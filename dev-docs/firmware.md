@@ -30,6 +30,17 @@ header-only C++ under `components/espcontrol/`.
 
 Visual setup and runtime wiring are separate. A new card often needs both.
 
+Media slider visuals own their runtime context as soon as visual setup creates
+them. Teardown must cancel both geometry and media-position timers, remove the
+parent resize callback, and clear LVGL user data before freeing the context.
+This ownership starts before Home Assistant data binding because startup or a
+dashboard rebuild can replace the visual during that gap.
+
+P4 crash-report handlers deliberately use the direct reboot path after clearing
+the saved report. Marking safe mode successful or using a safe reboot there
+clears ESPHome's failed-boot counter and can prevent recovery from a recurring
+startup crash.
+
 ## Adding Firmware Support for a Card
 
 Use an existing card with similar behavior as the architectural template:
