@@ -45,6 +45,11 @@ constexpr bool active(bool available, std::string_view mode,
   return action != "idle" && action != "off";
 }
 
+constexpr bool parent_indicator_active(bool available, std::string_view mode,
+                                       std::string_view action) {
+  return available && mode != "off" && action_is_working(action);
+}
+
 constexpr bool icon_enabled(bool available, std::string_view mode,
                             std::string_view) {
   return available && mode != "off";

@@ -477,7 +477,7 @@ struct ClimateSubpageParentIndicatorCtx {
 
 inline void apply_climate_subpage_parent_indicator(ClimateSubpageParentIndicatorCtx *ctx) {
   if (!ctx) return;
-  bool working = espcontrol::climate::active(
+  bool working = espcontrol::climate::parent_indicator_active(
       ctx->available, ctx->hvac_mode, ctx->hvac_action);
   set_card_checked_state(ctx->parent_btn, working);
   if (ctx->has_alt_icon && ctx->parent_icon)

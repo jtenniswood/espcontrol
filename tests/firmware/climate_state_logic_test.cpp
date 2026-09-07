@@ -20,6 +20,11 @@ void assert_state(const ClimateState &state, Status status, bool active,
            state.available, state.mode, state.action) == icon_enabled);
 }
 
+void assert_parent_indicator(const ClimateState &state, bool active) {
+  assert(espcontrol::climate::parent_indicator_active(
+           state.available, state.mode, state.action) == active);
+}
+
 int main() {
   // The displayed state table, including stale actions while switched off.
   assert_state({false, "auto", "heating"}, Status::UNAVAILABLE, false, false);
@@ -79,6 +84,19 @@ int main() {
   assert_state(state, Status::UNAVAILABLE, false, false);
   state.available = true;
   assert_state(state, Status::HEATING, true, true);
+
+  // Subpage parents reflect reported HVAC activity, while Off still wins.
+  assert_parent_indicator({true, "auto", "heating"}, true);
+  assert_parent_indicator({true, "cool", "cooling"}, true);
+  assert_parent_indicator({true, "dry", "drying"}, true);
+  assert_parent_indicator({true, "fan_only", "fan"}, true);
+  assert_parent_indicator({true, "off", "heating"}, false);
+  assert_parent_indicator({false, "auto", "heating"}, false);
+  assert_parent_indicator({true, "auto", "idle"}, false);
+  assert_parent_indicator({true, "auto", ""}, false);
+  assert_parent_indicator({true, "auto", "unknown"}, false);
+  assert_parent_indicator({true, "auto", "unavailable"}, false);
+  assert_parent_indicator({true, "heat", "preheating"}, false);
 
   return 0;
 }
