@@ -34,11 +34,12 @@ function createWebSandbox() {
     clearTimeout,
     requestAnimationFrame(fn) { return setTimeout(fn, 0); },
     URL,
+    URLSearchParams,
     TextEncoder,
     TextDecoder,
     atob,
     btoa,
-    location: { href: "http://espcontrol.test/" },
+    location: { href: "http://espcontrol.test/", search: "" },
     document: {
       readyState: "loading",
       activeElement: null,
