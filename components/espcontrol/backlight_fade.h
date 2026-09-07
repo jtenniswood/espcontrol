@@ -12,6 +12,23 @@ inline constexpr uint32_t DISPLAY_OFF_FADE_OUT_MS = 400;
 inline constexpr uint32_t BACKLIGHT_FADE_SAMPLE_MS = 16;
 inline constexpr float CLOCK_HANDOFF_LEVEL = 0.02f;
 
+// Keep the light's current brightness aligned with direct PWM samples so a
+// replacement fade (or normal light transition) starts at the visible level.
+// Internal samples must not publish a new user setting or write preferences.
+template<typename Light, typename Output>
+void apply_backlight_fade_level(Light &light, Output &output, float level) {
+  auto call = light.make_call();
+  call.set_state(level > 0.0f);
+  call.set_brightness(level);
+  call.set_transition_length(0);
+  call.set_publish(false);
+  call.set_save(false);
+  call.perform();
+  // ESPHome schedules its output write for the next light loop. Apply this
+  // sample now as well, before a redraw can delay that loop.
+  output.set_level(level);
+}
+
 // Sample brightness from elapsed time. A busy loop skips overdue samples
 // instead of extending the fade by waiting for every intermediate step.
 class BacklightFade {

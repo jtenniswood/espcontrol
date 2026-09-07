@@ -9,6 +9,7 @@ import textwrap
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "common" / "addon" / "backlight_schedule.yaml"
+FADE_SOURCE = ROOT / "common" / "addon" / "backlight.yaml"
 
 
 def check_recovery(source: str) -> None:
@@ -17,10 +18,17 @@ def check_recovery(source: str) -> None:
     script = source.index("  - id: backlight_apply_brightness")
     start = source.index("          float target = pct / 100.0f;", script)
     end = source.index("\n\n", start)
+    fade_source = FADE_SOURCE.read_text(encoding="utf-8")
+    fade_script = fade_source.index("  - id: backlight_fade_current_ui_to_black")
+    fade_start = fade_source.index("          float brightness =", fade_script)
+    fade_end = fade_source.index("      - while:", fade_start)
     with tempfile.TemporaryDirectory(prefix="backlight-recovery-") as directory:
         output = Path(directory)
         (output / "backlight_brightness_adapter.inc").write_text(
             textwrap.dedent(source[start:end]), encoding="utf-8"
+        )
+        (output / "backlight_fade_start.inc").write_text(
+            textwrap.dedent(fade_source[fade_start:fade_end]), encoding="utf-8"
         )
         binary = output / "backlight_recovery_test"
         subprocess.run([

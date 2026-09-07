@@ -859,10 +859,8 @@ script:
             id(backlight_fade_current_ui_to_black).stop();
             return;
           }
-          float brightness = 1.0f;
+          float brightness = 0.0f;
           id(display_backlight).current_values_as_brightness(&brightness);
-          if (brightness <= 0.01f) brightness = id(display_backlight).remote_values.get_brightness();
-          if (brightness <= 0.01f) brightness = 1.0f;
           id(screensaver_fade_out).start(
               brightness, minimum_level, millis(),
               target_mode == static_cast<int>(espcontrol::DisplayMode::CLOCK)
@@ -875,12 +873,15 @@ script:
                   !id(screensaver_fade_out).finished(millis());
           then:
             - lambda: |-
-                id(gpio_backlight_pwm).set_level(id(screensaver_fade_out).level(millis()));
+                espcontrol::apply_backlight_fade_level(
+                    id(display_backlight), id(gpio_backlight_pwm),
+                    id(screensaver_fade_out).level(millis()));
             - delay: !lambda 'return espcontrol::BACKLIGHT_FADE_SAMPLE_MS;'
       - lambda: |-
           if (id(espcontrol_app).display().transition_is_current(
                 static_cast<uint32_t>(generation), static_cast<espcontrol::DisplayMode>(target_mode))) {
-            id(gpio_backlight_pwm).set_level(minimum_level);
+            espcontrol::apply_backlight_fade_level(
+                id(display_backlight), id(gpio_backlight_pwm), minimum_level);
           }
 
   - id: display_mode_effect_off
@@ -1495,9 +1496,10 @@ script:
                 id(screensaver_fade_in).start(
                     espcontrol::CLOCK_HANDOFF_LEVEL, id(screensaver_clock_target_level),
                     millis(), espcontrol::CLOCK_FADE_IN_MS);
-            - output.set_level:
-                id: gpio_backlight_pwm
-                level: !lambda 'return espcontrol::CLOCK_HANDOFF_LEVEL;'
+            - lambda: |-
+                espcontrol::apply_backlight_fade_level(
+                    id(display_backlight), id(gpio_backlight_pwm),
+                    espcontrol::CLOCK_HANDOFF_LEVEL);
             # Keep a barely visible backlight during the overlay redraw. A
             # hard zero here creates a noticeable flash before the clock fades
             # in, especially on the 7-inch panel.
@@ -1510,7 +1512,9 @@ script:
                         !id(screensaver_fade_in).finished(millis());
                 then:
                   - lambda: |-
-                      id(gpio_backlight_pwm).set_level(id(screensaver_fade_in).level(millis()));
+                      espcontrol::apply_backlight_fade_level(
+                          id(display_backlight), id(gpio_backlight_pwm),
+                          id(screensaver_fade_in).level(millis()));
                   - delay: !lambda 'return espcontrol::BACKLIGHT_FADE_SAMPLE_MS;'
             - lambda: |-
                 if (!id(espcontrol_app).display().transition_is_current(
@@ -1518,7 +1522,9 @@ script:
                   id(show_clock_view).stop();
                   return;
                 }
-                id(gpio_backlight_pwm).set_level(id(screensaver_clock_target_level));
+                espcontrol::apply_backlight_fade_level(
+                    id(display_backlight), id(gpio_backlight_pwm),
+                    id(screensaver_clock_target_level));
             - script.execute:
                 id: backlight_note_internal_brightness
                 brightness: !lambda 'return id(screensaver_clock_target_level);'
