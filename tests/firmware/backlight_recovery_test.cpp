@@ -68,7 +68,7 @@ struct Fixture {
   uint32_t now_ms{1000};
   uint32_t millis() const { return now_ms; }
 
-  void start_fade(int target_mode, float minimum_level) {
+  void start_fade() {
 #include "backlight_fade_start.inc"
   }
 
@@ -80,60 +80,52 @@ struct Fixture {
 
 int main() {
   using namespace espcontrol;
-  // A new clock owner must continue from the last output sample, including
-  // interruptions during reveal, at minimum brightness, and at full black.
+  // A replacement display-off request must continue from the last output
+  // sample, including interruptions near and at full black.
   for (float initial : {0.8f, 0.01f, 0.0f}) {
-    for (bool reveal : {false, true}) {
-      for (uint32_t interrupted_ms : {0u, 100u, 200u, 250u}) {
-        Fixture fixture;
-        auto &light = fixture.display_backlight;
-        auto &controller = fixture.espcontrol_app.display();
-        controller.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::CLOCK);
-        const auto first = controller.resolve();
-        CHECK(controller.start_transition(first, fixture.now_ms));
-        apply_backlight_fade_level(&light, &light, initial);
-        BacklightFade fade;
-        fade.start(initial, reveal ? 0.35f : CLOCK_HANDOFF_LEVEL, fixture.now_ms, 250);
-        for (uint32_t elapsed : {0u, 100u, 200u, 250u}) {
-          if (elapsed > interrupted_ms) break;
-          const float sample = fade.level(fixture.now_ms + elapsed);
-          apply_backlight_fade_level(&light, &light, sample);
-        }
-        const float before = light.physical_level;
-        CHECK(controller.request(DisplayRequestSource::PRESENCE_SENSOR, DisplayMode::CLOCK));
-        CHECK(controller.cancel_transition());
-        fixture.now_ms += 300;
-        CHECK(controller.start_transition(controller.resolve(), fixture.now_ms));
-        fixture.start_fade(static_cast<int>(DisplayMode::CLOCK), CLOCK_HANDOFF_LEVEL);
-        const float first_replacement_sample = fixture.screensaver_fade_out.level(fixture.now_ms);
-        CHECK(std::fabs(first_replacement_sample - before) < 0.00001f);
-        apply_backlight_fade_level(&light, &light, first_replacement_sample);
-        CHECK(std::fabs(light.physical_level - before) < 0.00001f);
-        CHECK(!controller.complete_transition(first, fixture.now_ms));
-        CHECK(light.remote_values.get_brightness() == 0.8f);
-        CHECK(light.publications == 0);
-        CHECK(light.saves == 0);
-        CHECK(light.transition_length == 0);
+    for (uint32_t interrupted_ms : {0u, 100u, 200u, 400u}) {
+      Fixture fixture;
+      auto &light = fixture.display_backlight;
+      auto &controller = fixture.espcontrol_app.display();
+      controller.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::DISPLAY_OFF);
+      const auto first = controller.resolve();
+      CHECK(controller.start_transition(first, fixture.now_ms));
+      apply_backlight_fade_level(&light, &light, initial);
+      BacklightFade fade;
+      fade.start(initial, 0.0f, fixture.now_ms, DISPLAY_OFF_FADE_OUT_MS);
+      for (uint32_t elapsed : {0u, 100u, 200u, 400u}) {
+        if (elapsed > interrupted_ms) break;
+        const float sample = fade.level(fixture.now_ms + elapsed);
+        apply_backlight_fade_level(&light, &light, sample);
       }
+      const float before = light.physical_level;
+      CHECK(controller.request(DisplayRequestSource::PRESENCE_SENSOR, DisplayMode::DISPLAY_OFF));
+      CHECK(controller.cancel_transition());
+      fixture.now_ms += 450;
+      CHECK(controller.start_transition(controller.resolve(), fixture.now_ms));
+      fixture.start_fade();
+      const float first_replacement_sample = fixture.screensaver_fade_out.level(fixture.now_ms);
+      CHECK(std::fabs(first_replacement_sample - before) < 0.00001f);
+      apply_backlight_fade_level(&light, &light, first_replacement_sample);
+      CHECK(std::fabs(light.physical_level - before) < 0.00001f);
+      CHECK(!controller.complete_transition(first, fixture.now_ms));
+      CHECK(light.remote_values.get_brightness() == 0.8f);
+      CHECK(light.publications == 0);
+      CHECK(light.saves == 0);
+      CHECK(light.transition_length == 0);
     }
   }
   for (const auto destination : {DisplayMode::ACTIVE, DisplayMode::COVER_ART}) {
-    // Interrupt during clock fade-out, clock reveal, and automatic screen-off.
-    for (int phase = 0; phase < 3; ++phase) {
+    // Interrupt an automatic screen-off fade.
+    {
       Fixture fixture;
       auto &controller = fixture.espcontrol_app.display();
       auto &light = fixture.display_backlight;
-      controller.request(DisplayRequestSource::IDLE_TIMER,
-                         phase == 2 ? DisplayMode::DISPLAY_OFF : DisplayMode::CLOCK);
+      controller.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::DISPLAY_OFF);
       const auto interrupted = controller.resolve();
       CHECK(controller.start_transition(interrupted, 1000));
       BacklightFade fade;
-      if (phase == 1) {
-        fade.start(CLOCK_HANDOFF_LEVEL, 0.35f, 1000, CLOCK_FADE_IN_MS);
-      } else {
-        fade.start(light.stored_level, phase == 2 ? 0.0f : CLOCK_HANDOFF_LEVEL,
-                   1000, phase == 2 ? DISPLAY_OFF_FADE_OUT_MS : CLOCK_FADE_OUT_MS);
-      }
+      fade.start(light.stored_level, 0.0f, 1000, DISPLAY_OFF_FADE_OUT_MS);
       light.physical_level = fade.level(1200);
       CHECK(light.physical_level < light.stored_level);
 

@@ -4,13 +4,8 @@
 
 namespace espcontrol {
 
-// Clock reveal includes the redraw pause; screen-off still fades fully to zero.
-inline constexpr uint32_t CLOCK_FADE_OUT_MS = 250;
-inline constexpr uint32_t CLOCK_FADE_IN_MS = 225;
-inline constexpr uint32_t CLOCK_REDRAW_PAUSE_MS = 25;
 inline constexpr uint32_t DISPLAY_OFF_FADE_OUT_MS = 400;
 inline constexpr uint32_t BACKLIGHT_FADE_SAMPLE_MS = 16;
-inline constexpr float CLOCK_HANDOFF_LEVEL = 0.02f;
 
 // Keep the light's current brightness aligned with direct PWM samples so a
 // replacement fade (or normal light transition) starts at the visible level.

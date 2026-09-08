@@ -41,6 +41,36 @@ def check_recovery(source: str) -> None:
     print("backlight interrupted-fade recovery: ok")
 
 
+def check_clock_switches_without_fade() -> None:
+    source = FADE_SOURCE.read_text(encoding="utf-8")
+    start = source.index("  - id: clock_screensaver_refresh_brightness")
+    end = source.index("\n  # Hide the clock screensaver overlay", start)
+    clock_view = source[start:end]
+    assert "backlight_fade_current_ui_to_black" not in clock_view, (
+        "clock screensaver must not fade the active UI to black"
+    )
+    assert "screensaver_fade" not in clock_view, (
+        "clock screensaver must not run a brightness fade"
+    )
+    assert "transition_length: 400ms" not in clock_view, (
+        "clock screensaver brightness refresh must not fade"
+    )
+    assert clock_view.count("transition_length: 0s") == 2, (
+        "all clock screensaver brightness writes must be immediate"
+    )
+    reveal_overlay = clock_view.index(
+        "lv_obj_clear_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN);"
+    )
+    refresh_overlay = clock_view.index("lv_refr_now(nullptr);", reveal_overlay)
+    direct_brightness = clock_view.index(
+        "espcontrol::apply_backlight_fade_level(", refresh_overlay
+    )
+    assert reveal_overlay < refresh_overlay < direct_brightness, (
+        "clock overlay must be rendered before its brightness is applied"
+    )
+    print("clock screensaver direct transition: ok")
+
+
 def main() -> None:
     text = SOURCE.read_text(encoding="utf-8")
     handler = text.index("  - id: display_backlight_handle_state")
@@ -69,6 +99,7 @@ def main() -> None:
 
     print("backlight schedule startup guard: ok")
     check_recovery(text)
+    check_clock_switches_without_fade()
 
 
 if __name__ == "__main__":
