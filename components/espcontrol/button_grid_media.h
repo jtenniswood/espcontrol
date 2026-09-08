@@ -591,6 +591,7 @@ struct MediaPlaybackState {
   bool state_subscribed = false;
   bool metadata_subscribed = false;
   bool metadata_title_awaiting_refresh = false;
+  uint32_t metadata_title_refresh_started_ms = 0;
   bool source_subscribed = false;
   bool progress_subscribed = false;
   uint32_t progress_subscription_scope = 0;
@@ -762,6 +763,7 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->state_subscribed = false;
   state->metadata_subscribed = false;
   state->metadata_title_awaiting_refresh = false;
+  state->metadata_title_refresh_started_ms = 0;
   state->source_subscribed = false;
   state->progress_subscribed = false;
   state->progress_subscription_scope = 0;
@@ -1655,7 +1657,16 @@ inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {
           value, HA_STATE_TEXT_MAX_LEN);
         media_playback_clear_stale_external_source(
           state, !next_title.empty());
-        if (next_title != state->title && !state->metadata_title_awaiting_refresh) {
+        const bool title_refresh_pending =
+          espcontrol::media::media_title_refresh_pending(
+            state->metadata_title_awaiting_refresh,
+            state->metadata_title_refresh_started_ms,
+            esphome::millis());
+        if (!title_refresh_pending) {
+          state->metadata_title_awaiting_refresh = false;
+          state->metadata_title_refresh_started_ms = 0;
+        }
+        if (next_title != state->title && !title_refresh_pending) {
           // Home Assistant omits media_artist when the new item has no artist.
           // Clear the previous item's value and request a fresh snapshot so an
           // unchanged valid artist can be restored without retaining stale text.
@@ -1664,6 +1675,7 @@ inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {
         }
         state->title = next_title;
         state->metadata_title_awaiting_refresh = false;
+        state->metadata_title_refresh_started_ms = 0;
         media_playback_apply_metadata_consumers(state);
       })
   );
@@ -1963,6 +1975,7 @@ inline void media_playback_subscribe_content(MediaPlaybackState *state) {
         if (decision.clear_title) {
           state->title.clear();
           state->metadata_title_awaiting_refresh = true;
+          state->metadata_title_refresh_started_ms = esphome::millis();
         }
         if (decision.item_changed) {
           media_playback_clear_stale_artist(state);
