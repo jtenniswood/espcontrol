@@ -54,6 +54,17 @@ jobs:
         with:
           node-version: 24
 
+      - name: Prepare Python test environment
+        shell: bash
+        run: |
+          PYTHON_VENV="${RUNNER_TEMP}/espcontrol-release-python"
+          python3 -m venv "${PYTHON_VENV}"
+          "${PYTHON_VENV}/bin/python" -m pip install \
+            --disable-pip-version-check \
+            --no-cache-dir \
+            "PyYAML==6.0.2"
+          echo "${PYTHON_VENV}/bin" >> "${GITHUB_PATH}"
+
       - name: Ensure CMake is available
         shell: bash
         run: |
