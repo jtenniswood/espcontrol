@@ -4272,7 +4272,8 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
       content_w, layout.short_side,
       media_control_shuffle_supported(ctx),
       media_control_repeat_supported(ctx),
-      control_modal_uses_compact_portrait_tuning(layout) && layout.sh > layout.sw);
+      control_modal_uses_compact_portrait_tuning(layout) && layout.sh > layout.sw,
+      layout.sw == 1024 && layout.sh == 600);
   const lv_coord_t btn_size = transport_layout.button_size;
   lv_coord_t progress_slider_h = content_h * 42 / 100;
   lv_coord_t progress_slider_max_h = control_modal_scaled_px(144, layout.short_side);
