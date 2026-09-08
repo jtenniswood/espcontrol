@@ -1475,11 +1475,15 @@ script:
                                                  id(network_status_button));
                 network_status_hide_modal();
                 refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));
+                lv_obj_clear_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN);
+                lv_obj_move_foreground(id(clock_screensaver));
+                // Commit the black clock frame while the current UI brightness
+                // is still active. If PWM is lowered before LVGL refreshes, the
+                // previous screen visibly dims before the clock replaces it.
+                lv_refr_now(nullptr);
                 espcontrol::apply_backlight_fade_level(
                     id(display_backlight), id(gpio_backlight_pwm),
                     id(screensaver_clock_target_level));
-                lv_obj_clear_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN);
-                lv_obj_move_foreground(id(clock_screensaver));
             - lambda: |-
                 if (!id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::CLOCK)) {
