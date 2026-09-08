@@ -380,6 +380,12 @@ if artist_subscription < 0:
     raise SystemExit("Media artist subscription contract missing")
 if "state->artist.clear()" in metadata[:artist_subscription]:
     raise SystemExit("Media title updates must preserve an unchanged subscribed artist")
+for required in (
+    "media_title_refresh_pending(",
+    "state->metadata_title_refresh_started_ms = 0;",
+):
+    if required not in metadata:
+        raise SystemExit(f"Media title refresh expiry contract missing: {required}")
 content_start = media.find(
     "inline void media_playback_subscribe_content(MediaPlaybackState *state) {"
 )
@@ -397,8 +403,12 @@ for required in (
     "media_metadata_clear_decision(",
     "media_content_identity_fingerprint(",
     "should_replace_media_metadata_identity(",
-    "if (decision.clear_title) state->title.clear();",
-    "if (decision.clear_grouping) state->artist.clear();",
+    "if (decision.clear_title) {",
+    "state->metadata_title_awaiting_refresh = true;",
+    "state->metadata_title_refresh_started_ms = esphome::millis();",
+    "if (decision.item_changed) {",
+    "media_playback_clear_stale_artist(state);",
+    "media_playback_schedule_metadata_refresh(state);",
 ):
     if required not in content:
         raise SystemExit(f"Media item-change policy contract missing: {required}")
