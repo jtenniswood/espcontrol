@@ -292,7 +292,7 @@ inline Layout cover_art_layout(const std::string &slug, const std::string &rotat
     ? Layout{1024,600,0,0,600,585,0,439,600,615,34,377,430,260,0,true}
     : Layout{600,1024,0,0,600,0,600,600,424,30,634,540,360,162,0,true};
   if (slug == "guition-esp32-p4-jc4880p443") return landscape
-    ? Layout{800,480,0,0,480,480,0,320,480,504,34,272,330,220,0,true}
+    ? Layout{800,480,0,0,480,480,0,320,480,504,34,272,330,210,0,true}
     : Layout{480,800,0,0,480,0,480,480,320,24,514,324,262,130,0,true};
   if (slug == "guition-esp32-p4-jc8012p4a1" || slug == "guition-esp32-p4-jc8012p4a1-v2") return landscape
     ? Layout{1280,800,0,0,800,800,0,480,800,840,40,400,720,506,0,true}

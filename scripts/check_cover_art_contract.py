@@ -73,7 +73,7 @@ int main() {
   auto seven_v2 = cover_art_layout("guition-esp32-p4-jc1060p470-v2", "0", 1024, 600, 600, 260);
   assert(seven_v2.split && seven_v2.art_size == 600 && seven_v2.panel_x == 615);
   auto four = cover_art_layout("guition-esp32-p4-jc4880p443", "90", 800, 480, 480, 220);
-  assert(four.screen_width == 800);
+  assert(four.screen_width == 800 && four.title_max_height == 210);
   auto square = cover_art_layout("esp32-p4-86", "0", 720, 720, 800, 495);
   assert(!square.split && square.art_size == 720 && square.panel_padding == 36);
   RuntimeState s; assert(!s.needs_download()); s.select_source("track-a"); assert(s.needs_download());
