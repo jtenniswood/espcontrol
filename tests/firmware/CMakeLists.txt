@@ -53,6 +53,16 @@ target_compile_options(icons_legacy_alias_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(icons_legacy_alias_test PRIVATE ../../components/espcontrol)
 add_test(NAME icons_legacy_alias_test COMMAND icons_legacy_alias_test)
 
+add_executable(external_memory_allocator_test external_memory_allocator_test.cpp)
+target_compile_features(external_memory_allocator_test PRIVATE cxx_std_17)
+target_compile_options(external_memory_allocator_test PRIVATE -Wall -Wextra -Werror)
+target_compile_definitions(external_memory_allocator_test PRIVATE USE_ESP32)
+target_include_directories(external_memory_allocator_test PRIVATE
+  stubs
+  ../../components/espcontrol
+)
+add_test(NAME external_memory_allocator_test COMMAND external_memory_allocator_test)
+
 add_executable(alarm_delay_audio_test alarm_delay_audio_test.cpp)
 target_compile_features(alarm_delay_audio_test PRIVATE cxx_std_17)
 target_compile_options(alarm_delay_audio_test PRIVATE -Wall -Wextra -Werror)
@@ -64,6 +74,12 @@ target_compile_features(climate_target_logic_test PRIVATE cxx_std_17)
 target_compile_options(climate_target_logic_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(climate_target_logic_test PRIVATE ../../components/espcontrol)
 add_test(NAME climate_target_logic_test COMMAND climate_target_logic_test)
+
+add_executable(climate_subscription_policy_test climate_subscription_policy_test.cpp)
+target_compile_features(climate_subscription_policy_test PRIVATE cxx_std_17)
+target_compile_options(climate_subscription_policy_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(climate_subscription_policy_test PRIVATE ../../components/espcontrol)
+add_test(NAME climate_subscription_policy_test COMMAND climate_subscription_policy_test)
 
 add_executable(climate_state_logic_test climate_state_logic_test.cpp)
 target_compile_features(climate_state_logic_test PRIVATE cxx_std_17)
@@ -300,6 +316,26 @@ target_compile_features(image_pipeline_policy_test PRIVATE cxx_std_17)
 target_compile_options(image_pipeline_policy_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(image_pipeline_policy_test PRIVATE ../../components/artwork_image)
 add_test(NAME image_pipeline_policy_test COMMAND image_pipeline_policy_test)
+
+set(CLIMATE_SUBSCRIPTION_TEST_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/climate_subscription_runtime_test.cpp)
+add_custom_command(
+  OUTPUT ${CLIMATE_SUBSCRIPTION_TEST_SOURCE}
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/generate_climate_subscription_runtime_test.py
+    --output ${CLIMATE_SUBSCRIPTION_TEST_SOURCE}
+  DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/generate_climate_subscription_runtime_test.py
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/espcontrol/button_grid_climate.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/espcontrol/button_grid_climate_subscriptions.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/climate_subscription_runtime_test.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/issue_1837_climate_subpage.json
+  VERBATIM
+)
+add_executable(climate_subscription_runtime_test ${CLIMATE_SUBSCRIPTION_TEST_SOURCE})
+target_compile_features(climate_subscription_runtime_test PRIVATE cxx_std_17)
+target_compile_options(climate_subscription_runtime_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(climate_subscription_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME climate_subscription_runtime_test COMMAND climate_subscription_runtime_test)
 
 add_test(NAME cover_art_activation_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/cover_art_activation_test.py
