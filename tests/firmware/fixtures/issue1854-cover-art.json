@@ -1,0 +1,470 @@
+{
+  "version": 2,
+  "format": "espcontrol.backup",
+  "device": "guition-esp32-s3-4848s040",
+  "source": {
+    "device": "guition-esp32-s3-4848s040",
+    "slots": 9
+  },
+  "button_order": "3,,5,1b,,2,,,6",
+  "button_on_color": "0061FF",
+  "buttons": [
+    {
+      "entity": "media_player.issue1854",
+      "label": "TEST",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "cover_art",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "cover_art_details"
+    },
+    {
+      "entity": "",
+      "label": "Music",
+      "icon": "Music",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "subpage",
+      "precision": "",
+      "options": ""
+    },
+    {
+      "entity": "sensor.date",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "calendar",
+      "precision": "datetime",
+      "options": ""
+    },
+    {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "",
+      "precision": "",
+      "options": ""
+    },
+    {
+      "entity": "",
+      "label": "Home",
+      "icon": "Home",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "subpage",
+      "precision": "",
+      "options": ""
+    },
+    {
+      "entity": "",
+      "label": "Lights",
+      "icon": "Ceiling Lights Multiple",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "subpage",
+      "precision": "",
+      "options": ""
+    },
+    {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "",
+      "precision": "",
+      "options": ""
+    },
+    {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "",
+      "precision": "",
+      "options": ""
+    },
+    {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "",
+      "precision": "",
+      "options": ""
+    }
+  ],
+  "subpages": {
+    "2": "B||||||||",
+    "5": "B|||||||",
+    "6": "B||||||||"
+  },
+  "subpage_objects": {
+    "2": {
+      "order": [
+        "B"
+      ],
+      "back_label": "Back",
+      "buttons": [
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        }
+      ]
+    },
+    "5": {
+      "order": [
+        "B"
+      ],
+      "back_label": "Back",
+      "buttons": [
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        }
+      ]
+    },
+    "6": {
+      "order": [
+        "B"
+      ],
+      "back_label": "Back",
+      "buttons": [
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "",
+          "precision": "",
+          "options": ""
+        }
+      ]
+    }
+  },
+  "settings": {
+    "indoor_temp_enable": false,
+    "outdoor_temp_enable": false,
+    "clock_bar_temperature_entities": "",
+    "indoor_temp_entity": "",
+    "outdoor_temp_entity": "",
+    "temperature_unit": "\u00b0C",
+    "clock_bar": false,
+    "clock_bar_time": true,
+    "clock_bar_night_mode": false,
+    "network_status_icon": true,
+    "voice_services": false,
+    "alarm_delay_audio": false,
+    "alarm_delay_tts": true,
+    "alarm_delay_entry_announcement": "Please disarm the alarm",
+    "alarm_delay_exit_announcement": "Alarm arming, please leave the house",
+    "alarm_delay_beep_volume": 0.45,
+    "alarm_delay_final_countdown": 10,
+    "temperature_degree_symbol": true,
+    "subpage_chevron": true,
+    "timezone": "Auto (Home Assistant)",
+    "language": "en",
+    "clock_format": "24h",
+    "ntp_server_1": "0.pool.ntp.org",
+    "ntp_server_2": "1.pool.ntp.org",
+    "ntp_server_3": "2.pool.ntp.org",
+    "screensaver_mode": "sensor",
+    "presence_sensor_entity": "binary_sensor.issue1854_presence",
+    "media_player_sleep_prevention": true,
+    "media_player_sleep_prevention_entity": "media_player.issue1854",
+    "cover_art_screensaver": true,
+    "cover_art_media_player_entity": "media_player.issue1854",
+    "cover_art_secondary_media_player_entity": "",
+    "cover_art_attribute_conditions": "",
+    "cover_art_delay": 60,
+    "cover_art_track_overlay_duration": 10,
+    "cover_art_hide_external_input": true,
+    "home_assistant_artwork_protocol": "http",
+    "home_assistant_artwork_port": 8123,
+    "home_assistant_artwork_endpoint_mode": "Automatic",
+    "firmware_auto_update": false,
+    "firmware_update_frequency": "Daily",
+    "screensaver_action": "dim",
+    "clock_screensaver": false,
+    "clock_brightness": 69,
+    "clock_brightness_day": 69,
+    "clock_brightness_night": 68,
+    "screensaver_dimmed_brightness": 70,
+    "screensaver_dimmed_brightness_day": 94,
+    "screensaver_dimmed_brightness_night": 10,
+    "screensaver_timeout": 600,
+    "home_screen_timeout": 30,
+    "screen_rotation": "90"
+  },
+  "screen": {
+    "brightness_day": 100,
+    "brightness_night": 60,
+    "brightness_mode": "manual",
+    "manual_brightness": 100,
+    "brightness_dawn_time": "06:00",
+    "brightness_dusk_time": "18:00",
+    "schedule_trigger": "time",
+    "schedule_enabled": true,
+    "schedule_sensor_activation": "off",
+    "schedule_sensor_entity": "binary_sensor.issue1854_presence",
+    "schedule_on_hour": 6,
+    "schedule_off_hour": 0,
+    "schedule_mode": "screen_off",
+    "schedule_wake_timeout": 300,
+    "schedule_wake_brightness": 90,
+    "schedule_dimmed_brightness": 54,
+    "schedule_clock_brightness": 10,
+    "schedule_clock_text_color": "FFFFFF"
+  }
+}
