@@ -30,6 +30,17 @@ header-only C++ under `components/espcontrol/`.
 
 Visual setup and runtime wiring are separate. A new card often needs both.
 
+Media slider visuals own their runtime context as soon as visual setup creates
+them. Teardown must cancel both geometry and media-position timers, remove the
+parent resize callback, and clear LVGL user data before freeing the context.
+This ownership starts before Home Assistant data binding because startup or a
+dashboard rebuild can replace the visual during that gap.
+
+P4 crash-report handlers deliberately use the direct reboot path after clearing
+the saved report. Marking safe mode successful or using a safe reboot there
+clears ESPHome's failed-boot counter and can prevent recovery from a recurring
+startup crash.
+
 ## Adding Firmware Support for a Card
 
 Use an existing card with similar behavior as the architectural template:
@@ -80,7 +91,74 @@ Cards that reflect Home Assistant state must subscribe to the entity or
 attribute they need. Keep subscriptions narrow because display memory and update
 work are limited.
 
+The shared subscription coordinator stores its container backing and callback
+ownership blocks in external RAM when available, with internal RAM as the
+allocator fallback. Climate cards always subscribe to capability lists, but
+subscribe to current preset, fan, and swing values only when their configured or
+effective fallback controls need them. An optional subscription stays registered
+for that card context; narrowing a configuration can therefore leave its upstream
+channel in the append-only coordinator history until reboot.
+
+Each climate context owns its callbacks and releases them before deletion; a
+shared page callback scope is restored after registration. Optional registration
+failures stay pending on the guarded 250 ms timer, which rechecks current
+capabilities and stops once the work completes or its contexts are removed.
+
+Subscription diagnostics report `container_bytes` as persistent vector capacity,
+including nested lists. `alloc_external_bytes` and `alloc_internal_bytes` track
+all live allocations made by the adapter, including shared callback blocks and
+any active dispatch snapshots. String payloads, allocations inside `std::function`,
+and ESPHome transport storage are excluded from both measurements.
+
+The firmware host tests include the climate subscription maintenance helper
+directly and generate a harness for registration and context-deletion functions. It uses the issue
+fixture to count registered channels and a fake transport/timer to check delayed
+delivery and rebuilds; LVGL rendering and physical memory behaviour still need
+device testing.
+
 Use the firmware UI playbook for subscription and runtime checks.
+
+## Cover Art activation and the S3 stack
+
+ESPHome's automation actions call the next action synchronously. Keep the 1 ms
+yield at the start of `display_mode_effect_cover_art`: layout and logging must
+not inherit the controller's nested action stack. Keep artwork preparation in
+the restartable `cover_art_prepare_activation` script with its own yield. The
+parent waits for preparation before completing the transition. After the yield,
+validate transition generation, subscription generation, media entity and
+feature eligibility; obsolete work must not select or download artwork.
+
+`cover_art_request_artwork` already selects cached candidates. Do not add a
+second cached-selection call to activation. Image consumers continue sharing
+the existing serialized download queue.
+
+`tests/firmware/cover_art_activation_test.py` executes the production scheduling
+and artwork-selection bodies with an ESPHome action-chain excerpt and simulated
+LVGL/network/scheduler boundaries. Its `--mutations` option verifies the yields
+and ownership guards. Use `--esphome-source <generated-src>/esphome` after a
+toolchain update to verify the excerpt against the installed automation code.
+Run it with a Python environment containing PyYAML (the pinned ESPHome
+environment provides this dependency and CI reuses it).
+
+The anonymized `tests/firmware/fixtures/issue1854-cover-art.json` backup preserves
+the reporter's tile, 60-second Cover Art delay, presence dimming, music sleep
+prevention and 90-degree rotation. Replace all `media_player.issue1854` and
+`binary_sensor.issue1854_presence` values with bench entities before importing.
+The native payload is omitted so it cannot override the anonymized legacy
+fields. Test five cold boots, 20 playback/track changes, 20 screensaver/wake
+cycles and 30 minutes of playback on the 4-inch S3, followed by a 7-inch P4
+smoke test. Check both crashes and text corruption.
+
+Home Assistant reconnect recovery lives in the restartable
+`ha_refresh_after_connect` script. A Home Assistant disconnect cancels its delayed
+refreshes only when no authenticated Home Assistant connection remains. An old
+socket disconnecting must preserve a replacement's recovery and pending requests,
+including before state subscriptions are ready. Diagnostic API clients must not
+start or cancel that work. Artwork recovery
+rechecks source URLs without forcing a healthy cached image to download again.
+Real metadata changes still force a refresh when a provider reuses its URL.
+That refresh requirement survives attribute timeouts until artwork is handed to
+the download path; retries for a missing optional attribute then stay unforced.
 
 ## Config Parser Rules
 

@@ -108,5 +108,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 2580252, "gzip": 1085169, "gzipTolerance": 9216 }
+  "bundleSize": { "minified": 2580000, "gzip": 1085145, "gzipTolerance": 9216 }
 }

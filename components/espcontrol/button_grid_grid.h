@@ -66,9 +66,10 @@ struct GridConfig {
 
 inline void grid_log_memory(const char *stage) {
 #ifdef ESP_PLATFORM
-  ESP_LOGI("sensors", "Phase 2 %s heap: internal=%u psram=%u",
+  ESP_LOGI("sensors", "Phase 2 %s heap: internal=%u largest=%u psram=%u",
     stage,
     (unsigned) heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+    (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
     (unsigned) heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
 #else
   (void) stage;
@@ -1456,15 +1457,7 @@ inline void grid_prepare_media_runtime_for_visual_reset(lv_obj_t *owner) {
     } else if (allocation.deleter == grid_delete_media_slider_runtime_ptr) {
       SliderCtx *ctx = static_cast<SliderCtx *>(allocation.ptr);
       media_playback_detach_slider(ctx);
-      if (ctx->media_timer) {
-        lv_timer_del(ctx->media_timer);
-        ctx->media_timer = nullptr;
-      }
-      ctx->media_slider = nullptr;
-      ctx->fill = nullptr;
-      ctx->media_track_bg = nullptr;
-      ctx->media_value_lbl = nullptr;
-      ctx->media_status_lbl = nullptr;
+      slider_detach_runtime(ctx);
     }
   }
 }
@@ -2224,6 +2217,7 @@ inline void grid_phase2(
     refresh_image_cards();
   }
   refresh_weather_forecast_cards();
+  ha_log_subscription_diagnostics("grid-complete");
   grid_log_memory("end");
   ESP_LOGI("sensors", "Phase 2: done (%lu ms)", esphome::millis());
 }

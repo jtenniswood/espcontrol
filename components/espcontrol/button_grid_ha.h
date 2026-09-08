@@ -1,5 +1,6 @@
 #pragma once
 
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <utility>
@@ -7,6 +8,7 @@
 
 #include "ha_read_coordinator.h"
 #include "home_assistant_binding_service.h"
+#include "external_memory_allocator.h"
 #include "espcontrol_app_core.h"
 
 #ifdef ESP_PLATFORM
@@ -80,6 +82,26 @@ struct EspHomeHaReadTransport {
     esphome::api::global_api_server->subscribe_home_assistant_state(
         entity_id, attribute, std::move(callback));
   }
+
+  bool request(const std::string &entity_id, const std::string &attribute) {
+    if (!state_connected()) return false;
+    // The coordinator already owns a persistent subscription for this pair.
+    // Ask for its current value directly: get_home_assistant_state appends a
+    // permanent callback and its const-char overload borrows these strings.
+    // Appending also cannot wake an already-finished subscription handshake.
+    esphome::api::SubscribeHomeAssistantStateResponse request;
+    request.entity_id = esphome::StringRef(entity_id);
+    request.attribute = esphome::StringRef(attribute);
+    request.once = true;
+    bool sent = false;
+    for (const auto &client : esphome::api::global_api_server->active_clients()) {
+      if (!client || client->is_marked_for_removal() || !client->is_authenticated()) continue;
+      const char *name = client->get_name();
+      if (name == nullptr || std::string(name).find("Home Assistant") == std::string::npos) continue;
+      sent = client->send_message(request) || sent;
+    }
+    return sent;
+  }
 };
 
 struct EspHomeHaHeapProbe {
@@ -88,9 +110,13 @@ struct EspHomeHaHeapProbe {
   }
 };
 
-using EspHomeHaReadCoordinator = HaReadCoordinator<EspHomeHaReadTransport, EspHomeHaHeapProbe>;
+using EspHomeHaStorageAllocator = EspControlExternalAllocator<std::byte>;
+using EspHomeHaReadCoordinator =
+    HaReadCoordinator<EspHomeHaReadTransport, EspHomeHaHeapProbe,
+                      EspHomeHaStorageAllocator>;
 using EspHomeHaBindingService =
-    HomeAssistantBindingService<EspHomeHaReadTransport, EspHomeHaHeapProbe>;
+    HomeAssistantBindingService<EspHomeHaReadTransport, EspHomeHaHeapProbe,
+                                EspHomeHaStorageAllocator>;
 
 inline EspHomeHaBindingService &pre_core_ha_binding_service() {
   static EspHomeHaBindingService service;
@@ -144,19 +170,36 @@ inline void ha_reset_subscription_callbacks(uint32_t scope = HA_SUBSCRIPTION_SCO
 inline void ha_log_subscription_diagnostics(const char *stage) {
   auto &coordinator = ha_read_coordinator();
   size_t upstream_subscriptions = 0;
+  size_t internal_free = 0;
+  size_t internal_largest = 0;
+  size_t psram_free = 0;
 #ifdef USE_API_HOMEASSISTANT_STATES
   if (ha_api_available()) {
     upstream_subscriptions = esphome::api::global_api_server->get_state_subs().size();
   }
 #endif
-  ESP_LOGD("ha", "Subscriptions %s: active=%u retained=%u channels=%u pending=%u deferred=%u upstream=%u",
+#ifdef ESP_PLATFORM
+  internal_free = heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+  internal_largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+  psram_free = heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+#endif
+  ESP_LOGD("ha", "Subscriptions %s: active=%u retained=%u channels=%u/%u pending=%u deferred=%u upstream=%u container_bytes=%u alloc_external_bytes=%u alloc_internal_bytes=%u fallback=%u failed=%u heap_internal=%u heap_largest=%u psram_free=%u",
            stage ? stage : "status",
            static_cast<unsigned>(coordinator.subscription_count()),
            static_cast<unsigned>(coordinator.retained_channel_count()),
            static_cast<unsigned>(coordinator.subscription_channel_count()),
+           static_cast<unsigned>(coordinator.subscription_channel_capacity()),
            static_cast<unsigned>(coordinator.pending_read_count()),
            static_cast<unsigned>(coordinator.deferred_count()),
-           static_cast<unsigned>(upstream_subscriptions));
+           static_cast<unsigned>(upstream_subscriptions),
+           static_cast<unsigned>(coordinator.persistent_container_capacity_bytes()),
+           static_cast<unsigned>(EspControlExternalAllocatorStats::external_bytes),
+           static_cast<unsigned>(EspControlExternalAllocatorStats::internal_bytes),
+           static_cast<unsigned>(EspControlExternalAllocatorStats::internal_fallbacks),
+           static_cast<unsigned>(EspControlExternalAllocatorStats::failed_allocations),
+           static_cast<unsigned>(internal_free),
+           static_cast<unsigned>(internal_largest),
+           static_cast<unsigned>(psram_free));
 }
 
 inline void ha_reset_deferred_state_requests() {
@@ -314,4 +357,28 @@ inline bool ha_read_retained_attribute(const std::string &entity_id,
   return ha_read_coordinator().read_retained(
       entity_id, attribute, std::move(callback), true,
       HA_READ_INTERNAL_FREE_MIN_BYTES, HA_READ_INTERNAL_LARGEST_MIN_BYTES, owner);
+}
+
+// One timer pumps shared refresh work; it stores no consumer pointers.
+inline void ha_schedule_metadata_refresh(const std::string &entity_id,
+                                         std::initializer_list<const char *> attributes,
+                                         uint32_t scope) {
+  static lv_timer_t *timer = nullptr;
+  if (!timer) {
+    timer = lv_timer_create([](lv_timer_t *timer) {
+      auto &coordinator = ha_read_coordinator();
+      coordinator.flush_fresh(esphome::millis(), HA_READ_INTERNAL_FREE_MIN_BYTES,
+                              HA_READ_INTERNAL_LARGEST_MIN_BYTES);
+      if (!coordinator.has_scheduled_fresh()) lv_timer_pause(timer);
+    }, 50, nullptr);
+  }
+  if (!timer) return;
+  for (const char *attribute : attributes) {
+    if (attribute) ha_read_coordinator().schedule_fresh(entity_id, attribute, scope, esphome::millis());
+  }
+  if (ha_read_coordinator().has_scheduled_fresh()) lv_timer_resume(timer);
+}
+
+inline void ha_cancel_metadata_refresh(uint32_t scope) {
+  ha_read_coordinator().cancel_fresh(scope);
 }

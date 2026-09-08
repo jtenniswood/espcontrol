@@ -253,6 +253,97 @@ int main() {
   CHECK(!controller.clear(DisplayRequestSource::MEDIA_PLAYBACK));
   CHECK(!controller.request(DisplayRequestSource::PRESENCE_SENSOR, DisplayMode::DIMMED));
 
+  // A presentation transition is distinct from the policy decision that
+  // requested it. Periodic checks must not restart an unchanged slow effect.
+  DisplayModeController slow_clock;
+  CHECK(slow_clock.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::CLOCK));
+  const auto slow_clock_transition = slow_clock.resolve();
+  CHECK(slow_clock.start_transition(slow_clock_transition, 1000));
+  CHECK(slow_clock.has_transition_in_progress());
+  CHECK(slow_clock.transition_in_progress(slow_clock_transition));
+  CHECK(slow_clock.presentation_incomplete());
+  CHECK(!slow_clock.start_transition(slow_clock.resolve(), 2000));
+  CHECK(!slow_clock.start_transition(slow_clock.resolve(), 2500));
+  CHECK(!slow_clock.transition_warning_due(2999, 2000));
+  CHECK(slow_clock.transition_warning_due(3000, 2000));
+  CHECK(!slow_clock.transition_warning_due(4000, 2000));
+  CHECK(slow_clock.transition_elapsed_ms(4100) == 3100);
+  CHECK(slow_clock.complete_transition(slow_clock_transition, 4200));
+  CHECK(!slow_clock.has_transition_in_progress());
+  CHECK(!slow_clock.presentation_incomplete());
+  CHECK(slow_clock.last_completed_generation() ==
+        slow_clock_transition.generation);
+  CHECK(slow_clock.last_transition_elapsed_ms() == 3200);
+
+  // Wake can interrupt a clock before its presentation completes. The stale
+  // callback is rejected, while an explicit ACTIVE cleanup runs even though
+  // ACTIVE was the last completed controller mode.
+  DisplayModeController interrupted_clock;
+  CHECK(interrupted_clock.request(DisplayRequestSource::IDLE_TIMER,
+                                  DisplayMode::CLOCK));
+  const auto interrupted_transition = interrupted_clock.resolve();
+  CHECK(interrupted_clock.start_transition(interrupted_transition, 5000));
+  CHECK(interrupted_clock.current_mode_is(DisplayMode::ACTIVE));
+  CHECK(interrupted_clock.cancel_transition());
+  CHECK(interrupted_clock.clear(DisplayRequestSource::IDLE_TIMER));
+  interrupted_clock.require_presentation_cleanup();
+  const auto wake_cleanup = interrupted_clock.resolve();
+  CHECK(wake_cleanup.target_mode == DisplayMode::ACTIVE);
+  CHECK(!interrupted_clock.transition_required(wake_cleanup));
+  CHECK(interrupted_clock.presentation_incomplete());
+  CHECK(interrupted_clock.start_transition(wake_cleanup, 5100));
+  CHECK(!interrupted_clock.complete_transition(interrupted_transition, 5200));
+  CHECK(interrupted_clock.complete_transition(wake_cleanup, 5300));
+  CHECK(!interrupted_clock.presentation_incomplete());
+  CHECK(!interrupted_clock.start_transition(wake_cleanup, 5400));
+
+  // If a presentation script stops without a policy change, cancelling it
+  // leaves cleanup pending and invalidates the generation before retrying.
+  DisplayModeController stopped_effect;
+  CHECK(stopped_effect.request(DisplayRequestSource::IDLE_TIMER,
+                               DisplayMode::CLOCK));
+  const auto stopped_transition = stopped_effect.resolve();
+  CHECK(stopped_effect.start_transition(stopped_transition, 6000));
+  CHECK(stopped_effect.cancel_transition());
+  CHECK(stopped_effect.presentation_incomplete());
+  const auto stopped_retry = stopped_effect.resolve();
+  CHECK(stopped_retry.generation != stopped_transition.generation);
+  CHECK(!stopped_effect.complete_transition(stopped_transition, 6100));
+  CHECK(stopped_effect.start_transition(stopped_retry, 6200));
+  // Starting the retry must not make the cancelled callback acceptable again.
+  CHECK(!stopped_effect.complete_transition(stopped_transition, 6250));
+  CHECK(stopped_effect.complete_transition(stopped_retry, 6300));
+
+  // A newer winning request supersedes the old effect and invalidates its
+  // completion callback, including when the destination mode stays CLOCK but
+  // ownership changes from idle to presence.
+  DisplayModeController superseded_effect;
+  CHECK(superseded_effect.request(DisplayRequestSource::IDLE_TIMER,
+                                  DisplayMode::CLOCK));
+  const auto idle_owned_clock = superseded_effect.resolve();
+  CHECK(superseded_effect.start_transition(idle_owned_clock, 7000));
+  CHECK(superseded_effect.request(DisplayRequestSource::SCREEN_SCHEDULE,
+                                  DisplayMode::DISPLAY_OFF));
+  const auto scheduled_off = superseded_effect.resolve();
+  CHECK(!superseded_effect.transition_in_progress(scheduled_off));
+  CHECK(superseded_effect.cancel_transition());
+  CHECK(superseded_effect.start_transition(scheduled_off, 7100));
+  CHECK(!superseded_effect.complete_transition(idle_owned_clock, 7200));
+  CHECK(superseded_effect.complete_transition(scheduled_off, 7300));
+  CHECK(superseded_effect.clear(DisplayRequestSource::SCREEN_SCHEDULE));
+  const auto restored_idle_clock = superseded_effect.resolve();
+  CHECK(superseded_effect.start_transition(restored_idle_clock, 7400));
+  CHECK(superseded_effect.complete_transition(restored_idle_clock, 7500));
+  CHECK(superseded_effect.request(DisplayRequestSource::PRESENCE_SENSOR,
+                                  DisplayMode::CLOCK));
+  const auto presence_owned_clock = superseded_effect.resolve();
+  CHECK(presence_owned_clock.target_mode == DisplayMode::CLOCK);
+  CHECK(presence_owned_clock.winning_source ==
+        DisplayRequestSource::PRESENCE_SENSOR);
+  CHECK(superseded_effect.transition_required(presence_owned_clock));
+  CHECK(superseded_effect.start_transition(presence_owned_clock, 7600));
+  CHECK(superseded_effect.complete_transition(presence_owned_clock, 7700));
+
   DisplayModeController rapid;
   CHECK(rapid.request(DisplayRequestSource::SCREEN_SCHEDULE, DisplayMode::DISPLAY_OFF));
   const auto off_generation = rapid.resolve();

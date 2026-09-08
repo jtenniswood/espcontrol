@@ -874,7 +874,11 @@ script:
           if (target > 1.0f) target = 1.0f;
           float current = 0.0f;
           id(display_backlight).current_values_as_brightness(&current);
+          // A cancelled PWM fade can leave the physical backlight dim while
+          // the light state still matches the target. Always write during
+          // presentation recovery, including alarm and cover-art takeovers.
           if (!id(backlight_force_next_write) &&
+              !id(espcontrol_app).display().presentation_incomplete() &&
               id(display_backlight).current_values.is_on() &&
               std::fabs(current - target) < 0.005f) {
             return;

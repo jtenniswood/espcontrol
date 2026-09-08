@@ -14,6 +14,7 @@ int main() {
   using espcontrol::media::media_item_kind;
   using espcontrol::media::media_modal_artist_visible;
   using espcontrol::media::media_metadata_clear_decision;
+  using espcontrol::media::media_title_refresh_pending;
   using espcontrol::media::should_replace_media_metadata_identity;
 
   assert(media_item_kind("library://track/456") == MediaItemKind::TRACK);
@@ -46,6 +47,13 @@ int main() {
   assert(media_modal_artist_visible(false, "idle", false));
   assert(!media_control_updates_parent_label(true));
   assert(media_control_updates_parent_label(false));
+
+  assert(media_title_refresh_pending(true, 1000, 2999));
+  assert(!media_title_refresh_pending(true, 1000, 3000));
+  assert(!media_title_refresh_pending(false, 1000, 1500));
+  // Expiry remains correct across the millisecond clock wrapping to zero.
+  assert(media_title_refresh_pending(true, UINT32_MAX - 999, 999));
+  assert(!media_title_refresh_pending(true, UINT32_MAX - 999, 1000));
 
   // Sonos exposes TV audio as a home-theatre SPDIF stream. Music services use
   // ordinary provider IDs and must not inherit a retained TV classification.

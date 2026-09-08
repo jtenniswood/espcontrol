@@ -1431,20 +1431,28 @@ inline void slider_geometry_refresh_event_cb(lv_event_t *e) {
   slider_refresh_geometry(slider);
 }
 
+inline void slider_detach_runtime(SliderCtx *ctx,
+                                  lv_obj_t *deleting_slider = nullptr) {
+  espcontrol::media_slider_lifecycle::detach<
+    SliderCtx, lv_timer_t, lv_obj_t>(
+      ctx, deleting_slider,
+      [](lv_timer_t *timer) { lv_timer_del(timer); },
+      [](lv_obj_t *obj) { return lv_obj_get_user_data(obj); },
+      [](lv_obj_t *obj, void *user_data) {
+        lv_obj_set_user_data(obj, user_data);
+      },
+      [](lv_obj_t *parent, lv_obj_t *slider) {
+        lv_obj_remove_event_cb_with_user_data(
+          parent, slider_geometry_refresh_event_cb, slider);
+      });
+}
+
 inline void slider_geometry_delete_event_cb(lv_event_t *e) {
   if (!e) return;
   lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
   SliderCtx *ctx = slider ? (SliderCtx *)lv_obj_get_user_data(slider) : nullptr;
   if (!ctx) return;
-  if (ctx->geometry_timer) {
-    lv_timer_del(ctx->geometry_timer);
-    ctx->geometry_timer = nullptr;
-  }
-  if (ctx->geometry_parent) {
-    lv_obj_remove_event_cb_with_user_data(
-        ctx->geometry_parent, slider_geometry_refresh_event_cb, slider);
-    ctx->geometry_parent = nullptr;
-  }
+  slider_detach_runtime(ctx, slider);
 }
 
 inline void slider_bind_geometry_refresh(lv_obj_t *btn, lv_obj_t *slider) {
