@@ -44,7 +44,9 @@ sensor:
     filters:
       - lambda: |-
           if (!id(battery_status_enabled).state) {
-            return NAN;
+            // Drop ADC updates while optional battery support is disabled.
+            // Publishing NAN marks the sensor unavailable and logs it every 30s.
+            return {};
           }
           return min(max((x - ${battery_empty_voltage}f) /
                           (${battery_full_voltage}f - ${battery_empty_voltage}f) * 100.0f,
