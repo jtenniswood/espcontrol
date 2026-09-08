@@ -1,0 +1,13 @@
+{
+  "issue": 1837,
+  "device": "guition-esp32-p4-jc8012p4a1",
+  "other_subscription_channels": 50,
+  "subpage_cards": [
+    { "type": "climate_control", "entity": "climate.zone_1", "climate_tabs": "temperature" },
+    { "type": "climate_control", "entity": "climate.zone_2", "climate_tabs": "temperature" },
+    { "type": "climate_control", "entity": "climate.zone_3", "climate_tabs": "temperature" },
+    { "type": "climate_control", "entity": "climate.zone_4", "climate_tabs": "temperature" },
+    { "type": "climate_control", "entity": "climate.zone_5", "climate_tabs": "temperature" }
+  ],
+  "expected_initial_subscription_channels": 125
+}

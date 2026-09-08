@@ -91,6 +91,31 @@ Cards that reflect Home Assistant state must subscribe to the entity or
 attribute they need. Keep subscriptions narrow because display memory and update
 work are limited.
 
+The shared subscription coordinator stores its container backing and callback
+ownership blocks in external RAM when available, with internal RAM as the
+allocator fallback. Climate cards always subscribe to capability lists, but
+subscribe to current preset, fan, and swing values only when their configured or
+effective fallback controls need them. An optional subscription stays registered
+for that card context; narrowing a configuration can therefore leave its upstream
+channel in the append-only coordinator history until reboot.
+
+Each climate context owns its callbacks and releases them before deletion; a
+shared page callback scope is restored after registration. Optional registration
+failures stay pending on the guarded 250 ms timer, which rechecks current
+capabilities and stops once the work completes or its contexts are removed.
+
+Subscription diagnostics report `container_bytes` as persistent vector capacity,
+including nested lists. `alloc_external_bytes` and `alloc_internal_bytes` track
+all live allocations made by the adapter, including shared callback blocks and
+any active dispatch snapshots. String payloads, allocations inside `std::function`,
+and ESPHome transport storage are excluded from both measurements.
+
+The firmware host tests include the climate subscription maintenance helper
+directly and generate a harness for registration and context-deletion functions. It uses the issue
+fixture to count registered channels and a fake transport/timer to check delayed
+delivery and rebuilds; LVGL rendering and physical memory behaviour still need
+device testing.
+
 Use the firmware UI playbook for subscription and runtime checks.
 
 ## Cover Art activation and the S3 stack
