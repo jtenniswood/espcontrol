@@ -339,6 +339,7 @@ inline void media_playback_subscribe_grouping(MediaPlaybackState *state);
 inline void media_playback_subscribe_speaker_discovery(
   MediaPlaybackState *state, const std::string &entity_id);
 inline void media_playback_refresh_progress_timer(MediaPlaybackState *state);
+inline void media_playback_schedule_metadata_refresh(MediaPlaybackState *state);
 inline void media_playback_apply_metadata_consumers(MediaPlaybackState *state);
 inline void media_playback_apply_progress_consumers(MediaPlaybackState *state);
 
@@ -589,6 +590,8 @@ struct MediaPlaybackState {
   bool used = false;
   bool state_subscribed = false;
   bool metadata_subscribed = false;
+  bool metadata_title_awaiting_refresh = false;
+  uint32_t metadata_title_refresh_started_ms = 0;
   bool source_subscribed = false;
   bool progress_subscribed = false;
   uint32_t progress_subscription_scope = 0;
@@ -759,6 +762,8 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->used = true;
   state->state_subscribed = false;
   state->metadata_subscribed = false;
+  state->metadata_title_awaiting_refresh = false;
+  state->metadata_title_refresh_started_ms = 0;
   state->source_subscribed = false;
   state->progress_subscribed = false;
   state->progress_subscription_scope = 0;
@@ -931,6 +936,10 @@ inline void media_playback_set_artist(MediaPlaybackState *state,
   if (!media_playback_generation_valid(state, generation)) return;
   state->artist = media_playback_metadata_value(value, HA_STATE_TEXT_MAX_LEN);
   media_playback_apply_metadata_consumers(state);
+}
+
+inline void media_playback_clear_stale_artist(MediaPlaybackState *state) {
+  if (state) state->artist.clear();
 }
 
 inline void media_playback_clear_video_artist(MediaPlaybackState *state,
@@ -1572,6 +1581,12 @@ inline void media_playback_refresh_progress_timer(MediaPlaybackState *state) {
   else lv_timer_pause(state->progress_timer);
 }
 
+inline void media_playback_schedule_metadata_refresh(MediaPlaybackState *state) {
+  if (!state || state->entity_id.empty()) return;
+  ha_schedule_metadata_refresh(state->entity_id, {"media_title", "media_artist"},
+                               HA_SUBSCRIPTION_SCOPE_DEFAULT);
+}
+
 inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {
   if (!state || state->state_subscribed || state->entity_id.empty()) return;
   state->state_subscribed = true;
@@ -1642,12 +1657,25 @@ inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {
           value, HA_STATE_TEXT_MAX_LEN);
         media_playback_clear_stale_external_source(
           state, !next_title.empty());
-        if (next_title != state->title) {
-          // Video entities commonly omit media_artist entirely. Clear the
-          // previous audio item's grouping as soon as the film title changes.
-          media_playback_clear_video_artist(state, state->current_content_type);
+        const bool title_refresh_pending =
+          espcontrol::media::media_title_refresh_pending(
+            state->metadata_title_awaiting_refresh,
+            state->metadata_title_refresh_started_ms,
+            esphome::millis());
+        if (!title_refresh_pending) {
+          state->metadata_title_awaiting_refresh = false;
+          state->metadata_title_refresh_started_ms = 0;
+        }
+        if (next_title != state->title && !title_refresh_pending) {
+          // Home Assistant omits media_artist when the new item has no artist.
+          // Clear the previous item's value and request a fresh snapshot so an
+          // unchanged valid artist can be restored without retaining stale text.
+          media_playback_clear_stale_artist(state);
+          media_playback_schedule_metadata_refresh(state);
         }
         state->title = next_title;
+        state->metadata_title_awaiting_refresh = false;
+        state->metadata_title_refresh_started_ms = 0;
         media_playback_apply_metadata_consumers(state);
       })
   );
@@ -1944,8 +1972,15 @@ inline void media_playback_subscribe_content(MediaPlaybackState *state) {
           state->current_content_fingerprint = next_content_fingerprint;
           state->current_content_kind = next_kind;
         }
-        if (decision.clear_title) state->title.clear();
-        if (decision.clear_grouping) state->artist.clear();
+        if (decision.clear_title) {
+          state->title.clear();
+          state->metadata_title_awaiting_refresh = true;
+          state->metadata_title_refresh_started_ms = esphome::millis();
+        }
+        if (decision.item_changed) {
+          media_playback_clear_stale_artist(state);
+          media_playback_schedule_metadata_refresh(state);
+        }
 
         media_playback_apply_state_to_playlists(state);
         if (decision.item_changed) {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <utility>
@@ -79,6 +80,26 @@ struct EspHomeHaReadTransport {
                  Callback callback) {
     esphome::api::global_api_server->subscribe_home_assistant_state(
         entity_id, attribute, std::move(callback));
+  }
+
+  bool request(const std::string &entity_id, const std::string &attribute) {
+    if (!state_connected()) return false;
+    // The coordinator already owns a persistent subscription for this pair.
+    // Ask for its current value directly: get_home_assistant_state appends a
+    // permanent callback and its const-char overload borrows these strings.
+    // Appending also cannot wake an already-finished subscription handshake.
+    esphome::api::SubscribeHomeAssistantStateResponse request;
+    request.entity_id = esphome::StringRef(entity_id);
+    request.attribute = esphome::StringRef(attribute);
+    request.once = true;
+    bool sent = false;
+    for (const auto &client : esphome::api::global_api_server->active_clients()) {
+      if (!client || client->is_marked_for_removal() || !client->is_authenticated()) continue;
+      const char *name = client->get_name();
+      if (name == nullptr || std::string(name).find("Home Assistant") == std::string::npos) continue;
+      sent = client->send_message(request) || sent;
+    }
+    return sent;
   }
 };
 
@@ -314,4 +335,28 @@ inline bool ha_read_retained_attribute(const std::string &entity_id,
   return ha_read_coordinator().read_retained(
       entity_id, attribute, std::move(callback), true,
       HA_READ_INTERNAL_FREE_MIN_BYTES, HA_READ_INTERNAL_LARGEST_MIN_BYTES, owner);
+}
+
+// One timer pumps shared refresh work; it stores no consumer pointers.
+inline void ha_schedule_metadata_refresh(const std::string &entity_id,
+                                         std::initializer_list<const char *> attributes,
+                                         uint32_t scope) {
+  static lv_timer_t *timer = nullptr;
+  if (!timer) {
+    timer = lv_timer_create([](lv_timer_t *timer) {
+      auto &coordinator = ha_read_coordinator();
+      coordinator.flush_fresh(esphome::millis(), HA_READ_INTERNAL_FREE_MIN_BYTES,
+                              HA_READ_INTERNAL_LARGEST_MIN_BYTES);
+      if (!coordinator.has_scheduled_fresh()) lv_timer_pause(timer);
+    }, 50, nullptr);
+  }
+  if (!timer) return;
+  for (const char *attribute : attributes) {
+    if (attribute) ha_read_coordinator().schedule_fresh(entity_id, attribute, scope, esphome::millis());
+  }
+  if (ha_read_coordinator().has_scheduled_fresh()) lv_timer_resume(timer);
+}
+
+inline void ha_cancel_metadata_refresh(uint32_t scope) {
+  ha_read_coordinator().cancel_fresh(scope);
 }

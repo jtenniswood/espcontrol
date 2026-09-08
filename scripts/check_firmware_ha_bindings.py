@@ -165,6 +165,21 @@ COVER_COMMAND_REQUEST_PATTERN = re.compile(
 YAML_SCRIPT_PATTERN_TEMPLATE = r"(?ms)^  - id: {script_id}\n(?P<body>.*?)(?=^  - id: |\Z)"
 
 
+def accumulating_ha_read_call(text: str) -> bool:
+    # Preserve quoted strings while removing comments, so URLs cannot hide code
+    # after them and explanatory API names do not count as calls.
+    code = re.sub(
+        r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|//[^\n]*|/\*.*?\*/',
+        lambda match: " " if match.group().startswith(("//", "/*")) else match.group(),
+        text,
+        flags=re.DOTALL,
+    )
+    return bool(re.search(
+        r"\bget_home_assistant_state\s*\(|\btransport_\s*(?:\.|->)\s*get\s*\(",
+        code,
+    ))
+
+
 def yaml_script_body(text: str, script_id: str) -> str | None:
     match = re.search(YAML_SCRIPT_PATTERN_TEMPLATE.format(script_id=re.escape(script_id)), text)
     return match.group("body") if match else None
@@ -237,13 +252,10 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         or 'heap_probe_.available("Home Assistant state request"' not in coordinator_text
     ):
         errors.append(f"{rel}: guard retained Home Assistant reads under low internal heap")
-    if (
-        "get_home_assistant_state" in read_boundary_text
-        or "transport_.get(" in coordinator_text
-        or "ha_get_state" in text
-        or "ha_get_attribute" in text
-    ):
-        errors.append(f"{rel}: never register accumulating one-shot Home Assistant state reads")
+    if "transport_.request(" not in coordinator_text or "request_fresh(" not in coordinator_text:
+        errors.append(f"{rel}: route fresh Home Assistant reads through the bounded coordinator helper")
+    if accumulating_ha_read_call(read_boundary_text):
+        errors.append(f"{rel}: fresh metadata reads must reuse subscriptions, not append native callbacks or borrow temporary strings")
     if (
         "find_subscription_channel(entity_id, attribute, has_attribute)" not in coordinator_text
         or "!channel_reuses_reads(channel)" not in coordinator_text
@@ -2061,7 +2073,10 @@ def firmware_cover_art_progress_visibility_errors(path: Path, root: Path) -> lis
         handler = handler_match.group("body") if handler_match else ""
         metadata_assignment = handler.find(assignment)
         duration_invalidation = handler.find("invalidate_stale_media_duration()")
-        if (
+        if metadata_name in ("artist", "album"):
+            if duration_invalidation >= 0:
+                errors.append(f"{rel}: preserve duration when restoring media {metadata_name}")
+        elif (
             metadata_assignment < 0
             or duration_invalidation < 0
             or duration_invalidation > metadata_assignment
@@ -4615,6 +4630,29 @@ def expect_c6_update_status_errors(name: str, text: str, expected: tuple[str, ..
 
 
 def run_self_test() -> int:
+    for call in (
+        "api->get_home_assistant_state(entity, callback);",
+        "api.get_home_assistant_state(entity, callback);",
+        "get_home_assistant_state (entity, callback);",
+        "api . get_home_assistant_state\n(entity, callback);",
+        "transport_.get(entity, callback);",
+        "transport_ -> get (entity, callback);",
+        "api./* boundary */get_home_assistant_state(entity, callback);",
+    ):
+        for filename in ("button_grid_ha.h", "ha_read_coordinator.h"):
+            expect_ha_boundary_errors(
+                f"accumulating call in {filename}: {call}",
+                {"button_grid_ha.h": "", filename: call},
+                ("fresh metadata reads must reuse subscriptions",),
+            )
+    assert not accumulating_ha_read_call(
+        "// get_home_assistant_state(entity, callback);\n"
+        "/* transport_.get(entity, callback); */\n"
+        "transport_.request(entity, attribute);"
+    )
+    assert accumulating_ha_read_call(
+        'const char *url = "https://example.test"; api.get_home_assistant_state(entity, cb);'
+    )
     expect_media_cover_art_external_input_errors(
         "missing media cover art external-input handling",
         {
@@ -6352,13 +6390,11 @@ def run_self_test() -> int:
         "if (!already_subscribed) {}\n"
         "# artist callback\n"
         "std::function<void(esphome::StringRef)> handle_media_artist = [](esphome::StringRef artist) {\n"
-        "  invalidate_stale_media_duration();\n"
         "  id(cover_art_artist) = next;\n"
         "};\n"
         "if (!already_subscribed) {}\n"
         "# album callback\n"
         "std::function<void(esphome::StringRef)> handle_media_album = [](esphome::StringRef album) {\n"
-        "  invalidate_stale_media_duration();\n"
         "  id(cover_art_album) = next;\n"
         "  id(cover_art_sync_track_text).execute();\n"
         "};\n"
@@ -6453,24 +6489,24 @@ def run_self_test() -> int:
         ("preserve fresh cover art position when title metadata arrives late",),
     )
     expect_cover_art_progress_visibility_errors(
-        "cover art artist change keeps stale duration",
+        "cover art artist restoration discards duration",
         cover_art_progress_visibility.replace(
+            "handle_media_artist = [](esphome::StringRef artist) {\n",
             "handle_media_artist = [](esphome::StringRef artist) {\n"
             "  invalidate_stale_media_duration();\n",
-            "handle_media_artist = [](esphome::StringRef artist) {\n",
             1,
         ),
-        ("mark stale cover art duration unavailable when media artist changes",),
+        ("preserve duration when restoring media artist",),
     )
     expect_cover_art_progress_visibility_errors(
-        "cover art album change keeps stale duration",
+        "cover art album restoration discards duration",
         cover_art_progress_visibility.replace(
+            "handle_media_album = [](esphome::StringRef album) {\n",
             "handle_media_album = [](esphome::StringRef album) {\n"
             "  invalidate_stale_media_duration();\n",
-            "handle_media_album = [](esphome::StringRef album) {\n",
             1,
         ),
-        ("mark stale cover art duration unavailable when media album changes",),
+        ("preserve duration when restoring media album",),
     )
     expect_cover_art_progress_visibility_errors(
         "cover art album change delays progress refresh",
