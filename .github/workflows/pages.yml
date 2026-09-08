@@ -14,6 +14,8 @@ on:
   workflow_run:
     workflows: ["Build Release"]
     types: [completed]
+  schedule:
+    - cron: '17 */6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -28,6 +30,7 @@ concurrency:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   ESPCONTROL_NPM_CACHE_MAX_MB: 512
+  ESPDESKTOP_RELEASE_REPOSITORY: jtenniswood/espdesktop
 
 jobs:
   build-docs:
@@ -84,18 +87,26 @@ jobs:
           echo "DEVICE_SLUGS=${DEVICE_SLUGS}" >> "$GITHUB_ENV"
 
       - name: Download firmware from stable releases
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
+          RELEASE_REPOSITORY="${ESPDESKTOP_RELEASE_REPOSITORY}"
           RELEASES_JSON=$(curl -fsSL \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=30")
+            "https://api.github.com/repos/${RELEASE_REPOSITORY}/releases?per_page=30")
           STABLE_RELEASES_JSON=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select((.draft | not) and (.prerelease | not))][0:5]')
           RELEASE_COUNT=$(printf '%s' "${STABLE_RELEASES_JSON}" | jq 'length')
 
           if [ "${RELEASE_COUNT}" -eq 0 ]; then
-            echo "::warning::No stable firmware releases found"
+            echo "::warning::No stable EspDesktop firmware release found yet; retaining the latest EspControl firmware at the compatibility URL"
+            RELEASE_REPOSITORY="${GITHUB_REPOSITORY}"
+            RELEASES_JSON=$(curl -fsSL \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${RELEASE_REPOSITORY}/releases?per_page=30")
+            STABLE_RELEASES_JSON=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select((.draft | not) and (.prerelease | not))][0:5]')
+            RELEASE_COUNT=$(printf '%s' "${STABLE_RELEASES_JSON}" | jq 'length')
+          fi
+
+          if [ "${RELEASE_COUNT}" -eq 0 ]; then
+            echo "::warning::No stable firmware releases are available from either repository"
             exit 0
           fi
 
@@ -104,16 +115,12 @@ jobs:
             ASSET_NAME="$2"
             OUTPUT_PATH="$3"
             ASSET_URL=$(printf '%s' "${RELEASE_JSON}" | jq -r --arg name "${ASSET_NAME}" \
-              '.assets[]? | select(.name == $name) | .url' | head -n 1)
+              '.assets[]? | select(.name == $name) | .browser_download_url' | head -n 1)
             if [ -z "${ASSET_URL}" ]; then
               return 1
             fi
             mkdir -p "$(dirname "${OUTPUT_PATH}")"
-            curl -fsSL \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "Accept: application/octet-stream" \
-              "${ASSET_URL}" \
-              -o "${OUTPUT_PATH}"
+            curl -fsSL "${ASSET_URL}" -o "${OUTPUT_PATH}"
           }
 
           ota_md5() {
@@ -204,29 +211,29 @@ jobs:
           done
 
       - name: Download firmware from latest pre-release
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           RELEASES_JSON=$(curl -fsSL \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=20")
+            "https://api.github.com/repos/${ESPDESKTOP_RELEASE_REPOSITORY}/releases?per_page=20")
           BETA_ASSETS=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select((.draft | not) and .prerelease)][0].assets // []')
+
+          if [ "${BETA_ASSETS}" = "[]" ]; then
+            RELEASES_JSON=$(curl -fsSL \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=20")
+            BETA_ASSETS=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select((.draft | not) and .prerelease)][0].assets // []')
+          fi
 
           if [ "${BETA_ASSETS}" != "[]" ]; then
             download_beta_asset() {
               ASSET_NAME="$1"
               OUTPUT_PATH="$2"
               ASSET_URL=$(printf '%s' "${BETA_ASSETS}" | jq -r --arg name "${ASSET_NAME}" \
-                '.[] | select(.name == $name) | .url' | head -n 1)
+                '.[] | select(.name == $name) | .browser_download_url' | head -n 1)
               if [ -z "${ASSET_URL}" ]; then
                 return 0
               fi
-              curl -fsSL \
-                -H "Authorization: Bearer ${GH_TOKEN}" \
-                -H "Accept: application/octet-stream" \
-                "${ASSET_URL}" \
-                -o "${OUTPUT_PATH}"
+              curl -fsSL "${ASSET_URL}" -o "${OUTPUT_PATH}"
             }
 
             for SLUG in $DEVICE_SLUGS; do
