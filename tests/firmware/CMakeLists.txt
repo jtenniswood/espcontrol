@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.20)
 project(espcontrol_firmware_tests LANGUAGES CXX)
 
 enable_testing()
+include(CheckCXXSourceCompiles)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 add_executable(foundation_test foundation_test.cpp)
 target_compile_features(foundation_test PRIVATE cxx_std_17)
@@ -93,6 +95,48 @@ target_compile_options(media_metadata_policy_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(media_metadata_policy_test PRIVATE ../../components/espcontrol)
 add_test(NAME media_metadata_policy_test COMMAND media_metadata_policy_test)
 
+set(MEDIA_LIFECYCLE_PRODUCTION ${CMAKE_CURRENT_BINARY_DIR}/media_lifecycle_production.h)
+add_custom_command(
+  OUTPUT ${MEDIA_LIFECYCLE_PRODUCTION}
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/generate_media_lifecycle_integration.py
+    --root ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    --output ${MEDIA_LIFECYCLE_PRODUCTION}
+  DEPENDS
+    generate_media_lifecycle_integration.py
+    ../../components/espcontrol/button_grid_sliders.h
+    ../../components/espcontrol/button_grid_media.h
+    ../../components/espcontrol/button_grid_grid.h
+    ../../components/espcontrol/button_grid_media_driver.h
+  VERBATIM
+)
+add_executable(media_lifecycle_integration_test
+  media_lifecycle_integration_test.cpp ${MEDIA_LIFECYCLE_PRODUCTION})
+target_compile_features(media_lifecycle_integration_test PRIVATE cxx_std_17)
+target_compile_options(media_lifecycle_integration_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(media_lifecycle_integration_test PRIVATE
+  ${CMAKE_CURRENT_BINARY_DIR} ../../components/espcontrol)
+add_test(NAME media_lifecycle_integration_test COMMAND media_lifecycle_integration_test)
+
+add_executable(media_slider_lifecycle_test media_slider_lifecycle_test.cpp)
+target_compile_features(media_slider_lifecycle_test PRIVATE cxx_std_17)
+target_compile_options(media_slider_lifecycle_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(media_slider_lifecycle_test PRIVATE ../../components/espcontrol)
+set(ESPCONTROL_REQUIRED_FLAGS_SAVED "${CMAKE_REQUIRED_FLAGS}")
+set(ESPCONTROL_REQUIRED_LINK_OPTIONS_SAVED "${CMAKE_REQUIRED_LINK_OPTIONS}")
+set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+set(CMAKE_REQUIRED_LINK_OPTIONS "${CMAKE_REQUIRED_LINK_OPTIONS};-fsanitize=address")
+check_cxx_source_compiles("int main() { return 0; }" ESPCONTROL_HAS_ADDRESS_SANITIZER)
+set(CMAKE_REQUIRED_FLAGS "${ESPCONTROL_REQUIRED_FLAGS_SAVED}")
+set(CMAKE_REQUIRED_LINK_OPTIONS "${ESPCONTROL_REQUIRED_LINK_OPTIONS_SAVED}")
+if(ESPCONTROL_HAS_ADDRESS_SANITIZER)
+  foreach(target media_slider_lifecycle_test media_lifecycle_integration_test)
+    target_compile_options(${target} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+    target_link_options(${target} PRIVATE -fsanitize=address)
+  endforeach()
+endif()
+add_test(NAME media_slider_lifecycle_test COMMAND media_slider_lifecycle_test)
+
 add_executable(slider_geometry_test slider_geometry_test.cpp)
 target_compile_features(slider_geometry_test PRIVATE cxx_std_17)
 target_compile_options(slider_geometry_test PRIVATE -Wall -Wextra -Werror)
@@ -110,6 +154,12 @@ target_compile_features(display_mode_controller_test PRIVATE cxx_std_17)
 target_compile_options(display_mode_controller_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(display_mode_controller_test PRIVATE ../../components/espcontrol)
 add_test(NAME display_mode_controller_test COMMAND display_mode_controller_test)
+
+add_executable(backlight_fade_test backlight_fade_test.cpp)
+target_compile_features(backlight_fade_test PRIVATE cxx_std_17)
+target_compile_options(backlight_fade_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(backlight_fade_test PRIVATE ../../components/espcontrol)
+add_test(NAME backlight_fade_test COMMAND backlight_fade_test)
 
 add_executable(configuration_store_test
   configuration_store_test.cpp
@@ -251,7 +301,13 @@ target_compile_options(image_pipeline_policy_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(image_pipeline_policy_test PRIVATE ../../components/artwork_image)
 add_test(NAME image_pipeline_policy_test COMMAND image_pipeline_policy_test)
 
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_test(NAME cover_art_activation_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/cover_art_activation_test.py
+  --compiler ${CMAKE_CXX_COMPILER})
+add_test(NAME ha_reconnect_recovery_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/ha_reconnect_recovery_test.py)
+add_test(NAME cover_art_metadata_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/cover_art_metadata_test.py ${CMAKE_CXX_COMPILER})
 file(GLOB SAVED_CONFIG_FIXTURES
   CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_SOURCE_DIR}/../../common/config/*_card_normalization_fixtures.json
