@@ -43,7 +43,7 @@ def check_recovery(source: str) -> None:
 
 def check_clock_switches_without_fade() -> None:
     source = FADE_SOURCE.read_text(encoding="utf-8")
-    start = source.index("  - id: show_clock_view")
+    start = source.index("  - id: clock_screensaver_refresh_brightness")
     end = source.index("\n  # Hide the clock screensaver overlay", start)
     clock_view = source[start:end]
     assert "backlight_fade_current_ui_to_black" not in clock_view, (
@@ -52,8 +52,11 @@ def check_clock_switches_without_fade() -> None:
     assert "screensaver_fade" not in clock_view, (
         "clock screensaver must not run a brightness fade"
     )
-    assert "transition_length: 0s" in clock_view, (
-        "clock screensaver must apply its target brightness immediately"
+    assert "transition_length: 400ms" not in clock_view, (
+        "clock screensaver brightness refresh must not fade"
+    )
+    assert clock_view.count("transition_length: 0s") == 2, (
+        "all clock screensaver brightness writes must be immediate"
     )
     direct_brightness = clock_view.index("espcontrol::apply_backlight_fade_level(")
     reveal_overlay = clock_view.index(
