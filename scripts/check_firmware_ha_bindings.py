@@ -1173,6 +1173,19 @@ def firmware_cover_art_lifecycle_controller_errors(
             f"{backlight_rel}: preserve active cover art across lower-priority generation changes"
         )
 
+    transition_lifecycle_markers = (
+        "controller.transition_in_progress(transition)",
+        "id(display_mode_apply_transition).is_running()",
+        "controller.transition_warning_due(millis(), 2000)",
+        "controller.cancel_transition()",
+        "controller.presentation_incomplete()",
+        "controller.start_transition(transition, millis())",
+    )
+    if any(marker not in reconcile for marker in transition_lifecycle_markers):
+        errors.append(
+            f"{backlight_rel}: track in-flight display effects so periodic reconciliation cannot restart them"
+        )
+
     if "cover_art_screensaver_active" in cover_art_text or "cover_art_screensaver_active" in backlight_text:
         errors.append(f"{cover_art_rel}: use controller mode ownership instead of a compatibility cover art flag")
 
@@ -2424,6 +2437,22 @@ def firmware_screensaver_wake_guard_errors(
         if body is None:
             errors.append(f"{rel}: missing screensaver_wake script")
         else:
+            interrupted_transition_tokens = (
+                "controller.has_transition_in_progress()",
+                "controller.cancel_transition()",
+                "controller.require_presentation_cleanup()",
+                "script.stop: display_mode_apply_transition",
+                "script.stop: cover_art_hide_effect",
+                "script.stop: display_mode_effect_active",
+                "script.stop: display_mode_effect_setup_dimmed",
+                "script.stop: display_mode_effect_off",
+                "script.stop: display_mode_effect_cover_art",
+                "lv_obj_has_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN)",
+            )
+            if any(token not in body for token in interrupted_transition_tokens):
+                errors.append(
+                    f"{rel}: cancel interrupted display effects and force visible clock cleanup during wake"
+                )
             pending_restore_tokens = (
                 "id: screensaver_wake_restore_pending",
                 "id(screensaver_wake_restore_pending) =",
@@ -5779,7 +5808,7 @@ def run_self_test() -> int:
         "      - script.wait: display_mode_apply_transition\n"
         "  - id: display_mode_reconcile\n"
         "    then:\n"
-        "      - lambda: 'auto transition = controller.resolve(); bool transition_required = controller.transition_required(transition); if (!transition_required) { auto previous_cover_generation = id(cover_art_transition_generation); id(cover_art_transition_generation) = transition.generation; if (id(cover_art_download_generation) == previous_cover_generation) id(cover_art_download_generation) = transition.generation; }'\n"
+        "      - lambda: 'auto transition = controller.resolve(); if (controller.transition_in_progress(transition) && id(display_mode_apply_transition).is_running()) { controller.transition_warning_due(millis(), 2000); return; } controller.cancel_transition(); bool transition_required = controller.transition_required(transition) || controller.presentation_incomplete(); if (!transition_required) { auto previous_cover_generation = id(cover_art_transition_generation); id(cover_art_transition_generation) = transition.generation; if (id(cover_art_download_generation) == previous_cover_generation) id(cover_art_download_generation) = transition.generation; } controller.start_transition(transition, millis());'\n"
     )
     valid_cover_art_effects = (
         "globals:\n"
@@ -6847,11 +6876,21 @@ def run_self_test() -> int:
         "  - id: screensaver_wake\n"
         "    then:\n"
         "      - lambda: |-\n"
+        "          auto &controller = id(espcontrol_app).display();\n"
+        "          bool clock_visible = !lv_obj_has_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN);\n"
+        "          if (controller.has_transition_in_progress()) controller.cancel_transition();\n"
+        "          controller.require_presentation_cleanup();\n"
         "          id(screensaver_wake_restore_pending) =\n"
         "              !id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::ACTIVE);\n"
         "          id(screensaver_wake_touch_guard_skip_once) =\n"
         "              id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) ||\n"
         "              id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::DISPLAY_OFF);\n"
+        "      - script.stop: display_mode_apply_transition\n"
+        "      - script.stop: cover_art_hide_effect\n"
+        "      - script.stop: display_mode_effect_active\n"
+        "      - script.stop: display_mode_effect_setup_dimmed\n"
+        "      - script.stop: display_mode_effect_off\n"
+        "      - script.stop: display_mode_effect_cover_art\n"
         "      - script.execute: screensaver_wake_touch_block\n"
         "      - lambda: |-\n"
         "          id(espcontrol_app).display().clear(espcontrol::DisplayRequestSource::IDLE_TIMER);\n"
