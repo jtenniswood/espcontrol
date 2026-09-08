@@ -81,5 +81,6 @@ switch:
       - script.execute: clock_bar_apply
       - script.execute: battery_status_refresh
     on_turn_off:
-      - component.update: battery_voltage_raw
+      - lambda: |-
+          id(battery_percent).publish_state(NAN);
       - script.execute: clock_bar_apply
