@@ -252,6 +252,8 @@ target_include_directories(image_pipeline_policy_test PRIVATE ../../components/a
 add_test(NAME image_pipeline_policy_test COMMAND image_pipeline_policy_test)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_test(NAME ha_reconnect_recovery_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/ha_reconnect_recovery_test.py)
 add_test(NAME cover_art_metadata_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/cover_art_metadata_test.py ${CMAKE_CXX_COMPILER})
 file(GLOB SAVED_CONFIG_FIXTURES
