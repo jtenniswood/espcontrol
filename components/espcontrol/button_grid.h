@@ -49,6 +49,7 @@
 #include "button_grid_lawn_mower.h"
 #include "button_grid_actions.h"
 #include "button_grid_media_group.h"
+#include "button_grid_media_slider_lifecycle.h"
 #include "button_grid_sliders.h"
 #include "button_grid_fan.h"
 #include "button_grid_climate.h"
