@@ -31,6 +31,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   ESPCONTROL_NPM_CACHE_MAX_MB: 512
   ESPDESKTOP_RELEASE_REPOSITORY: jtenniswood/espdesktop
+  OPTIONAL_STABLE_FIRMWARE_SLUGS: guition-esp32-p4-jc8012p4a1 guition-esp32-p4-jc8012p4a1-v2 guition-esp32-p4-jc1060p470-v2 esp32-p4-86
 
 jobs:
   build-docs:
@@ -95,8 +96,25 @@ jobs:
           STABLE_RELEASES_JSON=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select((.draft | not) and (.prerelease | not))][0:5]')
           RELEASE_COUNT=$(printf '%s' "${STABLE_RELEASES_JSON}" | jq 'length')
 
-          if [ "${RELEASE_COUNT}" -eq 0 ]; then
-            echo "::warning::No stable EspDesktop firmware release found yet; retaining the latest EspControl firmware at the compatibility URL"
+          release_set_has_required_assets() {
+            RELEASE_SET="$1"
+            for SLUG in $DEVICE_SLUGS; do
+              if echo " ${OPTIONAL_STABLE_FIRMWARE_SLUGS} " | grep -q " ${SLUG} "; then
+                continue
+              fi
+              if ! printf '%s' "${RELEASE_SET}" | jq -e \
+                --arg manifest "${SLUG}.manifest.json" \
+                --arg ota "${SLUG}.ota.bin" \
+                'any(.[]; (([.assets[]?.name] | index($manifest)) != null) and (([.assets[]?.name] | index($ota)) != null))' \
+                >/dev/null; then
+                return 1
+              fi
+            done
+            return 0
+          }
+
+          if [ "${RELEASE_COUNT}" -eq 0 ] || ! release_set_has_required_assets "${STABLE_RELEASES_JSON}"; then
+            echo "::warning::No complete stable EspDesktop firmware release set found yet; retaining the latest EspControl firmware at the compatibility URL"
             RELEASE_REPOSITORY="${GITHUB_REPOSITORY}"
             RELEASES_JSON=$(curl -fsSL \
               -H "Accept: application/vnd.github+json" \
@@ -217,11 +235,33 @@ jobs:
             "https://api.github.com/repos/${ESPDESKTOP_RELEASE_REPOSITORY}/releases?per_page=20")
           BETA_ASSETS=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select((.draft | not) and .prerelease)][0].assets // []')
 
-          if [ "${BETA_ASSETS}" = "[]" ]; then
+          asset_list_has_required_firmware() {
+            ASSET_LIST="$1"
+            for SLUG in $DEVICE_SLUGS; do
+              if echo " ${OPTIONAL_STABLE_FIRMWARE_SLUGS} " | grep -q " ${SLUG} "; then
+                continue
+              fi
+              if ! printf '%s' "${ASSET_LIST}" | jq -e \
+                --arg manifest "${SLUG}.manifest.json" \
+                --arg ota "${SLUG}.ota.bin" \
+                '(([.[].name] | index($manifest)) != null) and (([.[].name] | index($ota)) != null)' \
+                >/dev/null; then
+                return 1
+              fi
+            done
+            return 0
+          }
+
+          if ! asset_list_has_required_firmware "${BETA_ASSETS}"; then
             RELEASES_JSON=$(curl -fsSL \
               -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=20")
             BETA_ASSETS=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select((.draft | not) and .prerelease)][0].assets // []')
+          fi
+
+          if ! asset_list_has_required_firmware "${BETA_ASSETS}"; then
+            echo "::warning::No complete beta firmware release set is available from either repository"
+            BETA_ASSETS='[]'
           fi
 
           if [ "${BETA_ASSETS}" != "[]" ]; then
@@ -249,11 +289,10 @@ jobs:
       - name: Verify firmware assets
         run: |
           MISSING=false
-          OPTIONAL_FIRMWARE_SLUGS="guition-esp32-p4-jc8012p4a1 guition-esp32-p4-jc8012p4a1-v2 guition-esp32-p4-jc1060p470-v2 esp32-p4-86"
           for SLUG in $DEVICE_SLUGS; do
             MANIFEST="firmware/${SLUG}/manifest.json"
             if [ ! -f "$MANIFEST" ]; then
-              if echo " ${OPTIONAL_FIRMWARE_SLUGS} " | grep -q " ${SLUG} "; then
+              if echo " ${OPTIONAL_STABLE_FIRMWARE_SLUGS} " | grep -q " ${SLUG} "; then
                 echo "::warning::No firmware manifest found for ${SLUG} yet — install button will work after the first release asset is published"
               else
                 echo "::error::No firmware manifest found for ${SLUG} — install page will be non-functional"
