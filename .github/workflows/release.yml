@@ -234,9 +234,17 @@ jobs:
           ESPHOME_IMAGE="ghcr.io/esphome/esphome:${ESPHOME_VERSION}"
           LOCK_FILE="/tmp/espcontrol-esphome-image.lock"
           if command -v flock >/dev/null 2>&1; then
-            flock "${LOCK_FILE}" ${DOCKER} pull "${ESPHOME_IMAGE}"
+            flock "${LOCK_FILE}" ${DOCKER} pull "${ESPHOME_IMAGE}" || {
+              echo "Initial ESPHome image pull failed; pruning stale Docker state and retrying."
+              ${DOCKER} system prune -af --volumes || true
+              flock "${LOCK_FILE}" ${DOCKER} pull "${ESPHOME_IMAGE}"
+            }
           else
-            ${DOCKER} pull "${ESPHOME_IMAGE}"
+            ${DOCKER} pull "${ESPHOME_IMAGE}" || {
+              echo "Initial ESPHome image pull failed; pruning stale Docker state and retrying."
+              ${DOCKER} system prune -af --volumes || true
+              ${DOCKER} pull "${ESPHOME_IMAGE}"
+            }
           fi
           echo "ESPHOME_IMAGE=${ESPHOME_IMAGE}" >> "$GITHUB_ENV"
 
