@@ -4267,13 +4267,21 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t text_w = content_w * 92 / 100;
   lv_coord_t text_gap = control_modal_scaled_px(8, layout.short_side);
   if (text_gap < 6) text_gap = 6;
+  int transport_button_scale_percent = 100;
+  if ((layout.sw == 1024 && layout.sh == 600) ||
+      (layout.sw == 600 && layout.sh == 1024)) {
+    transport_button_scale_percent = 80;
+  } else if ((layout.sw == 1280 && layout.sh == 800) ||
+             (layout.sw == 800 && layout.sh == 1280)) {
+    transport_button_scale_percent = 75;
+  }
   const espcontrol::media::MediaTransportLayout transport_layout =
     espcontrol::media::media_transport_layout(
       content_w, layout.short_side,
       media_control_shuffle_supported(ctx),
       media_control_repeat_supported(ctx),
       control_modal_uses_compact_portrait_tuning(layout) && layout.sh > layout.sw,
-      layout.sw == 1024 && layout.sh == 600);
+      transport_button_scale_percent);
   const lv_coord_t btn_size = transport_layout.button_size;
   lv_coord_t progress_slider_h = content_h * 42 / 100;
   lv_coord_t progress_slider_max_h = control_modal_scaled_px(144, layout.short_side);
