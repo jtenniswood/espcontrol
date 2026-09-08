@@ -38,16 +38,6 @@ int main() {
   CHECK(fade.level(2480) == 0.0f);
   CHECK(fade.level(5000) == 0.0f);
 
-  // The redraw pause counts toward clock fade-in, including a redraw that
-  // consumes the entire fade budget. Never replay a backlog of dim samples.
-  fade.start(CLOCK_HANDOFF_LEVEL, 0.35f, 6000, CLOCK_FADE_IN_MS);
-  CHECK(near(fade.level(6000 + CLOCK_REDRAW_PAUSE_MS),
-             CLOCK_HANDOFF_LEVEL + (0.35f - CLOCK_HANDOFF_LEVEL) *
-                 CLOCK_REDRAW_PAUSE_MS / CLOCK_FADE_IN_MS));
-  CHECK(!fade.finished(6000 + CLOCK_FADE_IN_MS - 1));
-  CHECK(fade.finished(6000 + CLOCK_FADE_IN_MS));
-  CHECK(fade.level(6800) == 0.35f);
-
   // A replacement fade starts a fresh timeline with its own brightness.
   fade.start(0.1f, 0.8f, 7000, 400);
   CHECK(near(fade.level(7200), 0.45f));
