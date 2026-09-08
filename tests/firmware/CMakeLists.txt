@@ -65,6 +65,12 @@ target_compile_options(climate_target_logic_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(climate_target_logic_test PRIVATE ../../components/espcontrol)
 add_test(NAME climate_target_logic_test COMMAND climate_target_logic_test)
 
+add_executable(climate_state_logic_test climate_state_logic_test.cpp)
+target_compile_features(climate_state_logic_test PRIVATE cxx_std_17)
+target_compile_options(climate_state_logic_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(climate_state_logic_test PRIVATE ../../components/espcontrol)
+add_test(NAME climate_state_logic_test COMMAND climate_state_logic_test)
+
 add_executable(media_volume_capability_test media_volume_capability_test.cpp)
 target_compile_features(media_volume_capability_test PRIVATE cxx_std_17)
 target_compile_options(media_volume_capability_test PRIVATE -Wall -Wextra -Werror)
@@ -332,3 +338,22 @@ target_include_directories(saved_config_parser_test PRIVATE
   ../../components/espcontrol
 )
 add_test(NAME saved_config_parser_test COMMAND saved_config_parser_test)
+
+set(CLIMATE_UPDATE_TEST_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/climate_update_test.cpp)
+add_custom_command(
+  OUTPUT ${CLIMATE_UPDATE_TEST_SOURCE}
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/generate_climate_update_test.py
+    --header ${CMAKE_CURRENT_SOURCE_DIR}/../../components/espcontrol/button_grid_climate.h
+    --output ${CLIMATE_UPDATE_TEST_SOURCE}
+  DEPENDS
+    generate_climate_update_test.py
+    climate_update_test.cpp.in
+    ../../components/espcontrol/button_grid_climate.h
+  VERBATIM
+)
+add_executable(climate_update_test ${CLIMATE_UPDATE_TEST_SOURCE})
+target_compile_features(climate_update_test PRIVATE cxx_std_17)
+target_compile_options(climate_update_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(climate_update_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME climate_update_test COMMAND climate_update_test)
