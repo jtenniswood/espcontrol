@@ -67,6 +67,50 @@ class HaReadCoordinator {
     for (const auto &request : deferred_) count += request.callbacks.size();
     return count;
   }
+
+  // Refresh work lives on the existing entity/attribute channel. Consumers
+  // share its debounce and only failed sends are retried, never absent values.
+  bool schedule_fresh(const std::string &entity_id, const std::string &attribute,
+                      uint32_t scope, uint32_t now) {
+    const size_t channel = find_subscription_channel(entity_id, attribute, true);
+    if (channel == subscription_channels_.size()) return false;
+    const uint32_t scopes = active_channel_scopes(channel) & scope;
+    if (scopes == 0) return false;
+    auto &request = subscription_channels_[channel];
+    request.refresh_scopes |= scopes;
+    request.refresh_due = now + 100;
+    request.fresh_request_pending = false;
+    return true;
+  }
+
+  void cancel_fresh(uint32_t scope) {
+    for (auto &channel : subscription_channels_) {
+      channel.refresh_scopes &= ~scope;
+    }
+  }
+
+  bool has_scheduled_fresh() const {
+    for (const auto &channel : subscription_channels_) {
+      if (channel.refresh_scopes != 0) return true;
+    }
+    return false;
+  }
+
+  void flush_fresh(uint32_t now, size_t min_free, size_t min_largest) {
+    if (callback_depth_ != 0) return;
+    size_t attempts = 0;
+    for (size_t i = 0; i < subscription_channels_.size(); ++i) {
+      auto &channel = subscription_channels_[i];
+      channel.refresh_scopes &= active_channel_scopes(i);
+      if (channel.refresh_scopes == 0 || static_cast<int32_t>(now - channel.refresh_due) < 0) continue;
+      channel.refresh_due = now + 1000;
+      if (!state_connected() ||
+          !heap_probe_.available("fresh Home Assistant metadata request", min_free, min_largest)) continue;
+      if (request_fresh(channel.entity_id, channel.attribute)) channel.refresh_scopes = 0;
+      // Leave room for normal state traffic in the native API send queue.
+      if (++attempts == 4) break;
+    }
+  }
   size_t transient_callback_capacity() const {
     size_t capacity = deferred_.capacity();
     for (const auto &request : deferred_) capacity += request.callbacks.capacity();
@@ -125,6 +169,28 @@ class HaReadCoordinator {
     return true;
   }
 
+  bool request_fresh(const std::string &entity_id,
+                    const std::string &attribute) {
+    if (!state_connected() || entity_id.empty() || attribute.empty()) return false;
+    const size_t channel = find_subscription_channel(entity_id, attribute, true);
+    if (channel == subscription_channels_.size()) return false;
+    bool has_active_callback = false;
+    for (const auto &ref : subscriptions_) {
+      if (!ref.pending_release && ref.channel == channel && ref.callback && *ref.callback) {
+        has_active_callback = true;
+        break;
+      }
+    }
+    if (!has_active_callback) return false;
+    if (subscription_channels_[channel].fresh_request_pending) return true;
+    // Replies use the existing subscription dispatcher, with no additional
+    // native callback or borrowed request strings retained after this call.
+    subscription_channels_[channel].fresh_request_pending = true;
+    if (transport_.request(entity_id, attribute)) return true;
+    subscription_channels_[channel].fresh_request_pending = false;
+    return false;
+  }
+
   void flush(size_t max_requests,
              size_t min_free,
              size_t min_largest) {
@@ -154,6 +220,7 @@ class HaReadCoordinator {
     // particular, artwork URLs and access tokens may change while the panel is
     // offline, so reads after a reconnect must wait for a fresh announcement.
     for (auto &channel : subscription_channels_) {
+      channel.fresh_request_pending = false;
       release_string_storage(channel.last_state);
       channel.has_last_state = false;
       release_string_storage(channel.cached_state);
@@ -162,6 +229,7 @@ class HaReadCoordinator {
   }
 
   void reset_subscriptions(uint32_t scope = 0) {
+    cancel_fresh(scope == 0 ? UINT32_MAX : scope);
     if (callback_depth_ != 0) {
       // A callback can rebuild a card immediately after requesting its old
       // subscriptions be reset. Mark only the callbacks that exist now so the
@@ -179,6 +247,7 @@ class HaReadCoordinator {
     if (generation_ == 0) generation_ = 1;
     reset_deferred();
     for (auto &channel : subscription_channels_) {
+      channel.fresh_request_pending = false;
       release_callback_storage(channel.pending_reads);
       release_string_storage(channel.cached_state);
       channel.has_cached_state = false;
@@ -246,6 +315,9 @@ class HaReadCoordinator {
     std::string cached_state;
     AllocatedVector<CallbackRef> pending_reads;
     bool has_cached_state = false;
+    bool fresh_request_pending = false;
+    uint32_t refresh_scopes = 0;
+    uint32_t refresh_due = 0;
   };
 
   static constexpr size_t MAX_DEFERRED_REQUESTS = 64;
@@ -321,6 +393,7 @@ class HaReadCoordinator {
   void invoke_subscription_channel(size_t channel, State state) {
     if (channel >= subscription_channels_.size()) return;
     SubscriptionChannel &subscription = subscription_channels_[channel];
+    subscription.fresh_request_pending = false;
     AllocatedVector<CallbackRef> pending_reads;
     pending_reads.swap(subscription.pending_reads);
     AllocatedVector<std::shared_ptr<Callback>> callbacks;
@@ -406,6 +479,14 @@ class HaReadCoordinator {
     if (pending_read_count() >= MAX_PENDING_READS) return false;
     callbacks.push_back(std::move(callback_ref));
     return true;
+  }
+
+  uint32_t active_channel_scopes(size_t channel) const {
+    uint32_t scopes = 0;
+    for (const auto &ref : subscriptions_) {
+      if (!ref.pending_release && ref.channel == channel && ref.callback && *ref.callback) scopes |= ref.scope;
+    }
+    return scopes;
   }
 
   bool channel_reuses_reads(size_t channel) const {
