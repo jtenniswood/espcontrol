@@ -1475,6 +1475,9 @@ script:
                                                  id(network_status_button));
                 network_status_hide_modal();
                 refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));
+                espcontrol::apply_backlight_fade_level(
+                    id(display_backlight), id(gpio_backlight_pwm),
+                    id(screensaver_clock_target_level));
                 lv_obj_clear_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN);
                 lv_obj_move_foreground(id(clock_screensaver));
             - lambda: |-

@@ -55,6 +55,13 @@ def check_clock_switches_without_fade() -> None:
     assert "transition_length: 0s" in clock_view, (
         "clock screensaver must apply its target brightness immediately"
     )
+    direct_brightness = clock_view.index("espcontrol::apply_backlight_fade_level(")
+    reveal_overlay = clock_view.index(
+        "lv_obj_clear_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN);"
+    )
+    assert direct_brightness < reveal_overlay, (
+        "clock brightness must reach the PWM before the overlay is revealed"
+    )
     print("clock screensaver direct transition: ok")
 
 
