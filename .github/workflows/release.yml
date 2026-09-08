@@ -63,7 +63,9 @@ jobs:
             --disable-pip-version-check \
             --no-cache-dir \
             "PyYAML==6.0.2"
+          PYTHON_SITE_PACKAGES="$("${PYTHON_VENV}/bin/python" -c 'import site; print(site.getsitepackages()[0])')"
           echo "PATH=${PYTHON_VENV}/bin:${PATH}" >> "${GITHUB_ENV}"
+          echo "PYTHONPATH=${PYTHON_SITE_PACKAGES}:${PYTHONPATH}" >> "${GITHUB_ENV}"
           echo "${PYTHON_VENV}/bin" >> "${GITHUB_PATH}"
 
       - name: Ensure CMake is available
