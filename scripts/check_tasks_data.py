@@ -99,6 +99,8 @@ TASKS = (
              "components/espcontrol/button_grid_slider_geometry.h",
              "components/espcontrol/button_grid_string.h",
              "components/espcontrol/button_grid_config_parser.h",
+             "components/espcontrol/button_grid_climate.h",
+             "components/espcontrol/climate_state_logic.h",
              "components/espcontrol/button_grid_media_slider_lifecycle.h",
              "components/espcontrol/button_grid_media.h",
              "components/espcontrol/button_grid_media_driver.h",
