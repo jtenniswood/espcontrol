@@ -85,7 +85,9 @@ jobs:
       - name: Set device slugs
         run: |
           DEVICE_SLUGS=$(jq -r '.devices | keys | join(" ")' devices/manifest.json)
+          RECOVERY_SLUGS=$(jq -r '[.devices | to_entries[] | select(.value.firmware.build.chip == "ESP32-P4") | .key] | join(" ")' devices/manifest.json)
           echo "DEVICE_SLUGS=${DEVICE_SLUGS}" >> "$GITHUB_ENV"
+          echo "RECOVERY_SLUGS=${RECOVERY_SLUGS}" >> "$GITHUB_ENV"
 
       - name: Download firmware from stable releases
         run: |
@@ -102,11 +104,27 @@ jobs:
               if echo " ${OPTIONAL_STABLE_FIRMWARE_SLUGS} " | grep -q " ${SLUG} "; then
                 continue
               fi
-              if ! printf '%s' "${RELEASE_SET}" | jq -e \
+              RELEASE=$(printf '%s' "${RELEASE_SET}" | jq -c \
                 --arg manifest "${SLUG}.manifest.json" \
                 --arg ota "${SLUG}.ota.bin" \
-                'any(.[]; (([.assets[]?.name] | index($manifest)) != null) and (([.assets[]?.name] | index($ota)) != null))' \
-                >/dev/null; then
+                'first(.[] | select(
+                  (([.assets[]?.name] | index($manifest)) != null) and
+                  (([.assets[]?.name] | index($ota)) != null)
+                )) // empty')
+              if [ -z "${RELEASE}" ]; then
+                return 1
+              fi
+              if ! printf '%s' "${RELEASE}" | jq -e \
+                --arg factory "${SLUG}.factory.bin" \
+                '([.assets[]?.name] | index($factory)) != null' >/dev/null; then
+                return 1
+              fi
+              if echo " ${RECOVERY_SLUGS} " | grep -q " ${SLUG} " && \
+                ! printf '%s' "${RELEASE}" | jq -e \
+                  --arg manifest "${SLUG}.recovery.manifest.json" \
+                  --arg image "${SLUG}.recovery.bin" \
+                  '(([.assets[]?.name] | index($manifest)) != null) and
+                   (([.assets[]?.name] | index($image)) != null)' >/dev/null; then
                 return 1
               fi
             done
@@ -233,7 +251,6 @@ jobs:
           RELEASES_JSON=$(curl -fsSL \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${ESPDESKTOP_RELEASE_REPOSITORY}/releases?per_page=20")
-          BETA_ASSETS=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select((.draft | not) and .prerelease)][0].assets // []')
 
           asset_list_has_required_firmware() {
             ASSET_LIST="$1"
@@ -252,14 +269,31 @@ jobs:
             return 0
           }
 
-          if ! asset_list_has_required_firmware "${BETA_ASSETS}"; then
+          select_complete_beta_assets() {
+            RELEASE_LIST="$1"
+            CANDIDATE_COUNT=$(printf '%s' "${RELEASE_LIST}" | jq '[.[] | select((.draft | not) and .prerelease)] | length')
+            if [ "${CANDIDATE_COUNT}" -eq 0 ]; then
+              return 1
+            fi
+            for IDX in $(seq 0 $((CANDIDATE_COUNT - 1))); do
+              CANDIDATE_ASSETS=$(printf '%s' "${RELEASE_LIST}" | jq -c \
+                "[.[] | select((.draft | not) and .prerelease)][${IDX}].assets // []")
+              if asset_list_has_required_firmware "${CANDIDATE_ASSETS}"; then
+                printf '%s' "${CANDIDATE_ASSETS}"
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          if ! BETA_ASSETS=$(select_complete_beta_assets "${RELEASES_JSON}"); then
             RELEASES_JSON=$(curl -fsSL \
               -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=20")
-            BETA_ASSETS=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select((.draft | not) and .prerelease)][0].assets // []')
+            BETA_ASSETS=$(select_complete_beta_assets "${RELEASES_JSON}" || true)
           fi
 
-          if ! asset_list_has_required_firmware "${BETA_ASSETS}"; then
+          if [ -z "${BETA_ASSETS}" ]; then
             echo "::warning::No complete beta firmware release set is available from either repository"
             BETA_ASSETS='[]'
           fi
