@@ -194,10 +194,6 @@ export function createControlsShellFeature(
         els.buttonSettings = config;
         modal.appendChild(config);
         overlay.appendChild(modal);
-        overlay.addEventListener("click", function (this: any, e?: any) {
-            if (e.target === overlay)
-                dependencies.closeSettings();
-        });
         page.appendChild(overlay);
         els.settingsOverlay = overlay;
         page.appendChild(buildApplyBar());
