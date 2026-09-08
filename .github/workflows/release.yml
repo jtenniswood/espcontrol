@@ -63,6 +63,7 @@ jobs:
             --disable-pip-version-check \
             --no-cache-dir \
             "PyYAML==6.0.2"
+          echo "PATH=${PYTHON_VENV}/bin:${PATH}" >> "${GITHUB_ENV}"
           echo "${PYTHON_VENV}/bin" >> "${GITHUB_PATH}"
 
       - name: Ensure CMake is available
