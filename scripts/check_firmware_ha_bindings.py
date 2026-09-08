@@ -165,6 +165,21 @@ COVER_COMMAND_REQUEST_PATTERN = re.compile(
 YAML_SCRIPT_PATTERN_TEMPLATE = r"(?ms)^  - id: {script_id}\n(?P<body>.*?)(?=^  - id: |\Z)"
 
 
+def accumulating_ha_read_call(text: str) -> bool:
+    # Preserve quoted strings while removing comments, so URLs cannot hide code
+    # after them and explanatory API names do not count as calls.
+    code = re.sub(
+        r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|//[^\n]*|/\*.*?\*/',
+        lambda match: " " if match.group().startswith(("//", "/*")) else match.group(),
+        text,
+        flags=re.DOTALL,
+    )
+    return bool(re.search(
+        r"\bget_home_assistant_state\s*\(|\btransport_\s*(?:\.|->)\s*get\s*\(",
+        code,
+    ))
+
+
 def yaml_script_body(text: str, script_id: str) -> str | None:
     match = re.search(YAML_SCRIPT_PATTERN_TEMPLATE.format(script_id=re.escape(script_id)), text)
     return match.group("body") if match else None
@@ -237,13 +252,10 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         or 'heap_probe_.available("Home Assistant state request"' not in coordinator_text
     ):
         errors.append(f"{rel}: guard retained Home Assistant reads under low internal heap")
-    if (
-        "get_home_assistant_state" in read_boundary_text
-        or "transport_.get(" in coordinator_text
-        or "ha_get_state" in text
-        or "ha_get_attribute" in text
-    ):
-        errors.append(f"{rel}: never register accumulating one-shot Home Assistant state reads")
+    if "transport_.request(" not in coordinator_text or "request_fresh(" not in coordinator_text:
+        errors.append(f"{rel}: route fresh Home Assistant reads through the bounded coordinator helper")
+    if accumulating_ha_read_call(read_boundary_text):
+        errors.append(f"{rel}: fresh metadata reads must reuse subscriptions, not append native callbacks or borrow temporary strings")
     if (
         "find_subscription_channel(entity_id, attribute, has_attribute)" not in coordinator_text
         or "!channel_reuses_reads(channel)" not in coordinator_text
@@ -748,8 +760,11 @@ def firmware_weather_reconnect_errors(core_infra_path: Path, root: Path) -> list
         return errors
 
     body = connected_match.group("body")
+    if "id(ha_refresh_after_connect).execute(" in body:
+        body = yaml_script_body(core_text, "ha_refresh_after_connect") or ""
+        body = re.split(r"(?m)^[a-z_]+:", body, maxsplit=1)[0]
     for match in re.finditer(r"refresh_weather_forecast_cards\(\);", body):
-        guard_window = body[max(0, match.start() - 160) : match.end()]
+        guard_window = body[max(0, match.start() - 220) : match.end()]
         if "ha_api_state_connected()" not in guard_window:
             errors.append(f"{core_rel}: wait for Home Assistant state readiness before forecast reconnect refreshes")
             break
@@ -1159,6 +1174,19 @@ def firmware_cover_art_lifecycle_controller_errors(
     ):
         errors.append(
             f"{backlight_rel}: preserve active cover art across lower-priority generation changes"
+        )
+
+    transition_lifecycle_markers = (
+        "controller.transition_in_progress(transition)",
+        "id(display_mode_apply_transition).is_running()",
+        "controller.transition_warning_due(millis(), 2000)",
+        "controller.cancel_transition()",
+        "controller.presentation_incomplete()",
+        "controller.start_transition(transition, millis())",
+    )
+    if any(marker not in reconcile for marker in transition_lifecycle_markers):
+        errors.append(
+            f"{backlight_rel}: track in-flight display effects so periodic reconciliation cannot restart them"
         )
 
     if "cover_art_screensaver_active" in cover_art_text or "cover_art_screensaver_active" in backlight_text:
@@ -2048,7 +2076,10 @@ def firmware_cover_art_progress_visibility_errors(path: Path, root: Path) -> lis
         handler = handler_match.group("body") if handler_match else ""
         metadata_assignment = handler.find(assignment)
         duration_invalidation = handler.find("invalidate_stale_media_duration()")
-        if (
+        if metadata_name in ("artist", "album"):
+            if duration_invalidation >= 0:
+                errors.append(f"{rel}: preserve duration when restoring media {metadata_name}")
+        elif (
             metadata_assignment < 0
             or duration_invalidation < 0
             or duration_invalidation > metadata_assignment
@@ -2248,7 +2279,7 @@ def firmware_image_card_startup_errors(
     if (
         "image_card_request_current_picture" not in text
         or "if (ctx->media_artwork)" not in text
-        or "image_card_request_media_artwork(ctx, true);" not in text
+        or "image_card_request_media_artwork(ctx, false);" not in text
         or "image_card_refresh_current_picture(ctx);" not in text
         or "ctx->media_artwork_retry_mask = 0;" not in text
         or "ctx->pending_fallback_picture.clear();" not in text
@@ -2409,6 +2440,22 @@ def firmware_screensaver_wake_guard_errors(
         if body is None:
             errors.append(f"{rel}: missing screensaver_wake script")
         else:
+            interrupted_transition_tokens = (
+                "controller.has_transition_in_progress()",
+                "controller.cancel_transition()",
+                "controller.require_presentation_cleanup()",
+                "script.stop: display_mode_apply_transition",
+                "script.stop: cover_art_hide_effect",
+                "script.stop: display_mode_effect_active",
+                "script.stop: display_mode_effect_setup_dimmed",
+                "script.stop: display_mode_effect_off",
+                "script.stop: display_mode_effect_cover_art",
+                "lv_obj_has_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN)",
+            )
+            if any(token not in body for token in interrupted_transition_tokens):
+                errors.append(
+                    f"{rel}: cancel interrupted display effects and force visible clock cleanup during wake"
+                )
             pending_restore_tokens = (
                 "id: screensaver_wake_restore_pending",
                 "id(screensaver_wake_restore_pending) =",
@@ -4586,6 +4633,29 @@ def expect_c6_update_status_errors(name: str, text: str, expected: tuple[str, ..
 
 
 def run_self_test() -> int:
+    for call in (
+        "api->get_home_assistant_state(entity, callback);",
+        "api.get_home_assistant_state(entity, callback);",
+        "get_home_assistant_state (entity, callback);",
+        "api . get_home_assistant_state\n(entity, callback);",
+        "transport_.get(entity, callback);",
+        "transport_ -> get (entity, callback);",
+        "api./* boundary */get_home_assistant_state(entity, callback);",
+    ):
+        for filename in ("button_grid_ha.h", "ha_read_coordinator.h"):
+            expect_ha_boundary_errors(
+                f"accumulating call in {filename}: {call}",
+                {"button_grid_ha.h": "", filename: call},
+                ("fresh metadata reads must reuse subscriptions",),
+            )
+    assert not accumulating_ha_read_call(
+        "// get_home_assistant_state(entity, callback);\n"
+        "/* transport_.get(entity, callback); */\n"
+        "transport_.request(entity, attribute);"
+    )
+    assert accumulating_ha_read_call(
+        'const char *url = "https://example.test"; api.get_home_assistant_state(entity, cb);'
+    )
     expect_media_cover_art_external_input_errors(
         "missing media cover art external-input handling",
         {
@@ -5741,7 +5811,7 @@ def run_self_test() -> int:
         "      - script.wait: display_mode_apply_transition\n"
         "  - id: display_mode_reconcile\n"
         "    then:\n"
-        "      - lambda: 'auto transition = controller.resolve(); bool transition_required = controller.transition_required(transition); if (!transition_required) { auto previous_cover_generation = id(cover_art_transition_generation); id(cover_art_transition_generation) = transition.generation; if (id(cover_art_download_generation) == previous_cover_generation) id(cover_art_download_generation) = transition.generation; }'\n"
+        "      - lambda: 'auto transition = controller.resolve(); if (controller.transition_in_progress(transition) && id(display_mode_apply_transition).is_running()) { controller.transition_warning_due(millis(), 2000); return; } controller.cancel_transition(); bool transition_required = controller.transition_required(transition) || controller.presentation_incomplete(); if (!transition_required) { auto previous_cover_generation = id(cover_art_transition_generation); id(cover_art_transition_generation) = transition.generation; if (id(cover_art_download_generation) == previous_cover_generation) id(cover_art_download_generation) = transition.generation; } controller.start_transition(transition, millis());'\n"
     )
     valid_cover_art_effects = (
         "globals:\n"
@@ -6323,13 +6393,11 @@ def run_self_test() -> int:
         "if (!already_subscribed) {}\n"
         "# artist callback\n"
         "std::function<void(esphome::StringRef)> handle_media_artist = [](esphome::StringRef artist) {\n"
-        "  invalidate_stale_media_duration();\n"
         "  id(cover_art_artist) = next;\n"
         "};\n"
         "if (!already_subscribed) {}\n"
         "# album callback\n"
         "std::function<void(esphome::StringRef)> handle_media_album = [](esphome::StringRef album) {\n"
-        "  invalidate_stale_media_duration();\n"
         "  id(cover_art_album) = next;\n"
         "  id(cover_art_sync_track_text).execute();\n"
         "};\n"
@@ -6424,24 +6492,24 @@ def run_self_test() -> int:
         ("preserve fresh cover art position when title metadata arrives late",),
     )
     expect_cover_art_progress_visibility_errors(
-        "cover art artist change keeps stale duration",
+        "cover art artist restoration discards duration",
         cover_art_progress_visibility.replace(
+            "handle_media_artist = [](esphome::StringRef artist) {\n",
             "handle_media_artist = [](esphome::StringRef artist) {\n"
             "  invalidate_stale_media_duration();\n",
-            "handle_media_artist = [](esphome::StringRef artist) {\n",
             1,
         ),
-        ("mark stale cover art duration unavailable when media artist changes",),
+        ("preserve duration when restoring media artist",),
     )
     expect_cover_art_progress_visibility_errors(
-        "cover art album change keeps stale duration",
+        "cover art album restoration discards duration",
         cover_art_progress_visibility.replace(
+            "handle_media_album = [](esphome::StringRef album) {\n",
             "handle_media_album = [](esphome::StringRef album) {\n"
             "  invalidate_stale_media_duration();\n",
-            "handle_media_album = [](esphome::StringRef album) {\n",
             1,
         ),
-        ("mark stale cover art duration unavailable when media album changes",),
+        ("preserve duration when restoring media album",),
     )
     expect_cover_art_progress_visibility_errors(
         "cover art album change delays progress refresh",
@@ -6704,7 +6772,7 @@ def run_self_test() -> int:
         "    ctx->pending_fallback_picture.clear();\n"
         "  }\n"
         "  if (ctx->media_artwork) {\n"
-        "    image_card_request_media_artwork(ctx, true);\n"
+        "    image_card_request_media_artwork(ctx, false);\n"
         "  } else {\n"
         "    image_card_request_current_picture(ctx);\n"
         "  }\n"
@@ -6811,11 +6879,21 @@ def run_self_test() -> int:
         "  - id: screensaver_wake\n"
         "    then:\n"
         "      - lambda: |-\n"
+        "          auto &controller = id(espcontrol_app).display();\n"
+        "          bool clock_visible = !lv_obj_has_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN);\n"
+        "          if (controller.has_transition_in_progress()) controller.cancel_transition();\n"
+        "          controller.require_presentation_cleanup();\n"
         "          id(screensaver_wake_restore_pending) =\n"
         "              !id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::ACTIVE);\n"
         "          id(screensaver_wake_touch_guard_skip_once) =\n"
         "              id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) ||\n"
         "              id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::DISPLAY_OFF);\n"
+        "      - script.stop: display_mode_apply_transition\n"
+        "      - script.stop: cover_art_hide_effect\n"
+        "      - script.stop: display_mode_effect_active\n"
+        "      - script.stop: display_mode_effect_setup_dimmed\n"
+        "      - script.stop: display_mode_effect_off\n"
+        "      - script.stop: display_mode_effect_cover_art\n"
         "      - script.execute: screensaver_wake_touch_block\n"
         "      - lambda: |-\n"
         "          id(espcontrol_app).display().clear(espcontrol::DisplayRequestSource::IDLE_TIMER);\n"

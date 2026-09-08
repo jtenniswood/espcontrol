@@ -56,6 +56,9 @@ globals:
   - id: cover_art_title
     type: std::string
     initial_value: '""'
+  - id: cover_art_title_awaiting_refresh
+    type: bool
+    initial_value: 'false'
   - id: cover_art_artist
     type: std::string
     initial_value: '""'
@@ -808,6 +811,9 @@ script:
     mode: restart
     then:
       - script.stop: cover_art_prepare_activation
+      - lambda: |-
+          ha_cancel_metadata_refresh(HA_SUBSCRIPTION_SCOPE_COVER_ART);
+          id(cover_art_title_awaiting_refresh) = false;
       - script.stop: cover_art_delay_timer
       - script.stop: cover_art_show_track_overlay
       - script.stop: cover_art_download
@@ -1875,6 +1881,29 @@ script:
           else:
             - script.execute: cover_art_playback_stopped
 
+  - id: cover_art_refresh_media_metadata
+    mode: restart
+    then:
+      - lambda: |-
+          if (!id(cover_art_screensaver_enabled).state ||
+              id(cover_art_active_media_player_entity).empty()) return;
+          // Refresh only metadata subscribed by this device, even while hidden.
+          #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
+          ha_schedule_metadata_refresh(id(cover_art_active_media_player_entity),
+            {"media_title", "media_artist"}, HA_SUBSCRIPTION_SCOPE_COVER_ART);
+          #else
+          ha_schedule_metadata_refresh(id(cover_art_active_media_player_entity),
+            {"media_title", "media_artist", "media_album_name"}, HA_SUBSCRIPTION_SCOPE_COVER_ART);
+          #endif
+
+  - id: cover_art_expire_title_refresh
+    mode: restart
+    then:
+      # A missing media_title produces no subscription callback. Expire the
+      # transition marker so the next real title change is handled normally.
+      - delay: 2s
+      - lambda: 'id(cover_art_title_awaiting_refresh) = false;'
+
   - id: cover_art_apply_external_input_policy
     mode: restart
     then:
@@ -2032,6 +2061,8 @@ script:
             id(cover_art_artwork_trigger).reset();
             id(cover_art_artwork_retry_mask) = 0;
             id(cover_art_empty_entity_logged) = false;
+            ha_cancel_metadata_refresh(HA_SUBSCRIPTION_SCOPE_COVER_ART);
+            id(cover_art_title_awaiting_refresh) = false;
             id(cover_art_subscribed_entity).clear();
             id(cover_art_subscribed_primary_entity).clear();
             id(cover_art_subscribed_secondary_entity).clear();
@@ -2048,6 +2079,8 @@ script:
             id(cover_art_subscribed_entity).clear();
             id(cover_art_subscribed_primary_entity).clear();
             id(cover_art_subscribed_secondary_entity).clear();
+            ha_cancel_metadata_refresh(HA_SUBSCRIPTION_SCOPE_COVER_ART);
+            id(cover_art_title_awaiting_refresh) = false;
             ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);
             #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
             media_playback_reset_cover_art_progress_subscriptions();
@@ -2065,6 +2098,8 @@ script:
             id(cover_art_subscribed_entity).clear();
             id(cover_art_subscribed_primary_entity).clear();
             id(cover_art_subscribed_secondary_entity).clear();
+            ha_cancel_metadata_refresh(HA_SUBSCRIPTION_SCOPE_COVER_ART);
+            id(cover_art_title_awaiting_refresh) = false;
             ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);
             #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
             media_playback_reset_cover_art_progress_subscriptions();
@@ -2085,6 +2120,8 @@ script:
             const std::string previous_entity = id(cover_art_subscribed_entity);
             id(cover_art_prepare_activation).stop();
             id(cover_art_schedule_paired_artwork).stop();
+            ha_cancel_metadata_refresh(HA_SUBSCRIPTION_SCOPE_COVER_ART);
+            id(cover_art_title_awaiting_refresh) = false;
             id(cover_art_artwork_trigger).reset();
             id(cover_art_artwork_retry_mask) = 0;
             ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);
@@ -2266,7 +2303,7 @@ script:
 
           std::function<void(esphome::StringRef)> handle_media_content_id =
             [cover_entity, subscription_generation,
-             mark_artwork_refresh_needed](esphome::StringRef content_id) {
+             mark_artwork_refresh_needed, invalidate_stale_media_duration](esphome::StringRef content_id) {
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
                   cover_entity != id(cover_art_active_media_player_entity)) return;
@@ -2290,11 +2327,13 @@ script:
               }
               if (!decision.item_changed) return;
 
+              invalidate_stale_media_duration();
+              id(cover_art_title_awaiting_refresh) = true;
+              id(cover_art_expire_title_refresh).execute();
               id(cover_art_title).clear();
-              if (decision.clear_grouping) {
-                id(cover_art_artist).clear();
-                id(cover_art_album).clear();
-              }
+              id(cover_art_artist).clear();
+              id(cover_art_album).clear();
+              id(cover_art_refresh_media_metadata).execute();
               mark_artwork_refresh_needed();
               id(cover_art_sync_track_text).execute();
               if (id(espcontrol_app).display().target_mode_is(
@@ -2388,11 +2427,16 @@ script:
                 string_ref_limited(title, HA_STATE_TEXT_MAX_LEN));
               if (next == "unknown" || next == "unavailable") next.clear();
               if (next == id(cover_art_title)) return;
-              // Hide an older track's duration, but keep a duration callback
-              // that arrived immediately before this metadata update.
-              invalidate_stale_media_duration();
-              lv_bar_set_value(id(cover_art_progress_bar), 0, LV_ANIM_OFF);
-              lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00");
+              // A content-ID transition already invalidated the old duration.
+              // Its delayed title restoration must preserve newer progress.
+              if (!id(cover_art_title_awaiting_refresh)) {
+                id(cover_art_artist).clear();
+                id(cover_art_refresh_media_metadata).execute();
+                invalidate_stale_media_duration();
+                lv_bar_set_value(id(cover_art_progress_bar), 0, LV_ANIM_OFF);
+                lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00");
+              }
+              id(cover_art_title_awaiting_refresh) = false;
               id(cover_art_title) = next;
               mark_artwork_refresh_needed();
               id(cover_art_sync_track_text).execute();
@@ -2417,8 +2461,7 @@ script:
             ESP_LOGI("cover_art", "Title subscription %s", title_subscribed ? "ready" : "failed");
           }
           std::function<void(esphome::StringRef)> handle_media_artist =
-            [cover_entity, subscription_generation, mark_artwork_refresh_needed,
-             invalidate_stale_media_duration](esphome::StringRef artist) {
+            [cover_entity, subscription_generation, mark_artwork_refresh_needed](esphome::StringRef artist) {
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
                   cover_entity != id(cover_art_active_media_player_entity)) return;
@@ -2426,7 +2469,6 @@ script:
                 string_ref_limited(artist, HA_STATE_TEXT_MAX_LEN));
               if (next == "unknown" || next == "unavailable") next.clear();
               if (next == id(cover_art_artist)) return;
-              invalidate_stale_media_duration();
               id(cover_art_artist) = next;
               mark_artwork_refresh_needed();
               id(cover_art_sync_track_text).execute();
@@ -2449,15 +2491,13 @@ script:
           }
           #ifndef ESPCONTROL_LOW_HEAP_COVER_ART
           std::function<void(esphome::StringRef)> handle_media_album =
-            [cover_entity, subscription_generation, mark_artwork_refresh_needed,
-             invalidate_stale_media_duration](esphome::StringRef album) {
+            [cover_entity, subscription_generation, mark_artwork_refresh_needed](esphome::StringRef album) {
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
                   cover_entity != id(cover_art_active_media_player_entity)) return;
               std::string next = string_ref_limited(album, HA_STATE_TEXT_MAX_LEN);
               if (next == "unknown" || next == "unavailable") next.clear();
               if (next == id(cover_art_album)) return;
-              invalidate_stale_media_duration();
               id(cover_art_album) = next;
               mark_artwork_refresh_needed();
               id(cover_art_sync_track_text).execute();

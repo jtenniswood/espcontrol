@@ -113,6 +113,17 @@ fields. Test five cold boots, 20 playback/track changes, 20 screensaver/wake
 cycles and 30 minutes of playback on the 4-inch S3, followed by a 7-inch P4
 smoke test. Check both crashes and text corruption.
 
+Home Assistant reconnect recovery lives in the restartable
+`ha_refresh_after_connect` script. A Home Assistant disconnect cancels its delayed
+refreshes only when no authenticated Home Assistant connection remains. An old
+socket disconnecting must preserve a replacement's recovery and pending requests,
+including before state subscriptions are ready. Diagnostic API clients must not
+start or cancel that work. Artwork recovery
+rechecks source URLs without forcing a healthy cached image to download again.
+Real metadata changes still force a refresh when a provider reuses its URL.
+That refresh requirement survives attribute timeouts until artwork is handed to
+the download path; retries for a missing optional attribute then stay unforced.
+
 ## Config Parser Rules
 
 `button_grid_config.h` should accept existing saved values after an upgrade. Be
