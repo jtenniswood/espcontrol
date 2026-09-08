@@ -22,6 +22,11 @@ invalidator = re.search(
 assert invalidator
 script = text.split("  - id: cover_art_refresh_media_metadata\n", 1)[1].split("\n  - id:", 1)[0]
 schedule = script.split("- lambda: |-\n", 1)[1]
+expiry_script = text.split("  - id: cover_art_expire_title_refresh\n", 1)[1].split("\n  - id:", 1)[0]
+assert "- delay: 2s" in expiry_script
+assert "id(cover_art_title_awaiting_refresh) = false;" in expiry_script
+content_id_callback = callback("content_id")
+assert "id(cover_art_expire_title_refresh).execute();" in content_id_callback
 source = r'''
 #include <cassert>
 #include <functional>
@@ -33,7 +38,8 @@ namespace espcontrol { enum class DisplayMode { COVER_ART }; }
 struct Switch { bool state = true; } cover_art_screensaver_enabled;
 struct Script { template<typename... Args> void execute(Args...) {} };
 Script cover_art_refresh_media_metadata, cover_art_sync_track_text,
-       cover_art_show_track_overlay, cover_art_request_artwork;
+       cover_art_expire_title_refresh, cover_art_show_track_overlay,
+       cover_art_request_artwork;
 struct Display { bool target_mode_is(espcontrol::DisplayMode) { return false; } };
 struct App { Display display() { return {}; } } espcontrol_app;
 struct Runtime { std::string loaded_url = "image"; bool image_available = true; } cover_art_runtime;
@@ -65,7 +71,8 @@ int main() {
  const int subscription_generation = cover_art_subscription_generation;
  auto mark_artwork_refresh_needed = []() {};
  auto invalidate_stale_media_duration = ''' + invalidator[1] + ";\n"
-source += "\n".join(callback(name) for name in ("content_id", "title", "artist", "album"))
+source += content_id_callback
+source += "\n".join(callback(name) for name in ("title", "artist", "album"))
 source += r'''
  auto schedule_metadata = []() {
 ''' + schedule + r'''

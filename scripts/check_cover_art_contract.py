@@ -397,8 +397,11 @@ for required in (
     "media_metadata_clear_decision(",
     "media_content_identity_fingerprint(",
     "should_replace_media_metadata_identity(",
-    "if (decision.clear_title) state->title.clear();",
-    "if (decision.clear_grouping) state->artist.clear();",
+    "if (decision.clear_title) {",
+    "state->metadata_title_awaiting_refresh = true;",
+    "if (decision.item_changed) {",
+    "media_playback_clear_stale_artist(state);",
+    "media_playback_schedule_metadata_refresh(state);",
 ):
     if required not in content:
         raise SystemExit(f"Media item-change policy contract missing: {required}")

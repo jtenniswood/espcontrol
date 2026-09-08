@@ -1863,6 +1863,14 @@ script:
             {"media_title", "media_artist", "media_album_name"}, HA_SUBSCRIPTION_SCOPE_COVER_ART);
           #endif
 
+  - id: cover_art_expire_title_refresh
+    mode: restart
+    then:
+      # A missing media_title produces no subscription callback. Expire the
+      # transition marker so the next real title change is handled normally.
+      - delay: 2s
+      - lambda: 'id(cover_art_title_awaiting_refresh) = false;'
+
   - id: cover_art_apply_external_input_policy
     mode: restart
     then:
@@ -2287,6 +2295,7 @@ script:
 
               invalidate_stale_media_duration();
               id(cover_art_title_awaiting_refresh) = true;
+              id(cover_art_expire_title_refresh).execute();
               id(cover_art_title).clear();
               id(cover_art_artist).clear();
               id(cover_art_album).clear();
