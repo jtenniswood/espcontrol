@@ -1,5 +1,6 @@
 #pragma once
 
+#include "climate_subscription_policy.h"
 #include "climate_state_logic.h"
 #include "climate_target_logic.h"
 
@@ -87,6 +88,9 @@ struct ClimateControlCtx {
   std::string preset_mode;
   std::vector<std::string> preset_modes;
   std::string options;
+  uint8_t configured_tab_mask = 0;
+  uint32_t subscription_generation = 0;
+  espcontrol::climate::OptionalSubscriptionState optional_subscriptions;
   bool available = true;
   bool has_target = false;
   bool has_current = false;
@@ -2211,6 +2215,10 @@ inline void climate_control_hide_modal() {
 
 inline void delete_climate_control_context(ClimateControlCtx *ctx) {
   if (!ctx) return;
+  ctx->optional_subscriptions.clear_pending();
+  // The context owns all its callbacks, independently of a shared page owner.
+  // Release before deleting widgets/context, including during HA dispatch.
+  ha_release_callbacks_for_owner(ctx);
   if (climate_control_modal_ui().active == ctx) climate_control_hide_modal();
   if (ctx->debounce_timer) {
     lv_timer_del(ctx->debounce_timer);
@@ -2588,6 +2596,9 @@ inline ClimateControlCtx *create_climate_control_context(
       ? CLIMATE_DEFAULT_STEP_TENTHS
       : CLIMATE_WHOLE_NUMBER_STEP_TENTHS;
   ctx->options = p.options;
+  ctx->configured_tab_mask = espcontrol::climate::configured_climate_tab_mask(
+    normalize_climate_control_tabs_value(
+      cfg_option_value(p.options, CLIMATE_CONTROL_TABS_OPTION)));
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;
   ctx->tertiary_color = tertiary_color;
@@ -2616,9 +2627,13 @@ inline ClimateControlCtx *create_climate_control_context(
   return ctx;
 }
 
+#include "button_grid_climate_subscriptions.h"
+
 inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
   const uint32_t generation = ha_subscription_generation();
+  HaCallbackOwnerScope owner_scope(ctx);
+  ctx->subscription_generation = generation;
   auto active = [generation]() {
     return generation == ha_subscription_generation();
   };
@@ -2674,6 +2689,7 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         if (espcontrol::climate::capability_change_invalidates_pending(
               previous_kind, next_kind, climate_target_values_complete(ctx)))
           climate_cancel_temperature_send(ctx);
+        climate_mark_optional_subscription_needs(ctx);
         refresh();
       })
   );
@@ -2743,20 +2759,6 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         refresh();
       })
   );
-  auto subscribe_text = [ctx, refresh, active](const char *attr, std::string ClimateControlCtx::*field) {
-    ha_subscribe_attribute(
-      ctx->entity_id, std::string(attr),
-      std::function<void(esphome::StringRef)>(
-        [ctx, refresh, active, field](esphome::StringRef value) {
-          if (!active()) return;
-          ctx->*field = climate_lower(climate_trim(string_ref_limited(value, HA_SHORT_STATE_MAX_LEN)));
-          refresh();
-        })
-    );
-  };
-  subscribe_text("fan_mode", &ClimateControlCtx::fan_mode);
-  subscribe_text("swing_mode", &ClimateControlCtx::swing_mode);
-  subscribe_text("preset_mode", &ClimateControlCtx::preset_mode);
   auto subscribe_list = [ctx, refresh, active](const char *attr, std::vector<std::string> ClimateControlCtx::*field) {
     ha_subscribe_attribute(
       ctx->entity_id, std::string(attr),
@@ -2764,6 +2766,7 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         [ctx, refresh, active, field](esphome::StringRef value) {
           if (!active()) return;
           ctx->*field = climate_parse_options(value);
+          climate_mark_optional_subscription_needs(ctx);
           refresh();
         })
     );
@@ -2772,4 +2775,8 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   subscribe_list("fan_modes", &ClimateControlCtx::fan_modes);
   subscribe_list("swing_modes", &ClimateControlCtx::swing_modes);
   subscribe_list("preset_modes", &ClimateControlCtx::preset_modes);
+  climate_subscribe_optional_fields(
+    ctx, espcontrol::climate::configured_optional_subscription_mask(
+      ctx->configured_tab_mask));
+  climate_mark_optional_subscription_needs(ctx);
 }

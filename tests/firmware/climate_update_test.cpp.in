@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "esphome/core/string_ref.h"
+#include "climate_subscription_policy.h"
 #include "climate_state_logic.h"
 #include "climate_target_logic.h"
 
@@ -92,6 +93,12 @@ void climate_cancel_temperature_send(ClimateControlCtx *) { assert(false); }
 void climate_normalize_range(ClimateControlCtx *) { assert(false); }
 std::vector<std::string> climate_parse_options(esphome::StringRef) { assert(false); return {}; }
 void climate_select_target_for_mode(ClimateControlCtx *, const std::string &) {}
+class HaCallbackOwnerScope {
+ public:
+  explicit HaCallbackOwnerScope(const void *) {}
+};
+bool climate_subscribe_optional_fields(ClimateControlCtx *, uint8_t) { return true; }
+void climate_mark_optional_subscription_needs(ClimateControlCtx *) {}
 
 // @production-function climate_send_option
 // @production-function subscribe_climate_control_state

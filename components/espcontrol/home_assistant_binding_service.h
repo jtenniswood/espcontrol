@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+#include <memory>
 #include <utility>
 
 #include "ha_read_coordinator.h"
@@ -46,10 +48,11 @@ inline void set_home_assistant_callback_owner_service(
 
 // Owns Home Assistant callback scope and read/subscription state. Transport and
 // heap policies keep the service host-testable and leave ESPHome as wiring.
-template<typename Transport, typename HeapProbe>
+template<typename Transport, typename HeapProbe,
+         typename Allocator = std::allocator<std::byte>>
 class HomeAssistantBindingService {
  public:
-  using ReadCoordinator = HaReadCoordinator<Transport, HeapProbe>;
+  using ReadCoordinator = HaReadCoordinator<Transport, HeapProbe, Allocator>;
   using CallbackOwnerScope = HomeAssistantCallbackOwnerService::Scope;
 
   explicit HomeAssistantBindingService(
