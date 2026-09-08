@@ -30,6 +30,17 @@ header-only C++ under `components/espcontrol/`.
 
 Visual setup and runtime wiring are separate. A new card often needs both.
 
+Media slider visuals own their runtime context as soon as visual setup creates
+them. Teardown must cancel both geometry and media-position timers, remove the
+parent resize callback, and clear LVGL user data before freeing the context.
+This ownership starts before Home Assistant data binding because startup or a
+dashboard rebuild can replace the visual during that gap.
+
+P4 crash-report handlers deliberately use the direct reboot path after clearing
+the saved report. Marking safe mode successful or using a safe reboot there
+clears ESPHome's failed-boot counter and can prevent recovery from a recurring
+startup crash.
+
 ## Adding Firmware Support for a Card
 
 Use an existing card with similar behavior as the architectural template:
@@ -106,6 +117,37 @@ delivery and rebuilds; LVGL rendering and physical memory behaviour still need
 device testing.
 
 Use the firmware UI playbook for subscription and runtime checks.
+
+## Cover Art activation and the S3 stack
+
+ESPHome's automation actions call the next action synchronously. Keep the 1 ms
+yield at the start of `display_mode_effect_cover_art`: layout and logging must
+not inherit the controller's nested action stack. Keep artwork preparation in
+the restartable `cover_art_prepare_activation` script with its own yield. The
+parent waits for preparation before completing the transition. After the yield,
+validate transition generation, subscription generation, media entity and
+feature eligibility; obsolete work must not select or download artwork.
+
+`cover_art_request_artwork` already selects cached candidates. Do not add a
+second cached-selection call to activation. Image consumers continue sharing
+the existing serialized download queue.
+
+`tests/firmware/cover_art_activation_test.py` executes the production scheduling
+and artwork-selection bodies with an ESPHome action-chain excerpt and simulated
+LVGL/network/scheduler boundaries. Its `--mutations` option verifies the yields
+and ownership guards. Use `--esphome-source <generated-src>/esphome` after a
+toolchain update to verify the excerpt against the installed automation code.
+Run it with a Python environment containing PyYAML (the pinned ESPHome
+environment provides this dependency and CI reuses it).
+
+The anonymized `tests/firmware/fixtures/issue1854-cover-art.json` backup preserves
+the reporter's tile, 60-second Cover Art delay, presence dimming, music sleep
+prevention and 90-degree rotation. Replace all `media_player.issue1854` and
+`binary_sensor.issue1854_presence` values with bench entities before importing.
+The native payload is omitted so it cannot override the anonymized legacy
+fields. Test five cold boots, 20 playback/track changes, 20 screensaver/wake
+cycles and 30 minutes of playback on the 4-inch S3, followed by a 7-inch P4
+smoke test. Check both crashes and text corruption.
 
 Home Assistant reconnect recovery lives in the restartable
 `ha_refresh_after_connect` script. A Home Assistant disconnect cancels its delayed
