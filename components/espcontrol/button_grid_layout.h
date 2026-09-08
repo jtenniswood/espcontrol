@@ -122,6 +122,9 @@ constexpr int CARD_SIZE_PORTRAIT_LARGE_COL_SPAN = 3;
 constexpr char CARD_SIZE_LANDSCAPE_LARGE_TOKEN = 'l';
 constexpr int CARD_SIZE_LANDSCAPE_LARGE_ROW_SPAN = 3;
 constexpr int CARD_SIZE_LANDSCAPE_LARGE_COL_SPAN = 4;
+constexpr char CARD_SIZE_ULTRA_WIDE_TOKEN = 'u';
+constexpr int CARD_SIZE_ULTRA_WIDE_ROW_SPAN = 1;
+constexpr int CARD_SIZE_ULTRA_WIDE_COL_SPAN = 5;
 
 inline bool card_span_matches(int row_span, int col_span, int expected_rows, int expected_cols) {
   return row_span == expected_rows && col_span == expected_cols;
@@ -172,6 +175,9 @@ inline void grid_token_spans(char suffix, int &row_span, int &col_span) {
   } else if (suffix == CARD_SIZE_LANDSCAPE_LARGE_TOKEN) {
     row_span = CARD_SIZE_LANDSCAPE_LARGE_ROW_SPAN;
     col_span = CARD_SIZE_LANDSCAPE_LARGE_COL_SPAN;
+  } else if (suffix == CARD_SIZE_ULTRA_WIDE_TOKEN) {
+    row_span = CARD_SIZE_ULTRA_WIDE_ROW_SPAN;
+    col_span = CARD_SIZE_ULTRA_WIDE_COL_SPAN;
   }
 }
 
@@ -180,7 +186,8 @@ inline bool grid_token_has_span_suffix(char suffix) {
     suffix == CARD_SIZE_LARGE_TOKEN || suffix == CARD_SIZE_EXTRA_TALL_TOKEN ||
     suffix == CARD_SIZE_EXTRA_WIDE_TOKEN || suffix == CARD_SIZE_EXTRA_LARGE_TOKEN ||
     suffix == CARD_SIZE_MAX_WIDE_TOKEN || suffix == CARD_SIZE_MAX_TALL_TOKEN ||
-    suffix == CARD_SIZE_PORTRAIT_LARGE_TOKEN || suffix == CARD_SIZE_LANDSCAPE_LARGE_TOKEN;
+    suffix == CARD_SIZE_PORTRAIT_LARGE_TOKEN || suffix == CARD_SIZE_LANDSCAPE_LARGE_TOKEN ||
+    suffix == CARD_SIZE_ULTRA_WIDE_TOKEN;
 }
 
 inline int parse_positive_int_span(const std::string &value, size_t start, size_t end) {
