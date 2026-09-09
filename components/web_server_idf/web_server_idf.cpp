@@ -853,9 +853,12 @@ void AsyncWebServerRequest::requestAuthentication() const {
   esp_fill_random(random_bytes, sizeof(random_bytes));
   bytes_to_hex(random_bytes, sizeof(random_bytes), opaque);
   retain_digest_challenge(nonce, opaque);
+  // Spell out the origin-wide protection space. RFC 7616 makes this the
+  // default when domain is omitted, but Safari may otherwise challenge again
+  // for fetches outside the path that established the authentication session.
   snprintf(header, sizeof(header),
-           R"(Digest realm="Login Required", qop="auth", algorithm=MD5, nonce="%s", opaque="%s"%s)", nonce,
-           opaque, this->digest_nonce_stale_ ? ", stale=true" : "");
+           R"(Digest realm="Login Required", domain="/", qop="auth", algorithm=MD5, nonce="%s", opaque="%s"%s)",
+           nonce, opaque, this->digest_nonce_stale_ ? ", stale=true" : "");
   httpd_resp_set_hdr(*this, "WWW-Authenticate", header);
 #else
   httpd_resp_set_hdr(*this, "WWW-Authenticate", "Basic realm=\"Login Required\"");

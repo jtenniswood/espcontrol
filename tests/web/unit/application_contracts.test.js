@@ -473,6 +473,12 @@ describe("browserless application contracts", () => {
       webServer.indexOf("esp_err_t AsyncWebServer::request_handler"),
     );
     assert.ok(rawBodyDispatcher.indexOf("canReceiveBody") < rawBodyDispatcher.indexOf("httpd_req_recv"));
+
+    assert.match(
+      webServer,
+      /Digest realm=\"Login Required\", domain=\"\/\"/,
+      "Digest challenges should explicitly cover every device path for Safari",
+    );
   });
 
   test("normalizes and preserves Wifi modal tab settings", () => {
