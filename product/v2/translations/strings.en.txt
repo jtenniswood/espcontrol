@@ -245,3 +245,7 @@ no_speakers=No Speakers
 grouping_failed=Grouping failed
 speakers_updated=Speakers updated
 updating_speakers=Updating speakers
+settings=Settings
+brightness=Brightness
+daytime=Daytime
+nighttime=Nighttime

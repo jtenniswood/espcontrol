@@ -87,6 +87,7 @@ struct lv_obj_t {
   int transform_scale_x = 256;
   int transform_scale_y = 256;
   std::string text;
+  int width = 480;
   void *user_data = nullptr;
 };
 constexpr int MAX_GRID_SLOTS = 25;
@@ -170,7 +171,7 @@ inline void lv_obj_clear_flag(lv_obj_t *obj, int flag) { if (obj) obj->flags &= 
 inline bool lv_obj_has_flag(lv_obj_t *obj, int flag) { return obj && (obj->flags & flag); }
 inline uint32_t lv_obj_get_child_cnt(lv_obj_t *) { return 0; }
 inline lv_obj_t *lv_obj_get_child(lv_obj_t *, uint32_t) { return nullptr; }
-inline int lv_obj_get_width(lv_obj_t *) { return 480; }
+inline int lv_obj_get_width(lv_obj_t *obj) { return obj ? obj->width : 480; }
 inline int lv_obj_get_height(lv_obj_t *) { return 480; }
 inline int lv_obj_get_style_pad_left(lv_obj_t *, int) { return 0; }
 inline int lv_obj_get_style_pad_right(lv_obj_t *, int) { return 0; }
@@ -185,7 +186,7 @@ inline int lv_disp_get_hor_res(lv_disp_t *) { return lv_test_hor_res; }
 inline int lv_disp_get_ver_res(lv_disp_t *) { return lv_test_ver_res; }
 inline void lv_label_set_long_mode(lv_obj_t *, int) {}
 inline void lv_obj_set_size(lv_obj_t *, int, int) {}
-inline void lv_obj_set_width(lv_obj_t *, int) {}
+inline void lv_obj_set_width(lv_obj_t *obj, int width) { if (obj) obj->width = width; }
 inline void lv_obj_set_height(lv_obj_t *, int) {}
 inline void lv_obj_set_pos(lv_obj_t *, int, int) {}
 inline void lv_obj_set_grid_cell(lv_obj_t *, int, int, int, int, int, int) {}
@@ -300,6 +301,17 @@ int main() {
     true, true, true,
     12, 17, 20, 10, 80);
   assert(lv_obj_move_background_calls == 3);
+  assert(lv_obj_get_width(&temperature_1) == 72);
+  set_clock_bar_temperature_labels(temperature_labels, 1);
+  temperature_1.text = "21°C";
+  lv_obj_clear_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN);
+  set_clock_bar_subpage_label("Settings");
+  assert(temperature_1.text == "Settings");
+  assert(lv_obj_get_width(&temperature_1) == 180);
+  set_clock_bar_subpage_label("");
+  assert(temperature_1.text == "21°C");
+  assert(!lv_obj_has_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN));
+  assert(lv_obj_get_width(&temperature_1) == 72);
   hide_clock_bar_top_layer_widgets(
     temperature_labels, 1, &display_time, &network_status_button);
   assert(lv_obj_has_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN));

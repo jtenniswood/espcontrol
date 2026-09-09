@@ -245,3 +245,7 @@ no_speakers=אין רמקולים
 grouping_failed=הקיבוץ נכשל
 speakers_updated=הרמקולים עודכנו
 updating_speakers=מעדכן רמקולים
+settings=הגדרות
+brightness=בהירות
+daytime=יום
+nighttime=לילה

@@ -245,3 +245,7 @@ no_speakers=Nenhum alto-falante
 grouping_failed=Falha ao agrupar
 speakers_updated=Alto-falantes atualizados
 updating_speakers=Atualizando alto-falantes
+settings=Configurações
+brightness=Brilho
+daytime=Dia
+nighttime=Noite

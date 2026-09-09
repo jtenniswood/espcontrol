@@ -245,3 +245,7 @@ no_speakers=Нет динамиков
 grouping_failed=Не удалось сгруппировать
 speakers_updated=Динамики обновлены
 updating_speakers=Обновление динамиков
+settings=Настройки
+brightness=Яркость
+daytime=День
+nighttime=Ночь

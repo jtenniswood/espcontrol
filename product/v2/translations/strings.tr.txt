@@ -245,3 +245,7 @@ no_speakers=Hoparlör Yok
 grouping_failed=Gruplama başarısız
 speakers_updated=Hoparlörler güncellendi
 updating_speakers=Hoparlörler güncelleniyor
+settings=Ayarlar
+brightness=Parlaklık
+daytime=Gündüz
+nighttime=Gece

@@ -245,3 +245,7 @@ no_speakers=Sem colunas
 grouping_failed=Falha ao agrupar
 speakers_updated=Colunas atualizadas
 updating_speakers=A atualizar colunas
+settings=Definições
+brightness=Brilho
+daytime=Dia
+nighttime=Noite

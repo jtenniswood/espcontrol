@@ -245,3 +245,7 @@ no_speakers=Nincsenek hangszórók
 grouping_failed=A csoportosítás sikertelen
 speakers_updated=Hangszórók frissítve
 updating_speakers=Hangszórók frissítése
+settings=Beállítások
+brightness=Fényerő
+daytime=Nappal
+nighttime=Éjszaka

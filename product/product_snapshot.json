@@ -13,7 +13,7 @@
     "cardTypes": 42,
     "entityNames": 101,
     "icons": 335,
-    "structuralIcons": 20,
+    "structuralIcons": 21,
     "compatibilityFixtureGroups": 2
   },
   "deviceProfiles": {
@@ -7393,6 +7393,12 @@
         "codepoint": "F02ED",
         "mdi": "image-broken",
         "comment": "Image card unavailable state"
+      },
+      {
+        "name": "Memory",
+        "codepoint": "F035B",
+        "mdi": "memory",
+        "comment": "Build information card"
       }
     ],
     "icons": [

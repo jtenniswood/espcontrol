@@ -245,3 +245,7 @@ no_speakers=Ingen høyttalere
 grouping_failed=Gruppering mislyktes
 speakers_updated=Høyttalere oppdatert
 updating_speakers=Oppdaterer høyttalere
+settings=Innstillinger
+brightness=Lysstyrke
+daytime=Dagtid
+nighttime=Nattetid

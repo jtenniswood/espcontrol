@@ -245,3 +245,7 @@ no_speakers=Ni zvočnikov
 grouping_failed=Združevanje ni uspelo
 speakers_updated=Zvočniki posodobljeni
 updating_speakers=Posodabljanje zvočnikov
+settings=Nastavitve
+brightness=Svetlost
+daytime=Dan
+nighttime=Noč

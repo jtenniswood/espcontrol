@@ -245,3 +245,7 @@ no_speakers=Žádné reproduktory
 grouping_failed=Seskupení se nezdařilo
 speakers_updated=Reproduktory aktualizovány
 updating_speakers=Aktualizace reproduktorů
+settings=Nastavení
+brightness=Jas
+daytime=Den
+nighttime=Noc

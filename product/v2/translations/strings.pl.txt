@@ -245,3 +245,7 @@ no_speakers=Brak głośników
 grouping_failed=Grupowanie nie powiodło się
 speakers_updated=Głośniki zaktualizowane
 updating_speakers=Aktualizowanie głośników
+settings=Ustawienia
+brightness=Jasność
+daytime=Dzień
+nighttime=Noc

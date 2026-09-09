@@ -242,6 +242,10 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Seskupení se nezdařilo";
   if (std::strcmp(text, "Speakers updated") == 0) return "Reproduktory aktualizovány";
   if (std::strcmp(text, "Updating speakers") == 0) return "Aktualizace reproduktorů";
+  if (std::strcmp(text, "Settings") == 0) return "Nastavení";
+  if (std::strcmp(text, "Brightness") == 0) return "Jas";
+  if (std::strcmp(text, "Daytime") == 0) return "Den";
+  if (std::strcmp(text, "Nighttime") == 0) return "Noc";
   return text;
 }
 
@@ -466,6 +470,10 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruppering mislykkedes";
   if (std::strcmp(text, "Speakers updated") == 0) return "Højttalere opdateret";
   if (std::strcmp(text, "Updating speakers") == 0) return "Opdaterer højttalere";
+  if (std::strcmp(text, "Settings") == 0) return "Indstillinger";
+  if (std::strcmp(text, "Brightness") == 0) return "Lysstyrke";
+  if (std::strcmp(text, "Daytime") == 0) return "Dagtid";
+  if (std::strcmp(text, "Nighttime") == 0) return "Nattetid";
   return text;
 }
 
@@ -688,6 +696,10 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruppierung fehlgeschlagen";
   if (std::strcmp(text, "Speakers updated") == 0) return "Lautsprecher aktualisiert";
   if (std::strcmp(text, "Updating speakers") == 0) return "Lautsprecher werden aktualisiert";
+  if (std::strcmp(text, "Settings") == 0) return "Einstellungen";
+  if (std::strcmp(text, "Brightness") == 0) return "Helligkeit";
+  if (std::strcmp(text, "Daytime") == 0) return "Tagsüber";
+  if (std::strcmp(text, "Nighttime") == 0) return "Nachts";
   return text;
 }
 
@@ -917,6 +929,10 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Error al agrupar";
   if (std::strcmp(text, "Speakers updated") == 0) return "Altavoces actualizados";
   if (std::strcmp(text, "Updating speakers") == 0) return "Actualizando altavoces";
+  if (std::strcmp(text, "Settings") == 0) return "Ajustes";
+  if (std::strcmp(text, "Brightness") == 0) return "Brillo";
+  if (std::strcmp(text, "Daytime") == 0) return "Día";
+  if (std::strcmp(text, "Nighttime") == 0) return "Noche";
   return text;
 }
 
@@ -1156,6 +1172,10 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Ryhmittely epäonnistui";
   if (std::strcmp(text, "Speakers updated") == 0) return "Kaiuttimet päivitetty";
   if (std::strcmp(text, "Updating speakers") == 0) return "Päivitetään kaiuttimia";
+  if (std::strcmp(text, "Settings") == 0) return "Asetukset";
+  if (std::strcmp(text, "Brightness") == 0) return "Kirkkaus";
+  if (std::strcmp(text, "Daytime") == 0) return "Päivä";
+  if (std::strcmp(text, "Nighttime") == 0) return "Yö";
   return text;
 }
 
@@ -1378,6 +1398,10 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Échec du regroupement";
   if (std::strcmp(text, "Speakers updated") == 0) return "Enceintes mises à jour";
   if (std::strcmp(text, "Updating speakers") == 0) return "Mise à jour des enceintes";
+  if (std::strcmp(text, "Settings") == 0) return "Paramètres";
+  if (std::strcmp(text, "Brightness") == 0) return "Luminosité";
+  if (std::strcmp(text, "Daytime") == 0) return "Jour";
+  if (std::strcmp(text, "Nighttime") == 0) return "Nuit";
   return text;
 }
 
@@ -1625,6 +1649,10 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "הקיבוץ נכשל";
   if (std::strcmp(text, "Speakers updated") == 0) return "הרמקולים עודכנו";
   if (std::strcmp(text, "Updating speakers") == 0) return "מעדכן רמקולים";
+  if (std::strcmp(text, "Settings") == 0) return "הגדרות";
+  if (std::strcmp(text, "Brightness") == 0) return "בהירות";
+  if (std::strcmp(text, "Daytime") == 0) return "יום";
+  if (std::strcmp(text, "Nighttime") == 0) return "לילה";
   return text;
 }
 
@@ -1864,6 +1892,10 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "A csoportosítás sikertelen";
   if (std::strcmp(text, "Speakers updated") == 0) return "Hangszórók frissítve";
   if (std::strcmp(text, "Updating speakers") == 0) return "Hangszórók frissítése";
+  if (std::strcmp(text, "Settings") == 0) return "Beállítások";
+  if (std::strcmp(text, "Brightness") == 0) return "Fényerő";
+  if (std::strcmp(text, "Daytime") == 0) return "Nappal";
+  if (std::strcmp(text, "Nighttime") == 0) return "Éjszaka";
   return text;
 }
 
@@ -2094,6 +2126,10 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Raggruppamento non riuscito";
   if (std::strcmp(text, "Speakers updated") == 0) return "Altoparlanti aggiornati";
   if (std::strcmp(text, "Updating speakers") == 0) return "Aggiornamento altoparlanti";
+  if (std::strcmp(text, "Settings") == 0) return "Impostazioni";
+  if (std::strcmp(text, "Brightness") == 0) return "Luminosità";
+  if (std::strcmp(text, "Daytime") == 0) return "Giorno";
+  if (std::strcmp(text, "Nighttime") == 0) return "Notte";
   return text;
 }
 
@@ -2321,6 +2357,10 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruppering mislyktes";
   if (std::strcmp(text, "Speakers updated") == 0) return "Høyttalere oppdatert";
   if (std::strcmp(text, "Updating speakers") == 0) return "Oppdaterer høyttalere";
+  if (std::strcmp(text, "Settings") == 0) return "Innstillinger";
+  if (std::strcmp(text, "Brightness") == 0) return "Lysstyrke";
+  if (std::strcmp(text, "Daytime") == 0) return "Dagtid";
+  if (std::strcmp(text, "Nighttime") == 0) return "Nattetid";
   return text;
 }
 
@@ -2549,6 +2589,10 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Groeperen mislukt";
   if (std::strcmp(text, "Speakers updated") == 0) return "Luidsprekers bijgewerkt";
   if (std::strcmp(text, "Updating speakers") == 0) return "Luidsprekers bijwerken";
+  if (std::strcmp(text, "Settings") == 0) return "Instellingen";
+  if (std::strcmp(text, "Brightness") == 0) return "Helderheid";
+  if (std::strcmp(text, "Daytime") == 0) return "Overdag";
+  if (std::strcmp(text, "Nighttime") == 0) return "Nacht";
   return text;
 }
 
@@ -2776,6 +2820,10 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Grupowanie nie powiodło się";
   if (std::strcmp(text, "Speakers updated") == 0) return "Głośniki zaktualizowane";
   if (std::strcmp(text, "Updating speakers") == 0) return "Aktualizowanie głośników";
+  if (std::strcmp(text, "Settings") == 0) return "Ustawienia";
+  if (std::strcmp(text, "Brightness") == 0) return "Jasność";
+  if (std::strcmp(text, "Daytime") == 0) return "Dzień";
+  if (std::strcmp(text, "Nighttime") == 0) return "Noc";
   return text;
 }
 
@@ -3005,6 +3053,10 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Falha ao agrupar";
   if (std::strcmp(text, "Speakers updated") == 0) return "Alto-falantes atualizados";
   if (std::strcmp(text, "Updating speakers") == 0) return "Atualizando alto-falantes";
+  if (std::strcmp(text, "Settings") == 0) return "Configurações";
+  if (std::strcmp(text, "Brightness") == 0) return "Brilho";
+  if (std::strcmp(text, "Daytime") == 0) return "Dia";
+  if (std::strcmp(text, "Nighttime") == 0) return "Noite";
   return text;
 }
 
@@ -3235,6 +3287,10 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Falha ao agrupar";
   if (std::strcmp(text, "Speakers updated") == 0) return "Colunas atualizadas";
   if (std::strcmp(text, "Updating speakers") == 0) return "A atualizar colunas";
+  if (std::strcmp(text, "Settings") == 0) return "Definições";
+  if (std::strcmp(text, "Brightness") == 0) return "Brilho";
+  if (std::strcmp(text, "Daytime") == 0) return "Dia";
+  if (std::strcmp(text, "Nighttime") == 0) return "Noite";
   return text;
 }
 
@@ -3474,6 +3530,10 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruparea a eșuat";
   if (std::strcmp(text, "Speakers updated") == 0) return "Difuzoare actualizate";
   if (std::strcmp(text, "Updating speakers") == 0) return "Se actualizează difuzoarele";
+  if (std::strcmp(text, "Settings") == 0) return "Setări";
+  if (std::strcmp(text, "Brightness") == 0) return "Luminozitate";
+  if (std::strcmp(text, "Daytime") == 0) return "Zi";
+  if (std::strcmp(text, "Nighttime") == 0) return "Noapte";
   return text;
 }
 
@@ -3720,6 +3780,10 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Не удалось сгруппировать";
   if (std::strcmp(text, "Speakers updated") == 0) return "Динамики обновлены";
   if (std::strcmp(text, "Updating speakers") == 0) return "Обновление динамиков";
+  if (std::strcmp(text, "Settings") == 0) return "Настройки";
+  if (std::strcmp(text, "Brightness") == 0) return "Яркость";
+  if (std::strcmp(text, "Daytime") == 0) return "День";
+  if (std::strcmp(text, "Nighttime") == 0) return "Ночь";
   return text;
 }
 
@@ -3951,6 +4015,10 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Zoskupenie zlyhalo";
   if (std::strcmp(text, "Speakers updated") == 0) return "Reproduktory aktualizované";
   if (std::strcmp(text, "Updating speakers") == 0) return "Aktualizácia reproduktorov";
+  if (std::strcmp(text, "Settings") == 0) return "Nastavenia";
+  if (std::strcmp(text, "Brightness") == 0) return "Jas";
+  if (std::strcmp(text, "Daytime") == 0) return "Deň";
+  if (std::strcmp(text, "Nighttime") == 0) return "Noc";
   return text;
 }
 
@@ -4186,6 +4254,10 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Združevanje ni uspelo";
   if (std::strcmp(text, "Speakers updated") == 0) return "Zvočniki posodobljeni";
   if (std::strcmp(text, "Updating speakers") == 0) return "Posodabljanje zvočnikov";
+  if (std::strcmp(text, "Settings") == 0) return "Nastavitve";
+  if (std::strcmp(text, "Brightness") == 0) return "Svetlost";
+  if (std::strcmp(text, "Daytime") == 0) return "Dan";
+  if (std::strcmp(text, "Nighttime") == 0) return "Noč";
   return text;
 }
 
@@ -4413,6 +4485,10 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruppering misslyckades";
   if (std::strcmp(text, "Speakers updated") == 0) return "Högtalare uppdaterade";
   if (std::strcmp(text, "Updating speakers") == 0) return "Uppdaterar högtalare";
+  if (std::strcmp(text, "Settings") == 0) return "Inställningar";
+  if (std::strcmp(text, "Brightness") == 0) return "Ljusstyrka";
+  if (std::strcmp(text, "Daytime") == 0) return "Dagtid";
+  if (std::strcmp(text, "Nighttime") == 0) return "Nattetid";
   return text;
 }
 
@@ -4652,6 +4728,10 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruplama başarısız";
   if (std::strcmp(text, "Speakers updated") == 0) return "Hoparlörler güncellendi";
   if (std::strcmp(text, "Updating speakers") == 0) return "Hoparlörler güncelleniyor";
+  if (std::strcmp(text, "Settings") == 0) return "Ayarlar";
+  if (std::strcmp(text, "Brightness") == 0) return "Parlaklık";
+  if (std::strcmp(text, "Daytime") == 0) return "Gündüz";
+  if (std::strcmp(text, "Nighttime") == 0) return "Gece";
   return text;
 }
 
@@ -4893,6 +4973,10 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Не вдалося згрупувати";
   if (std::strcmp(text, "Speakers updated") == 0) return "Динаміки оновлено";
   if (std::strcmp(text, "Updating speakers") == 0) return "Оновлення динаміків";
+  if (std::strcmp(text, "Settings") == 0) return "Налаштування";
+  if (std::strcmp(text, "Brightness") == 0) return "Яскравість";
+  if (std::strcmp(text, "Daytime") == 0) return "День";
+  if (std::strcmp(text, "Nighttime") == 0) return "Ніч";
   return text;
 }
 
@@ -5142,6 +5226,10 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Grouping failed";
   if (std::strcmp(key, "speakers_updated") == 0) return "Speakers updated";
   if (std::strcmp(key, "updating_speakers") == 0) return "Updating speakers";
+  if (std::strcmp(key, "settings") == 0) return "Settings";
+  if (std::strcmp(key, "brightness") == 0) return "Brightness";
+  if (std::strcmp(key, "daytime") == 0) return "Daytime";
+  if (std::strcmp(key, "nighttime") == 0) return "Nighttime";
   return key;
 }
 
@@ -5373,6 +5461,10 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Seskupení se nezdařilo";
   if (std::strcmp(key, "speakers_updated") == 0) return "Reproduktory aktualizovány";
   if (std::strcmp(key, "updating_speakers") == 0) return "Aktualizace reproduktorů";
+  if (std::strcmp(key, "settings") == 0) return "Nastavení";
+  if (std::strcmp(key, "brightness") == 0) return "Jas";
+  if (std::strcmp(key, "daytime") == 0) return "Den";
+  if (std::strcmp(key, "nighttime") == 0) return "Noc";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5598,6 +5690,10 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruppering mislykkedes";
   if (std::strcmp(key, "speakers_updated") == 0) return "Højttalere opdateret";
   if (std::strcmp(key, "updating_speakers") == 0) return "Opdaterer højttalere";
+  if (std::strcmp(key, "settings") == 0) return "Indstillinger";
+  if (std::strcmp(key, "brightness") == 0) return "Lysstyrke";
+  if (std::strcmp(key, "daytime") == 0) return "Dagtid";
+  if (std::strcmp(key, "nighttime") == 0) return "Nattetid";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5821,6 +5917,10 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruppierung fehlgeschlagen";
   if (std::strcmp(key, "speakers_updated") == 0) return "Lautsprecher aktualisiert";
   if (std::strcmp(key, "updating_speakers") == 0) return "Lautsprecher werden aktualisiert";
+  if (std::strcmp(key, "settings") == 0) return "Einstellungen";
+  if (std::strcmp(key, "brightness") == 0) return "Helligkeit";
+  if (std::strcmp(key, "daytime") == 0) return "Tagsüber";
+  if (std::strcmp(key, "nighttime") == 0) return "Nachts";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6051,6 +6151,10 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Error al agrupar";
   if (std::strcmp(key, "speakers_updated") == 0) return "Altavoces actualizados";
   if (std::strcmp(key, "updating_speakers") == 0) return "Actualizando altavoces";
+  if (std::strcmp(key, "settings") == 0) return "Ajustes";
+  if (std::strcmp(key, "brightness") == 0) return "Brillo";
+  if (std::strcmp(key, "daytime") == 0) return "Día";
+  if (std::strcmp(key, "nighttime") == 0) return "Noche";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6291,6 +6395,10 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Ryhmittely epäonnistui";
   if (std::strcmp(key, "speakers_updated") == 0) return "Kaiuttimet päivitetty";
   if (std::strcmp(key, "updating_speakers") == 0) return "Päivitetään kaiuttimia";
+  if (std::strcmp(key, "settings") == 0) return "Asetukset";
+  if (std::strcmp(key, "brightness") == 0) return "Kirkkaus";
+  if (std::strcmp(key, "daytime") == 0) return "Päivä";
+  if (std::strcmp(key, "nighttime") == 0) return "Yö";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6514,6 +6622,10 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Échec du regroupement";
   if (std::strcmp(key, "speakers_updated") == 0) return "Enceintes mises à jour";
   if (std::strcmp(key, "updating_speakers") == 0) return "Mise à jour des enceintes";
+  if (std::strcmp(key, "settings") == 0) return "Paramètres";
+  if (std::strcmp(key, "brightness") == 0) return "Luminosité";
+  if (std::strcmp(key, "daytime") == 0) return "Jour";
+  if (std::strcmp(key, "nighttime") == 0) return "Nuit";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6762,6 +6874,10 @@ inline const char *espcontrol_i18n_key_he(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "הקיבוץ נכשל";
   if (std::strcmp(key, "speakers_updated") == 0) return "הרמקולים עודכנו";
   if (std::strcmp(key, "updating_speakers") == 0) return "מעדכן רמקולים";
+  if (std::strcmp(key, "settings") == 0) return "הגדרות";
+  if (std::strcmp(key, "brightness") == 0) return "בהירות";
+  if (std::strcmp(key, "daytime") == 0) return "יום";
+  if (std::strcmp(key, "nighttime") == 0) return "לילה";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7002,6 +7118,10 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "A csoportosítás sikertelen";
   if (std::strcmp(key, "speakers_updated") == 0) return "Hangszórók frissítve";
   if (std::strcmp(key, "updating_speakers") == 0) return "Hangszórók frissítése";
+  if (std::strcmp(key, "settings") == 0) return "Beállítások";
+  if (std::strcmp(key, "brightness") == 0) return "Fényerő";
+  if (std::strcmp(key, "daytime") == 0) return "Nappal";
+  if (std::strcmp(key, "nighttime") == 0) return "Éjszaka";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7233,6 +7353,10 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Raggruppamento non riuscito";
   if (std::strcmp(key, "speakers_updated") == 0) return "Altoparlanti aggiornati";
   if (std::strcmp(key, "updating_speakers") == 0) return "Aggiornamento altoparlanti";
+  if (std::strcmp(key, "settings") == 0) return "Impostazioni";
+  if (std::strcmp(key, "brightness") == 0) return "Luminosità";
+  if (std::strcmp(key, "daytime") == 0) return "Giorno";
+  if (std::strcmp(key, "nighttime") == 0) return "Notte";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7461,6 +7585,10 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruppering mislyktes";
   if (std::strcmp(key, "speakers_updated") == 0) return "Høyttalere oppdatert";
   if (std::strcmp(key, "updating_speakers") == 0) return "Oppdaterer høyttalere";
+  if (std::strcmp(key, "settings") == 0) return "Innstillinger";
+  if (std::strcmp(key, "brightness") == 0) return "Lysstyrke";
+  if (std::strcmp(key, "daytime") == 0) return "Dagtid";
+  if (std::strcmp(key, "nighttime") == 0) return "Nattetid";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7689,6 +7817,10 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Groeperen mislukt";
   if (std::strcmp(key, "speakers_updated") == 0) return "Luidsprekers bijgewerkt";
   if (std::strcmp(key, "updating_speakers") == 0) return "Luidsprekers bijwerken";
+  if (std::strcmp(key, "settings") == 0) return "Instellingen";
+  if (std::strcmp(key, "brightness") == 0) return "Helderheid";
+  if (std::strcmp(key, "daytime") == 0) return "Overdag";
+  if (std::strcmp(key, "nighttime") == 0) return "Nacht";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7917,6 +8049,10 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Grupowanie nie powiodło się";
   if (std::strcmp(key, "speakers_updated") == 0) return "Głośniki zaktualizowane";
   if (std::strcmp(key, "updating_speakers") == 0) return "Aktualizowanie głośników";
+  if (std::strcmp(key, "settings") == 0) return "Ustawienia";
+  if (std::strcmp(key, "brightness") == 0) return "Jasność";
+  if (std::strcmp(key, "daytime") == 0) return "Dzień";
+  if (std::strcmp(key, "nighttime") == 0) return "Noc";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8147,6 +8283,10 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Falha ao agrupar";
   if (std::strcmp(key, "speakers_updated") == 0) return "Alto-falantes atualizados";
   if (std::strcmp(key, "updating_speakers") == 0) return "Atualizando alto-falantes";
+  if (std::strcmp(key, "settings") == 0) return "Configurações";
+  if (std::strcmp(key, "brightness") == 0) return "Brilho";
+  if (std::strcmp(key, "daytime") == 0) return "Dia";
+  if (std::strcmp(key, "nighttime") == 0) return "Noite";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8378,6 +8518,10 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Falha ao agrupar";
   if (std::strcmp(key, "speakers_updated") == 0) return "Colunas atualizadas";
   if (std::strcmp(key, "updating_speakers") == 0) return "A atualizar colunas";
+  if (std::strcmp(key, "settings") == 0) return "Definições";
+  if (std::strcmp(key, "brightness") == 0) return "Brilho";
+  if (std::strcmp(key, "daytime") == 0) return "Dia";
+  if (std::strcmp(key, "nighttime") == 0) return "Noite";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8618,6 +8762,10 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruparea a eșuat";
   if (std::strcmp(key, "speakers_updated") == 0) return "Difuzoare actualizate";
   if (std::strcmp(key, "updating_speakers") == 0) return "Se actualizează difuzoarele";
+  if (std::strcmp(key, "settings") == 0) return "Setări";
+  if (std::strcmp(key, "brightness") == 0) return "Luminozitate";
+  if (std::strcmp(key, "daytime") == 0) return "Zi";
+  if (std::strcmp(key, "nighttime") == 0) return "Noapte";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8865,6 +9013,10 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Не удалось сгруппировать";
   if (std::strcmp(key, "speakers_updated") == 0) return "Динамики обновлены";
   if (std::strcmp(key, "updating_speakers") == 0) return "Обновление динамиков";
+  if (std::strcmp(key, "settings") == 0) return "Настройки";
+  if (std::strcmp(key, "brightness") == 0) return "Яркость";
+  if (std::strcmp(key, "daytime") == 0) return "День";
+  if (std::strcmp(key, "nighttime") == 0) return "Ночь";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9097,6 +9249,10 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Zoskupenie zlyhalo";
   if (std::strcmp(key, "speakers_updated") == 0) return "Reproduktory aktualizované";
   if (std::strcmp(key, "updating_speakers") == 0) return "Aktualizácia reproduktorov";
+  if (std::strcmp(key, "settings") == 0) return "Nastavenia";
+  if (std::strcmp(key, "brightness") == 0) return "Jas";
+  if (std::strcmp(key, "daytime") == 0) return "Deň";
+  if (std::strcmp(key, "nighttime") == 0) return "Noc";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9333,6 +9489,10 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Združevanje ni uspelo";
   if (std::strcmp(key, "speakers_updated") == 0) return "Zvočniki posodobljeni";
   if (std::strcmp(key, "updating_speakers") == 0) return "Posodabljanje zvočnikov";
+  if (std::strcmp(key, "settings") == 0) return "Nastavitve";
+  if (std::strcmp(key, "brightness") == 0) return "Svetlost";
+  if (std::strcmp(key, "daytime") == 0) return "Dan";
+  if (std::strcmp(key, "nighttime") == 0) return "Noč";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9561,6 +9721,10 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruppering misslyckades";
   if (std::strcmp(key, "speakers_updated") == 0) return "Högtalare uppdaterade";
   if (std::strcmp(key, "updating_speakers") == 0) return "Uppdaterar högtalare";
+  if (std::strcmp(key, "settings") == 0) return "Inställningar";
+  if (std::strcmp(key, "brightness") == 0) return "Ljusstyrka";
+  if (std::strcmp(key, "daytime") == 0) return "Dagtid";
+  if (std::strcmp(key, "nighttime") == 0) return "Nattetid";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9801,6 +9965,10 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruplama başarısız";
   if (std::strcmp(key, "speakers_updated") == 0) return "Hoparlörler güncellendi";
   if (std::strcmp(key, "updating_speakers") == 0) return "Hoparlörler güncelleniyor";
+  if (std::strcmp(key, "settings") == 0) return "Ayarlar";
+  if (std::strcmp(key, "brightness") == 0) return "Parlaklık";
+  if (std::strcmp(key, "daytime") == 0) return "Gündüz";
+  if (std::strcmp(key, "nighttime") == 0) return "Gece";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10043,6 +10211,10 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Не вдалося згрупувати";
   if (std::strcmp(key, "speakers_updated") == 0) return "Динаміки оновлено";
   if (std::strcmp(key, "updating_speakers") == 0) return "Оновлення динаміків";
+  if (std::strcmp(key, "settings") == 0) return "Налаштування";
+  if (std::strcmp(key, "brightness") == 0) return "Яскравість";
+  if (std::strcmp(key, "daytime") == 0) return "День";
+  if (std::strcmp(key, "nighttime") == 0) return "Ніч";
   return espcontrol_i18n_key_en(key);
 }
 
