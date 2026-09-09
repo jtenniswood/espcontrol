@@ -202,6 +202,11 @@ class AsyncWebServerRequest {
   std::string post_query_;
 #ifdef USE_WEBSERVER_AUTH_DIGEST
   mutable bool digest_nonce_stale_{false};
+  // A raw-body handler may authenticate once before receiving the body and
+  // again before applying it. Remember only the replay-ledger acceptance for
+  // this request; authenticate() still verifies the complete Digest response
+  // on every call.
+  mutable bool digest_nonce_accepted_for_request_{false};
 #endif
   AsyncWebServerRequest(httpd_req_t *req) : req_(req) {}
   AsyncWebServerRequest(httpd_req_t *req, std::string post_query) : req_(req), post_query_(std::move(post_query)) {}

@@ -450,6 +450,31 @@ describe("browserless application contracts", () => {
     assert.match(docs, /web_server_auth` package is not required for Wifi Sharing/);
   });
 
+  test("authenticates native configuration bodies before receiving and before saving", () => {
+    const nativeWrite = fs.readFileSync(path.join(ROOT, "components/espcontrol/panel_config_write_endpoint.h"), "utf8");
+    const webServer = fs.readFileSync(path.join(ROOT, "components/web_server_idf/web_server_idf.cpp"), "utf8");
+
+    const receivePolicy = nativeWrite.slice(
+      nativeWrite.indexOf("bool canReceiveBody"),
+      nativeWrite.indexOf("void handleBody"),
+    );
+    assert.match(receivePolicy, /request->authenticate\(context\.username, context\.password\)/);
+    assert.ok(receivePolicy.indexOf("request->authenticate") < receivePolicy.indexOf("return true"));
+
+    const savePolicy = nativeWrite.slice(
+      nativeWrite.indexOf("void handleRequest"),
+      nativeWrite.indexOf("private:"),
+    );
+    assert.match(savePolicy, /request->authenticate\(context\.username, context\.password\)/);
+    assert.ok(savePolicy.indexOf("request->authenticate") < savePolicy.indexOf("save_if_generation"));
+
+    const rawBodyDispatcher = webServer.slice(
+      webServer.indexOf("esp_err_t AsyncWebServer::handle_raw_body_"),
+      webServer.indexOf("esp_err_t AsyncWebServer::request_handler"),
+    );
+    assert.ok(rawBodyDispatcher.indexOf("canReceiveBody") < rawBodyDispatcher.indexOf("httpd_req_recv"));
+  });
+
   test("normalizes and preserves Wifi modal tab settings", () => {
     const modalTabs = createConfigModalTabOptionsFeature({ document: {}, renderButtonSettings() {} });
     assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("credentials|qr")), ["credentials", "qr"]);
