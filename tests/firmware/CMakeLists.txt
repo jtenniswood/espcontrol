@@ -188,6 +188,11 @@ target_compile_features(settings_backlight_test PRIVATE cxx_std_17)
 target_compile_options(settings_backlight_test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME settings_backlight_test COMMAND settings_backlight_test)
 
+add_executable(network_status_layout_test network_status_layout_test.cpp)
+target_compile_features(network_status_layout_test PRIVATE cxx_std_17)
+target_compile_options(network_status_layout_test PRIVATE -Wall -Wextra -Werror)
+add_test(NAME network_status_layout_test COMMAND network_status_layout_test)
+
 add_executable(configuration_store_test
   configuration_store_test.cpp
   ../../components/espcontrol/configuration_store.cpp

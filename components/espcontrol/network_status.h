@@ -3,8 +3,10 @@
 // =============================================================================
 #pragma once
 
+#include "button_grid_limits.h"
 #include "display_text.h"
 #include "settings_backlight.h"
+#include "network_status_layout.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -31,8 +33,8 @@ struct NetworkStatusModalUi {
   bool brightness_dragging = false;
   SettingsBacklightLevel brightness_level = SettingsBacklightLevel::MANUAL;
   lv_timer_t *refresh_timer = nullptr;
-  lv_coord_t columns[4]{};
-  lv_coord_t rows[4]{};
+  lv_coord_t columns[MAX_GRID_SLOTS + 1]{};
+  lv_coord_t rows[MAX_GRID_SLOTS + 1]{};
 };
 
 inline const lv_font_t *&network_status_card_icon_font() {
@@ -287,27 +289,28 @@ inline void network_status_open_modal(const std::string &device_name,
   lv_obj_set_style_pad_column(
       ui.overlay, lv_obj_get_style_pad_column(page, LV_PART_MAIN), LV_PART_MAIN);
 
-  for (int i = 0; i < 3; ++i) {
-    ui.columns[i] = LV_GRID_FR(1);
-    ui.rows[i] = LV_GRID_FR(1);
-  }
-  ui.columns[3] = LV_GRID_TEMPLATE_LAST;
-  ui.rows[3] = LV_GRID_TEMPLATE_LAST;
+  const int cols = std::max(1, std::min(metrics.cols, MAX_GRID_SLOTS));
+  const int rows = std::max(1, std::min(metrics.rows, MAX_GRID_SLOTS));
+  for (int i = 0; i < cols; ++i) ui.columns[i] = LV_GRID_FR(1);
+  for (int i = 0; i < rows; ++i) ui.rows[i] = LV_GRID_FR(1);
+  ui.columns[cols] = LV_GRID_TEMPLATE_LAST;
+  ui.rows[rows] = LV_GRID_TEMPLATE_LAST;
   lv_obj_set_layout(ui.overlay, LV_LAYOUT_GRID);
   lv_obj_set_grid_dsc_array(ui.overlay, ui.columns, ui.rows);
 
   const char *labels[] = {espcontrol_i18n("Back"), ip_address.c_str(), "", ""};
   const char *icons[] = {"\U000F0141", "\U000F0200", "\U000F0336", "\U000F035B"};
-  const int positions[] = {0, 1, 3, 4};
-  const int spans[] = {1, 2, 1, 1};
 
   for (int i = 0; i < 4; ++i) {
     auto *button = create_grid_card_button(ui.overlay, radius, card_pad,
                                            label_font, text_color);
     apply_button_colors(button, false, DEFAULT_SLIDER_COLOR, true,
                         DEFAULT_OFF_COLOR);
-    lv_obj_set_grid_cell(button, LV_GRID_ALIGN_STRETCH, positions[i] % 3,
-                         spans[i], LV_GRID_ALIGN_STRETCH, positions[i] / 3, 1);
+    // Follow the device's normal card order and let its column count determine
+    // where the next row begins.
+    const NetworkStatusGridCell cell = network_status_grid_cell(i, cols);
+    lv_obj_set_grid_cell(button, LV_GRID_ALIGN_STRETCH, cell.column, 1,
+                         LV_GRID_ALIGN_STRETCH, cell.row, 1);
     BtnSlot slot = create_dynamic_card_slot(button, card_icon_font, label_font,
                                             label_font, text_color);
     apply_width_compensation(slot.icon_lbl,
