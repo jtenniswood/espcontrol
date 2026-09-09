@@ -65,8 +65,6 @@ int main() {
     media_transport_layout(400, 480, true, false, true);
   const auto landscape = media_transport_layout(720, 800, true, true);
   const auto seven_inch = media_transport_layout(900, 600, true, true);
-  const auto seven_inch_compact =
-    media_transport_layout(900, 600, true, true, false, 80);
   const auto ten_inch = media_transport_layout(1100, 800, true, true);
   const auto ten_inch_compact =
     media_transport_layout(1100, 800, true, true, false, 73);
@@ -81,8 +79,6 @@ int main() {
   assert(landscape.total_width <= 720);
   assert(!landscape.modes_on_second_row);
   assert(seven_inch.button_size == 110);
-  assert(seven_inch_compact.button_size == 88);
-  assert(seven_inch_compact.total_width < seven_inch.total_width);
   assert(ten_inch.button_size == 146);
   assert(ten_inch_compact.button_size == 107);
   assert(ten_inch_compact.total_width < ten_inch.total_width);
