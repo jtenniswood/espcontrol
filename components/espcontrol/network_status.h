@@ -47,6 +47,11 @@ inline NetworkStatusModalUi &network_status_modal_ui() {
   return ui;
 }
 
+inline std::string &network_status_previous_subpage_label() {
+  static std::string label;
+  return label;
+}
+
 inline const char *network_status_wifi_icon(float pct) {
   if (!std::isfinite(pct) || pct <= 0.0f) return NETWORK_ICON_WIFI_OUTLINE;
   if (pct < 25.0f) return NETWORK_ICON_WIFI_1;
@@ -150,7 +155,13 @@ inline void network_status_hide_modal() {
   lv_obj_t *overlay = ui.overlay;
   ui = NetworkStatusModalUi{};
   control_modal_clear_active(ControlModalKind::NETWORK_STATUS);
+  const std::string previous_subpage_label =
+      network_status_previous_subpage_label();
+  network_status_previous_subpage_label().clear();
   set_clock_bar_subpage_label("");
+  if (!previous_subpage_label.empty()) {
+    clock_bar_restore_subpage_label(previous_subpage_label);
+  }
   if (overlay) {
     screen_lock_unregister_tree(overlay);
     lv_obj_del(overlay);
@@ -242,7 +253,9 @@ inline void network_status_open_modal(const std::string &device_name,
                                       const lv_font_t *text_font,
                                       const lv_font_t *icon_font) {
   (void) device_name;
+  const std::string previous_subpage_label = clock_bar_subpage_label();
   network_status_hide_modal();
+  network_status_previous_subpage_label() = previous_subpage_label;
 
   auto &metrics = control_modal_grid_metrics();
   lv_obj_t *page = metrics.page ? metrics.page : lv_scr_act();

@@ -382,6 +382,18 @@ inline void set_clock_bar_subpage_label(const std::string &label) {
   clock_bar_update_left_text_width(left_label);
 }
 
+inline void clock_bar_restore_subpage_label(const std::string &label) {
+  auto &state = clock_bar_left_text_state();
+  state.saved_text.clear();
+  state.saved = false;
+  clock_bar_subpage_label() = label;
+
+  auto &labels = clock_bar_temperature_labels();
+  if (labels.empty() || !labels[0]) return;
+  lv_label_set_display_text(labels[0], label.c_str());
+  clock_bar_update_left_text_width(labels[0]);
+}
+
 inline void set_clock_bar_temperature_labels(lv_obj_t **labels, size_t count) {
   std::vector<lv_obj_t *> &out = clock_bar_temperature_labels();
   out.clear();
