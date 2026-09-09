@@ -4268,8 +4268,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t text_gap = control_modal_scaled_px(8, layout.short_side);
   if (text_gap < 6) text_gap = 6;
   int transport_button_scale_percent = 100;
-  if ((layout.sw == 1280 && layout.sh == 800) ||
-             (layout.sw == 800 && layout.sh == 1280)) {
+  if (control_modal_uses_large_landscape_tuning(layout)) {
     transport_button_scale_percent = 77;
   }
   const espcontrol::media::MediaTransportLayout transport_layout =
