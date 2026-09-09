@@ -160,6 +160,8 @@ describe("browserless application contracts", () => {
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
     assert.match(preview, /export interface AppStatusPreviewFeature/);
     assert.match(preview, /export function createAppStatusPreviewFeature/);
+    assert.match(preview, /sp-clockbar-subpage-title/);
+    assert.match(preview, /state\.buttons\[state\.editingSubpage - 1\]/);
     assert.match(entry, /statusPreview = createAppStatusPreviewFeature\(runtime, core, layout, environment, clockBarState\)/);
     assert.doesNotMatch(entry, /installAppStatusPreviewModule|appStatusPreviewCompatibilityGlobals/);
     assert.doesNotMatch(preview, /GlobalDescriptors|staticGlobal|appStatusPreviewCompatibilityGlobals/);
@@ -1112,11 +1114,13 @@ describe("browserless application contracts", () => {
     const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
     assert.match(preview, /export function createPreviewRenderFeature/);
+    assert.match(preview, /dependencies\.updateClockBarItemUi\(\)/);
     assert.doesNotMatch(preview, /GlobalDescriptors|staticGlobal|liveGlobal|installPreviewRenderModule|readonly globals/);
     assert.match(settings, /preview: Pick<PreviewRenderFeature/);
     assert.match(clipboard, /preview: Pick<PreviewRenderFeature/);
     assert.match(hooks, /preview: Pick<PreviewRenderFeature/);
     assert.match(entry, /preview = createPreviewRenderFeature\(\{/);
+    assert.match(entry, /updateClockBarItemUi: \(\) => statusPreview\.updateClockBarItemUi\(\)/);
     assert.doesNotMatch(entry, /context\.controllers\.preview\.globals/);
     assert.doesNotMatch(globals, /\bvar renderPreview:/);
     assert.doesNotMatch(globals, /\bvar (?:buttonTypeDisabledForDevice|buttonConfigDisabledForDevice|buttonTypeInfoOnlyVisible|buttonTypePickerDetails|buttonTypePickerKeys|buttonTypePickerOptionList|buttonTypeRegistryValue|buttonTypeVisibleInPicker|defaultButtonTypeForPicker|previewHtmlValue):/);
