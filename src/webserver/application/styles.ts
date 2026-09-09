@@ -46,7 +46,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-topbar.sp-hidden{display:none}" +
         ".sp-clockbar-section{height:100%;min-width:0;flex:1;display:flex;align-items:center;gap:.4cqw;position:relative}" +
         ".sp-clockbar-left{justify-content:flex-start}.sp-clockbar-middle{justify-content:center}.sp-clockbar-right{justify-content:flex-end}" +
-        ".sp-clockbar-subpage-title{color:#fff;font-size:var(--btn-label);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}" +
+        ".sp-clockbar-subpage-title{color:#fff;font-size:var(--btn-label);font-weight:var(--btn-label-weight,400);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}" +
         ".sp-clockbar-item{height:min(36px,calc(100% - .45cqw));min-height:0;min-width:28px;border:1px solid transparent;border-radius:calc(var(--topbar-fs)*.3);" +
         "background:transparent;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 calc(var(--topbar-fs)*.28);" +
         "box-sizing:border-box;cursor:pointer;font:inherit;line-height:1;pointer-events:auto;transition:background .2s,border-color .2s,opacity .2s}" +
@@ -54,13 +54,14 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-clockbar-item.sp-selected{border-color:var(--accent);background:rgba(92,115,231,.18)}" +
         ".sp-clockbar-item.sp-clockbar-hidden{opacity:.42;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18)}" +
         ".sp-clockbar-item.sp-clockbar-hidden.sp-selected{opacity:.65;border-color:var(--accent)}" +
-        ".sp-clockbar-network,.sp-clockbar-voice{padding:0;width:min(32px,calc(var(--topbar-fs)*1.9));min-width:24px}" +
-        ".sp-temp{color:#fff;font-size:var(--btn-label);white-space:nowrap;opacity:0;transition:opacity .3s}" +
+        ".sp-clockbar-network,.sp-clockbar-voice{padding:0;width:calc(var(--btn-label)*1.5);min-width:calc(var(--btn-label)*1.5)}" +
+        ".sp-temp{color:#fff;font-size:var(--btn-label);font-weight:var(--btn-label-weight,400);line-height:1.2;white-space:nowrap;opacity:0;transition:opacity .3s}" +
         ".sp-temp.sp-visible{opacity:1}" +
-        ".sp-clock{color:#fff;font-size:var(--btn-label);white-space:nowrap;opacity:1;transition:opacity .3s}" +
-        ".sp-topbar .sp-network-preview,.sp-topbar .sp-voice-preview{color:#fff;font-size:calc(var(--topbar-fs)*.86);" +
+        ".sp-clock{color:#fff;font-size:var(--btn-label);font-weight:var(--btn-label-weight,400);line-height:1.2;white-space:nowrap;opacity:1;transition:opacity .3s}" +
+        ".sp-topbar .sp-network-preview,.sp-topbar .sp-voice-preview{color:#fff;font-size:var(--btn-label);" +
         "line-height:1;width:calc(var(--topbar-fs)*1.05);height:1em;display:flex;align-items:center;" +
         "justify-content:center;opacity:0;transition:opacity .3s}" +
+        ".sp-topbar .sp-network-preview::before,.sp-topbar .sp-voice-preview::before{font-size:inherit;line-height:inherit}" +
         ".sp-network-preview.sp-visible,.sp-voice-preview.sp-visible{opacity:1}" +
         ".sp-voice-preview:not(.sp-visible){display:none}" +
         ".sp-main{position:absolute;top:var(--grid-top);left:var(--grid-left);right:var(--grid-right);bottom:var(--grid-bottom);" +

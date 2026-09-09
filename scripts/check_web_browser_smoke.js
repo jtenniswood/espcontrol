@@ -1818,6 +1818,78 @@ async function assertVoiceClockBarPreview(page, label, supported) {
   );
 }
 
+async function assertClockBarTypographyAndIconLayout(page, label) {
+  const metrics = await page.evaluate(() => {
+    const cardLabel = document.querySelector(".sp-main .sp-btn-label");
+    const clock = document.querySelector(".sp-clock");
+    const temperature = document.querySelector(".sp-temp");
+    const networkIcon = document.querySelector(".sp-network-preview");
+    const topbar = document.querySelector(".sp-topbar");
+    if (!cardLabel || !clock || !temperature || !networkIcon || !topbar)
+      return null;
+    const cardStyle = getComputedStyle(cardLabel);
+    const clockStyle = getComputedStyle(clock);
+    const temperatureStyle = getComputedStyle(temperature);
+    const networkStyle = getComputedStyle(networkIcon);
+    const networkGlyphStyle = getComputedStyle(networkIcon, "::before");
+    const iconRect = networkIcon.getBoundingClientRect();
+    const topbarRect = topbar.getBoundingClientRect();
+    return {
+      cardFontSize: cardStyle.fontSize,
+      cardFontWeight: cardStyle.fontWeight,
+      clockFontSize: clockStyle.fontSize,
+      clockFontWeight: clockStyle.fontWeight,
+      temperatureFontSize: temperatureStyle.fontSize,
+      temperatureFontWeight: temperatureStyle.fontWeight,
+      iconFontSize: networkStyle.fontSize,
+      glyphFontSize: networkGlyphStyle.fontSize,
+      iconHeight: iconRect.height,
+      topbarHeight: topbarRect.height,
+      iconCenterY: iconRect.y + iconRect.height / 2,
+      topbarCenterY: topbarRect.y + topbarRect.height / 2,
+    };
+  });
+  assert(metrics, `${label}: clock bar typography is measurable`);
+  assert.strictEqual(
+    metrics.clockFontSize,
+    metrics.cardFontSize,
+    `${label}: clock font size matches card labels`,
+  );
+  assert.strictEqual(
+    metrics.temperatureFontSize,
+    metrics.cardFontSize,
+    `${label}: temperature font size matches card labels`,
+  );
+  assert.strictEqual(
+    metrics.clockFontWeight,
+    metrics.cardFontWeight,
+    `${label}: clock font weight matches card labels`,
+  );
+  assert.strictEqual(
+    metrics.temperatureFontWeight,
+    metrics.cardFontWeight,
+    `${label}: temperature font weight matches card labels`,
+  );
+  assert.strictEqual(
+    metrics.iconFontSize,
+    metrics.cardFontSize,
+    `${label}: connectivity icon scales with the device label size`,
+  );
+  assert.strictEqual(
+    metrics.glyphFontSize,
+    metrics.iconFontSize,
+    `${label}: icon-font defaults do not override connectivity sizing`,
+  );
+  assert(
+    metrics.iconHeight <= metrics.topbarHeight,
+    `${label}: connectivity icon fits inside the clock bar`,
+  );
+  assert(
+    Math.abs(metrics.iconCenterY - metrics.topbarCenterY) <= 1,
+    `${label}: connectivity icon is vertically centered in the clock bar`,
+  );
+}
+
 async function assertMobileTabLayout(page, label, restoreViewport) {
   await page.setViewportSize({ width: 360, height: 740 });
   await page.waitForTimeout(100);
@@ -5482,6 +5554,7 @@ async function runCase(browser, testCase) {
       testCase,
     );
     await assertCardIconsTopLeft(page, testCase.name);
+    await assertClockBarTypographyAndIconLayout(page, testCase.name);
     await assertMediaCoverArtCompactPreview(page, testCase.name);
     await assertSettingsPage(page, testCase.name, testCase, posts);
     if (testCase.exerciseInteractions) {
