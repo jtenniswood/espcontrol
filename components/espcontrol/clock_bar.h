@@ -330,6 +330,40 @@ inline std::vector<lv_obj_t *> &clock_bar_temperature_labels() {
   return labels;
 }
 
+inline std::string &clock_bar_subpage_label() {
+  static std::string label;
+  return label;
+}
+
+struct ClockBarLeftTextWidths {
+  int temperature = 88;
+  int title = 176;
+};
+
+inline ClockBarLeftTextWidths &clock_bar_left_text_widths() {
+  static ClockBarLeftTextWidths widths;
+  return widths;
+}
+
+inline void clock_bar_update_left_text_width(lv_obj_t *label) {
+  if (!label) return;
+  const auto &widths = clock_bar_left_text_widths();
+  lv_obj_set_width(label, clock_bar_subpage_label().empty()
+      ? widths.temperature : widths.title);
+}
+
+inline void set_clock_bar_subpage_label(const std::string &label) {
+  if (clock_bar_subpage_label() == label) return;
+  clock_bar_subpage_label() = label;
+  // Update the visible text in the navigation event, not the periodic refresh.
+  auto &labels = clock_bar_temperature_labels();
+  if (!labels.empty() && labels[0]) {
+    lv_label_set_display_text(labels[0], label.c_str());
+    clock_bar_update_left_text_width(labels[0]);
+    if (label.empty()) lv_obj_add_flag(labels[0], LV_OBJ_FLAG_HIDDEN);
+  }
+}
+
 inline void set_clock_bar_temperature_labels(lv_obj_t **labels, size_t count) {
   std::vector<lv_obj_t *> &out = clock_bar_temperature_labels();
   out.clear();
@@ -429,6 +463,22 @@ inline void refresh_clock_bar_temperature_label_values(
   const bool show_on_screen =
       clock_bar_visible && clock_bar_active_on_button_grid_page(main_page_obj);
   std::vector<lv_obj_t *> &labels = clock_bar_temperature_labels();
+
+  if (!labels.empty()) clock_bar_update_left_text_width(labels[0]);
+  const std::string &subpage_label = clock_bar_subpage_label();
+  if (!subpage_label.empty()) {
+    if (!show_on_screen || labels.empty()) {
+      for (lv_obj_t *label : labels) clock_bar_set_widget_hidden(label, true);
+      return;
+    }
+    if (!labels[0]) return;
+    lv_label_set_display_text(labels[0], subpage_label.c_str());
+    clock_bar_set_widget_hidden(labels[0], false);
+    for (size_t i = 1; i < labels.size(); i++) {
+      clock_bar_set_widget_hidden(labels[i], true);
+    }
+    return;
+  }
 
   if (!clock_bar_temperature_has_items()) {
     if (!show_on_screen || (!indoor_enabled && !outdoor_enabled)) {
@@ -577,8 +627,16 @@ inline void apply_clock_bar_fixed_layout(lv_obj_t *temperature_label,
   if (time_width < 62) time_width = 62;
   if (time_width > 96) time_width = 96;
 
+  auto &left_widths = clock_bar_left_text_widths();
+  left_widths.temperature = temperature_width;
+  // Titles can use the free space up to the centered clock, rather than a
+  // temperature-sized box. Retain a gap so text cannot run into the time.
+  const int title_width =
+      (clock_bar_current_screen_width(480) - time_width) / 2 - left_x - 8;
+  left_widths.title = title_width > 0 ? title_width : temperature_width;
   clock_bar_prepare_text_label(
       temperature_label, temperature_width, LV_TEXT_ALIGN_LEFT);
+  clock_bar_update_left_text_width(temperature_label);
   clock_bar_prepare_text_label(display_time, time_width, LV_TEXT_ALIGN_CENTER);
 
   clock_bar_set_widget_hidden(temperature_label, !temperature_visible);

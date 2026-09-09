@@ -46,6 +46,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-topbar.sp-hidden{display:none}" +
         ".sp-clockbar-section{height:100%;min-width:0;flex:1;display:flex;align-items:center;gap:.4cqw;position:relative}" +
         ".sp-clockbar-left{justify-content:flex-start}.sp-clockbar-middle{justify-content:center}.sp-clockbar-right{justify-content:flex-end}" +
+        ".sp-clockbar-subpage-title{color:#fff;font-size:var(--btn-label);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}" +
         ".sp-clockbar-item{height:min(36px,calc(100% - .45cqw));min-height:0;min-width:28px;border:1px solid transparent;border-radius:calc(var(--topbar-fs)*.3);" +
         "background:transparent;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 calc(var(--topbar-fs)*.28);" +
         "box-sizing:border-box;cursor:pointer;line-height:1;font:inherit;pointer-events:auto;transition:background .2s,border-color .2s,opacity .2s}" +
