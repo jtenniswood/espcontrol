@@ -479,6 +479,8 @@ describe("browserless application contracts", () => {
       /Digest realm=\"Login Required\", domain=\"\/\"/,
       "Digest challenges should explicitly cover every device path for Safari",
     );
+    assert.match(webServer, /httpd_resp_set_hdr\(\*this, "Authentication-Info"/);
+    assert.match(webServer, /rspauth=\"%s\", cnonce=\"%\.\*s\", nc=%\.\*s, qop=auth/);
   });
 
   test("normalizes and preserves Wifi modal tab settings", () => {

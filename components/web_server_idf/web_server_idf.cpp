@@ -670,7 +670,8 @@ enum class DigestAuthResult : uint8_t { FAILED, STALE, REPLAYED, AUTHENTICATED }
 
 DigestAuthResult check_digest_auth(const char *username, const char *password, const std::string &header,
                                    const char *method, const char *request_uri,
-                                   bool nonce_accepted_for_request) {
+                                   bool nonce_accepted_for_request, char *authentication_info,
+                                   size_t authentication_info_size) {
   const size_t prefix_len = sizeof("Digest ") - 1;
   StringRef params(header.c_str() + prefix_len, header.size() - prefix_len);
 
@@ -737,6 +738,40 @@ DigestAuthResult check_digest_auth(const char *username, const char *password, c
       digest_request_policy(result == 0, nonce_accepted_for_request);
   if (request_policy == DigestRequestPolicy::REJECT)
     return DigestAuthResult::FAILED;
+
+  // Complete the Digest exchange with the server proof defined by RFC 7616.
+  // Safari relies on this response metadata to retain HTTP-authentication
+  // state reliably for later fetch requests in the same protection space.
+  char response_ha2[33];
+  esp_rom_md5_init(&ctx);
+  esp_rom_md5_update(&ctx, ":", 1);
+  esp_rom_md5_update(&ctx, request_uri, strlen(request_uri));
+  esp_rom_md5_final(digest, &ctx);
+  bytes_to_hex(digest, sizeof(digest), response_ha2);
+
+  char rspauth[33];
+  esp_rom_md5_init(&ctx);
+  esp_rom_md5_update(&ctx, ha1, 32);
+  esp_rom_md5_update(&ctx, ":", 1);
+  esp_rom_md5_update(&ctx, nonce.c_str(), nonce.size());
+  esp_rom_md5_update(&ctx, ":", 1);
+  esp_rom_md5_update(&ctx, nc.c_str(), nc.size());
+  esp_rom_md5_update(&ctx, ":", 1);
+  esp_rom_md5_update(&ctx, cnonce.c_str(), cnonce.size());
+  esp_rom_md5_update(&ctx, ":", 1);
+  esp_rom_md5_update(&ctx, DIGEST_QOP, strlen(DIGEST_QOP));
+  esp_rom_md5_update(&ctx, ":", 1);
+  esp_rom_md5_update(&ctx, response_ha2, 32);
+  esp_rom_md5_final(digest, &ctx);
+  bytes_to_hex(digest, sizeof(digest), rspauth);
+  const int authentication_info_length =
+      snprintf(authentication_info, authentication_info_size,
+               R"(rspauth="%s", cnonce="%.*s", nc=%.*s, qop=auth)", rspauth, static_cast<int>(cnonce.size()),
+               cnonce.c_str(), static_cast<int>(nc.size()), nc.c_str());
+  if (authentication_info_length < 0 ||
+      static_cast<size_t>(authentication_info_length) >= authentication_info_size)
+    return DigestAuthResult::FAILED;
+
   // Raw-body handlers authenticate before receiving the body, then verify the
   // same immutable request again before applying it. The response digest must
   // still match, but the request must not consume its nonce count twice.
@@ -774,11 +809,14 @@ bool AsyncWebServerRequest::authenticate(const char *username, const char *passw
   }
   const bool rechecking_authenticated_request = this->digest_nonce_accepted_for_request_;
   const auto result = check_digest_auth(username, password, auth.value(), http_method_str(this->method()),
-                                        this->req_->uri, rechecking_authenticated_request);
+                                        this->req_->uri, rechecking_authenticated_request,
+                                        this->digest_authentication_info_.data(),
+                                        this->digest_authentication_info_.size());
   this->digest_nonce_stale_ = result == DigestAuthResult::STALE || result == DigestAuthResult::REPLAYED;
   if (result == DigestAuthResult::REPLAYED) {
     ESP_LOGW(TAG, "Rejected replayed Digest nonce count for %s %s", http_method_str(this->method()), this->req_->uri);
   } else if (result == DigestAuthResult::AUTHENTICATED) {
+    httpd_resp_set_hdr(*this, "Authentication-Info", this->digest_authentication_info_.data());
     if (rechecking_authenticated_request) {
       ESP_LOGD(TAG, "Reused Digest authentication for request %s %s", http_method_str(this->method()),
                this->req_->uri);
