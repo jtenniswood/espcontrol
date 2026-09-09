@@ -299,7 +299,7 @@ inline void network_status_open_modal(const std::string &device_name,
   lv_obj_set_grid_dsc_array(ui.overlay, ui.columns, ui.rows);
 
   const char *labels[] = {espcontrol_i18n("Back"), ip_address.c_str(), "", ""};
-  const char *icons[] = {"\U000F0141", "\U000F0200", "\U000F0336", "\U000F035B"};
+  const char *icons[] = {"\U000F0141", "\U000F0200", "\U000F035B", "\U000F0336"};
 
   for (int i = 0; i < 4; ++i) {
     auto *button = create_grid_card_button(ui.overlay, radius, card_pad,
@@ -319,13 +319,13 @@ inline void network_status_open_modal(const std::string &device_name,
     lv_label_set_display_text(slot.icon_lbl, icons[i]);
     lv_label_set_display_text(slot.text_lbl, labels[i]);
 
-    if (i == 0) {
+    if (i == NETWORK_STATUS_BACK_CARD_INDEX) {
       lv_obj_add_event_cb(
           button, [](lv_event_t *) { network_status_hide_modal(); },
           LV_EVENT_CLICKED, nullptr);
       continue;
     }
-    if (i == 2) {
+    if (i == NETWORK_STATUS_BACKLIGHT_CARD_INDEX) {
       const CardPadding padding = capture_card_padding(button);
       ui.brightness_slider =
           setup_slider_widget(button, DEFAULT_SLIDER_COLOR, false);
@@ -349,9 +349,9 @@ inline void network_status_open_modal(const std::string &device_name,
     }
 
     lv_obj_clear_flag(button, LV_OBJ_FLAG_CLICKABLE);
-    if (i == 1) {
+    if (i == NETWORK_STATUS_IP_CARD_INDEX) {
       ui.ip_lbl = slot.text_lbl;
-    } else {
+    } else if (i == NETWORK_STATUS_BUILD_CARD_INDEX) {
       const std::string build_label =
           network_status_firmware_label(firmware_version);
       lv_label_set_display_text(slot.text_lbl, build_label.c_str());

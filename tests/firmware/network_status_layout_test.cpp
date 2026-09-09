@@ -3,6 +3,11 @@
 #include <cassert>
 
 int main() {
+  assert(NETWORK_STATUS_BACK_CARD_INDEX == 0);
+  assert(NETWORK_STATUS_IP_CARD_INDEX == 1);
+  assert(NETWORK_STATUS_BUILD_CARD_INDEX == 2);
+  assert(NETWORK_STATUS_BACKLIGHT_CARD_INDEX == 3);
+
   const auto square_last = network_status_grid_cell(3, 3);
   assert(square_last.column == 0);
   assert(square_last.row == 1);
