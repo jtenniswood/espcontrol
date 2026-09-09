@@ -487,6 +487,17 @@ describe("browserless application contracts", () => {
     }
   });
 
+  test("bridges a valid Digest login to a protected browser session", () => {
+    const webServer = fs.readFileSync(path.join(ROOT, "components/web_server_idf/web_server_idf.cpp"), "utf8");
+    assert.match(webServer, /ESPControlAuth/);
+    assert.match(webServer, /Path=\/; HttpOnly; SameSite=Strict/);
+    assert.match(webServer, /authenticate_digest_session\(username, password/);
+    assert.ok(
+      webServer.indexOf('get_header("Authorization")') < webServer.indexOf("authenticate_digest_session(username, password"),
+      "an explicit Authorization header remains authoritative",
+    );
+  });
+
   test("normalizes and preserves Wifi modal tab settings", () => {
     const modalTabs = createConfigModalTabOptionsFeature({ document: {}, renderButtonSettings() {} });
     assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("credentials|qr")), ["credentials", "qr"]);

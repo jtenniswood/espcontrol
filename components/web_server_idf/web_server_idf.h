@@ -7,6 +7,7 @@
 #include <esp_http_server.h>
 
 #include <atomic>
+#include <array>
 #include <functional>
 #include <list>
 #include <map>
@@ -207,6 +208,9 @@ class AsyncWebServerRequest {
   // this request; authenticate() still verifies the complete Digest response
   // on every call.
   mutable bool digest_nonce_accepted_for_request_{false};
+  // ESP-IDF retains response header pointers until the response is sent.
+  // Keep the browser-session cookie storage alive for the request lifetime.
+  mutable std::array<char, 96> digest_session_cookie_{};
 #endif
   AsyncWebServerRequest(httpd_req_t *req) : req_(req) {}
   AsyncWebServerRequest(httpd_req_t *req, std::string post_query) : req_(req), post_query_(std::move(post_query)) {}
