@@ -46,7 +46,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-topbar.sp-hidden{display:none}" +
         ".sp-clockbar-section{height:100%;min-width:0;flex:1;display:flex;align-items:center;gap:.4cqw;position:relative}" +
         ".sp-clockbar-left{justify-content:flex-start}.sp-clockbar-middle{justify-content:center}.sp-clockbar-right{justify-content:flex-end}" +
-        ".sp-clockbar-subpage-title{color:#fff;font-size:var(--btn-label);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}" +
+        ".sp-clockbar-subpage-title,.sp-temp,.sp-clock,.sp-btn-label{font-size:var(--btn-label);line-height:1.2;color:#fff;font-weight:var(--btn-label-weight,400)}" +
+        ".sp-clockbar-subpage-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}" +
         ".sp-clockbar-item{height:min(36px,calc(100% - .45cqw));min-height:0;min-width:28px;border:1px solid transparent;border-radius:calc(var(--topbar-fs)*.3);" +
         "background:transparent;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 calc(var(--topbar-fs)*.28);" +
         "box-sizing:border-box;cursor:pointer;line-height:1;font:inherit;pointer-events:auto;transition:background .2s,border-color .2s,opacity .2s}" +
@@ -54,13 +55,14 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-clockbar-item.sp-selected{border-color:var(--accent);background:rgba(92,115,231,.18)}" +
         ".sp-clockbar-item.sp-clockbar-hidden{opacity:.42;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18)}" +
         ".sp-clockbar-item.sp-clockbar-hidden.sp-selected{opacity:.65;border-color:var(--accent)}" +
-        ".sp-clockbar-network,.sp-clockbar-voice{padding:0;width:min(32px,calc(var(--topbar-fs)*1.9));min-width:24px}" +
-        ".sp-temp{color:#fff;font-size:var(--topbar-fs);white-space:nowrap;opacity:0;transition:opacity .3s}" +
+        ".sp-clockbar-network,.sp-clockbar-voice{padding:0;width:calc(var(--btn-label)*1.5);min-width:calc(var(--btn-label)*1.5)}" +
+        ".sp-temp{white-space:nowrap;opacity:0;transition:opacity .3s}" +
         ".sp-temp.sp-visible{opacity:1}" +
-        ".sp-clock{color:#fff;font-size:var(--clock-fs,var(--topbar-fs));white-space:nowrap;opacity:1;transition:opacity .3s}" +
-        ".sp-network-preview,.sp-voice-preview{color:#fff;font-size:calc(var(--topbar-fs)*.86);" +
-        "line-height:1;width:calc(var(--topbar-fs)*1.05);height:100%;display:flex;align-items:center;" +
+        ".sp-clock{white-space:nowrap;opacity:1;transition:opacity .3s}" +
+        ".sp-topbar .sp-network-preview,.sp-topbar .sp-voice-preview{color:#fff;font-size:var(--btn-label);" +
+        "line-height:1;width:calc(var(--topbar-fs)*1.05);height:1em;display:flex;align-items:center;" +
         "justify-content:center;opacity:0;transition:opacity .3s}" +
+        ".sp-topbar .sp-network-preview::before,.sp-topbar .sp-voice-preview::before{font-size:inherit;line-height:inherit}" +
         ".sp-network-preview.sp-visible,.sp-voice-preview.sp-visible{opacity:1}" +
         ".sp-voice-preview:not(.sp-visible){display:none}" +
         ".sp-main{position:absolute;top:var(--grid-top);left:var(--grid-left);right:var(--grid-right);bottom:var(--grid-bottom);" +
@@ -82,8 +84,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         "font-size:var(--btn-icon);line-height:1;color:#fff;z-index:1}" +
         ".sp-btn>.sp-btn-label,.sp-btn>.sp-btn-label-row{margin-top:auto}" +
         ".sp-media-group-active{box-shadow:inset 0 0 0 3px var(--accent)}" +
-        ".sp-btn-label{font-size:var(--btn-label);line-height:1.2;color:#fff;font-weight:var(--btn-label-weight,400);" +
-        "display:block;max-height:var(--btn-label-max-height);overflow:hidden;word-break:break-word;min-height:0}" +
+        ".sp-btn-label{display:block;max-height:var(--btn-label-max-height);overflow:hidden;word-break:break-word;min-height:0}" +
         ".sp-sensor-badge{position:absolute;top:var(--sensor-top);right:var(--sensor-right);font-size:var(--sensor-fs);opacity:.5}" +
         ".sp-sensor-preview{display:flex;align-items:baseline;gap:.18em;color:#fff}" +
         ".sp-climate-temp-card .sp-sensor-preview{position:absolute;left:var(--btn-pad);top:var(--btn-pad)}" +

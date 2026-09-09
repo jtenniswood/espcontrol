@@ -89,17 +89,52 @@ const BUTTON_FIXTURES = [
 function nativeConfigState(slug) {
   const buttons = {};
   BUTTON_FIXTURES.forEach((value, index) => { buttons[index + 1] = value; });
+  buttons[3] = ";Rooms;Home;Auto;;;subpage";
   return {
     document: {
       deviceProfile: slug,
       buttons,
-      subpages: {},
+      subpages: {
+        3: "~B,1|,light.kitchen,Kitchen,Lightbulb,Lightbulb",
+      },
       settings: { button_order: "1,2,3w,4,5,6" },
     },
     generation: 1,
     puts: [],
     requests: [],
   };
+}
+
+async function assertSubpageTitleTypography(page, label) {
+  await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+  await page.waitForSelector(".sp-clockbar-subpage-title");
+  const typography = await page.evaluate(() => {
+    const title = document.querySelector(".sp-clockbar-subpage-title");
+    const cardLabel = document.querySelector(".sp-main .sp-btn-label");
+    const titleStyle = getComputedStyle(title);
+    const cardStyle = getComputedStyle(cardLabel);
+    return {
+      title: {
+        fontFamily: titleStyle.fontFamily,
+        fontSize: titleStyle.fontSize,
+        fontWeight: titleStyle.fontWeight,
+        lineHeight: titleStyle.lineHeight,
+      },
+      card: {
+        fontFamily: cardStyle.fontFamily,
+        fontSize: cardStyle.fontSize,
+        fontWeight: cardStyle.fontWeight,
+        lineHeight: cardStyle.lineHeight,
+      },
+    };
+  });
+  assert.deepStrictEqual(
+    typography.title,
+    typography.card,
+    `${label}: subpage title uses the device card-label typography`,
+  );
+  await page.locator(".sp-back-btn .sp-back-hit").click();
+  await page.waitForSelector(".sp-clockbar-subpage-title", { state: "detached" });
 }
 
 function htmlFor(slug, embeddedFallback = false) {
@@ -529,6 +564,9 @@ function nativeDocumentEvents(document) {
   });
   Object.entries(document.buttons).forEach(([slot, state]) => {
     events.push({ id: `text-button_${slot}_config`, state });
+  });
+  Object.entries(document.subpages).forEach(([slot, state]) => {
+    events.push({ id: `text-subpage_${slot}_config`, state });
   });
   return events;
 }
@@ -1815,6 +1853,79 @@ async function assertVoiceClockBarPreview(page, label, supported) {
       { id: "switch-voice_services", state: "OFF", value: false },
       { id: "switch-screen__network_status_icon", state: "ON", value: true },
     ]),
+  );
+}
+
+async function assertClockBarTypographyAndIconLayout(page, label) {
+  const metrics = await page.evaluate(() => {
+    const cardLabel = document.querySelector(".sp-main .sp-btn-label");
+    const clock = document.querySelector(".sp-clock");
+    const temperature = document.querySelector(".sp-temp");
+    const networkIcon = document.querySelector(".sp-network-preview");
+    const topbar = document.querySelector(".sp-topbar");
+    if (!cardLabel || !clock || !temperature || !networkIcon || !topbar)
+      return null;
+    const cardStyle = getComputedStyle(cardLabel);
+    const clockStyle = getComputedStyle(clock);
+    const temperatureStyle = getComputedStyle(temperature);
+    const networkStyle = getComputedStyle(networkIcon);
+    const networkGlyphStyle = getComputedStyle(networkIcon, "::before");
+    const iconRect = networkIcon.getBoundingClientRect();
+    const clockRect = clock.getBoundingClientRect();
+    const topbarRect = topbar.getBoundingClientRect();
+    return {
+      cardFontSize: cardStyle.fontSize,
+      cardFontWeight: cardStyle.fontWeight,
+      clockFontSize: clockStyle.fontSize,
+      clockFontWeight: clockStyle.fontWeight,
+      temperatureFontSize: temperatureStyle.fontSize,
+      temperatureFontWeight: temperatureStyle.fontWeight,
+      iconFontSize: networkStyle.fontSize,
+      glyphFontSize: networkGlyphStyle.fontSize,
+      iconHeight: iconRect.height,
+      topbarHeight: topbarRect.height,
+      iconCenterY: iconRect.y + iconRect.height / 2,
+      clockCenterY: clockRect.y + clockRect.height / 2,
+    };
+  });
+  assert(metrics, `${label}: clock bar typography is measurable`);
+  assert.strictEqual(
+    metrics.clockFontSize,
+    metrics.cardFontSize,
+    `${label}: clock font size matches card labels`,
+  );
+  assert.strictEqual(
+    metrics.temperatureFontSize,
+    metrics.cardFontSize,
+    `${label}: temperature font size matches card labels`,
+  );
+  assert.strictEqual(
+    metrics.clockFontWeight,
+    metrics.cardFontWeight,
+    `${label}: clock font weight matches card labels`,
+  );
+  assert.strictEqual(
+    metrics.temperatureFontWeight,
+    metrics.cardFontWeight,
+    `${label}: temperature font weight matches card labels`,
+  );
+  assert.strictEqual(
+    metrics.iconFontSize,
+    metrics.cardFontSize,
+    `${label}: connectivity icon scales with the device label size`,
+  );
+  assert.strictEqual(
+    metrics.glyphFontSize,
+    metrics.iconFontSize,
+    `${label}: icon-font defaults do not override connectivity sizing`,
+  );
+  assert(
+    metrics.iconHeight <= metrics.topbarHeight,
+    `${label}: connectivity icon fits inside the clock bar`,
+  );
+  assert(
+    Math.abs(metrics.iconCenterY - metrics.clockCenterY) <= 1,
+    `${label}: connectivity icon is vertically aligned with the clock (${JSON.stringify(metrics)})`,
   );
 }
 
@@ -5081,6 +5192,8 @@ async function assertNativeProfileJourney(browser, testCase) {
     );
     await seedNativeDocument(page, nativeState);
 
+    await assertSubpageTitleTypography(page, testCase.name);
+
     const sensor = page.locator('.sp-main [data-slot="2"]');
     assert(
       (await sensor.textContent()).includes("Energy"),
@@ -5482,6 +5595,7 @@ async function runCase(browser, testCase) {
       testCase,
     );
     await assertCardIconsTopLeft(page, testCase.name);
+    await assertClockBarTypographyAndIconLayout(page, testCase.name);
     await assertMediaCoverArtCompactPreview(page, testCase.name);
     await assertSettingsPage(page, testCase.name, testCase, posts);
     if (testCase.exerciseInteractions) {
