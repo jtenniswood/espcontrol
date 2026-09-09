@@ -473,14 +473,18 @@ describe("browserless application contracts", () => {
       webServer.indexOf("esp_err_t AsyncWebServer::request_handler"),
     );
     assert.ok(rawBodyDispatcher.indexOf("canReceiveBody") < rawBodyDispatcher.indexOf("httpd_req_recv"));
+  });
 
-    assert.match(
-      webServer,
-      /Digest realm=\"Login Required\", domain=\"\/\"/,
-      "Digest challenges should explicitly cover every device path for Safari",
-    );
-    assert.match(webServer, /httpd_resp_set_hdr\(\*this, "Authentication-Info"/);
-    assert.match(webServer, /rspauth=\"%s\", cnonce=\"%\.\*s\", nc=%\.\*s, qop=auth/);
+  test("explicitly includes HTTP credentials in every browser request transport", () => {
+    const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
+    const migration = fs.readFileSync(path.join(ROOT, "src/webserver/application/native_panel_config_migration.ts"), "utf8");
+    const deviceConfig = fs.readFileSync(path.join(ROOT, "src/webserver/device_config.ts"), "utf8");
+    const sensor = fs.readFileSync(path.join(ROOT, "src/webserver/cards/sensor.ts"), "utf8");
+    const action = fs.readFileSync(path.join(ROOT, "src/webserver/cards/action.ts"), "utf8");
+    assert.match(entry, /new EventSource\("\/events", \{ withCredentials: true \}\)/);
+    for (const source of [migration, deviceConfig, sensor, action]) {
+      assert.match(source, /credentials: "include"/);
+    }
   });
 
   test("normalizes and preserves Wifi modal tab settings", () => {

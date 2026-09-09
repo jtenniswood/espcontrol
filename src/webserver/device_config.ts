@@ -55,7 +55,7 @@ export function initializeDeviceConfig(): void | Promise<void> {
     selectDeviceProfile(configured);
     return;
   }
-  return fetch("/espcontrol/version.json", { cache: "no-store" })
+  return fetch("/espcontrol/version.json", { cache: "no-store", credentials: "include" })
     .then((response) => {
       if (!response.ok)
         throw new Error(`Unable to identify this display (${response.status})`);

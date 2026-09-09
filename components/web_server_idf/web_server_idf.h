@@ -7,7 +7,6 @@
 #include <esp_http_server.h>
 
 #include <atomic>
-#include <array>
 #include <functional>
 #include <list>
 #include <map>
@@ -208,9 +207,6 @@ class AsyncWebServerRequest {
   // this request; authenticate() still verifies the complete Digest response
   // on every call.
   mutable bool digest_nonce_accepted_for_request_{false};
-  // httpd_resp_set_hdr retains the value pointer until the response is sent,
-  // so keep the RFC 7616 success proof alive for the request lifetime.
-  mutable std::array<char, 192> digest_authentication_info_{};
 #endif
   AsyncWebServerRequest(httpd_req_t *req) : req_(req) {}
   AsyncWebServerRequest(httpd_req_t *req, std::string post_query) : req_(req), post_query_(std::move(post_query)) {}
