@@ -4270,7 +4270,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   int transport_button_scale_percent = 100;
   if ((layout.sw == 1280 && layout.sh == 800) ||
              (layout.sw == 800 && layout.sh == 1280)) {
-    transport_button_scale_percent = 73;
+    transport_button_scale_percent = 77;
   }
   const espcontrol::media::MediaTransportLayout transport_layout =
     espcontrol::media::media_transport_layout(
