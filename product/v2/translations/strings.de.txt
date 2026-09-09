@@ -249,3 +249,4 @@ settings=Einstellungen
 brightness=Helligkeit
 daytime=Tagsüber
 nighttime=Nachts
+backlight=Hintergrundbeleuchtung

@@ -249,3 +249,4 @@ settings=Inställningar
 brightness=Ljusstyrka
 daytime=Dagtid
 nighttime=Nattetid
+backlight=Bakgrundsbelysning

@@ -5,7 +5,7 @@
 
 int main() {
   using Level = SettingsBacklightLevel;
-  assert(settings_backlight_percent(Level::MANUAL, 0) == 1);
+  assert(settings_backlight_percent(Level::MANUAL, 0) == 10);
   assert(settings_backlight_percent(Level::DAYTIME, 0) == 10);
   assert(settings_backlight_percent(Level::NIGHTTIME, 73) == 75);
   assert(settings_backlight_percent(Level::MANUAL, 73) == 73);
@@ -31,6 +31,14 @@ int main() {
     assert(settings_backlight_commit(level, 73, true));
     assert(target == level);
     assert(value == (level == Level::MANUAL ? 73 : 75));
+    // Both endpoints and out-of-range drags must preserve a visible backlight.
+    for (int requested : {-100, 0, 1, 9, 10, 100, 150}) {
+      assert(settings_backlight_commit(level, requested, true));
+      assert(target == level);
+      assert(value >= 10 && value <= 100);
+      if (requested <= 10) assert(value == 10);
+      if (requested >= 100) assert(value == 100);
+    }
   }
 
   const int before = writes;

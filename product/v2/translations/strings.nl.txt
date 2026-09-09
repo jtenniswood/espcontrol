@@ -249,3 +249,4 @@ settings=Instellingen
 brightness=Helderheid
 daytime=Overdag
 nighttime=Nacht
+backlight=Achtergrondverlichting

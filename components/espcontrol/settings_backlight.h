@@ -4,6 +4,9 @@
 #include <cmath>
 #include <functional>
 
+// Keep the on-device control readable even at its lowest setting.
+constexpr int SETTINGS_BACKLIGHT_MIN_PERCENT = 10;
+
 enum class SettingsBacklightLevel { MANUAL, DAYTIME, NIGHTTIME };
 
 struct SettingsBacklightState {
@@ -13,10 +16,9 @@ struct SettingsBacklightState {
 };
 
 inline int settings_backlight_percent(SettingsBacklightLevel level, float value) {
-  const int minimum = level == SettingsBacklightLevel::MANUAL ? 1 : 10;
   const int step = level == SettingsBacklightLevel::MANUAL ? 1 : 5;
   if (!std::isfinite(value)) value = 100;
-  return std::max(minimum,
+  return std::max(SETTINGS_BACKLIGHT_MIN_PERCENT,
                   std::min(100, static_cast<int>(std::lround(value / step)) * step));
 }
 

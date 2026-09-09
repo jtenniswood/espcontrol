@@ -176,16 +176,8 @@ inline void network_status_refresh_backlight() {
         settings_backlight_percent(state.level, state.percent), LV_ANIM_OFF);
   }
 
-  const char *title =
-      ui.brightness_level == SettingsBacklightLevel::MANUAL
-          ? espcontrol_i18n("Brightness")
-          : ui.brightness_level == SettingsBacklightLevel::DAYTIME
-                ? espcontrol_i18n("Daytime")
-                : espcontrol_i18n("Nighttime");
-  std::string label = std::string(title) + " " +
-                      std::to_string(lv_slider_get_value(ui.brightness_slider)) +
-                      "%";
-  lv_label_set_display_text(ui.brightness_label, label.c_str());
+  lv_label_set_display_text(ui.brightness_label,
+                            espcontrol_i18n("Backlight"));
   lv_label_set_display_text(
       ui.brightness_icon,
       ui.brightness_level == SettingsBacklightLevel::NIGHTTIME
@@ -306,8 +298,8 @@ inline void network_status_open_modal(const std::string &device_name,
 
   const char *labels[] = {espcontrol_i18n("Back"), ip_address.c_str(), "", ""};
   const char *icons[] = {"\U000F0141", "\U000F0200", "\U000F0336", "\U000F035B"};
-  const int positions[] = {0, 1, 3, 5};
-  const int spans[] = {1, 2, 2, 1};
+  const int positions[] = {0, 1, 3, 4};
+  const int spans[] = {1, 2, 1, 1};
 
   for (int i = 0; i < 4; ++i) {
     auto *button = create_grid_card_button(ui.overlay, radius, card_pad,
@@ -335,6 +327,8 @@ inline void network_status_open_modal(const std::string &device_name,
       ui.brightness_slider =
           setup_slider_widget(button, DEFAULT_SLIDER_COLOR, false);
       if (!ui.brightness_slider) continue;
+      lv_slider_set_range(ui.brightness_slider,
+                          SETTINGS_BACKLIGHT_MIN_PERCENT, 100);
       ui.brightness_label = slot.text_lbl;
       ui.brightness_icon = slot.icon_lbl;
       lv_obj_align(slot.icon_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
