@@ -170,9 +170,9 @@ inline void network_status_refresh_page() {
   if (ui.wifi_label && ui.wifi_quality) {
     const float quality = ui.wifi_quality();
     const std::string label = std::isfinite(quality)
-        ? "Wi-Fi " + std::to_string(static_cast<int>(std::lround(
+        ? std::to_string(static_cast<int>(std::lround(
               std::max(0.0f, std::min(100.0f, quality))))) + "%"
-        : "Wi-Fi —";
+        : "—";
     lv_label_set_display_text(ui.wifi_label, label.c_str());
   }
   if (ui.ip_lbl) {
