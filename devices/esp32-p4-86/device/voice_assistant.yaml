@@ -15,6 +15,56 @@ external_components:
   - source: github://n-IA-hane/esphome-audio-stack@v2026.7.0
     components: [esp_audio_stack, esp_afe]
 
+# Temporary issue #1701 diagnostics. Keep these on the diagnostic branch until
+# the first failure and any crash backtrace have been captured on hardware.
+esphome:
+  includes:
+    - <esp_heap_caps.h>
+
+logger:
+  level: DEBUG
+
+interval:
+  # This runs on the main loop, so snapshots continue when the audio task stops.
+  - interval: 5s
+    then:
+      - lambda: |-
+          const bool running = id(voice_audio_stack).is_running();
+          const bool error = id(voice_audio_stack).has_i2s_error();
+          const bool ready = id(voice_afe_processor).is_initialized();
+          const bool enabled = id(voice_services_enabled).state;
+          const bool muted = id(master_mute_switch).state;
+          const bool wake = id(onboard_wake_word).is_running();
+          const bool assistant = id(ha_voice_assistant).is_running();
+          const bool connected = api::global_api_server->is_connected();
+          const unsigned flags = running | (error << 1) | (ready << 2) |
+              (enabled << 3) | (muted << 4) | (wake << 5) |
+              (assistant << 6) | (connected << 7);
+          static unsigned previous_flags = 0xFFFFFFFFu;
+          const char *edge = flags == previous_flags ? "steady" : "changed";
+          previous_flags = flags;
+          ESP_LOGD("voice.diag",
+                   "uptime_ms=%lu %s running=%d i2s_error=%d afe_ready=%d enabled=%d muted=%d wake=%d assistant=%d api=%d",
+                   (unsigned long) millis(), edge, running, error, ready,
+                   enabled, muted, wake, assistant, connected);
+          // Atomic cumulative counters: feed_ok is bridge delivery, not proof
+          // that ESP-SR accepted or processed the samples. Levels are dBFS.
+          const auto t = id(voice_afe_processor).telemetry();
+          ESP_LOGD("voice.diag",
+                   "total frames=%lu glitch=%lu in_drop=%lu feed_ok=%lu feed_rej=%lu fetch_ok=%lu fetch_to=%lu out_drop=%lu",
+                   (unsigned long) t.frame_count, (unsigned long) t.glitch_count,
+                   (unsigned long) t.input_ring_drop, (unsigned long) t.feed_ok,
+                   (unsigned long) t.feed_rejected, (unsigned long) t.fetch_ok,
+                   (unsigned long) t.fetch_timeout, (unsigned long) t.output_ring_drop);
+          ESP_LOGD("voice.diag",
+                   "queue feed=%lu fetch=%lu input_dbfs=%.1f output_dbfs=%.1f internal_free=%u internal_largest=%u dma_free=%u dma_largest=%u",
+                   (unsigned long) t.feed_queue_frames, (unsigned long) t.fetch_queue_frames,
+                   t.input_volume_dbfs, t.output_rms_dbfs,
+                   (unsigned) heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+                   (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
+                   (unsigned) heap_caps_get_free_size(MALLOC_CAP_DMA),
+                   (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_DMA));
+
 esp_afe:
   id: voice_afe_processor
   type: sr
@@ -40,6 +90,8 @@ esp_afe:
 
 esp_audio_stack:
   id: voice_audio_stack
+  telemetry: true
+  telemetry_log_interval_frames: 128
   i2s_mclk_pin: GPIO13
   i2s_bclk_pin: GPIO12
   i2s_lrclk_pin: GPIO10
