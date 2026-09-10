@@ -172,7 +172,7 @@ inline void network_status_refresh_page() {
     const std::string label = std::isfinite(quality)
         ? std::to_string(static_cast<int>(std::lround(
               std::max(0.0f, std::min(100.0f, quality))))) + "%"
-        : "—";
+        : "Disconnected";
     lv_label_set_display_text(ui.wifi_label, label.c_str());
   }
   if (ui.ip_lbl) {
