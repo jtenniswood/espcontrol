@@ -148,14 +148,19 @@ inline void network_status_hide_modal() {
   NetworkStatusModalUi &ui = network_status_modal_ui();
   if (ui.refresh_timer) lv_timer_del(ui.refresh_timer);
   lv_obj_t *overlay = ui.overlay;
+  const bool modal_active = overlay != nullptr;
   ui = NetworkStatusModalUi{};
   control_modal_clear_active(ControlModalKind::NETWORK_STATUS);
-  const std::string previous_subpage_label =
-      network_status_previous_subpage_label();
-  network_status_previous_subpage_label().clear();
-  set_clock_bar_subpage_label("");
-  if (!previous_subpage_label.empty()) {
-    clock_bar_restore_subpage_label(previous_subpage_label);
+  if (modal_active) {
+    const std::string previous_subpage_label =
+        network_status_previous_subpage_label();
+    network_status_previous_subpage_label().clear();
+    set_clock_bar_subpage_label("");
+    if (!previous_subpage_label.empty()) {
+      clock_bar_restore_subpage_label(previous_subpage_label);
+    }
+  } else {
+    network_status_previous_subpage_label().clear();
   }
   if (overlay) {
     screen_lock_unregister_tree(overlay);

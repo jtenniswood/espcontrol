@@ -260,6 +260,7 @@ inline std::string navigation_active_subpage_label() {
 }
 
 inline void navigation_refresh_subpage_label() {
+  if (network_status_modal_ui().overlay != nullptr) return;
   set_clock_bar_subpage_label(navigation_active_subpage_label());
 }
 
