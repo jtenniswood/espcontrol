@@ -348,6 +348,9 @@ target_compile_options(climate_subscription_runtime_test PRIVATE -Wall -Wextra -
 target_include_directories(climate_subscription_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME climate_subscription_runtime_test COMMAND climate_subscription_runtime_test)
 
+add_test(NAME display_schedule_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/display_schedule_test.py
+  --compiler ${CMAKE_CXX_COMPILER})
 add_test(NAME cover_art_activation_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/cover_art_activation_test.py
   --compiler ${CMAKE_CXX_COMPILER})

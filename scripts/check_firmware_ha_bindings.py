@@ -2827,20 +2827,13 @@ def firmware_display_active_finalization_errors(
                 f"{schedule_rel}: preserve manual sleep across automatic scheduled wake"
             )
 
-    check_body = yaml_script_body(schedule_text, "screen_schedule_check")
-    if check_body is None:
-        errors.append(f"{schedule_rel}: missing screen_schedule_check script")
-    else:
-        edge_tokens = (
-            "const bool schedule_was_active",
-            "const bool schedule_night",
-            "schedule_was_active && !schedule_night",
-            "script.execute: screen_schedule_wake",
+    transition_body = yaml_script_body(backlight_text, "display_mode_apply_transition") or ""
+    completion_index = transition_body.find("complete_transition(")
+    finalize_index = transition_body.find("script.execute: display_active_finalize")
+    if not (0 <= completion_index < finalize_index):
+        errors.append(
+            f"{backlight_rel}: finalize every completed active transition in the shared adapter"
         )
-        if any(token not in check_body for token in edge_tokens):
-            errors.append(
-                f"{schedule_rel}: route the Night Schedule active-to-normal edge through scheduled wake"
-            )
 
     for connectivity_path in connectivity_paths:
         if not connectivity_path.exists():
@@ -7112,6 +7105,10 @@ def run_self_test() -> int:
     )
     valid_active_finalizer = (
         "script:\n"
+        "  - id: display_mode_apply_transition\n"
+        "    then:\n"
+        "      - lambda: 'controller.complete_transition();'\n"
+        "      - script.execute: display_active_finalize\n"
         "  - id: display_active_finalize\n"
         "    then:\n"
         "      - delay: 50ms\n"
@@ -7133,13 +7130,6 @@ def run_self_test() -> int:
         "      - script.execute: display_mode_reconcile\n"
         "      - script.wait: display_mode_apply_transition\n"
         "      - script.execute: display_active_finalize\n"
-        "  - id: screen_schedule_check\n"
-        "    then:\n"
-        "      - lambda: |-\n"
-        "          const bool schedule_was_active = true;\n"
-        "          const bool schedule_night = false;\n"
-        "          id(screen_schedule_normal_wake_pending) = schedule_was_active && !schedule_night;\n"
-        "      - script.execute: screen_schedule_wake\n"
     )
     valid_active_navigation = (
         "script:\n"
@@ -7177,13 +7167,13 @@ def run_self_test() -> int:
         ("preserve manual sleep",),
     )
     expect_display_active_finalization_errors(
-        "normal-hours edge uses scheduled wake",
-        valid_active_finalizer,
-        valid_schedule_wake.replace(
-            "      - script.execute: screen_schedule_wake\n", "", 1
+        "completed active transitions restart idle handling",
+        valid_active_finalizer.replace(
+            "      - script.execute: display_active_finalize\n", "", 1
         ),
+        valid_schedule_wake,
         valid_active_navigation,
-        ("active-to-normal edge",),
+        ("finalize every completed active transition",),
     )
     expect_display_active_finalization_errors(
         "active finalizer restores configured brightness",

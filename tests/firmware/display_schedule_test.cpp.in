@@ -1,0 +1,199 @@
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <functional>
+#include <iostream>
+#include <string>
+#include <vector>
+#include "display_mode_controller.h"
+using namespace espcontrol;
+#define id(x) x
+#define ESP_LOGD(...) log_stub(__VA_ARGS__)
+#define ESP_LOGW(...) log_stub(__VA_ARGS__)
+template<typename... T> void log_stub(T...) {}
+uint32_t now_ms = 1000;
+uint32_t millis() { return now_ms; }
+using Next = std::function<void()>;
+struct Event { uint32_t at; Next next; };
+std::vector<Event> events;
+void later(uint32_t delay, Next next) { events.push_back({now_ms + delay, std::move(next)}); }
+void advance(uint32_t ms) {
+  const auto end = now_ms + ms;
+  while (!events.empty()) {
+    auto first = std::min_element(events.begin(), events.end(),
+        [](const Event &a, const Event &b) { return a.at < b.at; });
+    if (first->at > end) break;
+    auto event = *first;
+    events.erase(first);
+    now_ms = event.at;
+    event.next();
+  }
+  now_ms = end;
+}
+using Step = std::function<void(Next)>;
+using Steps = std::vector<Step>;
+struct Script {
+  Steps steps;
+  std::array<int, 3> args{};
+  Next io;
+  unsigned epoch = 0;
+  bool running = false;
+  int calls = 0;
+  void run(size_t index, unsigned token) {
+    if (epoch != token) return;
+    if (index == steps.size()) { running = false; return; }
+    steps[index]([this, index, token] { run(index + 1, token); });
+  }
+  void execute(int a = 0, int b = 0, int c = 0) {
+    stop(); args = {a, b, c}; ++calls; running = true;
+    if (io) io();
+    run(0, epoch);
+  }
+  void stop() { ++epoch; running = false; }
+  bool is_running() const { return running; }
+};
+Step call(Next fn) { return [fn](Next next) { fn(); next(); }; }
+Step pause(std::function<uint32_t()> duration) {
+  return [duration](Next next) { later(duration(), next); };
+}
+void poll(Script &script, Next next) {
+  if (script.is_running()) later(1, [&script, next] { poll(script, next); });
+  else next();
+}
+Step wait_for(Script &script) { return [&script](Next next) { poll(script, next); }; }
+void run_branch(Script &owner, unsigned epoch, Steps steps, size_t index, Next next) {
+  if (owner.epoch != epoch) return;
+  if (index == steps.size()) { next(); return; }
+  steps[index]([&owner, epoch, steps, index, next] { run_branch(owner, epoch, steps, index + 1, next); });
+}
+Step branch(Script &owner, std::function<bool()> condition, Steps yes, Steps no) {
+  return [&owner, condition, yes, no](Next next) { run_branch(owner, owner.epoch, condition() ? yes : no, 0, next); };
+}
+// Hardware/settings boundary; production predicates use these values unchanged.
+struct App { DisplayModeController controller; auto &display() { return controller; } } espcontrol_app;
+struct Time { int hour = 6; bool valid = true; bool is_valid() const { return valid; } } clock_time;
+struct Clock { Time now() { return clock_time; } } panel_time, homeassistant_time;
+Time panel_time_or_fallback(Time primary, Time fallback) { return primary.valid ? primary : fallback; }
+struct Page { int *obj; } home{nullptr}, setup{}, ha{}, actions{}, off{};
+Page *main_page = &home, *button_setup_page = &setup, *ha_setup_page = &ha,
+     *ha_actions_page = &actions, *screen_off_page = &off;
+int *active_page = nullptr;
+int *lv_scr_act() { return active_page; }
+struct Text { std::string state; std::string current_option() { return state; } };
+Text button_order{"1"}, screen_schedule_trigger{"time"}, screen_schedule_sensor_activation{"Sensor Off"}, screensaver_mode{"timer"};
+struct Number { float state; } schedule_on_hour{7}, schedule_off_hour{22}, schedule_wake_timeout{60}, screensaver_timeout{300};
+struct Toggle { bool state = false; } schedule_enabled{true}, cover_art_screensaver_enabled{}, media_player_sleep_prevention_enabled{};
+bool connectivity_setup_display_active = false, schedule_presence_detected = false,
+     schedule_mode_always_on = false, schedule_mode_clock = true,
+     clock_bar_night_mode_active = false, cover_art_media_playing = false,
+     media_player_playing = false, presence_detected = false;
+uint32_t manual_wake_ms = 0, cover_art_transition_generation = 0, cover_art_download_generation = 0;
+bool alarm_display_takeover_active() { return espcontrol_app.display().takeover_active(DisplayTakeoverKind::CRITICAL); }
+// SCHEDULE_HELPERS
+Script cover_art_playback_started;
+// SCRIPT_DECLARATIONS
+
+void reset(DisplayMode night_mode = DisplayMode::CLOCK) {
+  events.clear(); now_ms = 1000;
+  // Every modeled script, including delayed branches, is idle before a case.
+  display_mode_reconcile.stop(); screen_schedule_check.stop(); screen_schedule_wake.stop();
+  display_mode_apply_transition.stop(); display_mode_effect_active.stop();
+  display_active_finalize.stop(); screensaver_idle_check.stop();
+  screensaver_idle_check.calls = home_screen_idle_check.calls = 0;
+  clock_time = {6, true}; active_page = home.obj;
+  schedule_enabled.state = true;
+  schedule_mode_clock = night_mode == DisplayMode::CLOCK;
+  schedule_mode_always_on = night_mode == DisplayMode::ACTIVE;
+  manual_wake_ms = 0; presence_detected = false; screensaver_mode.state = "timer";
+  espcontrol_app.controller = {};
+  auto &controller = espcontrol_app.display();
+  controller.request(DisplayRequestSource::SCREEN_SCHEDULE, night_mode);
+  controller.complete_transition(controller.resolve());
+}
+int main() {
+  // Distinct LVGL objects so off/setup-page tests cannot match main by accident.
+  int objects[5]{};
+  home.obj = &objects[0]; setup.obj = &objects[1]; ha.obj = &objects[2];
+  actions.obj = &objects[3]; off.obj = &objects[4];
+  // SCRIPT_SETUP
+  auto &controller = espcontrol_app.display();
+  navigate_after_api.io = [] { active_page = home.obj; display_active_finalize.execute(); };
+  display_mode_apply_transition.io = [&] {
+    if (static_cast<DisplayMode>(display_mode_apply_transition.args[1]) != DisplayMode::ACTIVE)
+      controller.complete_transition(controller.resolve(), millis());
+  };
+  screensaver_sleep_timer.io = [&] {
+    controller.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::DISPLAY_OFF);
+    display_mode_reconcile.execute();
+  };
+  // Both callback orders, all scheduled modes, and a temporary night wake.
+  for (auto mode : {DisplayMode::CLOCK, DisplayMode::DISPLAY_OFF, DisplayMode::ACTIVE}) {
+    for (bool fast_first : {false, true}) {
+      for (bool temporary_wake : {false, true}) {
+        reset(mode);
+        if (mode == DisplayMode::DISPLAY_OFF) active_page = off.obj;
+        controller.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::DISPLAY_OFF);
+        if (temporary_wake) {
+          manual_wake_ms = millis();
+          controller.request(DisplayRequestSource::USER_WAKE, DisplayMode::ACTIVE);
+          controller.complete_transition(controller.resolve());
+        }
+        clock_time.hour = 7;
+        (fast_first ? display_mode_reconcile : screen_schedule_check).execute();
+        assert(screensaver_idle_check.calls == 0);  // Wait for presentation completion.
+        (fast_first ? screen_schedule_check : display_mode_reconcile).execute();
+        advance(500);
+        assert(controller.current_mode_is(DisplayMode::ACTIVE));
+        assert(manual_wake_ms == 0);
+        assert(screensaver_idle_check.is_running());
+        const int starts = screensaver_idle_check.calls;
+        for (int seconds = 0; seconds < 299; ++seconds) {
+          display_mode_reconcile.execute();
+          if (seconds % 60 == 0) screen_schedule_check.execute();
+          advance(1000);
+        }
+        assert(screensaver_idle_check.calls == starts); // Polling cannot postpone sleep.
+        assert(controller.target_mode_is(DisplayMode::ACTIVE));
+        advance(1000);
+        assert(controller.target_mode_is(DisplayMode::DISPLAY_OFF));
+      }
+    }
+  }
+  // Manual sleep is never cleared by either order at the schedule boundary.
+  for (bool fast_first : {false, true}) {
+    reset(); controller.request(DisplayRequestSource::MANUAL_SLEEP, DisplayMode::DISPLAY_OFF);
+    controller.complete_transition(controller.resolve()); clock_time.hour = 7;
+    (fast_first ? display_mode_reconcile : screen_schedule_check).execute();
+    (fast_first ? screen_schedule_check : display_mode_reconcile).execute(); advance(1000);
+    assert(controller.target_source_is(DisplayRequestSource::MANUAL_SLEEP));
+    assert(screensaver_idle_check.calls == 0);
+  }
+  // Night boot and media ownership must not start a normal idle countdown.
+  for (auto mode : {DisplayMode::CLOCK, DisplayMode::DISPLAY_OFF}) {
+    reset(mode); display_active_finalize.execute(); advance(100);
+    assert(screensaver_idle_check.calls == 0);
+  }
+  reset(); clock_time.hour = 7;
+  controller.request(DisplayRequestSource::MEDIA_PLAYBACK, DisplayMode::COVER_ART);
+  display_mode_reconcile.execute(); advance(500);
+  assert(controller.target_mode_is(DisplayMode::COVER_ART));
+  assert(screensaver_idle_check.calls == 0);
+  // Presence continues to defer automatic sleep after the scheduled wake.
+  reset(); clock_time.hour = 7; screensaver_mode.state = "sensor"; presence_detected = true;
+  display_mode_reconcile.execute(); advance(301000);
+  assert(controller.target_mode_is(DisplayMode::ACTIVE));
+  presence_detected = false; advance(301000);
+  assert(controller.target_mode_is(DisplayMode::DISPLAY_OFF));
+  // A newer sleep decision during page settling must suppress finalization.
+  reset(); clock_time.hour = 7; display_mode_reconcile.execute(); advance(310);
+  controller.request(DisplayRequestSource::MANUAL_SLEEP, DisplayMode::DISPLAY_OFF);
+  display_mode_reconcile.execute(); advance(100);
+  assert(screensaver_idle_check.calls == 0);
+  // Boot navigation still finalizes even when no ACTIVE transition is needed.
+  reset(); controller = {}; clock_time.hour = 12;
+  display_active_finalize.execute(); advance(100);
+  assert(screensaver_idle_check.is_running());
+  std::cout << "Schedule callback orders, idle expiry, manual sleep, stale finalization and boot passed\n";
+}

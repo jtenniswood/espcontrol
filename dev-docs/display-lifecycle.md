@@ -144,6 +144,26 @@ These are true after every completed transition:
 10. Releasing a takeover or clearing a request resolves live inputs; it never
     restores a saved transient presentation.
 
+## Active display finalization
+
+Every successful `ACTIVE` transition invokes `display_active_finalize`, as does
+boot navigation. The finalizer waits for the effect adapter and page settling,
+then restores the clock bar, configured brightness, and idle timers only while
+the main page is active and the controller has no newer transition in progress.
+An unchanged reconciliation does not restart the idle countdown.
+
+The shared reconciler owns schedule exit: it clears temporary wake and stale
+automatic sleep requests while preserving manual sleep. Both the one-second
+reconcile tick and the slower schedule check therefore reach the same completion
+path. Detecting that edge only in `screen_schedule_check` loses it when the
+one-second tick clears `SCREEN_SCHEDULE` first (issue #1787).
+
+`tests/firmware/display_schedule_test.py` executes the production YAML lambdas
+and ACTIVE action sequence with a virtual clock and hardware doubles. It covers
+both callback orders, scheduled Clock/Off/Screen Dimmed, temporary wake, manual
+sleep, stale finalization, boot, and an idle timeout that repeated polls cannot
+postpone. Physical display timing still requires a device test.
+
 ## Expected event sequences
 
 These sequences are the named baseline for later host tests and physical-device
