@@ -46,6 +46,7 @@ dimmed=Escurecido
 direction=Direção
 disarm=Desarmar
 disarmed=Desarmado
+disconnected=Desconectado
 door=Porta
 door_open=Porta aberta
 dock=Dock

@@ -46,6 +46,7 @@ dimmed=Himmennetty
 direction=Suunta
 disarm=Poista viritys
 disarmed=Poistettu käytöstä
+disconnected=Yhteys katkaistu
 door=Ovi
 door_open=Ovi auki
 dock=Telakoi

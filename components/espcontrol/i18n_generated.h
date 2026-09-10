@@ -56,6 +56,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Směr";
   if (std::strcmp(text, "Disarm") == 0) return "Odzajistit";
   if (std::strcmp(text, "Disarmed") == 0) return "Odzajištěno";
+  if (std::strcmp(text, "Disconnected") == 0) return "Odpojeno";
   if (std::strcmp(text, "Door") == 0) return "Dveře";
   if (std::strcmp(text, "Door Open") == 0) return "Dveře otevřeny";
   if (std::strcmp(text, "Dock") == 0) return "Dokovat";
@@ -290,6 +291,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Retning";
   if (std::strcmp(text, "Disarm") == 0) return "Deaktiver";
   if (std::strcmp(text, "Disarmed") == 0) return "Deaktiveret";
+  if (std::strcmp(text, "Disconnected") == 0) return "Afbrudt";
   if (std::strcmp(text, "Door") == 0) return "Dør";
   if (std::strcmp(text, "Door Open") == 0) return "Dør åben";
   if (std::strcmp(text, "Docked") == 0) return "Docket";
@@ -519,6 +521,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Richtung";
   if (std::strcmp(text, "Disarm") == 0) return "Entschärfen";
   if (std::strcmp(text, "Disarmed") == 0) return "Entschärft";
+  if (std::strcmp(text, "Disconnected") == 0) return "Getrennt";
   if (std::strcmp(text, "Door") == 0) return "Tür";
   if (std::strcmp(text, "Door Open") == 0) return "Tür offen";
   if (std::strcmp(text, "Dock") == 0) return "Andocken";
@@ -745,6 +748,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Dirección";
   if (std::strcmp(text, "Disarm") == 0) return "Desarmar";
   if (std::strcmp(text, "Disarmed") == 0) return "Desarmada";
+  if (std::strcmp(text, "Disconnected") == 0) return "Desconectado";
   if (std::strcmp(text, "Door") == 0) return "Puerta";
   if (std::strcmp(text, "Door Open") == 0) return "Puerta abierta";
   if (std::strcmp(text, "Dock") == 0) return "Acoplar";
@@ -980,6 +984,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Suunta";
   if (std::strcmp(text, "Disarm") == 0) return "Poista viritys";
   if (std::strcmp(text, "Disarmed") == 0) return "Poistettu käytöstä";
+  if (std::strcmp(text, "Disconnected") == 0) return "Yhteys katkaistu";
   if (std::strcmp(text, "Door") == 0) return "Ovi";
   if (std::strcmp(text, "Door Open") == 0) return "Ovi auki";
   if (std::strcmp(text, "Dock") == 0) return "Telakoi";
@@ -1218,6 +1223,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Dimmed") == 0) return "Tamisé";
   if (std::strcmp(text, "Disarm") == 0) return "Désarmer";
   if (std::strcmp(text, "Disarmed") == 0) return "Désarmé";
+  if (std::strcmp(text, "Disconnected") == 0) return "Déconnecté";
   if (std::strcmp(text, "Door") == 0) return "Porte";
   if (std::strcmp(text, "Door Open") == 0) return "Porte ouverte";
   if (std::strcmp(text, "Dock") == 0) return "Station";
@@ -1452,6 +1458,7 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "כיוון";
   if (std::strcmp(text, "Disarm") == 0) return "נטרול";
   if (std::strcmp(text, "Disarmed") == 0) return "מנוטרל";
+  if (std::strcmp(text, "Disconnected") == 0) return "מנותק";
   if (std::strcmp(text, "Door") == 0) return "דלת";
   if (std::strcmp(text, "Door Open") == 0) return "דלת פתוחה";
   if (std::strcmp(text, "Dock") == 0) return "עגינה";
@@ -1700,6 +1707,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Irány";
   if (std::strcmp(text, "Disarm") == 0) return "Hatástalanítás";
   if (std::strcmp(text, "Disarmed") == 0) return "Hatástalanítva";
+  if (std::strcmp(text, "Disconnected") == 0) return "Lekapcsolva";
   if (std::strcmp(text, "Door") == 0) return "Ajtó";
   if (std::strcmp(text, "Door Open") == 0) return "Ajtó nyitva";
   if (std::strcmp(text, "Dock") == 0) return "Dokkolás";
@@ -1941,6 +1949,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Direzione";
   if (std::strcmp(text, "Disarm") == 0) return "Disinserisci";
   if (std::strcmp(text, "Disarmed") == 0) return "Disinserito";
+  if (std::strcmp(text, "Disconnected") == 0) return "Disconnesso";
   if (std::strcmp(text, "Door") == 0) return "Porta";
   if (std::strcmp(text, "Door Open") == 0) return "Porta aperta";
   if (std::strcmp(text, "Docked") == 0) return "In base";
@@ -2174,6 +2183,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Retning";
   if (std::strcmp(text, "Disarm") == 0) return "Deaktiver";
   if (std::strcmp(text, "Disarmed") == 0) return "Deaktivert";
+  if (std::strcmp(text, "Disconnected") == 0) return "Frakoblet";
   if (std::strcmp(text, "Door") == 0) return "Dør";
   if (std::strcmp(text, "Door Open") == 0) return "Dør åpen";
   if (std::strcmp(text, "Dock") == 0) return "Dokking";
@@ -2407,6 +2417,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Richting";
   if (std::strcmp(text, "Disarm") == 0) return "Uitschakelen";
   if (std::strcmp(text, "Disarmed") == 0) return "Uitgeschakeld";
+  if (std::strcmp(text, "Disconnected") == 0) return "Verbroken";
   if (std::strcmp(text, "Door") == 0) return "Deur";
   if (std::strcmp(text, "Door Open") == 0) return "Deur open";
   if (std::strcmp(text, "Dock") == 0) return "Docken";
@@ -2637,6 +2648,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Kierunek";
   if (std::strcmp(text, "Disarm") == 0) return "Rozbrój";
   if (std::strcmp(text, "Disarmed") == 0) return "Rozbrojony";
+  if (std::strcmp(text, "Disconnected") == 0) return "Rozłączone";
   if (std::strcmp(text, "Door") == 0) return "Drzwi";
   if (std::strcmp(text, "Door Open") == 0) return "Drzwi otwarte";
   if (std::strcmp(text, "Dock") == 0) return "Dokuj";
@@ -2869,6 +2881,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Direção";
   if (std::strcmp(text, "Disarm") == 0) return "Desarmar";
   if (std::strcmp(text, "Disarmed") == 0) return "Desarmado";
+  if (std::strcmp(text, "Disconnected") == 0) return "Desconectado";
   if (std::strcmp(text, "Door") == 0) return "Porta";
   if (std::strcmp(text, "Door Open") == 0) return "Porta aberta";
   if (std::strcmp(text, "Docked") == 0) return "Na base";
@@ -3102,6 +3115,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Direção";
   if (std::strcmp(text, "Disarm") == 0) return "Desarmar";
   if (std::strcmp(text, "Disarmed") == 0) return "Desarmado";
+  if (std::strcmp(text, "Disconnected") == 0) return "Desligado";
   if (std::strcmp(text, "Door") == 0) return "Porta";
   if (std::strcmp(text, "Door Open") == 0) return "Porta aberta";
   if (std::strcmp(text, "Dock") == 0) return "Ancorar";
@@ -3338,6 +3352,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Direcție";
   if (std::strcmp(text, "Disarm") == 0) return "Dezarmează";
   if (std::strcmp(text, "Disarmed") == 0) return "Dezarmat";
+  if (std::strcmp(text, "Disconnected") == 0) return "Deconectat";
   if (std::strcmp(text, "Door") == 0) return "Ușă";
   if (std::strcmp(text, "Door Open") == 0) return "Ușă deschisă";
   if (std::strcmp(text, "Dock") == 0) return "Andocare";
@@ -3583,6 +3598,7 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Направление";
   if (std::strcmp(text, "Disarm") == 0) return "Снять с охраны";
   if (std::strcmp(text, "Disarmed") == 0) return "Снято с охраны";
+  if (std::strcmp(text, "Disconnected") == 0) return "Отключено";
   if (std::strcmp(text, "Door") == 0) return "Дверь";
   if (std::strcmp(text, "Door Open") == 0) return "Дверь открыта";
   if (std::strcmp(text, "Dock") == 0) return "На базу";
@@ -3828,6 +3844,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Smer";
   if (std::strcmp(text, "Disarm") == 0) return "Odzbrojiť";
   if (std::strcmp(text, "Disarmed") == 0) return "Odzbrojené";
+  if (std::strcmp(text, "Disconnected") == 0) return "Odpojené";
   if (std::strcmp(text, "Door") == 0) return "Dvere";
   if (std::strcmp(text, "Door Open") == 0) return "Dvere otvorené";
   if (std::strcmp(text, "Dock") == 0) return "Dokovať";
@@ -4065,6 +4082,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Smer";
   if (std::strcmp(text, "Disarm") == 0) return "Izklopi varovanje";
   if (std::strcmp(text, "Disarmed") == 0) return "Varovanje izklopljeno";
+  if (std::strcmp(text, "Disconnected") == 0) return "Prekinjeno";
   if (std::strcmp(text, "Door") == 0) return "Vrata";
   if (std::strcmp(text, "Door Open") == 0) return "Vrata odprta";
   if (std::strcmp(text, "Dock") == 0) return "Priklop";
@@ -4303,6 +4321,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Riktning";
   if (std::strcmp(text, "Disarm") == 0) return "Avlarma";
   if (std::strcmp(text, "Disarmed") == 0) return "Avlarmat";
+  if (std::strcmp(text, "Disconnected") == 0) return "Frånkopplad";
   if (std::strcmp(text, "Door") == 0) return "Dörr";
   if (std::strcmp(text, "Door Open") == 0) return "Dörr öppen";
   if (std::strcmp(text, "Dock") == 0) return "Docka";
@@ -4535,6 +4554,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Yön";
   if (std::strcmp(text, "Disarm") == 0) return "Devre dışı bırak";
   if (std::strcmp(text, "Disarmed") == 0) return "Devre dışı";
+  if (std::strcmp(text, "Disconnected") == 0) return "Bağlantısı kesildi";
   if (std::strcmp(text, "Door") == 0) return "Kapı";
   if (std::strcmp(text, "Door Open") == 0) return "Kapı açık";
   if (std::strcmp(text, "Dock") == 0) return "Yuvaya dön";
@@ -4779,6 +4799,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Direction") == 0) return "Напрямок";
   if (std::strcmp(text, "Disarm") == 0) return "Вимкнути охорону";
   if (std::strcmp(text, "Disarmed") == 0) return "Охорону вимкнено";
+  if (std::strcmp(text, "Disconnected") == 0) return "Від’єднано";
   if (std::strcmp(text, "Door") == 0) return "Двері";
   if (std::strcmp(text, "Door Open") == 0) return "Двері відчинені";
   if (std::strcmp(text, "Dock") == 0) return "До бази";
@@ -5027,6 +5048,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Direction";
   if (std::strcmp(key, "disarm") == 0) return "Disarm";
   if (std::strcmp(key, "disarmed") == 0) return "Disarmed";
+  if (std::strcmp(key, "disconnected") == 0) return "Disconnected";
   if (std::strcmp(key, "door") == 0) return "Door";
   if (std::strcmp(key, "door_open") == 0) return "Door Open";
   if (std::strcmp(key, "dock") == 0) return "Dock";
@@ -5274,6 +5296,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Směr";
   if (std::strcmp(key, "disarm") == 0) return "Odzajistit";
   if (std::strcmp(key, "disarmed") == 0) return "Odzajištěno";
+  if (std::strcmp(key, "disconnected") == 0) return "Odpojeno";
   if (std::strcmp(key, "door") == 0) return "Dveře";
   if (std::strcmp(key, "door_open") == 0) return "Dveře otevřeny";
   if (std::strcmp(key, "dock") == 0) return "Dokovat";
@@ -5509,6 +5532,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Retning";
   if (std::strcmp(key, "disarm") == 0) return "Deaktiver";
   if (std::strcmp(key, "disarmed") == 0) return "Deaktiveret";
+  if (std::strcmp(key, "disconnected") == 0) return "Afbrudt";
   if (std::strcmp(key, "door") == 0) return "Dør";
   if (std::strcmp(key, "door_open") == 0) return "Dør åben";
   if (std::strcmp(key, "docked") == 0) return "Docket";
@@ -5739,6 +5763,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Richtung";
   if (std::strcmp(key, "disarm") == 0) return "Entschärfen";
   if (std::strcmp(key, "disarmed") == 0) return "Entschärft";
+  if (std::strcmp(key, "disconnected") == 0) return "Getrennt";
   if (std::strcmp(key, "door") == 0) return "Tür";
   if (std::strcmp(key, "door_open") == 0) return "Tür offen";
   if (std::strcmp(key, "dock") == 0) return "Andocken";
@@ -5966,6 +5991,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Dirección";
   if (std::strcmp(key, "disarm") == 0) return "Desarmar";
   if (std::strcmp(key, "disarmed") == 0) return "Desarmada";
+  if (std::strcmp(key, "disconnected") == 0) return "Desconectado";
   if (std::strcmp(key, "door") == 0) return "Puerta";
   if (std::strcmp(key, "door_open") == 0) return "Puerta abierta";
   if (std::strcmp(key, "dock") == 0) return "Acoplar";
@@ -6202,6 +6228,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Suunta";
   if (std::strcmp(key, "disarm") == 0) return "Poista viritys";
   if (std::strcmp(key, "disarmed") == 0) return "Poistettu käytöstä";
+  if (std::strcmp(key, "disconnected") == 0) return "Yhteys katkaistu";
   if (std::strcmp(key, "door") == 0) return "Ovi";
   if (std::strcmp(key, "door_open") == 0) return "Ovi auki";
   if (std::strcmp(key, "dock") == 0) return "Telakoi";
@@ -6441,6 +6468,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "dimmed") == 0) return "Tamisé";
   if (std::strcmp(key, "disarm") == 0) return "Désarmer";
   if (std::strcmp(key, "disarmed") == 0) return "Désarmé";
+  if (std::strcmp(key, "disconnected") == 0) return "Déconnecté";
   if (std::strcmp(key, "door") == 0) return "Porte";
   if (std::strcmp(key, "door_open") == 0) return "Porte ouverte";
   if (std::strcmp(key, "dock") == 0) return "Station";
@@ -6676,6 +6704,7 @@ inline const char *espcontrol_i18n_key_he(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "כיוון";
   if (std::strcmp(key, "disarm") == 0) return "נטרול";
   if (std::strcmp(key, "disarmed") == 0) return "מנוטרל";
+  if (std::strcmp(key, "disconnected") == 0) return "מנותק";
   if (std::strcmp(key, "door") == 0) return "דלת";
   if (std::strcmp(key, "door_open") == 0) return "דלת פתוחה";
   if (std::strcmp(key, "dock") == 0) return "עגינה";
@@ -6925,6 +6954,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Irány";
   if (std::strcmp(key, "disarm") == 0) return "Hatástalanítás";
   if (std::strcmp(key, "disarmed") == 0) return "Hatástalanítva";
+  if (std::strcmp(key, "disconnected") == 0) return "Lekapcsolva";
   if (std::strcmp(key, "door") == 0) return "Ajtó";
   if (std::strcmp(key, "door_open") == 0) return "Ajtó nyitva";
   if (std::strcmp(key, "dock") == 0) return "Dokkolás";
@@ -7167,6 +7197,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Direzione";
   if (std::strcmp(key, "disarm") == 0) return "Disinserisci";
   if (std::strcmp(key, "disarmed") == 0) return "Disinserito";
+  if (std::strcmp(key, "disconnected") == 0) return "Disconnesso";
   if (std::strcmp(key, "door") == 0) return "Porta";
   if (std::strcmp(key, "door_open") == 0) return "Porta aperta";
   if (std::strcmp(key, "docked") == 0) return "In base";
@@ -7401,6 +7432,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Retning";
   if (std::strcmp(key, "disarm") == 0) return "Deaktiver";
   if (std::strcmp(key, "disarmed") == 0) return "Deaktivert";
+  if (std::strcmp(key, "disconnected") == 0) return "Frakoblet";
   if (std::strcmp(key, "door") == 0) return "Dør";
   if (std::strcmp(key, "door_open") == 0) return "Dør åpen";
   if (std::strcmp(key, "dock") == 0) return "Dokking";
@@ -7635,6 +7667,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Richting";
   if (std::strcmp(key, "disarm") == 0) return "Uitschakelen";
   if (std::strcmp(key, "disarmed") == 0) return "Uitgeschakeld";
+  if (std::strcmp(key, "disconnected") == 0) return "Verbroken";
   if (std::strcmp(key, "door") == 0) return "Deur";
   if (std::strcmp(key, "door_open") == 0) return "Deur open";
   if (std::strcmp(key, "dock") == 0) return "Docken";
@@ -7865,6 +7898,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Kierunek";
   if (std::strcmp(key, "disarm") == 0) return "Rozbrój";
   if (std::strcmp(key, "disarmed") == 0) return "Rozbrojony";
+  if (std::strcmp(key, "disconnected") == 0) return "Rozłączone";
   if (std::strcmp(key, "door") == 0) return "Drzwi";
   if (std::strcmp(key, "door_open") == 0) return "Drzwi otwarte";
   if (std::strcmp(key, "dock") == 0) return "Dokuj";
@@ -8098,6 +8132,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Direção";
   if (std::strcmp(key, "disarm") == 0) return "Desarmar";
   if (std::strcmp(key, "disarmed") == 0) return "Desarmado";
+  if (std::strcmp(key, "disconnected") == 0) return "Desconectado";
   if (std::strcmp(key, "door") == 0) return "Porta";
   if (std::strcmp(key, "door_open") == 0) return "Porta aberta";
   if (std::strcmp(key, "docked") == 0) return "Na base";
@@ -8332,6 +8367,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Direção";
   if (std::strcmp(key, "disarm") == 0) return "Desarmar";
   if (std::strcmp(key, "disarmed") == 0) return "Desarmado";
+  if (std::strcmp(key, "disconnected") == 0) return "Desligado";
   if (std::strcmp(key, "door") == 0) return "Porta";
   if (std::strcmp(key, "door_open") == 0) return "Porta aberta";
   if (std::strcmp(key, "dock") == 0) return "Ancorar";
@@ -8569,6 +8605,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Direcție";
   if (std::strcmp(key, "disarm") == 0) return "Dezarmează";
   if (std::strcmp(key, "disarmed") == 0) return "Dezarmat";
+  if (std::strcmp(key, "disconnected") == 0) return "Deconectat";
   if (std::strcmp(key, "door") == 0) return "Ușă";
   if (std::strcmp(key, "door_open") == 0) return "Ușă deschisă";
   if (std::strcmp(key, "dock") == 0) return "Andocare";
@@ -8815,6 +8852,7 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Направление";
   if (std::strcmp(key, "disarm") == 0) return "Снять с охраны";
   if (std::strcmp(key, "disarmed") == 0) return "Снято с охраны";
+  if (std::strcmp(key, "disconnected") == 0) return "Отключено";
   if (std::strcmp(key, "door") == 0) return "Дверь";
   if (std::strcmp(key, "door_open") == 0) return "Дверь открыта";
   if (std::strcmp(key, "dock") == 0) return "На базу";
@@ -9061,6 +9099,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Smer";
   if (std::strcmp(key, "disarm") == 0) return "Odzbrojiť";
   if (std::strcmp(key, "disarmed") == 0) return "Odzbrojené";
+  if (std::strcmp(key, "disconnected") == 0) return "Odpojené";
   if (std::strcmp(key, "door") == 0) return "Dvere";
   if (std::strcmp(key, "door_open") == 0) return "Dvere otvorené";
   if (std::strcmp(key, "dock") == 0) return "Dokovať";
@@ -9299,6 +9338,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Smer";
   if (std::strcmp(key, "disarm") == 0) return "Izklopi varovanje";
   if (std::strcmp(key, "disarmed") == 0) return "Varovanje izklopljeno";
+  if (std::strcmp(key, "disconnected") == 0) return "Prekinjeno";
   if (std::strcmp(key, "door") == 0) return "Vrata";
   if (std::strcmp(key, "door_open") == 0) return "Vrata odprta";
   if (std::strcmp(key, "dock") == 0) return "Priklop";
@@ -9538,6 +9578,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Riktning";
   if (std::strcmp(key, "disarm") == 0) return "Avlarma";
   if (std::strcmp(key, "disarmed") == 0) return "Avlarmat";
+  if (std::strcmp(key, "disconnected") == 0) return "Frånkopplad";
   if (std::strcmp(key, "door") == 0) return "Dörr";
   if (std::strcmp(key, "door_open") == 0) return "Dörr öppen";
   if (std::strcmp(key, "dock") == 0) return "Docka";
@@ -9771,6 +9812,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Yön";
   if (std::strcmp(key, "disarm") == 0) return "Devre dışı bırak";
   if (std::strcmp(key, "disarmed") == 0) return "Devre dışı";
+  if (std::strcmp(key, "disconnected") == 0) return "Bağlantısı kesildi";
   if (std::strcmp(key, "door") == 0) return "Kapı";
   if (std::strcmp(key, "door_open") == 0) return "Kapı açık";
   if (std::strcmp(key, "dock") == 0) return "Yuvaya dön";
@@ -10016,6 +10058,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Напрямок";
   if (std::strcmp(key, "disarm") == 0) return "Вимкнути охорону";
   if (std::strcmp(key, "disarmed") == 0) return "Охорону вимкнено";
+  if (std::strcmp(key, "disconnected") == 0) return "Від’єднано";
   if (std::strcmp(key, "door") == 0) return "Двері";
   if (std::strcmp(key, "door_open") == 0) return "Двері відчинені";
   if (std::strcmp(key, "dock") == 0) return "До бази";

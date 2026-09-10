@@ -46,6 +46,7 @@ dimmed=Kısılmış
 direction=Yön
 disarm=Devre dışı bırak
 disarmed=Devre dışı
+disconnected=Bağlantısı kesildi
 door=Kapı
 door_open=Kapı açık
 dock=Yuvaya dön

@@ -46,6 +46,7 @@ dimmed=Stlmené
 direction=Smer
 disarm=Odzbrojiť
 disarmed=Odzbrojené
+disconnected=Odpojené
 door=Dvere
 door_open=Dvere otvorené
 dock=Dokovať

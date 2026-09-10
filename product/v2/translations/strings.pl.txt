@@ -46,6 +46,7 @@ dimmed=Przyciemnione
 direction=Kierunek
 disarm=Rozbrój
 disarmed=Rozbrojony
+disconnected=Rozłączone
 door=Drzwi
 door_open=Drzwi otwarte
 dock=Dokuj

@@ -46,6 +46,7 @@ dimmed=Zatemnjeno
 direction=Smer
 disarm=Izklopi varovanje
 disarmed=Varovanje izklopljeno
+disconnected=Prekinjeno
 door=Vrata
 door_open=Vrata odprta
 dock=Priklop

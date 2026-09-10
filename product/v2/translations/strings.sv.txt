@@ -46,6 +46,7 @@ dimmed=Nedtonad
 direction=Riktning
 disarm=Avlarma
 disarmed=Avlarmat
+disconnected=Frånkopplad
 door=Dörr
 door_open=Dörr öppen
 dock=Docka

@@ -46,6 +46,7 @@ dimmed=Ztlumeno
 direction=Směr
 disarm=Odzajistit
 disarmed=Odzajištěno
+disconnected=Odpojeno
 door=Dveře
 door_open=Dveře otevřeny
 dock=Dokovat

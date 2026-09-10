@@ -46,6 +46,7 @@ dimmed=Gedimd
 direction=Richting
 disarm=Uitschakelen
 disarmed=Uitgeschakeld
+disconnected=Verbroken
 door=Deur
 door_open=Deur open
 dock=Docken

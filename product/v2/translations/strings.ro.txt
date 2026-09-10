@@ -46,6 +46,7 @@ dimmed=Estompat
 direction=Direcție
 disarm=Dezarmează
 disarmed=Dezarmat
+disconnected=Deconectat
 door=Ușă
 door_open=Ușă deschisă
 dock=Andocare

@@ -46,6 +46,7 @@ dimmed=Tamisé
 direction=Direction
 disarm=Désarmer
 disarmed=Désarmé
+disconnected=Déconnecté
 door=Porte
 door_open=Porte ouverte
 dock=Station

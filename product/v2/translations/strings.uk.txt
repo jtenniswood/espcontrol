@@ -46,6 +46,7 @@ dimmed=Приглушено
 direction=Напрямок
 disarm=Вимкнути охорону
 disarmed=Охорону вимкнено
+disconnected=Від’єднано
 door=Двері
 door_open=Двері відчинені
 dock=До бази

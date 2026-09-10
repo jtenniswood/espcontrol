@@ -46,6 +46,7 @@ dimmed=Halványított
 direction=Irány
 disarm=Hatástalanítás
 disarmed=Hatástalanítva
+disconnected=Lekapcsolva
 door=Ajtó
 door_open=Ajtó nyitva
 dock=Dokkolás

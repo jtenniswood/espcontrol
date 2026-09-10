@@ -46,6 +46,7 @@ dimmed=Neddimmet
 direction=Retning
 disarm=Deaktiver
 disarmed=Deaktivert
+disconnected=Frakoblet
 door=Dør
 door_open=Dør åpen
 dock=Dokking

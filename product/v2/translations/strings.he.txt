@@ -46,6 +46,7 @@ dimmed=מעומעם
 direction=כיוון
 disarm=נטרול
 disarmed=מנוטרל
+disconnected=מנותק
 door=דלת
 door_open=דלת פתוחה
 dock=עגינה

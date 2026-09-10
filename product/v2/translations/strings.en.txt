@@ -46,6 +46,7 @@ dimmed=Dimmed
 direction=Direction
 disarm=Disarm
 disarmed=Disarmed
+disconnected=Disconnected
 door=Door
 door_open=Door Open
 dock=Dock
