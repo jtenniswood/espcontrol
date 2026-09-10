@@ -249,4 +249,3 @@ settings=Ayarlar
 brightness=Parlaklık
 daytime=Gündüz
 nighttime=Gece
-backlight=Arka aydınlatma

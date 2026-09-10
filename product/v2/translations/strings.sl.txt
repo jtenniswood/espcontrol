@@ -249,4 +249,3 @@ settings=Nastavitve
 brightness=Svetlost
 daytime=Dan
 nighttime=Noč
-backlight=Osvetlitev ozadja

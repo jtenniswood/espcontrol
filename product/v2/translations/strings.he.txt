@@ -249,4 +249,3 @@ settings=הגדרות
 brightness=בהירות
 daytime=יום
 nighttime=לילה
-backlight=תאורה אחורית

@@ -30,12 +30,6 @@ Configured in the **Brightness** section of the **Settings** tab in [Setup](/fea
 
 Sunrise and sunset times are derived from the timezone set in [Time Settings](/features/clock).
 
-## On-device brightness card
-
-Open Settings on the display and slide up or down on the 1×1 **Backlight** card, just like a light brightness card. The coloured fill shows the selected level without a percentage label; release to save it. The minimum is 10%, so this control cannot turn off the backlight.
-
-In Manual mode it adjusts the normal brightness. In automatic modes it adjusts the current Daytime or Nighttime level without changing the schedule.
-
 ## Home Assistant Control
 
 The panel exposes **Screen: Brightness Mode** and **Display Backlight** to Home Assistant, along with the day, night, dawn, and dusk settings. Selecting the mode in Home Assistant behaves the same as selecting it in Setup.

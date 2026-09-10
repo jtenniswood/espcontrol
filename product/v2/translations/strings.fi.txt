@@ -249,4 +249,3 @@ settings=Asetukset
 brightness=Kirkkaus
 daytime=Päivä
 nighttime=Yö
-backlight=Taustavalo

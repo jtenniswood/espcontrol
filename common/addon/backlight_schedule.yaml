@@ -87,42 +87,8 @@ esphome:
   on_boot:
     # Keep boot handlers in a list so later screen packages append rather than
     # replace this initialization during ESPHome package merging.
-    # Publish the live fail-dark decision before the loading screen's -200
-    # handler can decide whether it is safe to light the panel.
     - priority: -190
       then:
-        - lambda: |-
-            settings_backlight_service().read = []() {
-              SettingsBacklightState state;
-              state.available = true;
-              const bool manual = brightness_mode_manual(
-                  id(brightness_mode).current_option());
-              state.level = manual
-                  ? SettingsBacklightLevel::MANUAL
-                  : id(last_is_daytime) ? SettingsBacklightLevel::DAYTIME
-                                        : SettingsBacklightLevel::NIGHTTIME;
-              state.percent = manual
-                  ? id(manual_brightness_pct)
-                  : id(last_is_daytime) ? id(brightness_day).state
-                                        : id(brightness_night).state;
-              return state;
-            };
-            settings_backlight_service().write = [](
-                SettingsBacklightLevel level, int percent) {
-              const auto active = settings_backlight_service().read();
-              if (active.level != level) return;
-              percent = settings_backlight_percent(level, percent);
-              if (level == SettingsBacklightLevel::MANUAL) {
-                id(manual_brightness_pct) = percent;
-                id(backlight_apply_brightness).execute();
-              } else {
-                auto *setting = level == SettingsBacklightLevel::DAYTIME
-                    ? id(brightness_day) : id(brightness_night);
-                auto call = setting->make_call();
-                call.set_value(percent);
-                call.perform();
-              }
-            };
         - lambda: |-
             if (!id(screen_schedule_sensor_entity_migrated)) {
               auto call = id(screen_schedule_sensor_entity).make_call();

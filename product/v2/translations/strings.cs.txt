@@ -249,4 +249,3 @@ settings=Nastavení
 brightness=Jas
 daytime=Den
 nighttime=Noc
-backlight=Podsvícení

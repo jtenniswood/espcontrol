@@ -183,11 +183,6 @@ target_compile_options(backlight_fade_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(backlight_fade_test PRIVATE ../../components/espcontrol)
 add_test(NAME backlight_fade_test COMMAND backlight_fade_test)
 
-add_executable(settings_backlight_test settings_backlight_test.cpp)
-target_compile_features(settings_backlight_test PRIVATE cxx_std_17)
-target_compile_options(settings_backlight_test PRIVATE -Wall -Wextra -Werror)
-add_test(NAME settings_backlight_test COMMAND settings_backlight_test)
-
 add_executable(network_status_layout_test network_status_layout_test.cpp)
 target_compile_features(network_status_layout_test PRIVATE cxx_std_17)
 target_compile_options(network_status_layout_test PRIVATE -Wall -Wextra -Werror)

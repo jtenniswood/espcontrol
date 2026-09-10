@@ -249,4 +249,3 @@ settings=Paramètres
 brightness=Luminosité
 daytime=Jour
 nighttime=Nuit
-backlight=Rétroéclairage

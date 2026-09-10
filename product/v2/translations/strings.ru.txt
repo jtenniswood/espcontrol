@@ -249,4 +249,3 @@ settings=Настройки
 brightness=Яркость
 daytime=День
 nighttime=Ночь
-backlight=Подсветка

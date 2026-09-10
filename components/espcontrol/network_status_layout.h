@@ -10,7 +10,6 @@ struct NetworkStatusGridCell {
 constexpr int NETWORK_STATUS_BACK_CARD_INDEX = 0;
 constexpr int NETWORK_STATUS_IP_CARD_INDEX = 1;
 constexpr int NETWORK_STATUS_BUILD_CARD_INDEX = 2;
-constexpr int NETWORK_STATUS_BACKLIGHT_CARD_INDEX = 3;
 
 inline NetworkStatusGridCell network_status_grid_cell(int card_index,
                                                        int columns) {
