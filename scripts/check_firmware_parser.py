@@ -1036,6 +1036,7 @@ def main() -> int:
         shutil.copy2(LAYOUT_HEADER, tmp_path / "button_grid_layout.h")
         shutil.copy2(LIMITS_HEADER, tmp_path / "button_grid_limits.h")
         shutil.copy2(STRING_HEADER, tmp_path / "button_grid_string.h")
+        shutil.copy2(STRING_HEADER.parent / "camera_refresh_policy.h", tmp_path / "camera_refresh_policy.h")
         shutil.copy2(DISPLAY_TEXT_HEADER, tmp_path / "display_text.h")
         lvgl_stub = tmp_path / "esphome" / "components" / "lvgl" / "lvgl_esphome.h"
         lvgl_stub.parent.mkdir(parents=True, exist_ok=True)

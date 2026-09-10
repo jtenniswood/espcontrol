@@ -405,6 +405,13 @@ target_compile_options(climate_update_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(climate_update_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME climate_update_test COMMAND climate_update_test)
 
+add_executable(camera_refresh_policy_test camera_refresh_policy_test.cpp)
+target_compile_features(camera_refresh_policy_test PRIVATE cxx_std_17)
+target_compile_options(camera_refresh_policy_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(camera_refresh_policy_test PRIVATE ../../components/espcontrol)
+add_test(NAME camera_refresh_policy_test COMMAND camera_refresh_policy_test)
+add_test(NAME camera_refresh_runtime_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/camera_refresh_runtime_test.py)
 add_executable(reset_policy_test reset_policy_test.cpp)
 find_package(Threads REQUIRED)
 target_link_libraries(reset_policy_test PRIVATE Threads::Threads)

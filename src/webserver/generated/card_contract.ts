@@ -3739,6 +3739,36 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         ],
         "defaultValue": "fill",
         "omitDefault": true
+      },
+      {
+        "name": "image_modal_refresh_mode",
+        "label": "Expanded view refresh",
+        "kind": "choice",
+        "values": [
+          "off",
+          "periodic",
+          "activity"
+        ],
+        "defaultValue": "off",
+        "omitDefault": true
+      },
+      {
+        "name": "image_modal_refresh_interval",
+        "label": "Refresh interval",
+        "kind": "choice",
+        "values": [
+          "5",
+          "10",
+          "30"
+        ],
+        "defaultValue": "10",
+        "omitDefault": true
+      },
+      {
+        "name": "image_modal_refresh_trigger",
+        "label": "Trigger entity",
+        "kind": "text",
+        "omitDefault": true
       }
     ],
     "normalization": {
@@ -3780,7 +3810,10 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "canonicalOptionOrder": [
         "image_label",
         "image_icon",
-        "image_modal_mode"
+        "image_modal_mode",
+        "image_modal_refresh_mode",
+        "image_modal_refresh_interval",
+        "image_modal_refresh_trigger"
       ],
       "optionHook": "normalize_image_options"
     },
@@ -4726,6 +4759,9 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "image_icon": "image_icon",
   "image_label": "image_label",
   "image_modal_mode": "image_modal_mode",
+  "image_modal_refresh_interval": "image_modal_refresh_interval",
+  "image_modal_refresh_mode": "image_modal_refresh_mode",
+  "image_modal_refresh_trigger": "image_modal_refresh_trigger",
   "internal_mode": "internal_mode",
   "label_display": "label_display",
   "large_numbers": "large_numbers",

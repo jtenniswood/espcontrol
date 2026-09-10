@@ -3099,6 +3099,43 @@ async function assertCoverSettingsPanels(page, label) {
   });
 }
 
+async function assertCameraRefreshSettings(page, posts, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  const before = posts.length;
+  await page.locator(".sp-empty-cell:not(.sp-info-only-hidden)").first().click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.getByRole("button", { name: "Camera Card card type", exact: true }).click();
+  await page.locator("#sp-inp-entity").fill("camera.front_door");
+  await page.locator("#sp-inp-entity").dispatchEvent("change");
+  await page.locator(".sp-settings-modal .sp-disclosure").filter({ hasText: "Modal Settings" })
+    .locator("> .sp-disclosure-button").click();
+  const mode = page.locator("#sp-inp-image-refresh-mode");
+  const interval = page.locator("#sp-inp-image-refresh-interval");
+  const trigger = page.locator("#sp-inp-image-refresh-trigger");
+  assert.strictEqual(await mode.inputValue(), "off", `${label}: camera refresh is opt-in`);
+  assert(!(await interval.isVisible()));
+  await mode.selectOption("periodic");
+  assert.strictEqual(await interval.inputValue(), "10");
+  await interval.selectOption("5");
+  assert(!(await trigger.isVisible()));
+  await mode.selectOption("activity");
+  assert(await trigger.isVisible());
+  assert(!(await interval.isVisible()));
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  const error = page.getByText("Choose a binary sensor or event entity for activity refresh.", { exact: true });
+  assert(await error.isVisible());
+  await trigger.fill("camera.other");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  assert(await error.isVisible());
+  await trigger.fill("event.doorbell");
+  assert.strictEqual(await error.count(), 0);
+  assert.strictEqual(posts.length, before, `${label}: invalid refresh drafts must not save`);
+  await page.locator("#sp-inp-entity").fill("image.front_door");
+  assert(!(await mode.isVisible()), `${label}: image entities use revision events instead of polling controls`);
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay").classList.contains("sp-visible"));
+}
+
 async function assertMediaCoverArtSettingsPanels(page, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
@@ -5684,6 +5721,7 @@ async function runCase(browser, testCase) {
       await assertFanOptionalLightSettings(page, testCase.name);
       await assertWebhookSettingsPanel(page, posts, testCase.name);
       await assertNumberActionRequiresValue(page, posts, testCase.name);
+      await assertCameraRefreshSettings(page, posts, testCase.name);
     }
     await assertInternalControlsPanel(page, posts, testCase.name);
     await assertEmptyCellSettings(page, posts, testCase.name);

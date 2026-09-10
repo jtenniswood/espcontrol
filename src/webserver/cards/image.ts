@@ -1,3 +1,4 @@
+import { configOptionValue, setConfigOptionValue } from "../model/config_primitives";
 import {
     cardContractAllowInSubpage,
     cardContractCard,
@@ -25,6 +26,7 @@ export function registerImageCardTypes(
         imageLabelEnabled,
         imageIconEnabled,
         normalizeImageOptions,
+        validImageRefreshTrigger,
         setImageLabelEnabled,
         setImageIconEnabled,
         setImageModalMode,
@@ -102,13 +104,52 @@ export function registerImageCardTypes(
         syncLabelField();
         syncIconField();
     }
-    function renderImageModalSettings(this: any, panel?: any, b?: any, helpers?: any) {
+    function renderImageModalSettings(this: any, panel?: any, b?: any, helpers?: any, entityInput?: any) {
         var modeField: any = helpers.selectField("Expanded Image", helpers.idPrefix + "image-modal-mode", imageModalModeOptions(), imageModalMode(b));
         panel.appendChild(modeField.field);
         modeField.select.addEventListener("change", function (this: any) {
             setImageModalMode(b, this.value);
             helpers.saveField("options", b.options);
         });
+        const isCamera = () => String(b.entity || "").startsWith("camera.");
+        const refresh = helpers.selectField("Expanded view refresh", helpers.idPrefix + "image-refresh-mode", [
+            ["off", "Off"], ["periodic", "Periodic"], ["activity", "On activity"],
+        ], configOptionValue(b.options, "image_modal_refresh_mode") || "off");
+        const interval = helpers.selectField("Refresh interval", helpers.idPrefix + "image-refresh-interval", [
+            ["5", "5 seconds"], ["10", "10 seconds"], ["30", "30 seconds"],
+        ], configOptionValue(b.options, "image_modal_refresh_interval") || "10");
+        const trigger = helpers.entityField("Trigger entity", helpers.idPrefix + "image-refresh-trigger",
+            configOptionValue(b.options, "image_modal_refresh_trigger"),
+            "e.g. binary_sensor.front_door_motion", ["binary_sensor", "event"]);
+        const help = document.createElement("p");
+        help.className = "sp-setting-note";
+        help.textContent = "While expanded, activity refreshes the image every 5 seconds for 30 seconds. Further activations extend the window. The return-home timeout still applies.";
+        panel.appendChild(refresh.field);
+        panel.appendChild(interval.field);
+        panel.appendChild(trigger.field);
+        panel.appendChild(help);
+        helpers.requireField(trigger.input, "Choose a binary sensor or event entity for activity refresh.",
+            () => isCamera() && refresh.select.value === "activity", (value: string) => validImageRefreshTrigger(value.trim()));
+        function syncVisibility() {
+            refresh.field.hidden = !isCamera();
+            interval.field.hidden = !isCamera() || refresh.select.value !== "periodic";
+            trigger.field.hidden = help.hidden = !isCamera() || refresh.select.value !== "activity";
+        }
+        function syncRefreshSettings() {
+            syncVisibility();
+            let options = setConfigOptionValue(b.options, "image_modal_refresh_mode", refresh.select.value);
+            options = setConfigOptionValue(options, "image_modal_refresh_interval", interval.select.value);
+            options = setConfigOptionValue(options, "image_modal_refresh_trigger", trigger.input.value.trim());
+            b.options = normalizeImageOptions(options, b.entity, true);
+            helpers.saveField("options", b.options);
+        }
+        refresh.select.addEventListener("change", syncRefreshSettings);
+        interval.select.addEventListener("change", syncRefreshSettings);
+        trigger.input.addEventListener("input", syncRefreshSettings);
+        trigger.input.addEventListener("change", syncRefreshSettings);
+        entityInput.addEventListener("input", syncRefreshSettings);
+        entityInput.addEventListener("change", syncRefreshSettings);
+        syncVisibility();
     }
     registry.register("image", {
         label: function (this: any) { return cardContractCardLabel("image"); },
@@ -125,7 +166,7 @@ export function registerImageCardTypes(
             b.sensor = "";
             b.unit = "";
             b.precision = "";
-            b.options = normalizeImageOptions(b.options);
+            b.options = normalizeImageOptions(b.options, b.entity, true);
         },
         renderSettings: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
             if (imageIconEnabled(b)) {
@@ -139,13 +180,13 @@ export function registerImageCardTypes(
             b.sensor = "";
             b.unit = "";
             b.precision = "";
-            b.options = normalizeImageOptions(b.options);
+            b.options = normalizeImageOptions(b.options, b.entity, true);
             if (!imageLabelEnabled(b))
                 b.label = "";
-            helpers.renderCardEntityField(panel, b, helpers, IMAGE_CARD_METADATA);
+            const entityField = helpers.renderCardEntityField(panel, b, helpers, IMAGE_CARD_METADATA);
             renderImageLabelSettings(panel, b, helpers);
             var modalSettingsDisclosure: any = helpers.disclosureSection("Modal Settings", helpers.idPrefix + "image-modal-settings", false);
-            renderImageModalSettings(modalSettingsDisclosure.section, b, helpers);
+            renderImageModalSettings(modalSettingsDisclosure.section, b, helpers, entityField.input);
             panel.appendChild(modalSettingsDisclosure.panel);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {

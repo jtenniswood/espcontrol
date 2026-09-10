@@ -151,7 +151,10 @@ export function createConfigImageOptionsFeature(dependencies: ConfigImageOptions
     function imageIconEnabled(this: any, b?: any) {
         return !!(b && configOptionEnabled(b.options, IMAGE_ICON_OPTION));
     }
-    function normalizeImageOptions(this: any, options?: any) {
+    function validImageRefreshTrigger(value: string) {
+        return /^(binary_sensor|event)\.[a-z0-9_]+$/.test(value);
+    }
+    function normalizeImageOptions(this: any, options?: any, entity?: string, draft = false) {
         var out: any = "";
         if (configOptionEnabled(options, IMAGE_LABEL_OPTION)) {
             out = setConfigOption(out, IMAGE_LABEL_OPTION, true);
@@ -163,6 +166,19 @@ export function createConfigImageOptionsFeature(dependencies: ConfigImageOptions
         if (modalMode !== cardContractOptionDefaultValue("image", IMAGE_MODAL_MODE_OPTION, "fill")) {
             out = setConfigOptionValue(out, IMAGE_MODAL_MODE_OPTION, modalMode);
         }
+        if (!entity || entity.startsWith("camera.")) {
+            const mode = configOptionValue(options, "image_modal_refresh_mode");
+            const trigger = configOptionValue(options, "image_modal_refresh_trigger");
+            if (mode === "periodic") {
+                out = setConfigOptionValue(out, "image_modal_refresh_mode", mode);
+                const interval = configOptionValue(options, "image_modal_refresh_interval");
+                if (interval === "5" || interval === "30")
+                    out = setConfigOptionValue(out, "image_modal_refresh_interval", interval);
+            } else if (mode === "activity" && (draft || validImageRefreshTrigger(trigger))) {
+                out = setConfigOptionValue(out, "image_modal_refresh_mode", mode);
+                out = setConfigOptionValue(out, "image_modal_refresh_trigger", trigger);
+            }
+        }
         return out;
     }
     function setImageLabelEnabled(this: any, b?: any, enabled?: any) {
@@ -171,14 +187,14 @@ export function createConfigImageOptionsFeature(dependencies: ConfigImageOptions
         b.options = setConfigOption(b.options, IMAGE_LABEL_OPTION, !!enabled);
         if (!enabled)
             b.label = "";
-        b.options = normalizeImageOptions(b.options);
+        b.options = normalizeImageOptions(b.options, b.entity, true);
         return b.options;
     }
     function setImageIconEnabled(this: any, b?: any, enabled?: any) {
         if (!b)
             return "";
         b.options = setConfigOption(b.options, IMAGE_ICON_OPTION, !!enabled);
-        b.options = normalizeImageOptions(b.options);
+        b.options = normalizeImageOptions(b.options, b.entity, true);
         return b.options;
     }
     function setImageModalMode(this: any, b?: any, value?: any) {
@@ -186,7 +202,7 @@ export function createConfigImageOptionsFeature(dependencies: ConfigImageOptions
             return "";
         var mode: any = normalizeImageModalMode(value);
         b.options = setConfigOptionValue(b.options, IMAGE_MODAL_MODE_OPTION, mode === "fill" ? "" : mode);
-        b.options = normalizeImageOptions(b.options);
+        b.options = normalizeImageOptions(b.options, b.entity, true);
         return b.options;
     }
     return {
@@ -208,6 +224,7 @@ export function createConfigImageOptionsFeature(dependencies: ConfigImageOptions
         imageLabelEnabled,
         imageIconEnabled,
         normalizeImageOptions,
+        validImageRefreshTrigger,
         setImageLabelEnabled,
         setImageIconEnabled,
         setImageModalMode,

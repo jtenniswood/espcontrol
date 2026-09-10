@@ -404,7 +404,9 @@ void reconnect_does_not_replay_previous_connection_state() {
           "initial cover subscription should register");
   coordinator.transport().publish(0, "42");
   coordinator.reset_subscriptions(scope);
+  const auto connection_before = coordinator.connection_generation();
   coordinator.invalidate_retained_state();
+  require(coordinator.connection_generation() != connection_before, "disconnect must invalidate activity baselines");
 
   int calls = 0;
   require(coordinator.subscribe("cover.blind", "current_position",
