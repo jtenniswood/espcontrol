@@ -16,6 +16,7 @@ export interface NativePanelConfigResponse {
 export interface NativePanelConfigRequest {
   readonly method?: "GET" | "PUT";
   readonly cache?: "no-store";
+  readonly credentials?: "include";
   readonly headers?: Record<string, string>;
   readonly body?: Uint8Array;
 }

@@ -255,7 +255,7 @@ function composeApplicationContext(): ApplicationContext {
     document,
     window,
     fetch: fetchService,
-    createEventSource: () => new EventSource("/events"),
+    createEventSource: () => new EventSource("/events", { withCredentials: true }),
     schedule: ((callback: TimerHandler, delay?: number) => window.setTimeout(callback, delay)) as typeof setTimeout,
   };
   const deviceApi = createDeviceApi((url, init) =>

@@ -452,6 +452,55 @@ describe("browserless application contracts", () => {
     assert.match(docs, /web_server_auth` package is not required for Wifi Sharing/);
   });
 
+  test("authenticates native configuration bodies before receiving and before saving", () => {
+    const nativeWrite = fs.readFileSync(path.join(ROOT, "components/espcontrol/panel_config_write_endpoint.h"), "utf8");
+    const webServer = fs.readFileSync(path.join(ROOT, "components/web_server_idf/web_server_idf.cpp"), "utf8");
+
+    const receivePolicy = nativeWrite.slice(
+      nativeWrite.indexOf("bool canReceiveBody"),
+      nativeWrite.indexOf("void handleBody"),
+    );
+    assert.match(receivePolicy, /request->authenticate\(context\.username, context\.password\)/);
+    assert.ok(receivePolicy.indexOf("request->authenticate") < receivePolicy.indexOf("return true"));
+
+    const savePolicy = nativeWrite.slice(
+      nativeWrite.indexOf("void handleRequest"),
+      nativeWrite.indexOf("private:"),
+    );
+    assert.match(savePolicy, /request->authenticate\(context\.username, context\.password\)/);
+    assert.ok(savePolicy.indexOf("request->authenticate") < savePolicy.indexOf("save_if_generation"));
+
+    const rawBodyDispatcher = webServer.slice(
+      webServer.indexOf("esp_err_t AsyncWebServer::handle_raw_body_"),
+      webServer.indexOf("esp_err_t AsyncWebServer::request_handler"),
+    );
+    assert.ok(rawBodyDispatcher.indexOf("canReceiveBody") < rawBodyDispatcher.indexOf("httpd_req_recv"));
+  });
+
+  test("explicitly includes HTTP credentials in every browser request transport", () => {
+    const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
+    const migration = fs.readFileSync(path.join(ROOT, "src/webserver/application/native_panel_config_migration.ts"), "utf8");
+    const deviceConfig = fs.readFileSync(path.join(ROOT, "src/webserver/device_config.ts"), "utf8");
+    const sensor = fs.readFileSync(path.join(ROOT, "src/webserver/cards/sensor.ts"), "utf8");
+    const action = fs.readFileSync(path.join(ROOT, "src/webserver/cards/action.ts"), "utf8");
+    assert.match(entry, /new EventSource\("\/events", \{ withCredentials: true \}\)/);
+    for (const source of [migration, deviceConfig, sensor, action]) {
+      assert.match(source, /credentials: "include"/);
+    }
+  });
+
+  test("requires per-request authorization without bearer cookies on plain HTTP", () => {
+    const webServer = fs.readFileSync(path.join(ROOT, "components/web_server_idf/web_server_idf.cpp"), "utf8");
+    const authenticate = webServer.slice(
+      webServer.indexOf("bool AsyncWebServerRequest::authenticate("),
+      webServer.indexOf("void AsyncWebServerRequest::requestAuthentication("),
+    );
+    assert.match(authenticate, /if \(!auth\.has_value\(\)\) \{\s*(?:\/\/[^\n]*\n\s*)*return false;/);
+    assert.doesNotMatch(authenticate, /get_header\("Cookie"\)/);
+    assert.doesNotMatch(webServer, /ESPControlAuth|Set-Cookie|authenticate_digest_session|issue_digest_session/);
+    assert.match(authenticate, /check_digest_auth\(username, password/);
+  });
+
   test("normalizes and preserves Wifi modal tab settings", () => {
     const modalTabs = createConfigModalTabOptionsFeature({ document: {}, renderButtonSettings() {} });
     assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("credentials|qr")), ["credentials", "qr"]);

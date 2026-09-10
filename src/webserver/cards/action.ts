@@ -499,7 +499,7 @@ export function registerActionCardTypes(
             helpers.requireField(keyInp, "Add an action key before saving.");
         }
         pickerSection.textContent = "Loading actions…";
-        fetch("/local_actions")
+        fetch("/local_actions", { credentials: "include" })
             .then(function (this: any, resp?: any) {
             if (!resp.ok)
                 throw new Error("HTTP " + resp.status);
