@@ -25,6 +25,8 @@ constexpr const char *NETWORK_ICON_ETHERNET = "\U000F0200";
 struct NetworkStatusModalUi {
   lv_obj_t *overlay = nullptr;
   lv_obj_t *ip_lbl = nullptr;
+  lv_obj_t *wifi_label = nullptr;
+  float (*wifi_quality)() = nullptr;
   lv_timer_t *refresh_timer = nullptr;
   lv_coord_t columns[MAX_GRID_SLOTS + 1]{};
   lv_coord_t rows[MAX_GRID_SLOTS + 1]{};
@@ -165,6 +167,14 @@ inline void network_status_hide_modal() {
 inline void network_status_refresh_page() {
   auto &ui = network_status_modal_ui();
   if (!ui.overlay) return;
+  if (ui.wifi_label && ui.wifi_quality) {
+    const float quality = ui.wifi_quality();
+    const std::string label = std::isfinite(quality)
+        ? "Wi-Fi " + std::to_string(static_cast<int>(std::lround(
+              std::max(0.0f, std::min(100.0f, quality))))) + "%"
+        : "Wi-Fi —";
+    lv_label_set_display_text(ui.wifi_label, label.c_str());
+  }
   if (ui.ip_lbl) {
     const std::string ip_address = network_status_ip_address();
     lv_label_set_display_text(ui.ip_lbl, ip_address.c_str());
@@ -175,7 +185,8 @@ inline void network_status_open_modal(const std::string &device_name,
                                       const std::string &ip_address,
                                       const std::string &firmware_version,
                                       const lv_font_t *text_font,
-                                      const lv_font_t *icon_font) {
+                                      const lv_font_t *icon_font,
+                                      float (*wifi_quality)() = nullptr) {
   (void) device_name;
   const std::string previous_subpage_label = clock_bar_subpage_label();
   network_status_hide_modal();
@@ -187,6 +198,7 @@ inline void network_status_open_modal(const std::string &device_name,
   if (!page) return;
 
   auto &ui = network_status_modal_ui();
+  ui.wifi_quality = wifi_quality;
   const lv_font_t *label_font = reference
                                     ? lv_obj_get_style_text_font(reference,
                                                                  LV_PART_MAIN)
@@ -227,7 +239,9 @@ inline void network_status_open_modal(const std::string &device_name,
       ui.overlay, lv_obj_get_style_pad_column(page, LV_PART_MAIN), LV_PART_MAIN);
 
   const int cols = std::max(1, std::min(metrics.cols, MAX_GRID_SLOTS));
-  const int rows = std::max(1, std::min(metrics.rows, MAX_GRID_SLOTS));
+  const int configured_rows = std::max(1, std::min(metrics.rows, MAX_GRID_SLOTS));
+  const int card_count = NETWORK_STATUS_CARD_COUNT - (wifi_quality ? 0 : 1);
+  const int rows = network_status_grid_rows(cols, configured_rows, card_count);
   for (int i = 0; i < cols; ++i) ui.columns[i] = LV_GRID_FR(1);
   for (int i = 0; i < rows; ++i) ui.rows[i] = LV_GRID_FR(1);
   ui.columns[cols] = LV_GRID_TEMPLATE_LAST;
@@ -235,17 +249,20 @@ inline void network_status_open_modal(const std::string &device_name,
   lv_obj_set_layout(ui.overlay, LV_LAYOUT_GRID);
   lv_obj_set_grid_dsc_array(ui.overlay, ui.columns, ui.rows);
 
-  const char *labels[] = {espcontrol_i18n("Back"), ip_address.c_str(), ""};
-  const char *icons[] = {"\U000F0141", "\U000F0200", "\U000F035B"};
+  const char *labels[] = {espcontrol_i18n("Back"), ip_address.c_str(), "", ""};
+  const char *icons[] = {"\U000F0141", "\U000F0200", "\U000F05A9", "\U000F035B"};
 
-  for (int i = 0; i < 3; ++i) {
+  int visible_index = 0;
+  for (int i = 0; i < NETWORK_STATUS_CARD_COUNT; ++i) {
+    if (i == NETWORK_STATUS_WIFI_CARD_INDEX && !wifi_quality) continue;
     auto *button = create_grid_card_button(ui.overlay, radius, card_pad,
                                            label_font, text_color);
     apply_button_colors(button, false, DEFAULT_SLIDER_COLOR, true,
                         DEFAULT_OFF_COLOR);
     // Follow the device's normal card order and let its column count determine
     // where the next row begins.
-    const NetworkStatusGridCell cell = network_status_grid_cell(i, cols);
+    const NetworkStatusGridCell cell =
+        network_status_grid_cell(visible_index++, cols);
     lv_obj_set_grid_cell(button, LV_GRID_ALIGN_STRETCH, cell.column, 1,
                          LV_GRID_ALIGN_STRETCH, cell.row, 1);
     BtnSlot slot = create_dynamic_card_slot(button, card_icon_font, label_font,
@@ -265,6 +282,8 @@ inline void network_status_open_modal(const std::string &device_name,
     lv_obj_clear_flag(button, LV_OBJ_FLAG_CLICKABLE);
     if (i == NETWORK_STATUS_IP_CARD_INDEX) {
       ui.ip_lbl = slot.text_lbl;
+    } else if (i == NETWORK_STATUS_WIFI_CARD_INDEX) {
+      ui.wifi_label = slot.text_lbl;
     } else if (i == NETWORK_STATUS_BUILD_CARD_INDEX) {
       const std::string build_label =
           network_status_firmware_label(firmware_version);
