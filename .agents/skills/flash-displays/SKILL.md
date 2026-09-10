@@ -1,6 +1,6 @@
 ---
 name: flash-displays
-description: Flash EspControl display firmware from this repository using ESPHome. Use when the user invokes /flash-displays with no extra display name, or asks to flash, reflash, update, or upload firmware to all known displays in sequence, or to a specific display such as 7inch, 7-inch P4, 10inch, 10-inch V1, 10-inch V2, P4-86, 4.3-inch P4, 4-inch P4, or 4-inch S3, over an explicitly supplied OTA target or USB.
+description: Flash EspControl display firmware from this repository using ESPHome. Use when the user invokes /flash-displays with no extra display name, or asks to flash, reflash, update, or upload firmware to all known displays in sequence, or to a specific display such as 7inch, 7-inch P4, 10inch, 10-inch V1, 10-inch V2, P4-86, 4.3-inch P4, 4-inch P4, or S3, over an explicitly supplied OTA target or USB.
 ---
 
 # Flash Displays
@@ -19,7 +19,7 @@ Use the local development ESPHome configs to flash the known EspControl displays
 | `10inch V2`, `10-inch V2`, `JC8012P4A1 V2` | `devices/guition-esp32-p4-jc8012p4a1-v2` | Ask for the target |
 | `4inch P4`, `4-inch P4`, `P4-86`, `86 Panel`, `Waveshare P4-86`, `esp32-p4-86` | `devices/esp32-p4-86` | `192.168.6.104` |
 | `4.3inch P4`, `4.3-inch P4`, `P4 4.3inch`, `P4 4.3-inch`, `JC4880P443` | `devices/guition-esp32-p4-jc4880p443` | `192.168.6.101` |
-| `4inch S3`, `4-inch S3`, `4848S040` | `devices/guition-esp32-s3-4848s040` | `192.168.6.105` |
+| `S3`, `4inch S3`, `4-inch S3`, `4848S040` | `devices/guition-esp32-s3-4848s040` | `192.168.6.105` |
 
 Treat the 7-inch panel at `192.168.6.102`, and an ambiguous or default `7inch` request, as V1 hardware. Always flash that panel with the V1 `JC1060P470` configuration in `devices/guition-esp32-p4-jc1060p470`; never substitute the V2 configuration because that firmware will not work on this panel. Select the V2 directory only when the user explicitly requests the 7-inch V2 panel and supplies a different OTA target or explicitly requests USB.
 
@@ -27,7 +27,7 @@ Treat the 10-inch panel at `192.168.6.103`, and an ambiguous or default `10inch`
 
 All screens can also be flashed over USB when explicitly requested. Use the selected screen's config directory and the local serial target, normally `/dev/cu.usbmodem201301`.
 
-If the user says only `4inch` or `4-inch`, ask whether they mean the 4-inch P4 screen or the 4-inch S3 screen.
+If the user says only `4inch` or `4-inch`, ask whether they mean the 4-inch P4 screen or the S3 screen.
 
 For `/flash-displays` with no extra target, or for `all`, flash in this sequence by default over OTA using the default targets above:
 
@@ -35,7 +35,7 @@ For `/flash-displays` with no extra target, or for `all`, flash in this sequence
 2. 10-inch P4 V1.
 3. 4-inch P4 / P4-86.
 4. 4.3-inch P4.
-5. 4-inch S3.
+5. S3.
 
 ## YAML Selection
 
@@ -144,11 +144,11 @@ python3 ../../scripts/local_esphome.py dev.yaml run --device 192.168.6.101 --no-
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc4880p443
 python3 ../../scripts/local_esphome.py dev.yaml run --device /dev/cu.usbmodem201301 --no-logs
 
-# 4-inch S3 over OTA
+# S3 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-s3-4848s040
 python3 ../../scripts/local_esphome.py dev.yaml run --device 192.168.6.105 --no-logs
 
-# 4-inch S3 over USB, only when explicitly requested
+# S3 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-s3-4848s040
 python3 ../../scripts/local_esphome.py dev.yaml run --device /dev/cu.usbmodem201301 --no-logs
 
