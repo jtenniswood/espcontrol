@@ -276,6 +276,9 @@ export function createClockBarFeature(
         if (els.setVoiceServicesToggle) {
             els.setVoiceServicesToggle.checked = voiceServicesUiState().iconVisible;
         }
+        if (els.setVoiceServicesBadge) {
+            els.setVoiceServicesBadge.className = "sp-card-badge" + (voiceServicesUiState().iconVisible ? "" : " sp-hidden");
+        }
         if (els.setBatteryStatusToggle) {
             els.setBatteryStatusToggle.checked = !!state.batteryStatusOn;
         }
