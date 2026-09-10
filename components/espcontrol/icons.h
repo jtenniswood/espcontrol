@@ -37,6 +37,7 @@ static const IconEntry ICON_ENTRIES[] = {
     {"Repeat",                         "\U000F0456"},
     {"Repeat Once",                    "\U000F0458"},
     {"Image Card Unavailable",         "\U000F02ED"},
+    {"Memory",                         "\U000F035B"},
     {"Chevron Left",                   "\U000F0141"},
     {"Chevron Right",                  "\U000F0142"},
     {"Account",                        "\U000F0004"},
