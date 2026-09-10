@@ -86,8 +86,11 @@ def main() -> None:
         "if (!id(display_backlight).remote_values.is_on()) return;"
     ), "startup guard must run before restored light-state handling"
 
+    assert "on_boot:\n" in text and "    - priority: -190" in text, (
+        "schedule boot handler must be a list item so later packages preserve the brightness service"
+    )
     boot = text.index("priority: -190")
-    boot_end = text.index("\n      - lambda: |-", text.index("id(brightness_mode_runtime_ready) = true;", boot)) + 1
+    boot_end = text.index("\n        - lambda: |-", text.index("id(brightness_mode_runtime_ready) = true;", boot)) + 1
     boot_text = text[boot:boot_end]
     assert "id(brightness_mode_runtime_ready) = true;" in boot_text, (
         "brightness mode must become runtime-ready during boot initialization"

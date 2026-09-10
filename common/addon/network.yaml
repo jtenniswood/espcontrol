@@ -33,7 +33,12 @@ script:
             network_status_ip_address(),
             "${firmware_version}",
             id(${media_title_font})->get_lv_font(),
-            id(${icon_font})->get_lv_font());
+            id(${icon_font})->get_lv_font(),
+            +[]() -> float {
+              if (wifi::global_wifi_component == nullptr ||
+                  !wifi::global_wifi_component->is_connected()) return NAN;
+              return id(wifi_strength_percent).state;
+            });
 
 # ---------------------------------------------------------------------------
 # Uptime and WiFi signal sensors
