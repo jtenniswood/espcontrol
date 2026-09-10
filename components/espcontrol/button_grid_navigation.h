@@ -260,7 +260,10 @@ inline std::string navigation_active_subpage_label() {
 }
 
 inline void navigation_refresh_subpage_label() {
-  if (network_status_modal_ui().overlay != nullptr) return;
+  if (network_status_modal_ui().overlay != nullptr) {
+    set_clock_bar_subpage_label(espcontrol_i18n(std::string("Settings")));
+    return;
+  }
   set_clock_bar_subpage_label(navigation_active_subpage_label());
 }
 
