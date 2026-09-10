@@ -38,6 +38,8 @@ usage documentation lives in the root `README.md` and under `docs/`.
 - [Web Configurator](web-configurator.md)
 - [Firmware UI](firmware.md)
 - [Devices and Builds](devices-and-builds.md)
+- [P4-86 Voice Diagnostics](p4-86-voice-diagnostics.md) - temporary issue #1701
+  firmware and serial capture procedure.
 - [Modal Layout System](modal-layout-system.md)
 - [Display Lifecycle Transition Contract](display-lifecycle.md)
 - [Cover Art Mode](cover-art-mode.md)
