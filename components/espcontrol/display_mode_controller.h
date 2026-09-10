@@ -157,17 +157,94 @@ class DisplayModeController {
     return result;
   }
 
-  bool complete_transition(const DisplayTransition &transition) {
-    if (!generation_is_current(transition.generation)) return false;
-    const DisplayTransition current = resolve();
-    if (transition.target_mode != current.target_mode ||
-        transition.winning_source != current.winning_source ||
-        transition.winning_takeover != current.winning_takeover) {
+  // Presentation effects may span several LVGL loop iterations. Track the
+  // effect separately from the resolved policy so periodic reconciliation can
+  // leave an unchanged transition running instead of restarting its fade.
+  bool start_transition(const DisplayTransition &transition,
+                        uint32_t started_ms) {
+    if (!transition_is_current(transition.generation,
+                               transition.target_mode)) {
       return false;
     }
+    const DisplayTransition current = resolve();
+    if (!same_transition(transition, current)) return false;
+    if (transition_in_progress(transition)) return false;
+    if (!transition_required(current) && !presentation_incomplete_) return false;
+
+    in_flight_ = InFlightTransition{transition, started_ms, false};
+    cancelled_generation_ = 0;
+    presentation_incomplete_ = true;
+    return true;
+  }
+
+  bool transition_in_progress(const DisplayTransition &transition) const {
+    return in_flight_.has_value() &&
+           same_transition(in_flight_->transition, transition);
+  }
+
+  bool has_transition_in_progress() const { return in_flight_.has_value(); }
+
+  const DisplayTransition *in_flight_transition() const {
+    return in_flight_ ? &in_flight_->transition : nullptr;
+  }
+
+  bool cancel_transition() {
+    if (!in_flight_) return false;
+    cancelled_generation_ = in_flight_->transition.generation;
+    in_flight_.reset();
+    // A stopped effect can be retried without any request changing. Advance
+    // the policy generation in that case so a delayed completion from the
+    // cancelled attempt can never match the retry.
+    if (generation_ == cancelled_generation_) advance_generation();
+    return true;
+  }
+
+  void require_presentation_cleanup() { presentation_incomplete_ = true; }
+  bool presentation_incomplete() const { return presentation_incomplete_; }
+
+  uint32_t transition_elapsed_ms(uint32_t now_ms) const {
+    return in_flight_ ? now_ms - in_flight_->started_ms : 0;
+  }
+
+  bool transition_warning_due(uint32_t now_ms, uint32_t threshold_ms) {
+    if (!in_flight_ || in_flight_->warning_emitted ||
+        transition_elapsed_ms(now_ms) < threshold_ms) {
+      return false;
+    }
+    in_flight_->warning_emitted = true;
+    return true;
+  }
+
+  uint32_t last_completed_generation() const {
+    return last_completed_generation_;
+  }
+  uint32_t last_transition_elapsed_ms() const {
+    return last_transition_elapsed_ms_;
+  }
+
+  bool complete_transition(const DisplayTransition &transition) {
+    return complete_transition(transition, 0);
+  }
+
+  bool complete_transition(const DisplayTransition &transition,
+                           uint32_t completed_ms) {
+    if (!generation_is_current(transition.generation)) return false;
+    if (transition.generation == cancelled_generation_) return false;
+    if (in_flight_ && !same_transition(in_flight_->transition, transition)) {
+      return false;
+    }
+    const DisplayTransition current = resolve();
+    if (!same_transition(transition, current)) return false;
     current_mode_ = transition.target_mode;
     current_source_ = transition.winning_source;
     current_takeover_ = transition.winning_takeover;
+    last_completed_generation_ = transition.generation;
+    last_transition_elapsed_ms_ =
+        in_flight_ && completed_ms != 0
+            ? completed_ms - in_flight_->started_ms
+            : 0;
+    in_flight_.reset();
+    presentation_incomplete_ = false;
     return true;
   }
 
@@ -177,8 +254,13 @@ class DisplayModeController {
   }
 
   bool complete_transition(uint32_t generation, DisplayMode target_mode) {
+    return complete_transition(generation, target_mode, 0);
+  }
+
+  bool complete_transition(uint32_t generation, DisplayMode target_mode,
+                           uint32_t completed_ms) {
     if (!transition_is_current(generation, target_mode)) return false;
-    return complete_transition(resolve());
+    return complete_transition(resolve(), completed_ms);
   }
 
   bool transition_required(const DisplayTransition &transition) const {
@@ -240,6 +322,12 @@ class DisplayModeController {
   }
 
  private:
+  struct InFlightTransition {
+    DisplayTransition transition{};
+    uint32_t started_ms{0};
+    bool warning_emitted{false};
+  };
+
   struct Request {
     DisplayMode mode{DisplayMode::ACTIVE};
     uint32_t sequence{0};
@@ -255,6 +343,15 @@ class DisplayModeController {
 
   static constexpr std::size_t takeover_index(DisplayTakeoverKind kind) {
     return static_cast<std::size_t>(kind);
+  }
+
+  static bool same_transition(const DisplayTransition &first,
+                              const DisplayTransition &second) {
+    return first.generation == second.generation &&
+           first.previous_mode == second.previous_mode &&
+           first.target_mode == second.target_mode &&
+           first.winning_source == second.winning_source &&
+           first.winning_takeover == second.winning_takeover;
   }
 
   bool apply_source(DisplayRequestSource source, DisplayTransition &result) const {
@@ -287,6 +384,11 @@ class DisplayModeController {
   DisplayMode current_mode_{DisplayMode::ACTIVE};
   std::optional<DisplayRequestSource> current_source_;
   std::optional<DisplayTakeoverKind> current_takeover_;
+  std::optional<InFlightTransition> in_flight_;
+  uint32_t cancelled_generation_{0};
+  uint32_t last_completed_generation_{0};
+  uint32_t last_transition_elapsed_ms_{0};
+  bool presentation_incomplete_{false};
 };
 
 inline const char *display_mode_name(DisplayMode mode) {

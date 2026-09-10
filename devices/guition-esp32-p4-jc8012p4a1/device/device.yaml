@@ -21,6 +21,7 @@ esp32:
   engineering_sample: true
   framework:
     type: esp-idf
+    log_level: WARN
     # stick to recommended version, currently 5.5.4, 55.03.39 with tool-esptoolpy 5.3.0. No issues
     #version: 5.5.2
     # pioarduino 55.03.38-1 pulls tool-esptoolpy 5.2.0, which can install
@@ -33,13 +34,13 @@ esp32:
       disable_vfs_support_select: false
       disable_vfs_support_dir: false
     sdkconfig_options:
-      CONFIG_SDMMC_HOST_DEFAULT: "y"
       # ESPHome needs 18 sockets for this panel's API, web, diagnostics, and
       # artwork services. Keep two spare so short-lived HTTP requests do not
       # displace Home Assistant or remote connections.
       CONFIG_LWIP_MAX_SOCKETS: "20"
-      # HTTPS firmware checks need more stack on ESP32-P4; the default main
-      # task stack can trip the stack protector during mbedTLS setup.
+      # Stack for ESP-IDF's startup task. ESPHome runs setup and HTTPS checks
+      # in a separate loopTask, controlled by advanced.loop_task_stack_size
+      # (8192 bytes by default in ESPHome 2026.8.2).
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
       CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: "y"
       # Native OTA and display startup can block loopTask briefly on this
@@ -57,7 +58,6 @@ esp32:
       CONFIG_ESP_HOSTED_USE_MEMPOOL: "n"
       CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM: "y"
       CONFIG_FREERTOS_THREAD_LOCAL_STORAGE_POINTERS: "1"
-      CONFIG_LOG_DEFAULT_LEVEL: "2"
 
 # ---------------------------------------------------------------------------
 # External components
@@ -130,7 +130,6 @@ esphome:
   friendly_name: ${friendly_name}
   build_flags:
     - "-Wno-deprecated-declarations"
-    - "-DESPCONTROL_DISABLE_TODO=1"
     # Force cached ESPHome objects to rebuild after the 2026.5
     # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
     - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
@@ -173,12 +172,13 @@ esphome:
                   #ifdef USE_ESP32_CRASH_HANDLER
                   esphome::esp32::crash_handler_clear();
                   #endif
-                  id(jc8012p4a1_safe_mode).mark_successful();
                   global_preferences->sync();
-                  ESP_LOGW("jc8012p4a1", "Cleared saved crash report before API logging; rebooting once");
+                  ESP_LOGW("jc8012p4a1", "Cleared saved crash report before API logging; rebooting once while preserving the failed-boot counter");
               - delay: 500ms
               - lambda: |-
-                  App.safe_reboot();
+                  // Avoid safe_reboot(): its safe-mode shutdown hook clears
+                  // the failed-boot counter before the replacement boot.
+                  App.reboot();
     - priority: 250
       then:
         - lambda: |-

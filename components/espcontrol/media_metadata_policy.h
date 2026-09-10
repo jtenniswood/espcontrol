@@ -24,6 +24,16 @@ struct MediaMetadataClearDecision {
   bool clear_grouping = false;
 };
 
+constexpr uint32_t MEDIA_TITLE_REFRESH_TIMEOUT_MS = 2000;
+
+inline bool media_title_refresh_pending(bool awaiting_refresh,
+                                        uint32_t refresh_started_ms,
+                                        uint32_t now_ms) {
+  return awaiting_refresh &&
+         static_cast<uint32_t>(now_ms - refresh_started_ms) <
+           MEDIA_TITLE_REFRESH_TIMEOUT_MS;
+}
+
 inline std::string normalize_media_kind_token(std::string value) {
   std::transform(
     value.begin(), value.end(), value.begin(),

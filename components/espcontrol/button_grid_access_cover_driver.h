@@ -25,9 +25,8 @@ inline bool access_cover_driver_slider(const Context &context) {
 }
 
 inline bool access_cover_driver_matches(const Context &context) {
-  return !context.legacy_dispatch &&
-         (access_cover_driver_access(context) ||
-          access_cover_driver_cover(context));
+  return access_cover_driver_access(context) ||
+         access_cover_driver_cover(context);
 }
 
 inline void access_cover_driver_track_slider_cleanup(BtnSlot &slot) {

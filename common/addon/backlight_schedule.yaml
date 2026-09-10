@@ -88,64 +88,64 @@ text_sensor:
 
 esphome:
   on_boot:
-    # Publish the live fail-dark decision before the loading screen's -200
-    # handler can decide whether it is safe to light the panel.
-    priority: -190
-    then:
-      - lambda: |-
-          if (!id(screen_schedule_sensor_entity_migrated)) {
-            auto call = id(screen_schedule_sensor_entity).make_call();
-            call.set_value(id(presence_sensor_entity).state);
-            call.perform();
-            id(screen_schedule_sensor_entity_migrated) = true;
-            global_preferences->sync();
-          }
-      - lambda: |-
-          if (!id(brightness_mode_migrated)) {
-            const char *migrated_mode = id(automatic_brightness_legacy).state
-                ? "Sunrise and sunset" : "Fixed times";
-            auto mode_call = id(brightness_mode).make_call();
-            mode_call.set_option(migrated_mode);
-            mode_call.perform();
-            id(brightness_last_automatic_uses_sun) =
-                id(automatic_brightness_legacy).state;
-            id(brightness_mode_migrated) = true;
-            global_preferences->sync();
-          }
-          std::string mode = normalize_brightness_mode(
-              id(brightness_mode).current_option());
-          id(brightness_mode_last_observed) = mode;
-          if (!brightness_mode_manual(mode)) {
-            id(brightness_last_automatic_uses_sun) =
-                brightness_mode_uses_sun(mode);
-          }
-          id(brightness_mode_runtime_ready) = true;
-      - lambda: |-
-          std::string mode = id(schedule_mode).current_option();
-          id(schedule_mode_always_on) = screen_schedule_always_on_mode(mode);
-          id(schedule_mode_clock) = screen_schedule_clock_mode(mode);
-      - if:
-          condition:
-            lambda: 'return id(schedule_enabled).state && screen_schedule_disabled_trigger(id(screen_schedule_trigger).state);'
-          then:
-            - lambda: |-
-                auto call = id(screen_schedule_trigger).make_call();
-                call.set_value("time");
-                call.perform();
-      - lambda: |-
-          auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-          const bool waiting_for_time = screen_schedule_waiting_for_time(
-              id(screen_schedule_trigger).state, id(schedule_enabled).state, now.is_valid());
-          const bool schedule_night = screen_schedule_night_active(
-              id(screen_schedule_trigger).state,
-              id(schedule_enabled).state,
-              id(schedule_presence_detected),
-              now.is_valid(),
-              now.is_valid() ? now.hour : 0,
-              (int) id(schedule_on_hour).state,
-              (int) id(schedule_off_hour).state,
-              id(screen_schedule_sensor_activation).current_option());
-      - script.execute: screen_schedule_boot_guard
+    # Keep boot handlers in a list so later screen packages append rather than
+    # replace this initialization during ESPHome package merging.
+    - priority: -190
+      then:
+        - lambda: |-
+            if (!id(screen_schedule_sensor_entity_migrated)) {
+              auto call = id(screen_schedule_sensor_entity).make_call();
+              call.set_value(id(presence_sensor_entity).state);
+              call.perform();
+              id(screen_schedule_sensor_entity_migrated) = true;
+              global_preferences->sync();
+            }
+        - lambda: |-
+            if (!id(brightness_mode_migrated)) {
+              const char *migrated_mode = id(automatic_brightness_legacy).state
+                  ? "Sunrise and sunset" : "Fixed times";
+              auto mode_call = id(brightness_mode).make_call();
+              mode_call.set_option(migrated_mode);
+              mode_call.perform();
+              id(brightness_last_automatic_uses_sun) =
+                  id(automatic_brightness_legacy).state;
+              id(brightness_mode_migrated) = true;
+              global_preferences->sync();
+            }
+            std::string mode = normalize_brightness_mode(
+                id(brightness_mode).current_option());
+            id(brightness_mode_last_observed) = mode;
+            if (!brightness_mode_manual(mode)) {
+              id(brightness_last_automatic_uses_sun) =
+                  brightness_mode_uses_sun(mode);
+            }
+            id(brightness_mode_runtime_ready) = true;
+        - lambda: |-
+            std::string mode = id(schedule_mode).current_option();
+            id(schedule_mode_always_on) = screen_schedule_always_on_mode(mode);
+            id(schedule_mode_clock) = screen_schedule_clock_mode(mode);
+        - if:
+            condition:
+              lambda: 'return id(schedule_enabled).state && screen_schedule_disabled_trigger(id(screen_schedule_trigger).state);'
+            then:
+              - lambda: |-
+                  auto call = id(screen_schedule_trigger).make_call();
+                  call.set_value("time");
+                  call.perform();
+        - lambda: |-
+            auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+            const bool waiting_for_time = screen_schedule_waiting_for_time(
+                id(screen_schedule_trigger).state, id(schedule_enabled).state, now.is_valid());
+            const bool schedule_night = screen_schedule_night_active(
+                id(screen_schedule_trigger).state,
+                id(schedule_enabled).state,
+                id(schedule_presence_detected),
+                now.is_valid(),
+                now.is_valid() ? now.hour : 0,
+                (int) id(schedule_on_hour).state,
+                (int) id(schedule_off_hour).state,
+                id(screen_schedule_sensor_activation).current_option());
+        - script.execute: screen_schedule_boot_guard
 
 # =============================================================================
 # USER-CONFIGURABLE ENTITIES
@@ -893,7 +893,11 @@ script:
           if (target > 1.0f) target = 1.0f;
           float current = 0.0f;
           id(display_backlight).current_values_as_brightness(&current);
+          // A cancelled PWM fade can leave the physical backlight dim while
+          // the light state still matches the target. Always write during
+          // presentation recovery, including alarm and cover-art takeovers.
           if (!id(backlight_force_next_write) &&
+              !id(espcontrol_app).display().presentation_incomplete() &&
               id(display_backlight).current_values.is_on() &&
               std::fabs(current - target) < 0.005f) {
             return;

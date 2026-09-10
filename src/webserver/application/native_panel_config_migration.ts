@@ -10,7 +10,7 @@ export function createNativePanelConfigMigrationController(
 ): NativePanelConfigController {
   const fetchNative: NativePanelConfigFetch | null = typeof fetch === "function"
     ? (path: string, request?: NativePanelConfigRequest) =>
-      fetch(path, request as RequestInit) as unknown as Promise<NativePanelConfigResponse>
+      fetch(path, { ...request, credentials: "include" } as RequestInit) as unknown as Promise<NativePanelConfigResponse>
     : null;
   const controller = new NativePanelConfigController({
     fetch: fetchNative,

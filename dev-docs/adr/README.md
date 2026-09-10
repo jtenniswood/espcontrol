@@ -5,6 +5,10 @@ cleanup. Add a new record when a decision affects generated output, saved user
 data, firmware update paths, device compatibility, or the division between web
 and firmware behavior.
 
+ADRs own the decision and its historical context. They do not own current
+operational steps; link to the relevant subsystem page or playbook instead of
+copying a workflow into an ADR.
+
 ## Records
 
 - [ADR 0001: Generated Web Bundles](0001-generated-web-bundles.md)
@@ -16,3 +20,4 @@ and firmware behavior.
 - [ADR 0007: Atomic Versioned Configuration Service](0007-atomic-configuration-storage.md)
 - [ADR 0008: Typed Web State Boundary](0008-typed-web-state-boundary.md)
 - [ADR 0009: Atomic Draft Releases](0009-atomic-draft-releases.md)
+- [ADR 0010: Central Firmware Owner](0010-central-firmware-owner.md)

@@ -1,4 +1,4 @@
 interface:
   display_name: "Flash Displays"
   short_description: "Flash EspControl displays by IP by default, or USB on request."
-  default_prompt: "Flash all EspControl displays from main over IP by default, or flash a specific display such as 7inch P4, 10inch P4, 4inch P4, or 4inch S3. Say use USB to flash locally over USB instead."
+  default_prompt: "Use $flash-displays to flash all EspControl displays from main over IP by default, or flash a specific display such as 7inch P4, 10inch P4, 4inch P4, or S3. Say use USB to flash locally over USB instead."

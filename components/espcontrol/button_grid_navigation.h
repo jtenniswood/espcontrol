@@ -2,6 +2,8 @@
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
+#include <functional>
+
 #include "grid_navigation_service.h"
 #include "espcontrol_app_core.h"
 
@@ -131,6 +133,17 @@ inline void navigation_register_home_target(int slot, int display_order,
   navigation_home_targets().push_back(entry);
 }
 
+// The device supplies the clock-bar refresh with its visibility and temperature state.
+inline std::function<void()> &navigation_subpage_clock_bar_refresh() {
+  static std::function<void()> refresh;
+  return refresh;
+}
+
+inline void navigation_subpage_screen_changed(lv_event_t *) {
+  auto &refresh = navigation_subpage_clock_bar_refresh();
+  if (refresh) refresh();
+}
+
 inline void navigation_register_subpage(int slot, int display_order,
                                         const std::string &kind,
                                         lv_obj_t *screen) {
@@ -142,6 +155,12 @@ inline void navigation_register_subpage(int slot, int display_order,
   entry.screen = screen;
   navigation_subpages().push_back(entry);
   clock_bar_register_button_grid_page(screen);
+  // Both events run after LVGL has changed the active screen. Unloading also
+  // restores temperatures immediately when returning home or opening another UI.
+  lv_obj_add_event_cb(screen, navigation_subpage_screen_changed,
+                      LV_EVENT_SCREEN_LOADED, nullptr);
+  lv_obj_add_event_cb(screen, navigation_subpage_screen_changed,
+                      LV_EVENT_SCREEN_UNLOADED, nullptr);
 }
 
 inline int navigation_slot_from_target(const std::string &target) {
@@ -232,6 +251,20 @@ inline int navigation_active_subpage_slot() {
     if (entry.screen == active) return entry.slot;
   }
   return 0;
+}
+
+inline std::string navigation_active_subpage_label() {
+  NavigationHomeTargetEntry *parent =
+      navigation_find_slot_target(navigation_active_subpage_slot());
+  return parent == nullptr ? "" : parent->label;
+}
+
+inline void navigation_refresh_subpage_label() {
+  if (network_status_modal_ui().overlay != nullptr) {
+    set_clock_bar_subpage_label(espcontrol_i18n(std::string("Settings")));
+    return;
+  }
+  set_clock_bar_subpage_label(navigation_active_subpage_label());
 }
 
 inline bool navigation_restore_subpage_slot(int slot) {

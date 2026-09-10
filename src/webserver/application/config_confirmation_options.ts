@@ -38,6 +38,7 @@ export function createConfigConfirmationOptionsFeature(
         { value: "button.press", label: "Press Button", placeholder: "e.g. button.restart_router", icon: "gesture-tap-button", domains: ["button"] },
         { value: "input_button.press", label: "Press Input Button", placeholder: "e.g. input_button.doorbell", icon: "gesture-tap-button", domains: ["input_button"] },
         { value: "input_boolean.toggle", label: "Toggle Helper", placeholder: "e.g. input_boolean.guest_mode", icon: "toggle-switch-variant", domains: ["input_boolean"] },
+        { value: "number.set_value", label: "Set Number", placeholder: "e.g. number.target_level", icon: "counter", domains: ["number"] },
         { value: "input_number.set_value", label: "Set Number Helper", placeholder: "e.g. input_number.target_level", icon: "counter", domains: ["input_number"] },
         { value: ACTION_CARD_OPTION_SELECT_ACTION, label: "Option Select", placeholder: "e.g. select.wled_preset", icon: "form-dropdown", domains: ["select", "input_select"] },
         { value: ACTION_CARD_LOCAL_ACTION, label: "Local Action", placeholder: "e.g. zoom_mute", icon: "gesture-tap", domains: [] },
@@ -46,6 +47,12 @@ export function createConfigConfirmationOptionsFeature(
         for (var i: any = 0; i < actionCardActions.length; i++)
             if (actionCardActions[i].value === value) return actionCardActions[i];
         return null;
+    }
+    function actionCardEntityMatchesAction(this: any, entity?: any, action?: any) {
+        var info: any = actionCardInfo(action);
+        var entityDomain: any = String(entity || "").split(".")[0];
+        return !entityDomain || !info || !info.domains.length ||
+            info.domains.indexOf(entityDomain) >= 0;
     }
     function actionCardIsOptionSelect(this: any, button?: any) {
         var value: any = typeof button === "string" ? button : button && button.sensor;
@@ -83,10 +90,18 @@ export function createConfigConfirmationOptionsFeature(
         button.options = options;
         return options;
     }
-    function actionCardNeedsExtraValue(this: any, value?: any) { return value === "input_number.set_value"; }
-    function normalizeSavedConfigActionFields(this: any, button?: any) {
+    function actionCardNeedsExtraValue(this: any, value?: any) {
+        return value === "number.set_value" || value === "input_number.set_value";
+    }
+    function normalizeActionCardFields(this: any, button?: any, matchNumericActionToEntity?: any) {
         if (!button) return;
         if (button.sensor === "select.select_option") button.sensor = ACTION_CARD_OPTION_SELECT_ACTION;
+        var entityDomain: any = String(button.entity || "").split(".")[0];
+        if (matchNumericActionToEntity &&
+            (button.sensor === "number.set_value" || button.sensor === "input_number.set_value") &&
+            (entityDomain === "number" || entityDomain === "input_number")) {
+            button.sensor = entityDomain + ".set_value";
+        }
         if (!button.sensor || !actionCardInfo(button.sensor)) button.sensor = "scene.turn_on";
         button.precision = "";
         if (actionCardStateDisplayMode(button) !== "icon") button.icon_on = "Auto";
@@ -98,9 +113,12 @@ export function createConfigConfirmationOptionsFeature(
             if (!button.icon || button.icon === "Auto" || button.icon === "Flash") button.icon = "Gesture Tap";
         }
     }
+    function normalizeSavedConfigActionFields(this: any, button?: any) {
+        normalizeActionCardFields(button, true);
+    }
     function normalizeActionCardConfig(this: any, button?: any) {
         if (!button) return;
-        normalizeSavedConfigActionFields(button);
+        normalizeActionCardFields(button, false);
         button.options = normalizeActionOptions(button.options, button.sensor);
     }
     const { normalizeGarageOptions } = accessOptions;
@@ -403,6 +421,7 @@ export function createConfigConfirmationOptionsFeature(
     return {
         actionCardActions,
         actionCardInfo,
+        actionCardEntityMatchesAction,
         actionCardIsOptionSelect,
         actionCardIsLocal,
         normalizeSavedConfigActionFields,

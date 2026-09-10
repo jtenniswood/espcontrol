@@ -39,6 +39,7 @@ import type { PreviewContextMenuFeature } from "../application/preview_context_m
 import type { ControlsFieldsFeature } from "../application/controls_fields";
 import { cardContractOptionSupportedFor } from "../application/config_option_core";
 import { subpageKind } from "../application/config_subpage_options";
+import { entityMatchesDomains } from "../application/button_settings";
 import { pushDefaultIcon, pushDefaultIconOn } from "../cards/push";
 import {
     coverModeOptionValues,
@@ -253,9 +254,13 @@ export function installAppTestHooksConfig(
     } = lightCards;
     const {
         cardRequiresSquareSize,
+        cardIsWifiSharing,
+        cardSupportsWifiPortraitSizes,
+        cardSupportsExtraLargeSize,
         cardSupportsMaxSize,
         cardSupportsPortraitLargeSize,
         cardSupportsLandscapeLargeSize,
+        cardSupportsUltraWideSize,
         normalizeCardSizeForConfig,
         serializeButtonConfig,
         parseButtonConfig,
@@ -285,6 +290,7 @@ export function installAppTestHooksConfig(
             cardContractOptions: cardContractOptions,
             cardContractDefaultConfig: cardContractDefaultConfig,
             cardContractDomains: cardContractDomains,
+            entityMatchesDomains: entityMatchesDomains,
             cardContractMigrationAlias: cardContractMigrationAlias,
             cardContractOptionSupportedFor: cardContractOptionSupportedFor,
             cardLargeNumbersEnabled: cardLargeNumbersEnabled,
@@ -372,9 +378,13 @@ export function installAppTestHooksConfig(
             mediaNowPlayingControls: mediaNowPlayingControls,
             mediaStateDisplayModeSupported: mediaStateDisplayModeSupported,
             cardRequiresSquareSize: cardRequiresSquareSize,
+            cardIsWifiSharing: cardIsWifiSharing,
+            cardSupportsWifiPortraitSizes: cardSupportsWifiPortraitSizes,
+            cardSupportsExtraLargeSize: cardSupportsExtraLargeSize,
             cardSupportsMaxSize: cardSupportsMaxSize,
             cardSupportsPortraitLargeSize: cardSupportsPortraitLargeSize,
             cardSupportsLandscapeLargeSize: cardSupportsLandscapeLargeSize,
+            cardSupportsUltraWideSize: cardSupportsUltraWideSize,
             cardSizeMenuOptions: cardSizeMenuOptions,
             normalizeCardSizeForConfig: normalizeCardSizeForConfig,
             normalizeMediaOptions: normalizeMediaOptions,

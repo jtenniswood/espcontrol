@@ -72,6 +72,7 @@ DOCKER_COMMAND=${DOCKER:-docker}
 KEEP_STORAGE=${ESPCONTROL_DOCKER_BUILD_CACHE_KEEP:-2GB}
 LOCK_FILE=${ESPCONTROL_DOCKER_LOCK_FILE:-/tmp/espcontrol-esphome-image.lock}
 PRUNE_ALL_IMAGES=${ESPCONTROL_DOCKER_PRUNE_ALL_IMAGES:-false}
+PRUNE_CONTAINERS=${ESPCONTROL_DOCKER_PRUNE_CONTAINERS:-false}
 PRUNE_VOLUMES=${ESPCONTROL_DOCKER_PRUNE_VOLUMES:-false}
 CLEAN_RUNNER_UPDATES=${ESPCONTROL_CLEAN_RUNNER_UPDATES:-true}
 CLEAN_LEGACY_ESPHOME_CACHE=${ESPCONTROL_CLEAN_LEGACY_ESPHOME_CACHE:-true}
@@ -90,7 +91,9 @@ disk_report() {
 disk_report "Disk before cleanup"
 
 if ${DOCKER_COMMAND} info >/dev/null 2>&1; then
-  ${DOCKER_COMMAND} container prune -f >/dev/null || true
+  if [ "${PRUNE_CONTAINERS}" = "true" ]; then
+    ${DOCKER_COMMAND} container prune -f >/dev/null || true
+  fi
   if [ "${PRUNE_ALL_IMAGES}" = "true" ]; then
     ${DOCKER_COMMAND} image prune -af >/dev/null || true
   else

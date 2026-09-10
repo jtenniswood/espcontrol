@@ -22,6 +22,8 @@
 #include "utils.h"
 #include "web_server_idf.h"
 
+#include "digest_auth_policy.h"
+
 #ifdef USE_WEBSERVER_OTA
 #include <multipart_parser.h>
 #include "multipart.h"  // For parse_multipart_boundary and other utils
@@ -481,8 +483,7 @@ static constexpr uint32_t DIGEST_NONCE_LIFETIME_MS = 5 * 60 * 1000;
 
 struct DigestCnonceState {
   std::array<char, DIGEST_CNONCE_MAX_LENGTH + 1> value{};
-  uint32_t last_nonce_count{};
-  uint64_t used_nonce_counts{};
+  DigestNonceCountWindow nonce_counts{};
 };
 
 struct DigestNonceState {
@@ -555,32 +556,15 @@ bool digest_challenge_is_valid(StringRef nonce, StringRef opaque) {
   return valid;
 }
 
-bool accept_nonce_count(DigestCnonceState *state, uint32_t nonce_count) {
-  if (nonce_count > state->last_nonce_count) {
-    const uint32_t advance = nonce_count - state->last_nonce_count;
-    state->used_nonce_counts = advance >= 64 ? 1 : (state->used_nonce_counts << advance) | 1;
-    state->last_nonce_count = nonce_count;
-    return true;
-  }
+enum class DigestNonceCountResult : uint8_t { ACCEPTED, REPLAYED, UNAVAILABLE };
 
-  // Permit parallel requests to arrive slightly out of order, but never accept
-  // the same count twice or a count outside the bounded replay window.
-  const uint32_t distance = state->last_nonce_count - nonce_count;
-  if (distance >= 64)
-    return false;
-  const uint64_t count_mask = uint64_t{1} << distance;
-  if ((state->used_nonce_counts & count_mask) != 0)
-    return false;
-  state->used_nonce_counts |= count_mask;
-  return true;
-}
-
-bool accept_digest_nonce_count(StringRef nonce, StringRef opaque, StringRef cnonce, uint32_t nonce_count) {
+DigestNonceCountResult accept_digest_nonce_count(StringRef nonce, StringRef opaque, StringRef cnonce,
+                                                 uint32_t nonce_count) {
   if (cnonce.size() == 0 || cnonce.size() > DIGEST_CNONCE_MAX_LENGTH)
-    return false;
+    return DigestNonceCountResult::UNAVAILABLE;
 
   const uint32_t now = millis();
-  bool accepted = false;
+  DigestNonceCountResult result = DigestNonceCountResult::UNAVAILABLE;
   portENTER_CRITICAL(&digest_auth_lock);
   for (auto &state : digest_nonce_states) {
     if (digest_nonce_expired(state, now) ||
@@ -600,21 +584,22 @@ bool accept_digest_nonce_count(StringRef nonce, StringRef opaque, StringRef cnon
       if (!digest_ref_equals_buffer(cnonce, cnonce_state.value.data(), strlen(cnonce_state.value.data())))
         continue;
       found_cnonce = true;
-      accepted = accept_nonce_count(&cnonce_state, nonce_count);
+      result = accept_digest_nonce_count(&cnonce_state.nonce_counts, nonce_count) ? DigestNonceCountResult::ACCEPTED
+                                                                                  : DigestNonceCountResult::REPLAYED;
       break;
     }
 
     if (!found_cnonce && free_state != nullptr) {
       memcpy(free_state->value.data(), cnonce.c_str(), cnonce.size());
       free_state->value[cnonce.size()] = '\0';
-      free_state->last_nonce_count = nonce_count;
-      free_state->used_nonce_counts = 1;
-      accepted = true;
+      free_state->nonce_counts.last_nonce_count = nonce_count;
+      free_state->nonce_counts.used_nonce_counts = 1;
+      result = DigestNonceCountResult::ACCEPTED;
     }
     break;
   }
   portEXIT_CRITICAL(&digest_auth_lock);
-  return accepted;
+  return result;
 }
 
 void retain_digest_challenge(const char *nonce, const char *opaque) {
@@ -636,6 +621,19 @@ void bytes_to_hex(const uint8_t *data, size_t len, char *out) {
     out[i * 2 + 1] = HEX[data[i] & 0x0f];
   }
   out[len * 2] = '\0';
+}
+
+void digest_credential_hash(const char *username, const char *password, char *out) {
+  md5_context_t ctx;
+  uint8_t digest[16];
+  esp_rom_md5_init(&ctx);
+  esp_rom_md5_update(&ctx, username, strlen(username));
+  esp_rom_md5_update(&ctx, ":", 1);
+  esp_rom_md5_update(&ctx, DIGEST_REALM, strlen(DIGEST_REALM));
+  esp_rom_md5_update(&ctx, ":", 1);
+  esp_rom_md5_update(&ctx, password, strlen(password));
+  esp_rom_md5_final(digest, &ctx);
+  bytes_to_hex(digest, sizeof(digest), out);
 }
 
 StringRef digest_param(StringRef params, const char *key) {
@@ -681,10 +679,11 @@ StringRef digest_param(StringRef params, const char *key) {
   return StringRef();
 }
 
-enum class DigestAuthResult : uint8_t { FAILED, STALE, AUTHENTICATED };
+enum class DigestAuthResult : uint8_t { FAILED, STALE, REPLAYED, AUTHENTICATED };
 
 DigestAuthResult check_digest_auth(const char *username, const char *password, const std::string &header,
-                                   const char *method, const char *request_uri) {
+                                   const char *method, const char *request_uri,
+                                   bool nonce_accepted_for_request) {
   const size_t prefix_len = sizeof("Digest ") - 1;
   StringRef params(header.c_str() + prefix_len, header.size() - prefix_len);
 
@@ -707,21 +706,11 @@ DigestAuthResult check_digest_auth(const char *username, const char *password, c
       !parse_nonce_count(nc, &nonce_count)) {
     return DigestAuthResult::FAILED;
   }
-  if (!digest_challenge_is_valid(nonce, opaque))
-    return DigestAuthResult::STALE;
-
   md5_context_t ctx;
   uint8_t digest[16];
 
   char ha1[33];
-  esp_rom_md5_init(&ctx);
-  esp_rom_md5_update(&ctx, username, strlen(username));
-  esp_rom_md5_update(&ctx, ":", 1);
-  esp_rom_md5_update(&ctx, DIGEST_REALM, strlen(DIGEST_REALM));
-  esp_rom_md5_update(&ctx, ":", 1);
-  esp_rom_md5_update(&ctx, password, strlen(password));
-  esp_rom_md5_final(digest, &ctx);
-  bytes_to_hex(digest, sizeof(digest), ha1);
+  digest_credential_hash(username, password, ha1);
 
   char ha2[33];
   esp_rom_md5_init(&ctx);
@@ -750,11 +739,24 @@ DigestAuthResult check_digest_auth(const char *username, const char *password, c
   uint8_t result = 0;
   for (size_t i = 0; i < 32; i++)
     result |= static_cast<uint8_t>(expected[i] ^ response[i]);
-  if (result != 0)
+  const DigestRequestPolicy request_policy =
+      digest_request_policy(result == 0, nonce_accepted_for_request);
+  if (request_policy == DigestRequestPolicy::REJECT)
     return DigestAuthResult::FAILED;
-  if (!accept_digest_nonce_count(nonce, opaque, cnonce, nonce_count))
+
+  // Raw-body handlers authenticate before receiving the body, then verify the
+  // same immutable request again before applying it. The response digest must
+  // still match, but the request must not consume its nonce count twice.
+  if (request_policy == DigestRequestPolicy::REUSE_REQUEST_NONCE)
+    return DigestAuthResult::AUTHENTICATED;
+  if (!digest_challenge_is_valid(nonce, opaque))
     return DigestAuthResult::STALE;
-  return DigestAuthResult::AUTHENTICATED;
+  const DigestNonceCountResult nonce_count_result =
+      accept_digest_nonce_count(nonce, opaque, cnonce, nonce_count);
+  if (nonce_count_result == DigestNonceCountResult::REPLAYED)
+    return DigestAuthResult::REPLAYED;
+  return nonce_count_result == DigestNonceCountResult::ACCEPTED ? DigestAuthResult::AUTHENTICATED
+                                                                : DigestAuthResult::STALE;
 }
 
 }  // namespace
@@ -766,6 +768,8 @@ bool AsyncWebServerRequest::authenticate(const char *username, const char *passw
   }
   auto auth = this->get_header("Authorization");
   if (!auth.has_value()) {
+    // The device serves plain HTTP: a captured bearer cookie must never
+    // replace per-request authorization, even after an earlier Digest login.
     return false;
   }
 
@@ -777,9 +781,19 @@ bool AsyncWebServerRequest::authenticate(const char *username, const char *passw
     ESP_LOGW(TAG, "Only Digest authorization supported");
     return false;
   }
-  const auto result =
-      check_digest_auth(username, password, auth.value(), http_method_str(this->method()), this->req_->uri);
-  this->digest_nonce_stale_ = result == DigestAuthResult::STALE;
+  const bool rechecking_authenticated_request = this->digest_nonce_accepted_for_request_;
+  const auto result = check_digest_auth(username, password, auth.value(), http_method_str(this->method()),
+                                        this->req_->uri, rechecking_authenticated_request);
+  this->digest_nonce_stale_ = result == DigestAuthResult::STALE || result == DigestAuthResult::REPLAYED;
+  if (result == DigestAuthResult::REPLAYED) {
+    ESP_LOGW(TAG, "Rejected replayed Digest nonce count for %s %s", http_method_str(this->method()), this->req_->uri);
+  } else if (result == DigestAuthResult::AUTHENTICATED) {
+    if (rechecking_authenticated_request) {
+      ESP_LOGD(TAG, "Reused Digest authentication for request %s %s", http_method_str(this->method()),
+               this->req_->uri);
+    }
+    this->digest_nonce_accepted_for_request_ = true;
+  }
   return result == DigestAuthResult::AUTHENTICATED;
 #else
   const auto auth_prefix_len = sizeof("Basic ") - 1;
@@ -1178,7 +1192,6 @@ bool AsyncEventSourceResponse::try_send_nodefer(const char *message, size_t mess
   if (this->fd_.load() == 0) {
     return false;
   }
-
   process_buffer_();
   if (!event_buffer_.empty()) {
     // there is still pending event data to send first

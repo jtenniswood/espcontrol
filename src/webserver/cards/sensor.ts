@@ -565,7 +565,7 @@ export function registerSensorCardTypes(
         loadingDiv.className = "sp-field";
         loadingDiv.textContent = "Loading sensors…";
         pickerSection.appendChild(loadingDiv);
-        fetch("/local_sensors")
+        fetch("/local_sensors", { credentials: "include" })
             .then(function (this: any, resp?: any) {
             if (!resp.ok)
                 throw new Error("HTTP " + resp.status);

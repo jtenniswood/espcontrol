@@ -14,6 +14,18 @@ export function runCardEditorValidationControllerTests(): void {
   equal(result.firstInvalidIndex, 0, "the first missing field is identified for focus");
 
   result = controller.validateSave({
+    fields: [{ value: "        ", present: true }],
+    isSubpage: false, serializedConfigLength: 1, imageCardCount: 0, imageCardCapacity: 1,
+  });
+  equal(result.valid, true, "credential-specific presence rules can preserve all-space values");
+
+  result = controller.validateSave({
+    fields: [{ value: "non-empty", present: false }],
+    isSubpage: false, serializedConfigLength: 1, imageCardCount: 0, imageCardCapacity: 1,
+  });
+  equal(result.reason, "required-field", "credential-specific presence rules remain authoritative");
+
+  result = controller.validateSave({
     fields: [{ value: "light.kitchen" }], isSubpage: false, serializedConfigLength: 256,
     imageCardCount: 0, imageCardCapacity: 1,
   });

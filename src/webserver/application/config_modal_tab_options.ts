@@ -5,6 +5,7 @@ import {
     FAN_CONTROL_TABS_OPTION,
     FAN_LIGHT_ENTITY_OPTION,
     LIGHT_CONTROL_TABS_OPTION,
+    WIFI_QR_TABS_OPTION,
     cardContractOptionDefaultValue,
     cardContractOptionSpec,
 } from "./config_option_core";
@@ -254,6 +255,39 @@ export function createConfigModalTabOptionsFeature(
         b.options = normalizeFanControlOptions(b.options);
         return b.options;
     }
+    function wifiQrTabDefinitions(this: any) {
+        return [
+            { value: "qr", label: "QR Code" },
+            { value: "credentials", label: "Connection Details" },
+        ];
+    }
+    function wifiQrDefaultTabs(this: any) {
+        return cardContractOptionDefaultValue("wifi_qr", WIFI_QR_TABS_OPTION, "qr|credentials").split("|");
+    }
+    function normalizeWifiQrTabs(this: any, value?: any) {
+        return normalizeTabList(value, wifiQrTabDefinitions(), wifiQrDefaultTabs(), "qr");
+    }
+    function wifiQrTabs(this: any, b?: any) {
+        return normalizeWifiQrTabs(configOptionValue(b && b.options, WIFI_QR_TABS_OPTION));
+    }
+    function wifiQrTabsAreDefault(this: any, tabs?: any) {
+        return tabListIsDefault(normalizeWifiQrTabs((tabs || []).join("|")), wifiQrDefaultTabs());
+    }
+    function normalizeWifiQrTabOptions(this: any, options?: any) {
+        var tabs: any = normalizeWifiQrTabs(configOptionValue(options, WIFI_QR_TABS_OPTION));
+        return wifiQrTabsAreDefault(tabs)
+            ? setConfigOptionValue(options, WIFI_QR_TABS_OPTION, "")
+            : setConfigOptionValue(options, WIFI_QR_TABS_OPTION, tabs.join("|"));
+    }
+    function setWifiQrTabs(this: any, b?: any, tabs?: any) {
+        if (!b)
+            return "";
+        tabs = normalizeWifiQrTabs((tabs || []).join("|"));
+        b.options = wifiQrTabsAreDefault(tabs)
+            ? setConfigOptionValue(b.options, WIFI_QR_TABS_OPTION, "")
+            : setConfigOptionValue(b.options, WIFI_QR_TABS_OPTION, tabs.join("|"));
+        return b.options;
+    }
     function renderModalTabSettings(this: any, panel?: any, b?: any, helpers?: any, config?: any) {
         var section: any = dependencies.document.createElement("div");
         panel.appendChild(section);
@@ -440,6 +474,13 @@ export function createConfigModalTabOptionsFeature(
         normalizeFanControlOptions,
         setFanControlTabs,
         setFanLightEntity,
+        wifiQrTabDefinitions,
+        wifiQrDefaultTabs,
+        normalizeWifiQrTabs,
+        wifiQrTabs,
+        wifiQrTabsAreDefault,
+        normalizeWifiQrTabOptions,
+        setWifiQrTabs,
         renderModalTabSettings,
     };
 }

@@ -40,6 +40,7 @@ SAVED_CONFIG_WEBHOOK_HEADER = ROOT / "components" / "espcontrol" / "button_grid_
 SAVED_CONFIG_SUBPAGE_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_subpage_generated.h"
 SAVED_CONFIG_SWITCH_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_switch_generated.h"
 BACKLIGHT_HEADER = ROOT / "components" / "espcontrol" / "backlight.h"
+BACKLIGHT_FADE_HEADER = ROOT / "components" / "espcontrol" / "backlight_fade.h"
 DISPLAY_MODE_CONTROLLER_HEADER = ROOT / "components" / "espcontrol" / "display_mode_controller.h"
 CLOCK_BAR_HEADER = ROOT / "components" / "espcontrol" / "clock_bar.h"
 LAYOUT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_layout.h"
@@ -86,6 +87,7 @@ struct lv_obj_t {
   int transform_scale_x = 256;
   int transform_scale_y = 256;
   std::string text;
+  int width = 480;
   void *user_data = nullptr;
 };
 constexpr int MAX_GRID_SLOTS = 25;
@@ -169,7 +171,7 @@ inline void lv_obj_clear_flag(lv_obj_t *obj, int flag) { if (obj) obj->flags &= 
 inline bool lv_obj_has_flag(lv_obj_t *obj, int flag) { return obj && (obj->flags & flag); }
 inline uint32_t lv_obj_get_child_cnt(lv_obj_t *) { return 0; }
 inline lv_obj_t *lv_obj_get_child(lv_obj_t *, uint32_t) { return nullptr; }
-inline int lv_obj_get_width(lv_obj_t *) { return 480; }
+inline int lv_obj_get_width(lv_obj_t *obj) { return obj ? obj->width : 480; }
 inline int lv_obj_get_height(lv_obj_t *) { return 480; }
 inline int lv_obj_get_style_pad_left(lv_obj_t *, int) { return 0; }
 inline int lv_obj_get_style_pad_right(lv_obj_t *, int) { return 0; }
@@ -184,7 +186,7 @@ inline int lv_disp_get_hor_res(lv_disp_t *) { return lv_test_hor_res; }
 inline int lv_disp_get_ver_res(lv_disp_t *) { return lv_test_ver_res; }
 inline void lv_label_set_long_mode(lv_obj_t *, int) {}
 inline void lv_obj_set_size(lv_obj_t *, int, int) {}
-inline void lv_obj_set_width(lv_obj_t *, int) {}
+inline void lv_obj_set_width(lv_obj_t *obj, int width) { if (obj) obj->width = width; }
 inline void lv_obj_set_height(lv_obj_t *, int) {}
 inline void lv_obj_set_pos(lv_obj_t *, int, int) {}
 inline void lv_obj_set_grid_cell(lv_obj_t *, int, int, int, int, int, int) {}
@@ -299,6 +301,17 @@ int main() {
     true, true, true,
     12, 17, 20, 10, 80);
   assert(lv_obj_move_background_calls == 3);
+  assert(lv_obj_get_width(&temperature_1) == 72);
+  set_clock_bar_temperature_labels(temperature_labels, 1);
+  temperature_1.text = "21°C";
+  lv_obj_clear_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN);
+  set_clock_bar_subpage_label("Settings");
+  assert(temperature_1.text == "Settings");
+  assert(lv_obj_get_width(&temperature_1) == 180);
+  set_clock_bar_subpage_label("");
+  assert(temperature_1.text == "21°C");
+  assert(!lv_obj_has_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN));
+  assert(lv_obj_get_width(&temperature_1) == 72);
   hide_clock_bar_top_layer_widgets(
     temperature_labels, 1, &display_time, &network_status_button);
   assert(lv_obj_has_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN));
@@ -629,32 +642,6 @@ int main() {
   auto subpage_bad_kind = parse_cfg("media_player.bad;Bad;Speaker;Auto;indicator;;subpage;;subpage_kind=audio");
   assert(subpage_bad_kind.options == "");
 
-  auto todo = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo");
-  assert(todo.entity == "todo.shopping");
-  assert(todo.label == "Shopping");
-  assert(todo.icon == "Check");
-  assert(todo.icon_on == "Auto");
-  assert(todo.type == "todo");
-  assert(todo.options == "");
-  assert(todo_card_show_count(todo));
-  auto todo_icon_display = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo;;count_display=icon");
-  assert(todo_icon_display.options == "count_display=icon");
-  assert(!todo_card_show_count(todo_icon_display));
-  assert(!card_large_numbers_supported(todo_icon_display));
-  auto todo_large = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo;;large_numbers");
-  assert(todo_large.options == "large_numbers");
-  assert(todo_card_show_count(todo_large));
-  assert(card_large_numbers_enabled(todo_large));
-  auto todo_icon_large = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo;;count_display=icon,large_numbers");
-  assert(todo_icon_large.options == "count_display=icon");
-  assert(!card_large_numbers_enabled(todo_icon_large));
-  auto todo_legacy_options = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo;;count_display=top_task,label_display=count,completed_display=hide,large_numbers");
-  assert(todo_legacy_options.options == "large_numbers");
-  assert(todo_card_show_count(todo_legacy_options));
-  assert(!todo_card_shows_top_task(todo_legacy_options));
-  assert(!todo_card_label_shows_count(todo_legacy_options));
-  assert(!todo_card_shows_completed_items(todo_legacy_options));
-  assert(card_large_numbers_enabled(todo_legacy_options));
 
   assert(cfg_option_token_present("large_numbers,active_color", "active_color"));
   assert(cfg_option_value("state_entity=sensor.room%2Ctemp,state_unit=%25", "state_entity") == "sensor.room,temp");
@@ -741,7 +728,7 @@ int main() {
   assert(rise_h == 6 && rise_m == 0 && set_h == 18 && set_m == 0);
 
   OrderResult parsed;
-  parse_order_string("1,2d,3w,4b,5t,6x,7h,8v,9l,99", 10, parsed);
+  parse_order_string("1,2d,3w,4b,5t,6x,7h,8v,9l,10u,99", 11, parsed);
   assert(parsed.positions[0] == 1);
   assert(parsed.positions[1] == 2);
   assert(parsed.row_span[1] == 2 && parsed.col_span[1] == 1);
@@ -752,6 +739,7 @@ int main() {
   assert(parsed.row_span[6] == 2 && parsed.col_span[6] == 3);
   assert(parsed.row_span[7] == 3 && parsed.col_span[7] == 2);
   assert(parsed.row_span[8] == 3 && parsed.col_span[8] == 4);
+  assert(parsed.row_span[9] == 1 && parsed.col_span[9] == 5);
 
   OrderResult overlap;
   parse_order_string("1b,2,3,4,5,6", 9, overlap);
@@ -968,6 +956,7 @@ def main() -> int:
         shutil.copy2(SAVED_CONFIG_SWITCH_HEADER, tmp_path / "button_grid_saved_config_switch_generated.h")
         shutil.copy2(CLOCK_BAR_HEADER, tmp_path / "clock_bar.h")
         shutil.copy2(BACKLIGHT_HEADER, tmp_path / "backlight.h")
+        shutil.copy2(BACKLIGHT_FADE_HEADER, tmp_path / "backlight_fade.h")
         shutil.copy2(DISPLAY_MODE_CONTROLLER_HEADER, tmp_path / "display_mode_controller.h")
         shutil.copy2(LAYOUT_HEADER, tmp_path / "button_grid_layout.h")
         shutil.copy2(LIMITS_HEADER, tmp_path / "button_grid_limits.h")

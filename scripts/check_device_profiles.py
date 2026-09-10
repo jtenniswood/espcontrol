@@ -208,6 +208,7 @@ def test_s3_low_heap_policy() -> None:
         'CONFIG_SPIRAM_USE_MALLOC: "y"',
         'CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "4096"',
         'CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL: "32768"',
+        'CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"',
     ):
         assert option in device, f"S3 device profile is missing {option}"
     assert "HTTP_CLIENT_BUFFER_SIZE = 4 * 1024" in artwork, (
@@ -233,8 +234,10 @@ def test_native_panel_config_bindings(slug: str, profile: dict, device: str) -> 
     espcontrol = re.search(r"(?ms)^espcontrol:\n(?P<body>(?:^  .*\n|^\s*$\n)*)", device)
     assert espcontrol, f"{slug}: device.yaml is missing its espcontrol block"
     body = espcontrol.group("body")
-    if "  panel_config:\n" not in body:
-        return
+    assert "  panel_config:\n" in body, (
+        f"{slug}: device.yaml must enable native panel configuration so "
+        "cards that contain device-owned settings remain available"
+    )
 
     slots = int(profile["slots"])
     bindings = [
@@ -250,9 +253,12 @@ def test_native_panel_config_bindings(slug: str, profile: dict, device: str) -> 
     assert len(chunk_rows) == slots, (
         f"{slug}: native panel config must provide subpage chunks for all {slots} slots"
     )
+    chunk_count = 4 if "button_template_4chunk.yaml" in (
+        ROOT / "devices" / slug / "packages.yaml"
+    ).read_text(encoding="utf-8") else 8
     for slot, row in enumerate(chunk_rows, start=1):
         expected = [f"subpage_{slot}_config", f"subpage_{slot}_config_ext"] + [
-            f"subpage_{slot}_config_ext_{suffix}" for suffix in range(2, 8)
+            f"subpage_{slot}_config_ext_{suffix}" for suffix in range(2, chunk_count)
         ]
         actual = [value.strip() for value in row.split(",")]
         assert actual == expected, (
@@ -383,6 +389,34 @@ def test_upgrades_do_not_reset_saved_panel_config() -> None:
         assert "id(button_order).publish_state(\"\")" not in text, f"{rel}: must not clear saved button order"
         assert not re.search(r"id\((?:button|subpage)_\d+_config(?:_ext(?:_\d+)?)?\)\.publish_state\(\"\"\)", text), (
             f"{rel}: must not clear saved button or subpage config"
+        )
+
+
+def test_p4_crash_restart_preserves_safe_mode_counter() -> None:
+    slugs = (
+        "guition-esp32-p4-jc1060p470",
+        "guition-esp32-p4-jc1060p470-v2",
+        "guition-esp32-p4-jc4880p443",
+        "guition-esp32-p4-jc8012p4a1",
+        "guition-esp32-p4-jc8012p4a1-v2",
+    )
+    for slug in slugs:
+        path = ROOT / "devices" / slug / "device" / "device.yaml"
+        text = path.read_text(encoding="utf-8")
+        start = text.index("return esphome::esp32::crash_handler_has_data();")
+        end = text.find("    - priority:", start)
+        handler = text[start:end if end >= 0 else len(text)]
+        assert "esphome::esp32::crash_handler_clear();" in handler, (
+            f"{slug}: crash restart must clear the saved crash report"
+        )
+        assert "App.reboot();" in handler, (
+            f"{slug}: crash restart must bypass safe-shutdown counter clearing"
+        )
+        assert ".mark_successful();" not in handler, (
+            f"{slug}: crash restart must not reset the failed-boot counter"
+        )
+        assert "App.safe_reboot();" not in handler, (
+            f"{slug}: crash restart must preserve the failed-boot counter"
         )
 
 
@@ -647,7 +681,7 @@ def test_weather_card_visual_matches_preview() -> None:
         and "lv_obj_del(child);" in grid
         and "lv_obj_set_user_data(s.sensor_container, nullptr);" in grid
         and "lv_obj_clear_state(s.btn, LV_STATE_CHECKED);" in grid
-        and "lv_obj_clear_state(s.btn, LV_STATE_DISABLED);" in grid
+        and "set_card_disabled_state(s.btn, false);" in grid
         and "lv_obj_set_style_opa(s.btn, LV_OPA_COVER, LV_PART_MAIN);" in grid
         and "reset_card_slot_dynamic_children(s);" in setup_visual
     ), "weather cards must clear stale widget children, active states, and opacity before rendering"
@@ -893,6 +927,7 @@ def main() -> int:
     test_public_api_encryption_policy(profile_slugs)
     test_ota_preserves_deployed_partition_layouts()
     test_upgrades_do_not_reset_saved_panel_config()
+    test_p4_crash_restart_preserves_safe_mode_counter()
     test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
     test_rotation_refresh_rebuilds_subpages()

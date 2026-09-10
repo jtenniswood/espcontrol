@@ -89,17 +89,52 @@ const BUTTON_FIXTURES = [
 function nativeConfigState(slug) {
   const buttons = {};
   BUTTON_FIXTURES.forEach((value, index) => { buttons[index + 1] = value; });
+  buttons[3] = ";Rooms;Home;Auto;;;subpage";
   return {
     document: {
       deviceProfile: slug,
       buttons,
-      subpages: {},
+      subpages: {
+        3: "~B,1|,light.kitchen,Kitchen,Lightbulb,Lightbulb",
+      },
       settings: { button_order: "1,2,3w,4,5,6" },
     },
     generation: 1,
     puts: [],
     requests: [],
   };
+}
+
+async function assertSubpageTitleTypography(page, label) {
+  await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+  await page.waitForSelector(".sp-clockbar-subpage-title");
+  const typography = await page.evaluate(() => {
+    const title = document.querySelector(".sp-clockbar-subpage-title");
+    const cardLabel = document.querySelector(".sp-main .sp-btn-label");
+    const titleStyle = getComputedStyle(title);
+    const cardStyle = getComputedStyle(cardLabel);
+    return {
+      title: {
+        fontFamily: titleStyle.fontFamily,
+        fontSize: titleStyle.fontSize,
+        fontWeight: titleStyle.fontWeight,
+        lineHeight: titleStyle.lineHeight,
+      },
+      card: {
+        fontFamily: cardStyle.fontFamily,
+        fontSize: cardStyle.fontSize,
+        fontWeight: cardStyle.fontWeight,
+        lineHeight: cardStyle.lineHeight,
+      },
+    };
+  });
+  assert.deepStrictEqual(
+    typography.title,
+    typography.card,
+    `${label}: subpage title uses the device card-label typography`,
+  );
+  await page.locator(".sp-back-btn .sp-back-hit").click();
+  await page.waitForSelector(".sp-clockbar-subpage-title", { state: "detached" });
 }
 
 function htmlFor(slug, embeddedFallback = false) {
@@ -529,6 +564,9 @@ function nativeDocumentEvents(document) {
   });
   Object.entries(document.buttons).forEach(([slot, state]) => {
     events.push({ id: `text-button_${slot}_config`, state });
+  });
+  Object.entries(document.subpages).forEach(([slot, state]) => {
+    events.push({ id: `text-subpage_${slot}_config`, state });
   });
   return events;
 }
@@ -1815,6 +1853,79 @@ async function assertVoiceClockBarPreview(page, label, supported) {
       { id: "switch-voice_services", state: "OFF", value: false },
       { id: "switch-screen__network_status_icon", state: "ON", value: true },
     ]),
+  );
+}
+
+async function assertClockBarTypographyAndIconLayout(page, label) {
+  const metrics = await page.evaluate(() => {
+    const cardLabel = document.querySelector(".sp-main .sp-btn-label");
+    const clock = document.querySelector(".sp-clock");
+    const temperature = document.querySelector(".sp-temp");
+    const networkIcon = document.querySelector(".sp-network-preview");
+    const topbar = document.querySelector(".sp-topbar");
+    if (!cardLabel || !clock || !temperature || !networkIcon || !topbar)
+      return null;
+    const cardStyle = getComputedStyle(cardLabel);
+    const clockStyle = getComputedStyle(clock);
+    const temperatureStyle = getComputedStyle(temperature);
+    const networkStyle = getComputedStyle(networkIcon);
+    const networkGlyphStyle = getComputedStyle(networkIcon, "::before");
+    const iconRect = networkIcon.getBoundingClientRect();
+    const clockRect = clock.getBoundingClientRect();
+    const topbarRect = topbar.getBoundingClientRect();
+    return {
+      cardFontSize: cardStyle.fontSize,
+      cardFontWeight: cardStyle.fontWeight,
+      clockFontSize: clockStyle.fontSize,
+      clockFontWeight: clockStyle.fontWeight,
+      temperatureFontSize: temperatureStyle.fontSize,
+      temperatureFontWeight: temperatureStyle.fontWeight,
+      iconFontSize: networkStyle.fontSize,
+      glyphFontSize: networkGlyphStyle.fontSize,
+      iconHeight: iconRect.height,
+      topbarHeight: topbarRect.height,
+      iconCenterY: iconRect.y + iconRect.height / 2,
+      clockCenterY: clockRect.y + clockRect.height / 2,
+    };
+  });
+  assert(metrics, `${label}: clock bar typography is measurable`);
+  assert.strictEqual(
+    metrics.clockFontSize,
+    metrics.cardFontSize,
+    `${label}: clock font size matches card labels`,
+  );
+  assert.strictEqual(
+    metrics.temperatureFontSize,
+    metrics.cardFontSize,
+    `${label}: temperature font size matches card labels`,
+  );
+  assert.strictEqual(
+    metrics.clockFontWeight,
+    metrics.cardFontWeight,
+    `${label}: clock font weight matches card labels`,
+  );
+  assert.strictEqual(
+    metrics.temperatureFontWeight,
+    metrics.cardFontWeight,
+    `${label}: temperature font weight matches card labels`,
+  );
+  assert.strictEqual(
+    metrics.iconFontSize,
+    metrics.cardFontSize,
+    `${label}: connectivity icon scales with the device label size`,
+  );
+  assert.strictEqual(
+    metrics.glyphFontSize,
+    metrics.iconFontSize,
+    `${label}: icon-font defaults do not override connectivity sizing`,
+  );
+  assert(
+    metrics.iconHeight <= metrics.topbarHeight,
+    `${label}: connectivity icon fits inside the clock bar`,
+  );
+  assert(
+    Math.abs(metrics.iconCenterY - metrics.clockCenterY) <= 1,
+    `${label}: connectivity icon is vertically aligned with the clock (${JSON.stringify(metrics)})`,
   );
 }
 
@@ -3192,6 +3303,57 @@ async function assertPlaylistValidationOpensSourcePanel(page, label) {
   });
 }
 
+async function assertNumberActionRequiresValue(page, posts, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.waitForSelector("#sp-screen.sp-page.active");
+  const emptyCell = page
+    .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
+    .first();
+  assert(await emptyCell.count(), `${label}: number action validation needs an empty cell`);
+
+  const before = posts.length;
+  await emptyCell.click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.getByRole("button", { name: "Action card type" }).click();
+  await page.locator("#sp-inp-action").selectOption("number.set_value");
+  await page.locator("#sp-inp-entity").fill("number.target_level");
+  await page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Settings" })
+    .first()
+    .locator("> .sp-disclosure-button")
+    .click();
+  await page.locator("#sp-inp-action-value").fill("");
+  await page.getByRole("button", { name: "Save" }).click();
+
+  assert(
+    await page.getByText("Enter a value before saving.", { exact: true }).isVisible(),
+    `${label}: a number action should reject a blank value`,
+  );
+  assert.strictEqual(
+    posts.length,
+    before,
+    `${label}: an invalid number action should not post`,
+  );
+
+  await page.locator("#sp-inp-action-value").fill("12.5");
+  assert.strictEqual(
+    await page.getByText("Enter a value before saving.", { exact: true }).count(),
+    0,
+    `${label}: entering a number action value should clear the validation error`,
+  );
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    const overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+  assert.strictEqual(
+    posts.length,
+    before,
+    `${label}: closing the number action draft should not post`,
+  );
+}
+
 async function assertSpeakerGroupEditorAndPreview(page, posts, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
@@ -3337,8 +3499,8 @@ function backupButtons(count) {
   return buttons;
 }
 
-function backupFixture(device, slots) {
-  return {
+function backupFixture(device, slots, nativeProfile = null) {
+  const backup = {
     version: 2,
     format: "espcontrol.backup",
     device,
@@ -3409,6 +3571,17 @@ function backupFixture(device, slots) {
       schedule_clock_brightness: 40,
     },
   };
+  if (nativeProfile) {
+    backup.native_config = createPanelConfigBackupPayload(
+      encodePanelConfig({
+        deviceProfile: nativeProfile,
+        buttons: { 1: "light.kitchen;Kitchen;Lightbulb;Lightbulb" },
+        subpages: {},
+        settings: { button_order: "1,2,3w,4", button_on_color: "AA5500" },
+      }),
+    );
+  }
+  return backup;
 }
 
 function writeJsonFixture(name, value) {
@@ -3787,6 +3960,71 @@ async function assertBackupImportSmoke(page, posts, testCase) {
     ),
     `cross-device import shows an adaptation warning: ${JSON.stringify(warnings)}`,
   );
+
+  if (testCase.slug === "guition-esp32-p4-jc8012p4a1") {
+    const expectedNativeWarning =
+      "This backup was taken from guition-esp32-p4-jc8012p4a1-v2; this device is guition-esp32-p4-jc8012p4a1. Layout will be restored, but the native configuration will be skipped.";
+    const expectedSlotWarning = "Backup has 19 slots, current config has 20 - adapting";
+    await startBannerCapture(page);
+    await page.evaluate(() => {
+      window.__bannerMessages = [];
+    });
+    await importBackup(
+      page,
+      backupFixture(
+        "guition-esp32-p4-jc8012p4a1-v2",
+        testCase.slots - 1,
+        "guition-esp32-p4-jc8012p4a1-v2",
+      ),
+      "cross-profile-native-backup",
+    );
+    await page.waitForFunction(
+      (expected) =>
+        (window.__bannerMessages || []).some(
+          (entry) =>
+            entry.className.includes("sp-warning") &&
+            entry.text.includes(expected) &&
+            entry.text.includes("Backup has 19 slots, current config has 20 - adapting"),
+        ),
+      expectedNativeWarning,
+    );
+    await page.waitForFunction(() =>
+      (window.__bannerMessages || []).some(
+        (entry) =>
+          entry.className.includes("sp-success") &&
+          entry.text.includes("Configuration imported successfully"),
+      ),
+    );
+    const nativeWarnings = await page.evaluate(() => window.__bannerMessages || []);
+    const nativeWarningIndex = nativeWarnings.findIndex(
+      (entry) =>
+        entry.className.includes("sp-warning") &&
+        entry.text.includes(expectedNativeWarning) &&
+        entry.text.includes(expectedSlotWarning),
+    );
+    const successIndex = nativeWarnings.findIndex(
+      (entry) =>
+        entry.className.includes("sp-success") &&
+        entry.text.includes("Configuration imported successfully"),
+    );
+    assert.strictEqual(
+      nativeWarnings[nativeWarningIndex]?.text.includes(expectedNativeWarning),
+      true,
+      `cross-profile native import shows the specific warning: ${JSON.stringify(nativeWarnings)}`,
+    );
+    assert(
+      nativeWarnings[nativeWarningIndex]?.text.includes(expectedSlotWarning),
+      `cross-profile native import retains the slot adaptation warning: ${JSON.stringify(nativeWarnings)}`,
+    );
+    assert(
+      successIndex >= 0,
+      `cross-profile native import succeeds: ${JSON.stringify(nativeWarnings)}`,
+    );
+    assert(
+      nativeWarningIndex >= 0 && nativeWarningIndex < successIndex,
+      "cross-profile native warning appears before import completion",
+    );
+  }
 }
 
 async function entitySuggestionValues(
@@ -4954,6 +5192,8 @@ async function assertNativeProfileJourney(browser, testCase) {
     );
     await seedNativeDocument(page, nativeState);
 
+    await assertSubpageTitleTypography(page, testCase.name);
+
     const sensor = page.locator('.sp-main [data-slot="2"]');
     assert(
       (await sensor.textContent()).includes("Energy"),
@@ -5355,6 +5595,7 @@ async function runCase(browser, testCase) {
       testCase,
     );
     await assertCardIconsTopLeft(page, testCase.name);
+    await assertClockBarTypographyAndIconLayout(page, testCase.name);
     await assertMediaCoverArtCompactPreview(page, testCase.name);
     await assertSettingsPage(page, testCase.name, testCase, posts);
     if (testCase.exerciseInteractions) {
@@ -5375,6 +5616,7 @@ async function runCase(browser, testCase) {
       await assertAllCardSettingsGrouped(page, posts, testCase.name);
       await assertFanOptionalLightSettings(page, testCase.name);
       await assertWebhookSettingsPanel(page, posts, testCase.name);
+      await assertNumberActionRequiresValue(page, posts, testCase.name);
     }
     await assertInternalControlsPanel(page, posts, testCase.name);
     await assertEmptyCellSettings(page, posts, testCase.name);

@@ -12,7 +12,7 @@ struct SubpageBtn {
   std::string icon_on;
   std::string sensor;     // sensor entity, cover/internal mode, or action name
   std::string unit;
-  std::string type;       // button type: "" (toggle), action, sensor, door_window, presence, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, gate, lock, alarm, alarm_action, media, push, webhook, todo, internal, subpage
+  std::string type;       // button type: "" (toggle), action, sensor, door_window, presence, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, gate, lock, alarm, alarm_action, media, push, webhook, internal, subpage
   std::string precision;  // decimal places for sensor display; "text" = text sensor mode
   std::string options;    // comma-delimited card options
 };
@@ -173,14 +173,6 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.precision.clear();
     b.options = image_card_options_normalized(b.options);
   }
-  if (b.type == "todo") {
-    b.sensor.clear();
-    b.unit.clear();
-    b.precision.clear();
-    b.options = todo_card_options_normalized(b.options);
-    b.icon_on = "Auto";
-    if (b.icon.empty() || b.icon == "Auto") b.icon = "Check";
-  }
   if (b.type == "light_switch") {
     b.sensor.clear();
     b.unit.clear();
@@ -228,7 +220,6 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
       b.type != "alarm_action" &&
       !climate_card_type(b.type) && b.type != "cover" && b.type != "garage" && b.type != "gate" &&
       b.type != "webhook" &&
-      b.type != "todo" &&
       b.type != "sensor" && b.type != "door_window" && b.type != "presence" &&
       b.type != "subpage" && b.type != "light_control" && b.type != "media" &&
       !fan_card_type(b.type) && !card_large_numbers_supported(p)) {
@@ -486,7 +477,8 @@ struct ClimateSubpageParentIndicatorCtx {
 
 inline void apply_climate_subpage_parent_indicator(ClimateSubpageParentIndicatorCtx *ctx) {
   if (!ctx) return;
-  bool working = ctx->available && climate_action_is_working(ctx->hvac_action);
+  bool working = espcontrol::climate::parent_indicator_active(
+      ctx->available, ctx->hvac_mode, ctx->hvac_action);
   set_card_checked_state(ctx->parent_btn, working);
   if (ctx->has_alt_icon && ctx->parent_icon)
     lv_label_set_display_text(ctx->parent_icon, working ? ctx->on_glyph : ctx->off_glyph);

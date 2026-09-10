@@ -392,6 +392,8 @@ export function normalizeSavedConfigActionShadow(input: Partial<CardConfig>): Ca
   if (config.type === "local") { config.type = "action"; config.sensor = "local"; }
   if (config.type === "option_select") { config.type = "action"; config.sensor = "input_select.select_option"; }
   if (config.type !== "action") return null;
+  const entityDomain = config.entity.split(".")[0] || "";
+  if (["number.set_value", "input_number.set_value"].indexOf(config.sensor) >= 0 && ["number", "input_number"].indexOf(entityDomain) >= 0) config.sensor = entityDomain + ".set_value";
   if (ACTION_OPTION_SELECT_ACTIONS.indexOf(config.sensor as typeof ACTION_OPTION_SELECT_ACTIONS[number]) >= 0) {
     config.sensor = "input_select.select_option"; config.unit = ""; config.precision = ""; config.options = ""; config.icon_on = "Auto";
     if (!config.icon || config.icon === "Auto" || config.icon === "Chevron Down") config.icon = "Flash"; return config;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "climate_subscription_policy.h"
+#include "climate_state_logic.h"
 #include "climate_target_logic.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
@@ -86,6 +88,9 @@ struct ClimateControlCtx {
   std::string preset_mode;
   std::vector<std::string> preset_modes;
   std::string options;
+  uint8_t configured_tab_mask = 0;
+  uint32_t subscription_generation = 0;
+  espcontrol::climate::OptionalSubscriptionState optional_subscriptions;
   bool available = true;
   bool has_target = false;
   bool has_current = false;
@@ -550,39 +555,37 @@ inline std::string climate_hvac_service_value(const std::string &raw) {
   return value;
 }
 
-inline bool climate_action_is_working(const std::string &action) {
-  return action == "heating" || action == "cooling" ||
-         action == "drying" || action == "fan";
-}
-
 inline std::string climate_action_label(ClimateControlCtx *ctx) {
-  if (!ctx || !ctx->available) return espcontrol_i18n(std::string("Unavailable"));
-  if (ctx->hvac_action == "heating") return espcontrol_i18n(std::string("Heating"));
-  if (ctx->hvac_action == "cooling") return espcontrol_i18n(std::string("Cooling"));
-  if (ctx->hvac_action == "drying") return espcontrol_i18n(std::string("Drying"));
-  if (ctx->hvac_action == "fan") return espcontrol_i18n(std::string("Fan"));
-  if (ctx->hvac_mode == "off") return espcontrol_i18n(std::string("Off"));
-  if (ctx->hvac_action.empty() || ctx->hvac_action == "unknown" ||
-      ctx->hvac_action == "unavailable") return climate_option_label(ctx->hvac_mode);
-  if (ctx->hvac_action == "idle") return espcontrol_i18n(std::string("Idle"));
-  if (ctx->hvac_action == "off") return espcontrol_i18n(std::string("Off"));
+  if (!ctx) return espcontrol_i18n(std::string("Unavailable"));
+  switch (espcontrol::climate::status(
+      ctx->available, ctx->hvac_mode, ctx->hvac_action)) {
+    case espcontrol::climate::Status::UNAVAILABLE:
+      return espcontrol_i18n(std::string("Unavailable"));
+    case espcontrol::climate::Status::OFF:
+      return espcontrol_i18n(std::string("Off"));
+    case espcontrol::climate::Status::HEATING:
+      return espcontrol_i18n(std::string("Heating"));
+    case espcontrol::climate::Status::COOLING:
+      return espcontrol_i18n(std::string("Cooling"));
+    case espcontrol::climate::Status::DRYING:
+      return espcontrol_i18n(std::string("Drying"));
+    case espcontrol::climate::Status::FAN:
+      return espcontrol_i18n(std::string("Fan"));
+    case espcontrol::climate::Status::IDLE:
+      return espcontrol_i18n(std::string("Idle"));
+    case espcontrol::climate::Status::MODE_FALLBACK:
+      return climate_option_label(ctx->hvac_mode);
+  }
   return espcontrol_i18n(std::string("Idle"));
 }
 
 inline bool climate_is_active(ClimateControlCtx *ctx) {
-  if (!ctx || !ctx->available) return false;
-  if (climate_action_is_working(ctx->hvac_action)) return true;
-  if (ctx->hvac_mode == "off") return false;
-  if (ctx->hvac_action.empty() || ctx->hvac_action == "unknown" ||
-      ctx->hvac_action == "unavailable") {
-    return !climate_unavailable_value(ctx->hvac_mode);
-  }
-  return !(ctx->hvac_action == "idle" || ctx->hvac_action == "off");
+  return ctx && espcontrol::climate::active(
+      ctx->available, ctx->hvac_mode, ctx->hvac_action);
 }
 
-inline bool climate_temperature_controls_enabled(ClimateControlCtx *ctx) {
-  return ctx && ctx->available &&
-         (ctx->hvac_mode != "off" || climate_action_is_working(ctx->hvac_action));
+inline bool climate_card_icon_enabled(ClimateControlCtx *ctx) {
+  return ctx && espcontrol::climate::icon_enabled(ctx->available, ctx->hvac_mode);
 }
 
 inline bool climate_modal_temperature_controls_enabled(ClimateControlCtx *ctx) {
@@ -1084,7 +1087,7 @@ inline void climate_update_card(ClimateControlCtx *ctx) {
       if (ctx->icon_font)
         lv_obj_set_style_text_font(ctx->icon_lbl, ctx->icon_font, LV_PART_MAIN);
       lv_label_set_display_text(ctx->icon_lbl,
-        climate_temperature_controls_enabled(ctx) ? ctx->icon_on_glyph : ctx->icon_off_glyph);
+        climate_card_icon_enabled(ctx) ? ctx->icon_on_glyph : ctx->icon_off_glyph);
       climate_layout_card_icon(ctx->icon_lbl);
       lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
     } else {
@@ -2212,6 +2215,10 @@ inline void climate_control_hide_modal() {
 
 inline void delete_climate_control_context(ClimateControlCtx *ctx) {
   if (!ctx) return;
+  ctx->optional_subscriptions.clear_pending();
+  // The context owns all its callbacks, independently of a shared page owner.
+  // Release before deleting widgets/context, including during HA dispatch.
+  ha_release_callbacks_for_owner(ctx);
   if (climate_control_modal_ui().active == ctx) climate_control_hide_modal();
   if (ctx->debounce_timer) {
     lv_timer_del(ctx->debounce_timer);
@@ -2589,6 +2596,9 @@ inline ClimateControlCtx *create_climate_control_context(
       ? CLIMATE_DEFAULT_STEP_TENTHS
       : CLIMATE_WHOLE_NUMBER_STEP_TENTHS;
   ctx->options = p.options;
+  ctx->configured_tab_mask = espcontrol::climate::configured_climate_tab_mask(
+    normalize_climate_control_tabs_value(
+      cfg_option_value(p.options, CLIMATE_CONTROL_TABS_OPTION)));
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;
   ctx->tertiary_color = tertiary_color;
@@ -2617,9 +2627,13 @@ inline ClimateControlCtx *create_climate_control_context(
   return ctx;
 }
 
+#include "button_grid_climate_subscriptions.h"
+
 inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
   const uint32_t generation = ha_subscription_generation();
+  HaCallbackOwnerScope owner_scope(ctx);
+  ctx->subscription_generation = generation;
   auto active = [generation]() {
     return generation == ha_subscription_generation();
   };
@@ -2675,6 +2689,7 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         if (espcontrol::climate::capability_change_invalidates_pending(
               previous_kind, next_kind, climate_target_values_complete(ctx)))
           climate_cancel_temperature_send(ctx);
+        climate_mark_optional_subscription_needs(ctx);
         refresh();
       })
   );
@@ -2744,20 +2759,6 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         refresh();
       })
   );
-  auto subscribe_text = [ctx, refresh, active](const char *attr, std::string ClimateControlCtx::*field) {
-    ha_subscribe_attribute(
-      ctx->entity_id, std::string(attr),
-      std::function<void(esphome::StringRef)>(
-        [ctx, refresh, active, field](esphome::StringRef value) {
-          if (!active()) return;
-          ctx->*field = climate_lower(climate_trim(string_ref_limited(value, HA_SHORT_STATE_MAX_LEN)));
-          refresh();
-        })
-    );
-  };
-  subscribe_text("fan_mode", &ClimateControlCtx::fan_mode);
-  subscribe_text("swing_mode", &ClimateControlCtx::swing_mode);
-  subscribe_text("preset_mode", &ClimateControlCtx::preset_mode);
   auto subscribe_list = [ctx, refresh, active](const char *attr, std::vector<std::string> ClimateControlCtx::*field) {
     ha_subscribe_attribute(
       ctx->entity_id, std::string(attr),
@@ -2765,6 +2766,7 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         [ctx, refresh, active, field](esphome::StringRef value) {
           if (!active()) return;
           ctx->*field = climate_parse_options(value);
+          climate_mark_optional_subscription_needs(ctx);
           refresh();
         })
     );
@@ -2773,4 +2775,8 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   subscribe_list("fan_modes", &ClimateControlCtx::fan_modes);
   subscribe_list("swing_modes", &ClimateControlCtx::swing_modes);
   subscribe_list("preset_modes", &ClimateControlCtx::preset_modes);
+  climate_subscribe_optional_fields(
+    ctx, espcontrol::climate::configured_optional_subscription_mask(
+      ctx->configured_tab_mask));
+  climate_mark_optional_subscription_needs(ctx);
 }

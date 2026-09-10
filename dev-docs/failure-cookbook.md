@@ -88,6 +88,7 @@ Stop if an older backup cannot be normalized into the current model.
 
 First files:
 
+- `product/v2/device_catalog.json`
 - `devices/manifest.json`
 - `devices/guition-esp32-s3-4848s040/`
 - `components/espcontrol/button_grid_grid.h`
@@ -164,3 +165,28 @@ Fastest checks:
 npm run docs:build
 npm run check:dev-docs
 ```
+
+## Camera Image Is Slow or Fails Intermittently
+
+Use the controllable local endpoint to compare P4 image changes or reproduce
+slow and broken responses:
+
+```bash
+python3 scripts/camera_test_endpoint.py --image path/to/camera-snapshot.jpg
+```
+
+The endpoint is available at `http://<computer-ip>:8765/camera.jpg`. Query
+parameters can delay headers or chunks, change chunk counts, return HTTP errors,
+or send malformed image data. For example,
+`?header_delay_ms=500&chunk_delay_ms=100&chunks=8` simulates a slow camera;
+`?status=503` and `?malformed=1` exercise failure handling.
+
+Verify the harness first:
+
+```bash
+python3 scripts/camera_test_endpoint.py --self-test
+```
+
+When measuring on a panel, compare the same image, panel, network transport, and
+Home Assistant path. Capture response, first-byte, transfer, decode, and total
+timing log entries before and after the change.

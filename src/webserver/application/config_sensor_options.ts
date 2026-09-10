@@ -222,17 +222,6 @@ export function createConfigSensorOptionsFeature(cardRegistry: CardRegistry) {
         }
         return out;
     }
-    function normalizeTodoCountDisplay(this: any, value?: any) {
-        value = String(value || "").trim();
-        return value === "icon" ? "icon" : "count";
-    }
-    function normalizeTodoOptions(this: any, options?: any) {
-        var showCount: any = normalizeTodoCountDisplay(configOptionValue(options, "count_display")) === "count";
-        var out: any = showCount ? "" : setConfigOptionValue("", "count_display", "icon");
-        if (showCount)
-            out = copyLargeNumbersOption(out, options);
-        return out;
-    }
     return {
         sensorCardLocalSource,
         sensorCardModeController,
@@ -266,8 +255,6 @@ export function createConfigSensorOptionsFeature(cardRegistry: CardRegistry) {
         presenceActiveColorEnabled,
         setPresenceActiveColorEnabled,
         normalizePresenceOptions,
-        normalizeTodoCountDisplay,
-        normalizeTodoOptions,
     };
 }
 

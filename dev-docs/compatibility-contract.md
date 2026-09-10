@@ -13,7 +13,7 @@ explicit migration path, compatibility fixture, release note, and rollback plan.
 | Option values | Existing option keys and values either keep working or have a fallback parser. | `src/webserver/application/config_codec.ts`, `components/espcontrol/button_grid_config.h` |
 | Device slugs | Published device slugs remain valid for firmware bundles, web bundles, docs, manifests, and release assets. | `devices/manifest.json`, `npm run check:device-profiles`, `npm run check:firmware-release` |
 | Public firmware URLs | Installed panels can still find update manifests and OTA assets at the expected public paths. | `npm run check:firmware-release`, `npm run check:public-firmware-script` |
-| Public web bundles | Older firmware can still load `docs/public/webserver/<slug>/www.js` for its slug; new build entrypoints bundle the same generated file locally. | `python3 scripts/build.py www`, `npm run check:web-smoke` |
+| Public web assets | Older firmware can still load `docs/public/webserver/<slug>/www.js`; the hosted bridge and `web-assets.json` select a compatible immutable bundle, while new build entrypoints include `embedded/www.js` as the offline fallback. | `python3 scripts/build.py www`, `npm run check:web-smoke`, `npm run check:web-asset-manifest` |
 | Generated device YAML | Generated package and sensor blocks stay reproducible from manifest data. | `python3 scripts/generate_device_slots.py --check` |
 | Home Assistant actions | Existing card controls keep calling the same Home Assistant services unless a migration is deliberate. | `npm run check:firmware-ha-bindings`, `npm run check:firmware-card-runtime` |
 

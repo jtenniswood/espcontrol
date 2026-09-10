@@ -16,7 +16,7 @@ Use one for shortcuts such as a scene, script, automation, Home Assistant button
 2. Set a **Label** - this is the text shown on the card.
 3. Choose an **Action**.
 4. Enter the matching **Entity** (not needed for Local Action).
-5. Enter a value for **Set Number Helper**, if used, and choose an icon.
+5. Enter a value for **Set Number** or **Set Number Helper**, if used, and choose an icon.
 6. For scripts, you can add fields and ask for confirmation before running it.
 
 ## Supported Actions
@@ -29,9 +29,12 @@ Use one for shortcuts such as a scene, script, automation, Home Assistant button
 | **Press Button** | `button.restart_router` | None |
 | **Press Input Button** | `input_button.doorbell` | None |
 | **Toggle Helper** | `input_boolean.guest_mode` | None |
+| **Set Number** | `number.target_level` | Value |
 | **Set Number Helper** | `input_number.target_level` | Value |
 | **Option Select** | `select.wled_preset` or `input_select.house_mode` | Opens option list |
 | **Local Action** | Registered local action key | Runs on the panel |
+
+Use **Set Number** for a `number.*` entity supplied by a device or integration. Use **Set Number Helper** for an `input_number.*` helper created in Home Assistant. The setup page checks that the selected action and entity match, and corrects older saved cards that used the other numeric action.
 
 For more about choosing from a live list, see [Option Select](/card-types/option-select). For an action that runs on the panel without Home Assistant, see [Local Action](/card-types/local-actions).
 

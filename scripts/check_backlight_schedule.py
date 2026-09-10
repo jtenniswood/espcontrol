@@ -1,11 +1,74 @@
 #!/usr/bin/env python3
-"""Check the startup boundary for backlight mode persistence."""
+"""Check backlight startup persistence and interrupted-fade recovery."""
 
 from pathlib import Path
+import subprocess
+import tempfile
+import textwrap
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "common" / "addon" / "backlight_schedule.yaml"
+FADE_SOURCE = ROOT / "common" / "addon" / "backlight.yaml"
+
+
+def check_recovery(source: str) -> None:
+    # Exercise the actual YAML write/skip logic with the real display controller
+    # and fade sampler, while replacing ESPHome's light with a host test double.
+    script = source.index("  - id: backlight_apply_brightness")
+    start = source.index("          float target = pct / 100.0f;", script)
+    end = source.index("\n\n", start)
+    fade_source = FADE_SOURCE.read_text(encoding="utf-8")
+    fade_script = fade_source.index("  - id: backlight_fade_current_ui_to_black")
+    fade_start = fade_source.index("          float brightness =", fade_script)
+    fade_end = fade_source.index("      - while:", fade_start)
+    with tempfile.TemporaryDirectory(prefix="backlight-recovery-") as directory:
+        output = Path(directory)
+        (output / "backlight_brightness_adapter.inc").write_text(
+            textwrap.dedent(source[start:end]), encoding="utf-8"
+        )
+        (output / "backlight_fade_start.inc").write_text(
+            textwrap.dedent(fade_source[fade_start:fade_end]), encoding="utf-8"
+        )
+        binary = output / "backlight_recovery_test"
+        subprocess.run([
+            "c++", "-std=c++17", "-Wall", "-Wextra", "-Werror",
+            "-I", str(ROOT / "components" / "espcontrol"), "-I", str(output),
+            str(ROOT / "tests" / "firmware" / "backlight_recovery_test.cpp"),
+            "-o", str(binary),
+        ], check=True)
+        subprocess.run([str(binary)], check=True)
+    print("backlight interrupted-fade recovery: ok")
+
+
+def check_clock_switches_without_fade() -> None:
+    source = FADE_SOURCE.read_text(encoding="utf-8")
+    start = source.index("  - id: clock_screensaver_refresh_brightness")
+    end = source.index("\n  # Hide the clock screensaver overlay", start)
+    clock_view = source[start:end]
+    assert "backlight_fade_current_ui_to_black" not in clock_view, (
+        "clock screensaver must not fade the active UI to black"
+    )
+    assert "screensaver_fade" not in clock_view, (
+        "clock screensaver must not run a brightness fade"
+    )
+    assert "transition_length: 400ms" not in clock_view, (
+        "clock screensaver brightness refresh must not fade"
+    )
+    assert clock_view.count("transition_length: 0s") == 2, (
+        "all clock screensaver brightness writes must be immediate"
+    )
+    reveal_overlay = clock_view.index(
+        "lv_obj_clear_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN);"
+    )
+    refresh_overlay = clock_view.index("lv_refr_now(nullptr);", reveal_overlay)
+    direct_brightness = clock_view.index(
+        "espcontrol::apply_backlight_fade_level(", refresh_overlay
+    )
+    assert reveal_overlay < refresh_overlay < direct_brightness, (
+        "clock overlay must be rendered before its brightness is applied"
+    )
+    print("clock screensaver direct transition: ok")
 
 
 def main() -> None:
@@ -23,8 +86,11 @@ def main() -> None:
         "if (!id(display_backlight).remote_values.is_on()) return;"
     ), "startup guard must run before restored light-state handling"
 
+    assert "on_boot:\n" in text and "    - priority: -190" in text, (
+        "schedule boot handler must be a list item so later packages preserve the brightness service"
+    )
     boot = text.index("priority: -190")
-    boot_end = text.index("\n      - lambda: |-", text.index("id(brightness_mode_runtime_ready) = true;", boot)) + 1
+    boot_end = text.index("\n        - lambda: |-", text.index("id(brightness_mode_runtime_ready) = true;", boot)) + 1
     boot_text = text[boot:boot_end]
     assert "id(brightness_mode_runtime_ready) = true;" in boot_text, (
         "brightness mode must become runtime-ready during boot initialization"
@@ -35,6 +101,8 @@ def main() -> None:
     )
 
     print("backlight schedule startup guard: ok")
+    check_recovery(text)
+    check_clock_switches_without_fade()
 
 
 if __name__ == "__main__":

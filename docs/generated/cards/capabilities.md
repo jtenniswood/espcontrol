@@ -10,7 +10,7 @@ This generated reference lists stable setup facts from the shared card contract.
 | Card | Type | Entity domains | Subpages | Picker grouping | Main modes and options | Status |
 |---|---|---|---|---|---|---|
 | Switch | switch | light, switch, input_boolean, fan | Yes | Own picker item | Large Active Display Numbers; Confirmation Required: default, off, on, both; On State Pattern: default, stripes; Message; Confirm Button; Cancel Button | Visible |
-| Action | action | scene, script, automation, button, input_button, input_boolean, input_number, input_select, select | Yes | Own picker item | Large State Numbers; Confirmation Required; Fields; Message; Confirm Button; Cancel Button | Visible |
+| Action | action | scene, script, automation, button, input_button, input_boolean, number, input_number, input_select, select | Yes | Own picker item | Large State Numbers; Confirmation Required; Fields; Message; Confirm Button; Cancel Button | Visible |
 | Vacuum | vacuum | vacuum | Yes | Own picker item | Type: status, start_stop, dock, pause_resume, clean_spot, locate, clean_area | Visible |
 | Lawn Mower | lawn_mower | lawn_mower | Yes | Own picker item | Type: status, start_mowing, dock, pause_resume | Visible |
 | Alarm | alarm | alarm_control_panel | Yes | Own picker item | Type: control_panel, away, home, night, vacation, disarm; PIN required for arming; PIN required for disarming; Visible Actions: away, home, night, vacation, disarm; Icon Display: static, status; Label Display: name, status | Visible |
@@ -43,9 +43,11 @@ This generated reference lists stable setup facts from the shared card contract.
 | Webhook | webhook | None | Yes | Own picker item | Headers | Visible |
 | Sensor | sensor | sensor, binary_sensor, text_sensor | Yes | Own picker item | Large Sensor Numbers; Incoming Value Unit: default, seconds, minutes, hours, days; Lit When Active; Status Translation; Input Status; Display Text; Input Status 2; Display Text 2 | Visible |
 | Local Sensor | local_sensor | sensor, text_sensor | Yes | Sensor (sensor) | None | Hidden |
-| Slider | slider | light, fan | Yes | Own picker item | None | Visible |
+| Slider | slider | light, fan, number, input_number | Yes | Own picker item | None | Visible |
 | Subpage | subpage | None | No | Own picker item | Subpage Type: default, switch, lights, climate, presence, media, alarm, cover, garage, gate, lock, vacuum, lawn_mower, weather, sensor, image; Large State Numbers | Visible |
 | Date & Time | timezone | None | Yes | Date & Time (calendar) | Type: clock, datetime, default, timezone; Large Clock | Visible |
 | Weather | weather | weather | Yes | Own picker item | Type: default, today, tomorrow; Large Temperature Numbers | Visible |
 | Camera Card | image | camera, image | Yes | Own picker item | Show Label; Show Icon; Expanded Image: fill, fit | Visible |
+| Wifi Sharing | wifi_qr | None | Yes | Own picker item | Network name; Security: wpa, open; Password; Hidden network; Visible Tabs: qr, credentials | Visible |
+| QR Card | wifi_qr_card | None | Yes | Wifi Sharing (wifi_qr) | Network name; Security: wpa, open; Password; Hidden network; Visible Tabs: qr, credentials | Visible |
 | Weather Forecast | weather_forecast | weather | Yes | Own picker item | None | Hidden |

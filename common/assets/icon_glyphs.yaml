@@ -5,7 +5,8 @@
 - "\U000F01DA"  # mdi-download (Firmware install update entity)
 - "\U000F04F9"  # mdi-tag (Firmware version entity)
 - "\U000F06B0"  # mdi-update (Firmware update entities)
-- "\U000F05A9"  # mdi-wifi (Setup screens)
+- "\U000F0432"  # mdi-qrcode (Wifi Share QR tab)
+- "\U000F0306"  # mdi-key (Wifi Share credentials tab)
 - "\U000F0928"  # mdi-wifi-strength-4 (Setup screens)
 - "\U000F092F"  # mdi-wifi-strength-outline (Network status)
 - "\U000F091F"  # mdi-wifi-strength-1 (Network status)
@@ -19,6 +20,7 @@
 - "\U000F0456"  # mdi-repeat (Media modal repeat control)
 - "\U000F0458"  # mdi-repeat-once (Media modal repeat-one state)
 - "\U000F02ED"  # mdi-image-broken (Image card unavailable state)
+- "\U000F035B"  # mdi-memory (Build information card)
 - "\U000F0141"  # mdi-chevron-left
 - "\U000F0142"  # mdi-chevron-right
 - "\U000F0004"  # mdi-account
@@ -342,6 +344,7 @@
 - "\U000F0F38"  # mdi-weather-tornado
 - "\U000F059D"  # mdi-weather-windy
 - "\U000F059E"  # mdi-weather-windy-variant
+- "\U000F05A9"  # mdi-wifi
 - "\U000F1A88"  # mdi-wind-power
 - "\U000F0DA5"  # mdi-wind-turbine
 - "\U000F19AB"  # mdi-wind-turbine-alert

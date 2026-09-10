@@ -15,6 +15,16 @@
     "expected": { "entity": "number.level", "label": "Level", "icon": "Tune", "icon_on": "Auto", "sensor": "", "unit": "%", "type": "slider", "precision": "2", "options": "" }
   },
   {
+    "name": "native number action corrects helper service",
+    "input": "number.level;Level;Counter;Auto;input_number.set_value;12.5;action;;",
+    "expected": { "entity": "number.level", "label": "Level", "icon": "Counter", "icon_on": "Auto", "sensor": "number.set_value", "unit": "12.5", "type": "action", "precision": "", "options": "" }
+  },
+  {
+    "name": "number helper action corrects native service",
+    "input": "input_number.level;Level;Counter;Auto;number.set_value;12.5;action;;",
+    "expected": { "entity": "input_number.level", "label": "Level", "icon": "Counter", "icon_on": "Auto", "sensor": "input_number.set_value", "unit": "12.5", "type": "action", "precision": "", "options": "" }
+  },
+  {
     "name": "light brightness clears stale sensor and options",
     "input": "light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;sensor.level;%;light_brightness;2;large_numbers,unknown=1",
     "expected": { "entity": "light.kitchen", "label": "Kitchen", "icon": "Lightbulb Outline", "icon_on": "Lightbulb", "sensor": "", "unit": "%", "type": "light_brightness", "precision": "2", "options": "" }

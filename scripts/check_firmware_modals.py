@@ -72,6 +72,17 @@ def firmware_modal_errors(firmware_dir: Path, root: Path) -> list[str]:
             errors.append(
                 "components/espcontrol/button_grid_sliders.h: keep the cover modal back button above tab and slider controls"
             )
+
+    wifi_qr_path = firmware_dir / "button_grid_wifi_qr.h"
+    if wifi_qr_path.exists():
+        text = wifi_qr_path.read_text(encoding="utf-8")
+        if (
+            "control_modal_calc_layout(modal_width_compensation_percent);" not in text
+            or "ui.tab_row, layout, tabs_layout, modal_width_compensation_percent);" not in text
+        ):
+            errors.append(
+                "components/espcontrol/button_grid_wifi_qr.h: apply the active display width compensation to the Wifi modal"
+            )
     return errors
 
 
@@ -1063,7 +1074,7 @@ def firmware_media_modal_context_lifecycle_errors(root: Path) -> list[str]:
             "media_playback_detach_now_playing(ctx);",
             "delete_media_slider_context",
             "media_playback_detach_slider(ctx);",
-            "lv_timer_del(ctx->media_timer);",
+            "slider_detach_runtime(ctx);",
         )
         if any(requirement not in media_text for requirement in requirements):
             errors.append(
@@ -1949,7 +1960,7 @@ def run_self_test() -> int:
         "}\n"
         "inline void delete_media_slider_context(SliderCtx *ctx) {\n"
         "  media_playback_detach_slider(ctx);\n"
-        "  lv_timer_del(ctx->media_timer);\n"
+        "  slider_detach_runtime(ctx);\n"
         "}\n"
     )
     valid_media_grid_cleanup = "\n".join((

@@ -58,7 +58,6 @@ class PanelConfigReadHandler final
                           "Native configuration is unavailable");
       return;
     }
-
     char generation[16]{};
     char etag[20]{};
     char version[8]{};

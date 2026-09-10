@@ -46,7 +46,7 @@ Expected generated files depend on the source touched. Common examples include:
 
 - `src/webserver/generated/card_contract.ts`
 - `components/espcontrol/button_grid_contract_generated.h`
-- `docs/public/webserver/*/www.js`
+- generated files under `docs/public/webserver/`
 - `docs/generated/cards/capabilities.md`
 
 ## Stop If

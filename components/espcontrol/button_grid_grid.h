@@ -66,9 +66,10 @@ struct GridConfig {
 
 inline void grid_log_memory(const char *stage) {
 #ifdef ESP_PLATFORM
-  ESP_LOGI("sensors", "Phase 2 %s heap: internal=%u psram=%u",
+  ESP_LOGI("sensors", "Phase 2 %s heap: internal=%u largest=%u psram=%u",
     stage,
     (unsigned) heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+    (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
     (unsigned) heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
 #else
   (void) stage;
@@ -259,12 +260,13 @@ inline void apply_wide_large_date_time_card_layout(const BtnSlot &s,
 #include "button_grid_cover_modal_driver.h"
 #include "button_grid_navigation_driver.h"
 #include "button_grid_image_driver.h"
+#include "button_grid_wifi_qr.h"
+#include "button_grid_wifi_qr_driver.h"
 #include "button_grid_light_control_driver.h"
 #include "button_grid_fan_control_driver.h"
 #include "button_grid_climate_control_driver.h"
 #include "button_grid_alarm_driver.h"
 #include "button_grid_media_driver.h"
-#include "button_grid_legacy_compatibility_driver.h"
 
 inline void apply_card_label_line_clamp(lv_obj_t *label, const GridConfig &cfg,
                                         int row_span = 1) {
@@ -294,8 +296,9 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_state(s.btn, LV_STATE_CHECKED);
   sync_card_checked_text_color(s.btn);
-  lv_obj_clear_state(s.btn, LV_STATE_DISABLED);
+  set_card_disabled_state(s.btn, false);
   lv_obj_set_style_opa(s.btn, LV_OPA_COVER, LV_PART_MAIN);
+  if (s.icon_lbl) lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   if (s.sensor_container) lv_obj_set_user_data(s.sensor_container, nullptr);
   if (s.text_lbl) {
     lv_obj_set_style_bg_opa(s.text_lbl, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -538,6 +541,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   espcontrol::cards::cover_modal_driver_cleanup(s, p, context);
   espcontrol::cards::navigation_driver_cleanup(s, p, context);
   espcontrol::cards::image_driver_cleanup(s, p, context);
+  espcontrol::cards::wifi_qr_driver_cleanup(s, p, context);
   espcontrol::cards::light_control_driver_cleanup(s, p, context);
   espcontrol::cards::fan_control_driver_cleanup(s, p, context);
   espcontrol::cards::climate_control_driver_cleanup(s, p, context);
@@ -575,6 +579,8 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     espcontrol::cards::image_driver_refresh_layout(s, p, context);
     return;
   }
+  if (espcontrol::cards::wifi_qr_driver_setup_visual(
+        s, p, context, row_span, col_span)) return;
   if (espcontrol::cards::light_control_driver_setup_visual(s, p, context)) {
     espcontrol::cards::light_control_driver_attach_interaction(s, p, context);
     espcontrol::cards::light_control_driver_refresh_layout(s, p, context);
@@ -668,10 +674,6 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
         s, p, context, cfg, display)) {
     espcontrol::cards::navigation_driver_attach_interaction(s, p, context);
     espcontrol::cards::navigation_driver_refresh_layout(s, p, context, cfg);
-    return;
-  }
-  if (espcontrol::cards::legacy_compatibility_driver_setup_visual(
-        s, p, context, palette, display, row_span, col_span)) {
     return;
   }
   clear_unsupported_card_slot_visuals(s);
@@ -920,6 +922,9 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
 
   if (espcontrol::cards::image_driver_refresh_layout(
         s, p, context)) {
+    return;
+  } else if (espcontrol::cards::wifi_qr_driver_refresh_layout(
+               s, p, context, row_span, col_span)) {
     return;
   } else if (espcontrol::cards::light_control_driver_refresh_layout(
                s, p, context)) {
@@ -1452,15 +1457,7 @@ inline void grid_prepare_media_runtime_for_visual_reset(lv_obj_t *owner) {
     } else if (allocation.deleter == grid_delete_media_slider_runtime_ptr) {
       SliderCtx *ctx = static_cast<SliderCtx *>(allocation.ptr);
       media_playback_detach_slider(ctx);
-      if (ctx->media_timer) {
-        lv_timer_del(ctx->media_timer);
-        ctx->media_timer = nullptr;
-      }
-      ctx->media_slider = nullptr;
-      ctx->fill = nullptr;
-      ctx->media_track_bg = nullptr;
-      ctx->media_value_lbl = nullptr;
-      ctx->media_status_lbl = nullptr;
+      slider_detach_runtime(ctx);
     }
   }
 }
@@ -1802,6 +1799,9 @@ inline void grid_phase2(
   display_activate_profile(display);
   set_switch_confirmation_message_font(display_switch_confirmation_message_font(display));
   set_switch_confirmation_icon_font(display_icon_font(display));
+  set_wifi_qr_icon_font(display_icon_font(display));
+  network_status_card_icon_font() = display_icon_font(display);
+  set_wifi_qr_heading_font(display_media_title_font(display));
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
   configure_grid_layout(main_page_obj, NS, COLS);
@@ -1879,6 +1879,7 @@ inline void grid_phase2(
     navigation_register_home_target(idx, pos, p.label, scfg, s.btn);
     if (espcontrol::cards::image_driver_bind_main(
           s, p, context, cfg)) continue;
+    if (espcontrol::cards::wifi_qr_driver_bind_main(s, p, context)) continue;
     auto light_control_environment =
       espcontrol::cards::light_control_driver_environment(
         palette, display, s);
@@ -1931,8 +1932,6 @@ inline void grid_phase2(
     navigation_state.icon_on = &icon_on_cp[idx - 1];
     if (espcontrol::cards::navigation_driver_bind_main(
           s, p, context, navigation_state)) continue;
-    if (espcontrol::cards::legacy_compatibility_driver_bind(
-          s, p, context, palette, display, row_span, col_span)) continue;
     ESP_LOGE("card_runtime", "Card has no main-grid data driver: type=%s",
              p.type.c_str());
   }
@@ -2100,6 +2099,8 @@ inline void grid_phase2(
 
       if (espcontrol::cards::image_driver_bind_subpage(
             sub_slot, sb_cfg, context, cfg)) continue;
+      if (espcontrol::cards::wifi_qr_driver_bind_subpage(
+            sub_slot, sb_cfg, context)) continue;
       auto light_control_environment =
         espcontrol::cards::light_control_driver_environment(
           palette, display, sub_slot);
@@ -2201,8 +2202,6 @@ inline void grid_phase2(
         };
       if (espcontrol::cards::access_cover_driver_bind_subpage(
             sub_slot, sb_cfg, context, access_cover_environment)) continue;
-      if (espcontrol::cards::legacy_compatibility_driver_bind(
-            sub_slot, sb_cfg, context, palette, display, rs, cs)) continue;
       ESP_LOGE("card_runtime", "Card has no subpage data driver: type=%s",
                sb_cfg.type.c_str());
     }
@@ -2219,6 +2218,7 @@ inline void grid_phase2(
     refresh_image_cards();
   }
   refresh_weather_forecast_cards();
+  ha_log_subscription_diagnostics("grid-complete");
   grid_log_memory("end");
   ESP_LOGI("sensors", "Phase 2: done (%lu ms)", esphome::millis());
 }

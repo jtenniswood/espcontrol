@@ -1,6 +1,7 @@
 export interface RequiredCardField {
   readonly value: unknown;
   readonly active?: boolean;
+  readonly present?: boolean;
 }
 
 export interface RequiredCardFieldValidation {
@@ -20,6 +21,10 @@ export class CardEditorValidationController {
     for (let index = 0; index < fields.length; index += 1) {
       const field = fields[index]!;
       if (field.active === false) continue;
+      if (field.present !== undefined) {
+        if (field.present) continue;
+        return { valid: false, firstInvalidIndex: index };
+      }
       if (String(field.value || "").trim()) continue;
       return { valid: false, firstInvalidIndex: index };
     }

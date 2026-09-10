@@ -8,8 +8,7 @@
 namespace espcontrol::cards {
 
 inline bool cover_modal_driver_matches(const Context &context) {
-  return !context.legacy_dispatch &&
-         context.runtime.driver == card_runtime::CardDriverId::COVER_MODAL;
+  return context.runtime.driver == card_runtime::CardDriverId::COVER_MODAL;
 }
 
 inline void cover_modal_driver_track_slider_cleanup(BtnSlot &slot) {

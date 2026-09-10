@@ -18,6 +18,7 @@ namespace espcontrol {
 class EspControlApp : public esphome::Component {
  public:
   static constexpr size_t PANEL_CONFIG_STORAGE_SLOT_CAPACITY = 40 * 1024;
+  static constexpr size_t PANEL_CONFIG_NVS_SLOT_CAPACITY = 16 * 1024;
 
   EspControlApp();
   ~EspControlApp();
@@ -28,7 +29,7 @@ class EspControlApp : public esphome::Component {
   float get_setup_priority() const override {
     // The native configuration wiring binds restored ESPHome text entities.
     // Those entities, and the P4 display services they can refresh, are only
-    // ready once Wi-Fi setup has completed. Starting the owner earlier makes
+    // ready once Wifi setup has completed. Starting the owner earlier makes
     // P4 firmware reset before ESPHome can confirm a new OTA boot.
     return esphome::setup_priority::AFTER_WIFI;
   }
@@ -47,8 +48,10 @@ class EspControlApp : public esphome::Component {
       uint8_t slot, esphome::text::Text *button,
       esphome::text::Text *subpage_0, esphome::text::Text *subpage_1,
       esphome::text::Text *subpage_2, esphome::text::Text *subpage_3,
-      esphome::text::Text *subpage_4, esphome::text::Text *subpage_5,
-      esphome::text::Text *subpage_6, esphome::text::Text *subpage_7);
+      esphome::text::Text *subpage_4 = nullptr,
+      esphome::text::Text *subpage_5 = nullptr,
+      esphome::text::Text *subpage_6 = nullptr,
+      esphome::text::Text *subpage_7 = nullptr);
   void set_panel_config_card_images_storage(bool enabled) {
     panel_config_card_images_storage_ = enabled;
   }

@@ -1,9 +1,8 @@
 # Task Playbooks
 
-Use these playbooks when a request matches a common repo task. They are more
-prescriptive than [Change Workflows](../change-workflows.md): start with the
-listed source files, regenerate only when the playbook says to, and stop when
-unexpected files change.
+Playbooks own operational guidance: what to edit, what to regenerate, which
+checks to run, and when to stop. Use the [Task Router](../task-router.md) when
+the request does not already identify a workflow.
 
 ## Available Playbooks
 
@@ -11,10 +10,13 @@ unexpected files change.
 - [Add or change a supported device](add-supported-device.md)
 - [Change fonts or icons](change-fonts-or-icons.md)
 - [Change saved config](change-saved-config.md)
+- [Change the web configurator](change-web-configurator.md)
+- [Change firmware UI](change-firmware-ui.md)
+- [Change the release workflow](change-release-workflow.md)
 
 ## Shared Rules
 
-- Prefer source files over generated files.
+- Prefer authored sources over generated files.
 - Commit generated files only when a listed generator produced them.
 - Stop and inspect before keeping unrelated generated output.
 - Ask before removing saved-config compatibility, changing public device

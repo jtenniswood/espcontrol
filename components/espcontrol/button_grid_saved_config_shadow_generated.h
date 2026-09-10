@@ -142,6 +142,9 @@ inline bool normalize_saved_config_action_shadow(Config &config) {
   if (config.type == "local") { config.type = "action"; config.sensor = "local"; }
   if (config.type == "option_select") { config.type = "action"; config.sensor = "input_select.select_option"; }
   if (config.type != "action") return false;
+  const bool number_entity = config.entity.size() > 7 && config.entity.compare(0, 7, "number.") == 0;
+  const bool input_number_entity = config.entity.size() > 13 && config.entity.compare(0, 13, "input_number.") == 0;
+  if ((config.sensor == "number.set_value" || config.sensor == "input_number.set_value") && (number_entity || input_number_entity)) config.sensor = number_entity ? "number.set_value" : "input_number.set_value";
   if (config.icon.empty()) config.icon = "Auto";
   if (config.icon_on.empty()) config.icon_on = "Auto";
   if (saved_config_shadow_string_in(config.sensor, SAVED_CONFIG_SHADOW_ACTION_OPTION_SELECT_ACTIONS, sizeof(SAVED_CONFIG_SHADOW_ACTION_OPTION_SELECT_ACTIONS) / sizeof(SAVED_CONFIG_SHADOW_ACTION_OPTION_SELECT_ACTIONS[0]))) {

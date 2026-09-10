@@ -15,7 +15,7 @@ Local Sensor is a **Sensor** card source for a sensor or text sensor running on 
 3. Choose the sensor. The label and unit are filled in for you and can be changed.
 4. Choose **Numeric** for a value or **Text** for a live text state.
 
-The picker normally shows your own sensors. Turn on **Show internal sensors** to include diagnostics such as Wi-Fi signal strength. If the setup page cannot reach the panel, enter the ESPHome sensor `object_id` as the **Sensor Key**.
+The picker normally shows your own sensors. Turn on **Show internal sensors** to include diagnostics such as Wifi signal strength. If the setup page cannot reach the panel, enter the ESPHome sensor `object_id` as the **Sensor Key**.
 
 The card updates at the sensor's normal ESPHome update rate. It shows `--` until the first reading arrives.
 
