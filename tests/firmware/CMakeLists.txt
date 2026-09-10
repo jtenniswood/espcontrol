@@ -10,6 +10,12 @@ target_compile_features(foundation_test PRIVATE cxx_std_17)
 target_compile_options(foundation_test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME foundation_test COMMAND foundation_test)
 
+add_executable(digest_auth_policy_test digest_auth_policy_test.cpp)
+target_compile_features(digest_auth_policy_test PRIVATE cxx_std_17)
+target_compile_options(digest_auth_policy_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(digest_auth_policy_test PRIVATE ../../components/web_server_idf)
+add_test(NAME digest_auth_policy_test COMMAND digest_auth_policy_test)
+
 add_executable(button_grid_foundations_test button_grid_foundations_test.cpp)
 target_compile_features(button_grid_foundations_test PRIVATE cxx_std_17)
 target_compile_options(button_grid_foundations_test PRIVATE -Wall -Wextra -Werror)

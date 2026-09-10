@@ -47,6 +47,7 @@ export async function runDeviceApiTests(): Promise<void> {
   equal(fallback.url, "/second", "POST fallback reports the successful URL");
   equal(fallback.attemptedUrls.join(","), "/first,/second", "POST fallback preserves exact attempt order");
   equal(calls[0]?.init?.method, "POST", "POST fallback uses the POST method");
+  equal(calls[0]?.init?.credentials, "include", "device requests explicitly include browser credentials");
   equal(calls[0]?.init?.keepalive, undefined, "normal queued POSTs do not enable keepalive");
 
   const callCountBeforeNetworkFailure = calls.length;
@@ -71,6 +72,7 @@ export async function runDeviceApiTests(): Promise<void> {
   equal(json.value.state, "ON", "JSON requests decode the response body");
   const jsonCall = calls.find((call) => call.url === "/json");
   equal(jsonCall?.init?.cache, "no-store", "state loading bypasses the browser cache");
+  equal(jsonCall?.init?.credentials, "include", "state loading includes Safari HTTP credentials");
 
   const invalidJson = await api.getJson("/bad-json");
   equal(invalidJson.kind, "invalid-json", "invalid JSON returns a typed parsing failure");
