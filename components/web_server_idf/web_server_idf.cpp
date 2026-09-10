@@ -480,9 +480,6 @@ static constexpr size_t DIGEST_CNONCE_MAX_LENGTH = 64;
 static constexpr size_t DIGEST_NONCE_SLOTS = 8;
 static constexpr size_t DIGEST_CNONCE_SLOTS = 4;
 static constexpr uint32_t DIGEST_NONCE_LIFETIME_MS = 5 * 60 * 1000;
-static constexpr size_t DIGEST_SESSION_SLOTS = 8;
-static constexpr uint32_t DIGEST_SESSION_IDLE_LIFETIME_MS = 5 * 60 * 1000;
-static constexpr const char *DIGEST_SESSION_COOKIE = "ESPControlAuth";
 
 struct DigestCnonceState {
   std::array<char, DIGEST_CNONCE_MAX_LENGTH + 1> value{};
@@ -496,25 +493,12 @@ struct DigestNonceState {
   std::array<DigestCnonceState, DIGEST_CNONCE_SLOTS> cnonces{};
 };
 
-struct DigestSessionState {
-  std::array<char, DIGEST_VALUE_LENGTH + 1> token{};
-  std::array<char, DIGEST_VALUE_LENGTH + 1> credential_hash{};
-  uint32_t last_used_at{};
-};
-
 // Retain a small bounded set of challenges so simultaneous browser requests
 // can authenticate without allowing captured Authorization headers to replay.
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::array<DigestNonceState, DIGEST_NONCE_SLOTS> digest_nonce_states;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 size_t next_digest_nonce_slot = 0;
-// A bounded, RAM-only session table bridges Safari's failure to reuse HTTP
-// Digest credentials for fetch/EventSource requests. Sessions disappear on
-// reboot and expire after a short idle period.
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-std::array<DigestSessionState, DIGEST_SESSION_SLOTS> digest_session_states;
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-size_t next_digest_session_slot = 0;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 portMUX_TYPE digest_auth_lock = portMUX_INITIALIZER_UNLOCKED;
 
@@ -652,59 +636,6 @@ void digest_credential_hash(const char *username, const char *password, char *ou
   bytes_to_hex(digest, sizeof(digest), out);
 }
 
-bool authenticate_digest_session(const char *username, const char *password, const std::string &cookie_header) {
-  const char *token = nullptr;
-  size_t token_length = 0;
-  if (!find_http_cookie(cookie_header.c_str(), cookie_header.size(), DIGEST_SESSION_COOKIE, &token, &token_length) ||
-      token_length != DIGEST_VALUE_LENGTH)
-    return false;
-
-  char credential_hash[DIGEST_VALUE_LENGTH + 1];
-  digest_credential_hash(username, password, credential_hash);
-  const uint32_t now = millis();
-  bool authenticated = false;
-  portENTER_CRITICAL(&digest_auth_lock);
-  for (auto &state : digest_session_states) {
-    if (state.token[0] == '\0') continue;
-    if (digest_session_expired(state.last_used_at, now, DIGEST_SESSION_IDLE_LIFETIME_MS)) {
-      state = DigestSessionState{};
-      continue;
-    }
-    uint8_t difference = 0;
-    for (size_t i = 0; i < DIGEST_VALUE_LENGTH; i++) {
-      difference |= static_cast<uint8_t>(state.token[i] ^ token[i]);
-      difference |= static_cast<uint8_t>(state.credential_hash[i] ^ credential_hash[i]);
-    }
-    if (difference != 0) continue;
-    state.last_used_at = now;
-    authenticated = true;
-    break;
-  }
-  portEXIT_CRITICAL(&digest_auth_lock);
-  return authenticated;
-}
-
-bool issue_digest_session(const char *username, const char *password, char *cookie, size_t cookie_size) {
-  uint8_t random_bytes[16];
-  char token[DIGEST_VALUE_LENGTH + 1];
-  char credential_hash[DIGEST_VALUE_LENGTH + 1];
-  esp_fill_random(random_bytes, sizeof(random_bytes));
-  bytes_to_hex(random_bytes, sizeof(random_bytes), token);
-  digest_credential_hash(username, password, credential_hash);
-
-  portENTER_CRITICAL(&digest_auth_lock);
-  auto &state = digest_session_states[next_digest_session_slot];
-  memcpy(state.token.data(), token, sizeof(token));
-  memcpy(state.credential_hash.data(), credential_hash, sizeof(credential_hash));
-  state.last_used_at = millis();
-  next_digest_session_slot = (next_digest_session_slot + 1) % DIGEST_SESSION_SLOTS;
-  portEXIT_CRITICAL(&digest_auth_lock);
-
-  const int length = snprintf(cookie, cookie_size, "%s=%s; Path=/; HttpOnly; SameSite=Strict",
-                              DIGEST_SESSION_COOKIE, token);
-  return length > 0 && static_cast<size_t>(length) < cookie_size;
-}
-
 StringRef digest_param(StringRef params, const char *key) {
   size_t key_len = strlen(key);
   const char *base = params.c_str();
@@ -837,13 +768,8 @@ bool AsyncWebServerRequest::authenticate(const char *username, const char *passw
   }
   auto auth = this->get_header("Authorization");
   if (!auth.has_value()) {
-#ifdef USE_WEBSERVER_AUTH_DIGEST
-    const auto cookie = this->get_header("Cookie");
-    if (cookie.has_value() && authenticate_digest_session(username, password, cookie.value())) {
-      ESP_LOGD(TAG, "Authenticated browser request using its Digest session");
-      return true;
-    }
-#endif
+    // The device serves plain HTTP: a captured bearer cookie must never
+    // replace per-request authorization, even after an earlier Digest login.
     return false;
   }
 
@@ -867,12 +793,6 @@ bool AsyncWebServerRequest::authenticate(const char *username, const char *passw
                this->req_->uri);
     }
     this->digest_nonce_accepted_for_request_ = true;
-    if (!rechecking_authenticated_request &&
-        issue_digest_session(username, password, this->digest_session_cookie_.data(),
-                             this->digest_session_cookie_.size())) {
-      httpd_resp_set_hdr(*this, "Set-Cookie", this->digest_session_cookie_.data());
-      ESP_LOGD(TAG, "Issued browser session after Digest authentication");
-    }
   }
   return result == DigestAuthResult::AUTHENTICATED;
 #else

@@ -489,15 +489,16 @@ describe("browserless application contracts", () => {
     }
   });
 
-  test("bridges a valid Digest login to a protected browser session", () => {
+  test("requires per-request authorization without bearer cookies on plain HTTP", () => {
     const webServer = fs.readFileSync(path.join(ROOT, "components/web_server_idf/web_server_idf.cpp"), "utf8");
-    assert.match(webServer, /ESPControlAuth/);
-    assert.match(webServer, /Path=\/; HttpOnly; SameSite=Strict/);
-    assert.match(webServer, /authenticate_digest_session\(username, password/);
-    assert.ok(
-      webServer.indexOf('get_header("Authorization")') < webServer.indexOf("authenticate_digest_session(username, password"),
-      "an explicit Authorization header remains authoritative",
+    const authenticate = webServer.slice(
+      webServer.indexOf("bool AsyncWebServerRequest::authenticate("),
+      webServer.indexOf("void AsyncWebServerRequest::requestAuthentication("),
     );
+    assert.match(authenticate, /if \(!auth\.has_value\(\)\) \{\s*(?:\/\/[^\n]*\n\s*)*return false;/);
+    assert.doesNotMatch(authenticate, /get_header\("Cookie"\)/);
+    assert.doesNotMatch(webServer, /ESPControlAuth|Set-Cookie|authenticate_digest_session|issue_digest_session/);
+    assert.match(authenticate, /check_digest_auth\(username, password/);
   });
 
   test("normalizes and preserves Wifi modal tab settings", () => {
