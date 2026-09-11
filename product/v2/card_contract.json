@@ -2305,7 +2305,10 @@
     "image": {
       "label": "Camera Card",
       "allowInSubpage": true,
-      "domains": ["camera", "image"],
+      "domains": [
+        "camera",
+        "image"
+      ],
       "options": [
         {
           "name": "image_label",
@@ -2323,25 +2326,88 @@
           "name": "image_modal_mode",
           "label": "Expanded Image",
           "kind": "choice",
-          "values": ["fill", "fit"],
+          "values": [
+            "fill",
+            "fit"
+          ],
           "defaultValue": "fill",
+          "omitDefault": true
+        },
+        {
+          "name": "image_modal_refresh_mode",
+          "label": "Expanded view refresh",
+          "kind": "choice",
+          "values": [
+            "off",
+            "periodic",
+            "activity"
+          ],
+          "defaultValue": "off",
+          "omitDefault": true
+        },
+        {
+          "name": "image_modal_refresh_interval",
+          "label": "Refresh interval",
+          "kind": "choice",
+          "values": [
+            "5",
+            "10",
+            "30"
+          ],
+          "defaultValue": "10",
+          "omitDefault": true
+        },
+        {
+          "name": "image_modal_refresh_trigger",
+          "label": "Trigger entity",
+          "kind": "text",
           "omitDefault": true
         }
       ],
       "normalization": {
         "fields": {
-          "entity": { "policy": "keep" },
-          "label": { "policy": "hook", "hook": "normalize_image_fields" },
-          "icon": { "policy": "hook", "hook": "normalize_image_fields" },
-          "icon_on": { "policy": "default", "value": "Auto" },
-          "sensor": { "policy": "clear" },
-          "unit": { "policy": "clear" },
-          "type": { "policy": "default", "value": "image" },
-          "precision": { "policy": "clear" },
-          "options": { "policy": "hook", "hook": "normalize_image_options" }
+          "entity": {
+            "policy": "keep"
+          },
+          "label": {
+            "policy": "hook",
+            "hook": "normalize_image_fields"
+          },
+          "icon": {
+            "policy": "hook",
+            "hook": "normalize_image_fields"
+          },
+          "icon_on": {
+            "policy": "default",
+            "value": "Auto"
+          },
+          "sensor": {
+            "policy": "clear"
+          },
+          "unit": {
+            "policy": "clear"
+          },
+          "type": {
+            "policy": "default",
+            "value": "image"
+          },
+          "precision": {
+            "policy": "clear"
+          },
+          "options": {
+            "policy": "hook",
+            "hook": "normalize_image_options"
+          }
         },
         "unknownOptions": "drop",
-        "canonicalOptionOrder": ["image_label", "image_icon", "image_modal_mode"],
+        "canonicalOptionOrder": [
+          "image_label",
+          "image_icon",
+          "image_modal_mode",
+          "image_modal_refresh_mode",
+          "image_modal_refresh_interval",
+          "image_modal_refresh_trigger"
+        ],
         "optionHook": "normalize_image_options"
       },
       "default": {

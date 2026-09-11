@@ -34,6 +34,7 @@ class HaReadCoordinator {
   bool available() const { return transport_.available(); }
   bool state_connected() const { return transport_.state_connected(); }
   uint32_t generation() const { return generation_; }
+  uint32_t connection_generation() const { return connection_generation_; }
   uint32_t &generation_ref() { return generation_; }
   size_t deferred_count() const { return deferred_.size(); }
   size_t subscription_count() const { return subscriptions_.size(); }
@@ -216,6 +217,7 @@ class HaReadCoordinator {
   }
 
   void invalidate_retained_state() {
+    ++connection_generation_;
     // Retained values are scoped to one Home Assistant API connection.  In
     // particular, artwork URLs and access tokens may change while the panel is
     // offline, so reads after a reconnect must wait for a fresh announcement.
@@ -597,6 +599,7 @@ class HaReadCoordinator {
   AllocatedVector<SubscriptionChannel> subscription_channels_;
   AllocatedVector<OwnerGeneration> owner_generations_;
   uint32_t generation_ = 1;
+  uint32_t connection_generation_ = 1;
   uint32_t next_owner_generation_ = 1;
   bool pending_subscription_compaction_ = false;
   uint8_t callback_depth_ = 0;

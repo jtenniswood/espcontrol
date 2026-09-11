@@ -88,5 +88,125 @@
       "precision": "",
       "options": ""
     }
+  },
+  {
+    "name": "periodic five seconds",
+    "input": "camera.front_door;;Auto;Auto;;;image;;image_modal_refresh_mode=periodic,image_modal_refresh_interval=5",
+    "expected": {
+      "entity": "camera.front_door",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "image",
+      "precision": "",
+      "options": "image_modal_refresh_mode=periodic,image_modal_refresh_interval=5"
+    }
+  },
+  {
+    "name": "periodic invalid interval defaults to ten",
+    "input": "camera.front_door;;Auto;Auto;;;image;;image_modal_refresh_mode=periodic,image_modal_refresh_interval=2",
+    "expected": {
+      "entity": "camera.front_door",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "image",
+      "precision": "",
+      "options": "image_modal_refresh_mode=periodic"
+    }
+  },
+  {
+    "name": "activity sensor",
+    "input": "camera.front_door;;Auto;Auto;;;image;;image_modal_refresh_mode=activity,image_modal_refresh_interval=30,image_modal_refresh_trigger=binary_sensor.motion",
+    "expected": {
+      "entity": "camera.front_door",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "image",
+      "precision": "",
+      "options": "image_modal_refresh_mode=activity,image_modal_refresh_trigger=binary_sensor.motion"
+    }
+  },
+  {
+    "name": "activity doorbell",
+    "input": "camera.front_door;;Auto;Auto;;;image;;image_modal_refresh_mode=activity,image_modal_refresh_trigger=event.doorbell",
+    "expected": {
+      "entity": "camera.front_door",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "image",
+      "precision": "",
+      "options": "image_modal_refresh_mode=activity,image_modal_refresh_trigger=event.doorbell"
+    }
+  },
+  {
+    "name": "invalid activity disabled",
+    "input": "camera.front_door;;Auto;Auto;;;image;;image_modal_refresh_mode=activity,image_modal_refresh_trigger=camera.other",
+    "expected": {
+      "entity": "camera.front_door",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "image",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "missing activity trigger disabled",
+    "input": "camera.front_door;;Auto;Auto;;;image;;image_modal_refresh_mode=activity",
+    "expected": {
+      "entity": "camera.front_door",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "image",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "off drops unused refresh settings",
+    "input": "camera.front_door;;Auto;Auto;;;image;;image_modal_refresh_mode=off,image_modal_refresh_interval=5,image_modal_refresh_trigger=event.doorbell",
+    "expected": {
+      "entity": "camera.front_door",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "image",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "image entity ignores camera polling",
+    "input": "image.front_door;;Auto;Auto;;;image;;image_modal_refresh_mode=periodic,image_modal_refresh_interval=5",
+    "expected": {
+      "entity": "image.front_door",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "image",
+      "precision": "",
+      "options": ""
+    }
   }
 ]

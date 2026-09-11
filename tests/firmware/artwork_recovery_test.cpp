@@ -23,6 +23,7 @@ struct ImageCardCtx {
   espcontrol::artwork::RefreshTrigger media_artwork_trigger;
   espcontrol::artwork::SourceCandidates media_artwork_sources;
   bool media_artwork_refresh_forced = false;
+  bool explicit_picture_refresh = false;
   uint8_t media_artwork_retry_mask = 0, media_artwork_timeout_retries = 0;
   uint8_t startup_download_errors = 0;
   uint32_t next_picture_retry_ms = 0;
