@@ -27,6 +27,7 @@ esphome:
     - priority: -100
       then:
         - lambda: |-
+            clock_bar_enable_settings_access(id(network_status_button));
             navigation_subpage_clock_bar_refresh() = []() {
               navigation_refresh_subpage_label();
               refresh_clock_bar_temperature_label_values(
