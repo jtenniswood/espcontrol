@@ -2374,6 +2374,8 @@ inline void grid_phase3(
   // Rebinding can remove an entity or wait for a new state. Values from the
   // previous subscriptions must not keep controlling the screen meanwhile.
   const bool schedule_presence_was_detected = schedule_presence_detected_ptr && *schedule_presence_detected_ptr;
+  if (indoor_temp_ptr) *indoor_temp_ptr = NAN;
+  if (outdoor_temp_ptr) *outdoor_temp_ptr = NAN;
   if (presence_detected_ptr) *presence_detected_ptr = false;
   if (schedule_presence_detected_ptr) *schedule_presence_detected_ptr = false;
   if (media_player_playing_ptr) *media_player_playing_ptr = false;
