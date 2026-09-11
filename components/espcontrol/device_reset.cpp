@@ -15,6 +15,10 @@
 #include "esphome/components/json/json_util.h"
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "esphome/components/ota/ota_backend.h"
+#ifdef USE_SWITCH
+#include "esphome/components/switch/switch.h"
+#include "esphome/components/web_server_idf/utils.h"
+#endif
 #ifdef USE_UPDATE
 #include "esphome/components/update/update_entity.h"
 #endif
@@ -249,6 +253,29 @@ extern "C" esp_err_t __wrap_esp_hosted_slave_ota_begin() {
 }
 #endif
 
+namespace {
+bool operational_switch_request(httpd_req_t *raw) {
+#ifdef USE_SWITCH
+  if (raw->method != HTTP_POST) return false;
+  std::string path(raw->uri);
+  path.resize(path.find('?') == std::string::npos ? path.size() : path.find('?'));
+  // Match ESPHome's decoded display-name routes, including sub-devices.
+  path.resize(esphome::web_server_idf::url_decode(path.data()));
+  if (path.compare(0, 8, "/switch/") != 0) return false;
+  for (auto *entity : esphome::App.get_switches()) {
+    std::string device;
+#ifdef USE_DEVICES
+    if (entity->get_device() != nullptr) device = entity->get_device()->get_name().c_str();
+#endif
+    if (espcontrol::reset::switch_action_matches(path, entity->get_name().c_str(), device)) {
+      return entity->get_entity_category() == esphome::ENTITY_CATEGORY_NONE;
+    }
+  }
+#endif
+  return false;
+}
+}  // namespace
+
 // Shared dispatcher hook covers native config and legacy entity POSTs,
 // including calls from a stale browser. Standard control clients and ESPHome's
 // provisioning/upload forms remain usable when no reset is pending.
@@ -260,7 +287,8 @@ extern "C" bool espcontrol_allow_web_write(httpd_req_t *raw) {
   bool valid = size > 0 && size < sizeof(supplied) &&
                httpd_req_get_hdr_value_str(raw, "X-EspControl-Epoch", supplied, sizeof(supplied)) == ESP_OK &&
                std::to_string(epoch()) == supplied;
-  if (allow_web_write(ready(), pending(), raw->uri, size > 0, valid)) return true;
+  const bool operational_switch = size == 0 && ready() && !pending() && operational_switch_request(raw);
+  if (allow_web_write(ready(), pending(), raw->uri, size > 0, valid, operational_switch)) return true;
   httpd_resp_set_status(raw, pending() ? "409 Conflict" : "428 Precondition Required");
   httpd_resp_set_type(raw, "application/json");
   httpd_resp_send(raw, "{\"error\":\"Reload the page before changing settings\"}", HTTPD_RESP_USE_STRLEN);

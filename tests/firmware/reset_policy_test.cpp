@@ -156,6 +156,21 @@ int main() {
     assert(allow_web_write(true, false, uri, true, true));
     assert(!allow_web_write(true, true, uri, true, true));
   }
+  for (const char *action : {"turn_on", "turn_off", "toggle"}) {
+    const std::string path = std::string("/switch/Relay 1/") + action;
+    assert(switch_action_matches(path, "Relay 1"));
+    assert(!switch_action_matches(path, "Relay 2"));
+    assert(!switch_action_matches(path, "Relay 1", "Room"));
+    assert(allow_web_write(true, false, path, false, false, true));
+    assert(!allow_web_write(true, false, path, false, false, false));  // Config/unknown switch.
+    assert(!allow_web_write(true, false, path, true, false, true));
+    assert(!allow_web_write(true, true, path, false, false, true));
+    assert(!allow_web_write(false, false, path, false, false, true));
+  }
+  assert(switch_action_matches("/switch/Room/Relay 1/toggle", "Relay 1", "Room"));
+  assert(!switch_action_matches("/switch/Relay 1/set", "Relay 1"));
+  assert(!switch_action_matches("/switch/Relay 1/turn_on/extra", "Relay 1"));
+  assert(!switch_action_matches("/switch/Relay 1/turn_on", ""));
   MemoryStorage s; Journal j;
   s.fail_at = 1;
   assert(request(s, j, Mode::FACTORY) == Result::FAILED && !j.pending());

@@ -84,6 +84,13 @@ inline bool same_origin(const std::string &origin, const std::string &host,
   if (host.empty() || intent != "reset" || (!fetch_site.empty() && fetch_site != "same-origin")) return false;
   return origin.empty() || origin == "http://" + host;
 }
+// Input is decoded using the same adapter as ESPHome's request dispatcher.
+inline bool switch_action_matches(const std::string &path, const std::string &name,
+                                  const std::string &device = "") {
+  if (name.empty() || name.find('/') != std::string::npos || device.find('/') != std::string::npos) return false;
+  const std::string prefix = "/switch/" + (device.empty() ? "" : device + "/") + name + "/";
+  return path == prefix + "turn_on" || path == prefix + "turn_off" || path == prefix + "toggle";
+}
 inline bool write_requires_epoch(const std::string &uri) {
   const auto path = uri.substr(0, uri.find('?'));
   // ESPHome owns these forms. They do not edit the panel configuration and
@@ -100,10 +107,10 @@ inline bool write_requires_epoch(const std::string &uri) {
   return true;
 }
 inline bool allow_web_write(bool initialized, bool reset_pending, const std::string &uri,
-                            bool epoch_supplied, bool epoch_matches) {
+                            bool epoch_supplied, bool epoch_matches, bool operational_switch = false) {
   // A supplied stale epoch is always rejected, including operational actions
   // queued by an editor before reset. Pending reset blocks every mutation.
   return initialized && !reset_pending &&
-         (epoch_supplied ? epoch_matches : !write_requires_epoch(uri));
+         (epoch_supplied ? epoch_matches : (operational_switch || !write_requires_epoch(uri)));
 }
 }  // namespace espcontrol::reset

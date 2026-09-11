@@ -92,9 +92,10 @@ after a reset, a stale or missing epoch is rejected with 409/428. Reload the
 device state instead of refreshing the epoch and replaying old edits. Older
 firmware returns 404 for reset discovery and keeps its existing write protocol.
 Standard ESPHome control routes (such as `/light/.../turn_on` and
-`/button/.../press`) and the `/wifisave` and `/update` forms do not require an
+`/button/.../press`, plus operational switches such as the P4-86 relays) and the `/wifisave` and `/update` forms do not require an
 epoch. Configuration routes, including text, number, select and switch
-settings, still require it. A supplied stale epoch is rejected on every route,
+settings, still require it. Switches marked as configuration or diagnostic
+entities remain protected; unknown switch routes are not exempt. A supplied stale epoch is rejected on every route,
 and all mutations are blocked while reset is pending.
 
 Partial reset also retains the P4-86 one-time Wi-Fi initialization marker, so
