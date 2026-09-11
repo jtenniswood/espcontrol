@@ -104,6 +104,7 @@ esphome:
   friendly_name: ${friendly_name}
   build_flags:
     - "-DESPCONTROL_MAX_GRID_SLOTS=9"
+    - "-DESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=2"
     - "-DESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1"
     - "-DESPCONTROL_LOW_HEAP_COVER_ART=1"
     - "-DESPCONTROL_DISABLE_WEATHER_FORECAST=1"
@@ -533,6 +534,7 @@ script:
                         - lvgl.display.set_rotation: 90
                       else:
                         - lvgl.display.set_rotation: 180
+      - script.execute: camera_screensaver_request_image
 
 select:
   - platform: template

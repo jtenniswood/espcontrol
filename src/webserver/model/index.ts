@@ -134,6 +134,7 @@ export {
   normalizeScheduleWakeBrightness,
   normalizeScheduleWakeTimeout,
   normalizeScreensaverAction,
+  normalizeScreensaverCameraImageMode,
   normalizeScreensaverDimmedBrightness,
   normalizeTemperatureUnit,
   normalizeTimeOfDay,

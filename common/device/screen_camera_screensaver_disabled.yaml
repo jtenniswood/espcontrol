@@ -1,0 +1,25 @@
+# Camera screensaver is intentionally not built on constrained displays.
+# These no-op effects keep the common display-mode orchestrator uniform while
+# legacy imported Camera selections are converted to Display Off in display.yaml.
+
+script:
+  - id: camera_screensaver_config_changed
+    mode: restart
+    then: []
+
+  - id: camera_screensaver_request_image
+    mode: restart
+    then: []
+
+  - id: display_mode_effect_camera
+    mode: restart
+    parameters:
+      generation: int
+    then: []
+
+  - id: camera_screensaver_hide_effect
+    mode: restart
+    parameters:
+      generation: int
+      target_mode: int
+    then: []

@@ -11,6 +11,7 @@ substitutions:
   device_slug: "guition-esp32-p4-jc1060p470-v2"
   firmware_manifest_slug: "guition-esp32-p4-jc1060p470-v2"
   firmware_version: "dev"
+  screensaver_camera_supported: "true"
   screen_width: "1024"
   screen_height: "600"
   content_width: "550"
@@ -146,6 +147,7 @@ packages:
   screen_setup:    !include ../../common/device/screen_button_setup.yaml
   screen_clock:    !include ../../common/device/screen_clock.yaml
   screen_art:      !include ../../common/device/screen_cover_art.yaml
+  screen_camera:   !include ../../common/device/screen_camera_screensaver.yaml
   image_cards:     !include ../../common/device/image_cards_6.yaml
   # ---------------------------------------------------------------------------
   # Main page and dynamic sensor subscriptions (after setup screens)

@@ -14,6 +14,7 @@ export interface ScreensaverUiState {
   readonly mode: string;
   readonly clockVisible: boolean;
   readonly dimVisible: boolean;
+  readonly cameraVisible: boolean;
   readonly dayBrightnessLabel: string;
   readonly nightBrightnessLabel: string;
   readonly dimBrightnessLabel: string;
@@ -52,6 +53,7 @@ export function createScreensaverController(normalizers: ScreensaverNormalizers)
         mode,
         clockVisible: mode === "clock",
         dimVisible: mode === "dim",
+        cameraVisible: mode === "camera",
         dayBrightnessLabel: `${Math.round(state.clockBrightnessDay)}%`,
         nightBrightnessLabel: `${Math.round(state.clockBrightnessNight)}%`,
         dimBrightnessLabel: `${Math.round(state.dimBrightness)}%`,

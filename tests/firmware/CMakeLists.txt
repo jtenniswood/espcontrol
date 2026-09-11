@@ -328,6 +328,12 @@ target_compile_options(image_pipeline_policy_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(image_pipeline_policy_test PRIVATE ../../components/artwork_image)
 add_test(NAME image_pipeline_policy_test COMMAND image_pipeline_policy_test)
 
+add_executable(rgb565_scaler_test rgb565_scaler_test.cpp)
+target_compile_features(rgb565_scaler_test PRIVATE cxx_std_17)
+target_compile_options(rgb565_scaler_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(rgb565_scaler_test PRIVATE ../../components/artwork_image)
+add_test(NAME rgb565_scaler_test COMMAND rgb565_scaler_test)
+
 set(CLIMATE_SUBSCRIPTION_TEST_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/climate_subscription_runtime_test.cpp)
 add_custom_command(
   OUTPUT ${CLIMATE_SUBSCRIPTION_TEST_SOURCE}

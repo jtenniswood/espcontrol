@@ -7,7 +7,6 @@ inline lv_timer_t *&climate_optional_subscription_timer() {
   static lv_timer_t *timer = nullptr;
   return timer;
 }
-
 inline espcontrol::climate::SubscriptionCapabilities
 climate_subscription_capabilities(ClimateControlCtx *ctx) {
   espcontrol::climate::SubscriptionCapabilities capabilities;
@@ -126,4 +125,3 @@ inline void climate_process_pending_optional_subscriptions(lv_timer_t *timer) {
     lv_timer_del(timer);
   }
 }
-

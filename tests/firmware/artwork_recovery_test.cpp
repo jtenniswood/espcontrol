@@ -46,6 +46,7 @@ std::vector<Read> reads;
 std::vector<std::string> downloads;
 bool ha_api_connected() { return true; }
 bool ha_api_state_connected() { return true; }
+bool image_card_pipeline_suspended() { return false; }
 uint32_t ha_subscription_generation() { return 1; }
 bool ha_read_retained_attribute(const std::string &, const std::string &attribute,
                                 std::function<void(esphome::StringRef)> callback,

@@ -25,6 +25,7 @@ import {
     normalizeScheduleWakeBrightness,
     normalizeScheduleWakeTimeout,
     normalizeScreensaverAction,
+    normalizeScreensaverCameraImageMode,
     normalizeScreensaverDimmedBrightness,
     normalizeTemperatureUnit,
     normalizeTimeOfDay,
@@ -355,8 +356,17 @@ export function createAppStateEventHandlersFeature(
             "text-screensaver_mode": function (this: any, val?: any) {
                 state._screensaverModeReceived = true;
                 state.screensaverMode = val === "sensor" || val === "timer" || val === "disabled" ? val : "disabled";
-                if (els.setSsMode)
-                    els.setSsMode(getActiveScreensaverMode());
+                    if (els.setSsMode)
+                        els.setSsMode(getActiveScreensaverMode());
+            },
+            "text-screen_saver__camera_entity": function (this: any, val?: any) {
+                state.screensaverCameraEntity = val;
+                syncInput(els.setScreensaverCamera, val);
+                syncInput(els.setSensorScreensaverCamera, val);
+            },
+            "select-screen_saver__camera_image_mode": function (this: any, val?: any, d?: any) {
+                state.screensaverCameraImageMode = normalizeScreensaverCameraImageMode(d.value || val);
+                syncClockScreensaverControls();
             },
             "number-screen__daytime_brightness": function (this: any, val?: any) {
                 state.brightnessDayVal = parseFloat(val) || 100;

@@ -152,6 +152,7 @@ export function normalizeScreensaverAction(value: unknown): string {
   const action = String(value || "").toLowerCase().replace(/[\s-]+/g, "_");
   if (action === "screen_dimmed" || action === "dimmed" || action === "dim") return "dim";
   if (action === "clock") return "clock";
+  if (action === "camera") return "camera";
   return "off";
 }
 
@@ -159,7 +160,12 @@ export function screensaverActionOption(value: unknown): string {
   const action = normalizeScreensaverAction(value);
   if (action === "dim") return "Screen Dimmed";
   if (action === "clock") return "Clock";
+  if (action === "camera") return "Camera";
   return "Display Off";
+}
+
+export function normalizeScreensaverCameraImageMode(value: unknown): string {
+  return String(value || "").trim().toLowerCase() === "fill" ? "Fill" : "Fit";
 }
 
 export function scheduleModeOption(value: unknown): string {
@@ -355,6 +361,8 @@ export interface BackupPanelSettingsState {
   ntpServer3: string;
   screensaverMode: string;
   presenceSensorEntity: string;
+  screensaverCameraEntity: string;
+  screensaverCameraImageMode: string;
   mediaPlayerSleepPrevention: boolean;
   mediaPlayerSleepPreventionEntity: string;
   coverArtScreensaver: boolean;
@@ -498,6 +506,10 @@ export function normalizeBackupPanelSettings(
       : current.ntpServer3,
     screensaverMode: normalizeScreensaverMode(settings.screensaver_mode),
     presenceSensorEntity: String(settings.presence_sensor_entity || ""),
+    screensaverCameraEntity: String(settings.screensaver_camera_entity || ""),
+    screensaverCameraImageMode: normalizeScreensaverCameraImageMode(
+      settings.screensaver_camera_image_mode,
+    ),
     mediaPlayerSleepPrevention: objectValue(settings, "media_player_sleep_prevention") != null
       ? !!settings.media_player_sleep_prevention
       : true,
