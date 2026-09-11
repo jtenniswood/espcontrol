@@ -33,11 +33,13 @@ registry.register("timer", {
     var ef = document.createElement("div");
     ef.className = "sp-field";
     ef.appendChild(helpers.fieldLabel("Timer Entity", helpers.idPrefix + "entity"));
-    var entityInp = helpers.textInput(helpers.idPrefix + "entity", b.entity, "e.g. timer.kitchen");
+    var entityInp = helpers.entityInput(helpers.idPrefix + "entity", b.entity, "e.g. timer.kitchen", ["timer"]);
     ef.appendChild(entityInp);
     panel.appendChild(ef);
     helpers.markCardPrimaryField(ef, "entity");
     helpers.bindField(entityInp, "entity", true);
+    helpers.requireField(entityInp, "Add a timer entity before saving.");
+    helpers.requireEntityDomain(entityInp, ["timer"], "Choose a timer entity (timer.*).");
 
     // Label
     var lf = document.createElement("div");

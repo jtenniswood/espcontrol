@@ -2157,7 +2157,10 @@ inline void grid_phase2(
         [&](const std::string &entity_id) { add_parent_indicator(entity_id); };
       if (espcontrol::cards::media_driver_bind_subpage(
             sub_slot, sb_cfg, context, media_environment)) continue;
-      if (espcontrol::cards::timer_driver_bind_data(sub_slot, sb_cfg, context)) continue;
+      if (espcontrol::cards::timer_driver_bind_data(
+            sub_slot, sb_cfg, context, [&](const std::string &entity_id) {
+              add_parent_indicator(entity_id, timer_card_state_active_ref);
+            })) continue;
       if (bind_basic_sensor_card(sub_slot, sb_cfg, context, palette, cs)) continue;
       espcontrol::cards::BasicActionSubpageEnvironment action_environment;
       action_environment.grid_config = &cfg;

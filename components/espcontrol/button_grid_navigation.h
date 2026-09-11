@@ -112,6 +112,7 @@ inline void navigation_clear_subpages() {
   lv_obj_t *active = lv_scr_act();
   for (auto &entry : navigation_subpages()) {
     if (entry.screen != nullptr && entry.screen != active) {
+      navigation_release_subpage_runtime(entry);
       lv_obj_del(entry.screen);
     }
   }

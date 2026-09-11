@@ -105,14 +105,21 @@ struct TimerCardCtx {
 };
 
 inline int parse_timer_hms(esphome::StringRef value) {
-  // HA timer attrs are formatted "H:MM:SS" (e.g. "0:05:00").
+  // HA serializes timedeltas as H:MM:SS or N day(s), H:MM:SS.
   const std::string text(value.c_str(), value.size());
+  int days = 0, offset = 0;
+  if (text.find(',') != std::string::npos) {
+    char unit[5] = {};
+    if (sscanf(text.c_str(), "%9d %4[a-z], %n", &days, unit, &offset) != 2 ||
+        offset == 0 || days < 0 ||
+        (std::string(unit) != "day" && std::string(unit) != "days")) return 0;
+  }
   int h = 0, m = 0, s = 0, n = 0;
-  if (sscanf(text.c_str(), "%d:%d:%d%n", &h, &m, &s, &n) == 3 &&
-      n == (int)text.size() && h >= 0 && h <= 596522 &&
-      m >= 0 && m < 60 && s >= 0 && s < 60)
-    return h * 3600 + m * 60 + s;
-  return 0;
+  if (sscanf(text.c_str() + offset, "%9d:%2d:%2d%n", &h, &m, &s, &n) != 3 ||
+      offset + n != (int)text.size() || h < 0 ||
+      m < 0 || m > 59 || s < 0 || s > 59) return 0;
+  const int64_t total = int64_t(days) * 86400 + int64_t(h) * 3600 + m * 60 + s;
+  return total <= INT32_MAX ? static_cast<int>(total) : 0;
 }
 
 // Parse HA's ISO 8601 finishes_at (e.g. "2026-05-08T12:34:56.789012-06:00" or
@@ -172,6 +179,10 @@ inline void format_timer_secs(int secs, char *buf, size_t bufsz) {
   }
 }
 
+inline bool timer_card_state_active_ref(esphome::StringRef state) {
+  return state == "active";
+}
+
 inline void timer_card_refresh(TimerCardCtx *ctx) {
   if (!ctx || !ctx->value_lbl) return;
   int secs;
@@ -224,8 +235,7 @@ inline void subscribe_timer_card(TimerCardCtx *ctx) {
         // Cancel any pending confirmation if state changed away from active.
         if (ctx->state != "active") confirmation_disarm(&ctx->confirm);
         if (ctx->btn) {
-          if (ctx->state == "active") lv_obj_add_state(ctx->btn, LV_STATE_CHECKED);
-          else lv_obj_clear_state(ctx->btn, LV_STATE_CHECKED);
+          set_card_checked_state(ctx->btn, ctx->state == "active");
         }
         if (prev == "active" && ctx->state == "idle") {
           // Distinguish a natural finish (countdown reached zero) from a

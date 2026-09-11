@@ -25,6 +25,11 @@ void lv_label_set_display_text(lv_obj_t *o, const char *s) { o->text = s; }
 const char *lv_label_get_text(lv_obj_t *o) { return o->text.c_str(); }
 void lv_obj_add_state(lv_obj_t *o, int) { o->checked = true; }
 void lv_obj_clear_state(lv_obj_t *o, int) { o->checked = false; }
+int checked_state_updates = 0;
+void set_card_checked_state(lv_obj_t *o, bool active) {
+  ++checked_state_updates;
+  o->checked = active;
+}
 void lv_obj_add_flag(lv_obj_t *, int) {}
 void lv_obj_clear_flag(lv_obj_t *, int) {}
 void lv_obj_set_style_text_font(lv_obj_t *, const lv_font_t *, int) {}
@@ -45,7 +50,18 @@ struct ParsedCfg { std::string label; };
 #include "button_grid_timer.h"
 
 int main() {
+  assert(timer_card_state_active_ref("active"));
+  assert(!timer_card_state_active_ref("paused"));
+  assert(!timer_card_state_active_ref("idle"));
+  assert(!timer_card_state_active_ref("unavailable"));
   assert(parse_timer_hms("1:02:03") == 3723);
+  assert(parse_timer_hms("1 day, 0:00:00") == 86400);
+  assert(parse_timer_hms("2 days, 3:04:05") == 183845);
+  assert(parse_timer_hms("-1 day, 0:00:00") == 0);
+  assert(parse_timer_hms("1 week, 0:00:00") == 0);
+  assert(parse_timer_hms("999999999 days, 0:00:00") == 0);
+  assert(parse_timer_hms("999999999:00:00") == 0);
+  assert(parse_timer_hms("1 day, 0:00:00junk") == 0);
   assert(parse_timer_hms("-1:00:00") == 0);
   assert(parse_timer_hms("0:99:00") == 0);
   assert(parse_timer_hms("0:00:10junk") == 0);
@@ -66,10 +82,15 @@ int main() {
   subscribe_timer_card(ctx);
   callbacks["duration"]("0:05:00"); callbacks["state"]("idle");
   assert(value.text == "5:00");
+  callbacks["duration"]("1 day, 0:00:00"); assert(value.text == "24:00");
+  callbacks["remaining"]("2 days, 3:04:05"); callbacks["state"]("paused");
+  assert(value.text == "51:04" && !button.checked);
+  callbacks["duration"]("0:05:00"); callbacks["state"]("idle");
   handle_timer_card_click(ctx); assert(action == "timer.start");
   callbacks["remaining"]("0:05:00"); callbacks["state"]("active");
   esphome::now_ms += 2000; timer_card_refresh(ctx);
   assert(value.text == "4:58" && button.checked);
+  assert(checked_state_updates > 0);
   // Reconnect: absolute finish time wins over the stale remaining attribute.
   ctx->finishes_at_epoch = ::time(nullptr) + 20;
   timer_card_refresh(ctx); assert(value.text == "0:20" || value.text == "0:19");

@@ -27,7 +27,8 @@ inline bool timer_driver_handle_main_click(
 }
 
 inline bool timer_driver_bind_data(
-    BtnSlot &slot, const ParsedCfg &config, const Context &context) {
+    BtnSlot &slot, const ParsedCfg &config, const Context &context,
+    std::function<void(const std::string &)> add_parent_indicator = {}) {
   if (!timer_driver_matches(context)) return false;
   lv_obj_set_user_data(slot.btn, nullptr);
   if (config.entity.compare(0, 6, "timer.") != 0) return true;
@@ -51,6 +52,7 @@ inline bool timer_driver_bind_data(
   }
   timer->tick_timer = lv_timer_create(timer_card_tick_cb, 250, timer);
   if (context.surface == Surface::SUBPAGE) {
+    if (add_parent_indicator) add_parent_indicator(config.entity);
     lv_obj_add_event_cb(slot.btn, [](lv_event_t *event) {
       handle_timer_card_click(static_cast<TimerCardCtx *>(lv_event_get_user_data(event)));
     }, LV_EVENT_CLICKED, timer);
