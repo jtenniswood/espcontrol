@@ -30,28 +30,39 @@ export function buildResetSettings(exportBackup: () => void, makeCard: (title: s
       if (mode === "factory" ? window.prompt(warning + " Type RESET to continue.") !== "RESET" : !window.confirm(warning)) return;
       const dialog = document.createElement("dialog");
       dialog.className = "sp-reset-dialog";
-      dialog.setAttribute("aria-label", label);
+      dialog.setAttribute("aria-labelledby", "sp-reset-status-title");
+      dialog.setAttribute("aria-describedby", "sp-reset-status-message");
       dialog.addEventListener("cancel", event => event.preventDefault());
+      const heading = document.createElement("h2");
+      heading.id = "sp-reset-status-title";
+      heading.textContent = "Requesting reset…";
       const message = document.createElement("p");
-      message.textContent = "Requesting reset…";
-      dialog.append(message);
+      message.id = "sp-reset-status-message";
+      message.setAttribute("role", "status");
+      message.textContent = "Waiting for the display to accept the reset.";
+      dialog.append(heading, message);
       document.body.append(dialog);
       dialog.showModal();
       try {
         await session.reset(mode);
+        heading.textContent = "Restarting…";
         if (mode === "factory") {
-          message.textContent = "Factory reset requested. The display is restarting. Follow its Wi-Fi setup instructions to reconnect, or use its network address over Ethernet. You may need to set up its Home Assistant connection again.";
+          message.textContent = "Follow the display's Wi-Fi setup instructions to reconnect, or use its network address over Ethernet. You may need to set up its Home Assistant connection again.";
         } else {
-          message.textContent = "Restarting… Your Wi-Fi and Home Assistant connection will be retained. This page will reload when the display is ready.";
+          message.textContent = "Your Wi-Fi and Home Assistant connection will be retained. This page will reload when the display is ready.";
           const started = Date.now();
           const poll = async () => {
             try { if (await session.restarted()) { window.location.reload(); return; } } catch (_) { /* Restart disconnects HTTP. */ }
             if (Date.now() - started < 120000) window.setTimeout(poll, 2000);
-            else message.textContent = "The display has not reconnected yet. Check its screen and reload this page when it is ready. Do not restore a backup until reset has completed.";
+            else {
+              heading.textContent = "Waiting for the display";
+              message.textContent = "The display has not reconnected yet. Check its screen and reload this page when it is ready. Do not restore a backup until reset has completed.";
+            }
           };
           window.setTimeout(poll, 2000);
         }
       } catch (error) {
+        heading.textContent = "Check the display";
         message.textContent = String((error as Error).message) + " Check the display: the reset may already be restarting it. Reload this page before making further changes.";
       }
     };

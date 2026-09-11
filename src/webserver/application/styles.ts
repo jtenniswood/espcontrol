@@ -1,8 +1,7 @@
 import { WEB_UI_COLORS } from "../state/ui_tokens";
 
 export function createWebStyles(dragAnimation: boolean): string {
-    return ".sp-reset-dialog{max-width:480px;padding:24px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);font:inherit;line-height:1.5}.sp-reset-dialog::backdrop{background:rgba(0,0,0,.65)}" +
-        ":root{" +
+    return ":root{" +
         "--bg:#1b1b1f;--surface:#202127;--surface2:#2e2e32;--border:#3c3f44;" +
         "--text:#dfdfd6;--text2:#98989f;--text3:#6a6a71;--accent:#5c73e7;--accent-hover:#a8b1ff;" +
         "--screen-primary:#" + WEB_UI_COLORS.primary + ";--screen-secondary:#" + WEB_UI_COLORS.secondary + ";" +
@@ -225,12 +224,16 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-transfer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:260;" +
         "display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;" +
         "backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}" +
-        ".sp-transfer-dialog{position:relative;width:min(620px,100%);max-height:90vh;overflow:auto;" +
+        ".sp-transfer-dialog,.sp-reset-dialog{position:relative;width:min(620px,100%);max-height:90vh;overflow:auto;" +
         "box-sizing:border-box;padding:24px;background:var(--bg);border:1px solid var(--border);" +
         "border-radius:var(--radius);box-shadow:var(--shadow-3);color:var(--text);" +
         "font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}" +
-        ".sp-transfer-dialog h2{margin:0 44px 12px 0;font-size:1.2rem;font-weight:600}" +
-        ".sp-transfer-dialog p{margin:0 0 14px;color:var(--text2);line-height:1.45}" +
+        ".sp-transfer-dialog h2,.sp-reset-dialog h2{margin:0 44px 12px 0;font-size:1.2rem;font-weight:600}" +
+        ".sp-transfer-dialog p,.sp-reset-dialog p{margin:0 0 14px;color:var(--text2);line-height:1.45}" +
+        ".sp-reset-dialog{position:fixed;inset:0;margin:auto;width:min(480px,calc(100% - 32px));" +
+        "max-height:calc(100dvh - 32px);font-size:.875rem;font-weight:400;outline:none}" +
+        ".sp-reset-dialog h2{margin-right:0}.sp-reset-dialog p{margin-bottom:0}" +
+        ".sp-reset-dialog::backdrop{background:rgba(0,0,0,.65);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}" +
         ".sp-transfer-close{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:999px;" +
         "border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;" +
         "display:flex;align-items:center;justify-content:center;padding:0;z-index:1;line-height:1;" +
