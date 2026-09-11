@@ -191,5 +191,24 @@ class ArtworkRecoveryTest(unittest.TestCase):
         subprocess.run([self.executable, "exhausted_reconnect"], check=True)
 
 
+class DisplaySensorRebindTest(unittest.TestCase):
+    def test_rebind_discards_old_sensor_values(self):
+        source = (ROOT / "components/espcontrol/button_grid_grid.h").read_text()
+        match = re.search(r"^inline void grid_phase3\([^;{]*\) \{\n.*?^\}",
+                          source, re.MULTILINE | re.DOTALL)
+        self.assertIsNotNone(match)
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            (directory / "display_sensor_binding.h").write_text(match.group())
+            executable = str(directory / "display_sensor_rebind_test")
+            subprocess.run(
+                shlex.split(os.environ.get("CXX", "c++"))
+                + ["-std=c++17", "-Wall", "-Wextra", "-Werror", "-I", str(directory),
+                   str(ROOT / "tests/firmware/display_sensor_rebind_test.cpp"), "-o", executable],
+                check=True,
+            )
+            subprocess.run([executable], check=True)
+
+
 if __name__ == "__main__":
     unittest.main()

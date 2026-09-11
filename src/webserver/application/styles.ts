@@ -228,12 +228,16 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-transfer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:260;" +
         "display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;" +
         "backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}" +
-        ".sp-transfer-dialog{position:relative;width:min(620px,100%);max-height:90vh;overflow:auto;" +
+        ".sp-transfer-dialog,.sp-reset-dialog{position:relative;width:min(620px,100%);max-height:90vh;overflow:auto;" +
         "box-sizing:border-box;padding:24px;background:var(--bg);border:1px solid var(--border);" +
         "border-radius:var(--radius);box-shadow:var(--shadow-3);color:var(--text);" +
         "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}" +
-        ".sp-transfer-dialog h2{margin:0 44px 12px 0;font-size:var(--text-xl);font-weight:600}" +
-        ".sp-transfer-dialog p{margin:0 0 14px;color:var(--text2);line-height:1.45}" +
+        ".sp-transfer-dialog h2,.sp-reset-dialog h2{margin:0 44px 12px 0;font-size:var(--text-xl);font-weight:600}" +
+        ".sp-transfer-dialog p,.sp-reset-dialog p{margin:0 0 14px;color:var(--text2);line-height:1.45}" +
+        ".sp-reset-dialog{position:fixed;inset:0;margin:auto;width:min(480px,calc(100% - 32px));" +
+        "max-height:calc(100dvh - 32px);font-size:.875rem;font-weight:400;outline:none}" +
+        ".sp-reset-dialog h2{margin-right:0}.sp-reset-dialog p{margin-bottom:0}" +
+        ".sp-reset-dialog::backdrop{background:rgba(0,0,0,.65);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}" +
         ".sp-transfer-close{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:999px;" +
         "border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;" +
         "display:flex;align-items:center;justify-content:center;padding:0;z-index:1;line-height:1;" +
@@ -466,6 +470,16 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-info-panel .mdi{font-size:18px;color:var(--accent);line-height:1.1;flex:0 0 auto;margin-top:1px}" +
         ".sp-info-panel a{color:var(--accent);font-weight:600;text-decoration:none}" +
         ".sp-info-panel a:hover{text-decoration:underline}" +
+        ".sp-reset-backup-info{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center}" +
+        ".sp-reset-backup-info .sp-action-btn{white-space:nowrap}" +
+        "@media(max-width:480px){.sp-reset-backup-info{grid-template-columns:auto minmax(0,1fr)}" +
+        ".sp-reset-backup-info .sp-action-btn{grid-column:2;justify-self:end}}" +
+        ".sp-reset-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gap)}" +
+        ".sp-reset-option{display:flex;flex-direction:column;gap:6px;min-width:0;margin:0;padding:20px;background:var(--bg)}" +
+        ".sp-reset-option h4{margin:0;color:var(--text);font-size:.95rem;font-weight:600}" +
+        ".sp-reset-option p{margin:0 0 6px;color:var(--text2);font-size:.875rem;line-height:1.5}" +
+        ".sp-reset-option .sp-backup-btn{flex:0 0 auto;align-self:flex-start;margin-top:auto}" +
+        "@media(max-width:600px){.sp-reset-options{grid-template-columns:minmax(0,1fr)}}" +
         ".sp-panel-name-row{display:flex;align-items:center;gap:12px}" +
         ".sp-panel-name-row .sp-input{flex:1;min-width:0;margin:0}" +
         ".sp-panel-name-row .sp-fw-btn{flex:none;white-space:nowrap;margin:0}" +
@@ -540,6 +554,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         "cursor:pointer;font-family:inherit;transition:all .25s;background:var(--surface2);" +
         "color:var(--text)}" +
         ".sp-backup-btn:hover{background:var(--border);border-color:var(--text3)}" +
+        ".sp-backup-btn.sp-reset-danger{background:var(--danger);border-color:var(--danger);color:#fff}" +
+        ".sp-backup-btn.sp-reset-danger:hover{filter:brightness(.9)}" +
         ".sp-backup-btn .mdi{font-size:16px}" +
         ".sp-sun-info{font-size:.8rem;color:var(--text2);padding:8px 12px;margin-top:12px;background:var(--surface2);" +
         "border-radius:8px;text-align:center;display:none}" +

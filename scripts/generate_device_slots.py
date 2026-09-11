@@ -710,8 +710,58 @@ def phase2_block(device: dict) -> str:
     return "\n".join(lines)
 
 
+def display_sensor_subscription_script() -> str:
+    """Use the current sensor settings at boot and after live configuration changes."""
+    return """  - id: refresh_display_sensor_subscriptions
+    mode: single
+    then:
+      - lambda: |-
+          lv_obj_t *temperature_labels[] = {
+            id(temperatures),
+          };
+          grid_phase3(
+            id(indoor_temp_enable).state,
+            id(outdoor_temp_enable).state,
+            id(indoor_temp_entity).state,
+            id(outdoor_temp_entity).state,
+            id(clock_bar_temperature_entities).state,
+            &id(indoor_temp), &id(outdoor_temp),
+            temperature_labels,
+            1,
+            id(main_page)->obj,
+            id(presence_sensor_entity).state,
+            &id(presence_detected),
+            id(screen_schedule_sensor_entity).state,
+            &id(schedule_presence_detected),
+            id(media_player_sleep_prevention_entity).state,
+            &id(media_player_playing),
+            []() {
+              return clock_bar_should_show(
+                  id(clock_bar_enabled).state,
+                  id(main_page)->obj,
+                  id(espcontrol_app).display().current_mode(),
+                  id(espcontrol_app).display().target_schedule_inactive());
+            },
+            []() {
+              id(screensaver_presence_wake).execute();
+            },
+            []() {
+              id(screensaver_presence_sleep).execute();
+            },
+            []() {
+              id(screen_schedule_check).execute();
+            },
+            []() {
+              return id(outdoor_temp_enable).state;
+            });
+          ha_reannounce_state_subscriptions();
+"""
+
+
 def script_block(device: dict) -> str:
-    after_refresh = ["      - script.execute: clock_bar_apply"]
+    after_refresh = [
+        "      - script.execute: clock_bar_apply",
+    ]
     package = device.get("package") or {}
     subpage_chunks = int(package.get("subpageConfigChunks") or 8)
     subpage_rebuild_call = [
@@ -751,6 +801,7 @@ def script_block(device: dict) -> str:
                 *subpage_rebuild_call,
                 *after_refresh,
                 *subpage_refresh,
+                display_sensor_subscription_script(),
                 "",
             ]
         )
@@ -772,6 +823,7 @@ def script_block(device: dict) -> str:
             "            id(main_page)->obj);",
             *after_refresh,
             *subpage_refresh,
+            display_sensor_subscription_script(),
             "",
         ]
     )
@@ -807,6 +859,13 @@ def replace_script_block(text: str, device: dict) -> str:
 
 def replace_sensor_blocks(text: str, device: dict) -> str:
     text = replace_script_block(text, device)
+    text = re.sub(
+        r"(?ms)^        # Phase 3: Temperature \+ presence subscriptions\n"
+        r"        - lambda: \|-\n.*?(?=^        - delay: 500ms)",
+        "        # Bind display sensors after the initial grid is ready.\n"
+        "        - script.execute: refresh_display_sensor_subscriptions\n",
+        text,
+    )
     text = replace_phase(text, 1, phase1_block(device), "grid_phase1", device["slug"])
     text = replace_phase(text, 2, phase2_block(device), "grid_phase2", device["slug"])
     text = re.sub(

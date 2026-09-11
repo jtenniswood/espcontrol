@@ -2,9 +2,32 @@
   "schemaVersion": 1,
   "bundles": [
     {
-      "id": "87a1e997bd66e22a0bcb5ad7a995d8a5faafed0f954721b28559f2d461cb435d",
-      "sha256": "87a1e997bd66e22a0bcb5ad7a995d8a5faafed0f954721b28559f2d461cb435d",
-      "path": "bundles/87a1e997bd66e22a0bcb5ad7a995d8a5faafed0f954721b28559f2d461cb435d/www.js",
+      "id": "a9cb012d01897531427a31ca12abc9583e202a205d03c0aa1a7807d6b0f8234c",
+      "sha256": "a9cb012d01897531427a31ca12abc9583e202a205d03c0aa1a7807d6b0f8234c",
+      "path": "bundles/a9cb012d01897531427a31ca12abc9583e202a205d03c0aa1a7807d6b0f8234c/www.js",
+      "deviceProfiles": [
+        "guition-esp32-p4-jc1060p470",
+        "guition-esp32-p4-jc1060p470-v2",
+        "guition-esp32-p4-jc4880p443",
+        "guition-esp32-p4-jc8012p4a1",
+        "guition-esp32-p4-jc8012p4a1-v2",
+        "esp32-p4-86",
+        "guition-esp32-s3-4848s040"
+      ],
+      "firmwareVersions": [
+        "dev",
+        "v2.8.6",
+        "v2.8.5",
+        "v2.8.4",
+        "v2.8.3",
+        "v2.8.2"
+      ],
+      "webAssetVersion": 2
+    },
+    {
+      "id": "a9cb012d01897531427a31ca12abc9583e202a205d03c0aa1a7807d6b0f8234c",
+      "sha256": "a9cb012d01897531427a31ca12abc9583e202a205d03c0aa1a7807d6b0f8234c",
+      "path": "bundles/a9cb012d01897531427a31ca12abc9583e202a205d03c0aa1a7807d6b0f8234c/www.js",
       "deviceProfiles": [
         "guition-esp32-p4-jc1060p470",
         "guition-esp32-p4-jc1060p470-v2",

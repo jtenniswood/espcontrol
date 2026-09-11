@@ -2394,6 +2394,14 @@ inline void grid_phase3(
     std::function<bool()> clock_bar_temperature_visible_callback = nullptr) {
   ESP_LOGI("sensors", "Phase 3: temp/presence/media subscriptions start (%lu ms)", esphome::millis());
   ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_PHASE3);
+  // Rebinding can remove an entity or wait for a new state. Values from the
+  // previous subscriptions must not keep controlling the screen meanwhile.
+  const bool schedule_presence_was_detected = schedule_presence_detected_ptr && *schedule_presence_detected_ptr;
+  if (indoor_temp_ptr) *indoor_temp_ptr = NAN;
+  if (outdoor_temp_ptr) *outdoor_temp_ptr = NAN;
+  if (presence_detected_ptr) *presence_detected_ptr = false;
+  if (schedule_presence_detected_ptr) *schedule_presence_detected_ptr = false;
+  if (media_player_playing_ptr) *media_player_playing_ptr = false;
   bool has_clock_bar_entities = configure_clock_bar_temperature_entities(
       temperature_entities, temperature_labels, temperature_label_count,
       main_page_obj, clock_bar_visible_callback,
@@ -2492,6 +2500,9 @@ inline void grid_phase3(
         }),
       HA_SUBSCRIPTION_SCOPE_PHASE3
     );
+  }
+  if (schedule_presence_was_detected && !*schedule_presence_detected_ptr && schedule_presence_changed_callback) {
+    schedule_presence_changed_callback();
   }
   ESP_LOGI("sensors", "Phase 3: done (%lu ms)", esphome::millis());
 }

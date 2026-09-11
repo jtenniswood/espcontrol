@@ -222,6 +222,21 @@ async function installRoutes(context, slug, options = {}) {
 
   await context.route("**/*", async (route) => {
     const requestUrl = new URL(route.request().url());
+    if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/reset") {
+      const reset = options.resetState;
+      if (!reset) { await route.fulfill({ status: 404, body: "unsupported" }); return; }
+      if (route.request().method() === "POST") {
+        assert.strictEqual(route.request().headers()["x-espcontrol-request"], "reset");
+        assert.strictEqual(route.request().headers()["x-espcontrol-epoch"], String(reset.epoch));
+        reset.requests.push(JSON.parse(route.request().postData()));
+        reset.pending = true;
+        reset.epoch++;
+        await route.fulfill({ status: 202, contentType: "application/json", body: '{"status":"restarting"}' });
+      } else {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ modes: ["customization", "factory"], epoch: reset.epoch, pending: reset.pending }) });
+      }
+      return;
+    }
     const legacyTextMatch = requestUrl.hostname === "espcontrol.test" &&
       requestUrl.pathname.match(/^\/text\/([^/]+)(?:\/set)?$/);
     if (legacyTextMatch) {
@@ -5583,6 +5598,8 @@ async function runCase(browser, testCase) {
 
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
+    // Older firmware legitimately returns 404 for the reset capability probe.
+    if (message.location().url.endsWith("/api/v1/reset") && message.text().includes("404")) return;
     if (message.type() === "error" || message.type() === "warning")
       errors.push(`[${message.type()}] ${message.text()}`);
   });
@@ -5716,6 +5733,61 @@ async function runCase(browser, testCase) {
   }
 }
 
+async function assertResetControls(browser) {
+  for (const mode of ["customization", "factory", "unsupported"]) {
+    const testCase = CASES[0];
+    const resetState = { epoch: 3, pending: false, requests: [] };
+    const context = await browser.newContext({ viewport: testCase.viewport });
+    await installRoutes(context, testCase.slug, { nativeState: nativeConfigState(testCase.slug), resetState: mode === "unsupported" ? null : resetState });
+    const page = await context.newPage();
+    await installFakeEventSource(page);
+    try {
+      await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`);
+      await page.waitForSelector("#sp-app");
+      await seedNativeDocument(page, nativeConfigState(testCase.slug));
+      await page.getByRole("tab", { name: "Settings" }).click();
+      const card = page.locator(".card").filter({ has: page.locator("h3", { hasText: /^Factory Reset$/ }) });
+      if (mode === "unsupported") { assert(!(await card.isVisible())); continue; }
+      await card.waitFor({ state: "visible" });
+      await card.locator(".card-header").click();
+      assert(await card.getByRole("button", { name: "Save backup", exact: true }).isVisible());
+      const download = page.waitForEvent("download");
+      await card.getByRole("button", { name: "Save backup", exact: true }).click();
+      await download;
+      const label = mode === "factory" ? "Complete reset" : "Partial reset";
+      if (mode === "factory") {
+        page.on("dialog", async dialog => {
+          await dialog.dismiss();
+          assert.fail("Complete reset must not open a browser prompt");
+        });
+        const confirmation = page.getByRole("dialog", { name: "Complete reset?", exact: true });
+        await card.getByRole("button", { name: label, exact: true }).click();
+        assert(await confirmation.isVisible());
+        assert.strictEqual(await confirmation.locator("input").count(), 0);
+        assert.strictEqual(resetState.requests.length, 0, "opening confirmation must not reset");
+        assert(await confirmation.getByRole("button", { name: "Cancel", exact: true }).evaluate(el => el === document.activeElement));
+        await confirmation.getByRole("button", { name: "Cancel", exact: true }).click();
+        await confirmation.waitFor({ state: "detached" });
+        assert.strictEqual(resetState.requests.length, 0, "cancel must not reset");
+        await card.getByRole("button", { name: label, exact: true }).click();
+        await page.keyboard.press("Escape");
+        await confirmation.waitFor({ state: "detached" });
+        assert.strictEqual(resetState.requests.length, 0, "Escape must not reset");
+        await card.getByRole("button", { name: label, exact: true }).click();
+        await confirmation.getByRole("button", { name: label, exact: true }).click();
+      } else {
+        page.once("dialog", dialog => dialog.dismiss());
+        await card.getByRole("button", { name: label, exact: true }).click();
+        assert.strictEqual(resetState.requests.length, 0, "cancel must not reset");
+        page.once("dialog", dialog => dialog.accept());
+        await card.getByRole("button", { name: label, exact: true }).click();
+      }
+      await page.waitForFunction(() => document.querySelector(".sp-reset-dialog")?.textContent?.includes("restarting") || document.querySelector(".sp-reset-dialog")?.textContent?.includes("Restarting"));
+      assert.deepStrictEqual(resetState.requests, [{ mode }]);
+      assert(await page.locator(".sp-reset-dialog").isVisible());
+    } finally { await context.close(); }
+  }
+}
 
 async function assertNamingOfflineBackups(browser) {
   const testCase = ACTIVE_CASES[0];
@@ -5833,6 +5905,7 @@ async function assertPanelNaming(browser) {
       await assertPageTitleEvents(browser);
       await assertRotationStartupOrdering(browser);
     }
+    await assertResetControls(browser);
     for (const testCase of ACTIVE_CASES) {
       if (!acceptanceOnly) await runCase(browser, testCase);
       await assertNativeProfileJourney(browser, testCase);

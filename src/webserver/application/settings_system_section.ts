@@ -1,3 +1,4 @@
+import { buildResetSettings } from "./settings_reset_section";
 import { state } from "../state/app_instance";
 import { normalizeHomeAssistantArtworkEndpointMode, normalizeHomeAssistantArtworkPort, normalizeHomeAssistantArtworkProtocol } from "../model/settings";
 import type { UiRuntimeState } from "./state";
@@ -42,10 +43,10 @@ export function createSettingsSystemSectionFeature(
     artworkPostApi: Pick<ArtworkPostApiFeature, "postHomeAssistantArtworkPort" | "postHomeAssistantArtworkProtocol" | "postHomeAssistantArtworkEndpointMode">,
     publicFirmwareInstall: Pick<PublicFirmwareInstallFeature, "installPublicFirmwareViaWebOta">,
     fields: Pick<ControlsFieldsFeature, "fieldLabel" | "makeCollapsibleCard" | "toggleRow">,
-    helpers: Pick<SettingsPageHelpersFeature, "disclosureBadge" | "inlineDisclosure" | "statusBadge">,
+    helpers: Pick<SettingsPageHelpersFeature, "disclosureBadge" | "inlineDisclosure" | "statusBadge" | "infoPanel">,
 ): SettingsSystemSectionFeature {
     const { fieldLabel, makeCollapsibleCard, toggleRow } = fields;
-    const { disclosureBadge, inlineDisclosure, statusBadge } = helpers;
+    const { disclosureBadge, inlineDisclosure, statusBadge, infoPanel } = helpers;
     const { createActionButton } = shell;
     const els = runtime.els;
     const { render: renderFirmwareVersion } = firmwareVersion;
@@ -418,6 +419,7 @@ export function createSettingsSystemSectionFeature(
         return {
             identityCard: actions.buildIdentityCard?.(),
             backupCard: backupCard,
+            resetCard: buildResetSettings(actions.exportBackup, makeCollapsibleCard, infoPanel),
             firmwareCard: firmwareCard,
             homeAssistantSettingsCard: homeAssistantSettingsCard,
         };
