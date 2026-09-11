@@ -20,6 +20,9 @@ extern "C" {
 #include <esp_hosted_ota.h>
 }
 
+// Recovery also builds without EspControl; keep reset integration optional.
+extern "C" void espcontrol_hosted_ota_failed() __attribute__((weak));
+
 namespace esphome::c6_recovery {
 
 static const char *const TAG = "c6_recovery";
@@ -129,6 +132,15 @@ bool C6RecoveryComponent::install_firmware_() {
     return false;
   }
 
+  // Only an accepted begin owns the reservation. Release it on every failure,
+  // after hosted cleanup, while success keeps reset blocked until our reboot.
+  struct ResetReservation {
+    bool completed{false};
+    ~ResetReservation() {
+      if (!completed && espcontrol_hosted_ota_failed) espcontrol_hosted_ota_failed();
+    }
+  } reservation;
+
   uint8_t chunk[CHUNK_SIZE];
   const uint8_t *source = this->firmware_data_;
   size_t remaining = this->firmware_size_;
@@ -167,6 +179,7 @@ bool C6RecoveryComponent::install_firmware_() {
              esp_err_to_name(error));
     return false;
   }
+  reservation.completed = true;
   return true;
 }
 

@@ -77,13 +77,95 @@ int main() {
   assert(begin_calls == calls_before_reset);
 }
 '''
+hosted_wrappers = source[end + len("#ifdef USE_ESP32_HOSTED"):source.index("#endif", end)]
+hook_start = hosted_wrappers.index('extern "C" void espcontrol_hosted_ota_failed()')
+hook_end = hosted_wrappers.index("\n}", hook_start) + 2
+hosted_hook = hosted_wrappers[hook_start:hook_end]
+hosted_wrappers = hosted_wrappers[:hook_start] + hosted_wrappers[hook_end:]
+recovery = (ROOT / "components/c6_recovery/c6_recovery.cpp").read_text()
+recovery = recovery[recovery.index("bool C6RecoveryComponent::install_firmware_()"):
+                    recovery.index("}  // namespace esphome::c6_recovery")]
+hosted_harness = r'''
+#include <cassert>
+#include <algorithm>
+#include <cstring>
+#include "reset_interlock.h"
+using esp_err_t = int;
+constexpr int ESP_OK = 0, ESP_ERR_INVALID_STATE = 1, ESP_ERR_NOT_FOUND = 2, ESP_ERR_INVALID_ARG = 3;
+namespace espcontrol::reset { OperationInterlock interlock; }
+using namespace espcontrol::reset;
+int failure = 0;
+extern "C" void espcontrol_hosted_ota_failed() __attribute__((weak));
+extern "C" int __real_esp_hosted_slave_ota_begin() { return failure == 1 ? ESP_ERR_INVALID_ARG : ESP_OK; }
+int esp_hosted_slave_ota_write(uint8_t *, uint32_t) {
+  assert(interlock.busy());
+  return failure == 2 ? ESP_ERR_INVALID_ARG : ESP_OK;
+}
+int esp_hosted_slave_ota_end() {
+  assert(interlock.busy()); // Release only after cleanup, even on a write failure.
+  return failure == 3 ? ESP_ERR_INVALID_ARG : ESP_OK;
+}
+int esp_hosted_slave_ota_activate() {
+  assert(interlock.busy());
+  return failure == 4 ? ESP_ERR_INVALID_ARG : ESP_OK;
+}
+#define ESP_LOGE(...) ((void) 0)
+#define ESP_LOGI(...) ((void) 0)
+namespace esphome {
+namespace watchdog { struct WatchdogManager { explicit WatchdogManager(int) {} }; }
+struct Application { void feed_wdt() {} } App;
+void yield() {}
+namespace c6_recovery {
+constexpr size_t CHUNK_SIZE = 1500;
+struct C6RecoveryComponent {
+  uint8_t firmware[3100]{};
+  const uint8_t *firmware_data_ = firmware;
+  size_t firmware_size_ = sizeof(firmware);
+  bool install_firmware_();
+};
+}}
+''' + hosted_wrappers + r'''
+#define esp_hosted_slave_ota_begin __wrap_esp_hosted_slave_ota_begin
+namespace esphome::c6_recovery {
+''' + recovery + r'''
+}
+int main() {
+  esphome::c6_recovery::C6RecoveryComponent recovery;
+  // A rejected begin does not own (and cannot release) the active reservation.
+  assert(interlock.begin_installation(true));
+  assert(!recovery.install_firmware_());
+  assert(interlock.busy());
+  interlock.set_coprocessor_busy(false);
+  // No UpdateEntity notifications: direct recovery must handle every failure.
+  for (int stage = 1; stage <= 4; ++stage) {
+    failure = stage;
+    assert(!recovery.install_firmware_());
+    assert(!interlock.busy());
+    failure = 0;
+    assert(recovery.install_firmware_());
+    assert(interlock.busy()); // Successful recovery still has a scheduled reboot.
+    interlock.set_coprocessor_busy(false);
+  }
+}
+'''
 with tempfile.TemporaryDirectory() as temporary:
     directory = Path(temporary)
-    (directory / "test.cpp").write_text(harness)
-    executable = directory / "test"
-    subprocess.run(shlex.split(os.environ.get("CXX", "c++")) + [
-        "-std=c++17", "-Wall", "-Wextra", "-Werror", "-pthread",
-        "-I", str(ROOT / "components/espcontrol"), str(directory / "test.cpp"),
-        "-o", str(executable)], check=True)
-    subprocess.run([str(executable)], check=True)
-print("OTA wrapper overlap and lifecycle checks passed.")
+    for name, code in (("native", harness), ("hosted", hosted_harness)):
+        test_source = directory / (name + ".cpp")
+        test_source.write_text(code)
+        executable = directory / name
+        extra_sources = []
+        if name == "hosted":
+            # Match firmware translation units: the weak consumer must not see
+            # the optional callback's definition at compile time.
+            hook_source = directory / "hook.cpp"
+            hook_source.write_text('#include "reset_interlock.h"\n'
+                                   'namespace espcontrol::reset { extern OperationInterlock interlock; }\n'
+                                   + hosted_hook)
+            extra_sources.append(str(hook_source))
+        subprocess.run(shlex.split(os.environ.get("CXX", "c++")) + [
+            "-std=c++17", "-Wall", "-Wextra", "-Werror", "-pthread",
+            "-I", str(ROOT / "components/espcontrol"), str(test_source),
+            "-o", str(executable), *extra_sources], check=True)
+        subprocess.run([str(executable)], check=True)
+print("Native OTA and direct C6 recovery lifecycle checks passed.")

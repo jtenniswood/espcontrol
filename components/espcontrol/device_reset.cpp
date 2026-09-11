@@ -256,6 +256,11 @@ extern "C" esp_err_t __wrap_esp_ota_abort(esp_ota_handle_t handle) {
   return result;
 }
 #ifdef USE_ESP32_HOSTED
+// Direct offline recovery has no UpdateEntity to publish a terminal state.
+// Its owner calls this only after an accepted begin and all cleanup has ended.
+extern "C" void espcontrol_hosted_ota_failed() {
+  espcontrol::reset::interlock.set_coprocessor_busy(false);
+}
 extern "C" esp_err_t __real_esp_hosted_slave_ota_begin();
 extern "C" esp_err_t __wrap_esp_hosted_slave_ota_begin() {
   auto &gate = espcontrol::reset::interlock;
