@@ -53,7 +53,7 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
           await new Promise(resolve => setTimeout(resolve, 2000));
           continue;
         }
-        if (!response.ok) throw new Error("Could not read panel naming support. Reopen Settings to retry.");
+        if (!response.ok) throw new Error("Could not read panel naming support. Try again.");
         const capabilities = await response.json();
         return capabilities?.identity?.version === 1 ? request() : null;
       }
@@ -152,10 +152,26 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
       finally { input.disabled = false; }
     };
     body.append(label, input, preview, help, button, error);
-    void load().then(value => { if (value) { card.hidden = false; input.value = value.name; sync(); } }).catch(() => {
-      card.hidden = false;
-      body.textContent = "Could not read the panel name. Reopen Settings to try again.";
-    });
+    function loadCard() {
+      void load().then(value => {
+        card.hidden = !value;
+        if (value) {
+          body.replaceChildren(label, input, preview, help, button, error);
+          input.value = value.name;
+          sync();
+        }
+      }).catch(() => {
+        card.hidden = false;
+        const message = document.createElement("p");
+        message.textContent = "Could not read the panel name. Check the connection and try again.";
+        const retry = document.createElement("button");
+        retry.className = "sp-fw-btn";
+        retry.textContent = "Try again";
+        retry.onclick = () => { retry.disabled = true; loadCard(); };
+        body.replaceChildren(message, retry);
+      });
+    }
+    loadCard();
     return card;
   }
   async function chooseRestoreName(data: unknown): Promise<string | undefined | null> {

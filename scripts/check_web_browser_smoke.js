@@ -250,6 +250,10 @@ async function installRoutes(context, slug, options = {}) {
         await route.fulfill({ status: 404, body: "Not found" });
         return;
       }
+      if (route.request().method() === "GET" && identity.failLoad) {
+        await route.fulfill({ status: 503, body: "Starting up" });
+        return;
+      }
       if (route.request().method() === "POST") {
         identity.posts.push(route.request().postDataJSON());
         if (identity.failSave) {
@@ -5677,7 +5681,7 @@ async function runCase(browser, testCase) {
 async function assertPanelNaming(browser) {
   const testCase = ACTIVE_CASES[0];
   const context = await browser.newContext({ viewport: testCase.viewport });
-  const identityState = { posts: [], failSave: false, info: {
+  const identityState = { posts: [], failLoad: true, failSave: false, info: {
     name: "Kitchen", friendly_name: "Kitchen", hostname: "espcontrol-kitchen-a1b2c3",
     mac_suffix: "a1b2c3", ip_address: "192.168.1.25", restart_required: false,
   } };
@@ -5695,11 +5699,14 @@ async function assertPanelNaming(browser) {
     await page.waitForSelector("#sp-app");
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.getByRole("tab", { name: "Settings" }).click();
+    const card = page.locator(".card").filter({ has: page.locator(".card-header", { hasText: "Panel name" }) });
+    await card.locator(".card-header").click();
+    await card.getByText("Could not read the panel name. Check the connection and try again.").waitFor();
+    identityState.failLoad = false;
+    await card.getByRole("button", { name: "Try again", exact: true }).click();
     await page.waitForFunction(() => document.title === "EspControl — Kitchen");
     assert.strictEqual(await page.locator(".sp-brand").textContent(), "EspControl — Kitchen");
-    await page.getByRole("tab", { name: "Settings" }).click();
-    const card = page.locator(".card").filter({ has: page.locator("#sp-panel-name") });
-    await card.locator(".card-header").click();
     const save = card.getByRole("button", { name: "Save and restart", exact: true });
     assert(await save.isDisabled(), "unchanged names cannot be saved");
     await page.locator("#sp-panel-name").fill("Office");
