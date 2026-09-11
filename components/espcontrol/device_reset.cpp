@@ -224,13 +224,6 @@ void early_startup(bool compiled_networks, const char *username, const char *pas
 void register_handlers(esphome::web_server_idf::AsyncWebServer &server) { server.addHandler(new ResetHandler()); }
 }  // namespace espcontrol::reset
 
-// ESPHome's preference initialization runs before generated setup and attempts
-// a whole-NVS erase if opening preferences fails. Preserve reset bookkeeping
-// even on that path: storage errors must reach the coordinator's recovery
-// state instead of losing intent and restoring an old native configuration.
-// Explicit resets below erase individual keys and never use this helper.
-extern "C" esp_err_t __wrap_nvs_flash_erase() { return ESP_ERR_NOT_SUPPORTED; }
-
 // Shared dispatcher hook covers native config and legacy entity POSTs,
 // including calls from a stale browser that has no epoch header. ESPHome's
 // provisioning/upload forms remain usable when no reset is pending.

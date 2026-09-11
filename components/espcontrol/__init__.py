@@ -71,9 +71,6 @@ async def to_code(config):
     if CORE.config.get("preferences", {}).get("rtc_storage", False):
         raise cv.Invalid("EspControl reset requires flash preferences; remove preferences.rtc_storage")
     cg.add_define("USE_OTA_STATE_LISTENER")
-    # ESP32Preferences::open otherwise erases all NVS on an initialization
-    # error before generated setup can inspect the durable reset journal.
-    cg.add_build_flag("-Wl,--wrap=nvs_flash_erase")
     cg.add_global(cg.RawStatement('#include "esphome/components/espcontrol/device_reset.h"'), prepend=True)
     compiled_networks = bool(CORE.config.get("wifi", {}).get("networks", []))
     cg.add(espcontrol_ns.namespace("reset").early_startup(

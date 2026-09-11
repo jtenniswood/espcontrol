@@ -108,9 +108,10 @@ loading. Its `espcontrol_rst` journal survives factory cleanup. Failed cleanup
 blocks restoration and retries with a serial recovery message. The credential
 adapter in `reset_policy.h` is coupled to the pinned ESPHome Wi-Fi and API
 preference keys and must be checked when upgrading ESPHome.
-The linker also blocks ESPHome's automatic whole-NVS erase on preference
-initialization errors, which would otherwise destroy the journal before the
-coordinator runs. Reset cleanup always erases individual records.
+Reset cleanup always erases individual records. ESPHome's platform-level NVS
+initialization recovery remains unchanged; if NVS itself is unreadable and the
+platform erases it before setup, the reset journal cannot be recovered. The
+interrupted-reset guarantees assume NVS can initialize and read its journal.
 
 ## Adding a Card Settings UI
 
