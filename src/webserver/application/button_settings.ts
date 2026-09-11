@@ -1,6 +1,89 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installButtonSettingsModule(): GlobalDescriptors {
+import * as EspControlModel from "../model";
+import { applySpans, CARD_SIZE_SINGLE, clearSpans } from "../model/grid";
+import { iconSlug, mdiIcon, textSpan } from "./ui_primitives";
+import type { CardEditorDraftController } from "../features/card_editor_draft_controller";
+import type { CardEditorValidationController } from "../features/card_editor_validation_controller";
+import type { CardEditorSaveController } from "../features/card_editor_save_controller";
+import type { ConfigPersistenceFeature } from "./config_post_api";
+import type { CardRegistry } from "./card_registry";
+import type { ConfigImageOptionsFeature } from "./config_image_options";
+import type { ConfigConfirmationOptionsFeature } from "./config_confirmation_options";
+import type { ConfigCodecFeature } from "./config_codec";
+import type { ApplicationLayoutState } from "./application_context";
+import type { UiRuntimeState } from "./state";
+import type { EntityStateFeature } from "./entity_state";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { ApplicationApiFeature } from "./api";
+import type { GridFeature } from "./grid";
+import type { ButtonSettingsIconPickerFeature } from "./button_settings_icon_picker";
+import type { ButtonSettingsSelectionFeature } from "./button_settings_selection";
+import type { PreviewRenderFeature } from "./preview_render";
+import type { PreviewInteractionsFeature } from "./preview_interactions";
+import type { ControlsFieldsFeature } from "./controls_fields";
+
+export function entityMatchesDomains(entityId?: any, domains?: any): boolean {
+    var value: any = String(entityId || "").trim();
+    var dot: any = value.indexOf(".");
+    return dot > 0 && !!domains && domains.indexOf(value.slice(0, dot)) >= 0;
+}
+
+export interface ButtonSettingsFeature {
+    openCardSettings(...args: any[]): any;
+    renderBackButtonSettings(...args: any[]): any;
+    render(...args: any[]): any;
+}
+
+export function createButtonSettingsFeature(
+    cardEditorDraftController: CardEditorDraftController,
+    cardEditorValidationController: CardEditorValidationController,
+    cardEditorSaveController: CardEditorSaveController,
+    configPersistence: ConfigPersistenceFeature,
+    cardRegistry: CardRegistry,
+    imageOptions: ConfigImageOptionsFeature,
+    confirmationOptions: ConfigConfirmationOptionsFeature,
+    codec: ConfigCodecFeature,
+    layout: ApplicationLayoutState,
+    runtime: UiRuntimeState,
+    entityState: Pick<EntityStateFeature, "entityName" | "entityInput">,
+    shell: Pick<ControlsShellFeature, "isConfigLocked" | "createActionButton" | "showBanner">,
+    requestApi: Pick<ApplicationApiFeature, "postText">,
+    grid: Pick<GridFeature, "ctx" | "serializeGrid">,
+    iconPicker: ButtonSettingsIconPickerFeature,
+    selection: Pick<ButtonSettingsSelectionFeature, "closeSettings" | "hideSettingsOverlay">,
+    preview: Pick<PreviewRenderFeature, "defaultTypeForPicker" | "pickerOptions" | "registryValue" | "render">,
+    interactions: Pick<PreviewInteractionsFeature, "deleteSlot" | "emptyButtonConfig">,
+    fields: ControlsFieldsFeature,
+): ButtonSettingsFeature {
+    const { entityName, entityInput } = entityState;
+    const { isConfigLocked, createActionButton, showBanner } = shell;
+    const els = runtime.els;
+    const { ctx, serializeGrid } = grid;
+    const { closeSettings, hideSettingsOverlay } = selection;
+    const { defaultTypeForPicker: defaultButtonTypeForPicker, pickerOptions: buttonTypePickerOptionList, registryValue: buttonTypeRegistryValue, render: renderPreview } = preview;
+    const { deleteSlot, emptyButtonConfig } = interactions;
+    const {
+        applyCardMetadataFields, condField, disclosureSection, fieldLabel, fieldWithControl,
+        groupCardSettingsFields, markCardPrimaryField, renderBasicCardFields,
+        renderCardActiveColorToggle, renderCardEntityField, renderCardIconPair,
+        renderCardIconPicker, renderCardLargeNumbersToggle, renderCardModeSelector,
+        renderCardNumberField, renderCardOptionToggle, renderCardSegmentControl,
+        renderCardTextField, segmentControl, selectField, syncCardLargeNumbersToggle,
+        textInput, toggleRow,
+    } = fields;
+    const {
+        imageSlotCapacity,
+        imageCardCountWithCandidate,
+        showImageCardLimitBanner,
+    } = imageOptions;
+    const { cardOnPattern, setCardOnPattern } = confirmationOptions;
+    const {
+        normalizeButtonConfig,
+        normalizeCardSizeForConfig,
+        serializeButtonConfig,
+        getSubpage,
+        saveSubpageConfig,
+    } = codec;
     // ── Button settings panel (unified) ────────────────────────────────────
     function openCardSettings(this: any, slot?: any) {
         if (isConfigLocked())
@@ -73,7 +156,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             hideSettingsOverlay();
             return;
         }
-        if (!forceOpen && !isSettingsOpen()) {
+        if (!forceOpen && !runtime.isSettingsOpen()) {
             hideSettingsOverlay();
             return;
         }
@@ -83,17 +166,12 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             return;
         var slot: any = c.selected[0];
         var bIdx: any = slot - 1;
-        var pendingNewDraft: any = !!(state.settingsDraft &&
-            state.settingsDraft.isNew &&
-            state.settingsDraft.slot === slot &&
-            state.settingsDraft.isSub === c.isSub &&
-            (!c.isSub || state.settingsDraft.homeSlot === state.editingSubpage));
+        var location: any = { slot: slot, homeSlot: state.editingSubpage, isSub: c.isSub };
+        var pendingNewDraft: any = cardEditorDraftController.matchesNewDraft(state.settingsDraft, location);
         if (bIdx < 0 || (!pendingNewDraft && bIdx >= c.buttons.length))
             return;
         var liveButton: any = pendingNewDraft ? null : c.buttons[bIdx];
-        var draftKey: any = pendingNewDraft
-            ? state.settingsDraft!.key
-            : (c.isSub ? "sub:" + state.editingSubpage : "main") + ":" + slot;
+        var draftKey: any = pendingNewDraft ? state.settingsDraft!.key : cardEditorDraftController.keyFor(location);
         function cloneButtonConfig(this: any, src?: any) {
             return EspControlModel.cloneCardConfig(src);
         }
@@ -101,16 +179,8 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             EspControlModel.copyCardConfig(target, src);
             normalizeButtonConfig(target);
         }
-        if (!pendingNewDraft && (!state.settingsDraft || state.settingsDraft.key !== draftKey)) {
-            state.settingsDraft = {
-                key: draftKey,
-                slot: slot,
-                homeSlot: state.editingSubpage,
-                isSub: c.isSub,
-                dirty: false,
-                button: cloneButtonConfig(liveButton),
-            };
-        }
+        if (!pendingNewDraft)
+            state.settingsDraft = cardEditorDraftController.ensureExistingDraft(state.settingsDraft, location, liveButton);
         var b: any = state.settingsDraft!.button;
         var isNewDraft: any = !!state.settingsDraft!.isNew;
         var title: any = document.createElement("div");
@@ -122,9 +192,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
         var idPrefix: any = c.isSub ? "sp-sp-inp-" : "sp-inp-";
         var requiredFields: any = [];
         function markDraftDirty(this: any) {
-            if (state.settingsDraft && state.settingsDraft.key === draftKey) {
-                state.settingsDraft.dirty = true;
-            }
+            cardEditorDraftController.markDirty(state.settingsDraft, draftKey);
         }
         function saveField(this: any, field?: any, val?: any) {
             markDraftDirty();
@@ -165,17 +233,21 @@ export function installButtonSettingsModule(): GlobalDescriptors {
                 input.setAttribute("aria-describedby", existing.id);
             }
         }
-        function requireField(this: any, input?: any, message?: any, isActive?: any) {
+        function requireField(this: any, input?: any, message?: any, isActive?: any, hasValue?: any) {
             if (!input)
                 return;
             requiredFields.push({
                 input: input,
                 message: message || "Add an entity before saving.",
                 isActive: isActive || function (this: any) { return true; },
+                hasValue: hasValue,
             });
+            function fieldHasValue(this: any) {
+                return hasValue ? hasValue(input.value) : Boolean(String(input.value || "").trim());
+            }
             function maybeClearError(this: any) {
                 if (!isActive || isActive()) {
-                    if (String(input.value || "").trim())
+                    if (fieldHasValue())
                         clearFieldError(input);
                 }
                 else {
@@ -185,21 +257,72 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             input.addEventListener("input", maybeClearError);
             input.addEventListener("change", maybeClearError);
         }
+        function requireEntityDomain(this: any, input?: any, domains?: any, message?: any, isActive?: any) {
+            if (!input || !domains || !domains.length)
+                return;
+            requiredFields.push({
+                input: input,
+                message: message || "Choose a compatible entity before saving.",
+                isActive: isActive || function (this: any) { return true; },
+                allowEmpty: true,
+                isValid: function (this: any, value?: any) {
+                    return entityMatchesDomains(value, domains);
+                },
+            });
+            function maybeClearError(this: any) {
+                var value: any = String(input.value || "").trim();
+                if ((!isActive || isActive()) && value) {
+                    if (entityMatchesDomains(value, domains))
+                        clearFieldError(input);
+                }
+                else if (isActive && !isActive()) {
+                    clearFieldError(input);
+                }
+            }
+            input.addEventListener("input", maybeClearError);
+            input.addEventListener("change", maybeClearError);
+        }
         function validateSettingsDraft(this: any) {
-            var firstInvalid: any = null;
+            var validation: any = cardEditorValidationController.validateRequiredFields(requiredFields.map(function (this: any, rule?: any) {
+                var value: any = String(rule.input.value || "").trim();
+                return {
+                    value: rule.input.value,
+                    active: !rule.isActive || rule.isActive(),
+                    present: rule.allowEmpty && !value
+                        ? true
+                        : rule.hasValue
+                            ? Boolean(rule.hasValue(rule.input.value))
+                            : rule.isValid
+                                ? Boolean(value && rule.isValid(value))
+                                : undefined,
+                };
+            }));
+            var firstInvalid: any = validation.firstInvalidIndex >= 0 ? requiredFields[validation.firstInvalidIndex].input : null;
             for (var i: any = 0; i < requiredFields.length; i++) {
                 var rule: any = requiredFields[i];
                 if (rule.isActive && !rule.isActive()) {
                     clearFieldError(rule.input);
                     continue;
                 }
-                if (String(rule.input.value || "").trim()) {
+                var value: any = String(rule.input.value || "").trim();
+                if (!value && rule.allowEmpty)
+                    continue;
+                var isPresent: any = rule.hasValue
+                    ? rule.hasValue(rule.input.value)
+                    : Boolean(value);
+                if (isPresent && (!rule.isValid || rule.isValid(value))) {
                     clearFieldError(rule.input);
                     continue;
                 }
-                if (!firstInvalid)
-                    firstInvalid = rule.input;
                 showFieldError(rule.input, rule.message);
+            }
+            for (var j: any = 0; j < requiredFields.length; j++) {
+                var validityRule: any = requiredFields[j];
+                if (validityRule.isActive && !validityRule.isActive()) continue;
+                if (validityRule.input.checkValidity && !validityRule.input.checkValidity()) {
+                    showFieldError(validityRule.input, validityRule.input.validationMessage);
+                    if (!firstInvalid) firstInvalid = validityRule.input;
+                }
             }
             if (!firstInvalid)
                 return true;
@@ -219,12 +342,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
                 button.setAttribute("aria-expanded", "true");
         }
         function validateConfigSize(this: any) {
-            if (c.isSub)
-                return true;
-            if (serializeButtonConfig(b).length <= 255)
-                return true;
-            showBanner("Card settings are too large to save. Shorten confirmation text, labels, or entity IDs.", "error");
-            return false;
+            return validateSaveLimits().reason !== "config-size";
         }
         function validateImageCardLimit(this: any) {
             var count: any = imageCardCountWithCandidate({
@@ -233,10 +351,24 @@ export function installButtonSettingsModule(): GlobalDescriptors {
                 slot: slot,
                 button: b,
             });
-            if (count <= imageSlotCapacity())
+            var validation: any = cardEditorValidationController.validateSave({
+                fields: [], isSubpage: c.isSub, serializedConfigLength: 0,
+                imageCardCount: count, imageCardCapacity: imageSlotCapacity(),
+            });
+            if (validation.reason !== "image-limit")
                 return true;
             showImageCardLimitBanner();
             return false;
+        }
+        function validateSaveLimits(this: any) {
+            var validation: any = cardEditorValidationController.validateSave({
+                fields: [], isSubpage: c.isSub, serializedConfigLength: serializeButtonConfig(b).length,
+                imageCardCount: 0, imageCardCapacity: imageSlotCapacity(),
+            });
+            if (validation.reason === "config-size") {
+                showBanner("Card settings are too large to save. Shorten confirmation text, labels, or entity IDs.", "error");
+            }
+            return validation;
         }
         function applyCardSizeConstraint(this: any, savedButton?: any) {
             var currentSize: any = c.sizes[slot] || CARD_SIZE_SINGLE;
@@ -248,55 +380,79 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             else
                 c.sizes[slot] = nextSize;
             clearSpans(c.grid, c.maxSlots);
-            applySpans(c.grid, c.sizes, c.maxSlots);
+            applySpans(c.grid, c.sizes, c.maxSlots, layout.gridCols);
             return true;
+        }
+        function saveResultSucceeded(this: any, result?: any) {
+            return result !== "authentication-required" && result !== "conflict" &&
+                result !== "failed" && result !== "unsupported";
         }
         function applySettingsDraft(this: any) {
             if (!state.settingsDraft || state.settingsDraft.key !== draftKey)
-                return false;
+                return Promise.resolve(false);
             var draft: any = state.settingsDraft;
-            var savedButton: any = liveButton;
-            var sizeChanged: any = false;
-            if (draft.isNew) {
-                var pos: any = draft.pos;
-                if (pos < 0 || pos >= c.maxSlots || c.grid[pos] !== 0) {
+            var originalGrid: any = c.grid.slice();
+            var originalButtons: any = c.buttons.map(cloneButtonConfig);
+            var originalSizes: any = Object.assign({}, c.sizes || {});
+            var subpageHomeSlot: any = state.editingSubpage;
+            var originalSubpageOrder: any = c.isSub
+                ? (getSubpage(subpageHomeSlot).order || []).slice() : null;
+            var originalSubpagePending: any = c.isSub
+                ? state.subpageSavePending[subpageHomeSlot] : undefined;
+            function restoreDraftState(this: any) {
+                c.grid.splice.apply(c.grid, [0, c.grid.length].concat(originalGrid));
+                c.buttons.splice.apply(c.buttons, [0, c.buttons.length].concat(originalButtons));
+                Object.keys(c.sizes || {}).forEach(function (key) { delete c.sizes[key]; });
+                Object.assign(c.sizes, originalSizes);
+                if (c.isSub) {
+                    getSubpage(subpageHomeSlot).order = originalSubpageOrder;
+                    if (originalSubpagePending === undefined)
+                        delete state.subpageSavePending[subpageHomeSlot];
+                    else
+                        state.subpageSavePending[subpageHomeSlot] = originalSubpagePending;
+                }
+                renderPreview();
+            }
+            var saved: any = cardEditorSaveController.apply(draft, {
+                slot: slot, maxSlots: c.maxSlots, isSubpage: c.isSub,
+                grid: c.grid, buttons: c.buttons,
+            });
+            if (!saved.accepted) {
+                if (draft.isNew)
                     showBanner("That grid space is no longer available. Close this window and try again.", "error");
+                return Promise.resolve(false);
+            }
+            var savedButton: any = saved.button;
+            var sizeChanged: any = applyCardSizeConstraint(savedButton);
+            var orderChanged: any = !saved.saveSubpage && (saved.saveGrid || sizeChanged);
+            var persistence: any;
+            if (saved.saveSubpage)
+                persistence = saveSubpageConfig(subpageHomeSlot);
+            else if (saved.saveButton && orderChanged)
+                persistence = configPersistence.saveButtonConfigAndOrder(slot, serializeGrid(state.grid));
+            else if (saved.saveButton)
+                persistence = configPersistence.saveButtonConfig(slot);
+            else if (orderChanged)
+                persistence = requestApi.postText(entityName("button_order"), serializeGrid(state.grid));
+            else
+                persistence = Promise.resolve("saved");
+            return Promise.resolve(persistence).then(function (result: any) {
+                if (!saveResultSucceeded(result)) {
+                    restoreDraftState();
                     return false;
                 }
-                while (c.buttons.length < slot) {
-                    c.buttons.push(emptyButtonConfig());
+                state.settingsDraft = null;
+                var savedTypeDef: any = cardRegistry.definitions[savedButton.type || ""];
+                if (savedTypeDef && savedTypeDef.afterSave) {
+                    savedTypeDef.afterSave(savedButton, slot, { isSub: c.isSub });
                 }
-                savedButton = c.buttons[slot - 1];
-                copyButtonConfig(savedButton, draft.button);
-                c.grid[pos] = slot;
-                sizeChanged = applyCardSizeConstraint(savedButton);
-                if (c.isSub) {
-                    saveSubpageConfig(state.editingSubpage);
-                }
-                else {
-                    postText(entityName("button_order"), serializeGrid(state.grid));
-                    saveButtonConfig(slot);
-                }
-            }
-            else {
-                copyButtonConfig(liveButton, draft.button);
-                sizeChanged = applyCardSizeConstraint(liveButton);
-            }
-            state.settingsDraft = null;
-            if (!draft.isNew && c.isSub) {
-                saveSubpageConfig(state.editingSubpage);
-            }
-            else if (!draft.isNew) {
-                if (sizeChanged)
-                    postText(entityName("button_order"), serializeGrid(state.grid));
-                saveButtonConfig(slot);
-            }
-            var savedTypeDef: any = BUTTON_TYPES[savedButton.type || ""];
-            if (savedTypeDef && savedTypeDef.afterSave) {
-                savedTypeDef.afterSave(savedButton, slot, { isSub: c.isSub });
-            }
-            renderPreview();
-            return true;
+                renderPreview();
+                return true;
+            }).catch(function () {
+                restoreDraftState();
+                showBanner("Could not save the configuration. Check the connection and try again.", "error");
+                return false;
+            });
         }
         function bindField(this: any, input?: any, field?: any, rerender?: any) {
             function syncValue(this: any) {
@@ -343,7 +499,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             dropdown.className = "sp-icon-dropdown";
             picker.appendChild(dropdown);
             icf.appendChild(picker);
-            initIconPicker(picker, currentVal, onSelect);
+            iconPicker.init(picker, currentVal, onSelect);
             return icf;
         }
         function entityField(this: any, labelText?: any, inputId?: any, value?: any, placeholder?: any, domains?: any, bindName?: any, rerender?: any, requiredMessage?: any) {
@@ -394,11 +550,13 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             draft.autoSelectedButton = null;
         }
         function selectCardType(this: any, newType?: any) {
+            if (!isNewDraft)
+                return;
             var pickerType: any = newType;
             newType = defaultButtonTypeForPicker(newType);
             var wasNewDraftWithoutType: any = isNewDraft && state.settingsDraft &&
                 state.settingsDraft.key === draftKey && !state.settingsDraft.typeSelected;
-            var keepMediaEntity: any = (pickerType === "media_control" || pickerType === "media_cover_art") && b.type === "media";
+            var keepMediaEntity: any = pickerType === "media_control" && b.type === "media";
             clearAutomaticTypeDefaults();
             if (isNewDraft && b.type === "action" && newType !== "action") {
                 b.sensor = "";
@@ -410,26 +568,17 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             if (state.settingsDraft && state.settingsDraft.key === draftKey) {
                 state.settingsDraft.typeSelected = true;
             }
-            var td: any = BUTTON_TYPES[newType];
+            var td: any = cardRegistry.definitions[newType];
             if (td && td.onSelect && !keepMediaEntity)
                 td.onSelect(b);
             if (pickerType === "media_control") {
-                b.sensor = "control_modal";
-                b.label = "All Controls";
-                b.icon = "Auto";
-                b.icon_on = "Auto";
-                b.unit = "";
-                b.precision = "";
-                b.options = "";
-            }
-            if (pickerType === "media_cover_art") {
                 b.sensor = "cover_art";
                 b.label = "Cover Art";
                 b.icon = "Auto";
                 b.icon_on = "Auto";
                 b.unit = "";
                 b.precision = "";
-                b.options = normalizeMediaOptions(b.options, b.sensor);
+                b.options = "";
             }
             if (wasNewDraftWithoutType && state.settingsDraft && state.settingsDraft.key === draftKey) {
                 state.settingsDraft.autoSelectedButton = cloneButtonConfig(b);
@@ -575,14 +724,12 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             });
         }
         var isNewDraftWithoutType: any = isNewDraft && !state.settingsDraft?.typeSelected;
-        var rawTypeDef: any = isNewDraftWithoutType ? null : (BUTTON_TYPES[b.type || ""] || BUTTON_TYPES[""]);
+        var rawTypeDef: any = isNewDraftWithoutType ? null : (cardRegistry.definitions[b.type || ""] || cardRegistry.definitions[""]);
         var typeDef: any = rawTypeDef;
         {
             var selectedTypeKey: any = isNewDraftWithoutType
                 ? null
                 : buttonTypeRegistryValue(rawTypeDef, "pickerKey", "") || (b.type || "");
-            if (!isNewDraftWithoutType && b.type === "media" && mediaEditorMode(b.sensor) === "cover_art")
-                selectedTypeKey = "media_cover_art";
             var typeOpts: any = buttonTypePickerOptionList(c.isSub, selectedTypeKey);
             if (isNewDraftWithoutType) {
                 if (settingsModal)
@@ -591,26 +738,33 @@ export function installButtonSettingsModule(): GlobalDescriptors {
                 container.appendChild(panel);
                 return;
             }
-            var tf: any = document.createElement("div");
-            tf.className = "sp-field";
-            tf.appendChild(fieldLabel("Card", "sp-inp-type"));
-            var typeSelect: any = document.createElement("select");
-            typeSelect.className = "sp-select";
-            typeSelect.id = "sp-inp-type";
-            typeOpts.forEach(function (this: any, o?: any) {
-                var opt: any = document.createElement("option");
-                opt.value = o.key;
-                opt.textContent = o.label;
-                opt.disabled = !!o.disabled;
-                if (selectedTypeKey === o.key)
-                    opt.selected = true;
-                typeSelect.appendChild(opt);
-            });
-            typeSelect.addEventListener("change", function (this: any) {
-                selectCardType(this.value);
-            });
-            tf.appendChild(typeSelect);
-            panel.appendChild(tf);
+            if (!isNewDraft) {
+                var selectedTypeOption: any = typeOpts.find(function (o: any) { return o.key === selectedTypeKey; });
+                title.textContent = selectedTypeOption ? selectedTypeOption.label : buttonTypeRegistryValue(rawTypeDef, "label", "Card");
+            }
+            if (isNewDraft) {
+                var tf: any = document.createElement("div");
+                tf.className = "sp-field";
+                tf.appendChild(fieldLabel("Card", "sp-inp-type"));
+                var typeSelect: any = document.createElement("select");
+                typeSelect.className = "sp-select";
+                typeSelect.id = "sp-inp-type";
+                typeOpts.forEach(function (this: any, o?: any) {
+                    var opt: any = document.createElement("option");
+                    opt.value = o.key;
+                    opt.textContent = o.label;
+                    opt.disabled = !!o.disabled;
+                    if (selectedTypeKey === o.key)
+                        opt.selected = true;
+                    typeSelect.appendChild(opt);
+                });
+                typeSelect.addEventListener("change", function (this: any) {
+                    selectCardType(this.value);
+                });
+                tf.appendChild(typeSelect);
+                panel.appendChild(tf);
+                markCardPrimaryField(tf, "card");
+            }
         }
         var typeHelpers: any = {
             makeIconPicker: makeIconPicker,
@@ -622,6 +776,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             segmentControl: segmentControl,
             toggleSection: toggleSection,
             disclosureSection: disclosureSection,
+            markCardPrimaryField: markCardPrimaryField,
             precisionField: precisionField,
             fieldLabel: fieldLabel,
             textInput: textInput,
@@ -642,6 +797,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             renderBasicCardFields: renderBasicCardFields,
             renderCardSegmentControl: renderCardSegmentControl,
             requireField: requireField,
+            requireEntityDomain: requireEntityDomain,
             clearFieldError: clearFieldError,
             toggleRow: toggleRow,
             cardSize: c.sizes[slot] || 1,
@@ -676,6 +832,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             ]);
             ef.appendChild(entityInp);
             panel.appendChild(ef);
+            markCardPrimaryField(ef, "entity");
             bindField(entityInp, "entity", true);
             requireField(entityInp, "Add an entity before saving.");
             panel.appendChild(makeIconPicker(idPrefix + "icon-picker", idPrefix + "icon", b.icon || "Auto", function (this: any, opt?: any) {
@@ -693,6 +850,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             });
             panel.appendChild(patternField.field);
         }
+        groupCardSettingsFields(panel, idPrefix);
         var saveRow: any = document.createElement("div");
         saveRow.className = "sp-btn-row sp-btn-row--save";
         if (!isNewDraft) {
@@ -714,16 +872,21 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             rightGroup.appendChild(editSubBtn);
         }
         var saveBtn: any = createActionButton("sp-action-btn sp-save-btn", "Save");
-        saveBtn.addEventListener("click", function (this: any) {
+        saveBtn.addEventListener("click", async function (this: any) {
+            if (saveBtn.disabled)
+                return;
             if (!validateSettingsDraft())
                 return;
             if (!validateImageCardLimit())
                 return;
             if (!validateConfigSize())
                 return;
-            if (!applySettingsDraft())
+            saveBtn.disabled = true;
+            if (await applySettingsDraft()) {
+                closeSettings();
                 return;
-            closeSettings();
+            }
+            saveBtn.disabled = false;
         });
         rightGroup.appendChild(saveBtn);
         saveRow.appendChild(rightGroup);
@@ -731,8 +894,8 @@ export function installButtonSettingsModule(): GlobalDescriptors {
         container.appendChild(panel);
     }
     return {
-        "openCardSettings": staticGlobal(openCardSettings),
-        "renderBackButtonSettings": staticGlobal(renderBackButtonSettings),
-        "renderButtonSettings": staticGlobal(renderButtonSettings),
+        openCardSettings,
+        renderBackButtonSettings,
+        render: renderButtonSettings,
     };
 }

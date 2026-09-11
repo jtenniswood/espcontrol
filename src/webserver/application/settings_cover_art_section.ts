@@ -1,13 +1,45 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installSettingsCoverArtSectionModule(): GlobalDescriptors {
+import type { ConfigCodecFeature } from "./config_codec";
+import type { UiRuntimeState } from "./state";
+import type { EntityStateFeature } from "./entity_state";
+import type { AppStatusPreviewFeature } from "./app_status_preview";
+import type { ArtworkPostApiFeature } from "./artwork_post_api";
+import type { ControlsFieldsFeature } from "./controls_fields";
+import type { SettingsPageHelpersFeature } from "./settings_page_helpers";
+import type { CoverArtScreensaverController } from "../features/cover_art_screensaver_controller";
+import type { MediaPlaybackController } from "../features/media_playback_controller";
+
+export interface SettingsCoverArtSectionFeature {
+    buildCoverArtSettingsCard(...args: any[]): any;
+}
+
+export function createSettingsCoverArtSectionFeature(codec: Pick<ConfigCodecFeature, "bindTextPost">, runtime: UiRuntimeState, entityState: Pick<EntityStateFeature, "entityName" | "entityInput">, statusPreview: Pick<AppStatusPreviewFeature, "syncInput">, artworkPostApi: ArtworkPostApiFeature, fields: Pick<ControlsFieldsFeature, "condField" | "fieldLabel" | "makeCollapsibleCard" | "toggleRow">, helpers: Pick<SettingsPageHelpersFeature, "applyCoverArtScreensaverState" | "applyMediaPlaybackState" | "coverArtScreensaverState" | "coverArtTrackOverlayDurationSupported" | "infoPanel" | "inlineDisclosure" | "mediaPlaybackState" | "statusBadge" | "syncCoverArtScreensaverUi" | "syncMediaPlayerSleepPreventionUi">, coverArtScreensaver: CoverArtScreensaverController, mediaPlayback: MediaPlaybackController): SettingsCoverArtSectionFeature {
+    const { applyCoverArtScreensaverState, applyMediaPlaybackState, coverArtScreensaverState, coverArtTrackOverlayDurationSupported, infoPanel, inlineDisclosure, mediaPlaybackState, statusBadge, syncCoverArtScreensaverUi, syncMediaPlayerSleepPreventionUi } = helpers;
+    const _coverArtScreensaverController = coverArtScreensaver;
+    const _mediaPlaybackController = mediaPlayback;
+    const { condField, fieldLabel, makeCollapsibleCard, toggleRow } = fields;
+    const { entityName, entityInput } = entityState;
+    const { bindTextPost } = codec;
+    const { syncInput } = statusPreview;
+    const els = runtime.els;
+    const {
+        postMediaPlayerSleepPrevention,
+        postMediaPlayerSleepPreventionEntity,
+        postCoverArtScreensaver,
+        postCoverArtMediaPlayerEntity,
+        postCoverArtSecondaryMediaPlayerEntity,
+        postCoverArtConditions,
+        postCoverArtHideExternalInput,
+        postCoverArtDelay,
+        postCoverArtTrackOverlayDuration,
+    } = artworkPostApi;
     // ── Settings Cover Art Section ─────────────────────────────────────
     function buildCoverArtSettingsCard(this: any) {
         var coverArtBody: any = document.createElement("div");
         var coverArtToggle: any = toggleRow("Show Cover Art", "sp-set-ss-cover-art-enable", state.coverArtScreensaverOn);
         coverArtBody.appendChild(coverArtToggle.row);
         coverArtToggle.input.addEventListener("change", function (this: any) {
-            state.coverArtScreensaverOn = this.checked;
+            applyCoverArtScreensaverState(_coverArtScreensaverController.setEnabled(coverArtScreensaverState(), this.checked));
             syncCoverArtScreensaverUi();
             postCoverArtScreensaver(state.coverArtScreensaverOn);
         });
@@ -19,7 +51,7 @@ export function installSettingsCoverArtSectionModule(): GlobalDescriptors {
         var sleepPreventionToggle: any = toggleRow("Keep Screen Awake During Playback", "sp-set-ss-media-sleep-prevention", state.mediaPlayerSleepPreventionOn);
         coverArtScreensaverSettingsBody.appendChild(sleepPreventionToggle.row);
         sleepPreventionToggle.input.addEventListener("change", function (this: any) {
-            state.mediaPlayerSleepPreventionOn = this.checked;
+            applyMediaPlaybackState(_mediaPlaybackController.setSleepPreventionEnabled(mediaPlaybackState(), this.checked));
             syncMediaPlayerSleepPreventionUi();
             syncCoverArtScreensaverUi();
             postMediaPlayerSleepPrevention(state.mediaPlayerSleepPreventionOn);
@@ -33,8 +65,7 @@ export function installSettingsCoverArtSectionModule(): GlobalDescriptors {
         coverArtOnlyOptions.appendChild(coverArtEntityField);
         bindTextPost(coverArtEntityInp, entityName("screen_saver_cover_art_entity"), {
             onBlur: function (this: any, value?: any) {
-                state.coverArtMediaPlayerEntity = value;
-                state.mediaPlayerSleepPreventionEntity = value;
+                applyMediaPlaybackState(_mediaPlaybackController.setCoverArtEntity(mediaPlaybackState(), value));
             },
             post: function (this: any, value?: any) {
                 postCoverArtMediaPlayerEntity(value);
@@ -62,7 +93,7 @@ export function installSettingsCoverArtSectionModule(): GlobalDescriptors {
             coverArtDelaySelect.appendChild(o);
         });
         coverArtDelaySelect.addEventListener("change", function (this: any) {
-            state.coverArtDelay = normalizeCoverArtDelay(this.value);
+            applyCoverArtScreensaverState(_coverArtScreensaverController.setDelay(coverArtScreensaverState(), this.value));
             postCoverArtDelay(state.coverArtDelay);
         });
         coverArtDelayField.appendChild(coverArtDelaySelect);
@@ -92,7 +123,7 @@ export function installSettingsCoverArtSectionModule(): GlobalDescriptors {
                 trackOverlaySelect.appendChild(o);
             });
             trackOverlaySelect.addEventListener("change", function (this: any) {
-                state.coverArtTrackOverlayDuration = parseFloat(this.value) || 0;
+                applyCoverArtScreensaverState(_coverArtScreensaverController.setTrackOverlayDuration(coverArtScreensaverState(), this.value));
                 postCoverArtTrackOverlayDuration(state.coverArtTrackOverlayDuration);
             });
             trackOverlayField.appendChild(trackOverlaySelect);
@@ -107,7 +138,7 @@ export function installSettingsCoverArtSectionModule(): GlobalDescriptors {
         var coverArtShowExternalInputToggle: any = toggleRow("Show external sources", "sp-set-ss-cover-art-show-external-input", !state.coverArtHideExternalInputOn);
         secondaryCoverArtSettingsBody.appendChild(coverArtShowExternalInputToggle.row);
         coverArtShowExternalInputToggle.input.addEventListener("change", function (this: any) {
-            state.coverArtHideExternalInputOn = !this.checked;
+            applyCoverArtScreensaverState(_coverArtScreensaverController.setShowExternalSources(coverArtScreensaverState(), this.checked));
             syncCoverArtScreensaverUi();
             postCoverArtHideExternalInput(state.coverArtHideExternalInputOn);
         });
@@ -129,13 +160,12 @@ export function installSettingsCoverArtSectionModule(): GlobalDescriptors {
         els.setCoverArtSecondaryMediaPlayer = secondaryCoverArtEntityInp;
         els.setCoverArtSecondaryMediaPlayerOptions = secondaryCoverArtEntityOptions;
         coverArtOnlyOptions.appendChild(inlineDisclosure("External sources", secondaryCoverArtSettingsBody, !state.coverArtHideExternalInputOn));
-        state.coverArtFilteringEnabled = !!state.coverArtAttributeConditions;
+        applyCoverArtScreensaverState(_coverArtScreensaverController.initialState(coverArtScreensaverState()));
         var coverArtFilterToggle: any = toggleRow("Advanced Filtering", "sp-set-ss-cover-art-filtering", state.coverArtFilteringEnabled);
         coverArtAdvancedBody.appendChild(coverArtFilterToggle.row);
         coverArtFilterToggle.input.addEventListener("change", function (this: any) {
-            state.coverArtFilteringEnabled = this.checked;
+            applyCoverArtScreensaverState(_coverArtScreensaverController.setFilteringEnabled(coverArtScreensaverState(), this.checked));
             if (!state.coverArtFilteringEnabled) {
-                state.coverArtAttributeConditions = "";
                 syncInput(els.setCoverArtConditions, "");
                 postCoverArtConditions("");
             }
@@ -158,8 +188,7 @@ export function installSettingsCoverArtSectionModule(): GlobalDescriptors {
         coverArtAdvancedBody.appendChild(coverArtFilterOptions);
         bindTextPost(coverArtConditionsInp, entityName("screen_saver_cover_art_conditions"), {
             onBlur: function (this: any, value?: any) {
-                state.coverArtAttributeConditions = value;
-                state.coverArtFilteringEnabled = !!value || state.coverArtFilteringEnabled;
+                applyCoverArtScreensaverState(_coverArtScreensaverController.setAttributeConditions(coverArtScreensaverState(), value));
                 syncCoverArtScreensaverUi();
             },
             post: postCoverArtConditions,
@@ -178,6 +207,6 @@ export function installSettingsCoverArtSectionModule(): GlobalDescriptors {
         return coverArtCard;
     }
     return {
-        "buildCoverArtSettingsCard": staticGlobal(buildCoverArtSettingsCard),
+        buildCoverArtSettingsCard,
     };
 }

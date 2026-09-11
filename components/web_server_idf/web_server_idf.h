@@ -7,6 +7,7 @@
 #include <esp_http_server.h>
 
 #include <atomic>
+#include <array>
 #include <functional>
 #include <list>
 #include <map>
@@ -202,6 +203,11 @@ class AsyncWebServerRequest {
   std::string post_query_;
 #ifdef USE_WEBSERVER_AUTH_DIGEST
   mutable bool digest_nonce_stale_{false};
+  // A raw-body handler may authenticate once before receiving the body and
+  // again before applying it. Remember only the replay-ledger acceptance for
+  // this request; authenticate() still verifies the complete Digest response
+  // on every call.
+  mutable bool digest_nonce_accepted_for_request_{false};
 #endif
   AsyncWebServerRequest(httpd_req_t *req) : req_(req) {}
   AsyncWebServerRequest(httpd_req_t *req, std::string post_query) : req_(req), post_query_(std::move(post_query)) {}
@@ -241,6 +247,7 @@ class AsyncWebServer {
   static esp_err_t request_handler(httpd_req_t *r);
   static esp_err_t request_post_handler(httpd_req_t *r);
   esp_err_t request_handler_(AsyncWebServerRequest *request) const;
+  esp_err_t handle_raw_body_(httpd_req_t *r, const char *content_type);
   static void safe_close_with_shutdown(httpd_handle_t hd, int sockfd);
 #ifdef USE_WEBSERVER_OTA
   esp_err_t handle_multipart_upload_(httpd_req_t *r, const char *content_type);
@@ -261,6 +268,8 @@ class AsyncWebHandler {
                             size_t len, bool final) {}
   // NOLINTNEXTLINE(readability-identifier-naming)
   virtual void handleBody(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {}
+  virtual size_t maximumBodySize() const { return SIZE_MAX; }
+  virtual bool canReceiveBody(AsyncWebServerRequest *request) { return true; }
   // NOLINTNEXTLINE(readability-identifier-naming)
   virtual bool isRequestHandlerTrivial() const { return true; }
 };

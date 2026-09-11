@@ -7,7 +7,7 @@ fixtures are parsed or serialized.
 
 - `src/webserver/application/config_codec.ts`
 - `components/espcontrol/button_grid_config.h`
-- `compatibility/fixtures/product_compatibility.json`
+- `product/v2/product_compatibility.json`
 
 Only edit card UI or runtime files after the saved shape and compatibility rule
 are clear.
@@ -26,7 +26,7 @@ are clear.
 - [ ] Keep older values readable unless there is an intentional migration.
 - [ ] Preserve unknown-but-valid options where the card contract expects them.
 - [ ] Add or update compatibility fixtures in
-      `compatibility/fixtures/product_compatibility.json`.
+      `product/v2/product_compatibility.json`.
 - [ ] Check backup import/export behavior for the changed shape.
 
 ## Regenerate
@@ -46,7 +46,7 @@ Expected generated files depend on the source touched. Common examples include:
 
 - `src/webserver/generated/card_contract.ts`
 - `components/espcontrol/button_grid_contract_generated.h`
-- `docs/public/webserver/*/www.js`
+- generated files under `docs/public/webserver/`
 - `docs/generated/cards/capabilities.md`
 
 ## Stop If

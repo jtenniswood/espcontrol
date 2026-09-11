@@ -5,7 +5,7 @@ device-specific ESPHome YAML.
 
 ## Edit First
 
-- `devices/catalog.json`
+- `product/v2/device_catalog.json`
 - `devices/<slug>/packages.yaml`
 - `devices/<slug>/dev.yaml`
 - `devices/<slug>/esphome.yaml`
@@ -23,7 +23,7 @@ shared behavior change.
 
 ## Checklist
 
-- [ ] Add or update the device entry in `devices/catalog.json`.
+- [ ] Add or update the device entry in `product/v2/device_catalog.json`.
 - [ ] Select profiles for shared capabilities instead of copying those fields
       into the device `config` block.
 - [ ] Use explicit `overrides` only when a device must replace an inherited
@@ -54,7 +54,27 @@ Expected generated files commonly include:
 - `docs/generated/screens/*.md`
 - generated blocks in `devices/*/packages.yaml`
 - generated blocks in `devices/*/device/sensors.yaml`
-- `docs/public/webserver/*/www.js` when web profile data changes
+- generated files under `docs/public/webserver/` when web profile data changes
+
+## Compile or Upload Locally
+
+Run local firmware from the repository root with the pinned ESPHome wrapper:
+
+```bash
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run
+```
+
+When USB and OTA targets are both available, pass the target explicitly so a
+background run cannot stop at ESPHome's interactive prompt:
+
+```bash
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run --device <ip>
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run --device <usb-path>
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run --device <ip> --no-logs
+```
+
+Use USB for first flash. OTA requires an existing EspControl installation that
+is already connected to the network.
 
 ## Stop If
 

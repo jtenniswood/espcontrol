@@ -230,13 +230,13 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
       : (ref.label.empty()
           ? (ref.day == "today" ? espcontrol_i18n(std::string("Today")) : espcontrol_i18n(std::string("Tomorrow")))
           : ref.label);
-    lv_label_set_text(ref.label_lbl, label.c_str());
+    lv_label_set_display_text(ref.label_lbl, label.c_str());
   }
   if (!ref.value_lbl || !ref.unit_lbl) return;
   if (!valid) {
-    lv_label_set_text(ref.value_lbl, "--/--");
+    lv_label_set_display_text(ref.value_lbl, "--/--");
     std::string normalized_unit = weather_forecast_unit_symbol(unit);
-    lv_label_set_text(ref.unit_lbl, normalized_unit.c_str());
+    lv_label_set_display_text(ref.unit_lbl, normalized_unit.c_str());
     return;
   }
   char buf[24];
@@ -247,9 +247,9 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
   if (low == WEATHER_FORECAST_TEMP_MISSING) snprintf(low_buf, sizeof(low_buf), "--");
   else snprintf(low_buf, sizeof(low_buf), "%d", weather_forecast_display_temp(low, unit));
   snprintf(buf, sizeof(buf), "%s/%s", high_buf, low_buf);
-  lv_label_set_text(ref.value_lbl, buf);
+  lv_label_set_display_text(ref.value_lbl, buf);
   std::string normalized_unit = weather_forecast_unit_symbol(unit);
-  lv_label_set_text(ref.unit_lbl, normalized_unit.c_str());
+  lv_label_set_display_text(ref.unit_lbl, normalized_unit.c_str());
 }
 
 inline bool weather_forecast_card_ref_ready(const WeatherForecastCardRef &ref) {

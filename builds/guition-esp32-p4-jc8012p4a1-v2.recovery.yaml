@@ -1,0 +1,3 @@
+packages:
+  factory: !include guition-esp32-p4-jc8012p4a1-v2.factory.yaml
+  c6_recovery: !include ../common/device/esp32_c6_recovery.yaml

@@ -1,0 +1,11 @@
+{
+  "label": "Local Sensor",
+  "allowInSubpage": true,
+  "pickerKey": "sensor",
+  "hidden": true,
+  "domains": ["sensor", "text_sensor"],
+  "default": {
+    "entity": "", "label": "", "icon": "Auto", "icon_on": "Auto",
+    "sensor": "local", "unit": "", "type": "sensor", "precision": "", "options": ""
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "label": "Screen Lock",
+  "allowInSubpage": true,
+  "domains": [],
+  "normalization": {
+    "fields": {
+      "entity": { "policy": "clear" }, "label": { "policy": "clear" },
+      "icon": { "policy": "default", "value": "Lock" },
+      "icon_on": { "policy": "default", "value": "Lock Open" },
+      "sensor": { "policy": "clear" }, "unit": { "policy": "clear" },
+      "type": { "policy": "default", "value": "screen_lock" },
+      "precision": { "policy": "clear" }, "options": { "policy": "clear" }
+    },
+    "unknownOptions": "drop", "canonicalOptionOrder": []
+  },
+  "default": {
+    "entity": "", "label": "", "icon": "Lock", "icon_on": "Lock Open",
+    "sensor": "", "unit": "", "type": "screen_lock", "precision": "", "options": ""
+  }
+}

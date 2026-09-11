@@ -86,8 +86,8 @@ inline void setup_vacuum_card(BtnSlot &s, const ParsedCfg &p) {
   std::string label = p.label.empty()
     ? espcontrol_i18n(std::string(vacuum_card_mode_label(p.sensor)))
     : p.label;
-  lv_label_set_text(s.text_lbl, label.c_str());
-  lv_label_set_text(s.icon_lbl, vacuum_card_icon(p));
+  lv_label_set_display_text(s.text_lbl, label.c_str());
+  lv_label_set_display_text(s.icon_lbl, vacuum_card_icon(p));
   if (vacuum_card_read_only(p)) {
     lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
@@ -119,7 +119,7 @@ inline void apply_vacuum_card_state(VacuumCardCtx *ctx,
   if (!ctx) return;
   ctx->state = unavailable ? "unavailable" : std::string(state.c_str(), state.size());
   if (ctx->icon_lbl) {
-    lv_label_set_text(ctx->icon_lbl, find_icon(vacuum_state_icon_name(ctx->state)));
+    lv_label_set_display_text(ctx->icon_lbl, find_icon(vacuum_state_icon_name(ctx->state)));
   }
   if (ctx->text_lbl) {
     std::string label = ctx->status_card

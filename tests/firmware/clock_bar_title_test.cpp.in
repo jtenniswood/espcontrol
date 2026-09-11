@@ -1,0 +1,103 @@
+#include <algorithm>
+#include <cassert>
+#include <cctype>
+#include <cmath>
+#include <cstdio>
+#include <string>
+#include <vector>
+
+struct lv_event_t;
+struct lv_obj_t {
+  std::string text;
+  int width = 0;
+  bool hidden = false;
+  void (*delete_callback)(lv_event_t *) = nullptr;
+  int callbacks = 0;
+};
+struct lv_event_t { lv_obj_t *target; };
+struct BtnSlot { lv_obj_t *btn; lv_obj_t *text_lbl; };
+constexpr int LV_EVENT_DELETE = 2;
+void *lv_event_get_target(lv_event_t *event) { return event->target; }
+void lv_obj_add_event_cb(lv_obj_t *obj, void (*callback)(lv_event_t *), int, void *) {
+  obj->delete_callback = callback;
+  obj->callbacks++;
+}
+constexpr int LV_OBJ_FLAG_HIDDEN = 1;
+void lv_obj_set_width(lv_obj_t *obj, int width) { obj->width = width; }
+const char *lv_label_get_text(lv_obj_t *obj) { return obj->text.c_str(); }
+void lv_label_set_display_text(lv_obj_t *obj, const char *text) { obj->text = text; }
+bool lv_obj_has_flag(lv_obj_t *obj, int) { return obj->hidden; }
+void lv_obj_add_flag(lv_obj_t *obj, int) { obj->hidden = true; }
+void lv_obj_clear_flag(lv_obj_t *obj, int) { obj->hidden = false; }
+bool clock_bar_active_on_button_grid_page(lv_obj_t *) { return true; }
+const char *display_clock_bar_temperature_suffix() { return "°C"; }
+
+// @production
+
+int main() {
+  // Resolve the actual label at open time, including automatic name updates.
+  lv_obj_t card, name, renamed;
+  name.text = "Living room speaker";
+  control_modal_register_card_label({&card, &name});
+  control_modal_register_card_label({&card, &name});
+  assert(card.callbacks == 1);
+  assert(control_modal_card_label(&card) == name.text);
+  name.text = "Kitchen speaker";
+  assert(control_modal_card_label(&card) == name.text);
+  renamed.text = "New card";
+  control_modal_register_card_label({&card, &renamed});
+  assert(control_modal_card_label(&card) == renamed.text);
+  lv_event_t deleted{&card};
+  card.delete_callback(&deleted);
+  assert(control_modal_card_label(&card).empty());
+  assert(control_modal_card_labels().empty());
+
+  lv_obj_t left;
+  lv_obj_t *labels[] = {&left};
+  set_clock_bar_temperature_labels(labels, 1);
+  auto refresh = [&](bool visible, bool temperature, float value) {
+    refresh_clock_bar_temperature_label_values(nullptr, visible, temperature, false, value, NAN);
+  };
+  refresh(true, true, 20);
+  const std::string temperature = left.text;
+  set_clock_bar_modal_label("Living room climate");
+  assert(left.text == "Living room climate" && !left.hidden);
+  assert(left.width == clock_bar_left_text_state().title_width);
+  refresh(true, true, 21);
+  assert(left.text == "Living room climate");
+  set_clock_bar_modal_label("");
+  assert(left.text != temperature && left.text.find("21") != std::string::npos);
+  assert(left.width == clock_bar_left_text_state().temperature_width);
+
+  set_clock_bar_subpage_label("Upstairs");
+  set_clock_bar_modal_label("Bedroom speaker");
+  set_clock_bar_subpage_label("Upstairs");
+  refresh(true, true, 22);
+  assert(left.text == "Bedroom speaker");
+  set_clock_bar_modal_label("Bedroom light");
+  assert(left.text == "Bedroom light");
+  set_clock_bar_modal_label("");
+  assert(left.text == "Upstairs");
+  set_clock_bar_subpage_label("");
+  assert(left.text.find("22") != std::string::npos);
+
+  // A hidden temperature slot still supports titles, then hides on close.
+  refresh(true, false, NAN);
+  assert(left.hidden);
+  set_clock_bar_modal_label("Fan");
+  assert(!left.hidden && left.text == "Fan");
+  set_clock_bar_modal_label("");
+  assert(left.hidden);
+
+  // Disabled bars and display takeovers never expose a stray title.
+  refresh(false, false, NAN);
+  set_clock_bar_modal_label("Alarm");
+  assert(left.hidden);
+  refresh(true, false, NAN);
+  assert(!left.hidden && left.text == "Alarm");
+  hide_clock_bar_top_layer_widgets(labels, 1, nullptr, nullptr);
+  set_clock_bar_modal_label("Alarm PIN");
+  assert(left.hidden);
+  set_clock_bar_modal_label("");
+  assert(left.hidden);
+}

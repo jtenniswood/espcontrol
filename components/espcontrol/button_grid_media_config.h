@@ -11,6 +11,7 @@ constexpr uint8_t CONFIG_VERSION = 1;
 
 enum class Mode : uint8_t {
   CONTROL_MODAL,
+  SPEAKER_GROUP,
   PLAY_PAUSE,
   PREVIOUS,
   NEXT,
@@ -23,7 +24,6 @@ enum class Mode : uint8_t {
 
 enum class StateDisplay : uint8_t { LABEL, STATE };
 enum class NowPlayingControl : uint8_t { NONE, PROGRESS, PLAY_PAUSE };
-enum class CoverArtAction : uint8_t { PLAY_PAUSE, CONTROL_MODAL };
 enum class ControlLabelDisplay : uint8_t { STATUS, LABEL };
 enum class ControlNumberDisplay : uint8_t { ICON, VOLUME };
 
@@ -33,12 +33,12 @@ struct ConfigV1 {
   Mode mode = Mode::PLAY_PAUSE;
   StateDisplay state_display = StateDisplay::LABEL;
   NowPlayingControl now_playing_control = NowPlayingControl::NONE;
-  CoverArtAction cover_art_action = CoverArtAction::PLAY_PAUSE;
   bool show_track_details = false;
   std::string secondary_entity;
   ControlLabelDisplay control_label_display = ControlLabelDisplay::STATUS;
   ControlNumberDisplay control_number_display = ControlNumberDisplay::ICON;
   int max_volume_percent = 100;
+  std::string speaker_group_entity;
   std::string playlist_content_id;
   std::string playlist_content_type = "playlist";
   std::string playlist_player_source;
@@ -48,6 +48,7 @@ struct ConfigV1 {
 inline Mode mode_from_saved(const std::string &value) {
   const std::string mode = card_runtime_media_mode(value);
   if (mode == "control_modal") return Mode::CONTROL_MODAL;
+  if (mode == "speaker_group") return Mode::SPEAKER_GROUP;
   if (mode == "previous") return Mode::PREVIOUS;
   if (mode == "next") return Mode::NEXT;
   if (mode == "volume") return Mode::VOLUME;
@@ -77,9 +78,6 @@ inline ConfigV1 decode_config_v1(const ParsedCfg &saved) {
       config.now_playing_control = NowPlayingControl::PLAY_PAUSE;
     }
   }
-  if (cfg_option_value(saved.options, MEDIA_COVER_ART_ACTION_OPTION) == "control_modal") {
-    config.cover_art_action = CoverArtAction::CONTROL_MODAL;
-  }
   config.show_track_details = cfg_option_token_present(
       saved.options, MEDIA_COVER_ART_DETAILS_OPTION);
   config.secondary_entity = trim_saved_option_value(
@@ -92,6 +90,8 @@ inline ConfigV1 decode_config_v1(const ParsedCfg &saved) {
   }
   config.max_volume_percent = normalize_media_volume_max_percent(
       cfg_option_value(saved.options, VOLUME_MAX_OPTION));
+  config.speaker_group_entity = trim_saved_option_value(
+      cfg_option_value(saved.options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
   config.playlist_content_id = trim_saved_option_value(
       cfg_option_value(saved.options, MEDIA_PLAYLIST_CONTENT_ID_OPTION));
   config.playlist_content_type = trim_saved_option_value(

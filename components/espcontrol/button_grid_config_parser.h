@@ -43,7 +43,6 @@ constexpr const char *IMAGE_LABEL_OPTION = card_runtime_option_name_image_label(
 constexpr const char *IMAGE_ICON_OPTION = card_runtime_option_name_image_icon();
 constexpr const char *IMAGE_MODAL_MODE_OPTION = card_runtime_option_name_image_modal_mode();
 constexpr const char *MEDIA_COVER_ART_OPTION = card_runtime_option_name_media_cover_art();
-constexpr const char *MEDIA_COVER_ART_ACTION_OPTION = card_runtime_option_name_cover_art_action();
 constexpr const char *MEDIA_COVER_ART_DETAILS_OPTION = card_runtime_option_name_cover_art_details();
 constexpr const char *MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION = card_runtime_option_name_cover_art_secondary_entity();
 constexpr const char *LIGHT_CONTROL_TABS_OPTION = card_runtime_option_name_light_tabs();
@@ -51,12 +50,14 @@ constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|tempe
 constexpr const char *COVER_CONTROL_TABS_OPTION = card_runtime_option_name_cover_tabs();
 constexpr const char *CLIMATE_CONTROL_TABS_OPTION = "climate_tabs";
 constexpr const char *CLIMATE_CONTROL_DEFAULT_TABS_VALUE = "temperature|mode|preset|fan|swing";
-constexpr const char *FAN_CONTROL_TABS_OPTION = "fan_tabs";
+constexpr const char *FAN_CONTROL_TABS_OPTION = card_runtime_option_name_fan_tabs();
+constexpr const char *FAN_LIGHT_ENTITY_OPTION = card_runtime_option_name_fan_light_entity();
 constexpr const char *FAN_CONTROL_DEFAULT_TABS_VALUE = "power|speed|preset|oscillation|direction";
 constexpr const char *LABEL_DISPLAY_OPTION = card_runtime_option_name_label_display();
 constexpr const char *NUMBER_DISPLAY_OPTION = card_runtime_option_name_number_display();
 constexpr const char *TEMPERATURE_STEP_OPTION = card_runtime_option_name_temperature_step();
 constexpr const char *VOLUME_MAX_OPTION = card_runtime_option_name_volume_max();
+constexpr const char *MEDIA_SPEAKER_GROUP_ENTITY_OPTION = card_runtime_option_name_speaker_group_entity();
 constexpr const char *MEDIA_PLAYLIST_CONTENT_ID_OPTION = card_runtime_option_name_playlist_content_id();
 constexpr const char *MEDIA_PLAYLIST_CONTENT_TYPE_OPTION = card_runtime_option_name_playlist_content_type();
 constexpr const char *MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION = card_runtime_option_name_playlist_player_source();
@@ -178,7 +179,7 @@ struct ParsedCfg {
   std::string icon_on;     // 3  icon name for on state (blank = no swap)
   std::string sensor;      // 4  sensor entity, cover mode, or action name for Action cards
   std::string unit;        // 5  unit suffix for sensor display
-  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, gate, lock, alarm, alarm_action, media, climate, push, webhook, todo, internal, subpage
+  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, gate, lock, alarm, alarm_action, media, climate, push, webhook, internal, subpage
   std::string precision;   // 7  decimal places for sensors; "text" = text sensor mode
   std::string options;     // 8  comma-delimited card options
 };
@@ -325,12 +326,35 @@ inline std::string media_card_options_normalized(const std::string &options,
                                                  const std::string &mode) {
   if (mode == "control_modal") {
     std::string out;
+    std::string speaker_group_entity = trim_saved_option_value(
+      cfg_option_value(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
+    if (!speaker_group_entity.empty()) {
+      out = std::string(MEDIA_SPEAKER_GROUP_ENTITY_OPTION) + "=" +
+        encode_compact_field(speaker_group_entity);
+    }
     if (cfg_option_value(options, "label_display") == "label") {
-      out = "label_display=label";
+      if (!out.empty()) out += ",";
+      out += "label_display=label";
     }
     if (cfg_option_value(options, "number_display") == "volume") {
       if (!out.empty()) out += ",";
       out += "number_display=volume";
+    }
+    int max_pct = normalize_media_volume_max_percent(
+      cfg_option_value(options, VOLUME_MAX_OPTION));
+    if (max_pct < card_runtime_media_volume_max_default()) {
+      if (!out.empty()) out += ",";
+      out += std::string(VOLUME_MAX_OPTION) + "=" + std::to_string(max_pct);
+    }
+    return out;
+  }
+  if (mode == "speaker_group") {
+    std::string out;
+    std::string speaker_group_entity = trim_saved_option_value(
+      cfg_option_value(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
+    if (!speaker_group_entity.empty()) {
+      out = std::string(MEDIA_SPEAKER_GROUP_ENTITY_OPTION) + "=" +
+        encode_compact_field(speaker_group_entity);
     }
     int max_pct = normalize_media_volume_max_percent(
       cfg_option_value(options, VOLUME_MAX_OPTION));
@@ -366,9 +390,6 @@ inline std::string media_card_options_normalized(const std::string &options,
   }
   if (mode == "cover_art") {
     std::string out;
-    if (cfg_option_value(options, MEDIA_COVER_ART_ACTION_OPTION) == "control_modal") {
-      out = std::string(MEDIA_COVER_ART_ACTION_OPTION) + "=control_modal";
-    }
     if (cfg_option_token_present(options, MEDIA_COVER_ART_DETAILS_OPTION)) {
       if (!out.empty()) out += ",";
       out += MEDIA_COVER_ART_DETAILS_OPTION;
@@ -379,6 +400,19 @@ inline std::string media_card_options_normalized(const std::string &options,
       if (!out.empty()) out += ",";
       out += std::string(MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION) + "=" +
              encode_compact_field(secondary_entity);
+    }
+    std::string speaker_group_entity = trim_saved_option_value(
+      cfg_option_value(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
+    if (!speaker_group_entity.empty()) {
+      if (!out.empty()) out += ",";
+      out += std::string(MEDIA_SPEAKER_GROUP_ENTITY_OPTION) + "=" +
+             encode_compact_field(speaker_group_entity);
+    }
+    int max_pct = normalize_media_volume_max_percent(
+      cfg_option_value(options, VOLUME_MAX_OPTION));
+    if (max_pct < card_runtime_media_volume_max_default()) {
+      if (!out.empty()) out += ",";
+      out += std::string(VOLUME_MAX_OPTION) + "=" + std::to_string(max_pct);
     }
     return out;
   }
@@ -540,7 +574,7 @@ inline std::string normalize_climate_control_tabs_value(const std::string &value
 
 inline bool fan_control_tab_token_valid(const std::string &value) {
   return value == "power" || value == "speed" || value == "preset" ||
-         value == "oscillation" || value == "direction";
+         value == "oscillation" || value == "direction" || value == "light";
 }
 
 inline std::string normalize_fan_control_tabs_value(const std::string &value) {
@@ -563,10 +597,33 @@ inline std::string normalize_fan_control_tabs_value(const std::string &value) {
 }
 
 inline std::string fan_control_card_options_normalized(const std::string &options) {
-  std::string tabs = normalize_fan_control_tabs_value(
-    cfg_option_value(options, FAN_CONTROL_TABS_OPTION));
-  if (tabs == FAN_CONTROL_DEFAULT_TABS_VALUE) return "";
-  return std::string(FAN_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
+  std::string light_entity = cfg_option_value(options, FAN_LIGHT_ENTITY_OPTION);
+  std::string tabs_value = cfg_option_value(options, FAN_CONTROL_TABS_OPTION);
+  std::string tabs = normalize_fan_control_tabs_value(tabs_value);
+  if (light_entity.empty()) {
+    std::vector<std::string> filtered;
+    for (const auto &tab : split_config_fields(tabs, '|')) {
+      if (tab != "light") filtered.push_back(tab);
+    }
+    tabs.clear();
+    for (const auto &tab : filtered) {
+      if (!tabs.empty()) tabs += "|";
+      tabs += tab;
+    }
+    if (tabs.empty()) tabs = "power";
+  }
+  std::string default_tabs = FAN_CONTROL_DEFAULT_TABS_VALUE;
+  if (!light_entity.empty()) default_tabs += "|light";
+  if (tabs_value.empty()) tabs = default_tabs;
+  std::string out;
+  if (!light_entity.empty()) {
+    out = std::string(FAN_LIGHT_ENTITY_OPTION) + "=" + encode_compact_field(light_entity);
+  }
+  if (tabs != default_tabs) {
+    if (!out.empty()) out += ",";
+    out += std::string(FAN_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
+  }
+  return out;
 }
 
 inline bool image_card_label_enabled(const ParsedCfg &p) {
@@ -584,13 +641,6 @@ inline bool image_card_modal_fit_enabled(const ParsedCfg &p) {
 
 inline bool media_cover_art_enabled(const ParsedCfg &p) {
   return espcontrol::media::decode_config_v1(p).mode == espcontrol::media::Mode::COVER_ART;
-}
-
-inline std::string media_cover_art_press_action(const ParsedCfg &p) {
-  return espcontrol::media::decode_config_v1(p).cover_art_action ==
-             espcontrol::media::CoverArtAction::CONTROL_MODAL
-    ? "control_modal"
-    : "play_pause";
 }
 
 inline bool media_cover_art_details_enabled(const ParsedCfg &p) {
@@ -715,49 +765,6 @@ inline std::string presence_card_options_normalized(const std::string &options) 
   return cfg_option_token_present(options, "active_color") ? "active_color" : "";
 }
 
-inline std::string normalize_todo_count_display(const std::string &value) {
-  return value == "icon" ? "icon" : "count";
-}
-
-inline std::string normalize_todo_label_display(const std::string &value) {
-  (void) value;
-  return "label";
-}
-
-inline std::string normalize_todo_completed_display(const std::string &value) {
-  (void) value;
-  return "hide";
-}
-
-inline std::string todo_card_options_normalized(const std::string &options) {
-  bool show_count = normalize_todo_count_display(cfg_option_value(options, "count_display")) == "count";
-  std::string out = show_count ? "" : "count_display=icon";
-  if (show_count && (cfg_option_token_present(options, "large_numbers") ||
-      large_numbers_explicitly_disabled(options))) {
-    append_large_numbers_option(out, options);
-  }
-  return out;
-}
-
-inline bool todo_card_show_count(const ParsedCfg &p) {
-  return normalize_todo_count_display(cfg_option_value(p.options, "count_display")) == "count";
-}
-
-inline bool todo_card_shows_top_task(const ParsedCfg &p) {
-  (void) p;
-  return false;
-}
-
-inline bool todo_card_label_shows_count(const ParsedCfg &p) {
-  (void) p;
-  return false;
-}
-
-inline bool todo_card_shows_completed_items(const ParsedCfg &p) {
-  (void) p;
-  return false;
-}
-
 inline std::string normalize_climate_label_display(const std::string &value) {
   return card_runtime_climate_label_display(value);
 }
@@ -851,9 +858,6 @@ inline bool card_large_numbers_supported(const ParsedCfg &p) {
   if (p.type == "media") return p.sensor == "volume" || p.sensor == "position";
   if (climate_card_type(p.type)) {
     return normalize_climate_number_display(cfg_option_value(p.options, "number_display")) != "icon";
-  }
-  if (p.type == "todo") {
-    return normalize_todo_count_display(cfg_option_value(p.options, "count_display")) == "count";
   }
   if (p.type == "subpage") return !p.sensor.empty() && p.sensor != "indicator" && p.precision != "text";
   return card_runtime_large_numbers_supported(p.type, p.precision);
@@ -1058,6 +1062,13 @@ inline std::string action_card_options_normalized(const std::string &options,
 }
 
 inline void normalize_saved_config_action_fields(ParsedCfg &p) {
+  const bool number_entity = p.entity.size() > 7 && p.entity.compare(0, 7, "number.") == 0;
+  const bool input_number_entity =
+    p.entity.size() > 13 && p.entity.compare(0, 13, "input_number.") == 0;
+  if ((p.sensor == "number.set_value" || p.sensor == "input_number.set_value") &&
+      (number_entity || input_number_entity)) {
+    p.sensor = number_entity ? "number.set_value" : "input_number.set_value";
+  }
   if (action_card_option_select(p)) {
     p.sensor = card_runtime_option_select_canonical_action();
     p.unit.clear();
@@ -1288,14 +1299,6 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   const bool normalized_saved_static = normalize_saved_config_static(p);
   normalize_saved_config_date_time(
       p, normalize_saved_config_date_time_fields, date_time_card_options_normalized);
-  if (p.type == "todo") {
-    p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
-    p.icon_on = "Auto";
-    if (p.icon.empty() || p.icon == "Auto") p.icon = "Check";
-    p.options = todo_card_options_normalized(p.options);
-  }
   normalize_saved_config_light_control(p, normalize_saved_config_light_control_options);
   normalize_saved_config_subpage(
       p, normalize_saved_config_subpage_fields, normalize_saved_config_subpage_options);
@@ -1318,7 +1321,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   const bool normalized_saved_occupancy = normalize_saved_config_occupancy(
       p, normalize_saved_config_occupancy_fields,
       normalize_saved_config_occupancy_options);
-  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "todo" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "light_control" && p.type != "vacuum" && !card_large_numbers_supported(p)) {
+  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "wifi_qr" && p.type != "wifi_qr_card" && p.type != "light_control" && p.type != "vacuum" && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   normalize_saved_config_sensor(p, was_legacy_text_sensor,
@@ -1359,9 +1362,19 @@ inline bool cfg_option_enabled(const std::string &options, const char *name) {
 }
 
 inline int media_volume_max_percent(const ParsedCfg &p) {
-  return p.type == "media" && (p.sensor == "volume" || p.sensor == "control_modal")
+  return p.type == "media" && (p.sensor == "volume" || p.sensor == "control_modal" ||
+                               p.sensor == "cover_art" ||
+                               p.sensor == "speaker_group")
     ? normalize_media_volume_max_percent(cfg_option_value(p.options, VOLUME_MAX_OPTION))
     : card_runtime_media_volume_max_default();
+}
+
+inline std::string media_speaker_group_entity(const ParsedCfg &p) {
+  if (p.type != "media" || (p.sensor != "control_modal" && p.sensor != "cover_art" &&
+                            p.sensor != "speaker_group")) {
+    return "";
+  }
+  return trim_saved_option_value(cfg_option_value(p.options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
 }
 
 inline bool media_control_card_show_status_label(const ParsedCfg &p) {
@@ -1739,13 +1752,19 @@ inline std::string sensor_state_display_text(const ParsedCfg &p,
 }
 
 inline void lv_label_set_text_limited(lv_obj_t *label, esphome::StringRef value, size_t max_len) {
-  std::string text = string_ref_limited(value, max_len);
+  std::string text = normalize_display_text(string_ref_limited(value, max_len));
   lv_label_set_text(label, text.c_str());
 }
 
 inline bool parse_float_ref(esphome::StringRef value, float &out) {
   char *end;
   out = strtof(value.c_str(), &end);
+  return end != value.c_str();
+}
+
+inline bool parse_double_ref(esphome::StringRef value, double &out) {
+  char *end;
+  out = std::strtod(value.c_str(), &end);
   return end != value.c_str();
 }
 

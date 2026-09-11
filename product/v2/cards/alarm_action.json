@@ -1,0 +1,23 @@
+{
+  "label": "Alarm",
+  "allowInSubpage": true,
+  "pickerKey": "alarm",
+  "domains": ["alarm_control_panel"],
+  "normalization": {
+    "fields": {
+      "entity": { "policy": "keep" },
+      "label": { "policy": "hook", "hook": "normalize_security_fields" },
+      "icon": { "policy": "hook", "hook": "normalize_security_fields" },
+      "icon_on": { "policy": "default", "value": "Auto" },
+      "sensor": { "policy": "hook", "hook": "normalize_security_fields" },
+      "unit": { "policy": "clear" }, "type": { "policy": "default", "value": "alarm_action" },
+      "precision": { "policy": "clear" },
+      "options": { "policy": "hook", "hook": "normalize_security_options" }
+    },
+    "unknownOptions": "drop", "canonicalOptionOrder": [], "optionHook": "normalize_security_options"
+  },
+  "default": {
+    "entity": "", "label": "Arm Away", "icon": "Shield Lock", "icon_on": "Auto",
+    "sensor": "away", "unit": "", "type": "alarm_action", "precision": "", "options": ""
+  }
+}

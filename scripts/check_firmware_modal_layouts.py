@@ -44,12 +44,15 @@ def parse_resolution(value: str) -> tuple[int, int]:
 def assert_profile_contract(fixtures: dict, profiles: dict[str, dict]) -> None:
     fixture_by_slug = {entry["slug"]: entry for entry in fixtures["layouts"]}
     missing = sorted(set(profiles) - set(fixture_by_slug))
-    allowed_aliases = {"guition-esp32-p4-jc8012p4a1-v2"}
-    unexpected = sorted(set(missing) - allowed_aliases)
+    allowed_aliases = {
+        "guition-esp32-p4-jc8012p4a1-v2": "guition-esp32-p4-jc8012p4a1",
+        "guition-esp32-p4-jc1060p470-v2": "guition-esp32-p4-jc1060p470",
+    }
+    unexpected = sorted(set(missing) - set(allowed_aliases))
     assert not unexpected, f"modal geometry fixtures missing devices: {', '.join(unexpected)}"
 
     for slug, profile in profiles.items():
-        fixture_slug = "guition-esp32-p4-jc8012p4a1" if slug in allowed_aliases else slug
+        fixture_slug = allowed_aliases.get(slug, slug)
         fixture = fixture_by_slug[fixture_slug]
         modal = profile["firmware"]["display"]["modal"]
         expected_profile = fixture["profile"]
@@ -136,6 +139,42 @@ def cpp_assertions(entry: dict, index: int) -> list[str]:
         f"    assert(content.center_y == {content['centerY']});",
         "    assert(content.top >= layout.inset);",
         "    assert(content.bottom <= layout.panel_height);",
+        "    // All Controls can expose four media tabs when grouping is supported.",
+        "    TabRequest speaker_tabs_request;",
+        "    speaker_tabs_request.tab_count = 4;",
+        "    speaker_tabs_request.show_tab_bar = true;",
+        "    const TabLayout speaker_tabs = calculate_tabs(profile, layout, speaker_tabs_request);",
+        "    assert(speaker_tabs.show_tab_bar);",
+        "    assert(speaker_tabs.tab_count == 4);",
+        "    assert(speaker_tabs.row_left >= 0);",
+        "    assert(speaker_tabs.row_left + speaker_tabs.frame_width <= layout.panel_width);",
+        "    ContentRequest speaker_content_request;",
+        "    speaker_content_request.show_tab_bar = true;",
+        "    speaker_content_request.tab_frame_height = speaker_tabs.frame_height;",
+        "    speaker_content_request.tab_content_gap = speaker_tabs.content_gap;",
+        "    speaker_content_request.minimum_height = 180;",
+        "    speaker_content_request.fallback_height = layout.panel_height / 2;",
+        "    const ContentLayout speaker_content = calculate_content(layout, speaker_content_request);",
+        "    assert(speaker_content.width > 0);",
+        "    assert(speaker_content.height >= 180);",
+        "    assert(speaker_content.top >= layout.inset);",
+        "    // Standalone Speaker Group reserves room for the Back control.",
+        "    TabRequest standalone_tabs_request;",
+        "    standalone_tabs_request.tab_count = 0;",
+        "    standalone_tabs_request.show_tab_bar = false;",
+        "    const TabLayout standalone_tabs = calculate_tabs(profile, layout, standalone_tabs_request);",
+        "    assert(!standalone_tabs.show_tab_bar);",
+        "    assert(standalone_tabs.frame_height == 0);",
+        "    ContentRequest standalone_content_request;",
+        "    standalone_content_request.show_tab_bar = false;",
+        "    standalone_content_request.top_without_tabs = layout.inset * 2;",
+        "    standalone_content_request.safe_top = layout.back_inset_y + layout.back_size + scaled_px(12, layout.short_side);",
+        "    standalone_content_request.minimum_height = 180;",
+        "    standalone_content_request.fallback_height = layout.panel_height / 2;",
+        "    const ContentLayout standalone_content = calculate_content(layout, standalone_content_request);",
+        "    assert(standalone_content.top == standalone_content_request.safe_top);",
+        "    assert(standalone_content.width == speaker_content.width);",
+        "    assert(standalone_content.height >= 180);",
         f"    (void) \"{prefix}\";",
         "  }",
     ]

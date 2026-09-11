@@ -17,22 +17,24 @@ static bool decision_is(const DisplayModeController &controller, DisplayMode mod
 static void activate_priority(DisplayModeController &controller, int priority) {
   switch (priority) {
     case 1: controller.begin_takeover(DisplayTakeoverKind::CRITICAL); break;
-    case 2: controller.request(DisplayRequestSource::MANUAL_SLEEP, DisplayMode::DISPLAY_OFF); break;
-    case 3: controller.request(DisplayRequestSource::USER_WAKE, DisplayMode::ACTIVE); break;
-    case 4: controller.request(DisplayRequestSource::SCREEN_SCHEDULE, DisplayMode::CLOCK); break;
-    case 5: controller.begin_takeover(DisplayTakeoverKind::INTERACTIVE); break;
-    case 6: controller.request(DisplayRequestSource::MEDIA_PLAYBACK, DisplayMode::COVER_ART); break;
-    case 7: controller.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::DIMMED); break;
-    case 8: controller.request(DisplayRequestSource::SETUP_TIMEOUT, DisplayMode::SETUP_DIMMED); break;
+    case 2: controller.request(DisplayRequestSource::ONBOARDING, DisplayMode::ACTIVE); break;
+    case 3: controller.request(DisplayRequestSource::MANUAL_SLEEP, DisplayMode::DISPLAY_OFF); break;
+    case 4: controller.request(DisplayRequestSource::USER_WAKE, DisplayMode::ACTIVE); break;
+    case 5: controller.request(DisplayRequestSource::SCREEN_SCHEDULE, DisplayMode::CLOCK); break;
+    case 6: controller.begin_takeover(DisplayTakeoverKind::INTERACTIVE); break;
+    case 7: controller.request(DisplayRequestSource::MEDIA_PLAYBACK, DisplayMode::COVER_ART); break;
+    case 8: controller.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::DIMMED); break;
+    case 9: controller.request(DisplayRequestSource::SETUP_TIMEOUT, DisplayMode::SETUP_DIMMED); break;
     default: break;
   }
 }
 
 static DisplayMode expected_mode_for_priority(int priority) {
   const DisplayMode modes[] = {
-      DisplayMode::ACTIVE, DisplayMode::ACTIVE, DisplayMode::DISPLAY_OFF,
-      DisplayMode::ACTIVE, DisplayMode::CLOCK, DisplayMode::ACTIVE,
-      DisplayMode::COVER_ART, DisplayMode::DIMMED, DisplayMode::SETUP_DIMMED};
+      DisplayMode::ACTIVE, DisplayMode::ACTIVE, DisplayMode::ACTIVE,
+      DisplayMode::DISPLAY_OFF, DisplayMode::ACTIVE, DisplayMode::CLOCK,
+      DisplayMode::ACTIVE, DisplayMode::COVER_ART, DisplayMode::DIMMED,
+      DisplayMode::SETUP_DIMMED};
   return modes[priority];
 }
 
@@ -63,8 +65,11 @@ int main() {
   CHECK(!presence_can_wake_display(scheduled_presence.resolve()));
 
   // Every higher-priority policy beats every lower-priority policy.
-  for (int higher = 1; higher <= 8; ++higher) {
-    for (int lower = higher + 1; lower <= 9; ++lower) {
+  for (int higher = 1; higher <= 9; ++higher) {
+    for (int lower = higher + 1; lower <= 10; ++lower) {
+      // Setup timeout is deliberately nested inside onboarding: it may dim
+      // instructions but cannot expose any other lower-priority policy.
+      if (higher == 2 && lower == 9) continue;
       DisplayModeController pair;
       activate_priority(pair, lower);
       activate_priority(pair, higher);
@@ -78,6 +83,28 @@ int main() {
   CHECK(controller.transition_required(controller.resolve()));
   CHECK(decision_is(controller, DisplayMode::SETUP_DIMMED,
                     DisplayRequestSource::SETUP_TIMEOUT));
+
+  // Onboarding blocks every normal sleep policy while configuration is empty,
+  // including the normal setup-screen burn-in timeout.
+  DisplayModeController onboarding;
+  CHECK(onboarding.request(DisplayRequestSource::MANUAL_SLEEP,
+                           DisplayMode::DISPLAY_OFF));
+  CHECK(onboarding.request(DisplayRequestSource::SCREEN_SCHEDULE,
+                           DisplayMode::CLOCK));
+  CHECK(onboarding.request(DisplayRequestSource::IDLE_TIMER,
+                           DisplayMode::DISPLAY_OFF));
+  CHECK(onboarding.request(DisplayRequestSource::ONBOARDING,
+                           DisplayMode::ACTIVE));
+  CHECK(decision_is(onboarding, DisplayMode::ACTIVE,
+                    DisplayRequestSource::ONBOARDING));
+  CHECK(onboarding.request(DisplayRequestSource::SETUP_TIMEOUT,
+                           DisplayMode::SETUP_DIMMED));
+  CHECK(decision_is(onboarding, DisplayMode::ACTIVE,
+                    DisplayRequestSource::ONBOARDING));
+  CHECK(onboarding.clear(DisplayRequestSource::SETUP_TIMEOUT));
+  CHECK(onboarding.clear(DisplayRequestSource::ONBOARDING));
+  CHECK(decision_is(onboarding, DisplayMode::DISPLAY_OFF,
+                    DisplayRequestSource::MANUAL_SLEEP));
   CHECK(controller.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::CLOCK));
   CHECK(decision_is(controller, DisplayMode::CLOCK, DisplayRequestSource::IDLE_TIMER));
   CHECK(controller.request(DisplayRequestSource::PRESENCE_SENSOR, DisplayMode::DIMMED));
@@ -154,6 +181,7 @@ int main() {
   // after its clear path when tested independently.
   struct SourceMode { DisplayRequestSource source; DisplayMode mode; };
   const SourceMode clear_paths[] = {
+      {DisplayRequestSource::ONBOARDING, DisplayMode::ACTIVE},
       {DisplayRequestSource::BOOT_GUARD, DisplayMode::DISPLAY_OFF},
       {DisplayRequestSource::IDLE_TIMER, DisplayMode::DIMMED},
       {DisplayRequestSource::PRESENCE_SENSOR, DisplayMode::CLOCK},
@@ -224,6 +252,97 @@ int main() {
   CHECK(controller.current_mode() == DisplayMode::DIMMED);
   CHECK(!controller.clear(DisplayRequestSource::MEDIA_PLAYBACK));
   CHECK(!controller.request(DisplayRequestSource::PRESENCE_SENSOR, DisplayMode::DIMMED));
+
+  // A presentation transition is distinct from the policy decision that
+  // requested it. Periodic checks must not restart an unchanged slow effect.
+  DisplayModeController slow_clock;
+  CHECK(slow_clock.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::CLOCK));
+  const auto slow_clock_transition = slow_clock.resolve();
+  CHECK(slow_clock.start_transition(slow_clock_transition, 1000));
+  CHECK(slow_clock.has_transition_in_progress());
+  CHECK(slow_clock.transition_in_progress(slow_clock_transition));
+  CHECK(slow_clock.presentation_incomplete());
+  CHECK(!slow_clock.start_transition(slow_clock.resolve(), 2000));
+  CHECK(!slow_clock.start_transition(slow_clock.resolve(), 2500));
+  CHECK(!slow_clock.transition_warning_due(2999, 2000));
+  CHECK(slow_clock.transition_warning_due(3000, 2000));
+  CHECK(!slow_clock.transition_warning_due(4000, 2000));
+  CHECK(slow_clock.transition_elapsed_ms(4100) == 3100);
+  CHECK(slow_clock.complete_transition(slow_clock_transition, 4200));
+  CHECK(!slow_clock.has_transition_in_progress());
+  CHECK(!slow_clock.presentation_incomplete());
+  CHECK(slow_clock.last_completed_generation() ==
+        slow_clock_transition.generation);
+  CHECK(slow_clock.last_transition_elapsed_ms() == 3200);
+
+  // Wake can interrupt a clock before its presentation completes. The stale
+  // callback is rejected, while an explicit ACTIVE cleanup runs even though
+  // ACTIVE was the last completed controller mode.
+  DisplayModeController interrupted_clock;
+  CHECK(interrupted_clock.request(DisplayRequestSource::IDLE_TIMER,
+                                  DisplayMode::CLOCK));
+  const auto interrupted_transition = interrupted_clock.resolve();
+  CHECK(interrupted_clock.start_transition(interrupted_transition, 5000));
+  CHECK(interrupted_clock.current_mode_is(DisplayMode::ACTIVE));
+  CHECK(interrupted_clock.cancel_transition());
+  CHECK(interrupted_clock.clear(DisplayRequestSource::IDLE_TIMER));
+  interrupted_clock.require_presentation_cleanup();
+  const auto wake_cleanup = interrupted_clock.resolve();
+  CHECK(wake_cleanup.target_mode == DisplayMode::ACTIVE);
+  CHECK(!interrupted_clock.transition_required(wake_cleanup));
+  CHECK(interrupted_clock.presentation_incomplete());
+  CHECK(interrupted_clock.start_transition(wake_cleanup, 5100));
+  CHECK(!interrupted_clock.complete_transition(interrupted_transition, 5200));
+  CHECK(interrupted_clock.complete_transition(wake_cleanup, 5300));
+  CHECK(!interrupted_clock.presentation_incomplete());
+  CHECK(!interrupted_clock.start_transition(wake_cleanup, 5400));
+
+  // If a presentation script stops without a policy change, cancelling it
+  // leaves cleanup pending and invalidates the generation before retrying.
+  DisplayModeController stopped_effect;
+  CHECK(stopped_effect.request(DisplayRequestSource::IDLE_TIMER,
+                               DisplayMode::CLOCK));
+  const auto stopped_transition = stopped_effect.resolve();
+  CHECK(stopped_effect.start_transition(stopped_transition, 6000));
+  CHECK(stopped_effect.cancel_transition());
+  CHECK(stopped_effect.presentation_incomplete());
+  const auto stopped_retry = stopped_effect.resolve();
+  CHECK(stopped_retry.generation != stopped_transition.generation);
+  CHECK(!stopped_effect.complete_transition(stopped_transition, 6100));
+  CHECK(stopped_effect.start_transition(stopped_retry, 6200));
+  // Starting the retry must not make the cancelled callback acceptable again.
+  CHECK(!stopped_effect.complete_transition(stopped_transition, 6250));
+  CHECK(stopped_effect.complete_transition(stopped_retry, 6300));
+
+  // A newer winning request supersedes the old effect and invalidates its
+  // completion callback, including when the destination mode stays CLOCK but
+  // ownership changes from idle to presence.
+  DisplayModeController superseded_effect;
+  CHECK(superseded_effect.request(DisplayRequestSource::IDLE_TIMER,
+                                  DisplayMode::CLOCK));
+  const auto idle_owned_clock = superseded_effect.resolve();
+  CHECK(superseded_effect.start_transition(idle_owned_clock, 7000));
+  CHECK(superseded_effect.request(DisplayRequestSource::SCREEN_SCHEDULE,
+                                  DisplayMode::DISPLAY_OFF));
+  const auto scheduled_off = superseded_effect.resolve();
+  CHECK(!superseded_effect.transition_in_progress(scheduled_off));
+  CHECK(superseded_effect.cancel_transition());
+  CHECK(superseded_effect.start_transition(scheduled_off, 7100));
+  CHECK(!superseded_effect.complete_transition(idle_owned_clock, 7200));
+  CHECK(superseded_effect.complete_transition(scheduled_off, 7300));
+  CHECK(superseded_effect.clear(DisplayRequestSource::SCREEN_SCHEDULE));
+  const auto restored_idle_clock = superseded_effect.resolve();
+  CHECK(superseded_effect.start_transition(restored_idle_clock, 7400));
+  CHECK(superseded_effect.complete_transition(restored_idle_clock, 7500));
+  CHECK(superseded_effect.request(DisplayRequestSource::PRESENCE_SENSOR,
+                                  DisplayMode::CLOCK));
+  const auto presence_owned_clock = superseded_effect.resolve();
+  CHECK(presence_owned_clock.target_mode == DisplayMode::CLOCK);
+  CHECK(presence_owned_clock.winning_source ==
+        DisplayRequestSource::PRESENCE_SENSOR);
+  CHECK(superseded_effect.transition_required(presence_owned_clock));
+  CHECK(superseded_effect.start_transition(presence_owned_clock, 7600));
+  CHECK(superseded_effect.complete_transition(presence_owned_clock, 7700));
 
   DisplayModeController rapid;
   CHECK(rapid.request(DisplayRequestSource::SCREEN_SCHEDULE, DisplayMode::DISPLAY_OFF));

@@ -1,0 +1,280 @@
+{
+  "current": {
+    "buttons": {
+      "simple_switch": {
+        "entity": "light.kitchen",
+        "label": "Kitchen",
+        "icon": "Auto",
+        "icon_on": "Lightbulb",
+        "sensor": "",
+        "unit": "",
+        "type": "",
+        "precision": "",
+        "options": ""
+      },
+      "climate": {
+        "entity": "climate.living_room",
+        "label": "Living Room",
+        "icon": "Thermostat",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "climate_control",
+        "precision": "1",
+        "options": "label_display=status,number_display=actual"
+      },
+      "media": {
+        "entity": "media_player.living_room",
+        "label": "Living Room",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "now_playing",
+        "unit": "",
+        "type": "media",
+        "precision": "progress",
+        "options": ""
+      },
+      "alarm": {
+        "entity": "alarm_control_panel.house",
+        "label": "House Alarm",
+        "icon": "Security",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "alarm",
+        "precision": "",
+        "options": "pin_arm=0,actions=away%7Cdisarm"
+      }
+    },
+    "subpage": {
+      "order": [
+        "1",
+        "2d",
+        "B"
+      ],
+      "buttons": [
+        {
+          "entity": "scene.movie",
+          "label": "Movie",
+          "icon": "Flash",
+          "icon_on": "Auto",
+          "sensor": "scene.turn_on",
+          "unit": "",
+          "type": "action",
+          "precision": "",
+          "options": ""
+        },
+        {
+          "entity": "light.living_room",
+          "label": "Living Room",
+          "icon": "Lightbulb Outline",
+          "icon_on": "Lightbulb",
+          "sensor": "",
+          "unit": "",
+          "type": "light_brightness",
+          "precision": "",
+          "options": ""
+        }
+      ]
+    },
+    "compactSubpageStrings": {
+      "alarm_action": {
+        "input": "~1,B|AA,alarm_control_panel.house,Arm%20Away,Shield%20Lock,Auto,away,,,",
+        "expected": {
+          "order": [
+            "1",
+            "B"
+          ],
+          "buttons": [
+            {
+              "entity": "alarm_control_panel.house",
+              "label": "Arm Away",
+              "icon": "Shield Lock",
+              "icon_on": "Auto",
+              "sensor": "away",
+              "unit": "",
+              "type": "alarm_action",
+              "precision": "",
+              "options": ""
+            }
+          ]
+        }
+      },
+      "media_now_playing": {
+        "input": "~1,B|M,media_player.living,Living,Auto,Auto,now_playing,,progress,",
+        "expected": {
+          "order": [
+            "1",
+            "B"
+          ],
+          "buttons": [
+            {
+              "entity": "media_player.living",
+              "label": "Living",
+              "icon": "Auto",
+              "icon_on": "Auto",
+              "sensor": "now_playing",
+              "unit": "",
+              "type": "media",
+              "precision": "progress",
+              "options": ""
+            }
+          ]
+        }
+      }
+    },
+    "layoutImport": {
+      "order": "1x,2,3",
+      "expectedGridPrefix": [
+        1,
+        -1,
+        -1,
+        2,
+        3
+      ],
+      "expectedSizes": {
+        "1": 6
+      }
+    },
+    "generatedContract": {
+      "fields": [
+        "entity",
+        "label",
+        "icon",
+        "icon_on",
+        "sensor",
+        "unit",
+        "type",
+        "precision",
+        "options"
+      ],
+      "requiredCards": [
+        "",
+        "sensor",
+        "weather",
+        "media",
+        "alarm",
+        "alarm_action",
+        "climate",
+        "subpage"
+      ],
+      "subpageTypeCodes": {
+        "climate": "H",
+        "media": "M",
+        "alarm_action": "AA",
+        "subpage": "G"
+      },
+      "migrationAliases": {
+        "weather_forecast": {
+          "type": "weather",
+          "precision": "tomorrow"
+        },
+        "text_sensor": {
+          "type": "sensor",
+          "precision": "text"
+        }
+      }
+    },
+    "deviceProfiles": {
+      "requiredSlugs": [
+        "guition-esp32-p4-jc1060p470",
+        "guition-esp32-p4-jc1060p470-v2",
+        "guition-esp32-p4-jc4880p443",
+        "guition-esp32-p4-jc8012p4a1",
+        "guition-esp32-p4-jc8012p4a1-v2",
+        "esp32-p4-86",
+        "guition-esp32-s3-4848s040"
+      ]
+    }
+  },
+  "legacy-v1": {
+    "oldButtonStrings": {
+      "weather_forecast_alias": {
+        "input": "weather.home;Weather;Auto;Auto;;;weather_forecast;;",
+        "expected": {
+          "entity": "weather.home",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "weather",
+          "precision": "tomorrow",
+          "options": ""
+        }
+      },
+      "text_sensor_alias": {
+        "input": "sensor.washer;Washer;Washer;Auto;;;text_sensor;;active_color",
+        "expected": {
+          "entity": "",
+          "label": "",
+          "icon": "Washer",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "sensor",
+          "precision": "text",
+          "options": "active_color"
+        }
+      },
+      "media_controls_alias": {
+        "input": "media_player.living;Living;Speaker;Auto;controls;;media;;",
+        "expected": {
+          "entity": "media_player.living",
+          "label": "Living",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "play_pause",
+          "unit": "",
+          "type": "media",
+          "precision": "",
+          "options": ""
+        }
+      },
+      "light_temperature_kelvin_cleanup": {
+        "needsMigration": false,
+        "input": "light.desk;Desk;Lightbulb;Auto;kelvin;2000-6500;light_temperature;;",
+        "expected": {
+          "entity": "light.desk",
+          "label": "Desk",
+          "icon": "Lightbulb",
+          "icon_on": "Auto",
+          "sensor": "kelvin",
+          "unit": "2000-6500",
+          "type": "light_temperature",
+          "precision": "",
+          "options": ""
+        }
+      }
+    },
+    "backup": {
+      "version": 1,
+      "device": "large-panel",
+      "button_order": "2w,1,3",
+      "buttons": [
+        {
+          "entity": "light.kitchen",
+          "label": "Kitchen",
+          "icon": "Auto",
+          "icon_on": "Lightbulb"
+        },
+        {
+          "entity": "weather.home",
+          "label": "Weather",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "type": "weather_forecast"
+        },
+        {
+          "entity": "climate.hall",
+          "label": "Hall",
+          "type": "climate"
+        },
+        {}
+      ],
+      "subpages": {
+        "2": "1,B|scene.movie:Movie:Flash:Auto:scene.turn_on::action"
+      }
+    }
+  }
+}

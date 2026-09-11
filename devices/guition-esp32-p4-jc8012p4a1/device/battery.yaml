@@ -43,6 +43,9 @@ sensor:
     id: battery_percent
     filters:
       - lambda: |-
+          if (!id(battery_status_enabled).state) {
+            return NAN;
+          }
           return min(max((x - ${battery_empty_voltage}f) /
                           (${battery_full_voltage}f - ${battery_empty_voltage}f) * 100.0f,
                           0.0f), 100.0f);
@@ -72,7 +75,9 @@ switch:
     web_server:
       sorting_group_id: sg_display
     on_turn_on:
+      - component.update: battery_voltage_raw
       - script.execute: clock_bar_apply
       - script.execute: battery_status_refresh
     on_turn_off:
+      - component.update: battery_voltage_raw
       - script.execute: clock_bar_apply

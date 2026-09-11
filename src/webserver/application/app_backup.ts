@@ -1,29 +1,240 @@
+import type { PanelIdentityBackup } from "../model/panel_identity";
+import type { PanelIdentityFeature } from "./panel_identity";
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installAppBackupModule(): GlobalDescriptors {
+import * as EspControlModel from "../model";
+import {
+    normalizeBrightnessMode,
+    normalizeHexColor,
+    normalizeHomeAssistantArtworkPort,
+    normalizeHomeAssistantArtworkProtocol,
+    normalizeHomeAssistantArtworkEndpointMode,
+    normalizeHour,
+    normalizeLanguage,
+    normalizeScheduleClockBrightness,
+    normalizeScheduleDimmedBrightness,
+    normalizeScheduleMode,
+    normalizeScheduleSensorActivation,
+    normalizeScheduleTrigger,
+    normalizeScheduleWakeBrightness,
+    normalizeScheduleWakeTimeout,
+    normalizeScreensaverAction,
+    normalizeScreensaverDimmedBrightness,
+    normalizeTemperatureUnit,
+    normalizeTimeOfDay,
+} from "../model/settings";
+import type { BackupImportController } from "../features/backup_import_controller";
+import type { BackupExportController } from "../features/backup_export_controller";
+import type { BackupFileController } from "../features/backup_file_controller";
+import type { BackupRestoreController } from "../features/backup_restore_controller";
+import type { ApplicationLayoutState } from "./application_context";
+import type { NativePanelConfigController } from "../controllers/native_panel_config_controller";
+import type { PanelConfigDocument } from "../model";
+import type { ConfigCodecFeature } from "./config_codec";
+import type { UiRuntimeState } from "./state";
+import type { CoreFeature } from "./core";
+import { syncLanguageSelect } from "./language_state";
+import { hasCustomNtpServers, syncNtpServerUi } from "./ntp_state";
+import { syncIdleUi } from "./idle_state";
+import { getActiveScreensaverMode } from "./screensaver_state";
+import type { ScreenScheduleStateFeature } from "./screen_schedule_state";
+import type { ScreensaverTimeoutFeature } from "./screensaver_timeout";
+import type { FirmwareUpdateFeature } from "./firmware_update_state";
+import type { ClockBarFeature } from "./clock_bar_state";
+import type { EntityStateFeature } from "./entity_state";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { ApplicationApiFeature } from "./api";
+import type { AppStatusPreviewFeature } from "./app_status_preview";
+import type { GridFeature } from "./grid";
+import type { ArtworkPostApiFeature } from "./artwork_post_api";
+import type { ScreenSchedulePostApiFeature } from "./screen_schedule_post_api";
+import type { ClockBarPostApiFeature } from "./clock_bar_post_api";
+import type { ConfigPersistenceFeature } from "./config_post_api";
+import type { BackupContractFeature } from "./backup_contract";
+import type { SettingsPageHelpersFeature } from "./settings_page_helpers";
+import type { PreviewRenderFeature } from "./preview_render";
+import type { ButtonSettingsFeature } from "./button_settings";
+import { legacyRestoreFailureMessage, restoreLegacyLayoutDocument } from "../features/legacy_layout_restore";
+import { panelConfigDocumentContainsWifiSharing } from "../features/wifi_sharing_config";
+
+export interface AppBackupControllers {
+    readonly identity?: PanelIdentityFeature;
+    readonly layout: ApplicationLayoutState;
+    readonly backupExport: BackupExportController;
+    readonly backupImport: BackupImportController<any, any, any>;
+    readonly backupRestore: BackupRestoreController<any, any>;
+    readonly backupFile: BackupFileController;
+    readonly normalizeImportedPanelSettings: (settings: any) => any;
+    readonly gridColsForImportedSettings: (settings: any) => number;
+    readonly nativePanelConfig?: NativePanelConfigController;
+    readonly codec: ConfigCodecFeature;
+    readonly configPersistence: Pick<ConfigPersistenceFeature, "subpageEntityKeys">;
+    readonly backupContract: Pick<BackupContractFeature, "createBackupConfig" | "normalizeButtonConfig">;
+    readonly runtime: UiRuntimeState;
+    readonly core: Pick<CoreFeature, "syncPreviewOrientation">;
+    readonly screenScheduleState: ScreenScheduleStateFeature;
+    readonly screensaverTimeout: ScreensaverTimeoutFeature;
+    readonly firmwareUpdate: FirmwareUpdateFeature;
+    readonly clockBar: ClockBarFeature;
+    readonly entityState: Pick<EntityStateFeature, "entityName" | "entityNameForSlot">;
+    readonly shell: Pick<ControlsShellFeature, "switchTab"> & Partial<Pick<ControlsShellFeature, "showBanner">>;
+    readonly requestApi: ApplicationApiFeature;
+    readonly statusPreview: Pick<AppStatusPreviewFeature, "syncInput" | "updateTempPreview">;
+    readonly grid: Pick<GridFeature, "applyImportedButtonOrder" | "cancelMainGridSave" | "serializeGrid">;
+    readonly artworkPostApi: ArtworkPostApiFeature;
+    readonly schedulePostApi: ScreenSchedulePostApiFeature;
+    readonly clockBarPostApi: ClockBarPostApiFeature;
+    readonly settingsHelpers: Pick<SettingsPageHelpersFeature, "syncAlarmDelayAudioUi" | "syncClockScreensaverControls" | "syncCoverArtScreensaverUi" | "syncMediaPlayerSleepPreventionUi">;
+    readonly preview: Pick<PreviewRenderFeature, "render">;
+    readonly buttonSettings: Pick<ButtonSettingsFeature, "render">;
+}
+
+export interface AppBackupFeature {
+    backupExportFileName(value?: unknown): string;
+    normalizeImportedPanelSettings(settings?: unknown): unknown;
+    gridColsForImportedSettings(settings?: unknown): number;
+    exportConfig(): void;
+    importConfig(): void;
+}
+
+export function createAppBackupFeature(controllers: AppBackupControllers): AppBackupFeature {
+    const { syncAlarmDelayAudioUi, syncClockScreensaverControls, syncCoverArtScreensaverUi, syncMediaPlayerSleepPreventionUi } = controllers.settingsHelpers;
+    const { render: renderPreview } = controllers.preview;
+    const { render: renderButtonSettings } = controllers.buttonSettings;
+    const { subpageEntityKeys } = controllers.configPersistence;
+    const { createBackupConfig, normalizeButtonConfig: backupNormalizeButtonConfig } = controllers.backupContract;
+    const { entityName, entityNameForSlot } = controllers.entityState;
+    const { switchTab } = controllers.shell;
+    const requestApi = controllers.requestApi;
+    const { syncInput, updateTempPreview } = controllers.statusPreview;
+    const { applyImportedButtonOrder, cancelMainGridSave, serializeGrid } = controllers.grid;
+    const {
+        postPresenceSensorEntity,
+        postMediaPlayerSleepPrevention,
+        postMediaPlayerSleepPreventionEntity,
+        postCoverArtScreensaver,
+        postCoverArtMediaPlayerEntity,
+        postCoverArtSecondaryMediaPlayerEntity,
+        postCoverArtConditions,
+        postCoverArtDelay,
+        postCoverArtTrackOverlayDuration,
+        postCoverArtHideExternalInput,
+        postHomeAssistantArtworkProtocol,
+        postHomeAssistantArtworkPort,
+        postHomeAssistantArtworkEndpointMode,
+    } = controllers.artworkPostApi;
+    const {
+        postBrightnessMode,
+        postDisplayBacklightBrightness,
+        postBrightnessDawnTime,
+        postBrightnessDuskTime,
+        postScreenScheduleEnabled,
+        postScreenScheduleTrigger,
+        postScreenScheduleSensorActivation,
+        postScreenScheduleSensorEntity,
+        postScreenScheduleOnHour,
+        postScreenScheduleOffHour,
+        postScreenScheduleMode,
+        postScreenScheduleWakeTimeout,
+        postScreenScheduleWakeBrightness,
+        postScreenScheduleDimmedBrightness,
+        postScreenScheduleClockBrightness,
+    } = controllers.schedulePostApi;
+    const {
+        postClockBrightnessDay,
+        postClockBrightnessNight,
+        postClockScreensaver,
+        postClockBar,
+        postClockBarTemperatureEntities,
+        postClockBarTime,
+        postClockBarNightMode,
+        postNetworkStatusIcon,
+        postVoiceServices,
+        postAlarmDelayAudio,
+        postAlarmDelayTts,
+        postAlarmDelayEntryAnnouncement,
+        postAlarmDelayExitAnnouncement,
+        postAlarmDelayBeepVolume,
+        postAlarmDelayFinalCountdown,
+        postTemperatureDegreeSymbol,
+        postSubpageChevron,
+    } = controllers.clockBarPostApi;
+    const {
+        postText,
+        postSwitch,
+        postSelect,
+        postScreensaverMode,
+        postFirmwareAutoUpdate,
+        postFirmwareUpdateFrequency,
+        postScreensaverAction,
+        postScreensaverDimmedBrightness,
+        postScreensaverDimmedBrightnessDay,
+        postScreensaverDimmedBrightnessNight,
+        postScreensaverTimeout,
+        postHomeScreenTimeout,
+        postNumber,
+    } = requestApi;
+    const { syncPreviewOrientation } = controllers.core;
+    const {
+        buildSubpageGrid,
+        parseButtonConfig,
+        parseSubpageConfig,
+        serializeButtonConfig,
+        serializeSubpageConfig,
+    } = controllers.codec;
+    const els = controllers.runtime.els;
+    const { syncUi: syncScreenScheduleUi } = controllers.screenScheduleState;
+    const { syncUi: syncScreensaverTimeoutUi } = controllers.screensaverTimeout;
+    const { controlsVisible: firmwareUpdateControlsVisible, syncUi: syncFirmwareUpdateUi } = controllers.firmwareUpdate;
+    const {
+        applyTemperatureEntities: applyClockBarTemperatureEntities,
+        temperatureEntities: clockBarTemperatureEntities,
+        serializeTemperatureEntities: serializeClockBarTemperatureEntities,
+        syncUi: syncClockBarUi,
+        syncTemperatureUi,
+    } = controllers.clockBar;
     // ── Export / Import ────────────────────────────────────────────────────
+    var backupExportController: BackupExportController = controllers.backupExport;
     function backupExportScreenSizeSlug(this: any, value?: any) {
-        value = String(value || "").trim().toLowerCase();
-        if (!value)
-            return "screen";
-        value = value.replace(/\binches\b/g, "inch").replace(/\bin\b/g, "inch");
-        value = value.replace(/[^a-z0-9.]+/g, "-").replace(/^-+|-+$/g, "");
-        return value || "screen";
+        return backupExportController.screenSizeSlug(value);
     }
     function backupExportFileDate(this: any, value?: any) {
-        return value.getFullYear() + "-" +
-            String(value.getMonth() + 1).padStart(2, "0") + "-" +
-            String(value.getDate()).padStart(2, "0");
+        return backupExportController.fileDate(value);
     }
     function backupExportFileName(this: any, value?: any) {
-        var date: any = value || new Date();
-        return "espcontrol-" + backupExportScreenSizeSlug(CFG.screenSize) + "-" +
-            backupExportFileDate(date) + ".json";
+        return backupExportController.fileName(controllers.layout.config.screenSize, value, controllers.identity?.backup());
     }
-    function exportConfig(this: any) {
+    function normalizeImportedPanelSettings(this: any, settings?: any) {
+        return controllers.normalizeImportedPanelSettings(settings);
+    }
+    function gridColsForImportedSettings(this: any, importedSettings?: any) {
+        return controllers.gridColsForImportedSettings(importedSettings);
+    }
+    var backupImportController: BackupImportController<any, any, any> = controllers.backupImport;
+    var backupRestoreController: BackupRestoreController<any, any> = controllers.backupRestore;
+    var backupFileController: BackupFileController = controllers.backupFile;
+    function downloadBackupConfig(this: any, data: any, identity?: PanelIdentityBackup) {
+        if (identity) data.identity = identity;
+        backupFileController.download(data, backupExportController.fileName(controllers.layout.config.screenSize, undefined, identity));
+    }
+    function addNativeConfigToBackup(this: any, data?: any) {
+        return backupExportController.addNativeConfig(data, {
+            "deviceProfile": controllers.layout.deviceId,
+            "buttons": state.buttons,
+            "subpages": state.subpages,
+            "buttonOrder": data.button_order,
+            "buttonOnColor": data.button_on_color,
+        });
+    }
+    async function exportConfig(this: any) {
+        let identity: PanelIdentityBackup | undefined;
+        let identityUnavailable = false;
+        try {
+            await controllers.identity?.load();
+            identity = controllers.identity?.backup();
+        } catch { identityUnavailable = true; }
         var data: any = createBackupConfig({
-            device: DEVICE_ID,
-            slots: NUM_SLOTS,
+            device: controllers.layout.deviceId,
+            slots: controllers.layout.numSlots,
             exported_at: new Date().toISOString(),
             grid: state.grid,
             sizes: state.sizes,
@@ -40,6 +251,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                 temperature_unit: normalizeTemperatureUnit(state.temperatureUnit),
                 clock_bar: state.clockBarOn,
                 clock_bar_time: state.clockBarTimeOn,
+                clock_bar_night_mode: state.clockBarNightModeOn,
                 network_status_icon: state.networkStatusOn,
                 voice_services: state.voiceServicesOn,
                 alarm_delay_audio: state.alarmDelayAudioOn,
@@ -69,6 +281,10 @@ export function installAppBackupModule(): GlobalDescriptors {
                 cover_art_hide_external_input: state.coverArtHideExternalInputOn,
                 home_assistant_artwork_protocol: normalizeHomeAssistantArtworkProtocol(state.homeAssistantArtworkProtocol),
                 home_assistant_artwork_port: normalizeHomeAssistantArtworkPort(state.coverArtHomeAssistantPort),
+                home_assistant_artwork_endpoint_mode: normalizeHomeAssistantArtworkEndpointMode(
+                    state.homeAssistantArtworkEndpointMode,
+                    state.homeAssistantArtworkProtocol,
+                    state.coverArtHomeAssistantPort),
                 firmware_auto_update: !!state.autoUpdate,
                 firmware_update_frequency: state.updateFrequency,
                 screensaver_action: normalizeScreensaverAction(state.screensaverAction),
@@ -77,6 +293,8 @@ export function installAppBackupModule(): GlobalDescriptors {
                 clock_brightness_day: state.clockBrightnessDay,
                 clock_brightness_night: state.clockBrightnessNight,
                 screensaver_dimmed_brightness: normalizeScreensaverDimmedBrightness(state.screensaverDimmedBrightness),
+                screensaver_dimmed_brightness_day: normalizeScreensaverDimmedBrightness(state.screensaverDimmedBrightnessDay),
+                screensaver_dimmed_brightness_night: normalizeScreensaverDimmedBrightness(state.screensaverDimmedBrightnessNight),
                 screensaver_timeout: state.screensaverTimeout,
                 home_screen_timeout: state.homeScreenTimeout,
                 screen_rotation: state.screenRotation,
@@ -84,12 +302,14 @@ export function installAppBackupModule(): GlobalDescriptors {
             screen: {
                 brightness_day: Math.round(state.brightnessDayVal),
                 brightness_night: Math.round(state.brightnessNightVal),
-                automatic_brightness: !!state.automaticBrightnessEnabled,
+                brightness_mode: normalizeBrightnessMode(state.brightnessMode),
+                manual_brightness: Math.round(state.manualBrightnessVal),
                 brightness_dawn_time: normalizeTimeOfDay(state.brightnessDawnTime, "06:00"),
                 brightness_dusk_time: normalizeTimeOfDay(state.brightnessDuskTime, "18:00"),
                 schedule_trigger: normalizeScheduleTrigger(state.scheduleTrigger, state.scheduleEnabled),
                 schedule_enabled: !!state.scheduleEnabled,
                 schedule_sensor_activation: normalizeScheduleSensorActivation(state.scheduleSensorActivation),
+                schedule_sensor_entity: state.scheduleSensorEntity,
                 schedule_on_hour: normalizeHour(state.scheduleOnHour, 6),
                 schedule_off_hour: normalizeHour(state.scheduleOffHour, 23),
                 schedule_mode: normalizeScheduleMode(state.scheduleMode),
@@ -99,100 +319,143 @@ export function installAppBackupModule(): GlobalDescriptors {
                 schedule_clock_brightness: normalizeScheduleClockBrightness(state.scheduleClockBrightness),
                 schedule_clock_text_color: normalizeHexColor(state.scheduleClockTextColor, "FFFFFF"),
             },
-        });
-        var json: any = JSON.stringify(data, null, 2);
-        var blob: any = new Blob([json], { type: "application/json" });
-        var url: any = URL.createObjectURL(blob);
-        var name: any = backupExportFileName();
-        var a: any = document.createElement("a");
-        a.href = url;
-        a.download = name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        } as any);
+        downloadBackupConfig(addNativeConfigToBackup(data), identity);
+        if (identityUnavailable) controllers.shell.showBanner?.(
+            "Backup exported without the panel name because naming is unavailable.", "warning");
     }
     function importConfig(this: any) {
-        var input: any = document.createElement("input");
-        input.type = "file";
-        input.accept = ".json";
-        input.style.display = "none";
-        var importPostThrottleMs: any = 75;
-        function cleanupInput(this: any) {
-            if (input.parentNode)
-                input.parentNode.removeChild(input);
-        }
-        input.addEventListener("cancel", cleanupInput);
-        input.addEventListener("change", function (this: any) {
-            if (!input.files || !input.files[0]) {
-                cleanupInput();
-                return;
-            }
-            var reader: any = new FileReader();
-            reader.onerror = function (this: any) {
-                cleanupInput();
-                showBanner("Invalid file \u2014 could not read backup", "error");
-            };
-            reader.onload = function (this: any) {
-                var data: any;
+        backupFileController.import(function (data: any) {
+            void (async () => {
+                // Validate the complete backup before offering identity changes.
+                backupImportController.plan(data, { device: controllers.layout.deviceId, slots: controllers.layout.numSlots });
+                const restoredName = await controllers.identity?.chooseRestoreName(data);
+                if (restoredName === null) return;
+                async function applyBackupRestorePlan(this: any, plannedImport: any) {
+                var importedSettings: any = plannedImport.importedSettings;
+                var importedGridCols: any = plannedImport.importedGridCols;
+                var backupPlan: any = plannedImport.backupPlan;
+                var nativeDocument: PanelConfigDocument = {
+                    deviceProfile: controllers.layout.deviceId,
+                    buttons: {},
+                    subpages: {},
+                    settings: {
+                        button_order: "",
+                        button_on_color: backupPlan.config.button_on_color,
+                    },
+                };
+                for (var nativeButtonIndex: any = 0; nativeButtonIndex < controllers.layout.numSlots; nativeButtonIndex++) {
+                    var nativeButtonValue: any = serializeButtonConfig(backupNormalizeButtonConfig(backupPlan.buttons[nativeButtonIndex]));
+                    if (nativeButtonValue)
+                        nativeDocument.buttons[nativeButtonIndex + 1] = nativeButtonValue;
+                }
+                for (var nativeSubpageKey in backupPlan.subpages) {
+                    var nativeSubpageValue: any = serializeSubpageConfig(backupPlan.subpages[nativeSubpageKey]);
+                    if (nativeSubpageValue)
+                        nativeDocument.subpages[Number(nativeSubpageKey)] = nativeSubpageValue;
+                }
+                var backedUpNativeConfig: any = backupPlan.config.native_config;
+                if (backedUpNativeConfig &&
+                    backedUpNativeConfig.device_profile === controllers.layout.deviceId) {
+                    nativeDocument = EspControlModel.decodePanelConfig(
+                        EspControlModel.decodePanelConfigBackupPayload(backedUpNativeConfig));
+                }
+                nativeDocument.settings.button_order = String(nativeDocument.settings.button_order || backupPlan.button_order || "");
+                nativeDocument.settings.button_on_color = String(nativeDocument.settings.button_on_color || backupPlan.config.button_on_color || "");
+                var parsedButtonOrder: any = EspControlModel.parseGridOrder(
+                    nativeDocument.settings.button_order,
+                    controllers.layout.numSlots,
+                    importedGridCols,
+                    {});
+                nativeDocument.settings.button_order = EspControlModel.serializeGridOrder(
+                    parsedButtonOrder.grid,
+                    parsedButtonOrder.sizes);
+
+                function readLegacyText(name: string) {
+                    return requestApi.getJsonFirst(requestApi.entityDetailPaths("text", [name], "state"));
+                }
+                function rejectBackup(message: string): never {
+                    requestApi.postQueueError = true;
+                    throw Object.assign(new Error(message), { backupMessage: message });
+                }
+                function queueLegacyLayoutRestore() {
+                    if (panelConfigDocumentContainsWifiSharing(nativeDocument)) {
+                        const message = "This backup contains Wifi Sharing cards, which require current device firmware. Update the panel before restoring this backup.";
+                        rejectBackup(message);
+                    }
+                    return restoreLegacyLayoutDocument(nativeDocument, {
+                        slotCount: controllers.layout.numSlots,
+                        subpageEntityKeys: subpageEntityKeys(),
+                        entityName: entityName,
+                        entityNameForSlot: entityNameForSlot,
+                        splitSubpageConfigChunks: EspControlModel.splitSubpageConfigChunks,
+                        postText: requestApi.postTextLegacy,
+                        readText: readLegacyText,
+                    }).then(function (result: any) {
+                        if (!result.ok) {
+                            requestApi.postQueueError = true;
+                            throw Object.assign(new Error(legacyRestoreFailureMessage(result)), {
+                                backupMessage: legacyRestoreFailureMessage(result),
+                            });
+                        }
+                        return "legacy-fallback";
+                    });
+                }
+                await requestApi.postQueue;
+                var nativeController: any = controllers.nativePanelConfig;
+                var nativeAvailability: any = nativeController && nativeController.client
+                    ? await nativeController.waitForDiscovery()
+                    : "legacy-fallback";
+                if (nativeAvailability === "failed") {
+                    rejectBackup("Could not confirm that this device can safely restore the layout. Check the connection and try again.");
+                }
+                var layoutRestoreResult: any;
+                if (nativeAvailability === "legacy-fallback") {
+                    layoutRestoreResult = await queueLegacyLayoutRestore();
+                }
+                else {
+                    var nativeRestore: any = nativeController.writeDocument(nativeDocument);
+                    layoutRestoreResult = nativeRestore ? await nativeRestore : "failed";
+                    if (layoutRestoreResult === "legacy-fallback") {
+                        layoutRestoreResult = await queueLegacyLayoutRestore();
+                    }
+                    else if (layoutRestoreResult === "mirror-failed") {
+                        // The native document is durable, but the controller has
+                        // already warned that its downgrade copy is stale.
+                        requestApi.postQueueError = true;
+                    }
+                    else if (layoutRestoreResult !== "saved") {
+                        rejectBackup("The layout could not be restored. No other backup settings were changed.");
+                    }
+                }
+
+                // Do not change the editor or unrelated device settings until
+                // the complete layout has been accepted by the target firmware.
+                cancelMainGridSave();
+                var activeGridCols: any = controllers.layout.gridCols;
+                controllers.layout.gridCols = importedGridCols;
                 try {
-                    data = JSON.parse(reader.result);
+                    state.buttons = [];
+                    for (var canonicalButtonIndex: any = 0; canonicalButtonIndex < controllers.layout.numSlots; canonicalButtonIndex++)
+                        state.buttons[canonicalButtonIndex] = parseButtonConfig(nativeDocument.buttons[canonicalButtonIndex + 1] || "");
+                    state.subpages = {};
+                    state.subpageRaw = {};
+                    for (var canonicalSubpageKey in nativeDocument.subpages) {
+                        var canonicalSubpage: any = parseSubpageConfig(nativeDocument.subpages[Number(canonicalSubpageKey)] || "");
+                        buildSubpageGrid(canonicalSubpage);
+                        state.subpages[canonicalSubpageKey] = canonicalSubpage;
+                    }
+                    nativeDocument.settings.button_order = applyImportedButtonOrder(
+                        nativeDocument.settings.button_order, {});
                 }
-                catch (_) {
-                    showBanner("Invalid file \u2014 could not parse JSON", "error");
-                    cleanupInput();
-                    return;
+                finally {
+                    controllers.layout.gridCols = activeGridCols;
                 }
-                var backupPlan: any;
-                try {
-                    backupPlan = planBackupImport(data, { device: DEVICE_ID, slots: NUM_SLOTS });
-                }
-                catch (e) {
-                    showBanner((e as any).backupMessage || "Invalid config file \u2014 missing required fields", "error");
-                    cleanupInput();
-                    return;
-                }
-                for (var warningIdx: any = 0; warningIdx < backupPlan.warnings.length; warningIdx++) {
-                    showBanner(backupPlan.warnings[warningIdx], "warning");
-                }
-                setPostThrottle(importPostThrottleMs);
-                resetPostQueueError();
-                postText(entityName("button_on_color"), backupPlan.config.button_on_color);
-                for (var i: any = 0; i < NUM_SLOTS; i++) {
-                    var b: any = backupPlan.buttons[i];
-                    var n: any = i + 1;
-                    state.buttons[i] = backupNormalizeButtonConfig(b);
-                    saveButtonConfig(n);
-                }
-                state.subpages = {};
-                state.subpageRaw = {};
-                for (var subpageKey in backupPlan.subpages) {
-                    state.subpages[subpageKey] = backupPlan.subpages[subpageKey];
-                    saveSubpageEntity(subpageKey);
-                }
-                postText(entityName("button_order"), backupPlan.button_order);
-                applyImportedButtonOrder(backupPlan.button_order, backupPlan.importedSizes);
-                state.onColor = backupPlan.config.button_on_color;
+                state.onColor = nativeDocument.settings.button_on_color;
                 if (els.setOnColor && els.setOnColor._syncColor)
                     els.setOnColor._syncColor(state.onColor);
                 if (backupPlan.settings) {
                     var s: any = backupPlan.settings;
-                    var importedSettings: any = EspControlModel.normalizeBackupPanelSettings(s, {
-                        timezone: state.timezone,
-                        language: state.language,
-                        clockFormat: state.clockFormat,
-                        clockFormatOptions: state.clockFormatOptions,
-                        ntpDefaults: NTP_SERVER_DEFAULTS,
-                        ntpServer1: state.ntpServer1,
-                        ntpServer2: state.ntpServer2,
-                        ntpServer3: state.ntpServer3,
-                        coverArtHomeAssistantProtocol: state.homeAssistantArtworkProtocol,
-                        coverArtHomeAssistantPort: state.coverArtHomeAssistantPort,
-                        autoUpdate: state.autoUpdate,
-                        updateFrequency: state.updateFrequency,
-                        updateFrequencyOptions: state.updateFreqOptions,
-                        screenRotationOptions: allScreenRotationOptions(),
-                    });
                     state._clockBarTemperatureVisibilityReceived = true;
                     state._outdoorOn = importedSettings.outdoorTempEnable;
                     state._indoorOn = importedSettings.indoorTempEnable;
@@ -204,10 +467,11 @@ export function installAppBackupModule(): GlobalDescriptors {
                     postText(entityName("indoor_temp_entity"), importedSettings.indoorTempEntity);
                     postClockBar(importedSettings.clockBar);
                     postClockBarTime(importedSettings.clockBarTime);
+                    postClockBarNightMode(importedSettings.clockBarNightMode);
                     postNetworkStatusIcon(importedSettings.networkStatusIcon);
-                    if (CFG.features && CFG.features.voiceServices)
+                    if (controllers.layout.config.features && controllers.layout.config.features.voiceServices)
                         postVoiceServices(importedSettings.voiceServices);
-                    if (CFG.features && CFG.features.alarmDelayAudio) {
+                    if (controllers.layout.config.features && controllers.layout.config.features.alarmDelayAudio) {
                         postAlarmDelayAudio(importedSettings.alarmDelayAudio);
                         postAlarmDelayTts(importedSettings.alarmDelayTts);
                         postAlarmDelayEntryAnnouncement(importedSettings.alarmDelayEntryAnnouncement);
@@ -257,12 +521,15 @@ export function installAppBackupModule(): GlobalDescriptors {
                     postCoverArtHideExternalInput(importedSettings.coverArtHideExternalInput);
                     postHomeAssistantArtworkProtocol(importedSettings.coverArtHomeAssistantProtocol);
                     postHomeAssistantArtworkPort(importedSettings.coverArtHomeAssistantPort);
+                    postHomeAssistantArtworkEndpointMode(importedSettings.coverArtHomeAssistantEndpointMode);
                     if (firmwareUpdateControlsVisible()) {
                         postFirmwareAutoUpdate(importedSettings.autoUpdate);
                         postFirmwareUpdateFrequency(importedSettings.updateFrequency);
                     }
                     var importedScreensaverAction: any = importedSettings.screensaverAction;
                     var importedScreensaverDimmedBrightness: any = importedSettings.screensaverDimmedBrightness;
+                    var importedScreensaverDimmedBrightnessDay: any = importedSettings.screensaverDimmedBrightnessDay;
+                    var importedScreensaverDimmedBrightnessNight: any = importedSettings.screensaverDimmedBrightnessNight;
                     var importedClockBrightnessDay: any = importedSettings.clockBrightnessDay;
                     var importedClockBrightnessNight: any = importedSettings.clockBrightnessNight;
                     postScreensaverAction(importedScreensaverAction);
@@ -270,10 +537,12 @@ export function installAppBackupModule(): GlobalDescriptors {
                     postClockBrightnessDay(importedClockBrightnessDay);
                     postClockBrightnessNight(importedClockBrightnessNight);
                     postScreensaverDimmedBrightness(importedScreensaverDimmedBrightness);
+                    postScreensaverDimmedBrightnessDay(importedScreensaverDimmedBrightnessDay);
+                    postScreensaverDimmedBrightnessNight(importedScreensaverDimmedBrightnessNight);
                     postScreensaverTimeout(importedSettings.screensaverTimeout);
                     postHomeScreenTimeout(importedSettings.homeScreenTimeout);
                     var importedScreenRotation: any = importedSettings.screenRotation;
-                    if (CFG.features && CFG.features.screenRotation)
+                    if (controllers.layout.config.features && controllers.layout.config.features.screenRotation)
                         postSelect(entityName("screen_rotation"), importedScreenRotation);
                     state.clockBarTemperatureEntities = importedSettings.clockBarTemperatureEntities;
                     state._clockBarTemperatureEntitiesReceived = true;
@@ -284,6 +553,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.temperatureUnit = importedTemperatureUnit;
                     state.clockBarOn = importedSettings.clockBar;
                     state.clockBarTimeOn = importedSettings.clockBarTime;
+                    state.clockBarNightModeOn = importedSettings.clockBarNightMode;
                     state.networkStatusOn = importedSettings.networkStatusIcon;
                     state.voiceServicesOn = importedSettings.voiceServices;
                     state.alarmDelayAudioOn = importedSettings.alarmDelayAudio;
@@ -315,6 +585,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.coverArtHideExternalInputOn = importedSettings.coverArtHideExternalInput;
                     state.homeAssistantArtworkProtocol = importedSettings.coverArtHomeAssistantProtocol;
                     state.coverArtHomeAssistantPort = importedSettings.coverArtHomeAssistantPort;
+                    state.homeAssistantArtworkEndpointMode = importedSettings.coverArtHomeAssistantEndpointMode;
                     state.autoUpdate = importedSettings.autoUpdate;
                     state.updateFrequency = importedSettings.updateFrequency;
                     state.screensaverAction = importedScreensaverAction;
@@ -323,6 +594,8 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.clockBrightnessDay = importedClockBrightnessDay;
                     state.clockBrightnessNight = importedClockBrightnessNight;
                     state.screensaverDimmedBrightness = importedScreensaverDimmedBrightness;
+                    state.screensaverDimmedBrightnessDay = importedScreensaverDimmedBrightnessDay;
+                    state.screensaverDimmedBrightnessNight = importedScreensaverDimmedBrightnessNight;
                     state.screensaverTimeout = importedSettings.screensaverTimeout;
                     state.homeScreenTimeout = importedSettings.homeScreenTimeout;
                     state.screenRotation = importedScreenRotation;
@@ -332,6 +605,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                     if (els.setTemperatureUnit)
                         els.setTemperatureUnit.value = state.temperatureUnit;
                     syncInput(els.setPresence, state.presenceEntity);
+                    syncInput(els.setSchedulePresence, state.scheduleSensorEntity);
                     syncMediaPlayerSleepPreventionUi();
                     syncInput(els.setCoverArtMediaPlayer, state.coverArtMediaPlayerEntity);
                     syncInput(els.setCoverArtSecondaryMediaPlayer, state.coverArtSecondaryMediaPlayerEntity);
@@ -344,13 +618,13 @@ export function installAppBackupModule(): GlobalDescriptors {
                     syncFirmwareUpdateUi();
                     if (els.setTimezone)
                         els.setTimezone.value = state.timezone;
-                    syncLanguageSelect();
+                    syncLanguageSelect(controllers.runtime);
                     if (els.setClockFormat)
                         els.setClockFormat.value = state.clockFormat;
-                    syncNtpServerUi();
+                    syncNtpServerUi(controllers.runtime, syncInput);
                     syncClockScreensaverControls();
                     syncScreensaverTimeoutUi();
-                    syncIdleUi();
+                    syncIdleUi(controllers.runtime);
                     if (els.setScreenRotation)
                         els.setScreenRotation.value = state.screenRotation;
                     syncPreviewOrientation();
@@ -366,15 +640,18 @@ export function installAppBackupModule(): GlobalDescriptors {
                         scheduleClockBrightness: state.scheduleClockBrightness,
                         scheduleClockTextColor: state.scheduleClockTextColor,
                         scheduleSensorActivation: state.scheduleSensorActivation,
-                    });
+                        manualBrightnessVal: state.manualBrightnessVal,
+                    }, importedSettings ? importedSettings.presenceSensorEntity : state.presenceEntity);
                     state.brightnessDayVal = importedScreenSettings.brightnessDayVal;
                     state.brightnessNightVal = importedScreenSettings.brightnessNightVal;
-                    state.automaticBrightnessEnabled = importedScreenSettings.automaticBrightnessEnabled;
+                    state.brightnessMode = importedScreenSettings.brightnessMode;
+                    state.manualBrightnessVal = importedScreenSettings.manualBrightnessVal;
                     state.brightnessDawnTime = importedScreenSettings.brightnessDawnTime;
                     state.brightnessDuskTime = importedScreenSettings.brightnessDuskTime;
                     state.scheduleTrigger = importedScreenSettings.scheduleTrigger;
                     state.scheduleEnabled = importedScreenSettings.scheduleEnabled;
                     state.scheduleSensorActivation = importedScreenSettings.scheduleSensorActivation;
+                    state.scheduleSensorEntity = importedScreenSettings.scheduleSensorEntity;
                     state.scheduleOnHour = importedScreenSettings.scheduleOnHour;
                     state.scheduleOffHour = importedScreenSettings.scheduleOffHour;
                     state.scheduleMode = importedScreenSettings.scheduleMode;
@@ -385,11 +662,14 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.scheduleClockTextColor = importedScreenSettings.scheduleClockTextColor;
                     postNumber(entityName("screen_daytime_brightness"), state.brightnessDayVal);
                     postNumber(entityName("screen_nighttime_brightness"), state.brightnessNightVal);
-                    postAutomaticBrightnessEnabled(state.automaticBrightnessEnabled);
+                    postBrightnessMode(state.brightnessMode);
+                    if (state.brightnessMode === "manual")
+                        postDisplayBacklightBrightness(state.manualBrightnessVal);
                     postBrightnessDawnTime(state.brightnessDawnTime);
                     postBrightnessDuskTime(state.brightnessDuskTime);
                     postScreenScheduleTrigger(state.scheduleTrigger);
                     postScreenScheduleSensorActivation(state.scheduleSensorActivation);
+                    postScreenScheduleSensorEntity(state.scheduleSensorEntity);
                     postScreenScheduleOnHour(state.scheduleOnHour);
                     postScreenScheduleOffHour(state.scheduleOffHour);
                     postScreenScheduleMode(state.scheduleMode);
@@ -414,23 +694,31 @@ export function installAppBackupModule(): GlobalDescriptors {
                 renderPreview();
                 renderButtonSettings();
                 switchTab("screen");
-                setPostThrottle(0);
-                postQueueIdle().then(function (this: any) {
-                    if (!postQueueHadError())
-                        showBanner("Configuration imported successfully", "success");
-                });
-                cleanupInput();
-            };
-            reader.readAsText(input.files[0]);
+                await requestApi.postQueue;
+                if (typeof restoredName === "string" && !requestApi.postQueueError) {
+                    try { await controllers.identity?.saveAndRestart(restoredName); }
+                    catch (error) {
+                        throw Object.assign(new Error("Configuration restored, but panel naming or restart failed: " + (error as Error).message), {
+                            backupMessage: "Configuration restored, but panel naming or restart failed: " + (error as Error).message,
+                        });
+                    }
+                }
+                return layoutRestoreResult;
+                }
+                backupRestoreController.restore(data, {
+                    device: controllers.layout.deviceId,
+                    slots: controllers.layout.numSlots,
+                }, applyBackupRestorePlan);
+            })().catch((error) => {
+                controllers.shell.showBanner?.((error as Error).message || "Could not restore backup", "error");
+            });
         });
-        document.body.appendChild(input);
-        input.click();
     }
     return {
-        "backupExportScreenSizeSlug": staticGlobal(backupExportScreenSizeSlug),
-        "backupExportFileDate": staticGlobal(backupExportFileDate),
-        "backupExportFileName": staticGlobal(backupExportFileName),
-        "exportConfig": staticGlobal(exportConfig),
-        "importConfig": staticGlobal(importConfig),
+        backupExportFileName: (value) => backupExportFileName(value),
+        normalizeImportedPanelSettings: (settings) => normalizeImportedPanelSettings(settings),
+        gridColsForImportedSettings: (settings) => gridColsForImportedSettings(settings),
+        exportConfig: () => exportConfig(),
+        importConfig: () => importConfig(),
     };
 }

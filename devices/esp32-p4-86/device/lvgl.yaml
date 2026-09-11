@@ -35,14 +35,14 @@ lvgl:
           text_color: 0xFFFFFF
           hidden: true
 
-      # Network status (tappable, right side of clock bar)
+      # Voice volume (separate touch target beside network/settings)
       - obj:
           id: voice_clock_bar_mute_button
           align: top_right
-          x: -72
-          y: 10
-          width: 44
-          height: 42
+          x: -74
+          y: 6
+          width: 48
+          height: 48
           bg_opa: 0%
           border_width: 0
           pad_all: 0
@@ -54,7 +54,7 @@ lvgl:
             - label:
                 id: voice_clock_bar_mute_icon_label
                 text: "\U000F036C"
-                text_font: font_icon_status
+                text_font: font_icon_clock_bar
                 align: center
                 text_align: center
                 text_color: 0xFFFFFF
@@ -66,10 +66,10 @@ lvgl:
       - obj:
           id: network_status_button
           align: top_right
-          x: -20
-          y: 10
-          width: 44
-          height: 42
+          x: -8
+          y: 6
+          width: 48
+          height: 48
           bg_opa: 0%
           border_width: 0
           pad_all: 0
@@ -81,13 +81,39 @@ lvgl:
             - label:
                 id: network_status_icon_label
                 text: "\U000F0928"
-                text_font: font_icon_status
+                text_font: font_icon_clock_bar
                 align: center
                 text_align: center
                 text_color: 0xFFFFFF
           on_press:
             then:
               - script.execute: network_status_open_info
+
+      # Night mode indicator (schedule night period only). Starts hidden;
+      # clock_bar_apply positions and reveals it beside the network icon, so the
+      # x/y here are unused placeholders.
+      - obj:
+          id: night_mode_status_icon
+          align: top_right
+          x: 0
+          y: 0
+          width: 48
+          height: 48
+          bg_opa: 0%
+          border_width: 0
+          pad_all: 0
+          scrollable: false
+          scrollbar_mode: "off"
+          clickable: false
+          hidden: true
+          widgets:
+            - label:
+                id: night_mode_status_icon_label
+                text: "\U000F00DC"
+                text_font: font_icon_clock_bar
+                align: center
+                text_align: center
+                text_color: 0xFFFFFF
 
   # ---------------------------------------------------------------------------
   # Main page (fixed 3x3 grid of button widgets)

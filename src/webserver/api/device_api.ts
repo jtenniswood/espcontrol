@@ -2,6 +2,7 @@ export interface FetchRequestInit {
   method?: string;
   cache?: "no-store";
   keepalive?: boolean;
+  credentials?: "include";
   body?: unknown;
 }
 
@@ -68,7 +69,7 @@ export function createDeviceApi(fetchLike: FetchLike, delay: DelayLike = default
 
   async function request(url: string, init?: FetchRequestInit): Promise<DeviceResult> {
     try {
-      const response = await fetchLike(url, init);
+      const response = await fetchLike(url, { ...init, credentials: "include" });
       const base = { value: response, url, attemptedUrls: [url], status: response.status } as const;
       return response.ok
         ? { ok: true, kind: "success", ...base }

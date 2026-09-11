@@ -13,9 +13,9 @@ Use this when a panel is in a shared area and you want a quick way to prevent ac
 ## Setting Up a Screen Lock Card
 
 1. Select a card and change its type to **Screen Lock**.
-2. Set a **Label** if you want custom text. If left blank, the card uses the built-in lock label.
-3. Choose the **Locked Icon** and **Unlocked Icon** if you want different icons from the defaults.
-4. Apply the configuration.
+2. Save the card and apply the configuration.
+
+Screen Lock does not need an entity or any additional card settings. Its label and icon change automatically to show whether the touchscreen is locked or unlocked.
 
 ## How It Works on the Panel
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "climate_subscription_policy.h"
+#include "climate_state_logic.h"
 #include "climate_target_logic.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
@@ -86,6 +88,9 @@ struct ClimateControlCtx {
   std::string preset_mode;
   std::vector<std::string> preset_modes;
   std::string options;
+  uint8_t configured_tab_mask = 0;
+  uint32_t subscription_generation = 0;
+  espcontrol::climate::OptionalSubscriptionState optional_subscriptions;
   bool available = true;
   bool has_target = false;
   bool has_current = false;
@@ -550,39 +555,37 @@ inline std::string climate_hvac_service_value(const std::string &raw) {
   return value;
 }
 
-inline bool climate_action_is_working(const std::string &action) {
-  return action == "heating" || action == "cooling" ||
-         action == "drying" || action == "fan";
-}
-
 inline std::string climate_action_label(ClimateControlCtx *ctx) {
-  if (!ctx || !ctx->available) return espcontrol_i18n(std::string("Unavailable"));
-  if (ctx->hvac_action == "heating") return espcontrol_i18n(std::string("Heating"));
-  if (ctx->hvac_action == "cooling") return espcontrol_i18n(std::string("Cooling"));
-  if (ctx->hvac_action == "drying") return espcontrol_i18n(std::string("Drying"));
-  if (ctx->hvac_action == "fan") return espcontrol_i18n(std::string("Fan"));
-  if (ctx->hvac_mode == "off") return espcontrol_i18n(std::string("Off"));
-  if (ctx->hvac_action.empty() || ctx->hvac_action == "unknown" ||
-      ctx->hvac_action == "unavailable") return climate_option_label(ctx->hvac_mode);
-  if (ctx->hvac_action == "idle") return espcontrol_i18n(std::string("Idle"));
-  if (ctx->hvac_action == "off") return espcontrol_i18n(std::string("Off"));
+  if (!ctx) return espcontrol_i18n(std::string("Unavailable"));
+  switch (espcontrol::climate::status(
+      ctx->available, ctx->hvac_mode, ctx->hvac_action)) {
+    case espcontrol::climate::Status::UNAVAILABLE:
+      return espcontrol_i18n(std::string("Unavailable"));
+    case espcontrol::climate::Status::OFF:
+      return espcontrol_i18n(std::string("Off"));
+    case espcontrol::climate::Status::HEATING:
+      return espcontrol_i18n(std::string("Heating"));
+    case espcontrol::climate::Status::COOLING:
+      return espcontrol_i18n(std::string("Cooling"));
+    case espcontrol::climate::Status::DRYING:
+      return espcontrol_i18n(std::string("Drying"));
+    case espcontrol::climate::Status::FAN:
+      return espcontrol_i18n(std::string("Fan"));
+    case espcontrol::climate::Status::IDLE:
+      return espcontrol_i18n(std::string("Idle"));
+    case espcontrol::climate::Status::MODE_FALLBACK:
+      return climate_option_label(ctx->hvac_mode);
+  }
   return espcontrol_i18n(std::string("Idle"));
 }
 
 inline bool climate_is_active(ClimateControlCtx *ctx) {
-  if (!ctx || !ctx->available) return false;
-  if (climate_action_is_working(ctx->hvac_action)) return true;
-  if (ctx->hvac_mode == "off") return false;
-  if (ctx->hvac_action.empty() || ctx->hvac_action == "unknown" ||
-      ctx->hvac_action == "unavailable") {
-    return !climate_unavailable_value(ctx->hvac_mode);
-  }
-  return !(ctx->hvac_action == "idle" || ctx->hvac_action == "off");
+  return ctx && espcontrol::climate::active(
+      ctx->available, ctx->hvac_mode, ctx->hvac_action);
 }
 
-inline bool climate_temperature_controls_enabled(ClimateControlCtx *ctx) {
-  return ctx && ctx->available &&
-         (ctx->hvac_mode != "off" || climate_action_is_working(ctx->hvac_action));
+inline bool climate_card_icon_enabled(ClimateControlCtx *ctx) {
+  return ctx && espcontrol::climate::icon_enabled(ctx->available, ctx->hvac_mode);
 }
 
 inline bool climate_modal_temperature_controls_enabled(ClimateControlCtx *ctx) {
@@ -1083,8 +1086,8 @@ inline void climate_update_card(ClimateControlCtx *ctx) {
     if (show_icon) {
       if (ctx->icon_font)
         lv_obj_set_style_text_font(ctx->icon_lbl, ctx->icon_font, LV_PART_MAIN);
-      lv_label_set_text(ctx->icon_lbl,
-        climate_temperature_controls_enabled(ctx) ? ctx->icon_on_glyph : ctx->icon_off_glyph);
+      lv_label_set_display_text(ctx->icon_lbl,
+        climate_card_icon_enabled(ctx) ? ctx->icon_on_glyph : ctx->icon_off_glyph);
       climate_layout_card_icon(ctx->icon_lbl);
       lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
     } else {
@@ -1098,10 +1101,10 @@ inline void climate_update_card(ClimateControlCtx *ctx) {
       climate_layout_card_sensor(ctx->sensor_container);
     }
   }
-  if (!show_icon && ctx->value_lbl) lv_label_set_text(ctx->value_lbl, value.c_str());
-  if (!show_icon && ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, (value.empty() || value == "--") ? "" : display_temperature_unit_symbol());
+  if (!show_icon && ctx->value_lbl) lv_label_set_display_text(ctx->value_lbl, value.c_str());
+  if (!show_icon && ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, (value.empty() || value == "--") ? "" : display_temperature_unit_symbol());
   if (ctx->label_lbl) {
-    lv_label_set_text(ctx->label_lbl, climate_card_label(ctx).c_str());
+    lv_label_set_display_text(ctx->label_lbl, climate_card_label(ctx).c_str());
     climate_layout_card_label(ctx->label_lbl);
   }
   if (ctx->btn) {
@@ -1185,15 +1188,15 @@ inline void climate_update_drag_preview(ClimateControlCtx *ctx) {
   if (climate_dual_target(ctx)) {
     if (ctx->edit_high) {
       if (ui.high_target_lbl && ctx->has_high)
-        lv_label_set_text(ui.high_target_lbl, climate_format_tenths(
+        lv_label_set_display_text(ui.high_target_lbl, climate_format_tenths(
           climate_display_high_target(ctx), climate_target_display_precision(ctx)).c_str());
     } else {
       if (ui.low_target_lbl && ctx->has_low)
-        lv_label_set_text(ui.low_target_lbl, climate_format_tenths(
+        lv_label_set_display_text(ui.low_target_lbl, climate_format_tenths(
           climate_display_low_target(ctx), climate_target_display_precision(ctx)).c_str());
     }
   } else if (ui.target_lbl) {
-    lv_label_set_text(ui.target_lbl, climate_format_tenths(
+    lv_label_set_display_text(ui.target_lbl, climate_format_tenths(
       target, climate_target_display_precision(ctx)).c_str());
   }
   if (ui.panel && !climate_dual_target(ctx))
@@ -1295,7 +1298,7 @@ inline void climate_update_chip(lv_obj_t *chip, const char *title, const std::st
   if (!label) return;
   std::string text = espcontrol_i18n(title);
   if (show_value) text += " " + (value.empty() ? espcontrol_i18n(std::string("None")) : climate_option_label(value));
-  lv_label_set_text(label, text.c_str());
+  lv_label_set_display_text(label, text.c_str());
 }
 
 inline void climate_update_option_chip(lv_obj_t *chip, const char *title,
@@ -1310,10 +1313,10 @@ inline void climate_update_option_chip(lv_obj_t *chip, const char *title,
   if (!text_col) return;
   lv_obj_t *title_lbl = lv_obj_get_child(text_col, 0);
   lv_obj_t *value_lbl = lv_obj_get_child(text_col, 1);
-  if (title_lbl) lv_label_set_text(title_lbl, espcontrol_i18n(title));
+  if (title_lbl) lv_label_set_display_text(title_lbl, espcontrol_i18n(title));
   if (value_lbl) {
     std::string text = value.empty() ? espcontrol_i18n(std::string("None")) : climate_option_label(value);
-    lv_label_set_text(value_lbl, text.c_str());
+    lv_label_set_display_text(value_lbl, text.c_str());
   }
 }
 
@@ -1434,10 +1437,11 @@ inline lv_obj_t *climate_create_option_chip(lv_obj_t *parent, const char *icon,
 
   lv_obj_t *icon_lbl = lv_label_create(btn);
   lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_SCROLL_CHAIN_HOR);
-  lv_label_set_text(icon_lbl, icon);
+  lv_label_set_display_text(icon_lbl, icon);
   lv_obj_set_style_text_color(icon_lbl, lv_color_hex(DARK_TEXT_SOFT), LV_PART_MAIN);
   lv_obj_set_style_text_align(icon_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (icon_font) lv_obj_set_style_text_font(icon_lbl, icon_font, LV_PART_MAIN);
+  apply_width_compensation(icon_lbl, width_compensation_percent);
 
   lv_obj_t *text_col = lv_obj_create(btn);
   lv_obj_add_flag(text_col, LV_OBJ_FLAG_SCROLL_CHAIN_HOR);
@@ -1457,7 +1461,7 @@ inline lv_obj_t *climate_create_option_chip(lv_obj_t *parent, const char *icon,
   lv_obj_t *title_lbl = lv_label_create(text_col);
   lv_obj_add_flag(title_lbl, LV_OBJ_FLAG_SCROLL_CHAIN_HOR);
   lv_obj_set_width(title_lbl, lv_pct(100));
-  lv_label_set_text(title_lbl, espcontrol_i18n(title));
+  lv_label_set_display_text(title_lbl, espcontrol_i18n(title));
   lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_CLIP);
   lv_obj_set_style_text_color(title_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
   lv_obj_set_style_text_align(title_lbl, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
@@ -1466,7 +1470,7 @@ inline lv_obj_t *climate_create_option_chip(lv_obj_t *parent, const char *icon,
   lv_obj_t *value_lbl = lv_label_create(text_col);
   lv_obj_add_flag(value_lbl, LV_OBJ_FLAG_SCROLL_CHAIN_HOR);
   lv_obj_set_width(value_lbl, lv_pct(100));
-  lv_label_set_text(value_lbl, espcontrol_i18n("None"));
+  lv_label_set_display_text(value_lbl, espcontrol_i18n("None"));
   lv_label_set_long_mode(value_lbl, LV_LABEL_LONG_CLIP);
   lv_obj_set_style_text_color(value_lbl, lv_color_hex(DARK_TEXT_SOFT), LV_PART_MAIN);
   lv_obj_set_style_text_align(value_lbl, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
@@ -1584,11 +1588,9 @@ inline void climate_center_tab_icon(lv_obj_t *label) {
 
 inline lv_obj_t *climate_control_create_tab_button(lv_obj_t *parent, const char *icon,
                                                    const lv_font_t *font,
-                                                   ClimateControlTab tab,
-                                                   int width_compensation_percent) {
+                                                   ClimateControlTab tab) {
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
-  apply_width_compensation(btn, width_compensation_percent);
   lv_obj_set_style_bg_color(btn, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
@@ -1598,7 +1600,7 @@ inline lv_obj_t *climate_control_create_tab_button(lv_obj_t *parent, const char 
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_t *label = lv_label_create(btn);
   if (label) {
-    lv_label_set_text(label, icon);
+    lv_label_set_display_text(label, icon);
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
@@ -1728,7 +1730,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       }
 
       lv_obj_t *icon_lbl = lv_label_create(content_parent);
-      lv_label_set_text(icon_lbl, climate_option_icon(section_kind, option));
+      lv_label_set_display_text(icon_lbl, climate_option_icon(section_kind, option));
       lv_obj_set_style_text_color(icon_lbl, lv_color_hex(text_color), LV_PART_MAIN);
       lv_obj_set_style_text_align(icon_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
       if (compact_portrait_layout && ctx->card_icon_font) {
@@ -1736,11 +1738,13 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       } else if (ctx->icon_font) {
         lv_obj_set_style_text_font(icon_lbl, ctx->icon_font, LV_PART_MAIN);
       }
-      if (compact_portrait_layout && !ctx->card_icon_font) lv_obj_set_style_transform_zoom(
-        icon_lbl, CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_ICON_ZOOM, LV_PART_MAIN);
+      apply_icon_width_compensation(
+        icon_lbl,
+        compact_portrait_layout && !ctx->card_icon_font
+          ? CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_ICON_ZOOM : 256);
 
       lv_obj_t *label = lv_label_create(content_parent);
-      lv_label_set_text(label, climate_option_label(option).c_str());
+      lv_label_set_display_text(label, climate_option_label(option).c_str());
       lv_label_set_long_mode(label, compact_portrait_layout ? LV_LABEL_LONG_CLIP : LV_LABEL_LONG_WRAP);
       lv_obj_set_width(label, compact_portrait_layout ? LV_SIZE_CONTENT : lv_pct(100));
       lv_obj_set_style_text_color(label, lv_color_hex(text_color), LV_PART_MAIN);
@@ -1861,7 +1865,7 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
     lv_obj_set_style_pad_left(btn, 12, LV_PART_MAIN);
     lv_obj_set_style_pad_right(btn, 12, LV_PART_MAIN);
     lv_obj_t *label = lv_label_create(btn);
-    lv_label_set_text(label, climate_option_label(option).c_str());
+    lv_label_set_display_text(label, climate_option_label(option).c_str());
     lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
@@ -1917,8 +1921,8 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
   if (ui.target_lbl) {
     climate_set_obj_visible(ui.target_lbl, !dual);
     if (!ctx->available || !climate_selected_target_available(ctx))
-      lv_label_set_text(ui.target_lbl, "--");
-    else lv_label_set_text(ui.target_lbl, climate_format_tenths(
+      lv_label_set_display_text(ui.target_lbl, "--");
+    else lv_label_set_display_text(ui.target_lbl, climate_format_tenths(
       target, climate_target_display_precision(ctx)).c_str());
     lv_obj_clear_flag(ui.target_lbl, LV_OBJ_FLAG_CLICKABLE);
   }
@@ -1926,7 +1930,7 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
   climate_set_obj_visible(ui.target_separator_lbl, dual);
   climate_set_obj_visible(ui.high_target_lbl, dual);
   if (ui.low_target_lbl) {
-    lv_label_set_text(ui.low_target_lbl, ctx->has_low
+    lv_label_set_display_text(ui.low_target_lbl, ctx->has_low
       ? climate_format_tenths(climate_display_low_target(ctx),
           climate_target_display_precision(ctx)).c_str()
       : "--");
@@ -1935,7 +1939,7 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
     lv_obj_set_style_text_opa(ui.low_target_lbl, LV_OPA_COVER, LV_PART_MAIN);
   }
   if (ui.high_target_lbl) {
-    lv_label_set_text(ui.high_target_lbl, ctx->has_high
+    lv_label_set_display_text(ui.high_target_lbl, ctx->has_high
       ? climate_format_tenths(climate_display_high_target(ctx),
           climate_target_display_precision(ctx)).c_str()
       : "--");
@@ -1944,11 +1948,11 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
     lv_obj_set_style_text_opa(ui.high_target_lbl, LV_OPA_COVER, LV_PART_MAIN);
   }
   if (ui.unit_lbl) {
-    lv_label_set_text(ui.unit_lbl, show_dial ? display_temperature_unit_symbol() : "");
+    lv_label_set_display_text(ui.unit_lbl, show_dial ? display_temperature_unit_symbol() : "");
     climate_set_obj_visible(ui.unit_lbl, show_dial);
   }
   if (ui.status_lbl) {
-    lv_label_set_text(ui.status_lbl, climate_action_label(ctx).c_str());
+    lv_label_set_display_text(ui.status_lbl, climate_action_label(ctx).c_str());
   }
   climate_update_target_chip(ui.target_chip, ctx, false);
   climate_update_option_chip(ui.mode_chip, "Mode", ctx->hvac_mode, false);
@@ -2006,7 +2010,8 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   int tab_count = tabs_layout.tab_count;
   bool show_tab_bar = tabs_layout.show_tab_bar;
   lv_coord_t tab_frame_h = tabs_layout.tab_frame_h;
-  control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);
+  control_modal_apply_tab_row(
+    ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);
   for (int i = 0; show_tab_bar && i < tab_count; i++) {
     lv_obj_t *tab_btn = climate_control_tab_button(ui, visible_tabs.tabs[i]);
     if (!tab_btn) continue;
@@ -2210,6 +2215,10 @@ inline void climate_control_hide_modal() {
 
 inline void delete_climate_control_context(ClimateControlCtx *ctx) {
   if (!ctx) return;
+  ctx->optional_subscriptions.clear_pending();
+  // The context owns all its callbacks, independently of a shared page owner.
+  // Release before deleting widgets/context, including during HA dispatch.
+  ha_release_callbacks_for_owner(ctx);
   if (climate_control_modal_ui().active == ctx) climate_control_hide_modal();
   if (ctx->debounce_timer) {
     lv_timer_del(ctx->debounce_timer);
@@ -2241,19 +2250,19 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   ui.tab_row = control_modal_create_tab_row(ui.panel);
   ui.temperature_tab = climate_control_create_tab_button(
     ui.tab_row, find_icon("Thermometer"), ctx->icon_font,
-    ClimateControlTab::TEMPERATURE, ctx->width_compensation_percent);
+    ClimateControlTab::TEMPERATURE);
   ui.mode_tab = climate_control_create_tab_button(
     ui.tab_row, find_icon("Fire"), ctx->icon_font,
-    ClimateControlTab::MODE, ctx->width_compensation_percent);
+    ClimateControlTab::MODE);
   ui.preset_tab = climate_control_create_tab_button(
     ui.tab_row, find_icon("Air Filter"), ctx->icon_font,
-    ClimateControlTab::PRESET, ctx->width_compensation_percent);
+    ClimateControlTab::PRESET);
   ui.fan_tab = climate_control_create_tab_button(
     ui.tab_row, find_icon("Fan"), ctx->icon_font,
-    ClimateControlTab::FAN, ctx->width_compensation_percent);
+    ClimateControlTab::FAN);
   ui.swing_tab = climate_control_create_tab_button(
     ui.tab_row, find_icon("Arrow Up Down"), ctx->icon_font,
-    ClimateControlTab::SWING, ctx->width_compensation_percent);
+    ClimateControlTab::SWING);
 
   ui.menu_view = lv_obj_create(ui.panel);
   lv_obj_set_style_bg_opa(ui.menu_view, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -2363,7 +2372,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_set_style_text_color(ui.target_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.target_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->number_font) lv_obj_set_style_text_font(ui.target_lbl, ctx->number_font, LV_PART_MAIN);
-  apply_width_compensation(ui.target_lbl, ctx->width_compensation_percent);
+  apply_text_width_compensation(ui.target_lbl);
 
   auto create_range_target_label = [&]() {
     lv_obj_t *label = lv_label_create(ui.target_row);
@@ -2374,7 +2383,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     const lv_font_t *range_font = ctx->range_number_font
       ? ctx->range_number_font : ctx->number_font;
     if (range_font) lv_obj_set_style_text_font(label, range_font, LV_PART_MAIN);
-    apply_width_compensation(label, ctx->width_compensation_percent);
+    apply_text_width_compensation(label);
     lv_obj_clear_flag(label, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(label, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
@@ -2383,7 +2392,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   ui.low_target_lbl = create_range_target_label();
 
   ui.target_separator_lbl = lv_label_create(ui.target_row);
-  lv_label_set_text(ui.target_separator_lbl, "-");
+  lv_label_set_display_text(ui.target_separator_lbl, "-");
   lv_obj_set_style_text_color(ui.target_separator_lbl,
                               lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.target_separator_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
@@ -2399,7 +2408,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_set_style_text_color(ui.unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.unit_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->unit_font) lv_obj_set_style_text_font(ui.unit_lbl, ctx->unit_font, LV_PART_MAIN);
-  apply_width_compensation(ui.unit_lbl, ctx->width_compensation_percent);
+  apply_text_width_compensation(ui.unit_lbl);
 
   ui.status_lbl = lv_label_create(ui.panel);
   lv_obj_set_style_text_color(ui.status_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
@@ -2447,7 +2456,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
     control_modal_apply_pressed_fill(btn);
     lv_obj_t *label = lv_label_create(btn);
-    lv_label_set_text(label, icon);
+    lv_label_set_display_text(label, icon);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     const lv_font_t *toggle_icon_font = ctx->card_icon_font
       ? ctx->card_icon_font : ctx->icon_font;
@@ -2543,7 +2552,7 @@ inline void setup_climate_control_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
   if (icon_lbl) {
     if (show_icon && icon_font)
       lv_obj_set_style_text_font(icon_lbl, icon_font, LV_PART_MAIN);
-    lv_label_set_text(icon_lbl, (p.icon.empty() || p.icon == "Auto") ? find_icon("Thermostat") : find_icon(p.icon.c_str()));
+    lv_label_set_display_text(icon_lbl, (p.icon.empty() || p.icon == "Auto") ? find_icon("Thermostat") : find_icon(p.icon.c_str()));
     if (show_icon) {
       climate_layout_card_icon(icon_lbl);
       lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -2556,10 +2565,10 @@ inline void setup_climate_control_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
     else lv_obj_clear_flag(sensor_container, LV_OBJ_FLAG_HIDDEN);
     climate_layout_card_sensor(sensor_container);
   }
-  if (sensor_lbl) lv_label_set_text(sensor_lbl, "--");
-  if (unit_lbl) lv_label_set_text(unit_lbl, "");
+  if (sensor_lbl) lv_label_set_display_text(sensor_lbl, "--");
+  if (unit_lbl) lv_label_set_display_text(unit_lbl, "");
   if (text_lbl) {
-    lv_label_set_text(text_lbl, p.label.empty() ? espcontrol_i18n("Climate") : p.label.c_str());
+    lv_label_set_display_text(text_lbl, p.label.empty() ? espcontrol_i18n("Climate") : p.label.c_str());
     climate_layout_card_label(text_lbl);
   }
   apply_push_button_transition(btn);
@@ -2587,6 +2596,9 @@ inline ClimateControlCtx *create_climate_control_context(
       ? CLIMATE_DEFAULT_STEP_TENTHS
       : CLIMATE_WHOLE_NUMBER_STEP_TENTHS;
   ctx->options = p.options;
+  ctx->configured_tab_mask = espcontrol::climate::configured_climate_tab_mask(
+    normalize_climate_control_tabs_value(
+      cfg_option_value(p.options, CLIMATE_CONTROL_TABS_OPTION)));
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;
   ctx->tertiary_color = tertiary_color;
@@ -2615,9 +2627,13 @@ inline ClimateControlCtx *create_climate_control_context(
   return ctx;
 }
 
+#include "button_grid_climate_subscriptions.h"
+
 inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
   const uint32_t generation = ha_subscription_generation();
+  HaCallbackOwnerScope owner_scope(ctx);
+  ctx->subscription_generation = generation;
   auto active = [generation]() {
     return generation == ha_subscription_generation();
   };
@@ -2673,6 +2689,7 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         if (espcontrol::climate::capability_change_invalidates_pending(
               previous_kind, next_kind, climate_target_values_complete(ctx)))
           climate_cancel_temperature_send(ctx);
+        climate_mark_optional_subscription_needs(ctx);
         refresh();
       })
   );
@@ -2742,20 +2759,6 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         refresh();
       })
   );
-  auto subscribe_text = [ctx, refresh, active](const char *attr, std::string ClimateControlCtx::*field) {
-    ha_subscribe_attribute(
-      ctx->entity_id, std::string(attr),
-      std::function<void(esphome::StringRef)>(
-        [ctx, refresh, active, field](esphome::StringRef value) {
-          if (!active()) return;
-          ctx->*field = climate_lower(climate_trim(string_ref_limited(value, HA_SHORT_STATE_MAX_LEN)));
-          refresh();
-        })
-    );
-  };
-  subscribe_text("fan_mode", &ClimateControlCtx::fan_mode);
-  subscribe_text("swing_mode", &ClimateControlCtx::swing_mode);
-  subscribe_text("preset_mode", &ClimateControlCtx::preset_mode);
   auto subscribe_list = [ctx, refresh, active](const char *attr, std::vector<std::string> ClimateControlCtx::*field) {
     ha_subscribe_attribute(
       ctx->entity_id, std::string(attr),
@@ -2763,6 +2766,7 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         [ctx, refresh, active, field](esphome::StringRef value) {
           if (!active()) return;
           ctx->*field = climate_parse_options(value);
+          climate_mark_optional_subscription_needs(ctx);
           refresh();
         })
     );
@@ -2771,4 +2775,8 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   subscribe_list("fan_modes", &ClimateControlCtx::fan_modes);
   subscribe_list("swing_modes", &ClimateControlCtx::swing_modes);
   subscribe_list("preset_modes", &ClimateControlCtx::preset_modes);
+  climate_subscribe_optional_fields(
+    ctx, espcontrol::climate::configured_optional_subscription_mask(
+      ctx->configured_tab_mask));
+  climate_mark_optional_subscription_needs(ctx);
 }

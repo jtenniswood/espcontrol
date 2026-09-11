@@ -8,8 +8,7 @@
 namespace espcontrol::cards {
 
 inline bool climate_control_driver_matches(const Context &context) {
-  return !context.legacy_dispatch &&
-         context.runtime.driver == card_runtime::CardDriverId::CLIMATE;
+  return context.runtime.driver == card_runtime::CardDriverId::CLIMATE;
 }
 
 inline bool climate_control_driver_setup_visual(
@@ -28,8 +27,18 @@ inline bool climate_control_driver_attach_interaction(
 }
 
 inline bool climate_control_driver_refresh_layout(
-    BtnSlot &, const ParsedCfg &, const Context &context) {
-  return climate_control_driver_matches(context);
+    BtnSlot &slot, const ParsedCfg &config, const Context &context,
+    const DisplayProfile &display, int row_span, int col_span) {
+  if (!climate_control_driver_matches(context)) return false;
+  if (card_large_numbers_active_for_layout(config, row_span, col_span) &&
+      display_large_sensor_font(display)) {
+    apply_large_sensor_number_style(
+      slot, display_large_sensor_font(display),
+      display_large_sensor_unit_offset_percent(display));
+  } else {
+    apply_standard_sensor_number_style(slot, display);
+  }
+  return true;
 }
 
 inline bool climate_control_driver_cleanup(

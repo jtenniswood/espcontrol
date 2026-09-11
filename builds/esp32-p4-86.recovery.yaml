@@ -1,0 +1,3 @@
+packages:
+  factory: !include esp32-p4-86.factory.yaml
+  c6_recovery: !include ../common/device/esp32_c6_recovery.yaml

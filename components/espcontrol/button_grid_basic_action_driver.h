@@ -12,7 +12,6 @@ inline bool basic_action_driver_matches(const Context &context,
                                         const ParsedCfg &config) {
   using Driver = card_runtime::CardDriverId;
   using Type = card_runtime::CardTypeId;
-  if (context.legacy_dispatch) return false;
   switch (context.runtime.driver) {
     case Driver::TOGGLE:
     case Driver::ACTION:
@@ -122,7 +121,7 @@ inline void basic_action_driver_bind_toggle(
   }
 
   subscribe_toggle_state(
-    slot.btn, slot.icon_lbl, slot.sensor_container,
+    slot.btn, slot.icon_lbl, slot.sensor_container, slot.text_lbl,
     state.has_sensor, state.sensor_text_mode, state.has_icon_on,
     state.icon_off, state.icon_on, text_context, config.entity);
   if (*state.has_sensor) {

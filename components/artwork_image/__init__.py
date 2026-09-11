@@ -292,6 +292,18 @@ async def artwork_image_action_to_code(config, action_id, template_arg, args):
 async def to_code(config):
     image_format = IMAGE_FORMATS[config[CONF_FORMAT]]
     image_format.actions()
+    try:
+        from esphome.core import CORE
+
+        if CORE.is_esp32 and not CORE.using_arduino:
+            # The S3 background transfer attaches ESP-IDF's certificate bundle
+            # for every public HTTPS request, even when local TLS is explicitly
+            # permitted to use the separate insecure path below.
+            esp32.add_idf_sdkconfig_option(
+                "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE", True
+            )
+    except Exception as err:
+        _LOGGER.debug("Could not enable the ESP-IDF certificate bundle: %s", err)
     if config[CONF_ALLOW_INSECURE_LOCAL_URLS]:
         cg.add_define("USE_ARTWORK_IMAGE_INSECURE_LOCAL_URLS")
         try:

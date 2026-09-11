@@ -19,14 +19,15 @@ from device_profiles import (
     slot_devices as load_slot_devices,
     validate_manifest_data,
 )
+from product_model_v2 import load_product_model_v2, source_path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-CARD_CONTRACT_JSON = ROOT / "common" / "config" / "card_contract.json"
-ENTITY_NAMES_JSON = ROOT / "common" / "config" / "entity_names.json"
+CARD_CONTRACT_JSON = source_path("cardContract")
+ENTITY_NAMES_JSON = source_path("entityNames")
 ENTITY_IDENTIFIER_RE = re.compile(r"^[a-z0-9_]+$")
-ICONS_JSON = ROOT / "common" / "assets" / "icons.json"
-COMPATIBILITY_FIXTURES_JSON = ROOT / "compatibility" / "fixtures" / "product_compatibility.json"
+ICONS_JSON = source_path("icons")
+COMPATIBILITY_FIXTURES_JSON = source_path("compatibilityFixtures")
 PRODUCT_SNAPSHOT_JSON = ROOT / "product" / "product_snapshot.json"
 PRODUCT_SNAPSHOT_VERSION = 1
 
@@ -89,6 +90,8 @@ def path_error(path: str, message: str) -> str:
 
 
 def load_card_contract(path: Path = CARD_CONTRACT_JSON) -> dict[str, Any]:
+    if path.resolve() == CARD_CONTRACT_JSON.resolve():
+        return load_product_model_v2().card_contract_data()
     data = load_json(path)
     if not isinstance(data, dict):
         raise ProductSchemaError(f"{rel(path)} must contain a JSON object")

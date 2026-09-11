@@ -2,5 +2,30 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "timezone": "Europe/London",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github\\/esphome\\.env$/"
+      ],
+      "matchStrings": [
+        "ESPHOME_VERSION=(?<currentValue>\\d{4}\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "esphome/esphome",
+      "datasourceTemplate": "github-releases"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Check the shared ESPHome test and install version daily",
+      "matchPackageNames": [
+        "esphome/esphome"
+      ],
+      "schedule": [
+        "before 9am"
+      ]
+    }
   ]
 }

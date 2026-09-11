@@ -1,0 +1,82 @@
+name: Hermes Runner Migration Canary
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-docker:
+    name: Verify isolated Docker runtime
+    runs-on: [self-hosted, Linux, X64, hermes, espcontrol]
+    timeout-minutes: 10
+    env:
+      EXPECTED_RUNNER_SUFFIX: -hermes
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify dedicated HERMES placement and architecture
+        shell: bash
+        env:
+          ACTUAL_RUNNER_NAME: ${{ runner.name }}
+          ACTUAL_RUNNER_ARCH: ${{ runner.arch }}
+          ACTUAL_RUNNER_OS: ${{ runner.os }}
+        run: |
+          set -euo pipefail
+          printf 'runner=%s os=%s arch=%s kernel_arch=%s\n' "$ACTUAL_RUNNER_NAME" "$ACTUAL_RUNNER_OS" "$ACTUAL_RUNNER_ARCH" "$(uname -m)"
+          [[ "$ACTUAL_RUNNER_NAME" == *"$EXPECTED_RUNNER_SUFFIX" ]]
+          test "$ACTUAL_RUNNER_OS" = Linux
+          test "$ACTUAL_RUNNER_ARCH" = X64
+          test "$(uname -m)" = x86_64
+          test "${RUNNER_LABELS:-}" = "espcontrol,hermes"
+
+      - name: Verify bounded tmpfs workspace and cleanup hook
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_CLEANUP_WORKSPACE:-}" = true
+          test "${RUNNER_CLEANUP_TMP:-}" = true
+          test "${RUNNER_CLEANUP_DOCKER:-}" = false
+          test -x "${ACTIONS_RUNNER_HOOK_JOB_COMPLETED}"
+          fstype="$(findmnt -T "$GITHUB_WORKSPACE" -n -o FSTYPE)"
+          size_bytes="$(findmnt -T "$GITHUB_WORKSPACE" -n -b -o SIZE)"
+          printf 'workspace_fstype=%s workspace_size_bytes=%s cleanup_hook=%s\n' "$fstype" "$size_bytes" "$ACTIONS_RUNNER_HOOK_JOB_COMPLETED"
+          test "$fstype" = tmpfs
+          test "$size_bytes" -le 2147483648
+          residue="${GITHUB_WORKSPACE}/.hermes-canary-cleanup-${GITHUB_RUN_ID}"
+          printf '%s\n' "$GITHUB_RUN_ID" > "$residue"
+          test -f "$residue"
+
+      - name: Verify isolated DinD connectivity and production socket denial
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${DOCKER_HOST:-}" = "tcp://github-runner-docker:2375"
+          test ! -e /var/run/docker.sock
+          test ! -S /var/run/docker.sock
+          ! grep -Fq '/var/run/docker.sock' /proc/self/mountinfo
+          docker info --format 'docker_server={{.ServerVersion}} driver={{.Driver}} root={{.DockerRootDir}}'
+
+      - name: Build and run a disposable image on isolated DinD
+        shell: bash
+        run: |
+          set -euo pipefail
+          context="${RUNNER_TEMP}/hermes-canary-build-${GITHUB_RUN_ID}"
+          image="hermes-runner-canary:${GITHUB_RUN_ID}"
+          mkdir -p "$context"
+          trap 'docker image rm -f "$image" >/dev/null 2>&1 || true; rm -rf "$context"' EXIT
+          printf '%s\n' 'FROM alpine:3.22' 'RUN printf "canary-build-ok\\n" >/proof' 'CMD ["cat", "/proof"]' > "$context/Dockerfile"
+          docker build --pull -t "$image" "$context"
+          test "$(docker run --rm "$image")" = canary-build-ok
+          docker run --rm "$image" uname -m | grep -Eq '^(x86_64|amd64)$'
+
+      - name: Verify isolated Docker storage bound
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker_root="$(docker info --format '{{.DockerRootDir}}')"
+          fs_type="$(docker run --rm -v "${docker_root}:/probe:ro" alpine:3.22 stat -f -c %T /probe)"
+          printf 'docker_root=%s filesystem=%s\n' "$docker_root" "$fs_type"
+          test "$docker_root" = /var/lib/docker
+          test "$fs_type" = tmpfs

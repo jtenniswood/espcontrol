@@ -1,7 +1,36 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerImageCardTypes(): GlobalDescriptors {
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import { escHtml, iconSlug } from "../application/ui_primitives";
+import { WEB_UI_COLORS } from "../state/ui_tokens";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import type { ConfigImageOptionsFeature } from "../application/config_image_options";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+export function registerImageCardTypes(
+    registry: CardRegistry,
+    imageOptions: ConfigImageOptionsFeature,
+    fields: ControlsFieldsFeature,
+    cardUi: CardUiServices,
+): void {
+    const { renderPreview } = cardUi;
+    const { toggleRow } = fields;
+    const {
+        imageModalMode,
+        imageLabelEnabled,
+        imageIconEnabled,
+        normalizeImageOptions,
+        setImageLabelEnabled,
+        setImageIconEnabled,
+        setImageModalMode,
+    } = imageOptions;
     // Read-only Home Assistant camera/image entity card.
-    var IMAGE_CARD_METADATA: any = {
+    const IMAGE_CARD_METADATA: any = {
         entity: {
             label: "Camera Entity",
             idSuffix: "entity",
@@ -19,17 +48,6 @@ export function registerImageCardTypes(): GlobalDescriptors {
         ];
     }
     function renderImageLabelSettings(this: any, panel?: any, b?: any, helpers?: any) {
-        var labelToggle: any = helpers.toggleRow("Show Label", helpers.idPrefix + "image-label-toggle", imageLabelEnabled(b));
-        panel.appendChild(labelToggle.row);
-        var labelField: any = helpers.renderCardTextField(panel, b, helpers, {
-            text: {
-                label: "Label",
-                idSuffix: "image-label",
-                placeholder: "Uses entity name when blank",
-                bindName: "label",
-                rerender: true,
-            },
-        });
         var iconToggle: any = helpers.toggleRow("Show Icon", helpers.idPrefix + "image-icon-toggle", imageIconEnabled(b));
         panel.appendChild(iconToggle.row);
         if (imageIconEnabled(b) && (!b.icon || b.icon === "Auto"))
@@ -43,6 +61,17 @@ export function registerImageCardTypes(): GlobalDescriptors {
             onChange: function (this: any) { renderPreview(); },
         });
         iconField.classList.add("sp-cond-field");
+        var labelToggle: any = helpers.toggleRow("Show Label", helpers.idPrefix + "image-label-toggle", imageLabelEnabled(b));
+        panel.appendChild(labelToggle.row);
+        var labelField: any = helpers.renderCardTextField(panel, b, helpers, {
+            text: {
+                label: "Label",
+                idSuffix: "image-label",
+                placeholder: "Uses entity name when blank",
+                bindName: "label",
+                rerender: true,
+            },
+        });
         function syncLabelField(this: any) {
             labelField.field.hidden = !imageLabelEnabled(b);
         }
@@ -81,7 +110,7 @@ export function registerImageCardTypes(): GlobalDescriptors {
             helpers.saveField("options", b.options);
         });
     }
-    registerButtonType("image", {
+    registry.register("image", {
         label: function (this: any) { return cardContractCardLabel("image"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("image"); },
         pickerKey: function (this: any) { return cardContractPickerKey("image"); },
@@ -115,7 +144,9 @@ export function registerImageCardTypes(): GlobalDescriptors {
                 b.label = "";
             helpers.renderCardEntityField(panel, b, helpers, IMAGE_CARD_METADATA);
             renderImageLabelSettings(panel, b, helpers);
-            renderImageModalSettings(panel, b, helpers);
+            var modalSettingsDisclosure: any = helpers.disclosureSection("Modal Settings", helpers.idPrefix + "image-modal-settings", false);
+            renderImageModalSettings(modalSettingsDisclosure.section, b, helpers);
+            panel.appendChild(modalSettingsDisclosure.panel);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             var tertiaryColor: any = WEB_UI_COLORS.tertiary;
@@ -138,10 +169,4 @@ export function registerImageCardTypes(): GlobalDescriptors {
             };
         },
     });
-    return {
-        "IMAGE_CARD_METADATA": liveGlobal(() => IMAGE_CARD_METADATA, (value?: any) => { IMAGE_CARD_METADATA = value; }),
-        "imageModalModeOptions": staticGlobal(imageModalModeOptions),
-        "renderImageLabelSettings": staticGlobal(renderImageLabelSettings),
-        "renderImageModalSettings": staticGlobal(renderImageModalSettings),
-    };
 }

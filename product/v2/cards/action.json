@@ -1,0 +1,71 @@
+{
+  "label": "Action",
+  "allowInSubpage": true,
+  "domains": ["scene", "script", "automation", "button", "input_button", "input_boolean", "number", "input_number", "input_select", "select"],
+  "options": [
+    { "name": "large_numbers", "label": "Large State Numbers", "kind": "flag", "omitDefault": true, "applicabilityHook": "action_large_numbers_supported" },
+    { "name": "state_entity", "label": "State Entity", "kind": "text", "hidden": true, "docsHidden": true, "omitDefault": true },
+    {
+      "name": "state_unit", "label": "State Unit", "kind": "text", "hidden": true, "docsHidden": true, "omitDefault": true,
+      "applicability": [
+        { "source": "option", "name": "state_entity", "operator": "present" },
+        { "source": "option", "name": "state_precision", "operator": "in", "value": ["icon", "text"], "negate": true }
+      ]
+    },
+    {
+      "name": "state_precision", "label": "State Precision", "kind": "choice", "values": ["", "0", "1", "2", "icon", "text"],
+      "defaultValue": "", "hidden": true, "docsHidden": true, "omitDefault": true,
+      "applicability": [{ "source": "option", "name": "state_entity", "operator": "present" }]
+    },
+    {
+      "name": "confirmation_required", "label": "Confirmation Required", "kind": "flag", "storage": ["confirm_on"], "omitDefault": true,
+      "applicability": [{ "source": "field", "name": "sensor", "operator": "equals", "value": "script.turn_on" }]
+    },
+    {
+      "name": "script_fields", "label": "Fields", "kind": "text", "omitDefault": true,
+      "applicability": [{ "source": "field", "name": "sensor", "operator": "equals", "value": "script.turn_on" }]
+    },
+    {
+      "name": "confirm_message", "label": "Message", "kind": "text", "defaultValue": "Run this script?", "omitDefault": true,
+      "applicability": [
+        { "source": "field", "name": "sensor", "operator": "equals", "value": "script.turn_on" },
+        { "source": "option", "name": "confirm_on", "operator": "present" }
+      ]
+    },
+    {
+      "name": "confirm_yes", "label": "Confirm Button", "kind": "text", "defaultValue": "Yes", "omitDefault": true,
+      "applicability": [
+        { "source": "field", "name": "sensor", "operator": "equals", "value": "script.turn_on" },
+        { "source": "option", "name": "confirm_on", "operator": "present" }
+      ]
+    },
+    {
+      "name": "confirm_no", "label": "Cancel Button", "kind": "text", "defaultValue": "No", "omitDefault": true,
+      "applicability": [
+        { "source": "field", "name": "sensor", "operator": "equals", "value": "script.turn_on" },
+        { "source": "option", "name": "confirm_on", "operator": "present" }
+      ]
+    }
+  ],
+  "normalization": {
+    "fields": {
+      "entity": { "policy": "keep" },
+      "label": { "policy": "keep" },
+      "icon": { "policy": "hook", "hook": "normalize_action_fields" },
+      "icon_on": { "policy": "hook", "hook": "normalize_action_fields" },
+      "sensor": { "policy": "hook", "hook": "normalize_action_fields" },
+      "unit": { "policy": "hook", "hook": "normalize_action_fields" },
+      "type": { "policy": "hook", "hook": "normalize_action_fields" },
+      "precision": { "policy": "hook", "hook": "normalize_action_fields" },
+      "options": { "policy": "hook", "hook": "normalize_action_options" }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": ["state_entity", "state_unit", "state_precision", "large_numbers", "script_fields", "confirm_on", "confirm_message", "confirm_yes", "confirm_no"],
+    "optionHook": "normalize_action_options",
+    "migrationActions": ["legacy_local_action", "legacy_option_select", "legacy_vacuum_start", "legacy_vacuum_dock"]
+  },
+  "default": {
+    "entity": "", "label": "", "icon": "Flash", "icon_on": "Auto",
+    "sensor": "scene.turn_on", "unit": "", "type": "action", "precision": "", "options": ""
+  }
+}

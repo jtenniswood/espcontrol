@@ -1,0 +1,31 @@
+{
+  "label": "Vacuum",
+  "allowInSubpage": true,
+  "domains": ["vacuum"],
+  "options": [
+    { "name": "vacuum_mode", "label": "Type", "kind": "choice", "values": ["status", "start_stop", "dock", "pause_resume", "clean_spot", "locate", "clean_area"], "defaultValue": "start_stop", "storageField": "sensor", "omitDefault": false }
+  ],
+  "normalization": {
+    "fields": {
+      "entity": { "policy": "keep" }, "label": { "policy": "keep" },
+      "icon": { "policy": "hook", "hook": "normalize_vacuum_fields" },
+      "icon_on": { "policy": "default", "value": "Auto" },
+      "sensor": { "policy": "allowed", "values": ["status", "start_stop", "dock", "pause_resume", "clean_spot", "locate", "clean_area"], "aliases": { "vacuum.start": "start_stop", "vacuum.return_to_base": "dock" }, "fallback": "start_stop" },
+      "unit": { "policy": "hook", "hook": "normalize_vacuum_fields" },
+      "type": { "policy": "default", "value": "vacuum" }, "precision": { "policy": "clear" },
+      "options": { "policy": "clear" }
+    },
+    "unknownOptions": "drop", "canonicalOptionOrder": [],
+    "migrationActions": ["legacy_vacuum_start", "legacy_vacuum_dock"],
+    "hookData": {
+      "normalize_vacuum_fields": {
+        "preserveUnitForModes": ["clean_area"],
+        "defaultIcons": { "dock": "Robot Vacuum Variant", "clean_spot": "Vacuum", "locate": "Robot Vacuum Alert", "clean_area": "Vacuum Outline", "default": "Robot Vacuum" }
+      }
+    }
+  },
+  "default": {
+    "entity": "", "label": "", "icon": "Robot Vacuum", "icon_on": "Auto",
+    "sensor": "start_stop", "unit": "", "type": "vacuum", "precision": "", "options": ""
+  }
+}

@@ -44,5 +44,4 @@ export function runCardContractTests(): void {
     sensor: "cover_art",
   });
   equal(media?.driver, "media_cover_art", "mode-aware Media driver resolution");
-  equal(cardContractCard("todo"), null, "retired Todo card stays outside the public contract");
 }

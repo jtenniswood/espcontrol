@@ -1,0 +1,44 @@
+{
+  "label": "Weather",
+  "allowInSubpage": true,
+  "domains": ["weather"],
+  "options": [
+    {
+      "name": "weather_mode",
+      "label": "Type",
+      "kind": "choice",
+      "values": ["", "today", "tomorrow"],
+      "defaultValue": "",
+      "storageField": "precision",
+      "omitDefault": true
+    },
+    {
+      "name": "large_numbers",
+      "label": "Large Temperature Numbers",
+      "kind": "flag",
+      "omitDefault": true,
+      "supportedWhen": { "precision": ["today", "tomorrow"] }
+    }
+  ],
+  "normalization": {
+    "fields": {
+      "entity": { "policy": "keep" },
+      "label": { "policy": "hook", "hook": "normalize_weather_fields" },
+      "icon": { "policy": "keep" },
+      "icon_on": { "policy": "keep" },
+      "sensor": { "policy": "clear" },
+      "unit": { "policy": "keep" },
+      "type": { "policy": "default", "value": "weather" },
+      "precision": { "policy": "hook", "hook": "normalize_weather_fields" },
+      "options": { "policy": "hook", "hook": "normalize_weather_options" }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": ["large_numbers"],
+    "migrationActions": ["legacy_weather_forecast"],
+    "optionHook": "normalize_weather_options"
+  },
+  "default": {
+    "entity": "", "label": "", "icon": "Auto", "icon_on": "Auto",
+    "sensor": "", "unit": "", "type": "weather", "precision": "", "options": ""
+  }
+}

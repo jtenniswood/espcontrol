@@ -16,6 +16,12 @@ export interface SelectedGridMove {
   readonly grid: number[];
 }
 
+export interface GridSlotResize {
+  readonly accepted: boolean;
+  readonly grid: number[];
+  readonly sizes: SlotSizeMap;
+}
+
 export function resolveSpanPosition(
   grid: readonly number[],
   sizes: SlotSizeMap,
@@ -111,6 +117,72 @@ export function placeOrderedGridEntries(
     placeSlotAt(grid, slot, place, targetSize, gridCols);
   }
   return grid;
+}
+
+export function resizeGridSlot(
+  sourceGrid: readonly number[],
+  sourceSizes: SlotSizeMap,
+  slot: number,
+  pos: number,
+  targetSize: number,
+  maxSlots: number,
+  gridCols: number,
+  allowCardDisplacement: boolean,
+): GridSlotResize {
+  const grid = sourceGrid.slice(0, maxSlots);
+  while (grid.length < maxSlots) grid.push(0);
+  const sizes = { ...sourceSizes };
+  const currentSize = sizes[String(slot)] || 1;
+
+  if (!sizeFitsAt(pos, targetSize, maxSlots, gridCols)) {
+    return { accepted: false, grid: sourceGrid.slice(), sizes: { ...sourceSizes } };
+  }
+
+  const targetCells = coveredCells(pos, targetSize, maxSlots, gridCols, true);
+  const targetCellSet = new Set(targetCells);
+  const displaced: Array<{ slot: number; pos: number; size: number; cells: number[] }> = [];
+  for (let anchor = 0; anchor < maxSlots; anchor += 1) {
+    const displacedSlot = sourceGrid[anchor] ?? 0;
+    if (!(displacedSlot > 0 || displacedSlot === -2) || displacedSlot === slot) continue;
+    const displacedSize = sizes[String(displacedSlot)] || 1;
+    const displacedCells = coveredCells(anchor, displacedSize, maxSlots, gridCols, true);
+    if (!displacedCells.some((cell) => targetCellSet.has(cell))) continue;
+    if (displacedSlot > 0 && !allowCardDisplacement) {
+      return { accepted: false, grid: sourceGrid.slice(), sizes: { ...sourceSizes } };
+    }
+    displaced.push({ slot: displacedSlot, pos: anchor, size: displacedSize, cells: displacedCells });
+  }
+
+  for (const cell of coveredCells(pos, currentSize, maxSlots, gridCols, true)) grid[cell] = 0;
+  for (const item of displaced) {
+    for (const cell of item.cells) grid[cell] = 0;
+  }
+
+  placeSlotAt(grid, slot, pos, targetSize, gridCols);
+  const orderedDisplaced = displaced.slice().sort((a, b) => {
+    const aArea = coveredCells(0, a.size, maxSlots, gridCols, true).length;
+    const bArea = coveredCells(0, b.size, maxSlots, gridCols, true).length;
+    return bArea - aArea || a.pos - b.pos;
+  });
+  const placeDisplaced = (index: number, plannedGrid: number[]): number[] | null => {
+    if (index >= orderedDisplaced.length) return plannedGrid;
+    const item = orderedDisplaced[index]!;
+    for (let offset = 1; offset <= maxSlots; offset += 1) {
+      const candidate = (item.pos + offset) % maxSlots;
+      if (!canPlaceSlotAt(plannedGrid, candidate, item.size, maxSlots, gridCols)) continue;
+      const nextGrid = plannedGrid.slice();
+      placeSlotAt(nextGrid, item.slot, candidate, item.size, gridCols);
+      const placed = placeDisplaced(index + 1, nextGrid);
+      if (placed) return placed;
+    }
+    return null;
+  };
+  const plannedGrid = placeDisplaced(0, grid);
+  if (!plannedGrid) return { accepted: false, grid: sourceGrid.slice(), sizes: { ...sourceSizes } };
+
+  if (targetSize === 1) delete sizes[String(slot)];
+  else sizes[String(slot)] = targetSize;
+  return { accepted: true, grid: plannedGrid, sizes };
 }
 
 export function moveSelectedGridEntries(

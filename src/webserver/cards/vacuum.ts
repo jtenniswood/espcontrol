@@ -1,84 +1,43 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 import {
-    normalizeSavedConfigVacuumIconOn,
-    normalizeSavedConfigVacuumOptions,
-    normalizeSavedConfigVacuumPrecision,
-    normalizeSavedConfigVacuumSensor,
-} from "../generated/saved_config_vacuum";
-export function registerVacuumCardTypes(): GlobalDescriptors {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import { iconSlug } from "../application/ui_primitives";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import {
+    applyEntityModeCardModeChange,
+} from "./entity_mode_card";
+import type { ConfigRobotCardOptionsFeature } from "../application/config_robot_card_options";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+
+export function registerVacuumCardTypes(
+    registry: CardRegistry,
+    robotOptions: ConfigRobotCardOptionsFeature,
+    fields: ControlsFieldsFeature,
+    cardUi: CardUiServices,
+): void {
+    const { renderButtonSettings } = cardUi;
+    const { cardBadgeLabelHtml } = fields;
+    const {
+        vacuumModes,
+        normalizeVacuumConfig,
+        normalizeVacuumMode,
+        vacuumModeBadgeIcon,
+        vacuumModeDefaultIcon,
+        vacuumModeNeedsArea,
+        vacuumUsesDefaultIcon,
+    } = robotOptions;
     // Vacuum card: touchscreen-friendly controls for Home Assistant vacuum entities.
-    var VACUUM_CARD_MODES: any = [
-        ["status", "Status"],
-        ["start_stop", "Start / Stop"],
-        ["dock", "Dock"],
-        ["pause_resume", "Pause / Resume"],
-        ["clean_spot", "Spot Clean"],
-        ["locate", "Locate"],
-        ["clean_area", "Clean Area"],
-    ];
-    function vacuumModeValues(this: any) {
-        return entityModeValues("vacuum", "vacuum_mode", VACUUM_CARD_MODES);
-    }
-    function normalizeVacuumMode(this: any, mode?: any) {
-        return normalizeSavedConfigVacuumSensor(String(mode || ""));
-    }
-    function vacuumModeNeedsArea(this: any, mode?: any) {
-        return normalizeVacuumMode(mode) === "clean_area";
-    }
-    function vacuumModeDefaultIcon(this: any, mode?: any) {
-        mode = normalizeVacuumMode(mode);
-        if (mode === "dock")
-            return "Robot Vacuum Variant";
-        if (mode === "clean_spot")
-            return "Vacuum";
-        if (mode === "locate")
-            return "Robot Vacuum Alert";
-        if (mode === "clean_area")
-            return "Vacuum Outline";
-        return "Robot Vacuum";
-    }
-    function vacuumModeBadgeIcon(this: any, mode?: any) {
-        mode = normalizeVacuumMode(mode);
-        if (mode === "dock")
-            return "home-import-outline";
-        if (mode === "pause_resume")
-            return "play-pause";
-        if (mode === "clean_spot")
-            return "vacuum";
-        if (mode === "locate")
-            return "map-marker-question";
-        if (mode === "clean_area")
-            return "map-marker-path";
-        return "robot-vacuum";
-    }
-    function vacuumUsesDefaultIcon(this: any, icon?: any) {
-        return entityModeCardUsesDefaultIcon(icon, [
-            "Robot Vacuum",
-            "Robot Vacuum Alert",
-            "Robot Vacuum Off",
-            "Robot Vacuum Variant",
-            "Robot Vacuum Variant Alert",
-            "Robot Vacuum Variant Off",
-            "Vacuum",
-            "Vacuum Outline",
-        ]);
-    }
-    function normalizeVacuumConfig(this: any, b?: any) {
-        if (!b)
-            return;
-        b.sensor = normalizeSavedConfigVacuumSensor(String(b.sensor || ""));
-        b.unit = vacuumModeNeedsArea(b.sensor) ? (b.unit || "") : "";
-        b.precision = normalizeSavedConfigVacuumPrecision(String(b.precision || ""));
-        b.options = normalizeSavedConfigVacuumOptions(String(b.options || ""));
-        b.icon_on = normalizeSavedConfigVacuumIconOn(String(b.icon_on || ""));
-        if (!b.icon || b.icon === "Auto")
-            b.icon = vacuumModeDefaultIcon(b.sensor);
-    }
-    var VACUUM_CARD_METADATA: any = {
+    const VACUUM_CARD_METADATA: any = {
         mode: {
             label: "Type",
             idSuffix: "vacuum-type",
-            options: VACUUM_CARD_MODES,
+            options: vacuumModes,
             value: function (this: any, b?: any) {
                 return normalizeVacuumMode(b.sensor);
             },
@@ -99,7 +58,7 @@ export function registerVacuumCardTypes(): GlobalDescriptors {
             rerender: true,
         },
     };
-    registerButtonType("vacuum", {
+    registry.register("vacuum", {
         label: function (this: any) { return cardContractCardLabel("vacuum"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("vacuum"); },
         pickerKey: function (this: any) { return cardContractPickerKey("vacuum"); },
@@ -179,15 +138,4 @@ export function registerVacuumCardTypes(): GlobalDescriptors {
             };
         },
     });
-    return {
-        "VACUUM_CARD_MODES": liveGlobal(() => VACUUM_CARD_MODES, (value?: any) => { VACUUM_CARD_MODES = value; }),
-        "vacuumModeValues": staticGlobal(vacuumModeValues),
-        "normalizeVacuumMode": staticGlobal(normalizeVacuumMode),
-        "vacuumModeNeedsArea": staticGlobal(vacuumModeNeedsArea),
-        "vacuumModeDefaultIcon": staticGlobal(vacuumModeDefaultIcon),
-        "vacuumModeBadgeIcon": staticGlobal(vacuumModeBadgeIcon),
-        "vacuumUsesDefaultIcon": staticGlobal(vacuumUsesDefaultIcon),
-        "normalizeVacuumConfig": staticGlobal(normalizeVacuumConfig),
-        "VACUUM_CARD_METADATA": liveGlobal(() => VACUUM_CARD_METADATA, (value?: any) => { VACUUM_CARD_METADATA = value; }),
-    };
 }

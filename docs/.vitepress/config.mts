@@ -81,7 +81,15 @@ const screenProducts: Record<string, Record<string, string>> = {
   },
   'screens/jc1060p470.md': {
     name: 'Guition JC1060P470',
-    model: 'JC1060P470',
+    model: 'JC1060P470 / new panel revision',
+    size: '7 inches',
+    resolution: '1024 x 600',
+    processor: 'ESP32-P4',
+  },
+  'screens/jc1060p470-v2.md': {
+    name: 'Guition JC1060P470 V2',
+    brand: 'Guition',
+    model: 'JC1060P470 V2',
     size: '7 inches',
     resolution: '1024 x 600',
     processor: 'ESP32-P4',
@@ -163,7 +171,7 @@ const faqItems = [
   {
     question: 'How Many Cards Can I Have?',
     answer:
-      'The home screen supports 20 cards on both JC8012P4A1 rear-case revisions, 15 on JC1060P470, 6 on JC4880P443, and 9 on 4848S040 or the ESP32-P4 86 Panel, with more available through subpages.',
+      'The home screen supports 20 cards on both JC8012P4A1 rear-case revisions, 15 on both JC1060P470 panel revisions, 6 on JC4880P443, and 9 on 4848S040 or the ESP32-P4 86 Panel, with more available through subpages.',
   },
   {
     question: 'What Is a Subpage?',
@@ -178,7 +186,7 @@ const faqItems = [
   {
     question: 'Which Panels Are Supported?',
     answer:
-      'EspControl supports both Guition JC8012P4A1 rear-case revisions, JC1060P470, JC4880P443, 4848S040, and ESP32-P4 86 Panel touchscreens.',
+      'EspControl supports both Guition JC8012P4A1 rear-case revisions, both JC1060P470 panel revisions, JC4880P443, 4848S040, and ESP32-P4 86 Panel touchscreens.',
   },
   {
     question: 'Does the Panel Work with Other Smart Home Platforms?',
@@ -395,7 +403,6 @@ export default defineConfig({
           { text: 'Overview', link: '/' },
           { text: 'Install', link: '/getting-started/install' },
           { text: 'Enable Actions', link: '/getting-started/home-assistant-actions' },
-          { text: 'Manual Setup', link: '/getting-started/manual-esphome-setup' },
           { text: 'Troubleshooting', link: '/getting-started/troubleshooting' },
         ],
       },
@@ -427,6 +434,7 @@ export default defineConfig({
           { text: 'Climate', link: '/card-types/climate' },
           { text: 'Cover', link: '/card-types/covers' },
           { text: 'Date & Time', link: '/card-types/calendar' },
+          { text: "Timer", link: "/card-types/timers" },
           { text: 'Doors & Windows', link: '/card-types/doors-windows' },
           { text: 'Fans', link: '/card-types/fans' },
           { text: 'Garage Door', link: '/card-types/garage-doors' },
@@ -448,6 +456,7 @@ export default defineConfig({
           { text: 'Trigger', link: '/card-types/buttons' },
           { text: 'Weather', link: '/card-types/weather' },
           { text: 'Webhook', link: '/card-types/webhooks' },
+          { text: 'Wifi Share', link: '/card-types/wifi-share' },
           { text: 'World Clock', link: '/card-types/timezones' },
         ],
       },
@@ -476,15 +485,17 @@ export default defineConfig({
         ],
       },
       {
-        text: 'Reference',
+        text: 'Advanced',
         items: [
+          { text: 'Manual Setup', link: '/getting-started/manual-esphome-setup' },
           { text: 'Contributing', link: '/reference/contributing' },
           { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
+          { text: 'Wifi Issues', link: '/getting-started/c6-recovery' },
           { text: 'Icon Reference', link: '/reference/icons' },
           { text: 'Language Support', link: '/reference/language-support' },
           { text: 'Request Device Support', link: '/reference/request-device-support' },
           { text: 'FAQ', link: '/reference/faq' },
-          { text: 'Roadmap', link: '/reference/roadmap' },
+          { text: 'Privacy Policy', link: '/reference/privacy' },
         ],
       },
     ],

@@ -172,6 +172,7 @@ export interface PanelSettings {
   temperature_unit: string;
   clock_bar: boolean;
   clock_bar_time?: boolean;
+  clock_bar_night_mode?: boolean;
   network_status_icon: boolean;
   battery_status?: boolean;
   voice_services?: boolean;

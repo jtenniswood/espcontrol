@@ -24,6 +24,7 @@ class DeviceMatrixError(RuntimeError):
 
 
 BUILD_FILE_SUFFIXES = ("yaml", "factory.yaml")
+RECOVERY_CHIP_FAMILY = "ESP32-P4"
 
 
 def load_manifest(path: Path = DEVICE_MANIFEST) -> dict[str, Any]:
@@ -47,9 +48,14 @@ def validate_matrix_build_files(
 ) -> None:
     root = root_for_manifest(manifest_path)
     missing: list[str] = []
-    for slug in profiles:
+    for slug, profile in profiles.items():
         for suffix in BUILD_FILE_SUFFIXES:
             path = root / "builds" / f"{slug}.{suffix}"
+            if not path.is_file():
+                missing.append(str(path.relative_to(root)))
+        chip = profile.get("firmware", {}).get("build", {}).get("chip")
+        if chip == RECOVERY_CHIP_FAMILY:
+            path = root / "builds" / f"{slug}.recovery.yaml"
             if not path.is_file():
                 missing.append(str(path.relative_to(root)))
     if missing:
@@ -63,17 +69,26 @@ def release_matrix(profiles: dict[str, dict[str, Any]]) -> dict[str, list[dict[s
                 "device": slug,
                 "slug": slug,
                 "chip": profile["firmware"]["build"]["chip"],
+                "recovery": profile["firmware"]["build"]["chip"] == RECOVERY_CHIP_FAMILY,
             }
             for slug, profile in profiles.items()
         ]
     }
 
 
-def nightly_matrix(profiles: dict[str, dict[str, Any]]) -> dict[str, list[dict[str, str]]]:
-    return {"include": [{"slug": slug} for slug in profiles.keys()]}
+def nightly_matrix(profiles: dict[str, dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    return {
+        "include": [
+            {
+                "slug": slug,
+                "recovery": profile["firmware"]["build"]["chip"] == RECOVERY_CHIP_FAMILY,
+            }
+            for slug, profile in profiles.items()
+        ]
+    }
 
 
-def pr_matrix(profiles: dict[str, dict[str, Any]]) -> dict[str, list[dict[str, str]]]:
+def pr_matrix(profiles: dict[str, dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     return nightly_matrix(profiles)
 
 

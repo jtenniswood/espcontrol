@@ -72,6 +72,17 @@ def firmware_modal_errors(firmware_dir: Path, root: Path) -> list[str]:
             errors.append(
                 "components/espcontrol/button_grid_sliders.h: keep the cover modal back button above tab and slider controls"
             )
+
+    wifi_qr_path = firmware_dir / "button_grid_wifi_qr.h"
+    if wifi_qr_path.exists():
+        text = wifi_qr_path.read_text(encoding="utf-8")
+        if (
+            "control_modal_calc_layout(modal_width_compensation_percent);" not in text
+            or "ui.tab_row, layout, tabs_layout, modal_width_compensation_percent);" not in text
+        ):
+            errors.append(
+                "components/espcontrol/button_grid_wifi_qr.h: apply the active display width compensation to the Wifi modal"
+            )
     return errors
 
 
@@ -79,6 +90,7 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
     firmware_dir = root / "components" / "espcontrol"
     backlight_header_path = firmware_dir / "backlight.h"
     modal_path = firmware_dir / "button_grid_modal.h"
+    modal_service_path = firmware_dir / "control_modal_service.h"
     navigation_path = firmware_dir / "button_grid_navigation.h"
     grid_path = firmware_dir / "button_grid_grid.h"
     image_path = firmware_dir / "button_grid_image.h"
@@ -102,17 +114,24 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
         errors.append("components/espcontrol/button_grid_modal.h: provide shared modal lifecycle helpers")
     else:
         text = modal_path.read_text(encoding="utf-8")
+        modal_state_text = (
+            modal_service_path.read_text(encoding="utf-8")
+            if modal_service_path.exists()
+            else text
+        )
         if (
-            "enum class ControlModalDismissPolicy" not in text
+            "enum class ControlModalDismissPolicy" not in modal_state_text
             or "control_modal_force_close_active" not in text
             or "control_modal_close_active_internal(false)" not in text
             or "control_modal_close_for_display_takeover" not in text
-            or "PRESERVE_DURING_DISPLAY_TAKEOVER" not in text
+            or "PRESERVE_DURING_DISPLAY_TAKEOVER" not in modal_state_text
         ):
             errors.append(
                 "components/espcontrol/button_grid_modal.h: centralize modal dismissal policy for display takeover"
             )
-        kind_enum = re.search(r"enum class ControlModalKind\s*\{(?P<body>.*?)\};", text, re.S)
+        kind_enum = re.search(
+            r"enum class ControlModalKind\s*\{(?P<body>.*?)\};", modal_state_text, re.S
+        )
         definition = re.search(
             r"inline\s+ControlModalDefinition\s+control_modal_definition\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
             text,
@@ -428,6 +447,7 @@ def firmware_subpage_modal_wiring_errors(root: Path) -> list[str]:
 
 def firmware_light_control_brightness_errors(root: Path) -> list[str]:
     path = root / "components" / "espcontrol" / "button_grid_sliders.h"
+    modal_path = root / "components" / "espcontrol" / "button_grid_modal.h"
     errors: list[str] = []
 
     if not path.exists():
@@ -446,10 +466,12 @@ def firmware_light_control_brightness_errors(root: Path) -> list[str]:
         errors.append("components/espcontrol/button_grid_sliders.h: update brightness slider immediately when the light power button is used")
     if (
         "bool turn_on = !ui.active->on;" not in text
-        or "lv_obj_add_event_cb(ui.power_group" not in text
-        or "lv_obj_clear_flag(btn, LV_OBJ_FLAG_CLICKABLE);" not in text
+        or "ControlModalBinaryToggle power_toggle;" not in text
+        or "ui.power_group, ui.power_on_btn, ui.power_off_btn, &ui.power_toggle" not in text
+        or not modal_path.exists()
+        or "inline void control_modal_setup_binary_toggle(" not in modal_path.read_text(encoding="utf-8")
     ):
-        errors.append("components/espcontrol/button_grid_sliders.h: toggle light power from the whole modal control")
+        errors.append("components/espcontrol: use the shared full-area binary toggle for modal controls")
 
     return errors
 
@@ -465,7 +487,7 @@ def firmware_cover_control_tab_errors(root: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     if "bool show_tab_bar = visible_tabs.count > 1;" not in text:
         errors.append("components/espcontrol/button_grid_sliders.h: hide cover modal tabs when only one control is visible")
-    if "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);" not in text:
+    if "ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);" not in text:
         errors.append("components/espcontrol/button_grid_sliders.h: keep cover modal tab row hidden through the shared tab layout helper")
     if "control_modal_calc_content_layout(\n    layout, tabs_layout, show_tab_bar, 160)" not in text:
         errors.append("components/espcontrol/button_grid_sliders.h: position cover modal content with the shared content recipe")
@@ -488,7 +510,7 @@ def firmware_light_control_tab_errors(root: Path) -> list[str]:
         errors.append("components/espcontrol/button_grid_sliders.h: keep light modal tab visibility helper")
     if text.count("bool show_tab_bar = visible_tabs.count > 1;") < 2:
         errors.append("components/espcontrol/button_grid_sliders.h: hide light and cover modal tabs when only one control is visible")
-    if text.count("control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);") < 2:
+    if text.count("ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);") < 2:
         errors.append("components/espcontrol/button_grid_sliders.h: keep single-tab modal rows hidden through the shared tab layout helper")
     if text.count("control_modal_calc_content_layout(\n    layout, tabs_layout, show_tab_bar, 160)") < 2:
         errors.append("components/espcontrol/button_grid_sliders.h: let single-control modals use the shared content recipe")
@@ -575,21 +597,21 @@ def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
     required_by_file = {
         "button_grid_climate.h": (
             "return control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);",
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);",
+            "ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);",
             "control_modal_layout_tab_button(tab_btn, layout, tabs_layout, i, active);",
             "return control_modal_shared_tab_content_gap(layout);",
             "ui.tab_row = control_modal_create_tab_row(ui.panel);",
         ),
         "button_grid_fan.h": (
             "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);",
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);",
+            "ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);",
             "control_modal_layout_tab_button(tab_btn, layout, tabs_layout, i, active);",
             "control_modal_calc_content_layout(",
             "ui.tab_row = control_modal_create_tab_row(ui.panel);",
         ),
         "button_grid_media.h": (
-            "control_modal_calc_tab_layout(layout, MEDIA_CONTROL_TAB_COUNT, true)",
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);",
+            "control_modal_calc_tab_layout(layout, media_control_tab_count, true)",
+            "ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);",
             "control_modal_layout_tab_button(tabs[i].btn, layout, tabs_layout, i, active);",
             "control_modal_calc_content_layout(",
             "ui.tab_row = control_modal_create_tab_row(ui.panel);",
@@ -597,7 +619,7 @@ def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
     }
     sliders_required = (
         "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);",
-        "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);",
+        "ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);",
         "control_modal_layout_tab_button(",
         "control_modal_calc_content_layout(",
         "ui.tab_row = control_modal_create_tab_row(ui.panel);",
@@ -624,7 +646,7 @@ def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
                 break
         if (
             text.count("ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);") < 2
-            or text.count("control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);") < 2
+            or text.count("ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);") < 2
             or text.count("control_modal_calc_content_layout(") < 2
             or text.count("ui.tab_row = control_modal_create_tab_row(ui.panel);") < 2
         ):
@@ -685,6 +707,75 @@ def firmware_media_modal_progress_layout_errors(root: Path) -> list[str]:
             break
 
     return errors
+
+
+def firmware_media_modal_power_tab_errors(root: Path) -> list[str]:
+    path = root / "components" / "espcontrol" / "button_grid_media.h"
+    if not path.exists():
+        return ["components/espcontrol/button_grid_media.h: keep the conditional media Power tab"]
+
+    text = path.read_text(encoding="utf-8")
+    required = (
+        "POWER = 4",
+        "media_control_power_supported",
+        "media_control_ensure_power_tab_button",
+        "media_control_create_power_tab_content",
+        "media_control_refresh_power",
+        "previous_power_supported != power_supported",
+        "ui.tab == MediaControlTab::POWER && !media_control_power_supported(ctx)",
+        "ui.tab = MediaControlTab::CONTROLS",
+        "media_control_tab_count(",
+        "MediaControlTabLayout tabs[5]",
+    )
+    if any(needle not in text for needle in required):
+        return [
+            "components/espcontrol/button_grid_media.h: keep the conditional media Power tab, dynamic relayout, and safe Controls fallback"
+        ]
+    return []
+
+
+def firmware_media_modal_playback_mode_errors(root: Path) -> list[str]:
+    path = root / "components" / "espcontrol" / "button_grid_media.h"
+    if not path.exists():
+        return [
+            "components/espcontrol/button_grid_media.h: keep conditional Shuffle and Repeat modal controls"
+        ]
+
+    text = path.read_text(encoding="utf-8")
+    required = (
+        "lv_obj_t *shuffle_btn = nullptr;",
+        "lv_obj_t *repeat_btn = nullptr;",
+        "lv_obj_t *repeat_icon_lbl = nullptr;",
+        "if (media_control_shuffle_supported(ctx))",
+        "if (media_control_repeat_supported(ctx))",
+        'find_icon("Shuffle")',
+        '"Repeat Once"',
+        "media_control_refresh_playback_modes(ctx)",
+        "media_control_style_playback_mode_button",
+        "ctx->available && ctx->shuffle_known",
+        "ctx->available && known",
+        "previous_shuffle_supported != shuffle_supported",
+        "previous_repeat_supported != repeat_supported",
+        "media_control_clear_tab_content();",
+        "ui.shuffle_btn = nullptr;",
+        "ui.repeat_btn = nullptr;",
+        "ui.repeat_icon_lbl = nullptr;",
+        "media_transport_layout(",
+        "lv_obj_t *buttons[5]",
+        "ui.shuffle_btn, ui.previous_btn, ui.play_btn, ui.next_btn, ui.repeat_btn",
+        "transport_layout.button_size",
+        "transport_layout.modes_on_second_row",
+        "control_modal_uses_compact_portrait_tuning(layout) && layout.sh > layout.sw",
+        "lv_obj_t *transport_buttons[3]",
+        "lv_obj_t *mode_buttons[2]",
+        "transport_layout.second_row_start_x",
+        "transport_layout.row_gap",
+    )
+    if any(needle not in text for needle in required):
+        return [
+            "components/espcontrol/button_grid_media.h: keep conditional, state-synchronised Shuffle and Repeat controls with dynamic three/four/five-button layouts and cleanup"
+        ]
+    return []
 
 
 def firmware_network_status_version_errors(root: Path) -> list[str]:
@@ -852,6 +943,27 @@ def firmware_fan_modal_context_lifecycle_errors(root: Path) -> list[str]:
     return errors
 
 
+def firmware_fan_light_fallback_errors(root: Path) -> list[str]:
+    path = root / "components" / "espcontrol" / "button_grid_fan.h"
+    if not path.exists():
+        return [
+            "components/espcontrol/button_grid_fan.h: keep the separate light tab available when the fan is unavailable"
+        ]
+
+    text = path.read_text(encoding="utf-8")
+    required = (
+        'if (ctx->type == "fan_control" && fan_light_supported(ctx)) return true;',
+        'if (!ctx || (!ctx->available && !fan_light_supported(ctx))) return;',
+        "ctx->light_available = !ha_state_unavailable_ref(state);",
+        "if (ui.active == ctx && fan_control_visible_tabs(ctx).count == 0) fan_control_hide_modal();",
+    )
+    if any(requirement not in text for requirement in required):
+        return [
+            "components/espcontrol/button_grid_fan.h: keep the separate light tab available when the fan is unavailable"
+        ]
+    return []
+
+
 def firmware_climate_modal_context_lifecycle_errors(root: Path) -> list[str]:
     firmware_dir = root / "components" / "espcontrol"
     climate_path = firmware_dir / "button_grid_climate.h"
@@ -962,7 +1074,7 @@ def firmware_media_modal_context_lifecycle_errors(root: Path) -> list[str]:
             "media_playback_detach_now_playing(ctx);",
             "delete_media_slider_context",
             "media_playback_detach_slider(ctx);",
-            "lv_timer_del(ctx->media_timer);",
+            "slider_detach_runtime(ctx);",
         )
         if any(requirement not in media_text for requirement in requirements):
             errors.append(
@@ -1045,6 +1157,7 @@ def run_scan() -> int:
     errors.extend(firmware_climate_step_errors(ROOT))
     errors.extend(firmware_climate_option_selection_errors(ROOT))
     errors.extend(firmware_fan_modal_context_lifecycle_errors(ROOT))
+    errors.extend(firmware_fan_light_fallback_errors(ROOT))
     errors.extend(firmware_climate_modal_context_lifecycle_errors(ROOT))
     errors.extend(firmware_cover_modal_context_lifecycle_errors(ROOT))
     errors.extend(firmware_media_modal_context_lifecycle_errors(ROOT))
@@ -1055,6 +1168,8 @@ def run_scan() -> int:
     errors.extend(firmware_climate_control_tab_errors(ROOT))
     errors.extend(firmware_modal_tab_layout_errors(ROOT))
     errors.extend(firmware_media_modal_progress_layout_errors(ROOT))
+    errors.extend(firmware_media_modal_power_tab_errors(ROOT))
+    errors.extend(firmware_media_modal_playback_mode_errors(ROOT))
     errors.extend(firmware_network_status_version_errors(ROOT))
 
     if errors:
@@ -1242,39 +1357,39 @@ def valid_modal_tab_layout_files() -> dict[str, str]:
             "inline lv_coord_t control_modal_shared_tab_content_gap(const ControlModalLayout &layout) { return 0; }\n"
             "inline ControlModalTabLayout control_modal_calc_tab_layout(const ControlModalLayout &layout, int tab_count, bool show_tab_bar) { return espcontrol::modal::calculate_tabs(); }\n"
             "inline ContentLayout control_modal_calc_content_layout() {}\n"
-            "inline void control_modal_apply_tab_row(lv_obj_t *tab_row, const ControlModalLayout &layout, const ControlModalTabLayout &tabs_layout) {}\n"
+            "inline void control_modal_apply_tab_row(lv_obj_t *tab_row, const ControlModalLayout &layout, const ControlModalTabLayout &tabs_layout, int width_compensation_percent) {}\n"
             "inline lv_obj_t *control_modal_create_tab_row(lv_obj_t *panel) {}\n"
             "inline void control_modal_layout_tab_button(lv_obj_t *tab_btn, const ControlModalLayout &layout, const ControlModalTabLayout &tabs_layout, int index, bool active) {}\n"
         ),
         "components/espcontrol/button_grid_climate.h": (
             "return control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);\n"
             "return control_modal_shared_tab_content_gap(layout);\n"
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
+            "control_modal_apply_tab_row(\nui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);\n"
             "control_modal_layout_tab_button(tab_btn, layout, tabs_layout, i, active);\n"
             "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
         ),
         "components/espcontrol/button_grid_fan.h": (
             "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);\n"
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
+            "control_modal_apply_tab_row(\nui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);\n"
             "control_modal_layout_tab_button(tab_btn, layout, tabs_layout, i, active);\n"
             "control_modal_calc_content_layout(\n"
             "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
         ),
         "components/espcontrol/button_grid_media.h": (
-            "control_modal_calc_tab_layout(layout, MEDIA_CONTROL_TAB_COUNT, true)\n"
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
+            "control_modal_calc_tab_layout(layout, media_control_tab_count, true)\n"
+            "control_modal_apply_tab_row(\nui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);\n"
             "control_modal_layout_tab_button(tabs[i].btn, layout, tabs_layout, i, active);\n"
             "control_modal_calc_content_layout(\n"
             "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
         ),
         "components/espcontrol/button_grid_sliders.h": (
             "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);\n"
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
+            "control_modal_apply_tab_row(\nui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);\n"
             "control_modal_layout_tab_button(\n"
             "control_modal_calc_content_layout(\n"
             "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
             "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);\n"
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
+            "control_modal_apply_tab_row(\nui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);\n"
             "control_modal_layout_tab_button(\n"
             "control_modal_calc_content_layout(\n"
             "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
@@ -1309,6 +1424,97 @@ def expect_media_modal_progress_layout_errors(name: str, text: str, expected: tu
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
             assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_media_modal_power_tab_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "components" / "espcontrol" / "button_grid_media.h"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = firmware_media_modal_power_tab_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_media_modal_playback_mode_errors(
+    name: str, text: str, expected: tuple[str, ...]
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "components" / "espcontrol" / "button_grid_media.h"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = firmware_media_modal_playback_mode_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def valid_media_modal_playback_mode_text() -> str:
+    return (
+        "struct MediaControlModalUi {\n"
+        "  lv_obj_t *shuffle_btn = nullptr;\n"
+        "  lv_obj_t *repeat_btn = nullptr;\n"
+        "  lv_obj_t *repeat_icon_lbl = nullptr;\n"
+        "};\n"
+        "inline void media_control_create_controls_tab_content(MediaControlCtx *ctx) {\n"
+        "  if (media_control_shuffle_supported(ctx)) find_icon(\"Shuffle\");\n"
+        "  if (media_control_repeat_supported(ctx)) find_icon(\"Repeat Once\");\n"
+        "}\n"
+        "inline void media_control_refresh_playback_modes(MediaControlCtx *ctx) {\n"
+        "  media_control_style_playback_mode_button();\n"
+        "  bool shuffle = ctx->available && ctx->shuffle_known;\n"
+        "  bool repeat = ctx->available && known;\n"
+        "}\n"
+        "inline void media_playback_apply_state_to_control() {\n"
+        "  bool changed = previous_shuffle_supported != shuffle_supported ||\n"
+        "    previous_repeat_supported != repeat_supported;\n"
+        "  media_control_clear_tab_content();\n"
+        "}\n"
+        "inline void media_control_clear_tab_content() {\n"
+        "  ui.shuffle_btn = nullptr;\n"
+        "  ui.repeat_btn = nullptr;\n"
+        "  ui.repeat_icon_lbl = nullptr;\n"
+        "}\n"
+        "inline void media_control_refresh_modal() {\n"
+        "  media_control_refresh_playback_modes(ctx);\n"
+        "}\n"
+        "inline void media_control_layout_modal() {\n"
+        "  media_transport_layout(content_w, short_side, show_shuffle, show_repeat,\n"
+        "    control_modal_uses_compact_portrait_tuning(layout) && layout.sh > layout.sw);\n"
+        "  lv_obj_t *buttons[5] = {\n"
+        "    ui.shuffle_btn, ui.previous_btn, ui.play_btn, ui.next_btn, ui.repeat_btn};\n"
+        "  int size = transport_layout.button_size;\n"
+        "  if (transport_layout.modes_on_second_row) {\n"
+        "    lv_obj_t *transport_buttons[3] = {};\n"
+        "    lv_obj_t *mode_buttons[2] = {};\n"
+        "    int x = transport_layout.second_row_start_x;\n"
+        "    int y = transport_layout.row_gap;\n"
+        "  }\n"
+        "}\n"
+    )
+
+
+def valid_media_modal_power_tab_text() -> str:
+    return (
+        "enum class MediaControlTab { POWER = 4 };\n"
+        "inline bool media_control_power_supported() {}\n"
+        "inline bool media_control_ensure_power_tab_button() {}\n"
+        "inline void media_control_create_power_tab_content() {}\n"
+        "inline void media_control_refresh_power() {}\n"
+        "bool changed = previous_power_supported != power_supported;\n"
+        "if (ui.tab == MediaControlTab::POWER && !media_control_power_supported(ctx)) {\n"
+        "  ui.tab = MediaControlTab::CONTROLS;\n"
+        "}\n"
+        "int count = media_control_tab_count(progress_supported, power_supported);\n"
+        "MediaControlTabLayout tabs[5] = {};\n"
+    )
 
 
 def valid_media_modal_progress_layout_text() -> str:
@@ -1442,6 +1648,24 @@ def expect_fan_modal_context_lifecycle_errors(
         )
 
         errors = firmware_fan_modal_context_lifecycle_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), (
+                f"{name}: missing {item!r} in {errors!r}"
+            )
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_fan_light_fallback_errors(
+    name: str, fan_text: str, expected: tuple[str, ...]
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "components" / "espcontrol" / "button_grid_fan.h"
+        path.parent.mkdir(parents=True)
+        path.write_text(fan_text, encoding="utf-8")
+
+        errors = firmware_fan_light_fallback_errors(root)
         for item in expected:
             assert any(item in error for error in errors), (
                 f"{name}: missing {item!r} in {errors!r}"
@@ -1609,6 +1833,42 @@ def run_self_test() -> int:
         "fan_close_modals_for_context(ctx);\n",
         ("invalidate fan modals on main-grid and subpage cleanup",),
     )
+    valid_fan_light_fallback = (
+        "inline bool fan_control_supported(FanCardCtx *ctx) {\n"
+        "  if (ctx->type == \"fan_control\" && fan_light_supported(ctx)) return true;\n"
+        "}\n"
+        "inline void fan_control_open_modal(FanCardCtx *ctx) {\n"
+        "  if (!ctx || (!ctx->available && !fan_light_supported(ctx))) return;\n"
+        "}\n"
+        "inline void subscribe_fan_card_state(FanCardCtx *ctx) {\n"
+        "  ctx->light_available = !ha_state_unavailable_ref(state);\n"
+        "  ctx->light_on = ctx->light_available && is_entity_on_ref(state);\n"
+        "  refresh();\n"
+        "  FanControlModalUi &ui = fan_control_modal_ui();\n"
+        "  if (ui.active == ctx && fan_control_visible_tabs(ctx).count == 0) fan_control_hide_modal();\n"
+        "}\n"
+    )
+    expect_fan_light_fallback_errors(
+        "fan light remains available without the fan",
+        valid_fan_light_fallback,
+        (),
+    )
+    expect_fan_light_fallback_errors(
+        "fan light modal requires fan availability",
+        valid_fan_light_fallback.replace(
+            "if (!ctx || (!ctx->available && !fan_light_supported(ctx))) return;",
+            "if (!ctx || !ctx->available) return;",
+        ),
+        ("keep the separate light tab available",),
+    )
+    expect_fan_light_fallback_errors(
+        "fan light modal remains open when its last tab disappears",
+        valid_fan_light_fallback.replace(
+            "  if (ui.active == ctx && fan_control_visible_tabs(ctx).count == 0) fan_control_hide_modal();\n",
+            "",
+        ),
+        ("keep the separate light tab available",),
+    )
     valid_climate_cleanup = (
         "inline void delete_climate_control_context(ClimateControlCtx *ctx) {\n"
         "  if (climate_control_modal_ui().active == ctx) climate_control_hide_modal();\n"
@@ -1700,7 +1960,7 @@ def run_self_test() -> int:
         "}\n"
         "inline void delete_media_slider_context(SliderCtx *ctx) {\n"
         "  media_playback_detach_slider(ctx);\n"
-        "  lv_timer_del(ctx->media_timer);\n"
+        "  slider_detach_runtime(ctx);\n"
         "}\n"
     )
     valid_media_grid_cleanup = "\n".join((
@@ -2011,6 +2271,34 @@ def run_self_test() -> int:
             "",
         ),
         ("progress drawing gated",),
+    )
+    expect_media_modal_power_tab_errors(
+        "conditional media Power tab",
+        valid_media_modal_power_tab_text(),
+        (),
+    )
+    expect_media_modal_power_tab_errors(
+        "media Power tab loses safe fallback",
+        valid_media_modal_power_tab_text().replace(
+            "  ui.tab = MediaControlTab::CONTROLS;\n", ""
+        ),
+        ("safe Controls fallback",),
+    )
+    valid_playback_modes = valid_media_modal_playback_mode_text()
+    expect_media_modal_playback_mode_errors(
+        "conditional media Shuffle and Repeat controls",
+        valid_playback_modes,
+        (),
+    )
+    expect_media_modal_playback_mode_errors(
+        "media playback-mode cleanup removed",
+        valid_playback_modes.replace("  ui.repeat_btn = nullptr;\n", ""),
+        ("three/four/five-button layouts and cleanup",),
+    )
+    expect_media_modal_playback_mode_errors(
+        "media playback-mode capability relayout removed",
+        valid_playback_modes.replace("  media_control_clear_tab_content();\n", ""),
+        ("state-synchronised",),
     )
     home_idle_gated = valid_sleep_takeover_files()
     home_idle_gated["common/addon/backlight.yaml"] = home_idle_gated[

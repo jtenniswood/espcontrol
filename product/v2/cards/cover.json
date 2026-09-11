@@ -1,0 +1,65 @@
+{
+  "label": "Cover",
+  "allowInSubpage": true,
+  "domains": ["cover"],
+  "options": [
+    {
+      "name": "cover_mode",
+      "label": "Type",
+      "kind": "choice",
+      "values": ["modal", "", "tilt", "toggle", "open", "close", "stop", "set_position"],
+      "defaultValue": "modal",
+      "storageField": "sensor",
+      "omitDefault": false
+    },
+    {
+      "name": "cover_position",
+      "label": "Position",
+      "kind": "number",
+      "defaultValue": "50",
+      "storageField": "unit",
+      "omitDefault": false,
+      "min": 0,
+      "max": 100,
+      "step": 1
+    },
+    {
+      "name": "cover_tabs",
+      "label": "Visible Tabs",
+      "kind": "text",
+      "values": ["position", "controls", "tilt", "presets"],
+      "defaultValue": "position|controls|tilt|presets",
+      "omitDefault": true
+    }
+  ],
+  "normalization": {
+    "fields": {
+      "entity": { "policy": "keep" },
+      "label": { "policy": "keep" },
+      "icon": { "policy": "keep" },
+      "icon_on": { "policy": "keep" },
+      "sensor": { "policy": "hook", "hook": "normalize_access_fields" },
+      "unit": { "policy": "hook", "hook": "normalize_access_fields" },
+      "type": { "policy": "default", "value": "cover" },
+      "precision": { "policy": "clear" },
+      "options": { "policy": "hook", "hook": "normalize_access_options" }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": ["cover_tabs"],
+    "optionHook": "normalize_access_options"
+  },
+  "behavior": {
+    "cover": {
+      "commandServices": {
+        "open": "cover.open_cover",
+        "close": "cover.close_cover",
+        "stop": "cover.stop_cover",
+        "set_position": "cover.set_cover_position"
+      }
+    }
+  },
+  "default": {
+    "entity": "", "label": "", "icon": "Blinds", "icon_on": "Blinds Open",
+    "sensor": "modal", "unit": "", "type": "cover", "precision": "", "options": ""
+  }
+}

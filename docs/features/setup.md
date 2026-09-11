@@ -35,11 +35,12 @@ The setup page uses these card names and grouped modes on the device. For a quic
 | **[Action](/card-types/actions)** | Runs a one-tap Home Assistant scene, script, button, helper action, Option Select picker, or local panel action. | Depends on the selected action |
 | **[Option Select](/card-types/option-select)** | Opens a live `select` or `input_select` option list through the Action card. | Yes, as a select entity |
 | **[Webhook](/card-types/webhooks)** | Calls an HTTP URL directly from the panel for other automation platforms and webhook services. | URL |
+| **[Wifi Sharing](/card-types/wifi-share)** | Shows a QR code for separately configured guest Wifi. | No |
 | **[Trigger](/card-types/buttons)** | Fires an event to Home Assistant for use in automations. | No |
 | **[Sensor](/card-types/sensors)** | Shows a live numeric reading, readable duration, text state, or icon state from Home Assistant or a local device sensor. | Yes for Home Assistant, local sensor key for Local Sensor source |
 | **[Doors & Windows](/card-types/doors-windows)** | Shows a door or window contact sensor with open and closed icons. | Yes, as **Sensor Entity** |
 | **[Presence](/card-types/presence)** | Shows whether a person, room, or motion sensor is active. | Yes, as **Sensor Entity** |
-| **[Slider](/card-types/sliders)** | Controls light brightness or fan speed with a draggable fill bar. | Yes |
+| **[Slider](/card-types/sliders)** | Controls light brightness, fan speed, or a `number` / `input_number` value with a draggable fill bar. | Yes |
 | **[Fans](/card-types/fans)** | Controls supported fan switch, speed, oscillation, direction, and preset features. | Yes, as a fan entity |
 | **[Vacuum](/card-types/vacuum)** | Shows vacuum status or controls start/stop, dock, pause/resume, spot clean, locate, and clean area. | Yes, as a vacuum entity |
 | **[Lawn Mower](/card-types/lawn-mower)** | Shows mower status or controls start mowing, dock, and pause/resume. | Yes, as a lawn mower entity |
@@ -57,7 +58,7 @@ The setup page uses these card names and grouped modes on the device. For a quic
 
 For cards that use Home Assistant, enter the entity name from Home Assistant in the **Entity** field, such as `light.living_room`, `switch.garden_lights`, `scene.movie_mode`, or `weather.forecast_home`. Some card types use a more specific label, such as **Sensor Entity**, **Weather Entity**, or **Climate Entity**. You can find entity names under **Settings > Devices & Services** in Home Assistant.
 
-Some card names group several related controls together. **Lights** contains All Controls, Switch, Brightness, and Colour Temperature options. **Fans** contains Switch, Speed, Oscillation, Direction, and Preset options. **Action** contains scene, script, helper, Option Select, and Local Action modes. **Sensor** contains Home Assistant and Local Sensor sources. **Vacuum** contains Status, Start / Stop, Dock, Pause / Resume, Spot Clean, Locate, and Clean Area options. **Lawn Mower** contains Status, Start Mowing, Dock, and Pause / Resume options. **Cover** contains All Controls, Position, Tilt, Toggle, Open, Close, Stop, and Set Position options. **Alarm** contains Combined Control, Arm Away, Arm Home, Arm Night, Arm Vacation, and Disarm options. **Date & Time** contains Clock, Date, Time & Date, and World Clock options.
+Some card names group several related controls together. **Lights** contains All Controls, Switch, Brightness, and Colour Temperature options. **Fans** contains All Controls, Switch, Speed, Oscillation, Direction, and Preset options. **Action** contains scene, script, helper, Option Select, and Local Action modes. **Sensor** contains Home Assistant and Local Sensor sources. **Vacuum** contains Status, Start / Stop, Dock, Pause / Resume, Spot Clean, Locate, and Clean Area options. **Lawn Mower** contains Status, Start Mowing, Dock, and Pause / Resume options. **Cover** contains All Controls, Position, Tilt, Toggle, Open, Close, Stop, and Set Position options. **Alarm** contains All Controls, Arm Away, Arm Home, Arm Night, Arm Vacation, and Disarm options. **Date & Time** contains Clock, Date, Time & Date, and World Clock options.
 
 For the generated list of current card domains, subpage support, grouping, and options, see the [Card Capability Reference](/generated/cards/capabilities).
 
@@ -89,11 +90,13 @@ Right-click a card and open **Size** to choose:
 - **Extra Tall** - spans three rows.
 - **Wide** - spans two columns.
 - **Extra Wide** - spans three columns.
+- **Ultra Wide** - spans five columns and is available on screens with a five-column grid.
 - **Large** - spans a 2 x 2 area.
 - **Extra Large** - spans a 3 x 3 area and is available for Media cover-art cards.
-- **Max wide** - spans a 3 x 2 area and is available for Camera cards.
+- **Max Wide** - spans a 3 x 2 area and is available for Camera cards.
 - **Max tall** - spans a 2 x 3 area and is available for Camera cards.
-- **Portrait** - spans a 3 x 4 area and is available for Camera and Media cover-art cards on both 10.1-inch panels.
+- **Massive Wide (3x4)** - spans three rows by four columns and is available for Camera cards when the current screen orientation has room.
+- **Massive (4x3)** - spans four rows by three columns and is available for Camera and Media cover-art cards when the current screen orientation has room.
 
 If a card already occupies the space needed for a larger size, the setup page tries to move it to the next available slot. If there is not enough room, the size change is not applied.
 
@@ -103,7 +106,9 @@ The **Settings** tab also includes display, brightness, screensaver, backup, and
 
 ![Settings tab showing appearance, backlight, schedule, clock, and firmware controls](/images/settings-tab-display.png)
 
-Open **Settings > System > Home Assistant Settings** to change **Home Assistant Port** if your Home Assistant instance does not use the default `8123` port. Camera/image cards and media artwork downloads use this port when loading images from Home Assistant.
+Open **Settings > System > Home Assistant Settings** to manage the address used for camera/image cards and media artwork downloads. **Automatic** connection mode discovers the HTTP endpoint advertised by the connected Home Assistant instance, including port `80` used by new Home Assistant OS installations and port `8123` commonly used by existing installations and Home Assistant Container.
+
+If automatic discovery is unavailable because multicast traffic is blocked between network segments, select **Manual** and enter the protocol and port shown under **Home Assistant > Settings > System > Network**. Automatic mode keeps these values as its fallback. EspControl never rewrites complete artwork URLs supplied by media services or external CDNs.
 
 ## Apply Configuration
 
@@ -135,3 +140,23 @@ actions:
 ```
 
 The web setup page's **Apply Configuration** button remains separate: use it after saving web settings, and use the Home Assistant **Restart** entity when you only need to restart the display.
+
+## Naming Your Panel
+
+On firmware that supports panel naming, open **Settings → System → Panel name**.
+Enter a name such as **Kitchen**, check the address preview, then choose
+**Save and restart**. The name appears in the web interface, browser tab, the
+panel's network information and Home Assistant. The address becomes something
+like `kitchen-b2c3.local`; the four-character suffix comes from the panel's MAC address.
+
+The page shows the new address and current IP before restarting. Reopen the panel
+using either link. Router-managed DNS entries may need updating separately.
+Clearing the name restores the firmware's original name and address. Normal OTA
+updates retain your custom name; older firmware without naming support uses its
+compiled defaults.
+
+Home Assistant should update the existing device after reconnecting. A name you
+assigned manually in Home Assistant takes precedence. Existing entity IDs remain
+unchanged, but custom ESPHome action names include the hostname: update automations
+using actions such as `esphome.<old_name>_navigate`. Reload the ESPHome integration
+if its action list still shows the previous names.

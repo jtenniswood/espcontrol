@@ -22,6 +22,8 @@
 #include "utils.h"
 #include "web_server_idf.h"
 
+#include "digest_auth_policy.h"
+
 #ifdef USE_WEBSERVER_OTA
 #include <multipart_parser.h>
 #include "multipart.h"  // For parse_multipart_boundary and other utils
@@ -47,6 +49,9 @@ namespace esphome::web_server_idf {
 
 static const char *const TAG = "web_server_idf";
 
+extern "C" void espcontrol_register_web_server_handlers(
+    AsyncWebServer *server) __attribute__((weak));
+
 // Global instance to avoid guard variable (saves 8 bytes)
 // This is initialized at program startup before any threads
 namespace {
@@ -57,6 +62,8 @@ DefaultHeaders default_headers_instance;
 DefaultHeaders &DefaultHeaders::Instance() { return default_headers_instance; }
 
 namespace {
+static constexpr size_t MAX_FORM_URLENCODED_BODY_LENGTH = 1024;
+
 #ifdef ESPHOME_PROJECT_NAME
 static constexpr const char *ESPCONTROL_PROJECT_NAME = ESPHOME_PROJECT_NAME;
 #else
@@ -211,12 +218,22 @@ void AsyncWebServer::begin() {
   // The ESPControl web UI exposes many internal configuration entities. Larger
   // P4 panels can overflow the ESP-IDF default while serving entity details.
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  // The S3 display has a much smaller internal-heap margin than P4 panels.
+  // Keep the configuration UI available while returning 4 KiB to the
+  // artwork/networking paths.
+  config.stack_size = 12288;
+  config.max_open_sockets = 3;
+#else
   config.stack_size = 16384;
   // Keep browser bursts from opening several web sessions at once. The config
   // UI fetches details sequentially, so two client sockets are enough and leave
   // more internal heap available for LVGL/display work on P4 panels.
   config.max_open_sockets = 5;
+#endif
   config.backlog_conn = 2;
+  ESP_LOGI(TAG, "HTTP server policy: stack=%u sockets=%u", (unsigned) config.stack_size,
+           (unsigned) config.max_open_sockets);
   config.server_port = this->port_;
   config.uri_match_fn = [](const char * /*unused*/, const char * /*unused*/, size_t /*unused*/) { return true; };
   // Always enable LRU purging to handle socket exhaustion gracefully.
@@ -228,6 +245,12 @@ void AsyncWebServer::begin() {
   config.close_fn = AsyncWebServer::safe_close_with_shutdown;
   if (httpd_start(&this->server_, &config) == ESP_OK) {
     global_async_web_server() = this;
+    // Let an external component add its static handlers before the generic
+    // dispatcher is exposed to browsers or API clients. Handlers added later
+    // can disrupt concurrent network activity on ESP32-P4 panels.
+    if (espcontrol_register_web_server_handlers != nullptr) {
+      espcontrol_register_web_server_handlers(this);
+    }
     const httpd_uri_t handler_get = {
         .uri = "",
         .method = HTTP_GET,
@@ -244,6 +267,17 @@ void AsyncWebServer::begin() {
     };
     httpd_register_uri_handler(this->server_, &handler_post);
 
+    // Native configuration documents use PUT so browsers can make an
+    // optimistic, generation-guarded replacement without treating it as a
+    // form submission. Route it through the same raw-body dispatcher as POST.
+    const httpd_uri_t handler_put = {
+        .uri = "",
+        .method = HTTP_PUT,
+        .handler = AsyncWebServer::request_post_handler,
+        .user_ctx = this,
+    };
+    httpd_register_uri_handler(this->server_, &handler_put);
+
     const httpd_uri_t handler_options = {
         .uri = "",
         .method = HTTP_OPTIONS,
@@ -254,7 +288,10 @@ void AsyncWebServer::begin() {
   }
 }
 
+extern "C" bool espcontrol_allow_web_write(httpd_req_t *request) __attribute__((weak));
+
 esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
+  if (espcontrol_allow_web_write != nullptr && !espcontrol_allow_web_write(r)) return ESP_OK;
   ESP_LOGVV(TAG, "Enter AsyncWebServer::request_post_handler. uri=%s", r->uri);
   auto content_type = request_get_header(r, "Content-Type");
 
@@ -277,14 +314,12 @@ esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
       return server->handle_multipart_upload_(r, content_type_char);
 #endif
     } else {
-      ESP_LOGW(TAG, "Unsupported content type for POST: %s", content_type_char);
-      // fallback to get handler to support backward compatibility
-      return AsyncWebServer::request_handler(r);
+      return static_cast<AsyncWebServer *>(r->user_ctx)->handle_raw_body_(r, content_type_char);
     }
   }
 
   // Handle regular form data
-  if (r->content_len > CONFIG_HTTPD_MAX_REQ_HDR_LEN) {
+  if (r->content_len > MAX_FORM_URLENCODED_BODY_LENGTH) {
     ESP_LOGW(TAG, "Request size is to big: %zu", r->content_len);
     httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, nullptr);
     return ESP_FAIL;
@@ -315,6 +350,34 @@ esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
 
   AsyncWebServerRequest req(r, std::move(post_query));
   return static_cast<AsyncWebServer *>(r->user_ctx)->request_handler_(&req);
+}
+
+esp_err_t AsyncWebServer::handle_raw_body_(httpd_req_t *r, const char *content_type) {
+  AsyncWebServerRequest req(r);
+  AsyncWebHandler *handler = nullptr;
+  for (auto *candidate : this->handlers_) {
+    if (candidate->canHandle(&req)) { handler = candidate; break; }
+  }
+  if (handler == nullptr) return this->request_handler_(&req);
+  if (!handler->canReceiveBody(&req)) return ESP_OK;
+  const size_t total = r->content_len;
+  if (total > handler->maximumBodySize()) {
+    httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, "Request body is too large");
+    return ESP_FAIL;
+  }
+  std::vector<uint8_t> buffer(std::min<size_t>(1024, total));
+  for (size_t index = 0; index < total;) {
+    const int received = httpd_req_recv(r, reinterpret_cast<char *>(buffer.data()),
+                                        std::min(total - index, buffer.size()));
+    if (received <= 0) {
+      httpd_resp_send_err(r, received == HTTPD_SOCK_ERR_TIMEOUT ? HTTPD_408_REQ_TIMEOUT : HTTPD_400_BAD_REQUEST, nullptr);
+      return received == HTTPD_SOCK_ERR_TIMEOUT ? ESP_ERR_TIMEOUT : ESP_FAIL;
+    }
+    handler->handleBody(&req, buffer.data(), static_cast<size_t>(received), index, total);
+    index += static_cast<size_t>(received);
+  }
+  handler->handleRequest(&req);
+  return ESP_OK;
 }
 
 esp_err_t AsyncWebServer::request_handler(httpd_req_t *r) {
@@ -423,8 +486,7 @@ static constexpr uint32_t DIGEST_NONCE_LIFETIME_MS = 5 * 60 * 1000;
 
 struct DigestCnonceState {
   std::array<char, DIGEST_CNONCE_MAX_LENGTH + 1> value{};
-  uint32_t last_nonce_count{};
-  uint64_t used_nonce_counts{};
+  DigestNonceCountWindow nonce_counts{};
 };
 
 struct DigestNonceState {
@@ -497,32 +559,15 @@ bool digest_challenge_is_valid(StringRef nonce, StringRef opaque) {
   return valid;
 }
 
-bool accept_nonce_count(DigestCnonceState *state, uint32_t nonce_count) {
-  if (nonce_count > state->last_nonce_count) {
-    const uint32_t advance = nonce_count - state->last_nonce_count;
-    state->used_nonce_counts = advance >= 64 ? 1 : (state->used_nonce_counts << advance) | 1;
-    state->last_nonce_count = nonce_count;
-    return true;
-  }
+enum class DigestNonceCountResult : uint8_t { ACCEPTED, REPLAYED, UNAVAILABLE };
 
-  // Permit parallel requests to arrive slightly out of order, but never accept
-  // the same count twice or a count outside the bounded replay window.
-  const uint32_t distance = state->last_nonce_count - nonce_count;
-  if (distance >= 64)
-    return false;
-  const uint64_t count_mask = uint64_t{1} << distance;
-  if ((state->used_nonce_counts & count_mask) != 0)
-    return false;
-  state->used_nonce_counts |= count_mask;
-  return true;
-}
-
-bool accept_digest_nonce_count(StringRef nonce, StringRef opaque, StringRef cnonce, uint32_t nonce_count) {
+DigestNonceCountResult accept_digest_nonce_count(StringRef nonce, StringRef opaque, StringRef cnonce,
+                                                 uint32_t nonce_count) {
   if (cnonce.size() == 0 || cnonce.size() > DIGEST_CNONCE_MAX_LENGTH)
-    return false;
+    return DigestNonceCountResult::UNAVAILABLE;
 
   const uint32_t now = millis();
-  bool accepted = false;
+  DigestNonceCountResult result = DigestNonceCountResult::UNAVAILABLE;
   portENTER_CRITICAL(&digest_auth_lock);
   for (auto &state : digest_nonce_states) {
     if (digest_nonce_expired(state, now) ||
@@ -542,21 +587,22 @@ bool accept_digest_nonce_count(StringRef nonce, StringRef opaque, StringRef cnon
       if (!digest_ref_equals_buffer(cnonce, cnonce_state.value.data(), strlen(cnonce_state.value.data())))
         continue;
       found_cnonce = true;
-      accepted = accept_nonce_count(&cnonce_state, nonce_count);
+      result = accept_digest_nonce_count(&cnonce_state.nonce_counts, nonce_count) ? DigestNonceCountResult::ACCEPTED
+                                                                                  : DigestNonceCountResult::REPLAYED;
       break;
     }
 
     if (!found_cnonce && free_state != nullptr) {
       memcpy(free_state->value.data(), cnonce.c_str(), cnonce.size());
       free_state->value[cnonce.size()] = '\0';
-      free_state->last_nonce_count = nonce_count;
-      free_state->used_nonce_counts = 1;
-      accepted = true;
+      free_state->nonce_counts.last_nonce_count = nonce_count;
+      free_state->nonce_counts.used_nonce_counts = 1;
+      result = DigestNonceCountResult::ACCEPTED;
     }
     break;
   }
   portEXIT_CRITICAL(&digest_auth_lock);
-  return accepted;
+  return result;
 }
 
 void retain_digest_challenge(const char *nonce, const char *opaque) {
@@ -578,6 +624,19 @@ void bytes_to_hex(const uint8_t *data, size_t len, char *out) {
     out[i * 2 + 1] = HEX[data[i] & 0x0f];
   }
   out[len * 2] = '\0';
+}
+
+void digest_credential_hash(const char *username, const char *password, char *out) {
+  md5_context_t ctx;
+  uint8_t digest[16];
+  esp_rom_md5_init(&ctx);
+  esp_rom_md5_update(&ctx, username, strlen(username));
+  esp_rom_md5_update(&ctx, ":", 1);
+  esp_rom_md5_update(&ctx, DIGEST_REALM, strlen(DIGEST_REALM));
+  esp_rom_md5_update(&ctx, ":", 1);
+  esp_rom_md5_update(&ctx, password, strlen(password));
+  esp_rom_md5_final(digest, &ctx);
+  bytes_to_hex(digest, sizeof(digest), out);
 }
 
 StringRef digest_param(StringRef params, const char *key) {
@@ -623,10 +682,11 @@ StringRef digest_param(StringRef params, const char *key) {
   return StringRef();
 }
 
-enum class DigestAuthResult : uint8_t { FAILED, STALE, AUTHENTICATED };
+enum class DigestAuthResult : uint8_t { FAILED, STALE, REPLAYED, AUTHENTICATED };
 
 DigestAuthResult check_digest_auth(const char *username, const char *password, const std::string &header,
-                                   const char *method, const char *request_uri) {
+                                   const char *method, const char *request_uri,
+                                   bool nonce_accepted_for_request) {
   const size_t prefix_len = sizeof("Digest ") - 1;
   StringRef params(header.c_str() + prefix_len, header.size() - prefix_len);
 
@@ -649,21 +709,11 @@ DigestAuthResult check_digest_auth(const char *username, const char *password, c
       !parse_nonce_count(nc, &nonce_count)) {
     return DigestAuthResult::FAILED;
   }
-  if (!digest_challenge_is_valid(nonce, opaque))
-    return DigestAuthResult::STALE;
-
   md5_context_t ctx;
   uint8_t digest[16];
 
   char ha1[33];
-  esp_rom_md5_init(&ctx);
-  esp_rom_md5_update(&ctx, username, strlen(username));
-  esp_rom_md5_update(&ctx, ":", 1);
-  esp_rom_md5_update(&ctx, DIGEST_REALM, strlen(DIGEST_REALM));
-  esp_rom_md5_update(&ctx, ":", 1);
-  esp_rom_md5_update(&ctx, password, strlen(password));
-  esp_rom_md5_final(digest, &ctx);
-  bytes_to_hex(digest, sizeof(digest), ha1);
+  digest_credential_hash(username, password, ha1);
 
   char ha2[33];
   esp_rom_md5_init(&ctx);
@@ -692,11 +742,24 @@ DigestAuthResult check_digest_auth(const char *username, const char *password, c
   uint8_t result = 0;
   for (size_t i = 0; i < 32; i++)
     result |= static_cast<uint8_t>(expected[i] ^ response[i]);
-  if (result != 0)
+  const DigestRequestPolicy request_policy =
+      digest_request_policy(result == 0, nonce_accepted_for_request);
+  if (request_policy == DigestRequestPolicy::REJECT)
     return DigestAuthResult::FAILED;
-  if (!accept_digest_nonce_count(nonce, opaque, cnonce, nonce_count))
+
+  // Raw-body handlers authenticate before receiving the body, then verify the
+  // same immutable request again before applying it. The response digest must
+  // still match, but the request must not consume its nonce count twice.
+  if (request_policy == DigestRequestPolicy::REUSE_REQUEST_NONCE)
+    return DigestAuthResult::AUTHENTICATED;
+  if (!digest_challenge_is_valid(nonce, opaque))
     return DigestAuthResult::STALE;
-  return DigestAuthResult::AUTHENTICATED;
+  const DigestNonceCountResult nonce_count_result =
+      accept_digest_nonce_count(nonce, opaque, cnonce, nonce_count);
+  if (nonce_count_result == DigestNonceCountResult::REPLAYED)
+    return DigestAuthResult::REPLAYED;
+  return nonce_count_result == DigestNonceCountResult::ACCEPTED ? DigestAuthResult::AUTHENTICATED
+                                                                : DigestAuthResult::STALE;
 }
 
 }  // namespace
@@ -708,6 +771,8 @@ bool AsyncWebServerRequest::authenticate(const char *username, const char *passw
   }
   auto auth = this->get_header("Authorization");
   if (!auth.has_value()) {
+    // The device serves plain HTTP: a captured bearer cookie must never
+    // replace per-request authorization, even after an earlier Digest login.
     return false;
   }
 
@@ -719,9 +784,19 @@ bool AsyncWebServerRequest::authenticate(const char *username, const char *passw
     ESP_LOGW(TAG, "Only Digest authorization supported");
     return false;
   }
-  const auto result =
-      check_digest_auth(username, password, auth.value(), http_method_str(this->method()), this->req_->uri);
-  this->digest_nonce_stale_ = result == DigestAuthResult::STALE;
+  const bool rechecking_authenticated_request = this->digest_nonce_accepted_for_request_;
+  const auto result = check_digest_auth(username, password, auth.value(), http_method_str(this->method()),
+                                        this->req_->uri, rechecking_authenticated_request);
+  this->digest_nonce_stale_ = result == DigestAuthResult::STALE || result == DigestAuthResult::REPLAYED;
+  if (result == DigestAuthResult::REPLAYED) {
+    ESP_LOGW(TAG, "Rejected replayed Digest nonce count for %s %s", http_method_str(this->method()), this->req_->uri);
+  } else if (result == DigestAuthResult::AUTHENTICATED) {
+    if (rechecking_authenticated_request) {
+      ESP_LOGD(TAG, "Reused Digest authentication for request %s %s", http_method_str(this->method()),
+               this->req_->uri);
+    }
+    this->digest_nonce_accepted_for_request_ = true;
+  }
   return result == DigestAuthResult::AUTHENTICATED;
 #else
   const auto auth_prefix_len = sizeof("Basic ") - 1;
@@ -1112,7 +1187,7 @@ void AsyncEventSourceResponse::loop() {
   process_buffer_();
   process_deferred_queue_();
   if (!this->entities_iterator_.completed())
-    this->entities_iterator_.advance();
+    this->entities_iterator_.try_advance(1);
 }
 
 bool AsyncEventSourceResponse::try_send_nodefer(const char *message, size_t message_len, const char *event, uint32_t id,
@@ -1120,7 +1195,6 @@ bool AsyncEventSourceResponse::try_send_nodefer(const char *message, size_t mess
   if (this->fd_.load() == 0) {
     return false;
   }
-
   process_buffer_();
   if (!event_buffer_.empty()) {
     // there is still pending event data to send first

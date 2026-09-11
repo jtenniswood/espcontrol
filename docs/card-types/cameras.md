@@ -38,6 +38,32 @@ If your Home Assistant instance uses a custom port, open **Settings > System > H
 - If the image cannot be loaded, the card shows **Loading**, **Unavailable**, **Configure**, or **Too many** instead of leaving a blank tile.
 - Camera cards can be used on the main page or inside subpages.
 
+## Refreshing Cards from Home Assistant
+
+Every ESP32-P4 panel exposes a native ESPHome action for refreshing Camera cards on the page currently shown on the panel. It does not create a button entity and does not refresh Media Cover Art or Camera cards on other pages.
+
+Home Assistant generates the action name from your panel's device name:
+
+```yaml
+action: esphome.<device_name>_refresh_camera_cards
+```
+
+The action rereads each visible Camera card's current `entity_picture` and access token. If the resulting URL has changed, the new image can load immediately. If the URL is unchanged, the existing 30-second refresh guard remains in effect.
+
+For a `local_file` camera, call the panel action after changing the file path:
+
+```yaml
+actions:
+  - action: local_file.update_file_path
+    target:
+      entity_id: camera.doorbell_live
+    data:
+      file_path: /config/www/camera/doorbell-latest.jpg
+  - action: esphome.kitchen_panel_refresh_camera_cards
+```
+
+Replace the camera, file path, and generated ESPHome action with the values from your Home Assistant setup. If a refresh fails, the panel keeps showing the last image that loaded successfully.
+
 ## Practical Limits
 
 Camera images use more memory than normal control cards, so EspControl limits how many can be active at once.

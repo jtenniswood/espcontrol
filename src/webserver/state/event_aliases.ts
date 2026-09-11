@@ -6,6 +6,7 @@ export type SseHandlers = Record<string, SseHandler>;
 export const SSE_ALIAS_GROUPS = {
   clockBar: ["switch-screen__clock_bar", "switch-screen_clock_bar", "switch-clock_bar_enabled"],
   clockBarTime: ["switch-screen__clock_bar_time", "switch-screen_clock_bar_time", "switch-clock_bar_time_enabled"],
+  clockBarNightMode: ["switch-screen__clock_bar_night_mode_icon", "switch-screen_clock_bar_night_mode_icon", "switch-clock_bar_night_mode_enabled"],
   clockBarTemperatureEntities: ["text-clock_bar_temperature_entities", "text-clock_bar__temperature_entities"],
   networkStatus: ["switch-screen__network_status_icon", "switch-screen_network_status_icon", "switch-network_status_enabled"],
   batteryStatus: ["switch-screen__battery_status", "switch-screen_battery_status", "switch-battery_status_enabled"],
@@ -31,6 +32,8 @@ export const SSE_ALIAS_GROUPS = {
   coverArtHideExternalInput: ["switch-screen_saver__hide_cover_art_on_external_input", "switch-screen_saver_hide_cover_art_on_external_input", "switch-hide_cover_art_on_external_input", "switch-cover_art_hide_external_input", "switch-screen_saver__hide_for_external_sources"],
   homeAssistantArtworkProtocol: ["select-home_assistant_artwork_protocol", "select-cover_art_home_assistant_artwork_protocol"],
   homeAssistantArtworkPort: ["number-home_assistant_artwork_port"],
+  homeAssistantArtworkEndpointMode: ["select-home_assistant_artwork_endpoint_mode"],
+  homeAssistantArtworkEndpointStatus: ["text_sensor-home_assistant_artwork_endpoint_status"],
   scheduleTrigger: ["text-screen__schedule_trigger", "text-screen_schedule_trigger", "text-schedule_trigger"],
   scheduleSensorActivation: ["select-screen__schedule_sensor_activation", "select-screen_schedule_sensor_activation", "select-schedule_sensor_activation"],
   scheduleWakeTimeout: ["number-screen__schedule_wake_timeout", "number-screen_schedule_wake_timeout", "number-schedule_wake_timeout"],
@@ -57,6 +60,7 @@ function addSseAliases(handlers: SseHandlers, names: readonly string[], canonica
 export function applySseHandlerAliases(handlers: SseHandlers): void {
   addSseAliases(handlers, SSE_ALIAS_GROUPS.clockBar, "switch-screen__clock_bar");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.clockBarTime, "switch-screen__clock_bar_time");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.clockBarNightMode, "switch-screen__clock_bar_night_mode_icon");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.clockBarTemperatureEntities, "text-clock_bar_temperature_entities");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.networkStatus, "switch-screen__network_status_icon");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.batteryStatus, "switch-screen__battery_status");
@@ -82,6 +86,8 @@ export function applySseHandlerAliases(handlers: SseHandlers): void {
   addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtHideExternalInput, "switch-screen_saver__hide_cover_art_on_external_input");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkProtocol, "select-home_assistant_artwork_protocol");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkPort, "number-home_assistant_artwork_port");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkEndpointMode, "select-home_assistant_artwork_endpoint_mode");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkEndpointStatus, "text_sensor-home_assistant_artwork_endpoint_status");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleTrigger, "text-screen__schedule_trigger");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleSensorActivation, "select-screen__schedule_sensor_activation");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleWakeTimeout, "number-screen__schedule_wake_timeout");

@@ -28,6 +28,7 @@ struct DisplayFontRoles {
 struct DisplayWidthTokens {
   bool vertical_axis = false;
   int main_percent = 100;
+  int text_percent = 100;
   int volume_percent = 100;
 };
 
@@ -70,6 +71,8 @@ inline int display_width_percent(int percent) {
 
 inline void display_set_width_axis(const DisplayProfile &profile) {
   set_width_compensation_vertical_axis(profile.width.vertical_axis);
+  set_icon_width_compensation_percent(profile.width.main_percent);
+  set_text_width_compensation_percent(profile.width.text_percent);
 }
 
 inline DisplayModalProfile &display_active_modal_profile() {
@@ -103,8 +106,17 @@ inline int display_volume_width_percent(const DisplayProfile &profile) {
   return display_width_percent(profile.width.volume_percent);
 }
 
+inline int display_text_width_percent(const DisplayProfile &profile) {
+  return display_width_percent(profile.width.text_percent);
+}
+
 inline void display_apply_main_width(lv_obj_t *obj, const DisplayProfile &profile) {
   apply_width_compensation(obj, display_main_width_percent(profile));
+}
+
+inline void display_apply_text_width(lv_obj_t *obj, const DisplayProfile &profile) {
+  (void) profile;
+  apply_text_width_compensation(obj);
 }
 
 inline void display_apply_slot_text_width(const BtnSlot &slot, const DisplayProfile &profile) {

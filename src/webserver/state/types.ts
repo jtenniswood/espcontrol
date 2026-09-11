@@ -126,6 +126,7 @@ export interface AppState {
   clockBarOn: boolean;
   _clockBarStateValues: Record<string, boolean>;
   clockBarTimeOn: boolean;
+  clockBarNightModeOn: boolean;
   networkStatusOn: boolean;
   batteryStatusOn: boolean;
   voiceServicesOn: boolean;
@@ -152,6 +153,8 @@ export interface AppState {
   coverArtHideExternalInputOn: boolean;
   homeAssistantArtworkProtocol: string;
   coverArtHomeAssistantPort: number;
+  homeAssistantArtworkEndpointMode: string;
+  homeAssistantArtworkEndpointStatus: string;
   screensaverMode: string;
   _screensaverModeReceived: boolean;
   screensaverAction: string;
@@ -161,6 +164,8 @@ export interface AppState {
   clockBrightnessNight: number;
   clockBrightnessSplitReceived: boolean;
   screensaverDimmedBrightness: number;
+  screensaverDimmedBrightnessDay: number;
+  screensaverDimmedBrightnessNight: number;
   screensaverTimeout: number;
   screensaverTimeoutMin: number;
   screensaverTimeoutMax: number;
@@ -168,13 +173,15 @@ export interface AppState {
   homeScreenTimeout: number;
   brightnessDayVal: number;
   brightnessNightVal: number;
-  automaticBrightnessEnabled: boolean;
+  brightnessMode: string;
+  manualBrightnessVal: number;
   brightnessDawnTime: string;
   brightnessDuskTime: string;
   scheduleTrigger: string;
   _scheduleTriggerReceived: boolean;
   scheduleEnabled: boolean;
   scheduleSensorActivation: string;
+  scheduleSensorEntity: string;
   scheduleOnHour: number;
   scheduleOffHour: number;
   scheduleMode: string;
@@ -198,6 +205,7 @@ export interface AppState {
   screenRotationOptions: string[];
   screenRotationDeviceOptions: readonly string[] | null;
   screenRotationInitialReady: boolean;
+  screenRotationInitialFallbackActive: boolean;
   screenRotationInitialTimer: number | null;
   pendingButtonOrderRaw: string | null;
   sunrise: string;

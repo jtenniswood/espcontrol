@@ -186,21 +186,17 @@ void GSL3680::update_touches() {
     ESP_LOGV(TAG, "update_touches: %x %x %x %x %x %x %x %x", touch_data[0], touch_data[1], touch_data[2], touch_data[3], touch_data[4], touch_data[5], touch_data[6], touch_data[7]);
 
     uint8_t touch_count = touch_data[0] & 0x0f;
-    if (touch_count > 2) {
-        ESP_LOGW(TAG, "GSL3680 reported %u touches; clamping to the two points read by this driver", touch_count);
-        touch_count = 2;
+    if (touch_count > TOUCH_MAX_POINTS) {
+        ESP_LOGW(TAG, "GSL3680 reported %u touches; clamping to %u controller points",
+                 touch_count, TOUCH_MAX_POINTS);
+        touch_count = TOUCH_MAX_POINTS;
     }
-    uint16_t x1 = ((touch_data[7] & 0x0f) << 8) | touch_data[6];
-	uint16_t y1 = (touch_data[5] << 8) | touch_data[4];
-    uint16_t x2 = ((touch_data[11] & 0x0f) << 8) | touch_data[10];
-	uint16_t y2 = (touch_data[9] << 8) | touch_data[8];
-
-    cinfo.x[0] = x1;
-    cinfo.y[0] = y1;
-    cinfo.id[0] = ((touch_data[7] & 0xf0) >> 4);
-    cinfo.x[1] = x2;
-    cinfo.y[1] = y2;
-    cinfo.id[1] = ((touch_data[11] & 0xf0) >> 4);
+    for (uint8_t i = 0; i < touch_count; i++) {
+        const size_t offset = 4 + (i * 4);
+        cinfo.y[i] = (touch_data[offset + 1] << 8) | touch_data[offset];
+        cinfo.x[i] = ((touch_data[offset + 3] & 0x0f) << 8) | touch_data[offset + 2];
+        cinfo.id[i] = (touch_data[offset + 3] & 0xf0) >> 4;
+    }
     cinfo.finger_num = touch_count;
 
     gsl_alg_id_main(&cinfo);
@@ -227,7 +223,7 @@ void GSL3680::update_touches() {
     ESP_LOGV(TAG, "update_touches: touch [%d] %dx%d (%d)", cinfo.finger_num, cinfo.x[0], cinfo.y[0], mask);
 
     int selected_touch = -1;
-    for (int i = 0; i < cinfo.finger_num && i < 2; i++) {
+    for (int i = 0; i < cinfo.finger_num && i < TOUCH_MAX_POINTS; i++) {
         const bool touch_in_bounds =
             cinfo.x[i] >= this->x_raw_min_ && cinfo.x[i] <= this->x_raw_max_ &&
             cinfo.y[i] >= this->y_raw_min_ && cinfo.y[i] <= this->y_raw_max_;
@@ -241,8 +237,7 @@ void GSL3680::update_touches() {
         // or multi-touch wake tap; the screensaver wake path only needs one touch.
         this->add_raw_touch_position_(0, cinfo.x[selected_touch], cinfo.y[selected_touch]);
     } else if (cinfo.finger_num >= 1) {
-        ESP_LOGW(TAG, "Ignoring out-of-bounds GSL3680 touches %dx%d and %dx%d",
-                 cinfo.x[0], cinfo.y[0], cinfo.x[1], cinfo.y[1]);
+        ESP_LOGW(TAG, "Ignoring %d out-of-bounds GSL3680 touch points", cinfo.finger_num);
     }
 }
 

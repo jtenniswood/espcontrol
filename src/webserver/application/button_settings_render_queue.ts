@@ -1,47 +1,56 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installButtonSettingsRenderQueueModule(): GlobalDescriptors {
-    // ── Button Settings Render Queue ──────────────────────────────────
-    // ── Render debouncing ──────────────────────────────────────────────────
-    var _renderPending: any = false;
-    function scheduleRender(this: any) {
-        if (_renderPending)
-            return;
-        _renderPending = true;
-        requestAnimationFrame(function (this: any) {
-            _renderPending = false;
-            renderPreview();
-            if (isSettingsOpen() || isSettingsFocused()) {
-                _settingsDeferred = true;
-            }
-            else {
-                renderButtonSettings();
+import type { UiRuntimeState } from "./state";
+
+export interface ButtonSettingsRenderQueueFeature {
+    schedule(): void;
+    clearDeferred(): void;
+}
+
+export interface ButtonSettingsRenderQueueDependencies {
+    readonly document: Document;
+    readonly requestFrame: (callback: FrameRequestCallback) => number;
+    readonly renderPreview: () => void;
+    readonly renderButtonSettings: () => void;
+    readonly closeSettings: () => void;
+}
+
+export function createButtonSettingsRenderQueueFeature(
+    runtime: UiRuntimeState,
+    dependencies: ButtonSettingsRenderQueueDependencies,
+): ButtonSettingsRenderQueueFeature {
+    const els = runtime.els;
+    let renderPending = false;
+    let settingsDeferred = false;
+    const schedule = (): void => {
+        if (renderPending) return;
+        renderPending = true;
+        dependencies.requestFrame(() => {
+            renderPending = false;
+            dependencies.renderPreview();
+            if (runtime.isSettingsOpen() || runtime.isSettingsFocused()) {
+                settingsDeferred = true;
+            } else {
+                dependencies.renderButtonSettings();
             }
         });
-    }
-    var _settingsDeferred: any = false;
-    document.addEventListener("focusout", function (this: any, e?: any) {
-        if (!_settingsDeferred)
-            return;
-        if (e.relatedTarget && els.buttonSettings && els.buttonSettings.contains(e.relatedTarget))
-            return;
-        requestAnimationFrame(function (this: any) {
-            if (isSettingsOpen())
-                return;
-            if (!isSettingsFocused()) {
-                _settingsDeferred = false;
-                renderButtonSettings();
+    };
+    dependencies.document.addEventListener("focusout", (event: FocusEvent) => {
+        if (!settingsDeferred) return;
+        if (event.relatedTarget && els.buttonSettings?.contains(event.relatedTarget as Node)) return;
+        dependencies.requestFrame(() => {
+            if (runtime.isSettingsOpen()) return;
+            if (!runtime.isSettingsFocused()) {
+                settingsDeferred = false;
+                dependencies.renderButtonSettings();
             }
         });
     });
-    document.addEventListener("keydown", function (this: any, e?: any) {
-        if (e.key === "Escape" && els.settingsOverlay &&
-            els.settingsOverlay.classList.contains("sp-visible")) {
-            closeSettings();
+    dependencies.document.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key === "Escape" && els.settingsOverlay?.classList.contains("sp-visible")) {
+            dependencies.closeSettings();
         }
     });
     return {
-        "_renderPending": liveGlobal(() => _renderPending, (value?: any) => { _renderPending = value; }),
-        "scheduleRender": staticGlobal(scheduleRender),
-        "_settingsDeferred": liveGlobal(() => _settingsDeferred, (value?: any) => { _settingsDeferred = value; }),
+        schedule,
+        clearDeferred: () => { settingsDeferred = false; },
     };
 }

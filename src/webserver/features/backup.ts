@@ -1,3 +1,4 @@
+import type { PanelIdentityBackup } from "../model/panel_identity";
 import type { CardConfig } from "../contracts/types";
 import {
   BACKUP_CONFIG_VERSION,
@@ -12,6 +13,7 @@ import {
   structuredSubpageFromParsed,
   validateBackupEnvelope,
   type NormalizedBackupEnvelope,
+  type PanelConfigBackupPayload,
   type ParsedSubpageConfig,
   type SlotSizeMap,
 } from "../model";
@@ -22,6 +24,7 @@ export interface FeatureSubpage extends ParsedSubpageConfig {
 }
 
 export interface BackupFeatureSnapshot {
+  readonly identity?: PanelIdentityBackup;
   readonly device?: string;
   readonly slots?: unknown;
   readonly exported_at?: string;
@@ -33,6 +36,7 @@ export interface BackupFeatureSnapshot {
   readonly sizes?: SlotSizeMap;
   readonly settings?: Record<string, unknown>;
   readonly screen?: Record<string, unknown>;
+  readonly native_config?: PanelConfigBackupPayload | null;
 }
 
 export interface BackupTargetDevice {
@@ -158,7 +162,14 @@ export function createBackupFeature(dependencies: BackupFeatureDependencies): Ba
     const importedCount = config.buttons.length;
     const warnings: string[] = [];
 
-    if (config.device && config.device !== targetDeviceId) {
+    const nativeDeviceProfile = config.native_config?.device_profile ||
+      config.native_config_skipped_device_profile;
+    if (nativeDeviceProfile && nativeDeviceProfile !== targetDeviceId) {
+      warnings.push(
+        `This backup was taken from ${nativeDeviceProfile}; this device is ${targetDeviceId}. ` +
+          "Layout will be restored, but the native configuration will be skipped.",
+      );
+    } else if (config.device && config.device !== targetDeviceId) {
       warnings.push(`Config was exported from a different panel (${config.device}) - layout may look different`);
     }
     if (importedCount !== targetSlots) {

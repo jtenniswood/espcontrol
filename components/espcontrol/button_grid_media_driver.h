@@ -8,11 +8,11 @@
 namespace espcontrol::cards {
 
 inline bool media_driver_matches(const Context &context) {
-  if (context.legacy_dispatch) return false;
   using Driver = card_runtime::CardDriverId;
   switch (context.runtime.driver) {
     case Driver::MEDIA:
     case Driver::MEDIA_CONTROL:
+    case Driver::MEDIA_GROUP:
     case Driver::MEDIA_PLAY_PAUSE:
     case Driver::MEDIA_TRANSPORT:
     case Driver::MEDIA_VOLUME:
@@ -24,6 +24,20 @@ inline bool media_driver_matches(const Context &context) {
     default:
       return false;
   }
+}
+
+inline MediaNowPlayingCtx *media_driver_track_now_playing(
+    const Context &context, lv_obj_t *owner, MediaNowPlayingCtx *now_playing) {
+  return context.surface == Surface::SUBPAGE
+    ? grid_delete_media_now_playing_with_owner(owner, now_playing)
+    : grid_track_media_now_playing_runtime(owner, now_playing);
+}
+
+inline SliderCtx *media_driver_track_slider(
+    const Context &context, lv_obj_t *owner, SliderCtx *slider) {
+  return context.surface == Surface::SUBPAGE
+    ? grid_delete_media_slider_with_owner(owner, slider)
+    : grid_track_media_slider_runtime(owner, slider);
 }
 
 inline bool media_driver_setup_visual(
@@ -63,6 +77,32 @@ inline bool media_driver_setup_visual(
       ? display_media_cover_art_artist_font(display)
       : nullptr,
     display_main_width_percent(display), row_span, col_span);
+
+  // Visual setup can run well before Home Assistant data binding. Own every
+  // visual context immediately so a second setup pass can retire its timers
+  // and widgets safely even if Phase 2 has not run yet.
+  const std::string mode = media_card_mode(config.sensor);
+  if (mode == "now_playing" || mode == "cover_art") {
+    MediaNowPlayingCtx *now_playing = slot.sensor_container
+      ? static_cast<MediaNowPlayingCtx *>(
+          lv_obj_get_user_data(slot.sensor_container))
+      : nullptr;
+    media_driver_track_now_playing(context, slot.btn, now_playing);
+    if (now_playing != nullptr && now_playing->progress_slider != nullptr) {
+      SliderCtx *slider = static_cast<SliderCtx *>(
+        lv_obj_get_user_data(now_playing->progress_slider));
+      media_driver_track_slider(context, slot.btn, slider);
+    }
+  } else if (mode != "playlist" && !media_playback_button_mode(mode) &&
+             !media_control_modal_mode(mode) && mode != "volume") {
+    lv_obj_t *slider_obj = slot.sensor_container
+      ? static_cast<lv_obj_t *>(lv_obj_get_user_data(slot.sensor_container))
+      : nullptr;
+    SliderCtx *slider = slider_obj
+      ? static_cast<SliderCtx *>(lv_obj_get_user_data(slider_obj))
+      : nullptr;
+    media_driver_track_slider(context, slot.btn, slider);
+  }
   return true;
 }
 
@@ -155,20 +195,6 @@ inline MediaPlaylistCtx *media_driver_track_playlist(
     : grid_track_media_playlist_runtime(owner, playlist);
 }
 
-inline MediaNowPlayingCtx *media_driver_track_now_playing(
-    const Context &context, lv_obj_t *owner, MediaNowPlayingCtx *now_playing) {
-  return context.surface == Surface::SUBPAGE
-    ? grid_delete_media_now_playing_with_owner(owner, now_playing)
-    : grid_track_media_now_playing_runtime(owner, now_playing);
-}
-
-inline SliderCtx *media_driver_track_slider(
-    const Context &context, lv_obj_t *owner, SliderCtx *slider) {
-  return context.surface == Surface::SUBPAGE
-    ? grid_delete_media_slider_with_owner(owner, slider)
-    : grid_track_media_slider_runtime(owner, slider);
-}
-
 inline MediaControlCtx *media_driver_create_control(
     BtnSlot &slot, const ParsedCfg &config, const Context &context,
     const MediaDriverEnvironment &environment) {
@@ -199,8 +225,8 @@ inline void media_driver_bind_cover_art_route(
   if (!primary) return;
   media_playback_attach_now_playing(primary, now_playing);
   media_playback_subscribe_playback_state(primary);
-  media_playback_subscribe_metadata(primary);
   media_playback_subscribe_content(primary);
+  media_playback_subscribe_metadata(primary);
   media_playback_subscribe_progress(primary);
 
   MediaPlaybackState *secondary = nullptr;
@@ -209,8 +235,8 @@ inline void media_driver_bind_cover_art_route(
     if (secondary) {
       media_playback_attach_now_playing(secondary, now_playing);
       media_playback_subscribe_playback_state(secondary);
-      media_playback_subscribe_metadata(secondary);
       media_playback_subscribe_content(secondary);
+      media_playback_subscribe_metadata(secondary);
       media_playback_subscribe_progress(secondary);
     }
   }
@@ -226,11 +252,34 @@ inline void media_driver_bind_cover_art_route(
     const bool secondary_configured =
       !now_playing->secondary_entity.empty() &&
       now_playing->secondary_entity != now_playing->primary_entity;
+    const bool secondary_playback_active =
+      secondary_state && secondary_state->has_state &&
+      secondary_state->available &&
+      espcontrol::cover_art::media_entity_state_usable(
+        secondary_state->state_text);
+    const bool secondary_has_content =
+      media_playback_has_current_content(secondary_state);
     const bool use_secondary = espcontrol::cover_art::use_secondary_media_entity(
       primary_state && primary_state->external_source,
       secondary_configured,
-      secondary_state && secondary_state->available,
-      media_playback_has_current_content(secondary_state));
+      secondary_playback_active,
+      secondary_has_content);
+    if (primary_state && primary_state->external_source) {
+      ESP_LOGD(
+        "media_card",
+        "Secondary route entity=%s configured=%d state=%s active=%d content=%d title=%d artist=%d artwork=%u selected=%d",
+        now_playing->secondary_entity.empty()
+          ? "<none>" : now_playing->secondary_entity.c_str(),
+        secondary_configured,
+        secondary_state && secondary_state->has_state
+          ? secondary_state->state_text.c_str() : "<unknown>",
+        secondary_playback_active,
+        secondary_has_content,
+        secondary_state && !secondary_state->title.empty(),
+        secondary_state && !secondary_state->artist.empty(),
+        secondary_state ? static_cast<unsigned>(secondary_state->artwork_content_mask) : 0u,
+        use_secondary);
+    }
     const bool external_source_fallback =
       primary_state && primary_state->external_source && !use_secondary;
     const std::string next_entity = use_secondary
@@ -238,7 +287,19 @@ inline void media_driver_bind_cover_art_route(
     const bool entity_changed = next_entity != now_playing->active_entity;
     const bool presentation_changed =
       external_source_fallback != now_playing->external_source_fallback;
-    if (next_entity.empty() || (!entity_changed && !presentation_changed)) return;
+    if (next_entity.empty()) return;
+
+    // Reused cover-art routes still need to attach the current generation's
+    // control context. Returning before this point leaves the modal visible,
+    // but skips its grouping and speaker-discovery subscriptions.
+    if (control) {
+      if (control->entity_id != next_entity) {
+        media_playback_detach_control(control);
+        control->entity_id = next_entity;
+      }
+      subscribe_media_control_state(control);
+    }
+    if (!entity_changed && !presentation_changed) return;
 
     ESP_LOGI("media_card", "Cover art entity switched from %s to %s",
              now_playing->active_entity.empty() ? "<none>" : now_playing->active_entity.c_str(),
@@ -254,7 +315,7 @@ inline void media_driver_bind_cover_art_route(
         art->entity_id.clear();
       } else {
         art->entity_id = next_entity;
-        image_card_request_media_artwork(art);
+        image_card_schedule_media_artwork_refresh(art);
       }
     }
 
@@ -270,15 +331,6 @@ inline void media_driver_bind_cover_art_route(
       }
     }
 
-    if (entity_changed && control) {
-      // A newly bound control already targets the primary entity. Rebind it
-      // only when the active route genuinely switches to another entity.
-      if (control->entity_id != next_entity) {
-        media_playback_detach_control(control);
-        control->entity_id = next_entity;
-      }
-      subscribe_media_control_state(control);
-    }
   };
   now_playing->refresh_entity_route();
   media_playback_apply_state_to_now_playing(primary, now_playing);
@@ -302,7 +354,7 @@ inline bool media_driver_bind_data(
         media_play_pause_show_state(config) ? slot.text_lbl : nullptr,
         config.entity);
     }
-  } else if (mode == "control_modal") {
+  } else if (media_control_modal_mode(mode)) {
     MediaControlCtx *control = media_driver_create_control(
       slot, config, context, environment);
     subscribe_media_control_state(control);
@@ -332,13 +384,6 @@ inline bool media_driver_bind_data(
       // can immediately apply cached state through the stale callback.
       now_playing->refresh_entity_route = nullptr;
     }
-    media_driver_track_now_playing(context, slot.btn, now_playing);
-    if (now_playing && now_playing->progress_slider) {
-      media_driver_track_slider(
-        context, slot.btn,
-        static_cast<SliderCtx *>(
-          lv_obj_get_user_data(now_playing->progress_slider)));
-    }
     if (environment.grid_config) {
       setup_media_cover_art(slot, config, *environment.grid_config);
     }
@@ -351,10 +396,8 @@ inline bool media_driver_bind_data(
       subscribe_media_cover_art(now_playing, config.entity);
     }
     MediaControlCtx *control = nullptr;
-    if (mode == "cover_art" &&
-        media_cover_art_press_action(config) == "control_modal") {
-      control = media_driver_create_control(
-        slot, config, context, environment);
+    if (mode == "cover_art") {
+      control = media_driver_create_control(slot, config, context, environment);
       if (control) control->highlight_playing = false;
     }
     if (mode == "cover_art") {
@@ -366,10 +409,6 @@ inline bool media_driver_bind_data(
     lv_obj_t *slider_obj = slot.sensor_container
       ? static_cast<lv_obj_t *>(lv_obj_get_user_data(slot.sensor_container))
       : nullptr;
-    SliderCtx *slider = slider_obj
-      ? static_cast<SliderCtx *>(lv_obj_get_user_data(slider_obj))
-      : nullptr;
-    media_driver_track_slider(context, slot.btn, slider);
     if (slider_obj) {
       subscribe_media_slider_state(slot.btn, slider_obj, config.entity);
     }
@@ -392,7 +431,7 @@ inline bool media_driver_handle_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button) {
   if (!media_driver_matches(context)) return false;
   const std::string mode = media_card_mode(config.sensor);
-  if (mode == "control_modal") {
+  if (media_control_modal_mode(mode)) {
     MediaControlCtx *control = button
       ? static_cast<MediaControlCtx *>(lv_obj_get_user_data(button)) : nullptr;
     if (!control) control = grid_media_control_runtime_for_owner(button);
@@ -406,18 +445,10 @@ inline bool media_driver_handle_click(
   } else if (mode == "now_playing" && config.precision == "play_pause") {
     send_media_playback_action(config.entity, "play_pause");
   } else if (mode == "cover_art") {
-    if (media_cover_art_press_action(config) == "control_modal") {
-      MediaControlCtx *control = button
-        ? static_cast<MediaControlCtx *>(lv_obj_get_user_data(button)) : nullptr;
-      if (!control) control = grid_media_control_runtime_for_owner(button);
-      if (control) media_control_open_modal(control);
-    } else {
-      ImageCardCtx *art = button
-        ? static_cast<ImageCardCtx *>(lv_obj_get_user_data(button)) : nullptr;
-      send_media_playback_action(
-        art && !art->entity_id.empty() ? art->entity_id : config.entity,
-        "play_pause");
-    }
+    MediaControlCtx *control = button
+      ? static_cast<MediaControlCtx *>(lv_obj_get_user_data(button)) : nullptr;
+    if (!control) control = grid_media_control_runtime_for_owner(button);
+    if (control) media_control_open_modal(control);
   } else if (media_playback_button_mode(mode)) {
     send_media_playback_action(config.entity, mode);
   }
@@ -432,7 +463,7 @@ inline bool media_driver_handle_main_click(
 inline bool media_driver_subpage_clickable(
     const ParsedCfg &config) {
   const std::string mode = media_card_mode(config.sensor);
-  return mode == "control_modal" || mode == "volume" ||
+  return media_control_modal_mode(mode) || mode == "volume" ||
          mode == "playlist" || mode == "cover_art" ||
          media_playback_button_mode(mode) ||
          (mode == "now_playing" && config.precision == "play_pause");

@@ -9,6 +9,7 @@ constexpr int FAN_PRESET_MAX_OPTIONS = 32;
 struct FanCardCtx {
   std::string type;
   std::string entity_id;
+  std::string light_entity_id;
   std::string label;
   std::string friendly_name;
   std::string options;
@@ -30,6 +31,8 @@ struct FanCardCtx {
   int width_compensation_percent = 100;
   bool available = false;
   bool on = false;
+  bool light_available = false;
+  bool light_on = false;
   bool oscillating = false;
   bool oscillation_known = false;
   bool direction_known = false;
@@ -71,15 +74,17 @@ enum class FanControlTab : uint8_t {
   PRESET = 2,
   OSCILLATION = 3,
   DIRECTION = 4,
+  LIGHT = 5,
 };
 
 struct FanControlVisibleTabs {
-  FanControlTab tabs[5] = {
+  FanControlTab tabs[6] = {
     FanControlTab::POWER,
     FanControlTab::SPEED,
     FanControlTab::PRESET,
     FanControlTab::OSCILLATION,
     FanControlTab::DIRECTION,
+    FanControlTab::LIGHT,
   };
   uint8_t count = 0;
 
@@ -91,7 +96,7 @@ struct FanControlVisibleTabs {
   }
 
   void add(FanControlTab tab) {
-    if (count >= 5 || contains(tab)) return;
+    if (count >= 6 || contains(tab)) return;
     tabs[count++] = tab;
   }
 };
@@ -111,9 +116,11 @@ struct FanControlModalUi {
   lv_obj_t *preset_tab = nullptr;
   lv_obj_t *oscillation_tab = nullptr;
   lv_obj_t *direction_tab = nullptr;
+  lv_obj_t *light_tab = nullptr;
   lv_obj_t *power_group = nullptr;
   lv_obj_t *power_on_btn = nullptr;
   lv_obj_t *power_off_btn = nullptr;
+  ControlModalBinaryToggle power_toggle;
   lv_obj_t *speed_group = nullptr;
   lv_obj_t *speed_slider = nullptr;
   lv_obj_t *speed_fill = nullptr;
@@ -126,9 +133,15 @@ struct FanControlModalUi {
   lv_obj_t *oscillation_group = nullptr;
   lv_obj_t *oscillation_on_btn = nullptr;
   lv_obj_t *oscillation_off_btn = nullptr;
+  ControlModalBinaryToggle oscillation_toggle;
   lv_obj_t *direction_group = nullptr;
   lv_obj_t *direction_forward_btn = nullptr;
   lv_obj_t *direction_reverse_btn = nullptr;
+  ControlModalBinaryToggle direction_toggle;
+  lv_obj_t *light_group = nullptr;
+  lv_obj_t *light_on_btn = nullptr;
+  lv_obj_t *light_off_btn = nullptr;
+  ControlModalBinaryToggle light_toggle;
   FanCardCtx *active = nullptr;
   FanControlTab tab = FanControlTab::POWER;
   FanControlPresetClick preset_clicks[FAN_PRESET_MAX_OPTIONS];
@@ -184,6 +197,10 @@ inline bool fan_direction_supported(FanCardCtx *ctx) {
   return fan_feature_supported(ctx, FAN_FEATURE_DIRECTION, ctx && ctx->direction_known);
 }
 
+inline bool fan_light_supported(FanCardCtx *ctx) {
+  return ctx && !ctx->light_entity_id.empty() && ctx->light_available;
+}
+
 inline bool fan_control_tab_from_token(const std::string &value, FanControlTab &tab) {
   if (value == "power") {
     tab = FanControlTab::POWER;
@@ -205,6 +222,10 @@ inline bool fan_control_tab_from_token(const std::string &value, FanControlTab &
     tab = FanControlTab::DIRECTION;
     return true;
   }
+  if (value == "light") {
+    tab = FanControlTab::LIGHT;
+    return true;
+  }
   return false;
 }
 
@@ -215,6 +236,7 @@ inline bool fan_control_tab_supported(FanCardCtx *ctx, FanControlTab tab) {
     case FanControlTab::PRESET: return fan_preset_supported(ctx);
     case FanControlTab::OSCILLATION: return fan_oscillation_supported(ctx);
     case FanControlTab::DIRECTION: return fan_direction_supported(ctx);
+    case FanControlTab::LIGHT: return fan_light_supported(ctx);
   }
   return false;
 }
@@ -222,7 +244,10 @@ inline bool fan_control_tab_supported(FanCardCtx *ctx, FanControlTab tab) {
 inline FanControlVisibleTabs fan_control_visible_tabs(FanCardCtx *ctx) {
   FanControlVisibleTabs visible;
   std::string value = cfg_option_value(ctx ? ctx->options : "", FAN_CONTROL_TABS_OPTION);
-  if (value.empty()) value = FAN_CONTROL_DEFAULT_TABS_VALUE;
+  if (value.empty()) {
+    value = FAN_CONTROL_DEFAULT_TABS_VALUE;
+    if (ctx && !ctx->light_entity_id.empty()) value += "|light";
+  }
   size_t start = 0;
   while (start <= value.size()) {
     size_t end = value.find('|', start);
@@ -238,6 +263,7 @@ inline FanControlVisibleTabs fan_control_visible_tabs(FanCardCtx *ctx) {
     else if (fan_preset_supported(ctx)) visible.add(FanControlTab::PRESET);
     else if (fan_oscillation_supported(ctx)) visible.add(FanControlTab::OSCILLATION);
     else if (fan_direction_supported(ctx)) visible.add(FanControlTab::DIRECTION);
+    else if (fan_light_supported(ctx)) visible.add(FanControlTab::LIGHT);
   }
   return visible;
 }
@@ -265,6 +291,7 @@ inline lv_obj_t *fan_control_tab_button(FanControlModalUi &ui, FanControlTab tab
     case FanControlTab::PRESET: return ui.preset_tab;
     case FanControlTab::OSCILLATION: return ui.oscillation_tab;
     case FanControlTab::DIRECTION: return ui.direction_tab;
+    case FanControlTab::LIGHT: return ui.light_tab;
   }
   return nullptr;
 }
@@ -290,14 +317,14 @@ inline std::string fan_card_label(const ParsedCfg &p) {
 }
 
 inline void setup_fan_card(BtnSlot &s, const ParsedCfg &p) {
-  lv_label_set_text(s.icon_lbl, find_icon(fan_card_icon_name(p)));
-  lv_label_set_text(s.text_lbl, fan_card_label(p).c_str());
+  lv_label_set_display_text(s.icon_lbl, find_icon(fan_card_icon_name(p)));
+  lv_label_set_display_text(s.text_lbl, fan_card_label(p).c_str());
   if (p.type != "fan_switch") apply_push_button_transition(s.btn);
 }
 
 inline void setup_fan_control_card(BtnSlot &s, const ParsedCfg &p) {
-  lv_label_set_text(s.icon_lbl, find_icon(fan_card_icon_name(p)));
-  lv_label_set_text(s.text_lbl, fan_card_label(p).c_str());
+  lv_label_set_display_text(s.icon_lbl, find_icon(fan_card_icon_name(p)));
+  lv_label_set_display_text(s.text_lbl, fan_card_label(p).c_str());
   apply_push_button_transition(s.btn);
 }
 
@@ -398,7 +425,9 @@ inline bool fan_preset_active(const std::string &value) {
 }
 
 inline bool fan_control_supported(FanCardCtx *ctx) {
-  if (!ctx || !ctx->available) return false;
+  if (!ctx) return false;
+  if (ctx->type == "fan_control" && fan_light_supported(ctx)) return true;
+  if (!ctx->available) return false;
   if (ctx->type == "fan_oscillate") return ctx->oscillation_known;
   if (ctx->type == "fan_direction") return ctx->direction_known;
   if (ctx->type == "fan_preset") return !ctx->preset_modes.empty();
@@ -418,9 +447,9 @@ inline void fan_apply_card_visual(FanCardCtx *ctx) {
 
   if (ctx->icon_lbl) {
     if ((ctx->type == "fan_switch" || ctx->type == "fan_control") && active && ctx->icon_on_glyph) {
-      lv_label_set_text(ctx->icon_lbl, ctx->icon_on_glyph);
+      lv_label_set_display_text(ctx->icon_lbl, ctx->icon_on_glyph);
     } else if (ctx->icon_off_glyph) {
-      lv_label_set_text(ctx->icon_lbl, ctx->icon_off_glyph);
+      lv_label_set_display_text(ctx->icon_lbl, ctx->icon_off_glyph);
     }
   }
 }
@@ -505,7 +534,7 @@ inline void send_fan_step_action(FanCardCtx *ctx, bool increase) {
   if (!ctx) return;
   const char *service = increase ? "fan.increase_speed" : "fan.decrease_speed";
   if (ctx->percentage_step_known && ctx->percentage_step > 0) {
-    char buf[8];
+    char buf[12];
     snprintf(buf, sizeof(buf), "%d", ctx->percentage_step);
     send_fan_action(ctx->entity_id, service, "percentage_step", buf);
   } else {
@@ -542,7 +571,7 @@ inline lv_obj_t *fan_control_create_tab_button(lv_obj_t *parent, const char *ico
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_t *label = lv_label_create(btn);
   if (label) {
-    lv_label_set_text(label, icon);
+    lv_label_set_display_text(label, icon);
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
@@ -574,7 +603,7 @@ inline lv_obj_t *fan_control_create_icon_button(lv_obj_t *parent, const char *ic
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_t *label = lv_label_create(btn);
   if (label) {
-    lv_label_set_text(label, icon);
+    lv_label_set_display_text(label, icon);
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
@@ -623,6 +652,13 @@ inline void fan_control_apply_direction(FanCardCtx *ctx) {
   fan_control_style_binary_button(ui.direction_reverse_btn, reverse, ctx->on_color, SECONDARY_GREY);
 }
 
+inline void fan_control_apply_light(FanCardCtx *ctx) {
+  FanControlModalUi &ui = fan_control_modal_ui();
+  if (!ctx || ui.active != ctx) return;
+  fan_control_style_binary_button(ui.light_on_btn, ctx->light_on, ctx->on_color, SECONDARY_GREY);
+  fan_control_style_binary_button(ui.light_off_btn, !ctx->light_on, SECONDARY_GREY, SECONDARY_GREY, true);
+}
+
 inline void fan_control_set_speed_value(FanCardCtx *ctx, int pct) {
   FanControlModalUi &ui = fan_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
@@ -639,7 +675,7 @@ inline void fan_control_set_speed_value(FanCardCtx *ctx, int pct) {
   if (ui.speed_value_lbl) {
     char buf[8];
     snprintf(buf, sizeof(buf), "%d%%", pct);
-    lv_label_set_text(ui.speed_value_lbl, buf);
+    lv_label_set_display_text(ui.speed_value_lbl, buf);
   }
 }
 
@@ -657,6 +693,48 @@ inline void fan_control_refresh_card(FanCardCtx *ctx) {
   transient_status_label_show_if_changed(ctx->status_label, fan_status_text(ctx), false);
 }
 
+// Like the light modal, each binary control is one large toggle target.  This
+// keeps the control easy to use: tapping either icon always changes its state.
+inline void fan_control_toggle_modal_power() {
+  FanControlModalUi &ui = fan_control_modal_ui();
+  FanCardCtx *ctx = ui.active;
+  if (!ctx || !ctx->available) return;
+  ctx->on = !ctx->on;
+  fan_control_refresh_card(ctx);
+  fan_control_set_speed_value(ctx, ctx->on ? ctx->percentage : 0);
+  fan_control_apply_power(ctx);
+  send_fan_action(ctx->entity_id, ctx->on ? "fan.turn_on" : "fan.turn_off");
+}
+
+inline void fan_control_toggle_modal_oscillation() {
+  FanControlModalUi &ui = fan_control_modal_ui();
+  FanCardCtx *ctx = ui.active;
+  if (!ctx || !ctx->available) return;
+  ctx->oscillating = !ctx->oscillating;
+  fan_control_apply_oscillation(ctx);
+  send_fan_action(
+    ctx->entity_id, "fan.oscillate", "oscillating", ctx->oscillating ? "true" : "false");
+}
+
+inline void fan_control_toggle_modal_direction() {
+  FanControlModalUi &ui = fan_control_modal_ui();
+  FanCardCtx *ctx = ui.active;
+  if (!ctx || !ctx->available) return;
+  ctx->direction = ctx->direction == "reverse" ? "forward" : "reverse";
+  fan_control_apply_direction(ctx);
+  send_fan_action(ctx->entity_id, "fan.set_direction", "direction", ctx->direction.c_str());
+}
+
+inline void fan_control_toggle_modal_light() {
+  FanControlModalUi &ui = fan_control_modal_ui();
+  FanCardCtx *ctx = ui.active;
+  if (!ctx || !fan_light_supported(ctx)) return;
+  ctx->light_on = !ctx->light_on;
+  fan_control_apply_light(ctx);
+  if (ctx->light_on) send_turn_on_action(ctx->light_entity_id);
+  else send_turn_off_action(ctx->light_entity_id);
+}
+
 inline void fan_control_refresh_modal(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
   if (!ctx || ui.active != ctx || !ui.panel) return;
@@ -665,6 +743,7 @@ inline void fan_control_refresh_modal(FanCardCtx *ctx) {
   fan_control_apply_power(ctx);
   fan_control_apply_oscillation(ctx);
   fan_control_apply_direction(ctx);
+  fan_control_apply_light(ctx);
   fan_control_rebuild_preset_list(ctx);
   fan_control_apply_tab_visibility();
   fan_control_layout_modal(ctx);
@@ -682,6 +761,7 @@ inline void fan_control_apply_tab_visibility() {
   bool show_preset = visible_tabs.contains(FanControlTab::PRESET) && ui.tab == FanControlTab::PRESET;
   bool show_oscillation = visible_tabs.contains(FanControlTab::OSCILLATION) && ui.tab == FanControlTab::OSCILLATION;
   bool show_direction = visible_tabs.contains(FanControlTab::DIRECTION) && ui.tab == FanControlTab::DIRECTION;
+  bool show_light = visible_tabs.contains(FanControlTab::LIGHT) && ui.tab == FanControlTab::LIGHT;
   if (ui.tab_row) {
     if (show_tab_bar) lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.tab_row, LV_OBJ_FLAG_HIDDEN);
@@ -696,6 +776,7 @@ inline void fan_control_apply_tab_visibility() {
     {ui.preset_tab, FanControlTab::PRESET},
     {ui.oscillation_tab, FanControlTab::OSCILLATION},
     {ui.direction_tab, FanControlTab::DIRECTION},
+    {ui.light_tab, FanControlTab::LIGHT},
   };
   for (auto &item : buttons) {
     if (!item.btn) continue;
@@ -723,9 +804,14 @@ inline void fan_control_apply_tab_visibility() {
     if (show_direction) lv_obj_clear_flag(ui.direction_group, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.direction_group, LV_OBJ_FLAG_HIDDEN);
   }
+  if (ui.light_group) {
+    if (show_light) lv_obj_clear_flag(ui.light_group, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.light_group, LV_OBJ_FLAG_HIDDEN);
+  }
   fan_control_apply_power(ctx);
   fan_control_apply_oscillation(ctx);
   fan_control_apply_direction(ctx);
+  fan_control_apply_light(ctx);
 }
 
 inline void fan_control_layout_binary_group(lv_obj_t *group, lv_obj_t *first_btn,
@@ -772,7 +858,8 @@ inline void fan_control_layout_modal(FanCardCtx *ctx) {
   int tab_count = static_cast<int>(visible_tabs.count);
   bool show_tab_bar = visible_tabs.count > 1;
   ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);
-  control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);
+  control_modal_apply_tab_row(
+    ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);
   for (int i = 0; show_tab_bar && i < tab_count; i++) {
     lv_obj_t *tab_btn = fan_control_tab_button(ui, visible_tabs.tabs[i]);
     if (!tab_btn) continue;
@@ -798,6 +885,8 @@ inline void fan_control_layout_modal(FanCardCtx *ctx) {
   fan_control_layout_binary_group(ui.oscillation_group, ui.oscillation_on_btn, ui.oscillation_off_btn,
                                   control_w, content_h, center_y);
   fan_control_layout_binary_group(ui.direction_group, ui.direction_forward_btn, ui.direction_reverse_btn,
+                                  control_w, content_h, center_y);
+  fan_control_layout_binary_group(ui.light_group, ui.light_on_btn, ui.light_off_btn,
                                   control_w, content_h, center_y);
 
   if (ui.speed_group) {
@@ -872,7 +961,7 @@ inline void fan_control_rebuild_preset_list(FanCardCtx *ctx) {
   }
   if (count == 0) {
     lv_obj_t *empty = lv_label_create(ui.preset_list);
-    lv_label_set_text(empty, espcontrol_i18n("No presets"));
+    lv_label_set_display_text(empty, espcontrol_i18n("No presets"));
     lv_label_set_long_mode(empty, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(empty, lv_pct(100));
     lv_obj_set_style_text_color(empty, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
@@ -890,7 +979,7 @@ inline void fan_control_hide_modal() {
 }
 
 inline void fan_control_open_modal(FanCardCtx *ctx) {
-  if (!ctx || !ctx->available) return;
+  if (!ctx || (!ctx->available && !fan_light_supported(ctx))) return;
   FanControlVisibleTabs visible_tabs = fan_control_visible_tabs(ctx);
   if (visible_tabs.count == 0) return;
   ControlModalShell shell = control_modal_open_shell(
@@ -910,18 +999,19 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
   ui.preset_tab = fan_control_create_tab_button(ui.tab_row, find_icon("Fan Auto"), ctx->icon_font, FanControlTab::PRESET);
   ui.oscillation_tab = fan_control_create_tab_button(ui.tab_row, find_icon("Fan"), ctx->icon_font, FanControlTab::OSCILLATION);
   ui.direction_tab = fan_control_create_tab_button(ui.tab_row, find_icon("Swap Horizontal"), ctx->icon_font, FanControlTab::DIRECTION);
+  ui.light_tab = fan_control_create_tab_button(ui.tab_row, find_icon("Lightbulb"), ctx->icon_font, FanControlTab::LIGHT);
 
   ui.power_group = lv_obj_create(ui.panel);
   ui.oscillation_group = lv_obj_create(ui.panel);
   ui.direction_group = lv_obj_create(ui.panel);
-  lv_obj_t *binary_groups[] = {ui.power_group, ui.oscillation_group, ui.direction_group};
+  ui.light_group = lv_obj_create(ui.panel);
+  lv_obj_t *binary_groups[] = {ui.power_group, ui.oscillation_group, ui.direction_group, ui.light_group};
   for (lv_obj_t *group : binary_groups) {
     lv_obj_set_style_bg_color(group, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(group, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_width(group, 0, LV_PART_MAIN);
     lv_obj_set_style_shadow_width(group, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(group, 0, LV_PART_MAIN);
-    lv_obj_clear_flag(group, LV_OBJ_FLAG_SCROLLABLE);
   }
   ui.power_on_btn = fan_control_create_icon_button(ui.power_group, find_icon("Power"), ctx->icon_font);
   ui.power_off_btn = fan_control_create_icon_button(ui.power_group, find_icon("Circle Outline"), ctx->icon_font);
@@ -929,37 +1019,22 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
   ui.oscillation_off_btn = fan_control_create_icon_button(ui.oscillation_group, find_icon("Circle Outline"), ctx->icon_font);
   ui.direction_forward_btn = fan_control_create_icon_button(ui.direction_group, find_icon("Arrow Up"), ctx->icon_font);
   ui.direction_reverse_btn = fan_control_create_icon_button(ui.direction_group, find_icon("Arrow Down"), ctx->icon_font);
-
-  if (ui.power_on_btn) lv_obj_add_event_cb(ui.power_on_btn, [](lv_event_t *e) {
-    (void) e;
-    FanControlModalUi &ui = fan_control_modal_ui();
-    if (ui.active && ui.active->available) send_fan_action(ui.active->entity_id, "fan.turn_on");
-  }, LV_EVENT_CLICKED, nullptr);
-  if (ui.power_off_btn) lv_obj_add_event_cb(ui.power_off_btn, [](lv_event_t *e) {
-    (void) e;
-    FanControlModalUi &ui = fan_control_modal_ui();
-    if (ui.active && ui.active->available) send_fan_action(ui.active->entity_id, "fan.turn_off");
-  }, LV_EVENT_CLICKED, nullptr);
-  if (ui.oscillation_on_btn) lv_obj_add_event_cb(ui.oscillation_on_btn, [](lv_event_t *e) {
-    (void) e;
-    FanControlModalUi &ui = fan_control_modal_ui();
-    if (ui.active && ui.active->available) send_fan_action(ui.active->entity_id, "fan.oscillate", "oscillating", "true");
-  }, LV_EVENT_CLICKED, nullptr);
-  if (ui.oscillation_off_btn) lv_obj_add_event_cb(ui.oscillation_off_btn, [](lv_event_t *e) {
-    (void) e;
-    FanControlModalUi &ui = fan_control_modal_ui();
-    if (ui.active && ui.active->available) send_fan_action(ui.active->entity_id, "fan.oscillate", "oscillating", "false");
-  }, LV_EVENT_CLICKED, nullptr);
-  if (ui.direction_forward_btn) lv_obj_add_event_cb(ui.direction_forward_btn, [](lv_event_t *e) {
-    (void) e;
-    FanControlModalUi &ui = fan_control_modal_ui();
-    if (ui.active && ui.active->available) send_fan_action(ui.active->entity_id, "fan.set_direction", "direction", "forward");
-  }, LV_EVENT_CLICKED, nullptr);
-  if (ui.direction_reverse_btn) lv_obj_add_event_cb(ui.direction_reverse_btn, [](lv_event_t *e) {
-    (void) e;
-    FanControlModalUi &ui = fan_control_modal_ui();
-    if (ui.active && ui.active->available) send_fan_action(ui.active->entity_id, "fan.set_direction", "direction", "reverse");
-  }, LV_EVENT_CLICKED, nullptr);
+  ui.light_on_btn = fan_control_create_icon_button(ui.light_group, find_icon("Lightbulb"), ctx->icon_font);
+  ui.light_off_btn = fan_control_create_icon_button(ui.light_group, find_icon("Lightbulb Outline"), ctx->icon_font);
+  ui.power_toggle.callback = fan_control_toggle_modal_power;
+  control_modal_setup_binary_toggle(
+    ui.power_group, ui.power_on_btn, ui.power_off_btn, &ui.power_toggle);
+  ui.oscillation_toggle.callback = fan_control_toggle_modal_oscillation;
+  control_modal_setup_binary_toggle(
+    ui.oscillation_group, ui.oscillation_on_btn, ui.oscillation_off_btn,
+    &ui.oscillation_toggle);
+  ui.direction_toggle.callback = fan_control_toggle_modal_direction;
+  control_modal_setup_binary_toggle(
+    ui.direction_group, ui.direction_forward_btn, ui.direction_reverse_btn,
+    &ui.direction_toggle);
+  ui.light_toggle.callback = fan_control_toggle_modal_light;
+  control_modal_setup_binary_toggle(
+    ui.light_group, ui.light_on_btn, ui.light_off_btn, &ui.light_toggle);
 
   ui.speed_group = lv_obj_create(ui.panel);
   lv_obj_set_style_bg_opa(ui.speed_group, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -996,7 +1071,7 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
     if (ui.speed_value_lbl) {
       char buf[8];
       snprintf(buf, sizeof(buf), "%d%%", pct);
-      lv_label_set_text(ui.speed_value_lbl, buf);
+      lv_label_set_display_text(ui.speed_value_lbl, buf);
     }
     fan_control_refresh_card(ui.active);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
@@ -1102,7 +1177,7 @@ inline void fan_preset_open(FanCardCtx *ctx) {
 
   if (count == 0) {
     ui.empty_lbl = lv_label_create(ui.list);
-    lv_label_set_text(ui.empty_lbl, espcontrol_i18n("No presets"));
+    lv_label_set_display_text(ui.empty_lbl, espcontrol_i18n("No presets"));
     lv_label_set_long_mode(ui.empty_lbl, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(ui.empty_lbl, lv_pct(100));
     lv_obj_set_style_text_color(ui.empty_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
@@ -1136,6 +1211,7 @@ inline FanCardCtx *create_fan_card_context(
   FanCardCtx *ctx = new FanCardCtx();
   ctx->type = p.type;
   ctx->entity_id = p.entity;
+  ctx->light_entity_id = cfg_option_value(p.options, FAN_LIGHT_ENTITY_OPTION);
   ctx->label = p.type == "fan_control" ? p.label : fan_card_label(p);
   ctx->options = p.options;
   ctx->has_custom_label = !p.label.empty();
@@ -1268,4 +1344,17 @@ inline void subscribe_fan_card_state(FanCardCtx *ctx) {
         fan_preset_close_if_unsupported(ctx);
       })
   );
+  if (!ctx->light_entity_id.empty()) {
+    ha_subscribe_state(
+      ctx->light_entity_id,
+      std::function<void(esphome::StringRef)>(
+        [ctx, refresh](esphome::StringRef state) {
+          ctx->light_available = !ha_state_unavailable_ref(state);
+          ctx->light_on = ctx->light_available && is_entity_on_ref(state);
+          refresh();
+          FanControlModalUi &ui = fan_control_modal_ui();
+          if (ui.active == ctx && fan_control_visible_tabs(ctx).count == 0) fan_control_hide_modal();
+        })
+    );
+  }
 }

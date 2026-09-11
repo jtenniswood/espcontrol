@@ -147,7 +147,7 @@ inline void transient_status_label_revert_cb(lv_timer_t *timer) {
   TransientStatusLabel *ctx = static_cast<TransientStatusLabel *>(lv_timer_get_user_data(timer));
   if (!ctx) return;
   ctx->showing_status = false;
-  if (ctx->label) lv_label_set_text(ctx->label, ctx->steady_text.c_str());
+  if (ctx->label) lv_label_set_display_text(ctx->label, ctx->steady_text.c_str());
   lv_timer_pause(timer);
 }
 
@@ -158,7 +158,7 @@ inline TransientStatusLabel *create_transient_status_label(
   TransientStatusLabel *ctx = new TransientStatusLabel();
   ctx->label = label;
   ctx->steady_text = steady_text;
-  if (ctx->label) lv_label_set_text(ctx->label, ctx->steady_text.c_str());
+  if (ctx->label) lv_label_set_display_text(ctx->label, ctx->steady_text.c_str());
   ctx->revert_timer = lv_timer_create(transient_status_label_revert_cb, stable_ms, ctx);
   if (ctx->revert_timer) lv_timer_pause(ctx->revert_timer);
   return ctx;
@@ -169,7 +169,7 @@ inline void transient_status_label_set_steady(TransientStatusLabel *ctx,
   if (!ctx) return;
   ctx->steady_text = steady_text;
   if (!ctx->showing_status && ctx->label) {
-    lv_label_set_text(ctx->label, ctx->steady_text.c_str());
+    lv_label_set_display_text(ctx->label, ctx->steady_text.c_str());
   }
 }
 
@@ -182,7 +182,7 @@ inline void transient_status_label_show_if_changed(TransientStatusLabel *ctx,
     ctx->has_status = true;
     if (!release_to_steady) {
       ctx->showing_status = true;
-      if (ctx->label) lv_label_set_text(ctx->label, status_text.c_str());
+      if (ctx->label) lv_label_set_display_text(ctx->label, status_text.c_str());
       if (ctx->revert_timer) lv_timer_pause(ctx->revert_timer);
     }
     return;
@@ -190,7 +190,7 @@ inline void transient_status_label_show_if_changed(TransientStatusLabel *ctx,
   if (ctx->last_status_text == status_text) return;
   ctx->last_status_text = status_text;
   ctx->showing_status = true;
-  if (ctx->label) lv_label_set_text(ctx->label, status_text.c_str());
+  if (ctx->label) lv_label_set_display_text(ctx->label, status_text.c_str());
   if (ctx->revert_timer) {
     if (release_to_steady) {
       lv_timer_reset(ctx->revert_timer);

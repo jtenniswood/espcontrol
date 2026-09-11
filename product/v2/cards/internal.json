@@ -1,0 +1,36 @@
+{
+  "label": "Internal Switches",
+  "allowInSubpage": true,
+  "domains": [],
+  "options": [
+    {
+      "name": "internal_mode",
+      "label": "Mode",
+      "kind": "choice",
+      "values": ["switch", "push"],
+      "defaultValue": "switch",
+      "storageField": "sensor",
+      "omitDefault": false
+    }
+  ],
+  "behavior": {
+    "internalRelay": {
+      "defaultIcons": { "switch": "Lightbulb Outline", "push": "Gesture Tap" },
+      "defaultIconOn": "Lightbulb"
+    }
+  },
+  "normalization": {
+    "fields": {
+      "entity": { "policy": "keep" }, "label": { "policy": "keep" },
+      "icon": { "policy": "keep" }, "icon_on": { "policy": "keep" },
+      "sensor": { "policy": "keep" }, "unit": { "policy": "keep" },
+      "type": { "policy": "default", "value": "internal" },
+      "precision": { "policy": "keep" }, "options": { "policy": "clear" }
+    },
+    "unknownOptions": "drop", "canonicalOptionOrder": []
+  },
+  "default": {
+    "entity": "", "label": "", "icon": "Lightbulb Outline", "icon_on": "Lightbulb",
+    "sensor": "", "unit": "", "type": "internal", "precision": "", "options": ""
+  }
+}

@@ -1,11 +1,56 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installFirmwareUpdateStateModule(): GlobalDescriptors {
+import { firmwareVersionsSame, isSpecificFirmwareVersion } from "./firmware_metadata";
+import { escHtml } from "./ui_primitives";
+import type { UiRuntimeState } from "./state";
+import type { FirmwareVersionFeature } from "./firmware_version_state";
+
+export interface FirmwareUpdateFeature {
+    updateAvailable(): boolean;
+    publicInstallAvailable(): boolean;
+    latestInfo(): any;
+    latestInstallAvailable(): boolean;
+    latestInstallAction(): string;
+    findVersionInfo(version?: any): any;
+    infoForVersion(version?: any): any;
+    selectedInfo(): any;
+    previousInfos(): any[];
+    selectedPreviousInfo(): any;
+    previousInstallAvailable(): boolean;
+    versionSelectorVisible(): boolean;
+    syncVersionSelect(): void;
+    syncPreviousUi(): void;
+    setPublicInfo(info?: any): boolean;
+    setPublicVersions(infos?: any): boolean;
+    controlsVisible(): boolean;
+    syncCardBadge(): void;
+    syncUi(): void;
+    renderStatus(): void;
+    setInfo(data?: any): void;
+    stopInstallRefresh(): void;
+    stopInstallRefreshIfComplete(): boolean;
+    startInstallRefresh(): void;
+    clearWebOtaFallback(): void;
+    scheduleWebOtaFallback(): void;
+}
+
+export function createFirmwareUpdateFeature(
+    runtime: UiRuntimeState,
+    deviceId: string,
+    firmwareVersion: FirmwareVersionFeature,
+    dependencies: {
+        postInstall(): void;
+        refreshVersion(): void;
+        installViaWebOta(info?: any): void;
+        c6UpdateKnownAvailable(): boolean;
+    },
+): FirmwareUpdateFeature {
+    const els = runtime.els;
+    const { set: setFirmwareVersion } = firmwareVersion;
     // ── Firmware Update State ─────────────────────────────────────────────
     var firmwareInstallRefreshTimer: any = null;
     var firmwareInstallRefreshUntil: any = 0;
     var firmwareWebOtaFallbackTimer: any = null;
-    var FIRMWARE_WEB_OTA_FALLBACK_DELAY_MS: any = 12000;
+    const webOtaFallbackDelayMs = 12000;
     function firmwareUpdateAvailable(this: any) {
         return state.firmwareUpdateState === "UPDATE AVAILABLE" &&
             isSpecificFirmwareVersion(state.firmwareLatestVersion);
@@ -35,7 +80,7 @@ export function installFirmwareUpdateStateModule(): GlobalDescriptors {
             latest_version: state.firmwareLatestVersion,
             release_url: state.firmwareReleaseUrl,
             ota_url: state.firmwareOtaUrl,
-            ota_filename: state.firmwareOtaFilename || (DEVICE_ID + ".ota.bin"),
+            ota_filename: state.firmwareOtaFilename || (deviceId + ".ota.bin"),
             ota_md5: state.firmwareOtaMd5,
         };
     }
@@ -171,7 +216,7 @@ export function installFirmwareUpdateStateModule(): GlobalDescriptors {
     function syncFirmwareCardBadge(this: any) {
         if (els.firmwareCardBadge) {
             els.firmwareCardBadge.classList.toggle("sp-hidden",
-                !latestFirmwareInstallAvailable() && !c6FirmwareUpdateKnownAvailable());
+                !latestFirmwareInstallAvailable() && !dependencies.c6UpdateKnownAvailable());
         }
     }
     function syncFirmwareUpdateUi(this: any) {
@@ -250,7 +295,7 @@ export function installFirmwareUpdateStateModule(): GlobalDescriptors {
                 state.firmwareInstallPostPending = false;
                 clearFirmwareWebOtaFallback();
                 state.firmwareInstallStatus = "Installing update\u2026";
-                postFirmwareUpdateInstall();
+                dependencies.postInstall();
                 updateState = "INSTALLING";
             }
             else if (!installWindowActive || (updateState === "NO UPDATE" && !publicFirmwareInstallAvailable())) {
@@ -305,7 +350,7 @@ export function installFirmwareUpdateStateModule(): GlobalDescriptors {
     }
     function pollFirmwareInstallRefresh(this: any) {
         firmwareInstallRefreshTimer = null;
-        refreshFirmwareVersion();
+        dependencies.refreshVersion();
         if (stopFirmwareInstallRefreshIfComplete())
             return;
         if (Date.now() >= firmwareInstallRefreshUntil) {
@@ -338,44 +383,35 @@ export function installFirmwareUpdateStateModule(): GlobalDescriptors {
                 return;
             if (!publicFirmwareInstallAvailable())
                 return;
-            installPublicFirmwareViaWebOta(latestFirmwareInfo());
-        }, FIRMWARE_WEB_OTA_FALLBACK_DELAY_MS);
+            dependencies.installViaWebOta(latestFirmwareInfo());
+        }, webOtaFallbackDelayMs);
     }
     return {
-        "firmwareInstallRefreshTimer": liveGlobal(() => firmwareInstallRefreshTimer, (value?: any) => { firmwareInstallRefreshTimer = value; }),
-        "firmwareInstallRefreshUntil": liveGlobal(() => firmwareInstallRefreshUntil, (value?: any) => { firmwareInstallRefreshUntil = value; }),
-        "firmwareWebOtaFallbackTimer": liveGlobal(() => firmwareWebOtaFallbackTimer, (value?: any) => { firmwareWebOtaFallbackTimer = value; }),
-        "FIRMWARE_WEB_OTA_FALLBACK_DELAY_MS": liveGlobal(() => FIRMWARE_WEB_OTA_FALLBACK_DELAY_MS, (value?: any) => { FIRMWARE_WEB_OTA_FALLBACK_DELAY_MS = value; }),
-        "firmwareUpdateAvailable": staticGlobal(firmwareUpdateAvailable),
-        "publicFirmwareInstallAvailable": staticGlobal(publicFirmwareInstallAvailable),
-        "latestFirmwareInfo": staticGlobal(latestFirmwareInfo),
-        "latestFirmwareInstallAvailable": staticGlobal(latestFirmwareInstallAvailable),
-        "latestFirmwareInstallAction": staticGlobal(latestFirmwareInstallAction),
-        "latestFirmwareInfoFromState": staticGlobal(latestFirmwareInfoFromState),
-        "findFirmwareVersionInfo": staticGlobal(findFirmwareVersionInfo),
-        "firmwareInfoForVersion": staticGlobal(firmwareInfoForVersion),
-        "selectedFirmwareInfo": staticGlobal(selectedFirmwareInfo),
-        "previousFirmwareInfos": staticGlobal(previousFirmwareInfos),
-        "selectedPreviousFirmwareInfo": staticGlobal(selectedPreviousFirmwareInfo),
-        "previousFirmwareInstallAvailable": staticGlobal(previousFirmwareInstallAvailable),
-        "firmwareVersionSelectorVisible": staticGlobal(firmwareVersionSelectorVisible),
-        "syncFirmwareVersionSelect": staticGlobal(syncFirmwareVersionSelect),
-        "syncPreviousFirmwareUi": staticGlobal(syncPreviousFirmwareUi),
-        "setPublicFirmwareInfo": staticGlobal(setPublicFirmwareInfo),
-        "setPublicFirmwareVersions": staticGlobal(setPublicFirmwareVersions),
-        "publicFirmwareReleaseKnown": staticGlobal(publicFirmwareReleaseKnown),
-        "installedFirmwareMatchesPublicRelease": staticGlobal(installedFirmwareMatchesPublicRelease),
-        "firmwareUpdateControlsVisible": staticGlobal(firmwareUpdateControlsVisible),
-        "syncFirmwareCardBadge": staticGlobal(syncFirmwareCardBadge),
-        "syncFirmwareUpdateUi": staticGlobal(syncFirmwareUpdateUi),
-        "renderFirmwareUpdateStatus": staticGlobal(renderFirmwareUpdateStatus),
-        "setFirmwareUpdateInfo": staticGlobal(setFirmwareUpdateInfo),
-        "firmwareVersionMatches": staticGlobal(firmwareVersionMatches),
-        "stopFirmwareInstallRefresh": staticGlobal(stopFirmwareInstallRefresh),
-        "stopFirmwareInstallRefreshIfComplete": staticGlobal(stopFirmwareInstallRefreshIfComplete),
-        "pollFirmwareInstallRefresh": staticGlobal(pollFirmwareInstallRefresh),
-        "startFirmwareInstallRefresh": staticGlobal(startFirmwareInstallRefresh),
-        "clearFirmwareWebOtaFallback": staticGlobal(clearFirmwareWebOtaFallback),
-        "scheduleFirmwareWebOtaFallback": staticGlobal(scheduleFirmwareWebOtaFallback),
+        updateAvailable: firmwareUpdateAvailable,
+        publicInstallAvailable: publicFirmwareInstallAvailable,
+        latestInfo: latestFirmwareInfo,
+        latestInstallAvailable: latestFirmwareInstallAvailable,
+        latestInstallAction: latestFirmwareInstallAction,
+        findVersionInfo: findFirmwareVersionInfo,
+        infoForVersion: firmwareInfoForVersion,
+        selectedInfo: selectedFirmwareInfo,
+        previousInfos: previousFirmwareInfos,
+        selectedPreviousInfo: selectedPreviousFirmwareInfo,
+        previousInstallAvailable: previousFirmwareInstallAvailable,
+        versionSelectorVisible: firmwareVersionSelectorVisible,
+        syncVersionSelect: syncFirmwareVersionSelect,
+        syncPreviousUi: syncPreviousFirmwareUi,
+        setPublicInfo: setPublicFirmwareInfo,
+        setPublicVersions: setPublicFirmwareVersions,
+        controlsVisible: firmwareUpdateControlsVisible,
+        syncCardBadge: syncFirmwareCardBadge,
+        syncUi: syncFirmwareUpdateUi,
+        renderStatus: renderFirmwareUpdateStatus,
+        setInfo: setFirmwareUpdateInfo,
+        stopInstallRefresh: stopFirmwareInstallRefresh,
+        stopInstallRefreshIfComplete: stopFirmwareInstallRefreshIfComplete,
+        startInstallRefresh: startFirmwareInstallRefresh,
+        clearWebOtaFallback: clearFirmwareWebOtaFallback,
+        scheduleWebOtaFallback: scheduleFirmwareWebOtaFallback,
     };
 }

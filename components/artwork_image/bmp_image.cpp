@@ -3,6 +3,8 @@
 
 #ifdef USE_ARTWORK_IMAGE_BMP_SUPPORT
 
+#include <inttypes.h>
+
 #include "esphome/components/display/display.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
@@ -39,7 +41,8 @@ int HOT BmpDecoder::decode(uint8_t *buffer, size_t size) {
     this->compression_method_ = encode_uint32(buffer[33], buffer[32], buffer[31], buffer[30]);
 
     if (this->width_ <= 0 || this->height_ <= 0) {
-      ESP_LOGE(TAG, "Unsupported BMP orientation or dimensions: %dx%d", this->width_, this->height_);
+      ESP_LOGE(TAG, "Unsupported BMP orientation or dimensions: %" PRId32 "x%" PRId32,
+               this->width_, this->height_);
       return DECODE_ERROR_UNSUPPORTED_FORMAT;
     }
     if (this->bits_per_pixel_ == 24) {

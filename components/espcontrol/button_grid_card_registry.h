@@ -12,12 +12,14 @@ enum class Family : uint8_t {
   ALARM,
   ALARM_ACTION,
   DATE_TIME,
+  TIMER,
   CLIMATE,
   COVER,
   OCCUPANCY,
   FAN,
   ACCESS,
   IMAGE,
+  WIFI_QR,
   INTERNAL,
   MOWER,
   LIGHT_CONTROL,
@@ -33,7 +35,6 @@ enum class Family : uint8_t {
   VACUUM,
   WEATHER,
   WEBHOOK,
-  TODO,
   UNKNOWN,
 };
 

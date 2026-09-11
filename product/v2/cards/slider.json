@@ -1,0 +1,19 @@
+{
+  "label": "Slider",
+  "allowInSubpage": true,
+  "domains": ["light", "fan", "number", "input_number"],
+  "normalization": {
+    "fields": {
+      "entity": { "policy": "keep" }, "label": { "policy": "keep" },
+      "icon": { "policy": "keep" }, "icon_on": { "policy": "keep" },
+      "sensor": { "policy": "clear" }, "unit": { "policy": "keep" },
+      "type": { "policy": "default", "value": "slider" },
+      "precision": { "policy": "keep" }, "options": { "policy": "clear" }
+    },
+    "unknownOptions": "drop", "canonicalOptionOrder": []
+  },
+  "default": {
+    "entity": "", "label": "", "icon": "Auto", "icon_on": "Auto",
+    "sensor": "", "unit": "", "type": "slider", "precision": "", "options": ""
+  }
+}

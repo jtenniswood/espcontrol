@@ -513,7 +513,7 @@ int main() {
 }
 
 function main() {
-  const contract = JSON.parse(fs.readFileSync(path.join(ROOT, "common/config/card_contract.json"), "utf8"));
+  const contract = JSON.parse(fs.readFileSync(path.join(ROOT, "product/v2/card_contract.json"), "utf8"));
   assert.deepStrictEqual(contract.cards.action.normalization.migrationActions.slice(0, 2), ["legacy_local_action", "legacy_option_select"]);
   const generatedAction = loadTypeScriptModule(path.join(ROOT, "src/webserver/generated/saved_config_action.ts"));
   const localAction = { type: "local", sensor: "stale", unit: "unit", precision: "2", options: "unknown=1", icon_on: "Custom" };
@@ -901,12 +901,12 @@ function main() {
   assert.match(browser, /normalizeSavedConfigSwitch\(b, normalizeSwitchConfirmationOptions\)/);
   assert.doesNotMatch(browser, /if \(b && !normalizedSavedSensor && !b\.type\)/);
 
-  const vacuumCard = fs.readFileSync(path.join(ROOT, "src/webserver/cards/vacuum.ts"), "utf8");
-  assert.match(vacuumCard, /normalizeSavedConfigVacuumSensor\(String\(b\.sensor \|\| ""\)\)/);
-  assert.match(vacuumCard, /normalizeSavedConfigVacuumPrecision\(String\(b\.precision \|\| ""\)\)/);
-  assert.match(vacuumCard, /normalizeSavedConfigVacuumOptions\(String\(b\.options \|\| ""\)\)/);
-  assert.match(vacuumCard, /normalizeSavedConfigVacuumIconOn\(String\(b\.icon_on \|\| ""\)\)/);
-  assert.doesNotMatch(vacuumCard, /normalizeEntityModeCardConfig\(b,/);
+  const robotOptions = fs.readFileSync(path.join(ROOT, "src/webserver/application/config_robot_card_options.ts"), "utf8");
+  assert.match(robotOptions, /normalizeSavedConfigVacuumSensor\(String\(button\.sensor \|\| ""\)\)/);
+  assert.match(robotOptions, /normalizeSavedConfigVacuumPrecision\(String\(button\.precision \|\| ""\)\)/);
+  assert.match(robotOptions, /normalizeSavedConfigVacuumOptions\(String\(button\.options \|\| ""\)\)/);
+  assert.match(robotOptions, /normalizeSavedConfigVacuumIconOn\(String\(button\.icon_on \|\| ""\)\)/);
+  assert.doesNotMatch(robotOptions, /normalizeEntityModeCardConfig\(button,\s*\{[^}]*vacuum/s);
 
   const firmware = fs.readFileSync(path.join(ROOT, "components/espcontrol/button_grid_config_parser.h"), "utf8");
   assert.match(firmware, /#include "button_grid_saved_config_vacuum_generated\.h"/);

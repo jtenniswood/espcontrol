@@ -1,0 +1,87 @@
+{
+  "label": "Camera Card",
+  "allowInSubpage": true,
+  "domains": [
+    "camera",
+    "image"
+  ],
+  "options": [
+    {
+      "name": "image_label",
+      "label": "Show Label",
+      "kind": "flag",
+      "omitDefault": true
+    },
+    {
+      "name": "image_icon",
+      "label": "Show Icon",
+      "kind": "flag",
+      "omitDefault": true
+    },
+    {
+      "name": "image_modal_mode",
+      "label": "Expanded Image",
+      "kind": "choice",
+      "values": [
+        "fill",
+        "fit"
+      ],
+      "defaultValue": "fill",
+      "omitDefault": true
+    }
+  ],
+  "normalization": {
+    "fields": {
+      "entity": {
+        "policy": "keep"
+      },
+      "label": {
+        "policy": "hook",
+        "hook": "normalize_image_fields"
+      },
+      "icon": {
+        "policy": "hook",
+        "hook": "normalize_image_fields"
+      },
+      "icon_on": {
+        "policy": "default",
+        "value": "Auto"
+      },
+      "sensor": {
+        "policy": "clear"
+      },
+      "unit": {
+        "policy": "clear"
+      },
+      "type": {
+        "policy": "default",
+        "value": "image"
+      },
+      "precision": {
+        "policy": "clear"
+      },
+      "options": {
+        "policy": "hook",
+        "hook": "normalize_image_options"
+      }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": [
+      "image_label",
+      "image_icon",
+      "image_modal_mode"
+    ],
+    "optionHook": "normalize_image_options"
+  },
+  "default": {
+    "entity": "",
+    "label": "",
+    "icon": "Auto",
+    "icon_on": "Auto",
+    "sensor": "",
+    "unit": "",
+    "type": "image",
+    "precision": "",
+    "options": ""
+  }
+}

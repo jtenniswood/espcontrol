@@ -39,6 +39,20 @@ export function normalizeTimeOfDay(value: unknown, fallback: string): string {
   return String(hour).padStart(2, "0") + ":" + String(minute).padStart(2, "0");
 }
 
+export function normalizeBrightnessMode(value: unknown): string {
+  const mode = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (mode === "manual") return "manual";
+  if (mode === "fixed" || mode === "fixed_time" || mode === "fixed_times") return "fixed_times";
+  return "sunrise_sunset";
+}
+
+export function brightnessModeOption(value: unknown): string {
+  const mode = normalizeBrightnessMode(value);
+  if (mode === "manual") return "Manual";
+  if (mode === "fixed_times") return "Fixed times";
+  return "Sunrise and sunset";
+}
+
 export function normalizeScheduleWakeTimeout(value: unknown): number {
   const n = parseFloat(String(value));
   if (!Number.isFinite(n) || n <= 0) return 60;
@@ -183,6 +197,20 @@ export function normalizeHomeAssistantArtworkProtocol(value: unknown): string {
   return String(value || "").trim().toLowerCase() === "https" ? "https" : "http";
 }
 
+export function normalizeHomeAssistantArtworkEndpointMode(
+  value: unknown,
+  protocol: unknown = "http",
+  port: unknown = 8123,
+): string {
+  const mode = String(value || "").trim().toLowerCase();
+  if (mode === "automatic") return "Automatic";
+  if (mode === "manual") return "Manual";
+  return normalizeHomeAssistantArtworkProtocol(protocol) === "http" &&
+    normalizeHomeAssistantArtworkPort(port) === 8123
+    ? "Automatic"
+    : "Manual";
+}
+
 export function normalizeNtpServer(value: unknown, fallback: string): string {
   const server = String(value == null ? "" : value).trim();
   return server || fallback;
@@ -191,12 +219,14 @@ export function normalizeNtpServer(value: unknown, fallback: string): string {
 export interface BackupScreenSettingsState {
   brightnessDayVal: number;
   brightnessNightVal: number;
-  automaticBrightnessEnabled: boolean;
+  brightnessMode: string;
+  manualBrightnessVal: number;
   brightnessDawnTime: string;
   brightnessDuskTime: string;
   scheduleTrigger: string;
   scheduleEnabled: boolean;
   scheduleSensorActivation: string;
+  scheduleSensorEntity: string;
   scheduleOnHour: number;
   scheduleOffHour: number;
   scheduleMode: string;
@@ -219,15 +249,23 @@ function objectValue(source: Record<string, unknown>, key: string): unknown {
 export function normalizeBackupScreenSettings(
   screenSettings: Record<string, unknown>,
   current: Partial<BackupScreenSettingsState>,
+  legacyPresenceSensorEntity = "",
 ): BackupScreenSettingsState {
   const legacyScheduleEnabled = !!screenSettings.schedule_enabled;
   const scheduleTrigger = normalizeScheduleTrigger(screenSettings.schedule_trigger, legacyScheduleEnabled);
+  const brightnessMode = objectValue(screenSettings, "brightness_mode") != null
+    ? normalizeBrightnessMode(screenSettings.brightness_mode)
+    : objectValue(screenSettings, "automatic_brightness") != null && !screenSettings.automatic_brightness
+      ? "fixed_times"
+      : "sunrise_sunset";
   return {
     brightnessDayVal: numberOrFallback(screenSettings.brightness_day, 100),
     brightnessNightVal: numberOrFallback(screenSettings.brightness_night, 75),
-    automaticBrightnessEnabled: objectValue(screenSettings, "automatic_brightness") != null
-      ? !!screenSettings.automatic_brightness
-      : true,
+    brightnessMode,
+    manualBrightnessVal: numberOrFallback(
+      screenSettings.manual_brightness,
+      numberOrFallback(current.manualBrightnessVal, 100),
+    ),
     brightnessDawnTime: normalizeTimeOfDay(screenSettings.brightness_dawn_time, "06:00"),
     brightnessDuskTime: normalizeTimeOfDay(screenSettings.brightness_dusk_time, "18:00"),
     scheduleTrigger,
@@ -237,6 +275,9 @@ export function normalizeBackupScreenSettings(
         ? screenSettings.schedule_sensor_activation
         : current.scheduleSensorActivation,
     ),
+    scheduleSensorEntity: objectValue(screenSettings, "schedule_sensor_entity") !== undefined
+      ? String(screenSettings.schedule_sensor_entity || "")
+      : legacyPresenceSensorEntity,
     scheduleOnHour: normalizeHour(screenSettings.schedule_on_hour, 6),
     scheduleOffHour: normalizeHour(screenSettings.schedule_off_hour, 23),
     scheduleMode: normalizeScheduleMode(screenSettings.schedule_mode),
@@ -276,6 +317,7 @@ export interface BackupPanelSettingsCurrent {
   ntpServer3: string;
   coverArtHomeAssistantProtocol: string;
   coverArtHomeAssistantPort: number;
+  coverArtHomeAssistantEndpointMode: string;
   autoUpdate: boolean;
   updateFrequency: string;
   updateFrequencyOptions: readonly string[];
@@ -290,6 +332,7 @@ export interface BackupPanelSettingsState {
   clockBarTemperatureEntities: string[];
   clockBar: boolean;
   clockBarTime: boolean;
+  clockBarNightMode: boolean;
   networkStatusIcon: boolean;
   voiceServices: boolean;
   alarmDelayAudio: boolean;
@@ -323,6 +366,7 @@ export interface BackupPanelSettingsState {
   coverArtHideExternalInput: boolean;
   coverArtHomeAssistantProtocol: string;
   coverArtHomeAssistantPort: number;
+  coverArtHomeAssistantEndpointMode: string;
   autoUpdate: boolean;
   updateFrequency: string;
   screensaverAction: string;
@@ -330,6 +374,8 @@ export interface BackupPanelSettingsState {
   clockBrightnessDay: number;
   clockBrightnessNight: number;
   screensaverDimmedBrightness: number;
+  screensaverDimmedBrightnessDay: number;
+  screensaverDimmedBrightnessNight: number;
   screensaverTimeout: unknown;
   homeScreenTimeout: unknown;
   screenRotation: string;
@@ -374,6 +420,19 @@ export function normalizeBackupPanelSettings(
     objectValue(settings, "clock_brightness_night") != null ? settings.clock_brightness_night : settings.clock_brightness,
     clockBrightnessDay,
   );
+  const screensaverDimmedBrightness = normalizeScreensaverDimmedBrightness(
+    settings.screensaver_dimmed_brightness,
+  );
+  const screensaverDimmedBrightnessDay = normalizeScreensaverDimmedBrightness(
+    objectValue(settings, "screensaver_dimmed_brightness_day") != null
+      ? settings.screensaver_dimmed_brightness_day
+      : screensaverDimmedBrightness,
+  );
+  const screensaverDimmedBrightnessNight = normalizeScreensaverDimmedBrightness(
+    objectValue(settings, "screensaver_dimmed_brightness_night") != null
+      ? settings.screensaver_dimmed_brightness_night
+      : screensaverDimmedBrightnessDay,
+  );
   const legacyTemperatureEntities: string[] = [];
   if (settings.outdoor_temp_enable && settings.outdoor_temp_entity) {
     legacyTemperatureEntities.push(String(settings.outdoor_temp_entity));
@@ -386,6 +445,12 @@ export function normalizeBackupPanelSettings(
       ? settings.clock_bar_temperature_entities
       : legacyTemperatureEntities,
   );
+  const coverArtHomeAssistantProtocol = objectValue(settings, "home_assistant_artwork_protocol") != null
+    ? normalizeHomeAssistantArtworkProtocol(settings.home_assistant_artwork_protocol)
+    : normalizeHomeAssistantArtworkProtocol(current.coverArtHomeAssistantProtocol);
+  const coverArtHomeAssistantPort = objectValue(settings, "home_assistant_artwork_port") != null
+    ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port)
+    : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort);
   return {
     indoorTempEnable: false,
     outdoorTempEnable: hasOutdoorTempEnable ? !!settings.outdoor_temp_enable : clockBarTemperatureEntities.length > 0,
@@ -394,6 +459,7 @@ export function normalizeBackupPanelSettings(
     clockBarTemperatureEntities,
     clockBar: objectValue(settings, "clock_bar") != null ? !!settings.clock_bar : false,
     clockBarTime: objectValue(settings, "clock_bar_time") != null ? !!settings.clock_bar_time : true,
+    clockBarNightMode: objectValue(settings, "clock_bar_night_mode") != null ? !!settings.clock_bar_night_mode : false,
     networkStatusIcon: objectValue(settings, "network_status_icon") != null ? !!settings.network_status_icon : true,
     voiceServices: objectValue(settings, "voice_services") != null ? !!settings.voice_services : false,
     alarmDelayAudio: objectValue(settings, "alarm_delay_audio") != null ? !!settings.alarm_delay_audio : false,
@@ -447,12 +513,13 @@ export function normalizeBackupPanelSettings(
     coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null
       ? !!settings.cover_art_hide_external_input
       : true,
-    coverArtHomeAssistantProtocol: objectValue(settings, "home_assistant_artwork_protocol") != null
-      ? normalizeHomeAssistantArtworkProtocol(settings.home_assistant_artwork_protocol)
-      : normalizeHomeAssistantArtworkProtocol(current.coverArtHomeAssistantProtocol),
-    coverArtHomeAssistantPort: objectValue(settings, "home_assistant_artwork_port") != null
-      ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port)
-      : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort),
+    coverArtHomeAssistantProtocol,
+    coverArtHomeAssistantPort,
+    coverArtHomeAssistantEndpointMode: normalizeHomeAssistantArtworkEndpointMode(
+      settings.home_assistant_artwork_endpoint_mode,
+      coverArtHomeAssistantProtocol,
+      coverArtHomeAssistantPort,
+    ),
     autoUpdate: objectValue(settings, "firmware_auto_update") != null
       ? !!settings.firmware_auto_update
       : current.autoUpdate,
@@ -467,7 +534,9 @@ export function normalizeBackupPanelSettings(
     clockScreensaver: screensaverAction === "clock",
     clockBrightnessDay,
     clockBrightnessNight,
-    screensaverDimmedBrightness: normalizeScreensaverDimmedBrightness(settings.screensaver_dimmed_brightness),
+    screensaverDimmedBrightness,
+    screensaverDimmedBrightnessDay,
+    screensaverDimmedBrightnessNight,
     screensaverTimeout: settings.screensaver_timeout || 300,
     homeScreenTimeout: objectValue(settings, "home_screen_timeout") != null ? settings.home_screen_timeout : 60,
     screenRotation: normalizeScreenRotationValue(settings.screen_rotation, current.screenRotationOptions),

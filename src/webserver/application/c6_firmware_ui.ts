@@ -1,6 +1,18 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installC6FirmwareUiModule(): GlobalDescriptors {
+import type { UiRuntimeState } from "./state";
+import type { FirmwareUpdateFeature } from "./firmware_update_state";
+
+export interface C6FirmwareFeature {
+    updateKnownAvailable(): boolean;
+    syncUi(): void;
+    setCurrentVersion(version?: any): void;
+    setLatestVersion(version?: any): void;
+    setUpdateAvailable(value?: any): void;
+}
+
+export function createC6FirmwareFeature(runtime: UiRuntimeState, firmwareUpdate: FirmwareUpdateFeature): C6FirmwareFeature {
+    const els = runtime.els;
+    const { syncCardBadge: syncFirmwareCardBadge } = firmwareUpdate;
     // WiFi co-processor firmware update UI helpers.
     function displayC6FirmwareVersion(this: any, version?: any) {
         version = String(version == null ? "" : version).trim();
@@ -95,12 +107,10 @@ export function installC6FirmwareUiModule(): GlobalDescriptors {
         syncC6FirmwareUi();
     }
     return {
-        "displayC6FirmwareVersion": staticGlobal(displayC6FirmwareVersion),
-        "c6FirmwareVersionLooksKnown": staticGlobal(c6FirmwareVersionLooksKnown),
-        "c6FirmwareUpdateKnownAvailable": staticGlobal(c6FirmwareUpdateKnownAvailable),
-        "syncC6FirmwareUi": staticGlobal(syncC6FirmwareUi),
-        "setC6FirmwareCurrentVersion": staticGlobal(setC6FirmwareCurrentVersion),
-        "setC6FirmwareLatestVersion": staticGlobal(setC6FirmwareLatestVersion),
-        "setC6FirmwareUpdateAvailable": staticGlobal(setC6FirmwareUpdateAvailable),
+        updateKnownAvailable: c6FirmwareUpdateKnownAvailable,
+        syncUi: syncC6FirmwareUi,
+        setCurrentVersion: setC6FirmwareCurrentVersion,
+        setLatestVersion: setC6FirmwareLatestVersion,
+        setUpdateAvailable: setC6FirmwareUpdateAvailable,
     };
 }

@@ -5,6 +5,8 @@
 
 #include <cmath>
 
+#include "display_text.h"
+
 constexpr const char *BATTERY_ICON_UNKNOWN = "\U000F0091";  // Battery Unknown
 constexpr const char *BATTERY_ICON_ALERT = "\U000F0083";    // Battery Alert
 
@@ -37,5 +39,5 @@ inline const char *battery_status_icon(float pct) {
 
 inline void battery_status_set_icon(lv_obj_t *label, float pct) {
   if (!label) return;
-  lv_label_set_text(label, battery_status_icon(pct));
+  lv_label_set_display_text(label, battery_status_icon(pct));
 }

@@ -7,7 +7,7 @@ for each display family. Device identity is not inspected inside modal code.
 
 The modal system is split into five layers:
 
-1. `devices/catalog.json` assigns each device a semantic modal profile: layout
+1. `product/v2/device_catalog.json` assigns each device a semantic modal profile: layout
    family, density, memory tier, and base touch target.
 2. `scripts/generate_device_slots.py` writes that profile into generated device
    YAML and `GridConfig` activates it when the grid is built.

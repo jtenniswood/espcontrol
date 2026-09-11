@@ -6,7 +6,7 @@ This copy keeps the 10-inch P4 touchscreen driver in the same release stream as 
 
 Local changes:
 
-- Clamp the reported touch count to the two points read by this driver before calling the vendor touch tracking routine.
+- Decode all five points returned by the controller before calling the vendor touch tracking routine.
 - Feed the watchdog during the long firmware upload to the touch controller.
 
 License details from the source repository are included in `LICENSE.md`.

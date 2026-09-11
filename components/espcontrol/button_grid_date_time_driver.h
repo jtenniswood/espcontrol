@@ -29,11 +29,11 @@ inline bool date_time_driver_setup_visual(
   lv_obj_clear_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
   const bool calendar =
     context.runtime.type == card_runtime::CardTypeId::CALENDAR;
-  lv_label_set_text(slot.sensor_lbl, calendar ? "--" : "--:--");
-  lv_label_set_text(slot.unit_lbl, "");
+  lv_label_set_display_text(slot.sensor_lbl, calendar ? "--" : "--:--");
+  lv_label_set_display_text(slot.unit_lbl, "");
 
   if (calendar) {
-    lv_label_set_text(slot.text_lbl, espcontrol_i18n("Date"));
+    lv_label_set_display_text(slot.text_lbl, espcontrol_i18n("Date"));
     register_calendar_card(
       slot.sensor_lbl, slot.unit_lbl, slot.text_lbl,
       calendar_card_shows_time(config));
@@ -41,12 +41,12 @@ inline bool date_time_driver_setup_visual(
     const std::string label = config.label.empty()
       ? timezone_city_label(config.entity)
       : config.label;
-    lv_label_set_text(slot.text_lbl, label.c_str());
+    lv_label_set_display_text(slot.text_lbl, label.c_str());
     register_timezone_card(
       slot.sensor_lbl, slot.unit_lbl, slot.text_lbl,
       config.entity, config.label);
   } else {
-    lv_label_set_text(slot.text_lbl, "");
+    lv_label_set_display_text(slot.text_lbl, "");
     register_timezone_card(
       slot.sensor_lbl, slot.unit_lbl, slot.text_lbl,
       config.entity, "", false);

@@ -1,7 +1,11 @@
 #include "ha_read_coordinator.h"
+#include "espcontrol_app_core.h"
+#include "home_assistant_binding_service.h"
 
 #include <cstdlib>
+#include <cstddef>
 #include <functional>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,15 +24,13 @@ struct FakeTransport {
 
   bool api_available = true;
   bool connected = true;
-  std::vector<Request> reads;
+  bool accept_requests = true;
+  std::string rejected_attribute;
   std::vector<Request> subscriptions;
+  std::vector<Request> fresh_requests;
 
   bool available() const { return api_available; }
   bool state_connected() const { return connected; }
-
-  void get(std::string entity_id, std::string attribute, Callback callback) {
-    reads.push_back({std::move(entity_id), std::move(attribute), std::move(callback)});
-  }
 
   void subscribe(const std::string &entity_id,
                  const std::string &attribute,
@@ -36,14 +38,25 @@ struct FakeTransport {
     subscriptions.push_back({entity_id, attribute, std::move(callback)});
   }
 
-  void deliver_read(size_t index, const std::string &state) {
-    Callback callback = reads.at(index).callback;
-    callback(state);
+  bool request(const std::string &entity_id, const std::string &attribute) {
+    if (!connected || !accept_requests || attribute == rejected_attribute) return false;
+    fresh_requests.push_back({entity_id, attribute, {}});
+    return true;
   }
 
   void publish(size_t index, const std::string &state) {
     Callback callback = subscriptions.at(index).callback;
     callback(state);
+  }
+
+  void publish_fresh(size_t index, const std::string &state) {
+    const auto request = fresh_requests.at(index);
+    for (const auto &subscription : subscriptions) {
+      if (subscription.entity_id == request.entity_id && subscription.attribute == request.attribute) {
+        Callback callback = subscription.callback;
+        callback(state);
+      }
+    }
   }
 };
 
@@ -58,6 +71,49 @@ struct FakeHeapProbe {
 };
 
 using Coordinator = HaReadCoordinator<FakeTransport, FakeHeapProbe>;
+using BindingService = HomeAssistantBindingService<FakeTransport, FakeHeapProbe>;
+
+struct TrackingAllocatorState {
+  static inline size_t allocation_calls = 0;
+  static inline size_t deallocation_calls = 0;
+  static inline size_t allocated_bytes = 0;
+
+  static void reset() {
+    allocation_calls = 0;
+    deallocation_calls = 0;
+    allocated_bytes = 0;
+  }
+};
+
+template<typename T>
+struct TrackingAllocator {
+  using value_type = T;
+  using is_always_equal = std::true_type;
+
+  TrackingAllocator() = default;
+  template<typename U>
+  TrackingAllocator(const TrackingAllocator<U> &) {}
+
+  T *allocate(size_t count) {
+    TrackingAllocatorState::allocation_calls++;
+    TrackingAllocatorState::allocated_bytes += count * sizeof(T);
+    return std::allocator<T>{}.allocate(count);
+  }
+
+  void deallocate(T *pointer, size_t count) {
+    TrackingAllocatorState::deallocation_calls++;
+    std::allocator<T>{}.deallocate(pointer, count);
+  }
+
+  template<typename U>
+  bool operator==(const TrackingAllocator<U> &) const { return true; }
+  template<typename U>
+  bool operator!=(const TrackingAllocator<U> &) const { return false; }
+};
+
+using TrackingCoordinator =
+    HaReadCoordinator<FakeTransport, FakeHeapProbe,
+                      TrackingAllocator<std::byte>>;
 
 [[noreturn]] void fail(const char *message) {
   (void) message;
@@ -68,75 +124,150 @@ void require(bool condition, const char *message) {
   if (!condition) fail(message);
 }
 
+
 void disconnected_read_flushes_after_reconnect() {
   Coordinator coordinator;
+  require(coordinator.subscribe("sensor.room", "", [](std::string) {}, 1u, nullptr, true),
+          "retained state subscription should register");
   coordinator.transport().connected = false;
   std::string received;
-  require(coordinator.get("sensor.room", "", [&](std::string value) { received = value; },
-                          false, 10, 5),
-          "disconnected read should queue");
-  require(coordinator.deferred_count() == 1 && coordinator.transport().reads.empty(),
-          "disconnected read was not deferred");
+  require(coordinator.read_retained(
+              "sensor.room", "", [&](std::string value) { received = value; }, false, 10, 5),
+          "disconnected retained read should wait");
+  require(coordinator.deferred_count() == 0 && coordinator.pending_read_count() == 1,
+          "disconnected read did not wait on its retained channel");
   coordinator.transport().connected = true;
-  coordinator.flush(8, 10, 5);
-  require(coordinator.transport().reads.size() == 1, "reconnected read was not sent");
-  coordinator.transport().deliver_read(0, "ready");
+  coordinator.transport().publish(0, "ready");
   require(received == "ready", "reconnected callback was not invoked");
 }
 
-void low_memory_preserves_deferred_work() {
+
+void low_memory_rejects_retained_read_without_pending_work() {
   Coordinator coordinator;
-  coordinator.transport().connected = false;
-  int calls = 0;
-  require(coordinator.get("sensor.heap", "", [&](std::string) { calls++; }, false, 10, 5),
-          "read should queue before heap pressure");
-  coordinator.transport().connected = true;
+  require(coordinator.subscribe("sensor.heap", "", [](std::string) {}, 1u, nullptr, true),
+          "retained state subscription should register");
   coordinator.heap_probe().enough = false;
-  coordinator.flush(8, 10, 5);
-  require(coordinator.deferred_count() == 1 && coordinator.transport().reads.empty(),
-          "low-memory flush should retain work");
-  coordinator.heap_probe().enough = true;
-  coordinator.flush(8, 10, 5);
-  coordinator.transport().deliver_read(0, "ok");
-  require(calls == 1, "deferred low-memory read did not recover");
+  int calls = 0;
+  require(!coordinator.read_retained(
+              "sensor.heap", "", [&](std::string) { calls++; }, false, 10, 5),
+          "low-memory retained read should fail safely");
+  require(calls == 0 && coordinator.pending_read_count() == 0,
+          "low-memory retained read left pending work");
 }
+
 
 void duplicate_reads_fan_out_once() {
   Coordinator coordinator;
-  coordinator.transport().connected = false;
+  require(coordinator.subscribe("sensor.same", "", [](std::string) {}, 1u, nullptr, true),
+          "retained state subscription should register");
   int first = 0;
   int second = 0;
-  require(coordinator.get("sensor.same", "", [&](std::string) { first++; }, false, 10, 5),
-          "first duplicate read should queue");
-  require(coordinator.get("sensor.same", "", [&](std::string) { second++; }, false, 10, 5),
-          "second duplicate read should join");
-  require(coordinator.deferred_count() == 1, "duplicate reads were not coalesced");
-  coordinator.transport().connected = true;
-  coordinator.flush(8, 10, 5);
-  require(coordinator.transport().reads.size() == 1, "duplicate reads sent more than once");
-  coordinator.transport().deliver_read(0, "on");
+  require(coordinator.read_retained(
+              "sensor.same", "", [&](std::string) { first++; }, false, 10, 5),
+          "first duplicate read should wait");
+  require(coordinator.read_retained(
+              "sensor.same", "", [&](std::string) { second++; }, false, 10, 5),
+          "second duplicate read should wait");
+  require(coordinator.pending_read_count() == 2, "independent reads were not retained");
+  coordinator.transport().publish(0, "on");
   require(first == 1 && second == 1, "duplicate callbacks did not fan out");
 }
 
+
 void reentrant_reads_are_deferred() {
   Coordinator coordinator;
+  require(coordinator.subscribe("sensor.outer", "", [](std::string) {}, 1u, nullptr, true),
+          "outer retained subscription should register");
+  require(coordinator.subscribe("sensor.inner", "", [](std::string) {}, 1u, nullptr, true),
+          "inner retained subscription should register");
   int nested = 0;
-  require(coordinator.get(
+  require(coordinator.read_retained(
               "sensor.outer", "",
               [&](std::string) {
-                require(coordinator.get("sensor.inner", "", [&](std::string) { nested++; },
-                                        false, 10, 5),
+                require(coordinator.read_retained(
+                            "sensor.inner", "", [&](std::string) { nested++; }, false, 10, 5),
                         "nested read should queue");
               },
               false, 10, 5),
-          "outer read should send");
-  coordinator.transport().deliver_read(0, "outer");
-  require(coordinator.deferred_count() == 1 && coordinator.transport().reads.size() == 1,
-          "reentrant read was sent inside callback");
+          "outer read should wait");
+  coordinator.transport().publish(0, "outer");
+  require(coordinator.deferred_count() == 1 && nested == 0,
+          "reentrant read was invoked inside callback");
   coordinator.flush(8, 10, 5);
-  require(coordinator.transport().reads.size() == 2, "reentrant read did not flush");
-  coordinator.transport().deliver_read(1, "inner");
+  require(coordinator.pending_read_count() == 1,
+          "reentrant read did not flush to retained channel");
+  coordinator.transport().publish(1, "inner");
   require(nested == 1, "reentrant callback did not run");
+}
+
+void reentrant_reads_on_one_channel_share_deferred_work() {
+  Coordinator coordinator;
+  require(coordinator.subscribe("sensor.outer", "", [](std::string) {}, 1u, nullptr, true),
+          "outer retained subscription should register");
+  require(coordinator.subscribe("sensor.inner", "", [](std::string) {}, 1u, nullptr, true),
+          "inner retained subscription should register");
+  int first = 0;
+  int second = 0;
+  require(coordinator.read_retained(
+              "sensor.outer", "",
+              [&](std::string) {
+                require(coordinator.read_retained(
+                            "sensor.inner", "", [&](std::string) { first++; }, false, 10, 5),
+                        "first nested read should queue");
+                require(coordinator.read_retained(
+                            "sensor.inner", "", [&](std::string) { second++; }, false, 10, 5),
+                        "second nested read should queue");
+              },
+              false, 10, 5),
+          "outer read should wait");
+
+  coordinator.transport().publish(0, "outer");
+  require(coordinator.deferred_count() == 1 && coordinator.pending_read_count() == 2,
+          "same-channel nested reads were not grouped");
+  coordinator.flush(8, 10, 5);
+  coordinator.transport().publish(1, "inner");
+  require(first == 1 && second == 1,
+          "grouped same-channel reads did not fan out once");
+  require(coordinator.transient_callback_capacity() == 0,
+          "completed reentrant reads retained callback storage");
+}
+
+void resolved_deferred_channels_survive_channel_vector_growth() {
+  Coordinator coordinator;
+  require(coordinator.subscribe("sensor.outer", "", [](std::string) {}, 1u, nullptr, true),
+          "outer retained subscription should register");
+  require(coordinator.subscribe("sensor.first", "", [](std::string) {}, 1u, nullptr, true),
+          "first retained subscription should register");
+  require(coordinator.subscribe("sensor.second", "", [](std::string) {}, 1u, nullptr, true),
+          "second retained subscription should register");
+  int first = 0;
+  int second = 0;
+  require(coordinator.read_retained(
+              "sensor.outer", "",
+              [&](std::string) {
+                require(coordinator.read_retained(
+                            "sensor.first", "", [&](std::string) { first++; }, false, 10, 5),
+                        "first resolved channel should queue");
+                require(coordinator.read_retained(
+                            "sensor.second", "", [&](std::string) { second++; }, false, 10, 5),
+                        "second resolved channel should queue");
+                for (size_t i = 0; i < 100; i++) {
+                  require(coordinator.subscribe(
+                              "sensor.extra_" + std::to_string(i), "", [](std::string) {}, 1u),
+                          "extra subscription should register");
+                }
+              },
+              false, 10, 5),
+          "outer read should wait");
+
+  coordinator.transport().publish(0, "outer");
+  require(coordinator.deferred_count() == 2,
+          "different resolved channels were incorrectly combined");
+  coordinator.flush(8, 10, 5);
+  coordinator.transport().publish(1, "first");
+  coordinator.transport().publish(2, "second");
+  require(first == 1 && second == 1,
+          "resolved channel index became stale after channel vector growth");
 }
 
 void cancellation_is_safe_during_callback() {
@@ -157,42 +288,797 @@ void cancellation_is_safe_during_callback() {
           "callback cancellation was not deferred safely");
 }
 
-void stale_generations_do_not_deliver() {
+void subscription_reset_during_callback_preserves_rebuilt_subscriptions() {
   Coordinator coordinator;
-  int calls = 0;
-  require(coordinator.get("sensor.stale", "", [&](std::string) { calls++; }, false, 10, 5),
-          "stale read should send");
-  uint32_t old_generation = coordinator.generation();
-  coordinator.bump_generation(1u);
-  require(coordinator.generation() != old_generation, "generation did not advance");
-  coordinator.transport().deliver_read(0, "late");
-  require(calls == 0, "stale in-flight callback was delivered");
+  constexpr uint32_t scope = 1u << 1;
+  int artwork_calls = 0;
+  int secondary_idle_calls = 0;
+  require(coordinator.subscribe(
+              "media_player.primary", "source",
+              [&](std::string) {
+                coordinator.reset_subscriptions(scope);
+                require(coordinator.subscribe(
+                            "media_player.music", "entity_picture",
+                            [&](std::string) { artwork_calls++; }, scope, nullptr, true),
+                        "rebuilt artwork subscription should register");
+                require(coordinator.subscribe(
+                            "media_player.secondary", "",
+                            [&](std::string state) {
+                              if (state == "idle") secondary_idle_calls++;
+                            }, scope),
+                        "rebuilt secondary playback subscription should register");
+              },
+              scope),
+          "source subscription should register");
 
-  coordinator.transport().connected = false;
-  require(coordinator.get("sensor.queued", "", [&](std::string) { calls++; }, false, 10, 5),
-          "queued stale read should be accepted");
-  coordinator.bump_generation(1u);
-  require(coordinator.deferred_count() == 0, "generation cleanup retained deferred work");
+  coordinator.transport().publish(0, "Music");
+  require(coordinator.subscription_count() == 2,
+          "deferred reset removed rebuilt media subscriptions");
+  require(coordinator.read_retained(
+              "media_player.music", "entity_picture",
+              [](std::string) {}, true, 10, 5),
+          "rebuilt artwork subscription should support retained reads");
+  coordinator.transport().publish(1, "/api/media_player_proxy/music");
+  coordinator.transport().publish(2, "idle");
+  require(artwork_calls == 1,
+          "rebuilt artwork subscription did not receive its first update");
+  require(secondary_idle_calls == 1,
+          "rebuilt secondary playback subscription missed its stopped state");
 }
 
-void attribute_requests_preserve_attribute() {
+void owner_release_during_callback_preserves_rebuilt_subscriptions() {
   Coordinator coordinator;
-  require(coordinator.get("media_player.room", "media_title", [](std::string) {}, true, 10, 5),
-          "attribute read should send");
-  require(coordinator.transport().reads.size() == 1 &&
-              coordinator.transport().reads[0].attribute == "media_title",
-          "attribute read lost its attribute");
+  int card_owner = 0;
+  int source_calls = 0;
+  int stopped_calls = 0;
+  require(coordinator.subscribe(
+              "text.button_config", "",
+              [&](std::string) {
+                coordinator.release_owner(&card_owner);
+                require(coordinator.subscribe(
+                            "media_player.primary", "source",
+                            [&](std::string) { source_calls++; }, 1u,
+                            &card_owner, true),
+                        "rebuilt source subscription should register");
+                require(coordinator.subscribe(
+                            "media_player.secondary", "",
+                            [&](std::string state) {
+                              if (state == "idle") stopped_calls++;
+                            }, 1u, &card_owner),
+                        "rebuilt secondary subscription should register");
+              },
+              1u, &card_owner),
+          "card configuration subscription should register");
+
+  coordinator.transport().publish(0, "rebuilt");
+  require(coordinator.subscription_count() == 2,
+          "deferred owner release removed rebuilt card subscriptions");
+  coordinator.transport().publish(1, "Music");
+  coordinator.transport().publish(2, "idle");
+  require(source_calls == 1,
+          "rebuilt source subscription missed its first update");
+  require(stopped_calls == 1,
+          "rebuilt secondary subscription missed its stopped state");
+}
+
+void rebuilt_subscriptions_share_one_transport_channel() {
+  Coordinator coordinator;
+  constexpr uint32_t scope = 1u;
+  int old_calls = 0;
+  int new_calls = 0;
+  require(coordinator.subscribe("media_player.room", "media_title",
+                                [&](std::string) { old_calls++; }, scope),
+          "initial subscription should register");
+  coordinator.reset_subscriptions(scope);
+  require(coordinator.subscribe("media_player.room", "media_title",
+                                [&](std::string) { new_calls++; }, scope),
+          "rebuilt subscription should register");
+  require(coordinator.transport().subscriptions.size() == 1,
+          "rebuilt subscription created a duplicate transport channel");
+  coordinator.transport().publish(0, "Track");
+  require(old_calls == 0 && new_calls == 1,
+          "shared transport channel did not invoke only the current callback");
+}
+
+void rebuilt_subscription_replays_last_value() {
+  Coordinator coordinator;
+  constexpr uint32_t scope = 1u;
+  require(coordinator.subscribe("cover.blind", "current_position",
+                                [](std::string) {}, scope),
+          "initial cover subscription should register");
+  coordinator.transport().publish(0, "42");
+  coordinator.reset_subscriptions(scope);
+
+  std::string received;
+  require(coordinator.subscribe("cover.blind", "current_position",
+                                [&](std::string value) { received = value; }, scope),
+          "rebuilt cover subscription should register");
+  require(received == "42", "rebuilt subscription did not replay the latest value");
+}
+
+void reconnect_does_not_replay_previous_connection_state() {
+  Coordinator coordinator;
+  constexpr uint32_t scope = 1u;
+  require(coordinator.subscribe("cover.blind", "current_position",
+                                [](std::string) {}, scope),
+          "initial cover subscription should register");
+  coordinator.transport().publish(0, "42");
+  coordinator.reset_subscriptions(scope);
+  coordinator.invalidate_retained_state();
+
+  int calls = 0;
+  require(coordinator.subscribe("cover.blind", "current_position",
+                                [&](std::string) { calls++; }, scope),
+          "reconnected cover subscription should register");
+  require(calls == 0, "reconnected subscription replayed stale state");
+  coordinator.transport().publish(0, "43");
+  require(calls == 1, "reconnected subscription missed the fresh state");
+}
+
+void inactive_channels_do_not_retain_new_replay_values() {
+  Coordinator coordinator;
+  constexpr uint32_t scope = 1u;
+  require(coordinator.subscribe("cover.old", "current_position",
+                                [](std::string) {}, scope),
+          "initial cover subscription should register");
+  coordinator.transport().publish(0, "old");
+  coordinator.reset_subscriptions(scope);
+  coordinator.transport().publish(0, "inactive-update");
+
+  int calls = 0;
+  require(coordinator.subscribe("cover.old", "current_position",
+                                [&](std::string) { calls++; }, scope),
+          "inactive cover subscription should rebuild");
+  require(calls == 0, "inactive channel retained a new replay value");
+}
+
+void replay_state_cache_is_bounded() {
+  Coordinator coordinator;
+  constexpr uint32_t scope = 1u;
+  for (size_t i = 0; i < 65; i++) {
+    require(coordinator.subscribe("sensor.channel_" + std::to_string(i), "state",
+                                  [](std::string) {}, scope),
+            "bounded replay subscription should register");
+    coordinator.transport().publish(i, "value_" + std::to_string(i));
+  }
+  coordinator.reset_subscriptions(scope);
+
+  int oldest_calls = 0;
+  require(coordinator.subscribe("sensor.channel_0", "state",
+                                [&](std::string) { oldest_calls++; }, scope),
+          "oldest bounded replay subscription should rebuild");
+  require(oldest_calls == 0, "replay cache retained more than its bounded capacity");
+
+  std::string newest;
+  require(coordinator.subscribe("sensor.channel_64", "state",
+                                [&](std::string value) { newest = value; }, scope),
+          "newest bounded replay subscription should rebuild");
+  require(newest == "value_64", "bounded replay cache discarded the newest value");
+}
+
+void subscription_backed_reads_reuse_the_live_channel() {
+  Coordinator coordinator;
+  int subscription_calls = 0;
+  require(coordinator.subscribe(
+              "media_player.room", "entity_picture",
+              [&](std::string) { subscription_calls++; }, 1u, nullptr, true),
+          "artwork subscription should register");
+
+  std::string first_read;
+  require(coordinator.read_retained(
+              "media_player.room", "entity_picture",
+              [&](std::string value) { first_read = value; }, true, 10, 5),
+          "first artwork read should wait on its live subscription");
+  require(coordinator.transport().subscriptions.size() == 1 &&
+              coordinator.pending_read_count() == 1,
+          "subscription-backed artwork read created extra transport activity");
+
+  coordinator.transport().publish(0, "/api/media_player_proxy/room");
+  require(first_read == "/api/media_player_proxy/room" && subscription_calls == 1,
+          "live artwork response did not satisfy the pending read");
+
+  std::string cached_read;
+  require(coordinator.read_retained(
+              "media_player.room", "entity_picture",
+              [&](std::string value) { cached_read = value; }, true, 10, 5),
+          "later artwork read should reuse the live channel");
+  require(cached_read == "/api/media_player_proxy/room" &&
+              coordinator.transport().subscriptions.size() == 1 &&
+              coordinator.pending_read_count() == 0,
+          "later artwork read did not reuse the latest live value");
+}
+
+
+void retained_reads_never_accumulate_transport_callbacks() {
+  Coordinator coordinator;
+  int subscription_calls = 0;
+  int read_calls = 0;
+  require(coordinator.subscribe(
+              "media_player.room", "entity_picture",
+              [&](std::string) { subscription_calls++; }, 1u, nullptr, true),
+          "retained artwork subscription should register");
+  coordinator.transport().publish(0, "cached");
+
+  for (size_t i = 0; i < 1000; i++) {
+    require(coordinator.read_retained(
+                "media_player.room", "entity_picture",
+                [&](std::string value) {
+                  require(value == "cached", "retained read received the wrong cached value");
+                  read_calls++;
+                },
+                true, 10, 5),
+            "cached retained read should succeed");
+  }
+
+  require(read_calls == 1000 && coordinator.subscription_channel_count() == 1 &&
+              coordinator.pending_read_count() == 0,
+          "repeated retained reads accumulated transport or pending callbacks");
+  coordinator.transport().publish(0, "new");
+  require(read_calls == 1000 && subscription_calls == 2,
+          "later state update invoked completed retained-read callbacks");
+}
+
+void missing_retained_channel_fails_closed() {
+  Coordinator coordinator;
+  int calls = 0;
+  require(!coordinator.read_retained(
+              "media_player.room", "entity_picture",
+              [&](std::string) { calls++; }, true, 10, 5),
+          "missing retained channel should fail");
+  require(calls == 0 && coordinator.subscription_channel_count() == 0 &&
+              coordinator.pending_read_count() == 0,
+          "missing retained channel created coordinator state");
+}
+
+void pending_unowned_reads_are_globally_capped() {
+  Coordinator coordinator;
+  int calls = 0;
+  size_t accepted = 0;
+  require(coordinator.subscribe(
+              "media_player.room", "entity_picture",
+              [](std::string) {}, 1u, nullptr, true),
+          "retained remote artwork subscription should register");
+  require(coordinator.subscribe(
+              "media_player.room", "entity_picture_local",
+              [](std::string) {}, 1u, nullptr, true),
+          "retained local artwork subscription should register");
+  for (size_t i = 0; i < 1000; i++) {
+    const char *attribute = (i % 2 == 0) ? "entity_picture" : "entity_picture_local";
+    if (coordinator.read_retained(
+            "media_player.room", attribute,
+            [&](std::string) { calls++; }, true, 10, 5)) {
+      accepted++;
+    }
+  }
+  require(accepted == 64 && coordinator.pending_read_count() == 64,
+          "pending retained reads exceeded the global cap");
+  coordinator.transport().publish(0, "remote");
+  coordinator.transport().publish(1, "local");
+  require(calls == 64 && coordinator.pending_read_count() == 0,
+          "globally capped pending retained reads were not released");
+}
+
+void a_full_pending_queue_rejects_new_work_without_evicting_accepted_callbacks() {
+  Coordinator coordinator;
+  require(coordinator.subscribe(
+              "media_player.room", "entity_picture", [](std::string) {}, 1u, nullptr, true),
+          "retained artwork subscription should register");
+  int accepted_calls = 0;
+  for (size_t i = 0; i < 64; i++) {
+    require(coordinator.read_retained(
+                "media_player.room", "entity_picture",
+                [&](std::string) { accepted_calls++; }, true, 10, 5),
+            "bounded read should be accepted");
+  }
+  int rejected_calls = 0;
+  require(!coordinator.read_retained(
+              "media_player.room", "entity_picture",
+              [&](std::string) { rejected_calls++; }, true, 10, 5),
+          "full queue should explicitly reject newest work");
+
+  coordinator.transport().publish(0, "artwork");
+  require(accepted_calls == 64 && rejected_calls == 0,
+          "full queue silently evicted accepted work or delivered rejected work");
+  require(coordinator.transient_callback_capacity() == 0,
+          "delivered retained reads kept their high-water callback allocation");
+}
+
+void generation_change_discards_cached_and_pending_channel_reads() {
+  Coordinator coordinator;
+  require(coordinator.subscribe("media_player.room", "entity_picture",
+                                [](std::string) {}, 1u, nullptr, true),
+          "artwork subscription should register");
+  coordinator.transport().publish(0, "old");
+  coordinator.bump_generation(1u);
+  require(coordinator.subscribe("media_player.room", "entity_picture",
+                                [](std::string) {}, 1u, nullptr, true),
+          "new generation artwork subscription should register");
+
+  int calls = 0;
+  require(coordinator.read_retained("media_player.room", "entity_picture",
+                          [&](std::string) { calls++; }, true, 10, 5),
+          "new generation artwork read should wait for a current value");
+  require(calls == 0, "new generation consumed stale cached artwork");
+  coordinator.transport().publish(0, "new");
+  require(calls == 1, "new generation artwork read did not receive the current value");
+}
+
+void reconnect_discards_retained_channel_state() {
+  Coordinator coordinator;
+  require(coordinator.subscribe("media_player.room", "entity_picture",
+                                [](std::string) {}, 1u, nullptr, true),
+          "artwork subscription should register");
+  coordinator.transport().publish(0, "old-token");
+  coordinator.invalidate_retained_state();
+
+  std::string received;
+  require(coordinator.read_retained("media_player.room", "entity_picture",
+                          [&](std::string value) { received = value; }, true, 10, 5),
+          "reconnected artwork read should wait for a current value");
+  require(received.empty(), "reconnected artwork read reused stale credentials");
+  coordinator.transport().publish(0, "new-token");
+  require(received == "new-token",
+          "reconnected artwork read did not receive the current credentials");
+}
+
+
+void ordinary_subscriptions_fail_closed_for_retained_reads() {
+  Coordinator coordinator;
+  require(coordinator.subscribe("sensor.room", "friendly_name",
+                                [](std::string) {}, 1u),
+          "ordinary subscription should register");
+  coordinator.transport().publish(0, "Room");
+
+  int calls = 0;
+  require(!coordinator.read_retained(
+              "sensor.room", "friendly_name", [&](std::string) { calls++; }, true, 10, 5),
+          "ordinary subscription should reject retained reads");
+  require(calls == 0 && coordinator.pending_read_count() == 0,
+          "ordinary subscription retained an unsafe read");
+}
+
+void inactive_reusable_channels_release_cached_state() {
+  Coordinator coordinator;
+  require(coordinator.subscribe("media_player.room", "entity_picture",
+                                [](std::string) {}, 1u, nullptr, true),
+          "reusable artwork subscription should register");
+  coordinator.transport().publish(0, "old");
+  coordinator.reset_subscriptions();
+  require(coordinator.subscribe("media_player.room", "entity_picture",
+                                [](std::string) {}, 1u, nullptr, true),
+          "artwork subscription should be reusable after reset");
+
+  int calls = 0;
+  require(coordinator.read_retained("media_player.room", "entity_picture",
+                          [&](std::string) { calls++; }, true, 10, 5),
+          "recreated artwork read should wait for reannouncement");
+  require(calls == 0, "inactive artwork channel retained stale cached state");
+  coordinator.transport().publish(0, "new");
+  require(calls == 1, "reannounced artwork did not satisfy the recreated read");
+}
+
+void stalled_reusable_channel_coalesces_reads_per_owner() {
+  Coordinator coordinator;
+  int owner = 0;
+  require(coordinator.subscribe("media_player.room", "entity_picture_local",
+                                [](std::string) {}, 1u, &owner, true),
+          "reusable local artwork subscription should register");
+
+  int stale_calls = 0;
+  int current_calls = 0;
+  require(coordinator.read_retained("media_player.room", "entity_picture_local",
+                          [&](std::string) { stale_calls++; }, true, 10, 5, &owner),
+          "first local artwork read should wait");
+  require(coordinator.read_retained("media_player.room", "entity_picture_local",
+                          [&](std::string) { current_calls++; }, true, 10, 5, &owner),
+          "replacement local artwork read should wait");
+  require(coordinator.pending_read_count() == 1 &&
+              coordinator.transient_callback_capacity() == 1,
+          "stalled artwork retries retained superseded callback storage");
+  coordinator.transport().publish(0, "new");
+  require(stale_calls == 0 && current_calls == 1,
+          "stalled artwork retries retained superseded callbacks for one owner");
+}
+
+void unowned_reusable_channel_keeps_independent_reads() {
+  Coordinator coordinator;
+  require(coordinator.subscribe("media_player.room", "entity_picture",
+                                [](std::string) {}, 1u, nullptr, true),
+          "reusable artwork subscription should register");
+
+  int first_calls = 0;
+  int second_calls = 0;
+  require(coordinator.read_retained("media_player.room", "entity_picture",
+                          [&](std::string) { first_calls++; }, true, 10, 5),
+          "first unowned artwork read should wait");
+  require(coordinator.read_retained("media_player.room", "entity_picture",
+                          [&](std::string) { second_calls++; }, true, 10, 5),
+          "second unowned artwork read should wait independently");
+  coordinator.transport().publish(0, "new");
+  require(first_calls == 1 && second_calls == 1,
+          "duplicate cards did not both receive the first artwork update");
+}
+
+
+void generation_change_drops_pending_retained_reads() {
+  Coordinator coordinator;
+  require(coordinator.subscribe("sensor.stale", "", [](std::string) {}, 1u, nullptr, true),
+          "retained state subscription should register");
+  int calls = 0;
+  require(coordinator.read_retained(
+              "sensor.stale", "", [&](std::string) { calls++; }, false, 10, 5),
+          "pending retained read should register");
+  coordinator.bump_generation(1u);
+  require(coordinator.pending_read_count() == 0,
+          "generation cleanup retained pending work");
+  require(coordinator.subscribe("sensor.stale", "", [](std::string) {}, 1u, nullptr, true),
+          "replacement retained state subscription should register");
+  coordinator.transport().publish(0, "late");
+  require(calls == 0, "stale retained callback was delivered");
+}
+
+
+void retained_subscription_preserves_attribute() {
+  Coordinator coordinator;
+  require(coordinator.subscribe(
+              "media_player.room", "media_title", [](std::string) {}, 1u, nullptr, true),
+          "retained metadata subscription should register");
+  require(coordinator.transport().subscriptions.size() == 1 &&
+              coordinator.transport().subscriptions[0].attribute == "media_title",
+          "retained subscription lost its attribute");
+}
+
+void fresh_request_fans_out_through_live_callbacks() {
+  Coordinator coordinator;
+  int first_calls = 0;
+  int second_calls = 0;
+  require(coordinator.subscribe(
+              "media_player.room", "media_artist",
+              [&](std::string value) { if (value == "Artist") first_calls++; },
+              1u, nullptr, true),
+          "first metadata subscription should register");
+  require(coordinator.subscribe(
+              "media_player.room", "media_artist",
+              [&](std::string value) { if (value == "Artist") second_calls++; },
+              1u, nullptr, true),
+          "second metadata subscription should register");
+  require(coordinator.request_fresh("media_player.room", "media_artist"),
+          "fresh metadata request should use the live channel");
+  require(coordinator.request_fresh("media_player.room", "media_artist"),
+          "shared fresh metadata request should reuse the pending channel request");
+  require(coordinator.transport().fresh_requests.size() == 1,
+          "shared fresh metadata consumers should create one native request");
+  coordinator.transport().publish_fresh(0, "Artist");
+  require(first_calls == 1 && second_calls == 1,
+          "fresh metadata response did not fan out to live callbacks");
+}
+
+void fresh_request_is_ignored_after_reconnect_generation_change() {
+  Coordinator coordinator;
+  int calls = 0;
+  require(coordinator.subscribe(
+              "media_player.room", "media_artist",
+              [&](std::string) { calls++; }, 1u, nullptr, true),
+          "metadata subscription should register before reconnect");
+  require(coordinator.request_fresh("media_player.room", "media_artist"),
+          "fresh metadata request should be accepted before reconnect");
+  coordinator.bump_generation(1u);
+  coordinator.transport().publish_fresh(0, "old artist");
+  require(calls == 0, "stale fresh response survived a reconnect generation change");
+}
+
+void fresh_requests_reuse_subscription_and_recover_after_send_failure() {
+  Coordinator coordinator;
+  int calls = 0;
+  coordinator.subscribe("media_player.room", "media_artist",
+                        [&](std::string) { calls++; }, 1u, nullptr, true);
+  coordinator.transport().accept_requests = false;
+  require(!coordinator.request_fresh("media_player.room", "media_artist"),
+          "a rejected send must not remain pending");
+  coordinator.transport().accept_requests = true;
+  for (int i = 0; i < 100; ++i) {
+    require(coordinator.request_fresh("media_player.room", "media_artist"),
+            "fresh request should recover after rejection or response");
+    require(coordinator.request_fresh("media_player.room", "media_artist"),
+            "a shared pending request should be reused");
+    require(coordinator.transport().fresh_requests.size() == static_cast<size_t>(i + 1),
+            "pending fresh requests were not deduplicated");
+    coordinator.transport().publish_fresh(i, "artist");
+  }
+  require(calls == 100 && coordinator.transport().subscriptions.size() == 1,
+          "fresh responses must dispatch once without growing native callbacks");
+  coordinator.transport().connected = false;
+  require(!coordinator.request_fresh("media_player.room", "media_artist"),
+          "disconnected fresh request should not be sent");
+  require(!coordinator.request_fresh("media_player.other", "media_artist"),
+          "fresh request must require an existing live channel");
+}
+
+void scheduled_metadata_refreshes_share_channels_and_retry_only_failed_sends() {
+  Coordinator coordinator;
+  for (const auto *attribute : {"media_title", "media_artist"}) {
+    coordinator.subscribe("media_player.room", attribute, [](std::string) {}, 1u);
+    coordinator.subscribe("media_player.room", attribute, [](std::string) {}, 2u);
+    require(coordinator.schedule_fresh("media_player.room", attribute, 1u, 0), "schedule card");
+    require(coordinator.schedule_fresh("media_player.room", attribute, 2u, 0), "schedule screensaver");
+  }
+  require(!coordinator.schedule_fresh("media_player.room", "media_album_name", 2u, 0),
+          "S3 must not queue an unsupported album channel");
+  coordinator.flush_fresh(99, 0, 0);
+  require(coordinator.transport().fresh_requests.empty(), "debounce must delay sends");
+  coordinator.transport().rejected_attribute = "media_artist";
+  coordinator.flush_fresh(100, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 1, "shared title should send once");
+  coordinator.transport().publish(0, "Title");
+  coordinator.flush_fresh(1099, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 1, "failed sends must back off");
+  coordinator.transport().rejected_attribute.clear();
+  coordinator.flush_fresh(1100, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 2 &&
+          coordinator.transport().fresh_requests.back().attribute == "media_artist",
+          "retry must send only the failed artist attribute");
+  require(!coordinator.has_scheduled_fresh(), "unsupported album must not keep S3 retrying");
+  coordinator.flush_fresh(2100, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 2, "completed batch must stop");
+}
+
+void scheduled_metadata_refreshes_recover_and_cancel_by_consumer() {
+  Coordinator coordinator;
+  coordinator.subscribe("media_player.room", "media_artist", [](std::string) {}, 1u);
+  coordinator.subscribe("media_player.room", "media_artist", [](std::string) {}, 2u);
+  coordinator.schedule_fresh("media_player.room", "media_artist", 1u, 0);
+  coordinator.schedule_fresh("media_player.room", "media_artist", 2u, 0);
+  coordinator.reset_subscriptions(2u);
+  coordinator.transport().connected = false;
+  coordinator.flush_fresh(100, 0, 0);
+  coordinator.transport().connected = true;
+  coordinator.heap_probe().enough = false;
+  coordinator.flush_fresh(1100, 0, 0);
+  require(coordinator.transport().fresh_requests.empty() && coordinator.has_scheduled_fresh(),
+          "transient failures must preserve scheduled work");
+  coordinator.heap_probe().enough = true;
+  coordinator.flush_fresh(2100, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 1,
+          "resetting Cover Art must preserve the card request");
+  coordinator.schedule_fresh("media_player.room", "media_artist", 1u, 2200);
+  coordinator.bump_generation(1u);
+  coordinator.flush_fresh(2300, 0, 0);
+  require(!coordinator.has_scheduled_fresh() && coordinator.transport().fresh_requests.size() == 1,
+          "retired subscriptions must cancel scheduled work");
+}
+
+void scheduled_metadata_refreshes_isolate_players_and_handle_clock_wrap() {
+  Coordinator coordinator;
+  int owner = 0;
+  coordinator.subscribe("media_player.first", "media_artist", [](std::string) {}, 1u, &owner);
+  coordinator.subscribe("media_player.second", "media_artist", [](std::string) {}, 1u);
+  coordinator.request_fresh("media_player.second", "media_artist");
+  coordinator.schedule_fresh("media_player.first", "media_artist", 1u, UINT32_MAX - 49);
+  coordinator.request_fresh("media_player.second", "media_artist");
+  require(coordinator.transport().fresh_requests.size() == 1,
+          "first player's transition must not reset second player's pending read");
+  coordinator.flush_fresh(49, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 1, "wrapped deadline fired early");
+  coordinator.flush_fresh(50, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 2, "wrapped deadline never fired");
+  coordinator.schedule_fresh("media_player.first", "media_artist", 1u, 60);
+  coordinator.release_owner(&owner);
+  coordinator.flush_fresh(160, 0, 0);
+  require(!coordinator.has_scheduled_fresh() && coordinator.transport().fresh_requests.size() == 2,
+          "destroyed card must not leave queued refresh work");
+}
+
+void scheduled_metadata_refreshes_limit_each_send_burst() {
+  Coordinator coordinator;
+  for (int i = 0; i < 6; ++i) {
+    const std::string entity = "media_player.room" + std::to_string(i);
+    coordinator.subscribe(entity, "media_artist", [](std::string) {}, 1u);
+    coordinator.schedule_fresh(entity, "media_artist", 1u, 0);
+  }
+  coordinator.flush_fresh(100, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 4 && coordinator.has_scheduled_fresh(),
+          "refresh bursts must leave room for other API messages");
+  coordinator.flush_fresh(150, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 6 && !coordinator.has_scheduled_fresh(),
+          "remaining players must be serviced on the next pump");
+}
+
+void omitted_fresh_responses_do_not_accumulate_callbacks() {
+  Coordinator coordinator;
+  coordinator.subscribe("media_player.room", "media_artist",
+                        [](std::string) {}, 1u, nullptr, true);
+  const size_t capacity = coordinator.transient_callback_capacity();
+  for (int i = 0; i < 100; ++i) {
+    coordinator.schedule_fresh("media_player.room", "media_artist", 1u, i * 1000);
+    coordinator.flush_fresh(i * 1000 + 100, 0, 0);
+    require(coordinator.request_fresh("media_player.room", "media_artist"),
+            "a new track must still request an omitted attribute");
+    // Deliberately never answer: missing attributes must not retain a native
+    // callback per request, even when every transition resets pending reads.
+  }
+  require(coordinator.transport().subscriptions.size() == 1 &&
+              coordinator.subscription_count() == 1 &&
+              coordinator.subscription_channel_count() == 1 &&
+              coordinator.pending_read_count() == 0 &&
+              coordinator.transient_callback_capacity() == capacity,
+          "omitted attributes accumulated callbacks or transient storage");
+}
+
+
+void released_owner_drops_pending_reads_even_if_its_address_is_reused() {
+  Coordinator coordinator;
+  int owner = 0;
+  int old_calls = 0;
+  int replacement_calls = 0;
+  require(coordinator.subscribe("sensor.old", "", [](std::string) {}, 1u, &owner, true),
+          "old retained subscription should register");
+  require(coordinator.read_retained(
+              "sensor.old", "", [&](std::string) { old_calls++; }, false, 10, 5, &owner),
+          "old owned read should wait");
+  coordinator.release_owner(&owner);
+  require(coordinator.pending_read_count() == 0 &&
+              coordinator.transient_callback_capacity() == 0,
+          "released owner retained pending callback storage");
+  require(coordinator.subscribe("sensor.replacement", "", [](std::string) {}, 1u, &owner, true),
+          "replacement retained subscription should register");
+  require(coordinator.read_retained(
+              "sensor.replacement", "", [&](std::string) { replacement_calls++; },
+              false, 10, 5, &owner),
+          "replacement owned read should wait");
+  coordinator.transport().publish(0, "late");
+  coordinator.transport().publish(1, "current");
+  require(old_calls == 0 && replacement_calls == 1,
+          "released owner delivered a callback after its address was reused");
+}
+
+void callback_owner_scope_restores_the_previous_owner() {
+  BindingService service;
+  int first = 0;
+  int second = 0;
+  require(service.callback_owner() == nullptr, "new binding service has no callback owner");
+  {
+    auto first_scope = service.callback_owner_scope(&first);
+    require(service.callback_owner() == &first, "first callback scope was not applied");
+    {
+      auto second_scope = service.callback_owner_scope(&second);
+      require(service.callback_owner() == &second, "nested callback scope was not applied");
+    }
+    require(service.callback_owner() == &first, "nested callback scope was not restored");
+  }
+  require(service.callback_owner() == nullptr, "callback scope leaked after destruction");
+}
+
+void app_owned_callback_owner_is_used_when_bound() {
+  BindingService service;
+  HomeAssistantCallbackOwnerService app_owner;
+  int owner = 0;
+  set_home_assistant_callback_owner_service(&app_owner);
+  {
+    auto scope = service.callback_owner_scope(&owner);
+    require(app_owner.callback_owner() == &owner,
+            "binding service did not use app-owned callback state");
+  }
+  set_home_assistant_callback_owner_service(nullptr);
+  require(app_owner.callback_owner() == nullptr,
+          "callback scope did not restore app-owned state");
+}
+
+void core_owns_binding_service_lifetime() {
+  espcontrol::EspControlAppCore app;
+  require(app.start(), "application core did not start");
+  BindingService &service = app.home_assistant_binding_service<BindingService>();
+  int owner = 0;
+  {
+    auto scope = service.callback_owner_scope(&owner);
+    require(app.home_assistant_callback_owner().callback_owner() == &owner,
+            "core-owned binding did not use the app callback state");
+  }
+  require(app.stop(), "application core did not stop");
+}
+
+void channel_growth_uses_the_configured_allocator_and_preserves_delivery() {
+  TrackingAllocatorState::reset();
+  TrackingCoordinator coordinator;
+  std::vector<int> deliveries(256, 0);
+  const size_t checkpoints[] = {122, 128, 129, 140, 256};
+  size_t checkpoint = 0;
+
+  for (size_t i = 0; i < deliveries.size(); i++) {
+    require(coordinator.subscribe(
+                "sensor.channel_" + std::to_string(i), "",
+                [i, &deliveries](std::string) { deliveries[i]++; }, 1u),
+            "tracked subscription should register");
+    if (checkpoint < sizeof(checkpoints) / sizeof(checkpoints[0]) &&
+        i + 1 == checkpoints[checkpoint]) {
+      require(coordinator.subscription_channel_count() == checkpoints[checkpoint],
+              "channel count changed at a growth checkpoint");
+      require(coordinator.subscription_channel_capacity() >= checkpoints[checkpoint],
+              "channel capacity did not cover its growth checkpoint");
+      checkpoint++;
+    }
+  }
+
+  require(coordinator.subscription_channel_capacity() >= 256,
+          "channel storage did not grow through 256 entries");
+  require(coordinator.persistent_container_capacity_bytes() > 0,
+          "coordinator did not report allocated container storage");
+  require(TrackingAllocatorState::allocation_calls > deliveries.size(),
+          "nested containers and callback control blocks bypassed the allocator");
+
+  for (size_t i = 0; i < deliveries.size(); i++) {
+    coordinator.transport().publish(i, "ready");
+  }
+  for (int delivered : deliveries) {
+    require(delivered == 1, "channel delivery was lost during container growth");
+  }
+}
+
+void temporary_and_pending_callback_storage_use_the_configured_allocator() {
+  TrackingAllocatorState::reset();
+  TrackingCoordinator coordinator;
+  int owner = 0;
+  int calls = 0;
+  require(coordinator.subscribe(
+              "sensor.shared", "", [&](std::string) { calls++; }, 1u,
+              &owner, true),
+          "retained subscription should register");
+  require(coordinator.read_retained(
+              "sensor.shared", "", [&](std::string) { calls++; }, false,
+              10, 5, &owner),
+          "pending retained read should register");
+  const size_t before_publish = TrackingAllocatorState::allocation_calls;
+  coordinator.transport().publish(0, "ready");
+  require(calls == 2, "subscription and pending callback did not both run");
+  require(TrackingAllocatorState::allocation_calls > before_publish,
+          "dispatch snapshot bypassed the configured allocator");
+  coordinator.release_owner(&owner);
+  require(TrackingAllocatorState::deallocation_calls > 0,
+          "released callback storage did not use the configured allocator");
 }
 
 }  // namespace
 
 int main() {
+  scheduled_metadata_refreshes_share_channels_and_retry_only_failed_sends();
+  scheduled_metadata_refreshes_recover_and_cancel_by_consumer();
+  scheduled_metadata_refreshes_isolate_players_and_handle_clock_wrap();
+  scheduled_metadata_refreshes_limit_each_send_burst();
+  fresh_requests_reuse_subscription_and_recover_after_send_failure();
+  omitted_fresh_responses_do_not_accumulate_callbacks();
   disconnected_read_flushes_after_reconnect();
-  low_memory_preserves_deferred_work();
+  low_memory_rejects_retained_read_without_pending_work();
   duplicate_reads_fan_out_once();
   reentrant_reads_are_deferred();
+  reentrant_reads_on_one_channel_share_deferred_work();
+  resolved_deferred_channels_survive_channel_vector_growth();
   cancellation_is_safe_during_callback();
-  stale_generations_do_not_deliver();
-  attribute_requests_preserve_attribute();
+  subscription_reset_during_callback_preserves_rebuilt_subscriptions();
+  owner_release_during_callback_preserves_rebuilt_subscriptions();
+  rebuilt_subscriptions_share_one_transport_channel();
+  rebuilt_subscription_replays_last_value();
+  reconnect_does_not_replay_previous_connection_state();
+  inactive_channels_do_not_retain_new_replay_values();
+  replay_state_cache_is_bounded();
+  subscription_backed_reads_reuse_the_live_channel();
+  retained_reads_never_accumulate_transport_callbacks();
+  missing_retained_channel_fails_closed();
+  pending_unowned_reads_are_globally_capped();
+  a_full_pending_queue_rejects_new_work_without_evicting_accepted_callbacks();
+  generation_change_discards_cached_and_pending_channel_reads();
+  reconnect_discards_retained_channel_state();
+  ordinary_subscriptions_fail_closed_for_retained_reads();
+  inactive_reusable_channels_release_cached_state();
+  stalled_reusable_channel_coalesces_reads_per_owner();
+  unowned_reusable_channel_keeps_independent_reads();
+  generation_change_drops_pending_retained_reads();
+  retained_subscription_preserves_attribute();
+  fresh_request_fans_out_through_live_callbacks();
+  fresh_request_is_ignored_after_reconnect_generation_change();
+  released_owner_drops_pending_reads_even_if_its_address_is_reused();
+  callback_owner_scope_restores_the_previous_owner();
+  app_owned_callback_owner_is_used_when_bound();
+  core_owns_binding_service_lifetime();
+  channel_growth_uses_the_configured_allocator_and_preserves_delivery();
+  temporary_and_pending_callback_storage_use_the_configured_allocator();
   return EXIT_SUCCESS;
 }

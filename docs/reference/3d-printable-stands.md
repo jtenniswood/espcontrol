@@ -21,15 +21,7 @@ Choose the print file that matches your exact screen model. The cases are shaped
 | [4.3-inch JC4880P443](/screens/jc4880p443) | Desk stand | [MakerWorld](https://makerworld.com/en/models/2982320-desk-stand-for-4-3-inch-jc4880p443-esp32-screen#profileId-3346161) |
 | [4-inch 4848S040](/screens/4848s040) | Case stand | [MakerWorld](https://makerworld.com/en/models/2581572-guition-esp32s3-4848s040-case-stand#profileId-2847301) |
 
-## Before Printing
-
-- Confirm the screen model printed on the product listing or board matches the stand page.
-- Check that the USB-C cable exits in the direction you need for your desk or shelf.
-- Use a material and print settings suitable for the temperature and sunlight where the display will sit.
-- Test fit the display before forcing clips or tabs into place.
-
 ## Related Links
 
 - [Install EspControl](/getting-started/install)
 - [Supported Screens](/screens/jc1060p470)
-- [Request Device Support](/reference/request-device-support)

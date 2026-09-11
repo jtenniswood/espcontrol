@@ -79,12 +79,12 @@ inline bool status_entity_driver_setup_visual(
   }
   lv_obj_clear_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
-  lv_label_set_text(
+  lv_label_set_display_text(
     slot.icon_lbl, status_entity_driver_inactive_icon(config, context));
   const std::string label = config.label.empty()
     ? status_entity_driver_default_label(config, context)
     : config.label;
-  lv_label_set_text(slot.text_lbl, label.c_str());
+  lv_label_set_display_text(slot.text_lbl, label.c_str());
   return true;
 }
 
@@ -131,7 +131,7 @@ inline bool status_entity_driver_bind_data(
         const bool unavailable = ha_state_unavailable_ref(state);
         const bool active = !unavailable &&
           status_entity_driver_state_active(type, state);
-        lv_label_set_text(icon, active ? active_icon : inactive_icon);
+        lv_label_set_display_text(icon, active ? active_icon : inactive_icon);
         if (btn && active_color) {
           lv_obj_set_style_bg_color(
             btn, lv_color_hex(active ? on_color : sensor_color),

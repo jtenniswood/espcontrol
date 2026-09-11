@@ -65,10 +65,17 @@ def package_substitution_lines(device: dict) -> list[str]:
     return lines
 
 
-def clock_bar_icon_offset_expr() -> str:
-    """C++ expression for the x-offset of a one-slot clock-bar icon, placed
-    immediately left of the network status icon (itself at -clock_bar_right_x)."""
-    return "-(clock_bar_right_x + clock_bar_item_width / 2)"
+def clock_bar_icon_offset_lines(name: str, button: str, label: str) -> list[str]:
+    """C++ lines declaring `name` as the x-offset of an optional clock-bar icon.
+    Icons pack leftwards from the network status icon by glyph edges, so battery,
+    voice, and night mode never overlap and never leave an empty slot behind."""
+    box = f"{name}_box"
+    return [
+        f"      const int {box} = lv_obj_get_width(id({button}));",
+        f"      const int {name} = clock_bar_right_icons_next_x(",
+        f"          clock_bar_right_icons, {box},",
+        f"          clock_bar_glyph_width(id({label}), {box}));",
+    ]
 
 
 def battery_substitution_lines(device: dict) -> list[str]:
@@ -80,8 +87,10 @@ def battery_substitution_lines(device: dict) -> list[str]:
     return [
         "  battery_status_apply_code: |-",
         "    if (id(battery_status_enabled).state) {",
+        *clock_bar_icon_offset_lines("battery_status_icon_x", "battery_status_button",
+                                     "battery_status_icon_label"),
         "      lv_obj_align(id(battery_status_button), LV_ALIGN_TOP_RIGHT,",
-        f"                   {clock_bar_icon_offset_expr()}, clock_bar_icon_y);",
+        "                   battery_status_icon_x, clock_bar_icon_y);",
         "      lv_obj_clear_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);",
         "    } else {",
         "      lv_obj_add_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);",
@@ -100,13 +109,32 @@ def voice_substitution_lines(device: dict) -> list[str]:
             '    ESP_LOGW("navigation", "Voice volume target is not available on this device");',
             '  voice_interaction_active_condition: "false"',
         ]
+    icon_offset_lines = clock_bar_icon_offset_lines(
+        "voice_clock_bar_icon_x", "voice_clock_bar_mute_button",
+        "voice_clock_bar_mute_icon_label",
+    )
+    if device["slug"] == "esp32-p4-86":
+        icon_offset_lines = [
+            "      // These controls open different modals: space their full touch targets,",
+            "      // not just the narrower glyphs, with an 18px gap inside the 60px bar.",
+            "      clock_bar_right_icons = clock_bar_right_icons_begin(clock_bar_right_x, 18);",
+            "      if (show_network) {",
+            "        const int network_box = lv_obj_get_width(id(network_status_button));",
+            "        clock_bar_right_icons_seed(clock_bar_right_icons, network_box, network_box);",
+            "      }",
+            "      const int voice_clock_bar_icon_x_box = lv_obj_get_width(id(voice_clock_bar_mute_button));",
+            "      const int voice_clock_bar_icon_x = clock_bar_right_icons_next_x(",
+            "          clock_bar_right_icons, voice_clock_bar_icon_x_box,",
+            "          voice_clock_bar_icon_x_box);",
+        ]
     return [
         "  voice_clock_bar_hide_code: |-",
         "    lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
         "  voice_clock_bar_apply_code: |-",
         "    if (id(voice_services_enabled).state) {",
+        *icon_offset_lines,
         "      lv_obj_align(id(voice_clock_bar_mute_button), LV_ALIGN_TOP_RIGHT,",
-        f"                   {clock_bar_icon_offset_expr()}, clock_bar_icon_y);",
+        "                   voice_clock_bar_icon_x, clock_bar_icon_y);",
         "      lv_obj_clear_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
         "      const bool microphone_muted = id(master_mute_switch).state;",
         "      const bool output_muted = id(voice_media_player).is_muted();",
@@ -368,8 +396,12 @@ def cfg_lines(device: dict) -> list[str]:
         )
     if device["wrap_tall_labels"]:
         lines.append("            cfg.wrap_tall_labels = true;")
+    lines.append(f"            cfg.label_lines = {device['label_lines']};")
+    lines.append(f"            cfg.label_lines_tall = {device['label_lines_tall']};")
     if device.get("width_compensation_percent", 100) != 100:
         lines.append(f"            cfg.width_compensation_percent = {device['width_compensation_percent']};")
+    if device.get("text_width_compensation_percent", 100) != 100:
+        lines.append(f"            cfg.text_width_compensation_percent = {device['text_width_compensation_percent']};")
     if device.get("volume_width_compensation_percent", 100) != 100:
         lines.append(
             f"            cfg.volume_width_compensation_percent = {device['volume_width_compensation_percent']};"
@@ -516,9 +548,10 @@ def cfg_lines(device: dict) -> list[str]:
     lines.append("              return true;")
     lines.append("            });")
     lines.append("            set_width_compensation_vertical_axis(cfg.width_compensation_vertical);")
-    lines.append("            apply_width_compensation(id(display_time), cfg.width_compensation_percent);")
-    lines.append("            apply_width_compensation(id(temperatures), cfg.width_compensation_percent);")
-    lines.append("            apply_width_compensation(id(clock_label), cfg.width_compensation_percent);")
+    lines.append("            set_text_width_compensation_percent(cfg.text_width_compensation_percent);")
+    lines.append("            apply_text_width_compensation(id(display_time));")
+    lines.append("            apply_text_width_compensation(id(temperatures));")
+    lines.append("            apply_text_width_compensation(id(clock_label));")
     return lines
 
 
@@ -542,10 +575,16 @@ def phase1_block(device: dict) -> str:
     return "\n".join(lines)
 
 
-def refresh_block(device: dict) -> str:
+def refresh_block(device: dict, marker: str = "REFRESH GRID") -> str:
     lines = [
-        "          // BEGIN GENERATED REFRESH GRID WIRING",
+        f"          // BEGIN GENERATED {marker} WIRING",
         "          // Generated by scripts/generate_device_slots.py from devices/manifest.json.",
+        "          // Setup pages own the display until connectivity is configured.",
+        "          // There is no visible grid to refresh during that flow.",
+        "          if (id(connectivity_setup_display_active)) {",
+        f'            ESP_LOGI("sensors", "Skipping {marker.lower()} during connectivity onboarding");',
+        "            return;",
+        "          }",
         f"          {button_slot_macro()}",
         "          BtnSlot slots[] = {",
     ]
@@ -557,7 +596,7 @@ def refresh_block(device: dict) -> str:
             "          #undef BTN_SLOT",
             "          if (!id(screen_rotation_ready)) return;",
             *["          " + line[12:] if line.startswith("            ") else line for line in cfg_lines(device)],
-            "          // END GENERATED REFRESH GRID WIRING",
+            f"          // END GENERATED {marker} WIRING",
         ]
     )
     return "\n".join(lines)
@@ -667,19 +706,80 @@ def phase2_block(device: dict) -> str:
     return "\n".join(lines)
 
 
+def display_sensor_subscription_script() -> str:
+    """Use the current sensor settings at boot and after live configuration changes."""
+    return """  - id: refresh_display_sensor_subscriptions
+    mode: single
+    then:
+      - lambda: |-
+          lv_obj_t *temperature_labels[] = {
+            id(temperatures),
+          };
+          grid_phase3(
+            id(indoor_temp_enable).state,
+            id(outdoor_temp_enable).state,
+            id(indoor_temp_entity).state,
+            id(outdoor_temp_entity).state,
+            id(clock_bar_temperature_entities).state,
+            &id(indoor_temp), &id(outdoor_temp),
+            temperature_labels,
+            1,
+            id(main_page)->obj,
+            id(presence_sensor_entity).state,
+            &id(presence_detected),
+            id(screen_schedule_sensor_entity).state,
+            &id(schedule_presence_detected),
+            id(media_player_sleep_prevention_entity).state,
+            &id(media_player_playing),
+            []() {
+              return clock_bar_should_show(
+                  id(clock_bar_enabled).state,
+                  id(main_page)->obj,
+                  id(espcontrol_app).display().current_mode(),
+                  id(espcontrol_app).display().target_schedule_inactive());
+            },
+            []() {
+              id(screensaver_presence_wake).execute();
+            },
+            []() {
+              id(screensaver_presence_sleep).execute();
+            },
+            []() {
+              id(screen_schedule_check).execute();
+            },
+            []() {
+              return id(outdoor_temp_enable).state;
+            });
+          ha_reannounce_state_subscriptions();
+"""
+
+
 def script_block(device: dict) -> str:
-    after_refresh = ["      - script.execute: clock_bar_apply"]
+    after_refresh = [
+        "      - script.execute: clock_bar_apply",
+    ]
+    package = device.get("package") or {}
+    subpage_chunks = int(package.get("subpageConfigChunks") or 8)
+    subpage_rebuild_call = [
+        "          grid_rebuild_all(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7,"
+        if subpage_chunks >= 8
+        else "          grid_rebuild_all(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, nullptr, nullptr, nullptr, nullptr,",
+        "            id(button_order).state,",
+        "            id(button_on_color).state,",
+        "            id(main_page)->obj);",
+    ]
+    subpage_refresh = [
+        "  - id: refresh_subpage_grid",
+        "    mode: restart",
+        "    then:",
+        "      - delay: 3s",
+        "      - lambda: |-",
+        refresh_block(device, "SUBPAGE REFRESH"),
+        *refresh_subpage_arrays(device),
+        *subpage_rebuild_call,
+        "",
+    ]
     if device.get("refresh_rebuilds_subpages"):
-        package = device.get("package") or {}
-        subpage_chunks = int(package.get("subpageConfigChunks") or 8)
-        phase2_call = [
-            "          grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7,"
-            if subpage_chunks >= 8
-            else "          grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,",
-            "            id(button_order).state,",
-            "            id(button_on_color).state,",
-            "            id(main_page)->obj);",
-        ]
         return "\n".join(
             [
                 "script:",
@@ -687,15 +787,17 @@ def script_block(device: dict) -> str:
                 "    mode: restart",
                 "    then:",
                 "      - delay: 3s",
+                "      - script.execute: apply_button_grid",
+                "  - id: apply_button_grid",
+                "    mode: single",
+                "    then:",
                 "      - lambda: |-",
                 refresh_block(device),
                 *refresh_subpage_arrays(device),
-                "          grid_refresh_layout(slots, cfg,",
-                "            id(button_order).state,",
-                "            id(main_page)->obj);",
-                "          navigation_return_home(id(main_page)->obj);",
-                *phase2_call,
+                *subpage_rebuild_call,
                 *after_refresh,
+                *subpage_refresh,
+                display_sensor_subscription_script(),
                 "",
             ]
         )
@@ -706,12 +808,18 @@ def script_block(device: dict) -> str:
             "    mode: restart",
             "    then:",
             "      - delay: 3s",
+            "      - script.execute: apply_button_grid",
+            "  - id: apply_button_grid",
+            "    mode: single",
+            "    then:",
             "      - lambda: |-",
             refresh_block(device),
             "          grid_refresh_layout(slots, cfg,",
             "            id(button_order).state,",
             "            id(main_page)->obj);",
             *after_refresh,
+            *subpage_refresh,
+            display_sensor_subscription_script(),
             "",
         ]
     )
@@ -747,6 +855,13 @@ def replace_script_block(text: str, device: dict) -> str:
 
 def replace_sensor_blocks(text: str, device: dict) -> str:
     text = replace_script_block(text, device)
+    text = re.sub(
+        r"(?ms)^        # Phase 3: Temperature \+ presence subscriptions\n"
+        r"        - lambda: \|-\n.*?(?=^        - delay: 500ms)",
+        "        # Bind display sensors after the initial grid is ready.\n"
+        "        - script.execute: refresh_display_sensor_subscriptions\n",
+        text,
+    )
     text = replace_phase(text, 1, phase1_block(device), "grid_phase1", device["slug"])
     text = replace_phase(text, 2, phase2_block(device), "grid_phase2", device["slug"])
     text = re.sub(
@@ -801,6 +916,7 @@ def assert_generated_block_markers(package_path: Path, sensor_path: Path) -> Non
     sensor_text = sensor_path.read_text(encoding="utf-8")
     assert_marker_pair(package_text, package_path, "BEGIN GENERATED BUTTON PACKAGES", "END GENERATED BUTTON PACKAGES")
     assert_optional_marker_pair(sensor_text, sensor_path, "BEGIN GENERATED REFRESH GRID WIRING", "END GENERATED REFRESH GRID WIRING")
+    assert_optional_marker_pair(sensor_text, sensor_path, "BEGIN GENERATED SUBPAGE REFRESH WIRING", "END GENERATED SUBPAGE REFRESH WIRING")
     assert_marker_pair(sensor_text, sensor_path, "BEGIN GENERATED PHASE 1 GRID WIRING", "END GENERATED PHASE 1 GRID WIRING")
     assert_marker_pair(sensor_text, sensor_path, "BEGIN GENERATED PHASE 2 GRID WIRING", "END GENERATED PHASE 2 GRID WIRING")
 

@@ -6,15 +6,25 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <initializer_list>
 #include <string>
 
 #include "artwork_controller.h"
+
+// Defined by the firmware Home Assistant transport. Keeping this declaration
+// lightweight lets host-side Cover Art tests use the controller without
+// pulling in ESPHome's generated API types.
+inline void ha_schedule_metadata_refresh(
+    const std::string &entity_id,
+    std::initializer_list<const char *> attributes, uint32_t scope);
+inline void ha_cancel_metadata_refresh(uint32_t scope);
 
 namespace espcontrol::cover_art {
 
 constexpr int MAX_DOWNLOAD_RETRIES = 5;
 constexpr uint32_t DEFERRED_DOWNLOAD_MS = 100;
 constexpr uint32_t CACHED_ARTWORK_DEBOUNCE_MS = 300;
+constexpr uint32_t ARTWORK_TRIGGER_DEBOUNCE_MS = 75;
 constexpr uint32_t ARTWORK_ATTRIBUTE_RETRY_MS = 1500;
 constexpr uint32_t SUBSCRIPTION_RECONCILE_MS = 5000;
 constexpr size_t MAX_ARTWORK_URL_LENGTH = 4096;
@@ -44,17 +54,75 @@ inline bool media_card_artwork_suppressed(bool source_known,
   return source_known && external_source;
 }
 
+inline bool media_now_playing_artist_visible(bool artist_present,
+                                             bool external_source,
+                                             bool show_track_details,
+                                             bool external_source_fallback) {
+  return (show_track_details || external_source_fallback) &&
+         (artist_present || external_source);
+}
+
+inline bool media_external_source_stale_for_current_content(
+    bool external_source, bool source_observed_for_state,
+    bool current_content_present) {
+  return external_source && !source_observed_for_state &&
+         current_content_present;
+}
+
 inline bool media_entity_state_usable(const std::string &state) {
   const std::string normalized = normalized_media_source(state);
   return normalized == "playing" || normalized == "paused" ||
          normalized == "buffering";
 }
 
+inline bool media_artwork_content_current(bool state_known, bool available,
+                                          const std::string &state,
+                                          bool artwork_present) {
+  return artwork_present && state_known && available &&
+         media_entity_state_usable(state);
+}
+
+inline bool media_state_change_invalidates_retained_content(
+    bool previous_state_known, const std::string &previous_state,
+    const std::string &next_state) {
+  const std::string normalized_next = normalized_media_source(next_state);
+  if (media_entity_state_usable(normalized_next)) return false;
+  return !previous_state_known ||
+         normalized_media_source(previous_state) != normalized_next;
+}
+
+inline bool media_state_change_needs_content_resync(
+    bool previous_state_known, const std::string &previous_state,
+    const std::string &next_state, bool has_content) {
+  return previous_state_known &&
+         !media_entity_state_usable(previous_state) &&
+         media_entity_state_usable(next_state) && !has_content;
+}
+
+inline bool media_card_artwork_should_clear(bool state_known, bool available,
+                                            const std::string &state,
+                                            bool has_content) {
+  return state_known &&
+         (!available || (!media_entity_state_usable(state) && !has_content));
+}
+
+inline bool media_entity_content_available(bool state_known, bool available,
+                                           bool has_content) {
+  return state_known && available && has_content;
+}
+
+inline bool media_cover_art_idle_placeholder_visible(
+    bool state_known, bool available, const std::string &state,
+    bool has_content, bool external_source_fallback) {
+  return state_known && available && !media_entity_state_usable(state) &&
+         !has_content && !external_source_fallback;
+}
+
 inline bool use_secondary_media_entity(bool primary_external,
                                        bool secondary_configured,
-                                       bool secondary_available,
+                                       bool secondary_playback_active,
                                        bool secondary_has_content) {
-  return primary_external && secondary_configured && secondary_available &&
+  return primary_external && secondary_configured && secondary_playback_active &&
          secondary_has_content;
 }
 
@@ -126,6 +194,7 @@ inline AccentColor darken_accent_color(AccentColor color) {
 
 struct RuntimeState {
   espcontrol::artwork::SourceCandidates sources;
+  espcontrol::artwork::RefreshBatch artwork_refresh;
   std::string source_url, effective_download_url, active_download_source_url;
   std::string loaded_url, last_good_url, retry_url, fallback_url;
   int retry_count{0};
@@ -160,6 +229,7 @@ struct RuntimeState {
   bool begin_retry() { if (!can_retry()) return false; ++retry_count; return true; }
   void clear_image() {
     sources.clear();
+    artwork_refresh.reset();
     source_url.clear(); effective_download_url.clear(); active_download_source_url.clear(); loaded_url.clear();
     last_good_url.clear();
     retry_url.clear(); fallback_url.clear(); retry_count = 0; image_available = false; refresh_needed = false;
@@ -218,11 +288,11 @@ inline bool rotation_is_landscape(const std::string &slug, const std::string &ro
 inline Layout cover_art_layout(const std::string &slug, const std::string &rotation,
                                int screen_width, int screen_height, int art_size, int title_height) {
   const bool landscape = rotation_is_landscape(slug, rotation);
-  if (slug == "guition-esp32-p4-jc1060p470") return landscape
+  if (slug == "guition-esp32-p4-jc1060p470" || slug == "guition-esp32-p4-jc1060p470-v2") return landscape
     ? Layout{1024,600,0,0,600,585,0,439,600,615,34,377,430,260,0,true}
     : Layout{600,1024,0,0,600,0,600,600,424,30,634,540,360,162,0,true};
   if (slug == "guition-esp32-p4-jc4880p443") return landscape
-    ? Layout{800,480,0,0,480,480,0,320,480,504,34,272,330,220,0,true}
+    ? Layout{800,480,0,0,480,480,0,320,480,504,34,272,330,210,0,true}
     : Layout{480,800,0,0,480,0,480,480,320,24,514,324,262,130,0,true};
   if (slug == "guition-esp32-p4-jc8012p4a1" || slug == "guition-esp32-p4-jc8012p4a1-v2") return landscape
     ? Layout{1280,800,0,0,800,800,0,480,800,840,40,400,720,506,0,true}

@@ -1,5 +1,12 @@
+import { readIdentityBackup, type PanelIdentityBackup } from "./panel_identity";
 import type { CardConfig } from "../contracts/types";
 import { cloneCardConfig, emptyCardConfig } from "./card";
+import {
+  PANEL_CONFIG_DOCUMENT_VERSION,
+  createPanelConfigBackupPayload,
+  decodePanelConfigBackupPayload,
+  type PanelConfigBackupPayload,
+} from "./panel_config";
 import {
   markSpannedCells,
   serializeGridOrder,
@@ -25,6 +32,7 @@ export interface BackupEnvelopeOutputs {
 }
 
 export interface NormalizedBackupEnvelope {
+  identity?: PanelIdentityBackup;
   version: number;
   format: string;
   device: string;
@@ -37,9 +45,12 @@ export interface NormalizedBackupEnvelope {
   subpage_objects: Record<string, StructuredSubpageConfig>;
   settings: Record<string, unknown> | null;
   screen: Record<string, unknown> | null;
+  native_config?: PanelConfigBackupPayload;
+  native_config_skipped_device_profile?: string;
 }
 
 export interface BackupSnapshotEnvelope {
+  identity?: PanelIdentityBackup;
   device?: string;
   slots?: unknown;
   exported_at?: string;
@@ -47,6 +58,7 @@ export interface BackupSnapshotEnvelope {
   button_on_color?: string;
   settings?: Record<string, unknown>;
   screen?: Record<string, unknown>;
+  native_config?: PanelConfigBackupPayload | null;
 }
 
 export interface BackupUsedSlot {
@@ -77,6 +89,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
+function normalizeNativeBackup(value: unknown): PanelConfigBackupPayload | undefined {
+  // Readable backup fields remain usable on panels that do not understand a
+  // newer native document. The native section is optional by design.
+  if (isRecord(value) && typeof value.document_version === "number" &&
+      value.document_version > PANEL_CONFIG_DOCUMENT_VERSION) {
+    return undefined;
+  }
+  return createPanelConfigBackupPayload(decodePanelConfigBackupPayload(value));
+}
+
+function skippedNativeDeviceProfile(value: unknown): string | undefined {
+  if (!isRecord(value) || typeof value.document_version !== "number" ||
+      value.document_version <= PANEL_CONFIG_DOCUMENT_VERSION ||
+      typeof value.device_profile !== "string" || value.device_profile.length === 0) {
+    return undefined;
+  }
+  return value.device_profile;
+}
+
 export function validateBackupEnvelope(data: unknown): Record<string, unknown> {
   if (!isRecord(data)) {
     throw backupConfigError("Invalid config file - backup must be a JSON object");
@@ -94,6 +125,13 @@ export function validateBackupEnvelope(data: unknown): Record<string, unknown> {
   }
   if (!Array.isArray(data.buttons)) {
     throw backupConfigError("Invalid config file - missing required fields");
+  }
+  if (data.native_config !== undefined && data.native_config !== null) {
+    try {
+      normalizeNativeBackup(data.native_config);
+    } catch (error) {
+      throw backupConfigError((error as Error).message || "Invalid native configuration backup");
+    }
   }
 
   return data;
@@ -113,7 +151,12 @@ export function createBackupEnvelope(
 ): NormalizedBackupEnvelope {
   const slots = parseInt(String(snapshot.slots), 10) || outputs.buttons.length;
   const device = snapshot.device || "";
+  const nativeConfig = snapshot.native_config
+    ? normalizeNativeBackup(snapshot.native_config)
+    : undefined;
+  const identity = readIdentityBackup(snapshot.identity);
   return {
+    ...(identity ? { identity } : {}),
     version: BACKUP_CONFIG_VERSION,
     format: BACKUP_FORMAT,
     device,
@@ -129,6 +172,9 @@ export function createBackupEnvelope(
     subpage_objects: outputs.subpage_objects || {},
     settings: snapshot.settings || {},
     screen: snapshot.screen || {},
+    ...(nativeConfig
+      ? { native_config: nativeConfig }
+      : {}),
   };
 }
 
@@ -136,7 +182,15 @@ export function normalizeBackupEnvelope(
   data: Record<string, unknown>,
   outputs: BackupEnvelopeOutputs,
 ): NormalizedBackupEnvelope {
+  const nativeConfig = data.native_config
+    ? normalizeNativeBackup(data.native_config)
+    : undefined;
+  const skippedNativeProfile = nativeConfig
+    ? undefined
+    : skippedNativeDeviceProfile(data.native_config);
+  const identity = readIdentityBackup(data.identity);
   return {
+    ...(identity ? { identity } : {}),
     version: BACKUP_CONFIG_VERSION,
     format: BACKUP_FORMAT,
     device: String(data.device || ""),
@@ -151,6 +205,12 @@ export function normalizeBackupEnvelope(
     screen: isRecord(data.screen)
       ? data.screen
       : (isRecord(data.settings) && isRecord(data.settings.screen) ? data.settings.screen : null),
+    ...(nativeConfig
+      ? { native_config: nativeConfig }
+      : {}),
+    ...(skippedNativeProfile
+      ? { native_config_skipped_device_profile: skippedNativeProfile }
+      : {}),
   };
 }
 
