@@ -254,4 +254,4 @@ nighttime=Nighttime
 
 # Timer card
 timer=Timer
-timer_confirm=Confirm to Cancel
+timer_confirm=Confirm

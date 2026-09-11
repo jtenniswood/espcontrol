@@ -253,4 +253,4 @@ daytime=Overdag
 nighttime=Nacht
 
 timer=Timer
-timer_confirm=Annuleren bevestigen
+timer_confirm=Bevestigen

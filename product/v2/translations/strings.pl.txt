@@ -253,4 +253,4 @@ daytime=Dzień
 nighttime=Noc
 
 timer=Minutnik
-timer_confirm=Potwierdź anulowanie
+timer_confirm=Potwierdzić

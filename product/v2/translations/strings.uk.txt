@@ -253,4 +253,4 @@ daytime=День
 nighttime=Ніч
 
 timer=Таймер
-timer_confirm=Підтвердити скасування
+timer_confirm=Підтвердити

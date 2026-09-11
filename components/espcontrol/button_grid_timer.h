@@ -3,7 +3,7 @@
 // Timer card ported from benJDtom/espcontrol PR #136.
 // ── Reusable confirmation prompt ──────────────────────────────────────
 // Two-tap confirmation for destructive actions. Captures a label's text,
-// swaps in a prompt ("Confirm to Cancel"), and arms a one-shot timeout. A second
+// swaps in a prompt ("Confirm"), and arms a one-shot timeout. A second
 // tap within the window invokes the supplied callback; otherwise the
 // timeout restores the original text and disarms.
 struct ConfirmationCtx {
@@ -57,7 +57,7 @@ inline bool confirmation_try(ConfirmationCtx *c, lv_obj_t *prompt_lbl,
   if (prompt_lbl) {
     const char *cur = lv_label_get_text(prompt_lbl);
     c->original_text = cur ? cur : "";
-    lv_label_set_display_text(prompt_lbl, prompt_text ? prompt_text : espcontrol_i18n("Confirm to Cancel"));
+    lv_label_set_display_text(prompt_lbl, prompt_text ? prompt_text : espcontrol_i18n("Confirm"));
   } else {
     c->original_text.clear();
   }
@@ -289,7 +289,7 @@ inline void handle_timer_card_click(TimerCardCtx *ctx) {
   if (ctx->state == "active") {
     auto do_cancel = [ctx]() { ctx->cancel_requested = ha_send_entity_action(ctx->entity_id, "timer.cancel"); };
     if (ctx->confirm_enabled) {
-      confirmation_try(&ctx->confirm, ctx->text_lbl, espcontrol_i18n("Confirm to Cancel"),
+      confirmation_try(&ctx->confirm, ctx->text_lbl, espcontrol_i18n("Confirm"),
                        ctx->confirm_timeout_secs, do_cancel);
     } else {
       do_cancel();

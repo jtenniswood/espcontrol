@@ -253,4 +253,4 @@ daytime=Dagtid
 nighttime=Nattetid
 
 timer=Tidtaker
-timer_confirm=Bekreft avbrytelse
+timer_confirm=Bekreft

@@ -253,4 +253,4 @@ daytime=Dagtid
 nighttime=Nattetid
 
 timer=Timer
-timer_confirm=Bekräfta avbrytning
+timer_confirm=Bekräfta

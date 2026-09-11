@@ -253,4 +253,4 @@ daytime=Dan
 nighttime=Noč
 
 timer=Časovnik
-timer_confirm=Potrdi preklic
+timer_confirm=Potrdi
