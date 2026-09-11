@@ -303,13 +303,16 @@ int main() {
   assert(lv_obj_move_background_calls == 3);
   assert(lv_obj_get_width(&temperature_1) == 72);
   set_clock_bar_temperature_labels(temperature_labels, 1);
-  temperature_1.text = "21°C";
-  lv_obj_clear_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN);
+  // Match clock_bar_apply: refresh values and visibility before opening a title.
+  clock_bar_temperature_values()[0] = 21.0f;
+  refresh_clock_bar_temperature_label_values(
+    &main_page, awake_clock_bar.visible, false, true, NAN, 21.0f);
   set_clock_bar_subpage_label("Settings");
   assert(temperature_1.text == "Settings");
+  assert(!lv_obj_has_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN));
   assert(lv_obj_get_width(&temperature_1) == 180);
   set_clock_bar_subpage_label("");
-  assert(temperature_1.text == "21°C");
+  assert(temperature_1.text == "21°");
   assert(!lv_obj_has_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN));
   assert(lv_obj_get_width(&temperature_1) == 72);
   hide_clock_bar_top_layer_widgets(
