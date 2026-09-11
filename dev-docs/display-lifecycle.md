@@ -144,6 +144,26 @@ These are true after every completed transition:
 10. Releasing a takeover or clearing a request resolves live inputs; it never
     restores a saved transient presentation.
 
+## Active display finalization
+
+Every successful `ACTIVE` transition invokes `display_active_finalize`, as does
+boot navigation. The finalizer waits for the effect adapter and page settling,
+then restores the clock bar, configured brightness, and idle timers only while
+the main page is active and the controller has no newer transition in progress.
+An unchanged reconciliation does not restart the idle countdown.
+
+The shared reconciler owns schedule exit: it clears temporary wake and stale
+automatic sleep requests while preserving manual sleep. Both the one-second
+reconcile tick and the slower schedule check therefore reach the same completion
+path. Detecting that edge only in `screen_schedule_check` loses it when the
+one-second tick clears `SCREEN_SCHEDULE` first (issue #1787).
+
+`tests/firmware/display_schedule_test.py` executes the production YAML lambdas
+and ACTIVE action sequence with a virtual clock and hardware doubles. It covers
+both callback orders, scheduled Clock/Off/Screen Dimmed, temporary wake, manual
+sleep, stale finalization, boot, and an idle timeout that repeated polls cannot
+postpone. Physical display timing still requires a device test.
+
 ## Expected event sequences
 
 These sequences are the named baseline for later host tests and physical-device
@@ -151,7 +171,7 @@ tests. `gN` denotes a transition generation.
 
 | Sequence | Events | Expected decisions and checks |
 |---|---|---|
-| Default boot | Boot, valid time, schedule normal | Resolve `ACTIVE`; normal UI and normal brightness; idle timer starts. |
+| Default boot | Boot, valid time, schedule normal | Resolve `ACTIVE`; after the main page settles, the shared active-display finalizer restores the clock bar and normal brightness and starts the idle timers. |
 | First-time onboarding | Boot without WiFi or configured tiles; schedule, sleep, or setup-timeout requests change | `ONBOARDING` keeps the current setup instructions fully visible without a dimming timeout; adding the first tile clears onboarding and resolves live policy. |
 | Fail-dark boot | Enabled time-based schedule; boot; time invalid; repeat before and after upgrading saved settings | `BOOT_GUARD` requests `DISPLAY_OFF` in both cases; PWM remains off. When time becomes valid, clear boot guard and resolve the live schedule. |
 | Idle dim | `ACTIVE`; idle timeout; configured action Dim | `IDLE_TIMER` requests `DIMMED` at `g1`; normal UI remains beneath the dim guard; dim brightness applies. |
@@ -160,7 +180,7 @@ tests. `gN` denotes a transition generation.
 | Presence wake/sleep | Sensor mode; absence; presence; absence | Absence requests configured idle mode; presence clears it and resolves `ACTIVE`; later absence requests it again. Schedule requests continue to outrank presence. |
 | Wake from each inactive mode | Begin in `DIMMED`, `CLOCK`, `COVER_ART`, then `DISPLAY_OFF`; touch each once | Each touch produces `USER_WAKE` and `ACTIVE`; presentation and stale guard are removed; the wake touch does not trigger the underlying UI. Cover art may re-request after its existing pause/delay. |
 | Manual sleep | Any non-critical mode; long press; touch | `MANUAL_SLEEP` wins `DISPLAY_OFF`, clears temporary wake and closes interactive modal. Touch clears manual sleep and resolves `ACTIVE` or an off-hours temporary wake. |
-| Scheduled off and automatic wake | `ACTIVE`; enter off-hours Off; enter normal hours | `SCREEN_SCHEDULE` selects `DISPLAY_OFF`; later clearing that request selects `ACTIVE` and restarts idle handling. |
+| Scheduled off and automatic wake | `ACTIVE`; enter off-hours Off; enter normal hours | `SCREEN_SCHEDULE` selects `DISPLAY_OFF`; later clearing that request selects `ACTIVE`, waits for the main page to settle, restores its clock bar and configured brightness, and restarts idle handling through the shared active-display finalizer. |
 | Scheduled clock | `ACTIVE`; enter off-hours Clock; setting or time changes | Select `CLOCK` with scheduled clock brightness. Re-evaluate current schedule on every change; do not restore a previous transient mode. |
 | Temporary off-hours wake | Scheduled off or clock; touch; timeout | `USER_WAKE` selects `ACTIVE` at temporary-wake brightness. On existing timeout, clear it and re-resolve to the current scheduled off or clock mode. |
 | Scheduled Screen Dimmed | Enter off-hours Screen Dimmed | `SCREEN_SCHEDULE` selects `ACTIVE` at `schedule_dimmed_brightness` and suppresses idle sleep for that period. The internal `screen_schedule_always_on_mode` helper name does not change the user-facing mode or its brightness contract. |
