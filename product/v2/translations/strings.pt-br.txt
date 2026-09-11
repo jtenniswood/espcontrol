@@ -253,4 +253,4 @@ daytime=Dia
 nighttime=Noite
 
 timer=Temporizador
-timer_confirm=Confirmar?
+timer_confirm=Confirmar

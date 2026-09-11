@@ -253,4 +253,4 @@ daytime=Päivä
 nighttime=Yö
 
 timer=Ajastin
-timer_confirm=Vahvista?
+timer_confirm=Vahvista

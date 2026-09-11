@@ -36,6 +36,7 @@ registry.register("timer", {
     var entityInp = helpers.textInput(helpers.idPrefix + "entity", b.entity, "e.g. timer.kitchen");
     ef.appendChild(entityInp);
     panel.appendChild(ef);
+    helpers.markCardPrimaryField(ef, "entity");
     helpers.bindField(entityInp, "entity", true);
 
     // Label

@@ -253,4 +253,4 @@ daytime=Den
 nighttime=Noc
 
 timer=Časovač
-timer_confirm=Potvrdit?
+timer_confirm=Potvrdit

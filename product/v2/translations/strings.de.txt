@@ -253,4 +253,4 @@ daytime=Tagsüber
 nighttime=Nachts
 
 timer=Timer
-timer_confirm=Bestätigen?
+timer_confirm=Bestätigen
