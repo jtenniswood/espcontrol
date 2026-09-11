@@ -4921,6 +4921,7 @@ inline void open_device_volume_modal(lv_obj_t *anchor,
   }
   ctx->entity_id.clear();
   ctx->label = espcontrol_i18n(std::string("Device Volume"));
+  ctx->clock_bar_title = espcontrol_i18n_key("voice");
   ctx->btn = anchor;
   ctx->current_pct = media_clamp_percent((int)(player->volume * 100.0f + 0.5f));
   ctx->volume_known = true;
