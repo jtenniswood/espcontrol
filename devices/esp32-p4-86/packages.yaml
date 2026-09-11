@@ -40,8 +40,8 @@ substitutions:
   voice_clock_bar_apply_code: |-
     if (id(voice_services_enabled).state) {
       // These controls open different modals: space their full touch targets,
-      // not just the narrower glyphs, with a 12px gap inside the 60px bar.
-      clock_bar_right_icons = clock_bar_right_icons_begin(clock_bar_right_x, 12);
+      // not just the narrower glyphs, with an 18px gap inside the 60px bar.
+      clock_bar_right_icons = clock_bar_right_icons_begin(clock_bar_right_x, 18);
       if (show_network) {
         const int network_box = lv_obj_get_width(id(network_status_button));
         clock_bar_right_icons_seed(clock_bar_right_icons, network_box, network_box);
