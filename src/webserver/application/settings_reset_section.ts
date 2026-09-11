@@ -14,12 +14,18 @@ export function buildResetSettings(exportBackup: () => void, makeCard: (title: s
   backup.onclick = exportBackup;
   banner.append(backup);
   body.append(banner);
+  const options = document.createElement("div");
+  options.className = "sp-reset-options";
+  body.append(options);
   const session = resetSession();
   function addAction(mode: ResetMode, label: string, description: string): void {
-    const row = document.createElement("div");
-    row.className = "sp-field";
+    const panel = document.createElement("section");
+    panel.className = "sp-panel sp-reset-option";
+    const title = document.createElement("h4");
+    title.id = "sp-reset-option-" + mode;
+    title.textContent = label;
+    panel.setAttribute("aria-labelledby", title.id);
     const text = document.createElement("p");
-    text.className = "sp-setting-note";
     text.textContent = description;
     const button = document.createElement("button");
     button.type = "button";
@@ -66,8 +72,8 @@ export function buildResetSettings(exportBackup: () => void, makeCard: (title: s
         message.textContent = String((error as Error).message) + " Check the display: the reset may already be restarting it. Reload this page before making further changes.";
       }
     };
-    row.append(text, button);
-    body.append(row);
+    panel.append(title, text, button);
+    options.append(panel);
   }
   void session.discover().then(status => {
     if (!status) return;
@@ -77,8 +83,8 @@ export function buildResetSettings(exportBackup: () => void, makeCard: (title: s
       backup.disabled = true;
       return;
     }
-    if (status.modes.includes("customization")) addAction("customization", "Reset customization", "Remove all cards and device preferences, keeping Wi-Fi and Home Assistant connected. The display will restart into card setup.");
-    if (status.modes.includes("factory")) addAction("factory", "Factory reset", "Remove all customization and saved Wi-Fi and Home Assistant credentials. The display will restart into first-time setup.");
+    if (status.modes.includes("customization")) addAction("customization", "Reset customization", "Clear cards and preferences. Return to card setup with Wi-Fi and Home Assistant connected.");
+    if (status.modes.includes("factory")) addAction("factory", "Factory reset", "Clear customization and saved Wi-Fi and Home Assistant credentials. Restart into first-time setup.");
   }).catch(() => { /* Leave unavailable actions hidden; write transport fails closed. */ });
   return card;
 }
