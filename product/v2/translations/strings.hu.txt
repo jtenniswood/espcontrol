@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vakációs tartás
 vacuum=Porszívó
 version_unknown=Ismeretlen verzió
+voice=Hang
 volume=Hangerő
 waiting_for_home_assistant=Várakozás a Home Assistantra
 home_assistant_connection_lost=Csatlakozás a \nHome Assistanthez
