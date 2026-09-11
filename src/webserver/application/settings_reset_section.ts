@@ -1,5 +1,41 @@
 import { resetSession, type ResetMode } from "../api/reset_session";
 
+function confirmCompleteReset(warning: string): Promise<boolean> {
+  return new Promise(resolve => {
+    const dialog = document.createElement("dialog");
+    dialog.className = "sp-reset-dialog";
+    dialog.setAttribute("aria-labelledby", "sp-reset-confirm-title");
+    dialog.setAttribute("aria-describedby", "sp-reset-confirm-message");
+    const heading = document.createElement("h2");
+    heading.id = "sp-reset-confirm-title";
+    heading.textContent = "Complete reset?";
+    const message = document.createElement("p");
+    message.id = "sp-reset-confirm-message";
+    message.textContent = warning;
+    const actions = document.createElement("div");
+    actions.className = "sp-btn-row sp-btn-row--save";
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "sp-action-btn sp-cancel-btn";
+    cancel.textContent = "Cancel";
+    cancel.autofocus = true;
+    cancel.onclick = () => dialog.close("cancel");
+    const confirm = document.createElement("button");
+    confirm.type = "button";
+    confirm.className = "sp-action-btn sp-save-btn";
+    confirm.textContent = "Complete reset";
+    confirm.onclick = () => dialog.close("confirm");
+    dialog.addEventListener("close", () => {
+      dialog.remove();
+      resolve(dialog.returnValue === "confirm");
+    }, { once: true });
+    actions.append(cancel, confirm);
+    dialog.append(heading, message, actions);
+    document.body.append(dialog);
+    dialog.showModal();
+  });
+}
+
 export function buildResetSettings(exportBackup: () => void, makeCard: (title: string, body: HTMLElement, collapsed: boolean) => HTMLElement, infoPanel: (id: string, text: string) => HTMLElement): HTMLElement {
   const body = document.createElement("div");
   const card = makeCard("Factory Reset", body, true);
@@ -33,7 +69,7 @@ export function buildResetSettings(exportBackup: () => void, makeCard: (title: s
     button.textContent = label;
     button.onclick = async () => {
       const warning = description + (description.endsWith(".") ? " " : ". ") + "Settings cannot be recovered without a backup.";
-      if (mode === "factory" ? window.prompt(warning + " Type RESET to continue.") !== "RESET" : !window.confirm(warning)) return;
+      if (mode === "factory" ? !await confirmCompleteReset(warning) : !window.confirm(warning)) return;
       const dialog = document.createElement("dialog");
       dialog.className = "sp-reset-dialog";
       dialog.setAttribute("aria-labelledby", "sp-reset-status-title");

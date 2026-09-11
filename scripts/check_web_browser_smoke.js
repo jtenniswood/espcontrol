@@ -5686,11 +5686,33 @@ async function assertResetControls(browser) {
       await card.getByRole("button", { name: "Save backup", exact: true }).click();
       await download;
       const label = mode === "factory" ? "Complete reset" : "Partial reset";
-      page.once("dialog", dialog => mode === "factory" ? dialog.accept("wrong") : dialog.dismiss());
-      await card.getByRole("button", { name: label, exact: true }).click();
-      assert.strictEqual(resetState.requests.length, 0, "cancelled or mistyped confirmation must not reset");
-      page.once("dialog", dialog => dialog.accept(mode === "factory" ? "RESET" : undefined));
-      await card.getByRole("button", { name: label, exact: true }).click();
+      if (mode === "factory") {
+        page.on("dialog", async dialog => {
+          await dialog.dismiss();
+          assert.fail("Complete reset must not open a browser prompt");
+        });
+        const confirmation = page.getByRole("dialog", { name: "Complete reset?", exact: true });
+        await card.getByRole("button", { name: label, exact: true }).click();
+        assert(await confirmation.isVisible());
+        assert.strictEqual(await confirmation.locator("input").count(), 0);
+        assert.strictEqual(resetState.requests.length, 0, "opening confirmation must not reset");
+        assert(await confirmation.getByRole("button", { name: "Cancel", exact: true }).evaluate(el => el === document.activeElement));
+        await confirmation.getByRole("button", { name: "Cancel", exact: true }).click();
+        await confirmation.waitFor({ state: "detached" });
+        assert.strictEqual(resetState.requests.length, 0, "cancel must not reset");
+        await card.getByRole("button", { name: label, exact: true }).click();
+        await page.keyboard.press("Escape");
+        await confirmation.waitFor({ state: "detached" });
+        assert.strictEqual(resetState.requests.length, 0, "Escape must not reset");
+        await card.getByRole("button", { name: label, exact: true }).click();
+        await confirmation.getByRole("button", { name: label, exact: true }).click();
+      } else {
+        page.once("dialog", dialog => dialog.dismiss());
+        await card.getByRole("button", { name: label, exact: true }).click();
+        assert.strictEqual(resetState.requests.length, 0, "cancel must not reset");
+        page.once("dialog", dialog => dialog.accept());
+        await card.getByRole("button", { name: label, exact: true }).click();
+      }
       await page.waitForFunction(() => document.querySelector(".sp-reset-dialog")?.textContent?.includes("restarting") || document.querySelector(".sp-reset-dialog")?.textContent?.includes("Restarting"));
       assert.deepStrictEqual(resetState.requests, [{ mode }]);
       assert(await page.locator(".sp-reset-dialog").isVisible());
