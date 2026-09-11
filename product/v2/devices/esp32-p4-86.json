@@ -1,5 +1,5 @@
 {
-  "profiles": { "platform": "esp32-p4", "modal": "large-square", "fonts": "compact-panel", "network": ["c6-firmware-update", "network-coprocessor", "ethernet-selection"], "audio": "local-voice-services", "input": ["touchscreen", "physical-volume-buttons"] },
+  "profiles": { "platform": "esp32-p4-32mb", "assets": "card-backgrounds-9", "modal": "large-square", "fonts": "compact-panel", "network": ["c6-firmware-update", "network-coprocessor", "ethernet-selection"], "audio": "local-voice-services", "input": ["touchscreen", "physical-volume-buttons"] },
   "config": {
     "slots": 9,
     "capabilities": { "imageSlots": 6 },

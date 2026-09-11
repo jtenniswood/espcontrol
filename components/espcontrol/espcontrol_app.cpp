@@ -12,6 +12,7 @@
 #include "esphome/core/log.h"
 
 #include "panel_config_capabilities_endpoint.h"
+#include "panel_config_asset_references.h"
 #include "configuration_release_policy.h"
 #include "configuration_service.h"
 #include "configuration_store.h"
@@ -219,6 +220,49 @@ void EspControlApp::apply_boot_configuration() {
              static_cast<unsigned>(loaded.status));
     return;
   }
+  native_configuration_applied_ = true;
+}
+
+CardAssetReferenceState EspControlApp::check_recovery_references(
+    void *context, const std::string &id) {
+  auto *app = static_cast<EspControlApp *>(context);
+  if (app == nullptr) return CardAssetReferenceState::UNAVAILABLE;
+  if (!app->native_configuration_requested()) return CardAssetReferenceState::USE_LEGACY;
+  auto *runtime = app->native_configuration_runtime_.get();
+  auto *service = app->core_.configuration_service();
+  if (!app->native_configuration_initialized_ || !app->native_configuration_applied_ ||
+      runtime == nullptr || runtime->boot_buffer == nullptr || service == nullptr) {
+    return CardAssetReferenceState::UNAVAILABLE;
+  }
+  // Recovery runs on the application loop. Reuse its boot buffer, never the
+  // HTTP scratch buffer or the possibly stale legacy preference mirror.
+  const auto loaded = service->load(runtime->boot_buffer, PANEL_CONFIG_STORAGE_SLOT_CAPACITY);
+  bool referenced = false;
+  if (!loaded.ok() || !panel_config_references_asset(
+          runtime->boot_buffer, loaded.document_size, id, referenced)) {
+    return CardAssetReferenceState::UNAVAILABLE;
+  }
+  return referenced ? CardAssetReferenceState::REFERENCED : CardAssetReferenceState::UNREFERENCED;
+}
+
+bool EspControlApp::persist_card_asset_references(void *context) {
+  EspControlApp *const app = static_cast<EspControlApp *>(context);
+  if (app == nullptr || !app->native_configuration_requested()) return true;
+  NativeConfigurationRuntime *const runtime = app->native_configuration_runtime_.get();
+  configuration::ConfigurationService *const service =
+      app->core_.configuration_service();
+  if (!app->native_configuration_initialized_ || runtime == nullptr ||
+      runtime->document_buffer == nullptr || service == nullptr) {
+    return false;
+  }
+  const configuration::ServiceLoadResult result = service->refresh_legacy_shadow(
+      runtime->document_buffer, PANEL_CONFIG_STORAGE_SLOT_CAPACITY);
+  if (!result.ok()) {
+    ESP_LOGE(TAG, "Card image reference update could not reach native configuration (%u)",
+             static_cast<unsigned>(result.status));
+    return false;
+  }
+  return true;
 }
 
 void EspControlApp::setup() {
@@ -227,6 +271,12 @@ void EspControlApp::setup() {
     cards::set_card_runtime_registry_service(&core_.card_runtime_registry());
   } else {
     ESP_LOGE(TAG, "Application core failed to start");
+  }
+  card_assets_.set_recovery_reference_callback(&EspControlApp::check_recovery_references, this);
+  card_assets_.set_reference_persistence_callback(
+      &EspControlApp::persist_card_asset_references, this);
+  if (!card_assets_.start()) {
+    ESP_LOGE(TAG, "Card asset service failed to start");
   }
 
   // NVS work and the legacy snapshot can be expensive on a populated panel.
@@ -355,6 +405,7 @@ void EspControlApp::initialize_native_configuration() {
 void EspControlApp::loop() {
   home_assistant_endpoint_.loop();
   core_.run_once();
+  card_assets_.loop();
   // The app core starts before WiFi so Home Assistant boot automations are
   // safe. The IDF web server starts later, so retry idempotent registrations.
   register_panel_config_endpoints();
@@ -363,6 +414,7 @@ void EspControlApp::loop() {
 void EspControlApp::on_shutdown() {
   home_assistant_endpoint_.shutdown();
   cards::set_card_runtime_registry_service(nullptr);
+  card_assets_.stop();
   core_.stop();
 }
 

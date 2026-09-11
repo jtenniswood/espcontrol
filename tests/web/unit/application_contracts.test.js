@@ -17,6 +17,7 @@ function sourceFiles(directory) {
 
 describe("browserless application contracts", () => {
   const { runClipboardFeatureTests } = loadTypescriptTest("tests/web/clipboard_feature.test.ts");
+  const { runCardImagesFeatureTests } = loadTypescriptTest("tests/web/card_images_feature.test.ts");
   const { runApplicationContextTests } = loadTypescriptTest("tests/web/application_context.test.ts");
   const { runDeviceApiTests } = loadTypescriptTest("tests/web/device_api.test.ts");
   const { runSettingsFeatureTests } = loadTypescriptTest("tests/web/settings_feature.test.ts");
@@ -26,7 +27,8 @@ describe("browserless application contracts", () => {
   const { createConfigConfirmationOptionsFeature } = loadTypescriptTest("src/webserver/application/config_confirmation_options.ts");
 
   test("plans clipboard transfers", () => {
-    runClipboardFeatureTests();
+  runClipboardFeatureTests();
+  runCardImagesFeatureTests();
   });
 
   test("owns browser composition and compatibility layout state", () => {
@@ -1121,7 +1123,7 @@ describe("browserless application contracts", () => {
       const source = fs.readFileSync(path.join(ROOT, "src/webserver/application", file), "utf8");
       assert.match(source, /ControlsShellFeature/, `${file} should declare its shell dependency`);
     }
-    assert.match(entry, /createControlsFieldsFeature\(cards, configurationOptions, shell, requestApi\)/);
+    assert.match(entry, /createControlsFieldsFeature\(cards, configurationOptions, shell, requestApi, cardImages,/);
     assert.match(entry, /createButtonSettingsSelectionFeature\(/);
     assert.doesNotMatch(entry, /installButtonSettingsSelectionModule/);
   });
@@ -1133,7 +1135,7 @@ describe("browserless application contracts", () => {
     assert.match(fields, /export interface ControlsFieldsFeature/);
     assert.match(fields, /export function createControlsFieldsFeature/);
     assert.doesNotMatch(fields, /GlobalDescriptors|staticGlobal|liveGlobal|readonly globals/);
-    assert.match(entry, /fields = createControlsFieldsFeature\(cards, configurationOptions, shell, requestApi\)/);
+    assert.match(entry, /fields = createControlsFieldsFeature\(cards, configurationOptions, shell, requestApi, cardImages,/);
     assert.doesNotMatch(entry, /fields\.globals|installControlsFieldsModule/);
     assert.doesNotMatch(globals, /\bvar (?:makeCollapsibleCard|fieldLabel|textInput|fieldWithControl|selectField|segmentControl|colorField|toggleRow|applyCardMetadataFields|renderBasicCardFields|cardSensorPreviewHtml|cardBadgeLabelHtml|cardBadgePreview|condField|createRangeSlider):/);
     for (const file of ["action.ts", "calendar.ts", "sensor.ts", "switch.ts", "weather.ts"]) {

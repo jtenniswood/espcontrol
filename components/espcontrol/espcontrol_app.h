@@ -8,6 +8,7 @@
 #include "esphome/components/text/text.h"
 #include "esphome/core/component.h"
 
+#include "card_asset_service.h"
 #include "espcontrol_app_core.h"
 #include "panel_identity.h"
 #include "home_assistant_endpoint_resolver.h"
@@ -38,6 +39,8 @@ class EspControlApp : public esphome::Component {
 
   DisplayModeController &display() { return core_.display(); }
   const DisplayModeController &display() const { return core_.display(); }
+  CardAssetService &card_assets() { return card_assets_; }
+  const CardAssetService &card_assets() const { return card_assets_; }
   AppLifecycleState lifecycle_state() const { return core_.lifecycle_state(); }
   HomeAssistantEndpointResolver &home_assistant_endpoint() {
     return home_assistant_endpoint_;
@@ -68,6 +71,8 @@ class EspControlApp : public esphome::Component {
   void register_panel_config_endpoints();
   void initialize_native_configuration();
   void apply_boot_configuration();
+  static bool persist_card_asset_references(void *context);
+  static CardAssetReferenceState check_recovery_references(void *context, const std::string &id);
   bool native_configuration_requested() const;
   bool create_native_configuration_runtime();
 
@@ -86,8 +91,10 @@ class EspControlApp : public esphome::Component {
   // the framework's allocators and component setup are ready.
   std::unique_ptr<NativeConfigurationRuntime> native_configuration_runtime_;
   EspControlAppCore core_{};
+  CardAssetService card_assets_{};
   HomeAssistantEndpointResolver home_assistant_endpoint_{};
   bool native_configuration_initialized_{false};
+  bool native_configuration_applied_{false};
   bool panel_config_http_context_bound_{false};
   const char *web_auth_username_{nullptr};
   const char *web_auth_password_{nullptr};

@@ -14,6 +14,7 @@ import {
     GATE_LABEL_DISPLAY_OPTION,
     cardContractOptionDefaultValue,
     cardContractOptionSpec,
+    copyCardBackgroundOptions,
     copyLargeNumbersOption,
 } from "./config_option_core";
 import type { ConfigModalTabOptionsFeature } from "./config_modal_tab_options";
@@ -81,9 +82,9 @@ export function createConfigAccessClimateAlarmOptionsFeature(
     }
     function normalizeGarageOptions(this: any, options?: any, mode?: any) {
         var labelMode: any = normalizeGarageLabelDisplayMode(configOptionValue(options, GARAGE_LABEL_DISPLAY_OPTION));
-        var out: any = labelMode !== cardContractOptionDefaultValue("garage", GARAGE_LABEL_DISPLAY_OPTION, "label")
-            ? setConfigOptionValue("", GARAGE_LABEL_DISPLAY_OPTION, labelMode)
-            : "";
+        var out: any = copyCardBackgroundOptions("", options, { type: "garage" });
+        if (labelMode !== cardContractOptionDefaultValue("garage", GARAGE_LABEL_DISPLAY_OPTION, "label"))
+            out = setConfigOptionValue(out, GARAGE_LABEL_DISPLAY_OPTION, labelMode);
         var confirmationMode: any = mode === "open" ? "on" : mode === "close" ? "off" : "";
         return normalizeGarageConfirmation(out, options, confirmationMode);
     }
