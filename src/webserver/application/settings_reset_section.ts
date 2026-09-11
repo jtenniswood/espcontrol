@@ -2,7 +2,7 @@ import { resetSession, type ResetMode } from "../api/reset_session";
 
 export function buildResetSettings(exportBackup: () => void, makeCard: (title: string, body: HTMLElement, collapsed: boolean) => HTMLElement, infoPanel: (id: string, text: string) => HTMLElement): HTMLElement {
   const body = document.createElement("div");
-  const card = makeCard("Reset", body, true);
+  const card = makeCard("Factory Reset", body, true);
   card.hidden = true;
   const banner = infoPanel("sp-reset-backup-info", "Back up your customization before resetting. Backups don’t restore device connection credentials. Firmware and built-in defaults are kept.");
   banner.classList.add("sp-reset-backup-info");
@@ -32,7 +32,7 @@ export function buildResetSettings(exportBackup: () => void, makeCard: (title: s
     button.className = "sp-backup-btn";
     button.textContent = label;
     button.onclick = async () => {
-      const warning = description + " Settings cannot be recovered without a backup.";
+      const warning = description + (description.endsWith(".") ? " " : ". ") + "Settings cannot be recovered without a backup.";
       if (mode === "factory" ? window.prompt(warning + " Type RESET to continue.") !== "RESET" : !window.confirm(warning)) return;
       const dialog = document.createElement("dialog");
       dialog.className = "sp-reset-dialog";
@@ -83,8 +83,8 @@ export function buildResetSettings(exportBackup: () => void, makeCard: (title: s
       backup.disabled = true;
       return;
     }
-    if (status.modes.includes("customization")) addAction("customization", "Reset customization", "Clear cards and preferences. Return to card setup with Wi-Fi and Home Assistant connected.");
-    if (status.modes.includes("factory")) addAction("factory", "Factory reset", "Clear customization and saved Wi-Fi and Home Assistant credentials. Restart into first-time setup.");
+    if (status.modes.includes("customization")) addAction("customization", "Partial reset", "Reset cards and preferences. Retains your configuration for Wifi and Home Assistant");
+    if (status.modes.includes("factory")) addAction("factory", "Complete reset", "Remove all existing configuration and reset back to first time setup.");
   }).catch(() => { /* Leave unavailable actions hidden; write transport fails closed. */ });
   return card;
 }

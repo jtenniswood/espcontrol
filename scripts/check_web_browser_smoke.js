@@ -5677,7 +5677,7 @@ async function assertResetControls(browser) {
       await page.waitForSelector("#sp-app");
       await seedNativeDocument(page, nativeConfigState(testCase.slug));
       await page.getByRole("tab", { name: "Settings" }).click();
-      const card = page.locator(".card").filter({ has: page.locator("h3", { hasText: /^Reset$/ }) });
+      const card = page.locator(".card").filter({ has: page.locator("h3", { hasText: /^Factory Reset$/ }) });
       if (mode === "unsupported") { assert(!(await card.isVisible())); continue; }
       await card.waitFor({ state: "visible" });
       await card.locator(".card-header").click();
@@ -5685,7 +5685,7 @@ async function assertResetControls(browser) {
       const download = page.waitForEvent("download");
       await card.getByRole("button", { name: "Export backup", exact: true }).click();
       await download;
-      const label = mode === "factory" ? "Factory reset" : "Reset customization";
+      const label = mode === "factory" ? "Complete reset" : "Partial reset";
       page.once("dialog", dialog => mode === "factory" ? dialog.accept("wrong") : dialog.dismiss());
       await card.getByRole("button", { name: label, exact: true }).click();
       assert.strictEqual(resetState.requests.length, 0, "cancelled or mistyped confirmation must not reset");
