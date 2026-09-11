@@ -48,6 +48,8 @@ export async function runPanelIdentityTests() {
   try { await feature.saveAndRestart("Kitchen"); } catch { failed = true; }
   assert(failed && !restarted && feature.current() === null, "failed write cannot restart or publish name");
   assert(requests === 1, "one request on save");
+  assert(await feature.chooseRestoreName({ identity }) === undefined,
+    "identity outage preserves the destination name without blocking restore");
   const old = createPanelIdentityFeature({ document, fetch: (async () => new Response("", { status: 404 })) as typeof fetch,
     changed: () => {}, beforeSave: async () => {}, restart: async () => {}, makeCard: () => { throw new Error("unused"); } });
   assert(await old.load() === null, "old firmware has no identity feature");

@@ -177,7 +177,9 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
   async function chooseRestoreName(data: unknown): Promise<string | undefined | null> {
     const identity = readIdentityBackup((data as { identity?: unknown } | null)?.identity);
     if (!identity) return undefined;
-    const target = await load();
+    let target: PanelIdentityInfo | null;
+    try { target = await load(); }
+    catch { return undefined; } // Naming is optional; preserve it and restore configuration.
     if (!target) return undefined;
     return new Promise(resolve => {
       const dialog = document.createElement("dialog");

@@ -5678,6 +5678,40 @@ async function runCase(browser, testCase) {
 }
 
 
+async function assertNamingOfflineBackups(browser) {
+  const testCase = ACTIVE_CASES[0];
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  const identityState = { posts: [], failLoad: true, info: {} };
+  await installRoutes(context, testCase.slug, { identityState });
+  const page = await context.newPage();
+  const restartRequests = [];
+  page.on("request", request => {
+    if (request.method() === "POST" && request.url().includes("/button/")) restartRequests.push(request.url());
+  });
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await openBackupControls(page);
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const download = await downloadPromise;
+    const exported = JSON.parse(fs.readFileSync(await download.path(), "utf8"));
+    assert(!Object.hasOwn(exported, "identity"), "naming outage omits optional metadata");
+    assert(exported.native_config, "naming outage still exports configuration");
+    await page.getByText("Backup exported without the panel name because naming is unavailable.").waitFor();
+    const offlineBackup = backupFixture(testCase.slug, testCase.slots);
+    offlineBackup.identity = { version: 1, name: "Other panel", hostname: "other-panel-ffffff", mac_suffix: "ffffff" };
+    await importBackup(page, offlineBackup, "identity-offline-restore");
+    await page.waitForSelector(".sp-banner.sp-success");
+    assert.strictEqual(identityState.posts.length, 0, "offline restore cannot rename the destination");
+    assert.strictEqual(restartRequests.length, 0, "offline restore cannot restart for naming");
+    assert.strictEqual(await page.locator("dialog[open]").count(), 0, "offline restore skips the optional name dialog");
+  } finally { await context.close(); }
+}
+
 async function assertPanelNaming(browser) {
   const testCase = ACTIVE_CASES[0];
   const context = await browser.newContext({ viewport: testCase.viewport });
@@ -5753,6 +5787,7 @@ async function assertPanelNaming(browser) {
   const browser = await chromium.launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    await assertNamingOfflineBackups(browser);
     await assertPanelNaming(browser);
     if (process.env.ESPCONTROL_NAMING_ONLY === "1") { console.log("Panel naming browser checks passed."); return; }
     if (!acceptanceOnly) {

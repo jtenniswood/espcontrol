@@ -59,6 +59,9 @@ void PanelIdentity::setup() {
   char mac[esphome::MAC_ADDRESS_BUFFER_SIZE];
   esphome::get_mac_address_into_buffer(mac);
   suffix_ = std::string(mac + 8, 4);
+  for (char &c : suffix_) {
+    if (c >= 'A' && c <= 'F') c += 'a' - 'A';
+  }
   storage_error_ = prepare_storage();
   nvs_handle_t handle;
   if (storage_error_ == ESP_OK) storage_error_ = open_storage(&handle);

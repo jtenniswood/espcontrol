@@ -32,3 +32,7 @@ Selecting it copies the name, generates an address using the destination panel's
 own suffix, and restarts after the configuration restores successfully. The
 source panel's hardware identity is never copied. Older backups keep the
 current panel name.
+
+If panel naming is unavailable, export still saves your configuration and warns
+that the name was omitted. Import still restores the configuration and keeps
+the destination panel name.

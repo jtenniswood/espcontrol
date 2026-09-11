@@ -1,3 +1,4 @@
+import type { PanelIdentityBackup } from "../model/panel_identity";
 import type { PanelIdentityFeature } from "./panel_identity";
 import { state } from "../state/app_instance";
 import * as EspControlModel from "../model";
@@ -211,10 +212,9 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
     var backupImportController: BackupImportController<any, any, any> = controllers.backupImport;
     var backupRestoreController: BackupRestoreController<any, any> = controllers.backupRestore;
     var backupFileController: BackupFileController = controllers.backupFile;
-    function downloadBackupConfig(this: any, data?: any) {
-        const identity = controllers.identity?.backup();
+    function downloadBackupConfig(this: any, data: any, identity?: PanelIdentityBackup) {
         if (identity) data.identity = identity;
-        backupFileController.download(data, backupExportFileName());
+        backupFileController.download(data, backupExportController.fileName(controllers.layout.config.screenSize, undefined, identity));
     }
     function addNativeConfigToBackup(this: any, data?: any) {
         return backupExportController.addNativeConfig(data, {
@@ -226,8 +226,12 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
         });
     }
     async function exportConfig(this: any) {
-        try { await controllers.identity?.load(); }
-        catch { controllers.shell.showBanner?.("Could not read the panel name. Try exporting again once the panel is connected.", "error"); return; }
+        let identity: PanelIdentityBackup | undefined;
+        let identityUnavailable = false;
+        try {
+            await controllers.identity?.load();
+            identity = controllers.identity?.backup();
+        } catch { identityUnavailable = true; }
         var data: any = createBackupConfig({
             device: controllers.layout.deviceId,
             slots: controllers.layout.numSlots,
@@ -316,7 +320,9 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 schedule_clock_text_color: normalizeHexColor(state.scheduleClockTextColor, "FFFFFF"),
             },
         } as any);
-        downloadBackupConfig(addNativeConfigToBackup(data));
+        downloadBackupConfig(addNativeConfigToBackup(data), identity);
+        if (identityUnavailable) controllers.shell.showBanner?.(
+            "Backup exported without the panel name because naming is unavailable.", "warning");
     }
     function importConfig(this: any) {
         backupFileController.import(function (data: any) {
