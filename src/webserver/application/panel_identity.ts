@@ -127,9 +127,6 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
     label.textContent = "Panel name";
     const preview = document.createElement("p");
     preview.className = "sp-setting-note";
-    const help = document.createElement("p");
-    help.className = "sp-setting-note";
-    help.textContent = "Used in EspControl, backups and Home Assistant. Saving changes the network address and restarts the panel. Existing ESPHome action names may need updating. A name assigned in Home Assistant takes precedence. Clear to restore the original name.";
     const error = document.createElement("p");
     error.setAttribute("role", "status");
     const button = document.createElement("button");
@@ -151,12 +148,12 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
       catch (e) { sync(); error.textContent = (e as Error).message; }
       finally { input.disabled = false; }
     };
-    body.append(label, input, preview, help, button, error);
+    body.append(label, input, preview, button, error);
     function loadCard() {
       void load().then(value => {
         card.hidden = !value;
         if (value) {
-          body.replaceChildren(label, input, preview, help, button, error);
+          body.replaceChildren(label, input, preview, button, error);
           input.value = value.name;
           sync();
         }
