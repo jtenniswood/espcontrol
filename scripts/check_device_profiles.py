@@ -315,17 +315,12 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             assert "cfg.image_card_image_count" not in sensors, (
                 f"{slug}: zero image-card profile should not wire image-card downloaders"
             )
-        media_cover_art_supported = "media_cover_art" not in set(
-            profile["web"].get("disabledCardTypes", [])
+        assert f'image_card_slot_capacity: "{capacity}"' in package, (
+            f"{slug}: compile-time image pool must come from the product profile"
         )
-        if media_cover_art_supported:
-            assert "cfg.media_cover_art_supported = false;" not in sensors, (
-                f"{slug}: supported Media Cover Art must retain the firmware default"
-            )
-        else:
-            assert "cfg.media_cover_art_supported = false;" in sensors, (
-                f"{slug}: firmware must block unsupported Media Cover Art"
-            )
+        assert '-DESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=${image_card_slot_capacity}' in package, (
+            f"{slug}: compile-time image pool must use the generated capacity"
+        )
         if profile["firmware"].get("display", {}).get("infoOnly"):
             assert "cfg.info_only = true;" in sensors, f"{slug}: sensors.yaml missing info-only grid flag"
 

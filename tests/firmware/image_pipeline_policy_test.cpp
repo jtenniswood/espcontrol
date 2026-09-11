@@ -32,6 +32,16 @@ using esphome::artwork_image::background_transfer_should_follow_redirect;
 using esphome::artwork_image::background_transfer_tls_mode;
 
 int main() {
+  using esphome::artwork_image::image_pipeline_modal_cache_remaining_ms;
+  // One policy governs immediate reopen, delayed reopen, and timer rescheduling.
+  assert(image_pipeline_modal_cache_remaining_ms(false, 0, 0, 15000) == 0);
+  assert(image_pipeline_modal_cache_remaining_ms(true, 0, 0, 15000) == 15000);
+  assert(image_pipeline_modal_cache_remaining_ms(true, 0, 14999, 15000) == 1);
+  assert(image_pipeline_modal_cache_remaining_ms(true, 0, 15000, 15000) == 0);
+  assert(image_pipeline_modal_cache_remaining_ms(true, 1000, 17000, 15000) == 0);
+  assert(image_pipeline_modal_cache_remaining_ms(true, UINT32_MAX - 999, 0, 15000) == 14000);
+  assert(image_pipeline_modal_cache_remaining_ms(true, UINT32_MAX - 999, 14000, 15000) == 0);
+
   constexpr size_t internal_free_min = 40 * 1024;
   constexpr size_t internal_largest_min = 24 * 1024;
   constexpr size_t image_bytes = 320 * 320 * 2;
