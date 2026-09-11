@@ -26,7 +26,7 @@ export function normalizePanelName(value: unknown): string {
 
 export function panelHostname(name: string, suffix: string): string {
   const slug = name.replace(/[A-Z]/g, c => c.toLowerCase()).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "panel";
-  return `espcontrol-${slug.slice(0, 13).replace(/-+$/, "")}-${suffix}`;
+  return `${slug.slice(0, 13).replace(/-+$/, "")}-${suffix}`;
 }
 
 export function readIdentityBackup(value: unknown): PanelIdentityBackup | undefined {

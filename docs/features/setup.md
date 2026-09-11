@@ -147,7 +147,7 @@ On firmware that supports panel naming, open **Settings → System → Panel nam
 Enter a name such as **Kitchen**, check the address preview, then choose
 **Save and restart**. The name appears in the web interface, browser tab, the
 panel's network information and Home Assistant. The address becomes something
-like `espcontrol-kitchen-a1b2c3.local`; the suffix identifies your particular panel.
+like `kitchen-a1b2c3.local`; the suffix identifies your particular panel.
 
 The page shows the new address and current IP before restarting. Reopen the panel
 using either link. Router-managed DNS entries may need updating separately.

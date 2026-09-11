@@ -40,6 +40,6 @@ inline std::string panel_hostname(const std::string &name, const std::string &su
   if (slug.empty()) slug = "panel";
   slug.resize(std::min<size_t>(13, slug.size()));
   while (!slug.empty() && slug.back() == '-') slug.pop_back();
-  return "espcontrol-" + slug + "-" + suffix;
+  return slug + "-" + suffix;
 }
 }  // namespace espcontrol

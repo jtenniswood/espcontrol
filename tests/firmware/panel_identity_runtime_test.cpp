@@ -15,7 +15,7 @@ int main() {
   assert(first.save(" Kitchen "));
   assert(first.restart_required());
   assert(first.saved_name() == "Kitchen");
-  assert(first.target_hostname() == "espcontrol-kitchen-a1b2c3");
+  assert(first.target_hostname() == "kitchen-a1b2c3");
   assert(std::string(esphome::App.get_name().c_str()) == "original-panel-a1b2c3");
 
   // Simulate entity registration before App.setup(). Entity references must
@@ -25,7 +25,7 @@ int main() {
   rebooted.setup();
   assert(rebooted.get_setup_priority() > 800);
   assert(!rebooted.restart_required());
-  assert(std::string(esphome::App.get_name().c_str()) == "espcontrol-kitchen-a1b2c3");
+  assert(std::string(esphome::App.get_name().c_str()) == "kitchen-a1b2c3");
   assert(std::string(esphome::App.get_friendly_name().c_str()) == "Kitchen");
   assert(std::string(entity_name.c_str()) == "Original panel a1b2c3");
   fail_write = true;
@@ -73,7 +73,7 @@ int main() {
   espcontrol::PanelIdentity persisted;
   persisted.setup();
   assert(persisted.saved_name() == "Office");
-  assert(persisted.target_hostname() == "espcontrol-office-a1b2c3");
+  assert(persisted.target_hostname() == "office-a1b2c3");
   assert(!persisted.restart_required());
 
   // Migrate a previously saved shared-NVS name and keep it isolated afterward.

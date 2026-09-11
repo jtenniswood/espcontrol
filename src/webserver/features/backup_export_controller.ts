@@ -1,4 +1,4 @@
-import type { PanelIdentityBackup } from "../model/panel_identity";
+import { panelHostname, type PanelIdentityBackup } from "../model/panel_identity";
 import type { CardConfig } from "../contracts/types";
 import {
   createPanelConfigBackupPayload,
@@ -51,7 +51,7 @@ export function createBackupExportController(
     `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 
   const fileName = (screenSize?: unknown, value: Date = new Date(), identity?: PanelIdentityBackup): string => {
-    const named = identity?.name ? "-" + identity.hostname.replace(/^espcontrol-/, "") : "";
+    const named = identity?.name ? "-" + panelHostname(identity.name, identity.mac_suffix) : "";
     return `espcontrol-${screenSizeSlug(screenSize)}${named}-${fileDate(value)}.json`;
   };
 

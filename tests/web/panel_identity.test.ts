@@ -12,15 +12,15 @@ export async function runPanelIdentityTests() {
     assert(rejected, "reject invalid name " + JSON.stringify(value));
   }
   assert(normalizePanelName("界".repeat(40)).length === 40, "accept 120 UTF-8 bytes");
-  assert(panelHostname("Kitchen", "a1b2c3") === "espcontrol-kitchen-a1b2c3", "hostname");
-  assert(panelHostname("Küche", "abcdef") === "espcontrol-k-che-abcdef", "UTF-8 slug");
-  assert(panelHostname("東京", "abcdef") === "espcontrol-panel-abcdef", "non-ASCII fallback");
-  assert(panelHostname("K", "abcdef") === "espcontrol-panel-abcdef", "ASCII casing matches firmware");
+  assert(panelHostname("Kitchen", "a1b2c3") === "kitchen-a1b2c3", "hostname");
+  assert(panelHostname("Küche", "abcdef") === "k-che-abcdef", "UTF-8 slug");
+  assert(panelHostname("東京", "abcdef") === "panel-abcdef", "non-ASCII fallback");
+  assert(panelHostname("K", "abcdef") === "panel-abcdef", "ASCII casing matches firmware");
   assert(panelHostname("very long hallway panel", "abcdef").length <= 31, "hostname limit");
   assert(panelHostname("Kitchen", "111111") !== panelHostname("Kitchen", "222222"), "destination suffix");
   assert(readIdentityBackup(undefined) === undefined, "old backups");
   assert(readIdentityBackup({ version: 2 }) === undefined, "future metadata ignored");
-  const identity = { version: 1 as const, name: "Kitchen", hostname: "espcontrol-kitchen-a1b2c3", mac_suffix: "a1b2c3" };
+  const identity = { version: 1 as const, name: "Kitchen", hostname: "kitchen-a1b2c3", mac_suffix: "a1b2c3" };
   assert(readIdentityBackup(identity)?.name === "Kitchen", "metadata");
   const exporter = createBackupExportController({ serializeButtonConfig: () => "", serializeSubpageConfig: () => "" });
   assert(exporter.fileName("4 inches", new Date(2026, 8, 11), identity) === "espcontrol-4-inch-kitchen-a1b2c3-2026-09-11.json", "named backup");
