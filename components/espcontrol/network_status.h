@@ -192,7 +192,6 @@ inline void network_status_open_modal(const std::string &device_name,
                                       const lv_font_t *text_font,
                                       const lv_font_t *icon_font,
                                       float (*wifi_quality)() = nullptr) {
-  (void) device_name;
   // Settings is explicit navigation: dismiss nested menus and the current
   // modal before saving the underlying page title (for example, below Voice).
   control_modal_close_nested_menu();
@@ -257,8 +256,10 @@ inline void network_status_open_modal(const std::string &device_name,
   lv_obj_set_layout(ui.overlay, LV_LAYOUT_GRID);
   lv_obj_set_grid_dsc_array(ui.overlay, ui.columns, ui.rows);
 
-  const char *labels[] = {espcontrol_i18n("Back"), ip_address.c_str(), "", ""};
-  const char *icons[] = {"\U000F0141", "\U000F0200", "\U000F05A9", "\U000F035B"};
+  const char *labels[] = {espcontrol_i18n("Back"), ip_address.c_str(), "", "",
+                          device_name.c_str()};
+  const char *icons[] = {"\U000F0141", "\U000F0200", "\U000F05A9", "\U000F035B",
+                         "\U000F0200"};
 
   int visible_index = 0;
   for (int i = 0; i < NETWORK_STATUS_CARD_COUNT; ++i) {

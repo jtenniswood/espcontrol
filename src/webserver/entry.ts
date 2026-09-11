@@ -52,7 +52,7 @@ import { createGridMigrationFeature } from "./application/grid_migration";
 import { createArtworkPostApiFeature } from "./application/artwork_post_api";
 import { createScreenSchedulePostApiFeature } from "./application/screen_schedule_post_api";
 import { createClockBarPostApiFeature } from "./application/clock_bar_post_api";
-import { createControlsShellFeature } from "./application/controls_shell";
+import { createControlsShellFeature, renderPanelBrand } from "./application/controls_shell";
 import { createSettingsPageHelpersFeature, type SettingsPageHelpersFeature } from "./application/settings_page_helpers";
 import { createSettingsScheduleSectionFeature } from "./application/settings_schedule_section";
 import { createSettingsCoverArtSectionFeature } from "./application/settings_cover_art_section";
@@ -88,6 +88,7 @@ import { createBackupFeature } from "./features/backup";
 import { createBackupContractFeature } from "./application/backup_contract";
 import { createAppBackupFeature } from "./application/app_backup";
 import { createAppStatusPreviewFeature, type AppStatusPreviewFeature } from "./application/app_status_preview";
+import { createPanelIdentityFeature } from "./application/panel_identity";
 import { createAppTitleFeature } from "./application/app_title";
 import { createAppConfigEventsFeature } from "./application/app_config_events";
 import { createAppStateEventHandlersFeature } from "./application/app_state_event_handlers";
@@ -260,7 +261,27 @@ function composeApplicationContext(): ApplicationContext {
   };
   const deviceApi = createDeviceApi((url, init) =>
     dom.fetch(url, init as RequestInit));
+  const identity = createPanelIdentityFeature({
+    document: dom.document, fetch: dom.fetch,
+    changed: () => {
+      pageTitle.applyPageTitle(identity.current()?.friendly_name);
+      const brand = dom.document.querySelector(".sp-brand");
+      if (brand) renderPanelBrand(brand, dom.document, identity.current()?.name);
+    },
+    restart: async () => {
+      const response = await requestApi.postButtonPress("Apply Configuration");
+      if (!response?.ok) throw new Error("Name saved, but the panel could not restart. Try again.");
+    },
+    beforeSave: async () => {
+      if (shell.isConfigLocked()) throw new Error("Wait for the current panel operation to finish before renaming.");
+      await requestApi.postQueue;
+      if (requestApi.postQueueError) throw new Error("Some configuration changes failed. Reload the page before renaming.");
+    },
+    makeCard: (title, body) => fields.makeCollapsibleCard(title, body, true),
+    infoPanel: (id, text) => settingsUi.infoPanel(id, text),
+  });
   const pageTitle = createAppTitleFeature({
+    panelName: () => identity.current()?.name,
     document: dom.document,
     eventStreamEnabled: () => {
       try { return new URLSearchParams(dom.window.location.search).get("events") === "1"; }
@@ -288,6 +309,7 @@ function composeApplicationContext(): ApplicationContext {
   let app: AppFeature;
   const shell = createControlsShellFeature(runtime, {
     document: dom.document,
+    panelName: () => identity.current()?.name,
     state: AppInstance.state,
     schedule: dom.schedule,
     cancelSchedule: (handle) => { dom.window.clearTimeout(handle); },
@@ -776,6 +798,7 @@ function composeApplicationContext(): ApplicationContext {
     showBanner: shell.showBanner,
   });
   const backupApplication = createAppBackupFeature({
+    identity,
     layout,
     backupExport,
     backupImport,
@@ -850,6 +873,7 @@ function composeApplicationContext(): ApplicationContext {
     fields, settingsHelpers, coverArtScreensaver, mediaPlayback,
   );
   const systemSection = createSettingsSystemSectionFeature({
+    buildIdentityCard: identity.buildCard,
     exportBackup: backupApplication.exportConfig,
     importBackup: backupApplication.importConfig,
   }, runtime, firmwareVersion, firmwareUpdate, c6Firmware, shell, requestApi,
@@ -863,6 +887,8 @@ function composeApplicationContext(): ApplicationContext {
     systemSection, preview,
   );
   requestApi.connectReconnect(appEvents.connect);
+  // Start after composition; the service retries on a later Settings visit if offline.
+  dom.schedule(() => { void identity.load().catch(() => {}); }, 0);
   return createApplicationContext({
     layout,
     model: Model,

@@ -405,6 +405,18 @@ target_compile_options(climate_update_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(climate_update_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME climate_update_test COMMAND climate_update_test)
 
+add_executable(panel_identity_test panel_identity_test.cpp)
+target_compile_features(panel_identity_test PRIVATE cxx_std_17)
+target_compile_options(panel_identity_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_identity_test PRIVATE ../../components/espcontrol)
+add_test(NAME panel_identity_test COMMAND panel_identity_test)
+
+add_executable(panel_identity_runtime_test panel_identity_runtime_test.cpp ../../components/espcontrol/panel_identity.cpp)
+target_compile_features(panel_identity_runtime_test PRIVATE cxx_std_17)
+target_compile_options(panel_identity_runtime_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_identity_runtime_test PRIVATE panel_identity_stubs ../../components/espcontrol)
+add_test(NAME panel_identity_runtime_test COMMAND panel_identity_runtime_test)
+
 set(CLOCK_BAR_TITLE_TEST_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/clock_bar_title_test.cpp)
 add_custom_command(
   OUTPUT ${CLOCK_BAR_TITLE_TEST_SOURCE}
