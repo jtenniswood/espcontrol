@@ -1,4 +1,5 @@
 #include "device_reset.h"
+#include "reset_interlock.h"
 #include "esphome/core/defines.h"
 #ifdef USE_ESP32
 #include <algorithm>
@@ -6,6 +7,7 @@
 #include <mutex>
 #include <vector>
 #include <esp_partition.h>
+#include <esp_ota_ops.h>
 #include <nvs.h>
 #include "esphome/core/application.h"
 #include "esphome/core/hal.h"
@@ -22,11 +24,11 @@ namespace {
 constexpr const char *TAG = "espcontrol.reset";
 constexpr const char *JOURNAL_NAMESPACE = "espcontrol_rst";
 std::atomic<uint32_t> current_epoch{0};
-std::atomic<bool> reset_pending{false}, initialized{false}, installing{false}, entity_installing{false};
+std::atomic<bool> initialized{false};
+OperationInterlock interlock;
 #ifdef USE_UPDATE
 std::vector<esphome::update::UpdateEntity *> update_entities;
 #endif
-std::mutex reset_mutex;
 Journal journal;
 const char *auth_username = "";
 const char *auth_password = "";
@@ -162,7 +164,6 @@ class ResetHandler : public esphome::web_server_idf::AsyncWebHandler {
     });
     received_ = 0;
     if (!valid) { respond(raw, "400 Bad Request", "{\"error\":\"Invalid reset mode\"}"); return; }
-    std::lock_guard<std::mutex> lock(reset_mutex);
     const auto supplied = r->get_header("X-EspControl-Epoch").value_or("");
     if (supplied != std::to_string(epoch()) &&
         !(journal.pending() && journal.mode == mode && supplied == std::to_string(epoch() - 1))) {
@@ -170,36 +171,39 @@ class ResetHandler : public esphome::web_server_idf::AsyncWebHandler {
     }
     if (update_busy()) { respond(raw, "409 Conflict", "{\"error\":\"Firmware installation in progress\"}"); return; }
     const bool was_pending = journal.pending();
-    auto result = request(storage, journal, mode);
+    auto result = interlock.record(storage, journal, mode);
     if (result != Result::ACCEPTED) {
       // A failed commit/readback may still have published the journal. Fail
       // closed until a reboot settles it rather than accepting more writes.
-      if (result == Result::FAILED) reset_pending.store(true);
-      respond(raw, result == Result::CONFLICT ? "409 Conflict" : "500 Internal Server Error", "{\"error\":\"Reset could not be recorded\"}"); return;
+      respond(raw, result == Result::CONFLICT ? "409 Conflict" : "500 Internal Server Error", "{\"error\":\"Reset could not be recorded\"}");
+      if (result == Result::FAILED) schedule_restart();
+      return;
     }
     current_epoch.store(journal.epoch);
-    reset_pending.store(true);
     respond(raw, "202 Accepted", "{\"status\":\"restarting\"}");
     if (!was_pending) {
       // Schedule only after the response has been sent, outside the HTTP task.
-      esphome::App.scheduler.set_timeout(nullptr, "espcontrol_reset", 1000, []() { esphome::App.safe_reboot(); });
+      schedule_restart();
     }
   }
  private:
+  static void schedule_restart() {
+    esphome::App.scheduler.set_timeout(nullptr, "espcontrol_reset", 1000, []() { esphome::App.safe_reboot(); });
+  }
   char body_[129]{};
   size_t received_{0};
 };
 }  // namespace
 uint32_t epoch() { return current_epoch.load(); }
-bool pending() { return reset_pending.load(); }
+bool pending() { return interlock.pending(); }
 bool ready() { return initialized.load(); }
-void set_update_busy(bool busy) { installing.store(busy); }
-bool update_busy() { return installing.load() || entity_installing.load(); }
+void set_update_busy(bool busy) { interlock.set_ota_busy(busy); }
+bool update_busy() { return interlock.busy(); }
 void watch_update(esphome::update::UpdateEntity *entity) {
 #ifdef USE_UPDATE
   update_entities.push_back(entity);
   entity->add_on_state_callback([]() {
-    entity_installing.store(std::any_of(update_entities.begin(), update_entities.end(), [](auto *item) {
+    interlock.set_entities_busy(std::any_of(update_entities.begin(), update_entities.end(), [](auto *item) {
       return item->state == esphome::update::UPDATE_STATE_INSTALLING;
     }));
   });
@@ -223,6 +227,27 @@ void early_startup(bool compiled_networks, const char *username, const char *pas
 }
 void register_handlers(esphome::web_server_idf::AsyncWebServer &server) { server.addHandler(new ResetHandler()); }
 }  // namespace espcontrol::reset
+
+// Gate the actual flash entry points, including automatic updates and OTA
+// transports whose state notification is deferred to the main task.
+extern "C" esp_err_t __real_esp_ota_begin(const esp_partition_t *, size_t, esp_ota_handle_t *);
+extern "C" esp_err_t __wrap_esp_ota_begin(const esp_partition_t *partition, size_t size, esp_ota_handle_t *handle) {
+  auto &gate = espcontrol::reset::interlock;
+  if (!gate.begin_installation(false)) return ESP_ERR_INVALID_STATE;
+  const auto result = __real_esp_ota_begin(partition, size, handle);
+  if (result != ESP_OK) gate.set_ota_busy(false);
+  return result;
+}
+#ifdef USE_ESP32_HOSTED
+extern "C" esp_err_t __real_esp_hosted_slave_ota_begin();
+extern "C" esp_err_t __wrap_esp_hosted_slave_ota_begin() {
+  auto &gate = espcontrol::reset::interlock;
+  if (!gate.begin_installation(true)) return ESP_ERR_INVALID_STATE;
+  const auto result = __real_esp_hosted_slave_ota_begin();
+  if (result != ESP_OK) gate.set_coprocessor_busy(false);
+  return result;
+}
+#endif
 
 // Shared dispatcher hook covers native config and legacy entity POSTs,
 // including calls from a stale browser that has no epoch header. ESPHome's

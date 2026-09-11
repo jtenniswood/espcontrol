@@ -1,5 +1,6 @@
-#include "reset_policy.h"
+#include "reset_interlock.h"
 #include <cassert>
+#include <future>
 #include <map>
 #include <vector>
 using namespace espcontrol::reset;
@@ -63,7 +64,48 @@ void interrupted_resets_resume(Mode mode) {
     }
   }
 }
+void installations_and_resets_are_exclusive() {
+  for (bool coprocessor : {false, true}) {
+    MemoryStorage storage; Journal journal; OperationInterlock gate;
+    assert(gate.begin_installation(coprocessor));
+    assert(gate.record(storage, journal, Mode::FACTORY) == Result::CONFLICT);
+    assert(!journal.pending() && !gate.pending());
+    if (coprocessor) gate.set_coprocessor_busy(false); else gate.set_ota_busy(false);
+    assert(gate.record(storage, journal, Mode::FACTORY) == Result::ACCEPTED);
+    assert(!gate.begin_installation(false) && !gate.begin_installation(true));
+    assert(gate.record(storage, journal, Mode::FACTORY) == Result::ACCEPTED);
+    assert(gate.record(storage, journal, Mode::CUSTOMIZATION) == Result::CONFLICT);
+  }
+  for (bool persisted : {false, true}) {
+    MemoryStorage storage; Journal journal; OperationInterlock gate;
+    storage.fail_at = 1; storage.power_cut_after_write = persisted;
+    assert(gate.record(storage, journal, Mode::FACTORY) == Result::FAILED);
+    assert(gate.pending() && !gate.begin_installation(false) && !gate.begin_installation(true));
+    assert(gate.record(storage, journal, Mode::CUSTOMIZATION) == Result::FAILED);
+    // The scheduled restart resolves both an uncommitted write and failed
+    // readback after a successful commit, without a physical power cycle.
+    storage.fail_at = -1; storage.read(journal);
+    assert(resume(storage, journal));
+    assert(storage.slot_a == !persisted && !journal.pending());
+  }
+  struct PausedStorage : MemoryStorage {
+    std::promise<void> writing;
+    std::shared_future<void> proceed;
+    bool write(const Journal &value) override {
+      writing.set_value(); proceed.wait();
+      return MemoryStorage::write(value);
+    }
+  } storage;
+  std::promise<void> proceed; storage.proceed = proceed.get_future();
+  OperationInterlock gate; Journal journal;
+  auto resetting = std::async(std::launch::async, [&] { return gate.record(storage, journal, Mode::FACTORY); });
+  storage.writing.get_future().wait();
+  auto installing = std::async(std::launch::async, [&] { return gate.begin_installation(false); });
+  proceed.set_value();
+  assert(resetting.get() == Result::ACCEPTED && !installing.get());
+}
 int main() {
+  installations_and_resets_are_exclusive();
   interrupted_resets_resume(Mode::CUSTOMIZATION);
   interrupted_resets_resume(Mode::FACTORY);
   assert(wifi_preference_key(false, 1234) == 88491487);

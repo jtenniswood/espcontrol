@@ -71,6 +71,9 @@ async def to_code(config):
     if CORE.config.get("preferences", {}).get("rtc_storage", False):
         raise cv.Invalid("EspControl reset requires flash preferences; remove preferences.rtc_storage")
     cg.add_define("USE_OTA_STATE_LISTENER")
+    cg.add_build_flag("-Wl,--wrap=esp_ota_begin")
+    if "esp32_hosted" in CORE.config:
+        cg.add_build_flag("-Wl,--wrap=esp_hosted_slave_ota_begin")
     cg.add_global(cg.RawStatement('#include "esphome/components/espcontrol/device_reset.h"'), prepend=True)
     compiled_networks = bool(CORE.config.get("wifi", {}).get("networks", []))
     # Directly configured ESPHome web authentication must protect our native

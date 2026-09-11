@@ -106,6 +106,12 @@ durable, not that cleanup has completed. Stop saves/imports immediately, and
 reload only after a newer epoch reports `pending: false`. A lost response may
 still mean reset was accepted. The same pending mode is idempotent; conflicting
 modes and requests during firmware installation receive 409.
+A journal-write failure returns 500 and schedules a restart to resolve whether
+the intent persisted; writes stay blocked until that restart. Reset recording
+and OTA flash entry points share an interlock, so an automatic, web, native OTA
+or C6 update cannot begin writing after reset intent has been reserved. The
+ESP-IDF `esp_ota_begin` and hosted `esp_hosted_slave_ota_begin` linker adapters
+must remain covered when upgrading the pinned ESPHome/SDK versions.
 
 The early-startup coordinator owns cleanup independently of configuration
 loading. Its `espcontrol_rst` journal survives factory cleanup. Failed cleanup

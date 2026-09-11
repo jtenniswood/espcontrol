@@ -406,6 +406,8 @@ target_include_directories(climate_update_test PRIVATE stubs ../../components/es
 add_test(NAME climate_update_test COMMAND climate_update_test)
 
 add_executable(reset_policy_test reset_policy_test.cpp)
+find_package(Threads REQUIRED)
+target_link_libraries(reset_policy_test PRIVATE Threads::Threads)
 target_compile_features(reset_policy_test PRIVATE cxx_std_17)
 target_compile_options(reset_policy_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(reset_policy_test PRIVATE ../../components/espcontrol)
