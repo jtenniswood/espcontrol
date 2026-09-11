@@ -85,7 +85,7 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
       dialog.append(document.createElement("br"), ip);
     }
     const close = document.createElement("button");
-    close.className = "sp-btn";
+    close.className = "sp-fw-btn";
     close.textContent = "Close";
     close.onclick = () => dialog.close();
     dialog.append(document.createElement("br"), close);
@@ -133,7 +133,7 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
     const error = document.createElement("p");
     error.setAttribute("role", "status");
     const button = document.createElement("button");
-    button.className = "sp-btn";
+    button.className = "sp-fw-btn";
     button.textContent = "Save and restart";
     function sync() {
       try {
@@ -178,11 +178,11 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
         ? `Restore the name “${identity.name}” with this panel's address ${panelHostname(identity.name, target.mac_suffix)}.local. This restarts the panel and changes ESPHome action names.`
         : "Restore this panel's original firmware name and address. This may require a restart.";
       const apply = document.createElement("button");
-      apply.className = "sp-btn";
+      apply.className = "sp-fw-btn";
       apply.textContent = "Restore";
       apply.onclick = () => { resolve(checkbox.checked ? identity.name : undefined); dialog.close(); };
       const cancel = document.createElement("button");
-      cancel.className = "sp-btn";
+      cancel.className = "sp-fw-btn";
       cancel.textContent = "Cancel";
       cancel.onclick = () => dialog.close();
       dialog.addEventListener("close", () => { resolve(null); dialog.remove(); });

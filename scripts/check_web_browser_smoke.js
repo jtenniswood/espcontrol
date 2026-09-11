@@ -5704,6 +5704,7 @@ async function assertPanelNaming(browser) {
     assert(await save.isDisabled(), "unchanged names cannot be saved");
     await page.locator("#sp-panel-name").fill("Office");
     assert((await card.textContent()).includes("espcontrol-office-a1b2c3.local"));
+    if (process.env.ESPCONTROL_NAMING_SCREENSHOT) await page.screenshot({ path: process.env.ESPCONTROL_NAMING_SCREENSHOT, fullPage: true });
     identityState.failSave = true;
     await save.click();
     await page.waitForFunction(() => document.querySelector('[role="status"]')?.textContent?.includes("Could not save"));

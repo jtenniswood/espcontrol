@@ -18,9 +18,9 @@ export function createWebStyles(dragAnimation: boolean): string {
         "esp-app{display:none !important}" +
         ".sp-header{display:flex;align-items:center;background:var(--bg);" +
         "border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;height:56px;padding:0 20px}" +
-        ".sp-identity-dialog{max-width:32rem;width:calc(100% - 3rem);box-sizing:border-box;border:1px solid var(--border);border-radius:12px;padding:1.5rem;background:var(--bg);color:var(--text)}.sp-identity-dialog::backdrop{background:#0008}.sp-identity-dialog a{color:var(--accent);overflow-wrap:anywhere}.sp-identity-dialog button{margin:1rem .5rem 0 0}[hidden]{display:none!important}" +
+        ".sp-identity-dialog{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.875rem;line-height:1.5;max-width:32rem;width:calc(100% - 3rem);box-sizing:border-box;border:1px solid var(--border);border-radius:12px;padding:1.5rem;background:var(--bg);color:var(--text)}.sp-identity-dialog::backdrop{background:#0008}.sp-identity-dialog a{color:var(--accent);overflow-wrap:anywhere}.sp-identity-dialog button{margin:1rem .5rem 0 0}[hidden]{display:none!important}" +
         ".sp-brand{font-size:1rem;font-weight:600;color:var(--text);margin-right:auto;" +
-        "white-space:nowrap;letter-spacing:-.01em}" +
+        "min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-.01em}" +
         ".sp-nav{display:flex;align-items:center;height:100%}" +
         ".sp-tab{padding:0 16px;height:100%;display:flex;align-items:center;color:var(--text2);cursor:pointer;" +
         "font-size:.875rem;font-weight:500;border-bottom:2px solid transparent;text-decoration:none;transition:color .2s}" +
