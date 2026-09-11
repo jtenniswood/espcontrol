@@ -278,6 +278,7 @@ function composeApplicationContext(): ApplicationContext {
       if (requestApi.postQueueError) throw new Error("Some configuration changes failed. Reload the page before renaming.");
     },
     makeCard: (title, body) => fields.makeCollapsibleCard(title, body, true),
+    infoPanel: (id, text) => settingsUi.infoPanel(id, text),
   });
   const pageTitle = createAppTitleFeature({
     panelName: () => identity.current()?.name,

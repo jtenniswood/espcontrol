@@ -42,7 +42,7 @@ export async function runPanelIdentityTests() {
       return new Response("failed", { status: 500 });
     }) as typeof fetch,
     changed: () => {}, beforeSave: async () => {}, restart: async () => { restarted = true; },
-    makeCard: () => { throw new Error("unused"); },
+    infoPanel: () => { throw new Error("unused"); }, makeCard: () => { throw new Error("unused"); },
   });
   let failed = false;
   try { await feature.saveAndRestart("Kitchen"); } catch { failed = true; }
@@ -51,7 +51,7 @@ export async function runPanelIdentityTests() {
   assert(await feature.chooseRestoreName({ identity }) === undefined,
     "identity outage preserves the destination name without blocking restore");
   const old = createPanelIdentityFeature({ document, fetch: (async () => new Response("", { status: 404 })) as typeof fetch,
-    changed: () => {}, beforeSave: async () => {}, restart: async () => {}, makeCard: () => { throw new Error("unused"); } });
+    changed: () => {}, beforeSave: async () => {}, restart: async () => {}, infoPanel: () => { throw new Error("unused"); }, makeCard: () => { throw new Error("unused"); } });
   assert(await old.load() === null, "old firmware has no identity feature");
   assert(await old.chooseRestoreName({}) === undefined, "old backup preserves identity");
 }

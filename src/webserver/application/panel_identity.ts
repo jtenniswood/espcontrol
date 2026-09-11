@@ -16,6 +16,7 @@ export interface PanelIdentityDependencies {
   restart: () => Promise<void>;
   beforeSave: () => Promise<void>;
   makeCard: (title: string, body: HTMLElement) => HTMLElement;
+  infoPanel: (id: string, text: string) => HTMLElement;
 }
 
 export function createPanelIdentityFeature(deps: PanelIdentityDependencies): PanelIdentityFeature {
@@ -125,8 +126,8 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
     label.className = "sp-field-label";
     label.htmlFor = input.id;
     label.textContent = "Panel name";
-    const preview = document.createElement("p");
-    preview.className = "sp-setting-note";
+    const preview = deps.infoPanel("sp-panel-name-info", "");
+    const previewText = preview.lastElementChild!;
     const error = document.createElement("p");
     error.setAttribute("role", "status");
     const button = document.createElement("button");
@@ -136,7 +137,11 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
       try {
         const name = normalizePanelName(input.value);
         error.textContent = "";
-        preview.textContent = name && info ? panelHostname(name, info.mac_suffix) + ".local" : "Original firmware name and address";
+        previewText.textContent = name && info
+          ? `Your device will show as ${panelHostname(name, info.mac_suffix)}.local on your network`
+          : info && !info.name
+            ? `Your device will show as ${info.hostname}.local on your network`
+            : "Your device will use its original firmware name and address on your network";
         button.disabled = saving || !info || (name === info.name && !info.restart_required);
       } catch (e) { error.textContent = (e as Error).message; button.disabled = true; }
     }
@@ -148,12 +153,12 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
       catch (e) { sync(); error.textContent = (e as Error).message; }
       finally { input.disabled = false; }
     };
-    body.append(label, input, preview, button, error);
+    body.append(label, input, button, error, preview);
     function loadCard() {
       void load().then(value => {
         card.hidden = !value;
         if (value) {
-          body.replaceChildren(label, input, preview, button, error);
+          body.replaceChildren(label, input, button, error, preview);
           input.value = value.name;
           sync();
         }
