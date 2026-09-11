@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Počitniško zadržanje
 vacuum=Sesalnik
 version_unknown=Različica neznana
+voice=Glas
 volume=Glasnost
 waiting_for_home_assistant=Čakanje na Home Assistant
 home_assistant_connection_lost=Povezovanje s \nHome Assistant

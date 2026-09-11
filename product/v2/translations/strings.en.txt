@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vacationhold
 vacuum=Vacuum
 version_unknown=Version unknown
+voice=Voice
 volume=Volume
 waiting_for_home_assistant=Waiting for Home Assistant
 home_assistant_connection_lost=Connecting to \nHome Assistant

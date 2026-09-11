@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vacationhold
 vacuum=Støvsuger
 version_unknown=Ukjent versjon
+voice=Stemme
 volume=Volum
 waiting_for_home_assistant=Venter på Home Assistant
 home_assistant_connection_lost=Kobler til \nHome Assistant

@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vacationhold
 vacuum=Stofzuiger
 version_unknown=Versie onbekend
+voice=Spraak
 volume=Volume
 waiting_for_home_assistant=Wachten op Home Assistant
 home_assistant_connection_lost=Verbinden met \nHome Assistant
