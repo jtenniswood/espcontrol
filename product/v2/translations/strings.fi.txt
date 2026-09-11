@@ -251,3 +251,6 @@ settings=Asetukset
 brightness=Kirkkaus
 daytime=Päivä
 nighttime=Yö
+
+timer=Ajastin
+timer_confirm=Vahvista

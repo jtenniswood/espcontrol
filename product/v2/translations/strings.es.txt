@@ -251,3 +251,6 @@ settings=Ajustes
 brightness=Brillo
 daytime=Día
 nighttime=Noche
+
+timer=Temporizador
+timer_confirm=Confirmar

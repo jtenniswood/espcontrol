@@ -251,3 +251,6 @@ settings=Beállítások
 brightness=Fényerő
 daytime=Nappal
 nighttime=Éjszaka
+
+timer=Időzítő
+timer_confirm=Megerősítés

@@ -251,3 +251,6 @@ settings=Настройки
 brightness=Яркость
 daytime=День
 nighttime=Ночь
+
+timer=Таймер
+timer_confirm=Подтвердить

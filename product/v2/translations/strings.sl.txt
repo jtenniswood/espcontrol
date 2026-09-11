@@ -251,3 +251,6 @@ settings=Nastavitve
 brightness=Svetlost
 daytime=Dan
 nighttime=Noč
+
+timer=Časovnik
+timer_confirm=Potrdi

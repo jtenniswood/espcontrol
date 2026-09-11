@@ -86,7 +86,8 @@
       "subpage",
       "weather",
       "image",
-      "wifi_qr"
+      "wifi_qr",
+      "timer"
     ],
     "capabilities": [
       "informationOnly",
@@ -98,6 +99,18 @@
       "subpage"
     ],
     "specs": {
+      "timer": {
+        "driver": "timer",
+        "capabilities": {
+          "informationOnly": false,
+          "subscriptions": true,
+          "actions": true,
+          "numericControl": false,
+          "modal": false,
+          "runtimeAllocation": true,
+          "subpage": true
+        }
+      },
       "": {"driver": "toggle", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
       "action": {"driver": "action", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
       "vacuum": {"driver": "vacuum", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
@@ -160,6 +173,25 @@
     "media_cover_art"
   ],
   "cards": {
+    "timer": {
+      "label": "Timer",
+      "allowInSubpage": true,
+      "domains": [
+        "timer"
+      ],
+      "options": [],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "3",
+        "type": "timer",
+        "precision": "",
+        "options": ""
+      }
+    },
     "": {
       "label": "Switch",
       "allowInSubpage": true,
@@ -2563,6 +2595,7 @@
   },
   "retiredSubpageTypeCodes": [],
   "subpageTypeCodes": {
+    "timer": "TM",
     "action": "A",
     "calendar": "D",
     "clock": "CK",
