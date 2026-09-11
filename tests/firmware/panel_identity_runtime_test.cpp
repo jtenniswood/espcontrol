@@ -1,6 +1,8 @@
 #include <cassert>
 #include <string>
 #include "nvs.h"
+#include "nvs_flash.h"
+#include "panel_flash_layout.h"
 #include "esphome/core/application.h"
 #include "panel_identity.h"
 
@@ -53,4 +55,52 @@ int main() {
   unavailable.setup();
   assert(!unavailable.ready());
   assert(!unavailable.save("Kitchen"));
+
+  // A full settings store must not prevent identity writes on deployed layouts.
+  fail_open = false;
+  identity_flash.clear();
+  has_data_partition = true;
+  shared_full = true;
+  esphome::App = esphome::Application{};
+  espcontrol::PanelIdentity dedicated;
+  dedicated.setup();
+  assert(dedicated.ready());
+  assert(initialized_partition.address == 0xffc000);
+  assert(initialized_partition.size == 16384);
+  assert(dedicated.save("Office"));
+  assert(identity_flash.empty());
+  esphome::App = esphome::Application{};
+  espcontrol::PanelIdentity persisted;
+  persisted.setup();
+  assert(persisted.saved_name() == "Office");
+  assert(persisted.target_hostname() == "espcontrol-office-a1b2c3");
+  assert(!persisted.restart_required());
+
+  // Migrate a previously saved shared-NVS name and keep it isolated afterward.
+  identity_flash = dedicated_flash;
+  dedicated_flash.clear();
+  esphome::App = esphome::Application{};
+  espcontrol::PanelIdentity migrated;
+  migrated.setup();
+  assert(migrated.ready() && migrated.saved_name() == "Office");
+  assert(!dedicated_flash.empty());
+  assert(migrated.save(""));
+  esphome::App = esphome::Application{};
+  espcontrol::PanelIdentity reset_name;
+  reset_name.setup();
+  assert(reset_name.saved_name().empty()); // Must not revive the legacy name.
+  assert(!identity_flash.empty()); // Never erase shared settings.
+
+  fail_init = 7;
+  espcontrol::PanelIdentity failed_init;
+  failed_init.setup();
+  assert(!failed_init.ready());
+  assert(!failed_init.save("Kitchen"));
+  fail_init = 0;
+  data_partition.size = 8192;
+  espcontrol::PanelIdentity unsupported;
+  unsupported.setup();
+  assert(!unsupported.ready());
+  assert(espcontrol::panel_config_partition_bytes(0x200000) == 0x1fc000);
+  assert(espcontrol::panel_config_partition_bytes(8192) == 0);
 }
