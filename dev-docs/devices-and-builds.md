@@ -14,6 +14,7 @@ compatibility copy for existing tools.
 - web preview sizing and drag behavior
 - supported rotation values
 - firmware chip family
+- flash size and card-image partition capacity
 - firmware font roles
 - display-specific options
 - package substitutions and release metadata
@@ -33,6 +34,7 @@ devices/<slug>/
   packages.yaml
   device/
     device.yaml
+    card_asset_capabilities.yaml  # generated
     fonts.yaml
     lvgl.yaml
     sensors.yaml
@@ -79,6 +81,8 @@ Device-profile changes can regenerate:
 - `docs/generated/screens/*.md`
 - generated blocks in `devices/*/packages.yaml`
 - generated blocks in `devices/*/device/sensors.yaml`
+- generated `devices/*/device/card_asset_capabilities.yaml`
+- generated card-image decoder pools under `common/device/`
 - files under `docs/public/webserver/` when web profile data changes
 
 The supported-device playbook owns the generator order and verification checks.
@@ -136,6 +140,15 @@ or notes for a flag that no device uses.
 | `-Wno-deprecated-declarations` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Suppresses deprecation warnings emitted by current ESPHome/ESP-IDF dependencies in P4 builds. | Supported dependencies compile these device profiles without the deprecated declarations. |
 | `-Wno-literal-suffix` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Suppresses the ESP-IDF header literal-suffix warning in P4 C++ builds. | The upstream headers compile cleanly without the suppression. |
 | `-mtext-section-literals` | `guition-esp32-s3-4848s040` | Keeps Xtensa literal pools close enough for the large generated S3 firmware translation unit to link. | The S3 firmware is split into smaller translation units or the toolchain makes the flag unnecessary. |
+| `ESPCONTROL_CARD_BACKGROUND_MAX_ACTIVE=15` | `guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2` | Bounds active card-background decoders to the display slot count. | Runtime allocation replaces the compile-time device capacity. |
+| `ESPCONTROL_CARD_BACKGROUND_MAX_ACTIVE=20` | `guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Bounds active card-background decoders to the display slot count. | Runtime allocation replaces the compile-time device capacity. |
+| `ESPCONTROL_CARD_BACKGROUND_MAX_ACTIVE=6` | `guition-esp32-p4-jc4880p443` | Bounds active card-background decoders to the display slot count. | Runtime allocation replaces the compile-time device capacity. |
+| `ESPCONTROL_CARD_BACKGROUND_MAX_ACTIVE=9` | `esp32-p4-86`<br>`guition-esp32-s3-4848s040` | Bounds active card-background decoders to the display slot count. | Runtime allocation replaces the compile-time device capacity. |
+| `ESPCONTROL_CARD_BACKGROUND_RESIDENT_FRAMES=15` | `guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2` | Bounds resident card-background frames to the display slot count. | Runtime allocation replaces the compile-time device capacity. |
+| `ESPCONTROL_CARD_BACKGROUND_RESIDENT_FRAMES=20` | `guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Bounds resident card-background frames to the display slot count. | Runtime allocation replaces the compile-time device capacity. |
+| `ESPCONTROL_CARD_BACKGROUND_RESIDENT_FRAMES=6` | `guition-esp32-p4-jc4880p443` | Bounds resident card-background frames to the display slot count. | Runtime allocation replaces the compile-time device capacity. |
+| `ESPCONTROL_CARD_BACKGROUND_RESIDENT_FRAMES=9` | `esp32-p4-86`<br>`guition-esp32-s3-4848s040` | Bounds resident card-background frames to the display slot count. | Runtime allocation replaces the compile-time device capacity. |
+| `ESPCONTROL_CARD_IMAGE_PARTITION_BYTES=2097152` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2`<br>`guition-esp32-s3-4848s040` | Advertises the deployed two-megabyte image-storage partition capacity. | Image storage capacity is discovered entirely at runtime. |
 | `ESPCONTROL_DEVICE_SLUG="${device_slug}"` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2`<br>`guition-esp32-s3-4848s040` | Injects the selected device profile slug into the compiled firmware for diagnostics and runtime identification. | The device slug is supplied through generated component configuration instead of a preprocessor definition. |
 | `ESPCONTROL_DISABLE_WEATHER_FORECAST=1` | `guition-esp32-s3-4848s040` | Excludes the weather-forecast card from the constrained S3 firmware. | The card compiles and runs with safe flash and heap headroom on that panel. |
 | `ESPCONTROL_ESPHOME_2026_5_REBUILD=1` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Forces PlatformIO to rebuild objects after ESPHome 2026.5 scheduler and watchdog changes. | Stale 2026.4 objects are no longer present in supported caches, or a later marker supersedes it. |
@@ -154,6 +167,8 @@ or notes for a flag that no device uses.
 | `ESPCONTROL_KEEP_LVGL_ACTIVE_ON_DISPLAY_OFF=1` | `guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Keeps LVGL processing active while the panel is electrically off so scheduled and touch wake paths remain available. | ESPHome/LVGL can suspend and resume these panels without losing wake behavior. |
 | `ESPCONTROL_LOW_HEAP_COVER_ART=1` | `guition-esp32-s3-4848s040` | Uses the reduced-memory cover-art path on the constrained S3 panel. | The full cover-art path fits with safe runtime heap headroom. |
 | `ESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1` | `guition-esp32-s3-4848s040` | Uses the reduced-memory media modal path on the constrained S3 panel. | The full media path fits with safe runtime heap headroom. |
+| `ESPCONTROL_MAX_GRID_SLOTS=15` | `guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2` | Sizes card runtime storage for the display slot count. | Runtime allocation replaces the compile-time device capacity. |
+| `ESPCONTROL_MAX_GRID_SLOTS=20` | `guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Sizes card runtime storage for the display slot count. | Runtime allocation replaces the compile-time device capacity. |
 | `ESPCONTROL_MAX_GRID_SLOTS=6` | `guition-esp32-p4-jc4880p443` | Caps runtime grid allocation to six slots. | Grid slot capacity is generated from device profile data. |
 | `ESPCONTROL_MAX_GRID_SLOTS=9` | `esp32-p4-86`<br>`guition-esp32-s3-4848s040` | Caps runtime grid allocation to nine slots. | Grid slot capacity is generated from device profile data. |
 | `LV_USE_BIDI=1` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2`<br>`guition-esp32-s3-4848s040` | Enables LVGL bidirectional text ordering for right-to-left scripts such as Hebrew and Arabic. | ESPHome enables LVGL bidirectional text for every supported display without this compile definition. |

@@ -98,5 +98,49 @@
   "LV_USE_BIDI=1": {
     "purpose": "Enables LVGL bidirectional text ordering for right-to-left scripts such as Hebrew and Arabic.",
     "remove_when": "ESPHome enables LVGL bidirectional text for every supported display without this compile definition."
+  },
+  "ESPCONTROL_CARD_BACKGROUND_MAX_ACTIVE=6": {
+    "purpose": "Bounds active card-background decoders to the display slot count.",
+    "remove_when": "Runtime allocation replaces the compile-time device capacity."
+  },
+  "ESPCONTROL_CARD_BACKGROUND_RESIDENT_FRAMES=6": {
+    "purpose": "Bounds resident card-background frames to the display slot count.",
+    "remove_when": "Runtime allocation replaces the compile-time device capacity."
+  },
+  "ESPCONTROL_CARD_BACKGROUND_MAX_ACTIVE=9": {
+    "purpose": "Bounds active card-background decoders to the display slot count.",
+    "remove_when": "Runtime allocation replaces the compile-time device capacity."
+  },
+  "ESPCONTROL_CARD_BACKGROUND_RESIDENT_FRAMES=9": {
+    "purpose": "Bounds resident card-background frames to the display slot count.",
+    "remove_when": "Runtime allocation replaces the compile-time device capacity."
+  },
+  "ESPCONTROL_CARD_BACKGROUND_MAX_ACTIVE=15": {
+    "purpose": "Bounds active card-background decoders to the display slot count.",
+    "remove_when": "Runtime allocation replaces the compile-time device capacity."
+  },
+  "ESPCONTROL_CARD_BACKGROUND_RESIDENT_FRAMES=15": {
+    "purpose": "Bounds resident card-background frames to the display slot count.",
+    "remove_when": "Runtime allocation replaces the compile-time device capacity."
+  },
+  "ESPCONTROL_MAX_GRID_SLOTS=15": {
+    "purpose": "Sizes card runtime storage for the display slot count.",
+    "remove_when": "Runtime allocation replaces the compile-time device capacity."
+  },
+  "ESPCONTROL_CARD_BACKGROUND_MAX_ACTIVE=20": {
+    "purpose": "Bounds active card-background decoders to the display slot count.",
+    "remove_when": "Runtime allocation replaces the compile-time device capacity."
+  },
+  "ESPCONTROL_CARD_BACKGROUND_RESIDENT_FRAMES=20": {
+    "purpose": "Bounds resident card-background frames to the display slot count.",
+    "remove_when": "Runtime allocation replaces the compile-time device capacity."
+  },
+  "ESPCONTROL_MAX_GRID_SLOTS=20": {
+    "purpose": "Sizes card runtime storage for the display slot count.",
+    "remove_when": "Runtime allocation replaces the compile-time device capacity."
+  },
+  "ESPCONTROL_CARD_IMAGE_PARTITION_BYTES=2097152": {
+    "purpose": "Advertises the deployed two-megabyte image-storage partition capacity.",
+    "remove_when": "Image storage capacity is discovered entirely at runtime."
   }
 }

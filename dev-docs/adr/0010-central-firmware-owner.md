@@ -34,6 +34,17 @@ wiring adapter during the compatibility migration. Grid navigation is stored in
 a fixed-capacity core-owned slot because its entries carry LVGL handles; the UI
 continues to define those entries while the core defines their lifetime.
 
+The card-background feature subsequently adds `CardAssetService` to the same
+owner. Image persistence and the card-background runtime are created and
+released with `EspControlApp`; rendering and HTTP adapters reach that owner
+through the service boundary instead of maintaining independent singletons.
+The same service owns durable deletion and backup-restore markers. Native reference deletion transforms the latest durable document under the
+configuration service lock, then uses its normal commit, compatibility mirror,
+and runtime apply sequence before image bytes can be erased. The legacy
+reference adapter is retained only for installations without native wiring. Restored images remain in a device-side staging session until
+the web application confirms that configuration persistence completed; an
+unfinished session is recovered against saved native references after restart.
+
 The application core remains independent of ESPHome so ownership and lifecycle
 are covered by executable host tests.
 

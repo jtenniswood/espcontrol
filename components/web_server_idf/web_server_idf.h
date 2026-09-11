@@ -263,6 +263,9 @@ class AsyncWebHandler {
   virtual bool canHandle(AsyncWebServerRequest *request) const { return false; }
   // NOLINTNEXTLINE(readability-identifier-naming)
   virtual void handleRequest(AsyncWebServerRequest *request) {}
+  // Opt-in streaming endpoint. Return true after consuming/responding to the
+  // raw request; false retains normal form and bounded-body dispatch.
+  virtual bool handleRawRequest(AsyncWebServerRequest *request) { return false; }
   // NOLINTNEXTLINE(readability-identifier-naming)
   virtual void handleUpload(AsyncWebServerRequest *request, const std::string &filename, size_t index, uint8_t *data,
                             size_t len, bool final) {}
@@ -272,6 +275,11 @@ class AsyncWebHandler {
   virtual bool canReceiveBody(AsyncWebServerRequest *request) { return true; }
   // NOLINTNEXTLINE(readability-identifier-naming)
   virtual bool isRequestHandlerTrivial() const { return true; }
+#ifdef USE_WEBSERVER_AUTH
+  // ESPHome's AuthMiddlewareHandler overrides this virtual hook, allowing
+  // shortcut routes to reuse the configured Basic credentials.
+  virtual bool check_auth(AsyncWebServerRequest * /*request*/) { return true; }
+#endif
 };
 
 #ifdef USE_WEBSERVER

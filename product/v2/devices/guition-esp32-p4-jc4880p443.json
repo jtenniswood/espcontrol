@@ -1,5 +1,5 @@
 {
-  "profiles": { "platform": "esp32-p4", "modal": "compact-portrait", "fonts": "portrait-panel-p4", "network": "c6-firmware-update" },
+  "profiles": { "platform": "esp32-p4", "assets": "card-backgrounds-6", "modal": "compact-portrait", "fonts": "portrait-panel-p4", "network": "c6-firmware-update" },
   "config": {
     "slots": 6,
     "capabilities": { "imageSlots": 6 },

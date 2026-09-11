@@ -2,6 +2,7 @@
   "profiles": {
     "platform": "esp32-p4",
     "display": "jc1060p470-1024x600",
+    "assets": "card-backgrounds-15",
     "modal": "wide-landscape",
     "fonts": "large-panel-p4",
     "network": [

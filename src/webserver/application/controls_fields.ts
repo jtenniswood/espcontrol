@@ -5,9 +5,15 @@ import type { CardRegistry } from "./card_registry";
 import type { ConfigSensorOptionsFeature } from "./config_sensor_options";
 import type { ControlsShellFeature } from "./controls_shell";
 import type { ApplicationApiFeature } from "./api";
+import type { CardImageService } from "./card_image_service";
 import {
     SENSOR_LARGE_NUMBERS_OPTION,
+    cardBackgroundImage,
+    cardBackgroundSupported,
+    cardImageUrl,
     largeNumbersExplicitlyDisabled,
+    normalizeCardBackgroundImageId,
+    setCardBackgroundImage,
 } from "./config_option_core";
 export interface ControlsFieldsFeature {
     makeCollapsibleCard(...args: any[]): any;
@@ -42,6 +48,7 @@ export interface ControlsFieldsFeature {
     renderCardActiveColorToggle(...args: any[]): any;
     renderBasicCardFields(...args: any[]): any;
     renderCardSegmentControl(...args: any[]): any;
+    renderCardBackgroundControl(...args: any[]): any;
     cardSensorPreviewHtml(...args: any[]): any;
     cardBadgeLabelHtml(...args: any[]): any;
     cardIconHtml(...args: any[]): any;
@@ -54,10 +61,13 @@ export interface ControlsFieldsFeature {
 export function createControlsFieldsFeature(
     cardRegistry: CardRegistry,
     sensorOptions: ConfigSensorOptionsFeature,
-    shell: Pick<ControlsShellFeature, "createDisclosureChevron">,
+    shell: Pick<ControlsShellFeature, "createDisclosureChevron" | "showBanner">,
     requestApi: Pick<ApplicationApiFeature, "postNumber">,
+    cardImages: CardImageService,
+    renderUi: { renderPreview(): void; renderButtonSettings(): void },
 ): ControlsFieldsFeature {
     const { createDisclosureChevron } = shell;
+    const { showBanner } = shell;
     const {
         cardLargeNumbersSupported,
         cardLargeNumbersEnabled,
@@ -525,6 +535,152 @@ export function createControlsFieldsFeature(
             markCardPrimaryField(control.segment.parentNode, segment.primary === true ? "type" : segment.primary);
         return control;
     }
+    function renderCardBackgroundControl(this: any, panel?: any, b?: any, helpers?: any) {
+        if (!cardBackgroundSupported(b))
+            return null;
+        var disclosure: any = helpers.disclosureSection("Card Image", helpers.idPrefix + "card-image-settings", false);
+        var field: any = document.createElement("div");
+        field.className = "sp-field sp-card-bg-field";
+        field.appendChild(fieldLabel("Background Image", helpers.idPrefix + "bg-image"));
+        var preview: any = document.createElement("div");
+        preview.className = "sp-card-bg-preview";
+        field.appendChild(preview);
+        var select: any = document.createElement("select");
+        select.className = "sp-select";
+        select.id = helpers.idPrefix + "bg-image";
+        field.appendChild(select);
+        var actions: any = document.createElement("div");
+        actions.className = "sp-card-bg-actions";
+        var upload: any = document.createElement("input");
+        upload.type = "file";
+        upload.accept = "image/*";
+        upload.className = "sp-card-bg-file";
+        var uploadBtn: any = document.createElement("button");
+        uploadBtn.type = "button";
+        uploadBtn.className = "sp-action-btn";
+        uploadBtn.innerHTML = '<span class="mdi mdi-plus"></span>Add image';
+        var clearBtn: any = document.createElement("button");
+        clearBtn.type = "button";
+        clearBtn.className = "sp-action-btn";
+        clearBtn.innerHTML = '<span class="mdi mdi-close"></span>Clear';
+        var renameBtn: any = document.createElement("button");
+        renameBtn.type = "button";
+        renameBtn.className = "sp-action-btn";
+        renameBtn.innerHTML = '<span class="mdi mdi-pencil"></span>Rename';
+        var deleteBtn: any = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "sp-action-btn sp-card-bg-delete-btn";
+        deleteBtn.innerHTML = '<span class="mdi mdi-trash-can-outline"></span>';
+        deleteBtn.setAttribute("aria-label", "Delete image");
+        deleteBtn.title = "Delete image";
+        actions.append(upload, uploadBtn, clearBtn, renameBtn, deleteBtn);
+        field.appendChild(actions);
+        var availability: any = document.createElement("div");
+        availability.className = "sp-card-image-storage";
+        field.appendChild(availability);
+        const selectedImage = () => cardBackgroundImage(b);
+        const refreshPreview = () => {
+            const id = selectedImage();
+            preview.style.backgroundImage = id ? "url('" + cardImageUrl(id) + "')" : "";
+            preview.classList.toggle("sp-card-bg-preview-empty", !id);
+            const iconName = iconSlug(b.icon && b.icon !== "Auto" ? b.icon : "gesture-tap-button");
+            preview.innerHTML = '<span class="sp-card-bg-preview-icon mdi mdi-' + iconName + '"></span>' +
+                '<span class="sp-card-bg-preview-title">' + escHtml(b.label || b.entity || "Configure") + '</span>';
+            clearBtn.disabled = !id;
+            renameBtn.disabled = !id;
+            deleteBtn.disabled = !id;
+        };
+        const setBackground = (value: unknown) => {
+            setCardBackgroundImage(b, normalizeCardBackgroundImageId(value));
+            helpers.saveField("options", b.options);
+            refreshPreview();
+            renderUi.renderPreview();
+        };
+        const fillSelect = (items: readonly any[] = []) => {
+            const current = selectedImage();
+            const info = cardImages.info();
+            select.disabled = !info.available;
+            uploadBtn.disabled = !info.available;
+            availability.textContent = info.requiresUsbFlash
+                ? "Background images need one USB reflash to install image storage on this display."
+                : "Every card position on this display can use a background image.";
+            select.innerHTML = "";
+            const none = document.createElement("option");
+            none.value = "";
+            none.textContent = "No image";
+            select.appendChild(none);
+            items.forEach((item) => {
+                const option = document.createElement("option");
+                option.value = item.id;
+                option.textContent = item.name || item.id;
+                select.appendChild(option);
+            });
+            if (current && !items.some((item) => item.id === current)) {
+                const missing = document.createElement("option");
+                missing.value = current;
+                missing.textContent = current + " (missing)";
+                select.appendChild(missing);
+            }
+            select.value = current;
+            refreshPreview();
+        };
+        select.addEventListener("change", function (this: HTMLSelectElement) { setBackground(this.value); });
+        clearBtn.addEventListener("click", () => { select.value = ""; setBackground(""); });
+        renameBtn.addEventListener("click", () => {
+            const id = selectedImage();
+            if (!id) return;
+            const selected = Array.from(select.options).find((option: any) => option.value === id) as any;
+            const name = window.prompt("Image name", selected?.textContent || id);
+            if (name == null || !name.trim()) return;
+            renameBtn.disabled = true;
+            cardImages.rename(id, name.trim()).then(() => cardImages.list(true)).then(fillSelect).then(() => {
+                showBanner("Image renamed.", "success");
+            }).catch((error) => {
+                showBanner(error?.message || "Could not rename image.", "error");
+            }).finally(() => { renameBtn.disabled = !selectedImage(); });
+        });
+        uploadBtn.addEventListener("click", () => upload.click());
+        upload.addEventListener("change", () => {
+            const file = upload.files && upload.files[0];
+            if (!file) return;
+            uploadBtn.disabled = true;
+            cardImages.upload(file).then((item) => {
+                setBackground(item.id);
+                return cardImages.list(true);
+            }).then(fillSelect).catch((error) => {
+                showBanner(error?.message || "Could not upload image.", "error");
+            }).finally(() => {
+                upload.value = "";
+                uploadBtn.disabled = !cardImages.info().available;
+            });
+        });
+        deleteBtn.addEventListener("click", () => {
+            const id = selectedImage();
+            if (!id) return;
+            const used = cardImages.countUsage(id);
+            if (used && !window.confirm("This image is used by " + used + " card" + (used === 1 ? "" : "s") + ". Delete it anyway?"))
+                return;
+            deleteBtn.disabled = true;
+            deleteBtn.setAttribute("aria-busy", "true");
+            cardImages.deleteSafely(id).then(() => cardImages.list(true)).then((items) => {
+                fillSelect(items);
+                showBanner("Image deleted.", "success");
+                renderUi.renderPreview();
+                renderUi.renderButtonSettings();
+            }).catch((error) => {
+                showBanner(error?.message || "Could not delete image.", "error");
+                if (deleteBtn.isConnected) {
+                    deleteBtn.disabled = false;
+                    deleteBtn.removeAttribute("aria-busy");
+                }
+            });
+        });
+        fillSelect(cardImages.feature.cachedImages());
+        void cardImages.list(false).then(fillSelect).catch(() => fillSelect([]));
+        disclosure.section.appendChild(field);
+        panel.appendChild(disclosure.panel);
+        return disclosure.panel;
+    }
     function cardSensorPreviewHtml(this: any, b?: any, helpers?: any, value?: any, unit?: any, extraClass?: any, valueClass?: any) {
         var className: any = "sp-sensor-preview" + (extraClass ? " " + extraClass : "") +
             (cardLargeNumbersActiveForCardSize(b, helpers) ? " sp-sensor-preview-large" : "");
@@ -598,7 +754,7 @@ export function createControlsFieldsFeature(
         syncCardLargeNumbersToggle, renderCardEntityField, renderCardTextField,
         renderCardNumberField, renderCardIconPicker, renderCardOptionToggle,
         renderCardIconPair, renderCardActiveColorToggle, renderBasicCardFields,
-        renderCardSegmentControl, cardSensorPreviewHtml, cardBadgeLabelHtml,
+        renderCardSegmentControl, renderCardBackgroundControl, cardSensorPreviewHtml, cardBadgeLabelHtml,
         cardIconHtml, cardIconSlug, cardBadgePreview, condField, createRangeSlider,
     };
 }

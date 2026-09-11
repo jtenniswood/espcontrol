@@ -12,6 +12,7 @@ substitutions:
   friendly_name: "EspControl P4 86 Panel"
   espcontrol_component_url: "file:///config"
   mdi_font_file: "/config/common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
+  partition_table_file: "/config/common/device/partitions_32mb_card_images.csv"
   espcontrol_component_ref: "HEAD"
   voice_stt_failure_chime_file: "../devices/esp32-p4-86/device/voice_stt_failure_chime.flac"
   alarm_delay_entry_beep_file: "../devices/esp32-p4-86/device/alarm_delay_entry_beep.flac"

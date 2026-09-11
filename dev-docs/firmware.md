@@ -14,6 +14,7 @@ header-only C++ under `components/espcontrol/`.
 | `components/espcontrol/button_grid_modal.h` | Shared modal registry, lifecycle, LVGL shell, and layout adapters. |
 | `components/espcontrol/button_grid_modal_layout.h` | Pure device-aware frame, tab, and content layout recipes. |
 | `components/espcontrol/button_grid_subpages.h` | Subpage support. |
+| `components/espcontrol/card_background_controller.h` | Host-tested ownership, queueing, retry, readiness, and cache state for card-background decoder resources. |
 | `components/espcontrol/icons.h` | Icon lookup. |
 | `components/espcontrol/i18n_generated.h` | Generated translation strings. |
 
@@ -40,6 +41,32 @@ P4 crash-report handlers deliberately use the direct reboot path after clearing
 the saved report. Marking safe mode successful or using a safe reboot there
 clears ESPHome's failed-boot counter and can prevent recovery from a recurring
 startup crash.
+
+`card_background_rendering.cpp` owns card-background LVGL behavior and private
+state. `button_grid_card_background.h` keeps only the stable grid/YAML forwarding
+wrappers, following the hybrid compiled-module convention. The compiled code
+delegates resource allocation and asynchronous state
+transitions to `card_background_controller.h`. Keep download serialization,
+retry timing, decoder readiness, and binding counts in that controller so the
+widget layer only positions, reveals, and removes LVGL objects.
+
+Card-image endpoints register with the application alongside configuration and
+identity handlers. The generic web server owns mutation/reset preflight and
+streaming dispatch; it does not import card-image handlers or require the
+EspControl component. Endpoint responses use the shared JSON serializer.
+
+Card-image deletion transforms the latest native document through
+`ConfigurationService::transform_current`, so stale legacy mirrors cannot
+replace newer settings. A transaction-owned external-memory buffer keeps this
+work separate from HTTP and startup scratch storage.
+
+Card-image recovery waits for native startup restoration and checks the saved
+native document before reclaiming staged images. `card_asset_persistence.h`
+keeps the deployed delete/restore records behind a typed persistence port, so
+host tests exercise the same journal protocol with write, sync and reboot
+failures. A separate bounded journal retains the last four completed restore
+sessions, allowing lost commit responses to be retried across reboot without
+changing existing image or backup formats.
 
 ## Adding Firmware Support for a Card
 

@@ -5,7 +5,9 @@
 #include <memory>
 #include <cstring>
 #include <cctype>
-#include <cinttypes>
+#include <cstdio>
+#include <algorithm>
+#include <vector>
 
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
@@ -43,7 +45,6 @@ namespace esphome::web_server_idf {
 #ifndef HTTPD_409
 #define HTTPD_409 "409 Conflict"
 #endif
-
 #define CRLF_STR "\r\n"
 #define CRLF_LEN (sizeof(CRLF_STR) - 1)
 
@@ -285,6 +286,14 @@ void AsyncWebServer::begin() {
         .user_ctx = this,
     };
     httpd_register_uri_handler(this->server_, &handler_options);
+
+    const httpd_uri_t handler_delete = {
+        .uri = "",
+        .method = HTTP_DELETE,
+        .handler = AsyncWebServer::request_handler,
+        .user_ctx = this,
+    };
+    httpd_register_uri_handler(this->server_, &handler_delete);
   }
 }
 
@@ -293,6 +302,13 @@ extern "C" bool espcontrol_allow_web_write(httpd_req_t *request) __attribute__((
 esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
   if (espcontrol_allow_web_write != nullptr && !espcontrol_allow_web_write(r)) return ESP_OK;
   ESP_LOGVV(TAG, "Enter AsyncWebServer::request_post_handler. uri=%s", r->uri);
+  // Registered streaming handlers own body consumption and authorization.
+  // Product routes stay outside the generic HTTP transport.
+  AsyncWebServerRequest raw_request(r);
+  auto *server = static_cast<AsyncWebServer *>(r->user_ctx);
+  for (auto *handler : server->handlers_) {
+    if (handler->canHandle(&raw_request) && handler->handleRawRequest(&raw_request)) return ESP_OK;
+  }
   auto content_type = request_get_header(r, "Content-Type");
 
   if (!request_has_header(r, "Content-Length")) {
@@ -382,6 +398,8 @@ esp_err_t AsyncWebServer::handle_raw_body_(httpd_req_t *r, const char *content_t
 
 esp_err_t AsyncWebServer::request_handler(httpd_req_t *r) {
   ESP_LOGVV(TAG, "Enter AsyncWebServer::request_handler. method=%u, uri=%s", r->method, r->uri);
+  if (r->method == HTTP_DELETE && espcontrol_allow_web_write != nullptr &&
+      !espcontrol_allow_web_write(r)) return ESP_OK;
   AsyncWebServerRequest req(r);
   return static_cast<AsyncWebServer *>(r->user_ctx)->request_handler_(&req);
 }
@@ -404,6 +422,8 @@ esp_err_t AsyncWebServer::request_handler_(AsyncWebServerRequest *request) const
   }
   return ESP_ERR_NOT_FOUND;
 }
+
+
 
 AsyncWebServerRequest::~AsyncWebServerRequest() {
   delete this->rsp_;
@@ -434,7 +454,6 @@ void AsyncWebServerRequest::redirect(const std::string &url) {
   httpd_resp_set_status(*this, "302 Found");
   httpd_resp_set_hdr(*this, "Location", url.c_str());
   httpd_resp_set_hdr(*this, "Connection", "close");
-  apply_no_cache_headers(*this);
   httpd_resp_send(*this, nullptr, 0);
 }
 

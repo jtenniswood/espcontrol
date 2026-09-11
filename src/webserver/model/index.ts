@@ -28,12 +28,17 @@ export {
 export type { PanelConfigBackupPayload, PanelConfigDocument } from "./panel_config";
 
 export {
+  CARD_BACKGROUND_IMAGE_OPTION,
   CARD_CONFIG_FIELDS,
+  cardBackgroundAssetId,
+  cardOptionsWithAppearance,
   cardConfigChanged,
   cloneCardConfig,
   copyCardConfig,
   emptyCardConfig,
+  normalizeCardBackgroundAssetId,
   parseRawButtonConfig,
+  setCardBackgroundAssetId,
 } from "./card";
 
 export {

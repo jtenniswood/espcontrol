@@ -11,6 +11,7 @@ plus small per-device loader files.
 |---|---|
 | `src/webserver/entry.ts` | Composition root. It installs application modules and card registrations in one deliberate order. |
 | `src/webserver/application/` | Shared state, rendering, API, backup, settings, preview, and codec modules. Each file exports an explicit installer. |
+| `src/webserver/features/` | Typed, directly testable product features. Card-image storage and backup assets live here; application modules expose compatibility adapters for the existing UI. |
 | `src/webserver/cards/` | Card-specific settings panels and previews. Each file exports an explicit registration function. |
 | `src/webserver/model/*.ts` | Typed model sources. |
 | `src/webserver/state/*.ts` | Typed device configuration, application state factory, event aliases, and event parsing. |
@@ -31,6 +32,19 @@ same factory.
 Controllers keep responsibility for banners, reconnect scheduling, and UI
 locking; the typed device API owns transport, fallback attempts, throttling,
 keepalive requests, and JSON decoding.
+
+Card-image list, upload, rename, delete, storage metadata, and backup/restore
+operations use `api/card_image_api.ts` through the injected reset-aware transport.
+`application/card_image_optimizer.ts` owns browser canvas/Image APIs; the typed
+feature receives image optimization as a dependency. Each restore
+gets its own asset transaction; `features/backup_restore_controller.ts` owns
+validation, staging, configuration completion, commit retry, and rollback and
+returns a completion promise. `features/backup_archive_export.ts` handles
+explicit retry/configuration-only choices after image-read failures. Backup treats
+images as an asset provider rather than reaching into card-image globals or API
+routes itself. Keep `application/card_image_service.ts` and the backup helpers
+as adapters until the remaining application modules consume the typed feature
+directly.
 
 ## Build
 
@@ -96,7 +110,8 @@ Standard ESPHome control routes (such as `/light/.../turn_on` and
 epoch. Configuration routes, including text, number, select and switch
 settings, still require it. Switches marked as configuration or diagnostic
 entities remain protected; unknown switch routes are not exempt. A supplied stale epoch is rejected on every route,
-and all mutations are blocked while reset is pending. OTA transport status is
+and all mutations, including card-image upload, rename, deletion, and restore
+transactions, are blocked while reset is pending. OTA transport status is
 tracked per source, and the active native flash handle stays reserved until
 ESP-IDF ends or aborts it. A rejected or failed overlapping OTA attempt cannot
 release another writer's reset protection.

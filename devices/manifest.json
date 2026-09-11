@@ -6,7 +6,12 @@
     "guition-esp32-p4-jc1060p470": {
       "slots": 15,
       "capabilities": {
-        "imageSlots": 6
+        "imageSlots": 6,
+        "cardBackgrounds": {
+          "maxActive": 15,
+          "partitionBytes": 2097152,
+          "residentFrames": 15
+        }
       },
       "public": {
         "name": "Guition JC1060P470",
@@ -87,7 +92,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -201,7 +207,12 @@
     "guition-esp32-p4-jc1060p470-v2": {
       "slots": 15,
       "capabilities": {
-        "imageSlots": 6
+        "imageSlots": 6,
+        "cardBackgrounds": {
+          "maxActive": 15,
+          "partitionBytes": 2097152,
+          "residentFrames": 15
+        }
       },
       "public": {
         "name": "Guition JC1060P470 new panel (V2 label)",
@@ -282,7 +293,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -396,6 +408,11 @@
     "guition-esp32-p4-jc4880p443": {
       "slots": 6,
       "capabilities": {
+        "cardBackgrounds": {
+          "maxActive": 6,
+          "partitionBytes": 2097152,
+          "residentFrames": 6
+        },
         "imageSlots": 6
       },
       "public": {
@@ -476,7 +493,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -583,7 +601,12 @@
     "guition-esp32-p4-jc8012p4a1": {
       "slots": 20,
       "capabilities": {
-        "imageSlots": 6
+        "imageSlots": 6,
+        "cardBackgrounds": {
+          "maxActive": 20,
+          "partitionBytes": 2097152,
+          "residentFrames": 20
+        }
       },
       "public": {
         "name": "Guition JC8012P4A1",
@@ -663,7 +686,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -772,7 +796,12 @@
     "guition-esp32-p4-jc8012p4a1-v2": {
       "slots": 20,
       "capabilities": {
-        "imageSlots": 6
+        "imageSlots": 6,
+        "cardBackgrounds": {
+          "maxActive": 20,
+          "partitionBytes": 2097152,
+          "residentFrames": 20
+        }
       },
       "public": {
         "name": "Guition JC8012P4A1 new panel (2628+)",
@@ -852,7 +881,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -958,6 +988,11 @@
     "esp32-p4-86": {
       "slots": 9,
       "capabilities": {
+        "cardBackgrounds": {
+          "maxActive": 9,
+          "partitionBytes": 2097152,
+          "residentFrames": 9
+        },
         "imageSlots": 6
       },
       "public": {
@@ -1039,7 +1074,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 33554432
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -1161,6 +1197,11 @@
     "guition-esp32-s3-4848s040": {
       "slots": 9,
       "capabilities": {
+        "cardBackgrounds": {
+          "maxActive": 9,
+          "partitionBytes": 2097152,
+          "residentFrames": 9
+        },
         "imageSlots": 1
       },
       "public": {
@@ -1253,7 +1294,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-S3"
+          "chip": "ESP32-S3",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",
