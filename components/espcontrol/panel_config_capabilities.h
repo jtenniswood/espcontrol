@@ -7,8 +7,9 @@
 namespace espcontrol::configuration {
 
 constexpr uint16_t PANEL_CONFIG_API_VERSION = 1;
-constexpr uint16_t PANEL_CONFIG_WEB_ASSET_VERSION = 1;
-constexpr size_t PANEL_CONFIG_CAPABILITIES_MAX_JSON_BYTES = 192;
+// Version 2 editors send the reset epoch on configuration writes.
+constexpr uint16_t PANEL_CONFIG_WEB_ASSET_VERSION = 2;
+constexpr size_t PANEL_CONFIG_CAPABILITIES_MAX_JSON_BYTES = 320;
 constexpr const char *PANEL_CONFIG_WEB_ASSET_DELIVERY = "manifest";
 
 inline bool &panel_config_read_supported() {
@@ -40,7 +41,7 @@ inline bool write_panel_config_capabilities_json(char *output,
       output, output_capacity,
       "{\"identity\":{\"version\":1},\"api\":{\"version\":%u},\"configuration\":{\"document_versions\":[%u],"
       "\"read\":%s,\"write\":%s},\"web_assets\":{\"versions\":[%u],"
-      "\"delivery\":\"%s\"}}",
+      "\"delivery\":\"%s\"},\"reset\":{\"modes\":[\"customization\",\"factory\"],\"status\":\"/api/v1/reset\"}}",
       static_cast<unsigned>(PANEL_CONFIG_API_VERSION),
       static_cast<unsigned>(PANEL_CONFIG_DOCUMENT_VERSION),
       panel_config_read_supported() ? "true" : "false",

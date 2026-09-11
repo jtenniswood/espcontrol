@@ -10,6 +10,7 @@ from esphome.components.esp32 import VARIANT_ESP32S3, get_esp32_variant
 from esphome.components import text
 import esphome.config_validation as cv
 from esphome.const import CONF_ID
+from esphome.core import CORE, CoroPriority, coroutine_with_priority
 import os
 
 CODEOWNERS = ["@jtenniswood"]
@@ -66,15 +67,31 @@ CONFIG_SCHEMA = cv.Schema(
 ).extend(cv.COMPONENT_SCHEMA)
 
 
+@coroutine_with_priority(CoroPriority.DIAGNOSTICS)
 async def to_code(config):
+    # Run before safe_mode's early return and before any preference consumers.
+    if CORE.config.get("preferences", {}).get("rtc_storage", False):
+        raise cv.Invalid("EspControl reset requires flash preferences; remove preferences.rtc_storage")
+    cg.add_define("USE_OTA_STATE_LISTENER")
+    for operation in ("begin", "end", "abort"):
+        cg.add_build_flag(f"-Wl,--wrap=esp_ota_{operation}")
+    if "esp32_hosted" in CORE.config:
+        cg.add_build_flag("-Wl,--wrap=esp_hosted_slave_ota_begin")
+    cg.add_global(cg.RawStatement('#include "esphome/components/espcontrol/device_reset.h"'), prepend=True)
+    compiled_networks = bool(CORE.config.get("wifi", {}).get("networks", []))
+    # Directly configured ESPHome web authentication must protect our native
+    # endpoints too, even when the convenience auth add-on was not included.
+    web_auth = CORE.config.get("web_server", {}).get("auth", {})
+    username = web_auth.get("username", config[CONF_WEB_AUTH_USERNAME])
+    password = web_auth.get("password", config[CONF_WEB_AUTH_PASSWORD])
+    cg.add(espcontrol_ns.namespace("reset").early_startup(
+        compiled_networks, username, password))
     identity = cg.new_Pvariable(config["identity_id"])
     await cg.register_component(identity, config)
-    cg.add(identity.set_web_auth_credentials(
-        config[CONF_WEB_AUTH_USERNAME], config[CONF_WEB_AUTH_PASSWORD]))
+    cg.add(identity.set_web_auth_credentials(username, password))
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
-    cg.add(var.set_web_auth_credentials(
-        config[CONF_WEB_AUTH_USERNAME], config[CONF_WEB_AUTH_PASSWORD]))
+    cg.add(var.set_web_auth_credentials(username, password))
 
     panel_config = config.get(CONF_PANEL_CONFIG)
     if panel_config is not None:
@@ -93,6 +110,10 @@ async def to_code(config):
                 for source in button_sources[CONF_SUBPAGE_CHUNKS]
             ]
             cg.add(var.set_panel_config_button(slot, button, *subpages))
+
+    for update_config in CORE.config.get("update", []):
+        update_entity = await cg.get_variable(update_config[CONF_ID])
+        cg.add(espcontrol_ns.namespace("reset").watch_update(update_entity))
 
     # ESPHome's native ESP-IDF generator only forwards -D and -W entries from
     # esphome.build_flags. Route this required S3 compiler option through the

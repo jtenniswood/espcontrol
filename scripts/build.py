@@ -66,7 +66,7 @@ WEB_FIXED_MDI_ICON_CODEPOINTS = {
     "chip": "F061A", "clipboard-outline": "F014C", "clock": "F0954", "code-json": "F0626",
     "content-copy": "F018F", "content-cut": "F0190", "content-paste": "F0192", "counter": "F0199",
     "decimal": "F10A1", "domain": "F01D7", "drag": "F01DB", "eye-off-outline": "F06D1",
-    "eye-outline": "F06D0", "file": "F0214", "flag": "F023B", "folder-plus": "F0257",
+    "eye-outline": "F06D0", "factory": "F020F", "file": "F0214", "flag": "F023B", "folder-plus": "F0257",
     "form-dropdown": "F1400", "format-text": "F0284", "function": "F0295", "gesture-tap-button": "F12A8",
     "grid": "F02C1", "home-automation": "F07D1", "home-import-outline": "F0F9C", "hook": "F06E2",
     "information-outline": "F02FD", "keyboard-return": "F0311", "label": "F0315", "lightbulb-on": "F06E8",
@@ -4023,8 +4023,8 @@ def build_www(check_only=False, output_dir=None, test_hooks=False):
             "path": bundle_relative_path.as_posix(),
             "deviceProfiles": list(devices),
             "firmwareVersions": list(WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS),
-            "webAssetVersion": 1,
-        }],
+            "webAssetVersion": version,
+        } for version in (2, 1)],
     }, indent=2) + "\n"
 
     outputs = [(build_root / "www.js", bridge_text)]
