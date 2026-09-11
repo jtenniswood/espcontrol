@@ -550,6 +550,8 @@ export function createButtonSettingsFeature(
             draft.autoSelectedButton = null;
         }
         function selectCardType(this: any, newType?: any) {
+            if (!isNewDraft)
+                return;
             var pickerType: any = newType;
             newType = defaultButtonTypeForPicker(newType);
             var wasNewDraftWithoutType: any = isNewDraft && state.settingsDraft &&
@@ -736,27 +738,33 @@ export function createButtonSettingsFeature(
                 container.appendChild(panel);
                 return;
             }
-            var tf: any = document.createElement("div");
-            tf.className = "sp-field";
-            tf.appendChild(fieldLabel("Card", "sp-inp-type"));
-            var typeSelect: any = document.createElement("select");
-            typeSelect.className = "sp-select";
-            typeSelect.id = "sp-inp-type";
-            typeOpts.forEach(function (this: any, o?: any) {
-                var opt: any = document.createElement("option");
-                opt.value = o.key;
-                opt.textContent = o.label;
-                opt.disabled = !!o.disabled;
-                if (selectedTypeKey === o.key)
-                    opt.selected = true;
-                typeSelect.appendChild(opt);
-            });
-            typeSelect.addEventListener("change", function (this: any) {
-                selectCardType(this.value);
-            });
-            tf.appendChild(typeSelect);
-            panel.appendChild(tf);
-            markCardPrimaryField(tf, "card");
+            if (!isNewDraft) {
+                var selectedTypeOption: any = typeOpts.find(function (o: any) { return o.key === selectedTypeKey; });
+                title.textContent = selectedTypeOption ? selectedTypeOption.label : buttonTypeRegistryValue(rawTypeDef, "label", "Card");
+            }
+            if (isNewDraft) {
+                var tf: any = document.createElement("div");
+                tf.className = "sp-field";
+                tf.appendChild(fieldLabel("Card", "sp-inp-type"));
+                var typeSelect: any = document.createElement("select");
+                typeSelect.className = "sp-select";
+                typeSelect.id = "sp-inp-type";
+                typeOpts.forEach(function (this: any, o?: any) {
+                    var opt: any = document.createElement("option");
+                    opt.value = o.key;
+                    opt.textContent = o.label;
+                    opt.disabled = !!o.disabled;
+                    if (selectedTypeKey === o.key)
+                        opt.selected = true;
+                    typeSelect.appendChild(opt);
+                });
+                typeSelect.addEventListener("change", function (this: any) {
+                    selectCardType(this.value);
+                });
+                tf.appendChild(typeSelect);
+                panel.appendChild(tf);
+                markCardPrimaryField(tf, "card");
+            }
         }
         var typeHelpers: any = {
             makeIconPicker: makeIconPicker,

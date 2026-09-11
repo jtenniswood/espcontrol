@@ -187,6 +187,7 @@ vacation=Отпуск
 vacationhold=Удержание на отпуск
 vacuum=Пылесос
 version_unknown=Версия неизвестна
+voice=Голос
 volume=Громкость
 waiting_for_home_assistant=Ожидание Home Assistant
 home_assistant_connection_lost=Подключение к \nHome Assistant
