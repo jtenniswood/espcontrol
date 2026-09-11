@@ -7,7 +7,8 @@
 namespace espcontrol::configuration {
 
 constexpr uint16_t PANEL_CONFIG_API_VERSION = 1;
-constexpr uint16_t PANEL_CONFIG_WEB_ASSET_VERSION = 1;
+// Version 2 editors send the reset epoch on configuration writes.
+constexpr uint16_t PANEL_CONFIG_WEB_ASSET_VERSION = 2;
 constexpr size_t PANEL_CONFIG_CAPABILITIES_MAX_JSON_BYTES = 256;
 constexpr const char *PANEL_CONFIG_WEB_ASSET_DELIVERY = "manifest";
 

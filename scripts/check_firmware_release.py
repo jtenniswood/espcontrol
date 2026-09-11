@@ -280,11 +280,30 @@ def make_recovery_files(
 
 def web_manifest_for(base: Path, device_profiles: list[str]) -> Path:
     data = json.loads(WEB_MANIFEST.read_text(encoding="utf-8"))
-    data["bundles"][0]["deviceProfiles"] = device_profiles
-    data["bundles"][0]["firmwareVersions"] = [VERSION]
+    for bundle in data["bundles"]:
+        bundle["deviceProfiles"] = device_profiles
+        bundle["firmwareVersions"] = [VERSION]
     path = base.parent / "web-assets.json"
     path.write_text(json.dumps(data), encoding="utf-8")
     return path
+
+
+def test_web_bundle_compatibility_aliases() -> None:
+    with TemporaryDirectory() as tmp:
+        path = web_manifest_for(Path(tmp) / "release", [SLUG])
+        original = json.loads(path.read_text())
+        bundle = firmware_release.current_web_bundle(path, WEB_ROOT)
+        assert bundle["webAssetVersion"] == 2
+        for field, value in [("webAssetVersion", 2), ("sha256", "0" * 64), ("deviceProfiles", [])]:
+            data = json.loads(json.dumps(original))
+            data["bundles"][1][field] = value
+            path.write_text(json.dumps(data))
+            try:
+                firmware_release.current_web_bundle(path, WEB_ROOT)
+            except firmware_release.FirmwareReleaseError:
+                pass
+            else:
+                raise AssertionError(f"web manifest accepted an inconsistent alias: {field}")
 
 
 def record_release_provenance(
@@ -782,6 +801,7 @@ def main() -> int:
     test_pages_excludes_draft_prereleases()
     test_release_skill_creates_selected_tag_before_draft()
     test_valid_files_and_directory()
+    test_web_bundle_compatibility_aliases()
     test_placeholder_fails()
     test_unrelated_placeholder_strings_pass()
     test_wrong_manifest_version_fails()

@@ -415,9 +415,20 @@ def load_release_contract(path: Path) -> dict:
 def current_web_bundle(web_manifest_path: Path, web_root: Path) -> dict:
     manifest = load_manifest(web_manifest_path)
     bundles = manifest.get("bundles")
-    if not isinstance(bundles, list) or len(bundles) != 1 or not isinstance(bundles[0], dict):
+    if not isinstance(bundles, list) or not bundles or not isinstance(bundles[0], dict):
         raise FirmwareReleaseError(f"{web_manifest_path} must contain one current web bundle")
     bundle = bundles[0]
+    version = bundle.get("webAssetVersion")
+    if type(version) is not int or version < 1:
+        raise FirmwareReleaseError(f"{web_manifest_path} current web asset version is invalid")
+    seen_versions = {version}
+    for alias in bundles[1:]:
+        alias_version = alias.get("webAssetVersion") if isinstance(alias, dict) else None
+        if (type(alias_version) is not int or alias_version < 1 or alias_version >= version
+                or alias_version in seen_versions
+                or alias != {**bundle, "webAssetVersion": alias_version}):
+            raise FirmwareReleaseError(f"{web_manifest_path} compatibility entries must alias the current bundle")
+        seen_versions.add(alias_version)
     bundle_path = bundle.get("path")
     bundle_sha256 = bundle.get("sha256")
     if not isinstance(bundle_path, str) or not isinstance(bundle_sha256, str):

@@ -41,8 +41,8 @@ function verifyManifest(webRoot) {
   assert(fs.existsSync(manifestPath), "web asset manifest is missing");
   const manifest = readJson(manifestPath);
   assert(manifest.schemaVersion === 1, "web asset manifest schema version must be 1");
-  assert(Array.isArray(manifest.bundles) && manifest.bundles.length === 1,
-    "web asset manifest must declare one current bundle");
+  assert(Array.isArray(manifest.bundles) && manifest.bundles.length === 2,
+    "web asset manifest must declare the current bundle and its legacy compatibility entry");
 
   const bundle = manifest.bundles[0];
   assert(typeof bundle.id === "string" && /^[a-f0-9]{64}$/.test(bundle.id),
@@ -55,7 +55,9 @@ function verifyManifest(webRoot) {
     "web bundle device profiles must match the device manifest");
   assert(JSON.stringify(bundle.firmwareVersions) === JSON.stringify(expectedFirmwareVersions()),
     "web bundle must declare the development and supported stable firmware versions");
-  assert(bundle.webAssetVersion === 1, "web bundle must declare its web asset version");
+  assert(bundle.webAssetVersion === 2, "current web bundle must support reset epochs");
+  assert(JSON.stringify(manifest.bundles[1]) === JSON.stringify({ ...bundle, webAssetVersion: 1 }),
+    "legacy firmware must retain access to the same backward-compatible editor");
 
   const bundlePath = path.join(webRoot, bundle.path);
   assert(fs.existsSync(bundlePath), "content-addressed web bundle is missing");
@@ -146,6 +148,31 @@ async function verifyBridge() {
   assert(cleanedFallbackPath === "/",
     "web bridge must remove the one-time clean fallback flag from the address");
   sandbox.window.location.href = "http://panel.example/";
+
+  // New firmware must never receive a pre-reset editor, even if that editor's
+  // manifest still lists the development/stable firmware version as supported.
+  let servedManifest = manifest;
+  let assetVersion = 2;
+  const negotiated = [];
+  sandbox.document.head.appendChild = script => negotiated.push(script.src);
+  sandbox.fetch = url => Promise.resolve({ ok: true, json: () => Promise.resolve(
+    String(url).endsWith("web-assets.json") ? servedManifest : { web_assets: { versions: [assetVersion] } }
+  ) });
+  const runBridge = async () => {
+    vm.runInContext(fs.readFileSync(path.join(WEB_ROOT, "www.js"), "utf8"), sandbox);
+    await new Promise(resolve => setImmediate(resolve));
+  };
+  await runBridge();
+  assert(negotiated.length === 1, "reset-capable firmware must receive the current editor");
+  assetVersion = 1;
+  await runBridge();
+  assert(negotiated.length === 2, "older firmware must still receive a compatible hosted editor");
+  assetVersion = 2;
+  servedManifest = { ...manifest, bundles: [manifest.bundles[1]] };
+  const beforeFallback = fallbackStarts;
+  await runBridge();
+  assert(negotiated.length === 2 && fallbackStarts === beforeFallback + 1,
+    "reset-capable firmware must use its embedded editor when hosted assets only support version 1");
 }
 
 async function main() {

@@ -10,7 +10,7 @@ int main() {
   std::array<char, PANEL_CONFIG_CAPABILITIES_MAX_JSON_BYTES> capabilities{};
   size_t capabilities_size = 0;
   const bool passed = PANEL_CONFIG_API_VERSION == 1 &&
-                      PANEL_CONFIG_WEB_ASSET_VERSION == 1 &&
+                      PANEL_CONFIG_WEB_ASSET_VERSION == 2 &&
                       std::strcmp(PANEL_CONFIG_WEB_ASSET_DELIVERY, "manifest") == 0 &&
                       write_panel_config_capabilities_json(
                           capabilities.data(), capabilities.size(),

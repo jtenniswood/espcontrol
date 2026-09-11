@@ -4023,8 +4023,8 @@ def build_www(check_only=False, output_dir=None, test_hooks=False):
             "path": bundle_relative_path.as_posix(),
             "deviceProfiles": list(devices),
             "firmwareVersions": list(WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS),
-            "webAssetVersion": 1,
-        }],
+            "webAssetVersion": version,
+        } for version in (2, 1)],
     }, indent=2) + "\n"
 
     outputs = [(build_root / "www.js", bridge_text)]

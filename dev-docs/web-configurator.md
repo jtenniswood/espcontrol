@@ -94,6 +94,10 @@ firmware returns 404 for reset discovery and keeps its existing write protocol.
 ESPHome's `/wifisave` and `/update` forms do not require the epoch, but are
 blocked while reset is pending.
 
+The firmware requires web asset version 2 so an older hosted editor cannot
+omit these write preconditions. The current bundle also has a version 1
+manifest entry for older firmware; reset discovery hides unsupported actions.
+
 `POST /api/v1/reset` requires `Content-Type: application/json`,
 `X-EspControl-Request: reset`, the session epoch, and a body containing only
 `{"mode":"customization"}` or `{"mode":"factory"}`. Existing web authentication
