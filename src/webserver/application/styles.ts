@@ -463,6 +463,9 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-info-panel .mdi{font-size:18px;color:var(--accent);line-height:1.1;flex:0 0 auto;margin-top:1px}" +
         ".sp-info-panel a{color:var(--accent);font-weight:600;text-decoration:none}" +
         ".sp-info-panel a:hover{text-decoration:underline}" +
+        ".sp-panel-name-row{display:flex;align-items:center;gap:12px}" +
+        ".sp-panel-name-row .sp-input{flex:1;min-width:0;margin:0}" +
+        ".sp-panel-name-row .sp-fw-btn{flex:none;white-space:nowrap;margin:0}" +
         "#sp-panel-name-info{margin:16px 0 0;overflow-wrap:anywhere;min-width:0}" +
         "#sp-panel-name-info>span:last-child{min-width:0}" +
         "#sp-panel-name-info code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1em}" +

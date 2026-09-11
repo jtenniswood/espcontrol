@@ -5741,7 +5741,7 @@ async function assertPanelNaming(browser) {
     await card.getByRole("button", { name: "Try again", exact: true }).click();
     await page.waitForFunction(() => document.title === "EspControl — Kitchen");
     assert.strictEqual(await page.locator(".sp-brand").textContent(), "EspControl Kitchen");
-    const save = card.getByRole("button", { name: "Save and restart", exact: true });
+    const save = card.getByRole("button", { name: "Save & Restart", exact: true });
     assert(await save.isDisabled(), "unchanged names cannot be saved");
     await page.locator("#sp-panel-name").fill("Office");
     assert((await card.textContent()).includes("office-b2c3.local"));

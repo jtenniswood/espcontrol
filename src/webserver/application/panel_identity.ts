@@ -108,7 +108,7 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
         const message = reconnectDialog(saved);
         try { await deps.restart(); }
         catch (error) {
-          message.textContent = "Name saved, but the restart failed. Reopen Settings and choose Save and restart to retry.";
+          message.textContent = "Name saved, but the restart failed. Reopen Settings and choose Save & Restart to retry.";
           throw error;
         }
       }
@@ -132,7 +132,10 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
     error.setAttribute("role", "status");
     const button = document.createElement("button");
     button.className = "sp-fw-btn";
-    button.textContent = "Save and restart";
+    button.textContent = "Save & Restart";
+    const formRow = document.createElement("div");
+    formRow.className = "sp-panel-name-row";
+    formRow.append(input, button);
     function sync() {
       try {
         const name = normalizePanelName(input.value);
@@ -157,12 +160,12 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
       catch (e) { sync(); error.textContent = (e as Error).message; }
       finally { input.disabled = false; }
     };
-    body.append(label, input, button, error, preview);
+    body.append(label, formRow, error, preview);
     function loadCard() {
       void load().then(value => {
         card.hidden = !value;
         if (value) {
-          body.replaceChildren(label, input, button, error, preview);
+          body.replaceChildren(label, formRow, error, preview);
           input.value = value.name;
           sync();
         }
