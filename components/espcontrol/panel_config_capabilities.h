@@ -8,7 +8,7 @@ namespace espcontrol::configuration {
 
 constexpr uint16_t PANEL_CONFIG_API_VERSION = 1;
 constexpr uint16_t PANEL_CONFIG_WEB_ASSET_VERSION = 1;
-constexpr size_t PANEL_CONFIG_CAPABILITIES_MAX_JSON_BYTES = 160;
+constexpr size_t PANEL_CONFIG_CAPABILITIES_MAX_JSON_BYTES = 192;
 constexpr const char *PANEL_CONFIG_WEB_ASSET_DELIVERY = "manifest";
 
 inline bool &panel_config_read_supported() {
@@ -38,7 +38,7 @@ inline bool write_panel_config_capabilities_json(char *output,
     return false;
   const int written = std::snprintf(
       output, output_capacity,
-      "{\"api\":{\"version\":%u},\"configuration\":{\"document_versions\":[%u],"
+      "{\"identity\":{\"version\":1},\"api\":{\"version\":%u},\"configuration\":{\"document_versions\":[%u],"
       "\"read\":%s,\"write\":%s},\"web_assets\":{\"versions\":[%u],"
       "\"delivery\":\"%s\"}}",
       static_cast<unsigned>(PANEL_CONFIG_API_VERSION),

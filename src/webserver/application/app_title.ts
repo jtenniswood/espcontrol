@@ -6,6 +6,7 @@ export interface AppTitleFeature {
 
 export interface AppTitleDependencies {
     readonly document: Document;
+    readonly panelName?: () => string | undefined;
     readonly eventStreamEnabled: () => boolean;
     readonly eventSourceAvailable: () => boolean;
     readonly createEventSource: () => EventSource;
@@ -14,7 +15,8 @@ export interface AppTitleDependencies {
 export function createAppTitleFeature(dependencies: AppTitleDependencies): AppTitleFeature {
     function applyPageTitle(title?: unknown) {
         const text = typeof title === "string" ? title.trim() : "";
-        dependencies.document.title = text || "EspControl";
+        const panelName = dependencies.panelName?.();
+        dependencies.document.title = panelName ? "EspControl — " + panelName : text || "EspControl";
     }
     function handleWebServerPingEvent(event?: { data?: string }) {
         let data: any = null;

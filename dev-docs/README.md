@@ -37,6 +37,7 @@ usage documentation lives in the root `README.md` and under `docs/`.
 - [Saved-Configuration Normalization](saved-config-normalization.md)
 - [Web Configurator](web-configurator.md)
 - [Firmware UI](firmware.md)
+- [Panel Identity Storage](panel-identity.md)
 - [Devices and Builds](devices-and-builds.md)
 - [Modal Layout System](modal-layout-system.md)
 - [Display Lifecycle Transition Contract](display-lifecycle.md)

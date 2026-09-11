@@ -242,6 +242,34 @@ async function installRoutes(context, slug, options = {}) {
         return;
       }
     }
+    if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/identity") {
+      const identity = options.identityState;
+      if (!identity) {
+        // Old firmware does not implement this endpoint. A plain 204 is not a
+        // valid discovery response for a JSON endpoint.
+        await route.fulfill({ status: 404, body: "Not found" });
+        return;
+      }
+      if (route.request().method() === "GET" && identity.failLoad) {
+        await route.fulfill({ status: 503, body: "Starting up" });
+        return;
+      }
+      if (route.request().method() === "POST") {
+        identity.posts.push(route.request().postDataJSON());
+        if (identity.failSave) {
+          await route.fulfill({ status: 500, body: "Save failed" });
+          return;
+        }
+        identity.info.name = route.request().postDataJSON().name;
+        identity.info.friendly_name = identity.info.name || "Original panel";
+        identity.info.hostname = require("./load_typescript_module").loadTypeScriptModule(
+          path.join(ROOT, "src/webserver/model/panel_identity.ts")
+        ).panelHostname(identity.info.name, identity.info.mac_suffix);
+        identity.info.restart_required = true;
+      }
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(identity.info) });
+      return;
+    }
     if (nativeState && requestUrl.pathname.startsWith("/api/v1/")) {
       const suppliedGeneration = route.request().headers()["if-match"];
       nativeState.requests.push(
@@ -258,6 +286,7 @@ async function installRoutes(context, slug, options = {}) {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
+          identity: options.identityState ? { version: 1 } : undefined,
           configuration: { read: true, write: true, document_versions: [1] },
           web_assets: { versions: [1] },
         }),
@@ -273,6 +302,7 @@ async function installRoutes(context, slug, options = {}) {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
+          identity: options.identityState ? { version: 1 } : undefined,
           configuration: { read: false, write: false, document_versions: [] },
         }),
       });
@@ -5670,10 +5700,119 @@ async function runCase(browser, testCase) {
   }
 }
 
+
+async function assertNamingOfflineBackups(browser) {
+  const testCase = ACTIVE_CASES[0];
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  const identityState = { posts: [], failLoad: true, info: {} };
+  await installRoutes(context, testCase.slug, { identityState });
+  const page = await context.newPage();
+  const restartRequests = [];
+  page.on("request", request => {
+    if (request.method() === "POST" && request.url().includes("/button/")) restartRequests.push(request.url());
+  });
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await openBackupControls(page);
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const download = await downloadPromise;
+    const exported = JSON.parse(fs.readFileSync(await download.path(), "utf8"));
+    assert(!Object.hasOwn(exported, "identity"), "naming outage omits optional metadata");
+    assert(exported.native_config, "naming outage still exports configuration");
+    await page.getByText("Backup exported without the panel name because naming is unavailable.").waitFor();
+    const offlineBackup = backupFixture(testCase.slug, testCase.slots);
+    offlineBackup.identity = { version: 1, name: "Other panel", hostname: "other-panel-ffffff", mac_suffix: "ffffff" };
+    await importBackup(page, offlineBackup, "identity-offline-restore");
+    await page.waitForSelector(".sp-banner.sp-success");
+    assert.strictEqual(identityState.posts.length, 0, "offline restore cannot rename the destination");
+    assert.strictEqual(restartRequests.length, 0, "offline restore cannot restart for naming");
+    assert.strictEqual(await page.locator("dialog[open]").count(), 0, "offline restore skips the optional name dialog");
+  } finally { await context.close(); }
+}
+
+async function assertPanelNaming(browser) {
+  const testCase = ACTIVE_CASES[0];
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  const identityState = { posts: [], failLoad: true, failSave: false, info: {
+    name: "Kitchen", friendly_name: "Kitchen", hostname: "kitchen-b2c3",
+    mac_suffix: "b2c3", ip_address: "192.168.1.25", restart_required: false,
+  } };
+  await installRoutes(context, testCase.slug, { identityState });
+  const page = await context.newPage();
+  const errors = [];
+  const restartRequests = [];
+  page.on("pageerror", error => errors.push(error.message));
+  page.on("request", request => {
+    if (request.method() === "POST" && request.url().includes("/button/")) restartRequests.push(request.url());
+  });
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.getByRole("tab", { name: "Settings" }).click();
+    const card = page.locator(".card").filter({ has: page.locator(".card-header", { hasText: "Device Name" }) });
+    await card.locator(".card-header").click();
+    await card.getByText("Could not read the panel name. Check the connection and try again.").waitFor();
+    identityState.failLoad = false;
+    await card.getByRole("button", { name: "Try again", exact: true }).click();
+    await page.waitForFunction(() => document.title === "EspControl — Kitchen");
+    assert.strictEqual(await page.locator(".sp-brand").textContent(), "EspControl Kitchen");
+    const save = card.getByRole("button", { name: "Save & Restart", exact: true });
+    assert(await save.isDisabled(), "unchanged names cannot be saved");
+    await page.locator("#sp-panel-name").fill("Office");
+    assert((await card.textContent()).includes("office-b2c3.local"));
+    if (process.env.ESPCONTROL_NAMING_SCREENSHOT) await page.screenshot({ path: process.env.ESPCONTROL_NAMING_SCREENSHOT, fullPage: true });
+    identityState.failSave = true;
+    await save.click();
+    await page.waitForFunction(() => document.querySelector('[role="status"]')?.textContent?.includes("Could not save"));
+    assert.strictEqual(restartRequests.length, 0, "failed save must not restart");
+    assert.strictEqual(await page.title(), "EspControl — Kitchen");
+    identityState.failSave = false;
+    await save.click();
+    await page.waitForSelector("dialog[open]");
+    await page.waitForFunction(() => document.title === "EspControl — Office");
+    assert.strictEqual(await page.locator("dialog a").first().getAttribute("href"), "http://office-b2c3.local/");
+    await page.waitForTimeout(500);
+    assert.strictEqual(restartRequests.length, 1, "successful save requests one restart");
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    const backup = backupFixture(testCase.slug, testCase.slots);
+    backup.identity = { version: 1, name: "Bedroom", hostname: "espcontrol-bedroom-ffffff", mac_suffix: "ffffff" };
+    // Inspect the optional import before doing any configuration writes.
+    await importBackup(page, backup, "named-backup");
+    await page.waitForSelector("dialog[open]");
+    const choice = page.getByRole("checkbox", { name: "Also restore panel name" });
+    assert(!await choice.isChecked(), "name restore defaults off");
+    assert((await page.locator("dialog").textContent()).includes("bedroom-b2c3.local"), "restore uses destination MAC");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    assert.strictEqual(identityState.posts.length, 2, "cancel import cannot rename");
+    await importBackup(page, backup, "keep-destination-name");
+    await page.getByRole("button", { name: "Restore", exact: true }).click();
+    await page.waitForSelector(".sp-banner.sp-success");
+    assert.strictEqual(identityState.posts.length, 2, "unchecked name restore preserves identity");
+    await importBackup(page, backup, "restore-source-name");
+    await page.getByRole("checkbox", { name: "Also restore panel name" }).check();
+    await page.getByRole("button", { name: "Restore", exact: true }).click();
+    await page.waitForFunction(() => document.title === "EspControl — Bedroom");
+    assert.strictEqual(identityState.info.hostname, "bedroom-b2c3", "selected name restore keeps destination suffix");
+    assert.strictEqual(identityState.posts.length, 3, "name written once after successful restore");
+    assert.deepStrictEqual(errors, [], "naming journey has no browser errors");
+  } finally { await context.close(); }
+}
+
 (async function main() {
   const browser = await chromium.launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    await assertNamingOfflineBackups(browser);
+    await assertPanelNaming(browser);
+    if (process.env.ESPCONTROL_NAMING_ONLY === "1") { console.log("Panel naming browser checks passed."); return; }
     if (!acceptanceOnly) {
       await assertPageTitleEvents(browser);
       await assertRotationStartupOrdering(browser);
