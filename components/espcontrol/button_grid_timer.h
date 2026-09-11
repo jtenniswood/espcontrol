@@ -89,11 +89,19 @@ struct TimerCardCtx {
   uint16_t confirm_timeout_secs = 3;
   ConfirmationCtx confirm;
   bool cancel_requested = false;
-  ~TimerCardCtx() {
+  void detach() {
     ha_release_callbacks_for_owner(this);
     if (tick_timer) lv_timer_del(tick_timer);
+    tick_timer = nullptr;
     if (confirm.timeout_timer) lv_timer_del(confirm.timeout_timer);
+    confirm.timeout_timer = nullptr;
+    confirm.armed = false;
+    confirm.on_confirm = nullptr;
+    value_lbl = nullptr;
+    text_lbl = nullptr;
+    btn = nullptr;
   }
+  ~TimerCardCtx() { detach(); }
 };
 
 inline int parse_timer_hms(esphome::StringRef value) {

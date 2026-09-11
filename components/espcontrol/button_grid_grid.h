@@ -250,6 +250,7 @@ inline void apply_wide_large_date_time_card_layout(const BtnSlot &s,
   if (s.sensor_container) lv_obj_align(s.sensor_container, align, 0, 0);
 }
 
+inline void grid_prepare_timer_visual_reset(lv_obj_t *owner);
 #include "button_grid_timer_driver.h"
 #include "button_grid_date_time_driver.h"
 #include "button_grid_sensor_driver.h"
@@ -531,6 +532,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
                               int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   const auto family = context.family;
+  grid_prepare_timer_visual_reset(s.btn);
   espcontrol::cards::status_entity_driver_cleanup(s, p, context);
   espcontrol::cards::date_time_driver_cleanup(s, p, context);
   espcontrol::cards::sensor_driver_cleanup(s, p, context);
@@ -1329,6 +1331,17 @@ inline std::vector<GridRuntimeAllocation> &grid_runtime_allocations() {
 template<typename T>
 inline void grid_delete_runtime_ptr(void *ptr) {
   delete static_cast<T *>(ptr);
+}
+
+inline void grid_prepare_timer_visual_reset(lv_obj_t *owner) {
+  for (const auto &allocation : grid_runtime_allocations()) {
+    if (allocation.owner == owner &&
+        allocation.deleter == grid_delete_runtime_ptr<TimerCardCtx>) {
+      auto *timer = static_cast<TimerCardCtx *>(allocation.ptr);
+      if (lv_obj_get_user_data(owner) == timer) lv_obj_set_user_data(owner, nullptr);
+      timer->detach();
+    }
+  }
 }
 
 inline void grid_delete_transient_status_label(TransientStatusLabel *ctx) {

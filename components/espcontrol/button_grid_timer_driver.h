@@ -13,6 +13,7 @@ inline bool timer_driver_matches(const Context &context) {
 inline bool timer_driver_setup_visual(
     BtnSlot &slot, const ParsedCfg &config, const Context &context) {
   if (!timer_driver_matches(context)) return false;
+  lv_obj_set_user_data(slot.btn, nullptr);
   setup_timer_card(slot, config, nullptr);
   return true;
 }
