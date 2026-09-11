@@ -335,6 +335,8 @@ struct ClockBarLeftTextState {
   int title_width = 176;
   std::string saved_text;
   bool saved = false;
+  bool saved_hidden = false;
+  bool bar_visible = false;
 };
 
 inline ClockBarLeftTextState &clock_bar_left_text_state() {
@@ -347,32 +349,44 @@ inline std::string &clock_bar_subpage_label() {
   return label;
 }
 
+// Modal titles temporarily take precedence without changing the page title.
+inline std::string &clock_bar_modal_label() {
+  static std::string label;
+  return label;
+}
+
+inline const std::string &clock_bar_left_title() {
+  return clock_bar_modal_label().empty() ? clock_bar_subpage_label()
+                                       : clock_bar_modal_label();
+}
+
 inline void clock_bar_update_left_text_width(lv_obj_t *label) {
   if (!label) return;
   const auto &state = clock_bar_left_text_state();
-  lv_obj_set_width(label, clock_bar_subpage_label().empty()
+  lv_obj_set_width(label, clock_bar_left_title().empty()
                               ? state.temperature_width
                               : state.title_width);
 }
 
-inline void set_clock_bar_subpage_label(const std::string &label) {
-  if (clock_bar_subpage_label() == label) return;
+inline void clock_bar_apply_left_title(const std::string &previous_title) {
+  const std::string &label = clock_bar_left_title();
+  if (previous_title == label) return;
   auto &labels = clock_bar_temperature_labels();
   auto &state = clock_bar_left_text_state();
   lv_obj_t *left_label = labels.empty() ? nullptr : labels[0];
 
-  if (clock_bar_subpage_label().empty() && !label.empty() && left_label) {
+  if (previous_title.empty() && !label.empty() && left_label) {
     state.saved_text = lv_label_get_text(left_label);
+    state.saved_hidden = lv_obj_has_flag(left_label, LV_OBJ_FLAG_HIDDEN);
     state.saved = true;
   }
-  clock_bar_subpage_label() = label;
-
   if (!left_label) return;
   if (!label.empty()) {
     lv_label_set_display_text(left_label, label.c_str());
-    lv_obj_clear_flag(left_label, LV_OBJ_FLAG_HIDDEN);
+    if (state.bar_visible) lv_obj_clear_flag(left_label, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(left_label, LV_OBJ_FLAG_HIDDEN);
   } else if (state.saved) {
-    const bool hidden_now = lv_obj_has_flag(left_label, LV_OBJ_FLAG_HIDDEN);
+    const bool hidden_now = state.saved_hidden || !state.bar_visible;
     lv_label_set_display_text(left_label, state.saved_text.c_str());
     if (hidden_now) lv_obj_add_flag(left_label, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_clear_flag(left_label, LV_OBJ_FLAG_HIDDEN);
@@ -380,6 +394,18 @@ inline void set_clock_bar_subpage_label(const std::string &label) {
     state.saved = false;
   }
   clock_bar_update_left_text_width(left_label);
+}
+
+inline void set_clock_bar_subpage_label(const std::string &label) {
+  const std::string previous_title = clock_bar_left_title();
+  clock_bar_subpage_label() = label;
+  clock_bar_apply_left_title(previous_title);
+}
+
+inline void set_clock_bar_modal_label(const std::string &label) {
+  const std::string previous_title = clock_bar_left_title();
+  clock_bar_modal_label() = label;
+  clock_bar_apply_left_title(previous_title);
 }
 
 inline void clock_bar_restore_subpage_label(const std::string &label) {
@@ -390,7 +416,7 @@ inline void clock_bar_restore_subpage_label(const std::string &label) {
 
   auto &labels = clock_bar_temperature_labels();
   if (labels.empty() || !labels[0]) return;
-  lv_label_set_display_text(labels[0], label.c_str());
+  lv_label_set_display_text(labels[0], clock_bar_left_title().c_str());
   clock_bar_update_left_text_width(labels[0]);
 }
 
@@ -412,6 +438,7 @@ inline void hide_clock_bar_top_layer_widgets(lv_obj_t **temperature_labels,
                                              size_t temperature_label_count,
                                              lv_obj_t *display_time,
                                              lv_obj_t *network_status_button) {
+  clock_bar_left_text_state().bar_visible = false;
   set_clock_bar_temperature_labels(temperature_labels, temperature_label_count);
   for (size_t i = 0; temperature_labels && i < temperature_label_count; i++) {
     clock_bar_set_widget_hidden(temperature_labels[i], true);
@@ -508,13 +535,16 @@ inline void refresh_clock_bar_temperature_label_values(
     float indoor, float outdoor) {
   const bool show_on_screen =
       clock_bar_visible && clock_bar_active_on_button_grid_page(main_page_obj);
+  clock_bar_left_text_state().bar_visible = show_on_screen;
   std::vector<lv_obj_t *> &labels = clock_bar_temperature_labels();
 
   if (!labels.empty()) clock_bar_update_left_text_width(labels[0]);
-  const std::string &subpage_label = clock_bar_subpage_label();
+  const std::string &subpage_label = clock_bar_left_title();
   if (!subpage_label.empty()) {
     auto &state = clock_bar_left_text_state();
     if (state.saved) {
+      state.saved_hidden = !show_on_screen ||
+          (!clock_bar_temperature_has_items() && !indoor_enabled && !outdoor_enabled);
       state.saved_text = clock_bar_current_temperature_text(
           indoor_enabled, outdoor_enabled, indoor, outdoor);
     }

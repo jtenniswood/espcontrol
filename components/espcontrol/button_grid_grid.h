@@ -910,6 +910,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
     lv_obj_set_width(s.text_lbl, lv_pct(100));
   }
   display_apply_main_width(s.icon_lbl, display);
+  control_modal_register_card_label(s);
   display_apply_slot_text_width(s, display);
   if (espcontrol::cards::navigation_driver_refresh_layout(
         s, p, context, cfg)) return;
