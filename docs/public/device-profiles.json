@@ -154,8 +154,9 @@
       "resolution": "480 x 480",
       "orientation": "Square",
       "slots": 9,
-      "imageSlots": 1,
+      "imageSlots": 2,
       "imageCardTypes": [
+        "image",
         "media_cover_art"
       ],
       "grid": {

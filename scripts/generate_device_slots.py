@@ -203,6 +203,11 @@ def package_file_text(device: dict) -> str:
         [
             "substitutions:",
             *package_substitution_lines(device),
+            f'  image_card_slot_capacity: "{int(device["image_slot_capacity"])}"',
+            "",
+            "esphome:",
+            "  build_flags:",
+            '    - "-DESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=${image_card_slot_capacity}"',
             "",
             "packages:",
             "  # ---------------------------------------------------------------------------",

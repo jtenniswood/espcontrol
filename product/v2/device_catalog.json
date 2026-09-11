@@ -1012,7 +1012,7 @@
       "config": {
         "slots": 9,
         "capabilities": {
-          "imageSlots": 1
+        "imageSlots": 2
         },
         "public": {
           "name": "Guition 4848S040",
@@ -1056,8 +1056,7 @@
           "dragMode": "displace",
           "dragAnimation": true,
           "disabledCardTypes": [
-            "weather_forecast",
-            "image"
+          "weather_forecast"
           ],
           "screen": {
             "width": "55%",

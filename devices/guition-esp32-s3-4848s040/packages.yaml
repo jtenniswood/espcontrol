@@ -81,6 +81,11 @@ substitutions:
   cover_art_live_image_updates: "false"
   battery_status_apply_code: ""
   battery_status_hide_code: ""
+  image_card_slot_capacity: "2"
+
+esphome:
+  build_flags:
+    - "-DESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=${image_card_slot_capacity}"
 
 packages:
   # ---------------------------------------------------------------------------
@@ -131,7 +136,7 @@ packages:
   screen_setup:    !include ../../common/device/screen_button_setup.yaml
   screen_clock:    !include ../../common/device/screen_clock.yaml
   screen_art:      !include ../../common/device/screen_cover_art.yaml
-  image_cards:     !include ../../common/device/image_cards_1.yaml
+  image_cards:     !include ../../common/device/image_cards_2.yaml
   # ---------------------------------------------------------------------------
   # Main page and dynamic sensor subscriptions (after setup screens)
   # ---------------------------------------------------------------------------

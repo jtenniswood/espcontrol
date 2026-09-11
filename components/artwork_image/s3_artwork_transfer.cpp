@@ -9,6 +9,8 @@
 #include <cstring>
 #include <new>
 #include <string>
+#include <strings.h>
+#include <utility>
 
 #include "esp_crt_bundle.h"
 #include "esp_heap_caps.h"
@@ -99,15 +101,24 @@ static bool is_private_or_local_host(const std::string &host) {
 struct S3ArtworkTransferService::Job {
   ArtworkImage *owner{nullptr};
   uint32_t generation{0};
-  uint8_t priority{0};
-  uint64_t sequence{0};
   char *url{nullptr};
   std::vector<http_request::Header> headers;
   bool allow_insecure_local_urls{false};
   int timeout_ms{10000};
+  size_t reserved_free_bytes{0};
+  size_t reserved_largest_block_bytes{0};
   std::atomic<bool> cancelled{false};
   std::atomic<esp_http_client_handle_t> client{nullptr};
 
+  static void *operator new(size_t size, const std::nothrow_t &) noexcept {
+    return heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  }
+  static void operator delete(void *pointer) noexcept {
+    heap_caps_free(pointer);
+  }
+  static void operator delete(void *pointer, const std::nothrow_t &) noexcept {
+    heap_caps_free(pointer);
+  }
   ~Job() { heap_caps_free(this->url); }
 };
 
@@ -127,6 +138,20 @@ struct S3ArtworkTransferService::Transfer {
 
 S3ArtworkTransferResult::~S3ArtworkTransferResult() {
   heap_caps_free(this->data);
+}
+
+void *S3ArtworkTransferResult::operator new(
+    size_t size, const std::nothrow_t &) noexcept {
+  return heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+}
+
+void S3ArtworkTransferResult::operator delete(void *pointer) noexcept {
+  heap_caps_free(pointer);
+}
+
+void S3ArtworkTransferResult::operator delete(
+    void *pointer, const std::nothrow_t &) noexcept {
+  heap_caps_free(pointer);
 }
 
 uint8_t *S3ArtworkTransferResult::release_data() {
@@ -164,9 +189,10 @@ S3ArtworkTransferService::S3ArtworkTransferService() {
 }
 
 bool S3ArtworkTransferService::submit(
-    ArtworkImage *owner, uint32_t generation, uint8_t priority,
-    const std::string &url, const std::vector<http_request::Header> &headers,
-    bool allow_insecure_local_urls, int timeout_ms) {
+    ArtworkImage *owner, uint32_t generation, const std::string &url,
+    std::vector<http_request::Header> headers,
+    bool allow_insecure_local_urls, int timeout_ms,
+    size_t reserved_free_bytes, size_t reserved_largest_block_bytes) {
   if (!this->ready_ || !owner || !is_supported_url(url)) return false;
   auto *job = new (std::nothrow) Job();
   if (!job) return false;
@@ -179,19 +205,19 @@ bool S3ArtworkTransferService::submit(
   std::memcpy(job->url, url.c_str(), url.size() + 1);
   job->owner = owner;
   job->generation = generation;
-  job->priority = priority;
-  job->headers = headers;
+  job->headers = std::move(headers);
   job->allow_insecure_local_urls = allow_insecure_local_urls;
   job->timeout_ms = timeout_ms;
+  job->reserved_free_bytes = reserved_free_bytes;
+  job->reserved_largest_block_bytes = reserved_largest_block_bytes;
 
   this->lock_();
   this->cancel_locked_(owner);
-  if (this->pending_count_ >= 16) {
+  if (this->pending_count_ >= QUEUE_CAPACITY) {
     this->unlock_();
     delete job;
     return false;
   }
-  job->sequence = this->next_sequence_++;
   this->pending_[this->pending_count_++] = job;
   this->unlock_();
   xTaskNotifyGive(this->task_);
@@ -258,7 +284,7 @@ void S3ArtworkTransferService::task_loop_() {
       }
       if (result) {
         this->discard_completed_for_owner_locked_(result->owner);
-        if (this->completed_count_ < 16) {
+        if (this->completed_count_ < QUEUE_CAPACITY) {
           this->completed_[this->completed_count_++] = result;
         } else {
           delete result;
@@ -275,7 +301,6 @@ void S3ArtworkTransferService::task_loop_() {
 
 S3ArtworkTransferService::Job *S3ArtworkTransferService::next_job_() {
   this->lock_();
-  size_t best = 16;
   for (size_t i = 0; i < this->pending_count_;) {
     if (this->pending_[i]->cancelled.load()) {
       delete this->pending_[i];
@@ -285,21 +310,17 @@ S3ArtworkTransferService::Job *S3ArtworkTransferService::next_job_() {
       this->pending_[--this->pending_count_] = nullptr;
       continue;
     }
-    if (best == 16 || p4_pipeline_candidate_precedes(
-                          this->pending_[i]->priority,
-                          this->pending_[i]->sequence,
-                          this->pending_[best]->priority,
-                          this->pending_[best]->sequence)) {
-      best = i;
-    }
     ++i;
   }
-  if (best == 16) {
+  if (this->pending_count_ == 0) {
     this->unlock_();
     return nullptr;
   }
-  Job *job = this->pending_[best];
-  for (size_t next = best + 1; next < this->pending_count_; ++next) {
+  // ImageService is the sole priority scheduler. The worker receives only its
+  // selected request, so this queue remains FIFO and bounded for cancellation
+  // hand-off races.
+  Job *job = this->pending_[0];
+  for (size_t next = 1; next < this->pending_count_; ++next) {
     this->pending_[next - 1] = this->pending_[next];
   }
   this->pending_[--this->pending_count_] = nullptr;
@@ -317,10 +338,7 @@ esp_err_t S3ArtworkTransferService::http_event_(esp_http_client_event_t *event) 
   if (event->event_id == HTTP_EVENT_ON_HEADER) {
     if (transfer->response_ready_ms == 0) transfer->response_ready_ms = now;
     if (event->header_key && event->header_value) {
-      std::string key(event->header_key);
-      std::transform(key.begin(), key.end(), key.begin(),
-                     [](unsigned char c) { return std::tolower(c); });
-      if (key == "location") {
+      if (strcasecmp(event->header_key, "location") == 0) {
         const size_t length = std::strlen(event->header_value);
         if (length == 0 || length > MAX_REDIRECT_URL_LENGTH) {
           transfer->redirect_failed = true;
@@ -372,6 +390,19 @@ esp_err_t S3ArtworkTransferService::http_event_(esp_http_client_event_t *event) 
       transfer->oversized = true;
       return ESP_FAIL;
     }
+    const size_t psram_free =
+        heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+    if (!background_transfer_psram_growth_preserves_reserve(
+            psram_free, transfer->capacity, next_capacity,
+            transfer->job->reserved_free_bytes)) {
+      transfer->allocation_failed = true;
+      ESP_LOGW(TAG,
+               "Rejecting artwork buffer growth to preserve decode PSRAM: "
+               "current=%zu next=%zu free=%zu reserve=%zu",
+               transfer->capacity, next_capacity, psram_free,
+               transfer->job->reserved_free_bytes);
+      return ESP_FAIL;
+    }
     uint8_t *resized = static_cast<uint8_t *>(heap_caps_realloc(
         transfer->data, next_capacity, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
     if (!resized) {
@@ -380,6 +411,27 @@ esp_err_t S3ArtworkTransferService::http_event_(esp_http_client_event_t *event) 
     }
     transfer->data = resized;
     transfer->capacity = next_capacity;
+    const size_t remaining_free =
+        heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+    const size_t remaining_largest =
+        heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+    if (!background_transfer_psram_reserve_is_available(
+            remaining_free, remaining_largest,
+            transfer->job->reserved_free_bytes,
+            transfer->job->reserved_largest_block_bytes)) {
+      heap_caps_free(transfer->data);
+      transfer->data = nullptr;
+      transfer->capacity = 0;
+      transfer->size = 0;
+      transfer->allocation_failed = true;
+      ESP_LOGW(TAG,
+               "Released artwork transfer buffer after decode reserve check: "
+               "free=%zu largest=%zu reserve=%zu reserve_largest=%zu",
+               remaining_free, remaining_largest,
+               transfer->job->reserved_free_bytes,
+               transfer->job->reserved_largest_block_bytes);
+      return ESP_FAIL;
+    }
   }
   std::memcpy(transfer->data + transfer->size, event->data, incoming);
   transfer->size += incoming;

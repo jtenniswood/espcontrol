@@ -1,5 +1,6 @@
 #include "image_decoder.h"
 #include "artwork_image.h"
+#include "rgb565_scaler.h"
 
 #include "esphome/core/log.h"
 
@@ -68,29 +69,10 @@ void ImageDecoder::draw_rgb565_block(int x, int y, int w, int h, const uint8_t *
     return;
   }
 
-  for (int row = 0; row < h; row++) {
-    for (int col = 0; col < w; col++) {
-      int src_x = x + col;
-      int src_y = y + row;
-      int src_offset = (row * w + col) * 2;
-
-      int target_x0 = std::max(0, this->x_offset_ + static_cast<int>(src_x * this->x_scale_));
-      int target_y0 = std::max(0, this->y_offset_ + static_cast<int>(src_y * this->y_scale_));
-      auto target_w = std::min(this->image_->decode_buffer_width_,
-                               this->x_offset_ + static_cast<int>(std::ceil((src_x + 1) * this->x_scale_)));
-      auto target_h = std::min(this->image_->decode_buffer_height_,
-                               this->y_offset_ + static_cast<int>(std::ceil((src_y + 1) * this->y_scale_)));
-      for (int dy = target_y0; dy < target_h; dy++) {
-        for (int dx = target_x0; dx < target_w; dx++) {
-          int dst_pos = this->image_->get_position_(dx, dy);
-          memcpy(this->image_->decode_buffer_ + dst_pos, data + src_offset, 2);
-          if (bpp_bytes > 2) {
-            this->image_->decode_buffer_[dst_pos + 2] = 0xFF;
-          }
-        }
-      }
-    }
-  }
+  draw_scaled_rgb565_block(
+      this->image_->decode_buffer_, this->image_->decode_buffer_width_,
+      this->image_->decode_buffer_height_, bpp_bytes, this->x_offset_,
+      this->y_offset_, this->x_scale_, this->y_scale_, x, y, w, h, data);
 }
 
 void ImageDecoder::draw_rgb565_frame(int width, int height, size_t stride_bytes,
