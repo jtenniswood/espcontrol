@@ -13,7 +13,7 @@ from esphome.const import CONF_ID
 import os
 
 CODEOWNERS = ["@jtenniswood"]
-AUTO_LOAD = ["mdns"]
+AUTO_LOAD = ["mdns", "json"]
 
 CONF_ACTION_RESPONSES = "action_responses"
 CONF_PANEL_CONFIG = "panel_config"
@@ -29,6 +29,7 @@ CONF_WEB_AUTH_PASSWORD = "web_auth_password"
 
 espcontrol_ns = cg.global_ns.namespace("espcontrol")
 EspControlApp = espcontrol_ns.class_("EspControlApp", cg.Component)
+PanelIdentity = espcontrol_ns.class_("PanelIdentity", cg.Component)
 
 PANEL_CONFIG_BUTTON_SCHEMA = cv.Schema(
     {
@@ -56,6 +57,7 @@ PANEL_CONFIG_SCHEMA = cv.Schema(
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(CONF_ID): cv.declare_id(EspControlApp),
+        cv.GenerateID("identity_id"): cv.declare_id(PanelIdentity),
         cv.Optional(CONF_ACTION_RESPONSES, default=True): cv.boolean,
         cv.Optional(CONF_PANEL_CONFIG): PANEL_CONFIG_SCHEMA,
         cv.Optional(CONF_WEB_AUTH_USERNAME, default=""): cv.string_strict,
@@ -65,6 +67,10 @@ CONFIG_SCHEMA = cv.Schema(
 
 
 async def to_code(config):
+    identity = cg.new_Pvariable(config["identity_id"])
+    await cg.register_component(identity, config)
+    cg.add(identity.set_web_auth_credentials(
+        config[CONF_WEB_AUTH_USERNAME], config[CONF_WEB_AUTH_PASSWORD]))
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     cg.add(var.set_web_auth_credentials(

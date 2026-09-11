@@ -3,6 +3,7 @@ import type { UiRuntimeState } from "./state";
 
 export interface ControlsShellDependencies {
     readonly document: Document;
+    readonly panelName?: () => string | undefined;
     readonly state: AppState;
     readonly schedule: typeof setTimeout;
     readonly cancelSchedule: (handle: any) => void;
@@ -112,7 +113,8 @@ export function createControlsShellFeature(
         header.className = "sp-header";
         var brand: any = document.createElement("div");
         brand.className = "sp-brand";
-        brand.textContent = "EspControl";
+        const panelName = dependencies.panelName?.();
+        brand.textContent = panelName ? "EspControl — " + panelName : "EspControl";
         header.appendChild(brand);
         var nav: any = document.createElement("nav");
         nav.className = "sp-nav";

@@ -9,6 +9,7 @@
 #include "esphome/core/component.h"
 
 #include "espcontrol_app_core.h"
+#include "panel_identity.h"
 #include "home_assistant_endpoint_resolver.h"
 namespace espcontrol {
 

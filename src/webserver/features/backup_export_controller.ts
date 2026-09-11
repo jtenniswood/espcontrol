@@ -1,3 +1,4 @@
+import type { PanelIdentityBackup } from "../model/panel_identity";
 import type { CardConfig } from "../contracts/types";
 import {
   createPanelConfigBackupPayload,
@@ -27,7 +28,7 @@ export interface BackupWithNativeConfig {
 export interface BackupExportController {
   screenSizeSlug(value?: unknown): string;
   fileDate(value: Date): string;
-  fileName(screenSize?: unknown, value?: Date): string;
+  fileName(screenSize?: unknown, value?: Date, identity?: PanelIdentityBackup): string;
   addNativeConfig<Backup extends BackupWithNativeConfig>(
     backup: Backup,
     source: BackupNativeConfigSource,
@@ -49,8 +50,10 @@ export function createBackupExportController(
   const fileDate = (value: Date): string =>
     `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 
-  const fileName = (screenSize?: unknown, value: Date = new Date()): string =>
-    `espcontrol-${screenSizeSlug(screenSize)}-${fileDate(value)}.json`;
+  const fileName = (screenSize?: unknown, value: Date = new Date(), identity?: PanelIdentityBackup): string => {
+    const named = identity?.name ? "-" + identity.hostname.replace(/^espcontrol-/, "") : "";
+    return `espcontrol-${screenSizeSlug(screenSize)}${named}-${fileDate(value)}.json`;
+  };
 
   const addNativeConfig = <Backup extends BackupWithNativeConfig>(
     backup: Backup,
