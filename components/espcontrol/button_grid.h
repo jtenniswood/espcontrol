@@ -47,6 +47,7 @@
 #include "button_grid_subscriptions.h"
 #include "button_grid_vacuum.h"
 #include "button_grid_lawn_mower.h"
+#include "button_grid_timer.h"
 #include "button_grid_actions.h"
 #include "button_grid_media_group.h"
 #include "button_grid_media_slider_lifecycle.h"

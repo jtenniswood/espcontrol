@@ -6,6 +6,39 @@
     "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "wifi_qr"]
   },
   "types": {
+    "timer": {
+      "classification": "canonical",
+      "canonicalType": "timer",
+      "webRegistration": "timer",
+      "firmwareFamily": "TIMER",
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes",
+          "time"
+        ],
+        "actions": [
+          "home_assistant_service"
+        ],
+        "modalOwner": "none"
+      },
+      "modes": [
+        {
+          "name": "countdown",
+          "config": {
+            "entity": "timer.example"
+          }
+        },
+        {
+          "name": "confirm_cancel",
+          "config": {
+            "entity": "timer.example",
+            "sensor": "confirm",
+            "unit": "3"
+          }
+        }
+      ]
+    },
     "": {
       "classification": "canonical",
       "canonicalType": "",

@@ -2,6 +2,72 @@
   "baselineVersion": 1,
   "cases": [
     {
+      "name": "timer: countdown",
+      "sourceKind": "contract",
+      "sourceType": "timer",
+      "mode": "countdown",
+      "canonicalType": "timer",
+      "web": {
+        "registration": "timer",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "7803cc7419f5ab0a"
+        }
+      },
+      "firmware": {
+        "family": "TIMER"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes",
+          "time"
+        ],
+        "actions": [
+          "home_assistant_service"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
+      "name": "timer: confirm_cancel",
+      "sourceKind": "contract",
+      "sourceType": "timer",
+      "mode": "confirm_cancel",
+      "canonicalType": "timer",
+      "web": {
+        "registration": "timer",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "7803cc7419f5ab0a"
+        }
+      },
+      "firmware": {
+        "family": "TIMER"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes",
+          "time"
+        ],
+        "actions": [
+          "home_assistant_service"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
       "name": "switch: toggle",
       "sourceKind": "contract",
       "sourceType": "",

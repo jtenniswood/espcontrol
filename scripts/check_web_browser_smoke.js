@@ -5548,6 +5548,24 @@ async function assertCardIconsTopLeft(page, label) {
   }
 }
 
+async function assertTimerEntityValidation(page) {
+  await page.locator(".sp-main .sp-empty-cell").first().click();
+  await page.getByRole("button", { name: "Timer card type", exact: true }).click();
+  const entity = page.locator("#sp-inp-entity");
+  await entity.waitFor({ state: "visible" });
+  assert.strictEqual(await entity.evaluate(el => !!el.closest(".sp-disclosure")), false);
+  const save = page.locator(".sp-settings-modal .sp-save-btn");
+  await save.click();
+  await page.getByText("Add a timer entity before saving.", { exact: true }).waitFor();
+  await entity.fill("switch.kitchen");
+  await save.click();
+  await page.getByText("Choose a timer entity (timer.*).", { exact: true }).waitFor();
+  await entity.fill("timer.kitchen");
+  await save.click();
+  await page.waitForFunction(() =>
+    !document.querySelector(".sp-settings-overlay.sp-visible"));
+}
+
 async function runCase(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   await installRoutes(context, testCase.slug);
@@ -5661,6 +5679,9 @@ async function runCase(browser, testCase) {
       await assertApplySmoke(page, posts, errors);
     } else if (testCase.exerciseDeviceMocks) {
       await assertBackupImportSmoke(page, posts, testCase);
+    }
+    if (testCase.slug === "guition-esp32-p4-jc1060p470") {
+      await assertTimerEntityValidation(page);
     }
   } catch (error) {
     fs.mkdirSync(FAILURE_DIR, { recursive: true });

@@ -1,0 +1,19 @@
+{
+  "label": "Timer",
+  "allowInSubpage": true,
+  "domains": [
+    "timer"
+  ],
+  "options": [],
+  "default": {
+    "entity": "",
+    "label": "",
+    "icon": "Auto",
+    "icon_on": "Auto",
+    "sensor": "",
+    "unit": "3",
+    "type": "timer",
+    "precision": "",
+    "options": ""
+  }
+}

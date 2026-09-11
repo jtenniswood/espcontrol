@@ -251,3 +251,7 @@ settings=Settings
 brightness=Brightness
 daytime=Daytime
 nighttime=Nighttime
+
+# Timer card
+timer=Timer
+timer_confirm=Confirm
