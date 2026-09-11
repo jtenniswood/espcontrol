@@ -316,4 +316,3 @@ inline uint16_t timer_parse_confirm_timeout(const std::string &unit) {
   if (n > 30) n = 30;
   return (uint16_t)n;
 }
-
