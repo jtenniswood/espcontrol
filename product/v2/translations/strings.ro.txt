@@ -253,4 +253,4 @@ daytime=Zi
 nighttime=Noapte
 
 timer=Temporizator
-timer_confirm=Confirmați
+timer_confirm=Confirmați anularea

@@ -78,7 +78,7 @@ int main() {
   action.clear(); handle_timer_card_click(ctx); assert(action == "timer.start");
   callbacks["state"]("active"); ctx->confirm_enabled = true;
   action.clear(); handle_timer_card_click(ctx);
-  assert(action.empty() && label.text == "Confirm" && timers == 1);
+  assert(action.empty() && label.text == "Confirm to Cancel" && timers == 1);
   handle_timer_card_click(ctx);
   assert(action == "timer.cancel" && label.text == "Kitchen" && timers == 0);
   callbacks["state"]("idle"); assert(value.text == "5:00");

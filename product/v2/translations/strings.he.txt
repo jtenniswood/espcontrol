@@ -253,4 +253,4 @@ daytime=יום
 nighttime=לילה
 
 timer=טיימר
-timer_confirm=לאשר
+timer_confirm=אישור ביטול

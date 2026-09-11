@@ -34,6 +34,6 @@ A timer card displays a Home Assistant `timer.*` entity as a live countdown. Tap
 
 ## Confirmation
 
-When **Confirm before cancel** is enabled, tapping a running timer replaces the card's label with `Confirm` and arms a one-shot timeout. Tap a second time within the timeout window to cancel the timer; otherwise the prompt disappears and the timer keeps running.
+When **Confirm before cancel** is enabled, tapping a running timer replaces the card's label with `Confirm to Cancel` and arms a one-shot timeout. Tap a second time within the timeout window to cancel the timer; otherwise the prompt disappears and the timer keeps running.
 
 The timer's `duration` attribute is read from Home Assistant — there is no per-card duration setting. To change how long the timer runs, edit the timer entity in Home Assistant.

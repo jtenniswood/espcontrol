@@ -253,4 +253,4 @@ daytime=Gündüz
 nighttime=Gece
 
 timer=Zamanlayıcı
-timer_confirm=Onayla
+timer_confirm=İptali onayla

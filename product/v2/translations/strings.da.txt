@@ -253,4 +253,4 @@ daytime=Dagtid
 nighttime=Nattetid
 
 timer=Timer
-timer_confirm=Bekræft
+timer_confirm=Bekræft annullering
