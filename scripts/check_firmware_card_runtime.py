@@ -813,6 +813,8 @@ def check_root(root: Path) -> list[str]:
             "subscribe_media_cover_art",
             "subscribe_media_playlist_state",
             "subscribe_media_slider_state",
+            "grid_track_media_now_playing_runtime",
+            "grid_track_media_slider_runtime",
             "grid_track_media_control_runtime",
             "grid_delete_media_control_with_owner",
             '"media"',
@@ -860,6 +862,21 @@ def check_root(root: Path) -> list[str]:
                 failures.append(
                     f"components/espcontrol/{MEDIA_DRIVER_HEADER}: clear the stale cover-art route before attaching source state"
                 )
+        setup_body = function_body(text, "media_driver_setup_visual") or ""
+        if (
+            "media_driver_track_now_playing" not in setup_body
+            or "media_driver_track_slider" not in setup_body
+        ):
+            failures.append(
+                f"components/espcontrol/{MEDIA_DRIVER_HEADER}: own media visual contexts before data binding"
+            )
+        if (
+            "media_driver_track_now_playing" in bind_body
+            or "media_driver_track_slider" in bind_body
+        ):
+            failures.append(
+                f"components/espcontrol/{MEDIA_DRIVER_HEADER}: do not defer media visual ownership until data binding"
+            )
     elif grid_header.exists():
         failures.append(
             f"components/espcontrol/{MEDIA_DRIVER_HEADER}: missing shared media driver"

@@ -104,7 +104,8 @@ inline MediaTransportLayout media_transport_layout(int content_width,
                                                     int short_side,
                                                     bool show_shuffle,
                                                     bool show_repeat,
-                                                    bool stack_modes = false) {
+                                                    bool stack_modes = false,
+                                                    int button_scale_percent = 100) {
   MediaTransportLayout layout;
   if (content_width < 1) return layout;
   const int mode_count = (show_shuffle ? 1 : 0) + (show_repeat ? 1 : 0);
@@ -121,6 +122,9 @@ inline MediaTransportLayout media_transport_layout(int content_width,
   layout.button_size = media_transport_scaled_px(88, short_side);
   const int minimum_button = media_transport_scaled_px(74, short_side);
   if (layout.button_size < minimum_button) layout.button_size = minimum_button;
+  if (button_scale_percent < 1) button_scale_percent = 100;
+  layout.button_size =
+    (layout.button_size * button_scale_percent + 50) / 100;
 
   const int widest_gaps_width = layout.gap * (widest_row_count - 1);
   const int widest_row_width = layout.button_size * widest_row_count +

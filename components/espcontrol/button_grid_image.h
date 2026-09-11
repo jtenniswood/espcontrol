@@ -1616,7 +1616,9 @@ inline void image_card_request_current_picture(ImageCardCtx *ctx) {
     // Failed reads keep their existing immediate retry path. Ordinary triggers
     // are coalesced separately before starting a new paired read.
     if (ctx->media_artwork_retry_mask != 0) {
-      image_card_request_media_artwork(ctx, true);
+      // A missing companion attribute is not a new track. Retain any force
+      // already in flight, but do not create another forced image download.
+      image_card_request_media_artwork(ctx, false);
     } else {
       image_card_schedule_media_artwork_refresh(ctx);
     }
@@ -1630,6 +1632,7 @@ inline void image_card_request_current_picture(ImageCardCtx *ctx) {
 // the source that previously failed to queue.
 inline void image_card_refresh_current_picture(ImageCardCtx *ctx) {
   if (!ctx || image_card_pipeline_suspended()) return;
+  const bool force_refresh = !ctx->image_ready || ctx->media_artwork_refresh.forced;
   if (ctx->media_artwork) {
     ctx->media_artwork_retry_mask = 0;
     ctx->media_artwork_timeout_retries = 0;
@@ -1645,7 +1648,9 @@ inline void image_card_refresh_current_picture(ImageCardCtx *ctx) {
     }
   }
   if (ctx->media_artwork) {
-    image_card_schedule_media_artwork_refresh(ctx, true);
+    // Reconnect recovery rechecks the URLs; unchanged, healthy artwork stays
+    // cached. A pending metadata trigger still retains its forced refresh.
+    image_card_schedule_media_artwork_refresh(ctx, force_refresh);
   } else {
     image_card_request_current_picture(ctx);
   }
@@ -2300,6 +2305,10 @@ inline void image_card_process_media_artwork(ImageCardCtx *ctx,
   }
   if (batch_complete) ctx->media_artwork_timeout_retries = 0;
   ctx->media_artwork_refresh.finish();
+  // Settling an attribute batch does not satisfy a track-change refresh when
+  // no usable response arrived. Carry it into a retry or reconnect recovery;
+  // clear it only once the selected artwork is handed to the download path.
+  ctx->media_artwork_refresh_forced |= refresh_forced;
   ctx->media_artwork_sources.finish_refresh();
   if (espcontrol::artwork::artwork_pending_refresh_needs_reschedule(
         ctx->media_artwork_trigger.pending,
@@ -2348,6 +2357,7 @@ inline void image_card_process_media_artwork(ImageCardCtx *ctx,
     image_card_log_diagnostics(ctx, "media-artwork-unchanged");
     return;
   }
+  ctx->media_artwork_refresh_forced = false;
   image_card_handle_picture(ctx, esphome::StringRef(chosen));
 }
 

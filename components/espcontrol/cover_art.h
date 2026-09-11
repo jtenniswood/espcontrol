@@ -6,9 +6,18 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <initializer_list>
 #include <string>
 
 #include "artwork_controller.h"
+
+// Defined by the firmware Home Assistant transport. Keeping this declaration
+// lightweight lets host-side Cover Art tests use the controller without
+// pulling in ESPHome's generated API types.
+inline void ha_schedule_metadata_refresh(
+    const std::string &entity_id,
+    std::initializer_list<const char *> attributes, uint32_t scope);
+inline void ha_cancel_metadata_refresh(uint32_t scope);
 
 namespace espcontrol::cover_art {
 
@@ -283,7 +292,7 @@ inline Layout cover_art_layout(const std::string &slug, const std::string &rotat
     ? Layout{1024,600,0,0,600,585,0,439,600,615,34,377,430,260,0,true}
     : Layout{600,1024,0,0,600,0,600,600,424,30,634,540,360,162,0,true};
   if (slug == "guition-esp32-p4-jc4880p443") return landscape
-    ? Layout{800,480,0,0,480,480,0,320,480,504,34,272,330,220,0,true}
+    ? Layout{800,480,0,0,480,480,0,320,480,504,34,272,330,210,0,true}
     : Layout{480,800,0,0,480,0,480,480,320,24,514,324,262,130,0,true};
   if (slug == "guition-esp32-p4-jc8012p4a1" || slug == "guition-esp32-p4-jc8012p4a1-v2") return landscape
     ? Layout{1280,800,0,0,800,800,0,480,800,840,40,400,720,506,0,true}

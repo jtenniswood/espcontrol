@@ -289,7 +289,10 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
                 syncClockBarUi();
                 postVoiceServices(state.voiceServicesOn);
             });
-            voiceServicesCard = makeCollapsibleCard("Voice Services", voiceServicesBody, true);
+            var voiceServicesBadge: any = statusBadge("Voice services on");
+            els.setVoiceServicesBadge = voiceServicesBadge;
+            syncClockBarUi();
+            voiceServicesCard = makeCollapsibleCard("Voice Services", voiceServicesBody, true, voiceServicesBadge);
             els.voiceServicesCard = voiceServicesCard;
         }
         var batteryStatusCard: any = null;
@@ -535,6 +538,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             temperatureCard,
         ]);
         appendSettingsSection(config, "System", [
+            systemSettingsCards.identityCard,
             systemSettingsCards.backupCard,
             systemSettingsCards.firmwareCard,
             systemSettingsCards.homeAssistantSettingsCard,

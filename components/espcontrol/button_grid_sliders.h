@@ -1,6 +1,7 @@
 #pragma once
 
 #include "button_grid_slider_geometry.h"
+#include "clock_bar.h"
 #include "media_volume_capability.h"
 #include "number_slider_policy.h"
 
@@ -186,6 +187,7 @@ constexpr int MEDIA_VOLUME_MIC_ICON_ZOOM = 210;
 struct MediaVolumeCtx {
   std::string entity_id;
   std::string label;
+  std::string clock_bar_title;
   int current_pct = 0;
   int max_pct = 100;
   int pending_pct = -1;
@@ -226,6 +228,8 @@ struct MediaVolumeModalUi {
   lv_obj_t *mic_btn = nullptr;
   lv_obj_t *mic_lbl = nullptr;
   MediaVolumeCtx *active = nullptr;
+  std::string previous_clock_bar_title;
+  bool previous_clock_bar_left_hidden = false;
   bool updating_arc = false;
 };
 
@@ -1431,20 +1435,28 @@ inline void slider_geometry_refresh_event_cb(lv_event_t *e) {
   slider_refresh_geometry(slider);
 }
 
+inline void slider_detach_runtime(SliderCtx *ctx,
+                                  lv_obj_t *deleting_slider = nullptr) {
+  espcontrol::media_slider_lifecycle::detach<
+    SliderCtx, lv_timer_t, lv_obj_t>(
+      ctx, deleting_slider,
+      [](lv_timer_t *timer) { lv_timer_del(timer); },
+      [](lv_obj_t *obj) { return lv_obj_get_user_data(obj); },
+      [](lv_obj_t *obj, void *user_data) {
+        lv_obj_set_user_data(obj, user_data);
+      },
+      [](lv_obj_t *parent, lv_obj_t *slider) {
+        lv_obj_remove_event_cb_with_user_data(
+          parent, slider_geometry_refresh_event_cb, slider);
+      });
+}
+
 inline void slider_geometry_delete_event_cb(lv_event_t *e) {
   if (!e) return;
   lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
   SliderCtx *ctx = slider ? (SliderCtx *)lv_obj_get_user_data(slider) : nullptr;
   if (!ctx) return;
-  if (ctx->geometry_timer) {
-    lv_timer_del(ctx->geometry_timer);
-    ctx->geometry_timer = nullptr;
-  }
-  if (ctx->geometry_parent) {
-    lv_obj_remove_event_cb_with_user_data(
-        ctx->geometry_parent, slider_geometry_refresh_event_cb, slider);
-    ctx->geometry_parent = nullptr;
-  }
+  slider_detach_runtime(ctx, slider);
 }
 
 inline void slider_bind_geometry_refresh(lv_obj_t *btn, lv_obj_t *slider) {
@@ -3548,6 +3560,16 @@ inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
 
 inline void media_volume_hide_modal() {
   MediaVolumeModalUi &ui = media_volume_modal_ui();
+  if (ui.overlay && ui.active && !ui.active->clock_bar_title.empty()) {
+    set_clock_bar_subpage_label("");
+    if (!ui.previous_clock_bar_title.empty()) {
+      clock_bar_restore_subpage_label(ui.previous_clock_bar_title);
+    }
+    auto &labels = clock_bar_temperature_labels();
+    if (!labels.empty()) {
+      clock_bar_set_widget_hidden(labels[0], ui.previous_clock_bar_left_hidden);
+    }
+  }
   control_modal_delete_overlay(ControlModalKind::MEDIA_VOLUME, ui.overlay);
   ui = MediaVolumeModalUi();
 }
@@ -3670,6 +3692,13 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;
   ui.back_btn = shell.close_btn;
+  if (!ctx->clock_bar_title.empty()) {
+    ui.previous_clock_bar_title = clock_bar_subpage_label();
+    const auto &labels = clock_bar_temperature_labels();
+    ui.previous_clock_bar_left_hidden = !labels.empty() && labels[0] &&
+        lv_obj_has_flag(labels[0], LV_OBJ_FLAG_HIDDEN);
+    set_clock_bar_subpage_label(ctx->clock_bar_title);
+  }
   lv_obj_t *back_label = lv_obj_get_child(ui.back_btn, 0);
   if (back_label) lv_obj_set_style_text_color(back_label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
 

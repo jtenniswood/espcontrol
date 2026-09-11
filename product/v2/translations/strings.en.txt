@@ -46,6 +46,7 @@ dimmed=Dimmed
 direction=Direction
 disarm=Disarm
 disarmed=Disarmed
+disconnected=Disconnected
 door=Door
 door_open=Door Open
 dock=Dock
@@ -186,6 +187,7 @@ vacation=Vacation
 vacationhold=Vacationhold
 vacuum=Vacuum
 version_unknown=Version unknown
+voice=Voice
 volume=Volume
 waiting_for_home_assistant=Waiting for Home Assistant
 home_assistant_connection_lost=Connecting to \nHome Assistant
@@ -245,3 +247,11 @@ no_speakers=No Speakers
 grouping_failed=Grouping failed
 speakers_updated=Speakers updated
 updating_speakers=Updating speakers
+settings=Settings
+brightness=Brightness
+daytime=Daytime
+nighttime=Nighttime
+
+# Timer card
+timer=Timer
+timer_confirm=Confirm

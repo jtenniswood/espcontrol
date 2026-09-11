@@ -339,6 +339,7 @@ inline void media_playback_subscribe_grouping(MediaPlaybackState *state);
 inline void media_playback_subscribe_speaker_discovery(
   MediaPlaybackState *state, const std::string &entity_id);
 inline void media_playback_refresh_progress_timer(MediaPlaybackState *state);
+inline void media_playback_schedule_metadata_refresh(MediaPlaybackState *state);
 inline void media_playback_apply_metadata_consumers(MediaPlaybackState *state);
 inline void media_playback_apply_progress_consumers(MediaPlaybackState *state);
 
@@ -537,20 +538,29 @@ inline void media_apply_position(SliderCtx *ctx) {
 inline void media_deferred_position_refresh_cb(lv_timer_t *timer) {
   if (!timer) return;
   SliderCtx *ctx = static_cast<SliderCtx *>(lv_timer_get_user_data(timer));
-  if (ctx) {
-    if (ctx->media_slider) slider_refresh_geometry(ctx->media_slider);
-    media_apply_position(ctx);
-    if (ctx->media_position_refresh_remaining > 0) {
-      ctx->media_position_refresh_remaining--;
-      return;
+  if (!espcontrol::media_slider_lifecycle::callback_is_current(
+        ctx, timer,
+        [](lv_obj_t *obj) { return lv_obj_get_user_data(obj); })) {
+    if (ctx && ctx->media_timer == timer) {
+      ctx->media_timer = nullptr;
+      ctx->media_position_refresh_remaining = 0;
     }
-    ctx->media_timer = nullptr;
+    lv_timer_del(timer);
+    return;
   }
+  slider_refresh_geometry(ctx->media_slider);
+  media_apply_position(ctx);
+  if (ctx->media_position_refresh_remaining > 0) {
+    ctx->media_position_refresh_remaining--;
+    return;
+  }
+  ctx->media_timer = nullptr;
   lv_timer_del(timer);
 }
 
 inline void media_schedule_position_refresh(SliderCtx *ctx) {
-  if (!ctx || !ctx->media_position || !ctx->media_slider) return;
+  if (!espcontrol::media_slider_lifecycle::can_schedule(
+        ctx, [](lv_obj_t *obj) { return lv_obj_get_user_data(obj); })) return;
   ctx->media_position_refresh_remaining = 10;
   if (ctx->media_timer) return;
   ctx->media_timer = lv_timer_create(media_deferred_position_refresh_cb, 100, ctx);
@@ -589,6 +599,8 @@ struct MediaPlaybackState {
   bool used = false;
   bool state_subscribed = false;
   bool metadata_subscribed = false;
+  bool metadata_title_awaiting_refresh = false;
+  uint32_t metadata_title_refresh_started_ms = 0;
   bool source_subscribed = false;
   bool progress_subscribed = false;
   uint32_t progress_subscription_scope = 0;
@@ -740,15 +752,7 @@ inline void delete_media_now_playing_context(MediaNowPlayingCtx *ctx) {
 inline void delete_media_slider_context(SliderCtx *ctx) {
   if (!ctx) return;
   media_playback_detach_slider(ctx);
-  if (ctx->media_timer) {
-    lv_timer_del(ctx->media_timer);
-    ctx->media_timer = nullptr;
-  }
-  ctx->media_slider = nullptr;
-  ctx->fill = nullptr;
-  ctx->media_track_bg = nullptr;
-  ctx->media_value_lbl = nullptr;
-  ctx->media_status_lbl = nullptr;
+  slider_detach_runtime(ctx);
   delete ctx;
 }
 
@@ -759,6 +763,8 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->used = true;
   state->state_subscribed = false;
   state->metadata_subscribed = false;
+  state->metadata_title_awaiting_refresh = false;
+  state->metadata_title_refresh_started_ms = 0;
   state->source_subscribed = false;
   state->progress_subscribed = false;
   state->progress_subscription_scope = 0;
@@ -931,6 +937,10 @@ inline void media_playback_set_artist(MediaPlaybackState *state,
   if (!media_playback_generation_valid(state, generation)) return;
   state->artist = media_playback_metadata_value(value, HA_STATE_TEXT_MAX_LEN);
   media_playback_apply_metadata_consumers(state);
+}
+
+inline void media_playback_clear_stale_artist(MediaPlaybackState *state) {
+  if (state) state->artist.clear();
 }
 
 inline void media_playback_clear_video_artist(MediaPlaybackState *state,
@@ -1572,6 +1582,12 @@ inline void media_playback_refresh_progress_timer(MediaPlaybackState *state) {
   else lv_timer_pause(state->progress_timer);
 }
 
+inline void media_playback_schedule_metadata_refresh(MediaPlaybackState *state) {
+  if (!state || state->entity_id.empty()) return;
+  ha_schedule_metadata_refresh(state->entity_id, {"media_title", "media_artist"},
+                               HA_SUBSCRIPTION_SCOPE_DEFAULT);
+}
+
 inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {
   if (!state || state->state_subscribed || state->entity_id.empty()) return;
   state->state_subscribed = true;
@@ -1642,12 +1658,25 @@ inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {
           value, HA_STATE_TEXT_MAX_LEN);
         media_playback_clear_stale_external_source(
           state, !next_title.empty());
-        if (next_title != state->title) {
-          // Video entities commonly omit media_artist entirely. Clear the
-          // previous audio item's grouping as soon as the film title changes.
-          media_playback_clear_video_artist(state, state->current_content_type);
+        const bool title_refresh_pending =
+          espcontrol::media::media_title_refresh_pending(
+            state->metadata_title_awaiting_refresh,
+            state->metadata_title_refresh_started_ms,
+            esphome::millis());
+        if (!title_refresh_pending) {
+          state->metadata_title_awaiting_refresh = false;
+          state->metadata_title_refresh_started_ms = 0;
+        }
+        if (next_title != state->title && !title_refresh_pending) {
+          // Home Assistant omits media_artist when the new item has no artist.
+          // Clear the previous item's value and request a fresh snapshot so an
+          // unchanged valid artist can be restored without retaining stale text.
+          media_playback_clear_stale_artist(state);
+          media_playback_schedule_metadata_refresh(state);
         }
         state->title = next_title;
+        state->metadata_title_awaiting_refresh = false;
+        state->metadata_title_refresh_started_ms = 0;
         media_playback_apply_metadata_consumers(state);
       })
   );
@@ -1944,8 +1973,15 @@ inline void media_playback_subscribe_content(MediaPlaybackState *state) {
           state->current_content_fingerprint = next_content_fingerprint;
           state->current_content_kind = next_kind;
         }
-        if (decision.clear_title) state->title.clear();
-        if (decision.clear_grouping) state->artist.clear();
+        if (decision.clear_title) {
+          state->title.clear();
+          state->metadata_title_awaiting_refresh = true;
+          state->metadata_title_refresh_started_ms = esphome::millis();
+        }
+        if (decision.item_changed) {
+          media_playback_clear_stale_artist(state);
+          media_playback_schedule_metadata_refresh(state);
+        }
 
         media_playback_apply_state_to_playlists(state);
         if (decision.item_changed) {
@@ -4231,12 +4267,17 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t text_w = content_w * 92 / 100;
   lv_coord_t text_gap = control_modal_scaled_px(8, layout.short_side);
   if (text_gap < 6) text_gap = 6;
+  int transport_button_scale_percent = 100;
+  if (control_modal_uses_large_landscape_tuning(layout)) {
+    transport_button_scale_percent = 77;
+  }
   const espcontrol::media::MediaTransportLayout transport_layout =
     espcontrol::media::media_transport_layout(
       content_w, layout.short_side,
       media_control_shuffle_supported(ctx),
       media_control_repeat_supported(ctx),
-      control_modal_uses_compact_portrait_tuning(layout) && layout.sh > layout.sw);
+      control_modal_uses_compact_portrait_tuning(layout) && layout.sh > layout.sw,
+      transport_button_scale_percent);
   const lv_coord_t btn_size = transport_layout.button_size;
   lv_coord_t progress_slider_h = content_h * 42 / 100;
   lv_coord_t progress_slider_max_h = control_modal_scaled_px(144, layout.short_side);
@@ -4880,6 +4921,7 @@ inline void open_device_volume_modal(lv_obj_t *anchor,
   }
   ctx->entity_id.clear();
   ctx->label = espcontrol_i18n(std::string("Device Volume"));
+  ctx->clock_bar_title = espcontrol_i18n_key("voice");
   ctx->btn = anchor;
   ctx->current_pct = media_clamp_percent((int)(player->volume * 100.0f + 0.5f));
   ctx->volume_known = true;

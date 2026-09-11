@@ -25,7 +25,7 @@ script:
     then:
       - lambda: |-
           network_status_open_modal(
-            "${friendly_name}",
+            esphome::App.get_friendly_name().c_str(),
             network_status_ip_address(),
             "${firmware_version}",
             id(${media_title_font})->get_lv_font(),

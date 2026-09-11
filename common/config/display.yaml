@@ -24,6 +24,23 @@ globals:
 
 esphome:
   on_boot:
+    - priority: -100
+      then:
+        - lambda: |-
+            clock_bar_enable_settings_access(id(network_status_button));
+            navigation_subpage_clock_bar_refresh() = []() {
+              navigation_refresh_subpage_label();
+              refresh_clock_bar_temperature_label_values(
+                  id(main_page)->obj,
+                  clock_bar_should_show(
+                      id(clock_bar_enabled).state,
+                      id(main_page)->obj,
+                      id(espcontrol_app).display().target_mode(),
+                      id(espcontrol_app).display().target_schedule_inactive()),
+                  id(indoor_temp_enable).state,
+                  id(outdoor_temp_enable).state,
+                  id(indoor_temp), id(outdoor_temp));
+            };
     # Apply restored clock-bar visibility before subpages copy main-page padding.
     - priority: -150
       then:
@@ -63,6 +80,13 @@ esphome:
             set_display_temperature_degree_symbol(id(temperature_degree_symbol_enabled).state);
         - script.execute: clock_bar_hide
         - script.execute: clock_bar_apply
+
+interval:
+  - interval: 500ms
+    then:
+      - lambda: |-
+          auto &refresh_clock_bar = navigation_subpage_clock_bar_refresh();
+          if (refresh_clock_bar) refresh_clock_bar();
 
 script:
   - id: clock_bar_hide

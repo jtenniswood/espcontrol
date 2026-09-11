@@ -414,6 +414,34 @@ def test_upgrades_do_not_reset_saved_panel_config() -> None:
         )
 
 
+def test_p4_crash_restart_preserves_safe_mode_counter() -> None:
+    slugs = (
+        "guition-esp32-p4-jc1060p470",
+        "guition-esp32-p4-jc1060p470-v2",
+        "guition-esp32-p4-jc4880p443",
+        "guition-esp32-p4-jc8012p4a1",
+        "guition-esp32-p4-jc8012p4a1-v2",
+    )
+    for slug in slugs:
+        path = ROOT / "devices" / slug / "device" / "device.yaml"
+        text = path.read_text(encoding="utf-8")
+        start = text.index("return esphome::esp32::crash_handler_has_data();")
+        end = text.find("    - priority:", start)
+        handler = text[start:end if end >= 0 else len(text)]
+        assert "esphome::esp32::crash_handler_clear();" in handler, (
+            f"{slug}: crash restart must clear the saved crash report"
+        )
+        assert "App.reboot();" in handler, (
+            f"{slug}: crash restart must bypass safe-shutdown counter clearing"
+        )
+        assert ".mark_successful();" not in handler, (
+            f"{slug}: crash restart must not reset the failed-boot counter"
+        )
+        assert "App.safe_reboot();" not in handler, (
+            f"{slug}: crash restart must preserve the failed-boot counter"
+        )
+
+
 def test_local_voice_generation_uses_capability() -> None:
     voice_device = {
         "slug": "semantic-voice-test",
@@ -675,7 +703,7 @@ def test_weather_card_visual_matches_preview() -> None:
         and "lv_obj_del(child);" in grid
         and "lv_obj_set_user_data(s.sensor_container, nullptr);" in grid
         and "lv_obj_clear_state(s.btn, LV_STATE_CHECKED);" in grid
-        and "lv_obj_clear_state(s.btn, LV_STATE_DISABLED);" in grid
+        and "set_card_disabled_state(s.btn, false);" in grid
         and "lv_obj_set_style_opa(s.btn, LV_OPA_COVER, LV_PART_MAIN);" in grid
         and "reset_card_slot_dynamic_children(s);" in setup_visual
     ), "weather cards must clear stale widget children, active states, and opacity before rendering"
@@ -921,6 +949,7 @@ def main() -> int:
     test_public_api_encryption_policy(profile_slugs)
     test_ota_preserves_deployed_partition_layouts()
     test_upgrades_do_not_reset_saved_panel_config()
+    test_p4_crash_restart_preserves_safe_mode_counter()
     test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
     test_rotation_refresh_rebuilds_subpages()

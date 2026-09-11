@@ -10,10 +10,10 @@
   },
   "summary": {
     "deviceProfiles": 7,
-    "cardTypes": 42,
-    "entityNames": 103,
+    "cardTypes": 43,
+    "entityNames": 101,
     "icons": 335,
-    "structuralIcons": 20,
+    "structuralIcons": 21,
     "compatibilityFixtureGroups": 2
   },
   "deviceProfiles": {
@@ -1493,7 +1493,8 @@
         "subpage",
         "weather",
         "image",
-        "wifi_qr"
+        "wifi_qr",
+        "timer"
       ],
       "capabilities": [
         "informationOnly",
@@ -1505,6 +1506,18 @@
         "subpage"
       ],
       "specs": {
+        "timer": {
+          "driver": "timer",
+          "capabilities": {
+            "informationOnly": false,
+            "subscriptions": true,
+            "actions": true,
+            "numericControl": false,
+            "modal": false,
+            "runtimeAllocation": true,
+            "subpage": true
+          }
+        },
         "": {
           "driver": "toggle",
           "capabilities": {
@@ -2043,6 +2056,25 @@
       "media_cover_art"
     ],
     "cards": {
+      "timer": {
+        "label": "Timer",
+        "allowInSubpage": true,
+        "domains": [
+          "timer"
+        ],
+        "options": [],
+        "default": {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "3",
+          "type": "timer",
+          "precision": "",
+          "options": ""
+        }
+      },
       "": {
         "label": "Switch",
         "allowInSubpage": true,
@@ -6120,6 +6152,7 @@
     },
     "retiredSubpageTypeCodes": [],
     "subpageTypeCodes": {
+      "timer": "TM",
       "action": "A",
       "calendar": "D",
       "clock": "CK",
@@ -7418,6 +7451,12 @@
         "codepoint": "F02ED",
         "mdi": "image-broken",
         "comment": "Image card unavailable state"
+      },
+      {
+        "name": "Memory",
+        "codepoint": "F035B",
+        "mdi": "memory",
+        "comment": "Build information card"
       }
     ],
     "icons": [

@@ -1074,7 +1074,7 @@ def firmware_media_modal_context_lifecycle_errors(root: Path) -> list[str]:
             "media_playback_detach_now_playing(ctx);",
             "delete_media_slider_context",
             "media_playback_detach_slider(ctx);",
-            "lv_timer_del(ctx->media_timer);",
+            "slider_detach_runtime(ctx);",
         )
         if any(requirement not in media_text for requirement in requirements):
             errors.append(
@@ -1960,7 +1960,7 @@ def run_self_test() -> int:
         "}\n"
         "inline void delete_media_slider_context(SliderCtx *ctx) {\n"
         "  media_playback_detach_slider(ctx);\n"
-        "  lv_timer_del(ctx->media_timer);\n"
+        "  slider_detach_runtime(ctx);\n"
         "}\n"
     )
     valid_media_grid_cleanup = "\n".join((

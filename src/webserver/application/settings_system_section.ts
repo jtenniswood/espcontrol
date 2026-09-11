@@ -20,6 +20,7 @@ import type { ControlsFieldsFeature } from "./controls_fields";
 import type { SettingsPageHelpersFeature } from "./settings_page_helpers";
 
 export interface SettingsSystemSectionActions {
+    buildIdentityCard?(): HTMLElement;
     exportBackup(): void;
     importBackup(): void;
 }
@@ -84,10 +85,6 @@ export function createSettingsSystemSectionFeature(
         importBtn.addEventListener("click", actions.importBackup);
         backupRow.appendChild(importBtn);
         backupBody.appendChild(backupRow);
-        var backupWarning: any = document.createElement("p");
-        backupWarning.className = "sp-setting-note";
-        backupWarning.textContent = "Backup files include any Wifi Sharing passwords. Keep exported files private.";
-        backupBody.appendChild(backupWarning);
         var backupCard: any = makeCollapsibleCard("Backup", backupBody, true);
         var fwBody: any = document.createElement("div");
         var fwOverview: any = document.createElement("div");
@@ -419,6 +416,7 @@ export function createSettingsSystemSectionFeature(
         haPortInput.disabled = !manualEndpoint;
         var homeAssistantSettingsCard: any = makeCollapsibleCard("Home Assistant Settings", homeAssistantSettingsBody, true);
         return {
+            identityCard: actions.buildIdentityCard?.(),
             backupCard: backupCard,
             firmwareCard: firmwareCard,
             homeAssistantSettingsCard: homeAssistantSettingsCard,

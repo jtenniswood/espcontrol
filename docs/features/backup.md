@@ -20,3 +20,19 @@ EspControl keeps old saved card strings readable during upgrades. That means car
 New backup exports continue to use `version: 2` with `format: "espcontrol.backup"`. The readable JSON file also includes a `native_config` section. It records the panel profile, document version, and an encoded copy of the configuration so a firmware version with the native configuration service can restore it exactly. Older panels continue to import the same file through the compatible JSON fields.
 
 When importing a backup from a different-sized panel, EspControl keeps the saved card order where it can and rearranges cards that no longer fit the target screen. Subpages are moved with their parent card when the parent card is kept.
+
+## Panel Names in Backups
+
+Custom-named panels include their name and device suffix in backup filenames,
+for example `espcontrol-4-inch-kitchen-b2c3-2026-09-11.json`.
+
+When importing a backup with panel naming metadata, **Also restore panel name**
+is off by default. Leave it off to keep the destination's name and address.
+Selecting it copies the name, generates an address using the destination panel's
+own suffix, and restarts after the configuration restores successfully. The
+source panel's hardware identity is never copied. Older backups keep the
+current panel name.
+
+If panel naming is unavailable, export still saves your configuration and warns
+that the name was omitted. Import still restores the configuration and keeps
+the destination panel name.

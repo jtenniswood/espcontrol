@@ -54,6 +54,20 @@ jobs:
         with:
           node-version: 24
 
+      - name: Prepare Python test environment
+        shell: bash
+        run: |
+          PYTHON_VENV="${RUNNER_TEMP}/espcontrol-release-python"
+          python3 -m venv "${PYTHON_VENV}"
+          "${PYTHON_VENV}/bin/python" -m pip install \
+            --disable-pip-version-check \
+            --no-cache-dir \
+            "PyYAML==6.0.2"
+          PYTHON_SITE_PACKAGES="$("${PYTHON_VENV}/bin/python" -c 'import site; print(site.getsitepackages()[0])')"
+          echo "PATH=${PYTHON_VENV}/bin:${PATH}" >> "${GITHUB_ENV}"
+          echo "PYTHONPATH=${PYTHON_SITE_PACKAGES}:${PYTHONPATH}" >> "${GITHUB_ENV}"
+          echo "${PYTHON_VENV}/bin" >> "${GITHUB_PATH}"
+
       - name: Ensure CMake is available
         shell: bash
         run: |
@@ -220,9 +234,17 @@ jobs:
           ESPHOME_IMAGE="ghcr.io/esphome/esphome:${ESPHOME_VERSION}"
           LOCK_FILE="/tmp/espcontrol-esphome-image.lock"
           if command -v flock >/dev/null 2>&1; then
-            flock "${LOCK_FILE}" ${DOCKER} pull "${ESPHOME_IMAGE}"
+            flock "${LOCK_FILE}" ${DOCKER} pull "${ESPHOME_IMAGE}" || {
+              echo "Initial ESPHome image pull failed; pruning stale Docker state and retrying."
+              ${DOCKER} system prune -af --volumes || true
+              flock "${LOCK_FILE}" ${DOCKER} pull "${ESPHOME_IMAGE}"
+            }
           else
-            ${DOCKER} pull "${ESPHOME_IMAGE}"
+            ${DOCKER} pull "${ESPHOME_IMAGE}" || {
+              echo "Initial ESPHome image pull failed; pruning stale Docker state and retrying."
+              ${DOCKER} system prune -af --volumes || true
+              ${DOCKER} pull "${ESPHOME_IMAGE}"
+            }
           fi
           echo "ESPHOME_IMAGE=${ESPHOME_IMAGE}" >> "$GITHUB_ENV"
 

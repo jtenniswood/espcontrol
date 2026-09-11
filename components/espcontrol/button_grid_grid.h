@@ -67,9 +67,10 @@ struct GridConfig {
 
 inline void grid_log_memory(const char *stage) {
 #ifdef ESP_PLATFORM
-  ESP_LOGI("sensors", "Phase 2 %s heap: internal=%u psram=%u",
+  ESP_LOGI("sensors", "Phase 2 %s heap: internal=%u largest=%u psram=%u",
     stage,
     (unsigned) heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+    (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
     (unsigned) heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
 #else
   (void) stage;
@@ -250,6 +251,8 @@ inline void apply_wide_large_date_time_card_layout(const BtnSlot &s,
   if (s.sensor_container) lv_obj_align(s.sensor_container, align, 0, 0);
 }
 
+inline void grid_prepare_timer_visual_reset(lv_obj_t *owner);
+#include "button_grid_timer_driver.h"
 #include "button_grid_date_time_driver.h"
 #include "button_grid_sensor_driver.h"
 #include "button_grid_weather_driver.h"
@@ -296,7 +299,7 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_state(s.btn, LV_STATE_CHECKED);
   sync_card_checked_text_color(s.btn);
-  lv_obj_clear_state(s.btn, LV_STATE_DISABLED);
+  set_card_disabled_state(s.btn, false);
   lv_obj_set_style_opa(s.btn, LV_OPA_COVER, LV_PART_MAIN);
   if (s.icon_lbl) lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   if (s.sensor_container) lv_obj_set_user_data(s.sensor_container, nullptr);
@@ -531,6 +534,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
                               int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   const auto family = context.family;
+  grid_prepare_timer_visual_reset(s.btn);
   espcontrol::cards::status_entity_driver_cleanup(s, p, context);
   espcontrol::cards::date_time_driver_cleanup(s, p, context);
   espcontrol::cards::sensor_driver_cleanup(s, p, context);
@@ -575,6 +579,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
 
   if (context.known) screen_lock_register_controlled_button(s.btn);
 
+  if (espcontrol::cards::timer_driver_setup_visual(s, p, context)) return;
   if (espcontrol::cards::image_driver_setup_visual(s, p, context)) {
     espcontrol::cards::image_driver_attach_interaction(s, p, context);
     espcontrol::cards::image_driver_refresh_layout(s, p, context);
@@ -911,6 +916,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
     lv_obj_set_width(s.text_lbl, lv_pct(100));
   }
   display_apply_main_width(s.icon_lbl, display);
+  control_modal_register_card_label(s);
   display_apply_slot_text_width(s, display);
   if (espcontrol::cards::navigation_driver_refresh_layout(
         s, p, context, cfg)) return;
@@ -1329,6 +1335,17 @@ inline void grid_delete_runtime_ptr(void *ptr) {
   delete static_cast<T *>(ptr);
 }
 
+inline void grid_prepare_timer_visual_reset(lv_obj_t *owner) {
+  for (const auto &allocation : grid_runtime_allocations()) {
+    if (allocation.owner == owner &&
+        allocation.deleter == grid_delete_runtime_ptr<TimerCardCtx>) {
+      auto *timer = static_cast<TimerCardCtx *>(allocation.ptr);
+      if (lv_obj_get_user_data(owner) == timer) lv_obj_set_user_data(owner, nullptr);
+      timer->detach();
+    }
+  }
+}
+
 inline void grid_delete_transient_status_label(TransientStatusLabel *ctx) {
   if (ctx != nullptr) {
     if (ctx->revert_timer != nullptr) {
@@ -1458,15 +1475,7 @@ inline void grid_prepare_media_runtime_for_visual_reset(lv_obj_t *owner) {
     } else if (allocation.deleter == grid_delete_media_slider_runtime_ptr) {
       SliderCtx *ctx = static_cast<SliderCtx *>(allocation.ptr);
       media_playback_detach_slider(ctx);
-      if (ctx->media_timer) {
-        lv_timer_del(ctx->media_timer);
-        ctx->media_timer = nullptr;
-      }
-      ctx->media_slider = nullptr;
-      ctx->fill = nullptr;
-      ctx->media_track_bg = nullptr;
-      ctx->media_value_lbl = nullptr;
-      ctx->media_status_lbl = nullptr;
+      slider_detach_runtime(ctx);
     }
   }
 }
@@ -1809,6 +1818,7 @@ inline void grid_phase2(
   set_switch_confirmation_message_font(display_switch_confirmation_message_font(display));
   set_switch_confirmation_icon_font(display_icon_font(display));
   set_wifi_qr_icon_font(display_icon_font(display));
+  network_status_card_icon_font() = display_icon_font(display);
   set_wifi_qr_heading_font(display_media_title_font(display));
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
@@ -1916,6 +1926,7 @@ inline void grid_phase2(
       palette, display, s, cfg);
     if (espcontrol::cards::media_driver_bind_main(
           s, p, context, media_environment)) continue;
+    if (espcontrol::cards::timer_driver_bind_data(s, p, context)) continue;
     if (bind_basic_sensor_card(s, p, context, palette, col_span)) continue;
     espcontrol::cards::ToggleDriverState toggle_state;
     toggle_state.has_sensor = &has_sensor[idx - 1];
@@ -2149,6 +2160,10 @@ inline void grid_phase2(
         [&](const std::string &entity_id) { add_parent_indicator(entity_id); };
       if (espcontrol::cards::media_driver_bind_subpage(
             sub_slot, sb_cfg, context, media_environment)) continue;
+      if (espcontrol::cards::timer_driver_bind_data(
+            sub_slot, sb_cfg, context, [&](const std::string &entity_id) {
+              add_parent_indicator(entity_id, timer_card_state_active_ref);
+            })) continue;
       if (bind_basic_sensor_card(sub_slot, sb_cfg, context, palette, cs)) continue;
       espcontrol::cards::BasicActionSubpageEnvironment action_environment;
       action_environment.grid_config = &cfg;
@@ -2227,6 +2242,7 @@ inline void grid_phase2(
     refresh_image_cards();
   }
   refresh_weather_forecast_cards();
+  ha_log_subscription_diagnostics("grid-complete");
   grid_log_memory("end");
   ESP_LOGI("sensors", "Phase 2: done (%lu ms)", esphome::millis());
 }

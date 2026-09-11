@@ -109,6 +109,8 @@ packages:
 
 After saving, validate the device and install the firmware again. The next time you open the display address in a browser, it will ask for the username and password. EspControl uses Digest authentication so the password is not sent directly across your network.
 
+Safari may ask for the password repeatedly when loading card statistics or saving settings. Each protected request requires Digest authentication; the display does not use login cookies over its unencrypted HTTP connection.
+
 If the username or password substitution is missing, ESPHome validation will fail instead of building firmware with placeholder credentials.
 
 Use a different password for each display. For example, one display can point the substitutions at hallway secrets and another can point them at office secrets:

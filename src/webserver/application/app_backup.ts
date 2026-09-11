@@ -1,3 +1,5 @@
+import type { PanelIdentityBackup } from "../model/panel_identity";
+import type { PanelIdentityFeature } from "./panel_identity";
 import { state } from "../state/app_instance";
 import * as EspControlModel from "../model";
 import {
@@ -56,6 +58,7 @@ import { legacyRestoreFailureMessage, restoreLegacyLayoutDocument } from "../fea
 import { panelConfigDocumentContainsWifiSharing } from "../features/wifi_sharing_config";
 
 export interface AppBackupControllers {
+    readonly identity?: PanelIdentityFeature;
     readonly layout: ApplicationLayoutState;
     readonly backupExport: BackupExportController;
     readonly backupImport: BackupImportController<any, any, any>;
@@ -74,7 +77,7 @@ export interface AppBackupControllers {
     readonly firmwareUpdate: FirmwareUpdateFeature;
     readonly clockBar: ClockBarFeature;
     readonly entityState: Pick<EntityStateFeature, "entityName" | "entityNameForSlot">;
-    readonly shell: Pick<ControlsShellFeature, "switchTab">;
+    readonly shell: Pick<ControlsShellFeature, "switchTab"> & Partial<Pick<ControlsShellFeature, "showBanner">>;
     readonly requestApi: ApplicationApiFeature;
     readonly statusPreview: Pick<AppStatusPreviewFeature, "syncInput" | "updateTempPreview">;
     readonly grid: Pick<GridFeature, "applyImportedButtonOrder" | "cancelMainGridSave" | "serializeGrid">;
@@ -200,7 +203,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
         return backupExportController.fileDate(value);
     }
     function backupExportFileName(this: any, value?: any) {
-        return backupExportController.fileName(controllers.layout.config.screenSize, value);
+        return backupExportController.fileName(controllers.layout.config.screenSize, value, controllers.identity?.backup());
     }
     function normalizeImportedPanelSettings(this: any, settings?: any) {
         return controllers.normalizeImportedPanelSettings(settings);
@@ -211,8 +214,9 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
     var backupImportController: BackupImportController<any, any, any> = controllers.backupImport;
     var backupRestoreController: BackupRestoreController<any, any> = controllers.backupRestore;
     var backupFileController: BackupFileController = controllers.backupFile;
-    function downloadBackupConfig(this: any, data?: any) {
-        backupFileController.download(data, backupExportFileName());
+    function downloadBackupConfig(this: any, data: any, identity?: PanelIdentityBackup) {
+        if (identity) data.identity = identity;
+        backupFileController.download(data, backupExportController.fileName(controllers.layout.config.screenSize, undefined, identity));
     }
     function addNativeConfigToBackup(this: any, data?: any) {
         return backupExportController.addNativeConfig(data, {
@@ -223,7 +227,13 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
             "buttonOnColor": data.button_on_color,
         });
     }
-    function exportConfig(this: any) {
+    async function exportConfig(this: any) {
+        let identity: PanelIdentityBackup | undefined;
+        let identityUnavailable = false;
+        try {
+            await controllers.identity?.load();
+            identity = controllers.identity?.backup();
+        } catch { identityUnavailable = true; }
         var data: any = createBackupConfig({
             device: controllers.layout.deviceId,
             slots: controllers.layout.numSlots,
@@ -314,10 +324,17 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 schedule_clock_text_color: normalizeHexColor(state.scheduleClockTextColor, "FFFFFF"),
             },
         } as any);
-        downloadBackupConfig(addNativeConfigToBackup(data));
+        downloadBackupConfig(addNativeConfigToBackup(data), identity);
+        if (identityUnavailable) controllers.shell.showBanner?.(
+            "Backup exported without the panel name because naming is unavailable.", "warning");
     }
     function importConfig(this: any) {
         backupFileController.import(function (data: any) {
+            void (async () => {
+                // Validate the complete backup before offering identity changes.
+                backupImportController.plan(data, { device: controllers.layout.deviceId, slots: controllers.layout.numSlots });
+                const restoredName = await controllers.identity?.chooseRestoreName(data);
+                if (restoredName === null) return;
                 async function applyBackupRestorePlan(this: any, plannedImport: any) {
                 var importedSettings: any = plannedImport.importedSettings;
                 var importedGridCols: any = plannedImport.importedGridCols;
@@ -691,12 +708,24 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 renderPreview();
                 renderButtonSettings();
                 switchTab("screen");
+                await requestApi.postQueue;
+                if (typeof restoredName === "string" && !requestApi.postQueueError) {
+                    try { await controllers.identity?.saveAndRestart(restoredName); }
+                    catch (error) {
+                        throw Object.assign(new Error("Configuration restored, but panel naming or restart failed: " + (error as Error).message), {
+                            backupMessage: "Configuration restored, but panel naming or restart failed: " + (error as Error).message,
+                        });
+                    }
+                }
                 return layoutRestoreResult;
                 }
                 backupRestoreController.restore(data, {
                     device: controllers.layout.deviceId,
                     slots: controllers.layout.numSlots,
                 }, applyBackupRestorePlan);
+            })().catch((error) => {
+                controllers.shell.showBanner?.((error as Error).message || "Could not restore backup", "error");
+            });
         });
     }
     return {
