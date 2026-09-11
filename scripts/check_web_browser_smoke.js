@@ -5681,9 +5681,9 @@ async function assertResetControls(browser) {
       if (mode === "unsupported") { assert(!(await card.isVisible())); continue; }
       await card.waitFor({ state: "visible" });
       await card.locator(".card-header").click();
-      assert(await card.getByRole("button", { name: "Export backup", exact: true }).isVisible());
+      assert(await card.getByRole("button", { name: "Save backup", exact: true }).isVisible());
       const download = page.waitForEvent("download");
-      await card.getByRole("button", { name: "Export backup", exact: true }).click();
+      await card.getByRole("button", { name: "Save backup", exact: true }).click();
       await download;
       const label = mode === "factory" ? "Complete reset" : "Partial reset";
       page.once("dialog", dialog => mode === "factory" ? dialog.accept("wrong") : dialog.dismiss());

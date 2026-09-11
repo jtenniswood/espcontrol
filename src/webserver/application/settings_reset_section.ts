@@ -4,13 +4,13 @@ export function buildResetSettings(exportBackup: () => void, makeCard: (title: s
   const body = document.createElement("div");
   const card = makeCard("Factory Reset", body, true);
   card.hidden = true;
-  const banner = infoPanel("sp-reset-backup-info", "Back up your customization before resetting. Backups don’t restore device connection credentials. Firmware and built-in defaults are kept.");
+  const banner = infoPanel("sp-reset-backup-info", "Remember to backup your configuration before resetting your device");
   banner.classList.add("sp-reset-backup-info");
   const note = banner.lastElementChild as HTMLElement;
   const backup = document.createElement("button");
   backup.type = "button";
-  backup.className = "sp-backup-btn";
-  backup.textContent = "Export backup";
+  backup.className = "sp-action-btn sp-save-btn";
+  backup.textContent = "Save backup";
   backup.onclick = exportBackup;
   banner.append(backup);
   body.append(banner);

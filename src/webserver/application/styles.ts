@@ -466,9 +466,9 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-info-panel a{color:var(--accent);font-weight:600;text-decoration:none}" +
         ".sp-info-panel a:hover{text-decoration:underline}" +
         ".sp-reset-backup-info{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center}" +
-        ".sp-reset-backup-info .sp-backup-btn{white-space:nowrap}" +
+        ".sp-reset-backup-info .sp-action-btn{white-space:nowrap}" +
         "@media(max-width:480px){.sp-reset-backup-info{grid-template-columns:auto minmax(0,1fr)}" +
-        ".sp-reset-backup-info .sp-backup-btn{grid-column:2;justify-self:end}}" +
+        ".sp-reset-backup-info .sp-action-btn{grid-column:2;justify-self:end}}" +
         ".sp-reset-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gap)}" +
         ".sp-reset-option{display:flex;flex-direction:column;gap:12px;min-width:0;margin:0;padding:20px;background:var(--bg)}" +
         ".sp-reset-option h4{margin:0;color:var(--text);font-size:.95rem;font-weight:600}" +
