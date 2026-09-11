@@ -120,6 +120,7 @@ void installations_and_resets_are_exclusive() {
   for (bool coprocessor : {false, true}) {
     MemoryStorage storage; Journal journal; OperationInterlock gate;
     assert(gate.begin_installation(coprocessor));
+    assert(!gate.begin_installation(!coprocessor));
     assert(gate.record(storage, journal, Mode::FACTORY) == Result::CONFLICT);
     assert(!journal.pending() && !gate.pending());
     if (coprocessor) gate.set_coprocessor_busy(false);

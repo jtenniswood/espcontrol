@@ -20,7 +20,7 @@ class OperationInterlock {
   }
   bool begin_installation(bool coprocessor) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (pending_ || (coprocessor ? coprocessor_busy_.load() : native_reserved_.load())) return false;
+    if (pending_ || native_reserved_.load() || coprocessor_busy_.load()) return false;
     (coprocessor ? coprocessor_busy_ : native_reserved_).store(true);
     return true;
   }
