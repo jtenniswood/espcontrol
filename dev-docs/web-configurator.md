@@ -96,7 +96,10 @@ Standard ESPHome control routes (such as `/light/.../turn_on` and
 epoch. Configuration routes, including text, number, select and switch
 settings, still require it. Switches marked as configuration or diagnostic
 entities remain protected; unknown switch routes are not exempt. A supplied stale epoch is rejected on every route,
-and all mutations are blocked while reset is pending.
+and all mutations are blocked while reset is pending. OTA transport status is
+tracked per source, and the active native flash handle stays reserved until
+ESP-IDF ends or aborts it. A rejected or failed overlapping OTA attempt cannot
+release another writer's reset protection.
 
 Both reset modes clear the saved panel name, including legacy NVS identity
 records, before panel identity loads. Firmware-default names remain.

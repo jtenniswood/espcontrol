@@ -107,8 +107,8 @@ class NvsStorage final : public Storage {
 } storage;
 class OtaListener : public esphome::ota::OTAGlobalStateListener {
  public:
-  void on_ota_global_state(esphome::ota::OTAState state, float, uint8_t, esphome::ota::OTAComponent *) override {
-    set_update_busy(state != esphome::ota::OTA_ERROR && state != esphome::ota::OTA_ABORT);
+  void on_ota_global_state(esphome::ota::OTAState state, float, uint8_t, esphome::ota::OTAComponent *source) override {
+    interlock.set_ota_source_busy(source, state != esphome::ota::OTA_ERROR && state != esphome::ota::OTA_ABORT);
   }
 } ota_listener;
 void respond(httpd_req_t *raw, const char *status, const char *body) {
@@ -201,7 +201,6 @@ class ResetHandler : public esphome::web_server_idf::AsyncWebHandler {
 uint32_t epoch() { return current_epoch.load(); }
 bool pending() { return interlock.pending(); }
 bool ready() { return initialized.load(); }
-void set_update_busy(bool busy) { interlock.set_ota_busy(busy); }
 bool update_busy() { return interlock.busy(); }
 void watch_update(esphome::update::UpdateEntity *entity) {
 #ifdef USE_UPDATE
@@ -239,7 +238,21 @@ extern "C" esp_err_t __wrap_esp_ota_begin(const esp_partition_t *partition, size
   auto &gate = espcontrol::reset::interlock;
   if (!gate.begin_installation(false)) return ESP_ERR_INVALID_STATE;
   const auto result = __real_esp_ota_begin(partition, size, handle);
-  if (result != ESP_OK) gate.set_ota_busy(false);
+  gate.finish_begin(false, result == ESP_OK, result == ESP_OK ? *handle : 0);
+  return result;
+}
+// ESP-IDF end consumes a valid handle even when validation fails. Abort only
+// releases one on success. Unknown/stale handles cannot release another writer.
+extern "C" esp_err_t __real_esp_ota_end(esp_ota_handle_t);
+extern "C" esp_err_t __wrap_esp_ota_end(esp_ota_handle_t handle) {
+  const auto result = __real_esp_ota_end(handle);
+  if (result != ESP_ERR_NOT_FOUND) espcontrol::reset::interlock.finish_native_installation(handle);
+  return result;
+}
+extern "C" esp_err_t __real_esp_ota_abort(esp_ota_handle_t);
+extern "C" esp_err_t __wrap_esp_ota_abort(esp_ota_handle_t handle) {
+  const auto result = __real_esp_ota_abort(handle);
+  if (result == ESP_OK) espcontrol::reset::interlock.finish_native_installation(handle);
   return result;
 }
 #ifdef USE_ESP32_HOSTED
@@ -248,7 +261,7 @@ extern "C" esp_err_t __wrap_esp_hosted_slave_ota_begin() {
   auto &gate = espcontrol::reset::interlock;
   if (!gate.begin_installation(true)) return ESP_ERR_INVALID_STATE;
   const auto result = __real_esp_hosted_slave_ota_begin();
-  if (result != ESP_OK) gate.set_coprocessor_busy(false);
+  gate.finish_begin(true, result == ESP_OK);
   return result;
 }
 #endif

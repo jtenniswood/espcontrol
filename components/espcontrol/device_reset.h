@@ -13,6 +13,5 @@ bool pending();
 bool ready();
 void register_handlers(esphome::web_server_idf::AsyncWebServer &server);
 void watch_update(esphome::update::UpdateEntity *entity);
-void set_update_busy(bool busy);
 bool update_busy();
 }  // namespace espcontrol::reset

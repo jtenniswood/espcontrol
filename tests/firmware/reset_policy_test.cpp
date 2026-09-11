@@ -73,13 +73,57 @@ void interrupted_resets_resume(Mode mode) {
     }
   }
 }
+void overlapping_ota_preserves_the_active_writer() {
+  for (int attempt = 0; attempt < 20; ++attempt) {
+    OperationInterlock racing_gate;
+    std::promise<void> start;
+    auto ready = start.get_future().share();
+    auto begin = [&] { ready.wait(); return racing_gate.begin_installation(false); };
+    auto first = std::async(std::launch::async, begin);
+    auto second = std::async(std::launch::async, begin);
+    start.set_value();
+    assert(first.get() != second.get());
+  }
+  int native_source = 0, web_source = 0;
+  MemoryStorage storage; Journal journal; OperationInterlock gate;
+  gate.set_ota_source_busy(&native_source, true);  // STARTED can precede begin.
+  assert(gate.begin_installation(false));
+  gate.set_ota_source_busy(&web_source, true);
+  assert(!gate.begin_installation(false));  // Cannot call/release the real begin.
+  gate.set_ota_source_busy(&web_source, false);
+  assert(gate.record(storage, journal, Mode::FACTORY) == Result::CONFLICT);
+  gate.finish_begin(false, true, 42);
+  gate.finish_native_installation(0);  // Failed backend's harmless abort(0).
+  assert(gate.record(storage, journal, Mode::FACTORY) == Result::CONFLICT);
+  gate.set_ota_source_busy(&native_source, false);  // Delayed/error notification.
+  assert(gate.record(storage, journal, Mode::FACTORY) == Result::CONFLICT);
+  gate.finish_native_installation(42);
+  assert(!gate.busy());
+
+  // Each source owns its status, including after the flash handle is closed.
+  gate.set_ota_source_busy(&native_source, true);
+  gate.set_ota_source_busy(&web_source, true);
+  gate.set_ota_source_busy(&web_source, false);
+  assert(gate.busy());
+  gate.set_ota_source_busy(&native_source, false);
+  assert(!gate.busy());
+  assert(gate.begin_installation(false));
+  gate.finish_begin(false, false);  // A failed first begin releases its claim.
+  assert(!gate.busy());
+  assert(gate.begin_installation(true));
+  assert(!gate.begin_installation(true));
+  gate.finish_begin(true, false);
+  assert(!gate.busy());
+  assert(gate.record(storage, journal, Mode::FACTORY) == Result::ACCEPTED);
+}
 void installations_and_resets_are_exclusive() {
   for (bool coprocessor : {false, true}) {
     MemoryStorage storage; Journal journal; OperationInterlock gate;
     assert(gate.begin_installation(coprocessor));
     assert(gate.record(storage, journal, Mode::FACTORY) == Result::CONFLICT);
     assert(!journal.pending() && !gate.pending());
-    if (coprocessor) gate.set_coprocessor_busy(false); else gate.set_ota_busy(false);
+    if (coprocessor) gate.set_coprocessor_busy(false);
+    else { gate.finish_begin(false, true, 42); gate.finish_native_installation(42); }
     assert(gate.record(storage, journal, Mode::FACTORY) == Result::ACCEPTED);
     assert(!gate.begin_installation(false) && !gate.begin_installation(true));
     assert(gate.record(storage, journal, Mode::FACTORY) == Result::ACCEPTED);
@@ -114,6 +158,7 @@ void installations_and_resets_are_exclusive() {
   assert(resetting.get() == Result::ACCEPTED && !installing.get());
 }
 int main() {
+  overlapping_ota_preserves_the_active_writer();
   installations_and_resets_are_exclusive();
   interrupted_resets_resume(Mode::CUSTOMIZATION);
   interrupted_resets_resume(Mode::FACTORY);
