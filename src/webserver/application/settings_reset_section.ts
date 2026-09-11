@@ -1,19 +1,19 @@
 import { resetSession, type ResetMode } from "../api/reset_session";
 
-export function buildResetSettings(exportBackup: () => void, makeCard: (title: string, body: HTMLElement, collapsed: boolean) => HTMLElement): HTMLElement {
+export function buildResetSettings(exportBackup: () => void, makeCard: (title: string, body: HTMLElement, collapsed: boolean) => HTMLElement, infoPanel: (id: string, text: string) => HTMLElement): HTMLElement {
   const body = document.createElement("div");
   const card = makeCard("Reset", body, true);
   card.hidden = true;
-  const note = document.createElement("p");
-  note.className = "sp-setting-note";
-  note.textContent = "Save a backup first if you want to restore your customization later. Backups do not restore the display's Wi-Fi login or Home Assistant encryption key. Both options keep the installed firmware and any defaults compiled into it.";
-  body.append(note);
+  const banner = infoPanel("sp-reset-backup-info", "Back up your customization before resetting. Backups don’t restore device connection credentials. Firmware and built-in defaults are kept.");
+  banner.classList.add("sp-reset-backup-info");
+  const note = banner.lastElementChild as HTMLElement;
   const backup = document.createElement("button");
   backup.type = "button";
   backup.className = "sp-backup-btn";
   backup.textContent = "Export backup";
   backup.onclick = exportBackup;
-  body.append(backup);
+  banner.append(backup);
+  body.append(banner);
   const session = resetSession();
   function addAction(mode: ResetMode, label: string, description: string): void {
     const row = document.createElement("div");

@@ -465,6 +465,10 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-info-panel .mdi{font-size:18px;color:var(--accent);line-height:1.1;flex:0 0 auto;margin-top:1px}" +
         ".sp-info-panel a{color:var(--accent);font-weight:600;text-decoration:none}" +
         ".sp-info-panel a:hover{text-decoration:underline}" +
+        ".sp-reset-backup-info{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center}" +
+        ".sp-reset-backup-info .sp-backup-btn{white-space:nowrap}" +
+        "@media(max-width:480px){.sp-reset-backup-info{grid-template-columns:auto minmax(0,1fr)}" +
+        ".sp-reset-backup-info .sp-backup-btn{grid-column:2;justify-self:end}}" +
         ".sp-range-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}" +
         ".sp-range-row:last-child{margin-bottom:0}" +
         ".sp-range{flex:1;height:4px;-webkit-appearance:none;appearance:none;background:var(--surface2);" +
