@@ -21,6 +21,7 @@ import type { ControlsFieldsFeature } from "./controls_fields";
 import type { SettingsPageHelpersFeature } from "./settings_page_helpers";
 
 export interface SettingsSystemSectionActions {
+    buildIdentityCard?(): HTMLElement;
     exportBackup(): void;
     importBackup(): void;
 }
@@ -416,6 +417,7 @@ export function createSettingsSystemSectionFeature(
         haPortInput.disabled = !manualEndpoint;
         var homeAssistantSettingsCard: any = makeCollapsibleCard("Home Assistant Settings", homeAssistantSettingsBody, true);
         return {
+            identityCard: actions.buildIdentityCard?.(),
             backupCard: backupCard,
             resetCard: buildResetSettings(actions.exportBackup, makeCollapsibleCard, infoPanel),
             firmwareCard: firmwareCard,

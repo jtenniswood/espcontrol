@@ -1,7 +1,7 @@
 """ESPHome external component stub for espcontrol.
 
-Registers the central EspControlApp component and this directory as an include
-path so public C++ compatibility headers remain available to device YAML.
+Registers the early panel identity component, central EspControlApp component,
+and include path for compatibility headers used by device YAML.
 EspControlApp owns long-lived firmware services while YAML continues to supply
 device-specific wiring.
 """
@@ -30,6 +30,7 @@ CONF_WEB_AUTH_PASSWORD = "web_auth_password"
 
 espcontrol_ns = cg.global_ns.namespace("espcontrol")
 EspControlApp = espcontrol_ns.class_("EspControlApp", cg.Component)
+PanelIdentity = espcontrol_ns.class_("PanelIdentity", cg.Component)
 
 PANEL_CONFIG_BUTTON_SCHEMA = cv.Schema(
     {
@@ -57,6 +58,7 @@ PANEL_CONFIG_SCHEMA = cv.Schema(
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(CONF_ID): cv.declare_id(EspControlApp),
+        cv.GenerateID("identity_id"): cv.declare_id(PanelIdentity),
         cv.Optional(CONF_ACTION_RESPONSES, default=True): cv.boolean,
         cv.Optional(CONF_PANEL_CONFIG): PANEL_CONFIG_SCHEMA,
         cv.Optional(CONF_WEB_AUTH_USERNAME, default=""): cv.string_strict,
@@ -83,6 +85,9 @@ async def to_code(config):
     password = web_auth.get("password", config[CONF_WEB_AUTH_PASSWORD])
     cg.add(espcontrol_ns.namespace("reset").early_startup(
         compiled_networks, username, password))
+    identity = cg.new_Pvariable(config["identity_id"])
+    await cg.register_component(identity, config)
+    cg.add(identity.set_web_auth_credentials(username, password))
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     cg.add(var.set_web_auth_credentials(username, password))

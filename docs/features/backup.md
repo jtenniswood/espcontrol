@@ -35,3 +35,19 @@ Export a backup first if you want to restore your customization later. Backups d
 The Reset section appears only on firmware that supports it. After reset, reload any other open setup pages before editing. A reset interrupted by power loss resumes at startup. If storage cleanup fails, startup remains paused and the serial log reports `Reset recovery`; cleanup retries every ten seconds. Do not restore a backup until reset has completed.
 
 Reset clears operational configuration; it is not a forensic secure-erasure feature.
+
+## Panel Names in Backups
+
+Custom-named panels include their name and device suffix in backup filenames,
+for example `espcontrol-4-inch-kitchen-b2c3-2026-09-11.json`.
+
+When importing a backup with panel naming metadata, **Also restore panel name**
+is off by default. Leave it off to keep the destination's name and address.
+Selecting it copies the name, generates an address using the destination panel's
+own suffix, and restarts after the configuration restores successfully. The
+source panel's hardware identity is never copied. Older backups keep the
+current panel name.
+
+If panel naming is unavailable, export still saves your configuration and warns
+that the name was omitted. Import still restores the configuration and keeps
+the destination panel name.

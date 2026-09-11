@@ -1,3 +1,4 @@
+import { readIdentityBackup, type PanelIdentityBackup } from "./panel_identity";
 import type { CardConfig } from "../contracts/types";
 import { cloneCardConfig, emptyCardConfig } from "./card";
 import {
@@ -31,6 +32,7 @@ export interface BackupEnvelopeOutputs {
 }
 
 export interface NormalizedBackupEnvelope {
+  identity?: PanelIdentityBackup;
   version: number;
   format: string;
   device: string;
@@ -48,6 +50,7 @@ export interface NormalizedBackupEnvelope {
 }
 
 export interface BackupSnapshotEnvelope {
+  identity?: PanelIdentityBackup;
   device?: string;
   slots?: unknown;
   exported_at?: string;
@@ -151,7 +154,9 @@ export function createBackupEnvelope(
   const nativeConfig = snapshot.native_config
     ? normalizeNativeBackup(snapshot.native_config)
     : undefined;
+  const identity = readIdentityBackup(snapshot.identity);
   return {
+    ...(identity ? { identity } : {}),
     version: BACKUP_CONFIG_VERSION,
     format: BACKUP_FORMAT,
     device,
@@ -183,7 +188,9 @@ export function normalizeBackupEnvelope(
   const skippedNativeProfile = nativeConfig
     ? undefined
     : skippedNativeDeviceProfile(data.native_config);
+  const identity = readIdentityBackup(data.identity);
   return {
+    ...(identity ? { identity } : {}),
     version: BACKUP_CONFIG_VERSION,
     format: BACKUP_FORMAT,
     device: String(data.device || ""),

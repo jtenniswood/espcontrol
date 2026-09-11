@@ -1,4 +1,5 @@
 #include "panel_config_espidf_storage.h"
+#include "panel_flash_layout.h"
 
 #include <algorithm>
 #include <cstring>
@@ -37,7 +38,7 @@ bool EspIdfPanelConfigBlobStorage::begin_card_images_partition(
   if (partition == nullptr) return false;
 
   partition_slot_capacity_ = slot_capacity;
-  if (partition_slot_stride() > partition->size / 2) {
+  if (partition_slot_stride() > panel_config_partition_bytes(partition->size) / 2) {
     partition_slot_capacity_ = 0;
     return false;
   }
