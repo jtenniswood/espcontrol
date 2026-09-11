@@ -229,6 +229,7 @@ struct MediaVolumeModalUi {
   lv_obj_t *mic_lbl = nullptr;
   MediaVolumeCtx *active = nullptr;
   std::string previous_clock_bar_title;
+  bool previous_clock_bar_left_hidden = false;
   bool updating_arc = false;
 };
 
@@ -3564,6 +3565,10 @@ inline void media_volume_hide_modal() {
     if (!ui.previous_clock_bar_title.empty()) {
       clock_bar_restore_subpage_label(ui.previous_clock_bar_title);
     }
+    auto &labels = clock_bar_temperature_labels();
+    if (!labels.empty()) {
+      clock_bar_set_widget_hidden(labels[0], ui.previous_clock_bar_left_hidden);
+    }
   }
   control_modal_delete_overlay(ControlModalKind::MEDIA_VOLUME, ui.overlay);
   ui = MediaVolumeModalUi();
@@ -3689,6 +3694,9 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   ui.back_btn = shell.close_btn;
   if (!ctx->clock_bar_title.empty()) {
     ui.previous_clock_bar_title = clock_bar_subpage_label();
+    const auto &labels = clock_bar_temperature_labels();
+    ui.previous_clock_bar_left_hidden = !labels.empty() && labels[0] &&
+        lv_obj_has_flag(labels[0], LV_OBJ_FLAG_HIDDEN);
     set_clock_bar_subpage_label(ctx->clock_bar_title);
   }
   lv_obj_t *back_label = lv_obj_get_child(ui.back_btn, 0);
