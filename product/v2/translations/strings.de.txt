@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vacationhold
 vacuum=Staubsauger
 version_unknown=Version unbekannt
+voice=Sprache
 volume=Lautstärke
 waiting_for_home_assistant=Warten auf Home Assistant
 home_assistant_connection_lost=Verbindung mit \nHome Assistant wird hergestellt

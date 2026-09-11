@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vacationhold
 vacuum=Aspirador
 version_unknown=Versão desconhecida
+voice=Voz
 volume=Volume
 waiting_for_home_assistant=À espera do Home Assistant
 home_assistant_connection_lost=A ligar ao \nHome Assistant

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "button_grid_slider_geometry.h"
+#include "clock_bar.h"
 #include "media_volume_capability.h"
 #include "number_slider_policy.h"
 
@@ -186,6 +187,7 @@ constexpr int MEDIA_VOLUME_MIC_ICON_ZOOM = 210;
 struct MediaVolumeCtx {
   std::string entity_id;
   std::string label;
+  std::string clock_bar_title;
   int current_pct = 0;
   int max_pct = 100;
   int pending_pct = -1;
@@ -226,6 +228,7 @@ struct MediaVolumeModalUi {
   lv_obj_t *mic_btn = nullptr;
   lv_obj_t *mic_lbl = nullptr;
   MediaVolumeCtx *active = nullptr;
+  std::string previous_clock_bar_title;
   bool updating_arc = false;
 };
 
@@ -3556,6 +3559,12 @@ inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
 
 inline void media_volume_hide_modal() {
   MediaVolumeModalUi &ui = media_volume_modal_ui();
+  if (ui.overlay && ui.active && !ui.active->clock_bar_title.empty()) {
+    set_clock_bar_subpage_label("");
+    if (!ui.previous_clock_bar_title.empty()) {
+      clock_bar_restore_subpage_label(ui.previous_clock_bar_title);
+    }
+  }
   control_modal_delete_overlay(ControlModalKind::MEDIA_VOLUME, ui.overlay);
   ui = MediaVolumeModalUi();
 }
@@ -3678,6 +3687,10 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;
   ui.back_btn = shell.close_btn;
+  if (!ctx->clock_bar_title.empty()) {
+    ui.previous_clock_bar_title = clock_bar_subpage_label();
+    set_clock_bar_subpage_label(ctx->clock_bar_title);
+  }
   lv_obj_t *back_label = lv_obj_get_child(ui.back_btn, 0);
   if (back_label) lv_obj_set_style_text_color(back_label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
 

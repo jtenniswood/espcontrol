@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vacationhold
 vacuum=Dammsugare
 version_unknown=Version okänd
+voice=Röst
 volume=Volym
 waiting_for_home_assistant=Väntar på Home Assistant
 home_assistant_connection_lost=Ansluter till \nHome Assistant

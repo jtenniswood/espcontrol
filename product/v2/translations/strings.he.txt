@@ -187,6 +187,7 @@ vacation=חופשה
 vacationhold=החזקת חופשה
 vacuum=שואב אבק
 version_unknown=גרסה לא ידועה
+voice=קול
 volume=עוצמה
 waiting_for_home_assistant=ממתין ל-Home Assistant
 home_assistant_connection_lost=מתחבר אל\nHome Assistant

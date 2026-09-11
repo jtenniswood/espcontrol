@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Утримання на відпустку
 vacuum=Пилосос
 version_unknown=Версія невідома
+voice=Голос
 volume=Гучність
 waiting_for_home_assistant=Очікування Home Assistant
 home_assistant_connection_lost=Підключення до \nHome Assistant
