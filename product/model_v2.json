@@ -86,7 +86,8 @@
       "wifi_qr": "product/v2/cards/wifi_qr.json",
       "wifi_qr_card": "product/v2/cards/wifi_qr_card.json",
       "webhook": "product/v2/cards/webhook.json",
-      "": "product/v2/cards/default_switch.json"
+      "": "product/v2/cards/default_switch.json",
+      "timer": "product/v2/cards/timer.json"
     },
     "devices": {
       "guition-esp32-p4-jc8012p4a1": "product/v2/devices/guition-esp32-p4-jc8012p4a1.json",

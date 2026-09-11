@@ -251,3 +251,6 @@ settings=Instellingen
 brightness=Helderheid
 daytime=Overdag
 nighttime=Nacht
+
+timer=Timer
+timer_confirm=Bevestigen?

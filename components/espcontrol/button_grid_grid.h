@@ -250,6 +250,7 @@ inline void apply_wide_large_date_time_card_layout(const BtnSlot &s,
   if (s.sensor_container) lv_obj_align(s.sensor_container, align, 0, 0);
 }
 
+#include "button_grid_timer_driver.h"
 #include "button_grid_date_time_driver.h"
 #include "button_grid_sensor_driver.h"
 #include "button_grid_weather_driver.h"
@@ -574,6 +575,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
 
   if (context.known) screen_lock_register_controlled_button(s.btn);
 
+  if (espcontrol::cards::timer_driver_setup_visual(s, p, context)) return;
   if (espcontrol::cards::image_driver_setup_visual(s, p, context)) {
     espcontrol::cards::image_driver_attach_interaction(s, p, context);
     espcontrol::cards::image_driver_refresh_layout(s, p, context);
@@ -1909,6 +1911,7 @@ inline void grid_phase2(
       palette, display, s, cfg);
     if (espcontrol::cards::media_driver_bind_main(
           s, p, context, media_environment)) continue;
+    if (espcontrol::cards::timer_driver_bind_data(s, p, context)) continue;
     if (bind_basic_sensor_card(s, p, context, palette, col_span)) continue;
     espcontrol::cards::ToggleDriverState toggle_state;
     toggle_state.has_sensor = &has_sensor[idx - 1];
@@ -2141,6 +2144,7 @@ inline void grid_phase2(
         [&](const std::string &entity_id) { add_parent_indicator(entity_id); };
       if (espcontrol::cards::media_driver_bind_subpage(
             sub_slot, sb_cfg, context, media_environment)) continue;
+      if (espcontrol::cards::timer_driver_bind_data(sub_slot, sb_cfg, context)) continue;
       if (bind_basic_sensor_card(sub_slot, sb_cfg, context, palette, cs)) continue;
       espcontrol::cards::BasicActionSubpageEnvironment action_environment;
       action_environment.grid_config = &cfg;

@@ -251,3 +251,6 @@ settings=הגדרות
 brightness=בהירות
 daytime=יום
 nighttime=לילה
+
+timer=טיימר
+timer_confirm=לאשר?

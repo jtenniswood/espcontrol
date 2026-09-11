@@ -251,3 +251,6 @@ settings=Innstillinger
 brightness=Lysstyrke
 daytime=Dagtid
 nighttime=Nattetid
+
+timer=Tidtaker
+timer_confirm=Bekreft?

@@ -251,3 +251,6 @@ settings=Inställningar
 brightness=Ljusstyrka
 daytime=Dagtid
 nighttime=Nattetid
+
+timer=Timer
+timer_confirm=Bekräfta?

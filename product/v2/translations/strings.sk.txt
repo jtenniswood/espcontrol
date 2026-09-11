@@ -251,3 +251,6 @@ settings=Nastavenia
 brightness=Jas
 daytime=Deň
 nighttime=Noc
+
+timer=Časovač
+timer_confirm=Potvrdiť?

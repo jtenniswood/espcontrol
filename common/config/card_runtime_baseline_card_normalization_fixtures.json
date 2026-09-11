@@ -1,5 +1,35 @@
 [
   {
+    "name": "timer: countdown",
+    "input": "~timer.example,,Auto,Auto,,3,timer,,",
+    "expected": {
+      "entity": "timer.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "3",
+      "type": "timer",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "timer: confirm_cancel",
+    "input": "~timer.example,,Auto,Auto,confirm,3,timer,,",
+    "expected": {
+      "entity": "timer.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "confirm",
+      "unit": "3",
+      "type": "timer",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
     "name": "switch: toggle",
     "input": "~switch.example,,Auto,Auto,,,,,",
     "expected": {
