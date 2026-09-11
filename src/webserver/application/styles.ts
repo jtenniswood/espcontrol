@@ -7,7 +7,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         "--screen-primary:#" + WEB_UI_COLORS.primary + ";--screen-secondary:#" + WEB_UI_COLORS.secondary + ";" +
         "--screen-tertiary:#" + WEB_UI_COLORS.tertiary + ";" +
         "--accent-soft:rgba(197,139,74,.15);--success:#30a46c;--danger:#f14158;" +
-        "--radius:12px;--action-r:10px;--gap:16px;" +
+        "--radius:12px;--action-r:9999px;--gap:16px;" +
         "--text-xs:.75rem;--text-sm:.8rem;--text-md:.875rem;--text-lg:1rem;--text-xl:1.2rem;" +
         "--shadow-1:0 1px 2px rgba(0,0,0,.15),0 1px 3px rgba(30,20,10,.22);" +
         "--shadow-2:0 3px 12px rgba(0,0,0,.22),0 1px 4px rgba(30,20,10,.18);" +
@@ -315,7 +315,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-field-info-text.sp-visible{display:block}" +
         ".sp-setting-note{margin:-2px 0 14px;color:var(--text2);font-size:var(--text-sm);line-height:1.4;overflow-wrap:anywhere}" +
         ".sp-input,.sp-select{width:100%;padding:10px 12px;background:var(--surface2);" +
-        "border:1px solid var(--border);border-radius:var(--action-r);color:var(--text);font-size:var(--text-md);" +
+        "border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:var(--text-md);" +
         "font-family:inherit;box-sizing:border-box;outline:none;" +
         "transition:border-color .25s,box-shadow .25s}" +
         ".sp-textarea{min-height:84px;resize:vertical;line-height:1.35}" +
@@ -459,7 +459,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-schedule-times.sp-hidden{display:none}" +
         "#sp-set-schedule-actions{margin-top:28px}" +
         ".sp-info-panel{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin-bottom:16px;" +
-        "background:var(--accent-soft);border:1px solid rgba(197,139,74,.28);border-radius:var(--action-r);" +
+        "background:var(--accent-soft);border:1px solid rgba(197,139,74,.28);border-radius:10px;" +
         "color:var(--text2);font-size:.82rem;line-height:1.35}" +
         ".sp-info-panel .mdi{font-size:18px;color:var(--accent);line-height:1.1;flex:0 0 auto;margin-top:1px}" +
         ".sp-info-panel a{color:var(--accent);font-weight:600;text-decoration:none}" +
