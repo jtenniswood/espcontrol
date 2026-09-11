@@ -9,6 +9,7 @@ struct MemoryStorage : Storage {
   std::map<std::pair<std::string, std::string>, std::string> records{
       {{"esphome", "88491487"}, "wifi secret"}, {{"esphome", "88491486"}, "HA secret"},
       {{"esphome", "820818174"}, "true"}, {{"esphome", "layout"}, "legacy"}, {{"esphome", "volume"}, "0.9"},
+      {{"espcontrol_id", "identity"}, "old panel name"},
       {{"espcontrol_cfg", "slot_a"}, "old"}, {{"espcontrol_cfg", "slot_b"}, "older"},
       {{"espcontrol_rst", "journal"}, "intent"}, {{"wifi", "platform"}, "network"}};
   bool slot_a = true, slot_b = true;
@@ -67,6 +68,7 @@ void interrupted_resets_resume(Mode mode) {
       }
       assert(s.records.count({"esphome", "820818174"}) == (mode == Mode::CUSTOMIZATION ? 1 : 0));
       if (mode == Mode::CUSTOMIZATION) assert(s.records.at({"esphome", "88491487"}) == "wifi secret");
+      assert(!s.records.count({"espcontrol_id", "identity"}));
       assert(!s.records.count({"esphome", "layout"}) && !s.records.count({"espcontrol_cfg", "slot_b"}));
     }
   }

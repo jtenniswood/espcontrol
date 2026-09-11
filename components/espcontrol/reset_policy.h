@@ -35,7 +35,7 @@ inline constexpr uint32_t FACTORY_WIFI_RESET_DONE_KEY = 1944399030U ^ 1124703304
 inline bool preserve_key(Mode mode, const std::string &ns, const std::string &key, uint32_t wifi_key) {
   if (ns == "espcontrol_rst") return true;
   if (mode == Mode::FACTORY) return false;
-  if (ns == "espcontrol_cfg") return false;
+  if (ns == "espcontrol_cfg" || ns == "espcontrol_id") return false;
   if (ns != "esphome") return true;  // Platform network/calibration records.
   return key == std::to_string(wifi_key) || key == "88491486" ||
          key == std::to_string(FACTORY_WIFI_RESET_DONE_KEY);

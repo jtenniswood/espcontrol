@@ -98,6 +98,9 @@ settings, still require it. Switches marked as configuration or diagnostic
 entities remain protected; unknown switch routes are not exempt. A supplied stale epoch is rejected on every route,
 and all mutations are blocked while reset is pending.
 
+Both reset modes clear the saved panel name, including legacy NVS identity
+records, before panel identity loads. Firmware-default names remain.
+
 Partial reset also retains the P4-86 one-time Wi-Fi initialization marker, so
 its boot action cannot clear the preserved credentials. Its preference key is
 an adapter for the pinned ESPHome version, alongside the Wi-Fi and API keys.
