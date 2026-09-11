@@ -196,6 +196,7 @@ script:
             id(button_on_color).state,
             id(main_page)->obj);
       - script.execute: clock_bar_apply
+      - script.execute: refresh_display_sensor_subscriptions
   - id: refresh_subpage_grid
     mode: restart
     then:
@@ -373,6 +374,50 @@ script:
             id(button_order).state,
             id(button_on_color).state,
             id(main_page)->obj);
+
+  - id: refresh_display_sensor_subscriptions
+    mode: single
+    then:
+      - lambda: |-
+          lv_obj_t *temperature_labels[] = {
+            id(temperatures),
+          };
+          grid_phase3(
+            id(indoor_temp_enable).state,
+            id(outdoor_temp_enable).state,
+            id(indoor_temp_entity).state,
+            id(outdoor_temp_entity).state,
+            id(clock_bar_temperature_entities).state,
+            &id(indoor_temp), &id(outdoor_temp),
+            temperature_labels,
+            1,
+            id(main_page)->obj,
+            id(presence_sensor_entity).state,
+            &id(presence_detected),
+            id(screen_schedule_sensor_entity).state,
+            &id(schedule_presence_detected),
+            id(media_player_sleep_prevention_entity).state,
+            &id(media_player_playing),
+            []() {
+              return clock_bar_should_show(
+                  id(clock_bar_enabled).state,
+                  id(main_page)->obj,
+                  id(espcontrol_app).display().current_mode(),
+                  id(espcontrol_app).display().target_schedule_inactive());
+            },
+            []() {
+              id(screensaver_presence_wake).execute();
+            },
+            []() {
+              id(screensaver_presence_sleep).execute();
+            },
+            []() {
+              id(screen_schedule_check).execute();
+            },
+            []() {
+              return id(outdoor_temp_enable).state;
+            });
+          ha_reannounce_state_subscriptions();
 
 
 esphome:
@@ -663,46 +708,8 @@ esphome:
         - script.execute: time_update
         - delay: 100ms
 
-        # Phase 3: Temperature + presence subscriptions
-        - lambda: |-
-            lv_obj_t *temperature_labels[] = {
-              id(temperatures),
-            };
-            grid_phase3(
-              id(indoor_temp_enable).state,
-              id(outdoor_temp_enable).state,
-              id(indoor_temp_entity).state,
-              id(outdoor_temp_entity).state,
-              id(clock_bar_temperature_entities).state,
-              &id(indoor_temp), &id(outdoor_temp),
-              temperature_labels,
-              1,
-              id(main_page)->obj,
-              id(presence_sensor_entity).state,
-              &id(presence_detected),
-              id(screen_schedule_sensor_entity).state,
-              &id(schedule_presence_detected),
-              id(media_player_sleep_prevention_entity).state,
-              &id(media_player_playing),
-              []() {
-                return clock_bar_should_show(
-                    id(clock_bar_enabled).state,
-                    id(main_page)->obj,
-                    id(espcontrol_app).display().current_mode(),
-                    id(espcontrol_app).display().target_schedule_inactive());
-              },
-              []() {
-                id(screensaver_presence_wake).execute();
-              },
-              []() {
-                id(screensaver_presence_sleep).execute();
-              },
-              []() {
-                id(screen_schedule_check).execute();
-              },
-              []() {
-                return id(outdoor_temp_enable).state;
-              });
+        # Bind display sensors after the initial grid is ready.
+        - script.execute: refresh_display_sensor_subscriptions
         - delay: 500ms
         - script.execute: refresh_button_grid
         - delay: 1500ms

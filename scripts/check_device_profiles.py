@@ -484,6 +484,33 @@ def test_rotation_refresh_rebuilds_subpages() -> None:
         )
 
 
+def test_restored_display_sensors_bind_without_reboot() -> None:
+    for device in generate_device_slots.slot_devices():
+        slug = device["slug"]
+        sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
+        scripts, boot = sensors.split("\nesphome:", 1)
+        apply = scripts.split("  - id: apply_button_grid\n", 1)[1].split("\n  - id:", 1)[0]
+        assert "script.execute: refresh_display_sensor_subscriptions" in apply, (
+            f"{slug}: restoring sensor settings must rebind live display subscriptions"
+        )
+        binding = scripts.split("  - id: refresh_display_sensor_subscriptions\n", 1)[1]
+        assert "script.execute: refresh_display_sensor_subscriptions" in boot
+        assert sensors.count("grid_phase3(") == 1, f"{slug}: boot and restore must share sensor binding"
+        for entity in ("presence_sensor_entity", "screen_schedule_sensor_entity", "media_player_sleep_prevention_entity"):
+            assert f"id({entity}).state" in binding, f"{slug}: rebind the current {entity}"
+        assert binding.index("grid_phase3(") < binding.index("ha_reannounce_state_subscriptions();"), (
+            f"{slug}: advertise restored sensors to the existing Home Assistant connection"
+        )
+
+    # The restore writes these text entities; their handlers must reach the
+    # same debounced grid refresh that binds the newly configured sensors.
+    for filename, entity in (("common/config/display.yaml", "presence_sensor_entity"),
+                             ("common/addon/backlight_schedule.yaml", "screen_schedule_sensor_entity")):
+        source = (ROOT / filename).read_text(encoding="utf-8")
+        handler = source.split(f"    id: {entity}\n", 1)[1].split("\n  - platform:", 1)[0]
+        assert "script.execute: refresh_button_grid" in handler, f"{entity}: refresh on restore"
+
+
 def test_seven_inch_width_compensation_rotates_with_screen() -> None:
     profiles = load_device_profiles()
     for slug in (
@@ -931,6 +958,7 @@ def main() -> int:
     test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
     test_rotation_refresh_rebuilds_subpages()
+    test_restored_display_sensors_bind_without_reboot()
     test_seven_inch_width_compensation_rotates_with_screen()
     test_subpage_config_changes_schedule_live_refresh()
     test_web_screen_aspect_matches_public_resolution()
