@@ -208,7 +208,6 @@ script:
             id(button_on_color).state,
             id(main_page)->obj);
       - script.execute: clock_bar_apply
-      - script.execute: refresh_display_sensor_subscriptions
   - id: refresh_subpage_grid
     mode: restart
     then:

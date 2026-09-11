@@ -184,6 +184,8 @@ int main() {
                           "/light/Display%20Backlight/turn_off", "/button/restart/press",
                           "/fan/fan/turn_on", "/cover/blind/open", "/climate/thermostat/set",
                           "/lock/door/lock", "/valve/water/open", "/alarm_control_panel/alarm/arm_home",
+                          "/media_player/Voice%20Media%20Player/play",
+                          "/media_player/SendSpin%20Player/pause",
                           "/wifisave", "/update"}) {
     assert(!write_requires_epoch(uri));
     assert(allow_web_write(true, false, uri, false, false));

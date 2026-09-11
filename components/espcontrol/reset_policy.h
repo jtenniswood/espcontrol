@@ -101,7 +101,7 @@ inline bool write_requires_epoch(const std::string &uri) {
   // Text, number, select and switch routes contain the panel's settings and
   // continue to require it, as do native configuration and update endpoints.
   for (const char *prefix : {"/light/", "/button/", "/fan/", "/cover/",
-                             "/climate/", "/lock/", "/valve/", "/alarm_control_panel/"}) {
+                             "/climate/", "/lock/", "/valve/", "/alarm_control_panel/", "/media_player/"}) {
     if (path.compare(0, std::strlen(prefix), prefix) == 0) return false;
   }
   return true;

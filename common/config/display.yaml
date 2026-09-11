@@ -291,6 +291,7 @@ switch:
       sorting_group_id: sg_display
     on_turn_on:
       - script.execute: clock_bar_apply
+      - script.execute: refresh_display_sensor_subscriptions
       - lambda: |-
           refresh_clock_bar_temperature_label_values(
             id(main_page)->obj,
@@ -304,6 +305,7 @@ switch:
             id(indoor_temp), id(outdoor_temp));
     on_turn_off:
       - script.execute: clock_bar_apply
+      - script.execute: refresh_display_sensor_subscriptions
       - lambda: |-
           refresh_clock_bar_temperature_label_values(
             id(main_page)->obj,
@@ -328,6 +330,7 @@ switch:
       sorting_group_id: sg_display
     on_turn_on:
       - script.execute: clock_bar_apply
+      - script.execute: refresh_display_sensor_subscriptions
       - lambda: |-
           refresh_clock_bar_temperature_label_values(
             id(main_page)->obj,
@@ -341,6 +344,7 @@ switch:
             id(indoor_temp), id(outdoor_temp));
     on_turn_off:
       - script.execute: clock_bar_apply
+      - script.execute: refresh_display_sensor_subscriptions
       - lambda: |-
           refresh_clock_bar_temperature_label_values(
             id(main_page)->obj,
@@ -607,6 +611,7 @@ text:
                 return id(outdoor_temp_enable).state;
               });
         - script.execute: clock_bar_apply
+        - script.execute: refresh_display_sensor_subscriptions
 
   - platform: template
     name: "${entity_indoor_temp_entity}"
@@ -623,6 +628,9 @@ text:
     update_interval: never
     web_server:
       sorting_group_id: sg_display
+    on_value:
+      then:
+        - script.execute: refresh_display_sensor_subscriptions
 
   - platform: template
     name: "${entity_outdoor_temp_entity}"
@@ -639,6 +647,9 @@ text:
     update_interval: never
     web_server:
       sorting_group_id: sg_display
+    on_value:
+      then:
+        - script.execute: refresh_display_sensor_subscriptions
 
   - platform: template
     name: "Screensaver Mode"
@@ -681,6 +692,7 @@ text:
       sorting_group_id: sg_screensaver
     on_value:
       then:
+        - script.execute: refresh_display_sensor_subscriptions
         - script.execute: refresh_button_grid
 
   # Optional media player that keeps the screensaver awake while playing.
@@ -701,6 +713,7 @@ text:
       sorting_group_id: sg_screensaver
     on_value:
       then:
+        - script.execute: refresh_display_sensor_subscriptions
         - if:
             condition:
               lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::ACTIVE) && lv_scr_act() == id(main_page)->obj;'

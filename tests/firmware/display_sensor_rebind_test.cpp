@@ -39,9 +39,10 @@ int main() {
   bool presence = true, schedule = true, playing = true;
   int schedule_changes = 0;
   float indoor = 21, outdoor = 12;
-  auto rebind = [&](const std::string &prefix) {
-    grid_phase3(true, true, prefix.empty() ? "" : prefix + ".indoor",
-                prefix.empty() ? "" : prefix + ".outdoor", "", &indoor, &outdoor, nullptr, 0, nullptr,
+  auto rebind = [&](const std::string &prefix, bool indoor_on = true, bool outdoor_on = true,
+                    const std::string &temperature_entities = "") {
+    grid_phase3(indoor_on, outdoor_on, prefix.empty() ? "" : prefix + ".indoor",
+                prefix.empty() ? "" : prefix + ".outdoor", temperature_entities, &indoor, &outdoor, nullptr, 0, nullptr,
                 prefix.empty() ? "" : prefix + ".presence", &presence,
                 prefix.empty() ? "" : prefix + ".schedule", &schedule,
                 prefix.empty() ? "" : prefix + ".media", &playing,
@@ -76,12 +77,21 @@ int main() {
   assert(presence && schedule && playing);
 
   // Reset must precede subscriptions, which can immediately replay fresh state.
+  rebind("");
   retained = {{"new.presence", "on"}, {"new.schedule", "on"}, {"new.media", "playing"},
               {"new.indoor", "24"}, {"new.outdoor", "15"}};
   rebind("new");
   assert(presence && schedule && playing);
   assert(indoor == 24 && outdoor == 15 && rendered_indoor == 24 && rendered_outdoor == 15);
   retained.clear();
+  // Enable flags and custom clock-bar sensors also change the bindings.
+  rebind("new", false);
+  assert(!subscriptions.count("new.indoor") && subscriptions.count("new.outdoor"));
+  rebind("new", false);
+  rebind("new", false, false);
+  assert(!subscriptions.count("new.outdoor"));
+  rebind("new", false, false, "sensor.clock_temperature");
+  rebind("new", false, false, "sensor.clock_temperature");
   rebind("");
   assert(!presence && !schedule && !playing);
   assert(std::isnan(indoor) && std::isnan(outdoor));

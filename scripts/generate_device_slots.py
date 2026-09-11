@@ -749,7 +749,6 @@ def display_sensor_subscription_script() -> str:
 def script_block(device: dict) -> str:
     after_refresh = [
         "      - script.execute: clock_bar_apply",
-        "      - script.execute: refresh_display_sensor_subscriptions",
     ]
     package = device.get("package") or {}
     subpage_chunks = int(package.get("subpageConfigChunks") or 8)
