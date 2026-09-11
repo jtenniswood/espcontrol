@@ -3317,6 +3317,7 @@ async function assertNumberActionRequiresValue(page, posts, label) {
   await page.getByRole("button", { name: "Action card type" }).click();
   await page.locator("#sp-inp-action").selectOption("number.set_value");
   await page.locator("#sp-inp-entity").fill("number.target_level");
+  await page.locator("#sp-inp-entity").press("Tab");
   await page
     .locator(".sp-settings-modal .sp-disclosure")
     .filter({ hasText: "Card Settings" })
