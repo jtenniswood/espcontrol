@@ -83,6 +83,22 @@ inline bool write_requires_epoch(const std::string &uri) {
   const auto path = uri.substr(0, uri.find('?'));
   // ESPHome owns these forms. They do not edit the panel configuration and
   // cannot supply EspControl's editing-session header.
-  return path != "/wifisave" && path != "/update";
+  if (path == "/wifisave" || path == "/update") return false;
+  // Standard ESPHome control clients do not participate in web editing
+  // sessions. Keep operational entity actions usable without an epoch.
+  // Text, number, select and switch routes contain the panel's settings and
+  // continue to require it, as do native configuration and update endpoints.
+  for (const char *prefix : {"/light/", "/button/", "/fan/", "/cover/",
+                             "/climate/", "/lock/", "/valve/", "/alarm_control_panel/"}) {
+    if (path.compare(0, std::strlen(prefix), prefix) == 0) return false;
+  }
+  return true;
+}
+inline bool allow_web_write(bool initialized, bool reset_pending, const std::string &uri,
+                            bool epoch_supplied, bool epoch_matches) {
+  // A supplied stale epoch is always rejected, including operational actions
+  // queued by an editor before reset. Pending reset blocks every mutation.
+  return initialized && !reset_pending &&
+         (epoch_supplied ? epoch_matches : !write_requires_epoch(uri));
 }
 }  // namespace espcontrol::reset

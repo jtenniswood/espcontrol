@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vacationhold
 vacuum=Vysavač
 version_unknown=Verze neznámá
+voice=Hlas
 volume=Hlasitost
 waiting_for_home_assistant=Čekání na Home Assistant
 home_assistant_connection_lost=Připojování k \nHome Assistant

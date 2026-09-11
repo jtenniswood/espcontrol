@@ -98,10 +98,11 @@ inline ControlModalActive &control_modal_active() {
 
 inline void control_modal_reset_active() {
   control_modal_service().reset_active();
+  set_clock_bar_modal_label("");
 }
 
 inline void control_modal_clear_active(ControlModalKind kind) {
-  control_modal_service().clear_active(kind);
+  if (control_modal_active().kind == kind) control_modal_reset_active();
 }
 
 inline void control_modal_delete_overlay(ControlModalKind kind, lv_obj_t *&overlay) {
@@ -736,11 +737,49 @@ inline void control_modal_style_translucent_chrome_button(lv_obj_t *btn) {
   control_modal_apply_pressed_fill(btn);
 }
 
+struct ControlModalCardLabel {
+  lv_obj_t *button = nullptr;
+  lv_obj_t *label = nullptr;
+};
+
+inline std::vector<ControlModalCardLabel> &control_modal_card_labels() {
+  static std::vector<ControlModalCardLabel> labels;
+  return labels;
+}
+
+inline void control_modal_register_card_label(const BtnSlot &slot) {
+  if (!slot.btn || !slot.text_lbl) return;
+  auto &labels = control_modal_card_labels();
+  for (auto &entry : labels) {
+    if (entry.button == slot.btn) {
+      entry.label = slot.text_lbl;
+      return;
+    }
+  }
+  labels.push_back({slot.btn, slot.text_lbl});
+  lv_obj_add_event_cb(slot.btn, [](lv_event_t *event) {
+    auto *button = static_cast<lv_obj_t *>(lv_event_get_target(event));
+    auto &labels = control_modal_card_labels();
+    labels.erase(std::remove_if(labels.begin(), labels.end(),
+                               [button](const ControlModalCardLabel &entry) {
+                                 return entry.button == button;
+                               }), labels.end());
+  }, LV_EVENT_DELETE, nullptr);
+}
+
+inline std::string control_modal_card_label(lv_obj_t *button) {
+  for (const auto &entry : control_modal_card_labels()) {
+    if (entry.button == button) return lv_label_get_text(entry.label);
+  }
+  return "";
+}
+
 inline ControlModalShell control_modal_open_shell(ControlModalKind kind,
                                                   lv_obj_t *source_btn,
                                                   int width_compensation_percent,
                                                   const lv_font_t *icon_font,
                                                   ControlModalCloseCallback close_callback) {
+  const std::string card_label = control_modal_card_label(source_btn);
   control_modal_close_active();
   const ControlModalDefinition definition = control_modal_definition(kind);
   const bool button_top_right = definition.chrome == ControlModalChrome::CLOSE;
@@ -787,6 +826,7 @@ inline ControlModalShell control_modal_open_shell(ControlModalKind kind,
   }
 
   control_modal_set_active(kind, shell.overlay, close_callback, definition.dismiss_policy);
+  set_clock_bar_modal_label(card_label);
   return shell;
 }
 

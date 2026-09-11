@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vacationhold
 vacuum=Odkurzacz
 version_unknown=Wersja nieznana
+voice=Głos
 volume=Głośność
 waiting_for_home_assistant=Oczekiwanie na Home Assistant
 home_assistant_connection_lost=Łączenie z \nHome Assistant

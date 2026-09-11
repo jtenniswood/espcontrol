@@ -3080,7 +3080,8 @@ async function assertMediaCoverArtSettingsPanels(page, label) {
     0,
     `${label}: Cover Art should not appear as a top-level card type`,
   );
-  assert.strictEqual(await page.locator("#sp-inp-type").inputValue(), "media", `${label}: existing Cover Art card should open as Media`);
+  assert.strictEqual(await page.locator("#sp-inp-type").count(), 0, `${label}: saved cards must not offer card type changes`);
+  assert.strictEqual(await page.locator(".sp-settings-modal .sp-section-title").textContent(), "Media", `${label}: existing Cover Art card should show its card type as the title`);
   assert.strictEqual(await page.locator("#sp-inp-media-mode").inputValue(), "cover_art", `${label}: existing Cover Art card should retain its subtype`);
   assert.strictEqual(await page.locator("#sp-inp-entity").inputValue(), "media_player.living", `${label}: existing Cover Art card should retain its entity`);
   assert.deepStrictEqual(
@@ -3332,6 +3333,7 @@ async function assertNumberActionRequiresValue(page, posts, label) {
   await page.getByRole("button", { name: "Action card type" }).click();
   await page.locator("#sp-inp-action").selectOption("number.set_value");
   await page.locator("#sp-inp-entity").fill("number.target_level");
+  await page.locator("#sp-inp-entity").press("Tab");
   await page
     .locator(".sp-settings-modal .sp-disclosure")
     .filter({ hasText: "Card Settings" })

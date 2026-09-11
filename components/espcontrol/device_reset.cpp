@@ -250,7 +250,7 @@ extern "C" esp_err_t __wrap_esp_hosted_slave_ota_begin() {
 #endif
 
 // Shared dispatcher hook covers native config and legacy entity POSTs,
-// including calls from a stale browser that has no epoch header. ESPHome's
+// including calls from a stale browser. Standard control clients and ESPHome's
 // provisioning/upload forms remain usable when no reset is pending.
 extern "C" bool espcontrol_allow_web_write(httpd_req_t *raw) {
   using namespace espcontrol::reset;
@@ -260,7 +260,7 @@ extern "C" bool espcontrol_allow_web_write(httpd_req_t *raw) {
   bool valid = size > 0 && size < sizeof(supplied) &&
                httpd_req_get_hdr_value_str(raw, "X-EspControl-Epoch", supplied, sizeof(supplied)) == ESP_OK &&
                std::to_string(epoch()) == supplied;
-  if (ready() && !pending() && (!write_requires_epoch(raw->uri) || valid)) return true;
+  if (allow_web_write(ready(), pending(), raw->uri, size > 0, valid)) return true;
   httpd_resp_set_status(raw, pending() ? "409 Conflict" : "428 Precondition Required");
   httpd_resp_set_type(raw, "application/json");
   httpd_resp_send(raw, "{\"error\":\"Reload the page before changing settings\"}", HTTPD_RESP_USE_STRLEN);

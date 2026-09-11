@@ -109,13 +109,30 @@ def voice_substitution_lines(device: dict) -> list[str]:
             '    ESP_LOGW("navigation", "Voice volume target is not available on this device");',
             '  voice_interaction_active_condition: "false"',
         ]
+    icon_offset_lines = clock_bar_icon_offset_lines(
+        "voice_clock_bar_icon_x", "voice_clock_bar_mute_button",
+        "voice_clock_bar_mute_icon_label",
+    )
+    if device["slug"] == "esp32-p4-86":
+        icon_offset_lines = [
+            "      // These controls open different modals: space their full touch targets,",
+            "      // not just the narrower glyphs, with an 18px gap inside the 60px bar.",
+            "      clock_bar_right_icons = clock_bar_right_icons_begin(clock_bar_right_x, 18);",
+            "      if (show_network) {",
+            "        const int network_box = lv_obj_get_width(id(network_status_button));",
+            "        clock_bar_right_icons_seed(clock_bar_right_icons, network_box, network_box);",
+            "      }",
+            "      const int voice_clock_bar_icon_x_box = lv_obj_get_width(id(voice_clock_bar_mute_button));",
+            "      const int voice_clock_bar_icon_x = clock_bar_right_icons_next_x(",
+            "          clock_bar_right_icons, voice_clock_bar_icon_x_box,",
+            "          voice_clock_bar_icon_x_box);",
+        ]
     return [
         "  voice_clock_bar_hide_code: |-",
         "    lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
         "  voice_clock_bar_apply_code: |-",
         "    if (id(voice_services_enabled).state) {",
-        *clock_bar_icon_offset_lines("voice_clock_bar_icon_x", "voice_clock_bar_mute_button",
-                                     "voice_clock_bar_mute_icon_label"),
+        *icon_offset_lines,
         "      lv_obj_align(id(voice_clock_bar_mute_button), LV_ALIGN_TOP_RIGHT,",
         "                   voice_clock_bar_icon_x, clock_bar_icon_y);",
         "      lv_obj_clear_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",

@@ -125,6 +125,29 @@ int main() {
   assert(write_requires_epoch("/wifisave/config"));
   assert(write_requires_epoch("/api/v1/config"));
   assert(write_requires_epoch("/text/layout/set?value=old"));
+  for (const char *uri : {"/light/display_backlight/turn_on?brightness=128",
+                          "/light/Display%20Backlight/turn_off", "/button/restart/press",
+                          "/fan/fan/turn_on", "/cover/blind/open", "/climate/thermostat/set",
+                          "/lock/door/lock", "/valve/water/open", "/alarm_control_panel/alarm/arm_home",
+                          "/wifisave", "/update"}) {
+    assert(!write_requires_epoch(uri));
+    assert(allow_web_write(true, false, uri, false, false));
+    assert(allow_web_write(true, false, uri, true, true));
+    assert(!allow_web_write(true, false, uri, true, false));
+    assert(!allow_web_write(true, true, uri, false, false));
+    assert(!allow_web_write(true, true, uri, true, true));
+    assert(!allow_web_write(false, false, uri, false, false));
+  }
+  for (const char *uri : {"/api/v1/config", "/text/button_order/set?value=old",
+                          "/number/screensaver_timeout/set?value=10", "/select/brightness_mode/set",
+                          "/switch/schedule_enabled/turn_on", "/update/firmware/install",
+                          "/light_configuration/set", "/buttons/layout/set", "/wifisave/config"}) {
+    assert(write_requires_epoch(uri));
+    assert(!allow_web_write(true, false, uri, false, false));
+    assert(!allow_web_write(true, false, uri, true, false));
+    assert(allow_web_write(true, false, uri, true, true));
+    assert(!allow_web_write(true, true, uri, true, true));
+  }
   MemoryStorage s; Journal j;
   s.fail_at = 1;
   assert(request(s, j, Mode::FACTORY) == Result::FAILED && !j.pending());
