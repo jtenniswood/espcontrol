@@ -97,6 +97,10 @@ epoch. Configuration routes, including text, number, select and switch
 settings, still require it. A supplied stale epoch is rejected on every route,
 and all mutations are blocked while reset is pending.
 
+Partial reset also retains the P4-86 one-time Wi-Fi initialization marker, so
+its boot action cannot clear the preserved credentials. Its preference key is
+an adapter for the pinned ESPHome version, alongside the Wi-Fi and API keys.
+
 The firmware requires web asset version 2 so an older hosted editor cannot
 omit these write preconditions. The current bundle also has a version 1
 manifest entry for older firmware; reset discovery hides unsupported actions.

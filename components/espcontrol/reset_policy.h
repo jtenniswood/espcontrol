@@ -28,12 +28,17 @@ inline Mode parse_mode(const std::string &mode) {
 inline uint32_t wifi_preference_key(bool compiled_networks, uint32_t config_hash) {
   return compiled_networks ? config_hash : 88491487UL;
 }
+// ESPHome 2026.8.2 RestoringGlobalsComponent<bool> uses this salt XOR
+// the generated name hash for the P4-86 factory_wifi_reset_done global.
+// Clearing it would run the one-time Wi-Fi wipe again after a partial reset.
+inline constexpr uint32_t FACTORY_WIFI_RESET_DONE_KEY = 1944399030U ^ 1124703304U;
 inline bool preserve_key(Mode mode, const std::string &ns, const std::string &key, uint32_t wifi_key) {
   if (ns == "espcontrol_rst") return true;
   if (mode == Mode::FACTORY) return false;
   if (ns == "espcontrol_cfg") return false;
   if (ns != "esphome") return true;  // Platform network/calibration records.
-  return key == std::to_string(wifi_key) || key == "88491486";
+  return key == std::to_string(wifi_key) || key == "88491486" ||
+         key == std::to_string(FACTORY_WIFI_RESET_DONE_KEY);
 }
 class Storage {
  public:

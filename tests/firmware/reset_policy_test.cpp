@@ -8,7 +8,7 @@ struct MemoryStorage : Storage {
   Journal saved;
   std::map<std::pair<std::string, std::string>, std::string> records{
       {{"esphome", "88491487"}, "wifi secret"}, {{"esphome", "88491486"}, "HA secret"},
-      {{"esphome", "layout"}, "legacy"}, {{"esphome", "volume"}, "0.9"},
+      {{"esphome", "820818174"}, "true"}, {{"esphome", "layout"}, "legacy"}, {{"esphome", "volume"}, "0.9"},
       {{"espcontrol_cfg", "slot_a"}, "old"}, {{"espcontrol_cfg", "slot_b"}, "older"},
       {{"espcontrol_rst", "journal"}, "intent"}, {{"wifi", "platform"}, "network"}};
   bool slot_a = true, slot_b = true;
@@ -59,6 +59,13 @@ void interrupted_resets_resume(Mode mode) {
       assert(resume(s, j));
       assert(s.records.count({"esphome", "88491487"}) == (mode == Mode::CUSTOMIZATION ? 1 : 0));
       assert(s.records.count({"esphome", "88491486"}) == (mode == Mode::CUSTOMIZATION ? 1 : 0));
+      // Model the P4-86's priority-800 boot action after reset cleanup. A
+      // missing/false marker clears saved Wi-Fi even if cleanup retained it.
+      const auto marker = s.records.find({"esphome", "820818174"});
+      if (marker == s.records.end() || marker->second != "true") {
+        s.records.erase({"esphome", "88491487"});
+      }
+      assert(s.records.count({"esphome", "820818174"}) == (mode == Mode::CUSTOMIZATION ? 1 : 0));
       if (mode == Mode::CUSTOMIZATION) assert(s.records.at({"esphome", "88491487"}) == "wifi secret");
       assert(!s.records.count({"esphome", "layout"}) && !s.records.count({"espcontrol_cfg", "slot_b"}));
     }
@@ -108,6 +115,7 @@ int main() {
   installations_and_resets_are_exclusive();
   interrupted_resets_resume(Mode::CUSTOMIZATION);
   interrupted_resets_resume(Mode::FACTORY);
+  assert(FACTORY_WIFI_RESET_DONE_KEY == 820818174U);
   assert(wifi_preference_key(false, 1234) == 88491487);
   assert(wifi_preference_key(true, 1234) == 1234);
   assert(preserve_key(Mode::CUSTOMIZATION, "esphome", "1234", 1234));
