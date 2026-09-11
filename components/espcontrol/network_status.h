@@ -193,12 +193,12 @@ inline void network_status_open_modal(const std::string &device_name,
                                       const lv_font_t *icon_font,
                                       float (*wifi_quality)() = nullptr) {
   (void) device_name;
-  const bool modal_already_open = network_status_modal_ui().overlay != nullptr;
-  const std::string previous_subpage_label =
-      modal_already_open ? network_status_previous_subpage_label()
-                         : clock_bar_subpage_label();
+  // Settings is explicit navigation: dismiss nested menus and the current
+  // modal before saving the underlying page title (for example, below Voice).
+  control_modal_close_nested_menu();
+  control_modal_force_close_active();
   network_status_hide_modal();
-  network_status_previous_subpage_label() = previous_subpage_label;
+  network_status_previous_subpage_label() = clock_bar_subpage_label();
 
   auto &metrics = control_modal_grid_metrics();
   lv_obj_t *page = metrics.page ? metrics.page : lv_scr_act();
