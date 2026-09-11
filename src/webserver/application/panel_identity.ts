@@ -137,11 +137,15 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
       try {
         const name = normalizePanelName(input.value);
         error.textContent = "";
-        previewText.textContent = name && info
-          ? `Your device will show as ${panelHostname(name, info.mac_suffix)}.local on your network`
-          : info && !info.name
-            ? `Your device will show as ${info.hostname}.local on your network`
-            : "Your device will use its original firmware name and address on your network";
+        const hostname = name && info ? panelHostname(name, info.mac_suffix)
+          : info && !info.name ? info.hostname : null;
+        if (hostname) {
+          const address = document.createElement("code");
+          address.textContent = `${hostname}.local`;
+          previewText.replaceChildren("Your device will show as ", address, " on your network");
+        } else {
+          previewText.textContent = "Your device will use its original firmware name and address on your network";
+        }
         button.disabled = saving || !info || (name === info.name && !info.restart_required);
       } catch (e) { error.textContent = (e as Error).message; button.disabled = true; }
     }

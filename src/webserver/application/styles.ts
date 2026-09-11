@@ -465,6 +465,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-info-panel a:hover{text-decoration:underline}" +
         "#sp-panel-name-info{margin:16px 0 0;overflow-wrap:anywhere;min-width:0}" +
         "#sp-panel-name-info>span:last-child{min-width:0}" +
+        "#sp-panel-name-info code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1em}" +
         ".sp-range-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}" +
         ".sp-range-row:last-child{margin-bottom:0}" +
         ".sp-range{flex:1;height:4px;-webkit-appearance:none;appearance:none;background:var(--surface2);" +
