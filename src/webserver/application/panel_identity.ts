@@ -116,7 +116,7 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
   }
   function buildCard(): HTMLElement {
     const body = document.createElement("div");
-    const card = deps.makeCard("Panel name", body);
+    const card = deps.makeCard("Device Name", body);
     card.hidden = true;
     const input = document.createElement("input");
     input.className = "sp-input";
@@ -125,7 +125,7 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
     const label = document.createElement("label");
     label.className = "sp-field-label";
     label.htmlFor = input.id;
-    label.textContent = "Panel name";
+    label.textContent = "Device Name";
     const preview = deps.infoPanel("sp-panel-name-info", "");
     const previewText = preview.lastElementChild!;
     const error = document.createElement("p");

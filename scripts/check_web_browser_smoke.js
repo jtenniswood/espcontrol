@@ -5734,7 +5734,7 @@ async function assertPanelNaming(browser) {
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await page.evaluate(events => window.__seedEspState(events), seededEvents());
     await page.getByRole("tab", { name: "Settings" }).click();
-    const card = page.locator(".card").filter({ has: page.locator(".card-header", { hasText: "Panel name" }) });
+    const card = page.locator(".card").filter({ has: page.locator(".card-header", { hasText: "Device Name" }) });
     await card.locator(".card-header").click();
     await card.getByText("Could not read the panel name. Check the connection and try again.").waitFor();
     identityState.failLoad = false;
