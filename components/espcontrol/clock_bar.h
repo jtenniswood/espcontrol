@@ -660,6 +660,38 @@ inline void clock_bar_prepare_text_label(lv_obj_t *obj, int width,
   lv_obj_set_style_text_align(obj, align, LV_PART_MAIN);
 }
 
+// Keep the settings shortcut above newly created or reordered modal overlays.
+// Hidden clock-bar controls stay hidden; only the existing button's stacking
+// order changes, so its normal touch handling remains in effect.
+inline void clock_bar_raise_settings_button(lv_obj_t *button) {
+  if (!button || lv_obj_has_flag(button, LV_OBJ_FLAG_HIDDEN)) return;
+  lv_obj_move_foreground(button);
+}
+
+inline void clock_bar_settings_layer_changed(lv_event_t *event) {
+  auto *button = static_cast<lv_obj_t *>(lv_event_get_user_data(event));
+  if (!button || lv_event_get_target(event) != lv_obj_get_parent(button)) return;
+  clock_bar_raise_settings_button(button);
+}
+
+// Register once after the top-layer widgets have been created.
+inline void clock_bar_enable_settings_access(lv_obj_t *button) {
+  if (!button) return;
+  lv_obj_t *layer = lv_obj_get_parent(button);
+  if (!layer) return;
+  lv_obj_add_event_cb(layer, clock_bar_settings_layer_changed,
+                      LV_EVENT_CHILD_CHANGED, button);
+  lv_obj_add_event_cb(button, [](lv_event_t *event) {
+    auto *deleted = static_cast<lv_obj_t *>(lv_event_get_target(event));
+    lv_obj_t *parent = lv_obj_get_parent(deleted);
+    if (parent) {
+      lv_obj_remove_event_cb_with_user_data(
+          parent, clock_bar_settings_layer_changed, deleted);
+    }
+  }, LV_EVENT_DELETE, nullptr);
+  clock_bar_raise_settings_button(button);
+}
+
 inline void apply_clock_bar_fixed_layout(lv_obj_t *temperature_label,
                                          lv_obj_t *display_time,
                                          lv_obj_t *network_status_button,
@@ -701,7 +733,7 @@ inline void apply_clock_bar_fixed_layout(lv_obj_t *temperature_label,
   }
   if (network_status_button) {
     lv_obj_align(network_status_button, LV_ALIGN_TOP_RIGHT, -right_x, network_y);
-    lv_obj_move_background(network_status_button);
+    clock_bar_raise_settings_button(network_status_button);
   }
 }
 
