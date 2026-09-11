@@ -5,13 +5,13 @@
 int main() {
   std::string name;
   assert(espcontrol::normalize_panel_name("  Kitchen \t", name) && name == "Kitchen");
-  assert(espcontrol::panel_hostname(name, "a1b2c3") == "kitchen-a1b2c3");
+  assert(espcontrol::panel_hostname(name, "b2c3") == "kitchen-b2c3");
   assert(espcontrol::normalize_panel_name("", name) && name.empty());
   assert(espcontrol::normalize_panel_name("Küche", name));
-  assert(espcontrol::panel_hostname(name, "a1b2c3") == "k-che-a1b2c3");
-  assert(espcontrol::panel_hostname("東京", "abcdef") == "panel-abcdef");
-  assert(espcontrol::panel_hostname("A long hallway panel name", "abcdef").size() <= 31);
-  assert(espcontrol::panel_hostname("------------", "abcdef") == "panel-abcdef");
+  assert(espcontrol::panel_hostname(name, "b2c3") == "k-che-b2c3");
+  assert(espcontrol::panel_hostname("東京", "cdef") == "panel-cdef");
+  assert(espcontrol::panel_hostname("A long hallway panel name", "cdef").size() <= 31);
+  assert(espcontrol::panel_hostname("------------", "cdef") == "panel-cdef");
   assert(!espcontrol::normalize_panel_name(std::string(121, 'x'), name));
   assert(espcontrol::normalize_panel_name(std::string(120, 'x'), name));
   assert(!espcontrol::normalize_panel_name("bad\nname", name));

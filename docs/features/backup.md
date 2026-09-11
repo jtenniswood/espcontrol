@@ -24,7 +24,7 @@ When importing a backup from a different-sized panel, EspControl keeps the saved
 ## Panel Names in Backups
 
 Custom-named panels include their name and device suffix in backup filenames,
-for example `espcontrol-4-inch-kitchen-a1b2c3-2026-09-11.json`.
+for example `espcontrol-4-inch-kitchen-b2c3-2026-09-11.json`.
 
 When importing a backup with panel naming metadata, **Also restore panel name**
 is off by default. Leave it off to keep the destination's name and address.

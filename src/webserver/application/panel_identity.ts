@@ -35,7 +35,7 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
     const value = await response.json() as PanelIdentityInfo;
     if (!value || typeof value.name !== "string" || typeof value.friendly_name !== "string"
         || typeof value.hostname !== "string" || !/^[a-z0-9_-]{1,31}$/.test(value.hostname)
-        || typeof value.mac_suffix !== "string" || !/^[a-f0-9]{6}$/.test(value.mac_suffix)
+        || typeof value.mac_suffix !== "string" || !/^(?:[a-f0-9]{4}|[a-f0-9]{6})$/.test(value.mac_suffix)
         || typeof value.ip_address !== "string" || typeof value.restart_required !== "boolean") {
       throw new Error("Invalid panel identity response.");
     }

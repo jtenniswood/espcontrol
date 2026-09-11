@@ -5682,8 +5682,8 @@ async function assertPanelNaming(browser) {
   const testCase = ACTIVE_CASES[0];
   const context = await browser.newContext({ viewport: testCase.viewport });
   const identityState = { posts: [], failLoad: true, failSave: false, info: {
-    name: "Kitchen", friendly_name: "Kitchen", hostname: "kitchen-a1b2c3",
-    mac_suffix: "a1b2c3", ip_address: "192.168.1.25", restart_required: false,
+    name: "Kitchen", friendly_name: "Kitchen", hostname: "kitchen-b2c3",
+    mac_suffix: "b2c3", ip_address: "192.168.1.25", restart_required: false,
   } };
   await installRoutes(context, testCase.slug, { identityState });
   const page = await context.newPage();
@@ -5710,7 +5710,7 @@ async function assertPanelNaming(browser) {
     const save = card.getByRole("button", { name: "Save and restart", exact: true });
     assert(await save.isDisabled(), "unchanged names cannot be saved");
     await page.locator("#sp-panel-name").fill("Office");
-    assert((await card.textContent()).includes("office-a1b2c3.local"));
+    assert((await card.textContent()).includes("office-b2c3.local"));
     if (process.env.ESPCONTROL_NAMING_SCREENSHOT) await page.screenshot({ path: process.env.ESPCONTROL_NAMING_SCREENSHOT, fullPage: true });
     identityState.failSave = true;
     await save.click();
@@ -5721,7 +5721,7 @@ async function assertPanelNaming(browser) {
     await save.click();
     await page.waitForSelector("dialog[open]");
     await page.waitForFunction(() => document.title === "EspControl — Office");
-    assert.strictEqual(await page.locator("dialog a").first().getAttribute("href"), "http://office-a1b2c3.local/");
+    assert.strictEqual(await page.locator("dialog a").first().getAttribute("href"), "http://office-b2c3.local/");
     await page.waitForTimeout(500);
     assert.strictEqual(restartRequests.length, 1, "successful save requests one restart");
     await page.getByRole("button", { name: "Close", exact: true }).click();
@@ -5732,7 +5732,7 @@ async function assertPanelNaming(browser) {
     await page.waitForSelector("dialog[open]");
     const choice = page.getByRole("checkbox", { name: "Also restore panel name" });
     assert(!await choice.isChecked(), "name restore defaults off");
-    assert((await page.locator("dialog").textContent()).includes("bedroom-a1b2c3.local"), "restore uses destination MAC");
+    assert((await page.locator("dialog").textContent()).includes("bedroom-b2c3.local"), "restore uses destination MAC");
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     assert.strictEqual(identityState.posts.length, 2, "cancel import cannot rename");
     await importBackup(page, backup, "keep-destination-name");
@@ -5743,7 +5743,7 @@ async function assertPanelNaming(browser) {
     await page.getByRole("checkbox", { name: "Also restore panel name" }).check();
     await page.getByRole("button", { name: "Restore", exact: true }).click();
     await page.waitForFunction(() => document.title === "EspControl — Bedroom");
-    assert.strictEqual(identityState.info.hostname, "bedroom-a1b2c3", "selected name restore keeps destination suffix");
+    assert.strictEqual(identityState.info.hostname, "bedroom-b2c3", "selected name restore keeps destination suffix");
     assert.strictEqual(identityState.posts.length, 3, "name written once after successful restore");
     assert.deepStrictEqual(errors, [], "naming journey has no browser errors");
   } finally { await context.close(); }

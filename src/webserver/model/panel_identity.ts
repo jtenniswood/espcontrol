@@ -34,7 +34,7 @@ export function readIdentityBackup(value: unknown): PanelIdentityBackup | undefi
   const data = value as Record<string, unknown>;
   if (data.version !== 1) return undefined;
   const name = normalizePanelName(data.name);
-  if (typeof data.mac_suffix !== "string" || !/^[a-f0-9]{6}$/.test(data.mac_suffix)
+  if (typeof data.mac_suffix !== "string" || !/^(?:[a-f0-9]{4}|[a-f0-9]{6})$/.test(data.mac_suffix)
       || typeof data.hostname !== "string" || !/^[a-z0-9_-]{1,31}$/.test(data.hostname)) {
     throw new Error("Invalid panel identity in backup.");
   }
