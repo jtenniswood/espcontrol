@@ -470,9 +470,9 @@ export function createWebStyles(dragAnimation: boolean): string {
         "@media(max-width:480px){.sp-reset-backup-info{grid-template-columns:auto minmax(0,1fr)}" +
         ".sp-reset-backup-info .sp-action-btn{grid-column:2;justify-self:end}}" +
         ".sp-reset-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gap)}" +
-        ".sp-reset-option{display:flex;flex-direction:column;gap:12px;min-width:0;margin:0;padding:20px;background:var(--bg)}" +
+        ".sp-reset-option{display:flex;flex-direction:column;gap:6px;min-width:0;margin:0;padding:20px;background:var(--bg)}" +
         ".sp-reset-option h4{margin:0;color:var(--text);font-size:.95rem;font-weight:600}" +
-        ".sp-reset-option p{margin:0;color:var(--text2);font-size:.875rem;line-height:1.5}" +
+        ".sp-reset-option p{margin:0 0 6px;color:var(--text2);font-size:.875rem;line-height:1.5}" +
         ".sp-reset-option .sp-backup-btn{flex:0 0 auto;align-self:flex-start;margin-top:auto}" +
         "@media(max-width:600px){.sp-reset-options{grid-template-columns:minmax(0,1fr)}}" +
         ".sp-range-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}" +
