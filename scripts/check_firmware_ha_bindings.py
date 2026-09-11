@@ -2388,7 +2388,7 @@ def firmware_camera_refresh_action_errors(root: Path) -> list[str]:
     errors: list[str] = []
     image_header = root / "components" / "espcontrol" / "button_grid_image.h"
     p4_package = root / "common" / "device" / "image_cards_6.yaml"
-    s3_package = root / "common" / "device" / "image_cards_1.yaml"
+    s3_package = root / "common" / "device" / "image_cards_2.yaml"
     if not image_header.exists() or not p4_package.exists() or not s3_package.exists():
         return errors
 
@@ -2409,7 +2409,7 @@ def firmware_camera_refresh_action_errors(root: Path) -> list[str]:
         "ctx->camera_refresh_pending",
         "image_card_handle_picture(ctx, picture)",
         "IMAGE_CARD_MIN_REPEAT_REFRESH_MS",
-        "image_card_active_download_context()",
+        "ctx->image->request_update_url(ctx->url, max_source_dim)",
         "image_card_modal_active_for(ctx)",
     )
     if any(token not in image_text for token in camera_refresh_contract):
@@ -2432,13 +2432,13 @@ def firmware_camera_refresh_action_errors(root: Path) -> list[str]:
         )
     if "refresh_camera_cards" in s3_text or "refresh_visible_camera_cards" in s3_text:
         errors.append(
-            "common/device/image_cards_1.yaml: keep the unsupported S3 camera refresh action disabled"
+            "common/device/image_cards_2.yaml: keep the unsupported S3 camera refresh action disabled"
         )
 
     for package_path in sorted((root / "devices").glob("*/packages.yaml")):
         slug = package_path.parent.name
         package_text = package_path.read_text(encoding="utf-8")
-        expected = "image_cards_1.yaml" if slug == "guition-esp32-s3-4848s040" else "image_cards_6.yaml"
+        expected = "image_cards_2.yaml" if slug == "guition-esp32-s3-4848s040" else "image_cards_6.yaml"
         if expected not in package_text:
             errors.append(
                 f"{package_path.relative_to(root)}: include {expected} so camera refresh action support "
