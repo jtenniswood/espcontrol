@@ -46,11 +46,13 @@ enum class CardAssetRestoreResult {
 // own store.
 class CardAssetService {
  public:
-  using ReferencePersistenceCallback = bool (*)(void *context);
+  using ReferenceTransactionCallback = bool (*)(void *context, const std::string &id);
   static constexpr uint32_t RESTORE_SESSION_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
   explicit CardAssetService(CardAssetPersistence *persistence = card_asset_persistence())
       : persistence_(persistence) {}
-  ~CardAssetService() = default;
+  ~CardAssetService();
+  CardAssetService(const CardAssetService &) = delete;
+  CardAssetService &operator=(const CardAssetService &) = delete;
   using ReferenceCheckCallback = CardAssetReferenceState (*)(void *, const std::string &);
   void set_recovery_reference_callback(ReferenceCheckCallback callback, void *context) {
     recovery_reference_callback_ = callback;
@@ -63,7 +65,7 @@ class CardAssetService {
   bool running() const { return running_; }
 
   void set_reference_adapter(CardAssetReferenceAdapter *adapter);
-  void set_reference_persistence_callback(ReferencePersistenceCallback callback,
+  void set_reference_transaction_callback(ReferenceTransactionCallback callback,
                                           void *context = nullptr);
   bool supports_reference_transactions() const {
     return reference_adapter_ != nullptr && reference_adapter_->ready();
@@ -178,8 +180,8 @@ class CardAssetService {
   esphome::card_image_store::CardImageStore store_{};
   std::unique_ptr<RuntimeHolderBase> card_background_runtime_{};
   CardAssetReferenceAdapter *reference_adapter_{nullptr};
-  ReferencePersistenceCallback reference_persistence_callback_{nullptr};
-  void *reference_persistence_context_{nullptr};
+  ReferenceTransactionCallback reference_transaction_callback_{nullptr};
+  void *reference_transaction_context_{nullptr};
   std::string pending_delete_id_{};
   std::string restore_session_{};
   std::vector<std::string> staged_restore_ids_{};

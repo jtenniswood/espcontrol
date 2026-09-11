@@ -42,10 +42,23 @@ the saved report. Marking safe mode successful or using a safe reboot there
 clears ESPHome's failed-boot counter and can prevent recovery from a recurring
 startup crash.
 
-Card-background LVGL code delegates resource allocation and asynchronous state
+`card_background_rendering.cpp` owns card-background LVGL behavior and private
+state. `button_grid_card_background.h` keeps only the stable grid/YAML forwarding
+wrappers, following the hybrid compiled-module convention. The compiled code
+delegates resource allocation and asynchronous state
 transitions to `card_background_controller.h`. Keep download serialization,
 retry timing, decoder readiness, and binding counts in that controller so the
 widget layer only positions, reveals, and removes LVGL objects.
+
+Card-image endpoints register with the application alongside configuration and
+identity handlers. The generic web server owns mutation/reset preflight and
+streaming dispatch; it does not import card-image handlers or require the
+EspControl component. Endpoint responses use the shared JSON serializer.
+
+Card-image deletion transforms the latest native document through
+`ConfigurationService::transform_current`, so stale legacy mirrors cannot
+replace newer settings. A transaction-owned external-memory buffer keeps this
+work separate from HTTP and startup scratch storage.
 
 Card-image recovery waits for native startup restoration and checks the saved
 native document before reclaiming staged images. `card_asset_persistence.h`

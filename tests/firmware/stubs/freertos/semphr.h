@@ -9,3 +9,5 @@ inline SemaphoreHandle_t xSemaphoreCreateRecursiveMutex() {
 }
 inline int xSemaphoreTakeRecursive(SemaphoreHandle_t, uint32_t) { return 1; }
 inline int xSemaphoreGiveRecursive(SemaphoreHandle_t) { return 1; }
+
+inline void vSemaphoreDelete(SemaphoreHandle_t) {}

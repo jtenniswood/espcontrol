@@ -141,6 +141,11 @@ void test_card_asset_service_has_one_application_owner() {
   expect(first.stop(), "active service should stop cleanly");
   expect(espcontrol::card_asset_service() == nullptr, "stopping should remove adapter access");
   expect(!first.stop(), "stopped service cannot be stopped twice");
+  {
+    espcontrol::CardAssetService scoped{&persistence};
+    expect(scoped.start(), "scoped application service should start");
+  }
+  expect(espcontrol::card_asset_service() == nullptr, "destruction must unbind the service even without explicit shutdown");
 }
 
 void test_card_asset_service_deletes_only_after_references_persist() {
@@ -172,10 +177,11 @@ void test_card_asset_service_deletes_only_after_references_persist() {
          "failed reference persistence should stop deletion");
   expect(service.find(image.id, retained), "failed reference persistence must retain the image");
 
-  adapter.fail_clear = false;
+  // The native transaction replaces legacy mutation, even if the mirror is stale.
+  adapter.cleared_id.clear();
   bool native_persistence_ready = false;
-  service.set_reference_persistence_callback(
-      [](void *context) { return *static_cast<bool *>(context); },
+  service.set_reference_transaction_callback(
+      [](void *context, const std::string &) { return *static_cast<bool *>(context); },
       &native_persistence_ready);
   expect(service.delete_with_references(image.id) ==
              espcontrol::CardAssetDeleteResult::PERSISTENCE_FAILED,
@@ -186,7 +192,7 @@ void test_card_asset_service_deletes_only_after_references_persist() {
   native_persistence_ready = true;
   expect(service.delete_with_references(image.id) == espcontrol::CardAssetDeleteResult::SUCCESS,
          "retry should persist every configuration source and delete the image");
-  expect(adapter.cleared_id == image.id && !service.find(image.id, retained),
+  expect(adapter.cleared_id.empty() && !service.find(image.id, retained),
          "the exact image should be erased only after its references clear");
   expect(service.stop(), "asset service should stop after deletion transaction");
 }

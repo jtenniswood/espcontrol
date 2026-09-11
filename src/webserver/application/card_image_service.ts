@@ -1,3 +1,4 @@
+import { optimizeCardImage } from "./card_image_optimizer";
 import { state } from "../state/app_instance";
 import type { ApplicationLayoutState } from "./application_context";
 import type { ApplicationApiFeature } from "./api";
@@ -36,6 +37,7 @@ export function createCardImageService(dependencies: CardImageServiceDependencie
   );
   const cardImages = createCardImagesFeature({
     maxActiveBackgrounds,
+    optimize: optimizeCardImage,
     fetch: (url: string, request?: CardImageHttpRequest) =>
       dependencies.fetch(url, request as RequestInit),
     normalizeId: normalizeCardBackgroundImageId,

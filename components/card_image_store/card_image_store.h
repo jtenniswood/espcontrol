@@ -78,6 +78,9 @@ class CardImageReader : public http_request::HttpContainer {
 class CardImageStore {
  public:
   CardImageStore();
+  ~CardImageStore();
+  CardImageStore(const CardImageStore &) = delete;
+  CardImageStore &operator=(const CardImageStore &) = delete;
 
   bool available();
   size_t capacity();

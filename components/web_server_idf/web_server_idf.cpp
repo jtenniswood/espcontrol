@@ -14,7 +14,6 @@
 #include "esphome/core/defines.h"
 
 #include "esp_tls_crypto.h"
-#include "esphome/components/espcontrol/card_asset_http_api.h"
 #ifdef USE_WEBSERVER_AUTH_DIGEST
 #include <esp_random.h>
 #include <esp_rom_md5.h>
@@ -22,7 +21,6 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#include "request_uri.h"
 #include "utils.h"
 #include "web_server_idf.h"
 
@@ -304,22 +302,12 @@ extern "C" bool espcontrol_allow_web_write(httpd_req_t *request) __attribute__((
 esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
   if (espcontrol_allow_web_write != nullptr && !espcontrol_allow_web_write(r)) return ESP_OK;
   ESP_LOGVV(TAG, "Enter AsyncWebServer::request_post_handler. uri=%s", r->uri);
-  if (request_uri_path_equals(r->uri, "/api/card-images")) {
-#ifdef USE_WEBSERVER_AUTH
-    AsyncWebServerRequest req(r);
-    auto *server = static_cast<AsyncWebServer *>(r->user_ctx);
-    if (!server->authenticate_shortcut_request_(&req)) return ESP_OK;
-#endif
-    return ::espcontrol::card_asset_http::handle_post(r);
-  }
-  if (strncmp(r->uri, "/api/card-images/", strlen("/api/card-images/")) == 0) {
-#ifdef USE_WEBSERVER_AUTH
-    AsyncWebServerRequest req(r);
-    auto *server = static_cast<AsyncWebServer *>(r->user_ctx);
-    if (!server->authenticate_shortcut_request_(&req)) return ESP_OK;
-#endif
-    esp_err_t card_image_result = ::espcontrol::card_asset_http::handle_post(r);
-    if (card_image_result != ESP_ERR_NOT_FOUND) return card_image_result;
+  // Registered streaming handlers own body consumption and authorization.
+  // Product routes stay outside the generic HTTP transport.
+  AsyncWebServerRequest raw_request(r);
+  auto *server = static_cast<AsyncWebServer *>(r->user_ctx);
+  for (auto *handler : server->handlers_) {
+    if (handler->canHandle(&raw_request) && handler->handleRawRequest(&raw_request)) return ESP_OK;
   }
   auto content_type = request_get_header(r, "Content-Type");
 
@@ -410,19 +398,13 @@ esp_err_t AsyncWebServer::handle_raw_body_(httpd_req_t *r, const char *content_t
 
 esp_err_t AsyncWebServer::request_handler(httpd_req_t *r) {
   ESP_LOGVV(TAG, "Enter AsyncWebServer::request_handler. method=%u, uri=%s", r->method, r->uri);
+  if (r->method == HTTP_DELETE && espcontrol_allow_web_write != nullptr &&
+      !espcontrol_allow_web_write(r)) return ESP_OK;
   AsyncWebServerRequest req(r);
   return static_cast<AsyncWebServer *>(r->user_ctx)->request_handler_(&req);
 }
 
 esp_err_t AsyncWebServer::request_handler_(AsyncWebServerRequest *request) const {
-  if (::espcontrol::card_asset_http::is_shortcut_request(request)) {
-#ifdef USE_WEBSERVER_AUTH
-    if (!this->authenticate_shortcut_request_(request)) return ESP_OK;
-#endif
-  }
-  if (::espcontrol::card_asset_http::handle_request(request)) {
-    return ESP_OK;
-  }
   if (handle_firmware_version_request(request)) {
     return ESP_OK;
   }
@@ -441,20 +423,7 @@ esp_err_t AsyncWebServer::request_handler_(AsyncWebServerRequest *request) const
   return ESP_ERR_NOT_FOUND;
 }
 
-#ifdef USE_WEBSERVER_AUTH
-bool AsyncWebServer::authenticate_shortcut_request_(AsyncWebServerRequest *request) const {
-  bool saw_handler = false;
-  for (auto *handler : this->handlers_) {
-    saw_handler = true;
-    if (!handler->check_auth(request)) return false;
-  }
-  if (!saw_handler) {
-    request->requestAuthentication();
-    return false;
-  }
-  return true;
-}
-#endif
+
 
 AsyncWebServerRequest::~AsyncWebServerRequest() {
   delete this->rsp_;

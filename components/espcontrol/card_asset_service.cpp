@@ -52,7 +52,17 @@ uint32_t completed_checksum(const CompletedRestoresRecord &record) {
 }
 }
 
+CardAssetService::~CardAssetService() {
+  stop();
+#ifdef USE_ESP32
+  if (state_mutex_ != nullptr) vSemaphoreDelete(state_mutex_);
+#endif
+}
+
 bool CardAssetService::start() {
+#ifdef USE_ESP32
+  if (state_mutex_ == nullptr) return false;
+#endif
   StateLock lock(this);
   if (running_ || (active_card_asset_service != nullptr && active_card_asset_service != this)) {
     return false;
@@ -105,11 +115,11 @@ void CardAssetService::set_reference_adapter(CardAssetReferenceAdapter *adapter)
   }
 }
 
-void CardAssetService::set_reference_persistence_callback(
-    ReferencePersistenceCallback callback, void *context) {
+void CardAssetService::set_reference_transaction_callback(
+    ReferenceTransactionCallback callback, void *context) {
   StateLock lock(this);
-  reference_persistence_callback_ = callback;
-  reference_persistence_context_ = context;
+  reference_transaction_callback_ = callback;
+  reference_transaction_context_ = context;
   if (running_ && !pending_delete_id_.empty()) resume_pending_delete();
 }
 
@@ -193,10 +203,10 @@ CardAssetDeleteResult CardAssetService::resume_pending_delete() {
     return reserve_error == ESP_ERR_INVALID_STATE ? CardAssetDeleteResult::BUSY
                                                   : CardAssetDeleteResult::STORAGE_FAILED;
   }
-  if (!reference_adapter_->clear_asset_references(id) ||
-      (reference_persistence_callback_ != nullptr &&
-       !reference_persistence_callback_(reference_persistence_context_)) ||
-      reference_adapter_->references_asset(id)) {
+  const bool references_saved = reference_transaction_callback_ != nullptr
+      ? reference_transaction_callback_(reference_transaction_context_, id)
+      : reference_adapter_->clear_asset_references(id) && !reference_adapter_->references_asset(id);
+  if (!references_saved) {
     store_.cancel_erase(id);
     delete_running_ = false;
     return CardAssetDeleteResult::PERSISTENCE_FAILED;

@@ -10,8 +10,10 @@
 
 #include "card_asset_service.h"
 #include "../web_server_idf/utils.h"
+#include "../web_server_idf/request_uri.h"
 #include "../web_server_idf/web_server_idf.h"
 #include "esphome/core/log.h"
+#include "esphome/components/json/json_util.h"
 
 namespace espcontrol::card_asset_http {
 namespace {
@@ -26,6 +28,9 @@ using esphome::web_server_idf::query_key_value;
 using esphome::web_server_idf::request_get_header;
 using esphome::web_server_idf::strcasestr_n;
 
+const char *auth_username = "";
+const char *auth_password = "";
+
 static const char *const TAG = "card_asset_http";
 static constexpr const char *API_PREFIX = "/api/card-images/";
 static constexpr const char *RESTORE_PREFIX = "/api/card-images/restore/";
@@ -36,24 +41,6 @@ static constexpr const char *RESTORE_PREFIX = "/api/card-images/restore/";
 #ifndef HTTPD_503
 #define HTTPD_503 "503 Service Unavailable"
 #endif
-
-void append_json_string(std::string &out, const char *value) {
-  out.push_back('"');
-  for (const char *p = value; p != nullptr && *p != '\0'; ++p) {
-    switch (*p) {
-      case '\\':
-      case '"':
-        out.push_back('\\');
-        out.push_back(*p);
-        break;
-      case '\n': out.append("\\n"); break;
-      case '\r': out.append("\\r"); break;
-      case '\t': out.append("\\t"); break;
-      default: out.push_back(*p); break;
-    }
-  }
-  out.push_back('"');
-}
 
 void send_unavailable(httpd_req_t *request) {
   httpd_resp_set_status(request, HTTPD_503);
@@ -71,14 +58,15 @@ std::string id_from_url(const std::string &url, const char *prefix) {
   return id_valid(rest) ? rest : "";
 }
 
+void write_image_json(JsonObject object, const CardImageInfo &image) {
+  object["id"] = image.id;
+  object["name"] = image.name;
+  object["size"] = image.size;
+  object["url"] = "/card-images/" + image.id + ".jpg";
+}
+
 std::string item_json(const CardImageInfo &image) {
-  std::string body = "{\"id\":";
-  append_json_string(body, image.id.c_str());
-  body += ",\"name\":";
-  append_json_string(body, image.name.c_str());
-  body += ",\"size\":" + std::to_string(image.size);
-  body += ",\"url\":\"/card-images/" + image.id + ".jpg\"}";
-  return body;
+  return esphome::json::build_json([&](JsonObject root) { write_image_json(root, image); });
 }
 
 std::string request_query_value(httpd_req_t *request, const char *key) {
@@ -96,35 +84,27 @@ std::string list_json() {
   const size_t storage_bytes = assets != nullptr ? assets->capacity() : 0;
   const size_t used_bytes = assets != nullptr ? assets->used_bytes() : 0;
   const size_t free_bytes = assets != nullptr ? assets->free_bytes() : 0;
-  std::string out = "{\"available\":";
-  out += available ? "true" : "false";
-  out += ",\"requires_usb_flash\":";
-  out += available ? "false" : "true";
-  out += ",\"format_version\":" + std::to_string(CARD_IMAGE_FORMAT_VERSION);
-  out += ",\"reference_transactions\":true";
-  out += ",\"restore_transactions\":true";
-  out += ",\"max_active_backgrounds\":";
+  return esphome::json::build_json([&](JsonObject root) {
+    root["available"] = available;
+    root["requires_usb_flash"] = !available;
+    root["format_version"] = CARD_IMAGE_FORMAT_VERSION;
+    root["reference_transactions"] = true;
+    root["restore_transactions"] = true;
 #ifdef ESPCONTROL_CARD_BACKGROUND_MAX_ACTIVE
-  out += std::to_string(ESPCONTROL_CARD_BACKGROUND_MAX_ACTIVE);
+    root["max_active_backgrounds"] = ESPCONTROL_CARD_BACKGROUND_MAX_ACTIVE;
 #elif defined(ESPCONTROL_MAX_GRID_SLOTS)
-  out += std::to_string(ESPCONTROL_MAX_GRID_SLOTS);
+    root["max_active_backgrounds"] = ESPCONTROL_MAX_GRID_SLOTS;
 #else
-  out += "0";
+    root["max_active_backgrounds"] = 0;
 #endif
-  out += ",\"storage_bytes\":" + std::to_string(storage_bytes);
-  out += ",\"used_bytes\":" + std::to_string(used_bytes);
-  out += ",\"free_bytes\":" + std::to_string(free_bytes);
-  out += ",\"max_bytes\":" + std::to_string(CARD_IMAGE_MAX_BYTES);
-  out += ",\"images\":[";
-  const auto images = assets != nullptr ? assets->list() : std::vector<CardImageInfo>{};
-  bool first = true;
-  for (const auto &image : images) {
-    if (!first) out += ',';
-    first = false;
-    out += item_json(image);
-  }
-  out += "]}";
-  return out;
+    root["storage_bytes"] = storage_bytes;
+    root["used_bytes"] = used_bytes;
+    root["free_bytes"] = free_bytes;
+    root["max_bytes"] = CARD_IMAGE_MAX_BYTES;
+    auto images = root["images"].to<JsonArray>();
+    if (assets != nullptr)
+      for (const auto &image : assets->list()) write_image_json(images.add<JsonObject>(), image);
+  });
 }
 
 bool handle_get(AsyncWebServerRequest *request) {
@@ -132,6 +112,11 @@ bool handle_get(AsyncWebServerRequest *request) {
   char url_buffer[AsyncWebServerRequest::URL_BUF_SIZE];
   std::string url(request->url_to(url_buffer));
   if (url == "/api/card-images") {
+    if (card_asset_service() == nullptr) {
+      send_unavailable(*request);
+      return true;
+    }
+    httpd_resp_set_hdr(*request, "Cache-Control", "no-store");
     const std::string body = list_json();
     request->send(200, "application/json", body.c_str());
     return true;
@@ -406,32 +391,59 @@ esp_err_t handle_rename(httpd_req_t *request) {
 
 }  // namespace
 
-bool is_shortcut_request(AsyncWebServerRequest *request) {
-  if (request->method() != HTTP_GET && request->method() != HTTP_DELETE) return false;
-  char url_buffer[AsyncWebServerRequest::URL_BUF_SIZE];
-  const std::string url(request->url_to(url_buffer));
-  if (request->method() == HTTP_GET) {
-    return url == "/api/card-images" || url.rfind(API_PREFIX, 0) == 0 ||
-           url.rfind("/card-images/", 0) == 0;
-  }
-  return url.rfind(API_PREFIX, 0) == 0;
-}
-
-bool handle_request(AsyncWebServerRequest *request) {
-  return handle_get(request) || handle_delete(request);
-}
-
 esp_err_t handle_post(httpd_req_t *request) {
   if (strncmp(request->uri, RESTORE_PREFIX, strlen(RESTORE_PREFIX)) == 0) {
     return handle_restore(request);
   }
-  if (strncmp(request->uri, "/api/card-images", strlen("/api/card-images")) == 0 &&
-      (request->uri[strlen("/api/card-images")] == '\0' ||
-       request->uri[strlen("/api/card-images")] == '?')) {
+  if (esphome::web_server_idf::request_uri_path_equals(request->uri, "/api/card-images")) {
     return handle_upload(request);
   }
   if (strncmp(request->uri, API_PREFIX, strlen(API_PREFIX)) == 0) return handle_rename(request);
   return ESP_ERR_NOT_FOUND;
+}
+
+class CardAssetHandler final : public esphome::web_server_idf::AsyncWebHandler {
+ public:
+  bool canHandle(AsyncWebServerRequest *request) const override {
+    char path[AsyncWebServerRequest::URL_BUF_SIZE];
+    const std::string url(request->url_to(path));
+    if (request->method() == HTTP_GET)
+      return url == "/api/card-images" || url.rfind("/card-images/", 0) == 0;
+    if (request->method() == HTTP_POST)
+      return url == "/api/card-images" || url.rfind(API_PREFIX, 0) == 0;
+    return request->method() == HTTP_DELETE && url.rfind(API_PREFIX, 0) == 0;
+  }
+  bool handleRawRequest(AsyncWebServerRequest *request) override {
+    if (request->method() != HTTP_POST) return false;
+    if (!authorize(request)) return true;
+    if (handle_post(*request) == ESP_ERR_NOT_FOUND) request->send(404, "text/plain", "Not found");
+    return true;
+  }
+  void handleRequest(AsyncWebServerRequest *request) override {
+    if (!authorize(request)) return;
+    if (!handle_get(request) && !handle_delete(request)) request->send(404, "text/plain", "Not found");
+  }
+ private:
+  bool authorize(AsyncWebServerRequest *request) {
+#ifdef USE_WEBSERVER_AUTH
+    if (!request->authenticate(auth_username, auth_password)) {
+      request->requestAuthentication();
+      return false;
+    }
+#else
+    (void) request;
+#endif
+    return true;
+  }
+};
+
+void set_auth_credentials(const char *username, const char *password) {
+  auth_username = username == nullptr ? "" : username;
+  auth_password = password == nullptr ? "" : password;
+}
+
+void register_endpoints(esphome::web_server_idf::AsyncWebServer &server) {
+  server.addHandler(new CardAssetHandler());
 }
 
 }  // namespace espcontrol::card_asset_http

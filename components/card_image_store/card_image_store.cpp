@@ -28,6 +28,10 @@ static constexpr esp_partition_subtype_t CARD_IMAGE_PARTITION_SUBTYPE =
 
 CardImageStore::CardImageStore() : mutex_(xSemaphoreCreateRecursiveMutex()) {}
 
+CardImageStore::~CardImageStore() {
+  if (mutex_ != nullptr) vSemaphoreDelete(mutex_);
+}
+
 CardImageReader::CardImageReader(CardImageStore *store, const CardImageInfo &info)
     : store_(store), info_(info) {
   this->status_code = 200;

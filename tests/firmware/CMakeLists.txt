@@ -199,6 +199,7 @@ add_test(NAME configuration_store_test COMMAND configuration_store_test)
 
 add_executable(configuration_service_test
   configuration_service_test.cpp
+  ../../components/espcontrol/legacy_card_config.cpp
   ../../components/espcontrol/configuration_service.cpp
   ../../components/espcontrol/configuration_store.cpp
 )

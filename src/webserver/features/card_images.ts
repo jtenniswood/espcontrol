@@ -1,3 +1,5 @@
+import { createCardImageApi, type CardImageHttpRequest, type CardImageHttpResponse } from "../api/card_image_api";
+export type { CardImageHttpRequest, CardImageHttpResponse } from "../api/card_image_api";
 import type { CardConfig } from "../contracts/types";
 import type {
   BackupArchiveEntries,
@@ -30,20 +32,6 @@ export interface CardImageLibraryInfo {
   readonly maxBytes: number;
 }
 
-export interface CardImageHttpResponse {
-  readonly ok: boolean;
-  readonly status?: number;
-  json(): Promise<unknown>;
-  text(): Promise<string>;
-  arrayBuffer(): Promise<ArrayBuffer>;
-}
-
-export interface CardImageHttpRequest {
-  readonly method?: string;
-  readonly headers?: Readonly<Record<string, string>>;
-  readonly body?: unknown;
-}
-
 export interface CardImagesFeatureDependencies {
   readonly maxActiveBackgrounds: number;
   fetch(url: string, request?: CardImageHttpRequest): Promise<CardImageHttpResponse>;
@@ -52,6 +40,13 @@ export interface CardImagesFeatureDependencies {
   targetSize(): number;
   uploadMaxBytes(): number;
   minimumQuality(): number;
+  optimize?(file: Blob, options: CardImageOptimizationOptions): Promise<OptimizedCardImage>;
+}
+
+export interface CardImageOptimizationOptions {
+  targetSize: number;
+  maxBytes: number;
+  minimumQuality: number;
 }
 
 export interface OptimizedCardImage extends Blob {
@@ -197,6 +192,7 @@ function imageItem(value: unknown, normalizeId: (value: unknown) => string): Car
 }
 
 export function createCardImagesFeature(dependencies: CardImagesFeatureDependencies): CardImagesFeature {
+  const api = createCardImageApi(dependencies.fetch, dependencies.imageUrl);
   let loaded = false;
   let images: CardImageItem[] = [];
   let libraryInfo: CardImageLibraryInfo = {
@@ -219,7 +215,7 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
 
   const list = async (force = false): Promise<CardImageItem[]> => {
     if (!force && loaded) return images.slice();
-    const response = await dependencies.fetch("/api/card-images");
+    const response = await api.list();
     if (response.status === 404) throw new CardImageStorageUnavailableError();
     if (!response.ok) throw new Error("Could not load images.");
     const payload = await response.json() as CardImageListPayload;
@@ -259,81 +255,13 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
     failureMessage = "Could not upload image.",
     restoreSession?: string,
   ): Promise<CardImageItem> =>
-    dependencies.fetch(restoreSession
-      ? `/api/card-images?restore=${encodeURIComponent(restoreSession)}`
-      : "/api/card-images", {
-      method: "POST",
-      headers: { "Content-Type": "image/jpeg" },
-      body: bytes,
-    }).then((response) => decodeUploadResponse(response, failureMessage));
+    api.upload(bytes, restoreSession).then((response) => decodeUploadResponse(response, failureMessage));
 
-  const resize = (file: Blob): Promise<OptimizedCardImage> => new Promise((resolve, reject) => {
-    if (!file?.type || !file.type.startsWith("image/")) {
-      reject(new Error("Choose an image file."));
-      return;
-    }
-    const targetSize = dependencies.targetSize();
-    const maxBytes = dependencies.uploadMaxBytes();
-    const minQuality = dependencies.minimumQuality();
-    const source = new Image();
-    const objectUrl = URL.createObjectURL(file);
-    source.onload = (): void => {
-      URL.revokeObjectURL(objectUrl);
-      const canvas = document.createElement("canvas");
-      canvas.width = targetSize;
-      canvas.height = targetSize;
-      const context = canvas.getContext("2d");
-      if (!context) {
-        reject(new Error("Could not optimize that image."));
-        return;
-      }
-      context.imageSmoothingEnabled = true;
-      context.imageSmoothingQuality = "high";
-      const scale = Math.max(targetSize / source.naturalWidth, targetSize / source.naturalHeight);
-      const width = source.naturalWidth * scale;
-      const height = source.naturalHeight * scale;
-      context.drawImage(source, (targetSize - width) / 2, (targetSize - height) / 2, width, height);
-      const finish = (blob: Blob | null, quality: number): void => {
-        if (!blob || blob.size > maxBytes) {
-          reject(new Error("Image is still too large after browser optimization."));
-          return;
-        }
-        resolve(Object.assign(blob, {
-          optimizedWidth: targetSize,
-          optimizedHeight: targetSize,
-          optimizedQuality: quality,
-        }));
-      };
-      const encode = (quality: number): void => {
-        if (canvas.toBlob) {
-          canvas.toBlob((blob) => {
-            if (blob && blob.size > maxBytes && quality > minQuality) {
-              encode(Math.max(minQuality, quality - 0.08));
-            } else {
-              finish(blob, quality);
-            }
-          }, "image/jpeg", quality);
-          return;
-        }
-        const data = canvas.toDataURL("image/jpeg", quality);
-        const raw = atob(data.substring(data.indexOf(",") + 1));
-        const bytes = new Uint8Array(raw.length);
-        for (let index = 0; index < raw.length; index++) bytes[index] = raw.charCodeAt(index);
-        const blob = new Blob([bytes], { type: "image/jpeg" });
-        if (blob.size > maxBytes && quality > minQuality) {
-          encode(Math.max(minQuality, quality - 0.08));
-        } else {
-          finish(blob, quality);
-        }
-      };
-      encode(0.78);
-    };
-    source.onerror = (): void => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error("Could not read that image."));
-    };
-    source.src = objectUrl;
-  });
+  const resize = (file: Blob): Promise<OptimizedCardImage> => {
+    if (!dependencies.optimize) return Promise.reject(new Error("Image optimization is unavailable."));
+    return dependencies.optimize(file, { targetSize: dependencies.targetSize(),
+      maxBytes: dependencies.uploadMaxBytes(), minimumQuality: dependencies.minimumQuality() });
+  };
 
   return {
     list,
@@ -347,26 +275,18 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
     resize,
     async upload(file) {
       const optimized = await resize(file);
-      return decodeUploadResponse(await dependencies.fetch("/api/card-images", {
-        method: "POST",
-        headers: { "Content-Type": "image/jpeg" },
-        body: optimized,
-      }), "Could not upload image.");
+      return decodeUploadResponse(await api.upload(optimized), "Could not upload image.");
     },
     uploadBytes,
     async rename(value, name) {
       const id = dependencies.normalizeId(value);
       if (!id) throw new Error("Could not rename image.");
-      return decodeUploadResponse(await dependencies.fetch(`/api/card-images/${id}/rename`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `name=${encodeURIComponent(String(name || ""))}`,
-      }), "Could not rename image.");
+      return decodeUploadResponse(await api.rename(id, String(name || "")), "Could not rename image.");
     },
     async delete(value) {
       const id = dependencies.normalizeId(value);
       if (!id) return;
-      const response = await dependencies.fetch(`/api/card-images/${id}`, { method: "DELETE" });
+      const response = await api.delete(id);
       if (!response.ok) {
         const message = await response.text();
         throw new Error(message || "Could not delete image.");
@@ -376,13 +296,13 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
     async readBytes(value) {
       const id = dependencies.normalizeId(value);
       if (!id) throw new Error("Could not read image.");
-      const response = await dependencies.fetch(dependencies.imageUrl(id));
+      const response = await api.read(id);
       if (!response.ok) throw new Error(`Could not read image ${id}`);
       return new Uint8Array(await response.arrayBuffer());
     },
     async beginRestore() {
       if (!libraryInfo.restoreTransactions) return null;
-      const response = await dependencies.fetch("/api/card-images/restore/begin", { method: "POST" });
+      const response = await api.beginRestore();
       if (!response.ok) throw new Error((await response.text()) || "Could not start backup restore.");
       const payload = await response.json() as { session?: unknown };
       const session = String(payload.session || "");
@@ -390,16 +310,12 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
       return session;
     },
     async commitRestore(session) {
-      const response = await dependencies.fetch(
-        `/api/card-images/restore/${encodeURIComponent(session)}/commit`, { method: "POST" },
-      );
+      const response = await api.commitRestore(session);
       if (!response.ok) throw new Error((await response.text()) || "Could not commit backup restore.");
       invalidate();
     },
     async rollbackRestore(session) {
-      const response = await dependencies.fetch(
-        `/api/card-images/restore/${encodeURIComponent(session)}/rollback`, { method: "POST" },
-      );
+      const response = await api.rollbackRestore(session);
       if (!response.ok) throw new Error((await response.text()) || "Could not roll back backup restore.");
       invalidate();
     },

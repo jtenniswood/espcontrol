@@ -8,7 +8,7 @@ CONFIG_SCHEMA = cv.All(
     cv.only_on_esp32,
 )
 
-AUTO_LOAD = ["web_server", "espcontrol"]
+AUTO_LOAD = ["web_server"]
 
 
 async def to_code(config):

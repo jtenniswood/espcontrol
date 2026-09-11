@@ -252,9 +252,6 @@ class AsyncWebServer {
 #ifdef USE_WEBSERVER_OTA
   esp_err_t handle_multipart_upload_(httpd_req_t *r, const char *content_type);
 #endif
-#ifdef USE_WEBSERVER_AUTH
-  bool authenticate_shortcut_request_(AsyncWebServerRequest *request) const;
-#endif
   std::vector<AsyncWebHandler *> handlers_;
   std::function<void(AsyncWebServerRequest *request)> on_not_found_{};
 };
@@ -266,6 +263,9 @@ class AsyncWebHandler {
   virtual bool canHandle(AsyncWebServerRequest *request) const { return false; }
   // NOLINTNEXTLINE(readability-identifier-naming)
   virtual void handleRequest(AsyncWebServerRequest *request) {}
+  // Opt-in streaming endpoint. Return true after consuming/responding to the
+  // raw request; false retains normal form and bounded-body dispatch.
+  virtual bool handleRawRequest(AsyncWebServerRequest *request) { return false; }
   // NOLINTNEXTLINE(readability-identifier-naming)
   virtual void handleUpload(AsyncWebServerRequest *request, const std::string &filename, size_t index, uint8_t *data,
                             size_t len, bool final) {}

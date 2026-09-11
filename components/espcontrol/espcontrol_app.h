@@ -9,6 +9,7 @@
 #include "esphome/core/component.h"
 
 #include "card_asset_service.h"
+#include "card_asset_http_api.h"
 #include "espcontrol_app_core.h"
 #include "panel_identity.h"
 #include "home_assistant_endpoint_resolver.h"
@@ -63,6 +64,7 @@ class EspControlApp : public esphome::Component {
   void set_web_auth_credentials(const char *username, const char *password) {
     web_auth_username_ = username;
     web_auth_password_ = password;
+    card_asset_http::set_auth_credentials(username, password);
   }
 
  private:
@@ -71,7 +73,7 @@ class EspControlApp : public esphome::Component {
   void register_panel_config_endpoints();
   void initialize_native_configuration();
   void apply_boot_configuration();
-  static bool persist_card_asset_references(void *context);
+  static bool clear_card_asset_references(void *context, const std::string &id);
   static CardAssetReferenceState check_recovery_references(void *context, const std::string &id);
   bool native_configuration_requested() const;
   bool create_native_configuration_runtime();
