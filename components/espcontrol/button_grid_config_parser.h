@@ -1790,9 +1790,22 @@ inline bool utf8_letter_like(uint32_t codepoint) {
       (codepoint >= 0x1E00 && codepoint <= 0x1EFF)) {
     return true;
   }
-  return (codepoint >= 0x0370 && codepoint <= 0x03FF) ||
-         (codepoint >= 0x0400 && codepoint <= 0x052F) ||
-         (codepoint >= 0x0590 && codepoint <= 0x05FF);
+  // Unicode 16.0 Letter-category ranges within the supported script blocks.
+  // Punctuation, symbols, combining marks and unassigned positions must not
+  // consume a pending capital letter (for example Greek U+037E or Hebrew U+05BE).
+  return (codepoint >= 0x0370 && codepoint <= 0x0374) ||
+         (codepoint >= 0x0376 && codepoint <= 0x0377) ||
+         (codepoint >= 0x037A && codepoint <= 0x037D) ||
+         codepoint == 0x037F || codepoint == 0x0386 ||
+         (codepoint >= 0x0388 && codepoint <= 0x038A) ||
+         codepoint == 0x038C ||
+         (codepoint >= 0x038E && codepoint <= 0x03A1) ||
+         (codepoint >= 0x03A3 && codepoint <= 0x03F5) ||
+         (codepoint >= 0x03F7 && codepoint <= 0x03FF) ||
+         (codepoint >= 0x0400 && codepoint <= 0x0481) ||
+         (codepoint >= 0x048A && codepoint <= 0x052F) ||
+         (codepoint >= 0x05D0 && codepoint <= 0x05EA) ||
+         (codepoint >= 0x05EF && codepoint <= 0x05F2);
 }
 
 inline bool append_title_case_character(const std::string &text, size_t &offset,

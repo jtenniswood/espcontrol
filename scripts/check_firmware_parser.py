@@ -477,6 +477,15 @@ int main() {
     assert(formatter(u8"ßtest ÿtest Приветtest Ελληνικάtest שלוםtest") ==
            u8"ßtest ÿtest Приветtest Ελληνικάtest שלוםtest");
     assert(formatter(u8"—test 😀test") == u8"—Test 😀Test");
+    // Script punctuation, symbols and combining marks must not consume the first letter.
+    for (const std::string prefix : {u8"\u037E", u8"\u0387", u8"\u0384", u8"\u03F6",
+                                     u8"\u0482", u8"\u0483", u8"\u05BE", u8"\u05C3",
+                                     u8"\u05F3", u8"\u05B0"}) {
+      assert(formatter(prefix + "test") == prefix + "Test");
+      assert(formatter("a" + prefix + "TEST") == "A" + prefix + "test");
+    }
+    assert(formatter(u8"\u037Ftest \u03F7test \u0481test \u048Atest \u05EFtest") ==
+           u8"\u037Ftest \u03F7test \u0481test \u048Atest \u05EFtest");
     assert(formatter(std::string("\xFF") + "test") == std::string("\xFF") + "Test");
     assert(formatter(std::string("\xE2") + "x") == std::string("\xE2") + "X");
     assert(formatter(std::string("\xC0\xAF") + "test") == std::string("\xC0\xAF") + "Test");
