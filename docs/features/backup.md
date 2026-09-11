@@ -28,7 +28,7 @@ Open **Settings → System → Reset** to choose:
 - **Reset customization** removes cards, layouts, subpages, actions and device preferences, while keeping the saved Wi-Fi connection and Home Assistant encryption key. The display restarts into card setup.
 - **Factory reset** also removes saved Wi-Fi credentials and the Home Assistant encryption key. Type `RESET` to confirm, then follow the display's first-time setup instructions. Ethernet displays remain accessible through their wired network. Home Assistant may need to be configured again; its integration records and automations are not deleted.
 
-Export a backup first if you want to restore your customization later. Backups do not include network credentials. Both options keep the installed firmware and its built-in defaults. Names, credentials and other settings compiled into a custom ESPHome YAML remain; install stock firmware to restore stock defaults.
+Export a backup first if you want to restore your customization later. Backups do not restore the display's Wi-Fi login or Home Assistant encryption key. They can still contain passwords saved in Wi-Fi Sharing cards. Both options keep the installed firmware and its built-in defaults. Names, credentials and other settings compiled into a custom ESPHome YAML remain; install stock firmware to restore stock defaults.
 
 The Reset section appears only on firmware that supports it. After reset, reload any other open setup pages before editing. A reset interrupted by power loss resumes at startup. If storage cleanup fails, startup remains paused and the serial log reports `Reset recovery`; cleanup retries every ten seconds. Do not restore a backup until reset has completed.
 

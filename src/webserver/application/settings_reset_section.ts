@@ -6,7 +6,7 @@ export function buildResetSettings(exportBackup: () => void, makeCard: (title: s
   card.hidden = true;
   const note = document.createElement("p");
   note.className = "sp-setting-note";
-  note.textContent = "Save a backup first if you want to restore your customization later. Backups do not include network credentials. Both options keep the installed firmware and any defaults compiled into it.";
+  note.textContent = "Save a backup first if you want to restore your customization later. Backups do not restore the display's Wi-Fi login or Home Assistant encryption key. Both options keep the installed firmware and any defaults compiled into it.";
   body.append(note);
   const backup = document.createElement("button");
   backup.type = "button";
