@@ -361,7 +361,6 @@ target_compile_options(rgb565_scaler_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(rgb565_scaler_test PRIVATE ../../components/artwork_image)
 add_test(NAME rgb565_scaler_test COMMAND rgb565_scaler_test)
 
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
 file(GLOB SAVED_CONFIG_FIXTURES
   CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_SOURCE_DIR}/../../common/config/*_card_normalization_fixtures.json
