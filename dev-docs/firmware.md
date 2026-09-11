@@ -41,6 +41,11 @@ the saved report. Marking safe mode successful or using a safe reboot there
 clears ESPHome's failed-boot counter and can prevent recovery from a recurring
 startup crash.
 
+Image-card context capacity is generated from the product profile's
+`capabilities.imageSlots`, alongside downloader wiring. The S3 two-slot package
+extends the shared constrained package. Cache reuse and expiry scheduling use
+the same host-tested lifetime policy, including clock rollover and timestamp zero.
+
 ## Adding Firmware Support for a Card
 
 Use an existing card with similar behavior as the architectural template:

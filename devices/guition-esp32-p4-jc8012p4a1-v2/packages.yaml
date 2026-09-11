@@ -81,6 +81,11 @@ substitutions:
   cover_art_live_image_updates: "false"
   battery_status_apply_code: ""
   battery_status_hide_code: ""
+  image_card_slot_capacity: "6"
+
+esphome:
+  build_flags:
+    - "-DESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=${image_card_slot_capacity}"
 
 packages:
   # ---------------------------------------------------------------------------

@@ -171,9 +171,9 @@ inline bool image_card_constrained_memory_profile() {
 
 inline bool image_card_modal_cache_expired(uint32_t now = esphome::millis()) {
   ImageCardModalCache &cache = image_card_modal_cache();
-  return cache.ready && cache.cached_at_ms != 0 &&
-         (uint32_t) (now - cache.cached_at_ms) >=
-             IMAGE_CARD_CONSTRAINED_MODAL_CACHE_TTL_MS;
+  return esphome::artwork_image::image_pipeline_modal_cache_remaining_ms(
+             cache.ready, cache.cached_at_ms, now,
+             IMAGE_CARD_CONSTRAINED_MODAL_CACHE_TTL_MS) == 0;
 }
 
 inline bool image_card_retain_modal_cache(
@@ -241,16 +241,17 @@ inline void image_card_schedule_modal_cache_expiry(
   if (!modal_image || !image_card_constrained_memory_profile()) return;
   image_card_cancel_modal_cache_expiry();
   ImageCardModalCache &cache = image_card_modal_cache();
-  const uint32_t age = cache.cached_at_ms == 0
-                           ? IMAGE_CARD_CONSTRAINED_MODAL_CACHE_TTL_MS
-                           : esphome::millis() - cache.cached_at_ms;
-  if (age >= IMAGE_CARD_CONSTRAINED_MODAL_CACHE_TTL_MS) {
+  const uint32_t remaining_ms =
+      esphome::artwork_image::image_pipeline_modal_cache_remaining_ms(
+          cache.ready, cache.cached_at_ms, esphome::millis(),
+          IMAGE_CARD_CONSTRAINED_MODAL_CACHE_TTL_MS);
+  if (remaining_ms == 0) {
     image_card_release_modal_cache(modal_image);
     return;
   }
   cache.expiry_timer = lv_timer_create(
       image_card_modal_cache_expiry_timer_cb,
-      IMAGE_CARD_CONSTRAINED_MODAL_CACHE_TTL_MS - age, modal_image);
+      remaining_ms, modal_image);
   if (!cache.expiry_timer) image_card_release_modal_cache(modal_image);
 }
 
