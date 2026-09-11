@@ -65,7 +65,7 @@ export function buildResetSettings(exportBackup: () => void, makeCard: (title: s
     text.textContent = description;
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "sp-backup-btn";
+    button.className = mode === "factory" ? "sp-backup-btn sp-reset-danger" : "sp-backup-btn";
     button.textContent = label;
     button.onclick = async () => {
       const warning = description + (description.endsWith(".") ? " " : ". ") + "Settings cannot be recovered without a backup.";

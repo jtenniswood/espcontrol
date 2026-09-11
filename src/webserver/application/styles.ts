@@ -540,6 +540,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         "cursor:pointer;font-family:inherit;transition:all .25s;background:var(--surface2);" +
         "color:var(--text)}" +
         ".sp-backup-btn:hover{background:var(--border);border-color:#4a4d54}" +
+        ".sp-backup-btn.sp-reset-danger{background:var(--danger);border-color:var(--danger);color:#fff}" +
+        ".sp-backup-btn.sp-reset-danger:hover{filter:brightness(.9)}" +
         ".sp-backup-btn .mdi{font-size:16px}" +
         ".sp-sun-info{font-size:.8rem;color:var(--text2);padding:8px 12px;margin-top:12px;background:var(--surface2);" +
         "border-radius:8px;text-align:center;display:none}" +
