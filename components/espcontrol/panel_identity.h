@@ -15,6 +15,7 @@ class PanelIdentity : public esphome::Component {
     password_ = password;
   }
   bool save(const std::string &name);
+  int storage_error() const { return storage_error_; }
   bool ready() const { return ready_; }
   const std::string &saved_name() const { return saved_name_; }
   const std::string &suffix() const { return suffix_; }
@@ -30,6 +31,7 @@ class PanelIdentity : public esphome::Component {
   const char *username_{""};
   const char *password_{""};
   bool ready_{false};
+  int storage_error_{0};
 };
 extern PanelIdentity *panel_identity;
 }  // namespace espcontrol

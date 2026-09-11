@@ -61,17 +61,27 @@ void PanelIdentity::setup() {
 }
 
 bool PanelIdentity::save(const std::string &name) {
+  storage_error_ = ESP_OK;
   std::string normalized;
   if (!ready_ || !normalize_panel_name(name, normalized)) return false;
   if (normalized == saved_name_) return true;
   IdentityRecord record;
   std::memcpy(record.name, normalized.data(), normalized.size());
   nvs_handle_t handle;
-  if (nvs_open(NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) return false;
-  esp_err_t result = nvs_set_blob(handle, KEY, &record, sizeof(record));
+  esp_err_t result = nvs_open(NAMESPACE, NVS_READWRITE, &handle);
+  if (result != ESP_OK) {
+    storage_error_ = result;
+    ESP_LOGE("espcontrol.identity", "Name storage open failed: %d", result);
+    return false;
+  }
+  result = nvs_set_blob(handle, KEY, &record, sizeof(record));
   if (result == ESP_OK) result = nvs_commit(handle);
   nvs_close(handle);
-  if (result != ESP_OK) return false;
+  if (result != ESP_OK) {
+    storage_error_ = result;
+    ESP_LOGE("espcontrol.identity", "Name storage write failed: %d", result);
+    return false;
+  }
   saved_name_ = normalized;
   return true;
 }

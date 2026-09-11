@@ -54,7 +54,9 @@ class PanelIdentityHandler final : public esphome::web_server_idf::AsyncWebHandl
         return;
       }
       if (!panel_identity->save(name)) {
-        httpd_resp_send_err(raw, HTTPD_500_INTERNAL_SERVER_ERROR, "Panel name could not be saved");
+        const std::string error = "Panel name could not be saved (storage error " +
+            std::to_string(panel_identity->storage_error()) + ")";
+        httpd_resp_send_err(raw, HTTPD_500_INTERNAL_SERVER_ERROR, error.c_str());
         return;
       }
     }
