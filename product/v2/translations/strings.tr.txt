@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Tatil tutması
 vacuum=Süpürge
 version_unknown=Sürüm bilinmiyor
+voice=Ses
 volume=Ses
 waiting_for_home_assistant=Home Assistant bekleniyor
 home_assistant_connection_lost=\nHome Assistant'a bağlanılıyor

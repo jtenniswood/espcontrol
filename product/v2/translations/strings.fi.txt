@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Lomapito
 vacuum=Imuri
 version_unknown=Versio tuntematon
+voice=Puhe
 volume=Äänenvoimakkuus
 waiting_for_home_assistant=Odotetaan Home Assistantia
 home_assistant_connection_lost=Yhdistetään \nHome Assistantiin

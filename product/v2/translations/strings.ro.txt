@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Menținere vacanță
 vacuum=Aspirator
 version_unknown=Versiune necunoscută
+voice=Voce
 volume=Volum
 waiting_for_home_assistant=Se așteaptă Home Assistant
 home_assistant_connection_lost=Se conectează la \nHome Assistant
