@@ -27,6 +27,10 @@
     "purpose": "Forces PlatformIO to rebuild objects after ESPHome 2026.5 scheduler and watchdog changes.",
     "remove_when": "Stale 2026.4 objects are no longer present in supported caches, or a later marker supersedes it."
   },
+  "ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=2": {
+    "purpose": "Limits S3 camera and media cover-art cards to two shared image contexts to preserve memory headroom.",
+    "remove_when": "Image context capacity is generated from device profile data or a larger pool is validated on the S3."
+  },
   "ESPCONTROL_JC1060P470_BOOTFIX_20260522=1": {
     "purpose": "Cache-busting marker for the JC1060P470 boot-loop fix.",
     "remove_when": "A later required rebuild marker supersedes it."
