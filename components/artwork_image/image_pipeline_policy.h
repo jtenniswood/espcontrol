@@ -21,6 +21,15 @@ constexpr int image_pipeline_modal_max_target_side(bool constrained) {
                      : IMAGE_PIPELINE_STANDARD_MODAL_MAX_TARGET_SIDE_PX;
 }
 
+// Both cache reuse and timer scheduling use the same wrap-safe lifetime.
+// Readiness is explicit: a download completed at millis() == 0 is valid.
+constexpr uint32_t image_pipeline_modal_cache_remaining_ms(
+    bool ready, uint32_t cached_at_ms, uint32_t now_ms, uint32_t ttl_ms) {
+  if (!ready) return 0;
+  const uint32_t age = now_ms - cached_at_ms;
+  return age >= ttl_ms ? 0 : ttl_ms - age;
+}
+
 constexpr bool image_pipeline_should_retain_modal_cache(bool constrained) {
   return !constrained;
 }
