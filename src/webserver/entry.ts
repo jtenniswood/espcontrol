@@ -52,7 +52,7 @@ import { createGridMigrationFeature } from "./application/grid_migration";
 import { createArtworkPostApiFeature } from "./application/artwork_post_api";
 import { createScreenSchedulePostApiFeature } from "./application/screen_schedule_post_api";
 import { createClockBarPostApiFeature } from "./application/clock_bar_post_api";
-import { createControlsShellFeature } from "./application/controls_shell";
+import { createControlsShellFeature, renderPanelBrand } from "./application/controls_shell";
 import { createSettingsPageHelpersFeature, type SettingsPageHelpersFeature } from "./application/settings_page_helpers";
 import { createSettingsScheduleSectionFeature } from "./application/settings_schedule_section";
 import { createSettingsCoverArtSectionFeature } from "./application/settings_cover_art_section";
@@ -266,7 +266,7 @@ function composeApplicationContext(): ApplicationContext {
     changed: () => {
       pageTitle.applyPageTitle(identity.current()?.friendly_name);
       const brand = dom.document.querySelector(".sp-brand");
-      if (brand) brand.textContent = identity.current()?.name ? "EspControl — " + identity.current()!.name : "EspControl";
+      if (brand) renderPanelBrand(brand, dom.document, identity.current()?.name);
     },
     restart: async () => {
       const response = await requestApi.postButtonPress("Apply Configuration");
