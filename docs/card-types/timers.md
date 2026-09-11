@@ -14,7 +14,7 @@ A timer card displays a Home Assistant `timer.*` entity as a live countdown. Tap
 2. Enter a **Timer Entity** — the Home Assistant timer entity you want to control (for example, `timer.kitchen`).
 3. Set a **Label** (optional) — shown at the bottom of the card. If left blank, the entity's friendly name from Home Assistant is used.
 4. Optionally enable **Confirm before cancel** to require a second tap before cancelling a running timer.
-5. If confirmation is enabled, set the **Confirm Timeout** in seconds. After this delay the prompt disappears and the timer keeps running.
+5. If confirmation is enabled, set the **Confirmation Time Out (Seconds)**. After this delay the prompt disappears and the timer keeps running.
 
 ## How It Works on the Panel
 

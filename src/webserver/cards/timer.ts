@@ -55,7 +55,7 @@ registry.register("timer", {
     // Confirm timeout
     var tf = document.createElement("div");
     tf.className = "sp-field";
-    tf.appendChild(helpers.fieldLabel("Confirm Timeout (s)", helpers.idPrefix + "confirm-timeout"));
+    tf.appendChild(helpers.fieldLabel("Confirmation Time Out (Seconds)", helpers.idPrefix + "confirm-timeout"));
     var timeoutInp = document.createElement("input");
     timeoutInp.type = "number";
     timeoutInp.className = "sp-input";
