@@ -64,7 +64,8 @@ class PanelIdentityHandler final : public esphome::web_server_idf::AsyncWebHandl
       root["hostname"] = panel_identity->target_hostname();
       root["mac_suffix"] = panel_identity->suffix();
       root["restart_required"] = panel_identity->restart_required();
-      root["ip_address"] = esphome::network::get_ip_addresses()[0].str();
+      char address[esphome::network::IP_ADDRESS_BUFFER_SIZE];
+      root["ip_address"] = std::string(esphome::network::get_ip_addresses()[0].str_to(address));
     });
     httpd_resp_set_type(raw, "application/json");
     httpd_resp_set_hdr(raw, "Cache-Control", "no-store");
@@ -74,7 +75,8 @@ class PanelIdentityHandler final : public esphome::web_server_idf::AsyncWebHandl
   bool authorize(esphome::web_server_idf::AsyncWebServerRequest *request) {
     if (panel_identity == nullptr || !panel_identity->ready()) {
       httpd_req_t *raw = *request;
-      httpd_resp_send_err(raw, HTTPD_503_SERVICE_UNAVAILABLE, "Panel identity is unavailable");
+      httpd_resp_set_status(raw, "503 Service Unavailable");
+      httpd_resp_send(raw, "Panel identity is unavailable", HTTPD_RESP_USE_STRLEN);
       return false;
     }
 #ifdef USE_WEBSERVER_AUTH
