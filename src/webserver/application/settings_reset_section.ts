@@ -4,7 +4,7 @@ export function buildResetSettings(exportBackup: () => void, makeCard: (title: s
   const body = document.createElement("div");
   const card = makeCard("Factory Reset", body, true);
   card.hidden = true;
-  const banner = infoPanel("sp-reset-backup-info", "Remember to backup your configuration before resetting your device");
+  const banner = infoPanel("sp-reset-backup-info", "Backup your device before resetting");
   banner.classList.add("sp-reset-backup-info");
   const note = banner.lastElementChild as HTMLElement;
   const backup = document.createElement("button");
