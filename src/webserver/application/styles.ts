@@ -2,16 +2,16 @@ import { WEB_UI_COLORS } from "../state/ui_tokens";
 
 export function createWebStyles(dragAnimation: boolean): string {
     return ":root{" +
-        "--bg:#1a1a1e;--surface:#1f1f23;--surface2:#29292d;--border:#383840;" +
-        "--text:#e2e0d8;--text2:#9c9a93;--text3:#6c6a63;--accent:#c58b4a;--accent-hover:#e0a860;" +
+        "--bg:#1b1b1f;--surface:#202127;--surface2:#2e2e32;--border:#3c3f44;" +
+        "--text:#dfdfd6;--text2:#98989f;--text3:#6a6a71;--accent:#5c73e7;--accent-hover:#a8b1ff;" +
         "--screen-primary:#" + WEB_UI_COLORS.primary + ";--screen-secondary:#" + WEB_UI_COLORS.secondary + ";" +
         "--screen-tertiary:#" + WEB_UI_COLORS.tertiary + ";" +
-        "--accent-soft:rgba(197,139,74,.15);--success:#30a46c;--danger:#f14158;" +
+        "--accent-soft:rgba(100,108,255,.16);--success:#30a46c;--danger:#f14158;" +
         "--radius:12px;--action-r:9999px;--gap:16px;" +
         "--text-xs:.75rem;--text-sm:.8rem;--text-md:.875rem;--text-lg:1rem;--text-xl:1.2rem;" +
-        "--shadow-1:0 1px 2px rgba(0,0,0,.15),0 1px 3px rgba(30,20,10,.22);" +
-        "--shadow-2:0 3px 12px rgba(0,0,0,.22),0 1px 4px rgba(30,20,10,.18);" +
-        "--shadow-3:0 12px 32px rgba(0,0,0,.3),0 2px 6px rgba(30,20,10,.22)}" +
+        "--shadow-1:0 1px 2px rgba(0,0,0,.2),0 1px 2px rgba(0,0,0,.24);" +
+        "--shadow-2:0 3px 12px rgba(0,0,0,.28),0 1px 4px rgba(0,0,0,.2);" +
+        "--shadow-3:0 12px 32px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.24)}" +
         "#sp-app{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;" +
         "color:var(--text);max-width:1080px;margin:0 auto;-webkit-font-smoothing:antialiased;" +
         "font-optical-sizing:auto}" +
@@ -459,7 +459,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-schedule-times.sp-hidden{display:none}" +
         "#sp-set-schedule-actions{margin-top:28px}" +
         ".sp-info-panel{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin-bottom:16px;" +
-        "background:var(--accent-soft);border:1px solid rgba(197,139,74,.28);border-radius:10px;" +
+        "background:var(--accent-soft);border:1px solid rgba(92,115,231,.22);border-radius:10px;" +
         "color:var(--text2);font-size:.82rem;line-height:1.35}" +
         ".sp-info-panel .mdi{font-size:18px;color:var(--accent);line-height:1.1;flex:0 0 auto;margin-top:1px}" +
         ".sp-info-panel a{color:var(--accent);font-weight:600;text-decoration:none}" +
