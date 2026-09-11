@@ -681,7 +681,7 @@ def test_weather_card_visual_matches_preview() -> None:
         and "lv_obj_del(child);" in grid
         and "lv_obj_set_user_data(s.sensor_container, nullptr);" in grid
         and "lv_obj_clear_state(s.btn, LV_STATE_CHECKED);" in grid
-        and "lv_obj_clear_state(s.btn, LV_STATE_DISABLED);" in grid
+        and "set_card_disabled_state(s.btn, false);" in grid
         and "lv_obj_set_style_opa(s.btn, LV_OPA_COVER, LV_PART_MAIN);" in grid
         and "reset_card_slot_dynamic_children(s);" in setup_visual
     ), "weather cards must clear stale widget children, active states, and opacity before rendering"

@@ -194,6 +194,8 @@ export function createSettingsPageHelpersFeature(
         var uiState: any = _alarmDelayAudioController.uiState(audioState);
         if (els.setAlarmDelayAudioToggle)
             els.setAlarmDelayAudioToggle.checked = !!state.alarmDelayAudioOn;
+        if (els.setAlarmDelayAudioBadge)
+            els.setAlarmDelayAudioBadge.className = "sp-card-badge" + (state.alarmDelayAudioOn ? "" : " sp-hidden");
         if (els.setAlarmDelayTtsToggle)
             els.setAlarmDelayTtsToggle.checked = !!state.alarmDelayTtsOn;
         if (els.alarmDelayAudioOptions)
@@ -319,8 +321,10 @@ export function createSettingsPageHelpersFeature(
         body.appendChild(infoPanel(
             "sp-alarm-delay-audio-info",
             "Entry and exit beeps use the panel speaker. TTS is sent as a Home Assistant announcement event only while Voice Services are enabled."));
+        var badge: any = statusBadge("Alarm audio on");
+        els.setAlarmDelayAudioBadge = badge;
         syncAlarmDelayAudioUi();
-        return makeCollapsibleCard("Alarm Audio", body, true);
+        return makeCollapsibleCard("Alarm Audio", body, true, badge);
     }
     function coverArtTrackOverlayDurationSupported(this: any) {
         return !!controllers.layout.config.coverArtSquareOverlay;
