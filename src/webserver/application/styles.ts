@@ -1,7 +1,8 @@
 import { WEB_UI_COLORS } from "../state/ui_tokens";
 
 export function createWebStyles(dragAnimation: boolean): string {
-    return ":root{" +
+    return ".sp-reset-dialog{max-width:480px;padding:24px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);font:inherit;line-height:1.5}.sp-reset-dialog::backdrop{background:rgba(0,0,0,.65)}" +
+        ":root{" +
         "--bg:#1b1b1f;--surface:#202127;--surface2:#2e2e32;--border:#3c3f44;" +
         "--text:#dfdfd6;--text2:#98989f;--text3:#6a6a71;--accent:#5c73e7;--accent-hover:#a8b1ff;" +
         "--screen-primary:#" + WEB_UI_COLORS.primary + ";--screen-secondary:#" + WEB_UI_COLORS.secondary + ";" +

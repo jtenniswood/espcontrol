@@ -10,10 +10,11 @@ from esphome.components.esp32 import VARIANT_ESP32S3, get_esp32_variant
 from esphome.components import text
 import esphome.config_validation as cv
 from esphome.const import CONF_ID
+from esphome.core import CORE, CoroPriority, coroutine_with_priority
 import os
 
 CODEOWNERS = ["@jtenniswood"]
-AUTO_LOAD = ["mdns"]
+AUTO_LOAD = ["mdns", "json"]
 
 CONF_ACTION_RESPONSES = "action_responses"
 CONF_PANEL_CONFIG = "panel_config"
@@ -64,7 +65,19 @@ CONFIG_SCHEMA = cv.Schema(
 ).extend(cv.COMPONENT_SCHEMA)
 
 
+@coroutine_with_priority(CoroPriority.DIAGNOSTICS)
 async def to_code(config):
+    # Run before safe_mode's early return and before any preference consumers.
+    if CORE.config.get("preferences", {}).get("rtc_storage", False):
+        raise cv.Invalid("EspControl reset requires flash preferences; remove preferences.rtc_storage")
+    cg.add_define("USE_OTA_STATE_LISTENER")
+    # ESP32Preferences::open otherwise erases all NVS on an initialization
+    # error before generated setup can inspect the durable reset journal.
+    cg.add_build_flag("-Wl,--wrap=nvs_flash_erase")
+    cg.add_global(cg.RawStatement('#include "esphome/components/espcontrol/device_reset.h"'), prepend=True)
+    compiled_networks = bool(CORE.config.get("wifi", {}).get("networks", []))
+    cg.add(espcontrol_ns.namespace("reset").early_startup(
+        compiled_networks, config[CONF_WEB_AUTH_USERNAME], config[CONF_WEB_AUTH_PASSWORD]))
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     cg.add(var.set_web_auth_credentials(
@@ -87,6 +100,10 @@ async def to_code(config):
                 for source in button_sources[CONF_SUBPAGE_CHUNKS]
             ]
             cg.add(var.set_panel_config_button(slot, button, *subpages))
+
+    for update_config in CORE.config.get("update", []):
+        update_entity = await cg.get_variable(update_config[CONF_ID])
+        cg.add(espcontrol_ns.namespace("reset").watch_update(update_entity))
 
     # ESPHome's native ESP-IDF generator only forwards -D and -W entries from
     # esphome.build_flags. Route this required S3 compiler option through the

@@ -83,6 +83,35 @@ curl -s "http://<device-ip>/text/Button%20On%20Color?detail=all"
 The setup page writes to these same text/select/number/switch entities, so the
 REST response shows the exact compact string firmware will parse.
 
+### Reset and editing sessions
+
+Reset-capable firmware advertises `reset.modes` in capabilities. Read
+`GET /api/v1/reset` when opening an editing session and retain its `epoch` for
+that session. Configuration POST/PUT requests require `X-EspControl-Epoch`;
+after a reset, a stale or missing epoch is rejected with 409/428. Reload the
+device state instead of refreshing the epoch and replaying old edits. Older
+firmware returns 404 for reset discovery and keeps its existing write protocol.
+ESPHome's `/wifisave` and `/update` forms do not require the epoch, but are
+blocked while reset is pending.
+
+`POST /api/v1/reset` requires `Content-Type: application/json`,
+`X-EspControl-Request: reset`, the session epoch, and a body containing only
+`{"mode":"customization"}` or `{"mode":"factory"}`. Existing web authentication
+applies; cross-origin requests are rejected. A 202 response means intent is
+durable, not that cleanup has completed. Stop saves/imports immediately, and
+reload only after a newer epoch reports `pending: false`. A lost response may
+still mean reset was accepted. The same pending mode is idempotent; conflicting
+modes and requests during firmware installation receive 409.
+
+The early-startup coordinator owns cleanup independently of configuration
+loading. Its `espcontrol_rst` journal survives factory cleanup. Failed cleanup
+blocks restoration and retries with a serial recovery message. The credential
+adapter in `reset_policy.h` is coupled to the pinned ESPHome Wi-Fi and API
+preference keys and must be checked when upgrading ESPHome.
+The linker also blocks ESPHome's automatic whole-NVS erase on preference
+initialization errors, which would otherwise destroy the journal before the
+coordinator runs. Reset cleanup always erases individual records.
+
 ## Adding a Card Settings UI
 
 Each card module registers its label/default providers, preview renderer,

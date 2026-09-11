@@ -83,6 +83,8 @@ TASKS = (
          domains=("firmware",),
          inputs=(
              "tests/firmware/**",
+             "components/espcontrol/device_reset.*",
+             "components/espcontrol/reset_policy.h",
              "components/espcontrol/configuration_service.*",
              "components/espcontrol/panel_config_service_validator.h",
              "components/espcontrol/panel_config_capabilities.h",

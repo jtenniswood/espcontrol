@@ -1,4 +1,5 @@
 #include "espcontrol_app.h"
+#include "device_reset.h"
 
 #include <array>
 #include <cinttypes>
@@ -31,6 +32,7 @@ extern "C" void espcontrol_register_web_server_handlers(
     esphome::web_server_idf::AsyncWebServer *server) {
 #ifdef USE_WEBSERVER
   if (server == nullptr) return;
+  espcontrol::reset::register_handlers(*server);
   register_local_sensor_endpoint(*server);
   register_local_action_endpoint(*server);
   espcontrol::configuration::register_panel_config_capabilities_endpoint(*server);

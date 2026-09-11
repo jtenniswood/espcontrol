@@ -1,3 +1,4 @@
+import { resetAwareFetch } from "./api/reset_session";
 import * as DeviceConfig from "./device_config";
 import * as Model from "./model";
 import { createDeviceApi } from "./api/device_api";
@@ -249,7 +250,7 @@ function installTestHooks(context: ApplicationContext, lightCards: ReturnType<ty
 
 function composeApplicationContext(): ApplicationContext {
   const fetchService: typeof fetch = typeof fetch === "function"
-    ? fetch.bind(globalThis)
+    ? resetAwareFetch
     : (() => Promise.reject(new Error("Fetch is not available"))) as typeof fetch;
   const dom: ApplicationDomServices = {
     document,
@@ -341,6 +342,10 @@ function composeApplicationContext(): ApplicationContext {
     () => defaultTimezoneOptionsForDevice(layout.config),
     layout,
   );
+  dom.document.addEventListener("espcontrol-reset-stale", () => {
+    shell.setConfigLocked(true, "Device reset — reload this page before editing.");
+    shell.showBanner("The device was reset. Reload this page before making changes.", "error");
+  });
   const nativePanelConfig = createNativePanelConfigMigrationController({
     deviceProfile: () => layout.deviceId,
     slotCount: () => layout.numSlots,
@@ -349,7 +354,7 @@ function composeApplicationContext(): ApplicationContext {
     normalizeHexColor: (value, fallback) => Model.normalizeHexColor(value, fallback),
     showBanner: shell.showBanner,
     delay: (callback, milliseconds) => dom.schedule(callback, milliseconds),
-  });
+  }, dom.fetch);
   const configurationPersistence = createConfigPersistenceFeature(nativePanelConfig, runtime, layout, entityState, shell);
   const cards = createCardRegistry();
   const iconPicker = createButtonSettingsIconPickerFeature(dom.document, () => preview.render());

@@ -1,3 +1,4 @@
+import { buildResetSettings } from "./settings_reset_section";
 import { state } from "../state/app_instance";
 import { normalizeHomeAssistantArtworkEndpointMode, normalizeHomeAssistantArtworkPort, normalizeHomeAssistantArtworkProtocol } from "../model/settings";
 import type { UiRuntimeState } from "./state";
@@ -416,6 +417,7 @@ export function createSettingsSystemSectionFeature(
         var homeAssistantSettingsCard: any = makeCollapsibleCard("Home Assistant Settings", homeAssistantSettingsBody, true);
         return {
             backupCard: backupCard,
+            resetCard: buildResetSettings(actions.exportBackup, makeCollapsibleCard),
             firmwareCard: firmwareCard,
             homeAssistantSettingsCard: homeAssistantSettingsCard,
         };

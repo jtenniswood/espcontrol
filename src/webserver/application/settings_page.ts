@@ -526,6 +526,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             systemSettingsCards.firmwareCard,
             systemSettingsCards.homeAssistantSettingsCard,
             batteryStatusCard,
+            systemSettingsCards.resetCard,
         ]);
         page.appendChild(config);
         page.appendChild(buildApplyBar());
