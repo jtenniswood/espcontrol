@@ -1,7 +1,7 @@
 """ESPHome external component stub for espcontrol.
 
-Registers the central EspControlApp component and this directory as an include
-path so public C++ compatibility headers remain available to device YAML.
+Registers the early panel identity component, central EspControlApp component,
+and include path for compatibility headers used by device YAML.
 EspControlApp owns long-lived firmware services while YAML continues to supply
 device-specific wiring.
 """

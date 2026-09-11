@@ -264,7 +264,7 @@ function composeApplicationContext(): ApplicationContext {
   const identity = createPanelIdentityFeature({
     document: dom.document, fetch: dom.fetch,
     changed: () => {
-      pageTitle.applyPageTitle();
+      pageTitle.applyPageTitle(identity.current()?.friendly_name);
       const brand = dom.document.querySelector(".sp-brand");
       if (brand) brand.textContent = identity.current()?.name ? "EspControl — " + identity.current()!.name : "EspControl";
     },
@@ -273,6 +273,7 @@ function composeApplicationContext(): ApplicationContext {
       if (!response?.ok) throw new Error("Name saved, but the panel could not restart. Try again.");
     },
     beforeSave: async () => {
+      if (shell.isConfigLocked()) throw new Error("Wait for the current panel operation to finish before renaming.");
       await requestApi.postQueue;
       if (requestApi.postQueueError) throw new Error("Some configuration changes failed. Reload the page before renaming.");
     },

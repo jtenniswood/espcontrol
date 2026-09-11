@@ -140,3 +140,23 @@ actions:
 ```
 
 The web setup page's **Apply Configuration** button remains separate: use it after saving web settings, and use the Home Assistant **Restart** entity when you only need to restart the display.
+
+## Naming Your Panel
+
+On firmware that supports panel naming, open **Settings → System → Panel name**.
+Enter a name such as **Kitchen**, check the address preview, then choose
+**Save and restart**. The name appears in the web interface, browser tab, the
+panel's network information and Home Assistant. The address becomes something
+like `espcontrol-kitchen-a1b2c3.local`; the suffix identifies your particular panel.
+
+The page shows the new address and current IP before restarting. Reopen the panel
+using either link. Router-managed DNS entries may need updating separately.
+Clearing the name restores the firmware's original name and address. Normal OTA
+updates retain your custom name; older firmware without naming support uses its
+compiled defaults.
+
+Home Assistant should update the existing device after reconnecting. A name you
+assigned manually in Home Assistant takes precedence. Existing entity IDs remain
+unchanged, but custom ESPHome action names include the hostname: update automations
+using actions such as `esphome.<old_name>_navigate`. Reload the ESPHome integration
+if its action list still shows the previous names.

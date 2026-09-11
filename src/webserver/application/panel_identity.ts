@@ -29,10 +29,12 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
       ...(name === undefined ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }),
     });
     if (name === undefined && response.status === 404) return null;
-    if (!response.ok) throw new Error("Could not " + (name === undefined ? "read" : "save") + " the panel name. Check the connection and try again.");
+    if (!response.ok) throw new Error(name === undefined
+      ? "Could not read the panel name. Check the connection and try again."
+      : "Could not save the panel name. Check the connection and try again.");
     const value = await response.json() as PanelIdentityInfo;
     if (!value || typeof value.name !== "string" || typeof value.friendly_name !== "string"
-        || typeof value.hostname !== "string" || !/^[a-z0-9-]{1,31}$/.test(value.hostname)
+        || typeof value.hostname !== "string" || !/^[a-z0-9_-]{1,31}$/.test(value.hostname)
         || typeof value.mac_suffix !== "string" || !/^[a-f0-9]{6}$/.test(value.mac_suffix)
         || typeof value.ip_address !== "string" || typeof value.restart_required !== "boolean") {
       throw new Error("Invalid panel identity response.");
@@ -42,7 +44,21 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
     return info;
   }
   function load(): Promise<PanelIdentityInfo | null> {
-    if (!loading) loading = request().catch(error => { loading = null; throw error; });
+    if (!loading) loading = (async () => {
+      // Discover support before requesting identity so older firmware stays quiet.
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const response = await deps.fetch("/api/v1/capabilities", { credentials: "include", cache: "no-store" });
+        if (response.status === 404) return null;
+        if (response.status === 503 && attempt < 3) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        }
+        if (!response.ok) throw new Error("Could not read panel naming support. Reopen Settings to retry.");
+        const capabilities = await response.json();
+        return capabilities?.identity?.version === 1 ? request() : null;
+      }
+      return null;
+    })().catch(error => { loading = null; throw error; });
     return loading;
   }
   function backup(): PanelIdentityBackup | undefined {

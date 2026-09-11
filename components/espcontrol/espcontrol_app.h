@@ -13,7 +13,8 @@
 #include "home_assistant_endpoint_resolver.h"
 namespace espcontrol {
 
-// The single ESPHome component boundary for EspControl-owned firmware state.
+// The main ESPHome component boundary for EspControl runtime services.
+// PanelIdentity runs separately because network identity must be restored earlier.
 // YAML remains a compatibility/wiring layer and accesses services through this
 // owner while behaviour moves into compiled modules.
 class EspControlApp : public esphome::Component {

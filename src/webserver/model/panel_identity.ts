@@ -25,7 +25,7 @@ export function normalizePanelName(value: unknown): string {
 }
 
 export function panelHostname(name: string, suffix: string): string {
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "panel";
+  const slug = name.replace(/[A-Z]/g, c => c.toLowerCase()).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "panel";
   return `espcontrol-${slug.slice(0, 13).replace(/-+$/, "")}-${suffix}`;
 }
 
@@ -35,7 +35,7 @@ export function readIdentityBackup(value: unknown): PanelIdentityBackup | undefi
   if (data.version !== 1) return undefined;
   const name = normalizePanelName(data.name);
   if (typeof data.mac_suffix !== "string" || !/^[a-f0-9]{6}$/.test(data.mac_suffix)
-      || typeof data.hostname !== "string" || !/^[a-z0-9-]{1,31}$/.test(data.hostname)) {
+      || typeof data.hostname !== "string" || !/^[a-z0-9_-]{1,31}$/.test(data.hostname)) {
     throw new Error("Invalid panel identity in backup.");
   }
   return { version: 1, name, hostname: data.hostname, mac_suffix: data.mac_suffix };
