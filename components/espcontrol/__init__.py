@@ -73,12 +73,16 @@ async def to_code(config):
     cg.add_define("USE_OTA_STATE_LISTENER")
     cg.add_global(cg.RawStatement('#include "esphome/components/espcontrol/device_reset.h"'), prepend=True)
     compiled_networks = bool(CORE.config.get("wifi", {}).get("networks", []))
+    # Directly configured ESPHome web authentication must protect our native
+    # endpoints too, even when the convenience auth add-on was not included.
+    web_auth = CORE.config.get("web_server", {}).get("auth", {})
+    username = web_auth.get("username", config[CONF_WEB_AUTH_USERNAME])
+    password = web_auth.get("password", config[CONF_WEB_AUTH_PASSWORD])
     cg.add(espcontrol_ns.namespace("reset").early_startup(
-        compiled_networks, config[CONF_WEB_AUTH_USERNAME], config[CONF_WEB_AUTH_PASSWORD]))
+        compiled_networks, username, password))
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
-    cg.add(var.set_web_auth_credentials(
-        config[CONF_WEB_AUTH_USERNAME], config[CONF_WEB_AUTH_PASSWORD]))
+    cg.add(var.set_web_auth_credentials(username, password))
 
     panel_config = config.get(CONF_PANEL_CONFIG)
     if panel_config is not None:
