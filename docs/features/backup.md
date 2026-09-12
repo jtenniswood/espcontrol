@@ -23,16 +23,16 @@ New backup exports continue to use `version: 2` with `format: "espcontrol.backup
 
 When importing a backup from a different-sized panel, EspControl keeps the saved card order where it can and rearranges cards that no longer fit the target screen. Subpages are moved with their parent card when the parent card is kept.
 
-## Reset the display
+## Reset the Display
 
-Open **Settings → System → Factory Reset** to choose:
+Open **Settings > System > Factory Reset** on the [Setup](/features/setup) page. Choose **Save backup** to keep a copy of your settings, then choose a reset option and confirm:
 
-- **Partial reset** removes cards, layouts, subpages, actions and device preferences, while keeping the saved Wi-Fi connection and Home Assistant encryption key. The display restarts into card setup.
+- **Partial reset** removes cards, layouts, subpages, actions, the custom device name and device preferences, while keeping the saved Wi-Fi connection and Home Assistant encryption key. The display restarts into card setup.
 - **Complete reset** also removes saved Wi-Fi credentials and the Home Assistant encryption key. Confirm the reset in the web dialog, then follow the display's first-time setup instructions. Ethernet displays remain accessible through their wired network. Home Assistant may need to be configured again; its integration records and automations are not deleted.
 
-Export a backup first if you want to restore your customization later. Backups do not restore the display's Wi-Fi login or Home Assistant encryption key. They can still contain passwords saved in Wi-Fi Sharing cards. Both options keep the installed firmware and its built-in defaults. Names, credentials and other settings compiled into a custom ESPHome YAML remain; install stock firmware to restore stock defaults.
+Backups do not restore the display's Wi-Fi login or Home Assistant encryption key. They can still contain passwords saved in [Wifi Sharing cards](/card-types/wifi-share). Both options keep the installed firmware and its built-in defaults. Names, credentials and other settings compiled into a custom ESPHome YAML remain; install stock firmware to restore stock defaults.
 
-The Reset section appears only on firmware that supports it. After reset, reload any other open setup pages before editing. A reset interrupted by power loss resumes at startup. If storage cleanup fails, startup remains paused and the serial log reports `Reset recovery`; cleanup retries every ten seconds. Do not restore a backup until reset has completed.
+The **Factory Reset** section appears only on firmware that supports it. After reset, reload any other open setup pages before editing. A reset interrupted by power loss resumes at startup. If storage cleanup fails, startup remains paused and the serial log reports `Reset recovery`; cleanup retries every ten seconds. Do not restore a backup until reset has completed.
 
 Reset clears operational configuration; it is not a forensic secure-erasure feature.
 
