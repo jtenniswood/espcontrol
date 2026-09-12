@@ -232,6 +232,7 @@ export function createControlsFieldsFeature(
             card: false,
             type: false,
             entity: false,
+            name: false,
         };
         var movable: any = [];
         var firstDisclosure: any = null;
