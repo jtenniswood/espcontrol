@@ -39,6 +39,8 @@ usage documentation lives in the root `README.md` and under `docs/`.
 - [Firmware UI](firmware.md)
 - [Panel Identity Storage](panel-identity.md)
 - [Devices and Builds](devices-and-builds.md)
+- [P4-86 Voice Diagnostics](p4-86-voice-diagnostics.md) - temporary issue #1701
+  firmware and serial capture procedure.
 - [Modal Layout System](modal-layout-system.md)
 - [Display Lifecycle Transition Contract](display-lifecycle.md)
 - [Cover Art Mode](cover-art-mode.md)
