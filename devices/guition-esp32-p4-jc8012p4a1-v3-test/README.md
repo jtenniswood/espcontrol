@@ -39,8 +39,9 @@ esptool --chip esp32p4 --port YOUR_SERIAL_PORT --before no-reset write-flash 0x0
 
 Use the **merged factory image** at `0x0`. Do not substitute an OTA application
 image or a V2 factory/recovery image. Release BOOT and reset/power-cycle the panel
-after flashing. Join its `EspControl 10inch V3 Test` hotspot (with the device's MAC
-suffix, if present), and open `http://192.168.4.1` to enter Wi-Fi credentials.
+after flashing. Join the `ESP_xxxxxx` hotspot shown on the panel (`xxxxxx` is
+the last six MAC-address characters), and open `http://192.168.4.1` to enter
+Wi-Fi credentials.
 The captive portal can configure Wi-Fi but cannot upload firmware.
 
 Automatic P4 and C6 updates start off, including after a reboot. Leave them off
