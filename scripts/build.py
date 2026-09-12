@@ -48,8 +48,8 @@ WEB_SOURCE_DIR = ROOT / "src" / "webserver"
 # list aligned with the GitHub Pages release catalogue in pages.yml.
 WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = (
     "dev",
+    "v2.9.0",
     "v2.8.6",
-    "v2.8.5",
     "v2.8.4",
     "v2.8.3",
     "v2.8.2",
