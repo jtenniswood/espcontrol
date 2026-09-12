@@ -74,6 +74,11 @@ export async function runDeviceApiTests(): Promise<void> {
   equal(jsonCall?.init?.cache, "no-store", "state loading bypasses the browser cache");
   equal(jsonCall?.init?.credentials, "include", "state loading includes Safari HTTP credentials");
 
+  await api.getJson("https://jtenniswood.github.io/espcontrol/firmware/test/manifest.json", { credentials: "omit" });
+  equal(calls.at(-1)?.init?.credentials, "omit", "public metadata explicitly omits credentials");
+  await api.request("/explicit", { credentials: "same-origin" });
+  equal(calls.at(-1)?.init?.credentials, "same-origin", "explicit credential modes are preserved");
+
   const invalidJson = await api.getJson("/bad-json");
   equal(invalidJson.kind, "invalid-json", "invalid JSON returns a typed parsing failure");
   const firstJson = await api.getJsonFirst<{ state: string }>(["/first", "/bad-json", "/json"]);
