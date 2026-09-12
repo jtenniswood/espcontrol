@@ -585,10 +585,6 @@ export function createPreviewClipboardFeature(
         textarea.value = code;
         textarea.setAttribute("aria-label", "Card transfer code");
         dialog.appendChild(textarea);
-        var privacy: any = document.createElement("p");
-        privacy.className = "sp-transfer-note";
-        privacy.textContent = "Keep this code private. It can include webhook URLs, headers, or other sensitive configuration.";
-        dialog.appendChild(privacy);
         var status = document.createElement("p");
         status.className = "sp-transfer-note";
         status.setAttribute("role", "status");
