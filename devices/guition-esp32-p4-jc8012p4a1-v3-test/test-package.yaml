@@ -1,4 +1,6 @@
 # Experimental P4 v3.x target for issue #1939. Not a public device profile.
+# Named test-package.yaml so public-device inventory checks do not treat this
+# thin inherited experiment as a standalone packages.yaml hardware definition.
 # Inherit the V2 layout, panel, touch, clocks and Wi-Fi wiring unchanged.
 packages:
   v2: !include ../guition-esp32-p4-jc8012p4a1-v2/packages.yaml

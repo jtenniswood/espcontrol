@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -29,7 +30,6 @@ def main() -> None:
     # A worktree's .git points outside /config; preserve that path in the container.
     git_dir = git("rev-parse", "--path-format=absolute", "--git-common-dir")
     docker = ["docker", "run", "--rm", "--user"]
-    import os
     docker += [f"{os.getuid()}:{os.getgid()}", "-e", "HOME=/tmp",
                "-v", f"{ROOT}:/config", "-v", f"{git_dir}:{git_dir}:ro"]
 
@@ -54,20 +54,24 @@ def main() -> None:
     run(options + ["compile", CONFIG], "compile.log")
 
     build = ROOT / "builds/.esphome/build/espctl-v3-test"
-    sdk_files = list(build.glob("sdkconfig*"))
+    sdk_files = list(build.rglob("sdkconfig*"))
     sdk = next((p for p in sdk_files if p.is_file() and "CONFIG_IDF_TARGET=" in p.read_text()), None)
     if sdk is None:
         raise SystemExit(f"Cannot find generated sdkconfig in {build}")
     sdk_text = sdk.read_text()
     assert "CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y" not in sdk_text
-    assert "# CONFIG_ESP32P4_SELECTS_REV_LESS_V3 is not set" in sdk_text
+    assert ("# CONFIG_ESP32P4_SELECTS_REV_LESS_V3 is not set" in sdk_text
+            or "CONFIG_ESP32P4_SELECTS_REV_LESS_V3=n" in sdk_text)
     defines = (build / "src/esphome/core/defines.h").read_text()
     assert "#define USE_WEBSERVER_OTA_DISABLED" in defines
-    assert "#define USE_ESPHOME_OTA" in defines
     # Confirm the external component was fetched from this commit, including the upload guard.
     server = (build / "src/esphome/components/web_server_idf/web_server_idf.cpp").read_text()
     assert "Browser firmware uploads are disabled" in server
     generated = (build / "src/main.cpp").read_text()
+    assert "esphome::ESPHomeOTAComponent" in generated
+    assert "->set_port(3232)" in generated
+    for switch_id in ("auto_update_switch", "c6_auto_update_switch"):
+        assert f"{switch_id}->set_restore_mode(switch_::SWITCH_ALWAYS_OFF);" in generated
     assert f"/firmware/{SLUG}/manifest.json" in generated
     assert "/firmware/guition-esp32-p4-jc8012p4a1-v2/manifest.json" not in generated
 
@@ -75,6 +79,26 @@ def main() -> None:
     factories = list(build.rglob("firmware.factory.bin"))
     if len(factories) != 1:
         raise SystemExit(f"Expected one factory image, found {factories}")
+    artifact_dir = factories[0].parent
+    # Retain the application and symbols for subsequent native OTA tests/backtraces.
+    for filename in ("firmware.bin", "firmware.ota.bin", "firmware.elf"):
+        candidate = artifact_dir / filename
+        if candidate.is_file():
+            shutil.copy2(candidate, output / filename)
+    bootloaders = list(build.rglob("bootloader.bin"))
+    applications = [p for p in build.rglob("firmware.bin") if p.parent == artifact_dir]
+    if len(bootloaders) != 1 or len(applications) != 1:
+        raise SystemExit("Cannot identify the built bootloader and application for revision checks.")
+    for role, binary in (("bootloader", bootloaders[0]), ("application", applications[0])):
+        container_path = "/config/" + str(binary.relative_to(ROOT))
+        run(["-c", "import json,sys; from esptool.bin_image import LoadFirmwareImage; "
+             "i=LoadFirmwareImage('esp32p4',sys.argv[1]); "
+             "assert 300 <= i.min_rev_full <= 302 <= i.max_rev_full, "
+             "(i.min_rev_full,i.max_rev_full); "
+             "print(json.dumps({'chip_id':i.chip_id,'min_revision':i.min_rev_full,"
+             "'max_revision':i.max_rev_full}))", container_path], f"{role}-header.json", python=True)
+        run(["-m", "esptool", "--chip", "esp32p4", "image-info", container_path],
+            f"{role}-image-info.txt", python=True)
     factory = output / f"{SLUG}.factory.bin"
     shutil.copy2(factories[0], factory)
     checksum = hashlib.sha256(factory.read_bytes()).hexdigest()

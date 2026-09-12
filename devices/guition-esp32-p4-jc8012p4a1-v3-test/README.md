@@ -76,7 +76,7 @@ packages:
   setup:
     url: https://github.com/jtenniswood/espcontrol/
     ref: test-jc8012p4a1-v3
-    file: devices/guition-esp32-p4-jc8012p4a1-v3-test/packages.yaml
+    file: devices/guition-esp32-p4-jc8012p4a1-v3-test/test-package.yaml
     refresh: 1s
 ```
 
