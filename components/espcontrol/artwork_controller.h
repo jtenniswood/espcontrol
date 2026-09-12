@@ -7,6 +7,31 @@
 
 namespace espcontrol::artwork {
 
+// Recovery belongs to the failed image, not to the panel's startup window.
+// Keep a deadline even while waiting for Home Assistant to return fresh URLs:
+// a missing attribute reply must not strand recovery either.
+struct DownloadRecovery {
+  uint8_t step{0};
+  uint32_t retry_at{0};
+
+  bool active() const { return step != 0; }
+  uint32_t delay_ms() const {
+    return step >= 6 ? 60000u : (2000u << (step == 0 ? 0 : step - 1));
+  }
+  void failed(uint32_t now) {
+    if (!active()) step = 1;
+    retry_at = now + delay_ms();
+  }
+  bool due(uint32_t now) const {
+    return active() && static_cast<int32_t>(now - retry_at) >= 0;
+  }
+  void retry_started(uint32_t now) {
+    if (step < 6) ++step;
+    retry_at = now + delay_ms();
+  }
+  void reset() { step = 0; retry_at = 0; }
+};
+
 struct SourceSelection {
   std::string primary;
   std::string fallback;
@@ -239,8 +264,9 @@ constexpr bool artwork_timeout_preserves_displayed_image(bool response_window_ex
 // A selected source only needs another download when it differs from the
 // artwork already on screen, except for an explicit recovery refresh.
 constexpr bool artwork_selection_needs_download(bool refresh_forced,
-                                                bool source_matches_current) {
-  return refresh_forced || !source_matches_current;
+                                                bool source_matches_current,
+                                                bool image_ready = true) {
+  return refresh_forced || !source_matches_current || !image_ready;
 }
 
 // Owns the ordering rules for Home Assistant's remote and local artwork URLs.
