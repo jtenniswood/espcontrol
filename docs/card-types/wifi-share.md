@@ -14,13 +14,13 @@ It does not read, reveal, or share the Wifi network used by the EspControl panel
 
 ## Setting Up a Wifi Sharing Card
 
-1. Add **Wifi Sharing**, then choose **Connect Card** or **QR Card** from its **Type** setting.
+1. Add **Wifi Sharing**, then choose **Connect Card** or **QR Card** from its **Type** setting. Enter a **Name** directly below Type (default: **Connect**).
 2. Under **Wifi Network**, enter the **Network name (SSID)** exactly as it is broadcast, including any meaningful spaces.
 3. Choose **WPA/WPA2 Personal** and enter its password, or choose **Open** for a password-free network.
 4. Turn on **Hidden network** only when the network does not broadcast its name.
 5. Save the card, then tap it on the panel. Scan the black-and-white code with a current iPhone or Android phone.
 
-The Connect Card title and Wifi icon can be changed. The QR Card intentionally has no title or icon and uses all available tile space for the QR code. Neither card displays the password as text on the dashboard.
+The **Name** appears on the Connect Card and in the clock bar while either card’s modal is open. It is preserved when switching card types. Change the Connect Card’s Wifi icon under **Card Settings**. The QR Card tile intentionally has no title or icon and uses all available tile space for the QR code. Neither card displays the password as text on the dashboard.
 
 ## Modal Settings
 
