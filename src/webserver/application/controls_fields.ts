@@ -230,6 +230,7 @@ export function createControlsFieldsFeature(
             return null;
         var primaryKinds: any = {
             card: false,
+            name: false,
             type: false,
             entity: false,
         };
