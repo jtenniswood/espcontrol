@@ -4527,6 +4527,7 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   ui.speaker_generation = speaker_generation++;
   ui.tab = ctx->group_only ? MediaControlTab::SPEAKERS : MediaControlTab::CONTROLS;
   if (!ui.panel) return;
+  if (!ctx->group_only) set_clock_bar_modal_label(ctx->label);
 
   bool progress_tab_ready = true;
   bool power_tab_ready = true;

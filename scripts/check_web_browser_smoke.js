@@ -2701,6 +2701,8 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
       return {
         ungrouped,
         primaryKinds,
+        hasMediaName: ["cover_art", "control_modal"].includes(
+          document.querySelector("#sp-inp-media-mode")?.value),
         cardSettingsOpen:
           !!cardSettings && cardSettings.classList.contains("sp-open"),
       };
@@ -2718,11 +2720,11 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
     );
     assert(
       result.primaryKinds.every((kind) =>
-        ["card", "type", "entity"].includes(kind),
+        ["card", "type", "entity"].includes(kind) || (kind === "name" && result.hasMediaName),
       ),
-      `${label}: ${context} should only expose Card, Type, and Entity primary fields`,
+      `${label}: ${context} should only expose Card, Type, Entity, and the supported media Name primary fields`,
     );
-    for (const kind of ["type", "entity"]) {
+    for (const kind of ["type", "entity", "name"]) {
       assert(
         result.primaryKinds.filter((value) => value === kind).length <= 1,
         `${label}: ${context} should expose at most one ${kind} field outside groups`,
@@ -3143,6 +3145,11 @@ async function assertMediaCoverArtSettingsPanels(page, label) {
     `${label}: Media action types should use their concise names`,
   );
 
+  assert(await page.getByLabel("Name", { exact: true }).isVisible(), `${label}: Cover Art should expose Name`);
+  assert(await page.locator("#sp-inp-label").evaluate((input) =>
+    input.closest(".sp-field").previousElementSibling.contains(document.querySelector("#sp-inp-entity")) &&
+    !input.closest(".sp-disclosure")), `${label}: Name should sit directly below Entity outside Card Settings`);
+
   const cardSettings = page.locator(".sp-settings-modal .sp-disclosure").filter({
     has: page.locator("#sp-inp-media-cover-art-card-settings"),
   });
@@ -3417,6 +3424,13 @@ async function assertSpeakerGroupEditorAndPreview(page, posts, label) {
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
   await page.locator("#sp-inp-media-mode").selectOption("control_modal");
+  assert(await page.getByLabel("Name", { exact: true }).isVisible(), `${label}: All Controls should expose Name`);
+  await page.getByLabel("Name", { exact: true }).fill("Office speakers");
+  await page.getByLabel("Name", { exact: true }).dispatchEvent("change");
+  await page.locator("#sp-inp-media-mode").selectOption("cover_art");
+  assert.strictEqual(await page.getByLabel("Name", { exact: true }).inputValue(), "Office speakers", `${label}: Cover Art should retain the custom modal name`);
+  await page.locator("#sp-inp-media-mode").selectOption("control_modal");
+  assert.strictEqual(await page.getByLabel("Name", { exact: true }).inputValue(), "Office speakers", `${label}: All Controls should retain the custom modal name`);
   const advanced = page.locator(".sp-settings-modal .sp-disclosure").filter({
     has: page.locator("#sp-inp-media-advanced"),
   });

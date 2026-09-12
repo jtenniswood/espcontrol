@@ -398,6 +398,16 @@ export function registerMediaCardTypes(
                     }),
                 }
                 : MEDIA_CARD_METADATA);
+            if (b.sensor === "cover_art" || b.sensor === "control_modal") {
+                var nameField: any = helpers.renderCardTextField(panel, b, helpers, {
+                    label: "Name",
+                    idSuffix: "label",
+                    field: "label",
+                    placeholder: "e.g. Living Room Speaker",
+                    rerender: true,
+                });
+                helpers.markCardPrimaryField(nameField.field, "name");
+            }
             function renderSpeakerDiscoveryEntityField(this: any, target?: any) {
             if (b.sensor === "control_modal" || b.sensor === "speaker_group" || b.sensor === "cover_art") {
                 target = target || panel;
@@ -610,15 +620,6 @@ export function registerMediaCardTypes(
                     }),
                 });
                 labelDisplay.segment.classList.add("sp-segment-scroll");
-                if (mediaLabelDisplayMode(b) === "label") {
-                    helpers.renderCardTextField(panel, b, helpers, {
-                        label: "Label",
-                        idSuffix: "label",
-                        field: "label",
-                        placeholder: "All Controls",
-                        rerender: true,
-                    });
-                }
             }
             if (b.sensor !== "now_playing" &&
                 b.sensor !== "cover_art" &&
