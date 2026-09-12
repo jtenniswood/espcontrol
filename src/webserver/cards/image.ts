@@ -130,7 +130,6 @@ export function registerImageCardTypes(
                 text: {
                     label: "Name",
                     idSuffix: "image-name",
-                    placeholder: "Uses entity name when blank",
                     bindName: "label",
                     rerender: true,
                 },
