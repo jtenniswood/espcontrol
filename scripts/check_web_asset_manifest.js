@@ -59,6 +59,15 @@ function verifyManifest(webRoot) {
   assert(JSON.stringify(manifest.bundles[1]) === JSON.stringify({ ...bundle, webAssetVersion: 1 }),
     "legacy firmware must retain access to the same backward-compatible editor");
 
+  const referencedPaths = new Set(manifest.bundles.map(entry => entry.path));
+  for (const entry of fs.readdirSync(path.join(webRoot, "bundles"), { withFileTypes: true })) {
+    const relativePath = `bundles/${entry.name}/www.js`;
+    if (entry.isDirectory() && fs.existsSync(path.join(webRoot, relativePath))) {
+      assert(referencedPaths.has(relativePath),
+        `Unreferenced web bundle: ${relativePath}. Run python scripts/build.py www to remove it.`);
+    }
+  }
+
   const bundlePath = path.join(webRoot, bundle.path);
   assert(fs.existsSync(bundlePath), "content-addressed web bundle is missing");
   const contents = fs.readFileSync(bundlePath);

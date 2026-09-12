@@ -151,8 +151,11 @@ class GeneratedOutputTransaction:
     def stage_text(self, path, content):
         self._staged[Path(path).resolve()] = content
 
+    def stage_delete(self, path):
+        self._staged[Path(path).resolve()] = None
+
     def overlays(self):
-        return {str(path): content for path, content in self._staged.items()}
+        return {str(path): content for path, content in self._staged.items() if content is not None}
 
     def commit(self):
         if not self._staged:
@@ -166,6 +169,9 @@ class GeneratedOutputTransaction:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 target_mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
                 originals[path] = (path.read_bytes(), target_mode) if path.exists() else None
+                if content is None:
+                    prepared[path] = None
+                    continue
                 with tempfile.NamedTemporaryFile(
                     mode="w",
                     encoding="utf-8",
@@ -181,7 +187,10 @@ class GeneratedOutputTransaction:
                     prepared[path] = Path(handle.name)
 
             for path, staged_path in prepared.items():
-                self._replace_file(staged_path, path)
+                if staged_path is None:
+                    path.unlink(missing_ok=True)
+                else:
+                    self._replace_file(staged_path, path)
                 replaced.append(path)
         except Exception as exc:
             for path in reversed(replaced):
@@ -206,7 +215,8 @@ class GeneratedOutputTransaction:
             raise BuildError(f"Unable to publish generated outputs; restored the previous set: {exc}") from exc
         finally:
             for staged_path in prepared.values():
-                staged_path.unlink(missing_ok=True)
+                if staged_path is not None:
+                    staged_path.unlink(missing_ok=True)
 
 
 GENERATED_TRANSACTION = None
@@ -255,6 +265,7 @@ def run_generated_transaction_self_test():
             os.replace(source, destination)
 
         transaction = GeneratedOutputTransaction(replace_file=fail_second_replace)
+        transaction.stage_delete(third)
         transaction.stage_text(first, "first-broken")
         transaction.stage_text(second, "second-broken")
         try:
@@ -267,6 +278,14 @@ def run_generated_transaction_self_test():
             raise BuildError("Generated transaction did not restore the previous set")
         if first.stat().st_mode & 0o777 != 0o640:
             raise BuildError("Generated transaction rollback did not restore file permissions")
+
+        if third.read_text() != "third-new":
+            raise BuildError("Generated transaction did not restore a deleted output")
+        transaction = GeneratedOutputTransaction()
+        transaction.stage_delete(third)
+        transaction.commit()
+        if third.exists():
+            raise BuildError("Generated transaction did not delete a stale output")
 
         marker = "espcontrol-generated-overlay-self-test"
         entry_path = ROOT / "src" / "webserver" / "entry.ts"
@@ -4038,11 +4057,20 @@ def build_www(check_only=False, output_dir=None, test_hooks=False):
         (build_root / "web-assets.json", manifest_text),
     ])
 
+    output_root = build_root if output_dir is not None else WWW_OUTPUT_DIR
+    retained = {entry["path"] for entry in json.loads(manifest_text)["bundles"]}
+    stale = sorted(
+        path for path in (output_root / "bundles").glob("*/www.js")
+        if path.relative_to(output_root).as_posix() not in retained
+    )
+
     if output_dir is not None:
         for path, generated in outputs:
             if not path.exists() or path.read_text() != generated:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(generated, encoding="utf-8")
+        for path in stale:
+            path.unlink()
         print(f"Built shared www.js bundle, immutable asset, and {len(devices)} compatibility loader(s) in {build_root}")
         return []
 
@@ -4056,10 +4084,19 @@ def build_www(check_only=False, output_dir=None, test_hooks=False):
         if not path.exists() or path.read_text() != generated
     ]
 
+    dirty.extend(str(path.relative_to(WWW_OUTPUT_DIR)) for path in stale)
+
     if not check_only:
         for path, generated in outputs:
             if not path.exists() or path.read_text() != generated:
                 write_generated_text(path, generated)
+
+        # Publish the replacement manifest before removing its obsolete assets.
+        for path in stale:
+            if GENERATED_TRANSACTION is None:
+                path.unlink()
+            else:
+                GENERATED_TRANSACTION.stage_delete(path)
 
     if check_only and dirty:
         print("www.js outputs are out of date. Run 'python scripts/build.py www' to fix:")
