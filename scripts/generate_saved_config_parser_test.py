@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from urllib.parse import quote
 from pathlib import Path
 
 
@@ -124,6 +125,31 @@ def generate() -> str:
             "  assert(legacy_media_config.max_volume_percent == 1);",
         )
     )
+    # Issue 1946: both Wi-Fi card styles must retain options on subpages.
+    for card_type in ("wifi_qr", "wifi_qr_card"):
+        for security in ("wpa", "open"):
+            options = (
+                "ssid64=R3Vlc3QgV2lmaQ,security=" + security
+                + (",pass64=UGFzczt3b3JkOjEyMw" if security == "wpa" else "")
+                + ",hidden,wifi_tabs=credentials%7Cqr"
+            )
+            encodings = (
+                "1|:Connect:Wifi:Auto:::" + card_type + "::" + options,
+                "~1|" + card_type + ",,Connect,Wifi,Auto,,,," + quote(options, safe=""),
+            )
+            for encoded in encodings:
+                lines.extend((
+                    "  { // Issue 1946: " + card_type + " " + security,
+                    f"    const auto buttons = parse_subpage_config({cpp_string(encoded)});",
+                    "    assert(buttons.size() == 1);",
+                    f"    assert(buttons[0].options == {cpp_string(options)});",
+                    "    const auto config = parsed_cfg_from_subpage_btn(buttons[0]);",
+                    f"    assert(config.type == {cpp_string(card_type)});",
+                    f"    assert(config.options == {cpp_string(options)});",
+                    '    assert(cfg_option_value(config.options, "ssid64") == "R3Vlc3QgV2lmaQ");',
+                    '    assert(cfg_option_value(config.options, "wifi_tabs") == "credentials|qr");',
+                    "  }",
+                ))
     issue_248 = (
         "~B,,4,2,3,,,,8,9,,,1,6,5|X,,Office,Window Closed,Window Open,binary_sensor.office_window_sensor_opening,,window,active_color"
         "|X,,Linnea 1,Window Closed,Window Open,binary_sensor.linnea_br_window_sensor_opening,,window,active_color"
