@@ -4357,9 +4357,10 @@ async function assertCardTransferSmoke(page, posts, label) {
       };
     }, mode);
     await copyDialog.getByRole("button", { name: "Copy Code", exact: true }).click();
-    await page.waitForFunction((blocked) => document.querySelector('.sp-transfer-dialog [role="status"]').textContent === (blocked
+    await page.waitForFunction(() => !document.querySelector(".sp-transfer-actions .sp-save-btn").disabled);
+    assert.strictEqual(await copyDialog.getByRole("status").textContent(), mode === "blocked"
       ? "Could not copy automatically. Copy the selected code manually."
-      : "Code copied to clipboard."), mode === "blocked");
+      : "", `${label}: copying only shows a message when it fails`);
     assert.strictEqual(await page.evaluate(() => window.__copiedCode), mode === "blocked" ? null : code,
       `${label}: ${mode} clipboard path copies the exact code or reports failure`);
     await page.evaluate(() => {

@@ -621,7 +621,7 @@ export function createPreviewClipboardFeature(
                 }
             }
             status.textContent = copied
-                ? "Code copied to clipboard."
+                ? ""
                 : "Could not copy automatically. Copy the selected code manually.";
             copy.disabled = false;
             if (copied && dialog.isConnected)
