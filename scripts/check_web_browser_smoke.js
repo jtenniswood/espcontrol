@@ -219,7 +219,10 @@ async function installRoutes(context, slug, options = {}) {
     const requestUrl = new URL(route.request().url());
     if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/reset") {
       const reset = options.resetState;
-      if (!reset) { await route.fulfill({ status: 404, body: "unsupported" }); return; }
+      if (!reset) {
+        await route.abort("connectionclosed");
+        throw new Error("Legacy firmware must never receive a reset status request");
+      }
       if (route.request().method() === "POST") {
         assert.strictEqual(route.request().headers()["x-espcontrol-request"], "reset");
         assert.strictEqual(route.request().headers()["x-espcontrol-epoch"], String(reset.epoch));
@@ -301,6 +304,8 @@ async function installRoutes(context, slug, options = {}) {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
+          api: { version: 1 },
+          reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           configuration: { read: true, write: true, document_versions: [1] },
           web_assets: { versions: [1] },
@@ -317,6 +322,8 @@ async function installRoutes(context, slug, options = {}) {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
+          api: { version: 1 },
+          reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           configuration: { read: false, write: false, document_versions: [] },
         }),
@@ -425,6 +432,7 @@ async function installRoutes(context, slug, options = {}) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
+          headers: { "Access-Control-Allow-Origin": "*" },
           body: JSON.stringify(publicFirmwareManifest(slug)),
         });
         return;
@@ -433,6 +441,7 @@ async function installRoutes(context, slug, options = {}) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
+          headers: { "Access-Control-Allow-Origin": "*" },
           body: JSON.stringify(publicFirmwareVersions(slug)),
         });
         return;
@@ -5591,8 +5600,6 @@ async function runCase(browser, testCase) {
 
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
-    // Older firmware legitimately returns 404 for the reset capability probe.
-    if (message.location().url.endsWith("/api/v1/reset") && message.text().includes("404")) return;
     if (message.type() === "error" || message.type() === "warning")
       errors.push(`[${message.type()}] ${message.text()}`);
   });
@@ -5715,6 +5722,49 @@ async function runCase(browser, testCase) {
   } finally {
     await context.close();
   }
+}
+
+async function assertHostedCompatibility(browser) {
+  const testCase = CASES.find(item => item.slug === "guition-esp32-p4-jc8012p4a1-v2");
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, testCase.slug, { nativeState: nativeConfigState(testCase.slug) });
+  await context.addInitScript(() => {
+    const transport = window.fetch.bind(window);
+    window.__compatRequests = [];
+    window.fetch = async (input, init) => {
+      const request = new Request(new URL(String(input), location.href), init);
+      const record = { url: request.url, credentials: request.credentials, status: 0 };
+      window.__compatRequests.push(record);
+      const response = await transport(input, init);
+      record.status = response.status;
+      return response;
+    };
+  });
+  const page = await context.newPage();
+  const unhandled = [];
+  page.on("console", message => { if (message.text().includes("[state] unhandled:")) unhandled.push(message.text()); });
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`);
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.waitForFunction(() => ["manifest.json", "versions.json"].every(name =>
+      window.__compatRequests.some(item => item.url.startsWith("https://jtenniswood.github.io/espcontrol/firmware/") && item.url.endsWith(name) && item.status === 200)));
+    const requests = await page.evaluate(() => window.__compatRequests);
+    for (const request of requests.filter(item => item.url.startsWith("https://jtenniswood.github.io/espcontrol/firmware/"))) {
+      assert.equal(request.credentials, "omit", "public metadata must not include browser credentials");
+    }
+    assert(requests.some(item => item.url.endsWith("/espcontrol/version") && item.credentials === "include"), "device state requests retain authentication");
+    await page.getByRole("tab", { name: "Settings" }).click();
+    await page.evaluate(() => window.__seedEspState([
+      { id: "select/Home Assistant Artwork Connection", state: "Manual" },
+      { id: "text_sensor/Home Assistant Artwork Endpoint", state: "Manual — http://ha.test:8123" },
+    ]));
+    assert.equal(await page.locator("#sp-set-ha-artwork-endpoint-mode").inputValue(), "Manual");
+    assert.equal(await page.locator("#sp-ha-artwork-endpoint-status").textContent(), "Manual — http://ha.test:8123");
+    assert(!unhandled.some(message => message.includes("Home Assistant Artwork")), "display-name artwork events are handled");
+  } finally { await context.close(); }
 }
 
 async function assertResetControls(browser) {
@@ -5889,6 +5939,7 @@ async function assertPanelNaming(browser) {
       await assertPageTitleEvents(browser);
       await assertRotationStartupOrdering(browser);
     }
+    await assertHostedCompatibility(browser);
     await assertResetControls(browser);
     for (const testCase of ACTIVE_CASES) {
       if (!acceptanceOnly) await runCase(browser, testCase);

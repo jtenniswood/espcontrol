@@ -151,10 +151,10 @@ export function createSettingsSystemSectionFeature(
             postFirmwareUpdateCheck();
             requestApi.getJsonQuietly(publicFirmwareManifestUrl(), function (this: any, d?: any) {
                 setPublicFirmwareInfo(firmwareInfoFromPublicManifest(d));
-            });
+            }, { credentials: "omit" });
             requestApi.getJsonQuietly(publicFirmwareVersionsUrl(), function (this: any, d?: any) {
                 setPublicFirmwareVersions(firmwareInfosFromPublicVersions(d));
-            });
+            }, { credentials: "omit" });
             setTimeout(function (this: any) {
                 state.firmwareChecking = false;
                 stateLoader.refreshFirmwareVersion();

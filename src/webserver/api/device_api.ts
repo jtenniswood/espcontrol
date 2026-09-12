@@ -2,7 +2,7 @@ export interface FetchRequestInit {
   method?: string;
   cache?: "no-store";
   keepalive?: boolean;
-  credentials?: "include";
+  credentials?: RequestCredentials;
   body?: unknown;
 }
 
@@ -48,7 +48,7 @@ export interface DeviceApi {
   postQuiet(url: string): Promise<DeviceResult>;
   postFirstAvailable(urls: readonly string[]): Promise<DeviceResult>;
   enqueuePost(urls: readonly string[]): Promise<DeviceResult>;
-  getJson<T = unknown>(url: string): Promise<DeviceResult<T>>;
+  getJson<T = unknown>(url: string, options?: Pick<FetchRequestInit, "credentials">): Promise<DeviceResult<T>>;
   getJsonFirst<T = unknown>(urls: readonly string[]): Promise<DeviceResult<T> | null>;
   setPostThrottle(milliseconds: number): void;
   queueIdle(): Promise<DeviceResult | null>;
@@ -69,7 +69,7 @@ export function createDeviceApi(fetchLike: FetchLike, delay: DelayLike = default
 
   async function request(url: string, init?: FetchRequestInit): Promise<DeviceResult> {
     try {
-      const response = await fetchLike(url, { ...init, credentials: "include" });
+      const response = await fetchLike(url, { ...init, credentials: init?.credentials ?? "include" });
       const base = { value: response, url, attemptedUrls: [url], status: response.status } as const;
       return response.ok
         ? { ok: true, kind: "success", ...base }
@@ -105,8 +105,8 @@ export function createDeviceApi(fetchLike: FetchLike, delay: DelayLike = default
     return next;
   }
 
-  async function getJson<T = unknown>(url: string): Promise<DeviceResult<T>> {
-    const responseResult = await request(url, { cache: "no-store" });
+  async function getJson<T = unknown>(url: string, options?: Pick<FetchRequestInit, "credentials">): Promise<DeviceResult<T>> {
+    const responseResult = await request(url, { ...options, cache: "no-store" });
     if (!responseResult.ok) return responseResult as DeviceResult<T>;
     try {
       const value = await responseResult.value.json() as T;
