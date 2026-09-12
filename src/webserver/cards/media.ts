@@ -254,6 +254,11 @@ export function registerMediaCardTypes(
                     onChange: function (this: any) {
                         var oldMode: any = b.sensor;
                         b.sensor = validMode(this.value);
+                        // Both modal types share an editable Name. Its text alone
+                        // cannot tell us whether it was generated or user-entered.
+                        var preserveModalName: any = !!b.label &&
+                            (oldMode === "cover_art" || oldMode === "control_modal") &&
+                            (b.sensor === "cover_art" || b.sensor === "control_modal");
                         if (isMediaDefaultIcon(oldMode, b.icon)) {
                             b.icon = "Auto";
                             helpers.saveField("icon", b.icon);
@@ -294,7 +299,7 @@ export function registerMediaCardTypes(
                             b.icon = "Auto";
                             helpers.saveField("icon", b.icon);
                         }
-                        if (b.sensor === "control_modal" && mediaLabelIsGenerated(b.label)) {
+                        if (b.sensor === "control_modal" && !preserveModalName && mediaLabelIsGenerated(b.label)) {
                             b.label = mediaActionLabel(b.sensor);
                             helpers.saveField("label", b.label);
                         }
@@ -306,11 +311,11 @@ export function registerMediaCardTypes(
                             b.icon = "Auto";
                             helpers.saveField("icon", b.icon);
                         }
-                        if (b.sensor === "cover_art" && mediaLabelIsGenerated(b.label)) {
+                        if (b.sensor === "cover_art" && !preserveModalName && mediaLabelIsGenerated(b.label)) {
                             b.label = mediaActionLabel(b.sensor);
                             helpers.saveField("label", b.label);
                         }
-                        if ((oldMode === "control_modal" || oldMode === "speaker_group" || oldMode === "cover_art") &&
+                        if (!preserveModalName && (oldMode === "control_modal" || oldMode === "speaker_group" || oldMode === "cover_art") &&
                             b.sensor !== "control_modal" && b.sensor !== "speaker_group" &&
                             mediaLabelIsGenerated(b.label)) {
                             b.label = mediaActionLabel(b.sensor);
@@ -370,7 +375,7 @@ export function registerMediaCardTypes(
                 b.icon = "Auto";
                 helpers.saveField("icon", b.icon);
             }
-            if (b.sensor === "control_modal" && mediaLabelIsGenerated(b.label)) {
+            if (b.sensor === "control_modal" && !b.label) {
                 b.label = "All Controls";
                 helpers.saveField("label", b.label);
             }

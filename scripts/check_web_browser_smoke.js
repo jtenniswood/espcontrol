@@ -3440,6 +3440,21 @@ async function assertSpeakerGroupEditorAndPreview(page, posts, label) {
   assert.strictEqual(await page.getByLabel("Name", { exact: true }).inputValue(), "Office speakers", `${label}: Cover Art should retain the custom modal name`);
   await page.locator("#sp-inp-media-mode").selectOption("control_modal");
   assert.strictEqual(await page.getByLabel("Name", { exact: true }).inputValue(), "Office speakers", `${label}: All Controls should retain the custom modal name`);
+  for (const name of ["Media", "Now Playing", "Cover Art", "Speaker Group", "All Controls"]) {
+    await page.getByLabel("Name", { exact: true }).fill(name);
+    await page.getByLabel("Name", { exact: true }).dispatchEvent("change");
+    assert.strictEqual(await page.getByLabel("Name", { exact: true }).inputValue(), name, `${label}: editing Name must preserve ${name}`);
+    for (const mode of ["cover_art", "control_modal"]) {
+      await page.locator("#sp-inp-media-mode").selectOption(mode);
+      assert.strictEqual(await page.getByLabel("Name", { exact: true }).inputValue(), name, `${label}: ${mode} must preserve the explicit name ${name}`);
+    }
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay").classList.contains("sp-visible"));
+    await page.locator('.sp-main [data-slot="4"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible");
+    assert.strictEqual(await page.getByLabel("Name", { exact: true }).inputValue(), name, `${label}: reopening All Controls must preserve ${name}`);
+  }
   const advanced = page.locator(".sp-settings-modal .sp-disclosure").filter({
     has: page.locator("#sp-inp-media-advanced"),
   });
