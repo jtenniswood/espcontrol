@@ -1185,7 +1185,6 @@ inline void normalize_saved_config_image_fields(ParsedCfg &p) {
   p.icon = image_card_icon_enabled(p)
     ? (p.icon.empty() || p.icon == "Auto" ? "Camera" : p.icon)
     : "Auto";
-  if (!image_card_label_enabled(p)) p.label.clear();
 }
 
 inline std::string normalize_saved_config_image_options(
