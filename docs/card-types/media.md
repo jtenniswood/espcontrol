@@ -14,7 +14,7 @@ A Media card controls a Home Assistant `media_player`. Choose a small one-job ca
 
 1. Select a card and change its type to **Media**. New Media cards start as **Cover Art**.
 2. Choose a **Type** and enter the player entity, such as `media_player.living_room`.
-3. Set a label or icon where the chosen type offers one.
+3. For **Cover Art** and **All Controls**, enter a **Name** below Entity. This appears in the clock bar while the media popup is open. All Controls also uses it on the card when Label is selected. Other types offer a label or icon where supported.
 
 | Type | Best for |
 |---|---|
