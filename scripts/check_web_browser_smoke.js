@@ -4315,13 +4315,13 @@ async function assertCardTransferSmoke(page, posts, label) {
   );
   assert.strictEqual(
     await copyDialog.getByRole("button", { name: "Copy Code" }).count(),
-    0,
-    `${label}: copy dialog does not show a non-functional copy button`,
+    1,
+    `${label}: copy dialog exposes a clipboard copy button`,
   );
   assert.strictEqual(
     await copyDialog.locator(".sp-transfer-actions").count(),
-    0,
-    `${label}: copy dialog does not show footer actions`,
+    1,
+    `${label}: copy dialog shows footer actions`,
   );
   assert.strictEqual(
     await copyDialog.getByText(/Press (Command|Ctrl)\+C to copy\./).count(),
@@ -4338,6 +4338,39 @@ async function assertCardTransferSmoke(page, posts, label) {
     { start: 0, end: copySelection.length, length: copySelection.length },
     `${label}: card code is selected for manual copying`,
   );
+  for (const mode of ["modern", "http", "denied", "blocked"]) {
+    await page.evaluate((mode) => {
+      window.__copyTestOriginalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+      window.__copyTestOriginalExec = document.execCommand;
+      window.__copiedCode = null;
+      Object.defineProperty(navigator, "clipboard", { configurable: true, value: mode === "http" ? undefined : {
+        writeText: async (value) => {
+          if (mode !== "modern") throw new Error("Clipboard permission denied");
+          window.__copiedCode = value;
+        },
+      } });
+      document.execCommand = (command) => {
+        if (command !== "copy" || mode === "blocked") return false;
+        const textarea = document.querySelector(".sp-transfer-code");
+        window.__copiedCode = textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
+        return true;
+      };
+    }, mode);
+    await copyDialog.getByRole("button", { name: "Copy Code", exact: true }).click();
+    await page.waitForFunction((blocked) => document.querySelector('.sp-transfer-dialog [role="status"]').textContent === (blocked
+      ? "Could not copy automatically. Copy the selected code manually."
+      : "Code copied to clipboard."), mode === "blocked");
+    assert.strictEqual(await page.evaluate(() => window.__copiedCode), mode === "blocked" ? null : code,
+      `${label}: ${mode} clipboard path copies the exact code or reports failure`);
+    await page.evaluate(() => {
+      if (window.__copyTestOriginalClipboard) Object.defineProperty(navigator, "clipboard", window.__copyTestOriginalClipboard);
+      else delete navigator.clipboard;
+      document.execCommand = window.__copyTestOriginalExec;
+      delete window.__copyTestOriginalClipboard;
+      delete window.__copyTestOriginalExec;
+      delete window.__copiedCode;
+    });
+  }
   const dialogFont = await copyDialog.evaluate((element) => getComputedStyle(element).fontFamily);
   assert(/Inter|Segoe UI|Roboto|sans-serif/i.test(dialogFont), `${label}: copy dialog uses the web UI font stack`);
   const codeFont = await copyDialog.locator("textarea").evaluate((element) => getComputedStyle(element).fontFamily);

@@ -589,6 +589,46 @@ export function createPreviewClipboardFeature(
         privacy.className = "sp-transfer-note";
         privacy.textContent = "Keep this code private. It can include webhook URLs, headers, or other sensitive configuration.";
         dialog.appendChild(privacy);
+        var status = document.createElement("p");
+        status.className = "sp-transfer-note";
+        status.setAttribute("role", "status");
+        dialog.appendChild(status);
+        var actions = document.createElement("div");
+        actions.className = "sp-transfer-actions sp-btn-row";
+        var copy = createActionButton("sp-action-btn sp-save-btn", "Copy Code");
+        copy.addEventListener("click", async function () {
+            copy.disabled = true;
+            status.textContent = "";
+            var copied = false;
+            try {
+                var clipboard = document.defaultView?.navigator.clipboard;
+                if (clipboard) {
+                    await clipboard.writeText(code);
+                    copied = true;
+                }
+            }
+            catch (_) {
+                // Local HTTP pages and browser permissions may require selection-based copying.
+            }
+            if (!copied && dialog.isConnected) {
+                textarea.focus();
+                textarea.select();
+                try {
+                    copied = document.execCommand("copy");
+                }
+                catch (_) {
+                    // Leave the code selected for manual copying.
+                }
+            }
+            status.textContent = copied
+                ? "Code copied to clipboard."
+                : "Could not copy automatically. Copy the selected code manually.";
+            copy.disabled = false;
+            if (copied && dialog.isConnected)
+                copy.focus();
+        });
+        actions.appendChild(copy);
+        dialog.appendChild(actions);
         textarea.focus();
         textarea.select();
     }
