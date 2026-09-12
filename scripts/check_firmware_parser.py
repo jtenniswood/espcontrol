@@ -453,6 +453,55 @@ int main() {
   assert(sensor_state_display_text(state_labels, "medium-high") == "Medium-High");
   assert(text_sensor_display_text("pre-wash") == "Pre-Wash");
   assert(text_sensor_display_text("pre_wash") == "Pre Wash");
+  assert(text_sensor_display_text(u8"Übermorgen: Müll") == u8"Übermorgen: Müll");
+  assert(text_sensor_display_text(u8"ätest ötest ütest ætest") == u8"Ätest Ötest Ütest Ætest");
+  assert(text_sensor_display_text(u8"öätest") == u8"Öätest");
+  assert(text_sensor_display_text(u8"ÜBERMORGEN") == u8"Übermorgen");
+  assert(text_sensor_display_text(u8"čESKÝ") == u8"Český");
+  assert(text_sensor_display_text(u8"ßtest ÿtest") == u8"ßtest ÿtest");
+  assert(text_sensor_display_text(u8"Приветtest") == u8"Приветtest");
+  assert(text_sensor_display_text(u8"—test") == u8"—Test");
+  assert(text_sensor_display_text(u8"abä", 3) == "Ab");
+  assert(text_sensor_display_text("first_line\r\nsecond-line") == "First Line\nSecond-Line");
+  assert(sentence_cap_text(u8"über_status-test") == u8"Über Status Test");
+  assert(sentence_cap_text(u8"Приветtest") == u8"Приветtest");
+  assert(sentence_cap_text(u8"—test") == u8"—Test");
+  for (auto formatter : {+[](const std::string &s) { return text_sensor_display_text(s.c_str()); },
+                         +[](const std::string &s) { return sentence_cap_text(s); }}) {
+    assert(formatter("").empty());
+    assert(formatter(u8"Übermorgen: Müll") == u8"Übermorgen: Müll");
+    assert(formatter(u8"ätest ötest ütest ætest") == u8"Ätest Ötest Ütest Ætest");
+    assert(formatter(u8"öätest ÜBERMORGEN čESKÝ") == u8"Öätest Übermorgen Český");
+    assert(formatter(u8"ṣTEST ṢTEST") == u8"Ṣtest Ṣtest");
+    assert(formatter(u8"İTEST ıTEST iTEST ITEST") == u8"İtest ıtest Itest Itest");
+    assert(formatter(u8"ßtest ÿtest Приветtest Ελληνικάtest שלוםtest") ==
+           u8"ßtest ÿtest Приветtest Ελληνικάtest שלוםtest");
+    assert(formatter(u8"—test 😀test") == u8"—Test 😀Test");
+    // Script punctuation, symbols and combining marks must not consume the first letter.
+    for (const std::string prefix : {u8"\u037E", u8"\u0387", u8"\u0384", u8"\u03F6",
+                                     u8"\u0482", u8"\u0483", u8"\u05BE", u8"\u05C3",
+                                     u8"\u05F3", u8"\u05B0"}) {
+      assert(formatter(prefix + "test") == prefix + "Test");
+      assert(formatter("a" + prefix + "TEST") == "A" + prefix + "test");
+    }
+    assert(formatter(u8"\u037Ftest \u03F7test \u0481test \u048Atest \u05EFtest") ==
+           u8"\u037Ftest \u03F7test \u0481test \u048Atest \u05EFtest");
+    assert(formatter(std::string("\xFF") + "test") == std::string("\xFF") + "Test");
+    assert(formatter(std::string("\xE2") + "x") == std::string("\xE2") + "X");
+    assert(formatter(std::string("\xC0\xAF") + "test") == std::string("\xC0\xAF") + "Test");
+    assert(formatter(std::string("\xED\xA0\x80") + "test") == std::string("\xED\xA0\x80") + "Test");
+    assert(formatter(std::string("\xF4\x90\x80\x80") + "test") == std::string("\xF4\x90\x80\x80") + "Test");
+    assert(formatter(std::string("ab\xE2\x82")) == "Ab");
+  }
+  assert(text_sensor_display_text(" \r\nfirst__line\n\nsecond-line \r\n") == "First Line\nSecond-Line");
+  assert(sentence_cap_text(" \r\nfirst__line\n\nsecond-line \r\n") == "First Line Second Line");
+  for (const std::string s : {u8"ä", u8"Ṣ", u8"😀"}) {
+    for (size_t limit = 1; limit < s.size(); limit++) {
+      assert(text_sensor_display_text(s.c_str(), limit).empty());
+      assert(text_sensor_display_text(("ab" + s).c_str(), 2 + limit) == "Ab");
+    }
+    assert(text_sensor_display_text(s.c_str(), s.size()) == (s == u8"ä" ? u8"Ä" : s));
+  }
   auto legacy_state_labels = parse_cfg(";;;;sensor.bin_level;;sensor;text;state_labels,state_high_label=Please%20empty");
   assert(legacy_state_labels.options == "state_labels,state_input=high,state_output=Please empty");
   auto numeric_state_labels = parse_cfg(";;;;sensor.bin_level;;sensor;0;state_labels,state_high_label=Please%20empty");
