@@ -230,9 +230,9 @@ export function createControlsFieldsFeature(
             return null;
         var primaryKinds: any = {
             card: false,
+            name: false,
             type: false,
             entity: false,
-            name: false,
         };
         var movable: any = [];
         var firstDisclosure: any = null;

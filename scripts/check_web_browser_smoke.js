@@ -2701,8 +2701,6 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
       return {
         ungrouped,
         primaryKinds,
-        hasMediaName: ["cover_art", "control_modal"].includes(
-          document.querySelector("#sp-inp-media-mode")?.value),
         cardSettingsOpen:
           !!cardSettings && cardSettings.classList.contains("sp-open"),
       };
@@ -2720,11 +2718,11 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
     );
     assert(
       result.primaryKinds.every((kind) =>
-        ["card", "type", "entity"].includes(kind) || (kind === "name" && result.hasMediaName),
+        ["card", "type", "name", "entity"].includes(kind),
       ),
-      `${label}: ${context} should only expose Card, Type, Entity, and the supported media Name primary fields`,
+      `${label}: ${context} should only expose Card, Type, Name, and Entity primary fields`,
     );
-    for (const kind of ["type", "entity", "name"]) {
+    for (const kind of ["type", "name", "entity"]) {
       assert(
         result.primaryKinds.filter((value) => value === kind).length <= 1,
         `${label}: ${context} should expose at most one ${kind} field outside groups`,
@@ -2745,6 +2743,17 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
   for (const cardOption of cardOptions) {
     await page.locator("#sp-inp-type").selectOption(cardOption.value);
     await assertGrouped(cardOption.label);
+
+    if (cardOption.value === "wifi_qr") {
+      const name = page.locator('.sp-settings-modal .sp-panel > [data-sp-card-primary="name"]');
+      assert(await name.isVisible(), `${label}: Wifi Name should be outside Card Settings`);
+      assert.strictEqual(await name.locator("label").textContent(), "Name");
+      assert.strictEqual(
+        await name.evaluate((field) => field.previousElementSibling.getAttribute("data-sp-card-primary")),
+        "type",
+        `${label}: Wifi Name should immediately follow Type`,
+      );
+    }
 
     if (cardOption.value === "screen_lock") {
       assert.strictEqual(
