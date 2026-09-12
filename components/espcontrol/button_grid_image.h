@@ -82,6 +82,7 @@ struct ImageCardCtx {
   espcontrol::artwork::SourceCandidates media_artwork_sources;
   espcontrol::artwork::RefreshBatch media_artwork_refresh;
   espcontrol::artwork::RefreshTrigger media_artwork_trigger;
+  espcontrol::artwork::DownloadRecovery media_artwork_download_recovery;
   uint8_t media_artwork_retry_mask = 0;
   uint8_t media_artwork_timeout_retries = 0;
   lv_timer_t *media_artwork_trigger_timer = nullptr;
@@ -528,6 +529,7 @@ inline void image_card_clear_media_artwork(ImageCardCtx *ctx) {
   ctx->media_artwork_sources.clear();
   ctx->media_artwork_refresh.reset();
   ctx->media_artwork_trigger.reset();
+  ctx->media_artwork_download_recovery.reset();
   ctx->media_artwork_retry_mask = 0;
   ctx->media_artwork_timeout_retries = 0;
   ctx->media_artwork_refresh_forced = false;
@@ -676,6 +678,7 @@ inline void image_card_apply_downloaded(ImageCardCtx *ctx) {
   image_card_release_download_slot(ctx);
   ctx->last_download_completed_ms = esphome::millis();
   ctx->startup_download_errors = 0;
+  ctx->media_artwork_download_recovery.reset();
   ctx->next_download_retry_ms = 0;
   if (ctx->diagnostics_enabled && ctx->last_tile_request_started_ms != 0) {
     ESP_LOGI("image_card_diag", "Tile image applied for %s after %lu ms",
@@ -702,6 +705,19 @@ inline void image_card_handle_download_error(ImageCardCtx *ctx) {
   ESP_LOGW("image_card", "Image download failed for %s", ctx->entity_id.c_str());
   image_card_log_diagnostics(ctx, "tile-download-error");
   uint32_t now = esphome::millis();
+  if (ctx->active && ctx->media_artwork && !ctx->source_url.empty()) {
+    ctx->media_artwork_download_recovery.failed(now);
+    ctx->next_download_retry_ms = 0;
+    ESP_LOGW("image_card", "Artwork recovery for %s in %lu ms",
+             ctx->entity_id.c_str(),
+             static_cast<unsigned long>(ctx->media_artwork_download_recovery.delay_ms()));
+    if (ctx->image_ready) image_card_hide_loading(ctx);
+    else {
+      image_card_hide(ctx);
+      image_card_set_loading_state(ctx, "Unavailable", true);
+    }
+    return;
+  }
   if (!ctx->image_ready && image_card_startup_retry_active(ctx, now) &&
       ctx->startup_download_errors < IMAGE_CARD_STARTUP_DOWNLOAD_RETRIES) {
     ctx->startup_download_errors++;
@@ -893,6 +909,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].media_artwork_sources.clear();
     contexts[i].media_artwork_refresh.reset();
     contexts[i].media_artwork_trigger.reset();
+    contexts[i].media_artwork_download_recovery.reset();
     contexts[i].media_artwork_retry_mask = 0;
     contexts[i].media_artwork_timeout_retries = 0;
     if (contexts[i].media_artwork_trigger_timer) {
@@ -2230,8 +2247,12 @@ inline void image_card_process_media_artwork(ImageCardCtx *ctx,
     image_card_log_diagnostics(ctx, "media-artwork-timeout-current-preserved");
     return;
   }
-  if (!espcontrol::artwork::artwork_selection_needs_download(
-          refresh_forced, chosen == ctx->source_url)) {
+  // Ordinary repeated notifications must respect a failed image's backoff.
+  // Recovery and track changes explicitly force a new attempt.
+  if ((!refresh_forced && chosen == ctx->source_url &&
+       ctx->media_artwork_download_recovery.active()) ||
+      !espcontrol::artwork::artwork_selection_needs_download(
+          refresh_forced, chosen == ctx->source_url, ctx->image_ready)) {
     image_card_log_diagnostics(ctx, "media-artwork-unchanged");
     return;
   }
@@ -2415,6 +2436,7 @@ inline void image_card_schedule_media_artwork_refresh(ImageCardCtx *ctx,
 
 inline void image_card_refresh_media_artwork_on_metadata_change(ImageCardCtx *ctx) {
   if (!ctx || !ctx->active || !ctx->media_artwork) return;
+  ctx->media_artwork_download_recovery.reset();
   if (espcontrol::artwork::artwork_metadata_refresh_clears_retry(
         ctx->media_artwork_retry_mask)) {
     ctx->media_artwork_retry_mask = 0;
@@ -2512,12 +2534,28 @@ inline void refresh_image_cards() {
   }
 }
 
+inline void image_card_recover_media_artwork(ImageCardCtx *ctx, uint32_t now) {
+  if (!ctx || !ctx->active || !ctx->media_artwork || ctx->entity_id.empty() ||
+      !ctx->media_artwork_download_recovery.due(now) || ctx->download_active ||
+      ctx->media_artwork_refresh.active() || ctx->media_artwork_trigger.pending) return;
+  ctx->media_artwork_download_recovery.retry_started(now);
+  ctx->media_artwork_refresh_forced = true;
+  // A retained read alone would replay the failed URL. Ask HA for fresh
+  // attributes (including any proxy token in the URL) on existing channels.
+  // Their subscription callbacks start the usual paired artwork read.
+  ha_schedule_metadata_refresh(ctx->entity_id,
+      {"entity_picture", "entity_picture_local"}, HA_SUBSCRIPTION_SCOPE_DEFAULT);
+  ESP_LOGI("image_card", "Refreshing Home Assistant artwork for recovery: %s",
+           ctx->entity_id.c_str());
+}
+
 inline void image_card_refresh_due() {
   ImageCardCtx *contexts = image_card_contexts();
   uint32_t now = esphome::millis();
   for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
     ImageCardCtx *ctx = &contexts[i];
     if (!ctx->active) continue;
+    image_card_recover_media_artwork(ctx, now);
     if (esphome::artwork_image::image_pipeline_completion_needs_recovery(
           ctx->image_ready, ctx->image && ctx->image->has_image(),
           ctx->image && ctx->image->get_url() == ctx->url)) {
@@ -2574,6 +2612,7 @@ inline bool image_card_bind_runtime(BtnSlot &s, const ParsedCfg &p,
   ctx->end_display_takeover = cfg.end_display_takeover;
   ctx->modal_fit = image_card_modal_fit_enabled(p);
   ctx->media_artwork = false;
+  ctx->media_artwork_download_recovery.reset();
   ctx->media_artwork_suppressed = false;
   ctx->media_artwork_refresh_forced = false;
   ctx->media_artwork_refresh.reset();

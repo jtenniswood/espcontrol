@@ -40,6 +40,8 @@ A Media card controls a Home Assistant `media_player`. Choose a small one-job ca
 
 Cover Art is available in square **1×1**, **2×2**, and **3×3** card sizes. It uses one of the panel's shared image slots. ESP32-P4 screens have six slots shared between Camera and Cover Art cards across all pages. If the card shows **Too many**, remove one of those image cards.
 
+If an artwork download fails, the card automatically requests fresh artwork links from Home Assistant and retries, even after the panel has been running overnight. Retry delays increase from 2 seconds to a maximum of 60 seconds. A track change starts a fresh attempt; when Home Assistant reports no artwork, retries stop.
+
 ## Speaker Groups
 
 For speaker groups, first confirm the speakers can join in Home Assistant. EspControl uses the compatible-player list supplied by the configured discovery entity; by default this is `sensor.speaker_group`. The group screen stays hidden when no usable speakers are reported.
