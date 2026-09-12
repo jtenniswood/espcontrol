@@ -165,7 +165,6 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.options = webhook_card_options_normalized(b.options);
   }
   if (b.type == "image") {
-    b.label.clear();
     b.icon = "Auto";
     b.icon_on = "Auto";
     b.sensor.clear();

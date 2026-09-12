@@ -43,6 +43,7 @@ struct ImageCardCtx {
   esphome::artwork_image::ArtworkImage *image = nullptr;
   esphome::artwork_image::ArtworkImage *modal_image = nullptr;
   std::string entity_id;
+  std::string camera_name;
   std::string base_url;
   std::function<std::string()> base_url_provider;
   std::string source_url;
@@ -1949,6 +1950,7 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
              ctx->entity_id.c_str());
     return;
   }
+  set_clock_bar_modal_label(ctx->camera_name);
   control_modal_block_close_for(IMAGE_CARD_MODAL_CLOSE_GUARD_MS);
 
   ImageCardModalUi &ui = image_card_modal_ui();
@@ -2568,6 +2570,18 @@ inline bool image_card_bind_runtime(BtnSlot &s, const ParsedCfg &p,
   ctx->label_font = image_card_label_font_for_slot(s);
   image_card_apply_loading_fonts(loading, ctx->icon_font, ctx->label_font);
   ctx->entity_id = p.entity;
+  ctx->camera_name = p.label.empty() ? p.entity : p.label;
+  if (p.label.empty()) {
+    const uint32_t generation = ha_subscription_generation();
+    const std::string entity_id = p.entity;
+    ha_subscribe_attribute(entity_id, std::string("friendly_name"),
+      std::function<void(esphome::StringRef)>([ctx, entity_id, generation](esphome::StringRef name) {
+        if (!image_card_context_current(ctx, entity_id, generation)) return;
+        const std::string friendly_name = string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN);
+        ctx->camera_name = friendly_name.empty() ? entity_id : friendly_name;
+        if (image_card_modal_active_for(ctx)) set_clock_bar_modal_label(ctx->camera_name);
+      }));
+  }
   ctx->base_url = cfg.home_assistant_base_url ? cfg.home_assistant_base_url() : "";
   ctx->base_url_provider = cfg.home_assistant_base_url;
   ctx->begin_display_takeover = cfg.begin_display_takeover;

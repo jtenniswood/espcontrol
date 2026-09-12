@@ -580,9 +580,9 @@ int main() {
   auto image_bad_modal = parse_cfg("camera.front_door;;Auto;Auto;;;image;;image_modal_mode=stretch,image_refresh=30");
   assert(image_bad_modal.options == "");
   assert(!image_card_modal_fit_enabled(image_bad_modal));
-  auto image_ignored_label = parse_cfg("camera.front_door;Front Door;Auto;Auto;;;image;;");
-  assert(image_ignored_label.label == "");
-  assert(!image_card_label_enabled(image_ignored_label));
+  auto image_hidden_label_name = parse_cfg("camera.front_door;Front Door;Auto;Auto;;;image;;");
+  assert(image_hidden_label_name.label == "Front Door");
+  assert(!image_card_label_enabled(image_hidden_label_name));
   auto image_refresh = parse_cfg("~camera.front_door,,Auto,Auto,,,image,,image_refresh=30%2Cimage_refresh_mode=timer");
   assert(image_refresh.type == "image");
   assert(image_refresh.options == "");

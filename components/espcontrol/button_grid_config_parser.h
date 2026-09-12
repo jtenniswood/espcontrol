@@ -1185,7 +1185,6 @@ inline void normalize_saved_config_image_fields(ParsedCfg &p) {
   p.icon = image_card_icon_enabled(p)
     ? (p.icon.empty() || p.icon == "Auto" ? "Camera" : p.icon)
     : "Auto";
-  if (!image_card_label_enabled(p)) p.label.clear();
 }
 
 inline std::string normalize_saved_config_image_options(
@@ -1323,6 +1322,9 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
       normalize_saved_config_occupancy_options);
   if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "wifi_qr" && p.type != "wifi_qr_card" && p.type != "light_control" && p.type != "vacuum" && !card_large_numbers_supported(p)) {
     p.options.clear();
+  }
+  if ((p.type == "wifi_qr" || p.type == "wifi_qr_card") && p.label.empty()) {
+    p.label = "Connect";
   }
   normalize_saved_config_sensor(p, was_legacy_text_sensor,
                                 normalize_saved_config_sensor_fields,
