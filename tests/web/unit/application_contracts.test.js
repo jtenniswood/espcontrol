@@ -449,7 +449,7 @@ describe("browserless application contracts", () => {
     assert.doesNotMatch(webServer, /event_payload_is_legacy_panel_config/);
     assert.doesNotMatch(app, /panel_config_legacy_entity_guard/);
     assert.match(nativeController, /Sign in, enable web_server_auth, or update the panel firmware/);
-    assert.match(docs, /web_server_auth` package is not required for Wifi Sharing/);
+    assert.match(docs, /Wifi Sharing works without web authentication/);
   });
 
   test("authenticates native configuration bodies before receiving and before saving", () => {
