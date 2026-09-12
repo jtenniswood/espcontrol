@@ -1309,7 +1309,7 @@
     "input": "~,,Auto,Auto,,,wifi_qr_card,,ssid64%3DR3Vlc3Q%2Cpass64%3DUGFzc3dvcmQ",
     "expected": {
       "entity": "",
-      "label": "",
+      "label": "Connect",
       "icon": "Auto",
       "icon_on": "Auto",
       "sensor": "",

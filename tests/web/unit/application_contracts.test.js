@@ -396,8 +396,8 @@ describe("browserless application contracts", () => {
     assert.equal(definitions.wifi_qr.isAvailable(), false);
     nativeSupported = true;
     assert.equal(definitions.wifi_qr.isAvailable(), true);
-    assert.match(source, /labelField:\s*\{\s*label:\s*"Card title"/);
-    assert.doesNotMatch(source, /renderBasicCardFields\([^\n]+label:\s*false/);
+    assert.match(source, /labelField:\s*\{\s*label:\s*"Name"/);
+    assert.match(source, /renderBasicCardFields\([^\n]+label:\s*false/);
     assert.match(source, /disclosureSection\("Wifi Network"/);
     assert.match(source, /disclosureSection\("Modal Settings"/);
     assert.match(source, /wifiQrTabDefinitions/);
@@ -411,10 +411,10 @@ describe("browserless application contracts", () => {
     const custom = { label: "Visitors", options: "" };
     definitions.wifi_qr.normalizeConfig(custom);
     assert.equal(custom.label, "Visitors");
-    const qrCard = { type: "wifi_qr_card", label: "Remove me", icon: "Wifi", options: "" };
+    const qrCard = { type: "wifi_qr_card", label: "Visitors", icon: "Wifi", options: "" };
     definitions.wifi_qr_card.normalizeConfig(qrCard);
     assert.equal(qrCard.type, "wifi_qr_card");
-    assert.equal(qrCard.label, "");
+    assert.equal(qrCard.label, "Visitors");
     assert.equal(qrCard.icon, "Auto");
     const qrPreview = definitions.wifi_qr_card.renderPreview(qrCard, {});
     assert.equal(qrPreview.labelHtml, "");
@@ -429,7 +429,7 @@ describe("browserless application contracts", () => {
       { value: "wifi_qr" }, qrCard, { saveField() {} },
     );
     assert.equal(qrCard.type, "wifi_qr");
-    assert.equal(qrCard.label, "Connect");
+    assert.equal(qrCard.label, "Visitors");
     assert.equal(qrCard.icon, "Wifi");
     assert.equal(rerenders, 1);
     assert.match(source, /\[\["wifi_qr", "Connect Card"\], \["wifi_qr_card", "QR Card"\]\]/);

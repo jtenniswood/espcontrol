@@ -50,7 +50,7 @@ export function registerWifiQrCardTypes(
     };
     const WIFI_QR_CARD_METADATA: any = {
         mode: WIFI_QR_CARD_TYPE_METADATA.mode,
-        labelField: { label: "Card title", idSuffix: "wifi-label", placeholder: "Connect", bindName: "label", rerender: true },
+        labelField: { label: "Name", idSuffix: "wifi-label", placeholder: "Connect", bindName: "label", rerender: true },
         icon: { pickerIdSuffix: "wifi-icon-picker", idSuffix: "wifi-icon", field: "icon", fallback: "Wifi" },
     };
     // A valid QR for representative (non-user) Wifi credentials. Keeping this
@@ -107,9 +107,9 @@ export function registerWifiQrCardTypes(
         var qrCard: any = isQrCard(b);
         b.type = qrCard ? "wifi_qr_card" : "wifi_qr";
         b.entity = ""; b.sensor = ""; b.unit = ""; b.precision = ""; b.icon_on = "Auto";
-        if (qrCard) { b.label = ""; b.icon = "Auto"; }
+        if (!b.label || isLegacyWifiQrTitle(b.label)) b.label = "Connect";
+        if (qrCard) { b.icon = "Auto"; }
         else {
-            if (!b.label || isLegacyWifiQrTitle(b.label)) b.label = "Connect";
             if (!b.icon || b.icon === "Auto") b.icon = "Wifi";
         }
         var ssid: any = wifiQrSsid(b);
@@ -146,6 +146,8 @@ export function registerWifiQrCardTypes(
             onSelect: normalizeWifiQrConfig,
             renderSettingsBeforeLabel: function (this: any, panel?: any, b?: any, _slot?: any, helpers?: any) {
                 helpers.renderCardModeSelector(panel, b, helpers, WIFI_QR_CARD_TYPE_METADATA);
+                var nameField: any = helpers.renderCardTextField(panel, b, helpers, WIFI_QR_CARD_METADATA.labelField);
+                helpers.markCardPrimaryField(nameField.field, "name");
                 var networkDisclosure: any = helpers.disclosureSection("Wifi Network", helpers.idPrefix + "wifi-network", false);
                 panel.appendChild(networkDisclosure.panel);
                 var modalTabsDisclosure: any = helpers.disclosureSection("Modal Settings", helpers.idPrefix + "wifi-modal-tabs", b && b._modalSettingsOpen === true);
@@ -176,7 +178,7 @@ export function registerWifiQrCardTypes(
                 function hasCredentialBytes(this: any, value?: any) { return utf8Bytes(value).length > 0; }
                 helpers.requireField(ssidField.input, "Add a network name before saving.", undefined, hasCredentialBytes);
                 helpers.requireField(passwordField.input, "Add a Wifi password before saving.", function () { return securityField.select.value === "wpa"; }, hasCredentialBytes);
-                if (!isQrCard(b)) helpers.renderBasicCardFields(panel, b, helpers, WIFI_QR_CARD_METADATA, { entity: false });
+                if (!isQrCard(b)) helpers.renderBasicCardFields(panel, b, helpers, WIFI_QR_CARD_METADATA, { entity: false, label: false });
                 function save(this: any) {
                     var ssid: any = ssidField.input.value;
                     var security: any = securityField.select.value;
