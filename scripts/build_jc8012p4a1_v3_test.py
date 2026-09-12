@@ -75,21 +75,24 @@ def main() -> None:
     assert f"/firmware/{SLUG}/manifest.json" in generated
     assert "/firmware/guition-esp32-p4-jc8012p4a1-v2/manifest.json" not in generated
 
-    # ESPHome's native IDF and PlatformIO backends place the finished images differently.
+    # Use the native IDF flash plan to identify the actual app and bootloader.
+    flash_plan_path = build / "build/flasher_args.json"
+    flash_plan = json.loads(flash_plan_path.read_text())
+    image_dir = flash_plan_path.parent
+    application = image_dir / flash_plan["app"]["file"]
+    bootloader = image_dir / flash_plan["bootloader"]["file"]
     factories = list(build.rglob("firmware.factory.bin"))
     if len(factories) != 1:
         raise SystemExit(f"Expected one factory image, found {factories}")
-    artifact_dir = factories[0].parent
-    # Retain the application and symbols for subsequent native OTA tests/backtraces.
-    for filename in ("firmware.bin", "firmware.ota.bin", "firmware.elf"):
-        candidate = artifact_dir / filename
-        if candidate.is_file():
-            shutil.copy2(candidate, output / filename)
-    bootloaders = list(build.rglob("bootloader.bin"))
-    applications = [p for p in build.rglob("firmware.bin") if p.parent == artifact_dir]
-    if len(bootloaders) != 1 or len(applications) != 1:
-        raise SystemExit("Cannot identify the built bootloader and application for revision checks.")
-    for role, binary in (("bootloader", bootloaders[0]), ("application", applications[0])):
+    factory_bytes = factories[0].read_bytes()
+    for offset, relative_path in flash_plan["flash_files"].items():
+        payload = (image_dir / relative_path).read_bytes()
+        start = int(offset, 0)
+        assert factory_bytes[start:start + len(payload)] == payload, relative_path
+    shutil.copy2(application, output / f"{SLUG}.ota.bin")
+    shutil.copy2(application.with_suffix(".elf"), output / "firmware.elf")
+    shutil.copy2(flash_plan_path, output / "flasher_args.json")
+    for role, binary in (("bootloader", bootloader), ("application", application)):
         container_path = "/config/" + str(binary.relative_to(ROOT))
         run(["-c", "import json,sys; from esptool.bin_image import LoadFirmwareImage; "
              "i=LoadFirmwareImage('esp32p4',sys.argv[1]); "
