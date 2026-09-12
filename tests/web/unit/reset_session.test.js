@@ -94,29 +94,104 @@ test('reload waits for completion of a newer reset epoch', async () => {
 
 
 test('legacy capability discovery is shared and never probes an absent reset endpoint', async () => {
-  for (const status of [200, 404]) {
-    const calls = [];
+  const calls = [];
+  const session = new ResetSession(async (url, init) => {
+    calls.push(url);
+    if (url === '/api/v1/capabilities') {
+      assert.equal(init.credentials, 'include');
+      return response({ api: { version: 1 }, web_assets: { versions: [1] } });
+    }
+    if (url === '/api/v1/reset') throw new TypeError('Failed to fetch');
+    assert.equal(init.headers.has('X-EspControl-Epoch'), false);
+    return response({});
+  });
+  await Promise.all([session.discover(), session.fetch('/api/v1/config', { method: 'PUT' }), session.fetch('/text/layout/set', { method: 'POST' })]);
+  await session.fetch('/text/layout/set', { method: 'POST' });
+  assert.equal(calls.filter(url => url === '/api/v1/capabilities').length, 1);
+  assert.equal(calls.includes('/api/v1/reset'), false);
+});
+
+test('startup 404 and 503 keep concurrent saves waiting until reset support is known', async t => {
+  const timers = [], calls = [], epochs = [];
+  t.mock.method(globalThis, 'setTimeout', (callback, delay) => { timers.push({ callback, delay }); });
+  const startup = [404, 503];
+  const session = new ResetSession(async (url, init) => {
+    calls.push(url);
+    if (url === '/api/v1/capabilities') {
+      assert.equal(init.credentials, 'include');
+      const status = startup.shift();
+      return status ? response({}, status) : response(advertisement);
+    }
+    if (url === '/api/v1/reset') return response(capabilities());
+    epochs.push(init.headers.get('X-EspControl-Epoch'));
+    return response({});
+  });
+  const discovery = session.discover();
+  const writes = Promise.all([
+    session.fetch('/api/v1/config', { method: 'PUT' }),
+    session.fetch('/text/layout/set', { method: 'POST' }),
+  ]);
+  for (let retry = 0; retry < 2; retry++) {
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(epochs, [], 'no mutation may run during startup discovery');
+    assert.equal(calls.includes('/api/v1/reset'), false);
+    assert.equal(timers.length, 1, 'concurrent callers share a single retry');
+    const timer = timers.shift();
+    assert.equal(timer.delay, 2000);
+    timer.callback();
+  }
+  await writes;
+  assert.deepEqual((await discovery).modes, ['customization', 'factory']);
+  assert.deepEqual(epochs, ['7', '7']);
+  assert.equal(calls.filter(url => url === '/api/v1/capabilities').length, 3);
+  assert.equal(calls.filter(url => url === '/api/v1/reset').length, 1);
+});
+
+test('startup failure only becomes cached legacy mode after a valid legacy response', async t => {
+  const delays = [];
+  t.mock.method(globalThis, 'setTimeout', (callback, delay) => { delays.push(delay); queueMicrotask(callback); });
+  let requests = 0;
+  const session = new ResetSession(async (url, init) => {
+    if (url === '/api/v1/capabilities') return ++requests === 1
+      ? response({}, 404) : response({ api: { version: 1 } });
+    assert.notEqual(url, '/api/v1/reset');
+    assert.equal(init.headers.has('X-EspControl-Epoch'), false);
+    return response({});
+  });
+  assert.equal(await session.discover(), null);
+  await session.fetch('/text/layout/set', { method: 'POST' });
+  assert.equal(await session.discover(), null);
+  assert.equal(requests, 2);
+  assert.deepEqual(delays, [2000]);
+});
+
+test('exhausted startup retries block writes but a later attempt recovers without reloading', async t => {
+  t.mock.method(globalThis, 'setTimeout', callback => queueMicrotask(callback));
+  for (const status of [404, 503]) {
+    let ready = false, requests = 0;
+    const epochs = [];
     const session = new ResetSession(async (url, init) => {
-      calls.push(url);
-      if (url === '/api/v1/capabilities') {
-        assert.equal(init.credentials, 'include');
-        return response({ api: { version: 1 }, web_assets: { versions: [1] } }, status);
-      }
-      if (url === '/api/v1/reset') throw new TypeError('Failed to fetch');
-      assert.equal(init.headers.has('X-EspControl-Epoch'), false);
+      if (url === '/api/v1/capabilities') { requests++; return response(advertisement, ready ? 200 : status); }
+      if (url === '/api/v1/reset') return response(capabilities());
+      epochs.push(init.headers.get('X-EspControl-Epoch'));
       return response({});
     });
-    await Promise.all([session.discover(), session.fetch('/api/v1/config', { method: 'PUT' }), session.fetch('/text/layout/set', { method: 'POST' })]);
-    await session.fetch('/text/layout/set', { method: 'POST' });
-    assert.equal(calls.filter(url => url === '/api/v1/capabilities').length, 1);
-    assert.equal(calls.includes('/api/v1/reset'), false);
+    await assert.rejects(session.fetch('/api/v1/config', { method: 'PUT' }), /capabilities/);
+    assert.equal(requests, 4, 'startup retries are bounded');
+    assert.deepEqual(epochs, []);
+    ready = true;
+    await session.fetch('/api/v1/config', { method: 'PUT' });
+    assert.equal(requests, 5);
+    assert.deepEqual(epochs, ['7']);
+    assert.equal((await session.discover()).epoch, 7);
   }
 });
 
-test('invalid or unavailable capabilities block writes and discovery can retry', async () => {
+test('invalid or unavailable capabilities block writes and discovery can retry', async t => {
+  t.mock.method(globalThis, 'setTimeout', callback => queueMicrotask(callback));
   const failures = [
     () => { throw new TypeError('Failed to fetch'); },
-    ...[401, 403, 500, 503].map(status => () => response({}, status)),
+    ...[401, 403, 404, 500, 503].map(status => () => response({}, status)),
     () => new Response('not json'),
     ...[null, [], {}, { api: { version: 2 } },
       { api: { version: 1 }, reset: null },

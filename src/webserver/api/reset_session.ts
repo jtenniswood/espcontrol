@@ -17,8 +17,14 @@ export class ResetSession {
     return this.discovery;
   }
   private async discoverStatus(): Promise<ResetStatus | null> {
-    const response = await this.transport("/api/v1/capabilities", { credentials: "include", cache: "no-store" });
-    if (response.status === 404) return null;
+    const request = () => this.transport("/api/v1/capabilities", { credentials: "include", cache: "no-store" });
+    let response = await request();
+    // Handlers may still be registering after boot. Only a valid capabilities
+    // document can establish legacy mode; a startup 404 must not disable epochs.
+    for (let retry = 0; retry < 3 && (response.status === 404 || response.status === 503); retry++) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      response = await request();
+    }
     if (!response.ok) throw new Error("Could not check device capabilities. Try again.");
     const value = await response.json();
     if (!value || typeof value !== "object" || Array.isArray(value) ||
