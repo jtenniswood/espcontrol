@@ -411,6 +411,16 @@ describe("browserless application contracts", () => {
     const custom = { label: "Visitors", options: "" };
     definitions.wifi_qr.normalizeConfig(custom);
     assert.equal(custom.label, "Visitors");
+    const guest = { type: "wifi_qr", entity: "switch.guest_wifi", label: "Visitors", options: "ssid64=R3Vlc3Q,wifi_tabs=guest|qr|credentials" };
+    definitions.wifi_qr.normalizeConfig(guest);
+    assert.equal(guest.entity, "switch.guest_wifi");
+    assert.equal(guest.options, "ssid64=R3Vlc3Q,wifi_tabs=guest|qr|credentials");
+    definitions.wifi_qr.cardMetadata.mode.onChange.call(
+      { value: "wifi_qr_card" }, guest, { saveField() {} },
+    );
+    assert.equal(guest.entity, "switch.guest_wifi");
+    assert.equal(guest.options, "ssid64=R3Vlc3Q,wifi_tabs=guest|qr|credentials");
+    rerenders = 0;
     const qrCard = { type: "wifi_qr_card", label: "Visitors", icon: "Wifi", options: "" };
     definitions.wifi_qr_card.normalizeConfig(qrCard);
     assert.equal(qrCard.type, "wifi_qr_card");
@@ -505,6 +515,9 @@ describe("browserless application contracts", () => {
     const modalTabs = createConfigModalTabOptionsFeature({ document: {}, renderButtonSettings() {} });
     assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("credentials|qr")), ["credentials", "qr"]);
     assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("credentials|credentials|invalid")), ["credentials"]);
+    assert.deepEqual(Array.from(modalTabs.wifiQrDefaultTabs()), ["qr", "credentials"]);
+    assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("guest|qr|credentials|guest")), ["guest", "qr", "credentials"]);
+    assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("guest")), ["guest"]);
     const card = { options: "ssid64=R3Vlc3Q" };
     modalTabs.setWifiQrTabs(card, ["credentials"]);
     assert.equal(card.options, "ssid64=R3Vlc3Q,wifi_tabs=credentials");

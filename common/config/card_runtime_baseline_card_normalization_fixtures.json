@@ -1305,6 +1305,21 @@
     }
   },
   {
+    "name": "wifi_qr: guest",
+    "input": "~switch.guest_wifi,Connect,Wifi,Auto,,,wifi_qr,,ssid64%3DR3Vlc3Q%2Cpass64%3DUGFzc3dvcmQ%2Cwifi_tabs%3Dguest",
+    "expected": {
+      "entity": "switch.guest_wifi",
+      "label": "Connect",
+      "icon": "Wifi",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "wifi_qr",
+      "precision": "",
+      "options": "ssid64=R3Vlc3Q,pass64=UGFzc3dvcmQ,wifi_tabs=guest"
+    }
+  },
+  {
     "name": "wifi_qr_card: tile_qr",
     "input": "~,,Auto,Auto,,,wifi_qr_card,,ssid64%3DR3Vlc3Q%2Cpass64%3DUGFzc3dvcmQ",
     "expected": {
@@ -1317,6 +1332,21 @@
       "type": "wifi_qr_card",
       "precision": "",
       "options": "ssid64=R3Vlc3Q,pass64=UGFzc3dvcmQ"
+    }
+  },
+  {
+    "name": "wifi_qr_card: guest",
+    "input": "~switch.guest_wifi,,Auto,Auto,,,wifi_qr_card,,ssid64%3DR3Vlc3Q%2Cpass64%3DUGFzc3dvcmQ%2Cwifi_tabs%3Dguest",
+    "expected": {
+      "entity": "switch.guest_wifi",
+      "label": "Connect",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "wifi_qr_card",
+      "precision": "",
+      "options": "ssid64=R3Vlc3Q,pass64=UGFzc3dvcmQ,wifi_tabs=guest"
     }
   },
   {

@@ -15,7 +15,7 @@ inline std::vector<std::string> wifi_qr_tabs(const std::string &value) {
     const size_t end = configured.find('|', start);
     const std::string tab = configured.substr(start,
       end == std::string::npos ? std::string::npos : end - start);
-    if ((tab == "qr" || tab == "credentials") &&
+    if ((tab == "qr" || tab == "credentials" || tab == "guest") &&
         std::find(tabs.begin(), tabs.end(), tab) == tabs.end()) {
       tabs.push_back(tab);
     }

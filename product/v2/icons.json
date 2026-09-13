@@ -6,6 +6,12 @@
   },
   "structural": [
     {
+      "name": "Wifi Off",
+      "codepoint": "F05AA",
+      "mdi": "wifi-off",
+      "comment": "Guest Wi-Fi disabled"
+    },
+    {
       "name": "Close",
       "codepoint": "F0156",
       "mdi": "close",

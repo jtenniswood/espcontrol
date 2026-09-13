@@ -4,10 +4,12 @@
 // they are decoded only while the modal is open and are never logged.
 
 #include "wifi_qr_codec.h"
+#include "guest_wifi_state.h"
 
 enum class WifiQrTab : uint8_t {
   QR = 0,
   DETAILS = 1,
+  GUEST = 2,
 };
 
 struct WifiQrModalUi {
@@ -19,6 +21,19 @@ struct WifiQrModalUi {
   lv_obj_t *details_tab = nullptr;
   lv_obj_t *qr_view = nullptr;
   lv_obj_t *details_view = nullptr;
+  lv_obj_t *guest_tab = nullptr;
+  lv_obj_t *guest_view = nullptr;
+  lv_obj_t *guest_title = nullptr;
+  lv_obj_t *guest_status = nullptr;
+  lv_obj_t *guest_group = nullptr;
+  lv_obj_t *guest_on = nullptr;
+  lv_obj_t *guest_off = nullptr;
+  ControlModalBinaryToggle guest_toggle;
+  GuestWifiState guest_state;
+  std::string guest_entity;
+  lv_timer_t *guest_timer = nullptr;
+  uint32_t guest_generation = 0;
+  bool guest_subscribed = false;
   lv_obj_t *qr = nullptr;
   std::string qr_payload;
   lv_coord_t qr_side = 0;
@@ -67,6 +82,8 @@ inline bool wifi_qr_payload_from_config(const ParsedCfg &config, std::string *pa
 
 inline void wifi_qr_hide_modal() {
   WifiQrModalUi &ui = wifi_qr_modal_ui();
+  if (ui.guest_timer) lv_timer_del(ui.guest_timer);
+  ha_release_callbacks_for_owner(&ui);
   control_modal_delete_overlay(ControlModalKind::WIFI_QR, ui.overlay);
   ui = WifiQrModalUi();
 }
@@ -90,13 +107,68 @@ inline void wifi_qr_style_tab(lv_obj_t *btn, bool active) {
   }
 }
 
+inline void wifi_qr_apply_guest_state() {
+  WifiQrModalUi &ui = wifi_qr_modal_ui();
+  if (!ui.guest_group) return;
+  const auto &state = ui.guest_state;
+  const bool available = state.known && ha_api_state_connected();
+  lv_obj_t *tab_icon = control_modal_icon_label(ui.guest_tab);
+  if (tab_icon) {
+    lv_label_set_display_text(tab_icon, find_icon(available && !state.on ? "Wifi Off" : "Wifi"));
+    lv_obj_set_style_opa(tab_icon, available ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
+  }
+  lv_obj_set_style_opa(ui.guest_group, available ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
+  if (available && !state.pending) lv_obj_clear_state(ui.guest_group, LV_STATE_DISABLED);
+  else lv_obj_add_state(ui.guest_group, LV_STATE_DISABLED);
+  wifi_qr_style_tab(ui.guest_on, available && state.on);
+  wifi_qr_style_tab(ui.guest_off, available && !state.on);
+  if (ui.guest_status)
+    lv_label_set_text(ui.guest_status, espcontrol_i18n_key(available ? state.status_key() : "unavailable"));
+}
+
+inline void wifi_qr_guest_tick() {
+  WifiQrModalUi &ui = wifi_qr_modal_ui();
+  if (!ui.guest_group) return;
+  if (!ha_api_state_connected() || ui.guest_generation != ha_subscription_generation()) {
+    ha_release_callbacks_for_owner(&ui);
+    ui.guest_subscribed = false;
+    ui.guest_state.disconnect();
+    ui.guest_generation = ha_subscription_generation();
+  }
+  if (ha_api_state_connected() && !ui.guest_subscribed && guest_wifi_valid_entity(ui.guest_entity)) {
+    HaCallbackOwnerScope owner_scope(&ui);
+    ui.guest_subscribed = ha_subscribe_state(ui.guest_entity, [](esphome::StringRef value) {
+      WifiQrModalUi &current = wifi_qr_modal_ui();
+      if (!current.guest_group) return;
+      current.guest_state.receive(std::string(value.c_str(), value.size()));
+      wifi_qr_apply_guest_state();
+    });
+  }
+  ui.guest_state.tick(lv_tick_get());
+  wifi_qr_apply_guest_state();
+}
+
+inline void wifi_qr_toggle_guest() {
+  WifiQrModalUi &ui = wifi_qr_modal_ui();
+  if (!ha_api_state_connected() || !guest_wifi_valid_entity(ui.guest_entity) ||
+      !ui.guest_state.begin(lv_tick_get())) return;
+  if (!ha_send_entity_action(ui.guest_entity,
+        ui.guest_state.target_on ? "switch.turn_on" : "switch.turn_off")) {
+    ui.guest_state.send_failed();
+  }
+  wifi_qr_apply_guest_state();
+}
+
 inline void wifi_qr_apply_tab_visibility() {
   WifiQrModalUi &ui = wifi_qr_modal_ui();
   const bool show_qr = ui.tab == WifiQrTab::QR;
   wifi_qr_set_visible(ui.qr_view, show_qr);
-  wifi_qr_set_visible(ui.details_view, !show_qr);
+  wifi_qr_set_visible(ui.details_view, ui.tab == WifiQrTab::DETAILS);
+  wifi_qr_set_visible(ui.guest_view, ui.tab == WifiQrTab::GUEST);
   wifi_qr_style_tab(ui.qr_tab, show_qr);
-  wifi_qr_style_tab(ui.details_tab, !show_qr);
+  wifi_qr_style_tab(ui.details_tab, ui.tab == WifiQrTab::DETAILS);
+  wifi_qr_style_tab(ui.guest_tab, ui.tab == WifiQrTab::GUEST);
+  wifi_qr_apply_guest_state();
 }
 
 inline void wifi_qr_layout_modal() {
@@ -117,7 +189,7 @@ inline void wifi_qr_layout_modal() {
     ui.tab_row, layout, tabs_layout, modal_width_compensation_percent);
   for (size_t index = 0; index < ui.tabs.size(); ++index) {
     const WifiQrTab tab = ui.tabs[index];
-    lv_obj_t *button = tab == WifiQrTab::QR ? ui.qr_tab : ui.details_tab;
+    lv_obj_t *button = tab == WifiQrTab::QR ? ui.qr_tab : tab == WifiQrTab::DETAILS ? ui.details_tab : ui.guest_tab;
     control_modal_layout_tab_button(
       button, layout, tabs_layout, index, ui.tab == tab);
   }
@@ -131,7 +203,7 @@ inline void wifi_qr_layout_modal() {
   const espcontrol::modal::ContentLayout content =
     control_modal_calc_content_layout(
       layout, tabs_layout, show_tab_bar, 120, content_safe_top);
-  for (lv_obj_t *view : {ui.qr_view, ui.details_view}) {
+  for (lv_obj_t *view : {ui.qr_view, ui.details_view, ui.guest_view}) {
     if (!view) continue;
     lv_obj_set_size(view, content.width, content.height);
     lv_obj_align(view, LV_ALIGN_TOP_MID, 0, content.top);
@@ -159,6 +231,17 @@ inline void wifi_qr_layout_modal() {
   }
 
   if (ui.qr) lv_obj_center(ui.qr);
+
+  if (ui.guest_group) {
+    const lv_coord_t label_space = control_modal_scaled_px(52, layout.short_side);
+    const lv_coord_t height = std::max<lv_coord_t>(136,
+      std::min<lv_coord_t>(content.height - label_space * 2, control_modal_scaled_px(300, layout.short_side)));
+    const lv_coord_t width = std::min<lv_coord_t>(content.width - layout.inset * 2, height * 3 / 5);
+    light_control_layout_power(ui.guest_group, ui.guest_on, ui.guest_off,
+      width, height, 0, modal_width_compensation_percent);
+    lv_obj_align(ui.guest_title, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_align(ui.guest_status, LV_ALIGN_BOTTOM_MID, 0, 0);
+  }
 
   if (ui.back_btn) lv_obj_move_foreground(ui.back_btn);
   if (ui.tab_row) lv_obj_move_foreground(ui.tab_row);
@@ -242,16 +325,17 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
   const std::vector<std::string> configured_tabs =
     wifi_qr_tabs(cfg_option_value(config.options, "wifi_tabs"));
   for (const std::string &tab : configured_tabs) {
-    ui.tabs.push_back(tab == "credentials" ? WifiQrTab::DETAILS : WifiQrTab::QR);
+    ui.tabs.push_back(tab == "guest" ? WifiQrTab::GUEST : tab == "credentials" ? WifiQrTab::DETAILS : WifiQrTab::QR);
   }
   ui.tab = ui.tabs.front();
 
   ui.tab_row = control_modal_create_tab_row(ui.panel);
   for (WifiQrTab tab : ui.tabs) {
     lv_obj_t *button = wifi_qr_create_tab_button(ui.tab_row,
-      find_icon(tab == WifiQrTab::QR ? "Wifi QR Tab" : "Wifi Password Tab"), tab);
+      find_icon(tab == WifiQrTab::QR ? "Wifi QR Tab" : tab == WifiQrTab::DETAILS ? "Wifi Password Tab" : "Wifi"), tab);
     if (tab == WifiQrTab::QR) ui.qr_tab = button;
-    else ui.details_tab = button;
+    else if (tab == WifiQrTab::DETAILS) ui.details_tab = button;
+    else ui.guest_tab = button;
   }
 
   if (std::find(ui.tabs.begin(), ui.tabs.end(), WifiQrTab::QR) != ui.tabs.end())
@@ -282,6 +366,27 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
       ui.details_view,
       password.empty() ? espcontrol_i18n_key("none") : password.c_str(),
       DARK_TEXT_PRIMARY, wifi_qr_heading_font_ref());
+  }
+
+  if (std::find(ui.tabs.begin(), ui.tabs.end(), WifiQrTab::GUEST) != ui.tabs.end()) {
+    ui.guest_entity = config.entity;
+    ui.guest_view = wifi_qr_create_view(ui.panel);
+    ui.guest_title = wifi_qr_create_detail_label(ui.guest_view,
+      espcontrol_i18n_key("guest_wifi"), DARK_TEXT_PRIMARY, wifi_qr_heading_font_ref());
+    ui.guest_status = wifi_qr_create_detail_label(ui.guest_view,
+      espcontrol_i18n_key("unavailable"), DARK_TEXT_MUTED);
+    ui.guest_group = wifi_qr_create_view(ui.guest_view);
+    lv_obj_set_style_bg_color(ui.guest_group, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ui.guest_group, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(ui.guest_group, 0, LV_PART_MAIN);
+    ui.guest_on = control_modal_create_flat_icon_button(ui.guest_group,
+      find_icon("Wifi"), wifi_qr_icon_font_ref(), SECONDARY_GREY, LV_OPA_TRANSP);
+    ui.guest_off = control_modal_create_flat_icon_button(ui.guest_group,
+      find_icon("Wifi Off"), wifi_qr_icon_font_ref(), SECONDARY_GREY, LV_OPA_TRANSP);
+    ui.guest_toggle.callback = wifi_qr_toggle_guest;
+    control_modal_setup_binary_toggle(ui.guest_group, ui.guest_on, ui.guest_off, &ui.guest_toggle);
+    ui.guest_timer = lv_timer_create([](lv_timer_t *) { wifi_qr_guest_tick(); }, 250, nullptr);
+    wifi_qr_guest_tick();
   }
 
   ui.qr = ui.qr_view ? lv_qrcode_create(ui.qr_view) : nullptr;

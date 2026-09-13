@@ -5,7 +5,7 @@ It records the pre-migration baseline; it does not move executable behaviour int
 
 - Contract types: 43
 - Runtime-only types: 3
-- Baseline cases: 92
+- Baseline cases: 94
 
 | Contract type | Classification | Runtime driver | Capabilities | Canonical saved type | Web registration | Firmware family | Cases |
 |---|---|---|---|---|---|---|---:|
@@ -49,8 +49,8 @@ It records the pre-migration baseline; it does not move executable behaviour int
 | timezone | canonical | date_time | informationOnly, subscriptions, subpage | timezone | timezone | DATE_TIME | 1 |
 | weather | canonical | weather | informationOnly, subscriptions, subpage | weather | weather | WEATHER | 3 |
 | image | canonical | image | informationOnly, subscriptions, actions, modal, runtimeAllocation, subpage | image | image | IMAGE | 1 |
-| wifi_qr | canonical | wifi_qr | actions, modal, subpage | wifi_qr | wifi_qr | WIFI_QR | 1 |
-| wifi_qr_card | canonical | wifi_qr | actions, modal, subpage | wifi_qr_card | wifi_qr_card | WIFI_QR | 1 |
+| wifi_qr | canonical | wifi_qr | subscriptions, actions, modal, subpage | wifi_qr | wifi_qr | WIFI_QR | 2 |
+| wifi_qr_card | canonical | wifi_qr | subscriptions, actions, modal, subpage | wifi_qr_card | wifi_qr_card | WIFI_QR | 2 |
 | weather_forecast | accepted_legacy_input | weather | informationOnly, subscriptions, subpage | weather | weather_forecast | WEATHER | 1 |
 
 ## Runtime-only type decisions

@@ -17,6 +17,7 @@ struct IconEntry {
 
 static const IconEntry ICON_ENTRIES[] = {
     // --- GENERATED:ICONS START ---
+    {"Wifi Off",                       "\U000F05AA"},
     {"Close",                          "\U000F0156"},
     {"Folder",                         "\U000F024B"},
     {"Download",                       "\U000F01DA"},
