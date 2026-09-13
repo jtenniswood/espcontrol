@@ -109,7 +109,10 @@ should load `webserver/embedded/www.js`, not `webserver/www.js`. Keep a unique
 - Check display image, brightness and rotation; touch the centre and all corners.
 - Test sleep/wake, several cold starts and at least 30 minutes of operation.
 - Verify a multipart POST to `/update` is rejected with HTTP 403, both while the
-  Wi-Fi setup portal is active and after joining Wi-Fi. Do not use a V2 binary
+  Wi-Fi setup portal is active and after joining Wi-Fi. Repeat with encoded paths
+  such as `/up%64ate` and `/%75pdate?source=test`; these must also return 403.
+  Use a harmless dummy payload rather than firmware for these rejection checks.
+  Do not use a V2 binary
   as the test payload. Wi-Fi setup and normal configuration saves must still work.
 - Install another build of this V3 branch through native ESPHome OTA.
 - If display/touch startup fails, provide the full serial log, exact YAML,

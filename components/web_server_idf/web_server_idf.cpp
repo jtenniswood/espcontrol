@@ -294,9 +294,14 @@ esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
 #ifdef USE_WEBSERVER_OTA_DISABLED
   // Captive portal auto-loads the web OTA platform even with web_server.ota=false.
   // Enforce the explicit opt-out before any upload handler can write firmware.
-  if (strncmp(r->uri, "/update", 7) == 0 && (r->uri[7] == '\0' || r->uri[7] == '?')) {
-    httpd_resp_send_err(r, HTTPD_403_FORBIDDEN, "Browser firmware uploads are disabled");
-    return ESP_OK;
+  {
+    AsyncWebServerRequest request(r);
+    char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
+    // Match the decoded path used by canHandle(), including encoded /update URLs.
+    if (request.url_to(url_buf) == "/update") {
+      httpd_resp_send_err(r, HTTPD_403_FORBIDDEN, "Browser firmware uploads are disabled");
+      return ESP_OK;
+    }
   }
 #endif
   if (espcontrol_allow_web_write != nullptr && !espcontrol_allow_web_write(r)) return ESP_OK;

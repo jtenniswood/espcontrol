@@ -16,6 +16,10 @@ target_compile_options(digest_auth_policy_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(digest_auth_policy_test PRIVATE ../../components/web_server_idf)
 add_test(NAME digest_auth_policy_test COMMAND digest_auth_policy_test)
 
+add_test(NAME web_ota_guard_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/web_ota_guard_test.py)
+
 add_executable(button_grid_foundations_test button_grid_foundations_test.cpp)
 target_compile_features(button_grid_foundations_test PRIVATE cxx_std_17)
 target_compile_options(button_grid_foundations_test PRIVATE -Wall -Wextra -Werror)
