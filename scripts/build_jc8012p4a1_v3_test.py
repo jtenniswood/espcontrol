@@ -67,6 +67,10 @@ def main() -> None:
     # Confirm the external component was fetched from this commit, including the upload guard.
     server = (build / "src/esphome/components/web_server_idf/web_server_idf.cpp").read_text()
     assert "Browser firmware uploads are disabled" in server
+    # Reject stale upstream sources: their legacy PHY default aborts on P4 v3.
+    display = (build / "src/esphome/components/mipi_dsi/mipi_dsi.cpp").read_text()
+    assert display == (ROOT / "components/mipi_dsi/mipi_dsi.cpp").read_text()
+    assert ".phy_clk_src = {}," in display
     generated = (build / "src/main.cpp").read_text()
     assert "esphome::ESPHomeOTAComponent" in generated
     assert "->set_port(3232)" in generated

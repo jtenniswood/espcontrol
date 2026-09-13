@@ -4,7 +4,13 @@ Test branch for [issue #1939](https://github.com/jtenniswood/espcontrol/issues/1
 The reported stock firmware identifies an ESP32-P4 **v3.2** chip. This package
 changes the inherited V2 target to `engineering_sample: false`; the 360MHz CPU,
 200MHz hex PSRAM, display initialization, GSL3680 touch and C6 wiring stay the same.
-Display and touch compatibility still require physical testing.
+It also includes a branch-local MIPI DSI driver fix: ESP-IDF selects the PHY
+clock appropriate to the silicon (XTAL on V3). The original driver's legacy
+PLL_F20M selection caused an abort during display startup. Two testers on
+[PR #1954](https://github.com/jtenniswood/espcontrol/pull/1954) reported working
+displays with an XTAL override; this branch build still needs the full checklist
+below. Remove any temporary third-party `mipi_dsi` override from your local YAML
+before rebuilding, so the test uses this branch's component.
 
 This is not a public V3 release. Use only on the new P4 v3.x hardware, identified
 by its boot log or esptool chip information; the case date alone is insufficient.

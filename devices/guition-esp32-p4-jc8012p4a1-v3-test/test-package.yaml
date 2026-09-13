@@ -18,6 +18,17 @@ substitutions:
 esp32:
   engineering_sample: false
 
+# Only this experiment replaces the pinned ESPHome MIPI DSI driver.
+# Zero-initialized PHY clock selection lets IDF choose XTAL for production P4.
+external_components:
+  - source:
+      type: git
+      url: ${espcontrol_component_url}
+      ref: ${espcontrol_component_ref}
+      path: components
+    components: [mipi_dsi]
+    refresh: 1s
+
 switch:
   - id: !extend auto_update_switch
     restore_mode: ALWAYS_OFF
