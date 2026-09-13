@@ -2284,7 +2284,7 @@ def firmware_image_card_startup_errors(
         or "ctx->media_artwork_retry_mask = 0;" not in text
         or "ctx->pending_fallback_picture.clear();" not in text
         or "artwork_picture_response_clears_retry" not in text
-        or "inline void image_card_refresh_due()" not in text
+        or "inline void image_card_refresh_due(" not in text
         or text.count("image_card_request_current_picture(ctx);") < 2
         or "media_artwork_retry_mask" not in text
         or "artwork_source_request_mask" not in text

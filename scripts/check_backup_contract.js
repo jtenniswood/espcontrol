@@ -128,6 +128,20 @@ assert.strictEqual(v2.settings.firmware_auto_update, false, "exports firmware au
 assert.strictEqual(v2.settings.firmware_update_frequency, "Weekly", "exports firmware update frequency setting");
 assert.strictEqual(v2.screen.schedule_sensor_entity, "binary_sensor.schedule", "exports the dedicated schedule sensor setting");
 
+for (const options of [
+  "image_modal_refresh_mode=periodic,image_modal_refresh_interval=5",
+  "image_modal_refresh_mode=activity,image_modal_refresh_trigger=event.doorbell",
+]) {
+  const card = { type: "image", entity: "camera.front_door", options };
+  const backup = hooks.createBackupConfig({
+    device: "panel-a", slots: 2, grid: [1, 2], buttons: [card, { type: "subpage" }],
+    subpages: { 2: { order: ["1", "B"], buttons: [card] } },
+  });
+  const restored = hooks.normalizeBackupConfig(backup);
+  assert.strictEqual(restored.buttons[0].options, options, "camera refresh survives main-card backup");
+  assert.strictEqual(restored.subpage_objects[2].buttons[0].options, options, "camera refresh survives subpage backup");
+}
+
 const playlistButton = {
   entity: "media_player.kitchen",
   label: "Morning Mix",
