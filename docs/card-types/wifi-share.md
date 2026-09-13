@@ -43,7 +43,8 @@ shows Wi-Fi when the switch is on and Wi-Fi Off when it is off, including while
 you view the QR code or connection details. Unknown or unavailable switches show
 a muted icon and cannot be toggled. Changes wait for Home Assistant confirmation;
 if the switch does not reach the requested state, the display shows an error and
-allows another attempt.
+allows another attempt. If the panel reloads its configuration while this modal
+is open, the modal closes so it cannot operate a switch from an old card.
 
 Set up and test the guest-network switch in Home Assistant first, and allow the
 panel to perform Home Assistant actions. Saving settings, opening the modal,

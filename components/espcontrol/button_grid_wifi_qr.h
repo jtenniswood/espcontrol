@@ -126,14 +126,25 @@ inline void wifi_qr_apply_guest_state() {
     lv_label_set_text(ui.guest_status, espcontrol_i18n_key(available ? state.status_key() : "unavailable"));
 }
 
+inline bool wifi_qr_guest_configuration_current() {
+  WifiQrModalUi &ui = wifi_qr_modal_ui();
+  if (!ui.guest_group) return false;
+  // A grid rebuild can replace/delete this card while its modal is open.
+  // Never rebind or send an action using the old configuration snapshot.
+  if (ui.guest_generation != ha_subscription_generation()) {
+    wifi_qr_hide_modal();
+    return false;
+  }
+  return true;
+}
+
 inline void wifi_qr_guest_tick() {
   WifiQrModalUi &ui = wifi_qr_modal_ui();
-  if (!ui.guest_group) return;
-  if (!ha_api_state_connected() || ui.guest_generation != ha_subscription_generation()) {
+  if (!wifi_qr_guest_configuration_current()) return;
+  if (!ha_api_state_connected()) {
     ha_release_callbacks_for_owner(&ui);
     ui.guest_subscribed = false;
     ui.guest_state.disconnect();
-    ui.guest_generation = ha_subscription_generation();
   }
   if (ha_api_state_connected() && !ui.guest_subscribed && guest_wifi_valid_entity(ui.guest_entity)) {
     HaCallbackOwnerScope owner_scope(&ui);
@@ -150,7 +161,7 @@ inline void wifi_qr_guest_tick() {
 
 inline void wifi_qr_toggle_guest() {
   WifiQrModalUi &ui = wifi_qr_modal_ui();
-  if (!ha_api_state_connected() || !guest_wifi_valid_entity(ui.guest_entity) ||
+  if (!wifi_qr_guest_configuration_current() || !ha_api_state_connected() || !guest_wifi_valid_entity(ui.guest_entity) ||
       !ui.guest_state.begin(lv_tick_get())) return;
   if (!ha_send_entity_action(ui.guest_entity,
         ui.guest_state.target_on ? "switch.turn_on" : "switch.turn_off")) {
@@ -370,6 +381,7 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
 
   if (std::find(ui.tabs.begin(), ui.tabs.end(), WifiQrTab::GUEST) != ui.tabs.end()) {
     ui.guest_entity = config.entity;
+    ui.guest_generation = ha_subscription_generation();
     ui.guest_view = wifi_qr_create_view(ui.panel);
     ui.guest_title = wifi_qr_create_detail_label(ui.guest_view,
       espcontrol_i18n_key("guest_wifi"), DARK_TEXT_PRIMARY, wifi_qr_heading_font_ref());
