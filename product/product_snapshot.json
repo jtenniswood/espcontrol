@@ -13,7 +13,7 @@
     "cardTypes": 43,
     "entityNames": 101,
     "icons": 335,
-    "structuralIcons": 21,
+    "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
   },
   "deviceProfiles": {
@@ -2017,7 +2017,7 @@
           "driver": "wifi_qr",
           "capabilities": {
             "informationOnly": false,
-            "subscriptions": false,
+            "subscriptions": true,
             "actions": true,
             "numericControl": false,
             "modal": true,
@@ -2029,7 +2029,7 @@
           "driver": "wifi_qr",
           "capabilities": {
             "informationOnly": false,
-            "subscriptions": false,
+            "subscriptions": true,
             "actions": true,
             "numericControl": false,
             "modal": true,
@@ -5690,7 +5690,9 @@
       "wifi_qr": {
         "label": "Wifi Sharing",
         "allowInSubpage": true,
-        "domains": [],
+        "domains": [
+          "switch"
+        ],
         "options": [
           {
             "name": "ssid64",
@@ -5727,7 +5729,8 @@
             "kind": "text",
             "values": [
               "qr",
-              "credentials"
+              "credentials",
+              "guest"
             ],
             "defaultValue": "qr|credentials",
             "omitDefault": true
@@ -5736,7 +5739,7 @@
         "normalization": {
           "fields": {
             "entity": {
-              "policy": "clear"
+              "policy": "keep"
             },
             "label": {
               "policy": "default_if_empty",
@@ -5792,7 +5795,9 @@
         "label": "QR Card",
         "allowInSubpage": true,
         "pickerKey": "wifi_qr",
-        "domains": [],
+        "domains": [
+          "switch"
+        ],
         "options": [
           {
             "name": "ssid64",
@@ -5829,7 +5834,8 @@
             "kind": "text",
             "values": [
               "qr",
-              "credentials"
+              "credentials",
+              "guest"
             ],
             "defaultValue": "qr|credentials",
             "omitDefault": true
@@ -5838,7 +5844,7 @@
         "normalization": {
           "fields": {
             "entity": {
-              "policy": "clear"
+              "policy": "keep"
             },
             "label": {
               "policy": "clear"
@@ -7307,6 +7313,12 @@
       "mdi": "cog"
     },
     "structural": [
+      {
+        "name": "Wifi Off",
+        "codepoint": "F05AA",
+        "mdi": "wifi-off",
+        "comment": "Guest Wi-Fi disabled"
+      },
       {
         "name": "Close",
         "codepoint": "F0156",

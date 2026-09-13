@@ -2753,6 +2753,29 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
         "type",
         `${label}: Wifi Name should immediately follow Type`,
       );
+      const guestTab = page.locator("#sp-inp-wifi-tab-guest");
+      assert.strictEqual(await guestTab.isChecked(), false, `${label}: Guest Wi-Fi defaults off`);
+      assert.strictEqual(await page.locator("#sp-inp-wifi-guest-entity").count(), 0);
+      await page.locator("#sp-inp-wifi-modal-tabs").click();
+      await guestTab.check({ force: true });
+      const guestEntity = page.locator("#sp-inp-wifi-guest-entity");
+      assert(await guestEntity.isVisible(), `${label}: enabling Guest Wi-Fi reveals its switch picker`);
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      assert.strictEqual(await guestEntity.getAttribute("aria-invalid"), "true", `${label}: an enabled guest tab requires a switch`);
+      await guestEntity.fill("light.guest_wifi");
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      assert.strictEqual(await guestEntity.getAttribute("aria-invalid"), "true", `${label}: Guest Wi-Fi rejects non-switch entities`);
+      await guestEntity.fill("switch.guest_wifi");
+      await guestEntity.blur();
+      await page.locator("#sp-inp-wifi-card-type").selectOption("wifi_qr_card");
+      assert.strictEqual(await guestEntity.inputValue(), "switch.guest_wifi");
+      assert.strictEqual(await guestTab.isChecked(), true);
+      await page.locator("#sp-inp-wifi-card-type").selectOption("wifi_qr");
+      await guestTab.uncheck({ force: true });
+      assert.strictEqual(await guestEntity.count(), 0, `${label}: disabling Guest Wi-Fi hides the picker`);
+      await guestTab.check({ force: true });
+      assert.strictEqual(await guestEntity.inputValue(), "switch.guest_wifi", `${label}: disabled tabs retain their switch`);
+      await guestTab.uncheck({ force: true });
     }
 
     if (cardOption.value === "screen_lock") {
