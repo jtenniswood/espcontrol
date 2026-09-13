@@ -133,7 +133,7 @@ def generate() -> str:
             "  assert(subpage_image.precision.empty());",
             '  assert(subpage_image.options == "image_label,image_icon");',
             '  const auto subpage_image_hidden = normalize_subpage_btn({"camera.beach", "Beach", "Custom", "Custom On", "", "", "image", "", ""});',
-            "  assert(subpage_image_hidden.label.empty());",
+            '  assert(subpage_image_hidden.label == "Beach");',
             '  assert(subpage_image_hidden.icon == "Auto");',
             '  assert(subpage_image_hidden.icon_on == "Auto");',
             "  assert(subpage_image_hidden.options.empty());",
