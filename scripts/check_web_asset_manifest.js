@@ -60,6 +60,17 @@ function verifyManifest(webRoot) {
     "legacy firmware must retain access to the same backward-compatible editor");
 
   const referencedPaths = new Set(manifest.bundles.map(entry => entry.path));
+  const retentionPath = path.join(webRoot, "bundle-retention.json");
+  const retention = fs.existsSync(retentionPath) ? readJson(retentionPath) : { paths: [] };
+  assert(retention.schemaVersion === 1 && Array.isArray(retention.paths),
+    "web bundle retention manifest is invalid");
+  for (const retainedPath of retention.paths) {
+    assert(typeof retainedPath === "string" && /^bundles\/[a-f0-9]{64}\/www\.js$/.test(retainedPath),
+      `Invalid retained web bundle path: ${retainedPath}`);
+    assert(fs.existsSync(path.join(webRoot, retainedPath)),
+      `Retained web bundle is missing: ${retainedPath}`);
+    referencedPaths.add(retainedPath);
+  }
   for (const entry of fs.readdirSync(path.join(webRoot, "bundles"), { withFileTypes: true })) {
     const relativePath = `bundles/${entry.name}/www.js`;
     if (entry.isDirectory() && fs.existsSync(path.join(webRoot, relativePath))) {

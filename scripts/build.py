@@ -42,6 +42,7 @@ INTER_WEB_FONT = ROOT / "node_modules" / "vitepress" / "dist" / "client" / "them
 ROBOTO_WEB_FONT = ROOT / "common" / "assets" / "fonts" / "roboto-latin.woff2"
 SUPPORT_BUTTON_IMAGE = ROOT / "common" / "assets" / "images" / "buy-me-a-coffee-button.png"
 WEB_SOURCE_DIR = ROOT / "src" / "webserver"
+WEB_BUNDLE_RETENTION = ROOT / "docs" / "public" / "webserver" / "bundle-retention.json"
 
 # The hosted editor remains available to the development firmware plus the
 # current stable release and its four supported rollback releases. Keep this
@@ -4059,6 +4060,9 @@ def build_www(check_only=False, output_dir=None, test_hooks=False):
 
     output_root = build_root if output_dir is not None else WWW_OUTPUT_DIR
     retained = {entry["path"] for entry in json.loads(manifest_text)["bundles"]}
+    if output_dir is None and WEB_BUNDLE_RETENTION.exists():
+        retention = json.loads(WEB_BUNDLE_RETENTION.read_text(encoding="utf-8"))
+        retained.update(retention.get("paths", []))
     stale = sorted(
         path for path in (output_root / "bundles").glob("*/www.js")
         if path.relative_to(output_root).as_posix() not in retained
