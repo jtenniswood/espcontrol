@@ -38,7 +38,9 @@ switch:
 
 web_server:
   ota: false
-  js_url: "https://cdn.jsdelivr.net/gh/jtenniswood/espcontrol@${espcontrol_component_ref}/docs/public/webserver/www.js?device=${device_slug}&v=${firmware_version}"
+  # Load the complete branch editor: the release-manifest bridge rejects dev-v3-*
+  # versions, and manual builds have no embedded fallback for it to start.
+  js_url: "https://cdn.jsdelivr.net/gh/jtenniswood/espcontrol@${espcontrol_component_ref}/docs/public/webserver/embedded/www.js?device=${device_slug}&v=${firmware_version}"
 
 esphome:
   min_version: 2026.8.2

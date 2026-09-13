@@ -87,13 +87,20 @@ packages:
     refresh: 1s
 ```
 
-The manual package pulls external components and loads its web UI from this branch
-through jsDelivr. The USB factory image embeds the matching web UI for offline setup.
+The manual package pulls external components and loads the complete web UI from
+this branch through jsDelivr; the browser needs internet access. It bypasses the
+public release-manifest loader, which does not recognize `dev-v3-*` versions.
+The USB factory image embeds the matching web UI for offline setup.
 For exact reproduction, replace both package refs and the
 `espcontrol_component_ref` substitution with the same full commit SHA. Validate
 and clean build before the first install. Initial installation needs the USB
 factory image; once connected, Device Builder's wireless install uses native
 ESPHome OTA. The factory image's dashboard adoption link also selects this branch.
+
+If an earlier manual build opens a blank web page, rebuild from the updated branch
+and install through native ESPHome OTA, then hard-refresh the page. Its page source
+should load `webserver/embedded/www.js`, not `webserver/www.js`. Keep a unique
+`dev-v3-<commit>` firmware version so test reports identify the installed build.
 
 ## Physical test checklist
 
