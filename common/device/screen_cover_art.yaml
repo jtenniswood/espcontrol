@@ -1803,6 +1803,8 @@ script:
                 id(cover_art_runtime).loaded_url.clear();
                 id(cover_art_runtime).effective_download_url.clear();
                 id(cover_art_runtime).active_download_source_url.clear();
+                ESP_LOGD("display_mode", "Cover art cleanup complete for generation %u",
+                         static_cast<unsigned>(generation));
       - script.execute: clock_bar_apply
 
   - id: cover_art_start_delay

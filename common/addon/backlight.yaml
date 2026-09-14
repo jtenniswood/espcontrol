@@ -198,6 +198,11 @@ script:
                 condition:
                   lambda: 'return target_mode != static_cast<int>(espcontrol::DisplayMode::COVER_ART);'
                 then:
+                  - lambda: |-
+                      ESP_LOGD("display_mode", "Generation %u: hiding cover art before %s",
+                               static_cast<unsigned>(generation),
+                               espcontrol::display_mode_name(
+                                   static_cast<espcontrol::DisplayMode>(target_mode)));
                   - script.execute:
                       id: cover_art_hide_effect
                       generation: !lambda 'return generation;'
@@ -261,6 +266,9 @@ script:
                                   condition:
                                     lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::CLOCK);'
                                   then:
+                                    - lambda: |-
+                                        ESP_LOGD("display_mode", "Generation %u: presenting clock",
+                                                 static_cast<unsigned>(generation));
                                     - script.execute: clock_screensaver_refresh_brightness
                                     - script.wait: clock_screensaver_refresh_brightness
                                     - if:
@@ -765,31 +773,45 @@ script:
   - id: screensaver_presence_wake
     mode: restart
     then:
-      - if:
-          condition:
-            lambda: 'return id(screensaver_mode).state == "sensor";'
-          then:
-            - globals.set: { id: screensaver_sensor_sleep_pending, value: 'false' }
-            - if:
-                condition:
-                  lambda: |-
-                    return espcontrol::presence_can_wake_display(
-                        id(espcontrol_app).display().resolve());
-                then:
-                  - script.execute: screensaver_wake
-                else:
-                  # Presence must clear a sleep request recorded while the room
-                  # was empty, even when cover art or normal cards remain visible.
-                  - script.execute: display_mode_clear_automatic
+      - script.execute: screensaver_presence_update
 
   - id: screensaver_presence_sleep
     mode: restart
     then:
+      - script.execute: screensaver_presence_update
+
+  # Home Assistant state callbacks can run while LVGL and display transition
+  # actions are still unwinding. Defer the policy decision to the next loop
+  # pass, then read the latest presence value so rapid state changes coalesce.
+  - id: screensaver_presence_update
+    mode: restart
+    then:
+      - delay: 1ms
       - if:
           condition:
             lambda: 'return id(screensaver_mode).state == "sensor";'
           then:
-            - script.execute: screensaver_sleep_sensor
+            - lambda: |-
+                ESP_LOGD("display_mode", "Deferred presence update: detected=%s",
+                         id(presence_detected) ? "true" : "false");
+            - if:
+                condition:
+                  lambda: 'return id(presence_detected);'
+                then:
+                  - globals.set: { id: screensaver_sensor_sleep_pending, value: 'false' }
+                  - if:
+                      condition:
+                        lambda: |-
+                          return espcontrol::presence_can_wake_display(
+                              id(espcontrol_app).display().resolve());
+                      then:
+                        - script.execute: screensaver_wake
+                      else:
+                        # Presence must clear a sleep request recorded while the
+                        # room was empty, even when another mode remains visible.
+                        - script.execute: display_mode_clear_automatic
+                else:
+                  - script.execute: screensaver_sleep_sensor
 
   - id: screensaver_sleep_display_off
     mode: restart
