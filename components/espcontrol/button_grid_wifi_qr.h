@@ -23,8 +23,6 @@ struct WifiQrModalUi {
   lv_obj_t *details_view = nullptr;
   lv_obj_t *guest_tab = nullptr;
   lv_obj_t *guest_view = nullptr;
-  lv_obj_t *guest_title = nullptr;
-  lv_obj_t *guest_status = nullptr;
   lv_obj_t *guest_group = nullptr;
   lv_obj_t *guest_on = nullptr;
   lv_obj_t *guest_off = nullptr;
@@ -122,8 +120,6 @@ inline void wifi_qr_apply_guest_state() {
   else lv_obj_add_state(ui.guest_group, LV_STATE_DISABLED);
   wifi_qr_style_tab(ui.guest_on, available && state.on);
   wifi_qr_style_tab(ui.guest_off, available && !state.on);
-  if (ui.guest_status)
-    lv_label_set_text(ui.guest_status, espcontrol_i18n_key(available ? state.status_key() : "unavailable"));
 }
 
 inline bool wifi_qr_guest_configuration_current() {
@@ -244,14 +240,11 @@ inline void wifi_qr_layout_modal() {
   if (ui.qr) lv_obj_center(ui.qr);
 
   if (ui.guest_group) {
-    const lv_coord_t label_space = control_modal_scaled_px(52, layout.short_side);
     const lv_coord_t height = std::max<lv_coord_t>(136,
-      std::min<lv_coord_t>(content.height - label_space * 2, control_modal_scaled_px(300, layout.short_side)));
+      std::min<lv_coord_t>(content.height, control_modal_scaled_px(300, layout.short_side)));
     const lv_coord_t width = std::min<lv_coord_t>(content.width - layout.inset * 2, height * 3 / 5);
     light_control_layout_power(ui.guest_group, ui.guest_on, ui.guest_off,
       width, height, 0, modal_width_compensation_percent);
-    lv_obj_align(ui.guest_title, LV_ALIGN_TOP_MID, 0, 0);
-    lv_obj_align(ui.guest_status, LV_ALIGN_BOTTOM_MID, 0, 0);
   }
 
   if (ui.back_btn) lv_obj_move_foreground(ui.back_btn);
@@ -383,10 +376,6 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
     ui.guest_entity = config.entity;
     ui.guest_generation = ha_subscription_generation();
     ui.guest_view = wifi_qr_create_view(ui.panel);
-    ui.guest_title = wifi_qr_create_detail_label(ui.guest_view,
-      espcontrol_i18n_key("guest_wifi"), DARK_TEXT_PRIMARY, wifi_qr_heading_font_ref());
-    ui.guest_status = wifi_qr_create_detail_label(ui.guest_view,
-      espcontrol_i18n_key("unavailable"), DARK_TEXT_MUTED);
     ui.guest_group = wifi_qr_create_view(ui.guest_view);
     lv_obj_set_style_bg_color(ui.guest_group, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui.guest_group, LV_OPA_COVER, LV_PART_MAIN);
