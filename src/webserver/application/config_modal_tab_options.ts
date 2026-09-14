@@ -259,6 +259,7 @@ export function createConfigModalTabOptionsFeature(
         return [
             { value: "qr", label: "QR Code" },
             { value: "credentials", label: "Connection Details" },
+            { value: "guest", label: "Guest Wi-Fi" },
         ];
     }
     function wifiQrDefaultTabs(this: any) {
