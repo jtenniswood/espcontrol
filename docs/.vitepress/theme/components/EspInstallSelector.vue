@@ -79,6 +79,19 @@ import { withBase } from 'vitepress'
 
 const devices = [
   {
+    slug: 'guition-esp32-p4-jc8012p4a1-v3',
+    name: 'JC8012P4A1 V3 production-silicon panel',
+    revision: 'ESP32-P4 v3.x silicon; confirm with chip information first',
+    size: '10.1 inch',
+    resolution: '1280 x 800',
+    orientation: 'Landscape',
+    slots: 20,
+    cols: 5,
+    rows: 4,
+    aspect: '1280 / 800',
+    shape: 'landscape'
+  },
+  {
     slug: 'guition-esp32-p4-jc8012p4a1',
     name: 'JC8012P4A1 original panel',
     revision: 'Rear case 2627 or lower',

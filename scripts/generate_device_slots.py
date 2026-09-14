@@ -305,6 +305,31 @@ def package_file_text(device: dict) -> str:
             "",
         ]
     )
+    if device["slug"] == "guition-esp32-p4-jc8012p4a1-v3":
+        lines.extend(
+            [
+                "# V3 production-silicon settings. Keep these outside the generated",
+                "# button package section so device-slot regeneration retains them.",
+                "external_components:",
+                "  - source:",
+                "      type: git",
+                "      url: ${espcontrol_component_url}",
+                "      ref: ${espcontrol_component_ref}",
+                "      path: components",
+                "    components: [mipi_dsi]",
+                "    refresh: 1s",
+                "",
+                "switch:",
+                "  - id: !extend auto_update_switch",
+                "    restore_mode: ALWAYS_OFF",
+                "  - id: !extend c6_auto_update_switch",
+                "    restore_mode: ALWAYS_OFF",
+                "",
+                "web_server:",
+                "  ota: false",
+                "",
+            ]
+        )
     return "\n".join(lines)
 
 

@@ -254,3 +254,5 @@ nighttime=Nuit
 
 timer=Minuteur
 timer_confirm=Confirmer
+guest_wifi=Wi-Fi invité
+wifi_did_not_change=Le Wi-Fi n’a pas changé
