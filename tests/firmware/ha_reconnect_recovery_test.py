@@ -138,6 +138,10 @@ class ArtworkRecoveryTest(unittest.TestCase):
         directory = Path(cls.directory.name)
         source = (ROOT / "components/espcontrol/button_grid_image.h").read_text()
         names = (
+            "image_card_handle_download_error",
+            "image_card_clear_media_artwork",
+            "image_card_apply_downloaded",
+            "image_card_recover_media_artwork",
             "image_card_request_current_picture",
             "image_card_refresh_current_picture",
             "image_card_process_media_artwork",
@@ -174,6 +178,15 @@ class ArtworkRecoveryTest(unittest.TestCase):
 
     def test_unchanged_artwork_stays_cached(self):
         subprocess.run([self.executable, "unchanged"], check=True)
+
+    def test_download_recovery_after_startup(self):
+        for scenario in ("late_download_failure", "failed_same_url", "retry_backoff",
+                         "fresh_url_recovery", "no_artwork_cancels_recovery",
+                         "track_change_resets_recovery", "success_cancels_recovery",
+                         "retry_waits_for_download", "retry_clock_wrap",
+                         "failed_same_url_recovery", "previous_image_preserved"):
+            with self.subTest(scenario=scenario):
+                subprocess.run([self.executable, scenario], check=True)
 
     def test_missing_companion_does_not_repeat_download(self):
         subprocess.run([self.executable, "missing_companion"], check=True)

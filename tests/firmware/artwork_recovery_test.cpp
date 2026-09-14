@@ -6,8 +6,14 @@
 #include <vector>
 #include "artwork_controller.h"
 
-namespace esphome { using StringRef = std::string; }
+uint32_t current_time = 14u * 60 * 60 * 1000;
+namespace esphome {
+using StringRef = std::string;
+uint32_t millis() { return current_time; }
+}
 #define ESP_LOGD(...) ((void) 0)
+#define ESP_LOGI(...) ((void) 0)
+#define ESP_LOGW(...) ((void) 0)
 struct lv_timer_t { void *user_data; };
 void *lv_timer_get_user_data(lv_timer_t *timer) { return timer->user_data; }
 void lv_timer_del(lv_timer_t *timer) { delete timer; }
@@ -16,11 +22,23 @@ lv_timer_t *lv_timer_create(void (*)(lv_timer_t *), uint32_t, void *data) {
 }
 struct ImageCardCtx {
   bool active = true, media_artwork = true, image_ready = true;
+  bool download_active = false, diagnostics_enabled = false, requested_once = false;
+  void *widget = nullptr, *btn = nullptr, *media_overlay = nullptr;
+  struct Image {
+    std::string url;
+    const std::string &get_url() const { return url; }
+    void release() {}
+  } image_storage;
+  Image *image = &image_storage;
+  std::string url;
+  uint32_t retry_deadline_ms = 45000, next_download_retry_ms = 0;
+  uint32_t last_download_completed_ms = 0, last_tile_request_started_ms = 0;
   std::string entity_id = "media_player.test";
   std::string source_url = "https://ha/artwork/stable.jpg";
   std::string pending_fallback_picture;
   espcontrol::artwork::RefreshBatch media_artwork_refresh;
   espcontrol::artwork::RefreshTrigger media_artwork_trigger;
+  espcontrol::artwork::DownloadRecovery media_artwork_download_recovery;
   espcontrol::artwork::SourceCandidates media_artwork_sources;
   bool media_artwork_refresh_forced = false;
   uint8_t media_artwork_retry_mask = 0, media_artwork_timeout_retries = 0;
@@ -38,12 +56,36 @@ constexpr uint32_t IMAGE_CARD_API_RETRY_INTERVAL_MS = 5000;
 constexpr uint32_t IMAGE_CARD_RETRY_INTERVAL_MS = 5000;
 constexpr uint32_t IMAGE_CARD_MEDIA_ARTWORK_TRIGGER_DEBOUNCE_MS = 100;
 constexpr uint32_t IMAGE_CARD_MEDIA_ARTWORK_RESPONSE_DEBOUNCE_MS = 100;
+constexpr uint8_t IMAGE_CARD_STARTUP_DOWNLOAD_RETRIES = 10;
+constexpr uint32_t HA_SUBSCRIPTION_SCOPE_DEFAULT = 1;
+constexpr int LV_OBJ_FLAG_HIDDEN = 1;
 struct Read {
   std::string attribute;
   std::function<void(esphome::StringRef)> callback;
 };
 std::vector<Read> reads;
 std::vector<std::string> downloads;
+std::vector<std::string> fresh_requests;
+void ha_schedule_metadata_refresh(const std::string &,
+                                  std::initializer_list<const char *> attributes,
+                                  uint32_t) {
+  for (const auto *attribute : attributes) fresh_requests.emplace_back(attribute);
+}
+void image_card_release_download_slot(ImageCardCtx *ctx) { ctx->download_active = false; }
+void image_card_clear_widget_source(void *) {}
+void image_card_hide(ImageCardCtx *) {}
+void image_card_hide_loading(ImageCardCtx *) {}
+void image_card_sync_media_artwork_visibility(ImageCardCtx *) {}
+void image_card_set_widget_source(void *, ImageCardCtx::Image *) {}
+void lv_obj_add_flag(void *, int) {}
+void lv_obj_clear_flag(void *, int) {}
+void lv_obj_move_background(void *) {}
+void lv_obj_invalidate(void *) {}
+void notify_dashboard_content_changed() {}
+bool image_card_startup_retry_active(ImageCardCtx *ctx, uint32_t now) {
+  return ctx->retry_deadline_ms != 0 && int32_t(now - ctx->retry_deadline_ms) < 0;
+}
+bool image_card_modal_active_for(ImageCardCtx *) { return false; }
 bool ha_api_connected() { return true; }
 bool ha_api_state_connected() { return true; }
 uint32_t ha_subscription_generation() { return 1; }
@@ -59,14 +101,6 @@ void image_card_set_loading_state(ImageCardCtx *, const char *, bool) {}
 std::string string_ref_limited(const std::string &value, size_t limit) { return value.substr(0, limit); }
 std::string image_card_base_url(ImageCardCtx *) { return "https://ha"; }
 std::string image_card_join_url(const std::string &, const std::string &value) { return value; }
-void image_card_clear_media_artwork(ImageCardCtx *ctx) {
-  ctx->image_ready = false;
-  ctx->source_url.clear();
-  ctx->media_artwork_sources.clear();
-  ctx->media_artwork_refresh.reset();
-  ctx->media_artwork_trigger.reset();
-  ctx->media_artwork_refresh_forced = false;
-}
 void image_card_handle_picture(ImageCardCtx *ctx, const std::string &url) {
   downloads.push_back(url);
   ctx->source_url = url;
@@ -121,7 +155,102 @@ int main(int argc, char **argv) {
   ImageCardCtx ctx;
   ctx.media_artwork_sources.update(false, ctx.source_url);
   ctx.media_artwork_sources.finish_refresh();
-  if (scenario == "timeout_retry") {
+  if (scenario == "late_download_failure") {
+    ctx.image_ready = false;
+    image_card_handle_download_error(&ctx);
+    assert(ctx.media_artwork_download_recovery.active());
+    assert(!ctx.media_artwork_download_recovery.due(current_time + 1999));
+    image_card_recover_media_artwork(&ctx, current_time + 2000);
+    assert((fresh_requests == std::vector<std::string>{"entity_picture", "entity_picture_local"}));
+    assert(downloads.empty()); // Must obtain fresh HA attributes before retrying.
+  } else if (scenario == "failed_same_url") {
+    ctx.image_ready = false;
+    image_card_schedule_media_artwork_refresh(&ctx);
+    run_trigger(ctx);
+    respond_pair(ctx);
+    assert(downloads.size() == 1); // Missing image is never a successful cache hit.
+  } else if (scenario == "retry_backoff") {
+    ctx.image_ready = false;
+    image_card_handle_download_error(&ctx);
+    for (uint32_t delay : {2000u, 4000u, 8000u, 16000u, 32000u, 60000u, 60000u}) {
+      assert(ctx.media_artwork_download_recovery.retry_at == current_time + delay);
+      current_time += delay;
+      image_card_recover_media_artwork(&ctx, current_time);
+      // No HA reply: recovery must retain its next deadline, with bounded backoff.
+    }
+    assert(fresh_requests.size() == 14);
+  } else if (scenario == "fresh_url_recovery") {
+    ctx.image_ready = false;
+    image_card_handle_download_error(&ctx);
+    // Repeated ordinary notifications must not bypass the backoff.
+    image_card_schedule_media_artwork_refresh(&ctx);
+    run_trigger(ctx);
+    respond_pair(ctx);
+    assert(downloads.empty());
+    image_card_recover_media_artwork(&ctx, current_time + 2000);
+    image_card_schedule_media_artwork_refresh(&ctx); // Fresh subscription notification.
+    run_trigger(ctx);
+    respond("entity_picture", "https://ha/cover?token=renewed");
+    respond("entity_picture_local", "");
+    assert(downloads.size() == 1 && downloads.back() == "https://ha/cover?token=renewed");
+  } else if (scenario == "no_artwork_cancels_recovery") {
+    image_card_handle_download_error(&ctx);
+    image_card_schedule_media_artwork_refresh(&ctx);
+    run_trigger(ctx);
+    respond("entity_picture", "");
+    image_card_recover_media_artwork(&ctx, current_time + 60000);
+    assert(!ctx.media_artwork_download_recovery.active());
+    assert(fresh_requests.empty());
+  } else if (scenario == "track_change_resets_recovery") {
+    image_card_handle_download_error(&ctx);
+    ctx.media_artwork_download_recovery.step = 6;
+    image_card_refresh_media_artwork_on_metadata_change(&ctx);
+    assert(!ctx.media_artwork_download_recovery.active());
+    run_trigger(ctx);
+    respond_pair(ctx);
+    assert(downloads.size() == 1);
+    image_card_handle_download_error(&ctx);
+    assert(ctx.media_artwork_download_recovery.delay_ms() == 2000);
+  } else if (scenario == "success_cancels_recovery") {
+    image_card_handle_download_error(&ctx);
+    ctx.widget = &ctx;
+    ctx.url = ctx.image->url = ctx.source_url;
+    image_card_apply_downloaded(&ctx);
+    assert(ctx.image_ready && !ctx.media_artwork_download_recovery.active());
+    image_card_recover_media_artwork(&ctx, current_time + 60000);
+    assert(fresh_requests.empty());
+  } else if (scenario == "retry_waits_for_download") {
+    image_card_handle_download_error(&ctx);
+    ctx.download_active = true;
+    image_card_recover_media_artwork(&ctx, current_time + 60000);
+    assert(fresh_requests.empty());
+    ctx.download_active = false;
+    image_card_recover_media_artwork(&ctx, current_time + 60000);
+    assert(fresh_requests.size() == 2);
+  } else if (scenario == "retry_clock_wrap") {
+    current_time = UINT32_MAX - 999;
+    image_card_handle_download_error(&ctx);
+    image_card_recover_media_artwork(&ctx, current_time + 1999);
+    assert(fresh_requests.empty());
+    image_card_recover_media_artwork(&ctx, current_time + 2000);
+    assert(fresh_requests.size() == 2);
+  } else if (scenario == "failed_same_url_recovery") {
+    ctx.image_ready = false;
+    image_card_handle_download_error(&ctx);
+    image_card_recover_media_artwork(&ctx, current_time + 2000);
+    image_card_schedule_media_artwork_refresh(&ctx);
+    run_trigger(ctx);
+    respond_pair(ctx);
+    assert(downloads.size() == 1);
+  } else if (scenario == "previous_image_preserved") {
+    image_card_handle_download_error(&ctx);
+    assert(ctx.image_ready && ctx.media_artwork_download_recovery.active());
+    image_card_recover_media_artwork(&ctx, current_time + 2000);
+    image_card_schedule_media_artwork_refresh(&ctx);
+    run_trigger(ctx);
+    respond_pair(ctx);
+    assert(downloads.size() == 1); // Old pixels must not suppress recovery of the failed replacement.
+  } else if (scenario == "timeout_retry") {
     image_card_refresh_media_artwork_on_metadata_change(&ctx);
     run_trigger(ctx);
     timeout(ctx);
