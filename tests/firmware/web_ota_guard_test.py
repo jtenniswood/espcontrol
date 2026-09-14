@@ -22,9 +22,13 @@ harness = r'''
 #include <span>
 #include <string_view>
 using StringRef = std::string_view;
-struct httpd_req_t { const char *uri; int status = 0; };
-constexpr int ESP_OK = 0, HTTPD_403_FORBIDDEN = 403;
-int httpd_resp_send_err(httpd_req_t *r, int status, const char *) { r->status = status; return 0; }
+struct httpd_req_t { const char *uri; int status = 0; const char *body = nullptr; };
+constexpr int ESP_OK = 0, HTTPD_RESP_USE_STRLEN = -1;
+int httpd_resp_set_status(httpd_req_t *r, const char *status) {
+  r->status = std::strcmp(status, "403 Forbidden") == 0 ? 403 : 500;
+  return 0;
+}
+int httpd_resp_send(httpd_req_t *r, const char *body, int) { r->body = body; return 0; }
 // Only the hex conversion primitive is doubled; decode and path extraction are production code.
 size_t parse_hex(const char *s, size_t, uint8_t *out, size_t) {
   auto digit = [](char c) -> int {
@@ -59,6 +63,7 @@ int main() {
     httpd_req_t r{uri};
 #ifdef USE_WEBSERVER_OTA_DISABLED
     assert(dispatch(&r) == ESP_OK && r.status == 403);
+    assert(std::strcmp(r.body, "Browser firmware uploads are disabled") == 0);
 #else
     assert(dispatch(&r) == 42 && r.status == 0);
 #endif

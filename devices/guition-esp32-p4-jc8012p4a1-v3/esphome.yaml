@@ -1,0 +1,18 @@
+# User-facing ESPHome package for Guition JC8012P4A1 V3 production-silicon panels.
+substitutions:
+  name: "your-device-name"
+  friendly_name: "Your Device Name"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+packages:
+  api_encryption:
+    url: https://github.com/jtenniswood/espcontrol/
+    file: common/addon/api_encryption_dynamic.yaml
+    refresh: 1s
+  setup:
+    url: https://github.com/jtenniswood/espcontrol/
+    file: devices/guition-esp32-p4-jc8012p4a1-v3/packages.yaml
+    refresh: 1s

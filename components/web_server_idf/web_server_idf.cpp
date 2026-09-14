@@ -299,7 +299,11 @@ esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
     char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
     // Match the decoded path used by canHandle(), including encoded /update URLs.
     if (request.url_to(url_buf) == "/update") {
-      httpd_resp_send_err(r, HTTPD_403_FORBIDDEN, "Browser firmware uploads are disabled");
+      // httpd_err_code_t does not expose HTTPD_403_FORBIDDEN in ESP-IDF 5.5.
+      // Set the standard status text directly so this guard compiles on the
+      // pinned IDF and still returns a clear response to browser clients.
+      httpd_resp_set_status(r, "403 Forbidden");
+      httpd_resp_send(r, "Browser firmware uploads are disabled", HTTPD_RESP_USE_STRLEN);
       return ESP_OK;
     }
   }

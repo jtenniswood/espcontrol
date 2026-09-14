@@ -1,0 +1,26 @@
+# Local/CI build profile for the JC8012P4A1 V3 production-silicon panel.
+substitutions:
+  name: "espcontrol-jc8012p4a1-v3"
+  friendly_name: "EspControl 10inch V3"
+  espcontrol_component_url: "file:///config"
+  mdi_font_file: "/config/common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
+  espcontrol_component_ref: "HEAD"
+
+esp32:
+  partitions: "../common/device/partitions_16mb_card_images.csv"
+
+esphome:
+  name_add_mac_suffix: true
+
+packages:
+  espcontrol: !include ../devices/guition-esp32-p4-jc8012p4a1-v3/packages.yaml
+
+wifi:
+  ap:
+    ssid: "${friendly_name}"
+
+captive_portal:
+
+web_server:
+  js_url: ""
+  js_include: "../docs/public/webserver/embedded/www.js"
