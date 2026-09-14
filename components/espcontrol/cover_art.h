@@ -294,7 +294,8 @@ inline Layout cover_art_layout(const std::string &slug, const std::string &rotat
   if (slug == "guition-esp32-p4-jc4880p443") return landscape
     ? Layout{800,480,0,0,480,480,0,320,480,504,34,272,330,210,0,true}
     : Layout{480,800,0,0,480,0,480,480,320,24,514,324,262,130,0,true};
-  if (slug == "guition-esp32-p4-jc8012p4a1" || slug == "guition-esp32-p4-jc8012p4a1-v2") return landscape
+  if (slug == "guition-esp32-p4-jc8012p4a1" || slug == "guition-esp32-p4-jc8012p4a1-v2" ||
+      slug == "guition-esp32-p4-jc8012p4a1-v3") return landscape
     ? Layout{1280,800,0,0,800,800,0,480,800,840,40,400,720,506,0,true}
     : Layout{800,1280,0,0,800,0,800,800,480,40,834,720,422,216,0,true};
   art_size = std::max(1, std::min(art_size, std::min(screen_width, screen_height)));
