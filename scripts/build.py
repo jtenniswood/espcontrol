@@ -10,6 +10,7 @@ Usage:
     python scripts/build.py icons         # sync icons only
     python scripts/build.py i18n          # sync firmware translations only
     python scripts/build.py www           # build www.js only
+    python scripts/build.py www --retain-current-bundle  # retain a release bundle
     python scripts/build.py www --temporary-output DIR  # isolated fresh bundles
     python scripts/build.py icons --check # check icons only
     python scripts/build.py --self-test    # verify transactional publishing
@@ -4000,7 +4001,7 @@ def load_timezone_options():
     return options
 
 
-def build_www(check_only=False, output_dir=None, test_hooks=False):
+def build_www(check_only=False, output_dir=None, test_hooks=False, retain_current_bundle=False):
     """Build one shared www.js containing the validated device profiles."""
     devices = build_web_devices()
     embedded_mdi_styles = embedded_web_mdi_styles()
@@ -4059,6 +4060,16 @@ def build_www(check_only=False, output_dir=None, test_hooks=False):
     ])
 
     output_root = build_root if output_dir is not None else WWW_OUTPUT_DIR
+    if retain_current_bundle and output_dir is None:
+        retention = {"schemaVersion": 1, "paths": []}
+        if WEB_BUNDLE_RETENTION.exists():
+            retention = json.loads(WEB_BUNDLE_RETENTION.read_text(encoding="utf-8"))
+        paths = list(dict.fromkeys([*retention.get("paths", []), bundle_relative_path.as_posix()]))
+        outputs.append((
+            build_root / "bundle-retention.json",
+            json.dumps({"schemaVersion": 1, "paths": sorted(paths)}, indent=2) + "\n",
+        ))
+
     retained = {entry["path"] for entry in json.loads(manifest_text)["bundles"]}
     if output_dir is None and WEB_BUNDLE_RETENTION.exists():
         retention = json.loads(WEB_BUNDLE_RETENTION.read_text(encoding="utf-8"))
@@ -4128,6 +4139,8 @@ def main():
     check_only = "--check" in args
     test_hooks = "--test-hooks" in args
     args = [arg for arg in args if arg != "--test-hooks"]
+    retain_current_bundle = "--retain-current-bundle" in args
+    args = [arg for arg in args if arg != "--retain-current-bundle"]
     temporary_output = None
     if "--temporary-output" in args:
         index = args.index("--temporary-output")
@@ -4154,7 +4167,10 @@ def main():
                 contract_dirty = sync_card_contract(check_only=check_only)
                 device_dirty = sync_device_capabilities(check_only=check_only)
                 icon_dirty = sync_icons(check_only=check_only)
-                www_dirty = build_www(check_only=check_only)
+                www_dirty = build_www(
+                    check_only=check_only,
+                    retain_current_bundle=retain_current_bundle,
+                )
                 if check_only and (entity_dirty or i18n_dirty or contract_dirty or device_dirty or icon_dirty or www_dirty):
                     exit_code = 1
                 elif not entity_dirty and not i18n_dirty and not contract_dirty and not device_dirty and not icon_dirty and not www_dirty:
@@ -4206,7 +4222,12 @@ def main():
                 else:
                     print(f"Synced {len(dirty)} device capability output(s).")
             elif cmd == "www":
-                dirty = build_www(check_only=check_only, output_dir=temporary_output, test_hooks=test_hooks)
+                dirty = build_www(
+                    check_only=check_only,
+                    output_dir=temporary_output,
+                    test_hooks=test_hooks,
+                    retain_current_bundle=retain_current_bundle,
+                )
                 if check_only and dirty:
                     exit_code = 1
                 elif not dirty:
@@ -4215,7 +4236,11 @@ def main():
                     print(f"Built {len(dirty)} file(s).")
             else:
                 print(f"Unknown command: {cmd}")
-                print("Usage: python scripts/build.py [all|entities|contract|devices|icons|i18n|www] [--check]")
+                print(
+                    "Usage: python scripts/build.py "
+                    "[all|entities|contract|devices|icons|i18n|www] [--check] "
+                    "[--retain-current-bundle]"
+                )
                 exit_code = 1
         if exit_code == 0 and transaction is not None:
             transaction.commit()

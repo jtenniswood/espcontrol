@@ -86,8 +86,8 @@ TAG="vX.Y.Z"
 ```bash
 git switch -c "jtenniswood/prepare-web-assets-${TAG#v}"
 python3 scripts/prepare_release_web_assets.py "$TAG"
-python3 scripts/build.py
-python3 scripts/build.py --check
+python3 scripts/build.py www --retain-current-bundle
+python3 scripts/build.py www --check --retain-current-bundle
 npm run check:release-preflight
 git add scripts/build.py docs/public/webserver
 git commit -m "Prepare web assets for $TAG"
