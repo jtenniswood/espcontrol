@@ -39,20 +39,23 @@ namespace espcontrol { enum class DisplayTakeoverKind { INTERACTIVE }; }
 using Image = esphome::artwork_image::ArtworkImage;
 struct Timer { void *data; uint32_t delay; };
 using lv_timer_t = Timer;
-struct Widget {};
+struct Widget { bool hidden = false; };
 struct ImageCardCtx {
  bool active = true, media_artwork = false, image_ready = true;
  bool camera_entity_unavailable = false, download_active = false, modal_fit = false;
+ bool diagnostics_enabled = false; uint32_t last_modal_request_started_ms = 0;
  uint8_t camera_download_errors = 0, startup_download_errors = 0;
  uint32_t camera_retry_after_ms = 0, next_download_retry_ms = 0;
  uint32_t next_picture_retry_ms = 0, last_download_completed_ms = 0;
  Image *image = nullptr, *modal_image = nullptr;
  Widget *widget = nullptr;
  std::string entity_id = "camera.front", source_url = "snapshot", url = "snapshot";
+ std::string modal_url = "snapshot", modal_source_url = "snapshot";
  std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover;
 };
 struct ImageCardModalUi {
  ImageCardCtx *active = nullptr; Widget *image_widget = nullptr, *overlay = nullptr;
+ Widget *panel = nullptr, *back_btn = nullptr;
 };
 struct ImageCardModalCache {
  Image *image = nullptr; std::string entity_id, source_url;
@@ -69,7 +72,7 @@ bool image_card_constrained_memory_profile() { return constrained; }
 bool image_card_modal_active_for(ImageCardCtx *ctx) { return ui.active == ctx; }
 std::string tile_status, modal_status;
 int cleared = 0, pictures = 0, tile_requests = 0, modal_requests = 0, recovered = 0;
-void image_card_hide(ImageCardCtx *) {}
+void image_card_hide(ImageCardCtx *ctx) { if (ctx->widget) ctx->widget->hidden = true; }
 void image_card_set_loading_state(ImageCardCtx *, const char *s, bool) { tile_status = s; }
 void image_card_show_modal_loading(ImageCardCtx *, const char *s) { modal_status = s; }
 void image_card_clear_widget_source(Widget *) { ++cleared; }
@@ -88,6 +91,17 @@ Timer *lv_timer_create(void (*)(Timer *), uint32_t delay, void *data) {
 }
 constexpr uint32_t IMAGE_CARD_CONSTRAINED_MODAL_CACHE_TTL_MS = 15000;
 constexpr uint32_t IMAGE_CARD_RETRY_INTERVAL_MS = 2000;
+constexpr uint32_t IMAGE_CARD_MODAL_REFRESH_DELAY_MS = 1000;
+constexpr int LV_OBJ_FLAG_HIDDEN = 1;
+bool lv_obj_has_flag(Widget *w, int) { return w->hidden; }
+void lv_obj_move_background(Widget *) {}
+void lv_obj_move_foreground(Widget *) {}
+void lv_obj_invalidate(Widget *) {}
+void image_card_set_widget_source(Widget *, Image *) {}
+void image_card_hide_modal_loading(ImageCardCtx *) { modal_status.clear(); }
+bool image_card_has_separate_modal_image(ImageCardCtx *ctx) { return ctx->modal_image != ctx->image; }
+bool image_card_apply_modal_geometry(ImageCardCtx *, Image *) { return true; }
+void notify_dashboard_content_changed() {}
 constexpr uint32_t IMAGE_CARD_STARTUP_DOWNLOAD_RETRIES = 10;
 constexpr int IMAGE_CARD_MAX_CONTEXTS = 1;
 uint32_t ha_subscription_generation() { return 1; }
@@ -111,7 +125,7 @@ for name in ('image_card_modal_cache_expired', 'image_card_cancel_modal_cache_ex
              'image_card_handle_download_error', 'image_card_modal_has_tile_fallback',
              'image_card_modal_cache_matches', 'image_card_modal_needs_open_refresh',
              'subscribe_image_card_entity_state',
-             'image_card_hide_modal'):
+             'image_card_hide_modal', 'image_card_apply_modal_downloaded'):
     source += definition(name) + '\n'
 # The polling callback checks get_url as well as availability.
 source = source.replace('bool has_image() {', 'std::string get_url() { return "snapshot"; }\n bool has_image() {')
@@ -167,6 +181,10 @@ int main() {
  ctx.image_ready = false;
  image_card_refresh_due();
  assert(recovered == 0); // Never resurrect a failed transfer's old decoded frame.
+ // A successful modal retry clears the warning and schedules tile recovery.
+ image_card_apply_modal_downloaded(&ctx);
+ assert(cache.ready && ctx.camera_download_errors == 0 && modal_status.empty());
+ assert(ctx.next_download_retry_ms == now_ms + 1000);
  // Unavailable HA state cancels requests, waits, then restarts on recovery.
  subscribe_image_card_entity_state(&ctx, ctx.entity_id);
  state_callback("unavailable");
