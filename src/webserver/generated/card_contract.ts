@@ -3799,7 +3799,9 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
   "wifi_qr": {
     "label": "Wifi Sharing",
     "allowInSubpage": true,
-    "domains": [],
+    "domains": [
+      "switch"
+    ],
     "options": [
       {
         "name": "ssid64",
@@ -3836,7 +3838,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "kind": "text",
         "values": [
           "qr",
-          "credentials"
+          "credentials",
+          "guest"
         ],
         "defaultValue": "qr|credentials",
         "omitDefault": true
@@ -3845,7 +3848,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "normalization": {
       "fields": {
         "entity": {
-          "policy": "clear"
+          "policy": "keep"
         },
         "label": {
           "policy": "default_if_empty",
@@ -3901,7 +3904,9 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "label": "QR Card",
     "allowInSubpage": true,
     "pickerKey": "wifi_qr",
-    "domains": [],
+    "domains": [
+      "switch"
+    ],
     "options": [
       {
         "name": "ssid64",
@@ -3938,7 +3943,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "kind": "text",
         "values": [
           "qr",
-          "credentials"
+          "credentials",
+          "guest"
         ],
         "defaultValue": "qr|credentials",
         "omitDefault": true
@@ -3947,7 +3953,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "normalization": {
       "fields": {
         "entity": {
-          "policy": "clear"
+          "policy": "keep"
         },
         "label": {
           "policy": "clear"
@@ -4529,7 +4535,7 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
     "driver": "wifi_qr",
     "capabilities": {
       "informationOnly": false,
-      "subscriptions": false,
+      "subscriptions": true,
       "actions": true,
       "numericControl": false,
       "modal": true,
@@ -4541,7 +4547,7 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
     "driver": "wifi_qr",
     "capabilities": {
       "informationOnly": false,
-      "subscriptions": false,
+      "subscriptions": true,
       "actions": true,
       "numericControl": false,
       "modal": true,

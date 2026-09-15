@@ -14,6 +14,8 @@ int main() {
   assert(wifi_qr_compact_scale(116, 33) == 3);
   assert(wifi_qr_compact_scale(0, 33) == 0);
 
+  assert((wifi_qr_tabs("guest|qr|credentials|guest") == std::vector<std::string>{"guest", "qr", "credentials"}));
+  assert((wifi_qr_tabs("guest") == std::vector<std::string>{"guest"}));
   assert((wifi_qr_tabs("") == std::vector<std::string>{"qr", "credentials"}));
   assert((wifi_qr_tabs("credentials|qr") == std::vector<std::string>{"credentials", "qr"}));
   assert((wifi_qr_tabs("credentials") == std::vector<std::string>{"credentials"}));

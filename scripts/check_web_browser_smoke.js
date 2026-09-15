@@ -2753,6 +2753,7 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
         "type",
         `${label}: Wifi Name should immediately follow Type`,
       );
+
     }
 
     if (cardOption.value === "screen_lock") {
@@ -5302,6 +5303,41 @@ async function seedNativeDocument(page, nativeState) {
   await page.waitForSelector('.sp-main [data-slot="2"]');
 }
 
+async function assertGuestWifiSettings(page, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  const emptyCell = page.locator(".sp-empty-cell:not(.sp-info-only-hidden)").first();
+  assert(await emptyCell.count(), `${label}: guest Wi-Fi test needs an empty slot`);
+  await emptyCell.click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.getByRole("button", { name: "Switch card type" }).click();
+  await page.locator("#sp-inp-type").selectOption("wifi_qr");
+  const guestTab = page.locator("#sp-inp-wifi-tab-guest");
+  assert.strictEqual(await guestTab.isChecked(), false, `${label}: Guest Wi-Fi defaults off`);
+  assert.strictEqual(await page.locator("#sp-inp-wifi-guest-entity").count(), 0);
+  await page.locator("#sp-inp-wifi-modal-tabs").click();
+  await page.locator("#sp-inp-wifi-tab-guest + .sp-toggle-track").click();
+  const guestEntity = page.locator("#sp-inp-wifi-guest-entity");
+  assert(await guestEntity.isVisible(), `${label}: enabling Guest Wi-Fi reveals its switch picker`);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  assert.strictEqual(await guestEntity.getAttribute("aria-invalid"), "true", `${label}: an enabled guest tab requires a switch`);
+  await guestEntity.fill("light.guest_wifi");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  assert.strictEqual(await guestEntity.getAttribute("aria-invalid"), "true", `${label}: Guest Wi-Fi rejects non-switch entities`);
+  await guestEntity.fill("switch.guest_wifi");
+  await guestEntity.blur();
+  await page.locator("#sp-inp-wifi-card-type").selectOption("wifi_qr_card");
+  assert.strictEqual(await guestEntity.inputValue(), "switch.guest_wifi");
+  assert.strictEqual(await guestTab.isChecked(), true);
+  await page.locator("#sp-inp-wifi-card-type").selectOption("wifi_qr");
+  await page.locator("#sp-inp-wifi-tab-guest + .sp-toggle-track").click();
+  assert.strictEqual(await guestEntity.count(), 0, `${label}: disabling Guest Wi-Fi hides the picker`);
+  await page.locator("#sp-inp-wifi-tab-guest + .sp-toggle-track").click();
+  assert.strictEqual(await guestEntity.inputValue(), "switch.guest_wifi", `${label}: disabled tabs retain their switch`);
+  await page.locator("#sp-inp-wifi-tab-guest + .sp-toggle-track").click();
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
+}
+
 async function assertNativeProfileJourney(browser, testCase) {
   const nativeState = nativeConfigState(testCase.slug);
   const context = await browser.newContext({ viewport: testCase.viewport });
@@ -5319,6 +5355,7 @@ async function assertNativeProfileJourney(browser, testCase) {
       () => window.__eventSources && window.__eventSources.length > 0,
     );
     await seedNativeDocument(page, nativeState);
+    if (testCase.exerciseInteractions) await assertGuestWifiSettings(page, testCase.name);
 
     await assertSubpageTitleTypography(page, testCase.name);
 

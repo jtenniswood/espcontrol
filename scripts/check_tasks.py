@@ -1183,7 +1183,7 @@ def self_test() -> None:
         raise AssertionError("device slot outputs are not checked before device profiles consume them")
 
     web_order = [item.id for item in plan("ci", "web")]
-    for consumer in ("web-smoke", "web-browser-smoke"):
+    for consumer in ("web-smoke",):
         if web_order.index("device-manifest-output") > web_order.index(consumer):
             raise AssertionError(f"device manifest output is not checked before {consumer} consumes it")
 

@@ -117,6 +117,13 @@ const screenProducts: Record<string, Record<string, string>> = {
     resolution: '1280 x 800',
     processor: 'ESP32-P4',
   },
+  'screens/jc8012p4a1-v3.md': {
+    name: 'Guition JC8012P4A1 V3',
+    model: 'JC8012P4A1 V3',
+    size: '10.1 inches',
+    resolution: '1280 x 800',
+    processor: 'ESP32-P4',
+  },
   'screens/p4-86.md': {
     name: 'ESP32-P4 86 Panel',
     brand: 'ESP32-P4',
@@ -410,6 +417,7 @@ export default defineConfig({
         text: 'Supported Screens',
         items: [
           { text: '10.1-inch JC8012P4A1', link: '/screens/jc8012p4a1' },
+          { text: '10.1-inch JC8012P4A1 V3', link: '/screens/jc8012p4a1-v3' },
           { text: '7-inch JC1060P470', link: '/screens/jc1060p470' },
           { text: '4.3-inch JC4880P443', link: '/screens/jc4880p443' },
           { text: '4-inch ESP32-P4 86 Panel', link: '/screens/p4-86' },

@@ -46,6 +46,7 @@ def assert_profile_contract(fixtures: dict, profiles: dict[str, dict]) -> None:
     missing = sorted(set(profiles) - set(fixture_by_slug))
     allowed_aliases = {
         "guition-esp32-p4-jc8012p4a1-v2": "guition-esp32-p4-jc8012p4a1",
+        "guition-esp32-p4-jc8012p4a1-v3": "guition-esp32-p4-jc8012p4a1",
         "guition-esp32-p4-jc1060p470-v2": "guition-esp32-p4-jc1060p470",
     }
     unexpected = sorted(set(missing) - set(allowed_aliases))

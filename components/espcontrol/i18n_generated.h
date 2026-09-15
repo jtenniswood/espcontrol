@@ -250,6 +250,8 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Noc";
   if (std::strcmp(text, "Timer") == 0) return "Časovač";
   if (std::strcmp(text, "Confirm") == 0) return "Potvrdit";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi pro hosty";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Stav Wi-Fi se nezměnil";
   return text;
 }
 
@@ -481,6 +483,8 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Daytime") == 0) return "Dagtid";
   if (std::strcmp(text, "Nighttime") == 0) return "Nattetid";
   if (std::strcmp(text, "Confirm") == 0) return "Bekræft";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Gæste-Wi-Fi";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Wi-Fi blev ikke ændret";
   return text;
 }
 
@@ -710,6 +714,8 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Daytime") == 0) return "Tagsüber";
   if (std::strcmp(text, "Nighttime") == 0) return "Nachts";
   if (std::strcmp(text, "Confirm") == 0) return "Bestätigen";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Gast-WLAN";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "WLAN wurde nicht geändert";
   return text;
 }
 
@@ -947,6 +953,8 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Noche";
   if (std::strcmp(text, "Timer") == 0) return "Temporizador";
   if (std::strcmp(text, "Confirm") == 0) return "Confirmar";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi de invitados";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "El Wi-Fi no ha cambiado";
   return text;
 }
 
@@ -1194,6 +1202,8 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Yö";
   if (std::strcmp(text, "Timer") == 0) return "Ajastin";
   if (std::strcmp(text, "Confirm") == 0) return "Vahvista";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Vieras-Wi-Fi";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Wi-Fi ei muuttunut";
   return text;
 }
 
@@ -1424,6 +1434,8 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Nuit";
   if (std::strcmp(text, "Timer") == 0) return "Minuteur";
   if (std::strcmp(text, "Confirm") == 0) return "Confirmer";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi invité";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Le Wi-Fi n’a pas changé";
   return text;
 }
 
@@ -1679,6 +1691,8 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "לילה";
   if (std::strcmp(text, "Timer") == 0) return "טיימר";
   if (std::strcmp(text, "Confirm") == 0) return "לאשר";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "רשת Wi-Fi לאורחים";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "מצב ה-Wi-Fi לא השתנה";
   return text;
 }
 
@@ -1926,6 +1940,8 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Éjszaka";
   if (std::strcmp(text, "Timer") == 0) return "Időzítő";
   if (std::strcmp(text, "Confirm") == 0) return "Megerősítés";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Vendég Wi-Fi";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "A Wi-Fi állapota nem változott";
   return text;
 }
 
@@ -2163,6 +2179,8 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Daytime") == 0) return "Giorno";
   if (std::strcmp(text, "Nighttime") == 0) return "Notte";
   if (std::strcmp(text, "Confirm") == 0) return "Confermare";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi ospiti";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Il Wi-Fi non è cambiato";
   return text;
 }
 
@@ -2398,6 +2416,8 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Nattetid";
   if (std::strcmp(text, "Timer") == 0) return "Tidtaker";
   if (std::strcmp(text, "Confirm") == 0) return "Bekreft";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Gjeste-Wi-Fi";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Wi-Fi ble ikke endret";
   return text;
 }
 
@@ -2633,6 +2653,8 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Daytime") == 0) return "Overdag";
   if (std::strcmp(text, "Nighttime") == 0) return "Nacht";
   if (std::strcmp(text, "Confirm") == 0) return "Bevestigen";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Gastwifi";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Wifi is niet gewijzigd";
   return text;
 }
 
@@ -2868,6 +2890,8 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Noc";
   if (std::strcmp(text, "Timer") == 0) return "Minutnik";
   if (std::strcmp(text, "Confirm") == 0) return "Potwierdzić";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi dla gości";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Stan Wi-Fi nie zmienił się";
   return text;
 }
 
@@ -3105,6 +3129,8 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Noite";
   if (std::strcmp(text, "Timer") == 0) return "Temporizador";
   if (std::strcmp(text, "Confirm") == 0) return "Confirmar";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi de convidados";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "O Wi-Fi não mudou";
   return text;
 }
 
@@ -3343,6 +3369,8 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Noite";
   if (std::strcmp(text, "Timer") == 0) return "Temporizador";
   if (std::strcmp(text, "Confirm") == 0) return "Confirmar";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi de convidados";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "O Wi-Fi não mudou";
   return text;
 }
 
@@ -3590,6 +3618,8 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Noapte";
   if (std::strcmp(text, "Timer") == 0) return "Temporizator";
   if (std::strcmp(text, "Confirm") == 0) return "Confirmați";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi pentru oaspeți";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Starea Wi-Fi nu s-a schimbat";
   return text;
 }
 
@@ -3844,6 +3874,8 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Ночь";
   if (std::strcmp(text, "Timer") == 0) return "Таймер";
   if (std::strcmp(text, "Confirm") == 0) return "Подтвердить";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Гостевой Wi-Fi";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Состояние Wi-Fi не изменилось";
   return text;
 }
 
@@ -4083,6 +4115,8 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Noc";
   if (std::strcmp(text, "Timer") == 0) return "Časovač";
   if (std::strcmp(text, "Confirm") == 0) return "Potvrdiť";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi pre hostí";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Stav Wi-Fi sa nezmenil";
   return text;
 }
 
@@ -4326,6 +4360,8 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Noč";
   if (std::strcmp(text, "Timer") == 0) return "Časovnik";
   if (std::strcmp(text, "Confirm") == 0) return "Potrdi";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi za goste";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Stanje Wi-Fi se ni spremenilo";
   return text;
 }
 
@@ -4560,6 +4596,8 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Daytime") == 0) return "Dagtid";
   if (std::strcmp(text, "Nighttime") == 0) return "Nattetid";
   if (std::strcmp(text, "Confirm") == 0) return "Bekräfta";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Gäst-Wi-Fi";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Wi-Fi ändrades inte";
   return text;
 }
 
@@ -4807,6 +4845,8 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Gece";
   if (std::strcmp(text, "Timer") == 0) return "Zamanlayıcı";
   if (std::strcmp(text, "Confirm") == 0) return "Onayla";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Misafir Wi-Fi";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Wi-Fi durumu değişmedi";
   return text;
 }
 
@@ -5056,6 +5096,8 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Ніч";
   if (std::strcmp(text, "Timer") == 0) return "Таймер";
   if (std::strcmp(text, "Confirm") == 0) return "Підтвердити";
+  if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Гостьовий Wi-Fi";
+  if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Стан Wi-Fi не змінився";
   return text;
 }
 
@@ -5313,6 +5355,8 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Nighttime";
   if (std::strcmp(key, "timer") == 0) return "Timer";
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirm";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Guest Wi-Fi";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wi-Fi did not change";
   return key;
 }
 
@@ -5552,6 +5596,8 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Noc";
   if (std::strcmp(key, "timer") == 0) return "Časovač";
   if (std::strcmp(key, "timer_confirm") == 0) return "Potvrdit";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi pro hosty";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Stav Wi-Fi se nezměnil";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5784,6 +5830,8 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "daytime") == 0) return "Dagtid";
   if (std::strcmp(key, "nighttime") == 0) return "Nattetid";
   if (std::strcmp(key, "timer_confirm") == 0) return "Bekræft";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Gæste-Wi-Fi";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wi-Fi blev ikke ændret";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6014,6 +6062,8 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "daytime") == 0) return "Tagsüber";
   if (std::strcmp(key, "nighttime") == 0) return "Nachts";
   if (std::strcmp(key, "timer_confirm") == 0) return "Bestätigen";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Gast-WLAN";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "WLAN wurde nicht geändert";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6252,6 +6302,8 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Noche";
   if (std::strcmp(key, "timer") == 0) return "Temporizador";
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmar";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi de invitados";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "El Wi-Fi no ha cambiado";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6500,6 +6552,8 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Yö";
   if (std::strcmp(key, "timer") == 0) return "Ajastin";
   if (std::strcmp(key, "timer_confirm") == 0) return "Vahvista";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Vieras-Wi-Fi";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wi-Fi ei muuttunut";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6731,6 +6785,8 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Nuit";
   if (std::strcmp(key, "timer") == 0) return "Minuteur";
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmer";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi invité";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Le Wi-Fi n’a pas changé";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6987,6 +7043,8 @@ inline const char *espcontrol_i18n_key_he(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "לילה";
   if (std::strcmp(key, "timer") == 0) return "טיימר";
   if (std::strcmp(key, "timer_confirm") == 0) return "לאשר";
+  if (std::strcmp(key, "guest_wifi") == 0) return "רשת Wi-Fi לאורחים";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "מצב ה-Wi-Fi לא השתנה";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7235,6 +7293,8 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Éjszaka";
   if (std::strcmp(key, "timer") == 0) return "Időzítő";
   if (std::strcmp(key, "timer_confirm") == 0) return "Megerősítés";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Vendég Wi-Fi";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "A Wi-Fi állapota nem változott";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7473,6 +7533,8 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "daytime") == 0) return "Giorno";
   if (std::strcmp(key, "nighttime") == 0) return "Notte";
   if (std::strcmp(key, "timer_confirm") == 0) return "Confermare";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi ospiti";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Il Wi-Fi non è cambiato";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7709,6 +7771,8 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Nattetid";
   if (std::strcmp(key, "timer") == 0) return "Tidtaker";
   if (std::strcmp(key, "timer_confirm") == 0) return "Bekreft";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Gjeste-Wi-Fi";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wi-Fi ble ikke endret";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7944,6 +8008,8 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "daytime") == 0) return "Overdag";
   if (std::strcmp(key, "nighttime") == 0) return "Nacht";
   if (std::strcmp(key, "timer_confirm") == 0) return "Bevestigen";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Gastwifi";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wifi is niet gewijzigd";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8180,6 +8246,8 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Noc";
   if (std::strcmp(key, "timer") == 0) return "Minutnik";
   if (std::strcmp(key, "timer_confirm") == 0) return "Potwierdzić";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi dla gości";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Stan Wi-Fi nie zmienił się";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8418,6 +8486,8 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Noite";
   if (std::strcmp(key, "timer") == 0) return "Temporizador";
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmar";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi de convidados";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "O Wi-Fi não mudou";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8657,6 +8727,8 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Noite";
   if (std::strcmp(key, "timer") == 0) return "Temporizador";
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmar";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi de convidados";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "O Wi-Fi não mudou";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8905,6 +8977,8 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Noapte";
   if (std::strcmp(key, "timer") == 0) return "Temporizator";
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmați";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi pentru oaspeți";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Starea Wi-Fi nu s-a schimbat";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9160,6 +9234,8 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Ночь";
   if (std::strcmp(key, "timer") == 0) return "Таймер";
   if (std::strcmp(key, "timer_confirm") == 0) return "Подтвердить";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Гостевой Wi-Fi";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Состояние Wi-Fi не изменилось";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9400,6 +9476,8 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Noc";
   if (std::strcmp(key, "timer") == 0) return "Časovač";
   if (std::strcmp(key, "timer_confirm") == 0) return "Potvrdiť";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi pre hostí";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Stav Wi-Fi sa nezmenil";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9644,6 +9722,8 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Noč";
   if (std::strcmp(key, "timer") == 0) return "Časovnik";
   if (std::strcmp(key, "timer_confirm") == 0) return "Potrdi";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi za goste";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Stanje Wi-Fi se ni spremenilo";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9879,6 +9959,8 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "daytime") == 0) return "Dagtid";
   if (std::strcmp(key, "nighttime") == 0) return "Nattetid";
   if (std::strcmp(key, "timer_confirm") == 0) return "Bekräfta";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Gäst-Wi-Fi";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wi-Fi ändrades inte";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10127,6 +10209,8 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Gece";
   if (std::strcmp(key, "timer") == 0) return "Zamanlayıcı";
   if (std::strcmp(key, "timer_confirm") == 0) return "Onayla";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Misafir Wi-Fi";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wi-Fi durumu değişmedi";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10377,6 +10461,8 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Ніч";
   if (std::strcmp(key, "timer") == 0) return "Таймер";
   if (std::strcmp(key, "timer_confirm") == 0) return "Підтвердити";
+  if (std::strcmp(key, "guest_wifi") == 0) return "Гостьовий Wi-Fi";
+  if (std::strcmp(key, "wifi_did_not_change") == 0) return "Стан Wi-Fi не змінився";
   return espcontrol_i18n_key_en(key);
 }
 

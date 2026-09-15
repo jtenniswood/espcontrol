@@ -106,7 +106,7 @@ export function registerWifiQrCardTypes(
         var tabs: any = wifiQrTabs(b);
         var qrCard: any = isQrCard(b);
         b.type = qrCard ? "wifi_qr_card" : "wifi_qr";
-        b.entity = ""; b.sensor = ""; b.unit = ""; b.precision = ""; b.icon_on = "Auto";
+        b.entity = String(b.entity || "").trim(); b.sensor = ""; b.unit = ""; b.precision = ""; b.icon_on = "Auto";
         if (!b.label || isLegacyWifiQrTitle(b.label)) b.label = "Connect";
         if (qrCard) { b.icon = "Auto"; }
         else {
@@ -159,6 +159,20 @@ export function registerWifiQrCardTypes(
                     idPrefix: "wifi-tab-",
                     hideHeading: true,
                 });
+                if (wifiQrTabs(b).includes("guest")) {
+                    const guestField = helpers.renderCardEntityField(modalTabsDisclosure.section, b, helpers, {
+                        entity: {
+                            label: "Guest Wi-Fi switch",
+                            idSuffix: "wifi-guest-entity",
+                            placeholder: "e.g. switch.guest_wifi",
+                            domains: ["switch"],
+                            bindName: "entity",
+                            rerender: false,
+                        },
+                    });
+                    helpers.requireField(guestField.input, "Select a guest Wi-Fi switch before saving.", undefined,
+                        (value: string) => /^switch\.[a-z0-9_]+$/.test(String(value || "").trim()));
+                }
                 panel.appendChild(modalTabsDisclosure.panel);
                 if (!isQrCard(b)) {
                     var cardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "wifi-card-settings", false);

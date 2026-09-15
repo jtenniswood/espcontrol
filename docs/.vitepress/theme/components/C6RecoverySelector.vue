@@ -65,18 +65,25 @@ import { withBase } from 'vitepress'
 
 const devices = [
   {
+    slug: 'guition-esp32-p4-jc8012p4a1-v3',
+    name: 'JC8012P4A1 V3 production-silicon panel',
+    size: '10.1 in',
+    detail: 'ESP32-P4 v3.x silicon; confirm with chip information first',
+    warning: 'Use this only when chip information confirms ESP32-P4 v3.x production silicon, regardless of case date.',
+  },
+  {
     slug: 'guition-esp32-p4-jc8012p4a1',
     name: 'JC8012P4A1 original panel',
     size: '10.1 in',
-    detail: 'Rear case 2622 or lower',
-    warning: 'Use this only for rear case number 2622 or lower.',
+    detail: 'Rear case 2627 or lower, when V3 is not confirmed',
+    warning: 'Use this only for rear case number 2627 or lower when chip information does not confirm V3 silicon.',
   },
   {
     slug: 'guition-esp32-p4-jc8012p4a1-v2',
     name: 'JC8012P4A1 new panel',
     size: '10.1 in',
-    detail: 'Rear case 2624 or higher',
-    warning: 'Use this only for rear case number 2624 or higher.',
+    detail: 'Rear case 2628 or higher, when V3 is not confirmed',
+    warning: 'Use this only for rear case number 2628 or higher when chip information does not confirm V3 silicon.',
   },
   {
     slug: 'guition-esp32-p4-jc1060p470',
