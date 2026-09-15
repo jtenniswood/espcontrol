@@ -201,7 +201,7 @@ def test_web_server_request_limits() -> None:
 
 
 def test_s3_low_heap_policy() -> None:
-    """Keep the S3 artwork path and web server within its internal-heap budget."""
+    """Keep the S3 runtime tasks within its internal-heap and stack budget."""
     device = S3_DEVICE_YAML.read_text(encoding="utf-8")
     artwork = S3_ARTWORK_TRANSFER_CPP.read_text(encoding="utf-8")
     server = WEB_SERVER_IDF_CPP.read_text(encoding="utf-8")
@@ -213,6 +213,9 @@ def test_s3_low_heap_policy() -> None:
         'CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"',
     ):
         assert option in device, f"S3 device profile is missing {option}"
+    assert "loop_task_stack_size: 16384" in device, (
+        "S3 loop task must retain enough stack for display transitions"
+    )
     assert "HTTP_CLIENT_BUFFER_SIZE = 4 * 1024" in artwork, (
         "S3 artwork HTTP buffer must stay at 4 KiB"
     )
