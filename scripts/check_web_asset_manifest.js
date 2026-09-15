@@ -67,8 +67,13 @@ function verifyManifest(webRoot) {
   for (const retainedPath of retention.paths) {
     assert(typeof retainedPath === "string" && /^bundles\/[a-f0-9]{64}\/www\.js$/.test(retainedPath),
       `Invalid retained web bundle path: ${retainedPath}`);
-    assert(fs.existsSync(path.join(webRoot, retainedPath)),
+    const retainedBundlePath = path.join(webRoot, retainedPath);
+    assert(fs.existsSync(retainedBundlePath),
       `Retained web bundle is missing: ${retainedPath}`);
+    const retainedContents = fs.readFileSync(retainedBundlePath);
+    const retainedDigest = retainedPath.split("/")[1];
+    assert(sha256(retainedContents) === retainedDigest,
+      `Retained web bundle content does not match its path digest: ${retainedPath}`);
     referencedPaths.add(retainedPath);
   }
   for (const entry of fs.readdirSync(path.join(webRoot, "bundles"), { withFileTypes: true })) {
