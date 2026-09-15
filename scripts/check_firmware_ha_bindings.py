@@ -3127,10 +3127,16 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
                     f"{schedule_rel}: set the schedule-asleep marker before reconciling display-off"
                 )
 
+    presence_update_body = yaml_script_body(text, "screensaver_presence_update")
     wake_body = yaml_script_body(text, "screensaver_presence_wake")
     if wake_body is None:
         errors.append(f"{rel}: missing screensaver_presence_wake script")
     else:
+        if (
+            presence_update_body is not None
+            and "script.execute: screensaver_presence_update" in wake_body
+        ):
+            wake_body += presence_update_body
         typed_presence_wake = (
             "presence_can_wake_display(" in wake_body
             and "script.execute: screensaver_wake" in wake_body
@@ -3191,6 +3197,11 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
     if presence_sleep_body is None:
         errors.append(f"{rel}: missing screensaver_presence_sleep script")
     else:
+        if (
+            presence_update_body is not None
+            and "script.execute: screensaver_presence_update" in presence_sleep_body
+        ):
+            presence_sleep_body += presence_update_body
         reconcile_index = presence_sleep_body.find("script.execute: screen_schedule_check")
         sensor_guard_index = presence_sleep_body.find("screen_schedule_sensor_trigger(")
         sleep_action_index = presence_sleep_body.find("script.execute: screensaver_sleep_sensor")
