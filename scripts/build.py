@@ -50,11 +50,11 @@ WEB_BUNDLE_RETENTION = ROOT / "docs" / "public" / "webserver" / "bundle-retentio
 # list aligned with the GitHub Pages release catalogue in pages.yml.
 WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = (
     "dev",
+    "v2.9.1",
     "v2.9.0",
     "v2.8.6",
     "v2.8.4",
     "v2.8.3",
-    "v2.8.2",
 )
 
 # Fixed editor controls use a few MDI glyphs that are not selectable Product
