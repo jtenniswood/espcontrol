@@ -459,3 +459,6 @@ add_test(NAME timer_card_test COMMAND timer_card_test)
 
 add_test(NAME timer_subpage_cleanup_test
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/timer_subpage_cleanup_test.py)
+
+add_test(NAME camera_feedback_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/camera_feedback_test.py ${CMAKE_CXX_COMPILER})

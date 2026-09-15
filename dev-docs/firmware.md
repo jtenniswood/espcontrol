@@ -45,6 +45,11 @@ Image-card context capacity is generated from the product profile's
 `capabilities.imageSlots`, alongside downloader wiring. The S3 two-slot package
 extends the shared constrained package. Cache reuse and expiry scheduling use
 the same host-tested lifetime policy, including clock rollover and timestamp zero.
+The S3 retention window starts on modal close; reopening a matching retained
+image skips the modal download. Camera transfer errors invalidate modal reuse
+and show Unavailable in both views. Retries back off from 2 to 30 seconds,
+including while the modal is open; explicit unavailable/unknown entity states
+suspend downloads until Home Assistant reports recovery.
 
 ## Adding Firmware Support for a Card
 
