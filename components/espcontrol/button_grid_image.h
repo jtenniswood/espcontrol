@@ -895,6 +895,11 @@ inline void image_card_apply_modal_downloaded(ImageCardCtx *ctx) {
   cache.modal_fit = ctx->modal_fit;
   cache.cached_at_ms = esphome::millis();
   cache.ready = true;
+  // A successful expanded image must also recover the hidden tile after close.
+  if (!ctx->media_artwork && (ctx->camera_download_errors != 0 ||
+      (ctx->widget && lv_obj_has_flag(ctx->widget, LV_OBJ_FLAG_HIDDEN)))) {
+    ctx->next_download_retry_ms = esphome::millis() + IMAGE_CARD_MODAL_REFRESH_DELAY_MS;
+  }
   ctx->camera_download_errors = 0;
   ctx->camera_retry_after_ms = 0;
   image_card_cancel_modal_cache_expiry();
