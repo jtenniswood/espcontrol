@@ -100,6 +100,11 @@ script:
                 }
             - delay: 2s
             - lambda: |-
+                // The grid may have been rebuilt after Home Assistant's
+                // initial state-subscription announcement. Re-announce the
+                // current list before asking image cards for retained URLs
+                // and access tokens.
+                if (ha_api_state_connected()) ha_reannounce_state_subscriptions();
                 if (ha_api_connected()) refresh_image_cards();
                 if (ha_api_state_connected()) {
                   id(homeassistant_time).update();
@@ -111,6 +116,7 @@ script:
             - script.execute: screen_schedule_check
             - delay: 8s
             - lambda: |-
+                if (ha_api_state_connected()) ha_reannounce_state_subscriptions();
                 if (ha_api_connected()) refresh_image_cards();
                 if (ha_api_state_connected()) {
                   refresh_weather_forecast_cards();
@@ -118,6 +124,7 @@ script:
                 }
             - delay: 20s
             - lambda: |-
+                if (ha_api_state_connected()) ha_reannounce_state_subscriptions();
                 if (ha_api_connected()) refresh_image_cards();
                 if (ha_api_state_connected()) {
                   refresh_weather_forecast_cards();

@@ -29,6 +29,15 @@ class ReconnectRecoveryTest(unittest.TestCase):
         self.assertRegex(connect, r'(?s)if \(client_info.find\("Home Assistant"\).*?\{\s*id\(ha_refresh_after_connect\).execute')
         self.assertNotIn("delay:", connect)  # no detached old-connection timers
 
+    def test_image_recovery_reannounces_before_refreshing_cards(self):
+        recovery = self.core.split("  - id: ha_refresh_after_connect\n", 1)[1]
+        for block in recovery.split("            - delay: ")[1:4]:
+            self.assertIn("ha_reannounce_state_subscriptions();", block)
+            self.assertLess(
+                block.index("ha_reannounce_state_subscriptions();"),
+                block.index("refresh_image_cards();"),
+            )
+
     def test_disconnect_preserves_replacement_recovery(self):
         # Execute the production lambda against the sockets remaining after
         # ESPHome removes the departing one, including a pre-subscription HA.
