@@ -82,7 +82,13 @@ class StringRef {
 };
 }
 
+struct lv_event_t;
+using lv_event_cb_t = void (*)(lv_event_t *);
+struct TestEventHandler { lv_event_cb_t callback; int code; void *data; };
 struct lv_obj_t {
+  lv_obj_t *parent = nullptr;
+  std::vector<lv_obj_t *> children;
+  std::vector<TestEventHandler> handlers;
   int flags = 0;
   int transform_scale_x = 256;
   int transform_scale_y = 256;
@@ -179,7 +185,7 @@ inline int lv_obj_get_style_pad_top(lv_obj_t *, int) { return 0; }
 inline int lv_obj_get_style_pad_bottom(lv_obj_t *, int) { return 0; }
 inline int lv_obj_get_style_pad_column(lv_obj_t *, int) { return 0; }
 inline int lv_obj_get_style_pad_row(lv_obj_t *, int) { return 0; }
-inline lv_obj_t *lv_obj_get_parent(lv_obj_t *) { return nullptr; }
+inline lv_obj_t *lv_obj_get_parent(lv_obj_t *obj) { return obj->parent; }
 inline void *lv_obj_get_user_data(lv_obj_t *obj) { return obj ? obj->user_data : nullptr; }
 inline lv_disp_t *lv_disp_get_default() { return lv_test_disp_available ? &lv_test_default_disp : nullptr; }
 inline int lv_disp_get_hor_res(lv_disp_t *) { return lv_test_hor_res; }
@@ -195,7 +201,37 @@ inline void lv_obj_update_layout(lv_obj_t *) {}
 inline void lv_label_set_text(lv_obj_t *obj, const char *text) { if (obj) obj->text = text ? text : ""; }
 inline const char *lv_label_get_text(lv_obj_t *obj) { return obj ? obj->text.c_str() : ""; }
 inline void lv_obj_align(lv_obj_t *, int, int, int) {}
-inline void lv_obj_move_foreground(lv_obj_t *) {}
+constexpr int LV_EVENT_CHILD_CHANGED = 1;
+constexpr int LV_EVENT_DELETE = 2;
+struct lv_event_t { lv_obj_t *target; void *data; };
+inline void *lv_event_get_user_data(lv_event_t *event) { return event->data; }
+inline lv_obj_t *lv_event_get_target(lv_event_t *event) { return event->target; }
+inline void lv_obj_add_event_cb(lv_obj_t *obj, lv_event_cb_t cb, int code, void *data) {
+  obj->handlers.push_back({cb, code, data});
+}
+inline void lv_obj_remove_event_cb_with_user_data(lv_obj_t *obj, lv_event_cb_t cb, void *data) {
+  auto &handlers = obj->handlers;
+  handlers.erase(std::remove_if(handlers.begin(), handlers.end(), [&](const auto &h) {
+    return h.callback == cb && h.data == data;
+  }), handlers.end());
+}
+inline void test_send_event(lv_obj_t *obj, int code) {
+  const auto handlers = obj->handlers;
+  for (const auto &h : handlers) {
+    if (h.code != code) continue;
+    lv_event_t event{obj, h.data};
+    h.callback(&event);
+  }
+}
+inline void lv_obj_move_foreground(lv_obj_t *obj) {
+  if (!obj->parent) return;
+  auto &children = obj->parent->children;
+  auto it = std::find(children.begin(), children.end(), obj);
+  if (it == children.end() || it + 1 == children.end()) return;
+  children.erase(it);
+  children.push_back(obj);
+  test_send_event(obj->parent, LV_EVENT_CHILD_CHANGED);
+}
 inline void lv_obj_move_background(lv_obj_t *) { lv_obj_move_background_calls++; }
 
 #include "temperature_unit.h"
@@ -300,16 +336,19 @@ int main() {
     &network_status_button,
     true, true, true,
     12, 17, 20, 10, 80);
-  assert(lv_obj_move_background_calls == 3);
+  assert(lv_obj_move_background_calls == 2);
   assert(lv_obj_get_width(&temperature_1) == 72);
   set_clock_bar_temperature_labels(temperature_labels, 1);
-  temperature_1.text = "21°C";
-  lv_obj_clear_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN);
+  // Match clock_bar_apply: refresh values and visibility before opening a title.
+  clock_bar_temperature_values()[0] = 21.0f;
+  refresh_clock_bar_temperature_label_values(
+    &main_page, awake_clock_bar.visible, false, true, NAN, 21.0f);
   set_clock_bar_subpage_label("Settings");
   assert(temperature_1.text == "Settings");
+  assert(!lv_obj_has_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN));
   assert(lv_obj_get_width(&temperature_1) == 180);
   set_clock_bar_subpage_label("");
-  assert(temperature_1.text == "21°C");
+  assert(temperature_1.text == "21°");
   assert(!lv_obj_has_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN));
   assert(lv_obj_get_width(&temperature_1) == 72);
   hide_clock_bar_top_layer_widgets(
@@ -318,6 +357,42 @@ int main() {
   assert(lv_obj_has_flag(&display_time, LV_OBJ_FLAG_HIDDEN));
   assert(lv_obj_has_flag(&network_status_button, LV_OBJ_FLAG_HIDDEN));
   set_clock_bar_temperature_value_count(0);
+
+  // Settings remains above modal and nested overlays, even when a modal
+  // explicitly moves itself to the foreground after creation.
+  lv_obj_t top_layer;
+  lv_obj_t modal;
+  lv_obj_t nested_modal;
+  network_status_button.parent = &top_layer;
+  modal.parent = &top_layer;
+  nested_modal.parent = &top_layer;
+  top_layer.children = {&network_status_button};
+  lv_obj_clear_flag(&network_status_button, LV_OBJ_FLAG_HIDDEN);
+  clock_bar_enable_settings_access(&network_status_button);
+  top_layer.children.push_back(&modal);
+  test_send_event(&top_layer, LV_EVENT_CHILD_CHANGED);
+  assert(top_layer.children.back() == &network_status_button);
+  lv_obj_move_foreground(&modal);
+  assert(top_layer.children.back() == &network_status_button);
+  top_layer.children.push_back(&nested_modal);
+  test_send_event(&top_layer, LV_EVENT_CHILD_CHANGED);
+  assert(top_layer.children.back() == &network_status_button);
+
+  // A hidden clock bar is never brought back by opening a modal.
+  lv_obj_add_flag(&network_status_button, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_move_foreground(&nested_modal);
+  assert(top_layer.children.back() == &nested_modal);
+  assert(lv_obj_has_flag(&network_status_button, LV_OBJ_FLAG_HIDDEN));
+  lv_obj_clear_flag(&network_status_button, LV_OBJ_FLAG_HIDDEN);
+  clock_bar_raise_settings_button(&network_status_button);
+  assert(top_layer.children.back() == &network_status_button);
+
+  // Deleting/recreating the button does not leave a dangling layer callback.
+  test_send_event(&network_status_button, LV_EVENT_DELETE);
+  top_layer.children.pop_back();
+  assert(top_layer.handlers.empty());
+  test_send_event(&top_layer, LV_EVENT_CHILD_CHANGED);
+  network_status_button.parent = nullptr;
 
   // Right-side icons pack leftwards by glyph edges, so each visible icon sits
   // one gap from its neighbour regardless of the surrounding tap-target width.
@@ -378,6 +453,55 @@ int main() {
   assert(sensor_state_display_text(state_labels, "medium-high") == "Medium-High");
   assert(text_sensor_display_text("pre-wash") == "Pre-Wash");
   assert(text_sensor_display_text("pre_wash") == "Pre Wash");
+  assert(text_sensor_display_text(u8"Übermorgen: Müll") == u8"Übermorgen: Müll");
+  assert(text_sensor_display_text(u8"ätest ötest ütest ætest") == u8"Ätest Ötest Ütest Ætest");
+  assert(text_sensor_display_text(u8"öätest") == u8"Öätest");
+  assert(text_sensor_display_text(u8"ÜBERMORGEN") == u8"Übermorgen");
+  assert(text_sensor_display_text(u8"čESKÝ") == u8"Český");
+  assert(text_sensor_display_text(u8"ßtest ÿtest") == u8"ßtest ÿtest");
+  assert(text_sensor_display_text(u8"Приветtest") == u8"Приветtest");
+  assert(text_sensor_display_text(u8"—test") == u8"—Test");
+  assert(text_sensor_display_text(u8"abä", 3) == "Ab");
+  assert(text_sensor_display_text("first_line\r\nsecond-line") == "First Line\nSecond-Line");
+  assert(sentence_cap_text(u8"über_status-test") == u8"Über Status Test");
+  assert(sentence_cap_text(u8"Приветtest") == u8"Приветtest");
+  assert(sentence_cap_text(u8"—test") == u8"—Test");
+  for (auto formatter : {+[](const std::string &s) { return text_sensor_display_text(s.c_str()); },
+                         +[](const std::string &s) { return sentence_cap_text(s); }}) {
+    assert(formatter("").empty());
+    assert(formatter(u8"Übermorgen: Müll") == u8"Übermorgen: Müll");
+    assert(formatter(u8"ätest ötest ütest ætest") == u8"Ätest Ötest Ütest Ætest");
+    assert(formatter(u8"öätest ÜBERMORGEN čESKÝ") == u8"Öätest Übermorgen Český");
+    assert(formatter(u8"ṣTEST ṢTEST") == u8"Ṣtest Ṣtest");
+    assert(formatter(u8"İTEST ıTEST iTEST ITEST") == u8"İtest ıtest Itest Itest");
+    assert(formatter(u8"ßtest ÿtest Приветtest Ελληνικάtest שלוםtest") ==
+           u8"ßtest ÿtest Приветtest Ελληνικάtest שלוםtest");
+    assert(formatter(u8"—test 😀test") == u8"—Test 😀Test");
+    // Script punctuation, symbols and combining marks must not consume the first letter.
+    for (const std::string prefix : {u8"\u037E", u8"\u0387", u8"\u0384", u8"\u03F6",
+                                     u8"\u0482", u8"\u0483", u8"\u05BE", u8"\u05C3",
+                                     u8"\u05F3", u8"\u05B0"}) {
+      assert(formatter(prefix + "test") == prefix + "Test");
+      assert(formatter("a" + prefix + "TEST") == "A" + prefix + "test");
+    }
+    assert(formatter(u8"\u037Ftest \u03F7test \u0481test \u048Atest \u05EFtest") ==
+           u8"\u037Ftest \u03F7test \u0481test \u048Atest \u05EFtest");
+    assert(formatter(std::string("\xFF") + "test") == std::string("\xFF") + "Test");
+    assert(formatter(std::string("\xE2") + "x") == std::string("\xE2") + "X");
+    assert(formatter(std::string("\xC0\xAF") + "test") == std::string("\xC0\xAF") + "Test");
+    assert(formatter(std::string("\xED\xA0\x80") + "test") == std::string("\xED\xA0\x80") + "Test");
+    assert(formatter(std::string("\xF4\x90\x80\x80") + "test") == std::string("\xF4\x90\x80\x80") + "Test");
+    assert(formatter(std::string("ab\xE2\x82")) == "Ab");
+  }
+  assert(text_sensor_display_text(" \r\nfirst__line\n\nsecond-line \r\n") == "First Line\nSecond-Line");
+  assert(sentence_cap_text(" \r\nfirst__line\n\nsecond-line \r\n") == "First Line Second Line");
+  for (const std::string s : {u8"ä", u8"Ṣ", u8"😀"}) {
+    for (size_t limit = 1; limit < s.size(); limit++) {
+      assert(text_sensor_display_text(s.c_str(), limit).empty());
+      assert(text_sensor_display_text(("ab" + s).c_str(), 2 + limit) == "Ab");
+    }
+    assert(text_sensor_display_text(s.c_str(), s.size()) == (s == u8"ä" ? u8"Ä" : s));
+  }
   auto legacy_state_labels = parse_cfg(";;;;sensor.bin_level;;sensor;text;state_labels,state_high_label=Please%20empty");
   assert(legacy_state_labels.options == "state_labels,state_input=high,state_output=Please empty");
   auto numeric_state_labels = parse_cfg(";;;;sensor.bin_level;;sensor;0;state_labels,state_high_label=Please%20empty");
@@ -456,9 +580,9 @@ int main() {
   auto image_bad_modal = parse_cfg("camera.front_door;;Auto;Auto;;;image;;image_modal_mode=stretch,image_refresh=30");
   assert(image_bad_modal.options == "");
   assert(!image_card_modal_fit_enabled(image_bad_modal));
-  auto image_ignored_label = parse_cfg("camera.front_door;Front Door;Auto;Auto;;;image;;");
-  assert(image_ignored_label.label == "");
-  assert(!image_card_label_enabled(image_ignored_label));
+  auto image_hidden_label_name = parse_cfg("camera.front_door;Front Door;Auto;Auto;;;image;;");
+  assert(image_hidden_label_name.label == "Front Door");
+  assert(!image_card_label_enabled(image_hidden_label_name));
   auto image_refresh = parse_cfg("~camera.front_door,,Auto,Auto,,,image,,image_refresh=30%2Cimage_refresh_mode=timer");
   assert(image_refresh.type == "image");
   assert(image_refresh.options == "");

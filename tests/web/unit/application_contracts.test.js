@@ -396,8 +396,8 @@ describe("browserless application contracts", () => {
     assert.equal(definitions.wifi_qr.isAvailable(), false);
     nativeSupported = true;
     assert.equal(definitions.wifi_qr.isAvailable(), true);
-    assert.match(source, /labelField:\s*\{\s*label:\s*"Card title"/);
-    assert.doesNotMatch(source, /renderBasicCardFields\([^\n]+label:\s*false/);
+    assert.match(source, /labelField:\s*\{\s*label:\s*"Name"/);
+    assert.match(source, /renderBasicCardFields\([^\n]+label:\s*false/);
     assert.match(source, /disclosureSection\("Wifi Network"/);
     assert.match(source, /disclosureSection\("Modal Settings"/);
     assert.match(source, /wifiQrTabDefinitions/);
@@ -411,10 +411,20 @@ describe("browserless application contracts", () => {
     const custom = { label: "Visitors", options: "" };
     definitions.wifi_qr.normalizeConfig(custom);
     assert.equal(custom.label, "Visitors");
-    const qrCard = { type: "wifi_qr_card", label: "Remove me", icon: "Wifi", options: "" };
+    const guest = { type: "wifi_qr", entity: "switch.guest_wifi", label: "Visitors", options: "ssid64=R3Vlc3Q,wifi_tabs=guest|qr|credentials" };
+    definitions.wifi_qr.normalizeConfig(guest);
+    assert.equal(guest.entity, "switch.guest_wifi");
+    assert.equal(guest.options, "ssid64=R3Vlc3Q,wifi_tabs=guest|qr|credentials");
+    definitions.wifi_qr.cardMetadata.mode.onChange.call(
+      { value: "wifi_qr_card" }, guest, { saveField() {} },
+    );
+    assert.equal(guest.entity, "switch.guest_wifi");
+    assert.equal(guest.options, "ssid64=R3Vlc3Q,wifi_tabs=guest|qr|credentials");
+    rerenders = 0;
+    const qrCard = { type: "wifi_qr_card", label: "Visitors", icon: "Wifi", options: "" };
     definitions.wifi_qr_card.normalizeConfig(qrCard);
     assert.equal(qrCard.type, "wifi_qr_card");
-    assert.equal(qrCard.label, "");
+    assert.equal(qrCard.label, "Visitors");
     assert.equal(qrCard.icon, "Auto");
     const qrPreview = definitions.wifi_qr_card.renderPreview(qrCard, {});
     assert.equal(qrPreview.labelHtml, "");
@@ -429,7 +439,7 @@ describe("browserless application contracts", () => {
       { value: "wifi_qr" }, qrCard, { saveField() {} },
     );
     assert.equal(qrCard.type, "wifi_qr");
-    assert.equal(qrCard.label, "Connect");
+    assert.equal(qrCard.label, "Visitors");
     assert.equal(qrCard.icon, "Wifi");
     assert.equal(rerenders, 1);
     assert.match(source, /\[\["wifi_qr", "Connect Card"\], \["wifi_qr_card", "QR Card"\]\]/);
@@ -449,7 +459,7 @@ describe("browserless application contracts", () => {
     assert.doesNotMatch(webServer, /event_payload_is_legacy_panel_config/);
     assert.doesNotMatch(app, /panel_config_legacy_entity_guard/);
     assert.match(nativeController, /Sign in, enable web_server_auth, or update the panel firmware/);
-    assert.match(docs, /web_server_auth` package is not required for Wifi Sharing/);
+    assert.match(docs, /Wifi Sharing works without web authentication/);
   });
 
   test("authenticates native configuration bodies before receiving and before saving", () => {
@@ -505,6 +515,9 @@ describe("browserless application contracts", () => {
     const modalTabs = createConfigModalTabOptionsFeature({ document: {}, renderButtonSettings() {} });
     assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("credentials|qr")), ["credentials", "qr"]);
     assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("credentials|credentials|invalid")), ["credentials"]);
+    assert.deepEqual(Array.from(modalTabs.wifiQrDefaultTabs()), ["qr", "credentials"]);
+    assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("guest|qr|credentials|guest")), ["guest", "qr", "credentials"]);
+    assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("guest")), ["guest"]);
     const card = { options: "ssid64=R3Vlc3Q" };
     modalTabs.setWifiQrTabs(card, ["credentials"]);
     assert.equal(card.options, "ssid64=R3Vlc3Q,wifi_tabs=credentials");

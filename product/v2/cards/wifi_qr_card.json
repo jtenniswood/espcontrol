@@ -2,17 +2,17 @@
   "label": "QR Card",
   "allowInSubpage": true,
   "pickerKey": "wifi_qr",
-  "domains": [],
+  "domains": ["switch"],
   "options": [
     {"name": "ssid64", "label": "Network name", "kind": "text", "omitDefault": true},
     {"name": "security", "label": "Security", "kind": "choice", "values": ["wpa", "open"], "defaultValue": "wpa", "omitDefault": true},
     {"name": "pass64", "label": "Password", "kind": "text", "omitDefault": true},
     {"name": "hidden", "label": "Hidden network", "kind": "flag", "omitDefault": true},
-    {"name": "wifi_tabs", "label": "Visible Tabs", "kind": "text", "values": ["qr", "credentials"], "defaultValue": "qr|credentials", "omitDefault": true}
+    {"name": "wifi_tabs", "label": "Visible Tabs", "kind": "text", "values": ["qr", "credentials", "guest"], "defaultValue": "qr|credentials", "omitDefault": true}
   ],
   "normalization": {
     "fields": {
-      "entity": {"policy": "clear"},
+      "entity": {"policy": "keep"},
       "label": {"policy": "clear"},
       "icon": {"policy": "default", "value": "Auto"},
       "icon_on": {"policy": "default", "value": "Auto"},

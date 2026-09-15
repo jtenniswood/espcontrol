@@ -7,10 +7,11 @@ export type NativePanelConfigMigrationDependencies = Omit<NativePanelConfigContr
 /** Creates the typed configuration persistence controller for the browser app. */
 export function createNativePanelConfigMigrationController(
   dependencies: NativePanelConfigMigrationDependencies,
+  transport: typeof fetch | null = typeof fetch === "function" ? fetch : null,
 ): NativePanelConfigController {
-  const fetchNative: NativePanelConfigFetch | null = typeof fetch === "function"
+  const fetchNative: NativePanelConfigFetch | null = transport
     ? (path: string, request?: NativePanelConfigRequest) =>
-      fetch(path, { ...request, credentials: "include" } as RequestInit) as unknown as Promise<NativePanelConfigResponse>
+      transport(path, { ...request, credentials: "include" } as RequestInit) as unknown as Promise<NativePanelConfigResponse>
     : null;
   const controller = new NativePanelConfigController({
     fetch: fetchNative,

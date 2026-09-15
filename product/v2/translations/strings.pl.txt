@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vacationhold
 vacuum=Odkurzacz
 version_unknown=Wersja nieznana
+voice=Głos
 volume=Głośność
 waiting_for_home_assistant=Oczekiwanie na Home Assistant
 home_assistant_connection_lost=Łączenie z \nHome Assistant
@@ -250,3 +251,8 @@ settings=Ustawienia
 brightness=Jasność
 daytime=Dzień
 nighttime=Noc
+
+timer=Minutnik
+timer_confirm=Potwierdzić
+guest_wifi=Wi-Fi dla gości
+wifi_did_not_change=Stan Wi-Fi nie zmienił się

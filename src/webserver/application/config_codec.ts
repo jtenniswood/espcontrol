@@ -123,7 +123,6 @@ export function createConfigCodecFeature(
         normalizeMediaOptions,
     } = mediaOptions;
     const {
-        imageLabelEnabled,
         imageIconEnabled,
         normalizeImageOptions,
     } = imageOptions;
@@ -182,7 +181,8 @@ export function createConfigCodecFeature(
     function cardSupportsWifiPortraitSizes(this: any, b?: any) {
         return cardIsWifiSharing(b) && (
             layout.deviceId === "guition-esp32-p4-jc8012p4a1" ||
-            layout.deviceId === "guition-esp32-p4-jc8012p4a1-v2"
+            layout.deviceId === "guition-esp32-p4-jc8012p4a1-v2" ||
+            layout.deviceId === "guition-esp32-p4-jc8012p4a1-v3"
         );
     }
     function cardSupportsExtraLargeSize(this: any, b?: any) {
@@ -401,8 +401,6 @@ export function createConfigCodecFeature(
         if (!b)
             return;
         b.icon = imageIconEnabled(b) ? (b.icon && b.icon !== "Auto" ? b.icon : "Camera") : "Auto";
-        if (!imageLabelEnabled(b))
-            b.label = "";
     }
     function normalizeSavedConfigImageOptions(this: any, options?: any, _b?: any) {
         return normalizeImageOptions(options || "");
@@ -608,8 +606,6 @@ export function createConfigCodecFeature(
             sensor = "";
             unit = "";
             precision = "";
-            if (!imageLabelEnabled(b))
-                label = "";
         }
         if (type === "door_window")
             precision = normalizeDoorWindowSubtype(precision);

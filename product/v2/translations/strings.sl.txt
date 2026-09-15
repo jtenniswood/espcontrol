@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Počitniško zadržanje
 vacuum=Sesalnik
 version_unknown=Različica neznana
+voice=Glas
 volume=Glasnost
 waiting_for_home_assistant=Čakanje na Home Assistant
 home_assistant_connection_lost=Povezovanje s \nHome Assistant
@@ -250,3 +251,8 @@ settings=Nastavitve
 brightness=Svetlost
 daytime=Dan
 nighttime=Noč
+
+timer=Časovnik
+timer_confirm=Potrdi
+guest_wifi=Wi-Fi za goste
+wifi_did_not_change=Stanje Wi-Fi se ni spremenilo

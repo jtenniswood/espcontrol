@@ -48,6 +48,7 @@ The setup page uses these card names and grouped modes on the device. For a quic
 | **[Garage Door](/card-types/garage-doors)** | Controls a garage door cover entity with an open/close tap action. | Yes |
 | **[Lock](/card-types/locks)** | Locks, unlocks, or toggles a Home Assistant lock entity. | Yes |
 | **[Alarm](/card-types/alarms)** | Arms, disarms, or shows a Home Assistant alarm control panel. | Yes, as an alarm control panel entity |
+| **[Timer](/card-types/timers)** | Starts, cancels, or resumes a Home Assistant timer and shows its countdown. | Yes, as a timer entity |
 | **[Date & Time](/card-types/calendar)** | Shows the local clock, date, date and time, or a world clock. | No |
 | **[Weather](/card-types/weather)** | Shows the current condition or today's/tomorrow's forecast from a weather entity. | Yes, as **Weather Entity** |
 | **[Media](/card-types/media)** | Controls playback, volume, track position, or now-playing details for a media player. | Yes, as a media player entity |
@@ -102,7 +103,7 @@ If a card already occupies the space needed for a larger size, the setup page tr
 
 ## Device Settings
 
-The **Settings** tab also includes display, brightness, screensaver, backup, and firmware update controls.
+The **Settings** tab also includes display, brightness, screensaver, backup, and firmware update controls. Under **System**, use **Device Name** to [name your panel](#naming-your-panel), or **Factory Reset** to [reset cards and preferences or return to first-time setup](/features/backup#reset-the-display).
 
 ![Settings tab showing appearance, backlight, schedule, clock, and firmware controls](/images/settings-tab-display.png)
 
@@ -140,3 +141,23 @@ actions:
 ```
 
 The web setup page's **Apply Configuration** button remains separate: use it after saving web settings, and use the Home Assistant **Restart** entity when you only need to restart the display.
+
+## Naming Your Panel
+
+On firmware that supports panel naming, open **Settings > System > Device Name**.
+Enter a name such as **Kitchen**, check the address preview, then choose
+**Save & Restart**. The name appears in the web interface, browser tab, the
+panel's network information and Home Assistant. The address becomes something
+like `kitchen-b2c3.local`; the four-character suffix comes from the panel's MAC address.
+
+The page shows the new address and current IP before restarting. Reopen the panel
+using either link. Router-managed DNS entries may need updating separately.
+Clearing the name restores the firmware's original name and address. Normal OTA
+updates retain your custom name; older firmware without naming support uses its
+compiled defaults.
+
+Home Assistant should update the existing device after reconnecting. A name you
+assigned manually in Home Assistant takes precedence. Existing entity IDs remain
+unchanged, but custom ESPHome action names include the hostname: update automations
+using actions such as `esphome.<old_name>_navigate`. Reload the ESPHome integration
+if its action list still shows the previous names.

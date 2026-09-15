@@ -6,6 +6,12 @@ description:
 
 # Troubleshooting
 
+## Web Configuration Changes Won't Save
+
+The web editor can load a compatible hosted update independently of the display's firmware. Reload the page to pick up a published fix; reflashing is usually unnecessary for a hosted editor problem.
+
+If saving or importing a backup fails, try opening `http://YOUR-DISPLAY-IP/?espcontrol_fallback=1` to use the editor embedded in the firmware. Replace `YOUR-DISPLAY-IP` with the display's address. On builds with an embedded editor, this bypasses the hosted editor for that page load. Save one setting and reload to check that it persisted. Reopen the normal device address to return to the hosted editor.
+
 ## The Screen Doesn't Respond to Commands
 
 - If the display shows your Home Assistant devices but nothing happens when you tap controls, such as turning lights on, Home Assistant actions probably need to be enabled for the display.

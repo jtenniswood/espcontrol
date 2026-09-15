@@ -45,11 +45,11 @@
     }
   },
   {
-    "name": "label is cleared without label option",
+    "name": "name is preserved without label option",
     "input": "camera.front_door;Front Door;Auto;Auto;;;image;;",
     "expected": {
       "entity": "camera.front_door",
-      "label": "",
+      "label": "Front Door",
       "icon": "Auto",
       "icon_on": "Auto",
       "sensor": "",

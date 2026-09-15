@@ -16,6 +16,10 @@ target_compile_options(digest_auth_policy_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(digest_auth_policy_test PRIVATE ../../components/web_server_idf)
 add_test(NAME digest_auth_policy_test COMMAND digest_auth_policy_test)
 
+add_test(NAME web_ota_guard_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/web_ota_guard_test.py)
+
 add_executable(button_grid_foundations_test button_grid_foundations_test.cpp)
 target_compile_features(button_grid_foundations_test PRIVATE cxx_std_17)
 target_compile_options(button_grid_foundations_test PRIVATE -Wall -Wextra -Werror)
@@ -46,6 +50,14 @@ target_compile_features(control_modal_service_test PRIVATE cxx_std_17)
 target_compile_options(control_modal_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(control_modal_service_test PRIVATE ../../components/espcontrol)
 add_test(NAME control_modal_service_test COMMAND control_modal_service_test)
+
+add_executable(guest_wifi_state_test guest_wifi_state_test.cpp)
+target_compile_features(guest_wifi_state_test PRIVATE cxx_std_17)
+target_compile_options(guest_wifi_state_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(guest_wifi_state_test PRIVATE ../../components/espcontrol)
+add_test(NAME guest_wifi_state_test COMMAND guest_wifi_state_test)
+add_test(NAME guest_wifi_lifecycle_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/guest_wifi_lifecycle_test.py ${CMAKE_CXX_COMPILER})
 
 add_executable(wifi_qr_codec_test wifi_qr_codec_test.cpp)
 target_compile_features(wifi_qr_codec_test PRIVATE cxx_std_17)
@@ -404,3 +416,52 @@ target_compile_features(climate_update_test PRIVATE cxx_std_17)
 target_compile_options(climate_update_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(climate_update_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME climate_update_test COMMAND climate_update_test)
+
+add_executable(reset_policy_test reset_policy_test.cpp)
+find_package(Threads REQUIRED)
+target_link_libraries(reset_policy_test PRIVATE Threads::Threads)
+target_compile_features(reset_policy_test PRIVATE cxx_std_17)
+target_compile_options(reset_policy_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(reset_policy_test PRIVATE ../../components/espcontrol)
+add_test(NAME reset_policy_test COMMAND reset_policy_test)
+add_test(NAME reset_ota_wrapper_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/reset_ota_wrapper_test.py)
+add_executable(panel_identity_test panel_identity_test.cpp)
+target_compile_features(panel_identity_test PRIVATE cxx_std_17)
+target_compile_options(panel_identity_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_identity_test PRIVATE ../../components/espcontrol)
+add_test(NAME panel_identity_test COMMAND panel_identity_test)
+
+add_executable(panel_identity_runtime_test panel_identity_runtime_test.cpp ../../components/espcontrol/panel_identity.cpp)
+target_compile_features(panel_identity_runtime_test PRIVATE cxx_std_17)
+target_compile_options(panel_identity_runtime_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_identity_runtime_test PRIVATE panel_identity_stubs ../../components/espcontrol)
+add_test(NAME panel_identity_runtime_test COMMAND panel_identity_runtime_test)
+
+set(CLOCK_BAR_TITLE_TEST_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/clock_bar_title_test.cpp)
+add_custom_command(
+  OUTPUT ${CLOCK_BAR_TITLE_TEST_SOURCE}
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/generate_clock_bar_title_test.py
+    --header ${CMAKE_CURRENT_SOURCE_DIR}/../../components/espcontrol/clock_bar.h
+    --output ${CLOCK_BAR_TITLE_TEST_SOURCE}
+  DEPENDS
+    generate_clock_bar_title_test.py
+    clock_bar_title_test.cpp.in
+    ../../components/espcontrol/clock_bar.h
+    ../../components/espcontrol/button_grid_modal.h
+  VERBATIM
+)
+add_executable(clock_bar_title_test ${CLOCK_BAR_TITLE_TEST_SOURCE})
+target_compile_features(clock_bar_title_test PRIVATE cxx_std_17)
+target_compile_options(clock_bar_title_test PRIVATE -Wall -Wextra -Werror)
+add_test(NAME clock_bar_title_test COMMAND clock_bar_title_test)
+
+add_executable(timer_card_test timer_card_test.cpp)
+target_compile_features(timer_card_test PRIVATE cxx_std_17)
+target_compile_options(timer_card_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(timer_card_test PRIVATE ../../components/espcontrol)
+add_test(NAME timer_card_test COMMAND timer_card_test)
+
+add_test(NAME timer_subpage_cleanup_test
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/timer_subpage_cleanup_test.py)

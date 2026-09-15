@@ -144,6 +144,17 @@ export function runStateContractTests(): void {
   handlers["text-ntp_server_1"]?.("time.example", {}, "text-ntp_server_1");
   equal(calls.join(","), "clockBar,ntpServer1", "legacy aliases dispatch to their canonical handlers");
 
+  for (const [id, state, group] of [
+    ["select/Home Assistant Artwork Connection", "Automatic", "homeAssistantArtworkEndpointMode"],
+    ["text_sensor/Home Assistant Artwork Endpoint", "Automatic — http://172.16.20.40:8123", "homeAssistantArtworkEndpointStatus"],
+  ] as const) {
+    const event = { id, state };
+    const key = entityStateKeys(event).find(key => handlers[key]);
+    assert(key, "artwork display names resolve to a handler");
+    handlers[key]!(state, event, key);
+    equal(calls.at(-1), group, "artwork events dispatch to the canonical handler");
+  }
+
   const clockState = createInitialState(deviceConfig());
   applyClockBarStateValue(clockState, "ON", { id: "switch-screen__clock_bar", value: true }, "switch-screen__clock_bar");
   applyClockBarStateValue(clockState, "OFF", { id: "switch-clock_bar_enabled", value: false }, "switch-clock_bar_enabled");

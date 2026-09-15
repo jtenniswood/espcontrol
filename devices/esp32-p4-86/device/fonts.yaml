@@ -27,6 +27,13 @@ font:
     bpp: 4
     glyphs: !include ../../../common/assets/network_status_glyphs.yaml
 
+  # Clock-bar icons: match the S3 panel's physical size at 1.5x resolution.
+  - file: '${mdi_font_file}'
+    id: font_icon_clock_bar
+    size: 36
+    bpp: 4
+    glyphs: !include ../../../common/assets/network_status_glyphs.yaml
+
   # Main labels and setup body text
   - file: "gfonts://Roboto"
     id: font_text_body

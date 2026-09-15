@@ -112,6 +112,7 @@ inline void navigation_clear_subpages() {
   lv_obj_t *active = lv_scr_act();
   for (auto &entry : navigation_subpages()) {
     if (entry.screen != nullptr && entry.screen != active) {
+      navigation_release_subpage_runtime(entry);
       lv_obj_del(entry.screen);
     }
   }
@@ -262,6 +263,11 @@ inline std::string navigation_active_subpage_label() {
 inline void navigation_refresh_subpage_label() {
   if (network_status_modal_ui().overlay != nullptr) {
     set_clock_bar_subpage_label(espcontrol_i18n(std::string("Settings")));
+    return;
+  }
+  const auto &volume = media_volume_modal_ui();
+  if (volume.overlay && volume.active && !volume.active->clock_bar_title.empty()) {
+    set_clock_bar_subpage_label(volume.active->clock_bar_title);
     return;
   }
   set_clock_bar_subpage_label(navigation_active_subpage_label());

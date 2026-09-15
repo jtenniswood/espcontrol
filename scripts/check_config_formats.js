@@ -2625,9 +2625,9 @@ assertButtonRoundTrip(hooks, "image card label and icon options", {
   precision: "",
   options: "image_label,image_icon",
 }, false);
-assertButtonMigration(hooks, "image card clears label without overlay option", "camera.front_door;Front Door;Auto;Auto;;;image;;", {
+assertButtonRoundTrip(hooks, "image card preserves name without overlay option", {
   entity: "camera.front_door",
-  label: "",
+  label: "Front Door",
   icon: "Auto",
   icon_on: "Auto",
   sensor: "",
@@ -2635,7 +2635,7 @@ assertButtonMigration(hooks, "image card clears label without overlay option", "
   type: "image",
   precision: "",
   options: "",
-});
+}, false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_switch", false), false, "fan subtype hidden from top-level picker");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_control", false), false, "fan modal subtype hidden from top-level picker");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_control", true), false, "fan modal subtype hidden from subpage picker");

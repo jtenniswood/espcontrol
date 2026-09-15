@@ -288,7 +288,27 @@ void AsyncWebServer::begin() {
   }
 }
 
+extern "C" bool espcontrol_allow_web_write(httpd_req_t *request) __attribute__((weak));
+
 esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
+#ifdef USE_WEBSERVER_OTA_DISABLED
+  // Captive portal auto-loads the web OTA platform even with web_server.ota=false.
+  // Enforce the explicit opt-out before any upload handler can write firmware.
+  {
+    AsyncWebServerRequest request(r);
+    char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
+    // Match the decoded path used by canHandle(), including encoded /update URLs.
+    if (request.url_to(url_buf) == "/update") {
+      // httpd_err_code_t does not expose HTTPD_403_FORBIDDEN in ESP-IDF 5.5.
+      // Set the standard status text directly so this guard compiles on the
+      // pinned IDF and still returns a clear response to browser clients.
+      httpd_resp_set_status(r, "403 Forbidden");
+      httpd_resp_send(r, "Browser firmware uploads are disabled", HTTPD_RESP_USE_STRLEN);
+      return ESP_OK;
+    }
+  }
+#endif
+  if (espcontrol_allow_web_write != nullptr && !espcontrol_allow_web_write(r)) return ESP_OK;
   ESP_LOGVV(TAG, "Enter AsyncWebServer::request_post_handler. uri=%s", r->uri);
   auto content_type = request_get_header(r, "Content-Type");
 

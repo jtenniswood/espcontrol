@@ -187,6 +187,7 @@ vacation=Отпуск
 vacationhold=Удержание на отпуск
 vacuum=Пылесос
 version_unknown=Версия неизвестна
+voice=Голос
 volume=Громкость
 waiting_for_home_assistant=Ожидание Home Assistant
 home_assistant_connection_lost=Подключение к \nHome Assistant
@@ -250,3 +251,8 @@ settings=Настройки
 brightness=Яркость
 daytime=День
 nighttime=Ночь
+
+timer=Таймер
+timer_confirm=Подтвердить
+guest_wifi=Гостевой Wi-Fi
+wifi_did_not_change=Состояние Wi-Fi не изменилось

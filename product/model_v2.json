@@ -86,11 +86,13 @@
       "wifi_qr": "product/v2/cards/wifi_qr.json",
       "wifi_qr_card": "product/v2/cards/wifi_qr_card.json",
       "webhook": "product/v2/cards/webhook.json",
-      "": "product/v2/cards/default_switch.json"
+      "": "product/v2/cards/default_switch.json",
+      "timer": "product/v2/cards/timer.json"
     },
     "devices": {
       "guition-esp32-p4-jc8012p4a1": "product/v2/devices/guition-esp32-p4-jc8012p4a1.json",
       "guition-esp32-p4-jc8012p4a1-v2": "product/v2/devices/guition-esp32-p4-jc8012p4a1-v2.json",
+      "guition-esp32-p4-jc8012p4a1-v3": "product/v2/devices/guition-esp32-p4-jc8012p4a1-v3.json",
       "guition-esp32-p4-jc1060p470": "product/v2/devices/guition-esp32-p4-jc1060p470.json",
       "guition-esp32-p4-jc1060p470-v2": "product/v2/devices/guition-esp32-p4-jc1060p470-v2.json",
       "guition-esp32-p4-jc4880p443": "product/v2/devices/guition-esp32-p4-jc4880p443.json",

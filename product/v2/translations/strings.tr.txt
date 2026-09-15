@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Tatil tutması
 vacuum=Süpürge
 version_unknown=Sürüm bilinmiyor
+voice=Ses
 volume=Ses
 waiting_for_home_assistant=Home Assistant bekleniyor
 home_assistant_connection_lost=\nHome Assistant'a bağlanılıyor
@@ -250,3 +251,8 @@ settings=Ayarlar
 brightness=Parlaklık
 daytime=Gündüz
 nighttime=Gece
+
+timer=Zamanlayıcı
+timer_confirm=Onayla
+guest_wifi=Misafir Wi-Fi
+wifi_did_not_change=Wi-Fi durumu değişmedi

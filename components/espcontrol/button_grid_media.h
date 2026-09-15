@@ -4527,6 +4527,7 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   ui.speaker_generation = speaker_generation++;
   ui.tab = ctx->group_only ? MediaControlTab::SPEAKERS : MediaControlTab::CONTROLS;
   if (!ui.panel) return;
+  if (!ctx->group_only) set_clock_bar_modal_label(ctx->label);
 
   bool progress_tab_ready = true;
   bool power_tab_ready = true;
@@ -4921,6 +4922,7 @@ inline void open_device_volume_modal(lv_obj_t *anchor,
   }
   ctx->entity_id.clear();
   ctx->label = espcontrol_i18n(std::string("Device Volume"));
+  ctx->clock_bar_title = espcontrol_i18n_key("voice");
   ctx->btn = anchor;
   ctx->current_pct = media_clamp_percent((int)(player->volume * 100.0f + 0.5f));
   ctx->volume_known = true;

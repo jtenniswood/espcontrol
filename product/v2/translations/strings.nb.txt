@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vacationhold
 vacuum=Støvsuger
 version_unknown=Ukjent versjon
+voice=Stemme
 volume=Volum
 waiting_for_home_assistant=Venter på Home Assistant
 home_assistant_connection_lost=Kobler til \nHome Assistant
@@ -250,3 +251,8 @@ settings=Innstillinger
 brightness=Lysstyrke
 daytime=Dagtid
 nighttime=Nattetid
+
+timer=Tidtaker
+timer_confirm=Bekreft
+guest_wifi=Gjeste-Wi-Fi
+wifi_did_not_change=Wi-Fi ble ikke endret

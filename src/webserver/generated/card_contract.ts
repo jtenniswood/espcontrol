@@ -180,6 +180,25 @@ export const CARD_CONTRACT_MIGRATION_ACTIONS: Readonly<Record<string, MigrationA
 export const CARD_CONTRACT_RETIRED_SUBPAGE_TYPE_CODES = [] as const;
 export const CARD_CONFIG_FIELDS = ["entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options"] as const satisfies readonly SavedConfigField[];
 export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
+  "timer": {
+    "label": "Timer",
+    "allowInSubpage": true,
+    "domains": [
+      "timer"
+    ],
+    "options": [],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "3",
+      "type": "timer",
+      "precision": "",
+      "options": ""
+    }
+  },
   "": {
     "label": "Switch",
     "allowInSubpage": true,
@@ -3780,7 +3799,9 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
   "wifi_qr": {
     "label": "Wifi Sharing",
     "allowInSubpage": true,
-    "domains": [],
+    "domains": [
+      "switch"
+    ],
     "options": [
       {
         "name": "ssid64",
@@ -3817,7 +3838,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "kind": "text",
         "values": [
           "qr",
-          "credentials"
+          "credentials",
+          "guest"
         ],
         "defaultValue": "qr|credentials",
         "omitDefault": true
@@ -3826,7 +3848,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "normalization": {
       "fields": {
         "entity": {
-          "policy": "clear"
+          "policy": "keep"
         },
         "label": {
           "policy": "default_if_empty",
@@ -3882,7 +3904,9 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "label": "QR Card",
     "allowInSubpage": true,
     "pickerKey": "wifi_qr",
-    "domains": [],
+    "domains": [
+      "switch"
+    ],
     "options": [
       {
         "name": "ssid64",
@@ -3919,7 +3943,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "kind": "text",
         "values": [
           "qr",
-          "credentials"
+          "credentials",
+          "guest"
         ],
         "defaultValue": "qr|credentials",
         "omitDefault": true
@@ -3928,7 +3953,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "normalization": {
       "fields": {
         "entity": {
-          "policy": "clear"
+          "policy": "keep"
         },
         "label": {
           "policy": "clear"
@@ -4000,6 +4025,18 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
   }
 };
 export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
+  "timer": {
+    "driver": "timer",
+    "capabilities": {
+      "informationOnly": false,
+      "subscriptions": true,
+      "actions": true,
+      "numericControl": false,
+      "modal": false,
+      "runtimeAllocation": true,
+      "subpage": true
+    }
+  },
   "": {
     "driver": "toggle",
     "capabilities": {
@@ -4498,7 +4535,7 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
     "driver": "wifi_qr",
     "capabilities": {
       "informationOnly": false,
-      "subscriptions": false,
+      "subscriptions": true,
       "actions": true,
       "numericControl": false,
       "modal": true,
@@ -4510,7 +4547,7 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
     "driver": "wifi_qr",
     "capabilities": {
       "informationOnly": false,
-      "subscriptions": false,
+      "subscriptions": true,
       "actions": true,
       "numericControl": false,
       "modal": true,
@@ -4564,6 +4601,7 @@ export const CARD_CONTRACT_FAN_DEFAULT_ICON_ON: Readonly<Record<string, string>>
 export const CARD_CONTRACT_OPTION_SELECT_ACTION = "input_select.select_option";
 export const CARD_CONTRACT_OPTION_SELECT_ACTIONS = ["input_select.select_option", "select.select_option"] as const;
 export const CARD_CONTRACT_SUBPAGE_TYPE_CODES: Readonly<Record<string, string>> = {
+  "timer": "TM",
   "action": "A",
   "calendar": "D",
   "clock": "CK",
@@ -4604,6 +4642,7 @@ export const CARD_CONTRACT_SUBPAGE_TYPE_CODES: Readonly<Record<string, string>> 
   "subpage": "G"
 };
 export const CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE: Readonly<Record<string, string>> = {
+  "TM": "timer",
   "A": "action",
   "D": "calendar",
   "CK": "clock",

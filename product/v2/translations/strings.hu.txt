@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vakációs tartás
 vacuum=Porszívó
 version_unknown=Ismeretlen verzió
+voice=Hang
 volume=Hangerő
 waiting_for_home_assistant=Várakozás a Home Assistantra
 home_assistant_connection_lost=Csatlakozás a \nHome Assistanthez
@@ -250,3 +251,8 @@ settings=Beállítások
 brightness=Fényerő
 daytime=Nappal
 nighttime=Éjszaka
+
+timer=Időzítő
+timer_confirm=Megerősítés
+guest_wifi=Vendég Wi-Fi
+wifi_did_not_change=A Wi-Fi állapota nem változott

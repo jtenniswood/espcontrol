@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vacationhold
 vacuum=Aspirateur
 version_unknown=Version inconnue
+voice=Voix
 volume=Volume
 waiting_for_home_assistant=En attente de Home Assistant
 home_assistant_connection_lost=Connexion à \nHome Assistant
@@ -250,3 +251,8 @@ settings=Paramètres
 brightness=Luminosité
 daytime=Jour
 nighttime=Nuit
+
+timer=Minuteur
+timer_confirm=Confirmer
+guest_wifi=Wi-Fi invité
+wifi_did_not_change=Le Wi-Fi n’a pas changé

@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Утримання на відпустку
 vacuum=Пилосос
 version_unknown=Версія невідома
+voice=Голос
 volume=Гучність
 waiting_for_home_assistant=Очікування Home Assistant
 home_assistant_connection_lost=Підключення до \nHome Assistant
@@ -250,3 +251,8 @@ settings=Налаштування
 brightness=Яскравість
 daytime=День
 nighttime=Ніч
+
+timer=Таймер
+timer_confirm=Підтвердити
+guest_wifi=Гостьовий Wi-Fi
+wifi_did_not_change=Стан Wi-Fi не змінився

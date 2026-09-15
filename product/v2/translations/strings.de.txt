@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vacationhold
 vacuum=Staubsauger
 version_unknown=Version unbekannt
+voice=Sprache
 volume=Lautstärke
 waiting_for_home_assistant=Warten auf Home Assistant
 home_assistant_connection_lost=Verbindung mit \nHome Assistant wird hergestellt
@@ -250,3 +251,8 @@ settings=Einstellungen
 brightness=Helligkeit
 daytime=Tagsüber
 nighttime=Nachts
+
+timer=Timer
+timer_confirm=Bestätigen
+guest_wifi=Gast-WLAN
+wifi_did_not_change=WLAN wurde nicht geändert

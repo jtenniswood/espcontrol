@@ -1,3 +1,4 @@
+import { buildResetSettings } from "./settings_reset_section";
 import { state } from "../state/app_instance";
 import { normalizeHomeAssistantArtworkEndpointMode, normalizeHomeAssistantArtworkPort, normalizeHomeAssistantArtworkProtocol } from "../model/settings";
 import type { UiRuntimeState } from "./state";
@@ -20,6 +21,7 @@ import type { ControlsFieldsFeature } from "./controls_fields";
 import type { SettingsPageHelpersFeature } from "./settings_page_helpers";
 
 export interface SettingsSystemSectionActions {
+    buildIdentityCard?(): HTMLElement;
     exportBackup(): void;
     importBackup(): void;
 }
@@ -41,10 +43,10 @@ export function createSettingsSystemSectionFeature(
     artworkPostApi: Pick<ArtworkPostApiFeature, "postHomeAssistantArtworkPort" | "postHomeAssistantArtworkProtocol" | "postHomeAssistantArtworkEndpointMode">,
     publicFirmwareInstall: Pick<PublicFirmwareInstallFeature, "installPublicFirmwareViaWebOta">,
     fields: Pick<ControlsFieldsFeature, "fieldLabel" | "makeCollapsibleCard" | "toggleRow">,
-    helpers: Pick<SettingsPageHelpersFeature, "disclosureBadge" | "inlineDisclosure" | "statusBadge">,
+    helpers: Pick<SettingsPageHelpersFeature, "disclosureBadge" | "inlineDisclosure" | "statusBadge" | "infoPanel">,
 ): SettingsSystemSectionFeature {
     const { fieldLabel, makeCollapsibleCard, toggleRow } = fields;
-    const { disclosureBadge, inlineDisclosure, statusBadge } = helpers;
+    const { disclosureBadge, inlineDisclosure, statusBadge, infoPanel } = helpers;
     const { createActionButton } = shell;
     const els = runtime.els;
     const { render: renderFirmwareVersion } = firmwareVersion;
@@ -149,10 +151,10 @@ export function createSettingsSystemSectionFeature(
             postFirmwareUpdateCheck();
             requestApi.getJsonQuietly(publicFirmwareManifestUrl(), function (this: any, d?: any) {
                 setPublicFirmwareInfo(firmwareInfoFromPublicManifest(d));
-            });
+            }, { credentials: "omit" });
             requestApi.getJsonQuietly(publicFirmwareVersionsUrl(), function (this: any, d?: any) {
                 setPublicFirmwareVersions(firmwareInfosFromPublicVersions(d));
-            });
+            }, { credentials: "omit" });
             setTimeout(function (this: any) {
                 state.firmwareChecking = false;
                 stateLoader.refreshFirmwareVersion();
@@ -415,7 +417,9 @@ export function createSettingsSystemSectionFeature(
         haPortInput.disabled = !manualEndpoint;
         var homeAssistantSettingsCard: any = makeCollapsibleCard("Home Assistant Settings", homeAssistantSettingsBody, true);
         return {
+            identityCard: actions.buildIdentityCard?.(),
             backupCard: backupCard,
+            resetCard: buildResetSettings(actions.exportBackup, makeCollapsibleCard, infoPanel),
             firmwareCard: firmwareCard,
             homeAssistantSettingsCard: homeAssistantSettingsCard,
         };

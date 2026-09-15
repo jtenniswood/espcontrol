@@ -1,3 +1,4 @@
+import type { PanelIdentityBackup } from "../model/panel_identity";
 import type { CardConfig } from "../contracts/types";
 import {
   BACKUP_CONFIG_VERSION,
@@ -23,6 +24,7 @@ export interface FeatureSubpage extends ParsedSubpageConfig {
 }
 
 export interface BackupFeatureSnapshot {
+  readonly identity?: PanelIdentityBackup;
   readonly device?: string;
   readonly slots?: unknown;
   readonly exported_at?: string;

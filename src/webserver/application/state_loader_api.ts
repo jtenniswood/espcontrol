@@ -152,10 +152,10 @@ export function createStateLoaderFeature(runtime: UiRuntimeState, layout: Applic
         }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
         getJsonQuietly(publicFirmwareManifestUrl(), function (this: any, d?: any) {
             setPublicFirmwareInfo(firmwareInfoFromPublicManifest(d));
-        }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
+        }, { credentials: "omit" }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
         getJsonQuietly(publicFirmwareVersionsUrl(), function (this: any, d?: any) {
             setPublicFirmwareVersions(firmwareInfosFromPublicVersions(d));
-        }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
+        }, { credentials: "omit" }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
         getJsonFirst(entityDetailPaths("text_sensor", entityLookupNames("firmware_version")), function (this: any, d?: any) {
             setFirmwareVersion(d.state || d.value);
         }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);

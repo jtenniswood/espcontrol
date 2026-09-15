@@ -8,6 +8,7 @@ import os
 import re
 from urllib.request import Request, urlopen
 from pathlib import Path
+from firmware_release import current_web_bundle
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -130,9 +131,7 @@ def verify() -> dict:
         "firmware web-asset version disagrees with release contract"
     )
     device_slugs = list(read_json(DEVICE_MANIFEST)["devices"])
-    bundles = read_json(WEB_MANIFEST).get("bundles", [])
-    assert len(bundles) == 1, "web-asset manifest must contain one current bundle"
-    bundle = bundles[0]
+    bundle = current_web_bundle(WEB_MANIFEST, WEB_MANIFEST.parent)
     assert bundle.get("webAssetVersion") == contract["webAssetVersion"], (
         "web-asset version disagrees with release contract"
     )

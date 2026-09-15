@@ -33,8 +33,10 @@ LEGACY_OTA_PARTITION_LAYOUTS = {
     "guition-esp32-p4-jc4880p443": "partitions_16mb_card_images.csv",
     "guition-esp32-p4-jc8012p4a1": "partitions_16mb_card_images.csv",
     "guition-esp32-p4-jc8012p4a1-v2": "partitions_16mb_card_images.csv",
+    "guition-esp32-p4-jc8012p4a1-v3": "partitions_16mb_card_images.csv",
     "guition-esp32-s3-4848s040": "partitions_16mb_card_images.csv",
 }
+V3_SLUG = "guition-esp32-p4-jc8012p4a1-v3"
 LEGACY_OTA_PARTITION_ROWS = {
     "partitions_16mb_card_images.csv": (
         "nvs,           data, nvs,     0x9000,    0xd000,",
@@ -308,6 +310,26 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             assert "cfg.info_only = true;" in sensors, f"{slug}: sensors.yaml missing info-only grid flag"
 
 
+def test_v3_release_configuration() -> None:
+    """Keep the production V3 build contract outside generated package sections."""
+    package = (ROOT / "devices" / V3_SLUG / "packages.yaml").read_text(encoding="utf-8")
+    device = (ROOT / "devices" / V3_SLUG / "device" / "device.yaml").read_text(encoding="utf-8")
+    factory = (ROOT / "builds" / f"{V3_SLUG}.factory.yaml").read_text(encoding="utf-8")
+    recovery = (ROOT / "builds" / f"{V3_SLUG}.recovery.yaml").read_text(encoding="utf-8")
+
+    assert "engineering_sample: false" in device, "V3 must target production P4 silicon"
+    assert "url: ${espcontrol_component_url}" in package, "V3 MIPI source must use the configured component URL"
+    assert "ref: ${espcontrol_component_ref}" in package, "V3 MIPI source must use the configured component ref"
+    assert "components: [mipi_dsi]" in package, "V3 must retain the patched MIPI component"
+    assert "web_server:\n  ota: false" in package, "V3 browser firmware uploads must be disabled"
+    assert package.count("restore_mode: ALWAYS_OFF") >= 2, "V3 update switches must default off"
+    assert "espcontrol_component_url: \"file:///config\"" in factory
+    assert "espcontrol_component_ref: \"HEAD\"" in factory
+    assert 'js_include: "../docs/public/webserver/embedded/www.js"' in factory
+    assert f"!include {V3_SLUG}.factory.yaml" in recovery
+    assert "esp32_c6_recovery.yaml" in recovery
+
+
 def test_public_api_encryption_policy(profile_slugs: list[str]) -> None:
     policy = PUBLIC_API_ENCRYPTION_PACKAGE.read_text(encoding="utf-8")
     assert policy == "api:\n  encryption: {}\n", (
@@ -482,6 +504,41 @@ def test_rotation_refresh_rebuilds_subpages() -> None:
         assert "grid_rebuild_all(slots, cfg," in refresh_script, (
             f"{slug}: rotation refresh must rebuild secondary cards safely"
         )
+
+
+def test_restored_display_sensors_bind_without_reboot() -> None:
+    for device in generate_device_slots.slot_devices():
+        slug = device["slug"]
+        sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
+        scripts, boot = sensors.split("\nesphome:", 1)
+        binding = scripts.split("  - id: refresh_display_sensor_subscriptions\n", 1)[1]
+        assert "script.execute: refresh_display_sensor_subscriptions" in boot
+        assert sensors.count("grid_phase3(") == 1, f"{slug}: boot and restore must share sensor binding"
+        for entity in ("presence_sensor_entity", "screen_schedule_sensor_entity", "media_player_sleep_prevention_entity"):
+            assert f"id({entity}).state" in binding, f"{slug}: rebind the current {entity}"
+        assert binding.index("grid_phase3(") < binding.index("ha_reannounce_state_subscriptions();"), (
+            f"{slug}: advertise restored sensors to the existing Home Assistant connection"
+        )
+
+    # The restore writes these settings; their handlers must invoke the same
+    # subscription binding used at boot.
+    for filename, entities in (
+        ("common/config/display.yaml", (
+            "indoor_temp_enable", "outdoor_temp_enable", "clock_bar_temperature_entities",
+            "indoor_temp_entity", "outdoor_temp_entity", "presence_sensor_entity",
+            "media_player_sleep_prevention_entity",
+        )),
+        ("common/addon/backlight_schedule.yaml", ("screen_schedule_sensor_entity",)),
+    ):
+        source = (ROOT / filename).read_text(encoding="utf-8")
+        for entity in entities:
+            handler = source.split(f"    id: {entity}\n", 1)[1].split("\n  - platform:", 1)[0]
+            assert "script.execute: refresh_display_sensor_subscriptions" in handler, (
+                f"{entity}: subscription settings must rebind immediately"
+            )
+        for entity in ("presence_sensor_entity",) if filename.endswith("display.yaml") else ("screen_schedule_sensor_entity",):
+            handler = source.split(f"    id: {entity}\n", 1)[1].split("\n  - platform:", 1)[0]
+            assert "script.execute: refresh_button_grid" in handler, f"{entity}: refresh on restore"
 
 
 def test_seven_inch_width_compensation_rotates_with_screen() -> None:
@@ -924,6 +981,7 @@ def main() -> int:
     test_zero_image_capacity_disables_all_image_card_pickers(profiles)
     test_constrained_s3_supports_one_cover_art_card(profiles)
     test_generated_yaml(profiles)
+    test_v3_release_configuration()
     test_public_api_encryption_policy(profile_slugs)
     test_ota_preserves_deployed_partition_layouts()
     test_upgrades_do_not_reset_saved_panel_config()
@@ -931,6 +989,7 @@ def main() -> int:
     test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
     test_rotation_refresh_rebuilds_subpages()
+    test_restored_display_sensors_bind_without_reboot()
     test_seven_inch_width_compensation_rotates_with_screen()
     test_subpage_config_changes_schedule_live_refresh()
     test_web_screen_aspect_matches_public_resolution()

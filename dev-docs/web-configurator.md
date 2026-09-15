@@ -83,6 +83,60 @@ curl -s "http://<device-ip>/text/Button%20On%20Color?detail=all"
 The setup page writes to these same text/select/number/switch entities, so the
 REST response shows the exact compact string firmware will parse.
 
+### Reset and editing sessions
+
+Reset-capable firmware advertises `reset.modes` in capabilities. Read
+`GET /api/v1/reset` when opening an editing session and retain its `epoch` for
+that session. Configuration POST/PUT requests require `X-EspControl-Epoch`;
+after a reset, a stale or missing epoch is rejected with 409/428. Reload the
+device state instead of refreshing the epoch and replaying old edits. Older
+firmware returns 404 for reset discovery and keeps its existing write protocol.
+Standard ESPHome control routes (such as `/light/.../turn_on` and
+`/button/.../press`, plus operational switches such as the P4-86 relays) and the `/wifisave` and `/update` forms do not require an
+epoch. Configuration routes, including text, number, select and switch
+settings, still require it. Switches marked as configuration or diagnostic
+entities remain protected; unknown switch routes are not exempt. A supplied stale epoch is rejected on every route,
+and all mutations are blocked while reset is pending. OTA transport status is
+tracked per source, and the active native flash handle stays reserved until
+ESP-IDF ends or aborts it. A rejected or failed overlapping OTA attempt cannot
+release another writer's reset protection.
+
+Both reset modes clear the saved panel name, including legacy NVS identity
+records, before panel identity loads. Firmware-default names remain.
+
+Partial reset also retains the P4-86 one-time Wi-Fi initialization marker, so
+its boot action cannot clear the preserved credentials. Its preference key is
+an adapter for the pinned ESPHome version, alongside the Wi-Fi and API keys.
+
+The firmware requires web asset version 2 so an older hosted editor cannot
+omit these write preconditions. The current bundle also has a version 1
+manifest entry for older firmware; reset discovery hides unsupported actions.
+
+`POST /api/v1/reset` requires `Content-Type: application/json`,
+`X-EspControl-Request: reset`, the session epoch, and a body containing only
+`{"mode":"customization"}` or `{"mode":"factory"}`. Existing web authentication
+applies; cross-origin requests are rejected. A 202 response means intent is
+durable, not that cleanup has completed. Stop saves/imports immediately, and
+reload only after a newer epoch reports `pending: false`. A lost response may
+still mean reset was accepted. The same pending mode is idempotent; conflicting
+modes and requests during firmware installation receive 409.
+A journal-write failure returns 500 and schedules a restart to resolve whether
+the intent persisted; writes stay blocked until that restart. Reset recording
+and OTA flash entry points share an interlock, so an automatic, web, native OTA
+or C6 update cannot begin writing after reset intent has been reserved. The
+ESP-IDF `esp_ota_begin` and hosted `esp_hosted_slave_ota_begin` linker adapters
+must remain covered when upgrading the pinned ESPHome/SDK versions.
+
+The early-startup coordinator owns cleanup independently of configuration
+loading. Its `espcontrol_rst` journal survives factory cleanup. Failed cleanup
+blocks restoration and retries with a serial recovery message. The credential
+adapter in `reset_policy.h` is coupled to the pinned ESPHome Wi-Fi and API
+preference keys and must be checked when upgrading ESPHome.
+Reset cleanup always erases individual records. ESPHome's platform-level NVS
+initialization recovery remains unchanged; if NVS itself is unreadable and the
+platform erases it before setup, the reset journal cannot be recovered. The
+interrupted-reset guarantees assume NVS can initialize and read its journal.
+
 ## Adding a Card Settings UI
 
 Each card module registers its label/default providers, preview renderer,

@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vacationhold
 vacuum=Vysavač
 version_unknown=Verze neznámá
+voice=Hlas
 volume=Hlasitost
 waiting_for_home_assistant=Čekání na Home Assistant
 home_assistant_connection_lost=Připojování k \nHome Assistant
@@ -250,3 +251,8 @@ settings=Nastavení
 brightness=Jas
 daytime=Den
 nighttime=Noc
+
+timer=Časovač
+timer_confirm=Potvrdit
+guest_wifi=Wi-Fi pro hosty
+wifi_did_not_change=Stav Wi-Fi se nezměnil

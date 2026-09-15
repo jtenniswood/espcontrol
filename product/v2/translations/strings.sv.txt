@@ -187,6 +187,7 @@ vacation=Vacation
 vacationhold=Vacationhold
 vacuum=Dammsugare
 version_unknown=Version okänd
+voice=Röst
 volume=Volym
 waiting_for_home_assistant=Väntar på Home Assistant
 home_assistant_connection_lost=Ansluter till \nHome Assistant
@@ -250,3 +251,8 @@ settings=Inställningar
 brightness=Ljusstyrka
 daytime=Dagtid
 nighttime=Nattetid
+
+timer=Timer
+timer_confirm=Bekräfta
+guest_wifi=Gäst-Wi-Fi
+wifi_did_not_change=Wi-Fi ändrades inte

@@ -312,6 +312,7 @@ text:
       sorting_group_id: sg_brightness
     on_value:
       then:
+        - script.execute: refresh_display_sensor_subscriptions
         - script.execute: refresh_button_grid
 
   - platform: template

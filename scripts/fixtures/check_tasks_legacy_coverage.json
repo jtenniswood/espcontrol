@@ -24,7 +24,7 @@
     "web-smoke", "web-asset-manifest", "types", "saved-config-parity", "saved-config-shadow", "saved-config-production", "firmware-parser", "firmware-modals", "backlight-schedule", "firmware-modal-layouts", "firmware-display-tokens",
     "firmware-ha-bindings", "firmware-card-runtime", "firmware-release", "device-matrix",
     "device-profiles", "release-confidence", "release-changelog", "card-contract-outputs", "card-runtime-coverage",
-    "device-slots", "icon-groups", "status-icon-glyphs", "timezones", "public-firmware-script", "web-browser-smoke"
+    "device-slots", "icon-groups", "status-icon-glyphs", "timezones", "public-firmware-script"
   ],
   "all": [
     "firmware-tests", "web-unit", "generated", "device-manifest", "device-manifest-output", "product-schema", "product-model-v2",
