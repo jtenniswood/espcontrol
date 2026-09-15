@@ -164,6 +164,32 @@ def generate() -> str:
                     '    assert(cfg_option_value(config.options, "wifi_tabs") == "credentials|qr");',
                     "  }",
                 ))
+    # Guest Wi-Fi: preserve the switch and ordered tabs on both subpage encodings.
+    for card_type in ("wifi_qr", "wifi_qr_card"):
+        for security in ("wpa", "open"):
+            options = (
+                "ssid64=R3Vlc3QgV2lmaQ,security=" + security
+                + (",pass64=UGFzczt3b3JkOjEyMw" if security == "wpa" else "")
+                + ",hidden,wifi_tabs=guest%7Ccredentials%7Cqr"
+            )
+            encodings = (
+                "1|switch.guest_wifi:Connect:Wifi:Auto:::" + card_type + "::" + options,
+                "~1|" + card_type + ",switch.guest_wifi,Connect,Wifi,Auto,,,," + quote(options, safe=""),
+            )
+            for encoded in encodings:
+                lines.extend((
+                    "  { // Guest Wi-Fi: " + card_type + " " + security,
+                    f"    const auto buttons = parse_subpage_config({cpp_string(encoded)});",
+                    "    assert(buttons.size() == 1);",
+                    f"    assert(buttons[0].options == {cpp_string(options)});",
+                    "    const auto config = parsed_cfg_from_subpage_btn(buttons[0]);",
+                    '    assert(config.entity == "switch.guest_wifi");',
+                    f"    assert(config.type == {cpp_string(card_type)});",
+                    f"    assert(config.options == {cpp_string(options)});",
+                    '    assert(cfg_option_value(config.options, "ssid64") == "R3Vlc3QgV2lmaQ");',
+                    '    assert(cfg_option_value(config.options, "wifi_tabs") == "guest|credentials|qr");',
+                    "  }",
+                ))
     issue_248 = (
         "~B,,4,2,3,,,,8,9,,,1,6,5|X,,Office,Window Closed,Window Open,binary_sensor.office_window_sensor_opening,,window,active_color"
         "|X,,Linnea 1,Window Closed,Window Open,binary_sensor.linnea_br_window_sensor_opening,,window,active_color"

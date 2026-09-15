@@ -255,3 +255,5 @@ nighttime=Nighttime
 # Timer card
 timer=Timer
 timer_confirm=Confirm
+guest_wifi=Guest Wi-Fi
+wifi_did_not_change=Wi-Fi did not change

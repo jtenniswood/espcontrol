@@ -161,9 +161,22 @@ inline bool wifi_qr_driver_refresh_layout(
     return false;
   return wifi_qr_driver_render_tile(slot, config, row_span, col_span);
 }
-inline bool wifi_qr_driver_bind_main(BtnSlot &, const ParsedCfg &, const Context &context) { return wifi_qr_driver_matches(context); }
+inline void wifi_qr_driver_subscribe_guest(const ParsedCfg &config) {
+  const auto tabs = wifi_qr_tabs(cfg_option_value(config.options, "wifi_tabs"));
+  if (!guest_wifi_valid_entity(config.entity) ||
+      std::find(tabs.begin(), tabs.end(), "guest") == tabs.end()) return;
+  // Keep the coordinator's replay state current while the modal is closed.
+  // The ambient grid/subpage owner releases this subscription on rebuild.
+  ha_subscribe_state(config.entity, [](esphome::StringRef) {});
+}
+inline bool wifi_qr_driver_bind_main(BtnSlot &, const ParsedCfg &config, const Context &context) {
+  if (!wifi_qr_driver_matches(context)) return false;
+  wifi_qr_driver_subscribe_guest(config);
+  return true;
+}
 inline bool wifi_qr_driver_bind_subpage(BtnSlot &slot, const ParsedCfg &config, const Context &context) {
   if (!wifi_qr_driver_matches(context)) return false;
+  wifi_qr_driver_subscribe_guest(config);
   ParsedCfg *stored = grid_delete_with_owner(slot.btn, new ParsedCfg(config));
   lv_obj_add_event_cb(slot.btn, [](lv_event_t *event) {
     ParsedCfg *card = static_cast<ParsedCfg *>(lv_event_get_user_data(event));
