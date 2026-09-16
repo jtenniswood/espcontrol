@@ -921,7 +921,6 @@ inline void image_card_apply_downloaded(ImageCardCtx *ctx) {
 inline void image_card_handle_download_error(ImageCardCtx *ctx) {
   if (!ctx) return;
   image_card_release_download_slot(ctx);
-  if (image_card_pipeline_suspended()) return;
   ESP_LOGW("image_card", "Image download failed for %s", ctx->entity_id.c_str());
   image_card_log_diagnostics(ctx, "tile-download-error");
   if (!ctx->media_artwork) {
@@ -986,7 +985,6 @@ inline void image_card_show_modal_download_failure(ImageCardCtx *ctx) {
 }
 
 inline void image_card_apply_modal_downloaded(ImageCardCtx *ctx) {
-  if (image_card_pipeline_suspended()) return;
   if (!ctx || !ctx->active || !image_card_has_separate_modal_image(ctx)) return;
   if (!image_card_modal_active_for(ctx) || ctx->camera_entity_unavailable) return;
   if (ctx->modal_image->get_url() != ctx->modal_url) return;
@@ -1040,12 +1038,14 @@ inline void image_card_bind_callbacks(ImageCardCtx *ctx) {
   bool image_changed = ctx->callbacks_bound_image != bound_image;
   if (image_changed || !bound_image->has_on_finished_callbacks()) {
     bound_image->add_on_finished_callback([ctx, bound_image](bool) {
-      if (ctx->image == bound_image) image_card_apply_downloaded(ctx);
+      if (ctx->image == bound_image && !image_card_pipeline_suspended())
+        image_card_apply_downloaded(ctx);
     });
   }
   if (image_changed || !bound_image->has_on_error_callbacks()) {
     bound_image->add_on_error_callback([ctx, bound_image]() {
-      if (ctx->image == bound_image) image_card_handle_download_error(ctx);
+      if (ctx->image == bound_image && !image_card_pipeline_suspended())
+        image_card_handle_download_error(ctx);
     });
   }
   ctx->callbacks_bound_image = bound_image;
@@ -1058,11 +1058,13 @@ inline void image_card_bind_modal_callbacks(
   bound_image = modal_image;
   modal_image->add_on_finished_callback([modal_image](bool) {
     ImageCardCtx *ctx = image_card_modal_ui().active;
-    if (ctx && ctx->modal_image == modal_image) image_card_apply_modal_downloaded(ctx);
+    if (ctx && ctx->modal_image == modal_image && !image_card_pipeline_suspended())
+      image_card_apply_modal_downloaded(ctx);
   });
   modal_image->add_on_error_callback([modal_image]() {
     ImageCardCtx *ctx = image_card_modal_ui().active;
-    if (ctx && ctx->modal_image == modal_image) image_card_handle_modal_download_error(ctx);
+    if (ctx && ctx->modal_image == modal_image && !image_card_pipeline_suspended())
+      image_card_handle_modal_download_error(ctx);
   });
 }
 
@@ -1775,7 +1777,7 @@ inline bool image_card_context_current(ImageCardCtx *ctx,
                                        uint32_t generation);
 
 inline void image_card_request_current_picture(ImageCardCtx *ctx) {
-  if (!ctx || image_card_pipeline_suspended()) return;
+  if (!ctx) return;
   if (ctx->media_artwork) {
     // Failed reads keep their existing immediate retry path. Ordinary triggers
     // are coalesced separately before starting a new paired read.
@@ -1797,7 +1799,6 @@ inline void image_card_request_current_picture(ImageCardCtx *ctx) {
 inline void image_card_refresh_current_picture(ImageCardCtx *ctx) {
   if (!ctx) return;
   const bool force_refresh = !ctx->image_ready || ctx->media_artwork_refresh.forced;
-  if (!ctx || image_card_pipeline_suspended()) return;
   if (ctx->media_artwork) {
     ctx->media_artwork_retry_mask = 0;
     ctx->media_artwork_timeout_retries = 0;
@@ -2647,8 +2648,7 @@ inline void image_card_handle_media_artwork_picture(ImageCardCtx *ctx,
 }
 
 inline void image_card_request_media_artwork(ImageCardCtx *ctx, bool force_refresh) {
-  if (!ctx || !ctx->active || !ctx->media_artwork || ctx->entity_id.empty() ||
-      image_card_pipeline_suspended()) return;
+  if (!ctx || !ctx->active || !ctx->media_artwork || ctx->entity_id.empty()) return;
   const std::string entity_id = ctx->entity_id;
   const uint32_t generation = ha_subscription_generation();
   uint8_t request_mask = espcontrol::artwork::artwork_source_request_mask(
@@ -2739,8 +2739,7 @@ inline void image_card_media_artwork_trigger_timer_cb(lv_timer_t *timer) {
 
 inline void image_card_schedule_media_artwork_refresh(ImageCardCtx *ctx,
                                                       bool force_refresh) {
-  if (!ctx || !ctx->active || !ctx->media_artwork || ctx->entity_id.empty() ||
-      image_card_pipeline_suspended()) return;
+  if (!ctx || !ctx->active || !ctx->media_artwork || ctx->entity_id.empty()) return;
   ctx->media_artwork_trigger.schedule(force_refresh);
   if (ctx->media_artwork_trigger_timer) lv_timer_del(ctx->media_artwork_trigger_timer);
   ctx->media_artwork_trigger_timer = lv_timer_create(

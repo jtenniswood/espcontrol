@@ -634,13 +634,11 @@ inline bool image_card_icon_enabled(const ParsedCfg &p) {
   return cfg_option_token_present(p.options, IMAGE_ICON_OPTION);
 }
 
-inline void normalize_image_card_overlay_fields(std::string &label,
-                                                std::string &icon,
+inline void normalize_image_card_overlay_fields(std::string &icon,
                                                 const std::string &options) {
   icon = cfg_option_token_present(options, IMAGE_ICON_OPTION)
     ? (icon.empty() || icon == "Auto" ? "Camera" : icon)
     : "Auto";
-  if (!cfg_option_token_present(options, IMAGE_LABEL_OPTION)) label.clear();
 }
 
 inline bool image_card_modal_fit_enabled(const ParsedCfg &p) {
@@ -1191,7 +1189,7 @@ inline std::string normalize_saved_config_weather_options(
 }
 
 inline void normalize_saved_config_image_fields(ParsedCfg &p) {
-  normalize_image_card_overlay_fields(p.label, p.icon, p.options);
+  normalize_image_card_overlay_fields(p.icon, p.options);
 }
 
 inline std::string normalize_saved_config_image_options(
