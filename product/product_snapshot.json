@@ -12,7 +12,7 @@
     "deviceProfiles": 8,
     "cardTypes": 43,
     "entityNames": 101,
-    "icons": 342,
+    "icons": 344,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
   },
@@ -7943,6 +7943,11 @@
         "mdi": "chair-rolling"
       },
       {
+        "name": "Chef Hat",
+        "codepoint": "F0B7C",
+        "mdi": "chef-hat"
+      },
+      {
         "name": "Chevron Down",
         "codepoint": "F0140",
         "mdi": "chevron-down"
@@ -9056,6 +9061,11 @@
         "name": "Toilet",
         "codepoint": "F09AB",
         "mdi": "toilet"
+      },
+      {
+        "name": "Toy Brick",
+        "codepoint": "F1288",
+        "mdi": "toy-brick"
       },
       {
         "name": "Track Light",

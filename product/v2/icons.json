@@ -445,6 +445,11 @@
       "mdi": "chair-rolling"
     },
     {
+      "name": "Chef Hat",
+      "codepoint": "F0B7C",
+      "mdi": "chef-hat"
+    },
+    {
       "name": "Chevron Down",
       "codepoint": "F0140",
       "mdi": "chevron-down"
@@ -1558,6 +1563,11 @@
       "name": "Toilet",
       "codepoint": "F09AB",
       "mdi": "toilet"
+    },
+    {
+      "name": "Toy Brick",
+      "codepoint": "F1288",
+      "mdi": "toy-brick"
     },
     {
       "name": "Track Light",

@@ -277,6 +277,7 @@ const ICON_GROUPS = {
   'Washing Machine': 'Appliances',
   'Washing Machine Off': 'Appliances',
   'Silverware': 'Appliances',
+  'Chef Hat': 'Appliances',
 
   'Cast': 'Media & Entertainment',
   'Folder Music Outline': 'Media & Entertainment',
@@ -368,6 +369,7 @@ const ICON_GROUPS = {
   'Table': 'Rooms & Furniture',
   'Table Chair': 'Rooms & Furniture',
   'Toilet': 'Rooms & Furniture',
+  'Toy Brick': 'Rooms & Furniture',
 
   'Car Electric': 'Vehicles',
   'EV Charger': 'Vehicles',
