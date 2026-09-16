@@ -71,9 +71,11 @@ ImageCardModalCache &image_card_modal_cache() { return cache; }
 void image_card_schedule_modal_cache_expiry(Image *);
 bool constrained = true;
 bool image_card_constrained_memory_profile() { return constrained; }
+bool image_card_pipeline_suspended() { return false; }
 bool image_card_modal_active_for(ImageCardCtx *ctx) { return ui.active == ctx; }
 std::string tile_status, modal_status;
 int cleared = 0, pictures = 0, tile_requests = 0, modal_requests = 0, recovered = 0;
+int retained_state_reads = 0;
 void image_card_hide(ImageCardCtx *ctx) { if (ctx->widget) ctx->widget->hidden = true; }
 void image_card_set_loading_state(ImageCardCtx *, const char *s, bool) { tile_status = s; }
 void image_card_show_modal_loading(ImageCardCtx *, const char *s) { modal_status = s; }
@@ -106,11 +108,21 @@ bool image_card_apply_modal_geometry(ImageCardCtx *, Image *) { return true; }
 void notify_dashboard_content_changed() {}
 constexpr uint32_t IMAGE_CARD_STARTUP_DOWNLOAD_RETRIES = 10;
 constexpr int IMAGE_CARD_MAX_CONTEXTS = 1;
+constexpr uint32_t HA_SUBSCRIPTION_SCOPE_DEFAULT = 1;
 uint32_t ha_subscription_generation() { return 1; }
 bool image_card_context_current(ImageCardCtx *, const std::string &, uint32_t) { return true; }
 std::string string_ref_limited(const std::string &v, size_t n) { return v.substr(0,n); }
 std::function<void(std::string)> state_callback;
-void ha_subscribe_state(const std::string &, std::function<void(std::string)> cb) { state_callback = cb; }
+void ha_subscribe_state(const std::string &, std::function<void(std::string)> cb,
+                        uint32_t = HA_SUBSCRIPTION_SCOPE_DEFAULT, bool = false) {
+ state_callback = cb;
+}
+bool ha_read_retained_state(const std::string &, std::function<void(std::string)> cb,
+                            void * = nullptr) {
+ ++retained_state_reads;
+ cb("idle");
+ return true;
+}
 void image_card_request_picture(ImageCardCtx *) { ++pictures; }
 void image_card_request_current_picture(ImageCardCtx *) { ++pictures; }
 void image_card_request_source_url(ImageCardCtx *) { ++tile_requests; }
@@ -126,7 +138,8 @@ for name in ('image_card_modal_cache_expired', 'image_card_cancel_modal_cache_ex
              'image_card_camera_retry_blocked', 'image_card_camera_download_failed',
              'image_card_handle_download_error', 'image_card_modal_has_tile_fallback',
              'image_card_modal_cache_matches', 'image_card_modal_needs_open_refresh',
-             'subscribe_image_card_entity_state',
+             'image_card_apply_entity_state', 'subscribe_image_card_entity_state',
+             'image_card_refresh_entity_state',
              'image_card_hide_modal', 'image_card_apply_modal_downloaded'):
     source += definition(name) + '\n'
 # The polling callback checks get_url as well as availability.
@@ -211,6 +224,11 @@ int main() {
  state_callback("idle");
  assert(!ctx.camera_entity_unavailable && ctx.camera_download_errors == 0);
  assert(!image_card_camera_retry_blocked(&ctx) && pictures == 1);
+ // Resuming the shared image pipeline must revalidate retained availability.
+ ctx.camera_entity_unavailable = true;
+ ctx.active = true;
+ image_card_refresh_entity_state(&ctx);
+ assert(retained_state_reads == 1 && !ctx.camera_entity_unavailable);
  // Media Cover Art keeps its separate existing retry behavior.
  ctx.media_artwork = true; ctx.image_ready = true; tile_status.clear();
  image_card_handle_download_error(&ctx);

@@ -1905,6 +1905,30 @@ inline void subscribe_image_card_access_token(ImageCardCtx *ctx,
   );
 }
 
+inline void image_card_apply_entity_state(ImageCardCtx *ctx,
+                                          esphome::StringRef state) {
+  if (!ctx) return;
+  const std::string value = string_ref_limited(state, 64);
+  const bool unavailable = value == "unavailable" || value == "unknown";
+  const bool recovered = ctx->camera_entity_unavailable && !unavailable;
+  ctx->camera_entity_unavailable = unavailable;
+  if (unavailable) {
+    ctx->image->cancel_update();
+    image_card_release_download_slot(ctx);
+    if (image_card_modal_active_for(ctx) && ctx->modal_image)
+      ctx->modal_image->cancel_update();
+    ctx->next_download_retry_ms = 0;
+    image_card_show_camera_unavailable(ctx);
+    return;
+  }
+  if (recovered) {
+    ctx->camera_download_errors = 0;
+    ctx->camera_retry_after_ms = 0;
+    ctx->last_download_completed_ms = 0;
+  }
+  image_card_request_picture(ctx);
+}
+
 inline void subscribe_image_card_entity_state(ImageCardCtx *ctx,
                                               const std::string &entity_id) {
   if (!ctx || entity_id.empty()) return;
@@ -1914,25 +1938,22 @@ inline void subscribe_image_card_entity_state(ImageCardCtx *ctx,
     std::function<void(esphome::StringRef)>(
       [ctx, entity_id, generation](esphome::StringRef state) {
         if (!image_card_context_current(ctx, entity_id, generation)) return;
-        const std::string value = string_ref_limited(state, 64);
-        const bool unavailable = value == "unavailable" || value == "unknown";
-        const bool recovered = ctx->camera_entity_unavailable && !unavailable;
-        ctx->camera_entity_unavailable = unavailable;
-        if (unavailable) {
-          ctx->image->cancel_update();
-          image_card_release_download_slot(ctx);
-          if (image_card_modal_active_for(ctx) && ctx->modal_image)
-            ctx->modal_image->cancel_update();
-          ctx->next_download_retry_ms = 0;
-          image_card_show_camera_unavailable(ctx);
-          return;
-        }
-        if (recovered) {
-          ctx->camera_download_errors = 0;
-          ctx->camera_retry_after_ms = 0;
-          ctx->last_download_completed_ms = 0;
-        }
-        image_card_request_picture(ctx);
+        image_card_apply_entity_state(ctx, state);
+      }),
+    HA_SUBSCRIPTION_SCOPE_DEFAULT, true
+  );
+}
+
+inline void image_card_refresh_entity_state(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->active || ctx->entity_id.empty() || image_card_pipeline_suspended()) return;
+  const std::string entity_id = ctx->entity_id;
+  const uint32_t generation = ha_subscription_generation();
+  ha_read_retained_state(
+    entity_id,
+    std::function<void(esphome::StringRef)>(
+      [ctx, entity_id, generation](esphome::StringRef state) {
+        if (!image_card_context_current(ctx, entity_id, generation)) return;
+        image_card_apply_entity_state(ctx, state);
       })
   );
 }
@@ -2915,6 +2936,7 @@ inline void image_card_resume_pipeline() {
     ctx->retry_deadline_ms = now + IMAGE_CARD_STARTUP_RETRY_MS;
     ctx->next_picture_retry_ms = 0;
     ctx->next_download_retry_ms = 0;
+    image_card_refresh_entity_state(ctx);
     if (!ctx->media_artwork) {
       image_card_hide(ctx);
       image_card_set_loading_state(ctx, "Loading", true);
