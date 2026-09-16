@@ -115,6 +115,7 @@ import { registerLawnMowerCardTypes } from "./cards/lawn_mower";
 import { registerLightTemperatureCardTypes } from "./cards/light_temperature";
 import { registerLockCardTypes } from "./cards/lock";
 import { registerMediaCardTypes } from "./cards/media";
+import { registerNotificationCardTypes } from "./cards/notification";
 import { registerPresenceCardTypes } from "./cards/presence";
 import { registerPushCardTypes } from "./cards/push";
 import { registerScreenLockCardTypes } from "./cards/screen_lock";
@@ -191,6 +192,7 @@ function registerCards(context: ApplicationContext) {
   const lightCards = registerLightTemperatureCardTypes(registry, context.configuration.modalTabs, fields, cardUi);
   registerLockCardTypes(registry, context.configuration.lockOptions, fields, cardUi);
   registerMediaCardTypes(registry, context.configuration.mediaOptions, context.device.id, fields, context.controllers.settingsUi, cardUi);
+  registerNotificationCardTypes(registry, context.dom.document, cardUi);
   registerPresenceCardTypes(registry, context.configuration.options, fields);
   registerPushCardTypes(registry, fields);
   registerScreenLockCardTypes(registry, fields);

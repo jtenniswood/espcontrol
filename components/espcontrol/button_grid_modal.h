@@ -57,6 +57,7 @@ inline ControlModalDefinition control_modal_definition(ControlModalKind kind) {
       return {ControlModalPresentation::LIST, ControlModalChrome::CLOSE,
               ControlModalDismissPolicy::DISMISS};
     case ControlModalKind::NETWORK_STATUS:
+    case ControlModalKind::NOTIFICATION:
       return {ControlModalPresentation::STATUS, ControlModalChrome::CLOSE,
               ControlModalDismissPolicy::DISMISS};
     case ControlModalKind::ALARM_PIN:

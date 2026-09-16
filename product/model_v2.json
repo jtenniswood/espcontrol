@@ -48,6 +48,7 @@
       "sensor": "product/v2/cards/sensor.json",
       "media": "product/v2/cards/media.json",
       "image": "product/v2/cards/image.json",
+      "notification": "product/v2/cards/notification.json",
       "light_switch": "product/v2/cards/light_switch.json",
       "light_brightness": "product/v2/cards/light_brightness.json",
       "light_control": "product/v2/cards/light_control.json",
