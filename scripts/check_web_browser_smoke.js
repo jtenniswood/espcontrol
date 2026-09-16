@@ -4352,10 +4352,15 @@ async function assertCardTransferSmoke(page, posts, label) {
     1,
     `${label}: copy dialog uses concise guidance`,
   );
-  assert.strictEqual(
-    await copyDialog.getByRole("button", { name: "Copy Code" }).count(),
-    1,
-    `${label}: copy dialog exposes a clipboard copy button`,
+  const copyButton = copyDialog.getByRole("button", { name: "Copy", exact: true });
+  assert.strictEqual(await copyButton.count(), 1, `${label}: copy dialog exposes a clipboard copy button`);
+  assert(
+    await copyButton.evaluate((button) =>
+      button.classList.contains("sp-action-btn") &&
+      button.classList.contains("sp-transfer-copy-btn") &&
+      button.querySelector(".mdi-content-copy"),
+    ),
+    `${label}: copy button uses the copy icon and transfer button style`,
   );
   assert.strictEqual(
     await copyDialog.locator(".sp-transfer-actions").count(),
@@ -4395,13 +4400,27 @@ async function assertCardTransferSmoke(page, posts, label) {
         return true;
       };
     }, mode);
-    await copyDialog.getByRole("button", { name: "Copy Code", exact: true }).click();
-    await page.waitForFunction(() => !document.querySelector(".sp-transfer-actions .sp-save-btn").disabled);
+    await copyDialog.getByRole("button", { name: "Copy", exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector(".sp-transfer-actions .sp-transfer-copy-btn").disabled);
     assert.strictEqual(await copyDialog.getByRole("status").textContent(), mode === "blocked"
       ? "Could not copy automatically. Copy the selected code manually."
       : "", `${label}: copying only shows a message when it fails`);
     assert.strictEqual(await page.evaluate(() => window.__copiedCode), mode === "blocked" ? null : code,
       `${label}: ${mode} clipboard path copies the exact code or reports failure`);
+    if (mode === "blocked") {
+      assert.strictEqual(await copyDialog.getByRole("button", { name: "Copy", exact: true }).count(), 1,
+        `${label}: failed copying keeps the default button state`);
+    } else {
+      const copiedButton = copyDialog.getByRole("button", { name: "Copied", exact: true });
+      assert.strictEqual(await copiedButton.count(), 1, `${label}: successful copying shows the copied state`);
+      assert(
+        await copiedButton.evaluate((button) =>
+          button.classList.contains("sp-copied") && button.querySelector(".mdi-check"),
+        ),
+        `${label}: successful copying uses the check icon and accent state`,
+      );
+      await copyDialog.getByRole("button", { name: "Copy", exact: true }).waitFor({ state: "visible" });
+    }
     await page.evaluate(() => {
       if (window.__copyTestOriginalClipboard) Object.defineProperty(navigator, "clipboard", window.__copyTestOriginalClipboard);
       else delete navigator.clipboard;

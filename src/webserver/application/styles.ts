@@ -396,6 +396,12 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-delete-btn:hover,.sp-hide-btn:hover,.sp-cancel-btn:hover{background:var(--border);color:var(--text)}" +
         ".sp-save-btn{background:var(--accent);color:#fff}" +
         ".sp-save-btn:hover{background:var(--accent-hover);box-shadow:var(--shadow-1)}" +
+        ".sp-transfer-copy-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;" +
+        "border:1px solid var(--border);background:var(--surface2);color:var(--text2);" +
+        "transition:background .25s,color .25s,border-color .25s,opacity .25s,box-shadow .25s}" +
+        ".sp-transfer-copy-btn:hover{background:var(--border);border-color:var(--text3);color:var(--text);box-shadow:var(--shadow-1)}" +
+        ".sp-transfer-copy-btn.sp-copied{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-hover)}" +
+        ".sp-transfer-copy-btn.sp-copied:hover{background:var(--accent-soft);border-color:var(--accent-hover);color:var(--accent-hover)}" +
         ".sp-edit-subpage-btn{background:var(--accent);color:#fff}" +
         ".sp-edit-subpage-btn:hover{background:var(--accent-hover);box-shadow:var(--shadow-1)}" +
         ".sp-btn-row--save{margin-top:24px;justify-content:flex-end}" +

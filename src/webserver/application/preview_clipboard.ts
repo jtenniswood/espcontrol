@@ -591,9 +591,23 @@ export function createPreviewClipboardFeature(
         dialog.appendChild(status);
         var actions = document.createElement("div");
         actions.className = "sp-transfer-actions sp-btn-row";
-        var copy = createActionButton("sp-action-btn sp-save-btn", "Copy Code");
+        var copy = createActionButton("sp-action-btn sp-transfer-copy-btn", "", "content-copy");
+        var copyLabel: any = document.createTextNode("Copy");
+        copy.appendChild(copyLabel);
+        var copyIcon: any = copy.querySelector(".mdi");
+        var copyResetTimer: any;
+        function setCopyButtonState(copied: any) {
+            copy.classList.toggle("sp-copied", copied);
+            copyIcon.className = copied ? "mdi mdi-check" : "mdi mdi-content-copy";
+            copyLabel.textContent = copied ? "Copied" : "Copy";
+        }
         copy.addEventListener("click", async function () {
+            if (copyResetTimer) {
+                clearTimeout(copyResetTimer);
+                copyResetTimer = null;
+            }
             copy.disabled = true;
+            setCopyButtonState(false);
             status.textContent = "";
             var copied = false;
             try {
@@ -620,8 +634,15 @@ export function createPreviewClipboardFeature(
                 ? ""
                 : "Could not copy automatically. Copy the selected code manually.";
             copy.disabled = false;
-            if (copied && dialog.isConnected)
+            if (copied && dialog.isConnected) {
+                setCopyButtonState(true);
+                copyResetTimer = setTimeout(function () {
+                    copyResetTimer = null;
+                    if (dialog.isConnected)
+                        setCopyButtonState(false);
+                }, 2000);
                 copy.focus();
+            }
         });
         actions.appendChild(copy);
         dialog.appendChild(actions);
