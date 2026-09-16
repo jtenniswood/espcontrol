@@ -2878,7 +2878,6 @@ inline void refresh_image_cards() {
 }
 
 inline void image_card_refresh_due() {
-  if (image_card_pipeline_suspended()) return;
   ImageCardCtx *contexts = image_card_contexts();
   uint32_t now = esphome::millis();
   for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
@@ -2968,6 +2967,10 @@ inline void image_card_suspend_pipeline() {
       lv_timer_del(ctx->media_artwork_timer);
       ctx->media_artwork_timer = nullptr;
     }
+    // Mark the slot inactive while the screensaver owns the display. This
+    // keeps the regular refresh interval harmless without making the timer
+    // itself conditional on display mode.
+    ctx->active = false;
   }
   image_card_active_download_context() = nullptr;
   if (shared_modal_image) {
@@ -2987,6 +2990,8 @@ inline void image_card_resume_pipeline() {
   int reload_count = 0;
   for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
     ImageCardCtx *ctx = &contexts[i];
+    if (!ctx->widget) continue;
+    ctx->active = true;
     if (!image_card_context_visible_on_active_screen(ctx)) continue;
     ctx->retry_deadline_ms = now + IMAGE_CARD_STARTUP_RETRY_MS;
     ctx->next_picture_retry_ms = 0;
