@@ -28,7 +28,7 @@ Older cards that were created as **Weather Forecast** cards still work. They now
 ## How It Works on the Panel
 
 - In **Current Conditions** mode, the card watches the weather entity's current state.
-- In **Current Conditions** mode, the icon changes automatically and the label uses the condition name from Home Assistant.
+- In **Current Conditions** mode, the icon uses the normalized weather condition, while the label keeps provider-specific text from Home Assistant (for example, `light rain` is shown as **Light Rain** rather than being reduced to **Rainy**).
 - In **Temperatures Today** and **Temperatures Tomorrow** modes, the card asks Home Assistant for the daily forecast for the configured weather entity.
 - In temperature modes, the unit label comes from the panel's **Temperature Unit** setting.
 - In temperature modes, the card label defaults to **Today** or **Tomorrow**, unless you set your own label.
