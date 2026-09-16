@@ -43,7 +43,7 @@ web_server:
   js_url: "https://cdn.jsdelivr.net/gh/jtenniswood/espcontrol@${espcontrol_component_ref}/docs/public/webserver/embedded/www.js?device=${device_slug}&v=${firmware_version}"
 
 esphome:
-  min_version: 2026.8.2
+  min_version: 2026.9.0
   on_boot:
     - priority: -100
       then:

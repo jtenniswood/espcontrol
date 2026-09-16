@@ -123,6 +123,14 @@ class JPEGFormat(Format):
                 shutil.rmtree(dest_path)
             shutil.copytree(src_path, dest_path)
 
+        if CORE.using_toolchain_esp_idf:
+            # Native ESP-IDF builds compile artwork_image as part of the
+            # generated src component. Register the copied decoder as a local
+            # IDF dependency so its headers and library are available there.
+            from esphome.components.esp32 import add_idf_component
+
+            add_idf_component(name="libjpeg-turbo-esp32", path=dest_path)
+
 
 class BMPFormat(Format):
     def __init__(self):
