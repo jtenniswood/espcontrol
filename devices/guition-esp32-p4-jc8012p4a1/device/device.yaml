@@ -40,7 +40,7 @@ esp32:
       CONFIG_LWIP_MAX_SOCKETS: "20"
       # Stack for ESP-IDF's startup task. ESPHome runs setup and HTTPS checks
       # in a separate loopTask, controlled by advanced.loop_task_stack_size
-      # (8192 bytes by default in ESPHome 2026.8.2).
+      # (8192 bytes by default in ESPHome 2026.9.0).
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
       CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: "y"
       # Native OTA and display startup can block loopTask briefly on this

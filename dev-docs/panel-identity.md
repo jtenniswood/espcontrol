@@ -16,6 +16,6 @@ takes precedence thereafter. Devices without `card_images` retain shared NVS
 support; unexpected layouts fail closed. Downgrading to the initial naming
 implementation reads its older shared-NVS record, not the dedicated store.
 
-The ESPHome startup adapter is pinned to 2026.8.2. Review its Application
+The ESPHome startup adapter is pinned to 2026.9.0. Review its Application
 StringRef lifetime assumptions, partition ownership and NVS API usage when
 upgrading ESPHome.

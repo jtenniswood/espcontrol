@@ -1,8 +1,8 @@
 # Temporary P4 V3 display fix
 
-Vendored from ESPHome **2026.8.2**, as shipped in
-`ghcr.io/esphome/esphome:2026.8.2`, with its original license in `LICENSE`.
-Upstream: https://github.com/esphome/esphome/tree/2026.8.2/esphome/components/mipi_dsi
+Vendored from ESPHome **2026.9.0**, as shipped in
+`ghcr.io/esphome/esphome:2026.9.0`, with its original license in `LICENSE`.
+Upstream: https://github.com/esphome/esphome/tree/2026.9.0/esphome/components/mipi_dsi
 
 The sole source change is in `MipiDsi::setup()`: value-initialize `phy_clk_src`
 instead of assigning the deprecated `MIPI_DSI_PHY_CLK_SRC_DEFAULT` alias.
