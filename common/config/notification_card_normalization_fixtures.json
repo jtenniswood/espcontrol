@@ -1,0 +1,77 @@
+[
+  {
+    "name": "default level attribute is omitted",
+    "input": "sensor.house_notice;House;Auto;Auto;;;notification;;level_attribute=notification_level",
+    "expected": {
+      "entity": "sensor.house_notice",
+      "label": "House",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "notification",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "custom attributes and acknowledge action are preserved",
+    "input": "sensor.house_notice;House;Bell;Auto;;;notification;;level_attribute=severity,message_attribute=detail,ack_action=script.ack_notice",
+    "expected": {
+      "entity": "sensor.house_notice",
+      "label": "House",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "notification",
+      "precision": "",
+      "options": "level_attribute=severity,message_attribute=detail,ack_action=script.ack_notice"
+    }
+  },
+  {
+    "name": "options are reordered, trimmed, and lowercased",
+    "input": "sensor.house_notice;;Auto;Auto;;;notification;;ack_action=Script.Ack_Notice ,message_attribute= detail ",
+    "expected": {
+      "entity": "sensor.house_notice",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "notification",
+      "precision": "",
+      "options": "message_attribute=detail,ack_action=script.ack_notice"
+    }
+  },
+  {
+    "name": "unusable acknowledge actions and unknown options are dropped",
+    "input": "sensor.house_notice;;Auto;Auto;;;notification;;ack_action=not-an-action,unknown=1",
+    "expected": {
+      "entity": "sensor.house_notice",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "notification",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "stale display fields are cleared",
+    "input": "sensor.house_notice;House;Bell;Lightbulb;now_playing;C;notification;2;",
+    "expected": {
+      "entity": "sensor.house_notice",
+      "label": "House",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "notification",
+      "precision": "",
+      "options": ""
+    }
+  }
+]

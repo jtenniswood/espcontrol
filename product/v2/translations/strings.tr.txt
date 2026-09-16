@@ -256,3 +256,11 @@ timer=Zamanlayıcı
 timer_confirm=Onayla
 guest_wifi=Misafir Wi-Fi
 wifi_did_not_change=Wi-Fi durumu değişmedi
+
+# Notification card
+notification=Bildirim
+information=Bilgi
+warning=Uyarı
+alert=Alarm
+acknowledge=Onayla
+no_notifications=Bildirim yok

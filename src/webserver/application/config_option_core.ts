@@ -63,6 +63,9 @@ import {
     var FAN_LIGHT_ENTITY_OPTION: any = cardContractOptionName("fan_light_entity");
     var FAN_CONTROL_TABS_OPTION: any = cardContractOptionName("fan_tabs");
     var WIFI_QR_TABS_OPTION: any = cardContractOptionName("wifi_tabs");
+    var NOTIFICATION_LEVEL_ATTRIBUTE_OPTION: any = cardContractOptionName("level_attribute");
+    var NOTIFICATION_MESSAGE_ATTRIBUTE_OPTION: any = cardContractOptionName("message_attribute");
+    var NOTIFICATION_ACK_ACTION_OPTION: any = cardContractOptionName("ack_action");
     function largeNumbersExplicitlyDisabled(this: any, options?: any) {
         return configOptionValue(options, SENSOR_LARGE_NUMBERS_OPTION) === SENSOR_LARGE_NUMBERS_OFF_VALUE;
     }
@@ -157,6 +160,9 @@ export {
     FAN_LIGHT_ENTITY_OPTION,
     FAN_CONTROL_TABS_OPTION,
     WIFI_QR_TABS_OPTION,
+    NOTIFICATION_LEVEL_ATTRIBUTE_OPTION,
+    NOTIFICATION_MESSAGE_ATTRIBUTE_OPTION,
+    NOTIFICATION_ACK_ACTION_OPTION,
     largeNumbersExplicitlyDisabled,
     copyLargeNumbersOption,
     cardContractOptionSpec,

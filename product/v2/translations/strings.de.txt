@@ -256,3 +256,11 @@ timer=Timer
 timer_confirm=Bestätigen
 guest_wifi=Gast-WLAN
 wifi_did_not_change=WLAN wurde nicht geändert
+
+# Notification card
+notification=Benachrichtigung
+information=Information
+warning=Warnung
+alert=Alarm
+acknowledge=Bestätigen
+no_notifications=Keine Benachrichtigungen

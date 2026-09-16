@@ -35,6 +35,18 @@ static_assert(readable_text_color_for_bg(0xFFFFFF) == TERTIARY_GREY,
 static_assert(readable_text_color_for_bg(0x000000) == DARK_TEXT_PRIMARY,
               "dark backgrounds need light text");
 
+// Notification card severity palette. Each background is paired with a fixed
+// foreground because the generic brightness heuristic misjudges saturated
+// yellow: dark text on the muted yellow reads at about 8.4:1, white text on
+// the red at about 6.5:1. src/webserver/state/ui_tokens.ts repeats these
+// values for the setup page; keep both in step.
+constexpr uint32_t NOTIFICATION_INFORMATION_BG = DEFAULT_TERTIARY_COLOR;
+constexpr uint32_t NOTIFICATION_INFORMATION_TEXT = DARK_TEXT_PRIMARY;
+constexpr uint32_t NOTIFICATION_WARNING_BG = correct_display_color(0xE3B341);
+constexpr uint32_t NOTIFICATION_WARNING_TEXT = TERTIARY_GREY;
+constexpr uint32_t NOTIFICATION_ALERT_BG = correct_display_color(0xB3261E);
+constexpr uint32_t NOTIFICATION_ALERT_TEXT = DARK_TEXT_PRIMARY;
+
 inline uint32_t &current_button_primary_color_ref() {
   static uint32_t color = DEFAULT_SLIDER_COLOR;
   return color;

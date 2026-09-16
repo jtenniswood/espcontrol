@@ -221,7 +221,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
       b.type != "webhook" && b.type != "wifi_qr" && b.type != "wifi_qr_card" &&
       b.type != "sensor" && b.type != "door_window" && b.type != "presence" &&
       b.type != "subpage" && b.type != "light_control" && b.type != "media" &&
-      b.type != "image" &&
+      b.type != "image" && b.type != "notification" &&
       !fan_card_type(b.type) && !card_large_numbers_supported(p)) {
     b.options.clear();
   }

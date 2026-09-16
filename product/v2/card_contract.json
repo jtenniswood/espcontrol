@@ -31,7 +31,8 @@
     "normalize_switch_options",
     "normalize_sensor_fields",
     "normalize_sensor_options",
-    "normalize_vacuum_fields"
+    "normalize_vacuum_fields",
+    "normalize_notification_options"
   ],
   "fields": [
     "entity",
@@ -87,7 +88,8 @@
       "weather",
       "image",
       "wifi_qr",
-      "timer"
+      "timer",
+      "notification"
     ],
     "capabilities": [
       "informationOnly",
@@ -164,7 +166,8 @@
       "image": {"driver": "image", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": true, "subpage": true}},
       "wifi_qr": {"driver": "wifi_qr", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": false, "subpage": true}},
       "wifi_qr_card": {"driver": "wifi_qr", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": false, "subpage": true}},
-      "weather_forecast": {"driver": "weather", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}}
+      "weather_forecast": {"driver": "weather", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "notification": {"driver": "notification", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": true, "subpage": true}}
     }
   },
   "optionNames": [
@@ -2429,6 +2432,61 @@
         "sensor": "",
         "unit": "",
         "type": "wifi_qr_card",
+        "precision": "",
+        "options": ""
+      }
+    },
+    "notification": {
+      "label": "Notification",
+      "allowInSubpage": true,
+      "domains": ["sensor", "text_sensor", "binary_sensor"],
+      "options": [
+        {
+          "name": "level_attribute",
+          "label": "Level Attribute",
+          "kind": "text",
+          "defaultValue": "notification_level",
+          "omitDefault": true
+        },
+        {
+          "name": "message_attribute",
+          "label": "Message Attribute",
+          "kind": "text",
+          "defaultValue": "",
+          "omitDefault": true
+        },
+        {
+          "name": "ack_action",
+          "label": "Acknowledge Action",
+          "kind": "text",
+          "defaultValue": "",
+          "omitDefault": true
+        }
+      ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "default", "value": "Auto" },
+          "icon_on": { "policy": "default", "value": "Auto" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "notification" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "hook", "hook": "normalize_notification_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["level_attribute", "message_attribute", "ack_action"],
+        "optionHook": "normalize_notification_options"
+      },
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "notification",
         "precision": "",
         "options": ""
       }

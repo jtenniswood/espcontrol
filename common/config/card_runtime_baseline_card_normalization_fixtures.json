@@ -1350,6 +1350,21 @@
     }
   },
   {
+    "name": "notification: notification",
+    "input": "~sensor.example,,Auto,Auto,,,notification,,",
+    "expected": {
+      "entity": "sensor.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "notification",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
     "name": "weather_forecast: legacy_forecast",
     "input": "~weather.example,,Auto,Auto,,,weather_forecast,tomorrow,",
     "expected": {

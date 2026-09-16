@@ -10,7 +10,7 @@ type LargeNumbersRule = true | {
 };
 
 export const CARD_CONTRACT_VERSION = 1 as const;
-export const CARD_CONTRACT_NORMALIZATION_HOOKS = ["normalize_action_fields", "action_large_numbers_supported", "normalize_action_options", "normalize_media_fields", "normalize_media_options", "normalize_fan_fields", "normalize_fan_options", "normalize_date_time_fields", "normalize_date_time_options", "normalize_mower_fields", "normalize_occupancy_fields", "normalize_occupancy_options", "normalize_access_fields", "normalize_access_options", "normalize_security_fields", "normalize_security_options", "normalize_weather_fields", "normalize_weather_options", "normalize_image_fields", "normalize_image_options", "normalize_climate_fields", "normalize_climate_options", "normalize_light_control_options", "normalize_webhook_fields", "normalize_webhook_options", "normalize_subpage_fields", "normalize_subpage_options", "normalize_switch_options", "normalize_sensor_fields", "normalize_sensor_options", "normalize_vacuum_fields"] as const;
+export const CARD_CONTRACT_NORMALIZATION_HOOKS = ["normalize_action_fields", "action_large_numbers_supported", "normalize_action_options", "normalize_media_fields", "normalize_media_options", "normalize_fan_fields", "normalize_fan_options", "normalize_date_time_fields", "normalize_date_time_options", "normalize_mower_fields", "normalize_occupancy_fields", "normalize_occupancy_options", "normalize_access_fields", "normalize_access_options", "normalize_security_fields", "normalize_security_options", "normalize_weather_fields", "normalize_weather_options", "normalize_image_fields", "normalize_image_options", "normalize_climate_fields", "normalize_climate_options", "normalize_light_control_options", "normalize_webhook_fields", "normalize_webhook_options", "normalize_subpage_fields", "normalize_subpage_options", "normalize_switch_options", "normalize_sensor_fields", "normalize_sensor_options", "normalize_vacuum_fields", "normalize_notification_options"] as const;
 export const CARD_CONTRACT_MIGRATION_ACTIONS: Readonly<Record<string, MigrationActionSpec>> = {
   "legacy_local_action": {
     "when": [
@@ -4004,6 +4004,91 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "options": ""
     }
   },
+  "notification": {
+    "label": "Notification",
+    "allowInSubpage": true,
+    "domains": [
+      "sensor",
+      "text_sensor",
+      "binary_sensor"
+    ],
+    "options": [
+      {
+        "name": "level_attribute",
+        "label": "Level Attribute",
+        "kind": "text",
+        "defaultValue": "notification_level",
+        "omitDefault": true
+      },
+      {
+        "name": "message_attribute",
+        "label": "Message Attribute",
+        "kind": "text",
+        "defaultValue": "",
+        "omitDefault": true
+      },
+      {
+        "name": "ack_action",
+        "label": "Acknowledge Action",
+        "kind": "text",
+        "defaultValue": "",
+        "omitDefault": true
+      }
+    ],
+    "normalization": {
+      "fields": {
+        "entity": {
+          "policy": "keep"
+        },
+        "label": {
+          "policy": "keep"
+        },
+        "icon": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "icon_on": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "sensor": {
+          "policy": "clear"
+        },
+        "unit": {
+          "policy": "clear"
+        },
+        "type": {
+          "policy": "default",
+          "value": "notification"
+        },
+        "precision": {
+          "policy": "clear"
+        },
+        "options": {
+          "policy": "hook",
+          "hook": "normalize_notification_options"
+        }
+      },
+      "unknownOptions": "drop",
+      "canonicalOptionOrder": [
+        "level_attribute",
+        "message_attribute",
+        "ack_action"
+      ],
+      "optionHook": "normalize_notification_options"
+    },
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "notification",
+      "precision": "",
+      "options": ""
+    }
+  },
   "weather_forecast": {
     "label": "Weather Forecast",
     "allowInSubpage": true,
@@ -4566,6 +4651,18 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
       "runtimeAllocation": false,
       "subpage": true
     }
+  },
+  "notification": {
+    "driver": "notification",
+    "capabilities": {
+      "informationOnly": true,
+      "subscriptions": true,
+      "actions": true,
+      "numericControl": false,
+      "modal": true,
+      "runtimeAllocation": true,
+      "subpage": true
+    }
   }
 };
 export const CARD_CONTRACT_MIGRATION_ALIASES: Readonly<Record<string, Partial<CardConfig>>> = {
@@ -4706,6 +4803,7 @@ export const CARD_CONTRACT_LARGE_NUMBERS: Readonly<Record<string, LargeNumbersRu
   "timezone": true
 };
 export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
+  "ack_action": "ack_action",
   "actions": "actions",
   "active_color": "active_color",
   "alarm_card_type": "alarm_card_type",
@@ -4736,12 +4834,14 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "label_display": "label_display",
   "large_numbers": "large_numbers",
   "lawn_mower_mode": "lawn_mower_mode",
+  "level_attribute": "level_attribute",
   "light_tabs": "light_tabs",
   "lock_mode": "lock_mode",
   "media_cover_art": "media_cover_art",
   "media_display": "media_display",
   "media_mode": "media_mode",
   "media_now_playing_controls": "media_now_playing_controls",
+  "message_attribute": "message_attribute",
   "number_display": "number_display",
   "on_pattern": "on_pattern",
   "pass64": "pass64",

@@ -2840,6 +2840,39 @@
       }
     },
     {
+      "name": "notification: notification",
+      "sourceKind": "contract",
+      "sourceType": "notification",
+      "mode": "notification",
+      "canonicalType": "notification",
+      "web": {
+        "registration": "notification",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": true
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "7920430657da17c1"
+        }
+      },
+      "firmware": {
+        "family": "NOTIFICATION"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "modal",
+          "home_assistant_service"
+        ],
+        "modalOwner": "notification"
+      }
+    },
+    {
       "name": "weather_forecast: legacy_forecast",
       "sourceKind": "contract",
       "sourceType": "weather_forecast",

@@ -190,6 +190,27 @@ def generate() -> str:
                     '    assert(cfg_option_value(config.options, "wifi_tabs") == "guest|credentials|qr");',
                     "  }",
                 ))
+    # Notification cards carry their settings in options, so a subpage must keep
+    # them too rather than clearing the card back to its defaults.
+    notification_options = "level_attribute=severity,message_attribute=detail,ack_action=script.ack_notice"
+    for encoded in (
+        "1|sensor.house_notice:House Notice:Auto:Auto:::notification::" + notification_options,
+        "~1|notification,sensor.house_notice,House Notice,Auto,Auto,,,,"
+        + quote(notification_options, safe=""),
+    ):
+        lines.extend((
+            "  { // Notification cards keep their options on subpages.",
+            f"    const auto buttons = parse_subpage_config({cpp_string(encoded)});",
+            "    assert(buttons.size() == 1);",
+            f"    assert(buttons[0].options == {cpp_string(notification_options)});",
+            "    const auto config = parsed_cfg_from_subpage_btn(buttons[0]);",
+            '    assert(config.type == "notification");',
+            f"    assert(config.options == {cpp_string(notification_options)});",
+            '    assert(notification_card_level_attribute(config.options) == "severity");',
+            '    assert(notification_card_message_attribute(config.options) == "detail");',
+            '    assert(notification_card_ack_action(config.options) == "script.ack_notice");',
+            "  }",
+        ))
     issue_248 = (
         "~B,,4,2,3,,,,8,9,,,1,6,5|X,,Office,Window Closed,Window Open,binary_sensor.office_window_sensor_opening,,window,active_color"
         "|X,,Linnea 1,Window Closed,Window Open,binary_sensor.linnea_br_window_sensor_opening,,window,active_color"

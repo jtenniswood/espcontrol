@@ -256,3 +256,11 @@ timer=Timer
 timer_confirm=Bevestigen
 guest_wifi=Gastwifi
 wifi_did_not_change=Wifi is niet gewijzigd
+
+# Notification card
+notification=Melding
+information=Informatie
+warning=Waarschuwing
+alert=Alarm
+acknowledge=Bevestigen
+no_notifications=Geen meldingen

@@ -39,6 +39,7 @@ SAVED_CONFIG_LIGHT_CONTROL_HEADER = ROOT / "components" / "espcontrol" / "button
 SAVED_CONFIG_WEBHOOK_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_webhook_generated.h"
 SAVED_CONFIG_SUBPAGE_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_subpage_generated.h"
 SAVED_CONFIG_SWITCH_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_switch_generated.h"
+SAVED_CONFIG_NOTIFICATION_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_notification_generated.h"
 BACKLIGHT_HEADER = ROOT / "components" / "espcontrol" / "backlight.h"
 BACKLIGHT_FADE_HEADER = ROOT / "components" / "espcontrol" / "backlight_fade.h"
 DISPLAY_MODE_CONTROLLER_HEADER = ROOT / "components" / "espcontrol" / "display_mode_controller.h"
@@ -851,6 +852,28 @@ int main() {
   assert(!screen_schedule_normal_active("sensor", true, true, false, 0, 6, 23, "Sensor On"));
   assert(rise_h == 6 && rise_m == 0 && set_h == 18 && set_m == 0);
 
+  // Notification severity aliases must match the browser contract exactly.
+  assert(notification_level_from_text("") == NotificationLevel::INFORMATION);
+  assert(notification_level_from_text("information") == NotificationLevel::INFORMATION);
+  assert(notification_level_from_text("unknown level") == NotificationLevel::INFORMATION);
+  assert(notification_level_from_text("  Warning ") == NotificationLevel::WARNING);
+  assert(notification_level_from_text("warn") == NotificationLevel::WARNING);
+  assert(notification_level_from_text("caution") == NotificationLevel::WARNING);
+  assert(notification_level_from_text("medium") == NotificationLevel::WARNING);
+  assert(notification_level_from_text("ALERT") == NotificationLevel::ALERT);
+  assert(notification_level_from_text("critical") == NotificationLevel::ALERT);
+  assert(notification_level_from_text("error") == NotificationLevel::ALERT);
+  assert(notification_level_from_text("danger") == NotificationLevel::ALERT);
+  assert(notification_level_from_text("severe") == NotificationLevel::ALERT);
+  assert(notification_level_from_text("high") == NotificationLevel::ALERT);
+  assert(notification_card_level_attribute("") == "notification_level");
+  assert(notification_card_level_attribute("level_attribute=severity") == "severity");
+  assert(notification_card_message_attribute("message_attribute= detail ") == "detail");
+  assert(notification_card_ack_action_valid("script.ack_notice"));
+  assert(!notification_card_ack_action_valid("script"));
+  assert(!notification_card_ack_action_valid("script.ack.notice"));
+  assert(!notification_card_ack_action_valid("Script.Ack"));
+
   OrderResult parsed;
   parse_order_string("1,2d,3w,4b,5t,6x,7h,8v,9l,10u,99", 11, parsed);
   assert(parsed.positions[0] == 1);
@@ -1073,6 +1096,7 @@ def main() -> int:
         shutil.copy2(SAVED_CONFIG_SECURITY_HEADER, tmp_path / "button_grid_saved_config_security_generated.h")
         shutil.copy2(SAVED_CONFIG_WEATHER_HEADER, tmp_path / "button_grid_saved_config_weather_generated.h")
         shutil.copy2(SAVED_CONFIG_IMAGE_HEADER, tmp_path / "button_grid_saved_config_image_generated.h")
+        shutil.copy2(SAVED_CONFIG_NOTIFICATION_HEADER, tmp_path / "button_grid_saved_config_notification_generated.h")
         shutil.copy2(SAVED_CONFIG_CLIMATE_HEADER, tmp_path / "button_grid_saved_config_climate_generated.h")
         shutil.copy2(SAVED_CONFIG_LIGHT_CONTROL_HEADER, tmp_path / "button_grid_saved_config_light_control_generated.h")
         shutil.copy2(SAVED_CONFIG_WEBHOOK_HEADER, tmp_path / "button_grid_saved_config_webhook_generated.h")

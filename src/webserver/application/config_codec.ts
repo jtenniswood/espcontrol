@@ -44,6 +44,7 @@ import { normalizeSavedConfigLightControl } from "../generated/saved_config_ligh
 import { normalizeSavedConfigWebhook } from "../generated/saved_config_webhook";
 import { normalizeSavedConfigSubpage } from "../generated/saved_config_subpage";
 import { normalizeSavedConfigSwitch } from "../generated/saved_config_switch";
+import { normalizeSavedConfigNotification } from "../generated/saved_config_notification";
 import type { CardRegistry } from "./card_registry";
 import type { ConfigSensorOptionsFeature } from "./config_sensor_options";
 import type { ConfigMediaOptionsFeature } from "./config_media_options";
@@ -66,6 +67,7 @@ import {
     ACTION_CARD_OPTION_SELECT_ACTION,
 } from "./config_action_contract";
 import { normalizeCoverMode } from "./config_cover_contract";
+import { normalizeNotificationOptions } from "./config_notification_contract";
 import type { ConfigWeatherOptionsFeature } from "./config_weather_options";
 import type { ConfigWebhookOptionsFeature } from "./config_webhook_options";
 import type { ConfigRobotCardOptionsFeature } from "./config_robot_card_options";
@@ -402,6 +404,9 @@ export function createConfigCodecFeature(
             return;
         b.icon = imageIconEnabled(b) ? (b.icon && b.icon !== "Auto" ? b.icon : "Camera") : "Auto";
     }
+    function normalizeSavedConfigNotificationOptions(this: any, options?: any, _b?: any) {
+        return normalizeNotificationOptions(options);
+    }
     function normalizeSavedConfigImageOptions(this: any, options?: any, _b?: any) {
         return normalizeImageOptions(options || "");
     }
@@ -472,6 +477,8 @@ export function createConfigCodecFeature(
         if (b)
             normalizeSavedConfigImage(b, normalizeSavedConfigImageFields, normalizeSavedConfigImageOptions);
         if (b)
+            normalizeSavedConfigNotification(b, normalizeSavedConfigNotificationOptions);
+        if (b)
             normalizeSavedConfigLightControl(b, normalizeSavedConfigLightControlOptions);
         if (b)
             normalizeSavedConfigSubpage(b, normalizeSavedConfigSubpageFields, normalizeSavedConfigSubpageOptions);
@@ -480,7 +487,7 @@ export function createConfigCodecFeature(
         var normalizedSavedSensor: any = !!(b && normalizeSavedConfigSensor(b, wasLegacyTextSensor, normalizeSavedConfigSensorFields, normalizeSensorOptions));
         var normalizedSavedOccupancy: any = !!(b && normalizeSavedConfigOccupancy(b, normalizeSavedConfigOccupancyFields, normalizeSavedConfigOccupancyOptions));
         var normalizedSavedSwitch: any = !!(b && !normalizedSavedSensor && normalizeSavedConfigSwitch(b, normalizeSwitchConfirmationOptions));
-        if (b && !normalizedSavedSensor && !normalizedSavedSwitch && !normalizedSavedAccess && !normalizedSavedOccupancy && !normalizedSavedStatic && !normalizedSavedFan && !normalizedSavedMower && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && !isClimateCardType(b.type) && b.type !== "webhook" && b.type !== "media" && b.type !== "subpage" && b.type !== "image" && b.type !== "wifi_qr" && b.type !== "wifi_qr_card" && b.type !== "light_control" && b.type !== "vacuum" && !cardLargeNumbersSupported(b)) {
+        if (b && !normalizedSavedSensor && !normalizedSavedSwitch && !normalizedSavedAccess && !normalizedSavedOccupancy && !normalizedSavedStatic && !normalizedSavedFan && !normalizedSavedMower && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && !isClimateCardType(b.type) && b.type !== "webhook" && b.type !== "media" && b.type !== "subpage" && b.type !== "image" && b.type !== "wifi_qr" && b.type !== "wifi_qr_card" && b.type !== "light_control" && b.type !== "notification" && b.type !== "vacuum" && !cardLargeNumbersSupported(b)) {
             b.options = "";
         }
         return b;
@@ -681,6 +688,9 @@ export function createConfigCodecFeature(
             label = wifiButton.label;
             icon = wifiButton.icon;
             options = wifiButton.options;
+        }
+        else if (type === "notification") {
+            options = normalizeNotificationOptions(options);
         }
         else if (type === "light_control") {
             options = normalizeLightControlOptions(options);

@@ -3,7 +3,7 @@
   "lifecycleVocabulary": {
     "subscriptions": ["none", "state", "attributes", "local", "time", "action_response", "http"],
     "actions": ["none", "home_assistant_service", "local", "http", "navigation", "modal"],
-    "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "wifi_qr"]
+    "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "notification", "wifi_qr"]
   },
   "types": {
     "timer": {
@@ -355,6 +355,11 @@
       "classification": "canonical", "canonicalType": "wifi_qr_card", "webRegistration": "wifi_qr_card", "firmwareFamily": "WIFI_QR",
       "lifecycle": { "subscriptions": ["state"], "actions": ["modal", "home_assistant_service"], "modalOwner": "wifi_qr" },
       "modes": [{ "name": "tile_qr", "config": { "type": "wifi_qr_card", "options": "ssid64=R3Vlc3Q,pass64=UGFzc3dvcmQ" } }, { "name": "guest", "config": { "type": "wifi_qr_card", "entity": "switch.guest_wifi", "options": "ssid64=R3Vlc3Q,pass64=UGFzc3dvcmQ,wifi_tabs=guest" } }]
+    },
+    "notification": {
+      "classification": "canonical", "canonicalType": "notification", "webRegistration": "notification", "firmwareFamily": "NOTIFICATION",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["modal", "home_assistant_service"], "modalOwner": "notification" },
+      "modes": [{ "name": "notification", "config": { "entity": "sensor.example" } }]
     },
     "weather_forecast": {
       "classification": "accepted_legacy_input", "canonicalType": "weather", "webRegistration": "weather_forecast", "firmwareFamily": "WEATHER",
