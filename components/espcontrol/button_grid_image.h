@@ -22,6 +22,7 @@ constexpr uint32_t IMAGE_CARD_MIN_REPEAT_REFRESH_MS = 30000;
 constexpr uint32_t IMAGE_CARD_MODAL_REFRESH_DELAY_MS = 1000;
 constexpr uint32_t IMAGE_CARD_MODAL_REQUEST_DELAY_MS = 100;
 constexpr uint32_t IMAGE_CARD_MODAL_CLEANUP_DELAY_MS = 100;
+constexpr uint32_t IMAGE_CARD_CONSTRAINED_MODAL_CACHE_TTL_MS = 15000;
 constexpr uint32_t IMAGE_CARD_MODAL_CLOSE_GUARD_MS = 350;
 constexpr uint32_t IMAGE_CARD_MEDIA_ARTWORK_TRIGGER_DEBOUNCE_MS = 75;
 constexpr uint32_t IMAGE_CARD_MEDIA_ARTWORK_RESPONSE_DEBOUNCE_MS = 300;
@@ -149,6 +150,12 @@ inline ImageCardCtx *&image_card_active_download_context() {
   return ctx;
 }
 
+inline bool image_card_should_requeue_interrupted_tile(bool was_active_or_queued,
+                                                       bool context_active,
+                                                       bool has_source_url) {
+  return was_active_or_queued && context_active && has_source_url;
+}
+
 inline void image_card_start_next_queued_download(ImageCardCtx *finished_ctx) {
   if (image_card_pipeline_suspended()) return;
   ImageCardCtx *contexts = image_card_contexts();
@@ -156,8 +163,7 @@ inline void image_card_start_next_queued_download(ImageCardCtx *finished_ctx) {
     ImageCardCtx *next = &contexts[i];
     if (!next->active || !next->download_queued || next == finished_ctx) continue;
     next->download_queued = false;
-    if (esphome::artwork_image::image_pipeline_can_start_followup_inline(
-          image_card_uses_background_pipeline(next->image, next->source_url))) {
+    if (image_card_uses_background_pipeline(next->image, next->source_url)) {
       image_card_request_source_url(next);
     } else {
       image_card_schedule_source_refresh(next, IMAGE_CARD_API_RETRY_INTERVAL_MS,
@@ -181,7 +187,7 @@ inline void image_card_prioritize_modal_download(ImageCardCtx *ctx) {
   ImageCardCtx *active = image_card_active_download_context();
   if (active && active->image) {
     bool requeue_preempted_tile =
-      esphome::artwork_image::image_pipeline_should_requeue_interrupted_tile(
+      image_card_should_requeue_interrupted_tile(
         true, active->active, !active->source_url.empty());
     active->image->cancel_update();
     image_card_release_download_slot(active, false);
@@ -193,7 +199,7 @@ inline void image_card_prioritize_modal_download(ImageCardCtx *ctx) {
   }
   if (ctx && ctx != active) {
     bool requeue_selected_tile =
-      esphome::artwork_image::image_pipeline_should_requeue_interrupted_tile(
+      image_card_should_requeue_interrupted_tile(
         ctx->download_queued, ctx->active, !ctx->source_url.empty());
     if (ctx->image) ctx->image->cancel_update();
     image_card_release_download_slot(ctx, false);
@@ -585,9 +591,6 @@ inline void image_card_set_loading_state(lv_obj_t *loading_widget, const char *t
   if (!loading_widget) return;
   lv_obj_t *btn = lv_obj_get_parent(loading_widget);
   image_card_position_widget(btn, loading_widget, nullptr, nullptr);
-  lv_obj_t *label = image_card_loading_label(loading_widget);
-  if (label) lv_label_set_display_text(label, espcontrol_i18n(text));
-  image_card_set_configured_label_visible(loading_widget, false);
   lv_obj_t *icon = image_card_loading_icon(loading_widget);
   if (icon) lv_label_set_display_text(icon, IMAGE_CARD_LOADING_ICON);
   lv_obj_t *label = image_card_loading_label(loading_widget);
