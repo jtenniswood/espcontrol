@@ -80,7 +80,6 @@ struct ImageCardCtx {
   bool requested_once = false;
   bool image_ready = false;
   bool download_active = false;
-  bool download_queued = false;
   bool show_label = false;
   bool modal_fit = false;
   bool diagnostics_enabled = false;
@@ -152,96 +151,26 @@ inline size_t image_card_estimated_pipeline_bytes(int width, int height);
 inline void image_card_schedule_modal_cache_expiry(
     esphome::artwork_image::ArtworkImage *modal_image);
 
-inline bool image_card_uses_background_pipeline(
-    esphome::artwork_image::ArtworkImage *image, const std::string &url) {
-  return image && image->can_use_p4_pipeline(url);
-}
-
-inline ImageCardCtx *&image_card_active_download_context() {
-  static ImageCardCtx *ctx = nullptr;
-  return ctx;
-}
-
-inline bool image_card_should_requeue_interrupted_tile(bool was_active_or_queued,
-                                                       bool context_active,
-                                                       bool has_source_url) {
-  return was_active_or_queued && context_active && has_source_url;
-}
-
-inline void image_card_release_download_slot(ImageCardCtx *ctx, bool start_next);
-
-// Keep modal downloads ahead of an active tile while allowing the interrupted
-// tile to resume after the modal closes.
-inline void image_card_preempt_active_tile_for_modal() {
-  ImageCardCtx *candidate = image_card_active_download_context();
-  if (!candidate || !candidate->image || !candidate->image->request_is_active()) return;
-  const bool requeue = image_card_should_requeue_interrupted_tile(
-      true, candidate->active, !candidate->source_url.empty());
-  candidate->image->cancel_update();
-  image_card_release_download_slot(candidate, false);
-  if (requeue) {
-    candidate->download_queued = true;
-    candidate->next_download_retry_ms =
-        esphome::millis() + IMAGE_CARD_MODAL_REFRESH_DELAY_MS;
-  }
-}
-
-inline void image_card_start_next_queued_download(ImageCardCtx *finished_ctx) {
-  if (image_card_pipeline_suspended()) return;
-  ImageCardCtx *contexts = image_card_contexts();
-  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
-    ImageCardCtx *next = &contexts[i];
-    if (!next->active || !next->download_queued || next == finished_ctx) continue;
-    next->download_queued = false;
-    if (image_card_uses_background_pipeline(next->image, next->source_url)) {
-      image_card_request_source_url(next);
-    } else {
-      image_card_schedule_source_refresh(next, IMAGE_CARD_API_RETRY_INTERVAL_MS,
-                                         "image download queue");
-    }
-    return;
-  }
-}
-inline void image_card_release_download_slot(ImageCardCtx *ctx, bool start_next = true) {
+inline void image_card_release_download_slot(ImageCardCtx *ctx) {
   if (!ctx) return;
   ctx->download_active = false;
-  ctx->download_queued = false;
-  ImageCardCtx *&active = image_card_active_download_context();
-  if (active == ctx) {
-    active = nullptr;
-    if (start_next) image_card_start_next_queued_download(ctx);
-  }
 }
 
-inline void image_card_prioritize_modal_download(ImageCardCtx *ctx) {
-  ImageCardCtx *active = image_card_active_download_context();
-  if (active && active->image) {
-    // request_is_active() is checked here as well as in the compatibility
-    // helper above so modal priority never cancels an already-finished tile.
-    ImageCardCtx *candidate = active;
-    if (!candidate->image->request_is_active()) return;
-    bool requeue_preempted_tile =
-      image_card_should_requeue_interrupted_tile(
-        true, active->active, !active->source_url.empty());
+inline void image_card_preempt_active_tile_for_modal() {
+  ImageCardCtx *contexts = image_card_contexts();
+  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
+    ImageCardCtx *candidate = &contexts[i];
+    if (!candidate->active || !candidate->download_active ||
+        !candidate->image || !candidate->image->request_is_active()) {
+      continue;
+    }
     candidate->image->cancel_update();
-    image_card_release_download_slot(candidate, false);
-    if (requeue_preempted_tile) {
-      candidate->download_queued = true;
+    image_card_release_download_slot(candidate);
+    if (!candidate->source_url.empty()) {
       candidate->next_download_retry_ms =
           esphome::millis() + IMAGE_CARD_MODAL_REFRESH_DELAY_MS;
     }
-  }
-  if (ctx && ctx != active) {
-    bool requeue_selected_tile =
-      image_card_should_requeue_interrupted_tile(
-        ctx->download_queued, ctx->active, !ctx->source_url.empty());
-    if (ctx->image) ctx->image->cancel_update();
-    image_card_release_download_slot(ctx, false);
-    if (requeue_selected_tile) {
-      ctx->download_queued = true;
-      ctx->next_download_retry_ms =
-          esphome::millis() + IMAGE_CARD_MODAL_REFRESH_DELAY_MS;
-    }
+    return;
   }
 }
 
@@ -371,7 +300,7 @@ inline void image_card_log_diagnostics(ImageCardCtx *ctx, const char *stage,
   UBaseType_t stack_high_water = uxTaskGetStackHighWaterMark(nullptr);
   int core = xPortGetCoreID();
   ESP_LOGI("image_card_diag",
-           "%s entity=%s modal=%s image_ready=%s tile_dl=%s queued=%s requested=%s target=%dx%d "
+           "%s entity=%s modal=%s image_ready=%s tile_dl=%s requested=%s target=%dx%d "
            "src_len=%u url_len=%u modal_url_len=%u modal_age=%lu tile_age=%lu modal_req_age=%lu "
            "internal_free=%u internal_min=%u internal_largest=%u psram_free=%u psram_largest=%u "
            "task_stack_free=%u core=%d",
@@ -379,7 +308,6 @@ inline void image_card_log_diagnostics(ImageCardCtx *ctx, const char *stage,
            ui.active == ctx && ui.overlay ? "open" : "closed",
            ctx->image_ready ? "yes" : "no",
            ctx->download_active ? "yes" : "no",
-           ctx->download_queued ? "yes" : "no",
            ctx->requested_once ? "yes" : "no",
            static_cast<int>(target_width), static_cast<int>(target_height),
            static_cast<unsigned>(ctx->source_url.size()),
@@ -397,13 +325,12 @@ inline void image_card_log_diagnostics(ImageCardCtx *ctx, const char *stage,
            core);
 #else
   ESP_LOGI("image_card_diag",
-           "%s entity=%s modal=%s image_ready=%s tile_dl=%s queued=%s requested=%s target=%dx%d "
+           "%s entity=%s modal=%s image_ready=%s tile_dl=%s requested=%s target=%dx%d "
            "src_len=%u url_len=%u modal_url_len=%u modal_age=%lu tile_age=%lu modal_req_age=%lu",
            stage ? stage : "event", ctx->entity_id.c_str(),
            ui.active == ctx && ui.overlay ? "open" : "closed",
            ctx->image_ready ? "yes" : "no",
            ctx->download_active ? "yes" : "no",
-           ctx->download_queued ? "yes" : "no",
            ctx->requested_once ? "yes" : "no",
            static_cast<int>(target_width), static_cast<int>(target_height),
            static_cast<unsigned>(ctx->source_url.size()),
@@ -887,7 +814,7 @@ inline void image_card_apply_media_overlay_tint(ImageCardCtx *ctx) {
 inline void image_card_apply_downloaded(ImageCardCtx *ctx) {
   if (!ctx || !ctx->active || !ctx->widget || !ctx->image) return;
   if (image_card_pipeline_suspended()) {
-    image_card_release_download_slot(ctx, false);
+    image_card_release_download_slot(ctx);
     return;
   }
   if (ctx->camera_entity_unavailable) return;
@@ -1134,7 +1061,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
       lv_timer_del(contexts[i].modal_cleanup_timer);
       contexts[i].modal_cleanup_timer = nullptr;
     }
-    image_card_release_download_slot(&contexts[i], false);
+    image_card_release_download_slot(&contexts[i]);
     contexts[i].modal_fit = false;
     contexts[i].diagnostics_enabled = false;
     contexts[i].access_token_request_pending = false;
@@ -2046,15 +1973,6 @@ inline void image_card_request_source_url(ImageCardCtx *ctx, bool source_changed
     image_card_log_diagnostics(ctx, "tile-refresh-duplicate", width, height);
     return;
   }
-  ImageCardCtx *active_download = image_card_active_download_context();
-  if (!replace_pending_request && active_download && active_download != ctx) {
-    ctx->download_queued = true;
-    ctx->next_download_retry_ms = now + IMAGE_CARD_API_RETRY_INTERVAL_MS;
-    ESP_LOGD("image_card", "Deferring image refresh for %s while %s is downloading",
-             ctx->entity_id.c_str(), active_download->entity_id.c_str());
-    image_card_log_diagnostics(ctx, "tile-refresh-queued", width, height);
-    return;
-  }
   if (!replace_pending_request && !image_card_memory_available(ctx, "tile", decode_width, decode_height)) {
     ctx->next_download_retry_ms = now + IMAGE_CARD_RETRY_INTERVAL_MS;
     if (!ctx->image_ready) {
@@ -2069,8 +1987,6 @@ inline void image_card_request_source_url(ImageCardCtx *ctx, bool source_changed
   ctx->url = image_card_sized_url(ctx->source_url, request_width, request_height);
   ctx->requested_once = true;
   ctx->download_active = true;
-  ctx->download_queued = false;
-  image_card_active_download_context() = ctx;
   ctx->next_download_retry_ms = 0;
   ctx->last_tile_request_started_ms = now;
   ctx->image->set_target_size(decode_width, decode_height);
@@ -2125,6 +2041,7 @@ inline bool image_card_request_modal_source_url(ImageCardCtx *ctx) {
   // A retry is consumed only once the modal downloader accepts the request,
   // not when the delayed request timer is created.
   ctx->next_download_retry_ms = 0;
+  image_card_preempt_active_tile_for_modal();
   return true;
 }
 
@@ -2273,7 +2190,6 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
   image_card_cancel_stale_modal_download(ctx);
   // Keep any scheduled tile retry alive. While the modal is open the normal
   // refresh path defers it, then starts it shortly after the modal closes.
-  image_card_prioritize_modal_download(ctx);
 
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::IMAGE_CARD, ctx->btn, ctx->width_compensation_percent,
@@ -2939,7 +2855,7 @@ inline void image_card_suspend_pipeline() {
       image_card_clear_widget_source(ctx->widget);
       ctx->image->release();
     }
-    image_card_release_download_slot(ctx, false);
+    image_card_release_download_slot(ctx);
     ctx->image_ready = false;
     ctx->requested_once = false;
     ctx->url.clear();
@@ -2975,7 +2891,6 @@ inline void image_card_suspend_pipeline() {
     // itself conditional on display mode.
     ctx->active = false;
   }
-  image_card_active_download_context() = nullptr;
   if (shared_modal_image) {
     shared_modal_image->cancel_update();
     shared_modal_image->release();
