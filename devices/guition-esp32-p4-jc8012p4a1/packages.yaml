@@ -93,6 +93,11 @@ substitutions:
     }
   battery_status_hide_code: |-
     lv_obj_add_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);
+  image_card_slot_capacity: "6"
+
+esphome:
+  build_flags:
+    - "-DESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=${image_card_slot_capacity}"
 
 packages:
   # ---------------------------------------------------------------------------
