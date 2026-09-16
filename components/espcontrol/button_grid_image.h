@@ -2895,6 +2895,7 @@ inline void image_card_suspend_pipeline() {
     shared_modal_image->cancel_update();
     shared_modal_image->release();
   }
+  image_card_cancel_modal_cache_expiry();
   image_card_modal_cache() = ImageCardModalCache{};
   ESP_LOGI("image_card", "Suspended dashboard image pipeline for camera screensaver");
 }
