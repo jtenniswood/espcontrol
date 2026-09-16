@@ -415,6 +415,11 @@
       "mdi": "ceiling-fan"
     },
     {
+      "name": "Ceiling Fan Light",
+      "codepoint": "F1798",
+      "mdi": "ceiling-fan-light"
+    },
+    {
       "name": "Ceiling Light",
       "codepoint": "F0769",
       "mdi": "ceiling-light"
@@ -485,6 +490,11 @@
       "mdi": "coffee-maker"
     },
     {
+      "name": "Countertop",
+      "codepoint": "F181C",
+      "mdi": "countertop"
+    },
+    {
       "name": "Current AC",
       "codepoint": "F1480",
       "mdi": "current-ac"
@@ -518,6 +528,11 @@
       "name": "Delete Outline",
       "codepoint": "F09E7",
       "mdi": "delete-outline"
+    },
+    {
+      "name": "Delete Variant",
+      "codepoint": "F01B3",
+      "mdi": "delete-variant"
     },
     {
       "name": "Desk",
@@ -1210,6 +1225,11 @@
       "mdi": "keyboard-backspace"
     },
     {
+      "name": "Remote Desktop",
+      "codepoint": "F08B9",
+      "mdi": "remote-desktop"
+    },
+    {
       "name": "Remote Down",
       "codepoint": "F0047",
       "mdi": "arrow-down-bold-circle"
@@ -1238,6 +1258,11 @@
       "name": "Remote Up",
       "codepoint": "F005F",
       "mdi": "arrow-up-bold-circle"
+    },
+    {
+      "name": "Remote TV",
+      "codepoint": "F0EC5",
+      "mdi": "remote-tv"
     },
     {
       "name": "Robot Vacuum",
@@ -1363,6 +1388,11 @@
       "name": "Sofa Outline",
       "codepoint": "F156D",
       "mdi": "sofa-outline"
+    },
+    {
+      "name": "Sofa Single Outline",
+      "codepoint": "F156F",
+      "mdi": "sofa-single-outline"
     },
     {
       "name": "Solar Panel",
@@ -1608,6 +1638,16 @@
       "name": "View Headline",
       "codepoint": "F0571",
       "mdi": "view-headline"
+    },
+    {
+      "name": "Video",
+      "codepoint": "F0567",
+      "mdi": "video"
+    },
+    {
+      "name": "Video Outline",
+      "codepoint": "F0BDC",
+      "mdi": "video-outline"
     },
     {
       "name": "Volume High",
