@@ -56,6 +56,10 @@ namespace esphome::api { Server *global_api_server = &server; }
 bool ha_api_available() { return esphome::api::global_api_server != nullptr; }
 bool state_connected = false;
 bool ha_api_state_connected() { return state_connected; }
+std::string cover_art_home_assistant_client_address;
+struct EndpointResolver {
+  void execute() {}
+} cover_art_resolve_home_assistant_base_url;
 struct Recovery {
   bool running = true;
   void stop() { running = false; }
