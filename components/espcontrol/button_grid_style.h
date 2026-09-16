@@ -20,6 +20,19 @@ static_assert(readable_text_color_for_bg(0x000000) ==
                   DARK_THEME.text_primary,
               "dark backgrounds need light text");
 
+// Notification card severity palette. Each background is paired with a fixed
+// foreground because the generic brightness heuristic misjudges saturated
+// yellow: dark text on the muted yellow reads at about 8.4:1, white text on
+// the red at about 6.5:1. These are accessibility pairs, so they stay the same
+// in both themes rather than following the active one. The information level
+// is "normal card colours" and is read from the active theme where it is used.
+// src/webserver/state/ui_tokens.ts repeats these values for the setup page;
+// keep both in step.
+constexpr uint32_t NOTIFICATION_WARNING_BG = correct_display_color(0xE3B341);
+constexpr uint32_t NOTIFICATION_WARNING_TEXT = correct_display_color(0x212121);
+constexpr uint32_t NOTIFICATION_ALERT_BG = correct_display_color(0xB3261E);
+constexpr uint32_t NOTIFICATION_ALERT_TEXT = 0xFFFFFF;
+
 inline uint32_t &current_button_primary_color_ref() {
   static uint32_t color = DEFAULT_ACCENT_COLOR;
   return color;

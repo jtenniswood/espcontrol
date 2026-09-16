@@ -265,3 +265,11 @@ then_visit_192_168_4_1_in_your_browser=Poté v prohlížeči otevřete 192.168.4
 
 screensaver=Spořič obrazovky
 incorrect_pin=Nesprávný PIN
+
+# Notification card
+notification=Oznámení
+information=Informace
+warning=Varování
+alert=Výstraha
+acknowledge=Potvrdit
+no_notifications=Žádná oznámení

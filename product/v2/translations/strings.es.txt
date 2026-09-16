@@ -265,3 +265,11 @@ then_visit_192_168_4_1_in_your_browser=Después abre 192.168.4.1 en tu navegador
 
 screensaver=Salvapantallas
 incorrect_pin=PIN incorrecto
+
+# Notification card
+notification=Notificación
+information=Información
+warning=Advertencia
+alert=Alerta
+acknowledge=Confirmar
+no_notifications=Sin notificaciones

@@ -265,3 +265,11 @@ then_visit_192_168_4_1_in_your_browser=Затем откройте 192.168.4.1 �
 
 screensaver=Заставка
 incorrect_pin=Неверный PIN
+
+# Notification card
+notification=Уведомление
+information=Информация
+warning=Предупреждение
+alert=Тревога
+acknowledge=Подтвердить
+no_notifications=Нет уведомлений

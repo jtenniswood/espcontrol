@@ -265,3 +265,11 @@ then_visit_192_168_4_1_in_your_browser=Ouvrez ensuite 192.168.4.1 dans votre nav
 
 screensaver=Économiseur d’écran
 incorrect_pin=PIN incorrect
+
+# Notification card
+notification=Notification
+information=Information
+warning=Avertissement
+alert=Alerte
+acknowledge=Acquitter
+no_notifications=Aucune notification

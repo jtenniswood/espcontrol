@@ -265,3 +265,11 @@ then_visit_192_168_4_1_in_your_browser=Ezután nyissa meg a 192.168.4.1 címet a
 
 screensaver=Képernyőkímélő
 incorrect_pin=Helytelen PIN
+
+# Notification card
+notification=Értesítés
+information=Információ
+warning=Figyelmeztetés
+alert=Riasztás
+acknowledge=Nyugtázás
+no_notifications=Nincsenek értesítések

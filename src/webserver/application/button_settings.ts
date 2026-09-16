@@ -778,6 +778,7 @@ export function createButtonSettingsFeature(
             requireField: requireField,
             requireEntityDomain: requireEntityDomain,
             clearFieldError: clearFieldError,
+            showFieldError: showFieldError,
             toggleRow: toggleRow,
             cardSize: c.sizes[slot] || 1,
             idPrefix: idPrefix,
@@ -829,7 +830,7 @@ export function createButtonSettingsFeature(
             });
             panel.appendChild(patternField.field);
         }
-        if (b.type !== "image" && b.type !== "wifi_qr_card") {
+        if (b.type !== "image" && b.type !== "wifi_qr_card" && b.type !== "notification") {
             var cardAppearance: any = disclosureSection("Custom Colours", idPrefix + "card-colours", false);
             var cardColorEditor: any = document.createElement("div");
             cardColorEditor.className = "sp-card-color-editor";
