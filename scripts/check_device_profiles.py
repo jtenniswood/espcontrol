@@ -771,8 +771,8 @@ def test_weather_card_visual_matches_preview() -> None:
     assert 'normalized == "unknown"' in weather_forecast and 'return "unavailable";' in weather_forecast, (
         "current weather device cards should render unknown states with the unavailable weather icon"
     )
-    assert "inline bool weather_state_is_standard" in weather_forecast, (
-        "current weather device cards should distinguish standard states from provider-specific text"
+    assert "inline bool weather_state_has_localized_label" in weather_forecast, (
+        "current weather device cards should distinguish localized states from provider-specific text"
     )
     assert "return sentence_cap_text(trim_display_unit(state));" in weather_forecast, (
         "current weather device cards should retain provider-specific condition text in their labels"

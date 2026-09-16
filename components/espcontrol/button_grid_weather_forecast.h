@@ -85,25 +85,40 @@ inline const char* weather_icon_for_state(const std::string &state) {
   return find_icon("Weather Cloudy Alert");
 }
 
-inline bool weather_state_is_standard(const std::string &state) {
+inline bool weather_state_has_localized_label(const std::string &state) {
   std::string value = trim_display_unit(state);
   for (char &ch : value) {
     ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
   }
-  return value == "sunny" || value == "clear-night" || value == "partlycloudy" ||
-         value == "cloudy" || value == "fog" || value == "hail" ||
-         value == "lightning" || value == "lightning-rainy" || value == "pouring" ||
-         value == "rainy" || value == "snowy" || value == "snowy-rainy" ||
-         value == "windy" || value == "windy-variant" || value == "exceptional";
+  const std::string normalized = normalize_weather_state(state);
+  return value == normalized &&
+         (normalized == "sunny" || normalized == "clear-night" ||
+          normalized == "partlycloudy" || normalized == "cloudy" ||
+          normalized == "cloudy-alert" || normalized == "dust" ||
+          normalized == "fog" || normalized == "hail" || normalized == "hazy" ||
+          normalized == "hurricane" || normalized == "lightning" ||
+          normalized == "lightning-rainy" || normalized == "night-partly-cloudy" ||
+          normalized == "partly-lightning" || normalized == "partly-rainy" ||
+          normalized == "partly-snowy" || normalized == "partly-snowy-rainy" ||
+          normalized == "pouring" || normalized == "rainy" || normalized == "snowy" ||
+          normalized == "snowy-heavy" || normalized == "snowy-rainy" ||
+          normalized == "sunny-alert" || normalized == "sunset" ||
+          normalized == "sunset-down" || normalized == "sunset-up" ||
+          normalized == "tornado" || normalized == "windy" ||
+          normalized == "windy-variant" || normalized == "exceptional");
 }
 
 inline std::string weather_label_for_state(const std::string &state) {
   std::string normalized = normalize_weather_state(state);
-  if (!weather_state_is_standard(state)) {
-    if (normalized == "unknown") return espcontrol_i18n(std::string("Unknown"));
-    if (normalized == "unavailable" || normalized.empty()) {
-      return espcontrol_i18n(std::string("Unavailable"));
-    }
+  std::string value = trim_display_unit(state);
+  for (char &ch : value) {
+    ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  }
+  if (value == "unknown") return espcontrol_i18n(std::string("Unknown"));
+  if (value == "unavailable" || value.empty()) {
+    return espcontrol_i18n(std::string("Unavailable"));
+  }
+  if (!weather_state_has_localized_label(state)) {
     return sentence_cap_text(trim_display_unit(state));
   }
   if (normalized == "sunny") return espcontrol_i18n(std::string("Sunny"));
