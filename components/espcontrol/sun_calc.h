@@ -281,11 +281,7 @@ inline bool parsed_timezone_equal(const esphome::time::ParsedTimezone &a,
          timezone_dst_rule_equal(a.dst_end, b.dst_end);
 }
 
-inline bool posix_timezone_matches_global(const char *posix) {
-  esphome::time::ParsedTimezone parsed{};
-  if (!esphome::time::parse_posix_tz(posix, parsed)) return false;
-  return parsed_timezone_equal(parsed, esphome::time::get_global_tz());
-}
+inline bool posix_timezone_matches_global(const char *posix);
 #endif
 
 inline std::string effective_timezone_option(const std::string &tz_option) {
@@ -403,6 +399,38 @@ inline bool parse_posix_tz_rule(const char *posix,
   has_dst = true;
   return true;
 }
+
+#if defined(USE_TIME_TIMEZONE)
+inline bool posix_timezone_matches_global(const char *posix) {
+  int std_offset_seconds = 0;
+  int dst_offset_seconds = 0;
+  bool has_dst = false;
+  TzPosixTransitionRule start_rule = {};
+  TzPosixTransitionRule end_rule = {};
+  if (!parse_posix_tz_rule(posix, std_offset_seconds, has_dst,
+                           dst_offset_seconds, start_rule, end_rule)) {
+    return false;
+  }
+
+  const auto &global = esphome::time::get_global_tz();
+  if (global.std_offset_seconds != std_offset_seconds ||
+      global.dst_offset_seconds != dst_offset_seconds ||
+      global.dst_start.type != (has_dst ? esphome::time::DSTRuleType::MONTH_WEEK_DAY
+                                        : esphome::time::DSTRuleType::NONE)) {
+    return false;
+  }
+  if (!has_dst) return true;
+
+  return global.dst_start.time_seconds == start_rule.seconds &&
+         global.dst_start.month == start_rule.month &&
+         global.dst_start.week == start_rule.week &&
+         global.dst_start.day_of_week == start_rule.day &&
+         global.dst_end.time_seconds == end_rule.seconds &&
+         global.dst_end.month == end_rule.month &&
+         global.dst_end.week == end_rule.week &&
+         global.dst_end.day_of_week == end_rule.day;
+}
+#endif
 
 inline bool tz_is_leap_year(int year) {
   return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
