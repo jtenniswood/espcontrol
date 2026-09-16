@@ -67,6 +67,9 @@ wifi:
                 - script.execute: navigate_after_api
   on_disconnect:
     - script.execute: network_status_refresh
+    - lambda: |-
+        id(cover_art_home_assistant_client_address).clear();
+        id(cover_art_resolve_home_assistant_base_url).execute();
     - if:
         condition:
           lambda: |-

@@ -1762,11 +1762,15 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: Home Assistant settings card should be collapsed by default`,
   );
   await homeAssistantSettingsCard.locator(".card-header").click();
-  assert(
-    await homeAssistantSettingsCard
-      .locator("#sp-set-ha-artwork-port")
-      .isVisible(),
-    `${label}: Home Assistant port field should render in Home Assistant settings`,
+  assert.strictEqual(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-protocol").isVisible(),
+    false,
+    `${label}: Home Assistant protocol should be hidden in Automatic mode`,
+  );
+  assert.strictEqual(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isVisible(),
+    false,
+    `${label}: Home Assistant port should be hidden in Automatic mode`,
   );
   assert.strictEqual(
     await homeAssistantSettingsCard
@@ -1782,16 +1786,8 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   );
   assert.strictEqual(
     await homeAssistantSettingsCard.locator("#sp-ha-artwork-endpoint-status").textContent(),
-    "Automatic — http://192.0.2.10",
+    "The current Home Assistant artwork endpoint is http://192.0.2.10.",
     `${label}: Home Assistant artwork endpoint status should render`,
-  );
-  assert(
-    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-protocol").isDisabled(),
-    `${label}: Home Assistant protocol should be disabled in Automatic mode`,
-  );
-  assert(
-    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isDisabled(),
-    `${label}: Home Assistant port should be disabled in Automatic mode`,
   );
   const endpointModePostsBefore = posts.length;
   await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-endpoint-mode").selectOption("Manual");
@@ -1806,8 +1802,16 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: Home Assistant protocol should be editable in Manual mode`,
   );
   assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-protocol").isVisible(),
+    `${label}: Home Assistant protocol should render in Manual mode`,
+  );
+  assert(
     await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isEnabled(),
     `${label}: Home Assistant port should be editable in Manual mode`,
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isVisible(),
+    `${label}: Home Assistant port should render in Manual mode`,
   );
   assert(
     (await homeAssistantSettingsCard
@@ -5906,7 +5910,7 @@ async function assertHostedCompatibility(browser) {
       { id: "text_sensor/Home Assistant Artwork Endpoint", state: "Manual — http://ha.test:8123" },
     ]));
     assert.equal(await page.locator("#sp-set-ha-artwork-endpoint-mode").inputValue(), "Manual");
-    assert.equal(await page.locator("#sp-ha-artwork-endpoint-status").textContent(), "Manual — http://ha.test:8123");
+    assert.equal(await page.locator("#sp-ha-artwork-endpoint-status").textContent(), "The current Home Assistant artwork endpoint is http://ha.test:8123.");
     assert(!unhandled.some(message => message.includes("Home Assistant Artwork")), "display-name artwork events are handled");
   } finally { await context.close(); }
 }
