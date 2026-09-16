@@ -59,6 +59,31 @@ function verifyManifest(webRoot) {
   assert(JSON.stringify(manifest.bundles[1]) === JSON.stringify({ ...bundle, webAssetVersion: 1 }),
     "legacy firmware must retain access to the same backward-compatible editor");
 
+  const referencedPaths = new Set(manifest.bundles.map(entry => entry.path));
+  const retentionPath = path.join(webRoot, "bundle-retention.json");
+  const retention = fs.existsSync(retentionPath) ? readJson(retentionPath) : { paths: [] };
+  assert(retention.schemaVersion === 1 && Array.isArray(retention.paths),
+    "web bundle retention manifest is invalid");
+  for (const retainedPath of retention.paths) {
+    assert(typeof retainedPath === "string" && /^bundles\/[a-f0-9]{64}\/www\.js$/.test(retainedPath),
+      `Invalid retained web bundle path: ${retainedPath}`);
+    const retainedBundlePath = path.join(webRoot, retainedPath);
+    assert(fs.existsSync(retainedBundlePath),
+      `Retained web bundle is missing: ${retainedPath}`);
+    const retainedContents = fs.readFileSync(retainedBundlePath);
+    const retainedDigest = retainedPath.split("/")[1];
+    assert(sha256(retainedContents) === retainedDigest,
+      `Retained web bundle content does not match its path digest: ${retainedPath}`);
+    referencedPaths.add(retainedPath);
+  }
+  for (const entry of fs.readdirSync(path.join(webRoot, "bundles"), { withFileTypes: true })) {
+    const relativePath = `bundles/${entry.name}/www.js`;
+    if (entry.isDirectory() && fs.existsSync(path.join(webRoot, relativePath))) {
+      assert(referencedPaths.has(relativePath),
+        `Unreferenced web bundle: ${relativePath}. Run python scripts/build.py www to remove it.`);
+    }
+  }
+
   const bundlePath = path.join(webRoot, bundle.path);
   assert(fs.existsSync(bundlePath), "content-addressed web bundle is missing");
   const contents = fs.readFileSync(bundlePath);

@@ -61,6 +61,11 @@ function casesFromManifest() {
       slots: device.slots,
       viewport: viewportFor(aspect.ratio),
       coverArtSquareOverlay: !!(device.web && device.web.coverArtSquareOverlay),
+      mediaCoverArtSupported: !(
+        device.web &&
+        Array.isArray(device.web.disabledCardTypes) &&
+        device.web.disabledCardTypes.includes("media_cover_art")
+      ),
       minVisibleCards: device.web && device.web.infoOnly ? 1 : 4,
       exerciseInteractions: slug === "guition-esp32-p4-jc8012p4a1",
       exerciseDeviceMocks: sharedFourInchSquareSlugs.has(slug),
@@ -1757,11 +1762,15 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: Home Assistant settings card should be collapsed by default`,
   );
   await homeAssistantSettingsCard.locator(".card-header").click();
-  assert(
-    await homeAssistantSettingsCard
-      .locator("#sp-set-ha-artwork-port")
-      .isVisible(),
-    `${label}: Home Assistant port field should render in Home Assistant settings`,
+  assert.strictEqual(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-protocol").isVisible(),
+    false,
+    `${label}: Home Assistant protocol should be hidden in Automatic mode`,
+  );
+  assert.strictEqual(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isVisible(),
+    false,
+    `${label}: Home Assistant port should be hidden in Automatic mode`,
   );
   assert.strictEqual(
     await homeAssistantSettingsCard
@@ -1777,16 +1786,8 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   );
   assert.strictEqual(
     await homeAssistantSettingsCard.locator("#sp-ha-artwork-endpoint-status").textContent(),
-    "Automatic — http://192.0.2.10",
+    "The current Home Assistant artwork endpoint is http://192.0.2.10.",
     `${label}: Home Assistant artwork endpoint status should render`,
-  );
-  assert(
-    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-protocol").isDisabled(),
-    `${label}: Home Assistant protocol should be disabled in Automatic mode`,
-  );
-  assert(
-    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isDisabled(),
-    `${label}: Home Assistant port should be disabled in Automatic mode`,
   );
   const endpointModePostsBefore = posts.length;
   await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-endpoint-mode").selectOption("Manual");
@@ -1801,8 +1802,16 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: Home Assistant protocol should be editable in Manual mode`,
   );
   assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-protocol").isVisible(),
+    `${label}: Home Assistant protocol should render in Manual mode`,
+  );
+  assert(
     await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isEnabled(),
     `${label}: Home Assistant port should be editable in Manual mode`,
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isVisible(),
+    `${label}: Home Assistant port should render in Manual mode`,
   );
   assert(
     (await homeAssistantSettingsCard
@@ -2600,7 +2609,7 @@ async function assertEmptyCellSettings(page, posts, label) {
   );
 }
 
-async function assertNewMediaCardDefaults(page, posts, label) {
+async function assertNewMediaCardDefaults(page, posts, label, mediaCoverArtSupported) {
   const emptyCell = page
     .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
     .first();
@@ -2615,15 +2624,17 @@ async function assertNewMediaCardDefaults(page, posts, label) {
 
   assert.strictEqual(
     await page.locator("#sp-inp-media-mode").inputValue(),
-    "cover_art",
-    `${label}: a new Media card should default to Cover Art`,
+    mediaCoverArtSupported ? "cover_art" : "play_pause",
+    `${label}: a new Media card should default to an available mode`,
   );
-  await page.locator("#sp-inp-media-mode").selectOption("play_pause");
-  assert.strictEqual(
-    await page.locator("#sp-inp-label").inputValue(),
-    "Play/Pause",
-    `${label}: leaving Cover Art should refresh the generated label`,
-  );
+  if (mediaCoverArtSupported) {
+    await page.locator("#sp-inp-media-mode").selectOption("play_pause");
+    assert.strictEqual(
+      await page.locator("#sp-inp-label").inputValue(),
+      "Play/Pause",
+      `${label}: leaving Cover Art should refresh the generated label`,
+    );
+  }
 
   await page.locator(".sp-settings-close").click();
   await page.waitForFunction(() => {
@@ -4352,10 +4363,15 @@ async function assertCardTransferSmoke(page, posts, label) {
     1,
     `${label}: copy dialog uses concise guidance`,
   );
-  assert.strictEqual(
-    await copyDialog.getByRole("button", { name: "Copy Code" }).count(),
-    1,
-    `${label}: copy dialog exposes a clipboard copy button`,
+  const copyButton = copyDialog.getByRole("button", { name: "Copy", exact: true });
+  assert.strictEqual(await copyButton.count(), 1, `${label}: copy dialog exposes a clipboard copy button`);
+  assert(
+    await copyButton.evaluate((button) =>
+      button.classList.contains("sp-action-btn") &&
+      button.classList.contains("sp-transfer-copy-btn") &&
+      button.querySelector(".mdi-content-copy"),
+    ),
+    `${label}: copy button uses the copy icon and transfer button style`,
   );
   assert.strictEqual(
     await copyDialog.locator(".sp-transfer-actions").count(),
@@ -4395,13 +4411,27 @@ async function assertCardTransferSmoke(page, posts, label) {
         return true;
       };
     }, mode);
-    await copyDialog.getByRole("button", { name: "Copy Code", exact: true }).click();
-    await page.waitForFunction(() => !document.querySelector(".sp-transfer-actions .sp-save-btn").disabled);
+    await copyDialog.getByRole("button", { name: "Copy", exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector(".sp-transfer-actions .sp-transfer-copy-btn").disabled);
     assert.strictEqual(await copyDialog.getByRole("status").textContent(), mode === "blocked"
       ? "Could not copy automatically. Copy the selected code manually."
       : "", `${label}: copying only shows a message when it fails`);
     assert.strictEqual(await page.evaluate(() => window.__copiedCode), mode === "blocked" ? null : code,
       `${label}: ${mode} clipboard path copies the exact code or reports failure`);
+    if (mode === "blocked") {
+      assert.strictEqual(await copyDialog.getByRole("button", { name: "Copy", exact: true }).count(), 1,
+        `${label}: failed copying keeps the default button state`);
+    } else {
+      const copiedButton = copyDialog.getByRole("button", { name: "Copied", exact: true });
+      assert.strictEqual(await copiedButton.count(), 1, `${label}: successful copying shows the copied state`);
+      assert(
+        await copiedButton.evaluate((button) =>
+          button.classList.contains("sp-copied") && button.querySelector(".mdi-check"),
+        ),
+        `${label}: successful copying uses the check icon and accent state`,
+      );
+      await copyDialog.getByRole("button", { name: "Copy", exact: true }).waitFor({ state: "visible" });
+    }
     await page.evaluate(() => {
       if (window.__copyTestOriginalClipboard) Object.defineProperty(navigator, "clipboard", window.__copyTestOriginalClipboard);
       else delete navigator.clipboard;
@@ -5779,7 +5809,9 @@ async function runCase(browser, testCase) {
     );
     await assertCardIconsTopLeft(page, testCase.name);
     await assertClockBarTypographyAndIconLayout(page, testCase.name);
-    await assertMediaCoverArtCompactPreview(page, testCase.name);
+    if (testCase.mediaCoverArtSupported) {
+      await assertMediaCoverArtCompactPreview(page, testCase.name);
+    }
     await assertSettingsPage(page, testCase.name, testCase, posts);
     if (testCase.exerciseInteractions) {
       await assertNightScheduleSensorControls(page, posts, testCase.name);
@@ -5790,7 +5822,9 @@ async function runCase(browser, testCase) {
       testCase,
     );
     await assertCoverSettingsPanels(page, testCase.name);
-    await assertMediaCoverArtSettingsPanels(page, testCase.name);
+    if (testCase.mediaCoverArtSupported) {
+      await assertMediaCoverArtSettingsPanels(page, testCase.name);
+    }
     await assertAlarmSettingsPanels(page, testCase.name);
     await assertPlaylistValidationOpensSourcePanel(page, testCase.name);
     await assertSpeakerGroupEditorAndPreview(page, posts, testCase.name);
@@ -5803,7 +5837,12 @@ async function runCase(browser, testCase) {
     }
     await assertInternalControlsPanel(page, posts, testCase.name);
     await assertEmptyCellSettings(page, posts, testCase.name);
-    await assertNewMediaCardDefaults(page, posts, testCase.name);
+    await assertNewMediaCardDefaults(
+      page,
+      posts,
+      testCase.name,
+      testCase.mediaCoverArtSupported,
+    );
     if (testCase.exerciseInteractions) {
       await assertClockBarEditorSmoke(page, posts, testCase.name);
       await assertBackupImportSmoke(page, posts, testCase);
@@ -5871,7 +5910,7 @@ async function assertHostedCompatibility(browser) {
       { id: "text_sensor/Home Assistant Artwork Endpoint", state: "Manual — http://ha.test:8123" },
     ]));
     assert.equal(await page.locator("#sp-set-ha-artwork-endpoint-mode").inputValue(), "Manual");
-    assert.equal(await page.locator("#sp-ha-artwork-endpoint-status").textContent(), "Manual — http://ha.test:8123");
+    assert.equal(await page.locator("#sp-ha-artwork-endpoint-status").textContent(), "The current Home Assistant artwork endpoint is http://ha.test:8123.");
     assert(!unhandled.some(message => message.includes("Home Assistant Artwork")), "display-name artwork events are handled");
   } finally { await context.close(); }
 }

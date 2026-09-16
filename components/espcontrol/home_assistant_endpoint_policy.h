@@ -178,17 +178,19 @@ inline std::string select_discovered_origin(
     const std::vector<ServiceRecord> &records, const std::string &client_address,
     const std::string &fallback_protocol) {
   std::string matched_origin;
-  bool found_match = false;
   for (const ServiceRecord &record : records) {
     if (!record_matches_client(record, client_address)) continue;
-    // The native API connection identifies the host but not the HTTP service
-    // when multiple Home Assistant instances share that host. Do not choose a
-    // token-bearing destination based on mDNS result order.
-    if (found_match) return {};
-    matched_origin = build_origin(
+    const std::string candidate = build_origin(
         protocol_from_internal_url(record.internal_url, fallback_protocol),
         client_address, record.port);
-    found_match = true;
+    if (candidate.empty()) continue;
+    // The native API connection identifies the host but not the HTTP service
+    // when multiple Home Assistant instances share that host. Do not choose a
+    // token-bearing destination based on mDNS result order. mDNS can repeat
+    // the same service while combining PTR, SRV, TXT, A, and AAAA answers, so
+    // identical candidates are safe to collapse.
+    if (!matched_origin.empty() && matched_origin != candidate) return {};
+    matched_origin = candidate;
   }
   return matched_origin;
 }

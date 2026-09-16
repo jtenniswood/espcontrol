@@ -56,6 +56,11 @@ namespace esphome::api { Server *global_api_server = &server; }
 bool ha_api_available() { return esphome::api::global_api_server != nullptr; }
 bool state_connected = false;
 bool ha_api_state_connected() { return state_connected; }
+std::string cover_art_home_assistant_client_address;
+bool endpoint_resolve_called = false;
+struct EndpointResolver {
+  void execute() { endpoint_resolve_called = true; }
+} cover_art_resolve_home_assistant_base_url;
 struct Recovery {
   bool running = true;
   void stop() { running = false; }
@@ -70,16 +75,22 @@ void disconnect(const std::string &client_info) {
 void reset(std::vector<Client *> clients) {
   server.clients = clients;
   state_connected = false;
+  cover_art_home_assistant_client_address = "192.168.1.31";
+  endpoint_resolve_called = false;
   ha_refresh_after_connect.running = true;
   retained = forecast_pending = cover_pending = true;
 }
 void expect_preserved() {
   assert(ha_refresh_after_connect.running);
   assert(retained && forecast_pending && cover_pending);
+  assert(cover_art_home_assistant_client_address == "192.168.1.31");
+  assert(!endpoint_resolve_called);
 }
 void expect_cancelled() {
   assert(!ha_refresh_after_connect.running);
   assert(!retained && !forecast_pending && !cover_pending);
+  assert(cover_art_home_assistant_client_address.empty());
+  assert(endpoint_resolve_called);
 }
 int main() {
   Client replacement{"Home Assistant 2026.8"};

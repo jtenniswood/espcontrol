@@ -212,7 +212,9 @@ def test_release_skill_creates_selected_tag_before_draft() -> None:
 def test_release_preparation_adds_the_tag_before_tagging() -> None:
     skill = RELEASE_SKILL.read_text(encoding="utf-8")
     assert skill.index("prepare_release_web_assets.py") < skill.index('git tag -a "$TAG"')
-    assert skill.index("python3 scripts/build.py\n") < skill.index("python3 scripts/build.py --check")
+    assert skill.index("python3 scripts/build.py www --retain-current-bundle") < skill.index(
+        "python3 scripts/build.py www --check --retain-current-bundle"
+    )
     assert "gh pr create --base main" in skill
     assert "git push origin main" not in skill
     with TemporaryDirectory() as tmp:

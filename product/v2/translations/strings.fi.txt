@@ -159,6 +159,7 @@ snowy=Lumisadetta
 snowy_and_rain=Lunta ja sadetta
 spot_clean=Pistepuhdistus
 start=Käynnistä
+start_dock=Start / Dock
 still=Paikallaan
 subpage=Alisivu
 stop=Pysäytä

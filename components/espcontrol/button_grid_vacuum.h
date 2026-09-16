@@ -48,6 +48,7 @@ inline const char *vacuum_card_default_icon_name(const std::string &mode) {
 inline const char *vacuum_card_mode_label(const std::string &mode) {
   std::string normalized = vacuum_card_mode(mode);
   if (normalized == "status") return "Vacuum";
+  if (normalized == "start_dock") return "Start / Dock";
   if (normalized == "dock") return "Dock";
   if (normalized == "pause_resume") return "Pause";
   if (normalized == "clean_spot") return "Spot Clean";
@@ -179,6 +180,9 @@ inline const char *vacuum_service_for_card(const VacuumCardCtx *ctx) {
   if (!ctx) return nullptr;
   if (ctx->mode == "start_stop") {
     return ctx->state == "cleaning" ? "vacuum.stop" : "vacuum.start";
+  }
+  if (ctx->mode == "start_dock") {
+    return card_runtime_vacuum_start_dock_service(ctx->state);
   }
   if (ctx->mode == "pause_resume") {
     if (ctx->state == "cleaning") return "vacuum.pause";

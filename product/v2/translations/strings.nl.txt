@@ -159,6 +159,7 @@ snowy=Sneeuwachtig
 snowy_and_rain=Sneeuw en regen
 spot_clean=Plaatselijk reinigen
 start=Start
+start_dock=Start / Dock
 still=Vast
 subpage=Subpagina
 stop=Stoppen

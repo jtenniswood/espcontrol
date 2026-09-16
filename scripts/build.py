@@ -10,6 +10,7 @@ Usage:
     python scripts/build.py icons         # sync icons only
     python scripts/build.py i18n          # sync firmware translations only
     python scripts/build.py www           # build www.js only
+    python scripts/build.py www --retain-current-bundle  # retain a release bundle
     python scripts/build.py www --temporary-output DIR  # isolated fresh bundles
     python scripts/build.py icons --check # check icons only
     python scripts/build.py --self-test    # verify transactional publishing
@@ -42,17 +43,18 @@ INTER_WEB_FONT = ROOT / "node_modules" / "vitepress" / "dist" / "client" / "them
 ROBOTO_WEB_FONT = ROOT / "common" / "assets" / "fonts" / "roboto-latin.woff2"
 SUPPORT_BUTTON_IMAGE = ROOT / "common" / "assets" / "images" / "buy-me-a-coffee-button.png"
 WEB_SOURCE_DIR = ROOT / "src" / "webserver"
+WEB_BUNDLE_RETENTION = ROOT / "docs" / "public" / "webserver" / "bundle-retention.json"
 
 # The hosted editor remains available to the development firmware plus the
 # current stable release and its four supported rollback releases. Keep this
 # list aligned with the GitHub Pages release catalogue in pages.yml.
 WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = (
     "dev",
+    "v2.9.1",
     "v2.9.0",
     "v2.8.6",
     "v2.8.4",
     "v2.8.3",
-    "v2.8.2",
 )
 
 # Fixed editor controls use a few MDI glyphs that are not selectable Product
@@ -151,8 +153,11 @@ class GeneratedOutputTransaction:
     def stage_text(self, path, content):
         self._staged[Path(path).resolve()] = content
 
+    def stage_delete(self, path):
+        self._staged[Path(path).resolve()] = None
+
     def overlays(self):
-        return {str(path): content for path, content in self._staged.items()}
+        return {str(path): content for path, content in self._staged.items() if content is not None}
 
     def commit(self):
         if not self._staged:
@@ -166,6 +171,9 @@ class GeneratedOutputTransaction:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 target_mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
                 originals[path] = (path.read_bytes(), target_mode) if path.exists() else None
+                if content is None:
+                    prepared[path] = None
+                    continue
                 with tempfile.NamedTemporaryFile(
                     mode="w",
                     encoding="utf-8",
@@ -181,7 +189,10 @@ class GeneratedOutputTransaction:
                     prepared[path] = Path(handle.name)
 
             for path, staged_path in prepared.items():
-                self._replace_file(staged_path, path)
+                if staged_path is None:
+                    path.unlink(missing_ok=True)
+                else:
+                    self._replace_file(staged_path, path)
                 replaced.append(path)
         except Exception as exc:
             for path in reversed(replaced):
@@ -206,7 +217,8 @@ class GeneratedOutputTransaction:
             raise BuildError(f"Unable to publish generated outputs; restored the previous set: {exc}") from exc
         finally:
             for staged_path in prepared.values():
-                staged_path.unlink(missing_ok=True)
+                if staged_path is not None:
+                    staged_path.unlink(missing_ok=True)
 
 
 GENERATED_TRANSACTION = None
@@ -255,6 +267,7 @@ def run_generated_transaction_self_test():
             os.replace(source, destination)
 
         transaction = GeneratedOutputTransaction(replace_file=fail_second_replace)
+        transaction.stage_delete(third)
         transaction.stage_text(first, "first-broken")
         transaction.stage_text(second, "second-broken")
         try:
@@ -267,6 +280,14 @@ def run_generated_transaction_self_test():
             raise BuildError("Generated transaction did not restore the previous set")
         if first.stat().st_mode & 0o777 != 0o640:
             raise BuildError("Generated transaction rollback did not restore file permissions")
+
+        if third.read_text() != "third-new":
+            raise BuildError("Generated transaction did not restore a deleted output")
+        transaction = GeneratedOutputTransaction()
+        transaction.stage_delete(third)
+        transaction.commit()
+        if third.exists():
+            raise BuildError("Generated transaction did not delete a stale output")
 
         marker = "espcontrol-generated-overlay-self-test"
         entry_path = ROOT / "src" / "webserver" / "entry.ts"
@@ -3980,7 +4001,7 @@ def load_timezone_options():
     return options
 
 
-def build_www(check_only=False, output_dir=None, test_hooks=False):
+def build_www(check_only=False, output_dir=None, test_hooks=False, retain_current_bundle=False):
     """Build one shared www.js containing the validated device profiles."""
     devices = build_web_devices()
     embedded_mdi_styles = embedded_web_mdi_styles()
@@ -4038,11 +4059,33 @@ def build_www(check_only=False, output_dir=None, test_hooks=False):
         (build_root / "web-assets.json", manifest_text),
     ])
 
+    output_root = build_root if output_dir is not None else WWW_OUTPUT_DIR
+    if retain_current_bundle and output_dir is None:
+        retention = {"schemaVersion": 1, "paths": []}
+        if WEB_BUNDLE_RETENTION.exists():
+            retention = json.loads(WEB_BUNDLE_RETENTION.read_text(encoding="utf-8"))
+        paths = list(dict.fromkeys([*retention.get("paths", []), bundle_relative_path.as_posix()]))
+        outputs.append((
+            build_root / "bundle-retention.json",
+            json.dumps({"schemaVersion": 1, "paths": sorted(paths)}, indent=2) + "\n",
+        ))
+
+    retained = {entry["path"] for entry in json.loads(manifest_text)["bundles"]}
+    if output_dir is None and WEB_BUNDLE_RETENTION.exists():
+        retention = json.loads(WEB_BUNDLE_RETENTION.read_text(encoding="utf-8"))
+        retained.update(retention.get("paths", []))
+    stale = sorted(
+        path for path in (output_root / "bundles").glob("*/www.js")
+        if path.relative_to(output_root).as_posix() not in retained
+    )
+
     if output_dir is not None:
         for path, generated in outputs:
             if not path.exists() or path.read_text() != generated:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(generated, encoding="utf-8")
+        for path in stale:
+            path.unlink()
         print(f"Built shared www.js bundle, immutable asset, and {len(devices)} compatibility loader(s) in {build_root}")
         return []
 
@@ -4056,10 +4099,19 @@ def build_www(check_only=False, output_dir=None, test_hooks=False):
         if not path.exists() or path.read_text() != generated
     ]
 
+    dirty.extend(str(path.relative_to(WWW_OUTPUT_DIR)) for path in stale)
+
     if not check_only:
         for path, generated in outputs:
             if not path.exists() or path.read_text() != generated:
                 write_generated_text(path, generated)
+
+        # Publish the replacement manifest before removing its obsolete assets.
+        for path in stale:
+            if GENERATED_TRANSACTION is None:
+                path.unlink()
+            else:
+                GENERATED_TRANSACTION.stage_delete(path)
 
     if check_only and dirty:
         print("www.js outputs are out of date. Run 'python scripts/build.py www' to fix:")
@@ -4087,6 +4139,8 @@ def main():
     check_only = "--check" in args
     test_hooks = "--test-hooks" in args
     args = [arg for arg in args if arg != "--test-hooks"]
+    retain_current_bundle = "--retain-current-bundle" in args
+    args = [arg for arg in args if arg != "--retain-current-bundle"]
     temporary_output = None
     if "--temporary-output" in args:
         index = args.index("--temporary-output")
@@ -4113,7 +4167,10 @@ def main():
                 contract_dirty = sync_card_contract(check_only=check_only)
                 device_dirty = sync_device_capabilities(check_only=check_only)
                 icon_dirty = sync_icons(check_only=check_only)
-                www_dirty = build_www(check_only=check_only)
+                www_dirty = build_www(
+                    check_only=check_only,
+                    retain_current_bundle=retain_current_bundle,
+                )
                 if check_only and (entity_dirty or i18n_dirty or contract_dirty or device_dirty or icon_dirty or www_dirty):
                     exit_code = 1
                 elif not entity_dirty and not i18n_dirty and not contract_dirty and not device_dirty and not icon_dirty and not www_dirty:
@@ -4165,7 +4222,12 @@ def main():
                 else:
                     print(f"Synced {len(dirty)} device capability output(s).")
             elif cmd == "www":
-                dirty = build_www(check_only=check_only, output_dir=temporary_output, test_hooks=test_hooks)
+                dirty = build_www(
+                    check_only=check_only,
+                    output_dir=temporary_output,
+                    test_hooks=test_hooks,
+                    retain_current_bundle=retain_current_bundle,
+                )
                 if check_only and dirty:
                     exit_code = 1
                 elif not dirty:
@@ -4174,7 +4236,11 @@ def main():
                     print(f"Built {len(dirty)} file(s).")
             else:
                 print(f"Unknown command: {cmd}")
-                print("Usage: python scripts/build.py [all|entities|contract|devices|icons|i18n|www] [--check]")
+                print(
+                    "Usage: python scripts/build.py "
+                    "[all|entities|contract|devices|icons|i18n|www] [--check] "
+                    "[--retain-current-bundle]"
+                )
                 exit_code = 1
         if exit_code == 0 and transaction is not None:
             transaction.commit()

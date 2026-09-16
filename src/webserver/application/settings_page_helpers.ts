@@ -70,6 +70,11 @@ export interface SettingsPageHelpersFeature {
     createEntityToggleSection(...args: any[]): any;
 }
 
+export function formatHomeAssistantArtworkEndpointStatus(status: string): string {
+    const normalized = String(status || "").trim();
+    return normalized.replace(/^(?:Automatic|Fallback|Manual)\s*[—-]\s*/i, "").trim() || "Discovering";
+}
+
 export function createSettingsPageHelpersFeature(
     controllers: SettingsPageHelpersControllers,
 ): SettingsPageHelpersFeature {
@@ -456,10 +461,21 @@ export function createSettingsPageHelpersFeature(
             els.setHomeAssistantArtworkEndpointMode.value = state.homeAssistantArtworkEndpointMode;
         }
         var manualEndpoint: any = state.homeAssistantArtworkEndpointMode === "Manual";
+        if (els.setHomeAssistantArtworkProtocolField) {
+            els.setHomeAssistantArtworkProtocolField.classList.toggle("sp-hidden", !manualEndpoint);
+        }
+        if (els.setCoverArtHomeAssistantPortField) {
+            els.setCoverArtHomeAssistantPortField.classList.toggle("sp-hidden", !manualEndpoint);
+        }
         if (els.setHomeAssistantArtworkProtocol) els.setHomeAssistantArtworkProtocol.disabled = !manualEndpoint;
         if (els.setCoverArtHomeAssistantPort) els.setCoverArtHomeAssistantPort.disabled = !manualEndpoint;
         if (els.homeAssistantArtworkEndpointStatus) {
-            els.homeAssistantArtworkEndpointStatus.textContent = state.homeAssistantArtworkEndpointStatus || "Discovering";
+            var endpointStatus: any = formatHomeAssistantArtworkEndpointStatus(state.homeAssistantArtworkEndpointStatus);
+            if (els.homeAssistantArtworkEndpointStatusOutput) {
+                els.homeAssistantArtworkEndpointStatusOutput.textContent = endpointStatus;
+            } else {
+                els.homeAssistantArtworkEndpointStatus.textContent = endpointStatus;
+            }
         }
         if (els.setCoverArtFilterToggle) {
             els.setCoverArtFilterToggle.checked = !!state.coverArtFilteringEnabled;

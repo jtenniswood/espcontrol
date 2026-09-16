@@ -308,7 +308,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-card-badge.sp-hidden{display:none}" +
         ".sp-panel{background:var(--surface);border-radius:var(--radius);padding:24px;" +
         "margin-bottom:var(--gap);border:1px solid var(--border)}" +
-        ".sp-field{margin-bottom:24px}.sp-field:last-child{margin-bottom:0}" +
+        ".sp-field{margin-bottom:24px}.sp-field.sp-hidden{display:none}.sp-field:last-child{margin-bottom:0}" +
         ".sp-field.sp-icon-on-field:last-child{margin-bottom:44px}" +
         ".sp-state-translation-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px 14px;margin-bottom:28px}" +
         ".sp-state-translation-grid .sp-field{margin-bottom:0}" +
@@ -396,6 +396,12 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-delete-btn:hover,.sp-hide-btn:hover,.sp-cancel-btn:hover{background:var(--border);color:var(--text)}" +
         ".sp-save-btn{background:var(--accent);color:#fff}" +
         ".sp-save-btn:hover{background:var(--accent-hover);box-shadow:var(--shadow-1)}" +
+        ".sp-transfer-copy-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;" +
+        "border:1px solid var(--border);background:var(--surface2);color:var(--text2);" +
+        "transition:background .25s,color .25s,border-color .25s,opacity .25s,box-shadow .25s}" +
+        ".sp-transfer-copy-btn:hover{background:var(--border);border-color:var(--text3);color:var(--text);box-shadow:var(--shadow-1)}" +
+        ".sp-transfer-copy-btn.sp-copied{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-hover)}" +
+        ".sp-transfer-copy-btn.sp-copied:hover{background:var(--accent-soft);border-color:var(--accent-hover);color:var(--accent-hover)}" +
         ".sp-edit-subpage-btn{background:var(--accent);color:#fff}" +
         ".sp-edit-subpage-btn:hover{background:var(--accent-hover);box-shadow:var(--shadow-1)}" +
         ".sp-btn-row--save{margin-top:24px;justify-content:flex-end}" +
@@ -470,6 +476,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-info-panel .mdi{font-size:18px;color:var(--accent);line-height:1.1;flex:0 0 auto;margin-top:1px}" +
         ".sp-info-panel a{color:var(--accent);font-weight:600;text-decoration:none}" +
         ".sp-info-panel a:hover{text-decoration:underline}" +
+        "#sp-ha-artwork-endpoint-status code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere}" +
         ".sp-reset-backup-info{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center}" +
         ".sp-reset-backup-info .sp-action-btn{white-space:nowrap}" +
         "@media(max-width:480px){.sp-reset-backup-info{grid-template-columns:auto minmax(0,1fr)}" +

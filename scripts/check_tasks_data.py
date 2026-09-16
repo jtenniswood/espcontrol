@@ -280,7 +280,7 @@ TASKS = (
          parallel_safe=True, cache="never"),
     task("public-firmware-script", ("python3", "scripts/check_public_firmware.py", "--self-test"), profiles=PRODUCT,
          domains=("firmware", "workflow"), inputs=("scripts/**", "docs/public/**"), parallel_safe=True),
-    task("web-browser-smoke", ("node", "scripts/check_web_browser_smoke.js"), dependencies=("generated", "device-manifest-output"), profiles=CI + RELEASE,
+    task("web-browser-smoke", ("node", "scripts/check_web_browser_smoke.js"), dependencies=("generated", "device-manifest-output"), profiles=("all", "release"),
          domains=("web",), inputs=("src/webserver/**", "devices/**", "common/addon/time.yaml", "scripts/check_web_browser_smoke.js", "package-lock.json") + WEB_SOURCE_HELPERS,
          generated_inputs=("docs/public/webserver/**",),
          cache_env=("PLAYWRIGHT_BROWSERS_PATH", "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD")),

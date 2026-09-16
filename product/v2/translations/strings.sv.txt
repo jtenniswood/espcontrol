@@ -159,6 +159,7 @@ snowy=Snöigt
 snowy_and_rain=Snö och regn
 spot_clean=Punktstädning
 start=Starta
+start_dock=Start / Dock
 still=Still
 subpage=Undersida
 stop=Stoppa

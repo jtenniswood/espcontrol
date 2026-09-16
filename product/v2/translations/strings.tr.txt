@@ -159,6 +159,7 @@ snowy=Karlı
 snowy_and_rain=Kar ve yağmur
 spot_clean=Nokta temizliği
 start=Başlat
+start_dock=Start / Dock
 still=Durgun
 subpage=Alt sayfa
 stop=Durdur

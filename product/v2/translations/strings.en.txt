@@ -159,6 +159,7 @@ snowy=Snowy
 snowy_and_rain=Snowy And Rain
 spot_clean=Spot Clean
 start=Start
+start_dock=Start / Dock
 still=Still
 subpage=Subpage
 stop=Stop

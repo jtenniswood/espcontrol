@@ -50,6 +50,11 @@ int main() {
                                          "http://other.local:8123", false};
   assert(select_discovered_origin({matching, same_host_other_instance},
                                   "192.168.1.10", "http").empty());
+  ServiceRecord duplicate_matching{{"192.168.1.10"}, 80,
+                                   "http://homeassistant.local", false};
+  assert(select_discovered_origin({matching, duplicate_matching},
+                                  "192.168.1.10", "http") ==
+         "http://192.168.1.10:80");
 
   ServiceRecord missing_url{{"fe80::1234"}, 8123, "", false};
   assert(select_discovered_origin({missing_url}, "[fe80::1234]", "https") ==

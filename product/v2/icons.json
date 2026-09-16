@@ -185,6 +185,16 @@
       "mdi": "bell-ring"
     },
     {
+      "name": "Alarm Bell",
+      "codepoint": "F078E",
+      "mdi": "alarm-bell"
+    },
+    {
+      "name": "Alarm Clock",
+      "codepoint": "F0020",
+      "mdi": "alarm"
+    },
+    {
       "name": "Alarm Light",
       "codepoint": "F078F",
       "mdi": "alarm-light"
@@ -435,6 +445,11 @@
       "mdi": "chair-rolling"
     },
     {
+      "name": "Chef Hat",
+      "codepoint": "F0B7C",
+      "mdi": "chef-hat"
+    },
+    {
       "name": "Chevron Down",
       "codepoint": "F0140",
       "mdi": "chevron-down"
@@ -443,6 +458,16 @@
       "name": "Chevron Up",
       "codepoint": "F0143",
       "mdi": "chevron-up"
+    },
+    {
+      "name": "Coach Lamp",
+      "codepoint": "F1020",
+      "mdi": "coach-lamp"
+    },
+    {
+      "name": "Coach Lamp Variant",
+      "codepoint": "F1A37",
+      "mdi": "coach-lamp-variant"
     },
     {
       "name": "Clock",
@@ -815,6 +840,11 @@
       "mdi": "lamp-outline"
     },
     {
+      "name": "Lava Lamp",
+      "codepoint": "F07D5",
+      "mdi": "lava-lamp"
+    },
+    {
       "name": "LAN",
       "codepoint": "F0317",
       "mdi": "lan"
@@ -878,6 +908,11 @@
       "name": "Lightbulb Auto Outline",
       "codepoint": "F1801",
       "mdi": "lightbulb-auto-outline"
+    },
+    {
+      "name": "Lightbulb Fluorescent Tube Outline",
+      "codepoint": "F1805",
+      "mdi": "lightbulb-fluorescent-tube-outline"
     },
     {
       "name": "Lightbulb Group",
@@ -1123,6 +1158,11 @@
       "name": "Pool",
       "codepoint": "F0606",
       "mdi": "pool"
+    },
+    {
+      "name": "Post Lamp",
+      "codepoint": "F1A60",
+      "mdi": "post-lamp"
     },
     {
       "name": "Power",
@@ -1523,6 +1563,11 @@
       "name": "Toilet",
       "codepoint": "F09AB",
       "mdi": "toilet"
+    },
+    {
+      "name": "Toy Brick",
+      "codepoint": "F1288",
+      "mdi": "toy-brick"
     },
     {
       "name": "Track Light",

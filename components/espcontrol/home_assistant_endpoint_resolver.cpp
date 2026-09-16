@@ -1,6 +1,7 @@
 #include "home_assistant_endpoint_resolver.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <cstring>
 #include <utility>
@@ -74,10 +75,13 @@ void HomeAssistantEndpointResolver::request_discovery() {
   if (mode_ != home_assistant_endpoint::Mode::AUTOMATIC) return;
   cancel_query();
   retry_stage_ = 0;
-  const std::string pending_origin = origin_.empty()
-      ? home_assistant_endpoint::build_origin(protocol_, client_address_, port_)
-      : origin_;
-  publish(pending_origin, home_assistant_endpoint::Source::DISCOVERING);
+  const bool keep_verified_origin = source_ == home_assistant_endpoint::Source::AUTOMATIC &&
+      !origin_.empty() && !client_address_.empty();
+  const std::string pending_origin = !client_address_.empty() && !origin_.empty()
+      ? origin_
+      : home_assistant_endpoint::build_origin(protocol_, client_address_, port_);
+  if (!keep_verified_origin)
+    publish(pending_origin, home_assistant_endpoint::Source::DISCOVERING);
   next_query_ms_ = esphome::millis();
 }
 
@@ -142,10 +146,13 @@ void HomeAssistantEndpointResolver::loop() {
         const char *value = result->txt[index].value;
         if (key == nullptr) continue;
         if (std::strcmp(key, "internal_url") == 0 && value != nullptr)
-          record.internal_url = value;
-        if (std::strcmp(key, "landingpage") == 0 && value != nullptr &&
-            (std::strcmp(value, "True") == 0 || std::strcmp(value, "true") == 0))
-          record.landing_page = true;
+          record.internal_url = home_assistant_endpoint::trim_copy(value);
+        if (std::strcmp(key, "landingpage") == 0 && value != nullptr) {
+          std::string landing_page = home_assistant_endpoint::trim_copy(value);
+          std::transform(landing_page.begin(), landing_page.end(), landing_page.begin(),
+                         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+          record.landing_page = landing_page == "true" || landing_page == "1";
+        }
       }
       records.push_back(std::move(record));
     }
@@ -173,7 +180,11 @@ void HomeAssistantEndpointResolver::loop() {
       next_query_ms_ = now + RETRY_DELAYS_MS[2];
       return;
     }
-    recompute_fallback();
+    // A missed mDNS response is transient on busy or segmented networks. A
+    // previously verified endpoint is safer and more useful than immediately
+    // switching a working installation to the 8123 fallback.
+    if (source_ != home_assistant_endpoint::Source::AUTOMATIC)
+      recompute_fallback();
     schedule_retry(now);
     return;
   }
@@ -193,7 +204,8 @@ void HomeAssistantEndpointResolver::start_query(uint32_t now) {
     return;
   }
 #endif
-  recompute_fallback();
+  if (source_ != home_assistant_endpoint::Source::AUTOMATIC)
+    recompute_fallback();
   schedule_retry(now);
 }
 
