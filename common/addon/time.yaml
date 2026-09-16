@@ -18,12 +18,8 @@ esphome:
       - lambda: |-
           id(clock_format_12h) = id(clock_format_select).current_option() == "12h";
           std::string timezone_option = id(timezone_select).current_option();
-          const char *posix = apply_configured_timezone(timezone_option);
+          apply_configured_timezone(timezone_option);
           set_espcontrol_language(id(language_select).current_option());
-          if (posix != nullptr) {
-            id(panel_time).set_timezone(posix);
-            id(homeassistant_time).set_timezone(posix);
-          }
           set_display_temperature_unit(id(temperature_unit_select).current_option(),
                                        timezone_option);
           id(screen_active_timezone_sensor).publish_state(effective_timezone_option(timezone_option));
@@ -188,10 +184,7 @@ select:
         - lambda: |-
             std::string timezone_option(x.c_str(), x.size());
             const char *posix = apply_configured_timezone(timezone_option);
-            if (posix != nullptr) {
-              id(panel_time).set_timezone(posix);
-              id(homeassistant_time).set_timezone(posix);
-            } else {
+            if (posix == nullptr) {
               if (ha_api_state_connected()) id(homeassistant_time).update();
             }
             set_display_temperature_unit(id(temperature_unit_select).current_option(),
@@ -428,10 +421,6 @@ script:
       - lambda: |-
           std::string timezone_option = id(timezone_select).current_option();
           const char *posix = apply_configured_timezone(timezone_option);
-          if (posix != nullptr) {
-            id(panel_time).set_timezone(posix);
-            id(homeassistant_time).set_timezone(posix);
-          }
           set_display_temperature_unit(id(temperature_unit_select).current_option(),
                                        timezone_option);
           std::string active_timezone = effective_timezone_option(timezone_option);

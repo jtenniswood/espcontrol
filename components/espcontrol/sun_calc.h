@@ -249,9 +249,16 @@ inline const char* current_posix_tz(const std::string &tz_id) {
   return resolve_posix_tz_at_utc(tz_id, utc_point_from_tm(utc_tm));
 }
 
+#if defined(USE_TIME_TIMEZONE)
+inline bool set_global_timezone_from_posix(const char *posix);
+#endif
+
 inline const char* apply_timezone(const std::string &tz_option) {
   std::string tz_id = timezone_id_from_option(tz_option);
   const char* posix = current_posix_tz(tz_id);
+#if defined(USE_TIME_TIMEZONE)
+  set_global_timezone_from_posix(posix);
+#endif
   setenv("TZ", posix, 1);
   tzset();
   return posix;
@@ -263,24 +270,6 @@ inline const char* apply_configured_timezone(const std::string &tz_option) {
 }
 
 #if defined(USE_TIME_TIMEZONE)
-inline bool timezone_dst_rule_equal(const esphome::time::DSTRule &a,
-                                    const esphome::time::DSTRule &b) {
-  return a.time_seconds == b.time_seconds &&
-         a.day == b.day &&
-         a.type == b.type &&
-         a.month == b.month &&
-         a.week == b.week &&
-         a.day_of_week == b.day_of_week;
-}
-
-inline bool parsed_timezone_equal(const esphome::time::ParsedTimezone &a,
-                                  const esphome::time::ParsedTimezone &b) {
-  return a.std_offset_seconds == b.std_offset_seconds &&
-         a.dst_offset_seconds == b.dst_offset_seconds &&
-         timezone_dst_rule_equal(a.dst_start, b.dst_start) &&
-         timezone_dst_rule_equal(a.dst_end, b.dst_end);
-}
-
 inline bool posix_timezone_matches_global(const char *posix);
 #endif
 
@@ -401,6 +390,36 @@ inline bool parse_posix_tz_rule(const char *posix,
 }
 
 #if defined(USE_TIME_TIMEZONE)
+inline bool set_global_timezone_from_posix(const char *posix) {
+  int std_offset_seconds = 0;
+  int dst_offset_seconds = 0;
+  bool has_dst = false;
+  TzPosixTransitionRule start_rule = {};
+  TzPosixTransitionRule end_rule = {};
+  if (!parse_posix_tz_rule(posix, std_offset_seconds, has_dst,
+                           dst_offset_seconds, start_rule, end_rule)) {
+    return false;
+  }
+
+  esphome::time::ParsedTimezone parsed{};
+  parsed.std_offset_seconds = std_offset_seconds;
+  parsed.dst_offset_seconds = dst_offset_seconds;
+  if (has_dst) {
+    parsed.dst_start.time_seconds = start_rule.seconds;
+    parsed.dst_start.type = esphome::time::DSTRuleType::MONTH_WEEK_DAY;
+    parsed.dst_start.month = start_rule.month;
+    parsed.dst_start.week = start_rule.week;
+    parsed.dst_start.day_of_week = start_rule.day;
+    parsed.dst_end.time_seconds = end_rule.seconds;
+    parsed.dst_end.type = esphome::time::DSTRuleType::MONTH_WEEK_DAY;
+    parsed.dst_end.month = end_rule.month;
+    parsed.dst_end.week = end_rule.week;
+    parsed.dst_end.day_of_week = end_rule.day;
+  }
+  esphome::time::set_global_tz(parsed);
+  return true;
+}
+
 inline bool posix_timezone_matches_global(const char *posix) {
   int std_offset_seconds = 0;
   int dst_offset_seconds = 0;
