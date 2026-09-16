@@ -159,6 +159,7 @@ snowy=Nevado
 snowy_and_rain=Nieve y lluvia
 spot_clean=Limpieza localizada
 start=Iniciar
+start_dock=Start / Dock
 still=Quieto
 subpage=Subpágina
 stop=Detener

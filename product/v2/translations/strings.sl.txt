@@ -159,6 +159,7 @@ snowy=Snežno
 snowy_and_rain=Sneg in dež
 spot_clean=Točkovno čiščenje
 start=Začni
+start_dock=Start / Dock
 still=Mirovanje
 subpage=Podstran
 stop=Ustavi

@@ -5261,6 +5261,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Snowy And Rain";
   if (std::strcmp(key, "spot_clean") == 0) return "Spot Clean";
   if (std::strcmp(key, "start") == 0) return "Start";
+  if (std::strcmp(key, "start_dock") == 0) return "Start / Dock";
   if (std::strcmp(key, "still") == 0) return "Still";
   if (std::strcmp(key, "subpage") == 0) return "Subpage";
   if (std::strcmp(key, "stop") == 0) return "Stop";

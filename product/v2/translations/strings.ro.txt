@@ -159,6 +159,7 @@ snowy=Ninsoare
 snowy_and_rain=Ninsoare și ploaie
 spot_clean=Curățare locală
 start=Pornire
+start_dock=Start / Dock
 still=Nemișcat
 subpage=Subpagină
 stop=Oprire

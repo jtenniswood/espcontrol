@@ -159,6 +159,7 @@ snowy=Снег
 snowy_and_rain=Снег с дождём
 spot_clean=Точечная уборка
 start=Старт
+start_dock=Start / Dock
 still=Неподвижно
 subpage=Подстраница
 stop=Стоп

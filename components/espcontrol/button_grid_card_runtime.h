@@ -581,7 +581,7 @@ inline bool card_runtime_weather_forecast_precision(const std::string &precision
 }
 
 inline std::string card_runtime_vacuum_mode(const std::string &mode) {
-  if (mode == "status" || mode == "start_stop" || mode == "dock" ||
+  if (mode == "status" || mode == "start_stop" || mode == "start_dock" || mode == "dock" ||
       mode == "pause_resume" || mode == "clean_spot" || mode == "locate" ||
       mode == "clean_area") {
     return mode;
@@ -593,7 +593,13 @@ inline std::string card_runtime_vacuum_mode(const std::string &mode) {
 
 inline bool card_runtime_vacuum_state_mode(const std::string &mode) {
   std::string normalized = card_runtime_vacuum_mode(mode);
-  return normalized == "status" || normalized == "start_stop" || normalized == "pause_resume";
+  return normalized == "status" || normalized == "start_stop" || normalized == "start_dock" || normalized == "pause_resume";
+}
+
+inline const char *card_runtime_vacuum_start_dock_service(const std::string &state) {
+  if (state == "cleaning") return "vacuum.return_to_base";
+  if (state == "docked" || state == "idle" || state == "paused") return "vacuum.start";
+  return nullptr;
 }
 
 inline const char *card_runtime_vacuum_default_icon_name(const std::string &mode) {

@@ -21,6 +21,7 @@ export const LAWN_MOWER_CARD_MODES = [
 export const VACUUM_CARD_MODES = [
     ["status", "Status"],
     ["start_stop", "Start / Stop"],
+    ["start_dock", "Start / Dock"],
     ["dock", "Dock"],
     ["pause_resume", "Pause / Resume"],
     ["clean_spot", "Spot Clean"],

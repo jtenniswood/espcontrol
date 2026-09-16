@@ -159,6 +159,7 @@ snowy=Havas
 snowy_and_rain=Hó és eső
 spot_clean=Folttisztítás
 start=Indítás
+start_dock=Start / Dock
 still=Álló
 subpage=Aloldal
 stop=Leállítás

@@ -112,6 +112,18 @@ int main() {
   const auto fan_preset = card_runtime_context("fan_preset");
   const auto option_select = card_runtime_context("option_select");
   const auto vacuum = card_runtime_context("vacuum");
+  if (card_runtime_vacuum_mode("start_dock") != "start_dock" ||
+      !card_runtime_vacuum_state_mode("start_dock") ||
+      std::string(card_runtime_vacuum_start_dock_service("cleaning")) !=
+        "vacuum.return_to_base" ||
+      std::string(card_runtime_vacuum_start_dock_service("docked")) !=
+        "vacuum.start" ||
+      std::string(card_runtime_vacuum_start_dock_service("paused")) !=
+        "vacuum.start" ||
+      card_runtime_vacuum_start_dock_service("returning") != nullptr ||
+      card_runtime_vacuum_start_dock_service("unknown") != nullptr) {
+    return EXIT_FAILURE;
+  }
   const auto mower = card_runtime_context("lawn_mower");
   const auto garage = card_runtime_context("garage");
   const auto gate = card_runtime_context("gate");
