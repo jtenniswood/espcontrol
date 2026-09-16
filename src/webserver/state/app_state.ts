@@ -42,6 +42,7 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     alarmDelayBeepVolume: 0.45, alarmDelayFinalCountdown: 10,
     networkTransport: "wifi", wifiStrengthPercent: 100,
     temperatureDegreeSymbolOn: true, subpageChevronsOn: true, presenceEntity: "",
+    screensaverCameraEntity: "", screensaverCameraImageMode: "Fit",
     mediaPlayerSleepPreventionOn: true, mediaPlayerSleepPreventionEntity: "",
     coverArtScreensaverOn: false, coverArtMediaPlayerEntity: "", coverArtSecondaryMediaPlayerEntity: "", coverArtAttributeConditions: "",
     coverArtFilteringEnabled: false, coverArtDelay: 10, coverArtTrackOverlayDuration: 5,
