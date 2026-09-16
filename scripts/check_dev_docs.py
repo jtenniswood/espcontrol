@@ -286,6 +286,10 @@ def read_json(path: str) -> object:
     return json.loads((ROOT / path).read_text())
 
 
+def is_hidden_path(path: Path) -> bool:
+    return any(part.startswith(".") for part in path.relative_to(ROOT).parts)
+
+
 def normalize_build_flag(value: str) -> str:
     value = value.strip()
     if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
@@ -311,14 +315,18 @@ def included_yaml_paths(path: Path) -> list[Path]:
                 raise ValueError(
                     f"{rel(path)} includes YAML outside the repository: {include_value}"
                 ) from error
-            if include_path.suffix in {".yaml", ".yml"} and include_path.is_file():
+            if (
+                include_path.suffix in {".yaml", ".yml"}
+                and include_path.is_file()
+                and not is_hidden_path(include_path)
+            ):
                 included.append(include_path)
     return included
 
 
 def device_yaml_graph(device_root: Path) -> set[Path]:
     """Return device YAML plus local shared YAML reachable through includes."""
-    pending = list(device_root.glob("**/*.yaml"))
+    pending = [path for path in device_root.glob("**/*.yaml") if not is_hidden_path(path)]
     visited: set[Path] = set()
     while pending:
         path = pending.pop().resolve()

@@ -10,8 +10,8 @@ A Camera card shows a still image from a Home Assistant `camera` or `image` enti
 
 Camera cards are display cards. They do not stream live video, pan the camera, or send camera control actions. Tapping the card opens a larger view of the latest loaded image.
 
-::: info P4 screens only
-Camera cards are not supported on the ESP32-S3 screen because it has an older, slower processor and less available memory than the ESP32-P4 screens.
+::: info Display limits
+ESP32-P4 screens support up to six Camera or Media Cover Art cards. The 4-inch ESP32-S3 supports two shared image cards, allowing one Camera Card alongside one Media Cover Art card.
 :::
 
 ## Setting Up a Camera Card
@@ -33,6 +33,7 @@ If your Home Assistant instance uses a custom port, open **Settings > System > H
 - The card asks Home Assistant for the entity picture and downloads it through Home Assistant.
 - The small card requests a snapshot sized for its grid tile, which avoids downloading and processing more pixels than the tile can show.
 - Tapping the card opens the larger view immediately. A recent tile is shown while the larger image loads, when one is available.
+- On the 4-inch S3, closing the larger view keeps its image for up to 15 seconds when memory permits. Reopening within that window reuses it if the source has not changed.
 - Recently loaded images are kept for reuse when you move between pages, so returning to a camera page does not normally start from a blank tile.
 - The card refreshes when Home Assistant reports a new entity picture or an entity state update.
 - If the image cannot be loaded, the card shows **Loading**, **Unavailable**, **Configure**, or **Too many** instead of leaving a blank tile.
@@ -62,13 +63,15 @@ actions:
   - action: esphome.kitchen_panel_refresh_camera_cards
 ```
 
-Replace the camera, file path, and generated ESPHome action with the values from your Home Assistant setup. If a refresh fails, the panel keeps showing the last image that loaded successfully.
+Replace the camera, file path, and generated ESPHome action with the values from your Home Assistant setup. If a refresh fails, the card and any open larger view show **Unavailable**. Failed downloads retry with increasing delays, up to 30 seconds. An entity reported as unavailable by Home Assistant waits for a state change before downloading again.
 
 ## Practical Limits
 
 Camera images use more memory than normal control cards, so EspControl limits how many can be active at once.
 
 ESP32-P4 screens provide **6 shared image slots**. Each Camera card or Media card set to **Cover Art** uses one slot, across the main page and all subpages combined. For example, 4 Camera cards and 2 Media Cover Art cards use all 6 slots.
+
+The 4-inch ESP32-S3 provides **2 shared image slots** across the main page and all subpages. Camera and Media Cover Art cards both use this pool, so one of each can be shown together. Its expanded camera view requests an optimised image up to 320 pixels wide or tall; it remains a still snapshot and does not stream live video.
 
 If you see a **Too many** message or a warning while saving, reduce the number of Camera cards across the main page and subpages.
 
