@@ -159,6 +159,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-btn-max-tall{grid-row:span 3;grid-column:span 2}" +
         ".sp-btn-portrait-large{grid-row:span 4;grid-column:span 3}" +
         ".sp-btn-landscape-large{grid-row:span 3;grid-column:span 4}" +
+        ".sp-notification-message{max-width:100%;overflow:hidden}" +
+        ".sp-notification-message .sp-sensor-value{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
         ".sp-btn-ultra-wide{grid-column:span 5}" +
         ".sp-btn-ultra-wide .sp-media-now-title{-webkit-line-clamp:var(--btn-lines-dbl)}" +
         ".sp-empty-cell{border:2px dashed rgba(255,255,255,.15);background:transparent;" +
@@ -313,6 +315,9 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-state-translation-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px 14px;margin-bottom:28px}" +
         ".sp-state-translation-grid .sp-field{margin-bottom:0}" +
         ".sp-field-stack{display:grid;gap:10px}" +
+        ".sp-notification-legend{display:flex;flex-wrap:wrap;gap:8px}" +
+        ".sp-notification-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;" +
+        "border-radius:999px;font-size:.78rem;font-weight:500;line-height:1.3}" +
         ".sp-field-stack.sp-hidden{display:none}" +
         ".sp-field-label{display:block;font-size:var(--text-sm);font-weight:500;color:var(--text2);margin-bottom:8px}" +
         ".sp-field-info-button{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin:-4px 0 -4px 2px;padding:0;border:0;background:none;color:inherit;cursor:help;font-size:.9rem;vertical-align:middle}" +

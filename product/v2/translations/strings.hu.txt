@@ -256,3 +256,11 @@ timer=Időzítő
 timer_confirm=Megerősítés
 guest_wifi=Vendég Wi-Fi
 wifi_did_not_change=A Wi-Fi állapota nem változott
+
+# Notification card
+notification=Értesítés
+information=Információ
+warning=Figyelmeztetés
+alert=Riasztás
+acknowledge=Nyugtázás
+no_notifications=Nincsenek értesítések

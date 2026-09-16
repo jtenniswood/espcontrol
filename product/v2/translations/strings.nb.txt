@@ -256,3 +256,11 @@ timer=Tidtaker
 timer_confirm=Bekreft
 guest_wifi=Gjeste-Wi-Fi
 wifi_did_not_change=Wi-Fi ble ikke endret
+
+# Notification card
+notification=Varsel
+information=Informasjon
+warning=Advarsel
+alert=Alarm
+acknowledge=Kvitter
+no_notifications=Ingen varsler

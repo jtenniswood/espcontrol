@@ -177,6 +177,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "local_sensor": "docs/card-types/local-sensors.md",
     "lock": "docs/card-types/locks.md",
     "media": "docs/card-types/media.md",
+    "notification": "docs/card-types/notifications.md",
     "option_select": "docs/card-types/option-select.md",
     "push": "docs/card-types/buttons.md",
     "screen_lock": "docs/card-types/screen-lock.md",
@@ -571,7 +572,7 @@ def generated_card_map() -> str:
         checks = ["Contract", "Codec", "Parser"]
         if card.get("domains") or card_type in {"action", "push", "webhook", "weather", "image"}:
             checks.append("HA")
-        if "modal" in " ".join(firmware_files.get(card_type, [])).lower() or card_type in {"alarm", "alarm_action", "climate", "climate_control", "media", "option_select", "image"}:
+        if "modal" in " ".join(firmware_files.get(card_type, [])).lower() or card_type in {"alarm", "alarm_action", "climate", "climate_control", "media", "notification", "option_select", "image"}:
             checks.append("Modals")
         if card.get("options"):
             checks.append("Backup")

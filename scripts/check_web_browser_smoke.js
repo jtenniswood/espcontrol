@@ -2767,6 +2767,22 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
 
     }
 
+    if (cardOption.value === "notification") {
+      const name = page.locator('.sp-settings-modal .sp-panel > [data-sp-card-primary="name"]');
+      assert(await name.isVisible(), `${label}: Notification Name should be outside Card Settings`);
+      assert.strictEqual(await name.locator("label").textContent(), "Name");
+      assert.strictEqual(
+        await name.evaluate((field) => field.previousElementSibling.getAttribute("data-sp-card-primary")),
+        "entity",
+        `${label}: Notification Name should immediately follow Entity`,
+      );
+      assert.strictEqual(
+        await page.locator(".sp-settings-modal .sp-icon-picker").count(),
+        0,
+        `${label}: Notification icon follows the level, so there is no icon picker`,
+      );
+    }
+
     if (cardOption.value === "screen_lock") {
       assert.strictEqual(
         await page.locator("#sp-inp-entity").count(),

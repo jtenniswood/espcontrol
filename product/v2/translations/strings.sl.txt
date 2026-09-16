@@ -256,3 +256,11 @@ timer=Časovnik
 timer_confirm=Potrdi
 guest_wifi=Wi-Fi za goste
 wifi_did_not_change=Stanje Wi-Fi se ni spremenilo
+
+# Notification card
+notification=Obvestilo
+information=Informacija
+warning=Opozorilo
+alert=Alarm
+acknowledge=Potrdi
+no_notifications=Ni obvestil

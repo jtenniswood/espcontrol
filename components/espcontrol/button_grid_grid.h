@@ -261,6 +261,8 @@ inline void grid_prepare_timer_visual_reset(lv_obj_t *owner);
 #include "button_grid_access_cover_driver.h"
 #include "button_grid_cover_modal_driver.h"
 #include "button_grid_navigation_driver.h"
+#include "button_grid_notification.h"
+#include "button_grid_notification_driver.h"
 #include "button_grid_image_driver.h"
 #include "button_grid_wifi_qr.h"
 #include "button_grid_wifi_qr_driver.h"
@@ -545,6 +547,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   espcontrol::cards::navigation_driver_cleanup(s, p, context);
   espcontrol::cards::image_driver_cleanup(s, p, context);
   espcontrol::cards::wifi_qr_driver_cleanup(s, p, context);
+  espcontrol::cards::notification_driver_cleanup(s, p, context);
   espcontrol::cards::light_control_driver_cleanup(s, p, context);
   espcontrol::cards::fan_control_driver_cleanup(s, p, context);
   espcontrol::cards::climate_control_driver_cleanup(s, p, context);
@@ -555,6 +558,26 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     palette.has_off, palette.off_val);
   apply_button_on_pattern(s.btn, p.options, palette.has_on, palette.on_val);
   apply_standard_sensor_number_style(s, display);
+  // Notification cards raise the card label to the title font. Card labels
+  // otherwise inherit their font from the button, so dropping the local
+  // override restores the standard size for whatever card reuses this slot.
+  if (s.text_lbl) {
+    lv_obj_remove_local_style_prop(s.text_lbl, LV_STYLE_TEXT_FONT, LV_PART_MAIN);
+  }
+  // Notification cards also give the value row a fixed width and a scrolling
+  // long mode so a long message marquees inside the card. Both are sticky, so
+  // restore the content-sized, non-scrolling defaults every other card expects.
+  if (s.sensor_container) {
+    lv_obj_set_width(s.sensor_container, LV_SIZE_CONTENT);
+    lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(s.sensor_container, LV_SCROLLBAR_MODE_AUTO);
+  }
+  if (s.sensor_lbl) {
+    lv_label_set_long_mode(s.sensor_lbl, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(s.sensor_lbl, LV_SIZE_CONTENT);
+    lv_obj_remove_local_style_prop(
+      s.sensor_lbl, LV_STYLE_ANIM_DURATION, LV_PART_MAIN);
+  }
   if (s.unit_lbl) lv_obj_clear_flag(s.unit_lbl, LV_OBJ_FLAG_HIDDEN);
   if (s.text_lbl) lv_obj_clear_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
   if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
@@ -617,6 +640,12 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     espcontrol::cards::media_driver_attach_interaction(s, p, context);
     espcontrol::cards::media_driver_refresh_layout(
       s, p, context, cfg, row_span, col_span);
+    return;
+  }
+  if (espcontrol::cards::notification_driver_setup_visual(
+        s, p, context, display)) {
+    espcontrol::cards::notification_driver_attach_interaction(s, p, context);
+    espcontrol::cards::notification_driver_refresh_layout(s, p, context, display);
     return;
   }
   if (espcontrol::cards::sensor_driver_setup_visual(
@@ -924,6 +953,11 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
 
   if (espcontrol::cards::climate_control_driver_refresh_layout(
         s, p, context, display, row_span, col_span)) return;
+
+  if (espcontrol::cards::notification_driver_refresh_layout(
+        s, p, context, display)) {
+    return;
+  }
 
   if (espcontrol::cards::image_driver_refresh_layout(
         s, p, context)) {
@@ -1896,6 +1930,8 @@ inline void grid_phase2(
     if (espcontrol::cards::image_driver_bind_main(
           s, p, context, cfg)) continue;
     if (espcontrol::cards::wifi_qr_driver_bind_main(s, p, context)) continue;
+    if (espcontrol::cards::notification_driver_bind_main(
+          s, p, context, cfg)) continue;
     auto light_control_environment =
       espcontrol::cards::light_control_driver_environment(
         palette, display, s);
@@ -2118,6 +2154,8 @@ inline void grid_phase2(
             sub_slot, sb_cfg, context, cfg)) continue;
       if (espcontrol::cards::wifi_qr_driver_bind_subpage(
             sub_slot, sb_cfg, context)) continue;
+      if (espcontrol::cards::notification_driver_bind_subpage(
+            sub_slot, sb_cfg, context, cfg)) continue;
       auto light_control_environment =
         espcontrol::cards::light_control_driver_environment(
           palette, display, sub_slot);

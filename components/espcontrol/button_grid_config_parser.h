@@ -25,6 +25,7 @@
 #include "button_grid_saved_config_date_time_generated.h"
 #include "button_grid_saved_config_fan_generated.h"
 #include "button_grid_saved_config_media_generated.h"
+#include "button_grid_saved_config_notification_generated.h"
 #include "button_grid_saved_config_mower_generated.h"
 #include "button_grid_saved_config_occupancy_generated.h"
 #include "button_grid_saved_config_sensor_generated.h"
@@ -42,6 +43,9 @@ constexpr const char *SENSOR_TIME_UNIT_OPTION = card_runtime_option_name_time_un
 constexpr const char *IMAGE_LABEL_OPTION = card_runtime_option_name_image_label();
 constexpr const char *IMAGE_ICON_OPTION = card_runtime_option_name_image_icon();
 constexpr const char *IMAGE_MODAL_MODE_OPTION = card_runtime_option_name_image_modal_mode();
+constexpr const char *NOTIFICATION_LEVEL_ATTRIBUTE_OPTION = card_runtime_option_name_notification_level_attribute();
+constexpr const char *NOTIFICATION_MESSAGE_ATTRIBUTE_OPTION = card_runtime_option_name_notification_message_attribute();
+constexpr const char *NOTIFICATION_ACK_ACTION_OPTION = card_runtime_option_name_notification_ack_action();
 constexpr const char *MEDIA_COVER_ART_OPTION = card_runtime_option_name_media_cover_art();
 constexpr const char *MEDIA_COVER_ART_DETAILS_OPTION = card_runtime_option_name_cover_art_details();
 constexpr const char *MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION = card_runtime_option_name_cover_art_secondary_entity();
@@ -482,6 +486,96 @@ inline std::string image_card_options_normalized(const std::string &options) {
   if (modal_mode != card_runtime_image_modal_mode_default()) {
     if (!out.empty()) out += ",";
     out += std::string(IMAGE_MODAL_MODE_OPTION) + "=" + modal_mode;
+  }
+  return out;
+}
+
+enum class NotificationLevel : uint8_t {
+  INFORMATION,
+  WARNING,
+  ALERT,
+};
+
+// Home Assistant caps entity states at 255 characters; attribute messages can
+// be longer, so keep a bound that comfortably covers a few sentences without
+// letting one card own an unbounded string.
+constexpr size_t NOTIFICATION_MAX_MESSAGE_LENGTH = 512;
+constexpr size_t NOTIFICATION_MAX_LEVEL_LENGTH = 32;
+
+// Level names are matched loosely so ordinary Home Assistant template sensors
+// work without extra configuration. src/webserver/application/
+// config_notification_contract.ts applies the same aliases in the browser.
+inline NotificationLevel notification_level_from_text(const std::string &value) {
+  std::string level = trim_saved_option_value(value);
+  for (char &ch : level) {
+    ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  }
+  if (level == "alert" || level == "critical" || level == "error" ||
+      level == "danger" || level == "severe" || level == "high") {
+    return NotificationLevel::ALERT;
+  }
+  if (level == "warning" || level == "warn" || level == "caution" ||
+      level == "medium") {
+    return NotificationLevel::WARNING;
+  }
+  return NotificationLevel::INFORMATION;
+}
+
+// Notification cards store three text options: which attribute carries the
+// severity level, an optional attribute carrying the message, and an optional
+// Home Assistant action used to acknowledge the message.
+inline std::string notification_card_level_attribute(const std::string &options) {
+  const std::string value = trim_saved_option_value(
+    cfg_option_value(options, NOTIFICATION_LEVEL_ATTRIBUTE_OPTION));
+  return value.empty() ? card_runtime_notification_level_attribute_default() : value;
+}
+
+inline std::string notification_card_message_attribute(const std::string &options) {
+  return trim_saved_option_value(
+    cfg_option_value(options, NOTIFICATION_MESSAGE_ATTRIBUTE_OPTION));
+}
+
+inline std::string notification_card_ack_action(const std::string &options) {
+  return trim_saved_option_value(
+    cfg_option_value(options, NOTIFICATION_ACK_ACTION_OPTION));
+}
+
+// A Home Assistant action is only callable as "domain.service".
+inline bool notification_card_ack_action_valid(const std::string &action) {
+  const size_t dot = action.find('.');
+  if (dot == std::string::npos || dot == 0 || dot + 1 >= action.size()) return false;
+  if (action.find('.', dot + 1) != std::string::npos) return false;
+  for (char ch : action) {
+    const unsigned char value = static_cast<unsigned char>(ch);
+    if (ch == '.' || ch == '_' || std::islower(value) || std::isdigit(value)) continue;
+    return false;
+  }
+  return true;
+}
+
+inline std::string notification_card_options_normalized(const std::string &options) {
+  std::string out;
+  const std::string level_attribute = trim_saved_option_value(
+    cfg_option_value(options, NOTIFICATION_LEVEL_ATTRIBUTE_OPTION));
+  if (!level_attribute.empty() &&
+      level_attribute != card_runtime_notification_level_attribute_default()) {
+    out += std::string(NOTIFICATION_LEVEL_ATTRIBUTE_OPTION) + "=" +
+      encode_compact_field(level_attribute);
+  }
+  const std::string message_attribute = notification_card_message_attribute(options);
+  if (!message_attribute.empty()) {
+    if (!out.empty()) out += ",";
+    out += std::string(NOTIFICATION_MESSAGE_ATTRIBUTE_OPTION) + "=" +
+      encode_compact_field(message_attribute);
+  }
+  std::string ack_action = notification_card_ack_action(options);
+  for (char &ch : ack_action) {
+    ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  }
+  if (notification_card_ack_action_valid(ack_action)) {
+    if (!out.empty()) out += ",";
+    out += std::string(NOTIFICATION_ACK_ACTION_OPTION) + "=" +
+      encode_compact_field(ack_action);
   }
   return out;
 }
@@ -1197,6 +1291,11 @@ inline std::string normalize_saved_config_image_options(
   return image_card_options_normalized(options);
 }
 
+inline std::string normalize_saved_config_notification_options(
+    const std::string &options, const ParsedCfg &) {
+  return notification_card_options_normalized(options);
+}
+
 inline void normalize_saved_config_climate_fields(ParsedCfg &p) {
   if (p.icon.empty()) p.icon = "Thermostat";
   if (p.icon_on.empty()) p.icon_on = "Auto";
@@ -1300,6 +1399,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
       p, normalize_saved_config_webhook_fields, normalize_saved_config_webhook_options);
   normalize_saved_config_image(
       p, normalize_saved_config_image_fields, normalize_saved_config_image_options);
+  normalize_saved_config_notification(p, normalize_saved_config_notification_options);
   const bool normalized_saved_static = normalize_saved_config_static(p);
   normalize_saved_config_date_time(
       p, normalize_saved_config_date_time_fields, date_time_card_options_normalized);
@@ -1325,7 +1425,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   const bool normalized_saved_occupancy = normalize_saved_config_occupancy(
       p, normalize_saved_config_occupancy_fields,
       normalize_saved_config_occupancy_options);
-  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "wifi_qr" && p.type != "wifi_qr_card" && p.type != "light_control" && p.type != "vacuum" && !card_large_numbers_supported(p)) {
+  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "wifi_qr" && p.type != "wifi_qr_card" && p.type != "light_control" && p.type != "notification" && p.type != "vacuum" && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   if ((p.type == "wifi_qr" || p.type == "wifi_qr_card") && p.label.empty()) {

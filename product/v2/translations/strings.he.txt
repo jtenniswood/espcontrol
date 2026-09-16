@@ -256,3 +256,11 @@ timer=טיימר
 timer_confirm=לאשר
 guest_wifi=רשת Wi-Fi לאורחים
 wifi_did_not_change=מצב ה-Wi-Fi לא השתנה
+
+# Notification card
+notification=התראה
+information=מידע
+warning=אזהרה
+alert=התראה
+acknowledge=אישור
+no_notifications=אין התראות

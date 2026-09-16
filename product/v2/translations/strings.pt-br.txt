@@ -256,3 +256,11 @@ timer=Temporizador
 timer_confirm=Confirmar
 guest_wifi=Wi-Fi de convidados
 wifi_did_not_change=O Wi-Fi não mudou
+
+# Notification card
+notification=Notificação
+information=Informação
+warning=Aviso
+alert=Alerta
+acknowledge=Confirmar
+no_notifications=Sem notificações

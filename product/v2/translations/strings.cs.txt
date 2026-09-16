@@ -256,3 +256,11 @@ timer=Časovač
 timer_confirm=Potvrdit
 guest_wifi=Wi-Fi pro hosty
 wifi_did_not_change=Stav Wi-Fi se nezměnil
+
+# Notification card
+notification=Oznámení
+information=Informace
+warning=Varování
+alert=Výstraha
+acknowledge=Potvrdit
+no_notifications=Žádná oznámení

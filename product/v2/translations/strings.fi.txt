@@ -256,3 +256,11 @@ timer=Ajastin
 timer_confirm=Vahvista
 guest_wifi=Vieras-Wi-Fi
 wifi_did_not_change=Wi-Fi ei muuttunut
+
+# Notification card
+notification=Ilmoitus
+information=Tiedote
+warning=Varoitus
+alert=Hälytys
+acknowledge=Kuittaa
+no_notifications=Ei ilmoituksia

@@ -256,3 +256,11 @@ timer=Таймер
 timer_confirm=Подтвердить
 guest_wifi=Гостевой Wi-Fi
 wifi_did_not_change=Состояние Wi-Fi не изменилось
+
+# Notification card
+notification=Уведомление
+information=Информация
+warning=Предупреждение
+alert=Тревога
+acknowledge=Подтвердить
+no_notifications=Нет уведомлений

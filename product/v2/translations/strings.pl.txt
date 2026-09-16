@@ -256,3 +256,11 @@ timer=Minutnik
 timer_confirm=Potwierdzić
 guest_wifi=Wi-Fi dla gości
 wifi_did_not_change=Stan Wi-Fi nie zmienił się
+
+# Notification card
+notification=Powiadomienie
+information=Informacja
+warning=Ostrzeżenie
+alert=Alarm
+acknowledge=Potwierdź
+no_notifications=Brak powiadomień

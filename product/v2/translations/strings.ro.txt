@@ -256,3 +256,11 @@ timer=Temporizator
 timer_confirm=Confirmați
 guest_wifi=Wi-Fi pentru oaspeți
 wifi_did_not_change=Starea Wi-Fi nu s-a schimbat
+
+# Notification card
+notification=Notificare
+information=Informație
+warning=Avertisment
+alert=Alertă
+acknowledge=Confirmă
+no_notifications=Nicio notificare
