@@ -18,30 +18,84 @@ def load_scripts(path):
     return {item["id"]: item for item in yaml.load(text[text.index("script:\n"):], Loader)["script"]}
 
 
+def evaluate_condition(condition, state):
+    expression = condition["lambda"]
+    if "screensaver_mode" in expression:
+        return state["mode"] == "sensor"
+    if "presence_detected" in expression:
+        return state["presence_detected"]
+    if "presence_can_wake_display" in expression:
+        return state["can_wake"]
+    raise AssertionError(f"unhandled presence transition condition: {expression}")
+
+
+def execute_actions(actions, state, applied):
+    for action in actions:
+        if "delay" in action:
+            continue
+        if "globals.set" in action:
+            continue
+        if "lambda" in action:
+            continue
+        if "if" in action:
+            branch = action["if"]
+            selected = branch["then"] if evaluate_condition(branch["condition"], state) else branch.get("else", [])
+            execute_actions(selected, state, applied)
+            continue
+        target = action.get("script.execute")
+        if target == "screensaver_wake":
+            applied.append("wake")
+        elif target == "screensaver_sleep_sensor":
+            applied.append("sleep")
+        elif target == "display_mode_clear_automatic":
+            applied.append("clear")
+        else:
+            raise AssertionError(f"unhandled presence transition action: {action}")
+
+
 def main():
     scripts = load_scripts(ROOT / "common/addon/backlight.yaml")
+    for script_id in (
+        "screensaver_presence_wake",
+        "screensaver_presence_sleep",
+        "screensaver_presence_update",
+    ):
+        assert scripts[script_id]["mode"] == "restart"
     assert scripts["screensaver_presence_wake"]["then"] == [{"script.execute": "screensaver_presence_update"}]
     assert scripts["screensaver_presence_sleep"]["then"] == [{"script.execute": "screensaver_presence_update"}]
     update = scripts["screensaver_presence_update"]["then"]
     assert update[0] == {"delay": "1ms"}
-    assert all(name in str(update) for name in ("screensaver_mode", "presence_detected", "screensaver_wake", "screensaver_sleep_sensor"))
+    state = {"mode": "sensor", "presence_detected": False, "can_wake": True}
+    pending, applied = [], []
 
-    pending, detected, mode, applied = False, False, "sensor", []
-    def callback(value):
-        nonlocal pending, detected
-        detected, pending = value, True
+    def callback(script_id, value):
+        state["presence_detected"] = value
+        target = scripts[script_id]["then"][0]["script.execute"]
+        if scripts[target]["mode"] == "restart":
+            pending[:] = [target]
+        else:
+            pending.append(target)
+
     def loop_pass():
-        nonlocal pending
-        if pending:
-            pending = False
-            if mode == "sensor":
-                applied.append("wake" if detected else "sleep")
-    callback(False); callback(True)
+        queued = pending[:]
+        pending.clear()
+        for script_id in queued:
+            execute_actions(scripts[script_id]["then"], state, applied)
+
+    callback("screensaver_presence_sleep", False)
+    callback("screensaver_presence_wake", True)
     assert applied == []
-    loop_pass(); assert applied == ["wake"]
-    callback(True); callback(False); loop_pass()
+    loop_pass()
+    assert applied == ["wake"]
+
+    callback("screensaver_presence_wake", True)
+    callback("screensaver_presence_sleep", False)
+    loop_pass()
     assert applied == ["wake", "sleep"]
-    mode = "timer"; callback(False); loop_pass()
+
+    state["mode"] = "timer"
+    callback("screensaver_presence_sleep", False)
+    loop_pass()
     assert applied == ["wake", "sleep"]
 
 
