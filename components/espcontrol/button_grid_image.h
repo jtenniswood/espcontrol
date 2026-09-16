@@ -540,6 +540,9 @@ inline lv_obj_t *image_card_loading_label(lv_obj_t *loading_widget) {
   return lv_obj_get_child(loading_widget, 1);
 }
 
+inline void image_card_set_configured_label_visible(lv_obj_t *loading_widget,
+                                                     bool visible);
+
 inline const lv_font_t *image_card_label_font_for_slot(const BtnSlot &s) {
   const lv_font_t *font = s.text_lbl
     ? lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN)
