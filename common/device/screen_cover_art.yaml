@@ -1776,8 +1776,11 @@ script:
       - script.stop: cover_art_prepare_activation
       - script.stop: cover_art_delay_timer
       - script.stop: cover_art_show_track_overlay
+      - script.stop: cover_art_download
       - script.stop: cover_art_deferred_request_artwork
       - script.stop: cover_art_deferred_download
+      - script.stop: cover_art_request_artwork
+      - script.stop: cover_art_schedule_paired_artwork
       - script.stop: cover_art_prepare_download
       - script.stop: cover_art_retry_download
       - globals.set: { id: cover_art_transition_generation, value: '0' }
@@ -1791,8 +1794,11 @@ script:
       - lvgl.widget.hide: cover_art_progress_bar
       - if:
           condition:
-            lambda: 'return std::string("${device_slug}") == "guition-esp32-s3-4848s040";'
+            lambda: |-
+              return target_mode == static_cast<int>(espcontrol::DisplayMode::CAMERA) ||
+                     std::string("${device_slug}") == "guition-esp32-s3-4848s040";
           then:
+            - lambda: 'id(cover_art_downloaded_image)->cancel_update();'
             - script.execute: cover_art_clear_image_source
             - script.wait: cover_art_clear_image_source
             - lambda: |-

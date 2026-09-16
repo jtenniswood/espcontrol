@@ -314,9 +314,7 @@ script:
       - script.execute: clock_bar_apply
       - lvgl.widget.hide: dim_screensaver_touch_guard
       - lambda: |-
-          #if defined(CONFIG_IDF_TARGET_ESP32S3)
           image_card_suspend_pipeline();
-          #endif
       - globals.set:
           id: camera_screensaver_transition_generation
           value: !lambda 'return static_cast<uint32_t>(generation);'
@@ -336,7 +334,6 @@ script:
       - globals.set: { id: camera_screensaver_transition_generation, value: '0' }
       - lambda: 'id(camera_screensaver_downloaded_image)->cancel_update();'
       - lambda: |-
-          #if defined(CONFIG_IDF_TARGET_ESP32S3)
           #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
           ::lv_image_set_src(id(camera_screensaver_image),
                              static_cast<const void *>(nullptr));
@@ -347,5 +344,4 @@ script:
           id(camera_screensaver_image_available) = false;
           lv_obj_add_flag(id(camera_screensaver_image), LV_OBJ_FLAG_HIDDEN);
           lv_obj_clear_flag(id(camera_screensaver_unavailable), LV_OBJ_FLAG_HIDDEN);
-          #endif
       - lvgl.widget.hide: camera_screensaver
