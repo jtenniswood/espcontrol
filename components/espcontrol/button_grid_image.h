@@ -136,6 +136,8 @@ inline void image_card_schedule_source_refresh(ImageCardCtx *ctx, uint32_t delay
 inline void image_card_request_source_url(ImageCardCtx *ctx, bool source_changed = false);
 inline size_t image_card_estimated_buffer_bytes(int width, int height);
 inline size_t image_card_estimated_pipeline_bytes(int width, int height);
+inline void image_card_schedule_modal_cache_expiry(
+    esphome::artwork_image::ArtworkImage *modal_image);
 
 inline void image_card_release_download_slot(ImageCardCtx *ctx) {
   if (!ctx) return;
@@ -237,7 +239,16 @@ inline void image_card_modal_cache_expiry_timer_cb(lv_timer_t *timer) {
   if (cache.expiry_timer == timer) cache.expiry_timer = nullptr;
   lv_timer_del(timer);
   ImageCardCtx *active = image_card_modal_ui().active;
-  if (active && active->modal_image == modal_image) return;
+  if (active && active->modal_image == modal_image) {
+    // The shared modal downloader can be used by another card while this
+    // cache's timer is expiring. Keep the active image alive and restart the
+    // retention window so cleanup can happen after the modal closes.
+    if (cache.image == modal_image && cache.ready) {
+      cache.cached_at_ms = esphome::millis();
+      image_card_schedule_modal_cache_expiry(modal_image);
+    }
+    return;
+  }
   image_card_release_modal_cache(modal_image);
 }
 
@@ -1989,6 +2000,9 @@ inline bool image_card_request_modal_source_url(ImageCardCtx *ctx) {
   std::string effective_url = ctx->modal_image->request_update_url(ctx->modal_url, max_source_dim);
   if (effective_url.empty()) return false;
   ctx->modal_url = effective_url;
+  // A retry is consumed only once the modal downloader accepts the request,
+  // not when the delayed request timer is created.
+  ctx->next_download_retry_ms = 0;
   // Enqueue the higher-priority modal before cancelling an active tile. The
   // global ImageService then dispatches the modal immediately and remains the
   // sole request scheduler.
@@ -2003,6 +2017,10 @@ inline void image_card_modal_request_timer_cb(lv_timer_t *timer) {
   lv_timer_del(timer);
   if (!ctx || !image_card_modal_active_for(ctx)) return;
   if (!image_card_request_modal_source_url(ctx)) {
+    if (ctx->camera_download_errors != 0 && ctx->next_download_retry_ms == 0) {
+      ctx->next_download_retry_ms =
+          esphome::millis() + IMAGE_CARD_RETRY_INTERVAL_MS;
+    }
     image_card_show_modal_download_failure(ctx);
   }
 }
@@ -2731,10 +2749,16 @@ inline void image_card_refresh_due() {
     }
     if (ctx->next_download_retry_ms != 0 &&
         (int32_t)(now - ctx->next_download_retry_ms) >= 0) {
-      ctx->next_download_retry_ms = 0;
       if (image_card_modal_active_for(ctx) && ctx->camera_download_errors != 0) {
-        image_card_queue_modal_source_request(ctx);
+        // Leave the failed retry deadline in place until the delayed modal
+        // request actually starts. If the modal closes during that delay, the
+        // normal tile request path can still retry the camera.
+        if (!image_card_modal_ui().request_timer &&
+            !image_card_queue_modal_source_request(ctx)) {
+          ctx->next_download_retry_ms = now + IMAGE_CARD_RETRY_INTERVAL_MS;
+        }
       } else {
+        ctx->next_download_retry_ms = 0;
         image_card_request_source_url(ctx);
       }
     }

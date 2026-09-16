@@ -56,6 +56,7 @@ struct ImageCardCtx {
 struct ImageCardModalUi {
  ImageCardCtx *active = nullptr; Widget *image_widget = nullptr, *overlay = nullptr;
  Widget *panel = nullptr, *back_btn = nullptr;
+ Timer *request_timer = nullptr;
 };
 struct ImageCardModalCache {
  Image *image = nullptr; std::string entity_id, source_url;
@@ -67,6 +68,7 @@ ImageCardCtx contexts[1];
 ImageCardCtx *image_card_contexts() { return contexts; }
 ImageCardModalUi &image_card_modal_ui() { return ui; }
 ImageCardModalCache &image_card_modal_cache() { return cache; }
+void image_card_schedule_modal_cache_expiry(Image *);
 bool constrained = true;
 bool image_card_constrained_memory_profile() { return constrained; }
 bool image_card_modal_active_for(ImageCardCtx *ctx) { return ui.active == ctx; }
@@ -112,7 +114,7 @@ void ha_subscribe_state(const std::string &, std::function<void(std::string)> cb
 void image_card_request_picture(ImageCardCtx *) { ++pictures; }
 void image_card_request_current_picture(ImageCardCtx *) { ++pictures; }
 void image_card_request_source_url(ImageCardCtx *) { ++tile_requests; }
-void image_card_queue_modal_source_request(ImageCardCtx *) { ++modal_requests; }
+bool image_card_queue_modal_source_request(ImageCardCtx *) { ++modal_requests; return true; }
 void image_card_apply_downloaded(ImageCardCtx *) { ++recovered; }
 #define ESP_LOGI(...) do {} while(false)
 #define ESP_LOGW(...) do {} while(false)
@@ -153,6 +155,20 @@ int main() {
  assert(!image_card_modal_cache_matches(&ctx));
  image_card_modal_cache_expiry_timer_cb(cache.expiry_timer);
  assert(modal.released == 1 && !cache.ready);
+ // A shared modal image remains alive while another card is using it when its
+ // retention timer expires; the timer must be restarted until that modal closes.
+ modal.available = true; modal.released = 0; cache.image = &modal; cache.ready = true;
+ cache.entity_id = ctx.entity_id; cache.source_url = ctx.source_url;
+ cache.cached_at_ms = 1000; now_ms = 2000; ui.active = &ctx;
+ image_card_schedule_modal_cache_expiry(&modal);
+ now_ms = 17000;
+ image_card_modal_cache_expiry_timer_cb(cache.expiry_timer);
+ assert(modal.released == 0 && cache.ready && cache.expiry_timer);
+ assert(cache.cached_at_ms == now_ms);
+ ui.active = nullptr;
+ now_ms += 15000;
+ image_card_modal_cache_expiry_timer_cb(cache.expiry_timer);
+ assert(modal.released == 1 && !cache.ready);
  // Close near rollover, then reopen across rollover.
  modal.available = true; cache.image = &modal; cache.ready = true;
  cache.entity_id = ctx.entity_id; cache.source_url = ctx.source_url;
@@ -178,6 +194,7 @@ int main() {
  }
  image_card_refresh_due();
  assert(modal_requests == 1 && tile_requests == 0);
+ assert(ctx.next_download_retry_ms == now_ms); // Keep retry alive until request starts.
  ctx.image_ready = false;
  image_card_refresh_due();
  assert(recovered == 0); // Never resurrect a failed transfer's old decoded frame.
