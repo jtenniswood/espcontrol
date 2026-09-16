@@ -3019,6 +3019,7 @@ assertButtonMigration(hooks, "legacy vacuum return to base action card", "vacuum
 [
   ["status", ""],
   ["start_stop", ""],
+  ["start_dock", ""],
   ["dock", ""],
   ["pause_resume", ""],
   ["clean_spot", ""],

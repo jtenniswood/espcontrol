@@ -60,7 +60,7 @@ inline const CardContractShadowFieldPolicy SAVED_CONFIG_SHADOW_VACUUM_FIELDS[] =
   {"options", CardContractShadowPolicyKind::CLEAR, ""},
 };
 
-inline const char *const SAVED_CONFIG_SHADOW_VACUUM_MODES[] = {"status", "start_stop", "dock", "pause_resume", "clean_spot", "locate", "clean_area"};
+inline const char *const SAVED_CONFIG_SHADOW_VACUUM_MODES[] = {"status", "start_stop", "start_dock", "dock", "pause_resume", "clean_spot", "locate", "clean_area"};
 inline const char *const SAVED_CONFIG_SHADOW_VACUUM_UNIT_MODES[] = {"clean_area"};
 inline const char *const SAVED_CONFIG_SHADOW_ACTION_OPTION_SELECT_ACTIONS[] = {"input_select.select_option", "select.select_option"};
 inline const char *const SAVED_CONFIG_SHADOW_MEDIA_MODES[] = {"control_modal", "speaker_group", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"};

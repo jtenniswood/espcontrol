@@ -190,6 +190,7 @@ export const SAVED_CONFIG_SHADOW_PILOT_POLICIES: Readonly<Record<string, CardNor
         "values": [
           "status",
           "start_stop",
+          "start_dock",
           "dock",
           "pause_resume",
           "clean_spot",

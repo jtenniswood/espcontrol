@@ -159,6 +159,7 @@ snowy=Neigeux
 snowy_and_rain=Neige et pluie
 spot_clean=Nettoyage ciblé
 start=Démarrer
+start_dock=Start / Dock
 still=Fixe
 subpage=Sous-page
 stop=Arrêter

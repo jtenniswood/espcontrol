@@ -159,6 +159,7 @@ snowy=מושלג
 snowy_and_rain=שלג וגשם
 spot_clean=ניקוי נקודתי
 start=הפעלה
+start_dock=Start / Dock
 still=נייח
 subpage=תת-עמוד
 stop=עצירה

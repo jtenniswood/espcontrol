@@ -583,6 +583,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "values": [
           "status",
           "start_stop",
+          "start_dock",
           "dock",
           "pause_resume",
           "clean_spot",
@@ -615,6 +616,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "values": [
             "status",
             "start_stop",
+            "start_dock",
             "dock",
             "pause_resume",
             "clean_spot",

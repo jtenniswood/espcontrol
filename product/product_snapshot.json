@@ -2650,6 +2650,7 @@
             "values": [
               "status",
               "start_stop",
+              "start_dock",
               "dock",
               "pause_resume",
               "clean_spot",
@@ -2682,6 +2683,7 @@
               "values": [
                 "status",
                 "start_stop",
+                "start_dock",
                 "dock",
                 "pause_resume",
                 "clean_spot",
