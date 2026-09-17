@@ -175,6 +175,12 @@ def test_release_workflow_uses_current_ota_output() -> None:
     assert "npx playwright install --with-deps chromium" in workflow
     assert str(prepare_c6_firmware.C6_RELATIVE_PATH) in workflow
     assert "path: dist/firmware/" in workflow, "publishable firmware must use the dist boundary"
+    assert "name: Prepare release web assets" in workflow
+    assert "scripts/prepare_release_web_assets.py" in workflow
+    assert "name: Upload release web assets" in workflow
+    assert "name: Download release web assets" in workflow
+    assert "dist/release-web-assets" in workflow
+    assert "Include release web assets in distribution" in workflow
 
 
 def test_device_matrix_sparse_checkouts_include_product_model() -> None:
@@ -209,13 +215,14 @@ def test_release_skill_creates_selected_tag_before_draft() -> None:
     assert skill.index('gh release create "$TAG"', tag_creation) > tag_creation
 
 
-def test_release_preparation_adds_the_tag_before_tagging() -> None:
+def test_release_preparation_is_workflow_owned() -> None:
     skill = RELEASE_SKILL.read_text(encoding="utf-8")
-    assert skill.index("prepare_release_web_assets.py") < skill.index('git tag -a "$TAG"')
-    assert skill.index("python3 scripts/build.py www --retain-current-bundle") < skill.index(
-        "python3 scripts/build.py www --check --retain-current-bundle"
-    )
-    assert "gh pr create --base main" in skill
+    workflow = RELEASE_WORKFLOW.read_text(encoding="utf-8")
+    pages_workflow = PAGES_WORKFLOW.read_text(encoding="utf-8")
+    assert "No preparation PR is required." in skill
+    assert "gh pr create --base main" not in skill
+    assert "name: Prepare release web assets" in workflow
+    assert "name: Prepare published release web assets" in pages_workflow
     assert "git push origin main" not in skill
     with TemporaryDirectory() as tmp:
         build_script = Path(tmp) / "build.py"

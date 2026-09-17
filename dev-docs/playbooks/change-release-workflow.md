@@ -6,6 +6,8 @@ public firmware URLs, release checks, or GitHub workflow behavior.
 ## Edit First
 
 - `.github/workflows/release.yml` for job orchestration.
+- `.github/workflows/pages.yml` when public web assets or release-triggered
+  documentation output changes.
 - `scripts/firmware_release.py` for firmware asset and manifest behavior.
 - `scripts/check_release_contract.py` and focused release validators for
   assurance rules.
@@ -18,6 +20,8 @@ migration.
 ## Protect the Publication Boundary
 
 - Build and validate an existing private draft from its tagged revision.
+- Materialize release-specific web compatibility data inside the private
+  workflow checkout; do not require a preparation commit or PR before tagging.
 - Keep generated source and build caches out of release assets.
 - Verify filenames, versions, checksums, sizes, and remote inventory before
   publication.

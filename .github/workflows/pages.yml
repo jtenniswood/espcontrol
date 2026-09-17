@@ -54,6 +54,20 @@ jobs:
           npm ci --prefer-offline --cache "${NPM_CACHE}"
           bash scripts/prune_actions_cache.sh "${NPM_CACHE}" "${ESPCONTROL_NPM_CACHE_MAX_MB}" --strategy reset
 
+      - name: Prepare published release web assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RELEASE_TAG=$(gh release list --limit 30 --json tagName,isDraft \
+            --jq '[.[] | select(.isDraft == false) | .tagName][0] // ""')
+          if [ -z "${RELEASE_TAG}" ]; then
+            echo "No published release exists yet; keeping the checked-in web asset compatibility list."
+            exit 0
+          fi
+          python3 scripts/prepare_release_web_assets.py "${RELEASE_TAG}"
+          python3 scripts/build.py www --retain-current-bundle
+          python3 scripts/build.py www --check --retain-current-bundle
+
       - name: Build docs
         run: npm run docs:build
 

@@ -98,6 +98,30 @@ jobs:
       - name: Install browser runtime
         run: npx playwright install --with-deps chromium
 
+      - name: Prepare release web assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          python3 scripts/prepare_release_web_assets.py "${RELEASE_TAG}"
+          python3 scripts/build.py www --retain-current-bundle
+          python3 scripts/build.py www --check --retain-current-bundle
+
+          BUNDLE_PATH=$(jq -r '.bundles[0].path // empty' docs/public/webserver/web-assets.json)
+          if [ -z "${BUNDLE_PATH}" ]; then
+            echo "::error::The generated web asset manifest does not declare a current bundle"
+            exit 1
+          fi
+          mkdir -p "dist/release-web-assets/$(dirname "${BUNDLE_PATH}")"
+          cp docs/public/webserver/web-assets.json dist/release-web-assets/web-assets.json
+          cp "docs/public/webserver/${BUNDLE_PATH}" "dist/release-web-assets/${BUNDLE_PATH}"
+
+      - name: Upload release web assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-web-assets
+          path: dist/release-web-assets/
+
       - name: Run release preflight
         env:
           GH_TOKEN: ${{ github.token }}
@@ -383,6 +407,18 @@ jobs:
           merge-multiple: true
           path: dist/firmware
 
+      - name: Download release web assets
+        uses: actions/download-artifact@v8
+        with:
+          name: release-web-assets
+          path: release-web-assets
+
+      - name: Use release web assets
+        run: cp -a release-web-assets/. docs/public/webserver/
+
+      - name: Include release web assets in distribution
+        run: cp -a release-web-assets dist/release-web-assets
+
       - name: Generate release notes
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
@@ -452,6 +488,9 @@ jobs:
         with:
           name: release-dist
           path: dist
+
+      - name: Use release web assets
+        run: cp -a dist/release-web-assets/. docs/public/webserver/
 
       - name: Upload, verify, and publish draft release
         env:

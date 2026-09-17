@@ -72,7 +72,8 @@ Record flashing and device behavior separately in the pull request.
 ## Release Boundary
 
 Firmware releases start as private GitHub drafts. The manually dispatched build
-workflow checks out one immutable tag in every job, builds every supported
+workflow checks out one immutable tag in every job, materializes the selected
+tag's web compatibility entry in the private checkout, builds every supported
 target, and writes only publishable files to the distribution. Generated source
 and build caches are not assets.
 
