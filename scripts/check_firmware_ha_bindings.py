@@ -421,6 +421,10 @@ def firmware_option_select_state_errors(firmware_dir: Path, root: Path) -> list[
         errors.append(f"{rel}: normalize an unknown Option Select value to no current option")
     if "ctx->current_option = unavailable || no_current_option ? \"\" : state_text;" not in body:
         errors.append(f"{rel}: keep Option Select available while clearing an unknown current option")
+    if "option_select_refresh_modal_rows(ctx);" not in body:
+        errors.append(f"{rel}: clear stale Option Select modal selection styling")
+    if "option_select_refresh_modal_rows" not in text or "ui.option_rows[i] = btn;" not in text:
+        errors.append(f"{rel}: retain Option Select modal rows for state refreshes")
     return errors
 
 
@@ -4754,8 +4758,10 @@ def run_self_test() -> int:
         "  bool unavailable = ha_entity_state_unavailable_ref(ctx->entity_id, state);\n"
         "  bool no_current_option = normalized_state_text(state) == \"unknown\";\n"
         "  ctx->current_option = unavailable || no_current_option ? \"\" : state_text;\n"
+        "  option_select_refresh_modal_rows(ctx);\n"
         "}\n"
         "inline void subscribe_option_select_friendly_name(OptionSelectCtx *ctx) {}\n"
+        "  ui.option_rows[i] = btn;\n"
     )
     expect_option_select_state_errors(
         "entity-aware Option Select state handling",
@@ -4773,11 +4779,15 @@ def run_self_test() -> int:
         ).replace(
             "unavailable || no_current_option",
             "unavailable",
+        ).replace(
+            "  option_select_refresh_modal_rows(ctx);\n",
+            "",
         ),
         (
             "classify Option Select unknown states by entity type",
             "normalize an unknown Option Select value to no current option",
             "keep Option Select available while clearing an unknown current option",
+            "clear stale Option Select modal selection styling",
         ),
     )
     expect_media_cover_art_external_input_errors(
