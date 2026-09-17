@@ -511,10 +511,7 @@ inline void image_card_refresh_loading_layout(lv_obj_t *loading_widget) {
   image_card_position_widget(btn, loading_widget, nullptr, nullptr);
   lv_obj_set_style_pad_all(loading_widget, 0, LV_PART_MAIN);
   lv_coord_t pad_left = btn ? lv_obj_get_style_pad_left(btn, LV_PART_MAIN) : 0;
-  lv_coord_t pad_right = btn ? lv_obj_get_style_pad_right(btn, LV_PART_MAIN) : 0;
   lv_coord_t pad_top = btn ? lv_obj_get_style_pad_top(btn, LV_PART_MAIN) : 0;
-  lv_coord_t pad_bottom = btn ? lv_obj_get_style_pad_bottom(btn, LV_PART_MAIN) : 0;
-  lv_coord_t width = btn ? lv_obj_get_width(btn) : lv_obj_get_width(loading_widget);
   lv_obj_t *icon = image_card_loading_icon(loading_widget);
   lv_obj_t *label = image_card_loading_label(loading_widget);
   if (icon) {
@@ -526,10 +523,36 @@ inline void image_card_refresh_loading_layout(lv_obj_t *loading_widget) {
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     lv_obj_set_style_pad_all(label, 0, LV_PART_MAIN);
-    if (width > pad_left + pad_right) {
-      lv_obj_set_width(label, width - pad_left - pad_right);
+    lv_obj_t *configured_label = static_cast<lv_obj_t *>
+      (lv_obj_get_user_data(loading_widget));
+    bool aligned_to_configured_label = false;
+    if (btn && configured_label) {
+      // The configured label is the source of truth for the card's label
+      // position. Copy its resolved screen geometry instead of rebuilding the
+      // position from the overlay's size and the button padding; those values
+      // do not describe the same content box on every display profile.
+      lv_obj_update_layout(btn);
+      lv_area_t configured_coords;
+      lv_area_t loading_coords;
+      lv_obj_get_coords(configured_label, &configured_coords);
+      lv_obj_get_coords(loading_widget, &loading_coords);
+      lv_coord_t configured_width = lv_area_get_width(&configured_coords);
+      lv_coord_t configured_height = lv_area_get_height(&configured_coords);
+      if (configured_width > 0 && configured_height > 0) {
+        lv_obj_set_width(label, configured_width);
+        lv_obj_set_height(label, configured_height);
+        lv_obj_set_pos(
+          label,
+          configured_coords.x1 - loading_coords.x1,
+          configured_coords.y1 - loading_coords.y1);
+        aligned_to_configured_label = true;
+      }
     }
-    lv_obj_align(label, LV_ALIGN_BOTTOM_LEFT, pad_left, -pad_bottom);
+    if (!aligned_to_configured_label) {
+      lv_obj_set_width(label, lv_pct(100));
+      lv_obj_set_height(label, LV_SIZE_CONTENT);
+      lv_obj_align(label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+    }
     lv_obj_move_foreground(label);
   }
   lv_obj_update_layout(loading_widget);
