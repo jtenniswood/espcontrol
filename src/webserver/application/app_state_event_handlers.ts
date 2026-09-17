@@ -368,6 +368,10 @@ export function createAppStateEventHandlersFeature(
                 syncInput(els.setScreensaverCamera, val);
                 syncInput(els.setSensorScreensaverCamera, val);
             },
+            "text-screen_saver__photo_metadata_entity": function (this: any, val?: any) {
+                state.screensaverMetadataEntity = val;
+                syncInput(els.setScreensaverMetadata, val);
+            },
             "select-screen_saver__camera_image_mode": function (this: any, val?: any, d?: any) {
                 state.screensaverCameraImageMode = normalizeScreensaverCameraImageMode(d.value || val);
                 syncClockScreensaverControls();

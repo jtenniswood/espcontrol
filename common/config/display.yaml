@@ -500,7 +500,9 @@ switch:
           id: clock_overlay_apply
           target_mode: !lambda 'return static_cast<int>(id(espcontrol_app).display().current_mode());'
     on_turn_off:
-      - script.execute: clock_overlay_hide
+      - script.execute:
+          id: clock_overlay_apply
+          target_mode: !lambda 'return static_cast<int>(id(espcontrol_app).display().current_mode());'
 
   - platform: template
     name: "${entity_screen_saver_hide_cover_art_external_input}"
@@ -768,6 +770,25 @@ text:
     on_value:
       then:
         - script.execute: camera_screensaver_config_changed
+
+  - platform: template
+    name: "${entity_screen_saver_metadata_entity}"
+    internal: true
+    id: screensaver_metadata_entity
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 100
+    mode: text
+    entity_category: config
+    icon: "mdi:information-outline"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - script.execute: photo_metadata_refresh_subscription
 
   # Optional media player that keeps the screensaver awake while playing.
   - platform: template

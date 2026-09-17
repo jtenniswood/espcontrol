@@ -378,6 +378,9 @@ export function createSettingsPageHelpersFeature(
             els.setSensorScreensaverCameraImageModeField.style.display = cameraDisplay;
         if (els.setClockOverlayRow)
             els.setClockOverlayRow.style.display = cameraDisplay;
+        if (els.setScreensaverMetadataField)
+            els.setScreensaverMetadataField.style.display = cameraDisplay;
+        syncInput(els.setScreensaverMetadata, state.screensaverMetadataEntity);
         syncInput(els.setScreensaverCamera, state.screensaverCameraEntity);
         syncInput(els.setSensorScreensaverCamera, state.screensaverCameraEntity);
         if (els.setScreensaverCameraImageMode)

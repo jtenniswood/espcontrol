@@ -322,6 +322,7 @@ script:
       - lambda: 'lv_obj_move_foreground(id(camera_screensaver));'
       - script.execute: backlight_apply_brightness
       - script.execute: camera_screensaver_request_image
+      - script.execute: photo_metadata_refresh_subscription
       - script.execute:
           id: clock_overlay_apply
           target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::CAMERA);'
@@ -332,6 +333,7 @@ script:
       generation: int
       target_mode: int
     then:
+      - script.execute: photo_metadata_refresh_subscription
       - script.stop: camera_screensaver_request_image
       - script.stop: camera_screensaver_retry
       - globals.set: { id: camera_screensaver_transition_generation, value: '0' }

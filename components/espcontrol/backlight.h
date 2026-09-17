@@ -18,6 +18,7 @@
 #include "esphome/components/lvgl/lvgl_esphome.h"
 #include "clock_bar.h"
 #include "backlight_fade.h"
+#include "photo_metadata.h"
 #include "display_mode_controller.h"
 #include "sun_calc.h"
 #include "temperature_unit.h"
@@ -383,7 +384,9 @@ inline void position_clock_screensaver_label(lv_obj_t *overlay, lv_obj_t *label,
 }
 
 inline void position_clock_image_overlay(lv_obj_t *overlay, lv_obj_t *shadow,
-                                         lv_obj_t *label) {
+                                         lv_obj_t *label, lv_obj_t *metadata,
+                                         lv_obj_t *metadata_shadow, bool wide_panel,
+                                         bool clock_visible, bool metadata_visible) {
   if (!overlay || !shadow || !label) return;
   screensaver_fill_screen(overlay);
   lv_obj_update_layout(overlay);
@@ -397,18 +400,38 @@ inline void position_clock_image_overlay(lv_obj_t *overlay, lv_obj_t *shadow,
   if (screen_h <= 0) screen_h = 480;
 
   lv_obj_update_layout(label);
-  lv_coord_t h = lv_obj_get_height(label);
-  lv_coord_t margin = screen_w / 32;
-  if (margin < 12) margin = 12;
-  if (margin > 40) margin = 40;
+  const auto initial = espcontrol::photo_overlay_layout(
+      screen_w, screen_h, lv_obj_get_width(label), lv_obj_get_height(label),
+      0, wide_panel, clock_visible);
+  lv_coord_t metadata_height = 0;
+  if (metadata_visible) {
+    // Wrap up to three lines; long sensor values are clipped with an ellipsis.
+    const auto *font = lv_obj_get_style_text_font(metadata, LV_PART_MAIN);
+    const int max_height = 3 * lv_font_get_line_height(font) +
+                           2 * lv_obj_get_style_text_line_space(metadata, LV_PART_MAIN);
+    lv_obj_set_width(metadata, initial.metadata_width);
+    lv_obj_set_height(metadata, LV_SIZE_CONTENT);
+    lv_obj_set_style_text_align(metadata, wide_panel ? LV_TEXT_ALIGN_RIGHT : LV_TEXT_ALIGN_LEFT, 0);
+    lv_obj_update_layout(metadata);
+    metadata_height = std::min<int>(lv_obj_get_height(metadata), max_height);
+    lv_obj_set_height(metadata, metadata_height);
+    lv_obj_set_size(metadata_shadow, initial.metadata_width, metadata_height);
+    lv_obj_set_style_text_align(metadata_shadow, wide_panel ? LV_TEXT_ALIGN_RIGHT : LV_TEXT_ALIGN_LEFT, 0);
+  }
+  const auto layout = espcontrol::photo_overlay_layout(
+      screen_w, screen_h, lv_obj_get_width(label), lv_obj_get_height(label),
+      metadata_height, wide_panel, clock_visible);
   constexpr lv_coord_t shadow_offset_x = 1;
   constexpr lv_coord_t shadow_offset_y = 2;
-  constexpr lv_coord_t vertical_offset = 10;
-
-  const lv_coord_t x = margin;
-  const lv_coord_t y = screen_h - h - margin + vertical_offset;
+  const lv_coord_t x = layout.margin;
+  const lv_coord_t y = layout.clock_y;
   lv_obj_set_pos(shadow, x + shadow_offset_x, y + shadow_offset_y);
   lv_obj_set_pos(label, x, y);
+  if (metadata_visible) {
+    lv_obj_set_pos(metadata, layout.metadata_x, layout.metadata_y);
+    lv_obj_set_pos(metadata_shadow, layout.metadata_x + shadow_offset_x,
+                   layout.metadata_y + shadow_offset_y);
+  }
 }
 
 // ── Firmware update interval ─────────────────────────────────────────

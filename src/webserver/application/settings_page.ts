@@ -442,6 +442,19 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         sensorPanel.appendChild(sensorClockControls.dimBrightnessField);
         sensorPanel.appendChild(sensorClockControls.brightnessField);
         ssBody.appendChild(sensorPanel);
+        var metadataField: any = document.createElement("div");
+        metadataField.className = "sp-field";
+        metadataField.appendChild(fieldLabel("Photo Metadata Entity", "sp-set-screensaver-metadata"));
+        var metadataInput: any = entityInput("sp-set-screensaver-metadata", state.screensaverMetadataEntity,
+            "Optional sensor entity (leave empty to hide)", ["sensor"]);
+        metadataField.appendChild(metadataInput);
+        if (layout.config.features?.cameraScreensaver)
+            ssBody.appendChild(metadataField);
+        bindTextPost(metadataInput, entityName("screen_saver_metadata_entity"), {
+            onBlur: function (value: any) { state.screensaverMetadataEntity = value; },
+        });
+        els.setScreensaverMetadataField = metadataField;
+        els.setScreensaverMetadata = metadataInput;
         var clockOverlayToggle: any = toggleRow("Display Clock", "sp-set-ss-clock-overlay", state.clockOverlayOn);
         ssBody.appendChild(clockOverlayToggle.row);
         clockOverlayToggle.input.addEventListener("change", function (this: any) {

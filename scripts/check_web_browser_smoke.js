@@ -1452,14 +1452,23 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: image clock overlay toggle hides unless Camera is selected`,
   );
   if (hasCameraScreensaver) {
+    const metadataInput = screensaverCard.locator("#sp-set-screensaver-metadata");
+    assert.strictEqual(await metadataInput.isVisible(), false, `${label}: metadata hides outside Camera mode`);
     await dimmedAction.selectOption("camera");
+    assert(await metadataInput.isVisible(), `${label}: Camera mode offers a photo metadata sensor`);
+    const metadataPostStart = posts.length;
+    await metadataInput.fill("sensor.current_photo_caption");
+    await metadataInput.blur();
+    await waitForPost(posts,
+      { domain: "text", name: "Screen Saver: Photo Metadata Entity", action: "set", value: "sensor.current_photo_caption" },
+      `${label}: photo metadata sensor is saved`, metadataPostStart);
     assert(
       await clockOverlayRow.isVisible(),
       `${label}: image clock overlay toggle shows for Camera screensavers`,
     );
     assert(
       await page.evaluate(() => {
-        const imageMode = document.querySelector("#sp-set-screensaver-camera-image-mode")?.closest(".sp-field");
+        const imageMode = document.querySelector("#sp-set-screensaver-metadata")?.closest(".sp-field");
         const overlay = document.querySelector("#sp-set-ss-clock-overlay")?.closest(".sp-toggle-row");
         return !!imageMode && !!overlay && !!(imageMode.compareDocumentPosition(overlay) & Node.DOCUMENT_POSITION_FOLLOWING);
       }),

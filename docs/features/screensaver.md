@@ -38,7 +38,12 @@ When the screensaver activates, you can choose what happens:
 
 When Screen Dimmed is selected, Manual brightness mode uses **Dimmed Screen Brightness**. Automatic and Timed brightness modes use separate **Daytime Dimmed Screen Brightness** and **Nighttime Dimmed Screen Brightness** values, changing at the same sunrise/sunset or dawn/dusk boundary as the main screen. When Clock is selected, set separate **Daytime Clock Brightness** and **Nighttime Clock Brightness** values.
 
+### Photo metadata
+
+With **Camera** selected, the optional **Photo Metadata Entity** field accepts a Home Assistant `sensor.*` entity containing the current photo's caption, date, or location. Clear the field to disable it. Text appears bottom-right on 7- and 10-inch panels, using the clock's edge spacing; on smaller panels it appears below the clock. Empty, `unknown`, and `unavailable` states are hidden, and the clock moves back down without leaving a gap. Metadata can also appear with **Display Clock** switched off. Long text wraps to at most three lines.
+
 ## Sensor
+
 
 Instead of a timer, the screensaver is controlled by a motion or presence sensor (like a mmWave sensor mounted nearby). When someone is in the room, the screen stays on. When nobody is detected, the screen goes to sleep — and wakes up again when someone walks past.
 

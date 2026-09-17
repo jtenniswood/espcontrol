@@ -1606,25 +1606,46 @@ script:
           const bool image_mode =
               mode == espcontrol::DisplayMode::COVER_ART ||
               mode == espcontrol::DisplayMode::CAMERA;
-          if (!id(clock_overlay_enabled).state || !image_mode) {
+          if (!image_mode) {
             lv_obj_add_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN);
             return;
           }
           auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-          if (!time.is_valid()) {
+          const bool clock_visible = id(clock_overlay_enabled).state && time.is_valid();
+          const bool metadata_visible = mode == espcontrol::DisplayMode::CAMERA &&
+              ha_api_state_connected() && !id(photo_metadata_value).empty() &&
+              id(photo_metadata_subscribed_entity) == id(screensaver_metadata_entity).state &&
+              id(photo_metadata_subscription_generation) == ha_subscription_generation();
+          if (!clock_visible && !metadata_visible) {
             lv_obj_add_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN);
             return;
           }
-          char buf[8];
-          format_clock_time_without_suffix(buf, sizeof(buf),
-                                           time.hour, time.minute, id(clock_format_12h));
-          lv_label_set_text(id(clock_image_overlay_shadow), buf);
-          lv_label_set_text(id(clock_image_overlay_label), buf);
+          auto show = [](lv_obj_t *obj, bool visible) {
+            if (visible) lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+          };
+          show(id(clock_image_overlay_shadow), clock_visible);
+          show(id(clock_image_overlay_label), clock_visible);
+          show(id(photo_metadata_shadow), metadata_visible);
+          show(id(photo_metadata_label), metadata_visible);
+          if (clock_visible) {
+            char buf[8];
+            format_clock_time_without_suffix(buf, sizeof(buf),
+                                             time.hour, time.minute, id(clock_format_12h));
+            lv_label_set_text(id(clock_image_overlay_shadow), buf);
+            lv_label_set_text(id(clock_image_overlay_label), buf);
+          }
+          if (metadata_visible) {
+            lv_label_set_text(id(photo_metadata_shadow), id(photo_metadata_value).c_str());
+            lv_label_set_text(id(photo_metadata_label), id(photo_metadata_value).c_str());
+          }
           apply_clock_screensaver_text_color(
               id(clock_image_overlay_label), id(schedule_clock_text_color).state);
           position_clock_image_overlay(
               id(clock_image_overlay), id(clock_image_overlay_shadow),
-              id(clock_image_overlay_label));
+              id(clock_image_overlay_label), id(photo_metadata_label),
+              id(photo_metadata_shadow), ${screen_width} >= 1024,
+              clock_visible, metadata_visible);
           lv_obj_clear_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN);
           lv_obj_move_foreground(id(clock_image_overlay));
 
@@ -1636,7 +1657,7 @@ script:
           const bool image_mode =
               mode == espcontrol::DisplayMode::COVER_ART ||
               mode == espcontrol::DisplayMode::CAMERA;
-          if (!id(clock_overlay_enabled).state || !image_mode) {
+          if (!image_mode) {
             lv_obj_add_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN);
             return;
           }
@@ -1696,9 +1717,8 @@ interval:
           condition:
             lambda: |-
               const auto mode = id(espcontrol_app).display().current_mode();
-              return id(clock_overlay_enabled).state &&
-                     (mode == espcontrol::DisplayMode::COVER_ART ||
-                      mode == espcontrol::DisplayMode::CAMERA);
+              return mode == espcontrol::DisplayMode::COVER_ART ||
+                     mode == espcontrol::DisplayMode::CAMERA;
           then:
             - script.execute:
                 id: clock_overlay_apply
