@@ -16,7 +16,7 @@
 font:
   # Keep this font dedicated to the full-screen clock. The small glyph set and
   # 2-bit anti-aliasing limit flash and RAM use on resource-constrained panels.
-  - file: "gfonts://Roboto@Extra-Light"
+  - file: "gfonts://Roboto@Light"
     id: font_clock_display
     size: ${clock_font_size}
     bpp: 2
