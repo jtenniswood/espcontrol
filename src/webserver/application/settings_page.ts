@@ -442,7 +442,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         sensorPanel.appendChild(sensorClockControls.dimBrightnessField);
         sensorPanel.appendChild(sensorClockControls.brightnessField);
         ssBody.appendChild(sensorPanel);
-        var clockOverlayToggle: any = toggleRow("Show Clock on Image Screensavers", "sp-set-ss-clock-overlay", state.clockOverlayOn);
+        var clockOverlayToggle: any = toggleRow("Display Clock", "sp-set-ss-clock-overlay", state.clockOverlayOn);
         ssBody.appendChild(clockOverlayToggle.row);
         clockOverlayToggle.input.addEventListener("change", function (this: any) {
             state.clockOverlayOn = this.checked;
