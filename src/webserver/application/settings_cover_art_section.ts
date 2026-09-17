@@ -26,6 +26,7 @@ export function createSettingsCoverArtSectionFeature(codec: Pick<ConfigCodecFeat
         postMediaPlayerSleepPrevention,
         postMediaPlayerSleepPreventionEntity,
         postCoverArtScreensaver,
+        postClockOverlay,
         postCoverArtMediaPlayerEntity,
         postCoverArtSecondaryMediaPlayerEntity,
         postCoverArtConditions,
@@ -44,6 +45,14 @@ export function createSettingsCoverArtSectionFeature(codec: Pick<ConfigCodecFeat
             postCoverArtScreensaver(state.coverArtScreensaverOn);
         });
         els.setCoverArtToggle = coverArtToggle.input;
+        var clockOverlayToggle: any = toggleRow("Show Clock on Image Screensavers", "sp-set-ss-clock-overlay", state.clockOverlayOn);
+        coverArtBody.appendChild(clockOverlayToggle.row);
+        clockOverlayToggle.input.addEventListener("change", function (this: any) {
+            state.clockOverlayOn = this.checked;
+            syncCoverArtScreensaverUi();
+            postClockOverlay(state.clockOverlayOn);
+        });
+        els.setClockOverlayToggle = clockOverlayToggle.input;
         var coverArtOptions: any = condField();
         var coverArtOnlyOptions: any = condField();
         var coverArtAdvancedBody: any = document.createElement("div");

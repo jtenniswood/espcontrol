@@ -446,6 +446,9 @@ export function createSettingsPageHelpersFeature(
         if (els.setCoverArtToggle) {
             els.setCoverArtToggle.checked = !!state.coverArtScreensaverOn;
         }
+        if (els.setClockOverlayToggle) {
+            els.setClockOverlayToggle.checked = !!state.clockOverlayOn;
+        }
         if (els.setCoverArtOptions) {
             els.setCoverArtOptions.classList.toggle("sp-visible", uiState.contentVisible);
         }

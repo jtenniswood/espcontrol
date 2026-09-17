@@ -1585,7 +1585,64 @@ script:
     mode: single
     then:
       - lvgl.widget.hide: clock_screensaver
+      - script.execute: clock_overlay_hide
       - script.execute: clock_bar_apply
+
+  # Optional clock over image-based screensavers. This deliberately lives
+  # outside the black clock screensaver so cover art and camera retain their
+  # existing presentation and stream-lifecycle ownership.
+  - id: clock_overlay_hide
+    mode: restart
+    then:
+      - lvgl.widget.hide: clock_image_overlay
+
+  - id: clock_overlay_apply
+    mode: restart
+    parameters:
+      target_mode: int
+    then:
+      - lambda: |-
+          const auto mode = static_cast<espcontrol::DisplayMode>(target_mode);
+          const bool image_mode =
+              mode == espcontrol::DisplayMode::COVER_ART ||
+              mode == espcontrol::DisplayMode::CAMERA;
+          if (!id(clock_overlay_enabled).state || !image_mode) {
+            lv_obj_add_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN);
+            return;
+          }
+          auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+          if (!time.is_valid()) {
+            lv_obj_add_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN);
+            return;
+          }
+          char buf[8];
+          format_clock_time_without_suffix(buf, sizeof(buf),
+                                           time.hour, time.minute, id(clock_format_12h));
+          lv_label_set_text(id(clock_image_overlay_shadow), buf);
+          lv_label_set_text(id(clock_image_overlay_label), buf);
+          apply_clock_screensaver_text_color(
+              id(clock_image_overlay_label), id(schedule_clock_text_color).state);
+          position_clock_image_overlay(
+              id(clock_image_overlay), id(clock_image_overlay_shadow),
+              id(clock_image_overlay_label));
+          lv_obj_clear_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_move_foreground(id(clock_image_overlay));
+
+  - id: clock_overlay_keep_on_top
+    mode: restart
+    then:
+      - lambda: |-
+          const auto mode = id(espcontrol_app).display().current_mode();
+          const bool image_mode =
+              mode == espcontrol::DisplayMode::COVER_ART ||
+              mode == espcontrol::DisplayMode::CAMERA;
+          if (!id(clock_overlay_enabled).state || !image_mode) {
+            lv_obj_add_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN);
+            return;
+          }
+          if (!lv_obj_has_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN)) {
+            lv_obj_move_foreground(id(clock_image_overlay));
+          }
 
   # Keep the clock above any screen changes or top-layer overlays that appear
   # after the screensaver starts.
@@ -1612,6 +1669,7 @@ interval:
   - interval: 1s
     then:
       - script.execute: clock_screensaver_keep_on_top
+      - script.execute: clock_overlay_keep_on_top
       - script.execute: display_mode_reconcile
   - interval: 30s
     then:
@@ -1634,3 +1692,14 @@ interval:
                                            time.hour, time.minute, use_12h);
           lv_label_set_text(id(clock_label), buf);
           position_clock_screensaver_label(id(clock_screensaver), id(clock_label), time.minute);
+      - if:
+          condition:
+            lambda: |-
+              const auto mode = id(espcontrol_app).display().current_mode();
+              return id(clock_overlay_enabled).state &&
+                     (mode == espcontrol::DisplayMode::COVER_ART ||
+                      mode == espcontrol::DisplayMode::CAMERA);
+          then:
+            - script.execute:
+                id: clock_overlay_apply
+                target_mode: !lambda 'return static_cast<int>(id(espcontrol_app).display().current_mode());'

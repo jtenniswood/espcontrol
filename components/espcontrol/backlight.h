@@ -382,6 +382,35 @@ inline void position_clock_screensaver_label(lv_obj_t *overlay, lv_obj_t *label,
                  screen_h / 2 + oy - h / 2);
 }
 
+inline void position_clock_image_overlay(lv_obj_t *overlay, lv_obj_t *shadow,
+                                         lv_obj_t *label) {
+  if (!overlay || !shadow || !label) return;
+  screensaver_fill_screen(overlay);
+  lv_obj_update_layout(overlay);
+
+  lv_coord_t screen_w = lv_obj_get_width(overlay);
+  lv_coord_t screen_h = lv_obj_get_height(overlay);
+  lv_disp_t *disp = lv_disp_get_default();
+  if (screen_w <= 0 && disp) screen_w = lv_disp_get_hor_res(disp);
+  if (screen_h <= 0 && disp) screen_h = lv_disp_get_ver_res(disp);
+  if (screen_w <= 0) screen_w = 480;
+  if (screen_h <= 0) screen_h = 480;
+
+  lv_obj_update_layout(label);
+  lv_coord_t h = lv_obj_get_height(label);
+  lv_coord_t margin = screen_w / 32;
+  if (margin < 12) margin = 12;
+  if (margin > 40) margin = 40;
+  lv_coord_t shadow_offset = screen_w / 320;
+  if (shadow_offset < 2) shadow_offset = 2;
+  if (shadow_offset > 4) shadow_offset = 4;
+
+  const lv_coord_t x = margin;
+  const lv_coord_t y = screen_h - h - margin;
+  lv_obj_set_pos(shadow, x + shadow_offset, y + shadow_offset);
+  lv_obj_set_pos(label, x, y);
+}
+
 // ── Firmware update interval ─────────────────────────────────────────
 
 inline bool should_check_update(int counter, const std::string &freq) {

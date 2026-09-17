@@ -1731,6 +1731,9 @@ script:
                 else:
                   - script.execute: cover_art_show_black_screen
       - script.execute: cover_art_refresh_progress
+      - script.execute:
+          id: clock_overlay_apply
+          target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::COVER_ART);'
 
   - id: cover_art_prepare_activation
     mode: restart

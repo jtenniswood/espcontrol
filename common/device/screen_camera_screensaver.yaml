@@ -322,6 +322,9 @@ script:
       - lambda: 'lv_obj_move_foreground(id(camera_screensaver));'
       - script.execute: backlight_apply_brightness
       - script.execute: camera_screensaver_request_image
+      - script.execute:
+          id: clock_overlay_apply
+          target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::CAMERA);'
 
   - id: camera_screensaver_hide_effect
     mode: restart
