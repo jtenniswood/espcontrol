@@ -776,8 +776,12 @@ int main() {
   assert(parse_hex_color("BAD", valid) == 0 && !valid);
   assert(!ha_entity_state_unavailable_ref("button.test", "unknown"));
   assert(!ha_entity_state_unavailable_ref("input_button.test", "unknown"));
+  assert(!ha_entity_state_unavailable_ref("select.test", "unknown"));
+  assert(!ha_entity_state_unavailable_ref("input_select.test", "unknown"));
   assert(ha_entity_state_unavailable_ref("button.test", "unavailable"));
   assert(ha_entity_state_unavailable_ref("button.test", ""));
+  assert(ha_entity_state_unavailable_ref("select.test", "unavailable"));
+  assert(ha_entity_state_unavailable_ref("input_select.test", ""));
   assert(ha_entity_state_unavailable_ref("sensor.test", "unknown"));
   assert(ha_entity_state_unavailable_ref("light.test", "unknown"));
   assert(is_entity_on_ref("playing"));

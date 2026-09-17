@@ -402,6 +402,28 @@ def firmware_action_card_availability_errors(firmware_dir: Path, root: Path) -> 
     return errors
 
 
+def firmware_option_select_state_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_option_select.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    start = text.find("inline void subscribe_option_select_state(")
+    end = text.find("inline void subscribe_option_select_friendly_name(", start)
+    if start == -1 or end == -1:
+        return [f"{rel}: keep Option Select state subscription behavior explicit"]
+
+    body = text[start:end]
+    errors: list[str] = []
+    if "ha_entity_state_unavailable_ref(ctx->entity_id, state)" not in body:
+        errors.append(f"{rel}: classify Option Select unknown states by entity type")
+    if 'normalized_state_text(state) == "unknown"' not in body:
+        errors.append(f"{rel}: normalize an unknown Option Select value to no current option")
+    if "ctx->current_option = unavailable || no_current_option ? \"\" : state_text;" not in body:
+        errors.append(f"{rel}: keep Option Select available while clearing an unknown current option")
+    return errors
+
+
 def firmware_card_disabled_state_errors(firmware_dir: Path, root: Path) -> list[str]:
     errors: list[str] = []
     config_path = firmware_dir / "button_grid_config.h"
@@ -3673,6 +3695,7 @@ def run_scan() -> int:
     errors.extend(firmware_display_controller_ownership_errors(DISPLAY_LIFECYCLE_ROOTS, ROOT))
     errors.extend(firmware_ha_boundary_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_action_card_availability_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_option_select_state_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_card_disabled_state_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_media_card_availability_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_media_cover_art_external_input_errors(FIRMWARE_DIR, ROOT))
@@ -3829,6 +3852,20 @@ def expect_action_card_availability_errors(name: str, text: str, expected: tuple
         (firmware_dir / "button_grid_grid.h").write_text(text, encoding="utf-8")
 
         errors = firmware_action_card_availability_errors(firmware_dir, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_option_select_state_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_option_select.h").write_text(text, encoding="utf-8")
+
+        errors = firmware_option_select_state_errors(firmware_dir, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -4710,6 +4747,38 @@ def run_self_test() -> int:
     )
     assert accumulating_ha_read_call(
         'const char *url = "https://example.test"; api.get_home_assistant_state(entity, cb);'
+    )
+    valid_option_select_state = (
+        "inline void subscribe_option_select_state(OptionSelectCtx *ctx) {\n"
+        "  ha_subscribe_state(ctx->entity_id, callback);\n"
+        "  bool unavailable = ha_entity_state_unavailable_ref(ctx->entity_id, state);\n"
+        "  bool no_current_option = normalized_state_text(state) == \"unknown\";\n"
+        "  ctx->current_option = unavailable || no_current_option ? \"\" : state_text;\n"
+        "}\n"
+        "inline void subscribe_option_select_friendly_name(OptionSelectCtx *ctx) {}\n"
+    )
+    expect_option_select_state_errors(
+        "entity-aware Option Select state handling",
+        valid_option_select_state,
+        (),
+    )
+    expect_option_select_state_errors(
+        "generic Option Select state handling",
+        valid_option_select_state.replace(
+            "ha_entity_state_unavailable_ref(ctx->entity_id, state)",
+            "ha_state_unavailable_ref(state)",
+        ).replace(
+            "bool no_current_option = normalized_state_text(state) == \"unknown\";\n",
+            "",
+        ).replace(
+            "unavailable || no_current_option",
+            "unavailable",
+        ),
+        (
+            "classify Option Select unknown states by entity type",
+            "normalize an unknown Option Select value to no current option",
+            "keep Option Select available while clearing an unknown current option",
+        ),
     )
     expect_media_cover_art_external_input_errors(
         "missing media cover art external-input handling",

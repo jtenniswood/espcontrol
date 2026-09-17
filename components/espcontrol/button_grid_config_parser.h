@@ -1978,7 +1978,9 @@ inline bool ha_state_unavailable_ref(esphome::StringRef state) {
 
 inline bool ha_entity_accepts_unknown_state(const std::string &entity_id) {
   return (entity_id.size() > 7 && entity_id.compare(0, 7, "button.") == 0) ||
-         (entity_id.size() > 13 && entity_id.compare(0, 13, "input_button.") == 0);
+         (entity_id.size() > 13 && entity_id.compare(0, 13, "input_button.") == 0) ||
+         (entity_id.size() > 7 && entity_id.compare(0, 7, "select.") == 0) ||
+         (entity_id.size() > 13 && entity_id.compare(0, 13, "input_select.") == 0);
 }
 
 inline bool ha_entity_state_unavailable_ref(const std::string &entity_id,
