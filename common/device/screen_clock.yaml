@@ -1,7 +1,7 @@
 # =============================================================================
 # CLOCK SCREENSAVER - Full-screen clock overlay for idle display
 # =============================================================================
-# Black overlay with a large thin-font time label. Hidden by default; shown
+# Black overlay with a large bold-font time label. Hidden by default; shown
 # by backlight.yaml when the clock screensaver is enabled and the idle
 # timeout fires. The label is positioned absolutely so the interval can
 # drift it for burn-in prevention.
@@ -14,11 +14,13 @@
 # =============================================================================
 
 font:
-  - file: "gfonts://Roboto@Thin"
-    id: font_number_clock
+  # Keep this font dedicated to the full-screen clock. The small glyph set and
+  # 2-bit anti-aliasing limit flash and RAM use on resource-constrained panels.
+  - file: "gfonts://Roboto@Bold"
+    id: font_clock_display
     size: ${clock_font_size}
-    bpp: 4
-    glyphs: " 0123456789:"
+    bpp: 2
+    glyphs: "0123456789:"
 
 lvgl:
   top_layer:
@@ -41,7 +43,7 @@ lvgl:
           widgets:
             - label:
                 id: clock_label
-                text_font: font_number_clock
+                text_font: font_clock_display
                 text_color: 0xFFFFFF
                 text: "00:00"
       - obj:
