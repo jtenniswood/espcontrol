@@ -1,7 +1,7 @@
 # =============================================================================
 # CLOCK SCREENSAVER - Full-screen clock overlay for idle display
 # =============================================================================
-# Black overlay with a large bold-font time label. Hidden by default; shown
+# Black overlay with a large medium-weight time label. Hidden by default; shown
 # by backlight.yaml when the clock screensaver is enabled and the idle
 # timeout fires. The label is positioned absolutely so the interval can
 # drift it for burn-in prevention.
@@ -16,7 +16,7 @@
 font:
   # Keep this font dedicated to the full-screen clock. The small glyph set and
   # 2-bit anti-aliasing limit flash and RAM use on resource-constrained panels.
-  - file: "gfonts://Roboto@Bold"
+  - file: "gfonts://Roboto@Medium"
     id: font_clock_display
     size: ${clock_font_size}
     bpp: 2
