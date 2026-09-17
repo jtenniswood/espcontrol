@@ -401,9 +401,7 @@ inline void position_clock_image_overlay(lv_obj_t *overlay, lv_obj_t *shadow,
   lv_coord_t margin = screen_w / 32;
   if (margin < 12) margin = 12;
   if (margin > 40) margin = 40;
-  lv_coord_t shadow_offset = screen_w / 320;
-  if (shadow_offset < 2) shadow_offset = 2;
-  if (shadow_offset > 4) shadow_offset = 4;
+  constexpr lv_coord_t shadow_offset = 2;
 
   const lv_coord_t x = margin;
   const lv_coord_t y = screen_h - h - margin;
