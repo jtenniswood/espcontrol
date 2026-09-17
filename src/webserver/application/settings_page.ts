@@ -382,14 +382,6 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         var timerBtn: any = ssModeSegment.buttons.timer;
         var sensorBtn: any = ssModeSegment.buttons.sensor;
         ssBody.appendChild(ssModeSegment.segment);
-        var clockOverlayToggle: any = toggleRow("Show Clock on Image Screensavers", "sp-set-ss-clock-overlay", state.clockOverlayOn);
-        ssBody.appendChild(clockOverlayToggle.row);
-        clockOverlayToggle.input.addEventListener("change", function (this: any) {
-            state.clockOverlayOn = this.checked;
-            syncCoverArtScreensaverUi();
-            postClockOverlay(state.clockOverlayOn);
-        });
-        els.setClockOverlayToggle = clockOverlayToggle.input;
         var timerPanel: any = document.createElement("div");
         var timeoutControl: any = selectField("Timeout", "sp-set-ss-timeout", [], state.screensaverTimeout, function (this: any) {
             var n: any = parseFloat(this.value);
@@ -450,6 +442,15 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         sensorPanel.appendChild(sensorClockControls.dimBrightnessField);
         sensorPanel.appendChild(sensorClockControls.brightnessField);
         ssBody.appendChild(sensorPanel);
+        var clockOverlayToggle: any = toggleRow("Show Clock on Image Screensavers", "sp-set-ss-clock-overlay", state.clockOverlayOn);
+        ssBody.appendChild(clockOverlayToggle.row);
+        clockOverlayToggle.input.addEventListener("change", function (this: any) {
+            state.clockOverlayOn = this.checked;
+            syncCoverArtScreensaverUi();
+            postClockOverlay(state.clockOverlayOn);
+        });
+        els.setClockOverlayToggle = clockOverlayToggle.input;
+        els.setClockOverlayRow = clockOverlayToggle.row;
         els.setPresence = presInp;
         els.setSensorClockSelect = sensorClockControls.clockSelect;
         els.setSensorClockField = sensorClockControls.clockField;

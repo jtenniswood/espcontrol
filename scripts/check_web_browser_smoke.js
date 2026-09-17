@@ -1442,7 +1442,31 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   await screensaverCard.locator(".card-header").click();
   await screensaverCard.getByRole("button", { name: "Timer", exact: true }).click();
   const dimmedAction = screensaverCard.locator("#sp-set-clock-mode");
+  const clockOverlayToggle = screensaverCard.locator("#sp-set-ss-clock-overlay");
+  const clockOverlayRow = clockOverlayToggle.locator("..").locator("..");
+  const hasCameraScreensaver = await dimmedAction.locator('option[value="camera"]').count() > 0;
   await dimmedAction.selectOption("dim");
+  assert.strictEqual(
+    await clockOverlayRow.isVisible(),
+    false,
+    `${label}: image clock overlay toggle hides unless Camera is selected`,
+  );
+  if (hasCameraScreensaver) {
+    await dimmedAction.selectOption("camera");
+    assert(
+      await clockOverlayRow.isVisible(),
+      `${label}: image clock overlay toggle shows for Camera screensavers`,
+    );
+    assert(
+      await page.evaluate(() => {
+        const imageMode = document.querySelector("#sp-set-screensaver-camera-image-mode")?.closest(".sp-field");
+        const overlay = document.querySelector("#sp-set-ss-clock-overlay")?.closest(".sp-toggle-row");
+        return !!imageMode && !!overlay && !!(imageMode.compareDocumentPosition(overlay) & Node.DOCUMENT_POSITION_FOLLOWING);
+      }),
+      `${label}: image clock overlay toggle renders after the camera image settings`,
+    );
+    await dimmedAction.selectOption("dim");
+  }
   const manualDimmedBrightness = screensaverCard.locator("#sp-set-dimmed-brightness");
   const daytimeDimmedBrightness = screensaverCard.locator("#sp-set-daytime-dimmed-brightness");
   const nighttimeDimmedBrightness = screensaverCard.locator("#sp-set-nighttime-dimmed-brightness");
