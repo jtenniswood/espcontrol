@@ -61,12 +61,13 @@ lvgl:
           widgets:
             - label:
                 id: clock_image_overlay_shadow
-                text_font: font_number_clock
+                text_font: font_number_value_large
                 text_color: 0x000000
+                text_opa: 50%
                 text: "00:00"
             - label:
                 id: clock_image_overlay_label
-                text_font: font_number_clock
+                text_font: font_number_value_large
                 text_color: 0xFFFFFF
                 text: "00:00"
       - obj:
