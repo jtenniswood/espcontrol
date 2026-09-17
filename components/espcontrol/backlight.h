@@ -402,9 +402,10 @@ inline void position_clock_image_overlay(lv_obj_t *overlay, lv_obj_t *shadow,
   if (margin < 12) margin = 12;
   if (margin > 40) margin = 40;
   constexpr lv_coord_t shadow_offset = 2;
+  constexpr lv_coord_t vertical_offset = 10;
 
   const lv_coord_t x = margin;
-  const lv_coord_t y = screen_h - h - margin;
+  const lv_coord_t y = screen_h - h - margin + vertical_offset;
   lv_obj_set_pos(shadow, x + shadow_offset, y + shadow_offset);
   lv_obj_set_pos(label, x, y);
 }
