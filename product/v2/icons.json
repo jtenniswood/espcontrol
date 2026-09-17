@@ -955,6 +955,11 @@
       "mdi": "lightbulb-off"
     },
     {
+      "name": "Lightbulb On 50",
+      "codepoint": "F1A52",
+      "mdi": "lightbulb-on-50"
+    },
+    {
       "name": "Lightbulb On Outline",
       "codepoint": "F06E9",
       "mdi": "lightbulb-on-outline"
@@ -1003,6 +1008,11 @@
       "name": "Lock Open Outline",
       "codepoint": "F0340",
       "mdi": "lock-open-outline"
+    },
+    {
+      "name": "Lock Open Variant",
+      "codepoint": "F0FC6",
+      "mdi": "lock-open-variant"
     },
     {
       "name": "Lock Outline",
@@ -1633,6 +1643,11 @@
       "name": "Vacuum Outline",
       "codepoint": "F19A2",
       "mdi": "vacuum-outline"
+    },
+    {
+      "name": "Vanity Light",
+      "codepoint": "F11E1",
+      "mdi": "vanity-light"
     },
     {
       "name": "View Headline",

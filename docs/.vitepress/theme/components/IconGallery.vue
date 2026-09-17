@@ -75,6 +75,7 @@ const ICON_GROUPS = {
   'Lightbulb Night': 'Lighting',
   'Lightbulb Night Outline': 'Lighting',
   'Lightbulb Off': 'Lighting',
+  'Lightbulb On 50': 'Lighting',
   'Lightbulb On Outline': 'Lighting',
   'Lightbulb Outline': 'Lighting',
   'Lightbulb Spot': 'Lighting',
@@ -92,6 +93,7 @@ const ICON_GROUPS = {
   'String Lights Off': 'Lighting',
   'Track Light': 'Lighting',
   'Track Light Off': 'Lighting',
+  'Vanity Light': 'Lighting',
   'Wall Sconce': 'Lighting',
 
   'Air Conditioner': 'Climate & Air',
@@ -175,6 +177,7 @@ const ICON_GROUPS = {
   'Lock': 'Security & Access',
   'Lock Open': 'Security & Access',
   'Lock Open Outline': 'Security & Access',
+  'Lock Open Variant': 'Security & Access',
   'Lock Outline': 'Security & Access',
   'Motion Sensor': 'Security & Access',
   'Motion Sensor Off': 'Security & Access',
