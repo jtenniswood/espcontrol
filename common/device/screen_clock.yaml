@@ -65,7 +65,7 @@ lvgl:
                 id: clock_image_overlay_shadow
                 text_font: font_clock_display
                 text_color: 0x000000
-                text_opa: 30%
+                text_opa: 20%
                 text: "00:00"
             - label:
                 id: clock_image_overlay_label
