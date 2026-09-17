@@ -357,6 +357,8 @@ export function createSettingsPageHelpersFeature(
         var clockDisplay: any = controlState.clockVisible ? "" : "none";
         var dimDisplay: any = controlState.dimVisible ? "" : "none";
         var cameraDisplay: any = controlState.cameraVisible ? "" : "none";
+        if (els.setScreensaverCameraPanel)
+            els.setScreensaverCameraPanel.style.display = cameraDisplay;
         var automaticBrightness: any = normalizeBrightnessMode(state.brightnessMode) !== "manual";
         state.clockScreensaverOn = mode === "clock";
         syncClockBarUi();

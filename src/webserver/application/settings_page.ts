@@ -393,10 +393,6 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         timerPanel.appendChild(timeoutControl.field);
         var timerClockControls: any = createScreensaverThenControls("sp-set-clock-mode");
         timerPanel.appendChild(timerClockControls.clockField);
-        if (layout.config.features?.cameraScreensaver)
-            timerPanel.appendChild(timerClockControls.cameraField);
-        if (layout.config.features?.cameraScreensaver)
-            timerPanel.appendChild(timerClockControls.cameraImageModeField);
         timerPanel.appendChild(timerClockControls.dimBrightnessField);
         timerPanel.appendChild(timerClockControls.brightnessField);
         els.setClockSelect = timerClockControls.clockSelect;
@@ -435,13 +431,19 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         });
         var sensorClockControls: any = createScreensaverThenControls("sp-set-sensor-clock-mode");
         sensorPanel.appendChild(sensorClockControls.clockField);
-        if (layout.config.features?.cameraScreensaver)
-            sensorPanel.appendChild(sensorClockControls.cameraField);
-        if (layout.config.features?.cameraScreensaver)
-            sensorPanel.appendChild(sensorClockControls.cameraImageModeField);
         sensorPanel.appendChild(sensorClockControls.dimBrightnessField);
         sensorPanel.appendChild(sensorClockControls.brightnessField);
         ssBody.appendChild(sensorPanel);
+        var cameraPanel: any = document.createElement("section");
+        cameraPanel.id = "sp-set-screensaver-camera-panel";
+        cameraPanel.className = "sp-panel sp-camera-settings";
+        cameraPanel.setAttribute("aria-label", "Camera screensaver settings");
+        var timerCameraFields: any = document.createElement("div");
+        timerCameraFields.append(timerClockControls.cameraField, timerClockControls.cameraImageModeField);
+        var sensorCameraFields: any = document.createElement("div");
+        sensorCameraFields.append(sensorClockControls.cameraField, sensorClockControls.cameraImageModeField);
+        cameraPanel.append(timerCameraFields, sensorCameraFields);
+        els.setScreensaverCameraPanel = cameraPanel;
         var metadataField: any = document.createElement("div");
         metadataField.className = "sp-field";
         metadataField.appendChild(fieldLabel("Photo Metadata Entity", "sp-set-screensaver-metadata"));
@@ -454,7 +456,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setScreensaverMetadataField = metadataField;
         els.setScreensaverMetadata = metadataInput;
         var clockOverlayToggle: any = toggleRow("Display Clock", "sp-set-ss-clock-overlay", state.clockOverlayOn);
-        ssBody.appendChild(clockOverlayToggle.row);
+        cameraPanel.appendChild(clockOverlayToggle.row);
         clockOverlayToggle.input.addEventListener("change", function (this: any) {
             state.clockOverlayOn = this.checked;
             syncCoverArtScreensaverUi();
@@ -464,8 +466,8 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setClockOverlayRow = clockOverlayToggle.row;
         var metadataToggle: any = toggleRow("Display Metadata", "sp-set-ss-metadata-overlay", state.metadataOverlayOn);
         if (layout.config.features?.cameraScreensaver) {
-            ssBody.appendChild(metadataToggle.row);
-            ssBody.appendChild(metadataField);
+            cameraPanel.appendChild(metadataToggle.row);
+            cameraPanel.appendChild(metadataField);
         }
         metadataToggle.input.addEventListener("change", function (this: any) {
             state.metadataOverlayOn = this.checked;
@@ -507,6 +509,10 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             sensorBtn.className = mode === "sensor" ? "active" : "";
             timerPanel.style.display = mode === "timer" ? "" : "none";
             sensorPanel.style.display = mode === "sensor" ? "" : "none";
+            timerCameraFields.style.display = mode === "timer" ? "" : "none";
+            sensorCameraFields.style.display = mode === "sensor" ? "" : "none";
+            if (layout.config.features?.cameraScreensaver)
+                (mode === "sensor" ? sensorPanel : timerPanel).appendChild(cameraPanel);
             if (els.setScreensaverBadge) {
                 els.setScreensaverBadge.className = "sp-card-badge" + (mode === "disabled" ? " sp-hidden" : "");
             }

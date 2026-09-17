@@ -1452,12 +1452,18 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: image clock overlay toggle hides unless Camera is selected`,
   );
   if (hasCameraScreensaver) {
+    const cameraPanel = screensaverCard.locator("#sp-set-screensaver-camera-panel");
+    assert.strictEqual(await cameraPanel.isVisible(), false, `${label}: camera panel hides for other screensavers`);
     const metadataInput = screensaverCard.locator("#sp-set-screensaver-metadata");
     const metadataToggle = screensaverCard.locator("#sp-set-ss-metadata-overlay");
     const metadataRow = metadataToggle.locator("..").locator("..");
     assert.strictEqual(await metadataRow.isVisible(), false, `${label}: metadata toggle hides outside Camera mode`);
     assert.strictEqual(await metadataInput.isVisible(), false, `${label}: metadata hides outside Camera mode`);
     await dimmedAction.selectOption("camera");
+    assert(await cameraPanel.isVisible(), `${label}: Camera settings are grouped in a panel`);
+    assert(await cameraPanel.evaluate(panel => parseFloat(getComputedStyle(panel).borderTopWidth) > 0 && parseFloat(getComputedStyle(panel).paddingLeft) > 0), `${label}: camera panel has a visible border and inset padding`);
+    for (const id of ["sp-set-screensaver-camera", "sp-set-screensaver-camera-image-mode", "sp-set-ss-clock-overlay", "sp-set-ss-metadata-overlay", "sp-set-screensaver-metadata"])
+      assert.strictEqual(await cameraPanel.locator(`#${id}`).count(), 1, `${label}: ${id} belongs to the camera panel`);
     assert(await metadataRow.isVisible(), `${label}: Camera mode offers Display Metadata`);
     assert.strictEqual(await metadataInput.isVisible(), false, `${label}: disabled metadata hides its entity field`);
     const metadataPostStart = posts.length;
@@ -1491,7 +1497,17 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     assert.strictEqual(await metadataInput.isVisible(), false, `${label}: disabling metadata hides the field`);
     await metadataRow.locator(".sp-toggle").click();
     assert.strictEqual(await metadataInput.inputValue(), "sensor.current_photo_caption", `${label}: disabling metadata preserves the entity`);
+    await screensaverCard.getByRole("button", { name: "Sensor", exact: true }).click();
+    assert(await cameraPanel.isVisible(), `${label}: Sensor mode keeps camera settings grouped`);
+    assert(await cameraPanel.locator("#sp-set-sensor-screensaver-camera").isVisible(), `${label}: Sensor camera entity is visible in the panel`);
+    assert.strictEqual(await cameraPanel.locator("#sp-set-screensaver-camera").isVisible(), false, `${label}: Timer camera entity hides in Sensor mode`);
+    assert(await metadataInput.isVisible(), `${label}: Sensor mode preserves enabled metadata`);
+    await screensaverCard.getByRole("button", { name: "Disabled", exact: true }).click();
+    assert.strictEqual(await cameraPanel.isVisible(), false, `${label}: disabled screensaver hides the entire camera panel`);
+    await screensaverCard.getByRole("button", { name: "Timer", exact: true }).click();
+    assert(await cameraPanel.locator("#sp-set-screensaver-camera").isVisible(), `${label}: Timer mode restores its camera fields`);
     await dimmedAction.selectOption("dim");
+    assert.strictEqual(await cameraPanel.isVisible(), false, `${label}: switching away from Camera hides the panel`);
     assert.strictEqual(await metadataInput.isVisible(), false, `${label}: enabled metadata also hides outside Camera mode`);
   }
   const manualDimmedBrightness = screensaverCard.locator("#sp-set-dimmed-brightness");
