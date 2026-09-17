@@ -87,6 +87,10 @@
     "purpose": "Uses the reduced-memory media modal path on the constrained S3 panel.",
     "remove_when": "The full media path fits with safe runtime heap headroom."
   },
+  "ESPCONTROL_MAX_GRID_SLOTS=4": {
+    "purpose": "Caps runtime grid allocation to four slots.",
+    "remove_when": "Grid slot capacity is generated from device profile data."
+  },
   "ESPCONTROL_MAX_GRID_SLOTS=6": {
     "purpose": "Caps runtime grid allocation to six slots.",
     "remove_when": "Grid slot capacity is generated from device profile data."

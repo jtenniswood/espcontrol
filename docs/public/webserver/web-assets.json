@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "bundles": [
     {
-      "id": "c962924c240cbfac97fd37c35c11e465a51f46d1beb31e966cbf3552244e64e1",
-      "sha256": "c962924c240cbfac97fd37c35c11e465a51f46d1beb31e966cbf3552244e64e1",
-      "path": "bundles/c962924c240cbfac97fd37c35c11e465a51f46d1beb31e966cbf3552244e64e1/www.js",
+      "id": "e1257099fffa793db720e9c42e3050891e04009b5a9bd1417f5c96f50fe2de02",
+      "sha256": "e1257099fffa793db720e9c42e3050891e04009b5a9bd1417f5c96f50fe2de02",
+      "path": "bundles/e1257099fffa793db720e9c42e3050891e04009b5a9bd1417f5c96f50fe2de02/www.js",
       "deviceProfiles": [
         "guition-esp32-p4-jc1060p470",
         "guition-esp32-p4-jc1060p470-v2",
@@ -12,7 +12,8 @@
         "guition-esp32-p4-jc8012p4a1",
         "guition-esp32-p4-jc8012p4a1-v2",
         "esp32-p4-86",
-        "guition-esp32-s3-4848s040"
+        "guition-esp32-s3-4848s040",
+        "lilygo-t-display-s3-long"
       ],
       "firmwareVersions": [
         "dev",

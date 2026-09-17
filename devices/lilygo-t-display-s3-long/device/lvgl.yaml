@@ -1,0 +1,119 @@
+# =============================================================================
+# LVGL MAIN PAGE - Top-layer HUD and button grid
+# =============================================================================
+# Defines the primary UI: a top-layer overlay with temperature and clock
+# labels, and the main page containing a single row of 4 button widgets.
+# The display is configured native (640 tall x 180 wide) with `rotation: 90`,
+# which ESPHome normalizes into a software LVGL-level rotation for this chip
+# (AXS15231 has no hardware axis-swap bit), presenting a 640x180 logical
+# canvas here - so this file lays out the grid as a normal landscape bar, no
+# physical remounting or vertical-stack workaround needed.
+# pad_top clears the top-layer clock bar with a little breathing room.
+# sensors.yaml unhides and places active ones at boot via grid cell coords.
+# =============================================================================
+
+lvgl:
+  # ---------------------------------------------------------------------------
+  # Top layer (always visible above all pages)
+  # ---------------------------------------------------------------------------
+  top_layer:
+    widgets:
+      # Indoor/outdoor temperature (top-left)
+      - label:
+          text: "-°C"
+          id: temperatures
+          text_font: font_text_body
+          align: top_left
+          x: 6
+          y: 4
+          text_color: 0xFFFFFF
+          hidden: true
+      # Clock (top-center, updated every minute by time.yaml)
+      - label:
+          text: "--:--"
+          id: display_time
+          text_font: font_text_body
+          align: top_mid
+          x: 0
+          y: 4
+          text_align: center
+          text_color: 0xFFFFFF
+          hidden: true
+      # Network status (tappable, right side of clock bar)
+      - obj:
+          id: network_status_button
+          align: top_right
+          x: -6
+          y: 0
+          width: 40
+          height: 22
+          bg_opa: 0%
+          border_width: 0
+          pad_all: 0
+          scrollable: false
+          scrollbar_mode: "off"
+          clickable: true
+          hidden: true
+          widgets:
+            - label:
+                id: network_status_icon_label
+                text: "\U000F0928"
+                text_font: font_icon_status
+                align: center
+                text_align: center
+                text_color: 0xFFFFFF
+          on_press:
+            then:
+              - script.execute: network_status_open_info
+
+      # Night mode indicator (schedule night period only). Starts hidden;
+      # clock_bar_apply positions and reveals it beside the network icon, so the
+      # x/y here are unused placeholders.
+      - obj:
+          id: night_mode_status_icon
+          align: top_right
+          x: 0
+          y: 0
+          width: 40
+          height: 22
+          bg_opa: 0%
+          border_width: 0
+          pad_all: 0
+          scrollable: false
+          scrollbar_mode: "off"
+          clickable: false
+          hidden: true
+          widgets:
+            - label:
+                id: night_mode_status_icon_label
+                text: "\U000F00DC"
+                text_font: font_icon_status
+                align: center
+                text_align: center
+                text_color: 0xFFFFFF
+
+  # ---------------------------------------------------------------------------
+  # Main page (fixed 1x4 grid of button widgets)
+  # ---------------------------------------------------------------------------
+  pages:
+    - id: main_page
+      scrollbar_mode: "off"
+      layout:
+        type: grid
+        grid_columns: [FR(1), FR(1), FR(1), FR(1)]
+        grid_rows: [FR(1)]
+        pad_row: ${main_page_card_gap}
+        pad_column: ${main_page_card_gap}
+      width: 100%
+      bg_color: Black
+      bg_opa: cover
+      pad_top: ${main_page_pad_top}
+      pad_bottom: 3
+      pad_left: 4
+      pad_right: 4
+
+      widgets:
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "1" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "2" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "3" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "4" } }

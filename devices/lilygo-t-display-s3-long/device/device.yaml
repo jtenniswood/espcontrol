@@ -1,0 +1,296 @@
+# =============================================================================
+# DEVICE - LilyGO T-Display S3 Long hardware definition
+# =============================================================================
+# Pin assignments, peripherals, and platform config for the 3.4" 640x180 bar
+# panel. Includes the ESP32-S3R8 SoC (native WiFi, octal PSRAM), AXS15231B
+# QSPI TFT, CST3530 capacitive touchscreen (I2C, addressed via the native
+# ESPHome axs15231 touchscreen driver), and backlight PWM.
+#
+# Pin assignments come from LilyGO's own example firmware
+# (Xinyuan-LilyGO/T-Display-S3-Long, examples/*/pins_config.h). Touch uses
+# the stock ESPHome axs15231 touchscreen component. The display uses the
+# stock ESPHome mipi_spi/AXS15231 model, configured at its native panel
+# geometry (180 wide x 640 tall) with `rotation: 90` - this chip has no
+# hardware axis-swap bit, so ESPHome normalizes that rotation into a
+# software LVGL-level rotation automatically, matching a previously
+# confirmed-working reference configuration for this exact board.
+# =============================================================================
+
+substitutions:
+  espcontrol_component_source: "github://jtenniswood/espcontrol@main"
+  mdi_font_file: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
+
+# ---------------------------------------------------------------------------
+# ESP32-S3 platform (16MB flash, ESP-IDF framework)
+# ---------------------------------------------------------------------------
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+
+# ---------------------------------------------------------------------------
+# External component
+# ---------------------------------------------------------------------------
+external_components:
+  - source: ${espcontrol_component_source}
+    components: [espcontrol, web_server_idf, artwork_image]
+    refresh: 1s
+
+espcontrol:
+  id: espcontrol_app
+  panel_config:
+    device_profile: ${device_slug}
+    storage: card_images
+    button_order: button_order
+    button_on_color: button_on_color
+    buttons:
+      - config: button_1_config
+        subpage_chunks: [subpage_1_config, subpage_1_config_ext, subpage_1_config_ext_2, subpage_1_config_ext_3]
+      - config: button_2_config
+        subpage_chunks: [subpage_2_config, subpage_2_config_ext, subpage_2_config_ext_2, subpage_2_config_ext_3]
+      - config: button_3_config
+        subpage_chunks: [subpage_3_config, subpage_3_config_ext, subpage_3_config_ext_2, subpage_3_config_ext_3]
+      - config: button_4_config
+        subpage_chunks: [subpage_4_config, subpage_4_config_ext, subpage_4_config_ext_2, subpage_4_config_ext_3]
+
+# ---------------------------------------------------------------------------
+# ESPHome core (device name from substitutions)
+# ---------------------------------------------------------------------------
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  build_flags:
+    - "-DESPCONTROL_MAX_GRID_SLOTS=4"
+  on_boot:
+    - priority: -100
+      then:
+        - lambda: 'id(screen_rotation_ready) = true;'
+        - script.execute: clock_bar_apply
+
+# ---------------------------------------------------------------------------
+# PSRAM (video frame buffer memory)
+# ---------------------------------------------------------------------------
+psram:
+  mode: octal
+
+# ---------------------------------------------------------------------------
+# OTA updates (ESPHome native + HTTP-based)
+# ---------------------------------------------------------------------------
+ota:
+  - platform: esphome
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+    on_error:
+      then:
+        - script.execute: show_update_failed
+  - platform: http_request
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+    on_error:
+      then:
+        - script.execute: show_update_failed
+
+safe_mode:
+  id: t_display_s3_long_safe_mode
+
+# ---------------------------------------------------------------------------
+# Shared infrastructure (API, logging, web server, restart button)
+# ---------------------------------------------------------------------------
+packages:
+  core_infra: !include ../../../common/device/core_infra.yaml
+
+# This is a compact ESP32-S3 panel with no ESP32-C6 co-processor to share the
+# connection load with. Keep the native API connection pool modest, but allow
+# one spare slot so Home Assistant can reconnect after an abrupt OTA reset
+# while the ESPHome dashboard/logger still has a socket open. Give the send
+# queue extra headroom so reconnect bursts and compact Home Assistant action
+# responses do not drop the API connection.
+api:
+  listen_backlog: 4
+  max_connections: 3
+  max_send_queue: 12
+
+wifi:
+  use_psram: true
+
+# ---------------------------------------------------------------------------
+# Backlight (LEDC PWM output + monochromatic light entity)
+# ---------------------------------------------------------------------------
+output:
+  - platform: ledc
+    pin: GPIO1
+    id: gpio_backlight_pwm
+
+light:
+  - platform: monochromatic
+    output: gpio_backlight_pwm
+    name: Display Backlight
+    icon: mdi:lightbulb-on
+    id: display_backlight
+    restore_mode: RESTORE_DEFAULT_ON
+    default_transition_length: 0s
+    gamma_correct: 1.0
+    on_turn_on:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                return (id(espcontrol_app).display().target_source_is(
+                            espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
+                        id(espcontrol_app).display().target_mode_is(
+                            espcontrol::DisplayMode::DISPLAY_OFF)) ||
+                       screen_schedule_waiting_for_time(
+                         id(screen_schedule_trigger).state,
+                         id(schedule_enabled).state,
+                         now.is_valid());
+            then:
+              - script.execute: backlight_force_display_off
+            else:
+              - if:
+                  condition:
+                    lambda: |-
+                      return id(espcontrol_app).display().current_mode_is(
+                          espcontrol::DisplayMode::DISPLAY_OFF);
+                  then:
+                    - script.execute: screensaver_wake
+    on_turn_off:
+      then:
+        - script.execute: display_backlight_handle_off
+    on_state:
+      then:
+        - script.execute: display_backlight_handle_state
+
+# ---------------------------------------------------------------------------
+# QSPI bus (shared by the AXS15231B display)
+# ---------------------------------------------------------------------------
+spi:
+  - id: display_qspi
+    type: quad
+    clk_pin: GPIO17
+    data_pins:
+      - GPIO13
+      - GPIO18
+      - GPIO21
+      - GPIO14
+
+# ---------------------------------------------------------------------------
+# I2C bus and touchscreen (CST3530 capacitive, wakes screensaver on touch)
+# ---------------------------------------------------------------------------
+i2c:
+  sda: GPIO15
+  scl: GPIO10
+  id: touchscreen_bus
+
+touchscreen:
+  - platform: axs15231
+    id: my_touchscreen
+    display: my_display
+    i2c_id: touchscreen_bus
+    # Touch calibration below matches the display's logical 640x180 canvas
+    # (post software-rotation - see the display block below). These
+    # mirror_x/mirror_y/swap_xy values match a previously confirmed-working
+    # reference configuration for this exact board.
+    transform:
+      mirror_x: true
+      mirror_y: true
+      swap_xy: false
+    calibration:
+      x_min: 0
+      x_max: 640
+      y_min: 0
+      y_max: 180
+    on_touch:
+      - script.execute: cover_art_pause_after_touch
+      - script.wait: cover_art_pause_after_touch
+      - script.execute: screensaver_wake
+
+# ---------------------------------------------------------------------------
+# Display (3.4" 640x180 QSPI AXS15231B bar panel)
+# ---------------------------------------------------------------------------
+# Native panel geometry is 180 (wide) x 640 (tall). ESPHome rejects
+# `rotation` on this display block when LVGL is present ("not compatible
+# with LVGL, please set rotation in the LVGL config instead") - the
+# rotation lives on the lvgl: block below instead. data_rate is left at the
+# AXS15231 model default (10MHz) rather than overridden, matching a
+# previously confirmed-working reference configuration for this exact
+# board.
+display:
+  - platform: mipi_spi
+    id: my_display
+    spi_id: display_qspi
+    model: AXS15231
+    dimensions:
+      height: 640
+      width: 180
+    cs_pin: GPIO12
+    reset_pin: GPIO16
+    auto_clear_enabled: false
+
+# ---------------------------------------------------------------------------
+# LVGL base (display binding, must be before any page definitions)
+# ---------------------------------------------------------------------------
+# This panel is a fixed-orientation horizontal bar, so no runtime rotation
+# *feature* is wired up (unlike the square/portrait panels elsewhere in this
+# repo) - the select entity below exists only because shared common
+# packages reference its id. `rotation: 90` below is fixed, not dynamic: it
+# presents the native 180x640 panel as a 640x180 logical canvas to the rest
+# of this profile, matching a previously confirmed-working reference
+# configuration for this exact board.
+lvgl:
+  id: main_lvgl
+  rotation: 90
+  # full_refresh (below) requires the whole frame to be available to
+  # redraw as a single unit - pairing it with a fractional buffer_size
+  # hard-hung this LVGL version inside lv_display_set_buffers (watchdog
+  # abort before setup() even finished). Full-size buffer avoids that.
+  buffer_size: 100%
+  # The native panel width is 180px, which the default draw_rounding (8)
+  # does not evenly divide (180 / 8 = 22.5) - LVGL rounds the last partial
+  # flush up to 184 and writes a few rows past the real native buffer. 4
+  # does divide 180 evenly (45) while still being a valid power-of-two
+  # rounding value.
+  draw_rounding: 4
+  # This AXS15231B panel's controller mishandles some partial/dirty-rect
+  # writes with software rotation active - a garbage line remained at one
+  # edge even with draw_rounding fixed. This is a known issue on this exact
+  # board (Xinyuan-LilyGO/T-Display-S3-Long#44) - full_refresh forces every
+  # flush to redraw the whole screen at a fixed, aligned address window
+  # instead of an arbitrary partial rectangle, which is the workaround
+  # reported there for LVGL software rotation on this panel.
+  full_refresh: true
+  displays: my_display
+  touchscreens:
+    - touchscreen_id: my_touchscreen
+      long_press_time: 3s
+
+select:
+  - platform: template
+    name: "${entity_screen_rotation}"
+    internal: true
+    disabled_by_default: true
+    id: screen_rotation_select
+    entity_category: config
+    icon: "mdi:screen-rotation"
+    optimistic: true
+    restore_value: true
+    initial_option: "0"
+    options:
+      - "0"

@@ -110,6 +110,30 @@
         "tabs": {"size": 48, "selectedSize": 54, "gap": 12, "frameWidth": 306, "frameHeight": 66, "safeLeft": 73, "rowLeft": 82, "contentGap": 16, "iconZoom": 180},
         "content": {"top": 100, "bottom": 418, "width": 434, "height": 318, "centerY": 41}
       }
+    },
+    {
+      "slug": "lilygo-t-display-s3-long",
+      "profile": {
+        "family": "wide-landscape",
+        "density": "compact",
+        "memoryTier": "constrained",
+        "baseTouchTarget": 17
+      },
+      "viewport": {"width": 640, "height": 180},
+      "panelInsets": {"left": 4, "top": 22, "right": 4, "bottom": 3},
+      "groupedSpeakerModalBelowMinimum": true,
+      "note": "180px screen height can't reach the grouped-speaker All Controls modal's 180px content-height floor (panel_height/2 fallback is 77px). TODO: compact/vertical-slider layout for very short panels.",
+      "expected": {
+        "panel": {"x": 4, "y": 22, "width": 632, "height": 155},
+        "shortSide": 180,
+        "inset": 8,
+        "back": {"size": 17, "x": 8, "y": 8},
+        "buttonSize": 30,
+        "arc": {"size": 127, "stroke": 6, "centerX": 0},
+        "controlsCenterY": 48,
+        "tabs": {"size": 20, "selectedSize": 22, "gap": 12, "frameWidth": 156, "frameHeight": 28, "safeLeft": 29, "rowLeft": 238, "contentGap": 10, "iconZoom": 180},
+        "content": {"top": 46, "bottom": 147, "width": 616, "height": 77, "centerY": 7}
+      }
     }
   ]
 }

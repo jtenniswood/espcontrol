@@ -167,6 +167,29 @@
       "rotation": true,
       "ethernetManualInstall": false,
       "subpages": true
+    },
+    {
+      "slug": "lilygo-t-display-s3-long",
+      "installSlug": "lilygo-t-display-s3-long",
+      "name": "LilyGO T-Display S3 Long",
+      "docsPath": "/screens/t-display-s3-long",
+      "screenSize": "3.4 inches",
+      "resolution": "640 x 180",
+      "orientation": "Landscape",
+      "slots": 4,
+      "imageSlots": 1,
+      "imageCardTypes": [
+        "media_cover_art"
+      ],
+      "grid": {
+        "rows": 1,
+        "cols": 4
+      },
+      "chipFamily": "ESP32-S3",
+      "relays": 0,
+      "rotation": false,
+      "ethernetManualInstall": false,
+      "subpages": true
     }
   ]
 }

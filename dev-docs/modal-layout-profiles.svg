@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1508" height="370" viewBox="0 0 1508 370" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="370" viewBox="0 0 1800 370" role="img" aria-labelledby="title desc">
 <title id="title">EspControl modal layout profiles</title>
 <desc id="desc">Generated reference showing the shared modal shell, tabs, content region, and back button on each display family.</desc>
 <style>
@@ -12,7 +12,7 @@ text { font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
 .subtitle { fill: #98a2b3; font-size: 13px; } .device { fill: #f2f4f7; font-size: 13px; font-weight: 600; }
 .profile { fill: #b2ccff; font-size: 12px; } .meta { fill: #98a2b3; font-size: 11px; }
 </style>
-<rect width="1508" height="370" class="background"/>
+<rect width="1800" height="370" class="background"/>
 <text x="24.0" y="31.0" class="title" text-anchor="start">Device-aware modal layout reference</text>
 <text x="24.0" y="52.0" class="subtitle" text-anchor="start">Generated from the geometry contract; dashed areas are modal content regions.</text>
 <g id="guition-esp32-p4-jc1060p470">
@@ -89,5 +89,20 @@ text { font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
 <text x="1317.0" y="288.0" class="device" text-anchor="middle">s3-4848s040</text>
 <text x="1317.0" y="308.0" class="profile" text-anchor="middle">compact-square · compact</text>
 <text x="1317.0" y="326.0" class="meta" text-anchor="middle">480×480 · constrained memory</text>
+</g>
+<g id="lilygo-t-display-s3-long">
+<rect x="1484.0" y="129.8" width="250.0" height="70.3" rx="8" class="screen"/>
+<rect x="1485.6" y="138.4" width="246.9" height="60.5" rx="6" class="panel"/>
+<rect x="1578.5" y="142.3" width="60.9" height="10.9" rx="5.5" class="tab-frame"/>
+<circle cx="1584.0" cy="147.8" r="4.3" class="tab selected"/>
+<circle cx="1596.5" cy="147.8" r="3.9" class="tab"/>
+<circle cx="1609.0" cy="147.8" r="3.9" class="tab"/>
+<circle cx="1621.5" cy="147.8" r="3.9" class="tab"/>
+<circle cx="1634.0" cy="147.8" r="3.9" class="tab"/>
+<rect x="1488.7" y="156.4" width="240.6" height="30.1" rx="4" class="content"/>
+<circle cx="1492.0" cy="144.9" r="3.3" class="back"/>
+<text x="1609.0" y="288.0" class="device" text-anchor="middle">lilygo-t-display-s3-long</text>
+<text x="1609.0" y="308.0" class="profile" text-anchor="middle">wide-landscape · compact</text>
+<text x="1609.0" y="326.0" class="meta" text-anchor="middle">640×180 · constrained memory</text>
 </g>
 </svg>

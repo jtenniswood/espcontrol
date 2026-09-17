@@ -6,7 +6,8 @@
     "guition-esp32-p4-jc8012p4a1",
     "guition-esp32-p4-jc8012p4a1-v2",
     "esp32-p4-86",
-    "guition-esp32-s3-4848s040"
+    "guition-esp32-s3-4848s040",
+    "lilygo-t-display-s3-long"
   ],
   "button": {
     "input": "~media_player.kitchen,Morning%2C Mix,Music,Auto,playlist,,media,,playlist_content_id=media-source%253A//music/morning%252Cmix=50%2525%2Cplaylist_player_source=Kitchen%252C Main=Zone 50%2525",
@@ -108,5 +109,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 2580577, "gzip": 1085281, "gzipTolerance": 9216 }
+  "bundleSize": { "minified": 2581243, "gzip": 1090232, "gzipTolerance": 9216 }
 }
