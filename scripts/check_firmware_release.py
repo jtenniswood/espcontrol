@@ -205,6 +205,11 @@ def test_pages_excludes_draft_prereleases() -> None:
     workflow = PAGES_WORKFLOW.read_text(encoding="utf-8")
     assert "select((.draft | not) and .prerelease)" in workflow
     assert "select(.prerelease)" not in workflow
+    assert "actions: read" in workflow
+    assert "name: Download verified release web assets" in workflow
+    assert "run-id: ${{ github.event.workflow_run.id }}" in workflow
+    assert "name: Use verified release web assets" in workflow
+    assert "if: github.event_name != 'workflow_run'" in workflow
 
 
 def test_release_skill_creates_selected_tag_before_draft() -> None:

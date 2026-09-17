@@ -75,7 +75,8 @@ No preparation PR is required. The `Build Release` workflow reads the published
 release catalogue, adds the selected tag to the compatibility list in its
 private checkout, rebuilds and verifies the web asset manifest, and carries the
 result through the release jobs. The Pages workflow performs the same
-catalogue-based preparation for the public docs build.
+catalogue-based preparation for ordinary public docs builds and deploys the
+verified release artifact when it follows a successful release workflow.
 
 Set the selected tag before creating the draft, for example:
 
