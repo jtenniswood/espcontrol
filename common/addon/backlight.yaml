@@ -1613,6 +1613,7 @@ script:
           auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           const bool clock_visible = id(clock_overlay_enabled).state && time.is_valid();
           const bool metadata_visible = mode == espcontrol::DisplayMode::CAMERA &&
+              id(metadata_overlay_enabled).state &&
               ha_api_state_connected() && !id(photo_metadata_value).empty() &&
               id(photo_metadata_subscribed_entity) == id(screensaver_metadata_entity).state &&
               id(photo_metadata_subscription_generation) == ha_subscription_generation();

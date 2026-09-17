@@ -363,6 +363,7 @@ export interface BackupPanelSettingsState {
   presenceSensorEntity: string;
   screensaverCameraEntity: string;
   screensaverMetadataEntity: string;
+  metadataOverlay: boolean;
   screensaverCameraImageMode: string;
   mediaPlayerSleepPrevention: boolean;
   mediaPlayerSleepPreventionEntity: string;
@@ -510,6 +511,9 @@ export function normalizeBackupPanelSettings(
     presenceSensorEntity: String(settings.presence_sensor_entity || ""),
     screensaverCameraEntity: String(settings.screensaver_camera_entity || ""),
     screensaverMetadataEntity: String(settings.screensaver_metadata_entity || ""),
+    metadataOverlay: objectValue(settings, "metadata_overlay") != null
+      ? !!settings.metadata_overlay
+      : String(settings.screensaver_metadata_entity || "").startsWith("sensor."),
     screensaverCameraImageMode: normalizeScreensaverCameraImageMode(
       settings.screensaver_camera_image_mode,
     ),

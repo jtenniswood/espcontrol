@@ -44,6 +44,7 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     temperatureDegreeSymbolOn: true, subpageChevronsOn: true, presenceEntity: "",
     screensaverCameraEntity: "", screensaverCameraImageMode: "Fit",
     screensaverMetadataEntity: "",
+    metadataOverlayOn: false,
     mediaPlayerSleepPreventionOn: true, mediaPlayerSleepPreventionEntity: "",
     coverArtScreensaverOn: false, clockOverlayOn: false, coverArtMediaPlayerEntity: "", coverArtSecondaryMediaPlayerEntity: "", coverArtAttributeConditions: "",
     coverArtFilteringEnabled: false, coverArtDelay: 10, coverArtTrackOverlayDuration: 5,

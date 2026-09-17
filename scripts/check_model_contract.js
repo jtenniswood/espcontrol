@@ -642,6 +642,15 @@ assert.strictEqual(panelSettings.screensaverMode, "timer", "panel screensaver mo
 assert.strictEqual(panelSettings.screensaverAction, "dim", "panel screensaver action imports");
 assert.strictEqual(panelSettings.screensaverCameraImageMode, "Fill", "panel camera image mode imports");
 assert.strictEqual(panelSettings.screensaverMetadataEntity, "sensor.current_photo_caption", "panel photo metadata entity imports");
+assert.strictEqual(panelSettings.metadataOverlay, true, "older backups with a metadata entity keep metadata enabled");
+const metadataSettingsCurrent = {
+  ...panelSettings, clockFormatOptions: ["12h", "24h"], screenRotationOptions: ["0"],
+  ntpDefaults: ["pool.ntp.org", "time.nist.gov", "time.google.com"], updateFrequencyOptions: ["Daily"],
+};
+assert.strictEqual(model.normalizeBackupPanelSettings({
+  screensaver_metadata_entity: "sensor.current_photo_caption", metadata_overlay: false,
+}, metadataSettingsCurrent).metadataOverlay, false, "explicitly disabled metadata stays off when restoring a saved entity");
+assert.strictEqual(model.normalizeBackupPanelSettings({}, metadataSettingsCurrent).metadataOverlay, false, "metadata defaults off without a saved entity");
 assert.strictEqual(model.normalizeScreensaverCameraImageMode("unexpected"), "Fit", "invalid camera image mode defaults to Fit");
 assert.strictEqual(panelSettings.coverArtHideExternalInput, true, "panel cover art external-input setting imports");
 assert.strictEqual(panelSettings.coverArtHomeAssistantEndpointMode, "Manual", "panel Home Assistant artwork endpoint mode imports");

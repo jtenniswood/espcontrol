@@ -137,7 +137,7 @@ script:
     mode: restart
     then:
       - lambda: |-
-          const bool active = id(espcontrol_app).display().target_mode_is(
+          const bool active = id(metadata_overlay_enabled).state && id(espcontrol_app).display().target_mode_is(
               espcontrol::DisplayMode::CAMERA) && ha_api_state_connected();
           const std::string &configured = id(screensaver_metadata_entity).state;
           const std::string entity = active && configured.rfind("sensor.", 0) == 0
@@ -156,7 +156,7 @@ script:
             HaCallbackOwnerScope scope(owner);
             const bool subscribed = ha_subscribe_state(entity,
               std::function<void(esphome::StringRef)>([entity, generation](esphome::StringRef value) {
-                if (!ha_api_state_connected() || generation != ha_subscription_generation() ||
+                if (!id(metadata_overlay_enabled).state || !ha_api_state_connected() || generation != ha_subscription_generation() ||
                     generation != id(photo_metadata_subscription_generation) ||
                     entity != id(photo_metadata_subscribed_entity) ||
                     entity != id(screensaver_metadata_entity).state ||

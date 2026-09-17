@@ -247,6 +247,15 @@ export const ENTITY_CATALOG = {
         "screensaver_metadata_entity"
       ]
     },
+    "screen_saver_metadata_overlay": {
+      "domain": "switch",
+      "name": "Screen Saver: Metadata Overlay",
+      "objectIds": [
+        "screen_saver__metadata_overlay",
+        "screen_saver_metadata_overlay",
+        "metadata_overlay_enabled"
+      ]
+    },
     "screen_saver_camera_image_mode": {
       "domain": "select",
       "name": "Screen Saver: Camera Image Mode",
@@ -780,6 +789,7 @@ export const ENTITY_CATALOG = {
       "screen_saver_action",
       "screen_saver_camera_entity",
       "screen_saver_metadata_entity",
+      "screen_saver_metadata_overlay",
       "screen_saver_camera_image_mode",
       "presence_sensor_entity",
       "screen_schedule_sensor_entity",

@@ -14,6 +14,8 @@ struct App {
   DisplayMode current_mode() { return target; }
 } espcontrol_app;
 struct Setting { std::string state; } screensaver_metadata_entity;
+struct Toggle { bool state = false; void turn_on() { state = true; } } metadata_overlay_enabled;
+bool metadata_overlay_toggle_migrated = false;
 struct Apply { int calls = 0; void execute(int) { ++calls; } } clock_overlay_apply;
 std::string photo_metadata_subscribed_entity, photo_metadata_value;
 uint32_t photo_metadata_subscription_generation = 0, generation = 1;
@@ -36,11 +38,25 @@ std::string string_ref_limited(esphome::StringRef value, size_t size) { return v
 void refresh() {
 #include "metadata_subscription.inc"
 }
+bool migrate() {
+  bool preferences_changed = false;
+#include "metadata_migration.inc"
+  return preferences_changed;
+}
 int main() {
+  assert(migrate() && !metadata_overlay_enabled.state); // Fresh installs default off.
+  metadata_overlay_toggle_migrated = false;
+  screensaver_metadata_entity.state = "sensor.photo";
+  assert(migrate() && metadata_overlay_enabled.state); // Existing setup stays enabled.
+  metadata_overlay_enabled.state = false;
+  assert(!migrate() && !metadata_overlay_enabled.state); // Never undo the user's off choice.
   screensaver_metadata_entity.state = "sensor.photo";
   refresh();
   assert(subscriptions == 0);
   espcontrol_app.target = DisplayMode::CAMERA;
+  refresh();
+  assert(subscriptions == 0); // A saved entity alone must not enable metadata.
+  metadata_overlay_enabled.state = true;
   refresh();
   assert(subscriptions == 1 && announcements == 1);
   state_callback("Paris");
@@ -86,6 +102,17 @@ int main() {
   subscribe_ok = true;
   refresh();
   assert(state_callback && subscriptions == 6);
+  state_callback("Visible");
+  stale = state_callback;
+  metadata_overlay_enabled.state = false;
+  stale("Late update");
+  assert(photo_metadata_value == "Visible");
+  refresh();
+  assert(!state_callback && photo_metadata_value.empty());
+  assert(screensaver_metadata_entity.state == "sensor.new_photo");
+  metadata_overlay_enabled.state = true;
+  refresh();
+  assert(state_callback && subscriptions == 7);
   screensaver_metadata_entity.state.clear();
   refresh();
   assert(!state_callback && photo_metadata_value.empty());

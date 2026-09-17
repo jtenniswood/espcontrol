@@ -144,6 +144,7 @@ export interface AppState {
   presenceEntity: string;
   screensaverCameraEntity: string;
   screensaverMetadataEntity: string;
+  metadataOverlayOn: boolean;
   screensaverCameraImageMode: string;
   mediaPlayerSleepPreventionOn: boolean;
   mediaPlayerSleepPreventionEntity: string;

@@ -220,7 +220,7 @@ TASKS = (
                                       "components/espcontrol/display_mode_controller.h"), parallel_safe=True),
     task("photo-metadata", ("python3", "scripts/check_photo_metadata.py"), profiles=FAST,
          domains=("firmware",), inputs=("components/espcontrol/photo_metadata.h",
-              "common/device/screen_clock.yaml", "tests/firmware/photo_metadata*.cpp",
+              "common/device/screen_clock.yaml", "common/config/display.yaml", "tests/firmware/photo_metadata*.cpp",
               "scripts/check_photo_metadata.py"), parallel_safe=True),
     task("firmware-modal-layouts", ("python3", "scripts/check_firmware_modal_layouts.py"),
          ("python3", "scripts/generate_modal_layout_reference.py", "--check"),

@@ -6,6 +6,10 @@
 # =============================================================================
 
 globals:
+  - id: metadata_overlay_toggle_migrated
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
   - id: screen_rotation_ready
     type: bool
     restore_value: no
@@ -46,6 +50,13 @@ esphome:
       then:
         - lambda: |-
             bool preferences_changed = false;
+            if (!id(metadata_overlay_toggle_migrated)) {
+              // Preserve metadata already enabled by the previous entity-only setting.
+              if (id(screensaver_metadata_entity).state.rfind("sensor.", 0) == 0)
+                id(metadata_overlay_enabled).turn_on();
+              id(metadata_overlay_toggle_migrated) = true;
+              preferences_changed = true;
+            }
             if (!id(media_player_sleep_prevention_default_on_migrated)) {
               id(media_player_sleep_prevention_enabled).turn_on();
               id(media_player_sleep_prevention_default_on_migrated) = true;
@@ -503,6 +514,21 @@ switch:
       - script.execute:
           id: clock_overlay_apply
           target_mode: !lambda 'return static_cast<int>(id(espcontrol_app).display().current_mode());'
+
+  - platform: template
+    name: "${entity_screen_saver_metadata_overlay}"
+    internal: true
+    id: metadata_overlay_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: "mdi:information-outline"
+    entity_category: config
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_turn_on:
+      - script.execute: photo_metadata_refresh_subscription
+    on_turn_off:
+      - script.execute: photo_metadata_refresh_subscription
 
   - platform: template
     name: "${entity_screen_saver_hide_cover_art_external_input}"

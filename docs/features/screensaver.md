@@ -40,7 +40,9 @@ When Screen Dimmed is selected, Manual brightness mode uses **Dimmed Screen Brig
 
 ### Photo metadata
 
-With **Camera** selected, the optional **Photo Metadata Entity** field accepts a Home Assistant `sensor.*` entity containing the current photo's caption, date, or location. Clear the field to disable it. Text appears bottom-right on 7- and 10-inch panels, using the clock's edge spacing; on smaller panels it appears below the clock. Empty, `unknown`, and `unavailable` states are hidden, and the clock moves back down without leaving a gap. Metadata can also appear with **Display Clock** switched off. Long text wraps to at most three lines.
+With **Camera** selected, enable **Display Metadata** below **Display Clock** to reveal the **Photo Metadata Entity** field. Enter a Home Assistant `sensor.*` entity containing the current photo's caption, date, or location. Turning the toggle off hides metadata and the field without clearing the saved entity. Existing metadata setups remain enabled after upgrading.
+
+Text appears bottom-right on 7- and 10-inch panels, using the clock's edge spacing; on smaller panels it appears below the clock. Empty, `unknown`, and `unavailable` states are hidden, and the clock moves back down without leaving a gap. Metadata can also appear with **Display Clock** switched off. Long text wraps to at most three lines.
 
 ## Sensor
 

@@ -379,7 +379,11 @@ export function createSettingsPageHelpersFeature(
         if (els.setClockOverlayRow)
             els.setClockOverlayRow.style.display = cameraDisplay;
         if (els.setScreensaverMetadataField)
-            els.setScreensaverMetadataField.style.display = cameraDisplay;
+            els.setScreensaverMetadataField.style.display = controlState.cameraVisible && state.metadataOverlayOn ? "" : "none";
+        if (els.setMetadataOverlayRow)
+            els.setMetadataOverlayRow.style.display = cameraDisplay;
+        if (els.setMetadataOverlayToggle)
+            els.setMetadataOverlayToggle.checked = state.metadataOverlayOn;
         syncInput(els.setScreensaverMetadata, state.screensaverMetadataEntity);
         syncInput(els.setScreensaverCamera, state.screensaverCameraEntity);
         syncInput(els.setSensorScreensaverCamera, state.screensaverCameraEntity);

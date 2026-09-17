@@ -1453,10 +1453,19 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   );
   if (hasCameraScreensaver) {
     const metadataInput = screensaverCard.locator("#sp-set-screensaver-metadata");
+    const metadataToggle = screensaverCard.locator("#sp-set-ss-metadata-overlay");
+    const metadataRow = metadataToggle.locator("..").locator("..");
+    assert.strictEqual(await metadataRow.isVisible(), false, `${label}: metadata toggle hides outside Camera mode`);
     assert.strictEqual(await metadataInput.isVisible(), false, `${label}: metadata hides outside Camera mode`);
     await dimmedAction.selectOption("camera");
-    assert(await metadataInput.isVisible(), `${label}: Camera mode offers a photo metadata sensor`);
+    assert(await metadataRow.isVisible(), `${label}: Camera mode offers Display Metadata`);
+    assert.strictEqual(await metadataInput.isVisible(), false, `${label}: disabled metadata hides its entity field`);
     const metadataPostStart = posts.length;
+    await metadataRow.locator(".sp-toggle").click();
+    await waitForPost(posts,
+      { domain: "switch", name: "screen_saver__metadata_overlay", action: "turn_on" },
+      `${label}: metadata toggle enables the firmware overlay`, metadataPostStart);
+    assert(await metadataInput.isVisible(), `${label}: enabling metadata reveals its entity field`);
     await metadataInput.fill("sensor.current_photo_caption");
     await metadataInput.blur();
     await waitForPost(posts,
@@ -1468,13 +1477,22 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     );
     assert(
       await page.evaluate(() => {
-        const imageMode = document.querySelector("#sp-set-screensaver-metadata")?.closest(".sp-field");
-        const overlay = document.querySelector("#sp-set-ss-clock-overlay")?.closest(".sp-toggle-row");
-        return !!imageMode && !!overlay && !!(imageMode.compareDocumentPosition(overlay) & Node.DOCUMENT_POSITION_FOLLOWING);
+        const clock = document.querySelector("#sp-set-ss-clock-overlay")?.closest(".sp-toggle-row");
+        const metadata = document.querySelector("#sp-set-ss-metadata-overlay")?.closest(".sp-toggle-row");
+        const entity = document.querySelector("#sp-set-screensaver-metadata")?.closest(".sp-field");
+        return !!clock && !!metadata && !!entity && clock.nextElementSibling === metadata && metadata.nextElementSibling === entity;
       }),
-      `${label}: image clock overlay toggle renders after the camera image settings`,
+      `${label}: Display Metadata follows Display Clock, with its entity field underneath`,
     );
+    await metadataRow.locator(".sp-toggle").click();
+    await waitForPost(posts,
+      { domain: "switch", name: "screen_saver__metadata_overlay", action: "turn_off" },
+      `${label}: metadata toggle disables the firmware overlay`, metadataPostStart);
+    assert.strictEqual(await metadataInput.isVisible(), false, `${label}: disabling metadata hides the field`);
+    await metadataRow.locator(".sp-toggle").click();
+    assert.strictEqual(await metadataInput.inputValue(), "sensor.current_photo_caption", `${label}: disabling metadata preserves the entity`);
     await dimmedAction.selectOption("dim");
+    assert.strictEqual(await metadataInput.isVisible(), false, `${label}: enabled metadata also hides outside Camera mode`);
   }
   const manualDimmedBrightness = screensaverCard.locator("#sp-set-dimmed-brightness");
   const daytimeDimmedBrightness = screensaverCard.locator("#sp-set-daytime-dimmed-brightness");
