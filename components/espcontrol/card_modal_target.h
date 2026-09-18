@@ -20,11 +20,14 @@ struct ModalTarget {
 };
 
 template<typename Runtime>
-inline ModalTarget modal_target(Runtime *runtime, const std::string &fallback_entity,
+inline ModalTarget modal_target(Runtime *runtime, const std::string &configured_entity,
                                 ControlModalKind kind, bool available,
                                 void (*open)(Runtime *)) {
   ModalTarget target;
-  target.entity = runtime ? runtime->entity_id : fallback_entity;
+  // Keep a configured media target stable when its live playback route switches.
+  // Empty subpage entities (notably inherited alarms) use the bound runtime.
+  target.entity = !configured_entity.empty() ? configured_entity
+    : runtime ? runtime->entity_id : "";
   target.kind = kind;
   target.available = runtime && available;
   if (runtime) target.open = [runtime, open]() { open(runtime); };

@@ -163,6 +163,9 @@ int main() {
       button.runtime = &runtime;
     }
     if (test.kind == ControlModalKind::MEDIA_CONTROL) {
+      runtime.entity_id = "media_player.secondary";
+      assert(espcontrol_open_modal(test.entity, true) && opened == &runtime);
+      runtime.entity_id = test.entity;
       runtime.group_only = true; runtime.grouping_supported = false;
       assert(!espcontrol_open_modal(test.entity, true));
       runtime.group_only = false;
