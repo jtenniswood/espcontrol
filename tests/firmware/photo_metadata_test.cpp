@@ -14,11 +14,10 @@ int main() {
   for (const auto width : {480, 720, 800}) {
     const auto empty = photo_overlay_layout(width, 800, 280, 120, 0, false, true);
     const auto shown = photo_overlay_layout(width, 800, 280, 120, 60, false, true);
-    assert(empty.clock_y - shown.clock_y ==
-           shown.metadata_bottom - shown.bottom + 60 + 4);
-    assert(shown.clock_y + 120 + 4 == shown.metadata_y);
+    assert(empty.clock_y == shown.clock_y);
     assert(shown.metadata_x == std::max(shown.margin, 24));
-    assert(shown.metadata_y + 60 == 800 - shown.metadata_bottom);
+    assert(shown.metadata_y == std::max(shown.margin, 24));
+    assert(shown.metadata_x + shown.metadata_width == width - shown.metadata_x);
     assert(shown.metadata_bottom == std::max(shown.bottom, 24));
   }
   for (const auto width : {1024, 1280}) {
@@ -27,7 +26,7 @@ int main() {
     assert(empty.clock_y == shown.clock_y);
     assert(shown.metadata_x >= shown.margin + 440 + 8);
     assert(shown.metadata_x + shown.metadata_width == width - shown.margin);
-    assert(shown.metadata_y == shown.clock_y);
+    assert(shown.metadata_y + 60 == shown.clock_y + 170);
     const auto alone = photo_overlay_layout(width, 800, 440, 170, 60, true, false);
     assert(alone.metadata_width == width - 2 * alone.margin);
     assert(alone.metadata_y + 60 == 800 - alone.metadata_bottom);
