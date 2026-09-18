@@ -3457,6 +3457,25 @@ def firmware_s3_api_errors(
     return errors
 
 
+def firmware_open_modal_api_errors(root: Path, package_paths: tuple[Path, ...]) -> list[str]:
+    errors: list[str] = []
+    api_path = root / "common/device/api_open_modal.yaml"
+    if not api_path.exists():
+        return ["common/device/api_open_modal.yaml: missing entity modal API action"]
+    text = api_path.read_text(encoding="utf-8")
+    required = ("action: open_modal", "entity_id: string", "mode: restart",
+                "espcontrol_can_open_modal(entity_id,", "script.execute: screensaver_wake",
+                "script.wait: screensaver_wake", "espcontrol_open_modal(entity_id,",
+                "script.execute: screensaver_idle_check", "script.execute: home_screen_idle_check")
+    positions = [text.find(value) for value in required]
+    if -1 in positions or positions != sorted(positions):
+        errors.append("common/device/api_open_modal.yaml: validate, wake, revalidate, open, then reset idle timers")
+    for path in package_paths:
+        if "api_open_modal.yaml" not in path.read_text(encoding="utf-8"):
+            errors.append(f"{path.relative_to(root)}: include the entity modal action on P4 and S3")
+    return errors
+
+
 def firmware_navigation_target_errors(
     firmware_dir: Path,
     api_navigate_path: Path,
@@ -3775,6 +3794,7 @@ def run_scan() -> int:
             ROOT,
         )
     )
+    errors.extend(firmware_open_modal_api_errors(ROOT, DEVICE_PACKAGE_PATHS))
     errors.extend(firmware_navigation_target_errors(FIRMWARE_DIR, API_NAVIGATE_PATH, DEVICE_PACKAGE_PATHS, ROOT))
     errors.extend(firmware_connectivity_api_errors(CONNECTIVITY_PATHS, ROOT))
     errors.extend(
@@ -7694,6 +7714,24 @@ def run_self_test() -> int:
         "      - lvgl.page.show: ha_setup_page\n",
         ("keep the current display visible",),
     )
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        api = root / "common/device/api_open_modal.yaml"
+        api.parent.mkdir(parents=True)
+        original = (ROOT / "common/device/api_open_modal.yaml").read_text()
+        package = root / "packages.yaml"
+        package.write_text("packages:\n  api_open_modal: !include common/device/api_open_modal.yaml\n")
+        api.write_text(original)
+        assert not firmware_open_modal_api_errors(root, (package,))
+        for token in ("mode: restart", "espcontrol_can_open_modal", "script.wait: screensaver_wake",
+                      "espcontrol_open_modal", "script.execute: home_screen_idle_check"):
+            api.write_text(original.replace(token, "removed"))
+            assert firmware_open_modal_api_errors(root, (package,)), token
+        api.write_text(original)
+        package.write_text("packages: {}\n")
+        assert firmware_open_modal_api_errors(root, (package,))
+        api.unlink()
+        assert firmware_open_modal_api_errors(root, (package,))
     print("Firmware Home Assistant binding self-tests passed.")
     return 0
 

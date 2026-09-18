@@ -259,6 +259,8 @@ def package_file_text(device: dict) -> str:
             ),
         ]
     )
+    if package.get("apiOpenModalAction", True):
+        lines.append(include_line("api_open_modal", "!include ../../common/device/api_open_modal.yaml"))
     if package.get("apiNavigateAction", True):
         lines.append(include_line("api_navigate", "!include ../../common/device/api_navigate.yaml"))
     lines.extend(

@@ -241,11 +241,13 @@ inline void option_select_refresh_modal_rows(OptionSelectCtx *ctx) {
   }
 }
 
+inline bool option_select_can_open_modal(OptionSelectCtx *ctx) {
+  return ctx && !ctx->entity_id.empty() && ctx->available &&
+         option_select_entity_supported(ctx->entity_id);
+}
+
 inline void option_select_open_modal(OptionSelectCtx *ctx) {
-  if (!ctx || ctx->entity_id.empty() || !ctx->available ||
-      !option_select_entity_supported(ctx->entity_id)) {
-    return;
-  }
+  if (!option_select_can_open_modal(ctx)) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::OPTION_SELECT, ctx->btn, ctx->width_compensation_percent,
     ctx->icon_font, option_select_hide_modal);

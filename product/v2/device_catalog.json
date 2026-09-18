@@ -8,6 +8,9 @@
         "firmware": {
           "build": {
             "chip": "ESP32-P4"
+          },
+          "package": {
+            "apiOpenModalAction": true
           }
         }
       },
@@ -15,6 +18,9 @@
         "firmware": {
           "build": {
             "chip": "ESP32-S3"
+          },
+          "package": {
+            "apiOpenModalAction": true
           }
         }
       }

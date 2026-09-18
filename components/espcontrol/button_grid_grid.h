@@ -1014,6 +1014,8 @@ inline void grid_phase1(
     const std::string &on_hex,
     lv_obj_t *main_page_obj = nullptr) {
   ESP_LOGI("sensors", "Phase 1: visual setup start (%lu ms)", esphome::millis());
+  // Remote controls may be open over a non-grid page when widgets are rebuilt.
+  navigation_hide_modals();
   set_backlight_display_takeover_callback(navigation_close_modals_for_display_takeover);
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
   const DisplayProfile display = display_profile_from_grid_config(cfg);
@@ -1231,6 +1233,7 @@ inline bool grid_refresh_subpage_layouts(
         ESP_LOGW("sensors", "Subpage %d is missing card %d", si + 1, button_index);
         continue;
       }
+      card->display_order = gp;
       const int col = sp_order.has_back_token ? gp % COLS : (gp + 1) % COLS;
       const int row = sp_order.has_back_token ? gp / COLS : (gp + 1) / COLS;
       const int col_span = sp_order.col_span[button_index - 1] > 0
@@ -1482,6 +1485,8 @@ inline void grid_release_runtime_allocations(
     lv_obj_t *owner, void *preserve_primary = nullptr,
     void *preserve_secondary = nullptr) {
   if (owner == nullptr) return;
+  // Close before any context is freed, including an inactive subpage's owner.
+  navigation_hide_modals();
   std::vector<GridRuntimeAllocation> &allocations = grid_runtime_allocations();
   size_t write_index = 0;
   for (size_t read_index = 0; read_index < allocations.size(); read_index++) {

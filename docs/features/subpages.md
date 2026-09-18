@@ -92,6 +92,60 @@ Targeting a normal home-screen card is the same as tapping it on the panel. Came
 
 The panel wakes before navigating, so the action works when the screen is off, dimmed, or showing the clock screensaver. It does not change long-press behavior. If you use the [Home screen timeout](/features/idle), the panel will still return to the home screen using that normal setting.
 
+## Open Entity Controls From Home Assistant
+
+Use `open_modal` to wake a P4 or S3 panel and open an existing control card by
+its Home Assistant entity ID. The card can be on the home screen or inside a
+subpage. Its popup opens over the current page; closing it returns to that same
+page. Normal idle and home-screen timeouts still apply.
+
+```yaml
+action: esphome.hall_panel_open_modal
+data:
+  entity_id: light.office_ceiling
+```
+
+Replace `hall_panel` with your device name. Find the action under Home Assistant
+**Developer Tools > Actions**, after installing firmware containing this feature.
+Reload the ESPHome integration if the new action has not appeared.
+
+The entity must already have a configured card with controls: Light Control,
+Cover All Controls, Climate, Fan Control or Preset, Media Control, Speaker Group,
+Volume or Cover Art, Camera/Image, Alarm Control, Option Select, or Wi-Fi sharing
+with a guest-network entity. Opening controls does not toggle a device, start
+playback, run a script, or confirm a command. Toggle-only cards, command cards,
+and confirmation popups are not eligible.
+
+If several control cards use the same entity, the first home-screen control card
+in display order wins, followed by subpages in parent and child display order.
+The chosen card's settings are used. If it is unavailable, the panel does not
+fall back to another card. Give each target entity one control card when you need
+an unambiguous choice.
+
+For example, an automation can show light controls when presence is detected:
+
+```yaml
+alias: Show office light controls
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.office_presence
+    to: "on"
+actions:
+  - action: esphome.hall_panel_open_modal
+    data:
+      entity_id: light.office_ceiling
+```
+
+Requests are ignored while Screen Lock is enabled, during an active alarm display
+takeover, or before the panel is ready. Empty or unknown entity IDs, unsupported
+cards, and unavailable controls leave the current display untouched. Requests
+arriving during wake-up replace the pending request with the latest one.
+
+This action does not return a result to Home Assistant. Device logs under
+`open_modal` explain rejected requests, duplicate matches, successful opens, or
+modal creation failures. The older `navigate` action remains unavailable on S3;
+`open_modal` is a separate action.
+
 ## Show State
 
 Turn on **Show State** if you want the Subpage card on the home screen to show state.

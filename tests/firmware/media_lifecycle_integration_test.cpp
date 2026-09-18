@@ -241,6 +241,10 @@ ControlUi &media_control_modal_ui() { static ControlUi ui; return ui; }
 VolumeUi &media_volume_modal_ui() { static VolumeUi ui; return ui; }
 void media_control_hide_modal() { CHECK(false); }
 void media_volume_hide_modal() { CHECK(false); }
+void navigation_hide_modals() {
+  CHECK(media_control_modal_ui().active == nullptr);
+  CHECK(media_volume_modal_ui().active == nullptr);
+}
 struct GridRuntimeAllocation { lv_obj_t *owner; void *ptr; void (*deleter)(void *); };
 
 #include "media_lifecycle_production.h"
