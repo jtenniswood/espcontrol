@@ -256,8 +256,10 @@ export function createAppStateEventHandlersFeature(
                 syncCoverArtScreensaverUi();
             },
             "switch-screen_saver__clock_overlay": function (this: any, val?: any, d?: any) {
+                state.clockOverlaySupported = true;
                 state.clockOverlayOn = d.value === true || val === "ON";
                 syncCoverArtScreensaverUi();
+                syncClockScreensaverControls();
             },
             "switch-screen_saver__metadata_overlay": function (this: any, val?: any, d?: any) {
                 state.metadataOverlayOn = d.value === true || val === "ON";
@@ -368,9 +370,11 @@ export function createAppStateEventHandlersFeature(
                         els.setSsMode(getActiveScreensaverMode());
             },
             "text-screen_saver__camera_entity": function (this: any, val?: any) {
+                state.screensaverCameraSupported = true;
                 state.screensaverCameraEntity = val;
                 syncInput(els.setScreensaverCamera, val);
                 syncInput(els.setSensorScreensaverCamera, val);
+                syncClockScreensaverControls();
             },
             "text-screen_saver__photo_metadata_entity": function (this: any, val?: any) {
                 state.screensaverMetadataEntity = val;

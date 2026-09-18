@@ -143,6 +143,8 @@ export interface AppState {
   subpageChevronsOn: boolean;
   presenceEntity: string;
   screensaverCameraEntity: string;
+  screensaverCameraSupported: boolean;
+  clockOverlaySupported: boolean;
   screensaverMetadataEntity: string;
   metadataOverlayOn: boolean;
   screensaverCameraImageMode: string;

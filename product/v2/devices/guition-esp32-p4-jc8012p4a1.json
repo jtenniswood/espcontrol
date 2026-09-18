@@ -19,5 +19,14 @@
         }
       }
     }
+  },
+  "overrides": {
+    "firmware": {
+      "package": {
+        "substitutions": {
+          "clock_font_size": "\"160\""
+        }
+      }
+    }
   }
 }

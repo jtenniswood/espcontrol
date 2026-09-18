@@ -385,7 +385,7 @@ inline void position_clock_screensaver_label(lv_obj_t *overlay, lv_obj_t *label,
 
 inline void position_clock_image_overlay(lv_obj_t *overlay, lv_obj_t *shadow,
                                          lv_obj_t *label, lv_obj_t *metadata,
-                                         lv_obj_t *metadata_shadow, bool wide_panel,
+                                         lv_obj_t *metadata_shadow,
                                          bool clock_visible, bool metadata_visible) {
   if (!overlay || !shadow || !label) return;
   screensaver_fill_screen(overlay);
@@ -402,7 +402,7 @@ inline void position_clock_image_overlay(lv_obj_t *overlay, lv_obj_t *shadow,
   lv_obj_update_layout(label);
   const auto initial = espcontrol::photo_overlay_layout(
       screen_w, screen_h, lv_obj_get_width(label), lv_obj_get_height(label),
-      0, wide_panel, clock_visible);
+      0, clock_visible);
   lv_coord_t metadata_height = 0;
   if (metadata_visible) {
     // Wrap up to three lines; long sensor values are clipped with an ellipsis.
@@ -420,7 +420,7 @@ inline void position_clock_image_overlay(lv_obj_t *overlay, lv_obj_t *shadow,
   }
   const auto layout = espcontrol::photo_overlay_layout(
       screen_w, screen_h, lv_obj_get_width(label), lv_obj_get_height(label),
-      metadata_height, wide_panel, clock_visible);
+      metadata_height, clock_visible);
   constexpr lv_coord_t shadow_offset_x = 1;
   constexpr lv_coord_t shadow_offset_y = 2;
   const lv_coord_t x = layout.margin;

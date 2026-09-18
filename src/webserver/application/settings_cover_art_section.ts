@@ -48,6 +48,15 @@ export function createSettingsCoverArtSectionFeature(codec: Pick<ConfigCodecFeat
         var coverArtOnlyOptions: any = condField();
         var coverArtAdvancedBody: any = document.createElement("div");
         var coverArtScreensaverSettingsBody: any = document.createElement("div");
+        var clockOverlayToggle: any = toggleRow("Display Clock", "sp-set-cover-art-clock-overlay", state.clockOverlayOn);
+        coverArtScreensaverSettingsBody.appendChild(clockOverlayToggle.row);
+        clockOverlayToggle.input.addEventListener("change", function (this: any) {
+            state.clockOverlayOn = this.checked;
+            syncCoverArtScreensaverUi();
+            artworkPostApi.postClockOverlay(state.clockOverlayOn);
+        });
+        els.setCoverArtClockOverlayToggle = clockOverlayToggle.input;
+        els.setCoverArtClockOverlayRow = clockOverlayToggle.row;
         var sleepPreventionToggle: any = toggleRow("Keep Screen Awake During Playback", "sp-set-ss-media-sleep-prevention", state.mediaPlayerSleepPreventionOn);
         coverArtScreensaverSettingsBody.appendChild(sleepPreventionToggle.row);
         sleepPreventionToggle.input.addEventListener("change", function (this: any) {

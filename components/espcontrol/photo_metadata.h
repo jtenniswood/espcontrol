@@ -34,7 +34,8 @@ struct PhotoOverlayLayout {
 
 inline PhotoOverlayLayout photo_overlay_layout(int width, int height, int clock_width,
                                                int clock_height, int metadata_height,
-                                               bool wide_panel, bool clock_visible) {
+                                               bool clock_visible) {
+  const bool wide_panel = width >= 1024;
   const int margin = std::clamp(width / 32, 12, 40);
   const int bottom = margin - 10;  // Match the image clock's existing lower position.
   // Compact layouts keep metadata in the upper-right corner, while wide
