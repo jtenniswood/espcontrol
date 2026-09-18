@@ -24,9 +24,9 @@ int main() {
     const auto empty = photo_overlay_layout(width, 800, 440, 170, 0, true, true);
     const auto shown = photo_overlay_layout(width, 800, 440, 170, 60, true, true);
     assert(empty.clock_y == shown.clock_y);
-    assert(shown.metadata_x >= shown.margin + 440 + 8);
+    assert(shown.metadata_x == shown.margin + 440 + 8 - 20);
     assert(shown.metadata_x + shown.metadata_width == width - shown.margin);
-    assert(shown.metadata_y + 60 == shown.clock_y + 170);
+    assert(shown.metadata_y + 60 == shown.clock_y + 170 - 50);
     const auto alone = photo_overlay_layout(width, 800, 440, 170, 60, true, false);
     assert(alone.metadata_width == width - 2 * alone.margin);
     assert(alone.metadata_y + 60 == 800 - alone.metadata_bottom);

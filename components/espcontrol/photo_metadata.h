@@ -43,14 +43,16 @@ inline PhotoOverlayLayout photo_overlay_layout(int width, int height, int clock_
   const int metadata_inset = wide_panel ? margin : std::max(margin, 24);
   const int metadata_bottom = wide_panel ? bottom : std::max(bottom, 24);
   const int gap = wide_panel ? 8 : 0;
+  constexpr int wide_metadata_left_shift = 20;
+  constexpr int wide_metadata_up_shift = 50;
   const int metadata_x = wide_panel && clock_visible
-      ? margin + clock_width + gap : metadata_inset;
+      ? margin + clock_width + gap - wide_metadata_left_shift : metadata_inset;
   const int metadata_width = std::max(1, width - metadata_inset - metadata_x);
   const int clock_y = height - bottom - clock_height;
   const int metadata_y = !wide_panel
       ? metadata_inset
       : wide_panel && clock_visible
-          ? clock_y + clock_height - metadata_height
+          ? clock_y + clock_height - metadata_height - wide_metadata_up_shift
           : height - metadata_bottom - metadata_height;
   return {margin, bottom, clock_y, metadata_x, metadata_y, metadata_width,
           metadata_bottom};
