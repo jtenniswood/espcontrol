@@ -38,19 +38,20 @@ inline PhotoOverlayLayout photo_overlay_layout(int width, int height, int clock_
   const int margin = std::clamp(width / 32, 12, 40);
   const int bottom = margin - 10;  // Match the image clock's existing lower position.
   // The compact layouts need more breathing room for the metadata than the
-  // clock's deliberately low position allows. Keep the wide-panel treatment
-  // unchanged, while giving stacked metadata a 24px edge inset and a tighter
-  // gap to the clock above it.
+  // clock's deliberately low position allows. Wide panels keep their
+  // side-by-side placement, while stacked metadata gets a 24px edge inset
+  // and a tighter gap to the clock above it.
   const int metadata_inset = wide_panel ? margin : std::max(margin, 24);
   const int metadata_bottom = wide_panel ? bottom : std::max(bottom, 24);
   const int gap = wide_panel ? 8 : 4;
   const int metadata_x = wide_panel && clock_visible
       ? margin + clock_width + gap : metadata_inset;
   const int metadata_width = std::max(1, width - metadata_inset - metadata_x);
-  const int metadata_y = height - metadata_bottom - metadata_height;
   const int clock_y = !wide_panel && metadata_height > 0
-      ? metadata_y - gap - clock_height
+      ? height - metadata_bottom - metadata_height - gap - clock_height
       : height - bottom - clock_height;
+  const int metadata_y = wide_panel && clock_visible
+      ? clock_y : height - metadata_bottom - metadata_height;
   return {margin, bottom, clock_y, metadata_x, metadata_y, metadata_width,
           metadata_bottom};
 }
