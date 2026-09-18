@@ -411,12 +411,12 @@ inline void position_clock_image_overlay(lv_obj_t *overlay, lv_obj_t *shadow,
                            2 * lv_obj_get_style_text_line_space(metadata, LV_PART_MAIN);
     lv_obj_set_width(metadata, initial.metadata_width);
     lv_obj_set_height(metadata, LV_SIZE_CONTENT);
-    lv_obj_set_style_text_align(metadata, wide_panel ? LV_TEXT_ALIGN_RIGHT : LV_TEXT_ALIGN_LEFT, 0);
+    lv_obj_set_style_text_align(metadata, LV_TEXT_ALIGN_RIGHT, 0);
     lv_obj_update_layout(metadata);
     metadata_height = std::min<int>(lv_obj_get_height(metadata), max_height);
     lv_obj_set_height(metadata, metadata_height);
     lv_obj_set_size(metadata_shadow, initial.metadata_width, metadata_height);
-    lv_obj_set_style_text_align(metadata_shadow, wide_panel ? LV_TEXT_ALIGN_RIGHT : LV_TEXT_ALIGN_LEFT, 0);
+    lv_obj_set_style_text_align(metadata_shadow, LV_TEXT_ALIGN_RIGHT, 0);
   }
   const auto layout = espcontrol::photo_overlay_layout(
       screen_w, screen_h, lv_obj_get_width(label), lv_obj_get_height(label),
