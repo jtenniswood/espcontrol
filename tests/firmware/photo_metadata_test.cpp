@@ -27,9 +27,10 @@ int main() {
     assert(empty.clock_y == shown.clock_y);
     assert(shown.metadata_x >= shown.margin + 440 + 8);
     assert(shown.metadata_x + shown.metadata_width == width - shown.margin);
-    assert(shown.clock_y + 170 == shown.metadata_y + 60);
+    assert(shown.metadata_y == shown.clock_y);
     const auto alone = photo_overlay_layout(width, 800, 440, 170, 60, true, false);
     assert(alone.metadata_width == width - 2 * alone.margin);
+    assert(alone.metadata_y + 60 == 800 - alone.metadata_bottom);
     assert(shown.metadata_bottom == shown.bottom);
   }
 }
