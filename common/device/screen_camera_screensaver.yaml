@@ -23,6 +23,9 @@ globals:
   - id: camera_screensaver_request_pending
     type: bool
     initial_value: 'false'
+  - id: camera_screensaver_use_sized_request
+    type: bool
+    initial_value: 'false'
 
 artwork_image:
   - url: "https://placehold.co/1x1/000000/000000.jpg"
@@ -78,6 +81,17 @@ artwork_image:
             - lvgl.widget.hide: camera_screensaver_loading
             - lvgl.widget.show: camera_screensaver_image
     on_error:
+      - lambda: |-
+          if (id(camera_screensaver_transition_generation) != 0 &&
+              id(espcontrol_app).display().transition_is_current(
+                  id(camera_screensaver_transition_generation), espcontrol::DisplayMode::CAMERA) &&
+              !id(camera_screensaver_use_sized_request)) {
+            // Original snapshots avoid HA's additional JPEG compression. If
+            // transfer/decode limits reject one, use bounded snapshots for
+            // the rest of this screensaver session instead of retrying it.
+            id(camera_screensaver_use_sized_request) = true;
+            ESP_LOGW("camera_screensaver", "Original snapshot failed; retrying a display-sized snapshot");
+          }
       - if:
           condition:
             lambda: 'return !id(camera_screensaver_image_available);'
@@ -215,6 +229,9 @@ script:
                 void *const camera_owner = &id(camera_screensaver_subscribed_entity);
                 if (id(camera_screensaver_subscribed_entity) != entity ||
                     id(camera_screensaver_subscribed_generation) != subscription_generation) {
+                  if (id(camera_screensaver_subscribed_entity) != entity) {
+                    id(camera_screensaver_use_sized_request) = false;
+                  }
                   ha_release_callbacks_for_owner(camera_owner);
                   id(camera_screensaver_subscribed_entity) = entity;
                   id(camera_screensaver_subscribed_generation) = subscription_generation;
@@ -251,7 +268,9 @@ script:
                   const std::string path = image_card_proxy_path_with_token(
                     image_card_entity_proxy_path(entity), id(camera_screensaver_access_token));
                   std::string url = image_card_join_url(id(cover_art_home_assistant_base_url), path);
-                  url = image_card_sized_url(url, camera_decode_width, camera_decode_height);
+                  if (id(camera_screensaver_use_sized_request)) {
+                    url = image_card_sized_url(url, camera_decode_width, camera_decode_height);
+                  }
                   url = image_card_append_query_param(url, "time", static_cast<int>(millis()));
                   id(camera_screensaver_request_pending) = false;
                   if (!url.empty()) id(camera_screensaver_downloaded_image)->request_update_url(url);
@@ -338,6 +357,7 @@ script:
       - script.stop: camera_screensaver_request_image
       - script.stop: camera_screensaver_retry
       - globals.set: { id: camera_screensaver_transition_generation, value: '0' }
+      - globals.set: { id: camera_screensaver_use_sized_request, value: 'false' }
       - lambda: 'id(camera_screensaver_downloaded_image)->cancel_update();'
       - lambda: |-
           #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)

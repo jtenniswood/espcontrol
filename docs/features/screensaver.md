@@ -38,7 +38,7 @@ When the screensaver activates, you can choose what happens:
 
 When Screen Dimmed is selected, Manual brightness mode uses **Dimmed Screen Brightness**. Automatic and Timed brightness modes use separate **Daytime Dimmed Screen Brightness** and **Nighttime Dimmed Screen Brightness** values, changing at the same sunrise/sunset or dawn/dusk boundary as the main screen. When Clock is selected, set separate **Daytime Clock Brightness** and **Nighttime Clock Brightness** values.
 
-The 4-inch ESP32-S3 camera screensaver uses the panel's native 480×480 resolution. Sharpness also depends on the resolution and quality of the source image from Home Assistant.
+The 4-inch ESP32-S3 camera screensaver uses the panel's native 480×480 resolution. The screensaver requests the original Home Assistant snapshot to avoid extra compression, then resizes it on the panel. If downloading or decoding it fails, subsequent requests ask Home Assistant for display-sized snapshots for the rest of that screensaver session. Sharpness still depends on the source image; filtered JPEG resizing preserves detail when reducing images and smooths edges when enlarging them.
 
 ### Photo metadata
 
