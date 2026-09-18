@@ -26,6 +26,7 @@ for file, name in [
     ('button_grid_actions.h', 'media_card_mode'),
     ('button_grid_media.h', 'media_control_modal_mode'),
     ('guest_wifi_state.h', 'guest_wifi_valid_entity'),
+    ('button_grid_image.h', 'image_card_context_on_active_screen'),
 ]:
     helpers += function(file, name)
 for file, name in [

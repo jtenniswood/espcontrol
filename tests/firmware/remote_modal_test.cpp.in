@@ -13,7 +13,10 @@ struct ParsedCfg {
   std::string entity, type, sensor, options;
 };
 using SubpageBtn = ParsedCfg;
+struct lv_obj_t;
 struct Runtime {
+  lv_obj_t *btn = nullptr;
+  bool media_artwork = false;
   std::string entity_id;
   bool available = true;
   bool group_only = false;
@@ -35,7 +38,7 @@ using AlarmCardCtx = Runtime;
 using FanCardCtx = Runtime;
 using ImageCardCtx = Runtime;
 using OptionSelectCtx = Runtime;
-struct lv_obj_t { Runtime *runtime = nullptr; bool hidden = false; };
+struct lv_obj_t { Runtime *runtime = nullptr; bool hidden = false; lv_obj_t *parent = nullptr; };
 constexpr int LV_OBJ_FLAG_HIDDEN = 1;
 void *lv_obj_get_user_data(lv_obj_t *obj) { return obj->runtime; }
 bool lv_obj_has_flag(lv_obj_t *obj, int) { return obj->hidden; }
@@ -81,7 +84,11 @@ void log_message(const char *, const char *format, Args... args) {
 }
 #define ESP_LOGW(...) log_message(__VA_ARGS__)
 #define ESP_LOGI(...) log_message(__VA_ARGS__)
+using ControlModalActive = ControlModalActiveState<lv_obj_t>;
 auto &control_modal_active() { return modal; }
+lv_obj_t *lv_obj_get_parent(lv_obj_t *o) { return o->parent; }
+lv_obj_t *lv_scr_act() { return current_page; }
+bool image_card_modal_active_for(Runtime *r) { return modal.overlay && opened == r && modal.kind == ControlModalKind::IMAGE_CARD; }
 void navigation_hide_modals() { ++closes; modal = {}; }
 void show(Runtime *runtime, ControlModalKind kind) {
   ++opens; opened = runtime;
@@ -245,5 +252,19 @@ int main() {
     assert(!espcontrol_open_modal(config.entity, true));
     assert(opens == previous && closes == dismissed && commands == 0);
   }
+  // Visible remote camera controls still qualify for the P4 refresh action,
+  // even though their source card belongs to an inactive subpage.
+  Runtime camera; lv_obj_t camera_button{&camera, false, &other_page};
+  camera.btn = &camera_button;
+  current_page = &home;
+  modal = {};
+  assert(!image_card_context_on_active_screen(&camera));
+  image_card_open_modal(&camera);
+  assert(image_card_context_on_active_screen(&camera));
+  media_control_open_modal(&first);
+  assert(!image_card_context_on_active_screen(&camera));
+  navigation_hide_modals();
+  current_page = &other_page;
+  assert(image_card_context_on_active_screen(&camera));
   return 0;
 }

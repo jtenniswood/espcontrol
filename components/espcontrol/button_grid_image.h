@@ -2680,6 +2680,8 @@ inline bool image_card_context_on_active_screen(ImageCardCtx *ctx) {
        !image_card_modal_active_for(ctx))) {
     return false;
   }
+  // Remote entity controls can be visible over a different grid page.
+  if (image_card_modal_active_for(ctx)) return true;
   lv_obj_t *screen = ctx->btn;
   while (lv_obj_get_parent(screen) != nullptr) screen = lv_obj_get_parent(screen);
   return screen == lv_scr_act();
