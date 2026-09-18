@@ -51,6 +51,7 @@ for driver in ['light_control', 'cover_modal', 'climate_control', 'fan_control',
                'numeric_selectable', 'media', 'image', 'alarm', 'wifi_qr']:
     helpers += function('button_grid_' + driver + '_driver.h', driver + '_driver_modal_target')
 helpers += '}\n'
+helpers += function('button_grid_grid.h', 'grid_release_runtime_allocations')
 source = source.replace('// PRODUCTION_HOOKS', helpers)
 with tempfile.TemporaryDirectory(prefix='remote-modal-test-') as directory:
     cpp = Path(directory) / 'test.cpp'

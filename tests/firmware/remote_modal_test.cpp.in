@@ -90,6 +90,13 @@ lv_obj_t *lv_obj_get_parent(lv_obj_t *o) { return o->parent; }
 lv_obj_t *lv_scr_act() { return current_page; }
 bool image_card_modal_active_for(Runtime *r) { return modal.overlay && opened == r && modal.kind == ControlModalKind::IMAGE_CARD; }
 void navigation_hide_modals() { ++closes; modal = {}; }
+struct GridRuntimeAllocation {
+  lv_obj_t *owner;
+  void *ptr;
+  void (*deleter)(void *);
+};
+std::vector<GridRuntimeAllocation> allocations;
+auto &grid_runtime_allocations() { return allocations; }
 void show(Runtime *runtime, ControlModalKind kind) {
   ++opens; opened = runtime;
   if (!fail_open) { modal.kind = kind; modal.overlay = &overlay; }
@@ -269,5 +276,12 @@ int main() {
   navigation_hide_modals();
   current_page = &other_page;
   assert(image_card_context_on_active_screen(&camera));
+  // A remote modal can sit over a non-grid page. Release must close it before
+  // freeing its runtime, without relying on navigation back to the home page.
+  current_page = &other_page;
+  light_control_open_modal(&first);
+  allocations.push_back({&one, &first, [](void *) { assert(!modal.overlay); }});
+  grid_release_runtime_allocations(&one);
+  assert(!modal.overlay && allocations.empty() && current_page == &other_page);
   return 0;
 }
