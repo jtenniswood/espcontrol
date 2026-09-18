@@ -29,6 +29,7 @@ struct PhotoOverlayLayout {
   int metadata_x;
   int metadata_y;
   int metadata_width;
+  int metadata_bottom;
 };
 
 inline PhotoOverlayLayout photo_overlay_layout(int width, int height, int clock_width,
@@ -36,12 +37,22 @@ inline PhotoOverlayLayout photo_overlay_layout(int width, int height, int clock_
                                                bool wide_panel, bool clock_visible) {
   const int margin = std::clamp(width / 32, 12, 40);
   const int bottom = margin - 10;  // Match the image clock's existing lower position.
-  const int gap = 8;
-  const int metadata_x = wide_panel && clock_visible ? margin + clock_width + gap : margin;
-  const int metadata_width = std::max(1, width - margin - metadata_x);
-  const int lift = !wide_panel && metadata_height > 0 ? metadata_height + gap : 0;
-  return {margin, bottom, height - bottom - clock_height - lift,
-          metadata_x, height - bottom - metadata_height, metadata_width};
+  // The compact layouts need more breathing room for the metadata than the
+  // clock's deliberately low position allows. Keep the wide-panel treatment
+  // unchanged, while giving stacked metadata a 24px edge inset and a tighter
+  // gap to the clock above it.
+  const int metadata_inset = wide_panel ? margin : std::max(margin, 24);
+  const int metadata_bottom = wide_panel ? bottom : std::max(bottom, 24);
+  const int gap = wide_panel ? 8 : 4;
+  const int metadata_x = wide_panel && clock_visible
+      ? margin + clock_width + gap : metadata_inset;
+  const int metadata_width = std::max(1, width - metadata_inset - metadata_x);
+  const int metadata_y = height - metadata_bottom - metadata_height;
+  const int clock_y = !wide_panel && metadata_height > 0
+      ? metadata_y - gap - clock_height
+      : height - bottom - clock_height;
+  return {margin, bottom, clock_y, metadata_x, metadata_y, metadata_width,
+          metadata_bottom};
 }
 
 }  // namespace espcontrol
