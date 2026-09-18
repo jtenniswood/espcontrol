@@ -85,7 +85,7 @@ lvgl:
                 text: "00:00"
             - label:
                 id: photo_metadata_shadow
-                text_font: font_text_title
+                text_font: font_text_body
                 text_color: 0x000000
                 text_opa: 20%
                 long_mode: DOT
@@ -93,7 +93,7 @@ lvgl:
                 hidden: true
             - label:
                 id: photo_metadata_label
-                text_font: font_text_title
+                text_font: font_text_body
                 text_color: 0xFFFFFF
                 long_mode: DOT
                 text: ""
