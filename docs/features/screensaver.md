@@ -38,6 +38,8 @@ When the screensaver activates, you can choose what happens:
 
 When Screen Dimmed is selected, Manual brightness mode uses **Dimmed Screen Brightness**. Automatic and Timed brightness modes use separate **Daytime Dimmed Screen Brightness** and **Nighttime Dimmed Screen Brightness** values, changing at the same sunrise/sunset or dawn/dusk boundary as the main screen. When Clock is selected, set separate **Daytime Clock Brightness** and **Nighttime Clock Brightness** values.
 
+The 4-inch ESP32-S3 camera screensaver uses the panel's native 480×480 resolution. Sharpness also depends on the resolution and quality of the source image from Home Assistant.
+
 ### Photo metadata
 
 With **Camera** selected, enable **Display Metadata** below **Display Clock** to reveal the **Photo Metadata Entity** field. Enter a Home Assistant `sensor.*` entity containing the current photo's caption, date, or location. Turning the toggle off hides metadata and the field without clearing the saved entity. Existing metadata setups remain enabled after upgrading.

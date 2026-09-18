@@ -61,8 +61,8 @@ artwork_image:
                         : LV_IMAGE_ALIGN_CONTAIN);
                 #else
                 lv_img_set_pivot(id(camera_screensaver_image), 0, 0);
-                lv_img_set_zoom(id(camera_screensaver_image), 384);
-                lv_obj_set_size(id(camera_screensaver_image), 320, 320);
+                lv_img_set_zoom(id(camera_screensaver_image), 256);
+                lv_obj_set_size(id(camera_screensaver_image), img->get_width(), img->get_height());
                 #endif
                 #endif
                 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
@@ -180,8 +180,9 @@ script:
                   - lvgl.widget.show: camera_screensaver_loading
             - lambda: |-
                 #if defined(CONFIG_IDF_TARGET_ESP32S3)
-                constexpr int camera_decode_width = 320;
-                constexpr int camera_decode_height = 320;
+                // Decode at the S3 panel's native resolution instead of enlarging a smaller image.
+                constexpr int camera_decode_width = ${screen_width};
+                constexpr int camera_decode_height = ${screen_height};
                 #else
                 int camera_decode_width = ${screen_width};
                 int camera_decode_height = ${screen_height};
