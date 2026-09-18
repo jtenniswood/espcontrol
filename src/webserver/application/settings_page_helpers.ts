@@ -356,7 +356,14 @@ export function createSettingsPageHelpersFeature(
         var mode: any = controlState.mode;
         var clockDisplay: any = controlState.clockVisible ? "" : "none";
         var dimDisplay: any = controlState.dimVisible ? "" : "none";
-        var cameraDisplay: any = controlState.cameraVisible ? "" : "none";
+        var cameraSupported = !!controllers.layout.config.features?.cameraScreensaver && state.screensaverCameraSupported;
+        var cameraDisplay: any = cameraSupported && controlState.cameraVisible ? "" : "none";
+        for (const select of [els.setClockSelect, els.setSensorClockSelect]) {
+            if (!select) continue;
+            const option = select.querySelector('option[value="camera"]');
+            if (cameraSupported && !option) select.add(new Option("Camera", "camera"));
+            if (!cameraSupported && option) option.remove();
+        }
         if (els.setScreensaverCameraPanel)
             els.setScreensaverCameraPanel.style.display = cameraDisplay;
         var automaticBrightness: any = normalizeBrightnessMode(state.brightnessMode) !== "manual";
@@ -379,7 +386,7 @@ export function createSettingsPageHelpersFeature(
         if (els.setSensorScreensaverCameraImageModeField)
             els.setSensorScreensaverCameraImageModeField.style.display = cameraDisplay;
         if (els.setClockOverlayRow)
-            els.setClockOverlayRow.style.display = cameraDisplay;
+            els.setClockOverlayRow.style.display = state.clockOverlaySupported ? cameraDisplay : "none";
         if (els.setScreensaverMetadataField)
             els.setScreensaverMetadataField.style.display = controlState.cameraVisible && state.metadataOverlayOn ? "" : "none";
         if (els.setMetadataOverlayRow)
@@ -460,6 +467,12 @@ export function createSettingsPageHelpersFeature(
         if (els.setClockOverlayToggle) {
             els.setClockOverlayToggle.checked = !!state.clockOverlayOn;
         }
+        if (els.setCoverArtClockOverlayToggle) {
+            els.setCoverArtClockOverlayToggle.checked = !!state.clockOverlayOn;
+        }
+        if (els.setCoverArtClockOverlayRow) {
+            els.setCoverArtClockOverlayRow.style.display = state.clockOverlaySupported && state.coverArtScreensaverOn ? "" : "none";
+        }
         if (els.setCoverArtOptions) {
             els.setCoverArtOptions.classList.toggle("sp-visible", uiState.contentVisible);
         }
@@ -535,7 +548,7 @@ export function createSettingsPageHelpersFeature(
             { value: "off", label: "Display Off" },
             { value: "dim", label: "Screen Dimmed" },
             { value: "clock", label: "Clock" },
-            ...(controllers.layout.config.features?.cameraScreensaver ? [{ value: "camera", label: "Camera" }] : []),
+            ...(controllers.layout.config.features?.cameraScreensaver && state.screensaverCameraSupported ? [{ value: "camera", label: "Camera" }] : []),
         ].forEach(function (this: any, opt?: any) {
             var o: any = document.createElement("option");
             o.value = opt.value;
@@ -562,7 +575,10 @@ export function createSettingsPageHelpersFeature(
         cameraField.appendChild(cameraInput);
         bindTextPost(cameraInput, entityName("screen_saver_camera_entity"), {
             post: postScreensaverCameraEntity,
-            onBlur: function (value: any) { state.screensaverCameraEntity = value; },
+            onBlur: function (value: any) {
+                state.screensaverCameraEntity = value;
+                syncClockScreensaverControls();
+            },
         });
         var cameraImageModeField: any = document.createElement("div");
         cameraImageModeField.className = "sp-field";

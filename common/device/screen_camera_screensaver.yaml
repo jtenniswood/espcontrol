@@ -20,6 +20,9 @@ globals:
   - id: camera_screensaver_image_available
     type: bool
     initial_value: 'false'
+  - id: camera_screensaver_entity_unavailable
+    type: bool
+    initial_value: 'false'
   - id: camera_screensaver_request_pending
     type: bool
     initial_value: 'false'
@@ -43,6 +46,7 @@ artwork_image:
           condition:
             lambda: |-
               return id(camera_screensaver_transition_generation) != 0 &&
+                     !id(camera_screensaver_entity_unavailable) &&
                      id(espcontrol_app).display().transition_is_current(
                        id(camera_screensaver_transition_generation),
                        espcontrol::DisplayMode::CAMERA);
@@ -166,6 +170,7 @@ script:
       - globals.set: { id: camera_screensaver_subscribed_entity, value: '""' }
       - globals.set: { id: camera_screensaver_subscribed_generation, value: '0' }
       - globals.set: { id: camera_screensaver_image_available, value: 'false' }
+      - globals.set: { id: camera_screensaver_entity_unavailable, value: 'false' }
       - lvgl.widget.hide: camera_screensaver_image
       - lvgl.widget.show: camera_screensaver_unavailable
       - globals.set: { id: camera_screensaver_access_token, value: '""' }
@@ -237,14 +242,25 @@ script:
                   id(camera_screensaver_subscribed_generation) = subscription_generation;
                   id(camera_screensaver_access_token).clear();
                   id(camera_screensaver_request_pending) = false;
+                  id(camera_screensaver_entity_unavailable) = false;
                   {
                     HaCallbackOwnerScope camera_subscription_owner(camera_owner);
                     ha_subscribe_state(entity,
-                      std::function<void(esphome::StringRef)>([entity, subscription_generation](esphome::StringRef) {
+                      std::function<void(esphome::StringRef)>([entity, subscription_generation](esphome::StringRef state) {
                         if (subscription_generation != ha_subscription_generation() ||
                             entity != id(screensaver_camera_entity).state) return;
+                        const std::string value = string_ref_limited(state, 64);
+                        id(camera_screensaver_entity_unavailable) =
+                            value == "unavailable" || value == "unknown";
+                        if (id(camera_screensaver_entity_unavailable)) {
+                          id(camera_screensaver_downloaded_image)->cancel_update();
+                          id(camera_screensaver_request_pending) = false;
+                          id(camera_screensaver_image_available) = false;
+                          id(camera_screensaver_show_unavailable).execute();
+                          return;
+                        }
                         id(camera_screensaver_request_image).execute();
-                      }));
+                      }), HA_SUBSCRIPTION_SCOPE_DEFAULT, true);
                     ha_subscribe_attribute(entity, std::string("access_token"),
                       std::function<void(esphome::StringRef)>([entity, subscription_generation](esphome::StringRef token) {
                         if (subscription_generation != ha_subscription_generation() ||
@@ -263,6 +279,10 @@ script:
                       true);
                   }
                   ha_reannounce_state_subscriptions();
+                }
+                if (id(camera_screensaver_entity_unavailable)) {
+                  id(camera_screensaver_show_unavailable).execute();
+                  return;
                 }
                 if (image_card_valid_access_token(id(camera_screensaver_access_token))) {
                   const std::string path = image_card_proxy_path_with_token(

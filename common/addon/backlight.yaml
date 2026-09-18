@@ -1645,7 +1645,7 @@ script:
           position_clock_image_overlay(
               id(clock_image_overlay), id(clock_image_overlay_shadow),
               id(clock_image_overlay_label), id(photo_metadata_label),
-              id(photo_metadata_shadow), ${screen_width} >= 1024,
+              id(photo_metadata_shadow),
               clock_visible, metadata_visible);
           lv_obj_clear_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN);
           lv_obj_move_foreground(id(clock_image_overlay));

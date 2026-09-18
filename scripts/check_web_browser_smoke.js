@@ -1444,6 +1444,14 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   const dimmedAction = screensaverCard.locator("#sp-set-clock-mode");
   const clockOverlayToggle = screensaverCard.locator("#sp-set-ss-clock-overlay");
   const clockOverlayRow = clockOverlayToggle.locator("..").locator("..");
+  assert.strictEqual(await dimmedAction.locator('option[value="camera"]').count(), 0,
+    `${label}: older firmware without camera entities does not offer Camera`);
+  assert.strictEqual(await clockOverlayRow.isVisible(), false,
+    `${label}: older firmware without the overlay entity hides Display Clock`);
+  await page.evaluate(() => window.__seedEspState([
+    { id: "text-screen_saver__camera_entity", state: "" },
+    { id: "switch-screen_saver__clock_overlay", state: "OFF", value: false },
+  ]));
   const hasCameraScreensaver = await dimmedAction.locator('option[value="camera"]').count() > 0;
   await dimmedAction.selectOption("dim");
   assert.strictEqual(
@@ -1460,6 +1468,9 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     assert.strictEqual(await metadataRow.isVisible(), false, `${label}: metadata toggle hides outside Camera mode`);
     assert.strictEqual(await metadataInput.isVisible(), false, `${label}: metadata hides outside Camera mode`);
     await dimmedAction.selectOption("camera");
+    const timerCamera = cameraPanel.locator("#sp-set-screensaver-camera");
+    await timerCamera.fill("camera.front_door");
+    await timerCamera.blur();
     assert(await cameraPanel.isVisible(), `${label}: Camera settings are grouped in a panel`);
     assert(await cameraPanel.evaluate(panel => parseFloat(getComputedStyle(panel).borderTopWidth) > 0 && parseFloat(getComputedStyle(panel).paddingLeft) > 0), `${label}: camera panel has a visible border and inset padding`);
     for (const id of ["sp-set-screensaver-camera", "sp-set-screensaver-camera-image-mode", "sp-set-ss-clock-overlay", "sp-set-ss-metadata-overlay", "sp-set-screensaver-metadata"])
@@ -1498,6 +1509,10 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     await metadataRow.locator(".sp-toggle").click();
     assert.strictEqual(await metadataInput.inputValue(), "sensor.current_photo_caption", `${label}: disabling metadata preserves the entity`);
     await screensaverCard.getByRole("button", { name: "Sensor", exact: true }).click();
+    const sensorCamera = cameraPanel.locator("#sp-set-sensor-screensaver-camera");
+    assert.strictEqual(await sensorCamera.inputValue(), "camera.front_door", `${label}: camera input stays synchronized without a server echo`);
+    await sensorCamera.fill("image.garden");
+    await sensorCamera.blur();
     assert(await cameraPanel.isVisible(), `${label}: Sensor mode keeps camera settings grouped`);
     assert(await cameraPanel.locator("#sp-set-sensor-screensaver-camera").isVisible(), `${label}: Sensor camera entity is visible in the panel`);
     assert.strictEqual(await cameraPanel.locator("#sp-set-screensaver-camera").isVisible(), false, `${label}: Timer camera entity hides in Sensor mode`);
@@ -1505,6 +1520,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     await screensaverCard.getByRole("button", { name: "Disabled", exact: true }).click();
     assert.strictEqual(await cameraPanel.isVisible(), false, `${label}: disabled screensaver hides the entire camera panel`);
     await screensaverCard.getByRole("button", { name: "Timer", exact: true }).click();
+    assert.strictEqual(await timerCamera.inputValue(), "image.garden", `${label}: Sensor camera changes also reach Timer mode`);
     assert(await cameraPanel.locator("#sp-set-screensaver-camera").isVisible(), `${label}: Timer mode restores its camera fields`);
     await dimmedAction.selectOption("dim");
     assert.strictEqual(await cameraPanel.isVisible(), false, `${label}: switching away from Camera hides the panel`);
@@ -1655,6 +1671,14 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: cover art secondary entity should begin inside its collapsed panel`,
   );
   await screensaverSettings.locator("> .sp-disclosure-button").click();
+  const coverArtClock = coverArtCard.locator("#sp-set-cover-art-clock-overlay");
+  assert(await coverArtClock.locator("..").locator("..").isVisible(), `${label}: Cover Art offers Display Clock without Camera selected`);
+  const overlayPosts = posts.length;
+  await coverArtClock.locator("..").locator("..").locator(".sp-toggle").click();
+  await waitForPost(posts,
+    { domain: "switch", name: "screen_saver__clock_overlay", action: "turn_on" },
+    `${label}: Cover Art clock toggle updates the shared overlay`, overlayPosts);
+  assert(await clockOverlayToggle.isChecked(), `${label}: Camera and Cover Art clock toggles stay synchronized`);
   assert(
     await coverArtCard.locator("#sp-set-ss-cover-art-delay").isVisible(),
     `${label}: cover art show-after field should render inside screensaver settings`,

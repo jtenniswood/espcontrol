@@ -518,17 +518,17 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     var importedScreensaverMode: any = importedSettings.screensaverMode;
                     postScreensaverMode(importedScreensaverMode);
                     postPresenceSensorEntity(importedSettings.presenceSensorEntity);
-                    if (controllers.layout.config.features?.cameraScreensaver)
+                    if (controllers.layout.config.features?.cameraScreensaver && state.screensaverCameraSupported)
                         postText(entityName("screen_saver_camera_entity"), importedSettings.screensaverCameraEntity);
-                    if (controllers.layout.config.features?.cameraScreensaver)
+                    if (controllers.layout.config.features?.cameraScreensaver && state.screensaverCameraSupported)
                         postText(entityName("screen_saver_metadata_entity"), importedSettings.screensaverMetadataEntity);
-                    if (controllers.layout.config.features?.cameraScreensaver)
+                    if (controllers.layout.config.features?.cameraScreensaver && state.screensaverCameraSupported)
                         postScreensaverCameraImageMode(importedSettings.screensaverCameraImageMode);
                     postMediaPlayerSleepPrevention(importedSettings.mediaPlayerSleepPrevention);
                     postMediaPlayerSleepPreventionEntity(importedSettings.mediaPlayerSleepPreventionEntity);
                     postCoverArtScreensaver(importedSettings.coverArtScreensaver);
-                    postClockOverlay(importedSettings.clockOverlay);
-                    if (controllers.layout.config.features?.cameraScreensaver)
+                    if (state.clockOverlaySupported) postClockOverlay(importedSettings.clockOverlay);
+                    if (controllers.layout.config.features?.cameraScreensaver && state.screensaverCameraSupported)
                         controllers.artworkPostApi.postMetadataOverlay(importedSettings.metadataOverlay);
                     postCoverArtMediaPlayerEntity(importedSettings.coverArtMediaPlayerEntity);
                     postCoverArtSecondaryMediaPlayerEntity(importedSettings.coverArtSecondaryMediaPlayerEntity);
@@ -545,7 +545,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     }
                     var importedScreensaverAction: any = importedSettings.screensaverAction;
                     if (importedScreensaverAction === "camera" &&
-                        !controllers.layout.config.features?.cameraScreensaver)
+                        (!controllers.layout.config.features?.cameraScreensaver || !state.screensaverCameraSupported))
                         importedScreensaverAction = "off";
                     var importedScreensaverDimmedBrightness: any = importedSettings.screensaverDimmedBrightness;
                     var importedScreensaverDimmedBrightnessDay: any = importedSettings.screensaverDimmedBrightnessDay;

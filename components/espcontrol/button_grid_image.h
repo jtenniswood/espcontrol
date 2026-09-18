@@ -2796,6 +2796,7 @@ inline void refresh_visible_image_cards() {
     }
     ctx->next_picture_retry_ms = 0;
     ctx->next_download_retry_ms = 0;
+    if (!ctx->media_artwork) image_card_refresh_entity_state(ctx);
     image_card_refresh_current_picture(ctx);
   }
 }
@@ -2886,6 +2887,7 @@ inline void image_card_suspend_pipeline() {
     ctx->next_picture_retry_ms = 0;
     ctx->next_download_retry_ms = 0;
     ctx->last_download_completed_ms = 0;
+    ctx->access_token.clear();
     ctx->access_token_request_pending = false;
     ctx->camera_refresh_pending = false;
     ctx->startup_download_errors = 0;
