@@ -117,6 +117,7 @@ packages:
   # Addons
   # ---------------------------------------------------------------------------
   connectivity:    !include ../../common/addon/connectivity.yaml
+  api_open_modal:  !include ../../common/device/api_open_modal.yaml
   api_navigate:    !include ../../common/device/api_navigate.yaml
   time_sync:       !include ../../common/addon/time.yaml
   backlight:       !include ../../common/addon/backlight.yaml

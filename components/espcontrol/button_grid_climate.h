@@ -2235,8 +2235,12 @@ inline void delete_climate_control_context(ClimateControlCtx *ctx) {
   delete ctx;
 }
 
+inline bool climate_control_can_open_modal(ClimateControlCtx *ctx) {
+  return !(!ctx || !ctx->available);
+}
+
 inline void climate_control_open_modal(ClimateControlCtx *ctx) {
-  if (!ctx || !ctx->available) return;
+  if (!climate_control_can_open_modal(ctx)) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::CLIMATE, ctx->btn, ctx->width_compensation_percent,
     ctx->icon_font, climate_control_hide_modal);

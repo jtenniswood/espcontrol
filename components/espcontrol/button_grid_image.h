@@ -2158,10 +2158,14 @@ inline void image_card_hide_modal() {
   image_card_schedule_modal_cleanup(ctx);
 }
 
+inline bool image_card_can_open_modal(ImageCardCtx *ctx) {
+  return ctx && ctx->active && ctx->image &&
+         esphome::artwork_image::image_pipeline_modal_can_open(
+           ctx->image_ready, !ctx->source_url.empty());
+}
+
 inline void image_card_open_modal(ImageCardCtx *ctx) {
-  if (!ctx || !ctx->active || !ctx->image ||
-      !esphome::artwork_image::image_pipeline_modal_can_open(
-        ctx->image_ready, !ctx->source_url.empty())) {
+  if (!image_card_can_open_modal(ctx)) {
     ESP_LOGW("image_card", "No camera card is available to open");
     image_card_log_diagnostics(ctx, "modal-open-not-ready");
     return;

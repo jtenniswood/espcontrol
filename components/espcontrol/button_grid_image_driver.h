@@ -1,5 +1,7 @@
 #pragma once
 
+#include "card_modal_target.h"
+
 // Shared lifecycle driver for Image cards. The downloader, cache, geometry,
 // and modal implementation remain in button_grid_image.h; this driver owns
 // the grid and subpage lifecycle boundary.
@@ -85,6 +87,16 @@ inline bool image_driver_handle_main_click(
     ? static_cast<ImageCardCtx *>(lv_obj_get_user_data(button)) : nullptr;
   if (image_context) image_card_open_modal(image_context);
   return true;
+}
+
+// Explicit modal-only route; it must never activate the card's command path.
+inline ModalTarget image_driver_modal_target(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button) {
+  if (!image_driver_matches(context)) return {};
+  auto *runtime = button
+    ? static_cast<ImageCardCtx *>(lv_obj_get_user_data(button)) : nullptr;
+  return modal_target(runtime, config.entity, ControlModalKind::IMAGE_CARD,
+                      image_card_can_open_modal(runtime), image_card_open_modal);
 }
 
 }  // namespace espcontrol::cards

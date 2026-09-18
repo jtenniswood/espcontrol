@@ -1,0 +1,35 @@
+# Open existing entity controls without activating the card's normal command.
+api:
+  actions:
+    - action: open_modal
+      variables:
+        entity_id: string
+      then:
+        - script.execute:
+            id: open_entity_modal
+            entity_id: !lambda 'return entity_id;'
+
+script:
+  - id: open_entity_modal
+    mode: restart
+    parameters:
+      entity_id: string
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return espcontrol_can_open_modal(entity_id,
+                !id(connectivity_setup_display_active) &&
+                !navigation_home_targets().empty());
+          then:
+            - script.execute: screensaver_wake
+            - script.wait: screensaver_wake
+            - if:
+                condition:
+                  lambda: |-
+                    return espcontrol_open_modal(entity_id,
+                      !id(connectivity_setup_display_active) &&
+                      !navigation_home_targets().empty());
+                then:
+                  - script.execute: screensaver_idle_check
+                  - script.execute: home_screen_idle_check

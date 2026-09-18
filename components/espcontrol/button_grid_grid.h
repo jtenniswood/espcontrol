@@ -1231,6 +1231,7 @@ inline bool grid_refresh_subpage_layouts(
         ESP_LOGW("sensors", "Subpage %d is missing card %d", si + 1, button_index);
         continue;
       }
+      card->display_order = gp;
       const int col = sp_order.has_back_token ? gp % COLS : (gp + 1) % COLS;
       const int row = sp_order.has_back_token ? gp / COLS : (gp + 1) / COLS;
       const int col_span = sp_order.col_span[button_index - 1] > 0
