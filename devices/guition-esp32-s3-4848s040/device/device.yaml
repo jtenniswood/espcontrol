@@ -443,11 +443,9 @@ lvgl:
   id: main_lvgl
   # Keep LVGL after WiFi and after the display driver.
   setup_priority: 230
-  # A full-frame buffer avoids splitting page redraws into many small regions.
-  # At 90/270 degrees ESPHome rotates each rendered region in software; one
-  # full-frame rotation is substantially cheaper than repeatedly rotating the
-  # same page in partial chunks on the S3's PSRAM-backed display stack.
-  buffer_size: 100%
+  # Keep the buffer small so WiFi and runtime display resources retain PSRAM
+  # headroom on the memory-constrained S3.
+  buffer_size: 12%
   displays: my_display
   rotation: 180
   touchscreens:
