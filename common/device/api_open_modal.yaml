@@ -20,6 +20,7 @@ script:
             lambda: |-
               return espcontrol_can_open_modal(entity_id,
                 !id(connectivity_setup_display_active) &&
+                grid_phase2_complete() &&
                 !navigation_home_targets().empty());
           then:
             - script.execute: screensaver_wake
@@ -29,6 +30,7 @@ script:
                   lambda: |-
                     return espcontrol_open_modal(entity_id,
                       !id(connectivity_setup_display_active) &&
+                      grid_phase2_complete() &&
                       !navigation_home_targets().empty());
                 then:
                   - script.execute: screensaver_idle_check

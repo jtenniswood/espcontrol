@@ -106,6 +106,23 @@ def package_api_navigate_enabled(package_path: Path, root: Path) -> bool:
     return bool(package.get("apiNavigateAction", True))
 
 
+def package_api_open_modal_enabled(package_path: Path, root: Path) -> bool:
+    manifest_path = root / "devices" / "manifest.json"
+    if not manifest_path.exists():
+        return True
+    try:
+        slug = package_path.relative_to(root / "devices").parts[0]
+    except (ValueError, IndexError):
+        return True
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return True
+    device = manifest.get("devices", {}).get(slug, {})
+    package = device.get("firmware", {}).get("package", {})
+    return bool(package.get("apiOpenModalAction", True))
+
+
 def package_local_voice_services_enabled(package_path: Path, root: Path) -> bool:
     manifest_path = root / "devices" / "manifest.json"
     if not manifest_path.exists():
@@ -3468,9 +3485,11 @@ def firmware_open_modal_api_errors(root: Path, package_paths: tuple[Path, ...]) 
                 "script.wait: screensaver_wake", "espcontrol_open_modal(entity_id,",
                 "script.execute: screensaver_idle_check", "script.execute: home_screen_idle_check")
     positions = [text.find(value) for value in required]
-    if -1 in positions or positions != sorted(positions):
+    if -1 in positions or positions != sorted(positions) or text.count("grid_phase2_complete()") < 2:
         errors.append("common/device/api_open_modal.yaml: validate, wake, revalidate, open, then reset idle timers")
     for path in package_paths:
+        if not package_api_open_modal_enabled(path, root):
+            continue
         if "api_open_modal.yaml" not in path.read_text(encoding="utf-8"):
             errors.append(f"{path.relative_to(root)}: include the entity modal action on P4 and S3")
     return errors
@@ -7728,6 +7747,16 @@ def run_self_test() -> int:
             api.write_text(original.replace(token, "removed"))
             assert firmware_open_modal_api_errors(root, (package,)), token
         api.write_text(original)
+        manifest = root / "devices/manifest.json"
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text(
+            json.dumps({"devices": {"constrained": {"firmware": {"package": {"apiOpenModalAction": False}}}}}),
+            encoding="utf-8",
+        )
+        disabled_package = root / "devices/constrained/packages.yaml"
+        disabled_package.parent.mkdir(parents=True)
+        disabled_package.write_text("packages: {}\n", encoding="utf-8")
+        assert not firmware_open_modal_api_errors(root, (disabled_package,))
         package.write_text("packages: {}\n")
         assert firmware_open_modal_api_errors(root, (package,))
         api.unlink()

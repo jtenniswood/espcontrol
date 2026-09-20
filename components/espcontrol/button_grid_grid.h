@@ -76,6 +76,18 @@ inline void grid_log_memory(const char *stage) {
 #endif
 }
 
+// Remote modal requests must wait until the subscription/runtime phase has
+// finished. Phase 1 has already registered navigation targets, but the card
+// contexts and subpage runtimes are not safe to use until phase 2 completes.
+inline bool &grid_phase2_complete_state() {
+  static bool complete = false;
+  return complete;
+}
+
+inline bool grid_phase2_complete() {
+  return grid_phase2_complete_state();
+}
+
 inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   DisplayProfile profile;
   profile.fonts.icon = cfg.icon_font;
@@ -1014,6 +1026,7 @@ inline void grid_phase1(
     const std::string &on_hex,
     lv_obj_t *main_page_obj = nullptr) {
   ESP_LOGI("sensors", "Phase 1: visual setup start (%lu ms)", esphome::millis());
+  grid_phase2_complete_state() = false;
   // Remote controls may be open over a non-grid page when widgets are rebuilt.
   navigation_hide_modals();
   set_backlight_display_takeover_callback(navigation_close_modals_for_display_takeover);
@@ -2245,6 +2258,7 @@ inline void grid_phase2(
   }
   refresh_weather_forecast_cards();
   ha_log_subscription_diagnostics("grid-complete");
+  grid_phase2_complete_state() = true;
   grid_log_memory("end");
   ESP_LOGI("sensors", "Phase 2: done (%lu ms)", esphome::millis());
 }
