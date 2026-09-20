@@ -4017,9 +4017,25 @@ def load_legacy_web_bundle(manifest_path):
     except (OSError, json.JSONDecodeError) as exc:
         raise BuildError(f"Could not read legacy web asset manifest {path}") from exc
     bundles = manifest.get("bundles") if isinstance(manifest, dict) else None
-    if not isinstance(bundles, list) or not bundles or not isinstance(bundles[0], dict):
+    if not isinstance(bundles, list):
         raise BuildError(f"Legacy web asset manifest {path} has no bundle entries")
-    bundle = bundles[0]
+    bundle = next(
+        (
+            candidate
+            for candidate in bundles
+            if isinstance(candidate, dict)
+            and isinstance(candidate.get("firmwareVersions"), list)
+            and any(
+                isinstance(version, str) and version != "dev"
+                for version in candidate["firmwareVersions"]
+            )
+        ),
+        None,
+    )
+    if bundle is None:
+        raise BuildError(
+            f"Legacy web asset manifest {path} has no published firmware bundle"
+        )
     bundle_id = bundle.get("id")
     bundle_path = bundle.get("path")
     if (

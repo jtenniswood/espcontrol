@@ -178,6 +178,7 @@ def test_release_workflow_uses_current_ota_output() -> None:
     assert "name: Prepare release web assets" in workflow
     assert "scripts/prepare_release_web_assets.py" in workflow
     assert "--legacy-web-manifest" in workflow
+    assert 'any(.firmwareVersions[]?; . != "dev")' in workflow
     assert "name: Upload release web assets" in workflow
     assert "name: Download release web assets" in workflow
     assert "dist/release-web-assets" in workflow
@@ -231,6 +232,7 @@ def test_release_preparation_is_workflow_owned() -> None:
     assert "name: Prepare published release web assets" in pages_workflow
     assert "--legacy-only" in pages_workflow
     assert "--legacy-web-manifest" in pages_workflow
+    assert 'any(.firmwareVersions[]?; . != "dev")' in pages_workflow
     assert "git push origin main" not in skill
     with TemporaryDirectory() as tmp:
         build_script = Path(tmp) / "build.py"

@@ -111,7 +111,8 @@ jobs:
           mkdir -p "${LEGACY_WEB_DIR}"
           if curl -fsSL "https://jtenniswood.github.io/espcontrol/webserver/web-assets.json" \
             -o "${LEGACY_WEB_MANIFEST}"; then
-            BUNDLE_PATH=$(jq -er '.bundles[0].path' "${LEGACY_WEB_MANIFEST}")
+            BUNDLE_PATH=$(jq -er '[.bundles[] | select(any(.firmwareVersions[]?; . != "dev"))][0].path' \
+              "${LEGACY_WEB_MANIFEST}")
             if [[ ! "${BUNDLE_PATH}" =~ ^bundles/[0-9a-f]{64}/www\.js$ ]]; then
               echo "::error::Published web asset manifest has an invalid bundle path"
               exit 1
