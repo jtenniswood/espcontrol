@@ -95,14 +95,14 @@ export const GENERATED_ICON_NAMES: readonly string[] = [
     "Track Light", "Track Light Off", "Transmission Tower", "Trash Can", "Trash Can Outline", "Vacuum",
     "Vacuum Outline", "Vanity Light", "View Headline", "Video", "Video Outline", "Volume High",
     "Volume Off", "Wall Outlet", "Wall Sconce", "Washing Machine", "Washing Machine Off", "Water",
-    "Water Boiler", "Water Boiler Off", "Water Percent", "Water Alert", "Weather Cloudy", "Weather Cloudy Alert",
-    "Weather Dust", "Weather Fog", "Weather Hail", "Weather Hazy", "Weather Hurricane", "Weather Lightning",
-    "Weather Lightning Rainy", "Weather Night", "Weather Night Cloudy", "Weather Partly Cloudy", "Weather Partly Lightning", "Weather Partly Rainy",
-    "Weather Partly Snowy", "Weather Partly Snowy Rainy", "Weather Pouring", "Weather Rainy", "Weather Snowy", "Weather Snowy Heavy",
-    "Weather Snowy Rainy", "Weather Sunny", "Weather Sunny Alert", "Weather Sunny Off", "Weather Sunset", "Weather Sunset Down",
-    "Weather Sunset Up", "Weather Tornado", "Weather Windy", "Weather Windy Variant", "Wifi", "Wind Power",
-    "Wind Turbine", "Wind Turbine Alert", "Wind Turbine Check", "Window Closed", "Window Open", "Window Shutter",
-    "Window Shutter Open",
+    "Water Boiler", "Water Boiler Off", "Water Percent", "Water Pump", "Water Pump Off", "Water Alert",
+    "Weather Cloudy", "Weather Cloudy Alert", "Weather Dust", "Weather Fog", "Weather Hail", "Weather Hazy",
+    "Weather Hurricane", "Weather Lightning", "Weather Lightning Rainy", "Weather Night", "Weather Night Cloudy", "Weather Partly Cloudy",
+    "Weather Partly Lightning", "Weather Partly Rainy", "Weather Partly Snowy", "Weather Partly Snowy Rainy", "Weather Pouring", "Weather Rainy",
+    "Weather Snowy", "Weather Snowy Heavy", "Weather Snowy Rainy", "Weather Sunny", "Weather Sunny Alert", "Weather Sunny Off",
+    "Weather Sunset", "Weather Sunset Down", "Weather Sunset Up", "Weather Tornado", "Weather Windy", "Weather Windy Variant",
+    "Wifi", "Wind Power", "Wind Turbine", "Wind Turbine Alert", "Wind Turbine Check", "Window Closed",
+    "Window Open", "Window Shutter", "Window Shutter Open",
   ];
 // --- GENERATED:ICONS END ---
 

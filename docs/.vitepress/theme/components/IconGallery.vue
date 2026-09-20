@@ -342,6 +342,8 @@ const ICON_GROUPS = {
   'Water Boiler': 'Water & Outdoors',
   'Water Boiler Off': 'Water & Outdoors',
   'Water Percent': 'Water & Outdoors',
+  'Water Pump': 'Water & Outdoors',
+  'Water Pump Off': 'Water & Outdoors',
   'Shower Head': 'Water & Outdoors',
 
   'Application': 'Network & Tech',
