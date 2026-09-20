@@ -232,7 +232,8 @@ def test_release_preparation_is_workflow_owned() -> None:
     with TemporaryDirectory() as tmp:
         build_script = Path(tmp) / "build.py"
         build_script.write_text(
-            'WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = (\n    "dev",\n    "v1.0.0",\n)\n',
+            'WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = (\n    "dev",\n    "v1.0.0",\n)\n'
+            'WEB_ASSET_CURRENT_FIRMWARE_VERSION = None\n',
             encoding="utf-8",
         )
         releases = [

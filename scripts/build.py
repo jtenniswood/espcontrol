@@ -45,9 +45,11 @@ SUPPORT_BUTTON_IMAGE = ROOT / "common" / "assets" / "images" / "buy-me-a-coffee-
 WEB_SOURCE_DIR = ROOT / "src" / "webserver"
 WEB_BUNDLE_RETENTION = ROOT / "docs" / "public" / "webserver" / "bundle-retention.json"
 
-# The hosted editor remains available to the development firmware plus the
-# current stable release and its four supported rollback releases. Keep this
-# list aligned with the GitHub Pages release catalogue in pages.yml.
+# Keep this list aligned with the GitHub Pages release catalogue in pages.yml.
+# The current source bundle is intentionally restricted to development firmware
+# (and the release being prepared). Stable firmware keeps using the retained
+# bundle from the latest published source until that firmware contains the
+# matching generated icon glyphs.
 WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = (
     "dev",
     "v2.10.0",
@@ -56,6 +58,9 @@ WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = (
     "v2.8.6",
     "v2.8.4",
 )
+WEB_ASSET_CURRENT_FIRMWARE_VERSION = None
+WEB_ASSET_LEGACY_BUNDLE_ID = "42f3fd87eb8cbfab59943a7643a19416ded29eddb8608498ada20e95b416fd49"
+WEB_ASSET_LEGACY_BUNDLE_PATH = f"bundles/{WEB_ASSET_LEGACY_BUNDLE_ID}/www.js"
 
 # Fixed editor controls use a few MDI glyphs that are not selectable Product
 # Model icons. Keep their pinned codepoints here so rebuilding www.js remains
@@ -4036,16 +4041,40 @@ def build_www(check_only=False, output_dir=None, test_hooks=False, retain_curren
     bridge_text = (build_root / "www.js").read_text()
     bundle_sha256 = hashlib.sha256(bundle_text.encode("utf-8")).hexdigest()
     bundle_relative_path = Path("bundles") / bundle_sha256 / "www.js"
+    current_firmware_versions = ["dev"]
+    if WEB_ASSET_CURRENT_FIRMWARE_VERSION is not None:
+        if WEB_ASSET_CURRENT_FIRMWARE_VERSION not in WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS:
+            raise BuildError(
+                "current web asset firmware version is missing from the supported version list"
+            )
+        current_firmware_versions.append(WEB_ASSET_CURRENT_FIRMWARE_VERSION)
+    legacy_firmware_versions = [
+        firmware_version
+        for firmware_version in WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS
+        if firmware_version not in current_firmware_versions
+    ]
+    current_bundle = {
+        "id": bundle_sha256,
+        "sha256": bundle_sha256,
+        "path": bundle_relative_path.as_posix(),
+        "deviceProfiles": list(devices),
+        "firmwareVersions": current_firmware_versions,
+    }
+    legacy_bundle = {
+        "id": WEB_ASSET_LEGACY_BUNDLE_ID,
+        "sha256": WEB_ASSET_LEGACY_BUNDLE_ID,
+        "path": WEB_ASSET_LEGACY_BUNDLE_PATH,
+        "deviceProfiles": list(devices),
+        "firmwareVersions": legacy_firmware_versions,
+    }
     manifest_text = json.dumps({
         "schemaVersion": 1,
-        "bundles": [{
-            "id": bundle_sha256,
-            "sha256": bundle_sha256,
-            "path": bundle_relative_path.as_posix(),
-            "deviceProfiles": list(devices),
-            "firmwareVersions": list(WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS),
-            "webAssetVersion": version,
-        } for version in (2, 1)],
+        "bundles": [
+            {**current_bundle, "webAssetVersion": 2},
+            {**current_bundle, "webAssetVersion": 1},
+            {**legacy_bundle, "webAssetVersion": 2},
+            {**legacy_bundle, "webAssetVersion": 1},
+        ],
     }, indent=2) + "\n"
 
     outputs = [(build_root / "www.js", bridge_text)]

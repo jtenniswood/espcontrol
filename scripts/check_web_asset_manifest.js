@@ -36,15 +36,30 @@ function expectedFirmwareVersions() {
   return [...match[1].matchAll(/"([^"]+)"/g)].map((item) => item[1]);
 }
 
+function expectedCurrentFirmwareVersion() {
+  const source = fs.readFileSync(BUILD_SCRIPT_PATH, "utf8");
+  const match = source.match(/^WEB_ASSET_CURRENT_FIRMWARE_VERSION = (.+)$/m);
+  assert(match, "build source must declare the current web asset firmware version");
+  return match[1].trim() === "None" ? null : JSON.parse(match[1].trim());
+}
+
+function expectedLegacyBundleId() {
+  const source = fs.readFileSync(BUILD_SCRIPT_PATH, "utf8");
+  const match = source.match(/^WEB_ASSET_LEGACY_BUNDLE_ID = "([a-f0-9]{64})"$/m);
+  assert(match, "build source must declare the retained legacy web bundle");
+  return match[1];
+}
+
 function verifyManifest(webRoot) {
   const manifestPath = path.join(webRoot, "web-assets.json");
   assert(fs.existsSync(manifestPath), "web asset manifest is missing");
   const manifest = readJson(manifestPath);
   assert(manifest.schemaVersion === 1, "web asset manifest schema version must be 1");
-  assert(Array.isArray(manifest.bundles) && manifest.bundles.length === 2,
-    "web asset manifest must declare the current bundle and its legacy compatibility entry");
+  assert(Array.isArray(manifest.bundles) && manifest.bundles.length === 4,
+    "web asset manifest must declare current and retained legacy bundles");
 
   const bundle = manifest.bundles[0];
+  const legacyBundle = manifest.bundles[2];
   assert(typeof bundle.id === "string" && /^[a-f0-9]{64}$/.test(bundle.id),
     "web bundle id must be a SHA-256 digest");
   assert(bundle.sha256 === bundle.id, "web bundle digest must match its id");
@@ -53,11 +68,24 @@ function verifyManifest(webRoot) {
   assert(Array.isArray(bundle.deviceProfiles), "web bundle must declare device profiles");
   assert(JSON.stringify(bundle.deviceProfiles) === JSON.stringify(expectedProfiles()),
     "web bundle device profiles must match the device manifest");
-  assert(JSON.stringify(bundle.firmwareVersions) === JSON.stringify(expectedFirmwareVersions()),
-    "web bundle must declare the development and supported stable firmware versions");
+  const currentFirmwareVersions = ["dev"];
+  const currentFirmwareVersion = expectedCurrentFirmwareVersion();
+  if (currentFirmwareVersion) currentFirmwareVersions.push(currentFirmwareVersion);
+  const legacyFirmwareVersions = expectedFirmwareVersions()
+    .filter((version) => !currentFirmwareVersions.includes(version));
+  assert(JSON.stringify(bundle.firmwareVersions) === JSON.stringify(currentFirmwareVersions),
+    "current web bundle must declare only firmware with matching generated outputs");
   assert(bundle.webAssetVersion === 2, "current web bundle must support reset epochs");
   assert(JSON.stringify(manifest.bundles[1]) === JSON.stringify({ ...bundle, webAssetVersion: 1 }),
-    "legacy firmware must retain access to the same backward-compatible editor");
+    "current web bundle must retain its compatibility alias");
+  assert(legacyBundle.id === expectedLegacyBundleId(),
+    "legacy firmware must use the retained pre-change web bundle");
+  assert(JSON.stringify(legacyBundle.firmwareVersions) === JSON.stringify(legacyFirmwareVersions),
+    "legacy web bundle must declare the remaining stable firmware versions");
+  assert(legacyBundle.webAssetVersion === 2,
+    "legacy web bundle must support reset-capable firmware");
+  assert(JSON.stringify(manifest.bundles[3]) === JSON.stringify({ ...legacyBundle, webAssetVersion: 1 }),
+    "legacy web bundle must retain its compatibility alias");
 
   const referencedPaths = new Set(manifest.bundles.map(entry => entry.path));
   const retentionPath = path.join(webRoot, "bundle-retention.json");
@@ -106,7 +134,7 @@ function verifyManifest(webRoot) {
 
 async function verifyBridge() {
   const manifest = readJson(path.join(WEB_ROOT, "web-assets.json"));
-  const stableVersion = manifest.bundles[0].firmwareVersions.find(
+  const stableVersion = manifest.bundles[2].firmwareVersions.find(
     (version) => /^v\d+\.\d+\.\d+$/.test(version),
   );
   assert(stableVersion, "web asset manifest must declare a stable firmware version");
@@ -150,8 +178,8 @@ async function verifyBridge() {
   vm.runInContext(fs.readFileSync(path.join(WEB_ROOT, "www.js"), "utf8"), sandbox);
   await new Promise((resolve) => setImmediate(resolve));
   assert(releaseLoaded.length === 1, "web bridge must load the supported stable firmware bundle");
-  assert(releaseLoaded[0] === `https://assets.example/webserver/${manifest.bundles[0].path}?device=esp32-p4-86&v=${stableVersion}`,
-    "web bridge must select a bundle for an explicitly requested stable firmware version");
+  assert(releaseLoaded[0] === `https://assets.example/webserver/${manifest.bundles[2].path}?device=esp32-p4-86&v=${stableVersion}`,
+    "web bridge must select the retained bundle for an explicitly requested stable firmware version");
 
   let fallbackStarts = 0;
   sandbox.__ESPCONTROL_START_EMBEDDED__ = () => { fallbackStarts += 1; };

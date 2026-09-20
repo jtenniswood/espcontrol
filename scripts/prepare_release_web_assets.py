@@ -16,6 +16,9 @@ RELEASE_TAG_RE = re.compile(r"^v\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$")
 VERSION_LIST_RE = re.compile(
     r"(?ms)^(WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = \(\n)(.*?)(^\))"
 )
+CURRENT_VERSION_RE = re.compile(
+    r"(?m)^WEB_ASSET_CURRENT_FIRMWARE_VERSION = (.+)$"
+)
 MAX_STABLE_RELEASES = 5
 
 
@@ -84,14 +87,23 @@ def prepare(path: Path, tag: str, releases: list[dict]) -> bool:
         raise PrepareReleaseWebAssetsError(
             f"Could not find WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS in {path}"
         )
+    current_match = CURRENT_VERSION_RE.search(source)
+    if not current_match:
+        raise PrepareReleaseWebAssetsError(
+            f"Could not find WEB_ASSET_CURRENT_FIRMWARE_VERSION in {path}"
+        )
     versions = re.findall(r'"([^"]+)"', match.group(2))
     if not versions or versions[0] != "dev":
         raise PrepareReleaseWebAssetsError("web asset compatibility list must start with dev")
     updated_versions = supported_versions(tag, releases)
-    if versions == updated_versions:
+    updated_current = f'WEB_ASSET_CURRENT_FIRMWARE_VERSION = "{tag}"'
+    if versions == updated_versions and current_match.group(0) == updated_current:
         return False
     entries = "".join(f'    "{version}",\n' for version in updated_versions)
     updated = source[:match.start()] + match.group(1) + entries + match.group(3) + source[match.end():]
+    current_match = CURRENT_VERSION_RE.search(updated)
+    assert current_match is not None
+    updated = updated[:current_match.start()] + updated_current + updated[current_match.end():]
     path.write_text(updated, encoding="utf-8")
     return True
 
