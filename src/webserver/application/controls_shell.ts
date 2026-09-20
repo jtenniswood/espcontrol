@@ -18,7 +18,7 @@ export function renderPanelBrand(brand: Element, document: Document, name?: stri
     if (name) {
         const label = document.createElement("span");
         label.className = "sp-brand-name";
-        label.textContent = name;
+        label.textContent = " " + name;
         brand.appendChild(label);
     }
 }
