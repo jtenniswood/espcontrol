@@ -397,6 +397,8 @@ export default defineConfig({
   },
 
   themeConfig: {
+    logo: '/images/espcontrol-logo.svg',
+    siteTitle: 'Espcontrol',
     nav: [
       { text: 'Install', link: '/getting-started/install' },
       { text: 'Issues', link: 'https://github.com/jtenniswood/espcontrol/issues' },

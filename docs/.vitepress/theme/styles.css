@@ -9,6 +9,14 @@
   text-transform: uppercase;
 }
 
+.VPNavBarTitle .VPImage.logo {
+  filter: invert(1);
+}
+
+.dark .VPNavBarTitle .VPImage.logo {
+  filter: none;
+}
+
 .github-stars {
   display: inline-flex;
   align-items: center;
