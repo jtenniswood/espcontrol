@@ -177,6 +177,7 @@ def test_release_workflow_uses_current_ota_output() -> None:
     assert "path: dist/firmware/" in workflow, "publishable firmware must use the dist boundary"
     assert "name: Prepare release web assets" in workflow
     assert "scripts/prepare_release_web_assets.py" in workflow
+    assert "--legacy-web-manifest" in workflow
     assert "name: Upload release web assets" in workflow
     assert "name: Download release web assets" in workflow
     assert "dist/release-web-assets" in workflow
@@ -228,6 +229,8 @@ def test_release_preparation_is_workflow_owned() -> None:
     assert "gh pr create --base main" not in skill
     assert "name: Prepare release web assets" in workflow
     assert "name: Prepare published release web assets" in pages_workflow
+    assert "--legacy-only" in pages_workflow
+    assert "--legacy-web-manifest" in pages_workflow
     assert "git push origin main" not in skill
     with TemporaryDirectory() as tmp:
         build_script = Path(tmp) / "build.py"
@@ -251,6 +254,10 @@ def test_release_preparation_is_workflow_owned() -> None:
         assert prepare_release_web_assets.prepare(build_script, "v1.2.0-beta.1", releases) is True
         assert '    "v1.2.0-beta.1",' in build_script.read_text(encoding="utf-8")
         assert '    "v1.1.0-beta.1",' not in build_script.read_text(encoding="utf-8")
+        assert prepare_release_web_assets.prepare(
+            build_script, "v1.2.0-beta.1", releases, set_current_version=False
+        ) is True
+        assert "WEB_ASSET_CURRENT_FIRMWARE_VERSION = None" in build_script.read_text(encoding="utf-8")
 
 
 def make_release_files(base: Path, slug: str = SLUG, version: str = VERSION) -> tuple[Path, Path, Path]:
