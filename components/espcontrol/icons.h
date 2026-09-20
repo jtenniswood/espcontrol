@@ -354,6 +354,8 @@ static const IconEntry ICON_ENTRIES[] = {
     {"Water Boiler",                       "\U000F0F92"},
     {"Water Boiler Off",                   "\U000F11B4"},
     {"Water Percent",                      "\U000F058E"},
+    {"Water Pump",                         "\U000F058F"},
+    {"Water Pump Off",                     "\U000F0F93"},
     {"Water Alert",                        "\U000F1502"},
     {"Weather Cloudy",                     "\U000F0590"},
     {"Weather Cloudy Alert",               "\U000F0F2F"},

@@ -1715,6 +1715,16 @@
       "mdi": "water-percent"
     },
     {
+      "name": "Water Pump",
+      "codepoint": "F058F",
+      "mdi": "water-pump"
+    },
+    {
+      "name": "Water Pump Off",
+      "codepoint": "F0F93",
+      "mdi": "water-pump-off"
+    },
+    {
       "name": "Water Alert",
       "codepoint": "F1502",
       "mdi": "water-alert"

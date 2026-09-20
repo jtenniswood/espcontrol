@@ -12,7 +12,7 @@
     "deviceProfiles": 8,
     "cardTypes": 43,
     "entityNames": 101,
-    "icons": 355,
+    "icons": 357,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
   },
@@ -9213,6 +9213,16 @@
         "name": "Water Percent",
         "codepoint": "F058E",
         "mdi": "water-percent"
+      },
+      {
+        "name": "Water Pump",
+        "codepoint": "F058F",
+        "mdi": "water-pump"
+      },
+      {
+        "name": "Water Pump Off",
+        "codepoint": "F0F93",
+        "mdi": "water-pump-off"
       },
       {
         "name": "Water Alert",

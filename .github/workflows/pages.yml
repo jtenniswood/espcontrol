@@ -7,6 +7,8 @@ on:
       - 'docs/**'
       - 'devices/manifest.json'
       - 'scripts/check_public_firmware.py'
+      - 'scripts/build.py'
+      - 'scripts/prepare_release_web_assets.py'
       - 'scripts/prune_actions_cache.sh'
       - 'package.json'
       - 'package-lock.json'
@@ -80,9 +82,29 @@ jobs:
             echo "No published release exists yet; keeping the checked-in web asset compatibility list."
             exit 0
           fi
-          python3 scripts/prepare_release_web_assets.py "${RELEASE_TAG}"
-          python3 scripts/build.py www --retain-current-bundle
-          python3 scripts/build.py www --check --retain-current-bundle
+          python3 scripts/prepare_release_web_assets.py --legacy-only "${RELEASE_TAG}"
+
+          LEGACY_WEB_DIR="${RUNNER_TEMP}/espcontrol-published-web"
+          LEGACY_WEB_MANIFEST="${LEGACY_WEB_DIR}/web-assets.json"
+          LEGACY_WEB_ARGS=()
+          mkdir -p "${LEGACY_WEB_DIR}"
+          if curl -fsSL "https://jtenniswood.github.io/espcontrol/webserver/web-assets.json" \
+            -o "${LEGACY_WEB_MANIFEST}"; then
+            BUNDLE_PATH=$(jq -er '[.bundles[] | select(any(.firmwareVersions[]?; . != "dev"))][0].path' \
+              "${LEGACY_WEB_MANIFEST}")
+            if [[ ! "${BUNDLE_PATH}" =~ ^bundles/[0-9a-f]{64}/www\.js$ ]]; then
+              echo "::error::Published web asset manifest has an invalid bundle path"
+              exit 1
+            fi
+            mkdir -p "docs/public/webserver/$(dirname "${BUNDLE_PATH}")"
+            curl -fsSL "https://jtenniswood.github.io/espcontrol/webserver/${BUNDLE_PATH}" \
+              -o "docs/public/webserver/${BUNDLE_PATH}"
+            LEGACY_WEB_ARGS=(--legacy-web-manifest "${LEGACY_WEB_MANIFEST}")
+          else
+            echo "::warning::Could not download the published web asset manifest; using the checked-in fallback bundle."
+          fi
+          python3 scripts/build.py www --retain-current-bundle "${LEGACY_WEB_ARGS[@]}"
+          python3 scripts/build.py www --check --retain-current-bundle "${LEGACY_WEB_ARGS[@]}"
 
       - name: Build docs
         run: npm run docs:build

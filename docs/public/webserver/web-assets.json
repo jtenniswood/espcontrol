@@ -2,6 +2,44 @@
   "schemaVersion": 1,
   "bundles": [
     {
+      "id": "fed3b50359d0bf7929da8096e129530d383f76f3a6e2d4c20aa479934d81c7cb",
+      "sha256": "fed3b50359d0bf7929da8096e129530d383f76f3a6e2d4c20aa479934d81c7cb",
+      "path": "bundles/fed3b50359d0bf7929da8096e129530d383f76f3a6e2d4c20aa479934d81c7cb/www.js",
+      "deviceProfiles": [
+        "guition-esp32-p4-jc1060p470",
+        "guition-esp32-p4-jc1060p470-v2",
+        "guition-esp32-p4-jc4880p443",
+        "guition-esp32-p4-jc8012p4a1",
+        "guition-esp32-p4-jc8012p4a1-v2",
+        "guition-esp32-p4-jc8012p4a1-v3",
+        "esp32-p4-86",
+        "guition-esp32-s3-4848s040"
+      ],
+      "firmwareVersions": [
+        "dev"
+      ],
+      "webAssetVersion": 2
+    },
+    {
+      "id": "fed3b50359d0bf7929da8096e129530d383f76f3a6e2d4c20aa479934d81c7cb",
+      "sha256": "fed3b50359d0bf7929da8096e129530d383f76f3a6e2d4c20aa479934d81c7cb",
+      "path": "bundles/fed3b50359d0bf7929da8096e129530d383f76f3a6e2d4c20aa479934d81c7cb/www.js",
+      "deviceProfiles": [
+        "guition-esp32-p4-jc1060p470",
+        "guition-esp32-p4-jc1060p470-v2",
+        "guition-esp32-p4-jc4880p443",
+        "guition-esp32-p4-jc8012p4a1",
+        "guition-esp32-p4-jc8012p4a1-v2",
+        "guition-esp32-p4-jc8012p4a1-v3",
+        "esp32-p4-86",
+        "guition-esp32-s3-4848s040"
+      ],
+      "firmwareVersions": [
+        "dev"
+      ],
+      "webAssetVersion": 1
+    },
+    {
       "id": "42f3fd87eb8cbfab59943a7643a19416ded29eddb8608498ada20e95b416fd49",
       "sha256": "42f3fd87eb8cbfab59943a7643a19416ded29eddb8608498ada20e95b416fd49",
       "path": "bundles/42f3fd87eb8cbfab59943a7643a19416ded29eddb8608498ada20e95b416fd49/www.js",
@@ -16,7 +54,6 @@
         "guition-esp32-s3-4848s040"
       ],
       "firmwareVersions": [
-        "dev",
         "v2.10.0",
         "v2.9.1",
         "v2.9.0",
@@ -40,7 +77,6 @@
         "guition-esp32-s3-4848s040"
       ],
       "firmwareVersions": [
-        "dev",
         "v2.10.0",
         "v2.9.1",
         "v2.9.0",
