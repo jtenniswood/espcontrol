@@ -839,7 +839,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
       display_media_title_font(display), padding,
-      row_span == 1 ? 2 : 0, ctx->play_pause_background,
+      row_span == 1 ? 2 : 0, ctx->play_pause_background || ctx->progress_slider,
       ctx->progress_slider ? padding.left : 0, false);
     media_cover_art_refresh_geometry(ctx);
     if (ctx->progress_slider) slider_refresh_geometry(ctx->progress_slider);
