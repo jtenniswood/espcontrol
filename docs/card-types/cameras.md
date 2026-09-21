@@ -41,6 +41,7 @@ If your Home Assistant instance uses a custom port, open **Settings > System > H
 - On the 4-inch S3, closing the larger view keeps its image for up to 15 seconds when memory permits. Reopening within that window reuses it if the source has not changed.
 - Recently loaded images are kept for reuse when you move between pages, so returning to a camera page does not normally start from a blank tile.
 - The card refreshes when Home Assistant reports a new entity picture or an entity state update.
+- An `image.*` entity reports its image-update timestamp as its state. A new timestamp is loaded straight away, even if the last download was less than 30 seconds ago, because the picture behind the unchanged URL has changed. An image entity that Home Assistant updates every few seconds therefore refreshes on the panel at that pace.
 - If the image cannot be loaded, the card shows **Loading**, **Unavailable**, **Configure**, or **Too many** instead of leaving a blank tile.
 - Camera cards can be used on the main page or inside subpages.
 
@@ -92,7 +93,7 @@ Camera performance also depends on the connection between the panel and Home Ass
 | The card says **Unavailable** | Check that the entity exists in Home Assistant and has an image available. |
 | The card says **Too many** | Remove or move some Camera cards so the panel has enough image download slots. |
 | The picture is cropped | Change **Expanded Image** to **Show full image**. |
-| The picture does not update often | Check whether the Home Assistant camera entity itself is updating its snapshot image. |
+| The picture does not update often | Check whether the Home Assistant camera entity itself is updating its snapshot image. For an `image.*` entity, check that its state (the image-update timestamp) changes in Home Assistant. |
 | Images remain slow on several cards | Check the panel's WiFi signal and Home Assistant response time. On supported Ethernet models, consider the advanced wired firmware option. |
 
 ## Show Photos from Immich

@@ -12,6 +12,7 @@
 #include "esphome/core/version.h"
 #include "artwork_controller.h"
 #include "cover_art.h"
+#include "image_entity_revision.h"
 #include "../artwork_image/image_pipeline_policy.h"
 #include <cstring>
 
@@ -85,6 +86,9 @@ struct ImageCardCtx {
   bool diagnostics_enabled = false;
   bool access_token_request_pending = false;
   bool camera_refresh_pending = false;
+  // Image entities: last seen image-update timestamp and whether it still
+  // needs a download.
+  espcontrol::image_card::ImageEntityRevision image_revision;
   bool media_artwork = false;
   bool media_artwork_suppressed = false;
   bool media_artwork_refresh_forced = false;
@@ -1066,6 +1070,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].diagnostics_enabled = false;
     contexts[i].access_token_request_pending = false;
     contexts[i].camera_refresh_pending = false;
+    contexts[i].image_revision.reset();
     contexts[i].media_artwork = false;
     contexts[i].media_artwork_suppressed = false;
     contexts[i].media_artwork_refresh_forced = false;
@@ -1926,6 +1931,7 @@ inline void image_card_apply_entity_state(ImageCardCtx *ctx,
     ctx->camera_retry_after_ms = 0;
     ctx->last_download_completed_ms = 0;
   }
+  if (ctx->entity_id.rfind("image.", 0) == 0) ctx->image_revision.observe(value);
   image_card_request_picture(ctx);
 }
 
@@ -2008,6 +2014,7 @@ inline void image_card_request_source_url(ImageCardCtx *ctx, bool source_changed
   ctx->url = image_card_sized_url(ctx->source_url, request_width, request_height);
   ctx->requested_once = true;
   ctx->download_active = true;
+  ctx->image_revision.acknowledge();
   ctx->next_download_retry_ms = 0;
   ctx->last_tile_request_started_ms = now;
   ctx->image->set_target_size(decode_width, decode_height);
@@ -2400,7 +2407,14 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
   }
   uint32_t now = esphome::millis();
   bool source_changed = ctx->source_url != url;
-  if (!ctx->media_artwork && ctx->image_ready && ctx->camera_download_errors == 0 &&
+  // An image entity announces a new picture through its state (the
+  // image-update timestamp) while the proxy URL stays the same. That revision
+  // is a changed picture and must not wait out the recent-refresh guard.
+  const bool revision_pending =
+    espcontrol::image_card::image_entity_revision_bypasses_refresh_guard(
+      ctx->entity_id.rfind("image.", 0) == 0, ctx->image_revision.pending);
+  if (!revision_pending && !ctx->media_artwork && ctx->image_ready &&
+      ctx->camera_download_errors == 0 &&
       !ctx->camera_entity_unavailable && !source_changed &&
       ctx->last_download_completed_ms != 0 &&
       (uint32_t)(now - ctx->last_download_completed_ms) <
@@ -2414,6 +2428,7 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
   image_card_log_diagnostics(ctx, "picture-url-ready");
   if (image_card_modal_active_for(ctx)) {
     image_card_queue_modal_source_request(ctx);
+    ctx->image_revision.acknowledge();
     image_card_schedule_source_refresh(ctx, IMAGE_CARD_MODAL_REFRESH_DELAY_MS, "tile");
     return;
   }
