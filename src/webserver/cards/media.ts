@@ -890,7 +890,7 @@ export function registerMediaCardTypes(
                     var nowBgColor: any = WEB_UI_COLORS.secondary;
                     progressBg =
                         '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(nowBgColor) + '">' +
-                            '<span class="sp-slider-track"><span class="sp-slider-fill" style="width:50%;height:100%;background:#' + WEB_UI_COLORS.secondary + '">' +
+                            '<span class="sp-slider-track"><span class="sp-slider-fill" style="width:50%;height:100%;background:#' + helpers.escHtml(state.onColor || WEB_UI_COLORS.primary) + '">' +
                             '</span></span></span>';
                 }
                 else if (mediaNowPlayingPlayPauseEnabled(b)) {

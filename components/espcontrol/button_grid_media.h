@@ -2278,22 +2278,7 @@ inline lv_obj_t *setup_media_progress_background(lv_obj_t *btn,
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(btn, slider);
 
-  lv_obj_add_event_cb(slider, [](lv_event_t *e) {
-    lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
-    SliderCtx *ctx = (SliderCtx *)lv_obj_get_user_data(sl);
-    if (!ctx) return;
-    int val = lv_slider_get_value(sl);
-    slider_update_ctx_fill(ctx, lv_obj_get_parent(sl), ctx->inverted ? 100 - val : val);
-  }, LV_EVENT_VALUE_CHANGED, nullptr);
-
-  lv_obj_add_event_cb(slider, [](lv_event_t *e) {
-    lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
-    SliderCtx *ctx = (SliderCtx *)lv_obj_get_user_data(sl);
-    if (!ctx || ctx->entity_id.empty() || !ctx->available) return;
-    int val = lv_slider_get_value(sl);
-    media_set_pending_seek_position(ctx, val);
-    send_media_seek_action(ctx->entity_id, val, ctx->media_duration);
-  }, LV_EVENT_RELEASED, nullptr);
+  lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
 
   return slider;
 }
@@ -4660,7 +4645,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     ctx->show_track_details = mode != "cover_art" || media_cover_art_details_enabled(p);
     ctx->play_pause_background = mode == "now_playing" && media_now_playing_play_pause_enabled(p);
     if (mode == "now_playing" && media_now_playing_progress_enabled(p)) {
-      ctx->progress_slider = setup_media_progress_background(s.btn, secondary_color, tertiary_color, p.entity);
+      ctx->progress_slider = setup_media_progress_background(s.btn, on_color, tertiary_color, p.entity);
     }
     const CardPadding layout_padding = ctx->progress_slider ? padding : CardPadding{};
     lv_obj_set_user_data(s.sensor_container, (void *)ctx);
@@ -4713,7 +4698,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     ctx->artist_lbl = s.text_lbl;
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, layout_padding,
-      row_span == 1 ? 2 : 0, ctx->play_pause_background,
+      row_span == 1 ? 2 : 0, ctx->play_pause_background || ctx->progress_slider,
       mode == "now_playing" && media_now_playing_progress_enabled(p)
         ? layout_padding.left : 0);
     return;
