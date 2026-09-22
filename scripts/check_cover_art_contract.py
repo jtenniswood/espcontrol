@@ -152,6 +152,24 @@ int main() {
   assert(ten.split && ten.art_size == 800 && ten.panel_x == 840);
   auto ten_v2 = cover_art_layout("guition-esp32-p4-jc8012p4a1-v2", "90", 800, 1280, 800, 506);
   assert(ten_v2.screen_height == 1280 && ten_v2.panel_y == 834);
+  // Five full 103px title lines must leave one artist line and elapsed time
+  // above the playback button. Short titles release space for longer artists.
+  for (const auto &slug : {"guition-esp32-p4-jc8012p4a1",
+                          "guition-esp32-p4-jc8012p4a1-v2",
+                          "guition-esp32-p4-jc8012p4a1-v3"}) {
+    for (const auto &rotation : {"0", "180"}) {
+      const auto layout = cover_art_layout(slug, rotation, 1280, 800, 800, 506);
+      const auto button = playback_button_layout(layout, 103);
+      assert(layout.title_max_lines == 5 && button.title_max_height == 515);
+      const int artist = artist_height_budget(button.panel_height, 515, 47, 4, 35);
+      assert(artist == 51);
+      assert(515 + artist + 35 <= button.panel_height);
+      assert(layout.panel_y + button.panel_height <= 800 - button.margin - button.size);
+      assert(artist_height_budget(button.panel_height, 103, 47, 4, 35) > artist);
+      assert(artist_height_budget(button.panel_height, 515, 47, 4, 0) >= artist);
+    }
+    assert(cover_art_layout(slug, "90", 800, 1280, 800, 506).title_max_lines == 0);
+  }
   auto seven_v2 = cover_art_layout("guition-esp32-p4-jc1060p470-v2", "0", 1024, 600, 600, 260);
   assert(seven_v2.split && seven_v2.art_size == 600 && seven_v2.panel_x == 615);
   auto four = cover_art_layout("guition-esp32-p4-jc4880p443", "90", 800, 480, 480, 220);

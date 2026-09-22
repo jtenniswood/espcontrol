@@ -666,7 +666,8 @@ script:
                              layout.panel_x, layout.panel_y, layout.panel_width, layout.panel_height,
                              layout.title_max_height);
           set_art_image_geometry(layout.art_x, layout.art_y, layout.art_size);
-          const auto playback = espcontrol::cover_art::playback_button_layout(layout);
+          const auto playback = espcontrol::cover_art::playback_button_layout(
+              layout, lv_font_get_line_height(lv_obj_get_style_text_font(id(cover_art_title_label), LV_PART_MAIN)));
           lv_obj_clear_flag(id(cover_art_playback_button), LV_OBJ_FLAG_EVENT_BUBBLE);
           if (!${cover_art_square_overlay} || id(cover_art_playback_control_enabled).state) {
             lv_obj_clear_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN);
@@ -687,6 +688,31 @@ script:
             lv_obj_set_style_pad_left(id(cover_art_track_panel), layout.panel_padding, LV_PART_MAIN);
             lv_obj_set_style_pad_right(id(cover_art_track_panel), layout.panel_padding, LV_PART_MAIN);
           }
+      - script.execute: cover_art_fit_artist_text
+
+  - id: cover_art_fit_artist_text
+    mode: restart
+    then:
+      - lambda: |-
+          const auto layout = espcontrol::cover_art::cover_art_layout(
+              "${device_slug}", id(screen_rotation_select).current_option(),
+              ${screen_width}, ${screen_height}, ${cover_art_size}, ${cover_art_title_max_height});
+          auto *artist = id(cover_art_artist_label);
+          // Restore the configured behaviour when rotating out of this layout.
+          lv_label_set_long_mode(artist, std::string("${cover_art_artist_long_mode}") == "dot"
+              ? LV_LABEL_LONG_DOT : LV_LABEL_LONG_WRAP);
+          lv_obj_set_style_max_height(artist, LV_COORD_MAX, LV_PART_MAIN);
+          if (layout.title_max_lines == 0) return;
+          lv_obj_update_layout(id(cover_art_track_panel));
+          const int time_height = lv_obj_has_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN)
+              ? 0 : lv_obj_get_height(id(cover_art_time_label));
+          const int artist_height = espcontrol::cover_art::artist_height_budget(
+              lv_obj_get_content_height(id(cover_art_track_panel)),
+              lv_obj_get_height(id(cover_art_title_label)),
+              lv_font_get_line_height(lv_obj_get_style_text_font(artist, LV_PART_MAIN)),
+              ${cover_art_artist_pad_top}, time_height);
+          lv_obj_set_style_max_height(artist, artist_height, LV_PART_MAIN);
+          lv_label_set_long_mode(artist, LV_LABEL_LONG_DOT);
 
   - id: cover_art_apply_downloaded_image
     mode: restart
@@ -1554,6 +1580,8 @@ script:
             lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
           }
+
+      - script.execute: cover_art_fit_artist_text
 
   - id: cover_art_refresh_progress
     mode: restart

@@ -361,6 +361,7 @@ struct Layout {
   int accent_x, accent_y, accent_width, accent_height;
   int panel_x, panel_y, panel_width, panel_height, title_max_height, panel_padding;
   bool split;
+  int title_max_lines{0};
 };
 inline bool rotation_is_landscape(const std::string &slug, const std::string &rotation) {
   return slug == "guition-esp32-p4-jc4880p443" ? rotation == "90" || rotation == "270"
@@ -377,7 +378,7 @@ inline Layout cover_art_layout(const std::string &slug, const std::string &rotat
     : Layout{480,800,0,0,480,0,480,480,320,24,514,324,262,130,0,true};
   if (slug == "guition-esp32-p4-jc8012p4a1" || slug == "guition-esp32-p4-jc8012p4a1-v2" ||
       slug == "guition-esp32-p4-jc8012p4a1-v3") return landscape
-    ? Layout{1280,800,0,0,800,800,0,480,800,840,40,400,720,506,0,true}
+    ? Layout{1280,800,0,0,800,800,0,480,800,840,40,400,720,515,0,true,5}
     : Layout{800,1280,0,0,800,0,800,800,480,40,834,720,422,216,0,true};
   art_size = std::max(1, std::min(art_size, std::min(screen_width, screen_height)));
   int x = std::max(0, (screen_width - art_size) / 2), y = std::max(0, (screen_height - art_size) / 2);
@@ -387,14 +388,19 @@ inline Layout cover_art_layout(const std::string &slug, const std::string &rotat
 struct PlaybackButtonLayout {
   int size, margin, panel_width, panel_height, title_max_height;
 };
-inline PlaybackButtonLayout playback_button_layout(const Layout &layout) {
+inline PlaybackButtonLayout playback_button_layout(const Layout &layout, int title_line_height = 0) {
   const int short_side = std::min(layout.screen_width, layout.screen_height);
   const int size = std::clamp(short_side / 5, 80, 112);
   const int margin = std::clamp(short_side / 20, 24, 40);
   int width = layout.panel_width;
   int height = layout.panel_height;
   int title_height = layout.title_max_height;
-  if (layout.split && layout.screen_height > layout.screen_width) {
+  if (layout.title_max_lines > 0) {
+    // The 10-inch landscape panel fits five title lines plus artist/time.
+    // Use the space above the button without reserving a second full margin.
+    height = std::min(height, layout.screen_height - size - margin - layout.panel_y);
+    if (title_line_height > 0) title_height = layout.title_max_lines * title_line_height;
+  } else if (layout.split && layout.screen_height > layout.screen_width) {
     // Portrait metadata and controls share the area below the artwork.
     width = std::min(width, layout.screen_width - size - 2 * margin - layout.panel_x);
   } else {
@@ -403,6 +409,12 @@ inline PlaybackButtonLayout playback_button_layout(const Layout &layout) {
     title_height = std::max(1, title_height - (layout.panel_height - height));
   }
   return {size, margin, width, height, title_height};
+}
+
+inline int artist_height_budget(int panel_height, int title_height, int line_height,
+                                int top_padding, int time_height) {
+  const int available = std::max(0, panel_height - title_height - time_height - top_padding);
+  return top_padding + (available / std::max(1, line_height)) * line_height;
 }
 
 inline bool progress_available(float duration) {
