@@ -139,7 +139,7 @@ const screenProducts: Record<string, Record<string, string>> = {
     processor: 'ESP32-P4',
   },
   'screens/p4-86.md': {
-    name: 'ESP32-P4 86 Panel',
+    name: 'ESP32-P4 86',
     brand: 'ESP32-P4',
     model: 'ESP32-P4-86-Panel-ETH-2RO',
     size: '4 inches',
@@ -436,7 +436,7 @@ export default defineConfig({
           {
             text: '10.1-inch JC8012P4A1',
             link: '/screens/jc8012p4a1',
-            collapsed: false,
+            collapsed: true,
             items: [
               { text: 'V3', link: '/screens/jc8012p4a1-v3' },
               { text: 'V2', link: '/screens/jc8012p4a1-v2' },
@@ -446,14 +446,14 @@ export default defineConfig({
           {
             text: '7-inch JC1060P470',
             link: '/screens/jc1060p470',
-            collapsed: false,
+            collapsed: true,
             items: [
               { text: 'V2', link: '/screens/jc1060p470-v2' },
               { text: 'V1', link: '/screens/jc1060p470-v1' },
             ],
           },
           { text: '4.3-inch JC4880P443', link: '/screens/jc4880p443' },
-          { text: '4-inch ESP32-P4 86 Panel', link: '/screens/p4-86' },
+          { text: '4-inch ESP32-P4 86', link: '/screens/p4-86' },
           { text: '4-inch 4848S040', link: '/screens/4848s040' },
           { text: 'Printable Stands', link: '/reference/3d-printable-stands' },
         ],
