@@ -86,6 +86,8 @@ artwork_image:
             - lvgl.widget.show: camera_screensaver_image
     on_error:
       - lambda: |-
+          if (!id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::CAMERA)) return;
+          int retry_delay_ms = 10000;
           if (id(camera_screensaver_transition_generation) != 0 &&
               id(espcontrol_app).display().transition_is_current(
                   id(camera_screensaver_transition_generation), espcontrol::DisplayMode::CAMERA) &&
@@ -94,19 +96,17 @@ artwork_image:
             // transfer/decode limits reject one, use bounded snapshots for
             // the rest of this screensaver session instead of retrying it.
             id(camera_screensaver_use_sized_request) = true;
+            // Yield to finish this error callback, then try the bounded URL.
+            retry_delay_ms = 1;
             ESP_LOGW("camera_screensaver", "Original snapshot failed; retrying a display-sized snapshot");
           }
+          id(camera_screensaver_retry).execute(retry_delay_ms);
       - if:
           condition:
             lambda: 'return !id(camera_screensaver_image_available);'
           then:
             - lvgl.widget.hide: camera_screensaver_loading
             - lvgl.widget.show: camera_screensaver_unavailable
-      - if:
-          condition:
-            lambda: 'return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::CAMERA);'
-          then:
-            - script.execute: camera_screensaver_retry
 
 interval:
   - interval: 1s
@@ -237,7 +237,7 @@ script:
                 }
                 if (id(cover_art_home_assistant_base_url).empty()) {
                   id(cover_art_resolve_home_assistant_base_url).execute();
-                  id(camera_screensaver_retry).execute();
+                  id(camera_screensaver_retry).execute(10000);
                   return;
                 }
                 const uint32_t subscription_generation = ha_subscription_generation();
@@ -317,7 +317,7 @@ script:
                     const std::string next = string_ref_limited(token, 512);
                     if (!image_card_valid_access_token(next)) {
                       id(camera_screensaver_show_unavailable).execute();
-                      id(camera_screensaver_retry).execute();
+                      id(camera_screensaver_retry).execute(10000);
                       return;
                     }
                     id(camera_screensaver_access_token) = next;
@@ -326,13 +326,15 @@ script:
                 if (!requested) {
                   id(camera_screensaver_request_pending) = false;
                   id(camera_screensaver_show_unavailable).execute();
-                  id(camera_screensaver_retry).execute();
+                  id(camera_screensaver_retry).execute(10000);
                 }
 
   - id: camera_screensaver_retry
     mode: restart
+    parameters:
+      delay_ms: int
     then:
-      - delay: 10s
+      - delay: !lambda 'return delay_ms;'
       - if:
           condition:
             lambda: 'return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::CAMERA);'

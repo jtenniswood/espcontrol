@@ -5,6 +5,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import textwrap
 
 root = Path(__file__).resolve().parents[2]
 header = (root / 'components/espcontrol/button_grid_image.h').read_text()
@@ -181,8 +182,37 @@ auto screensaver_callback(std::string entity, uint32_t subscription_generation) 
   return ''' + callback[0] + r''';
 }
 '''
+error_callback = textwrap.dedent(camera_yaml.split('    on_error:\n      - lambda: |-\n', 1)[1]
+                                 .split('\n      - if:', 1)[0])
+source += r'''
+namespace espcontrol { enum class DisplayMode { CAMERA }; }
+struct CameraDisplay {
+ bool active = true, current = true;
+ bool target_mode_is(espcontrol::DisplayMode) { return active; }
+ bool transition_is_current(uint32_t, espcontrol::DisplayMode) { return current; }
+};
+struct CameraApp { CameraDisplay state; CameraDisplay &display() { return state; } } espcontrol_app;
+struct Retry { int delay_ms = -1; void execute(int delay) { delay_ms = delay; } } camera_screensaver_retry;
+uint32_t camera_screensaver_transition_generation = 1;
+bool camera_screensaver_use_sized_request = false;
+void screensaver_download_error() {
+''' + error_callback + '\n}\n'
 source += r'''
 int main() {
+ // Original-image failures try a bounded snapshot on the next loop; bounded
+ // failures retain backoff, and stale/inactive sessions cannot enable fallback.
+ screensaver_download_error();
+ assert(camera_screensaver_use_sized_request && camera_screensaver_retry.delay_ms == 1);
+ screensaver_download_error();
+ assert(camera_screensaver_retry.delay_ms == 10000);
+ camera_screensaver_use_sized_request = false;
+ espcontrol_app.state.current = false;
+ screensaver_download_error();
+ assert(!camera_screensaver_use_sized_request && camera_screensaver_retry.delay_ms == 10000);
+ espcontrol_app.state.active = false;
+ camera_screensaver_retry.delay_ms = -1;
+ screensaver_download_error();
+ assert(!camera_screensaver_use_sized_request && camera_screensaver_retry.delay_ms == -1);
  Image tile, modal; Widget widget;
  auto &ctx = contexts[0]; ctx.image = &tile; ctx.modal_image = &modal; ctx.widget = &widget;
  cache.image = &modal; cache.entity_id = ctx.entity_id; cache.source_url = ctx.source_url;
