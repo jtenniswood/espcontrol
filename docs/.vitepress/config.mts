@@ -437,9 +437,9 @@ export default defineConfig({
             link: '/screens/jc8012p4a1',
             collapsed: false,
             items: [
-              { text: 'V1', link: '/screens/jc8012p4a1-v1' },
-              { text: 'V2', link: '/screens/jc8012p4a1-v2' },
               { text: 'V3', link: '/screens/jc8012p4a1-v3' },
+              { text: 'V2', link: '/screens/jc8012p4a1-v2' },
+              { text: 'V1', link: '/screens/jc8012p4a1-v1' },
             ],
           },
           {
@@ -447,8 +447,8 @@ export default defineConfig({
             link: '/screens/jc1060p470',
             collapsed: false,
             items: [
-              { text: 'V1', link: '/screens/jc1060p470-v1' },
               { text: 'V2', link: '/screens/jc1060p470-v2' },
+              { text: 'V1', link: '/screens/jc1060p470-v1' },
             ],
           },
           { text: '4.3-inch JC4880P443', link: '/screens/jc4880p443' },
