@@ -436,7 +436,7 @@ export default defineConfig({
           {
             text: '10.1-inch JC8012P4A1',
             link: '/screens/jc8012p4a1',
-            collapsed: false,
+            collapsed: true,
             items: [
               { text: 'V3', link: '/screens/jc8012p4a1-v3' },
               { text: 'V2', link: '/screens/jc8012p4a1-v2' },
@@ -446,7 +446,7 @@ export default defineConfig({
           {
             text: '7-inch JC1060P470',
             link: '/screens/jc1060p470',
-            collapsed: false,
+            collapsed: true,
             items: [
               { text: 'V2', link: '/screens/jc1060p470-v2' },
               { text: 'V1', link: '/screens/jc1060p470-v1' },
