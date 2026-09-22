@@ -36,6 +36,8 @@ target_include_directories(media_display_text_test PRIVATE stubs ../../component
 add_test(NAME media_display_text_test COMMAND media_display_text_test)
 add_test(NAME media_display_integration_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/media_display_integration_test.py ${CMAKE_CXX_COMPILER})
+add_test(NAME media_title_progress_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/media_title_progress_test.py ${CMAKE_CXX_COMPILER})
 
 add_executable(grid_navigation_service_test
   grid_navigation_service_test.cpp

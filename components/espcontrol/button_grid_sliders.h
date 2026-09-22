@@ -1396,7 +1396,7 @@ inline void slider_update_ctx_fill(SliderCtx *c, lv_obj_t *btn, int pct) {
     slider_update_horizontal_track_fill(c->fill, btn, pct);
   } else {
     slider_update_fill(c->fill, btn, pct, c->horizontal, c->inverted, c->radius,
-                       c->media_position);
+                       c->media_position && c->interactive);
   }
 }
 

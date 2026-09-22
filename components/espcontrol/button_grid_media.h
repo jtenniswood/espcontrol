@@ -2274,11 +2274,20 @@ inline lv_obj_t *setup_media_progress_background(lv_obj_t *btn,
   ctx->content_pad_right = padding.right;
   ctx->content_pad_bottom = padding.bottom;
   ctx->media_position = true;
+  ctx->interactive = false;
   ctx->media_slider = slider;
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(btn, slider);
 
   lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
+
+  lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+    lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    SliderCtx *ctx = (SliderCtx *)lv_obj_get_user_data(sl);
+    if (!ctx) return;
+    int val = lv_slider_get_value(sl);
+    slider_update_ctx_fill(ctx, lv_obj_get_parent(sl), ctx->inverted ? 100 - val : val);
+  }, LV_EVENT_VALUE_CHANGED, nullptr);
 
   return slider;
 }
