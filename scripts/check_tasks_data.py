@@ -65,7 +65,7 @@ CI = ("ci", "all")
 RELEASE = ("release",)
 MAINTAINER_DOCS = ("dev-docs/**", "DEVELOPERS.md", "README.md", "product/README.md")
 WEB_SOURCE_HELPERS = ("scripts/web_source.js", "scripts/build_web_bundle.js")
-WEB_BUNDLE_INPUTS = ("devices/**", "common/addon/time.yaml", "docs/public/images/espcontrol-logo.svg")
+WEB_BUNDLE_INPUTS = ("devices/**", "common/addon/time.yaml")
 WEB_BUNDLE_BUILD_HELPERS = (
     "scripts/build.py",
     "scripts/check_timezones.py",

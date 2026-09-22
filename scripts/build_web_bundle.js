@@ -30,7 +30,7 @@ function overlayPlugin(overlays) {
   };
 }
 
-async function bundleApp(devices, embeddedMdiStyles, logoSvg, testHooks, overlays) {
+async function bundleApp(devices, embeddedMdiStyles, testHooks, overlays) {
   const defaultDeviceId = testHooks ? Object.keys(devices)[0] : "";
   const timezoneOptions = Object.values(devices)[0].timezoneOptions;
   const profiles = Object.fromEntries(
@@ -54,7 +54,6 @@ async function bundleApp(devices, embeddedMdiStyles, logoSvg, testHooks, overlay
       __ESPCONTROL_DEVICE_PROFILES__: JSON.stringify(profiles),
       __ESPCONTROL_TIMEZONE_OPTIONS__: JSON.stringify(timezoneOptions),
       __ESPCONTROL_EMBEDDED_MDI_STYLES__: JSON.stringify(embeddedMdiStyles),
-      __ESPCONTROL_LOGO_SVG__: JSON.stringify(logoSvg),
       __ESPCONTROL_TEST_HOOKS_ENABLED__: testHooks ? "true" : "false",
     },
     entryPoints: [ENTRY],
@@ -97,7 +96,6 @@ async function main() {
     await bundleApp(
       request.devices,
       request.embeddedMdiStyles,
-      request.espcontrolLogoSvg || "",
       !!request.testHooks,
       request.overlays,
     ),
