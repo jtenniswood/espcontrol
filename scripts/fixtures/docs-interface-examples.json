@@ -1,0 +1,286 @@
+[
+  {
+    "name": "living-room",
+    "device": "guition-esp32-p4-jc1060p470",
+    "time": "19:30",
+    "temperature": "21\u00b0",
+    "order": "1,2,3,4w,5,6,7,8,9,10,11,12,13,14",
+    "cards": [
+      {
+        "type": "",
+        "entity": "light.living_room",
+        "label": "Living Room",
+        "icon": "Lightbulb"
+      },
+      {
+        "type": "",
+        "entity": "light.kitchen",
+        "label": "Kitchen",
+        "icon": "Lightbulb"
+      },
+      {
+        "type": "climate",
+        "entity": "climate.room",
+        "label": "Heating"
+      },
+      {
+        "type": "media",
+        "entity": "media_player.living_room",
+        "sensor": "now_playing"
+      },
+      {
+        "type": "cover",
+        "entity": "cover.blinds",
+        "label": "Blinds",
+        "sensor": "modal",
+        "icon": "Blinds"
+      },
+      {
+        "type": "lock",
+        "entity": "lock.front_door",
+        "label": "Front Door",
+        "icon": "Lock"
+      },
+      {
+        "type": "scene",
+        "entity": "scene.movie",
+        "label": "Movie",
+        "icon": "Movie Roll"
+      },
+      {
+        "type": "weather",
+        "entity": "weather.home",
+        "label": "Today",
+        "precision": "today"
+      },
+      {
+        "type": "sensor",
+        "sensor": "sensor.room",
+        "label": "Room",
+        "unit": "\u00b0C",
+        "precision": "1"
+      },
+      {
+        "type": "sensor",
+        "sensor": "sensor.humidity",
+        "label": "Humidity",
+        "unit": "%",
+        "precision": "0"
+      },
+      {
+        "type": "sensor",
+        "sensor": "sensor.power",
+        "label": "Power",
+        "unit": "W",
+        "precision": "0"
+      },
+      {
+        "type": "media",
+        "entity": "media_player.living_room",
+        "sensor": "volume",
+        "label": "Volume"
+      },
+      {
+        "type": "subpage",
+        "label": "Lights",
+        "icon": "Folder"
+      },
+      {
+        "type": "calendar"
+      }
+    ],
+    "samples": [
+      {
+        "slot": 1,
+        "active": true,
+        "text": {}
+      },
+      {
+        "slot": 3,
+        "active": false,
+        "text": {
+          ".sp-sensor-value": "21",
+          ".sp-btn-label": "Idle"
+        }
+      },
+      {
+        "slot": 4,
+        "active": false,
+        "text": {
+          ".sp-media-now-title": "Evening Mix",
+          ".sp-media-now-artist": "Living Room"
+        }
+      },
+      {
+        "slot": 9,
+        "active": false,
+        "text": {
+          ".sp-sensor-value": "21.4"
+        }
+      },
+      {
+        "slot": 10,
+        "active": false,
+        "text": {
+          ".sp-sensor-value": "46"
+        }
+      },
+      {
+        "slot": 11,
+        "active": false,
+        "text": {
+          ".sp-sensor-value": "420"
+        }
+      },
+      {
+        "slot": 14,
+        "active": false,
+        "text": {
+          ".sp-sensor-value": "22",
+          ".sp-btn-label": "September"
+        }
+      }
+    ]
+  },
+  {
+    "name": "hallway",
+    "device": "guition-esp32-p4-jc4880p443",
+    "time": "08:15",
+    "temperature": "20\u00b0",
+    "order": "1,2,3,4,5,6",
+    "cards": [
+      {
+        "type": "",
+        "entity": "light.hall_light",
+        "label": "Hall Light",
+        "icon": "Lightbulb"
+      },
+      {
+        "type": "lock",
+        "entity": "lock.front_door",
+        "label": "Front Door",
+        "icon": "Lock"
+      },
+      {
+        "type": "door_window",
+        "sensor": "binary_sensor.patio",
+        "label": "Patio",
+        "icon": "Door Open"
+      },
+      {
+        "type": "presence",
+        "sensor": "binary_sensor.hall",
+        "label": "Hall"
+      },
+      {
+        "type": "sensor",
+        "sensor": "sensor.outside",
+        "label": "Outside",
+        "unit": "\u00b0C",
+        "precision": "0"
+      },
+      {
+        "type": "scene",
+        "entity": "scene.away",
+        "label": "Away",
+        "icon": "Movie Roll"
+      }
+    ],
+    "samples": [
+      {
+        "slot": 1,
+        "active": true,
+        "text": {}
+      },
+      {
+        "slot": 3,
+        "active": true,
+        "text": {}
+      },
+      {
+        "slot": 5,
+        "active": false,
+        "text": {
+          ".sp-sensor-value": "12"
+        }
+      }
+    ]
+  },
+  {
+    "name": "bedside",
+    "device": "esp32-p4-86",
+    "time": "22:15",
+    "temperature": "19\u00b0",
+    "order": "1w,2,3,4,5,6,7,8",
+    "cards": [
+      {
+        "type": "clock",
+        "options": "large_numbers"
+      },
+      {
+        "type": "",
+        "entity": "light.lamp",
+        "label": "Lamp",
+        "icon": "Lightbulb"
+      },
+      {
+        "type": "cover",
+        "entity": "cover.blinds",
+        "label": "Blinds",
+        "sensor": "modal",
+        "icon": "Blinds"
+      },
+      {
+        "type": "scene",
+        "entity": "scene.goodnight",
+        "label": "Goodnight",
+        "icon": "Movie Roll"
+      },
+      {
+        "type": "sensor",
+        "sensor": "sensor.room",
+        "label": "Room",
+        "unit": "\u00b0C",
+        "precision": "1"
+      },
+      {
+        "type": "calendar"
+      },
+      {
+        "type": "media",
+        "entity": "media_player.living_room",
+        "sensor": "volume",
+        "label": "Volume"
+      },
+      {
+        "type": "subpage",
+        "label": "Lights",
+        "icon": "Folder"
+      }
+    ],
+    "samples": [
+      {
+        "slot": 1,
+        "active": false,
+        "text": {
+          ".sp-sensor-value": "22:15"
+        }
+      },
+      {
+        "slot": 5,
+        "active": false,
+        "text": {
+          ".sp-sensor-value": "19.5"
+        }
+      },
+      {
+        "slot": 6,
+        "active": false,
+        "text": {
+          ".sp-sensor-value": "22",
+          ".sp-btn-label": "September"
+        }
+      }
+    ]
+  }
+]
