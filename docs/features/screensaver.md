@@ -8,7 +8,7 @@ description:
 
 The panel can use a screensaver when it's not being used. When active, it can dim the normal screen, show a dim clock, display a Home Assistant image, or turn the backlight off so the panel goes dark. Touch the screen to wake it up.
 
-There are three screen saver modes, configured in the **Settings** tab on the [Setup](/features/setup) page:
+There are three screensaver modes, configured in **Settings > Sleep & Schedule > Screensaver** on the [Setup](/features/setup) page:
 
 ## Disabled
 
@@ -29,11 +29,11 @@ If the 10 or 30 second choices are not shown, update the panel firmware first. T
 
 ### What Happens
 
-When the screensaver activates, you can choose what happens:
+Use **Then** to choose what happens when the screensaver activates:
 
 - **Screen Dimmed** — keeps the normal screen visible, but lowers the backlight. The first tap wakes the screen instead of pressing a card.
-- **Clock** — shows a large drifting clock at reduced brightness (the default). The clock repositions itself periodically to prevent burn-in.
-- **Display Off** — switches to a black screen and turns the backlight off completely. While the backlight is off, EspControl can exercise the LCD pixels in the background to reduce burn-in risk; this should not be visible.
+- **Clock** — shows a large drifting clock at reduced brightness. The clock repositions itself periodically to prevent burn-in.
+- **Display Off** (the default) — switches to a black screen and turns the backlight off completely. While the backlight is off, EspControl can exercise the LCD pixels in the background to reduce burn-in risk; this should not be visible.
 - **Camera** — on ESP32-P4 panels and the 4-inch 4848S040 ESP32-S3 panel, shows the selected `camera.*` or `image.*` entity full-screen. Choose **Fit** to keep the whole image visible (with black space where its shape does not match the panel) or **Fill** to crop the image to the screen. The image refreshes when Home Assistant reports an update and the previous successful image stays visible while a replacement downloads. If no image is available, the panel shows **Camera unavailable** and retries safely.
 
 When Screen Dimmed is selected, Manual brightness mode uses **Dimmed Screen Brightness**. Automatic and Timed brightness modes use separate **Daytime Dimmed Screen Brightness** and **Nighttime Dimmed Screen Brightness** values, changing at the same sunrise/sunset or dawn/dusk boundary as the main screen. When Clock is selected, set separate **Daytime Clock Brightness** and **Nighttime Clock Brightness** values.
