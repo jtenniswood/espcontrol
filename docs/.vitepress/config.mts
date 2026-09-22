@@ -81,7 +81,14 @@ const screenProducts: Record<string, Record<string, string>> = {
   },
   'screens/jc1060p470.md': {
     name: 'Guition JC1060P470',
-    model: 'JC1060P470 / new panel revision',
+    model: 'JC1060P470',
+    size: '7 inches',
+    resolution: '1024 x 600',
+    processor: 'ESP32-P4',
+  },
+  'screens/jc1060p470-v1.md': {
+    name: 'Guition JC1060P470 V1',
+    model: 'JC1060P470 V1',
     size: '7 inches',
     resolution: '1024 x 600',
     processor: 'ESP32-P4',
@@ -104,7 +111,14 @@ const screenProducts: Record<string, Record<string, string>> = {
   'screens/jc8012p4a1.md': {
     name: 'Guition JC8012P4A1',
     brand: 'Guition',
-    model: 'JC8012P4A1 / new panel revision',
+    model: 'JC8012P4A1',
+    size: '10.1 inches',
+    resolution: '1280 x 800',
+    processor: 'ESP32-P4',
+  },
+  'screens/jc8012p4a1-v1.md': {
+    name: 'Guition JC8012P4A1 V1',
+    model: 'JC8012P4A1 V1',
     size: '10.1 inches',
     resolution: '1280 x 800',
     processor: 'ESP32-P4',
@@ -419,9 +433,25 @@ export default defineConfig({
       {
         text: 'Supported Screens',
         items: [
-          { text: '10.1-inch JC8012P4A1', link: '/screens/jc8012p4a1' },
-          { text: '10.1-inch JC8012P4A1 V3', link: '/screens/jc8012p4a1-v3' },
-          { text: '7-inch JC1060P470', link: '/screens/jc1060p470' },
+          {
+            text: '10.1-inch JC8012P4A1',
+            link: '/screens/jc8012p4a1',
+            collapsed: false,
+            items: [
+              { text: 'V1', link: '/screens/jc8012p4a1-v1' },
+              { text: 'V2', link: '/screens/jc8012p4a1-v2' },
+              { text: 'V3', link: '/screens/jc8012p4a1-v3' },
+            ],
+          },
+          {
+            text: '7-inch JC1060P470',
+            link: '/screens/jc1060p470',
+            collapsed: false,
+            items: [
+              { text: 'V1', link: '/screens/jc1060p470-v1' },
+              { text: 'V2', link: '/screens/jc1060p470-v2' },
+            ],
+          },
           { text: '4.3-inch JC4880P443', link: '/screens/jc4880p443' },
           { text: '4-inch ESP32-P4 86 Panel', link: '/screens/p4-86' },
           { text: '4-inch 4848S040', link: '/screens/4848s040' },
