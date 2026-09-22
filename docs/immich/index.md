@@ -22,7 +22,7 @@ Immich stores and organises your photos; the companion chooses what to show, siz
 
 ## Get started
 
-You need Home Assistant, [HACS](https://hacs.xyz/), and an **Immich 3.2 or later** server reachable from Home Assistant. Have your server address and a [read-only API key](/immich/installation#immich-connection-and-permissions) ready.
+You need Home Assistant and an **Immich 3.2 or later** server reachable from Home Assistant. Have your server address and a [read-only API key](/immich/installation#immich-connection-and-permissions) ready. [HACS](https://hacs.xyz/) is the recommended installation route; you can also [install manually](/immich/installation#manual-installation) without HACS.
 
 Check the [installation status](/immich/installation#installation-status) before starting; the companion's development and releases are separate from EspControl firmware.
 
