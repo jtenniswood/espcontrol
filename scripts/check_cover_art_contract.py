@@ -190,7 +190,23 @@ int main() {
     }
   }
   auto four = cover_art_layout("guition-esp32-p4-jc4880p443", "90", 800, 480, 480, 220);
-  assert(four.screen_width == 800 && four.title_max_height == 210);
+  assert(four.screen_width == 800);
+  // Three 69px title lines leave room for artist and elapsed time above the
+  // playback control in both landscape rotations of the 4.3-inch display.
+  for (const auto &rotation : {"90", "270"}) {
+    const auto layout = cover_art_layout("guition-esp32-p4-jc4880p443", rotation, 800, 480, 480, 130);
+    const auto button = playback_button_layout(layout, 69);
+    assert(layout.title_max_lines == 3 && button.title_max_height == 207);
+    const int artist = artist_height_budget(button.panel_height, 207, 47, 10, 42);
+    assert(artist >= 57);
+    assert(207 + artist + 42 <= button.panel_height);
+    assert(layout.panel_y + button.panel_height <= 480 - button.margin - button.size);
+    assert(artist_height_budget(button.panel_height, 69, 47, 10, 42) > artist);
+  }
+  for (const auto &rotation : {"0", "180"}) {
+    const auto layout = cover_art_layout("guition-esp32-p4-jc4880p443", rotation, 480, 800, 480, 130);
+    assert(layout.title_max_lines == 0 && layout.title_max_height == 130);
+  }
   auto square = cover_art_layout("esp32-p4-86", "0", 720, 720, 800, 495);
   assert(!square.split && square.art_size == 720 && square.panel_padding == 36);
   for (const auto &slug : {"guition-esp32-s3-4848s040", "esp32-p4-86"}) {

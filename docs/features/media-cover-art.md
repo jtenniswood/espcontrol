@@ -27,10 +27,11 @@ Titles expand to fit longer track names, up to these limits on the cover-art scr
 | Display | Maximum title lines |
 | --- | --- |
 | 4-inch square S3 and P4-86, in any orientation | 3 |
+| 4.3-inch, in landscape | 3 |
 | 7-inch, in landscape | 4 |
 | 10-inch, in landscape | 5 |
 
-Shorter titles use only the space they need. Artist text uses the remaining space, with an ellipsis when it does not fit. The 7-inch and 10-inch portrait layouts keep their shorter title limits.
+Shorter titles use only the space they need. Artist text uses the remaining space, with an ellipsis when it does not fit. The 4.3-inch, 7-inch and 10-inch portrait layouts keep their shorter title limits.
 
 On square displays, **Show Track Details For** controls how long details stay visible when a track changes. Pausing with the screensaver button brings the details back and keeps them visible until playback resumes, then the fade-out timer starts again. With **Never**, pausing still reveals the details, but resuming hides them immediately. With **Always**, they remain visible. Rectangular displays and screens without artwork keep track details visible.
 
