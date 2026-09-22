@@ -18,7 +18,7 @@ The address is shown on the display screen when no cards are configured yet. You
 
 ### Adding a Card
 
-Tap any empty space in the grid (shown as a dashed outline with a **+** icon). A settings panel appears below the preview where you configure the card:
+Tap any empty space in the grid (shown as a dashed outline with a **+** icon), then choose a card type. Its configuration opens with the card name as the heading and the same settings layout used when editing a saved card. To choose a different card type, close the panel and start again from the empty space.
 
 ![Card settings panel](/images/button-settings.png)
 
