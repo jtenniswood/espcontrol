@@ -1,6 +1,6 @@
 # Interface example renders
 
-These PNGs are rendered from the production web card components with native firmware measurements, not AI-generated images or physical-device screenshots.
+These PNGs are rendered from the production web card components using firmware layout measurements and browser-specific numeric calibration, not AI-generated images or physical-device screenshots.
 
 From the repository root, with `npm ci` and Playwright Chromium installed, run:
 
@@ -22,6 +22,8 @@ The renderer builds a temporary bundle with the existing test hooks, supplies th
 - Roboto and Material Design Icons: the bundled assets under `common/assets/fonts/`, embedded by the normal web build.
 - Flat active, control and information colours: `src/webserver/state/ui_tokens.ts` (matching the firmware theme).
 
-The capture script removes editor borders, badges and hover decoration, hides subpage chevrons, and supplies sample readings and active colours. It does not change the production interface. It verifies rendered dimensions, grid columns, padding, radius, gaps, label size, font loading and hidden chevrons before saving. No live device or Home Assistant connection is used.
+The capture script removes editor borders, badges and hover decoration, hides subpage chevrons, and supplies sample readings and active colours. It does not change the production interface. Standard numeric values render at 80% of the firmware font size, with their containers inset by half the normal card padding at the top-left. This is a visual calibration requested during device comparison, not a firmware sizing rule. The bedside example disables Large Clock.
+
+The script verifies rendered dimensions, grid columns, padding, radius, gaps, label size, numeric size and position, font loading and hidden chevrons before saving. No live device or Home Assistant connection is used.
 
 Browser text metrics, wrapping and antialiasing can differ from LVGL; firmware width compensation is not simulated. These are source-based documentation illustrations, not pixel-perfect firmware captures or hardware validation. Exact device screenshots would require capturing the LVGL framebuffer or running the firmware UI in an LVGL simulator.

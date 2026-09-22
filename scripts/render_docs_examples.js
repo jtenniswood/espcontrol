@@ -15,6 +15,11 @@ const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "devices/manifest.js
 const { WEB_UI_COLORS: colors } = loadTypeScriptModule(path.join(ROOT, "src/webserver/state/ui_tokens.ts"));
 const examples = JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures/docs-interface-examples.json"), "utf8"));
 
+// Visual calibration for documentation, following device-comparison feedback.
+// Browser font sizes and ink placement are not identical to LVGL font metrics.
+const NUMBER_SCALE = 0.8;
+const NUMBER_INSET_SCALE = 0.5;
+
 function firmwareMetrics(slug) {
   const device = manifest.devices[slug];
   const substitutions = device.firmware.package.substitutions;
@@ -58,8 +63,12 @@ function captureStyles(m) {
       --grid-top:${m.top}px; --grid-left:${m.left}px; --grid-right:${m.right}px;
       --grid-bottom:${m.bottom}px; --grid-gap:${m.gap}px;
     }
-    .sp-sensor-value { font-size:${m.sensor}px }
-    .sp-sensor-preview-large .sp-sensor-value { font-size:${m.largeSensor}px!important }
+    .sp-screen .sp-btn .sp-sensor-preview {
+      position:absolute; left:${m.padding * NUMBER_INSET_SCALE}px; top:${m.padding * NUMBER_INSET_SCALE}px;
+      margin:0; justify-content:flex-start; align-items:baseline;
+    }
+    .sp-screen .sp-sensor-value { font-size:${m.sensor * NUMBER_SCALE}px; line-height:1 }
+    .sp-screen .sp-sensor-preview-large .sp-sensor-value { font-size:${m.largeSensor * NUMBER_SCALE}px!important }
     .sp-sensor-badge, .sp-subpage-badge, .sp-badge, .sp-support-btn { display:none!important }
     .sp-btn { box-shadow:none!important; transition:none!important }
     .sp-btn:hover { filter:none!important }
@@ -150,6 +159,18 @@ async function render(browser, bundleDir, example) {
   for (const key of ["width", "height", "padding", "radius", "gap", "cols", "label"]) assert.equal(metrics[key], m[key], `${example.name}: ${key}`);
   assert(metrics.fontsReady, "Bundled fonts must be loaded");
   assert(!metrics.chevrons, "No subpage arrows in documentation examples");
+  const numbers = await page.locator(".sp-main .sp-sensor-preview").evaluateAll(blocks => blocks.map(block => {
+    const value = block.querySelector(".sp-sensor-value");
+    const card = block.closest(".sp-btn").getBoundingClientRect();
+    const rect = block.getBoundingClientRect();
+    return { left: rect.left - card.left, top: rect.top - card.top,
+      size: parseFloat(getComputedStyle(value).fontSize), large: block.classList.contains("sp-sensor-preview-large") };
+  }));
+  for (const numeric of numbers) {
+    assert(Math.abs(numeric.left - m.padding * NUMBER_INSET_SCALE) < 0.1, "Number left inset");
+    assert(Math.abs(numeric.top - m.padding * NUMBER_INSET_SCALE) < 0.1, "Number top inset");
+    assert(Math.abs(numeric.size - (numeric.large ? m.largeSensor : m.sensor) * NUMBER_SCALE) < 0.1, "Number size");
+  }
   assert.deepEqual(errors, []);
   await page.locator(".sp-screen").screenshot({ path: path.join(DEST, `${example.name}-render.png`) });
   await page.close();

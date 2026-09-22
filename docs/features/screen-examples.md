@@ -8,7 +8,7 @@ description:
 
 Use these examples as a starting point for arranging your own panel. Each combines existing card types in a grid supported by the display shown.
 
-These are **rendered interface examples** using the real card components, bundled fonts and icons, and spacing and font sizes read from each device’s firmware configuration. Names and readings are sample data. They are browser renders rather than device screenshots, so text rasterisation and some alignment may differ on hardware. Build the layouts in [Setup](/features/setup); they are not downloadable configurations.
+These are **rendered interface examples** using the real card components, bundled fonts and icons, and layout measurements read from each device’s firmware configuration. Numeric size and position are adjusted for these browser illustrations. Names and readings are sample data. They are browser renders rather than device screenshots, so text rasterisation and some alignment may differ on hardware. Build the layouts in [Setup](/features/setup); they are not downloadable configurations.
 
 ## Living Room: Controls and Readings
 
@@ -50,7 +50,7 @@ A square [4-inch P4-86 panel](/screens/p4-86) has a three-column, three-row grid
 
 | Cards in the example | How to create them |
 |---|---|
-| 22:15 and September | [Date & Time](/card-types/calendar): a Wide Clock with Large Clock enabled, plus a separate Single Date card. |
+| 22:15 and September | [Date & Time](/card-types/calendar): a Wide Clock with Large Clock disabled, plus a separate Single Date card. |
 | Lamp and Blinds | [Lights](/card-types/lights) set to Switch, and a [Cover](/card-types/covers) card. |
 | Goodnight | An [Action](/card-types/actions) card for your own bedtime scene or script. |
 | Room | A numeric [Sensor](/card-types/sensors) card with °C as its unit. |
