@@ -110,6 +110,8 @@ export function runStateContractTests(): void {
     mediaPlayerSleepPrevention: "switch-screen_saver__media_player_sleep_prevention",
     mediaPlayerSleepPreventionEntity: "text-media_player_sleep_prevention_entity",
     coverArt: "switch-screen_saver__cover_art",
+    clockOverlay: "switch-screen_saver__clock_overlay",
+    metadataOverlay: "switch-screen_saver__metadata_overlay",
     coverArtEntity: "text-screen_saver__cover_art_entity",
     coverArtSecondaryEntity: "text-screen_saver__external_source_media_entity",
     coverArtConditions: "text-screen_saver__cover_art_conditions",
