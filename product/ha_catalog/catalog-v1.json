@@ -1,0 +1,175 @@
+{
+  "version": "1.0.0",
+  "wire_version": 1,
+  "transports": {
+    "native": {
+      "query_key": "query",
+      "version_key": "protocol_version",
+      "default_limit": 25,
+      "max_limit": 50,
+      "max_cursor": 10000
+    },
+    "legacy_http": {
+      "query_key": "q",
+      "version_key": "protocol",
+      "default_limit": 50,
+      "max_limit": 100
+    }
+  },
+  "request_limits": {
+    "query": 120,
+    "field": 40,
+    "area": 120,
+    "device_id": 120,
+    "capability": 80
+  },
+  "pagination": "Sort by case-folded friendly name, then exact entity ID. Cursor is an offset, not a snapshot token. Registry changes between pages may shift results; retry from zero. next_cursor is null at the end. Native requests reject out-of-range pagination; legacy HTTP clamps page size to 1\u2013100 and negative cursor to zero.",
+  "field_domains": {
+    "entity": null,
+    "state_entity": null,
+    "sensor": [
+      "binary_sensor",
+      "input_number",
+      "sensor",
+      "text_sensor"
+    ],
+    "binary_sensor": [
+      "binary_sensor"
+    ],
+    "text_sensor": [
+      "text_sensor"
+    ],
+    "light": [
+      "light"
+    ],
+    "fan": [
+      "fan"
+    ],
+    "climate": [
+      "climate"
+    ],
+    "cover": [
+      "cover"
+    ],
+    "lock": [
+      "lock"
+    ],
+    "alarm": [
+      "alarm_control_panel"
+    ],
+    "media_player": [
+      "media_player"
+    ],
+    "vacuum": [
+      "vacuum"
+    ],
+    "lawn_mower": [
+      "lawn_mower"
+    ],
+    "weather": [
+      "weather"
+    ],
+    "camera": [
+      "camera",
+      "image"
+    ],
+    "select": [
+      "input_select",
+      "select"
+    ],
+    "number": [
+      "input_number",
+      "number"
+    ],
+    "switch": [
+      "input_boolean",
+      "switch"
+    ],
+    "person": [
+      "person"
+    ],
+    "device_tracker": [
+      "device_tracker"
+    ],
+    "scene": [
+      "scene"
+    ],
+    "script": [
+      "script"
+    ],
+    "automation": [
+      "automation"
+    ],
+    "button": [
+      "button",
+      "input_button"
+    ],
+    "action": [
+      "automation",
+      "button",
+      "input_boolean",
+      "input_button",
+      "input_number",
+      "input_select",
+      "number",
+      "scene",
+      "script",
+      "select"
+    ]
+  },
+  "metadata": {
+    "entity_id": "string",
+    "domain": "string",
+    "device_id": "string | null",
+    "name": "string",
+    "device_name": "string | null",
+    "area_name": "string | null",
+    "device_class": "string | null",
+    "icon": "string | null",
+    "unit": "string | null",
+    "available": "boolean",
+    "disabled": "boolean",
+    "hidden": "boolean",
+    "capabilities": "string[]"
+  },
+  "picker_domain_fields": {
+    "automation": "automation",
+    "binary_sensor": "binary_sensor",
+    "button": "button",
+    "camera": "camera",
+    "climate": "climate",
+    "cover": "cover",
+    "fan": "fan",
+    "lawn_mower": "lawn_mower",
+    "light": "light",
+    "lock": "lock",
+    "media_player": "media_player",
+    "number": "number",
+    "person": "person",
+    "scene": "scene",
+    "select": "select",
+    "script": "script",
+    "sensor": "sensor",
+    "switch": "switch",
+    "vacuum": "vacuum",
+    "weather": "weather",
+    "device_tracker": "device_tracker",
+    "alarm_control_panel": "alarm",
+    "image": "camera",
+    "input_boolean": "switch",
+    "input_button": "button",
+    "input_number": "number",
+    "input_select": "select",
+    "text_sensor": "sensor"
+  },
+  "picker_group_fields": [
+    "sensor",
+    "action"
+  ],
+  "firmware_bridge": {
+    "max_pending": 2,
+    "timeout_ms": 15000,
+    "max_response_bytes": 24000,
+    "max_filter": 120
+  }
+}

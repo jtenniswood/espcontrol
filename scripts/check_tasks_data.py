@@ -76,6 +76,11 @@ WEB_BUNDLE_BUILD_HELPERS = (
 
 # Declaration order is the stable tie-breaker used by the planner.
 TASKS = (
+    task("ha-catalog-contract", ("python3", "scripts/sync_ha_catalog_contract.py"),
+         profiles=FAST + RELEASE, domains=("firmware", "web"),
+         inputs=("scripts/sync_ha_catalog_contract.py", "product/ha_catalog/**",
+                 "components/espcontrol/ha_catalog_contract.h",
+                 "src/webserver/generated/ha_catalog_contract.ts"), parallel_safe=True),
     task("firmware-tests", ("cmake", "-E", "remove_directory", "build/tests/firmware"),
          ("cmake", "-S", "tests/firmware", "-B", "build/tests/firmware"),
          ("cmake", "--build", "build/tests/firmware"),
@@ -83,6 +88,8 @@ TASKS = (
          domains=("firmware",),
          inputs=(
              "tests/firmware/**",
+             "components/espcontrol/ha_catalog_contract.h",
+             "components/espcontrol/ha_entity_catalog_policy.h",
              "components/espcontrol/device_reset.*",
              "components/espcontrol/reset_policy.h",
              "components/espcontrol/reset_interlock.h",

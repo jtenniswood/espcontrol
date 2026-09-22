@@ -45,6 +45,13 @@ class CheckMatrixRow:
 
 SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
     SourceTruthRow(
+        "product/ha_catalog/contract-lock.json",
+        ("product/ha_catalog/catalog-v1.json", "product/ha_catalog/fixtures/catalog-v1.json",
+         "src/webserver/generated/ha_catalog_contract.ts", "components/espcontrol/ha_catalog_contract.h"),
+        "python3 scripts/sync_ha_catalog_contract.py --source-checkout /path/to/espcontrol-integration",
+        "`python3 scripts/sync_ha_catalog_contract.py` and catalog web unit tests",
+    ),
+    SourceTruthRow(
         "product/v2/card_contract.json",
         (
             "src/webserver/generated/card_contract.ts",

@@ -11,6 +11,8 @@
 #include <esp_http_server.h>
 
 #include "button_grid_ha.h"
+#include "ha_catalog_contract.h"
+#include "ha_entity_catalog_policy.h"
 #include "esphome/components/json/json_util.h"
 #include "esphome/components/network/ip_address.h"
 #include "esphome/components/web_server_idf/web_server_idf.h"
@@ -20,14 +22,13 @@ namespace espcontrol {
 
 // The browser uses a short-polling endpoint because ESP-IDF's request object
 // cannot safely be retained while an ESPHome action is travelling to HA.
-constexpr size_t HA_ENTITY_CATALOG_MAX_PENDING = 2;
-constexpr uint32_t HA_ENTITY_CATALOG_TIMEOUT_MS = 15000;
+constexpr size_t HA_ENTITY_CATALOG_MAX_PENDING = catalog_contract::MAX_PENDING;
+constexpr uint32_t HA_ENTITY_CATALOG_TIMEOUT_MS = catalog_contract::TIMEOUT_MS;
 constexpr uint32_t HA_ENTITY_CATALOG_RESULT_RETENTION_MS = 60000;
-constexpr size_t HA_ENTITY_CATALOG_MAX_QUERY = 120;
-constexpr size_t HA_ENTITY_CATALOG_MAX_FILTER = 120;
-constexpr size_t HA_ENTITY_CATALOG_MAX_BODY = 24000;
-constexpr uint32_t HA_ENTITY_CATALOG_MAX_LIMIT = 50;
-constexpr uint32_t HA_ENTITY_CATALOG_MAX_CURSOR = 10000;
+constexpr size_t HA_ENTITY_CATALOG_MAX_QUERY = catalog_contract::MAX_QUERY_LENGTH;
+constexpr size_t HA_ENTITY_CATALOG_MAX_BODY = catalog_contract::MAX_RESPONSE_BYTES;
+constexpr uint32_t HA_ENTITY_CATALOG_MAX_LIMIT = catalog_contract::MAX_LIMIT;
+constexpr uint32_t HA_ENTITY_CATALOG_MAX_CURSOR = catalog_contract::MAX_CURSOR;
 
 struct HaEntityCatalogPending {
   enum class State : uint8_t { FREE, PENDING, COMPLETE, ERROR };
@@ -99,6 +100,11 @@ inline void ha_entity_catalog_complete(uint32_t request_id,
     slot->state = HaEntityCatalogPending::State::ERROR;
     slot->created_ms = esphome::millis();
     slot->error = "Home Assistant returned no catalog response";
+    return;
+  }
+  if (payload["protocol_version"].as<int>() != catalog_contract::PROTOCOL_VERSION) {
+    slot->state = HaEntityCatalogPending::State::ERROR;
+    slot->error = "Home Assistant entity catalog uses an unsupported protocol version";
     return;
   }
   slot->body.clear();
@@ -344,11 +350,12 @@ class HaEntityCatalogHandler final
                                 request->arg("include_hidden") == "true";
     const bool include_disabled = request->arg("include_disabled") == "1" ||
                                   request->arg("include_disabled") == "true";
-    const std::string limit = request->arg("limit").empty() ? "25" : request->arg("limit");
+    const std::string limit = request->arg("limit").empty() ? std::to_string(catalog_contract::DEFAULT_LIMIT) : request->arg("limit");
     const std::string cursor = request->arg("cursor").empty() ? "0" : request->arg("cursor");
-    if (field.size() > HA_ENTITY_CATALOG_MAX_FILTER || area.size() > HA_ENTITY_CATALOG_MAX_FILTER ||
-        device_id.size() > HA_ENTITY_CATALOG_MAX_FILTER ||
-        capabilities.size() > HA_ENTITY_CATALOG_MAX_FILTER) {
+    if (!ha_entity_catalog_filter_valid(field, catalog_contract::MAX_FIELD_LENGTH) ||
+        !ha_entity_catalog_filter_valid(area, catalog_contract::MAX_AREA_LENGTH) ||
+        !ha_entity_catalog_filter_valid(device_id, catalog_contract::MAX_DEVICE_ID_LENGTH) ||
+        !ha_entity_catalog_capabilities_valid(capabilities)) {
       request->send(400, "application/json", "{\"error\":\"filter too long\"}");
       return;
     }

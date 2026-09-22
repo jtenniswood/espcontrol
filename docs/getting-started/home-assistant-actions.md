@@ -62,3 +62,15 @@ You won't be able to control any devices, it will be in a read-only state, and e
 ## Device Not Showing Up?
 
 If you don't see your EspControl device in the ESPHome integration, it may not have been added to Home Assistant yet. Head back to the [Install](/getting-started/install#add-to-home-assistant) guide to add it first.
+
+### Entity catalog compatibility
+
+The entity picker uses a versioned contract shared with the EspControl Home
+Assistant integration. Unsupported protocol versions or invalid pagination now
+produce an explicit catalog error; remembered suggestions and manual entity-ID
+entry remain available. Updating the integration and firmware together restores
+catalog access when their protocol versions differ.
+
+The integration supports Home Assistant 2026.8.0 and later. The firmware consumes
+catalog wire version 1; its generated contract is pinned to an exact integration
+revision so request limits and field rules can be checked before release.

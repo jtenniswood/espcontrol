@@ -1,5 +1,7 @@
 import type { HomeAssistantEntityPage, HomeAssistantEntityRecord } from "../model/entity_catalog";
 
+import { CATALOG_FIELD_DOMAINS, CATALOG_PICKER_FIELDS, CATALOG_PICKER_GROUPS, CATALOG_PROTOCOL_VERSION, CATALOG_TRANSPORTS } from "../generated/ha_catalog_contract";
+
 export interface EntityCatalogClient {
     /** Search the HA catalog through the display's native ESPHome connection. */
     search(
@@ -18,47 +20,13 @@ export interface EntityCatalogSearchOptions {
 }
 
 function fieldForDomains(domains: string[]): string {
-    const fields: Record<string, string> = {
-        alarm_control_panel: "alarm",
-        automation: "automation",
-        binary_sensor: "binary_sensor",
-        button: "button",
-        camera: "camera",
-        climate: "climate",
-        cover: "cover",
-        fan: "fan",
-        image: "camera",
-        input_boolean: "switch",
-        input_button: "button",
-        input_number: "number",
-        input_select: "select",
-        lawn_mower: "lawn_mower",
-        light: "light",
-        lock: "lock",
-        media_player: "media_player",
-        number: "number",
-        person: "person",
-        scene: "scene",
-        select: "select",
-        script: "script",
-        sensor: "sensor",
-        text_sensor: "sensor",
-        switch: "switch",
-        vacuum: "vacuum",
-        weather: "weather",
-        device_tracker: "device_tracker",
-    };
+    const fields: Readonly<Record<string, string>> = CATALOG_PICKER_FIELDS;
     const normalized = new Set(domains);
-    const sensorDomains = new Set(["sensor", "binary_sensor", "text_sensor", "input_number"]);
-    if (normalized.size > 1 && [...normalized].every((domain) => sensorDomains.has(domain))) {
-        return "sensor";
-    }
-    const actionDomains = new Set([
-        "scene", "script", "automation", "button", "input_button", "input_boolean",
-        "number", "input_number", "select", "input_select",
-    ]);
-    if (normalized.size > 1 && [...normalized].every((domain) => actionDomains.has(domain))) {
-        return "action";
+    if (normalized.size > 1) {
+        for (const field of CATALOG_PICKER_GROUPS) {
+            const accepted: readonly string[] = CATALOG_FIELD_DOMAINS[field];
+            if ([...normalized].every((domain) => accepted.includes(domain))) return field;
+        }
     }
     const mapped = domains.map((domain) => fields[domain]).filter(Boolean);
     const commonField = mapped[0];
@@ -67,14 +35,13 @@ function fieldForDomains(domains: string[]): string {
         return commonField;
     }
     const first = domains[0];
-    if (domains.length === 1 && first && fields[first]) return fields[first];
-    return "entity";
+    return domains.length === 1 && first ? fields[first] || "entity" : "entity";
 }
 
 const SEARCH_PATH = "/api/v1/ha/entities/search";
 // Keep each native response below HA_ENTITY_CATALOG_MAX_BODY even when HA
 // includes long names, areas, devices, states, and capability metadata.
-const PAGE_LIMIT = 25;
+const PAGE_LIMIT = CATALOG_TRANSPORTS.native.default_limit;
 const POLL_DELAY_MS = 100;
 const MAX_POLLS = 150;
 
@@ -143,10 +110,17 @@ export function createEntityCatalogClient(
                 break;
             }
             if (!page || !Array.isArray(page.entities)) throw new Error("Home Assistant entity catalog timed out");
+            if (page.protocol_version !== CATALOG_PROTOCOL_VERSION) {
+                throw new Error("Home Assistant entity catalog uses an unsupported protocol version");
+            }
             entities.push(...page.entities);
-            if (page.next_cursor === null || typeof page.next_cursor !== "number" || page.next_cursor <= cursor) {
+            if (page.next_cursor === null) {
                 complete = true;
                 break;
+            }
+            if (!Number.isInteger(page.next_cursor) || page.next_cursor <= cursor ||
+                page.next_cursor > CATALOG_TRANSPORTS.native.max_cursor) {
+                throw new Error("Home Assistant entity catalog returned invalid pagination");
             }
             cursor = page.next_cursor;
         }

@@ -1,0 +1,107 @@
+{
+  "provenance": {
+    "firmware_repository": "jtenniswood/espcontrol",
+    "firmware_revision": "c525e016ecaa5118d791fcc047bb43ffde32b1c6",
+    "note": "Contract fixture for native catalog branch; automated protocol coverage, not a claim of a published firmware release or hardware test."
+  },
+  "states": [
+    {
+      "entity_id": "light.kitchen",
+      "state": "on",
+      "attributes": {
+        "friendly_name": "Kitchen Lights",
+        "brightness": 128,
+        "access_token": "private"
+      }
+    },
+    {
+      "entity_id": "light.office",
+      "state": "off",
+      "attributes": {
+        "friendly_name": "Office Lights"
+      }
+    }
+  ],
+  "searches": [
+    {
+      "request": {
+        "field": "light",
+        "limit": 1,
+        "cursor": 0
+      },
+      "entities": [
+        {
+          "entity_id": "light.kitchen",
+          "domain": "light",
+          "device_id": null,
+          "name": "Kitchen Lights",
+          "device_name": null,
+          "area_name": null,
+          "device_class": null,
+          "icon": null,
+          "unit": null,
+          "available": true,
+          "disabled": false,
+          "hidden": false,
+          "capabilities": [
+            "brightness"
+          ]
+        }
+      ],
+      "next_cursor": 1
+    },
+    {
+      "request": {
+        "field": "light",
+        "limit": 1,
+        "cursor": 1
+      },
+      "entities": [
+        {
+          "entity_id": "light.office",
+          "domain": "light",
+          "device_id": null,
+          "name": "Office Lights",
+          "device_name": null,
+          "area_name": null,
+          "device_class": null,
+          "icon": null,
+          "unit": null,
+          "available": true,
+          "disabled": false,
+          "hidden": false,
+          "capabilities": []
+        }
+      ],
+      "next_cursor": null
+    },
+    {
+      "request": {
+        "query": "kitchen",
+        "field": "light",
+        "capabilities": "brightness",
+        "limit": 50
+      },
+      "entities": [
+        {
+          "entity_id": "light.kitchen",
+          "domain": "light",
+          "device_id": null,
+          "name": "Kitchen Lights",
+          "device_name": null,
+          "area_name": null,
+          "device_class": null,
+          "icon": null,
+          "unit": null,
+          "available": true,
+          "disabled": false,
+          "hidden": false,
+          "capabilities": [
+            "brightness"
+          ]
+        }
+      ],
+      "next_cursor": null
+    }
+  ]
+}

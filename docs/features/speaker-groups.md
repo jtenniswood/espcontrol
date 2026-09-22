@@ -102,4 +102,3 @@ For example, `10%`, `25%`, and `40%` has a group level of `25%`. Moving Group Vo
 - If volume controls are missing, join at least one other speaker and check that each group member reports a `volume_level` value.
 - Change membership and volume in Home Assistant and confirm the panel updates.
 - Reconnect or restart a speaker and confirm its state returns without reopening the card.
-

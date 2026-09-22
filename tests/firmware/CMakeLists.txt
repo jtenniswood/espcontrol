@@ -10,6 +10,12 @@ target_compile_features(foundation_test PRIVATE cxx_std_17)
 target_compile_options(foundation_test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME foundation_test COMMAND foundation_test)
 
+add_executable(ha_entity_catalog_policy_test ha_entity_catalog_policy_test.cpp)
+target_compile_features(ha_entity_catalog_policy_test PRIVATE cxx_std_17)
+target_compile_options(ha_entity_catalog_policy_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(ha_entity_catalog_policy_test PRIVATE ../../components/espcontrol)
+add_test(NAME ha_entity_catalog_policy_test COMMAND ha_entity_catalog_policy_test)
+
 add_executable(digest_auth_policy_test digest_auth_policy_test.cpp)
 target_compile_features(digest_auth_policy_test PRIVATE cxx_std_17)
 target_compile_options(digest_auth_policy_test PRIVATE -Wall -Wextra -Werror)

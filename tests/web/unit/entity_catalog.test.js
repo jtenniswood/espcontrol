@@ -75,3 +75,33 @@ test("entity catalog exposes a meaningful transport error", async () => {
     /Home Assistant is not ready/,
   );
 });
+
+test("entity catalog consumes the pinned integration pagination fixture", async () => {
+  const fixture = require("../../../product/ha_catalog/fixtures/catalog-v1.json");
+  const pages = fixture.searches.slice(0, 2);
+  let index = 0;
+  const requests = [];
+  const client = createEntityCatalogClient(undefined, async (url) => {
+    requests.push(String(url));
+    if (!String(url).includes("request_id=")) return response(200, { status: "pending", request_id: 1 });
+    const page = pages[index++];
+    return response(200, { protocol_version: 1, entities: page.entities, next_cursor: page.next_cursor });
+  });
+  assert.deepEqual(await client.search("", ["light"]), pages.flatMap((page) => page.entities));
+  assert.match(requests[2], /cursor=1/);
+});
+
+test("entity catalog rejects unsupported protocols and malformed pagination", async () => {
+  for (const page of [
+    { protocol_version: 99, entities: [], next_cursor: null },
+    { protocol_version: 1, entities: [], next_cursor: 0 },
+    { protocol_version: 1, entities: [], next_cursor: -1 },
+    { protocol_version: 1, entities: [], next_cursor: 10001 },
+    { protocol_version: 1, entities: [], next_cursor: "1" },
+    { protocol_version: 1, entities: [] },
+  ]) {
+    const client = createEntityCatalogClient(undefined, async (url) =>
+      String(url).includes("request_id=") ? response(200, page) : response(200, { status: "pending", request_id: 1 }));
+    await assert.rejects(client.search(""), /unsupported protocol|invalid pagination/);
+  }
+});

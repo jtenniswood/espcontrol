@@ -1,0 +1,22 @@
+{
+  "repository": "https://github.com/jtenniswood/espcontrol-integration",
+  "revision": "ef3ac6de06115a38fc83d615c49b6c268b4b515e",
+  "files": {
+    "product/ha_catalog/catalog-v1.json": {
+      "upstream": "protocol/catalog-v1.json",
+      "sha256": "b67fceeb7f9c9c207c1cf63585debd7b4adf655f8e5d46acb954a35f36fd0234"
+    },
+    "product/ha_catalog/fixtures/catalog-v1.json": {
+      "upstream": "protocol/fixtures/catalog-v1.json",
+      "sha256": "b75f5c5187e25f81803ffe04abdb677f6456be12e057a7b300cf835d521e9edd"
+    },
+    "src/webserver/generated/ha_catalog_contract.ts": {
+      "upstream": "protocol/generated/catalog.ts",
+      "sha256": "a5015e7003cd0415357216d525eea0bd822041d7da343eed1b8cebe7b719f451"
+    },
+    "components/espcontrol/ha_catalog_contract.h": {
+      "upstream": "protocol/generated/catalog.h",
+      "sha256": "42f90aec60ab92a81bf7c56e3a6472ad26abbc68fcb9eb015589330906107338"
+    }
+  }
+}
