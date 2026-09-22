@@ -25,7 +25,8 @@ layout, downloading, and presentation responsibilities distinct.
   panel. Artist text may wrap only when the panel has enough vertical space.
 - Titles have priority over artist text. Missing titles use an em dash; a
   missing artist hides that line.
-- On 10-inch landscape screens, titles grow naturally up to five full lines.
+- On landscape screens, titles grow naturally up to four full lines on 7-inch
+  displays and five on 10-inch displays, using their configured line spacing.
   Artist text uses the remaining whole lines with an ellipsis when needed,
   keeping elapsed time above the bottom-right playback button. Portrait retains
   its shorter title limit because its metadata panel sits below the artwork.

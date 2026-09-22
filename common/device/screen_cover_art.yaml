@@ -350,7 +350,7 @@ lvgl:
                       text_font: ${cover_art_title_font}
                       text_color: ${cover_art_text_color}
                       text_align: left
-                      text_line_space: 0
+                      text_line_space: ${cover_art_title_line_space}
                   - label:
                       id: cover_art_artist_label
                       clickable: false
@@ -667,7 +667,8 @@ script:
                              layout.title_max_height);
           set_art_image_geometry(layout.art_x, layout.art_y, layout.art_size);
           const auto playback = espcontrol::cover_art::playback_button_layout(
-              layout, lv_font_get_line_height(lv_obj_get_style_text_font(id(cover_art_title_label), LV_PART_MAIN)));
+              layout, lv_font_get_line_height(lv_obj_get_style_text_font(id(cover_art_title_label), LV_PART_MAIN)),
+              ${cover_art_title_line_space});
           lv_obj_clear_flag(id(cover_art_playback_button), LV_OBJ_FLAG_EVENT_BUBBLE);
           if (!${cover_art_square_overlay} || id(cover_art_playback_control_enabled).state) {
             lv_obj_clear_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN);

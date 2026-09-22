@@ -172,6 +172,23 @@ int main() {
   }
   auto seven_v2 = cover_art_layout("guition-esp32-p4-jc1060p470-v2", "0", 1024, 600, 600, 260);
   assert(seven_v2.split && seven_v2.art_size == 600 && seven_v2.panel_x == 615);
+  // The 7-inch font has 89px lines with -8px spacing: four lines use 332px.
+  for (const auto &slug : {"guition-esp32-p4-jc1060p470", "guition-esp32-p4-jc1060p470-v2"}) {
+    for (const auto &rotation : {"0", "180"}) {
+      const auto layout = cover_art_layout(slug, rotation, 1024, 600, 600, 260);
+      const auto button = playback_button_layout(layout, 89, -8);
+      assert(layout.title_max_lines == 4 && button.title_max_height == 332);
+      const int artist = artist_height_budget(button.panel_height, 332, 47, 10, 42);
+      assert(artist == 57);
+      assert(332 + artist + 42 <= button.panel_height);
+      assert(layout.panel_y + button.panel_height <= 600 - button.margin - button.size);
+      assert(artist_height_budget(button.panel_height, 89, 47, 10, 42) > artist);
+    }
+    for (const auto &rotation : {"90", "270"}) {
+      const auto layout = cover_art_layout(slug, rotation, 600, 1024, 600, 260);
+      assert(layout.title_max_lines == 0 && layout.title_max_height == 162);
+    }
+  }
   auto four = cover_art_layout("guition-esp32-p4-jc4880p443", "90", 800, 480, 480, 220);
   assert(four.screen_width == 800 && four.title_max_height == 210);
   auto square = cover_art_layout("esp32-p4-86", "0", 720, 720, 800, 495);

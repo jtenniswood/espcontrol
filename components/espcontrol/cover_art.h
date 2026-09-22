@@ -371,7 +371,7 @@ inline Layout cover_art_layout(const std::string &slug, const std::string &rotat
                                int screen_width, int screen_height, int art_size, int title_height) {
   const bool landscape = rotation_is_landscape(slug, rotation);
   if (slug == "guition-esp32-p4-jc1060p470" || slug == "guition-esp32-p4-jc1060p470-v2") return landscape
-    ? Layout{1024,600,0,0,600,585,0,439,600,615,34,377,430,260,0,true}
+    ? Layout{1024,600,0,0,600,585,0,439,600,615,24,377,440,332,0,true,4}
     : Layout{600,1024,0,0,600,0,600,600,424,30,634,540,360,162,0,true};
   if (slug == "guition-esp32-p4-jc4880p443") return landscape
     ? Layout{800,480,0,0,480,480,0,320,480,504,34,272,330,210,0,true}
@@ -388,7 +388,8 @@ inline Layout cover_art_layout(const std::string &slug, const std::string &rotat
 struct PlaybackButtonLayout {
   int size, margin, panel_width, panel_height, title_max_height;
 };
-inline PlaybackButtonLayout playback_button_layout(const Layout &layout, int title_line_height = 0) {
+inline PlaybackButtonLayout playback_button_layout(const Layout &layout, int title_line_height = 0,
+                                                   int title_line_space = 0) {
   const int short_side = std::min(layout.screen_width, layout.screen_height);
   const int size = std::clamp(short_side / 5, 80, 112);
   const int margin = std::clamp(short_side / 20, 24, 40);
@@ -396,10 +397,11 @@ inline PlaybackButtonLayout playback_button_layout(const Layout &layout, int tit
   int height = layout.panel_height;
   int title_height = layout.title_max_height;
   if (layout.title_max_lines > 0) {
-    // The 10-inch landscape panel fits five title lines plus artist/time.
+    // Landscape panels with a line budget keep room for artist/time.
     // Use the space above the button without reserving a second full margin.
     height = std::min(height, layout.screen_height - size - margin - layout.panel_y);
-    if (title_line_height > 0) title_height = layout.title_max_lines * title_line_height;
+    if (title_line_height > 0) title_height = layout.title_max_lines * title_line_height +
+        (layout.title_max_lines - 1) * title_line_space;
   } else if (layout.split && layout.screen_height > layout.screen_width) {
     // Portrait metadata and controls share the area below the artwork.
     width = std::min(width, layout.screen_width - size - 2 * margin - layout.panel_x);
