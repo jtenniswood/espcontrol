@@ -152,12 +152,12 @@ const faqItems = [
   {
     question: "How Do I Find My Device's IP Address?",
     answer:
-      'Check the display when no cards are configured, your router connected devices list, or the ESPHome device page in Home Assistant.',
+      'Tap the connectivity icon in the clock bar, check the unconfigured display, your router connected-device list, or the ESPHome device page in Home Assistant.',
   },
   {
     question: 'The Web Page Looks Broken or Unstyled',
     answer:
-      'Make sure the panel has internet access, clear your browser cache, and try Chrome or Edge.',
+      'Check that the browser can reach the web resources, force-refresh the page or try a private window, and update firmware if new controls are missing.',
   },
   {
     question: "My Device Won't Connect to WiFi",
@@ -167,12 +167,12 @@ const faqItems = [
   {
     question: 'How Do I Reset the Device?',
     answer:
-      'Re-flash the firmware from the install guide with a USB-C data cable. WiFi settings reset, while card configuration is stored separately.',
+      'Use Settings > System > Factory Reset. Partial reset keeps WiFi and the Home Assistant encryption key; Complete reset also clears those saved credentials. Both keep installed firmware and compiled defaults.',
   },
   {
     question: 'Can I Use This Without Home Assistant?',
     answer:
-      'No. EspControl is designed for Home Assistant and needs it for device control, clock sync, temperature data, and screensaver sensor data.',
+      'Home Assistant is required for smart-home controls, entity readings, and media features. ESPHome Device Builder is not required for the normal browser installation.',
   },
   {
     question: 'How Do I Update the Firmware?',
@@ -187,12 +187,12 @@ const faqItems = [
   {
     question: 'What Card Types Are Available?',
     answer:
-      'The setup page includes Switch, Lights, Action, Option Select, Webhook, Trigger, Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Lawn Mower, Cover, Garage Door, Lock, Alarm, Date & Time, World Clock, Weather, Camera, Media, Climate, Internal Switches, Screen Lock, and Subpage cards.',
+      'The card catalogue covers lights, switches, climate, fans, covers, locks, alarms, media, cameras, sensors, weather, actions, and more.',
   },
   {
     question: 'How Many Cards Can I Have?',
     answer:
-      'The home screen supports 20 cards on both JC8012P4A1 rear-case revisions, 15 on both JC1060P470 panel revisions, 6 on JC4880P443, and 9 on 4848S040 or the ESP32-P4 86 Panel, with more available through subpages.',
+      'Standard home grids have 9 slots on 4-inch panels, 6 on the 4.3-inch, 15 on the 7-inch, and 20 on the 10.1-inch. Larger cards occupy several slots; subpages add more pages, and image cards have separate shared limits.',
   },
   {
     question: 'What Is a Subpage?',
@@ -207,7 +207,7 @@ const faqItems = [
   {
     question: 'Which Panels Are Supported?',
     answer:
-      'EspControl supports both Guition JC8012P4A1 rear-case revisions, both JC1060P470 panel revisions, JC4880P443, 4848S040, and ESP32-P4 86 Panel touchscreens.',
+      'Supported families are Guition 4848S040, JC4880P443, JC1060P470 original and V2, JC8012P4A1 original, V2 and V3, and ESP32-P4 86 Panel. Check the installer and model guide for the exact hardware revision.',
   },
   {
     question: 'Does the Panel Work with Other Smart Home Platforms?',
@@ -222,7 +222,7 @@ const faqItems = [
   {
     question: 'How Is My Data Handled?',
     answer:
-      'Device control stays on your local network. Internet access is only used for firmware update checks and web page styling resources.',
+      'Smart-home control normally runs locally between the panel and Home Assistant. Updates, web assets, network time, artwork, webhooks, and configured cloud integrations can involve external connections.',
   },
 ]
 
@@ -415,6 +415,7 @@ export default defineConfig({
     siteTitle: 'Espcontrol',
     nav: [
       { text: 'Install', link: '/getting-started/install' },
+      { text: 'FAQ', link: '/reference/faq' },
       { text: 'Issues', link: 'https://github.com/jtenniswood/espcontrol/issues' },
       { text: 'GitHub', link: 'https://github.com/jtenniswood/espcontrol' },
     ],
@@ -437,9 +438,9 @@ export default defineConfig({
             link: '/screens/jc8012p4a1',
             collapsed: false,
             items: [
-              { text: 'V1', link: '/screens/jc8012p4a1-v1' },
-              { text: 'V2', link: '/screens/jc8012p4a1-v2' },
               { text: 'V3', link: '/screens/jc8012p4a1-v3' },
+              { text: 'V2', link: '/screens/jc8012p4a1-v2' },
+              { text: 'V1', link: '/screens/jc8012p4a1-v1' },
             ],
           },
           {
@@ -447,8 +448,8 @@ export default defineConfig({
             link: '/screens/jc1060p470',
             collapsed: false,
             items: [
-              { text: 'V1', link: '/screens/jc1060p470-v1' },
               { text: 'V2', link: '/screens/jc1060p470-v2' },
+              { text: 'V1', link: '/screens/jc1060p470-v1' },
             ],
           },
           { text: '4.3-inch JC4880P443', link: '/screens/jc4880p443' },
