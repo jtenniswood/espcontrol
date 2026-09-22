@@ -25,6 +25,10 @@ Add a [Camera card](/card-types/cameras) for a Home Assistant `camera` or `image
 
 Check that the snapshot loads, then tap it to confirm the larger view works. For a doorbell, combine the documented [P4 camera refresh action](/card-types/cameras#refreshing-cards-from-home-assistant) with [Screen: Wake](/features/screensaver#wake-from-home-assistant) in a Home Assistant automation. A Camera card does not automatically open when someone rings.
 
+## Show Your Immich Photos
+
+Install [EspControl Immich Companion](/immich/) to turn your photo library, albums, Memories or keyword searches into a slideshow. Follow [Connect to EspControl](/immich/display-setup) to use its Home Assistant image entity in the photo screensaver or a Camera card, with optional photo metadata.
+
 ## Use Home Assistant Assist Voice Control
 
 Use the **4-inch P4 86 Panel** and follow [Voice Control](/features/voice-control). You need a configured Home Assistant Assist pipeline as well as the panel's microphones and speaker. Confirm a spoken command works before adjusting wake-word or audio settings. Other supported screens do not provide this voice feature.

@@ -97,8 +97,8 @@ Camera performance also depends on the connection between the panel and Home Ass
 
 ## Show Photos from Immich
 
-A Home Assistant `image` entity can supply changing photos to a Camera card. The separate [EspControl Immich Companion](https://github.com/jtenniswood/espcontrol-immich) integration manages photo selection and slideshow controls in Home Assistant; the panel only needs its image entity.
+A Home Assistant `image` entity can supply changing photos to a Camera card. The separate [EspControl Immich Companion](/immich/) integration manages photo selection and slideshow controls in Home Assistant; the panel only needs its image entity.
 
-**Integration status checked September 22, 2026:** the companion has installation documentation but no published GitHub releases. Follow its [current installation guide](https://github.com/jtenniswood/espcontrol-immich/blob/main/docs/installation.md) for requirements and update instructions. Its development status is separate from stable EspControl firmware.
+Follow [Connect to EspControl](/immich/display-setup) for Camera card and photo screensaver setup, and check the [installation guide](/immich/installation#installation-status) for the companion's requirements, development status and update instructions.
 
 Configure the integration in Home Assistant, confirm its image entity updates, then select that entity in a Camera card. Do not enter an Immich API key into the panel. The usual snapshot refresh and shared image-slot limits still apply.

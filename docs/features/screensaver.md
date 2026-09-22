@@ -40,6 +40,12 @@ When Screen Dimmed is selected, Manual brightness mode uses **Dimmed Screen Brig
 
 The 4-inch ESP32-S3 camera screensaver uses the panel's native 480×480 resolution. The screensaver requests the original Home Assistant snapshot to avoid extra compression, then resizes it on the panel. If downloading or decoding it fails, subsequent requests ask Home Assistant for display-sized snapshots for the rest of that screensaver session. Sharpness still depends on the source image; filtered JPEG resizing preserves detail when reducing images and smooths edges when enlarging them.
 
+### Photos from Immich
+
+Use [EspControl Immich Companion](/immich/) to show photos from your Immich library, albums, Memories or keyword searches. Its Home Assistant integration provides an `image.*` entity that works with **Then → Camera**, plus slideshow controls and photo-detail sensors.
+
+Follow [Connect to EspControl](/immich/display-setup) to install the companion, choose the image entity, match the screen shape and add optional date or location metadata. The companion controls photo selection and slideshow timing; EspControl displays the images when the screensaver activates.
+
 ### Photo metadata
 
 With **Camera** selected, enable **Display Metadata** below **Display Clock** to reveal the **Photo Metadata Entity** field. Enter a Home Assistant `sensor.*` entity containing the current photo's caption, date, or location. Turning the toggle off hides metadata and the field without clearing the saved entity. Existing metadata setups remain enabled after upgrading.

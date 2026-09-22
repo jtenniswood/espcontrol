@@ -420,6 +420,19 @@ export default defineConfig({
         ],
       },
       {
+        text: 'Immich Photos',
+        items: [
+          { text: 'Overview', link: '/immich/' },
+          { text: 'Installation', link: '/immich/installation' },
+          { text: 'Connect to EspControl', link: '/immich/display-setup' },
+          { text: 'Using Your Frame', link: '/immich/using-your-frame' },
+          { text: 'Settings Reference', link: '/immich/settings-reference' },
+          { text: 'Home Assistant Entities', link: '/immich/entities' },
+          { text: 'Browser & API Add-on', link: '/immich/add-on' },
+          { text: 'Compatibility', link: '/immich/compatibility' },
+        ],
+      },
+      {
         text: 'Advanced',
         items: [
           { text: 'Manual Setup', link: '/getting-started/manual-esphome-setup' },
