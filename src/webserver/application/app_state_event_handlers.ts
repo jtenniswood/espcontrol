@@ -251,6 +251,10 @@ export function createAppStateEventHandlersFeature(
                 state.mediaPlayerSleepPreventionOn = d.value === true || val === "ON";
                 syncMediaPlayerSleepPreventionUi();
             },
+            "switch-screen_saver__cover_art_playback_control": function (this: any, val?: any, d?: any) {
+                state.coverArtPlaybackControlOn = d.value === true || val === "ON";
+                syncCoverArtScreensaverUi();
+            },
             "switch-screen_saver__cover_art": function (this: any, val?: any, d?: any) {
                 state.coverArtScreensaverOn = d.value === true || val === "ON";
                 syncCoverArtScreensaverUi();

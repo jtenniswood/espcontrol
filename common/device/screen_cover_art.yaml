@@ -503,6 +503,27 @@ script:
             - script.wait: cover_art_pause_after_touch
             - script.execute: screensaver_wake
 
+  - id: cover_art_refresh_playback_setting
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(cover_art_playback_button) == nullptr;'
+          then:
+            - script.stop: cover_art_refresh_playback_setting
+      - if:
+          condition:
+            lambda: 'return ${cover_art_square_overlay} && !id(cover_art_playback_control_enabled).state;'
+          then:
+            - if:
+                condition:
+                  lambda: 'return id(cover_art_playback_control).retains_pause(id(cover_art_active_media_player_entity));'
+                then:
+                  - script.execute: cover_art_return_home_after_playback
+            - lambda: id(cover_art_playback_control).reset();
+      - lambda: id(cover_art_layout_signature).clear();
+      - script.execute: cover_art_apply_responsive_layout
+
   - id: cover_art_update_playback_control
     mode: restart
     then:
@@ -524,6 +545,7 @@ script:
     mode: single
     then:
       - lambda: |-
+          if (${cover_art_square_overlay} && !id(cover_art_playback_control_enabled).state) return;
           if (!id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) ||
               lv_obj_has_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN) ||
               id(screensaver_wake_touch_guard_active) || !ha_api_state_connected()) return;
@@ -646,12 +668,17 @@ script:
           set_art_image_geometry(layout.art_x, layout.art_y, layout.art_size);
           const auto playback = espcontrol::cover_art::playback_button_layout(layout);
           lv_obj_clear_flag(id(cover_art_playback_button), LV_OBJ_FLAG_EVENT_BUBBLE);
-          lv_obj_set_size(id(cover_art_playback_button), playback.size, playback.size);
-          lv_obj_align(id(cover_art_playback_button), LV_ALIGN_BOTTOM_RIGHT,
-                       -playback.margin, -playback.margin);
-          lv_obj_set_width(id(cover_art_track_panel), playback.panel_width);
-          lv_obj_set_height(id(cover_art_track_panel), playback.panel_height);
-          lv_obj_set_style_max_height(id(cover_art_title_label), playback.title_max_height, LV_PART_MAIN);
+          if (!${cover_art_square_overlay} || id(cover_art_playback_control_enabled).state) {
+            lv_obj_clear_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_size(id(cover_art_playback_button), playback.size, playback.size);
+            lv_obj_align(id(cover_art_playback_button), LV_ALIGN_BOTTOM_RIGHT,
+                         -playback.margin, -playback.margin);
+            lv_obj_set_width(id(cover_art_track_panel), playback.panel_width);
+            lv_obj_set_height(id(cover_art_track_panel), playback.panel_height);
+            lv_obj_set_style_max_height(id(cover_art_title_label), playback.title_max_height, LV_PART_MAIN);
+          } else {
+            lv_obj_add_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN);
+          }
           if (!layout.split) {
             lv_obj_set_style_bg_opa(id(cover_art_accent_overlay), LV_OPA_80, LV_PART_MAIN);
             lv_obj_set_style_opa(id(cover_art_accent_overlay), LV_OPA_80, LV_PART_MAIN);

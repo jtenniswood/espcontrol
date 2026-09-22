@@ -821,3 +821,26 @@ assert.strictEqual(legacyPanelSettings.autoUpdate, false, "legacy panel settings
 assert.strictEqual(legacyPanelSettings.updateFrequency, "Monthly", "legacy panel settings keep current firmware update frequency");
 
 console.log("Model contract tests passed.");
+
+assert.strictEqual(
+  model.normalizeBackupPanelSettings({ cover_art_playback_control: false }, {
+    timezone: "UTC (GMT+0)", language: "en", clockFormat: "12h", clockFormatOptions: ["12h", "24h"],
+    ntpDefaults: ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"], ntpServer1: "0.pool.ntp.org",
+    ntpServer2: "1.pool.ntp.org", ntpServer3: "2.pool.ntp.org", coverArtHomeAssistantProtocol: "http",
+    coverArtHomeAssistantPort: 8123, autoUpdate: true, updateFrequency: "Daily",
+    updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"], screenRotationOptions: ["0", "90", "180", "270"],
+  }).coverArtPlaybackControl,
+  false,
+  "explicit playback control setting remains off",
+);
+assert.strictEqual(
+  model.normalizeBackupPanelSettings({}, {
+    timezone: "UTC (GMT+0)", language: "en", clockFormat: "12h", clockFormatOptions: ["12h", "24h"],
+    ntpDefaults: ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"], ntpServer1: "0.pool.ntp.org",
+    ntpServer2: "1.pool.ntp.org", ntpServer3: "2.pool.ntp.org", coverArtHomeAssistantProtocol: "http",
+    coverArtHomeAssistantPort: 8123, autoUpdate: true, updateFrequency: "Daily",
+    updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"], screenRotationOptions: ["0", "90", "180", "270"],
+  }).coverArtPlaybackControl,
+  true,
+  "missing playback control setting defaults on",
+);

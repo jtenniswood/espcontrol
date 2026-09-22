@@ -790,4 +790,14 @@ assert '''if (id(cover_art_playback_control).retains_pause(cover_entity)) {
                   id(cover_art_show_track_overlay).execute();''' in playback
 fallback = yaml_script_body(screen, "cover_art_show_black_screen") or ""
 assert "retains_pause(id(cover_art_active_media_player_entity))" in fallback
+setting = yaml_script_body(screen, "cover_art_refresh_playback_setting") or ""
+assert "${cover_art_square_overlay} && !id(cover_art_playback_control_enabled).state" in setting
+assert "script.execute: cover_art_return_home_after_playback" in setting
+assert "id(cover_art_playback_control).reset()" in setting
+assert "id(cover_art_layout_signature).clear()" in setting
+assert "script.execute: cover_art_apply_responsive_layout" in setting
+assert "!id(cover_art_playback_control_enabled).state) return;" in control
+layout_script = yaml_script_body(screen, "cover_art_apply_responsive_layout") or ""
+assert "!${cover_art_square_overlay} || id(cover_art_playback_control_enabled).state" in layout_script
+assert "lv_obj_add_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN)" in layout_script
 print("Cover art policy, layout, and state contract checks passed.")

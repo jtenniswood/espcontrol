@@ -279,6 +279,15 @@ export const ENTITY_CATALOG = {
         "screen_schedule_sensor_entity"
       ]
     },
+    "screen_saver_cover_art_playback_control": {
+      "domain": "switch",
+      "name": "Screen Saver: Cover Art Playback Control",
+      "objectIds": [
+        "screen_saver__cover_art_playback_control",
+        "screen_saver_cover_art_playback_control",
+        "cover_art_playback_control_enabled"
+      ]
+    },
     "screen_saver_media_player_sleep_prevention": {
       "domain": "switch",
       "name": "Screen Saver: Media Player Sleep Prevention",
@@ -793,6 +802,7 @@ export const ENTITY_CATALOG = {
       "screen_saver_camera_image_mode",
       "presence_sensor_entity",
       "screen_schedule_sensor_entity",
+      "screen_saver_cover_art_playback_control",
       "screen_saver_media_player_sleep_prevention",
       "media_player_sleep_prevention_entity",
       "screen_saver_cover_art",

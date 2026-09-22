@@ -50,6 +50,10 @@ layout, downloading, and presentation responsibilities distinct.
   the no-artwork fallback keep details visible. The button uses 75% of the raw
   extracted RGB values, while the background uses one third; pressing lightens
   the button colour.
+- The persistent playback setting defaults on and is saved/restored with the
+  other display settings. Only square displays expose and honour the toggle;
+  larger displays keep the button. Disabling it releases a retained pause,
+  rejects queued button presses, and restores the unreserved metadata layout.
 - An optional secondary media entity may become the active player while the
   primary player reports TV, line-in, or HDMI. Routing switches the complete
   playback presentation together and invalidates callbacks and artwork owned by

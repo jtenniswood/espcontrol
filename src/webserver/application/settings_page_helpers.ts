@@ -461,6 +461,9 @@ export function createSettingsPageHelpersFeature(
     function syncCoverArtScreensaverUi(this: any) {
         applyCoverArtScreensaverState(_coverArtScreensaverController.normalize(coverArtScreensaverState()));
         var uiState: any = _coverArtScreensaverController.uiState(coverArtScreensaverState());
+        if (els.setCoverArtPlaybackControlToggle) {
+            els.setCoverArtPlaybackControlToggle.checked = state.coverArtPlaybackControlOn;
+        }
         if (els.setCoverArtToggle) {
             els.setCoverArtToggle.checked = !!state.coverArtScreensaverOn;
         }

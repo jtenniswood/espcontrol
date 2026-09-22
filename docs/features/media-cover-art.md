@@ -25,6 +25,7 @@ Turn on **Show Cover Art** to reveal the settings, then choose the **Media Playe
 ### Screensaver Settings
 
 - **Keep Screen Awake During Playback** — on by default. While Show Cover Art is enabled, this prevents normal screensaver sleep during playback and lets artwork appear after **Show After**. It has no effect while Show Cover Art is off.
+- **Persistent Play/Pause Control** — on by default. On 4-inch square screens, turn it off to hide the button and restore the full track-details layout. Turning it off during a retained pause dismisses the screensaver. Larger screens always show the playback button and do not show this setting.
 - **Show After** — choose 3, 5, 10, or 30 seconds, 1 minute, or 5 minutes. The default is 10 seconds. This also controls when cover art returns after you dismiss it; every touch restarts the countdown.
 - **Show Track Details For** — available on the 4-inch square displays. Choose **Never**, 3, 5, 10, 15, 20, 30, or 60 seconds, or **Always**. The default is 5 seconds.
 

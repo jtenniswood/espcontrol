@@ -373,6 +373,7 @@ export interface BackupPanelSettingsState {
   coverArtSecondaryMediaPlayerEntity: string;
   coverArtAttributeConditions: string;
   coverArtDelay: unknown;
+  coverArtPlaybackControl: boolean;
   coverArtTrackOverlayDuration: unknown;
   coverArtHideExternalInput: boolean;
   coverArtHomeAssistantProtocol: string;
@@ -531,6 +532,7 @@ export function normalizeBackupPanelSettings(
     coverArtDelay: normalizeCoverArtDelay(
       objectValue(settings, "cover_art_delay") != null ? settings.cover_art_delay : 10,
     ),
+    coverArtPlaybackControl: objectValue(settings, "cover_art_playback_control") != null ? !!settings.cover_art_playback_control : true,
     coverArtTrackOverlayDuration: objectValue(settings, "cover_art_track_overlay_duration") != null ? settings.cover_art_track_overlay_duration : 5,
     coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null
       ? !!settings.cover_art_hide_external_input

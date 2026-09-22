@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 8,
     "cardTypes": 43,
-    "entityNames": 106,
+    "entityNames": 107,
     "icons": 357,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
@@ -6826,6 +6826,19 @@
         "name": "Screen Schedule Sensor Entity",
         "objectIds": [
           "screen_schedule_sensor_entity"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_cover_art_playback_control",
+        "domain": "switch",
+        "name": "Screen Saver: Cover Art Playback Control",
+        "objectIds": [
+          "screen_saver__cover_art_playback_control",
+          "screen_saver_cover_art_playback_control",
+          "cover_art_playback_control_enabled"
         ],
         "groups": [
           "settings"

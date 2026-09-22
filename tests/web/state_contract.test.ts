@@ -108,6 +108,7 @@ export function runStateContractTests(): void {
     screensaverTimeout: "number-screensaver_timeout",
     clockScreensaver: "switch-screen_saver__clock",
     mediaPlayerSleepPrevention: "switch-screen_saver__media_player_sleep_prevention",
+    coverArtPlaybackControl: "switch-screen_saver__cover_art_playback_control",
     mediaPlayerSleepPreventionEntity: "text-media_player_sleep_prevention_entity",
     coverArt: "switch-screen_saver__cover_art",
     clockOverlay: "switch-screen_saver__clock_overlay",
