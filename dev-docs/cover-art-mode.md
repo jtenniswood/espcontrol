@@ -37,6 +37,8 @@ layout, downloading, and presentation responsibilities distinct.
   choice with equivalent contrast.
 - The progress bar stays at the bottom edge and updates only when its rounded
   percentage changes. Elapsed text updates once per visible second.
+  Refit artist text when elapsed-time visibility changes, including duration
+  arriving after metadata or disappearing for an external input.
 - While replacement artwork downloads, keep the previous good image visible.
   When no good image exists, show the black metadata fallback without an error
   message.

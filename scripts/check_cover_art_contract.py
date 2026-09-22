@@ -848,6 +848,16 @@ connection = yaml_script_body(screen, "cover_art_update_playback_control") or ""
 assert "update_connection(ha_api_state_connected())" in connection
 assert "script.execute: cover_art_return_home_after_playback" in connection
 
+progress = yaml_script_body(screen, "cover_art_refresh_progress") or ""
+assert "const bool time_was_hidden = lv_obj_has_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);" in progress
+assert "if (time_was_hidden != lv_obj_has_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN))" in progress
+assert "id(cover_art_fit_artist_text).execute();" in progress
+# Both early exits (external input and missing duration) and normal playback
+# must refit after visibility changes, while steady per-second updates skip it.
+assert progress.count("refit_artist_if_needed();") == 3
+assert progress.count("refit_artist_if_needed();\n            return;") == 2
+assert progress.rfind("refit_artist_if_needed();") > progress.index("lv_label_set_text(id(cover_art_time_label), label);")
+
 overlay = yaml_script_body(screen, "cover_art_show_track_overlay") or ""
 assert "mode: restart" in overlay
 assert "track_overlay_mode(" in overlay

@@ -1603,6 +1603,12 @@ script:
           then:
             - script.stop: cover_art_refresh_progress
       - lambda: |-
+          const bool time_was_hidden = lv_obj_has_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
+          auto refit_artist_if_needed = [&]() {
+            if (time_was_hidden != lv_obj_has_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN)) {
+              id(cover_art_fit_artist_text).execute();
+            }
+          };
           if (id(cover_art_external_input_active)) {
             id(cover_art_media_duration) = 0.0f;
             id(cover_art_media_position) = 0.0f;
@@ -1611,6 +1617,7 @@ script:
             lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00");
             lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
+            refit_artist_if_needed();
             return;
           }
           float duration = id(cover_art_media_duration);
@@ -1663,6 +1670,7 @@ script:
             lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00");
             lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
+            refit_artist_if_needed();
             return;
           }
 
@@ -1709,6 +1717,7 @@ script:
             id(cover_art_last_progress_percent) = value;
             lv_bar_set_value(id(cover_art_progress_bar), value, LV_ANIM_OFF);
           }
+          refit_artist_if_needed();
 
   - id: cover_art_show_track_overlay
     mode: restart
