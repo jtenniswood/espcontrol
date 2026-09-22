@@ -43,6 +43,8 @@ layout, downloading, and presentation responsibilities distinct.
   controls when it can appear again. Raw touchscreen wake defers to LVGL while
   cover art is visible, so the playback button cannot also dismiss the screen.
 - The bottom-right playback button remains visible independently of metadata.
+  Its circle and icon use the active display's width compensation together,
+  including the 7-inch profile's 95% correction and portrait axis switching.
   `PlaybackControl` retains a pause only after this session requests it and HA
   confirms it within five seconds. Pending commands suppress repeat taps;
   unconfirmed commands expire. Dismissal, player changes, stopped/unavailable

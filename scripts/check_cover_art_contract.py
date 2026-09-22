@@ -855,6 +855,9 @@ assert "id(cover_art_layout_signature).clear()" in setting
 assert "script.execute: cover_art_apply_responsive_layout" in setting
 assert "!id(cover_art_playback_control_enabled).state) return;" in control
 layout_script = yaml_script_body(screen, "cover_art_apply_responsive_layout") or ""
+compensation_call = "apply_width_compensation(id(cover_art_playback_button), icon_width_compensation_percent());"
+assert compensation_call in layout_script
+assert layout_script.index(compensation_call) < layout_script.index("if (signature ==")
 assert "!${cover_art_square_overlay} || id(cover_art_playback_control_enabled).state" in layout_script
 assert "lv_obj_add_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN)" in layout_script
 print("Cover art policy, layout, and state contract checks passed.")

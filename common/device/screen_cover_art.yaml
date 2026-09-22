@@ -588,6 +588,9 @@ script:
     mode: restart
     then:
       - lambda: |-
+          // Correct the whole control (circle and icon) using the active display profile.
+          // Apply before the geometry cache so profile/axis updates cannot leave a stale transform.
+          apply_width_compensation(id(cover_art_playback_button), icon_width_compensation_percent());
           int screen_w = lv_obj_get_width(id(cover_art_screensaver));
           int screen_h = lv_obj_get_height(id(cover_art_screensaver));
           if (screen_w <= 0) screen_w = ${screen_width};
