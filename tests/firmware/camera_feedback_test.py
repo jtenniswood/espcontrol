@@ -269,6 +269,19 @@ int main() {
  ctx.camera_entity_unavailable = true;
  refresh_visible_image_cards();
  assert(retained_state_reads == 2 && !ctx.camera_entity_unavailable);
+ // P4 panels retain card images and credentials across camera screensaver entry.
+ constrained = false;
+ ctx.access_token = "p4-token";
+ ctx.image_ready = true;
+ const int releases_before_p4 = tile.released + modal.released;
+ const int pictures_before_p4 = pictures;
+ image_card_suspend_pipeline();
+ image_card_resume_pipeline();
+ assert(!suspended && ctx.active && ctx.image_ready);
+ assert(ctx.access_token == "p4-token");
+ assert(tile.released + modal.released == releases_before_p4);
+ assert(pictures == pictures_before_p4 && retained_state_reads == 2);
+ constrained = true;
  // Tokens may rotate while callbacks are suspended; never reuse the old token.
  ctx.access_token = "old-token";
  image_card_suspend_pipeline();

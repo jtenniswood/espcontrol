@@ -2857,6 +2857,7 @@ inline void image_card_refresh_due() {
 // full-screen camera frame. The camera display mode owns the image pipeline
 // until it returns to ACTIVE, at which point only visible cards are reloaded.
 inline void image_card_suspend_pipeline() {
+  if (!image_card_constrained_memory_profile()) return;
   if (image_card_pipeline_suspended()) return;
   image_card_pipeline_suspended_state() = true;
 
