@@ -103,13 +103,23 @@ If a card already occupies the space needed for a larger size, the setup page tr
 
 ## Device Settings
 
-The **Settings** tab also includes display, brightness, screensaver, backup, and firmware update controls. Under **System**, use **Device Name** to [name your panel](#naming-your-panel), or **Factory Reset** to [reset cards and preferences or return to first-time setup](/features/backup#reset-the-display).
+The **Settings** tab groups the current controls as follows. Open a card to see its options; some options appear only when their feature is enabled.
 
-![Settings tab showing appearance, backlight, schedule, clock, and firmware controls](/images/settings-tab-display.png)
+| Section | Settings |
+|---|---|
+| **Display** | [Appearance](/features/appearance), [Backlight](/features/backlight), [Idle](/features/idle), [Clock Bar](/features/clock-bar), [Rotation](/features/rotation) |
+| **Voice & Sounds** | [Voice Services](/features/voice-control#turn-on-voice-services), [Alarm Audio](/card-types/alarms#entry-and-exit-delays) |
+| **Sleep & Schedule** | [Cover Art Screen Saver](/features/media-cover-art), [Screensaver](/features/screensaver), [Night Schedule](/features/screen-schedule) |
+| **Preferences** | [Language](/features/language), [Time](/features/clock), [Temperature](/features/temperature) |
+| **System** | [Device Name](#naming-your-panel), [Backup](/features/backup), [Firmware](/features/firmware-updates), [Home Assistant Settings](#home-assistant-settings), [Battery](/features/battery), [Factory Reset](/features/backup#reset-the-display) |
+
+Device-specific cards, including Voice Services, Alarm Audio, Rotation, and Battery, appear only on supported panels. Device Name and Factory Reset also require firmware that supports them.
+
+### Home Assistant Settings
 
 Open **Settings > System > Home Assistant Settings** to manage the address used for camera/image cards and media artwork downloads. **Automatic** connection mode discovers the HTTP endpoint advertised by the connected Home Assistant instance, including port `80` used by new Home Assistant OS installations and port `8123` commonly used by existing installations and Home Assistant Container.
 
-If automatic discovery is unavailable because multicast traffic is blocked between network segments, select **Manual** and enter the protocol and port shown under **Home Assistant > Settings > System > Network**. Automatic mode keeps these values as its fallback. EspControl never rewrites complete artwork URLs supplied by media services or external CDNs.
+If automatic discovery is unavailable because multicast traffic is blocked between network segments, select **Manual** and set **Home Assistant Protocol** (`http` or `https`) and **Home Assistant Port** (1–65535) to the values shown under **Home Assistant > Settings > System > Network**. Automatic mode keeps these values as its fallback. EspControl never rewrites complete artwork URLs supplied by media services or external CDNs.
 
 ## Apply Configuration
 
