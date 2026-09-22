@@ -27,7 +27,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import iconsData from '../../../../product/v2/icons.json'
+import { iconOptions, iconSlug } from '../../../../src/webserver/application/ui_primitives'
 
 const GROUP_ORDER = [
   'Lighting',
@@ -391,6 +391,7 @@ const ICON_GROUPS = {
   'Pill Multiple': 'Health',
 
   'Account': 'General',
+  'Auto': 'General',
   'Bird': 'General',
   'Broom': 'General',
   'Cat': 'General',
@@ -419,7 +420,7 @@ const ICON_GROUPS = {
   'Video Outline': 'Media & Entertainment',
 }
 
-const icons = iconsData.icons
+const icons = iconOptions.map(name => ({ name, mdi: iconSlug(name) }))
 const search = ref('')
 const copiedName = ref(null)
 let copyTimer = null
