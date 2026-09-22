@@ -115,6 +115,28 @@ int main() {
   assert(!control.pending());
   control.observe("player.a", "paused", 9011);
   assert(!control.retains_pause("player.a"));
+  // A local pause reveals faded details and prevents their timer from hiding them.
+  control.reset();
+  assert(track_overlay_mode(true, false, true, true, 10) == TrackOverlayMode::TIMED);
+  control.begin("player.a", "playing", 10000);
+  control.observe("player.a", "paused", 10001);
+  for (float seconds : {-1.0f, 0.0f, 10.0f, 30.0f}) {
+    assert(track_overlay_mode(false, control.retains_pause("player.a"), true, true, seconds)
+           == TrackOverlayMode::PERSISTENT);
+  }
+  control.begin("player.a", "paused", 10002);
+  assert(track_overlay_mode(false, control.retains_pause("player.a"), true, true, 10)
+         == TrackOverlayMode::PERSISTENT); // wait for HA before restarting the timer
+  control.observe("player.a", "playing", 10003);
+  assert(track_overlay_mode(true, control.retains_pause("player.a"), true, true, 10)
+         == TrackOverlayMode::TIMED);
+  assert(track_overlay_mode(true, false, true, true, 0) == TrackOverlayMode::HIDDEN);
+  assert(track_overlay_mode(true, false, true, true, -1) == TrackOverlayMode::PERSISTENT);
+  control.observe("player.a", "paused", 10004); // external pause must not retain details
+  assert(track_overlay_mode(false, control.retains_pause("player.a"), true, true, 10)
+         == TrackOverlayMode::HIDDEN);
+  assert(track_overlay_mode(true, false, false, true, 10) == TrackOverlayMode::PERSISTENT);
+  assert(track_overlay_mode(true, false, true, false, 10) == TrackOverlayMode::PERSISTENT);
   PolicyInput p; assert(!policy_allows_display(p));
   p.enabled = p.media_playing = p.entity_configured = true; assert(policy_allows_display(p));
   p.external_input_active = p.hide_external_input = true;
@@ -752,4 +774,20 @@ assert "LV_OBJ_FLAG_EVENT_BUBBLE" in screen
 connection = yaml_script_body(screen, "cover_art_update_playback_control") or ""
 assert "update_connection(ha_api_state_connected())" in connection
 assert "script.execute: cover_art_return_home_after_playback" in connection
+
+overlay = yaml_script_body(screen, "cover_art_show_track_overlay") or ""
+assert "mode: restart" in overlay
+assert "track_overlay_mode(" in overlay
+assert "TrackOverlayMode::TIMED" in overlay and "TrackOverlayMode::HIDDEN" in overlay
+assert "retains_pause(id(cover_art_active_media_player_entity))" in overlay
+assert "id(cover_art_track_overlay_duration).state * 1000" in overlay
+delayed_hide = overlay[overlay.index("- delay:"):]
+assert "id(cover_art_media_playing) &&" in delayed_hide
+playback = screen[screen.index("std::function<void(esphome::StringRef)> handle_playback_state ="):
+                  screen.index("std::function<void(esphome::StringRef)> handle_media_title =")]
+assert "if (!was_playing) id(cover_art_show_track_overlay).execute();" in playback
+assert '''if (id(cover_art_playback_control).retains_pause(cover_entity)) {
+                  id(cover_art_show_track_overlay).execute();''' in playback
+fallback = yaml_script_body(screen, "cover_art_show_black_screen") or ""
+assert "retains_pause(id(cover_art_active_media_player_entity))" in fallback
 print("Cover art policy, layout, and state contract checks passed.")

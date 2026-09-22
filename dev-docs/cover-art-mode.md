@@ -43,6 +43,13 @@ layout, downloading, and presentation responsibilities distinct.
   media, loss of the HA state connection, and higher-priority display modes clear
   ownership. Real playback state remains
   paused so progress does not advance. Commands target the active routed player.
+- A retained local pause reveals track details and cancels their hide timer.
+  Confirmed playback resumes the configured square-screen timer from the start;
+  a zero duration hides details immediately on resume and -1 keeps them visible.
+  Rectangular layouts and
+  the no-artwork fallback keep details visible. The button uses 75% of the raw
+  extracted RGB values, while the background uses one third; pressing lightens
+  the button colour.
 - An optional secondary media entity may become the active player while the
   primary player reports TV, line-in, or HDMI. Routing switches the complete
   playback presentation together and invalidates callbacks and artwork owned by

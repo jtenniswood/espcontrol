@@ -30,6 +30,17 @@ constexpr uint32_t SUBSCRIPTION_RECONCILE_MS = 5000;
 constexpr size_t MAX_ARTWORK_URL_LENGTH = 4096;
 constexpr int ACCENT_SAMPLE_GRID = 20;
 
+enum class TrackOverlayMode { HIDDEN, PERSISTENT, TIMED };
+
+inline TrackOverlayMode track_overlay_mode(bool playing, bool retained_pause,
+                                          bool square, bool image_available,
+                                          float duration_seconds) {
+  if (retained_pause) return TrackOverlayMode::PERSISTENT;
+  if (!playing) return TrackOverlayMode::HIDDEN;
+  if (!square || !image_available || duration_seconds < 0) return TrackOverlayMode::PERSISTENT;
+  return duration_seconds > 0 ? TrackOverlayMode::TIMED : TrackOverlayMode::HIDDEN;
+}
+
 inline std::string normalized_media_source(std::string source) {
   while (!source.empty() && std::isspace(static_cast<unsigned char>(source.front()))) {
     source.erase(source.begin());

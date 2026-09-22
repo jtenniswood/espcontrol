@@ -759,19 +759,21 @@ script:
           #else
           auto *dsc = img->get_lv_img_dsc();
           #endif
-          auto accent = espcontrol::cover_art::darken_accent_color(
-              espcontrol::cover_art::extract_accent_color_rgb565(
+          const auto accent = espcontrol::cover_art::extract_accent_color_rgb565(
                   dsc ? dsc->data : nullptr, img_w, img_h, img->is_big_endian(),
                   img->get_content_offset_x(), img->get_content_offset_y(),
-                  img->get_content_width(), img->get_content_height()));
-          lv_color_t dark_accent = accent.valid
-              ? lv_color_make(accent.red, accent.green, accent.blue)
+                  img->get_content_width(), img->get_content_height());
+          const auto dark = espcontrol::cover_art::darken_accent_color(accent);
+          lv_color_t dark_accent = dark.valid
+              ? lv_color_make(dark.red, dark.green, dark.blue)
               : lv_color_make(0, 0, 0);
           ESP_LOGI("cover_art", "Artwork tint color: rgb(%d,%d,%d)",
-                   accent.red, accent.green, accent.blue);
+                   dark.red, dark.green, dark.blue);
           lv_obj_set_style_bg_color(id(cover_art_backdrop), dark_accent, 0);
           lv_obj_set_style_bg_color(id(cover_art_accent_overlay), dark_accent, 0);
-          const lv_color_t button_color = accent.valid ? dark_accent : lv_color_hex(0x313131);
+          const lv_color_t button_color = accent.valid
+              ? lv_color_make(accent.red * 3 / 4, accent.green * 3 / 4, accent.blue * 3 / 4)
+              : lv_color_hex(0x313131);
           lv_obj_set_style_bg_color(id(cover_art_playback_button), button_color, LV_PART_MAIN);
           lv_obj_set_style_bg_color(id(cover_art_playback_button), lv_color_lighten(button_color, 48),
                                     LV_PART_MAIN | LV_STATE_PRESSED);
@@ -817,7 +819,10 @@ script:
           lv_obj_set_style_text_line_space(id(cover_art_title_label), ${cover_art_title_line_space}, 0);
       - if:
           condition:
-            lambda: 'return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) && id(cover_art_media_playing);'
+            lambda: |-
+              return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) &&
+                     (id(cover_art_media_playing) ||
+                      id(cover_art_playback_control).retains_pause(id(cover_art_active_media_player_entity)));
           then:
             - lvgl.widget.show: cover_art_accent_overlay
             - lvgl.widget.show: cover_art_track_panel
@@ -1655,7 +1660,10 @@ script:
             - script.stop: cover_art_show_track_overlay
       - if:
           condition:
-            lambda: 'return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) && id(cover_art_media_playing);'
+            lambda: |-
+              return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) &&
+                     (id(cover_art_media_playing) ||
+                      id(cover_art_playback_control).retains_pause(id(cover_art_active_media_player_entity)));
           then:
             - script.execute: cover_art_sync_track_text
             - if:
@@ -1678,9 +1686,11 @@ script:
             - if:
                 condition:
                   lambda: |-
-                    return ${cover_art_square_overlay} &&
-                           id(cover_art_runtime).image_available &&
-                           id(cover_art_track_overlay_duration).state == 0;
+                    return espcontrol::cover_art::track_overlay_mode(
+                        id(cover_art_media_playing),
+                        id(cover_art_playback_control).retains_pause(id(cover_art_active_media_player_entity)),
+                        ${cover_art_square_overlay}, id(cover_art_runtime).image_available,
+                        id(cover_art_track_overlay_duration).state) == espcontrol::cover_art::TrackOverlayMode::HIDDEN;
                 then:
                   - lvgl.widget.hide: cover_art_accent_overlay
                   - lvgl.widget.hide: cover_art_track_panel
@@ -1691,13 +1701,19 @@ script:
                   - lvgl.widget.show: cover_art_track_panel
                   - if:
                       condition:
-                        lambda: 'return ${cover_art_square_overlay} && id(cover_art_track_overlay_duration).state > 0;'
+                        lambda: |-
+                          return espcontrol::cover_art::track_overlay_mode(
+                              id(cover_art_media_playing),
+                              id(cover_art_playback_control).retains_pause(id(cover_art_active_media_player_entity)),
+                              ${cover_art_square_overlay}, id(cover_art_runtime).image_available,
+                              id(cover_art_track_overlay_duration).state) == espcontrol::cover_art::TrackOverlayMode::TIMED;
                       then:
                         - delay: !lambda 'return (uint32_t)(id(cover_art_track_overlay_duration).state * 1000);'
                         - if:
                             condition:
                               lambda: |-
                                 return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) &&
+                                       id(cover_art_media_playing) &&
                                        id(cover_art_runtime).image_available &&
                                        ${cover_art_square_overlay} &&
                                        id(espcontrol_app).display().transition_is_current(
@@ -2514,7 +2530,10 @@ script:
                   id(cover_art_last_position_timestamp) = now.timestamp;
                 }
                 // Resume in place when this screen retained the paused artwork.
-                if (id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART)) return;
+                if (id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART)) {
+                  if (!was_playing) id(cover_art_show_track_overlay).execute();
+                  return;
+                }
                 if (!was_playing || restart_cover_art_delay) id(cover_art_playback_started).execute();
                 return;
               }
@@ -2531,7 +2550,9 @@ script:
                 if (id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART)) id(cover_art_refresh_progress).execute();
                 id(cover_art_delay_timer).stop();
                 id(cover_art_show_track_overlay).stop();
-                if (!id(cover_art_playback_control).retains_pause(cover_entity)) {
+                if (id(cover_art_playback_control).retains_pause(cover_entity)) {
+                  id(cover_art_show_track_overlay).execute();
+                } else {
                   id(cover_art_return_home_after_playback).execute();
                 }
                 return;
