@@ -14,9 +14,25 @@ You will find these controls in **Settings > Sleep & Schedule > Cover Art Screen
 
 ## Play and pause
 
-Tap the round button in the bottom-right corner to pause the displayed player. The artwork stays visible and the button changes to Play, so you can resume without leaving the screensaver. Pausing also brings the track details back and keeps them visible; resuming restarts the **Show Track Details For** timer on square screens. The button stays visible when track details fade away. It uses a brighter version of the artwork's extracted background colour and lightens while pressed, with a neutral grey fallback when artwork is unavailable.
+Tap the round button in the bottom-right corner to pause the displayed player. The artwork stays visible and the button changes to Play, so you can resume without leaving the screensaver. The button stays visible when track details fade away.
 
-This only keeps the screensaver open for a pause requested with this button. Pausing from Home Assistant, a phone, or another control still ends cover-art mode. Touch anywhere outside the button to dismiss the screensaver normally; music stays paused until you resume it. Night schedules and display takeovers still apply. If the Home Assistant connection is lost while paused, the retained screensaver closes.
+The button uses a brighter version of the colour extracted from the artwork and lightens while pressed, with a neutral grey fallback when artwork is unavailable. On 7-inch displays, its shape is adjusted for the panel's pixels so it appears round in either orientation.
+
+Only a pause requested with this button keeps the screensaver open. Pausing from Home Assistant, a phone, or another control still ends cover-art mode. Touch anywhere outside the button to dismiss the screensaver without changing playback: paused music stays paused, and playing music keeps playing. Night schedules and display takeovers still apply. If the Home Assistant connection is lost while paused, the retained screensaver closes.
+
+## Track details and layout
+
+Titles expand to fit longer track names, up to these limits on the cover-art screensaver:
+
+| Display | Maximum title lines |
+| --- | --- |
+| 4-inch square S3 and P4-86, in any orientation | 3 |
+| 7-inch, in landscape | 4 |
+| 10-inch, in landscape | 5 |
+
+Shorter titles use only the space they need. Artist text uses the remaining space, with an ellipsis when it does not fit. The 7-inch and 10-inch portrait layouts keep their shorter title limits.
+
+On square displays, **Show Track Details For** controls how long details stay visible when a track changes. Pausing with the screensaver button brings the details back and keeps them visible until playback resumes, then the fade-out timer starts again. With **Never**, pausing still reveals the details, but resuming hides them immediately. With **Always**, they remain visible. Rectangular displays and screens without artwork keep track details visible.
 
 ## Settings
 
@@ -25,7 +41,7 @@ Turn on **Show Cover Art** to reveal the settings, then choose the **Media Playe
 ### Screensaver Settings
 
 - **Keep Screen Awake During Playback** — on by default. While Show Cover Art is enabled, this prevents normal screensaver sleep during playback and lets artwork appear after **Show After**. It has no effect while Show Cover Art is off.
-- **Persistent Play/Pause Control** — on by default. On 4-inch square screens, turn it off to hide the button and restore the full track-details layout. Turning it off during a retained pause dismisses the screensaver. Larger screens always show the playback button and do not show this setting.
+- **Persistent Play/Pause Control** — on by default, directly below **Keep Screen Awake During Playback** on the 4-inch square S3 and P4-86. Turn it off to hide the button and restore the full width for track details, still allowing up to three title lines. Turning it off while paused from the screensaver dismisses it without resuming playback. Larger screens always show the playback button and do not show this setting.
 - **Show After** — choose 3, 5, 10, or 30 seconds, 1 minute, or 5 minutes. The default is 10 seconds. This also controls when cover art returns after you dismiss it; every touch restarts the countdown.
 - **Show Track Details For** — available on the 4-inch square displays. Choose **Never**, 3, 5, 10, 15, 20, 30, or 60 seconds, or **Always**. The default is 5 seconds.
 
