@@ -467,12 +467,6 @@ export function createSettingsPageHelpersFeature(
         if (els.setClockOverlayToggle) {
             els.setClockOverlayToggle.checked = !!state.clockOverlayOn;
         }
-        if (els.setCoverArtClockOverlayToggle) {
-            els.setCoverArtClockOverlayToggle.checked = !!state.clockOverlayOn;
-        }
-        if (els.setCoverArtClockOverlayRow) {
-            els.setCoverArtClockOverlayRow.style.display = state.clockOverlaySupported && state.coverArtScreensaverOn ? "" : "none";
-        }
         if (els.setCoverArtOptions) {
             els.setCoverArtOptions.classList.toggle("sp-visible", uiState.contentVisible);
         }

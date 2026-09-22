@@ -1671,14 +1671,8 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: cover art secondary entity should begin inside its collapsed panel`,
   );
   await screensaverSettings.locator("> .sp-disclosure-button").click();
-  const coverArtClock = coverArtCard.locator("#sp-set-cover-art-clock-overlay");
-  assert(await coverArtClock.locator("..").locator("..").isVisible(), `${label}: Cover Art offers Display Clock without Camera selected`);
-  const overlayPosts = posts.length;
-  await coverArtClock.locator("..").locator("..").locator(".sp-toggle").click();
-  await waitForPost(posts,
-    { domain: "switch", name: "screen_saver__clock_overlay", action: "turn_on" },
-    `${label}: Cover Art clock toggle updates the shared overlay`, overlayPosts);
-  assert(await clockOverlayToggle.isChecked(), `${label}: Camera and Cover Art clock toggles stay synchronized`);
+  assert.strictEqual(await coverArtCard.locator("#sp-set-cover-art-clock-overlay").count(), 0,
+    `${label}: media Cover Art must not offer the camera clock overlay`);
   assert(
     await coverArtCard.locator("#sp-set-ss-cover-art-delay").isVisible(),
     `${label}: cover art show-after field should render inside screensaver settings`,

@@ -1588,9 +1588,8 @@ script:
       - script.execute: clock_overlay_hide
       - script.execute: clock_bar_apply
 
-  # Optional clock over image-based screensavers. This deliberately lives
-  # outside the black clock screensaver so cover art and camera retain their
-  # existing presentation and stream-lifecycle ownership.
+  # Optional clock and metadata over the camera/image screensaver. Media
+  # cover art owns its presentation and must never show this overlay.
   - id: clock_overlay_hide
     mode: restart
     then:
@@ -1603,10 +1602,7 @@ script:
     then:
       - lambda: |-
           const auto mode = static_cast<espcontrol::DisplayMode>(target_mode);
-          const bool image_mode =
-              mode == espcontrol::DisplayMode::COVER_ART ||
-              mode == espcontrol::DisplayMode::CAMERA;
-          if (!image_mode) {
+          if (mode != espcontrol::DisplayMode::CAMERA) {
             lv_obj_add_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN);
             return;
           }
@@ -1655,10 +1651,7 @@ script:
     then:
       - lambda: |-
           const auto mode = id(espcontrol_app).display().current_mode();
-          const bool image_mode =
-              mode == espcontrol::DisplayMode::COVER_ART ||
-              mode == espcontrol::DisplayMode::CAMERA;
-          if (!image_mode) {
+          if (mode != espcontrol::DisplayMode::CAMERA) {
             lv_obj_add_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN);
             return;
           }
@@ -1718,8 +1711,7 @@ interval:
           condition:
             lambda: |-
               const auto mode = id(espcontrol_app).display().current_mode();
-              return mode == espcontrol::DisplayMode::COVER_ART ||
-                     mode == espcontrol::DisplayMode::CAMERA;
+              return mode == espcontrol::DisplayMode::CAMERA;
           then:
             - script.execute:
                 id: clock_overlay_apply

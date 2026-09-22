@@ -46,7 +46,7 @@ With **Camera** selected, enable **Display Metadata** below **Display Clock** to
 
 Text appears toward the bottom-right on screens at least 1024 pixels wide. On smaller screens and large panels rotated into portrait, it appears in the upper-right corner. Empty, `unknown`, and `unavailable` states are hidden; the clock stays in the same position. Metadata can also appear with **Display Clock** switched off. Long text wraps to at most three lines.
 
-**Display Clock** is also available in the Cover Art settings and controls the same clock overlay. Camera and clock-overlay controls appear only when the installed firmware supports them.
+**Display Clock** applies only to the Camera screensaver, including `camera.*` and `image.*` sources. It is hidden while the media Cover Art screensaver is active. Camera and clock-overlay controls appear only when the installed firmware supports them.
 
 ## Sensor
 
