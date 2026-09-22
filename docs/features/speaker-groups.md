@@ -67,37 +67,6 @@ template:
             v2|{{ ns.items | to_json }}
 ```
 
-### Music Assistant 2.7 and Earlier
-
-Older Music Assistant versions can expose group and sync-group entities as well as individual speakers. This version excludes those virtual group entities so the panel shows only physical players.
-
-```yaml
-template:
-  - sensor:
-      - name: "Speaker Group"
-        unique_id: speaker_group
-        state: >
-          {%- set s = integration_entities("music_assistant")
-              | select("match", "media_player")
-              | reject("is_state_attr", "mass_player_type", "group")
-              | reject("is_state_attr", "mass_player_type", "sync_group")
-              | list -%}
-          {{ s | count }}
-        attributes:
-          data: >
-            {%- set s = integration_entities("music_assistant")
-                | select("match", "media_player")
-                | reject("is_state_attr", "mass_player_type", "group")
-                | reject("is_state_attr", "mass_player_type", "sync_group")
-                | list -%}
-            {%- set ns = namespace(items=[]) -%}
-            {%- for entity_id in s -%}
-              {%- set available = states(entity_id) not in ["unknown", "unavailable"] -%}
-              {%- set ns.items = ns.items + [[entity_id, state_attr(entity_id, "friendly_name") or entity_id, state_attr(entity_id, "volume_level"), available]] -%}
-            {%- endfor -%}
-            v2|{{ ns.items | to_json }}
-```
-
 ## Verify the Sensor
 
 After Home Assistant restarts, open **Developer Tools** > **States** and search for `sensor.speaker_group`. Its state should be the number of speakers found, and its `data` attribute should list the speaker names. If it is missing, check the YAML indentation and Home Assistant logs. If Home Assistant assigned another entity ID, such as `sensor.speaker_group_2`, use that exact ID in **Speaker Discovery Entity** below. If its state is `0`, check that the integration name matches Home Assistant and that it has `media_player` entities.
