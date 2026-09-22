@@ -12,7 +12,7 @@
     "deviceProfiles": 8,
     "cardTypes": 43,
     "entityNames": 107,
-    "icons": 357,
+    "icons": 359,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
   },
@@ -7796,6 +7796,16 @@
         "name": "Arrow Up Down",
         "codepoint": "F0E79",
         "mdi": "arrow-up-down"
+      },
+      {
+        "name": "Awning",
+        "codepoint": "F1B87",
+        "mdi": "awning"
+      },
+      {
+        "name": "Awning Outline",
+        "codepoint": "F1B88",
+        "mdi": "awning-outline"
       },
       {
         "name": "Battery",

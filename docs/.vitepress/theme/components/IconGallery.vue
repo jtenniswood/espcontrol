@@ -135,6 +135,8 @@ const ICON_GROUPS = {
   'Arrow Up Down': 'Climate & Air',
   'Swap Horizontal': 'Climate & Air',
 
+  'Awning': 'Covers & Shading',
+  'Awning Outline': 'Covers & Shading',
   'Blinds': 'Covers & Shading',
   'Blinds Horizontal': 'Covers & Shading',
   'Blinds Horizontal Closed': 'Covers & Shading',
