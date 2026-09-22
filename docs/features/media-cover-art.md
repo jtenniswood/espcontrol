@@ -1,5 +1,5 @@
 ---
-title: EspControl Media Cover Art
+title: "Show Home Assistant Media Cover Art on Your Touchscreen"
 description:
   How to show media cover art while music or video is playing on your EspControl panel.
 ---
@@ -7,6 +7,8 @@ description:
 # Media Cover Art
 
 Media Cover Art can turn the panel into a now-playing display while a selected Home Assistant media player is playing.
+
+You need a `media_player` entity that supplies artwork in Home Assistant and a reachable Home Assistant image-download address. First check that artwork appears in Home Assistant, then configure the panel below. The [migration guide](/getting-started/migrate-esphome-media-player) covers dedicated album-art layouts.
 
 You will find these controls in **Settings > Sleep & Schedule > Cover Art Screen Saver** on the panel web page.
 
@@ -40,3 +42,14 @@ If cover art is shown for `TV` or `Line-in` instead of hidden, the artist line s
 Cover art is separate from the normal [Screensaver](/features/screensaver) mode. Use Screensaver when you want the panel to dim, show a clock, or turn off after inactivity.
 
 For artwork downloads, open **Settings > System > Home Assistant Settings**. **Connection > Automatic** discovers the Home Assistant HTTP endpoint; **Manual** lets you choose **Home Assistant Protocol** (`http` or `https`) and **Home Assistant Port**. The card shows the current artwork endpoint. See [Home Assistant Settings](/features/setup#home-assistant-settings) for discovery and fallback behavior.
+
+## Track Details Work but Artwork Is Missing
+
+Playback metadata uses the native ESPHome connection; image downloads use HTTP or HTTPS. One can work while the other fails.
+
+1. Confirm the selected player has artwork in Home Assistant.
+2. Open **Settings > System > Home Assistant Settings** and check the displayed artwork endpoint.
+3. If automatic discovery chooses an unreachable endpoint, use **Manual** with the reachable protocol and port. A reverse proxy may need **Artwork Base URL**.
+4. Retry playback. Confirm both the small Cover Art card and its expanded view load an image.
+
+Artwork availability depends on the source. If only Spotify, radio, Plex, or another source fails, capture [USB logs](/reference/collect-usb-logs) and include the source and firmware version in a report, with private URLs and credentials removed.

@@ -263,7 +263,7 @@ TASKS = (
          generated_inputs=(
              "common/config/card_runtime_baseline_card_normalization_fixtures.json",
              "compatibility/fixtures/card_runtime_surface_baseline.json",
-             "docs/generated/cards/runtime-coverage.md",
+             "dev-docs/generated/card-runtime-coverage.md",
          ),
          cache_inputs=WEB_BUNDLE_BUILD_HELPERS, parallel_safe=True, cache_tools=("node",)),
     task("device-slots", ("python3", "scripts/generate_device_slots.py", "--check"), profiles=PRODUCT,
@@ -285,6 +285,6 @@ TASKS = (
          generated_inputs=("docs/public/webserver/**",),
          cache_env=("PLAYWRIGHT_BROWSERS_PATH", "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD")),
     task("docs-build", ("npm", "run", "docs:build"), dependencies=("generated",), profiles=("all", "release"),
-         domains=("docs",), inputs=("docs/**",) + MAINTAINER_DOCS + ("package-lock.json",),
+         domains=("docs",), inputs=("docs/**", "scripts/check_docs_site.py") + MAINTAINER_DOCS + ("package.json", "package-lock.json",),
          generated_inputs=("docs/generated/**",), cache="never"),
 )

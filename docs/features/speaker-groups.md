@@ -1,5 +1,5 @@
 ---
-title: Speaker Groups
+title: "Group Home Assistant Speakers from Your Touchscreen"
 description: Set up Home Assistant speaker discovery, join compatible speakers, and control group volume from EspControl.
 ---
 

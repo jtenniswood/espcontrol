@@ -1,5 +1,5 @@
 ---
-title: EspControl Idle Timeout
+title: "Idle Timeout"
 description:
   How the EspControl panel automatically returns to the home screen after a period of inactivity.
 ---

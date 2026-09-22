@@ -1,10 +1,10 @@
 ---
-title: Camera Cards
+title: "Show Home Assistant Camera Snapshots on Your Touchscreen"
 description:
   How to show Home Assistant camera and image entities on your EspControl panel.
 ---
 
-# Camera
+# Show Home Assistant Camera Snapshots
 
 A Camera card shows a still image from a Home Assistant `camera` or `image` entity. It is useful for doorbells, driveway cameras, room snapshots, weather cameras, or any Home Assistant image entity you want visible on the panel.
 
@@ -15,6 +15,8 @@ ESP32-P4 screens support up to six Camera or Media Cover Art cards. The 4-inch E
 :::
 
 ## Setting Up a Camera Card
+
+Before starting, confirm the `camera` or `image` entity shows an image in Home Assistant and that the panel can reach Home Assistant's HTTP or HTTPS endpoint. [Choose a screen](/screens/) with enough shared image slots for your layout.
 
 1. Select a card and change its type to **Camera Card**.
 2. Enter a **Camera Entity**, for example `camera.front_door`.
@@ -89,3 +91,11 @@ Camera performance also depends on the connection between the panel and Home Ass
 | The picture is cropped | Change **Expanded Image** to **Show full image**. |
 | The picture does not update often | Check whether the Home Assistant camera entity itself is updating its snapshot image. |
 | Images remain slow on several cards | Check the panel's WiFi signal and Home Assistant response time. On supported Ethernet models, consider the advanced wired firmware option. |
+
+## Show Photos from Immich
+
+A Home Assistant `image` entity can supply changing photos to a Camera card. The separate [EspControl Immich Companion](https://github.com/jtenniswood/espcontrol-immich) integration manages photo selection and slideshow controls in Home Assistant; the panel only needs its image entity.
+
+**Integration status checked September 22, 2026:** the companion has installation documentation but no published GitHub releases. Follow its [current installation guide](https://github.com/jtenniswood/espcontrol-immich/blob/main/docs/installation.md) for requirements and update instructions. Its development status is separate from stable EspControl firmware.
+
+Configure the integration in Home Assistant, confirm its image entity updates, then select that entity in a Camera card. Do not enter an Immich API key into the panel. The usual snapshot refresh and shared image-slot limits still apply.

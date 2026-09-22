@@ -156,7 +156,7 @@ runtime-only types, lists meaningful modes, and records the broad subscription,
 action, and modal responsibilities that later driver migrations must preserve.
 Run `npm run check:card-runtime-coverage` to check the generated parser fixtures,
 web picker/preview fingerprints, firmware-family coverage, and
-`docs/generated/cards/runtime-coverage.md` report. Regenerate them with
+`dev-docs/generated/card-runtime-coverage.md` report. Regenerate them with
 `node scripts/generate_card_runtime_coverage.js` only when a reviewed behaviour
 change intentionally updates the baseline.
 

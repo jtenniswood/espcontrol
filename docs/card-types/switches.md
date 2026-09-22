@@ -1,5 +1,5 @@
 ---
-title: Switch Cards
+title: "Home Assistant Switch Cards"
 description:
   How to use switch cards on your EspControl panel to control Home Assistant entities.
 ---

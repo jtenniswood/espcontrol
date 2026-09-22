@@ -1,10 +1,11 @@
 ---
-title: Enable Actions
+title: "Allow EspControl to Control Home Assistant Devices"
+titleTemplate: :title
 description:
   How to allow your EspControl touchscreen to perform Home Assistant actions so it can control lights, switches, and other devices.
 ---
 
-# Enable Actions
+# Allow EspControl to Control Home Assistant Devices
 
 EspControl needs permission to call Home Assistant actions (like toggling lights, running scripts, changing media volume, or adjusting climate targets) on your behalf. Without this, the touchscreen can display read-only information but **cards won't be able to control your devices or request forecast data**.
 

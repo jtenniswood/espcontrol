@@ -1,5 +1,5 @@
 ---
-title: Slider Cards
+title: "Home Assistant Slider Cards"
 description:
   How to use slider cards on your EspControl panel to control lights, fans, and number entities from Home Assistant.
 ---

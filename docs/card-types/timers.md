@@ -1,5 +1,5 @@
 ---
-title: Timer Cards
+title: "Home Assistant Timer Cards"
 description:
   How to use timer cards on your EspControl panel to start, cancel, and resume Home Assistant timer entities.
 ---

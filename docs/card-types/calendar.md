@@ -1,5 +1,5 @@
 ---
-title: Date & Time Cards
+title: "Show the Date and Time on Your Touchscreen"
 description:
   How to show the local clock, date, or date and time on your EspControl panel.
 ---

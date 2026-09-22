@@ -1,10 +1,12 @@
 ---
-title: EspControl Troubleshooting
+title: "Troubleshoot EspControl Installation and Home Assistant Controls"
 description:
   Solutions for common issues when installing EspControl, connecting to WiFi, or adding the device to Home Assistant.
 ---
 
 # Troubleshooting
+
+Start with the symptom below. Have your screen model, hardware revision, and firmware version ready; use the matching [screen guide](/screens/) to confirm the installed firmware.
 
 ## Web Configuration Changes Won't Save
 
@@ -53,13 +55,24 @@ If saving or importing a backup fails, try opening `http://YOUR-DISPLAY-IP/?espc
 
 ## The Web Page Looks Broken or Unstyled
 
-- The device's web page loads some resources from the internet. Make sure the display has a working internet connection (not just local network access).
-- Try clearing your browser cache and reloading.
+- The setup page loads hosted web resources through your **browser**. Check that the browser can reach them, even if the panel itself is on a restricted IoT network.
+- Force-refresh the page or try a private window. If loading still fails, try the [embedded-editor fallback](#web-configuration-changes-won-t-save).
+
+## WiFi Does Not Connect
+
+- Use 2.4 GHz WiFi, check the password, and move closer to the access point during setup.
+- If saved WiFi cannot reconnect, wait up to **90 seconds** for the `ESP_xxxxxx` setup hotspot, then repeat [WiFi setup](/getting-started/install#connect-to-wifi).
+- Ethernet-only custom builds have no WiFi hotspot. Check the wired connection and DHCP lease instead.
+- For repeated P4 disconnections, use the [P4 WiFi checks](#a-p4-panel-has-unreliable-wifi).
+
+## Stripes, Haze, or a Halo on the Screen
+
+Confirm the firmware matches the exact panel revision and use a known-good power supply and cable that meet its specifications. If the fault remains, include photos, the power setup, model, and firmware version in a report. A hardware fault may need the seller's help.
 
 ## I Want to Start Over
 
-- To re-flash the firmware, connect via USB-C and use the [install button](/getting-started/install#flash-the-firmware) again.
-- To clear WiFi settings and start fresh, re-flash the device. It will create the setup hotspot again.
+- Save a backup, then use **Settings > System > Factory Reset**. Partial reset keeps WiFi and the Home Assistant encryption key; Complete reset clears those saved credentials too.
+- Both keep installed firmware and compiled defaults. A normal reflash is not a guaranteed reset. Follow [Reset the display](/features/backup#reset-the-display) for the full procedure and older-firmware limitations.
 
 ## I Need Help With a Bug
 

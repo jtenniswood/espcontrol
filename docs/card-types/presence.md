@@ -1,5 +1,5 @@
 ---
-title: Presence Cards
+title: "Home Assistant Presence Cards"
 description:
   How to show room, motion, or occupancy sensors on your EspControl panel.
 ---
