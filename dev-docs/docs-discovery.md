@@ -9,7 +9,8 @@ search-provider administration does not belong in installation instructions.
 Run `npm run docs:build`, then `npm run docs:preview`. The build checks every
 sitemap page for a unique title and description, one main heading, its canonical
 URL, internal links and anchors, and FAQ structured answers matching visible
-text. It also checks the three retired-page redirects. Test the comparison
+text. It also checks all 19 retired-page redirects, including previously published
+screen fragments and their destination anchors. Test the comparison
 table and navigation on mobile as well as desktop.
 
 Generated fragments under `docs/generated/` are include-only. Publish useful

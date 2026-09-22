@@ -11,6 +11,22 @@ export const redirects: Record<string, string> = {
   'generated/cards/capabilities': `${hostname}reference/card-capabilities`,
   'generated/cards/runtime-coverage':
     'https://github.com/jtenniswood/espcontrol/blob/main/dev-docs/generated/card-runtime-coverage.md',
+  'generated/screens/4848s040-grid': `${hostname}screens/4848s040#card-grid`,
+  'generated/screens/4848s040-install': `${hostname}screens/4848s040#install`,
+  'generated/screens/jc1060p470-grid': `${hostname}screens/jc1060p470#card-grid`,
+  'generated/screens/jc1060p470-install': `${hostname}screens/jc1060p470-v1#install`,
+  'generated/screens/jc1060p470-v2-grid': `${hostname}screens/jc1060p470#card-grid`,
+  'generated/screens/jc1060p470-v2-install': `${hostname}screens/jc1060p470-v2#install`,
+  'generated/screens/jc4880p443-grid': `${hostname}screens/jc4880p443#card-grid`,
+  'generated/screens/jc4880p443-install': `${hostname}screens/jc4880p443#install`,
+  'generated/screens/jc8012p4a1-grid': `${hostname}screens/jc8012p4a1`,
+  'generated/screens/jc8012p4a1-install': `${hostname}screens/jc8012p4a1-v1#install`,
+  'generated/screens/jc8012p4a1-v2-grid': `${hostname}screens/jc8012p4a1`,
+  'generated/screens/jc8012p4a1-v2-install': `${hostname}screens/jc8012p4a1-v2#install`,
+  'generated/screens/jc8012p4a1-v3-grid': `${hostname}screens/jc8012p4a1`,
+  'generated/screens/jc8012p4a1-v3-install': `${hostname}screens/jc8012p4a1-v3#install`,
+  'generated/screens/p4-86-grid': `${hostname}screens/p4-86#card-grid`,
+  'generated/screens/p4-86-install': `${hostname}screens/p4-86#install`,
 }
 
 export async function writeRedirects(outDir: string) {

@@ -206,12 +206,39 @@ def check_build(dist):
         'generated/cards/capabilities': BASE + 'reference/card-capabilities',
         'generated/cards/runtime-coverage': 'https://github.com/jtenniswood/espcontrol/blob/main/dev-docs/generated/card-runtime-coverage.md',
     }
+    screen_guides = {
+        '4848s040': ('4848s040#card-grid', '4848s040'),
+        'jc1060p470': ('jc1060p470#card-grid', 'jc1060p470-v1'),
+        'jc1060p470-v2': ('jc1060p470#card-grid', 'jc1060p470-v2'),
+        'jc4880p443': ('jc4880p443#card-grid', 'jc4880p443'),
+        'jc8012p4a1': ('jc8012p4a1', 'jc8012p4a1-v1'),
+        'jc8012p4a1-v2': ('jc8012p4a1', 'jc8012p4a1-v2'),
+        'jc8012p4a1-v3': ('jc8012p4a1', 'jc8012p4a1-v3'),
+        'p4-86': ('p4-86#card-grid', 'p4-86'),
+    }
+    for model, (grid, install) in screen_guides.items():
+        redirects[f'generated/screens/{model}-grid'] = BASE + 'screens/' + grid
+        redirects[f'generated/screens/{model}-install'] = BASE + 'screens/' + install + '#install'
+    baseline = json.loads((ROOT / 'dev-docs/hosting/seo-baseline-2026-09-22.json').read_text())
+    for url in baseline['generated_urls']:
+        if url.removeprefix(BASE) not in redirects:
+            errors.append(f'Previously published generated page has no redirect: {url}')
     for path, destination in redirects.items():
-        page = Page((dist / (path + '.html')).read_text())
+        file = dist / (path + '.html')
+        if not file.is_file():
+            errors.append(f'Missing retired-page redirect: {path}')
+            continue
+        page = Page(file.read_text())
         if page.canonicals != [destination.split('#')[0]] or 'noindex' not in page.meta.get('robots', '') or page.meta.get('refresh') != f'0; url={destination}' or destination not in page.links:
             errors.append(f'Broken retired-page redirect: {path}')
-    if (dist / 'generated/screens').exists():
-        errors.append('Generated screen fragments are still published')
+        if destination.startswith(BASE):
+            target = urlsplit(destination)
+            target_page = pages.get(target._replace(fragment='').geturl())
+            if not target_page or (target.fragment and unquote(target.fragment) not in target_page.ids):
+                errors.append(f'Broken redirect destination: {path}: {destination}')
+    for file in (dist / 'generated').rglob('*.html'):
+        if file.relative_to(dist).with_suffix('').as_posix() not in redirects:
+            errors.append(f'Generated fragment is still published: {file.relative_to(dist)}')
     if (dist / 'robots.txt').exists():
         errors.append('Project-path robots.txt cannot control crawling; publish the host-root template instead')
 
