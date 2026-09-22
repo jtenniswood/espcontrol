@@ -350,7 +350,7 @@ lvgl:
                       text_font: ${cover_art_title_font}
                       text_color: ${cover_art_text_color}
                       text_align: left
-                      text_line_space: ${cover_art_title_line_space}
+                      text_line_space: 0
                   - label:
                       id: cover_art_artist_label
                       clickable: false
@@ -666,6 +666,7 @@ script:
                              layout.panel_x, layout.panel_y, layout.panel_width, layout.panel_height,
                              layout.title_max_height);
           set_art_image_geometry(layout.art_x, layout.art_y, layout.art_size);
+          lv_obj_set_style_text_line_space(id(cover_art_title_label), ${cover_art_title_line_space}, LV_PART_MAIN);
           const auto playback = espcontrol::cover_art::playback_button_layout(
               layout, lv_font_get_line_height(lv_obj_get_style_text_font(id(cover_art_title_label), LV_PART_MAIN)),
               ${cover_art_title_line_space});
