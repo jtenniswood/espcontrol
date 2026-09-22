@@ -81,6 +81,8 @@ To enable it:
 2. Turn on **Voice Services**.
 3. Wait a few seconds for the wake-word engine to start.
 
+You can also enable it on the panel web page under **Settings > Voice & Sounds > Voice Services**.
+
 When **Voice Services** is off, wake-word listening is stopped and the clock-bar microphone shortcut is hidden. Other normal EspControl screen features continue to work.
 
 ## Wake Words
