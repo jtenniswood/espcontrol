@@ -136,6 +136,7 @@ constexpr int LV_LABEL_LONG_CLIP = 1;
 constexpr int LV_TEXT_ALIGN_LEFT = 0;
 constexpr int LV_TEXT_ALIGN_CENTER = 1;
 constexpr int LV_TEXT_ALIGN_RIGHT = 2;
+constexpr int LV_SIZE_CONTENT = -1;
 constexpr int LV_ALIGN_TOP_LEFT = 0;
 constexpr int LV_ALIGN_TOP_MID = 1;
 constexpr int LV_ALIGN_TOP_RIGHT = 2;
@@ -163,6 +164,8 @@ inline void lv_obj_set_style_bg_grad_dir(lv_obj_t *, int, lv_style_selector_t) {
 inline void lv_obj_set_style_text_color(lv_obj_t *, lv_color_t, lv_style_selector_t) {}
 inline void lv_obj_set_style_text_align(lv_obj_t *, int, lv_style_selector_t) {}
 inline lv_color_t lv_obj_get_style_text_color(lv_obj_t *, lv_style_selector_t) { return 0; }
+inline int lv_font_get_line_height(const lv_font_t *) { return 20; }
+inline int lv_obj_get_style_text_line_space(lv_obj_t *, lv_style_selector_t) { return 0; }
 inline const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *, lv_style_selector_t) {
   static const lv_font_t font;
   return &font;
@@ -1084,6 +1087,7 @@ def main() -> int:
         shutil.copy2(SAVED_CONFIG_SWITCH_HEADER, tmp_path / "button_grid_saved_config_switch_generated.h")
         shutil.copy2(CLOCK_BAR_HEADER, tmp_path / "clock_bar.h")
         shutil.copy2(BACKLIGHT_HEADER, tmp_path / "backlight.h")
+        shutil.copy2(BACKLIGHT_HEADER.with_name("photo_metadata.h"), tmp_path / "photo_metadata.h")
         shutil.copy2(BACKLIGHT_FADE_HEADER, tmp_path / "backlight_fade.h")
         shutil.copy2(DISPLAY_MODE_CONTROLLER_HEADER, tmp_path / "display_mode_controller.h")
         shutil.copy2(LAYOUT_HEADER, tmp_path / "button_grid_layout.h")

@@ -31,6 +31,10 @@
     "purpose": "Sizes the camera and media cover-art context pool from the generated device profile capacity.",
     "remove_when": "The image runtime uses another bounded allocation mechanism that consumes the same product profile capacity."
   },
+  "ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=2": {
+    "purpose": "Limits the camera and media cover-art context pool on the constrained S3 display.",
+    "remove_when": "The constrained S3 display can safely use the generated image-card capacity without this explicit limit."
+  },
   "ESPCONTROL_JC1060P470_BOOTFIX_20260522=1": {
     "purpose": "Cache-busting marker for the JC1060P470 boot-loop fix.",
     "remove_when": "A later required rebuild marker supersedes it."
