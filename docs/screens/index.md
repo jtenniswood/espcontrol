@@ -45,7 +45,7 @@ The Waveshare **ESP32-P4-86-Panel-ETH-2RO** supports USB-C power or its separate
 - **7-inch JC1060P470:** a case marked `V2`, or a screen-board date `2622` or higher, identifies [V2](/screens/jc1060p470-v2). An unmarked case with an earlier board date identifies [V1](/screens/jc1060p470-v1). Follow the [identification guide](/screens/jc1060p470) if uncertain.
 - **4-inch P4:** EspControl targets **ESP32-P4-86-Panel-ETH-2RO**. Other rear boards or similarly named camera variants are not automatically supported.
 
-Matching screen size, resolution, or processor is not sufficient. The common Cheap Yellow Display and other unlisted boards need a separate [device-support assessment](/reference/request-device-support).
+Matching screen size, resolution, or processor is not sufficient. The common Cheap Yellow Display and other unlisted boards do not have ready-to-install EspControl firmware.
 
 ## Buy, Mount, and Install
 
