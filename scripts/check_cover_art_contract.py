@@ -193,6 +193,28 @@ int main() {
   assert(four.screen_width == 800 && four.title_max_height == 210);
   auto square = cover_art_layout("esp32-p4-86", "0", 720, 720, 800, 495);
   assert(!square.split && square.art_size == 720 && square.panel_padding == 36);
+  for (const auto &slug : {"guition-esp32-s3-4848s040", "esp32-p4-86"}) {
+    const bool s3 = std::string(slug) == "guition-esp32-s3-4848s040";
+    const int side = s3 ? 480 : 720;
+    const int title_line = s3 ? 82 : 123;
+    const int artist_line = s3 ? 47 : 70;
+    const int artist_padding = s3 ? 6 : 9;
+    const int time_height = s3 ? 35 : 53;
+    for (const auto &rotation : {"0", "90", "180", "270"}) {
+      const auto layout = cover_art_layout(slug, rotation, side, side, side, s3 ? 330 : 495);
+      const auto button = playback_button_layout(layout, title_line);
+      assert(layout.title_max_lines == 3 && button.title_max_height == 3 * title_line);
+      const int content_height = button.panel_height - layout.panel_padding - button.panel_bottom_padding;
+      const int artist = artist_height_budget(content_height, button.title_max_height,
+                                              artist_line, artist_padding, time_height);
+      assert(artist >= artist_line + artist_padding);
+      assert(button.title_max_height + artist + time_height <= content_height);
+      assert(layout.panel_y + button.panel_height <= side - button.margin - button.size);
+      // Turning off the control restores the full panel, still capped at three title lines.
+      assert(button.title_max_height + artist_line + artist_padding + time_height <=
+             layout.panel_height - 2 * layout.panel_padding);
+    }
+  }
   for (const auto &layout : {ten, ten_v2, seven_v2, four, square,
        cover_art_layout("guition-esp32-s3-4848s040", "0", 480, 480, 480, 330),
        cover_art_layout("guition-esp32-p4-jc4880p443", "0", 480, 800, 480, 130)}) {

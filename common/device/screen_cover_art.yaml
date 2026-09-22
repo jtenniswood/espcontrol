@@ -670,6 +670,8 @@ script:
           const auto playback = espcontrol::cover_art::playback_button_layout(
               layout, lv_font_get_line_height(lv_obj_get_style_text_font(id(cover_art_title_label), LV_PART_MAIN)),
               ${cover_art_title_line_space});
+          // Keep the title line limit even when the square-screen control is disabled.
+          lv_obj_set_style_max_height(id(cover_art_title_label), playback.title_max_height, LV_PART_MAIN);
           lv_obj_clear_flag(id(cover_art_playback_button), LV_OBJ_FLAG_EVENT_BUBBLE);
           if (!${cover_art_square_overlay} || id(cover_art_playback_control_enabled).state) {
             lv_obj_clear_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN);
@@ -678,7 +680,6 @@ script:
                          -playback.margin, -playback.margin);
             lv_obj_set_width(id(cover_art_track_panel), playback.panel_width);
             lv_obj_set_height(id(cover_art_track_panel), playback.panel_height);
-            lv_obj_set_style_max_height(id(cover_art_title_label), playback.title_max_height, LV_PART_MAIN);
           } else {
             lv_obj_add_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN);
           }
@@ -686,7 +687,9 @@ script:
             lv_obj_set_style_bg_opa(id(cover_art_accent_overlay), LV_OPA_80, LV_PART_MAIN);
             lv_obj_set_style_opa(id(cover_art_accent_overlay), LV_OPA_80, LV_PART_MAIN);
             lv_obj_set_style_pad_top(id(cover_art_track_panel), layout.panel_padding, LV_PART_MAIN);
-            lv_obj_set_style_pad_bottom(id(cover_art_track_panel), layout.panel_padding, LV_PART_MAIN);
+            lv_obj_set_style_pad_bottom(id(cover_art_track_panel),
+                id(cover_art_playback_control_enabled).state ? playback.panel_bottom_padding : layout.panel_padding,
+                LV_PART_MAIN);
             lv_obj_set_style_pad_left(id(cover_art_track_panel), layout.panel_padding, LV_PART_MAIN);
             lv_obj_set_style_pad_right(id(cover_art_track_panel), layout.panel_padding, LV_PART_MAIN);
           }

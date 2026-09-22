@@ -382,11 +382,12 @@ inline Layout cover_art_layout(const std::string &slug, const std::string &rotat
     : Layout{800,1280,0,0,800,0,800,800,480,40,834,720,422,216,0,true};
   art_size = std::max(1, std::min(art_size, std::min(screen_width, screen_height)));
   int x = std::max(0, (screen_width - art_size) / 2), y = std::max(0, (screen_height - art_size) / 2);
+  const int title_max_lines = slug == "guition-esp32-s3-4848s040" || slug == "esp32-p4-86" ? 3 : 0;
   return Layout{screen_width,screen_height,x,y,art_size,x,y,art_size,art_size,x,y,art_size,art_size,
-                title_height,art_size >= 700 ? 36 : 24,false};
+                title_height,art_size >= 700 ? 36 : 24,false,title_max_lines};
 }
 struct PlaybackButtonLayout {
-  int size, margin, panel_width, panel_height, title_max_height;
+  int size, margin, panel_width, panel_height, title_max_height, panel_bottom_padding;
 };
 inline PlaybackButtonLayout playback_button_layout(const Layout &layout, int title_line_height = 0,
                                                    int title_line_space = 0) {
@@ -397,7 +398,7 @@ inline PlaybackButtonLayout playback_button_layout(const Layout &layout, int tit
   int height = layout.panel_height;
   int title_height = layout.title_max_height;
   if (layout.title_max_lines > 0) {
-    // Landscape panels with a line budget keep room for artist/time.
+    // Panels with a line budget keep room for artist/time.
     // Use the space above the button without reserving a second full margin.
     height = std::min(height, layout.screen_height - size - margin - layout.panel_y);
     if (title_line_height > 0) title_height = layout.title_max_lines * title_line_height +
@@ -410,7 +411,9 @@ inline PlaybackButtonLayout playback_button_layout(const Layout &layout, int tit
     height = std::min(height, layout.screen_height - size - 2 * margin - layout.panel_y);
     title_height = std::max(1, title_height - (layout.panel_height - height));
   }
-  return {size, margin, width, height, title_height};
+  // The button's reserved band supplies the bottom spacing on square screens.
+  const int bottom_padding = layout.title_max_lines > 0 ? 0 : layout.panel_padding;
+  return {size, margin, width, height, title_height, bottom_padding};
 }
 
 inline int artist_height_budget(int panel_height, int title_height, int line_height,

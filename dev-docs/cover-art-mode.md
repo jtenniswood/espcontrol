@@ -20,7 +20,8 @@ layout, downloading, and presentation responsibilities distinct.
 ## Presentation Contract
 
 - Square screens use artwork as the full background. Metadata may temporarily
-  overlay it and long artist text truncates with an ellipsis.
+  overlay it; titles grow up to three full lines whether the playback control
+  is enabled or disabled, and long artist text truncates with an ellipsis.
 - Rectangular screens use a square artwork region and a dedicated metadata
   panel. Artist text may wrap only when the panel has enough vertical space.
 - Titles have priority over artist text. Missing titles use an em dash; a
