@@ -1,8 +1,20 @@
 import type { AppState } from "../state/types";
 import type { UiRuntimeState } from "./state";
 
+declare const __ESPCONTROL_LOGO_SVG__: string;
+
 export function renderPanelBrand(brand: Element, document: Document, name?: string): void {
-    brand.textContent = "EspControl";
+    brand.textContent = "";
+    const logo = document.createElement("img");
+    logo.className = "sp-brand-logo";
+    logo.src = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(__ESPCONTROL_LOGO_SVG__);
+    logo.alt = "";
+    logo.setAttribute("aria-hidden", "true");
+    brand.appendChild(logo);
+    const title = document.createElement("span");
+    title.className = "sp-brand-title";
+    title.textContent = "EspControl";
+    brand.appendChild(title);
     if (name) {
         const label = document.createElement("span");
         label.className = "sp-brand-name";

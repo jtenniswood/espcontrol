@@ -2938,8 +2938,8 @@ inline void image_card_resume_pipeline() {
     ctx->retry_deadline_ms = now + IMAGE_CARD_STARTUP_RETRY_MS;
     ctx->next_picture_retry_ms = 0;
     ctx->next_download_retry_ms = 0;
-    image_card_refresh_entity_state(ctx);
     if (!ctx->media_artwork) {
+      image_card_refresh_entity_state(ctx);
       image_card_hide(ctx);
       image_card_set_loading_state(ctx, "Loading", true);
     }

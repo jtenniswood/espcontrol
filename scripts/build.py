@@ -43,6 +43,7 @@ MDI_WEB_FONT = ROOT / "common" / "assets" / "fonts" / f"materialdesignicons-webf
 INTER_WEB_FONT = ROOT / "node_modules" / "vitepress" / "dist" / "client" / "theme-default" / "fonts" / "inter-roman-latin.woff2"
 ROBOTO_WEB_FONT = ROOT / "common" / "assets" / "fonts" / "roboto-latin.woff2"
 SUPPORT_BUTTON_IMAGE = ROOT / "common" / "assets" / "images" / "buy-me-a-coffee-button.png"
+ESPCONTROL_LOGO_SVG = ROOT / "docs" / "public" / "images" / "espcontrol-logo.svg"
 WEB_SOURCE_DIR = ROOT / "src" / "webserver"
 WEB_BUNDLE_RETENTION = ROOT / "docs" / "public" / "webserver" / "bundle-retention.json"
 
@@ -319,6 +320,7 @@ def run_generated_transaction_self_test():
                 "outputDir": str(bundle_root),
                 "devices": {slug: config},
                 "embeddedMdiStyles": embedded_mdi_styles,
+                "espcontrolLogoSvg": ESPCONTROL_LOGO_SVG.read_text(encoding="utf-8"),
                 "testHooks": False,
                 "overlays": {str(entry_path): entry_overlay},
             }),
@@ -4058,6 +4060,7 @@ def build_www(
     """Build one shared www.js containing the validated device profiles."""
     devices = build_web_devices()
     embedded_mdi_styles = embedded_web_mdi_styles()
+    espcontrol_logo_svg = ESPCONTROL_LOGO_SVG.read_text(encoding="utf-8")
     temporary_root = None
     if output_dir is None:
         temporary_root = tempfile.TemporaryDirectory(prefix="espcontrol-www-")
@@ -4072,6 +4075,7 @@ def build_www(
             "outputDir": str(build_root),
             "devices": devices,
             "embeddedMdiStyles": embedded_mdi_styles,
+            "espcontrolLogoSvg": espcontrol_logo_svg,
             "testHooks": test_hooks,
             "overlays": GENERATED_TRANSACTION.overlays() if GENERATED_TRANSACTION is not None else {},
         }),

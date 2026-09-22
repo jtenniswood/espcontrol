@@ -87,6 +87,7 @@ bool image_card_modal_active_for(ImageCardCtx *ctx) { return ui.active == ctx; }
 std::string tile_status, modal_status;
 int cleared = 0, pictures = 0, tile_requests = 0, modal_requests = 0, recovered = 0;
 int retained_state_reads = 0;
+std::string retained_state = "idle";
 void image_card_hide(ImageCardCtx *ctx) { if (ctx->widget) ctx->widget->hidden = true; }
 void image_card_set_loading_state(ImageCardCtx *, const char *s, bool) { tile_status = s; }
 void image_card_show_modal_loading(ImageCardCtx *, const char *s) { modal_status = s; }
@@ -134,7 +135,7 @@ void ha_subscribe_state(const std::string &, std::function<void(std::string)> cb
 bool ha_read_retained_state(const std::string &, std::function<void(std::string)> cb,
                             void * = nullptr) {
  ++retained_state_reads;
- cb("idle");
+ cb(retained_state);
  return true;
 }
 void image_card_request_picture(ImageCardCtx *) { ++pictures; }
@@ -162,6 +163,7 @@ source = source.replace('bool has_image() {', 'std::string get_url() { return "s
 source += definition('image_card_refresh_due')
 source += definition('refresh_visible_image_cards')
 source += definition('image_card_suspend_pipeline')
+source += definition('image_card_resume_pipeline')
 camera_yaml = (root / 'common/device/screen_camera_screensaver.yaml').read_text()
 callback = re.search(
     r'std::function<void\(esphome::StringRef\)>\(\[entity, subscription_generation\]\(esphome::StringRef state\) \{.*?\}\)',
@@ -272,6 +274,22 @@ int main() {
  image_card_suspend_pipeline();
  assert(suspended && !ctx.active && ctx.access_token.empty());
  assert(!ctx.access_token_request_pending);
+ // Visible cameras revalidate availability when the real resume path runs.
+ ctx.camera_entity_unavailable = true;
+ image_card_resume_pipeline();
+ assert(!suspended && ctx.active && !ctx.camera_entity_unavailable);
+ assert(retained_state_reads == 3);
+ // An unavailable media player must not acquire the camera-only blocker on wake.
+ ctx.media_artwork = true; ctx.entity_id = "media_player.lounge";
+ image_card_suspend_pipeline();
+ retained_state = "unavailable";
+ const int pictures_before_media_resume = pictures;
+ image_card_resume_pipeline();
+ assert(ctx.active && !ctx.camera_entity_unavailable);
+ assert(retained_state_reads == 3 && pictures > pictures_before_media_resume);
+ retained_state = "playing";
+ refresh_visible_image_cards();
+ assert(!ctx.camera_entity_unavailable && pictures > pictures_before_media_resume + 1);
  // Media Cover Art keeps its separate existing retry behavior.
  ctx.media_artwork = true; ctx.image_ready = true; tile_status.clear();
  image_card_handle_download_error(&ctx);
