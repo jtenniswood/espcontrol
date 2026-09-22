@@ -161,6 +161,16 @@ lvgl:
                 hidden: true
 
 script:
+  - id: camera_screensaver_text_refresh
+    mode: restart
+    then:
+      - lvgl.label.update:
+          id: camera_screensaver_unavailable
+          text: !lambda 'return std::string(espcontrol_i18n_key("unavailable"));'
+      - lvgl.label.update:
+          id: camera_screensaver_loading
+          text: !lambda 'return std::string(espcontrol_i18n_key("loading"));'
+
   - id: camera_screensaver_config_changed
     mode: restart
     then:
