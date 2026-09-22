@@ -139,7 +139,7 @@ const screenProducts: Record<string, Record<string, string>> = {
     processor: 'ESP32-P4',
   },
   'screens/p4-86.md': {
-    name: 'ESP32-P4 86 Panel',
+    name: 'ESP32-P4 86',
     brand: 'ESP32-P4',
     model: 'ESP32-P4-86-Panel-ETH-2RO',
     size: '4 inches',
@@ -453,7 +453,7 @@ export default defineConfig({
             ],
           },
           { text: '4.3-inch JC4880P443', link: '/screens/jc4880p443' },
-          { text: '4-inch ESP32-P4 86 Panel', link: '/screens/p4-86' },
+          { text: '4-inch ESP32-P4 86', link: '/screens/p4-86' },
           { text: '4-inch 4848S040', link: '/screens/4848s040' },
           { text: 'Printable Stands', link: '/reference/3d-printable-stands' },
         ],
