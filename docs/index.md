@@ -75,6 +75,7 @@ If you find this project useful, consider buying me a coffee to support ongoing 
 
 ## Next Steps
 
+- [Example Layouts](/features/screen-examples) — illustrated living-room, hallway, and bedside setups
 - [Install](/getting-started/install) — what you need, how to flash, and first-time setup
 - [Setup](/features/setup) — how to configure cards, display, and screensaver from your browser
 - [Card Types](/card-types/) — choose the right card for each Home Assistant control, sensor, or panel action

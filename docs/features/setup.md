@@ -8,6 +8,8 @@ description:
 
 Your EspControl panel has a built-in web page where you can set everything up. Open it by typing the panel's address into any browser on your phone or computer.
 
+For ideas before you start, browse the illustrated [living-room, hallway, and bedside layouts](/features/screen-examples).
+
 ![Screen setup page](/images/screen-setup.png)
 
 ![Webserver card grid with examples of lights, climate, media, weather, covers, locks, actions, sensors, and date cards](/images/webserver-card-gallery.png)

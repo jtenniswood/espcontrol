@@ -10,6 +10,8 @@ Cards are the controls and information tiles shown on the EspControl screen. Eac
 
 Use this page when you know what you want the panel to do but are not sure which card type to choose.
 
+See [Example Screen Layouts](/features/screen-examples) for illustrated ways to combine these cards on landscape, portrait, and square panels.
+
 ## Choose a Card
 
 | Goal | Use this card | Entity or target |
