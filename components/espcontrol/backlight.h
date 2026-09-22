@@ -425,7 +425,8 @@ inline void position_clock_image_overlay(lv_obj_t *overlay, lv_obj_t *shadow,
   constexpr lv_coord_t shadow_offset_y = 2;
   const lv_coord_t x = layout.margin;
   const lv_coord_t y = layout.clock_y;
-  lv_obj_set_pos(shadow, x + shadow_offset_x, y + shadow_offset_y);
+  // Give the large clock shadow one extra pixel of separation on each axis.
+  lv_obj_set_pos(shadow, x + shadow_offset_x + 1, y + shadow_offset_y + 1);
   lv_obj_set_pos(label, x, y);
   if (metadata_visible) {
     lv_obj_set_pos(metadata, layout.metadata_x, layout.metadata_y);
