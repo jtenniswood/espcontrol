@@ -77,5 +77,5 @@ This detailed routing table is generated directly from `scripts/check_tasks_data
 | `timezones` | firmware, web | Yes | never | — | — | `common/**`<br>`src/webserver/**`<br>`components/espcontrol/sun_calc.h`<br>`scripts/check_timezones.py` | — | `npm run check:timezones` |
 | `public-firmware-script` | firmware, workflow | Yes | deterministic | — | — | `scripts/**`<br>`docs/public/**` | — | `npm run check:public-firmware-script` |
 | `web-browser-smoke` | web | No | deterministic | `PLAYWRIGHT_BROWSERS_PATH`<br>`PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD` | — | `src/webserver/**`<br>`devices/**`<br>`common/addon/time.yaml`<br>`scripts/check_web_browser_smoke.js`<br>`package-lock.json`<br>`scripts/web_source.js`<br>`scripts/build_web_bundle.js` | — | `npm run check:web-browser-smoke` |
-| `docs-build` | docs | No | never | — | — | `docs/**`<br>`dev-docs/**`<br>`DEVELOPERS.md`<br>`README.md`<br>`product/README.md`<br>`package-lock.json` | — | `python3 scripts/check_tasks.py run-task docs-build` |
+| `docs-build` | docs | No | never | — | — | `docs/**`<br>`scripts/check_docs_site.py`<br>`dev-docs/**`<br>`DEVELOPERS.md`<br>`README.md`<br>`product/README.md`<br>`package.json`<br>`package-lock.json` | — | `python3 scripts/check_tasks.py run-task docs-build` |
 <!-- END GENERATED CHECK MATRIX -->

@@ -1,66 +1,66 @@
 ---
-title: EspControl FAQ
+title: "Home Assistant Touchscreen Questions and Answers"
 description: Community questions about EspControl setup, supported screens, Sonos and media, cameras, updates, and troubleshooting.
 outline: [2, 3]
 ---
 
-# FAQ
+# Home Assistant Touchscreen Questions and Answers
 
-Answers to questions raised in the EspControl Reddit discussions, with recurring questions and essential setup decisions first, followed by more detailed topics. Repeated questions are combined, and answers reflect the current documentation rather than limitations in older releases.
+Quick answers to common questions, with links to the detailed setup guides. Answers describe the current documentation; check [firmware release status](/features/firmware-updates#stable-releases-development-builds-and-custom-firmware) when a control is missing on an older panel.
 
-Start with [Install](/getting-started/install) for a new panel or [Troubleshooting](/getting-started/troubleshooting) for a setup problem.
+Compare [supported screens](/screens/) before buying. Start with [Install](/getting-started/install) for a new panel or [Troubleshooting](/getting-started/troubleshooting) for a setup problem.
 
 ## Most asked and essential questions {#getting-started}
 
 ### What Is EspControl, and Do I Need to Write Code?
 
-EspControl turns a supported ESP32 touchscreen into a dedicated Home Assistant controller. Install with the [browser installer](/getting-started/install), connect it to your network and Home Assistant, then open the panel's web page to choose cards and entities. Normal setup does not require writing YAML or building a user interface.
+EspControl turns a supported ESP32 touchscreen into a dedicated Home Assistant controller. Normal setup uses the [browser installer](/getting-started/install) and panel web editor; no YAML or UI coding is required.
 
 ### Can I Use This Without Home Assistant?
 
-Home Assistant is required for the smart-home controls, entity readings, and media features described here. Add your lights, speakers, thermostats, and other devices to Home Assistant first, then select their entities in EspControl. You do not need ESPHome Device Builder for the normal browser installation.
+Home Assistant is required for smart-home controls, entity readings, and media features. Add your devices there first. ESPHome Device Builder is not required for [normal browser installation](/getting-started/install).
 
 ### Which Panels Are Supported?
 
-Use the [installer's supported-screen list](/getting-started/install) and the matching screen guide. Supported families are the Guition **4848S040** (4-inch S3), **JC4880P443** (4.3-inch P4), **JC1060P470** (7-inch P4, original and V2), **JC8012P4A1** (10.1-inch P4, original, V2, and V3), and the **ESP32-P4 86 Panel**. Exact hardware revisions matter; another screen with the same size or processor is not automatically compatible.
+Supported families are Guition 4848S040, JC4880P443, JC1060P470, JC8012P4A1, and P4 86 Panel ETH-2RO. Exact revisions matter. Use [Choose a screen](/screens/) to compare them and find the matching installer.
 
 ### Should I Choose the S3 or a P4 Screen?
 
-The [4-inch S3](/screens/4848s040) is the lower-cost starting point and supports media controls, speaker groups, and camera snapshots. P4 panels offer more capacity for image cards and a choice of screen sizes. The [4-inch P4 86 Panel](/screens/p4-86) also has a sharper 720×720 display and voice support. Compare the model guides and current seller listings; prices quoted in old posts are not fixed prices.
+Choose S3 for a compact, lower-cost panel; choose P4 for more image slots or a larger screen. P4 86 also supports voice. Compare [capacity, networking, and hardware revisions](/screens/).
 
 ### Can I Display My Existing Home Assistant Dashboard Cards?
 
-No. The panel uses its own touch interface rather than a browser running a Home Assistant dashboard. You configure EspControl cards that use your Home Assistant entities; Lovelace and custom dashboard cards cannot be imported. See [Setup](/features/setup).
+No. EspControl has its own touch interface and cards using Home Assistant entities. Lovelace and custom dashboard cards cannot be imported. See [Configure your panel](/features/setup).
 
 ### Can It Control Spotify, Sonos, Apple TV, Plex, or Music Assistant?
 
-EspControl controls the `media_player` entities already available in Home Assistant. Add the relevant integration first, then select its entity in a [Media card](/card-types/media). Playback, volume, seeking, artwork, and other controls depend on what that integration exposes. It does not connect a speaker to Home Assistant for you.
+Yes, through compatible Home Assistant `media_player` entities. Playback, artwork, volume, and seeking depend on the integration. Add it to Home Assistant first, then configure a [Media card](/card-types/media).
 
 ### Does the S3 Now Support Cameras, and Is It Live Video?
 
-Yes, current S3 firmware supports Camera cards. These show still snapshots from `camera.*` or `image.*` entities and refresh on relevant Home Assistant updates. They do not play a live video stream or guarantee a fixed frame rate. Tapping opens a larger image. Older comments saying cameras require a P4 predate S3 support. See [Cameras](/card-types/cameras).
+S3 and P4 panels support Camera cards showing still snapshots from Home Assistant `camera` or `image` entities. They do not stream live video. Tap to enlarge the latest image. See [Cameras](/card-types/cameras).
 
 ### Why Do Track Details Work but the Album Image Is Missing?
 
-Check that the selected Home Assistant entity provides artwork, then check the HTTP address the panel uses under **Settings > System > Home Assistant Settings**. The native ESPHome connection can work while image downloads fail. Use a reachable protocol/port or **Artwork Base URL** for a reverse proxy, update firmware, and retry. Spotify, radio, Plex, and Apple TV can expose different artwork URLs; capture [USB logs](/reference/collect-usb-logs) if only certain sources fail. See [Media Cover Art](/features/media-cover-art).
+Metadata and image downloads use different connections. Check that Home Assistant supplies artwork and the panel can reach its HTTP/HTTPS endpoint. Follow the [missing-artwork checks](/features/media-cover-art#track-details-work-but-artwork-is-missing).
 
 ### Are There Stands or Wall Mounts, Including a 7-inch Mount?
 
-Published files are listed under [Printable Stands and Mounts](/reference/3d-printable-stands). Match the exact model, rear board, and cable clearance. That list currently includes a 7-inch desk stand; a wall mount mentioned as a prototype in an older comment is not necessarily published. If you do not have a printer, the files can be used with a printing service, but check the model's dimensions first.
+Yes; [Printable Stands and Mounts](/reference/3d-printable-stands) lists published files, including a 7-inch desk stand. Match the exact rear board and cable clearance. Prototypes mentioned in older discussions may not be published.
 
 ### How Do I Open the New Controls or Change Their Tab Order?
 
-For Lights, Covers, Fans, or Media, select **All Controls** in the card's type or interaction settings. Climate cards open their controls when tapped. Use **Visible Tabs** where offered to reorder or hide controls; unsupported entity features remain hidden. If the option is absent, update firmware and reload the setup page. See [Lights](/card-types/lights), [Covers](/card-types/covers), [Fans](/card-types/fans), and [Media](/card-types/media).
+Choose **All Controls** for [Lights](/card-types/lights), [Covers](/card-types/covers), [Fans](/card-types/fans), or [Media](/card-types/media). Climate controls open on tap. Use **Visible Tabs** where offered. Missing options may require newer firmware and a browser reload.
 
 ## Music, speakers, and cover art
 
 ### Can I Group Speakers on the S3, and Can I Mix Sonos with WiiM?
 
-Speaker grouping is available on the S3 as well as P4 panels. It needs compatible Home Assistant players, actions permission, and the discovery sensor described in [Speaker Groups](/features/speaker-groups). Test joining the players in Home Assistant first. Music Assistant can provide another integration route, but EspControl cannot make incompatible Sonos, WiiM, or other players group together.
+Grouping works on S3 and P4 with compatible Home Assistant players. EspControl cannot make incompatible players join. Test grouping in Home Assistant, then follow [Speaker Groups](/features/speaker-groups) for discovery and actions permission.
 
 ### Can I Make a Dedicated Album-art Screen or Migrate from the Older Media Controller?
 
-Yes. Use a large Cover Art card, or enable the automatic [Media Cover Art](/features/media-cover-art) screen. On a square 3×3 panel, a 3×3 Cover Art card with the clock bar hidden fills the grid. Follow the [media-controller migration guide](/getting-started/migrate-esphome-media-player). Speaker grouping is now available, although early migration replies described it as unfinished.
+Yes. Use a large Cover Art card or the automatic [Media Cover Art](/features/media-cover-art) screen. The [migration guide](/getting-started/migrate-esphome-media-player) covers layouts, playback controls, and idle behaviour.
 
 ### How Do I Get the Speaker and Playback Tabs Shown in the Posts?
 
@@ -68,119 +68,101 @@ Use **Media > All Controls**, or tap a **Cover Art** card. Tabs appear according
 
 ### Can a Card Start a Playlist, Album, or Radio Station?
 
-Choose **Media > Track, Album or Playlist**, select the player, and provide the content ID or URI accepted by its Home Assistant integration. You can also trigger a Home Assistant script with an Action card for more complex playback. This is a saved shortcut rather than a full music-library browser. See [Media](/card-types/media).
+Choose **Media > Track, Album or Playlist** and supply a content ID accepted by the player integration. For complex playback, run a Home Assistant script with an Action card. See [Media](/card-types/media).
 
 ### Which Displays Support Voice or Play Audio Themselves?
 
-[Voice Control](/features/voice-control) is supported on the **4-inch ESP32-P4 86 Panel**, using its microphones and speaker with Home Assistant Assist. Its audio-capable firmware can also play media. Other panels' Media cards control external Home Assistant players; a Media card does not imply that the panel itself has a speaker.
+The **4-inch P4 86 Panel** supports [Home Assistant Assist voice control](/features/voice-control) and local audio with its microphones, speaker, and audio-capable firmware. Other panels' Media cards control external players.
 
 ## Cameras and photos
 
 ### Why Does a Camera Change from Loading to Unavailable?
 
-Check that the entity has an image in Home Assistant and that the panel can reach its image-download address. In **Settings > System > Home Assistant Settings**, try **Manual** with the reachable protocol and port if automatic discovery selects an unsuitable endpoint. A reverse proxy may need an explicit base URL. Also check the shared image-card limit. See [Setup](/features/setup#device-settings) and [Cameras](/card-types/cameras).
+Check the image exists in Home Assistant, the panel can reach its HTTP/HTTPS endpoint, and the shared image limit is not exceeded. See [Camera troubleshooting](/card-types/cameras#troubleshooting) and [connection settings](/features/setup#home-assistant-settings).
 
 ### Can I Show a Doorbell Snapshot When Someone Rings?
 
-Use a Camera card for the doorbell's Home Assistant camera or image entity. A Home Assistant automation can wake the screen with **Screen: Wake**. On P4 panels, the documented **refresh_camera_cards** action refreshes Camera cards on the visible page, subject to its refresh guard. Do not assume that action is available on S3 or that a snapshot card automatically opens on a ring. See [camera refresh](/card-types/cameras#refreshing-cards-from-home-assistant) and [screen wake](/features/screensaver#wake-from-home-assistant).
+Use a Camera card and a Home Assistant automation with [Screen: Wake](/features/screensaver#wake-from-home-assistant). P4 panels also have a [visible-camera refresh action](/card-types/cameras#refreshing-cards-from-home-assistant). The card does not automatically open when the doorbell rings.
 
 ### How Many Camera and Cover Art Cards Can I Use?
 
-P4 panels have **six shared image slots**. The S3 has **two**, allowing a Camera card alongside a Media Cover Art card. Limits apply across the main page and all subpages combined; moving an image card into a folder does not free a slot. See [camera limits](/card-types/cameras#practical-limits).
+P4 panels have **six** shared image slots; S3 has **two**. Camera and Cover Art cards share that limit across all pages. Moving a card into a folder does not free a slot. See [limits](/card-types/cameras#practical-limits).
 
 ### Can I Use Immich or Turn It into a Photo Frame?
 
-A Camera card can display a Home Assistant `image` entity, so a photo integration can supply changing pictures. The [EspControl Immich integration](https://github.com/jtenniswood/espcontrol-immich) was announced for beta testing in the S3-camera discussions. Follow that integration's own setup and status; photo selection happens through the integration, rather than by entering an Immich API key into a Camera card.
+Yes, through a Home Assistant `image` entity. The separate Immich Companion manages photos; the panel displays snapshots. See [Immich setup and integration status](/card-types/cameras#show-photos-from-immich), including its requirements and update path.
 
 ## Updates, names, and multiple panels
 
 ### How Do I Update the Firmware?
 
-If **Auto Update** is turned on (the default), the panel checks for and installs new versions automatically. You don't need to do anything.
-
-To update manually:
-
-1. Open the panel's web page.
-2. Go to the **Settings** tab in the [Setup](/features/setup).
-3. Under **Firmware**, press **Check for Update**.
-4. If a new version is available, the panel will download and install it.
-
-Advanced Ethernet-only builds may have these built-in update controls disabled. Update those displays through ESPHome OTA or USB instead.
-
-See [Firmware Updates](/features/firmware-updates) for more details.
+Standard firmware offers **Auto Update** and **Check for Update** under Firmware settings. Custom, Ethernet-only, and V3 installation paths have exceptions. Follow [Firmware Updates](/features/firmware-updates) for the correct method and release status.
 
 ### Will Automatic Updates Keep My Custom ESPHome YAML?
 
-Built-in updates install the project's released firmware; they do not rebuild your personal YAML. For custom components, pins, or other compiled changes, turn off the panel's built-in **Auto Update** and continue updating through [ESPHome](/getting-started/manual-esphome-setup). Saved cards and supported runtime settings are separate from custom compiled firmware.
+No. Built-in updates install released binaries and do not rebuild custom YAML. Disable **Auto Update** and continue through ESPHome for custom builds. See [release and custom-firmware guidance](/features/firmware-updates#stable-releases-development-builds-and-custom-firmware).
 
 ### Why Did Home Assistant Say Transport Encryption Was Disabled After an Update?
 
-Older mixed installation paths could replace a custom encrypted build with stock firmware that lacked the personal key. Current [manual setup](/getting-started/manual-esphome-setup) uses a device-stored key and documents how compatible OTA updates preserve it. Keep the recommended encryption package when rebuilding, and manage custom firmware consistently through ESPHome. A full erase or complete reset can require pairing again; do not treat an unexpected encryption warning as something to dismiss automatically.
+Mixed custom and stock firmware can change encryption behaviour. Keep the device-stored key package documented in [manual setup](/getting-started/manual-esphome-setup). Do not dismiss an unexpected warning; check [encryption troubleshooting](/getting-started/troubleshooting#home-assistant-says-connection-requires-encryption).
 
 ### Can I Rename a Panel Without Compiling Firmware?
 
-Yes. Open **Settings > System > Device Name**, check the address preview, and choose **Save & Restart**. Current firmware retains the name through normal OTA updates. Entity IDs stay unchanged, but custom ESPHome action names include the hostname, so update automations using those actions. See [Naming Your Panel](/features/setup#naming-your-panel).
+Yes. Use **Settings > System > Device Name > Save & Restart**. Entity IDs stay unchanged, but hostname-based ESPHome action names change. Update affected automations. See [Naming Your Panel](/features/setup#naming-your-panel).
 
 ### Can I Back Up My Setup?
 
-Yes. In the [Setup](/features/setup) **Settings** tab, under **Backup**, you can **Export** your entire setup (cards, subpages, colours, and display settings) as a file. To restore it later, use **Import** to load the saved file. You can also use this to copy your setup to a different panel — the import will rearrange cards automatically if the panels are different sizes. See [Backup](/features/backup) for details.
+Yes. Use **Export** and **Import** under Backup to save cards and settings or copy a setup to another panel. Layouts adapt to different screen sizes. See [Backup and restore](/features/backup) for exclusions.
 
 ### Can I Copy Just a Few Cards to Another Panel?
 
-Use **Copy Code** and **Paste Code** in the setup page to transfer cards and their attached subpages without replacing all the destination's settings. Use Backup Export/Import for a whole setup. Each panel still has its own web page and identity. See [Setup](/features/setup) and [Backup](/features/backup).
+Use **Copy Code** and **Paste Code** in [Setup](/features/setup) for cards and attached subpages. Use [Backup](/features/backup) for a whole configuration. Each panel keeps its own web page and identity.
 
 ### Can I Restart from Home Assistant and Update Without Reconnecting USB?
 
-Yes. Current firmware exposes a **Restart** button in Home Assistant; custom YAML is no longer needed just for that button. Once a panel is online, later manual ESPHome updates can usually use OTA. USB is still needed for initial flashing, recovery, or a documented change of firmware/networking type. See [Restart From Home Assistant](/features/setup#restart-from-home-assistant) and [Manual Setup](/getting-started/manual-esphome-setup).
+Yes. Home Assistant exposes a [Restart button](/features/setup#restart-from-home-assistant); online panels can usually update wirelessly. USB remains necessary for initial flashing, recovery, or networking-type changes. See [manual installation](/getting-started/manual-esphome-setup).
 
 ### How Do I Reset the Device?
 
-Open **Settings > System > Factory Reset** and save a backup first. **Partial reset** clears cards and preferences while keeping WiFi and the Home Assistant encryption key. **Complete reset** also removes those saved credentials and returns the display to first-time setup. Both keep the installed firmware; settings compiled into custom firmware remain. A normal firmware reflash is not a guaranteed reset. See [Reset the display](/features/backup#reset-the-display).
+Back up first, then use **Settings > System > Factory Reset**. Partial reset keeps WiFi and the Home Assistant key; Complete reset clears them. Both retain firmware. Follow [Reset the display](/features/backup#reset-the-display).
 
 ### Can I Stay on Releases While Managing the Panel in ESPHome?
 
-The simplest release-update route is the browser-installed firmware and its built-in updater. Manual ESPHome builds use the sources selected by your package configuration; rebuilding is not the same as installing a published release binary. For a release-specific custom build, use matching tagged sources throughout your configuration and dependencies. See [Manual Setup](/getting-started/manual-esphome-setup).
+Yes, by building from matching tagged sources and dependencies. Rebuilding the current source is different from installing a published binary. See [release versus custom firmware](/features/firmware-updates#stable-releases-development-builds-and-custom-firmware).
 
 ## Troubleshooting and privacy
 
 ### Why Do Cards Show State but Tapping Does Nothing?
 
-Enable **Allow the device to perform Home Assistant actions** for the panel in the ESPHome integration. Verify that the action also works directly in Home Assistant. If a garage-door confirmation still prevents an action, report the entity, card settings, firmware version, and reproduction steps rather than assuming the old report has the same cause. See [Enable Actions](/getting-started/home-assistant-actions).
+Enable **Allow the device to perform Home Assistant actions** in the panel's ESPHome integration options. Then test a command that works directly in Home Assistant. Follow [Enable Actions](/getting-started/home-assistant-actions).
 
 ### The Web Page Looks Broken or Unstyled
 
-The setup page loads web resources from the internet. Check that the browser can reach those resources, then force-refresh the page or try a private window. Update the panel firmware if new card types or **All Controls** options are missing. See [Troubleshooting](/getting-started/troubleshooting).
+Check that your browser can reach the hosted web resources, then force-refresh or try a private window. If needed, use the embedded-editor fallback in [Troubleshooting](/getting-started/troubleshooting#web-configuration-changes-won-t-save).
 
 ### My Device Won't Connect to WiFi
 
-- Make sure you're connecting to a **2.4 GHz** network. The panel does not support 5 GHz WiFi.
-- Double-check your **WiFi password** — it's easy to mistype on a small screen.
-- Move the panel **closer to your router** during initial setup. You can move it to its final location afterwards.
-- If the panel previously connected but can't anymore (e.g. you changed your WiFi password), it will first try to reconnect. If that does not work, it will create a hotspot so you can enter the new details. Look for a network called **ESP_xxxxxx**; it can take up to **90 seconds** to appear.
-- If you installed an advanced Ethernet-only build, WiFi setup is intentionally disabled. Check the Ethernet cable, switch port, and DHCP/router lease list instead.
+Use 2.4 GHz WiFi, verify the password, and wait up to 90 seconds for the setup hotspot if reconnecting fails. Ethernet-only builds have no hotspot. Follow [WiFi troubleshooting](/getting-started/troubleshooting#wifi-does-not-connect).
 
 ### How Do I Find My Device's IP Address?
 
-Tap the connectivity icon in the panel's clock bar to see its IP address and device name. An unconfigured display also shows its address. Alternatively, check your router's connected-device list or the device under **Home Assistant > Settings > Devices & services > ESPHome**.
+Tap the connectivity icon in the clock bar, check the unconfigured display, or look in your router's device list or Home Assistant ESPHome device page. Then open that address in a browser.
 
 ### The Display Is Stuck on the Loading Screen
 
-- Give it up to **60 seconds** on first boot. It needs time to connect to WiFi and download resources.
-- If the display shows a WiFi reconnecting message, wait a little longer. Short WiFi outages can recover by themselves before setup mode starts.
-- If it stays on the loading screen, **power-cycle** the panel (unplug and re-plug the USB-C cable).
-- If the WiFi hotspot appears after restarting, the panel couldn't connect to your network — go through the [WiFi setup](/getting-started/install#connect-to-wifi) again.
+Allow startup time, then power-cycle and check WiFi setup if it remains stuck. Use the [loading-screen checks](/getting-started/troubleshooting#the-display-is-stuck-on-the-loading-screen), including USB logs if you need to report it.
 
 ### What Should I Do about Stripes, Haze, or a Halo around the Screen?
 
-Check the correct firmware for the exact panel revision and try a known-good power supply and cable that meet its requirements. A comment reporting improvement with another USB supply does not establish the cause of every display fault. If it persists, include photos, the power setup, model, and firmware in a report; a panel defect may need the seller's help.
+Check firmware revision, supply, and cable first. If the fault persists, document the hardware and symptoms; a panel defect may need seller support. Follow the [display checks](/getting-started/troubleshooting#stripes-haze-or-a-halo-on-the-screen).
 
 ### Where Should I Report a Bug or Request a Feature?
 
-Use [GitHub issues](https://github.com/jtenniswood/espcontrol/issues). Include the exact display/revision, firmware version, installation method, steps to reproduce, and relevant Home Assistant entity attributes. Photos help with layout problems; [USB logs](/reference/collect-usb-logs) help with crashes or image downloads. Remove credentials and private details before posting. See [Contributing](/reference/contributing).
+Use [GitHub issues](https://github.com/jtenniswood/espcontrol/issues) with model, revision, firmware, reproduction steps, and relevant logs or photos. Remove credentials and private details. See [Contributing](/reference/contributing) and [USB logs](/reference/collect-usb-logs).
 
 ### How Is My Data Handled?
 
-Smart-home control normally runs between the panel and Home Assistant on your local network. EspControl does not run a central service collecting your smart-home data. Firmware updates, web assets, network time, artwork URLs, webhooks, and any cloud services chosen in Home Assistant can involve external connections. A local remote does not make Spotify or another cloud-backed integration offline. See [Privacy](/reference/privacy).
+Smart-home control normally runs locally. Updates, web assets, network time, artwork, webhooks, and integrations can contact external services. EspControl has no central smart-home data collection service. See [Privacy](/reference/privacy) for details.
 
 ## Cards and everyday controls
 
@@ -190,23 +172,23 @@ The [card catalogue](/card-types/) covers lights, switches, climate, fans, cover
 
 ### How Many Cards Can I Have?
 
-The standard home grids have **9 slots** on the 4-inch panels, **6** on the 4.3-inch, **15** on the 7-inch, and **20** on the 10.1-inch panels. Larger cards occupy several slots. [Subpages](/features/subpages) add more pages; each reserves one slot for Back. Camera and Cover Art cards also have separate [shared image limits](#how-many-camera-and-cover-art-cards-can-i-use).
+Standard home grids have **9 slots** on 4-inch panels, **6** on 4.3-inch, **15** on 7-inch, and **20** on 10.1-inch. Larger cards occupy multiple slots. [Subpages](/features/subpages) add pages; [image limits](/card-types/cameras#practical-limits) apply separately.
 
 ### What Is a Subpage?
 
-Subpages are like folders for your cards. Set a home-screen card to the **Subpage** type and it becomes a folder. Tapping it on the panel opens a new page with its own set of cards. This is great for grouping controls by room or device type without filling up the home screen. See [Subpage](/features/subpages).
+A Subpage card opens another page of controls, like a folder for a room or device group. Each subpage reserves one slot for Back. See [Subpages](/features/subpages).
 
 ### Can the Screen Sleep, Wake on Touch, or Wake When Someone Arrives?
 
-Yes. Configure a timer or Home Assistant presence sensor in [Screensaver](/features/screensaver), then choose dimming, a clock, or display off. Touch wakes it, and Home Assistant also exposes a **Screen: Wake** button. Built-in camera face detection is not a supported presence method; use a Home Assistant presence sensor.
+Yes. [Screensaver settings](/features/screensaver) support timer- or Home Assistant presence-based behaviour, touch wake, and **Screen: Wake**. Built-in camera face detection is not a supported presence source.
 
 ### Can It Control Mini-split Fan Speed, Swing, and Heating/Cooling Targets?
 
-A [Climate card](/card-types/climate) exposes temperature, HVAC mode, fan, swing, and preset options when the Home Assistant entity supports them. Range thermostats now show separate low/heating and high/cooling targets; older reports of only one target do not describe the current controls. If an option is missing, compare the entity's attributes in Home Assistant and include them in a bug report.
+Yes, when the Home Assistant climate entity exposes those capabilities. Range thermostats show separate heating and cooling targets. See [Climate](/card-types/climate) and compare missing controls with the entity's Home Assistant attributes.
 
 ### Why Does My Weather Card Only Show Cloudy Instead of a Temperature?
 
-**Current Conditions** shows the weather state. Current firmware also offers **Temperatures Today** and **Temperatures Tomorrow** for forecast highs and lows; these need Home Assistant actions permission. For a current measured temperature, use a Sensor card with a temperature sensor entity. If only the old option appears, update firmware and reload the browser. See [Weather](/card-types/weather).
+**Current Conditions** shows the state. Select **Temperatures Today** or **Temperatures Tomorrow** for forecast highs/lows and enable actions permission. Use a Sensor card for measured temperature. See [Weather](/card-types/weather).
 
 ### Can I Choose a Different Background Colour for Every Card?
 
@@ -226,7 +208,7 @@ Yes, when the WLED integration exposes them as a `select` entity. Add an **Actio
 
 ### Can One Sensor Card Show Temperature and Humidity Together?
 
-A Sensor card currently uses one source entity. Use separate cards, group them in a subpage, or expose a combined text reading from Home Assistant and display it with a Text sensor card. A dedicated multi-sensor tile was requested in the discussions; it is not a current Sensor card mode. See [Sensors](/card-types/sensors).
+A Sensor card has one source entity. Use separate cards or a combined text sensor from Home Assistant. A dedicated multi-sensor tile is not a current mode. See [Sensors](/card-types/sensors).
 
 ### Why Do Light Controls Use Colour Presets Instead of a Colour Wheel?
 
@@ -244,11 +226,11 @@ The panel includes hundreds of icons from the Material Design Icons set. If the 
 
 ### Which 10-inch Revision or 4-inch P4 Variant Should I Buy?
 
-Check the [10.1-inch guide](/screens/jc8012p4a1) before selecting original or V2 firmware, and use the [V3 guide](/screens/jc8012p4a1-v3) when chip information confirms ESP32-P4 v3.x silicon. Seller names alone can be ambiguous. The current [P4 86 guide](/screens/p4-86) targets **ESP32-P4-86-Panel-ETH-2RO**; do not assume a camera-port variant or a different rear board has the same support or fits the same case.
+Check [revision identification](/screens/#identify-the-hardware-revision-before-installing). JC8012P4A1 V3 silicon takes precedence over case dates. P4 86 support targets **ETH-2RO**; other boards are not automatically compatible.
 
 ### Can I Use a Cheap Yellow Display or Another ESP32 Screen?
 
-Only the exact supported models have ready-to-install EspControl firmware. The common Cheap Yellow Display is not on that list. A matching processor or resolution is not enough: display drivers, touch, memory, and wiring also matter. For another board, share its exact model and hardware details in a [GitHub request](https://github.com/jtenniswood/espcontrol/issues); community work needs testing on that hardware.
+Only [listed models](/screens/) have ready-to-install firmware. A matching processor or resolution is insufficient. Provide hardware details through [Request Device Support](/reference/request-device-support) for another board; testing on that hardware is required.
 
 ### Will It Fit a Standard Wall Box or Replace a Light Switch?
 
@@ -260,25 +242,25 @@ An Ethernet port alone does not establish PoE support. Check the exact panel and
 
 ### Can the Panel Also Be a Bluetooth Proxy?
 
-Bluetooth proxy is not part of the current standard panel setup. The screens need their available memory for the interface and image features. The documented Ethernet-only builds also omit Bluetooth proxy and turn off the WiFi/Bluetooth co-processor; changing to Ethernet does not enable it. Use a separate proxy for that role.
+Bluetooth proxy is not included in standard panel setup or documented Ethernet-only builds. Use a separate proxy. Ethernet firmware turns off the WiFi/Bluetooth co-processor; see [networking options](/screens/#networking-and-power).
 
 ### Can It Run on a Battery and Show the Charge Level?
 
-Battery power and battery measurement are separate hardware features. Current [Battery Status](/features/battery) support is optional and limited to compatible 10.1-inch JC8012P4A1 battery hardware; readings are estimates and may need verification. It does not detect charging. The S3 battery experiments in the comments do not establish supported charge reporting or a guaranteed runtime.
+Power and measurement are separate hardware features. [Battery Status](/features/battery) is optional on compatible JC8012P4A1 battery hardware, estimates charge, and does not detect charging. S3 experiments do not establish supported charge reporting.
 
 ### Can I Use a 10-inch Display in Portrait Mode?
 
-Use **Settings > Display > Rotation**. Available rotations depend on the panel and firmware; most supported panels offer 0, 90, 180, and 270 degrees. Check the preview and available card space after rotating. See [Rotation](/features/rotation).
+Use **Settings > Display > Rotation**. Available orientations depend on panel and firmware. Check the preview and usable card space after rotating. See [Rotation](/features/rotation).
 
 ### Does It Have a Room Temperature Sensor?
 
-Do not assume a panel includes a usable ambient temperature sensor. Select a Home Assistant temperature entity, or use a [Local Sensor](/card-types/local-sensors) if your hardware and firmware provide one. A sensor mounted near the processor or backlight can read warmer than the room.
+Do not assume an ambient sensor is built in. Select a Home Assistant temperature entity or a supported [Local Sensor](/card-types/local-sensors). Sensors near the processor or backlight can read warmer than the room.
 
 ## More about EspControl
 
 ### Does the Panel Work with Other Smart Home Platforms?
 
-EspControl is built specifically for Home Assistant. It does not support other platforms like Google Home, Apple HomeKit, or SmartThings directly. However, if those platforms are integrated into your Home Assistant setup, the panel can control devices that are exposed through Home Assistant.
+EspControl connects to Home Assistant. Google Home, HomeKit, SmartThings, and other platforms work indirectly only through devices and entities exposed by their Home Assistant integrations.
 
 ### Where Is the Source Code, and How Can I Help?
 

@@ -1,5 +1,5 @@
 ---
-title: Language
+title: "Change the Panel Language"
 description: Choose the panel language and learn how to contribute translations for EspControl.
 ---
 

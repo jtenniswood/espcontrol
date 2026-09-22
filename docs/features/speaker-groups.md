@@ -1,5 +1,5 @@
 ---
-title: Speaker Groups
+title: "Group Home Assistant Speakers from Your Touchscreen"
 description: Set up Home Assistant speaker discovery, join compatible speakers, and control group volume from EspControl.
 ---
 
@@ -59,37 +59,6 @@ template:
         attributes:
           data: >
             {%- set s = integration_entities("music_assistant") | select("match", "media_player") | list -%}
-            {%- set ns = namespace(items=[]) -%}
-            {%- for entity_id in s -%}
-              {%- set available = states(entity_id) not in ["unknown", "unavailable"] -%}
-              {%- set ns.items = ns.items + [[entity_id, state_attr(entity_id, "friendly_name") or entity_id, state_attr(entity_id, "volume_level"), available]] -%}
-            {%- endfor -%}
-            v2|{{ ns.items | to_json }}
-```
-
-### Music Assistant 2.7 and Earlier
-
-Older Music Assistant versions can expose group and sync-group entities as well as individual speakers. This version excludes those virtual group entities so the panel shows only physical players.
-
-```yaml
-template:
-  - sensor:
-      - name: "Speaker Group"
-        unique_id: speaker_group
-        state: >
-          {%- set s = integration_entities("music_assistant")
-              | select("match", "media_player")
-              | reject("is_state_attr", "mass_player_type", "group")
-              | reject("is_state_attr", "mass_player_type", "sync_group")
-              | list -%}
-          {{ s | count }}
-        attributes:
-          data: >
-            {%- set s = integration_entities("music_assistant")
-                | select("match", "media_player")
-                | reject("is_state_attr", "mass_player_type", "group")
-                | reject("is_state_attr", "mass_player_type", "sync_group")
-                | list -%}
             {%- set ns = namespace(items=[]) -%}
             {%- for entity_id in s -%}
               {%- set available = states(entity_id) not in ["unknown", "unavailable"] -%}

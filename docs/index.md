@@ -1,18 +1,18 @@
 ---
-title: EspControl — No-Code Smart Home Touch Controller
+title: "EspControl: No-Code Home Assistant Touchscreen"
 titleTemplate: :title
 description: "No-code Home Assistant touchscreen controller for supported ESP32 panels. Install from a browser, configure cards from the panel web page, and control your home locally."
 ---
 
 ![EspControl on a 7-inch touchscreen: home screen with temperature, clock, and control tiles](/images/home_screen_hero.jpg)
 
-# EspControl
+# EspControl: No-Code Home Assistant Touchscreen
 
 **A no-code touchscreen controller for Home Assistant.** EspControl turns affordable ESP32 touchscreens into dedicated panels for the lights, scenes, sensors, heating, garage doors, media players, cameras, alarms, and routines you use every day.
 
 You do not need to write YAML, build your own ESPHome configuration, or keep a tablet permanently logged into Home Assistant. Install the firmware from a browser, connect the screen to WiFi, add it to Home Assistant, then configure the panel from its built-in setup page.
 
-Start here: **[Install EspControl](/getting-started/install)**.
+Start here: **[Choose your screen](/screens/)** or **[install EspControl](/getting-started/install)** if you already have one. For room controls, music, cameras, or voice, browse the [practical guides](/guides/).
 
 **Source code and issues:** [github.com/jtenniswood/espcontrol](https://github.com/jtenniswood/espcontrol).
 
@@ -55,6 +55,8 @@ See [Card Types](/card-types/) for examples and setup notes.
 6. Open the panel setup page and choose the cards, pages, active colour, and display behaviour you want.
 
 ## Where to Buy
+
+Compare [screen sizes, image limits, voice support, and hardware revisions](/screens/) before ordering. Prices below are approximate seller prices, not fixed project pricing.
 
 | Screen | Panel | 3D printable mount |
 |---|---|---|

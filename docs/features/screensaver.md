@@ -1,5 +1,5 @@
 ---
-title: EspControl Screensaver
+title: "Screensaver"
 description:
   How to configure screensaver modes and presence sensor wake on your EspControl panel.
 ---

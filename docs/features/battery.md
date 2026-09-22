@@ -1,5 +1,5 @@
 ---
-title: EspControl Battery Status
+title: "Battery Status"
 description:
   How to enable battery support on compatible panels.
 ---

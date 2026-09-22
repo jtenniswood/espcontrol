@@ -1,12 +1,14 @@
 ---
-title: Media Cards
+title: "Control Home Assistant Media Players from Your Touchscreen"
 description:
   How to use media cards on your EspControl panel to control Home Assistant media players.
 ---
 
-# Media
+# Control Home Assistant Media Players
 
 A Media card controls a Home Assistant `media_player`. Choose a small one-job card, or use **All Controls** for the main playback screen.
+
+Add your Sonos, Spotify, Apple TV, Plex, Music Assistant, or other player integration in Home Assistant first. EspControl uses the entities and capabilities that integration exposes; it does not connect a speaker or streaming account for you.
 
 ![Wide media card showing now-playing title and artist](/images/card-media.png)
 

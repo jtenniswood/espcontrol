@@ -1,5 +1,5 @@
 ---
-title: Lock Cards
+title: "Home Assistant Lock Cards"
 description:
   How to use lock cards on your EspControl panel to lock, unlock, and view Home Assistant lock entities.
 ---

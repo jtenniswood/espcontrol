@@ -1,10 +1,10 @@
 ---
-title: EspControl Screen Setup
+title: "Configure Your Home Assistant Touchscreen"
 description:
   How to use the built-in web page to configure cards, icons, display settings, screensaver, and brightness on your EspControl panel.
 ---
 
-# Setting Up Your Device's Screen
+# Configure Your Home Assistant Touchscreen
 
 Your EspControl panel has a built-in web page where you can set everything up. Open it by typing the panel's address into any browser on your phone or computer.
 
@@ -61,7 +61,7 @@ For cards that use Home Assistant, enter the entity name from Home Assistant in 
 
 Some card names group several related controls together. **Lights** contains All Controls, Switch, Brightness, and Colour Temperature options. **Fans** contains All Controls, Switch, Speed, Oscillation, Direction, and Preset options. **Action** contains scene, script, helper, Option Select, and Local Action modes. **Sensor** contains Home Assistant and Local Sensor sources. **Vacuum** contains Status, Start / Stop, Dock, Pause / Resume, Spot Clean, Locate, and Clean Area options. **Lawn Mower** contains Status, Start Mowing, Dock, and Pause / Resume options. **Cover** contains All Controls, Position, Tilt, Toggle, Open, Close, Stop, and Set Position options. **Alarm** contains All Controls, Arm Away, Arm Home, Arm Night, Arm Vacation, and Disarm options. **Date & Time** contains Clock, Date, Time & Date, and World Clock options.
 
-For the generated list of current card domains, subpage support, grouping, and options, see the [Card Capability Reference](/generated/cards/capabilities).
+For the generated list of current card domains, subpage support, grouping, and options, see the [Card Capability Reference](/reference/card-capabilities).
 
 Most cards also let you choose an icon and set a label. If the label is left blank, the panel uses the friendly name from Home Assistant when it can.
 

@@ -1,5 +1,5 @@
 ---
-title: ESP32-P4 86 Voice Control
+title: "Home Assistant Assist on the P4 86 Touchscreen"
 description:
   How to set up and use Voice Assistant, wake words, timers, mute, volume, media playback, and troubleshooting on the ESP32-P4 86 Panel.
 ---

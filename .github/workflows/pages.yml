@@ -7,6 +7,7 @@ on:
       - 'docs/**'
       - 'devices/manifest.json'
       - 'scripts/check_public_firmware.py'
+      - 'scripts/check_docs_site.py'
       - 'scripts/build.py'
       - 'scripts/prepare_release_web_assets.py'
       - 'scripts/prune_actions_cache.sh'
@@ -107,6 +108,8 @@ jobs:
           python3 scripts/build.py www --check --retain-current-bundle "${LEGACY_WEB_ARGS[@]}"
 
       - name: Build docs
+        env:
+          GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
         run: npm run docs:build
 
       - name: Upload docs artifact

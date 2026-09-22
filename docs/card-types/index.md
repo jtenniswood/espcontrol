@@ -1,5 +1,5 @@
 ---
-title: Card Types
+title: "Home Assistant Card Types"
 description:
   Quick reference for choosing the right EspControl card type for Home Assistant controls, sensors, local panel actions, and subpages.
 ---
@@ -85,4 +85,4 @@ Read-only display cards such as Sensor, Presence, Date & Time, and current Weath
 
 ## Current Capability Reference
 
-For a generated table of card type names, saved type values, supported entity domains, subpage support, picker grouping, options, and visibility status, see the [Card Capability Reference](/generated/cards/capabilities).
+For a generated table of card type names, saved type values, supported entity domains, subpage support, picker grouping, options, and visibility status, see the [Card Capability Reference](/reference/card-capabilities).
