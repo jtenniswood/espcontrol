@@ -42,7 +42,7 @@ Cover Art is available in square **1×1**, **2×2**, and **3×3** card sizes. It
 
 ## Speaker Groups
 
-For speaker groups, first confirm the speakers can join in Home Assistant. EspControl uses the compatible-player list supplied by the configured discovery entity; by default this is `sensor.speaker_group`. The group screen stays hidden when no usable speakers are reported.
+Use **Speaker Group** to open the speaker controls directly, or access them from **All Controls**. Follow the [Speaker Groups setup guide](/features/speaker-groups) for the Home Assistant discovery sensor templates, Music Assistant options, card setup, group volume, and troubleshooting.
 
 ::: info Requires Home Assistant actions
 Media cards send Home Assistant actions. If a control does not respond, check [Enable Actions](/getting-started/home-assistant-actions).
