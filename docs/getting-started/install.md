@@ -14,7 +14,7 @@ If you want to compile and install the firmware yourself, use the [Manual Setup 
 
 ## Flash the Firmware
 
-Connect the display to your computer with the USB-C cable, choose your panel, then click the install button.
+Connect the display to your computer with the USB-C cable, choose your device and hardware version, then click the install button. The newest listed hardware version is selected by default; check the identification note matches your panel before installing.
 
 <EspInstallSelector />
 
@@ -34,7 +34,7 @@ If the install button doesn't detect your device, try a different USB-C cable. C
 ### Step by Step
 
 1. **Plug in the display** using the USB-C cable. If your computer asks to install drivers, allow it.
-2. **Choose your panel** above, then click **Install EspControl**. A dialog will ask you to choose a serial port — select the one that appeared when you plugged in the display.
+2. **Choose your device and hardware version** above, then click **Install EspControl**. A dialog will ask you to choose a serial port — select the one that appeared when you plugged in the display.
 3. **Wait for the flash to complete.** This takes a few minutes. You'll see a progress bar. Don't disconnect the cable until it finishes.
 4. **The display restarts** and shows a loading screen.
 
