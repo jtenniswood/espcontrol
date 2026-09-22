@@ -47,7 +47,7 @@ layout, downloading, and presentation responsibilities distinct.
   Confirmed playback resumes the configured square-screen timer from the start;
   a zero duration hides details immediately on resume and -1 keeps them visible.
   Rectangular layouts and
-  the no-artwork fallback keep details visible. The button uses 75% of the raw
+  the no-artwork fallback keep details visible. The button uses 90% of the raw
   extracted RGB values, while the background uses one third; pressing lightens
   the button colour.
 - The persistent playback setting defaults on and is saved/restored with the
