@@ -289,6 +289,27 @@ int main() {
   auto full_fallback = extract_accent_color_rgb565(red_blue_le, 2, 1, false, 4, 0, 1, 1);
   assert(full_fallback.valid && full_fallback.red == 127 && full_fallback.blue == 127);
   auto dark_red = darken_accent_color(little_red);
+  // Keep the icon readable for pale artwork without reducing button brightness.
+  assert(playback_icon_color({229,229,229,true}, {234,234,234,true}) == 0x000000);
+  assert(playback_icon_color({49,49,49,true}, {88,88,88,true}) == 0xFFFFFF);
+  for (int red = 0; red <= 255; red += 17) {
+    for (int green = 0; green <= 255; green += 17) {
+      for (int blue = 0; blue <= 255; blue += 17) {
+        const AccentColor normal{static_cast<uint8_t>(red * 9 / 10),
+                                 static_cast<uint8_t>(green * 9 / 10),
+                                 static_cast<uint8_t>(blue * 9 / 10), true};
+        const AccentColor pressed{static_cast<uint8_t>(normal.red + (255 - normal.red) * 48 / 255),
+                                  static_cast<uint8_t>(normal.green + (255 - normal.green) * 48 / 255),
+                                  static_cast<uint8_t>(normal.blue + (255 - normal.blue) * 48 / 255), true};
+        const bool dark_icon = playback_icon_color(normal, pressed) == 0;
+        for (const auto &background : {normal, pressed}) {
+          const float luminance = accent_luminance(background);
+          const float contrast = dark_icon ? (luminance + 0.05f) / 0.05f : 1.05f / (luminance + 0.05f);
+          assert(contrast >= 3.0f);
+        }
+      }
+    }
+  }
   assert(dark_red.valid && dark_red.red == 85 && dark_red.green == 0 && dark_red.blue == 0);
   assert(!extract_accent_color_rgb565(nullptr, 1, 1, false, 0, 0, 1, 1).valid);
 }
@@ -873,6 +894,11 @@ assert '''if (id(cover_art_playback_control).retains_pause(cover_entity)) {
                   id(cover_art_show_track_overlay).execute();''' in playback
 fallback = yaml_script_body(screen, "cover_art_show_black_screen") or ""
 assert "retains_pause(id(cover_art_active_media_player_entity))" in fallback
+assert "lv_obj_set_style_text_color(id(cover_art_playback_icon), lv_color_hex(0xFFFFFF), LV_PART_MAIN);" in fallback
+accent_script = yaml_script_body(screen, "cover_art_extract_accent_color") or ""
+assert "espcontrol::cover_art::playback_icon_color(" in accent_script
+assert "rgb(button_color), rgb(pressed_color)" in accent_script
+assert "lv_obj_set_style_text_color(id(cover_art_playback_icon), lv_color_hex(icon_color), LV_PART_MAIN);" in accent_script
 setting = yaml_script_body(screen, "cover_art_refresh_playback_setting") or ""
 assert "${cover_art_square_overlay} && !id(cover_art_playback_control_enabled).state" in setting
 assert "script.execute: cover_art_return_home_after_playback" in setting

@@ -835,8 +835,21 @@ script:
           const lv_color_t button_color = accent.valid
               ? lv_color_make(accent.red * 9 / 10, accent.green * 9 / 10, accent.blue * 9 / 10)
               : lv_color_hex(0x313131);
+          const lv_color_t pressed_color = lv_color_lighten(button_color, 48);
+          const auto rgb = [](lv_color_t color) -> espcontrol::cover_art::AccentColor {
+          #if LVGL_VERSION_MAJOR >= 9
+            return {color.red, color.green, color.blue, true};
+          #else
+            lv_color32_t value;
+            value.full = lv_color_to32(color);
+            return {value.ch.red, value.ch.green, value.ch.blue, true};
+          #endif
+          };
+          const auto icon_color = espcontrol::cover_art::playback_icon_color(
+              rgb(button_color), rgb(pressed_color));
+          lv_obj_set_style_text_color(id(cover_art_playback_icon), lv_color_hex(icon_color), LV_PART_MAIN);
           lv_obj_set_style_bg_color(id(cover_art_playback_button), button_color, LV_PART_MAIN);
-          lv_obj_set_style_bg_color(id(cover_art_playback_button), lv_color_lighten(button_color, 48),
+          lv_obj_set_style_bg_color(id(cover_art_playback_button), pressed_color,
                                     LV_PART_MAIN | LV_STATE_PRESSED);
 
   - id: cover_art_clear_image_source
@@ -869,6 +882,7 @@ script:
           lv_obj_set_style_bg_color(id(cover_art_backdrop), black, 0);
           lv_obj_set_style_bg_color(id(cover_art_accent_overlay), black, 0);
           const lv_color_t button_color = lv_color_hex(0x313131);
+          lv_obj_set_style_text_color(id(cover_art_playback_icon), lv_color_hex(0xFFFFFF), LV_PART_MAIN);
           lv_obj_set_style_bg_color(id(cover_art_playback_button), button_color, LV_PART_MAIN);
           lv_obj_set_style_bg_color(id(cover_art_playback_button), lv_color_lighten(button_color, 48),
                                     LV_PART_MAIN | LV_STATE_PRESSED);

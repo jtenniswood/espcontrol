@@ -16,7 +16,7 @@ You will find these controls in **Settings > Sleep & Schedule > Cover Art Screen
 
 Tap the round button in the bottom-right corner to pause the displayed player. The artwork stays visible and the button changes to Play, so you can resume without leaving the screensaver. The button stays visible when track details fade away.
 
-The button uses a brighter version of the colour extracted from the artwork and lightens while pressed, with a neutral grey fallback when artwork is unavailable. On 7-inch displays, its shape is adjusted for the panel's pixels so it appears round in either orientation.
+The button uses a brighter version of the colour extracted from the artwork and lightens while pressed, with a neutral grey fallback when artwork is unavailable. Its icon switches between black and white to remain readable, including on pale artwork. On 7-inch displays, its shape is adjusted for the panel's pixels so it appears round in either orientation.
 
 Only a pause requested with this button keeps the screensaver open. Pausing from Home Assistant, a phone, or another control still ends cover-art mode. Touch anywhere outside the button to dismiss the screensaver without changing playback: paused music stays paused, and playing music keeps playing. Night schedules and display takeovers still apply. If the Home Assistant connection is lost while paused, the retained screensaver closes.
 

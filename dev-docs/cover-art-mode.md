@@ -60,7 +60,9 @@ layout, downloading, and presentation responsibilities distinct.
   Rectangular layouts and
   the no-artwork fallback keep details visible. The button uses 90% of the raw
   extracted RGB values, while the background uses one third; pressing lightens
-  the button colour.
+  the button colour. Choose a black or white icon for the strongest minimum
+  contrast across both normal and pressed colours; reset it to white for the
+  neutral no-artwork fallback.
 - The persistent playback setting defaults on and is saved/restored with the
   other display settings. Only square displays expose and honour the toggle;
   larger displays keep the button. Disabling it releases a retained pause,

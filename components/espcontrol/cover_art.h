@@ -144,6 +144,24 @@ struct AccentColor {
   bool valid{false};
 };
 
+inline float accent_luminance(AccentColor color) {
+  const auto linear = [](uint8_t channel) {
+    const float value = channel / 255.0f;
+    return value <= 0.04045f ? value / 12.92f : std::pow((value + 0.055f) / 1.055f, 2.4f);
+  };
+  return 0.2126f * linear(color.red) + 0.7152f * linear(color.green) + 0.0722f * linear(color.blue);
+}
+
+inline uint32_t playback_icon_color(AccentColor normal, AccentColor pressed) {
+  // Use one foreground for both states, choosing the strongest worst-case
+  // contrast so pressing the button never makes the glyph disappear.
+  const float normal_luminance = accent_luminance(normal);
+  const float pressed_luminance = accent_luminance(pressed);
+  const float black_contrast = (std::min(normal_luminance, pressed_luminance) + 0.05f) / 0.05f;
+  const float white_contrast = 1.05f / (std::max(normal_luminance, pressed_luminance) + 0.05f);
+  return black_contrast >= white_contrast ? 0x000000 : 0xFFFFFF;
+}
+
 inline AccentColor extract_accent_color_rgb565(
     const uint8_t *data, int image_width, int image_height, bool big_endian,
     int content_x, int content_y, int content_width, int content_height) {
