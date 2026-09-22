@@ -279,6 +279,12 @@ class PlaybackControl {
   void expire(uint32_t now) {
     if (pending() && now - started_ms_ >= COMMAND_TIMEOUT_MS) cancel_pending();
   }
+  bool update_connection(bool connected) {
+    if (connected) return false;
+    const bool dismiss = retained_;
+    reset();
+    return dismiss;
+  }
   void cancel_pending() {
     command_ = PlaybackCommand::NONE;
     if (!retained_) entity_.clear();

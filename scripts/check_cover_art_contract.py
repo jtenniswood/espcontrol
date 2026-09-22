@@ -98,6 +98,23 @@ int main() {
   control.observe("player.b", "paused", 8001);
   assert(!control.retains_pause("player.a") && !control.retains_pause("player.b"));
   assert(control.begin("player.b", "paused", 8002) == PlaybackCommand::NONE);
+  // Connection loss ends the retained session, including a pending resume.
+  control.begin("player.a", "playing", 9000);
+  control.observe("player.a", "paused", 9001);
+  assert(!control.update_connection(true));
+  assert(control.retains_pause("player.a"));
+  control.begin("player.a", "paused", 9002);
+  assert(control.update_connection(false));
+  assert(!control.pending() && !control.retains_pause("player.a"));
+  assert(!control.update_connection(false));
+  assert(!control.update_connection(true));
+  control.observe("player.a", "paused", 9003);
+  assert(!control.retains_pause("player.a")); // reconnect cannot reclaim the pause
+  control.begin("player.a", "playing", 9010);
+  assert(!control.update_connection(false)); // pending pause is not a retained screen
+  assert(!control.pending());
+  control.observe("player.a", "paused", 9011);
+  assert(!control.retains_pause("player.a"));
   PolicyInput p; assert(!policy_allows_display(p));
   p.enabled = p.media_playing = p.entity_configured = true; assert(policy_allows_display(p));
   p.external_input_active = p.hide_external_input = true;
@@ -732,4 +749,7 @@ assert "screensaver_wake" not in control.replace("screensaver_wake_touch_guard_a
 assert "cover_art_active_media_player_entity" in control
 assert "LV_OBJ_FLAG_EVENT_BUBBLE" in screen
 
+connection = yaml_script_body(screen, "cover_art_update_playback_control") or ""
+assert "update_connection(ha_api_state_connected())" in connection
+assert "script.execute: cover_art_return_home_after_playback" in connection
 print("Cover art policy, layout, and state contract checks passed.")

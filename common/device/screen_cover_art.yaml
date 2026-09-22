@@ -503,6 +503,12 @@ script:
   - id: cover_art_update_playback_control
     mode: restart
     then:
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_art_playback_control).update_connection(ha_api_state_connected());
+          then:
+            - script.execute: cover_art_return_home_after_playback
       - lambda: |-
           auto &control = id(cover_art_playback_control);
           control.expire(millis());

@@ -39,8 +39,9 @@ layout, downloading, and presentation responsibilities distinct.
 - The bottom-right playback button remains visible independently of metadata.
   `PlaybackControl` retains a pause only after this session requests it and HA
   confirms it within five seconds. Pending commands suppress repeat taps;
-  unconfirmed commands expire. Dismissal, player changes, stop/unavailable, and
-  higher-priority display modes clear ownership. Real playback state remains
+  unconfirmed commands expire. Dismissal, player changes, stopped/unavailable
+  media, loss of the HA state connection, and higher-priority display modes clear
+  ownership. Real playback state remains
   paused so progress does not advance. Commands target the active routed player.
 - An optional secondary media entity may become the active player while the
   primary player reports TV, line-in, or HDMI. Routing switches the complete
