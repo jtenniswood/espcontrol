@@ -236,6 +236,70 @@ struct RuntimeState {
   }
 };
 
+enum class PlaybackCommand { NONE, PAUSE, PLAY };
+
+// Ownership belongs to one visible screensaver session, never to all paused
+// media. HA state confirms commands; repeated taps cannot queue toggles.
+class PlaybackControl {
+ public:
+  static constexpr uint32_t COMMAND_TIMEOUT_MS = 5000;
+
+  PlaybackCommand begin(const std::string &entity, const std::string &state,
+                        uint32_t now) {
+    expire(now);
+    if (pending() || entity.empty()) return PlaybackCommand::NONE;
+    if (state == "playing" || state == "buffering") {
+      reset();
+      command_ = PlaybackCommand::PAUSE;
+    } else if (state == "paused" && retains_pause(entity)) {
+      command_ = PlaybackCommand::PLAY;
+    } else {
+      return PlaybackCommand::NONE;
+    }
+    entity_ = entity;
+    started_ms_ = now;
+    return command_;
+  }
+
+  void observe(const std::string &entity, const std::string &state, uint32_t now) {
+    expire(now);
+    if (entity != entity_) { reset(); return; }
+    if (state == "paused") {
+      if (command_ == PlaybackCommand::PAUSE) {
+        retained_ = true;
+        command_ = PlaybackCommand::NONE;
+      }
+    } else if (state == "playing" || state == "buffering") {
+      if (command_ != PlaybackCommand::PAUSE) reset();
+    } else {
+      reset();
+    }
+  }
+
+  void expire(uint32_t now) {
+    if (pending() && now - started_ms_ >= COMMAND_TIMEOUT_MS) cancel_pending();
+  }
+  void cancel_pending() {
+    command_ = PlaybackCommand::NONE;
+    if (!retained_) entity_.clear();
+  }
+  void reset() {
+    command_ = PlaybackCommand::NONE;
+    retained_ = false;
+    entity_.clear();
+  }
+  bool pending() const { return command_ != PlaybackCommand::NONE; }
+  bool retains_pause(const std::string &entity) const {
+    return retained_ && !entity.empty() && entity == entity_;
+  }
+
+ private:
+  std::string entity_;
+  PlaybackCommand command_{PlaybackCommand::NONE};
+  uint32_t started_ms_{0};
+  bool retained_{false};
+};
+
 struct PolicyInput {
   bool enabled{false}, media_playing{false}, entity_configured{false};
   bool attribute_conditions_match{true}, hide_external_input{false}, external_input_active{false};
@@ -303,6 +367,27 @@ inline Layout cover_art_layout(const std::string &slug, const std::string &rotat
   return Layout{screen_width,screen_height,x,y,art_size,x,y,art_size,art_size,x,y,art_size,art_size,
                 title_height,art_size >= 700 ? 36 : 24,false};
 }
+struct PlaybackButtonLayout {
+  int size, margin, panel_width, panel_height, title_max_height;
+};
+inline PlaybackButtonLayout playback_button_layout(const Layout &layout) {
+  const int short_side = std::min(layout.screen_width, layout.screen_height);
+  const int size = std::clamp(short_side / 5, 80, 112);
+  const int margin = std::clamp(short_side / 20, 24, 40);
+  int width = layout.panel_width;
+  int height = layout.panel_height;
+  int title_height = layout.title_max_height;
+  if (layout.split && layout.screen_height > layout.screen_width) {
+    // Portrait metadata and controls share the area below the artwork.
+    width = std::min(width, layout.screen_width - size - 2 * margin - layout.panel_x);
+  } else {
+    // Square/landscape screens reserve a band below the metadata.
+    height = std::min(height, layout.screen_height - size - 2 * margin - layout.panel_y);
+    title_height = std::max(1, title_height - (layout.panel_height - height));
+  }
+  return {size, margin, width, height, title_height};
+}
+
 inline bool progress_available(float duration) {
   return std::isfinite(duration) && duration > 0.0f;
 }

@@ -55,6 +55,49 @@ int main() {
   assert(!use_secondary_media_entity(true, true, false, true));
   assert(!use_secondary_media_entity(true, true, true, false));
   assert(use_secondary_media_entity(true, true, true, true));
+  // Only a pause requested from this screensaver owns a retained session.
+  PlaybackControl control;
+  control.observe("player.a", "paused", 1);
+  assert(!control.retains_pause("player.a"));
+  assert(control.begin("player.a", "playing", 10) == PlaybackCommand::PAUSE);
+  assert(control.begin("player.a", "playing", 11) == PlaybackCommand::NONE);
+  control.observe("player.a", "playing", 20); // repeated state before acknowledgement
+  control.observe("player.a", "paused", 30);
+  assert(control.retains_pause("player.a") && !control.pending());
+  assert(control.begin("player.a", "paused", 40) == PlaybackCommand::PLAY);
+  control.observe("player.a", "paused", 50);
+  assert(control.retains_pause("player.a"));
+  control.observe("player.a", "buffering", 60);
+  control.observe("player.a", "paused", 70); // next pause was external
+  assert(!control.retains_pause("player.a"));
+  // Failed/timed-out pause requests must not claim a later external pause.
+  control.begin("player.a", "playing", 100);
+  control.cancel_pending();
+  control.observe("player.a", "paused", 101);
+  assert(!control.retains_pause("player.a"));
+  control.begin("player.a", "playing", 200);
+  control.observe("player.a", "paused", 200 + PlaybackControl::COMMAND_TIMEOUT_MS);
+  assert(!control.retains_pause("player.a"));
+  control.begin("player.a", "playing", UINT32_MAX - 100);
+  control.observe("player.a", "paused", 20); // millis wrap
+  assert(control.retains_pause("player.a"));
+  control.begin("player.a", "paused", 30);
+  control.expire(30 + PlaybackControl::COMMAND_TIMEOUT_MS);
+  assert(!control.pending() && control.retains_pause("player.a"));
+  // Dismissal, player replacement, and stopped playback release ownership.
+  control.reset();
+  control.observe("player.a", "paused", 6000);
+  assert(!control.retains_pause("player.a"));
+  for (const auto &state : {"idle", "off", "unavailable", "unknown"}) {
+    control.begin("player.a", "playing", 7000);
+    control.observe("player.a", "paused", 7001);
+    control.observe("player.a", state, 7002);
+    assert(!control.retains_pause("player.a"));
+  }
+  control.begin("player.a", "playing", 8000);
+  control.observe("player.b", "paused", 8001);
+  assert(!control.retains_pause("player.a") && !control.retains_pause("player.b"));
+  assert(control.begin("player.b", "paused", 8002) == PlaybackCommand::NONE);
   PolicyInput p; assert(!policy_allows_display(p));
   p.enabled = p.media_playing = p.entity_configured = true; assert(policy_allows_display(p));
   p.external_input_active = p.hide_external_input = true;
@@ -76,6 +119,17 @@ int main() {
   assert(four.screen_width == 800 && four.title_max_height == 210);
   auto square = cover_art_layout("esp32-p4-86", "0", 720, 720, 800, 495);
   assert(!square.split && square.art_size == 720 && square.panel_padding == 36);
+  for (const auto &layout : {ten, ten_v2, seven_v2, four, square,
+       cover_art_layout("guition-esp32-s3-4848s040", "0", 480, 480, 480, 330),
+       cover_art_layout("guition-esp32-p4-jc4880p443", "0", 480, 800, 480, 130)}) {
+    const auto button = playback_button_layout(layout);
+    assert(button.size >= 80 && button.size <= 112);
+    assert(button.panel_width > 0 && button.panel_height > 0 && button.title_max_height > 0);
+    const int button_x = layout.screen_width - button.margin - button.size;
+    const int button_y = layout.screen_height - button.margin - button.size;
+    assert(layout.panel_x + button.panel_width <= button_x ||
+           layout.panel_y + button.panel_height <= button_y);
+  }
   RuntimeState s; assert(!s.needs_download()); s.select_source("track-a"); assert(s.needs_download());
   s.begin_download("track-a?refresh=1"); s.select_source("track-b");
   assert(s.apply_download("track-a?refresh=1") && s.loaded_url == "track-a" && s.needs_download());
@@ -660,4 +714,22 @@ for required in (
         raise SystemExit(
             f"Full-screen secondary media routing contract missing: {required}"
         )
+
+# A visible screensaver must reach LVGL so the control consumes its own press.
+from check_firmware_ha_bindings import yaml_script_body
+screen = (ROOT / "common/device/screen_cover_art.yaml").read_text()
+touch = yaml_script_body(screen, "cover_art_handle_touch") or ""
+for required in (
+    "!id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART)",
+    "lv_obj_has_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN)",
+    "script.execute: cover_art_pause_after_touch",
+    "script.wait: cover_art_pause_after_touch",
+    "script.execute: screensaver_wake",
+):
+    assert required in touch, f"Missing cover-art touch routing: {required}"
+control = yaml_script_body(screen, "cover_art_toggle_playback") or ""
+assert "screensaver_wake" not in control.replace("screensaver_wake_touch_guard_active", "")
+assert "cover_art_active_media_player_entity" in control
+assert "LV_OBJ_FLAG_EVENT_BUBBLE" in screen
+
 print("Cover art policy, layout, and state contract checks passed.")

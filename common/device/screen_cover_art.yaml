@@ -3,6 +3,8 @@
 # =============================================================================
 
 globals:
+  - id: cover_art_playback_control
+    type: espcontrol::cover_art::PlaybackControl
   - id: home_assistant_artwork_endpoint_mode_migrated
     type: bool
     restore_value: true
@@ -226,6 +228,7 @@ interval:
 
   - interval: 1s
     then:
+      - script.execute: cover_art_update_playback_control
       - if:
           condition:
             lambda: |-
@@ -257,6 +260,10 @@ lvgl:
     widgets:
       - obj:
           id: cover_art_screensaver
+          on_press:
+            - script.execute: cover_art_pause_after_touch
+            - script.wait: cover_art_pause_after_touch
+            - script.execute: screensaver_wake
           x: 0
           y: 0
           width: 100%
@@ -287,6 +294,7 @@ lvgl:
                 clickable: false
             - image:
                 id: cover_art_image_widget
+                clickable: false
                 x: ${cover_art_x}
                 y: ${cover_art_y}
                 width: ${cover_art_size}px
@@ -334,6 +342,7 @@ lvgl:
                 widgets:
                   - label:
                       id: cover_art_title_label
+                      clickable: false
                       text: "—"
                       width: 100%
                       max_height: ${cover_art_title_max_height}px
@@ -344,6 +353,7 @@ lvgl:
                       text_line_space: 0
                   - label:
                       id: cover_art_artist_label
+                      clickable: false
                       text: ""
                       pad_top: ${cover_art_artist_pad_top}
                       width: 100%
@@ -355,6 +365,7 @@ lvgl:
                       hidden: true
                   - label:
                       id: cover_art_time_label
+                      clickable: false
                       text: "0:00  /  0:00"
                       pad_top: ${cover_art_time_pad_top}
                       width: 100%
@@ -365,6 +376,7 @@ lvgl:
                       hidden: true
             - bar:
                 id: cover_art_progress_bar
+                clickable: false
                 align: bottom_mid
                 y: 0
                 width: ${cover_art_progress_width}px
@@ -379,6 +391,30 @@ lvgl:
                 indicator:
                   bg_color: ${cover_art_text_color}
                   radius: 0
+            - button:
+                id: cover_art_playback_button
+                align: bottom_right
+                width: 96
+                height: 96
+                x: -24
+                y: -24
+                radius: 1000
+                bg_color: 0x313131
+                bg_opa: 100%
+                border_width: 0
+                shadow_width: 0
+                pad_all: 0
+                scrollable: false
+                on_press:
+                  - script.execute: cover_art_toggle_playback
+                widgets:
+                  - label:
+                      id: cover_art_playback_icon
+                      align: center
+                      text: "\U000F03E4"
+                      text_font: font_icon_main
+                      text_color: 0xFFFFFF
+                      clickable: false
 script:
   - id: cover_art_resolve_home_assistant_base_url
     mode: restart
@@ -448,9 +484,53 @@ script:
           }
           refresh_image_cards();
 
+  # While cover art is visible, LVGL routes the press to either its background
+  # or playback button. Other display modes keep the normal raw-touch wake path.
+  - id: cover_art_handle_touch
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return !id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) ||
+                     lv_obj_has_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN) ||
+                     id(screensaver_wake_touch_guard_active);
+          then:
+            - script.execute: cover_art_pause_after_touch
+            - script.wait: cover_art_pause_after_touch
+            - script.execute: screensaver_wake
+
+  - id: cover_art_update_playback_control
+    mode: restart
+    then:
+      - lambda: |-
+          auto &control = id(cover_art_playback_control);
+          control.expire(millis());
+          const bool paused = id(cover_art_last_playback_state) == "paused";
+          lv_label_set_text(id(cover_art_playback_icon), paused ? "\U000F040A" : "\U000F03E4");
+          lv_obj_set_style_opa(id(cover_art_playback_button),
+                              control.pending() ? LV_OPA_50 : LV_OPA_COVER, 0);
+
+  - id: cover_art_toggle_playback
+    mode: single
+    then:
+      - lambda: |-
+          if (!id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) ||
+              lv_obj_has_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN) ||
+              id(screensaver_wake_touch_guard_active) || !ha_api_state_connected()) return;
+          auto &control = id(cover_art_playback_control);
+          const std::string entity = id(cover_art_active_media_player_entity);
+          const auto command = control.begin(entity, id(cover_art_last_playback_state), millis());
+          if (command == espcontrol::cover_art::PlaybackCommand::NONE) return;
+          const char *service = command == espcontrol::cover_art::PlaybackCommand::PAUSE
+              ? "media_player.media_pause" : "media_player.media_play";
+          if (!ha_send_entity_action(entity, service)) control.cancel_pending();
+          id(cover_art_update_playback_control).execute();
+
   - id: cover_art_pause_after_touch
     mode: restart
     then:
+      - lambda: id(cover_art_playback_control).reset();
       - if:
           condition:
             lambda: |-
@@ -555,6 +635,14 @@ script:
                              layout.panel_x, layout.panel_y, layout.panel_width, layout.panel_height,
                              layout.title_max_height);
           set_art_image_geometry(layout.art_x, layout.art_y, layout.art_size);
+          const auto playback = espcontrol::cover_art::playback_button_layout(layout);
+          lv_obj_clear_flag(id(cover_art_playback_button), LV_OBJ_FLAG_EVENT_BUBBLE);
+          lv_obj_set_size(id(cover_art_playback_button), playback.size, playback.size);
+          lv_obj_align(id(cover_art_playback_button), LV_ALIGN_BOTTOM_RIGHT,
+                       -playback.margin, -playback.margin);
+          lv_obj_set_width(id(cover_art_track_panel), playback.panel_width);
+          lv_obj_set_height(id(cover_art_track_panel), playback.panel_height);
+          lv_obj_set_style_max_height(id(cover_art_title_label), playback.title_max_height, LV_PART_MAIN);
           if (!layout.split) {
             lv_obj_set_style_bg_opa(id(cover_art_accent_overlay), LV_OPA_80, LV_PART_MAIN);
             lv_obj_set_style_opa(id(cover_art_accent_overlay), LV_OPA_80, LV_PART_MAIN);
@@ -814,6 +902,7 @@ script:
   - id: cover_art_disable
     mode: restart
     then:
+      - lambda: id(cover_art_playback_control).reset();
       - script.stop: cover_art_prepare_activation
       - lambda: |-
           ha_cancel_metadata_refresh(HA_SUBSCRIPTION_SCOPE_COVER_ART);
@@ -1789,6 +1878,7 @@ script:
       - lambda: |-
           id(cover_art_runtime).effective_download_url.clear();
           id(cover_art_runtime).active_download_source_url.clear();
+      - lambda: id(cover_art_playback_control).reset();
       - lvgl.widget.hide: cover_art_screensaver
       - lvgl.widget.hide: cover_art_accent_overlay
       - lvgl.widget.hide: cover_art_track_panel
@@ -1883,6 +1973,14 @@ script:
   - id: cover_art_playback_refresh
     mode: restart
     then:
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_art_screensaver_enabled).state &&
+                     id(cover_art_playback_control).retains_pause(id(cover_art_active_media_player_entity)) &&
+                     id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_playback_refresh
       - if:
           condition:
             lambda: |-
@@ -2130,6 +2228,7 @@ script:
             primary_entity == id(cover_art_subscribed_primary_entity) &&
             secondary_entity == id(cover_art_subscribed_secondary_entity);
           if (!already_subscribed) {
+            id(cover_art_playback_control).reset();
             const std::string previous_entity = id(cover_art_subscribed_entity);
             id(cover_art_prepare_activation).stop();
             id(cover_art_schedule_paired_artwork).stop();
@@ -2376,11 +2475,13 @@ script:
                   cover_entity != id(cover_art_active_media_player_entity)) return;
               std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
               bool playing = state_text == "playing" || state_text == "buffering";
+              id(cover_art_playback_control).observe(cover_entity, state_text, millis());
               if (state_text == id(cover_art_last_playback_state) &&
                   id(cover_art_media_playing) == playing) {
                 return;
               }
               id(cover_art_last_playback_state) = state_text;
+              id(cover_art_update_playback_control).execute();
               ESP_LOGI("cover_art", "Playback state for %s: '%s' (active=%s, was_playing=%s)",
                        cover_entity.c_str(), state_text.c_str(),
                        id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) ? "true" : "false",
@@ -2395,6 +2496,8 @@ script:
                 if (now.is_valid() && id(cover_art_position_anchor_epoch) == 0) {
                   id(cover_art_last_position_timestamp) = now.timestamp;
                 }
+                // Resume in place when this screen retained the paused artwork.
+                if (id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART)) return;
                 if (!was_playing || restart_cover_art_delay) id(cover_art_playback_started).execute();
                 return;
               }
@@ -2411,7 +2514,9 @@ script:
                 if (id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART)) id(cover_art_refresh_progress).execute();
                 id(cover_art_delay_timer).stop();
                 id(cover_art_show_track_overlay).stop();
-                id(cover_art_return_home_after_playback).execute();
+                if (!id(cover_art_playback_control).retains_pause(cover_entity)) {
+                  id(cover_art_return_home_after_playback).execute();
+                }
                 return;
               }
 
@@ -2887,6 +2992,7 @@ script:
   - id: cover_art_playback_stopped
     mode: restart
     then:
+      - lambda: id(cover_art_playback_control).reset();
       - script.stop: cover_art_delayed_playback_stopped
       - globals.set:
           id: cover_art_delay_interrupted_by_transition

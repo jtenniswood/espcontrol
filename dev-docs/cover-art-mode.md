@@ -33,8 +33,15 @@ layout, downloading, and presentation responsibilities distinct.
 - While replacement artwork downloads, keep the previous good image visible.
   When no good image exists, show the black metadata fallback without an error
   message.
-- A touch dismisses the takeover and the configured return delay controls when
-  it can appear again.
+- A background touch dismisses the takeover and the configured return delay
+  controls when it can appear again. Raw touchscreen wake defers to LVGL while
+  cover art is visible, so the playback button cannot also dismiss the screen.
+- The bottom-right playback button remains visible independently of metadata.
+  `PlaybackControl` retains a pause only after this session requests it and HA
+  confirms it within five seconds. Pending commands suppress repeat taps;
+  unconfirmed commands expire. Dismissal, player changes, stop/unavailable, and
+  higher-priority display modes clear ownership. Real playback state remains
+  paused so progress does not advance. Commands target the active routed player.
 - An optional secondary media entity may become the active player while the
   primary player reports TV, line-in, or HDMI. Routing switches the complete
   playback presentation together and invalidates callbacks and artwork owned by

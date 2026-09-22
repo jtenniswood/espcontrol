@@ -12,6 +12,12 @@ You need a `media_player` entity that supplies artwork in Home Assistant and a r
 
 You will find these controls in **Settings > Sleep & Schedule > Cover Art Screen Saver** on the panel web page.
 
+## Play and pause
+
+Tap the round button in the bottom-right corner to pause the displayed player. The artwork stays visible and the button changes to Play, so you can resume without leaving the screensaver. The button stays visible when track details fade away.
+
+This only keeps the screensaver open for a pause requested with this button. Pausing from Home Assistant, a phone, or another control still ends cover-art mode. Touch anywhere outside the button to dismiss the screensaver normally; music stays paused until you resume it. Night schedules and display takeovers still apply.
+
 ## Settings
 
 Turn on **Show Cover Art** to reveal the settings, then choose the **Media Player Entity** to watch, such as `media_player.living_room`.
