@@ -202,6 +202,7 @@ def check_build(dist):
             errors.append('FAQ structured answers differ from the rendered questions or answers')
 
     redirects = {
+        'reference/request-device-support': BASE + 'screens/',
         'card-types/weather-forecast': BASE + 'card-types/weather#temperatures-tomorrow',
         'generated/cards/capabilities': BASE + 'reference/card-capabilities',
         'generated/cards/runtime-coverage': 'https://github.com/jtenniswood/espcontrol/blob/main/dev-docs/generated/card-runtime-coverage.md',

@@ -230,7 +230,7 @@ Check [revision identification](/screens/#identify-the-hardware-revision-before-
 
 ### Can I Use a Cheap Yellow Display or Another ESP32 Screen?
 
-Only [listed models](/screens/) have ready-to-install firmware. A matching processor or resolution is insufficient. Provide hardware details through [Request Device Support](/reference/request-device-support) for another board; testing on that hardware is required.
+Only [listed models](/screens/) have ready-to-install firmware. A matching processor, screen size, or resolution does not make another board compatible.
 
 ### Will It Fit a Standard Wall Box or Replace a Light Switch?
 

@@ -7,6 +7,7 @@ export const hostname = 'https://jtenniswood.github.io/espcontrol/'
 // GitHub Pages cannot configure HTTP redirects. These HTML fallbacks preserve
 // published links while keeping retired pages out of search and the sitemap.
 export const redirects: Record<string, string> = {
+  'reference/request-device-support': `${hostname}screens/`,
   'card-types/weather-forecast': `${hostname}card-types/weather#temperatures-tomorrow`,
   'generated/cards/capabilities': `${hostname}reference/card-capabilities`,
   'generated/cards/runtime-coverage':
