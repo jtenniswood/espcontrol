@@ -529,16 +529,31 @@ export default defineConfig({
         ],
       },
       {
-        text: 'Advanced',
+        text: 'Setup & Troubleshooting',
         items: [
           { text: 'Manual Setup', link: '/getting-started/manual-esphome-setup' },
-          { text: 'Contributing', link: '/reference/contributing' },
-          { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
           { text: 'Wifi Issues', link: '/getting-started/c6-recovery' },
+          { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
+        ],
+      },
+      {
+        text: 'Reference',
+        items: [
+          { text: 'FAQ', link: '/reference/faq' },
           { text: 'Icon Reference', link: '/reference/icons' },
           { text: 'Language Support', link: '/reference/language-support' },
+        ],
+      },
+      {
+        text: 'Community',
+        items: [
+          { text: 'Contributing', link: '/reference/contributing' },
           { text: 'Request Device Support', link: '/reference/request-device-support' },
-          { text: 'FAQ', link: '/reference/faq' },
+        ],
+      },
+      {
+        text: 'About',
+        items: [
           { text: 'Privacy Policy', link: '/reference/privacy' },
         ],
       },

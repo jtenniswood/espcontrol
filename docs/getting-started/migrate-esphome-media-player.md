@@ -23,19 +23,19 @@ The two projects do not share their saved settings. Before changing firmware, no
 This is the closest match to the old media-player behaviour. Your normal EspControl cards remain available, but artwork takes over the screen when the selected player starts playing.
 
 1. Open the panel's address in a browser and select **Settings**.
-2. Open **Sleep & Schedule > Media Cover Art**.
+2. Open **Sleep & Schedule > Cover Art Screen Saver**.
 3. Turn on **Show Cover Art**.
 4. Set **Media Player Entity** to the player you previously controlled, for example `media_player.living_room`.
-5. Set **Show After** to **3 seconds** for the quickest transition to artwork.
+5. Open **Screensaver Settings** and set **Show After** to **3 seconds** for the quickest transition to artwork.
 6. On a 4-inch square display, set **Show Track Details For** to **Always** if you want the title, artist, time, and progress to remain visible. Choose a shorter time if you prefer artwork with less text.
-7. Open **Advanced Options** and leave **Keep Screen Awake During Playback** on.
+7. Leave **Keep Screen Awake During Playback** on in **Screensaver Settings**.
 
 When Home Assistant supplies a track duration, EspControl also shows playback time and a progress bar. Live radio and other streams without a duration still show their available artwork and track details.
 
 Touching the artwork returns you to the normal card screen. EspControl waits for the selected **Show After** time from your most recent touch before showing the artwork again, so you have time to use other controls.
 
 ::: tip TV and Line-in sources
-Open **Advanced Options** and turn on **Hide for external source inputs** if your speaker reports `TV` or `Line-in` and you do not want its artwork screen to appear for those sources.
+Open **External sources** and leave **Show external sources** off if your speaker reports `TV`, `Line-in`, or `HDMI` and you do not want artwork for those inputs. A usable saved **External Source Media Entity** can still supply artwork; clear that entity as well if you want to hide it.
 :::
 
 See [Media Cover Art](/features/media-cover-art) for filtering, custom Home Assistant ports, and more detailed behaviour.
@@ -76,7 +76,7 @@ Use [Night Schedule](/features/screen-schedule) as well if the panel should alwa
 
 | ESPHome Media Player | EspControl equivalent |
 | --- | --- |
-| Full-screen album art during playback | **Settings > Sleep & Schedule > Media Cover Art** |
+| Full-screen album art during playback | **Settings > Sleep & Schedule > Cover Art Screen Saver** |
 | Always-visible artwork | **Media > Cover Art** card |
 | Title and artist overlay | **Show Track Details For** or **Show Track Details** |
 | Playback and volume panel | Tap a Cover Art card, or add a **Media > All Controls** card |
