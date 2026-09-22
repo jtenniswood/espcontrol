@@ -67,6 +67,21 @@ def ensure_pinned_esphome(esphome_bin: str) -> None:
         )
 
 
+def ensure_generated_web_bundle() -> None:
+    """Regenerate the embedded editor before any firmware image is built."""
+
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "build.py"), "www"],
+        cwd=ROOT,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise LocalEsphomeError(
+            "The embedded web interface could not be regenerated; install the web build dependencies "
+            "before compiling or flashing firmware."
+        )
+
+
 def resolve_yaml_path(yaml_arg: str, cwd: Path | None = None) -> Path:
     base = cwd or Path.cwd()
     path = Path(yaml_arg)
@@ -148,6 +163,8 @@ def run(argv: list[str]) -> int:
         print(shlex.join(esphome_command))
         return 0
 
+    if command in {"compile", "run"}:
+        ensure_generated_web_bundle()
     ensure_pinned_esphome(esphome_bin)
     esphome_command = build_esphome_command(yaml_path, command, command_args, version, esphome_bin)
     return subprocess.run(esphome_command, cwd=esphome_working_dir(yaml_path)).returncode

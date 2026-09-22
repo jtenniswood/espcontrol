@@ -722,7 +722,7 @@ export function createSettingsPageHelpersFeature(
     function createEntityToggleSection(this: any, label?: any, id?: any, checked?: any, switchName?: any, entityLabel?: any, entityPostName?: any, placeholder?: any) {
         var toggle: any = toggleRow(label, id, checked);
         var field: any = condField();
-        var inp: any = entityInput("", "", placeholder, ["sensor"]);
+        var inp: any = entityInput("", "", placeholder, ["sensor", "media_player"]);
         field.appendChild(inp);
         toggle.input.addEventListener("change", function (this: any) { postSwitch(switchName, this.checked); });
         bindTextPost(inp, entityPostName, {});

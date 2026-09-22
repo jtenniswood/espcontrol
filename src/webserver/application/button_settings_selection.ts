@@ -31,9 +31,9 @@ export interface ButtonSettingsSelectionDependencies {
     readonly openVoiceServicesSettings: () => void;
 }
 
-export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, clockBar: ClockBarFeature, entityState: Pick<EntityStateFeature, "entityInput">, shell: Pick<ControlsShellFeature, "isConfigLocked" | "createActionButton">, statusPreview: Pick<AppStatusPreviewFeature, "clockBarItemActive" | "clockBarItemLabel" | "clockBarItems" | "isClockBarTemperatureItem" | "updateClockBarItemUi">, grid: Pick<GridFeature, "ctx">, renderQueue: ButtonSettingsRenderQueueFeature, dependencies: ButtonSettingsSelectionDependencies): ButtonSettingsSelectionFeature {
+export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, clockBar: ClockBarFeature, entityState: Pick<EntityStateFeature, "entityInput" | "entityValue">, shell: Pick<ControlsShellFeature, "isConfigLocked" | "createActionButton">, statusPreview: Pick<AppStatusPreviewFeature, "clockBarItemActive" | "clockBarItemLabel" | "clockBarItems" | "isClockBarTemperatureItem" | "updateClockBarItemUi">, grid: Pick<GridFeature, "ctx">, renderQueue: ButtonSettingsRenderQueueFeature, dependencies: ButtonSettingsSelectionDependencies): ButtonSettingsSelectionFeature {
     const { document, fields: { fieldLabel, toggleRow }, renderPreview, renderButtonSettings, showSelectionMenu, openVoiceServicesSettings } = dependencies;
-    const { entityInput } = entityState;
+    const { entityInput, entityValue } = entityState;
     const { isConfigLocked, createActionButton } = shell;
     const els = runtime.els;
     const { clockBarItemActive, clockBarItemLabel, clockBarItems, isClockBarTemperatureItem, updateClockBarItemUi } = statusPreview;
@@ -244,7 +244,7 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
         saveRow.appendChild(hideBtn);
         var saveBtn: any = createActionButton("sp-action-btn sp-save-btn", "Save");
         saveBtn.addEventListener("click", function (this: any) {
-            saveClockBarTemperatureSettings(entityInp.value, degreeToggle.input.checked);
+            saveClockBarTemperatureSettings(entityValue(entityInp), degreeToggle.input.checked);
             closeSettings();
         });
         saveRow.appendChild(saveBtn);

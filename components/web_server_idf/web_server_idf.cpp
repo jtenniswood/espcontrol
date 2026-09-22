@@ -456,9 +456,23 @@ void AsyncWebServerRequest::redirect(const std::string &url) {
 }
 
 void AsyncWebServerRequest::init_response_(AsyncWebServerResponse *rsp, int code, const char *content_type) {
-  // Set status code - use constants for common codes, default to 500 for unknown codes
+  // Set status code. Keep the complete set used by custom handlers here; the
+  // old adapter silently converted every less-common status to HTTP 500,
+  // which made structured catalog errors indistinguishable from server bugs.
   const char *status;
   switch (code) {
+    case 400:
+      status = "400 Bad Request";
+      break;
+    case 401:
+      status = "401 Unauthorized";
+      break;
+    case 403:
+      status = "403 Forbidden";
+      break;
+    case 408:
+      status = "408 Request Timeout";
+      break;
     case 200:
       status = HTTPD_200;
       break;
@@ -467,6 +481,18 @@ void AsyncWebServerRequest::init_response_(AsyncWebServerResponse *rsp, int code
       break;
     case 409:
       status = HTTPD_409;
+      break;
+    case 429:
+      status = "429 Too Many Requests";
+      break;
+    case 502:
+      status = "502 Bad Gateway";
+      break;
+    case 503:
+      status = "503 Service Unavailable";
+      break;
+    case 504:
+      status = "504 Gateway Timeout";
       break;
     default:
       status = HTTPD_500;

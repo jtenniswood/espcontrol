@@ -85,6 +85,6 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     clockBarDragItem: "", clockBarTempRestoreIndoor: false, clockBarTempRestoreOutdoor: true,
     clockBarTempRestoreEntities: [], subpages: {}, subpageRaw: {}, subpageSavePending: {}, editingSubpage: null,
     subpageSelectedSlots: [], subpageLastClicked: -1, clipboard: null, settingsDraft: null,
-    entityPostPaths: {}, entityNames: {},
+    entityPostPaths: {}, entityNames: {}, entityCatalogRecords: {},
   };
 }

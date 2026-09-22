@@ -416,11 +416,11 @@ export function registerMediaCardTypes(
             function renderSpeakerDiscoveryEntityField(this: any, target?: any) {
             if (b.sensor === "control_modal" || b.sensor === "speaker_group" || b.sensor === "cover_art") {
                 target = target || panel;
-                var groupEntityField: any = helpers.textField(
+                var groupEntityField: any = helpers.entityField(
                     "Speaker Discovery Entity (optional)",
                     helpers.idPrefix + "speaker-group-entity",
                     mediaSpeakerGroupEntity(b),
-                    "Default: sensor.speaker_group", "", false);
+                    "Default: sensor.speaker_group", ["sensor"], null, false);
                 var groupEntityHintText: any = "Leave this blank to use sensor.speaker_group. Only enter another helper if you have more than one speaker helper or have changed the default entity name.";
                 var groupEntityHint: any = document.createElement("button");
                 groupEntityHint.type = "button";

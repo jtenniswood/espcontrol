@@ -22,6 +22,7 @@ import { createScreenScheduleStateFeature } from "./application/screen_schedule_
 import { createAppearanceFeature } from "./application/appearance_state";
 import { createFirmwareVersionFeature } from "./application/firmware_version_state";
 import { createEntityStateFeature } from "./application/entity_state";
+import { createEntityCatalogClient } from "./application/entity_catalog";
 import { createClockBarFeature, type ClockBarFeature } from "./application/clock_bar_state";
 import { createFirmwareUpdateFeature, type FirmwareUpdateFeature } from "./application/firmware_update_state";
 import { createScreensaverTimeoutFeature } from "./application/screensaver_timeout";
@@ -329,11 +330,13 @@ function composeApplicationContext(): ApplicationContext {
   let confirmationOptions: ReturnType<typeof createConfigConfirmationOptionsFeature>;
   let clockBarState: ClockBarFeature;
   let statusPreview: AppStatusPreviewFeature;
+  const entityCatalog = createEntityCatalogClient(undefined, dom.fetch);
   const entityState = createEntityStateFeature({
     actionCardStateEntity: (button) => confirmationOptions.actionCardStateEntity(button),
     totalSlots: () => layout.totalSlots,
     clockBarTemperatureEntities: () => clockBarState.temperatureEntities(),
     textInput: (id, value, placeholder) => fields.textInput(id, value, placeholder),
+    entityCatalog,
   });
   const screenRotation = createScreenRotationFeature(runtime, layout, {
     applyButtonOrder: (value, skipSpanNormalization) => grid.applyButtonOrderValue(value, skipSpanNormalization),

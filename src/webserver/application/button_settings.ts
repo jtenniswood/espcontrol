@@ -45,7 +45,7 @@ export function createButtonSettingsFeature(
     codec: ConfigCodecFeature,
     layout: ApplicationLayoutState,
     runtime: UiRuntimeState,
-    entityState: Pick<EntityStateFeature, "entityName" | "entityInput">,
+    entityState: Pick<EntityStateFeature, "entityName" | "entityInput" | "entityValue">,
     shell: Pick<ControlsShellFeature, "isConfigLocked" | "createActionButton" | "showBanner">,
     requestApi: Pick<ApplicationApiFeature, "postText">,
     grid: Pick<GridFeature, "ctx" | "serializeGrid">,
@@ -55,7 +55,7 @@ export function createButtonSettingsFeature(
     interactions: Pick<PreviewInteractionsFeature, "deleteSlot" | "emptyButtonConfig">,
     fields: ControlsFieldsFeature,
 ): ButtonSettingsFeature {
-    const { entityName, entityInput } = entityState;
+    const { entityName, entityInput, entityValue } = entityState;
     const { isConfigLocked, createActionButton, showBanner } = shell;
     const els = runtime.els;
     const { ctx, serializeGrid } = grid;
@@ -236,7 +236,7 @@ export function createButtonSettingsFeature(
         function requireField(this: any, input?: any, message?: any, isActive?: any, hasValue?: any) {
             if (!input)
                 return;
-            requiredFields.push({
+        requiredFields.push({
                 input: input,
                 message: message || "Add an entity before saving.",
                 isActive: isActive || function (this: any) { return true; },
@@ -266,11 +266,11 @@ export function createButtonSettingsFeature(
                 isActive: isActive || function (this: any) { return true; },
                 allowEmpty: true,
                 isValid: function (this: any, value?: any) {
-                    return entityMatchesDomains(value, domains);
+                    return entityMatchesDomains(entityValue(input), domains);
                 },
             });
             function maybeClearError(this: any) {
-                var value: any = String(input.value || "").trim();
+                var value: any = String(entityValue(input) || "").trim();
                 if ((!isActive || isActive()) && value) {
                     if (entityMatchesDomains(value, domains))
                         clearFieldError(input);

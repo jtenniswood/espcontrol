@@ -364,9 +364,16 @@ export function createWebStyles(dragAnimation: boolean): string {
         "overflow-y:auto;z-index:60;box-shadow:var(--shadow-3);padding:0}" +
         ".sp-entity-dropdown.sp-open{display:block}" +
         ".sp-entity-option{display:block;width:100%;padding:10px 12px;background:transparent;border:0;" +
-        "color:var(--text);font-size:.875rem;line-height:1.4;font-family:inherit;text-align:left;" +
+        "color:var(--text);font-family:inherit;text-align:left;" +
         "cursor:pointer;box-sizing:border-box}" +
+        ".sp-entity-option-name{display:block;color:var(--text);font-size:var(--text-md);font-weight:400;line-height:1.35}" +
+        ".sp-entity-option-location{display:block;margin-top:2px;color:var(--text2);font-size:var(--text-sm);font-weight:400;line-height:1.35}" +
+        ".sp-entity-option-id{display:block;margin-top:2px;color:var(--text2);font-size:var(--text-xs);font-weight:400;line-height:1.25}" +
         ".sp-entity-option:hover,.sp-entity-option:focus{background:var(--accent-soft);outline:none}" +
+        ".sp-entity-catalog-status{padding:10px 12px;color:var(--text3);font-size:.8rem;line-height:1.35}" +
+        ".sp-entity-catalog-error{padding:10px 12px;color:#f66f81;font-size:.8rem;line-height:1.35}" +
+        ".sp-entity-catalog-retry{display:block;margin:0 12px 10px;padding:6px 9px;border:1px solid var(--border);" +
+        "border-radius:6px;background:var(--surface);color:var(--text);font:inherit;cursor:pointer}" +
         ".sp-field-error{font-size:.75rem;color:#f66f81;margin-top:6px;line-height:1.35}" +
         ".sp-icon-picker{position:relative}" +
         ".sp-icon-picker-input{width:100%;padding:10px 12px;padding-left:36px;background:var(--surface2);" +
