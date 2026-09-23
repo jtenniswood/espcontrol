@@ -186,7 +186,7 @@ export function createConfigCodecFeature(
         );
     }
     function cardSupportsExtraLargeSize(this: any, b?: any) {
-        return cardRequiresSquareSize(b) || cardIsWifiSharing(b);
+        return cardRequiresSquareSize(b) || cardIsWifiSharing(b) || cardSupportsMaxSize(b);
     }
     function cardSupportsMaxSize(this: any, b?: any) {
         return !!(b && b.type === "image");
