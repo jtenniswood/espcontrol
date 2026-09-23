@@ -31,7 +31,7 @@ Add your Sonos, Spotify, Apple TV, Plex, Music Assistant, or other player integr
 
 ## What to Expect
 
-- **Now Playing** with **Seek** enabled shows progress in your highlight colour while playing and keeps the current position in grey while paused. Tap the title card to play or pause; use **Track Position** or the **All Controls** progress tab to seek.
+- **Now Playing** has independent **Tile Display** and **Tap Action** settings, described below.
 - Playback buttons send the matching Home Assistant media action.
 - Titles and artists display fullwidth Latin characters as ordinary letters (for example, `ＯＳＡＫＡ` becomes `OSAKA`) and omit emoji. This also applies to the Cover Art screensaver. Supported accented, Greek, and Cyrillic text is preserved; other scripts still depend on the panel's font coverage. The original Home Assistant metadata is unchanged.
 - Shuffle and Repeat appear in **All Controls** only when the player advertises support for them. A supported control stays disabled until Home Assistant reports its current state, then continues to follow changes made elsewhere.
@@ -39,6 +39,26 @@ Add your Sonos, Spotify, Apple TV, Plex, Music Assistant, or other player integr
 - Volume and track position follow changes made elsewhere in Home Assistant. Some players show progress but do not support seeking; some only support volume up and down rather than an exact level.
 - All Controls hides tabs that the selected player does not support. Its speaker tab appears only when compatible speakers are available.
 - For **Track, Album or Playlist**, choose the speaker, then provide the content ID or URI. You can also set the player source or input when the integration uses one.
+
+## Now Playing
+
+Choose what the tile displays separately from what happens when you tap it. Title and artist remain visible in every display mode.
+
+| Tile Display | Appearance |
+|---|---|
+| **Track Info** | Title and artist on the normal tile background. |
+| **Progress** | Playback progress behind the title and artist. The played portion uses your highlight colour while playing, and stays at the current position in grey while paused. |
+| **Playback State** | The whole tile changes colour to indicate playing or paused. |
+
+| Tap Action | Behavior |
+|---|---|
+| **None** | Tapping does nothing. |
+| **Play/Pause** | Toggles playback. |
+| **Seek** | Seeks to the position tapped. Available only with **Progress**. |
+
+Changing Tile Display keeps the selected Tap Action. If you switch away from Progress while Seek is selected, Tap Action becomes None.
+
+Existing saved cards and backups retain their behavior automatically: **None** becomes **Track Info + None**, **Track Position** becomes **Progress + Play/Pause**, and **Play/Pause** becomes **Playback State + Play/Pause**. You do not need to edit or save each card after updating.
 
 ## Cover Art
 

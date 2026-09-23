@@ -10,6 +10,7 @@ from generate_media_lifecycle_integration import definition
 root = Path(__file__).resolve().parents[2]
 media = (root / "components/espcontrol/button_grid_media.h").read_text(encoding="utf-8")
 sliders = (root / "components/espcontrol/button_grid_sliders.h").read_text(encoding="utf-8")
+config = (root / "components/espcontrol/button_grid_media_config.h").read_text(encoding="utf-8")
 slider_context = sliders.split("struct SliderCtx {", 1)[1].split("\n};", 1)[0]
 source = r'''
 #include <algorithm>
@@ -34,6 +35,7 @@ struct lv_obj_t {
 struct lv_event_t { lv_obj_t *target; };
 constexpr int LV_PART_MAIN = 0, LV_STATE_CHECKED = 1, LV_OBJ_FLAG_CLICKABLE = 1;
 constexpr int LV_EVENT_VALUE_CHANGED = 2, LV_ANIM_OFF = 0;
+constexpr int LV_EVENT_RELEASED = 3;
 constexpr int LV_ALIGN_LEFT_MID = 0, LV_ALIGN_RIGHT_MID = 1;
 constexpr int LV_ALIGN_BOTTOM_MID = 2, LV_ALIGN_TOP_MID = 3;
 uint32_t now_ms = 1000;
@@ -79,6 +81,15 @@ std::string media_status_text(const std::string &s) { return s; }
 '''
 source += "struct SliderCtx {" + slider_context + "\n};\n"
 source += r'''
+struct ParsedCfg { std::string sensor = "now_playing", precision, options; };
+std::string cfg_option_value(const std::string &options, const std::string &key) {
+  const std::string prefix = key + "=";
+  return options.compare(0, prefix.size(), prefix) == 0 ? options.substr(prefix.size()) : "";
+}
+enum class TapAction : uint8_t { NONE, PLAY_PAUSE, SEEK };
+'''
+source += definition(config, "tap_action_from_saved")[1] + "\n"
+source += r'''
 struct MediaPlaybackState {
   bool available = true, playing = true, has_position = true;
   bool position_updated_at_known = false;
@@ -89,6 +100,9 @@ struct MediaPlaybackState {
 bool media_seek_pending_active(SliderCtx *) { return false; }
 constexpr float MEDIA_SEEK_MATCH_TOLERANCE_SECONDS = 1;
 void media_schedule_position_refresh(SliderCtx *) {}
+int seek_count = 0;
+void media_set_pending_seek_position(SliderCtx *, int) {}
+void send_media_seek_action(const std::string &, int, float) { ++seek_count; }
 '''
 for name in ("slider_update_fill", "slider_update_ctx_fill"):
     source += definition(sliders, name)[1] + "\n"
@@ -97,12 +111,25 @@ for name in ("media_apply_position", "media_playback_apply_state_to_slider",
     source += definition(media, name)[1] + "\n"
 source += r'''
 int main() {
+  for (const std::string display : {"", "progress", "play_pause"}) {
+    ParsedCfg saved;
+    saved.precision = display;
+    assert(tap_action_from_saved(saved) == (display.empty() ? TapAction::NONE : TapAction::PLAY_PAUSE));
+    saved.options = "media_tap_action=none";
+    assert(tap_action_from_saved(saved) == TapAction::NONE);
+    saved.options = "media_tap_action=play_pause";
+    assert(tap_action_from_saved(saved) == TapAction::PLAY_PAUSE);
+    saved.options = "media_tap_action=seek";
+    assert(tap_action_from_saved(saved) == (display == "progress" ? TapAction::SEEK : TapAction::NONE));
+  }
   constexpr uint32_t accent = 0xFF8C00, grey = 0x313131, background = 0x212121;
   lv_obj_t title;
   auto *slider = setup_media_progress_background(
     &title, accent, grey, background, "media_player.test");
   auto *ctx = static_cast<SliderCtx *>(slider->data);
   assert(!slider->clickable && !ctx->interactive);
+  emit(slider, LV_EVENT_RELEASED);
+  assert(seek_count == 0);
 
   MediaPlaybackState playback;
   media_playback_apply_state_to_slider(&playback, ctx);
@@ -135,6 +162,14 @@ int main() {
 
   delete ctx;
   for (auto *child : title.children) delete child;
+  lv_obj_t seek_title;
+  auto *seek_slider = setup_media_progress_background(
+    &seek_title, accent, grey, background, "media_player.test", true);
+  assert(seek_slider->clickable);
+  emit(seek_slider, LV_EVENT_RELEASED);
+  assert(seek_count == 1);
+  delete static_cast<SliderCtx *>(seek_slider->data);
+  for (auto *child : seek_title.children) delete child;
 }
 '''
 with tempfile.TemporaryDirectory(prefix="media-title-progress-") as tmp:

@@ -333,6 +333,7 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_MEDIA_COVER_ART = "media_cover_a
 constexpr const char *CARD_CONTRACT_OPTION_NAME_MEDIA_DISPLAY = "media_display";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_MEDIA_MODE = "media_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_MEDIA_NOW_PLAYING_CONTROLS = "media_now_playing_controls";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_MEDIA_TAP_ACTION = "media_tap_action";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_NUMBER_DISPLAY = "number_display";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ON_PATTERN = "on_pattern";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_PASS64 = "pass64";

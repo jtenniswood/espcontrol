@@ -385,9 +385,10 @@ inline std::string media_card_options_normalized(const std::string &options,
     return out;
   }
   if (mode == "now_playing") {
-    return cfg_option_token_present(options, MEDIA_COVER_ART_OPTION)
-      ? std::string(MEDIA_COVER_ART_OPTION)
-      : "";
+    if (cfg_option_token_present(options, MEDIA_COVER_ART_OPTION)) return MEDIA_COVER_ART_OPTION;
+    const std::string action = cfg_option_value(options, "media_tap_action");
+    return action == "none" || action == "play_pause" || action == "seek"
+      ? "media_tap_action=" + action : "";
   }
   if (mode == "cover_art") {
     std::string out;

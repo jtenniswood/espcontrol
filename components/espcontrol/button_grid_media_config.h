@@ -24,6 +24,18 @@ enum class Mode : uint8_t {
 
 enum class StateDisplay : uint8_t { LABEL, STATE };
 enum class NowPlayingControl : uint8_t { NONE, PROGRESS, PLAY_PAUSE };
+enum class TapAction : uint8_t { NONE, PLAY_PAUSE, SEEK };
+
+inline TapAction tap_action_from_saved(const ParsedCfg &saved) {
+  if (saved.sensor != "now_playing") return TapAction::NONE;
+  const std::string action = cfg_option_value(saved.options, "media_tap_action");
+  if (action == "none") return TapAction::NONE;
+  if (action == "play_pause") return TapAction::PLAY_PAUSE;
+  if (action == "seek") return saved.precision == "progress" ? TapAction::SEEK : TapAction::NONE;
+  // Missing actions retain the behavior of existing saved cards.
+  return saved.precision == "progress" || saved.precision == "play_pause"
+    ? TapAction::PLAY_PAUSE : TapAction::NONE;
+}
 enum class ControlLabelDisplay : uint8_t { STATUS, LABEL };
 enum class ControlNumberDisplay : uint8_t { ICON, VOLUME };
 
@@ -33,6 +45,7 @@ struct ConfigV1 {
   Mode mode = Mode::PLAY_PAUSE;
   StateDisplay state_display = StateDisplay::LABEL;
   NowPlayingControl now_playing_control = NowPlayingControl::NONE;
+  TapAction tap_action = TapAction::NONE;
   bool show_track_details = false;
   std::string secondary_entity;
   ControlLabelDisplay control_label_display = ControlLabelDisplay::STATUS;
@@ -72,6 +85,7 @@ inline ConfigV1 decode_config_v1(const ParsedCfg &saved) {
     config.state_display = StateDisplay::STATE;
   }
   if (config.mode == Mode::NOW_PLAYING) {
+    config.tap_action = tap_action_from_saved(saved);
     if (saved.precision == "progress") {
       config.now_playing_control = NowPlayingControl::PROGRESS;
     } else if (saved.precision == "play_pause") {

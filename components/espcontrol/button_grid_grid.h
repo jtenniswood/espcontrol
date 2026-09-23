@@ -839,7 +839,8 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
       display_media_title_font(display), padding,
-      row_span == 1 ? 2 : 0, ctx->play_pause_background || ctx->progress_slider,
+      row_span == 1 ? 2 : 0,
+      espcontrol::media::tap_action_from_saved(p) == espcontrol::media::TapAction::PLAY_PAUSE,
       ctx->progress_slider ? padding.left : 0, false);
     media_cover_art_refresh_geometry(ctx);
     if (ctx->progress_slider) slider_refresh_geometry(ctx->progress_slider);

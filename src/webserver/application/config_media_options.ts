@@ -1,4 +1,5 @@
 import type { DeviceConfig } from "../state/types";
+import { mediaNowPlayingTapAction } from "../model/media_card";
 import {
     configOptionEnabled,
     configOptionValue,
@@ -151,6 +152,11 @@ export function createConfigMediaOptionsFeature(
         return String(parsed);
     }
     function normalizeMediaOptions(this: any, options?: any, mode?: any) {
+        if (mode === "now_playing") {
+            const action = configOptionValue(options, "media_tap_action");
+            return ["none", "play_pause", "seek"].includes(action)
+                ? setConfigOptionValue("", "media_tap_action", action) : "";
+        }
         mode = mediaEditorMode(mode);
         if (mode === "control_modal") {
             var controlOut: any = "";
@@ -342,6 +348,7 @@ export function createConfigMediaOptionsFeature(
         return b.options;
     }
     return {
+        mediaNowPlayingTapAction,
         mediaBehaviorSpec,
         mediaCoverArtCardsSupported,
         mediaModeOptionValues,

@@ -17,6 +17,17 @@ export type MediaCardMode =
 
 export type MediaStateDisplay = "label" | "state";
 export type MediaNowPlayingControl = "none" | "progress" | "play_pause";
+export type MediaTapAction = "none" | "play_pause" | "seek";
+
+export function mediaNowPlayingTapAction(config: Partial<CardConfig>): MediaTapAction {
+  if (config.sensor !== "now_playing") return "none";
+  const action = configOptionValue(config.options || "", "media_tap_action");
+  if (action === "none" || action === "play_pause") return action;
+  if (action === "seek") return config.precision === "progress" ? "seek" : "none";
+  // Missing actions retain the behavior of existing saved cards.
+  return config.precision === "progress" || config.precision === "play_pause"
+    ? "play_pause" : "none";
+}
 export type MediaCoverArtAction = "control_modal";
 export type MediaControlLabelDisplay = "label" | "status";
 export type MediaControlNumberDisplay = "icon" | "volume";
@@ -27,6 +38,7 @@ export interface MediaCardConfigV1 {
   mode: MediaCardMode;
   stateDisplay: MediaStateDisplay;
   nowPlayingControl: MediaNowPlayingControl;
+  tapAction: MediaTapAction;
   coverArtAction: MediaCoverArtAction;
   showTrackDetails: boolean;
   secondaryEntity: string;
@@ -93,6 +105,7 @@ export function decodeMediaCardConfigV1(config: Partial<CardConfig>): MediaCardC
         ? precision
         : "none",
     coverArtAction: "control_modal",
+    tapAction: mediaNowPlayingTapAction(config),
     showTrackDetails: configOptionEnabled(options, "cover_art_details"),
     secondaryEntity: configOptionValue(options, "cover_art_secondary_entity").trim(),
     controlLabelDisplay:

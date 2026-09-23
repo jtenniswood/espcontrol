@@ -1002,7 +1002,7 @@ inline void media_playback_apply_state_to_slider(MediaPlaybackState *state,
   if (!state || !ctx) return;
   ctx->available = state->available;
   ctx->media_playing = state->playing;
-  if (!ctx->interactive && ctx->fill) {
+  if (ctx->media_playing_color != ctx->media_paused_color && ctx->fill) {
     lv_obj_set_style_bg_color(
       ctx->fill,
       lv_color_hex(state->available && state->playing
@@ -2256,7 +2256,8 @@ inline lv_obj_t *setup_media_progress_background(lv_obj_t *btn,
                                                  uint32_t progress_color,
                                                  uint32_t paused_color,
                                                  uint32_t background_color,
-                                                 const std::string &entity_id) {
+                                                 const std::string &entity_id,
+                                                 bool seek_enabled = false) {
   lv_obj_set_style_bg_color(btn, lv_color_hex(background_color), LV_PART_MAIN);
   lv_obj_set_style_bg_color(
     btn, lv_color_hex(background_color),
@@ -2282,14 +2283,14 @@ inline lv_obj_t *setup_media_progress_background(lv_obj_t *btn,
   ctx->content_pad_right = padding.right;
   ctx->content_pad_bottom = padding.bottom;
   ctx->media_position = true;
-  ctx->interactive = false;
+  ctx->interactive = seek_enabled;
   ctx->media_playing_color = progress_color;
   ctx->media_paused_color = paused_color;
   ctx->media_slider = slider;
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(btn, slider);
 
-  lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
+  if (!seek_enabled) lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
 
   lv_obj_add_event_cb(slider, [](lv_event_t *e) {
     lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
@@ -2298,6 +2299,17 @@ inline lv_obj_t *setup_media_progress_background(lv_obj_t *btn,
     int val = lv_slider_get_value(sl);
     slider_update_ctx_fill(ctx, lv_obj_get_parent(sl), ctx->inverted ? 100 - val : val);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
+
+  if (seek_enabled) {
+    lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+      lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+      SliderCtx *ctx = static_cast<SliderCtx *>(lv_obj_get_user_data(sl));
+      if (!ctx || !ctx->available || ctx->entity_id.empty()) return;
+      const int value = lv_slider_get_value(sl);
+      media_set_pending_seek_position(ctx, value);
+      send_media_seek_action(ctx->entity_id, value, ctx->media_duration);
+    }, LV_EVENT_RELEASED, nullptr);
+  }
 
   return slider;
 }
@@ -4665,7 +4677,8 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     ctx->play_pause_background = mode == "now_playing" && media_now_playing_play_pause_enabled(p);
     if (mode == "now_playing" && media_now_playing_progress_enabled(p)) {
       ctx->progress_slider = setup_media_progress_background(
-        s.btn, on_color, secondary_color, tertiary_color, p.entity);
+        s.btn, on_color, secondary_color, tertiary_color, p.entity,
+        espcontrol::media::tap_action_from_saved(p) == espcontrol::media::TapAction::SEEK);
     }
     const CardPadding layout_padding = ctx->progress_slider ? padding : CardPadding{};
     lv_obj_set_user_data(s.sensor_container, (void *)ctx);
@@ -4718,7 +4731,8 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     ctx->artist_lbl = s.text_lbl;
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, layout_padding,
-      row_span == 1 ? 2 : 0, ctx->play_pause_background || ctx->progress_slider,
+      row_span == 1 ? 2 : 0,
+      espcontrol::media::tap_action_from_saved(p) == espcontrol::media::TapAction::PLAY_PAUSE,
       mode == "now_playing" && media_now_playing_progress_enabled(p)
         ? layout_padding.left : 0);
     return;
