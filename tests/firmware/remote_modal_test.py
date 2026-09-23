@@ -10,8 +10,23 @@ HEADERS = ROOT / 'components/espcontrol'
 
 def function(file, name):
     source = (HEADERS / file).read_text()
-    start = source.rfind('inline ', 0, source.index(name + '('))
-    body = source.index('{', start)
+    search_from = 0
+    while True:
+        signature = source.find(name + '(', search_from)
+        if signature < 0:
+            raise ValueError(f'Could not find definition of {name} in {file}')
+        open_paren = source.index('(', signature)
+        depth = 1
+        close_paren = open_paren + 1
+        while depth:
+            depth += (source[close_paren] == '(') - (source[close_paren] == ')')
+            close_paren += 1
+        body = source.find('{', close_paren)
+        declaration_end = source.find(';', close_paren)
+        if body >= 0 and (declaration_end < 0 or body < declaration_end):
+            start = source.rfind('inline ', 0, signature)
+            break
+        search_from = close_paren
     depth = 1
     end = body + 1
     while depth:
@@ -26,6 +41,7 @@ for file, name in [
     ('button_grid_actions.h', 'media_card_mode'),
     ('button_grid_media.h', 'media_control_modal_mode'),
     ('guest_wifi_state.h', 'guest_wifi_valid_entity'),
+    ('button_grid_image.h', 'image_card_page_visible'),
     ('button_grid_image.h', 'image_card_context_visible_on_active_screen'),
     ('button_grid_image.h', 'image_card_context_on_active_screen'),
 ]:
