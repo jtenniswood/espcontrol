@@ -40,6 +40,7 @@ api:
   on_client_connected:
     - lambda: |-
         if (client_info.find("Home Assistant") != std::string::npos) {
+          id(espcontrol_app).home_assistant_endpoint().invalidate_connection();
           id(ha_refresh_after_connect).execute(client_info, client_address);
         }
   on_client_disconnected:
@@ -258,6 +259,16 @@ number:
           id(cover_art_resolve_home_assistant_base_url).execute();
 
 text_sensor:
+  - platform: template
+    name: "${entity_home_assistant_artwork_endpoint_health}"
+    internal: true
+    id: home_assistant_artwork_endpoint_health
+    entity_category: diagnostic
+    icon: "mdi:lan-check"
+    update_interval: 1s
+    lambda: |-
+      return id(espcontrol_app).home_assistant_endpoint().health();
+
   - platform: template
     name: "${entity_home_assistant_artwork_endpoint_status}"
     internal: true

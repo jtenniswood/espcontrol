@@ -506,3 +506,20 @@ add_test(NAME remote_modal_test COMMAND
 
 add_test(NAME clock_image_overlay_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/clock_image_overlay_test.py)
+
+add_executable(home_assistant_endpoint_resolver_test
+  home_assistant_endpoint_resolver_test.cpp
+  ../../components/espcontrol/home_assistant_endpoint_resolver.cpp
+  ../../components/espcontrol/home_assistant_endpoint_probe.cpp)
+target_compile_features(home_assistant_endpoint_resolver_test PRIVATE cxx_std_17)
+target_compile_options(home_assistant_endpoint_resolver_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(home_assistant_endpoint_resolver_test PRIVATE endpoint_stubs ../../components/espcontrol)
+add_test(NAME home_assistant_endpoint_resolver_test COMMAND home_assistant_endpoint_resolver_test)
+
+add_executable(home_assistant_endpoint_probe_test
+  home_assistant_endpoint_probe_test.cpp ../../components/espcontrol/home_assistant_endpoint_probe.cpp)
+target_compile_features(home_assistant_endpoint_probe_test PRIVATE cxx_std_17)
+target_compile_options(home_assistant_endpoint_probe_test PRIVATE -Wall -Wextra -Werror)
+target_compile_definitions(home_assistant_endpoint_probe_test PRIVATE USE_ESP_IDF)
+target_include_directories(home_assistant_endpoint_probe_test PRIVATE endpoint_idf_stubs endpoint_stubs ../../components/espcontrol)
+add_test(NAME home_assistant_endpoint_probe_test COMMAND home_assistant_endpoint_probe_test)

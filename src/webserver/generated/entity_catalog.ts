@@ -384,6 +384,13 @@ export const ENTITY_CATALOG = {
         "home_assistant_artwork_endpoint_status"
       ]
     },
+    "home_assistant_artwork_endpoint_health": {
+      "domain": "text_sensor",
+      "name": "Home Assistant Artwork Connection Health",
+      "objectIds": [
+        "home_assistant_artwork_endpoint_health"
+      ]
+    },
     "home_assistant_artwork_protocol": {
       "domain": "select",
       "name": "Home Assistant Artwork Protocol",
@@ -814,6 +821,7 @@ export const ENTITY_CATALOG = {
       "screen_saver_hide_cover_art_external_input",
       "home_assistant_artwork_endpoint_mode",
       "home_assistant_artwork_endpoint_status",
+      "home_assistant_artwork_endpoint_health",
       "home_assistant_artwork_protocol",
       "home_assistant_artwork_port",
       "screen_saver_daytime_clock_brightness",

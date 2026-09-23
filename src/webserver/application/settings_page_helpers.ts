@@ -75,7 +75,7 @@ export interface SettingsPageHelpersFeature {
 
 export function formatHomeAssistantArtworkEndpointStatus(status: string): string {
     const normalized = String(status || "").trim();
-    return normalized.replace(/^(?:Automatic|Fallback|Manual)\s*[—-]\s*/i, "").trim() || "Discovering";
+    return normalized || "Discovering";
 }
 
 export function createSettingsPageHelpersFeature(
@@ -519,6 +519,10 @@ export function createSettingsPageHelpersFeature(
             } else {
                 els.homeAssistantArtworkEndpointStatus.textContent = endpointStatus;
             }
+        }
+        if (els.homeAssistantArtworkEndpointHealth) {
+            els.homeAssistantArtworkEndpointHealth.textContent = state.homeAssistantArtworkEndpointHealth;
+            els.homeAssistantArtworkEndpointHealth.hidden = !state.homeAssistantArtworkEndpointHealth;
         }
         if (els.setCoverArtFilterToggle) {
             els.setCoverArtFilterToggle.checked = !!state.coverArtFilteringEnabled;

@@ -1884,7 +1884,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   );
   assert.strictEqual(
     await homeAssistantSettingsCard.locator("#sp-ha-artwork-endpoint-status").textContent(),
-    "The current Home Assistant artwork endpoint is http://192.0.2.10.",
+    "Home Assistant artwork endpoint: Automatic — http://192.0.2.10.",
     `${label}: Home Assistant artwork endpoint status should render`,
   );
   const endpointModePostsBefore = posts.length;
@@ -3229,7 +3229,7 @@ async function assertCameraRefreshSettings(page, posts, label) {
   assert.strictEqual(await page.locator(".sp-settings-modal .sp-disclosure").filter({ hasText: "Modal Settings" })
     .locator("#sp-inp-image-refresh-mode").count(), 0,
     `${label}: refresh controls must sit outside Modal Settings`);
-  assert(await page.getByText("Activity refreshes the visible card or expanded image", { exact: false }).count() === 1);
+  assert(await page.getByText("On activity refreshes them every 5 seconds for 30 seconds.", { exact: false }).count() === 1);
   assert.strictEqual(await mode.inputValue(), "off", `${label}: camera refresh is opt-in`);
   assert(!(await interval.isVisible()));
   await mode.selectOption("periodic");
@@ -6031,9 +6031,11 @@ async function assertHostedCompatibility(browser) {
     await page.evaluate(() => window.__seedEspState([
       { id: "select/Home Assistant Artwork Connection", state: "Manual" },
       { id: "text_sensor/Home Assistant Artwork Endpoint", state: "Manual — http://ha.test:8123" },
+      { id: "text_sensor/Home Assistant Artwork Connection Health", state: "Manual connection" },
     ]));
     assert.equal(await page.locator("#sp-set-ha-artwork-endpoint-mode").inputValue(), "Manual");
-    assert.equal(await page.locator("#sp-ha-artwork-endpoint-status").textContent(), "The current Home Assistant artwork endpoint is http://ha.test:8123.");
+    assert.equal(await page.locator("#sp-ha-artwork-endpoint-status").textContent(), "Home Assistant artwork endpoint: Manual — http://ha.test:8123.");
+    assert.equal(await page.locator("#sp-ha-artwork-endpoint-health").textContent(), "Manual connection");
     assert(!unhandled.some(message => message.includes("Home Assistant Artwork")), "display-name artwork events are handled");
   } finally { await context.close(); }
 }

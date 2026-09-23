@@ -123,6 +123,7 @@ export function runStateContractTests(): void {
     homeAssistantArtworkPort: "number-home_assistant_artwork_port",
     homeAssistantArtworkEndpointMode: "select-home_assistant_artwork_endpoint_mode",
     homeAssistantArtworkEndpointStatus: "text_sensor-home_assistant_artwork_endpoint_status",
+    homeAssistantArtworkEndpointHealth: "text_sensor-home_assistant_artwork_endpoint_health",
     scheduleTrigger: "text-screen__schedule_trigger",
     scheduleSensorActivation: "select-screen__schedule_sensor_activation",
     scheduleWakeTimeout: "number-screen__schedule_wake_timeout",

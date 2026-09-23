@@ -366,7 +366,7 @@ export function createSettingsSystemSectionFeature(
         els.setHomeAssistantArtworkEndpointMode = haModeSelect;
         var haStatus: any = infoPanel("sp-ha-artwork-endpoint-status", "");
         var haStatusText: any = haStatus.lastElementChild;
-        haStatusText.textContent = "The current Home Assistant artwork endpoint is";
+        haStatusText.textContent = "Home Assistant artwork endpoint:";
         haStatusText.appendChild(document.createTextNode(" "));
         var haStatusOutput: any = document.createElement("code");
         haStatusOutput.textContent = formatHomeAssistantArtworkEndpointStatus(state.homeAssistantArtworkEndpointStatus);
@@ -375,6 +375,12 @@ export function createSettingsSystemSectionFeature(
         homeAssistantSettingsBody.appendChild(haStatus);
         els.homeAssistantArtworkEndpointStatus = haStatus;
         els.homeAssistantArtworkEndpointStatusOutput = haStatusOutput;
+        var haHealth: any = document.createElement("p");
+        haHealth.id = "sp-ha-artwork-endpoint-health";
+        haHealth.textContent = state.homeAssistantArtworkEndpointHealth;
+        haHealth.hidden = !state.homeAssistantArtworkEndpointHealth;
+        homeAssistantSettingsBody.appendChild(haHealth);
+        els.homeAssistantArtworkEndpointHealth = haHealth;
         var haProtocolField: any = document.createElement("div");
         haProtocolField.className = "sp-field";
         haProtocolField.appendChild(fieldLabel("Home Assistant Protocol", "sp-set-ha-artwork-protocol"));

@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 8,
     "cardTypes": 43,
-    "entityNames": 107,
+    "entityNames": 108,
     "icons": 359,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
@@ -7020,6 +7020,17 @@
         "name": "Home Assistant Artwork Endpoint",
         "objectIds": [
           "home_assistant_artwork_endpoint_status"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "home_assistant_artwork_endpoint_health",
+        "domain": "text_sensor",
+        "name": "Home Assistant Artwork Connection Health",
+        "objectIds": [
+          "home_assistant_artwork_endpoint_health"
         ],
         "groups": [
           "settings"

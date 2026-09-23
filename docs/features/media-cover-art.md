@@ -73,7 +73,7 @@ Playback metadata uses the native ESPHome connection; image downloads use HTTP o
 
 1. Confirm the selected player has artwork in Home Assistant.
 2. Open **Settings > System > Home Assistant Settings** and check the displayed artwork endpoint.
-3. If automatic discovery chooses an unreachable endpoint, use **Manual** with the reachable protocol and port. A reverse proxy may need **Artwork Base URL**.
+3. If automatic discovery chooses an unreachable endpoint, use **Manual** with the reachable protocol and port. For hostname-dependent proxies, Automatic needs a reachable advertised local URL; Manual currently supports protocol and port only.
 4. Retry playback. Confirm both the small Cover Art card and its expanded view load an image.
 
 Artwork availability depends on the source. If only Spotify, radio, Plex, or another source fails, capture [USB logs](/reference/collect-usb-logs) and include the source and firmware version in a report, with private URLs and credentials removed.

@@ -164,6 +164,7 @@ export interface AppState {
   coverArtHomeAssistantPort: number;
   homeAssistantArtworkEndpointMode: string;
   homeAssistantArtworkEndpointStatus: string;
+  homeAssistantArtworkEndpointHealth: string;
   screensaverMode: string;
   _screensaverModeReceived: boolean;
   screensaverAction: string;

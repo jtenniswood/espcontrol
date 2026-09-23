@@ -26,7 +26,7 @@ class ReconnectRecoveryTest(unittest.TestCase):
 
     def test_only_ha_clients_start_recovery(self):
         connect = self.core.split("  on_client_connected:\n", 1)[1].split("  on_client_disconnected:", 1)[0]
-        self.assertRegex(connect, r'(?s)if \(client_info.find\("Home Assistant"\).*?\{\s*id\(ha_refresh_after_connect\).execute')
+        self.assertRegex(connect, r'(?s)if \(client_info.find\("Home Assistant"\).*?\{\s*id\(espcontrol_app\).home_assistant_endpoint\(\).invalidate_connection\(\);\s*id\(ha_refresh_after_connect\).execute')
         self.assertNotIn("delay:", connect)  # no detached old-connection timers
 
     def test_disconnect_preserves_replacement_recovery(self):

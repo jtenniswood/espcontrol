@@ -363,6 +363,10 @@ export function createAppStateEventHandlersFeature(
                     d.value || val, state.homeAssistantArtworkProtocol, state.coverArtHomeAssistantPort);
                 syncCoverArtScreensaverUi();
             },
+            "text_sensor-home_assistant_artwork_endpoint_health": function (this: any, val?: any) {
+                state.homeAssistantArtworkEndpointHealth = String(val || "");
+                syncCoverArtScreensaverUi();
+            },
             "text_sensor-home_assistant_artwork_endpoint_status": function (this: any, val?: any) {
                 state.homeAssistantArtworkEndpointStatus = String(val || "Discovering");
                 syncCoverArtScreensaverUi();
