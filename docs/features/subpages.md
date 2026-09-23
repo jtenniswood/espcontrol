@@ -31,11 +31,12 @@ Subpages can contain Switch, Lights, Action, Local Action, Option Select, Webhoo
 
 You can ask Home Assistant to wake the panel and open or activate something on the home screen. This is useful in automations, scripts, dashboards, or voice routines where you want the panel to jump to a relevant page or open a card's normal control popup.
 
-The general Home-Assistant-to-panel `navigate` action is disabled on the ESP32-S3 4-inch panel because it can stop Home Assistant completing the panel startup registration on that lower-memory model. Tapping Subpage cards on the panel still works normally.
+The general Home-Assistant-to-panel `navigate` action is available on P4 and S3 firmware. It can activate any home-screen card by label or slot, so command cards may run their configured Home Assistant actions.
 
 Firmware with the remote control actions also provides `open_subpage`, including
 on the S3. This focused action opens a labeled Subpage card without activating
-other kinds of home-screen cards.
+other kinds of home-screen cards. Use it when an automation should only open a
+subpage and should never trigger a command card.
 
 Use the ESPHome action named after your device:
 
@@ -181,8 +182,9 @@ arriving during wake-up replace the pending request with the latest one.
 This action does not return a result to Home Assistant. Device logs under
 `open_modal` explain rejected requests, duplicate matches, successful opens, or
 modal creation failures. Logs under `open_subpage` explain rejected requests and
-duplicate labels. The general `navigate` action remains unavailable on S3;
-`open_subpage` is a separate focused action.
+duplicate labels. `navigate` is available on the S3 as well as P4 devices;
+`open_subpage` remains the focused option when only a labeled Subpage card
+should be opened.
 
 ## Show State
 
