@@ -1201,7 +1201,7 @@
               "screen_schedule_clock_min_brightness": "\"1\"",
               "screen_schedule_clock_default_brightness": "\"10\""
             },
-            "apiNavigateAction": false
+            "apiNavigateAction": true
           }
         }
       }

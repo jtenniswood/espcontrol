@@ -147,9 +147,11 @@ inline bool remote_subpage_resolve(const std::string &label, bool ui_ready,
   const std::string normalized = navigation_lower(wanted);
   int matches = 0;
   for (auto &entry : navigation_home_targets()) {
+    NavigationSubpageEntry *page = navigation_find_slot(entry.slot);
     if (!entry.button || entry.label.empty() ||
         navigation_lower(entry.label) != normalized ||
-        parse_cfg(entry.config).type != "subpage") {
+        parse_cfg(entry.config).type != "subpage" ||
+        page == nullptr || page->screen == nullptr) {
       continue;
     }
     ++matches;

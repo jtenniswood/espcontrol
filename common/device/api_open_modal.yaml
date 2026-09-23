@@ -5,6 +5,7 @@ api:
       variables:
         entity_id: string
       then:
+        - script.stop: open_remote_subpage
         - script.execute:
             id: open_entity_modal
             entity_id: !lambda 'return entity_id;'
@@ -22,6 +23,7 @@ api:
       variables:
         label: string
       then:
+        - script.stop: open_entity_modal
         - script.execute:
             id: open_remote_subpage
             label: !lambda 'return label;'

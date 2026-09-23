@@ -1595,7 +1595,7 @@
             "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
-          "apiNavigateAction": false,
+          "apiNavigateAction": true,
           "apiOpenModalAction": true
         }
       },

@@ -1971,7 +1971,12 @@ inline void grid_phase2(
              p.type.c_str());
   }
 
-  if (cfg.info_only) return;
+  if (cfg.info_only) {
+    // Info-only profiles still bind main-card runtimes in phase 2. They do not
+    // build subpages, but remote modal actions can safely use those runtimes.
+    grid_phase2_complete_state() = true;
+    return;
+  }
 
   // --- Subpage creation ---
   static lv_coord_t sp_col_dsc[MAX_GRID_SLOTS + 1];
