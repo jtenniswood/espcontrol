@@ -125,3 +125,8 @@ inline bool espcontrol_open_modal(const std::string &entity_id, bool ui_ready) {
            selection.target.entity.c_str(), selection.slot, selection.subcard);
   return true;
 }
+
+inline void espcontrol_close_modal() {
+  control_modal_close_nested_menu();
+  control_modal_close_active();
+}

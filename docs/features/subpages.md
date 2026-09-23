@@ -136,10 +136,20 @@ actions:
       entity_id: light.office_ceiling
 ```
 
-Requests are ignored while Screen Lock is enabled, during an active alarm display
-takeover, or before the panel is ready. Empty or unknown entity IDs, unsupported
-cards, and unavailable controls leave the current display untouched. Requests
-arriving during wake-up replace the pending request with the latest one.
+To close the currently open control popup remotely, call `close_modal` with no
+data. It returns to the page underneath the popup and does nothing when no
+control popup is open:
+
+```yaml
+action: esphome.hall_panel_close_modal
+```
+
+Replace `hall_panel` with your ESPHome device name, as for `open_modal`.
+
+Open requests are ignored while Screen Lock is enabled, during an active alarm
+display takeover, or before the panel is ready. Empty or unknown entity IDs,
+unsupported cards, and unavailable controls leave the current display untouched.
+Requests arriving during wake-up replace the pending request with the latest one.
 
 This action does not return a result to Home Assistant. Device logs under
 `open_modal` explain rejected requests, duplicate matches, successful opens, or

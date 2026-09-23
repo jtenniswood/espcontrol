@@ -8,6 +8,9 @@ api:
         - script.execute:
             id: open_entity_modal
             entity_id: !lambda 'return entity_id;'
+    - action: close_modal
+      then:
+        - lambda: 'espcontrol_close_modal();'
 
 script:
   - id: open_entity_modal
