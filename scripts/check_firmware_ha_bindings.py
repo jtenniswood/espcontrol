@@ -1054,9 +1054,19 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
         r"normalize_display_text\(\s*decode_html_entities\(id\(cover_art_media_source\)\)\)",
         sync_text_body,
     )
+    title_display_normalized = sync_text_body is not None and re.search(
+        r"const std::string title\s*=\s*espcontrol::media::normalize_media_display_text\(\s*"
+        r"id\(cover_art_title\)\);",
+        sync_text_body,
+    ) and "normalize_display_text(title)" in sync_text_body
+    artist_display_normalized = sync_text_body is not None and re.search(
+        r"normalize_display_text\(\s*espcontrol::media::normalize_media_display_text\(\s*"
+        r"id\(cover_art_artist\)\)\)",
+        sync_text_body,
+    )
     if sync_text_body is not None and (
-        "normalize_display_text(id(cover_art_title))" not in sync_text_body
-        or "normalize_display_text(id(cover_art_artist))" not in sync_text_body
+        not title_display_normalized
+        or not artist_display_normalized
         or source_display_normalized is None
     ):
         errors.append(f"{rel}: normalize decoded cover art metadata only at the label boundary")
@@ -5972,6 +5982,17 @@ def run_self_test() -> int:
         ("normalize decoded cover art metadata only at the label boundary",),
     )
     expect_cover_art_refresh_errors(
+        "cover art metadata bypasses media unicode cleanup",
+        "script:\n"
+        "  - id: cover_art_sync_track_text\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          return normalize_display_text(id(cover_art_title));\n"
+        "          return normalize_display_text(id(cover_art_artist));\n"
+        "          return normalize_display_text(decode_html_entities(id(cover_art_media_source)));\n",
+        ("normalize decoded cover art metadata only at the label boundary",),
+    )
+    expect_cover_art_refresh_errors(
         "stale cover refresh guard present",
         "globals:\n"
         "  - id: cover_art_runtime\n"
@@ -5983,8 +6004,9 @@ def run_self_test() -> int:
         "  - id: cover_art_sync_track_text\n"
         "    then:\n"
         "      - lambda: |-\n"
-        "          return normalize_display_text(id(cover_art_title));\n"
-        "          return normalize_display_text(id(cover_art_artist));\n"
+        "          const std::string title = espcontrol::media::normalize_media_display_text(id(cover_art_title));\n"
+        "          return normalize_display_text(title);\n"
+        "          return normalize_display_text(espcontrol::media::normalize_media_display_text(id(cover_art_artist)));\n"
         "          return normalize_display_text(\n"
         "            decode_html_entities(id(cover_art_media_source)));\n"
         "  - id: cover_art_resolve_home_assistant_base_url\n"

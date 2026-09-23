@@ -1559,17 +1559,20 @@ script:
               return normalize_display_text(
                 decode_html_entities(id(cover_art_media_source)));
             }
-            if (id(cover_art_title).empty()) return std::string("—");
-            return normalize_display_text(id(cover_art_title));
+            const std::string title = espcontrol::media::normalize_media_display_text(
+              id(cover_art_title));
+            if (title.empty()) return std::string("—");
+            return normalize_display_text(title);
       - if:
           condition:
-            lambda: 'return id(cover_art_external_input_active) || !id(cover_art_artist).empty();'
+            lambda: 'return id(cover_art_external_input_active) || !espcontrol::media::normalize_media_display_text(id(cover_art_artist)).empty();'
           then:
             - lvgl.label.update:
                 id: cover_art_artist_label
                 text: !lambda |-
                   if (!id(cover_art_artist).empty()) {
-                    return normalize_display_text(id(cover_art_artist));
+                    return normalize_display_text(
+                      espcontrol::media::normalize_media_display_text(id(cover_art_artist)));
                   }
                   return espcontrol_i18n(std::string("Source"));
             - lvgl.widget.show: cover_art_artist_label

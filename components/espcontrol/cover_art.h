@@ -10,6 +10,7 @@
 #include <string>
 
 #include "artwork_controller.h"
+#include "media_display_text.h"
 
 // Defined by the firmware Home Assistant transport. Keeping this declaration
 // lightweight lets host-side Cover Art tests use the controller without
