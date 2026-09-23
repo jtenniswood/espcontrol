@@ -13,6 +13,11 @@ api:
         - script.stop: open_entity_modal
         - script.stop: open_remote_subpage
         - lambda: 'espcontrol_close_modal();'
+    - action: close_subpage
+      then:
+        - script.stop: open_entity_modal
+        - script.stop: open_remote_subpage
+        - lambda: 'espcontrol_close_subpage(id(main_page)->obj);'
     - action: open_subpage
       variables:
         label: string

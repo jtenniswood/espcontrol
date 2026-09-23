@@ -162,6 +162,16 @@ Use the Subpage card's home-screen label. If labels are duplicated, the first
 matching card in display order opens. This action wakes the panel and leaves
 other card types untouched.
 
+To return from the currently open subpage to the home screen, call
+`close_subpage` with no data:
+
+```yaml
+action: esphome.hall_panel_close_subpage
+```
+
+This also closes a popup on that subpage. It does nothing if the home screen is
+already active, and it does not interrupt an alarm display takeover.
+
 Open requests are ignored while Screen Lock is enabled, during an active alarm
 display takeover, or before the panel is ready. `open_modal` requires a supported,
 available control card for the entity. `open_subpage` requires a matching labeled

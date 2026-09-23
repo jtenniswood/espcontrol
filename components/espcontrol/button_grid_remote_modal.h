@@ -177,3 +177,19 @@ inline bool espcontrol_open_subpage(const std::string &label, bool ui_ready,
   if (!remote_subpage_resolve(label, ui_ready && main_page_obj != nullptr, target)) return false;
   return navigation_activate_home_target(target, main_page_obj);
 }
+
+inline bool espcontrol_close_subpage(lv_obj_t *main_page_obj) {
+  if (alarm_display_takeover_active()) {
+    ESP_LOGW("close_subpage", "Rejected request: alarm display is active");
+    return false;
+  }
+  if (navigation_active_subpage_slot() == 0) {
+    ESP_LOGI("close_subpage", "No subpage is open");
+    return false;
+  }
+  if (main_page_obj == nullptr) {
+    ESP_LOGW("close_subpage", "Main page is not ready");
+    return false;
+  }
+  return navigation_return_home(main_page_obj);
+}
