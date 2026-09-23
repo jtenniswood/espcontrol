@@ -1950,6 +1950,15 @@ inline void image_card_apply_entity_state(ImageCardCtx *ctx,
   if (!ctx) return;
   const std::string value = string_ref_limited(state, 64);
   const bool unavailable = value == "unavailable" || value == "unknown";
+  if (ctx->entity_id.rfind("image.", 0) == 0) {
+    if (unavailable) {
+      // A recovered entity may report the same timestamp it had before going
+      // unavailable. Forget that baseline so recovery triggers a fresh image.
+      ctx->revision.invalidate();
+    } else if (!ctx->revision.observe(string_ref_limited(state, 80))) {
+      return;
+    }
+  }
   const bool recovered = ctx->camera_entity_unavailable && !unavailable;
   ctx->camera_entity_unavailable = unavailable;
   if (unavailable) {
@@ -1978,8 +1987,6 @@ inline void subscribe_image_card_entity_state(ImageCardCtx *ctx,
     std::function<void(esphome::StringRef)>(
       [ctx, entity_id, generation](esphome::StringRef state) {
         if (!image_card_context_current(ctx, entity_id, generation)) return;
-        if (entity_id.rfind("image.", 0) == 0 &&
-            !ctx->revision.observe(string_ref_limited(state, 80))) return;
         image_card_apply_entity_state(ctx, state);
       }),
     HA_SUBSCRIPTION_SCOPE_DEFAULT, true

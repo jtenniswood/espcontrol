@@ -132,6 +132,7 @@ struct ImageRevision {
     ++latest;
     return true;
   }
+  void invalidate() { timestamp.clear(); }
   bool tile_dirty() const { return latest != tile_applied; }
   bool modal_dirty() const { return latest != modal_applied; }
 };
