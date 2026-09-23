@@ -128,5 +128,52 @@ inline bool espcontrol_open_modal(const std::string &entity_id, bool ui_ready) {
 
 inline void espcontrol_close_modal() {
   control_modal_close_nested_menu();
-  control_modal_close_active();
+  control_modal_force_close_active();
+}
+
+inline bool remote_subpage_resolve(const std::string &label, bool ui_ready,
+                                   NavigationHomeTargetEntry *&target) {
+  const std::string wanted = navigation_trim(label);
+  const char *reason = nullptr;
+  if (wanted.empty()) reason = "empty subpage label";
+  else if (!ui_ready) reason = "display is not ready";
+  else if (screen_lock_enabled()) reason = "screen is locked";
+  else if (alarm_display_takeover_active()) reason = "alarm display is active";
+  if (reason) {
+    ESP_LOGW("open_subpage", "Rejected request: %s", reason);
+    return false;
+  }
+
+  const std::string normalized = navigation_lower(wanted);
+  int matches = 0;
+  for (auto &entry : navigation_home_targets()) {
+    if (!entry.button || entry.label.empty() ||
+        navigation_lower(entry.label) != normalized ||
+        parse_cfg(entry.config).type != "subpage") {
+      continue;
+    }
+    ++matches;
+    if (!target || entry.display_order < target->display_order) target = &entry;
+  }
+  if (!target) {
+    ESP_LOGW("open_subpage", "No subpage labelled '%s'", wanted.c_str());
+    return false;
+  }
+  if (matches > 1) {
+    ESP_LOGI("open_subpage", "Multiple subpages are labelled '%s'; using slot %d",
+             wanted.c_str(), target->slot);
+  }
+  return true;
+}
+
+inline bool espcontrol_can_open_subpage(const std::string &label, bool ui_ready) {
+  NavigationHomeTargetEntry *target = nullptr;
+  return remote_subpage_resolve(label, ui_ready, target);
+}
+
+inline bool espcontrol_open_subpage(const std::string &label, bool ui_ready,
+                                    lv_obj_t *main_page_obj) {
+  NavigationHomeTargetEntry *target = nullptr;
+  if (!remote_subpage_resolve(label, ui_ready && main_page_obj != nullptr, target)) return false;
+  return navigation_activate_home_target(target, main_page_obj);
 }

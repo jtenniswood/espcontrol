@@ -31,7 +31,11 @@ Subpages can contain Switch, Lights, Action, Local Action, Option Select, Webhoo
 
 You can ask Home Assistant to wake the panel and open or activate something on the home screen. This is useful in automations, scripts, dashboards, or voice routines where you want the panel to jump to a relevant page or open a card's normal control popup.
 
-This Home-Assistant-to-panel action is disabled on the ESP32-S3 4-inch panel because it can stop Home Assistant completing the panel startup registration on that lower-memory model. Tapping Subpage cards on the panel still works normally.
+The general Home-Assistant-to-panel `navigate` action is disabled on the ESP32-S3 4-inch panel because it can stop Home Assistant completing the panel startup registration on that lower-memory model. Tapping Subpage cards on the panel still works normally.
+
+Firmware with the remote control actions also provides `open_subpage`, including
+on the S3. This focused action opens a labeled Subpage card without activating
+other kinds of home-screen cards.
 
 Use the ESPHome action named after your device:
 
@@ -146,15 +150,29 @@ action: esphome.hall_panel_close_modal
 
 Replace `hall_panel` with your ESPHome device name, as for `open_modal`.
 
+To open a labeled Subpage card from Home Assistant, call `open_subpage`:
+
+```yaml
+action: esphome.hall_panel_open_subpage
+data:
+  label: "Lights"
+```
+
+Use the Subpage card's home-screen label. If labels are duplicated, the first
+matching card in display order opens. This action wakes the panel and leaves
+other card types untouched.
+
 Open requests are ignored while Screen Lock is enabled, during an active alarm
-display takeover, or before the panel is ready. Empty or unknown entity IDs,
-unsupported cards, and unavailable controls leave the current display untouched.
-Requests arriving during wake-up replace the pending request with the latest one.
+display takeover, or before the panel is ready. `open_modal` requires a supported,
+available control card for the entity. `open_subpage` requires a matching labeled
+Subpage card. Invalid requests leave the current display untouched. Requests
+arriving during wake-up replace the pending request with the latest one.
 
 This action does not return a result to Home Assistant. Device logs under
 `open_modal` explain rejected requests, duplicate matches, successful opens, or
-modal creation failures. The older `navigate` action remains unavailable on S3;
-`open_modal` is a separate action.
+modal creation failures. Logs under `open_subpage` explain rejected requests and
+duplicate labels. The general `navigate` action remains unavailable on S3;
+`open_subpage` is a separate focused action.
 
 ## Show State
 
