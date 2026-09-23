@@ -1002,6 +1002,13 @@ inline void media_playback_apply_state_to_slider(MediaPlaybackState *state,
   if (!state || !ctx) return;
   ctx->available = state->available;
   ctx->media_playing = state->playing;
+  if (!ctx->interactive && ctx->fill) {
+    lv_obj_set_style_bg_color(
+      ctx->fill,
+      lv_color_hex(state->available && state->playing
+        ? ctx->media_playing_color : ctx->media_paused_color),
+      LV_PART_MAIN);
+  }
   if (ctx->media_status_lbl) {
     std::string label = media_status_text(state->available ? state->state_text : std::string("unavailable"));
     lv_label_set_display_text(ctx->media_status_lbl, label.c_str());
@@ -2247,6 +2254,7 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
 
 inline lv_obj_t *setup_media_progress_background(lv_obj_t *btn,
                                                  uint32_t progress_color,
+                                                 uint32_t paused_color,
                                                  uint32_t background_color,
                                                  const std::string &entity_id) {
   lv_obj_set_style_bg_color(btn, lv_color_hex(background_color), LV_PART_MAIN);
@@ -2275,6 +2283,8 @@ inline lv_obj_t *setup_media_progress_background(lv_obj_t *btn,
   ctx->content_pad_bottom = padding.bottom;
   ctx->media_position = true;
   ctx->interactive = false;
+  ctx->media_playing_color = progress_color;
+  ctx->media_paused_color = paused_color;
   ctx->media_slider = slider;
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(btn, slider);
@@ -4654,7 +4664,8 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     ctx->show_track_details = mode != "cover_art" || media_cover_art_details_enabled(p);
     ctx->play_pause_background = mode == "now_playing" && media_now_playing_play_pause_enabled(p);
     if (mode == "now_playing" && media_now_playing_progress_enabled(p)) {
-      ctx->progress_slider = setup_media_progress_background(s.btn, on_color, tertiary_color, p.entity);
+      ctx->progress_slider = setup_media_progress_background(
+        s.btn, on_color, secondary_color, tertiary_color, p.entity);
     }
     const CardPadding layout_padding = ctx->progress_slider ? padding : CardPadding{};
     lv_obj_set_user_data(s.sensor_container, (void *)ctx);

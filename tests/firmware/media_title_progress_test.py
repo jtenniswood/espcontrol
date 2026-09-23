@@ -26,6 +26,7 @@ struct lv_obj_t {
   lv_obj_t *parent = nullptr;
   void *data = nullptr;
   int value = 0, width = 200, height = 80, radius = 20;
+  uint32_t color = 0;
   bool clickable = true;
   std::vector<lv_obj_t *> children;
   std::vector<std::pair<int, void (*)(lv_event_t *)>> events;
@@ -38,7 +39,7 @@ constexpr int LV_ALIGN_BOTTOM_MID = 2, LV_ALIGN_TOP_MID = 3;
 uint32_t now_ms = 1000;
 namespace esphome { uint32_t millis() { return now_ms; } }
 uint32_t lv_color_hex(uint32_t color) { return color; }
-void lv_obj_set_style_bg_color(lv_obj_t *, uint32_t, int) {}
+void lv_obj_set_style_bg_color(lv_obj_t *o, uint32_t color, int) { o->color = color; }
 void lv_obj_set_style_radius(lv_obj_t *o, int radius, int) { o->radius = radius; }
 int lv_obj_get_style_radius(lv_obj_t *o, int) { return o->radius; }
 int lv_obj_get_width(lv_obj_t *o) { return o->width; }
@@ -96,9 +97,10 @@ for name in ("media_apply_position", "media_playback_apply_state_to_slider",
     source += definition(media, name)[1] + "\n"
 source += r'''
 int main() {
+  constexpr uint32_t accent = 0xFF8C00, grey = 0x313131, background = 0x212121;
   lv_obj_t title;
   auto *slider = setup_media_progress_background(
-    &title, 0xFF8C00, 0x212121, "media_player.test");
+    &title, accent, grey, background, "media_player.test");
   auto *ctx = static_cast<SliderCtx *>(slider->data);
   assert(!slider->clickable && !ctx->interactive);
 
@@ -109,6 +111,7 @@ int main() {
   now_ms = 6000;
   media_playback_apply_state_to_slider(&playback, ctx);
   assert(slider->value == 5 && ctx->fill->width == 10);
+  assert(ctx->fill->color == accent);
 
   now_ms = 11000;
   media_playback_apply_state_to_slider(&playback, ctx);
@@ -124,6 +127,7 @@ int main() {
   now_ms = 51000;
   media_playback_apply_state_to_slider(&playback, ctx);
   assert(slider->value == 10);
+  assert(ctx->fill->width == 20 && ctx->fill->color == grey);
 
   playback.duration = 0;
   media_playback_apply_state_to_slider(&playback, ctx);
