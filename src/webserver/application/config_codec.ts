@@ -174,6 +174,9 @@ export function createConfigCodecFeature(
         typeDef.normalizeConfig(b);
         return true;
     }
+    function cardRequiresSquareSize(this: any, b?: any) {
+        return false;
+    }
     function cardIsWifiSharing(this: any, b?: any) {
         return !!(b && (b.type === "wifi_qr" || b.type === "wifi_qr_card"));
     }
@@ -1024,6 +1027,7 @@ export function createConfigCodecFeature(
     const feature = {
         normalizeWithRegisteredCardType,
         normalizeButtonConfig,
+        cardRequiresSquareSize,
         cardIsWifiSharing,
         cardSupportsWifiPortraitSizes,
         cardSupportsExtraLargeSize,
