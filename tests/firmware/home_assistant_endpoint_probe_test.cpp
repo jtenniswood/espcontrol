@@ -50,4 +50,11 @@ int main() {
  probe_test_client_allocation_fails = true;
  assert(probe.start("http://ha.local:80", 8)); probe_test_run_task();
  assert(probe.take(result) && result.outcome == EndpointProbeOutcome::RESOURCE);
+ probe_test_client_allocation_fails = false;
+ probe_test_error = ESP_ERR_NO_MEM;
+ assert(probe.start("https://ha.example:443", 9)); probe_test_run_task();
+ assert(probe.take(result) && result.outcome == EndpointProbeOutcome::RESOURCE);
+ probe_test_error = ESP_FAIL;
+ assert(probe.start("https://ha.example:443", 10)); probe_test_run_task();
+ assert(probe.take(result) && result.outcome == EndpointProbeOutcome::TRANSPORT);
 }

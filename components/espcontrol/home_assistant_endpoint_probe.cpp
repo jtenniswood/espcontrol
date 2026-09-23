@@ -135,6 +135,7 @@ void EndpointProbeService::run(void *argument) {
       type = home_assistant_endpoint::trim_copy(type);
       std::transform(type.begin(), type.end(), type.begin(), ::tolower);
       if (status == 401 || status == 403) job->result.outcome = EndpointProbeOutcome::ACCESS_DENIED;
+      else if (error == ESP_ERR_NO_MEM) job->result.outcome = EndpointProbeOutcome::RESOURCE;
       else if (error != ESP_OK) job->result.outcome = EndpointProbeOutcome::TRANSPORT;
       else if (status == 200 && (type == "application/json" || type == "application/manifest+json"))
         job->result.outcome = EndpointProbeOutcome::READY;
