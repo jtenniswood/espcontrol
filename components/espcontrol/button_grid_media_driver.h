@@ -1,5 +1,7 @@
 #pragma once
 
+#include "card_modal_target.h"
+
 // Shared lifecycle driver for every Media card mode. The specialised playback,
 // artwork, playlist, progress, volume, Home Assistant, and modal helpers remain
 // in button_grid_media.h; this driver owns the main-grid/subpage boundary.
@@ -498,6 +500,26 @@ inline bool media_driver_bind_subpage(
       card_runtime_context(*saved, Surface::SUBPAGE), *saved, target);
   }, media_fast_press_mode(mode) ? LV_EVENT_PRESSED : LV_EVENT_CLICKED, click);
   return true;
+}
+
+inline ModalTarget media_driver_modal_target(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button) {
+  if (!media_driver_matches(context)) return {};
+  const std::string mode = media_card_mode(config.sensor);
+  if (media_control_modal_mode(mode) || mode == "cover_art") {
+    auto *runtime = button
+      ? static_cast<MediaControlCtx *>(lv_obj_get_user_data(button)) : nullptr;
+    if (!runtime) runtime = grid_media_control_runtime_for_owner(button);
+    return modal_target(runtime, config.entity, ControlModalKind::MEDIA_CONTROL,
+                        media_control_can_open_modal(runtime), media_control_open_modal);
+  }
+  if (mode == "volume") {
+    auto *runtime = button
+      ? static_cast<MediaVolumeCtx *>(lv_obj_get_user_data(button)) : nullptr;
+    return modal_target(runtime, config.entity, ControlModalKind::MEDIA_VOLUME,
+                        media_volume_can_open_modal(runtime), media_volume_open_modal);
+  }
+  return {};
 }
 
 }  // namespace espcontrol::cards

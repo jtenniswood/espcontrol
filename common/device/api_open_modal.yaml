@@ -1,0 +1,30 @@
+# Open existing entity controls without activating the card's normal command.
+api:
+  actions:
+    - action: open_modal
+      variables:
+        entity_id: string
+      then:
+        - script.execute:
+            id: open_entity_modal
+            entity_id: !lambda 'return entity_id;'
+    - action: close_modal
+      then:
+        - script.stop: open_entity_modal
+        - script.stop: open_remote_subpage
+        - script.stop: remote_navigate
+        - lambda: 'espcontrol_close_modal();'
+    - action: close_subpage
+      then:
+        - script.stop: open_entity_modal
+        - script.stop: open_remote_subpage
+        - script.stop: remote_navigate
+        - lambda: 'espcontrol_close_subpage(id(main_page)->obj);'
+    - action: open_subpage
+      variables:
+        label: string
+      then:
+        - script.stop: open_entity_modal
+        - script.execute:
+            id: open_remote_subpage
+            label: !lambda 'return label;'

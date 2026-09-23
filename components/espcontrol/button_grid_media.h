@@ -4513,8 +4513,12 @@ inline MediaControlCtx *create_media_control_context(
   return ctx;
 }
 
+inline bool media_control_can_open_modal(MediaControlCtx *ctx) {
+  return !(!ctx || !ctx->available || (ctx->group_only && !ctx->grouping_supported));
+}
+
 inline void media_control_open_modal(MediaControlCtx *ctx) {
-  if (!ctx || !ctx->available || (ctx->group_only && !ctx->grouping_supported)) return;
+  if (!media_control_can_open_modal(ctx)) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::MEDIA_CONTROL, ctx->btn, ctx->width_compensation_percent,
     ctx->icon_font, media_control_hide_modal);

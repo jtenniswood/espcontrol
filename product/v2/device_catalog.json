@@ -8,6 +8,9 @@
         "firmware": {
           "build": {
             "chip": "ESP32-P4"
+          },
+          "package": {
+            "apiOpenModalAction": true
           }
         }
       },
@@ -15,6 +18,9 @@
         "firmware": {
           "build": {
             "chip": "ESP32-S3"
+          },
+          "package": {
+            "apiOpenModalAction": true
           }
         }
       }
@@ -1225,7 +1231,7 @@
               "screen_schedule_clock_min_brightness": "\"1\"",
               "screen_schedule_clock_default_brightness": "\"10\""
             },
-            "apiNavigateAction": false
+            "apiNavigateAction": true
           }
         }
       }

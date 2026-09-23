@@ -11,7 +11,9 @@ namespace esphome {
 namespace artwork_image {
 
 constexpr int IMAGE_PIPELINE_STANDARD_MODAL_MAX_TARGET_SIDE_PX = 800;
-constexpr int IMAGE_PIPELINE_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX = 320;
+// Match the native 480 px side of the ESP32-S3 panel while keeping the
+// existing memory checks responsible for deciding whether a decode can run.
+constexpr int IMAGE_PIPELINE_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX = 480;
 constexpr size_t IMAGE_PIPELINE_S3_COMPRESSED_TRANSFER_ALLOWANCE_BYTES =
     128 * 1024;
 constexpr size_t IMAGE_PIPELINE_S3_PSRAM_HEADROOM_BYTES = 96 * 1024;
