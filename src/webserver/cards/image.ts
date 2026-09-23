@@ -100,7 +100,7 @@ export function registerImageCardTypes(
     function renderImageRefreshSettings(panel: any, b: any, helpers: any, entityInput: any, refreshPanel: any) {
         const isCamera = () => String(b.entity || "").startsWith("camera.");
         const refresh = helpers.selectField("Camera refresh", helpers.idPrefix + "image-refresh-mode", [
-            ["off", "Off"], ["periodic", "Periodic (visible card and expanded view)"], ["activity", "On activity"],
+            ["off", "Off"], ["periodic", "Periodic"], ["activity", "On activity"],
         ], configOptionValue(b.options, "image_modal_refresh_mode") || "off");
         const interval = helpers.selectField("Refresh interval", helpers.idPrefix + "image-refresh-interval", [
             ["1", "1 second"], ["3", "3 seconds"], ["5", "5 seconds"], ["10", "10 seconds"], ["30", "30 seconds"],
