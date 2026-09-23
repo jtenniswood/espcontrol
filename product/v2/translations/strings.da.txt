@@ -159,6 +159,7 @@ snowy=Sne
 snowy_and_rain=Sne og regn
 spot_clean=Pletrengøring
 start=Start
+start_dock=Start / Dock
 still=Stille
 subpage=Underside
 stop=Stop
@@ -254,3 +255,5 @@ nighttime=Nattetid
 
 timer=Timer
 timer_confirm=Bekræft
+guest_wifi=Gæste-Wi-Fi
+wifi_did_not_change=Wi-Fi blev ikke ændret

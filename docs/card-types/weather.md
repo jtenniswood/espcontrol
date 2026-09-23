@@ -1,5 +1,5 @@
 ---
-title: Weather Cards
+title: "Home Assistant Weather Cards"
 description:
   How to show current Home Assistant weather conditions or daily high / low temperatures on your EspControl panel.
 ---
@@ -9,8 +9,6 @@ description:
 A weather card displays weather information from a Home Assistant weather entity. It can show either the current condition, such as **Sunny**, **Cloudy**, or **Rainy**, or the high / low temperatures for today or tomorrow, such as **18/10°C**.
 
 Weather cards are read-only — tapping them does nothing.
-
-Older cards that were created as **Weather Forecast** cards still work. They now load as **Weather** cards with **Display** set to **Temperatures Tomorrow**.
 
 ![Weather card showing today's high and low temperatures](/images/card-weather.png)
 
@@ -28,7 +26,7 @@ Older cards that were created as **Weather Forecast** cards still work. They now
 ## How It Works on the Panel
 
 - In **Current Conditions** mode, the card watches the weather entity's current state.
-- In **Current Conditions** mode, the icon changes automatically and the label uses the condition name from Home Assistant.
+- In **Current Conditions** mode, the icon uses the normalized weather condition, while the label keeps provider-specific text from Home Assistant (for example, `light rain` is shown as **Light Rain** rather than being reduced to **Rainy**).
 - In **Temperatures Today** and **Temperatures Tomorrow** modes, the card asks Home Assistant for the daily forecast for the configured weather entity.
 - In temperature modes, the unit label comes from the panel's **Temperature Unit** setting.
 - In temperature modes, the card label defaults to **Today** or **Tomorrow**, unless you set your own label.
@@ -39,6 +37,12 @@ Older cards that were created as **Weather Forecast** cards still work. They now
 ::: tip Home Assistant actions permission
 The temperature displays need the same **Allow the device to perform Home Assistant actions** setting as control cards. EspControl uses that permission to request forecast data from Home Assistant.
 :::
+
+## Temperatures Tomorrow
+
+To show tomorrow's forecast high and low, create a **Weather** card and set **Display** to **Temperatures Tomorrow**. Enable [Home Assistant actions](/getting-started/home-assistant-actions) so the panel can request the forecast.
+
+Older configurations containing a separate **Weather Forecast** card load as a Weather card with this setting. You do not need to recreate them.
 
 ## Supported Conditions
 

@@ -1,12 +1,22 @@
 ---
-title: Install EspControl Firmware
+title: Install EspControl on a Home Assistant Touchscreen
+titleTemplate: :title
 description:
   How to flash EspControl firmware to a supported ESP32 touchscreen, connect it to WiFi, and add it to Home Assistant.
 ---
 
-# Install
+# Install EspControl on a Home Assistant Touchscreen
 
 Flash the EspControl firmware to your supported ESP32 display directly from your browser — no special software or technical knowledge required.
+
+## Before You Start
+
+- Identify your exact [supported screen and hardware revision](/screens/).
+- Use Chrome or Edge on a desktop computer and a USB-C **data** cable.
+- Have your 2.4 GHz WiFi name and password ready, with Home Assistant reachable on the same local network.
+- Add at least one light, switch, or sensor to Home Assistant so you can test the panel after pairing.
+
+Normal browser installation does not require ESPHome Device Builder or writing YAML. You will install firmware, connect WiFi, pair with Home Assistant, enable actions, and test your first card.
 
 ::: tip Prefer ESPHome?
 If you want to compile and install the firmware yourself, use the [Manual Setup guide](/getting-started/manual-esphome-setup).
@@ -14,7 +24,7 @@ If you want to compile and install the firmware yourself, use the [Manual Setup 
 
 ## Flash the Firmware
 
-Connect the display to your computer with the USB-C cable, choose your panel, then click the install button.
+Connect the display to your computer with the USB-C cable, choose your device and hardware version, then click the install button. The newest listed hardware version is selected by default; check the identification note matches your panel before installing.
 
 <EspInstallSelector />
 
@@ -34,7 +44,7 @@ If the install button doesn't detect your device, try a different USB-C cable. C
 ### Step by Step
 
 1. **Plug in the display** using the USB-C cable. If your computer asks to install drivers, allow it.
-2. **Choose your panel** above, then click **Install EspControl**. A dialog will ask you to choose a serial port — select the one that appeared when you plugged in the display.
+2. **Choose your device and hardware version** above, then click **Install EspControl**. A dialog will ask you to choose a serial port — select the one that appeared when you plugged in the display.
 3. **Wait for the flash to complete.** This takes a few minutes. You'll see a progress bar. Don't disconnect the cable until it finishes.
 4. **The display restarts** and shows a loading screen.
 
@@ -59,7 +69,7 @@ Once the display is on your WiFi network, Home Assistant should discover it auto
 2. **Look for a notification** in the bottom left — it should say a new device was discovered. If you don't see one, go to **Settings > Devices & Services** and look for a new **ESPHome** entry.
 3. **Click "Configure"** and follow the prompts to add the device.
 
-This connection is how the display gets the current time, temperature data, and the ability to control your devices. After adding the device, you need to [allow it to perform Home Assistant actions](/getting-started/home-assistant-actions) so the touchscreen can control your devices.
+This connection provides device states and controls. The clock normally uses network time, with Home Assistant as a fallback. After adding the device, you need to [allow it to perform Home Assistant actions](/getting-started/home-assistant-actions) so the touchscreen can control your devices.
 
 ## Configure Your Panel
 
@@ -73,4 +83,8 @@ With the display connected to WiFi and paired with Home Assistant, you're ready 
 
 That's it — your panel is ready to use. See the [Setup](/features/setup) guide for a full walkthrough of every setting.
 
-Next: [Troubleshooting](/getting-started/troubleshooting)
+## Confirm It Works
+
+Add one Switch or Light card using an entity that already works in Home Assistant. Tap it on the panel and confirm the real device changes. Change it in Home Assistant and confirm the panel follows. If the state displays but tapping does nothing, check [actions permission](/getting-started/home-assistant-actions).
+
+Next: [Build your panel](/guides/), or use [Troubleshooting](/getting-started/troubleshooting) if setup fails.

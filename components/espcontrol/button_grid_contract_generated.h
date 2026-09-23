@@ -214,8 +214,8 @@ inline CardRuntimeSpec card_runtime_spec(CardTypeId type) {
     case CardTypeId::TIMEZONE: return {type, CardDriverId::DATE_TIME, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_SUBPAGE)};
     case CardTypeId::WEATHER: return {type, CardDriverId::WEATHER, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_SUBPAGE)};
     case CardTypeId::IMAGE: return {type, CardDriverId::IMAGE, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
-    case CardTypeId::WIFI_QR: return {type, CardDriverId::WIFI_QR, static_cast<uint16_t>(CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_SUBPAGE)};
-    case CardTypeId::WIFI_QR_CARD: return {type, CardDriverId::WIFI_QR, static_cast<uint16_t>(CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_SUBPAGE)};
+    case CardTypeId::WIFI_QR: return {type, CardDriverId::WIFI_QR, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_SUBPAGE)};
+    case CardTypeId::WIFI_QR_CARD: return {type, CardDriverId::WIFI_QR, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_SUBPAGE)};
     case CardTypeId::WEATHER_FORECAST: return {type, CardDriverId::WEATHER, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_SUBPAGE)};
     default: return {};
   }

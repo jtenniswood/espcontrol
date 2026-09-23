@@ -1,17 +1,18 @@
 ---
-title: Manual Setup
+title: "Install EspControl with ESPHome Device Builder"
+titleTemplate: :title
 description:
   How to add EspControl to ESPHome manually, compile the firmware, and install it by USB or OTA.
 ---
 
-# Manual Setup
+# Install EspControl with ESPHome Device Builder
 
 The normal [browser install](/getting-started/install) is the easiest route. Use this page if you prefer to manage EspControl from ESPHome, want to compile the firmware yourself, or need to install from the ESPHome Device Builder dashboard.
 
 ## What You Need
 
 - A supported ESP32 panel.
-- ESPHome 2026.8.2 or newer, using Device Builder in Home Assistant or the ESPHome command line on your computer.
+- ESPHome 2026.9.0 or newer, using Device Builder in Home Assistant or the ESPHome command line on your computer.
 - A USB-C data cable for the first install.
 - Your WiFi name and password, unless you are using an advanced wired Ethernet option.
 
@@ -21,12 +22,13 @@ Use USB for a blank screen or a screen that is not already running EspControl. O
 
 ## Choose the Correct Package File
 
-Each screen uses a different ESPHome package file. Pick the one that matches your panel:
+Each screen uses a different ESPHome package file. For the JC8012P4A1, confirm ESP32-P4 silicon first: V3 production silicon takes precedence over the case date. Pick the one that matches your panel:
 
 | Panel | Package file |
 | --- | --- |
 | 10.1-inch JC8012P4A1 original panel, rear case `2627` or lower | `devices/guition-esp32-p4-jc8012p4a1/packages.yaml` |
 | 10.1-inch JC8012P4A1 new panel, rear case `2628` or higher | `devices/guition-esp32-p4-jc8012p4a1-v2/packages.yaml` |
+| 10.1-inch JC8012P4A1 V3, ESP32-P4 v3.x production silicon | `devices/guition-esp32-p4-jc8012p4a1-v3/packages.yaml` |
 | 7-inch JC1060P470 V1 / original panel, no version marking on case or board date code before `2622` | `devices/guition-esp32-p4-jc1060p470/packages.yaml` |
 | 7-inch JC1060P470 V2 / new panel, case marked `V2` or board date code `2622` or higher | `devices/guition-esp32-p4-jc1060p470-v2/packages.yaml` |
 | 4.3-inch JC4880P443 | `devices/guition-esp32-p4-jc4880p443/packages.yaml` |

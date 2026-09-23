@@ -159,6 +159,7 @@ snowy=Snöigt
 snowy_and_rain=Snö och regn
 spot_clean=Punktstädning
 start=Starta
+start_dock=Start / Dock
 still=Still
 subpage=Undersida
 stop=Stoppa
@@ -254,3 +255,5 @@ nighttime=Nattetid
 
 timer=Timer
 timer_confirm=Bekräfta
+guest_wifi=Gäst-Wi-Fi
+wifi_did_not_change=Wi-Fi ändrades inte

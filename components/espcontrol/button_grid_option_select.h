@@ -43,6 +43,7 @@ struct OptionSelectModalUi {
   lv_obj_t *list = nullptr;
   lv_obj_t *empty_lbl = nullptr;
   OptionSelectCtx *active = nullptr;
+  lv_obj_t *option_rows[OPTION_SELECT_MAX_OPTIONS] = {};
   OptionSelectOptionClick option_clicks[OPTION_SELECT_MAX_OPTIONS];
 };
 
@@ -224,6 +225,22 @@ inline void option_select_hide_modal() {
   ui = OptionSelectModalUi();
 }
 
+inline void option_select_refresh_modal_rows(OptionSelectCtx *ctx) {
+  if (!ctx) return;
+  OptionSelectModalUi &ui = option_select_modal_ui();
+  if (ui.active != ctx) return;
+  int count = ctx->options.size() > OPTION_SELECT_MAX_OPTIONS
+    ? OPTION_SELECT_MAX_OPTIONS
+    : static_cast<int>(ctx->options.size());
+  for (int i = 0; i < count; i++) {
+    lv_obj_t *row = ui.option_rows[i];
+    if (!row) continue;
+    bool active = !ctx->current_option.empty() && ctx->options[i] == ctx->current_option;
+    lv_obj_set_style_bg_color(
+      row, lv_color_hex(active ? ctx->accent_color : SECONDARY_GREY), LV_PART_MAIN);
+  }
+}
+
 inline void option_select_open_modal(OptionSelectCtx *ctx) {
   if (!ctx || ctx->entity_id.empty() || !ctx->available ||
       !option_select_entity_supported(ctx->entity_id)) {
@@ -268,6 +285,7 @@ inline void option_select_open_modal(OptionSelectCtx *ctx) {
       ui.list, ctx->options[i], active, row_h, row_radius,
       ctx->accent_color, SECONDARY_GREY,
       ctx->label_font, ctx->width_compensation_percent);
+    ui.option_rows[i] = btn;
     ui.option_clicks[i].ctx = ctx;
     ui.option_clicks[i].value = ctx->options[i];
     lv_obj_add_event_cb(btn, [](lv_event_t *e) {
@@ -321,10 +339,12 @@ inline void subscribe_option_select_state(OptionSelectCtx *ctx) {
     ctx->entity_id,
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
       std::string state_text = string_ref_limited(state, HA_STATE_TEXT_MAX_LEN);
-      bool unavailable = ha_state_unavailable_ref(state);
+      bool unavailable = ha_entity_state_unavailable_ref(ctx->entity_id, state);
+      bool no_current_option = normalized_state_text(state) == "unknown";
       ctx->available = !unavailable;
-      ctx->current_option = unavailable ? "" : state_text;
+      ctx->current_option = unavailable || no_current_option ? "" : state_text;
       option_select_apply_card_text(ctx);
+      option_select_refresh_modal_rows(ctx);
       OptionSelectModalUi &ui = option_select_modal_ui();
       if (ui.active == ctx && !ctx->available) option_select_hide_modal();
     })

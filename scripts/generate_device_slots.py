@@ -40,6 +40,10 @@ def package_substitution_lines(device: dict) -> list[str]:
     ]
     if package.get("firmwareVersion"):
         lines.append(f'  firmware_version: "{package["firmwareVersion"]}"')
+    camera_screensaver_supported = bool(device.get("camera_screensaver_supported"))
+    lines.append(
+        f'  screensaver_camera_supported: "{str(camera_screensaver_supported).lower()}"'
+    )
     added_voice_substitutions = False
     for key, value in package["substitutions"].items():
         lines.append(f"  {key}: {value}")
@@ -203,6 +207,11 @@ def package_file_text(device: dict) -> str:
         [
             "substitutions:",
             *package_substitution_lines(device),
+            f'  image_card_slot_capacity: "{int(device["image_slot_capacity"])}"',
+            "",
+            "esphome:",
+            "  build_flags:",
+            '    - "-DESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=${image_card_slot_capacity}"',
             "",
             "packages:",
             "  # ---------------------------------------------------------------------------",
@@ -285,6 +294,12 @@ def package_file_text(device: dict) -> str:
             include_line("screen_setup", "!include ../../common/device/screen_button_setup.yaml"),
             include_line("screen_clock", "!include ../../common/device/screen_clock.yaml"),
             include_line("screen_art", "!include ../../common/device/screen_cover_art.yaml"),
+            include_line(
+                "screen_camera",
+                "!include ../../common/device/screen_camera_screensaver.yaml"
+                if device.get("camera_screensaver_supported")
+                else "!include ../../common/device/screen_camera_screensaver_disabled.yaml",
+            ),
             *(
                 [
                     include_line(
@@ -305,6 +320,31 @@ def package_file_text(device: dict) -> str:
             "",
         ]
     )
+    if device["slug"] == "guition-esp32-p4-jc8012p4a1-v3":
+        lines.extend(
+            [
+                "# V3 production-silicon settings. Keep these outside the generated",
+                "# button package section so device-slot regeneration retains them.",
+                "external_components:",
+                "  - source:",
+                "      type: git",
+                "      url: ${espcontrol_component_url}",
+                "      ref: ${espcontrol_component_ref}",
+                "      path: components",
+                "    components: [mipi_dsi]",
+                "    refresh: 1s",
+                "",
+                "switch:",
+                "  - id: !extend auto_update_switch",
+                "    restore_mode: ALWAYS_OFF",
+                "  - id: !extend c6_auto_update_switch",
+                "    restore_mode: ALWAYS_OFF",
+                "",
+                "web_server:",
+                "  ota: false",
+                "",
+            ]
+        )
     return "\n".join(lines)
 
 

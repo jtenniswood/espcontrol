@@ -201,9 +201,6 @@ jobs:
           npm ci --prefer-offline --cache "${NPM_CACHE}"
           bash scripts/prune_actions_cache.sh "${NPM_CACHE}" "${ESPCONTROL_NPM_CACHE_MAX_MB}" --strategy reset
 
-      - name: Install browser runtime
-        run: npx playwright install --with-deps chromium
-
       - name: Run required check graph
         run: npm run check:ci -- --summary-json check-task-summary.json
 

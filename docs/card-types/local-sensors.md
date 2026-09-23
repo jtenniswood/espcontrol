@@ -1,5 +1,5 @@
 ---
-title: Local Sensor Cards
+title: "Display Local Panel Sensors"
 description:
   How to display readings from ESPHome sensors on the panel itself.
 ---

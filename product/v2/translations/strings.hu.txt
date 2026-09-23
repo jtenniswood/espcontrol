@@ -159,6 +159,7 @@ snowy=Havas
 snowy_and_rain=Hó és eső
 spot_clean=Folttisztítás
 start=Indítás
+start_dock=Start / Dock
 still=Álló
 subpage=Aloldal
 stop=Leállítás
@@ -254,3 +255,5 @@ nighttime=Éjszaka
 
 timer=Időzítő
 timer_confirm=Megerősítés
+guest_wifi=Vendég Wi-Fi
+wifi_did_not_change=A Wi-Fi állapota nem változott

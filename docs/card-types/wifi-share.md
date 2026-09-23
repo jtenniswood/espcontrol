@@ -1,5 +1,5 @@
 ---
-title: Wifi Sharing
+title: "Share Guest WiFi with a QR Code"
 description: Share separately configured guest Wifi with a scannable QR code on EspControl.
 ---
 
@@ -30,6 +30,26 @@ Under **Modal Settings**, choose which tabs appear when you tap the card:
 - **Connection Details** - shows the network name and password for visitors to enter manually.
 
 Both tabs are enabled by default. You can reorder them or hide either one, but at least one must stay enabled. These settings affect the popup; the QR Card still shows its code on the dashboard.
+
+## Optional Guest Wi-Fi Control
+
+Under **Modal Settings**, enable **Guest Wi-Fi** and select the Home Assistant
+`switch` entity that controls your guest network. The tab is disabled by default
+for both Connect Card and QR Card. Move it in the tab list to choose its position;
+the first enabled tab opens first.
+
+The Guest Wi-Fi tab uses the same large toggle as the light control. Its tab icon
+shows Wi-Fi when the switch is on and Wi-Fi Off when it is off, including while
+you view the QR code or connection details. Unknown or unavailable switches show
+a muted icon and cannot be toggled. Changes wait for Home Assistant confirmation;
+if the switch does not reach the requested state, the display shows an error and
+allows another attempt. If the panel reloads its configuration while this modal
+is open, the modal closes so it cannot operate a switch from an old card.
+
+Set up and test the guest-network switch in Home Assistant first, and allow the
+panel to perform Home Assistant actions. Saving settings, opening the modal,
+restarting the display, and scanning the QR code do not change the network state.
+QR and connection details remain available when the guest network is off.
 
 ## Supported Networks
 

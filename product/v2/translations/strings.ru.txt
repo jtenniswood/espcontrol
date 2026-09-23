@@ -159,6 +159,7 @@ snowy=Снег
 snowy_and_rain=Снег с дождём
 spot_clean=Точечная уборка
 start=Старт
+start_dock=Start / Dock
 still=Неподвижно
 subpage=Подстраница
 stop=Стоп
@@ -254,3 +255,5 @@ nighttime=Ночь
 
 timer=Таймер
 timer_confirm=Подтвердить
+guest_wifi=Гостевой Wi-Fi
+wifi_did_not_change=Состояние Wi-Fi не изменилось

@@ -162,8 +162,8 @@
       "timezone": {"driver": "date_time", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
       "weather": {"driver": "weather", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
       "image": {"driver": "image", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": true, "subpage": true}},
-      "wifi_qr": {"driver": "wifi_qr", "capabilities": {"informationOnly": false, "subscriptions": false, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": false, "subpage": true}},
-      "wifi_qr_card": {"driver": "wifi_qr", "capabilities": {"informationOnly": false, "subscriptions": false, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": false, "subpage": true}},
+      "wifi_qr": {"driver": "wifi_qr", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": false, "subpage": true}},
+      "wifi_qr_card": {"driver": "wifi_qr", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": false, "subpage": true}},
       "weather_forecast": {"driver": "weather", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}}
     }
   },
@@ -411,7 +411,7 @@
           "name": "vacuum_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["status", "start_stop", "dock", "pause_resume", "clean_spot", "locate", "clean_area"],
+          "values": ["status", "start_stop", "start_dock", "dock", "pause_resume", "clean_spot", "locate", "clean_area"],
           "defaultValue": "start_stop",
           "storageField": "sensor",
           "omitDefault": false
@@ -423,7 +423,7 @@
           "label": { "policy": "keep" },
           "icon": { "policy": "hook", "hook": "normalize_vacuum_fields" },
           "icon_on": { "policy": "default", "value": "Auto" },
-          "sensor": { "policy": "allowed", "values": ["status", "start_stop", "dock", "pause_resume", "clean_spot", "locate", "clean_area"], "aliases": { "vacuum.start": "start_stop", "vacuum.return_to_base": "dock" }, "fallback": "start_stop" },
+          "sensor": { "policy": "allowed", "values": ["status", "start_stop", "start_dock", "dock", "pause_resume", "clean_spot", "locate", "clean_area"], "aliases": { "vacuum.start": "start_stop", "vacuum.return_to_base": "dock" }, "fallback": "start_stop" },
           "unit": { "policy": "hook", "hook": "normalize_vacuum_fields" },
           "type": { "policy": "default", "value": "vacuum" },
           "precision": { "policy": "clear" },
@@ -2425,17 +2425,17 @@
     "wifi_qr": {
       "label": "Wifi Sharing",
       "allowInSubpage": true,
-      "domains": [],
+      "domains": ["switch"],
       "options": [
         { "name": "ssid64", "label": "Network name", "kind": "text", "omitDefault": true },
         { "name": "security", "label": "Security", "kind": "choice", "values": ["wpa", "open"], "defaultValue": "wpa", "omitDefault": true },
         { "name": "pass64", "label": "Password", "kind": "text", "omitDefault": true },
         { "name": "hidden", "label": "Hidden network", "kind": "flag", "omitDefault": true },
-        { "name": "wifi_tabs", "label": "Visible Tabs", "kind": "text", "values": ["qr", "credentials"], "defaultValue": "qr|credentials", "omitDefault": true }
+        { "name": "wifi_tabs", "label": "Visible Tabs", "kind": "text", "values": ["qr", "credentials", "guest"], "defaultValue": "qr|credentials", "omitDefault": true }
       ],
       "normalization": {
         "fields": {
-          "entity": { "policy": "clear" },
+          "entity": { "policy": "keep" },
           "label": { "policy": "default_if_empty", "value": "Connect" },
           "icon": { "policy": "default_if_empty", "value": "Wifi" },
           "icon_on": { "policy": "default", "value": "Auto" },
@@ -2464,17 +2464,17 @@
       "label": "QR Card",
       "allowInSubpage": true,
       "pickerKey": "wifi_qr",
-      "domains": [],
+      "domains": ["switch"],
       "options": [
         { "name": "ssid64", "label": "Network name", "kind": "text", "omitDefault": true },
         { "name": "security", "label": "Security", "kind": "choice", "values": ["wpa", "open"], "defaultValue": "wpa", "omitDefault": true },
         { "name": "pass64", "label": "Password", "kind": "text", "omitDefault": true },
         { "name": "hidden", "label": "Hidden network", "kind": "flag", "omitDefault": true },
-        { "name": "wifi_tabs", "label": "Visible Tabs", "kind": "text", "values": ["qr", "credentials"], "defaultValue": "qr|credentials", "omitDefault": true }
+        { "name": "wifi_tabs", "label": "Visible Tabs", "kind": "text", "values": ["qr", "credentials", "guest"], "defaultValue": "qr|credentials", "omitDefault": true }
       ],
       "normalization": {
         "fields": {
-          "entity": { "policy": "clear" },
+          "entity": { "policy": "keep" },
           "label": { "policy": "clear" },
           "icon": { "policy": "default", "value": "Auto" },
           "icon_on": { "policy": "default", "value": "Auto" },

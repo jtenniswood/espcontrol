@@ -159,6 +159,7 @@ snowy=Sneží
 snowy_and_rain=Sneh a dážď
 spot_clean=Bodové čistenie
 start=Spustiť
+start_dock=Start / Dock
 still=Stojí
 subpage=Podstránka
 stop=Zastaviť
@@ -254,3 +255,5 @@ nighttime=Noc
 
 timer=Časovač
 timer_confirm=Potvrdiť
+guest_wifi=Wi-Fi pre hostí
+wifi_did_not_change=Stav Wi-Fi sa nezmenil

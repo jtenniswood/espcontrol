@@ -1,0 +1,50 @@
+{
+  "captured_at": "2026-09-22T10:31:35.004617+00:00",
+  "sitemap_urls": 93,
+  "generated_urls": [
+    "https://jtenniswood.github.io/espcontrol/generated/cards/capabilities",
+    "https://jtenniswood.github.io/espcontrol/generated/cards/runtime-coverage",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/4848s040-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/4848s040-install",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc1060p470-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc1060p470-install",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc1060p470-v2-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc1060p470-v2-install",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc4880p443-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc4880p443-install",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc8012p4a1-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc8012p4a1-install",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc8012p4a1-v2-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc8012p4a1-v2-install",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc8012p4a1-v3-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc8012p4a1-v3-install",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/p4-86-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/p4-86-install"
+  ],
+  "duplicate_titles": {
+    "Espcontrol": 16
+  },
+  "duplicate_descriptions": {
+    "Touchscreen control panel for Home Assistant on supported ESP32 panels \u2014 card-based controls, web configuration, automatic updates.": 18
+  },
+  "missing_h1": [
+    "https://jtenniswood.github.io/espcontrol/generated/screens/4848s040-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/4848s040-install",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc1060p470-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc1060p470-install",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc1060p470-v2-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc1060p470-v2-install",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc4880p443-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc4880p443-install",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc8012p4a1-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc8012p4a1-install",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc8012p4a1-v2-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc8012p4a1-v2-install",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc8012p4a1-v3-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/jc8012p4a1-v3-install",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/p4-86-grid",
+    "https://jtenniswood.github.io/espcontrol/generated/screens/p4-86-install"
+  ],
+  "missing_metadata": [],
+  "search_console_data": "Not available in this crawl; export from the verified owner account."
+}

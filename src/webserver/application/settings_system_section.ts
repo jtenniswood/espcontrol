@@ -18,7 +18,7 @@ import type { FirmwareUpdatePostApiFeature } from "./firmware_update_post_api";
 import type { ArtworkPostApiFeature } from "./artwork_post_api";
 import type { PublicFirmwareInstallFeature } from "./public_firmware_install";
 import type { ControlsFieldsFeature } from "./controls_fields";
-import type { SettingsPageHelpersFeature } from "./settings_page_helpers";
+import { formatHomeAssistantArtworkEndpointStatus, type SettingsPageHelpersFeature } from "./settings_page_helpers";
 
 export interface SettingsSystemSectionActions {
     buildIdentityCard?(): HTMLElement;
@@ -359,18 +359,22 @@ export function createSettingsSystemSectionFeature(
                 this.value, state.homeAssistantArtworkProtocol, state.coverArtHomeAssistantPort);
             this.value = state.homeAssistantArtworkEndpointMode;
             postHomeAssistantArtworkEndpointMode(state.homeAssistantArtworkEndpointMode);
-            haProtocolSelect.disabled = state.homeAssistantArtworkEndpointMode !== "Manual";
-            haPortInput.disabled = state.homeAssistantArtworkEndpointMode !== "Manual";
+            syncHomeAssistantEndpointFields();
         });
         haModeField.appendChild(haModeSelect);
         homeAssistantSettingsBody.appendChild(haModeField);
         els.setHomeAssistantArtworkEndpointMode = haModeSelect;
-        var haStatus: any = document.createElement("p");
-        haStatus.className = "sp-setting-note";
-        haStatus.id = "sp-ha-artwork-endpoint-status";
-        haStatus.textContent = state.homeAssistantArtworkEndpointStatus || "Discovering";
+        var haStatus: any = infoPanel("sp-ha-artwork-endpoint-status", "");
+        var haStatusText: any = haStatus.lastElementChild;
+        haStatusText.textContent = "The current Home Assistant artwork endpoint is";
+        haStatusText.appendChild(document.createTextNode(" "));
+        var haStatusOutput: any = document.createElement("code");
+        haStatusOutput.textContent = formatHomeAssistantArtworkEndpointStatus(state.homeAssistantArtworkEndpointStatus);
+        haStatusText.appendChild(haStatusOutput);
+        haStatusText.appendChild(document.createTextNode("."));
         homeAssistantSettingsBody.appendChild(haStatus);
         els.homeAssistantArtworkEndpointStatus = haStatus;
+        els.homeAssistantArtworkEndpointStatusOutput = haStatusOutput;
         var haProtocolField: any = document.createElement("div");
         haProtocolField.className = "sp-field";
         haProtocolField.appendChild(fieldLabel("Home Assistant Protocol", "sp-set-ha-artwork-protocol"));
@@ -392,6 +396,7 @@ export function createSettingsSystemSectionFeature(
         haProtocolField.appendChild(haProtocolSelect);
         homeAssistantSettingsBody.appendChild(haProtocolField);
         els.setHomeAssistantArtworkProtocol = haProtocolSelect;
+        els.setHomeAssistantArtworkProtocolField = haProtocolField;
         var haPortField: any = document.createElement("div");
         haPortField.className = "sp-field";
         haPortField.appendChild(fieldLabel("Home Assistant Port", "sp-set-ha-artwork-port"));
@@ -412,9 +417,15 @@ export function createSettingsSystemSectionFeature(
         haPortField.appendChild(haPortInput);
         homeAssistantSettingsBody.appendChild(haPortField);
         els.setCoverArtHomeAssistantPort = haPortInput;
-        var manualEndpoint = haModeSelect.value === "Manual";
-        haProtocolSelect.disabled = !manualEndpoint;
-        haPortInput.disabled = !manualEndpoint;
+        els.setCoverArtHomeAssistantPortField = haPortField;
+        function syncHomeAssistantEndpointFields() {
+            var manualEndpoint: any = state.homeAssistantArtworkEndpointMode === "Manual";
+            haProtocolField.classList.toggle("sp-hidden", !manualEndpoint);
+            haPortField.classList.toggle("sp-hidden", !manualEndpoint);
+            haProtocolSelect.disabled = !manualEndpoint;
+            haPortInput.disabled = !manualEndpoint;
+        }
+        syncHomeAssistantEndpointFields();
         var homeAssistantSettingsCard: any = makeCollapsibleCard("Home Assistant Settings", homeAssistantSettingsBody, true);
         return {
             identityCard: actions.buildIdentityCard?.(),

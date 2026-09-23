@@ -159,6 +159,7 @@ snowy=Snowy
 snowy_and_rain=Snowy And Rain
 spot_clean=Spot Clean
 start=Start
+start_dock=Start / Dock
 still=Still
 subpage=Subpage
 stop=Stop
@@ -255,3 +256,5 @@ nighttime=Nighttime
 # Timer card
 timer=Timer
 timer_confirm=Confirm
+guest_wifi=Guest Wi-Fi
+wifi_did_not_change=Wi-Fi did not change

@@ -1,0 +1,4 @@
+interface:
+  display_name: "User Feedback"
+  short_description: "Draft branch-testing feedback posts"
+  default_prompt: "Draft a user-reviewable testing post for this EspControl branch, including manual ESPHome setup and focused feedback steps."

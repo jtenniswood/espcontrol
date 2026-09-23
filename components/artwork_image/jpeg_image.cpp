@@ -33,7 +33,6 @@ static void jpeg_error_exit(j_common_ptr cinfo) {
 
 static constexpr size_t MAX_JPEG_DOWNLOAD_SIZE = 2 * 1024 * 1024;  // 2 MB
 static constexpr uint32_t JPEG_DECODE_BUDGET_MS = 12;
-static constexpr int JPEG_SCANLINE_BATCH = 8;
 
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
 static jpeg_decoder_handle_t p4_jpeg_decoder() {
@@ -291,6 +290,10 @@ int JpegDecoder::decode_hardware_(uint8_t *buffer, size_t size) {
                             static_cast<size_t>(padded_width) * 2, workspace.output);
   }
 
+  if (this->has_failed()) {
+    p4_release_jpeg_workspace();
+    return DECODE_ERROR_OUT_OF_MEMORY;
+  }
   this->decoded_bytes_ = size;
   ESP_LOGI(TAG, "ESP32-P4 hardware JPEG decoded %lux%lu in %lu ms (PPA scale: %s)",
            static_cast<unsigned long>(info.width), static_cast<unsigned long>(info.height),
@@ -331,51 +334,32 @@ int JpegDecoder::start_decode_(uint8_t *buffer, size_t size) {
            this->cinfo_.progressive_mode ? "yes" : "no");
   // Request RGB output regardless of input colorspace
   this->cinfo_.out_color_space = JCS_RGB;
-  // Use fast integer IDCT — slightly lower quality but faster on ESP32
-  // and avoids pulling in the float IDCT code path.
-  this->cinfo_.dct_method = JDCT_IFAST;
+  // Accurate integer IDCT preserves detail without floating-point decoding.
+  this->cinfo_.dct_method = JDCT_ISLOW;
 
   // Use IDCT scaling to downscale during decode.
   int target_w = this->image_->get_fixed_width();
   int target_h = this->image_->get_fixed_height();
   if (target_w > 0 && target_h > 0) {
-    // Choose the smallest useful IDCT output. Cover mode must retain enough
-    // pixels in both dimensions for the final crop; other modes may prefer a
-    // smaller decode to reduce libjpeg's temporary memory peak on ESP32-S3.
+    // Keep enough pixels for the visible content in both Fit and Fill modes.
+    // Picking the closest dimensions can shrink below the display size and
+    // immediately enlarge the image again, irreversibly losing detail.
     constexpr unsigned int denoms[] = {1, 2, 4, 8};
     unsigned int best_denom = 1;
-    int best_w = 0;
-    int best_h = 0;
-    long best_score = LONG_MAX;
-    uint64_t best_area = UINT64_MAX;
     const bool cover_mode = this->image_->get_resize_mode() == ImageResizeMode::COVER;
-    bool found_candidate = false;
     for (unsigned int denom : denoms) {
       this->cinfo_.scale_num = 1;
       this->cinfo_.scale_denom = denom;
       jpeg_calc_output_dimensions(&this->cinfo_);
       int candidate_w = static_cast<int>(this->cinfo_.output_width);
       int candidate_h = static_cast<int>(this->cinfo_.output_height);
-      if (cover_mode && (candidate_w < target_w || candidate_h < target_h)) continue;
-      long score = std::labs(candidate_w - target_w) + std::labs(candidate_h - target_h);
-      uint64_t area = static_cast<uint64_t>(candidate_w) * static_cast<uint64_t>(candidate_h);
-      if (score < best_score || (score == best_score && area < best_area)) {
-        best_score = score;
-        best_area = area;
+      if (jpeg_decode_size_sufficient(candidate_w, candidate_h, target_w, target_h, cover_mode)) {
         best_denom = denom;
-        best_w = candidate_w;
-        best_h = candidate_h;
-        found_candidate = true;
       }
     }
-    if (cover_mode && !found_candidate) best_denom = 1;
     this->cinfo_.scale_num = 1;
     this->cinfo_.scale_denom = best_denom;
     jpeg_calc_output_dimensions(&this->cinfo_);
-    if (best_denom > 1 && (best_w < target_w || best_h < target_h)) {
-      ESP_LOGD(TAG, "Using smaller JPEG decode to reduce memory peak: target=%dx%d",
-               target_w, target_h);
-    }
     if (this->cinfo_.output_width == 0 || this->cinfo_.output_height == 0) {
       this->cinfo_.scale_denom = 1;
       jpeg_calc_output_dimensions(&this->cinfo_);
@@ -391,6 +375,12 @@ int JpegDecoder::start_decode_(uint8_t *buffer, size_t size) {
   }
 
   if (!this->set_size(this->out_w_, this->out_h_)) {
+    this->cleanup_();
+    return DECODE_ERROR_OUT_OF_MEMORY;
+  }
+
+  if ((this->x_scale_ != 1.0 || this->y_scale_ != 1.0) &&
+      !this->prepare_filtered_resize(this->out_w_, this->out_h_)) {
     this->cleanup_();
     return DECODE_ERROR_OUT_OF_MEMORY;
   }
@@ -422,40 +412,51 @@ int JpegDecoder::decode_scanlines_() {
 
   const uint32_t start = millis();
   while (this->cinfo_.output_scanline < this->cinfo_.output_height) {
-    for (int i = 0; i < JPEG_SCANLINE_BATCH && this->cinfo_.output_scanline < this->cinfo_.output_height; i++) {
-      uint8_t *row_ptr = this->row_buffer_;
-      jpeg_read_scanlines(&this->cinfo_, &row_ptr, 1);
+    uint8_t *row_ptr = this->row_buffer_;
+    jpeg_read_scanlines(&this->cinfo_, &row_ptr, 1);
 
-      if (this->use_rgb565_) {
-        // Convert RGB888 -> RGB565 in-place (2 bpp fits within the 3 bpp
-        // source buffer, so no separate allocation needed). We read forward
-        // and write forward; the write pointer never overtakes the read
-        // pointer because 2 < 3.
-        uint8_t *dst = this->row_buffer_;
-        for (int x = 0; x < this->out_w_; x++) {
-          uint8_t r = this->row_buffer_[x * 3 + 0];
-          uint8_t g = this->row_buffer_[x * 3 + 1];
-          uint8_t b = this->row_buffer_[x * 3 + 2];
-          uint16_t rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-          if (this->big_endian_) {
-            dst[0] = rgb565 >> 8;
-            dst[1] = rgb565 & 0xFF;
-          } else {
-            dst[0] = rgb565 & 0xFF;
-            dst[1] = rgb565 >> 8;
-          }
-          dst += 2;
-        }
-        this->draw_rgb565_block(0, this->y_, this->out_w_, 1, this->row_buffer_);
-      } else {
-        for (int x = 0; x < this->out_w_; x++) {
-          Color color(this->row_buffer_[x * 3 + 0], this->row_buffer_[x * 3 + 1], this->row_buffer_[x * 3 + 2]);
-          this->draw(x, this->y_, 1, 1, color);
-        }
+    if (this->resample_workspace_) {
+      // Filter RGB888 before reducing colour precision to the display format.
+      this->draw_filtered_rgb888_row(this->y_, this->row_buffer_);
+      if (this->has_failed()) {
+        this->cleanup_();
+        return DECODE_ERROR_UNSUPPORTED_FORMAT;
       }
-      this->y_++;
+    } else if (this->use_rgb565_) {
+      // Convert RGB888 -> RGB565 in-place (2 bpp fits within the 3 bpp
+      // source buffer, so no separate allocation needed). We read forward
+      // and write forward; the write pointer never overtakes the read
+      // pointer because 2 < 3.
+      uint8_t *dst = this->row_buffer_;
+      for (int x = 0; x < this->out_w_; x++) {
+        uint8_t r = this->row_buffer_[x * 3 + 0];
+        uint8_t g = this->row_buffer_[x * 3 + 1];
+        uint8_t b = this->row_buffer_[x * 3 + 2];
+        uint16_t rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+        if (this->big_endian_) {
+          dst[0] = rgb565 >> 8;
+          dst[1] = rgb565 & 0xFF;
+        } else {
+          dst[0] = rgb565 & 0xFF;
+          dst[1] = rgb565 >> 8;
+        }
+        dst += 2;
+      }
+      this->draw_rgb565_block(0, this->y_, this->out_w_, 1,
+                              this->row_buffer_);
+    } else {
+      for (int x = 0; x < this->out_w_; x++) {
+        Color color(this->row_buffer_[x * 3 + 0],
+                    this->row_buffer_[x * 3 + 1],
+                    this->row_buffer_[x * 3 + 2]);
+        this->draw(x, this->y_, 1, 1, color);
+      }
     }
+    this->y_++;
     App.feed_wdt();
+    // Check after every row. Scaling one camera scanline may be noticeably
+    // more expensive than an unscaled line, so an eight-row batch could
+    // overrun the cooperative decode budget and delay LVGL input handling.
     if (millis() - start >= JPEG_DECODE_BUDGET_MS) {
       break;
     }
@@ -474,6 +475,7 @@ int JpegDecoder::decode_scanlines_() {
 }
 
 void JpegDecoder::cleanup_() {
+  this->release_filtered_resize();
   if (this->row_buffer_ != nullptr) {
     free(this->row_buffer_);
     this->row_buffer_ = nullptr;

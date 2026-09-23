@@ -56,7 +56,11 @@ api:
             }
           }
         }
-        if (is_home_assistant) id(ha_refresh_after_connect).stop();
+        if (is_home_assistant) {
+          id(ha_refresh_after_connect).stop();
+          id(cover_art_home_assistant_client_address).clear();
+          id(cover_art_resolve_home_assistant_base_url).execute();
+        }
         if (!is_home_assistant && ha_api_state_connected()) {
           return;
         }

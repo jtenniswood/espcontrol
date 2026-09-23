@@ -181,7 +181,8 @@ export function createConfigCodecFeature(
     function cardSupportsWifiPortraitSizes(this: any, b?: any) {
         return cardIsWifiSharing(b) && (
             layout.deviceId === "guition-esp32-p4-jc8012p4a1" ||
-            layout.deviceId === "guition-esp32-p4-jc8012p4a1-v2"
+            layout.deviceId === "guition-esp32-p4-jc8012p4a1-v2" ||
+            layout.deviceId === "guition-esp32-p4-jc8012p4a1-v3"
         );
     }
     function cardSupportsExtraLargeSize(this: any, b?: any) {

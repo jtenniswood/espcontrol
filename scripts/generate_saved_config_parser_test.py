@@ -123,6 +123,20 @@ def generate() -> str:
             "  assert(legacy_media_config.mode == espcontrol::media::Mode::PLAY_PAUSE);",
             "  assert(legacy_media_config.state_display == espcontrol::media::StateDisplay::STATE);",
             "  assert(legacy_media_config.max_volume_percent == 1);",
+            "  // Camera overlays retain their configured label, icon, and flags on subpages.",
+            '  const auto subpage_image = normalize_subpage_btn({"camera.beach", "Beach", "Camera", "Auto", "stale", "unit", "image", "2", "image_label,image_icon,unknown=1"});',
+            '  assert(subpage_image.label == "Beach");',
+            '  assert(subpage_image.icon == "Camera");',
+            '  assert(subpage_image.icon_on == "Auto");',
+            "  assert(subpage_image.sensor.empty());",
+            "  assert(subpage_image.unit.empty());",
+            "  assert(subpage_image.precision.empty());",
+            '  assert(subpage_image.options == "image_label,image_icon");',
+            '  const auto subpage_image_hidden = normalize_subpage_btn({"camera.beach", "Beach", "Custom", "Custom On", "", "", "image", "", ""});',
+            '  assert(subpage_image_hidden.label == "Beach");',
+            '  assert(subpage_image_hidden.icon == "Auto");',
+            '  assert(subpage_image_hidden.icon_on == "Auto");',
+            "  assert(subpage_image_hidden.options.empty());",
         )
     )
     # Issue 1946: both Wi-Fi card styles must retain options on subpages.
@@ -148,6 +162,32 @@ def generate() -> str:
                     f"    assert(config.options == {cpp_string(options)});",
                     '    assert(cfg_option_value(config.options, "ssid64") == "R3Vlc3QgV2lmaQ");',
                     '    assert(cfg_option_value(config.options, "wifi_tabs") == "credentials|qr");',
+                    "  }",
+                ))
+    # Guest Wi-Fi: preserve the switch and ordered tabs on both subpage encodings.
+    for card_type in ("wifi_qr", "wifi_qr_card"):
+        for security in ("wpa", "open"):
+            options = (
+                "ssid64=R3Vlc3QgV2lmaQ,security=" + security
+                + (",pass64=UGFzczt3b3JkOjEyMw" if security == "wpa" else "")
+                + ",hidden,wifi_tabs=guest%7Ccredentials%7Cqr"
+            )
+            encodings = (
+                "1|switch.guest_wifi:Connect:Wifi:Auto:::" + card_type + "::" + options,
+                "~1|" + card_type + ",switch.guest_wifi,Connect,Wifi,Auto,,,," + quote(options, safe=""),
+            )
+            for encoded in encodings:
+                lines.extend((
+                    "  { // Guest Wi-Fi: " + card_type + " " + security,
+                    f"    const auto buttons = parse_subpage_config({cpp_string(encoded)});",
+                    "    assert(buttons.size() == 1);",
+                    f"    assert(buttons[0].options == {cpp_string(options)});",
+                    "    const auto config = parsed_cfg_from_subpage_btn(buttons[0]);",
+                    '    assert(config.entity == "switch.guest_wifi");',
+                    f"    assert(config.type == {cpp_string(card_type)});",
+                    f"    assert(config.options == {cpp_string(options)});",
+                    '    assert(cfg_option_value(config.options, "ssid64") == "R3Vlc3QgV2lmaQ");',
+                    '    assert(cfg_option_value(config.options, "wifi_tabs") == "guest|credentials|qr");',
                     "  }",
                 ))
     issue_248 = (

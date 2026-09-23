@@ -39,6 +39,9 @@ ethernet:
               else:
                 - script.execute: navigate_after_api
   on_disconnect:
+    - lambda: |-
+        id(cover_art_home_assistant_client_address).clear();
+        id(cover_art_resolve_home_assistant_base_url).execute();
     - if:
         condition:
           lambda: 'return !id(boot_grace_period);'

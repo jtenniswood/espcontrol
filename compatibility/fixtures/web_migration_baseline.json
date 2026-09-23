@@ -5,6 +5,7 @@
     "guition-esp32-p4-jc4880p443",
     "guition-esp32-p4-jc8012p4a1",
     "guition-esp32-p4-jc8012p4a1-v2",
+    "guition-esp32-p4-jc8012p4a1-v3",
     "esp32-p4-86",
     "guition-esp32-s3-4848s040"
   ],
@@ -49,12 +50,12 @@
       "timezone": "Europe/London (GMT+0)", "temperatureUnit": "°F", "language": "en", "clockFormat": "12h",
       "hasNtpServer1": false, "hasNtpServer2": false, "hasNtpServer3": false,
       "ntpServer1": "pool.ntp.org", "ntpServer2": "time.nist.gov", "ntpServer3": "time.google.com",
-      "screensaverMode": "disabled", "presenceSensorEntity": "", "mediaPlayerSleepPrevention": true,
+      "screensaverMode": "disabled", "presenceSensorEntity": "", "screensaverCameraEntity": "", "screensaverMetadataEntity": "", "metadataOverlay": false, "screensaverCameraImageMode": "Fit", "mediaPlayerSleepPrevention": true,
       "mediaPlayerSleepPreventionEntity": "", "coverArtScreensaver": false, "coverArtMediaPlayerEntity": "",
-      "coverArtSecondaryMediaPlayerEntity": "",
+      "coverArtSecondaryMediaPlayerEntity": "", "coverArtPlaybackControl": true,
       "coverArtAttributeConditions": "", "coverArtDelay": 10, "coverArtTrackOverlayDuration": 5,
       "coverArtHideExternalInput": true, "coverArtHomeAssistantEndpointMode": "Manual", "coverArtHomeAssistantProtocol": "https", "coverArtHomeAssistantPort": 8123,
-      "autoUpdate": true, "updateFrequency": "Weekly", "screensaverAction": "off", "clockScreensaver": false,
+      "autoUpdate": true, "updateFrequency": "Weekly", "screensaverAction": "off", "clockScreensaver": false, "clockOverlay": false,
       "clockBrightnessDay": 35, "clockBrightnessNight": 35, "screensaverDimmedBrightness": 10,
       "screensaverDimmedBrightnessDay": 10, "screensaverDimmedBrightnessNight": 10,
       "screensaverTimeout": 300, "homeScreenTimeout": 60, "screenRotation": "90"
@@ -108,5 +109,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 2606417, "gzip": 1096986, "gzipTolerance": 9216 }
+  "bundleSize": { "minified": 2619499, "gzip": 1092759, "gzipTolerance": 9216 }
 }

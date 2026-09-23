@@ -7,6 +7,8 @@ description: Browse all available icons for your EspControl cards.
 
 Click any icon to copy its name to the clipboard, then paste it into the icon field on your panel's web page.
 
+This reference uses the same icon list as the app's icon picker. Choose **Auto** to let the card select its icon automatically; the cog shown here is its fallback preview.
+
 <IconGallery />
 
 ## Missing an Icon?

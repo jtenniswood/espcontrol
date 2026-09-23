@@ -16,6 +16,10 @@ target_compile_options(digest_auth_policy_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(digest_auth_policy_test PRIVATE ../../components/web_server_idf)
 add_test(NAME digest_auth_policy_test COMMAND digest_auth_policy_test)
 
+add_test(NAME web_ota_guard_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/web_ota_guard_test.py)
+
 add_executable(button_grid_foundations_test button_grid_foundations_test.cpp)
 target_compile_features(button_grid_foundations_test PRIVATE cxx_std_17)
 target_compile_options(button_grid_foundations_test PRIVATE -Wall -Wextra -Werror)
@@ -46,6 +50,14 @@ target_compile_features(control_modal_service_test PRIVATE cxx_std_17)
 target_compile_options(control_modal_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(control_modal_service_test PRIVATE ../../components/espcontrol)
 add_test(NAME control_modal_service_test COMMAND control_modal_service_test)
+
+add_executable(guest_wifi_state_test guest_wifi_state_test.cpp)
+target_compile_features(guest_wifi_state_test PRIVATE cxx_std_17)
+target_compile_options(guest_wifi_state_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(guest_wifi_state_test PRIVATE ../../components/espcontrol)
+add_test(NAME guest_wifi_state_test COMMAND guest_wifi_state_test)
+add_test(NAME guest_wifi_lifecycle_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/guest_wifi_lifecycle_test.py ${CMAKE_CXX_COMPILER})
 
 add_executable(wifi_qr_codec_test wifi_qr_codec_test.cpp)
 target_compile_features(wifi_qr_codec_test PRIVATE cxx_std_17)
@@ -351,10 +363,26 @@ add_test(NAME climate_subscription_runtime_test COMMAND climate_subscription_run
 add_test(NAME cover_art_activation_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/cover_art_activation_test.py
   --compiler ${CMAKE_CXX_COMPILER})
+add_test(NAME presence_transition_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/presence_transition_test.py)
 add_test(NAME ha_reconnect_recovery_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/ha_reconnect_recovery_test.py)
 add_test(NAME cover_art_metadata_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/cover_art_metadata_test.py ${CMAKE_CXX_COMPILER})
+add_executable(rgb565_scaler_test rgb565_scaler_test.cpp)
+target_compile_features(rgb565_scaler_test PRIVATE cxx_std_17)
+target_compile_options(rgb565_scaler_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(rgb565_scaler_test PRIVATE ../../components/artwork_image)
+add_test(NAME rgb565_scaler_test COMMAND rgb565_scaler_test)
+
+add_executable(scanline_resampler_test scanline_resampler_test.cpp)
+target_compile_features(scanline_resampler_test PRIVATE cxx_std_17)
+target_compile_options(scanline_resampler_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(scanline_resampler_test PRIVATE ../../components/artwork_image)
+add_test(NAME scanline_resampler_test COMMAND scanline_resampler_test)
+add_test(NAME image_resize_integration_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/image_resize_integration_test.py ${CMAKE_CXX_COMPILER})
+
 file(GLOB SAVED_CONFIG_FIXTURES
   CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_SOURCE_DIR}/../../common/config/*_card_normalization_fixtures.json
@@ -460,3 +488,9 @@ add_test(NAME timer_card_test COMMAND timer_card_test)
 
 add_test(NAME timer_subpage_cleanup_test
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/timer_subpage_cleanup_test.py)
+
+add_test(NAME camera_feedback_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/camera_feedback_test.py ${CMAKE_CXX_COMPILER})
+
+add_test(NAME clock_image_overlay_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/clock_image_overlay_test.py)

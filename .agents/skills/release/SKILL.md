@@ -69,13 +69,16 @@ patch            v1.2.3 -> v1.2.4
 If there is no existing stable release, treat the first stable release as
 `v1.0.0` unless the user asks for a different full tag.
 
-### 3. Prepare Web-Asset Compatibility
+### 3. Verify Release Source Readiness
 
-Before creating the tag, add it to the immutable web bundle's compatibility
-list. This makes the hosted bridge select the declared bundle for the new
-firmware instead of falling back to the editor embedded in the device.
+No preparation PR is required. The `Build Release` workflow reads the published
+release catalogue, adds the selected tag to the compatibility list in its
+private checkout, rebuilds and verifies the web asset manifest, and carries the
+result through the release jobs. The Pages workflow performs the same
+catalogue-based preparation for ordinary public docs builds and deploys the
+verified release artifact when it follows a successful release workflow.
 
-Set the selected tag before preparing the bundle, for example:
+Set the selected tag before creating the draft, for example:
 
 ```bash
 # Stable release:
@@ -83,23 +86,9 @@ TAG="vX.Y.Z"
 # Pre-release: TAG="vX.Y.Z-beta.N"
 ```
 
-```bash
-git switch -c "jtenniswood/prepare-web-assets-${TAG#v}"
-python3 scripts/prepare_release_web_assets.py "$TAG"
-python3 scripts/build.py
-python3 scripts/build.py --check
-npm run check:release-preflight
-git add scripts/build.py docs/public/webserver
-git commit -m "Prepare web assets for $TAG"
-git push -u origin HEAD
-gh pr create --base main --title "Prepare web assets for $TAG" --body "Adds $TAG to the declared immutable web bundle compatibility list."
-```
-
-Do this before tagging: the tag must point at the source revision that already
-declares its compatible web bundle. Have that preparation PR reviewed and
-merged, then return to `main` and pull the merged revision before creating the
-release tag. The helper retains `dev`, the five current stable releases, and
-the latest pre-release only.
+Keep the source checkout clean and make sure generated outputs are current
+before creating the tag. The compatibility helper retains `dev`, the five
+current stable releases, and the latest pre-release only.
 
 ### 4. Create the Tag and Draft Release
 

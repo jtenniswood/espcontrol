@@ -1,5 +1,5 @@
 ---
-title: Vacuum Cards
+title: "Home Assistant Vacuum Cards"
 description:
   How to show or control a Home Assistant vacuum entity from your EspControl panel.
 ---
@@ -26,6 +26,7 @@ For **Clean Area**, also enter the Home Assistant **Area ID**, such as `kitchen`
 |---|---|
 | **Status** | Shows the vacuum state, such as cleaning, docked, paused, returning, or error. |
 | **Start / Stop** | Starts cleaning when the vacuum is not cleaning, and stops when it is cleaning. |
+| **Start / Dock** | Starts or resumes cleaning when the vacuum is docked, idle, or paused, and sends it back to the dock when it is cleaning. |
 | **Dock** | Sends the vacuum back to its base. |
 | **Pause / Resume** | Pauses while cleaning and resumes when paused. |
 | **Spot Clean** | Starts spot cleaning at the vacuum's current location. |

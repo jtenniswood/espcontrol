@@ -159,6 +159,7 @@ snowy=Nevado
 snowy_and_rain=Nieve y lluvia
 spot_clean=Limpieza localizada
 start=Iniciar
+start_dock=Start / Dock
 still=Quieto
 subpage=Subpágina
 stop=Detener
@@ -254,3 +255,5 @@ nighttime=Noche
 
 timer=Temporizador
 timer_confirm=Confirmar
+guest_wifi=Wi-Fi de invitados
+wifi_did_not_change=El Wi-Fi no ha cambiado

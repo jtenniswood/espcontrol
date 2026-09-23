@@ -329,8 +329,10 @@ inline bool ha_cancel_action_response_callback(uint32_t call_id, const char *err
 
 inline bool ha_subscribe_state(const std::string &entity_id,
                                HomeAssistantStateCallback callback,
-                               uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT) {
-  return ha_read_coordinator().subscribe(entity_id, std::string(), std::move(callback), scope, ha_callback_owner());
+                               uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT,
+                               bool retain_latest = false) {
+  return ha_read_coordinator().subscribe(
+      entity_id, std::string(), std::move(callback), scope, ha_callback_owner(), retain_latest);
 }
 
 inline bool ha_subscribe_attribute(const std::string &entity_id,
@@ -356,6 +358,22 @@ inline bool ha_read_retained_attribute(const std::string &entity_id,
   }
   return ha_read_coordinator().read_retained(
       entity_id, attribute, std::move(callback), true,
+      HA_READ_INTERNAL_FREE_MIN_BYTES, HA_READ_INTERNAL_LARGEST_MIN_BYTES, owner);
+}
+
+inline bool ha_read_retained_state(const std::string &entity_id,
+                                   HomeAssistantStateCallback callback,
+                                   void *request_owner = nullptr) {
+  void *ambient_owner = ha_callback_owner();
+  void *owner = request_owner != nullptr ? request_owner : ambient_owner;
+  if (ambient_owner != nullptr && request_owner == nullptr) {
+    callback = [owner, callback = std::move(callback)](esphome::StringRef state) {
+      if (!lv_obj_is_valid(static_cast<lv_obj_t *>(owner))) return;
+      if (callback) callback(state);
+    };
+  }
+  return ha_read_coordinator().read_retained(
+      entity_id, std::string(), std::move(callback), false,
       HA_READ_INTERNAL_FREE_MIN_BYTES, HA_READ_INTERNAL_LARGEST_MIN_BYTES, owner);
 }
 

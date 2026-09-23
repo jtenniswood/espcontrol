@@ -1,3 +1,22 @@
+.screen-comparison-hint {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .screen-comparison-hint {
+    display: block;
+    color: var(--vp-c-text-2);
+    font-size: 14px;
+  }
+
+  body .sp-support-btn {
+    position: static;
+    display: block;
+    width: max-content;
+    margin: 24px auto;
+  }
+}
+
 .VPSidebarItem .text .sidebar-static-header {
   display: block;
   margin-top: 18px;
@@ -7,6 +26,14 @@
   letter-spacing: 0;
   line-height: 20px;
   text-transform: uppercase;
+}
+
+.VPNavBarTitle .VPImage.logo {
+  filter: invert(1);
+}
+
+.dark .VPNavBarTitle .VPImage.logo {
+  filter: none;
 }
 
 .github-stars {

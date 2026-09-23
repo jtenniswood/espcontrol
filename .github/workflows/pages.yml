@@ -7,6 +7,9 @@ on:
       - 'docs/**'
       - 'devices/manifest.json'
       - 'scripts/check_public_firmware.py'
+      - 'scripts/check_docs_site.py'
+      - 'scripts/build.py'
+      - 'scripts/prepare_release_web_assets.py'
       - 'scripts/prune_actions_cache.sh'
       - 'package.json'
       - 'package-lock.json'
@@ -18,6 +21,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -54,7 +58,58 @@ jobs:
           npm ci --prefer-offline --cache "${NPM_CACHE}"
           bash scripts/prune_actions_cache.sh "${NPM_CACHE}" "${ESPCONTROL_NPM_CACHE_MAX_MB}" --strategy reset
 
+      - name: Download verified release web assets
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v8
+        with:
+          name: release-web-assets
+          path: release-web-assets
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Use verified release web assets
+        if: github.event_name == 'workflow_run'
+        run: cp -a release-web-assets/. docs/public/webserver/
+
+      - name: Prepare published release web assets
+        if: github.event_name != 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RELEASE_TAG=$(gh release list --limit 30 --json tagName,isDraft \
+            --jq '[.[] | select(.isDraft == false) | .tagName][0] // ""')
+          if [ -z "${RELEASE_TAG}" ]; then
+            echo "No published release exists yet; keeping the checked-in web asset compatibility list."
+            exit 0
+          fi
+          python3 scripts/prepare_release_web_assets.py --legacy-only "${RELEASE_TAG}"
+
+          LEGACY_WEB_DIR="${RUNNER_TEMP}/espcontrol-published-web"
+          LEGACY_WEB_MANIFEST="${LEGACY_WEB_DIR}/web-assets.json"
+          LEGACY_WEB_ARGS=()
+          mkdir -p "${LEGACY_WEB_DIR}"
+          if curl -fsSL "https://jtenniswood.github.io/espcontrol/webserver/web-assets.json" \
+            -o "${LEGACY_WEB_MANIFEST}"; then
+            BUNDLE_PATH=$(jq -er '[.bundles[] | select(any(.firmwareVersions[]?; . != "dev"))][0].path' \
+              "${LEGACY_WEB_MANIFEST}")
+            if [[ ! "${BUNDLE_PATH}" =~ ^bundles/[0-9a-f]{64}/www\.js$ ]]; then
+              echo "::error::Published web asset manifest has an invalid bundle path"
+              exit 1
+            fi
+            mkdir -p "docs/public/webserver/$(dirname "${BUNDLE_PATH}")"
+            curl -fsSL "https://jtenniswood.github.io/espcontrol/webserver/${BUNDLE_PATH}" \
+              -o "docs/public/webserver/${BUNDLE_PATH}"
+            LEGACY_WEB_ARGS=(--legacy-web-manifest "${LEGACY_WEB_MANIFEST}")
+          else
+            echo "::warning::Could not download the published web asset manifest; using the checked-in fallback bundle."
+          fi
+          python3 scripts/build.py www --retain-current-bundle "${LEGACY_WEB_ARGS[@]}"
+          python3 scripts/build.py www --check --retain-current-bundle "${LEGACY_WEB_ARGS[@]}"
+
       - name: Build docs
+        env:
+          GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
         run: npm run docs:build
 
       - name: Upload docs artifact
@@ -242,7 +297,7 @@ jobs:
       - name: Verify firmware assets
         run: |
           MISSING=false
-          OPTIONAL_FIRMWARE_SLUGS="guition-esp32-p4-jc8012p4a1 guition-esp32-p4-jc8012p4a1-v2 guition-esp32-p4-jc1060p470-v2 esp32-p4-86"
+          OPTIONAL_FIRMWARE_SLUGS="guition-esp32-p4-jc8012p4a1 guition-esp32-p4-jc8012p4a1-v2 guition-esp32-p4-jc8012p4a1-v3 guition-esp32-p4-jc1060p470-v2 esp32-p4-86"
           for SLUG in $DEVICE_SLUGS; do
             MANIFEST="firmware/${SLUG}/manifest.json"
             if [ ! -f "$MANIFEST" ]; then
@@ -304,6 +359,6 @@ jobs:
           python3 scripts/check_public_firmware.py
           --base-url "${{ steps.deployment.outputs.page_url }}"
           --manifest devices/manifest.json
-          --optional-stable-slugs guition-esp32-p4-jc8012p4a1 guition-esp32-p4-jc8012p4a1-v2 guition-esp32-p4-jc1060p470-v2 esp32-p4-86
+          --optional-stable-slugs guition-esp32-p4-jc8012p4a1 guition-esp32-p4-jc8012p4a1-v2 guition-esp32-p4-jc8012p4a1-v3 guition-esp32-p4-jc1060p470-v2 esp32-p4-86
           --retries 5
           --delay 20

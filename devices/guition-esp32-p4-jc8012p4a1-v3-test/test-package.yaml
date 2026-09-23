@@ -1,0 +1,52 @@
+# Experimental P4 v3.x target for issue #1939. Not a public device profile.
+# Named test-package.yaml so public-device inventory checks do not treat this
+# thin inherited experiment as a standalone packages.yaml hardware definition.
+# Inherit the V2 layout, panel, touch, clocks and Wi-Fi wiring unchanged.
+packages:
+  v2: !include ../guition-esp32-p4-jc8012p4a1-v2/packages.yaml
+
+substitutions:
+  name: "espctl-v3-test"
+  friendly_name: "EspControl 10inch V3 Test"
+  firmware_version: "dev-v3-test"
+  espcontrol_component_ref: "test-jc8012p4a1-v3"
+  cover_art_placeholder_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/${espcontrol_component_ref}/common/assets/cover_art_placeholder.svg"
+  # Keep device_slug inherited from V2 for the existing UI/layout contract.
+  # This unpublished update channel must never point at the V2 release image.
+  firmware_manifest_slug: "guition-esp32-p4-jc8012p4a1-v3-test"
+
+esp32:
+  engineering_sample: false
+
+# Only this experiment replaces the pinned ESPHome MIPI DSI driver.
+# Zero-initialized PHY clock selection lets IDF choose XTAL for production P4.
+external_components:
+  - source:
+      type: git
+      url: ${espcontrol_component_url}
+      ref: ${espcontrol_component_ref}
+      path: components
+    components: [mipi_dsi]
+    refresh: 1s
+
+switch:
+  - id: !extend auto_update_switch
+    restore_mode: ALWAYS_OFF
+  # Preserve the working C6 firmware throughout the initial hardware test.
+  - id: !extend c6_auto_update_switch
+    restore_mode: ALWAYS_OFF
+
+web_server:
+  ota: false
+  # Load the complete branch editor: the release-manifest bridge rejects dev-v3-*
+  # versions, and manual builds have no embedded fallback for it to start.
+  js_url: "https://cdn.jsdelivr.net/gh/jtenniswood/espcontrol@${espcontrol_component_ref}/docs/public/webserver/embedded/www.js?device=${device_slug}&v=${firmware_version}"
+
+esphome:
+  min_version: 2026.9.0
+  on_boot:
+    - priority: -100
+      then:
+        - logger.log:
+            level: WARN
+            format: "JC8012P4A1 V3 TEST: use only branch-built firmware via ESPHome OTA or USB."
