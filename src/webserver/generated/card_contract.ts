@@ -3759,6 +3759,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "label": "Refresh interval",
         "kind": "choice",
         "values": [
+          "1",
+          "3",
           "5",
           "10",
           "30"

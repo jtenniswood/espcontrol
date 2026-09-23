@@ -179,7 +179,7 @@ export function createConfigImageOptionsFeature(dependencies: ConfigImageOptions
             if (mode === "periodic") {
                 out = setConfigOptionValue(out, "image_modal_refresh_mode", mode);
                 const interval = configOptionValue(options, "image_modal_refresh_interval");
-                if (interval === "5" || interval === "30")
+                if (interval === "1" || interval === "3" || interval === "5" || interval === "30")
                     out = setConfigOptionValue(out, "image_modal_refresh_interval", interval);
             } else if (mode === "activity" && (draft || validImageRefreshTrigger(trigger))) {
                 out = setConfigOptionValue(out, "image_modal_refresh_mode", mode);

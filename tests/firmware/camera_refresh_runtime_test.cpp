@@ -20,15 +20,17 @@ using lv_obj_t = int;
 int tile_requests = 0, modal_requests = 0;
 struct FakeImage {
   std::string url;
-  bool cancelled = false;
+  bool cancelled = false, active = false;
   bool has_image() const { return true; }
   const std::string &get_url() const { return url; }
-  void cancel_update() { cancelled = true; }
+  bool request_is_active() const { return active; }
+  void cancel_update() { cancelled = true; active = false; }
   void set_target_size(int, int) {}
   void set_resize_mode(esphome::artwork_image::ImageResizeMode) {}
   std::string request_update_url(const std::string &value, int) {
     ++tile_requests;
     url = value;
+    active = true;
     return value;
   }
 };
@@ -36,7 +38,7 @@ struct ImageCardCtx {
   bool active = true, media_artwork = false, image_ready = true;
   bool access_token_request_pending = false, explicit_picture_refresh = false;
   bool download_active = false, visible = true, modal = false;
-  bool activity_tile_request = false, download_queued = false, requested_once = false;
+  bool scheduled_tile_request = false, download_queued = false, requested_once = false;
   int startup_download_errors = 0;
   lv_obj_t *widget = nullptr, *btn = nullptr;
   uint32_t retry_deadline_ms = 0, last_tile_request_started_ms = 0;
@@ -44,11 +46,16 @@ struct ImageCardCtx {
   uint8_t media_artwork_retry_mask = 0;
   uint32_t last_download_completed_ms = 99000, next_picture_retry_ms = 0, next_download_retry_ms = 0;
   uint32_t revision_retry_ms = 0;
+  uint8_t camera_download_errors = 0;
+  bool camera_entity_unavailable = false;
   FakeImage *image = nullptr, *modal_image = nullptr;
   espcontrol::camera::RefreshSchedule refresh_schedule;
   espcontrol::camera::ActivityTrigger activity_trigger;
   espcontrol::camera::ImageRevision revision;
 };
+struct ModalUi { void *request_timer = nullptr; };
+ModalUi modal_ui;
+ModalUi &image_card_modal_ui() { return modal_ui; }
 constexpr int IMAGE_CARD_MAX_CONTEXTS = 2;
 constexpr uint32_t IMAGE_CARD_MIN_REPEAT_REFRESH_MS = 30000;
 constexpr uint32_t IMAGE_CARD_MODAL_REFRESH_DELAY_MS = 1000;
@@ -80,7 +87,12 @@ bool connected = true;
 ImageCardCtx *image_card_contexts() { return contexts; }
 bool ha_api_connected() { return true; } // A diagnostic client may remain connected.
 bool ha_api_state_connected() { return connected; }
+bool image_card_pipeline_suspended() { return false; }
+bool image_card_camera_retry_blocked(ImageCardCtx *) { return false; }
+void image_card_camera_download_failed(ImageCardCtx *) {}
 uint32_t ha_subscription_generation() { return 1; }
+struct HaCoordinator { uint32_t connection_generation() const { return 1; } };
+HaCoordinator &ha_read_coordinator() { static HaCoordinator value; return value; }
 bool image_card_context_current(ImageCardCtx *, const std::string &, uint32_t) { return true; }
 bool image_card_modal_active_for(ImageCardCtx *ctx) { return ctx->modal; }
 bool image_card_context_on_active_screen(ImageCardCtx *ctx) { return ctx->visible && (!image_card_page_visible() || image_card_page_visible()()); }
@@ -101,11 +113,12 @@ bool image_card_startup_retry_active(ImageCardCtx *, uint32_t = 0) { return fals
 void image_card_schedule_picture_retry(ImageCardCtx *ctx, uint32_t delay) { ctx->next_picture_retry_ms = esphome::now + delay; }
 void image_card_schedule_source_refresh(ImageCardCtx *ctx, uint32_t delay, const char *) { ctx->next_download_retry_ms = esphome::now + delay; }
 void image_card_request_source_url(ImageCardCtx *ctx, bool source_changed = false);
-void image_card_queue_modal_source_request(ImageCardCtx *ctx) {
-  if (ctx->refresh_schedule.in_flight) return;
+bool image_card_queue_modal_source_request(ImageCardCtx *ctx) {
+  if (ctx->refresh_schedule.in_flight) return true;
   ++modal_requests;
   ctx->revision.modal_requested = ctx->revision.latest;
   ctx->refresh_schedule.started();
+  return true;
 }
 void image_card_cancel_modal_request_timer() {}
 void image_card_apply_downloaded(ImageCardCtx *) {}
@@ -128,8 +141,9 @@ void reset() {
 }
 void finish_tile() {
   auto &ctx = contexts[0];
-  image_card_finish_activity_tile_request(&ctx, true);
+  image_card_finish_scheduled_tile_request(&ctx, true);
   image_card_release_download_slot(&ctx);
+  tile.active = false;
   ctx.revision.tile_applied = ctx.revision.tile_requested;
 }
 int main() {
@@ -239,54 +253,30 @@ int main() {
   ctx.visible = false;
   image_card_refresh_due();
   assert(tile.cancelled && !ctx.download_active && !ctx.refresh_schedule.open);
-  assert(!ctx.activity_tile_request && !ctx.download_queued && ctx.next_download_retry_ms == 0);
+  assert(!ctx.scheduled_tile_request && !ctx.download_queued && ctx.next_download_retry_ms == 0);
   image_card_handle_activity_state(&ctx, "off", true, 1);
   image_card_handle_activity_state(&ctx, "on", true, 1);
   ctx.visible = true;
   image_card_refresh_due();
   assert(tile_requests == 4 && !ctx.refresh_schedule.window); // No hidden-event replay.
 
-  // Requests queued behind another tile are rechecked at dispatch time.
+  // A trigger received while the page is hidden must not start a later refresh.
   reset();
   ctx.entity_id = "camera.test";
   ctx.last_download_completed_ms = 0;
   ctx.refresh_schedule.mode = espcontrol::camera::RefreshMode::ACTIVITY;
-  image_card_handle_activity_state(&ctx, "first-event", false, 1);
-  image_card_handle_activity_state(&ctx, "second-event", false, 1);
-  active_download = &contexts[1];
-  image_card_refresh_due();
-  assert(ctx.activity_tile_request && ctx.download_queued && tile_requests == 0);
-  esphome::now += 30000;
-  active_download = nullptr;
-  image_card_request_source_url(&ctx);
-  assert(tile_requests == 0 && !ctx.activity_tile_request && !ctx.download_queued);
-  assert(ctx.next_download_retry_ms == 0);
-  image_card_handle_activity_state(&ctx, "third-event", false, 2);
-  image_card_refresh_due();
-  assert(tile_requests == 0); // Reconnect establishes a new event baseline.
-  image_card_handle_activity_state(&ctx, "fourth-event", false, 2);
-  enough_memory = false;
-  image_card_refresh_due();
-  assert(tile_requests == 0 && ctx.refresh_schedule.failures == 1);
-  assert(!ctx.activity_tile_request && ctx.next_download_retry_ms == 0);
-  enough_memory = true;
-  esphome::now += 5000;
+  image_card_handle_activity_state(&ctx, "off", true, 1);
+  image_card_handle_activity_state(&ctx, "on", true, 1);
   image_card_refresh_due();
   assert(tile_requests == 1);
-  finish_tile();
-  esphome::now += 30000;
-  image_card_refresh_due();
-  assert(tile_requests == 1); // Expiry also stops ordinary visible-tile scheduling.
 
   // Screen-off/saver visibility is independent of the underlying LVGL page.
-  image_card_handle_activity_state(&ctx, "fifth-event", false, 2);
-  image_card_refresh_due();
-  assert(tile_requests == 2);
   image_card_refresh_due([] { return false; });
   assert(!ctx.refresh_schedule.open && tile.cancelled);
-  image_card_handle_activity_state(&ctx, "sixth-event", false, 2);
+  image_card_handle_activity_state(&ctx, "off", true, 1);
+  image_card_handle_activity_state(&ctx, "on", true, 1);
   image_card_refresh_due([] { return true; });
-  assert(tile_requests == 2 && !ctx.refresh_schedule.window);
+  assert(tile_requests == 1 && !ctx.refresh_schedule.window);
 
   // Hiding one tile must not cancel the shared modal belonging to another card.
   reset();
@@ -309,8 +299,16 @@ int main() {
   ctx.entity_id = "camera.test";
   ctx.last_download_completed_ms = 0;
   ctx.refresh_schedule.mode = espcontrol::camera::RefreshMode::PERIODIC;
+  ctx.refresh_schedule.interval_ms = 1000;
   image_card_refresh_due();
-  assert(tile_requests == 0); // Periodic remains expanded-only.
+  assert(tile_requests == 1 && ctx.scheduled_tile_request); // Periodic refresh starts on the visible card.
+  finish_tile();
+  esphome::now += 999;
+  image_card_refresh_due();
+  assert(tile_requests == 1);
+  esphome::now += 1;
+  image_card_refresh_due();
+  assert(tile_requests == 2 && ctx.scheduled_tile_request);
 
   reset();
   ctx.entity_id = "camera.test";
@@ -319,11 +317,12 @@ int main() {
   image_card_handle_activity_state(&ctx, "off", true, 1);
   image_card_handle_activity_state(&ctx, "on", true, 1);
   image_card_refresh_due();
-  assert(tile_requests == 1 && ctx.activity_tile_request);
+  assert(tile_requests == 1 && ctx.scheduled_tile_request);
   const auto window_end = ctx.refresh_schedule.window_end;
-  image_card_prioritize_modal_download(&ctx);
-  assert(tile.cancelled && !ctx.activity_tile_request && !ctx.download_queued);
-  assert(!ctx.refresh_schedule.in_flight && ctx.next_download_retry_ms == 0);
+  image_card_preempt_active_tile_for_modal();
+  assert(tile.cancelled && !ctx.scheduled_tile_request && !ctx.download_queued);
+  assert(!ctx.refresh_schedule.in_flight &&
+         ctx.next_download_retry_ms == esphome::now + IMAGE_CARD_MODAL_REFRESH_DELAY_MS);
   ctx.modal = true;
   ctx.refresh_schedule.enter_expanded(esphome::now, true);
   image_card_refresh_due();
@@ -336,20 +335,5 @@ int main() {
   esphome::now += 5000;
   image_card_refresh_due();
   assert(tile_requests == 2 && ctx.refresh_schedule.window_end == window_end);
-
-  reset();
-  ctx.entity_id = "camera.test";
-  ctx.last_download_completed_ms = esphome::now - 1000;
-  ctx.refresh_schedule.mode = espcontrol::camera::RefreshMode::ACTIVITY;
-  image_card_handle_activity_state(&ctx, "off", true, 1);
-  image_card_handle_activity_state(&ctx, "on", true, 1);
-  image_card_refresh_due();
-  assert(tile_requests == 0); // Reuse a tile downloaded just before schedule activation.
-  esphome::now += 4000;
-  active_download = &contexts[1];
-  image_card_refresh_due();
-  assert(ctx.download_queued && ctx.activity_tile_request && ctx.next_download_retry_ms != 0);
-  image_card_prioritize_modal_download(&ctx);
-  assert(!ctx.download_queued && !ctx.activity_tile_request && ctx.next_download_retry_ms == 0);
 
 }

@@ -10,10 +10,10 @@ ROOT = Path(__file__).resolve().parents[2]
 source = (ROOT / "components/espcontrol/button_grid_image.h").read_text()
 functions = []
 for name in (
-    "image_card_prioritize_modal_download", "image_card_finish_activity_tile_request", "image_card_cancel_activity_tile_request",
-    "image_card_activity_tile_request_allowed", "image_card_request_source_url",
+    "image_card_preempt_active_tile_for_modal", "image_card_finish_scheduled_tile_request", "image_card_cancel_scheduled_tile_request",
+    "image_card_scheduled_tile_request_allowed", "image_card_request_source_url",
     "image_card_handle_download_error", "image_card_handle_picture",
-    "image_card_begin_activity_schedule", "image_card_refresh_due", "image_card_handle_activity_state",
+    "image_card_begin_refresh_schedule", "image_card_refresh_due", "image_card_handle_activity_state",
 ):
     match = re.search(rf"^inline (?:void|bool) {name}\([^;{{]*\) \{{\n.*?^\}}", source, re.M | re.S)
     if match is None:

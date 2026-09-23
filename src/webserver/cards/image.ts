@@ -100,17 +100,17 @@ export function registerImageCardTypes(
     function renderImageRefreshSettings(panel: any, b: any, helpers: any, entityInput: any, refreshPanel: any) {
         const isCamera = () => String(b.entity || "").startsWith("camera.");
         const refresh = helpers.selectField("Camera refresh", helpers.idPrefix + "image-refresh-mode", [
-            ["off", "Off"], ["periodic", "Periodic (expanded view)"], ["activity", "On activity"],
+            ["off", "Off"], ["periodic", "Periodic (visible card and expanded view)"], ["activity", "On activity"],
         ], configOptionValue(b.options, "image_modal_refresh_mode") || "off");
         const interval = helpers.selectField("Refresh interval", helpers.idPrefix + "image-refresh-interval", [
-            ["5", "5 seconds"], ["10", "10 seconds"], ["30", "30 seconds"],
+            ["1", "1 second"], ["3", "3 seconds"], ["5", "5 seconds"], ["10", "10 seconds"], ["30", "30 seconds"],
         ], configOptionValue(b.options, "image_modal_refresh_interval") || "10");
         const trigger = helpers.entityField("Trigger entity", helpers.idPrefix + "image-refresh-trigger",
             configOptionValue(b.options, "image_modal_refresh_trigger"),
             "e.g. binary_sensor.front_door_motion", ["binary_sensor", "event"]);
         const help = document.createElement("p");
         help.className = "sp-setting-note";
-        help.textContent = "Activity refreshes the visible card or expanded image every 5 seconds for 30 seconds. New activity restarts this period. Refreshing stops when the card is hidden. The return-home timeout still applies.";
+        help.textContent = "Periodic refresh updates the visible card and expanded image at the selected interval. On activity refreshes them every 5 seconds for 30 seconds. New activity restarts this period. Refreshing stops when the card is hidden. The return-home timeout still applies.";
         panel.appendChild(refresh.field);
         panel.appendChild(interval.field);
         panel.appendChild(trigger.field);

@@ -51,12 +51,12 @@ For a `camera.*` entity, open **Refresh Settings > Camera refresh**:
 | Mode | Behaviour |
 |---|---|
 | **Off** (default) | Keeps the existing updates from Home Assistant and the image request when opening the camera. |
-| **Periodic** | Downloads another snapshot while expanded. Choose **5**, **10** (default), or **30 seconds** between completed downloads and the next request. |
+| **Periodic** | Refreshes the visible card and expanded image. Choose **1**, **3**, **5**, **10** (default), or **30 seconds** between completed downloads and the next request. |
 | **On activity** | A trigger refreshes the visible card or expanded image for **30 seconds**, with **5 seconds** between a completed download and the next request. Another activation restarts that period. |
 
 For **On activity**, select a **Trigger entity** such as `binary_sensor.front_door_motion` or `event.front_door_doorbell`. Binary sensors trigger when they change from off to on. Event entities trigger when a new event occurs; every event type on the selected entity counts. Opening while a binary sensor is already on starts one window. Remaining on does not extend it indefinitely.
 
-Periodic refresh runs only while the camera is expanded. On activity also refreshes the camera card while it is visible on the main page or a subpage. Opening or closing the expanded view keeps the current activity window; it does not restart the 30 seconds. Leaving the page, covering the card with another modal, or entering the screensaver stops activity refreshes. Events received while hidden do not queue refreshes for later.
+Periodic and activity refresh run while the camera card is visible on the main page or a subpage. Opening the expanded view continues the same refresh schedule. On activity refreshes for 30 seconds; new activity restarts that window. Leaving the page, covering the card with another modal, or entering the screensaver stops refreshes. Events received while hidden do not queue refreshes for later.
 
 Refreshes do not open the camera, wake the screen, or extend **Home Screen Timeout**. Old doorbell events are not replayed after reconnecting.
 
@@ -112,7 +112,7 @@ Camera performance also depends on the connection between the panel and Home Ass
 | The card says **Unavailable** | Check that the entity exists in Home Assistant and has an image available. |
 | The card says **Too many** | Remove or move some Camera cards so the panel has enough image download slots. |
 | The picture is cropped | Change **Expanded Image** to **Show full image**. |
-| The picture does not update often | For a camera, enable expanded-view refresh and check snapshot freshness in Home Assistant. For an image entity, check that its image-update timestamp changes. |
+| The picture does not update often | For a camera, enable periodic refresh or set an activity trigger, and check snapshot freshness in Home Assistant. For an image entity, check that its image-update timestamp changes. |
 | Images remain slow on several cards | Check the panel's WiFi signal and Home Assistant response time. On supported Ethernet models, consider the advanced wired firmware option. |
 
 ## Show Photos from Immich

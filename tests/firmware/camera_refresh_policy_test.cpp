@@ -10,6 +10,8 @@ int main() {
   for (const char *bad : {"", "camera.front", "event.", "event.Door", "event.x,y", "binary_sensor.x=y"})
     assert(!valid_trigger(bad));
   assert(refresh_mode("timer") == RefreshMode::OFF);
+  assert(refresh_interval_ms("1") == 1000);
+  assert(refresh_interval_ms("3") == 3000);
   assert(refresh_interval_ms("invalid") == 10000);
 
   RefreshSchedule periodic;
@@ -142,8 +144,14 @@ int main() {
   activity.begin(40000, false);
   activity.enter_expanded(41000, true);
   assert(activity.window_end == 71000); // First opening with a known-on baseline.
-  periodic.enter_expanded(1000, false);
+  periodic.close();
+  periodic.begin(1000, false);
+  periodic.enter_expanded(2000, false);
   periodic.leave_expanded();
-  assert(!periodic.open);
+  assert(periodic.open && !periodic.in_flight);
+  RefreshSchedule off;
+  off.enter_expanded(1000, false);
+  off.leave_expanded();
+  assert(!off.open);
 
 }

@@ -26,7 +26,8 @@ inline bool valid_trigger(const std::string &value) {
 }
 
 inline uint32_t refresh_interval_ms(const std::string &value) {
-  return value == "5" ? 5000 : value == "30" ? 30000 : 10000;
+  return value == "1" ? 1000 : value == "3" ? 3000 :
+         value == "5" ? 5000 : value == "30" ? 30000 : 10000;
 }
 
 inline bool valid_state(const std::string &value) {
@@ -83,12 +84,12 @@ struct RefreshSchedule {
     if (sensor_on) activate(now);
   }
   void enter_expanded(uint32_t now, bool sensor_on) {
-    if (mode != RefreshMode::ACTIVITY || !open) begin(now, sensor_on);
-    else if (!window && sensor_on) activate(now);
+    if (!open) begin(now, sensor_on);
+    else if (mode == RefreshMode::ACTIVITY && !window && sensor_on) activate(now);
   }
   void leave_expanded() {
-    if (mode == RefreshMode::ACTIVITY) in_flight = false;
-    else close();
+    if (mode == RefreshMode::OFF) close();
+    else in_flight = false;
   }
   void activate(uint32_t now) {
     if (!open || mode != RefreshMode::ACTIVITY) return;

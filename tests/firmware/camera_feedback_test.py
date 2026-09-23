@@ -21,6 +21,7 @@ source = r'''
 #include <cstdint>
 #include <functional>
 #include <string>
+#include "camera_refresh_policy.h"
 #include "image_pipeline_policy.h"
 uint32_t now_ms = 0;
 namespace esphome {
@@ -55,8 +56,14 @@ struct ImageCardCtx {
  std::string modal_url = "snapshot", modal_source_url = "snapshot";
  std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover;
  bool requested_once = false, access_token_request_pending = false, camera_refresh_pending = false;
+ bool scheduled_tile_request = false;
  bool media_artwork_refresh_forced = false;
  uint32_t retry_deadline_ms = 0, media_artwork_retry_mask = 0, media_artwork_timeout_retries = 0;
+ uint32_t revision_retry_ms = 0;
+ espcontrol::camera::RefreshSchedule refresh_schedule;
+ espcontrol::camera::ActivityTrigger activity_trigger;
+ espcontrol::camera::ImageRevision revision;
+ std::string refresh_trigger_entity;
  std::string access_token, pending_fallback_picture;
  Resettable media_artwork_refresh, media_artwork_trigger;
  Timer *modal_cleanup_timer = nullptr, *media_artwork_trigger_timer = nullptr, *media_artwork_timer = nullptr;
@@ -83,7 +90,12 @@ bool suspended = false;
 bool &image_card_pipeline_suspended_state() { return suspended; }
 bool image_card_pipeline_suspended() { return suspended; }
 bool ha_api_connected() { return true; }
+bool ha_api_state_connected() { return true; }
 bool image_card_context_visible_on_active_screen(ImageCardCtx *) { return true; }
+bool image_card_context_on_active_screen(ImageCardCtx *ctx) {
+ return image_card_context_visible_on_active_screen(ctx);
+}
+std::function<bool()> &image_card_page_visible() { static std::function<bool()> page; return page; }
 bool image_card_modal_active_for(ImageCardCtx *ctx) { return ui.active == ctx; }
 std::string tile_status, modal_status;
 int cleared = 0, pictures = 0, tile_requests = 0, modal_requests = 0, recovered = 0;
@@ -144,6 +156,13 @@ void image_card_request_current_picture(ImageCardCtx *) { ++pictures; }
 void image_card_refresh_current_picture(ImageCardCtx *) { ++pictures; }
 void image_card_request_source_url(ImageCardCtx *) { ++tile_requests; }
 bool image_card_queue_modal_source_request(ImageCardCtx *) { ++modal_requests; return true; }
+void image_card_cancel_scheduled_tile_request(ImageCardCtx *ctx) {
+ ctx->scheduled_tile_request = false;
+ ctx->refresh_schedule.in_flight = false;
+}
+void image_card_begin_refresh_schedule(ImageCardCtx *ctx) {
+ ctx->refresh_schedule.begin(now_ms, false);
+}
 void image_card_apply_downloaded(ImageCardCtx *) { ++recovered; }
 #define ESP_LOGI(...) do {} while(false)
 #define ESP_LOGW(...) do {} while(false)
@@ -153,7 +172,8 @@ for name in ('image_card_modal_cache_expired', 'image_card_cancel_modal_cache_ex
              'image_card_release_modal_cache', 'image_card_modal_cache_expiry_timer_cb',
              'image_card_schedule_modal_cache_expiry', 'image_card_show_camera_unavailable',
              'image_card_camera_retry_blocked', 'image_card_camera_download_failed',
-             'image_card_handle_download_error', 'image_card_modal_has_tile_fallback',
+             'image_card_finish_scheduled_tile_request', 'image_card_handle_download_error',
+             'image_card_modal_has_tile_fallback',
              'image_card_modal_cache_matches', 'image_card_modal_needs_open_refresh',
              'image_card_apply_entity_state', 'subscribe_image_card_entity_state',
              'image_card_refresh_entity_state',
@@ -283,8 +303,12 @@ int main() {
  assert(ctx.next_download_retry_ms == now_ms + 1000);
  // Unavailable HA state cancels requests, waits, then restarts on recovery.
  subscribe_image_card_entity_state(&ctx, ctx.entity_id);
+ const int tile_cancelled_before_unavailable = tile.cancelled;
+ const int modal_cancelled_before_unavailable = modal.cancelled;
  state_callback("unavailable");
- assert(ctx.camera_entity_unavailable && tile.cancelled == 1 && modal.cancelled == 1);
+ assert(ctx.camera_entity_unavailable &&
+        tile.cancelled == tile_cancelled_before_unavailable + 1 &&
+        modal.cancelled == modal_cancelled_before_unavailable + 1);
  assert(image_card_camera_retry_blocked(&ctx));
  assert(ctx.next_download_retry_ms == 0 && pictures == 0);
  state_callback("idle");
@@ -363,6 +387,7 @@ with tempfile.TemporaryDirectory(prefix='camera-feedback-') as temp:
     cpp.write_text(source)
     subprocess.run([sys.argv[1] if len(sys.argv) > 1 else 'c++', '-std=c++17',
                     '-Wall', '-Wextra', '-Werror', '-I', str(root / 'components/artwork_image'),
+                    '-I', str(root / 'components/espcontrol'),
                     str(cpp), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
 print('Camera cache lifecycle, availability, retry backoff and recovery passed.')
