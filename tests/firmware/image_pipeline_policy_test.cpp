@@ -50,7 +50,7 @@ int main() {
 
   // Constrained displays use a smaller modal and release it after closing;
   // standard P4 displays keep their existing 800px cache.
-  assert(image_pipeline_modal_max_target_side(true) == 320);
+  assert(image_pipeline_modal_max_target_side(true) == 480);
   assert(image_pipeline_modal_max_target_side(false) == 800);
   assert(!image_pipeline_should_retain_modal_cache(true));
   assert(image_pipeline_should_retain_modal_cache(false));
