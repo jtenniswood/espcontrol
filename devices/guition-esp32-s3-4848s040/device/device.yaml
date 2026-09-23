@@ -109,6 +109,7 @@ esphome:
   friendly_name: ${friendly_name}
   build_flags:
     - "-DESPCONTROL_MAX_GRID_SLOTS=9"
+    - "-DESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=2"
     - "-DESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1"
     - "-DESPCONTROL_LOW_HEAP_COVER_ART=1"
     - "-DESPCONTROL_DISABLE_WEATHER_FORECAST=1"
@@ -409,9 +410,7 @@ touchscreen:
       mirror_x: false
       mirror_y: false
     on_touch:
-      - script.execute: cover_art_pause_after_touch
-      - script.wait: cover_art_pause_after_touch
-      - script.execute: screensaver_wake
+      - script.execute: cover_art_handle_touch
 
 # ---------------------------------------------------------------------------
 # Display (4" 480x480 MIPI RGB panel)
@@ -443,11 +442,9 @@ lvgl:
   id: main_lvgl
   # Keep LVGL after WiFi and after the display driver.
   setup_priority: 230
-  # A full-frame buffer avoids splitting page redraws into many small regions.
-  # At 90/270 degrees ESPHome rotates each rendered region in software; one
-  # full-frame rotation is substantially cheaper than repeatedly rotating the
-  # same page in partial chunks on the S3's PSRAM-backed display stack.
-  buffer_size: 100%
+  # Keep the buffer small so WiFi and runtime display resources retain PSRAM
+  # headroom on the memory-constrained S3.
+  buffer_size: 12%
   displays: my_display
   rotation: 180
   touchscreens:
@@ -542,6 +539,7 @@ script:
                         - lvgl.display.set_rotation: 90
                       else:
                         - lvgl.display.set_rotation: 180
+      - script.execute: camera_screensaver_request_image
 
 select:
   - platform: template

@@ -85,6 +85,9 @@ globals:
   - id: screensaver_action_dimmed
     type: bool
     initial_value: 'false'
+  - id: screensaver_action_camera
+    type: bool
+    initial_value: 'false'
   # Connectivity setup must remain visible even when a restored time-based
   # schedule would otherwise keep the panel dark while time is unavailable.
   - id: connectivity_setup_display_active
@@ -100,6 +103,8 @@ esphome:
             std::string action = id(screensaver_action).current_option();
             id(screensaver_action_clock) = screensaver_action_clock_mode(action);
             id(screensaver_action_dimmed) = screensaver_action_dimmed_mode(action);
+            id(screensaver_action_camera) =
+                ${screensaver_camera_supported} && screensaver_action_camera_mode(action);
           };
           update_screensaver_action_cache();
 
@@ -210,6 +215,15 @@ script:
                   - script.wait: cover_art_hide_effect
             - if:
                 condition:
+                  lambda: 'return target_mode != static_cast<int>(espcontrol::DisplayMode::CAMERA);'
+                then:
+                  - script.execute:
+                      id: camera_screensaver_hide_effect
+                      generation: !lambda 'return generation;'
+                      target_mode: !lambda 'return target_mode;'
+                  - script.wait: camera_screensaver_hide_effect
+            - if:
+                condition:
                   lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::ACTIVE);'
                 then:
                   - script.execute:
@@ -288,32 +302,45 @@ script:
                                   else:
                                     - if:
                                         condition:
-                                          lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::DISPLAY_OFF);'
+                                          lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::CAMERA);'
                                         then:
                                           - script.execute:
-                                              id: display_mode_effect_off
+                                              id: display_mode_effect_camera
                                               generation: !lambda 'return generation;'
-                                          - script.wait: display_mode_effect_off
+                                          - script.wait: display_mode_effect_camera
                                           - lambda: |-
                                               id(espcontrol_app).display().complete_transition(
-                                                  static_cast<uint32_t>(generation), espcontrol::DisplayMode::DISPLAY_OFF,
+                                                  static_cast<uint32_t>(generation), espcontrol::DisplayMode::CAMERA,
                                                   millis());
                                         else:
                                           - if:
                                               condition:
-                                                lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::COVER_ART);'
+                                                lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::DISPLAY_OFF);'
                                               then:
-                                                - globals.set:
-                                                    id: cover_art_transition_generation
-                                                    value: !lambda 'return static_cast<uint32_t>(generation);'
                                                 - script.execute:
-                                                    id: display_mode_effect_cover_art
+                                                    id: display_mode_effect_off
                                                     generation: !lambda 'return generation;'
-                                                - script.wait: display_mode_effect_cover_art
+                                                - script.wait: display_mode_effect_off
                                                 - lambda: |-
                                                     id(espcontrol_app).display().complete_transition(
-                                                        static_cast<uint32_t>(generation), espcontrol::DisplayMode::COVER_ART,
+                                                        static_cast<uint32_t>(generation), espcontrol::DisplayMode::DISPLAY_OFF,
                                                         millis());
+                                              else:
+                                                - if:
+                                                    condition:
+                                                      lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::COVER_ART);'
+                                                    then:
+                                                      - globals.set:
+                                                          id: cover_art_transition_generation
+                                                          value: !lambda 'return static_cast<uint32_t>(generation);'
+                                                      - script.execute:
+                                                          id: display_mode_effect_cover_art
+                                                          generation: !lambda 'return generation;'
+                                                      - script.wait: display_mode_effect_cover_art
+                                                      - lambda: |-
+                                                          id(espcontrol_app).display().complete_transition(
+                                                              static_cast<uint32_t>(generation), espcontrol::DisplayMode::COVER_ART,
+                                                              millis());
       - lambda: |-
           const auto &controller = id(espcontrol_app).display();
           if (controller.last_completed_generation() ==
@@ -388,6 +415,8 @@ script:
                       }
             - script.execute: clock_bar_apply
             - script.execute: backlight_apply_brightness
+      - lambda: |-
+          image_card_resume_pipeline();
 
   - id: display_mode_effect_setup_dimmed
     mode: restart
@@ -490,12 +519,21 @@ script:
             id(cover_art_playback_started).execute();
           }
 
+          // A retained pause is valid only while this presentation remains
+          // visible. Schedule, manual sleep, and modal takeovers end the session.
+          if (!controller.target_mode_is(espcontrol::DisplayMode::COVER_ART)) {
+            if (id(cover_art_playback_control).retains_pause(id(cover_art_active_media_player_entity))) {
+              controller.clear(espcontrol::DisplayRequestSource::MEDIA_PLAYBACK);
+            }
+            id(cover_art_playback_control).reset();
+          }
           auto transition = controller.resolve();
           const bool migrated_target =
               transition.target_mode == espcontrol::DisplayMode::ACTIVE ||
               transition.target_mode == espcontrol::DisplayMode::SETUP_DIMMED ||
               transition.target_mode == espcontrol::DisplayMode::DIMMED ||
               transition.target_mode == espcontrol::DisplayMode::CLOCK ||
+              transition.target_mode == espcontrol::DisplayMode::CAMERA ||
               transition.target_mode == espcontrol::DisplayMode::COVER_ART ||
               transition.target_mode == espcontrol::DisplayMode::DISPLAY_OFF;
 
@@ -537,6 +575,14 @@ script:
           const bool transition_required =
               controller.transition_required(transition) ||
               controller.presentation_incomplete();
+          if (transition.target_mode == espcontrol::DisplayMode::CAMERA &&
+              !transition_required &&
+              id(camera_screensaver_transition_generation) != transition.generation) {
+            // A lower-priority request can advance the controller generation while
+            // Camera remains the winner. Keep camera downloads current just like
+            // the cover-art path above.
+            id(camera_screensaver_transition_generation) = transition.generation;
+          }
           if (transition.target_mode == espcontrol::DisplayMode::COVER_ART &&
               !transition_required &&
               id(cover_art_transition_generation) != transition.generation) {
@@ -752,9 +798,17 @@ script:
                                   id: display_mode_request_automatic
                                   target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::DIMMED);'
                             else:
-                              - script.execute:
-                                  id: display_mode_request_automatic
-                                  target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::DISPLAY_OFF);'
+                              - if:
+                                  condition:
+                                    lambda: 'return id(screensaver_action_camera);'
+                                  then:
+                                    - script.execute:
+                                        id: display_mode_request_automatic
+                                        target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::CAMERA);'
+                                  else:
+                                    - script.execute:
+                                        id: display_mode_request_automatic
+                                        target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::DISPLAY_OFF);'
             - globals.set:
                 id: screensaver_sensor_sleep_pending
                 value: 'false'
@@ -1141,8 +1195,20 @@ script:
       - script.stop: show_dimmed_view
       - script.stop: screensaver_dimmed_refresh_brightness
       - script.stop: show_cover_art_view
+      - script.stop: camera_screensaver_request_image
       - script.stop: cover_art_delay_timer
       - script.stop: cover_art_show_track_overlay
+      - lambda: |-
+          id(screensaver_wake_restore_pending) =
+              !id(espcontrol_app).display().target_mode_is(
+                  espcontrol::DisplayMode::ACTIVE);
+          id(screensaver_wake_touch_guard_skip_once) =
+              id(espcontrol_app).display().target_mode_is(
+                  espcontrol::DisplayMode::COVER_ART) ||
+              id(espcontrol_app).display().target_mode_is(
+                  espcontrol::DisplayMode::CAMERA) ||
+              id(espcontrol_app).display().target_mode_is(
+                  espcontrol::DisplayMode::DISPLAY_OFF);
       - if:
           condition:
             lambda: 'return id(screensaver_wake_touch_guard_skip_once);'
@@ -1527,7 +1593,79 @@ script:
     mode: single
     then:
       - lvgl.widget.hide: clock_screensaver
+      - script.execute: clock_overlay_hide
       - script.execute: clock_bar_apply
+
+  # Optional clock and metadata over the camera/image screensaver. Media
+  # cover art owns its presentation and must never show this overlay.
+  - id: clock_overlay_hide
+    mode: restart
+    then:
+      - lvgl.widget.hide: clock_image_overlay
+
+  - id: clock_overlay_apply
+    mode: restart
+    parameters:
+      target_mode: int
+    then:
+      - lambda: |-
+          const auto mode = static_cast<espcontrol::DisplayMode>(target_mode);
+          if (mode != espcontrol::DisplayMode::CAMERA) {
+            lv_obj_add_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN);
+            return;
+          }
+          auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+          const bool clock_visible = id(clock_overlay_enabled).state && time.is_valid();
+          const bool metadata_visible = mode == espcontrol::DisplayMode::CAMERA &&
+              id(metadata_overlay_enabled).state &&
+              ha_api_state_connected() && !id(photo_metadata_value).empty() &&
+              id(photo_metadata_subscribed_entity) == id(screensaver_metadata_entity).state &&
+              id(photo_metadata_subscription_generation) == ha_subscription_generation();
+          if (!clock_visible && !metadata_visible) {
+            lv_obj_add_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN);
+            return;
+          }
+          auto show = [](lv_obj_t *obj, bool visible) {
+            if (visible) lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+          };
+          show(id(clock_image_overlay_shadow), clock_visible);
+          show(id(clock_image_overlay_label), clock_visible);
+          show(id(photo_metadata_shadow), metadata_visible);
+          show(id(photo_metadata_label), metadata_visible);
+          if (clock_visible) {
+            char buf[8];
+            format_clock_time_without_suffix(buf, sizeof(buf),
+                                             time.hour, time.minute, id(clock_format_12h));
+            lv_label_set_text(id(clock_image_overlay_shadow), buf);
+            lv_label_set_text(id(clock_image_overlay_label), buf);
+          }
+          if (metadata_visible) {
+            lv_label_set_text(id(photo_metadata_shadow), id(photo_metadata_value).c_str());
+            lv_label_set_text(id(photo_metadata_label), id(photo_metadata_value).c_str());
+          }
+          apply_clock_screensaver_text_color(
+              id(clock_image_overlay_label), id(schedule_clock_text_color).state);
+          position_clock_image_overlay(
+              id(clock_image_overlay), id(clock_image_overlay_shadow),
+              id(clock_image_overlay_label), id(photo_metadata_label),
+              id(photo_metadata_shadow),
+              clock_visible, metadata_visible);
+          lv_obj_clear_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_move_foreground(id(clock_image_overlay));
+
+  - id: clock_overlay_keep_on_top
+    mode: restart
+    then:
+      - lambda: |-
+          const auto mode = id(espcontrol_app).display().current_mode();
+          if (mode != espcontrol::DisplayMode::CAMERA) {
+            lv_obj_add_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN);
+            return;
+          }
+          if (!lv_obj_has_flag(id(clock_image_overlay), LV_OBJ_FLAG_HIDDEN)) {
+            lv_obj_move_foreground(id(clock_image_overlay));
+          }
 
   # Keep the clock above any screen changes or top-layer overlays that appear
   # after the screensaver starts.
@@ -1554,6 +1692,7 @@ interval:
   - interval: 1s
     then:
       - script.execute: clock_screensaver_keep_on_top
+      - script.execute: clock_overlay_keep_on_top
       - script.execute: display_mode_reconcile
   - interval: 30s
     then:
@@ -1576,3 +1715,12 @@ interval:
                                            time.hour, time.minute, use_12h);
           lv_label_set_text(id(clock_label), buf);
           position_clock_screensaver_label(id(clock_screensaver), id(clock_label), time.minute);
+      - if:
+          condition:
+            lambda: |-
+              const auto mode = id(espcontrol_app).display().current_mode();
+              return mode == espcontrol::DisplayMode::CAMERA;
+          then:
+            - script.execute:
+                id: clock_overlay_apply
+                target_mode: !lambda 'return static_cast<int>(id(espcontrol_app).display().current_mode());'

@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitepress'
+import { faqSchema, hostname, jsonLd, writeRedirects } from './discovery'
 
-const hostname = 'https://jtenniswood.github.io/espcontrol/'
 const defaultImage = {
   url: `${hostname}images/home_screen_hero.jpg`,
   width: '1024',
@@ -81,7 +81,14 @@ const screenProducts: Record<string, Record<string, string>> = {
   },
   'screens/jc1060p470.md': {
     name: 'Guition JC1060P470',
-    model: 'JC1060P470 / new panel revision',
+    model: 'JC1060P470',
+    size: '7 inches',
+    resolution: '1024 x 600',
+    processor: 'ESP32-P4',
+  },
+  'screens/jc1060p470-v1.md': {
+    name: 'Guition JC1060P470 V1',
+    model: 'JC1060P470 V1',
     size: '7 inches',
     resolution: '1024 x 600',
     processor: 'ESP32-P4',
@@ -104,7 +111,14 @@ const screenProducts: Record<string, Record<string, string>> = {
   'screens/jc8012p4a1.md': {
     name: 'Guition JC8012P4A1',
     brand: 'Guition',
-    model: 'JC8012P4A1 / new panel revision',
+    model: 'JC8012P4A1',
+    size: '10.1 inches',
+    resolution: '1280 x 800',
+    processor: 'ESP32-P4',
+  },
+  'screens/jc8012p4a1-v1.md': {
+    name: 'Guition JC8012P4A1 V1',
+    model: 'JC8012P4A1 V1',
     size: '10.1 inches',
     resolution: '1280 x 800',
     processor: 'ESP32-P4',
@@ -125,8 +139,8 @@ const screenProducts: Record<string, Record<string, string>> = {
     processor: 'ESP32-P4',
   },
   'screens/p4-86.md': {
-    name: 'ESP32-P4 86 Panel',
-    brand: 'ESP32-P4',
+    name: 'ESP32-P4 86',
+    brand: 'Waveshare',
     model: 'ESP32-P4-86-Panel-ETH-2RO',
     size: '4 inches',
     resolution: '720 x 720',
@@ -134,92 +148,17 @@ const screenProducts: Record<string, Record<string, string>> = {
   },
 }
 
-const faqItems = [
-  {
-    question: "How Do I Find My Device's IP Address?",
-    answer:
-      'Check the display when no cards are configured, your router connected devices list, or the ESPHome device page in Home Assistant.',
-  },
-  {
-    question: 'The Web Page Looks Broken or Unstyled',
-    answer:
-      'Make sure the panel has internet access, clear your browser cache, and try Chrome or Edge.',
-  },
-  {
-    question: "My Device Won't Connect to WiFi",
-    answer:
-      'Use a 2.4 GHz WiFi network, double-check the password, move closer to the router during setup, or reconnect through the espcontrol setup hotspot.',
-  },
-  {
-    question: 'How Do I Reset the Device?',
-    answer:
-      'Re-flash the firmware from the install guide with a USB-C data cable. WiFi settings reset, while card configuration is stored separately.',
-  },
-  {
-    question: 'Can I Use This Without Home Assistant?',
-    answer:
-      'No. EspControl is designed for Home Assistant and needs it for device control, clock sync, temperature data, and screensaver sensor data.',
-  },
-  {
-    question: 'How Do I Update the Firmware?',
-    answer:
-      'Leave Auto Update enabled for automatic updates, or use Check for Update in the Firmware section of the setup page. Advanced Ethernet-only builds may need to be updated through ESPHome.',
-  },
-  {
-    question: "What If the Icon I Need Isn't Listed?",
-    answer:
-      'Open a GitHub issue with the Material Design Icons name and what you would use it for.',
-  },
-  {
-    question: 'What Card Types Are Available?',
-    answer:
-      'The setup page includes Switch, Lights, Action, Option Select, Webhook, Trigger, Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Lawn Mower, Cover, Garage Door, Lock, Alarm, Date & Time, World Clock, Weather, Camera, Media, Climate, Internal Switches, Screen Lock, and Subpage cards.',
-  },
-  {
-    question: 'How Many Cards Can I Have?',
-    answer:
-      'The home screen supports 20 cards on both JC8012P4A1 rear-case revisions, 15 on both JC1060P470 panel revisions, 6 on JC4880P443, and 9 on 4848S040 or the ESP32-P4 86 Panel, with more available through subpages.',
-  },
-  {
-    question: 'What Is a Subpage?',
-    answer:
-      'A Subpage card works like a folder, opening another page of cards for grouping rooms or device types.',
-  },
-  {
-    question: 'Can I Back Up My Setup?',
-    answer:
-      'Yes. Use Export and Import in the Backup section of the setup page to save and restore cards, subpages, colours, and display settings.',
-  },
-  {
-    question: 'Which Panels Are Supported?',
-    answer:
-      'EspControl supports both Guition JC8012P4A1 rear-case revisions, both JC1060P470 panel revisions, JC4880P443, 4848S040, and ESP32-P4 86 Panel touchscreens.',
-  },
-  {
-    question: 'Does the Panel Work with Other Smart Home Platforms?',
-    answer:
-      'EspControl is built for Home Assistant. Other platforms only work indirectly if they are integrated into Home Assistant.',
-  },
-  {
-    question: 'The Display Is Stuck on the Loading Screen',
-    answer:
-      'Wait up to 60 seconds, power-cycle the panel, and if the setup hotspot appears, go through WiFi setup again.',
-  },
-  {
-    question: 'How Is My Data Handled?',
-    answer:
-      'Device control stays on your local network. Internet access is only used for firmware update checks and web page styling resources.',
-  },
-]
-
 export default defineConfig({
-  title: 'Espcontrol',
+  title: 'EspControl',
   description:
     'Touchscreen control panel for Home Assistant on supported ESP32 panels — card-based controls, web configuration, automatic updates.',
   base: '/espcontrol/',
   lang: 'en-US',
   cleanUrls: true,
   lastUpdated: true,
+  srcExclude: ['generated/**'],
+  markdown: { config: faqSchema },
+  buildEnd: ({ outDir }) => writeRedirects(outDir),
 
   sitemap: {
     hostname,
@@ -227,18 +166,13 @@ export default defineConfig({
   },
 
   head: [
+    ...(process.env.GOOGLE_SITE_VERIFICATION
+      ? [['meta', { name: 'google-site-verification', content: process.env.GOOGLE_SITE_VERIFICATION }] as [string, Record<string, string>]]
+      : []),
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/espcontrol/favicon.svg' }],
-    [
-      'meta',
-      {
-        name: 'keywords',
-        content:
-          'Espcontrol, ESPHome, Home Assistant, ESP32-P4, ESP32-S3, Guition, LVGL, touchscreen, control panel',
-      },
-    ],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:locale', content: 'en_US' }],
-    ['meta', { property: 'og:site_name', content: 'Espcontrol' }],
+    ['meta', { property: 'og:site_name', content: 'EspControl' }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     [
       'style',
@@ -253,14 +187,14 @@ export default defineConfig({
     [
       'script',
       { type: 'application/ld+json' },
-      JSON.stringify({
+      jsonLd({
         '@context': 'https://schema.org',
         '@graph': [
           {
             '@type': 'WebSite',
             '@id': `${hostname}#website`,
             url: hostname,
-            name: 'Espcontrol',
+            name: 'EspControl',
             description:
               'ESPHome firmware for supported ESP32 touchscreens: Home Assistant card controls, web UI, OTA updates.',
             inLanguage: 'en-US',
@@ -268,7 +202,7 @@ export default defineConfig({
           {
             '@type': 'SoftwareApplication',
             '@id': `${hostname}#software`,
-            name: 'Espcontrol',
+            name: 'EspControl',
             applicationCategory: 'UtilitiesApplication',
             operatingSystem: 'ESP32',
             description:
@@ -322,55 +256,22 @@ export default defineConfig({
       title &&
       description
     ) {
-      const isHowTo =
-        pageData.relativePath === 'getting-started/install.md' ||
-        pageData.relativePath === 'getting-started/manual-esphome-setup.md' ||
-        pageData.relativePath === 'getting-started/migrate-esphome-media-player.md'
       const articleSchema: Record<string, unknown> = {
         '@context': 'https://schema.org',
-        '@type': isHowTo ? 'HowTo' : 'TechArticle',
+        '@type': 'TechArticle',
         name: title,
         description,
         url: canonicalUrl,
         isPartOf: { '@id': `${hostname}#website` },
         author: { '@type': 'Person', name: 'jtenniswood', url: 'https://github.com/jtenniswood' },
       }
-      if (isHowTo) {
-        if (pageData.relativePath === 'getting-started/manual-esphome-setup.md') {
-          articleSchema.step = [
-            { '@type': 'HowToStep', name: 'Choose the correct ESPHome package file' },
-            { '@type': 'HowToStep', name: 'Create the device in ESPHome Device Builder' },
-            { '@type': 'HowToStep', name: 'Install by USB or OTA' },
-            { '@type': 'HowToStep', name: 'Add the display to Home Assistant' },
-          ]
-        } else if (
-          pageData.relativePath === 'getting-started/migrate-esphome-media-player.md'
-        ) {
-          articleSchema.step = [
-            { '@type': 'HowToStep', name: 'Install and connect EspControl' },
-            { '@type': 'HowToStep', name: 'Choose an automatic or card-based cover-art layout' },
-            { '@type': 'HowToStep', name: 'Configure media playback controls' },
-            { '@type': 'HowToStep', name: 'Configure the idle clock or display-off behaviour' },
-          ]
-        } else {
-          articleSchema.step = [
-            { '@type': 'HowToStep', name: 'Flash firmware from your browser' },
-            { '@type': 'HowToStep', name: 'Connect to WiFi' },
-            { '@type': 'HowToStep', name: 'Add to Home Assistant' },
-            { '@type': 'HowToStep', name: 'Configure buttons from the web page' },
-          ]
-        }
+      if (pageData.lastUpdated) {
+        articleSchema.dateModified = new Date(pageData.lastUpdated).toISOString()
       }
       if (pageData.relativePath === 'reference/faq.md') {
         articleSchema['@type'] = 'FAQPage'
-        articleSchema.mainEntity = faqItems.map((item) => ({
-          '@type': 'Question',
-          name: item.question,
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: item.answer,
-          },
-        }))
+        articleSchema.mainEntity = pageData.frontmatter.faqAnswers
+        delete pageData.frontmatter.faqAnswers
       }
       const screenProduct = screenProducts[pageData.relativePath]
       if (screenProduct) {
@@ -391,15 +292,19 @@ export default defineConfig({
       pageData.frontmatter.head.push([
         'script',
         { type: 'application/ld+json' },
-        JSON.stringify(articleSchema),
+        jsonLd(articleSchema),
       ])
     }
   },
 
   themeConfig: {
+    logo: '/images/espcontrol-logo.svg',
+    siteTitle: 'EspControl',
     nav: [
+      { text: 'Choose a Screen', link: '/screens/' },
       { text: 'Install', link: '/getting-started/install' },
-      { text: 'Issues', link: 'https://github.com/jtenniswood/espcontrol/issues' },
+      { text: 'Guides', link: '/guides/' },
+      { text: 'FAQ', link: '/reference/faq' },
       { text: 'GitHub', link: 'https://github.com/jtenniswood/espcontrol' },
     ],
 
@@ -408,19 +313,38 @@ export default defineConfig({
         text: 'Getting Started',
         items: [
           { text: 'Overview', link: '/' },
+          { text: 'Choose a Screen', link: '/screens/' },
           { text: 'Install', link: '/getting-started/install' },
           { text: 'Enable Actions', link: '/getting-started/home-assistant-actions' },
+          { text: 'Configure', link: '/features/setup' },
+          { text: 'Guides', link: '/guides/' },
           { text: 'Troubleshooting', link: '/getting-started/troubleshooting' },
         ],
       },
       {
         text: 'Supported Screens',
         items: [
-          { text: '10.1-inch JC8012P4A1', link: '/screens/jc8012p4a1' },
-          { text: '10.1-inch JC8012P4A1 V3', link: '/screens/jc8012p4a1-v3' },
-          { text: '7-inch JC1060P470', link: '/screens/jc1060p470' },
+          {
+            text: '10.1-inch JC8012P4A1',
+            link: '/screens/jc8012p4a1',
+            collapsed: true,
+            items: [
+              { text: 'V3', link: '/screens/jc8012p4a1-v3' },
+              { text: 'V2', link: '/screens/jc8012p4a1-v2' },
+              { text: 'V1', link: '/screens/jc8012p4a1-v1' },
+            ],
+          },
+          {
+            text: '7-inch JC1060P470',
+            link: '/screens/jc1060p470',
+            collapsed: true,
+            items: [
+              { text: 'V2', link: '/screens/jc1060p470-v2' },
+              { text: 'V1', link: '/screens/jc1060p470-v1' },
+            ],
+          },
           { text: '4.3-inch JC4880P443', link: '/screens/jc4880p443' },
-          { text: '4-inch ESP32-P4 86 Panel', link: '/screens/p4-86' },
+          { text: '4-inch ESP32-P4 86', link: '/screens/p4-86' },
           { text: '4-inch 4848S040', link: '/screens/4848s040' },
           { text: 'Printable Stands', link: '/reference/3d-printable-stands' },
         ],
@@ -430,6 +354,7 @@ export default defineConfig({
         items: [
           { text: 'Setup', link: '/features/setup' },
           { text: 'Subpages', link: '/features/subpages' },
+          { text: 'Speaker Groups', link: '/features/speaker-groups' },
         ],
       },
       {
@@ -495,16 +420,45 @@ export default defineConfig({
         ],
       },
       {
+        text: 'Immich Photos',
+        items: [
+          { text: 'Overview', link: '/immich/' },
+          { text: 'Installation', link: '/immich/installation' },
+          { text: 'Connect to EspControl', link: '/immich/display-setup' },
+          { text: 'Using Your Frame', link: '/immich/using-your-frame' },
+          { text: 'Settings Reference', link: '/immich/settings-reference' },
+          { text: 'Home Assistant Entities', link: '/immich/entities' },
+          { text: 'Browser & API Add-on', link: '/immich/add-on' },
+          { text: 'Compatibility', link: '/immich/compatibility' },
+        ],
+      },
+      {
         text: 'Advanced',
         items: [
           { text: 'Manual Setup', link: '/getting-started/manual-esphome-setup' },
-          { text: 'Contributing', link: '/reference/contributing' },
-          { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
           { text: 'Wifi Issues', link: '/getting-started/c6-recovery' },
+          { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
+        ],
+      },
+      {
+        text: 'Reference',
+        items: [
+          { text: 'FAQ', link: '/reference/faq' },
+          { text: 'Card Capabilities', link: '/reference/card-capabilities' },
           { text: 'Icon Reference', link: '/reference/icons' },
           { text: 'Language Support', link: '/reference/language-support' },
-          { text: 'Request Device Support', link: '/reference/request-device-support' },
-          { text: 'FAQ', link: '/reference/faq' },
+        ],
+      },
+      {
+        text: 'Community',
+        items: [
+          { text: 'Contributing', link: '/reference/contributing' },
+        ],
+      },
+      {
+        text: 'About',
+        items: [
+          { text: 'Commercial Partnerships', link: '/reference/partnerships' },
           { text: 'Privacy Policy', link: '/reference/privacy' },
         ],
       },

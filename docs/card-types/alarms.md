@@ -1,5 +1,5 @@
 ---
-title: Alarm Cards
+title: "Home Assistant Alarm Cards"
 description:
   How to use alarm cards on your EspControl panel to arm, disarm, and monitor Home Assistant alarm_control_panel entities.
 ---
@@ -65,7 +65,13 @@ Use the PIN settings to match how you want the wall panel to behave:
 
 ## Entry and Exit Delays
 
-When Home Assistant reports an arming or entry delay, All Controls shows a countdown and progress bar. On the **ESP32-P4 86 Panel**, optional delay sounds are available under **Settings → Alarm Audio**. They are off by default.
+When Home Assistant reports an arming or entry delay, All Controls shows a countdown and progress bar. On the **ESP32-P4 86 Panel**, optional delay sounds are available under **Settings > Voice & Sounds > Alarm Audio**:
+
+- **Alarm Delay Audio** — enables entry and exit beeps on the panel speaker. Off by default.
+- **TTS Announcements** — enables announcement events sent to Home Assistant while Voice Services is enabled.
+- **Entry Announcement / Exit Announcement** — set the announcement text when TTS Announcements is on.
+- **Beep Volume** — set the beep level from 5% to 100%.
+- **Faster Beeps During Final Seconds** — choose the final countdown window, from 0 to 60 seconds; 0 disables the faster beeps.
 
 ## How It Works on the Panel
 

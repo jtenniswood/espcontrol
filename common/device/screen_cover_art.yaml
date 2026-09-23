@@ -3,6 +3,8 @@
 # =============================================================================
 
 globals:
+  - id: cover_art_playback_control
+    type: espcontrol::cover_art::PlaybackControl
   - id: home_assistant_artwork_endpoint_mode_migrated
     type: bool
     restore_value: true
@@ -226,6 +228,7 @@ interval:
 
   - interval: 1s
     then:
+      - script.execute: cover_art_update_playback_control
       - if:
           condition:
             lambda: |-
@@ -257,6 +260,10 @@ lvgl:
     widgets:
       - obj:
           id: cover_art_screensaver
+          on_press:
+            - script.execute: cover_art_pause_after_touch
+            - script.wait: cover_art_pause_after_touch
+            - script.execute: screensaver_wake
           x: 0
           y: 0
           width: 100%
@@ -287,6 +294,7 @@ lvgl:
                 clickable: false
             - image:
                 id: cover_art_image_widget
+                clickable: false
                 x: ${cover_art_x}
                 y: ${cover_art_y}
                 width: ${cover_art_size}px
@@ -334,6 +342,7 @@ lvgl:
                 widgets:
                   - label:
                       id: cover_art_title_label
+                      clickable: false
                       text: "—"
                       width: 100%
                       max_height: ${cover_art_title_max_height}px
@@ -344,6 +353,7 @@ lvgl:
                       text_line_space: 0
                   - label:
                       id: cover_art_artist_label
+                      clickable: false
                       text: ""
                       pad_top: ${cover_art_artist_pad_top}
                       width: 100%
@@ -355,6 +365,7 @@ lvgl:
                       hidden: true
                   - label:
                       id: cover_art_time_label
+                      clickable: false
                       text: "0:00  /  0:00"
                       pad_top: ${cover_art_time_pad_top}
                       width: 100%
@@ -365,6 +376,7 @@ lvgl:
                       hidden: true
             - bar:
                 id: cover_art_progress_bar
+                clickable: false
                 align: bottom_mid
                 y: 0
                 width: ${cover_art_progress_width}px
@@ -379,6 +391,33 @@ lvgl:
                 indicator:
                   bg_color: ${cover_art_text_color}
                   radius: 0
+            - button:
+                id: cover_art_playback_button
+                align: bottom_right
+                width: 96
+                height: 96
+                x: -24
+                y: -24
+                radius: 1000
+                bg_color: 0x313131
+                bg_opa: 100%
+                border_width: 0
+                shadow_width: 0
+                pad_all: 0
+                scrollable: false
+                pressed:
+                  bg_color: 0x585858
+                  border_width: 0
+                on_press:
+                  - script.execute: cover_art_toggle_playback
+                widgets:
+                  - label:
+                      id: cover_art_playback_icon
+                      align: center
+                      text: "\U000F03E4"
+                      text_font: font_icon_main
+                      text_color: 0xFFFFFF
+                      clickable: false
 script:
   - id: cover_art_resolve_home_assistant_base_url
     mode: restart
@@ -441,12 +480,88 @@ script:
               ESP_LOGI("cover_art", "Rebuilding full-screen artwork URLs after Home Assistant base URL change");
               id(cover_art_process_cached_artwork).execute();
             }
+            if (id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::CAMERA)) {
+              id(camera_screensaver_downloaded_image)->cancel_update();
+              id(camera_screensaver_request_image).execute();
+            }
           }
           refresh_image_cards();
+
+  # While cover art is visible, LVGL routes the press to either its background
+  # or playback button. Other display modes keep the normal raw-touch wake path.
+  - id: cover_art_handle_touch
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return !id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) ||
+                     lv_obj_has_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN) ||
+                     id(screensaver_wake_touch_guard_active);
+          then:
+            - script.execute: cover_art_pause_after_touch
+            - script.wait: cover_art_pause_after_touch
+            - script.execute: screensaver_wake
+
+  - id: cover_art_refresh_playback_setting
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(cover_art_playback_button) == nullptr;'
+          then:
+            - script.stop: cover_art_refresh_playback_setting
+      - if:
+          condition:
+            lambda: 'return ${cover_art_square_overlay} && !id(cover_art_playback_control_enabled).state;'
+          then:
+            - if:
+                condition:
+                  lambda: 'return id(cover_art_playback_control).retains_pause(id(cover_art_active_media_player_entity));'
+                then:
+                  - script.execute: cover_art_return_home_after_playback
+            - lambda: id(cover_art_playback_control).reset();
+      - lambda: id(cover_art_layout_signature).clear();
+      - script.execute: cover_art_apply_responsive_layout
+
+  - id: cover_art_update_playback_control
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_art_playback_control).update_connection(ha_api_state_connected());
+          then:
+            - script.execute: cover_art_return_home_after_playback
+      - lambda: |-
+          auto &control = id(cover_art_playback_control);
+          control.expire(millis());
+          const bool paused = id(cover_art_last_playback_state) == "paused";
+          lv_label_set_text(id(cover_art_playback_icon), paused ? "\U000F040A" : "\U000F03E4");
+          lv_obj_set_style_opa(id(cover_art_playback_button),
+                              control.pending() ? LV_OPA_50 : LV_OPA_COVER, 0);
+
+  - id: cover_art_toggle_playback
+    mode: single
+    then:
+      - lambda: |-
+          if (${cover_art_square_overlay} && !id(cover_art_playback_control_enabled).state) return;
+          if (!id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) ||
+              lv_obj_has_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN) ||
+              id(screensaver_wake_touch_guard_active) || !ha_api_state_connected()) return;
+          auto &control = id(cover_art_playback_control);
+          const std::string entity = id(cover_art_active_media_player_entity);
+          const auto command = control.begin(entity, id(cover_art_last_playback_state), millis());
+          if (command == espcontrol::cover_art::PlaybackCommand::NONE) return;
+          const char *service = command == espcontrol::cover_art::PlaybackCommand::PAUSE
+              ? "media_player.media_pause" : "media_player.media_play";
+          if (!ha_send_entity_action(entity, service)) control.cancel_pending();
+          id(cover_art_update_playback_control).execute();
 
   - id: cover_art_pause_after_touch
     mode: restart
     then:
+      - lambda: id(cover_art_playback_control).reset();
       - if:
           condition:
             lambda: |-
@@ -473,6 +588,9 @@ script:
     mode: restart
     then:
       - lambda: |-
+          // Correct the whole control (circle and icon) using the active display profile.
+          // Apply before the geometry cache so profile/axis updates cannot leave a stale transform.
+          apply_width_compensation(id(cover_art_playback_button), icon_width_compensation_percent());
           int screen_w = lv_obj_get_width(id(cover_art_screensaver));
           int screen_h = lv_obj_get_height(id(cover_art_screensaver));
           if (screen_w <= 0) screen_w = ${screen_width};
@@ -551,14 +669,58 @@ script:
                              layout.panel_x, layout.panel_y, layout.panel_width, layout.panel_height,
                              layout.title_max_height);
           set_art_image_geometry(layout.art_x, layout.art_y, layout.art_size);
+          lv_obj_set_style_text_line_space(id(cover_art_title_label), ${cover_art_title_line_space}, LV_PART_MAIN);
+          const auto playback = espcontrol::cover_art::playback_button_layout(
+              layout, lv_font_get_line_height(lv_obj_get_style_text_font(id(cover_art_title_label), LV_PART_MAIN)),
+              ${cover_art_title_line_space});
+          // Keep the title line limit even when the square-screen control is disabled.
+          lv_obj_set_style_max_height(id(cover_art_title_label), playback.title_max_height, LV_PART_MAIN);
+          lv_obj_clear_flag(id(cover_art_playback_button), LV_OBJ_FLAG_EVENT_BUBBLE);
+          if (!${cover_art_square_overlay} || id(cover_art_playback_control_enabled).state) {
+            lv_obj_clear_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_size(id(cover_art_playback_button), playback.size, playback.size);
+            lv_obj_align(id(cover_art_playback_button), LV_ALIGN_BOTTOM_RIGHT,
+                         -playback.margin, -playback.margin);
+            lv_obj_set_width(id(cover_art_track_panel), playback.panel_width);
+            lv_obj_set_height(id(cover_art_track_panel), playback.panel_height);
+          } else {
+            lv_obj_add_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN);
+          }
           if (!layout.split) {
             lv_obj_set_style_bg_opa(id(cover_art_accent_overlay), LV_OPA_80, LV_PART_MAIN);
             lv_obj_set_style_opa(id(cover_art_accent_overlay), LV_OPA_80, LV_PART_MAIN);
             lv_obj_set_style_pad_top(id(cover_art_track_panel), layout.panel_padding, LV_PART_MAIN);
-            lv_obj_set_style_pad_bottom(id(cover_art_track_panel), layout.panel_padding, LV_PART_MAIN);
+            lv_obj_set_style_pad_bottom(id(cover_art_track_panel),
+                id(cover_art_playback_control_enabled).state ? playback.panel_bottom_padding : layout.panel_padding,
+                LV_PART_MAIN);
             lv_obj_set_style_pad_left(id(cover_art_track_panel), layout.panel_padding, LV_PART_MAIN);
             lv_obj_set_style_pad_right(id(cover_art_track_panel), layout.panel_padding, LV_PART_MAIN);
           }
+      - script.execute: cover_art_fit_artist_text
+
+  - id: cover_art_fit_artist_text
+    mode: restart
+    then:
+      - lambda: |-
+          const auto layout = espcontrol::cover_art::cover_art_layout(
+              "${device_slug}", id(screen_rotation_select).current_option(),
+              ${screen_width}, ${screen_height}, ${cover_art_size}, ${cover_art_title_max_height});
+          auto *artist = id(cover_art_artist_label);
+          // Restore the configured behaviour when rotating out of this layout.
+          lv_label_set_long_mode(artist, std::string("${cover_art_artist_long_mode}") == "dot"
+              ? LV_LABEL_LONG_DOT : LV_LABEL_LONG_WRAP);
+          lv_obj_set_style_max_height(artist, LV_COORD_MAX, LV_PART_MAIN);
+          if (layout.title_max_lines == 0) return;
+          lv_obj_update_layout(id(cover_art_track_panel));
+          const int time_height = lv_obj_has_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN)
+              ? 0 : lv_obj_get_height(id(cover_art_time_label));
+          const int artist_height = espcontrol::cover_art::artist_height_budget(
+              lv_obj_get_content_height(id(cover_art_track_panel)),
+              lv_obj_get_height(id(cover_art_title_label)),
+              lv_font_get_line_height(lv_obj_get_style_text_font(artist, LV_PART_MAIN)),
+              ${cover_art_artist_pad_top}, time_height);
+          lv_obj_set_style_max_height(artist, artist_height, LV_PART_MAIN);
+          lv_label_set_long_mode(artist, LV_LABEL_LONG_DOT);
 
   - id: cover_art_apply_downloaded_image
     mode: restart
@@ -658,18 +820,37 @@ script:
           #else
           auto *dsc = img->get_lv_img_dsc();
           #endif
-          auto accent = espcontrol::cover_art::darken_accent_color(
-              espcontrol::cover_art::extract_accent_color_rgb565(
+          const auto accent = espcontrol::cover_art::extract_accent_color_rgb565(
                   dsc ? dsc->data : nullptr, img_w, img_h, img->is_big_endian(),
                   img->get_content_offset_x(), img->get_content_offset_y(),
-                  img->get_content_width(), img->get_content_height()));
-          lv_color_t dark_accent = accent.valid
-              ? lv_color_make(accent.red, accent.green, accent.blue)
+                  img->get_content_width(), img->get_content_height());
+          const auto dark = espcontrol::cover_art::darken_accent_color(accent);
+          lv_color_t dark_accent = dark.valid
+              ? lv_color_make(dark.red, dark.green, dark.blue)
               : lv_color_make(0, 0, 0);
           ESP_LOGI("cover_art", "Artwork tint color: rgb(%d,%d,%d)",
-                   accent.red, accent.green, accent.blue);
+                   dark.red, dark.green, dark.blue);
           lv_obj_set_style_bg_color(id(cover_art_backdrop), dark_accent, 0);
           lv_obj_set_style_bg_color(id(cover_art_accent_overlay), dark_accent, 0);
+          const lv_color_t button_color = accent.valid
+              ? lv_color_make(accent.red * 9 / 10, accent.green * 9 / 10, accent.blue * 9 / 10)
+              : lv_color_hex(0x313131);
+          const lv_color_t pressed_color = lv_color_lighten(button_color, 48);
+          const auto rgb = [](lv_color_t color) -> espcontrol::cover_art::AccentColor {
+          #if LVGL_VERSION_MAJOR >= 9
+            return {color.red, color.green, color.blue, true};
+          #else
+            lv_color32_t value;
+            value.full = lv_color_to32(color);
+            return {value.ch.red, value.ch.green, value.ch.blue, true};
+          #endif
+          };
+          const auto icon_color = espcontrol::cover_art::playback_icon_color(
+              rgb(button_color), rgb(pressed_color));
+          lv_obj_set_style_text_color(id(cover_art_playback_icon), lv_color_hex(icon_color), LV_PART_MAIN);
+          lv_obj_set_style_bg_color(id(cover_art_playback_button), button_color, LV_PART_MAIN);
+          lv_obj_set_style_bg_color(id(cover_art_playback_button), pressed_color,
+                                    LV_PART_MAIN | LV_STATE_PRESSED);
 
   - id: cover_art_clear_image_source
     mode: restart
@@ -700,6 +881,11 @@ script:
           lv_color_t black = lv_color_make(0, 0, 0);
           lv_obj_set_style_bg_color(id(cover_art_backdrop), black, 0);
           lv_obj_set_style_bg_color(id(cover_art_accent_overlay), black, 0);
+          const lv_color_t button_color = lv_color_hex(0x313131);
+          lv_obj_set_style_text_color(id(cover_art_playback_icon), lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+          lv_obj_set_style_bg_color(id(cover_art_playback_button), button_color, LV_PART_MAIN);
+          lv_obj_set_style_bg_color(id(cover_art_playback_button), lv_color_lighten(button_color, 48),
+                                    LV_PART_MAIN | LV_STATE_PRESSED);
       - script.execute: cover_art_clear_image_source
       - script.wait: cover_art_clear_image_source
       - lvgl.widget.hide: cover_art_image_widget
@@ -708,7 +894,10 @@ script:
           lv_obj_set_style_text_line_space(id(cover_art_title_label), ${cover_art_title_line_space}, 0);
       - if:
           condition:
-            lambda: 'return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) && id(cover_art_media_playing);'
+            lambda: |-
+              return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) &&
+                     (id(cover_art_media_playing) ||
+                      id(cover_art_playback_control).retains_pause(id(cover_art_active_media_player_entity)));
           then:
             - lvgl.widget.show: cover_art_accent_overlay
             - lvgl.widget.show: cover_art_track_panel
@@ -810,6 +999,7 @@ script:
   - id: cover_art_disable
     mode: restart
     then:
+      - lambda: id(cover_art_playback_control).reset();
       - script.stop: cover_art_prepare_activation
       - lambda: |-
           ha_cancel_metadata_refresh(HA_SUBSCRIPTION_SCOPE_COVER_ART);
@@ -1413,6 +1603,8 @@ script:
             lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
           }
 
+      - script.execute: cover_art_fit_artist_text
+
   - id: cover_art_refresh_progress
     mode: restart
     then:
@@ -1425,6 +1617,12 @@ script:
           then:
             - script.stop: cover_art_refresh_progress
       - lambda: |-
+          const bool time_was_hidden = lv_obj_has_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
+          auto refit_artist_if_needed = [&]() {
+            if (time_was_hidden != lv_obj_has_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN)) {
+              id(cover_art_fit_artist_text).execute();
+            }
+          };
           if (id(cover_art_external_input_active)) {
             id(cover_art_media_duration) = 0.0f;
             id(cover_art_media_position) = 0.0f;
@@ -1433,6 +1631,7 @@ script:
             lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00");
             lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
+            refit_artist_if_needed();
             return;
           }
           float duration = id(cover_art_media_duration);
@@ -1485,6 +1684,7 @@ script:
             lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00");
             lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
+            refit_artist_if_needed();
             return;
           }
 
@@ -1531,6 +1731,7 @@ script:
             id(cover_art_last_progress_percent) = value;
             lv_bar_set_value(id(cover_art_progress_bar), value, LV_ANIM_OFF);
           }
+          refit_artist_if_needed();
 
   - id: cover_art_show_track_overlay
     mode: restart
@@ -1545,7 +1746,10 @@ script:
             - script.stop: cover_art_show_track_overlay
       - if:
           condition:
-            lambda: 'return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) && id(cover_art_media_playing);'
+            lambda: |-
+              return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) &&
+                     (id(cover_art_media_playing) ||
+                      id(cover_art_playback_control).retains_pause(id(cover_art_active_media_player_entity)));
           then:
             - script.execute: cover_art_sync_track_text
             - if:
@@ -1568,9 +1772,11 @@ script:
             - if:
                 condition:
                   lambda: |-
-                    return ${cover_art_square_overlay} &&
-                           id(cover_art_runtime).image_available &&
-                           id(cover_art_track_overlay_duration).state == 0;
+                    return espcontrol::cover_art::track_overlay_mode(
+                        id(cover_art_media_playing),
+                        id(cover_art_playback_control).retains_pause(id(cover_art_active_media_player_entity)),
+                        ${cover_art_square_overlay}, id(cover_art_runtime).image_available,
+                        id(cover_art_track_overlay_duration).state) == espcontrol::cover_art::TrackOverlayMode::HIDDEN;
                 then:
                   - lvgl.widget.hide: cover_art_accent_overlay
                   - lvgl.widget.hide: cover_art_track_panel
@@ -1581,13 +1787,19 @@ script:
                   - lvgl.widget.show: cover_art_track_panel
                   - if:
                       condition:
-                        lambda: 'return ${cover_art_square_overlay} && id(cover_art_track_overlay_duration).state > 0;'
+                        lambda: |-
+                          return espcontrol::cover_art::track_overlay_mode(
+                              id(cover_art_media_playing),
+                              id(cover_art_playback_control).retains_pause(id(cover_art_active_media_player_entity)),
+                              ${cover_art_square_overlay}, id(cover_art_runtime).image_available,
+                              id(cover_art_track_overlay_duration).state) == espcontrol::cover_art::TrackOverlayMode::TIMED;
                       then:
                         - delay: !lambda 'return (uint32_t)(id(cover_art_track_overlay_duration).state * 1000);'
                         - if:
                             condition:
                               lambda: |-
                                 return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) &&
+                                       id(cover_art_media_playing) &&
                                        id(cover_art_runtime).image_available &&
                                        ${cover_art_square_overlay} &&
                                        id(espcontrol_app).display().transition_is_current(
@@ -1727,6 +1939,7 @@ script:
                 else:
                   - script.execute: cover_art_show_black_screen
       - script.execute: cover_art_refresh_progress
+      - script.execute: clock_overlay_hide
 
   - id: cover_art_prepare_activation
     mode: restart
@@ -1772,8 +1985,11 @@ script:
       - script.stop: cover_art_prepare_activation
       - script.stop: cover_art_delay_timer
       - script.stop: cover_art_show_track_overlay
+      - script.stop: cover_art_download
       - script.stop: cover_art_deferred_request_artwork
       - script.stop: cover_art_deferred_download
+      - script.stop: cover_art_request_artwork
+      - script.stop: cover_art_schedule_paired_artwork
       - script.stop: cover_art_prepare_download
       - script.stop: cover_art_retry_download
       - globals.set: { id: cover_art_transition_generation, value: '0' }
@@ -1781,14 +1997,18 @@ script:
       - lambda: |-
           id(cover_art_runtime).effective_download_url.clear();
           id(cover_art_runtime).active_download_source_url.clear();
+      - lambda: id(cover_art_playback_control).reset();
       - lvgl.widget.hide: cover_art_screensaver
       - lvgl.widget.hide: cover_art_accent_overlay
       - lvgl.widget.hide: cover_art_track_panel
       - lvgl.widget.hide: cover_art_progress_bar
       - if:
           condition:
-            lambda: 'return std::string("${device_slug}") == "guition-esp32-s3-4848s040";'
+            lambda: |-
+              return target_mode == static_cast<int>(espcontrol::DisplayMode::CAMERA) ||
+                     std::string("${device_slug}") == "guition-esp32-s3-4848s040";
           then:
+            - lambda: 'id(cover_art_downloaded_image)->cancel_update();'
             - script.execute: cover_art_clear_image_source
             - script.wait: cover_art_clear_image_source
             - lambda: |-
@@ -1872,6 +2092,14 @@ script:
   - id: cover_art_playback_refresh
     mode: restart
     then:
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_art_screensaver_enabled).state &&
+                     id(cover_art_playback_control).retains_pause(id(cover_art_active_media_player_entity)) &&
+                     id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_playback_refresh
       - if:
           condition:
             lambda: |-
@@ -2119,6 +2347,7 @@ script:
             primary_entity == id(cover_art_subscribed_primary_entity) &&
             secondary_entity == id(cover_art_subscribed_secondary_entity);
           if (!already_subscribed) {
+            id(cover_art_playback_control).reset();
             const std::string previous_entity = id(cover_art_subscribed_entity);
             id(cover_art_prepare_activation).stop();
             id(cover_art_schedule_paired_artwork).stop();
@@ -2365,11 +2594,13 @@ script:
                   cover_entity != id(cover_art_active_media_player_entity)) return;
               std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
               bool playing = state_text == "playing" || state_text == "buffering";
+              id(cover_art_playback_control).observe(cover_entity, state_text, millis());
               if (state_text == id(cover_art_last_playback_state) &&
                   id(cover_art_media_playing) == playing) {
                 return;
               }
               id(cover_art_last_playback_state) = state_text;
+              id(cover_art_update_playback_control).execute();
               ESP_LOGI("cover_art", "Playback state for %s: '%s' (active=%s, was_playing=%s)",
                        cover_entity.c_str(), state_text.c_str(),
                        id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) ? "true" : "false",
@@ -2383,6 +2614,11 @@ script:
                 id(cover_art_media_playing) = true;
                 if (now.is_valid() && id(cover_art_position_anchor_epoch) == 0) {
                   id(cover_art_last_position_timestamp) = now.timestamp;
+                }
+                // Resume in place when this screen retained the paused artwork.
+                if (id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART)) {
+                  if (!was_playing) id(cover_art_show_track_overlay).execute();
+                  return;
                 }
                 if (!was_playing || restart_cover_art_delay) id(cover_art_playback_started).execute();
                 return;
@@ -2400,7 +2636,11 @@ script:
                 if (id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART)) id(cover_art_refresh_progress).execute();
                 id(cover_art_delay_timer).stop();
                 id(cover_art_show_track_overlay).stop();
-                id(cover_art_return_home_after_playback).execute();
+                if (id(cover_art_playback_control).retains_pause(cover_entity)) {
+                  id(cover_art_show_track_overlay).execute();
+                } else {
+                  id(cover_art_return_home_after_playback).execute();
+                }
                 return;
               }
 
@@ -2876,6 +3116,7 @@ script:
   - id: cover_art_playback_stopped
     mode: restart
     then:
+      - lambda: id(cover_art_playback_control).reset();
       - script.stop: cover_art_delayed_playback_stopped
       - globals.set:
           id: cover_art_delay_interrupted_by_transition

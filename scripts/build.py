@@ -11,6 +11,7 @@ Usage:
     python scripts/build.py i18n          # sync firmware translations only
     python scripts/build.py www           # build www.js only
     python scripts/build.py www --retain-current-bundle  # retain a release bundle
+    python scripts/build.py www --legacy-web-manifest PATH  # use the published bundle as the legacy bundle
     python scripts/build.py www --temporary-output DIR  # isolated fresh bundles
     python scripts/build.py icons --check # check icons only
     python scripts/build.py --self-test    # verify transactional publishing
@@ -45,9 +46,11 @@ SUPPORT_BUTTON_IMAGE = ROOT / "common" / "assets" / "images" / "buy-me-a-coffee-
 WEB_SOURCE_DIR = ROOT / "src" / "webserver"
 WEB_BUNDLE_RETENTION = ROOT / "docs" / "public" / "webserver" / "bundle-retention.json"
 
-# The hosted editor remains available to the development firmware plus the
-# current stable release and its four supported rollback releases. Keep this
-# list aligned with the GitHub Pages release catalogue in pages.yml.
+# Keep this list aligned with the GitHub Pages release catalogue in pages.yml.
+# The current source bundle is intentionally restricted to development firmware
+# (and the release being prepared). Stable firmware keeps using the retained
+# bundle from the latest published source until that firmware contains the
+# matching generated icon glyphs.
 WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = (
     "dev",
     "v2.10.0",
@@ -56,6 +59,12 @@ WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = (
     "v2.8.6",
     "v2.8.4",
 )
+WEB_ASSET_CURRENT_FIRMWARE_VERSION = None
+# Local fallback for builds that do not have the currently published manifest.
+# Release and Pages workflows pass --legacy-web-manifest so this rotates with
+# the published release instead of remaining pinned here.
+WEB_ASSET_LEGACY_BUNDLE_ID = "42f3fd87eb8cbfab59943a7643a19416ded29eddb8608498ada20e95b416fd49"
+WEB_ASSET_LEGACY_BUNDLE_PATH = f"bundles/{WEB_ASSET_LEGACY_BUNDLE_ID}/www.js"
 
 # Fixed editor controls use a few MDI glyphs that are not selectable Product
 # Model icons. Keep their pinned codepoints here so rebuilding www.js remains
@@ -4001,7 +4010,51 @@ def load_timezone_options():
     return options
 
 
-def build_www(check_only=False, output_dir=None, test_hooks=False, retain_current_bundle=False):
+def load_legacy_web_bundle(manifest_path):
+    path = Path(manifest_path)
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BuildError(f"Could not read legacy web asset manifest {path}") from exc
+    bundles = manifest.get("bundles") if isinstance(manifest, dict) else None
+    if not isinstance(bundles, list):
+        raise BuildError(f"Legacy web asset manifest {path} has no bundle entries")
+    bundle = next(
+        (
+            candidate
+            for candidate in bundles
+            if isinstance(candidate, dict)
+            and isinstance(candidate.get("firmwareVersions"), list)
+            and any(
+                isinstance(version, str) and version != "dev"
+                for version in candidate["firmwareVersions"]
+            )
+        ),
+        None,
+    )
+    if bundle is None:
+        raise BuildError(
+            f"Legacy web asset manifest {path} has no published firmware bundle"
+        )
+    bundle_id = bundle.get("id")
+    bundle_path = bundle.get("path")
+    if (
+        not isinstance(bundle_id, str)
+        or not re.fullmatch(r"[0-9a-f]{64}", bundle_id)
+        or bundle.get("sha256") != bundle_id
+        or bundle_path != f"bundles/{bundle_id}/www.js"
+    ):
+        raise BuildError(f"Legacy web asset manifest {path} has an invalid current bundle")
+    return bundle_id, bundle_path
+
+
+def build_www(
+    check_only=False,
+    output_dir=None,
+    test_hooks=False,
+    retain_current_bundle=False,
+    legacy_web_manifest=None,
+):
     """Build one shared www.js containing the validated device profiles."""
     devices = build_web_devices()
     embedded_mdi_styles = embedded_web_mdi_styles()
@@ -4036,16 +4089,44 @@ def build_www(check_only=False, output_dir=None, test_hooks=False, retain_curren
     bridge_text = (build_root / "www.js").read_text()
     bundle_sha256 = hashlib.sha256(bundle_text.encode("utf-8")).hexdigest()
     bundle_relative_path = Path("bundles") / bundle_sha256 / "www.js"
+    legacy_bundle_id = WEB_ASSET_LEGACY_BUNDLE_ID
+    legacy_bundle_path = WEB_ASSET_LEGACY_BUNDLE_PATH
+    if legacy_web_manifest is not None:
+        legacy_bundle_id, legacy_bundle_path = load_legacy_web_bundle(legacy_web_manifest)
+    current_firmware_versions = ["dev"]
+    if WEB_ASSET_CURRENT_FIRMWARE_VERSION is not None:
+        if WEB_ASSET_CURRENT_FIRMWARE_VERSION not in WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS:
+            raise BuildError(
+                "current web asset firmware version is missing from the supported version list"
+            )
+        current_firmware_versions.append(WEB_ASSET_CURRENT_FIRMWARE_VERSION)
+    legacy_firmware_versions = [
+        firmware_version
+        for firmware_version in WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS
+        if firmware_version not in current_firmware_versions
+    ]
+    current_bundle = {
+        "id": bundle_sha256,
+        "sha256": bundle_sha256,
+        "path": bundle_relative_path.as_posix(),
+        "deviceProfiles": list(devices),
+        "firmwareVersions": current_firmware_versions,
+    }
+    legacy_bundle = {
+        "id": legacy_bundle_id,
+        "sha256": legacy_bundle_id,
+        "path": legacy_bundle_path,
+        "deviceProfiles": list(devices),
+        "firmwareVersions": legacy_firmware_versions,
+    }
     manifest_text = json.dumps({
         "schemaVersion": 1,
-        "bundles": [{
-            "id": bundle_sha256,
-            "sha256": bundle_sha256,
-            "path": bundle_relative_path.as_posix(),
-            "deviceProfiles": list(devices),
-            "firmwareVersions": list(WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS),
-            "webAssetVersion": version,
-        } for version in (2, 1)],
+        "bundles": [
+            {**current_bundle, "webAssetVersion": 2},
+            {**current_bundle, "webAssetVersion": 1},
+            {**legacy_bundle, "webAssetVersion": 2},
+            {**legacy_bundle, "webAssetVersion": 1},
+        ],
     }, indent=2) + "\n"
 
     outputs = [(build_root / "www.js", bridge_text)]
@@ -4141,6 +4222,13 @@ def main():
     args = [arg for arg in args if arg != "--test-hooks"]
     retain_current_bundle = "--retain-current-bundle" in args
     args = [arg for arg in args if arg != "--retain-current-bundle"]
+    legacy_web_manifest = None
+    if "--legacy-web-manifest" in args:
+        index = args.index("--legacy-web-manifest")
+        if index + 1 >= len(args):
+            raise BuildError("--legacy-web-manifest requires a manifest path")
+        legacy_web_manifest = args[index + 1]
+        del args[index:index + 2]
     temporary_output = None
     if "--temporary-output" in args:
         index = args.index("--temporary-output")
@@ -4170,6 +4258,7 @@ def main():
                 www_dirty = build_www(
                     check_only=check_only,
                     retain_current_bundle=retain_current_bundle,
+                    legacy_web_manifest=legacy_web_manifest,
                 )
                 if check_only and (entity_dirty or i18n_dirty or contract_dirty or device_dirty or icon_dirty or www_dirty):
                     exit_code = 1
@@ -4227,6 +4316,7 @@ def main():
                     output_dir=temporary_output,
                     test_hooks=test_hooks,
                     retain_current_bundle=retain_current_bundle,
+                    legacy_web_manifest=legacy_web_manifest,
                 )
                 if check_only and dirty:
                     exit_code = 1
@@ -4239,7 +4329,7 @@ def main():
                 print(
                     "Usage: python scripts/build.py "
                     "[all|entities|contract|devices|icons|i18n|www] [--check] "
-                    "[--retain-current-bundle]"
+                    "[--retain-current-bundle] [--legacy-web-manifest PATH]"
                 )
                 exit_code = 1
         if exit_code == 0 and transaction is not None:

@@ -82,6 +82,7 @@ template<typename... Args>
 void log_message(const char *, const char *format, Args... args) {
   char message[512]; std::snprintf(message, sizeof(message), format, args...); last_log = message;
 }
+void log_message(const char *, const char *message) { last_log = message; }
 #define ESP_LOGW(...) log_message(__VA_ARGS__)
 #define ESP_LOGI(...) log_message(__VA_ARGS__)
 using ControlModalActive = ControlModalActiveState<lv_obj_t>;
@@ -130,6 +131,31 @@ Runtime *grid_media_control_runtime_for_owner(lv_obj_t *button) { return button 
 bool wifi_qr_payload_from_config(const ParsedCfg &config, std::string *payload,
                                  std::string *ssid, std::string *) {
   return payload && ssid && config.options == "valid";
+}
+void control_modal_close_nested_menu() {}
+void control_modal_force_close_active() { navigation_hide_modals(); }
+std::string navigation_lower(const std::string &value) {
+  std::string lowered = value;
+  for (char &character : lowered) character = static_cast<char>(std::tolower(character));
+  return lowered;
+}
+NavigationSubpageEntry *navigation_find_slot(int slot) {
+  for (auto &page : pages) if (page.slot == slot) return &page;
+  return nullptr;
+}
+int active_subpage_slot = 0;
+int navigation_active_subpage_slot() { return active_subpage_slot; }
+bool navigation_return_home(lv_obj_t *main_page_obj) {
+  if (!main_page_obj) return false;
+  current_page = main_page_obj;
+  active_subpage_slot = 0;
+  return true;
+}
+bool navigation_activate_home_target(NavigationHomeTargetEntry *target, lv_obj_t *main_page_obj) {
+  if (!target || !main_page_obj) return false;
+  current_page = target->button == &home ? main_page_obj : target->button;
+  active_subpage_slot = target->slot;
+  return true;
 }
 // PRODUCTION_HOOKS
 #include "button_grid_remote_modal.h"

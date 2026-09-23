@@ -12,5 +12,14 @@
       "name": "Guition JC8012P4A1 V3 (production silicon)",
       "docsPath": "/screens/jc8012p4a1-v3"
     }
+  },
+  "overrides": {
+    "firmware": {
+      "package": {
+        "substitutions": {
+          "clock_font_size": "\"200\""
+        }
+      }
+    }
   }
 }

@@ -1,5 +1,5 @@
 ---
-title: EspControl Temperature Display
+title: "Temperature Display"
 description:
   How to show temperature sensors on your EspControl panel's top bar.
 ---

@@ -27,6 +27,7 @@ esphome:
       - script.execute: ha_setup_text_refresh
       - script.execute: ha_actions_text_refresh
       - script.execute: button_setup_text_refresh
+      - script.execute: camera_screensaver_text_refresh
 
 # Ask Home Assistant time is scheduled centrally by core_infra.yaml after the
 # native API handshake has completed.  Keeping it there prevents a second
@@ -268,6 +269,7 @@ select:
         - script.execute: ha_setup_text_refresh
         - script.execute: ha_actions_text_refresh
         - script.execute: button_setup_text_refresh
+        - script.execute: camera_screensaver_text_refresh
         - script.execute: refresh_button_grid
         - script.execute: network_status_refresh
 

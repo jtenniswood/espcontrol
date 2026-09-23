@@ -18,6 +18,7 @@
 #include "esphome/components/lvgl/lvgl_esphome.h"
 #include "clock_bar.h"
 #include "backlight_fade.h"
+#include "photo_metadata.h"
 #include "display_mode_controller.h"
 #include "sun_calc.h"
 #include "temperature_unit.h"
@@ -320,6 +321,10 @@ inline bool screensaver_action_dimmed_mode(const std::string &action) {
          action == "Dimmed" || action == "dimmed" || action == "dim";
 }
 
+inline bool screensaver_action_camera_mode(const std::string &action) {
+  return action == "Camera" || action == "camera";
+}
+
 // ── Screensaver layout helpers ──────────────────────────────────────
 
 inline void screensaver_fill_screen(lv_obj_t *obj) {
@@ -376,6 +381,58 @@ inline void position_clock_screensaver_label(lv_obj_t *overlay, lv_obj_t *label,
   int oy = (minute * 13) % 41 - 20;
   lv_obj_set_pos(label, screen_w / 2 + ox - w / 2,
                  screen_h / 2 + oy - h / 2);
+}
+
+inline void position_clock_image_overlay(lv_obj_t *overlay, lv_obj_t *shadow,
+                                         lv_obj_t *label, lv_obj_t *metadata,
+                                         lv_obj_t *metadata_shadow,
+                                         bool clock_visible, bool metadata_visible) {
+  if (!overlay || !shadow || !label) return;
+  screensaver_fill_screen(overlay);
+  lv_obj_update_layout(overlay);
+
+  lv_coord_t screen_w = lv_obj_get_width(overlay);
+  lv_coord_t screen_h = lv_obj_get_height(overlay);
+  lv_disp_t *disp = lv_disp_get_default();
+  if (screen_w <= 0 && disp) screen_w = lv_disp_get_hor_res(disp);
+  if (screen_h <= 0 && disp) screen_h = lv_disp_get_ver_res(disp);
+  if (screen_w <= 0) screen_w = 480;
+  if (screen_h <= 0) screen_h = 480;
+
+  lv_obj_update_layout(label);
+  const auto initial = espcontrol::photo_overlay_layout(
+      screen_w, screen_h, lv_obj_get_width(label), lv_obj_get_height(label),
+      0, clock_visible);
+  lv_coord_t metadata_height = 0;
+  if (metadata_visible) {
+    // Wrap up to three lines; long sensor values are clipped with an ellipsis.
+    const auto *font = lv_obj_get_style_text_font(metadata, LV_PART_MAIN);
+    const int max_height = 3 * lv_font_get_line_height(font) +
+                           2 * lv_obj_get_style_text_line_space(metadata, LV_PART_MAIN);
+    lv_obj_set_width(metadata, initial.metadata_width);
+    lv_obj_set_height(metadata, LV_SIZE_CONTENT);
+    lv_obj_set_style_text_align(metadata, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_obj_update_layout(metadata);
+    metadata_height = std::min<int>(lv_obj_get_height(metadata), max_height);
+    lv_obj_set_height(metadata, metadata_height);
+    lv_obj_set_size(metadata_shadow, initial.metadata_width, metadata_height);
+    lv_obj_set_style_text_align(metadata_shadow, LV_TEXT_ALIGN_RIGHT, 0);
+  }
+  const auto layout = espcontrol::photo_overlay_layout(
+      screen_w, screen_h, lv_obj_get_width(label), lv_obj_get_height(label),
+      metadata_height, clock_visible);
+  constexpr lv_coord_t shadow_offset_x = 1;
+  constexpr lv_coord_t shadow_offset_y = 2;
+  const lv_coord_t x = layout.margin;
+  const lv_coord_t y = layout.clock_y;
+  // Give the large clock shadow one extra pixel of separation on each axis.
+  lv_obj_set_pos(shadow, x + shadow_offset_x + 1, y + shadow_offset_y + 1);
+  lv_obj_set_pos(label, x, y);
+  if (metadata_visible) {
+    lv_obj_set_pos(metadata, layout.metadata_x, layout.metadata_y);
+    lv_obj_set_pos(metadata_shadow, layout.metadata_x + shadow_offset_x,
+                   layout.metadata_y + shadow_offset_y);
+  }
 }
 
 // ── Firmware update interval ─────────────────────────────────────────

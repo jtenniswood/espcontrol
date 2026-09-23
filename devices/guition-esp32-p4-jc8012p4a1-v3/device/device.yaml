@@ -350,9 +350,7 @@ touchscreen:
       mirror_x: true
       mirror_y: false
     on_touch:
-      - script.execute: cover_art_pause_after_touch
-      - script.wait: cover_art_pause_after_touch
-      - script.execute: screensaver_wake
+      - script.execute: cover_art_handle_touch
 
 # ---------------------------------------------------------------------------
 # Display (10.1" V2/new-panel 800x1280 native MIPI DSI panel)
@@ -620,6 +618,7 @@ script:
                       else:
                         - lvgl.display.set_rotation: 90
       - script.execute: cover_art_apply_responsive_layout
+      - script.execute: camera_screensaver_request_image
 
 select:
   - platform: template

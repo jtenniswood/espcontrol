@@ -1,10 +1,11 @@
 ---
-title: Light Cards
+title: "Control Home Assistant Lights with EspControl"
+titleTemplate: :title
 description:
   How to use light cards on your EspControl panel for light switching, brightness, colour temperature, and colour presets.
 ---
 
-# Lights
+# Control Home Assistant Lights with EspControl
 
 The Lights card is a guided card type for Home Assistant `light` entities. It keeps the common light controls together, so you can choose whether a light should behave like a switch, a brightness slider, a colour temperature slider, or a full light control popup.
 

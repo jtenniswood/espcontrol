@@ -18,6 +18,7 @@ SCREEN_WIFI_SETUP_PATH = ROOT / "common" / "device" / "screen_wifi_setup.yaml"
 API_NAVIGATE_PATH = ROOT / "common" / "device" / "api_navigate.yaml"
 C6_FIRMWARE_UPDATE_PATH = ROOT / "common" / "device" / "esp32_c6_firmware_update.yaml"
 COVER_ART_PATH = ROOT / "common" / "device" / "screen_cover_art.yaml"
+CAMERA_SCREENSAVER_PATH = ROOT / "common" / "device" / "screen_camera_screensaver.yaml"
 SCREEN_CLOCK_PATH = ROOT / "common" / "device" / "screen_clock.yaml"
 ARTWORK_IMAGE_PATH = ROOT / "components" / "artwork_image" / "artwork_image.cpp"
 BACKLIGHT_PATH = ROOT / "common" / "addon" / "backlight.yaml"
@@ -1207,7 +1208,7 @@ def firmware_cover_art_lifecycle_controller_errors(
         errors.append(f"{cover_art_rel}: wait for controller dismissal before releasing cover art resources")
     if "script.wait: display_mode_clear_cover_art" not in playback_restore:
         errors.append(f"{cover_art_rel}: wait for controller dismissal before restoring playback UI")
-    if "DisplayRequestSource::MEDIA_PLAYBACK" in reconcile:
+    if re.search(r"(?:set_request|controller\.request)\(\s*espcontrol::DisplayRequestSource::MEDIA_PLAYBACK", reconcile):
         errors.append(f"{backlight_rel}: do not rebuild media requests from the compatibility cover art flag")
     if (
         "previous_cover_generation" not in reconcile
@@ -1388,19 +1389,14 @@ def firmware_media_sleep_prevention_errors(
 
 def firmware_touch_cover_art_delay_errors(paths: tuple[Path, ...], root: Path) -> list[str]:
     errors: list[str] = []
-    required_sequence = (
-        "on_touch:\n"
-        "      - script.execute: cover_art_pause_after_touch\n"
-        "      - script.wait: cover_art_pause_after_touch\n"
-        "      - script.execute: screensaver_wake"
-    )
+    required_sequence = "on_touch:\n      - script.execute: cover_art_handle_touch"
     for path in paths:
         text = path.read_text(encoding="utf-8")
-        if "on_touch:" not in text or "script.execute: screensaver_wake" not in text:
+        if "on_touch:" not in text:
             continue
         if required_sequence not in text:
             errors.append(
-                f"{path.relative_to(root)}: restart the cover art Show After delay before every touchscreen wake"
+                f"{path.relative_to(root)}: route touches through cover art before waking the screen"
             )
     return errors
 
@@ -3033,7 +3029,14 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             adapter_body is not None
             and "espcontrol::DisplayMode::COVER_ART" in adapter_body
             and "id: cover_art_hide_effect" in adapter_body
-            and "DisplayRequestSource::MEDIA_PLAYBACK" not in reconcile_body
+            and (
+                "DisplayRequestSource::MEDIA_PLAYBACK" not in reconcile_body
+                or (
+                    "if (!controller.target_mode_is(espcontrol::DisplayMode::COVER_ART))" in reconcile_body
+                    and "if (id(cover_art_playback_control).retains_pause(id(cover_art_active_media_player_entity)))" in reconcile_body
+                    and "controller.request(espcontrol::DisplayRequestSource::MEDIA_PLAYBACK" not in reconcile_body
+                )
+            )
         )
         legacy_clears_cover_art = (
             "if (schedule_night && id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART))" in reconcile_body
@@ -3480,20 +3483,43 @@ def firmware_s3_api_errors(
 def firmware_open_modal_api_errors(root: Path, package_paths: tuple[Path, ...]) -> list[str]:
     errors: list[str] = []
     api_path = root / "common/device/api_open_modal.yaml"
+    scripts_path = root / "common/device/api_remote_actions.yaml"
     if not api_path.exists():
         return ["common/device/api_open_modal.yaml: missing entity modal API action"]
-    text = api_path.read_text(encoding="utf-8")
-    required = ("action: open_modal", "entity_id: string", "mode: restart",
-                "espcontrol_can_open_modal(entity_id,", "script.execute: screensaver_wake",
-                "script.wait: screensaver_wake", "espcontrol_open_modal(entity_id,",
-                "script.execute: screensaver_idle_check", "script.execute: home_screen_idle_check")
-    positions = [text.find(value) for value in required]
-    if -1 in positions or positions != sorted(positions) or text.count("grid_phase2_complete()") < 2:
+    if not scripts_path.exists():
+        return ["common/device/api_remote_actions.yaml: missing shared remote action scripts"]
+    api_text = api_path.read_text(encoding="utf-8")
+    scripts_text = scripts_path.read_text(encoding="utf-8")
+    modal_script_start = scripts_text.find("  - id: open_entity_modal")
+    modal_script_end = scripts_text.find("  - id: open_remote_subpage", modal_script_start)
+    modal_script = scripts_text[modal_script_start:modal_script_end if modal_script_end >= 0 else None]
+    api_required = ("action: open_modal", "entity_id: string", "id: open_entity_modal")
+    script_required = ("mode: restart", "espcontrol_can_open_modal(entity_id,",
+                      "script.execute: screensaver_wake", "script.wait: screensaver_wake",
+                      "espcontrol_open_modal(entity_id,", "script.execute: screensaver_idle_check",
+                      "script.execute: home_screen_idle_check")
+    api_positions = [api_text.find(value) for value in api_required]
+    script_positions = [modal_script.find(value) for value in script_required]
+    if (modal_script_start < 0 or -1 in api_positions or api_positions != sorted(api_positions)
+            or -1 in script_positions or script_positions != sorted(script_positions)
+            or modal_script.count("grid_phase2_complete()") < 2):
         errors.append("common/device/api_open_modal.yaml: validate, wake, revalidate, open, then reset idle timers")
     for path in package_paths:
-        if not package_api_open_modal_enabled(path, root):
+        has_modal = package_api_open_modal_enabled(path, root)
+        has_navigate = package_api_navigate_enabled(path, root)
+        package_text = path.read_text(encoding="utf-8") if path.exists() else ""
+        if not has_modal and "api_open_modal.yaml" in package_text:
+            errors.append(f"{path.relative_to(root)}: omit the entity modal action when disabled")
+        if not has_navigate and "api_navigate.yaml" in package_text:
+            errors.append(f"{path.relative_to(root)}: omit the navigate action when disabled")
+        has_remote_scripts = "api_remote_actions.yaml" in package_text
+        if (has_modal or has_navigate) and not has_remote_scripts:
+            errors.append(f"{path.relative_to(root)}: include shared remote scripts when either API action is enabled")
+        if not (has_modal or has_navigate) and has_remote_scripts:
+            errors.append(f"{path.relative_to(root)}: omit shared remote scripts when both API actions are disabled")
+        if not has_modal:
             continue
-        if "api_open_modal.yaml" not in path.read_text(encoding="utf-8"):
+        if "api_open_modal.yaml" not in package_text:
             errors.append(f"{path.relative_to(root)}: include the entity modal action on P4 and S3")
     return errors
 
@@ -3558,6 +3584,9 @@ def firmware_navigation_target_errors(
     else:
         api_rel = api_navigate_path.relative_to(root)
         api_text = api_navigate_path.read_text(encoding="utf-8")
+        shared_actions_path = root / "common/device/api_remote_actions.yaml"
+        if shared_actions_path.exists():
+            api_text += "\n" + shared_actions_path.read_text(encoding="utf-8")
         if "navigation_is_voice_target(target)" not in api_text or "${navigate_voice_target_code}" not in api_text:
             errors.append(f"{api_rel}: route reserved voice targets through the device-specific voice hook")
         if "!navigation_has_home_label_target(target)" not in api_text:
@@ -3735,6 +3764,74 @@ def firmware_c6_update_status_errors(path: Path, root: Path) -> list[str]:
     return errors
 
 
+def firmware_camera_screensaver_retained_token_errors(
+    path: Path, root: Path
+) -> list[str]:
+    if not path.exists():
+        return []
+    text = path.read_text(encoding="utf-8")
+    retained_token_subscription = re.search(
+        r'ha_subscribe_attribute\(\s*entity,\s*std::string\("access_token"\),'
+        r'.*?HA_SUBSCRIPTION_SCOPE_DEFAULT\s*,\s*true\s*\);',
+        text,
+        re.DOTALL,
+    )
+    rel = path.relative_to(root)
+    errors: list[str] = []
+    if not retained_token_subscription:
+        errors.append(
+            f"{rel}: retain the camera screensaver access-token subscription "
+            "so retained Home Assistant reads can complete"
+        )
+    if "ha_reannounce_state_subscriptions();" not in text:
+        errors.append(
+            f"{rel}: re-announce the late camera screensaver subscription "
+            "so Home Assistant publishes its current token immediately"
+        )
+    if 'espcontrol_i18n_key("unavailable")' not in text:
+        errors.append(
+            f"{rel}: translate the camera screensaver unavailable label"
+        )
+    if (
+        "HaCallbackOwnerScope camera_subscription_owner(camera_owner);" not in text
+        or "ha_release_callbacks_for_owner(camera_owner);" not in text
+        or "ha_release_callbacks_for_owner(&id(camera_screensaver_subscribed_entity));" not in text
+        or not re.search(
+            r'ha_read_retained_attribute\(\s*entity,\s*std::string\("access_token"\),'
+            r'.*?\}\)\s*,\s*camera_owner\s*\);',
+            text,
+            re.DOTALL,
+        )
+    ):
+        errors.append(
+            f"{rel}: own and release camera screensaver callbacks when the entity changes"
+        )
+    if "id(camera_screensaver_downloaded_image)->cancel_update();" not in text:
+        errors.append(
+            f"{rel}: cancel stale camera screensaver downloads when the entity changes"
+        )
+    if (
+        "lv_image_set_src(id(camera_screensaver_image)" not in text
+        or not re.search(
+            r"lvgl\.image\.update:\s*\n\s*id:\s*camera_screensaver_image\s*\n"
+            r"\s*src:\s*camera_screensaver_downloaded_image",
+            text,
+        )
+    ):
+        errors.append(
+            f"{rel}: rebind the downloaded camera buffer to the LVGL image widget"
+        )
+    if (
+        'id(screensaver_camera_image_mode).current_option() == "Fill"' not in text
+        or "ImageResizeMode::COVER" not in text
+        or "ImageResizeMode::FIT" not in text
+    ):
+        errors.append(
+            f"{rel}: map the camera Fit and Fill options to artwork resize modes"
+        )
+    return errors
+
+
 def run_scan() -> int:
     errors = firmware_ha_binding_errors(FIRMWARE_DIR, ROOT)
     errors.extend(firmware_display_controller_ownership_errors(DISPLAY_LIFECYCLE_ROOTS, ROOT))
@@ -3758,6 +3855,11 @@ def run_scan() -> int:
     errors.extend(firmware_cover_art_refresh_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_playback_grace_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_disable_errors(COVER_ART_PATH, ROOT))
+    errors.extend(
+        firmware_camera_screensaver_retained_token_errors(
+            CAMERA_SCREENSAVER_PATH, ROOT
+        )
+    )
     errors.extend(firmware_cover_art_lifecycle_controller_errors(BACKLIGHT_PATH, COVER_ART_PATH, ROOT))
     errors.extend(firmware_media_sleep_prevention_errors(BACKLIGHT_PATH, DISPLAY_CONFIG_PATH, COVER_ART_PATH, ROOT))
     errors.extend(firmware_touch_cover_art_delay_errors(DEVICE_TOUCH_PATHS, ROOT))
@@ -4770,6 +4872,22 @@ def expect_c6_update_status_errors(name: str, text: str, expected: tuple[str, ..
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
+def expect_camera_screensaver_retained_token_errors(
+    name: str, text: str, expected: tuple[str, ...]
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "common" / "device" / "screen_camera_screensaver.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = firmware_camera_screensaver_retained_token_errors(path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
 def run_self_test() -> int:
     for call in (
         "api->get_home_assistant_state(entity, callback);",
@@ -4831,6 +4949,76 @@ def run_self_test() -> int:
             "keep Option Select available while clearing an unknown current option",
             "clear stale Option Select modal selection styling",
         ),
+    )
+    valid_camera_screensaver = (
+        'text: !lambda \'return std::string(espcontrol_i18n_key("unavailable"));\'\n'
+        'ha_release_callbacks_for_owner(&id(camera_screensaver_subscribed_entity));\n'
+        'id(camera_screensaver_downloaded_image)->cancel_update();\n'
+        'void *const camera_owner = &id(camera_screensaver_subscribed_entity);\n'
+        'ha_release_callbacks_for_owner(camera_owner);\n'
+        'HaCallbackOwnerScope camera_subscription_owner(camera_owner);\n'
+        'ha_subscribe_attribute(entity, std::string("access_token"), callback,\n'
+        '  HA_SUBSCRIPTION_SCOPE_DEFAULT, true);\n'
+        'ha_reannounce_state_subscriptions();\n'
+        'ha_read_retained_attribute(entity, std::string("access_token"),\n'
+        '  std::function<void(esphome::StringRef)>([](esphome::StringRef) {}), camera_owner);\n'
+        'lv_image_set_src(id(camera_screensaver_image), static_cast<const void *>(nullptr));\n'
+        'lvgl.image.update:\n'
+        '  id: camera_screensaver_image\n'
+        '  src: camera_screensaver_downloaded_image\n'
+        'id(screensaver_camera_image_mode).current_option() == "Fill"\n'
+        'esphome::artwork_image::ImageResizeMode::COVER\n'
+        'esphome::artwork_image::ImageResizeMode::FIT\n'
+    )
+    expect_camera_screensaver_retained_token_errors(
+        "camera token subscription is not retained",
+        valid_camera_screensaver.replace(
+            ',\n  HA_SUBSCRIPTION_SCOPE_DEFAULT, true);', ');'
+        ),
+        ("retain the camera screensaver access-token subscription",),
+    )
+    expect_camera_screensaver_retained_token_errors(
+        "camera token subscription is retained",
+        valid_camera_screensaver,
+        (),
+    )
+    expect_camera_screensaver_retained_token_errors(
+        "late camera token subscription is not announced",
+        valid_camera_screensaver.replace('ha_reannounce_state_subscriptions();\n', ''),
+        ("re-announce the late camera screensaver subscription",),
+    )
+    expect_camera_screensaver_retained_token_errors(
+        "camera unavailable label is not translated",
+        valid_camera_screensaver.replace('espcontrol_i18n_key("unavailable")', '"Unavailable"'),
+        ("translate the camera screensaver unavailable label",),
+    )
+    expect_camera_screensaver_retained_token_errors(
+        "camera subscriptions are not owned",
+        valid_camera_screensaver.replace(
+            'HaCallbackOwnerScope camera_subscription_owner(camera_owner);\n', ''
+        ),
+        ("own and release camera screensaver callbacks",),
+    )
+    expect_camera_screensaver_retained_token_errors(
+        "stale camera download is not cancelled",
+        valid_camera_screensaver.replace(
+            'id(camera_screensaver_downloaded_image)->cancel_update();\n', ''
+        ),
+        ("cancel stale camera screensaver downloads",),
+    )
+    expect_camera_screensaver_retained_token_errors(
+        "downloaded camera image is not rebound",
+        valid_camera_screensaver.replace(
+            'lv_image_set_src(id(camera_screensaver_image), static_cast<const void *>(nullptr));\n', ''
+        ),
+        ("rebind the downloaded camera buffer",),
+    )
+    expect_camera_screensaver_retained_token_errors(
+        "camera image display modes are not mapped",
+        valid_camera_screensaver.replace(
+            'esphome::artwork_image::ImageResizeMode::COVER\n', ''
+        ),
+        ("map the camera Fit and Fill options",),
     )
     expect_media_cover_art_external_input_errors(
         "missing media cover art external-input handling",
@@ -7746,15 +7934,23 @@ def run_self_test() -> int:
         api = root / "common/device/api_open_modal.yaml"
         api.parent.mkdir(parents=True)
         original = (ROOT / "common/device/api_open_modal.yaml").read_text()
+        scripts = root / "common/device/api_remote_actions.yaml"
+        scripts.write_text((ROOT / "common/device/api_remote_actions.yaml").read_text())
         package = root / "packages.yaml"
-        package.write_text("packages:\n  api_open_modal: !include common/device/api_open_modal.yaml\n")
+        package.write_text(
+            "packages:\n"
+            "  api_remote_actions: !include common/device/api_remote_actions.yaml\n"
+            "  api_open_modal: !include common/device/api_open_modal.yaml\n"
+        )
         api.write_text(original)
         assert not firmware_open_modal_api_errors(root, (package,))
         for token in ("mode: restart", "espcontrol_can_open_modal", "script.wait: screensaver_wake",
                       "espcontrol_open_modal", "script.execute: home_screen_idle_check"):
-            api.write_text(original.replace(token, "removed"))
+            source_path = api if token in original else scripts
+            source_text = original if source_path == api else scripts.read_text(encoding="utf-8")
+            source_path.write_text(source_text.replace(token, "removed"))
             assert firmware_open_modal_api_errors(root, (package,)), token
-        api.write_text(original)
+            source_path.write_text(source_text)
         manifest = root / "devices/manifest.json"
         manifest.parent.mkdir(parents=True)
         manifest.write_text(
@@ -7764,6 +7960,35 @@ def run_self_test() -> int:
         disabled_package = root / "devices/constrained/packages.yaml"
         disabled_package.parent.mkdir(parents=True)
         disabled_package.write_text("packages: {}\n", encoding="utf-8")
+        # Navigation remains independently enabled, so its package includes the
+        # shared scripts while omitting the modal API package.
+        manifest.write_text(
+            json.dumps({"devices": {"constrained": {"firmware": {"package": {
+                "apiOpenModalAction": False, "apiNavigateAction": True
+            }}}}}),
+            encoding="utf-8",
+        )
+        disabled_package.write_text(
+            "packages:\n"
+            "  api_remote_actions: !include common/device/api_remote_actions.yaml\n"
+            "  api_navigate: !include common/device/api_navigate.yaml\n",
+            encoding="utf-8",
+        )
+        assert not firmware_open_modal_api_errors(root, (disabled_package,))
+        # The inverse selection keeps the modal actions and shared scripts but
+        # omits navigation.
+        manifest.write_text(
+            json.dumps({"devices": {"constrained": {"firmware": {"package": {
+                "apiOpenModalAction": True, "apiNavigateAction": False
+            }}}}}),
+            encoding="utf-8",
+        )
+        disabled_package.write_text(
+            "packages:\n"
+            "  api_remote_actions: !include common/device/api_remote_actions.yaml\n"
+            "  api_open_modal: !include common/device/api_open_modal.yaml\n",
+            encoding="utf-8",
+        )
         assert not firmware_open_modal_api_errors(root, (disabled_package,))
         package.write_text("packages: {}\n")
         assert firmware_open_modal_api_errors(root, (package,))

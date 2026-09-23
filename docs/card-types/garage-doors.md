@@ -1,5 +1,5 @@
 ---
-title: Garage Door Cards
+title: "Home Assistant Garage Door Cards"
 description:
   How to use garage door cards on your EspControl panel to open and close Home Assistant cover entities.
 ---

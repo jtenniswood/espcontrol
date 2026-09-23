@@ -1,10 +1,10 @@
 ---
-title: EspControl Screen Setup
+title: "Configure Your Home Assistant Touchscreen"
 description:
   How to use the built-in web page to configure cards, icons, display settings, screensaver, and brightness on your EspControl panel.
 ---
 
-# Setting Up Your Device's Screen
+# Configure Your Home Assistant Touchscreen
 
 Your EspControl panel has a built-in web page where you can set everything up. Open it by typing the panel's address into any browser on your phone or computer.
 
@@ -18,7 +18,7 @@ The address is shown on the display screen when no cards are configured yet. You
 
 ### Adding a Card
 
-Tap any empty space in the grid (shown as a dashed outline with a **+** icon). A settings panel appears below the preview where you configure the card:
+Tap any empty space in the grid (shown as a dashed outline with a **+** icon), then choose a card type. Its configuration opens with the card name as the heading and the same settings layout used when editing a saved card. To choose a different card type, close the panel and start again from the empty space.
 
 ![Card settings panel](/images/button-settings.png)
 
@@ -61,7 +61,7 @@ For cards that use Home Assistant, enter the entity name from Home Assistant in 
 
 Some card names group several related controls together. **Lights** contains All Controls, Switch, Brightness, and Colour Temperature options. **Fans** contains All Controls, Switch, Speed, Oscillation, Direction, and Preset options. **Action** contains scene, script, helper, Option Select, and Local Action modes. **Sensor** contains Home Assistant and Local Sensor sources. **Vacuum** contains Status, Start / Stop, Dock, Pause / Resume, Spot Clean, Locate, and Clean Area options. **Lawn Mower** contains Status, Start Mowing, Dock, and Pause / Resume options. **Cover** contains All Controls, Position, Tilt, Toggle, Open, Close, Stop, and Set Position options. **Alarm** contains All Controls, Arm Away, Arm Home, Arm Night, Arm Vacation, and Disarm options. **Date & Time** contains Clock, Date, Time & Date, and World Clock options.
 
-For the generated list of current card domains, subpage support, grouping, and options, see the [Card Capability Reference](/generated/cards/capabilities).
+For the generated list of current card domains, subpage support, grouping, and options, see the [Card Capability Reference](/reference/card-capabilities).
 
 Most cards also let you choose an icon and set a label. If the label is left blank, the panel uses the friendly name from Home Assistant when it can.
 
@@ -103,13 +103,23 @@ If a card already occupies the space needed for a larger size, the setup page tr
 
 ## Device Settings
 
-The **Settings** tab also includes display, brightness, screensaver, backup, and firmware update controls. Under **System**, use **Device Name** to [name your panel](#naming-your-panel), or **Factory Reset** to [reset cards and preferences or return to first-time setup](/features/backup#reset-the-display).
+The **Settings** tab groups the current controls as follows. Open a card to see its options; some options appear only when their feature is enabled.
 
-![Settings tab showing appearance, backlight, schedule, clock, and firmware controls](/images/settings-tab-display.png)
+| Section | Settings |
+|---|---|
+| **Display** | [Appearance](/features/appearance), [Backlight](/features/backlight), [Idle](/features/idle), [Clock Bar](/features/clock-bar), [Rotation](/features/rotation) |
+| **Voice & Sounds** | [Voice Services](/features/voice-control#turn-on-voice-services), [Alarm Audio](/card-types/alarms#entry-and-exit-delays) |
+| **Sleep & Schedule** | [Cover Art Screen Saver](/features/media-cover-art), [Screensaver](/features/screensaver), [Night Schedule](/features/screen-schedule) |
+| **Preferences** | [Language](/features/language), [Time](/features/clock), [Temperature](/features/temperature) |
+| **System** | [Device Name](#naming-your-panel), [Backup](/features/backup), [Firmware](/features/firmware-updates), [Home Assistant Settings](#home-assistant-settings), [Battery](/features/battery), [Factory Reset](/features/backup#reset-the-display) |
+
+Device-specific cards, including Voice Services, Alarm Audio, Rotation, and Battery, appear only on supported panels. Device Name and Factory Reset also require firmware that supports them.
+
+### Home Assistant Settings
 
 Open **Settings > System > Home Assistant Settings** to manage the address used for camera/image cards and media artwork downloads. **Automatic** connection mode discovers the HTTP endpoint advertised by the connected Home Assistant instance, including port `80` used by new Home Assistant OS installations and port `8123` commonly used by existing installations and Home Assistant Container.
 
-If automatic discovery is unavailable because multicast traffic is blocked between network segments, select **Manual** and enter the protocol and port shown under **Home Assistant > Settings > System > Network**. Automatic mode keeps these values as its fallback. EspControl never rewrites complete artwork URLs supplied by media services or external CDNs.
+If automatic discovery is unavailable because multicast traffic is blocked between network segments, select **Manual** and set **Home Assistant Protocol** (`http` or `https`) and **Home Assistant Port** (1–65535) to the values shown under **Home Assistant > Settings > System > Network**. Automatic mode keeps these values as its fallback. EspControl never rewrites complete artwork URLs supplied by media services or external CDNs.
 
 ## Apply Configuration
 

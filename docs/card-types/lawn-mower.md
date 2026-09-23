@@ -1,5 +1,5 @@
 ---
-title: Lawn Mower Cards
+title: "Home Assistant Lawn Mower Cards"
 description:
   How to show or control a Home Assistant lawn mower entity from your EspControl panel.
 ---

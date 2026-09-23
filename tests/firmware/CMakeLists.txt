@@ -375,6 +375,14 @@ target_compile_options(rgb565_scaler_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(rgb565_scaler_test PRIVATE ../../components/artwork_image)
 add_test(NAME rgb565_scaler_test COMMAND rgb565_scaler_test)
 
+add_executable(scanline_resampler_test scanline_resampler_test.cpp)
+target_compile_features(scanline_resampler_test PRIVATE cxx_std_17)
+target_compile_options(scanline_resampler_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(scanline_resampler_test PRIVATE ../../components/artwork_image)
+add_test(NAME scanline_resampler_test COMMAND scanline_resampler_test)
+add_test(NAME image_resize_integration_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/image_resize_integration_test.py ${CMAKE_CXX_COMPILER})
+
 file(GLOB SAVED_CONFIG_FIXTURES
   CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_SOURCE_DIR}/../../common/config/*_card_normalization_fixtures.json
@@ -480,3 +488,6 @@ add_test(NAME camera_feedback_test COMMAND
 add_test(NAME remote_modal_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/remote_modal_test.py)
+
+add_test(NAME clock_image_overlay_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/clock_image_overlay_test.py)

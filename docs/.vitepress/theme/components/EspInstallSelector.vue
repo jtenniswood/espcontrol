@@ -1,41 +1,60 @@
 <template>
   <div class="esp-install-selector">
-    <div class="device-list" role="listbox" aria-label="Target install device">
-      <button
+    <div class="device-list" role="group" aria-label="Target install device">
+      <div
         v-for="device in devices"
         :key="device.slug"
-        type="button"
         class="device-card"
-        :class="{ selected: selected.slug === device.slug }"
-        role="option"
-        :aria-selected="selected.slug === device.slug"
-        @click="selectDevice(device)"
+        :class="{ selected: selectedDevice.slug === device.slug }"
       >
-        <span
-          class="device-screen"
-          :class="device.shape"
-          :style="{
-            '--screen-aspect': device.aspect,
-            '--grid-cols': device.cols,
-            '--grid-rows': device.rows
-          }"
-          aria-hidden="true"
+        <button
+          type="button"
+          class="device-choice"
+          :aria-pressed="selectedDevice.slug === device.slug"
+          @click="selectDevice(device)"
         >
-          <span class="screen-grid">
-            <span v-for="slot in device.slots" :key="slot"></span>
+          <span
+            class="device-screen"
+            :class="device.shape"
+            :style="{
+              '--screen-aspect': device.aspect,
+              '--grid-cols': device.cols,
+              '--grid-rows': device.rows
+            }"
+            aria-hidden="true"
+          >
+            <span class="screen-grid">
+              <span v-for="slot in device.slots" :key="slot"></span>
+            </span>
           </span>
-        </span>
-        <span class="device-copy">
-          <span class="device-name">{{ device.size }}</span>
-          <span class="device-meta">{{ device.name }} - {{ device.resolution }}</span>
-          <span v-if="device.revision" class="device-revision">{{ device.revision }}</span>
-          <span class="device-tags">
-            <span>{{ device.orientation }}</span>
-            <span>{{ device.slots }} buttons</span>
+          <span class="device-copy">
+            <span class="device-name">{{ device.size }}</span>
+            <span class="device-meta">{{ device.name }} - {{ device.resolution }}</span>
+            <span class="device-tags">
+              <span>{{ device.orientation }}</span>
+              <span>{{ device.slots }} buttons</span>
+            </span>
           </span>
-        </span>
-        <span class="device-check" aria-hidden="true"></span>
-      </button>
+          <span class="device-check" aria-hidden="true"></span>
+        </button>
+        <div v-if="device.versions.length > 1" class="device-version">
+          <label :for="`${device.slug}-version`">Hardware version</label>
+          <select
+            :id="`${device.slug}-version`"
+            v-model="selectedVersions[device.slug]"
+            :aria-label="`${device.size} hardware version`"
+            :aria-describedby="`${device.slug}-revision`"
+            @change="selectDevice(device)"
+          >
+            <option v-for="version in device.versions" :key="version.slug" :value="version.slug">
+              {{ version.label }}
+            </option>
+          </select>
+          <span :id="`${device.slug}-revision`" class="device-revision">
+            {{ selectedVersion(device).revision }}
+          </span>
+        </div>
+      </div>
     </div>
 
     <div class="installer-actions">
@@ -79,22 +98,8 @@ import { withBase } from 'vitepress'
 
 const devices = [
   {
-    slug: 'guition-esp32-p4-jc8012p4a1-v3',
-    name: 'JC8012P4A1 V3 production-silicon panel',
-    revision: 'ESP32-P4 v3.x silicon; confirm with chip information first',
-    size: '10.1 inch',
-    resolution: '1280 x 800',
-    orientation: 'Landscape',
-    slots: 20,
-    cols: 5,
-    rows: 4,
-    aspect: '1280 / 800',
-    shape: 'landscape'
-  },
-  {
     slug: 'guition-esp32-p4-jc8012p4a1',
-    name: 'JC8012P4A1 original panel',
-    revision: 'Rear case 2627 or lower',
+    name: 'JC8012P4A1',
     size: '10.1 inch',
     resolution: '1280 x 800',
     orientation: 'Landscape',
@@ -102,25 +107,31 @@ const devices = [
     cols: 5,
     rows: 4,
     aspect: '1280 / 800',
-    shape: 'landscape'
-  },
-  {
-    slug: 'guition-esp32-p4-jc8012p4a1-v2',
-    name: 'JC8012P4A1 new panel',
-    revision: 'Rear case 2628 or higher',
-    size: '10.1 inch',
-    resolution: '1280 x 800',
-    orientation: 'Landscape',
-    slots: 20,
-    cols: 5,
-    rows: 4,
-    aspect: '1280 / 800',
-    shape: 'landscape'
+    shape: 'landscape',
+    versions: [
+      {
+        slug: 'guition-esp32-p4-jc8012p4a1-v3',
+        number: 3,
+        label: 'V3 — Production silicon',
+        revision: 'ESP32-P4 v3.x silicon; confirm with chip information first'
+      },
+      {
+        slug: 'guition-esp32-p4-jc8012p4a1',
+        number: 1,
+        label: 'V1 — Original panel',
+        revision: 'Rear case 2627 or lower'
+      },
+      {
+        slug: 'guition-esp32-p4-jc8012p4a1-v2',
+        number: 2,
+        label: 'V2 — New panel',
+        revision: 'Rear case 2628 or higher'
+      }
+    ]
   },
   {
     slug: 'guition-esp32-p4-jc1060p470',
-    name: 'JC1060P470 original panel',
-    revision: 'Unmarked case; board date before 2622',
+    name: 'JC1060P470',
     size: '7 inch',
     resolution: '1024 x 600',
     orientation: 'Landscape',
@@ -128,20 +139,21 @@ const devices = [
     cols: 5,
     rows: 3,
     aspect: '1024 / 600',
-    shape: 'landscape'
-  },
-  {
-    slug: 'guition-esp32-p4-jc1060p470-v2',
-    name: 'JC1060P470 new panel',
-    revision: 'Case marked V2; board date 2622 or newer',
-    size: '7 inch',
-    resolution: '1024 x 600',
-    orientation: 'Landscape',
-    slots: 15,
-    cols: 5,
-    rows: 3,
-    aspect: '1024 / 600',
-    shape: 'landscape'
+    shape: 'landscape',
+    versions: [
+      {
+        slug: 'guition-esp32-p4-jc1060p470',
+        number: 1,
+        label: 'V1 — Original panel',
+        revision: 'Unmarked case; board date before 2622'
+      },
+      {
+        slug: 'guition-esp32-p4-jc1060p470-v2',
+        number: 2,
+        label: 'V2 — New panel',
+        revision: 'Case marked V2; board date 2622 or newer'
+      }
+    ]
   },
   {
     slug: 'guition-esp32-p4-jc4880p443',
@@ -153,7 +165,14 @@ const devices = [
     cols: 2,
     rows: 3,
     aspect: '480 / 800',
-    shape: 'portrait'
+    shape: 'portrait',
+    versions: [
+      {
+        slug: 'guition-esp32-p4-jc4880p443',
+        number: 1,
+        label: 'V1 — Original panel'
+      }
+    ]
   },
   {
     slug: 'esp32-p4-86',
@@ -165,7 +184,14 @@ const devices = [
     cols: 3,
     rows: 3,
     aspect: '1 / 1',
-    shape: 'square'
+    shape: 'square',
+    versions: [
+      {
+        slug: 'esp32-p4-86',
+        number: 1,
+        label: 'V1 — Original panel'
+      }
+    ]
   },
   {
     slug: 'guition-esp32-s3-4848s040',
@@ -177,11 +203,30 @@ const devices = [
     cols: 3,
     rows: 3,
     aspect: '1 / 1',
-    shape: 'square'
+    shape: 'square',
+    versions: [
+      {
+        slug: 'guition-esp32-s3-4848s040',
+        number: 1,
+        label: 'V1 — Original panel'
+      }
+    ]
   }
-]
+].map(device => ({
+  ...device,
+  // Keep the newest hardware revision first, regardless of declaration order.
+  versions: [...device.versions].sort((a, b) => b.number - a.number)
+}))
 
-const selected = ref(devices[0])
+const selectedDevice = ref(devices[0])
+const selectedVersions = ref(Object.fromEntries(
+  devices.map(device => [device.slug, device.versions[0].slug])
+))
+const selectedVersion = device => device.versions.find(
+  version => version.slug === selectedVersions.value[device.slug]
+)
+const selected = computed(() => selectedVersion(selectedDevice.value))
+
 const checked = ref(false)
 const supported = ref(false)
 const ready = ref(false)
@@ -227,7 +272,7 @@ async function prepareInstaller() {
 }
 
 function selectDevice(device) {
-  selected.value = device
+  selectedDevice.value = device
   if (checked.value && supported.value) prepareInstaller()
 }
 
@@ -253,19 +298,13 @@ onMounted(() => {
 
 .device-card {
   position: relative;
-  display: grid;
-  grid-template-columns: 74px 1fr 22px;
-  gap: 14px;
-  align-items: center;
-  width: 100%;
-  min-height: 124px;
+  min-width: 0;
   padding: 14px;
   border: 1px solid var(--vp-c-border);
   border-radius: 8px;
   color: var(--vp-c-text-1);
   background: var(--vp-c-bg-soft);
   text-align: left;
-  cursor: pointer;
   transition:
     background-color 0.2s,
     border-color 0.2s,
@@ -278,7 +317,8 @@ onMounted(() => {
   transform: translateY(-1px);
 }
 
-.device-card:focus-visible {
+.device-choice:focus-visible,
+.device-version select:focus-visible {
   outline: 2px solid var(--vp-c-brand-1);
   outline-offset: 3px;
 }
@@ -287,6 +327,44 @@ onMounted(() => {
   border-color: var(--vp-c-brand-1);
   background: var(--vp-c-brand-soft);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+}
+
+.device-choice {
+  display: grid;
+  grid-template-columns: 74px 1fr 22px;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  min-height: 96px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.device-version {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.device-version label {
+  color: var(--vp-c-text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.device-version select {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 6px;
+  color: var(--vp-c-text-1);
+  background: var(--vp-c-bg);
+  font: inherit;
+  font-size: 13px;
+  appearance: auto;
+  cursor: pointer;
 }
 
 .device-screen {
@@ -443,7 +521,7 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .device-card {
+  .device-choice {
     grid-template-columns: 64px 1fr 22px;
   }
 

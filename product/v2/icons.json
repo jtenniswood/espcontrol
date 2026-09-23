@@ -220,6 +220,16 @@
       "mdi": "arrow-up-down"
     },
     {
+      "name": "Awning",
+      "codepoint": "F1B87",
+      "mdi": "awning"
+    },
+    {
+      "name": "Awning Outline",
+      "codepoint": "F1B88",
+      "mdi": "awning-outline"
+    },
+    {
       "name": "Battery",
       "codepoint": "F0079",
       "mdi": "battery"
@@ -1713,6 +1723,16 @@
       "name": "Water Percent",
       "codepoint": "F058E",
       "mdi": "water-percent"
+    },
+    {
+      "name": "Water Pump",
+      "codepoint": "F058F",
+      "mdi": "water-pump"
+    },
+    {
+      "name": "Water Pump Off",
+      "codepoint": "F0F93",
+      "mdi": "water-pump-off"
     },
     {
       "name": "Water Alert",

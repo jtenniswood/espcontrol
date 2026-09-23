@@ -1442,7 +1442,90 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   await screensaverCard.locator(".card-header").click();
   await screensaverCard.getByRole("button", { name: "Timer", exact: true }).click();
   const dimmedAction = screensaverCard.locator("#sp-set-clock-mode");
+  const clockOverlayToggle = screensaverCard.locator("#sp-set-ss-clock-overlay");
+  const clockOverlayRow = clockOverlayToggle.locator("..").locator("..");
+  assert.strictEqual(await dimmedAction.locator('option[value="camera"]').count(), 0,
+    `${label}: older firmware without camera entities does not offer Camera`);
+  assert.strictEqual(await clockOverlayRow.isVisible(), false,
+    `${label}: older firmware without the overlay entity hides Display Clock`);
+  await page.evaluate(() => window.__seedEspState([
+    { id: "text-screen_saver__camera_entity", state: "" },
+    { id: "switch-screen_saver__clock_overlay", state: "OFF", value: false },
+  ]));
+  const hasCameraScreensaver = await dimmedAction.locator('option[value="camera"]').count() > 0;
   await dimmedAction.selectOption("dim");
+  assert.strictEqual(
+    await clockOverlayRow.isVisible(),
+    false,
+    `${label}: image clock overlay toggle hides unless Camera is selected`,
+  );
+  if (hasCameraScreensaver) {
+    const cameraPanel = screensaverCard.locator("#sp-set-screensaver-camera-panel");
+    assert.strictEqual(await cameraPanel.isVisible(), false, `${label}: camera panel hides for other screensavers`);
+    const metadataInput = screensaverCard.locator("#sp-set-screensaver-metadata");
+    const metadataToggle = screensaverCard.locator("#sp-set-ss-metadata-overlay");
+    const metadataRow = metadataToggle.locator("..").locator("..");
+    assert.strictEqual(await metadataRow.isVisible(), false, `${label}: metadata toggle hides outside Camera mode`);
+    assert.strictEqual(await metadataInput.isVisible(), false, `${label}: metadata hides outside Camera mode`);
+    await dimmedAction.selectOption("camera");
+    const timerCamera = cameraPanel.locator("#sp-set-screensaver-camera");
+    await timerCamera.fill("camera.front_door");
+    await timerCamera.blur();
+    assert(await cameraPanel.isVisible(), `${label}: Camera settings are grouped in a panel`);
+    assert(await cameraPanel.evaluate(panel => parseFloat(getComputedStyle(panel).borderTopWidth) > 0 && parseFloat(getComputedStyle(panel).paddingLeft) > 0), `${label}: camera panel has a visible border and inset padding`);
+    for (const id of ["sp-set-screensaver-camera", "sp-set-screensaver-camera-image-mode", "sp-set-ss-clock-overlay", "sp-set-ss-metadata-overlay", "sp-set-screensaver-metadata"])
+      assert.strictEqual(await cameraPanel.locator(`#${id}`).count(), 1, `${label}: ${id} belongs to the camera panel`);
+    assert(await metadataRow.isVisible(), `${label}: Camera mode offers Display Metadata`);
+    assert.strictEqual(await metadataInput.isVisible(), false, `${label}: disabled metadata hides its entity field`);
+    const metadataPostStart = posts.length;
+    await metadataRow.locator(".sp-toggle").click();
+    await waitForPost(posts,
+      { domain: "switch", name: "screen_saver__metadata_overlay", action: "turn_on" },
+      `${label}: metadata toggle enables the firmware overlay`, metadataPostStart);
+    assert(await metadataInput.isVisible(), `${label}: enabling metadata reveals its entity field`);
+    await metadataInput.fill("sensor.current_photo_caption");
+    await metadataInput.blur();
+    await waitForPost(posts,
+      { domain: "text", name: "Screen Saver: Photo Metadata Entity", action: "set", value: "sensor.current_photo_caption" },
+      `${label}: photo metadata sensor is saved`, metadataPostStart);
+    assert(
+      await clockOverlayRow.isVisible(),
+      `${label}: image clock overlay toggle shows for Camera screensavers`,
+    );
+    assert(
+      await page.evaluate(() => {
+        const clock = document.querySelector("#sp-set-ss-clock-overlay")?.closest(".sp-toggle-row");
+        const metadata = document.querySelector("#sp-set-ss-metadata-overlay")?.closest(".sp-toggle-row");
+        const entity = document.querySelector("#sp-set-screensaver-metadata")?.closest(".sp-field");
+        return !!clock && !!metadata && !!entity && clock.nextElementSibling === metadata && metadata.nextElementSibling === entity;
+      }),
+      `${label}: Display Metadata follows Display Clock, with its entity field underneath`,
+    );
+    await metadataRow.locator(".sp-toggle").click();
+    await waitForPost(posts,
+      { domain: "switch", name: "screen_saver__metadata_overlay", action: "turn_off" },
+      `${label}: metadata toggle disables the firmware overlay`, metadataPostStart);
+    assert.strictEqual(await metadataInput.isVisible(), false, `${label}: disabling metadata hides the field`);
+    await metadataRow.locator(".sp-toggle").click();
+    assert.strictEqual(await metadataInput.inputValue(), "sensor.current_photo_caption", `${label}: disabling metadata preserves the entity`);
+    await screensaverCard.getByRole("button", { name: "Sensor", exact: true }).click();
+    const sensorCamera = cameraPanel.locator("#sp-set-sensor-screensaver-camera");
+    assert.strictEqual(await sensorCamera.inputValue(), "camera.front_door", `${label}: camera input stays synchronized without a server echo`);
+    await sensorCamera.fill("image.garden");
+    await sensorCamera.blur();
+    assert(await cameraPanel.isVisible(), `${label}: Sensor mode keeps camera settings grouped`);
+    assert(await cameraPanel.locator("#sp-set-sensor-screensaver-camera").isVisible(), `${label}: Sensor camera entity is visible in the panel`);
+    assert.strictEqual(await cameraPanel.locator("#sp-set-screensaver-camera").isVisible(), false, `${label}: Timer camera entity hides in Sensor mode`);
+    assert(await metadataInput.isVisible(), `${label}: Sensor mode preserves enabled metadata`);
+    await screensaverCard.getByRole("button", { name: "Disabled", exact: true }).click();
+    assert.strictEqual(await cameraPanel.isVisible(), false, `${label}: disabled screensaver hides the entire camera panel`);
+    await screensaverCard.getByRole("button", { name: "Timer", exact: true }).click();
+    assert.strictEqual(await timerCamera.inputValue(), "image.garden", `${label}: Sensor camera changes also reach Timer mode`);
+    assert(await cameraPanel.locator("#sp-set-screensaver-camera").isVisible(), `${label}: Timer mode restores its camera fields`);
+    await dimmedAction.selectOption("dim");
+    assert.strictEqual(await cameraPanel.isVisible(), false, `${label}: switching away from Camera hides the panel`);
+    assert.strictEqual(await metadataInput.isVisible(), false, `${label}: enabled metadata also hides outside Camera mode`);
+  }
   const manualDimmedBrightness = screensaverCard.locator("#sp-set-dimmed-brightness");
   const daytimeDimmedBrightness = screensaverCard.locator("#sp-set-daytime-dimmed-brightness");
   const nighttimeDimmedBrightness = screensaverCard.locator("#sp-set-nighttime-dimmed-brightness");
@@ -1588,6 +1671,8 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: cover art secondary entity should begin inside its collapsed panel`,
   );
   await screensaverSettings.locator("> .sp-disclosure-button").click();
+  assert.strictEqual(await coverArtCard.locator("#sp-set-cover-art-clock-overlay").count(), 0,
+    `${label}: media Cover Art must not offer the camera clock overlay`);
   assert(
     await coverArtCard.locator("#sp-set-ss-cover-art-delay").isVisible(),
     `${label}: cover art show-after field should render inside screensaver settings`,
@@ -1609,10 +1694,23 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: track overlay duration visibility should match square cover art layout`,
   );
   if (options.coverArtSquareOverlay) {
+    const playbackToggle = screensaverSettings.locator("#sp-set-ss-playback-control");
+    assert(await playbackToggle.isChecked(), `${label}: persistent playback control defaults on`);
+    assert(await playbackToggle.evaluate((el) => {
+      const awake = document.querySelector("#sp-set-ss-media-sleep-prevention");
+      return !!(awake.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }), `${label}: playback toggle follows keep-screen-awake`);
+    await screensaverSettings.locator("#sp-set-ss-playback-control + .sp-toggle-track").click();
+    assert(!(await playbackToggle.isChecked()), `${label}: persistent playback control can be disabled`);
+    await screensaverSettings.locator("#sp-set-ss-playback-control + .sp-toggle-track").click();
+    assert(await playbackToggle.isChecked(), `${label}: persistent playback control can be re-enabled`);
     assert(
       await coverArtCard.locator("#sp-set-ss-track-overlay").isVisible(),
       `${label}: track overlay duration should render inside screensaver settings`,
     );
+  } else {
+    assert.strictEqual(await page.locator("#sp-set-ss-playback-control").count(), 0,
+      `${label}: persistent playback setting is hidden on larger screens`);
   }
   await externalSources.locator("> .sp-disclosure-button").click();
   const coverArtSecondaryInfo = coverArtCard.locator("#sp-set-ss-cover-art-secondary-player-info");
@@ -2402,18 +2500,17 @@ async function assertEmptyCellSettings(page, posts, label) {
 
   await page.locator(`.sp-main [data-pos="${pos}"]`).click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Action card type" }).click();
-  await page.locator("#sp-inp-type").waitFor({ state: "visible" });
-  await page
-    .locator(".sp-settings-modal .sp-disclosure")
-    .filter({ hasText: "Card Settings" })
-    .first()
-    .locator(".sp-disclosure-button")
-    .click();
-  await page.locator("#sp-inp-label").fill("Keep this label");
-  await page.locator("#sp-inp-entity").fill("switch.keep_this_entity");
-  await page.locator("#sp-inp-action").selectOption({ label: "Run Script" });
-  await page.locator("#sp-inp-type").selectOption({ label: "Switch" });
+  await page.getByRole("button", { name: "Switch card type" }).click();
+  assert.strictEqual(
+    await page.locator(".sp-settings-modal .sp-section-title").textContent(),
+    "Switch",
+    `${label}: a new card uses the same card-specific heading as a saved card`,
+  );
+  assert.strictEqual(
+    await page.locator("#sp-inp-type").count(),
+    0,
+    `${label}: a selected new card does not show a redundant Card dropdown`,
+  );
   await page.locator("#sp-inp-entity").waitFor({ state: "visible" });
   const switchCardSettings = page
     .locator(".sp-settings-modal .sp-disclosure")
@@ -2452,36 +2549,17 @@ async function assertEmptyCellSettings(page, posts, label) {
     await page.locator("#sp-inp-label").isVisible(),
     `${label}: opening Switch Card Settings should reveal its controls`,
   );
-  assert.strictEqual(
-    await page.locator("#sp-inp-label").inputValue(),
-    "Keep this label",
-    `${label}: changing the default card type preserves the typed label`,
-  );
-  assert.strictEqual(
-    await page.locator("#sp-inp-entity").inputValue(),
-    "switch.keep_this_entity",
-    `${label}: changing the default card type preserves the typed entity`,
-  );
-  assert.strictEqual(
-    await page.locator("#sp-inp-icon").inputValue(),
-    "Auto",
-    `${label}: changing the default Action card type clears its icon default`,
-  );
-  assert.strictEqual(
-    await page.locator("#sp-inp-sensor-when-on-toggle").isChecked(),
-    false,
-    `${label}: changing the default Action card type clears its active display default`,
-  );
-  assert(
-    await page.locator(".sp-settings-modal .sp-save-btn").isVisible(),
-    `${label}: changing the default card type keeps Save visible`,
-  );
+  assert.strictEqual(await page.locator("#sp-inp-icon").inputValue(), "Auto");
+  assert.strictEqual(await page.locator("#sp-inp-sensor-when-on-toggle").isChecked(), false);
+  assert(await page.locator(".sp-settings-modal .sp-save-btn").isVisible());
   assert.strictEqual(
     await page.locator(".sp-settings-modal .sp-delete-btn").count(),
     0,
     `${label}: unsaved new card keeps Delete hidden after type selection`,
   );
-  await page.locator("#sp-inp-type").selectOption({ label: "Sensor" });
+  await page.locator(".sp-settings-close").click();
+  await emptyCell.click();
+  await page.getByRole("button", { name: "Sensor card type" }).click();
   await page
     .locator(".sp-settings-modal .sp-disclosure")
     .filter({ hasText: "Card Settings" })
@@ -2644,7 +2722,7 @@ async function assertNewMediaCardDefaults(page, posts, label, mediaCoverArtSuppo
 
   await page.locator(`.sp-main [data-pos="${pos}"].sp-empty-cell`).click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Action card type" }).click();
+  await page.getByRole("button", { name: "Media card type" }).click();
   await page
     .locator(".sp-settings-modal .sp-disclosure")
     .filter({ hasText: "Card Settings" })
@@ -2652,12 +2730,11 @@ async function assertNewMediaCardDefaults(page, posts, label, mediaCoverArtSuppo
     .locator(".sp-disclosure-button")
     .click();
   await page.locator("#sp-inp-label").fill("Custom media label");
-  await page.locator("#sp-inp-type").selectOption("media");
   await page.locator("#sp-inp-media-mode").selectOption("play_pause");
   assert.strictEqual(
     await page.locator("#sp-inp-label").inputValue(),
     "Custom media label",
-    `${label}: changing a labelled card to Media preserves its custom label`,
+    `${label}: changing Media mode preserves its custom label`,
   );
   await page.locator(".sp-settings-close").click();
   await page.waitForFunction(() => {
@@ -2681,7 +2758,6 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
   const before = posts.length;
   await emptyCell.click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Switch card type" }).click();
 
   async function assertGrouped(context) {
     const result = await page.evaluate(() => {
@@ -2724,14 +2800,14 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
     );
     assert.strictEqual(
       result.primaryKinds.filter((kind) => kind === "card").length,
-      1,
-      `${label}: ${context} should keep exactly one Card field outside groups`,
+      0,
+      `${label}: ${context} should not show a redundant Card field`,
     );
     assert(
       result.primaryKinds.every((kind) =>
-        ["card", "type", "name", "entity"].includes(kind),
+        ["type", "name", "entity"].includes(kind),
       ),
-      `${label}: ${context} should only expose Card, Type, Name, and Entity primary fields`,
+      `${label}: ${context} should only expose Type, Name, and Entity primary fields`,
     );
     for (const kind of ["type", "name", "entity"]) {
       assert(
@@ -2747,12 +2823,21 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
   }
 
   const cardOptions = await page
-    .locator("#sp-inp-type option:not([disabled])")
+    .locator(".sp-card-type-option:not([disabled])")
     .evaluateAll((options) =>
-      options.map((option) => ({ value: option.value, label: option.textContent })),
+      options.map((option) => ({ value: option.getAttribute("data-card-type"), label: option.querySelector(".sp-card-type-title").textContent })),
     );
-  for (const cardOption of cardOptions) {
-    await page.locator("#sp-inp-type").selectOption(cardOption.value);
+  for (const [index, cardOption] of cardOptions.entries()) {
+    if (index > 0) {
+      await page.locator(".sp-settings-close").click();
+      await emptyCell.click();
+    }
+    await page.locator(`.sp-card-type-option[data-card-type="${cardOption.value}"]`).click();
+    assert.strictEqual(
+      await page.locator(".sp-settings-modal .sp-section-title").textContent(),
+      cardOption.label,
+      `${label}: ${cardOption.label} uses its card name as the editor heading`,
+    );
     await assertGrouped(cardOption.label);
 
     if (cardOption.value === "wifi_qr") {
@@ -2848,8 +2933,7 @@ async function assertFanOptionalLightSettings(page, label) {
   if ((await emptyCell.count()) === 0) return;
   await emptyCell.click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Switch card type" }).click();
-  await page.locator("#sp-inp-type").selectOption("fan_speed");
+  await page.locator('.sp-card-type-option[data-card-type="fan_speed"]').click();
   const fanType = page.locator(
     '.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select',
   );
@@ -2919,13 +3003,12 @@ async function assertInternalControlsPanel(page, posts, label) {
   const before = posts.length;
   await emptyCell.click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Switch card type" }).click();
 
   const internalOption = page.locator(
-    '#sp-inp-type option[value="internal"]:not([disabled])',
+    '.sp-card-type-option[data-card-type="internal"]:not([disabled])',
   );
   if ((await internalOption.count()) > 0) {
-    await page.locator("#sp-inp-type").selectOption("internal");
+    await internalOption.click();
     const controlsButton = page.getByRole("button", {
       name: "Controls",
       exact: true,
@@ -2999,8 +3082,7 @@ async function assertWebhookSettingsPanel(page, posts, label) {
   const before = posts.length;
   await emptyCell.click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Switch card type" }).click();
-  await page.locator("#sp-inp-type").selectOption("webhook");
+  await page.locator('.sp-card-type-option[data-card-type="webhook"]').click();
 
   const webhookSettingsButton = page.getByRole("button", {
     name: "Webhook Settings",
@@ -5339,8 +5421,7 @@ async function assertGuestWifiSettings(page, label) {
   assert(await emptyCell.count(), `${label}: guest Wi-Fi test needs an empty slot`);
   await emptyCell.click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Switch card type" }).click();
-  await page.locator("#sp-inp-type").selectOption("wifi_qr");
+  await page.locator('.sp-card-type-option[data-card-type="wifi_qr"]').click();
   const guestTab = page.locator("#sp-inp-wifi-tab-guest");
   assert.strictEqual(await guestTab.isChecked(), false, `${label}: Guest Wi-Fi defaults off`);
   assert.strictEqual(await page.locator("#sp-inp-wifi-guest-entity").count(), 0);

@@ -1,5 +1,6 @@
 #pragma once
 #include "esphome/core/color.h"
+#include "scanline_resampler.h"
 
 namespace esphome {
 namespace artwork_image {
@@ -23,7 +24,7 @@ class ImageDecoder {
    * @param image The image to decode the stream into.
    */
   ImageDecoder(ArtworkImage *image) : image_(image) {}
-  virtual ~ImageDecoder() = default;
+  virtual ~ImageDecoder();
 
   /**
    * @brief Initialize the decoder.
@@ -95,7 +96,15 @@ class ImageDecoder {
   void set_download_size(size_t download_size) { this->download_size_ = download_size; }
   virtual bool is_decoding() const { return false; }
 
+  bool prepare_filtered_resize(int width, int height);
+  void draw_filtered_rgb888_row(int y, const uint8_t *data);
+
  protected:
+  void release_filtered_resize();
+  ScanlineResampler resampler_;
+  RAMAllocator<uint8_t> resample_allocator_;
+  uint8_t *resample_workspace_{nullptr};
+  size_t resample_workspace_size_{0};
   ArtworkImage *image_;
   // Initializing to 1, to ensure it is distinguishable from initial "decoded_bytes_".
   // Will be overwritten anyway once the download size is known.

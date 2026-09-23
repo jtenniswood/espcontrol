@@ -20,6 +20,9 @@
   "overrides": {
     "firmware": {
       "package": {
+        "substitutions": {
+          "clock_font_size": "\"140\""
+        },
         "backlightPwmFrequency": {
           "wifi": "1000Hz",
           "ethernet": "20000Hz"

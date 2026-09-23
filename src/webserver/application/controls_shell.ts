@@ -2,7 +2,11 @@ import type { AppState } from "../state/types";
 import type { UiRuntimeState } from "./state";
 
 export function renderPanelBrand(brand: Element, document: Document, name?: string): void {
-    brand.textContent = "EspControl";
+    brand.textContent = "";
+    const title = document.createElement("span");
+    title.className = "sp-brand-title";
+    title.textContent = "EspControl";
+    brand.appendChild(title);
     if (name) {
         const label = document.createElement("span");
         label.className = "sp-brand-name";

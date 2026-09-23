@@ -1,18 +1,37 @@
 # =============================================================================
 # CLOCK SCREENSAVER - Full-screen clock overlay for idle display
 # =============================================================================
-# Black overlay with a large thin-font time label. Hidden by default; shown
+# Black overlay with a large light-weight time label. Hidden by default; shown
 # by backlight.yaml when the clock screensaver is enabled and the idle
 # timeout fires. The label is positioned absolutely so the interval can
 # drift it for burn-in prevention.
+#
+# The transparent image overlay below is independent from the black clock
+# screensaver. It is hidden by default and only shown over cover art/camera
+# views when the optional clock overlay setting is enabled. Photo metadata
+# can appear independently in camera mode and reuses the existing body font.
+# Both use matching text shadows instead of blur to keep S3 overhead low.
 # =============================================================================
 
+globals:
+  - id: photo_metadata_subscribed_entity
+    type: std::string
+    initial_value: '""'
+  - id: photo_metadata_subscription_generation
+    type: uint32_t
+    initial_value: '0'
+  - id: photo_metadata_value
+    type: std::string
+    initial_value: '""'
+
 font:
-  - file: "gfonts://Roboto@Thin"
-    id: font_number_clock
+  # Keep this font dedicated to the full-screen clock. The small glyph set and
+  # 2-bit anti-aliasing limit flash and RAM use on resource-constrained panels.
+  - file: "gfonts://Roboto@Light"
+    id: font_clock_display
     size: ${clock_font_size}
-    bpp: 4
-    glyphs: " 0123456789:"
+    bpp: 2
+    glyphs: "0123456789:"
 
 lvgl:
   top_layer:
@@ -35,9 +54,50 @@ lvgl:
           widgets:
             - label:
                 id: clock_label
-                text_font: font_number_clock
+                text_font: font_clock_display
                 text_color: 0xFFFFFF
                 text: "00:00"
+      - obj:
+          id: clock_image_overlay
+          x: 0
+          y: 0
+          width: 100%
+          height: 100%
+          bg_opa: 0%
+          radius: 0
+          border_width: 0
+          pad_all: 0
+          scrollable: false
+          scrollbar_mode: "off"
+          clickable: false
+          hidden: true
+          widgets:
+            - label:
+                id: clock_image_overlay_shadow
+                text_font: font_clock_display
+                text_color: 0x000000
+                text_opa: 20%
+                text: "00:00"
+            - label:
+                id: clock_image_overlay_label
+                text_font: font_clock_display
+                text_color: 0xFFFFFF
+                text: "00:00"
+            - label:
+                id: photo_metadata_shadow
+                text_font: font_text_body
+                text_color: 0x000000
+                text_opa: 20%
+                long_mode: DOT
+                text: ""
+                hidden: true
+            - label:
+                id: photo_metadata_label
+                text_font: font_text_body
+                text_color: 0xFFFFFF
+                long_mode: DOT
+                text: ""
+                hidden: true
       - obj:
           id: dim_screensaver_touch_guard
           x: 0
@@ -69,3 +129,52 @@ lvgl:
           scrollbar_mode: "off"
           clickable: true
           hidden: true
+
+script:
+  # Subscribe only while camera mode is active. Release the owner on exit,
+  # entity changes or disconnect; generation checks discard stale callbacks.
+  - id: photo_metadata_refresh_subscription
+    mode: restart
+    then:
+      - lambda: |-
+          const bool active = id(metadata_overlay_enabled).state && id(espcontrol_app).display().target_mode_is(
+              espcontrol::DisplayMode::CAMERA) && ha_api_state_connected();
+          const std::string &configured = id(screensaver_metadata_entity).state;
+          const std::string entity = active && configured.rfind("sensor.", 0) == 0
+              ? configured : std::string();
+          const uint32_t generation = entity.empty() ? 0 : ha_subscription_generation();
+          if (entity == id(photo_metadata_subscribed_entity) &&
+              generation == id(photo_metadata_subscription_generation)) return;
+          void *const owner = &id(photo_metadata_subscribed_entity);
+          ha_release_callbacks_for_owner(owner);
+          id(photo_metadata_subscribed_entity) = entity;
+          id(photo_metadata_subscription_generation) = generation;
+          id(photo_metadata_value).clear();
+          id(clock_overlay_apply).execute(static_cast<int>(id(espcontrol_app).display().current_mode()));
+          if (entity.empty()) return;
+          {
+            HaCallbackOwnerScope scope(owner);
+            const bool subscribed = ha_subscribe_state(entity,
+              std::function<void(esphome::StringRef)>([entity, generation](esphome::StringRef value) {
+                if (!id(metadata_overlay_enabled).state || !ha_api_state_connected() || generation != ha_subscription_generation() ||
+                    generation != id(photo_metadata_subscription_generation) ||
+                    entity != id(photo_metadata_subscribed_entity) ||
+                    entity != id(screensaver_metadata_entity).state ||
+                    !id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::CAMERA)) return;
+                const std::string next = espcontrol::photo_metadata_text(string_ref_limited(value, 260));
+                if (next == id(photo_metadata_value)) return;
+                id(photo_metadata_value) = next;
+                id(clock_overlay_apply).execute(static_cast<int>(espcontrol::DisplayMode::CAMERA));
+              }));
+            if (!subscribed) {
+              id(photo_metadata_subscribed_entity).clear();
+              id(photo_metadata_subscription_generation) = 0;
+              return;
+            }
+          }
+          ha_reannounce_state_subscriptions();
+
+interval:
+  - interval: 1s
+    then:
+      - script.execute: photo_metadata_refresh_subscription

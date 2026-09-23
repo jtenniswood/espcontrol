@@ -152,6 +152,7 @@ export function normalizeScreensaverAction(value: unknown): string {
   const action = String(value || "").toLowerCase().replace(/[\s-]+/g, "_");
   if (action === "screen_dimmed" || action === "dimmed" || action === "dim") return "dim";
   if (action === "clock") return "clock";
+  if (action === "camera") return "camera";
   return "off";
 }
 
@@ -159,7 +160,12 @@ export function screensaverActionOption(value: unknown): string {
   const action = normalizeScreensaverAction(value);
   if (action === "dim") return "Screen Dimmed";
   if (action === "clock") return "Clock";
+  if (action === "camera") return "Camera";
   return "Display Off";
+}
+
+export function normalizeScreensaverCameraImageMode(value: unknown): string {
+  return String(value || "").trim().toLowerCase() === "fill" ? "Fill" : "Fit";
 }
 
 export function scheduleModeOption(value: unknown): string {
@@ -355,13 +361,19 @@ export interface BackupPanelSettingsState {
   ntpServer3: string;
   screensaverMode: string;
   presenceSensorEntity: string;
+  screensaverCameraEntity: string;
+  screensaverMetadataEntity: string;
+  metadataOverlay: boolean;
+  screensaverCameraImageMode: string;
   mediaPlayerSleepPrevention: boolean;
   mediaPlayerSleepPreventionEntity: string;
   coverArtScreensaver: boolean;
+  clockOverlay: boolean;
   coverArtMediaPlayerEntity: string;
   coverArtSecondaryMediaPlayerEntity: string;
   coverArtAttributeConditions: string;
   coverArtDelay: unknown;
+  coverArtPlaybackControl: boolean;
   coverArtTrackOverlayDuration: unknown;
   coverArtHideExternalInput: boolean;
   coverArtHomeAssistantProtocol: string;
@@ -498,17 +510,29 @@ export function normalizeBackupPanelSettings(
       : current.ntpServer3,
     screensaverMode: normalizeScreensaverMode(settings.screensaver_mode),
     presenceSensorEntity: String(settings.presence_sensor_entity || ""),
+    screensaverCameraEntity: String(settings.screensaver_camera_entity || ""),
+    screensaverMetadataEntity: String(settings.screensaver_metadata_entity || ""),
+    metadataOverlay: objectValue(settings, "metadata_overlay") != null
+      ? !!settings.metadata_overlay
+      : String(settings.screensaver_metadata_entity || "").startsWith("sensor."),
+    screensaverCameraImageMode: normalizeScreensaverCameraImageMode(
+      settings.screensaver_camera_image_mode,
+    ),
     mediaPlayerSleepPrevention: objectValue(settings, "media_player_sleep_prevention") != null
       ? !!settings.media_player_sleep_prevention
       : true,
     mediaPlayerSleepPreventionEntity: String(settings.media_player_sleep_prevention_entity || settings.cover_art_media_player_entity || ""),
     coverArtScreensaver: !!settings.cover_art_screensaver,
+    clockOverlay: objectValue(settings, "clock_overlay") != null
+      ? !!settings.clock_overlay
+      : false,
     coverArtMediaPlayerEntity: String(settings.cover_art_media_player_entity || settings.media_player_sleep_prevention_entity || ""),
     coverArtSecondaryMediaPlayerEntity: String(settings.cover_art_secondary_media_player_entity || ""),
     coverArtAttributeConditions: String(settings.cover_art_attribute_conditions || settings.cover_art_conditions || ""),
     coverArtDelay: normalizeCoverArtDelay(
       objectValue(settings, "cover_art_delay") != null ? settings.cover_art_delay : 10,
     ),
+    coverArtPlaybackControl: objectValue(settings, "cover_art_playback_control") != null ? !!settings.cover_art_playback_control : true,
     coverArtTrackOverlayDuration: objectValue(settings, "cover_art_track_overlay_duration") != null ? settings.cover_art_track_overlay_duration : 5,
     coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null
       ? !!settings.cover_art_hide_external_input

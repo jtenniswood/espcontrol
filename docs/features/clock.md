@@ -1,25 +1,23 @@
 ---
-title: EspControl Time Settings
+title: "Time Settings"
 description:
   How to configure clock sync, timezone, and 12/24-hour format on your EspControl panel.
 ---
 
 # Time Settings
 
-The panel can display a clock in the top bar, updated every minute from network time. You can choose your timezone, switch between 12-hour and 24-hour format, set custom NTP servers, and adjust the month text used by Date cards.
+The panel can display a clock in the top bar, updated every minute from network time. You can choose your timezone, switch between 12-hour and 24-hour format, and set custom NTP servers.
 
 ## Settings
 
-Configured in the **Time Settings** section of the **Settings** tab in [Setup](/features/setup).
+Configured in **Settings > Preferences > Time** in [Setup](/features/setup).
 
 - **Timezone** — use **Auto (Home Assistant)** to follow the timezone Home Assistant sends to the panel, or select a fixed timezone from the dropdown. This also determines sunrise and sunset times used by the [backlight schedule](/features/backlight).
-- **Clock Format** — choose **12h** for 12-hour time without an AM/PM suffix, or **24h** for 24-hour time. Defaults to 24h.
+- **Clock Format** — choose **12-hour** for time without an AM/PM suffix, or **24-hour** for 24-hour time. Defaults to 24h.
 - **Custom NTP Servers** — turn this on to show and edit the NTP server fields. When it is off, the panel uses the defaults: `0.pool.ntp.org`, `1.pool.ntp.org`, and `2.pool.ntp.org`.
 - **NTP Server 1 / 2 / 3** — choose the network time servers used to keep the panel clock accurate when custom NTP servers are enabled.
-- **Custom Month Names** — advanced Date card labels. Turn this on to edit the twelve month names used by Date cards. Turning it off resets them to the default English month names.
-- **Sunrise / Sunset** — read-only reference values calculated from your timezone, updated daily. Displayed in whichever format you chose.
 
-The **Clock Bar** section controls whether the top bar is shown. The clock bar uses a fixed layout with one temperature reading, the time, and status icons. Select an item in the screen preview to edit or hide it. The temperature unit itself is set in the **Temperature** section. When the connectivity icon is shown, tap it on the panel to see the device name, IP address, WiFi strength, uptime, and firmware version.
+The **Clock Bar** section controls whether the top bar is shown. The clock bar uses a fixed layout with one temperature reading, the time, and status icons. Select an item in the screen preview to edit or hide it. The temperature unit itself is set in the **Temperature** section. When the connectivity icon is shown, tap it on the panel to see the device name, IP address, WiFi strength, and firmware version.
 
 The network status icon is on by default. Hide the **Connectivity** item in the screen preview if you only want the clock and temperature items in the top bar.
 
@@ -37,4 +35,4 @@ The clock format setting affects three things:
 
 The setting is saved on the device and persists across restarts.
 
-Custom month names are saved as one device setting named **Screen: Month Names**. The setup page shows it as twelve separate fields so it is easier to edit.
+Sunrise and sunset times are shown under **Settings > Display > Backlight** when **Automatic** is selected.

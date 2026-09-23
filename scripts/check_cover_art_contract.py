@@ -55,6 +55,88 @@ int main() {
   assert(!use_secondary_media_entity(true, true, false, true));
   assert(!use_secondary_media_entity(true, true, true, false));
   assert(use_secondary_media_entity(true, true, true, true));
+  // Only a pause requested from this screensaver owns a retained session.
+  PlaybackControl control;
+  control.observe("player.a", "paused", 1);
+  assert(!control.retains_pause("player.a"));
+  assert(control.begin("player.a", "playing", 10) == PlaybackCommand::PAUSE);
+  assert(control.begin("player.a", "playing", 11) == PlaybackCommand::NONE);
+  control.observe("player.a", "playing", 20); // repeated state before acknowledgement
+  control.observe("player.a", "paused", 30);
+  assert(control.retains_pause("player.a") && !control.pending());
+  assert(control.begin("player.a", "paused", 40) == PlaybackCommand::PLAY);
+  control.observe("player.a", "paused", 50);
+  assert(control.retains_pause("player.a"));
+  control.observe("player.a", "buffering", 60);
+  control.observe("player.a", "paused", 70); // next pause was external
+  assert(!control.retains_pause("player.a"));
+  // Failed/timed-out pause requests must not claim a later external pause.
+  control.begin("player.a", "playing", 100);
+  control.cancel_pending();
+  control.observe("player.a", "paused", 101);
+  assert(!control.retains_pause("player.a"));
+  control.begin("player.a", "playing", 200);
+  control.observe("player.a", "paused", 200 + PlaybackControl::COMMAND_TIMEOUT_MS);
+  assert(!control.retains_pause("player.a"));
+  control.begin("player.a", "playing", UINT32_MAX - 100);
+  control.observe("player.a", "paused", 20); // millis wrap
+  assert(control.retains_pause("player.a"));
+  control.begin("player.a", "paused", 30);
+  control.expire(30 + PlaybackControl::COMMAND_TIMEOUT_MS);
+  assert(!control.pending() && control.retains_pause("player.a"));
+  // Dismissal, player replacement, and stopped playback release ownership.
+  control.reset();
+  control.observe("player.a", "paused", 6000);
+  assert(!control.retains_pause("player.a"));
+  for (const auto &state : {"idle", "off", "unavailable", "unknown"}) {
+    control.begin("player.a", "playing", 7000);
+    control.observe("player.a", "paused", 7001);
+    control.observe("player.a", state, 7002);
+    assert(!control.retains_pause("player.a"));
+  }
+  control.begin("player.a", "playing", 8000);
+  control.observe("player.b", "paused", 8001);
+  assert(!control.retains_pause("player.a") && !control.retains_pause("player.b"));
+  assert(control.begin("player.b", "paused", 8002) == PlaybackCommand::NONE);
+  // Connection loss ends the retained session, including a pending resume.
+  control.begin("player.a", "playing", 9000);
+  control.observe("player.a", "paused", 9001);
+  assert(!control.update_connection(true));
+  assert(control.retains_pause("player.a"));
+  control.begin("player.a", "paused", 9002);
+  assert(control.update_connection(false));
+  assert(!control.pending() && !control.retains_pause("player.a"));
+  assert(!control.update_connection(false));
+  assert(!control.update_connection(true));
+  control.observe("player.a", "paused", 9003);
+  assert(!control.retains_pause("player.a")); // reconnect cannot reclaim the pause
+  control.begin("player.a", "playing", 9010);
+  assert(!control.update_connection(false)); // pending pause is not a retained screen
+  assert(!control.pending());
+  control.observe("player.a", "paused", 9011);
+  assert(!control.retains_pause("player.a"));
+  // A local pause reveals faded details and prevents their timer from hiding them.
+  control.reset();
+  assert(track_overlay_mode(true, false, true, true, 10) == TrackOverlayMode::TIMED);
+  control.begin("player.a", "playing", 10000);
+  control.observe("player.a", "paused", 10001);
+  for (float seconds : {-1.0f, 0.0f, 10.0f, 30.0f}) {
+    assert(track_overlay_mode(false, control.retains_pause("player.a"), true, true, seconds)
+           == TrackOverlayMode::PERSISTENT);
+  }
+  control.begin("player.a", "paused", 10002);
+  assert(track_overlay_mode(false, control.retains_pause("player.a"), true, true, 10)
+         == TrackOverlayMode::PERSISTENT); // wait for HA before restarting the timer
+  control.observe("player.a", "playing", 10003);
+  assert(track_overlay_mode(true, control.retains_pause("player.a"), true, true, 10)
+         == TrackOverlayMode::TIMED);
+  assert(track_overlay_mode(true, false, true, true, 0) == TrackOverlayMode::HIDDEN);
+  assert(track_overlay_mode(true, false, true, true, -1) == TrackOverlayMode::PERSISTENT);
+  control.observe("player.a", "paused", 10004); // external pause must not retain details
+  assert(track_overlay_mode(false, control.retains_pause("player.a"), true, true, 10)
+         == TrackOverlayMode::HIDDEN);
+  assert(track_overlay_mode(true, false, false, true, 10) == TrackOverlayMode::PERSISTENT);
+  assert(track_overlay_mode(true, false, true, false, 10) == TrackOverlayMode::PERSISTENT);
   PolicyInput p; assert(!policy_allows_display(p));
   p.enabled = p.media_playing = p.entity_configured = true; assert(policy_allows_display(p));
   p.external_input_active = p.hide_external_input = true;
@@ -70,12 +152,96 @@ int main() {
   assert(ten.split && ten.art_size == 800 && ten.panel_x == 840);
   auto ten_v2 = cover_art_layout("guition-esp32-p4-jc8012p4a1-v2", "90", 800, 1280, 800, 506);
   assert(ten_v2.screen_height == 1280 && ten_v2.panel_y == 834);
+  // Five full 103px title lines must leave one artist line and elapsed time
+  // above the playback button. Short titles release space for longer artists.
+  for (const auto &slug : {"guition-esp32-p4-jc8012p4a1",
+                          "guition-esp32-p4-jc8012p4a1-v2",
+                          "guition-esp32-p4-jc8012p4a1-v3"}) {
+    for (const auto &rotation : {"0", "180"}) {
+      const auto layout = cover_art_layout(slug, rotation, 1280, 800, 800, 506);
+      const auto button = playback_button_layout(layout, 103);
+      assert(layout.title_max_lines == 5 && button.title_max_height == 515);
+      const int artist = artist_height_budget(button.panel_height, 515, 47, 4, 35);
+      assert(artist == 51);
+      assert(515 + artist + 35 <= button.panel_height);
+      assert(layout.panel_y + button.panel_height <= 800 - button.margin - button.size);
+      assert(artist_height_budget(button.panel_height, 103, 47, 4, 35) > artist);
+      assert(artist_height_budget(button.panel_height, 515, 47, 4, 0) >= artist);
+    }
+    assert(cover_art_layout(slug, "90", 800, 1280, 800, 506).title_max_lines == 0);
+  }
   auto seven_v2 = cover_art_layout("guition-esp32-p4-jc1060p470-v2", "0", 1024, 600, 600, 260);
   assert(seven_v2.split && seven_v2.art_size == 600 && seven_v2.panel_x == 615);
+  // The 7-inch font has 89px lines with -8px spacing: four lines use 332px.
+  for (const auto &slug : {"guition-esp32-p4-jc1060p470", "guition-esp32-p4-jc1060p470-v2"}) {
+    for (const auto &rotation : {"0", "180"}) {
+      const auto layout = cover_art_layout(slug, rotation, 1024, 600, 600, 260);
+      const auto button = playback_button_layout(layout, 89, -8);
+      assert(layout.title_max_lines == 4 && button.title_max_height == 332);
+      const int artist = artist_height_budget(button.panel_height, 332, 47, 10, 42);
+      assert(artist == 57);
+      assert(332 + artist + 42 <= button.panel_height);
+      assert(layout.panel_y + button.panel_height <= 600 - button.margin - button.size);
+      assert(artist_height_budget(button.panel_height, 89, 47, 10, 42) > artist);
+    }
+    for (const auto &rotation : {"90", "270"}) {
+      const auto layout = cover_art_layout(slug, rotation, 600, 1024, 600, 260);
+      assert(layout.title_max_lines == 0 && layout.title_max_height == 162);
+    }
+  }
   auto four = cover_art_layout("guition-esp32-p4-jc4880p443", "90", 800, 480, 480, 220);
-  assert(four.screen_width == 800 && four.title_max_height == 210);
+  assert(four.screen_width == 800);
+  // Three 69px title lines leave room for artist and elapsed time above the
+  // playback control in both landscape rotations of the 4.3-inch display.
+  for (const auto &rotation : {"90", "270"}) {
+    const auto layout = cover_art_layout("guition-esp32-p4-jc4880p443", rotation, 800, 480, 480, 130);
+    const auto button = playback_button_layout(layout, 69);
+    assert(layout.title_max_lines == 3 && button.title_max_height == 207);
+    const int artist = artist_height_budget(button.panel_height, 207, 47, 10, 42);
+    assert(artist >= 57);
+    assert(207 + artist + 42 <= button.panel_height);
+    assert(layout.panel_y + button.panel_height <= 480 - button.margin - button.size);
+    assert(artist_height_budget(button.panel_height, 69, 47, 10, 42) > artist);
+  }
+  for (const auto &rotation : {"0", "180"}) {
+    const auto layout = cover_art_layout("guition-esp32-p4-jc4880p443", rotation, 480, 800, 480, 130);
+    assert(layout.title_max_lines == 0 && layout.title_max_height == 130);
+  }
   auto square = cover_art_layout("esp32-p4-86", "0", 720, 720, 800, 495);
   assert(!square.split && square.art_size == 720 && square.panel_padding == 36);
+  for (const auto &slug : {"guition-esp32-s3-4848s040", "esp32-p4-86"}) {
+    const bool s3 = std::string(slug) == "guition-esp32-s3-4848s040";
+    const int side = s3 ? 480 : 720;
+    const int title_line = s3 ? 82 : 123;
+    const int artist_line = s3 ? 47 : 70;
+    const int artist_padding = s3 ? 6 : 9;
+    const int time_height = s3 ? 35 : 53;
+    for (const auto &rotation : {"0", "90", "180", "270"}) {
+      const auto layout = cover_art_layout(slug, rotation, side, side, side, s3 ? 330 : 495);
+      const auto button = playback_button_layout(layout, title_line);
+      assert(layout.title_max_lines == 3 && button.title_max_height == 3 * title_line);
+      const int content_height = button.panel_height - layout.panel_padding - button.panel_bottom_padding;
+      const int artist = artist_height_budget(content_height, button.title_max_height,
+                                              artist_line, artist_padding, time_height);
+      assert(artist >= artist_line + artist_padding);
+      assert(button.title_max_height + artist + time_height <= content_height);
+      assert(layout.panel_y + button.panel_height <= side - button.margin - button.size);
+      // Turning off the control restores the full panel, still capped at three title lines.
+      assert(button.title_max_height + artist_line + artist_padding + time_height <=
+             layout.panel_height - 2 * layout.panel_padding);
+    }
+  }
+  for (const auto &layout : {ten, ten_v2, seven_v2, four, square,
+       cover_art_layout("guition-esp32-s3-4848s040", "0", 480, 480, 480, 330),
+       cover_art_layout("guition-esp32-p4-jc4880p443", "0", 480, 800, 480, 130)}) {
+    const auto button = playback_button_layout(layout);
+    assert(button.size >= 80 && button.size <= 112);
+    assert(button.panel_width > 0 && button.panel_height > 0 && button.title_max_height > 0);
+    const int button_x = layout.screen_width - button.margin - button.size;
+    const int button_y = layout.screen_height - button.margin - button.size;
+    assert(layout.panel_x + button.panel_width <= button_x ||
+           layout.panel_y + button.panel_height <= button_y);
+  }
   RuntimeState s; assert(!s.needs_download()); s.select_source("track-a"); assert(s.needs_download());
   s.begin_download("track-a?refresh=1"); s.select_source("track-b");
   assert(s.apply_download("track-a?refresh=1") && s.loaded_url == "track-a" && s.needs_download());
@@ -123,6 +289,27 @@ int main() {
   auto full_fallback = extract_accent_color_rgb565(red_blue_le, 2, 1, false, 4, 0, 1, 1);
   assert(full_fallback.valid && full_fallback.red == 127 && full_fallback.blue == 127);
   auto dark_red = darken_accent_color(little_red);
+  // Keep the icon readable for pale artwork without reducing button brightness.
+  assert(playback_icon_color({229,229,229,true}, {234,234,234,true}) == 0x000000);
+  assert(playback_icon_color({49,49,49,true}, {88,88,88,true}) == 0xFFFFFF);
+  for (int red = 0; red <= 255; red += 17) {
+    for (int green = 0; green <= 255; green += 17) {
+      for (int blue = 0; blue <= 255; blue += 17) {
+        const AccentColor normal{static_cast<uint8_t>(red * 9 / 10),
+                                 static_cast<uint8_t>(green * 9 / 10),
+                                 static_cast<uint8_t>(blue * 9 / 10), true};
+        const AccentColor pressed{static_cast<uint8_t>(normal.red + (255 - normal.red) * 48 / 255),
+                                  static_cast<uint8_t>(normal.green + (255 - normal.green) * 48 / 255),
+                                  static_cast<uint8_t>(normal.blue + (255 - normal.blue) * 48 / 255), true};
+        const bool dark_icon = playback_icon_color(normal, pressed) == 0;
+        for (const auto &background : {normal, pressed}) {
+          const float luminance = accent_luminance(background);
+          const float contrast = dark_icon ? (luminance + 0.05f) / 0.05f : 1.05f / (luminance + 0.05f);
+          assert(contrast >= 3.0f);
+        }
+      }
+    }
+  }
   assert(dark_red.valid && dark_red.red == 85 && dark_red.green == 0 && dark_red.blue == 0);
   assert(!extract_accent_color_rgb565(nullptr, 1, 1, false, 0, 0, 1, 1).valid);
 }
@@ -660,4 +847,69 @@ for required in (
         raise SystemExit(
             f"Full-screen secondary media routing contract missing: {required}"
         )
+
+# A visible screensaver must reach LVGL so the control consumes its own press.
+from check_firmware_ha_bindings import yaml_script_body
+screen = (ROOT / "common/device/screen_cover_art.yaml").read_text()
+touch = yaml_script_body(screen, "cover_art_handle_touch") or ""
+for required in (
+    "!id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART)",
+    "lv_obj_has_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN)",
+    "script.execute: cover_art_pause_after_touch",
+    "script.wait: cover_art_pause_after_touch",
+    "script.execute: screensaver_wake",
+):
+    assert required in touch, f"Missing cover-art touch routing: {required}"
+control = yaml_script_body(screen, "cover_art_toggle_playback") or ""
+assert "screensaver_wake" not in control.replace("screensaver_wake_touch_guard_active", "")
+assert "cover_art_active_media_player_entity" in control
+assert "LV_OBJ_FLAG_EVENT_BUBBLE" in screen
+
+connection = yaml_script_body(screen, "cover_art_update_playback_control") or ""
+assert "update_connection(ha_api_state_connected())" in connection
+assert "script.execute: cover_art_return_home_after_playback" in connection
+
+progress = yaml_script_body(screen, "cover_art_refresh_progress") or ""
+assert "const bool time_was_hidden = lv_obj_has_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);" in progress
+assert "if (time_was_hidden != lv_obj_has_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN))" in progress
+assert "id(cover_art_fit_artist_text).execute();" in progress
+# Both early exits (external input and missing duration) and normal playback
+# must refit after visibility changes, while steady per-second updates skip it.
+assert progress.count("refit_artist_if_needed();") == 3
+assert progress.count("refit_artist_if_needed();\n            return;") == 2
+assert progress.rfind("refit_artist_if_needed();") > progress.index("lv_label_set_text(id(cover_art_time_label), label);")
+
+overlay = yaml_script_body(screen, "cover_art_show_track_overlay") or ""
+assert "mode: restart" in overlay
+assert "track_overlay_mode(" in overlay
+assert "TrackOverlayMode::TIMED" in overlay and "TrackOverlayMode::HIDDEN" in overlay
+assert "retains_pause(id(cover_art_active_media_player_entity))" in overlay
+assert "id(cover_art_track_overlay_duration).state * 1000" in overlay
+delayed_hide = overlay[overlay.index("- delay:"):]
+assert "id(cover_art_media_playing) &&" in delayed_hide
+playback = screen[screen.index("std::function<void(esphome::StringRef)> handle_playback_state ="):
+                  screen.index("std::function<void(esphome::StringRef)> handle_media_title =")]
+assert "if (!was_playing) id(cover_art_show_track_overlay).execute();" in playback
+assert '''if (id(cover_art_playback_control).retains_pause(cover_entity)) {
+                  id(cover_art_show_track_overlay).execute();''' in playback
+fallback = yaml_script_body(screen, "cover_art_show_black_screen") or ""
+assert "retains_pause(id(cover_art_active_media_player_entity))" in fallback
+assert "lv_obj_set_style_text_color(id(cover_art_playback_icon), lv_color_hex(0xFFFFFF), LV_PART_MAIN);" in fallback
+accent_script = yaml_script_body(screen, "cover_art_extract_accent_color") or ""
+assert "espcontrol::cover_art::playback_icon_color(" in accent_script
+assert "rgb(button_color), rgb(pressed_color)" in accent_script
+assert "lv_obj_set_style_text_color(id(cover_art_playback_icon), lv_color_hex(icon_color), LV_PART_MAIN);" in accent_script
+setting = yaml_script_body(screen, "cover_art_refresh_playback_setting") or ""
+assert "${cover_art_square_overlay} && !id(cover_art_playback_control_enabled).state" in setting
+assert "script.execute: cover_art_return_home_after_playback" in setting
+assert "id(cover_art_playback_control).reset()" in setting
+assert "id(cover_art_layout_signature).clear()" in setting
+assert "script.execute: cover_art_apply_responsive_layout" in setting
+assert "!id(cover_art_playback_control_enabled).state) return;" in control
+layout_script = yaml_script_body(screen, "cover_art_apply_responsive_layout") or ""
+compensation_call = "apply_width_compensation(id(cover_art_playback_button), icon_width_compensation_percent());"
+assert compensation_call in layout_script
+assert layout_script.index(compensation_call) < layout_script.index("if (signature ==")
+assert "!${cover_art_square_overlay} || id(cover_art_playback_control_enabled).state" in layout_script
+assert "lv_obj_add_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN)" in layout_script
 print("Cover art policy, layout, and state contract checks passed.")
