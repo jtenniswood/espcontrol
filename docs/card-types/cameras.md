@@ -51,7 +51,7 @@ For a `camera.*` entity, open **Refresh Settings > Camera refresh**:
 | Mode | Behaviour |
 |---|---|
 | **Off** (default) | Keeps the existing updates from Home Assistant and the image request when opening the camera. |
-| **Periodic** | Refreshes the visible card and expanded image. Choose **1**, **3**, **5**, **10** (default), or **30 seconds** between completed downloads and the next request. |
+| **Periodic** | Refreshes the visible card and expanded image. Choose **5**, **10** (default), or **30 seconds** between completed downloads and the next request. |
 | **On activity** | A trigger refreshes the visible card or expanded image for **30 seconds**, with **5 seconds** between a completed download and the next request. Another activation restarts that period. |
 
 For **On activity**, select a **Trigger entity** such as `binary_sensor.front_door_motion` or `event.front_door_doorbell`. Binary sensors trigger when they change from off to on. Event entities trigger when a new event occurs; every event type on the selected entity counts. Opening while a binary sensor is already on starts one window. Remaining on does not extend it indefinitely.

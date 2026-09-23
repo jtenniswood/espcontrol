@@ -105,8 +105,8 @@
     }
   },
   {
-    "name": "periodic invalid interval defaults to ten",
-    "input": "camera.front_door;;Auto;Auto;;;image;;image_modal_refresh_mode=periodic,image_modal_refresh_interval=2",
+    "name": "periodic removed interval defaults to ten",
+    "input": "camera.front_door;;Auto;Auto;;;image;;image_modal_refresh_mode=periodic,image_modal_refresh_interval=1",
     "expected": {
       "entity": "camera.front_door",
       "label": "",

@@ -5840,8 +5840,6 @@
             "label": "Refresh interval",
             "kind": "choice",
             "values": [
-              "1",
-              "3",
               "5",
               "10",
               "30"

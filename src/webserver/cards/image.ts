@@ -103,7 +103,7 @@ export function registerImageCardTypes(
             ["off", "Off"], ["periodic", "Periodic"], ["activity", "On activity"],
         ], configOptionValue(b.options, "image_modal_refresh_mode") || "off");
         const interval = helpers.selectField("Refresh interval", helpers.idPrefix + "image-refresh-interval", [
-            ["1", "1 second"], ["3", "3 seconds"], ["5", "5 seconds"], ["10", "10 seconds"], ["30", "30 seconds"],
+            ["5", "5 seconds"], ["10", "10 seconds"], ["30", "30 seconds"],
         ], configOptionValue(b.options, "image_modal_refresh_interval") || "10");
         const trigger = helpers.entityField("Trigger entity", helpers.idPrefix + "image-refresh-trigger",
             configOptionValue(b.options, "image_modal_refresh_trigger"),

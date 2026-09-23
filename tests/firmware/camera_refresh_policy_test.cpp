@@ -10,8 +10,9 @@ int main() {
   for (const char *bad : {"", "camera.front", "event.", "event.Door", "event.x,y", "binary_sensor.x=y"})
     assert(!valid_trigger(bad));
   assert(refresh_mode("timer") == RefreshMode::OFF);
-  assert(refresh_interval_ms("1") == 1000);
-  assert(refresh_interval_ms("3") == 3000);
+  assert(refresh_interval_ms("1") == 10000);
+  assert(refresh_interval_ms("3") == 10000);
+  assert(refresh_interval_ms("5") == 5000);
   assert(refresh_interval_ms("invalid") == 10000);
 
   RefreshSchedule periodic;

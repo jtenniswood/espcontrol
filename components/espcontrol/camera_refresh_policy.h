@@ -26,8 +26,7 @@ inline bool valid_trigger(const std::string &value) {
 }
 
 inline uint32_t refresh_interval_ms(const std::string &value) {
-  return value == "1" ? 1000 : value == "3" ? 3000 :
-         value == "5" ? 5000 : value == "30" ? 30000 : 10000;
+  return value == "5" ? 5000 : value == "30" ? 30000 : 10000;
 }
 
 inline bool valid_state(const std::string &value) {

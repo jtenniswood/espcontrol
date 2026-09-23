@@ -299,11 +299,11 @@ int main() {
   ctx.entity_id = "camera.test";
   ctx.last_download_completed_ms = 0;
   ctx.refresh_schedule.mode = espcontrol::camera::RefreshMode::PERIODIC;
-  ctx.refresh_schedule.interval_ms = 1000;
+  ctx.refresh_schedule.interval_ms = 5000;
   image_card_refresh_due();
   assert(tile_requests == 1 && ctx.scheduled_tile_request); // Periodic refresh starts on the visible card.
   finish_tile();
-  esphome::now += 999;
+  esphome::now += 4999;
   image_card_refresh_due();
   assert(tile_requests == 1);
   esphome::now += 1;
