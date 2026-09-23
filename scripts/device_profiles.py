@@ -129,6 +129,7 @@ CANONICAL_PACKAGE_KEYS = (
     "extraPackages",
     "backlightPwmFrequency",
     "apiNavigateAction",
+    "apiOpenModalAction",
 )
 
 
@@ -672,6 +673,7 @@ def validate_package(slug: str, device: dict[str, Any], errors: list[str]) -> No
         "localVoiceServices",
         "alarmDelayAudio",
         "apiNavigateAction",
+        "apiOpenModalAction",
         "esp32C6FirmwareUpdate",
     ):
         if key in package and not isinstance(package[key], bool):

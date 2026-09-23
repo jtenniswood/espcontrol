@@ -953,7 +953,8 @@ def firmware_fan_light_fallback_errors(root: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     required = (
         'if (ctx->type == "fan_control" && fan_light_supported(ctx)) return true;',
-        'if (!ctx || (!ctx->available && !fan_light_supported(ctx))) return;',
+        'return ctx && (ctx->available || fan_light_supported(ctx)) &&',
+        'if (!fan_control_can_open_modal(ctx)) return;',
         "ctx->light_available = !ha_state_unavailable_ref(state);",
         "if (ui.active == ctx && fan_control_visible_tabs(ctx).count == 0) fan_control_hide_modal();",
     )
@@ -1837,8 +1838,12 @@ def run_self_test() -> int:
         "inline bool fan_control_supported(FanCardCtx *ctx) {\n"
         "  if (ctx->type == \"fan_control\" && fan_light_supported(ctx)) return true;\n"
         "}\n"
+        "inline bool fan_control_can_open_modal(FanCardCtx *ctx) {\n"
+        "  return ctx && (ctx->available || fan_light_supported(ctx)) &&\n"
+        "         fan_control_visible_tabs(ctx).count > 0;\n"
+        "}\n"
         "inline void fan_control_open_modal(FanCardCtx *ctx) {\n"
-        "  if (!ctx || (!ctx->available && !fan_light_supported(ctx))) return;\n"
+        "  if (!fan_control_can_open_modal(ctx)) return;\n"
         "}\n"
         "inline void subscribe_fan_card_state(FanCardCtx *ctx) {\n"
         "  ctx->light_available = !ha_state_unavailable_ref(state);\n"
@@ -1856,8 +1861,8 @@ def run_self_test() -> int:
     expect_fan_light_fallback_errors(
         "fan light modal requires fan availability",
         valid_fan_light_fallback.replace(
-            "if (!ctx || (!ctx->available && !fan_light_supported(ctx))) return;",
-            "if (!ctx || !ctx->available) return;",
+            "return ctx && (ctx->available || fan_light_supported(ctx)) &&",
+            "return ctx && ctx->available &&",
         ),
         ("keep the separate light tab available",),
     )

@@ -107,6 +107,23 @@ def package_api_navigate_enabled(package_path: Path, root: Path) -> bool:
     return bool(package.get("apiNavigateAction", True))
 
 
+def package_api_open_modal_enabled(package_path: Path, root: Path) -> bool:
+    manifest_path = root / "devices" / "manifest.json"
+    if not manifest_path.exists():
+        return True
+    try:
+        slug = package_path.relative_to(root / "devices").parts[0]
+    except (ValueError, IndexError):
+        return True
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return True
+    device = manifest.get("devices", {}).get(slug, {})
+    package = device.get("firmware", {}).get("package", {})
+    return bool(package.get("apiOpenModalAction", True))
+
+
 def package_local_voice_services_enabled(package_path: Path, root: Path) -> bool:
     manifest_path = root / "devices" / "manifest.json"
     if not manifest_path.exists():
@@ -3445,8 +3462,11 @@ def firmware_s3_api_errors(
     if s3_packages_path.exists():
         s3_rel = s3_packages_path.relative_to(root)
         s3_packages = s3_packages_path.read_text(encoding="utf-8")
-        if "api_navigate" in s3_packages or "api_navigate.yaml" in s3_packages:
-            errors.append(f"{s3_rel}: omit the Home Assistant navigate API action on S3")
+        has_navigate_package = "api_navigate" in s3_packages or "api_navigate.yaml" in s3_packages
+        if package_api_navigate_enabled(s3_packages_path, root) and not has_navigate_package:
+            errors.append(f"{s3_rel}: include the Home Assistant navigate API action on S3")
+        elif not package_api_navigate_enabled(s3_packages_path, root) and has_navigate_package:
+            errors.append(f"{s3_rel}: omit the Home Assistant navigate API action when disabled")
 
     for package_path in package_paths:
         if package_path == s3_packages_path or not package_path.exists():
@@ -3457,6 +3477,50 @@ def firmware_s3_api_errors(
         package_text = package_path.read_text(encoding="utf-8")
         if "api_navigate" not in package_text or "api_navigate.yaml" not in package_text:
             errors.append(f"{package_rel}: include the dedicated Home Assistant navigate API package")
+    return errors
+
+
+def firmware_open_modal_api_errors(root: Path, package_paths: tuple[Path, ...]) -> list[str]:
+    errors: list[str] = []
+    api_path = root / "common/device/api_open_modal.yaml"
+    scripts_path = root / "common/device/api_remote_actions.yaml"
+    if not api_path.exists():
+        return ["common/device/api_open_modal.yaml: missing entity modal API action"]
+    if not scripts_path.exists():
+        return ["common/device/api_remote_actions.yaml: missing shared remote action scripts"]
+    api_text = api_path.read_text(encoding="utf-8")
+    scripts_text = scripts_path.read_text(encoding="utf-8")
+    modal_script_start = scripts_text.find("  - id: open_entity_modal")
+    modal_script_end = scripts_text.find("  - id: open_remote_subpage", modal_script_start)
+    modal_script = scripts_text[modal_script_start:modal_script_end if modal_script_end >= 0 else None]
+    api_required = ("action: open_modal", "entity_id: string", "id: open_entity_modal")
+    script_required = ("mode: restart", "espcontrol_can_open_modal(entity_id,",
+                      "script.execute: screensaver_wake", "script.wait: screensaver_wake",
+                      "espcontrol_open_modal(entity_id,", "script.execute: screensaver_idle_check",
+                      "script.execute: home_screen_idle_check")
+    api_positions = [api_text.find(value) for value in api_required]
+    script_positions = [modal_script.find(value) for value in script_required]
+    if (modal_script_start < 0 or -1 in api_positions or api_positions != sorted(api_positions)
+            or -1 in script_positions or script_positions != sorted(script_positions)
+            or modal_script.count("grid_phase2_complete()") < 2):
+        errors.append("common/device/api_open_modal.yaml: validate, wake, revalidate, open, then reset idle timers")
+    for path in package_paths:
+        has_modal = package_api_open_modal_enabled(path, root)
+        has_navigate = package_api_navigate_enabled(path, root)
+        package_text = path.read_text(encoding="utf-8") if path.exists() else ""
+        if not has_modal and "api_open_modal.yaml" in package_text:
+            errors.append(f"{path.relative_to(root)}: omit the entity modal action when disabled")
+        if not has_navigate and "api_navigate.yaml" in package_text:
+            errors.append(f"{path.relative_to(root)}: omit the navigate action when disabled")
+        has_remote_scripts = "api_remote_actions.yaml" in package_text
+        if (has_modal or has_navigate) and not has_remote_scripts:
+            errors.append(f"{path.relative_to(root)}: include shared remote scripts when either API action is enabled")
+        if not (has_modal or has_navigate) and has_remote_scripts:
+            errors.append(f"{path.relative_to(root)}: omit shared remote scripts when both API actions are disabled")
+        if not has_modal:
+            continue
+        if "api_open_modal.yaml" not in package_text:
+            errors.append(f"{path.relative_to(root)}: include the entity modal action on P4 and S3")
     return errors
 
 
@@ -3520,6 +3584,9 @@ def firmware_navigation_target_errors(
     else:
         api_rel = api_navigate_path.relative_to(root)
         api_text = api_navigate_path.read_text(encoding="utf-8")
+        shared_actions_path = root / "common/device/api_remote_actions.yaml"
+        if shared_actions_path.exists():
+            api_text += "\n" + shared_actions_path.read_text(encoding="utf-8")
         if "navigation_is_voice_target(target)" not in api_text or "${navigate_voice_target_code}" not in api_text:
             errors.append(f"{api_rel}: route reserved voice targets through the device-specific voice hook")
         if "!navigation_has_home_label_target(target)" not in api_text:
@@ -3851,6 +3918,7 @@ def run_scan() -> int:
             ROOT,
         )
     )
+    errors.extend(firmware_open_modal_api_errors(ROOT, DEVICE_PACKAGE_PATHS))
     errors.extend(firmware_navigation_target_errors(FIRMWARE_DIR, API_NAVIGATE_PATH, DEVICE_PACKAGE_PATHS, ROOT))
     errors.extend(firmware_connectivity_api_errors(CONNECTIVITY_PATHS, ROOT))
     errors.extend(
@@ -7736,8 +7804,13 @@ def run_self_test() -> int:
     expect_s3_api_errors(
         "S3 includes navigate API package",
         "api:\n  max_connections: 3\n  max_send_queue: 12\n",
-        ("omit the Home Assistant navigate API action on S3",),
+        (),
         s3_packages_text="packages:\n  api_navigate: !include ../../common/device/api_navigate.yaml\n",
+    )
+    expect_s3_api_errors(
+        "S3 missing navigate API package",
+        "api:\n  max_connections: 3\n  max_send_queue: 12\n",
+        ("include the Home Assistant navigate API action on S3",),
     )
     expect_s3_api_errors(
         "navigate action left in shared core",
@@ -7856,6 +7929,71 @@ def run_self_test() -> int:
         "      - lvgl.page.show: ha_setup_page\n",
         ("keep the current display visible",),
     )
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        api = root / "common/device/api_open_modal.yaml"
+        api.parent.mkdir(parents=True)
+        original = (ROOT / "common/device/api_open_modal.yaml").read_text()
+        scripts = root / "common/device/api_remote_actions.yaml"
+        scripts.write_text((ROOT / "common/device/api_remote_actions.yaml").read_text())
+        package = root / "packages.yaml"
+        package.write_text(
+            "packages:\n"
+            "  api_remote_actions: !include common/device/api_remote_actions.yaml\n"
+            "  api_open_modal: !include common/device/api_open_modal.yaml\n"
+        )
+        api.write_text(original)
+        assert not firmware_open_modal_api_errors(root, (package,))
+        for token in ("mode: restart", "espcontrol_can_open_modal", "script.wait: screensaver_wake",
+                      "espcontrol_open_modal", "script.execute: home_screen_idle_check"):
+            source_path = api if token in original else scripts
+            source_text = original if source_path == api else scripts.read_text(encoding="utf-8")
+            source_path.write_text(source_text.replace(token, "removed"))
+            assert firmware_open_modal_api_errors(root, (package,)), token
+            source_path.write_text(source_text)
+        manifest = root / "devices/manifest.json"
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text(
+            json.dumps({"devices": {"constrained": {"firmware": {"package": {"apiOpenModalAction": False}}}}}),
+            encoding="utf-8",
+        )
+        disabled_package = root / "devices/constrained/packages.yaml"
+        disabled_package.parent.mkdir(parents=True)
+        disabled_package.write_text("packages: {}\n", encoding="utf-8")
+        # Navigation remains independently enabled, so its package includes the
+        # shared scripts while omitting the modal API package.
+        manifest.write_text(
+            json.dumps({"devices": {"constrained": {"firmware": {"package": {
+                "apiOpenModalAction": False, "apiNavigateAction": True
+            }}}}}),
+            encoding="utf-8",
+        )
+        disabled_package.write_text(
+            "packages:\n"
+            "  api_remote_actions: !include common/device/api_remote_actions.yaml\n"
+            "  api_navigate: !include common/device/api_navigate.yaml\n",
+            encoding="utf-8",
+        )
+        assert not firmware_open_modal_api_errors(root, (disabled_package,))
+        # The inverse selection keeps the modal actions and shared scripts but
+        # omits navigation.
+        manifest.write_text(
+            json.dumps({"devices": {"constrained": {"firmware": {"package": {
+                "apiOpenModalAction": True, "apiNavigateAction": False
+            }}}}}),
+            encoding="utf-8",
+        )
+        disabled_package.write_text(
+            "packages:\n"
+            "  api_remote_actions: !include common/device/api_remote_actions.yaml\n"
+            "  api_open_modal: !include common/device/api_open_modal.yaml\n",
+            encoding="utf-8",
+        )
+        assert not firmware_open_modal_api_errors(root, (disabled_package,))
+        package.write_text("packages: {}\n")
+        assert firmware_open_modal_api_errors(root, (package,))
+        api.unlink()
+        assert firmware_open_modal_api_errors(root, (package,))
     print("Firmware Home Assistant binding self-tests passed.")
     return 0
 

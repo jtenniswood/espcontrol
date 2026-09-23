@@ -63,3 +63,5 @@
 #include "button_grid_alarm.h"
 #include "button_grid_navigation.h"
 #include "button_grid_grid.h"
+
+#include "button_grid_remote_modal.h"
