@@ -27,82 +27,24 @@ You can also right-click an empty space on the home screen and choose **Create S
 
 Subpages can contain Switch, Lights, Action, Local Action, Option Select, Webhook, Trigger, Sensor, Local Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Lawn Mower, Cover, Garage Door, Lock, Alarm, Date & Time, Clock, World Clock, Weather, Camera, Media, Climate, Internal Switches, and Screen Lock cards. Subpages cannot contain another Subpage card.
 
-## Open or Activate a Target From Home Assistant
+## Automate Panel Navigation and Controls
 
-You can ask Home Assistant to wake the panel and open or activate something on the home screen. This is useful in automations, scripts, dashboards, or voice routines where you want the panel to jump to a relevant page or open a card's normal control popup.
+Home Assistant actions let an automation put the panel on the page or controls
+that matter at that moment—for example, show a room's light controls when someone
+arrives, or return the panel to its home screen after a task. Find them in
+**Developer Tools > Actions** after the panel firmware registers them. Replace
+`hall_panel` below with your ESPHome device name.
 
-The general Home-Assistant-to-panel `navigate` action is available on P4 and S3 firmware. It can activate any home-screen card by label or slot, so command cards may run their configured Home Assistant actions.
+| Action | Why use it | Data |
+| --- | --- | --- |
+| `navigate` | Simulate tapping a home-screen card, or return home. Useful for jumping to a card from a routine or dashboard button. Available on P4 and S3. | `target`: card label, `slot:3`, or `home` (`voice` opens voice controls on supported P4s) |
+| `open_modal` | Show an entity's existing control popup without toggling it or running a command. Useful for surfacing controls at the right time. Available on P4 and S3. | `entity_id`: entity on a supported control card |
+| `close_modal` | Dismiss the popup and reveal the page underneath. | None |
+| `open_subpage` | Open a labeled Subpage without activating another card. Useful when an automation should show a group of related controls safely. | `label`: Subpage card label |
+| `close_subpage` | Return to the home screen; also closes a popup on that subpage. | None |
 
-Firmware with the remote control actions also provides `open_subpage`, including
-on the S3. This focused action opens a labeled Subpage card without activating
-other kinds of home-screen cards. Use it when an automation should only open a
-subpage and should never trigger a command card.
-
-Use the ESPHome action named after your device:
-
-```yaml
-action: esphome.<device_name>_navigate
-data:
-  target: "Lights"
-```
-
-Replace `<device_name>` with the ESPHome device name shown in Home Assistant. For example, if the device is called `hall_panel`, the action is:
-
-```yaml
-action: esphome.hall_panel_navigate
-data:
-  target: "Lights"
-```
-
-### Test It in Home Assistant
-
-Before using the action in an automation or dashboard button, test it from Home Assistant:
-
-1. Go to **Developer Tools**.
-2. Open the **Actions** tab.
-3. Search for `navigate` or your panel name, such as `hall_panel`.
-4. Select the ESPHome action for your panel.
-5. Enter the target page and click **Perform action**.
-
-For example:
-
-```yaml
-action: esphome.hall_panel_navigate
-data:
-  target: "Lights"
-```
-
-To return to the home screen, use:
-
-```yaml
-action: esphome.hall_panel_navigate
-data:
-  target: "home"
-```
-
-The action is not an entity, so it will not appear in the entity list. It only appears in **Developer Tools** > **Actions** after the panel firmware has registered it with Home Assistant. If Home Assistant shows `Action not found` or `Unknown action selected`, update the panel firmware and reload or restart the ESPHome integration.
-
-The `target` value can be:
-
-- `home` or `main` to open the home screen.
-- The **Label** you set on a home-screen card, such as `Lights`, `Heating`, `Camera`, or `Media`. Matching is not case-sensitive, so `lights` and `Lights` work the same way.
-- `slot:3` to activate the card in home-screen slot 3.
-- `voice`, `mic`, `microphone`, `speaker`, `volume`, or `device_volume` on voice-enabled ESP32-P4-86 firmware to open the device volume and microphone control popup when **Voice Services** are enabled.
-
-You do not need to know a page number. Use the same label you gave the card on the home screen.
-
-If two home-screen cards use the same label, the first matching displayed slot is used. To avoid surprises, give cards you want to target a unique label. If Home Assistant sends a label or slot that does not exist, the panel logs a warning and stays on the current page.
-
-Targeting a normal home-screen card is the same as tapping it on the panel. Camera or image, climate, media volume, light control, cover, alarm, option-select, and similar cards open their normal popup. Action, toggle, webhook, lock, garage, cover command, vacuum, mower, and other command cards can send real Home Assistant commands, so target those carefully.
-
-The panel wakes before navigating, so the action works when the screen is off, dimmed, or showing the clock screensaver. It does not change long-press behavior. If you use the [Home screen timeout](/features/idle), the panel will still return to the home screen using that normal setting.
-
-## Open Entity Controls From Home Assistant
-
-Use `open_modal` to wake a P4 or S3 panel and open an existing control card by
-its Home Assistant entity ID. The card can be on the home screen or inside a
-subpage. Its popup opens over the current page; closing it returns to that same
-page. Normal idle and home-screen timeouts still apply.
+Example action to show the office light controls from an automation, such as one
+triggered by presence:
 
 ```yaml
 action: esphome.hall_panel_open_modal
@@ -110,81 +52,18 @@ data:
   entity_id: light.office_ceiling
 ```
 
-Replace `hall_panel` with your device name. Find the action under Home Assistant
-**Developer Tools > Actions**, after installing firmware containing this feature.
-Reload the ESPHome integration if the new action has not appeared.
+`navigate` behaves like a tap: targeting an Action, toggle, webhook, lock, or
+other command card can run its configured action. Use `open_subpage` when you
+only want to open a Subpage. For `open_modal`, the entity must have a supported
+control card configured on the panel; this action displays its controls but does
+not operate the entity. Labels are case-insensitive; if duplicates exist, the
+first matching card opens. Opening actions wake the panel. Screen Lock and an
+active alarm display takeover prevent remote opens.
 
-The entity must already have a configured card with controls: Light Control,
-Cover All Controls, Climate, Fan Control or Preset, Media Control, Speaker Group,
-Volume or Cover Art, Camera/Image, Alarm Control, Option Select, or Wi-Fi sharing
-with a guest-network entity. Opening controls does not toggle a device, start
-playback, run a script, or confirm a command. Toggle-only cards, command cards,
-and confirmation popups are not eligible.
-
-If several control cards use the same entity, the first home-screen control card
-in display order wins, followed by subpages in parent and child display order.
-The chosen card's settings are used. If it is unavailable, the panel does not
-fall back to another card. Give each target entity one control card when you need
-an unambiguous choice.
-
-For example, an automation can show light controls when presence is detected:
-
-```yaml
-alias: Show office light controls
-triggers:
-  - trigger: state
-    entity_id: binary_sensor.office_presence
-    to: "on"
-actions:
-  - action: esphome.hall_panel_open_modal
-    data:
-      entity_id: light.office_ceiling
-```
-
-To close the currently open control popup remotely, call `close_modal` with no
-data. It returns to the page underneath the popup and does nothing when no
-control popup is open:
-
-```yaml
-action: esphome.hall_panel_close_modal
-```
-
-Replace `hall_panel` with your ESPHome device name, as for `open_modal`.
-
-To open a labeled Subpage card from Home Assistant, call `open_subpage`:
-
-```yaml
-action: esphome.hall_panel_open_subpage
-data:
-  label: "Lights"
-```
-
-Use the Subpage card's home-screen label. If labels are duplicated, the first
-matching card in display order opens. This action wakes the panel and leaves
-other card types untouched.
-
-To return from the currently open subpage to the home screen, call
-`close_subpage` with no data:
-
-```yaml
-action: esphome.hall_panel_close_subpage
-```
-
-This also closes a popup on that subpage. It does nothing if the home screen is
-already active, and it does not interrupt an alarm display takeover.
-
-Open requests are ignored while Screen Lock is enabled, during an active alarm
-display takeover, or before the panel is ready. `open_modal` requires a supported,
-available control card for the entity. `open_subpage` requires a matching labeled
-Subpage card. Invalid requests leave the current display untouched. Requests
-arriving during wake-up replace the pending request with the latest one.
-
-This action does not return a result to Home Assistant. Device logs under
-`open_modal` explain rejected requests, duplicate matches, successful opens, or
-modal creation failures. Logs under `open_subpage` explain rejected requests and
-duplicate labels. `navigate` is available on the S3 as well as P4 devices;
-`open_subpage` remains the focused option when only a labeled Subpage card
-should be opened.
+These are actions, not entities. If a newly installed action is missing from
+**Developer Tools > Actions**, update the panel firmware and reload the ESPHome
+integration. The panel logs rejected requests; Home Assistant actions do not
+return a result.
 
 ## Show State
 
