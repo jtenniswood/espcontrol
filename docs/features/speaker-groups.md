@@ -23,7 +23,7 @@ Check your configuration in Home Assistant, then restart Home Assistant to load 
 
 ### Standard Integrations
 
-This example lists Sonos players. For another integration that supports joining and unjoining your speakers, replace both instances of `sonos` with its Home Assistant integration name, such as `heos`. Include the main speaker and the speakers you want to join.
+This example lists Sonos players using the comma-separated format supported by existing EspControl installations. For another integration that supports joining and unjoining your speakers, replace both instances of `sonos` with its Home Assistant integration name, such as `heos`. Include the main speaker and the speakers you want to join.
 
 ```yaml
 template:
@@ -36,12 +36,7 @@ template:
         attributes:
           data: >
             {%- set s = integration_entities("sonos") | select("match", "media_player") | list -%}
-            {%- set ns = namespace(items=[]) -%}
-            {%- for entity_id in s -%}
-              {%- set available = states(entity_id) not in ["unknown", "unavailable"] -%}
-              {%- set ns.items = ns.items + [[entity_id, state_attr(entity_id, "friendly_name") or entity_id, state_attr(entity_id, "volume_level"), available]] -%}
-            {%- endfor -%}
-            v2|{{ ns.items | to_json }}
+            {{ s | map("replace", "media_player.", "") | join(",") }}|{{ s | map("state_attr", "friendly_name") | join(",") }}|{{ s | map("state_attr", "volume_level") | join(",") }}
 ```
 
 ### Music Assistant 2.8 and Later
@@ -71,7 +66,7 @@ template:
 
 After Home Assistant restarts, open **Developer Tools** > **States** and search for `sensor.speaker_group`. Its state should be the number of speakers found, and its `data` attribute should list the speaker names. If it is missing, check the YAML indentation and Home Assistant logs. If Home Assistant assigned another entity ID, such as `sensor.speaker_group_2`, use that exact ID in **Speaker Discovery Entity** below. If its state is `0`, check that the integration name matches Home Assistant and that it has `media_player` entities.
 
-The versioned JSON format above is recommended because speaker names can safely contain commas and it reports availability explicitly. The earlier comma-separated ESPHome Media Player format remains supported for existing installations.
+The Sonos example uses the earlier comma-separated format, which remains supported. The Music Assistant example uses versioned JSON, so names containing commas are handled safely and availability is reported explicitly.
 
 ## Add the Card in EspControl
 
