@@ -39,7 +39,7 @@ template:
             {{ s | map("replace", "media_player.", "") | join(",") }}|{{ s | map("state_attr", "friendly_name") | join(",") }}|{{ s | map("state_attr", "volume_level") | join(",") }}
 ```
 
-### Music Assistant 2.8 and Later
+### Music Assistant
 
 [Music Assistant 2.8 introduced player merging](https://www.music-assistant.io/blog/2026/03/25/music-assistant-2-8/), which combines multiple protocols for the same physical speaker into one player. Use this template to list its media players. Only include players that can be grouped together. To restrict the list, replace the `set s = ...` expression in **both** `state` and `data` with an explicit list, for example `{%- set s = ["media_player.living_room", "media_player.kitchen"] -%}`. Use the Music Assistant entity IDs for those players.
 
