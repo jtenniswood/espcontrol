@@ -13,7 +13,12 @@
 #include "esphome/core/defines.h"
 #include "esphome/core/hal.h"
 #ifdef USE_ESP_IDF
+#if __has_include("lwip/opt.h")
 #include "lwip/opt.h"
+#endif
+#ifndef LWIP_IPV6
+#define LWIP_IPV6 0
+#endif
 #endif
 
 #ifdef USE_ESP_IDF
