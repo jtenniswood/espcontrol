@@ -25,7 +25,7 @@ EspControl exposes each relay in two ways:
 | ETH-2RO | **Relay 1** | `switch.<device_name>_relay_1` | `button.<device_name>_relay_1_push` | GPIO32 |
 | ETH-2RO | **Relay 2** | `switch.<device_name>_relay_2` | `button.<device_name>_relay_2_push` | GPIO46 |
 
-They appear as normal Home Assistant entities on the EspControl device. You can control them from Home Assistant dashboards, automations, scripts, and voice assistants.
+They appear as normal Home Assistant entities on the EspControl device. You can control them from Home Assistant dashboards, automations, scripts, and Home Assistant voice assistants.
 
 ![Home Assistant controls card showing Display Backlight plus Relay 1, Relay 2, and Relay 3 switches](/images/relay-controls.svg)
 
