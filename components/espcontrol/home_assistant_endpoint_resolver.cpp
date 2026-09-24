@@ -173,7 +173,8 @@ void HomeAssistantEndpointResolver::process_probe(uint32_t now) {
   }
   if (!selecting_ || probe_pending_ || static_cast<int32_t>(now - next_probe_ms_) < 0) return;
   if (candidate_index_ >= candidates_.size()) { finish_selection(now); return; }
-  if (probe_->start(candidates_[candidate_index_].origin, selection_generation_)) {
+  if (probe_->start(candidates_[candidate_index_].origin, selection_generation_,
+                    candidates_[candidate_index_].require_local_destination)) {
     probe_pending_ = true;
     health_ = "Checking connection";
   } else {

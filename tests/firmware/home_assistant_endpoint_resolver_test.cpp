@@ -9,12 +9,14 @@ using namespace espcontrol::home_assistant_endpoint;
 
 struct FakeProbe : EndpointProbe {
   std::vector<std::string> calls;
+  std::vector<bool> local_destination_required;
   std::deque<EndpointProbeResult> results;
   uint32_t generation{0};
   bool available{true};
-  bool start(const std::string &origin, uint32_t gen) override {
+  bool start(const std::string &origin, uint32_t gen, bool require_local_destination) override {
     if (!available) return false;
-    calls.push_back(origin); generation = gen; return true;
+    calls.push_back(origin); local_destination_required.push_back(require_local_destination);
+    generation = gen; return true;
   }
   bool take(EndpointProbeResult &result) override {
     if (results.empty()) return false;
@@ -34,8 +36,10 @@ int main() {
   resolver.configure("Automatic", "http", 8123, "10.20.30.40");
   resolver.accept_discovery({server}); resolver.loop();
   assert(probe.calls.back() == "https://split.example:9443");
+  assert(probe.local_destination_required.back());
   probe.reply(EndpointProbeOutcome::TRANSPORT); resolver.loop();
   assert(probe.calls.back() == "http://10.20.30.40:8123");
+  assert(!probe.local_destination_required.back());
   probe.reply(EndpointProbeOutcome::READY, 200); resolver.loop();
   assert(resolver.origin() == "http://10.20.30.40:8123");
   assert(resolver.health() == "Connection checked" && changes == 1);

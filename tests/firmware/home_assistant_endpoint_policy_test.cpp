@@ -28,7 +28,9 @@ int main() {
   found = discover({local}, "10.20.30.40", "http", 80);
   assert(found.candidates.size() == 4);
   assert(found.candidates[0].origin == "https://split.example:9443");
+  assert(found.candidates[0].require_local_destination);
   assert(found.candidates[1].origin == "http://10.20.30.40:8123");
+  assert(!found.candidates[1].require_local_destination);
   assert(found.candidates[2].origin == "https://10.20.30.40:8123");
   assert(found.candidates[3].origin == "http://10.20.30.40:80");
   assert(found.candidates[3].source == Source::FALLBACK);

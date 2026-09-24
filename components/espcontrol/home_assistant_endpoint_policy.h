@@ -250,6 +250,7 @@ struct Candidate {
   std::string origin;
   Source source{Source::AUTOMATIC};
   const char *reason{"advertised local URL"};
+  bool require_local_destination{false};
 };
 struct Discovery {
   std::vector<Candidate> candidates;
@@ -272,17 +273,20 @@ inline Discovery discover(const std::vector<ServiceRecord> &records,
     }
     if (!matched || !record.internal_url.empty()) matched = &record;
   }
-  auto add = [&](std::string origin, Source source, const char *reason) {
+  auto add = [&](std::string origin, Source source, const char *reason,
+                 bool require_local_destination = false) {
     origin = parse_origin(origin);
     if (origin.empty()) return;
     for (const auto &candidate : result.candidates)
       if (candidate.origin == origin) return;
-    result.candidates.push_back({std::move(origin), source, reason});
+    result.candidates.push_back({std::move(origin), source, reason, require_local_destination});
   };
   if (matched && !result.ambiguous) {
     const std::string internal = parse_origin(matched->internal_url);
     result.invalid_internal_url = !matched->internal_url.empty() && internal.empty();
-    add(internal, Source::AUTOMATIC, "advertised local URL");
+    // mDNS is unauthenticated. Hostnames from its TXT record may be used only
+    // when the probe confirms they resolve to a private/local network target.
+    add(internal, Source::AUTOMATIC, "advertised local URL", true);
     add(build_origin(protocol, client, matched->port), Source::AUTOMATIC, "advertised local service");
     if (local_address(client))
       add(build_origin(normalize_protocol(protocol) == "http" ? "https" : "http", client, matched->port),

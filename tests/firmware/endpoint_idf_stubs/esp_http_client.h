@@ -20,9 +20,10 @@ inline esp_http_client_config_t probe_test_config;
 inline std::string probe_test_url, probe_test_content_type = "application/manifest+json";
 inline std::map<std::string, std::string> probe_test_headers;
 inline int probe_test_status = 200, probe_test_error = 0, probe_test_cleanups = 0;
+inline int probe_test_client_allocations = 0;
 inline bool probe_test_client_allocation_fails = false;
 inline esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t *config) {
- probe_test_config = *config; probe_test_url = config->url; probe_test_headers.clear();
+ ++probe_test_client_allocations; probe_test_config = *config; probe_test_url = config->url; probe_test_headers.clear();
  return probe_test_client_allocation_fails ? nullptr : &probe_test_config;
 }
 inline void esp_http_client_set_header(esp_http_client_handle_t, const char *key, const char *value) {
