@@ -2886,8 +2886,8 @@ def firmware_display_active_finalization_errors(
     else:
         ordered_tokens = (
             "delay: 50ms",
-            "lv_scr_act() == id(main_page)->obj",
             "espcontrol::DisplayMode::ACTIVE",
+            "lv_scr_act() == id(main_page)->obj",
             "script.execute: clock_bar_apply",
             "script.wait: clock_bar_apply",
             "script.execute: backlight_apply_brightness",
@@ -7526,12 +7526,16 @@ def run_self_test() -> int:
         "      - delay: 50ms\n"
         "      - if:\n"
         "          condition:\n"
-        "            lambda: 'return lv_scr_act() == id(main_page)->obj && id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::ACTIVE);'\n"
+        "            lambda: 'return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::ACTIVE);'\n"
         "          then:\n"
-        "            - script.execute: clock_bar_apply\n"
-        "            - script.wait: clock_bar_apply\n"
-        "            - script.execute: backlight_apply_brightness\n"
-        "            - script.wait: backlight_apply_brightness\n"
+        "            - if:\n"
+        "                condition:\n"
+        "                  lambda: 'return lv_scr_act() == id(main_page)->obj;'\n"
+        "                then:\n"
+        "                  - script.execute: clock_bar_apply\n"
+        "                  - script.wait: clock_bar_apply\n"
+        "                  - script.execute: backlight_apply_brightness\n"
+        "                  - script.wait: backlight_apply_brightness\n"
         "            - script.execute: screensaver_idle_check\n"
         "            - script.execute: home_screen_idle_check\n"
     )
@@ -7556,6 +7560,17 @@ def run_self_test() -> int:
         valid_schedule_wake,
         valid_active_navigation,
         (),
+    )
+    expect_display_active_finalization_errors(
+        "active-state check precedes the page-specific guard",
+        valid_active_finalizer.replace(
+            "return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::ACTIVE);",
+            "return lv_scr_act() == id(main_page)->obj && "
+            "id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::ACTIVE);",
+        ),
+        valid_schedule_wake,
+        valid_active_navigation,
+        ("finalize active display",),
     )
     expect_display_active_finalization_errors(
         "scheduled wake waits for its display transition",
