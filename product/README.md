@@ -66,7 +66,7 @@ generated output.
 - `v2/devices/guition-esp32-p4-jc4880p443.json` is the authoritative 4.3-inch
   P4 device entry.
 - `v2/devices/esp32-p4-86.json` is the authoritative square P4-86 device
-  entry, including its local-voice and relay capabilities.
+  entry, including its relay capabilities.
 - `v2/devices/guition-esp32-s3-4848s040.json` is the authoritative compact
   S3 device entry.
 

@@ -83,8 +83,6 @@ const backup = plain(hooks.createBackupConfig({
 }));
 assert.deepStrictEqual(backup, fixture.backup, "backup export structure changed");
 
-assert.deepStrictEqual(Array.from(hooks.voiceServicesPostUrls(true)), fixture.postUrls.voiceServicesOn,
-  "voice-services fallback request ordering changed");
 assert.deepStrictEqual(Array.from(hooks.coverArtDelayPostUrls(30)), fixture.postUrls.coverArtDelay30,
   "cover-art fallback request ordering changed");
 

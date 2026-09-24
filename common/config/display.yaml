@@ -111,7 +111,6 @@ script:
                                            id(display_time),
                                            id(network_status_button));
           clock_bar_set_widget_hidden(id(night_mode_status_icon), true);
-          ${voice_clock_bar_hide_code}
           ${battery_status_hide_code}
           network_status_hide_modal();
 
@@ -156,7 +155,6 @@ script:
                                              id(display_time),
                                              id(network_status_button));
             clock_bar_set_widget_hidden(id(night_mode_status_icon), true);
-            ${voice_clock_bar_hide_code}
             ${battery_status_hide_code}
             network_status_hide_modal();
             return;
@@ -201,7 +199,6 @@ script:
             lv_obj_add_flag(id(network_status_button), LV_OBJ_FLAG_HIDDEN);
             network_status_hide_modal();
           }
-          ${voice_clock_bar_apply_code}
           ${battery_status_apply_code}
           if (show_night_mode) {
             const int night_mode_box = lv_obj_get_width(id(night_mode_status_icon));

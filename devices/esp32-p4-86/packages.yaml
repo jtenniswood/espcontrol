@@ -36,42 +36,6 @@ substitutions:
   main_page_compact_pad_top: "6"
   clock_bar_item_gap: "96"
   clock_bar_visual_gap: "12"
-  voice_clock_bar_hide_code: |-
-    lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);
-  voice_clock_bar_apply_code: |-
-    if (id(voice_services_enabled).state) {
-      // These controls open different modals: space their full touch targets,
-      // not just the narrower glyphs, with an 18px gap inside the 60px bar.
-      clock_bar_right_icons = clock_bar_right_icons_begin(clock_bar_right_x, 18);
-      if (show_network) {
-        const int network_box = lv_obj_get_width(id(network_status_button));
-        clock_bar_right_icons_seed(clock_bar_right_icons, network_box, network_box);
-      }
-      const int voice_clock_bar_icon_x_box = lv_obj_get_width(id(voice_clock_bar_mute_button));
-      const int voice_clock_bar_icon_x = clock_bar_right_icons_next_x(
-          clock_bar_right_icons, voice_clock_bar_icon_x_box,
-          voice_clock_bar_icon_x_box);
-      lv_obj_align(id(voice_clock_bar_mute_button), LV_ALIGN_TOP_RIGHT,
-                   voice_clock_bar_icon_x, clock_bar_icon_y);
-      lv_obj_clear_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);
-      const bool microphone_muted = id(master_mute_switch).state;
-      const bool output_muted = id(voice_media_player).is_muted();
-      lv_label_set_text(id(voice_clock_bar_mute_icon_label),
-                        microphone_muted ? "\U000F036D" :
-                        output_muted ? "\U000F04C4" : "\U000F036C");
-      lv_obj_set_style_text_color(id(voice_clock_bar_mute_icon_label),
-                                  lv_color_hex(0xFFFFFF),
-                                  LV_PART_MAIN);
-    } else {
-      lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);
-    }
-  navigate_voice_target_code: |-
-    if (id(voice_services_enabled).state) {
-      id(open_device_volume_control).execute();
-    } else {
-      ESP_LOGW("navigation", "Voice volume target is not available while Voice Services are disabled");
-    }
-  voice_interaction_active_condition: "id(voice_interaction_active)"
   clock_font_size: "170"
   clock_cx: "360"
   clock_cy: "360"
@@ -79,11 +43,6 @@ substitutions:
   screen_saver_clock_default_brightness: "35"
   screen_schedule_clock_min_brightness: "1"
   screen_schedule_clock_default_brightness: "10"
-  voice_wake_chime_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_wake_chime.flac"
-  voice_timer_alert_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_timer_alert.flac"
-  voice_stt_failure_chime_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_stt_failure_chime.flac"
-  alarm_delay_entry_beep_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/30ea813b1e2d4008b019c30862dce478d238a697/devices/esp32-p4-86/device/alarm_delay_entry_beep.flac"
-  alarm_delay_exit_beep_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/30ea813b1e2d4008b019c30862dce478d238a697/devices/esp32-p4-86/device/alarm_delay_exit_beep.flac"
   network_transport: "wifi"
   disable_updates: "false"
   network_package_suffix: ${ "_ethernet" if network_transport == "ethernet" else "" }
@@ -174,8 +133,6 @@ packages:
   network:         !include ../../common/addon/network${network_package_suffix}.yaml
   memory_diag:     !include ../../common/addon/memory_diagnostics.yaml
   fw_update:       !include ../../common/addon/firmware_update${firmware_update_package_suffix}.yaml
-  voice_assistant: !include device/voice_assistant.yaml
-  physical_volume_button: !include device/physical_volume_button${network_package_suffix}.yaml
 
   # ---------------------------------------------------------------------------
   # Screens (loading must be first page for LVGL startup)

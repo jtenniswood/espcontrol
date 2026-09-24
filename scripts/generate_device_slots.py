@@ -44,14 +44,8 @@ def package_substitution_lines(device: dict) -> list[str]:
     lines.append(
         f'  screensaver_camera_supported: "{str(camera_screensaver_supported).lower()}"'
     )
-    added_voice_substitutions = False
     for key, value in package["substitutions"].items():
         lines.append(f"  {key}: {value}")
-        if key == "clock_bar_visual_gap":
-            lines.extend(voice_substitution_lines(device))
-            added_voice_substitutions = True
-    if not added_voice_substitutions:
-        lines.extend(voice_substitution_lines(device))
     if package.get("ethernetSelectable"):
         frequency = package["backlightPwmFrequency"]
         lines.extend(
@@ -71,8 +65,8 @@ def package_substitution_lines(device: dict) -> list[str]:
 
 def clock_bar_icon_offset_lines(name: str, button: str, label: str) -> list[str]:
     """C++ lines declaring `name` as the x-offset of an optional clock-bar icon.
-    Icons pack leftwards from the network status icon by glyph edges, so battery,
-    voice, and night mode never overlap and never leave an empty slot behind."""
+    Icons pack leftwards from the network status icon by glyph edges, so battery
+    and night mode never overlap or leave an empty slot behind."""
     box = f"{name}_box"
     return [
         f"      const int {box} = lv_obj_get_width(id({button}));",
@@ -101,63 +95,6 @@ def battery_substitution_lines(device: dict) -> list[str]:
         "    }",
         "  battery_status_hide_code: |-",
         "    lv_obj_add_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);",
-    ]
-
-
-def voice_substitution_lines(device: dict) -> list[str]:
-    if not package_data(device).get("localVoiceServices"):
-        return [
-            '  voice_clock_bar_hide_code: ""',
-            '  voice_clock_bar_apply_code: ""',
-            "  navigate_voice_target_code: |-",
-            '    ESP_LOGW("navigation", "Voice volume target is not available on this device");',
-            '  voice_interaction_active_condition: "false"',
-        ]
-    icon_offset_lines = clock_bar_icon_offset_lines(
-        "voice_clock_bar_icon_x", "voice_clock_bar_mute_button",
-        "voice_clock_bar_mute_icon_label",
-    )
-    if device["slug"] == "esp32-p4-86":
-        icon_offset_lines = [
-            "      // These controls open different modals: space their full touch targets,",
-            "      // not just the narrower glyphs, with an 18px gap inside the 60px bar.",
-            "      clock_bar_right_icons = clock_bar_right_icons_begin(clock_bar_right_x, 18);",
-            "      if (show_network) {",
-            "        const int network_box = lv_obj_get_width(id(network_status_button));",
-            "        clock_bar_right_icons_seed(clock_bar_right_icons, network_box, network_box);",
-            "      }",
-            "      const int voice_clock_bar_icon_x_box = lv_obj_get_width(id(voice_clock_bar_mute_button));",
-            "      const int voice_clock_bar_icon_x = clock_bar_right_icons_next_x(",
-            "          clock_bar_right_icons, voice_clock_bar_icon_x_box,",
-            "          voice_clock_bar_icon_x_box);",
-        ]
-    return [
-        "  voice_clock_bar_hide_code: |-",
-        "    lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
-        "  voice_clock_bar_apply_code: |-",
-        "    if (id(voice_services_enabled).state) {",
-        *icon_offset_lines,
-        "      lv_obj_align(id(voice_clock_bar_mute_button), LV_ALIGN_TOP_RIGHT,",
-        "                   voice_clock_bar_icon_x, clock_bar_icon_y);",
-        "      lv_obj_clear_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
-        "      const bool microphone_muted = id(master_mute_switch).state;",
-        "      const bool output_muted = id(voice_media_player).is_muted();",
-        "      lv_label_set_text(id(voice_clock_bar_mute_icon_label),",
-        '                        microphone_muted ? "\\U000F036D" :',
-        '                        output_muted ? "\\U000F04C4" : "\\U000F036C");',
-        "      lv_obj_set_style_text_color(id(voice_clock_bar_mute_icon_label),",
-        "                                  lv_color_hex(0xFFFFFF),",
-        "                                  LV_PART_MAIN);",
-        "    } else {",
-        "      lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
-        "    }",
-        "  navigate_voice_target_code: |-",
-        "    if (id(voice_services_enabled).state) {",
-        "      id(open_device_volume_control).execute();",
-        "    } else {",
-        '      ESP_LOGW("navigation", "Voice volume target is not available while Voice Services are disabled");',
-        "    }",
-        '  voice_interaction_active_condition: "id(voice_interaction_active)"',
     ]
 
 
@@ -527,32 +464,6 @@ def cfg_lines(device: dict) -> list[str]:
     lines.append("            cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {")
     lines.append("              id(display_takeover_end).execute(static_cast<int>(kind));")
     lines.append("            };")
-    if package_data(device).get("alarmDelayAudio"):
-        lines.extend(
-            [
-                "            cfg.alarm_delay_audio.enabled = []() {",
-                "              return id(alarm_delay_audio_enabled).state;",
-                "            };",
-                "            cfg.alarm_delay_audio.tts_enabled = []() {",
-                "              return id(alarm_delay_tts_enabled).state && id(voice_services_enabled).state;",
-                "            };",
-                "            cfg.alarm_delay_audio.final_countdown_seconds = []() {",
-                "              return static_cast<int>(id(alarm_delay_final_countdown_seconds).state);",
-                "            };",
-                "            cfg.alarm_delay_audio.ready = []() {",
-                "              return !id(alarm_delay_tts_pending);",
-                "            };",
-                "            cfg.alarm_delay_audio.play_beep = [](AlarmDelayAudioMode mode) {",
-                "              id(play_alarm_delay_beep).execute(mode == AlarmDelayAudioMode::ENTRY);",
-                "            };",
-                "            cfg.alarm_delay_audio.announce = [](AlarmDelayAudioMode mode) {",
-                "              id(announce_alarm_delay).execute(mode == AlarmDelayAudioMode::ENTRY);",
-                "            };",
-                "            cfg.alarm_delay_audio.stop = []() {",
-                "              id(stop_alarm_delay_audio).execute();",
-                "            };",
-            ]
-        )
     if image_card_count > 0:
         lines.append("            static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {")
         for num in range(1, image_card_count + 1):

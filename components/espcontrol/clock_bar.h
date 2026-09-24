@@ -625,7 +625,7 @@ inline lv_coord_t clock_bar_current_screen_height(lv_coord_t fallback) {
   return height > 0 ? height : fallback;
 }
 
-// Right-side status icons (network, battery, voice mute, night mode) pack
+// Right-side status icons (network, battery, night mode) pack
 // leftwards by glyph edge. Each one is a wide tap target around a narrow centred
 // glyph, so the spacing a user sees depends only on which icons are actually
 // shown and no fixed-width slot is left empty when an icon is hidden.

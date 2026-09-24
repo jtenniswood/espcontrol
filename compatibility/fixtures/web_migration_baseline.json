@@ -97,11 +97,6 @@
     "screen": { "brightness_day": 80 }
   },
   "postUrls": {
-    "voiceServicesOn": [
-      "/switch/voice_services/turn_on",
-      "/switch/voice_services_enabled/turn_on",
-      "/switch/Voice%20Services/turn_on"
-    ],
     "coverArtDelay30": [
       "/number/screen_saver__cover_art_delay/set?value=30",
       "/number/screen_saver_cover_art_delay/set?value=30",
@@ -109,5 +104,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 2625762, "gzip": 1093737, "gzipTolerance": 9216 }
+  "bundleSize": { "minified": 2623692, "gzip": 1093737, "gzipTolerance": 9216 }
 }

@@ -1117,9 +1117,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     await page
       .locator("#sp-settings .sp-settings-status-title")
       .evaluateAll((nodes) => nodes.map((node) => node.textContent)),
-    options.slug === "esp32-p4-86"
-      ? ["Display", "Voice & Sounds", "Sleep & Schedule", "Preferences", "System"]
-      : ["Display", "Sleep & Schedule", "Preferences", "System"],
+    ["Display", "Sleep & Schedule", "Preferences", "System"],
     `${label}: settings groups should be ordered by purpose`,
   );
   const settingsPlacement = await page.locator("#sp-settings .sp-config").evaluate((config) => {
@@ -1348,77 +1346,9 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
       has: page.locator(".card-header h3", { hasText: /^Alarm Audio$/ }),
     })
     .first();
-  if (options.slug === "esp32-p4-86") {
-    assert.strictEqual(
-      settingsPlacement["Voice Services"]?.section,
-      "Voice & Sounds",
-      `${label}: voice services should be grouped with voice and sound controls`,
-    );
-    assert.strictEqual(
-      settingsPlacement["Alarm Audio"]?.section,
-      "Voice & Sounds",
-      `${label}: alarm audio should be grouped with voice and sound controls`,
-    );
-    assert.strictEqual(
-      settingsPlacement["Alarm Audio"]?.index,
-      settingsPlacement["Voice Services"]?.index + 1,
-      `${label}: alarm audio should appear immediately below voice services`,
-    );
-    assert(
-      await voiceServicesCard.isVisible(),
-      `${label}: voice services settings card is available for the voice-capable panel`,
-    );
-    assert(
-      await alarmDelayAudioCard.isVisible(),
-      `${label}: alarm delay audio settings are available for the speaker panel`,
-    );
-    await alarmDelayAudioCard.locator(".card-header").click();
-    const alarmDelayAudioToggle = alarmDelayAudioCard.locator("#sp-set-alarm-delay-audio");
-    async function setAlarmDelayAudioEnabled(enabled) {
-      await alarmDelayAudioToggle.evaluate((input, checked) => {
-        input.checked = checked;
-        input.dispatchEvent(new Event("change", { bubbles: true }));
-      }, enabled);
-    }
-    await setAlarmDelayAudioEnabled(true);
-    const entryAnnouncement = alarmDelayAudioCard.locator("#sp-set-alarm-delay-entry-announcement");
-    const exitAnnouncement = alarmDelayAudioCard.locator("#sp-set-alarm-delay-exit-announcement");
-    async function changeAnnouncement(input, value) {
-      await input.evaluate((element, nextValue) => {
-        element.value = nextValue;
-        element.dispatchEvent(new Event("change", { bubbles: true }));
-      }, value);
-    }
-    await changeAnnouncement(entryAnnouncement, "Updated entry announcement");
-    await changeAnnouncement(exitAnnouncement, "Updated exit announcement");
-    await setAlarmDelayAudioEnabled(false);
-    await setAlarmDelayAudioEnabled(true);
-    assert.strictEqual(
-      await entryAnnouncement.inputValue(),
-      "Updated entry announcement",
-      `${label}: entry announcement state survives settings UI synchronization`,
-    );
-    assert.strictEqual(
-      await exitAnnouncement.inputValue(),
-      "Updated exit announcement",
-      `${label}: exit announcement state survives settings UI synchronization`,
-    );
-  } else {
-    assert(
-      !clockBarText.includes("Voice Services"),
-      `${label}: voice services toggle is hidden from the clock bar`,
-    );
-    assert.strictEqual(
-      await voiceServicesCard.count(),
-      0,
-      `${label}: voice services settings card is hidden on panels without local voice`,
-    );
-    assert.strictEqual(
-      await alarmDelayAudioCard.count(),
-      0,
-      `${label}: alarm delay audio settings are hidden on panels without speaker support`,
-    );
-  }
+  assert(!clockBarText.includes("Voice Services"), `${label}: voice services are removed`);
+  assert.strictEqual(await voiceServicesCard.count(), 0, `${label}: voice settings are not shown`);
+  assert.strictEqual(await alarmDelayAudioCard.count(), 0, `${label}: alarm audio settings are not shown`);
   const nightScheduleCard = page
     .locator("#sp-settings .card")
     .filter({
@@ -1951,93 +1881,12 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   assert(!overflow, `${label}: settings page has horizontal overflow`);
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
-  await assertVoiceClockBarPreview(page, label, options.slug === "esp32-p4-86");
+  await assertVoiceClockBarPreview(page, label);
 }
 
-async function assertVoiceClockBarPreview(page, label, supported) {
+async function assertVoiceClockBarPreview(page, label) {
   const voiceItem = page.locator('[data-clockbar-item="voice"]');
-  if (!supported) {
-    assert.strictEqual(
-      await voiceItem.count(),
-      0,
-      `${label}: voice services clock bar item is not rendered on panels without local voice`,
-    );
-    return;
-  }
-
-  assert.strictEqual(
-    await voiceItem.count(),
-    1,
-    `${label}: voice services clock bar item is rendered on the voice-capable panel`,
-  );
-  await page.evaluate(() =>
-    window.__seedEspState([
-      { id: "switch-voice_services", state: "ON", value: true },
-      { id: "switch-screen__network_status_icon", state: "OFF", value: false },
-    ]),
-  );
-  await page.waitForFunction(() => {
-    var voice = document.querySelector(
-      '[data-clockbar-item="voice"] .sp-voice-preview',
-    );
-    return voice && voice.className.indexOf("sp-visible") !== -1;
-  });
-
-  const preview = await page.evaluate(() => {
-    function box(selector) {
-      var el = document.querySelector(selector);
-      if (!el) return null;
-      var rect = el.getBoundingClientRect();
-      return {
-        className: el.className,
-        left: rect.left,
-        right: rect.right,
-        width: rect.width,
-        height: rect.height,
-      };
-    }
-    return {
-      voice: box('[data-clockbar-item="voice"]'),
-      network: box('[data-clockbar-item="network"]'),
-      voiceIcon: box('[data-clockbar-item="voice"] .sp-voice-preview'),
-      networkIcon: box('[data-clockbar-item="network"] .sp-network-preview'),
-    };
-  });
-  assert(
-    preview.voice && preview.network,
-    `${label}: voice and network clock bar items are measurable`,
-  );
-  assert(
-    preview.voice.right <= preview.network.left + 1,
-    `${label}: voice mic is positioned to the left of connectivity`,
-  );
-  assert(
-    !preview.voice.className.includes("sp-clockbar-hidden"),
-    `${label}: voice item stays active when connectivity is hidden`,
-  );
-  assert(
-    preview.network.className.includes("sp-clockbar-hidden"),
-    `${label}: network item is hidden independently of voice`,
-  );
-  assert(
-    preview.voiceIcon.className.includes("sp-visible"),
-    `${label}: voice mic remains visible when connectivity is hidden`,
-  );
-  assert(
-    preview.voiceIcon.width > 0 && preview.voiceIcon.height > 0,
-    `${label}: voice mic remains measurable when connectivity is hidden`,
-  );
-  assert(
-    preview.networkIcon.className.includes("sp-visible"),
-    `${label}: hidden connectivity keeps its placeholder icon visible`,
-  );
-
-  await page.evaluate(() =>
-    window.__seedEspState([
-      { id: "switch-voice_services", state: "OFF", value: false },
-      { id: "switch-screen__network_status_icon", state: "ON", value: true },
-    ]),
-  );
+  assert.strictEqual(await voiceItem.count(), 0, `${label}: voice clock bar item is removed`);
 }
 
 async function assertClockBarTypographyAndIconLayout(page, label) {
