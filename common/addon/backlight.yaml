@@ -690,15 +690,18 @@ script:
           condition:
             lambda: |-
               const auto &controller = id(espcontrol_app).display();
-              return lv_scr_act() == id(main_page)->obj &&
-                     !controller.has_transition_in_progress() &&
+              return !controller.has_transition_in_progress() &&
                      controller.current_mode_is(espcontrol::DisplayMode::ACTIVE) &&
                      controller.target_mode_is(espcontrol::DisplayMode::ACTIVE);
           then:
-            - script.execute: clock_bar_apply
-            - script.wait: clock_bar_apply
-            - script.execute: backlight_apply_brightness
-            - script.wait: backlight_apply_brightness
+            - if:
+                condition:
+                  lambda: 'return lv_scr_act() == id(main_page)->obj;'
+                then:
+                  - script.execute: clock_bar_apply
+                  - script.wait: clock_bar_apply
+                  - script.execute: backlight_apply_brightness
+                  - script.wait: backlight_apply_brightness
             - script.execute: screensaver_idle_check
             - script.execute: home_screen_idle_check
 

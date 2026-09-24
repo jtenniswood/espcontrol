@@ -90,7 +90,14 @@ bool connectivity_setup_display_active = false, schedule_presence_detected = fal
      clock_bar_night_mode_active = false, cover_art_media_playing = false,
      media_player_playing = false, presence_detected = false;
 uint32_t manual_wake_ms = 0, cover_art_transition_generation = 0, cover_art_download_generation = 0;
+uint32_t camera_screensaver_transition_generation = 0;
+std::string cover_art_active_media_player_entity;
+struct CoverArtPlaybackControl {
+  bool retains_pause(const std::string &) const { return false; }
+  void reset() {}
+} cover_art_playback_control;
 bool alarm_display_takeover_active() { return espcontrol_app.display().takeover_active(DisplayTakeoverKind::CRITICAL); }
+void image_card_resume_pipeline() {}
 // SCHEDULE_HELPERS
 Script cover_art_playback_started;
 // SCRIPT_DECLARATIONS
@@ -193,6 +200,15 @@ int main() {
   assert(screensaver_idle_check.calls == 0);
   // Boot navigation still finalizes even when no ACTIVE transition is needed.
   reset(); controller = {}; clock_time.hour = 12;
+  display_active_finalize.execute(); advance(100);
+  assert(screensaver_idle_check.is_running());
+  // Ending an ACTIVE schedule while a subpage is selected still restarts the
+  // screensaver countdown, even when the home-page timeout is disabled.
+  reset(); clock_time.hour = 12;
+  controller.clear(DisplayRequestSource::SCREEN_SCHEDULE);
+  controller.request(DisplayRequestSource::USER_WAKE, DisplayMode::ACTIVE);
+  controller.complete_transition(controller.resolve());
+  active_page = actions.obj;
   display_active_finalize.execute(); advance(100);
   assert(screensaver_idle_check.is_running());
   std::cout << "Schedule callback orders, idle expiry, manual sleep, stale finalization and boot passed\n";
