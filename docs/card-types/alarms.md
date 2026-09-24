@@ -1,5 +1,5 @@
 ---
-title: Alarm Cards
+title: "Home Assistant Alarm Cards"
 description:
   How to use alarm cards on your EspControl panel to arm, disarm, and monitor Home Assistant alarm_control_panel entities.
 ---

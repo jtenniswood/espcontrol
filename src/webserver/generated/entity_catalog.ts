@@ -229,6 +229,42 @@ export const ENTITY_CATALOG = {
         "screensaver_action"
       ]
     },
+    "screen_saver_camera_entity": {
+      "domain": "text",
+      "name": "Screen Saver: Camera Entity",
+      "objectIds": [
+        "screen_saver__camera_entity",
+        "screen_saver_camera_entity",
+        "screensaver_camera_entity"
+      ]
+    },
+    "screen_saver_metadata_entity": {
+      "domain": "text",
+      "name": "Screen Saver: Photo Metadata Entity",
+      "objectIds": [
+        "screen_saver__photo_metadata_entity",
+        "screen_saver_photo_metadata_entity",
+        "screensaver_metadata_entity"
+      ]
+    },
+    "screen_saver_metadata_overlay": {
+      "domain": "switch",
+      "name": "Screen Saver: Metadata Overlay",
+      "objectIds": [
+        "screen_saver__metadata_overlay",
+        "screen_saver_metadata_overlay",
+        "metadata_overlay_enabled"
+      ]
+    },
+    "screen_saver_camera_image_mode": {
+      "domain": "select",
+      "name": "Screen Saver: Camera Image Mode",
+      "objectIds": [
+        "screen_saver__camera_image_mode",
+        "screen_saver_camera_image_mode",
+        "screensaver_camera_image_mode"
+      ]
+    },
     "presence_sensor_entity": {
       "domain": "text",
       "name": "Presence Sensor Entity",
@@ -241,6 +277,15 @@ export const ENTITY_CATALOG = {
       "name": "Screen Schedule Sensor Entity",
       "objectIds": [
         "screen_schedule_sensor_entity"
+      ]
+    },
+    "screen_saver_cover_art_playback_control": {
+      "domain": "switch",
+      "name": "Screen Saver: Cover Art Playback Control",
+      "objectIds": [
+        "screen_saver__cover_art_playback_control",
+        "screen_saver_cover_art_playback_control",
+        "cover_art_playback_control_enabled"
       ]
     },
     "screen_saver_media_player_sleep_prevention": {
@@ -339,6 +384,13 @@ export const ENTITY_CATALOG = {
         "home_assistant_artwork_endpoint_status"
       ]
     },
+    "home_assistant_artwork_endpoint_health": {
+      "domain": "text_sensor",
+      "name": "Home Assistant Artwork Connection Health",
+      "objectIds": [
+        "home_assistant_artwork_endpoint_health"
+      ]
+    },
     "home_assistant_artwork_protocol": {
       "domain": "select",
       "name": "Home Assistant Artwork Protocol",
@@ -352,6 +404,13 @@ export const ENTITY_CATALOG = {
       "name": "Home Assistant Artwork Port",
       "objectIds": [
         "home_assistant_artwork_port"
+      ]
+    },
+    "home_assistant_artwork_host": {
+      "domain": "text",
+      "name": "Home Assistant Artwork Host",
+      "objectIds": [
+        "home_assistant_artwork_host"
       ]
     },
     "screen_saver_daytime_clock_brightness": {
@@ -418,6 +477,15 @@ export const ENTITY_CATALOG = {
         "screen_saver__clock",
         "screen_saver_clock",
         "clock_screensaver_enabled"
+      ]
+    },
+    "screen_saver_clock_overlay": {
+      "domain": "switch",
+      "name": "Screen Saver: Clock Overlay",
+      "objectIds": [
+        "screen_saver__clock_overlay",
+        "screen_saver_clock_overlay",
+        "clock_overlay_enabled"
       ]
     },
     "screen_timezone": {
@@ -742,8 +810,13 @@ export const ENTITY_CATALOG = {
       "outdoor_temp_entity",
       "screensaver_mode",
       "screen_saver_action",
+      "screen_saver_camera_entity",
+      "screen_saver_metadata_entity",
+      "screen_saver_metadata_overlay",
+      "screen_saver_camera_image_mode",
       "presence_sensor_entity",
       "screen_schedule_sensor_entity",
+      "screen_saver_cover_art_playback_control",
       "screen_saver_media_player_sleep_prevention",
       "media_player_sleep_prevention_entity",
       "screen_saver_cover_art",
@@ -755,8 +828,10 @@ export const ENTITY_CATALOG = {
       "screen_saver_hide_cover_art_external_input",
       "home_assistant_artwork_endpoint_mode",
       "home_assistant_artwork_endpoint_status",
+      "home_assistant_artwork_endpoint_health",
       "home_assistant_artwork_protocol",
       "home_assistant_artwork_port",
+      "home_assistant_artwork_host",
       "screen_saver_daytime_clock_brightness",
       "screen_saver_nighttime_clock_brightness",
       "screen_saver_clock_brightness",
@@ -766,6 +841,7 @@ export const ENTITY_CATALOG = {
       "screensaver_timeout",
       "home_screen_timeout",
       "screen_saver_clock",
+      "screen_saver_clock_overlay",
       "screen_timezone",
       "screen_active_timezone",
       "screen_language",

@@ -1651,7 +1651,6 @@ describe("browserless application contracts", () => {
       "__ESPCONTROL_DEVICE_PROFILES__",
       "__ESPCONTROL_DEVICE_PROFILE__",
       "__ESPCONTROL_EMBEDDED_MDI_STYLES__",
-      "__ESPCONTROL_LOGO_SVG__",
       "__ESPCONTROL_RELOAD_EMBEDDED__",
       "__ESPCONTROL_START_EMBEDDED__",
       "__ESPCONTROL_TEST_HOOKS_ENABLED__",

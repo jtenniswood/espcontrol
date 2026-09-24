@@ -1,5 +1,5 @@
 ---
-title: Wifi Sharing
+title: "Share Guest WiFi with a QR Code"
 description: Share separately configured guest Wifi with a scannable QR code on EspControl.
 ---
 

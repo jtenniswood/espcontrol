@@ -18,6 +18,7 @@ struct ServiceRecord {
   uint16_t port{0};
   std::string internal_url;
   bool landing_page{false};
+  std::string identity;
 };
 
 inline std::string trim_copy(std::string value) {
@@ -30,6 +31,9 @@ inline std::string trim_copy(std::string value) {
 
 inline bool parse_ipv6_words(const std::string &value,
                              std::array<uint16_t, 8> &words) {
+  if (value.empty() || (value.front() == ':' && value.rfind("::", 0) != 0) ||
+      (value.back() == ':' && (value.size() < 2 || value[value.size() - 2] != ':')))
+    return false;
   const size_t compressed = value.find("::");
   if (compressed != std::string::npos &&
       value.find("::", compressed + 2) != std::string::npos)
@@ -142,20 +146,6 @@ inline std::string normalize_protocol(std::string value) {
   return value == "https" ? "https" : "http";
 }
 
-inline std::string protocol_from_internal_url(const std::string &url,
-                                              const std::string &fallback) {
-  const size_t scheme_end = url.find("://");
-  if (scheme_end == std::string::npos) return normalize_protocol(fallback);
-  std::string scheme = url.substr(0, scheme_end);
-  std::transform(scheme.begin(), scheme.end(), scheme.begin(), [](unsigned char c) {
-    return static_cast<char>(std::tolower(c));
-  });
-  if (scheme != "http" && scheme != "https") {
-    return normalize_protocol(fallback);
-  }
-  return scheme;
-}
-
 inline std::string build_origin(const std::string &protocol,
                                 const std::string &address, uint16_t port) {
   const std::string host = display_host(address);
@@ -174,25 +164,155 @@ inline bool record_matches_client(const ServiceRecord &record,
   return false;
 }
 
-inline std::string select_discovered_origin(
-    const std::vector<ServiceRecord> &records, const std::string &client_address,
-    const std::string &fallback_protocol) {
-  std::string matched_origin;
-  for (const ServiceRecord &record : records) {
-    if (!record_matches_client(record, client_address)) continue;
-    const std::string candidate = build_origin(
-        protocol_from_internal_url(record.internal_url, fallback_protocol),
-        client_address, record.port);
-    if (candidate.empty()) continue;
-    // The native API connection identifies the host but not the HTTP service
-    // when multiple Home Assistant instances share that host. Do not choose a
-    // token-bearing destination based on mDNS result order. mDNS can repeat
-    // the same service while combining PTR, SRV, TXT, A, and AAAA answers, so
-    // identical candidates are safe to collapse.
-    if (!matched_origin.empty() && matched_origin != candidate) return {};
-    matched_origin = candidate;
+// Parse origins only. Never log rejected input: it may contain credentials.
+inline std::string parse_origin(std::string value) {
+  value = trim_copy(value);
+  if (value.empty() || value.size() > 512 ||
+      value.find_first_of("@?#\\ \t\r\n") != std::string::npos) return {};
+  const size_t scheme_end = value.find("://");
+  if (scheme_end == std::string::npos) return {};
+  std::string scheme = value.substr(0, scheme_end);
+  std::transform(scheme.begin(), scheme.end(), scheme.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  if (scheme != "http" && scheme != "https") return {};
+  std::string authority = value.substr(scheme_end + 3);
+  const size_t slash = authority.find('/');
+  if (slash != std::string::npos) {
+    if (slash != authority.size() - 1) return {};
+    authority.pop_back();
   }
-  return matched_origin;
+  std::string host, port_text;
+  bool explicit_port = false;
+  if (!authority.empty() && authority.front() == '[') {
+    const size_t close = authority.find(']');
+    if (close == std::string::npos) return {};
+    host = authority.substr(1, close - 1);
+    std::transform(host.begin(), host.end(), host.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    std::array<uint16_t, 8> words{};
+    if (!parse_ipv6_words(host, words)) return {};
+    host = "[" + canonical_ipv6(host) + "]";
+    if (close + 1 != authority.size()) {
+      if (authority[close + 1] != ':') return {};
+      explicit_port = true;
+      port_text = authority.substr(close + 2);
+    }
+  } else {
+    const size_t colon = authority.find(':');
+    host = authority.substr(0, colon);
+    if (colon != std::string::npos) {
+      explicit_port = true;
+      port_text = authority.substr(colon + 1);
+    }
+    if (host.empty() || host.front() == '.' || host.front() == '-' ||
+        host.back() == '-') return {};
+    for (unsigned char c : host)
+      if (!std::isalnum(c) && c != '.' && c != '-') return {};
+    std::transform(host.begin(), host.end(), host.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  }
+  unsigned port = scheme == "https" ? 443 : 80;
+  if (explicit_port) {
+    if (port_text.empty() || port_text.size() > 5) return {};
+    port = 0;
+    for (unsigned char c : port_text) {
+      if (!std::isdigit(c)) return {};
+      port = port * 10 + (c - '0');
+    }
+    if (port == 0 || port > 65535) return {};
+  }
+  // Canonical effective ports make origin comparisons independent of spelling.
+  return scheme + "://" + host + ":" + std::to_string(port);
+}
+
+inline bool local_address(const std::string &value) {
+  const std::string address = normalize_address(value);
+  std::array<uint16_t, 8> words{};
+  if (parse_ipv6_words(address, words)) {
+    return (words[0] & 0xfe00) == 0xfc00 ||
+           (words[0] & 0xffc0) == 0xfe80 || address == "0:0:0:0:0:0:0:1";
+  }
+  unsigned parts[4]{};
+  size_t cursor = 0;
+  for (unsigned i = 0; i < 4; ++i) {
+    const size_t start = cursor;
+    while (cursor < address.size() && std::isdigit(static_cast<unsigned char>(address[cursor]))) {
+      parts[i] = parts[i] * 10 + address[cursor++] - '0';
+      if (parts[i] > 255) return false;
+    }
+    if (cursor == start) return false;
+    if (i != 3 && (cursor == address.size() || address[cursor++] != '.')) return false;
+  }
+  if (cursor != address.size()) return false;
+  return parts[0] == 10 || parts[0] == 127 ||
+      (parts[0] == 172 && parts[1] >= 16 && parts[1] <= 31) ||
+      (parts[0] == 192 && parts[1] == 168) || (parts[0] == 169 && parts[1] == 254);
+}
+
+inline bool origin_host_matches_client(const std::string &origin,
+                                       const std::string &client_address) {
+  const size_t scheme = origin.find("://");
+  if (scheme == std::string::npos) return false;
+  const size_t start = scheme + 3;
+  const size_t end = origin.find(':', origin[start] == '[' ? origin.find(']', start) + 1 : start);
+  if (end == std::string::npos || end <= start) return false;
+  std::string host = origin.substr(start, end - start);
+  if (host.size() >= 2 && host.front() == '[') host = host.substr(1, host.size() - 2);
+  return normalize_address(host) == normalize_address(client_address);
+}
+
+struct Candidate {
+  std::string origin;
+  Source source{Source::AUTOMATIC};
+  const char *reason{"advertised local URL"};
+  bool require_local_destination{false};
+};
+struct Discovery {
+  std::vector<Candidate> candidates;
+  bool ambiguous{false};
+  bool invalid_internal_url{false};
+};
+
+inline Discovery discover(const std::vector<ServiceRecord> &records,
+                          const std::string &client, const std::string &protocol,
+                          uint16_t fallback_port) {
+  Discovery result;
+  const ServiceRecord *matched = nullptr;
+  for (const auto &record : records) {
+    if (!record_matches_client(record, client)) continue;
+    if (matched && (matched->identity != record.identity || matched->port != record.port ||
+                    (!matched->internal_url.empty() && !record.internal_url.empty() &&
+                     parse_origin(matched->internal_url) != parse_origin(record.internal_url)))) {
+      result.ambiguous = true;
+      break;
+    }
+    if (!matched || !record.internal_url.empty()) matched = &record;
+  }
+  auto add = [&](std::string origin, Source source, const char *reason,
+                 bool require_local_destination = false) {
+    origin = parse_origin(origin);
+    if (origin.empty()) return;
+    for (const auto &candidate : result.candidates)
+      if (candidate.origin == origin) return;
+    result.candidates.push_back({std::move(origin), source, reason, require_local_destination});
+  };
+  if (matched && !result.ambiguous) {
+    const std::string internal = parse_origin(matched->internal_url);
+    result.invalid_internal_url = !matched->internal_url.empty() && internal.empty();
+    // mDNS is unauthenticated. Hostnames from its TXT record may be used only
+    // when the probe confirms they resolve to a private/local network target.
+    // The TXT hostname is unauthenticated and later image URLs carry HA
+    // tokens. Automatic mode only accepts an origin whose host is the
+    // connected API peer IP. A user-entered Manual host is an
+    // explicit trust decision and remains available for TLS/FQDN deployments.
+    if (!internal.empty() && origin_host_matches_client(internal, client))
+      add(internal, Source::AUTOMATIC, "advertised local URL");
+    else if (!matched->internal_url.empty())
+      result.invalid_internal_url = true;
+    add(build_origin(protocol, client, matched->port), Source::AUTOMATIC, "advertised local service");
+    if (local_address(client))
+      add(build_origin(normalize_protocol(protocol) == "http" ? "https" : "http", client, matched->port),
+          Source::AUTOMATIC, "alternate local protocol");
+  }
+  add(build_origin(protocol, client, fallback_port), Source::FALLBACK, "configured fallback");
+  return result;
 }
 
 inline Mode infer_legacy_mode(const std::string &protocol, uint16_t port) {

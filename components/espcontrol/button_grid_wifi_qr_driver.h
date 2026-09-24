@@ -1,5 +1,7 @@
 #pragma once
 
+#include "card_modal_target.h"
+
 #include <src/libs/qrcode/qrcodegen.h>
 
 #include "wifi_qr_layout.h"
@@ -189,4 +191,17 @@ inline bool wifi_qr_driver_handle_main_click(const Context &context, const Parse
   wifi_qr_open_modal(config, button);
   return true;
 }
+inline ModalTarget wifi_qr_driver_modal_target(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button) {
+  if (!wifi_qr_driver_matches(context) || !guest_wifi_valid_entity(config.entity)) return {};
+  ModalTarget target;
+  target.entity = config.entity;
+  target.kind = ControlModalKind::WIFI_QR;
+  // Validate without logging or retaining decoded credentials.
+  std::string payload, ssid;
+  target.available = button && wifi_qr_payload_from_config(config, &payload, &ssid, nullptr);
+  target.open = [config, button]() { wifi_qr_open_modal(config, button); };
+  return target;
+}
+
 }  // namespace espcontrol::cards

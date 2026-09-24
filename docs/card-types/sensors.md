@@ -1,5 +1,5 @@
 ---
-title: Sensor Cards
+title: "Home Assistant Sensor Cards"
 description:
   How to display live readings, durations, text, or icon states from Home Assistant on EspControl.
 ---

@@ -65,7 +65,7 @@ CI = ("ci", "all")
 RELEASE = ("release",)
 MAINTAINER_DOCS = ("dev-docs/**", "DEVELOPERS.md", "README.md", "product/README.md")
 WEB_SOURCE_HELPERS = ("scripts/web_source.js", "scripts/build_web_bundle.js")
-WEB_BUNDLE_INPUTS = ("devices/**", "common/addon/time.yaml", "docs/public/images/espcontrol-logo.svg")
+WEB_BUNDLE_INPUTS = ("devices/**", "common/addon/time.yaml")
 WEB_BUNDLE_BUILD_HELPERS = (
     "scripts/build.py",
     "scripts/check_timezones.py",
@@ -112,6 +112,9 @@ TASKS = (
              "components/espcontrol/climate_state_logic.h",
              "components/espcontrol/button_grid_media_slider_lifecycle.h",
              "components/espcontrol/button_grid_media.h",
+             "components/espcontrol/media_display_text.h",
+             "components/espcontrol/media_emoji_ranges.h",
+             "common/device/screen_cover_art.yaml",
              "components/espcontrol/button_grid_media_driver.h",
              "components/espcontrol/button_grid_sliders.h",
              "components/espcontrol/button_grid_grid.h",
@@ -222,6 +225,10 @@ TASKS = (
          domains=("firmware",), inputs=("common/addon/backlight_schedule.yaml", "common/addon/backlight.yaml", "scripts/check_backlight_schedule.py",
                                       "tests/firmware/backlight_recovery_test.cpp", "components/espcontrol/backlight_fade.h",
                                       "components/espcontrol/display_mode_controller.h"), parallel_safe=True),
+    task("photo-metadata", ("python3", "scripts/check_photo_metadata.py"), profiles=FAST,
+         domains=("firmware",), inputs=("components/espcontrol/photo_metadata.h",
+              "common/device/screen_clock.yaml", "common/config/display.yaml", "tests/firmware/photo_metadata*.cpp",
+              "scripts/check_photo_metadata.py"), parallel_safe=True),
     task("firmware-modal-layouts", ("python3", "scripts/check_firmware_modal_layouts.py"),
          ("python3", "scripts/generate_modal_layout_reference.py", "--check"),
          dependencies=("device-manifest-output",), profiles=FAST,
@@ -267,7 +274,7 @@ TASKS = (
          generated_inputs=(
              "common/config/card_runtime_baseline_card_normalization_fixtures.json",
              "compatibility/fixtures/card_runtime_surface_baseline.json",
-             "docs/generated/cards/runtime-coverage.md",
+             "dev-docs/generated/card-runtime-coverage.md",
          ),
          cache_inputs=WEB_BUNDLE_BUILD_HELPERS, parallel_safe=True, cache_tools=("node",)),
     task("device-slots", ("python3", "scripts/generate_device_slots.py", "--check"), profiles=PRODUCT,
@@ -289,6 +296,6 @@ TASKS = (
          generated_inputs=("docs/public/webserver/**",),
          cache_env=("PLAYWRIGHT_BROWSERS_PATH", "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD")),
     task("docs-build", ("npm", "run", "docs:build"), dependencies=("generated",), profiles=("all", "release"),
-         domains=("docs",), inputs=("docs/**",) + MAINTAINER_DOCS + ("package-lock.json",),
+         domains=("docs",), inputs=("docs/**", "scripts/check_docs_site.py") + MAINTAINER_DOCS + ("package.json", "package-lock.json",),
          generated_inputs=("docs/generated/**",), cache="never"),
 )

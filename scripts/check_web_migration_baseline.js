@@ -63,7 +63,7 @@ const currentPanel = {
   clockFormat: "12h", clockFormatOptions: ["12h", "24h"],
   ntpDefaults: ["pool.ntp.org", "time.nist.gov", "time.google.com"],
   ntpServer1: "pool.ntp.org", ntpServer2: "time.nist.gov", ntpServer3: "time.google.com",
-  screensaverMode: "off", screensaverAction: "main", coverArtHomeAssistantProtocol: "http",
+  screensaverMode: "off", screensaverAction: "main", coverArtHomeAssistantHost: "", coverArtHomeAssistantProtocol: "http",
   coverArtHomeAssistantPort: 80, updateFrequency: "Daily", screenRotation: "0",
   autoUpdate: true, updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
   screenRotationOptions: ["0", "90", "180", "270"],

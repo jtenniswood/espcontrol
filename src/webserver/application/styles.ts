@@ -22,7 +22,6 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-identity-dialog{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.875rem;line-height:1.5;max-width:32rem;width:calc(100% - 3rem);box-sizing:border-box;border:1px solid var(--border);border-radius:12px;padding:1.5rem;background:var(--bg);color:var(--text)}.sp-identity-dialog::backdrop{background:#0008}.sp-identity-dialog a{color:var(--accent);overflow-wrap:anywhere}.sp-identity-dialog button{margin:1rem .5rem 0 0}[hidden]{display:none!important}" +
         ".sp-brand{display:flex;align-items:center;gap:.55rem;font-size:var(--text-lg);font-weight:600;color:var(--text);margin-right:auto;" +
         "min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-.01em}" +
-        ".sp-brand-logo{width:28px;height:28px;display:block;flex:0 0 auto}" +
         ".sp-brand-title{font-weight:600;flex:0 0 auto}" +
         ".sp-brand-name{font-weight:400;color:var(--text2);overflow:hidden;text-overflow:ellipsis}" +
         ".sp-nav{display:flex;align-items:center;height:100%}" +
@@ -310,6 +309,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-card-badge.sp-hidden{display:none}" +
         ".sp-panel{background:var(--surface);border-radius:var(--radius);padding:24px;" +
         "margin-bottom:var(--gap);border:1px solid var(--border)}" +
+        ".sp-camera-settings{display:flex;flex-direction:column;gap:24px;margin-bottom:0}" +
+        ".sp-camera-settings>.sp-field,.sp-camera-settings>.sp-toggle-row{margin-bottom:0}" +
         ".sp-field{margin-bottom:24px}.sp-field.sp-hidden{display:none}.sp-field:last-child{margin-bottom:0}" +
         ".sp-field.sp-icon-on-field:last-child{margin-bottom:44px}" +
         ".sp-state-translation-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px 14px;margin-bottom:28px}" +
@@ -608,7 +609,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ":root{--gap:12px}" +
         "#sp-app{max-width:100%}" +
         ".sp-header{padding:0 12px;height:48px}" +
-        ".sp-brand{font-size:.875rem}.sp-brand-logo{width:24px;height:24px}" +
+        ".sp-brand{font-size:.875rem}" +
         ".sp-tab{padding:0 12px;font-size:.8rem}" +
         ".sp-tab-docs{margin-left:4px;padding-left:18px}" +
         ".sp-wrap{padding-left:0;padding-right:0}" +

@@ -21,9 +21,12 @@ export const SSE_ALIAS_GROUPS = {
   subpageChevron: ["switch-screen__subpage_chevron", "switch-screen_subpage_chevron", "switch-subpage_chevrons_enabled"],
   screensaverTimeout: ["number-screensaver_timeout", "number-screen_saver__timeout", "number-screen_saver_timeout"],
   clockScreensaver: ["switch-screen_saver__clock", "switch-screen_saver_clock", "switch-clock_screensaver_enabled"],
+  coverArtPlaybackControl: ["switch-screen_saver__cover_art_playback_control", "switch-screen_saver_cover_art_playback_control", "switch-cover_art_playback_control_enabled"],
   mediaPlayerSleepPrevention: ["switch-screen_saver__media_player_sleep_prevention", "switch-screen_saver_media_player_sleep_prevention", "switch-media_player_sleep_prevention_enabled"],
   mediaPlayerSleepPreventionEntity: ["text-media_player_sleep_prevention_entity"],
   coverArt: ["switch-screen_saver__cover_art", "switch-screen_saver_cover_art", "switch-screensaver_cover_art"],
+  clockOverlay: ["switch-screen_saver__clock_overlay", "switch-screen_saver_clock_overlay", "switch-clock_overlay_enabled"],
+  metadataOverlay: ["switch-screen_saver__metadata_overlay", "switch-screen_saver_metadata_overlay", "switch-metadata_overlay_enabled"],
   coverArtEntity: ["text-screen_saver__cover_art_entity", "text-screen_saver_cover_art_entity", "text-cover_art_media_player_entity"],
   coverArtSecondaryEntity: ["text-screen_saver__external_source_media_entity", "text-screen_saver_cover_art_secondary_entity", "text-cover_art_secondary_media_player_entity"],
   coverArtConditions: ["text-screen_saver__cover_art_conditions", "text-screen_saver_cover_art_conditions", "text-cover_art_attribute_conditions"],
@@ -32,8 +35,10 @@ export const SSE_ALIAS_GROUPS = {
   coverArtHideExternalInput: ["switch-screen_saver__hide_cover_art_on_external_input", "switch-screen_saver_hide_cover_art_on_external_input", "switch-hide_cover_art_on_external_input", "switch-cover_art_hide_external_input", "switch-screen_saver__hide_for_external_sources"],
   homeAssistantArtworkProtocol: ["select-home_assistant_artwork_protocol", "select-cover_art_home_assistant_artwork_protocol"],
   homeAssistantArtworkPort: ["number-home_assistant_artwork_port"],
+  homeAssistantArtworkHost: ["text-home_assistant_artwork_host"],
   homeAssistantArtworkEndpointMode: ["select-home_assistant_artwork_endpoint_mode", "select-home_assistant_artwork_connection"],
   homeAssistantArtworkEndpointStatus: ["text_sensor-home_assistant_artwork_endpoint_status", "text_sensor-home_assistant_artwork_endpoint"],
+  homeAssistantArtworkEndpointHealth: ["text_sensor-home_assistant_artwork_endpoint_health", "text_sensor-home_assistant_artwork_connection_health"],
   scheduleTrigger: ["text-screen__schedule_trigger", "text-screen_schedule_trigger", "text-schedule_trigger"],
   scheduleSensorActivation: ["select-screen__schedule_sensor_activation", "select-screen_schedule_sensor_activation", "select-schedule_sensor_activation"],
   scheduleWakeTimeout: ["number-screen__schedule_wake_timeout", "number-screen_schedule_wake_timeout", "number-schedule_wake_timeout"],
@@ -75,9 +80,12 @@ export function applySseHandlerAliases(handlers: SseHandlers): void {
   addSseAliases(handlers, SSE_ALIAS_GROUPS.subpageChevron, "switch-screen__subpage_chevron");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.screensaverTimeout, "number-screensaver_timeout");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.clockScreensaver, "switch-screen_saver__clock");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtPlaybackControl, "switch-screen_saver__cover_art_playback_control");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.mediaPlayerSleepPrevention, "switch-screen_saver__media_player_sleep_prevention");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.mediaPlayerSleepPreventionEntity, "text-media_player_sleep_prevention_entity");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArt, "switch-screen_saver__cover_art");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.clockOverlay, "switch-screen_saver__clock_overlay");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.metadataOverlay, "switch-screen_saver__metadata_overlay");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtEntity, "text-screen_saver__cover_art_entity");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtSecondaryEntity, "text-screen_saver__external_source_media_entity");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtConditions, "text-screen_saver__cover_art_conditions");
@@ -86,8 +94,10 @@ export function applySseHandlerAliases(handlers: SseHandlers): void {
   addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtHideExternalInput, "switch-screen_saver__hide_cover_art_on_external_input");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkProtocol, "select-home_assistant_artwork_protocol");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkPort, "number-home_assistant_artwork_port");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkHost, "text-home_assistant_artwork_host");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkEndpointMode, "select-home_assistant_artwork_endpoint_mode");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkEndpointStatus, "text_sensor-home_assistant_artwork_endpoint_status");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkEndpointHealth, "text_sensor-home_assistant_artwork_endpoint_health");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleTrigger, "text-screen__schedule_trigger");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleSensorActivation, "select-screen__schedule_sensor_activation");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleWakeTimeout, "number-screen__schedule_wake_timeout");

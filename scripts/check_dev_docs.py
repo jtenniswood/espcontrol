@@ -59,7 +59,7 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         (
             "common/config/card_runtime_baseline_card_normalization_fixtures.json",
             "compatibility/fixtures/card_runtime_surface_baseline.json",
-            "docs/generated/cards/runtime-coverage.md",
+            "dev-docs/generated/card-runtime-coverage.md",
         ),
         "node scripts/generate_card_runtime_coverage.js",
         "`npm run check:card-runtime-coverage` and `npm run check:saved-config-parity`",
@@ -192,7 +192,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "wifi_qr_card": "docs/card-types/wifi-share.md",
     "weather": "docs/card-types/weather.md",
     "image": "docs/card-types/cameras.md",
-    "weather_forecast": "docs/card-types/weather-forecast.md",
+    "weather_forecast": "docs/card-types/weather.md",
 }
 
 

@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitepress'
+import { faqSchema, hostname, jsonLd, writeRedirects } from './discovery'
 
-const hostname = 'https://jtenniswood.github.io/espcontrol/'
 const defaultImage = {
   url: `${hostname}images/home_screen_hero.jpg`,
   width: '1024',
@@ -140,7 +140,7 @@ const screenProducts: Record<string, Record<string, string>> = {
   },
   'screens/p4-86.md': {
     name: 'ESP32-P4 86',
-    brand: 'ESP32-P4',
+    brand: 'Waveshare',
     model: 'ESP32-P4-86-Panel-ETH-2RO',
     size: '4 inches',
     resolution: '720 x 720',
@@ -148,92 +148,17 @@ const screenProducts: Record<string, Record<string, string>> = {
   },
 }
 
-const faqItems = [
-  {
-    question: "How Do I Find My Device's IP Address?",
-    answer:
-      'Tap the connectivity icon in the clock bar, check the unconfigured display, your router connected-device list, or the ESPHome device page in Home Assistant.',
-  },
-  {
-    question: 'The Web Page Looks Broken or Unstyled',
-    answer:
-      'Check that the browser can reach the web resources, force-refresh the page or try a private window, and update firmware if new controls are missing.',
-  },
-  {
-    question: "My Device Won't Connect to WiFi",
-    answer:
-      'Use a 2.4 GHz WiFi network, double-check the password, move closer to the router during setup, or reconnect through the espcontrol setup hotspot.',
-  },
-  {
-    question: 'How Do I Reset the Device?',
-    answer:
-      'Use Settings > System > Factory Reset. Partial reset keeps WiFi and the Home Assistant encryption key; Complete reset also clears those saved credentials. Both keep installed firmware and compiled defaults.',
-  },
-  {
-    question: 'Can I Use This Without Home Assistant?',
-    answer:
-      'Home Assistant is required for smart-home controls, entity readings, and media features. ESPHome Device Builder is not required for the normal browser installation.',
-  },
-  {
-    question: 'How Do I Update the Firmware?',
-    answer:
-      'Leave Auto Update enabled for automatic updates, or use Check for Update in the Firmware section of the setup page. Advanced Ethernet-only builds may need to be updated through ESPHome.',
-  },
-  {
-    question: "What If the Icon I Need Isn't Listed?",
-    answer:
-      'Open a GitHub issue with the Material Design Icons name and what you would use it for.',
-  },
-  {
-    question: 'What Card Types Are Available?',
-    answer:
-      'The card catalogue covers lights, switches, climate, fans, covers, locks, alarms, media, cameras, sensors, weather, actions, and more.',
-  },
-  {
-    question: 'How Many Cards Can I Have?',
-    answer:
-      'Standard home grids have 9 slots on 4-inch panels, 6 on the 4.3-inch, 15 on the 7-inch, and 20 on the 10.1-inch. Larger cards occupy several slots; subpages add more pages, and image cards have separate shared limits.',
-  },
-  {
-    question: 'What Is a Subpage?',
-    answer:
-      'A Subpage card works like a folder, opening another page of cards for grouping rooms or device types.',
-  },
-  {
-    question: 'Can I Back Up My Setup?',
-    answer:
-      'Yes. Use Export and Import in the Backup section of the setup page to save and restore cards, subpages, colours, and display settings.',
-  },
-  {
-    question: 'Which Panels Are Supported?',
-    answer:
-      'Supported families are Guition 4848S040, JC4880P443, JC1060P470 original and V2, JC8012P4A1 original, V2 and V3, and ESP32-P4 86 Panel. Check the installer and model guide for the exact hardware revision.',
-  },
-  {
-    question: 'Does the Panel Work with Other Smart Home Platforms?',
-    answer:
-      'EspControl is built for Home Assistant. Other platforms only work indirectly if they are integrated into Home Assistant.',
-  },
-  {
-    question: 'The Display Is Stuck on the Loading Screen',
-    answer:
-      'Wait up to 60 seconds, power-cycle the panel, and if the setup hotspot appears, go through WiFi setup again.',
-  },
-  {
-    question: 'How Is My Data Handled?',
-    answer:
-      'Smart-home control normally runs locally between the panel and Home Assistant. Updates, web assets, network time, artwork, webhooks, and configured cloud integrations can involve external connections.',
-  },
-]
-
 export default defineConfig({
-  title: 'Espcontrol',
+  title: 'EspControl',
   description:
     'Touchscreen control panel for Home Assistant on supported ESP32 panels — card-based controls, web configuration, automatic updates.',
   base: '/espcontrol/',
   lang: 'en-US',
   cleanUrls: true,
   lastUpdated: true,
+  srcExclude: ['generated/**'],
+  markdown: { config: faqSchema },
+  buildEnd: ({ outDir }) => writeRedirects(outDir),
 
   sitemap: {
     hostname,
@@ -241,18 +166,13 @@ export default defineConfig({
   },
 
   head: [
+    ...(process.env.GOOGLE_SITE_VERIFICATION
+      ? [['meta', { name: 'google-site-verification', content: process.env.GOOGLE_SITE_VERIFICATION }] as [string, Record<string, string>]]
+      : []),
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/espcontrol/favicon.svg' }],
-    [
-      'meta',
-      {
-        name: 'keywords',
-        content:
-          'Espcontrol, ESPHome, Home Assistant, ESP32-P4, ESP32-S3, Guition, LVGL, touchscreen, control panel',
-      },
-    ],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:locale', content: 'en_US' }],
-    ['meta', { property: 'og:site_name', content: 'Espcontrol' }],
+    ['meta', { property: 'og:site_name', content: 'EspControl' }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     [
       'style',
@@ -267,14 +187,14 @@ export default defineConfig({
     [
       'script',
       { type: 'application/ld+json' },
-      JSON.stringify({
+      jsonLd({
         '@context': 'https://schema.org',
         '@graph': [
           {
             '@type': 'WebSite',
             '@id': `${hostname}#website`,
             url: hostname,
-            name: 'Espcontrol',
+            name: 'EspControl',
             description:
               'ESPHome firmware for supported ESP32 touchscreens: Home Assistant card controls, web UI, OTA updates.',
             inLanguage: 'en-US',
@@ -282,7 +202,7 @@ export default defineConfig({
           {
             '@type': 'SoftwareApplication',
             '@id': `${hostname}#software`,
-            name: 'Espcontrol',
+            name: 'EspControl',
             applicationCategory: 'UtilitiesApplication',
             operatingSystem: 'ESP32',
             description:
@@ -336,55 +256,22 @@ export default defineConfig({
       title &&
       description
     ) {
-      const isHowTo =
-        pageData.relativePath === 'getting-started/install.md' ||
-        pageData.relativePath === 'getting-started/manual-esphome-setup.md' ||
-        pageData.relativePath === 'getting-started/migrate-esphome-media-player.md'
       const articleSchema: Record<string, unknown> = {
         '@context': 'https://schema.org',
-        '@type': isHowTo ? 'HowTo' : 'TechArticle',
+        '@type': 'TechArticle',
         name: title,
         description,
         url: canonicalUrl,
         isPartOf: { '@id': `${hostname}#website` },
         author: { '@type': 'Person', name: 'jtenniswood', url: 'https://github.com/jtenniswood' },
       }
-      if (isHowTo) {
-        if (pageData.relativePath === 'getting-started/manual-esphome-setup.md') {
-          articleSchema.step = [
-            { '@type': 'HowToStep', name: 'Choose the correct ESPHome package file' },
-            { '@type': 'HowToStep', name: 'Create the device in ESPHome Device Builder' },
-            { '@type': 'HowToStep', name: 'Install by USB or OTA' },
-            { '@type': 'HowToStep', name: 'Add the display to Home Assistant' },
-          ]
-        } else if (
-          pageData.relativePath === 'getting-started/migrate-esphome-media-player.md'
-        ) {
-          articleSchema.step = [
-            { '@type': 'HowToStep', name: 'Install and connect EspControl' },
-            { '@type': 'HowToStep', name: 'Choose an automatic or card-based cover-art layout' },
-            { '@type': 'HowToStep', name: 'Configure media playback controls' },
-            { '@type': 'HowToStep', name: 'Configure the idle clock or display-off behaviour' },
-          ]
-        } else {
-          articleSchema.step = [
-            { '@type': 'HowToStep', name: 'Flash firmware from your browser' },
-            { '@type': 'HowToStep', name: 'Connect to WiFi' },
-            { '@type': 'HowToStep', name: 'Add to Home Assistant' },
-            { '@type': 'HowToStep', name: 'Configure buttons from the web page' },
-          ]
-        }
+      if (pageData.lastUpdated) {
+        articleSchema.dateModified = new Date(pageData.lastUpdated).toISOString()
       }
       if (pageData.relativePath === 'reference/faq.md') {
         articleSchema['@type'] = 'FAQPage'
-        articleSchema.mainEntity = faqItems.map((item) => ({
-          '@type': 'Question',
-          name: item.question,
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: item.answer,
-          },
-        }))
+        articleSchema.mainEntity = pageData.frontmatter.faqAnswers
+        delete pageData.frontmatter.faqAnswers
       }
       const screenProduct = screenProducts[pageData.relativePath]
       if (screenProduct) {
@@ -405,18 +292,19 @@ export default defineConfig({
       pageData.frontmatter.head.push([
         'script',
         { type: 'application/ld+json' },
-        JSON.stringify(articleSchema),
+        jsonLd(articleSchema),
       ])
     }
   },
 
   themeConfig: {
     logo: '/images/espcontrol-logo.svg',
-    siteTitle: 'Espcontrol',
+    siteTitle: 'EspControl',
     nav: [
+      { text: 'Choose a Screen', link: '/screens/' },
       { text: 'Install', link: '/getting-started/install' },
+      { text: 'Guides', link: '/guides/' },
       { text: 'FAQ', link: '/reference/faq' },
-      { text: 'Issues', link: 'https://github.com/jtenniswood/espcontrol/issues' },
       { text: 'GitHub', link: 'https://github.com/jtenniswood/espcontrol' },
     ],
 
@@ -425,8 +313,11 @@ export default defineConfig({
         text: 'Getting Started',
         items: [
           { text: 'Overview', link: '/' },
+          { text: 'Choose a Screen', link: '/screens/' },
           { text: 'Install', link: '/getting-started/install' },
           { text: 'Enable Actions', link: '/getting-started/home-assistant-actions' },
+          { text: 'Configure', link: '/features/setup' },
+          { text: 'Guides', link: '/guides/' },
           { text: 'Troubleshooting', link: '/getting-started/troubleshooting' },
         ],
       },
@@ -529,17 +420,30 @@ export default defineConfig({
         ],
       },
       {
-        text: 'Setup & Troubleshooting',
+        text: 'Immich Photos',
+        items: [
+          { text: 'Overview', link: '/immich/' },
+          { text: 'Installation', link: '/immich/installation' },
+          { text: 'Connect to EspControl', link: '/immich/display-setup' },
+          { text: 'Using Your Frame', link: '/immich/using-your-frame' },
+          { text: 'Settings Reference', link: '/immich/settings-reference' },
+          { text: 'Home Assistant Entities', link: '/immich/entities' },
+          { text: 'Browser & API Add-on', link: '/immich/add-on' },
+          { text: 'Compatibility', link: '/immich/compatibility' },
+        ],
+      },
+      {
+        text: 'Advanced',
         items: [
           { text: 'Manual Setup', link: '/getting-started/manual-esphome-setup' },
           { text: 'Wifi Issues', link: '/getting-started/c6-recovery' },
-          { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
         ],
       },
       {
         text: 'Reference',
         items: [
           { text: 'FAQ', link: '/reference/faq' },
+          { text: 'Card Capabilities', link: '/reference/card-capabilities' },
           { text: 'Icon Reference', link: '/reference/icons' },
           { text: 'Language Support', link: '/reference/language-support' },
         ],
@@ -547,13 +451,20 @@ export default defineConfig({
       {
         text: 'Community',
         items: [
-          { text: 'Contributing', link: '/reference/contributing' },
-          { text: 'Request Device Support', link: '/reference/request-device-support' },
+          {
+            text: 'Contributing',
+            link: '/reference/contributing',
+            collapsed: true,
+            items: [
+              { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
+            ],
+          },
         ],
       },
       {
         text: 'About',
         items: [
+          { text: 'Commercial Partnerships', link: '/reference/partnerships' },
           { text: 'Privacy Policy', link: '/reference/privacy' },
         ],
       },

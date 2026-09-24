@@ -978,10 +978,14 @@ inline void fan_control_hide_modal() {
   control_modal_delete_overlay(ControlModalKind::FAN_CONTROL, overlay);
 }
 
+inline bool fan_control_can_open_modal(FanCardCtx *ctx) {
+  return ctx && (ctx->available || fan_light_supported(ctx)) &&
+         fan_control_visible_tabs(ctx).count > 0;
+}
+
 inline void fan_control_open_modal(FanCardCtx *ctx) {
-  if (!ctx || (!ctx->available && !fan_light_supported(ctx))) return;
+  if (!fan_control_can_open_modal(ctx)) return;
   FanControlVisibleTabs visible_tabs = fan_control_visible_tabs(ctx);
-  if (visible_tabs.count == 0) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::FAN_CONTROL, ctx->btn, ctx->width_compensation_percent,
     ctx->icon_font, fan_control_hide_modal);

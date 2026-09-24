@@ -1,5 +1,5 @@
 ---
-title: EspControl Backlight Settings
+title: "Backlight Settings"
 description:
   Choose manual backlight control or automatic day and night brightness using sunrise, sunset, or fixed times.
 ---

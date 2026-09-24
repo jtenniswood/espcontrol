@@ -112,6 +112,15 @@ Fonts only include the glyphs explicitly listed for that font.
   normalized to plain `S` and `s` only when text is rendered. Keep this
   substitution at the display boundary so Home Assistant values and service
   data remain unchanged.
+- Media renderers additionally use `media_display_text.h` to map fullwidth
+  ASCII forms to ordinary text and omit emoji sequences. Keep this at the
+  rendering boundary: original metadata is also used for track identity and
+  artwork refresh. The media helper preserves other scripts without promising
+  glyph coverage and applies output byte limits at UTF-8 character boundaries.
+  Emoji ranges come from Unicode 17.0; regenerate `media_emoji_ranges.h` with
+  `scripts/generate_media_emoji_ranges.py` and a local copy of that version's
+  `emoji-data.txt`. Normal builds require no Unicode download. Plain digits,
+  `#`, `*`, `©`, `®`, and `™` remain text unless used in an emoji sequence.
 - Icon fonts use Material Design Icon glyph sets such as
   `common/assets/icon_glyphs.yaml`.
 - Number fonts intentionally include only digits and a few symbols such as

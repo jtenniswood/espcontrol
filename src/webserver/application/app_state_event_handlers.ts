@@ -25,6 +25,7 @@ import {
     normalizeScheduleWakeBrightness,
     normalizeScheduleWakeTimeout,
     normalizeScreensaverAction,
+    normalizeScreensaverCameraImageMode,
     normalizeScreensaverDimmedBrightness,
     normalizeTemperatureUnit,
     normalizeTimeOfDay,
@@ -250,9 +251,23 @@ export function createAppStateEventHandlersFeature(
                 state.mediaPlayerSleepPreventionOn = d.value === true || val === "ON";
                 syncMediaPlayerSleepPreventionUi();
             },
+            "switch-screen_saver__cover_art_playback_control": function (this: any, val?: any, d?: any) {
+                state.coverArtPlaybackControlOn = d.value === true || val === "ON";
+                syncCoverArtScreensaverUi();
+            },
             "switch-screen_saver__cover_art": function (this: any, val?: any, d?: any) {
                 state.coverArtScreensaverOn = d.value === true || val === "ON";
                 syncCoverArtScreensaverUi();
+            },
+            "switch-screen_saver__clock_overlay": function (this: any, val?: any, d?: any) {
+                state.clockOverlaySupported = true;
+                state.clockOverlayOn = d.value === true || val === "ON";
+                syncCoverArtScreensaverUi();
+                syncClockScreensaverControls();
+            },
+            "switch-screen_saver__metadata_overlay": function (this: any, val?: any, d?: any) {
+                state.metadataOverlayOn = d.value === true || val === "ON";
+                syncClockScreensaverControls();
             },
             "switch-screen_saver__hide_cover_art_on_external_input": function (this: any, val?: any, d?: any) {
                 state.coverArtHideExternalInputOn = d.value === true || val === "ON";
@@ -343,9 +358,17 @@ export function createAppStateEventHandlersFeature(
                 state.coverArtHomeAssistantPort = normalizeHomeAssistantArtworkPort(val);
                 syncCoverArtScreensaverUi();
             },
+            "text-home_assistant_artwork_host": function (this: any, val?: any) {
+                state.homeAssistantArtworkHost = String(val || "").trim().slice(0, 253);
+                syncCoverArtScreensaverUi();
+            },
             "select-home_assistant_artwork_endpoint_mode": function (this: any, val?: any, d?: any) {
                 state.homeAssistantArtworkEndpointMode = normalizeHomeAssistantArtworkEndpointMode(
                     d.value || val, state.homeAssistantArtworkProtocol, state.coverArtHomeAssistantPort);
+                syncCoverArtScreensaverUi();
+            },
+            "text_sensor-home_assistant_artwork_endpoint_health": function (this: any, val?: any) {
+                state.homeAssistantArtworkEndpointHealth = String(val || "");
                 syncCoverArtScreensaverUi();
             },
             "text_sensor-home_assistant_artwork_endpoint_status": function (this: any, val?: any) {
@@ -355,8 +378,23 @@ export function createAppStateEventHandlersFeature(
             "text-screensaver_mode": function (this: any, val?: any) {
                 state._screensaverModeReceived = true;
                 state.screensaverMode = val === "sensor" || val === "timer" || val === "disabled" ? val : "disabled";
-                if (els.setSsMode)
-                    els.setSsMode(getActiveScreensaverMode());
+                    if (els.setSsMode)
+                        els.setSsMode(getActiveScreensaverMode());
+            },
+            "text-screen_saver__camera_entity": function (this: any, val?: any) {
+                state.screensaverCameraSupported = true;
+                state.screensaverCameraEntity = val;
+                syncInput(els.setScreensaverCamera, val);
+                syncInput(els.setSensorScreensaverCamera, val);
+                syncClockScreensaverControls();
+            },
+            "text-screen_saver__photo_metadata_entity": function (this: any, val?: any) {
+                state.screensaverMetadataEntity = val;
+                syncInput(els.setScreensaverMetadata, val);
+            },
+            "select-screen_saver__camera_image_mode": function (this: any, val?: any, d?: any) {
+                state.screensaverCameraImageMode = normalizeScreensaverCameraImageMode(d.value || val);
+                syncClockScreensaverControls();
             },
             "number-screen__daytime_brightness": function (this: any, val?: any) {
                 state.brightnessDayVal = parseFloat(val) || 100;

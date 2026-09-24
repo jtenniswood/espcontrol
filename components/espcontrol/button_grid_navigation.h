@@ -7,6 +7,10 @@
 #include "grid_navigation_service.h"
 #include "espcontrol_app_core.h"
 
+// Implemented by button_grid_image.h; navigation calls this when a subpage
+// becomes active after the S3 camera screensaver released image buffers.
+inline void refresh_visible_image_cards();
+
 // ── Home Assistant-driven home-screen navigation ─────────────────────
 
 struct NavigationHomeTargetEntry {
@@ -29,6 +33,7 @@ struct NavigationSubpageEntry {
     lv_obj_t *button = nullptr;
     BtnSlot slot{};
     SubpageBtn definition{};
+    int display_order = 0;
   };
   std::vector<Card> cards;
 };
@@ -277,6 +282,7 @@ inline bool navigation_restore_subpage_slot(int slot) {
   NavigationSubpageEntry *entry = navigation_find_slot(slot);
   if (entry == nullptr || entry->screen == nullptr) return false;
   lv_scr_load_anim(entry->screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+  refresh_visible_image_cards();
   return true;
 }
 
@@ -295,7 +301,8 @@ inline void navigation_register_subpage_card(int slot, int index,
   if (index <= 0 || card_slot.btn == nullptr) return;
   NavigationSubpageEntry *entry = navigation_find_slot(slot);
   if (entry == nullptr) return;
-  entry->cards.push_back({index, card_slot.btn, card_slot, definition});
+  entry->cards.push_back({index, card_slot.btn, card_slot, definition,
+                          static_cast<int>(entry->cards.size())});
 }
 
 inline void navigation_retire_subpage(int slot, lv_obj_t *main_page_obj) {
@@ -338,6 +345,7 @@ inline bool navigation_open_first_kind(const std::string &kind,
     return false;
   }
   lv_scr_load_anim(target->screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+  refresh_visible_image_cards();
   return true;
 }
 

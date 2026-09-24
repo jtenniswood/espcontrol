@@ -1,11 +1,16 @@
-import { normalizeCoverArtDelay, normalizeHomeAssistantArtworkEndpointMode, normalizeHomeAssistantArtworkProtocol } from "../model/settings";
+import { normalizeCoverArtDelay, normalizeHomeAssistantArtworkEndpointMode, normalizeHomeAssistantArtworkProtocol, normalizeScreensaverCameraImageMode } from "../model/settings";
 import type { EntityStateFeature } from "./entity_state";
 import type { ApplicationApiFeature } from "./api";
 export interface ArtworkPostApiFeature {
     postPresenceSensorEntity(value?: any): any;
+    postScreensaverCameraEntity(value?: any): any;
+    postScreensaverCameraImageMode(value?: any): any;
     postMediaPlayerSleepPrevention(on?: any): any;
     postMediaPlayerSleepPreventionEntity(value?: any): any;
+    postCoverArtPlaybackControl(on?: any): any;
     postCoverArtScreensaver(on?: any): any;
+    postClockOverlay(on?: any): any;
+    postMetadataOverlay(on?: any): any;
     postCoverArtMediaPlayerEntity(value?: any): any;
     postCoverArtSecondaryMediaPlayerEntity(value?: any): any;
     postCoverArtConditions(value?: any): any;
@@ -18,6 +23,7 @@ export interface ArtworkPostApiFeature {
     homeAssistantArtworkPortPostUrls(value?: any): any;
     postHomeAssistantArtworkPort(value?: any): any;
     postHomeAssistantArtworkProtocol(value?: any): any;
+    postHomeAssistantArtworkHost(value?: any): any;
     postHomeAssistantArtworkEndpointMode(value?: any): any;
 }
 
@@ -31,14 +37,29 @@ export function createArtworkPostApiFeature(
     function postPresenceSensorEntity(this: any, value?: any) {
         return postTextWithObjectIds(entityName("presence_sensor_entity"), entityObjectIds("presence_sensor_entity"), value);
     }
+    function postScreensaverCameraEntity(this: any, value?: any) {
+        return postTextWithObjectIds(entityName("screen_saver_camera_entity"), entityObjectIds("screen_saver_camera_entity"), value);
+    }
+    function postScreensaverCameraImageMode(this: any, value?: any) {
+        return postSelectWithObjectIds(entityName("screen_saver_camera_image_mode"), entityObjectIds("screen_saver_camera_image_mode"), normalizeScreensaverCameraImageMode(value));
+    }
     function postMediaPlayerSleepPrevention(this: any, on?: any) {
         return postSwitchWithObjectIds(entityName("screen_saver_media_player_sleep_prevention"), entityObjectIds("screen_saver_media_player_sleep_prevention"), on);
     }
     function postMediaPlayerSleepPreventionEntity(this: any, value?: any) {
         return postTextWithObjectIds(entityName("media_player_sleep_prevention_entity"), entityObjectIds("media_player_sleep_prevention_entity"), value);
     }
+    function postCoverArtPlaybackControl(this: any, on?: any) {
+        return postSwitchWithObjectIds(entityName("screen_saver_cover_art_playback_control"), entityObjectIds("screen_saver_cover_art_playback_control"), on);
+    }
     function postCoverArtScreensaver(this: any, on?: any) {
         return postSwitchWithObjectIds(entityName("screen_saver_cover_art"), entityObjectIds("screen_saver_cover_art"), on);
+    }
+    function postClockOverlay(this: any, on?: any) {
+        return postSwitchWithObjectIds(entityName("screen_saver_clock_overlay"), entityObjectIds("screen_saver_clock_overlay"), on);
+    }
+    function postMetadataOverlay(this: any, on?: any) {
+        return postSwitchWithObjectIds(entityName("screen_saver_metadata_overlay"), entityObjectIds("screen_saver_metadata_overlay"), on);
     }
     function postCoverArtMediaPlayerEntity(this: any, value?: any) {
         return postTextWithObjectIds(entityName("screen_saver_cover_art_entity"), entityObjectIds("screen_saver_cover_art_entity"), value);
@@ -76,14 +97,22 @@ export function createArtworkPostApiFeature(
     function postHomeAssistantArtworkProtocol(this: any, value?: any) {
         return postSelectWithObjectIds(entityName("home_assistant_artwork_protocol"), entityObjectIds("home_assistant_artwork_protocol"), normalizeHomeAssistantArtworkProtocol(value));
     }
+    function postHomeAssistantArtworkHost(this: any, value?: any) {
+        return postTextWithObjectIds(entityName("home_assistant_artwork_host"), entityObjectIds("home_assistant_artwork_host"), String(value || "").trim().slice(0, 253));
+    }
     function postHomeAssistantArtworkEndpointMode(this: any, value?: any) {
         return postSelectWithObjectIds(entityName("home_assistant_artwork_endpoint_mode"), entityObjectIds("home_assistant_artwork_endpoint_mode"), normalizeHomeAssistantArtworkEndpointMode(value));
     }
     return {
         postPresenceSensorEntity,
+        postScreensaverCameraEntity,
+        postScreensaverCameraImageMode,
         postMediaPlayerSleepPrevention,
         postMediaPlayerSleepPreventionEntity,
+        postCoverArtPlaybackControl,
         postCoverArtScreensaver,
+        postClockOverlay,
+        postMetadataOverlay,
         postCoverArtMediaPlayerEntity,
         postCoverArtSecondaryMediaPlayerEntity,
         postCoverArtConditions,
@@ -96,6 +125,7 @@ export function createArtworkPostApiFeature(
         homeAssistantArtworkPortPostUrls,
         postHomeAssistantArtworkPort,
         postHomeAssistantArtworkProtocol,
+        postHomeAssistantArtworkHost,
         postHomeAssistantArtworkEndpointMode,
     };
 }

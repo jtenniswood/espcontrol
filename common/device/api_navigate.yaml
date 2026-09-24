@@ -1,8 +1,8 @@
 # =============================================================================
 # API NAVIGATE ACTION - Home Assistant-driven page navigation
 # =============================================================================
-# Kept outside core_infra so low-memory device profiles can omit this custom
-# API action without losing the normal Home Assistant state/action pipeline.
+# Kept outside core_infra so constrained device profiles can enable this custom
+# API action without changing the normal Home Assistant state/action pipeline.
 # =============================================================================
 
 api:
@@ -11,14 +11,8 @@ api:
       variables:
         target: string
       then:
-        - script.execute: screensaver_wake
-        - script.wait: screensaver_wake
-        - lambda: |-
-            if (navigation_is_voice_target(target) && !navigation_has_home_label_target(target)) {
-              navigation_hide_modals();
-              ${navigate_voice_target_code}
-            } else {
-              espcontrol_navigate(target, id(main_page)->obj);
-            }
-        - script.execute: screensaver_idle_check
-        - script.execute: home_screen_idle_check
+        - script.stop: open_entity_modal
+        - script.stop: open_remote_subpage
+        - script.execute:
+            id: remote_navigate
+            target: !lambda 'return target;'

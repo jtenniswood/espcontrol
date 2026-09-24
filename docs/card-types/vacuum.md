@@ -1,5 +1,5 @@
 ---
-title: Vacuum Cards
+title: "Home Assistant Vacuum Cards"
 description:
   How to show or control a Home Assistant vacuum entity from your EspControl panel.
 ---

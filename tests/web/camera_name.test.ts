@@ -21,7 +21,12 @@ export function runCameraNameTests(): void {
   const node = () => ({ classList: { add() {}, toggle() {} }, appendChild() {} });
   const helpers: any = {
     idPrefix: "test-",
-    renderCardEntityField: () => fields.push("entity"),
+    renderCardEntityField: () => {
+      fields.push("entity");
+      return { input: { addEventListener() {} } };
+    },
+    entityField: () => ({ field: node(), input: { value: "", addEventListener() {} } }),
+    requireField: () => {},
     renderCardTextField: (_panel: any, _card: any, _helpers: any, metadata: any) => {
       fields.push(metadata.text.label);
       check(metadata.text.bindName === "label", "Name must reuse saved labels");
@@ -35,7 +40,13 @@ export function runCameraNameTests(): void {
     selectField: () => ({ field: node(), select: { addEventListener() {} } }),
     escHtml: (value: string) => value,
   };
-  definition.renderSettings(node(), camera, 1, helpers);
+  const previousDocument = globalThis.document;
+  try {
+    globalThis.document = { createElement: node } as any;
+    definition.renderSettings(node(), camera, 1, helpers);
+  } finally {
+    globalThis.document = previousDocument;
+  }
   check(fields.join(",") === "entity,Name", "Name must follow Entity without a separate Label field");
   check(primaryName, "Name must stay outside Card Settings");
   check(camera.label === "Front Door", "Opening settings must retain a hidden label's name");
