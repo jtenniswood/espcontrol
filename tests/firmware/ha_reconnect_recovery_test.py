@@ -17,6 +17,34 @@ class ReconnectRecoveryTest(unittest.TestCase):
         self.core = (ROOT / "common/device/core_infra.yaml").read_text()
         self.image = (ROOT / "components/espcontrol/button_grid_image.h").read_text()
 
+    def test_discovery_boot_callback_survives_device_package_merging(self):
+        # A mapping-form on_boot is replaced by later list-form device hooks.
+        # Inspect ESPHome's actual merged entry points, not the shared source:
+        # without this callback, discovery succeeds but image cards see no URL.
+        from esphome.components.packages import resolve_packages
+        from esphome.core import CORE
+        from esphome.yaml_util import load_yaml
+
+        configurations = sorted((ROOT / "builds").glob("*.factory.yaml"))
+        self.assertTrue(configurations)
+        for path in configurations:
+            with self.subTest(device=path.name):
+                CORE.reset()
+                CORE.config_path = str(path)
+                try:
+                    config = resolve_packages(load_yaml(path))
+                    hooks = config["esphome"]["on_boot"]
+                    self.assertIsInstance(hooks, list)
+                    callbacks = [hook for hook in hooks if "set_change_callback" in str(hook)]
+                    self.assertEqual(len(callbacks), 1, "Artwork discovery boot callback was lost")
+                    hook = callbacks[0]
+                    self.assertEqual(hook["priority"], 250)
+                    self.assertIn("cover_art_resolve_home_assistant_base_url", str(hook))
+                    self.assertIn("home_assistant_artwork_endpoint_mode_migrated", str(hook))
+                    self.assertIn({"script.execute": "cover_art_resubscribe"}, hook["then"])
+                finally:
+                    CORE.reset()
+
     def test_recovery_has_one_restartable_owner_and_yields_first(self):
         script = self.core.split("  - id: ha_refresh_after_connect\n", 1)[1]
         self.assertIn("    mode: restart\n", script)
