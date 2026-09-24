@@ -497,6 +497,9 @@ export function createSettingsPageHelpersFeature(
             els.setHomeAssistantArtworkProtocol.value =
                 normalizeHomeAssistantArtworkProtocol(state.homeAssistantArtworkProtocol);
         }
+        if (els.setHomeAssistantArtworkHost) {
+            els.setHomeAssistantArtworkHost.value = String(state.homeAssistantArtworkHost || "");
+        }
         if (els.setCoverArtHomeAssistantPort) {
             els.setCoverArtHomeAssistantPort.value = String(normalizeHomeAssistantArtworkPort(state.coverArtHomeAssistantPort));
         }
@@ -510,8 +513,12 @@ export function createSettingsPageHelpersFeature(
         if (els.setCoverArtHomeAssistantPortField) {
             els.setCoverArtHomeAssistantPortField.classList.toggle("sp-hidden", !manualEndpoint);
         }
+        if (els.setHomeAssistantArtworkHostField) {
+            els.setHomeAssistantArtworkHostField.classList.toggle("sp-hidden", !manualEndpoint);
+        }
         if (els.setHomeAssistantArtworkProtocol) els.setHomeAssistantArtworkProtocol.disabled = !manualEndpoint;
         if (els.setCoverArtHomeAssistantPort) els.setCoverArtHomeAssistantPort.disabled = !manualEndpoint;
+        if (els.setHomeAssistantArtworkHost) els.setHomeAssistantArtworkHost.disabled = !manualEndpoint;
         if (els.homeAssistantArtworkEndpointStatus) {
             var endpointStatus: any = formatHomeAssistantArtworkEndpointStatus(state.homeAssistantArtworkEndpointStatus);
             if (els.homeAssistantArtworkEndpointStatusOutput) {

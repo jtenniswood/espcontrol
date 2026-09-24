@@ -49,7 +49,7 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     mediaPlayerSleepPreventionOn: true, mediaPlayerSleepPreventionEntity: "",
     coverArtScreensaverOn: false, clockOverlayOn: false, coverArtMediaPlayerEntity: "", coverArtSecondaryMediaPlayerEntity: "", coverArtAttributeConditions: "",
     coverArtPlaybackControlOn: true, coverArtFilteringEnabled: false, coverArtDelay: 10, coverArtTrackOverlayDuration: 5,
-    coverArtHideExternalInputOn: true, homeAssistantArtworkProtocol: "http", coverArtHomeAssistantPort: 8123,
+    coverArtHideExternalInputOn: true, homeAssistantArtworkProtocol: "http", homeAssistantArtworkHost: "", coverArtHomeAssistantPort: 8123,
     homeAssistantArtworkEndpointMode: "Automatic", homeAssistantArtworkEndpointStatus: "Discovering", homeAssistantArtworkEndpointHealth: "",
     screensaverMode: "disabled", _screensaverModeReceived: false, screensaverAction: "off",
     _screensaverActionReceived: false, clockScreensaverOn: false, clockBrightnessDay: 35,

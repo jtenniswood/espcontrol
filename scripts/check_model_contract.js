@@ -596,6 +596,7 @@ const panelSettings = model.normalizeBackupPanelSettings({
   screensaver_metadata_entity: "sensor.current_photo_caption",
   cover_art_hide_external_input: true,
   home_assistant_artwork_endpoint_mode: "Manual",
+  home_assistant_artwork_host: "ha.example.test",
   home_assistant_artwork_protocol: "https",
   home_assistant_artwork_port: "80",
   firmware_auto_update: false,
@@ -616,6 +617,7 @@ const panelSettings = model.normalizeBackupPanelSettings({
   ntpServer2: "1.pool.ntp.org",
   ntpServer3: "2.pool.ntp.org",
   coverArtHomeAssistantProtocol: "http",
+  coverArtHomeAssistantHost: "",
   coverArtHomeAssistantPort: 8123,
   autoUpdate: true,
   updateFrequency: "Daily",
@@ -655,6 +657,7 @@ assert.strictEqual(model.normalizeScreensaverCameraImageMode("unexpected"), "Fit
 assert.strictEqual(panelSettings.coverArtHideExternalInput, true, "panel cover art external-input setting imports");
 assert.strictEqual(panelSettings.coverArtHomeAssistantEndpointMode, "Manual", "panel Home Assistant artwork endpoint mode imports");
 assert.strictEqual(panelSettings.coverArtHomeAssistantProtocol, "https", "panel Home Assistant artwork protocol imports");
+assert.strictEqual(panelSettings.coverArtHomeAssistantHost, "ha.example.test", "panel Home Assistant artwork host imports");
 assert.strictEqual(panelSettings.coverArtHomeAssistantPort, 80, "panel Home Assistant artwork port imports");
 assert.strictEqual(
   model.normalizeHomeAssistantArtworkEndpointMode(undefined, "http", 8123),

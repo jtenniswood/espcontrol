@@ -203,6 +203,10 @@ export function normalizeHomeAssistantArtworkProtocol(value: unknown): string {
   return String(value || "").trim().toLowerCase() === "https" ? "https" : "http";
 }
 
+export function normalizeHomeAssistantArtworkHost(value: unknown): string {
+  return String(value == null ? "" : value).trim().slice(0, 253);
+}
+
 export function normalizeHomeAssistantArtworkEndpointMode(
   value: unknown,
   protocol: unknown = "http",
@@ -321,6 +325,7 @@ export interface BackupPanelSettingsCurrent {
   ntpServer1: string;
   ntpServer2: string;
   ntpServer3: string;
+  coverArtHomeAssistantHost: string;
   coverArtHomeAssistantProtocol: string;
   coverArtHomeAssistantPort: number;
   coverArtHomeAssistantEndpointMode: string;
@@ -376,6 +381,7 @@ export interface BackupPanelSettingsState {
   coverArtPlaybackControl: boolean;
   coverArtTrackOverlayDuration: unknown;
   coverArtHideExternalInput: boolean;
+  coverArtHomeAssistantHost: string;
   coverArtHomeAssistantProtocol: string;
   coverArtHomeAssistantPort: number;
   coverArtHomeAssistantEndpointMode: string;
@@ -460,6 +466,9 @@ export function normalizeBackupPanelSettings(
   const coverArtHomeAssistantProtocol = objectValue(settings, "home_assistant_artwork_protocol") != null
     ? normalizeHomeAssistantArtworkProtocol(settings.home_assistant_artwork_protocol)
     : normalizeHomeAssistantArtworkProtocol(current.coverArtHomeAssistantProtocol);
+  const coverArtHomeAssistantHost = objectValue(settings, "home_assistant_artwork_host") != null
+    ? normalizeHomeAssistantArtworkHost(settings.home_assistant_artwork_host)
+    : normalizeHomeAssistantArtworkHost(current.coverArtHomeAssistantHost);
   const coverArtHomeAssistantPort = objectValue(settings, "home_assistant_artwork_port") != null
     ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port)
     : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort);
@@ -537,6 +546,7 @@ export function normalizeBackupPanelSettings(
     coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null
       ? !!settings.cover_art_hide_external_input
       : true,
+    coverArtHomeAssistantHost,
     coverArtHomeAssistantProtocol,
     coverArtHomeAssistantPort,
     coverArtHomeAssistantEndpointMode: normalizeHomeAssistantArtworkEndpointMode(

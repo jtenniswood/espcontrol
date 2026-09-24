@@ -728,6 +728,7 @@ function composeApplicationContext(): ApplicationContext {
       ntpServer2: state.ntpServer2,
       ntpServer3: state.ntpServer3,
       coverArtHomeAssistantProtocol: state.homeAssistantArtworkProtocol,
+      coverArtHomeAssistantHost: state.homeAssistantArtworkHost,
       coverArtHomeAssistantPort: state.coverArtHomeAssistantPort,
       coverArtHomeAssistantEndpointMode: state.homeAssistantArtworkEndpointMode,
       autoUpdate: state.autoUpdate,

@@ -25,7 +25,7 @@ struct FakeProbe : EndpointProbe {
   void shutdown() override {}
   void reply(EndpointProbeOutcome outcome, int status = 0) { results.push_back({generation, outcome, status, 0}); }
 };
-ServiceRecord server{{"10.20.30.40"}, 8123, "https://split.example:9443", false, "one"};
+ServiceRecord server{{"10.20.30.40"}, 8123, "https://10.20.30.40:9443", false, "one"};
 
 int main() {
   FakeProbe probe;
@@ -35,8 +35,8 @@ int main() {
   resolver.setup();
   resolver.configure("Automatic", "http", 8123, "10.20.30.40");
   resolver.accept_discovery({server}); resolver.loop();
-  assert(probe.calls.back() == "https://split.example:9443");
-  assert(probe.local_destination_required.back());
+  assert(probe.calls.back() == "https://10.20.30.40:9443");
+  assert(!probe.local_destination_required.back());
   probe.reply(EndpointProbeOutcome::TRANSPORT); resolver.loop();
   assert(probe.calls.back() == "http://10.20.30.40:8123");
   assert(!probe.local_destination_required.back());
@@ -59,9 +59,9 @@ int main() {
   resolver.report_download(resolver.origin(), gen, 0, false, true);
   resolver.loop(); assert(probe.calls.size() == 3); // coalesce
   const uint32_t stale = probe.generation;
-  resolver.configure("Manual", "https", 8443, "10.20.30.40");
+  resolver.configure("Manual", "https", 8443, "10.20.30.40", "ha.example.test");
   probe.results.push_back({stale, EndpointProbeOutcome::READY, 200, 0}); resolver.loop();
-  assert(resolver.origin() == "https://10.20.30.40:8443");
+  assert(resolver.origin() == "https://ha.example.test:8443");
   assert(resolver.health() == "Manual connection");
   resolver.report_download(resolver.origin(), resolver.generation(), 0, false, true);
   resolver.report_download(resolver.origin(), resolver.generation(), 0, false, true);
@@ -113,7 +113,7 @@ int main() {
   resource.configure("Automatic", "http", 8123, "10.20.30.40");
   resource.accept_discovery({server}); resource.loop();
   unavailable.reply(EndpointProbeOutcome::READY, 200); resource.loop();
-  assert(resource.origin() == "https://split.example:9443");
+  assert(resource.origin() == "https://10.20.30.40:9443");
 
   // A second installation on the API host invalidates an otherwise healthy route.
   auto other = server; other.identity = "two";
@@ -127,12 +127,14 @@ int main() {
   replaced_resolver.configure("Automatic", "http", 8123, "10.20.30.40");
   replaced_resolver.accept_discovery({server}); replaced_resolver.loop();
   const auto old_selection = replaced_probe.generation;
-  auto updated = server; updated.internal_url = "https://new.example:9443";
+  auto updated = server;
+  updated.addresses = {"10.20.30.40", "10.20.30.41"};
+  updated.internal_url = "https://10.20.30.40:9444";
   replaced_resolver.accept_discovery({updated});
   replaced_probe.results.push_back({old_selection, EndpointProbeOutcome::READY, 200, 0});
   replaced_resolver.loop();
   assert(replaced_resolver.origin().empty());
-  assert(replaced_probe.calls.back() == "https://new.example:9443");
+  assert(replaced_probe.calls.back() == "https://10.20.30.40:9444");
   const auto old_connection = replaced_resolver.generation();
   replaced_probe.reply(EndpointProbeOutcome::READY, 200);
   replaced_resolver.invalidate_connection();

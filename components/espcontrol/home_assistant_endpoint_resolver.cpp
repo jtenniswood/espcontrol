@@ -18,23 +18,30 @@ constexpr size_t QUERY_MAX_RESULTS = 8;
 constexpr uint32_t RETRY_DELAYS_MS[] = {5000, 30000, 300000};
 
 std::string HomeAssistantEndpointResolver::fallback() const {
-  return parse_origin(build_origin(protocol_, client_address_, port_));
+  const std::string &host = mode_ == Mode::MANUAL && !manual_host_.empty()
+      ? manual_host_ : client_address_;
+  return parse_origin(build_origin(protocol_, host, port_));
 }
 void HomeAssistantEndpointResolver::setup() { setup_complete_ = true; }
 
 void HomeAssistantEndpointResolver::configure(const std::string &mode,
-    const std::string &protocol, uint16_t port, const std::string &client) {
+    const std::string &protocol, uint16_t port, const std::string &client,
+    const std::string &manual_host) {
   const auto next_mode = mode == "Manual" ? Mode::MANUAL : Mode::AUTOMATIC;
   const auto next_protocol = normalize_protocol(protocol);
   const auto next_client = normalize_address(client);
+  const auto parsed_manual = parse_origin(build_origin("http", manual_host, 80));
+  const std::string next_manual_host = parsed_manual.empty()
+      ? std::string() : parsed_manual.substr(7, parsed_manual.size() - 10);
   const uint16_t next_port = port ? port : 8123;
   if (next_mode == mode_ && next_protocol == protocol_ && next_port == port_ &&
-      next_client == client_address_) return;
+      next_client == client_address_ && next_manual_host == manual_host_) return;
   const bool same_client = next_client == client_address_;
   mode_ = next_mode;
   protocol_ = next_protocol;
   port_ = next_port;
   client_address_ = next_client;
+  manual_host_ = next_manual_host;
   cancel_query();
   ++selection_generation_;
   ++origin_generation_;

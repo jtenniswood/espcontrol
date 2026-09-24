@@ -123,6 +123,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
         postCoverArtTrackOverlayDuration,
         postCoverArtHideExternalInput,
         postHomeAssistantArtworkProtocol,
+        postHomeAssistantArtworkHost,
         postHomeAssistantArtworkPort,
         postHomeAssistantArtworkEndpointMode,
     } = controllers.artworkPostApi;
@@ -290,6 +291,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 cover_art_track_overlay_duration: state.coverArtTrackOverlayDuration,
                 cover_art_hide_external_input: state.coverArtHideExternalInputOn,
                 home_assistant_artwork_protocol: normalizeHomeAssistantArtworkProtocol(state.homeAssistantArtworkProtocol),
+                home_assistant_artwork_host: String(state.homeAssistantArtworkHost || "").trim().slice(0, 253),
                 home_assistant_artwork_port: normalizeHomeAssistantArtworkPort(state.coverArtHomeAssistantPort),
                 home_assistant_artwork_endpoint_mode: normalizeHomeAssistantArtworkEndpointMode(
                     state.homeAssistantArtworkEndpointMode,
@@ -540,6 +542,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     postCoverArtTrackOverlayDuration(importedSettings.coverArtTrackOverlayDuration);
                     postCoverArtHideExternalInput(importedSettings.coverArtHideExternalInput);
                     postHomeAssistantArtworkProtocol(importedSettings.coverArtHomeAssistantProtocol);
+                    postHomeAssistantArtworkHost(importedSettings.coverArtHomeAssistantHost);
                     postHomeAssistantArtworkPort(importedSettings.coverArtHomeAssistantPort);
                     postHomeAssistantArtworkEndpointMode(importedSettings.coverArtHomeAssistantEndpointMode);
                     if (firmwareUpdateControlsVisible()) {
@@ -613,6 +616,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     state.coverArtTrackOverlayDuration = importedSettings.coverArtTrackOverlayDuration;
                     state.coverArtHideExternalInputOn = importedSettings.coverArtHideExternalInput;
                     state.homeAssistantArtworkProtocol = importedSettings.coverArtHomeAssistantProtocol;
+                    state.homeAssistantArtworkHost = importedSettings.coverArtHomeAssistantHost;
                     state.coverArtHomeAssistantPort = importedSettings.coverArtHomeAssistantPort;
                     state.homeAssistantArtworkEndpointMode = importedSettings.coverArtHomeAssistantEndpointMode;
                     state.autoUpdate = importedSettings.autoUpdate;

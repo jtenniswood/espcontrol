@@ -568,6 +568,7 @@ function seededEvents() {
       min: 1,
       max: 65535,
     },
+    { id: "text-home_assistant_artwork_host", state: "" },
     { id: "switch-firmware__auto_update", state: "ON", value: true },
     { id: "text_sensor-firmware__version", state: "v1.12.0" },
     {
@@ -1871,6 +1872,11 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: Home Assistant port should be hidden in Automatic mode`,
   );
   assert.strictEqual(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-host").isVisible(),
+    false,
+    `${label}: Home Assistant host should be hidden in Automatic mode`,
+  );
+  assert.strictEqual(
     await homeAssistantSettingsCard
       .locator("#sp-set-ha-artwork-port")
       .inputValue(),
@@ -1910,6 +1916,23 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   assert(
     await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isVisible(),
     `${label}: Home Assistant port should render in Manual mode`,
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-host").isVisible(),
+    `${label}: Home Assistant host should render in Manual mode`,
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-host").isEnabled(),
+    `${label}: Home Assistant host should be editable in Manual mode`,
+  );
+  const hostPostsBefore = posts.length;
+  await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-host").fill("ha.example.test");
+  await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-host").dispatchEvent("change");
+  await waitForPost(
+    posts,
+    { domain: "text", name: "home_assistant_artwork_host", value: "ha.example.test" },
+    `${label}: Home Assistant host post`,
+    hostPostsBefore,
   );
   assert(
     (await homeAssistantSettingsCard

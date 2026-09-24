@@ -246,6 +246,18 @@ inline bool local_address(const std::string &value) {
       (parts[0] == 192 && parts[1] == 168) || (parts[0] == 169 && parts[1] == 254);
 }
 
+inline bool origin_host_matches_client(const std::string &origin,
+                                       const std::string &client_address) {
+  const size_t scheme = origin.find("://");
+  if (scheme == std::string::npos) return false;
+  const size_t start = scheme + 3;
+  const size_t end = origin.find(':', origin[start] == '[' ? origin.find(']', start) + 1 : start);
+  if (end == std::string::npos || end <= start) return false;
+  std::string host = origin.substr(start, end - start);
+  if (host.size() >= 2 && host.front() == '[') host = host.substr(1, host.size() - 2);
+  return normalize_address(host) == normalize_address(client_address);
+}
+
 struct Candidate {
   std::string origin;
   Source source{Source::AUTOMATIC};
@@ -286,7 +298,14 @@ inline Discovery discover(const std::vector<ServiceRecord> &records,
     result.invalid_internal_url = !matched->internal_url.empty() && internal.empty();
     // mDNS is unauthenticated. Hostnames from its TXT record may be used only
     // when the probe confirms they resolve to a private/local network target.
-    add(internal, Source::AUTOMATIC, "advertised local URL", true);
+    // The TXT hostname is unauthenticated and later image URLs carry HA
+    // tokens. Automatic mode only accepts an origin whose host is the
+    // connected API peer IP. A user-entered Manual host is an
+    // explicit trust decision and remains available for TLS/FQDN deployments.
+    if (!internal.empty() && origin_host_matches_client(internal, client))
+      add(internal, Source::AUTOMATIC, "advertised local URL");
+    else if (!matched->internal_url.empty())
+      result.invalid_internal_url = true;
     add(build_origin(protocol, client, matched->port), Source::AUTOMATIC, "advertised local service");
     if (local_address(client))
       add(build_origin(normalize_protocol(protocol) == "http" ? "https" : "http", client, matched->port),

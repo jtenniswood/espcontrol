@@ -21,7 +21,8 @@ class HomeAssistantEndpointResolver {
   void loop();
   void shutdown();
   void configure(const std::string &mode, const std::string &protocol,
-                 uint16_t port, const std::string &client_address);
+                 uint16_t port, const std::string &client_address,
+                 const std::string &manual_host = "");
   void request_discovery();
   void invalidate_connection();
   void set_change_callback(ChangeCallback callback) { change_callback_ = std::move(callback); }
@@ -48,7 +49,7 @@ class HomeAssistantEndpointResolver {
   home_assistant_endpoint::Mode mode_{home_assistant_endpoint::Mode::AUTOMATIC};
   std::string protocol_{"http"};
   uint16_t port_{8123};
-  std::string client_address_, origin_;
+  std::string client_address_, manual_host_, origin_;
   std::string status_{"Discovering"}, health_{"Checking connection"};
   home_assistant_endpoint::Source source_{home_assistant_endpoint::Source::DISCOVERING};
   ChangeCallback change_callback_;

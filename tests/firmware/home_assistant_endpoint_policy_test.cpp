@@ -23,17 +23,27 @@ int main() {
   auto found = discover({local}, "10.20.30.40", "http", 8123);
   assert(found.candidates.size() == 2);
   assert(found.candidates[0].origin == "http://10.20.30.40:8123");
-  // External HTTPS is not an input. Internal hostname, port and TLS stay together.
-  local.internal_url = "https://split.example:9443/";
+  // External HTTPS is not an input. Automatic advertised origins must bind
+  // directly to the connected API peer IP.
+  local.internal_url = "https://10.20.30.40:9443/";
   found = discover({local}, "10.20.30.40", "http", 80);
   assert(found.candidates.size() == 4);
-  assert(found.candidates[0].origin == "https://split.example:9443");
-  assert(found.candidates[0].require_local_destination);
+  assert(found.candidates[0].origin == "https://10.20.30.40:9443");
+  assert(!found.candidates[0].require_local_destination);
   assert(found.candidates[1].origin == "http://10.20.30.40:8123");
   assert(!found.candidates[1].require_local_destination);
   assert(found.candidates[2].origin == "https://10.20.30.40:8123");
   assert(found.candidates[3].origin == "http://10.20.30.40:80");
   assert(found.candidates[3].source == Source::FALLBACK);
+  local.internal_url = "https://10.20.30.41:9443/";
+  found = discover({local}, "10.20.30.40", "http", 80);
+  assert(found.invalid_internal_url);
+  assert(found.candidates[0].origin == "http://10.20.30.40:8123");
+  local.internal_url = "https://split.example:9443/";
+  found = discover({local}, "10.20.30.40", "http", 80);
+  assert(found.invalid_internal_url);
+  assert(found.candidates[0].origin == "http://10.20.30.40:8123");
+  local.internal_url = "https://10.20.30.40:9443/";
   assert(discover({local, local}, "10.20.30.40", "http", 80).candidates.size() == 4);
   auto partial = local; partial.internal_url.clear();
   assert(discover({partial, local}, "10.20.30.40", "http", 80).candidates.size() == 4);
