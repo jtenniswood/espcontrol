@@ -682,6 +682,29 @@ void stalled_reusable_channel_coalesces_reads_per_owner() {
           "stalled artwork retries retained superseded callbacks for one owner");
 }
 
+void stalled_remote_artwork_channel_coalesces_reads_per_owner() {
+  Coordinator coordinator;
+  int owner = 0;
+  require(coordinator.subscribe("media_player.room", "entity_picture",
+                                [](std::string) {}, 1u, &owner, true),
+          "reusable remote artwork subscription should register");
+
+  int stale_calls = 0;
+  int current_calls = 0;
+  require(coordinator.read_retained("media_player.room", "entity_picture",
+                          [&](std::string) { stale_calls++; }, true, 10, 5, &owner),
+          "first remote artwork read should wait");
+  require(coordinator.read_retained("media_player.room", "entity_picture",
+                          [&](std::string) { current_calls++; }, true, 10, 5, &owner),
+          "replacement remote artwork read should wait");
+  require(coordinator.pending_read_count() == 1 &&
+              coordinator.transient_callback_capacity() == 1,
+          "stalled remote artwork retries retained superseded callbacks for one owner");
+  coordinator.transport().publish(0, "new");
+  require(stale_calls == 0 && current_calls == 1,
+          "stalled remote artwork retries superseded callbacks for one owner");
+}
+
 void unowned_reusable_channel_keeps_independent_reads() {
   Coordinator coordinator;
   require(coordinator.subscribe("media_player.room", "entity_picture",
@@ -1071,6 +1094,7 @@ int main() {
   ordinary_subscriptions_fail_closed_for_retained_reads();
   inactive_reusable_channels_release_cached_state();
   stalled_reusable_channel_coalesces_reads_per_owner();
+  stalled_remote_artwork_channel_coalesces_reads_per_owner();
   unowned_reusable_channel_keeps_independent_reads();
   generation_change_drops_pending_retained_reads();
   retained_subscription_preserves_attribute();

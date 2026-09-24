@@ -1887,7 +1887,8 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
           ctx->access_token = token;
           std::string authed_path = image_card_proxy_path_with_token(proxy_path, token);
           image_card_handle_picture(ctx, esphome::StringRef(authed_path));
-        })
+        }),
+      ctx
     );
     if (!requested) {
       ctx->access_token_request_pending = false;
@@ -1926,11 +1927,13 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
               [ctx, entity_id, generation](esphome::StringRef fallback_picture) {
                 if (!image_card_context_current(ctx, entity_id, generation)) return;
                 image_card_handle_picture(ctx, fallback_picture);
-              })
+              }),
+            ctx
           );
           if (!fallback_requested) image_card_handle_picture(ctx, picture);
           else image_card_wait_for_picture(ctx);
-        })
+        }),
+      ctx
     );
     if (requested_local) {
       image_card_wait_for_picture(ctx);
@@ -1950,7 +1953,8 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
           return;
         }
         image_card_handle_picture(ctx, picture);
-      })
+      }),
+    ctx
   );
   if (!requested && (ha_api_connected() || image_card_startup_retry_active(ctx))) {
     ESP_LOGD("image_card", "Queued entity_picture retry for %s: connected=%d state_connected=%d",
