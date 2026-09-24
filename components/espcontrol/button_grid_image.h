@@ -18,6 +18,7 @@
 constexpr uint32_t IMAGE_CARD_STARTUP_RETRY_MS = 45000;
 constexpr uint32_t IMAGE_CARD_RETRY_INTERVAL_MS = 2000;
 constexpr uint32_t IMAGE_CARD_API_RETRY_INTERVAL_MS = 250;
+constexpr uint32_t IMAGE_CARD_ATTRIBUTE_REQUEST_TIMEOUT_MS = 10000;
 constexpr uint32_t IMAGE_CARD_MIN_REPEAT_REFRESH_MS = 30000;
 constexpr uint32_t IMAGE_CARD_MODAL_REFRESH_DELAY_MS = 1000;
 constexpr uint32_t IMAGE_CARD_MODAL_REQUEST_DELAY_MS = 100;
@@ -84,6 +85,7 @@ struct ImageCardCtx {
   bool modal_fit = false;
   bool diagnostics_enabled = false;
   bool access_token_request_pending = false;
+  uint32_t access_token_request_started_ms = 0;
   bool camera_refresh_pending = false;
   bool scheduled_tile_request = false;
   espcontrol::camera::RefreshSchedule refresh_schedule;
@@ -1097,6 +1099,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].modal_fit = false;
     contexts[i].diagnostics_enabled = false;
     contexts[i].access_token_request_pending = false;
+    contexts[i].access_token_request_started_ms = 0;
     contexts[i].camera_refresh_pending = false;
     contexts[i].refresh_schedule = {};
     contexts[i].scheduled_tile_request = false;
@@ -1797,16 +1800,46 @@ inline void image_card_schedule_picture_retry(ImageCardCtx *ctx, uint32_t delay_
   ctx->next_picture_retry_ms = esphome::millis() + delay_ms;
 }
 
+inline bool image_card_access_token_request_expired(const ImageCardCtx *ctx,
+                                                     uint32_t now = esphome::millis()) {
+  return ctx && ctx->access_token_request_pending &&
+      now - ctx->access_token_request_started_ms >=
+          IMAGE_CARD_ATTRIBUTE_REQUEST_TIMEOUT_MS;
+}
+
+// Keep a short startup grace period, then stop leaving an empty card in a
+// permanent loading state while Home Assistant state/attributes are missing.
+// A previously loaded image stays visible during transient API outages.
+inline void image_card_wait_for_picture(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->active) return;
+  if (ctx->camera_entity_unavailable) {
+    image_card_show_camera_unavailable(ctx);
+    return;
+  }
+  image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);
+  if (ctx->image_ready) {
+    image_card_hide_loading(ctx);
+    return;
+  }
+  if (image_card_startup_retry_active(ctx)) {
+    image_card_set_loading_state(ctx, "Loading", true);
+  } else {
+    image_card_hide(ctx);
+    image_card_set_loading_state(ctx, "Unavailable", true);
+  }
+}
+
 inline void image_card_request_picture(ImageCardCtx *ctx) {
   if (!ctx || !ctx->active || ctx->entity_id.empty() ||
       image_card_pipeline_suspended()) return;
+  if (ctx->camera_entity_unavailable) {
+    image_card_show_camera_unavailable(ctx);
+    return;
+  }
   image_card_log_diagnostics(ctx, "picture-request");
   if (!ha_api_connected()) {
     image_card_log_diagnostics(ctx, "picture-waiting-ha-api");
-    if (image_card_startup_retry_active(ctx)) {
-      image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);
-      image_card_set_loading_state(ctx, "Loading", true);
-    }
+    image_card_wait_for_picture(ctx);
     return;
   }
   const std::string entity_id = ctx->entity_id;
@@ -1814,8 +1847,7 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
   if (!proxy_path.empty()) {
     if (image_card_base_url(ctx).empty()) {
       image_card_log_diagnostics(ctx, "picture-waiting-base-url");
-      image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);
-      image_card_set_loading_state(ctx, "Loading", true);
+      image_card_wait_for_picture(ctx);
       return;
     }
     if (image_card_valid_access_token(ctx->access_token)) {
@@ -1824,13 +1856,19 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
       return;
     }
     if (ctx->access_token_request_pending) {
-      image_card_log_diagnostics(ctx, "picture-waiting-token-request");
-      image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);
-      image_card_set_loading_state(ctx, "Loading", true);
-      return;
+      if (!image_card_access_token_request_expired(ctx)) {
+        image_card_log_diagnostics(ctx, "picture-waiting-token-request");
+        image_card_wait_for_picture(ctx);
+        return;
+      }
+      ESP_LOGW("image_card", "Timed out waiting for access token for %s",
+               ctx->entity_id.c_str());
+      ctx->access_token_request_pending = false;
+      ctx->access_token_request_started_ms = 0;
     }
     const uint32_t generation = ha_subscription_generation();
     ctx->access_token_request_pending = true;
+    ctx->access_token_request_started_ms = esphome::millis();
     bool requested = ha_read_retained_attribute(
       entity_id,
       std::string("access_token"),
@@ -1838,26 +1876,27 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
         [ctx, entity_id, generation, proxy_path](esphome::StringRef token_ref) {
           if (!image_card_context_current(ctx, entity_id, generation)) return;
           ctx->access_token_request_pending = false;
+          ctx->access_token_request_started_ms = 0;
           std::string token = string_ref_limited(token_ref, 512);
           if (!image_card_valid_access_token(token)) {
             ctx->access_token.clear();
             image_card_log_diagnostics(ctx, "picture-waiting-token");
-            image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);
-            image_card_set_loading_state(ctx, "Loading", true);
+            image_card_wait_for_picture(ctx);
             return;
           }
           ctx->access_token = token;
           std::string authed_path = image_card_proxy_path_with_token(proxy_path, token);
           image_card_handle_picture(ctx, esphome::StringRef(authed_path));
-        })
+        }),
+      ctx
     );
     if (!requested) {
       ctx->access_token_request_pending = false;
+      ctx->access_token_request_started_ms = 0;
       image_card_log_diagnostics(ctx, "picture-attribute-request-queued");
-      image_card_schedule_picture_retry(
-        ctx,
-        ha_api_connected() ? IMAGE_CARD_API_RETRY_INTERVAL_MS : IMAGE_CARD_RETRY_INTERVAL_MS);
-      image_card_set_loading_state(ctx, "Loading", true);
+      image_card_wait_for_picture(ctx);
+    } else {
+      image_card_wait_for_picture(ctx);
     }
     return;
   }
@@ -1888,12 +1927,18 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
               [ctx, entity_id, generation](esphome::StringRef fallback_picture) {
                 if (!image_card_context_current(ctx, entity_id, generation)) return;
                 image_card_handle_picture(ctx, fallback_picture);
-              })
+              }),
+            ctx
           );
           if (!fallback_requested) image_card_handle_picture(ctx, picture);
-        })
+          else image_card_wait_for_picture(ctx);
+        }),
+      ctx
     );
-    if (requested_local) return;
+    if (requested_local) {
+      image_card_wait_for_picture(ctx);
+      return;
+    }
   }
   const uint32_t generation = ha_subscription_generation();
   bool requested = ha_read_retained_attribute(
@@ -1908,15 +1953,16 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
           return;
         }
         image_card_handle_picture(ctx, picture);
-      })
+      }),
+    ctx
   );
   if (!requested && (ha_api_connected() || image_card_startup_retry_active(ctx))) {
     ESP_LOGD("image_card", "Queued entity_picture retry for %s: connected=%d state_connected=%d",
              entity_id.c_str(), ha_api_connected(), ha_api_state_connected());
     image_card_log_diagnostics(ctx, "picture-retry-queued");
-    image_card_schedule_picture_retry(
-      ctx,
-      ha_api_connected() ? IMAGE_CARD_API_RETRY_INTERVAL_MS : IMAGE_CARD_RETRY_INTERVAL_MS);
+    image_card_wait_for_picture(ctx);
+  } else if (requested) {
+    image_card_wait_for_picture(ctx);
   }
 }
 
@@ -1931,6 +1977,7 @@ inline void subscribe_image_card_access_token(ImageCardCtx *ctx,
       [ctx, entity_id, generation](esphome::StringRef token_ref) {
         if (!image_card_context_current(ctx, entity_id, generation)) return;
         ctx->access_token_request_pending = false;
+        ctx->access_token_request_started_ms = 0;
         std::string token = string_ref_limited(token_ref, 512);
         if (!image_card_valid_access_token(token)) {
           ctx->access_token.clear();
@@ -2412,6 +2459,11 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
 
 inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef picture) {
   if (!ctx || !ctx->active || !ctx->image || image_card_pipeline_suspended()) return;
+  if (ctx->camera_entity_unavailable) {
+    image_card_show_camera_unavailable(ctx);
+    return;
+  }
+  ctx->next_picture_retry_ms = 0;
   std::string raw = string_ref_limited(picture, 4096);
   std::string base_url = image_card_base_url(ctx);
   std::string url = image_card_join_url(base_url, raw);
@@ -2421,9 +2473,7 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
       ESP_LOGD("image_card", "Waiting for Home Assistant base URL before loading %s",
                ctx->entity_id.c_str());
       image_card_log_diagnostics(ctx, "picture-empty-base-url");
-      image_card_hide(ctx);
-      image_card_set_loading_state(ctx, "Loading", true);
-      image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);
+      image_card_wait_for_picture(ctx);
       return;
     }
   }
@@ -2435,13 +2485,7 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
       return;
     }
     if (ctx->image_ready) return;
-    image_card_hide(ctx);
-    if (image_card_startup_retry_active(ctx)) {
-      ctx->next_picture_retry_ms = esphome::millis() + IMAGE_CARD_RETRY_INTERVAL_MS;
-      image_card_set_loading_state(ctx, "Loading", true);
-    } else {
-      image_card_set_loading_state(ctx, "Unavailable", true);
-    }
+    image_card_wait_for_picture(ctx);
     return;
   }
   if (!image_card_home_assistant_proxy_authed(url) &&
@@ -2449,11 +2493,23 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
     url = image_card_proxy_path_with_token(url, ctx->access_token);
   }
   if (!image_card_home_assistant_proxy_authed(url) &&
+      ctx->access_token_request_pending) {
+    if (!image_card_access_token_request_expired(ctx)) {
+      image_card_wait_for_picture(ctx);
+      return;
+    }
+    ESP_LOGW("image_card", "Timed out waiting for access token for %s",
+             ctx->entity_id.c_str());
+    ctx->access_token_request_pending = false;
+    ctx->access_token_request_started_ms = 0;
+  }
+  if (!image_card_home_assistant_proxy_authed(url) &&
       !ctx->access_token_request_pending) {
     const std::string entity_id = ctx->entity_id;
     const std::string retry_picture = raw;
     const uint32_t generation = ha_subscription_generation();
     ctx->access_token_request_pending = true;
+    ctx->access_token_request_started_ms = esphome::millis();
     bool requested = ha_read_retained_attribute(
       entity_id,
       std::string("access_token"),
@@ -2461,6 +2517,7 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
         [ctx, entity_id, retry_picture, generation](esphome::StringRef token_ref) {
           if (!image_card_context_current(ctx, entity_id, generation)) return;
           ctx->access_token_request_pending = false;
+          ctx->access_token_request_started_ms = 0;
           std::string token = string_ref_limited(token_ref, 512);
           if (!image_card_valid_access_token(token)) {
             ctx->access_token.clear();
@@ -2470,27 +2527,22 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
           }
           ctx->access_token = token;
           image_card_handle_picture(ctx, esphome::StringRef(retry_picture));
-        })
+        }),
+      ctx
     );
     if (requested) {
-      image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);
-      image_card_set_loading_state(ctx, "Loading", true);
+      image_card_wait_for_picture(ctx);
       return;
     }
     ctx->access_token_request_pending = false;
+    ctx->access_token_request_started_ms = 0;
   }
   if (!image_card_home_assistant_proxy_authed(url)) {
     ESP_LOGW("image_card", "Skipping unauthenticated Home Assistant image proxy for %s",
              ctx->entity_id.c_str());
     image_card_log_diagnostics(ctx, "picture-unauthenticated-proxy");
     if (ctx->image_ready) return;
-    image_card_hide(ctx);
-    if (image_card_startup_retry_active(ctx)) {
-      image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);
-      image_card_set_loading_state(ctx, "Loading", true);
-    } else {
-      image_card_set_loading_state(ctx, "Unavailable", true);
-    }
+    image_card_wait_for_picture(ctx);
     return;
   }
   if (espcontrol::artwork::artwork_picture_response_clears_retry(
@@ -3046,6 +3098,7 @@ inline void image_card_suspend_pipeline() {
     ctx->last_download_completed_ms = 0;
     ctx->access_token.clear();
     ctx->access_token_request_pending = false;
+    ctx->access_token_request_started_ms = 0;
     ctx->camera_refresh_pending = false;
     ctx->startup_download_errors = 0;
     ctx->pending_fallback_picture.clear();

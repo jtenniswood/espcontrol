@@ -150,26 +150,27 @@ globals:
     initial_value: '""'
 
 esphome:
+  # Keep this a list so device startup hooks append instead of replacing it.
   on_boot:
-    priority: 250
-    then:
-      - lambda: |-
-          id(espcontrol_app).home_assistant_endpoint().set_change_callback([]() {
+    - priority: 250
+      then:
+        - lambda: |-
+            id(espcontrol_app).home_assistant_endpoint().set_change_callback([]() {
+              id(cover_art_resolve_home_assistant_base_url).execute();
+            });
+            if (!id(home_assistant_artwork_endpoint_mode_migrated)) {
+              const auto inferred = espcontrol::home_assistant_endpoint::infer_legacy_mode(
+                  id(cover_art_home_assistant_artwork_protocol).current_option(),
+                  static_cast<uint16_t>(id(cover_art_home_assistant_artwork_port).state));
+              const char *option = inferred == espcontrol::home_assistant_endpoint::Mode::AUTOMATIC
+                                       ? "Automatic" : "Manual";
+              auto call = id(home_assistant_artwork_endpoint_mode).make_call();
+              call.set_option(option);
+              call.perform();
+              id(home_assistant_artwork_endpoint_mode_migrated) = true;
+            }
             id(cover_art_resolve_home_assistant_base_url).execute();
-          });
-          if (!id(home_assistant_artwork_endpoint_mode_migrated)) {
-            const auto inferred = espcontrol::home_assistant_endpoint::infer_legacy_mode(
-                id(cover_art_home_assistant_artwork_protocol).current_option(),
-                static_cast<uint16_t>(id(cover_art_home_assistant_artwork_port).state));
-            const char *option = inferred == espcontrol::home_assistant_endpoint::Mode::AUTOMATIC
-                                     ? "Automatic" : "Manual";
-            auto call = id(home_assistant_artwork_endpoint_mode).make_call();
-            call.set_option(option);
-            call.perform();
-            id(home_assistant_artwork_endpoint_mode_migrated) = true;
-          }
-          id(cover_art_resolve_home_assistant_base_url).execute();
-      - script.execute: cover_art_resubscribe
+        - script.execute: cover_art_resubscribe
 
 image:
   - platform: file
@@ -428,7 +429,8 @@ script:
               id(home_assistant_artwork_endpoint_mode).current_option(),
               id(cover_art_home_assistant_artwork_protocol).current_option(),
               static_cast<uint16_t>(id(cover_art_home_assistant_artwork_port).state),
-              id(cover_art_home_assistant_client_address));
+              id(cover_art_home_assistant_client_address),
+              id(cover_art_home_assistant_artwork_host).state);
           id(cover_art_home_assistant_base_url) =
               id(espcontrol_app).home_assistant_endpoint().origin();
           if (id(cover_art_home_assistant_base_url).empty()) {

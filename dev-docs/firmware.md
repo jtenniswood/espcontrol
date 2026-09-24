@@ -227,3 +227,19 @@ Remove or downgrade noisy logs before finalizing a change.
   its context and points `user_data` at the new context. If a card creates a
   timer or async callback, check that the button still points at the same context
   before writing to shared labels.
+
+### Home Assistant HTTP endpoint discovery
+
+`HomeAssistantEndpointResolver` matches mDNS to the native API peer, preserves
+complete internal origins and serializes candidate checks through a transient
+background probe. Probe jobs have a three-second result deadline; a DNS/socket
+operation still unwinding holds the single worker slot so retries cannot pile up.
+Only origin changes notify image consumers. Selection generations discard stale
+probe results; origin generations discard stale image feedback. The shared
+artwork transfer observer emits main-loop outcomes for HA proxy paths without
+retaining tokens. Two consecutive transport failures schedule one recovery cycle;
+HTTP, content, allocation and cancellation failures do not reselect endpoints.
+
+The endpoint policy and resolver lifecycle tests run without ESP hardware. A
+manifest response verifies connectivity, not camera authorization or image data.
+Manual mode and saved backup fields retain their previous semantics.

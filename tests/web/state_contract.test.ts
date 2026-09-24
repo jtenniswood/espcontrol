@@ -121,8 +121,10 @@ export function runStateContractTests(): void {
     coverArtHideExternalInput: "switch-screen_saver__hide_cover_art_on_external_input",
     homeAssistantArtworkProtocol: "select-home_assistant_artwork_protocol",
     homeAssistantArtworkPort: "number-home_assistant_artwork_port",
+    homeAssistantArtworkHost: "text-home_assistant_artwork_host",
     homeAssistantArtworkEndpointMode: "select-home_assistant_artwork_endpoint_mode",
     homeAssistantArtworkEndpointStatus: "text_sensor-home_assistant_artwork_endpoint_status",
+    homeAssistantArtworkEndpointHealth: "text_sensor-home_assistant_artwork_endpoint_health",
     scheduleTrigger: "text-screen__schedule_trigger",
     scheduleSensorActivation: "select-screen__schedule_sensor_activation",
     scheduleWakeTimeout: "number-screen__schedule_wake_timeout",
@@ -150,6 +152,7 @@ export function runStateContractTests(): void {
   for (const [id, state, group] of [
     ["select/Home Assistant Artwork Connection", "Automatic", "homeAssistantArtworkEndpointMode"],
     ["text_sensor/Home Assistant Artwork Endpoint", "Automatic — http://172.16.20.40:8123", "homeAssistantArtworkEndpointStatus"],
+    ["text/Home Assistant Artwork Host", "ha.example.test", "homeAssistantArtworkHost"],
   ] as const) {
     const event = { id, state };
     const key = entityStateKeys(event).find(key => handlers[key]);

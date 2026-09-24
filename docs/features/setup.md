@@ -117,9 +117,15 @@ Device-specific cards, including Voice Services, Alarm Audio, Rotation, and Batt
 
 ### Home Assistant Settings
 
-Open **Settings > System > Home Assistant Settings** to manage the address used for camera/image cards and media artwork downloads. **Automatic** connection mode discovers the HTTP endpoint advertised by the connected Home Assistant instance, including port `80` used by new Home Assistant OS installations and port `8123` commonly used by existing installations and Home Assistant Container.
+Open **Settings > System > Home Assistant Settings** to manage camera/image and media artwork connections. **Automatic** can use the local URL advertised by the connected Home Assistant instance when the URL uses the same IP address as the native ESPHome connection; it keeps the advertised protocol and port together. Home Assistant's separate Internet URL is not used.
 
-If automatic discovery is unavailable because multicast traffic is blocked between network segments, select **Manual** and set **Home Assistant Protocol** (`http` or `https`) and **Home Assistant Port** (1–65535) to the values shown under **Home Assistant > Settings > System > Network**. Automatic mode keeps these values as its fallback. EspControl never rewrites complete artwork URLs supplied by media services or external CDNs.
+The panel checks candidates in the background. If the advertised local URL cannot be reached, it checks the connected server's advertised HTTP port with the configured protocol, then the other protocol for a local/private address. Its final fallback uses the configured protocol and port with the connected server's IP. If multicast discovery is blocked or ambiguous, only that configured fallback is used; EspControl does not scan ports or guess hostnames.
+
+The settings show the endpoint, its source (**Automatic**, **Fallback**, or **Manual**) and connection health. **Connection checked** means the public Home Assistant manifest responded; **Images received** means an image download succeeded. Access errors, camera errors and invalid images do not cause EspControl to switch servers. Repeated connection failures trigger a background recheck. Complete artwork URLs supplied by media services or external CDNs are preserved.
+
+Choose **Manual** to set **Home Assistant Host** (optional), **Home Assistant Protocol** (`http` or `https`), and **Home Assistant Port** (1–65535). Leave Host blank to use the address of the connected Home Assistant API client. A hostname lets HTTPS use a certificate issued to that DNS name; the panel still verifies certificates, so a self-signed certificate must be trusted separately. Automatic discovery only accepts an advertised URL whose host is the same IP address as the connected Home Assistant API client. Use Manual for a hostname-based proxy or a proxy on a different host.
+
+The native ESPHome connection and image downloads are separate connections. If controls work but images fail, compare the displayed endpoint with **Home Assistant > Settings > System > Network > Home Assistant URL > Local network**. **Access denied** can indicate an authentication or IP-ban policy; changing HTTP/HTTPS will not repair that policy. A restricted manifest endpoint may show **Connection failed** until a real image download succeeds.
 
 ## Apply Configuration
 

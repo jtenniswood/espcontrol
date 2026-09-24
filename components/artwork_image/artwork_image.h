@@ -9,6 +9,7 @@
 #include "artwork_url.h"
 #include "image_decoder.h"
 #include "image_service.h"
+#include "transfer_observer.h"
 
 namespace esphome {
 namespace artwork_image {
@@ -269,6 +270,8 @@ class ArtworkImage : public PollingComponent,
   image::Image *placeholder_{nullptr};
 
   std::string url_{""};
+  TransferStamp transfer_stamp_;
+  TransferFailure transfer_failure_{TransferFailure::CONTENT};
   int last_http_status_{0};
   bool last_error_was_ha_media_proxy_{false};
 

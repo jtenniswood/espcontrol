@@ -568,6 +568,7 @@ function seededEvents() {
       min: 1,
       max: 65535,
     },
+    { id: "text-home_assistant_artwork_host", state: "" },
     { id: "switch-firmware__auto_update", state: "ON", value: true },
     { id: "text_sensor-firmware__version", state: "v1.12.0" },
     {
@@ -1871,6 +1872,11 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: Home Assistant port should be hidden in Automatic mode`,
   );
   assert.strictEqual(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-host").isVisible(),
+    false,
+    `${label}: Home Assistant host should be hidden in Automatic mode`,
+  );
+  assert.strictEqual(
     await homeAssistantSettingsCard
       .locator("#sp-set-ha-artwork-port")
       .inputValue(),
@@ -1884,7 +1890,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   );
   assert.strictEqual(
     await homeAssistantSettingsCard.locator("#sp-ha-artwork-endpoint-status").textContent(),
-    "The current Home Assistant artwork endpoint is http://192.0.2.10.",
+    "Home Assistant artwork endpoint: Automatic — http://192.0.2.10.",
     `${label}: Home Assistant artwork endpoint status should render`,
   );
   const endpointModePostsBefore = posts.length;
@@ -1910,6 +1916,23 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   assert(
     await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isVisible(),
     `${label}: Home Assistant port should render in Manual mode`,
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-host").isVisible(),
+    `${label}: Home Assistant host should render in Manual mode`,
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-host").isEnabled(),
+    `${label}: Home Assistant host should be editable in Manual mode`,
+  );
+  const hostPostsBefore = posts.length;
+  await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-host").fill("ha.example.test");
+  await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-host").dispatchEvent("change");
+  await waitForPost(
+    posts,
+    { domain: "text", name: "home_assistant_artwork_host", value: "ha.example.test" },
+    `${label}: Home Assistant host post`,
+    hostPostsBefore,
   );
   assert(
     (await homeAssistantSettingsCard
@@ -3229,7 +3252,7 @@ async function assertCameraRefreshSettings(page, posts, label) {
   assert.strictEqual(await page.locator(".sp-settings-modal .sp-disclosure").filter({ hasText: "Modal Settings" })
     .locator("#sp-inp-image-refresh-mode").count(), 0,
     `${label}: refresh controls must sit outside Modal Settings`);
-  assert(await page.getByText("Activity refreshes the visible card or expanded image", { exact: false }).count() === 1);
+  assert(await page.getByText("On activity refreshes them every 5 seconds for 30 seconds.", { exact: false }).count() === 1);
   assert.strictEqual(await mode.inputValue(), "off", `${label}: camera refresh is opt-in`);
   assert(!(await interval.isVisible()));
   await mode.selectOption("periodic");
@@ -6031,9 +6054,11 @@ async function assertHostedCompatibility(browser) {
     await page.evaluate(() => window.__seedEspState([
       { id: "select/Home Assistant Artwork Connection", state: "Manual" },
       { id: "text_sensor/Home Assistant Artwork Endpoint", state: "Manual — http://ha.test:8123" },
+      { id: "text_sensor/Home Assistant Artwork Connection Health", state: "Manual connection" },
     ]));
     assert.equal(await page.locator("#sp-set-ha-artwork-endpoint-mode").inputValue(), "Manual");
-    assert.equal(await page.locator("#sp-ha-artwork-endpoint-status").textContent(), "The current Home Assistant artwork endpoint is http://ha.test:8123.");
+    assert.equal(await page.locator("#sp-ha-artwork-endpoint-status").textContent(), "Home Assistant artwork endpoint: Manual — http://ha.test:8123.");
+    assert.equal(await page.locator("#sp-ha-artwork-endpoint-health").textContent(), "Manual connection");
     assert(!unhandled.some(message => message.includes("Home Assistant Artwork")), "display-name artwork events are handled");
   } finally { await context.close(); }
 }

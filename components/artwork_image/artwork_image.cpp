@@ -739,6 +739,8 @@ bool ArtworkImage::start_service_update_(uint32_t generation) {
 }
 
 void ArtworkImage::start_update_() {
+  this->transfer_stamp_ = TransferObserver::instance().begin(this->url_, this->service_generation_);
+  this->transfer_failure_ = TransferFailure::CONTENT;
   this->last_http_status_ = 0;
   this->last_error_was_ha_media_proxy_ = false;
   this->peak_download_buffer_size_ = this->download_buffer_.size();
@@ -802,6 +804,7 @@ void ArtworkImage::start_update_() {
     ESP_LOGD(TAG, "Queued artwork on guarded ESP32-S3 transfer task");
     return;
   }
+  this->transfer_failure_ = TransferFailure::RESOURCE;
   ESP_LOGE(TAG, "Guarded ESP32-S3 transfer task unavailable; refusing synchronous artwork request");
   this->fail_download_();
   return;
@@ -814,6 +817,8 @@ void ArtworkImage::start_update_() {
   }
 
   if (this->downloader_ == nullptr) {
+    if (this->transfer_failure_ != TransferFailure::RESOURCE)
+      this->transfer_failure_ = TransferFailure::TRANSPORT;
     this->last_error_was_ha_media_proxy_ = is_ha_media_proxy_url(this->url_);
     ESP_LOGE(TAG, "Download failed before response; source=%s url=%s",
              classify_artwork_url_for_log(this->url_), sanitize_artwork_url_for_log(this->url_).c_str());
@@ -823,6 +828,7 @@ void ArtworkImage::start_update_() {
   this->response_ready_ms_ = millis();
 
   int http_code = this->downloader_->status_code;
+  this->last_http_status_ = http_code;
   this->log_state_("response-ready");
   if (http_code == HTTP_CODE_NOT_MODIFIED) {
     // Image hasn't changed on server. Skip download.
@@ -832,11 +838,14 @@ void ArtworkImage::start_update_() {
       this->complete_service_request_();
       return;
     }
+    TransferObserver::instance().complete(this->transfer_stamp_, this->service_generation_,
+                                         this->last_http_status_, TransferFailure::NONE);
     this->download_finished_callback_.call(true);
     this->complete_service_request_();
     return;
   }
   if (http_code != HTTP_CODE_OK) {
+    this->transfer_failure_ = TransferFailure::HTTP;
     this->last_http_status_ = http_code;
     this->last_error_was_ha_media_proxy_ = is_ha_media_proxy_url(this->url_);
     ESP_LOGE(TAG, "Artwork HTTP result: status=%d content_length=%zu content_type=%s source=%s url=%s",
@@ -960,6 +969,7 @@ std::shared_ptr<http_request::HttpContainer> ArtworkImage::get_local_idf_(
 
   esp_http_client_handle_t client = esp_http_client_init(&config);
   if (client == nullptr) {
+    this->transfer_failure_ = TransferFailure::RESOURCE;
     ESP_LOGE(TAG, "Local artwork request failed; client could not be initialized");
     return nullptr;
   }
@@ -978,6 +988,7 @@ std::shared_ptr<http_request::HttpContainer> ArtworkImage::get_local_idf_(
   esp_err_t err = esp_http_client_open(client, 0);
   App.feed_wdt();
   if (err != ESP_OK) {
+    if (err == ESP_ERR_NO_MEM) this->transfer_failure_ = TransferFailure::RESOURCE;
     ESP_LOGE(TAG, "Local artwork request failed: %s source=%s url=%s", esp_err_to_name(err),
              classify_artwork_url_for_log(url), safe_url.c_str());
     container->end();
@@ -1035,6 +1046,7 @@ void ArtworkImage::loop() {
   // Deferred decoder creation for AUTO format: read data for magic-byte detection
   if (!this->decoder_ && this->downloader_) {
     if (!this->ensure_download_buffer_capacity_()) {
+      this->transfer_failure_ = TransferFailure::RESOURCE;
       this->fail_download_();
       return;
     }
@@ -1053,6 +1065,7 @@ void ArtworkImage::loop() {
       this->last_data_millis_ = millis();
       this->note_response_bytes_();
     } else if (len < 0) {
+      this->transfer_failure_ = TransferFailure::TRANSPORT;
       ESP_LOGE(TAG, "Download failed while detecting image format: %d", len);
       this->fail_download_();
       return;
@@ -1067,6 +1080,7 @@ void ArtworkImage::loop() {
 
     if (this->download_buffer_.unread() < 12) {
       if (millis() - this->last_data_millis_ > DOWNLOAD_STALL_TIMEOUT_MS) {
+        this->transfer_failure_ = TransferFailure::TRANSPORT;
         ESP_LOGE(TAG, "Download stalled waiting for format detection bytes");
         this->fail_download_();
       }
@@ -1124,6 +1138,7 @@ void ArtworkImage::loop() {
   }
 
   if (!this->ensure_download_buffer_capacity_()) {
+    this->transfer_failure_ = TransferFailure::RESOURCE;
     this->fail_download_();
     return;
   }
@@ -1151,6 +1166,7 @@ void ArtworkImage::loop() {
   }
 
   if (len < 0) {
+    this->transfer_failure_ = TransferFailure::TRANSPORT;
     ESP_LOGE(TAG, "Download failed while reading image data: %d", len);
     this->fail_download_();
     return;
@@ -1179,6 +1195,7 @@ void ArtworkImage::loop() {
   }
 
   if (millis() - this->last_data_millis_ > DOWNLOAD_STALL_TIMEOUT_MS) {
+    this->transfer_failure_ = TransferFailure::TRANSPORT;
     ESP_LOGE(TAG, "Download stalled: no data received for %" PRIu32 "ms (buffered %zu bytes)",
              DOWNLOAD_STALL_TIMEOUT_MS, this->download_buffer_.unread());
     this->fail_download_();
@@ -1222,6 +1239,7 @@ bool ArtworkImage::consume_s3_transfer_result_() {
       S3ArtworkTransferService::instance().take(
           this, this->s3_transfer_generation_, &allocation_failed);
   if (allocation_failed) {
+    this->transfer_failure_ = TransferFailure::RESOURCE;
     this->s3_transfer_pending_ = false;
     ESP_LOGE(TAG, "ESP32-S3 artwork transfer could not allocate its result");
     this->log_state_("s3-transfer-allocation-failed");
@@ -1247,6 +1265,12 @@ bool ArtworkImage::consume_s3_transfer_result_() {
       result->status == HTTP_CODE_NOT_MODIFIED, result->size,
       this->max_download_buffer_size_);
   if (!publishable) {
+    this->transfer_failure_ = result->error == ESP_ERR_NO_MEM ? TransferFailure::RESOURCE
+        : result->status >= 400 ? TransferFailure::HTTP
+        : result->error == ESP_ERR_INVALID_SIZE || result->error == ESP_ERR_INVALID_ARG ||
+          result->error == ESP_ERR_INVALID_RESPONSE
+            ? TransferFailure::CONTENT
+        : result->error != ESP_OK ? TransferFailure::TRANSPORT : TransferFailure::CONTENT;
     ESP_LOGE(TAG,
              "ESP32-S3 artwork transfer failed: error=%s status=%d bytes=%zu source=%s url=%s",
              esp_err_to_name(result->error), result->status, result->size,
@@ -1269,6 +1293,8 @@ bool ArtworkImage::consume_s3_transfer_result_() {
       this->complete_service_request_();
       return true;
     }
+    TransferObserver::instance().complete(this->transfer_stamp_, this->service_generation_,
+                                         this->last_http_status_, TransferFailure::NONE);
     this->download_finished_callback_.call(true);
     this->complete_service_request_();
     return true;
@@ -1358,6 +1384,7 @@ bool ArtworkImage::consume_p4_pipeline_result_() {
       P4ImagePipeline::instance().take(this, this->p4_pipeline_generation_,
                                        &allocation_failed);
   if (allocation_failed) {
+    this->transfer_failure_ = TransferFailure::RESOURCE;
     this->p4_pipeline_pending_ = false;
     ESP_LOGE(TAG, "ESP32-P4 image pipeline could not allocate its result");
     this->fail_download_();
@@ -1377,6 +1404,12 @@ bool ArtworkImage::consume_p4_pipeline_result_() {
   bool status_ok = p4_pipeline_http_status_is_success(
       result->status, this->last_error_was_ha_media_proxy_);
   if (result->error != ESP_OK || !status_ok) {
+    this->transfer_failure_ = result->error == ESP_ERR_NO_MEM ? TransferFailure::RESOURCE
+        : result->status >= 400 ? TransferFailure::HTTP
+        : result->error == ESP_ERR_INVALID_SIZE || result->error == ESP_ERR_INVALID_ARG ||
+          result->error == ESP_ERR_INVALID_RESPONSE
+            ? TransferFailure::CONTENT
+        : result->error != ESP_OK ? TransferFailure::TRANSPORT : TransferFailure::CONTENT;
     ESP_LOGE(TAG, "ESP32-P4 image pipeline request failed: error=%s status=%d bytes=%zu",
              esp_err_to_name(result->error), result->status, result->size);
     delete result;
@@ -1395,6 +1428,8 @@ bool ArtworkImage::consume_p4_pipeline_result_() {
       this->complete_service_request_();
       return true;
     }
+    TransferObserver::instance().complete(this->transfer_stamp_, this->service_generation_,
+                                         this->last_http_status_, TransferFailure::NONE);
     this->download_finished_callback_.call(true);
     this->complete_service_request_();
     return true;
@@ -1907,6 +1942,8 @@ void ArtworkImage::finish_download_() {
 #endif
   this->log_state_("lvgl-descriptor-ready");
   App.feed_wdt();
+  TransferObserver::instance().complete(this->transfer_stamp_, this->service_generation_,
+                                       this->last_http_status_, TransferFailure::NONE);
   this->download_finished_callback_.call(false);
   App.feed_wdt();
   this->log_state_("download-callback-finished");
@@ -1925,6 +1962,8 @@ void ArtworkImage::fail_download_() {
   this->log_state_("request-failed");
   this->log_timing_("error", bytes_read);
   this->end_connection_();
+  TransferObserver::instance().complete(this->transfer_stamp_, this->service_generation_,
+                                       this->last_http_status_, this->transfer_failure_);
   this->download_error_callback_.call();
   this->complete_service_request_();
 }

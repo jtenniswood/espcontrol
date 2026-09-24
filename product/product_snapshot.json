@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 8,
     "cardTypes": 43,
-    "entityNames": 107,
+    "entityNames": 109,
     "icons": 359,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
@@ -7047,6 +7047,17 @@
         ]
       },
       {
+        "key": "home_assistant_artwork_endpoint_health",
+        "domain": "text_sensor",
+        "name": "Home Assistant Artwork Connection Health",
+        "objectIds": [
+          "home_assistant_artwork_endpoint_health"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
         "key": "home_assistant_artwork_protocol",
         "domain": "select",
         "name": "Home Assistant Artwork Protocol",
@@ -7064,6 +7075,17 @@
         "name": "Home Assistant Artwork Port",
         "objectIds": [
           "home_assistant_artwork_port"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "home_assistant_artwork_host",
+        "domain": "text",
+        "name": "Home Assistant Artwork Host",
+        "objectIds": [
+          "home_assistant_artwork_host"
         ],
         "groups": [
           "settings"

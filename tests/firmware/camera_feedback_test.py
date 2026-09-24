@@ -15,6 +15,14 @@ def definition(name):
     assert len(matches) == 1, name
     return matches[0]
 
+picture_handler = definition('image_card_handle_picture')
+assert re.search(
+    r'ha_read_retained_attribute\(\s*entity_id,\s*std::string\("access_token"\),'
+    r'.*?\n\s*\}\),\s*ctx\s*\);',
+    picture_handler,
+    re.S,
+), 'picture retry access-token reads must be coalesced per card owner'
+
 source = r'''
 #include <algorithm>
 #include <cassert>
@@ -49,6 +57,7 @@ struct ImageCardCtx {
  bool diagnostics_enabled = false; uint32_t last_modal_request_started_ms = 0;
  uint8_t camera_download_errors = 0, startup_download_errors = 0;
  uint32_t camera_retry_after_ms = 0, next_download_retry_ms = 0;
+ uint32_t access_token_request_started_ms = 0;
  uint32_t next_picture_retry_ms = 0, last_download_completed_ms = 0;
  Image *image = nullptr, *modal_image = nullptr;
  Widget *widget = nullptr;
@@ -108,7 +117,6 @@ void image_card_clear_widget_source(Widget *) { ++cleared; }
 void image_card_hide_loading(ImageCardCtx *) { tile_status.clear(); }
 void image_card_release_download_slot(ImageCardCtx *c) { c->download_active = false; }
 void image_card_log_diagnostics(ImageCardCtx *, const char *) {}
-bool image_card_startup_retry_active(ImageCardCtx *, uint32_t) { return true; }
 void image_card_cancel_modal_request_timer() {}
 enum class ControlModalKind { NONE, IMAGE_CARD };
 struct Modal { ControlModalKind kind = ControlModalKind::NONE; } active_modal;
@@ -123,6 +131,7 @@ Timer *lv_timer_create(void (*)(Timer *), uint32_t delay, void *data) {
 constexpr uint32_t IMAGE_CARD_CONSTRAINED_MODAL_CACHE_TTL_MS = 15000;
 constexpr uint32_t IMAGE_CARD_RETRY_INTERVAL_MS = 2000;
 constexpr uint32_t IMAGE_CARD_STARTUP_RETRY_MS = 30000;
+constexpr uint32_t IMAGE_CARD_ATTRIBUTE_REQUEST_TIMEOUT_MS = 10000;
 constexpr uint32_t IMAGE_CARD_MODAL_REFRESH_DELAY_MS = 1000;
 constexpr int LV_OBJ_FLAG_HIDDEN = 1;
 bool lv_obj_has_flag(Widget *w, int) { return w->hidden; }
@@ -168,9 +177,12 @@ void image_card_apply_downloaded(ImageCardCtx *) { ++recovered; }
 #define ESP_LOGW(...) do {} while(false)
 '''
 # Use unchanged production definitions, rather than reproducing their logic.
-for name in ('image_card_modal_cache_expired', 'image_card_cancel_modal_cache_expiry',
+for name in ('image_card_startup_retry_active', 'image_card_schedule_picture_retry',
+             'image_card_access_token_request_expired', 'image_card_show_camera_unavailable',
+             'image_card_wait_for_picture',
+             'image_card_modal_cache_expired', 'image_card_cancel_modal_cache_expiry',
              'image_card_release_modal_cache', 'image_card_modal_cache_expiry_timer_cb',
-             'image_card_schedule_modal_cache_expiry', 'image_card_show_camera_unavailable',
+             'image_card_schedule_modal_cache_expiry',
              'image_card_camera_retry_blocked', 'image_card_camera_download_failed',
              'image_card_finish_scheduled_tile_request', 'image_card_handle_download_error',
              'image_card_modal_has_tile_fallback',
@@ -219,6 +231,35 @@ void screensaver_download_error() {
 ''' + error_callback + '\n}\n'
 source += r'''
 int main() {
+ // Pending camera cards leave the startup spinner after its grace period,
+ // retry missing HA state, and preserve an already displayed image.
+ ImageCardCtx waiting;
+ Widget waiting_widget;
+ waiting.widget = &waiting_widget;
+ waiting.image_ready = false;
+ waiting.retry_deadline_ms = 10000;
+ now_ms = 0;
+ image_card_wait_for_picture(&waiting);
+ assert(tile_status == "Loading" && waiting.next_picture_retry_ms == 2000);
+ assert(!waiting_widget.hidden);
+ now_ms = 10000;
+ image_card_wait_for_picture(&waiting);
+ assert(tile_status == "Unavailable" && waiting.next_picture_retry_ms == 12000);
+ assert(waiting_widget.hidden);
+ waiting.image_ready = true;
+ waiting_widget.hidden = false;
+ image_card_wait_for_picture(&waiting);
+ assert(tile_status.empty() && !waiting_widget.hidden);
+ waiting.image_ready = false;
+ waiting.camera_entity_unavailable = true;
+ waiting.next_picture_retry_ms = 0;
+ image_card_wait_for_picture(&waiting);
+ assert(tile_status == "Unavailable" && waiting.next_picture_retry_ms == 0);
+ waiting.access_token_request_pending = true;
+ waiting.access_token_request_started_ms = now_ms;
+ assert(!image_card_access_token_request_expired(&waiting, now_ms + 9999));
+ assert(image_card_access_token_request_expired(&waiting, now_ms + 10000));
+
  // Original-image failures try a bounded snapshot on the next loop; bounded
  // failures retain backoff, and stale/inactive sessions cannot enable fallback.
  screensaver_download_error();

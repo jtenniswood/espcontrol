@@ -75,7 +75,7 @@ export interface SettingsPageHelpersFeature {
 
 export function formatHomeAssistantArtworkEndpointStatus(status: string): string {
     const normalized = String(status || "").trim();
-    return normalized.replace(/^(?:Automatic|Fallback|Manual)\s*[—-]\s*/i, "").trim() || "Discovering";
+    return normalized || "Discovering";
 }
 
 export function createSettingsPageHelpersFeature(
@@ -497,6 +497,9 @@ export function createSettingsPageHelpersFeature(
             els.setHomeAssistantArtworkProtocol.value =
                 normalizeHomeAssistantArtworkProtocol(state.homeAssistantArtworkProtocol);
         }
+        if (els.setHomeAssistantArtworkHost) {
+            els.setHomeAssistantArtworkHost.value = String(state.homeAssistantArtworkHost || "");
+        }
         if (els.setCoverArtHomeAssistantPort) {
             els.setCoverArtHomeAssistantPort.value = String(normalizeHomeAssistantArtworkPort(state.coverArtHomeAssistantPort));
         }
@@ -510,8 +513,12 @@ export function createSettingsPageHelpersFeature(
         if (els.setCoverArtHomeAssistantPortField) {
             els.setCoverArtHomeAssistantPortField.classList.toggle("sp-hidden", !manualEndpoint);
         }
+        if (els.setHomeAssistantArtworkHostField) {
+            els.setHomeAssistantArtworkHostField.classList.toggle("sp-hidden", !manualEndpoint);
+        }
         if (els.setHomeAssistantArtworkProtocol) els.setHomeAssistantArtworkProtocol.disabled = !manualEndpoint;
         if (els.setCoverArtHomeAssistantPort) els.setCoverArtHomeAssistantPort.disabled = !manualEndpoint;
+        if (els.setHomeAssistantArtworkHost) els.setHomeAssistantArtworkHost.disabled = !manualEndpoint;
         if (els.homeAssistantArtworkEndpointStatus) {
             var endpointStatus: any = formatHomeAssistantArtworkEndpointStatus(state.homeAssistantArtworkEndpointStatus);
             if (els.homeAssistantArtworkEndpointStatusOutput) {
@@ -519,6 +526,10 @@ export function createSettingsPageHelpersFeature(
             } else {
                 els.homeAssistantArtworkEndpointStatus.textContent = endpointStatus;
             }
+        }
+        if (els.homeAssistantArtworkEndpointHealth) {
+            els.homeAssistantArtworkEndpointHealth.textContent = state.homeAssistantArtworkEndpointHealth;
+            els.homeAssistantArtworkEndpointHealth.hidden = !state.homeAssistantArtworkEndpointHealth;
         }
         if (els.setCoverArtFilterToggle) {
             els.setCoverArtFilterToggle.checked = !!state.coverArtFilteringEnabled;

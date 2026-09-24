@@ -23,6 +23,7 @@ export interface ArtworkPostApiFeature {
     homeAssistantArtworkPortPostUrls(value?: any): any;
     postHomeAssistantArtworkPort(value?: any): any;
     postHomeAssistantArtworkProtocol(value?: any): any;
+    postHomeAssistantArtworkHost(value?: any): any;
     postHomeAssistantArtworkEndpointMode(value?: any): any;
 }
 
@@ -96,6 +97,9 @@ export function createArtworkPostApiFeature(
     function postHomeAssistantArtworkProtocol(this: any, value?: any) {
         return postSelectWithObjectIds(entityName("home_assistant_artwork_protocol"), entityObjectIds("home_assistant_artwork_protocol"), normalizeHomeAssistantArtworkProtocol(value));
     }
+    function postHomeAssistantArtworkHost(this: any, value?: any) {
+        return postTextWithObjectIds(entityName("home_assistant_artwork_host"), entityObjectIds("home_assistant_artwork_host"), String(value || "").trim().slice(0, 253));
+    }
     function postHomeAssistantArtworkEndpointMode(this: any, value?: any) {
         return postSelectWithObjectIds(entityName("home_assistant_artwork_endpoint_mode"), entityObjectIds("home_assistant_artwork_endpoint_mode"), normalizeHomeAssistantArtworkEndpointMode(value));
     }
@@ -121,6 +125,7 @@ export function createArtworkPostApiFeature(
         homeAssistantArtworkPortPostUrls,
         postHomeAssistantArtworkPort,
         postHomeAssistantArtworkProtocol,
+        postHomeAssistantArtworkHost,
         postHomeAssistantArtworkEndpointMode,
     };
 }
