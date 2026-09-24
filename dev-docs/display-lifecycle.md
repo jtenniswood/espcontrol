@@ -76,7 +76,7 @@ first matching row wins.
 | 4 | Temporary user wake | `ACTIVE` / `USER_WAKE` | Uses configured wake brightness until the existing 10–3600 second timeout expires. |
 | 5 | Night schedule | Off, `CLOCK`, or `ACTIVE` / `SCREEN_SCHEDULE` | Off and clock close image modals; Screen Dimmed keeps the active UI at `schedule_dimmed_brightness`. An enabled time-based schedule fails dark until local time is valid, whether or not a saved sleep marker exists. |
 | 6 | Interactive takeover | `ACTIVE`, image modal foreground | Automatic idle or presence sleep is deferred. Manual sleep and scheduled off or clock may close it. |
-| 7 | Eligible media playback | `COVER_ART` / `MEDIA_PLAYBACK` | Eligibility still includes entity, attribute, external-input, voice, schedule, and alarm checks. |
+| 7 | Eligible media playback | `COVER_ART` / `MEDIA_PLAYBACK` | Eligibility includes entity, attribute, external-input, schedule, and alarm checks. |
 | 8 | Idle timer or absence | Configured `DIMMED`, `CLOCK`, or `DISPLAY_OFF` | Presence detected defers sensor sleep. Media sleep prevention and alarm takeover defer idle sleep. |
 | 9 | Setup timeout outside onboarding | `SETUP_DIMMED` / `SETUP_TIMEOUT` | Static setup pages may still use the existing burn-in dim path. |
 | 10 | No request | `ACTIVE` / default | Normal UI at normal calculated brightness. |

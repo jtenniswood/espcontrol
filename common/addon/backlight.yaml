@@ -770,10 +770,8 @@ script:
             - if:
                 condition:
                   lambda: |-
-                    bool voice_active = ${voice_interaction_active_condition};
                     return id(cover_art_screensaver_enabled).state &&
                            id(cover_art_media_playing) &&
-                           !voice_active &&
                            id(cover_art_attribute_conditions_match) &&
                            !(id(cover_art_hide_external_input_enabled).state &&
                              id(cover_art_external_input_active)) &&

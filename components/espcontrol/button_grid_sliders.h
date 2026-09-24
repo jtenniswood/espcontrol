@@ -181,13 +181,10 @@ constexpr lv_coord_t MEDIA_VOLUME_CONTROLS_DOWN_REF_PX = DISPLAY_MODAL_CONTROLS_
 constexpr lv_coord_t MEDIA_VOLUME_TITLE_GAP_REF_PX = DISPLAY_MODAL_TITLE_GAP_REF_PX;
 constexpr lv_coord_t MEDIA_VOLUME_UNIT_Y_REF_PX = -22;
 constexpr lv_coord_t MEDIA_VOLUME_COMPACT_PORTRAIT_BUTTON_REF_PX = 96;
-constexpr lv_coord_t MEDIA_VOLUME_MIC_BUTTON_OFFSET_REF_PX = 8;
-constexpr int MEDIA_VOLUME_MIC_ICON_ZOOM = 210;
 
 struct MediaVolumeCtx {
   std::string entity_id;
   std::string label;
-  std::string clock_bar_title;
   int current_pct = 0;
   int max_pct = 100;
   int pending_pct = -1;
@@ -206,8 +203,6 @@ struct MediaVolumeCtx {
   const lv_font_t *label_font = nullptr;
   const lv_font_t *icon_font = nullptr;
   std::function<void(int)> apply_percent;
-  std::function<bool()> mic_muted;
-  std::function<void(bool)> set_mic_muted;
   espcontrol::media::VolumeControlMode volume_control_mode =
     espcontrol::media::VolumeControlMode::ABSOLUTE;
   bool volume_known = false;
@@ -225,11 +220,7 @@ struct MediaVolumeModalUi {
   lv_obj_t *pct_unit_lbl = nullptr;
   lv_obj_t *minus_btn = nullptr;
   lv_obj_t *plus_btn = nullptr;
-  lv_obj_t *mic_btn = nullptr;
-  lv_obj_t *mic_lbl = nullptr;
   MediaVolumeCtx *active = nullptr;
-  std::string previous_clock_bar_title;
-  bool previous_clock_bar_left_hidden = false;
   bool updating_arc = false;
 };
 
@@ -3508,24 +3499,6 @@ inline void media_volume_refresh_controls(MediaVolumeCtx *ctx) {
       mode, ctx->current_pct, media_volume_max_pct(ctx)));
 }
 
-inline bool media_volume_has_mic_control(MediaVolumeCtx *ctx) {
-  return ctx && ctx->mic_muted && ctx->set_mic_muted;
-}
-
-inline void media_volume_apply_mic_button_state(MediaVolumeCtx *ctx) {
-  MediaVolumeModalUi &ui = media_volume_modal_ui();
-  if (!ctx || !ui.mic_btn || !ui.mic_lbl || !media_volume_has_mic_control(ctx)) return;
-  bool muted = ctx->mic_muted();
-  lv_label_set_display_text(ui.mic_lbl, muted ? "\U000F036D" : "\U000F036C");
-  lv_obj_set_style_text_color(ui.mic_lbl,
-    lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-}
-
-inline void media_volume_refresh_active_mic_button() {
-  MediaVolumeModalUi &ui = media_volume_modal_ui();
-  media_volume_apply_mic_button_state(ui.active);
-}
-
 inline void media_volume_set_card_value(MediaVolumeCtx *ctx, int pct) {
   if (!ctx || !ctx->pct_lbl) return;
   pct = media_clamp_percent(pct);
@@ -3568,16 +3541,6 @@ inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
 
 inline void media_volume_hide_modal() {
   MediaVolumeModalUi &ui = media_volume_modal_ui();
-  if (ui.overlay && ui.active && !ui.active->clock_bar_title.empty()) {
-    set_clock_bar_subpage_label("");
-    if (!ui.previous_clock_bar_title.empty()) {
-      clock_bar_restore_subpage_label(ui.previous_clock_bar_title);
-    }
-    auto &labels = clock_bar_temperature_labels();
-    if (!labels.empty()) {
-      clock_bar_set_widget_hidden(labels[0], ui.previous_clock_bar_left_hidden);
-    }
-  }
   control_modal_delete_overlay(ControlModalKind::MEDIA_VOLUME, ui.overlay);
   ui = MediaVolumeModalUi();
 }
@@ -3644,29 +3607,11 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   control_modal_apply_arc_layout(ui.arc, layout, ctx->width_compensation_percent);
   control_modal_apply_step_buttons_layout(
     ui.minus_btn, ui.plus_btn, media_volume_step_button_layout(layout));
-  if (ui.mic_btn) {
-    lv_obj_set_size(ui.mic_btn, layout.back_size, layout.back_size);
-    lv_obj_set_style_radius(ui.mic_btn, layout.back_size / 2, LV_PART_MAIN);
-    lv_coord_t mic_offset =
-      control_modal_scaled_px(MEDIA_VOLUME_MIC_BUTTON_OFFSET_REF_PX, layout.short_side);
-    lv_obj_align(ui.mic_btn, LV_ALIGN_TOP_RIGHT,
-      -layout.inset - mic_offset, layout.back_inset_y + mic_offset);
-    if (ui.mic_lbl && MEDIA_VOLUME_MIC_ICON_ZOOM != 256) {
-      lv_obj_update_layout(ui.mic_lbl);
-      lv_coord_t offset_x = lv_obj_get_width(ui.mic_lbl) *
-        (256 - MEDIA_VOLUME_MIC_ICON_ZOOM) / 512;
-      lv_coord_t offset_y = lv_obj_get_height(ui.mic_lbl) *
-        (256 - MEDIA_VOLUME_MIC_ICON_ZOOM) / 512;
-      lv_obj_set_style_transform_zoom(ui.mic_lbl, MEDIA_VOLUME_MIC_ICON_ZOOM, LV_PART_MAIN);
-      lv_obj_align(ui.mic_lbl, LV_ALIGN_CENTER, offset_x, offset_y);
-    }
-  }
   lv_obj_set_style_translate_y(ui.pct_unit_lbl,
     control_modal_scaled_px(MEDIA_VOLUME_UNIT_Y_REF_PX, layout.short_side), LV_PART_MAIN);
   lv_obj_align(ui.title_lbl, LV_ALIGN_CENTER, 0, title_center_y);
   lv_obj_align(ui.pct_row, LV_ALIGN_CENTER, 0, layout.value_center_y);
   lv_obj_move_foreground(ui.back_btn);
-  if (ui.mic_btn) lv_obj_move_foreground(ui.mic_btn);
 }
 
 inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct) {
@@ -3704,13 +3649,6 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;
   ui.back_btn = shell.close_btn;
-  if (!ctx->clock_bar_title.empty()) {
-    ui.previous_clock_bar_title = clock_bar_subpage_label();
-    const auto &labels = clock_bar_temperature_labels();
-    ui.previous_clock_bar_left_hidden = !labels.empty() && labels[0] &&
-        lv_obj_has_flag(labels[0], LV_OBJ_FLAG_HIDDEN);
-    set_clock_bar_subpage_label(ctx->clock_bar_title);
-  }
   lv_obj_t *back_label = lv_obj_get_child(ui.back_btn, 0);
   if (back_label) lv_obj_set_style_text_color(back_label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
 
@@ -3792,23 +3730,6 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
         ui.active, ui.active->current_pct + 1, true, true);
     }
   }, LV_EVENT_CLICKED, nullptr);
-
-  if (media_volume_has_mic_control(ctx)) {
-    ui.mic_btn = control_modal_create_round_button(ui.panel, 32, "\U000F036C",
-      ctx->icon_font, DARK_BORDER, SECONDARY_GREY, ctx->width_compensation_percent);
-    if (ui.mic_btn) {
-      control_modal_style_chrome_button(ui.mic_btn, shell.layout, true);
-      ui.mic_lbl = lv_obj_get_child(ui.mic_btn, 0);
-      lv_obj_add_event_cb(ui.mic_btn, [](lv_event_t *) {
-        MediaVolumeModalUi &ui = media_volume_modal_ui();
-        if (!media_volume_has_mic_control(ui.active)) return;
-        bool muted = ui.active->mic_muted();
-        ui.active->set_mic_muted(!muted);
-        media_volume_apply_mic_button_state(ui.active);
-      }, LV_EVENT_CLICKED, nullptr);
-      media_volume_apply_mic_button_state(ctx);
-    }
-  }
 
   media_volume_layout_modal(ctx);
   media_volume_set_modal_value(ctx, ctx->current_pct);

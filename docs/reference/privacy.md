@@ -64,8 +64,6 @@ Depending on the cards and options you enable, the device may also:
 - request media artwork from URLs supplied by Home Assistant or by your
   configuration;
 - send requests to webhook URLs that you configure; and
-- use Home Assistant's voice-assistant pipeline, which may involve a speech
-  service or other provider selected in Home Assistant.
 
 These requests are initiated by your configuration and may expose information
 to the service named by the URL or integration. Review the privacy practices
@@ -120,7 +118,7 @@ that service's policy and retention practices.
 ## Your choices and privacy requests
 
 You can choose whether to use automatic firmware updates, configure optional
-webhooks or voice features, visit external links, or submit information to
+webhooks, visit external links, or submit information to
 GitHub. To remove local device settings, use a full flash erase or another
 verified factory-reset procedure that clears the device's storage. A normal
 reset or firmware re-flash may preserve saved configuration, including entity

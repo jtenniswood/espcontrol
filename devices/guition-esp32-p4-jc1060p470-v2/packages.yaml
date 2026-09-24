@@ -36,11 +36,6 @@ substitutions:
   main_page_compact_pad_top: "5"
   clock_bar_item_gap: "80"
   clock_bar_visual_gap: "10"
-  voice_clock_bar_hide_code: ""
-  voice_clock_bar_apply_code: ""
-  navigate_voice_target_code: |-
-    ESP_LOGW("navigation", "Voice volume target is not available on this device");
-  voice_interaction_active_condition: "false"
   clock_font_size: "200"
   clock_cx: "512"
   clock_cy: "300"

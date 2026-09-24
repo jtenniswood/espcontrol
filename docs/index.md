@@ -12,7 +12,7 @@ description: "No-code Home Assistant touchscreen controller for supported ESP32 
 
 You do not need to write YAML, build your own ESPHome configuration, or keep a tablet permanently logged into Home Assistant. Install the firmware from a browser, connect the screen to WiFi, add it to Home Assistant, then configure the panel from its built-in setup page.
 
-Start here: **[Choose your screen](/screens/)** or **[install EspControl](/getting-started/install)** if you already have one. For room controls, music, cameras, or voice, browse the [practical guides](/guides/).
+Start here: **[Choose your screen](/screens/)** or **[install EspControl](/getting-started/install)** if you already have one. For room controls, music, and cameras, browse the [practical guides](/guides/).
 
 **Source code and issues:** [github.com/jtenniswood/espcontrol](https://github.com/jtenniswood/espcontrol).
 
@@ -56,7 +56,7 @@ See [Card Types](/card-types/) for examples and setup notes.
 
 ## Where to Buy
 
-Compare [screen sizes, image limits, voice support, and hardware revisions](/screens/) before ordering. Prices below are approximate seller prices, not fixed project pricing.
+Compare [screen sizes, image limits, and hardware revisions](/screens/) before ordering. Prices below are approximate seller prices, not fixed project pricing.
 
 | Screen | Panel | 3D printable mount |
 |---|---|---|

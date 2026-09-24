@@ -339,14 +339,14 @@ class PlaybackControl {
 struct PolicyInput {
   bool enabled{false}, media_playing{false}, entity_configured{false};
   bool attribute_conditions_match{true}, hide_external_input{false}, external_input_active{false};
-  bool schedule_blocks{false}, alarm_takeover_active{false}, voice_interaction_active{false};
+  bool schedule_blocks{false}, alarm_takeover_active{false};
 };
 inline bool policy_allows_feature(const PolicyInput &i) {
   return i.enabled && i.entity_configured && i.attribute_conditions_match && !(i.hide_external_input && i.external_input_active);
 }
 inline bool policy_allows_download(const PolicyInput &i) { return policy_allows_feature(i); }
 inline bool policy_allows_display(const PolicyInput &i) {
-  return policy_allows_feature(i) && i.media_playing && !i.schedule_blocks && !i.alarm_takeover_active && !i.voice_interaction_active;
+  return policy_allows_feature(i) && i.media_playing && !i.schedule_blocks && !i.alarm_takeover_active;
 }
 inline bool feature_allowed(bool enabled, bool entity_configured, bool conditions_match,
                             bool hide_external_input, bool external_input_active) {
@@ -361,7 +361,7 @@ inline bool feature_allowed(bool enabled, bool entity_configured, bool condition
 inline bool display_allowed(bool enabled, bool media_playing, bool entity_configured,
                             bool conditions_match, bool hide_external_input,
                             bool external_input_active, bool schedule_blocks,
-                            bool alarm_active, bool voice_active) {
+                            bool alarm_active) {
   PolicyInput input;
   input.enabled = enabled;
   input.media_playing = media_playing;
@@ -371,7 +371,6 @@ inline bool display_allowed(bool enabled, bool media_playing, bool entity_config
   input.external_input_active = external_input_active;
   input.schedule_blocks = schedule_blocks;
   input.alarm_takeover_active = alarm_active;
-  input.voice_interaction_active = voice_active;
   return policy_allows_display(input);
 }
 

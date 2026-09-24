@@ -128,6 +128,6 @@ Do not claim causation from small or seasonal changes.
 
 For answer-engine checks, record provider, date, exact prompt, cited URLs, and
 factual accuracy for a fixed sample: supported screens, S3 image limits, camera
-video support, voice hardware, and installation requirements. Results vary and
+video support, and installation requirements. Results vary and
 are observations, not guaranteed rankings. Google includes AI-feature traffic
 within its Web search reporting rather than providing an isolated AEO score.

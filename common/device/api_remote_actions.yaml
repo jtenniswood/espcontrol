@@ -11,12 +11,7 @@ script:
       - script.execute: screensaver_wake
       - script.wait: screensaver_wake
       - lambda: |-
-          if (navigation_is_voice_target(target) && !navigation_has_home_label_target(target)) {
-            navigation_hide_modals();
-            ${navigate_voice_target_code}
-          } else {
-            espcontrol_navigate(target, id(main_page)->obj);
-          }
+          espcontrol_navigate(target, id(main_page)->obj);
       - script.execute: screensaver_idle_check
       - script.execute: home_screen_idle_check
 
