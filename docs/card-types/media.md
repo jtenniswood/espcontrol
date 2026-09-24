@@ -42,6 +42,8 @@ Add your Sonos, Spotify, Apple TV, Plex, Music Assistant, or other player integr
 
 ## Now Playing
 
+When testing an unreleased branch through remote ESPHome packages, include `common/addon/embedded_web_ui.yaml` after the device package from the same repository and branch. This embeds that branch's editor; the standard device package otherwise loads the published editor, which may not yet contain these settings.
+
 Choose what the tile displays separately from what happens when you tap it. Title and artist remain visible in every display mode.
 
 | Tile Display | Appearance |

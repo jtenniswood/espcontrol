@@ -1,0 +1,4 @@
+# Use the editor from the same checkout as the firmware when testing a branch.
+web_server:
+  js_url: ""
+  js_include: "../../docs/public/webserver/embedded/www.js"
