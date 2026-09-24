@@ -89,7 +89,9 @@ assert.deepStrictEqual(Array.from(hooks.coverArtDelayPostUrls(30)), fixture.post
   "cover-art fallback request ordering changed");
 
 const freshOutput = freshWebOutputDir({ testHooks: false });
-const bytes = fs.readFileSync(path.join(freshOutput, "embedded", "www.js"));
+// Measure the same line endings on Windows and Linux.
+const bytes = Buffer.from(fs.readFileSync(path.join(freshOutput, "embedded", "www.js"), "utf8")
+  .replace(/\r\n/g, "\n"));
 const source = bytes.toString("utf8");
 assert(/^\s*(?:["']use strict["'];)?\(\(\)=>\{/.test(source),
   "shared bundle must remain a normal browser IIFE");

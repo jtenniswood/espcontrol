@@ -30,7 +30,7 @@ function expectedProfiles() {
 function expectedFirmwareVersions() {
   const source = fs.readFileSync(BUILD_SCRIPT_PATH, "utf8");
   const match = source.match(
-    /^WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = \(\n([\s\S]*?)^\)/m,
+    /^WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = \(\r?\n([\s\S]*?)^\)/m,
   );
   assert(match, "build source must declare web asset firmware versions");
   return [...match[1].matchAll(/"([^"]+)"/g)].map((item) => item[1]);
