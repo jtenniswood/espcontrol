@@ -437,7 +437,6 @@ export default defineConfig({
         items: [
           { text: 'Manual Setup', link: '/getting-started/manual-esphome-setup' },
           { text: 'Wifi Issues', link: '/getting-started/c6-recovery' },
-          { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
         ],
       },
       {
@@ -452,7 +451,14 @@ export default defineConfig({
       {
         text: 'Community',
         items: [
-          { text: 'Contributing', link: '/reference/contributing' },
+          {
+            text: 'Contributing',
+            link: '/reference/contributing',
+            collapsed: true,
+            items: [
+              { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
+            ],
+          },
         ],
       },
       {
