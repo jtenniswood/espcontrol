@@ -2527,7 +2527,8 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
           }
           ctx->access_token = token;
           image_card_handle_picture(ctx, esphome::StringRef(retry_picture));
-        })
+        }),
+      ctx
     );
     if (requested) {
       image_card_wait_for_picture(ctx);

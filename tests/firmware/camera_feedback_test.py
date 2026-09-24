@@ -15,6 +15,14 @@ def definition(name):
     assert len(matches) == 1, name
     return matches[0]
 
+picture_handler = definition('image_card_handle_picture')
+assert re.search(
+    r'ha_read_retained_attribute\(\s*entity_id,\s*std::string\("access_token"\),'
+    r'.*?\n\s*\}\),\s*ctx\s*\);',
+    picture_handler,
+    re.S,
+), 'picture retry access-token reads must be coalesced per card owner'
+
 source = r'''
 #include <algorithm>
 #include <cassert>

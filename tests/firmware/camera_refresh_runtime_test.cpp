@@ -105,7 +105,10 @@ std::string image_card_entity_proxy_path(const std::string &) { return ""; }
 std::string image_card_proxy_path_with_token(const std::string &s, const std::string &) { return s; }
 bool image_card_valid_access_token(const std::string &) { return true; }
 bool image_card_home_assistant_proxy_authed(const std::string &) { return true; }
-bool ha_read_retained_attribute(const std::string &, const std::string &, std::function<void(std::string)>) { return false; }
+bool ha_read_retained_attribute(const std::string &, const std::string &,
+                                std::function<void(std::string)>, void * = nullptr) {
+  return false;
+}
 void image_card_log_diagnostics(ImageCardCtx *, const char *, int = 0, int = 0) {}
 void image_card_hide(ImageCardCtx *) {}
 void image_card_clear_media_artwork(ImageCardCtx *) {}
