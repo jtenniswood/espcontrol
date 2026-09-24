@@ -61,9 +61,9 @@ class ProductSchemaError(RuntimeError):
 
 def rel(path: Path) -> str:
     try:
-        return str(path.relative_to(ROOT))
+        return path.relative_to(ROOT).as_posix()
     except ValueError:
-        return str(path)
+        return path.as_posix()
 
 
 def reject_duplicate_json_keys(path: Path, pairs: list[tuple[str, Any]]) -> dict[str, Any]:
