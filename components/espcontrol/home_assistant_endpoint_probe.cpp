@@ -12,6 +12,9 @@
 #include <sys/socket.h>
 #include "esphome/core/defines.h"
 #include "esphome/core/hal.h"
+#ifdef USE_ESP_IDF
+#include "lwip/opt.h"
+#endif
 
 #ifdef USE_ESP_IDF
 #include "esp_http_client.h"
@@ -36,6 +39,7 @@ bool local_or_private_address(const char *text) {
     return first == 10 || first == 127 || (first == 172 && second >= 16 && second <= 31) ||
         (first == 192 && second == 168) || (first == 169 && second == 254);
   }
+#if LWIP_IPV6
   in6_addr ipv6{};
   if (inet_pton(AF_INET6, text, &ipv6) != 1) return false;
   if (IN6_IS_ADDR_V4MAPPED(&ipv6)) {
@@ -49,6 +53,9 @@ bool local_or_private_address(const char *text) {
   }
   return IN6_IS_ADDR_LOOPBACK(&ipv6) || IN6_IS_ADDR_LINKLOCAL(&ipv6) ||
       (ipv6.s6_addr[0] & 0xfe) == 0xfc;
+#else
+  return false;
+#endif
 }
 
 bool local_tls_host(const char *host) {
@@ -60,9 +67,11 @@ bool local_tls_host(const char *host) {
     return first == 10 || first == 127 || (first == 172 && second >= 16 && second <= 31) ||
         (first == 192 && second == 168) || (first == 169 && second == 254);
   }
+#if LWIP_IPV6
   in6_addr ipv6{};
   if (inet_pton(AF_INET6, host, &ipv6) == 1)
     return IN6_IS_ADDR_LOOPBACK(&ipv6) || IN6_IS_ADDR_LINKLOCAL(&ipv6);
+#endif
   const size_t length = std::strlen(host);
   return std::strcmp(host, "localhost") == 0 ||
       (length > 6 && strcasecmp(host + length - 6, ".local") == 0);
@@ -186,12 +195,18 @@ void EndpointProbeService::run(void *argument) {
       if (getaddrinfo(host_buffer, nullptr, &hints, &addresses) == 0 && addresses) {
         safe = true;
         for (addrinfo *address = addresses; address; address = address->ai_next) {
+#if LWIP_IPV6
           char resolved[INET6_ADDRSTRLEN]{};
+#else
+          char resolved[INET_ADDRSTRLEN]{};
+#endif
           const void *source = nullptr;
           if (address->ai_family == AF_INET)
             source = &reinterpret_cast<sockaddr_in *>(address->ai_addr)->sin_addr;
+#if LWIP_IPV6
             else if (address->ai_family == AF_INET6)
               source = &reinterpret_cast<sockaddr_in6 *>(address->ai_addr)->sin6_addr;
+#endif
             if (!source || !inet_ntop(address->ai_family, source, resolved, sizeof(resolved)) ||
                 !local_or_private_address(resolved)) {
             safe = false;
