@@ -530,7 +530,8 @@ export function registerMediaCardTypes(
                                 action === "seek" && value !== "progress" ? "none" : action);
                             cardHelpers.saveField("precision", button.precision);
                             cardHelpers.saveField("options", button.options);
-                            renderButtonSettings();
+                            syncTapAction();
+                            renderPreview();
                         },
                     }),
                 });
@@ -545,13 +546,20 @@ export function registerMediaCardTypes(
                             if (value === "seek" && !mediaNowPlayingProgressEnabled(b)) return;
                             b.options = setConfigOptionValue(b.options, "media_tap_action", value);
                             cardHelpers.saveField("options", b.options);
-                            renderButtonSettings();
+                            renderPreview();
                         },
                     },
                 });
-                tapAction.buttons.seek.disabled = !mediaNowPlayingProgressEnabled(b);
-                tapAction.buttons.seek.title = mediaNowPlayingProgressEnabled(b)
-                    ? "" : "Select Progress to enable seeking.";
+                function syncTapAction() {
+                    const action = mediaNowPlayingTapAction(b);
+                    for (const value in tapAction.buttons) {
+                        tapAction.buttons[value].classList.toggle("active", value === action);
+                    }
+                    tapAction.buttons.seek.disabled = !mediaNowPlayingProgressEnabled(b);
+                    tapAction.buttons.seek.title = mediaNowPlayingProgressEnabled(b)
+                        ? "" : "Select Progress to enable seeking.";
+                }
+                syncTapAction();
             }
             if (b.sensor === "now_playing") {
                 var controlsMode: any = mediaNowPlayingControls(b);

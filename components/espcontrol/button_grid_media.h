@@ -347,6 +347,7 @@ inline void media_playback_subscribe_speaker_discovery(
   MediaPlaybackState *state, const std::string &entity_id);
 inline void media_playback_refresh_progress_timer(MediaPlaybackState *state);
 inline void media_playback_schedule_metadata_refresh(MediaPlaybackState *state);
+inline void media_playback_recover_missing_progress(MediaPlaybackState *state);
 inline void media_playback_apply_metadata_consumers(MediaPlaybackState *state);
 inline void media_playback_apply_progress_consumers(MediaPlaybackState *state);
 
@@ -1612,6 +1613,17 @@ inline void media_playback_schedule_metadata_refresh(MediaPlaybackState *state) 
   if (!state || state->entity_id.empty()) return;
   ha_schedule_metadata_refresh(state->entity_id, {"media_title", "media_artist"},
                                HA_SUBSCRIPTION_SCOPE_DEFAULT);
+  media_playback_recover_missing_progress(state);
+}
+
+inline void media_playback_recover_missing_progress(MediaPlaybackState *state) {
+  if (!state || !state->playing || !state->progress_subscribed ||
+      state->entity_id.empty() || (state->has_duration && state->has_position)) return;
+  // An unchanged HA attribute may not be resent after local progress was cleared.
+  // Refresh only missing progress on a playback edge, not on every timer tick.
+  ha_schedule_metadata_refresh(state->entity_id,
+    {"media_duration", "media_position", "media_position_updated_at"},
+    state->progress_subscription_scope);
 }
 
 inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {
@@ -1655,6 +1667,7 @@ inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {
         }
         media_playback_apply_state_to_consumers(state);
         media_playback_refresh_progress_timer(state);
+        if (!was_playing && state->playing) media_playback_recover_missing_progress(state);
         // Attribute subscriptions only report values that changed. If an
         // entity retains the same track while moving through idle, the local
         // idle cleanup has no metadata callback to repopulate the card or its

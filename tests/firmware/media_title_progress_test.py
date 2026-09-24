@@ -92,6 +92,9 @@ source += definition(config, "tap_action_from_saved")[1] + "\n"
 source += r'''
 struct MediaPlaybackState {
   bool available = true, playing = true, has_position = true;
+  bool has_duration = true, progress_subscribed = true;
+  std::string entity_id = "media_player.test";
+  uint32_t progress_subscription_scope = 1;
   bool position_updated_at_known = false;
   float duration = 100, position_seconds = 0;
   uint32_t position_updated_ms = 1000, position_updated_at_ms = 0;
@@ -103,11 +106,17 @@ void media_schedule_position_refresh(SliderCtx *) {}
 int seek_count = 0;
 void media_set_pending_seek_position(SliderCtx *, int) {}
 void send_media_seek_action(const std::string &, int, float) { ++seek_count; }
+std::vector<std::string> refreshed_attributes;
+void ha_schedule_metadata_refresh(const std::string &entity,
+    std::initializer_list<const char *> attributes, uint32_t scope) {
+  assert(entity == "media_player.test" && scope == 1);
+  for (const char *attribute : attributes) refreshed_attributes.push_back(attribute);
+}
 '''
 for name in ("slider_update_fill", "slider_update_ctx_fill"):
     source += definition(sliders, name)[1] + "\n"
 for name in ("media_apply_position", "media_playback_apply_state_to_slider",
-             "setup_media_progress_background"):
+             "setup_media_progress_background", "media_playback_recover_missing_progress"):
     source += definition(media, name)[1] + "\n"
 source += r'''
 int main() {
@@ -132,6 +141,20 @@ int main() {
   assert(seek_count == 0);
 
   MediaPlaybackState playback;
+  media_playback_recover_missing_progress(&playback);
+  assert(refreshed_attributes.empty());
+  playback.has_duration = false;
+  playback.duration = 0;
+  media_playback_recover_missing_progress(&playback);
+  assert((refreshed_attributes == std::vector<std::string>{
+    "media_duration", "media_position", "media_position_updated_at"}));
+  refreshed_attributes.clear();
+  playback.playing = false;
+  media_playback_recover_missing_progress(&playback);
+  assert(refreshed_attributes.empty());
+  playback.playing = true;
+  playback.has_duration = true;
+  playback.duration = 100;
   media_playback_apply_state_to_slider(&playback, ctx);
   assert(ctx->fill->width == 0);
 

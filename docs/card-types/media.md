@@ -60,6 +60,8 @@ Choose what the tile displays separately from what happens when you tap it. Titl
 
 Changing Tile Display keeps the selected Tap Action. If you switch away from Progress while Seek is selected, Tap Action becomes None.
 
+These selections update in place so Card Settings stays open. If playback progress data is missing, the display requests it again when playback resumes or track metadata refreshes. Players that do not report a duration cannot show a progress fill.
+
 Existing saved cards and backups retain their behavior automatically: **None** becomes **Track Info + None**, **Track Position** becomes **Progress + Play/Pause**, and **Play/Pause** becomes **Playback State + Play/Pause**. You do not need to edit or save each card after updating.
 
 ## Cover Art
