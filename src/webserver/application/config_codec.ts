@@ -194,6 +194,9 @@ export function createConfigCodecFeature(
         return !!(b && (b.type === "image" ||
             (b.type === "media" && mediaEditorMode(b.sensor) === "cover_art")));
     }
+    function cardSupportsSquareMaxSizes(this: any, b?: any) {
+        return !cardIsWifiSharing(b) && layout.gridRows === 3 && layout.gridCols === 3;
+    }
     function cardSupportsPortraitLargeSize(this: any, b?: any) {
         return cardSupportsMaxSize(b) && layout.gridRows >= 4 && layout.gridCols >= 3;
     }
@@ -227,7 +230,9 @@ export function createConfigCodecFeature(
         if (size === CARD_SIZE_PORTRAIT_LARGE)
             return cardSupportsPortraitLargeSize(b) ? size : CARD_SIZE_SINGLE;
         if (size === CARD_SIZE_MAX_WIDE || size === CARD_SIZE_MAX_TALL)
-            return cardSupportsMaxSize(b) && cardSizeFitsLayout(size) ? size : CARD_SIZE_SINGLE;
+            return (cardSupportsMaxSize(b) || cardSupportsSquareMaxSizes(b)) && cardSizeFitsLayout(size)
+                ? size
+                : CARD_SIZE_SINGLE;
         return cardSizeFitsLayout(size) ? size : CARD_SIZE_SINGLE;
     }
     function normalizeSavedConfigSensorFields(this: any, b?: any, wasLegacyTextSensor?: any) {
@@ -1032,6 +1037,7 @@ export function createConfigCodecFeature(
         cardSupportsWifiPortraitSizes,
         cardSupportsExtraLargeSize,
         cardSupportsMaxSize,
+        cardSupportsSquareMaxSizes,
         cardSupportsPortraitLargeSize,
         cardSupportsLandscapeLargeSize,
         cardSupportsUltraWideSize,
