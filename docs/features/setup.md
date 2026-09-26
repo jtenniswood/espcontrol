@@ -37,6 +37,7 @@ The setup page uses these card names and grouped modes on the device. For a quic
 | **[Webhook](/card-types/webhooks)** | Calls an HTTP URL directly from the panel for other automation platforms and webhook services. | URL |
 | **[Wifi Sharing](/card-types/wifi-share)** | Shows a QR code for separately configured guest Wifi. | No |
 | **[Trigger](/card-types/buttons)** | Fires an event to Home Assistant for use in automations. | No |
+| **[Battery](/card-types/battery)** | Shows battery charge as a changing icon and percentage. | Yes, as **Battery Entity** |
 | **[Sensor](/card-types/sensors)** | Shows a live numeric reading, readable duration, text state, or icon state from Home Assistant or a local device sensor. | Yes for Home Assistant, local sensor key for Local Sensor source |
 | **[Doors & Windows](/card-types/doors-windows)** | Shows a door or window contact sensor with open and closed icons. | Yes, as **Sensor Entity** |
 | **[Presence](/card-types/presence)** | Shows whether a person, room, or motion sensor is active. | Yes, as **Sensor Entity** |

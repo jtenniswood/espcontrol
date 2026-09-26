@@ -7,6 +7,17 @@
 
 template<typename Config>
 inline bool normalize_saved_config_static(Config &config) {
+  if (config.type == "battery") {
+    config.label.clear();
+    config.icon = "Auto";
+    config.icon_on = "Auto";
+    config.sensor.clear();
+    config.unit.clear();
+    config.type = "battery";
+    config.precision.clear();
+    config.options.clear();
+    return true;
+  }
   if (config.type == "internal") {
     config.type = "internal";
     config.options.clear();

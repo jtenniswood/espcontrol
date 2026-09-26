@@ -150,6 +150,7 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
 
 
 PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
+    "battery": "docs/card-types/battery.md",
     "": "docs/card-types/switches.md",
     "action": "docs/card-types/actions.md",
     "alarm": "docs/card-types/alarms.md",
@@ -497,6 +498,7 @@ def firmware_header_map(card_types: list[str]) -> dict[str, list[str]]:
     out = {card_type: [] for card_type in card_types}
     runtime_boundary = "components/espcontrol/button_grid_card_runtime.h"
     extra_by_type = {
+        "battery": ["components/espcontrol/button_grid_battery_driver.h"],
         "weather": ["components/espcontrol/button_grid_weather_forecast.h"],
     }
     headers = [

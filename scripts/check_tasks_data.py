@@ -107,6 +107,7 @@ TASKS = (
              "components/espcontrol/button_grid_limits.h",
              "components/espcontrol/button_grid_slider_geometry.h",
              "components/espcontrol/button_grid_string.h",
+             "components/espcontrol/button_grid_battery_driver.h",
              "components/espcontrol/button_grid_config_parser.h",
              "components/espcontrol/button_grid_climate.h",
              "components/espcontrol/climate_state_logic.h",

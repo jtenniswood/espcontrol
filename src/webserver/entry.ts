@@ -124,6 +124,7 @@ import { registerSubpageCardTypes } from "./cards/subpage";
 import { registerSwitchCardTypes } from "./cards/switch";
 import { registerTimezoneCardTypes } from "./cards/timezone";
 import { registerVacuumCardTypes } from "./cards/vacuum";
+import { registerBatteryCardTypes } from "./cards/battery";
 import { registerWeatherCardTypes } from "./cards/weather";
 import { registerWeatherForecastCardTypes } from "./cards/weather_forecast";
 import { registerWebhookCardTypes } from "./cards/webhook";
@@ -200,6 +201,7 @@ function registerCards(context: ApplicationContext) {
   registerSwitchCardTypes(registry, context.configuration.confirmationOptions, lightCards, fields);
   registerTimezoneCardTypes(registry, context.configuration.dateTimeOptions, context.dom.document, fields);
   registerVacuumCardTypes(registry, context.configuration.robotOptions, fields, cardUi);
+  registerBatteryCardTypes(registry, fields);
   const weatherCards = registerWeatherCardTypes(registry, context.configuration.weatherOptions, context.controllers.clockBarState, fields, cardUi);
   registerWeatherForecastCardTypes(registry, weatherCards, context.controllers.clockBarState, fields);
   registerWebhookCardTypes(registry, context.configuration.webhookOptions, fields, cardUi);

@@ -50,6 +50,7 @@ enum class CardTypeId : uint8_t {
   SLIDER,
   SUBPAGE,
   TIMEZONE,
+  BATTERY,
   WEATHER,
   IMAGE,
   WIFI_QR,
@@ -97,6 +98,7 @@ enum class CardDriverId : uint8_t {
   WEBHOOK,
   SENSOR,
   SUBPAGE,
+  BATTERY,
   WEATHER,
   IMAGE,
   WIFI_QR,
@@ -164,6 +166,7 @@ inline CardTypeId card_type_id(const std::string &type) {
   if (type == "slider") return CardTypeId::SLIDER;
   if (type == "subpage") return CardTypeId::SUBPAGE;
   if (type == "timezone") return CardTypeId::TIMEZONE;
+  if (type == "battery") return CardTypeId::BATTERY;
   if (type == "weather") return CardTypeId::WEATHER;
   if (type == "image") return CardTypeId::IMAGE;
   if (type == "wifi_qr") return CardTypeId::WIFI_QR;
@@ -212,6 +215,7 @@ inline CardRuntimeSpec card_runtime_spec(CardTypeId type) {
     case CardTypeId::SLIDER: return {type, CardDriverId::NUMERIC, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_NUMERIC_CONTROL | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::SUBPAGE: return {type, CardDriverId::SUBPAGE, static_cast<uint16_t>(CAPABILITY_ACTIONS | CAPABILITY_RUNTIME_ALLOCATION)};
     case CardTypeId::TIMEZONE: return {type, CardDriverId::DATE_TIME, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_SUBPAGE)};
+    case CardTypeId::BATTERY: return {type, CardDriverId::BATTERY, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_SUBPAGE)};
     case CardTypeId::WEATHER: return {type, CardDriverId::WEATHER, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_SUBPAGE)};
     case CardTypeId::IMAGE: return {type, CardDriverId::IMAGE, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::WIFI_QR: return {type, CardDriverId::WIFI_QR, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_SUBPAGE)};
@@ -603,6 +607,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "slider") return "Slider";
   if (type == "subpage") return "Subpage";
   if (type == "timezone") return "Date & Time";
+  if (type == "battery") return "Battery";
   if (type == "weather") return "Weather";
   if (type == "image") return "Camera Card";
   if (type == "wifi_qr") return "Wifi Sharing";
@@ -650,6 +655,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "slider") return true;
   if (type == "subpage") return false;
   if (type == "timezone") return true;
+  if (type == "battery") return true;
   if (type == "weather") return true;
   if (type == "image") return true;
   if (type == "wifi_qr") return true;
@@ -697,6 +703,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "slider") return "Auto";
   if (type == "subpage") return "Auto";
   if (type == "timezone") return "Auto";
+  if (type == "battery") return "Auto";
   if (type == "weather") return "Auto";
   if (type == "image") return "Auto";
   if (type == "wifi_qr") return "Wifi";
@@ -744,6 +751,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "slider") return "Auto";
   if (type == "subpage") return "Auto";
   if (type == "timezone") return "Auto";
+  if (type == "battery") return "Auto";
   if (type == "weather") return "Auto";
   if (type == "image") return "Auto";
   if (type == "wifi_qr") return "Auto";
@@ -794,6 +802,7 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
   if (type == "local_sensor") return "LS";
   if (type == "door_window") return "X";
   if (type == "presence") return "PR";
+  if (type == "battery") return "BT";
   if (type == "weather") return "W";
   if (type == "weather_forecast") return "F";
   if (type == "option_select") return "U";
@@ -837,6 +846,7 @@ inline std::string card_contract_subpage_type_from_code(const std::string &code)
   if (code == "LS") return "local_sensor";
   if (code == "X") return "door_window";
   if (code == "PR") return "presence";
+  if (code == "BT") return "battery";
   if (code == "W") return "weather";
   if (code == "F") return "weather_forecast";
   if (code == "U") return "option_select";

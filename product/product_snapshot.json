@@ -10,7 +10,7 @@
   },
   "summary": {
     "deviceProfiles": 8,
-    "cardTypes": 43,
+    "cardTypes": 44,
     "entityNames": 102,
     "icons": 359,
     "structuralIcons": 22,
@@ -1679,6 +1679,7 @@
         "webhook",
         "sensor",
         "subpage",
+        "battery",
         "weather",
         "image",
         "wifi_qr",
@@ -2166,6 +2167,18 @@
         },
         "timezone": {
           "driver": "date_time",
+          "capabilities": {
+            "informationOnly": true,
+            "subscriptions": true,
+            "actions": false,
+            "numericControl": false,
+            "modal": false,
+            "runtimeAllocation": false,
+            "subpage": true
+          }
+        },
+        "battery": {
+          "driver": "battery",
           "capabilities": {
             "informationOnly": true,
             "subscriptions": true,
@@ -5701,6 +5714,61 @@
           "options": ""
         }
       },
+      "battery": {
+        "label": "Battery",
+        "allowInSubpage": true,
+        "domains": [
+          "sensor"
+        ],
+        "options": [],
+        "normalization": {
+          "fields": {
+            "entity": {
+              "policy": "keep"
+            },
+            "label": {
+              "policy": "clear"
+            },
+            "icon": {
+              "policy": "default",
+              "value": "Auto"
+            },
+            "icon_on": {
+              "policy": "default",
+              "value": "Auto"
+            },
+            "sensor": {
+              "policy": "clear"
+            },
+            "unit": {
+              "policy": "clear"
+            },
+            "type": {
+              "policy": "default",
+              "value": "battery"
+            },
+            "precision": {
+              "policy": "clear"
+            },
+            "options": {
+              "policy": "clear"
+            }
+          },
+          "unknownOptions": "drop",
+          "canonicalOptionOrder": []
+        },
+        "default": {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "battery",
+          "precision": "",
+          "options": ""
+        }
+      },
       "weather": {
         "label": "Weather",
         "allowInSubpage": true,
@@ -6390,6 +6458,7 @@
       "local_sensor": "LS",
       "door_window": "X",
       "presence": "PR",
+      "battery": "BT",
       "weather": "W",
       "weather_forecast": "F",
       "option_select": "U",
@@ -9494,6 +9563,17 @@
   "compatibilityFixtures": {
     "current": {
       "buttons": {
+        "battery": {
+          "entity": "sensor.phone_battery",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "battery",
+          "precision": "",
+          "options": ""
+        },
         "simple_switch": {
           "entity": "light.kitchen",
           "label": "Kitchen",
@@ -9571,6 +9651,28 @@
         ]
       },
       "compactSubpageStrings": {
+        "battery": {
+          "input": "~1,B|BT,sensor.phone_battery",
+          "expected": {
+            "order": [
+              "1",
+              "B"
+            ],
+            "buttons": [
+              {
+                "entity": "sensor.phone_battery",
+                "label": "",
+                "icon": "Auto",
+                "icon_on": "Auto",
+                "sensor": "",
+                "unit": "",
+                "type": "battery",
+                "precision": "",
+                "options": ""
+              }
+            ]
+          }
+        },
         "alarm_action": {
           "input": "~1,B|AA,alarm_control_panel.house,Arm%20Away,Shield%20Lock,Auto,away,,,",
           "expected": {

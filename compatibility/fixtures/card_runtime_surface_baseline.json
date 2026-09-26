@@ -2,6 +2,37 @@
   "baselineVersion": 1,
   "cases": [
     {
+      "name": "battery: percentage",
+      "sourceKind": "contract",
+      "sourceType": "battery",
+      "mode": "percentage",
+      "canonicalType": "battery",
+      "web": {
+        "registration": "battery",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": true
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "1ea347b136aaf318"
+        }
+      },
+      "firmware": {
+        "family": "BATTERY"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state"
+        ],
+        "actions": [
+          "none"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
       "name": "timer: countdown",
       "sourceKind": "contract",
       "sourceType": "timer",

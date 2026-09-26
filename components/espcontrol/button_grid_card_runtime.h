@@ -65,6 +65,7 @@ inline Family family_for_runtime_type(espcontrol::card_runtime::CardTypeId type)
     case Type::SLIDER:
     case Type::LIGHT_BRIGHTNESS: return Family::SLIDER;
     case Type::SUBPAGE: return Family::SUBPAGE;
+    case Type::BATTERY: return Family::BATTERY;
     case Type::WEATHER:
     case Type::WEATHER_FORECAST: return Family::WEATHER;
     case Type::WEBHOOK: return Family::WEBHOOK;

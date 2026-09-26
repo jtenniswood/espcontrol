@@ -1,6 +1,17 @@
 {
   "current": {
     "buttons": {
+      "battery": {
+        "entity": "sensor.phone_battery",
+        "label": "",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "battery",
+        "precision": "",
+        "options": ""
+      },
       "simple_switch": {
         "entity": "light.kitchen",
         "label": "Kitchen",
@@ -78,6 +89,28 @@
       ]
     },
     "compactSubpageStrings": {
+      "battery": {
+        "input": "~1,B|BT,sensor.phone_battery",
+        "expected": {
+          "order": [
+            "1",
+            "B"
+          ],
+          "buttons": [
+            {
+              "entity": "sensor.phone_battery",
+              "label": "",
+              "icon": "Auto",
+              "icon_on": "Auto",
+              "sensor": "",
+              "unit": "",
+              "type": "battery",
+              "precision": "",
+              "options": ""
+            }
+          ]
+        }
+      },
       "alarm_action": {
         "input": "~1,B|AA,alarm_control_panel.house,Arm%20Away,Shield%20Lock,Auto,away,,,",
         "expected": {

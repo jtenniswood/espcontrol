@@ -1,5 +1,20 @@
 [
   {
+    "name": "battery: percentage",
+    "input": "~sensor.phone_battery,,Auto,Auto,,,battery,,",
+    "expected": {
+      "entity": "sensor.phone_battery",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "battery",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
     "name": "timer: countdown",
     "input": "~timer.example,,Auto,Auto,,3,timer,,",
     "expected": {

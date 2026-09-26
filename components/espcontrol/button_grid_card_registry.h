@@ -33,6 +33,7 @@ enum class Family : uint8_t {
   SLIDER,
   SUBPAGE,
   VACUUM,
+  BATTERY,
   WEATHER,
   WEBHOOK,
   UNKNOWN,

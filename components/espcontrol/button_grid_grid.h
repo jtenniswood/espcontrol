@@ -265,6 +265,7 @@ inline void grid_prepare_timer_visual_reset(lv_obj_t *owner);
 #include "button_grid_timer_driver.h"
 #include "button_grid_date_time_driver.h"
 #include "button_grid_sensor_driver.h"
+#include "button_grid_battery_driver.h"
 #include "button_grid_weather_driver.h"
 #include "button_grid_basic_action_driver.h"
 #include "button_grid_numeric_selectable_driver.h"
@@ -547,6 +548,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   espcontrol::cards::status_entity_driver_cleanup(s, p, context);
   espcontrol::cards::date_time_driver_cleanup(s, p, context);
   espcontrol::cards::sensor_driver_cleanup(s, p, context);
+  espcontrol::cards::battery_driver_cleanup(s, p, context);
   espcontrol::cards::weather_driver_cleanup(s, p, context);
   espcontrol::cards::basic_action_driver_cleanup(s, p, context);
   espcontrol::cards::numeric_selectable_driver_cleanup(s, p, context);
@@ -651,6 +653,11 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       s, p, context, display, row_span, col_span);
     return;
   }
+  if (espcontrol::cards::battery_driver_setup_visual(s, p, context, palette)) {
+    espcontrol::cards::battery_driver_attach_interaction(s, p, context);
+    espcontrol::cards::battery_driver_refresh_layout(s, p, context);
+    return;
+  }
   if (espcontrol::cards::weather_driver_setup_visual(
         s, p, context, palette, display)) {
     espcontrol::cards::weather_driver_attach_interaction(s, p, context);
@@ -706,6 +713,7 @@ inline bool bind_basic_sensor_card(
   if (espcontrol::cards::date_time_driver_bind_data(s, p, context)) return true;
   if (espcontrol::cards::sensor_driver_bind_data(
         s, p, context, palette, col_span)) return true;
+  if (espcontrol::cards::battery_driver_bind_data(s, p, context)) return true;
   if (espcontrol::cards::weather_driver_bind_data(s, p, context)) return true;
   return false;
 }

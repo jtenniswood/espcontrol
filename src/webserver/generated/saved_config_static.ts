@@ -5,6 +5,17 @@
 import type { CardConfig } from "../contracts/types";
 
 export function normalizeSavedConfigStatic(config: CardConfig): boolean {
+  if (config.type === "battery") {
+    config.label = "";
+    config.icon = "Auto";
+    config.icon_on = "Auto";
+    config.sensor = "";
+    config.unit = "";
+    config.type = "battery";
+    config.precision = "";
+    config.options = "";
+    return true;
+  }
   if (config.type === "internal") {
     config.type = "internal";
     config.options = "";

@@ -3623,6 +3623,61 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "options": ""
     }
   },
+  "battery": {
+    "label": "Battery",
+    "allowInSubpage": true,
+    "domains": [
+      "sensor"
+    ],
+    "options": [],
+    "normalization": {
+      "fields": {
+        "entity": {
+          "policy": "keep"
+        },
+        "label": {
+          "policy": "clear"
+        },
+        "icon": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "icon_on": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "sensor": {
+          "policy": "clear"
+        },
+        "unit": {
+          "policy": "clear"
+        },
+        "type": {
+          "policy": "default",
+          "value": "battery"
+        },
+        "precision": {
+          "policy": "clear"
+        },
+        "options": {
+          "policy": "clear"
+        }
+      },
+      "unknownOptions": "drop",
+      "canonicalOptionOrder": []
+    },
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "battery",
+      "precision": "",
+      "options": ""
+    }
+  },
   "weather": {
     "label": "Weather",
     "allowInSubpage": true,
@@ -4542,6 +4597,18 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
       "subpage": true
     }
   },
+  "battery": {
+    "driver": "battery",
+    "capabilities": {
+      "informationOnly": true,
+      "subscriptions": true,
+      "actions": false,
+      "numericControl": false,
+      "modal": false,
+      "runtimeAllocation": false,
+      "subpage": true
+    }
+  },
   "weather": {
     "driver": "weather",
     "capabilities": {
@@ -4645,6 +4712,7 @@ export const CARD_CONTRACT_SUBPAGE_TYPE_CODES: Readonly<Record<string, string>> 
   "local_sensor": "LS",
   "door_window": "X",
   "presence": "PR",
+  "battery": "BT",
   "weather": "W",
   "weather_forecast": "F",
   "option_select": "U",
@@ -4686,6 +4754,7 @@ export const CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE: Readonly<Record<string, string
   "LS": "local_sensor",
   "X": "door_window",
   "PR": "presence",
+  "BT": "battery",
   "W": "weather",
   "F": "weather_forecast",
   "U": "option_select",

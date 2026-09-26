@@ -521,3 +521,9 @@ target_compile_options(home_assistant_endpoint_probe_test PRIVATE -Wall -Wextra 
 target_compile_definitions(home_assistant_endpoint_probe_test PRIVATE USE_ESP_IDF)
 target_include_directories(home_assistant_endpoint_probe_test PRIVATE endpoint_idf_stubs endpoint_stubs ../../components/espcontrol)
 add_test(NAME home_assistant_endpoint_probe_test COMMAND home_assistant_endpoint_probe_test)
+
+add_executable(battery_card_test battery_card_test.cpp)
+target_compile_features(battery_card_test PRIVATE cxx_std_17)
+target_compile_options(battery_card_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(battery_card_test PRIVATE ../../components/espcontrol)
+add_test(NAME battery_card_test COMMAND battery_card_test)

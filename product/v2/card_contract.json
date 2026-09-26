@@ -84,6 +84,7 @@
       "webhook",
       "sensor",
       "subpage",
+      "battery",
       "weather",
       "image",
       "wifi_qr",
@@ -160,6 +161,7 @@
       "slider": {"driver": "numeric", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": false, "runtimeAllocation": true, "subpage": true}},
       "subpage": {"driver": "subpage", "capabilities": {"informationOnly": false, "subscriptions": false, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": false}},
       "timezone": {"driver": "date_time", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "battery": {"driver": "battery", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
       "weather": {"driver": "weather", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
       "image": {"driver": "image", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": true, "subpage": true}},
       "wifi_qr": {"driver": "wifi_qr", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": false, "subpage": true}},
@@ -2249,6 +2251,61 @@
         "options": ""
       }
     },
+    "battery": {
+      "label": "Battery",
+      "allowInSubpage": true,
+      "domains": [
+        "sensor"
+      ],
+      "options": [],
+      "normalization": {
+        "fields": {
+          "entity": {
+            "policy": "keep"
+          },
+          "label": {
+            "policy": "clear"
+          },
+          "icon": {
+            "policy": "default",
+            "value": "Auto"
+          },
+          "icon_on": {
+            "policy": "default",
+            "value": "Auto"
+          },
+          "sensor": {
+            "policy": "clear"
+          },
+          "unit": {
+            "policy": "clear"
+          },
+          "type": {
+            "policy": "default",
+            "value": "battery"
+          },
+          "precision": {
+            "policy": "clear"
+          },
+          "options": {
+            "policy": "clear"
+          }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "battery",
+        "precision": "",
+        "options": ""
+      }
+    },
     "weather": {
       "label": "Weather",
       "allowInSubpage": true,
@@ -2670,6 +2727,7 @@
     "local_sensor": "LS",
     "door_window": "X",
     "presence": "PR",
+    "battery": "BT",
     "weather": "W",
     "weather_forecast": "F",
     "option_select": "U",

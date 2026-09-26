@@ -6,6 +6,29 @@
     "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "wifi_qr"]
   },
   "types": {
+    "battery": {
+      "classification": "canonical",
+      "canonicalType": "battery",
+      "webRegistration": "battery",
+      "firmwareFamily": "BATTERY",
+      "lifecycle": {
+        "subscriptions": [
+          "state"
+        ],
+        "actions": [
+          "none"
+        ],
+        "modalOwner": "none"
+      },
+      "modes": [
+        {
+          "name": "percentage",
+          "config": {
+            "entity": "sensor.phone_battery"
+          }
+        }
+      ]
+    },
     "timer": {
       "classification": "canonical",
       "canonicalType": "timer",
