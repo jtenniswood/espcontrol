@@ -179,7 +179,7 @@
             "main_page_compact_pad_top": "\"5\"",
             "clock_bar_item_gap": "\"80\"",
             "clock_bar_visual_gap": "\"10\"",
-            "clock_font_size": "\"200\"",
+            "clock_font_size": "\"140\"",
             "clock_cx": "\"512\"",
             "clock_cy": "\"300\"",
             "screen_saver_clock_min_brightness": "\"1\"",
@@ -194,7 +194,8 @@
           "backlightPwmFrequency": {
             "wifi": "1000Hz",
             "ethernet": "20000Hz"
-          }
+          },
+          "apiOpenModalAction": true
         }
       }
     },
@@ -389,7 +390,8 @@
           "backlightPwmFrequency": {
             "wifi": "1000Hz",
             "ethernet": "20000Hz"
-          }
+          },
+          "apiOpenModalAction": true
         }
       }
     },
@@ -567,7 +569,7 @@
             "main_page_compact_pad_top": "\"5\"",
             "clock_bar_item_gap": "\"96\"",
             "clock_bar_visual_gap": "\"12\"",
-            "clock_font_size": "\"160\"",
+            "clock_font_size": "\"140\"",
             "clock_cx": "\"240\"",
             "clock_cy": "\"400\"",
             "screen_saver_clock_min_brightness": "\"1\"",
@@ -576,7 +578,8 @@
             "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_lg",
-          "esp32C6FirmwareUpdate": true
+          "esp32C6FirmwareUpdate": true,
+          "apiOpenModalAction": true
         }
       }
     },
@@ -753,7 +756,7 @@
             "main_page_compact_pad_top": "\"5\"",
             "clock_bar_item_gap": "\"78\"",
             "clock_bar_visual_gap": "\"10\"",
-            "clock_font_size": "\"220\"",
+            "clock_font_size": "\"160\"",
             "clock_cx": "\"640\"",
             "clock_cy": "\"400\"",
             "screen_saver_clock_min_brightness": "\"1\"",
@@ -765,7 +768,8 @@
           "esp32C6FirmwareUpdate": true,
           "extraPackages": {
             "battery": "!include device/battery.yaml"
-          }
+          },
+          "apiOpenModalAction": true
         }
       }
     },
@@ -942,7 +946,7 @@
             "main_page_compact_pad_top": "\"5\"",
             "clock_bar_item_gap": "\"78\"",
             "clock_bar_visual_gap": "\"10\"",
-            "clock_font_size": "\"220\"",
+            "clock_font_size": "\"200\"",
             "clock_cx": "\"640\"",
             "clock_cy": "\"400\"",
             "screen_saver_clock_min_brightness": "\"1\"",
@@ -951,7 +955,8 @@
             "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
-          "esp32C6FirmwareUpdate": true
+          "esp32C6FirmwareUpdate": true,
+          "apiOpenModalAction": true
         }
       }
     },
@@ -1128,7 +1133,7 @@
             "main_page_compact_pad_top": "\"5\"",
             "clock_bar_item_gap": "\"78\"",
             "clock_bar_visual_gap": "\"10\"",
-            "clock_font_size": "\"220\"",
+            "clock_font_size": "\"200\"",
             "clock_cx": "\"640\"",
             "clock_cy": "\"400\"",
             "screen_saver_clock_min_brightness": "\"1\"",
@@ -1137,7 +1142,8 @@
             "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
-          "esp32C6FirmwareUpdate": true
+          "esp32C6FirmwareUpdate": true,
+          "apiOpenModalAction": true
         }
       }
     },
@@ -1313,7 +1319,7 @@
             "main_page_compact_pad_top": "\"6\"",
             "clock_bar_item_gap": "\"96\"",
             "clock_bar_visual_gap": "\"12\"",
-            "clock_font_size": "\"224\"",
+            "clock_font_size": "\"170\"",
             "clock_cx": "\"360\"",
             "clock_cy": "\"360\"",
             "screen_saver_clock_min_brightness": "\"1\"",
@@ -1340,7 +1346,8 @@
           "backlightPwmFrequency": {
             "wifi": "100Hz",
             "ethernet": "20000Hz"
-          }
+          },
+          "apiOpenModalAction": true
         }
       }
     },
@@ -1530,7 +1537,7 @@
             "main_page_compact_pad_top": "\"4\"",
             "clock_bar_item_gap": "\"60\"",
             "clock_bar_visual_gap": "\"8\"",
-            "clock_font_size": "\"160\"",
+            "clock_font_size": "\"120\"",
             "clock_cx": "\"240\"",
             "clock_cy": "\"240\"",
             "screen_saver_clock_min_brightness": "\"1\"",
@@ -1539,7 +1546,8 @@
             "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
-          "apiNavigateAction": false
+          "apiNavigateAction": true,
+          "apiOpenModalAction": true
         }
       }
     }

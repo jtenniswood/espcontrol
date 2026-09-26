@@ -1544,8 +1544,12 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
     &ui.arming_disarm_action);
 }
 
+inline bool alarm_control_can_open_modal(AlarmCardCtx *ctx) {
+  return !(!alarm_card_context_valid(ctx) || !ctx->available);
+}
+
 inline void alarm_control_open_modal(AlarmCardCtx *ctx) {
-  if (!alarm_card_context_valid(ctx) || !ctx->available) return;
+  if (!alarm_control_can_open_modal(ctx)) return;
   const lv_font_t *label_font = ctx->label_font
     ? ctx->label_font
     : ctx->btn ? lv_obj_get_style_text_font(ctx->btn, LV_PART_MAIN) : nullptr;

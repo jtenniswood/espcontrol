@@ -8,6 +8,9 @@
         "firmware": {
           "build": {
             "chip": "ESP32-P4"
+          },
+          "package": {
+            "apiOpenModalAction": true
           }
         }
       },
@@ -15,6 +18,9 @@
         "firmware": {
           "build": {
             "chip": "ESP32-S3"
+          },
+          "package": {
+            "apiOpenModalAction": true
           }
         }
       }
@@ -566,6 +572,9 @@
       "overrides": {
         "firmware": {
           "package": {
+            "substitutions": {
+              "clock_font_size": "\"140\""
+            },
             "backlightPwmFrequency": {
               "wifi": "1000Hz",
               "ethernet": "20000Hz"
@@ -761,7 +770,7 @@
               "main_page_compact_pad_top": "\"5\"",
               "clock_bar_item_gap": "\"96\"",
               "clock_bar_visual_gap": "\"12\"",
-              "clock_font_size": "\"160\"",
+              "clock_font_size": "\"140\"",
               "clock_cx": "\"240\"",
               "clock_cy": "\"400\"",
               "screen_saver_clock_min_brightness": "\"1\"",
@@ -794,6 +803,15 @@
             }
           }
         }
+      },
+      "overrides": {
+        "firmware": {
+          "package": {
+            "substitutions": {
+              "clock_font_size": "\"160\""
+            }
+          }
+        }
       }
     },
     "guition-esp32-p4-jc8012p4a1-v2": {
@@ -810,6 +828,15 @@
           "name": "Guition JC8012P4A1 new panel (2628+)",
           "docsPath": "/screens/jc8012p4a1-v2"
         }
+      },
+      "overrides": {
+        "firmware": {
+          "package": {
+            "substitutions": {
+              "clock_font_size": "\"200\""
+            }
+          }
+        }
       }
     },
     "guition-esp32-p4-jc8012p4a1-v3": {
@@ -825,6 +852,15 @@
         "public": {
           "name": "Guition JC8012P4A1 V3 (production silicon)",
           "docsPath": "/screens/jc8012p4a1-v3"
+        }
+      },
+      "overrides": {
+        "firmware": {
+          "package": {
+            "substitutions": {
+              "clock_font_size": "\"200\""
+            }
+          }
         }
       }
     },
@@ -992,7 +1028,7 @@
               "main_page_compact_pad_top": "\"6\"",
               "clock_bar_item_gap": "\"96\"",
               "clock_bar_visual_gap": "\"12\"",
-              "clock_font_size": "\"224\"",
+              "clock_font_size": "\"170\"",
               "clock_cx": "\"360\"",
               "clock_cy": "\"360\"",
               "screen_saver_clock_min_brightness": "\"1\"",
@@ -1028,7 +1064,7 @@
       "config": {
         "slots": 9,
         "capabilities": {
-        "imageSlots": 2
+          "imageSlots": 2
         },
         "public": {
           "name": "Guition 4848S040",
@@ -1072,7 +1108,7 @@
           "dragMode": "displace",
           "dragAnimation": true,
           "disabledCardTypes": [
-          "weather_forecast"
+            "weather_forecast"
           ],
           "screen": {
             "width": "55%",
@@ -1187,7 +1223,7 @@
               "main_page_compact_pad_top": "\"4\"",
               "clock_bar_item_gap": "\"60\"",
               "clock_bar_visual_gap": "\"8\"",
-              "clock_font_size": "\"160\"",
+              "clock_font_size": "\"120\"",
               "clock_cx": "\"240\"",
               "clock_cy": "\"240\"",
               "screen_saver_clock_min_brightness": "\"1\"",
@@ -1195,7 +1231,7 @@
               "screen_schedule_clock_min_brightness": "\"1\"",
               "screen_schedule_clock_default_brightness": "\"10\""
             },
-            "apiNavigateAction": false
+            "apiNavigateAction": true
           }
         }
       }

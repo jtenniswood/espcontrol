@@ -1,5 +1,5 @@
 ---
-title: ESP32-P4 86 Voice Control
+title: "Home Assistant Assist on the P4 86 Touchscreen"
 description:
   How to set up and use Voice Assistant, wake words, timers, mute, volume, media playback, and troubleshooting on the ESP32-P4 86 Panel.
 ---
@@ -80,6 +80,8 @@ To enable it:
 1. Open the device in Home Assistant.
 2. Turn on **Voice Services**.
 3. Wait a few seconds for the wake-word engine to start.
+
+You can also enable it on the panel web page under **Settings > Voice & Sounds > Voice Services**.
 
 When **Voice Services** is off, wake-word listening is stopped and the clock-bar microphone shortcut is hidden. Other normal EspControl screen features continue to work.
 

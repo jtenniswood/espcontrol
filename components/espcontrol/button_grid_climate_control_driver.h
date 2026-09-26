@@ -1,5 +1,7 @@
 #pragma once
 
+#include "card_modal_target.h"
+
 // Shared lifecycle driver for Climate Control cards. The specialised
 // temperature, HVAC mode, preset, fan, swing, Home Assistant, and modal
 // helpers remain in button_grid_climate.h; this driver owns the grid/subpage
@@ -159,6 +161,16 @@ inline bool climate_control_driver_handle_main_click(
     ? static_cast<ClimateControlCtx *>(lv_obj_get_user_data(button)) : nullptr;
   if (climate) climate_control_open_modal(climate);
   return true;
+}
+
+// Explicit modal-only route; it must never activate the card's command path.
+inline ModalTarget climate_control_driver_modal_target(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button) {
+  if (!climate_control_driver_matches(context)) return {};
+  auto *runtime = button
+    ? static_cast<ClimateControlCtx *>(lv_obj_get_user_data(button)) : nullptr;
+  return modal_target(runtime, config.entity, ControlModalKind::CLIMATE,
+                      climate_control_can_open_modal(runtime), climate_control_open_modal);
 }
 
 }  // namespace espcontrol::cards

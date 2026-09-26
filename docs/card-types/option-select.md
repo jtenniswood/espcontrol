@@ -1,5 +1,5 @@
 ---
-title: Option Select Action
+title: "Home Assistant Option Select Action"
 description:
   How to use the Option Select action on your EspControl panel to choose Home Assistant select and input_select options.
 ---

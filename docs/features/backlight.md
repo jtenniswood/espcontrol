@@ -1,5 +1,5 @@
 ---
-title: EspControl Backlight Settings
+title: "Backlight Settings"
 description:
   Choose manual backlight control or automatic day and night brightness using sunrise, sunset, or fixed times.
 ---
@@ -10,29 +10,29 @@ The panel can keep one brightness level under manual control, or automatically u
 
 ## How It Works
 
-The **Brightness Mode** setting gives you three clear choices:
+The **Backlight** card gives you three choices:
 
 - **Manual** — keeps the brightness level you choose.
-- **Sunrise and sunset** — uses your **Daytime Brightness** and **Nighttime Brightness**, changing at locally calculated sunrise and sunset.
-- **Fixed times** — uses the same day and night levels, changing at the **Dawn** and **Dusk** times you choose.
+- **Automatic** — uses your **Daytime Brightness** and **Nighttime Brightness**, changing at locally calculated sunrise and sunset.
+- **Timed** — uses the same day and night levels, changing at the **Dawn** and **Dusk** times you choose.
 
 Sunrise and sunset are calculated on-device from your selected timezone using a NOAA solar algorithm. The transition is checked every 60 seconds and recalculated at midnight. No internet connection or Home Assistant is required.
 
 ## Settings
 
-Configured in the **Brightness** section of the **Settings** tab in [Setup](/features/setup).
+Configured in **Settings > Display > Backlight** in [Setup](/features/setup).
 
-- **Brightness Mode** — choose **Manual**, **Sunrise and sunset**, or **Fixed times**.
-- **Brightness** — shown in Manual mode and sets the normal screen brightness (1%–100%).
+- Choose **Manual**, **Automatic**, or **Timed** at the top of the card.
+- **Brightness** — shown in Manual mode and sets the normal screen brightness (10%–100% in the web slider).
 - **Daytime Brightness** — shown in either automatic mode and sets the daytime level (10%–100%, default 100%).
 - **Nighttime Brightness** — shown in either automatic mode and sets the nighttime level (10%–100%, default 75%).
-- **Dawn / Dusk** — shown in Fixed times mode and decides when the panel switches between the day and night levels.
+- **Dawn / Dusk** — shown in Timed mode and decides when the panel switches between the day and night levels.
 
-Sunrise and sunset times are derived from the timezone set in [Time Settings](/features/clock).
+In Automatic mode, read-only sunrise and sunset times appear below the brightness sliders. They are derived from the timezone set in [Time Settings](/features/clock).
 
 ## Home Assistant Control
 
-The panel exposes **Screen: Brightness Mode** and **Display Backlight** to Home Assistant, along with the day, night, dawn, and dusk settings. Selecting the mode in Home Assistant behaves the same as selecting it in Setup.
+The panel exposes **Screen: Brightness Mode** and **Display Backlight** to Home Assistant, along with the day, night, dawn, and dusk settings. Home Assistant calls the automatic modes **Sunrise and sunset** and **Fixed times**; these correspond to **Automatic** and **Timed** in the web settings.
 
 Changing the brightness of **Display Backlight** automatically selects **Manual** mode. Turning the backlight on or off does not change the selected mode, so existing sleep and wake automations continue to work.
 

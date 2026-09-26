@@ -1,5 +1,7 @@
 #pragma once
 
+#include "card_modal_target.h"
+
 // Shared lifecycle driver for Fan Control cards. The specialised power,
 // speed, preset, oscillation, direction, Home Assistant, and modal helpers
 // remain in button_grid_fan.h; this driver owns the grid/subpage boundary.
@@ -121,6 +123,16 @@ inline bool fan_control_driver_handle_main_click(
     ? static_cast<FanCardCtx *>(lv_obj_get_user_data(button)) : nullptr;
   if (fan) fan_control_open_modal(fan);
   return true;
+}
+
+// Explicit modal-only route; it must never activate the card's command path.
+inline ModalTarget fan_control_driver_modal_target(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button) {
+  if (!fan_control_driver_matches(context)) return {};
+  auto *runtime = button
+    ? static_cast<FanCardCtx *>(lv_obj_get_user_data(button)) : nullptr;
+  return modal_target(runtime, config.entity, ControlModalKind::FAN_CONTROL,
+                      fan_control_can_open_modal(runtime), fan_control_open_modal);
 }
 
 }  // namespace espcontrol::cards

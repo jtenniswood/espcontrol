@@ -105,4 +105,10 @@ interval:
   - interval: 250ms
     then:
       - lambda: |-
-          image_card_refresh_due();
+          image_card_refresh_due([]() {
+            const auto &display = id(espcontrol_app).display();
+            return (display.current_mode_is(espcontrol::DisplayMode::ACTIVE) ||
+                    display.current_mode_is(espcontrol::DisplayMode::DIMMED)) &&
+                   (display.target_mode_is(espcontrol::DisplayMode::ACTIVE) ||
+                    display.target_mode_is(espcontrol::DisplayMode::DIMMED));
+          });

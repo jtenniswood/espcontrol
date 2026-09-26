@@ -1,5 +1,5 @@
 ---
-title: Climate Cards
+title: "Home Assistant Climate Cards"
 description:
   How to use climate cards on your EspControl panel to control Home Assistant climate entities.
 ---

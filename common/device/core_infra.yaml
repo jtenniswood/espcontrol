@@ -40,6 +40,7 @@ api:
   on_client_connected:
     - lambda: |-
         if (client_info.find("Home Assistant") != std::string::npos) {
+          id(espcontrol_app).home_assistant_endpoint().invalidate_connection();
           id(ha_refresh_after_connect).execute(client_info, client_address);
         }
   on_client_disconnected:
@@ -257,7 +258,37 @@ number:
           id(cover_art_home_assistant_artwork_port).publish_state(x);
           id(cover_art_resolve_home_assistant_base_url).execute();
 
+text:
+  - platform: template
+    name: "${entity_home_assistant_artwork_host}"
+    internal: true
+    id: cover_art_home_assistant_artwork_host
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 253
+    mode: text
+    entity_category: config
+    icon: "mdi:server-network"
+    web_server:
+      sorting_group_id: sg_connectivity
+    set_action:
+      - lambda: |-
+          id(cover_art_home_assistant_artwork_host).publish_state(x);
+          id(cover_art_resolve_home_assistant_base_url).execute();
+
 text_sensor:
+  - platform: template
+    name: "${entity_home_assistant_artwork_endpoint_health}"
+    internal: true
+    id: home_assistant_artwork_endpoint_health
+    entity_category: diagnostic
+    icon: "mdi:lan-check"
+    update_interval: 1s
+    lambda: |-
+      return id(espcontrol_app).home_assistant_endpoint().health();
+
   - platform: template
     name: "${entity_home_assistant_artwork_endpoint_status}"
     internal: true

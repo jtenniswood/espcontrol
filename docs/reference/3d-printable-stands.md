@@ -1,5 +1,5 @@
 ---
-title: Printable Stands and Mounts
+title: "ESP32 Touchscreen Stands and Mounts"
 description:
   3D printable stands and mounts for EspControl supported ESP32 touchscreens, with links to the matching MakerWorld print files.
 ---

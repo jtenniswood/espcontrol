@@ -1,0 +1,83 @@
+# Shared scripts for the independently selectable Home Assistant navigation
+# and control actions. Included when either action package is enabled.
+script:
+  - id: remote_navigate
+    mode: restart
+    parameters:
+      target: string
+    then:
+      - script.stop: open_entity_modal
+      - script.stop: open_remote_subpage
+      - script.execute: screensaver_wake
+      - script.wait: screensaver_wake
+      - lambda: |-
+          if (navigation_is_voice_target(target) && !navigation_has_home_label_target(target)) {
+            navigation_hide_modals();
+            ${navigate_voice_target_code}
+          } else {
+            espcontrol_navigate(target, id(main_page)->obj);
+          }
+      - script.execute: screensaver_idle_check
+      - script.execute: home_screen_idle_check
+
+  - id: open_entity_modal
+    mode: restart
+    parameters:
+      entity_id: string
+    then:
+      - script.stop: open_remote_subpage
+      - script.stop: remote_navigate
+      - if:
+          condition:
+            lambda: |-
+              return espcontrol_can_open_modal(entity_id,
+                !id(connectivity_setup_display_active) &&
+                grid_phase2_complete() &&
+                !navigation_home_targets().empty());
+          then:
+            - script.execute: screensaver_wake
+            - script.wait: screensaver_wake
+            - if:
+                condition:
+                  lambda: |-
+                    return espcontrol_open_modal(entity_id,
+                      !id(connectivity_setup_display_active) &&
+                      grid_phase2_complete() &&
+                      !navigation_home_targets().empty());
+                then:
+                  - script.execute: screensaver_idle_check
+                  - script.execute: home_screen_idle_check
+
+  - id: open_remote_subpage
+    mode: restart
+    parameters:
+      label: string
+    then:
+      - script.stop: open_entity_modal
+      - script.stop: remote_navigate
+      - if:
+          condition:
+            lambda: |-
+              return espcontrol_can_open_subpage(label,
+                !id(connectivity_setup_display_active) &&
+                grid_phase2_complete() &&
+                !navigation_home_targets().empty());
+          then:
+            - script.execute: screensaver_wake
+            - script.wait: screensaver_wake
+            - if:
+                condition:
+                  lambda: |-
+                    return espcontrol_can_open_subpage(label,
+                      !id(connectivity_setup_display_active) &&
+                      grid_phase2_complete() &&
+                      !navigation_home_targets().empty());
+                then:
+                  - lambda: |-
+                      espcontrol_open_subpage(label,
+                        !id(connectivity_setup_display_active) &&
+                        grid_phase2_complete() &&
+                        !navigation_home_targets().empty(),
+                        id(main_page)->obj);
+                  - script.execute: screensaver_idle_check
+                  - script.execute: home_screen_idle_check

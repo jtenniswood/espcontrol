@@ -1,5 +1,5 @@
 ---
-title: Screen Lock Cards
+title: "Lock the Touchscreen"
 description:
   How to use screen lock cards on your EspControl panel to lock and unlock local touchscreen controls.
 ---

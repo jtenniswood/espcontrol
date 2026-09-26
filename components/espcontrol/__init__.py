@@ -14,7 +14,7 @@ from esphome.core import CORE, CoroPriority, coroutine_with_priority
 import os
 
 CODEOWNERS = ["@jtenniswood"]
-AUTO_LOAD = ["mdns", "json"]
+AUTO_LOAD = ["mdns", "json", "socket"]
 
 CONF_ACTION_RESPONSES = "action_responses"
 CONF_PANEL_CONFIG = "panel_config"
@@ -65,6 +65,18 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_WEB_AUTH_PASSWORD, default=""): cv.sensitive(cv.string_strict),
     }
 ).extend(cv.COMPONENT_SCHEMA)
+
+
+def _consume_endpoint_socket(config):
+    from esphome.components import socket
+
+    consume = getattr(socket, "consume_sockets", None)
+    if consume is not None:
+        consume(1, "ha_endpoint_probe")(config)
+    return config
+
+
+CONFIG_SCHEMA = cv.All(CONFIG_SCHEMA, _consume_endpoint_socket)
 
 
 @coroutine_with_priority(CoroPriority.DIAGNOSTICS)

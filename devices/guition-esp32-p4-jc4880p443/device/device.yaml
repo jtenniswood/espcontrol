@@ -267,9 +267,7 @@ touchscreen:
     id: my_touchscreen
     display: my_display
     on_touch:
-      - script.execute: cover_art_pause_after_touch
-      - script.wait: cover_art_pause_after_touch
-      - script.execute: screensaver_wake
+      - script.execute: cover_art_handle_touch
 
 # ---------------------------------------------------------------------------
 # Display (4.3" 480x800 MIPI DSI panel)
@@ -317,6 +315,7 @@ script:
                       else:
                         - lvgl.display.set_rotation: 180
       - script.execute: cover_art_apply_responsive_layout
+      - script.execute: camera_screensaver_request_image
 
 select:
   - platform: template

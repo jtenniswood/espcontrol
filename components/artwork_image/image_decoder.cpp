@@ -3,11 +3,51 @@
 #include "rgb565_scaler.h"
 
 #include "esphome/core/log.h"
+#include "esphome/core/application.h"
 
 namespace esphome {
 namespace artwork_image {
 
 static const char *const TAG = "artwork_image.decoder";
+
+ImageDecoder::~ImageDecoder() { this->release_filtered_resize(); }
+
+void ImageDecoder::release_filtered_resize() {
+  if (this->resample_workspace_) {
+    this->resample_allocator_.deallocate(this->resample_workspace_, this->resample_workspace_size_);
+    this->resample_workspace_ = nullptr;
+  }
+  this->resample_workspace_size_ = 0;
+  this->resampler_ = ScanlineResampler{};
+}
+
+bool ImageDecoder::prepare_filtered_resize(int width, int height) {
+  this->release_filtered_resize();
+  const int content_width = this->image_->decode_content_width_;
+  const int content_height = this->image_->decode_content_height_;
+  const int start_x = std::max(0, this->x_offset_);
+  const int end_x = std::min(this->image_->decode_buffer_width_, this->x_offset_ + content_width);
+  this->resample_workspace_size_ = ScanlineResampler::workspace_size(end_x - start_x);
+  this->resample_workspace_ = this->resample_allocator_.allocate(this->resample_workspace_size_);
+  if (!this->resampler_.configure(width, height, content_width, content_height,
+                                 this->image_->decode_buffer_width_, this->image_->decode_buffer_height_,
+                                 this->x_offset_, this->y_offset_, this->resample_workspace_,
+                                 this->resample_workspace_size_)) {
+    this->failed_ = true;
+    this->release_filtered_resize();
+    ESP_LOGE(TAG, "Could not allocate filtered image resize workspace");
+    return false;
+  }
+  return true;
+}
+
+void ImageDecoder::draw_filtered_rgb888_row(int y, const uint8_t *data) {
+  if (!this->resampler_.push_row(y, [data](int x) {
+        return ResampleColor{data[x * 3], data[x * 3 + 1], data[x * 3 + 2]};
+      }, [this](int x, int y, ResampleColor color) {
+        this->image_->draw_pixel_(x, y, Color(color.r, color.g, color.b, 0xFF));
+      })) this->failed_ = true;
+}
 
 bool ImageDecoder::set_size(int width, int height) {
   bool success = this->image_->resize_(width, height) > 0;
@@ -92,10 +132,6 @@ void ImageDecoder::draw_rgb565_frame(int width, int height, size_t stride_bytes,
                            : this->image_->decode_buffer_height_;
   if (content_width <= 0 || content_height <= 0) return;
 
-  int start_x = std::max(0, this->x_offset_);
-  int start_y = std::max(0, this->y_offset_);
-  int end_x = std::min(this->image_->decode_buffer_width_, this->x_offset_ + content_width);
-  int end_y = std::min(this->image_->decode_buffer_height_, this->y_offset_ + content_height);
   if (bpp_bytes == 2 && this->x_offset_ == 0 && this->y_offset_ == 0 &&
       width == this->image_->decode_buffer_width_ && height == this->image_->decode_buffer_height_ &&
       content_width == width && content_height == height) {
@@ -111,24 +147,26 @@ void ImageDecoder::draw_rgb565_frame(int width, int height, size_t stride_bytes,
     return;
   }
 
-  std::vector<size_t> source_x_offsets(static_cast<size_t>(std::max(0, end_x - start_x)));
-  for (int dst_x = start_x; dst_x < end_x; dst_x++) {
-    int src_x = std::min(width - 1, (dst_x - this->x_offset_) * width / content_width);
-    source_x_offsets[dst_x - start_x] = static_cast<size_t>(src_x) * 2;
-  }
-  for (int dst_y = start_y; dst_y < end_y; dst_y++) {
-    int src_y = std::min(height - 1, (dst_y - this->y_offset_) * height / content_height);
-    const uint8_t *source_row = data + static_cast<size_t>(src_y) * stride_bytes;
-    uint8_t *destination =
-        this->image_->decode_buffer_ + this->image_->get_position_(start_x, dst_y);
-    for (int dst_x = start_x; dst_x < end_x; dst_x++) {
-      const uint8_t *source = source_row + source_x_offsets[dst_x - start_x];
-      destination[0] = source[0];
-      destination[1] = source[1];
-      if (bpp_bytes > 2) destination[2] = 0xFF;
-      destination += bpp_bytes;
+  if (!this->prepare_filtered_resize(width, height)) return;
+  const bool big_endian = this->image_->is_big_endian();
+  for (int y = 0; y < height; y++) {
+    const uint8_t *row = data + static_cast<size_t>(y) * stride_bytes;
+    if (!this->resampler_.push_row(y, [row, big_endian](int x) {
+          const uint16_t pixel = big_endian ? (row[x * 2] << 8) | row[x * 2 + 1]
+                                            : row[x * 2] | (row[x * 2 + 1] << 8);
+          const uint8_t r = (pixel >> 11) & 31, g = (pixel >> 5) & 63, b = pixel & 31;
+          return ResampleColor{static_cast<uint8_t>((r << 3) | (r >> 2)),
+                               static_cast<uint8_t>((g << 2) | (g >> 4)),
+                               static_cast<uint8_t>((b << 3) | (b >> 2))};
+        }, [this](int x, int y, ResampleColor color) {
+          this->image_->draw_pixel_(x, y, Color(color.r, color.g, color.b, 0xFF));
+        })) {
+      this->failed_ = true;
+      break;
     }
+    App.feed_wdt();
   }
+  this->release_filtered_resize();
 }
 
 DownloadBuffer::DownloadBuffer(size_t size) : buffer_(nullptr), size_(size) {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "card_modal_target.h"
+
 // Shared lifecycle driver for numeric and selectable cards. The same visual,
 // binding, interaction, layout, and cleanup entry points serve main-grid and
 // subpage cards while retaining the established slider, fan, and modal helpers.
@@ -288,6 +290,23 @@ inline bool numeric_selectable_driver_handle_main_click(
   }
   // Light Temperature sends only from the slider release callback.
   return true;
+}
+
+inline ModalTarget numeric_selectable_driver_modal_target(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button) {
+  if (numeric_selectable_driver_option_select(context, config)) {
+    auto *runtime = button
+      ? static_cast<OptionSelectCtx *>(lv_obj_get_user_data(button)) : nullptr;
+    return modal_target(runtime, config.entity, ControlModalKind::OPTION_SELECT,
+                        option_select_can_open_modal(runtime), option_select_open_modal);
+  }
+  if (context.runtime.type == card_runtime::CardTypeId::FAN_PRESET) {
+    auto *runtime = button
+      ? static_cast<FanCardCtx *>(lv_obj_get_user_data(button)) : nullptr;
+    return modal_target(runtime, config.entity, ControlModalKind::FAN_PRESET,
+                        fan_control_supported(runtime), fan_preset_open);
+  }
+  return {};
 }
 
 }  // namespace espcontrol::cards

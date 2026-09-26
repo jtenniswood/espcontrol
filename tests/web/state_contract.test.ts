@@ -108,8 +108,11 @@ export function runStateContractTests(): void {
     screensaverTimeout: "number-screensaver_timeout",
     clockScreensaver: "switch-screen_saver__clock",
     mediaPlayerSleepPrevention: "switch-screen_saver__media_player_sleep_prevention",
+    coverArtPlaybackControl: "switch-screen_saver__cover_art_playback_control",
     mediaPlayerSleepPreventionEntity: "text-media_player_sleep_prevention_entity",
     coverArt: "switch-screen_saver__cover_art",
+    clockOverlay: "switch-screen_saver__clock_overlay",
+    metadataOverlay: "switch-screen_saver__metadata_overlay",
     coverArtEntity: "text-screen_saver__cover_art_entity",
     coverArtSecondaryEntity: "text-screen_saver__external_source_media_entity",
     coverArtConditions: "text-screen_saver__cover_art_conditions",
@@ -118,8 +121,10 @@ export function runStateContractTests(): void {
     coverArtHideExternalInput: "switch-screen_saver__hide_cover_art_on_external_input",
     homeAssistantArtworkProtocol: "select-home_assistant_artwork_protocol",
     homeAssistantArtworkPort: "number-home_assistant_artwork_port",
+    homeAssistantArtworkHost: "text-home_assistant_artwork_host",
     homeAssistantArtworkEndpointMode: "select-home_assistant_artwork_endpoint_mode",
     homeAssistantArtworkEndpointStatus: "text_sensor-home_assistant_artwork_endpoint_status",
+    homeAssistantArtworkEndpointHealth: "text_sensor-home_assistant_artwork_endpoint_health",
     scheduleTrigger: "text-screen__schedule_trigger",
     scheduleSensorActivation: "select-screen__schedule_sensor_activation",
     scheduleWakeTimeout: "number-screen__schedule_wake_timeout",
@@ -147,6 +152,7 @@ export function runStateContractTests(): void {
   for (const [id, state, group] of [
     ["select/Home Assistant Artwork Connection", "Automatic", "homeAssistantArtworkEndpointMode"],
     ["text_sensor/Home Assistant Artwork Endpoint", "Automatic — http://172.16.20.40:8123", "homeAssistantArtworkEndpointStatus"],
+    ["text/Home Assistant Artwork Host", "ha.example.test", "homeAssistantArtworkHost"],
   ] as const) {
     const event = { id, state };
     const key = entityStateKeys(event).find(key => handlers[key]);

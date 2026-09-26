@@ -1,5 +1,5 @@
 ---
-title: EspControl Firmware Updates
+title: "Firmware Updates"
 description:
   How the EspControl panel checks for and installs firmware updates over the air, and how to control update behaviour.
 ---
@@ -7,6 +7,16 @@ description:
 # Firmware Updates
 
 Your panel can update its firmware over the air — no USB cable or computer needed after the initial install. When a new version is available, the panel downloads and installs it automatically (if enabled) or waits for you to trigger the update manually.
+
+## Stable Releases, Development Builds, and Custom Firmware
+
+Use the [published release list](https://github.com/jtenniswood/espcontrol/releases) to confirm whether a version is stable or marked **Pre-release**. Documentation follows the project's current source; a recently documented control may require newer firmware than your panel has installed. Compare **Current version** with the release notes before relying on a new option.
+
+**Release status checked September 22, 2026:** `v2.10.0` is the latest published stable release. This dated check is not a promise that a later version is available on every hardware revision; use the matching installer and release assets for your panel.
+
+Built-in updates install released binaries. They do not rebuild custom YAML, pins, or components. If you manage a custom ESPHome build, turn off **Auto Update** and use [manual ESPHome updates](/getting-started/manual-esphome-setup). For a release-specific custom build, use matching tagged sources and dependencies.
+
+The JC8012P4A1 V3 rejects browser OTA firmware uploads; use native ESPHome OTA as described in the [V3 guide](/screens/jc8012p4a1-v3). Advanced Ethernet-only builds with updates disabled also use ESPHome OTA or USB.
 
 ## Update Settings
 

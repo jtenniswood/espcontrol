@@ -11,6 +11,7 @@ substitutions:
   device_slug: "guition-esp32-p4-jc8012p4a1-v3"
   firmware_manifest_slug: "guition-esp32-p4-jc8012p4a1-v3"
   firmware_version: "dev"
+  screensaver_camera_supported: "true"
   screen_width: "1280"
   screen_height: "800"
   content_width: "760"
@@ -40,7 +41,7 @@ substitutions:
   navigate_voice_target_code: |-
     ESP_LOGW("navigation", "Voice volume target is not available on this device");
   voice_interaction_active_condition: "false"
-  clock_font_size: "220"
+  clock_font_size: "200"
   clock_cx: "640"
   clock_cy: "400"
   screen_saver_clock_min_brightness: "1"
@@ -131,6 +132,8 @@ packages:
   # Addons
   # ---------------------------------------------------------------------------
   connectivity:    !include ../../common/addon/connectivity.yaml
+  api_remote_actions: !include ../../common/device/api_remote_actions.yaml
+  api_open_modal:  !include ../../common/device/api_open_modal.yaml
   api_navigate:    !include ../../common/device/api_navigate.yaml
   time_sync:       !include ../../common/addon/time.yaml
   backlight:       !include ../../common/addon/backlight.yaml
@@ -149,6 +152,7 @@ packages:
   screen_setup:    !include ../../common/device/screen_button_setup.yaml
   screen_clock:    !include ../../common/device/screen_clock.yaml
   screen_art:      !include ../../common/device/screen_cover_art.yaml
+  screen_camera:   !include ../../common/device/screen_camera_screensaver.yaml
   image_cards:     !include ../../common/device/image_cards_6.yaml
   # ---------------------------------------------------------------------------
   # Main page and dynamic sensor subscriptions (after setup screens)

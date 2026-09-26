@@ -974,8 +974,12 @@ inline void light_control_hide_modal() {
   control_modal_delete_overlay(ControlModalKind::LIGHT_CONTROL, overlay);
 }
 
+inline bool light_control_can_open_modal(LightControlCtx *ctx) {
+  return !(!ctx || !ctx->available);
+}
+
 inline void light_control_open_modal(LightControlCtx *ctx) {
-  if (!ctx || !ctx->available) return;
+  if (!light_control_can_open_modal(ctx)) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::LIGHT_CONTROL, ctx->btn, ctx->width_compensation_percent,
     ctx->icon_font, light_control_hide_modal);
@@ -2482,8 +2486,12 @@ inline lv_obj_t *cover_control_create_position_fill(lv_obj_t *slider, uint32_t a
   return fill;
 }
 
+inline bool cover_control_can_open_modal(CoverControlCtx *ctx) {
+  return !(!ctx || !ctx->available);
+}
+
 inline void cover_control_open_modal(CoverControlCtx *ctx) {
-  if (!ctx || !ctx->available) return;
+  if (!cover_control_can_open_modal(ctx)) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::COVER_CONTROL, ctx->btn, ctx->width_compensation_percent,
     ctx->icon_font, cover_control_hide_modal);
@@ -3682,8 +3690,12 @@ inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct) {
   if (ui.pct_unit_lbl) lv_label_set_display_text(ui.pct_unit_lbl, "");
 }
 
+inline bool media_volume_can_open_modal(MediaVolumeCtx *ctx) {
+  return !(!ctx || !ctx->available);
+}
+
 inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
-  if (!ctx || !ctx->available) return;
+  if (!media_volume_can_open_modal(ctx)) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::MEDIA_VOLUME, ctx->btn, ctx->width_compensation_percent,
     ctx->icon_font, media_volume_hide_modal);

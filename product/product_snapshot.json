@@ -11,8 +11,8 @@
   "summary": {
     "deviceProfiles": 8,
     "cardTypes": 43,
-    "entityNames": 101,
-    "icons": 357,
+    "entityNames": 109,
+    "icons": 359,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
   },
@@ -195,7 +195,7 @@
             "main_page_compact_pad_top": "\"5\"",
             "clock_bar_item_gap": "\"80\"",
             "clock_bar_visual_gap": "\"10\"",
-            "clock_font_size": "\"200\"",
+            "clock_font_size": "\"140\"",
             "clock_cx": "\"512\"",
             "clock_cy": "\"300\"",
             "screen_saver_clock_min_brightness": "\"1\"",
@@ -210,7 +210,8 @@
           "backlightPwmFrequency": {
             "wifi": "1000Hz",
             "ethernet": "20000Hz"
-          }
+          },
+          "apiOpenModalAction": true
         }
       },
       "settings": {
@@ -410,7 +411,8 @@
           "backlightPwmFrequency": {
             "wifi": "1000Hz",
             "ethernet": "20000Hz"
-          }
+          },
+          "apiOpenModalAction": true
         }
       },
       "settings": {
@@ -593,7 +595,7 @@
             "main_page_compact_pad_top": "\"5\"",
             "clock_bar_item_gap": "\"96\"",
             "clock_bar_visual_gap": "\"12\"",
-            "clock_font_size": "\"160\"",
+            "clock_font_size": "\"140\"",
             "clock_cx": "\"240\"",
             "clock_cy": "\"400\"",
             "screen_saver_clock_min_brightness": "\"1\"",
@@ -602,7 +604,8 @@
             "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_lg",
-          "esp32C6FirmwareUpdate": true
+          "esp32C6FirmwareUpdate": true,
+          "apiOpenModalAction": true
         }
       },
       "settings": {
@@ -784,7 +787,7 @@
             "main_page_compact_pad_top": "\"5\"",
             "clock_bar_item_gap": "\"78\"",
             "clock_bar_visual_gap": "\"10\"",
-            "clock_font_size": "\"220\"",
+            "clock_font_size": "\"160\"",
             "clock_cx": "\"640\"",
             "clock_cy": "\"400\"",
             "screen_saver_clock_min_brightness": "\"1\"",
@@ -796,7 +799,8 @@
           "esp32C6FirmwareUpdate": true,
           "extraPackages": {
             "battery": "!include device/battery.yaml"
-          }
+          },
+          "apiOpenModalAction": true
         }
       },
       "settings": {
@@ -978,7 +982,7 @@
             "main_page_compact_pad_top": "\"5\"",
             "clock_bar_item_gap": "\"78\"",
             "clock_bar_visual_gap": "\"10\"",
-            "clock_font_size": "\"220\"",
+            "clock_font_size": "\"200\"",
             "clock_cx": "\"640\"",
             "clock_cy": "\"400\"",
             "screen_saver_clock_min_brightness": "\"1\"",
@@ -987,7 +991,8 @@
             "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
-          "esp32C6FirmwareUpdate": true
+          "esp32C6FirmwareUpdate": true,
+          "apiOpenModalAction": true
         }
       },
       "settings": {
@@ -1169,7 +1174,7 @@
             "main_page_compact_pad_top": "\"5\"",
             "clock_bar_item_gap": "\"78\"",
             "clock_bar_visual_gap": "\"10\"",
-            "clock_font_size": "\"220\"",
+            "clock_font_size": "\"200\"",
             "clock_cx": "\"640\"",
             "clock_cy": "\"400\"",
             "screen_saver_clock_min_brightness": "\"1\"",
@@ -1178,7 +1183,8 @@
             "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
-          "esp32C6FirmwareUpdate": true
+          "esp32C6FirmwareUpdate": true,
+          "apiOpenModalAction": true
         }
       },
       "settings": {
@@ -1358,7 +1364,7 @@
             "main_page_compact_pad_top": "\"6\"",
             "clock_bar_item_gap": "\"96\"",
             "clock_bar_visual_gap": "\"12\"",
-            "clock_font_size": "\"224\"",
+            "clock_font_size": "\"170\"",
             "clock_cx": "\"360\"",
             "clock_cy": "\"360\"",
             "screen_saver_clock_min_brightness": "\"1\"",
@@ -1385,7 +1391,8 @@
           "backlightPwmFrequency": {
             "wifi": "100Hz",
             "ethernet": "20000Hz"
-          }
+          },
+          "apiOpenModalAction": true
         }
       },
       "settings": {
@@ -1579,7 +1586,7 @@
             "main_page_compact_pad_top": "\"4\"",
             "clock_bar_item_gap": "\"60\"",
             "clock_bar_visual_gap": "\"8\"",
-            "clock_font_size": "\"160\"",
+            "clock_font_size": "\"120\"",
             "clock_cx": "\"240\"",
             "clock_cy": "\"240\"",
             "screen_saver_clock_min_brightness": "\"1\"",
@@ -1588,7 +1595,8 @@
             "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
-          "apiNavigateAction": false
+          "apiNavigateAction": true,
+          "apiOpenModalAction": true
         }
       },
       "settings": {
@@ -5822,6 +5830,36 @@
             ],
             "defaultValue": "fill",
             "omitDefault": true
+          },
+          {
+            "name": "image_modal_refresh_mode",
+            "label": "Camera refresh",
+            "kind": "choice",
+            "values": [
+              "off",
+              "periodic",
+              "activity"
+            ],
+            "defaultValue": "off",
+            "omitDefault": true
+          },
+          {
+            "name": "image_modal_refresh_interval",
+            "label": "Refresh interval",
+            "kind": "choice",
+            "values": [
+              "5",
+              "10",
+              "30"
+            ],
+            "defaultValue": "10",
+            "omitDefault": true
+          },
+          {
+            "name": "image_modal_refresh_trigger",
+            "label": "Trigger entity",
+            "kind": "text",
+            "omitDefault": true
           }
         ],
         "normalization": {
@@ -5863,7 +5901,10 @@
           "canonicalOptionOrder": [
             "image_label",
             "image_icon",
-            "image_modal_mode"
+            "image_modal_mode",
+            "image_modal_refresh_mode",
+            "image_modal_refresh_interval",
+            "image_modal_refresh_trigger"
           ],
           "optionHook": "normalize_image_options"
         },
@@ -6758,6 +6799,58 @@
         ]
       },
       {
+        "key": "screen_saver_camera_entity",
+        "domain": "text",
+        "name": "Screen Saver: Camera Entity",
+        "objectIds": [
+          "screen_saver__camera_entity",
+          "screen_saver_camera_entity",
+          "screensaver_camera_entity"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_metadata_entity",
+        "domain": "text",
+        "name": "Screen Saver: Photo Metadata Entity",
+        "objectIds": [
+          "screen_saver__photo_metadata_entity",
+          "screen_saver_photo_metadata_entity",
+          "screensaver_metadata_entity"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_metadata_overlay",
+        "domain": "switch",
+        "name": "Screen Saver: Metadata Overlay",
+        "objectIds": [
+          "screen_saver__metadata_overlay",
+          "screen_saver_metadata_overlay",
+          "metadata_overlay_enabled"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_camera_image_mode",
+        "domain": "select",
+        "name": "Screen Saver: Camera Image Mode",
+        "objectIds": [
+          "screen_saver__camera_image_mode",
+          "screen_saver_camera_image_mode",
+          "screensaver_camera_image_mode"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
         "key": "presence_sensor_entity",
         "domain": "text",
         "name": "Presence Sensor Entity",
@@ -6774,6 +6867,19 @@
         "name": "Screen Schedule Sensor Entity",
         "objectIds": [
           "screen_schedule_sensor_entity"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_cover_art_playback_control",
+        "domain": "switch",
+        "name": "Screen Saver: Cover Art Playback Control",
+        "objectIds": [
+          "screen_saver__cover_art_playback_control",
+          "screen_saver_cover_art_playback_control",
+          "cover_art_playback_control_enabled"
         ],
         "groups": [
           "settings"
@@ -6920,6 +7026,17 @@
         ]
       },
       {
+        "key": "home_assistant_artwork_endpoint_health",
+        "domain": "text_sensor",
+        "name": "Home Assistant Artwork Connection Health",
+        "objectIds": [
+          "home_assistant_artwork_endpoint_health"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
         "key": "home_assistant_artwork_protocol",
         "domain": "select",
         "name": "Home Assistant Artwork Protocol",
@@ -6937,6 +7054,17 @@
         "name": "Home Assistant Artwork Port",
         "objectIds": [
           "home_assistant_artwork_port"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "home_assistant_artwork_host",
+        "domain": "text",
+        "name": "Home Assistant Artwork Host",
+        "objectIds": [
+          "home_assistant_artwork_host"
         ],
         "groups": [
           "settings"
@@ -7039,6 +7167,19 @@
           "screen_saver__clock",
           "screen_saver_clock",
           "clock_screensaver_enabled"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_clock_overlay",
+        "domain": "switch",
+        "name": "Screen Saver: Clock Overlay",
+        "objectIds": [
+          "screen_saver__clock_overlay",
+          "screen_saver_clock_overlay",
+          "clock_overlay_enabled"
         ],
         "groups": [
           "settings"
@@ -7718,6 +7859,16 @@
         "name": "Arrow Up Down",
         "codepoint": "F0E79",
         "mdi": "arrow-up-down"
+      },
+      {
+        "name": "Awning",
+        "codepoint": "F1B87",
+        "mdi": "awning"
+      },
+      {
+        "name": "Awning Outline",
+        "codepoint": "F1B88",
+        "mdi": "awning-outline"
       },
       {
         "name": "Battery",

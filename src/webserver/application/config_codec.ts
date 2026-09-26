@@ -10,6 +10,8 @@ import {
     CARD_SIZE_PORTRAIT_LARGE,
     CARD_SIZE_SINGLE,
     CARD_SIZE_ULTRA_WIDE,
+    sizeColSpan,
+    sizeRowSpan,
 } from "../model/grid";
 import {
     cardContractDefaultConfig,
@@ -173,7 +175,7 @@ export function createConfigCodecFeature(
         return true;
     }
     function cardRequiresSquareSize(this: any, b?: any) {
-        return !!(b && b.type === "media" && mediaEditorMode(b.sensor) === "cover_art");
+        return false;
     }
     function cardIsWifiSharing(this: any, b?: any) {
         return !!(b && (b.type === "wifi_qr" || b.type === "wifi_qr_card"));
@@ -186,19 +188,23 @@ export function createConfigCodecFeature(
         );
     }
     function cardSupportsExtraLargeSize(this: any, b?: any) {
-        return cardRequiresSquareSize(b) || cardIsWifiSharing(b);
+        return cardIsWifiSharing(b) || cardSupportsMaxSize(b);
     }
     function cardSupportsMaxSize(this: any, b?: any) {
-        return !!(b && b.type === "image");
+        return !!(b && (b.type === "image" ||
+            (b.type === "media" && mediaEditorMode(b.sensor) === "cover_art")));
     }
     function cardSupportsPortraitLargeSize(this: any, b?: any) {
-        return (cardRequiresSquareSize(b) || cardSupportsMaxSize(b)) && layout.gridRows >= 4 && layout.gridCols >= 3;
+        return cardSupportsMaxSize(b) && layout.gridRows >= 4 && layout.gridCols >= 3;
     }
     function cardSupportsLandscapeLargeSize(this: any, b?: any) {
         return cardSupportsMaxSize(b) && layout.gridRows >= 3 && layout.gridCols >= 4;
     }
     function cardSupportsUltraWideSize(this: any, b?: any) {
-        return !cardRequiresSquareSize(b) && layout.gridCols >= 5;
+        return !cardIsWifiSharing(b) && layout.gridCols >= 5;
+    }
+    function cardSizeFitsLayout(this: any, size?: any) {
+        return sizeColSpan(size) <= layout.gridCols && sizeRowSpan(size) <= layout.gridRows;
     }
     function normalizeCardSizeForConfig(this: any, b?: any, size?: any) {
         size = size || CARD_SIZE_SINGLE;
@@ -208,7 +214,7 @@ export function createConfigCodecFeature(
             if (size === CARD_SIZE_SINGLE || size === CARD_SIZE_LARGE)
                 return size;
             if (size === CARD_SIZE_EXTRA_LARGE)
-                return layout.gridCols >= 3 && layout.gridRows >= 3 ? size : CARD_SIZE_SINGLE;
+                return cardSizeFitsLayout(size) ? size : CARD_SIZE_SINGLE;
             if (cardSupportsWifiPortraitSizes(b) &&
                 (size === CARD_SIZE_MAX_TALL || size === CARD_SIZE_PORTRAIT_LARGE))
                 return size;
@@ -221,12 +227,8 @@ export function createConfigCodecFeature(
         if (size === CARD_SIZE_PORTRAIT_LARGE)
             return cardSupportsPortraitLargeSize(b) ? size : CARD_SIZE_SINGLE;
         if (size === CARD_SIZE_MAX_WIDE || size === CARD_SIZE_MAX_TALL)
-            return cardSupportsMaxSize(b) ? size : CARD_SIZE_SINGLE;
-        if (!cardRequiresSquareSize(b))
-            return size;
-        return size === CARD_SIZE_LARGE || size === CARD_SIZE_EXTRA_LARGE
-            ? size
-            : CARD_SIZE_SINGLE;
+            return cardSupportsMaxSize(b) && cardSizeFitsLayout(size) ? size : CARD_SIZE_SINGLE;
+        return cardSizeFitsLayout(size) ? size : CARD_SIZE_SINGLE;
     }
     function normalizeSavedConfigSensorFields(this: any, b?: any, wasLegacyTextSensor?: any) {
         if (!b)
@@ -402,8 +404,8 @@ export function createConfigCodecFeature(
             return;
         b.icon = imageIconEnabled(b) ? (b.icon && b.icon !== "Auto" ? b.icon : "Camera") : "Auto";
     }
-    function normalizeSavedConfigImageOptions(this: any, options?: any, _b?: any) {
-        return normalizeImageOptions(options || "");
+    function normalizeSavedConfigImageOptions(this: any, options?: any, b?: any) {
+        return normalizeImageOptions(options || "", b && b.entity);
     }
     function normalizeSavedConfigClimateFields(this: any, b?: any) {
         if (!b)
@@ -670,7 +672,7 @@ export function createConfigCodecFeature(
             options = normalizePresenceOptions(options);
         }
         else if (type === "image") {
-            options = normalizeImageOptions(options);
+            options = normalizeImageOptions(options, b && b.entity);
         }
         else if (type === "wifi_qr" || type === "wifi_qr_card") {
             var wifiButton: any = EspControlModel.cloneCardConfig(b || {});

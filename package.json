@@ -50,7 +50,7 @@
     "check:web-browser-smoke": "python3 scripts/check_tasks.py run-task web-browser-smoke",
     "changelog:release": "python3 scripts/release_changelog.py",
     "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
+    "docs:build": "vitepress build docs && python3 scripts/check_docs_site.py",
     "docs:preview": "vitepress preview docs",
     "test": "npm run check:fast",
     "test:ci": "npm run check:ci",

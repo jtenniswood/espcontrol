@@ -89,6 +89,7 @@ const v2 = hooks.createBackupConfig({
     clock_bar: true,
     cover_art_hide_external_input: true,
     home_assistant_artwork_endpoint_mode: "Manual",
+    home_assistant_artwork_host: "ha.example.test",
     home_assistant_artwork_protocol: "https",
     home_assistant_artwork_port: 80,
     firmware_auto_update: false,
@@ -124,9 +125,24 @@ assert.strictEqual(v2.settings.cover_art_hide_external_input, true, "exports cov
 assert.strictEqual(v2.settings.home_assistant_artwork_endpoint_mode, "Manual", "exports Home Assistant artwork endpoint mode");
 assert.strictEqual(v2.settings.home_assistant_artwork_protocol, "https", "exports Home Assistant artwork protocol setting");
 assert.strictEqual(v2.settings.home_assistant_artwork_port, 80, "exports Home Assistant artwork port setting");
+assert.strictEqual(v2.settings.home_assistant_artwork_host, "ha.example.test", "exports Home Assistant artwork host setting");
 assert.strictEqual(v2.settings.firmware_auto_update, false, "exports firmware auto-update setting");
 assert.strictEqual(v2.settings.firmware_update_frequency, "Weekly", "exports firmware update frequency setting");
 assert.strictEqual(v2.screen.schedule_sensor_entity, "binary_sensor.schedule", "exports the dedicated schedule sensor setting");
+
+for (const options of [
+  "image_modal_refresh_mode=periodic,image_modal_refresh_interval=5",
+  "image_modal_refresh_mode=activity,image_modal_refresh_trigger=event.doorbell",
+]) {
+  const card = { type: "image", entity: "camera.front_door", options };
+  const backup = hooks.createBackupConfig({
+    device: "panel-a", slots: 2, grid: [1, 2], buttons: [card, { type: "subpage" }],
+    subpages: { 2: { order: ["1", "B"], buttons: [card] } },
+  });
+  const restored = hooks.normalizeBackupConfig(backup);
+  assert.strictEqual(restored.buttons[0].options, options, "camera refresh survives main-card backup");
+  assert.strictEqual(restored.subpage_objects[2].buttons[0].options, options, "camera refresh survives subpage backup");
+}
 
 const playlistButton = {
   entity: "media_player.kitchen",
