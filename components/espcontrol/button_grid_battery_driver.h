@@ -36,7 +36,7 @@ inline void battery_driver_update(lv_obj_t *icon, lv_obj_t *label, esphome::Stri
   } else {
     // Clamp before converting to int, including extremely large finite states.
     const int soc = value <= 0 ? 0 : value >= 100 ? 100 : static_cast<int>(value + 0.5f);
-    char percentage[8];
+    char percentage[16];
     std::snprintf(percentage, sizeof(percentage), "%d%%", soc);
     lv_label_set_display_text(icon, battery_icon_for_soc(soc));
     lv_label_set_display_text(label, percentage);
