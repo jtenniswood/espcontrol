@@ -169,6 +169,7 @@ sunset=Закат
 sunset_down=Закат: стемнело
 sunset_up=Закат: посветлело
 swing=Колебание
+horizontal_swing=Горизонтальное колебание
 target=Цель
 temporaryhold=Временное удержание
 today=Сегодня

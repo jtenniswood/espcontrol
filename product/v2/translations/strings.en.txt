@@ -169,6 +169,7 @@ sunset=Sunset
 sunset_down=Sunset Down
 sunset_up=Sunset Up
 swing=Swing
+horizontal_swing=Horizontal Swing
 target=Target
 temporaryhold=Temporaryhold
 today=Today

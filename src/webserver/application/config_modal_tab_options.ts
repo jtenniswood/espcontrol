@@ -160,6 +160,7 @@ export function createConfigModalTabOptionsFeature(
             { value: "preset", label: "Preset" },
             { value: "fan", label: "Fan" },
             { value: "swing", label: "Swing" },
+            { value: "horizontal_swing", label: "Horizontal Swing" },
         ];
     }
     function climateControlDefaultTabs(this: any) {

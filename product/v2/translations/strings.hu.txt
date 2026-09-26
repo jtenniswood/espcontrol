@@ -169,6 +169,7 @@ sunset=Naplemente
 sunset_down=Naplemente le
 sunset_up=Naplemente fel
 swing=Legyezés
+horizontal_swing=Vízszintes legyezés
 target=Célérték
 temporaryhold=Ideiglenes tartás
 today=Ma

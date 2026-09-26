@@ -169,6 +169,7 @@ sunset=Захід сонця
 sunset_down=Захід сонця вниз
 sunset_up=Захід сонця вгору
 swing=Коливання
+horizontal_swing=Горизонтальне коливання
 target=Ціль
 temporaryhold=Тимчасове утримання
 today=Сьогодні

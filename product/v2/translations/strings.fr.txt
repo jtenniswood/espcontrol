@@ -169,6 +169,7 @@ sunset=Coucher du soleil
 sunset_down=Coucher bas
 sunset_up=Coucher haut
 swing=Oscillation
+horizontal_swing=Oscillation horizontale
 target=Cible
 temporaryhold=Temporaryhold
 today=Aujourd'hui

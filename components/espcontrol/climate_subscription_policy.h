@@ -9,11 +9,13 @@ namespace espcontrol::climate {
 constexpr uint8_t OPTIONAL_SUBSCRIPTION_PRESET = 1u << 0;
 constexpr uint8_t OPTIONAL_SUBSCRIPTION_FAN = 1u << 1;
 constexpr uint8_t OPTIONAL_SUBSCRIPTION_SWING = 1u << 2;
+constexpr uint8_t OPTIONAL_SUBSCRIPTION_HORIZONTAL_SWING = 1u << 3;
 constexpr uint8_t CLIMATE_TAB_TEMPERATURE = 1u << 0;
 constexpr uint8_t CLIMATE_TAB_MODE = 1u << 1;
 constexpr uint8_t CLIMATE_TAB_PRESET = 1u << 2;
 constexpr uint8_t CLIMATE_TAB_FAN = 1u << 3;
 constexpr uint8_t CLIMATE_TAB_SWING = 1u << 4;
+constexpr uint8_t CLIMATE_TAB_HORIZONTAL_SWING = 1u << 5;
 
 struct SubscriptionCapabilities {
   bool temperature = false;
@@ -21,6 +23,7 @@ struct SubscriptionCapabilities {
   bool preset = false;
   bool fan = false;
   bool swing = false;
+  bool horizontal_swing = false;
 };
 
 constexpr bool subscription_tab_present(std::string_view tabs,
@@ -48,6 +51,9 @@ constexpr uint8_t configured_optional_subscription_mask(
   if (subscription_tab_present(tabs, "swing")) {
     mask |= OPTIONAL_SUBSCRIPTION_SWING;
   }
+  if (subscription_tab_present(tabs, "horizontal_swing")) {
+    mask |= OPTIONAL_SUBSCRIPTION_HORIZONTAL_SWING;
+  }
   return mask;
 }
 
@@ -58,6 +64,9 @@ constexpr uint8_t configured_climate_tab_mask(std::string_view tabs) {
   if (subscription_tab_present(tabs, "preset")) mask |= CLIMATE_TAB_PRESET;
   if (subscription_tab_present(tabs, "fan")) mask |= CLIMATE_TAB_FAN;
   if (subscription_tab_present(tabs, "swing")) mask |= CLIMATE_TAB_SWING;
+  if (subscription_tab_present(tabs, "horizontal_swing")) {
+    mask |= CLIMATE_TAB_HORIZONTAL_SWING;
+  }
   return mask;
 }
 
@@ -66,6 +75,9 @@ constexpr uint8_t configured_optional_subscription_mask(uint8_t tabs) {
   if ((tabs & CLIMATE_TAB_PRESET) != 0) mask |= OPTIONAL_SUBSCRIPTION_PRESET;
   if ((tabs & CLIMATE_TAB_FAN) != 0) mask |= OPTIONAL_SUBSCRIPTION_FAN;
   if ((tabs & CLIMATE_TAB_SWING) != 0) mask |= OPTIONAL_SUBSCRIPTION_SWING;
+  if ((tabs & CLIMATE_TAB_HORIZONTAL_SWING) != 0) {
+    mask |= OPTIONAL_SUBSCRIPTION_HORIZONTAL_SWING;
+  }
   return mask;
 }
 
@@ -75,7 +87,9 @@ constexpr bool configured_tab_is_supported(
          (capabilities.hvac && (tabs & CLIMATE_TAB_MODE) != 0) ||
          (capabilities.preset && (tabs & CLIMATE_TAB_PRESET) != 0) ||
          (capabilities.fan && (tabs & CLIMATE_TAB_FAN) != 0) ||
-         (capabilities.swing && (tabs & CLIMATE_TAB_SWING) != 0);
+         (capabilities.swing && (tabs & CLIMATE_TAB_SWING) != 0) ||
+         (capabilities.horizontal_swing &&
+          (tabs & CLIMATE_TAB_HORIZONTAL_SWING) != 0);
 }
 
 // Configured controls receive their current-value subscription immediately.
@@ -89,6 +103,9 @@ constexpr uint8_t required_optional_subscription_mask(
   if (capabilities.preset) return mask | OPTIONAL_SUBSCRIPTION_PRESET;
   if (capabilities.fan) return mask | OPTIONAL_SUBSCRIPTION_FAN;
   if (capabilities.swing) return mask | OPTIONAL_SUBSCRIPTION_SWING;
+  if (capabilities.horizontal_swing) {
+    return mask | OPTIONAL_SUBSCRIPTION_HORIZONTAL_SWING;
+  }
   return mask;
 }
 

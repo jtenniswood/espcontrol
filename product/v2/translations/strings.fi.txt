@@ -169,6 +169,7 @@ sunset=Auringonlasku
 sunset_down=Auringonlasku alas
 sunset_up=Auringonlasku ylös
 swing=Kääntö
+horizontal_swing=Vaakasuuntainen kääntö
 target=Tavoite
 temporaryhold=Väliaikainen pito
 today=Tänään

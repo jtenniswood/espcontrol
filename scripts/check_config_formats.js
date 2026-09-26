@@ -666,7 +666,7 @@ assert.strictEqual(
   "plain climate cards omit climate control tabs"
 );
 assert.strictEqual(
-  hooks.normalizeClimateOptions("climate_tabs=temperature%7Cmode%7Cpreset%7Cfan%7Cswing", true),
+  hooks.normalizeClimateOptions("climate_tabs=temperature%7Cmode%7Cpreset%7Cfan%7Cswing%7Chorizontal_swing", true),
   "",
   "default climate control tab order is omitted"
 );

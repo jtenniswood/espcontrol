@@ -169,6 +169,7 @@ sunset=Apus
 sunset_down=Apus jos
 sunset_up=Apus sus
 swing=Balans
+horizontal_swing=Balans orizontal
 target=Țintă
 temporaryhold=Menținere temporară
 today=Astăzi

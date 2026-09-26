@@ -169,6 +169,7 @@ sunset=Tramonto
 sunset_down=Tramonto giù
 sunset_up=Tramonto su
 swing=Oscillazione
+horizontal_swing=Oscillazione orizzontale
 target=Target
 temporaryhold=Temporaneo
 today=Oggi

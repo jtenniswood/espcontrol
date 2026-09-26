@@ -9,5 +9,5 @@
     { "type": "climate_control", "entity": "climate.zone_4", "climate_tabs": "temperature" },
     { "type": "climate_control", "entity": "climate.zone_5", "climate_tabs": "temperature" }
   ],
-  "expected_initial_subscription_channels": 125
+  "expected_initial_subscription_channels": 130
 }

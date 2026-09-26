@@ -169,6 +169,7 @@ sunset=Zonsondergang
 sunset_down=Zon onder
 sunset_up=Zon op
 swing=Zwenken
+horizontal_swing=Horizontaal zwenken
 target=Doel
 temporaryhold=Temporaryhold
 today=Vandaag

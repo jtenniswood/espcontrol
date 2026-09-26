@@ -169,6 +169,7 @@ sunset=Gün batımı
 sunset_down=Gün batımı aşağı
 sunset_up=Gün batımı yukarı
 swing=Salınım
+horizontal_swing=Yatay salınım
 target=Hedef
 temporaryhold=Geçici tutma
 today=Bugün
