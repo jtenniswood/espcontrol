@@ -169,6 +169,7 @@ sunset=שקיעה
 sunset_down=שקיעה
 sunset_up=זריחה
 swing=נדנוד
+horizontal_swing=נדנוד אופקי
 target=יעד
 temporaryhold=החזקה זמנית
 today=היום

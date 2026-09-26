@@ -42,9 +42,9 @@ Tapping the card opens a climate control popup. From there, you can:
 - Change the target temperature.
 - Adjust separate low and high targets when Home Assistant reports a target temperature range.
 - Change HVAC mode, such as Off, Heat, Cool, Heat/Cool, Auto, Dry, or Fan.
-- Change fan, swing, or preset modes when the entity exposes those options.
+- Change fan, vertical swing, horizontal swing, or preset modes when the entity exposes those options.
 
-The card follows Home Assistant attributes such as current temperature, target temperature, min/max temperature, target step, HVAC mode, fan mode, swing mode, and preset mode.
+The card follows Home Assistant attributes such as current temperature, target temperature, min/max temperature, target step, HVAC mode, fan mode, vertical and horizontal swing modes, and preset mode.
 
 ### Low and High Targets
 

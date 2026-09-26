@@ -169,6 +169,7 @@ sunset=Solnedgang
 sunset_down=Solnedgang ned
 sunset_up=Solnedgang op
 swing=Sving
+horizontal_swing=Horisontal sving
 target=Mål
 temporaryhold=Temporaryhold
 today=I dag

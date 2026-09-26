@@ -169,6 +169,7 @@ sunset=Západ slunce
 sunset_down=Západ slunce dolů
 sunset_up=Západ slunce nahoru
 swing=Kývání
+horizontal_swing=Horizontální kývání
 target=Cíl
 temporaryhold=Temporaryhold
 today=Dnes

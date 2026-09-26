@@ -85,6 +85,8 @@ struct ClimateControlCtx {
   std::vector<std::string> fan_modes;
   std::string swing_mode;
   std::vector<std::string> swing_modes;
+  std::string swing_horizontal_mode;
+  std::vector<std::string> swing_horizontal_modes;
   std::string preset_mode;
   std::vector<std::string> preset_modes;
   std::string options;
@@ -152,15 +154,17 @@ enum class ClimateControlTab : uint8_t {
   PRESET = 2,
   FAN = 3,
   SWING = 4,
+  HORIZONTAL_SWING = 5,
 };
 
 struct ClimateControlVisibleTabs {
-  ClimateControlTab tabs[5] = {
+  ClimateControlTab tabs[6] = {
     ClimateControlTab::TEMPERATURE,
     ClimateControlTab::MODE,
     ClimateControlTab::PRESET,
     ClimateControlTab::FAN,
     ClimateControlTab::SWING,
+    ClimateControlTab::HORIZONTAL_SWING,
   };
   uint8_t count = 0;
 
@@ -172,7 +176,7 @@ struct ClimateControlVisibleTabs {
   }
 
   void add(ClimateControlTab tab) {
-    if (count >= 5 || contains(tab)) return;
+    if (count >= 6 || contains(tab)) return;
     tabs[count++] = tab;
   }
 };
@@ -189,6 +193,7 @@ struct ClimateControlModalUi {
   lv_obj_t *preset_tab = nullptr;
   lv_obj_t *fan_tab = nullptr;
   lv_obj_t *swing_tab = nullptr;
+  lv_obj_t *horizontal_swing_tab = nullptr;
   lv_obj_t *mode_btn = nullptr;
   lv_obj_t *menu_view = nullptr;
   lv_obj_t *menu_close_btn = nullptr;
@@ -216,6 +221,7 @@ struct ClimateControlModalUi {
   lv_obj_t *preset_chip = nullptr;
   lv_obj_t *fan_chip = nullptr;
   lv_obj_t *swing_chip = nullptr;
+  lv_obj_t *horizontal_swing_chip = nullptr;
   lv_obj_t *menu_overlay = nullptr;
   ClimateOptionClick option_clicks[CLIMATE_OPTION_MAX_OPTIONS];
   ClimateControlCtx *active = nullptr;
@@ -619,6 +625,10 @@ inline bool climate_control_tab_from_token(const std::string &value, ClimateCont
     tab = ClimateControlTab::SWING;
     return true;
   }
+  if (value == "horizontal_swing") {
+    tab = ClimateControlTab::HORIZONTAL_SWING;
+    return true;
+  }
   return false;
 }
 
@@ -635,6 +645,8 @@ inline bool climate_control_tab_supported(ClimateControlCtx *ctx, ClimateControl
       return !ctx->fan_modes.empty();
     case ClimateControlTab::SWING:
       return !ctx->swing_modes.empty();
+    case ClimateControlTab::HORIZONTAL_SWING:
+      return !ctx->swing_horizontal_modes.empty();
   }
   return false;
 }
@@ -660,11 +672,12 @@ inline ClimateControlVisibleTabs climate_control_visible_tabs(ClimateControlCtx 
     visible.add(ClimateControlTab::TEMPERATURE);
   }
   if (visible.count == 0) {
-    ClimateControlTab fallbacks[4] = {
+    ClimateControlTab fallbacks[5] = {
       ClimateControlTab::MODE,
       ClimateControlTab::PRESET,
       ClimateControlTab::FAN,
       ClimateControlTab::SWING,
+      ClimateControlTab::HORIZONTAL_SWING,
     };
     for (ClimateControlTab fallback : fallbacks) {
       if (climate_control_tab_supported(ctx, fallback)) {
@@ -707,6 +720,7 @@ inline lv_obj_t *climate_control_tab_button(ClimateControlModalUi &ui, ClimateCo
     case ClimateControlTab::PRESET: return ui.preset_tab;
     case ClimateControlTab::FAN: return ui.fan_tab;
     case ClimateControlTab::SWING: return ui.swing_tab;
+    case ClimateControlTab::HORIZONTAL_SWING: return ui.horizontal_swing_tab;
   }
   return nullptr;
 }
@@ -1343,6 +1357,10 @@ inline void climate_send_option(ClimateControlCtx *ctx, const std::string &kind,
   } else if (kind == "swing") {
     ctx->swing_mode = value;
     climate_send_action(ctx->entity_id, "climate.set_swing_mode", {{"swing_mode", value}});
+  } else if (kind == "horizontal_swing") {
+    ctx->swing_horizontal_mode = value;
+    climate_send_action(ctx->entity_id, "climate.set_swing_horizontal_mode",
+                        {{"swing_horizontal_mode", value}});
   } else if (kind == "preset") {
     ctx->preset_mode = value;
     climate_send_action(ctx->entity_id, "climate.set_preset_mode", {{"preset_mode", value}});
@@ -1358,6 +1376,7 @@ inline std::string climate_option_current_value(ClimateControlCtx *ctx, const st
   if (kind == "hvac") return ctx->hvac_mode;
   if (kind == "fan") return ctx->fan_mode;
   if (kind == "swing") return ctx->swing_mode;
+  if (kind == "horizontal_swing") return ctx->swing_horizontal_mode;
   if (kind == "preset") return ctx->preset_mode;
   if (kind == "target") return ctx->edit_high ? "high" : "low";
   return "";
@@ -1395,9 +1414,29 @@ inline const char *climate_option_icon(const std::string &kind, const std::strin
   }
   if (kind == "swing") {
     if (mode == "off") return find_icon("Motion Sensor Off");
-    if (mode == "vertical" || mode == "up_down") return find_icon("Swap Vertical");
+    if (mode == "vertical" || mode == "up_down" ||
+        (mode.find("up") != std::string::npos &&
+         mode.find("down") != std::string::npos)) {
+      return find_icon("Swap Vertical");
+    }
+    if (mode.find("up") != std::string::npos ||
+        mode.find("top") != std::string::npos) {
+      return find_icon("Arrow Up");
+    }
+    if (mode.find("down") != std::string::npos ||
+        mode.find("bottom") != std::string::npos) {
+      return find_icon("Arrow Down");
+    }
     if (mode == "horizontal" || mode == "left_right") return find_icon("Swap Horizontal");
     if (mode == "both" || mode == "auto") return find_icon("Swap Horizontal");
+    return find_icon("Swap Vertical");
+  }
+  if (kind == "horizontal_swing") {
+    if (mode == "off") return find_icon("Motion Sensor Off");
+    bool left = mode.find("left") != std::string::npos;
+    bool right = mode.find("right") != std::string::npos;
+    if (left && !right) return find_icon("Chevron Left");
+    if (right && !left) return find_icon("Chevron Right");
     return find_icon("Swap Horizontal");
   }
   if (mode == "off") return find_icon("Power");
@@ -1654,6 +1693,9 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
   } else if (kind == "swing") {
     options = &ctx->swing_modes;
     title = "Swing";
+  } else if (kind == "horizontal_swing") {
+    options = &ctx->swing_horizontal_modes;
+    title = "Horizontal Swing";
   }
   if (!ui.panel || !options || options->empty()) return;
 
@@ -1771,6 +1813,7 @@ inline const char *climate_control_tab_kind(ClimateControlTab tab) {
     case ClimateControlTab::PRESET: return "preset";
     case ClimateControlTab::FAN: return "fan";
     case ClimateControlTab::SWING: return "swing";
+    case ClimateControlTab::HORIZONTAL_SWING: return "horizontal_swing";
     case ClimateControlTab::TEMPERATURE: return "";
   }
   return "";
@@ -1788,6 +1831,7 @@ inline void climate_control_apply_tab_visibility() {
   bool show_preset = ui.tab == ClimateControlTab::PRESET;
   bool show_fan = ui.tab == ClimateControlTab::FAN;
   bool show_swing = ui.tab == ClimateControlTab::SWING;
+  bool show_horizontal_swing = ui.tab == ClimateControlTab::HORIZONTAL_SWING;
 
   climate_set_obj_visible(ui.tab_row, show_tab_bar);
   climate_set_obj_visible(ui.temperature_tab,
@@ -1800,12 +1844,15 @@ inline void climate_control_apply_tab_visibility() {
     show_tab_bar && visible_tabs.contains(ClimateControlTab::FAN));
   climate_set_obj_visible(ui.swing_tab,
     show_tab_bar && visible_tabs.contains(ClimateControlTab::SWING));
+  climate_set_obj_visible(ui.horizontal_swing_tab,
+    show_tab_bar && visible_tabs.contains(ClimateControlTab::HORIZONTAL_SWING));
 
   climate_control_style_tab(ui.temperature_tab, show_temperature, ctx->accent_color);
   climate_control_style_tab(ui.mode_tab, show_mode, ctx->accent_color);
   climate_control_style_tab(ui.preset_tab, show_preset, ctx->accent_color);
   climate_control_style_tab(ui.fan_tab, show_fan, ctx->accent_color);
   climate_control_style_tab(ui.swing_tab, show_swing, ctx->accent_color);
+  climate_control_style_tab(ui.horizontal_swing_tab, show_horizontal_swing, ctx->accent_color);
 
   climate_set_dial_controls_visible(show_temperature);
   if (show_temperature) {
@@ -1830,6 +1877,7 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
   if (kind == "hvac") options = &ctx->hvac_modes;
   else if (kind == "fan") options = &ctx->fan_modes;
   else if (kind == "swing") options = &ctx->swing_modes;
+  else if (kind == "horizontal_swing") options = &ctx->swing_horizontal_modes;
   else if (kind == "preset") options = &ctx->preset_modes;
   else if (kind == "target") {
     target_options = {"low", "high"};
@@ -1959,6 +2007,8 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
   climate_update_option_chip(ui.preset_chip, "Preset", ctx->preset_mode, false);
   climate_update_option_chip(ui.fan_chip, "Fan", ctx->fan_mode, false);
   climate_update_option_chip(ui.swing_chip, "Swing", ctx->swing_mode, false);
+  climate_update_option_chip(ui.horizontal_swing_chip, "Horizontal Swing",
+                             ctx->swing_horizontal_mode, false);
   climate_set_obj_visible(ui.chips, false);
   climate_set_step_button_enabled(ui.minus_btn, temp_enabled && !dual);
   climate_set_step_button_enabled(ui.plus_btn, temp_enabled && !dual);
@@ -2097,6 +2147,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   layout_option_chip(ui.preset_chip);
   layout_option_chip(ui.fan_chip);
   layout_option_chip(ui.swing_chip);
+  layout_option_chip(ui.horizontal_swing_chip);
   lv_coord_t chip_content_w = visible_chip_count == 0 ? 0 :
     visible_chip_count * option_chip_w + (visible_chip_count - 1) * chip_gap;
   if (chip_content_w > chip_row_w) {
@@ -2267,6 +2318,9 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   ui.swing_tab = climate_control_create_tab_button(
     ui.tab_row, find_icon("Arrow Up Down"), ctx->icon_font,
     ClimateControlTab::SWING);
+  ui.horizontal_swing_tab = climate_control_create_tab_button(
+    ui.tab_row, find_icon("Swap Horizontal"), ctx->icon_font,
+    ClimateControlTab::HORIZONTAL_SWING);
 
   ui.menu_view = lv_obj_create(ui.panel);
   lv_obj_set_style_bg_opa(ui.menu_view, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -2514,10 +2568,15 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   ui.swing_chip = climate_create_option_chip(ui.chips, find_icon("Swap Horizontal"), "Swing",
     chip_icon_font, ctx->option_title_font, ctx->option_value_font,
     ctx->width_compensation_percent);
+  ui.horizontal_swing_chip = climate_create_option_chip(
+    ui.chips, find_icon("Swap Horizontal"), "Horizontal Swing",
+    chip_icon_font, ctx->option_title_font, ctx->option_value_font,
+    ctx->width_compensation_percent);
   lv_obj_add_flag(ui.mode_chip, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(ui.preset_chip, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(ui.fan_chip, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(ui.swing_chip, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(ui.horizontal_swing_chip, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_event_cb(ui.target_chip, [](lv_event_t *) {
     ClimateControlModalUi &ui = climate_control_modal_ui();
     if (ui.active) climate_open_option_menu(ui.active, "target");
@@ -2537,6 +2596,10 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_add_event_cb(ui.swing_chip, [](lv_event_t *) {
     ClimateControlModalUi &ui = climate_control_modal_ui();
     if (ui.active) climate_open_option_menu(ui.active, "swing");
+  }, LV_EVENT_CLICKED, nullptr);
+  lv_obj_add_event_cb(ui.horizontal_swing_chip, [](lv_event_t *) {
+    ClimateControlModalUi &ui = climate_control_modal_ui();
+    if (ui.active) climate_open_option_menu(ui.active, "horizontal_swing");
   }, LV_EVENT_CLICKED, nullptr);
 
   climate_control_set_modal_value(ctx);
@@ -2778,6 +2841,7 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   subscribe_list("hvac_modes", &ClimateControlCtx::hvac_modes);
   subscribe_list("fan_modes", &ClimateControlCtx::fan_modes);
   subscribe_list("swing_modes", &ClimateControlCtx::swing_modes);
+  subscribe_list("swing_horizontal_modes", &ClimateControlCtx::swing_horizontal_modes);
   subscribe_list("preset_modes", &ClimateControlCtx::preset_modes);
   climate_subscribe_optional_fields(
     ctx, espcontrol::climate::configured_optional_subscription_mask(

@@ -169,6 +169,7 @@ sunset=Sonnenuntergang
 sunset_down=Sonnenuntergang ab
 sunset_up=Sonnenuntergang auf
 swing=Schwenken
+horizontal_swing=Horizontales Schwenken
 target=Ziel
 temporaryhold=Temporaryhold
 today=Heute

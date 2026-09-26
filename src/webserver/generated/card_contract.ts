@@ -1312,7 +1312,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "name": "climate_tabs",
         "label": "Visible Tabs",
         "kind": "text",
-        "defaultValue": "temperature|mode|preset|fan|swing",
+        "defaultValue": "temperature|mode|preset|fan|swing|horizontal_swing",
         "omitDefault": true
       }
     ],

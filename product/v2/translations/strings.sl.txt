@@ -169,6 +169,7 @@ sunset=Sončni zahod
 sunset_down=Sončni zahod dol
 sunset_up=Sončni zahod gor
 swing=Nihanje
+horizontal_swing=Vodoravno nihanje
 target=Cilj
 temporaryhold=Začasno zadržanje
 today=Danes

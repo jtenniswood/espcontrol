@@ -169,6 +169,7 @@ sunset=Pôr do sol
 sunset_down=Pôr do sol baixo
 sunset_up=Pôr do sol alto
 swing=Oscilação
+horizontal_swing=Oscilação horizontal
 target=Alvo
 temporaryhold=Temporaryhold
 today=Hoje

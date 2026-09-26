@@ -169,6 +169,7 @@ sunset=Zachód słońca
 sunset_down=Zachód słońca dół
 sunset_up=Zachód słońca góra
 swing=Ruch wahadłowy
+horizontal_swing=Ruch poziomy
 target=Cel
 temporaryhold=Temporaryhold
 today=Dziś

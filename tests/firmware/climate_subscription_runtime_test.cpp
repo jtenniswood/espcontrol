@@ -154,9 +154,9 @@ void fixture_registers_only_needed_attributes() {
     coordinator.subscribe("sensor.other_" + std::to_string(i), "", [](auto) {}, 1);
   for (const auto &card : fixture_cards) {
     add_card(card.entity, card.tabs);
-    for (const char *attribute : {"supported_features", "hvac_modes", "preset_modes", "fan_modes", "swing_modes"})
+    for (const char *attribute : {"supported_features", "hvac_modes", "preset_modes", "fan_modes", "swing_modes", "swing_horizontal_modes"})
       assert(coordinator.transport().has(card.entity, attribute));
-    for (const char *attribute : {"preset_mode", "fan_mode", "swing_mode"})
+    for (const char *attribute : {"preset_mode", "fan_mode", "swing_mode", "swing_horizontal_mode"})
       assert(!coordinator.transport().has(card.entity, attribute));
   }
   assert(coordinator.subscription_count() == fixture_expected_channels);
@@ -166,12 +166,14 @@ void fixture_registers_only_needed_attributes() {
 
 void configured_values_are_registered_immediately() {
   reset();
-  auto *ctx = add_card("climate.all", "temperature|mode|preset|fan|swing");
-  assert(coordinator.subscription_count() == 18);
+  auto *ctx = add_card("climate.all", "temperature|mode|preset|fan|swing|horizontal_swing");
+  assert(coordinator.subscription_count() == 20);
   coordinator.transport().publish(ctx->entity_id, "preset_mode", "eco");
   coordinator.transport().publish(ctx->entity_id, "fan_mode", "auto");
   coordinator.transport().publish(ctx->entity_id, "swing_mode", "vertical");
-  assert(ctx->preset_mode == "eco" && ctx->fan_mode == "auto" && ctx->swing_mode == "vertical");
+  coordinator.transport().publish(ctx->entity_id, "swing_horizontal_mode", "left");
+  assert(ctx->preset_mode == "eco" && ctx->fan_mode == "auto" &&
+         ctx->swing_mode == "vertical" && ctx->swing_horizontal_mode == "left");
   assert(timers.empty());
 }
 
@@ -186,11 +188,11 @@ void fallback_delivery_reannounces_historical_channels() {
   coordinator.transport().publish(ctx->entity_id, "supported_features", "0");
   coordinator.transport().publish(ctx->entity_id, "preset_modes", "['eco', 'boost']");
   assert(ctx->preset_mode.empty());
-  assert(coordinator.subscription_count() == 15);
+  assert(coordinator.subscription_count() == 16);
   on_reannounce = [&] { coordinator.transport().publish(ctx->entity_id, "preset_mode", "eco"); };
   run_maintenance();
   assert(coordinator.subscription_channel_count() == channels);
-  assert(coordinator.subscription_count() == 16);
+  assert(coordinator.subscription_count() == 17);
   assert(reannouncements == 1 && ctx->preset_mode == "eco");
   coordinator.transport().publish(ctx->entity_id, "preset_modes", "['eco', 'boost']");
   assert(timers.empty());  // Repeated capabilities do not add duplicate callbacks.
@@ -270,7 +272,7 @@ void failed_registration_retries_without_new_capabilities() {
   coordinator.transport().api_available = true;
   // No further capability updates: retry alone must finish registration.
   run_maintenance();
-  assert(coordinator.subscription_count() == 16 && reannouncements == 1);
+  assert(coordinator.subscription_count() == 17 && reannouncements == 1);
   coordinator.transport().publish(ctx->entity_id, "fan_mode", "auto");
   assert(ctx->fan_mode == "auto");
   coordinator.transport().publish(ctx->entity_id, "fan_modes", "['auto']");
@@ -334,7 +336,7 @@ void reannouncement_can_queue_the_next_fallback() {
   };
   run_maintenance(true);
   run_maintenance();
-  assert(coordinator.subscription_count() == 17 && reannouncements == 2);
+  assert(coordinator.subscription_count() == 18 && reannouncements == 2);
 }
 
 void generation_reset_discards_stale_pending_work() {

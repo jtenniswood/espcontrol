@@ -31,6 +31,7 @@ constexpr size_t HA_FRIENDLY_NAME_MAX_LEN = 256;
 
 std::string espcontrol_i18n(const std::string &value) { return value; }
 std::string climate_option_label(const std::string &value) { return value; }
+const char *find_icon(const char *name) { return name; }
 // @production-function climate_action_label
 // @production-function climate_is_active
 // @production-function climate_card_icon_enabled
@@ -101,6 +102,7 @@ bool climate_subscribe_optional_fields(ClimateControlCtx *, uint8_t) { return tr
 void climate_mark_optional_subscription_needs(ClimateControlCtx *) {}
 
 // @production-function climate_send_option
+// @production-function climate_option_icon
 // @production-function subscribe_climate_control_state
 
 constexpr const char *ENTITY = "climate.living_room";
@@ -143,6 +145,27 @@ int main() {
   assert(ctx.hvac_action == "heating");
   expect_refresh([] { receive_action("heating"); }, "Off", false, false);
   expect_refresh([] { receive_mode("off"); }, "Off", false, false);
+
+  ctx.swing_horizontal_modes = {"Left and right swing", "Left swing", "Right fix"};
+  ctx.swing_horizontal_mode = "Left and right swing";
+  requests.clear();
+  expect_refresh([&] {
+    climate_send_option(&ctx, "horizontal_swing", "Right fix");
+  }, "Off", false, false);
+  assert(requests.size() == 1);
+  assert(requests[0].entity == ENTITY);
+  assert(requests[0].service == "climate.set_swing_horizontal_mode");
+  assert(requests[0].data.size() == 1);
+  assert(std::string(requests[0].data[0].first) == "swing_horizontal_mode");
+  assert(requests[0].data[0].second == "Right fix");
+  assert(ctx.swing_horizontal_mode == "Right fix");
+  assert(std::string(climate_option_icon("horizontal_swing", "Left swing")) == "Chevron Left");
+  assert(std::string(climate_option_icon("horizontal_swing", "Right fix")) == "Chevron Right");
+  assert(std::string(climate_option_icon("horizontal_swing", "Middle fix")) == "Swap Horizontal");
+  assert(std::string(climate_option_icon("swing", "Upwards swing")) == "Arrow Up");
+  assert(std::string(climate_option_icon("swing", "Downwards swing")) == "Arrow Down");
+  assert(std::string(climate_option_icon("swing", "Top fix")) == "Arrow Up");
+  assert(std::string(climate_option_icon("swing", "Bottom fix")) == "Arrow Down");
 
   // HA changes the mode first and retains a working action.
   receive_mode("heat");

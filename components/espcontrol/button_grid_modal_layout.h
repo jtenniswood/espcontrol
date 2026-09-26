@@ -285,7 +285,9 @@ constexpr TabLayout calculate_tabs(
   layout.tab_size = shared_tab_size(profile, frame, tokens);
   layout.content_gap = shared_tab_content_gap(profile, frame, tokens);
 
-  const int minimum_tab_size = control_tab_min_size(profile);
+  const int minimum_tab_size = uses_family(profile, LayoutFamily::COMPACT_PORTRAIT)
+    ? 48
+    : control_tab_min_size(profile);
   while (true) {
     layout.selected_tab_size = layout.tab_size + layout.tab_size / 8;
     layout.frame_padding = layout.tab_size / 5;
@@ -298,10 +300,16 @@ constexpr TabLayout calculate_tabs(
     layout.centered_left = (frame.panel_width - layout.frame_width) / 2;
     layout.row_left = layout.centered_left;
 
+    const bool compact_portrait_overflow =
+      uses_family(profile, LayoutFamily::COMPACT_PORTRAIT) &&
+      layout.row_left < layout.safe_left &&
+      layout.safe_left + layout.frame_width > frame.panel_width;
     const bool can_shrink = layout.show_tab_bar && request.avoid_back_button &&
-      !uses_family(profile, LayoutFamily::COMPACT_PORTRAIT) &&
       !uses_family(profile, LayoutFamily::LARGE_SQUARE) &&
-      layout.row_left < layout.safe_left && layout.tab_size > minimum_tab_size;
+      layout.tab_size > minimum_tab_size &&
+      ((layout.row_left < layout.safe_left &&
+        !uses_family(profile, LayoutFamily::COMPACT_PORTRAIT)) ||
+       compact_portrait_overflow);
     if (!can_shrink) break;
     layout.tab_size--;
   }
