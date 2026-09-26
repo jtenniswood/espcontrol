@@ -89,6 +89,8 @@ bool connectivity_setup_display_active = false, schedule_presence_detected = fal
      schedule_mode_always_on = false, schedule_mode_clock = true,
      clock_bar_night_mode_active = false, cover_art_media_playing = false,
      media_player_playing = false, presence_detected = false;
+bool screensaver_action_clock = false, screensaver_action_dimmed = false,
+     screensaver_action_camera = false;
 uint32_t manual_wake_ms = 0, cover_art_transition_generation = 0, cover_art_download_generation = 0;
 uint32_t camera_screensaver_transition_generation = 0;
 std::string cover_art_active_media_player_entity;
@@ -111,9 +113,14 @@ void reset(DisplayMode night_mode = DisplayMode::CLOCK) {
   screensaver_idle_check.calls = home_screen_idle_check.calls = 0;
   clock_time = {6, true}; active_page = home.obj;
   schedule_enabled.state = true;
+  screen_schedule_trigger.state = "time";
+  schedule_presence_detected = false;
   schedule_mode_clock = night_mode == DisplayMode::CLOCK;
   schedule_mode_always_on = night_mode == DisplayMode::ACTIVE;
   manual_wake_ms = 0; presence_detected = false; screensaver_mode.state = "timer";
+  screensaver_action_clock = screensaver_action_dimmed = screensaver_action_camera = false;
+  cover_art_screensaver_enabled.state = media_player_sleep_prevention_enabled.state = false;
+  media_player_playing = false;
   espcontrol_app.controller = {};
   auto &controller = espcontrol_app.display();
   controller.request(DisplayRequestSource::SCREEN_SCHEDULE, night_mode);
@@ -152,8 +159,13 @@ int main() {
         assert(screensaver_idle_check.calls == 0);  // Wait for presentation completion.
         (fast_first ? screen_schedule_check : display_mode_reconcile).execute();
         advance(500);
-        assert(controller.current_mode_is(DisplayMode::ACTIVE));
         assert(manual_wake_ms == 0);
+        if (mode == DisplayMode::CLOCK && !temporary_wake) {
+          assert(controller.current_mode_is(DisplayMode::DISPLAY_OFF));
+          assert(screensaver_idle_check.calls == 0);
+          continue;
+        }
+        assert(controller.current_mode_is(DisplayMode::ACTIVE));
         assert(screensaver_idle_check.is_running());
         const int starts = screensaver_idle_check.calls;
         for (int seconds = 0; seconds < 299; ++seconds) {
@@ -167,6 +179,54 @@ int main() {
         assert(controller.target_mode_is(DisplayMode::DISPLAY_OFF));
       }
     }
+  }
+  // A night clock hands off directly to every configured idle action, even
+  // after boot when there is no hidden idle request to restore. The dashboard
+  // must never brighten and no fresh five-minute countdown may start.
+  for (bool fast_first : {false, true}) {
+    for (bool sensor : {false, true}) {
+      for (auto action : {DisplayMode::DISPLAY_OFF, DisplayMode::CLOCK,
+                          DisplayMode::DIMMED, DisplayMode::CAMERA}) {
+        reset();
+        screensaver_mode.state = sensor ? "sensor" : "timer";
+        screensaver_action_clock = action == DisplayMode::CLOCK;
+        screensaver_action_dimmed = action == DisplayMode::DIMMED;
+        screensaver_action_camera = action == DisplayMode::CAMERA;
+        const int active_effects = display_mode_effect_active.calls;
+        const int brightness_writes = backlight_apply_brightness.calls;
+        clock_time.hour = 9;
+        (fast_first ? display_mode_reconcile : screen_schedule_check).execute();
+        assert(controller.target_mode_is(action));
+        (fast_first ? screen_schedule_check : display_mode_reconcile).execute();
+        advance(1000);
+        assert(controller.current_mode_is(action));
+        assert(controller.target_source_is(sensor ? DisplayRequestSource::PRESENCE_SENSOR
+                                                 : DisplayRequestSource::IDLE_TIMER));
+        assert(display_mode_effect_active.calls == active_effects);
+        assert(backlight_apply_brightness.calls == brightness_writes);
+        assert(screensaver_idle_check.calls == 0);
+      }
+    }
+  }
+  // Sensor-driven schedules use the same clock-to-idle handoff.
+  for (bool fast_first : {false, true}) {
+    reset(); screen_schedule_trigger.state = "sensor";
+    schedule_presence_detected = true; // Sensor Off no longer requests night.
+    (fast_first ? display_mode_reconcile : screen_schedule_check).execute();
+    (fast_first ? screen_schedule_check : display_mode_reconcile).execute();
+    advance(500);
+    assert(controller.current_mode_is(DisplayMode::DISPLAY_OFF));
+    assert(screensaver_idle_check.calls == 0);
+  }
+  // Disabled screensavers and media sleep prevention still allow normal wake.
+  for (bool playing : {false, true}) {
+    reset(); clock_time.hour = 7;
+    screensaver_mode.state = playing ? "timer" : "disabled";
+    cover_art_screensaver_enabled.state = playing;
+    media_player_sleep_prevention_enabled.state = playing;
+    media_player_playing = playing;
+    display_mode_reconcile.execute(); advance(500);
+    assert(controller.current_mode_is(DisplayMode::ACTIVE));
   }
   // Manual sleep is never cleared by either order at the schedule boundary.
   for (bool fast_first : {false, true}) {
@@ -194,7 +254,8 @@ int main() {
   presence_detected = false; advance(301000);
   assert(controller.target_mode_is(DisplayMode::DISPLAY_OFF));
   // A newer sleep decision during page settling must suppress finalization.
-  reset(); clock_time.hour = 7; display_mode_reconcile.execute(); advance(310);
+  reset(); clock_time.hour = 7; screensaver_mode.state = "disabled";
+  display_mode_reconcile.execute(); advance(310);
   controller.request(DisplayRequestSource::MANUAL_SLEEP, DisplayMode::DISPLAY_OFF);
   display_mode_reconcile.execute(); advance(100);
   assert(screensaver_idle_check.calls == 0);

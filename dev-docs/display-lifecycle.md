@@ -157,7 +157,12 @@ the main page is active and the controller has no newer transition in progress.
 An unchanged reconciliation does not restart the idle countdown.
 
 The shared reconciler owns schedule exit: it clears temporary wake and stale
-automatic sleep requests while preserving manual sleep. Both the one-second
+automatic sleep requests while preserving manual sleep. When the outgoing winner
+is the scheduled clock, it records the current normal screensaver action before
+resolving, avoiding an intermediate ACTIVE presentation and a fresh idle timeout.
+Disabled screensavers, detected presence in sensor mode, temporary user wake,
+and media sleep prevention retain normal wake behavior. Scheduled Off and Screen
+Dimmed also retain their normal wake behavior. Both the one-second
 reconcile tick and the slower schedule check therefore reach the same completion
 path. Detecting that edge only in `screen_schedule_check` loses it when the
 one-second tick clears `SCREEN_SCHEDULE` first (issue #1787).
