@@ -31,6 +31,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { withBase } from 'vitepress'
+import { loadUsbInstaller } from '../usb-installer'
 
 const props = defineProps({
   slug: { type: String, default: 'guition-esp32-p4-jc1060p470' }
@@ -65,7 +66,7 @@ async function prepareInstaller() {
   if (!manifestAvailable.value) return
 
   try {
-    await import('https://unpkg.com/esp-web-tools@10/dist/web/install-button.js')
+    await loadUsbInstaller()
     ready.value = true
   } catch (err) {
     loadError.value = `Failed to load the USB installer. ${err?.message || ''}`.trim()

@@ -8,6 +8,7 @@ on:
       - 'devices/manifest.json'
       - 'scripts/check_public_firmware.py'
       - 'scripts/check_docs_site.py'
+      - 'scripts/check_docs_installer.js'
       - 'scripts/build.py'
       - 'scripts/prepare_release_web_assets.py'
       - 'scripts/prune_actions_cache.sh'
@@ -340,7 +341,6 @@ jobs:
 
       - name: Download firmware artifact
         uses: actions/download-artifact@v8
-        continue-on-error: true
         with:
           name: firmware
           path: dist/firmware

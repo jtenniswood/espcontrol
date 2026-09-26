@@ -24,9 +24,15 @@ If you want to compile and install the firmware yourself, use the [Manual Setup 
 
 ## Flash the Firmware
 
-Connect the display to your computer with the USB-C cable, choose your device and hardware version, then click the install button. The newest listed hardware version is selected by default; check the identification note matches your panel before installing.
+Connect the display to your computer with the USB-C cable, choose your device and hardware version, then click the install button. Select the hardware version that matches your panel; no version is preselected for models with multiple revisions. The 4.3-inch JC4880P443 V3 is not supported yet.
 
 <EspInstallSelector />
+
+### USB installation and BOOT mode
+
+The **10.1-inch V3 supports this browser USB installer**. Its restriction applies to browser firmware uploads over WiFi (OTA), not USB installation. Use native ESPHome OTA for later updates.
+
+If installation cannot connect or asks for BOOT, unplug the programming USB cable, hold **BOOT/download**, reconnect the cable, then release BOOT when the serial port appears. Select that port and retry. After flashing, release BOOT and reset or power-cycle the display to start EspControl. See the [10.1-inch V3 manual USB fallback](/screens/jc8012p4a1-v3#manual-usb-fallback) if it still fails.
 
 ## Having Unreliable Wifi on a P4 Panel?
 

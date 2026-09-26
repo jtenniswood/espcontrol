@@ -61,3 +61,13 @@ npm run check:fast
 Browser checks additionally require the installed Chromium runtime. Firmware
 compiles require either the pinned host ESPHome CLI for local device work or
 Docker for the repository's matrix/release workflow.
+
+## Browser USB Installer
+
+`npm run docs:build` checks the resolved flashing library and builds the installer
+into the docs. Run `npm run docs:check-installer` after building to check panel
+selection and all three installer entry points in Chromium with mocked Web Serial.
+These checks do not flash hardware. The ESP Web Tools dependency overrides in
+`package.json` retain the P4 v3.1/v3.2 flash-power fix and compatible Material styles;
+retest them when upgrading. Device testing must still cover a production-silicon
+P4 and an older supported panel.

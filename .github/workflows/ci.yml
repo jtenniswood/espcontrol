@@ -242,6 +242,12 @@ jobs:
 
       - run: npm run docs:build
 
+      - name: Install Chromium for installer checks
+        run: npx playwright install --with-deps chromium
+
+      - name: Check browser USB installer
+        run: npm run docs:check-installer
+
   ci-gate:
     name: CI Gate
     needs: [pr-process, validate, docs]

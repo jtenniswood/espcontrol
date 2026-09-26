@@ -296,6 +296,6 @@ TASKS = (
          generated_inputs=("docs/public/webserver/**",),
          cache_env=("PLAYWRIGHT_BROWSERS_PATH", "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD")),
     task("docs-build", ("npm", "run", "docs:build"), dependencies=("generated",), profiles=("all", "release"),
-         domains=("docs",), inputs=("docs/**", "scripts/check_docs_site.py") + MAINTAINER_DOCS + ("package.json", "package-lock.json",),
+         domains=("docs",), inputs=("docs/**", "scripts/check_docs_site.py", "scripts/check_docs_installer.js") + MAINTAINER_DOCS + ("package.json", "package-lock.json",),
          generated_inputs=("docs/generated/**",), cache="never"),
 )
