@@ -10,6 +10,7 @@ import {
 import type { CardRegistry } from "../application/card_registry";
 import type { ConfigDateTimeOptionsFeature } from "../application/config_date_time_options";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
+import { configOptionEnabled, setConfigOption } from "../model/config_primitives";
 
 export function registerClockCardTypes(
     registry: CardRegistry,
@@ -44,12 +45,25 @@ export function registerClockCardTypes(
             b.precision = "";
             helpers.renderCardModeSelector(panel, b, helpers, metadata);
             helpers.renderCardLargeNumbersToggle(panel, b, helpers, metadata);
+            const centerClock: any = (metadata as any).centerClock || {};
+            if (centerClock.supportedCardSize(b, helpers)) {
+                const centerToggle: any = helpers.toggleRow(
+                    centerClock.label,
+                    helpers.idPrefix + centerClock.idSuffix,
+                    configOptionEnabled(b.options, "center_clock"),
+                );
+                panel.appendChild(centerToggle.row);
+                centerToggle.input.addEventListener("change", function (this: any) {
+                    b.options = setConfigOption(b.options, "center_clock", this.checked);
+                    helpers.saveField("options", b.options);
+                });
+            }
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             var time: any = dateTimeCardTimeParts();
             return {
                 buttonClass: cardLargeNumbersHidePreviewLabel(b, helpers, metadata)
-                    ? "sp-clock-wide-large"
+                    ? "sp-clock-wide-large" + (configOptionEnabled(b.options, "center_clock") ? " sp-clock-centered" : "")
                     : undefined,
                 iconHtml: cardSensorPreviewHtml(b, helpers, time.value, time.unit),
                 labelHtml: "",

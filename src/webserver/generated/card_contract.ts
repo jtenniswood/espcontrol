@@ -1082,6 +1082,12 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "label": "Large Clock",
         "kind": "flag",
         "omitDefault": true
+      },
+      {
+        "name": "center_clock",
+        "label": "Center Clock",
+        "kind": "flag",
+        "omitDefault": true
       }
     ],
     "normalization": {
@@ -1120,7 +1126,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       },
       "unknownOptions": "drop",
       "canonicalOptionOrder": [
-        "large_numbers"
+        "large_numbers",
+        "center_clock"
       ],
       "optionHook": "normalize_date_time_options"
     },
@@ -4744,6 +4751,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "actions": "actions",
   "active_color": "active_color",
   "alarm_card_type": "alarm_card_type",
+  "center_clock": "center_clock",
   "climate_tabs": "climate_tabs",
   "confirm_message": "confirm_message",
   "confirm_no": "confirm_no",
