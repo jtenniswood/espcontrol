@@ -1,5 +1,5 @@
 import type { AppState } from "../state/types";
-import { CARD_SIZE_LARGE, CARD_SIZE_SINGLE, CARD_SIZE_WIDE } from "../model/grid";
+import { CARD_SIZE_LARGE, CARD_SIZE_SINGLE, CARD_SIZE_WIDE, cardSizeDefinition } from "../model/grid";
 import { cardContractOptionSpec } from "./config_option_core";
 
 export interface ConfigDateTimeOptionsDependencies {
@@ -138,11 +138,23 @@ export function createConfigDateTimeOptionsFeature(dependencies: ConfigDateTimeO
             supportedCardSize: function (button?: any, helpers?: any) {
                 const cardSize = (helpers && helpers.cardSize) || CARD_SIZE_SINGLE;
                 return dateTimeCardMode(button) === "clock"
-                    ? cardSize === CARD_SIZE_WIDE || cardSize === CARD_SIZE_LARGE
+                    ? cardSize === CARD_SIZE_WIDE || cardSize === CARD_SIZE_LARGE || cardSizeDefinition(cardSize).colSpan > 2
                     : cardSize === CARD_SIZE_LARGE;
+            },
+            defaultEnabled: function (button?: any, helpers?: any) {
+                const cardSize = (helpers && helpers.cardSize) || CARD_SIZE_SINGLE;
+                return dateTimeCardMode(button) === "clock" && cardSizeDefinition(cardSize).colSpan > 2;
             },
             hideLabel: function (_button?: any, helpers?: any) {
                 return ((helpers && helpers.cardSize) || CARD_SIZE_SINGLE) === CARD_SIZE_WIDE;
+            },
+        },
+        centerClock: {
+            label: "Center Clock",
+            idSuffix: "center-clock",
+            supportedCardSize: function (button?: any, helpers?: any) {
+                const cardSize = (helpers && helpers.cardSize) || CARD_SIZE_SINGLE;
+                return dateTimeCardMode(button) === "clock" && cardSizeDefinition(cardSize).colSpan > 2;
             },
         },
         preview: { dateBadge: "calendar-month", timezoneBadge: "map-clock" },
