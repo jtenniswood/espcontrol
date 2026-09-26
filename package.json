@@ -50,7 +50,7 @@
     "check:web-browser-smoke": "python3 scripts/check_tasks.py run-task web-browser-smoke",
     "changelog:release": "python3 scripts/release_changelog.py",
     "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs && python3 scripts/check_docs_site.py",
+    "docs:build": "node scripts/check_docs_installer.js && vitepress build docs && python3 scripts/check_docs_site.py",
     "docs:preview": "vitepress preview docs",
     "test": "npm run check:fast",
     "test:ci": "npm run check:ci",
@@ -58,13 +58,21 @@
     "test:web-unit": "python3 scripts/check_tasks.py run-task web-unit",
     "test:web-browser": "python3 scripts/check_tasks.py run-task web-browser-smoke",
     "test:mutations": "python3 scripts/check_tasks.py run-task mutations",
-    "webserver:build": "python3 scripts/build.py www"
+    "webserver:build": "python3 scripts/build.py www",
+    "docs:check-installer": "node scripts/check_docs_installer.js --browser"
   },
   "devDependencies": {
     "esbuild": "^0.28.0",
+    "esp-web-tools": "10.4.0",
     "playwright": "^1.60.0",
     "postcss": "^8.5.15",
     "typescript": "^7.0.0",
     "vitepress": "^1.6.3"
+  },
+  "overrides": {
+    "esp-web-tools": {
+      "esptool-js": "0.7.0",
+      "@material/web": "2.2.0"
+    }
   }
 }
