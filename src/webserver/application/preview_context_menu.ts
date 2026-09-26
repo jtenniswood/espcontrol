@@ -79,6 +79,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         cardSupportsWifiPortraitSizes,
         cardSupportsExtraLargeSize,
         cardSupportsMaxSize,
+        cardSupportsSquareMaxSizes,
         cardSupportsPortraitLargeSize,
         cardSupportsLandscapeLargeSize,
         cardSupportsUltraWideSize,
@@ -216,7 +217,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
             if (fitsScreen(CARD_SIZE_MAX_TALL)) options.push({ size: CARD_SIZE_MAX_TALL, label: "Max Tall (2x3)" });
             if (fitsScreen(CARD_SIZE_PORTRAIT_LARGE)) options.push({ size: CARD_SIZE_PORTRAIT_LARGE, label: "Massive (3x4)" });
         }
-        if (cardSupportsMaxSize(b)) {
+        if (cardSupportsMaxSize(b) || cardSupportsSquareMaxSizes(b)) {
             if (fitsScreen(CARD_SIZE_MAX_WIDE)) options.push({ size: CARD_SIZE_MAX_WIDE, label: "Max Wide (3x2)" });
             if (fitsScreen(CARD_SIZE_MAX_TALL)) options.push({ size: CARD_SIZE_MAX_TALL, label: "Max tall (2x3)" });
         }
