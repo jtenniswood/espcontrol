@@ -17,7 +17,7 @@ This generated reference lists stable setup facts from the shared card contract.
 | Alarm | alarm | alarm_control_panel | Yes | Own picker item | Type: control_panel, away, home, night, vacation, disarm; PIN required for arming; PIN required for disarming; Visible Actions: away, home, night, vacation, disarm; Icon Display: static, status; Label Display: name, status | Visible |
 | Alarm | alarm_action | alarm_control_panel | Yes | Alarm (alarm) | None | Visible |
 | Date & Time | calendar | sensor | Yes | Own picker item | Type: clock, datetime, default, timezone; Large Clock | Visible |
-| Date & Time | clock | None | Yes | Date & Time (calendar) | Type: clock, datetime, default, timezone; Large Clock | Visible |
+| Date & Time | clock | None | Yes | Date & Time (calendar) | Type: clock, datetime, default, timezone; Large Clock; Center Clock | Visible |
 | Climate | climate | climate | Yes | Own picker item | Label Display: label, status, actual, target; Icon & Temperatures: icon, actual, target; Temperature Step: 1, 0.5; Large Temperature Numbers | Visible |
 | All Controls | climate_control | climate | Yes | Climate (climate) | Label Display: label, status, actual, target; Icon & Temperatures: icon, actual, target; Temperature Step: 1, 0.5; Large Temperature Numbers; Visible Tabs | Hidden |
 | Cover | cover | cover | Yes | Own picker item | Type: modal, default, tilt, toggle, open, close, stop, set_position; Position: 0-100; Visible Tabs: position, controls, tilt, presets | Visible |

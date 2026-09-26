@@ -348,13 +348,19 @@ export function createControlsFieldsFeature(
     }
     function cardLargeNumbersActiveForCardSize(this: any, b?: any, helpers?: any, metadata?: any) {
         helpers = helpers || {};
+        metadata = metadata || cardLargeNumbersMetadata(b);
         if (!cardLargeNumbersSupported(b) ||
-            !cardLargeNumbersSupportsCardSize(b, helpers, metadata || cardLargeNumbersMetadata(b))) {
+            !cardLargeNumbersSupportsCardSize(b, helpers, metadata)) {
             return false;
         }
         if (largeNumbersExplicitlyDisabled(b && b.options))
             return false;
-        return (helpers.cardSize || CARD_SIZE_SINGLE) === CARD_SIZE_LARGE || cardLargeNumbersEnabled(b);
+        var large: any = metadata.largeNumbers || {};
+        var defaultEnabled: any = large.defaultEnabled;
+        var defaultActive: any = typeof defaultEnabled === "function"
+            ? !!defaultEnabled(b, helpers)
+            : (helpers.cardSize || CARD_SIZE_SINGLE) === CARD_SIZE_LARGE;
+        return defaultActive || cardLargeNumbersEnabled(b);
     }
     function cardLargeNumbersHidePreviewLabel(this: any, b?: any, helpers?: any, metadata?: any) {
         if (!cardLargeNumbersActiveForCardSize(b, helpers, metadata))
