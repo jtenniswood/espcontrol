@@ -83,6 +83,10 @@ TASKS = (
          domains=("firmware",),
          inputs=(
              "tests/firmware/**",
+             "common/addon/backlight.yaml",
+             "common/addon/backlight_schedule.yaml",
+             "components/espcontrol/backlight.h",
+             "components/espcontrol/display_mode_controller.h",
              "components/espcontrol/device_reset.*",
              "components/espcontrol/reset_policy.h",
              "components/espcontrol/reset_interlock.h",

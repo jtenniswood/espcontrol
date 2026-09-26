@@ -108,12 +108,11 @@ The **Settings** tab groups the current controls as follows. Open a card to see 
 | Section | Settings |
 |---|---|
 | **Display** | [Appearance](/features/appearance), [Backlight](/features/backlight), [Idle](/features/idle), [Clock Bar](/features/clock-bar), [Rotation](/features/rotation) |
-| **Voice & Sounds** | [Voice Services](/features/voice-control#turn-on-voice-services), [Alarm Audio](/card-types/alarms#entry-and-exit-delays) |
 | **Sleep & Schedule** | [Cover Art Screen Saver](/features/media-cover-art), [Screensaver](/features/screensaver), [Night Schedule](/features/screen-schedule) |
 | **Preferences** | [Language](/features/language), [Time](/features/clock), [Temperature](/features/temperature) |
 | **System** | [Device Name](#naming-your-panel), [Backup](/features/backup), [Firmware](/features/firmware-updates), [Home Assistant Settings](#home-assistant-settings), [Battery](/features/battery), [Factory Reset](/features/backup#reset-the-display) |
 
-Device-specific cards, including Voice Services, Alarm Audio, Rotation, and Battery, appear only on supported panels. Device Name and Factory Reset also require firmware that supports them.
+Device-specific settings, including Rotation and Battery, appear only on supported panels. Device Name and Factory Reset also require firmware that supports them.
 
 ### Home Assistant Settings
 

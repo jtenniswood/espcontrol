@@ -21,6 +21,8 @@ struct Fixture {
       bool is_on() const { return on; }
     } current_values;
     struct RemoteValues {
+      bool on{true};
+      bool is_on() const { return on; }
       float brightness{0.8f};
       float get_brightness() const { return brightness; }
     } remote_values;
@@ -50,6 +52,7 @@ struct Fixture {
         light.current_values.on = on;
         if (publish) {
           ++light.publications;
+          light.remote_values.on = on;
           light.remote_values.brightness = target;
         }
         if (save) ++light.saves;
@@ -58,9 +61,14 @@ struct Fixture {
         light.physical_level = on ? target : 0.0f;
       }
     };
-    Call make_call() { return Call{*this}; }
-    Call turn_on() { return Call{*this}; }
+    Call make_call() { return Call{*this, remote_values.brightness, remote_values.on}; }
+    Call turn_on() { return Call{*this, remote_values.brightness, true}; }
+    Call turn_off() { return Call{*this, remote_values.brightness, false}; }
   } display_backlight;
+  struct Output {
+    Light &light;
+    void turn_off() { light.physical_level = 0.0f; }
+  } gpio_backlight_pwm{display_backlight};
   bool backlight_force_next_write{false};
   float backlight_expected_internal_level{0};
   bool backlight_expected_internal_level_valid{false};
@@ -72,6 +80,10 @@ struct Fixture {
 #include "backlight_fade_start.inc"
   }
 
+  void force_off() {
+#include "backlight_force_off.inc"
+  }
+
   void apply_brightness(float pct) {
     // Extracted from backlight_apply_brightness, not a copy of its policy.
 #include "backlight_brightness_adapter.inc"
@@ -80,6 +92,50 @@ struct Fixture {
 
 int main() {
   using namespace espcontrol;
+  // Both immediate scheduled sleep and automatic fade-to-black must publish
+  // OFF once, preserve the remembered brightness, and publish ON on wake.
+  for (bool fade_out : {false, true}) {
+    Fixture fixture;
+    auto &light = fixture.display_backlight;
+    if (fade_out) {
+      for (float level : {0.8f, 0.4f, 0.01f, 0.0f}) {
+        apply_backlight_fade_level(&light, &light, level);
+        CHECK(light.remote_values.is_on());
+        CHECK(light.publications == 0);
+        CHECK(light.saves == 0);
+      }
+      CHECK(!light.current_values.is_on());
+      CHECK(light.physical_level == 0.0f);
+    }
+    fixture.force_off();
+    CHECK(!light.remote_values.is_on());
+    CHECK(!light.current_values.is_on());
+    CHECK(light.physical_level == 0.0f);
+    CHECK(light.publications == 1);
+    CHECK(light.remote_values.get_brightness() == 0.8f);
+    const auto writes = light.writes;
+    const auto saves = light.saves;
+    for (int poll = 0; poll < 10; ++poll) fixture.force_off();
+    CHECK(light.writes == writes);
+    CHECK(light.publications == 1);
+    CHECK(light.saves == saves);
+    fixture.apply_brightness(80.0f);
+    CHECK(light.remote_values.is_on());
+    CHECK(light.current_values.is_on());
+    CHECK(light.physical_level == 0.8f);
+    CHECK(light.publications == 2);
+  }
+  // A direct internal light sample can also leave the inverse mismatch.
+  // Finalizing OFF must still cut the output when the reported state is OFF.
+  {
+    Fixture fixture;
+    auto &light = fixture.display_backlight;
+    light.remote_values.on = false;
+    fixture.force_off();
+    CHECK(!light.current_values.is_on());
+    CHECK(!light.remote_values.is_on());
+    CHECK(light.physical_level == 0.0f);
+  }
   // A replacement display-off request must continue from the last output
   // sample, including interruptions near and at full black.
   for (float initial : {0.8f, 0.01f, 0.0f}) {

@@ -416,7 +416,6 @@ export default defineConfig({
           { text: 'Factory Reset', link: '/features/backup#reset-the-display' },
           { text: 'Firmware', link: '/features/firmware-updates' },
           { text: 'Built-in Relays', link: '/features/relays' },
-          { text: 'Voice Control', link: '/features/voice-control' },
         ],
       },
       {

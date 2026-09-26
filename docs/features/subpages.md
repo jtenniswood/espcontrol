@@ -37,7 +37,7 @@ arrives, or return the panel to its home screen after a task. Find them in
 
 | Action | Why use it | Data |
 | --- | --- | --- |
-| `navigate` | Simulate tapping a home-screen card, or return home. Useful for jumping to a card from a routine or dashboard button. Available on P4 and S3. | `target`: card label, `slot:3`, or `home` (`voice` opens voice controls on supported P4s) |
+| `navigate` | Simulate tapping a home-screen card, or return home. Useful for jumping to a card from a routine or dashboard button. Available on P4 and S3. | `target`: card label, `slot:3`, or `home` |
 | `open_modal` | Show an entity's existing control popup without toggling it or running a command. Useful for surfacing controls at the right time. Available on P4 and S3. | `entity_id`: entity on a supported control card |
 | `close_modal` | Dismiss the popup and reveal the page underneath. | None |
 | `open_subpage` | Open a labeled Subpage without activating another card. Useful when an automation should show a group of related controls safely. | `label`: Subpage card label |

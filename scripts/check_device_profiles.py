@@ -462,23 +462,6 @@ def test_p4_crash_restart_preserves_safe_mode_counter() -> None:
         )
 
 
-def test_local_voice_generation_uses_capability() -> None:
-    voice_device = {
-        "slug": "semantic-voice-test",
-        "package": {"localVoiceServices": True},
-    }
-    standard_device = {
-        "slug": "esp32-p4-86",
-        "package": {"firmwareVersion": "dev"},
-    }
-    assert "open_device_volume_control" in "\n".join(
-        generate_device_slots.voice_substitution_lines(voice_device)
-    ), "local voice generation must follow the semantic capability"
-    assert "open_device_volume_control" not in "\n".join(
-        generate_device_slots.voice_substitution_lines(standard_device)
-    ), "the device slug alone must not enable local voice generation"
-
-
 def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
     slug = "guition-esp32-s3-4848s040"
     sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
@@ -1012,7 +995,6 @@ def main() -> int:
     test_ota_preserves_deployed_partition_layouts()
     test_upgrades_do_not_reset_saved_panel_config()
     test_p4_crash_restart_preserves_safe_mode_counter()
-    test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
     test_rotation_refresh_rebuilds_subpages()
     test_restored_display_sensors_bind_without_reboot()

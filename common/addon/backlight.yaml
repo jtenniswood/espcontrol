@@ -241,6 +241,7 @@ script:
                             id(espcontrol_app).display().complete_transition(
                                 static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE,
                                 millis());
+                        - script.execute: display_active_finalize
                 else:
                   - if:
                       condition:
@@ -477,7 +478,9 @@ script:
           // Entering normal hours is a deliberate scheduled wake. Discard an
           // automatic sleep request that was hidden beneath the night schedule,
           // then let the normal idle/presence timers start a fresh cycle.
-          if (schedule_was_active && !schedule_night) {
+          if (schedule_ended) {
+            id(manual_wake_ms) = 0;
+            id(screen_schedule_wake_timeout_check).stop();
             controller.clear(espcontrol::DisplayRequestSource::IDLE_TIMER);
             controller.clear(espcontrol::DisplayRequestSource::PRESENCE_SENSOR);
           }
@@ -675,6 +678,33 @@ script:
               espcontrol::DisplayRequestSource::SETUP_TIMEOUT);
       - script.execute: display_mode_reconcile
 
+  # Successful ACTIVE transitions and boot navigation share this finalizer.
+  # Wait for the effect adapter and page change before restoring normal UI and
+  # idle handling. Reconciliation alone must never restart the idle countdown.
+  - id: display_active_finalize
+    mode: restart
+    then:
+      - script.wait: display_mode_apply_transition
+      - delay: 50ms
+      - if:
+          condition:
+            lambda: |-
+              const auto &controller = id(espcontrol_app).display();
+              return !controller.has_transition_in_progress() &&
+                     controller.current_mode_is(espcontrol::DisplayMode::ACTIVE) &&
+                     controller.target_mode_is(espcontrol::DisplayMode::ACTIVE);
+          then:
+            - if:
+                condition:
+                  lambda: 'return lv_scr_act() == id(main_page)->obj;'
+                then:
+                  - script.execute: clock_bar_apply
+                  - script.wait: clock_bar_apply
+                  - script.execute: backlight_apply_brightness
+                  - script.wait: backlight_apply_brightness
+            - script.execute: screensaver_idle_check
+            - script.execute: home_screen_idle_check
+
   # Typed takeover ownership is recorded directly in the controller. Requests
   # continue to update underneath a takeover, so ending it resolves current
   # schedule, presence, media, and idle state instead of restoring a snapshot.
@@ -770,10 +800,8 @@ script:
             - if:
                 condition:
                   lambda: |-
-                    bool voice_active = ${voice_interaction_active_condition};
                     return id(cover_art_screensaver_enabled).state &&
                            id(cover_art_media_playing) &&
-                           !voice_active &&
                            id(cover_art_attribute_conditions_match) &&
                            !(id(cover_art_hide_external_input_enabled).state &&
                              id(cover_art_external_input_active)) &&
@@ -877,7 +905,12 @@ script:
     then:
       - if:
           condition:
-            light.is_on: display_backlight
+            lambda: |-
+              // Fade samples update current_values without publishing. The
+              // final sample can already be OFF while Home Assistant still
+              // sees ON, so finalize both the physical and reported state.
+              return id(display_backlight).current_values.is_on() ||
+                     id(display_backlight).remote_values.is_on();
           then:
             - light.turn_off:
                 id: display_backlight

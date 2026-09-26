@@ -121,8 +121,6 @@ CANONICAL_PACKAGE_KEYS = (
     "substitutions",
     "deviceFontPackageKey",
     "touchscreenPackage",
-    "localVoiceServices",
-    "alarmDelayAudio",
     "networkCoprocessor",
     "esp32C6FirmwareUpdate",
     "ethernetSelectable",
@@ -670,8 +668,6 @@ def validate_package(slug: str, device: dict[str, Any], errors: list[str]) -> No
         "ethernetSelectable",
         "improvSerial",
         "touchscreenPackage",
-        "localVoiceServices",
-        "alarmDelayAudio",
         "apiNavigateAction",
         "apiOpenModalAction",
         "esp32C6FirmwareUpdate",
@@ -894,12 +890,8 @@ def web_features(profile: dict[str, Any]) -> dict[str, Any]:
             features["screenRotationDisplayOffset"] = rotation["displayOffset"]
     if profile.get("internalRelays"):
         features["internalRelays"] = copy.deepcopy(profile["internalRelays"])
-    if package.get("localVoiceServices"):
-        features["voiceServices"] = True
     if "battery" in (package.get("extraPackages") or {}):
         features["battery"] = True
-    if package.get("alarmDelayAudio"):
-        features["alarmDelayAudio"] = True
     if package.get("subpageConfigChunks"):
         features["subpageConfigChunks"] = package["subpageConfigChunks"]
     if camera_screensaver_supported(profile):

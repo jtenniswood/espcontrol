@@ -143,11 +143,11 @@ int main() {
   assert(!policy_allows_display(p) && !policy_allows_download(p));
   p.hide_external_input = false; p.schedule_blocks = true;
   assert(!policy_allows_display(p) && policy_allows_download(p));
-  p.schedule_blocks = false; p.voice_interaction_active = true; assert(!policy_allows_display(p));
+  p.schedule_blocks = false; p.alarm_takeover_active = true; assert(!policy_allows_display(p));
   assert(feature_allowed(true, true, true, false, false));
   assert(!feature_allowed(true, true, true, true, true));
-  assert(display_allowed(true, true, true, true, false, false, false, false, false));
-  assert(!display_allowed(true, true, true, true, false, false, false, true, false));
+  assert(display_allowed(true, true, true, true, false, false, false, false));
+  assert(!display_allowed(true, true, true, true, false, false, false, true));
   auto ten = cover_art_layout("guition-esp32-p4-jc8012p4a1", "0", 1280, 800, 800, 506);
   assert(ten.split && ten.art_size == 800 && ten.panel_x == 840);
   auto ten_v2 = cover_art_layout("guition-esp32-p4-jc8012p4a1-v2", "90", 800, 1280, 800, 506);
@@ -260,11 +260,11 @@ int main() {
   s.select_source("entity-b"); assert(s.retry_count == 0 && s.refresh_needed);
   s.begin_download("entity-b"); assert(!s.apply_download("entity-a"));
   assert(s.apply_download("entity-b") && s.current_image_loaded());
-  // Rapid play/pause policy changes cannot bypass alarm, voice, schedule, or source filtering.
-  assert(display_allowed(true, true, true, true, false, false, false, false, false));
-  assert(!display_allowed(true, false, true, true, false, false, false, false, false));
-  assert(!display_allowed(true, true, true, false, false, false, false, false, false));
-  assert(!display_allowed(true, true, true, true, false, false, true, false, false));
+  // Rapid play/pause policy changes cannot bypass alarm, schedule, or source filtering.
+  assert(display_allowed(true, true, true, true, false, false, false, false));
+  assert(!display_allowed(true, false, true, true, false, false, false, false));
+  assert(!display_allowed(true, true, true, false, false, false, false, false));
+  assert(!display_allowed(true, true, true, true, false, false, true, false));
   // Rotations remain deterministic when events repeat or arrive after boot.
   auto portrait_again = cover_art_layout("guition-esp32-p4-jc1060p470", "90", 600, 1024, 600, 260);
   auto portrait_repeat = cover_art_layout("guition-esp32-p4-jc1060p470", "90", 600, 1024, 600, 260);

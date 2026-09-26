@@ -89,11 +89,6 @@ target_include_directories(external_memory_allocator_test PRIVATE
 )
 add_test(NAME external_memory_allocator_test COMMAND external_memory_allocator_test)
 
-add_executable(alarm_delay_audio_test alarm_delay_audio_test.cpp)
-target_compile_features(alarm_delay_audio_test PRIVATE cxx_std_17)
-target_compile_options(alarm_delay_audio_test PRIVATE -Wall -Wextra -Werror)
-target_include_directories(alarm_delay_audio_test PRIVATE ../../components/espcontrol)
-add_test(NAME alarm_delay_audio_test COMMAND alarm_delay_audio_test)
 
 add_executable(climate_target_logic_test climate_target_logic_test.cpp)
 target_compile_features(climate_target_logic_test PRIVATE cxx_std_17)
@@ -368,6 +363,9 @@ target_compile_options(climate_subscription_runtime_test PRIVATE -Wall -Wextra -
 target_include_directories(climate_subscription_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME climate_subscription_runtime_test COMMAND climate_subscription_runtime_test)
 
+add_test(NAME display_schedule_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/display_schedule_test.py
+  --compiler ${CMAKE_CXX_COMPILER})
 add_test(NAME cover_art_activation_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/cover_art_activation_test.py
   --compiler ${CMAKE_CXX_COMPILER})

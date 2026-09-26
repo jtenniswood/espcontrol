@@ -72,14 +72,8 @@ export function createStateLoaderFeature(runtime: UiRuntimeState, layout: Applic
         if (layout.config.features && layout.config.features.screenRotation) {
             items = items.concat(entityStateItems(ENTITY_CATALOG.groups.settings_optional));
         }
-        if (layout.config.features && layout.config.features.voiceServices) {
-            items = items.concat(entityStateItems(ENTITY_CATALOG.groups.settings_voice));
-        }
         if (layout.config.features && layout.config.features.battery) {
             items = items.concat(entityStateItems(ENTITY_CATALOG.groups.settings_battery));
-        }
-        if (layout.config.features && layout.config.features.alarmDelayAudio) {
-            items = items.concat(entityStateItems(ENTITY_CATALOG.groups.settings_alarm_audio));
         }
         return items;
     }

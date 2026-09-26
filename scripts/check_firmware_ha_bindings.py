@@ -124,23 +124,6 @@ def package_api_open_modal_enabled(package_path: Path, root: Path) -> bool:
     return bool(package.get("apiOpenModalAction", True))
 
 
-def package_local_voice_services_enabled(package_path: Path, root: Path) -> bool:
-    manifest_path = root / "devices" / "manifest.json"
-    if not manifest_path.exists():
-        return False
-    try:
-        slug = package_path.relative_to(root / "devices").parts[0]
-    except (ValueError, IndexError):
-        return False
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return False
-    device = manifest.get("devices", {}).get(slug, {})
-    package = device.get("firmware", {}).get("package", {})
-    return bool(package.get("localVoiceServices"))
-
-
 HA_BOUNDARY_ALLOWLIST = {
     "button_grid_ha.h",
 }
@@ -2870,6 +2853,83 @@ def firmware_clock_bar_navigation_errors(
     return errors
 
 
+def firmware_display_active_finalization_errors(
+    backlight_path: Path,
+    schedule_path: Path,
+    connectivity_paths: tuple[Path, ...],
+    root: Path,
+) -> list[str]:
+    errors: list[str] = []
+
+    backlight_rel = backlight_path.relative_to(root)
+    backlight_text = backlight_path.read_text(encoding="utf-8")
+    finalize_body = yaml_script_body(backlight_text, "display_active_finalize")
+    if finalize_body is None:
+        errors.append(f"{backlight_rel}: missing shared active-display finalizer")
+    else:
+        ordered_tokens = (
+            "delay: 50ms",
+            "espcontrol::DisplayMode::ACTIVE",
+            "lv_scr_act() == id(main_page)->obj",
+            "script.execute: clock_bar_apply",
+            "script.wait: clock_bar_apply",
+            "script.execute: backlight_apply_brightness",
+            "script.wait: backlight_apply_brightness",
+            "script.execute: screensaver_idle_check",
+            "script.execute: home_screen_idle_check",
+        )
+        indexes = [finalize_body.find(token) for token in ordered_tokens]
+        if any(index == -1 for index in indexes) or indexes != sorted(indexes):
+            errors.append(
+                f"{backlight_rel}: finalize active display after page settle with clock bar, "
+                "configured brightness, and idle timers"
+            )
+
+    schedule_rel = schedule_path.relative_to(root)
+    schedule_text = schedule_path.read_text(encoding="utf-8")
+    wake_body = yaml_script_body(schedule_text, "screen_schedule_wake")
+    if wake_body is None:
+        errors.append(f"{schedule_rel}: missing screen_schedule_wake script")
+    else:
+        reconcile_index = wake_body.find("script.execute: display_mode_reconcile")
+        transition_index = wake_body.find("script.wait: display_mode_apply_transition")
+        finalize_index = wake_body.find("script.execute: display_active_finalize")
+        if not (0 <= reconcile_index < transition_index < finalize_index):
+            errors.append(
+                f"{schedule_rel}: wait for scheduled wake transition before finalizing the active display"
+            )
+        if "espcontrol::DisplayRequestSource::MANUAL_SLEEP" in wake_body:
+            errors.append(
+                f"{schedule_rel}: preserve manual sleep across automatic scheduled wake"
+            )
+
+    transition_body = yaml_script_body(backlight_text, "display_mode_apply_transition") or ""
+    completion_index = transition_body.find("complete_transition(")
+    finalize_index = transition_body.find("script.execute: display_active_finalize")
+    if not (0 <= completion_index < finalize_index):
+        errors.append(
+            f"{backlight_rel}: finalize every completed active transition in the shared adapter"
+        )
+
+    for connectivity_path in connectivity_paths:
+        if not connectivity_path.exists():
+            continue
+        connectivity_rel = connectivity_path.relative_to(root)
+        navigation_body = yaml_script_body(
+            connectivity_path.read_text(encoding="utf-8"), "navigate_after_api"
+        )
+        if navigation_body is None:
+            continue
+        page_index = navigation_body.find("lvgl.page.show: main_page")
+        finalize_index = navigation_body.find("script.execute: display_active_finalize")
+        if not (0 <= page_index < finalize_index):
+            errors.append(
+                f"{connectivity_rel}: finalize brightness, clock bar, and idle timers after main-page navigation"
+            )
+
+    return errors
+
+
 def firmware_clock_screensaver_overlay_errors(backlight_path: Path, root: Path) -> list[str]:
     errors: list[str] = []
     if not backlight_path.exists():
@@ -3554,16 +3614,12 @@ def firmware_navigation_target_errors(
         errors.append(f"{navigation_rel}: register general home-screen navigation targets")
     if "navigation_find_label_target" not in navigation_text or "navigation_home_targets()" not in navigation_text:
         errors.append(f"{navigation_rel}: resolve navigate labels against home-screen cards")
-    if "navigation_has_home_label_target" not in navigation_text:
-        errors.append(f"{navigation_rel}: let configured card labels take priority over voice aliases")
     if "entry.display_order < best->display_order" not in navigation_text:
         errors.append(f"{navigation_rel}: choose the first displayed card when labels are duplicated")
     if "navigation_find_slot_target" not in navigation_text or "entry.slot == slot" not in navigation_text:
         errors.append(f"{navigation_rel}: resolve slot:n against home-screen card slots")
     if "navigation_return_home(main_page_obj)" not in navigation_text or "handle_button_click(target->config, target->slot, target->button)" not in navigation_text:
         errors.append(f"{navigation_rel}: activate navigated home-screen cards through the normal tap handler")
-    if "navigation_is_voice_target" not in navigation_text or '"device_volume"' not in navigation_text:
-        errors.append(f"{navigation_rel}: reserve voice volume navigation aliases")
     if "normalized == \"home\" || normalized == \"main\"" not in navigation_text:
         errors.append(f"{navigation_rel}: preserve home/main navigation targets")
 
@@ -3590,38 +3646,15 @@ def firmware_navigation_target_errors(
             errors.append(f"{navigation_driver_rel}: preserve subpage navigation registration")
 
     if not api_navigate_path.exists():
-        errors.append("common/device/api_navigate.yaml: route voice aliases through the navigate action")
+        errors.append("common/device/api_navigate.yaml: route navigation targets through the navigate action")
     else:
         api_rel = api_navigate_path.relative_to(root)
         api_text = api_navigate_path.read_text(encoding="utf-8")
         shared_actions_path = root / "common/device/api_remote_actions.yaml"
         if shared_actions_path.exists():
             api_text += "\n" + shared_actions_path.read_text(encoding="utf-8")
-        if "navigation_is_voice_target(target)" not in api_text or "${navigate_voice_target_code}" not in api_text:
-            errors.append(f"{api_rel}: route reserved voice targets through the device-specific voice hook")
-        if "!navigation_has_home_label_target(target)" not in api_text:
-            errors.append(f"{api_rel}: resolve configured card labels before reserved voice aliases")
         if "espcontrol_navigate(target, id(main_page)->obj);" not in api_text:
-            errors.append(f"{api_rel}: keep normal navigate targets routed through espcontrol_navigate")
-
-    voice_package_found = False
-    for package_path in package_paths:
-        if not package_path.exists():
-            continue
-        package_rel = package_path.relative_to(root)
-        package_text = package_path.read_text(encoding="utf-8")
-        if "navigate_voice_target_code" not in package_text:
-            errors.append(f"{package_rel}: define a voice-target navigate hook")
-        if package_local_voice_services_enabled(package_path, root):
-            voice_package_found = True
-            if "id(open_device_volume_control).execute();" not in package_text:
-                errors.append(f"{package_rel}: open the local voice volume modal for voice navigation aliases")
-            if "id(voice_services_enabled).state" not in package_text:
-                errors.append(f"{package_rel}: only open the voice volume modal when Voice Services are enabled")
-        elif "open_device_volume_control" in package_text:
-            errors.append(f"{package_rel}: keep the voice volume modal hook limited to local voice service packages")
-    if not voice_package_found:
-        errors.append("devices/manifest.json: define a voice volume navigate hook for a local voice service package")
+            errors.append(f"{api_rel}: route navigation targets through espcontrol_navigate")
     return errors
 
 
@@ -3904,6 +3937,11 @@ def run_scan() -> int:
     )
     errors.extend(firmware_clock_bar_pending_wake_errors(DISPLAY_CONFIG_PATH, ROOT))
     errors.extend(firmware_clock_bar_navigation_errors(CONNECTIVITY_PATHS, ROOT))
+    errors.extend(
+        firmware_display_active_finalization_errors(
+            BACKLIGHT_PATH, BACKLIGHT_SCHEDULE_PATH, CONNECTIVITY_PATHS, ROOT
+        )
+    )
     errors.extend(firmware_clock_screensaver_overlay_errors(BACKLIGHT_PATH, ROOT))
     errors.extend(firmware_screen_schedule_screensaver_overlay_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_screen_schedule_screensaver_override_errors(BACKLIGHT_PATH, ROOT))
@@ -4668,6 +4706,32 @@ def expect_clock_bar_navigation_errors(
         path.parent.mkdir(parents=True)
         path.write_text(text, encoding="utf-8")
         errors = firmware_clock_bar_navigation_errors((path,), root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_display_active_finalization_errors(
+    name: str,
+    backlight_text: str,
+    schedule_text: str,
+    connectivity_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        addon_dir = root / "common" / "addon"
+        addon_dir.mkdir(parents=True)
+        backlight_path = addon_dir / "backlight.yaml"
+        schedule_path = addon_dir / "backlight_schedule.yaml"
+        connectivity_path = addon_dir / "connectivity.yaml"
+        backlight_path.write_text(backlight_text, encoding="utf-8")
+        schedule_path.write_text(schedule_text, encoding="utf-8")
+        connectivity_path.write_text(connectivity_text, encoding="utf-8")
+        errors = firmware_display_active_finalization_errors(
+            backlight_path, schedule_path, (connectivity_path,), root
+        )
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -7407,6 +7471,111 @@ def run_self_test() -> int:
         "",
         ("clear the shared wake guard after a stuck touch timeout",),
     )
+    valid_active_finalizer = (
+        "script:\n"
+        "  - id: display_mode_apply_transition\n"
+        "    then:\n"
+        "      - lambda: 'controller.complete_transition();'\n"
+        "      - script.execute: display_active_finalize\n"
+        "  - id: display_active_finalize\n"
+        "    then:\n"
+        "      - delay: 50ms\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: 'return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::ACTIVE);'\n"
+        "          then:\n"
+        "            - if:\n"
+        "                condition:\n"
+        "                  lambda: 'return lv_scr_act() == id(main_page)->obj;'\n"
+        "                then:\n"
+        "                  - script.execute: clock_bar_apply\n"
+        "                  - script.wait: clock_bar_apply\n"
+        "                  - script.execute: backlight_apply_brightness\n"
+        "                  - script.wait: backlight_apply_brightness\n"
+        "            - script.execute: screensaver_idle_check\n"
+        "            - script.execute: home_screen_idle_check\n"
+    )
+    valid_schedule_wake = (
+        "script:\n"
+        "  - id: screen_schedule_wake\n"
+        "    then:\n"
+        "      - script.execute: display_mode_reconcile\n"
+        "      - script.wait: display_mode_apply_transition\n"
+        "      - script.execute: display_active_finalize\n"
+    )
+    valid_active_navigation = (
+        "script:\n"
+        "  - id: navigate_after_api\n"
+        "    then:\n"
+        "      - lvgl.page.show: main_page\n"
+        "      - script.execute: display_active_finalize\n"
+    )
+    expect_display_active_finalization_errors(
+        "active display finalization remains complete",
+        valid_active_finalizer,
+        valid_schedule_wake,
+        valid_active_navigation,
+        (),
+    )
+    expect_display_active_finalization_errors(
+        "active-state check precedes the page-specific guard",
+        valid_active_finalizer.replace(
+            "return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::ACTIVE);",
+            "return lv_scr_act() == id(main_page)->obj && "
+            "id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::ACTIVE);",
+        ),
+        valid_schedule_wake,
+        valid_active_navigation,
+        ("finalize active display",),
+    )
+    expect_display_active_finalization_errors(
+        "scheduled wake waits for its display transition",
+        valid_active_finalizer,
+        valid_schedule_wake.replace(
+            "      - script.wait: display_mode_apply_transition\n", "", 1
+        ),
+        valid_active_navigation,
+        ("wait for scheduled wake transition",),
+    )
+    expect_display_active_finalization_errors(
+        "automatic scheduled wake preserves manual sleep",
+        valid_active_finalizer,
+        valid_schedule_wake.replace(
+            "    then:\n",
+            "    then:\n"
+            "      - lambda: 'id(espcontrol_app).display().clear(espcontrol::DisplayRequestSource::MANUAL_SLEEP);'\n",
+            1,
+        ),
+        valid_active_navigation,
+        ("preserve manual sleep",),
+    )
+    expect_display_active_finalization_errors(
+        "completed active transitions restart idle handling",
+        valid_active_finalizer.replace(
+            "      - script.execute: display_active_finalize\n", "", 1
+        ),
+        valid_schedule_wake,
+        valid_active_navigation,
+        ("finalize every completed active transition",),
+    )
+    expect_display_active_finalization_errors(
+        "active finalizer restores configured brightness",
+        valid_active_finalizer.replace(
+            "            - script.execute: backlight_apply_brightness\n", "", 1
+        ),
+        valid_schedule_wake,
+        valid_active_navigation,
+        ("configured brightness",),
+    )
+    expect_display_active_finalization_errors(
+        "main-page navigation uses the active finalizer",
+        valid_active_finalizer,
+        valid_schedule_wake,
+        valid_active_navigation.replace(
+            "      - script.execute: display_active_finalize\n", "", 1
+        ),
+        ("after main-page navigation",),
+    )
     expect_clock_bar_navigation_errors(
         "late navigation requires active display mode",
         "script:\n"
@@ -7852,8 +8021,6 @@ def run_self_test() -> int:
         "inline auto navigation_home_targets() {}\n"
         "inline void navigation_find_label_target() { navigation_home_targets(); entry.display_order < best->display_order; }\n"
         "inline void navigation_find_slot_target() { entry.slot == slot; }\n"
-        "inline bool navigation_is_voice_target() { return normalized == \"device_volume\"; }\n"
-        "inline bool navigation_has_home_label_target() {}\n"
         "inline void navigation_activate_home_target() { navigation_return_home(main_page_obj); handle_button_click(target->config, target->slot, target->button); }\n"
         "inline void espcontrol_navigate() { normalized == \"home\" || normalized == \"main\"; }\n",
         "navigation_clear_home_targets();\n"
@@ -7861,13 +8028,9 @@ def run_self_test() -> int:
         "navigation_clear_home_targets();\n"
         "navigation_register_home_target(idx, pos, p.label, s.config->state, s.btn);\n",
         "inline bool navigation_driver_own_subpage() { navigation_register_subpage( }\n",
-        "if (navigation_is_voice_target(target) && !navigation_has_home_label_target(target)) { ${navigate_voice_target_code} } else { espcontrol_navigate(target, id(main_page)->obj); }\n",
-        {
-            "esp32-p4-86": "navigate_voice_target_code: |-\n  if (id(voice_services_enabled).state) { id(open_device_volume_control).execute(); }\n",
-            "future-voice-panel": "navigate_voice_target_code: |-\n  if (id(voice_services_enabled).state) { id(open_device_volume_control).execute(); }\n",
-            "other-p4": "navigate_voice_target_code: |-\n  ESP_LOGW(\"navigation\", \"Voice volume target is not available on this device\");\n",
-        },
-        ("esp32-p4-86", "future-voice-panel"),
+        "espcontrol_navigate(target, id(main_page)->obj);\n",
+        {},
+        (),
         (),
     )
     expect_connectivity_api_errors(

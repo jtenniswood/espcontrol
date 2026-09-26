@@ -193,7 +193,7 @@ inline void network_status_open_modal(const std::string &device_name,
                                       const lv_font_t *icon_font,
                                       float (*wifi_quality)() = nullptr) {
   // Settings is explicit navigation: dismiss nested menus and the current
-  // modal before saving the underlying page title (for example, below Voice).
+  // modal before saving the underlying page title.
   control_modal_close_nested_menu();
   control_modal_force_close_active();
   network_status_hide_modal();

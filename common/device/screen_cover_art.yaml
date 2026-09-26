@@ -1852,18 +1852,6 @@ script:
                 tag: cover_art
                 format: "Skipping cover art while screen schedule night mode is active"
             - script.stop: show_cover_art_view
-      - if:
-          condition:
-            lambda: 'return ${voice_interaction_active_condition};'
-          then:
-            - logger.log:
-                level: DEBUG
-                tag: cover_art
-                format: "Skipping cover art while voice interaction is active"
-            - script.execute: display_mode_clear_cover_art
-            - script.wait: display_mode_clear_cover_art
-            - script.execute: clock_bar_apply
-            - script.stop: show_cover_art_view
       - script.stop: cover_art_delay_timer
       - script.execute: display_mode_request_cover_art
 
@@ -2065,7 +2053,6 @@ script:
             lambda: |-
               if (!id(espcontrol_app).display().generation_is_current(
                     id(cover_art_delay_generation))) return false;
-              bool voice_active = ${voice_interaction_active_condition};
               auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
               bool schedule_blocks = screen_schedule_blocks_cover_art(
                   id(screen_schedule_trigger).state,
@@ -2084,8 +2071,7 @@ script:
                        id(cover_art_hide_external_input_enabled).state,
                        id(cover_art_external_input_active),
                        schedule_blocks,
-                       alarm_display_takeover_active(),
-                       voice_active) &&
+                       alarm_display_takeover_active()) &&
                      (id(cover_art_manual_pause_until_ms) == 0 ||
                       (int32_t)(id(cover_art_manual_pause_until_ms) - millis()) <= 0);
           then:

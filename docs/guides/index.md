@@ -1,6 +1,6 @@
 ---
 title: Home Assistant Touchscreen Setup and Control Guides
-description: Set up an EspControl room panel, media remote, camera display, or voice controller with practical guides and clear hardware requirements.
+description: Set up an EspControl room panel, media remote, or camera display with practical guides and clear hardware requirements.
 ---
 
 # What Would You Like to Control?
@@ -28,10 +28,6 @@ Check that the snapshot loads, then tap it to confirm the larger view works. For
 ## Show Your Immich Photos
 
 Install [EspControl Immich Companion](/immich/) to turn your photo library, albums, Memories or keyword searches into a slideshow. Follow [Connect to EspControl](/immich/display-setup) to use its Home Assistant image entity in the photo screensaver or a Camera card, with optional photo metadata.
-
-## Use Home Assistant Assist Voice Control
-
-Use the **4-inch P4 86 Panel** and follow [Voice Control](/features/voice-control). You need a configured Home Assistant Assist pipeline as well as the panel's microphones and speaker. Confirm a spoken command works before adjusting wake-word or audio settings. Other supported screens do not provide this voice feature.
 
 ## Maintain or Troubleshoot a Panel
 

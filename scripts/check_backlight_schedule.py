@@ -5,11 +5,47 @@ from pathlib import Path
 import subprocess
 import tempfile
 import textwrap
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "common" / "addon" / "backlight_schedule.yaml"
 FADE_SOURCE = ROOT / "common" / "addon" / "backlight.yaml"
+
+
+def force_off_adapter(source: str) -> str:
+    """Exercise the production off guard and actions, including legacy guards."""
+    class Loader(yaml.SafeLoader):
+        pass
+
+    Loader.add_constructor("!lambda", lambda loader, node: loader.construct_scalar(node))
+    scripts = yaml.load(source[source.index("script:\n"):], Loader)["script"]
+    script = next(item for item in scripts if item["id"] == "backlight_force_display_off")
+
+    def actions(items):
+        result = []
+        for item in items:
+            kind, value = next(iter(item.items()))
+            if kind == "if":
+                condition = value["condition"]
+                if "light.is_on" in condition:
+                    predicate = f"return id({condition['light.is_on']}).current_values.is_on();"
+                else:
+                    predicate = condition["lambda"]
+                result.append(f"if (([&] {{ {predicate} }})()) {{ {actions(value['then'])} }}")
+            elif kind == "light.turn_off":
+                assert value["transition_length"] == "0s"
+                result.append(f"{{ auto call = id({value['id']}).turn_off(); "
+                              "call.set_transition_length(0); call.perform(); }")
+            elif kind == "output.turn_off":
+                result.append(f"id({value}).turn_off();")
+            elif kind == "lambda":
+                result.append(value)
+            else:
+                raise ValueError(f"Unsupported off action: {kind}")
+        return "\n".join(result)
+
+    return actions(script["then"])
 
 
 def check_recovery(source: str) -> None:
@@ -24,6 +60,9 @@ def check_recovery(source: str) -> None:
     fade_end = fade_source.index("      - while:", fade_start)
     with tempfile.TemporaryDirectory(prefix="backlight-recovery-") as directory:
         output = Path(directory)
+        (output / "backlight_force_off.inc").write_text(
+            force_off_adapter(fade_source), encoding="utf-8"
+        )
         (output / "backlight_brightness_adapter.inc").write_text(
             textwrap.dedent(source[start:end]), encoding="utf-8"
         )
@@ -38,7 +77,7 @@ def check_recovery(source: str) -> None:
             "-o", str(binary),
         ], check=True)
         subprocess.run([str(binary)], check=True)
-    print("backlight interrupted-fade recovery: ok")
+    print("backlight interrupted-fade recovery and reported off state: ok")
 
 
 def check_clock_switches_without_fade() -> None:
