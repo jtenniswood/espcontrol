@@ -11,13 +11,14 @@ import type { CardRegistry } from "../application/card_registry";
 import type { ConfigDateTimeOptionsFeature } from "../application/config_date_time_options";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
 import { configOptionEnabled, setConfigOption } from "../model/config_primitives";
+import { CARD_SIZE_LARGE, CARD_SIZE_WIDE, cardSizeDefinition } from "../model/grid";
 
 export function registerClockCardTypes(
     registry: CardRegistry,
     dateTimeOptions: ConfigDateTimeOptionsFeature,
     fields: ControlsFieldsFeature,
 ): void {
-    const { cardLargeNumbersHidePreviewLabel, cardSensorPreviewHtml } = fields;
+    const { cardLargeNumbersActiveForCardSize, cardSensorPreviewHtml } = fields;
     const { dateTimeCardTimeParts, metadata } = dateTimeOptions;
     // Read-only local clock card: displays the panel's local time only.
     registry.register("clock", {
@@ -61,10 +62,16 @@ export function registerClockCardTypes(
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             var time: any = dateTimeCardTimeParts();
+            const cardSize = (helpers && helpers.cardSize) || 1;
+            const cardDefinition = cardSizeDefinition(cardSize);
+            const largeClock = cardLargeNumbersActiveForCardSize(b, helpers, metadata);
+            const usesWideLayout = cardSize === CARD_SIZE_WIDE || cardDefinition.colSpan > 2;
+            const centered = largeClock && usesWideLayout && configOptionEnabled(b.options, "center_clock");
             return {
-                buttonClass: cardLargeNumbersHidePreviewLabel(b, helpers, metadata)
-                    ? "sp-clock-wide-large" + (configOptionEnabled(b.options, "center_clock") ? " sp-clock-centered" : "")
-                    : undefined,
+                buttonClass: [
+                    largeClock ? "sp-clock-large" : "",
+                    largeClock && usesWideLayout ? (centered ? "sp-clock-centered" : "sp-clock-left-mid") : "",
+                ].filter(Boolean).join(" ") || undefined,
                 iconHtml: cardSensorPreviewHtml(b, helpers, time.value, time.unit),
                 labelHtml: "",
             };

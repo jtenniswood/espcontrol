@@ -141,7 +141,9 @@ export function createConfigDateTimeOptionsFeature(dependencies: ConfigDateTimeO
             },
             defaultEnabled: function (button?: any, helpers?: any) {
                 const cardSize = (helpers && helpers.cardSize) || CARD_SIZE_SINGLE;
-                return dateTimeCardMode(button) === "clock" && cardSizeDefinition(cardSize).colSpan > 2;
+                const colSpan = cardSizeDefinition(cardSize).colSpan;
+                return dateTimeCardMode(button) === "clock" &&
+                    (cardSize === CARD_SIZE_WIDE || cardSize === CARD_SIZE_LARGE || colSpan > 2);
             },
             hideLabel: function (_button?: any, helpers?: any) {
                 return ((helpers && helpers.cardSize) || CARD_SIZE_SINGLE) === CARD_SIZE_WIDE;
