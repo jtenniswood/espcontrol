@@ -41,10 +41,9 @@ esp32:
       disable_vfs_support_dir: false
     sdkconfig_options:
       CONFIG_SDMMC_HOST_DEFAULT: "y"
-      # Eight API clients add five sockets above ESPHome's three-client
-      # baseline. Reserve those five explicitly on top of the generated
-      # 14-socket web, artwork, mDNS, OTA, and API budget.
-      CONFIG_LWIP_MAX_SOCKETS: "19"
+      # Cover the calculated API, web, artwork, mDNS, OTA, and Sendspin
+      # socket budget, including the listening sockets.
+      CONFIG_LWIP_MAX_SOCKETS: "21"
       # HTTPS firmware checks need more stack on ESP32-P4; the default main
       # task stack can trip the stack protector during mbedTLS setup.
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
