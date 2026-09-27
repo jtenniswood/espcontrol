@@ -776,6 +776,24 @@ assert(wideClockPreview.iconHtml.includes("sp-sensor-preview-large"), "clock wid
 assert.strictEqual(wideClockPreview.buttonClass, "sp-clock-large sp-clock-left-mid", "clock wide large preview is left aligned");
 assert.strictEqual(wideClockPreview.labelHtml, "", "clock wide preview does not render a date label");
 
+const resizedWideClockPreview = hooks.buttonTypePreviewFor("clock", {
+  type: "clock",
+  options: "large_numbers,center_clock",
+}, {
+  cardSize: 3,
+  clockFormat: "24h",
+});
+assert.strictEqual(resizedWideClockPreview.buttonClass, "sp-clock-large sp-clock-left-mid", "two-column clocks ignore retained center-clock options");
+
+const centeredExtraWideClockPreview = hooks.buttonTypePreviewFor("clock", {
+  type: "clock",
+  options: "large_numbers,center_clock",
+}, {
+  cardSize: 6,
+  clockFormat: "24h",
+});
+assert.strictEqual(centeredExtraWideClockPreview.buttonClass, "sp-clock-large sp-clock-centered", "clocks wider than two columns honor center-clock");
+
 const timezonePreview = hooks.buttonTypePreviewFor("timezone", {
   entity: "America/New_York (GMT-5)",
   type: "timezone",

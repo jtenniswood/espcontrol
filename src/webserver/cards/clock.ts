@@ -45,15 +45,31 @@ export function registerClockCardTypes(
             b.unit = "";
             b.precision = "";
             helpers.renderCardModeSelector(panel, b, helpers, metadata);
-            helpers.renderCardLargeNumbersToggle(panel, b, helpers, metadata);
             const centerClock: any = (metadata as any).centerClock || {};
-            if (centerClock.supportedCardSize(b, helpers) && cardLargeNumbersActiveForCardSize(b, helpers, metadata)) {
+            let centerClockRow: any = null;
+            const largeSettingsMetadata: any = Object.assign({}, metadata, {
+                largeNumbers: Object.assign({}, metadata.largeNumbers, {
+                    onChange: function (this: any, currentButton?: any, currentHelpers?: any) {
+                        if (centerClockRow) {
+                            centerClockRow.style.display = cardLargeNumbersActiveForCardSize(
+                                currentButton || b,
+                                currentHelpers || helpers,
+                                metadata,
+                            ) ? "" : "none";
+                        }
+                    },
+                }),
+            });
+            helpers.renderCardLargeNumbersToggle(panel, b, helpers, largeSettingsMetadata);
+            if (centerClock.supportedCardSize(b, helpers)) {
                 const centerToggle: any = helpers.toggleRow(
                     centerClock.label,
                     helpers.idPrefix + centerClock.idSuffix,
                     configOptionEnabled(b.options, "center_clock"),
                 );
                 panel.appendChild(centerToggle.row);
+                centerClockRow = centerToggle.row;
+                centerClockRow.style.display = cardLargeNumbersActiveForCardSize(b, helpers, metadata) ? "" : "none";
                 centerToggle.input.addEventListener("change", function (this: any) {
                     b.options = setConfigOption(b.options, "center_clock", this.checked);
                     helpers.saveField("options", b.options);
@@ -66,7 +82,7 @@ export function registerClockCardTypes(
             const cardDefinition = cardSizeDefinition(cardSize);
             const largeClock = cardLargeNumbersActiveForCardSize(b, helpers, metadata);
             const usesWideLayout = cardSize === CARD_SIZE_WIDE || cardDefinition.colSpan > 2;
-            const centered = largeClock && usesWideLayout && configOptionEnabled(b.options, "center_clock");
+            const centered = largeClock && cardDefinition.colSpan > 2 && configOptionEnabled(b.options, "center_clock");
             return {
                 buttonClass: [
                     largeClock ? "sp-clock-large" : "",
