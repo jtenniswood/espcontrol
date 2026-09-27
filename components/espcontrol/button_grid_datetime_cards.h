@@ -253,6 +253,18 @@ struct TimezoneCardRef {
   bool show_label;
 };
 
+struct TimezoneCardState {
+  bool valid = false;
+  time_t epoch = 0;
+  std::string active_timezone;
+  bool use_12h = false;
+};
+
+inline TimezoneCardState &timezone_card_state() {
+  static TimezoneCardState state;
+  return state;
+}
+
 inline TimezoneCardRef *timezone_card_refs() {
   static TimezoneCardRef refs[MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS];
   return refs;
@@ -346,13 +358,20 @@ inline void register_timezone_card(lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
     return;
   }
   timezone_card_refs()[count++] = {value_lbl, unit_lbl, label_lbl, timezone, label, show_label};
-  apply_timezone_card_text(timezone_card_refs()[count - 1], false, 0, timezone, false);
+  const TimezoneCardState &state = timezone_card_state();
+  apply_timezone_card_text(timezone_card_refs()[count - 1], state.valid,
+                           state.epoch, state.active_timezone, state.use_12h);
 }
 
 inline void update_timezone_cards(bool valid,
                                   time_t epoch,
                                   const std::string &active_timezone,
                                   bool use_12h) {
+  TimezoneCardState &state = timezone_card_state();
+  state.valid = valid;
+  state.epoch = epoch;
+  state.active_timezone = active_timezone;
+  state.use_12h = use_12h;
   compact_timezone_card_refs();
   TimezoneCardRef *refs = timezone_card_refs();
   int count = timezone_card_count();
