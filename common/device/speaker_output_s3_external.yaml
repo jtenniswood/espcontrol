@@ -40,6 +40,13 @@ sendspin:
   id: sendspin_hub
   task_stack_in_psram: true
 
+esphome:
+  on_boot:
+    - priority: -100
+      then:
+        - lambda: |-
+            id(speaker_volume_control).publish_state(id(device_speaker).volume * 100.0f);
+
 media_source:
   - platform: sendspin
     id: sendspin_media_source
@@ -72,3 +79,22 @@ media_player:
       num_channels: 1
       sources:
         - speaker_announcement_http_source
+    on_volume:
+      - lambda: id(speaker_volume_control).publish_state(x * 100.0f);
+
+number:
+  - platform: template
+    id: speaker_volume_control
+    name: "${friendly_name} Speaker Volume"
+    icon: mdi:volume-high
+    unit_of_measurement: "%"
+    min_value: 0
+    max_value: 80
+    step: 1
+    initial_value: 50
+    optimistic: true
+    restore_value: true
+    set_action:
+      - media_player.volume_set:
+          id: device_speaker
+          volume: !lambda return x / 100.0f;

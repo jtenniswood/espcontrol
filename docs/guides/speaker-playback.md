@@ -10,6 +10,10 @@ Supported panels expose an ESPHome media player named after the panel with
 control playback, and adjust its volume. The board amplifier turns on during
 playback and switches off when playback ends.
 
+Home Assistant also exposes a “Speaker Volume” slider for automations and
+direct control. It stays in sync with volume changes made from the media player
+or Music Assistant and is capped at 80% to keep headroom for the small speaker.
+
 The speaker also connects to Music Assistant as a native Sendspin player. It is
 discovered automatically when Music Assistant and the panel are on the same
 network; no separate Music Assistant player provider setup is required.
