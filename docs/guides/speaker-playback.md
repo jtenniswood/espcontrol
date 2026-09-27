@@ -10,6 +10,12 @@ Supported panels expose an ESPHome media player named after the panel with
 control playback, and adjust its volume. The board amplifier turns on during
 playback and switches off when playback ends.
 
+Use **Browse media** on the speaker entity in Home Assistant to choose audio
+from the Home Assistant media browser, including sources provided by installed
+integrations such as Music Assistant. Home Assistant resolves the selected
+item and sends its audio stream to the speaker; the device does not need a
+separate account or connection to each music service.
+
 Home Assistant also exposes a “Speaker Volume” slider for automations and
 direct control. It stays in sync with volume changes made from the media player
 or Music Assistant and is capped at 80% to keep headroom for the small speaker.
