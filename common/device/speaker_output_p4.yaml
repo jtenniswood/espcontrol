@@ -39,13 +39,13 @@ speaker:
     id: speaker_announcement_resampler
     output_speaker: speaker_announcement_input
     sample_rate: 48000
-    bits_per_sample: 16bit
+    bits_per_sample: passthrough
 
   - platform: resampler
     id: speaker_media_resampler
     output_speaker: speaker_media_input
     sample_rate: 48000
-    bits_per_sample: 16bit
+    bits_per_sample: passthrough
 
 media_player:
   - platform: speaker
