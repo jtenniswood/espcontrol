@@ -852,7 +852,8 @@ script:
           lv_obj_set_style_text_color(id(cover_art_playback_icon), lv_color_hex(icon_color), LV_PART_MAIN);
           lv_obj_set_style_bg_color(id(cover_art_playback_button), button_color, LV_PART_MAIN);
           lv_obj_set_style_bg_color(id(cover_art_playback_button), pressed_color,
-                                    LV_PART_MAIN | LV_STATE_PRESSED);
+                                    static_cast<lv_style_selector_t>(LV_PART_MAIN) |
+                                        static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
 
   - id: cover_art_clear_image_source
     mode: restart
@@ -887,7 +888,8 @@ script:
           lv_obj_set_style_text_color(id(cover_art_playback_icon), lv_color_hex(0xFFFFFF), LV_PART_MAIN);
           lv_obj_set_style_bg_color(id(cover_art_playback_button), button_color, LV_PART_MAIN);
           lv_obj_set_style_bg_color(id(cover_art_playback_button), lv_color_lighten(button_color, 48),
-                                    LV_PART_MAIN | LV_STATE_PRESSED);
+                                    static_cast<lv_style_selector_t>(LV_PART_MAIN) |
+                                        static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
       - script.execute: cover_art_clear_image_source
       - script.wait: cover_art_clear_image_source
       - lvgl.widget.hide: cover_art_image_widget

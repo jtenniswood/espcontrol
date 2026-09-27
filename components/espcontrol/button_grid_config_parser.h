@@ -893,13 +893,16 @@ inline bool card_large_numbers_supported(const ParsedCfg &p) {
 inline std::string date_time_card_options_normalized(const std::string &options,
                                                      const ParsedCfg &p) {
   if (!card_large_numbers_supported(p)) return "";
+  std::string out;
   if (cfg_option_token_present(options, "large_numbers") ||
       large_numbers_explicitly_disabled(options)) {
-    std::string out;
     append_large_numbers_option(out, options);
-    return out;
   }
-  return "";
+  if (p.type == "clock" && cfg_option_token_present(options, "center_clock")) {
+    if (!out.empty()) out += ",";
+    out += "center_clock";
+  }
+  return out;
 }
 
 inline std::string normalize_garage_label_display(const std::string &value) {

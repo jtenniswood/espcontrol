@@ -168,15 +168,18 @@ export function createConfigSensorOptionsFeature(cardRegistry: CardRegistry) {
         return out;
     }
     function normalizeDateTimeOptions(this: any, type?: any, options?: any, precision?: any) {
+        var out = "";
         if (configOptionEnabled(options, SENSOR_LARGE_NUMBERS_OPTION) &&
             cardContractOptionSupportedFor(type, SENSOR_LARGE_NUMBERS_OPTION, { precision: precision })) {
-            return copyLargeNumbersOption("", options);
-        }
-        if (largeNumbersExplicitlyDisabled(options) &&
+            out = copyLargeNumbersOption(out, options);
+        } else if (largeNumbersExplicitlyDisabled(options) &&
             cardContractOptionSupportedFor(type, SENSOR_LARGE_NUMBERS_OPTION, { precision: precision })) {
-            return copyLargeNumbersOption("", options);
+            out = copyLargeNumbersOption(out, options);
         }
-        return "";
+        if (type === "clock" && configOptionEnabled(options, "center_clock")) {
+            out = setConfigOption(out, "center_clock", true);
+        }
+        return out;
     }
     function normalizeDoorWindowSubtype(this: any, value?: any) {
         value = String(value || "").trim();

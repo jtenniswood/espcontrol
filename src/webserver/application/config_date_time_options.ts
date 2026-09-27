@@ -1,5 +1,5 @@
 import type { AppState } from "../state/types";
-import { CARD_SIZE_LARGE, CARD_SIZE_SINGLE, CARD_SIZE_WIDE } from "../model/grid";
+import { CARD_SIZE_LARGE, CARD_SIZE_SINGLE, CARD_SIZE_WIDE, cardSizeDefinition } from "../model/grid";
 import { cardContractOptionSpec } from "./config_option_core";
 
 export interface ConfigDateTimeOptionsDependencies {
@@ -76,16 +76,52 @@ export function createConfigDateTimeOptionsFeature(dependencies: ConfigDateTimeO
         dependencies.renderButtonSettings();
     }
 
-    function dateTimeCardTimeParts(this: any) {
-        const now = dependencies.now();
+    function formattedTimeParts(this: any, timezoneOption: string) {
         const use12h = dependencies.state.clockFormat === "12h";
-        const hour = now.getUTCHours();
-        const minute = String(now.getUTCMinutes()).padStart(2, "0");
-        if (use12h) {
-            const hour12 = hour % 12 || 12;
-            return { value: String(hour12) + ":" + minute, unit: "" };
+        const timezoneId = dependencies.timezoneId(dependencies.effectiveTimezoneOption(timezoneOption));
+        const options: any = { timeZone: timezoneId, hour: "numeric", minute: "2-digit" };
+        if (use12h) options.hour12 = true;
+        else options.hourCycle = "h23";
+        const parts = new Intl.DateTimeFormat("en-US", options).formatToParts(dependencies.now());
+        let hour = "";
+        let minute = "";
+        for (const part of parts) {
+            if (part.type === "hour") hour = part.value;
+            else if (part.type === "minute") minute = part.value;
         }
-        return { value: String(hour).padStart(2, "0") + ":" + minute, unit: "" };
+        if (!hour || !minute) return { value: "--:--", unit: "" };
+        return { value: (use12h ? hour : hour.padStart(2, "0")) + ":" + minute, unit: "" };
+    }
+
+    function dateTimeCardTimeParts(this: any) {
+        try {
+            return formattedTimeParts(dependencies.state.timezone || "UTC");
+        }
+        catch (_error) {
+            return { value: "--:--", unit: "" };
+        }
+    }
+
+    function dateTimeCardDateParts(this: any) {
+        try {
+            const options: any = {
+                timeZone: dependencies.timezoneId(dependencies.effectiveTimezoneOption(dependencies.state.timezone || "UTC")),
+                day: "numeric",
+                month: "numeric",
+            };
+            const parts = new Intl.DateTimeFormat("en-US", options).formatToParts(dependencies.now());
+            let day = "";
+            let month = "";
+            for (const part of parts) {
+                if (part.type === "day") day = part.value;
+                else if (part.type === "month") month = part.value;
+            }
+            if (!day || !month) return { day: "--", month: "Date" };
+            return { day, month: dependencies.monthNameForIndex(Number(month) - 1) };
+        }
+        catch (_error) {
+            return { day: "--", month: "Date" };
+        }
     }
 
     function timezoneCardCityLabel(this: any, timezoneOption?: any) {
@@ -96,21 +132,8 @@ export function createConfigDateTimeOptionsFeature(dependencies: ConfigDateTimeO
     }
 
     function timezoneCardTimeParts(this: any, timezoneOption?: any) {
-        const use12h = dependencies.state.clockFormat === "12h";
-        const timezoneId = dependencies.timezoneId(dependencies.effectiveTimezoneOption(timezoneOption || "UTC"));
         try {
-            const options: any = { timeZone: timezoneId, hour: "numeric", minute: "2-digit" };
-            if (use12h) options.hour12 = true;
-            else options.hourCycle = "h23";
-            const parts = new Intl.DateTimeFormat("en-US", options).formatToParts(dependencies.now());
-            let hour = "";
-            let minute = "";
-            for (const part of parts) {
-                if (part.type === "hour") hour = part.value;
-                else if (part.type === "minute") minute = part.value;
-            }
-            if (!hour || !minute) return { value: "--:--", unit: "" };
-            return { value: (use12h ? hour : hour.padStart(2, "0")) + ":" + minute, unit: "" };
+            return formattedTimeParts(timezoneOption || "UTC");
         }
         catch (_error) {
             return { value: "--:--", unit: "" };
@@ -137,12 +160,25 @@ export function createConfigDateTimeOptionsFeature(dependencies: ConfigDateTimeO
             idSuffix: "large-date-time-numbers",
             supportedCardSize: function (button?: any, helpers?: any) {
                 const cardSize = (helpers && helpers.cardSize) || CARD_SIZE_SINGLE;
-                return dateTimeCardMode(button) === "clock"
-                    ? cardSize === CARD_SIZE_WIDE || cardSize === CARD_SIZE_LARGE
-                    : cardSize === CARD_SIZE_LARGE;
+                return dateTimeCardMode(button) === "clock" || cardSize === CARD_SIZE_LARGE;
+            },
+            defaultEnabled: function (button?: any, helpers?: any) {
+                const cardSize = (helpers && helpers.cardSize) || CARD_SIZE_SINGLE;
+                const colSpan = cardSizeDefinition(cardSize).colSpan;
+                return cardSize === CARD_SIZE_LARGE ||
+                    (dateTimeCardMode(button) === "clock" &&
+                        (cardSize === CARD_SIZE_WIDE || colSpan > 2));
             },
             hideLabel: function (_button?: any, helpers?: any) {
                 return ((helpers && helpers.cardSize) || CARD_SIZE_SINGLE) === CARD_SIZE_WIDE;
+            },
+        },
+        centerClock: {
+            label: "Center Clock",
+            idSuffix: "center-clock",
+            supportedCardSize: function (button?: any, helpers?: any) {
+                const cardSize = (helpers && helpers.cardSize) || CARD_SIZE_SINGLE;
+                return dateTimeCardMode(button) === "clock" && cardSizeDefinition(cardSize).colSpan > 2;
             },
         },
         preview: { dateBadge: "calendar-month", timezoneBadge: "map-clock" },
@@ -151,6 +187,7 @@ export function createConfigDateTimeOptionsFeature(dependencies: ConfigDateTimeO
     return {
         appendTimezoneOption: dependencies.appendTimezoneOption,
         dateTimeCardMode,
+        dateTimeCardDateParts,
         dateTimeCardTimeParts,
         dateTimeLargeNumbersLabel,
         dateTimeModeOptionValues,

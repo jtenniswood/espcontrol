@@ -76,7 +76,8 @@ inline bool date_time_driver_large_layout(
     const Context &context, int row_span, int col_span) {
   if (context.runtime.type == card_runtime::CardTypeId::CLOCK) {
     return large_number_square_card_layout(row_span, col_span) ||
-           card_span_is_wide(row_span, col_span);
+           card_span_is_wide(row_span, col_span) ||
+           col_span > CARD_SIZE_WIDE_COL_SPAN;
   }
   return large_number_square_card_layout(row_span, col_span);
 }
@@ -106,14 +107,24 @@ inline bool date_time_driver_refresh_layout(
   const bool large_numbers = card_large_numbers_supported(config) &&
     !card_large_numbers_disabled(config) &&
     (large_layout || card_large_numbers_enabled(config));
-  if (!large_layout || !large_numbers || !display_large_sensor_font(display)) {
+  const bool explicitly_large_clock =
+    context.runtime.type == card_runtime::CardTypeId::CLOCK &&
+    card_large_numbers_enabled(config);
+  if ((!large_layout && !explicitly_large_clock) ||
+      !large_numbers || !display_large_sensor_font(display)) {
     return true;
   }
 
   apply_large_sensor_number_style(
     slot, display_large_sensor_font(display),
     display_large_sensor_unit_offset_percent(display));
-  if (card_span_is_wide(row_span, col_span)) {
+  if (context.runtime.type == card_runtime::CardTypeId::CLOCK &&
+      col_span > CARD_SIZE_WIDE_COL_SPAN) {
+    const lv_align_t align = cfg_option_token_present(config.options, "center_clock")
+      ? LV_ALIGN_CENTER
+      : LV_ALIGN_LEFT_MID;
+    apply_wide_large_date_time_card_layout(slot, align);
+  } else if (card_span_is_wide(row_span, col_span)) {
     const lv_align_t align =
       context.runtime.type == card_runtime::CardTypeId::CLOCK
         ? LV_ALIGN_LEFT_MID
