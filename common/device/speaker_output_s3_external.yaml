@@ -1,0 +1,91 @@
+# Optional external I2S amplifier output for ESP32-S3 panels without a free
+# onboard audio path. Connect BCLK to GPIO41, LRCLK to GPIO42, DOUT to GPIO43,
+# and provide power and ground to the external I2S DAC/amplifier.
+i2s_audio:
+  - id: speaker_i2s
+    i2s_lrclk_pin: GPIO42
+    i2s_bclk_pin: GPIO41
+
+speaker:
+  - platform: i2s_audio
+    id: speaker_output
+    i2s_audio_id: speaker_i2s
+    i2s_dout_pin: GPIO43
+    dac_type: external
+    channel: mono
+    sample_rate: 48000
+    bits_per_sample: 16bit
+    buffer_duration: 300ms
+
+  - platform: mixer
+    id: speaker_mixer
+    output_speaker: speaker_output
+    source_speakers:
+      - id: speaker_announcement_input
+      - id: speaker_media_input
+      - id: speaker_sendspin_input
+
+  - platform: resampler
+    id: speaker_announcement_resampler
+    output_speaker: speaker_announcement_input
+    sample_rate: 48000
+    bits_per_sample: passthrough
+
+  - platform: resampler
+    id: speaker_media_resampler
+    output_speaker: speaker_media_input
+    sample_rate: 48000
+    bits_per_sample: passthrough
+
+  - platform: resampler
+    id: speaker_sendspin_resampler
+    output_speaker: speaker_sendspin_input
+    sample_rate: 48000
+    bits_per_sample: passthrough
+
+sendspin:
+  id: sendspin_hub
+  task_stack_in_psram: true
+
+media_source:
+  - platform: sendspin
+    id: sendspin_media_source
+    sendspin_id: sendspin_hub
+    task_stack_in_psram: true
+  - platform: audio_http
+    id: speaker_media_http_source
+  - platform: audio_http
+    id: speaker_announcement_http_source
+
+media_player:
+  - platform: speaker_source
+    id: device_speaker
+    name: "${friendly_name} Speaker"
+    icon: mdi:speaker
+    volume_min: 0.0
+    volume_max: 0.8
+    media_pipeline:
+      speaker: speaker_media_resampler
+      format: FLAC
+      sample_rate: 48000
+      num_channels: 1
+      sources:
+        - speaker_media_http_source
+    announcement_pipeline:
+      speaker: speaker_announcement_resampler
+      format: FLAC
+      sample_rate: 48000
+      num_channels: 1
+      sources:
+        - speaker_announcement_http_source
+
+  - platform: speaker_source
+    id: sendspin_speaker_player
+    internal: true
+    media_pipeline:
+      speaker: speaker_sendspin_resampler
+      format: NONE
+      sample_rate: 48000
+      num_channels: 1
+      sources:
+        - sendspin_media_source

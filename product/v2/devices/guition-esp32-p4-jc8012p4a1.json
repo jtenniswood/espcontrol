@@ -15,7 +15,11 @@
     "firmware": {
       "package": {
         "extraPackages": {
-          "battery": "!include device/battery.yaml"
+          "battery": "!include device/battery.yaml",
+          "speaker_output": "!include ../../common/device/speaker_output_p4.yaml"
+        },
+        "substitutions": {
+          "speaker_amplifier_pin": "\"GPIO20\""
         }
       }
     }
