@@ -5,10 +5,14 @@ description: Use supported EspControl panels as Home Assistant media players.
 
 # Speaker Playback
 
-Supported P4 panels expose an ESPHome media player named after the panel with
+Supported panels expose an ESPHome media player named after the panel with
 “Speaker” appended. Home Assistant can send announcements and media to it,
 control playback, and adjust its volume. The board amplifier turns on during
 playback and switches off when playback ends.
+
+The speaker also connects to Music Assistant as a native Sendspin player. It is
+discovered automatically when Music Assistant and the panel are on the same
+network; no separate Music Assistant player provider setup is required.
 
 Connect a compatible passive speaker to the panel's speaker connector. The P4
 audio output uses the onboard ES8311 codec and amplifier; no external DAC is

@@ -36,22 +36,39 @@ speaker:
     sample_rate: 48000
     bits_per_sample: passthrough
 
+sendspin:
+  id: sendspin_hub
+  task_stack_in_psram: true
+
+media_source:
+  - platform: sendspin
+    id: sendspin_media_source
+    sendspin_id: sendspin_hub
+    task_stack_in_psram: true
+  - platform: audio_http
+    id: speaker_media_http_source
+  - platform: audio_http
+    id: speaker_announcement_http_source
+
 media_player:
-  - platform: speaker
+  - platform: speaker_source
     id: device_speaker
     name: "${friendly_name} Speaker"
     icon: mdi:speaker
     volume_min: 0.0
     volume_max: 0.8
-    task_stack_in_psram: true
-    buffer_size: 1000000
+    media_pipeline:
+      speaker: speaker_media_resampler
+      format: FLAC
+      sample_rate: 48000
+      num_channels: 1
+      sources:
+        - sendspin_media_source
+        - speaker_media_http_source
     announcement_pipeline:
       speaker: speaker_announcement_resampler
       format: FLAC
       sample_rate: 48000
       num_channels: 1
-    media_pipeline:
-      speaker: speaker_media_resampler
-      format: FLAC
-      sample_rate: 48000
-      num_channels: 2
+      sources:
+        - speaker_announcement_http_source
