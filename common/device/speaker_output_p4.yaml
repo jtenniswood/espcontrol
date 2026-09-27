@@ -34,6 +34,7 @@ speaker:
     source_speakers:
       - id: speaker_announcement_input
       - id: speaker_media_input
+      - id: speaker_sendspin_input
 
   - platform: resampler
     id: speaker_announcement_resampler
@@ -44,6 +45,12 @@ speaker:
   - platform: resampler
     id: speaker_media_resampler
     output_speaker: speaker_media_input
+    sample_rate: 48000
+    bits_per_sample: passthrough
+
+  - platform: resampler
+    id: speaker_sendspin_resampler
+    output_speaker: speaker_sendspin_input
     sample_rate: 48000
     bits_per_sample: passthrough
 
@@ -70,11 +77,10 @@ media_player:
     volume_max: 0.8
     media_pipeline:
       speaker: speaker_media_resampler
-      format: NONE
+      format: FLAC
       sample_rate: 48000
       num_channels: 1
       sources:
-        - sendspin_media_source
         - speaker_media_http_source
     announcement_pipeline:
       speaker: speaker_announcement_resampler
@@ -88,14 +94,46 @@ media_player:
     on_announcement:
       - switch.turn_on: speaker_amplifier
     on_idle:
+      - script.execute: speaker_amplifier_off_if_unused
+    on_pause:
+      - script.execute: speaker_amplifier_off_if_unused
+
+  - platform: speaker_source
+    id: sendspin_speaker_player
+    internal: true
+    media_pipeline:
+      speaker: speaker_sendspin_resampler
+      format: NONE
+      sample_rate: 48000
+      num_channels: 1
+      sources:
+        - sendspin_media_source
+    on_play:
+      - switch.turn_on: speaker_amplifier
+    on_idle:
+      - script.execute: speaker_amplifier_off_if_unused
+    on_pause:
+      - script.execute: speaker_amplifier_off_if_unused
+
+script:
+  - id: speaker_amplifier_off_if_unused
+    mode: restart
+    then:
       - delay: 500ms
       - if:
           condition:
-            media_player.is_idle: device_speaker
+            and:
+              - not:
+                  media_player.is_playing: device_speaker
+              - not:
+                  media_player.is_announcing: device_speaker
+              - not:
+                  media_player.is_playing: sendspin_speaker_player
+              - not:
+                  media_player.is_announcing: sendspin_speaker_player
           then:
             - switch.turn_off: speaker_amplifier
-    on_pause:
-      - switch.turn_off: speaker_amplifier
+
 switch:
   - platform: gpio
     id: speaker_amplifier
