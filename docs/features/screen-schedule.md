@@ -42,6 +42,8 @@ The on time is included, and the off time is not included. For example, **6:00 A
 
 Overnight schedules also work. For example, **8:00 PM** to **7:00 AM** keeps the screen on through the night and turns it off during the day.
 
+When the scheduled **Clock** period ends, an idle panel goes directly to its normal screensaver action. For example, a night clock with **Screen Off** as the daytime screensaver turns off at the daytime boundary without brightening the dashboard for another idle timeout. A temporary touch wake, detected screensaver presence, or media sleep prevention still allows the panel to stay awake.
+
 If the on and off times are the same, the schedule is treated as always on.
 
 ## Manual Wake and Sleep
