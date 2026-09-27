@@ -16,10 +16,6 @@ integrations such as Music Assistant. Home Assistant resolves the selected
 item and sends its audio stream to the speaker; the device does not need a
 separate account or connection to each music service.
 
-Home Assistant also exposes a “Speaker Volume” slider for automations and
-direct control. It stays in sync with volume changes made from the media player
-or Music Assistant and is capped at 80% to keep headroom for the small speaker.
-
 The speaker also connects to Music Assistant as a native Sendspin player. It is
 discovered automatically when Music Assistant and the panel are on the same
 network; no separate Music Assistant player provider setup is required.
