@@ -137,9 +137,7 @@ export function createConfigDateTimeOptionsFeature(dependencies: ConfigDateTimeO
             idSuffix: "large-date-time-numbers",
             supportedCardSize: function (button?: any, helpers?: any) {
                 const cardSize = (helpers && helpers.cardSize) || CARD_SIZE_SINGLE;
-                return dateTimeCardMode(button) === "clock"
-                    ? cardSize === CARD_SIZE_WIDE || cardSize === CARD_SIZE_LARGE || cardSizeDefinition(cardSize).colSpan > 2
-                    : cardSize === CARD_SIZE_LARGE;
+                return dateTimeCardMode(button) === "clock" || cardSize === CARD_SIZE_LARGE;
             },
             defaultEnabled: function (button?: any, helpers?: any) {
                 const cardSize = (helpers && helpers.cardSize) || CARD_SIZE_SINGLE;

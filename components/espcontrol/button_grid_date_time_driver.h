@@ -107,7 +107,11 @@ inline bool date_time_driver_refresh_layout(
   const bool large_numbers = card_large_numbers_supported(config) &&
     !card_large_numbers_disabled(config) &&
     (large_layout || card_large_numbers_enabled(config));
-  if (!large_layout || !large_numbers || !display_large_sensor_font(display)) {
+  const bool explicitly_large_clock =
+    context.runtime.type == card_runtime::CardTypeId::CLOCK &&
+    card_large_numbers_enabled(config);
+  if ((!large_layout && !explicitly_large_clock) ||
+      !large_numbers || !display_large_sensor_font(display)) {
     return true;
   }
 
