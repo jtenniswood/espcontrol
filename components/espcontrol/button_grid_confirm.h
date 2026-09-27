@@ -60,6 +60,10 @@ inline void switch_confirmation_confirm() {
     send_action_card_action(ui.cfg);
   } else if (is_garage_command) {
     send_cover_command_action(ui.cfg);
+  } else if (is_cover_entity(ui.cfg.entity)) {
+    // Garage and generic toggle cards treat open as on. Preserve the direction
+    // chosen before confirmation instead of sending an unsupported turn_on/off.
+    send_cover_command_action(ui.cfg.entity, ui.turn_on ? "open" : "close");
   } else if (!ui.cfg.entity.empty()) {
     if (ui.turn_on) send_turn_on_action(ui.cfg.entity);
     else send_turn_off_action(ui.cfg.entity);
