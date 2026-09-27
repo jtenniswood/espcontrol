@@ -191,6 +191,7 @@ int main() {
   }
   auto four = cover_art_layout("guition-esp32-p4-jc4880p443", "90", 800, 480, 480, 220);
   assert(four.screen_width == 800);
+  assert(playback_button_layout(four).size == 112);
   // Three 69px title lines leave room for artist and elapsed time above the
   // playback control in both landscape rotations of the 4.3-inch display.
   for (const auto &rotation : {"90", "270"}) {
@@ -209,6 +210,7 @@ int main() {
   }
   auto square = cover_art_layout("esp32-p4-86", "0", 720, 720, 800, 495);
   assert(!square.split && square.art_size == 720 && square.panel_padding == 36);
+  assert(playback_button_layout(square).size == 144);
   for (const auto &slug : {"guition-esp32-s3-4848s040", "esp32-p4-86"}) {
     const bool s3 = std::string(slug) == "guition-esp32-s3-4848s040";
     const int side = s3 ? 480 : 720;
@@ -235,7 +237,7 @@ int main() {
        cover_art_layout("guition-esp32-s3-4848s040", "0", 480, 480, 480, 330),
        cover_art_layout("guition-esp32-p4-jc4880p443", "0", 480, 800, 480, 130)}) {
     const auto button = playback_button_layout(layout);
-    assert(button.size >= 80 && button.size <= 112);
+    assert(button.size >= 80 && button.size <= 144);
     assert(button.panel_width > 0 && button.panel_height > 0 && button.title_max_height > 0);
     const int button_x = layout.screen_width - button.margin - button.size;
     const int button_y = layout.screen_height - button.margin - button.size;

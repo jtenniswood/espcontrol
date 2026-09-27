@@ -410,10 +410,10 @@ struct PlaybackButtonLayout {
 inline PlaybackButtonLayout playback_button_layout(const Layout &layout, int title_line_height = 0,
                                                    int title_line_space = 0) {
   const int short_side = std::min(layout.screen_width, layout.screen_height);
-  const int reserved_size = std::clamp(short_side / 5, 80, 112);
+  const int default_size = std::clamp(short_side / 5, 80, 112);
   const int size = layout.screen_width == 720 && layout.screen_height == 720
       ? 144
-      : short_side == 480 && layout.split ? 120 : reserved_size;
+      : short_side == 480 && layout.split ? 112 : default_size;
   const int margin = std::clamp(short_side / 20, 24, 40);
   int width = layout.panel_width;
   int height = layout.panel_height;
@@ -421,15 +421,15 @@ inline PlaybackButtonLayout playback_button_layout(const Layout &layout, int tit
   if (layout.title_max_lines > 0) {
     // Panels with a line budget keep room for artist/time.
     // Use the space above the button without reserving a second full margin.
-    height = std::min(height, layout.screen_height - reserved_size - margin - layout.panel_y);
+    height = std::min(height, layout.screen_height - size - margin - layout.panel_y);
     if (title_line_height > 0) title_height = layout.title_max_lines * title_line_height +
         (layout.title_max_lines - 1) * title_line_space;
   } else if (layout.split && layout.screen_height > layout.screen_width) {
     // Portrait metadata and controls share the area below the artwork.
-    width = std::min(width, layout.screen_width - reserved_size - 2 * margin - layout.panel_x);
+    width = std::min(width, layout.screen_width - size - 2 * margin - layout.panel_x);
   } else {
     // Square/landscape screens reserve a band below the metadata.
-    height = std::min(height, layout.screen_height - reserved_size - 2 * margin - layout.panel_y);
+    height = std::min(height, layout.screen_height - size - 2 * margin - layout.panel_y);
     title_height = std::max(1, title_height - (layout.panel_height - height));
   }
   // The button's reserved band supplies the bottom spacing on square screens.
