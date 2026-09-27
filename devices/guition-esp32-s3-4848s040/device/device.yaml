@@ -39,6 +39,8 @@ esp32:
       # Keep WiFi startup inside the internal-RAM budget after the RGB display
       # and LVGL buffers are initialized.
       CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM: "8"
+      # The static RX pool of eight requires an RX BA window of at most 16.
+      CONFIG_ESP_WIFI_RX_BA_WIN: "16"
       CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
       # Route ordinary allocations larger than 4 KiB to PSRAM while keeping
       # a 32 KiB internal reserve for DMA and cache-disabled operations.
@@ -65,7 +67,7 @@ external_components:
       url: ${espcontrol_component_url}
       ref: ${espcontrol_component_ref}
       path: components
-    components: [espcontrol, web_server_idf, artwork_image, mipi_rgb]
+    components: [espcontrol, web_server_idf, artwork_image, mipi_rgb, sendspin]
     refresh: 1s
 
 espcontrol:
@@ -244,6 +246,7 @@ api:
 # GPIO19/20 are used by the touchscreen/display path, so USB_SERIAL_JTAG
 # stops working once the application starts.
 logger:
+  baud_rate: 0
   hardware_uart: UART0
 
 wifi:

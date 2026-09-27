@@ -19,6 +19,8 @@ Use a [Media card](/card-types/media) with a `media_player` entity. Playback, vo
 
 For multiple speakers, follow [Speaker Groups](/features/speaker-groups) and confirm the players can join in Home Assistant first. For a dedicated album-art display, use [Media Cover Art](/features/media-cover-art). Existing users of the older controller can follow the [migration guide](/getting-started/migrate-esphome-media-player).
 
+To play audio directly from a supported panel, see [Speaker Playback](/guides/speaker-playback) for the supported P4 speaker output and S3 external-amplifier wiring.
+
 ## Show a Camera or Doorbell Snapshot
 
 Add a [Camera card](/card-types/cameras) for a Home Assistant `camera` or `image` entity. The panel shows still snapshots, not live video. S3 panels have two shared image slots; P4 panels have six, shared with Media Cover Art across all pages.
