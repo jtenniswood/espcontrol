@@ -257,6 +257,7 @@ light:
 # I2C bus and touchscreen (GT911 capacitive, wakes screensaver on touch)
 # ---------------------------------------------------------------------------
 i2c:
+  id: bus_a
   sda: GPIO7
   scl: GPIO8
   scan: false

@@ -11,6 +11,7 @@ substitutions:
   device_slug: "guition-esp32-p4-jc1060p470"
   firmware_manifest_slug: "guition-esp32-p4-jc1060p470"
   firmware_version: "dev"
+  speaker_amplifier_pin: "GPIO11"
   screensaver_camera_supported: "true"
   screen_width: "1024"
   screen_height: "600"
@@ -95,6 +96,7 @@ packages:
   # ---------------------------------------------------------------------------
   entity_names:    !include ../../common/config/entity_names.yaml
   device:          !include device/device.yaml
+  speaker_output:  !include ../../common/device/speaker_output_p4.yaml
   network_coprocessor: !include device/network_coprocessor${network_package_suffix}.yaml
   esp32_c6_firmware_update: !include ../../common/device/esp32_c6_firmware_update${esp32_c6_firmware_update_package_suffix}.yaml
   icons:           !include ../../common/assets/icons.yaml

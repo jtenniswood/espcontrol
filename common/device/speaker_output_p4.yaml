@@ -1,0 +1,84 @@
+# Shared ES8311 speaker output for Guition ESP32-P4 panels.
+# Board packages provide the amplifier-enable pin for their hardware revision.
+
+i2s_audio:
+  - id: speaker_i2s
+    i2s_lrclk_pin: GPIO10
+    i2s_bclk_pin: GPIO12
+    i2s_mclk_pin: GPIO13
+
+audio_dac:
+  - platform: es8311
+    id: speaker_dac
+    i2c_id: bus_a
+    address: 0x18
+    bits_per_sample: 16bit
+    sample_rate: 48000
+    use_mclk: true
+
+speaker:
+  - platform: i2s_audio
+    id: speaker_output
+    i2s_audio_id: speaker_i2s
+    i2s_dout_pin: GPIO9
+    dac_type: external
+    audio_dac: speaker_dac
+    channel: mono
+    sample_rate: 48000
+    bits_per_sample: 16bit
+    buffer_duration: 300ms
+
+  - platform: mixer
+    id: speaker_mixer
+    output_speaker: speaker_output
+    source_speakers:
+      - id: speaker_announcement_input
+      - id: speaker_media_input
+
+  - platform: resampler
+    id: speaker_announcement_resampler
+    output_speaker: speaker_announcement_input
+    sample_rate: 48000
+    bits_per_sample: 16bit
+
+  - platform: resampler
+    id: speaker_media_resampler
+    output_speaker: speaker_media_input
+    sample_rate: 48000
+    bits_per_sample: 16bit
+
+media_player:
+  - platform: speaker
+    id: device_speaker
+    name: "${friendly_name} Speaker"
+    icon: mdi:speaker
+    volume_min: 0.0
+    volume_max: 0.8
+    task_stack_in_psram: true
+    buffer_size: 1000000
+    announcement_pipeline:
+      speaker: speaker_announcement_resampler
+      format: FLAC
+      sample_rate: 48000
+      num_channels: 1
+    media_pipeline:
+      speaker: speaker_media_resampler
+      format: FLAC
+      sample_rate: 48000
+      num_channels: 2
+    on_play:
+      - switch.turn_on: speaker_amplifier
+    on_announcement:
+      - switch.turn_on: speaker_amplifier
+    on_idle:
+      - delay: 500ms
+      - switch.turn_off: speaker_amplifier
+
+switch:
+  - platform: gpio
+    id: speaker_amplifier
+    name: "${friendly_name} Speaker Amplifier"
+    icon: mdi:speaker
+    pin: ${speaker_amplifier_pin}
+    restore_mode: ALWAYS_OFF
+    internal: true

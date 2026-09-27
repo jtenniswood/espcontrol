@@ -89,6 +89,7 @@ packages:
   # ---------------------------------------------------------------------------
   entity_names:    !include ../../common/config/entity_names.yaml
   device:          !include device/device.yaml
+  speaker_output:  !include ../../common/device/speaker_output_s3_external.yaml
   icons:           !include ../../common/assets/icons.yaml
   fonts_device:    !include device/fonts.yaml
   button_theme:    !include ../../common/theme/button.yaml

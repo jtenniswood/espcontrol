@@ -11,6 +11,7 @@ substitutions:
   device_slug: "guition-esp32-p4-jc8012p4a1-v2"
   firmware_manifest_slug: "guition-esp32-p4-jc8012p4a1-v2"
   firmware_version: "dev"
+  speaker_amplifier_pin: "GPIO20"
   screensaver_camera_supported: "true"
   screen_width: "1280"
   screen_height: "800"
@@ -89,6 +90,7 @@ packages:
   # ---------------------------------------------------------------------------
   entity_names:    !include ../../common/config/entity_names.yaml
   device:          !include device/device.yaml
+  speaker_output:  !include ../../common/device/speaker_output_p4.yaml
   esp32_c6_firmware_update: !include ../../common/device/esp32_c6_firmware_update.yaml
   icons:           !include ../../common/assets/icons.yaml
   fonts_device:    !include device/fonts.yaml
