@@ -105,10 +105,10 @@ font:
       - " dhms"
 
   # Large sensor values
-  - file: "gfonts://Roboto@Thin"
+  - file: "gfonts://Roboto@Light"
     id: font_number_value_large
     size: 138
-    bpp: 4
+    bpp: 2
     glyphs:
       - "0123456789.-°/%"
       - ":"

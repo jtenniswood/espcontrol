@@ -98,7 +98,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-date-time-wide-large{justify-content:center;align-items:center}" +
         ".sp-clock-wide-large{justify-content:flex-start;align-items:center}" +
         ".sp-clock-wide-large.sp-clock-centered{justify-content:center}" +
-        ".sp-clock-wide-large .sp-sensor-value{font-family:Roboto,sans-serif;font-weight:100}" +
+        ".sp-clock-wide-large .sp-sensor-value{font-family:Roboto,sans-serif;font-weight:300}" +
         ".sp-forecast-preview{white-space:nowrap;gap:0}" +
         ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
         ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:#fff}" +
