@@ -11,7 +11,6 @@ substitutions:
   device_slug: "guition-esp32-p4-jc1060p470-v2"
   firmware_manifest_slug: "guition-esp32-p4-jc1060p470-v2"
   firmware_version: "dev"
-  speaker_amplifier_pin: "GPIO11"
   screensaver_camera_supported: "true"
   screen_width: "1024"
   screen_height: "600"
@@ -44,6 +43,7 @@ substitutions:
   screen_saver_clock_default_brightness: "35"
   screen_schedule_clock_min_brightness: "1"
   screen_schedule_clock_default_brightness: "10"
+  speaker_amplifier_pin: "GPIO11"
   network_transport: "wifi"
   disable_updates: "false"
   network_package_suffix: ${ "_ethernet" if network_transport == "ethernet" else "" }
@@ -96,7 +96,6 @@ packages:
   # ---------------------------------------------------------------------------
   entity_names:    !include ../../common/config/entity_names.yaml
   device:          !include device/device.yaml
-  speaker_output:  !include ../../common/device/speaker_output_p4.yaml
   network_coprocessor: !include device/network_coprocessor${network_package_suffix}.yaml
   esp32_c6_firmware_update: !include ../../common/device/esp32_c6_firmware_update${esp32_c6_firmware_update_package_suffix}.yaml
   icons:           !include ../../common/assets/icons.yaml
@@ -140,6 +139,7 @@ packages:
   network:         !include ../../common/addon/network${network_package_suffix}.yaml
   memory_diag:     !include ../../common/addon/memory_diagnostics.yaml
   fw_update:       !include ../../common/addon/firmware_update${firmware_update_package_suffix}.yaml
+  speaker_output:  !include ../../common/device/speaker_output_p4.yaml
 
   # ---------------------------------------------------------------------------
   # Screens (loading must be first page for LVGL startup)

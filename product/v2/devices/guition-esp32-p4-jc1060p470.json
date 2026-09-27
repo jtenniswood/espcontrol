@@ -15,14 +15,21 @@
     "public": {
       "name": "Guition JC1060P470",
       "docsPath": "/screens/jc1060p470"
+    },
+    "firmware": {
+      "package": {
+        "substitutions": {
+          "speaker_amplifier_pin": "\"GPIO11\""
+        },
+        "extraPackages": {
+          "speaker_output": "!include ../../common/device/speaker_output_p4.yaml"
+        }
+      }
     }
   },
   "overrides": {
     "firmware": {
       "package": {
-        "substitutions": {
-          "clock_font_size": "\"140\""
-        },
         "backlightPwmFrequency": {
           "wifi": "1000Hz",
           "ethernet": "20000Hz"

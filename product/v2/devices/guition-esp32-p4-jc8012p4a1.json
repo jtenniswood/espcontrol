@@ -15,16 +15,11 @@
     "firmware": {
       "package": {
         "extraPackages": {
-          "battery": "!include device/battery.yaml"
-        }
-      }
-    }
-  },
-  "overrides": {
-    "firmware": {
-      "package": {
+          "battery": "!include device/battery.yaml",
+          "speaker_output": "!include ../../common/device/speaker_output_p4.yaml"
+        },
         "substitutions": {
-          "clock_font_size": "\"160\""
+          "speaker_amplifier_pin": "\"GPIO20\""
         }
       }
     }
