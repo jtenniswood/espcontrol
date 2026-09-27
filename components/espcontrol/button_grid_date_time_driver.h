@@ -119,7 +119,7 @@ inline bool date_time_driver_refresh_layout(
     slot, display_large_sensor_font(display),
     display_large_sensor_unit_offset_percent(display));
   if (context.runtime.type == card_runtime::CardTypeId::CLOCK &&
-      (card_span_is_wide(row_span, col_span) || col_span > CARD_SIZE_WIDE_COL_SPAN)) {
+      col_span > CARD_SIZE_WIDE_COL_SPAN) {
     const lv_align_t align = cfg_option_token_present(config.options, "center_clock")
       ? LV_ALIGN_CENTER
       : LV_ALIGN_LEFT_MID;

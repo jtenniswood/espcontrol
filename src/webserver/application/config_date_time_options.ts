@@ -102,6 +102,28 @@ export function createConfigDateTimeOptionsFeature(dependencies: ConfigDateTimeO
         }
     }
 
+    function dateTimeCardDateParts(this: any) {
+        try {
+            const options: any = {
+                timeZone: dependencies.timezoneId(dependencies.effectiveTimezoneOption(dependencies.state.timezone || "UTC")),
+                day: "numeric",
+                month: "numeric",
+            };
+            const parts = new Intl.DateTimeFormat("en-US", options).formatToParts(dependencies.now());
+            let day = "";
+            let month = "";
+            for (const part of parts) {
+                if (part.type === "day") day = part.value;
+                else if (part.type === "month") month = part.value;
+            }
+            if (!day || !month) return { day: "--", month: "Date" };
+            return { day, month: dependencies.monthNameForIndex(Number(month) - 1) };
+        }
+        catch (_error) {
+            return { day: "--", month: "Date" };
+        }
+    }
+
     function timezoneCardCityLabel(this: any, timezoneOption?: any) {
         const timezoneId = dependencies.timezoneId(dependencies.effectiveTimezoneOption(timezoneOption || ""));
         if (!timezoneId) return "World Clock";
@@ -143,8 +165,9 @@ export function createConfigDateTimeOptionsFeature(dependencies: ConfigDateTimeO
             defaultEnabled: function (button?: any, helpers?: any) {
                 const cardSize = (helpers && helpers.cardSize) || CARD_SIZE_SINGLE;
                 const colSpan = cardSizeDefinition(cardSize).colSpan;
-                return dateTimeCardMode(button) === "clock" &&
-                    (cardSize === CARD_SIZE_WIDE || cardSize === CARD_SIZE_LARGE || colSpan > 2);
+                return cardSize === CARD_SIZE_LARGE ||
+                    (dateTimeCardMode(button) === "clock" &&
+                        (cardSize === CARD_SIZE_WIDE || colSpan > 2));
             },
             hideLabel: function (_button?: any, helpers?: any) {
                 return ((helpers && helpers.cardSize) || CARD_SIZE_SINGLE) === CARD_SIZE_WIDE;
@@ -164,6 +187,7 @@ export function createConfigDateTimeOptionsFeature(dependencies: ConfigDateTimeO
     return {
         appendTimezoneOption: dependencies.appendTimezoneOption,
         dateTimeCardMode,
+        dateTimeCardDateParts,
         dateTimeCardTimeParts,
         dateTimeLargeNumbersLabel,
         dateTimeModeOptionValues,

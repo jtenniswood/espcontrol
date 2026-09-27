@@ -729,6 +729,18 @@ const dateTimePreview = hooks.buttonTypePreviewFor("calendar", {
 assert(dateTimePreview.iconHtml.includes("sp-sensor-preview-large"), "date/time 2x2 preview defaults to large numbers");
 assert(previewSensorValue(dateTimePreview).includes(":"), "date/time preview renders a time value");
 
+const timezoneDateTimePreview = hooks.buttonTypePreviewForMockNow("calendar", {
+  type: "calendar",
+  precision: "datetime",
+  options: "",
+}, {
+  timezone: "Pacific/Honolulu",
+  language: "en",
+  clockFormat: "24h",
+});
+assert(previewSensorValue(timezoneDateTimePreview).startsWith("23:00"), "date/time preview formats its time in the panel timezone");
+assert(timezoneDateTimePreview.labelHtml.includes("31 December"), "date/time preview formats its date in the panel timezone");
+
 const wideDateTimePreview = hooks.buttonTypePreviewFor("calendar", {
   type: "calendar",
   precision: "datetime",
@@ -751,7 +763,7 @@ const clockPreview = hooks.buttonTypePreviewFor("clock", {
 assert(previewSensorValue(clockPreview).includes(":"), "clock preview renders a time value");
 assert(clockPreview.iconHtml.includes("sp-sensor-preview-large"), "clock 2x2 preview defaults to large numbers");
 assert.strictEqual(clockPreview.labelHtml, "", "clock preview does not render a date label");
-assert.strictEqual(clockPreview.buttonClass, undefined, "clock 2x2 preview uses the standard wrapper");
+assert.strictEqual(clockPreview.buttonClass, "sp-clock-large", "clock 2x2 preview uses the large clock wrapper");
 
 const wideClockPreview = hooks.buttonTypePreviewFor("clock", {
   type: "clock",
@@ -761,7 +773,7 @@ const wideClockPreview = hooks.buttonTypePreviewFor("clock", {
   clockFormat: "24h",
 });
 assert(wideClockPreview.iconHtml.includes("sp-sensor-preview-large"), "clock wide preview supports large numbers");
-assert.strictEqual(wideClockPreview.buttonClass, "sp-clock-wide-large", "clock wide large preview is left aligned");
+assert.strictEqual(wideClockPreview.buttonClass, "sp-clock-large sp-clock-left-mid", "clock wide large preview is left aligned");
 assert.strictEqual(wideClockPreview.labelHtml, "", "clock wide preview does not render a date label");
 
 const timezonePreview = hooks.buttonTypePreviewFor("timezone", {

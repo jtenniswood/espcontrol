@@ -47,7 +47,7 @@ export function registerClockCardTypes(
             helpers.renderCardModeSelector(panel, b, helpers, metadata);
             helpers.renderCardLargeNumbersToggle(panel, b, helpers, metadata);
             const centerClock: any = (metadata as any).centerClock || {};
-            if (centerClock.supportedCardSize(b, helpers)) {
+            if (centerClock.supportedCardSize(b, helpers) && cardLargeNumbersActiveForCardSize(b, helpers, metadata)) {
                 const centerToggle: any = helpers.toggleRow(
                     centerClock.label,
                     helpers.idPrefix + centerClock.idSuffix,
