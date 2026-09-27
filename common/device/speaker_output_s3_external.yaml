@@ -1,5 +1,5 @@
 # Optional external I2S amplifier output for ESP32-S3 panels without a free
-# onboard audio path. Connect BCLK to GPIO41, LRCLK to GPIO42, DOUT to GPIO47,
+# onboard audio path. Connect BCLK to GPIO41, LRCLK to GPIO42, DOUT to GPIO43,
 # and provide power and ground to the external I2S DAC/amplifier.
 i2s_audio:
   - id: speaker_i2s
@@ -10,7 +10,7 @@ speaker:
   - platform: i2s_audio
     id: speaker_output
     i2s_audio_id: speaker_i2s
-    i2s_dout_pin: GPIO47
+    i2s_dout_pin: GPIO43
     dac_type: external
     channel: mono
     sample_rate: 48000
@@ -59,7 +59,7 @@ media_player:
     volume_max: 0.8
     media_pipeline:
       speaker: speaker_media_resampler
-      format: FLAC
+      format: NONE
       sample_rate: 48000
       num_channels: 1
       sources:

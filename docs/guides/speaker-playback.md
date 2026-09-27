@@ -28,9 +28,12 @@ needed.
 
 The 4848S040 uses its relay GPIOs for the onboard I2S amplifier, so this setup
 keeps the relays available and uses an external I2S amplifier instead. Connect
-the external amplifier's BCLK to GPIO41, LRCLK to GPIO42, DOUT to GPIO47, and
-connect its power and ground as required by the amplifier. Connect a speaker
-to the amplifier output.
+the external amplifier's BCLK to GPIO41 and LRCLK to GPIO42. Connect the
+panel's DOUT on GPIO43 to the amplifier's DIN input, then connect power and
+ground as required by the amplifier. Connect a speaker to the amplifier output.
+
+GPIO43 is shared with UART0 transmit, so serial log output is disabled on this
+profile when speaker playback is enabled.
 
 The onboard amplifier path requires hardware changes and reassigning the relay
 GPIOs. The default firmware does not make that change.
