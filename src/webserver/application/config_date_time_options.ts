@@ -76,16 +76,30 @@ export function createConfigDateTimeOptionsFeature(dependencies: ConfigDateTimeO
         dependencies.renderButtonSettings();
     }
 
-    function dateTimeCardTimeParts(this: any) {
-        const now = dependencies.now();
+    function formattedTimeParts(this: any, timezoneOption: string) {
         const use12h = dependencies.state.clockFormat === "12h";
-        const hour = now.getUTCHours();
-        const minute = String(now.getUTCMinutes()).padStart(2, "0");
-        if (use12h) {
-            const hour12 = hour % 12 || 12;
-            return { value: String(hour12) + ":" + minute, unit: "" };
+        const timezoneId = dependencies.timezoneId(dependencies.effectiveTimezoneOption(timezoneOption));
+        const options: any = { timeZone: timezoneId, hour: "numeric", minute: "2-digit" };
+        if (use12h) options.hour12 = true;
+        else options.hourCycle = "h23";
+        const parts = new Intl.DateTimeFormat("en-US", options).formatToParts(dependencies.now());
+        let hour = "";
+        let minute = "";
+        for (const part of parts) {
+            if (part.type === "hour") hour = part.value;
+            else if (part.type === "minute") minute = part.value;
         }
-        return { value: String(hour).padStart(2, "0") + ":" + minute, unit: "" };
+        if (!hour || !minute) return { value: "--:--", unit: "" };
+        return { value: (use12h ? hour : hour.padStart(2, "0")) + ":" + minute, unit: "" };
+    }
+
+    function dateTimeCardTimeParts(this: any) {
+        try {
+            return formattedTimeParts(dependencies.state.timezone || "UTC");
+        }
+        catch (_error) {
+            return { value: "--:--", unit: "" };
+        }
     }
 
     function timezoneCardCityLabel(this: any, timezoneOption?: any) {
@@ -96,21 +110,8 @@ export function createConfigDateTimeOptionsFeature(dependencies: ConfigDateTimeO
     }
 
     function timezoneCardTimeParts(this: any, timezoneOption?: any) {
-        const use12h = dependencies.state.clockFormat === "12h";
-        const timezoneId = dependencies.timezoneId(dependencies.effectiveTimezoneOption(timezoneOption || "UTC"));
         try {
-            const options: any = { timeZone: timezoneId, hour: "numeric", minute: "2-digit" };
-            if (use12h) options.hour12 = true;
-            else options.hourCycle = "h23";
-            const parts = new Intl.DateTimeFormat("en-US", options).formatToParts(dependencies.now());
-            let hour = "";
-            let minute = "";
-            for (const part of parts) {
-                if (part.type === "hour") hour = part.value;
-                else if (part.type === "minute") minute = part.value;
-            }
-            if (!hour || !minute) return { value: "--:--", unit: "" };
-            return { value: (use12h ? hour : hour.padStart(2, "0")) + ":" + minute, unit: "" };
+            return formattedTimeParts(timezoneOption || "UTC");
         }
         catch (_error) {
             return { value: "--:--", unit: "" };
