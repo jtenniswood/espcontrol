@@ -50,12 +50,12 @@ the last six MAC-address characters), and open `http://192.168.4.1` to enter
 Wi-Fi credentials.
 The captive portal can configure Wi-Fi but cannot upload firmware.
 
-Automatic P4 and C6 updates start off, including after a reboot. Leave them off
-for this experiment. The P4 manifest points to an unpublished test channel;
-update checks may report an unavailable manifest. The reused web UI may list V2
-releases, but browser uploads are blocked with HTTP 403, including the fallback
-upload route. Use only branch-built USB images or native ESPHome OTA updates.
-No C6 recovery image is built or installed.
+Automatic P4 and C6 updates start on by default and retain their setting across
+reboots. The P4 manifest points to an unpublished test channel, so update checks
+may report an unavailable manifest. The reused web UI may list V2 releases, but
+browser uploads are blocked with HTTP 403, including the fallback upload route.
+Use only branch-built USB images or native ESPHome OTA updates. No C6 recovery
+image is built or installed.
 
 ## Manual ESPHome configuration / native OTA
 

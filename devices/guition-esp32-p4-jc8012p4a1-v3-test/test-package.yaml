@@ -29,13 +29,6 @@ external_components:
     components: [mipi_dsi]
     refresh: 1s
 
-switch:
-  - id: !extend auto_update_switch
-    restore_mode: ALWAYS_OFF
-  # Preserve the working C6 firmware throughout the initial hardware test.
-  - id: !extend c6_auto_update_switch
-    restore_mode: ALWAYS_OFF
-
 web_server:
   ota: false
   # Load the complete branch editor: the release-manifest bridge rejects dev-v3-*

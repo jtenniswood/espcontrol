@@ -342,7 +342,7 @@ def test_v3_release_configuration() -> None:
     assert "ref: ${espcontrol_component_ref}" in package, "V3 MIPI source must use the configured component ref"
     assert "components: [mipi_dsi]" in package, "V3 must retain the patched MIPI component"
     assert "web_server:\n  ota: false" in package, "V3 browser firmware uploads must be disabled"
-    assert package.count("restore_mode: ALWAYS_OFF") >= 2, "V3 update switches must default off"
+    assert "restore_mode: ALWAYS_OFF" not in package, "V3 firmware update switches must use shared defaults"
     assert "espcontrol_component_url: \"file:///config\"" in factory
     assert "espcontrol_component_ref: \"HEAD\"" in factory
     assert 'js_include: "../docs/public/webserver/embedded/www.js"' in factory

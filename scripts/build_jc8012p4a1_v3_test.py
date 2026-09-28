@@ -75,7 +75,7 @@ def main() -> None:
     assert "esphome::ESPHomeOTAComponent" in generated
     assert "->set_port(3232)" in generated
     for switch_id in ("auto_update_switch", "c6_auto_update_switch"):
-        assert f"{switch_id}->set_restore_mode(switch_::SWITCH_ALWAYS_OFF);" in generated
+        assert f"{switch_id}->set_restore_mode(switch_::SWITCH_ALWAYS_OFF);" not in generated
     assert f"/firmware/{SLUG}/manifest.json" in generated
     assert "/firmware/guition-esp32-p4-jc8012p4a1-v2/manifest.json" not in generated
 

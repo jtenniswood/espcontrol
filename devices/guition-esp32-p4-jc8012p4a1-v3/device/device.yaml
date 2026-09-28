@@ -1,5 +1,5 @@
 # =============================================================================
-# DEVICE - Guition ESP32-P4 JC8012P4A1 V2 hardware definition
+# DEVICE - Guition ESP32-P4 JC8012P4A1 V3 hardware definition
 # =============================================================================
 # Pin assignments, peripherals, and platform config for the 10.1" touch panel.
 # Includes the ESP32-P4 main SoC, ESP32-C6 hosted WiFi co-processor, MIPI
@@ -352,7 +352,7 @@ touchscreen:
       - script.execute: cover_art_handle_touch
 
 # ---------------------------------------------------------------------------
-# Display (10.1" V2/new-panel 800x1280 native MIPI DSI panel)
+# Display (10.1" V3 production-silicon 800x1280 native MIPI DSI panel)
 # ---------------------------------------------------------------------------
 display:
   - platform: mipi_dsi
