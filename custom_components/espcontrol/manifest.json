@@ -1,0 +1,20 @@
+{
+  "domain": "espcontrol",
+  "name": "EspControl",
+  "codeowners": ["@jtenniswood"],
+  "config_flow": true,
+  "dependencies": ["http"],
+  "documentation": "https://jtenniswood.github.io/espcontrol/",
+  "integration_type": "device",
+  "issue_tracker": "https://github.com/jtenniswood/espcontrol/issues",
+  "iot_class": "local_push",
+  "version": "0.1.0",
+  "zeroconf": [
+    {
+      "type": "_espcontrol._tcp.local.",
+      "properties": {
+        "protocol": "1*"
+      }
+    }
+  ]
+}

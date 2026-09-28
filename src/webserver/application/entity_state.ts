@@ -2,6 +2,7 @@ import { state } from "../state/app_instance";
 import { ENTITY_CATALOG } from "../generated/entity_catalog";
 import { entityStateKeys } from "../state/event_state";
 import type { ConfigConfirmationOptionsFeature } from "./config_confirmation_options";
+import type { EntityCatalogClient } from "./entity_catalog";
 
 type EntityDefinition = {
     readonly domain?: string;
@@ -17,10 +18,12 @@ export interface EntityStateDependencies {
     readonly totalSlots: () => number;
     readonly clockBarTemperatureEntities: () => any[];
     readonly textInput: (id: any, value: any, placeholder: any) => any;
+    readonly entityCatalog?: EntityCatalogClient;
 }
 
 export function createEntityStateFeature(dependencies: EntityStateDependencies) {
     const { actionCardStateEntity, clockBarTemperatureEntities } = dependencies;
+    const entityCatalog = dependencies.entityCatalog;
     // ── Entity State Helpers ───────────────────────────────────────────────
     function uniquePush(this: any, list?: any, value?: any) {
         if (value && list.indexOf(value) === -1)
@@ -240,6 +243,19 @@ export function createEntityStateFeature(dependencies: EntityStateDependencies) 
             dropdown.appendChild(option);
         });
         dropdown.classList.toggle("sp-open", document.activeElement === input && items.length > 0);
+        var remoteQuery: any = String(input.value || "").trim();
+        if (entityCatalog && !input._remoteEntityRequest && input._remoteEntityQuery !== remoteQuery) {
+            input._remoteEntityQuery = remoteQuery;
+            input._remoteEntityRequest = entityCatalog.search(String(input.value || ""), input._entityDomains || []).then(function (this: any, records?: any[]) {
+                input._remoteEntityRequest = null;
+                (records || []).forEach(function (this: any, record?: any) {
+                    rememberEntityName(record.entity_id, record.name);
+                });
+                refreshEntityDatalist(input);
+            }).catch(function (this: any) {
+                input._remoteEntityRequest = null;
+            });
+        }
     }
     function attachEntitySuggestions(this: any, input?: any, domains?: any) {
         if (!input || input._entitySuggestionsAttached)

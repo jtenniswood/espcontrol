@@ -35,6 +35,7 @@ usage documentation lives in the root `README.md` and under `docs/`.
 
 ## Subsystems
 
+- [Home Assistant Integration POC](home-assistant-integration-poc.md) - local discovery, pairing, entity catalog, and current limitations.
 - [Card Contract](card-contract.md)
 - [Generated Card Runtime Coverage](generated/card-runtime-coverage.md)
 - [Card Type Map](card-type-map.md)

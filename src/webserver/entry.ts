@@ -22,6 +22,7 @@ import { createScreenScheduleStateFeature } from "./application/screen_schedule_
 import { createAppearanceFeature } from "./application/appearance_state";
 import { createFirmwareVersionFeature } from "./application/firmware_version_state";
 import { createEntityStateFeature } from "./application/entity_state";
+import { createEntityCatalogClient } from "./application/entity_catalog";
 import { createClockBarFeature, type ClockBarFeature } from "./application/clock_bar_state";
 import { createFirmwareUpdateFeature, type FirmwareUpdateFeature } from "./application/firmware_update_state";
 import { createScreensaverTimeoutFeature } from "./application/screensaver_timeout";
@@ -329,11 +330,17 @@ function composeApplicationContext(): ApplicationContext {
   let confirmationOptions: ReturnType<typeof createConfigConfirmationOptionsFeature>;
   let clockBarState: ClockBarFeature;
   let statusPreview: AppStatusPreviewFeature;
+  let entityCatalogStorage: Storage | undefined;
+  try { entityCatalogStorage = dom.window.localStorage; } catch (_) { entityCatalogStorage = undefined; }
+  const entityCatalog = createEntityCatalogClient(entityCatalogStorage, dom.fetch);
+  const pairingHash = String(((dom.window as any).location || {}).hash || "").match(/^#espcontrol-pairing=([^&]+)$/);
+  if (pairingHash && pairingHash[1]) entityCatalog.importPairing(pairingHash[1]);
   const entityState = createEntityStateFeature({
     actionCardStateEntity: (button) => confirmationOptions.actionCardStateEntity(button),
     totalSlots: () => layout.totalSlots,
     clockBarTemperatureEntities: () => clockBarState.temperatureEntities(),
     textInput: (id, value, placeholder) => fields.textInput(id, value, placeholder),
+    entityCatalog,
   });
   const screenRotation = createScreenRotationFeature(runtime, layout, {
     applyButtonOrder: (value, skipSpanNormalization) => grid.applyButtonOrderValue(value, skipSpanNormalization),

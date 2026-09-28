@@ -12,6 +12,20 @@ esphome:
     - "-DLV_USE_BIDI=1"
     - '-DESPCONTROL_DEVICE_SLUG=\"${device_slug}\"'
 
+# Experimental discovery advertisement for the local EspControl integration.
+# ESPHome's normal `_esphomelib` service remains enabled for rollback and
+# existing installs; the additional service is what the POC config flow filters.
+mdns:
+  services:
+    - service: "_espcontrol"
+      protocol: "_tcp"
+      port: 6053
+      txt:
+        protocol: "1"
+        device_id: !lambda 'return get_mac_address();'
+        model: "${device_slug}"
+        web_port: "80"
+
 # This invisible widget enables LVGL's QR-code component in the configuration
 # ESPHome generates for every display. Build flags cannot enable LVGL features
 # because ESPHome's generated lv_conf.h deliberately overrides them.

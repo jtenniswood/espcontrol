@@ -1,0 +1,37 @@
+{
+  "services": {
+    "create_pairing_token": {
+      "name": "Create pairing token",
+      "description": "Create a short-lived catalogue credential for one EspControl display.",
+      "fields": {
+        "device_id": {
+          "name": "Device ID",
+          "description": "The stable device identifier shown during discovery."
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add EspControl display",
+        "description": "Enter the stable device ID and network address.",
+        "data": {
+          "device_id": "Device ID",
+          "host": "Host",
+          "port": "Port"
+        }
+      },
+      "confirm": {
+        "title": "Add EspControl display",
+        "description": "Do you want to add this EspControl display?"
+      }
+    },
+    "abort": {
+      "already_configured": "This display is already configured.",
+      "unsupported_protocol": "This display uses an unsupported protocol version.",
+      "missing_device_id": "The display did not provide a stable device ID.",
+      "invalid_device": "The display provided invalid discovery information."
+    }
+  }
+}

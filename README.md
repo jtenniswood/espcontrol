@@ -50,6 +50,19 @@ After that, the panel runs on its own. You can still change the layout at any ti
 
 Start here: [Install EspControl](https://jtenniswood.github.io/espcontrol/getting-started/install)
 
+## Experimental Home Assistant integration
+
+This repository also contains an experimental Home Assistant integration that
+can be installed through HACS as a custom repository. In HACS, open **Custom
+repositories**, add this GitHub repository, choose **Integration**, and install
+EspControl. Restart Home Assistant, then add the discovered EspControl device
+from **Settings → Devices & services**.
+
+The HACS package is a proof of concept for discovery, temporary pairing, and
+entity selection. It does not yet replace the ESPHome native state and action
+transport. Use the [integration notes](dev-docs/home-assistant-integration-poc.md)
+for the current protocol, limitations, and validation commands.
+
 ## Supported Screens
 
 EspControl supports several low-cost ESP32 touchscreens. Larger screens give you more room for controls; smaller screens are useful beside doors, on desks, or in individual rooms.

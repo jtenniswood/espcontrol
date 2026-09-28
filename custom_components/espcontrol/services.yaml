@@ -1,0 +1,10 @@
+create_pairing_token:
+  name: Create pairing token
+  description: Create a short-lived catalogue credential for one EspControl display.
+  fields:
+    device_id:
+      name: Device ID
+      description: The stable device identifier shown during discovery.
+      required: true
+      selector:
+        text:
