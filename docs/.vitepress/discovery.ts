@@ -11,7 +11,7 @@ export const redirects: Record<string, string> = {
   'card-types/weather-forecast': `${hostname}card-types/weather#temperatures-tomorrow`,
   'generated/cards/capabilities': `${hostname}reference/card-capabilities`,
   'generated/cards/runtime-coverage':
-    'https://github.com/jtenniswood/espcontrol/blob/main/dev-docs/generated/card-runtime-coverage.md',
+    `${hostname}reference/card-capabilities`,
   'generated/screens/4848s040-grid': `${hostname}screens/4848s040#card-grid`,
   'generated/screens/4848s040-install': `${hostname}screens/4848s040#install`,
   'generated/screens/jc1060p470-grid': `${hostname}screens/jc1060p470#card-grid`,
