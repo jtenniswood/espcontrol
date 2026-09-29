@@ -12,7 +12,7 @@
     "deviceProfiles": 8,
     "cardTypes": 43,
     "entityNames": 102,
-    "icons": 359,
+    "icons": 364,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
   },
@@ -8262,6 +8262,31 @@
         "name": "Folder Play",
         "codepoint": "F19FA",
         "mdi": "folder-play"
+      },
+      {
+        "name": "Folder Account Outline",
+        "codepoint": "F0B9C",
+        "mdi": "folder-account-outline"
+      },
+      {
+        "name": "Folder Home Outline",
+        "codepoint": "F10B6",
+        "mdi": "folder-home-outline"
+      },
+      {
+        "name": "Folder Key Outline",
+        "codepoint": "F10EC",
+        "mdi": "folder-key-outline"
+      },
+      {
+        "name": "Folder Open Outline",
+        "codepoint": "F0DCF",
+        "mdi": "folder-open-outline"
+      },
+      {
+        "name": "Folder Outline",
+        "codepoint": "F0256",
+        "mdi": "folder-outline"
       },
       {
         "name": "Fountain",
