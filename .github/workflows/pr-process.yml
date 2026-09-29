@@ -1,0 +1,25 @@
+name: PR Description
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-process-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-process:
+    # Keep the existing check name so it can be required independently of CI Gate.
+    name: PR Process
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Check PR documentation decision
+        run: python3 scripts/check_pr_process.py

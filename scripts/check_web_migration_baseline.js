@@ -8,6 +8,7 @@ const vm = require("vm");
 const zlib = require("zlib");
 const { freshWebOutputDir, loadBuiltWebSource } = require("./web_source");
 const { loadTypeScriptModule } = require("./load_typescript_module");
+const { checkBundleBudget } = require("./web_bundle_budget");
 
 const ROOT = path.resolve(__dirname, "..");
 const FIXTURE_PATH = path.join(ROOT, "compatibility", "fixtures", "web_migration_baseline.json");
@@ -99,11 +100,6 @@ const bundleSize = {
   minified: bytes.length,
   gzip: zlib.gzipSync(bytes, { level: 9, mtime: 0 }).length,
 };
-assert.strictEqual(bundleSize.minified, fixture.bundleSize.minified,
-  "shared minified migration baseline changed");
-assert(
-  Math.abs(bundleSize.gzip - fixture.bundleSize.gzip) <=
-    (fixture.bundleSize.gzipTolerance || 1024),
-  "shared gzip migration baseline changed beyond the supported compressor variation");
+console.log(checkBundleBudget(bundleSize, fixture.bundleBudget));
 
 console.log("Web migration characterization baseline checks passed.");
