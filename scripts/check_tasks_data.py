@@ -85,6 +85,8 @@ TASKS = (
              "tests/firmware/**",
              "common/addon/backlight.yaml",
              "common/addon/backlight_schedule.yaml",
+             "common/addon/time.yaml",
+             "components/espcontrol/sun_calc.h",
              "components/espcontrol/backlight.h",
              "components/espcontrol/display_mode_controller.h",
              "components/espcontrol/device_reset.*",
