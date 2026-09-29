@@ -1269,19 +1269,6 @@ def self_test() -> None:
     for task_id in ("config", "model-contract"):
         if "product/v2/product_compatibility.json" not in registry[task_id].inputs:
             raise AssertionError(f"{task_id} cache keys omit compatibility fixtures")
-    if not {
-        "common/**",
-        "components/**",
-        "compatibility/**",
-        "devices/**",
-        "package.json",
-        ".github/workflows/**",
-        "docs/**",
-        "product/**",
-        "scripts/**",
-        "src/**",
-    } <= set(registry["dev-docs"].inputs + registry["dev-docs"].cache_inputs):
-        raise AssertionError("dev-docs cache keys omit runtime validation inputs")
     if not {"c++", "g++", "clang++"} <= set(registry["firmware-parser"].cache_tools):
         raise AssertionError("firmware parser cache keys omit compiler tool versions")
     if "components/artwork_image/artwork_image.cpp" not in registry["cover-art-contract"].inputs:
@@ -1933,15 +1920,15 @@ def self_test() -> None:
     def task_ids(selected: list[Task]) -> set[str]:
         return {item.id for item in selected}
 
-    docs_selected, _, docs_fallback = changed_plan(["dev-docs/README.md"])
-    if docs_fallback is not None or not {"dev-docs", "docs-build"} <= task_ids(docs_selected):
+    docs_selected, _, docs_fallback = changed_plan(["docs/reference/contributing.md"])
+    if docs_fallback is not None or "docs-build" not in task_ids(docs_selected):
         raise AssertionError("docs-only changes do not select documentation checks")
 
     for maintainer_doc in ("README.md", "DEVELOPERS.md", "product/README.md"):
         maintainer_selected, _, maintainer_fallback = changed_plan([maintainer_doc])
         if (
             maintainer_fallback is not None
-            or not {"dev-docs", "docs-build"} <= task_ids(maintainer_selected)
+            or "docs-build" not in task_ids(maintainer_selected)
         ):
             raise AssertionError(f"{maintainer_doc} does not select maintainer documentation checks")
 

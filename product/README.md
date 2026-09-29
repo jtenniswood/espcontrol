@@ -7,10 +7,6 @@ profile in [`v2/`](v2/) while preserving the existing generated output.
 Generators and validators resolve their card and device inputs through this
 model, so later migrations change one controlled entry point.
 
-The hard internal edit/rebuild/check contract lives in
-[`dev-docs/source-of-truth.md`](../dev-docs/source-of-truth.md). Use that page
-when deciding what to edit and what must be regenerated.
-
 ## Authored Product Sources
 
 Edit these files when changing product behavior or supported hardware:

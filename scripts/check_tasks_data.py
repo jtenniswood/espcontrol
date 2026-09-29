@@ -63,7 +63,7 @@ PRODUCT = ("product", "fast", "ci", "all", "release")
 FAST = ("fast", "ci", "all")
 CI = ("ci", "all")
 RELEASE = ("release",)
-MAINTAINER_DOCS = ("dev-docs/**", "DEVELOPERS.md", "README.md", "product/README.md")
+MAINTAINER_DOCS = ("DEVELOPERS.md", "README.md", "product/README.md", "docs/**")
 WEB_SOURCE_HELPERS = ("scripts/web_source.js", "scripts/build_web_bundle.js")
 WEB_BUNDLE_INPUTS = ("devices/**", "common/addon/time.yaml")
 WEB_BUNDLE_BUILD_HELPERS = (
@@ -163,15 +163,6 @@ TASKS = (
          domains=("workflow",), inputs=("scripts/check_local_artifacts.py",), cache="never"),
     task("local-esphome", ("python3", "scripts/local_esphome.py", "--self-test"), profiles=FAST,
          domains=("firmware", "workflow"), inputs=("scripts/local_esphome.py",), cache="never"),
-    task("dev-docs", ("python3", "scripts/check_dev_docs.py", "--check"), profiles=FAST,
-         domains=("docs",), inputs=MAINTAINER_DOCS + (
-             "scripts/check_dev_docs.py", "package.json", ".github/workflows/**",
-             "product/v2/card_contract.json", "src/webserver/cards/**",
-             "components/espcontrol/button_grid*.h",
-         ), cache_inputs=(
-             "common/**", "components/**", "compatibility/**", "devices/**",
-             "docs/**", "product/**", "scripts/**", "src/**",
-         ), parallel_safe=True),
     task("pr-process", ("python3", "scripts/check_pr_process.py", "--self-test"), profiles=FAST,
          domains=("workflow",), inputs=(".github/**", "scripts/check_pr_process.py"), cache="never"),
     task("pr-testing-guidance", ("python3", "scripts/pr_testing_guidance.py", "--self-test"), profiles=FAST,
@@ -230,10 +221,8 @@ TASKS = (
               "common/device/screen_clock.yaml", "common/config/display.yaml", "tests/firmware/photo_metadata*.cpp",
               "scripts/check_photo_metadata.py"), parallel_safe=True),
     task("firmware-modal-layouts", ("python3", "scripts/check_firmware_modal_layouts.py"),
-         ("python3", "scripts/generate_modal_layout_reference.py", "--check"),
          dependencies=("device-manifest-output",), profiles=FAST,
-         domains=("firmware", "product", "docs"), inputs=("common/config/modal_layout_geometry_fixtures.json", "components/espcontrol/button_grid_modal_layout.h", "product/v2/device_catalog.json", "scripts/device_profiles.py", "scripts/check_firmware_modal_layouts.py", "scripts/generate_modal_layout_reference.py"),
-         generated_inputs=("dev-docs/modal-layout-profiles.svg",),
+         domains=("firmware", "product"), inputs=("common/config/modal_layout_geometry_fixtures.json", "components/espcontrol/button_grid_modal_layout.h", "product/v2/device_catalog.json", "scripts/device_profiles.py", "scripts/check_firmware_modal_layouts.py"),
          parallel_safe=True, cache_tools=("c++", "g++", "clang++")),
     task("firmware-display-tokens", ("python3", "scripts/check_firmware_display_tokens.py"),
          ("python3", "scripts/check_firmware_display_tokens.py", "--self-test"), profiles=FAST,
@@ -274,7 +263,7 @@ TASKS = (
          generated_inputs=(
              "common/config/card_runtime_baseline_card_normalization_fixtures.json",
              "compatibility/fixtures/card_runtime_surface_baseline.json",
-             "dev-docs/generated/card-runtime-coverage.md",
+             "compatibility/fixtures/card_runtime_coverage.md",
          ),
          cache_inputs=WEB_BUNDLE_BUILD_HELPERS, parallel_safe=True, cache_tools=("node",)),
     task("device-slots", ("python3", "scripts/generate_device_slots.py", "--check"), profiles=PRODUCT,

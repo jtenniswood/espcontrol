@@ -10,7 +10,6 @@
     "check:ci": "python3 scripts/check_tasks.py run ci",
     "check:config": "python3 scripts/check_tasks.py run-task config",
     "check:cover-art-contract": "python3 scripts/check_tasks.py run-task cover-art-contract",
-    "check:dev-docs": "python3 scripts/check_tasks.py run-task dev-docs",
     "check:device-matrix": "python3 scripts/check_tasks.py run-task device-matrix",
     "check:device-profiles": "python3 scripts/check_tasks.py run-task device-profiles",
     "check:device-api": "python3 scripts/check_tasks.py run-task device-api",

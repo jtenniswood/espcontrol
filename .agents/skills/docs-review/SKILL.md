@@ -16,8 +16,7 @@ maintain the change.
 2. Compare the diff with likely EspControl documentation targets:
    - Public docs: `docs/`, `README.md`, generated product pages, and card or
      feature pages.
-   - Maintainer docs: `dev-docs/`, `DEVELOPERS.md`, workflow files, and PR
-     templates.
+   - Maintainer docs: `DEVELOPERS.md`, workflow files, and PR templates.
    - Generated docs only as outputs; ask for the source or generator update when
      generated docs are stale.
 3. Decide whether documentation is needed. Do not ask for docs when the change
@@ -45,8 +44,8 @@ maintain the change.
 - Prefer updating an existing page over adding a new page.
 - Prefer `docs/` for install, setup, card usage, visible behavior,
   troubleshooting, and upgrade impact.
-- Prefer `dev-docs/`, `DEVELOPERS.md`, or `.github/` for build, release,
-  generator, source-of-truth, test, and internal workflow changes.
+- Prefer `DEVELOPERS.md`, `.github/`, or the relevant scripts for build,
+  release, generator, source-of-truth, test, and internal workflow changes.
 - Avoid implementation detail unless it affects setup, testing, troubleshooting,
   compatibility, or upgrade decisions.
 - Avoid blocking a PR for broad docs polish, duplicated explanations, or
@@ -62,5 +61,5 @@ Lead with findings. For each finding include:
 - The smallest useful wording or location when practical.
 
 If no documentation change is needed, say that clearly in one sentence and give
-the reason. Then mention any checks used, such as `npm run check:dev-docs`,
-`npm run docs:build`, or other repository-specific documentation validators.
+the reason. Then mention any checks used, such as `npm run docs:build` or other
+repository-specific documentation validators.

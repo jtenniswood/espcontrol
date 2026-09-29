@@ -28,7 +28,7 @@ language, with enough file detail for a future implementation task.
 Create or update:
 
 ```text
-dev-docs/tech-debt-cleanup-backlog.md
+.agents/tech-debt-cleanup-backlog.md
 ```
 
 Use this file as the durable task list. Keep it concise enough to revisit after
@@ -147,7 +147,7 @@ After completing a selected cleanup task in a later turn:
 Use this chat format after a scan:
 
 ```text
-Created/updated: dev-docs/tech-debt-cleanup-backlog.md
+Created/updated: .agents/tech-debt-cleanup-backlog.md
 
 Critical issues:
 1. <title> - <one-line practical impact>
