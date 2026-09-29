@@ -95,7 +95,7 @@ export function createPublicFirmwareInstallFeature(
             return ensurePublicFirmwareOtaUrl(info).then(function (this: any, otaUrl?: any) {
                 if (!otaUrl)
                     throw new Error("Firmware file is not available yet.");
-                return deviceApi.request(otaUrl, { cache: "no-store" });
+                return deviceApi.request(otaUrl, { cache: "no-store", credentials: "omit" });
             }).then(function (this: any, result?: any) {
                 if (result.kind === "network-error")
                     throw result.error;
