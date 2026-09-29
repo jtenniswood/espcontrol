@@ -205,7 +205,7 @@ def check_build(dist):
         'reference/request-device-support': BASE + 'screens/',
         'card-types/weather-forecast': BASE + 'card-types/weather#temperatures-tomorrow',
         'generated/cards/capabilities': BASE + 'reference/card-capabilities',
-        'generated/cards/runtime-coverage': 'https://github.com/jtenniswood/espcontrol/blob/main/dev-docs/generated/card-runtime-coverage.md',
+        'generated/cards/runtime-coverage': BASE + 'reference/card-capabilities',
     }
     screen_guides = {
         '4848s040': ('4848s040#card-grid', '4848s040'),
@@ -220,7 +220,7 @@ def check_build(dist):
     for model, (grid, install) in screen_guides.items():
         redirects[f'generated/screens/{model}-grid'] = BASE + 'screens/' + grid
         redirects[f'generated/screens/{model}-install'] = BASE + 'screens/' + install + '#install'
-    baseline = json.loads((ROOT / 'dev-docs/hosting/seo-baseline-2026-09-22.json').read_text())
+    baseline = json.loads((ROOT / 'scripts/fixtures/docs_seo_baseline_2026_09_22.json').read_text())
     for url in baseline['generated_urls']:
         if url.removeprefix(BASE) not in redirects:
             errors.append(f'Previously published generated page has no redirect: {url}')
