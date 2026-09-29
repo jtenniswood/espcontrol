@@ -101,6 +101,7 @@ CATEGORIES = (
 INTERNAL_PATHS = (
     ".agents/",
     ".github/",
+    "dev-docs/",
     "docs/",
     "package.json",
     "package-lock.json",
