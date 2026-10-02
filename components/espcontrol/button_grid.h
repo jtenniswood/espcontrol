@@ -38,6 +38,7 @@
 #include "button_grid_ha.h"
 #include "button_grid_config.h"
 #include "button_grid_style.h"
+#include "theme_runtime_tree.h"
 #include "button_grid_card_runtime.h"
 #include "button_grid_layout.h"
 #include "button_grid_display.h"
@@ -61,6 +62,7 @@
 #include "network_status.h"
 #include "button_grid_alarm.h"
 #include "button_grid_navigation.h"
+#include "theme_runtime_ui.h"
 #include "button_grid_grid.h"
 
 #include "button_grid_remote_modal.h"

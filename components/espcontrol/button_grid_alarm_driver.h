@@ -49,15 +49,18 @@ struct AlarmDriverEnvironment {
   lv_obj_t *grid_page = nullptr;
   int slot_count = 0;
   int grid_cols = 1;
-  uint32_t on_color = DEFAULT_SLIDER_COLOR;
-  uint32_t off_color = SECONDARY_GREY;
-  uint32_t tertiary_color = TERTIARY_GREY;
+  uint32_t on_color = DEFAULT_ACCENT_COLOR;
+  uint32_t off_color = theme_display_color(current_theme().surface_primary);
+  uint32_t tertiary_color = theme_display_color(current_theme().surface_secondary);
+  int theme_red_percent = 100;
+  int theme_green_percent = 100;
+  int theme_blue_percent = 100;
   const lv_font_t *icon_font = nullptr;
   const lv_font_t *arming_title_font = nullptr;
   const lv_font_t *value_font = nullptr;
   const lv_font_t *key_font = nullptr;
   const lv_font_t *label_font = nullptr;
-  lv_color_t text_color = lv_color_hex(0xFFFFFF);
+  lv_color_t text_color = lv_color_hex(current_theme().text_primary);
   int width_compensation_percent = 100;
   std::function<void(espcontrol::DisplayTakeoverKind)> begin_display_takeover;
   std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover;
@@ -73,9 +76,12 @@ inline AlarmDriverEnvironment alarm_driver_environment(
   environment.slot_count = slot_count;
   environment.grid_cols = grid_cols;
   environment.on_color = palette.has_on
-    ? palette.on_val : DEFAULT_SLIDER_COLOR;
+    ? palette.on_val : DEFAULT_ACCENT_COLOR;
   environment.off_color = palette.off_val;
   environment.tertiary_color = palette.sensor_val;
+  environment.theme_red_percent = display.color.red_percent;
+  environment.theme_green_percent = display.color.green_percent;
+  environment.theme_blue_percent = display.color.blue_percent;
   environment.icon_font = display_icon_font(display);
   environment.label_font = slot.text_lbl
     ? lv_obj_get_style_text_font(slot.text_lbl, LV_PART_MAIN) : nullptr;
@@ -85,7 +91,7 @@ inline AlarmDriverEnvironment alarm_driver_environment(
   environment.key_font = display_optional_media_title_font(display);
   environment.text_color = slot.text_lbl
     ? lv_obj_get_style_text_color(slot.text_lbl, LV_PART_MAIN)
-    : lv_color_hex(0xFFFFFF);
+    : lv_color_hex(current_theme().text_primary);
   environment.width_compensation_percent =
     display_main_width_percent(display);
   environment.begin_display_takeover = grid_config.begin_display_takeover;
@@ -128,6 +134,10 @@ inline AlarmCardCtx *alarm_driver_bind_data(
       environment.text_color, environment.width_compensation_percent,
       false, environment.begin_display_takeover,
       environment.end_display_takeover));
+  alarm->theme_red_percent = environment.theme_red_percent;
+  alarm->theme_green_percent = environment.theme_green_percent;
+  alarm->theme_blue_percent = environment.theme_blue_percent;
+  alarm->off_theme_owned = true;
   if (context.surface == Surface::SUBPAGE) {
     alarm->grid_page = environment.grid_page;
   }

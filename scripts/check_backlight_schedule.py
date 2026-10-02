@@ -13,6 +13,52 @@ SOURCE = ROOT / "common" / "addon" / "backlight_schedule.yaml"
 FADE_SOURCE = ROOT / "common" / "addon" / "backlight.yaml"
 
 
+def check_theme_entity_wiring(source: str) -> None:
+    """Keep HA and web writes on the same restored ESPHome entities."""
+    class Loader(yaml.SafeLoader):
+        pass
+
+    Loader.add_constructor("!lambda", lambda loader, node: loader.construct_scalar(node))
+    package = yaml.load(source, Loader)
+
+    def entity(section: str, entity_id: str) -> dict:
+        return next(item for item in package[section] if item.get("id") == entity_id)
+
+    for entity_id in ("screen_theme_mode", "screen_theme_auto_method"):
+        item = entity("select", entity_id)
+        assert not item.get("internal", False), f"{entity_id} must be visible in HA"
+        assert item["restore_value"] is True
+        assert {"script.execute": "theme_settings_refresh"} in item["on_value"]["then"]
+
+    assert entity("select", "screen_theme_mode")["options"] == ["Dark", "Light", "Auto"]
+    assert entity("select", "screen_theme_auto_method")["options"] == [
+        "Time", "Sunrise / Sunset"
+    ]
+    for entity_id in ("screen_theme_light_start", "screen_theme_dark_start"):
+        item = entity("text", entity_id)
+        assert not item.get("internal", False) and item["restore_value"] is True
+        actions = item["set_action"]
+        assert "parse_theme_time" in actions[0]["lambda"]
+        assert f"id({entity_id}).publish_state(x);" in actions[0]["lambda"]
+        assert "id(theme_settings_refresh).execute();" in actions[0]["lambda"]
+
+    for entity_id in ("screen_theme_sunrise_offset", "screen_theme_sunset_offset"):
+        item = entity("number", entity_id)
+        assert not item.get("internal", False) and item["restore_value"] is True
+        assert (item["min_value"], item["max_value"], item["step"]) == (-180, 180, 1)
+        actions = item["set_action"]
+        assert "theme_sun_offset_valid" in actions[0]["lambda"]
+        assert f"id({entity_id}).publish_state(x);" in actions[0]["lambda"]
+        assert "id(theme_settings_refresh).execute();" in actions[0]["lambda"]
+
+    active = entity("text_sensor", "screen_active_theme")
+    assert not active.get("internal", False)
+    refresh = entity("script", "theme_settings_refresh")["then"][0]["lambda"]
+    assert "apply_theme_resolution" in refresh
+    assert "id(screen_active_theme).publish_state(active);" in refresh
+    print("theme HA entity persistence and refresh wiring: ok")
+
+
 def force_off_adapter(source: str) -> str:
     """Exercise the production off guard and actions, including legacy guards."""
     class Loader(yaml.SafeLoader):
@@ -140,6 +186,7 @@ def main() -> None:
     )
 
     print("backlight schedule startup guard: ok")
+    check_theme_entity_wiring(text)
     check_recovery(text)
     check_clock_switches_without_fade()
 

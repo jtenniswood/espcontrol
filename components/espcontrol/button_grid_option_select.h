@@ -21,9 +21,9 @@ struct OptionSelectCtx {
   lv_obj_t *value_lbl = nullptr;
   lv_obj_t *unit_lbl = nullptr;
   lv_obj_t *label_lbl = nullptr;
-  uint32_t accent_color = DEFAULT_SLIDER_COLOR;
-  uint32_t secondary_color = SECONDARY_GREY;
-  uint32_t tertiary_color = TERTIARY_GREY;
+  uint32_t accent_color = DEFAULT_ACCENT_COLOR;
+  uint32_t secondary_color = theme_display_color(current_theme().surface_primary);
+  uint32_t tertiary_color = theme_display_color(current_theme().surface_secondary);
   int width_compensation_percent = 100;
   const lv_font_t *value_font = nullptr;
   const lv_font_t *label_font = nullptr;
@@ -237,7 +237,7 @@ inline void option_select_refresh_modal_rows(OptionSelectCtx *ctx) {
     if (!row) continue;
     bool active = !ctx->current_option.empty() && ctx->options[i] == ctx->current_option;
     lv_obj_set_style_bg_color(
-      row, lv_color_hex(active ? ctx->accent_color : SECONDARY_GREY), LV_PART_MAIN);
+      row, lv_color_hex(active ? ctx->accent_color : theme_display_color(current_theme().surface_primary)), LV_PART_MAIN);
   }
 }
 
@@ -285,7 +285,7 @@ inline void option_select_open_modal(OptionSelectCtx *ctx) {
     bool active = ctx->options[i] == ctx->current_option;
     lv_obj_t *btn = control_modal_create_list_row(
       ui.list, ctx->options[i], active, row_h, row_radius,
-      ctx->accent_color, SECONDARY_GREY,
+      ctx->accent_color, theme_display_color(current_theme().surface_primary),
       ctx->label_font, ctx->width_compensation_percent);
     ui.option_rows[i] = btn;
     ui.option_clicks[i].ctx = ctx;
@@ -303,7 +303,7 @@ inline void option_select_open_modal(OptionSelectCtx *ctx) {
     lv_label_set_display_text(ui.empty_lbl, espcontrol_i18n("No options"));
     lv_label_set_long_mode(ui.empty_lbl, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(ui.empty_lbl, lv_pct(100));
-    lv_obj_set_style_text_color(ui.empty_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui.empty_lbl, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
     lv_obj_set_style_text_align(ui.empty_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (ctx->label_font) lv_obj_set_style_text_font(ui.empty_lbl, ctx->label_font, LV_PART_MAIN);
   }

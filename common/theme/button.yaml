@@ -1,19 +1,18 @@
 # =============================================================================
 # THEME: BUTTON - Sizing, colors, and LVGL style for control buttons
 # =============================================================================
-# Default substitutions for button dimensions and colors, plus the LVGL
-# style definition and theme overrides applied to all buttons on the
+# Button accent and invisible border defaults, plus the LVGL style definition
+# and theme overrides applied to all buttons on the
 # main page. The "checked" state reflects an entity that is currently on.
 # =============================================================================
 
 # ---------------------------------------------------------------------------
-# Substitutions (styling defaults used by button_widget.yaml)
+# Button-specific substitutions. Neutral UI colors live in colors.yaml.
 # ---------------------------------------------------------------------------
 substitutions:
   button_on_color: "0xFF8C00"
-  button_on_text_color: "0xFFFFFF"
-  button_text_color: "0xFFFFFF"
-  button_control_color: "0x313131"
+  # Border width is zero; preserve its existing black color independently of
+  # the visible semantic border color.
   button_border_color: "0x000000"
   button_border_width: "0"
 
@@ -23,7 +22,7 @@ lvgl:
   # ---------------------------------------------------------------------------
   style_definitions:
     - id: control
-      bg_color: $button_control_color
+      bg_color: $theme_surface_primary_color
       border_color: $button_border_color
       border_width: $button_border_width
 
@@ -37,7 +36,7 @@ lvgl:
       radius: $radius
       pad_all: $padding
       shadow_width: 0
-      text_color: $button_text_color
+      text_color: $theme_text_primary_color
       border_color: $button_border_color
       border_width: $button_border_width
       pressed:
@@ -46,6 +45,7 @@ lvgl:
         border_width: $button_border_width
       checked:
         bg_color: $button_on_color
-        text_color: $button_on_text_color
+        # Accent foreground is independent of the neutral Light/Dark text role.
+        text_color: 0xFFFFFF
         border_color: $button_border_color
         border_width: $button_border_width

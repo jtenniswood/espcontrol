@@ -63,7 +63,7 @@ inline bool access_cover_driver_setup_visual(
   } else {
     setup_slider_visual(
       slot, config,
-      palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR);
+      palette.has_on ? palette.on_val : DEFAULT_ACCENT_COLOR);
     access_cover_driver_track_slider_cleanup(slot);
   }
   return true;

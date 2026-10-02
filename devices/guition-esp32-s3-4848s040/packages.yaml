@@ -91,6 +91,7 @@ packages:
   device:          !include device/device.yaml
   icons:           !include ../../common/assets/icons.yaml
   fonts_device:    !include device/fonts.yaml
+  theme_colors:    !include ../../common/theme/colors.yaml
   button_theme:    !include ../../common/theme/button.yaml
   # ---------------------------------------------------------------------------
   # Configuration (text/select/number components for web UI)

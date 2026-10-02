@@ -72,14 +72,14 @@ inline bool numeric_selectable_driver_setup_visual(
   } else if (context.runtime.driver == Driver::LIGHT_TEMPERATURE) {
     setup_light_temp_visual(
       slot, config,
-      palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR);
+      palette.has_on ? palette.on_val : DEFAULT_ACCENT_COLOR);
     numeric_selectable_driver_track_slider_cleanup(slot);
   } else if (numeric_selectable_driver_fan_action(context)) {
     setup_fan_card(slot, config);
   } else {
     setup_slider_visual(
       slot, config,
-      palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR);
+      palette.has_on ? palette.on_val : DEFAULT_ACCENT_COLOR);
     numeric_selectable_driver_track_slider_cleanup(slot);
   }
   return true;
@@ -121,7 +121,7 @@ inline OptionSelectCtx *numeric_selectable_driver_bind_option_select(
   OptionSelectCtx *select = numeric_selectable_driver_track(
     context, slot.btn, create_option_select_context(
       slot, config,
-      palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
+      palette.has_on ? palette.on_val : DEFAULT_ACCENT_COLOR,
       palette.off_val, palette.sensor_val,
       display_main_width_percent(display)));
   subscribe_option_select_state(select);
@@ -135,7 +135,7 @@ inline FanCardCtx *numeric_selectable_driver_bind_fan_action(
   if (config.entity.empty()) return nullptr;
   FanCardCtx *fan = create_fan_card_context(
     slot, config,
-    palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
+    palette.has_on ? palette.on_val : DEFAULT_ACCENT_COLOR,
     palette.off_val, palette.sensor_val,
     lv_obj_get_style_text_font(slot.text_lbl, LV_PART_MAIN),
     display_icon_font(display), display_main_width_percent(display));

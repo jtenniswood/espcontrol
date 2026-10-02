@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 9,
     "cardTypes": 43,
-    "entityNames": 102,
+    "entityNames": 109,
     "icons": 364,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
@@ -7405,6 +7405,62 @@
           "screen_brightness_mode",
           "brightness_mode"
         ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_theme_mode",
+        "domain": "select",
+        "name": "Screen: Theme Mode",
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_theme_auto_method",
+        "domain": "select",
+        "name": "Screen: Theme Auto Method",
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_theme_light_start",
+        "domain": "text",
+        "name": "Screen: Theme Light Start",
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_theme_dark_start",
+        "domain": "text",
+        "name": "Screen: Theme Dark Start",
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_theme_sunrise_offset",
+        "domain": "number",
+        "name": "Screen: Theme Sunrise Offset",
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_theme_sunset_offset",
+        "domain": "number",
+        "name": "Screen: Theme Sunset Offset",
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_active_theme",
+        "domain": "text_sensor",
+        "name": "Screen: Active Theme",
         "groups": [
           "settings"
         ]

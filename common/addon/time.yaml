@@ -489,3 +489,4 @@ script:
             update_calendar_cards_time(false, 0, 0, 0, 0, false);
             update_timezone_cards(false, 0, id(timezone_select).current_option(), use_12h);
           }
+      - script.execute: theme_settings_refresh

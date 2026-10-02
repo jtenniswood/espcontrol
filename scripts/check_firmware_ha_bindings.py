@@ -4926,6 +4926,7 @@ def expect_wifi_setup_display_text_errors(
         errors = firmware_wifi_setup_display_text_errors(
             loading_path, wifi_setup_path, connectivity_path, root
         )
+        errors = [error.replace("\\", "/") for error in errors]
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:

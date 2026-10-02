@@ -1,0 +1,16 @@
+# Shared semantic colors for the current dark device UI.
+# These are compile-time ESPHome substitutions. The user-selected button accent,
+# functional state colors, artwork, QR modules, and screen-off behavior are separate.
+substitutions:
+  theme_background_color: "0x000000"
+  theme_surface_primary_color: "0x313131"
+  theme_surface_secondary_color: "0x212121"
+  theme_text_primary_color: "0xFFFFFF"
+  theme_text_muted_color: "0xB0B0B0"
+  theme_text_inverted_color: "0x000000"
+  theme_text_disabled_color: "0x707070"
+  theme_border_color: "0x313131"
+  theme_control_neutral_color: "0x313131"
+  theme_track_background_color: "0x313131"
+  theme_overlay_color: "0x000000"
+  theme_setup_action_color: "0x333333"

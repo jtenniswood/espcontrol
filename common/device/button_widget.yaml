@@ -37,12 +37,12 @@ button:
         widgets:
           - label:
               text_font: $sensor_value_font
-              text_color: $button_text_color
+              text_color: $theme_text_primary_color
               id: button_${num}_sensor_label
               text: "--"
           - label:
               text_font: $unit_font
-              text_color: $button_text_color
+              text_color: $theme_text_primary_color
               id: button_${num}_unit_label
               text: ""
               pad_bottom: 6

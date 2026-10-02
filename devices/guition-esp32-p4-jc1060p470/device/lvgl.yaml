@@ -22,7 +22,7 @@ lvgl:
           align: top_left
           x: 8
           y: 8
-          text_color: 0xFFFFFF
+          text_color: $theme_text_primary_color
           hidden: true
 
       # Clock (top-center, updated every minute by time.yaml)
@@ -34,7 +34,7 @@ lvgl:
           x: 0
           y: 8
           text_align: center
-          text_color: 0xFFFFFF
+          text_color: $theme_text_primary_color
           hidden: true
 
       # Network status (tappable, right side of clock bar)
@@ -59,7 +59,7 @@ lvgl:
                 text_font: font_icon_status
                 align: center
                 text_align: center
-                text_color: 0xFFFFFF
+                text_color: $theme_text_primary_color
           on_press:
             then:
               - script.execute: network_status_open_info
@@ -88,7 +88,7 @@ lvgl:
                 text_font: font_icon_status
                 align: center
                 text_align: center
-                text_color: 0xFFFFFF
+                text_color: $theme_text_primary_color
 
   # ---------------------------------------------------------------------------
   # Main page (fixed 3x5 grid of button widgets)
@@ -103,7 +103,7 @@ lvgl:
         pad_row: ${main_page_card_gap}
         pad_column: ${main_page_card_gap}
       width: 100%
-      bg_color: Black
+      bg_color: $theme_background_color
       bg_opa: cover
       pad_top: ${main_page_pad_top}
       pad_bottom: 5

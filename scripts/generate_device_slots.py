@@ -183,6 +183,7 @@ def package_file_text(device: dict) -> str:
                 package.get("deviceFontPackageKey", "fonts_device"),
                 "!include device/fonts.yaml",
             ),
+            include_line("theme_colors", "!include ../../common/theme/colors.yaml"),
             include_line("button_theme", "!include ../../common/theme/button.yaml"),
             "  # ---------------------------------------------------------------------------",
             "  # Configuration (text/select/number components for web UI)",

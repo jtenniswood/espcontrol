@@ -136,15 +136,6 @@ inline void configure_grid_layout(lv_obj_t *page, int num_slots, int cols) {
   lv_obj_update_layout(page);
 }
 
-struct CardPalette {
-  bool has_on = false;
-  bool has_off = false;
-  bool has_sensor_color = false;
-  uint32_t on_val = DEFAULT_SLIDER_COLOR;
-  uint32_t off_val = SECONDARY_GREY;
-  uint32_t sensor_val = TERTIARY_GREY;
-};
-
 template<typename T>
 inline T *grid_track_runtime_allocation(lv_obj_t *owner, T *ptr);
 
@@ -1035,6 +1026,7 @@ inline void grid_phase1(
   // Clear image references before visual setup removes their old LVGL widgets.
   espcontrol::cards::image_driver_reset_pool(cfg);
   int NS = bounded_grid_slots(cfg.num_slots);
+  bool neutral_buttons[MAX_GRID_SLOTS]{};
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
   if (COLS > MAX_GRID_SLOTS) COLS = MAX_GRID_SLOTS;
   for (int i = 0; i < NS; i++)
@@ -1065,15 +1057,15 @@ inline void grid_phase1(
 
   bool has_on;
   uint32_t on_val = parse_hex_color(on_hex, has_on);
-  uint32_t off_val = display_correct_color(DEFAULT_SECONDARY_COLOR_RAW, display);
-  uint32_t sensor_val = display_correct_color(DEFAULT_TERTIARY_COLOR_RAW, display);
+  uint32_t off_val = display_correct_color(current_theme().surface_primary, display);
+  uint32_t sensor_val = display_correct_color(current_theme().surface_secondary, display);
   if (has_on) on_val = display_correct_color(on_val, display);
 
   CardPalette palette;
   palette.has_on = has_on;
   palette.has_off = true;
   palette.has_sensor_color = true;
-  palette.on_val = has_on ? on_val : DEFAULT_SLIDER_COLOR;
+  palette.on_val = has_on ? on_val : DEFAULT_ACCENT_COLOR;
   palette.off_val = off_val;
   palette.sensor_val = sensor_val;
   set_current_button_primary_color(palette.on_val);
@@ -1104,12 +1096,18 @@ inline void grid_phase1(
 
     ParsedCfg p = parse_cfg(scfg);
     const auto context = card_runtime_context(p);
+    neutral_buttons[idx - 1] = context.family != espcontrol::cards::Family::IMAGE &&
+        espcontrol::cards::media_driver_theme_owned_surface(context, p);
     display_apply_main_width(s.icon_lbl, display);
     display_apply_slot_text_width(s, display);
     setup_card_visual(s, p, context, cfg, palette, row_span, col_span);
     refresh_card_layout(s, p, cfg, row_span, col_span);
   }
   screen_lock_apply();
+  register_theme_grid(main_page_obj, slots, neutral_buttons, NS,
+                      cfg.color_correction_red_percent,
+                      cfg.color_correction_green_percent,
+                      cfg.color_correction_blue_percent);
   ESP_LOGI("sensors", "Phase 1: done (%lu ms)", esphome::millis());
 }
 
@@ -1868,15 +1866,15 @@ inline void grid_phase2(
 
   bool has_on;
   uint32_t on_val = parse_hex_color(on_hex, has_on);
-  uint32_t off_val = display_correct_color(DEFAULT_SECONDARY_COLOR_RAW, display);
-  uint32_t sensor_val = display_correct_color(DEFAULT_TERTIARY_COLOR_RAW, display);
+  uint32_t off_val = display_correct_color(current_theme().surface_primary, display);
+  uint32_t sensor_val = display_correct_color(current_theme().surface_secondary, display);
   if (has_on) on_val = display_correct_color(on_val, display);
 
   CardPalette palette;
   palette.has_on = has_on;
   palette.has_off = true;
   palette.has_sensor_color = true;
-  palette.on_val = has_on ? on_val : DEFAULT_SLIDER_COLOR;
+  palette.on_val = has_on ? on_val : DEFAULT_ACCENT_COLOR;
   palette.off_val = off_val;
   palette.sensor_val = sensor_val;
   set_current_button_primary_color(palette.on_val);
@@ -2050,7 +2048,7 @@ inline void grid_phase2(
 
     lv_obj_t *back_btn = create_grid_card_button(
       sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color);
-    apply_button_colors(back_btn, false, DEFAULT_SLIDER_COLOR, true, off_val);
+    apply_button_colors(back_btn, false, DEFAULT_ACCENT_COLOR, true, off_val);
     set_grid_card_cell(
       back_btn, sub_scr,
       sp_ord.back_pos % COLS, sp_ord.back_pos / COLS,
@@ -2122,7 +2120,10 @@ inline void grid_phase2(
       BtnSlot sub_slot = create_dynamic_card_slot(
         sb_btn, sp_icon_fnt, display_sensor_font(display), sp_btn_fnt, sp_txt_color,
         cfg.subpage_chevron_font);
-      navigation_register_subpage_card(si + 1, bn, sub_slot, sb);
+      navigation_register_subpage_card(
+          si + 1, bn, sub_slot, sb,
+          context.family != espcontrol::cards::Family::IMAGE &&
+              espcontrol::cards::media_driver_theme_owned_surface(context, sb_cfg));
       display_apply_main_width(sub_slot.icon_lbl, display);
       display_apply_slot_text_width(sub_slot, display);
       setup_card_visual(sub_slot, sb_cfg, context, cfg, palette, rs, cs);

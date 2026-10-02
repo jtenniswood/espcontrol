@@ -58,9 +58,9 @@ inline ClimateControlCtx *climate_control_driver_track(
 }
 
 struct ClimateControlDriverEnvironment {
-  uint32_t accent_color = DEFAULT_SLIDER_COLOR;
-  uint32_t secondary_color = SECONDARY_GREY;
-  uint32_t tertiary_color = TERTIARY_GREY;
+  uint32_t accent_color = DEFAULT_ACCENT_COLOR;
+  uint32_t secondary_color = theme_display_color(current_theme().surface_primary);
+  uint32_t tertiary_color = theme_display_color(current_theme().surface_secondary);
   const lv_font_t *number_font = nullptr;
   const lv_font_t *range_number_font = nullptr;
   const lv_font_t *unit_font = nullptr;
@@ -78,11 +78,11 @@ inline ClimateControlDriverEnvironment climate_control_driver_environment(
     const BtnSlot &slot) {
   ClimateControlDriverEnvironment environment;
   environment.accent_color = palette.has_on
-    ? palette.on_val : DEFAULT_SLIDER_COLOR;
+    ? palette.on_val : DEFAULT_ACCENT_COLOR;
   environment.secondary_color = palette.has_off
-    ? palette.off_val : SECONDARY_GREY;
+    ? palette.off_val : theme_display_color(current_theme().surface_primary);
   environment.tertiary_color = palette.has_sensor_color
-    ? palette.sensor_val : TERTIARY_GREY;
+    ? palette.sensor_val : theme_display_color(current_theme().surface_secondary);
   environment.number_font = display_volume_number_font(display);
   environment.range_number_font = display_media_control_title_font(display);
   environment.unit_font = display_volume_label_font(display)

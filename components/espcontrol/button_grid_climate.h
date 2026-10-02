@@ -119,9 +119,9 @@ struct ClimateControlCtx {
   int pending_target_tenths = CLIMATE_DEFAULT_TARGET_TENTHS;
   bool pending_temp_send = false;
   lv_timer_t *debounce_timer = nullptr;
-  uint32_t accent_color = DEFAULT_SLIDER_COLOR;
-  uint32_t secondary_color = SECONDARY_GREY;
-  uint32_t tertiary_color = TERTIARY_GREY;
+  uint32_t accent_color = DEFAULT_ACCENT_COLOR;
+  uint32_t secondary_color = theme_display_color(current_theme().surface_primary);
+  uint32_t tertiary_color = theme_display_color(current_theme().surface_secondary);
   lv_obj_t *btn = nullptr;
   lv_obj_t *icon_lbl = nullptr;
   lv_obj_t *label_lbl = nullptr;
@@ -999,12 +999,12 @@ inline bool climate_has_active_arc_mode(ClimateControlCtx *ctx) {
 }
 
 inline uint32_t climate_modal_arc_color(ClimateControlCtx *ctx) {
-  if (!climate_has_active_arc_mode(ctx)) return SECONDARY_GREY;
-  return ctx ? ctx->accent_color : DEFAULT_SLIDER_COLOR;
+  if (!climate_has_active_arc_mode(ctx)) return theme_display_color(current_theme().surface_primary);
+  return ctx ? ctx->accent_color : DEFAULT_ACCENT_COLOR;
 }
 
 inline uint32_t climate_heating_color(ClimateControlCtx *ctx) {
-  return ctx ? ctx->accent_color : DEFAULT_SLIDER_COLOR;
+  return ctx ? ctx->accent_color : DEFAULT_ACCENT_COLOR;
 }
 
 inline int climate_modal_arc_value(ClimateControlCtx *ctx, bool temp_enabled, int target) {
@@ -1022,7 +1022,7 @@ inline int climate_target_from_modal_arc_value(ClimateControlCtx *ctx, int value
 }
 
 inline uint32_t climate_active_color(ClimateControlCtx *ctx) {
-  if (!ctx) return DEFAULT_SLIDER_COLOR;
+  if (!ctx) return DEFAULT_ACCENT_COLOR;
   return ctx->accent_color;
 }
 
@@ -1459,7 +1459,7 @@ inline lv_obj_t *climate_create_option_chip(lv_obj_t *parent, const char *icon,
   lv_obj_set_flex_grow(btn, 0);
   lv_obj_add_flag(btn, LV_OBJ_FLAG_SCROLL_CHAIN_HOR);
   lv_obj_set_style_radius(btn, 47, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(btn, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(theme_display_color(current_theme().surface_primary)), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
@@ -1477,7 +1477,7 @@ inline lv_obj_t *climate_create_option_chip(lv_obj_t *parent, const char *icon,
   lv_obj_t *icon_lbl = lv_label_create(btn);
   lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_SCROLL_CHAIN_HOR);
   lv_label_set_display_text(icon_lbl, icon);
-  lv_obj_set_style_text_color(icon_lbl, lv_color_hex(DARK_TEXT_SOFT), LV_PART_MAIN);
+  lv_obj_set_style_text_color(icon_lbl, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
   lv_obj_set_style_text_align(icon_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (icon_font) lv_obj_set_style_text_font(icon_lbl, icon_font, LV_PART_MAIN);
   apply_width_compensation(icon_lbl, width_compensation_percent);
@@ -1502,7 +1502,7 @@ inline lv_obj_t *climate_create_option_chip(lv_obj_t *parent, const char *icon,
   lv_obj_set_width(title_lbl, lv_pct(100));
   lv_label_set_display_text(title_lbl, espcontrol_i18n(title));
   lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_CLIP);
-  lv_obj_set_style_text_color(title_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+  lv_obj_set_style_text_color(title_lbl, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
   lv_obj_set_style_text_align(title_lbl, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
   if (title_font) lv_obj_set_style_text_font(title_lbl, title_font, LV_PART_MAIN);
 
@@ -1511,7 +1511,7 @@ inline lv_obj_t *climate_create_option_chip(lv_obj_t *parent, const char *icon,
   lv_obj_set_width(value_lbl, lv_pct(100));
   lv_label_set_display_text(value_lbl, espcontrol_i18n("None"));
   lv_label_set_long_mode(value_lbl, LV_LABEL_LONG_CLIP);
-  lv_obj_set_style_text_color(value_lbl, lv_color_hex(DARK_TEXT_SOFT), LV_PART_MAIN);
+  lv_obj_set_style_text_color(value_lbl, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
   lv_obj_set_style_text_align(value_lbl, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
   if (value_font) lv_obj_set_style_text_font(value_lbl, value_font, LV_PART_MAIN);
 
@@ -1544,7 +1544,7 @@ inline void climate_style_range_target_button(lv_obj_t *btn, bool selected,
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   if (label) {
     lv_obj_set_style_text_color(label, lv_color_hex(
-      selected ? DARK_TEXT_PRIMARY : DARK_TEXT_MUTED), LV_PART_MAIN);
+      selected ? current_theme().text_primary : current_theme().text_muted), LV_PART_MAIN);
   }
 }
 
@@ -1577,20 +1577,21 @@ inline void climate_set_dial_controls_visible(bool visible) {
 
 inline void climate_set_step_button_enabled(lv_obj_t *btn, bool enabled) {
   if (!btn) return;
+  control_modal_track_theme_disabled(btn);
   lv_style_selector_t disabled_selector =
     static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DISABLED);
   lv_obj_set_style_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(btn, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(theme_display_color(current_theme().surface_primary)), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, disabled_selector);
   lv_obj_set_style_opa(btn, LV_OPA_COVER, disabled_selector);
-  lv_obj_set_style_border_color(btn, lv_color_hex(DARK_CONTROL_NEUTRAL), LV_PART_MAIN);
-  lv_obj_set_style_border_color(btn, lv_color_hex(DARK_TRACK_BACKGROUND), disabled_selector);
+  lv_obj_set_style_border_color(btn, lv_color_hex(theme_display_color(current_theme().control_neutral)), LV_PART_MAIN);
+  lv_obj_set_style_border_color(btn, lv_color_hex(theme_display_color(current_theme().track_background)), disabled_selector);
 
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   if (label) {
-    lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-    lv_obj_set_style_text_color(label, lv_color_hex(DARK_TRACK_BACKGROUND), disabled_selector);
+    lv_obj_set_style_text_color(label, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(theme_display_color(current_theme().track_background)), disabled_selector);
   }
 
   if (enabled) {
@@ -1606,15 +1607,16 @@ inline void climate_set_step_button_enabled(lv_obj_t *btn, bool enabled) {
 
 inline void climate_control_style_tab(lv_obj_t *btn, bool active, uint32_t accent_color) {
   if (!btn) return;
+  control_modal_track_theme_tab(btn);
   (void) accent_color;
   lv_obj_set_style_bg_color(
-    btn, lv_color_hex(active ? DARK_TEXT_PRIMARY : SECONDARY_GREY), LV_PART_MAIN);
+    btn, lv_color_hex(active ? current_theme().text_primary : theme_display_color(current_theme().surface_primary)), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, active ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   if (label) {
     lv_obj_set_style_text_color(
-      label, lv_color_hex(active ? TERTIARY_GREY : DARK_TEXT_PRIMARY), LV_PART_MAIN);
+      label, lv_color_hex(active ? theme_display_color(current_theme().surface_secondary) : current_theme().text_primary), LV_PART_MAIN);
   }
 }
 
@@ -1630,7 +1632,7 @@ inline lv_obj_t *climate_control_create_tab_button(lv_obj_t *parent, const char 
                                                    ClimateControlTab tab) {
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
-  lv_obj_set_style_bg_color(btn, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(theme_display_color(current_theme().surface_primary)), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
@@ -1640,7 +1642,7 @@ inline lv_obj_t *climate_control_create_tab_button(lv_obj_t *parent, const char 
   lv_obj_t *label = lv_label_create(btn);
   if (label) {
     lv_label_set_display_text(label, icon);
-    lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
     climate_center_tab_icon(label);
@@ -1732,8 +1734,8 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       ClimateOptionClick *click = climate_next_option_click(ui, ctx, section_kind, option);
       if (!click) break;
       bool selected = climate_option_selected(ctx, section_kind, option);
-      uint32_t bg_color = selected ? ctx->accent_color : ctx->secondary_color;
-      uint32_t text_color = selected ? DARK_TEXT_PRIMARY : readable_text_color_for_bg(bg_color);
+      uint32_t bg_color = selected ? ctx->accent_color : theme_display_color(current_theme().surface_primary);
+      uint32_t text_color = selected ? CARD_ACCENT_TEXT_COLOR : readable_text_color_for_bg(bg_color);
       lv_obj_t *btn = lv_btn_create(parent);
       lv_obj_set_size(btn, 118, 118);
       lv_obj_set_style_radius(btn, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
@@ -1915,7 +1917,7 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
     lv_obj_t *label = lv_label_create(btn);
     lv_label_set_display_text(label, climate_option_label(option).c_str());
     lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
-    lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     if (ctx->option_menu_font) lv_obj_set_style_text_font(label, ctx->option_menu_font, LV_PART_MAIN);
     lv_obj_center(label);
@@ -1947,7 +1949,7 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
              : climate_modal_arc_color(ctx)), LV_PART_INDICATOR);
       ui.updating_arc = false;
     }
-    lv_obj_set_style_bg_color(ui.arc, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_KNOB);
+    lv_obj_set_style_bg_color(ui.arc, lv_color_hex(current_theme().text_primary), LV_PART_KNOB);
     lv_obj_set_style_bg_opa(ui.arc, dual ? LV_OPA_COVER : LV_OPA_TRANSP,
                             LV_PART_KNOB);
     climate_set_arc_enabled(ui.arc, temp_enabled);
@@ -1983,7 +1985,7 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
           climate_target_display_precision(ctx)).c_str()
       : "--");
     lv_obj_set_style_text_color(ui.low_target_lbl,
-                                lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+                                lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
     lv_obj_set_style_text_opa(ui.low_target_lbl, LV_OPA_COVER, LV_PART_MAIN);
   }
   if (ui.high_target_lbl) {
@@ -1992,7 +1994,7 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
           climate_target_display_precision(ctx)).c_str()
       : "--");
     lv_obj_set_style_text_color(ui.high_target_lbl,
-                                lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+                                lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
     lv_obj_set_style_text_opa(ui.high_target_lbl, LV_OPA_COVER, LV_PART_MAIN);
   }
   if (ui.unit_lbl) {
@@ -2331,7 +2333,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_add_flag(ui.menu_view, LV_OBJ_FLAG_HIDDEN);
 
   ui.menu_close_btn = control_modal_create_round_button(ui.panel, 32, "\U000F0156", ctx->icon_font,
-    DARK_BORDER, SECONDARY_GREY, ctx->width_compensation_percent);
+    theme_display_color(current_theme().border), theme_display_color(current_theme().surface_primary), ctx->width_compensation_percent);
   lv_obj_set_style_bg_opa(ui.menu_close_btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.menu_close_btn, 0, LV_PART_MAIN);
   lv_obj_add_flag(ui.menu_close_btn, LV_OBJ_FLAG_HIDDEN);
@@ -2359,7 +2361,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_arc_set_range(ui.arc, ctx->min_tenths, ctx->max_tenths);
   lv_obj_set_style_bg_opa(ui.arc, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.arc, 0, LV_PART_MAIN);
-  lv_obj_set_style_arc_color(ui.arc, lv_color_hex(DARK_TRACK_BACKGROUND), LV_PART_MAIN);
+  lv_obj_set_style_arc_color(ui.arc, lv_color_hex(theme_display_color(current_theme().track_background)), LV_PART_MAIN);
   lv_obj_set_style_arc_rounded(ui.arc, true, LV_PART_MAIN);
   lv_obj_set_style_arc_rounded(ui.arc, true, LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(ui.arc, LV_OPA_TRANSP, LV_PART_KNOB);
@@ -2395,7 +2397,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   }, LV_EVENT_PRESS_LOST, nullptr);
 
   ui.current_dot = lv_obj_create(ui.panel);
-  lv_obj_set_style_bg_color(ui.current_dot, lv_color_hex(DARK_CONTROL_NEUTRAL), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.current_dot, lv_color_hex(theme_display_color(current_theme().control_neutral)), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.current_dot, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.current_dot, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.current_dot, 0, LV_PART_MAIN);
@@ -2405,7 +2407,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_add_flag(ui.current_dot, LV_OBJ_FLAG_HIDDEN);
 
   ui.handle_dot = lv_obj_create(ui.panel);
-  lv_obj_set_style_bg_color(ui.handle_dot, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.handle_dot, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.handle_dot, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.handle_dot, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.handle_dot, 0, LV_PART_MAIN);
@@ -2427,14 +2429,14 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_clear_flag(ui.target_row, LV_OBJ_FLAG_SCROLLABLE);
 
   ui.target_lbl = lv_label_create(ui.target_row);
-  lv_obj_set_style_text_color(ui.target_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_text_color(ui.target_lbl, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.target_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->number_font) lv_obj_set_style_text_font(ui.target_lbl, ctx->number_font, LV_PART_MAIN);
   apply_text_width_compensation(ui.target_lbl);
 
   auto create_range_target_label = [&]() {
     lv_obj_t *label = lv_label_create(ui.target_row);
-    lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
     lv_obj_set_style_text_opa(label, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(label, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
@@ -2452,7 +2454,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   ui.target_separator_lbl = lv_label_create(ui.target_row);
   lv_label_set_display_text(ui.target_separator_lbl, "-");
   lv_obj_set_style_text_color(ui.target_separator_lbl,
-                              lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+                              lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.target_separator_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   const lv_font_t *range_font = ctx->range_number_font
     ? ctx->range_number_font : ctx->number_font;
@@ -2463,20 +2465,20 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   ui.high_target_lbl = create_range_target_label();
 
   ui.unit_lbl = lv_label_create(ui.target_row);
-  lv_obj_set_style_text_color(ui.unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_text_color(ui.unit_lbl, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.unit_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->unit_font) lv_obj_set_style_text_font(ui.unit_lbl, ctx->unit_font, LV_PART_MAIN);
   apply_text_width_compensation(ui.unit_lbl);
 
   ui.status_lbl = lv_label_create(ui.panel);
-  lv_obj_set_style_text_color(ui.status_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+  lv_obj_set_style_text_color(ui.status_lbl, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.status_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->label_font) lv_obj_set_style_text_font(ui.status_lbl, ctx->label_font, LV_PART_MAIN);
 
   ui.minus_btn = control_modal_create_round_button(ui.panel, 72, find_icon("Minus"), ctx->icon_font,
-    DARK_CONTROL_NEUTRAL, SECONDARY_GREY, ctx->width_compensation_percent);
+    theme_display_color(current_theme().control_neutral), theme_display_color(current_theme().surface_primary), ctx->width_compensation_percent);
   ui.plus_btn = control_modal_create_round_button(ui.panel, 72, find_icon("Plus"), ctx->icon_font,
-    DARK_CONTROL_NEUTRAL, SECONDARY_GREY, ctx->width_compensation_percent);
+    theme_display_color(current_theme().control_neutral), theme_display_color(current_theme().surface_primary), ctx->width_compensation_percent);
   climate_apply_step_button_icon_size(ui.minus_btn);
   climate_apply_step_button_icon_size(ui.plus_btn);
   lv_obj_add_event_cb(ui.minus_btn, [](lv_event_t *) {
@@ -2491,7 +2493,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   }, LV_EVENT_CLICKED, nullptr);
 
   ui.range_toggle = lv_obj_create(ui.panel);
-  lv_obj_set_style_bg_color(ui.range_toggle, lv_color_hex(DARK_TRACK_BACKGROUND), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.range_toggle, lv_color_hex(theme_display_color(current_theme().track_background)), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.range_toggle, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.range_toggle, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.range_toggle, 3, LV_PART_MAIN);

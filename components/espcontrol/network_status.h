@@ -24,6 +24,10 @@ constexpr const char *NETWORK_ICON_ETHERNET = "\U000F0200";
 
 struct NetworkStatusModalUi {
   lv_obj_t *overlay = nullptr;
+  lv_obj_t *cards[NETWORK_STATUS_CARD_COUNT]{};
+  lv_obj_t *icons[NETWORK_STATUS_CARD_COUNT]{};
+  lv_obj_t *labels[NETWORK_STATUS_CARD_COUNT]{};
+  int card_count = 0;
   lv_obj_t *ip_lbl = nullptr;
   lv_obj_t *wifi_label = nullptr;
   float (*wifi_quality)() = nullptr;
@@ -40,6 +44,22 @@ inline const lv_font_t *&network_status_card_icon_font() {
 inline NetworkStatusModalUi &network_status_modal_ui() {
   static NetworkStatusModalUi ui;
   return ui;
+}
+
+inline void network_status_apply_theme(void *context, const ThemePalette &theme) {
+  auto &ui = *static_cast<NetworkStatusModalUi *>(context);
+  if (!ui.overlay) return;
+  lv_obj_set_style_bg_color(ui.overlay, lv_color_hex(theme.background), LV_PART_MAIN);
+  for (int i = 0; i < ui.card_count; ++i) {
+    lv_obj_t *button = ui.cards[i];
+    if (!button) continue;
+    lv_obj_set_style_bg_color(button,
+                              lv_color_hex(theme_display_color(theme.surface_primary)),
+                              LV_PART_MAIN);
+    lv_obj_set_style_text_color(button, lv_color_hex(theme.text_primary), LV_PART_MAIN);
+    if (ui.icons[i]) lv_obj_set_style_text_color(ui.icons[i], lv_color_hex(theme.text_primary), LV_PART_MAIN);
+    if (ui.labels[i]) lv_obj_set_style_text_color(ui.labels[i], lv_color_hex(theme.text_primary), LV_PART_MAIN);
+  }
 }
 
 inline std::string &network_status_previous_subpage_label() {
@@ -148,6 +168,7 @@ inline void network_status_hide_modal() {
   NetworkStatusModalUi &ui = network_status_modal_ui();
   if (ui.refresh_timer) lv_timer_del(ui.refresh_timer);
   lv_obj_t *overlay = ui.overlay;
+  if (overlay) unregister_theme_refresh(overlay);
   const bool modal_active = overlay != nullptr;
   ui = NetworkStatusModalUi{};
   control_modal_clear_active(ControlModalKind::NETWORK_STATUS);
@@ -215,7 +236,7 @@ inline void network_status_open_modal(const std::string &device_name,
   const lv_color_t text_color = reference
                                     ? lv_obj_get_style_text_color(reference,
                                                                   LV_PART_MAIN)
-                                    : lv_color_hex(DARK_TEXT_PRIMARY);
+                                    : lv_color_hex(current_theme().text_primary);
   const lv_coord_t radius = control_modal_card_radius(reference);
   const lv_coord_t card_pad = reference
                                   ? lv_obj_get_style_pad_top(reference,
@@ -266,8 +287,10 @@ inline void network_status_open_modal(const std::string &device_name,
     if (i == NETWORK_STATUS_WIFI_CARD_INDEX && !wifi_quality) continue;
     auto *button = create_grid_card_button(ui.overlay, radius, card_pad,
                                            label_font, text_color);
-    apply_button_colors(button, false, DEFAULT_SLIDER_COLOR, true,
-                        DEFAULT_OFF_COLOR);
+    const int card_index = ui.card_count++;
+    ui.cards[card_index] = button;
+    apply_button_colors(button, false, DEFAULT_ACCENT_COLOR, true,
+                        theme_display_color(current_theme().surface_primary));
     // Follow the device's normal card order and let its column count determine
     // where the next row begins.
     const NetworkStatusGridCell cell =
@@ -276,6 +299,8 @@ inline void network_status_open_modal(const std::string &device_name,
                          LV_GRID_ALIGN_STRETCH, cell.row, 1);
     BtnSlot slot = create_dynamic_card_slot(button, card_icon_font, label_font,
                                             label_font, text_color);
+    ui.icons[card_index] = slot.icon_lbl;
+    ui.labels[card_index] = slot.text_lbl;
     apply_width_compensation(slot.icon_lbl,
                              icon_width_compensation_percent());
     apply_text_width_compensation(slot.text_lbl);
@@ -303,6 +328,12 @@ inline void network_status_open_modal(const std::string &device_name,
   control_modal_set_active(ControlModalKind::NETWORK_STATUS, ui.overlay,
                            network_status_hide_modal,
                            ControlModalDismissPolicy::DISMISS);
+  register_theme_refresh(ui.overlay, network_status_apply_theme, &ui);
+  lv_obj_add_event_cb(ui.overlay, [](lv_event_t *event) {
+    unregister_theme_refresh(lv_event_get_target(event));
+    network_status_modal_ui().overlay = nullptr;
+  }, LV_EVENT_DELETE, nullptr);
+  apply_current_theme();
   lv_obj_update_layout(ui.overlay);
   network_status_refresh_page();
   ui.refresh_timer = lv_timer_create(

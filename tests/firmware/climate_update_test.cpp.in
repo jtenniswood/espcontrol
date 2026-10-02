@@ -12,13 +12,12 @@
 #include "climate_subscription_policy.h"
 #include "climate_state_logic.h"
 #include "climate_target_logic.h"
+#include "theme_palette.h"
 
 struct lv_obj_t {};
 struct lv_timer_t {};
 struct lv_font_t {};
-constexpr uint32_t DEFAULT_SLIDER_COLOR = 0;
-constexpr uint32_t SECONDARY_GREY = 0;
-constexpr uint32_t TERTIARY_GREY = 0;
+constexpr uint32_t DEFAULT_ACCENT_COLOR = 0;
 constexpr size_t HA_SHORT_STATE_MAX_LEN = 64;
 constexpr size_t HA_FRIENDLY_NAME_MAX_LEN = 256;
 

@@ -153,7 +153,7 @@ inline AlarmActionCtx *basic_action_driver_bind_alarm_action(
   card->pin_label_font = card->key_label_font;
   card->icon_font = display_icon_font(display);
   card->arming_title_font = card->key_label_font;
-  card->on_color = palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR;
+  card->on_color = palette.has_on ? palette.on_val : DEFAULT_ACCENT_COLOR;
   card->off_color = palette.off_val;
   card->tertiary_color = palette.sensor_val;
   card->width_compensation_percent = display_main_width_percent(display);
@@ -179,7 +179,7 @@ inline FanCardCtx *basic_action_driver_bind_fan_switch(
   if (config.entity.empty()) return nullptr;
   FanCardCtx *fan = create_fan_card_context(
     slot, config,
-    palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
+    palette.has_on ? palette.on_val : DEFAULT_ACCENT_COLOR,
     palette.off_val, palette.sensor_val,
     lv_obj_get_style_text_font(slot.text_lbl, LV_PART_MAIN),
     display_icon_font(display), display_main_width_percent(display));

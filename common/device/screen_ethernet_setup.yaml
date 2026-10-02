@@ -4,10 +4,16 @@
 # Instructions shown when the Ethernet-only build has no wired network address.
 # =============================================================================
 
+esphome:
+  on_boot:
+    - priority: -210
+      then:
+        - lambda: 'register_theme_static_page(id(ethernet_setup_page)->obj);'
+
 lvgl:
   pages:
     - id: ethernet_setup_page
-      bg_color: 0x000000
+      bg_color: $theme_background_color
       scrollable: false
       pad_all: 0
       widgets:
@@ -49,20 +55,20 @@ lvgl:
                     - label:
                         text_font: $setup_icon_font_id
                         text: $icon_ethernet
-                        text_color: 0xFFFFFF
+                        text_color: $theme_text_primary_color
                         text_align: center
                     - label:
                         id: ethernet_setup_title
                         text: ""
                         text_font: $setup_title_font_id
-                        text_color: 0xFFFFFF
+                        text_color: $theme_text_primary_color
                         width: $content_width
                         text_align: center
                     - label:
                         id: ethernet_setup_instructions
                         text: ""
                         text_font: $setup_body_font_id
-                        text_color: 0xB0B0B0
+                        text_color: $theme_text_muted_color
                         width: $content_width
                         text_align: center
 

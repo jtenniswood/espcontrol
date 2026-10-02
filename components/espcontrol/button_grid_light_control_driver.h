@@ -46,7 +46,7 @@ inline T *light_control_driver_track(
 }
 
 struct LightControlDriverEnvironment {
-  uint32_t accent_color = DEFAULT_SLIDER_COLOR;
+  uint32_t accent_color = DEFAULT_ACCENT_COLOR;
   const lv_font_t *number_font = nullptr;
   const lv_font_t *label_font = nullptr;
   const lv_font_t *icon_font = nullptr;
@@ -59,7 +59,7 @@ inline LightControlDriverEnvironment light_control_driver_environment(
     const BtnSlot &slot) {
   LightControlDriverEnvironment environment;
   environment.accent_color = palette.has_on
-    ? palette.on_val : DEFAULT_SLIDER_COLOR;
+    ? palette.on_val : DEFAULT_ACCENT_COLOR;
   environment.number_font = display_volume_number_font(display);
   environment.label_font = display_volume_label_font(display)
     ? display_volume_label_font(display)

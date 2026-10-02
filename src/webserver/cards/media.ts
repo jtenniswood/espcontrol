@@ -10,6 +10,7 @@ import {
     cardContractPickerKey,
 } from "../generated/card_contract";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
+import { PREVIEW_THEME_COLORS, previewEffectiveTheme } from "../state/preview_theme";
 import { escHtml, iconSlug } from "../application/ui_primitives";
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ConfigMediaOptionsFeature } from "../application/config_media_options";
@@ -794,6 +795,7 @@ export function registerMediaCardTypes(
             renderSpeakerDiscoveryEntityField(mediaAdvancedSettings);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
+            const neutralPreview = PREVIEW_THEME_COLORS[previewEffectiveTheme(state)];
             function modeInfo(this: any, value?: any) {
                 if (value === "controls")
                     value = "play_pause";
@@ -844,8 +846,8 @@ export function registerMediaCardTypes(
                 };
             }
             if (mode === "position") {
-                var bgColor: any = WEB_UI_COLORS.secondary;
-                var progressColor: any = WEB_UI_COLORS.secondary;
+                var bgColor: any = neutralPreview.surfacePrimary;
+                var progressColor: any = neutralPreview.trackBackground;
                 var positionLabel: any = b.precision === "state" ? "Paused" : label;
                 var positionClass: any = "sp-sensor-preview sp-media-position-time" +
                     (cardLargeNumbersActiveForCardSize(b, helpers, MEDIA_CARD_METADATA) ? " sp-sensor-preview-large" : "");
@@ -888,14 +890,14 @@ export function registerMediaCardTypes(
             if (mode === "now_playing") {
                 var progressBg: any = "";
                 if (mediaNowPlayingProgressEnabled(b)) {
-                    var nowBgColor: any = WEB_UI_COLORS.secondary;
+                    var nowBgColor: any = neutralPreview.surfacePrimary;
                     progressBg =
                         '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(nowBgColor) + '">' +
-                            '<span class="sp-slider-track"><span class="sp-slider-fill" style="width:50%;height:100%;background:#' + WEB_UI_COLORS.secondary + '">' +
+                            '<span class="sp-slider-track"><span class="sp-slider-fill" style="width:50%;height:100%;background:#' + neutralPreview.trackBackground + '">' +
                             '</span></span></span>';
                 }
                 else if (mediaNowPlayingPlayPauseEnabled(b)) {
-                    var playBgColor: any = WEB_UI_COLORS.secondary;
+                    var playBgColor: any = neutralPreview.surfacePrimary;
                     progressBg =
                         '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(playBgColor) + '">' +
                             '</span>';

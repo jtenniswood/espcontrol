@@ -9,7 +9,8 @@ import {
     cardContractPickerKey,
 } from "../generated/card_contract";
 import { escHtml, iconSlug } from "../application/ui_primitives";
-import { WEB_UI_COLORS } from "../state/ui_tokens";
+import { state } from "../state/app_instance";
+import { PREVIEW_THEME_COLORS, previewEffectiveTheme } from "../state/preview_theme";
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ConfigImageOptionsFeature } from "../application/config_image_options";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
@@ -188,7 +189,7 @@ export function registerImageCardTypes(
             panel.appendChild(refreshSettings.panel);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
-            var tertiaryColor: any = WEB_UI_COLORS.tertiary;
+            var tertiaryColor: any = PREVIEW_THEME_COLORS[previewEffectiveTheme(state)].surfaceSecondary;
             var label: any = imageLabelEnabled(b) ? String((b && b.label) || "Camera").trim() : "";
             var iconName: any = b && b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "camera";
             var icon: any = imageIconEnabled(b) ? '<span class="sp-image-preview-icon mdi mdi-' + iconName + '"></span>' : "";

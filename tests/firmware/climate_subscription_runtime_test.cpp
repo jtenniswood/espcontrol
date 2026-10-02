@@ -13,13 +13,14 @@
 #include "climate_subscription_policy.h"
 #include "climate_target_logic.h"
 #include "ha_read_coordinator.h"
+#include "theme_palette.h"
 
 using ClimateTargetKind = espcontrol::climate::TargetKind;
 struct lv_obj_t {};
 struct lv_font_t {};
 struct lv_timer_t { void (*callback)(lv_timer_t *); };
 constexpr int MAX_GRID_SLOTS = 32, MAX_SUBPAGE_ITEMS = 64;
-constexpr uint32_t DEFAULT_SLIDER_COLOR = 0, SECONDARY_GREY = 0, TERTIARY_GREY = 0;
+constexpr uint32_t DEFAULT_ACCENT_COLOR = 0;
 constexpr size_t HA_SHORT_STATE_MAX_LEN = 64, HA_FRIENDLY_NAME_MAX_LEN = 128;
 constexpr size_t HA_TEXT_SENSOR_STATE_MAX_LEN = 256;
 

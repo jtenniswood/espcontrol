@@ -1451,7 +1451,6 @@ describe("browserless application contracts", () => {
       "application/preview_render.ts",
       "application/settings_page.ts",
       "application/styles.ts",
-      "cards/image.ts",
       "cards/media.ts",
       "state/app_state.ts",
     ];
@@ -1459,6 +1458,11 @@ describe("browserless application contracts", () => {
       const source = fs.readFileSync(path.join(ROOT, "src/webserver", consumer), "utf8");
       assert.match(source, /import \{ WEB_UI_COLORS \} from /, `${consumer} should import the UI colours`);
     }
+    const imagePreview = fs.readFileSync(path.join(ROOT, "src/webserver/cards/image.ts"), "utf8");
+    assert.match(imagePreview, /import \{ PREVIEW_THEME_COLORS, previewEffectiveTheme \} from /);
+    const styles = fs.readFileSync(path.join(ROOT, "src/webserver/application/styles.ts"), "utf8");
+    assert.match(styles, /previewThemeCss\("Light"\)/);
+    assert.match(styles, /\.sp-empty-cell\{border:2px dashed color-mix\(in srgb,var\(--preview-text-muted\)/);
     const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
     assert.doesNotMatch(entry, /UiTokens/);

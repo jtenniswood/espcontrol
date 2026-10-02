@@ -101,6 +101,7 @@ packages:
   esp32_c6_firmware_update: !include ../../common/device/esp32_c6_firmware_update${esp32_c6_firmware_update_package_suffix}.yaml
   icons:           !include ../../common/assets/icons.yaml
   fonts_device:    !include device/fonts.yaml
+  theme_colors:    !include ../../common/theme/colors.yaml
   button_theme:    !include ../../common/theme/button.yaml
   # ---------------------------------------------------------------------------
   # Configuration (text/select/number components for web UI)

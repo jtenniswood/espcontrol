@@ -51,6 +51,81 @@ RULES: tuple[tuple[re.Pattern[str], str, set[str]], ...] = (
     ),
 )
 
+# YAML substitutions and the runtime C++ palette are authored independently.
+# Guard their dark RGB parity until both can consume one shared source.
+THEME_RGB = {
+    "BACKGROUND": 0x000000,
+    "SURFACE_PRIMARY": 0x313131,
+    "SURFACE_SECONDARY": 0x212121,
+    "TEXT_PRIMARY": 0xFFFFFF,
+    "TEXT_MUTED": 0xB0B0B0,
+    "TEXT_INVERTED": 0x000000,
+    "TEXT_DISABLED": 0x707070,
+    "BORDER": 0x313131,
+    "CONTROL_NEUTRAL": 0x313131,
+    "TRACK_BACKGROUND": 0x313131,
+    "OVERLAY": 0x000000,
+    "SETUP_ACTION": 0x333333,
+}
+LIGHT_THEME_RGB = {
+    "BACKGROUND": 0xF4F4F4,
+    "SURFACE_PRIMARY": 0xFFFFFF,
+    "SURFACE_SECONDARY": 0xE8E8E8,
+    "TEXT_PRIMARY": 0x181818,
+    "TEXT_MUTED": 0x606060,
+    "TEXT_INVERTED": 0xFFFFFF,
+    "TEXT_DISABLED": 0x9A9A9A,
+    "BORDER": 0xD0D0D0,
+    "CONTROL_NEUTRAL": 0xE0E0E0,
+    "TRACK_BACKGROUND": 0xD0D0D0,
+    "OVERLAY": 0x000000,
+    "SETUP_ACTION": 0xE0E0E0,
+}
+LEGACY_NEUTRAL_NAMES = re.compile(
+    r"\b(?:DARK_(?:TEXT_PRIMARY|TEXT_INVERTED|TEXT_MUTED|TEXT_SOFT|"
+    r"TEXT_DISABLED|BORDER|CONTROL_NEUTRAL|OVERLAY|TRACK_BACKGROUND)|"
+    r"SECONDARY_GREY|TERTIARY_GREY|DEFAULT_(?:SECONDARY|TERTIARY|OFF)_COLOR(?:_RAW)?)\b"
+)
+
+
+def check_theme_colors(root: Path) -> list[str]:
+    yaml_path = root / "common/theme/colors.yaml"
+    palette_path = root / "components/espcontrol/theme_palette.h"
+    accent_path = root / "components/espcontrol/button_grid_style.h"
+    if not yaml_path.exists() and not palette_path.exists():
+        return []  # Isolated display-token self-test fixtures.
+    failures: list[str] = []
+    if not yaml_path.exists() or not palette_path.exists() or not accent_path.exists():
+        return ["semantic theme colors need YAML, the runtime palette, and the accent boundary"]
+    yaml_text = yaml_path.read_text(encoding="utf-8")
+    palette_text = palette_path.read_text(encoding="utf-8")
+    accent_text = accent_path.read_text(encoding="utf-8")
+    for role, rgb in THEME_RGB.items():
+        yaml_name = f"theme_{role.lower()}_color"
+        yaml_value = re.search(rf"^  {yaml_name}: [\"']?0x([0-9A-Fa-f]{{6}})[\"']?$", yaml_text, re.M)
+        if yaml_value is None or int(yaml_value.group(1), 16) != rgb:
+            failures.append(f"common/theme/colors.yaml: {yaml_name} must remain 0x{rgb:06X}")
+        field = role.lower()
+        cpp_value = re.search(rf"\btheme\.{field}\s*=\s*0x([0-9A-Fa-f]{{6}});", palette_text)
+        if cpp_value is None or int(cpp_value.group(1), 16) != rgb:
+            failures.append(f"theme_palette.h: {field} must remain raw RGB 0x{rgb:06X}")
+    if "inline constexpr ThemePalette DARK_THEME = make_dark_theme();" not in palette_text:
+        failures.append("theme_palette.h: define the concrete Dark palette")
+    light_match = re.search(r"inline constexpr ThemePalette LIGHT_THEME\s*=\s*\{([^}]+)\};", palette_text, re.S)
+    light_values = [int(value, 16) for value in re.findall(r"0x([0-9A-Fa-f]{6})", light_match.group(1))] if light_match else []
+    if light_values != list(LIGHT_THEME_RGB.values()):
+        failures.append("theme_palette.h: Light roles must match the reviewed raw RGB palette")
+    if "inline const ThemePalette &current_theme()" not in palette_text:
+        failures.append("theme_palette.h: provide runtime current-theme access")
+    if "constexpr uint32_t DEFAULT_ACCENT_COLOR_RAW = 0xFF8C00;" not in accent_text:
+        failures.append("button_grid_style.h: preserve the separate default user accent")
+    neutral_global = re.compile(r"\bTHEME_(?:BACKGROUND|SURFACE_[A-Z_]+|TEXT_[A-Z_]+|BORDER|CONTROL_NEUTRAL|TRACK_BACKGROUND|OVERLAY)\b")
+    for path in (root / "components/espcontrol").glob("*.h"):
+        text = path.read_text(encoding="utf-8")
+        if LEGACY_NEUTRAL_NAMES.search(text) or neutral_global.search(text):
+            failures.append(f"{path.relative_to(root)}: consume the runtime palette, not global neutral colors")
+    return failures
+
 
 def firmware_headers(root: Path) -> list[Path]:
     firmware_dir = root / "components" / "espcontrol"
@@ -59,6 +134,7 @@ def firmware_headers(root: Path) -> list[Path]:
 
 def check_root(root: Path) -> list[str]:
     failures: list[str] = []
+    failures.extend(check_theme_colors(root))
     for path in firmware_headers(root):
         filename = path.name
         lines = path.read_text(encoding="utf-8").splitlines()
@@ -238,6 +314,22 @@ def run_self_test() -> None:
                 assert any(text in failure for failure in failures), (files, failures, text)
             if not expected:
                 assert not failures, (files, failures)
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "common/theme").mkdir(parents=True)
+        (root / "components/espcontrol").mkdir(parents=True)
+        yaml_path = root / "common/theme/colors.yaml"
+        cpp_path = root / "components/espcontrol/theme_palette.h"
+        accent_path = root / "components/espcontrol/button_grid_style.h"
+        yaml_path.write_text((ROOT / "common/theme/colors.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+        cpp_path.write_text((ROOT / "components/espcontrol/theme_palette.h").read_text(encoding="utf-8"), encoding="utf-8")
+        accent_path.write_text((ROOT / "components/espcontrol/button_grid_style.h").read_text(encoding="utf-8"), encoding="utf-8")
+        assert not check_theme_colors(root)
+        yaml_path.write_text(yaml_path.read_text(encoding="utf-8").replace("0xB0B0B0", "0xB0B0B1"), encoding="utf-8")
+        assert any("theme_text_muted_color" in failure for failure in check_theme_colors(root))
+        yaml_path.write_text((ROOT / "common/theme/colors.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+        cpp_path.write_text(cpp_path.read_text(encoding="utf-8").replace("theme.text_muted = 0xB0B0B0", "theme.text_muted = 0xB0B0B1"), encoding="utf-8")
+        assert any("text_muted" in failure for failure in check_theme_colors(root))
     print("Firmware display token self-tests passed.")
 
 

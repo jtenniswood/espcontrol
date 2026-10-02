@@ -1,42 +1,31 @@
 #pragma once
 
-// Shared UI colour tokens for device-side LVGL rendering.
-// Primary is user configurable; secondary and tertiary are fixed defaults.
+// The user accent remains separate from the neutral runtime theme.
 
-constexpr uint32_t DEFAULT_PRIMARY_COLOR_RAW = 0xFF8C00;
-constexpr uint32_t DEFAULT_SECONDARY_COLOR_RAW = 0x313131;
-constexpr uint32_t DEFAULT_TERTIARY_COLOR_RAW = 0x212121;
+#include "theme_palette.h"
 
-constexpr uint32_t DEFAULT_SLIDER_COLOR = correct_display_color(DEFAULT_PRIMARY_COLOR_RAW);
-constexpr uint32_t DEFAULT_OFF_COLOR = correct_display_color(DEFAULT_SECONDARY_COLOR_RAW);
-constexpr uint32_t DEFAULT_TERTIARY_COLOR = correct_display_color(DEFAULT_TERTIARY_COLOR_RAW);
-
-constexpr uint32_t SECONDARY_GREY = DEFAULT_OFF_COLOR;
-constexpr uint32_t TERTIARY_GREY = DEFAULT_TERTIARY_COLOR;
-constexpr uint32_t DARK_TEXT_PRIMARY = 0xFFFFFF;
-constexpr uint32_t DARK_TEXT_INVERTED = 0x000000;
-constexpr uint32_t DARK_TEXT_MUTED = 0xB0B0B0;
-constexpr uint32_t DARK_TEXT_SOFT = DARK_TEXT_PRIMARY;
-constexpr uint32_t DARK_BORDER = SECONDARY_GREY;
-constexpr uint32_t DARK_CONTROL_NEUTRAL = SECONDARY_GREY;
-constexpr uint32_t DARK_OVERLAY = 0x000000;
-constexpr uint32_t DARK_TRACK_BACKGROUND = SECONDARY_GREY;
+constexpr uint32_t DEFAULT_ACCENT_COLOR_RAW = 0xFF8C00;
+constexpr uint32_t DEFAULT_ACCENT_COLOR = correct_display_color(DEFAULT_ACCENT_COLOR_RAW);
+constexpr uint32_t CARD_ACCENT_TEXT_COLOR = 0xFFFFFF;
+constexpr uint32_t CARD_CONTRAST_DARK_COLOR = theme_display_color(DARK_THEME.surface_secondary);
 
 constexpr uint32_t readable_text_color_for_bg(uint32_t bg_color) {
   uint32_t red = (bg_color >> 16) & 0xFF;
   uint32_t green = (bg_color >> 8) & 0xFF;
   uint32_t blue = bg_color & 0xFF;
   uint32_t brightness = (red * 299 + green * 587 + blue * 114) / 1000;
-  return brightness > 186 ? TERTIARY_GREY : DARK_TEXT_PRIMARY;
+  return brightness > 186 ? CARD_CONTRAST_DARK_COLOR : CARD_ACCENT_TEXT_COLOR;
 }
 
-static_assert(readable_text_color_for_bg(0xFFFFFF) == TERTIARY_GREY,
+static_assert(readable_text_color_for_bg(0xFFFFFF) ==
+                  theme_display_color(DARK_THEME.surface_secondary),
               "light backgrounds need dark text");
-static_assert(readable_text_color_for_bg(0x000000) == DARK_TEXT_PRIMARY,
+static_assert(readable_text_color_for_bg(0x000000) ==
+                  DARK_THEME.text_primary,
               "dark backgrounds need light text");
 
 inline uint32_t &current_button_primary_color_ref() {
-  static uint32_t color = DEFAULT_SLIDER_COLOR;
+  static uint32_t color = DEFAULT_ACCENT_COLOR;
   return color;
 }
 
@@ -47,3 +36,14 @@ inline void set_current_button_primary_color(uint32_t color) {
 inline uint32_t current_button_primary_color() {
   return current_button_primary_color_ref();
 }
+
+// Card-specific values: the on color belongs to user configuration, while
+// neutral defaults are sampled from the active theme when a card is built.
+struct CardPalette {
+  bool has_on = false;
+  bool has_off = false;
+  bool has_sensor_color = false;
+  uint32_t on_val = DEFAULT_ACCENT_COLOR;
+  uint32_t off_val = theme_display_color(current_theme().surface_primary);
+  uint32_t sensor_val = theme_display_color(current_theme().surface_secondary);
+};

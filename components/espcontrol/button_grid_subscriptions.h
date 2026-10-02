@@ -89,8 +89,8 @@ inline void subscribe_sensor_value(lv_obj_t *sensor_lbl, const std::string &sens
                                    const std::string &unit = "",
                                    lv_obj_t *availability_obj = nullptr,
                                    bool active_color = false,
-                                   uint32_t on_color = DEFAULT_SLIDER_COLOR,
-                                   uint32_t sensor_color = TERTIARY_GREY) {
+                                   uint32_t on_color = DEFAULT_ACCENT_COLOR,
+                                   uint32_t sensor_color = theme_display_color(current_theme().surface_secondary)) {
   std::string display_unit = trim_display_unit(unit);
   ha_subscribe_state(
     sensor_id,
@@ -193,8 +193,8 @@ inline void subscribe_toggle_text_sensor_value(ToggleTextSensorCtx *ctx, const s
 inline void subscribe_text_sensor_value(lv_obj_t *text_lbl, const std::string &sensor_id,
                                         lv_obj_t *availability_obj = nullptr,
                                         bool active_color = false,
-                                        uint32_t on_color = DEFAULT_SLIDER_COLOR,
-                                        uint32_t sensor_color = TERTIARY_GREY) {
+                                        uint32_t on_color = DEFAULT_ACCENT_COLOR,
+                                        uint32_t sensor_color = theme_display_color(current_theme().surface_secondary)) {
   ha_subscribe_state(
     sensor_id,
     std::function<void(esphome::StringRef)>(
@@ -232,8 +232,8 @@ inline void subscribe_sensor_icon_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
 inline void subscribe_sensor_text_card_value(lv_obj_t *text_lbl, const ParsedCfg &p,
                                              lv_obj_t *availability_obj = nullptr,
                                              bool active_color = false,
-                                             uint32_t on_color = DEFAULT_SLIDER_COLOR,
-                                             uint32_t sensor_color = TERTIARY_GREY) {
+                                             uint32_t on_color = DEFAULT_ACCENT_COLOR,
+                                             uint32_t sensor_color = theme_display_color(current_theme().surface_secondary)) {
   if (p.sensor.empty()) return;
   ha_subscribe_state(
     p.sensor,

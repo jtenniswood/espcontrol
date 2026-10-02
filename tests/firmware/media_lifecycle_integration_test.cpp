@@ -151,7 +151,7 @@ std::string media_card_mode(const std::string &sensor) { return sensor; }
 bool media_playback_button_mode(const std::string &mode) { return mode == "play_pause"; }
 bool media_control_modal_mode(const std::string &mode) { return mode == "control_modal"; }
 struct lv_font_t {};
-constexpr unsigned DEFAULT_SLIDER_COLOR = 0;
+constexpr unsigned DEFAULT_ACCENT_COLOR = 0;
 struct CardPalette { bool has_on = false; unsigned on_val = 0, off_val = 0, sensor_val = 0; };
 enum class DisplayModalLayoutFamily { COMPACT_PORTRAIT };
 struct DisplayProfile { struct { DisplayModalLayoutFamily layout_family; } modal{}; };

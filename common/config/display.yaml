@@ -118,6 +118,9 @@ script:
     mode: restart
     then:
       - lambda: |-
+          register_theme_hud(id(temperatures), id(display_time),
+                             id(network_status_icon_label),
+                             id(night_mode_status_icon_label));
           ClockBarVisibility visibility = clock_bar_resolve_visibility(
               id(clock_bar_enabled).state,
               id(main_page)->obj,
