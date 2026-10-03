@@ -3048,14 +3048,25 @@ script:
             - if:
                 condition:
                   lambda: |-
-                    return id(media_player_sleep_prevention_enabled).state ||
-                           (id(screensaver_mode).state != "timer" &&
-                            id(screensaver_mode).state != "sensor") ||
-                           !id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::ACTIVE);
+                    const bool clock_screensaver_active =
+                        id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::CLOCK);
+                    return !clock_screensaver_active &&
+                           (id(media_player_sleep_prevention_enabled).state ||
+                            (id(screensaver_mode).state != "timer" &&
+                             id(screensaver_mode).state != "sensor") ||
+                            !id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::ACTIVE));
                 then:
                   - script.execute: cover_art_start_delay
                 else:
-                  - script.execute: screensaver_idle_check
+                  - if:
+                      condition:
+                        lambda: |-
+                          return id(espcontrol_app).display().target_mode_is(
+                              espcontrol::DisplayMode::CLOCK);
+                      then:
+                        - script.execute: show_cover_art_view
+                      else:
+                        - script.execute: screensaver_idle_check
 
   - id: cover_art_delayed_playback_stopped
     mode: restart
