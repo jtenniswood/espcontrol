@@ -327,6 +327,9 @@ jobs:
             ${DOCKER} cp \
               "${container}:/config/${BUILD_INPUT_DIR}/.esphome/build" \
               "${build_cache}/" 2>/dev/null || true
+            python3 scripts/report_firmware_size.py \
+              --target "${config_file}" --build-root "${build_cache}" \
+              --compile-status "${status}" || status=1
             cleanup_container
             trap - EXIT
             return "${status}"
