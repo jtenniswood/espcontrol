@@ -1,0 +1,133 @@
+# =============================================================================
+# SCREEN: NOTIFICATION POPUP
+# =============================================================================
+# Top-layer overlay for HA-pushed notifications. Two actions are exposed:
+#
+# Persistent (user must tap to dismiss):
+#   action: esphome.<device>_send_notification
+#   data:
+#     message: "Front door camera triggered"
+#     title: "Motion Detected"   # optional — omit or pass "" to hide title
+#     message_id: "motion_front"  # optional, returned in HA events
+#
+# Auto-dismissing:
+#   action: esphome.<device>_send_expiring_notification
+#   data:
+#     message: "Front door camera triggered"
+#     title: "Motion Detected"   # optional
+#     timeout: 15                # seconds until auto-dismiss
+#     message_id: "motion_front"  # optional, returned in HA events
+#
+# The popup fires one of two HA events on close:
+#   esphome.notification_acknowledged  – user tapped to dismiss
+#   esphome.notification_expired       – auto-timeout elapsed unread
+#
+# Both events carry: device_name, message_id
+#
+# Implementation: LVGL top_layer card (always above all pages/screensaver).
+# Background is a semi-transparent dark scrim; there is no GPU blur on ESP32.
+# Tapping anywhere (card or scrim) dismisses the popup.
+# notification_popup.h is auto-included by ESPHome's component resource system.
+# =============================================================================
+
+lvgl:
+  top_layer:
+    widgets:
+      # Full-screen scrim — dark overlay that blocks interaction with UI beneath.
+      # Tapping the scrim (outside the card) dismisses the popup.
+      - obj:
+          id: notification_scrim
+          x: 0
+          y: 0
+          width: ${screen_width}
+          height: ${screen_height}
+          bg_color: 0x000000
+          bg_opa: 75%
+          radius: 0
+          border_width: 0
+          pad_all: 0
+          scrollable: false
+          scrollbar_mode: "off"
+          clickable: true
+          hidden: true
+          on_click:
+            then:
+              - lambda: |-
+                  notification_popup_dismiss(true);
+          widgets:
+            # Notification card — centered dark panel with title + body.
+            # Tapping the card also dismisses (same as tapping the scrim).
+            - obj:
+                id: notification_card
+                align: center
+                width: ${content_width}
+                height: SIZE_CONTENT
+                bg_color: 0x1E1E1E
+                bg_opa: cover
+                radius: 16
+                border_width: 0
+                pad_top: 24
+                pad_bottom: 24
+                pad_left: 24
+                pad_right: 24
+                scrollable: false
+                clickable: true
+                layout:
+                  type: flex
+                  flex_flow: COLUMN
+                  flex_align_main: center
+                  flex_align_cross: start
+                  pad_row: 12
+                on_click:
+                  then:
+                    - lambda: |-
+                        notification_popup_dismiss(true);
+                widgets:
+                  - label:
+                      id: notification_title_lbl
+                      text: ""
+                      text_font: ${setup_body_font_id}
+                      text_color: 0xFFFFFF
+                      long_mode: wrap
+                      width: 100%
+                  - label:
+                      id: notification_body_lbl
+                      text: ""
+                      text_font: ${label_font}
+                      text_color: 0xAAAAAA
+                      long_mode: wrap
+                      width: 100%
+
+api:
+  actions:
+    - action: send_notification
+      variables:
+        message: string
+        title: string
+        message_id: string
+      then:
+        - script.execute: screensaver_wake
+        - lambda: |-
+            notification_popup_show(
+              id(notification_scrim),
+              id(notification_title_lbl),
+              id(notification_body_lbl),
+              title, message,
+              0,
+              message_id);
+    - action: send_expiring_notification
+      variables:
+        message: string
+        title: string
+        timeout: int
+        message_id: string
+      then:
+        - script.execute: screensaver_wake
+        - lambda: |-
+            notification_popup_show(
+              id(notification_scrim),
+              id(notification_title_lbl),
+              id(notification_body_lbl),
+              title, message,
+              timeout,
+              message_id);
