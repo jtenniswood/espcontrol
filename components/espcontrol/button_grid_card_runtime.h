@@ -53,6 +53,7 @@ inline Family family_for_runtime_type(espcontrol::card_runtime::CardTypeId type)
     case Type::IMAGE: return Family::IMAGE;
     case Type::WIFI_QR:
     case Type::WIFI_QR_CARD: return Family::WIFI_QR;
+    case Type::NOTIFICATION: return Family::NOTIFICATION;
     case Type::INTERNAL: return Family::INTERNAL;
     case Type::LIGHT_CONTROL: return Family::LIGHT_CONTROL;
     case Type::LIGHT_TEMPERATURE: return Family::LIGHT_TEMPERATURE;
@@ -181,6 +182,7 @@ inline bool card_runtime_main_click_opens_modal(
     case Driver::IMAGE:
     case Driver::WIFI_QR:
     case Driver::LIGHT_CONTROL:
+    case Driver::NOTIFICATION:
     case Driver::MEDIA_CONTROL:
     case Driver::MEDIA_GROUP:
     case Driver::MEDIA_VOLUME:
@@ -340,6 +342,18 @@ constexpr const char *card_runtime_option_name_playlist_content_type() {
 
 constexpr const char *card_runtime_option_name_playlist_player_source() {
   return CARD_CONTRACT_OPTION_NAME_PLAYLIST_PLAYER_SOURCE;
+}
+
+constexpr const char *card_runtime_option_name_notification_level_attribute() {
+  return CARD_CONTRACT_OPTION_NAME_LEVEL_ATTRIBUTE;
+}
+
+constexpr const char *card_runtime_option_name_notification_message_attribute() {
+  return CARD_CONTRACT_OPTION_NAME_MESSAGE_ATTRIBUTE;
+}
+
+constexpr const char *card_runtime_option_name_notification_ack_action() {
+  return CARD_CONTRACT_OPTION_NAME_ACK_ACTION;
 }
 
 inline bool card_runtime_large_numbers_supported(const std::string &type,
@@ -523,6 +537,10 @@ inline std::string card_runtime_image_modal_mode(const std::string &value) {
 
 inline const char *card_runtime_image_modal_mode_default() {
   return CARD_CONTRACT_IMAGE_MODAL_MODE_DEFAULT;
+}
+
+inline const char *card_runtime_notification_level_attribute_default() {
+  return CARD_CONTRACT_NOTIFICATION_LEVEL_ATTRIBUTE_DEFAULT;
 }
 
 inline bool card_runtime_light_control_tab_valid(const std::string &tab) {
