@@ -89,6 +89,7 @@ low_target=Țintă scăzută
 media=Media
 media_control=Control media
 playlist=Listă de redare
+cover_art=Copertă album
 medium=Mediu
 mode=Mod
 group=Grup

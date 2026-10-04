@@ -89,6 +89,7 @@ low_target=Нижняя цель
 media=Медиа
 media_control=Управление медиа
 playlist=Плейлист
+cover_art=Обложка
 medium=Средняя
 mode=Режим
 group=Группа
