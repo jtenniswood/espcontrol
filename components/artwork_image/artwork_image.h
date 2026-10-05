@@ -44,7 +44,8 @@ enum ImageResizeMode {
 enum P4PipelinePriority : uint8_t {
   P4_PIPELINE_DISABLED = 0,
   P4_PIPELINE_TILE = 1,
-  P4_PIPELINE_MODAL = 2,
+  P4_PIPELINE_COVER_ART = 2,
+  P4_PIPELINE_MODAL = 3,
 };
 
 /**

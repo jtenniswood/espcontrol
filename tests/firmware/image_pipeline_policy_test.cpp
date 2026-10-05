@@ -19,6 +19,7 @@ using esphome::artwork_image::ImagePipelineMemoryFailure;
 using esphome::artwork_image::p4_pipeline_transfer_capacity;
 using esphome::artwork_image::cover_alignment_edge_overscan;
 using esphome::artwork_image::p4_cover_scale_plan;
+using esphome::artwork_image::p4_image_scale_plan;
 using esphome::artwork_image::p4_jpeg_hardware_target_supported;
 using esphome::artwork_image::BackgroundTransferTlsMode;
 using esphome::artwork_image::background_transfer_result_can_publish;
@@ -292,6 +293,21 @@ int main() {
   assert(portrait_plan.crop_width * portrait_plan.scale_units / 16 == 688);
   assert(portrait_plan.crop_height * portrait_plan.scale_units / 16 == 504);
   assert(!p4_cover_scale_plan(0, 768, 688, 504, 16, 4095).valid);
+
+  // The logged cover-art case is FIT, 640x640 -> 800x800. PPA must
+  // preserve all four edges while avoiding the multi-second CPU resize.
+  const auto fit_plan = p4_image_scale_plan(640, 640, 800, 800, 16, 4095, false);
+  assert(fit_plan.valid && fit_plan.scale_units == 20);
+  assert(fit_plan.crop_width == 640 && fit_plan.crop_height == 640);
+  assert(fit_plan.crop_x == 0 && fit_plan.crop_y == 0);
+  const auto rectangular_fit = p4_image_scale_plan(640, 480, 800, 600, 16, 4095, false);
+  assert(rectangular_fit.valid && rectangular_fit.crop_width == 640 && rectangular_fit.crop_height == 480);
+  assert(p4_image_scale_plan(640, 640, 400, 400, 16, 4095, false).valid);
+  // A quantised crop or letterboxing is never allowed to change FIT into COVER.
+  assert(!p4_image_scale_plan(640, 640, 799, 799, 16, 4095, false).valid);
+  assert(!p4_image_scale_plan(640, 480, 800, 800, 16, 4095, false).valid);
+  assert(!p4_image_scale_plan(0, 640, 800, 800, 16, 4095, false).valid);
+  assert(p4_image_scale_plan(640, 480, 800, 800, 16, 4095, true).valid);
 
   // Packed RGB565 output is safe only for RGB565 image targets. Every other
   // configured type must fall back to the format-aware software decoder.

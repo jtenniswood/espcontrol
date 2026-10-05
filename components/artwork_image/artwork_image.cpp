@@ -795,7 +795,10 @@ void ArtworkImage::start_update_() {
       ESP_LOGD(TAG, "Queued local artwork on ESP32-P4 image pipeline");
       return;
     }
-    ESP_LOGW(TAG, "ESP32-P4 image pipeline unavailable; using loop-based downloader");
+    this->transfer_failure_ = TransferFailure::RESOURCE;
+    ESP_LOGE(TAG, "ESP32-P4 image pipeline unavailable; refusing synchronous artwork request");
+    this->fail_download_();
+    return;
   }
 #endif
 

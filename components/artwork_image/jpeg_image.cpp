@@ -106,6 +106,7 @@ static ppa_client_handle_t p4_ppa_scaler() {
 static bool p4_scale_rgb565(const uint8_t *source, uint32_t source_stride_pixels,
                             uint32_t source_width, uint32_t source_height,
                             uint32_t target_width, uint32_t target_height,
+                            bool cover_mode,
                             uint8_t *&scaled, size_t &scaled_capacity) {
   ppa_client_handle_t client = p4_ppa_scaler();
   if (client == nullptr || source == nullptr || target_width == 0 || target_height == 0) return false;
@@ -123,11 +124,11 @@ static bool p4_scale_rgb565(const uint8_t *source, uint32_t source_stride_pixels
 
   static constexpr uint32_t PPA_SCALE_FRACTIONAL_STEPS = 16;
   static constexpr uint32_t PPA_MAX_SCALE_UNITS = 4095;
-  P4CoverScalePlan plan = p4_cover_scale_plan(
+  P4CoverScalePlan plan = p4_image_scale_plan(
       source_width, source_height, target_width, target_height,
-      PPA_SCALE_FRACTIONAL_STEPS, PPA_MAX_SCALE_UNITS);
+      PPA_SCALE_FRACTIONAL_STEPS, PPA_MAX_SCALE_UNITS, cover_mode);
   if (!plan.valid) {
-    ESP_LOGW(TAG, "ESP32-P4 PPA could not represent exact cover scale; using CPU scaling");
+    ESP_LOGD(TAG, "ESP32-P4 PPA could not preserve requested image geometry; using CPU scaling");
     return false;
   }
   memset(scaled, 0, target_size);
@@ -267,11 +268,12 @@ int JpegDecoder::decode_hardware_(uint8_t *buffer, size_t size) {
   int target_height = this->image_->get_fixed_height();
   bool ppa_scaled = false;
   if (target_width > 0 && target_height > 0 &&
-      this->image_->get_resize_mode() == ImageResizeMode::COVER &&
       (target_width != static_cast<int>(info.width) ||
        target_height != static_cast<int>(info.height))) {
     ppa_scaled = p4_scale_rgb565(workspace.output, padded_width, info.width, info.height,
-                                 target_width, target_height, workspace.scaled,
+                                 target_width, target_height,
+                                 this->image_->get_resize_mode() == ImageResizeMode::COVER,
+                                 workspace.scaled,
                                  workspace.scaled_capacity);
   }
   if (ppa_scaled) {

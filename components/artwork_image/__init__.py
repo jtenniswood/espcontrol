@@ -209,7 +209,7 @@ ARTWORK_IMAGE_SCHEMA = (
             cv.Optional(CONF_ALLOW_INSECURE_LOCAL_URLS, default=False): cv.boolean,
             cv.Optional(CONF_HARDWARE_ACCELERATION, default=True): cv.boolean,
             cv.Optional(CONF_P4_PIPELINE, default="DISABLED"): cv.one_of(
-                "DISABLED", "TILE", "MODAL", upper=True
+                "DISABLED", "TILE", "COVER_ART", "MODAL", upper=True
             ),
             cv.Optional(CONF_ON_DOWNLOAD_FINISHED): automation.validate_automation({}),
             cv.Optional(CONF_ON_ERROR): automation.validate_automation({}),

@@ -518,5 +518,23 @@ constexpr bool p4_jpeg_hardware_target_supported(bool target_is_rgb565) {
   return target_is_rgb565;
 }
 
+// FIT may share the hardware scaler when it preserves the entire source.
+// Reject quantised plans that crop even a single pixel; letterboxed and
+// non-exact fit sizes must retain the filtered software resize.
+constexpr P4CoverScalePlan p4_image_scale_plan(uint32_t source_width,
+                                              uint32_t source_height,
+                                              uint32_t target_width,
+                                              uint32_t target_height,
+                                              uint32_t fractional_steps,
+                                              uint32_t max_scale_units,
+                                              bool cover_mode) {
+  auto plan = p4_cover_scale_plan(source_width, source_height, target_width,
+                                 target_height, fractional_steps, max_scale_units);
+  if (!cover_mode && (plan.crop_width != source_width || plan.crop_height != source_height)) {
+    return {};
+  }
+  return plan;
+}
+
 }  // namespace artwork_image
 }  // namespace esphome
