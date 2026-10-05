@@ -43,6 +43,8 @@ using HomeAssistantStateCallback = Transport::Callback;
 constexpr size_t HA_READ_INTERNAL_FREE_MIN_BYTES = 8192;
 constexpr size_t HA_READ_INTERNAL_LARGEST_MIN_BYTES = 4096;
 struct Switch { bool state = true; } cover_art_screensaver_enabled;
+bool cover_art_media_playing = true;
+espcontrol::cover_art::PlaybackControl cover_art_playback_control;
 struct Script {
   int calls = 0;
   void execute() { ++calls; }
@@ -108,6 +110,16 @@ int main() {
   assert(cover_art_runtime.sources.get(false) == "http://homeassistant/new-remote.jpg");
   assert(cover_art_runtime.sources.get(true) == "http://homeassistant/new-local.jpg");
   assert(coordinator.transport().callbacks.size() == 2);
+  // Idle subscription/metadata notifications must not recreate stopped reads.
+  coordinator.invalidate_retained_state();
+  cover_art_media_playing = false;
+  request_artwork();
+  assert(coordinator.pending_read_count() == 0);
+  // A pause requested on the screensaver intentionally keeps its artwork live.
+  cover_art_playback_control.begin(cover_art_active_media_player_entity, "playing", 1);
+  cover_art_playback_control.observe(cover_art_active_media_player_entity, "paused", 2);
+  request_artwork();
+  assert(coordinator.pending_read_count() == 2);
 }
 '''
 with tempfile.TemporaryDirectory(prefix="cover-art-pending-") as temp:

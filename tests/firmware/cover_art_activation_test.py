@@ -32,7 +32,9 @@ def generate(root):
     scripts = {s["id"]: s for s in scripts}
     selected = {"display_mode_effect_cover_art", "cover_art_prepare_activation",
                 "cover_art_request_artwork", "cover_art_use_cached_artwork",
-                "cover_art_prepare_download", "cover_art_deferred_download", "cover_art_hide_effect"}
+                "cover_art_prepare_download", "cover_art_deferred_download", "cover_art_hide_effect",
+                "cover_art_release_stopped_artwork", "cover_art_return_home_after_playback",
+                "cover_art_playback_stopped", "cover_art_delayed_playback_stopped"}
     declarations = set(scripts)
     setups = []
     serial = 0
@@ -53,7 +55,11 @@ def generate(root):
                 context += f"auto {parameter} = std::get<{index}>({owner}.args); (void){parameter}; "
             body = ""
             if kind == "delay":
-                duration = ("1" if value == "1ms" else f"([]() {{ {cpp(value)} }})()")
+                if isinstance(value, str) and re.fullmatch(r"\d+(ms|s)", value):
+                    duration = str(int(value.removesuffix("ms").removesuffix("s")) *
+                                   (1 if value.endswith("ms") else 1000))
+                else:
+                    duration = f"([]() {{ {cpp(value)} }})()"
                 setups.append(f"auto *{name} = make_delay({owner}, {duration});")
                 output.append(name)
                 continue
@@ -92,6 +98,10 @@ def generate(root):
                 setups.append(f"auto *{name} = make_wait({owner}, {value});")
                 output.append(name)
                 continue
+            elif kind == "globals.set":
+                body = f"{value['id']} = {cpp(value['value'])};"
+            elif kind == "artwork_image.release":
+                body = f"{value}->release();"
             # Other LVGL/widget actions remain real chained action nodes with fake I/O.
             setups.append(f"auto *{name} = make_action({owner}, [&]() {{ {context}{body} }});")
             output.append(name)

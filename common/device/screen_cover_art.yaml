@@ -1222,7 +1222,9 @@ script:
       - lambda: |-
           const std::string cover_entity = id(cover_art_active_media_player_entity);
           const int subscription_generation = id(cover_art_subscription_generation);
-          if (!id(cover_art_screensaver_enabled).state || cover_entity.empty()) return;
+          if (!id(cover_art_screensaver_enabled).state || cover_entity.empty() ||
+              (!id(cover_art_media_playing) &&
+               !id(cover_art_playback_control).retains_pause(cover_entity))) return;
           const bool force_refresh = id(cover_art_artwork_trigger).consume();
           const uint8_t request_mask = espcontrol::artwork::artwork_source_request_mask(
             id(cover_art_artwork_retry_mask));
@@ -3092,7 +3094,7 @@ script:
                     return state != "playing" && state != "buffering" && state != "paused";
                 then:
                   # The obsolete callback may retire its old request from live
-                  # playback state, but it must not touch presentation widgets.
+                  # playback state, but it must not change the current view.
                   # Reset the non-visual playback state first so later schedule
                   # and wake checks cannot reopen cover art for stopped media.
                   - globals.set:
@@ -3113,6 +3115,7 @@ script:
                       id(cover_art_last_progress_percent) = -1;
                   - script.execute: display_mode_clear_cover_art
                   - script.wait: display_mode_clear_cover_art
+                  - script.execute: cover_art_release_stopped_artwork
             - script.stop: cover_art_delayed_playback_stopped
       - if:
           condition:
@@ -3147,11 +3150,51 @@ script:
           lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00");
       - script.execute: cover_art_return_home_after_playback
 
+  - id: cover_art_release_stopped_artwork
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_art_media_playing) ||
+                     id(cover_art_playback_control).retains_pause(
+                       id(cover_art_active_media_player_entity)) ||
+                     id(espcontrol_app).display().target_mode_is(
+                       espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_release_stopped_artwork
+      - script.stop: cover_art_prepare_activation
+      - script.stop: cover_art_download
+      - script.stop: cover_art_prepare_download
+      - script.stop: cover_art_deferred_download
+      - script.stop: cover_art_retry_download
+      - script.stop: cover_art_deferred_request_artwork
+      - script.stop: cover_art_schedule_paired_artwork
+      - script.stop: cover_art_process_cached_artwork
+      - script.stop: cover_art_use_cached_artwork
+      - script.stop: cover_art_apply_downloaded_image
+      - script.stop: cover_art_extract_accent_color
+      - lambda: |-
+          ha_release_callbacks_for_owner(&id(cover_art_runtime));
+          id(cover_art_runtime).clear_image();
+          id(cover_art_artwork_trigger).reset();
+          id(cover_art_artwork_retry_mask) = 0;
+          id(cover_art_pending_remote_url).clear();
+          id(cover_art_pending_local_url).clear();
+          id(cover_art_artwork_pending_count) = 0;
+          ++id(cover_art_request_id);
+      - script.execute: cover_art_clear_image_source
+      - script.wait: cover_art_clear_image_source
+      - artwork_image.release: cover_art_downloaded_image
+      - lambda: ha_log_subscription_diagnostics("cover-art-stopped");
+
   - id: cover_art_return_home_after_playback
     mode: restart
     then:
       - script.execute: display_mode_clear_cover_art
       - script.wait: display_mode_clear_cover_art
+      - script.execute: cover_art_release_stopped_artwork
+      - script.wait: cover_art_release_stopped_artwork
       - if:
           condition:
             lambda: |-

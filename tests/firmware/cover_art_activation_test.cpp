@@ -11,6 +11,7 @@
 #include "cover_art.h"
 #include "display_mode_controller.h"
 #include "artwork_url.h"
+#include "ha_read_coordinator.h"
 
 using Action = esphome::Action<>;
 using ActionList = esphome::ActionList<>;
@@ -137,8 +138,37 @@ bool cover_art_attribute_conditions_match = true, cover_art_external_input_activ
     cover_art_media_playing = true;
 std::string cover_art_active_media_player_entity = "media_player.issue1854",
     cover_art_pending_remote_url, cover_art_pending_local_url;
-struct Image { void cancel_update() {} void release() {} } image;
+bool image_source_detached = false;
+struct Image {
+  int releases = 0;
+  void cancel_update() {}
+  void release() { assert(image_source_detached); ++releases; }
+} image;
 Image *cover_art_downloaded_image = &image;
+espcontrol::cover_art::PlaybackControl cover_art_playback_control;
+espcontrol::artwork::RefreshTrigger cover_art_artwork_trigger;
+uint8_t cover_art_artwork_retry_mask = 0;
+bool cover_art_delay_interrupted_by_transition = false;
+uint32_t cover_art_manual_pause_until_ms = 0;
+float cover_art_media_position = 0, cover_art_position_anchor = 0, cover_art_media_duration = 0;
+int cover_art_position_anchor_epoch = 0, cover_art_last_position_timestamp = 0,
+    cover_art_last_progress_percent = -1;
+std::string cover_art_last_playback_state = "playing";
+int cover_art_progress_bar = 0, cover_art_time_label = 0;
+constexpr int LV_ANIM_OFF = 0;
+void lv_bar_set_value(int, int, int) {}
+void lv_label_set_text(int, const char*) {}
+struct Transport {
+  using State = std::string;
+  using Callback = std::function<void(State)>;
+  bool available() const { return true; }
+  bool state_connected() const { return true; }
+  void subscribe(const std::string&, const std::string&, Callback) {}
+};
+struct Heap { bool available(const char*, size_t, size_t) { return true; } };
+HaReadCoordinator<Transport, Heap> coordinator;
+void ha_release_callbacks_for_owner(void *owner) { coordinator.release_owner(owner); }
+void ha_log_subscription_diagnostics(const char*) {}
 int cover_art_image_widget = 0;
 constexpr int LV_OBJ_FLAG_HIDDEN = 1;
 void lv_obj_add_flag(int, int) {}
@@ -151,6 +181,7 @@ void reset() {
   display_mode_effect_cover_art.stop();
   cover_art_prepare_activation.stop();
   cover_art_deferred_download.stop();
+  cover_art_delayed_playback_stopped.stop();
   events.clear();
   espcontrol_app.controller = {};
   espcontrol_app.controller.request(espcontrol::DisplayRequestSource::MEDIA_PLAYBACK,
@@ -161,6 +192,12 @@ void reset() {
   cover_art_attribute_conditions_match = true;
   cover_art_external_input_active = false;
   cover_art_active_media_player_entity = "media_player.issue1854";
+  cover_art_playback_control.reset();
+  cover_art_media_playing = true;
+  cover_art_last_playback_state = "playing";
+  image.releases = 0;
+  image_source_detached = false;
+  coordinator.invalidate_retained_state();
   cover_art_runtime = {};
   cover_art_runtime.sources.update(false, "https://example.test/art.jpg");
   cover_art_request_artwork.calls = cover_art_use_cached_artwork.calls = 0;
@@ -173,6 +210,10 @@ int main(int argc, char **argv) {
   // GENERATED_SCRIPT_SETUP
   cover_art_apply_responsive_layout.io = [] { layout_depth = depth; };
   cover_art_request_artwork.io = [] { artwork_depth = depth; };
+  cover_art_clear_image_source.io = [] { image_source_detached = true; };
+  display_mode_clear_cover_art.io = [] {
+    espcontrol_app.controller.clear(espcontrol::DisplayRequestSource::MEDIA_PLAYBACK);
+  };
   cover_art_download.io = [] {
     cover_art_runtime.image_available = true;
     cover_art_runtime.loaded_url = cover_art_runtime.source_url;
@@ -265,4 +306,67 @@ int main(int argc, char **argv) {
   drain();
   assert(cover_art_download.calls == 1);
   std::puts("Cover Art activation: scheduling, ownership, caching and cancellation passed");
+
+  // Playback-stop teardown also works after an earlier Wake hid the view.
+  assert(coordinator.subscribe("media_player.issue1854", "entity_picture_local",
+                               [](std::string) {}, 1u, nullptr, true));
+  for (bool already_hidden : {false, true}) {
+    reset();
+    if (already_hidden)
+      espcontrol_app.controller.request(espcontrol::DisplayRequestSource::USER_WAKE,
+                                        espcontrol::DisplayMode::ACTIVE);
+    cover_art_runtime.image_available = true;
+    cover_art_runtime.loaded_url = "https://example.test/art.jpg";
+    assert(coordinator.read_retained("media_player.issue1854", "entity_picture_local",
+                                    [](std::string) {}, true, 1, 1, &cover_art_runtime));
+    // Another consumer's pending read must survive screensaver cleanup.
+    assert(coordinator.read_retained("media_player.issue1854", "entity_picture_local",
+                                    [](std::string) {}, true, 1, 1, &image));
+    cover_art_playback_stopped.execute();
+    drain();
+    assert(image.releases == 1 && image_source_detached);
+    assert(!cover_art_runtime.image_available && cover_art_runtime.loaded_url.empty());
+    assert(coordinator.pending_read_count() == 1);
+    assert(!cover_art_media_playing);
+  }
+
+  // The two-second debounce protects normal track gaps and resumed playback.
+  for (const std::string state : {"playing", "buffering", "paused"}) {
+    reset();
+    cover_art_last_playback_state = "idle";
+    cover_art_delayed_playback_stopped.execute(cover_art_transition_generation);
+    for (int i = 0; i < 1000; ++i) tick();
+    assert(image.releases == 0);
+    cover_art_last_playback_state = state;
+    drain();
+    assert(image.releases == 0);
+  }
+  // A stop callback from before Wake still releases its unused artwork.
+  reset();
+  cover_art_last_playback_state = "idle";
+  cover_art_delayed_playback_stopped.execute(cover_art_transition_generation);
+  espcontrol_app.controller.request(espcontrol::DisplayRequestSource::USER_WAKE,
+                                    espcontrol::DisplayMode::ACTIVE);
+  drain();
+  assert(image.releases == 1 && !cover_art_media_playing);
+  assert(espcontrol_app.controller.target_mode_is(espcontrol::DisplayMode::ACTIVE));
+
+  // Cleanup cannot retire artwork that is playing or retained by a local pause.
+  reset();
+  cover_art_release_stopped_artwork.execute();
+  drain();
+  assert(image.releases == 0);
+  cover_art_playback_control.begin(cover_art_active_media_player_entity, "playing", 1);
+  cover_art_playback_control.observe(cover_art_active_media_player_entity, "paused", 2);
+  cover_art_media_playing = false;
+  cover_art_release_stopped_artwork.execute();
+  drain();
+  assert(image.releases == 0);
+  // Playback can resume while return-home is finishing its display transition.
+  reset();
+  display_mode_clear_cover_art.io = [] { cover_art_media_playing = true; };
+  cover_art_playback_stopped.execute();
+  drain();
+  assert(image.releases == 0);
+  std::printf("Playback teardown: stop, Wake, debounce and retained pause checks passed\n");
 }
