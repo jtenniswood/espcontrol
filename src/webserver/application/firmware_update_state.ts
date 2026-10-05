@@ -28,7 +28,7 @@ export interface FirmwareUpdateFeature {
     setInfo(data?: any): void;
     stopInstallRefresh(): void;
     stopInstallRefreshIfComplete(): boolean;
-    startInstallRefresh(): void;
+    startInstallRefresh(restartWindow?: boolean): void;
     clearWebOtaFallback(): void;
     scheduleWebOtaFallback(): void;
 }
@@ -373,8 +373,8 @@ export function createFirmwareUpdateFeature(
         }
         firmwareInstallRefreshTimer = setTimeout(pollFirmwareInstallRefresh, 5000);
     }
-    function startFirmwareInstallRefresh(this: any) {
-        if (firmwareInstallRefreshUntil)
+    function startFirmwareInstallRefresh(this: any, restartWindow?: boolean) {
+        if (firmwareInstallRefreshUntil && !restartWindow)
             return;
         firmwareInstallRefreshGeneration++;
         state.firmwareInstallError = "";

@@ -123,7 +123,7 @@ export function createPublicFirmwareInstallFeature(
                         throw new Error("Device reported that the firmware upload failed.");
                     }
                     // The confirmation deadline starts after the transfer completes.
-                    startFirmwareInstallRefresh();
+                    startFirmwareInstallRefresh(true);
                     waitForFirmwareRestart();
                     return true;
                 });
@@ -131,7 +131,7 @@ export function createPublicFirmwareInstallFeature(
                 if (uploadStarted && !uploadResponseReceived) {
                     // The connection may close during reboot, but that is not proof
                     // of success. Keep checking the version and expose the uncertainty.
-                    startFirmwareInstallRefresh();
+                    startFirmwareInstallRefresh(true);
                     state.firmwareInstallStatus = "Upload connection lost. Checking whether the display installed the firmware…";
                     renderFirmwareUpdateStatus();
                     setTimeout(appEvents.connect, 5000);
