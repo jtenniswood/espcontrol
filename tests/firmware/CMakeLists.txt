@@ -388,6 +388,8 @@ target_include_directories(scanline_resampler_test PRIVATE ../../components/artw
 add_test(NAME scanline_resampler_test COMMAND scanline_resampler_test)
 add_test(NAME image_resize_integration_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/image_resize_integration_test.py ${CMAKE_CXX_COMPILER})
+add_test(NAME p4_jpeg_memory_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/p4_jpeg_memory_test.py ${CMAKE_CXX_COMPILER})
 
 file(GLOB SAVED_CONFIG_FIXTURES
   CONFIGURE_DEPENDS
