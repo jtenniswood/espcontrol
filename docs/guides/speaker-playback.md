@@ -1,12 +1,12 @@
 ---
 title: Speaker Playback
-description: Use supported EspControl panels as Home Assistant media players.
+description: Use the 4-inch ESP32-P4-86 panel as a Home Assistant media player.
 ---
 
 # Speaker Playback
 
-Supported panels expose an ESPHome media player named after the panel with
-“Speaker” appended. Home Assistant can send announcements and media to it,
+The 4-inch ESP32-P4-86 panel exposes an ESPHome media player named after the
+panel with “Speaker” appended. Home Assistant can send announcements and media to it,
 control playback, and adjust its volume. The board amplifier turns on during
 playback and switches off when playback ends.
 
@@ -24,19 +24,8 @@ Connect a compatible passive speaker to the panel's speaker connector. The P4
 audio output uses the onboard ES8311 codec and amplifier; no external DAC is
 needed.
 
-## S3 4848S040
-
-The 4848S040 uses its relay GPIOs for the onboard I2S amplifier, so this setup
-keeps the relays available and uses an external I2S amplifier instead. Connect
-the external amplifier's BCLK to GPIO41 and LRCLK to GPIO42. Connect the
-panel's DOUT on GPIO43 to the amplifier's DIN input, then connect power and
-ground as required by the amplifier. Connect a speaker to the amplifier output.
-
-GPIO43 is shared with UART0 transmit, so serial log output is disabled on this
-profile when speaker playback is enabled.
-
-The onboard amplifier path requires hardware changes and reassigning the relay
-GPIOs. The default firmware does not make that change.
+Speaker output and Sendspin are included only on the ESP32-P4-86. The 7-inch,
+10.1-inch, 4.3-inch P4, and 4-inch S3 profiles do not include local audio output.
 
 Audio uses ESPHome's speaker media player, which requires ESP-IDF and Home
 Assistant 2024.10 or newer for Home Assistant media transcoding.

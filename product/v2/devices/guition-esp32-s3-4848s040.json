@@ -174,10 +174,7 @@
           "screen_schedule_clock_min_brightness": "\"1\"",
           "screen_schedule_clock_default_brightness": "\"10\""
         },
-        "apiNavigateAction": true,
-        "extraPackages": {
-          "speaker_output": "!include ../../common/device/speaker_output_s3_external.yaml"
-        }
+        "apiNavigateAction": true
       }
     }
   }

@@ -19,7 +19,7 @@ Use a [Media card](/card-types/media) with a `media_player` entity. Playback, vo
 
 For multiple speakers, follow [Speaker Groups](/features/speaker-groups) and confirm the players can join in Home Assistant first. For a dedicated album-art display, use [Media Cover Art](/features/media-cover-art). Existing users of the older controller can follow the [migration guide](/getting-started/migrate-esphome-media-player).
 
-To play audio directly from a supported panel, see [Speaker Playback](/guides/speaker-playback) for the supported P4 speaker output and S3 external-amplifier wiring.
+To play audio directly from the 4-inch ESP32-P4-86 panel, see [Speaker Playback](/guides/speaker-playback).
 
 ## Show a Camera or Doorbell Snapshot
 

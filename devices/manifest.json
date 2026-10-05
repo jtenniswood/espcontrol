@@ -185,16 +185,12 @@
             "screen_saver_clock_min_brightness": "\"1\"",
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
-            "screen_schedule_clock_default_brightness": "\"10\"",
-            "speaker_amplifier_pin": "\"GPIO11\""
+            "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
           "networkCoprocessor": true,
           "esp32C6FirmwareUpdate": true,
           "ethernetSelectable": true,
-          "extraPackages": {
-            "speaker_output": "!include ../../common/device/speaker_output_p4.yaml"
-          },
           "backlightPwmFrequency": {
             "wifi": "1000Hz",
             "ethernet": "20000Hz"
@@ -385,16 +381,12 @@
             "screen_saver_clock_min_brightness": "\"1\"",
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
-            "screen_schedule_clock_default_brightness": "\"10\"",
-            "speaker_amplifier_pin": "\"GPIO11\""
+            "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
           "networkCoprocessor": true,
           "esp32C6FirmwareUpdate": true,
           "ethernetSelectable": true,
-          "extraPackages": {
-            "speaker_output": "!include ../../common/device/speaker_output_p4.yaml"
-          },
           "backlightPwmFrequency": {
             "wifi": "1000Hz",
             "ethernet": "20000Hz"
@@ -583,14 +575,10 @@
             "screen_saver_clock_min_brightness": "\"1\"",
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
-            "screen_schedule_clock_default_brightness": "\"10\"",
-            "speaker_amplifier_pin": "\"GPIO11\""
+            "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_lg",
           "esp32C6FirmwareUpdate": true,
-          "extraPackages": {
-            "speaker_output": "!include ../../common/device/speaker_output_p4.yaml"
-          },
           "apiOpenModalAction": true
         }
       }
@@ -774,14 +762,12 @@
             "screen_saver_clock_min_brightness": "\"1\"",
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
-            "screen_schedule_clock_default_brightness": "\"10\"",
-            "speaker_amplifier_pin": "\"GPIO20\""
+            "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
           "esp32C6FirmwareUpdate": true,
           "extraPackages": {
-            "battery": "!include device/battery.yaml",
-            "speaker_output": "!include ../../common/device/speaker_output_p4.yaml"
+            "battery": "!include device/battery.yaml"
           },
           "apiOpenModalAction": true
         }
@@ -966,14 +952,10 @@
             "screen_saver_clock_min_brightness": "\"1\"",
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
-            "screen_schedule_clock_default_brightness": "\"10\"",
-            "speaker_amplifier_pin": "\"GPIO20\""
+            "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
           "esp32C6FirmwareUpdate": true,
-          "extraPackages": {
-            "speaker_output": "!include ../../common/device/speaker_output_p4.yaml"
-          },
           "apiOpenModalAction": true
         }
       }
@@ -1157,14 +1139,10 @@
             "screen_saver_clock_min_brightness": "\"1\"",
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
-            "screen_schedule_clock_default_brightness": "\"10\"",
-            "speaker_amplifier_pin": "\"GPIO20\""
+            "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
           "esp32C6FirmwareUpdate": true,
-          "extraPackages": {
-            "speaker_output": "!include ../../common/device/speaker_output_p4.yaml"
-          },
           "apiOpenModalAction": true
         }
       }
@@ -1561,9 +1539,6 @@
             "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
-          "extraPackages": {
-            "speaker_output": "!include ../../common/device/speaker_output_s3_external.yaml"
-          },
           "apiNavigateAction": true,
           "apiOpenModalAction": true
         }

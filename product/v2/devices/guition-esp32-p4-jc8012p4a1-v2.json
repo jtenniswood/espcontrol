@@ -11,16 +11,6 @@
     "public": {
       "name": "Guition JC8012P4A1 new panel (2628+)",
       "docsPath": "/screens/jc8012p4a1-v2"
-    },
-    "firmware": {
-      "package": {
-        "substitutions": {
-          "speaker_amplifier_pin": "\"GPIO20\""
-        },
-        "extraPackages": {
-          "speaker_output": "!include ../../common/device/speaker_output_p4.yaml"
-        }
-      }
     }
   },
   "overrides": {
