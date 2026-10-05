@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Compile and exercise the pure cover-art policy, layout, and state helpers."""
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -363,18 +364,11 @@ for required in (
         raise SystemExit(f"P4 artwork job safety contract missing: {required}")
 
 jpeg_decoder = (ROOT / "components" / "artwork_image" / "jpeg_image.cpp").read_text(encoding="utf-8")
-for required in (
-    """if (!this->set_size(target_width, target_height)) {
-      p4_release_jpeg_workspace();
-      return DECODE_ERROR_OUT_OF_MEMORY;
-    }""",
-    """if (!this->set_size(info.width, info.height)) {
-      p4_release_jpeg_workspace();
-      return DECODE_ERROR_OUT_OF_MEMORY;
-    }""",
-):
-    if required not in jpeg_decoder:
-        raise SystemExit("P4 JPEG workspace must be released after image buffer allocation failure")
+# Exercise buffer ownership on success and failure instead of requiring a
+# particular spelling of manual cleanup; the decoder now uses scoped ownership.
+subprocess.run(
+    [sys.executable, str(ROOT / "tests/firmware/p4_jpeg_memory_test.py")], check=True
+)
 
 if 'if (err == ESP_ERR_NOT_SUPPORTED) {' not in jpeg_decoder:
     raise SystemExit("P4 JPEG unsupported-format fallback must be handled explicitly")
