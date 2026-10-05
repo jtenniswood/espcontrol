@@ -141,6 +141,31 @@ export async function runFirmwareUpdateTests() {
     await loaded;
     equal(state.firmwareInstallStatus, "Firmware v2.8.6 installed.", "loader applies version before completing");
 
+    // A slow firmware transfer does not consume the confirmation window.
+    updates.stopInstallRefresh();
+    version.set("v2.11.0");
+    const pollsBeforeTransfer = pollsScheduled;
+    let finishDownload!: (result: any) => void;
+    let finishUpload!: (result: any) => void;
+    const delayedTransfer = createPublicFirmwareInstallFeature({ request: (url: string) => url === "/update"
+      ? new Promise(resolve => { finishUpload = resolve; })
+      : new Promise(resolve => { finishDownload = resolve; }) } as any, "test", updates,
+      { setConfigLocked() {}, showBanner() {} } as any,
+      { getJsonQuietly: async () => {} } as any, { connect() {} });
+    const installing = delayedTransfer.installPublicFirmwareViaWebOta({
+      latest_version: "v2.8.6", ota_url: "https://example.test/fw.bin",
+    });
+    for (let i = 0; i < 10 && !finishDownload; i++) await Promise.resolve();
+    finishDownload({ kind: "success", value: { ok: true, blob: async () => new Blob(["firmware"]) } });
+    for (let i = 0; i < 10 && !finishUpload; i++) await Promise.resolve();
+    equal(typeof finishUpload, "function", "firmware download proceeds to the device upload");
+    now += 181000;
+    equal(pollsScheduled, pollsBeforeTransfer, "transfer does not start the confirmation timer");
+    equal(state.firmwareInstallError.includes("could not be confirmed"), false, "long transfer cannot time out confirmation");
+    finishUpload({ kind: "success", value: { ok: true, text: async () => "Update Successful!" } });
+    await installing;
+    equal(pollsScheduled, pollsBeforeTransfer + 2, "confirmation and reconnect timers start when upload completes");
+
     let banner = "";
     const upload = createPublicFirmwareInstallFeature({ request: async (url: string) => url === "/update"
       ? { kind: "network-error", error: new Error("Load failed") }

@@ -89,6 +89,7 @@ low_target=Alacsony célérték
 media=Média
 media_control=Médiavezérlés
 playlist=Lejátszási lista
+cover_art=Albumborító
 medium=Közepes
 mode=Mód
 group=Csoport

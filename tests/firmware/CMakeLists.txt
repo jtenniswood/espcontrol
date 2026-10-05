@@ -524,3 +524,6 @@ target_compile_options(home_assistant_endpoint_probe_test PRIVATE -Wall -Wextra 
 target_compile_definitions(home_assistant_endpoint_probe_test PRIVATE USE_ESP_IDF)
 target_include_directories(home_assistant_endpoint_probe_test PRIVATE endpoint_idf_stubs endpoint_stubs ../../components/espcontrol)
 add_test(NAME home_assistant_endpoint_probe_test COMMAND home_assistant_endpoint_probe_test)
+
+add_test(NAME clock_screensaver_time_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/clock_screensaver_time_test.py)

@@ -35,6 +35,11 @@ int main() {
   if (position_for_value(fractional, 20.0) != 80) return EXIT_FAILURE;
   if (!close_to(snap_value(fractional, 0.37), 0.25)) return EXIT_FAILURE;
   if (format_value(-0.25, fractional) != "-0.25") return EXIT_FAILURE;
+  if (nearest_step_index(fractional, -100.0) != 0) return EXIT_FAILURE;
+  if (nearest_step_index(fractional, 100.0) != 80) return EXIT_FAILURE;
+  if (!close_to(value_for_step_index(fractional, 41), 0.25)) return EXIT_FAILURE;
+  if (!close_to(value_for_step_index(fractional, -1), -10.0)) return EXIT_FAILURE;
+  if (!close_to(value_for_step_index(fractional, 100), 10.0)) return EXIT_FAILURE;
 
   const Metadata uneven_range{0.0, 1.0, 0.3};
   if (legal_step_count(uneven_range) != 4) return EXIT_FAILURE;
@@ -43,6 +48,22 @@ int main() {
   if (!close_to(value_for_position(uneven_range, 4), 1.0)) return EXIT_FAILURE;
   if (position_for_value(uneven_range, 1.0) != 4) return EXIT_FAILURE;
   if (!close_to(snap_value(uneven_range, 1.0), 1.0)) return EXIT_FAILURE;
+
+  const Metadata negative_decimal_stepper{-2.5, 2.5, 0.75};
+  if (legal_step_count(negative_decimal_stepper) != 7) return EXIT_FAILURE;
+  if (!close_to(value_for_step_index(negative_decimal_stepper, 1), -1.75))
+    return EXIT_FAILURE;
+  if (!close_to(value_for_step_index(negative_decimal_stepper, 7), 2.5))
+    return EXIT_FAILURE;
+  if (nearest_step_index(negative_decimal_stepper, -100.0) != 0)
+    return EXIT_FAILURE;
+  if (nearest_step_index(negative_decimal_stepper, 100.0) != 7)
+    return EXIT_FAILURE;
+
+  const Metadata non_unit_step{10.0, 13.0, 0.7};
+  if (!close_to(snap_value(non_unit_step, 11.1), 11.4)) return EXIT_FAILURE;
+  if (!close_to(value_for_step_index(non_unit_step, 100), 13.0))
+    return EXIT_FAILURE;
 
   const Metadata uneven_maximum_precision{0.0, 1.25, 0.5};
   if (format_value(value_for_position(uneven_maximum_precision, 3),

@@ -89,6 +89,7 @@ low_target=Низька ціль
 media=Медіа
 media_control=Керування медіа
 playlist=Список відтворення
+cover_art=Обкладинка
 medium=Середньо
 mode=Режим
 group=Група

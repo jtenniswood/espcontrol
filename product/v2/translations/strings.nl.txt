@@ -89,6 +89,7 @@ low_target=Laag doel
 media=Media
 media_control=Mediabediening
 playlist=Afspeellijst
+cover_art=Albumhoes
 medium=Medium
 mode=Modus
 group=Groep

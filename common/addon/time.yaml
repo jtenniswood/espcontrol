@@ -446,6 +446,13 @@ script:
 
   - id: time_update
     then:
+      - if:
+          condition:
+            lambda: |-
+              return id(espcontrol_app).display().current_mode_is(
+                  espcontrol::DisplayMode::CLOCK);
+          then:
+            - script.execute: clock_screensaver_update_time
       - lvgl.label.update:
           id: display_time
           text: !lambda |-

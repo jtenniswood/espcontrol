@@ -89,6 +89,7 @@ low_target=Niedriger Zielwert
 media=Medien
 media_control=Mediensteuerung
 playlist=Wiedergabeliste
+cover_art=Albumcover
 medium=Medium
 mode=Modus
 group=Gruppe

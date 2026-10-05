@@ -89,6 +89,7 @@ low_target=Alvo baixo
 media=Mídia
 media_control=Controle de mídia
 playlist=Lista de reprodução
+cover_art=Capa do álbum
 medium=Medium
 mode=Modo
 group=Grupo

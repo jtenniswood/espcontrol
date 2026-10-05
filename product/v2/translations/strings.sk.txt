@@ -89,6 +89,7 @@ low_target=Nízky cieľ
 media=Médiá
 media_control=Ovládanie médií
 playlist=Zoznam skladieb
+cover_art=Obal albumu
 medium=Medium
 mode=Režim
 group=Skupina

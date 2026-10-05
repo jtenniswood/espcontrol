@@ -89,7 +89,6 @@ export function createPublicFirmwareInstallFeature(
                 "Uploading firmware " + state.firmwareInstallTargetVersion + "\u2026" :
                 "Uploading firmware update\u2026";
             renderFirmwareUpdateStatus();
-            startFirmwareInstallRefresh();
             var uploadStarted: any = false;
             var uploadResponseReceived: any = false;
             return ensurePublicFirmwareOtaUrl(info).then(function (this: any, otaUrl?: any) {
@@ -123,6 +122,8 @@ export function createPublicFirmwareInstallFeature(
                     if (/update failed/i.test(text)) {
                         throw new Error("Device reported that the firmware upload failed.");
                     }
+                    // The confirmation deadline starts after the transfer completes.
+                    startFirmwareInstallRefresh();
                     waitForFirmwareRestart();
                     return true;
                 });
@@ -130,6 +131,7 @@ export function createPublicFirmwareInstallFeature(
                 if (uploadStarted && !uploadResponseReceived) {
                     // The connection may close during reboot, but that is not proof
                     // of success. Keep checking the version and expose the uncertainty.
+                    startFirmwareInstallRefresh();
                     state.firmwareInstallStatus = "Upload connection lost. Checking whether the display installed the firmware…";
                     renderFirmwareUpdateStatus();
                     setTimeout(appEvents.connect, 5000);

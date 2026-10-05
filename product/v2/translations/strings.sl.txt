@@ -89,6 +89,7 @@ low_target=Nizka ciljna vrednost
 media=Predstavnost
 media_control=Nadzor predstavnosti
 playlist=Seznam predvajanja
+cover_art=Naslovnica
 medium=Srednje
 mode=Način
 group=Skupina

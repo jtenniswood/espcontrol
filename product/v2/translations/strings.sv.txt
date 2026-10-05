@@ -89,6 +89,7 @@ low_target=Lågt mål
 media=Media
 media_control=Mediekontroll
 playlist=Spellista
+cover_art=Skivomslag
 medium=Medium
 mode=Läge
 group=Grupp

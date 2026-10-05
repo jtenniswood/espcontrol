@@ -89,6 +89,7 @@ low_target=Nízký cíl
 media=Média
 media_control=Ovládání médií
 playlist=Playlist
+cover_art=Obal alba
 medium=Medium
 mode=Režim
 group=Skupina

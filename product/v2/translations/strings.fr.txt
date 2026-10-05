@@ -89,6 +89,7 @@ low_target=Cible basse
 media=Média
 media_control=Contrôle multimédia
 playlist=Liste de lecture
+cover_art=Pochette
 medium=Medium
 mode=Mode
 group=Groupe
