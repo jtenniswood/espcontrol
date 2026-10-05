@@ -89,6 +89,7 @@ low_target=Lavt mål
 media=Medie
 media_control=Mediestyring
 playlist=Afspilningsliste
+cover_art=Albumcover
 medium=Medium
 mode=Tilstand
 group=Gruppe

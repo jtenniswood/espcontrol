@@ -18,6 +18,10 @@ The recovery download contains both the latest EspControl firmware and its match
 C6 firmware. The P4 transfers the C6 update internally, so the repair does **not**
 need working Wifi or internet access after the USB download has completed.
 
+Recovery firmware keeps USB recovery progress, warnings and errors while using
+INFO-level logging to fit the C6 image in the existing OTA partition. Its Cover
+Art title uses fewer shading levels; the glyphs, font size and layout stay the same.
+
 ::: warning This reinstalls EspControl
 Export your configuration from **Settings > Backup** first when the panel is still
 accessible. Recovery normally preserves saved configuration, but preservation

@@ -3,11 +3,12 @@ name: CI
 on:
   workflow_dispatch:
   pull_request:
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
     paths:
       - '.github/workflows/ci.yml'
+      - '.github/workflows/pr-process.yml'
       - '.github/workflows/nightly-firmware.yml'
       - '.github/workflows/pr-testing-guidance.yml'
       - '.github/workflows/release.yml'
@@ -41,15 +42,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  pr-process:
-    name: PR Process
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - name: Check PR documentation decision
-        run: python3 scripts/check_pr_process.py
-
   sync-icons:
     name: Sync Generated Icons
     if: github.event_name != 'pull_request'
@@ -214,10 +206,9 @@ jobs:
 
   docs:
     name: Build Docs
-    needs: [sync-icons, validate]
+    needs: sync-icons
     if: >-
       always() &&
-      needs.validate.result == 'success' &&
       (github.event_name == 'pull_request' || needs.sync-icons.outputs.changed != 'true')
     runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     steps:
@@ -250,17 +241,15 @@ jobs:
 
   ci-gate:
     name: CI Gate
-    needs: [pr-process, validate, docs]
+    needs: [validate, docs]
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Verify required CI jobs passed
         run: |
-          if [ "${{ needs.pr-process.result }}" != "success" ] ||
-             [ "${{ needs.validate.result }}" != "success" ] ||
+          if [ "${{ needs.validate.result }}" != "success" ] ||
              [ "${{ needs.docs.result }}" != "success" ]; then
             echo "::error::Required CI jobs did not pass."
-            echo "PR Process: ${{ needs.pr-process.result }}"
             echo "Validate Generated Files: ${{ needs.validate.result }}"
             echo "Build Docs: ${{ needs.docs.result }}"
             exit 1

@@ -1575,6 +1575,21 @@ script:
                 brightness: !lambda 'return id(screensaver_clock_target_level);'
                 transition_length: 0s
 
+  # Refresh on entry and at the minute boundary, including time/format changes.
+  - id: clock_screensaver_update_time
+    then:
+      - lambda: |-
+          apply_clock_screensaver_text_color(id(clock_label), id(schedule_clock_text_color).state);
+          auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+          if (time.is_valid()) {
+            char buf[8];
+            bool use_12h = id(clock_format_12h);
+            format_clock_time_without_suffix(buf, sizeof(buf),
+                                             time.hour, time.minute, use_12h);
+            lv_label_set_text(id(clock_label), buf);
+            position_clock_screensaver_label(id(clock_screensaver), id(clock_label), time.minute);
+          }
+
   # Show the clock screensaver overlay
   - id: show_clock_view
     mode: restart
@@ -1591,17 +1606,7 @@ script:
           then:
             - lambda: 'navigation_return_home(id(main_page)->obj);'
             - lvgl.widget.hide: dim_screensaver_touch_guard
-            - lambda: |-
-                apply_clock_screensaver_text_color(id(clock_label), id(schedule_clock_text_color).state);
-                auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-                if (time.is_valid()) {
-                  char buf[8];
-                  bool use_12h = id(clock_format_12h);
-                  format_clock_time_without_suffix(buf, sizeof(buf),
-                                                   time.hour, time.minute, use_12h);
-                  lv_label_set_text(id(clock_label), buf);
-                  position_clock_screensaver_label(id(clock_screensaver), id(clock_label), time.minute);
-                }
+            - script.execute: clock_screensaver_update_time
             - script.execute: clock_bar_hide
             - script.wait: clock_bar_hide
             - lambda: |-
@@ -1741,7 +1746,7 @@ script:
           lv_obj_move_foreground(id(clock_screensaver));
 
 # -----------------------------------------------------------------------------
-# Clock screensaver drift update (repositions label for burn-in prevention)
+# Screensaver layering and brightness/image-overlay maintenance
 # -----------------------------------------------------------------------------
 interval:
   - interval: 1s
@@ -1758,18 +1763,6 @@ interval:
                   espcontrol::DisplayMode::CLOCK);
           then:
             - script.execute: clock_screensaver_refresh_brightness
-      - lambda: |-
-          if (!id(espcontrol_app).display().current_mode_is(
-                espcontrol::DisplayMode::CLOCK)) return;
-          apply_clock_screensaver_text_color(id(clock_label), id(schedule_clock_text_color).state);
-          auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-          if (!time.is_valid()) return;
-          char buf[8];
-          bool use_12h = id(clock_format_12h);
-          format_clock_time_without_suffix(buf, sizeof(buf),
-                                           time.hour, time.minute, use_12h);
-          lv_label_set_text(id(clock_label), buf);
-          position_clock_screensaver_label(id(clock_screensaver), id(clock_label), time.minute);
       - if:
           condition:
             lambda: |-

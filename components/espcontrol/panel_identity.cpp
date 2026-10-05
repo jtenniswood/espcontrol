@@ -11,8 +11,9 @@
 #include "esphome/core/version.h"
 
 // This adapter relies on 2026.9.0's non-const Application StringRef members,
-// exposed as const references by the public getters. Review at ESPHome upgrades.
-static_assert(ESPHOME_VERSION_CODE == VERSION_CODE(2026, 9, 0),
+// exposed as const references by the public getters. Review at ESPHome minor upgrades.
+static_assert(ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 9, 0) &&
+                  ESPHOME_VERSION_CODE < VERSION_CODE(2026, 10, 0),
               "Review panel identity startup adapter for this ESPHome version");
 namespace espcontrol {
 PanelIdentity *panel_identity = nullptr;

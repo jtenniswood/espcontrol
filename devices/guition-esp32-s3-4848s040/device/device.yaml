@@ -409,6 +409,13 @@ touchscreen:
     id: my_touchscreen
     display: my_display
     update_interval: 16ms
+    # Use this panel's native coordinate range instead of the GT911's
+    # auto-detected limits (candidate fix for shifted touches in #2123).
+    calibration:
+      x_min: 0
+      x_max: 480
+      y_min: 0
+      y_max: 480
     transform:
       mirror_x: false
       mirror_y: false

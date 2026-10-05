@@ -3,6 +3,7 @@
   "private": true,
   "license": "PolyForm-Noncommercial-1.0.0",
   "scripts": {
+    "prepare:ci": "python3 scripts/prepare_ci.py",
     "check:all": "python3 scripts/check_tasks.py run all",
     "check:backup-contract": "python3 scripts/check_tasks.py run-task backup-contract",
     "check:card-contract-outputs": "python3 scripts/check_tasks.py run-task card-contract-outputs",

@@ -89,6 +89,7 @@ low_target=Niski cel
 media=Media
 media_control=Sterowanie multimediami
 playlist=Playlista
+cover_art=Okładka
 medium=Medium
 mode=Tryb
 group=Grupa
