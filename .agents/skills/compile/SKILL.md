@@ -24,6 +24,14 @@ guition-esp32-s3-4848s040
 
 ## Workflow
 
+Run all commands from the active repository worktree. Resolve its root once and
+use that path for Docker mounts; do not use a fixed machine-specific checkout
+path:
+
+```bash
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+```
+
 ### 1. Resolve the ESPHome Version
 
 Use the ESPHome version pinned by the repository in `.github/esphome.env`. This
@@ -45,7 +53,7 @@ entry point CI uses, so the test matches what a release build would do.
 
 ```bash
 docker run --rm \
-  -v "/Users/jtenniswood/Library/CloudStorage/Dropbox/Git/espcontrol:/config" \
+  -v "$REPO_ROOT:/config" \
   "$ESPHOME_IMAGE" \
   compile /config/builds/<slug>.factory.yaml
 ```

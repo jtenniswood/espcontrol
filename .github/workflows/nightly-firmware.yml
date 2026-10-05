@@ -206,6 +206,9 @@ jobs:
 
             ${DOCKER} start -a "${container}"
             compile_status=$?
+            python3 scripts/report_firmware_size.py \
+              --target "${target}" --build-root "${build_cache}" \
+              --compile-status "${compile_status}" || compile_status=1
             cleanup_container
             trap - EXIT
             bash scripts/reclaim_actions_disk.sh
