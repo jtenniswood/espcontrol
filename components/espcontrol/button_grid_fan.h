@@ -125,7 +125,6 @@ struct FanControlModalUi {
   lv_obj_t *speed_slider = nullptr;
   lv_obj_t *speed_fill = nullptr;
   lv_obj_t *speed_handle = nullptr;
-  lv_obj_t *speed_value_lbl = nullptr;
   lv_obj_t *speed_minus_btn = nullptr;
   lv_obj_t *speed_plus_btn = nullptr;
   lv_obj_t *preset_list = nullptr;
@@ -672,11 +671,6 @@ inline void fan_control_set_speed_value(FanCardCtx *ctx, int pct) {
   light_control_update_slider_fill(
     ui.speed_slider, ui.speed_fill, ui.speed_handle, pct, lv_color_hex(ctx->on_color));
   light_control_update_slider_handle(ui.speed_slider, ui.speed_handle, pct);
-  if (ui.speed_value_lbl) {
-    char buf[8];
-    snprintf(buf, sizeof(buf), "%d%%", pct);
-    lv_label_set_display_text(ui.speed_value_lbl, buf);
-  }
 }
 
 inline std::string fan_control_card_title(FanCardCtx *ctx) {
@@ -892,22 +886,17 @@ inline void fan_control_layout_modal(FanCardCtx *ctx) {
   if (ui.speed_group) {
     lv_obj_set_size(ui.speed_group, control_w, content_h);
     lv_obj_align(ui.speed_group, LV_ALIGN_CENTER, 0, center_y);
-    lv_coord_t value_h = control_modal_scaled_px(38, layout.short_side);
-    if (value_h < 30) value_h = 30;
     lv_coord_t step_h = control_modal_scaled_px(56, layout.short_side);
     if (step_h < 44) step_h = 44;
     lv_coord_t gap = control_modal_scaled_px(10, layout.short_side);
     if (gap < 8) gap = 8;
-    lv_coord_t slider_h = content_h - value_h - step_h - gap * 2;
+    lv_coord_t slider_h = content_h - step_h - gap;
     if (slider_h < 100) slider_h = content_h * 2 / 3;
     lv_coord_t slider_w = control_w;
-    if (ui.speed_value_lbl) {
-      lv_obj_set_size(ui.speed_value_lbl, slider_w, value_h);
-      lv_obj_align(ui.speed_value_lbl, LV_ALIGN_TOP_MID, 0, 0);
-    }
     light_control_layout_slider(ui.speed_slider, slider_w, slider_h,
-      -content_h / 2 + value_h + gap + slider_h / 2,
+      -content_h / 2 + slider_h / 2,
       ctx->width_compensation_percent);
+    lv_obj_update_layout(ui.panel);
     light_control_update_slider_fill(
       ui.speed_slider, ui.speed_fill, ui.speed_handle, ctx->on ? ctx->percentage : 0,
       lv_color_hex(ctx->on_color));
@@ -1046,10 +1035,6 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
   lv_obj_set_style_shadow_width(ui.speed_group, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.speed_group, 0, LV_PART_MAIN);
   lv_obj_clear_flag(ui.speed_group, LV_OBJ_FLAG_SCROLLABLE);
-  ui.speed_value_lbl = lv_label_create(ui.speed_group);
-  lv_obj_set_style_text_color(ui.speed_value_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-  lv_obj_set_style_text_align(ui.speed_value_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (ctx->label_font) lv_obj_set_style_text_font(ui.speed_value_lbl, ctx->label_font, LV_PART_MAIN);
   ui.speed_slider = lv_slider_create(ui.speed_group);
   light_control_style_slider(ui.speed_slider, ctx->on_color);
   lv_slider_set_value(ui.speed_slider, slider_clamp_pct(ctx->percentage), LV_ANIM_OFF);
@@ -1072,11 +1057,6 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
     light_control_update_slider_fill(
       slider, ui.speed_fill, ui.speed_handle, pct, lv_color_hex(ui.active->on_color));
     light_control_update_slider_handle(slider, ui.speed_handle, pct);
-    if (ui.speed_value_lbl) {
-      char buf[8];
-      snprintf(buf, sizeof(buf), "%d%%", pct);
-      lv_label_set_display_text(ui.speed_value_lbl, buf);
-    }
     fan_control_refresh_card(ui.active);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.speed_slider, [](lv_event_t *e) {
