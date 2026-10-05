@@ -33,6 +33,13 @@ git worktree list
 git fetch origin main --prune
 ```
 
+Resolve the active worktree root before running bundled scripts so the command
+also works when started from a subdirectory:
+
+```bash
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+```
+
 Do not overwrite, revert, or remove local changes. If a worktree has
 uncommitted changes, leave it alone and mention it in the final update.
 
@@ -41,7 +48,7 @@ uncommitted changes, leave it alone and mention it in the final update.
 Run the script in dry-run mode first:
 
 ```bash
-python3 .agents/skills/clean-complete-branches/scripts/clean_complete_branches.py
+python3 "$REPO_ROOT/.agents/skills/clean-complete-branches/scripts/clean_complete_branches.py"
 ```
 
 The script treats a branch as complete only when:
@@ -62,14 +69,14 @@ their exact commits may not be ancestors of `main`.
 After reviewing the dry-run output, remove only the listed safe candidates:
 
 ```bash
-python3 .agents/skills/clean-complete-branches/scripts/clean_complete_branches.py --apply
+python3 "$REPO_ROOT/.agents/skills/clean-complete-branches/scripts/clean_complete_branches.py" --apply
 ```
 
 By default, `--apply` removes safe worktree folders and local branch refs. To
 also delete matching GitHub remote branches, add `--delete-remotes`:
 
 ```bash
-python3 .agents/skills/clean-complete-branches/scripts/clean_complete_branches.py --apply --delete-remotes
+python3 "$REPO_ROOT/.agents/skills/clean-complete-branches/scripts/clean_complete_branches.py" --apply --delete-remotes
 ```
 
 The script does not merge PRs, close issues, or delete protected branches.

@@ -31,6 +31,13 @@ git worktree list
 git fetch origin main --prune
 ```
 
+Resolve the active worktree root before running bundled scripts so the command
+also works when started from a subdirectory:
+
+```bash
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+```
+
 Do not overwrite, revert, or remove local changes. If a worktree has uncommitted
 changes, leave it alone and mention it in the final update.
 
@@ -39,7 +46,7 @@ changes, leave it alone and mention it in the final update.
 Run the script in dry-run mode first:
 
 ```bash
-python3 .agents/skills/clean-merged-branch-folders/scripts/clean_merged_worktrees.py
+python3 "$REPO_ROOT/.agents/skills/clean-merged-branch-folders/scripts/clean_merged_worktrees.py"
 ```
 
 The script treats a worktree as safe to remove when:
@@ -59,14 +66,14 @@ exact branch commits are often not ancestors of `main`.
 After reviewing the dry-run output, remove only the listed safe candidates:
 
 ```bash
-python3 .agents/skills/clean-merged-branch-folders/scripts/clean_merged_worktrees.py --apply
+python3 "$REPO_ROOT/.agents/skills/clean-merged-branch-folders/scripts/clean_merged_worktrees.py" --apply
 ```
 
 Leave local branch refs in place unless the user explicitly asks to delete them.
 If branch deletion is requested, use:
 
 ```bash
-python3 .agents/skills/clean-merged-branch-folders/scripts/clean_merged_worktrees.py --apply --delete-branches
+python3 "$REPO_ROOT/.agents/skills/clean-merged-branch-folders/scripts/clean_merged_worktrees.py" --apply --delete-branches
 ```
 
 The script uses `git branch -d`, not forced deletion, so branches that Git does
