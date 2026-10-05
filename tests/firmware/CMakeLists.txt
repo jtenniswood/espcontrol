@@ -375,6 +375,8 @@ add_test(NAME ha_reconnect_recovery_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/ha_reconnect_recovery_test.py)
 add_test(NAME cover_art_metadata_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/cover_art_metadata_test.py ${CMAKE_CXX_COMPILER})
+add_test(NAME cover_art_pending_reads_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/cover_art_pending_reads_test.py ${CMAKE_CXX_COMPILER})
 add_executable(rgb565_scaler_test rgb565_scaler_test.cpp)
 target_compile_features(rgb565_scaler_test PRIVATE cxx_std_17)
 target_compile_options(rgb565_scaler_test PRIVATE -Wall -Wextra -Werror)

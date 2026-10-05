@@ -1304,6 +1304,9 @@ script:
                 id(cover_art_process_cached_artwork).execute();
               }
             };
+          // Some players never return one of these optional attributes. Use
+          // a stable owner so a new batch releases its superseded callbacks.
+          void *request_owner = &id(cover_art_runtime);
           bool remote_queued = true;
           if ((request_mask & espcontrol::artwork::ARTWORK_SOURCE_REMOTE) != 0) {
             remote_queued = ha_read_retained_attribute(
@@ -1312,7 +1315,8 @@ script:
             std::function<void(esphome::StringRef)>(
               [handle_picture_change](esphome::StringRef picture) {
                 handle_picture_change(picture, false);
-              })
+              }),
+            request_owner
             );
           }
           bool local_queued = true;
@@ -1323,7 +1327,8 @@ script:
             std::function<void(esphome::StringRef)>(
               [handle_picture_change](esphome::StringRef picture) {
                 handle_picture_change(picture, true);
-              })
+              }),
+            request_owner
             );
           }
           id(cover_art_artwork_retry_mask) = espcontrol::artwork::artwork_source_failed_mask(
