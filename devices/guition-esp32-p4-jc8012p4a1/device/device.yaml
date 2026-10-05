@@ -56,6 +56,17 @@ esp32:
       # stacks in PSRAM.
       CONFIG_ESP_HOSTED_USE_MEMPOOL: "n"
       CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM: "y"
+      # ESPHome's 65 KiB TCP windows and 64-entry mailboxes can retain most
+      # of this panel's remaining internal RAM during an artwork response.
+      # Bound network bursts and prefer PSRAM for eligible WiFi/lwIP data;
+      # the SDIO transport still needs its own internal/DMA headroom.
+      CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
+      CONFIG_LWIP_TCP_SND_BUF_DEFAULT: "16384"
+      CONFIG_LWIP_TCP_WND_DEFAULT: "16384"
+      CONFIG_LWIP_TCP_RECVMBOX_SIZE: "16"
+      CONFIG_LWIP_TCPIP_RECVMBOX_SIZE: "16"
+      CONFIG_ESP_HOSTED_SDIO_TX_Q_SIZE: "10"
+      CONFIG_ESP_HOSTED_SDIO_RX_Q_SIZE: "10"
       CONFIG_FREERTOS_THREAD_LOCAL_STORAGE_POINTERS: "1"
 
 # ---------------------------------------------------------------------------
