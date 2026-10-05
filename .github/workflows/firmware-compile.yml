@@ -177,6 +177,7 @@ jobs:
               --user "$(id -u):$(id -g)" \
               -e HOME=/config \
               -e PLATFORMIO_CORE_DIR=/config/.esphome/platformio \
+              -e UV_CACHE_DIR=/config/.esphome/uv-cache \
               -e PLATFORMIO_SETTING_ENABLE_TELEMETRY=false \
               -v "${PLATFORMIO_CACHE}:/config/.esphome" \
               -v "${build_cache}:/config/${BUILD_INPUT_DIR}/.esphome" \
