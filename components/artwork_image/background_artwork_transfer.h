@@ -5,7 +5,7 @@
 #include <new>
 #include <string>
 
-#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
+#if defined(USE_ESP_IDF) && (defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32P4))
 
 #include <vector>
 
@@ -21,7 +21,7 @@ namespace artwork_image {
 
 class ArtworkImage;
 
-struct S3ArtworkTransferResult {
+struct BackgroundArtworkTransferResult {
   ArtworkImage *owner{nullptr};
   uint32_t generation{0};
   int status{0};
@@ -36,16 +36,16 @@ struct S3ArtworkTransferResult {
   static void *operator new(size_t size, const std::nothrow_t &) noexcept;
   static void operator delete(void *pointer) noexcept;
   static void operator delete(void *pointer, const std::nothrow_t &) noexcept;
-  ~S3ArtworkTransferResult();
+  ~BackgroundArtworkTransferResult();
   uint8_t *release_data();
 };
 
-// Owns all ESP32-S3 artwork networking. ImageService still serializes image
-// consumers; this worker only moves the blocking HTTP transaction away from
-// the ESPHome loop and returns a complete, generation-tagged transfer.
-class S3ArtworkTransferService {
+// Moves blocking HTTP transactions away from the ESPHome display loop on
+// ESP32-S3 and ESP32-P4. ImageService still serializes image consumers; the
+// worker returns a complete, generation-tagged transfer for decoding.
+class BackgroundArtworkTransferService {
  public:
-  static S3ArtworkTransferService &instance();
+  static BackgroundArtworkTransferService &instance();
 
   bool submit(ArtworkImage *owner, uint32_t generation,
               const std::string &url,
@@ -54,13 +54,13 @@ class S3ArtworkTransferService {
               size_t reserved_free_bytes,
               size_t reserved_largest_block_bytes);
   void cancel(ArtworkImage *owner);
-  S3ArtworkTransferResult *take(ArtworkImage *owner, uint32_t generation,
+  BackgroundArtworkTransferResult *take(ArtworkImage *owner, uint32_t generation,
                                 bool *allocation_failed);
 
  private:
-  S3ArtworkTransferService();
-  S3ArtworkTransferService(const S3ArtworkTransferService &) = delete;
-  S3ArtworkTransferService &operator=(const S3ArtworkTransferService &) = delete;
+  BackgroundArtworkTransferService();
+  BackgroundArtworkTransferService(const BackgroundArtworkTransferService &) = delete;
+  BackgroundArtworkTransferService &operator=(const BackgroundArtworkTransferService &) = delete;
 
   struct Job;
   static constexpr size_t QUEUE_CAPACITY = 2;
@@ -74,10 +74,10 @@ class S3ArtworkTransferService {
   static esp_err_t http_event_(esp_http_client_event_t *event);
   void task_loop_();
   Job *next_job_();
-  S3ArtworkTransferResult *perform_(Job *job);
+  BackgroundArtworkTransferResult *perform_(Job *job);
   void cancel_locked_(ArtworkImage *owner);
   void record_allocation_failure_locked_(const Job *job);
-  S3ArtworkTransferResult *remove_completed_at_locked_(size_t index);
+  BackgroundArtworkTransferResult *remove_completed_at_locked_(size_t index);
   void discard_completed_for_owner_locked_(ArtworkImage *owner);
   void lock_();
   void unlock_();
@@ -88,7 +88,7 @@ class S3ArtworkTransferService {
   Job *pending_[QUEUE_CAPACITY]{};
   size_t pending_count_{0};
   Job *active_{nullptr};
-  S3ArtworkTransferResult *completed_[QUEUE_CAPACITY]{};
+  BackgroundArtworkTransferResult *completed_[QUEUE_CAPACITY]{};
   size_t completed_count_{0};
   AllocationFailure allocation_failures_[QUEUE_CAPACITY]{};
 };

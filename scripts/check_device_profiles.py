@@ -29,7 +29,7 @@ BUTTON_GRID_WEATHER_FORECAST = ROOT / "components" / "espcontrol" / "button_grid
 WEB_SERVER_IDF_INIT = ROOT / "components" / "web_server_idf" / "__init__.py"
 WEB_SERVER_IDF_CPP = ROOT / "components" / "web_server_idf" / "web_server_idf.cpp"
 S3_DEVICE_YAML = ROOT / "devices" / "guition-esp32-s3-4848s040" / "device" / "device.yaml"
-S3_ARTWORK_TRANSFER_CPP = ROOT / "components" / "artwork_image" / "s3_artwork_transfer.cpp"
+BACKGROUND_ARTWORK_TRANSFER_CPP = ROOT / "components" / "artwork_image" / "background_artwork_transfer.cpp"
 PUBLIC_API_ENCRYPTION_PACKAGE = ROOT / "common" / "addon" / "api_encryption_dynamic.yaml"
 PUBLIC_API_ENCRYPTION_REFERENCE = "common/addon/api_encryption_dynamic.yaml"
 LEGACY_OTA_PARTITION_LAYOUTS = {
@@ -214,7 +214,7 @@ def test_web_server_request_limits() -> None:
 def test_s3_low_heap_policy() -> None:
     """Keep the S3 runtime tasks within its internal-heap and stack budget."""
     device = S3_DEVICE_YAML.read_text(encoding="utf-8")
-    artwork = S3_ARTWORK_TRANSFER_CPP.read_text(encoding="utf-8")
+    artwork = BACKGROUND_ARTWORK_TRANSFER_CPP.read_text(encoding="utf-8")
     server = WEB_SERVER_IDF_CPP.read_text(encoding="utf-8")
 
     for option in (

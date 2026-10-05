@@ -71,6 +71,8 @@ For artwork downloads, open **Settings > System > Home Assistant Settings**. **C
 
 Playback metadata uses the native ESPHome connection; image downloads use HTTP or HTTPS. One can work while the other fails.
 
+Touch and playback controls stay available while artwork downloads or retries.
+
 1. Confirm the selected player has artwork in Home Assistant.
 2. Open **Settings > System > Home Assistant Settings** and check the displayed artwork endpoint.
 3. If automatic discovery chooses an unreachable endpoint, use **Manual** and enter the host, protocol, and port that work from the panel's network. Leave the host blank to use the panel's Home Assistant API address. Automatic discovery only trusts an advertised URL on that same IP; use Manual for a hostname-based proxy or a proxy on a different host.

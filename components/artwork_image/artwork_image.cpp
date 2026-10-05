@@ -24,8 +24,8 @@
 #include "esp_http_client.h"
 #endif
 
-#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
-#include "s3_artwork_transfer.h"
+#if defined(USE_ESP_IDF) && (defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32P4))
+#include "background_artwork_transfer.h"
 #endif
 
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
@@ -795,17 +795,19 @@ void ArtworkImage::start_update_() {
       ESP_LOGD(TAG, "Queued local artwork on ESP32-P4 image pipeline");
       return;
     }
-    ESP_LOGW(TAG, "ESP32-P4 image pipeline unavailable; using loop-based downloader");
+    ESP_LOGW(TAG, "ESP32-P4 image pipeline unavailable; using background artwork transfer");
   }
 #endif
 
-#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
-  if (this->start_s3_transfer_(std::move(headers))) {
-    ESP_LOGD(TAG, "Queued artwork on guarded ESP32-S3 transfer task");
+#if defined(USE_ESP_IDF) && (defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32P4))
+  // HTTP connect/header/body waits must never run on the display and touch
+  // loop. Keep the same rule even when a dedicated P4 pipeline is unavailable.
+  if (this->start_background_transfer_(std::move(headers))) {
+    ESP_LOGD(TAG, "Queued artwork on guarded background transfer task");
     return;
   }
   this->transfer_failure_ = TransferFailure::RESOURCE;
-  ESP_LOGE(TAG, "Guarded ESP32-S3 transfer task unavailable; refusing synchronous artwork request");
+  ESP_LOGE(TAG, "Background transfer task unavailable; refusing synchronous artwork request");
   this->fail_download_();
   return;
 #endif
@@ -1028,8 +1030,8 @@ size_t ArtworkImage::get_sane_content_length_() const {
 void ArtworkImage::loop() {
   ImageService::instance().process_pending();
   this->cleanup_retired_buffers_(false);
-  if (this->s3_transfer_pending_) {
-    this->consume_s3_transfer_result_();
+  if (this->background_transfer_pending_) {
+    this->consume_background_transfer_result_();
     return;
   }
   if (this->p4_pipeline_pending_) {
@@ -1203,11 +1205,11 @@ void ArtworkImage::loop() {
   }
 }
 
-bool ArtworkImage::start_s3_transfer_(
+bool ArtworkImage::start_background_transfer_(
     std::vector<http_request::Header> &&headers) {
-#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
+#if defined(USE_ESP_IDF) && (defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32P4))
   this->download_buffer_.reset();
-  ++this->s3_transfer_generation_;
+  ++this->background_transfer_generation_;
   const int timeout_ms = this->parent_ ? this->parent_->get_timeout() : 10000;
   const size_t replacement_bytes =
       this->fixed_width_ > 0 && this->fixed_height_ > 0
@@ -1215,13 +1217,13 @@ bool ArtworkImage::start_s3_transfer_(
           : 0;
   const size_t reserved_free_bytes =
       replacement_bytes + IMAGE_PIPELINE_S3_PSRAM_HEADROOM_BYTES;
-  if (!S3ArtworkTransferService::instance().submit(
-          this, this->s3_transfer_generation_, this->url_, std::move(headers),
+  if (!BackgroundArtworkTransferService::instance().submit(
+          this, this->background_transfer_generation_, this->url_, std::move(headers),
           this->allow_insecure_local_urls_, timeout_ms, reserved_free_bytes,
           replacement_bytes)) {
     return false;
   }
-  this->s3_transfer_pending_ = true;
+  this->background_transfer_pending_ = true;
   this->start_time_ = ::time(nullptr);
   this->last_data_millis_ = millis();
   this->enable_loop();
@@ -1232,23 +1234,23 @@ bool ArtworkImage::start_s3_transfer_(
 #endif
 }
 
-bool ArtworkImage::consume_s3_transfer_result_() {
-#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
+bool ArtworkImage::consume_background_transfer_result_() {
+#if defined(USE_ESP_IDF) && (defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32P4))
   bool allocation_failed = false;
-  S3ArtworkTransferResult *result =
-      S3ArtworkTransferService::instance().take(
-          this, this->s3_transfer_generation_, &allocation_failed);
+  BackgroundArtworkTransferResult *result =
+      BackgroundArtworkTransferService::instance().take(
+          this, this->background_transfer_generation_, &allocation_failed);
   if (allocation_failed) {
     this->transfer_failure_ = TransferFailure::RESOURCE;
-    this->s3_transfer_pending_ = false;
-    ESP_LOGE(TAG, "ESP32-S3 artwork transfer could not allocate its result");
-    this->log_state_("s3-transfer-allocation-failed");
+    this->background_transfer_pending_ = false;
+    ESP_LOGE(TAG, "Background artwork transfer could not allocate its result");
+    this->log_state_("background-transfer-allocation-failed");
     this->fail_download_();
     return true;
   }
   if (!result) return false;
 
-  this->s3_transfer_pending_ = false;
+  this->background_transfer_pending_ = false;
   this->last_http_status_ = result->status;
   this->last_error_was_ha_media_proxy_ = is_ha_media_proxy_url(this->url_);
   this->request_started_ms_ = result->request_started_ms;
@@ -1260,7 +1262,7 @@ bool ArtworkImage::consume_s3_transfer_result_() {
   const bool status_ok = p4_pipeline_http_status_is_success(
       result->status, this->last_error_was_ha_media_proxy_);
   const bool publishable = background_transfer_result_can_publish(
-      this->s3_transfer_generation_, result->generation, false,
+      this->background_transfer_generation_, result->generation, false,
       result->error == ESP_OK, result->error != ESP_ERR_NO_MEM, status_ok,
       result->status == HTTP_CODE_NOT_MODIFIED, result->size,
       this->max_download_buffer_size_);
@@ -1272,12 +1274,12 @@ bool ArtworkImage::consume_s3_transfer_result_() {
             ? TransferFailure::CONTENT
         : result->error != ESP_OK ? TransferFailure::TRANSPORT : TransferFailure::CONTENT;
     ESP_LOGE(TAG,
-             "ESP32-S3 artwork transfer failed: error=%s status=%d bytes=%zu source=%s url=%s",
+             "Background artwork transfer failed: error=%s status=%d bytes=%zu source=%s url=%s",
              esp_err_to_name(result->error), result->status, result->size,
              classify_artwork_url_for_log(this->url_),
              sanitize_artwork_url_for_log(this->url_).c_str());
     delete result;
-    this->log_state_("s3-transfer-failed");
+    this->log_state_("background-transfer-failed");
     this->fail_download_();
     return true;
   }
@@ -1300,7 +1302,7 @@ bool ArtworkImage::consume_s3_transfer_result_() {
     return true;
   }
   if (result->size < 12 || result->size > this->max_download_buffer_size_) {
-    ESP_LOGE(TAG, "ESP32-S3 artwork transfer returned an invalid image size: %zu",
+    ESP_LOGE(TAG, "Background artwork transfer returned an invalid image size: %zu",
              result->size);
     delete result;
     this->fail_download_();
@@ -1311,7 +1313,7 @@ bool ArtworkImage::consume_s3_transfer_result_() {
   uint8_t *result_data = result->release_data();
   if (!this->download_buffer_.adopt(result_data, result_size)) {
     heap_caps_free(result_data);
-    ESP_LOGE(TAG, "ESP32-S3 artwork transfer returned an invalid transfer buffer");
+    ESP_LOGE(TAG, "Background artwork transfer returned an invalid transfer buffer");
     delete result;
     this->fail_download_();
     return true;
@@ -1324,11 +1326,11 @@ bool ArtworkImage::consume_s3_transfer_result_() {
   if (resolved == ImageFormat::AUTO ||
       !this->create_decoder_(resolved, this->completed_transfer_bytes_)) {
     ESP_LOGE(TAG,
-             "ESP32-S3 artwork transfer could not create a decoder for the response");
+             "Background artwork transfer could not create a decoder for the response");
     this->fail_download_();
     return true;
   }
-  this->log_state_("s3-transfer-decoder-ready");
+  this->log_state_("background-transfer-decoder-ready");
   if (!this->decode_buffered_data_()) {
     this->fail_download_();
     return true;
@@ -1338,7 +1340,7 @@ bool ArtworkImage::consume_s3_transfer_result_() {
   } else if (background_transfer_decode_is_incomplete(
                  this->decoder_->is_finished(), this->decoder_->is_decoding())) {
     ESP_LOGE(TAG,
-             "ESP32-S3 artwork transfer finished before image decoder completed");
+             "Background artwork transfer finished before image decoder completed");
     this->fail_download_();
   }
   return true;
@@ -1347,14 +1349,14 @@ bool ArtworkImage::consume_s3_transfer_result_() {
 #endif
 }
 
-void ArtworkImage::cancel_s3_transfer_() {
-#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
-  if (this->s3_transfer_pending_) {
-    S3ArtworkTransferService::instance().cancel(this);
+void ArtworkImage::cancel_background_transfer_() {
+#if defined(USE_ESP_IDF) && (defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32P4))
+  if (this->background_transfer_pending_) {
+    BackgroundArtworkTransferService::instance().cancel(this);
   }
 #endif
-  this->s3_transfer_pending_ = false;
-  ++this->s3_transfer_generation_;
+  this->background_transfer_pending_ = false;
+  ++this->background_transfer_generation_;
 }
 
 bool ArtworkImage::start_p4_pipeline_(std::vector<http_request::Header> &headers) {
@@ -2034,7 +2036,7 @@ void ArtworkImage::log_state_(const char *stage) {
 }
 
 void ArtworkImage::end_connection_() {
-  this->cancel_s3_transfer_();
+  this->cancel_background_transfer_();
   this->cancel_p4_pipeline_();
   if (this->downloader_) {
     this->downloader_->end();

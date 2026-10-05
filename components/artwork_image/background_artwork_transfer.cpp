@@ -1,6 +1,6 @@
-#include "s3_artwork_transfer.h"
+#include "background_artwork_transfer.h"
 
-#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
+#if defined(USE_ESP_IDF) && (defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32P4))
 
 #include <algorithm>
 #include <atomic>
@@ -23,7 +23,7 @@
 namespace esphome {
 namespace artwork_image {
 
-static const char *const TAG = "artwork_image.s3_transfer";
+static const char *const TAG = "artwork_image.transfer";
 static constexpr size_t MAX_TRANSFER_SIZE = 2 * 1024 * 1024;
 static constexpr size_t INITIAL_TRANSFER_CAPACITY = 16 * 1024;
 // Keep the ESP-IDF HTTP client's internal RX buffer below the S3 panel's
@@ -98,7 +98,7 @@ static bool is_private_or_local_host(const std::string &host) {
          (parts[0] == 169 && parts[1] == 254);
 }
 
-struct S3ArtworkTransferService::Job {
+struct BackgroundArtworkTransferService::Job {
   ArtworkImage *owner{nullptr};
   uint32_t generation{0};
   char *url{nullptr};
@@ -122,7 +122,7 @@ struct S3ArtworkTransferService::Job {
   ~Job() { heap_caps_free(this->url); }
 };
 
-struct S3ArtworkTransferService::Transfer {
+struct BackgroundArtworkTransferService::Transfer {
   Job *job{nullptr};
   uint8_t *data{nullptr};
   size_t size{0};
@@ -136,47 +136,47 @@ struct S3ArtworkTransferService::Transfer {
   uint32_t first_byte_ms{0};
 };
 
-S3ArtworkTransferResult::~S3ArtworkTransferResult() {
+BackgroundArtworkTransferResult::~BackgroundArtworkTransferResult() {
   heap_caps_free(this->data);
 }
 
-void *S3ArtworkTransferResult::operator new(
+void *BackgroundArtworkTransferResult::operator new(
     size_t size, const std::nothrow_t &) noexcept {
   return heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 }
 
-void S3ArtworkTransferResult::operator delete(void *pointer) noexcept {
+void BackgroundArtworkTransferResult::operator delete(void *pointer) noexcept {
   heap_caps_free(pointer);
 }
 
-void S3ArtworkTransferResult::operator delete(
+void BackgroundArtworkTransferResult::operator delete(
     void *pointer, const std::nothrow_t &) noexcept {
   heap_caps_free(pointer);
 }
 
-uint8_t *S3ArtworkTransferResult::release_data() {
+uint8_t *BackgroundArtworkTransferResult::release_data() {
   uint8_t *data = this->data;
   this->data = nullptr;
   return data;
 }
 
-S3ArtworkTransferService &S3ArtworkTransferService::instance() {
-  static S3ArtworkTransferService service;
+BackgroundArtworkTransferService &BackgroundArtworkTransferService::instance() {
+  static BackgroundArtworkTransferService service;
   return service;
 }
 
-S3ArtworkTransferService::S3ArtworkTransferService() {
+BackgroundArtworkTransferService::BackgroundArtworkTransferService() {
   this->mutex_ = xSemaphoreCreateMutex();
   if (!this->mutex_) return;
   bool stack_in_psram = false;
   BaseType_t created = xTaskCreateWithCaps(
-      task_entry_, "s3_artwork_http", TRANSFER_TASK_STACK_SIZE, this, 2,
+      task_entry_, "artwork_http", TRANSFER_TASK_STACK_SIZE, this, 2,
       &this->task_, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   stack_in_psram = created == pdPASS;
   if (created != pdPASS) {
     ESP_LOGW(TAG, "Could not allocate artwork task stack in PSRAM; falling back to internal RAM");
     created = xTaskCreate(
-        task_entry_, "s3_artwork_http", TRANSFER_TASK_STACK_SIZE, this, 2,
+        task_entry_, "artwork_http", TRANSFER_TASK_STACK_SIZE, this, 2,
         &this->task_);
   }
   this->ready_ = created == pdPASS && this->task_ != nullptr;
@@ -184,11 +184,11 @@ S3ArtworkTransferService::S3ArtworkTransferService() {
     ESP_LOGI(TAG, "Artwork transfer task ready (stack=%s)", stack_in_psram ? "PSRAM" : "internal RAM");
   }
   if (!this->ready_) {
-    ESP_LOGE(TAG, "Could not start guarded ESP32-S3 artwork transfer task");
+    ESP_LOGE(TAG, "Could not start guarded artwork transfer task");
   }
 }
 
-bool S3ArtworkTransferService::submit(
+bool BackgroundArtworkTransferService::submit(
     ArtworkImage *owner, uint32_t generation, const std::string &url,
     std::vector<http_request::Header> headers,
     bool allow_insecure_local_urls, int timeout_ms,
@@ -224,18 +224,18 @@ bool S3ArtworkTransferService::submit(
   return true;
 }
 
-void S3ArtworkTransferService::cancel(ArtworkImage *owner) {
+void BackgroundArtworkTransferService::cancel(ArtworkImage *owner) {
   if (!this->ready_ || !owner) return;
   this->lock_();
   this->cancel_locked_(owner);
   this->unlock_();
 }
 
-S3ArtworkTransferResult *S3ArtworkTransferService::take(
+BackgroundArtworkTransferResult *BackgroundArtworkTransferService::take(
     ArtworkImage *owner, uint32_t generation, bool *allocation_failed) {
   if (!this->ready_ || !owner) return nullptr;
   if (allocation_failed) *allocation_failed = false;
-  S3ArtworkTransferResult *match = nullptr;
+  BackgroundArtworkTransferResult *match = nullptr;
   this->lock_();
   for (auto &failure : this->allocation_failures_) {
     if (failure.owner != owner) continue;
@@ -245,7 +245,7 @@ S3ArtworkTransferResult *S3ArtworkTransferService::take(
     failure = AllocationFailure{};
   }
   for (size_t i = 0; i < this->completed_count_;) {
-    S3ArtworkTransferResult *candidate = this->completed_[i];
+    BackgroundArtworkTransferResult *candidate = this->completed_[i];
     if (candidate->owner != owner) {
       ++i;
       continue;
@@ -263,17 +263,17 @@ S3ArtworkTransferResult *S3ArtworkTransferService::take(
   return match;
 }
 
-void S3ArtworkTransferService::task_entry_(void *arg) {
-  static_cast<S3ArtworkTransferService *>(arg)->task_loop_();
+void BackgroundArtworkTransferService::task_entry_(void *arg) {
+  static_cast<BackgroundArtworkTransferService *>(arg)->task_loop_();
 }
 
-void S3ArtworkTransferService::task_loop_() {
+void BackgroundArtworkTransferService::task_loop_() {
   while (true) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     while (true) {
       Job *job = this->next_job_();
       if (!job) break;
-      S3ArtworkTransferResult *result = this->perform_(job);
+      BackgroundArtworkTransferResult *result = this->perform_(job);
       this->lock_();
       this->active_ = nullptr;
       if (result && !background_transfer_result_is_current(
@@ -299,7 +299,7 @@ void S3ArtworkTransferService::task_loop_() {
   }
 }
 
-S3ArtworkTransferService::Job *S3ArtworkTransferService::next_job_() {
+BackgroundArtworkTransferService::Job *BackgroundArtworkTransferService::next_job_() {
   this->lock_();
   for (size_t i = 0; i < this->pending_count_;) {
     if (this->pending_[i]->cancelled.load()) {
@@ -329,7 +329,7 @@ S3ArtworkTransferService::Job *S3ArtworkTransferService::next_job_() {
   return job;
 }
 
-esp_err_t S3ArtworkTransferService::http_event_(esp_http_client_event_t *event) {
+esp_err_t BackgroundArtworkTransferService::http_event_(esp_http_client_event_t *event) {
   auto *transfer = static_cast<Transfer *>(event->user_data);
   if (!transfer || !transfer->job) return ESP_OK;
   if (transfer->job->cancelled.load()) return ESP_FAIL;
@@ -438,9 +438,9 @@ esp_err_t S3ArtworkTransferService::http_event_(esp_http_client_event_t *event) 
   return ESP_OK;
 }
 
-S3ArtworkTransferResult *S3ArtworkTransferService::perform_(Job *job) {
+BackgroundArtworkTransferResult *BackgroundArtworkTransferService::perform_(Job *job) {
   if (!job || job->cancelled.load()) return nullptr;
-  auto *result = new (std::nothrow) S3ArtworkTransferResult();
+  auto *result = new (std::nothrow) BackgroundArtworkTransferResult();
   if (!result) return nullptr;
   result->owner = job->owner;
   result->generation = job->generation;
@@ -591,7 +591,7 @@ S3ArtworkTransferResult *S3ArtworkTransferService::perform_(Job *job) {
   return result;
 }
 
-void S3ArtworkTransferService::cancel_locked_(ArtworkImage *owner) {
+void BackgroundArtworkTransferService::cancel_locked_(ArtworkImage *owner) {
   for (size_t i = 0; i < this->pending_count_;) {
     if (this->pending_[i]->owner != owner) {
       ++i;
@@ -614,7 +614,7 @@ void S3ArtworkTransferService::cancel_locked_(ArtworkImage *owner) {
   }
 }
 
-void S3ArtworkTransferService::record_allocation_failure_locked_(
+void BackgroundArtworkTransferService::record_allocation_failure_locked_(
     const Job *job) {
   if (!job) return;
   for (auto &failure : this->allocation_failures_) {
@@ -626,10 +626,10 @@ void S3ArtworkTransferService::record_allocation_failure_locked_(
   ESP_LOGE(TAG, "No slot available to report S3 transfer allocation failure");
 }
 
-S3ArtworkTransferResult *
-S3ArtworkTransferService::remove_completed_at_locked_(size_t index) {
+BackgroundArtworkTransferResult *
+BackgroundArtworkTransferService::remove_completed_at_locked_(size_t index) {
   if (index >= this->completed_count_) return nullptr;
-  S3ArtworkTransferResult *result = this->completed_[index];
+  BackgroundArtworkTransferResult *result = this->completed_[index];
   for (size_t next = index + 1; next < this->completed_count_; ++next) {
     this->completed_[next - 1] = this->completed_[next];
   }
@@ -637,7 +637,7 @@ S3ArtworkTransferService::remove_completed_at_locked_(size_t index) {
   return result;
 }
 
-void S3ArtworkTransferService::discard_completed_for_owner_locked_(
+void BackgroundArtworkTransferService::discard_completed_for_owner_locked_(
     ArtworkImage *owner) {
   for (size_t i = 0; i < this->completed_count_;) {
     if (this->completed_[i]->owner != owner) {
@@ -648,11 +648,11 @@ void S3ArtworkTransferService::discard_completed_for_owner_locked_(
   }
 }
 
-void S3ArtworkTransferService::lock_() {
+void BackgroundArtworkTransferService::lock_() {
   xSemaphoreTake(this->mutex_, portMAX_DELAY);
 }
 
-void S3ArtworkTransferService::unlock_() { xSemaphoreGive(this->mutex_); }
+void BackgroundArtworkTransferService::unlock_() { xSemaphoreGive(this->mutex_); }
 
 }  // namespace artwork_image
 }  // namespace esphome
