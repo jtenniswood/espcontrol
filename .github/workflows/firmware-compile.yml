@@ -21,7 +21,7 @@ concurrency:
 jobs:
   detect-changes:
     name: Detect Firmware Changes
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     outputs:
       compile_required: ${{ steps.filter.outputs.compile_required }}
     steps:
@@ -50,7 +50,7 @@ jobs:
     name: Prepare Device Matrix
     needs: detect-changes
     if: needs.detect-changes.outputs.compile_required == 'true'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
@@ -89,21 +89,14 @@ jobs:
     name: Compile Firmware (${{ matrix.slug }})
     needs: [detect-changes, device-matrix]
     if: needs.detect-changes.outputs.compile_required == 'true'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      # Keep self-hosted firmware compiles serialized without using a job-level
-      # concurrency group. GitHub Actions only allows one running and one
-      # pending job per concurrency group, so sharing one group across matrix
-      # children cancels queued device builds before they run.
+      # Keep firmware compiles serialized to limit concurrent GitHub-hosted
+      # runner usage across this matrix.
       max-parallel: 1
       matrix: ${{ fromJSON(needs.device-matrix.outputs.matrix) }}
     steps:
-      - name: Prepare self-hosted workspace
-        run: |
-          rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
-            sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
-
       - uses: actions/checkout@v7.0.1
         with:
           path: espcontrol-${{ matrix.slug }}
@@ -135,10 +128,6 @@ jobs:
             echo "::error::Docker is not available to the self-hosted runner user"
             exit 1
           fi
-
-      - name: Reclaim runner disk
-        working-directory: espcontrol-${{ matrix.slug }}
-        run: bash scripts/reclaim_actions_disk.sh
 
       - name: Prepare isolated ESPHome cache
         working-directory: espcontrol-${{ matrix.slug }}
@@ -227,13 +216,12 @@ jobs:
             exit 0
           fi
           rm -rf "${RUN_CACHE_ROOT}"
-          bash scripts/reclaim_actions_disk.sh
 
   firmware-compile-gate:
     name: Firmware Compile Gate
     needs: [detect-changes, device-matrix, compile]
     if: always()
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Verify firmware compile result
         run: |
