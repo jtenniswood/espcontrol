@@ -39,18 +39,23 @@
         </button>
         <div v-if="device.versions.length > 1" class="device-version">
           <label :for="`${device.slug}-version`">Hardware version</label>
-          <select
-            :id="`${device.slug}-version`"
-            v-model="selectedVersions[device.slug]"
-            :aria-label="`${device.size} hardware version`"
-            :aria-describedby="`${device.slug}-revision`"
-            @change="selectDevice(device)"
-          >
-            <option disabled value="">Choose hardware version</option>
-            <option v-for="version in device.versions" :key="version.slug" :value="version.slug">
-              {{ version.label }}
-            </option>
-          </select>
+          <div class="device-version-control">
+            <select
+              :id="`${device.slug}-version`"
+              v-model="selectedVersions[device.slug]"
+              :aria-label="`${device.size} hardware version`"
+              :aria-describedby="`${device.slug}-revision`"
+              @change="selectDevice(device)"
+            >
+              <option disabled value="">Choose hardware version</option>
+              <option v-for="version in device.versions" :key="version.slug" :value="version.slug">
+                {{ version.label }}
+              </option>
+            </select>
+            <svg class="device-version-chevron" viewBox="0 0 12 12" aria-hidden="true">
+              <path d="m2 4 4 4 4-4" />
+            </svg>
+          </div>
           <span :id="`${device.slug}-revision`" class="device-revision">
             {{ selectedVersion(device)?.revision }}
           </span>
@@ -377,18 +382,38 @@ onMounted(() => {
   font-weight: 600;
 }
 
+.device-version-control {
+  position: relative;
+}
+
 .device-version select {
   width: 100%;
   min-width: 0;
-  padding: 8px 10px;
+  padding: 8px 34px 8px 10px;
   border: 1px solid var(--vp-c-border);
   border-radius: 6px;
   color: var(--vp-c-text-1);
   background: var(--vp-c-bg);
   font: inherit;
   font-size: 13px;
-  appearance: auto;
+  appearance: none;
   cursor: pointer;
+}
+
+.device-version-chevron {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 12px;
+  height: 12px;
+  color: var(--vp-c-text-2);
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.75;
+  pointer-events: none;
+  transform: translateY(-50%);
 }
 
 .device-screen {
