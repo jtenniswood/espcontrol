@@ -89,6 +89,7 @@ low_target=Düşük hedef
 media=Medya
 media_control=Medya kontrolü
 playlist=Çalma listesi
+cover_art=Albüm kapağı
 medium=Orta
 mode=Mod
 group=Grup

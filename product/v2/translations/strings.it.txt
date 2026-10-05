@@ -89,6 +89,7 @@ low_target=Target basso
 media=Media
 media_control=Controllo multimediale
 playlist=Playlist
+cover_art=Copertina
 medium=Medio
 mode=Modalità
 group=Gruppo
