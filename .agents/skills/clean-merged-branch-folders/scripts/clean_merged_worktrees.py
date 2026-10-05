@@ -227,7 +227,7 @@ def main() -> int:
     args = parser.parse_args()
 
     root = repo_root()
-    current_path = Path.cwd().resolve()
+    current_path = Path(git(["rev-parse", "--show-toplevel"], check=True).stdout.strip()).resolve()
     protected_branches = PROTECTED_BRANCHES | set(args.protected)
 
     if not args.no_fetch:

@@ -7,6 +7,12 @@
 
 ## Development workflow
 
+- Resolve the active repository root with `git rev-parse --show-toplevel` and
+  use that worktree for repository files and commands. Do not assume the main
+  checkout's path; this repository is often used through linked worktrees.
+- Keep changes and checks in the worktree where the task was started unless a
+  workflow explicitly needs another branch or worktree.
+
 - Treat `main` as the stable branch.
 - For normal code, firmware, configuration, UI, or documentation changes, create a short-lived branch from the latest `main`.
 - Use a separate git worktree for feature or fix work so multiple issues can be developed and tested at the same time without changing `main`.
