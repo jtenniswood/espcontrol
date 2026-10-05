@@ -1,4 +1,4 @@
-# Shared ES8311 speaker output for Guition ESP32-P4 panels.
+# ES8311 speaker output for the ESP32-P4-86 panel.
 # Board packages provide the amplifier-enable pin for their hardware revision.
 
 i2s_audio:
@@ -34,7 +34,6 @@ speaker:
     source_speakers:
       - id: speaker_announcement_input
       - id: speaker_media_input
-      - id: speaker_sendspin_input
 
   - platform: resampler
     id: speaker_announcement_resampler
@@ -48,21 +47,7 @@ speaker:
     sample_rate: 48000
     bits_per_sample: passthrough
 
-  - platform: resampler
-    id: speaker_sendspin_resampler
-    output_speaker: speaker_sendspin_input
-    sample_rate: 48000
-    bits_per_sample: passthrough
-
-sendspin:
-  id: sendspin_hub
-  task_stack_in_psram: true
-
 media_source:
-  - platform: sendspin
-    id: sendspin_media_source
-    sendspin_id: sendspin_hub
-    task_stack_in_psram: true
   - platform: audio_http
     id: speaker_media_http_source
   - platform: audio_http
@@ -98,23 +83,6 @@ media_player:
     on_pause:
       - script.execute: speaker_amplifier_off_if_unused
 
-  - platform: speaker_source
-    id: sendspin_speaker_player
-    internal: true
-    media_pipeline:
-      speaker: speaker_sendspin_resampler
-      format: NONE
-      sample_rate: 48000
-      num_channels: 1
-      sources:
-        - sendspin_media_source
-    on_play:
-      - switch.turn_on: speaker_amplifier
-    on_idle:
-      - script.execute: speaker_amplifier_off_if_unused
-    on_pause:
-      - script.execute: speaker_amplifier_off_if_unused
-
 script:
   - id: speaker_amplifier_off_if_unused
     mode: restart
@@ -127,10 +95,6 @@ script:
                   media_player.is_playing: device_speaker
               - not:
                   media_player.is_announcing: device_speaker
-              - not:
-                  media_player.is_playing: sendspin_speaker_player
-              - not:
-                  media_player.is_announcing: sendspin_speaker_player
           then:
             - switch.turn_off: speaker_amplifier
 
