@@ -14,3 +14,17 @@ c6_recovery:
   version: "2.12.12"
   path: "../.firmware-deps/esp32-c6/2.12.12/network_adapter_esp32c6.bin"
   sha256: "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94"
+
+# Recovery also embeds the C6 image. Compile out debug/config logging to leave
+# room in the deployed application partitions; retain recovery progress,
+# warnings and errors. Normal factory/OTA builds keep their usual log level.
+logger:
+  level: INFO
+  # Some panels enable DEBUG per tag; recovery uses the INFO ceiling throughout.
+  logs: !remove
+
+# The large multilingual cover-art title is the biggest recovery-only saving.
+# Keep its glyphs, size and layout, with four alpha levels instead of sixteen.
+font:
+  - id: !extend font_cover_art_title
+    bpp: 2
