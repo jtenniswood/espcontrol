@@ -26,6 +26,7 @@ export interface FirmwareUpdateFeature {
     syncUi(): void;
     renderStatus(): void;
     setInfo(data?: any): void;
+    pauseInstallRefresh(): void;
     stopInstallRefresh(): void;
     stopInstallRefreshIfComplete(): boolean;
     startInstallRefresh(restartWindow?: boolean): void;
@@ -332,6 +333,14 @@ export function createFirmwareUpdateFeature(
         state.firmwareInstallPostPending = false;
         state.firmwareInstallStatus = "";
     }
+    function pauseFirmwareInstallRefresh(this: any) {
+        firmwareInstallRefreshGeneration++;
+        if (firmwareInstallRefreshTimer)
+            clearTimeout(firmwareInstallRefreshTimer);
+        firmwareInstallRefreshTimer = null;
+        firmwareInstallRefreshUntil = 0;
+        state.firmwareWebOtaDownloadPending = true;
+    }
     function stopFirmwareInstallRefreshIfComplete(this: any) {
         var target: any = state.firmwareInstallTargetVersion;
         if (!isSpecificFirmwareVersion(target) || !firmwareVersionsSame(state.firmwareVersion, target))
@@ -428,6 +437,7 @@ export function createFirmwareUpdateFeature(
         syncUi: syncFirmwareUpdateUi,
         renderStatus: renderFirmwareUpdateStatus,
         setInfo: setFirmwareUpdateInfo,
+        pauseInstallRefresh: pauseFirmwareInstallRefresh,
         stopInstallRefresh: stopFirmwareInstallRefresh,
         stopInstallRefreshIfComplete: stopFirmwareInstallRefreshIfComplete,
         startInstallRefresh: startFirmwareInstallRefresh,

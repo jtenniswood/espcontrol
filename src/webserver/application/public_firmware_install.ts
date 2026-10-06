@@ -38,6 +38,7 @@ export function createPublicFirmwareInstallFeature(
         clearWebOtaFallback: clearFirmwareWebOtaFallback,
         renderStatus: renderFirmwareUpdateStatus,
         startInstallRefresh: startFirmwareInstallRefresh,
+        pauseInstallRefresh: pauseFirmwareInstallRefresh,
         stopInstallRefresh: stopFirmwareInstallRefresh,
     } = firmwareUpdate;
     // ── Public Firmware Web OTA ────────────────────────────────────────────
@@ -68,6 +69,7 @@ export function createPublicFirmwareInstallFeature(
     }
     function installPublicFirmwareViaWebOta(this: any, info?: any) {
         info = info || selectedFirmwareInfo();
+        pauseFirmwareInstallRefresh();
         var installingLatest: any = !info ||
             firmwareVersionsSame(info.latest_version, state.firmwareLatestVersion);
         return requestApi.getJsonQuietly(publicFirmwareManifestUrl(), function (this: any, d?: any) {
@@ -83,7 +85,6 @@ export function createPublicFirmwareInstallFeature(
             clearFirmwareWebOtaFallback();
             state.firmwareInstallPostPending = false;
             state.firmwareChecking = false;
-            state.firmwareWebOtaDownloadPending = true;
             state.firmwareUpdateState = "INSTALLING";
             state.firmwareInstallError = "";
             state.firmwareInstallStatus = state.firmwareInstallTargetVersion ?
