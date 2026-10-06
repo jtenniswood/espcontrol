@@ -2196,6 +2196,8 @@ def parse_args() -> argparse.Namespace:
     plan_parser.add_argument("--explain", action="store_true")
     run_parser = subparsers.add_parser("run", help="run the tasks selected by a profile")
     run_parser.add_argument("profile", choices=PROFILES)
+    run_parser.add_argument("--root", type=Path, default=ROOT,
+                            help="repository root where selected task commands run")
     run_parser.add_argument("--domain", choices=DOMAINS)
     run_parser.add_argument("--jobs", type=int, default=1)
     run_parser.add_argument("--no-cache", action="store_true")
@@ -2247,7 +2249,7 @@ def main() -> int:
             selected = plan(args.profile, args.domain)
             exit_code, summary = execute_tasks(
                 selected,
-                ROOT,
+                args.root,
                 profile=args.profile,
                 domain=args.domain,
                 requested_task=None,
