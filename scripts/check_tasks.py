@@ -875,6 +875,17 @@ def skipped_result(item: Task, status: str) -> dict[str, object]:
     }
 
 
+def preverified_result(item: Task) -> dict[str, object]:
+    return {
+        "id": item.id,
+        "status": "passed",
+        "duration_seconds": 0.0,
+        "exit_code": 0,
+        "commands": [],
+        "cache": {"state": "preverified"},
+    }
+
+
 def cached_result(item: Task, key: str) -> dict[str, object]:
     return {
         "id": item.id,
@@ -896,6 +907,7 @@ def execute_tasks(
     jobs: int = 1,
     no_cache: bool = False,
     keep_going: bool | None = None,
+    preverified_tasks: set[str] | None = None,
 ) -> tuple[int, dict[str, object]]:
     if jobs < 1:
         raise ConfigurationError("--jobs must be at least 1")
@@ -908,6 +920,16 @@ def execute_tasks(
     result_by_id: dict[str, dict[str, object]] = {}
     exit_code = 0
     registry = validate_registry(tuple(selected))
+    preverified_tasks = preverified_tasks or set()
+    selected_ids = {item.id for item in selected}
+    unknown_preverified = preverified_tasks - selected_ids
+    if unknown_preverified:
+        raise ConfigurationError(
+            "preverified tasks are not selected by this run: "
+            + ", ".join(sorted(unknown_preverified))
+        )
+    if preverified_tasks and profile != "release":
+        raise ConfigurationError("--preverified-task is only valid for the release profile")
     controller = ProcessController()
     ci_disabled = os.environ.get("CI", "").lower() == "true"
     cache_enabled = not no_cache and not ci_disabled
@@ -965,6 +987,10 @@ def execute_tasks(
                 if controller.interrupted or exit_code == 130:
                     result_by_id[item.id] = skipped_result(item, "not_run")
                     exit_code = 130
+                    continue
+                if item.id in preverified_tasks:
+                    print(f"\n==> {item.id}\npreverified in an earlier workflow step", flush=True)
+                    result_by_id[item.id] = preverified_result(item)
                     continue
                 if any(depends_on(item.id, failed_id, registry) for failed_id in failed_ids):
                     result_by_id[item.id] = skipped_result(item, "blocked")
@@ -2175,6 +2201,8 @@ def parse_args() -> argparse.Namespace:
     run_parser.add_argument("--no-cache", action="store_true")
     run_parser.add_argument("--keep-going", action="store_true", default=None,
                             help="run independent checks after a failure (default for ci; disabled for release)")
+    run_parser.add_argument("--preverified-task", action="append", default=[],
+                            help="mark a release-profile task as passed because an earlier workflow step ran it")
     run_parser.add_argument("--summary-json", type=Path)
     task_parser = subparsers.add_parser("run-task", help="run one task and its dependencies")
     task_parser.add_argument("task_id")
@@ -2226,6 +2254,7 @@ def main() -> int:
                 jobs=args.jobs,
                 no_cache=args.no_cache,
                 keep_going=args.keep_going,
+                preverified_tasks=set(args.preverified_task),
             )
             print_summary(summary)
             write_summary(summary, args.summary_json)

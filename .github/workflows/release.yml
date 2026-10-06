@@ -108,6 +108,9 @@ jobs:
       - name: Install browser runtime
         run: npx playwright install --with-deps chromium
 
+      - name: Verify checked-in generated outputs
+        run: python3 scripts/build.py --check
+
       - name: Prepare release web assets
         env:
           GH_TOKEN: ${{ github.token }}
@@ -156,7 +159,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          npm run check:release-preflight
+          npm run check:release-preflight -- --preverified-task generated
           python3 scripts/check_release_contract.py --github-repository "${GITHUB_REPOSITORY}"
 
   device-matrix:
