@@ -65,18 +65,20 @@ def test_nightly_matrix_includes_every_manifest_slug() -> None:
     }
 
 
-def test_pr_matrix_includes_every_manifest_slug() -> None:
+def test_pr_matrix_uses_one_representative_per_chip_family() -> None:
     matrix = run_ok(["pr"])
-    assert matrix == {
-        "include": [
+    expected: dict[str, dict[str, object]] = {}
+    for slug, device in manifest_data()["devices"].items():
+        chip = device["firmware"]["build"]["chip"]
+        expected.setdefault(
+            chip,
             {
                 "slug": slug,
-                "recovery": device["firmware"]["build"]["chip"]
-                == device_matrix.RECOVERY_CHIP_FAMILY,
-            }
-            for slug, device in manifest_data()["devices"].items()
-        ]
-    }
+                "recovery": chip == device_matrix.RECOVERY_CHIP_FAMILY,
+            },
+        )
+    assert matrix == {"include": list(expected.values())}
+    assert len(matrix["include"]) < len(manifest_data()["devices"])
 
 
 def test_release_matrix_includes_every_manifest_slug() -> None:
@@ -145,7 +147,7 @@ def main() -> int:
     tests = [
         test_release_matrix_shape,
         test_nightly_matrix_includes_every_manifest_slug,
-        test_pr_matrix_includes_every_manifest_slug,
+        test_pr_matrix_uses_one_representative_per_chip_family,
         test_release_matrix_includes_every_manifest_slug,
         test_missing_chip_metadata_fails,
         test_matrix_build_files_are_required,

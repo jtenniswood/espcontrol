@@ -79,10 +79,12 @@ A successful compile or CI run confirms that the project builds. It does not
 replace testing on the affected display when the change touches the on-device
 experience.
 
-Firmware-related pull requests automatically compile every supported factory and
-P4 recovery image. The **Firmware Compile Gate** check fails if any required
-build fails. Changes outside firmware inputs skip compilation. PR, nightly and
-release build summaries report application size, OTA partition capacity and remaining
-headroom; less than 128 KiB free produces a warning, and an oversized image fails
-the build. Sizes use the compiled application binary and partition table, not the
-larger USB factory image.
+Firmware-related pull requests compile one representative device for each chip
+family, including its P4 recovery image where applicable. The nightly workflow
+and releases compile every supported device and recovery image. The **Firmware
+Compile Gate** check fails if any required build fails. Changes outside firmware
+inputs skip compilation. PR, nightly and release build summaries report
+application size, OTA partition capacity and remaining headroom; less than
+128 KiB free produces a warning, and an oversized image fails the build. Sizes
+use the compiled application binary and partition table, not the larger USB
+factory image.
