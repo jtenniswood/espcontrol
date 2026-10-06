@@ -304,7 +304,7 @@ export function createFirmwareUpdateFeature(
         }
         // Keep the controls busy while the final asynchronous refresh is pending.
         if (state.firmwareInstallTargetVersion &&
-            (firmwareInstallRefreshUntil || state.firmwareUpdateState === "INSTALLING") &&
+            (firmwareInstallRefreshUntil || state.firmwareWebOtaDownloadPending) &&
             (updateState === "UPDATE AVAILABLE" || updateState === "NO UPDATE")) {
             updateState = "INSTALLING";
         }
@@ -312,7 +312,7 @@ export function createFirmwareUpdateFeature(
         state.firmwareReleaseUrl = d.release_url || state.firmwareReleaseUrl || "";
         if (state.firmwareUpdateState)
             state.firmwareChecking = false;
-        if (state.firmwareUpdateState === "INSTALLING") {
+        if (state.firmwareUpdateState === "INSTALLING" && !state.firmwareWebOtaDownloadPending) {
             startFirmwareInstallRefresh();
         }
         else {
@@ -326,6 +326,7 @@ export function createFirmwareUpdateFeature(
             clearTimeout(firmwareInstallRefreshTimer);
         firmwareInstallRefreshTimer = null;
         firmwareInstallRefreshUntil = 0;
+        state.firmwareWebOtaDownloadPending = false;
         clearFirmwareWebOtaFallback();
         state.firmwareInstallTargetVersion = "";
         state.firmwareInstallPostPending = false;

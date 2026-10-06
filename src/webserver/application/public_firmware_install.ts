@@ -83,6 +83,7 @@ export function createPublicFirmwareInstallFeature(
             clearFirmwareWebOtaFallback();
             state.firmwareInstallPostPending = false;
             state.firmwareChecking = false;
+            state.firmwareWebOtaDownloadPending = true;
             state.firmwareUpdateState = "INSTALLING";
             state.firmwareInstallError = "";
             state.firmwareInstallStatus = state.firmwareInstallTargetVersion ?
@@ -123,6 +124,7 @@ export function createPublicFirmwareInstallFeature(
                         throw new Error("Device reported that the firmware upload failed.");
                     }
                     // The confirmation deadline starts after the transfer completes.
+                    state.firmwareWebOtaDownloadPending = false;
                     startFirmwareInstallRefresh(true);
                     waitForFirmwareRestart();
                     return true;
