@@ -68,6 +68,16 @@ jobs:
           echo "PYTHONPATH=${PYTHON_SITE_PACKAGES}:${PYTHONPATH}" >> "${GITHUB_ENV}"
           echo "${PYTHON_VENV}/bin" >> "${GITHUB_PATH}"
 
+      - name: Install pinned ESPHome test dependency
+        shell: bash
+        run: |
+          source .github/esphome.env
+          PYTHON_VENV="${RUNNER_TEMP}/espcontrol-release-python"
+          "${PYTHON_VENV}/bin/python" -m pip install \
+            --disable-pip-version-check \
+            --no-cache-dir \
+            "esphome==${ESPHOME_VERSION}"
+
       - name: Ensure CMake is available
         shell: bash
         run: |
