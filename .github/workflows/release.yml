@@ -37,6 +37,12 @@ jobs:
           ref: ${{ inputs.release_tag }}
       - run: git sparse-checkout disable || true
 
+      - name: Checkout release validation tooling
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: release-validation-tools
+
       - name: Pin release source revision
         id: source
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -108,6 +114,11 @@ jobs:
       - name: Install browser runtime
         run: npx playwright install --with-deps chromium
 
+      - name: Verify checked-in generated outputs
+        run: |
+          python3 scripts/build.py --self-test
+          python3 scripts/build.py --check
+
       - name: Prepare release web assets
         env:
           GH_TOKEN: ${{ github.token }}
@@ -156,7 +167,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          npm run check:release-preflight
+          python3 release-validation-tools/scripts/check_tasks.py run release \
+            --root "${GITHUB_WORKSPACE}" \
+            --preverified-task generated
           python3 scripts/check_release_contract.py --github-repository "${GITHUB_REPOSITORY}"
 
   device-matrix:
