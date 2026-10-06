@@ -68,13 +68,19 @@ def test_web_bundles(profile_slugs: list[str]) -> None:
 
 
 def test_firmware_release_matrix(profile_slugs: list[str]) -> None:
+    profiles = load_device_profiles()
     matrices = {
-        "release": device_matrix.release_matrix(load_device_profiles()),
-        "nightly": device_matrix.nightly_matrix(load_device_profiles()),
-        "pull request": device_matrix.pr_matrix(load_device_profiles()),
+        "release": device_matrix.release_matrix(profiles),
+        "nightly": device_matrix.nightly_matrix(profiles),
     }
     for label, matrix in matrices.items():
         assert_same_slugs(profile_slugs, [entry["slug"] for entry in matrix["include"]], f"{label} firmware matrix")
+
+    pr_entries = device_matrix.pr_matrix(profiles)["include"]
+    pr_chips = [profiles[entry["slug"]]["firmware"]["build"]["chip"] for entry in pr_entries]
+    expected_chips = {profile["firmware"]["build"]["chip"] for profile in profiles.values()}
+    assert len(pr_chips) == len(set(pr_chips)), "pull request firmware matrix repeats a chip family"
+    assert set(pr_chips) == expected_chips, "pull request firmware matrix does not cover every chip family"
 
 
 def test_public_firmware_manifest(profile_slugs: list[str]) -> None:
