@@ -186,7 +186,7 @@ int main() {
                           "/fan/fan/turn_on", "/cover/blind/open", "/climate/thermostat/set",
                           "/lock/door/lock", "/valve/water/open", "/alarm_control_panel/alarm/arm_home",
                           "/media_player/Voice%20Media%20Player/play",
-                          "/media_player/SendSpin%20Player/pause",
+                          "/media_player/EspControl%20Speaker/pause",
                           "/wifisave", "/update"}) {
     assert(!write_requires_epoch(uri));
     assert(allow_web_write(true, false, uri, false, false));
