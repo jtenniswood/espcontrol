@@ -119,6 +119,9 @@ jobs:
           python3 scripts/build.py --self-test
           python3 scripts/build.py --check
 
+      - name: Verify checked-in web asset manifest
+        run: node scripts/check_web_asset_manifest.js
+
       - name: Prepare release web assets
         env:
           GH_TOKEN: ${{ github.token }}
@@ -169,7 +172,8 @@ jobs:
         run: |
           python3 release-validation-tools/scripts/check_tasks.py run release \
             --root "${GITHUB_WORKSPACE}" \
-            --preverified-task generated
+            --preverified-task generated \
+            --preverified-task web-asset-manifest
           python3 scripts/check_release_contract.py --github-repository "${GITHUB_REPOSITORY}"
 
   device-matrix:
