@@ -303,7 +303,8 @@ export function createFirmwareUpdateFeature(
             }
         }
         // Keep the controls busy while the final asynchronous refresh is pending.
-        if (state.firmwareInstallTargetVersion && firmwareInstallRefreshUntil &&
+        if (state.firmwareInstallTargetVersion &&
+            (firmwareInstallRefreshUntil || state.firmwareUpdateState === "INSTALLING") &&
             (updateState === "UPDATE AVAILABLE" || updateState === "NO UPDATE")) {
             updateState = "INSTALLING";
         }
