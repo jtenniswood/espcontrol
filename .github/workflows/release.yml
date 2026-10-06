@@ -109,7 +109,9 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Verify checked-in generated outputs
-        run: python3 scripts/build.py --check
+        run: |
+          python3 scripts/build.py --self-test
+          python3 scripts/build.py --check
 
       - name: Prepare release web assets
         env:
