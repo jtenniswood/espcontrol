@@ -43,7 +43,7 @@ def actions(items):
 
 layout = (args.root / "components/espcontrol/button_grid_layout.h").read_text()
 helpers = layout[layout.index("inline int normalize_width_compensation_percent"):
-                 layout.index("inline void apply_text_width_compensation")]
+                 layout.index("inline void apply_slot_text_width_compensation")]
 screen = yaml.load((args.root / "common/device/screen_cover_art.yaml").read_text(), Loader)
 responsive = next(s for s in screen["script"] if s["id"] == "cover_art_apply_responsive_layout")
 # Execute the real compensation call, including its position before the geometry cache.
@@ -59,7 +59,7 @@ for slug in ("guition-esp32-p4-jc1060p470", "guition-esp32-p4-jc1060p470-v2"):
 #include <string>
 using lv_coord_t = int;
 constexpr int LV_PART_MAIN = 0;
-struct lv_obj_t { int x = 256, y = 256; } button;
+struct lv_obj_t { int x = 256, y = 256; } button, icon, text;
 void lv_obj_set_style_transform_scale_x(lv_obj_t *obj, int scale, int) { obj->x = scale; }
 void lv_obj_set_style_transform_scale_y(lv_obj_t *obj, int scale, int) { obj->y = scale; }
 struct Select { std::string option; std::string current_option() { return option; } } screen_rotation_select;
@@ -80,6 +80,21 @@ void check(const std::string &option) {
   assert(button.x == (portrait ? 256 : 243));
   assert(button.y == (portrait ? 243 : 256));
   assert(display_rotation == (std::stoi(option) + 180) % 360);
+  // Standalone icons use the same rotated axis, preserving their chosen zoom.
+  apply_icon_width_compensation(&icon, 180);
+  assert(icon.x == (portrait ? 180 : 171));
+  assert(icon.y == (portrait ? 171 : 180));
+  // Normal 7-inch text keeps its separate 100% setting in every orientation.
+  apply_text_width_compensation(&text);
+  assert(text.x == 256 && text.y == 256);
+  // Text compensation, when configured, also switches axes and clears the old one.
+  set_text_width_compensation_percent(95);
+  apply_text_width_compensation(&text);
+  assert(text.x == (portrait ? 256 : 243));
+  assert(text.y == (portrait ? 243 : 256));
+  set_text_width_compensation_percent(100);
+  apply_text_width_compensation(&text);
+  assert(text.x == 256 && text.y == 256);
 }
 int main() {
   set_icon_width_compensation_percent(95);
@@ -106,4 +121,4 @@ int main() {
         subprocess.run([args.compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror",
                         str(cpp), "-o", str(exe)], check=True)
         subprocess.run([str(exe)], check=True)
-    print(f"{slug}: cover-art pixel compensation follows restored and changed rotation")
+    print(f"{slug}: button, icon, and text compensation follow restored and changed rotation")
