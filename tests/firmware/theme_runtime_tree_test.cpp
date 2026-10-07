@@ -54,6 +54,11 @@ struct lv_obj_t {
   bool has_pressed_background = false;
   lv_color_t disabled_border{0};
   lv_color_t disabled_text{0};
+  lv_color_t checked_text{0};
+  lv_color_t pressed_text{0};
+  bool has_disabled_text = false;
+  bool has_checked_text = false;
+  bool has_pressed_text = false;
   int border_width = 0;
   int opacity = LV_OPA_TRANSP;
   int state = 0;
@@ -82,7 +87,12 @@ lv_color_t lv_obj_get_style_bg_color(const lv_obj_t *obj, int part) {
     return obj->pressed_background;
   return part == LV_PART_KNOB ? obj->knob : obj->background;
 }
-lv_color_t lv_obj_get_style_text_color(const lv_obj_t *obj, int) { return obj->text; }
+lv_color_t lv_obj_get_style_text_color(const lv_obj_t *obj, int) {
+  if ((obj->state & LV_STATE_DISABLED) && obj->has_disabled_text) return obj->disabled_text;
+  if ((obj->state & LV_STATE_PRESSED) && obj->has_pressed_text) return obj->pressed_text;
+  if ((obj->state & LV_STATE_CHECKED) && obj->has_checked_text) return obj->checked_text;
+  return obj->text;
+}
 lv_color_t lv_obj_get_style_arc_color(const lv_obj_t *obj, int) { return obj->arc; }
 lv_color_t lv_obj_get_style_border_color(const lv_obj_t *obj, int) { return obj->border; }
 int lv_obj_get_style_border_width(const lv_obj_t *obj, int) { return obj->border_width; }
@@ -96,7 +106,10 @@ void lv_obj_set_style_bg_opa(lv_obj_t *obj, int opacity, int selector) {
 }
 void apply_push_button_transition(lv_obj_t *) {}
 void lv_obj_set_style_text_color(lv_obj_t *obj, lv_color_t color, int selector) {
-  (selector == LV_STATE_DISABLED ? obj->disabled_text : obj->text) = color;
+  if (selector == LV_STATE_DISABLED) { obj->disabled_text = color; obj->has_disabled_text = true; }
+  else if (selector == LV_STATE_CHECKED) { obj->checked_text = color; obj->has_checked_text = true; }
+  else if (selector == LV_STATE_PRESSED) { obj->pressed_text = color; obj->has_pressed_text = true; }
+  else obj->text = color;
 }
 void lv_obj_set_style_arc_color(lv_obj_t *obj, lv_color_t color, int) { obj->arc = color; }
 void lv_obj_set_style_border_color(lv_obj_t *obj, lv_color_t color, int selector) {
@@ -134,10 +147,11 @@ std::vector<TestSubpage> &navigation_subpages() {
 }
 constexpr uint32_t CARD_ACCENT_TEXT_COLOR = 0xFFFFFF;
 void sync_card_checked_text_color(lv_obj_t *button) {
-  for (auto *child : button->children) child->text = button->text;
+  for (auto *child : button->children) child->text = lv_obj_get_style_text_color(button, LV_PART_MAIN);
 }
 void set_card_content_disabled(lv_obj_t *, bool) {}
 #include "theme_runtime_ui.h"
+#include "theme_settings.h"
 namespace esphome { using StringRef = std::string; }
 bool sensor_active_color_state_ref(const std::string &state, bool) { return state == "on"; }
 void media_control_apply_availability(lv_obj_t *, lv_obj_t *, bool) {}
@@ -182,6 +196,113 @@ static void test_grid_secondary_surface() {
   assert(sensor.background.full == DARK_THEME.surface_secondary);
   lv_event_t deleted{&page};
   page.delete_callback(&deleted);
+}
+
+static void test_restore_grid_theme(ThemeMode mode, EffectiveTheme effective,
+                                    bool restore_explicit_light = false) {
+  ThemeSettings settings;
+  settings.mode = mode;
+  settings.auto_method = ThemeAutoMethod::SUNRISE_SUNSET;
+  settings.light_start = 20 * 60;
+  settings.dark_start = 7 * 60;
+  settings.sunrise_offset = -45;
+  settings.sunset_offset = 90;
+  ThemeResolver resolver;
+  resolver.effective = effective;
+  ThemeConditions unavailable;
+  set_active_theme_palette(effective == EffectiveTheme::LIGHT ? LIGHT_THEME : DARK_THEME);
+
+  int settings_notifications = 0;
+  const auto count_settings_refresh = [](void *context, const ThemePalette &) {
+    ++*static_cast<int *>(context);
+  };
+  assert(register_theme_refresh(&settings_notifications, count_settings_refresh, &settings_notifications));
+  apply_current_theme();
+  const int initial_notifications = settings_notifications;
+
+  lv_obj_t page, button, label, back, back_label, subpage, sub_button, sub_label, accent_card;
+  button.type = back.type = sub_button.type = &lv_button_class;
+  button.text = back.text = sub_button.text = lv_color_hex(DARK_THEME.text_primary);
+  label.type = back_label.type = sub_label.type = &lv_label_class;
+  button.children = {&label}; label.parent = &button;
+  back.children = {&back_label}; back_label.parent = &back;
+  sub_button.children = {&sub_label}; sub_label.parent = &sub_button;
+  button.opacity = back.opacity = sub_button.opacity = LV_OPA_COVER;
+  BtnSlot slots[] = {{&button}};
+  const bool neutral[] = {true};
+  register_theme_grid(&page, slots, neutral, 1, 100, 100, 100);
+  apply_current_theme();  // The existing owner has already seen this palette.
+
+  // Restore phase 1 reuses the main page/button but recreates descendants with
+  // the ESPHome global theme's Dark defaults, then registers the same owner.
+  label.text = lv_color_hex(DARK_THEME.text_primary);
+  button.background = lv_color_hex(current_theme().surface_primary);
+  register_theme_grid(&page, slots, neutral, 1, 100, 100, 100);
+  assert(label.text.full == DARK_THEME.text_primary);  // Registration is too early.
+
+  // Modern backups post explicit settings independently of the layout. They
+  // may arrive before reconciliation finishes; legacy backups post none.
+  if (restore_explicit_light) {
+    settings.mode = ThemeMode::LIGHT;
+    settings.auto_method = ThemeAutoMethod::TIME;
+    settings.light_start = 6 * 60 + 30;
+    settings.dark_start = 21 * 60;
+    settings.sunrise_offset = -20;
+    settings.sunset_offset = 45;
+  }
+  apply_theme_resolution(resolver, settings, unavailable);
+  const ThemeSettings expected_settings = settings;
+  const EffectiveTheme expected_effective = resolver.effective;
+  const ThemePalette *expected_palette = &current_theme();
+  const int expected_notifications = initial_notifications + (restore_explicit_light ? 1 : 0);
+  assert(settings_notifications == expected_notifications);
+
+  // Phase 2 has retired the old subpage and registered its replacement. Its
+  // label and back-button defaults were created after any setting transition.
+  back.background = sub_button.background = lv_color_hex(DARK_THEME.surface_primary);
+  back_label.text = sub_label.text = lv_color_hex(DARK_THEME.text_primary);
+  accent_card.type = &lv_button_class;
+  accent_card.opacity = LV_OPA_COVER;
+  accent_card.background = lv_color_hex(DARK_THEME.surface_secondary);
+  theme_set_content_background(&accent_card);
+  navigation_subpages().push_back({&subpage, &back, {{true, &sub_button}, {true, &accent_card}}});
+  sub_button.state = LV_STATE_CHECKED;
+  const int preserved_subpage_state = sub_button.state;
+
+  refresh_theme_grid_after_rebuild();  // Final boundary: no mode transition.
+  assert(settings.mode == expected_settings.mode);
+  assert(settings.auto_method == expected_settings.auto_method);
+  assert(settings.light_start == expected_settings.light_start);
+  assert(settings.dark_start == expected_settings.dark_start);
+  assert(settings.sunrise_offset == expected_settings.sunrise_offset);
+  assert(settings.sunset_offset == expected_settings.sunset_offset);
+  assert(resolver.effective == expected_effective && &current_theme() == expected_palette);
+  assert(settings_notifications == expected_notifications);
+  assert(page.background.full == current_theme().background);
+  assert(button.background.full == current_theme().surface_primary);
+  assert(label.text.full == current_theme().text_primary);
+  assert(subpage.background.full == current_theme().background);
+  assert(back.background.full == current_theme().surface_primary);
+  assert(back_label.text.full == current_theme().text_primary);
+  assert(sub_button.background.full == current_theme().surface_primary);
+  assert(sub_button.state == preserved_subpage_state);
+  assert(sub_button.text.full == current_theme().text_primary);
+  assert(sub_label.text.full == CARD_ACCENT_TEXT_COLOR);
+  assert(accent_card.background.full == DARK_THEME.surface_secondary);
+  int grid_bindings = 0;
+  for (const auto &binding : theme_refresh_bindings())
+    if (binding.owner == &page) ++grid_bindings;
+  assert(grid_bindings == 1);
+  apply_current_theme();
+  assert(settings_notifications == expected_notifications);
+
+  navigation_subpages().clear();
+  lv_event_t deleted{&page};
+  page.delete_callback(&deleted);
+  refresh_theme_grid_after_rebuild();  // Deleted owners must never be touched.
+  assert(theme_grid_targets().main_page == nullptr);
+  assert(settings_notifications == expected_notifications);
+  unregister_theme_refresh(&settings_notifications);
 }
 
 static void test_sensor_state_refresh() {
@@ -793,6 +914,11 @@ int main() {
   late_light_page.delete_callback(&late_light_deleted);
   test_supported_pressed_lists();
   test_grid_secondary_surface();
+  test_restore_grid_theme(ThemeMode::LIGHT, EffectiveTheme::LIGHT);
+  test_restore_grid_theme(ThemeMode::DARK, EffectiveTheme::DARK);
+  test_restore_grid_theme(ThemeMode::DARK, EffectiveTheme::DARK, true);
+  test_restore_grid_theme(ThemeMode::AUTO, EffectiveTheme::LIGHT);
+  test_restore_grid_theme(ThemeMode::AUTO, EffectiveTheme::DARK);
   test_playback_mode_accent_collision();
   test_sensor_state_refresh();
   test_pressed_overflow_recovery();

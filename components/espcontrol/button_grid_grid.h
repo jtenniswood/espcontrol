@@ -1965,6 +1965,7 @@ inline void grid_phase2(
   if (cfg.info_only) {
     // Info-only profiles still bind main-card runtimes in phase 2. They do not
     // build subpages, but remote modal actions can safely use those runtimes.
+    refresh_theme_grid_after_rebuild();
     grid_phase2_complete_state() = true;
     return;
   }
@@ -2258,6 +2259,7 @@ inline void grid_phase2(
   }
   refresh_weather_forecast_cards();
   ha_log_subscription_diagnostics("grid-complete");
+  refresh_theme_grid_after_rebuild();
   grid_phase2_complete_state() = true;
   grid_log_memory("end");
   ESP_LOGI("sensors", "Phase 2: done (%lu ms)", esphome::millis());

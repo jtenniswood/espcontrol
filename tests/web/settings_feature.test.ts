@@ -73,6 +73,15 @@ export function runSettingsFeatureTests(): void {
   equal(restoredTheme.screen?.theme_dark_start, "07:00", "backup retains Dark boundary");
   equal(normalizeBackupEnvelope({ version: 2, format: "espcontrol.backup", buttons: [], screen: {} }, backupOutputs).screen?.theme_mode,
         undefined, "old backups remain valid without a theme field");
+  const legacyScreen = normalizeBackupEnvelope({ version: 2, format: "espcontrol.backup", device: "esp32-p4-86", buttons: [],
+    screen: { schedule_clock_text_color: "FFFFFF" } }, backupOutputs).screen;
+  for (const key of Object.keys(themeScreen))
+    equal(legacyScreen?.[key], undefined, `legacy restore must not invent ${key}`);
+  const explicitLight = { ...themeScreen, theme_mode: "Light" };
+  const lightBackup = createBackupEnvelope({ device: "esp32-p4-86", slots: 0, screen: explicitLight }, backupOutputs);
+  const lightRestore = normalizeBackupEnvelope(lightBackup as unknown as Record<string, unknown>, backupOutputs).screen;
+  for (const [key, value] of Object.entries(explicitLight))
+    equal(lightRestore?.[key], value, `modern Light restore retains ${key}`);
   const clock = screensaverControlState("Clock", 35.4, 12.6, 8.2);
   equal(clock.mode, "clock", "clock action is normalized");
   equal(clock.clockVisible, true, "clock controls are shown for clock mode");

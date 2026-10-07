@@ -118,6 +118,19 @@ inline void register_theme_grid(lv_obj_t *main_page, BtnSlot *slots,
       theme_grid_targets().main_page = nullptr;
     }, LV_EVENT_DELETE, nullptr);
   }
+  // Phase 2 still has to bind cards and replace subpages. Apply once that
+  // reconstruction is complete, rather than caching an early partial refresh.
+}
+
+inline void refresh_theme_grid_after_rebuild() {
+  auto &targets = theme_grid_targets();
+  if (!targets.main_page) return;
+  // The owner survives a rebuild, but its new descendants can inherit the
+  // compile-time Dark styles. Reset only this binding's applied palette by
+  // re-registering it, then use the normal refresh path without changing mode.
+  unregister_theme_refresh(targets.main_page);
+  if (!register_theme_refresh(targets.main_page, theme_apply_grid, &targets))
+    ESP_LOGW("theme", "Refresh registry full; rebuilt grid will not follow theme changes");
   apply_current_theme();
 }
 
