@@ -2801,7 +2801,7 @@ inline void media_control_refresh_power(MediaControlCtx *ctx) {
   if (ui.power_icon_lbl) {
     lv_label_set_display_text(ui.power_icon_lbl, find_icon("Power"));
     lv_obj_set_style_text_color(
-      ui.power_icon_lbl, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
+      ui.power_icon_lbl, lv_color_hex(on ? CARD_ACCENT_TEXT_COLOR : current_theme().text_primary), LV_PART_MAIN);
   }
   if (ui.power_status_lbl) {
     const std::string status = !ctx->state_known
@@ -2825,7 +2825,7 @@ inline void media_control_style_playback_mode_button(lv_obj_t *btn,
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   if (label) {
     lv_obj_set_style_text_color(
-      label, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
+      label, lv_color_hex(active ? CARD_ACCENT_TEXT_COLOR : current_theme().text_primary), LV_PART_MAIN);
   }
   media_control_apply_availability(btn, btn, interactive);
 }

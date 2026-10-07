@@ -150,7 +150,11 @@ static void test_playback_mode_accent_collision() {
   theme_restyle_tree(&button, DARK_THEME, LIGHT_THEME);
   assert(button.background.full == DARK_THEME.surface_primary);
   set_active_theme_palette(LIGHT_THEME);
+  media_control_style_playback_mode_button(&button, true, true, DARK_THEME.surface_primary);
+  assert(button.background.full == DARK_THEME.surface_primary);
+  assert(label.text.full == CARD_ACCENT_TEXT_COLOR);
   media_control_style_playback_mode_button(&button, false, true, DARK_THEME.surface_primary);
+  assert(label.text.full == LIGHT_THEME.text_primary);
   assert(!lv_obj_has_flag(&button, LV_OBJ_FLAG_USER_1));
   theme_restyle_tree(&button, LIGHT_THEME, DARK_THEME);
   assert(button.background.full == DARK_THEME.surface_primary);
