@@ -465,6 +465,10 @@ script:
                         - lvgl.display.set_rotation: 90
                       else:
                         - lvgl.display.set_rotation: 180
+      # Grid refresh is delayed; update the pixel axis before screensaver layout.
+      - lambda: |-
+          const auto rotation = id(screen_rotation_select).current_option();
+          set_width_compensation_vertical_axis(rotation == "90" || rotation == "270");
       - script.execute: cover_art_apply_responsive_layout
       - script.execute: camera_screensaver_request_image
 
