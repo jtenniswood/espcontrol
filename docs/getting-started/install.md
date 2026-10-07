@@ -28,12 +28,6 @@ Connect the display to your computer with the USB-C cable, choose your device an
 
 <EspInstallSelector />
 
-### USB installation and BOOT mode
-
-The **10.1-inch V3 supports this browser USB installer**. Its restriction applies to browser firmware uploads over WiFi (OTA), not USB installation. Use native ESPHome OTA for later updates.
-
-If installation cannot connect or asks for BOOT, unplug the programming USB cable, hold **BOOT/download**, reconnect the cable, then release BOOT when the serial port appears. Select that port and retry. After flashing, release BOOT and reset or power-cycle the display to start EspControl. See the [10.1-inch V3 manual USB fallback](/screens/jc8012p4a1-v3#manual-usb-fallback) if it still fails.
-
 ## Having Unreliable Wifi on a P4 Panel?
 
 P4 panels use a separate ESP32-C6 Wifi processor. If a P4 panel repeatedly
