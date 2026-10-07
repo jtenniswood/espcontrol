@@ -43,6 +43,7 @@ struct lv_obj_t {
   lv_color_t knob{0};
   lv_color_t border{0};
   lv_color_t pressed_background{0};
+  bool has_pressed_background = false;
   lv_color_t disabled_border{0};
   lv_color_t disabled_text{0};
   int border_width = 0;
@@ -63,6 +64,8 @@ void lv_obj_clear_flag(lv_obj_t *obj, uint32_t flag) { obj->flags &= ~flag; }
 lv_obj_t *lv_obj_get_parent(const lv_obj_t *obj) { return obj->parent; }
 int lv_obj_get_style_bg_opa(const lv_obj_t *obj, int) { return obj->opacity; }
 lv_color_t lv_obj_get_style_bg_color(const lv_obj_t *obj, int part) {
+  if (part == LV_PART_MAIN && (obj->state & LV_STATE_PRESSED) && obj->has_pressed_background)
+    return obj->pressed_background;
   return part == LV_PART_KNOB ? obj->knob : obj->background;
 }
 lv_color_t lv_obj_get_style_text_color(const lv_obj_t *obj, int) { return obj->text; }
@@ -70,9 +73,14 @@ lv_color_t lv_obj_get_style_arc_color(const lv_obj_t *obj, int) { return obj->ar
 lv_color_t lv_obj_get_style_border_color(const lv_obj_t *obj, int) { return obj->border; }
 int lv_obj_get_style_border_width(const lv_obj_t *obj, int) { return obj->border_width; }
 void lv_obj_set_style_bg_color(lv_obj_t *obj, lv_color_t color, int part) {
+  if (part == LV_STATE_PRESSED) obj->has_pressed_background = true;
   (part == LV_STATE_PRESSED ? obj->pressed_background :
    part == LV_PART_KNOB ? obj->knob : obj->background) = color;
 }
+void lv_obj_set_style_bg_opa(lv_obj_t *obj, int opacity, int selector) {
+  if (selector == LV_PART_MAIN) obj->opacity = opacity;
+}
+void apply_push_button_transition(lv_obj_t *) {}
 void lv_obj_set_style_text_color(lv_obj_t *obj, lv_color_t color, int selector) {
   (selector == LV_STATE_DISABLED ? obj->disabled_text : obj->text) = color;
 }
@@ -94,6 +102,112 @@ lv_obj_t *lv_event_get_target(lv_event_t *event) { return event->target; }
 
 #include "theme_runtime_static.h"
 #include "theme_modal_adapter.h"
+
+static_assert(CONTROL_MODAL_THEME_PRESSED_CAPACITY == 64,
+              "All 64 supported select rows must fit in one modal owner");
+
+static void test_supported_pressed_lists() {
+  // Production demand: fan (20 fixed + 32 presets), climate (19 + 32 options),
+  // select (64 rows). Hidden controls still belong to their modal owner.
+  for (int demand : {52, 51, 64}) {
+    set_active_theme_palette(DARK_THEME);
+    apply_current_theme();
+    theme_warnings.clear();
+    lv_obj_t overlay, panel, rows[64];
+    panel.background = lv_color_hex(DARK_THEME.surface_secondary);
+    panel.opacity = LV_OPA_COVER;
+    control_modal_register_theme({&overlay, &panel});
+    for (int i = 0; i < demand; ++i) {
+      auto &row = rows[i];
+      row.type = &lv_button_class;
+      row.parent = &panel;
+      row.background = lv_color_hex(DARK_THEME.surface_primary);
+      row.opacity = LV_OPA_COVER;
+      panel.children.push_back(&row);
+      control_modal_apply_pressed_fill(&row);
+    }
+    set_active_theme_palette(LIGHT_THEME);
+    apply_current_theme();
+    for (int i = 0; i < demand; ++i) {
+      auto &row = rows[i];
+      assert(lv_obj_get_style_bg_color(&row, LV_PART_MAIN).full == LIGHT_THEME.surface_primary);
+      row.state = LV_STATE_PRESSED;
+      assert(lv_obj_get_style_bg_color(&row, LV_PART_MAIN).full == LIGHT_THEME.surface_primary);
+      row.state = 0;
+    }
+    rows[demand - 1].state = LV_STATE_PRESSED;
+    set_active_theme_palette(DARK_THEME);
+    apply_current_theme();
+    assert(rows[demand - 1].state == LV_STATE_PRESSED);
+    for (int i = 0; i < demand; ++i) {
+      assert(rows[i].background.full == DARK_THEME.surface_primary);
+      assert(rows[i].pressed_background.full == DARK_THEME.surface_primary);
+    }
+    assert(theme_warnings.empty());
+    lv_event_t deleted{&overlay};
+    overlay.delete_callback(&deleted);
+  }
+}
+
+static void test_pressed_overflow_recovery() {
+  set_active_theme_palette(DARK_THEME);
+  apply_current_theme();
+  theme_warnings.clear();
+  lv_obj_t overlay, panel, rows[CONTROL_MODAL_THEME_PRESSED_CAPACITY + 1];
+  const auto open = [&]() {
+    panel.children.clear();
+    panel.background = lv_color_hex(current_theme().surface_secondary);
+    panel.opacity = LV_OPA_COVER;
+    control_modal_register_theme({&overlay, &panel});
+    for (auto &row : rows) {
+      row = {};
+      row.type = &lv_button_class;
+      row.parent = &panel;
+      row.background = lv_color_hex(current_theme().surface_primary);
+      row.opacity = LV_OPA_COVER;
+      panel.children.push_back(&row);
+      control_modal_apply_pressed_fill(&row);
+    }
+  };
+  open();
+  auto &omitted = rows[CONTROL_MODAL_THEME_PRESSED_CAPACITY];
+  assert(theme_warnings.size() == 1);
+  assert(omitted.delete_callback == nullptr);
+  set_active_theme_palette(LIGHT_THEME);
+  apply_current_theme();
+  assert(lv_obj_get_style_bg_color(&omitted, LV_PART_MAIN).full == LIGHT_THEME.surface_primary);
+  omitted.state = LV_STATE_PRESSED;
+  assert(lv_obj_get_style_bg_color(&omitted, LV_PART_MAIN).full == DARK_THEME.surface_primary);
+  omitted.state = 0;
+  assert(lv_obj_get_style_bg_color(&omitted, LV_PART_MAIN).full == LIGHT_THEME.surface_primary);
+  assert(omitted.pressed_background.full == DARK_THEME.surface_primary);
+  // Reopening writes current-theme pressed styles, even for the omitted row.
+  lv_event_t deleted{&overlay};
+  overlay.delete_callback(&deleted);
+  open();
+  assert(theme_warnings.size() == 2);
+  omitted.state = LV_STATE_PRESSED;
+  assert(lv_obj_get_style_bg_color(&omitted, LV_PART_MAIN).full == LIGHT_THEME.surface_primary);
+  omitted.state = 0;
+  set_active_theme_palette(DARK_THEME);
+  apply_current_theme();
+  assert(omitted.background.full == DARK_THEME.surface_primary);
+  assert(omitted.pressed_background.full == LIGHT_THEME.surface_primary);
+  // A freed slot is usable on an explicit registration retry, not on a press.
+  deleted.target = &rows[0];
+  rows[0].delete_callback(&deleted);
+  panel.children.erase(panel.children.begin());
+  control_modal_apply_pressed_fill(&omitted);
+  assert(omitted.delete_callback != nullptr);
+  assert(theme_warnings.size() == 2);
+  set_active_theme_palette(LIGHT_THEME);
+  apply_current_theme();
+  assert(omitted.pressed_background.full == LIGHT_THEME.surface_primary);
+  deleted.target = &overlay;
+  overlay.delete_callback(&deleted);
+  set_active_theme_palette(DARK_THEME);
+  apply_current_theme();
+}
 
 static void test_content_collisions() {
   // Swatches, HA-derived light fills and selected rows may be exactly neutral.
@@ -257,19 +371,19 @@ static void test_registry_exhaustion() {
   rejected.delete_callback(&deleted);
 
   // Exercise the actual modal tracking functions extracted from production.
-  lv_obj_t panel, tabs[11], pressed[25], disabled[9];
+  lv_obj_t panel, tabs[11], pressed[CONTROL_MODAL_THEME_PRESSED_CAPACITY + 1], disabled[9];
   auto &modal = control_modal_theme_targets()[0];
   modal.panel = &panel;
   theme_warnings.clear();
   for (auto &tab : tabs) { tab.parent = &panel; control_modal_track_theme_tab(&tab); }
   for (auto &button : pressed) { button.parent = &panel; control_modal_track_theme_pressed(&button); }
   for (auto &button : disabled) { button.parent = &panel; control_modal_track_theme_disabled(&button); }
-  assert(modal.theme_tab_count == 10 && modal.theme_pressed_count == 24 && modal.theme_disabled_count == 8);
+  assert(modal.theme_tab_count == 10 && modal.theme_pressed_count == CONTROL_MODAL_THEME_PRESSED_CAPACITY && modal.theme_disabled_count == 8);
   assert(theme_warnings.size() == 3);
   assert(theme_warnings[0].find("Modal tab targets full") != std::string::npos);
   assert(theme_warnings[1].find("Modal pressed targets full") != std::string::npos);
   assert(theme_warnings[2].find("Modal disabled targets full") != std::string::npos);
-  assert(tabs[10].delete_callback == nullptr && pressed[24].delete_callback == nullptr &&
+  assert(tabs[10].delete_callback == nullptr && pressed[CONTROL_MODAL_THEME_PRESSED_CAPACITY].delete_callback == nullptr &&
          disabled[8].delete_callback == nullptr);
   control_modal_track_theme_tab(&tabs[0]);
   control_modal_track_theme_pressed(&pressed[0]);
@@ -279,9 +393,9 @@ static void test_registry_exhaustion() {
   deleted.target = &pressed[0]; pressed[0].delete_callback(&deleted);
   deleted.target = &disabled[0]; disabled[0].delete_callback(&deleted);
   control_modal_track_theme_tab(&tabs[10]);
-  control_modal_track_theme_pressed(&pressed[24]);
+  control_modal_track_theme_pressed(&pressed[CONTROL_MODAL_THEME_PRESSED_CAPACITY]);
   control_modal_track_theme_disabled(&disabled[8]);
-  assert(modal.theme_tab_count == 10 && modal.theme_pressed_count == 24 && modal.theme_disabled_count == 8);
+  assert(modal.theme_tab_count == 10 && modal.theme_pressed_count == CONTROL_MODAL_THEME_PRESSED_CAPACITY && modal.theme_disabled_count == 8);
   assert(theme_warnings.size() == 3);
   modal = {};
   // Image modal content intentionally has no neutral state targets.
@@ -559,6 +673,8 @@ int main() {
   assert(late_light_title.text.full == DARK_THEME.text_primary);
   lv_event_t late_light_deleted{&late_light_page};
   late_light_page.delete_callback(&late_light_deleted);
+  test_supported_pressed_lists();
+  test_pressed_overflow_recovery();
   test_content_collisions();
   test_registry_exhaustion();
 }

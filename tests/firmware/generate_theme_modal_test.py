@@ -8,9 +8,14 @@ parser.add_argument("--header", required=True, type=Path)
 parser.add_argument("--output", required=True, type=Path)
 args = parser.parse_args()
 source = args.header.read_text(encoding="utf-8")
-start = source.index("struct ControlModalThemeTargets {")
+start = source.index("constexpr uint8_t CONTROL_MODAL_THEME_PRESSED_CAPACITY")
 end = source.index("struct ControlModalToastShell {", start)
+definitions = [source[start:end]]
+for name in ("control_modal_apply_pressed_fill", "control_modal_apply_pressed_fill_color"):
+    start = source.index(f"inline void {name}(")
+    end = source.index("\n}", start) + 2
+    definitions.append(source[start:end])
 args.output.write_text(
-    "// Extracted from button_grid_modal.h; do not edit.\n" + source[start:end],
+    "// Extracted from button_grid_modal.h; do not edit.\n" + "\n".join(definitions),
     encoding="utf-8",
 )

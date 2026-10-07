@@ -243,6 +243,10 @@ struct ControlModalNestedShell {
 
 // Only the shared shell chrome is owned here. Modal-specific controls keep
 // their own state/accent colors and can register a separate refresh adapter.
+// Select lists own up to 64 rows; fan/climate controls need up to 52/51
+// simultaneous targets, including hidden tabs. Keep allocation bounded.
+constexpr uint8_t CONTROL_MODAL_THEME_PRESSED_CAPACITY = 64;
+
 struct ControlModalThemeTargets {
   lv_obj_t *overlay = nullptr;
   lv_obj_t *panel = nullptr;
@@ -251,7 +255,7 @@ struct ControlModalThemeTargets {
   bool content_owned = false;
   lv_obj_t *theme_tabs[10]{};
   uint8_t theme_tab_count = 0;
-  lv_obj_t *theme_pressed[24]{};
+  lv_obj_t *theme_pressed[CONTROL_MODAL_THEME_PRESSED_CAPACITY]{};
   uint8_t theme_pressed_count = 0;
   lv_obj_t *theme_disabled[8]{};
   uint8_t theme_disabled_count = 0;
@@ -319,7 +323,7 @@ inline void control_modal_track_theme_pressed(lv_obj_t *button) {
   if (!targets) return;
   for (uint8_t i = 0; i < targets->theme_pressed_count; ++i)
     if (targets->theme_pressed[i] == button) return;
-  if (targets->theme_pressed_count < 24) {
+  if (targets->theme_pressed_count < CONTROL_MODAL_THEME_PRESSED_CAPACITY) {
     bool tracked = false;
     for (uint8_t i = 0; i < targets->theme_tab_count; ++i)
       if (targets->theme_tabs[i] == button) tracked = true;
@@ -328,7 +332,8 @@ inline void control_modal_track_theme_pressed(lv_obj_t *button) {
     if (!tracked) lv_obj_add_event_cb(button, control_modal_theme_child_deleted, LV_EVENT_DELETE, nullptr);
     targets->theme_pressed[targets->theme_pressed_count++] = button;
   } else {
-    ESP_LOGW("theme", "Modal pressed targets full (24); control will not follow theme changes");
+    ESP_LOGW("theme", "Modal pressed targets full (%u); control will not follow theme changes",
+             static_cast<unsigned>(CONTROL_MODAL_THEME_PRESSED_CAPACITY));
   }
 }
 
