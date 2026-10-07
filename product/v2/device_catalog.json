@@ -996,12 +996,29 @@
         "artwork": "landscape-1280x800"
       },
       "config": {
+        "layout": {
+          "portraitSlots": 18
+        },
         "public": {
           "name": "Guition JC8012P4A1 V3 (production silicon)",
           "docsPath": "/screens/jc8012p4a1-v3"
+        },
+        "web": {
+          "portrait": {
+            "slots": 18
+          }
         }
       },
       "overrides": {
+        "layout": {
+          "portraitCols": 3
+        },
+        "web": {
+          "portrait": {
+            "cols": 3,
+            "rows": 6
+          }
+        },
         "firmware": {
           "package": {
             "substitutions": {
