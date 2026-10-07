@@ -25,9 +25,6 @@ esp32:
     # incompletely in ESPHome containers and then fail while creating .bin files.
     #platform_version: 55.03.37
     advanced:
-      # First S3 rotation performance trial: optimise the CPU drawing/copying
-      # loops for speed while keeping the existing display memory allocations.
-      compiler_optimization: PERF
       # The clock/cover-art display controller uses a deep ESPHome action chain.
       # Keep enough headroom for rapid presence-driven sleep/wake transitions;
       # the 8 KiB default can overflow loopTask on this profile.
@@ -431,6 +428,9 @@ display:
   - platform: mipi_rgb
     model: GUITION-4848S040
     id: my_display
+    # Quarter-turn copies use small blocks in the RGB driver. Keep the rotation
+    # scratch buffer in PSRAM, with the same size as the former LVGL buffer.
+    rotation_backend: driver
     # Start WiFi before the RGB panel allocates its frame buffers; otherwise the
     # WiFi driver can fail to claim enough internal RX buffers on fresh boots.
     setup_priority: 240
