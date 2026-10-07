@@ -328,7 +328,8 @@ inline void network_status_open_modal(const std::string &device_name,
   control_modal_set_active(ControlModalKind::NETWORK_STATUS, ui.overlay,
                            network_status_hide_modal,
                            ControlModalDismissPolicy::DISMISS);
-  register_theme_refresh(ui.overlay, network_status_apply_theme, &ui);
+  if (!register_theme_refresh(ui.overlay, network_status_apply_theme, &ui))
+    ESP_LOGW("theme", "Refresh registry full; network status will not follow theme changes");
   lv_obj_add_event_cb(ui.overlay, [](lv_event_t *event) {
     unregister_theme_refresh(lv_event_get_target(event));
     network_status_modal_ui().overlay = nullptr;

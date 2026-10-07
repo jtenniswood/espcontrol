@@ -1538,6 +1538,7 @@ inline void climate_set_arc_enabled(lv_obj_t *arc, bool enabled) {
 inline void climate_style_range_target_button(lv_obj_t *btn, bool selected,
                                                uint32_t selected_color) {
   if (!btn) return;
+  theme_set_content_background(btn, selected);
   lv_obj_set_style_bg_color(btn, lv_color_hex(selected_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, selected ? LV_OPA_COVER : LV_OPA_TRANSP,
                           LV_PART_MAIN);
@@ -1737,6 +1738,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       uint32_t bg_color = selected ? ctx->accent_color : theme_display_color(current_theme().surface_primary);
       uint32_t text_color = selected ? CARD_ACCENT_TEXT_COLOR : readable_text_color_for_bg(bg_color);
       lv_obj_t *btn = lv_btn_create(parent);
+      theme_set_content_background(btn, selected);
       lv_obj_set_size(btn, 118, 118);
       lv_obj_set_style_radius(btn, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
       lv_obj_set_style_bg_color(btn, lv_color_hex(bg_color), LV_PART_MAIN);
@@ -2397,6 +2399,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   }, LV_EVENT_PRESS_LOST, nullptr);
 
   ui.current_dot = lv_obj_create(ui.panel);
+  theme_set_control_neutral_fill(ui.current_dot);
   lv_obj_set_style_bg_color(ui.current_dot, lv_color_hex(theme_display_color(current_theme().control_neutral)), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.current_dot, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.current_dot, 0, LV_PART_MAIN);
@@ -2407,6 +2410,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_add_flag(ui.current_dot, LV_OBJ_FLAG_HIDDEN);
 
   ui.handle_dot = lv_obj_create(ui.panel);
+  theme_set_primary_foreground_fill(ui.handle_dot);
   lv_obj_set_style_bg_color(ui.handle_dot, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.handle_dot, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.handle_dot, 0, LV_PART_MAIN);

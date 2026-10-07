@@ -465,6 +465,7 @@ inline void light_control_apply_modal_power(LightControlCtx *ctx) {
   lv_obj_t *on_label = ui.power_on_btn ? lv_obj_get_child(ui.power_on_btn, 0) : nullptr;
   lv_obj_t *off_label = ui.power_off_btn ? lv_obj_get_child(ui.power_off_btn, 0) : nullptr;
   if (ui.power_on_btn) {
+    theme_set_content_background(ui.power_on_btn, ctx->on);
     lv_obj_set_style_bg_color(
       ui.power_on_btn,
       lv_color_hex(ctx->on ? ctx->accent_color : theme_display_color(current_theme().surface_primary)),
@@ -474,6 +475,7 @@ inline void light_control_apply_modal_power(LightControlCtx *ctx) {
     lv_obj_set_style_shadow_width(ui.power_on_btn, 0, LV_PART_MAIN);
   }
   if (ui.power_off_btn) {
+    theme_set_primary_foreground_fill(ui.power_off_btn, !ctx->on);
     lv_obj_set_style_bg_color(
       ui.power_off_btn,
       lv_color_hex(ctx->on ? theme_display_color(current_theme().surface_primary) : current_theme().text_primary),
@@ -647,6 +649,7 @@ inline lv_obj_t *light_control_create_slider_handle(lv_obj_t *slider) {
   lv_obj_t *handle = lv_obj_create(slider);
   if (!handle) return nullptr;
   lv_obj_set_size(handle, 0, 0);
+  theme_set_primary_foreground_fill(handle);
   lv_obj_set_style_bg_color(handle, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(handle, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(handle, 0, LV_PART_MAIN);
@@ -692,6 +695,7 @@ inline lv_obj_t *light_control_create_slider_fill(lv_obj_t *slider, lv_color_t f
   lv_obj_t *fill = lv_obj_create(slider);
   if (!fill) return nullptr;
   lv_obj_set_size(fill, 0, 0);
+  theme_set_content_background(fill);
   lv_obj_set_style_bg_color(fill, fill_color, LV_PART_MAIN);
   lv_obj_set_style_bg_opa(fill, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(fill, 0, LV_PART_MAIN);
@@ -711,6 +715,7 @@ inline void light_control_update_slider_fill(lv_obj_t *slider, lv_obj_t *fill,
   lv_coord_t width = lv_obj_get_width(slider);
   if (height <= 0 || width <= 0) return;
   pct = slider_clamp_pct(pct);
+  theme_set_content_background(fill);
   lv_obj_set_style_bg_color(fill, fill_color, LV_PART_MAIN);
   lv_coord_t fill_h = light_control_slider_fill_height(slider, pct);
   lv_obj_set_size(fill, width, fill_h);
@@ -1137,6 +1142,7 @@ inline void light_control_rebuild_color_grid(LightControlCtx *ctx) {
   for (uint32_t i = 0; i < count; i++) {
     lv_obj_t *swatch = lv_btn_create(ui.color_grid);
     if (!swatch) continue;
+    theme_set_content_background(swatch);
     lv_obj_set_style_bg_color(swatch, lv_color_hex(presets[i].color), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(swatch, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_width(swatch, 0, LV_PART_MAIN);
@@ -1506,6 +1512,7 @@ inline lv_obj_t *setup_slider_widget(lv_obj_t *btn, uint32_t on_color, bool hori
   lv_obj_t *fill = lv_obj_create(btn);
   if (!fill) return nullptr;
   lv_obj_set_size(fill, 0, 0);
+  theme_set_content_background(fill);
   lv_obj_set_style_bg_color(fill, lv_color_hex(on_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(fill, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(fill, 0, LV_PART_MAIN);
@@ -2087,6 +2094,7 @@ inline lv_obj_t *cover_control_create_slider_handle(lv_obj_t *slider) {
   lv_obj_t *handle = lv_obj_create(slider);
   if (!handle) return nullptr;
   lv_obj_set_size(handle, 0, 0);
+  theme_set_primary_foreground_fill(handle);
   lv_obj_set_style_bg_color(handle, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(handle, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(handle, 0, LV_PART_MAIN);
@@ -2190,6 +2198,7 @@ inline void cover_control_update_position_fill(int position_pct) {
   lv_coord_t width = lv_obj_get_width(ui.position_slider);
   lv_coord_t height = lv_obj_get_height(ui.position_slider);
   if (width <= 0 || height <= 0) return;
+  theme_set_content_background(ui.position_fill, fill_pct > 0);
   lv_obj_set_style_bg_color(
     ui.position_fill, lv_color_hex(cover_control_slider_fill_color(ui.active, fill_pct)),
     LV_PART_MAIN);
@@ -2386,6 +2395,7 @@ inline void cover_control_refresh_preset_selection(CoverControlCtx *ctx) {
     uint32_t bg_color = selected ? ctx->accent_color : theme_display_color(current_theme().surface_primary);
     uint32_t text_color = selected ? CARD_ACCENT_TEXT_COLOR
                                    : readable_text_color_for_bg(bg_color);
+    theme_set_content_background(btn, selected);
     lv_obj_set_style_bg_color(btn, lv_color_hex(bg_color), LV_PART_MAIN);
     lv_obj_t *icon = lv_obj_get_child(btn, 0);
     lv_obj_t *label = lv_obj_get_child(btn, 1);
@@ -2468,6 +2478,7 @@ inline lv_obj_t *cover_control_create_position_fill(lv_obj_t *slider, uint32_t a
   lv_obj_t *fill = lv_obj_create(slider);
   if (!fill) return nullptr;
   lv_obj_set_size(fill, 0, 0);
+  theme_set_content_background(fill);
   lv_obj_set_style_bg_color(fill, lv_color_hex(accent_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(fill, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(fill, 0, LV_PART_MAIN);

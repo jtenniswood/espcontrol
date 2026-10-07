@@ -309,6 +309,8 @@ inline void control_modal_track_theme_tab(lv_obj_t *tab) {
       if (targets->theme_disabled[i] == tab) tracked = true;
     if (!tracked) lv_obj_add_event_cb(tab, control_modal_theme_child_deleted, LV_EVENT_DELETE, nullptr);
     targets->theme_tabs[targets->theme_tab_count++] = tab;
+  } else {
+    ESP_LOGW("theme", "Modal tab targets full (10); control will not follow theme changes");
   }
 }
 
@@ -325,6 +327,8 @@ inline void control_modal_track_theme_pressed(lv_obj_t *button) {
       if (targets->theme_disabled[i] == button) tracked = true;
     if (!tracked) lv_obj_add_event_cb(button, control_modal_theme_child_deleted, LV_EVENT_DELETE, nullptr);
     targets->theme_pressed[targets->theme_pressed_count++] = button;
+  } else {
+    ESP_LOGW("theme", "Modal pressed targets full (24); control will not follow theme changes");
   }
 }
 
@@ -341,6 +345,8 @@ inline void control_modal_track_theme_disabled(lv_obj_t *button) {
       if (targets->theme_pressed[i] == button) tracked = true;
     if (!tracked) lv_obj_add_event_cb(button, control_modal_theme_child_deleted, LV_EVENT_DELETE, nullptr);
     targets->theme_disabled[targets->theme_disabled_count++] = button;
+  } else {
+    ESP_LOGW("theme", "Modal disabled targets full (8); control will not follow theme changes");
   }
 }
 
@@ -376,7 +382,8 @@ inline void control_modal_register_theme(const ControlModalThemeTargets &targets
   const bool new_owner = stored.overlay != targets.overlay;
   stored = targets;
   if (!stored.overlay) return;
-  register_theme_refresh(stored.overlay, control_modal_apply_theme, &stored);
+  if (!register_theme_refresh(stored.overlay, control_modal_apply_theme, &stored))
+    ESP_LOGW("theme", "Refresh registry full; modal will not follow theme changes");
   if (new_owner) {
     lv_obj_add_event_cb(stored.overlay, [](lv_event_t *event) {
       lv_obj_t *owner = static_cast<lv_obj_t *>(lv_event_get_target(event));
@@ -792,6 +799,7 @@ inline void control_modal_setup_binary_toggle(
 inline void control_modal_apply_pressed_fill_color(lv_obj_t *btn,
                                                    uint32_t pressed_color) {
   if (!btn) return;
+  theme_set_content_pressed_fill(btn);
   control_modal_apply_pressed_fill(btn);
   lv_obj_set_style_bg_color(btn, lv_color_hex(pressed_color),
     static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
@@ -1100,6 +1108,7 @@ inline lv_obj_t *control_modal_create_list_row(lv_obj_t *parent,
   lv_obj_set_width(btn, lv_pct(100));
   lv_obj_set_height(btn, height);
   lv_obj_set_style_radius(btn, radius, LV_PART_MAIN);
+  theme_set_content_background(btn, active);
   lv_obj_set_style_bg_color(btn, lv_color_hex(active ? active_color : inactive_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);

@@ -91,7 +91,8 @@ inline void register_theme_grid(lv_obj_t *main_page, BtnSlot *slots,
     targets.neutral_buttons[i] = neutral_buttons[i];
   }
   for (int i = targets.count; i < MAX_GRID_SLOTS; ++i) targets.buttons[i] = nullptr;
-  register_theme_refresh(main_page, theme_apply_grid, &targets);
+  if (!register_theme_refresh(main_page, theme_apply_grid, &targets))
+    ESP_LOGW("theme", "Refresh registry full; grid will not follow theme changes");
   if (new_owner) {
     lv_obj_add_event_cb(main_page, [](lv_event_t *event) {
       unregister_theme_refresh(lv_event_get_target(event));
@@ -127,7 +128,8 @@ inline void register_theme_hud(lv_obj_t *temperature, lv_obj_t *time,
   const bool new_owner = targets.time != time;
   targets = {temperature, time, network, night};
   if (!time) return;
-  register_theme_refresh(time, theme_apply_hud, &targets);
+  if (!register_theme_refresh(time, theme_apply_hud, &targets))
+    ESP_LOGW("theme", "Refresh registry full; HUD will not follow theme changes");
   if (new_owner) {
     lv_obj_add_event_cb(time, [](lv_event_t *event) {
       unregister_theme_refresh(lv_event_get_target(event));

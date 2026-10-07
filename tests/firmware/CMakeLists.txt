@@ -26,10 +26,19 @@ target_compile_options(theme_settings_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(theme_settings_test PRIVATE ../../components/espcontrol)
 add_test(NAME theme_settings_test COMMAND theme_settings_test)
 
-add_executable(theme_runtime_tree_test theme_runtime_tree_test.cpp)
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/theme_modal_adapter.h
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_theme_modal_test.py
+    --header ${CMAKE_CURRENT_SOURCE_DIR}/../../components/espcontrol/button_grid_modal.h
+    --output ${CMAKE_CURRENT_BINARY_DIR}/theme_modal_adapter.h
+  DEPENDS generate_theme_modal_test.py ../../components/espcontrol/button_grid_modal.h
+  VERBATIM)
+add_executable(theme_runtime_tree_test theme_runtime_tree_test.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/theme_modal_adapter.h)
 target_compile_features(theme_runtime_tree_test PRIVATE cxx_std_17)
 target_compile_options(theme_runtime_tree_test PRIVATE -Wall -Wextra -Werror)
-target_include_directories(theme_runtime_tree_test PRIVATE ../../components/espcontrol)
+target_include_directories(theme_runtime_tree_test PRIVATE ../../components/espcontrol
+  ${CMAKE_CURRENT_BINARY_DIR})
 add_test(NAME theme_runtime_tree_test COMMAND theme_runtime_tree_test)
 add_test(NAME theme_refresh_contract_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/theme_refresh_contract_test.py)

@@ -907,6 +907,8 @@ inline void alarm_control_update_modal(AlarmCardCtx *ctx) {
     bool selected = active_mode == mode;
     uint32_t bg = selected ? alarm_control_active_color(ctx, mode)
                            : alarm_control_inactive_color(ctx);
+    theme_set_content_background(btn, selected || !ctx->off_theme_owned);
+    theme_set_content_pressed_fill(btn, selected || !ctx->off_theme_owned);
     lv_obj_set_style_bg_color(btn, lv_color_hex(bg), LV_PART_MAIN);
     lv_obj_set_style_bg_color(btn, lv_color_hex(bg),
       static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
@@ -1302,6 +1304,7 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
 
   ui.arming_progress = lv_obj_create(ui.arming_view);
   lv_obj_set_size(ui.arming_progress, progress_w, progress_h);
+  theme_set_content_background(ui.arming_progress);
   lv_obj_set_style_bg_color(ui.arming_progress, lv_color_hex(primary_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.arming_progress, LV_OPA_50, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.arming_progress, 0, LV_PART_MAIN);
@@ -1315,6 +1318,7 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
 
   ui.arming_progress_fill = lv_obj_create(ui.arming_progress);
   lv_obj_set_size(ui.arming_progress_fill, 0, progress_h);
+  theme_set_content_background(ui.arming_progress_fill);
   lv_obj_set_style_bg_color(ui.arming_progress_fill, lv_color_hex(primary_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.arming_progress_fill, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.arming_progress_fill, 0, LV_PART_MAIN);

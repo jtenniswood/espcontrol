@@ -618,6 +618,7 @@ inline void fan_control_style_binary_button(lv_obj_t *btn, bool active,
                                             bool active_outline = false) {
   if (!btn) return;
   lv_obj_t *label = lv_obj_get_child(btn, 0);
+  theme_set_content_background(btn, active && !active_outline);
   lv_obj_set_style_bg_color(btn, lv_color_hex(active ? active_color : inactive_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, active ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_color(btn, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);

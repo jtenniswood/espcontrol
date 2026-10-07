@@ -21,17 +21,23 @@ inline ThemeStaticPageTargets (&theme_static_pages())[8] {
 
 inline void theme_collect_static_labels(lv_obj_t *obj, ThemeStaticPageTargets &targets,
                                         const ThemePalette &initial) {
-  if (lv_obj_check_type(obj, &lv_button_class) && targets.action_count < 2 &&
-      theme_color_matches(lv_obj_get_style_bg_color(obj, LV_PART_MAIN), initial.setup_action))
-    targets.actions[targets.action_count++] = obj;
-  if (lv_obj_check_type(obj, &lv_label_class) && targets.label_count < 12) {
+  if (lv_obj_check_type(obj, &lv_button_class) &&
+      theme_color_matches(lv_obj_get_style_bg_color(obj, LV_PART_MAIN), initial.setup_action)) {
+    if (targets.action_count < 2) targets.actions[targets.action_count++] = obj;
+    else ESP_LOGW("theme", "Static action targets full (2); action will not follow theme changes");
+  }
+  if (lv_obj_check_type(obj, &lv_label_class)) {
     const lv_color_t color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
     uint8_t role = 0;
     if (theme_color_matches(color, initial.text_primary)) role = 1;
     else if (theme_color_matches(color, initial.text_muted)) role = 2;
     if (role) {
-      targets.labels[targets.label_count] = obj;
-      targets.roles[targets.label_count++] = role;
+      if (targets.label_count < 12) {
+        targets.labels[targets.label_count] = obj;
+        targets.roles[targets.label_count++] = role;
+      } else {
+        ESP_LOGW("theme", "Static label targets full (12); label will not follow theme changes");
+      }
     }
   }
   const uint32_t count = lv_obj_get_child_cnt(obj);
@@ -51,14 +57,20 @@ inline void theme_apply_static_page(void *context, const ThemePalette &theme) {
 }
 
 inline bool register_theme_static_page(lv_obj_t *page, bool include_labels = true) {
-  if (!page) return false;
+  if (!page) {
+    ESP_LOGW("theme", "Cannot register a null static page");
+    return false;
+  }
   ThemeStaticPageTargets *slot = nullptr;
   for (auto &entry : theme_static_pages())
     if (entry.page == page) { slot = &entry; break; }
   if (slot) return true;
   for (auto &entry : theme_static_pages())
     if (!entry.page) { slot = &entry; break; }
-  if (!slot) return false;
+  if (!slot) {
+    ESP_LOGW("theme", "Static page targets full (8); page will not follow theme changes");
+    return false;
+  }
   *slot = {};
   slot->page = page;
   // YAML objects retain their compile-time palette even if runtime selection
@@ -69,6 +81,7 @@ inline bool register_theme_static_page(lv_obj_t *page, bool include_labels = tru
                           LIGHT_THEME.background) ? LIGHT_THEME : DARK_THEME;
   if (include_labels) theme_collect_static_labels(page, *slot, initial);
   if (!register_theme_refresh(page, theme_apply_static_page, slot)) {
+    ESP_LOGW("theme", "Refresh registry full; static page will not follow theme changes");
     *slot = {};
     return false;
   }

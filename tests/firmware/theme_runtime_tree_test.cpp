@@ -1,6 +1,10 @@
 #include <cassert>
 #include <cstdint>
+#include <string>
 #include <vector>
+
+static std::vector<std::string> theme_warnings;
+#define ESP_LOGW(tag, message, ...) theme_warnings.emplace_back(message)
 
 struct lv_color_t { uint32_t full; };
 constexpr lv_color_t lv_color_hex(uint32_t rgb) { return {rgb}; }
@@ -14,6 +18,10 @@ constexpr int LV_STATE_DISABLED = 4;
 using lv_style_selector_t = int;
 constexpr int LV_OPA_TRANSP = 0;
 constexpr int LV_OPA_COVER = 255;
+constexpr uint32_t LV_OBJ_FLAG_USER_1 = 1u << 27;
+constexpr uint32_t LV_OBJ_FLAG_USER_2 = 1u << 28;
+constexpr uint32_t LV_OBJ_FLAG_USER_3 = 1u << 29;
+constexpr uint32_t LV_OBJ_FLAG_USER_4 = 1u << 30;
 
 struct lv_obj_class_t {};
 static const lv_obj_class_t lv_obj_class{};
@@ -40,6 +48,8 @@ struct lv_obj_t {
   int border_width = 0;
   int opacity = LV_OPA_TRANSP;
   int state = 0;
+  uint32_t flags = 0;
+  lv_obj_t *parent = nullptr;
   std::vector<lv_obj_t *> children;
   lv_event_cb_t delete_callback = nullptr;
 };
@@ -47,6 +57,10 @@ struct lv_obj_t {
 bool lv_obj_check_type(const lv_obj_t *obj, const lv_obj_class_t *type) {
   return obj->type == type;
 }
+bool lv_obj_has_flag(const lv_obj_t *obj, uint32_t flag) { return (obj->flags & flag) != 0; }
+void lv_obj_add_flag(lv_obj_t *obj, uint32_t flag) { obj->flags |= flag; }
+void lv_obj_clear_flag(lv_obj_t *obj, uint32_t flag) { obj->flags &= ~flag; }
+lv_obj_t *lv_obj_get_parent(const lv_obj_t *obj) { return obj->parent; }
 int lv_obj_get_style_bg_opa(const lv_obj_t *obj, int) { return obj->opacity; }
 lv_color_t lv_obj_get_style_bg_color(const lv_obj_t *obj, int part) {
   return part == LV_PART_KNOB ? obj->knob : obj->background;
@@ -79,6 +93,213 @@ void lv_obj_add_event_cb(lv_obj_t *obj, lv_event_cb_t callback, int event, void 
 lv_obj_t *lv_event_get_target(lv_event_t *event) { return event->target; }
 
 #include "theme_runtime_static.h"
+#include "theme_modal_adapter.h"
+
+static void test_content_collisions() {
+  // Swatches, HA-derived light fills and selected rows may be exactly neutral.
+  // A selected row must still refresh the neutral controls below it.
+  const uint32_t colors[] = {0x000000, 0x313131, 0x212121, 0xFFFFFF,
+                            LIGHT_THEME.background, LIGHT_THEME.text_primary};
+  for (uint32_t rgb : colors) {
+    lv_obj_t selected, content_label, neutral_child, handle, accent_label, slider;
+    selected.opacity = LV_OPA_COVER;
+    selected.background = lv_color_hex(rgb);
+    selected.state = LV_STATE_PRESSED;
+    theme_set_content_background(&selected);
+    content_label.type = &lv_label_class;
+    content_label.text = lv_color_hex(0xFFFFFF);
+    neutral_child.opacity = LV_OPA_COVER;
+    neutral_child.background = lv_color_hex(DARK_THEME.surface_secondary);
+    handle.opacity = LV_OPA_COVER;
+    handle.background = lv_color_hex(DARK_THEME.text_primary);
+    theme_set_primary_foreground_fill(&handle);
+    accent_label.type = &lv_label_class;
+    accent_label.text = lv_color_hex(rgb);
+    theme_set_content_foreground(&accent_label);
+    slider.type = &lv_slider_class;
+    slider.opacity = LV_OPA_COVER;
+    slider.background = lv_color_hex(DARK_THEME.track_background);
+    slider.knob = lv_color_hex(rgb);
+    theme_set_content_foreground(&slider);
+    selected.children = {&content_label, &neutral_child, &handle, &accent_label, &slider};
+    for (int i = 0; i < 3; ++i) {
+      theme_restyle_tree(&selected, DARK_THEME, LIGHT_THEME);
+      assert(selected.background.full == rgb);
+      assert(content_label.text.full == 0xFFFFFF);
+      assert(neutral_child.background.full == LIGHT_THEME.surface_secondary);
+      assert(handle.background.full == LIGHT_THEME.text_primary);
+      assert(accent_label.text.full == rgb);
+      assert(slider.knob.full == rgb);
+      assert(slider.background.full == LIGHT_THEME.track_background);
+      theme_restyle_tree(&selected, LIGHT_THEME, DARK_THEME);
+      assert(selected.background.full == rgb);
+      assert(handle.background.full == DARK_THEME.text_primary);
+      assert(neutral_child.background.full == DARK_THEME.surface_secondary);
+      assert(selected.state == LV_STATE_PRESSED);
+    }
+    // On deselection the state writer returns the fill to theme ownership.
+    theme_set_content_background(&selected, false);
+    selected.background = lv_color_hex(DARK_THEME.surface_primary);
+    theme_restyle_tree(&selected, DARK_THEME, LIGHT_THEME);
+    assert(selected.background.full == LIGHT_THEME.surface_primary);
+  }
+  // Test foreground ownership outside a selected/content-background ancestor.
+  lv_obj_t accent;
+  accent.type = &lv_label_class;
+  accent.text = lv_color_hex(DARK_THEME.text_primary);
+  theme_set_content_foreground(&accent);
+  theme_restyle_tree(&accent, DARK_THEME, LIGHT_THEME);
+  assert(accent.text.full == DARK_THEME.text_primary);
+  lv_obj_t pressed;
+  pressed.pressed_background = lv_color_hex(0x313131);
+  theme_set_content_pressed_fill(&pressed);
+  theme_restyle_pressed_fill(&pressed, LIGHT_THEME);
+  assert(pressed.pressed_background.full == 0x313131);
+  theme_set_content_pressed_fill(&pressed, false);
+  theme_restyle_pressed_fill(&pressed, LIGHT_THEME);
+  assert(pressed.pressed_background.full == LIGHT_THEME.surface_primary);
+  lv_obj_t off_button, inverted_label;
+  off_button.opacity = LV_OPA_COVER;
+  off_button.background = lv_color_hex(DARK_THEME.text_primary);
+  theme_set_primary_foreground_fill(&off_button);
+  inverted_label.type = &lv_label_class;
+  inverted_label.text = lv_color_hex(DARK_THEME.text_inverted);
+  inverted_label.parent = &off_button;
+  off_button.children = {&inverted_label};
+  theme_restyle_tree(&off_button, DARK_THEME, LIGHT_THEME);
+  assert(off_button.background.full == LIGHT_THEME.text_primary);
+  assert(inverted_label.text.full == LIGHT_THEME.text_inverted);
+  theme_restyle_tree(&off_button, LIGHT_THEME, DARK_THEME);
+  assert(off_button.background.full == DARK_THEME.text_primary);
+  assert(inverted_label.text.full == DARK_THEME.text_inverted);
+  // The climate current-temperature dot shares Dark RGB with surface_primary,
+  // but must resolve to control_neutral, not surface_primary, in Light.
+  lv_obj_t current_dot;
+  current_dot.opacity = LV_OPA_COVER;
+  current_dot.background = lv_color_hex(DARK_THEME.control_neutral);
+  theme_set_control_neutral_fill(&current_dot);
+  theme_restyle_tree(&current_dot, DARK_THEME, LIGHT_THEME);
+  assert(current_dot.background.full == LIGHT_THEME.control_neutral);
+  theme_restyle_tree(&current_dot, LIGHT_THEME, DARK_THEME);
+  assert(current_dot.background.full == DARK_THEME.control_neutral);
+  // Corrected neutral RGB can collide too; an explicit fill remains raw content.
+  const ThemeTreeCorrection correction{80, 90, 100};
+  lv_obj_t fill;
+  fill.opacity = LV_OPA_COVER;
+  fill.background = lv_color_hex(theme_tree_corrected(DARK_THEME.surface_primary, correction));
+  const uint32_t original = fill.background.full;
+  theme_set_content_background(&fill);
+  theme_restyle_tree(&fill, DARK_THEME, LIGHT_THEME, false, correction);
+  assert(fill.background.full == original);
+}
+
+static void test_registry_exhaustion() {
+  theme_warnings.clear();
+  assert(!register_theme_static_page(nullptr));
+  assert(theme_warnings.size() == 1);
+  theme_warnings.clear();
+  lv_obj_t pages[9];
+  for (int i = 0; i < 8; ++i) assert(register_theme_static_page(&pages[i]));
+  assert(register_theme_static_page(&pages[0]));  // Duplicate succeeds even at capacity.
+  assert(!register_theme_static_page(&pages[8]));
+  assert(theme_warnings.size() == 1);
+  assert(theme_warnings.back().find("Static page targets full") != std::string::npos);
+  assert(pages[8].delete_callback == nullptr);
+  for (int i = 0; i < 8; ++i) {
+    lv_event_t deleted{&pages[i]};
+    pages[i].delete_callback(&deleted);
+  }
+  assert(register_theme_static_page(&pages[8]));  // Freed slots are reusable.
+  lv_event_t deleted{&pages[8]};
+  pages[8].delete_callback(&deleted);
+
+  lv_obj_t collected, labels[13], actions[3];
+  for (auto &label : labels) {
+    label.type = &lv_label_class;
+    label.text = lv_color_hex(DARK_THEME.text_primary);
+    collected.children.push_back(&label);
+  }
+  for (auto &action : actions) {
+    action.type = &lv_button_class;
+    action.background = lv_color_hex(DARK_THEME.setup_action);
+    collected.children.push_back(&action);
+  }
+  theme_warnings.clear();
+  assert(register_theme_static_page(&collected));
+  assert(theme_static_pages()[0].label_count == 12);
+  assert(theme_static_pages()[0].action_count == 2);
+  assert(theme_warnings.size() == 2);
+  set_active_theme_palette(LIGHT_THEME);
+  apply_current_theme();
+  assert(labels[11].text.full == LIGHT_THEME.text_primary);
+  assert(labels[12].text.full == DARK_THEME.text_primary);  // Overflow is explicit.
+  assert(actions[1].background.full == LIGHT_THEME.setup_action);
+  assert(actions[2].background.full == DARK_THEME.setup_action);
+  set_active_theme_palette(DARK_THEME);
+  apply_current_theme();
+  deleted.target = &collected;
+  collected.delete_callback(&deleted);
+
+  // A failed outer registry reservation must release its static-page slot.
+  int owners[16];
+  const auto noop = [](void *, const ThemePalette &) {};
+  for (auto &owner : owners) assert(register_theme_refresh(&owner, noop, nullptr));
+  theme_warnings.clear();
+  lv_obj_t rejected;
+  assert(!register_theme_static_page(&rejected));
+  assert(theme_static_pages()[0].page == nullptr);
+  assert(rejected.delete_callback == nullptr);
+  assert(theme_warnings.size() == 1);
+  assert(theme_warnings.back().find("Refresh registry full") != std::string::npos);
+  for (auto &owner : owners) unregister_theme_refresh(&owner);
+  assert(register_theme_static_page(&rejected));
+  deleted.target = &rejected;
+  rejected.delete_callback(&deleted);
+
+  // Exercise the actual modal tracking functions extracted from production.
+  lv_obj_t panel, tabs[11], pressed[25], disabled[9];
+  auto &modal = control_modal_theme_targets()[0];
+  modal.panel = &panel;
+  theme_warnings.clear();
+  for (auto &tab : tabs) { tab.parent = &panel; control_modal_track_theme_tab(&tab); }
+  for (auto &button : pressed) { button.parent = &panel; control_modal_track_theme_pressed(&button); }
+  for (auto &button : disabled) { button.parent = &panel; control_modal_track_theme_disabled(&button); }
+  assert(modal.theme_tab_count == 10 && modal.theme_pressed_count == 24 && modal.theme_disabled_count == 8);
+  assert(theme_warnings.size() == 3);
+  assert(theme_warnings[0].find("Modal tab targets full") != std::string::npos);
+  assert(theme_warnings[1].find("Modal pressed targets full") != std::string::npos);
+  assert(theme_warnings[2].find("Modal disabled targets full") != std::string::npos);
+  assert(tabs[10].delete_callback == nullptr && pressed[24].delete_callback == nullptr &&
+         disabled[8].delete_callback == nullptr);
+  control_modal_track_theme_tab(&tabs[0]);
+  control_modal_track_theme_pressed(&pressed[0]);
+  control_modal_track_theme_disabled(&disabled[0]);
+  assert(theme_warnings.size() == 3);  // Existing entries never consume another slot.
+  deleted.target = &tabs[0]; tabs[0].delete_callback(&deleted);
+  deleted.target = &pressed[0]; pressed[0].delete_callback(&deleted);
+  deleted.target = &disabled[0]; disabled[0].delete_callback(&deleted);
+  control_modal_track_theme_tab(&tabs[10]);
+  control_modal_track_theme_pressed(&pressed[24]);
+  control_modal_track_theme_disabled(&disabled[8]);
+  assert(modal.theme_tab_count == 10 && modal.theme_pressed_count == 24 && modal.theme_disabled_count == 8);
+  assert(theme_warnings.size() == 3);
+  modal = {};
+  // Image modal content intentionally has no neutral state targets.
+  modal.panel = &panel; modal.content_owned = true;
+  control_modal_track_theme_tab(&tabs[0]);
+  assert(modal.theme_tab_count == 0 && theme_warnings.size() == 3);
+  modal = {};
+  for (auto &owner : owners) assert(register_theme_refresh(&owner, noop, nullptr));
+  lv_obj_t overlay;
+  ControlModalThemeTargets targets;
+  targets.overlay = &overlay;
+  control_modal_register_theme(targets);
+  assert(theme_warnings.size() == 4);
+  assert(theme_warnings.back().find("Refresh registry full") != std::string::npos);
+  deleted.target = &overlay; overlay.delete_callback(&deleted);
+  assert(modal.overlay == nullptr);
+  for (auto &owner : owners) unregister_theme_refresh(&owner);
+}
 
 int main() {
   ThemePalette alternate = DARK_THEME;
@@ -338,4 +559,6 @@ int main() {
   assert(late_light_title.text.full == DARK_THEME.text_primary);
   lv_event_t late_light_deleted{&late_light_page};
   late_light_page.delete_callback(&late_light_deleted);
+  test_content_collisions();
+  test_registry_exhaustion();
 }

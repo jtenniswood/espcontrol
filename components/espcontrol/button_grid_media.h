@@ -2594,6 +2594,7 @@ inline lv_obj_t *media_control_create_progress_fill(lv_obj_t *slider, lv_color_t
   lv_obj_t *fill = lv_obj_create(slider);
   if (!fill) return nullptr;
   lv_obj_set_size(fill, 0, 0);
+  theme_set_content_background(fill);
   lv_obj_set_style_bg_color(fill, fill_color, LV_PART_MAIN);
   lv_obj_set_style_bg_opa(fill, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(fill, 0, LV_PART_MAIN);
@@ -2610,6 +2611,7 @@ inline lv_obj_t *media_control_create_progress_handle(lv_obj_t *slider) {
   lv_obj_t *handle = lv_obj_create(slider);
   if (!handle) return nullptr;
   lv_obj_set_size(handle, 0, 0);
+  theme_set_primary_foreground_fill(handle);
   lv_obj_set_style_bg_color(handle, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(handle, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(handle, 0, LV_PART_MAIN);
@@ -2657,6 +2659,7 @@ inline void media_control_update_progress_fill(lv_obj_t *slider, lv_obj_t *fill,
   lv_coord_t height = lv_obj_get_height(slider);
   if (width <= 0 || height <= 0) return;
   pct = media_clamp_percent(pct);
+  theme_set_content_background(fill);
   lv_obj_set_style_bg_color(fill, fill_color, LV_PART_MAIN);
   lv_coord_t fill_w = media_control_progress_fill_width(slider, pct);
   lv_obj_set_size(fill, fill_w, height);
@@ -2790,6 +2793,7 @@ inline void media_control_refresh_power(MediaControlCtx *ctx) {
   const bool interactive = command != espcontrol::media::PowerCommand::NONE;
   const bool on = ctx->state_known && ctx->available && ctx->state_text != "off" &&
                   ctx->state_text != "unknown" && ctx->state_text != "unavailable";
+  theme_set_content_background(ui.power_btn, on);
   lv_obj_set_style_bg_color(
     ui.power_btn,
     lv_color_hex(on ? ctx->accent_color : theme_display_color(current_theme().surface_primary)), LV_PART_MAIN);
@@ -3078,6 +3082,7 @@ inline void media_control_style_progress_slider(lv_obj_t *slider, uint32_t backg
   lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_bg_color(slider, lv_color_hex(tint_color), LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_INDICATOR);
+  theme_set_content_foreground(slider);
   lv_obj_set_style_bg_color(slider, lv_color_hex(tint_color), LV_PART_KNOB);
   lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_KNOB);
   lv_obj_set_style_border_width(slider, 0, LV_PART_MAIN);
@@ -3444,6 +3449,7 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
   if (row->row) {
     if (visible) lv_obj_clear_flag(row->row, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(row->row, LV_OBJ_FLAG_HIDDEN);
+    theme_set_content_background(row->row, row->selected);
     lv_obj_set_style_bg_color(row->row, lv_color_hex(bg_color), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(row->row, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_width(row->row, 0, LV_PART_MAIN);
@@ -3718,6 +3724,7 @@ inline lv_obj_t *media_control_create_speaker_volume_button(
   lv_obj_t *btn = lv_btn_create(parent);
   lv_obj_set_size(btn, size, size);
   lv_obj_set_style_radius(btn, size / 2, LV_PART_MAIN);
+  theme_set_primary_foreground_fill(btn);
   lv_obj_set_style_bg_color(btn, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
@@ -3727,6 +3734,7 @@ inline lv_obj_t *media_control_create_speaker_volume_button(
   lv_obj_t *label = lv_label_create(btn);
   lv_label_set_display_text(label, icon);
   if (ctx->icon_font) lv_obj_set_style_text_font(label, ctx->icon_font, LV_PART_MAIN);
+  theme_set_content_foreground(label);
   lv_obj_set_style_text_color(label, lv_color_hex(ctx->accent_color), LV_PART_MAIN);
   lv_obj_center(label);
   lv_obj_set_user_data(btn, row);
