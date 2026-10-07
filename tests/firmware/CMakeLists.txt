@@ -32,6 +32,8 @@ add_custom_command(
     --header ${CMAKE_CURRENT_SOURCE_DIR}/../../components/espcontrol/button_grid_modal.h
     --output ${CMAKE_CURRENT_BINARY_DIR}/theme_modal_adapter.h
   DEPENDS generate_theme_modal_test.py ../../components/espcontrol/button_grid_modal.h
+    ../../components/espcontrol/button_grid_subscriptions.h
+    ../../components/espcontrol/button_grid_media.h
   VERBATIM)
 add_executable(theme_runtime_tree_test theme_runtime_tree_test.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/theme_modal_adapter.h)

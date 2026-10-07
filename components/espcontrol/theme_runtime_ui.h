@@ -26,13 +26,32 @@ inline uint32_t theme_grid_correct_color(uint32_t raw_rgb,
                                targets.green_percent, targets.blue_percent);
 }
 
+inline uint32_t current_grid_sensor_color() {
+  return theme_grid_correct_color(current_theme().surface_secondary, theme_grid_targets());
+}
+
 inline void theme_apply_grid_button(lv_obj_t *button, uint32_t neutral,
                                     const ThemePalette &theme) {
   if (!button) return;
   // Change only the neutral/default fill. Checked and pressed backgrounds are
   // owned by the persisted user accent and the card's state callbacks.
-  lv_obj_set_style_bg_color(button, lv_color_hex(neutral), LV_PART_MAIN);
-  lv_obj_set_style_text_color(button, lv_color_hex(theme.text_primary), LV_PART_MAIN);
+  const bool content_fill = lv_obj_has_flag(button, LV_OBJ_FLAG_USER_1) &&
+                            !lv_obj_has_flag(button, LV_OBJ_FLAG_USER_3);
+  if (!content_fill) {
+    // Read the default selector directly: checked/pressed fills must not hide
+    // an information card's secondary surface during refresh.
+    lv_style_value_t background{};
+    const uint32_t secondary = current_grid_sensor_color();
+    const uint32_t previous_secondary = theme_grid_correct_color(
+        theme_refresh_previous().surface_secondary, theme_grid_targets());
+    if (lv_obj_get_local_style_prop(button, &background, LV_STYLE_BG_COLOR, LV_PART_MAIN) == LV_RESULT_OK &&
+        (theme_color_matches(background.color, previous_secondary) ||
+         theme_color_matches(background.color, secondary)))
+      neutral = secondary;
+    lv_obj_set_style_bg_color(button, lv_color_hex(neutral), LV_PART_MAIN);
+  }
+  lv_obj_set_style_text_color(button,
+      lv_color_hex(content_fill ? CARD_ACCENT_TEXT_COLOR : theme.text_primary), LV_PART_MAIN);
   // Accent/checked foreground stays white for contrast even when the neutral
   // palette uses dark text. The accent itself remains card/user-owned.
   lv_obj_set_style_text_color(button, lv_color_hex(CARD_ACCENT_TEXT_COLOR),

@@ -15,6 +15,11 @@ constexpr int LV_PART_MAIN = 0;
 constexpr int LV_PART_KNOB = 1;
 constexpr int LV_STATE_PRESSED = 2;
 constexpr int LV_STATE_DISABLED = 4;
+constexpr int LV_STATE_CHECKED = 8;
+constexpr int LV_STATE_DEFAULT = 0;
+constexpr int LV_STYLE_BG_COLOR = 1;
+constexpr int LV_RESULT_OK = 0;
+struct lv_style_value_t { lv_color_t color; };
 using lv_style_selector_t = int;
 constexpr int LV_OPA_TRANSP = 0;
 constexpr int LV_OPA_COVER = 255;
@@ -59,6 +64,12 @@ bool lv_obj_check_type(const lv_obj_t *obj, const lv_obj_class_t *type) {
   return obj->type == type;
 }
 bool lv_obj_has_flag(const lv_obj_t *obj, uint32_t flag) { return (obj->flags & flag) != 0; }
+bool lv_obj_has_state(const lv_obj_t *obj, int state) { return (obj->state & state) != 0; }
+int lv_obj_get_local_style_prop(const lv_obj_t *obj, lv_style_value_t *value, int prop, int selector) {
+  assert(prop == LV_STYLE_BG_COLOR && selector == LV_PART_MAIN);
+  value->color = obj->background;
+  return LV_RESULT_OK;
+}
 void lv_obj_add_flag(lv_obj_t *obj, uint32_t flag) { obj->flags |= flag; }
 void lv_obj_clear_flag(lv_obj_t *obj, uint32_t flag) { obj->flags &= ~flag; }
 lv_obj_t *lv_obj_get_parent(const lv_obj_t *obj) { return obj->parent; }
@@ -101,7 +112,107 @@ void lv_obj_add_event_cb(lv_obj_t *obj, lv_event_cb_t callback, int event, void 
 lv_obj_t *lv_event_get_target(lv_event_t *event) { return event->target; }
 
 #include "theme_runtime_static.h"
+
+#include "button_grid_limits.h"
+int bounded_grid_slots(int count) {
+  assert(count >= 0 && count <= MAX_GRID_SLOTS);
+  return count;
+}
+struct BtnSlot { lv_obj_t *btn = nullptr; };
+struct TestSubpage {
+  lv_obj_t *screen = nullptr;
+  lv_obj_t *back_button = nullptr;
+  struct Card { bool neutral_background; lv_obj_t *button; };
+  std::vector<Card> cards;
+};
+std::vector<TestSubpage> &navigation_subpages() {
+  static std::vector<TestSubpage> pages;
+  return pages;
+}
+constexpr uint32_t CARD_ACCENT_TEXT_COLOR = 0xFFFFFF;
+void sync_card_checked_text_color(lv_obj_t *button) {
+  for (auto *child : button->children) child->text = button->text;
+}
+void set_card_content_disabled(lv_obj_t *, bool) {}
+#include "theme_runtime_ui.h"
+namespace esphome { using StringRef = std::string; }
+bool sensor_active_color_state_ref(const std::string &state, bool) { return state == "on"; }
+void media_control_apply_availability(lv_obj_t *, lv_obj_t *, bool) {}
 #include "theme_modal_adapter.h"
+
+static void test_playback_mode_accent_collision() {
+  set_active_theme_palette(DARK_THEME);
+  lv_obj_t button, label;
+  button.type = &lv_button_class;
+  label.type = &lv_label_class;
+  button.children = {&label};
+  media_control_style_playback_mode_button(&button, true, true, DARK_THEME.surface_primary);
+  theme_restyle_tree(&button, DARK_THEME, LIGHT_THEME);
+  assert(button.background.full == DARK_THEME.surface_primary);
+  set_active_theme_palette(LIGHT_THEME);
+  media_control_style_playback_mode_button(&button, false, true, DARK_THEME.surface_primary);
+  assert(!lv_obj_has_flag(&button, LV_OBJ_FLAG_USER_1));
+  theme_restyle_tree(&button, LIGHT_THEME, DARK_THEME);
+  assert(button.background.full == DARK_THEME.surface_primary);
+  set_active_theme_palette(DARK_THEME);
+}
+
+static void test_grid_secondary_surface() {
+  set_active_theme_palette(DARK_THEME);
+  apply_current_theme();
+  lv_obj_t page, sensor;
+  sensor.type = &lv_button_class;
+  sensor.opacity = LV_OPA_COVER;
+  sensor.background = lv_color_hex(DARK_THEME.surface_secondary);
+  BtnSlot slots[] = {{&sensor}};
+  const bool neutral[] = {true};
+  register_theme_grid(&page, slots, neutral, 1, 100, 100, 100);
+  set_active_theme_palette(LIGHT_THEME);
+  apply_current_theme();
+  assert(sensor.background.full == LIGHT_THEME.surface_secondary);
+  set_active_theme_palette(DARK_THEME);
+  apply_current_theme();
+  assert(sensor.background.full == DARK_THEME.surface_secondary);
+  lv_event_t deleted{&page};
+  page.delete_callback(&deleted);
+}
+
+static void test_sensor_state_refresh() {
+  set_active_theme_palette(DARK_THEME);
+  apply_current_theme();
+  lv_obj_t page, sensor, label, subpage, sub_sensor;
+  sensor.type = &lv_button_class;
+  sensor.opacity = LV_OPA_COVER;
+  sensor.children = {&label};
+  label.type = &lv_label_class;
+  label.parent = &sensor;
+  BtnSlot slots[] = {{&sensor}};
+  const bool neutral[] = {true};
+  register_theme_grid(&page, slots, neutral, 1, 50, 100, 100);
+  // The active accent deliberately collides with a semantic neutral RGB.
+  const uint32_t accent = DARK_THEME.surface_secondary;
+  apply_sensor_active_color(&sensor, true, "on", accent, current_grid_sensor_color(), false);
+  set_active_theme_palette(LIGHT_THEME);
+  apply_current_theme();
+  assert(sensor.background.full == accent && label.text.full == CARD_ACCENT_TEXT_COLOR);
+  apply_sensor_active_color(&sensor, true, "off", accent, current_grid_sensor_color(), false);
+  assert(sensor.background.full == correct_display_color(LIGHT_THEME.surface_secondary, 50, 100, 100));
+  assert(label.text.full == LIGHT_THEME.text_primary);
+  sub_sensor = sensor;
+  sub_sensor.children.clear();
+  navigation_subpages().push_back({&subpage, nullptr, {{true, &sub_sensor}}});
+  sensor.state = LV_STATE_CHECKED;
+  set_active_theme_palette(DARK_THEME);
+  apply_current_theme();
+  assert(sensor.state == LV_STATE_CHECKED);
+  assert(sensor.background.full == correct_display_color(DARK_THEME.surface_secondary, 50, 100, 100));
+  assert(sub_sensor.background.full == sensor.background.full);
+  apply_sensor_active_color(&sensor, true, "off", accent, current_grid_sensor_color(), true);
+  assert(sensor.background.full == correct_display_color(DARK_THEME.surface_secondary, 50, 100, 100));
+  navigation_subpages().clear();
+  lv_event_t deleted{&page};
+  page.delete_callback(&deleted);
+}
 
 static_assert(CONTROL_MODAL_THEME_PRESSED_CAPACITY == 64,
               "All 64 supported select rows must fit in one modal owner");
@@ -674,6 +785,9 @@ int main() {
   lv_event_t late_light_deleted{&late_light_page};
   late_light_page.delete_callback(&late_light_deleted);
   test_supported_pressed_lists();
+  test_grid_secondary_surface();
+  test_playback_mode_accent_collision();
+  test_sensor_state_refresh();
   test_pressed_overflow_recovery();
   test_content_collisions();
   test_registry_exhaustion();

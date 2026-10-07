@@ -6,6 +6,10 @@
 
 // ── Home Assistant subscriptions ──────────────────────────────────────
 
+// The grid owns device colour correction; callbacks sample the live neutral
+// instead of retaining the palette that was active when they subscribed.
+inline uint32_t current_grid_sensor_color();
+
 struct ToggleTextSensorCtx {
   lv_obj_t *text_lbl = nullptr;
   std::string steady_text;
@@ -44,11 +48,14 @@ inline void apply_sensor_active_color(lv_obj_t *btn, bool active_color,
                                       bool unavailable,
                                       bool numeric_mode = false) {
   if (!btn || !active_color) return;
-  uint32_t next_color =
-    (!unavailable && sensor_active_color_state_ref(state, numeric_mode))
-      ? on_color : sensor_color;
+  const bool active = !unavailable && sensor_active_color_state_ref(state, numeric_mode);
+  theme_set_content_background(btn, active);
+  uint32_t next_color = active ? on_color : sensor_color;
   lv_obj_set_style_bg_color(btn, lv_color_hex(next_color),
     static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+  lv_obj_set_style_text_color(btn,
+      lv_color_hex(active ? CARD_ACCENT_TEXT_COLOR : current_theme().text_primary), LV_PART_MAIN);
+  sync_card_checked_text_color(btn);
 }
 
 inline void apply_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj,
@@ -89,17 +96,16 @@ inline void subscribe_sensor_value(lv_obj_t *sensor_lbl, const std::string &sens
                                    const std::string &unit = "",
                                    lv_obj_t *availability_obj = nullptr,
                                    bool active_color = false,
-                                   uint32_t on_color = DEFAULT_ACCENT_COLOR,
-                                   uint32_t sensor_color = theme_display_color(current_theme().surface_secondary)) {
+                                   uint32_t on_color = DEFAULT_ACCENT_COLOR) {
   std::string display_unit = trim_display_unit(unit);
   ha_subscribe_state(
     sensor_id,
     std::function<void(esphome::StringRef)>(
       [sensor_lbl, precision, unit_lbl, display_unit, availability_obj,
-       active_color, on_color, sensor_color](esphome::StringRef state) {
+       active_color, on_color](esphome::StringRef state) {
       bool unavailable = ha_state_unavailable_ref(state);
       apply_sensor_active_color(availability_obj, active_color, state,
-        on_color, sensor_color, unavailable, true);
+        on_color, current_grid_sensor_color(), unavailable, true);
 
       float val = 0.0f;
       if (!unavailable && parse_float_ref(state, val) && std::isfinite(val)) {
@@ -193,15 +199,14 @@ inline void subscribe_toggle_text_sensor_value(ToggleTextSensorCtx *ctx, const s
 inline void subscribe_text_sensor_value(lv_obj_t *text_lbl, const std::string &sensor_id,
                                         lv_obj_t *availability_obj = nullptr,
                                         bool active_color = false,
-                                        uint32_t on_color = DEFAULT_ACCENT_COLOR,
-                                        uint32_t sensor_color = theme_display_color(current_theme().surface_secondary)) {
+                                        uint32_t on_color = DEFAULT_ACCENT_COLOR) {
   ha_subscribe_state(
     sensor_id,
     std::function<void(esphome::StringRef)>(
-      [text_lbl, availability_obj, active_color, on_color, sensor_color](esphome::StringRef state) {
+      [text_lbl, availability_obj, active_color, on_color](esphome::StringRef state) {
       bool unavailable = ha_state_unavailable_ref(state);
       apply_sensor_active_color(availability_obj, active_color, state,
-        on_color, sensor_color, unavailable);
+        on_color, current_grid_sensor_color(), unavailable);
       set_wrapped_button_label_text(text_lbl, text_sensor_display_text(state));
     })
   );
@@ -232,16 +237,15 @@ inline void subscribe_sensor_icon_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
 inline void subscribe_sensor_text_card_value(lv_obj_t *text_lbl, const ParsedCfg &p,
                                              lv_obj_t *availability_obj = nullptr,
                                              bool active_color = false,
-                                             uint32_t on_color = DEFAULT_ACCENT_COLOR,
-                                             uint32_t sensor_color = theme_display_color(current_theme().surface_secondary)) {
+                                             uint32_t on_color = DEFAULT_ACCENT_COLOR) {
   if (p.sensor.empty()) return;
   ha_subscribe_state(
     p.sensor,
     std::function<void(esphome::StringRef)>(
-      [text_lbl, p, availability_obj, active_color, on_color, sensor_color](esphome::StringRef state) {
+      [text_lbl, p, availability_obj, active_color, on_color](esphome::StringRef state) {
       bool unavailable = ha_state_unavailable_ref(state);
       apply_sensor_active_color(availability_obj, active_color, state,
-        on_color, sensor_color, unavailable);
+        on_color, current_grid_sensor_color(), unavailable);
       set_wrapped_button_label_text(text_lbl, sensor_state_display_text(p, state));
     })
   );

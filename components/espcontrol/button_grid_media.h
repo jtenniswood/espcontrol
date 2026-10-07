@@ -2818,6 +2818,7 @@ inline void media_control_style_playback_mode_button(lv_obj_t *btn,
                                                       bool interactive,
                                                       uint32_t accent_color) {
   if (!btn) return;
+  theme_set_content_background(btn, active);
   lv_obj_set_style_bg_color(
     btn, lv_color_hex(active ? accent_color : theme_display_color(current_theme().surface_primary)), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
