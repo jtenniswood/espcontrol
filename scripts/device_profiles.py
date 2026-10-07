@@ -769,6 +769,8 @@ def validate_web(slug: str, device: dict[str, Any], errors: list[str]) -> None:
             for key in ("cols", "rows"):
                 if not is_positive_int(portrait_obj.get(key)):
                     errors.append(device_error(slug, f"web.portrait.{key} must be a positive integer"))
+            if "slots" in portrait_obj and not is_positive_int(portrait_obj.get("slots")):
+                errors.append(device_error(slug, "web.portrait.slots must be a positive integer when set"))
             validate_screen_box(slug, errors, portrait_obj.get("screen"), "web.portrait.screen")
 
     topbar = require_object(slug, errors, web.get("topbar"), "web.topbar")

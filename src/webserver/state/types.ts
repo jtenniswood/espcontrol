@@ -36,6 +36,7 @@ export interface DeviceConfig {
   readonly portrait?: {
     readonly cols: number;
     readonly rows: number;
+    readonly slots?: number;
     readonly screen: {
       readonly width: string;
       readonly aspect: string;

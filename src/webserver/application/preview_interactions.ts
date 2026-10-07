@@ -418,7 +418,7 @@ export function createPreviewInteractionsFeature(
             if (s > 0)
                 used[s] = true;
         });
-        for (var i: any = 1; i <= dependencies.layout.numSlots; i++) {
+        for (var i: any = 1; i <= dependencies.layout.previewSlots; i++) {
             if (!used[i])
                 return i;
         }
@@ -426,8 +426,8 @@ export function createPreviewInteractionsFeature(
     }
     function firstFreeCell(this: any, afterPos?: any) {
         var start: any = afterPos != null ? afterPos : 0;
-        for (var i: any = 0; i < dependencies.layout.numSlots; i++) {
-            var candidate: any = (start + i) % dependencies.layout.numSlots;
+        for (var i: any = 0; i < dependencies.layout.previewSlots; i++) {
+            var candidate: any = (start + i) % dependencies.layout.previewSlots;
             if (state.grid[candidate] === 0)
                 return candidate;
         }
@@ -498,7 +498,7 @@ export function createPreviewInteractionsFeature(
             return;
         var srcSz: any = state.sizes[srcSlot] || 1;
         var srcPos: any = state.grid.indexOf(srcSlot);
-        var placement: any = findDuplicatePlacement(state.grid, srcPos + 1, srcSz, dependencies.layout.numSlots);
+        var placement: any = findDuplicatePlacement(state.grid, srcPos + 1, srcSz, dependencies.layout.previewSlots);
         if (placement.pos < 0)
             return;
         var src: any = state.buttons[srcSlot - 1];
@@ -545,7 +545,7 @@ export function createPreviewInteractionsFeature(
         }
         var srcSz: any = sp.sizes[srcSlot] || 1;
         var srcPos: any = sp.grid.indexOf(srcSlot);
-        var placement: any = findDuplicatePlacement(sp.grid, srcPos + 1, srcSz, dependencies.layout.numSlots);
+        var placement: any = findDuplicatePlacement(sp.grid, srcPos + 1, srcSz, dependencies.layout.previewSlots);
         if (placement.pos < 0)
             return;
         var src: any = sp.buttons[srcSlot - 1];

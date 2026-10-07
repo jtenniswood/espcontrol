@@ -1016,7 +1016,7 @@
         "cols": 5,
         "rows": 4,
         "firmwareGrid": "5x4",
-        "portraitCols": 4
+        "portraitCols": 3
       },
       "rotation": {
         "enabled": true,
@@ -1037,12 +1037,13 @@
           "aspect": "1280/800"
         },
         "portrait": {
-          "cols": 4,
-          "rows": 5,
+          "cols": 3,
+          "rows": 6,
           "screen": {
             "width": "63%",
             "aspect": "800/1280"
-          }
+          },
+          "slots": 18
         },
         "topbar": {
           "height": 3.59,

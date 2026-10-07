@@ -966,7 +966,7 @@ export function createConfigCodecFeature(
         return subpage;
     }
     function buildSubpageGrid(this: any, sp?: any) {
-        var result: any = EspControlModel.buildSubpageGrid(sp, layout.numSlots, layout.gridCols);
+        var result: any = EspControlModel.buildSubpageGrid(sp, layout.totalSlots, layout.gridCols);
         sp.grid = result.grid;
         sp.sizes = result.sizes;
         return sp.grid;

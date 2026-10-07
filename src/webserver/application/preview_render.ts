@@ -122,6 +122,13 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 main.appendChild(backBtn);
             }
             else if (slot > 0) {
+                if (slot > c.maxSlots) {
+                    var unavailable: any = document.createElement("div");
+                    unavailable.className = "sp-empty-cell";
+                    unavailable.setAttribute("data-pos", pos);
+                    main.appendChild(unavailable);
+                    continue;
+                }
                 var bIdx: any = slot - 1;
                 if (c.isSub && bIdx >= c.buttons.length)
                     continue;
