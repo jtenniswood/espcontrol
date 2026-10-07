@@ -59,9 +59,13 @@ script:
           #undef BTN_SLOT
           if (!id(screen_rotation_ready)) return;
           GridConfig cfg = {};
-          cfg.num_slots = 20;
           bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
-          cfg.cols = portrait ? 4 : 5;
+          cfg.num_slots = portrait ? 18 : 20;
+          cfg.cols = portrait ? 3 : 5;
+          if (portrait) {
+            lv_obj_add_flag(slots[18].btn, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(slots[19].btn, LV_OBJ_FLAG_HIDDEN);
+          }
           cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
           cfg.subpage_chevron_x = 4;
           cfg.subpage_chevron_y = -2;
@@ -247,9 +251,13 @@ script:
           #undef BTN_SLOT
           if (!id(screen_rotation_ready)) return;
           GridConfig cfg = {};
-          cfg.num_slots = 20;
           bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
-          cfg.cols = portrait ? 4 : 5;
+          cfg.num_slots = portrait ? 18 : 20;
+          cfg.cols = portrait ? 3 : 5;
+          if (portrait) {
+            lv_obj_add_flag(slots[18].btn, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(slots[19].btn, LV_OBJ_FLAG_HIDDEN);
+          }
           cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
           cfg.subpage_chevron_x = 4;
           cfg.subpage_chevron_y = -2;
@@ -474,9 +482,13 @@ esphome:
             };
             #undef BTN_SLOT
             GridConfig cfg = {};
-            cfg.num_slots = 20;
             bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
-            cfg.cols = portrait ? 4 : 5;
+            cfg.num_slots = portrait ? 18 : 20;
+            cfg.cols = portrait ? 3 : 5;
+            if (portrait) {
+              lv_obj_add_flag(slots[18].btn, LV_OBJ_FLAG_HIDDEN);
+              lv_obj_add_flag(slots[19].btn, LV_OBJ_FLAG_HIDDEN);
+            }
             cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
             cfg.subpage_chevron_x = 4;
             cfg.subpage_chevron_y = -2;
@@ -653,9 +665,13 @@ esphome:
             #undef SP_EXT6
             #undef SP_EXT7
             GridConfig cfg = {};
-            cfg.num_slots = 20;
             bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
-            cfg.cols = portrait ? 4 : 5;
+            cfg.num_slots = portrait ? 18 : 20;
+            cfg.cols = portrait ? 3 : 5;
+            if (portrait) {
+              lv_obj_add_flag(slots[18].btn, LV_OBJ_FLAG_HIDDEN);
+              lv_obj_add_flag(slots[19].btn, LV_OBJ_FLAG_HIDDEN);
+            }
             cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
             cfg.subpage_chevron_x = 4;
             cfg.subpage_chevron_y = -2;

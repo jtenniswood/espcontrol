@@ -2,10 +2,10 @@
 # LVGL MAIN PAGE - Top-layer HUD and button grid
 # =============================================================================
 # Defines the primary UI: a top-layer overlay with temperature and clock
-# labels, and the main page containing a 5-column x 4-row grid of 20 button widgets.
-# Uses LVGL grid layout for sparse cell placement on the 1280x800 landscape
-# display. Buttons start hidden; sensors.yaml unhides and places active
-# ones at boot via grid cell coords.
+# labels, and the main page containing up to 20 button widgets. The grid is
+# configured dynamically for landscape and portrait in sensors.yaml. Buttons
+# start hidden; sensors.yaml unhides and places active ones at boot via grid
+# cell coords.
 # =============================================================================
 
 lvgl:
@@ -91,7 +91,7 @@ lvgl:
                 text_color: 0xFFFFFF
 
   # ---------------------------------------------------------------------------
-  # Main page (fixed 5-column x 4-row grid of button widgets)
+  # Main page (responsive button grid)
   # ---------------------------------------------------------------------------
   pages:
     - id: main_page
