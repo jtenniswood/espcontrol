@@ -27,7 +27,7 @@ inline void theme_set_primary_foreground_fill(lv_obj_t *obj, bool owned = true) 
   else lv_obj_clear_flag(obj, LV_OBJ_FLAG_USER_3);
 }
 inline void theme_set_control_neutral_fill(lv_obj_t *obj) {
-  if (obj) lv_obj_add_flag(obj, LV_OBJ_FLAG_USER_1 | LV_OBJ_FLAG_USER_3);
+  if (obj) lv_obj_add_flag(obj, static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_USER_1 | LV_OBJ_FLAG_USER_3));
 }
 inline void theme_set_content_pressed_fill(lv_obj_t *obj, bool owned = true) {
   if (!obj) return;

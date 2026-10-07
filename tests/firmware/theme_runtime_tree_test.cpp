@@ -18,15 +18,18 @@ constexpr int LV_STATE_DISABLED = 4;
 constexpr int LV_STATE_CHECKED = 8;
 constexpr int LV_STATE_DEFAULT = 0;
 constexpr int LV_STYLE_BG_COLOR = 1;
-constexpr int LV_RESULT_OK = 0;
+enum lv_style_res_t { LV_STYLE_RES_NOT_FOUND, LV_STYLE_RES_FOUND };
+using lv_style_prop_t = uint8_t;
 struct lv_style_value_t { lv_color_t color; };
 using lv_style_selector_t = int;
 constexpr int LV_OPA_TRANSP = 0;
 constexpr int LV_OPA_COVER = 255;
-constexpr uint32_t LV_OBJ_FLAG_USER_1 = 1u << 27;
-constexpr uint32_t LV_OBJ_FLAG_USER_2 = 1u << 28;
-constexpr uint32_t LV_OBJ_FLAG_USER_3 = 1u << 29;
-constexpr uint32_t LV_OBJ_FLAG_USER_4 = 1u << 30;
+enum lv_obj_flag_t : uint32_t {
+  LV_OBJ_FLAG_USER_1 = 1u << 27,
+  LV_OBJ_FLAG_USER_2 = 1u << 28,
+  LV_OBJ_FLAG_USER_3 = 1u << 29,
+  LV_OBJ_FLAG_USER_4 = 1u << 30,
+};
 
 struct lv_obj_class_t {};
 static const lv_obj_class_t lv_obj_class{};
@@ -63,15 +66,15 @@ struct lv_obj_t {
 bool lv_obj_check_type(const lv_obj_t *obj, const lv_obj_class_t *type) {
   return obj->type == type;
 }
-bool lv_obj_has_flag(const lv_obj_t *obj, uint32_t flag) { return (obj->flags & flag) != 0; }
+bool lv_obj_has_flag(const lv_obj_t *obj, lv_obj_flag_t flag) { return (obj->flags & flag) != 0; }
 bool lv_obj_has_state(const lv_obj_t *obj, int state) { return (obj->state & state) != 0; }
-int lv_obj_get_local_style_prop(const lv_obj_t *obj, lv_style_value_t *value, int prop, int selector) {
+lv_style_res_t lv_obj_get_local_style_prop(lv_obj_t *obj, lv_style_prop_t prop, lv_style_value_t *value, int selector) {
   assert(prop == LV_STYLE_BG_COLOR && selector == LV_PART_MAIN);
   value->color = obj->background;
-  return LV_RESULT_OK;
+  return LV_STYLE_RES_FOUND;
 }
-void lv_obj_add_flag(lv_obj_t *obj, uint32_t flag) { obj->flags |= flag; }
-void lv_obj_clear_flag(lv_obj_t *obj, uint32_t flag) { obj->flags &= ~flag; }
+void lv_obj_add_flag(lv_obj_t *obj, lv_obj_flag_t flag) { obj->flags |= flag; }
+void lv_obj_clear_flag(lv_obj_t *obj, lv_obj_flag_t flag) { obj->flags &= ~flag; }
 lv_obj_t *lv_obj_get_parent(const lv_obj_t *obj) { return obj->parent; }
 int lv_obj_get_style_bg_opa(const lv_obj_t *obj, int) { return obj->opacity; }
 lv_color_t lv_obj_get_style_bg_color(const lv_obj_t *obj, int part) {

@@ -44,7 +44,7 @@ inline void theme_apply_grid_button(lv_obj_t *button, uint32_t neutral,
     const uint32_t secondary = current_grid_sensor_color();
     const uint32_t previous_secondary = theme_grid_correct_color(
         theme_refresh_previous().surface_secondary, theme_grid_targets());
-    if (lv_obj_get_local_style_prop(button, &background, LV_STYLE_BG_COLOR, LV_PART_MAIN) == LV_RESULT_OK &&
+    if (lv_obj_get_local_style_prop(button, LV_STYLE_BG_COLOR, &background, LV_PART_MAIN) == LV_STYLE_RES_FOUND &&
         (theme_color_matches(background.color, previous_secondary) ||
          theme_color_matches(background.color, secondary)))
       neutral = secondary;
