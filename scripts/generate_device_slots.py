@@ -341,11 +341,19 @@ def cfg_lines(device: dict) -> list[str]:
     image_card_count = int(device["image_slot_capacity"])
     lines = [
         "            GridConfig cfg = {};",
-        f"            cfg.num_slots = {device['slots']};",
     ]
+    if "portrait_slots" not in device:
+        lines.append(f"            cfg.num_slots = {device['slots']};")
     if "portrait_cols" in device:
         lines.append('            bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";')
         lines.append(f"            cfg.cols = portrait ? {device['portrait_cols']} : {device['cols']};")
+        if "portrait_slots" in device:
+            lines.append(f"            cfg.num_slots = portrait ? {device['portrait_slots']} : {device['slots']};")
+            if device["portrait_slots"] < device["slots"]:
+                lines.append("            if (portrait) {")
+                for slot in range(device["portrait_slots"], device["slots"]):
+                    lines.append(f"              lv_obj_add_flag(slots[{slot}].btn, LV_OBJ_FLAG_HIDDEN);")
+                lines.append("            }")
         if device.get("rotate_width_compensation", False):
             lines.append("            cfg.width_compensation_vertical = portrait;")
     else:

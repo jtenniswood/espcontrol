@@ -149,7 +149,7 @@ export function applySpans(
   const items: GridEntry[] = [];
   for (let i = 0; i < maxSlots; i += 1) {
     const slot = entries[i] ?? 0;
-    if (!(slot > 0 || slot === -2)) continue;
+    if (!(slot > 0 && slot <= maxSlots || slot === -2)) continue;
     const size = sizes[String(slot)] || 1;
     const candidates: number[] = [];
     for (let offset = 0; offset < maxSlots; offset += 1) {

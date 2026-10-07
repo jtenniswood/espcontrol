@@ -375,6 +375,12 @@ def validate_layout(slug: str, device: dict[str, Any], errors: list[str]) -> Non
 
     if "portraitCols" in layout and not is_positive_int(layout.get("portraitCols")):
         errors.append(device_error(slug, "layout.portraitCols must be a positive integer when set"))
+    if "portraitSlots" in layout:
+        portrait_slots = layout.get("portraitSlots")
+        if not is_positive_int(portrait_slots):
+            errors.append(device_error(slug, "layout.portraitSlots must be a positive integer when set"))
+        elif is_positive_int(slots) and portrait_slots > slots:
+            errors.append(device_error(slug, "layout.portraitSlots cannot exceed slots"))
 
     firmware_grid = layout.get("firmwareGrid")
     if not isinstance(firmware_grid, str) or not re.fullmatch(r"[1-9]\d*x[1-9]\d*", firmware_grid):
@@ -965,6 +971,8 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
     }
     if "portraitCols" in layout:
         slot["portrait_cols"] = layout["portraitCols"]
+    if "portraitSlots" in layout:
+        slot["portrait_slots"] = layout["portraitSlots"]
     if display.get("widthCompensationPercent", 100) != 100:
         slot["width_compensation_percent"] = display["widthCompensationPercent"]
     if display.get("textWidthCompensationPercent", 100) != 100:

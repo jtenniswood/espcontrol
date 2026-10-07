@@ -60,8 +60,8 @@ script:
           if (!id(screen_rotation_ready)) return;
           GridConfig cfg = {};
           bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
-          cfg.num_slots = portrait ? 18 : 20;
           cfg.cols = portrait ? 3 : 5;
+          cfg.num_slots = portrait ? 18 : 20;
           if (portrait) {
             lv_obj_add_flag(slots[18].btn, LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(slots[19].btn, LV_OBJ_FLAG_HIDDEN);
@@ -252,8 +252,8 @@ script:
           if (!id(screen_rotation_ready)) return;
           GridConfig cfg = {};
           bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
-          cfg.num_slots = portrait ? 18 : 20;
           cfg.cols = portrait ? 3 : 5;
+          cfg.num_slots = portrait ? 18 : 20;
           if (portrait) {
             lv_obj_add_flag(slots[18].btn, LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(slots[19].btn, LV_OBJ_FLAG_HIDDEN);
@@ -483,8 +483,8 @@ esphome:
             #undef BTN_SLOT
             GridConfig cfg = {};
             bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
-            cfg.num_slots = portrait ? 18 : 20;
             cfg.cols = portrait ? 3 : 5;
+            cfg.num_slots = portrait ? 18 : 20;
             if (portrait) {
               lv_obj_add_flag(slots[18].btn, LV_OBJ_FLAG_HIDDEN);
               lv_obj_add_flag(slots[19].btn, LV_OBJ_FLAG_HIDDEN);
@@ -666,8 +666,8 @@ esphome:
             #undef SP_EXT7
             GridConfig cfg = {};
             bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
-            cfg.num_slots = portrait ? 18 : 20;
             cfg.cols = portrait ? 3 : 5;
+            cfg.num_slots = portrait ? 18 : 20;
             if (portrait) {
               lv_obj_add_flag(slots[18].btn, LV_OBJ_FLAG_HIDDEN);
               lv_obj_add_flag(slots[19].btn, LV_OBJ_FLAG_HIDDEN);

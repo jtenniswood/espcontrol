@@ -976,7 +976,8 @@
         "cols": 5,
         "rows": 4,
         "firmwareGrid": "5x4",
-        "portraitCols": 3
+        "portraitCols": 3,
+        "portraitSlots": 18
       },
       "rotation": {
         "enabled": true,

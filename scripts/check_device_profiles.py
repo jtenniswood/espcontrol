@@ -292,7 +292,17 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
         sensors = sensor_path.read_text(encoding="utf-8")
         assert f'device_slug: "{slug}"' in package, f"{slug}: packages.yaml missing device slug"
         assert f'firmware_manifest_slug: "{slug}"' in package, f"{slug}: packages.yaml missing manifest slug"
-        assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing slot count"
+        portrait_slots = profile["layout"].get("portraitSlots")
+        if portrait_slots is None:
+            assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing slot count"
+        else:
+            assert f"cfg.num_slots = portrait ? {portrait_slots} : {profile['slots']};" in sensors, (
+                f"{slug}: sensors.yaml missing portrait slot capacity"
+            )
+            for slot in range(portrait_slots, profile["slots"]):
+                assert f"lv_obj_add_flag(slots[{slot}].btn, LV_OBJ_FLAG_HIDDEN);" in sensors, (
+                    f"{slug}: sensors.yaml must hide portrait-only unavailable slot {slot + 1}"
+                )
         test_native_panel_config_bindings(slug, profile, device)
         label_lines = profile["web"]["btn"]["labelLines"]
         label_lines_tall = profile["web"]["btn"]["labelLinesDouble"]
