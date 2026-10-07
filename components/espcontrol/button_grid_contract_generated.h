@@ -296,6 +296,7 @@ inline const char *const CARD_CONTRACT_CLIMATE_PRECISION_VALUES[] = {"", "1", "2
 inline const char *const CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS[] = {"today", "tomorrow"};
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ACTIONS = "actions";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ACTIVE_COLOR = "active_color";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_ACTIVE_ENTITY = "active_entity";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ALARM_CARD_TYPE = "alarm_card_type";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CENTER_CLOCK = "center_clock";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CLIMATE_TABS = "climate_tabs";

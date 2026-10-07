@@ -25,6 +25,8 @@ A Sensor card is read-only. It displays a Home Assistant `sensor`, `binary_senso
 
 Choose **Lit When Active** when an active status should use the on colour. It is not available for Time cards. Numeric cards treat values above zero as active; Text and Icon cards follow recognised Home Assistant active states.
 
+When **Lit When Active** is enabled, **Active Entity** can optionally select a different Home Assistant entity to control the card colour. The card continues to display the value from **Sensor Entity**. For example, display `sensor.dishwasher_program` as `Eco` and select `binary_sensor.dishwasher_running` as the Active Entity. The card then shows `Eco` unchanged while the binary sensor controls its highlight. Numeric active entities use values above zero; text and binary entities use recognised active states. Unknown or unavailable states leave the card unlit. Clear Active Entity to use Sensor Entity for both display and colour, as before.
+
 ## Useful Details
 
 - A Time card needs a value in days, hours, minutes, seconds, milliseconds, or microseconds. You can select the unit manually when Auto cannot identify it.

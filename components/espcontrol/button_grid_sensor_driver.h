@@ -193,18 +193,25 @@ inline bool sensor_driver_bind_data(
     if (!config.entity.empty()) sensor_driver_register_local_value(slot, config);
     return true;
   }
+  const bool active_color = sensor_active_color_enabled(config);
+  const std::string active_entity = sensor_active_entity(config);
+  const bool color_from_display_entity = active_color && active_entity.empty();
   if (is_text_sensor_card(config)) {
     if (!config.sensor.empty()) {
       subscribe_sensor_text_card_value(
-        slot.text_lbl, config, slot.btn, sensor_active_color_enabled(config),
+        slot.text_lbl, config, slot.btn, color_from_display_entity,
         palette.on_val, palette.sensor_val);
+    }
+    if (active_color && !active_entity.empty()) {
+      subscribe_sensor_active_color_state(
+        slot.btn, active_entity, palette.on_val, palette.sensor_val);
     }
     return true;
   }
   if (!config.sensor.empty()) {
     if (config.precision == "icon") {
       subscribe_sensor_icon_state(
-        slot.btn, slot.icon_lbl, config, sensor_active_color_enabled(config));
+        slot.btn, slot.icon_lbl, config, color_from_display_entity);
     } else if (config.precision == "time") {
       TimeSensorCtx *time = slot.config == nullptr
         ? grid_delete_with_owner(slot.btn, new TimeSensorCtx())
@@ -219,10 +226,14 @@ inline bool sensor_driver_bind_data(
       subscribe_sensor_value(
         slot.sensor_lbl, config.sensor, parse_precision(config.precision),
         slot.unit_lbl, config.unit, slot.btn,
-        sensor_active_color_enabled(config), palette.on_val,
+        color_from_display_entity, palette.on_val,
         palette.sensor_val);
     }
     if (config.label.empty()) subscribe_friendly_name(slot.text_lbl, config.sensor);
+  }
+  if (active_color && !active_entity.empty()) {
+    subscribe_sensor_active_color_state(
+      slot.btn, active_entity, palette.on_val, palette.sensor_val);
   }
   return true;
 }

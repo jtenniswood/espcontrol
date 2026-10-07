@@ -51,6 +51,21 @@ inline void apply_sensor_active_color(lv_obj_t *btn, bool active_color,
     static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
 }
 
+inline void subscribe_sensor_active_color_state(
+    lv_obj_t *btn, const std::string &entity_id,
+    uint32_t on_color, uint32_t sensor_color) {
+  if (!btn || entity_id.empty()) return;
+  ha_subscribe_state(
+    entity_id,
+    std::function<void(esphome::StringRef)>(
+      [btn, on_color, sensor_color](esphome::StringRef state) {
+        const bool unavailable = ha_state_unavailable_ref(state);
+        apply_sensor_active_color(
+          btn, true, state, on_color, sensor_color, unavailable, true);
+      })
+  );
+}
+
 inline void apply_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj,
                                        bool available) {
   if (visual_obj) {

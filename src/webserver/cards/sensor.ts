@@ -27,9 +27,11 @@ export function registerSensorCardTypes(
         sensorCardIsLocal,
         normalizeSensorOptions,
         sensorActiveColorEnabled,
+        sensorActiveEntity,
         sensorTimeUnit,
         setSensorTimeUnit,
         setSensorActiveColorEnabled,
+        setSensorActiveEntity,
         sensorStateLabelsEnabled,
         sensorStateInput,
         sensorStateOutput,
@@ -218,6 +220,37 @@ export function registerSensorCardTypes(
             });
             panel.appendChild(iconSection);
             var activeColorToggle: any = helpers.renderCardActiveColorToggle(panel, b, helpers, SENSOR_CARD_METADATA.activeColor, setSensorActiveColorEnabled);
+            var activeEntitySection: any = condField();
+            activeEntitySection.classList.toggle("sp-visible", sensorActiveColorEnabled(b));
+            var activeEntityField: any = helpers.renderCardEntityField(activeEntitySection, b, helpers, {
+                entity: {
+                    label: "Active Entity",
+                    idSuffix: "sensor-active-entity",
+                    value: function (this: any) { return sensorActiveEntity(b); },
+                    placeholder: "e.g. binary_sensor.dishwasher_running",
+                    domains: ["sensor", "binary_sensor", "text_sensor"],
+                    bindName: null,
+                    rerender: false,
+                },
+            });
+            var activeEntityInput: any = activeEntityField.input;
+            panel.appendChild(activeEntitySection);
+            activeColorToggle.input.addEventListener("change", function (this: any) {
+                activeEntitySection.classList.toggle("sp-visible", this.checked);
+            });
+            function saveActiveEntity(this: any) {
+                setSensorActiveEntity(b, activeEntityInput.value);
+                helpers.saveField("options", b.options);
+            }
+            activeEntityInput.addEventListener("input", saveActiveEntity);
+            activeEntityInput.addEventListener("change", saveActiveEntity);
+            activeEntityInput.addEventListener("blur", saveActiveEntity);
+            activeEntityInput.addEventListener("keydown", function (this: any, e?: any) {
+                if (e.key === "Enter") {
+                    saveActiveEntity();
+                    this.blur();
+                }
+            });
             var hasStateLabels: any = sensorStateLabelsEnabled(b);
             var advancedToggleSection: any = helpers.toggleSection("Advanced", helpers.idPrefix + "sensor-advanced-toggle", hasStateLabels);
             var advancedToggle: any = advancedToggleSection.toggle;

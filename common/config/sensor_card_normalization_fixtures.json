@@ -1,5 +1,20 @@
 [
   {
+    "name": "text sensor keeps display and active entities separate",
+    "input": "sensor.dishwasher_program;Dishwasher;Auto;Auto;sensor.dishwasher_program;;sensor;text;active_color,active_entity=binary_sensor.dishwasher_running",
+    "expected": {
+      "entity": "sensor.dishwasher_program",
+      "label": "Dishwasher",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.dishwasher_program",
+      "unit": "",
+      "type": "sensor",
+      "precision": "text",
+      "options": "active_color,active_entity=binary_sensor.dishwasher_running"
+    }
+  },
+  {
     "name": "numeric sensor preserves large numbers",
     "input": "sensor.room_temp;Room Temp;Auto;Auto;sensor.room_temp;deg C;sensor;1;large_numbers,ignored=1",
     "expected": {
@@ -45,8 +60,23 @@
     }
   },
   {
+    "name": "numeric sensor retains active entity even when highlight is disabled",
+    "input": "sensor.dishwasher_program;Dishwasher;Auto;Auto;sensor.dishwasher_program;;sensor;1;active_entity=binary_sensor.dishwasher_running",
+    "expected": {
+      "entity": "sensor.dishwasher_program",
+      "label": "Dishwasher",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.dishwasher_program",
+      "unit": "",
+      "type": "sensor",
+      "precision": "1",
+      "options": "active_entity=binary_sensor.dishwasher_running"
+    }
+  },
+  {
     "name": "time sensor auto unit omits time unit and incompatible settings",
-    "input": "sensor.ups_runtime;UPS Runtime;Clock;Bell;sensor.ups_runtime;hours;sensor;time;large_numbers,state_labels,state_input=on,state_output=Running",
+    "input": "sensor.ups_runtime;UPS Runtime;Clock;Bell;sensor.ups_runtime;hours;sensor;time;large_numbers,state_labels,state_input=on,state_output=Running,active_entity=binary_sensor.dishwasher_running",
     "expected": {
       "entity": "sensor.ups_runtime",
       "label": "UPS Runtime",

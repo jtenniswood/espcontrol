@@ -690,6 +690,14 @@ inline std::string sensor_card_options_normalized(const std::string &options,
     if (!out.empty()) out += ",";
     out += "active_color";
   }
+  if (precision != "time") {
+    std::string active_entity = trim_saved_option_value(
+      cfg_option_value(options, "active_entity"));
+    if (!active_entity.empty()) {
+      if (!out.empty()) out += ",";
+      out += std::string("active_entity=") + encode_compact_field(active_entity);
+    }
+  }
   if (precision == "text" && cfg_option_token_present(options, SENSOR_STATE_LABELS_OPTION)) {
     if (!out.empty()) out += ",";
     out += SENSOR_STATE_LABELS_OPTION;
@@ -1476,6 +1484,12 @@ inline bool sensor_active_color_enabled(const ParsedCfg &p) {
   return p.type == "sensor" && cfg_option_enabled(p.options, "active_color");
 }
 
+inline std::string sensor_active_entity(const ParsedCfg &p) {
+  return p.type == "sensor"
+    ? trim_saved_option_value(cfg_option_value(p.options, "active_entity"))
+    : "";
+}
+
 inline bool sensor_state_labels_enabled(const ParsedCfg &p) {
   return p.type == "sensor" && p.precision == "text" &&
          cfg_option_enabled(p.options, SENSOR_STATE_LABELS_OPTION);
@@ -1977,7 +1991,7 @@ inline bool numeric_state_positive_ref(esphome::StringRef state) {
 inline bool is_entity_on_ref(esphome::StringRef state) {
   std::string value = normalized_state_text(state);
   return value == "on" || value == "true" || value == "1" ||
-         value == "home" || value == "playing" ||
+         value == "home" || value == "playing" || value == "running" ||
          value == "open" || value == "opened" ||
          value == "opening" || value == "closing" ||
          value == "unlocked" || value == "unlocking" || value == "jammed";

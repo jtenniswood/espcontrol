@@ -104,6 +104,7 @@ export const SAVED_CONFIG_SHADOW_PILOT_POLICIES: Readonly<Record<string, CardNor
       "large_numbers",
       "time_unit",
       "active_color",
+      "active_entity",
       "state_labels",
       "state_input",
       "state_output",

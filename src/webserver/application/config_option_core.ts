@@ -21,6 +21,7 @@ import {
     var SENSOR_LARGE_NUMBERS_OFF_VALUE: any = "off";
     var SENSOR_TIME_UNIT_OPTION: any = cardContractOptionName("time_unit");
     var SENSOR_ACTIVE_COLOR_OPTION: any = cardContractOptionName("active_color");
+    var SENSOR_ACTIVE_ENTITY_OPTION: any = cardContractOptionName("active_entity");
     var SWITCH_CONFIRM_OFF_OPTION: any = cardContractOptionName("confirm_off");
     var SWITCH_CONFIRM_ON_OPTION: any = cardContractOptionName("confirm_on");
     var SWITCH_CONFIRM_MESSAGE_OPTION: any = cardContractOptionName("confirm_message");
@@ -115,6 +116,7 @@ export {
     SENSOR_LARGE_NUMBERS_OFF_VALUE,
     SENSOR_TIME_UNIT_OPTION,
     SENSOR_ACTIVE_COLOR_OPTION,
+    SENSOR_ACTIVE_ENTITY_OPTION,
     SWITCH_CONFIRM_OFF_OPTION,
     SWITCH_CONFIRM_ON_OPTION,
     SWITCH_CONFIRM_MESSAGE_OPTION,

@@ -83,6 +83,29 @@
       }
     },
     {
+      "name": "active_entity",
+      "label": "Active Entity",
+      "kind": "text",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "option",
+          "name": "active_color",
+          "operator": "present"
+        },
+        {
+          "source": "field",
+          "name": "precision",
+          "operator": "in",
+          "value": ["time"],
+          "negate": true
+        }
+      ],
+      "supportedWhen": {
+        "precisionNot": ["time"]
+      }
+    },
+    {
       "name": "state_labels",
       "label": "Status Translation",
       "kind": "flag",
@@ -219,6 +242,7 @@
       "large_numbers",
       "time_unit",
       "active_color",
+      "active_entity",
       "state_labels",
       "state_input",
       "state_output",

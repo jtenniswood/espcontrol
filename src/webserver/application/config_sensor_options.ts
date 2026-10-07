@@ -9,6 +9,7 @@ import { cardContractLargeNumbersSupported } from "../generated/card_contract";
 import { createSensorCardModeController, LOCAL_SENSOR_SOURCE } from "../features/sensor_card_mode_controller";
 import {
     SENSOR_ACTIVE_COLOR_OPTION,
+    SENSOR_ACTIVE_ENTITY_OPTION,
     SENSOR_LARGE_NUMBERS_OFF_VALUE,
     SENSOR_LARGE_NUMBERS_OPTION,
     SENSOR_STATE_HIGH_LABEL_OPTION,
@@ -85,6 +86,18 @@ export function createConfigSensorOptionsFeature(cardRegistry: CardRegistry) {
         b.options = setConfigOption(b.options, SENSOR_ACTIVE_COLOR_OPTION, enabled);
         return b.options;
     }
+    function sensorActiveEntity(this: any, b?: any) {
+        return b && b.type === "sensor"
+            ? configOptionValue(b.options, SENSOR_ACTIVE_ENTITY_OPTION).trim()
+            : "";
+    }
+    function setSensorActiveEntity(this: any, b?: any, entity?: any) {
+        if (!b || b.type !== "sensor")
+            return "";
+        b.options = setConfigOptionValue(b.options, SENSOR_ACTIVE_ENTITY_OPTION, String(entity || "").trim());
+        b.options = normalizeSensorOptions(b.options, b.precision);
+        return b.options;
+    }
     function sensorStateLabelsEnabled(this: any, b?: any) {
         return !!(b && b.type === "sensor" && b.precision === "text" &&
             configOptionEnabled(b.options, SENSOR_STATE_LABELS_OPTION));
@@ -155,6 +168,10 @@ export function createConfigSensorOptionsFeature(cardRegistry: CardRegistry) {
         if (configOptionEnabled(options, SENSOR_ACTIVE_COLOR_OPTION) &&
             cardContractOptionSupportedFor("sensor", SENSOR_ACTIVE_COLOR_OPTION, { precision: precision })) {
             out = setConfigOption(out, SENSOR_ACTIVE_COLOR_OPTION, true);
+        }
+        if (cardContractOptionSupportedFor("sensor", SENSOR_ACTIVE_ENTITY_OPTION, { precision: precision })) {
+            out = setConfigOptionValue(out, SENSOR_ACTIVE_ENTITY_OPTION,
+                configOptionValue(options, SENSOR_ACTIVE_ENTITY_OPTION).trim());
         }
         if (precision === "text" && configOptionEnabled(options, SENSOR_STATE_LABELS_OPTION)) {
             out = setConfigOption(out, SENSOR_STATE_LABELS_OPTION, true);
@@ -238,6 +255,8 @@ export function createConfigSensorOptionsFeature(cardRegistry: CardRegistry) {
         setSensorTimeUnit,
         sensorActiveColorEnabled,
         setSensorActiveColorEnabled,
+        sensorActiveEntity,
+        setSensorActiveEntity,
         sensorStateLabelsEnabled,
         legacySensorStateInput,
         legacySensorStateOutput,

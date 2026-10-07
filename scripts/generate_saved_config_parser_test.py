@@ -68,6 +68,11 @@ def generate() -> str:
     lines.extend(
         (
             "  // Time sensor duration formatting can limit narrow cards to one component.",
+            '  assert(sensor_active_color_state_ref(esphome::StringRef("running"), true));',
+            '  assert(sensor_active_color_state_ref(esphome::StringRef("1"), true));',
+            '  assert(!sensor_active_color_state_ref(esphome::StringRef("off"), true));',
+            '  assert(!sensor_active_color_state_ref(esphome::StringRef("Eco"), true));',
+            '  assert(!sensor_active_color_state_ref(esphome::StringRef("unavailable"), true));',
             "  char duration[48];",
             '  assert(format_duration_value(duration, sizeof(duration), 0.0, "seconds") && std::string(duration) == "0s");',
             '  assert(format_duration_value(duration, sizeof(duration), 59.0, "s") && std::string(duration) == "59s");',

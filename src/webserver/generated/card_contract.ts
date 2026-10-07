@@ -3218,6 +3218,33 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         }
       },
       {
+        "name": "active_entity",
+        "label": "Active Entity",
+        "kind": "text",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "option",
+            "name": "active_color",
+            "operator": "present"
+          },
+          {
+            "source": "field",
+            "name": "precision",
+            "operator": "in",
+            "value": [
+              "time"
+            ],
+            "negate": true
+          }
+        ],
+        "supportedWhen": {
+          "precisionNot": [
+            "time"
+          ]
+        }
+      },
+      {
         "name": "state_labels",
         "label": "Status Translation",
         "kind": "flag",
@@ -3354,6 +3381,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "large_numbers",
         "time_unit",
         "active_color",
+        "active_entity",
         "state_labels",
         "state_input",
         "state_output",
@@ -4750,6 +4778,7 @@ export const CARD_CONTRACT_LARGE_NUMBERS: Readonly<Record<string, LargeNumbersRu
 export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "actions": "actions",
   "active_color": "active_color",
+  "active_entity": "active_entity",
   "alarm_card_type": "alarm_card_type",
   "center_clock": "center_clock",
   "climate_tabs": "climate_tabs",
