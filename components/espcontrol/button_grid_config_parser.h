@@ -241,6 +241,48 @@ inline std::string cfg_option_value(const std::string &options, const char *name
   return "";
 }
 
+inline std::string normalize_card_color_value(std::string value) {
+  if (!value.empty() && value[0] == '#') value.erase(0, 1);
+  if (value.size() != 6) return "";
+  for (char &ch : value) {
+    if (!std::isxdigit(static_cast<unsigned char>(ch))) return "";
+    ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
+  }
+  return value;
+}
+
+inline std::string card_color_options_normalized(const std::string &options) {
+  std::string out;
+  const char *names[] = {"card_on_color", "card_off_color"};
+  for (const char *name : names) {
+    const std::string value = normalize_card_color_value(cfg_option_value(options, name));
+    if (!value.empty()) {
+      if (!out.empty()) out += ",";
+      out += std::string(name) + "=" + value;
+    }
+  }
+  return out;
+}
+
+inline std::string options_without_card_colors(const std::string &options) {
+  std::string out;
+  size_t start = 0;
+  while (start < options.size()) {
+    size_t end = options.find(',', start);
+    if (end == std::string::npos) end = options.size();
+    const std::string token = options.substr(start, end - start);
+    if (token.compare(0, 14, "card_on_color=") != 0 &&
+        token.compare(0, 15, "card_off_color=") != 0) {
+      if (!token.empty()) {
+        if (!out.empty()) out += ",";
+        out += token;
+      }
+    }
+    start = end + 1;
+  }
+  return out;
+}
+
 inline bool large_numbers_explicitly_disabled(const std::string &options) {
   return cfg_option_value(options, "large_numbers") == "off";
 }
@@ -1302,6 +1344,8 @@ inline std::string normalize_saved_config_subpage_options(
 }
 
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
+  const std::string card_colors = card_color_options_normalized(p.options);
+  p.options = options_without_card_colors(p.options);
   migrate_saved_config_action_legacy(p);
   const bool was_legacy_text_sensor = p.type == "text_sensor";
   migrate_saved_config_sensor_legacy(p);
@@ -1357,6 +1401,10 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   normalize_saved_config_sensor(p, was_legacy_text_sensor,
                                 normalize_saved_config_sensor_fields,
                                 sensor_card_options_normalized);
+  if (!card_colors.empty()) {
+    if (!p.options.empty()) p.options += ",";
+    p.options += card_colors;
+  }
   return p;
 }
 

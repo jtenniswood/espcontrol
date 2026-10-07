@@ -67,3 +67,26 @@ export function setConfigOptionValue(options: unknown, name: string, value: unkn
   if (text) out.push(prefix + encodeConfigField(text));
   return out.join(",");
 }
+
+const CARD_COLOR_OPTIONS = ["card_on_color", "card_off_color"] as const;
+
+export function normalizedCardColorOptions(options: unknown): string {
+  const out: string[] = [];
+  for (const name of CARD_COLOR_OPTIONS) {
+    const value = configOptionValue(options, name).replace(/^#/, "").toUpperCase();
+    if (/^[0-9A-F]{6}$/.test(value)) out.push(name + "=" + value);
+  }
+  return out.join(",");
+}
+
+export function withoutCardColorOptions(options: unknown): string {
+  return String(options || "").split(",").filter((part) =>
+    !CARD_COLOR_OPTIONS.some((name) => part.indexOf(name + "=") === 0),
+  ).filter(Boolean).join(",");
+}
+
+export function setCardColorOption(options: unknown, name: string, value: unknown): string {
+  if (CARD_COLOR_OPTIONS.indexOf(name as typeof CARD_COLOR_OPTIONS[number]) < 0) return String(options || "");
+  const cleaned = String(value || "").replace(/^#/, "").trim().toUpperCase();
+  return setConfigOptionValue(options, name, /^[0-9A-F]{6}$/.test(cleaned) ? cleaned : "");
+}

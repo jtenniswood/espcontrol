@@ -1,6 +1,7 @@
 import { state } from "../state/app_instance";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
 import { PREVIEW_THEME_COLORS, previewEffectiveTheme } from "../state/preview_theme";
+import { configOptionValue } from "../model/config_primitives";
 import { escHtml } from "./ui_primitives";
 import {
     buttonConfigDisabledForDevice as isButtonConfigDisabledForDevice,
@@ -166,18 +167,22 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 var typePreview: any = previewTypeDef && previewTypeDef.renderPreview
                     ? previewTypeDef.renderPreview(b, { escHtml: escHtml, cardSize: slotSz || 1 })
                     : null;
+                var cardOnColor: any = configOptionValue(b.options, "card_on_color").replace(/^#/, "").toUpperCase();
+                var cardOffColor: any = configOptionValue(b.options, "card_off_color").replace(/^#/, "").toUpperCase();
+                if (!/^[0-9A-F]{6}$/.test(cardOnColor)) cardOnColor = "";
+                if (!/^[0-9A-F]{6}$/.test(cardOffColor)) cardOffColor = "";
                 var btn: any = document.createElement("div");
                 btn.className = "sp-btn" +
                     (typePreview && typePreview.buttonClass ? " " + typePreview.buttonClass : "") +
                     sizeClass(slotSz) +
                     (c.selected.indexOf(slot) !== -1 ? " sp-selected" : "");
-                btn.style.backgroundColor = "#" + color;
+                btn.style.backgroundColor = "#" + (cardOffColor || color);
                 btn.draggable = !isConfigLocked();
                 btn.setAttribute("data-pos", pos);
                 btn.setAttribute("data-slot", slot);
                 var hasWhenOn: any = !typePreview && (b.sensor || (b.icon_on && b.icon_on !== "Auto"));
                 if (!typePreview && hasWhenOn && typeof cardOnPattern === "function" && cardOnPattern(b) === "stripes") {
-                    var onColor: any = state.onColor && state.onColor.length === 6 ? state.onColor : WEB_UI_COLORS.primary;
+                    var onColor: any = cardOnColor || (state.onColor && state.onColor.length === 6 ? state.onColor : WEB_UI_COLORS.primary);
                     btn.style.backgroundImage =
                         "repeating-linear-gradient(135deg,#" + onColor + " 0,#" + onColor +
                             " 12px,rgba(255,255,255,.22) 12px,rgba(255,255,255,.22) 20px)";
@@ -192,6 +197,13 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     sensorBadge +
                         iconHtml +
                         labelHtml;
+                if (cardOnColor) {
+                    var activeSwatch: any = document.createElement("span");
+                    activeSwatch.className = "sp-card-active-color-preview";
+                    activeSwatch.title = "Active colour";
+                    activeSwatch.style.cssText = "position:absolute;right:5%;top:5%;width:10%;height:10%;min-width:8px;min-height:8px;border-radius:50%;background:#" + cardOnColor + ";border:1px solid rgba(255,255,255,.75);";
+                    btn.appendChild(activeSwatch);
+                }
                 main.appendChild(btn);
             }
             else {

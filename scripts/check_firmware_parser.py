@@ -47,6 +47,7 @@ LAYOUT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_layout.h"
 LIMITS_HEADER = ROOT / "components" / "espcontrol" / "button_grid_limits.h"
 STRING_HEADER = ROOT / "components" / "espcontrol" / "button_grid_string.h"
 DISPLAY_TEXT_HEADER = ROOT / "components" / "espcontrol" / "display_text.h"
+DISPLAY_COLOR_HEADER = ROOT / "components" / "espcontrol" / "display_color.h"
 BUTTON_GRID_FACADE = ROOT / "components" / "espcontrol" / "button_grid.h"
 CARD_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "card_normalization_fixtures.json"
 DEVICES_DIR = ROOT / "devices"
@@ -238,6 +239,7 @@ inline void lv_obj_move_foreground(lv_obj_t *obj) {
 inline void lv_obj_move_background(lv_obj_t *) { lv_obj_move_background_calls++; }
 
 #include "temperature_unit.h"
+#include "display_color.h"
 #include "button_grid_config_parser.h"
 #include "backlight.h"
 #include "button_grid_layout.h"
@@ -1059,6 +1061,7 @@ def main() -> int:
     with TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         shutil.copy2(PARSER_HEADER, tmp_path / "button_grid_config_parser.h")
+        shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
         shutil.copy2(MEDIA_CONFIG_HEADER, tmp_path / "button_grid_media_config.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "temperature_unit.h", tmp_path / "temperature_unit.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "sun_calc.h", tmp_path / "sun_calc.h")

@@ -1,5 +1,7 @@
 import { state } from "../state/app_instance";
+import { WEB_UI_COLORS } from "../state/ui_tokens";
 import * as EspControlModel from "../model";
+import { configOptionValue, setCardColorOption } from "../model/config_primitives";
 import { applySpans, CARD_SIZE_SINGLE, clearSpans } from "../model/grid";
 import { iconSlug, mdiIcon, textSpan } from "./ui_primitives";
 import type { CardEditorDraftController } from "../features/card_editor_draft_controller";
@@ -69,7 +71,7 @@ export function createButtonSettingsFeature(
         renderCardIconPicker, renderCardLargeNumbersToggle, renderCardModeSelector,
         renderCardNumberField, renderCardOptionToggle, renderCardSegmentControl,
         renderCardTextField, segmentControl, selectField, syncCardLargeNumbersToggle,
-        textInput, toggleRow,
+        colorField, textInput, toggleRow,
     } = fields;
     const {
         imageSlotCapacity,
@@ -825,6 +827,47 @@ export function createButtonSettingsFeature(
             });
             panel.appendChild(patternField.field);
         }
+        var cardAppearance: any = disclosureSection("Card Colours", idPrefix + "card-colours", false);
+        var defaultCardOnColor: any = state.onColor || WEB_UI_COLORS.primary;
+        var defaultCardOffColor: any = (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone") ? WEB_UI_COLORS.tertiary : WEB_UI_COLORS.secondary;
+        var cardOnColor: any = configOptionValue(b.options, "card_on_color") || defaultCardOnColor;
+        var cardOffColor: any = configOptionValue(b.options, "card_off_color") || defaultCardOffColor;
+        var cardColorPresets: any = ["F44336", "E91E63", "9C27B0", "673AB7", "3F51B5", "2196F3", "03A9F4", "00BCD4", "009688", "4CAF50", "8BC34A", "CDDC39", "FFEB3B", "FFC107", "FF9800", "795548"];
+        function createCardColorControl(this: any, label?: any, option?: any, value?: any, id?: any, defaultValue?: any) {
+            function saveColor(this: any, hex?: any) {
+                b.options = setCardColorOption(b.options, option, hex);
+                saveField("options", b.options);
+                renderPreview();
+            }
+            var picker: any = colorField(id, value, saveColor);
+            var presetGrid: any = document.createElement("div");
+            presetGrid.style.cssText = "display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:5px;margin-top:7px;";
+            cardColorPresets.forEach(function (this: any, hex?: any) {
+                var swatch: any = document.createElement("button");
+                swatch.type = "button";
+                swatch.title = "#" + hex;
+                swatch.setAttribute("aria-label", "Set colour to #" + hex);
+                swatch.style.cssText = "height:24px;border:1px solid rgba(255,255,255,.35);border-radius:5px;background:#" + hex + ";cursor:pointer;";
+                swatch.addEventListener("click", function () {
+                    picker._syncColor(hex);
+                    saveColor(hex);
+                });
+                presetGrid.appendChild(swatch);
+            });
+            var control: any = document.createElement("div");
+            control.appendChild(picker);
+            control.appendChild(presetGrid);
+            var reset: any = createActionButton("sp-action-btn", "Use default");
+            reset.addEventListener("click", function () {
+                picker._syncColor(defaultValue);
+                saveColor("");
+            });
+            control.appendChild(reset);
+            return fieldWithControl(label, id, control);
+        }
+        cardAppearance.section.appendChild(createCardColorControl("Active colour", "card_on_color", cardOnColor, idPrefix + "card-on-color", defaultCardOnColor));
+        cardAppearance.section.appendChild(createCardColorControl("Background colour", "card_off_color", cardOffColor, idPrefix + "card-off-color", defaultCardOffColor));
+        panel.appendChild(cardAppearance.panel);
         groupCardSettingsFields(panel, idPrefix);
         var saveRow: any = document.createElement("div");
         saveRow.className = "sp-btn-row sp-btn-row--save";

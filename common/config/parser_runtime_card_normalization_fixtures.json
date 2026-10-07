@@ -78,5 +78,37 @@
       "precision": "text",
       "options": "state_labels,state_input=high,state_output=Please empty,state_input_2=low,state_output_2=Full"
     }
+  },
+  {
+    "name": "switch card colour overrides survive firmware normalization",
+    "input": "input_boolean.therapist;Therapist;Account;Auto;;;;;card_on_color=E91E63,card_off_color=3F51B5",
+    "canonical": "input_boolean.therapist;Therapist;Account;Auto;;;;;card_on_color=E91E63,card_off_color=3F51B5",
+    "expected": {
+      "entity": "input_boolean.therapist",
+      "label": "Therapist",
+      "icon": "Account",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "",
+      "precision": "",
+      "options": "card_on_color=E91E63,card_off_color=3F51B5"
+    }
+  },
+  {
+    "name": "sensor card colour override survives type option normalization",
+    "input": "sensor.office;Office;Gauge;Auto;binary_sensor.office;;sensor;text;active_color,card_on_color=00BCD4",
+    "canonical": "sensor.office;Office;Gauge;Auto;binary_sensor.office;;sensor;text;active_color,card_on_color=00BCD4",
+    "expected": {
+      "entity": "sensor.office",
+      "label": "Office",
+      "icon": "Gauge",
+      "icon_on": "Auto",
+      "sensor": "binary_sensor.office",
+      "unit": "",
+      "type": "sensor",
+      "precision": "text",
+      "options": "active_color,card_on_color=00BCD4"
+    }
   }
 ]

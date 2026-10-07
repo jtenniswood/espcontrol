@@ -188,7 +188,7 @@ Yes, when the Home Assistant climate entity exposes those capabilities. Range th
 
 ### Can I Choose a Different Background Colour for Every Card?
 
-The current interface uses a shared **Primary** colour for active cards and fixed colours for inactive and information cards. It does not offer arbitrary per-card background colours. Change the accent in [Appearance](/features/appearance).
+Yes. Open an individual card's settings and expand **Card Colours** to choose its active colour and background. Use one of the 16 presets or enter a custom colour. **Use default** makes that card inherit the panel's active colour and its usual background again. The shared active colour remains available in [Appearance](/features/appearance).
 
 ### Can I Send Blinds to 25, 50, or 75 Percent?
 

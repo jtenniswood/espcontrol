@@ -19,6 +19,14 @@ constexpr uint32_t correct_display_color(
   return (red << 16) | (green << 8) | blue;
 }
 
+constexpr uint32_t display_text_color_for_bg(uint32_t bg_color) {
+  const uint32_t red = (bg_color >> 16) & 0xFF;
+  const uint32_t green = (bg_color >> 8) & 0xFF;
+  const uint32_t blue = bg_color & 0xFF;
+  const uint32_t brightness = (red * 299 + green * 587 + blue * 114) / 1000;
+  return brightness > 186 ? 0x212121 : 0xFFFFFF;
+}
+
 constexpr uint32_t correct_display_color(uint32_t rgb) {
   return correct_display_color(
     rgb, COLOR_CORRECTION_RED_PERCENT, COLOR_CORRECTION_GREEN_PERCENT,

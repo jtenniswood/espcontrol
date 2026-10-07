@@ -10,7 +10,10 @@ import {
   serializeCompactSubpageConfig,
   serializeLegacySubpageConfig,
   setConfigOption,
+  setCardColorOption,
   setConfigOptionValue,
+  normalizedCardColorOptions,
+  withoutCardColorOptions,
   splitSubpageConfigChunks,
   trimConfigFields,
 } from "../../src/webserver/model";
@@ -51,6 +54,14 @@ export function runEncodingTests(): void {
   equal(configOptionValue(options, "confirm_message"), "Run, now?", "valued options round-trip reserved characters");
   options = setConfigOption(options, "confirm_on", false);
   equal(configOptionEnabled(options, "confirm_on"), false, "flag options can be disabled");
+
+  options = setConfigOptionValue(options, "large_numbers", "off");
+  options = setCardColorOption(options, "card_on_color", "#e91e63");
+  options = setCardColorOption(options, "card_off_color", "3f51b5");
+  equal(normalizedCardColorOptions(options), "card_on_color=E91E63,card_off_color=3F51B5", "card colours normalize to canonical hex values");
+  equal(withoutCardColorOptions(options), "active_color,confirm_message=Run%2C now?,large_numbers=off", "card colours can be separated before type-specific normalization");
+  options = setCardColorOption(options, "card_on_color", "invalid");
+  equal(normalizedCardColorOptions(options), "card_off_color=3F51B5", "invalid card colours are dropped safely");
 
   deepEqual(parseRawButtonConfig("light.kitchen;Kitchen;Lightbulb;Auto;;;;;active_color"), {
     entity: "light.kitchen",

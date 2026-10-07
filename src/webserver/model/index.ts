@@ -52,9 +52,12 @@ export {
   decodeConfigField,
   encodeConfigField,
   legacyButtonConfigSafe,
+  normalizedCardColorOptions,
+  setCardColorOption,
   setConfigOption,
   setConfigOptionValue,
   trimConfigFields,
+  withoutCardColorOptions,
 } from "./config_primitives";
 
 export {
