@@ -350,6 +350,21 @@ def test_v3_release_configuration() -> None:
     assert "esp32_c6_recovery.yaml" in recovery
 
 
+def test_jc4880p443_v3_configuration() -> None:
+    slug = "guition-esp32-p4-jc4880p443-v3"
+    device = (ROOT / "devices" / slug / "device" / "device.yaml").read_text(encoding="utf-8")
+    package = (ROOT / "devices" / slug / "packages.yaml").read_text(encoding="utf-8")
+    original = (ROOT / "devices" / "guition-esp32-p4-jc4880p443" / "device" / "device.yaml").read_text(encoding="utf-8")
+    assert "engineering_sample: false" in device and "cpu_frequency: 360MHz" in device
+    assert "engineering_sample: true" in original, "Original profile must still target older P4 silicon"
+    assert "mode: hex" in device and "model: JC4880P443" in device
+    assert "platform: gt911" in device and "frequency: 100kHz" in device
+    assert "artwork_image, mipi_dsi]" in device, "Production P4 requires the DSI clock fix"
+    assert "url: ${espcontrol_component_url}" in device and "ref: ${espcontrol_component_ref}" in device
+    for suffix in (".yaml", ".factory.yaml", ".recovery.yaml"):
+        assert (ROOT / "builds" / f"{slug}{suffix}").is_file()
+
+
 def test_public_api_encryption_policy(profile_slugs: list[str]) -> None:
     policy = PUBLIC_API_ENCRYPTION_PACKAGE.read_text(encoding="utf-8")
     assert policy == "api:\n  encryption: {}\n", (
@@ -994,6 +1009,7 @@ def main() -> int:
     test_s3_exposes_camera_and_media_cover_art(profiles)
     test_generated_yaml(profiles)
     test_v3_release_configuration()
+    test_jc4880p443_v3_configuration()
     test_public_api_encryption_policy(profile_slugs)
     test_ota_preserves_deployed_partition_layouts()
     test_upgrades_do_not_reset_saved_panel_config()

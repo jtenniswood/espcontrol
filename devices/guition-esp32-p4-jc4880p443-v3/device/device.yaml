@@ -1,0 +1,351 @@
+# =============================================================================
+# DEVICE - Guition ESP32-P4 JC4880P443 V3 hardware definition
+# =============================================================================
+# Pin assignments, peripherals, and platform config for the 4.3" touch panel.
+# Includes the ESP32-P4 main SoC, ESP32-C6 hosted WiFi co-processor, MIPI
+# DSI display, GT911 capacitive touchscreen, and backlight PWM.
+# =============================================================================
+
+substitutions:
+  espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
+  espcontrol_component_ref: "main"
+  mdi_font_file: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
+
+# ---------------------------------------------------------------------------
+# ESP32-P4 platform (16MB flash, ESP-IDF framework)
+# ---------------------------------------------------------------------------
+esp32:
+  variant: esp32p4
+  flash_size: 16MB
+  # SKU 10150002-V3 uses production P4 v3.x silicon.
+  cpu_frequency: 360MHz
+  engineering_sample: false
+  framework:
+    type: esp-idf
+    # stick to recommended version, currently 5.5.4, 55.03.39 with tool-esptoolpy 5.3.0. No issues
+    #version: 5.5.2
+    # pioarduino 55.03.38-1 pulls tool-esptoolpy 5.2.0, which can install
+    # incompletely in ESPHome containers and then fail while creating .bin files.
+    #platform_version: 55.03.37
+    advanced:
+      enable_idf_experimental_features: yes
+      execute_from_psram: true
+    sdkconfig_options:
+      # HTTPS firmware checks need more stack on ESP32-P4; the default main
+      # task stack can trip the stack protector during mbedTLS setup.
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
+      CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: "y"
+      # Native OTA can block loopTask while ESP-IDF erases the alternate app
+      # partition on this panel. Use the ESP-IDF maximum so the flash
+      # erase/prep step can finish before data upload continues.
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "60"
+      # ESPHome 2026.5 / ESP-IDF 5.5.2 can make ESP-Hosted preallocate a
+      # large internal DMA buffer pool before ESPHome starts. On P4 display
+      # builds this can fail with "HS_MP: mempool create failed: no mem" and
+      # trigger OTA rollback, so use dynamic buffers and keep hosted task
+      # stacks in PSRAM.
+      CONFIG_ESP_HOSTED_USE_MEMPOOL: "n"
+      CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM: "y"
+
+# ---------------------------------------------------------------------------
+# External component
+# ---------------------------------------------------------------------------
+external_components:
+  - source:
+      type: git
+      url: ${espcontrol_component_url}
+      ref: ${espcontrol_component_ref}
+      path: components
+    # Production P4 needs the silicon-aware DSI clock selection.
+    components: [espcontrol, web_server_idf, artwork_image, mipi_dsi]
+    refresh: 1s
+
+espcontrol:
+  id: espcontrol_app
+  panel_config:
+    device_profile: ${device_slug}
+    storage: card_images
+    button_order: button_order
+    button_on_color: button_on_color
+    buttons:
+      - config: button_1_config
+        subpage_chunks: [subpage_1_config, subpage_1_config_ext, subpage_1_config_ext_2, subpage_1_config_ext_3, subpage_1_config_ext_4, subpage_1_config_ext_5, subpage_1_config_ext_6, subpage_1_config_ext_7]
+      - config: button_2_config
+        subpage_chunks: [subpage_2_config, subpage_2_config_ext, subpage_2_config_ext_2, subpage_2_config_ext_3, subpage_2_config_ext_4, subpage_2_config_ext_5, subpage_2_config_ext_6, subpage_2_config_ext_7]
+      - config: button_3_config
+        subpage_chunks: [subpage_3_config, subpage_3_config_ext, subpage_3_config_ext_2, subpage_3_config_ext_3, subpage_3_config_ext_4, subpage_3_config_ext_5, subpage_3_config_ext_6, subpage_3_config_ext_7]
+      - config: button_4_config
+        subpage_chunks: [subpage_4_config, subpage_4_config_ext, subpage_4_config_ext_2, subpage_4_config_ext_3, subpage_4_config_ext_4, subpage_4_config_ext_5, subpage_4_config_ext_6, subpage_4_config_ext_7]
+      - config: button_5_config
+        subpage_chunks: [subpage_5_config, subpage_5_config_ext, subpage_5_config_ext_2, subpage_5_config_ext_3, subpage_5_config_ext_4, subpage_5_config_ext_5, subpage_5_config_ext_6, subpage_5_config_ext_7]
+      - config: button_6_config
+        subpage_chunks: [subpage_6_config, subpage_6_config_ext, subpage_6_config_ext_2, subpage_6_config_ext_3, subpage_6_config_ext_4, subpage_6_config_ext_5, subpage_6_config_ext_6, subpage_6_config_ext_7]
+# ---------------------------------------------------------------------------
+# ESPHome core (device name from substitutions)
+# ---------------------------------------------------------------------------
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  build_flags:
+    - "-Wno-deprecated-declarations"
+    - "-DESPCONTROL_MAX_GRID_SLOTS=6"
+    # Force cached ESPHome objects to rebuild after the 2026.5
+    # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
+    - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
+    # Separate marker for the JC4880P443 boot-loop fix so ESPHome cannot
+    # silently reuse the earlier 09:02 build that still crashes.
+    - "-DESPCONTROL_JC4880P443_BOOTFIX_20260522=1"
+    # Rebuild marker for the JC4880P443 OTA flash erase watchdog increase.
+    - "-DESPCONTROL_JC4880P443_OTA_WDT_20260522=1"
+    # Keep the ESP-IDF header warning suppressed without warning on C sources.
+    - "-Wno-literal-suffix"
+    - "-Wno-complain-wrong-lang"
+  on_boot:
+    - priority: 260
+      then:
+        - if:
+            condition:
+              lambda: |-
+                #ifdef USE_ESP32_CRASH_HANDLER
+                return esphome::esp32::crash_handler_has_data();
+                #else
+                return false;
+                #endif
+            then:
+              - lambda: |-
+                  #ifdef USE_ESP32_CRASH_HANDLER
+                  esphome::esp32::crash_handler_clear();
+                  #endif
+                  global_preferences->sync();
+                  ESP_LOGW("jc4880p443", "Cleared saved crash report before API logging; rebooting once while preserving the failed-boot counter");
+              - delay: 500ms
+              - lambda: |-
+                  // Avoid safe_reboot(): its safe-mode shutdown hook clears
+                  // the failed-boot counter before the replacement boot.
+                  App.reboot();
+    - priority: 250
+      then:
+        - lambda: |-
+            ESP_LOGI("jc4880p443", "Bootfix marker 2026-05-22 active");
+    - priority: -100
+      then:
+        - lambda: 'id(screen_rotation_ready) = true;'
+        - script.execute: apply_screen_rotation
+
+# ---------------------------------------------------------------------------
+# ESP32-C6 co-processor (provides WiFi/BLE via SDIO)
+# ---------------------------------------------------------------------------
+esp32_hosted:
+  active_high: true
+  variant: ESP32C6
+  reset_pin: GPIO54
+  cmd_pin: GPIO19
+  clk_pin: GPIO18
+  d0_pin: GPIO14
+  d1_pin: GPIO15
+  d2_pin: GPIO16
+  d3_pin: GPIO17
+  # Use the lower SDIO clock for reliable ESP32-C6 communication across
+  # production panels; camera transfers remain supported at this speed.
+  sdio_frequency: 20MHz
+
+# ---------------------------------------------------------------------------
+# PSRAM (video frame buffer memory)
+# ---------------------------------------------------------------------------
+psram:
+  mode: hex
+  speed: 200MHz
+
+# ---------------------------------------------------------------------------
+# OTA updates (ESPHome native + HTTP-based)
+# ---------------------------------------------------------------------------
+ota:
+  - platform: esphome
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+    on_error:
+      then:
+        - script.execute: show_update_failed
+  - platform: http_request
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+    on_error:
+      then:
+        - script.execute: show_update_failed
+
+safe_mode:
+  id: jc4880p443_safe_mode
+
+# ---------------------------------------------------------------------------
+# Shared infrastructure (API, logging, web server, restart button)
+# ---------------------------------------------------------------------------
+packages:
+  core_infra: !include ../../../common/device/core_infra.yaml
+
+# ---------------------------------------------------------------------------
+# Power management (LDO channel for DSI PHY)
+# ---------------------------------------------------------------------------
+esp_ldo:
+  - channel: 3
+    voltage: 2.5V
+
+# ---------------------------------------------------------------------------
+# Backlight (LEDC PWM output + monochromatic light entity)
+# ---------------------------------------------------------------------------
+output:
+  - platform: ledc
+    pin: GPIO23
+    id: gpio_backlight_pwm
+    frequency: 100Hz
+    inverted: false
+    min_power: 0.0
+    max_power: 0.8
+
+light:
+  - platform: monochromatic
+    output: gpio_backlight_pwm
+    name: Display Backlight
+    icon: mdi:lightbulb-on
+    id: display_backlight
+    restore_mode: RESTORE_DEFAULT_ON
+    default_transition_length: 0s
+    gamma_correct: 1.0
+    on_turn_on:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                return (id(espcontrol_app).display().target_source_is(
+                            espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
+                        id(espcontrol_app).display().target_mode_is(
+                            espcontrol::DisplayMode::DISPLAY_OFF)) ||
+                       screen_schedule_waiting_for_time(
+                         id(screen_schedule_trigger).state,
+                         id(schedule_enabled).state,
+                         now.is_valid());
+            then:
+              - script.execute: backlight_force_display_off
+            else:
+              - if:
+                  condition:
+                    lambda: |-
+                      return id(espcontrol_app).display().current_mode_is(
+                          espcontrol::DisplayMode::DISPLAY_OFF);
+                  then:
+                    - script.execute: screensaver_wake
+    on_turn_off:
+      then:
+        - script.execute: display_backlight_handle_off
+    on_state:
+      then:
+        - script.execute: display_backlight_handle_state
+
+# ---------------------------------------------------------------------------
+# I2C bus and touchscreen (GT911 capacitive, wakes screensaver on touch)
+# ---------------------------------------------------------------------------
+i2c:
+  id: bus_a
+  sda: GPIO7
+  scl: GPIO8
+  scan: false
+  # The manufacturer P4_V3X_DEMO uses GT911 at 100kHz.
+  frequency: 100kHz
+
+touchscreen:
+  - platform: gt911
+    id: my_touchscreen
+    display: my_display
+    on_touch:
+      - script.execute: cover_art_handle_touch
+
+# ---------------------------------------------------------------------------
+# Display (4.3" 480x800 MIPI DSI panel)
+# ---------------------------------------------------------------------------
+display:
+  - platform: mipi_dsi
+    id: my_display
+    # Manufacturer P4_V3X_DEMO: ST7701, GPIO5 reset, 34MHz PCLK,
+    # 500Mbps / two lanes. The bundled model matches its init sequence.
+    model: JC4880P443
+    update_interval: never
+    auto_clear_enabled: false
+
+# ---------------------------------------------------------------------------
+# LVGL base (display binding, must be before any page definitions)
+# ---------------------------------------------------------------------------
+lvgl:
+  id: main_lvgl
+  buffer_size: 100%
+  displays: my_display
+  rotation: 180
+  byte_order: little_endian
+  touchscreens:
+    - touchscreen_id: my_touchscreen
+      long_press_time: 3s
+
+script:
+  - id: apply_screen_rotation
+    then:
+      - if:
+          condition:
+            lambda: 'return id(screen_rotation_select).current_option() == "90";'
+          then:
+            - lvgl.display.set_rotation: 270
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(screen_rotation_select).current_option() == "180";'
+                then:
+                  - lvgl.display.set_rotation: 0
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(screen_rotation_select).current_option() == "270";'
+                      then:
+                        - lvgl.display.set_rotation: 90
+                      else:
+                        - lvgl.display.set_rotation: 180
+      - script.execute: cover_art_apply_responsive_layout
+      - script.execute: camera_screensaver_request_image
+
+select:
+  - platform: template
+    name: "${entity_screen_rotation}"
+    internal: true
+    disabled_by_default: true
+    id: screen_rotation_select
+    entity_category: config
+    icon: "mdi:screen-rotation"
+    optimistic: true
+    restore_value: true
+    initial_option: "180"
+    options:
+      - "0"
+      - "90"
+      - "180"
+      - "270"
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(screen_rotation_ready);'
+            then:
+              - script.execute: apply_screen_rotation
+              - script.execute: refresh_button_grid

@@ -64,10 +64,6 @@
       <div v-if="!selected" class="installer-status">
         Choose your display and hardware version above to enable USB installation.
       </div>
-      <div v-else-if="selected.unsupported" class="installer-status warning">
-        The 4.3-inch JC4880P443 V3 (ESP32-P4 v3.x) is not supported yet.
-        Do not install the original-panel firmware on this revision.
-      </div>
       <div v-else-if="!checked" class="installer-status">
         Preparing installer...
       </div>
@@ -187,9 +183,8 @@ const devices = [
       {
         slug: 'guition-esp32-p4-jc4880p443-v3',
         number: 3,
-        label: 'V3 — Not yet supported',
-        revision: 'ESP32-P4 v3.x production silicon; firmware support is pending',
-        unsupported: true
+        label: 'V3 — Production silicon',
+        revision: 'SKU 10150002-V3; ESP32-P4 v3.x chip (including v3.2)'
       }
     ]
   },
@@ -254,7 +249,7 @@ const manifestAvailable = ref(false)
 const loadError = ref('')
 let manifestRequest = 0
 
-const manifestUrl = computed(() => selected.value && !selected.value.unsupported
+const manifestUrl = computed(() => selected.value
   ? withBase(`/firmware/${selected.value.slug}/manifest.json`)
   : '')
 

@@ -74,6 +74,30 @@
       "subpages": true
     },
     {
+      "slug": "guition-esp32-p4-jc4880p443-v3",
+      "installSlug": "guition-esp32-p4-jc4880p443-v3",
+      "name": "Guition JC4880P443 V3 (production silicon)",
+      "docsPath": "/screens/jc4880p443-v3",
+      "screenSize": "4.3 inches",
+      "resolution": "480 x 800",
+      "orientation": "Portrait",
+      "slots": 6,
+      "imageSlots": 6,
+      "imageCardTypes": [
+        "image",
+        "media_cover_art"
+      ],
+      "grid": {
+        "rows": 3,
+        "cols": 2
+      },
+      "chipFamily": "ESP32-P4",
+      "relays": 0,
+      "rotation": true,
+      "ethernetManualInstall": false,
+      "subpages": true
+    },
+    {
       "slug": "guition-esp32-p4-jc8012p4a1",
       "installSlug": "guition-esp32-p4-jc8012p4a1",
       "name": "Guition JC8012P4A1",

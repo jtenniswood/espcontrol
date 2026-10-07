@@ -211,6 +211,7 @@ def check_build(dist):
         '4848s040': ('4848s040#card-grid', '4848s040'),
         'jc1060p470': ('jc1060p470#card-grid', 'jc1060p470-v1'),
         'jc1060p470-v2': ('jc1060p470#card-grid', 'jc1060p470-v2'),
+        'jc4880p443-v3': ('jc4880p443#card-grid', 'jc4880p443-v3'),
         'jc4880p443': ('jc4880p443#card-grid', 'jc4880p443'),
         'jc8012p4a1': ('jc8012p4a1', 'jc8012p4a1-v1'),
         'jc8012p4a1-v2': ('jc8012p4a1', 'jc8012p4a1-v2'),
