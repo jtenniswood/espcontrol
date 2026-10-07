@@ -124,6 +124,49 @@ inline void subscribe_sensor_value(lv_obj_t *sensor_lbl, const std::string &sens
   );
 }
 
+// Optional small value shown below a card's main label. This shares the normal
+// HA state channel and is independent of the card's primary data.
+inline void subscribe_secondary_card_value(const BtnSlot &slot,
+                                           const ParsedCfg &config) {
+  if (!slot.secondary_lbl) return;
+  const bool supported = config.type.empty() || config.type == "sensor" ||
+                         config.type == "climate_control";
+  const std::string entity = cfg_option_value(config.options, "secondary_entity");
+  if (!supported || entity.empty()) return;
+  const std::string prefix = cfg_option_value(config.options, "secondary_prefix");
+  const std::string unit = trim_display_unit(
+    cfg_option_value(config.options, "secondary_unit"));
+  lv_obj_clear_flag(slot.secondary_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_set_width(slot.secondary_lbl, lv_pct(100));
+  lv_label_set_long_mode(slot.secondary_lbl, LV_LABEL_LONG_DOT);
+  lv_obj_align(slot.secondary_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+  const lv_font_t *label_font = slot.text_lbl
+    ? lv_obj_get_style_text_font(slot.text_lbl, LV_PART_MAIN) : nullptr;
+  const lv_coord_t label_height = label_font && label_font->line_height > 0
+    ? label_font->line_height : 16;
+  if (slot.text_lbl) {
+    lv_obj_align(slot.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, -label_height - 2);
+    lv_obj_move_foreground(slot.text_lbl);
+  }
+  lv_obj_move_foreground(slot.secondary_lbl);
+  lv_label_set_display_text(slot.secondary_lbl, "—");
+  ha_subscribe_state(
+    entity,
+    std::function<void(esphome::StringRef)>(
+      [label = slot.secondary_lbl, prefix, unit](esphome::StringRef state) {
+        if (ha_state_unavailable_ref(state)) {
+          lv_label_set_display_text(label, "—");
+          return;
+        }
+        std::string text;
+        if (!prefix.empty()) text = prefix + ": ";
+        text.append(state.c_str(), state.size());
+        text += unit;
+        lv_label_set_display_text(label, text.c_str());
+      })
+  );
+}
+
 inline void apply_time_sensor_value(TimeSensorCtx *ctx) {
   if (!ctx || !ctx->sensor_lbl) return;
   if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, "");

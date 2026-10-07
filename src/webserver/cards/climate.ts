@@ -22,7 +22,7 @@ export function registerClimateCardTypes(
     renderQueue: ButtonSettingsRenderQueueFeature,
     fields: ControlsFieldsFeature,
 ): void {
-    const { cardBadgeLabelHtml, cardSensorPreviewHtml, condField } = fields;
+    const { cardBadgeLabelHtml, cardSensorPreviewHtml, condField, renderSecondaryDataFields, secondaryDataPreviewHtml } = fields;
     const { temperatureUnitSymbol } = clockBar;
     const {
         climateControlTabDefinitions,
@@ -148,6 +148,7 @@ export function registerClimateCardTypes(
             }
             var cardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "climate-card-settings", false);
             var cardSettings: any = cardSettingsDisclosure.section;
+            renderSecondaryDataFields(cardSettings, b, helpers);
             helpers.renderCardSegmentControl(cardSettings, b, helpers, {
                 segment: Object.assign({}, CLIMATE_CARD_METADATA.numberDisplay, {
                     value: function (this: any) { return climateNumberDisplayMode(b); },
@@ -251,7 +252,7 @@ export function registerClimateCardTypes(
                 label = targetVal + unit;
             }
             function climateLabelHtml(this: any) {
-                return cardBadgeLabelHtml(helpers, label, CLIMATE_CARD_METADATA.preview.badge);
+                return cardBadgeLabelHtml(helpers, label, CLIMATE_CARD_METADATA.preview.badge) + secondaryDataPreviewHtml(b, helpers);
             }
             if (numberMode === "icon") {
                 var iconName: any = b.icon && b.icon !== "Auto" ? b.icon : "Thermostat";

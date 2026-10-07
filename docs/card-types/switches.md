@@ -25,6 +25,7 @@ Use [Action](/card-types/actions) for Home Assistant button entities, [Media](/c
 5. Choose an **On Icon** if you want a different icon while the entity is active.
 6. Optionally turn on **Active Display** if the card should show a live sensor value or text state while active.
 7. Optionally turn on **Confirmation Required** if turning this device on or off by accident would be a problem.
+8. Optionally set a **Secondary Data Entity** to show another sensor below the card label, with an optional prefix and unit.
 
 ## How It Works on the Panel
 

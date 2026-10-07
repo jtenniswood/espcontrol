@@ -53,6 +53,15 @@ button:
         text: !lambda 'return std::string(espcontrol_i18n("Configure"));'
         long_mode: wrap
         width: 100%
+    # Optional second entity value shown beneath the card's label.
+    - label:
+        align: bottom_left
+        id: button_${num}_secondary_label
+        text: ""
+        text_opa: 70%
+        long_mode: dot
+        width: 100%
+        hidden: true
     # Subpage marker (shown only for subpage cards by the shared grid code)
     - label:
         text_font: $subpage_chevron_font

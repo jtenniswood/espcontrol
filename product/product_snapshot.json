@@ -2473,6 +2473,24 @@
         ],
         "options": [
           {
+            "name": "secondary_entity",
+            "label": "Secondary Data Entity",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
+            "name": "secondary_prefix",
+            "label": "Secondary Data Prefix",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
+            "name": "secondary_unit",
+            "label": "Secondary Data Unit",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
             "name": "large_numbers",
             "label": "Large Active Display Numbers",
             "kind": "flag",
@@ -2575,7 +2593,10 @@
             "confirm_on",
             "confirm_message",
             "confirm_yes",
-            "confirm_no"
+            "confirm_no",
+            "secondary_entity",
+            "secondary_prefix",
+            "secondary_unit"
           ],
           "optionHook": "normalize_switch_options"
         },
@@ -3428,6 +3449,24 @@
         ],
         "options": [
           {
+            "name": "secondary_entity",
+            "label": "Secondary Data Entity",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
+            "name": "secondary_prefix",
+            "label": "Secondary Data Prefix",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
+            "name": "secondary_unit",
+            "label": "Secondary Data Unit",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
             "name": "label_display",
             "label": "Label Display",
             "kind": "choice",
@@ -3512,7 +3551,10 @@
             "label_display",
             "number_display",
             "temperature_step",
-            "large_numbers"
+            "large_numbers",
+            "secondary_entity",
+            "secondary_prefix",
+            "secondary_unit"
           ],
           "optionHook": "normalize_climate_options"
         },
@@ -3550,6 +3592,24 @@
           "climate"
         ],
         "options": [
+          {
+            "name": "secondary_entity",
+            "label": "Secondary Data Entity",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
+            "name": "secondary_prefix",
+            "label": "Secondary Data Prefix",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
+            "name": "secondary_unit",
+            "label": "Secondary Data Unit",
+            "kind": "text",
+            "omitDefault": true
+          },
           {
             "name": "label_display",
             "label": "Label Display",
@@ -3643,7 +3703,10 @@
             "number_display",
             "temperature_step",
             "large_numbers",
-            "climate_tabs"
+            "climate_tabs",
+            "secondary_entity",
+            "secondary_prefix",
+            "secondary_unit"
           ],
           "optionHook": "normalize_climate_options"
         },
@@ -5420,6 +5483,24 @@
         ],
         "options": [
           {
+            "name": "secondary_entity",
+            "label": "Secondary Data Entity",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
+            "name": "secondary_prefix",
+            "label": "Secondary Data Prefix",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
+            "name": "secondary_unit",
+            "label": "Secondary Data Unit",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
             "name": "large_numbers",
             "label": "Large Sensor Numbers",
             "kind": "flag",
@@ -5628,6 +5709,9 @@
           },
           "unknownOptions": "drop",
           "canonicalOptionOrder": [
+            "secondary_entity",
+            "secondary_prefix",
+            "secondary_unit",
             "large_numbers",
             "time_unit",
             "active_color",

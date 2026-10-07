@@ -292,7 +292,7 @@ inline void apply_card_label_line_clamp(lv_obj_t *label, const GridConfig &cfg,
 
 inline bool card_slot_static_child(const BtnSlot &s, lv_obj_t *child) {
   return child == s.icon_lbl || child == s.sensor_container ||
-         child == s.text_lbl || child == s.subpage_lbl;
+         child == s.text_lbl || child == s.secondary_lbl || child == s.subpage_lbl;
 }
 
 inline void reset_card_slot_dynamic_children(BtnSlot &s) {
@@ -308,6 +308,10 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
     lv_obj_set_style_bg_opa(s.text_lbl, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_pad_all(s.text_lbl, 0, LV_PART_MAIN);
     lv_obj_set_style_radius(s.text_lbl, 0, LV_PART_MAIN);
+  }
+  if (s.secondary_lbl) {
+    lv_label_set_display_text(s.secondary_lbl, "");
+    lv_obj_add_flag(s.secondary_lbl, LV_OBJ_FLAG_HIDDEN);
   }
   int32_t count = static_cast<int32_t>(lv_obj_get_child_cnt(s.btn));
   for (int32_t i = count - 1; i >= 0; i--) {
@@ -906,6 +910,29 @@ inline void refresh_slider_card_layout(BtnSlot &s) {
   if (slider) slider_refresh_geometry(slider);
 }
 
+inline void refresh_secondary_card_label_layout(BtnSlot &slot,
+                                                const ParsedCfg &config) {
+  if (!slot.secondary_lbl) return;
+  const bool supported = config.type.empty() || config.type == "sensor" ||
+                         config.type == "climate_control";
+  if (!supported || cfg_option_value(config.options, "secondary_entity").empty()) {
+    lv_obj_add_flag(slot.secondary_lbl, LV_OBJ_FLAG_HIDDEN);
+    return;
+  }
+  lv_obj_clear_flag(slot.secondary_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_set_width(slot.secondary_lbl, lv_pct(100));
+  lv_label_set_long_mode(slot.secondary_lbl, LV_LABEL_LONG_DOT);
+  lv_obj_align(slot.secondary_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+  const lv_font_t *font = slot.text_lbl
+    ? lv_obj_get_style_text_font(slot.text_lbl, LV_PART_MAIN) : nullptr;
+  const lv_coord_t height = font && font->line_height > 0 ? font->line_height : 16;
+  if (slot.text_lbl) {
+    lv_obj_align(slot.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, -height - 2);
+    lv_obj_move_foreground(slot.text_lbl);
+  }
+  lv_obj_move_foreground(slot.secondary_lbl);
+}
+
 inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
                                 const GridConfig &cfg,
                                 int row_span = 1,
@@ -921,6 +948,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   display_apply_main_width(s.icon_lbl, display);
   control_modal_register_card_label(s);
   display_apply_slot_text_width(s, display);
+  refresh_secondary_card_label_layout(s, p);
   if (espcontrol::cards::navigation_driver_refresh_layout(
         s, p, context, cfg)) return;
 
@@ -928,7 +956,10 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
         s, p, context)) return;
 
   if (espcontrol::cards::climate_control_driver_refresh_layout(
-        s, p, context, display, row_span, col_span)) return;
+        s, p, context, display, row_span, col_span)) {
+    refresh_secondary_card_label_layout(s, p);
+    return;
+  }
 
   if (espcontrol::cards::image_driver_refresh_layout(
         s, p, context)) {
@@ -1937,6 +1968,7 @@ inline void grid_phase2(
     int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
     if (cfg.info_only && info_only_hidden_card_type(context)) continue;
     navigation_register_home_target(idx, pos, p.label, scfg, s.btn);
+    subscribe_secondary_card_value(s, p);
     if (espcontrol::cards::image_driver_bind_main(
           s, p, context, cfg)) continue;
     if (espcontrol::cards::wifi_qr_driver_bind_main(s, p, context)) continue;
@@ -2169,6 +2201,7 @@ inline void grid_phase2(
       // cards remove button padding so their fill can reach the edges, so run
       // the card-specific refresh after clamping to restore the captured inset.
       refresh_card_layout(sub_slot, sb_cfg, cfg, rs, cs);
+      subscribe_secondary_card_value(sub_slot, sb_cfg);
 
       if (espcontrol::cards::image_driver_bind_subpage(
             sub_slot, sb_cfg, context, cfg)) continue;

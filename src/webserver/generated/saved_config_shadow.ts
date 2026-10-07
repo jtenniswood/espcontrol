@@ -101,6 +101,9 @@ export const SAVED_CONFIG_SHADOW_PILOT_POLICIES: Readonly<Record<string, CardNor
     },
     "unknownOptions": "drop",
     "canonicalOptionOrder": [
+      "secondary_entity",
+      "secondary_prefix",
+      "secondary_unit",
       "large_numbers",
       "time_unit",
       "active_color",

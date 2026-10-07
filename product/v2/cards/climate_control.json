@@ -5,6 +5,9 @@
   "hidden": true,
   "domains": ["climate"],
   "options": [
+    { "name": "secondary_entity", "label": "Secondary Data Entity", "kind": "text", "omitDefault": true },
+    { "name": "secondary_prefix", "label": "Secondary Data Prefix", "kind": "text", "omitDefault": true },
+    { "name": "secondary_unit", "label": "Secondary Data Unit", "kind": "text", "omitDefault": true },
     { "name": "label_display", "label": "Label Display", "kind": "choice", "values": ["label", "status", "actual", "target"], "defaultValue": "label", "omitDefault": true },
     { "name": "number_display", "label": "Icon & Temperatures", "kind": "choice", "values": ["icon", "actual", "target"], "defaultValue": "target", "omitDefault": true },
     { "name": "temperature_step", "label": "Temperature Step", "kind": "choice", "values": ["1", "0.5"], "defaultValue": "1", "omitDefault": true },
@@ -22,7 +25,7 @@
       "options": { "policy": "hook", "hook": "normalize_climate_options" }
     },
     "unknownOptions": "drop",
-    "canonicalOptionOrder": ["label_display", "number_display", "temperature_step", "large_numbers", "climate_tabs"],
+    "canonicalOptionOrder": ["label_display", "number_display", "temperature_step", "large_numbers", "climate_tabs", "secondary_entity", "secondary_prefix", "secondary_unit"],
     "optionHook": "normalize_climate_options"
   },
   "behavior": {

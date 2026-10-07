@@ -7,6 +7,9 @@
     "text_sensor"
   ],
   "options": [
+    { "name": "secondary_entity", "label": "Secondary Data Entity", "kind": "text", "omitDefault": true },
+    { "name": "secondary_prefix", "label": "Secondary Data Prefix", "kind": "text", "omitDefault": true },
+    { "name": "secondary_unit", "label": "Secondary Data Unit", "kind": "text", "omitDefault": true },
     {
       "name": "large_numbers",
       "label": "Large Sensor Numbers",
@@ -216,6 +219,9 @@
     },
     "unknownOptions": "drop",
     "canonicalOptionOrder": [
+      "secondary_entity",
+      "secondary_prefix",
+      "secondary_unit",
       "large_numbers",
       "time_unit",
       "active_color",

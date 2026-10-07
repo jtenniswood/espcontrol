@@ -324,7 +324,7 @@ def button_slot_macro() -> str:
     return (
         "#define BTN_SLOT(n) { button_##n##_config, button_##n, button_##n##_icon_label, "
         "button_##n##_text_label, button_##n##_sensor_container, button_##n##_sensor_label, "
-        "button_##n##_unit_label, button_##n##_subpage_label }"
+        "button_##n##_unit_label, button_##n##_secondary_label, button_##n##_subpage_label }"
     )
 
 

@@ -20,7 +20,7 @@ export function registerSensorCardTypes(
     cardUi: CardUiServices,
 ): void {
     const { renderButtonSettings } = cardUi;
-    const { cardBadgeLabelHtml, cardSensorPreviewHtml, condField, toggleRow } = fields;
+    const { cardBadgeLabelHtml, cardSensorPreviewHtml, condField, toggleRow, renderSecondaryDataFields, secondaryDataPreviewHtml } = fields;
     const {
         sensorCardLocalSource: SENSOR_CARD_LOCAL_SENSOR,
         sensorCardModeController,
@@ -132,6 +132,7 @@ export function registerSensorCardTypes(
                 renderSensorLocalSettings(panel, b, slot, helpers);
                 return;
             }
+            renderSecondaryDataFields(panel, b, helpers);
             var displayMode: any = sensorCardModeController().displayMode(b);
             var isTextMode: any = displayMode === "text";
             var modeField: any = helpers.renderCardModeSelector(panel, b, helpers, {
@@ -358,7 +359,7 @@ export function registerSensorCardTypes(
                     : "1h";
                 return {
                     iconHtml: cardSensorPreviewHtml(b, helpers, timeValue, ""),
-                    labelHtml: cardBadgeLabelHtml(helpers, b.label || b.sensor || "Sensor", SENSOR_CARD_METADATA.preview.numericBadge),
+                labelHtml: cardBadgeLabelHtml(helpers, b.label || b.sensor || "Sensor", SENSOR_CARD_METADATA.preview.numericBadge) + secondaryDataPreviewHtml(b, helpers),
                 };
             }
             var label: any = b.label || b.sensor || "Sensor";
@@ -367,7 +368,7 @@ export function registerSensorCardTypes(
             var sampleVal: any = (0).toFixed(prec);
             return {
                 iconHtml: cardSensorPreviewHtml(b, helpers, sampleVal, unit),
-                labelHtml: cardBadgeLabelHtml(helpers, label, SENSOR_CARD_METADATA.preview.numericBadge),
+                labelHtml: cardBadgeLabelHtml(helpers, label, SENSOR_CARD_METADATA.preview.numericBadge) + secondaryDataPreviewHtml(b, helpers),
             };
         },
     });

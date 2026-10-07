@@ -364,6 +364,14 @@ inline BtnSlot create_dynamic_card_slot(lv_obj_t *btn,
   lv_obj_align(slot.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
   configure_button_label_wrap(slot.text_lbl);
 
+  slot.secondary_lbl = lv_label_create(btn);
+  if (label_font) lv_obj_set_style_text_font(slot.secondary_lbl, label_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(slot.secondary_lbl, text_color, LV_PART_MAIN);
+  lv_obj_set_style_text_opa(slot.secondary_lbl, LV_OPA_70, LV_PART_MAIN);
+  lv_label_set_display_text(slot.secondary_lbl, "");
+  lv_obj_align(slot.secondary_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+  lv_obj_add_flag(slot.secondary_lbl, LV_OBJ_FLAG_HIDDEN);
+
   slot.subpage_lbl = lv_label_create(btn);
   const lv_font_t *chevron_font = subpage_icon_font ? subpage_icon_font : icon_font;
   if (chevron_font) lv_obj_set_style_text_font(slot.subpage_lbl, chevron_font, LV_PART_MAIN);
