@@ -18,7 +18,7 @@ These are the standard home-screen layouts. A larger card occupies several slots
 | Screen and installation guide | Processor | Resolution and default layout | Home slots | Shared image slots |
 |---|---|---|---:|---:|
 | [4-inch Guition 4848S040](/screens/4848s040) | ESP32-S3 | 480 × 480, square | 9 | 2 |
-| [4.3-inch Guition JC4880P443](/screens/jc4880p443) | ESP32-P4 | 480 × 800, portrait | 6 | 6 |
+| 4.3-inch Guition JC4880P443 ([original](/screens/jc4880p443) / [V3](/screens/jc4880p443-v3)) | ESP32-P4 | 480 × 800, portrait | 6 | 6 |
 | [4-inch P4 86 Panel, ETH-2RO](/screens/p4-86) | ESP32-P4 | 720 × 720, square | 9 | 6 |
 | [7-inch Guition JC1060P470](/screens/jc1060p470) | ESP32-P4 | 1024 × 600, landscape | 15 | 6 |
 | [10.1-inch Guition JC8012P4A1](/screens/jc8012p4a1) | ESP32-P4 | 1280 × 800, landscape | 20 | 6 |

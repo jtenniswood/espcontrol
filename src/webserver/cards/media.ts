@@ -862,7 +862,8 @@ export function registerMediaCardTypes(
                 var coverArtColor: any = WEB_UI_COLORS.tertiary;
                 if (mediaCoverArtDetailsEnabled(b)) {
                     var singleCoverArtCard: any = ((helpers && helpers.cardSize) || CARD_SIZE_SINGLE) === CARD_SIZE_SINGLE;
-                    var controlFontClass: any = deviceId === "guition-esp32-p4-jc4880p443"
+                    var controlFontClass: any = (deviceId === "guition-esp32-p4-jc4880p443" ||
+                        deviceId === "guition-esp32-p4-jc4880p443-v3")
                         ? " sp-media-cover-control-fonts"
                         : "";
                     return {

@@ -105,7 +105,14 @@ const devices = [
     name: 'JC4880P443',
     size: '4.3 in',
     detail: '480 × 800 portrait',
-    warning: 'Only for the original JC4880P443 with ESP32-P4 silicon below v3.0. The 4.3-inch SKU V3 / v3.x chip is not supported; do not use this recovery image on it.',
+    warning: 'Only for the original JC4880P443 with ESP32-P4 silicon below v3.0. For SKU V3 / v3.x chips, select the separate JC4880P443 V3 recovery image.',
+  },
+  {
+    slug: 'guition-esp32-p4-jc4880p443-v3',
+    name: 'JC4880P443 V3',
+    size: '4.3 in',
+    detail: 'SKU 10150002-V3; ESP32-P4 v3.x',
+    warning: 'Only for the JC4880P443 V3 with ESP32-P4 v3.x production silicon. Use the original profile for chips below v3.0.',
   },
   {
     slug: 'esp32-p4-86',

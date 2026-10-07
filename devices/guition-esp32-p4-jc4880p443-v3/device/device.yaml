@@ -1,9 +1,9 @@
 # =============================================================================
-# DEVICE - Guition ESP32-P4 JC1060P470 hardware definition
+# DEVICE - Guition ESP32-P4 JC4880P443 V3 hardware definition
 # =============================================================================
-# Pin assignments, peripherals, and platform config for the 7" touch panel.
-# Includes the ESP32-P4 main SoC, MIPI DSI display, GT911 capacitive
-# touchscreen, and backlight PWM.
+# Pin assignments, peripherals, and platform config for the 4.3" touch panel.
+# Includes the ESP32-P4 main SoC, ESP32-C6 hosted WiFi co-processor, MIPI
+# DSI display, GT911 capacitive touchscreen, and backlight PWM.
 # =============================================================================
 
 substitutions:
@@ -17,8 +17,9 @@ substitutions:
 esp32:
   variant: esp32p4
   flash_size: 16MB
-  cpu_frequency: 360MHZ
-  engineering_sample: true
+  # SKU 10150002-V3 uses production P4 v3.x silicon.
+  cpu_frequency: 360MHz
+  engineering_sample: false
   framework:
     type: esp-idf
     # stick to recommended version, currently 5.5.4, 55.03.39 with tool-esptoolpy 5.3.0. No issues
@@ -27,17 +28,9 @@ esp32:
     # incompletely in ESPHome containers and then fail while creating .bin files.
     #platform_version: 55.03.37
     advanced:
-      enable_idf_experimental_features: true
+      enable_idf_experimental_features: yes
       execute_from_psram: true
-      disable_vfs_support_termios: false
-      disable_vfs_support_select: false
-      disable_vfs_support_dir: false
     sdkconfig_options:
-      CONFIG_SDMMC_HOST_DEFAULT: "y"
-      # Eight API clients add five sockets above ESPHome's three-client
-      # baseline. Reserve those five explicitly on top of the generated
-      # 14-socket web, artwork, mDNS, OTA, and API budget.
-      CONFIG_LWIP_MAX_SOCKETS: "19"
       # HTTPS firmware checks need more stack on ESP32-P4; the default main
       # task stack can trip the stack protector during mbedTLS setup.
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
@@ -53,8 +46,6 @@ esp32:
       # stacks in PSRAM.
       CONFIG_ESP_HOSTED_USE_MEMPOOL: "n"
       CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM: "y"
-      CONFIG_FREERTOS_THREAD_LOCAL_STORAGE_POINTERS: "1"
-      CONFIG_LOG_DEFAULT_LEVEL: "2"
 
 # ---------------------------------------------------------------------------
 # External component
@@ -65,15 +56,15 @@ external_components:
       url: ${espcontrol_component_url}
       ref: ${espcontrol_component_ref}
       path: components
-    components: [espcontrol, web_server_idf, artwork_image]
+    # Production P4 needs the silicon-aware DSI clock selection.
+    components: [espcontrol, web_server_idf, artwork_image, mipi_dsi]
     refresh: 1s
 
 espcontrol:
   id: espcontrol_app
-  # The native document is imported from these restored entities on first boot.
-  # The legacy entities remain live during the compatibility releases.
   panel_config:
     device_profile: ${device_slug}
+    storage: card_images
     button_order: button_order
     button_on_color: button_on_color
     buttons:
@@ -89,24 +80,6 @@ espcontrol:
         subpage_chunks: [subpage_5_config, subpage_5_config_ext, subpage_5_config_ext_2, subpage_5_config_ext_3, subpage_5_config_ext_4, subpage_5_config_ext_5, subpage_5_config_ext_6, subpage_5_config_ext_7]
       - config: button_6_config
         subpage_chunks: [subpage_6_config, subpage_6_config_ext, subpage_6_config_ext_2, subpage_6_config_ext_3, subpage_6_config_ext_4, subpage_6_config_ext_5, subpage_6_config_ext_6, subpage_6_config_ext_7]
-      - config: button_7_config
-        subpage_chunks: [subpage_7_config, subpage_7_config_ext, subpage_7_config_ext_2, subpage_7_config_ext_3, subpage_7_config_ext_4, subpage_7_config_ext_5, subpage_7_config_ext_6, subpage_7_config_ext_7]
-      - config: button_8_config
-        subpage_chunks: [subpage_8_config, subpage_8_config_ext, subpage_8_config_ext_2, subpage_8_config_ext_3, subpage_8_config_ext_4, subpage_8_config_ext_5, subpage_8_config_ext_6, subpage_8_config_ext_7]
-      - config: button_9_config
-        subpage_chunks: [subpage_9_config, subpage_9_config_ext, subpage_9_config_ext_2, subpage_9_config_ext_3, subpage_9_config_ext_4, subpage_9_config_ext_5, subpage_9_config_ext_6, subpage_9_config_ext_7]
-      - config: button_10_config
-        subpage_chunks: [subpage_10_config, subpage_10_config_ext, subpage_10_config_ext_2, subpage_10_config_ext_3, subpage_10_config_ext_4, subpage_10_config_ext_5, subpage_10_config_ext_6, subpage_10_config_ext_7]
-      - config: button_11_config
-        subpage_chunks: [subpage_11_config, subpage_11_config_ext, subpage_11_config_ext_2, subpage_11_config_ext_3, subpage_11_config_ext_4, subpage_11_config_ext_5, subpage_11_config_ext_6, subpage_11_config_ext_7]
-      - config: button_12_config
-        subpage_chunks: [subpage_12_config, subpage_12_config_ext, subpage_12_config_ext_2, subpage_12_config_ext_3, subpage_12_config_ext_4, subpage_12_config_ext_5, subpage_12_config_ext_6, subpage_12_config_ext_7]
-      - config: button_13_config
-        subpage_chunks: [subpage_13_config, subpage_13_config_ext, subpage_13_config_ext_2, subpage_13_config_ext_3, subpage_13_config_ext_4, subpage_13_config_ext_5, subpage_13_config_ext_6, subpage_13_config_ext_7]
-      - config: button_14_config
-        subpage_chunks: [subpage_14_config, subpage_14_config_ext, subpage_14_config_ext_2, subpage_14_config_ext_3, subpage_14_config_ext_4, subpage_14_config_ext_5, subpage_14_config_ext_6, subpage_14_config_ext_7]
-      - config: button_15_config
-        subpage_chunks: [subpage_15_config, subpage_15_config_ext, subpage_15_config_ext_2, subpage_15_config_ext_3, subpage_15_config_ext_4, subpage_15_config_ext_5, subpage_15_config_ext_6, subpage_15_config_ext_7]
 # ---------------------------------------------------------------------------
 # ESPHome core (device name from substitutions)
 # ---------------------------------------------------------------------------
@@ -115,14 +88,15 @@ esphome:
   friendly_name: ${friendly_name}
   build_flags:
     - "-Wno-deprecated-declarations"
+    - "-DESPCONTROL_MAX_GRID_SLOTS=6"
     # Force cached ESPHome objects to rebuild after the 2026.5
     # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
     - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
-    # Separate marker for the JC1060P470 boot-loop fix so ESPHome cannot
-    # silently reuse the earlier 10:42 build that still crashes.
-    - "-DESPCONTROL_JC1060P470_BOOTFIX_20260522=1"
-    # Rebuild marker for the JC1060P470 OTA flash erase watchdog increase.
-    - "-DESPCONTROL_JC1060P470_OTA_WDT_20260526=1"
+    # Separate marker for the JC4880P443 boot-loop fix so ESPHome cannot
+    # silently reuse the earlier 09:02 build that still crashes.
+    - "-DESPCONTROL_JC4880P443_BOOTFIX_20260522=1"
+    # Rebuild marker for the JC4880P443 OTA flash erase watchdog increase.
+    - "-DESPCONTROL_JC4880P443_OTA_WDT_20260522=1"
     # Keep the ESP-IDF header warning suppressed without warning on C sources.
     - "-Wno-literal-suffix"
     - "-Wno-complain-wrong-lang"
@@ -143,7 +117,7 @@ esphome:
                   esphome::esp32::crash_handler_clear();
                   #endif
                   global_preferences->sync();
-                  ESP_LOGW("jc1060p470", "Cleared saved crash report before API logging; rebooting once while preserving the failed-boot counter");
+                  ESP_LOGW("jc4880p443", "Cleared saved crash report before API logging; rebooting once while preserving the failed-boot counter");
               - delay: 500ms
               - lambda: |-
                   // Avoid safe_reboot(): its safe-mode shutdown hook clears
@@ -152,17 +126,28 @@ esphome:
     - priority: 250
       then:
         - lambda: |-
-            ESP_LOGI("jc1060p470", "Bootfix marker 2026-05-22 active");
+            ESP_LOGI("jc4880p443", "Bootfix marker 2026-05-22 active");
     - priority: -100
       then:
         - lambda: 'id(screen_rotation_ready) = true;'
         - script.execute: apply_screen_rotation
 
-# The P4 panel has enough memory for additional native API clients. Allow
-# Home Assistant, ESPHome logs, and browser/configuration sessions to overlap
-# without rejecting connections at ESPHome's default five-client limit.
-api:
-  max_connections: 8
+# ---------------------------------------------------------------------------
+# ESP32-C6 co-processor (provides WiFi/BLE via SDIO)
+# ---------------------------------------------------------------------------
+esp32_hosted:
+  active_high: true
+  variant: ESP32C6
+  reset_pin: GPIO54
+  cmd_pin: GPIO19
+  clk_pin: GPIO18
+  d0_pin: GPIO14
+  d1_pin: GPIO15
+  d2_pin: GPIO16
+  d3_pin: GPIO17
+  # Use the lower SDIO clock for reliable ESP32-C6 communication across
+  # production panels; camera transfers remain supported at this speed.
+  sdio_frequency: 20MHz
 
 # ---------------------------------------------------------------------------
 # PSRAM (video frame buffer memory)
@@ -205,7 +190,7 @@ ota:
         - script.execute: show_update_failed
 
 safe_mode:
-  id: jc1060p470_safe_mode
+  id: jc4880p443_safe_mode
 
 # ---------------------------------------------------------------------------
 # Shared infrastructure (API, logging, web server, restart button)
@@ -214,17 +199,11 @@ packages:
   core_infra: !include ../../../common/device/core_infra.yaml
 
 # ---------------------------------------------------------------------------
-# Power management (LDO channels for DSI PHY and SD card)
+# Power management (LDO channel for DSI PHY)
 # ---------------------------------------------------------------------------
 esp_ldo:
   - channel: 3
-    id: dsi_phy_enable
     voltage: 2.5V
-    adjustable: True
-  - channel: 4
-    id: sd_card_power
-    voltage: 2.7V
-    adjustable: True
 
 # ---------------------------------------------------------------------------
 # Backlight (LEDC PWM output + monochromatic light entity)
@@ -233,7 +212,10 @@ output:
   - platform: ledc
     pin: GPIO23
     id: gpio_backlight_pwm
-    frequency: ${backlight_pwm_frequency}
+    frequency: 100Hz
+    inverted: false
+    min_power: 0.0
+    max_power: 0.8
 
 light:
   - platform: monochromatic
@@ -279,43 +261,29 @@ light:
 # I2C bus and touchscreen (GT911 capacitive, wakes screensaver on touch)
 # ---------------------------------------------------------------------------
 i2c:
-  - id: bus_a
-    sda: GPIO07
-    scl: GPIO08
-    frequency: 400kHz
-    sda_pullup_enabled: False
-    scl_pullup_enabled: False
-
-i2c_device:
-  - id: i2cdev1
-    address: 0x18
-  - id: i2cdev2
-    address: 0x32
-  - id: i2cdev3
-    address: 0x36
-  - id: i2cdev4
-    address: 0x40
+  id: bus_a
+  sda: GPIO7
+  scl: GPIO8
+  scan: false
+  # The manufacturer P4_V3X_DEMO uses GT911 at 100kHz.
+  frequency: 100kHz
 
 touchscreen:
   - platform: gt911
     id: my_touchscreen
     display: my_display
-    i2c_id: bus_a
-    reset_pin: GPIO22
-    interrupt_pin: GPIO21
     on_touch:
       - script.execute: cover_art_handle_touch
 
 # ---------------------------------------------------------------------------
-# Display (7" 1024x600 MIPI DSI panel)
+# Display (4.3" 480x800 MIPI DSI panel)
 # ---------------------------------------------------------------------------
 display:
   - platform: mipi_dsi
     id: my_display
-    model: JC1060P470
-    color_order: RGB
-    reset_pin:
-      number: GPIO05
+    # Manufacturer P4_V3X_DEMO: ST7701, GPIO5 reset, 34MHz PCLK,
+    # 500Mbps / two lanes. The bundled model matches its init sequence.
+    model: JC4880P443
     update_interval: never
     auto_clear_enabled: false
 
@@ -324,6 +292,7 @@ display:
 # ---------------------------------------------------------------------------
 lvgl:
   id: main_lvgl
+  buffer_size: 100%
   displays: my_display
   rotation: 180
   byte_order: little_endian
@@ -353,10 +322,6 @@ script:
                         - lvgl.display.set_rotation: 90
                       else:
                         - lvgl.display.set_rotation: 180
-      # Grid refresh is delayed; update the pixel axis before screensaver layout.
-      - lambda: |-
-          const auto rotation = id(screen_rotation_select).current_option();
-          set_width_compensation_vertical_axis(rotation == "90" || rotation == "270");
       - script.execute: cover_art_apply_responsive_layout
       - script.execute: camera_screensaver_request_image
 

@@ -190,6 +190,16 @@ int main() {
       assert(layout.title_max_lines == 0 && layout.title_max_height == 162);
     }
   }
+  // Both 4.3-inch chip revisions must retain the portrait layout and rotation convention.
+  for (const auto &rotation : {"0", "90", "180", "270"}) {
+    const auto original = cover_art_layout("guition-esp32-p4-jc4880p443", rotation, 480, 800, 480, 130);
+    const auto v3 = cover_art_layout("guition-esp32-p4-jc4880p443-v3", rotation, 480, 800, 480, 130);
+    assert(v3.split && v3.screen_width == original.screen_width && v3.screen_height == original.screen_height);
+    assert(v3.panel_x == original.panel_x && v3.panel_y == original.panel_y);
+    assert(v3.title_max_lines == original.title_max_lines && v3.title_max_height == original.title_max_height);
+    assert(rotation_is_landscape("guition-esp32-p4-jc4880p443-v3", rotation) ==
+           rotation_is_landscape("guition-esp32-p4-jc4880p443", rotation));
+  }
   auto four = cover_art_layout("guition-esp32-p4-jc4880p443", "90", 800, 480, 480, 220);
   assert(four.screen_width == 800);
   assert(playback_button_layout(four).size == 112);

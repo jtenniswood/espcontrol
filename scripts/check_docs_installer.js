@@ -95,15 +95,15 @@ async function checkBrowser() {
     assert.equal(await install.getAttribute('manifest'), '/espcontrol/firmware/guition-esp32-p4-jc8012p4a1-v3/manifest.json');
     await install.locator('button[slot="activate"]').click();
     await page.waitForFunction(() => !!customElements.get('ewt-install-dialog'));
-    const beforeUnsupported = manifests.length;
     await page.locator('#guition-esp32-p4-jc4880p443-version').selectOption('guition-esp32-p4-jc4880p443-v3');
-    await page.waitForFunction(() => document.querySelector('.installer-actions').textContent.includes('not supported yet'));
-    assert.equal(await install.count(), 0);
-    assert.equal(manifests.length, beforeUnsupported, 'Unsupported 4.3-inch V3 must not request firmware');
+    await install.waitFor();
+    assert.equal(await install.getAttribute('manifest'), '/espcontrol/firmware/guition-esp32-p4-jc4880p443-v3/manifest.json');
     await page.locator('#guition-esp32-p4-jc4880p443-version').selectOption('guition-esp32-p4-jc4880p443');
     await install.waitFor();
     assert.equal(await install.getAttribute('manifest'), '/espcontrol/firmware/guition-esp32-p4-jc4880p443/manifest.json');
     for (const [pagePath, manifest] of [
+      ['screens/jc4880p443-v3', '/espcontrol/firmware/guition-esp32-p4-jc4880p443-v3/manifest.json'],
+      ['getting-started/c6-recovery?device=guition-esp32-p4-jc4880p443-v3', '/espcontrol/firmware/guition-esp32-p4-jc4880p443-v3/recovery/manifest.json'],
       ['screens/jc8012p4a1-v3', '/espcontrol/firmware/guition-esp32-p4-jc8012p4a1-v3/manifest.json'],
       ['getting-started/c6-recovery?device=guition-esp32-p4-jc8012p4a1-v3', '/espcontrol/firmware/guition-esp32-p4-jc8012p4a1-v3/recovery/manifest.json'],
     ]) {
@@ -115,7 +115,7 @@ async function checkBrowser() {
         assert(await install.locator('button[slot="activate"]').isDisabled());
         await page.locator('.confirmation input').check();
         assert(await install.locator('button[slot="activate"]').isEnabled());
-        await page.locator('.device-card').filter({ hasText: 'JC4880P443' }).click();
+        await page.getByRole('option', { name: '4.3 in JC4880P443 480 × 800 portrait', exact: true }).click();
         assert(await install.locator('button[slot="activate"]').isDisabled(), 'Changing recovery panel must reset confirmation');
       }
     }

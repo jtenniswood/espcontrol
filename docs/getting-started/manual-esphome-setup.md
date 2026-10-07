@@ -31,7 +31,8 @@ Each screen uses a different ESPHome package file. For the JC8012P4A1, confirm E
 | 10.1-inch JC8012P4A1 V3, ESP32-P4 v3.x production silicon | `devices/guition-esp32-p4-jc8012p4a1-v3/packages.yaml` |
 | 7-inch JC1060P470 V1 / original panel, no version marking on case or board date code before `2622` | `devices/guition-esp32-p4-jc1060p470/packages.yaml` |
 | 7-inch JC1060P470 V2 / new panel, case marked `V2` or board date code `2622` or higher | `devices/guition-esp32-p4-jc1060p470-v2/packages.yaml` |
-| 4.3-inch JC4880P443 | `devices/guition-esp32-p4-jc4880p443/packages.yaml` |
+| 4.3-inch JC4880P443 original | `devices/guition-esp32-p4-jc4880p443/packages.yaml` |
+| [4.3-inch JC4880P443 V3](/screens/jc4880p443-v3) | `devices/guition-esp32-p4-jc4880p443-v3/packages.yaml` |
 | 4-inch ESP32-P4 86 Panel | `devices/esp32-p4-86/packages.yaml` |
 | 4-inch 4848S040 | `devices/guition-esp32-s3-4848s040/packages.yaml` |
 
