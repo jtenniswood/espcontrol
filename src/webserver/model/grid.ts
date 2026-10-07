@@ -138,7 +138,26 @@ export function applySpans(
   maxSlots: number,
   gridCols: number,
 ): void {
-  const entries = grid.slice(0, maxSlots);
+  let entries = grid.slice(0, maxSlots);
+  const unavailablePositions: number[] = [];
+  for (let i = 0; i < entries.length; i += 1) {
+    if (entries[i]! > maxSlots) unavailablePositions.push(i);
+  }
+  const preservedEntries = unavailablePositions.length > 0
+    ? grid.filter((slot) => slot > maxSlots)
+    : [];
+  const trailingCapacity = Math.max(0, grid.length - maxSlots);
+  if (preservedEntries.length > trailingCapacity) return;
+  if (unavailablePositions.length > 0) {
+    const visibleEntries = entries.filter((slot) => slot <= maxSlots);
+    const trailingVisibleEntries = grid.slice(maxSlots).filter(
+      (slot) => slot === -2 || (slot > 0 && slot <= maxSlots),
+    );
+    visibleEntries.push(...trailingVisibleEntries);
+    if (visibleEntries.length > maxSlots) return;
+    entries = visibleEntries;
+  }
+
   interface GridEntry {
     readonly slot: number;
     readonly originalPos: number;
@@ -227,6 +246,11 @@ export function applySpans(
   search(0, Array<number>(maxSlots).fill(0), {}, 0);
   const plannedGrid = bestGrid || Array<number>(maxSlots).fill(0);
   for (let i = 0; i < maxSlots; i += 1) grid[i] = plannedGrid[i] ?? 0;
+  if (unavailablePositions.length > 0) {
+    for (let i = maxSlots; i < grid.length; i += 1) {
+      grid[i] = preservedEntries[i - maxSlots] ?? 0;
+    }
+  }
   for (const item of items) {
     if (item.size <= 1 || bestDowngraded[String(item.slot)]) delete sizes[String(item.slot)];
   }
