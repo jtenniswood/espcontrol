@@ -149,12 +149,14 @@ export function applySpans(
   const trailingCapacity = Math.max(0, grid.length - maxSlots);
   if (preservedEntries.length > trailingCapacity) return;
   if (unavailablePositions.length > 0) {
-    const visibleEntries = entries.filter((slot) => slot <= maxSlots);
+    const visibleEntries = entries.filter(
+      (slot) => slot === -2 || (slot > 0 && slot <= maxSlots),
+    );
     const trailingVisibleEntries = grid.slice(maxSlots).filter(
       (slot) => slot === -2 || (slot > 0 && slot <= maxSlots),
     );
+    if (visibleEntries.length + trailingVisibleEntries.length > maxSlots) return;
     visibleEntries.push(...trailingVisibleEntries);
-    if (visibleEntries.length > maxSlots) return;
     entries = visibleEntries;
   }
 
@@ -261,6 +263,7 @@ export function parseGridOrder(
   maxSlots: number,
   gridCols: number,
   initialSizes?: SlotSizeMap,
+  activeSlots: number = maxSlots,
 ): ParsedGridOrder {
   const grid = Array<number>(maxSlots).fill(0);
   const sizes = copySizes(initialSizes);
@@ -277,7 +280,7 @@ export function parseGridOrder(
       if (parsedSize > 1) sizes[String(slot)] = parsedSize;
     }
   }
-  applySpans(grid, sizes, maxSlots, gridCols);
+  applySpans(grid, sizes, activeSlots, gridCols);
   return { grid, sizes };
 }
 

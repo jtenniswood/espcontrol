@@ -64,7 +64,13 @@ export function createGridFeature(codec: ConfigCodecFeature, runtime: UiRuntimeS
         return className ? " " + className : "";
     }
     function parseOrder(this: any, str?: any) {
-        var parsed: any = EspControlModel.parseGridOrder(str, layout.totalSlots, layout.gridCols, state.sizes);
+        var parsed: any = EspControlModel.parseGridOrder(
+            str,
+            layout.totalSlots,
+            layout.gridCols,
+            state.sizes,
+            layout.previewSlots,
+        );
         state.sizes = parsed.sizes;
         return parsed.grid;
     }
