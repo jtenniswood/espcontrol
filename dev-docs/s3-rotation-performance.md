@@ -98,3 +98,21 @@ rectangular panels, odd sizes, source/destination padding, clipped areas, source
 offsets, small scratch capacities, and buffer guards. Compile and flash after
 the tests pass, repeat settled memory observations, and wait for physical
 feedback before Stage 3. Stages 3 and 4 remain pending.
+
+Stage 2 verification:
+
+- Firmware source: `050ed35fe`; generated configuration enables the driver
+  rotation backend and restores `-Os`. The driver compiled successfully with
+  ESPHome 2026.9.1 and ESP-IDF 5.5.5.
+- The new rotation CMake/CTest test passed. AddressSanitizer and
+  UndefinedBehaviorSanitizer also passed; leak detection was disabled because
+  the sandbox uses ptrace, which LeakSanitizer does not support.
+- `npm run prepare:ci` passed all 48 CI tasks, all 76 host firmware tests, docs
+  build, and browser installer checks. Regeneration produced no tracked changes.
+- Application size: 4,868,080 bytes; OTA headroom: 2,406,416 bytes.
+- Upload attempted, but the target's web, API, and OTA ports and ICMP all timed
+  out. A second known panel on the same subnet also timed out; the Tailscale
+  route probe received no reply. No Stage 2 image was transferred.
+- The last confirmed running firmware is Stage 1. The compiler reversion and
+  blocked rotation take effect only after connectivity returns and this image
+  is uploaded. Post-Stage-2 RAM observations and physical feedback remain pending.
