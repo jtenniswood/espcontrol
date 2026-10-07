@@ -100,6 +100,20 @@ def check_theme_colors(root: Path) -> list[str]:
     yaml_text = yaml_path.read_text(encoding="utf-8")
     palette_text = palette_path.read_text(encoding="utf-8")
     accent_text = accent_path.read_text(encoding="utf-8")
+    preview_path = root / "src/webserver/state/preview_theme.ts"
+    if not preview_path.exists():
+        failures.append("preview_theme.ts: define the device preview palettes")
+    else:
+        preview_text = preview_path.read_text(encoding="utf-8")
+        for mode, colors in (("Dark", THEME_RGB), ("Light", LIGHT_THEME_RGB)):
+            block = re.search(rf"\b{mode}:\s*\{{([^}}]+)\}}", preview_text)
+            for role in ("BACKGROUND", "SURFACE_PRIMARY", "SURFACE_SECONDARY", "TEXT_PRIMARY",
+                         "TEXT_MUTED", "TEXT_DISABLED", "BORDER", "TRACK_BACKGROUND", "CONTROL_NEUTRAL"):
+                words = role.lower().split("_")
+                field = words[0] + "".join(word.title() for word in words[1:])
+                value = re.search(rf'\b{field}:\s*"([0-9A-Fa-f]{{6}})"', block.group(1)) if block else None
+                if value is None or int(value.group(1), 16) != colors[role]:
+                    failures.append(f"preview_theme.ts: {mode} {field} must match firmware 0x{colors[role]:06X}")
     for role, rgb in THEME_RGB.items():
         yaml_name = f"theme_{role.lower()}_color"
         yaml_value = re.search(rf"^  {yaml_name}: [\"']?0x([0-9A-Fa-f]{{6}})[\"']?$", yaml_text, re.M)
@@ -321,6 +335,9 @@ def run_self_test() -> None:
         yaml_path = root / "common/theme/colors.yaml"
         cpp_path = root / "components/espcontrol/theme_palette.h"
         accent_path = root / "components/espcontrol/button_grid_style.h"
+        preview_path = root / "src/webserver/state/preview_theme.ts"
+        preview_path.parent.mkdir(parents=True)
+        preview_path.write_text((ROOT / "src/webserver/state/preview_theme.ts").read_text(encoding="utf-8"), encoding="utf-8")
         yaml_path.write_text((ROOT / "common/theme/colors.yaml").read_text(encoding="utf-8"), encoding="utf-8")
         cpp_path.write_text((ROOT / "components/espcontrol/theme_palette.h").read_text(encoding="utf-8"), encoding="utf-8")
         accent_path.write_text((ROOT / "components/espcontrol/button_grid_style.h").read_text(encoding="utf-8"), encoding="utf-8")
@@ -330,6 +347,9 @@ def run_self_test() -> None:
         yaml_path.write_text((ROOT / "common/theme/colors.yaml").read_text(encoding="utf-8"), encoding="utf-8")
         cpp_path.write_text(cpp_path.read_text(encoding="utf-8").replace("theme.text_muted = 0xB0B0B0", "theme.text_muted = 0xB0B0B1"), encoding="utf-8")
         assert any("text_muted" in failure for failure in check_theme_colors(root))
+        cpp_path.write_text((ROOT / "components/espcontrol/theme_palette.h").read_text(encoding="utf-8"), encoding="utf-8")
+        preview_path.write_text(preview_path.read_text(encoding="utf-8").replace('background: "F4F4F4"', 'background: "F4F4F5"'), encoding="utf-8")
+        assert any("Light background" in failure for failure in check_theme_colors(root))
     print("Firmware display token self-tests passed.")
 
 

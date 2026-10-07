@@ -114,9 +114,8 @@ inline bool register_theme_refresh(void *owner, ThemeRefreshCallback callback,
   }
   for (auto &binding : theme_refresh_bindings()) {
     if (!binding.owner) {
-      // Production YAML screens start with Dark compile-time styles; the
-      // explicit Light test build starts with Light styles. Replaying the
-      // Dark -> active transition is harmless for newly created owners.
+      // YAML screens start with Dark compile-time styles. Runtime owners can
+      // already use the active palette; the first refresh handles both cases.
       binding = {owner, callback, context, &DARK_THEME};
       return true;
     }

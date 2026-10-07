@@ -18,7 +18,9 @@ When clock or solar data is temporarily unavailable, Auto keeps the last active 
 
 Home Assistant can also change the same saved settings as the setup page through **Screen: Theme Mode**, **Screen: Theme Auto Method**, **Screen: Theme Light Start**, **Screen: Theme Dark Start**, **Screen: Theme Sunrise Offset**, and **Screen: Theme Sunset Offset**. Changes apply without a reboot. The setup-page preview follows the chosen manual theme or, in Auto, the reported Active Theme.
 
-The theme changes the panel's neutral backgrounds, controls and text. Artwork, camera images, cover art, QR codes, user-selected clock text and status colours keep their own colours.
+The theme changes the panel's neutral backgrounds, controls and text, including setup and loading screens. Primary/accent, artwork, camera images, cover art, QR codes and status colours keep their own colours. The clock screensaver keeps a black background and its saved text colour in both themes; theme changes do not wake the panel or reset navigation.
+
+Backups include the theme mode, automatic method, times and offsets. Older backups without these fields leave the panel's current theme settings unchanged. Older Schedule and Sun selections migrate to Auto with the corresponding method.
 
 ## Active colour
 

@@ -237,7 +237,7 @@ TASKS = (
          parallel_safe=True, cache_tools=("c++", "g++", "clang++")),
     task("firmware-display-tokens", ("python3", "scripts/check_firmware_display_tokens.py"),
          ("python3", "scripts/check_firmware_display_tokens.py", "--self-test"), profiles=FAST,
-         domains=("firmware",), inputs=("common/theme/colors.yaml", "components/**", "scripts/check_firmware_display_tokens.py"), parallel_safe=True),
+         domains=("firmware", "web"), inputs=("common/theme/colors.yaml", "components/**", "src/webserver/state/preview_theme.ts", "scripts/check_firmware_display_tokens.py"), parallel_safe=True),
     task("firmware-ha-bindings", ("python3", "scripts/check_firmware_ha_bindings.py"),
          ("python3", "scripts/check_firmware_ha_bindings.py", "--self-test"), dependencies=("device-slots",), profiles=FAST,
          domains=("firmware",), inputs=("common/**", "components/**", "devices/**", "scripts/check_firmware_ha_bindings.py"), parallel_safe=True),

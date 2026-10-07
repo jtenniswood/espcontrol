@@ -33,12 +33,6 @@ font:
     bpp: 2
     glyphs: "0123456789:"
 
-esphome:
-  on_boot:
-    - priority: -210
-      then:
-        - lambda: 'register_theme_static_page(id(clock_screensaver), false);'
-
 lvgl:
   top_layer:
     widgets:
@@ -48,7 +42,9 @@ lvgl:
           y: 0
           width: 100%
           height: 100%
-          bg_color: $theme_background_color
+          # The saved clock text colour is independent of the theme. Keep its
+          # content background black so the default white stays readable.
+          bg_color: 0x000000
           bg_opa: 100%
           radius: 0
           border_width: 0
@@ -61,7 +57,7 @@ lvgl:
             - label:
                 id: clock_label
                 text_font: font_clock_display
-                text_color: $theme_text_primary_color
+                text_color: 0xFFFFFF
                 text: "00:00"
       - obj:
           id: clock_image_overlay

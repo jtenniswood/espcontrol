@@ -20,7 +20,9 @@ for name, page in (
     assert f"register_theme_static_page(id({page})->obj)" in source, name
 
 clock = (DEVICE / "screen_clock.yaml").read_text(encoding="utf-8")
-assert "register_theme_static_page(id(clock_screensaver), false)" in clock
+assert "register_theme_static_page" not in clock
+assert "bg_color: 0x000000" in clock
+assert not re.search(r"\$theme_\w+", clock)
 
 cover_art = (DEVICE / "screen_cover_art.yaml").read_text(encoding="utf-8")
 assert not re.search(r"register_theme_|apply_current_theme|current_theme\(\)", cover_art)

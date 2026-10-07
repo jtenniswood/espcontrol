@@ -1,6 +1,6 @@
 import type { AppState } from "./types";
 
-// Keep these raw preview roles in step with ThemePalette. The browser shell has
+// check_firmware_display_tokens.py guards parity with ThemePalette. The browser shell has
 // its own CSS theme; only the simulated device screen consumes these values.
 export const PREVIEW_THEME_COLORS = {
   Dark: {
