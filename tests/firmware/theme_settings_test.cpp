@@ -1,4 +1,5 @@
 #include <cassert>
+#include <limits>
 
 #include "theme_settings.h"
 
@@ -22,6 +23,22 @@ int main() {
 
   ThemeResolver resolver;
   ThemeSettings settings;
+  assert(migrate_legacy_theme_index(3, settings));
+  assert(settings.mode == ThemeMode::AUTO && settings.auto_method == ThemeAutoMethod::SUNRISE_SUNSET);
+  for (size_t index : {0u, 1u, 2u, 4u, 99u}) {
+    assert(!migrate_legacy_theme_index(index, settings));
+    assert(settings.auto_method == ThemeAutoMethod::SUNRISE_SUNSET);
+  }
+  settings = {};
+  int offset = 12;
+  for (float value : {-180.0f, 0.0f, 180.0f})
+    assert(parse_theme_sun_offset(value, offset) && offset == static_cast<int>(value));
+  offset = 12;
+  for (float invalid : {-181.0f, 181.0f, 1.5f, std::numeric_limits<float>::max(),
+                        std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()}) {
+    assert(!parse_theme_sun_offset(invalid, offset));
+    assert(offset == 12);
+  }
   ThemeConditions conditions;
   ThemeCounter counter;
   assert(register_theme_refresh(&counter, count_theme, &counter));

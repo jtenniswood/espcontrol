@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <cstddef>
+#include <cmath>
 #include <initializer_list>
 #include <string>
 
@@ -20,6 +22,16 @@ struct ThemeSettings {
   int sunrise_offset = 0;
   int sunset_offset = 0;
 };
+
+// ESPHome template selects restore option indexes, not option strings. The
+// former Sun option occupied index 3, outside today's Dark/Light/Auto list.
+// Index 2 already restores as Auto with the default Time method (Schedule).
+inline bool migrate_legacy_theme_index(size_t index, ThemeSettings &settings) {
+  if (index != 3) return false;
+  settings.mode = ThemeMode::AUTO;
+  settings.auto_method = ThemeAutoMethod::SUNRISE_SUNSET;
+  return true;
+}
 
 struct ThemeConditions {
   bool time_valid = false;
@@ -61,6 +73,13 @@ inline ThemeAutoMethod parse_theme_auto_method(const std::string &method) {
 inline bool theme_sun_offset_valid(int offset) {
   return offset >= -THEME_SUN_OFFSET_LIMIT_MINUTES &&
          offset <= THEME_SUN_OFFSET_LIMIT_MINUTES;
+}
+
+inline bool parse_theme_sun_offset(float value, int &offset) {
+  if (!std::isfinite(value) || value < -THEME_SUN_OFFSET_LIMIT_MINUTES ||
+      value > THEME_SUN_OFFSET_LIMIT_MINUTES || std::floor(value) != value) return false;
+  offset = static_cast<int>(value);
+  return true;
 }
 
 inline int theme_normalize_minute(int minute) {

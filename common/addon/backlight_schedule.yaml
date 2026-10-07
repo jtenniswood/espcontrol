@@ -98,12 +98,14 @@ esphome:
     - priority: -190
       then:
         - lambda: |-
-            // Older firmware exposed Schedule and Sun as top-level options.
-            // If a restored value survives the new option list, preserve it.
-            const auto old_mode = id(screen_theme_mode).current_option();
-            if (old_mode == "Schedule" || old_mode == "Sun") {
+            // Read the persisted index before replacing the obsolete Sun
+            // value; ESPHome discards out-of-range indexes during setup.
+            size_t old_index;
+            auto preference = id(screen_theme_mode).make_entity_preference<size_t>();
+            ThemeSettings migrated;
+            if (preference.load(&old_index) && migrate_legacy_theme_index(old_index, migrated)) {
               auto method = id(screen_theme_auto_method).make_call();
-              method.set_option(old_mode == "Sun" ? "Sunrise / Sunset" : "Time");
+              method.set_option("Sunrise / Sunset");
               method.perform();
               auto mode = id(screen_theme_mode).make_call();
               mode.set_option("Auto");
@@ -534,8 +536,8 @@ number:
       sorting_group_id: sg_brightness
     set_action:
       - lambda: |-
-          if (!std::isfinite(x) || std::floor(x) != x ||
-              !theme_sun_offset_valid(static_cast<int>(x))) {
+          int offset;
+          if (!parse_theme_sun_offset(x, offset)) {
             ESP_LOGW("theme", "Rejected invalid sunrise offset: %.1f", x);
             return;
           }
@@ -557,8 +559,8 @@ number:
       sorting_group_id: sg_brightness
     set_action:
       - lambda: |-
-          if (!std::isfinite(x) || std::floor(x) != x ||
-              !theme_sun_offset_valid(static_cast<int>(x))) {
+          int offset;
+          if (!parse_theme_sun_offset(x, offset)) {
             ESP_LOGW("theme", "Rejected invalid sunset offset: %.1f", x);
             return;
           }
@@ -762,15 +764,16 @@ script:
           // are rejected by the text entities above.
           parse_theme_time(id(screen_theme_light_start).state, settings.light_start);
           parse_theme_time(id(screen_theme_dark_start).state, settings.dark_start);
+          bool offsets_valid = true;
           if (id(screen_theme_sunrise_offset).has_state())
-            settings.sunrise_offset = static_cast<int>(id(screen_theme_sunrise_offset).state);
+            offsets_valid &= parse_theme_sun_offset(id(screen_theme_sunrise_offset).state, settings.sunrise_offset);
           if (id(screen_theme_sunset_offset).has_state())
-            settings.sunset_offset = static_cast<int>(id(screen_theme_sunset_offset).state);
+            offsets_valid &= parse_theme_sun_offset(id(screen_theme_sunset_offset).state, settings.sunset_offset);
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           ThemeConditions conditions;
           conditions.time_valid = now.is_valid();
           if (conditions.time_valid) conditions.local_minute = now.hour * 60 + now.minute;
-          conditions.sun_valid = id(sunrise_sunset_valid);
+          conditions.sun_valid = id(sunrise_sunset_valid) && offsets_valid;
           conditions.sunrise_minute = id(sunrise_hour) * 60 + id(sunrise_minute);
           conditions.sunset_minute = id(sunset_hour) * 60 + id(sunset_minute);
           apply_theme_resolution(current_theme_resolver(), settings, conditions);

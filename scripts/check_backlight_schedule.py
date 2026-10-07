@@ -47,7 +47,7 @@ def check_theme_entity_wiring(source: str) -> None:
         assert not item.get("internal", False) and item["restore_value"] is True
         assert (item["min_value"], item["max_value"], item["step"]) == (-180, 180, 1)
         actions = item["set_action"]
-        assert "theme_sun_offset_valid" in actions[0]["lambda"]
+        assert "parse_theme_sun_offset" in actions[0]["lambda"]
         assert f"id({entity_id}).publish_state(x);" in actions[0]["lambda"]
         assert "id(theme_settings_refresh).execute();" in actions[0]["lambda"]
 
@@ -56,6 +56,10 @@ def check_theme_entity_wiring(source: str) -> None:
     refresh = entity("script", "theme_settings_refresh")["then"][0]["lambda"]
     assert "apply_theme_resolution" in refresh
     assert "id(screen_active_theme).publish_state(active);" in refresh
+    assert "parse_theme_sun_offset" in refresh and "&& offsets_valid" in refresh
+    migration = package["esphome"]["on_boot"][0]["then"][0]["lambda"]
+    assert "make_entity_preference<size_t>()" in migration
+    assert "preference.load(&old_index)" in migration and "migrate_legacy_theme_index" in migration
     print("theme HA entity persistence and refresh wiring: ok")
 
 
