@@ -24,7 +24,7 @@ If you want to compile and install the firmware yourself, use the [Manual Setup 
 
 ## Flash the Firmware
 
-Connect the display to your computer with the USB-C cable, choose your device and hardware version, then click the install button. Select the hardware version that matches your panel; no version is preselected for models with multiple revisions. The 4.3-inch JC4880P443 V3 is not supported yet.
+Connect the display to your computer with the USB-C cable, choose your device and hardware version, then click the install button. Select the hardware version that matches your panel; no version is preselected for models with multiple revisions. For the 4.3-inch JC4880P443, select V3 only for SKU 10150002-V3 with an ESP32-P4 v3.x chip; see the [V3 guide](/screens/jc4880p443-v3) if a previous incompatible flash left it dark.
 
 <EspInstallSelector />
 
