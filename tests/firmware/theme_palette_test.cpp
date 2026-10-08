@@ -103,7 +103,7 @@ int main() {
   assert(sample.applications == 1);
   CardPalette card;
   assert(card.on_val == DEFAULT_ACCENT_COLOR);
-  assert(card.off_val == theme_display_color(alternate.surface_primary));
+  assert(card.off_val == theme_display_color(alternate.surface_secondary));
   assert(card.sensor_val == theme_display_color(alternate.surface_secondary));
   assert(current_button_primary_color() == 0xAABBCC);
   assert(CARD_ACCENT_TEXT_COLOR == 0xFFFFFF);
@@ -129,7 +129,7 @@ int main() {
   assert(production_switch.previous == &DARK_THEME);
   assert(production_switch.background == 0xE3E3E3);
   CardPalette light_card;
-  assert(light_card.off_val == theme_display_color(LIGHT_THEME.surface_primary));
+  assert(light_card.off_val == theme_display_color(LIGHT_THEME.surface_secondary));
   assert(light_card.sensor_val == theme_display_color(LIGHT_THEME.surface_secondary));
   assert(light_card.on_val == DEFAULT_ACCENT_COLOR);
   assert(current_button_primary_color() == 0xAABBCC);

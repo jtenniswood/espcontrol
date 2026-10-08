@@ -1057,7 +1057,7 @@ inline void grid_phase1(
 
   bool has_on;
   uint32_t on_val = parse_hex_color(on_hex, has_on);
-  uint32_t off_val = display_correct_color(current_theme().surface_primary, display);
+  uint32_t off_val = display_correct_color(current_theme().surface_secondary, display);
   uint32_t sensor_val = display_correct_color(current_theme().surface_secondary, display);
   if (has_on) on_val = display_correct_color(on_val, display);
 
@@ -1866,7 +1866,7 @@ inline void grid_phase2(
 
   bool has_on;
   uint32_t on_val = parse_hex_color(on_hex, has_on);
-  uint32_t off_val = display_correct_color(current_theme().surface_primary, display);
+  uint32_t off_val = display_correct_color(current_theme().surface_secondary, display);
   uint32_t sensor_val = display_correct_color(current_theme().surface_secondary, display);
   if (has_on) on_val = display_correct_color(on_val, display);
 

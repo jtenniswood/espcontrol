@@ -66,7 +66,7 @@ inline void theme_apply_grid(void *context, const ThemePalette &theme) {
   auto &targets = *static_cast<ThemeGridTargets *>(context);
   if (!targets.main_page) return;
   lv_obj_set_style_bg_color(targets.main_page, lv_color_hex(theme.background), LV_PART_MAIN);
-  const uint32_t neutral = theme_grid_correct_color(theme.surface_primary, targets);
+  const uint32_t neutral = theme_grid_correct_color(theme.surface_secondary, targets);
   const ThemeTreeCorrection correction = {targets.red_percent, targets.green_percent,
                                           targets.blue_percent};
   for (int i = 0; i < targets.count; ++i) {
