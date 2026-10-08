@@ -831,6 +831,13 @@ export function createButtonSettingsFeature(
         var defaultCardOnColor: any = state.onColor || WEB_UI_COLORS.primary;
         var defaultCardOffColor: any = (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone") ? WEB_UI_COLORS.tertiary : WEB_UI_COLORS.secondary;
         var cardColorPresets: any = ["F44336", "E91E63", "9C27B0", "673AB7", "3F51B5", "2196F3", "03A9F4", "00BCD4", "009688", "4CAF50", "8BC34A", "CDDC39", "FFEB3B", "FFC107", "FF9800", "795548"];
+        var activeColorPresets: any = cardColorPresets.map(function (hex: string) {
+            return [0, 2, 4].map(function (offset: number) {
+                var channel: number = parseInt(hex.slice(offset, offset + 2), 16);
+                var brighter: number = Math.round(channel + (255 - channel) * 0.3);
+                return ("0" + brighter.toString(16)).slice(-2).toUpperCase();
+            }).join("");
+        });
         var cardColorChoices: any = document.createElement("div");
         cardColorChoices.className = "sp-card-color-choices";
         var cardColorEditor: any = document.createElement("div");
@@ -867,7 +874,8 @@ export function createButtonSettingsFeature(
             var presetGrid: any = document.createElement("div");
             presetGrid.className = "sp-card-color-presets";
             presetGrid.setAttribute("aria-label", color.label + " presets");
-            cardColorPresets.forEach(function (this: any, hex?: any) {
+            var presets: any = color.option === "card_on_color" ? activeColorPresets : cardColorPresets;
+            presets.forEach(function (this: any, hex?: any) {
                 var swatch: any = document.createElement("button");
                 swatch.type = "button";
                 swatch.className = "sp-card-color-preset";
