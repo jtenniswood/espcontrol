@@ -9,7 +9,7 @@ export const PREVIEW_THEME_COLORS = {
     border: "303030", trackBackground: "313131", controlNeutral: "303030",
   },
   Light: {
-    background: "F4F4F4", surfacePrimary: "FFFFFF", surfaceSecondary: "E8E8E8",
+    background: "D0D0D0", surfacePrimary: "FFFFFF", surfaceSecondary: "E8E8E8",
     textPrimary: "333333", textMuted: "606060", textDisabled: "9A9A9A",
     border: "D0D0D0", trackBackground: "D0D0D0", controlNeutral: "E0E0E0",
   },
