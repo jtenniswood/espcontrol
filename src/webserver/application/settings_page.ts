@@ -1,7 +1,7 @@
 import { state } from "../state/app_instance";
 import { NTP_SERVER_DEFAULTS } from "../state/app_state";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
-import { createColorPresetGrid } from "./color_presets";
+import { createColorSwatches } from "../components/color_swatches";
 import {
     normalizeBrightnessMode,
     normalizeLanguage,
@@ -81,7 +81,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         var config: any = document.createElement("div");
         config.className = "sp-config fade-in";
         var appearBody: any = document.createElement("div");
-        var onColor = createColorPresetGrid(state.onColor || WEB_UI_COLORS.primary, function (hex) {
+        var onColor = createColorSwatches(state.onColor || WEB_UI_COLORS.primary, function (hex) {
             state.onColor = hex;
             renderPreview();
             postText(entityName("button_on_color"), hex);

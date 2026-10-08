@@ -1,3 +1,4 @@
+import { COLOR_SWATCH_STYLES } from "../components/color_swatches";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
 import { previewThemeCss } from "../state/preview_theme";
 
@@ -526,12 +527,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-color-swatch input{position:absolute;inset:-8px;width:calc(100% + 16px);" +
         "height:calc(100% + 16px);cursor:pointer;opacity:0}" +
         ".sp-color-row .sp-input{flex:1}" +
-        ".sp-card-color-preset:focus-visible{outline:2px solid var(--accent);outline-offset:3px}" +
-        ".sp-card-color-presets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));width:224px;max-width:100%;gap:6px}" +
-        ".sp-card-color-preset{width:100%;max-width:40px;aspect-ratio:1;padding:0;justify-self:center;box-sizing:border-box;" +
-        "display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.35);border-radius:50%;cursor:pointer}" +
-        ".sp-card-color-check{display:none;font-size:20px;line-height:1;font-weight:700}" +
-        ".sp-card-color-preset[aria-pressed=true] .sp-card-color-check{display:block}" +
+        COLOR_SWATCH_STYLES +
         ".sp-card-color-header{position:relative}" +
         ".sp-disclosure.sp-open .sp-card-color-header .sp-disclosure-button{gap:56px}" +
         ".sp-disclosure:not(.sp-open) .sp-card-color-header .sp-card-header-action{display:none}" +

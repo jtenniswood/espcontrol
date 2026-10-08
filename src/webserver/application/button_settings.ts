@@ -1,7 +1,7 @@
 import { state } from "../state/app_instance";
 import * as EspControlModel from "../model";
 import { configOptionValue, setCardColor } from "../model/config_primitives";
-import { createColorPresetGrid } from "./color_presets";
+import { createColorSwatches } from "../components/color_swatches";
 import { applySpans, CARD_SIZE_SINGLE, clearSpans } from "../model/grid";
 import { iconSlug, mdiIcon, textSpan } from "./ui_primitives";
 import type { CardEditorDraftController } from "../features/card_editor_draft_controller";
@@ -837,7 +837,7 @@ export function createButtonSettingsFeature(
                 saveField("options", b.options);
                 renderPreview();
             }
-            var presetGrid = createColorPresetGrid(configOptionValue(b.options, "card_off_color"), saveCardColor, "Card colour presets");
+            var presetGrid = createColorSwatches(configOptionValue(b.options, "card_off_color"), saveCardColor, "Card colour presets");
             cardColorEditor.appendChild(presetGrid);
             var resetCardColors: any = createActionButton("sp-icon-button sp-card-header-action", "", "restore", "Reset colours to defaults");
             resetCardColors.title = "Reset colours";
