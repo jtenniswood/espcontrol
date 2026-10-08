@@ -89,6 +89,13 @@ const CARD_TYPE_PICKER_DEFAULTS: Readonly<Record<string, string>> = {
   media_control: "media",
 };
 
+export function cardPreviewTextColor(background: string): string {
+  const rgb = parseInt(background.replace(/^#/, ""), 16);
+  // Match display_text_color_for_bg in the firmware, including its integer rounding.
+  const brightness = Math.floor((((rgb >> 16) & 255) * 299 + ((rgb >> 8) & 255) * 587 + (rgb & 255) * 114) / 1000);
+  return brightness > 186 ? "#212121" : "#FFFFFF";
+}
+
 export function previewValue<T>(preview: Record<string, unknown> | null | undefined, key: string, fallback: T): T {
   return preview && Object.prototype.hasOwnProperty.call(preview, key) ? preview[key] as T : fallback;
 }
