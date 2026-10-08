@@ -4,9 +4,9 @@ import type { AppState } from "./types";
 // its own CSS theme; only the simulated device screen consumes these values.
 export const PREVIEW_THEME_COLORS = {
   Dark: {
-    background: "000000", surfacePrimary: "313131", surfaceSecondary: "212121",
+    background: "404040", surfacePrimary: "404040", surfaceSecondary: "4A4A4A",
     textPrimary: "FFFFFF", textMuted: "B0B0B0", textDisabled: "707070",
-    border: "313131", trackBackground: "313131", controlNeutral: "313131",
+    border: "404040", trackBackground: "313131", controlNeutral: "404040",
   },
   Light: {
     background: "F4F4F4", surfacePrimary: "FFFFFF", surfaceSecondary: "E8E8E8",

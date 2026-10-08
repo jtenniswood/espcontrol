@@ -54,15 +54,15 @@ RULES: tuple[tuple[re.Pattern[str], str, set[str]], ...] = (
 # YAML substitutions and the runtime C++ palette are authored independently.
 # Guard their dark RGB parity until both can consume one shared source.
 THEME_RGB = {
-    "BACKGROUND": 0x000000,
-    "SURFACE_PRIMARY": 0x313131,
-    "SURFACE_SECONDARY": 0x212121,
+    "BACKGROUND": 0x404040,
+    "SURFACE_PRIMARY": 0x404040,
+    "SURFACE_SECONDARY": 0x4A4A4A,
     "TEXT_PRIMARY": 0xFFFFFF,
     "TEXT_MUTED": 0xB0B0B0,
     "TEXT_INVERTED": 0x000000,
     "TEXT_DISABLED": 0x707070,
-    "BORDER": 0x313131,
-    "CONTROL_NEUTRAL": 0x313131,
+    "BORDER": 0x404040,
+    "CONTROL_NEUTRAL": 0x404040,
     "TRACK_BACKGROUND": 0x313131,
     "OVERLAY": 0x000000,
     "SETUP_ACTION": 0x333333,
