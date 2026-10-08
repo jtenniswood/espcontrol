@@ -1148,7 +1148,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     placeholder.remove();
     return result;
   });
-  assert.strictEqual(lightPreview.background, "rgb(0, 0, 0)", `${label}: preview uses Light background`);
+  assert.strictEqual(lightPreview.background, "rgb(221, 221, 221)", `${label}: preview uses Light background`);
   assert.strictEqual(lightPreview.card, "#FFFFFF", `${label}: Light cards retain their separate white fill`);
   assert.strictEqual(lightPreview.sensor, "#F5F5F5", `${label}: Light sensors retain their separate grey fill`);
   assert.notStrictEqual(lightPreview.outline, lightPreview.background,

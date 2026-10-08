@@ -71,13 +71,13 @@ THEME_RGB = {
     "SETUP_ACTION": 0x333333,
 }
 LIGHT_THEME_RGB = {
-    "BACKGROUND": 0x000000,
+    "BACKGROUND": 0xDDDDDD,
     "SURFACE_PRIMARY": 0xB0B0B0,
     "SURFACE_SECONDARY": 0xFFFFFF,
     "SURFACE_SENSOR": 0xF5F5F5,
     "SURFACE_CARD": 0xFFFFFF,
     "TEXT_PRIMARY": 0x333333,
-    "CLOCKBAR_TEXT": 0xFFFFFF,
+    "CLOCKBAR_TEXT": 0x333333,
     "TEXT_MUTED": 0x606060,
     "TEXT_INVERTED": 0xFFFFFF,
     "TEXT_DISABLED": 0x9A9A9A,
@@ -355,7 +355,7 @@ def run_self_test() -> None:
         cpp_path.write_text(cpp_path.read_text(encoding="utf-8").replace("theme.text_muted = 0xB0B0B0", "theme.text_muted = 0xB0B0B1"), encoding="utf-8")
         assert any("text_muted" in failure for failure in check_theme_colors(root))
         cpp_path.write_text((ROOT / "components/espcontrol/theme_palette.h").read_text(encoding="utf-8"), encoding="utf-8")
-        preview_path.write_text(preview_path.read_text(encoding="utf-8").replace('background: "000000"', 'background: "000001"'), encoding="utf-8")
+        preview_path.write_text(preview_path.read_text(encoding="utf-8").replace('background: "DDDDDD"', 'background: "DDDDDE"'), encoding="utf-8")
         assert any("Light background" in failure for failure in check_theme_colors(root))
     print("Firmware display token self-tests passed.")
 
