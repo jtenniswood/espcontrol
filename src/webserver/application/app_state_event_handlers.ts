@@ -602,10 +602,12 @@ export function createAppStateEventHandlersFeature(
             "text_sensor-screen__sunrise": function (this: any, val?: any) {
                 state.sunrise = val;
                 updateSunInfo();
+                syncThemeSettingsUi(state, runtime);
             },
             "text_sensor-screen__sunset": function (this: any, val?: any) {
                 state.sunset = val;
                 updateSunInfo();
+                syncThemeSettingsUi(state, runtime);
             },
             "text_sensor-network_transport": function (this: any, val?: any) {
                 state.networkTransport = normalizeNetworkTransport(val);

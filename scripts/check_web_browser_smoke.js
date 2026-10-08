@@ -1123,7 +1123,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: Time exposes Light start`);
   assert(await page.locator("#sp-set-theme-dark-start").isVisible(),
     `${label}: Time exposes Dark start`);
-  await page.locator("#sp-set-theme-auto-method").getByRole("button", { name: "Sunrise / Sunset" }).click();
+  await page.locator("#sp-set-theme-auto-method").getByRole("button", { name: "Automatic" }).click();
   assert.strictEqual(await page.locator("#sp-set-theme-sunrise-offset").count(), 0,
     `${label}: solar method does not expose sunrise offset control`);
   assert.strictEqual(await page.locator("#sp-set-theme-sunset-offset").count(), 0,

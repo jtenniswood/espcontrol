@@ -17,6 +17,13 @@ export function syncThemeSettingsUi(state: AppState, runtime: UiRuntimeState): v
     const button = methodButtons[method];
     if (button) button.classList.toggle("active", state.themeAutoMethod === method);
   }
+  if (els.setThemeSunInfo) {
+    const visible = auto && state.themeAutoMethod === "Sunrise / Sunset";
+    els.setThemeSunInfo.classList.toggle("sp-visible", visible);
+    const sunrise = state.sunrise || "--:--";
+    const sunset = state.sunset || "--:--";
+    els.setThemeSunInfo.textContent = `Sunrise: ${sunrise}  /  Sunset: ${sunset}`;
+  }
   if (els.setThemeScheduleFields)
     els.setThemeScheduleFields.className =
       "sp-cond-field" + (auto && state.themeAutoMethod === "Time" ? " sp-visible" : "");

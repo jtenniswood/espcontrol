@@ -11,8 +11,8 @@ Find these controls in **Settings → Appearance** on the [Setup](/features/setu
 ## Theme
 
 - **Dark** and **Light** select a fixed appearance.
-- **Automatic → Time** uses the panel's local clock. Set **Light from** and **Dark from** in 24-hour `HH:MM` format. The Light period can cross midnight. If both times are the same, Dark remains active.
-- **Automatic → Sunrise / Sunset** switches to Light at sunrise and Dark at sunset. The panel uses its existing on-device sunrise/sunset calculation based on the configured timezone and approximate location. Set the correct timezone under **Settings → Time**. A Home Assistant `sun.sun` entity is not required.
+- Under **Automatic theme**, **Time** uses the panel's local clock. Set **Light from** and **Dark from** in 24-hour `HH:MM` format. The Light period can cross midnight. If both times are the same, Dark remains active.
+- Under **Automatic theme**, **Automatic** switches to Light at sunrise and Dark at sunset. The panel shows the calculated sunrise and sunset times when this method is selected. It uses its existing on-device calculation based on the configured timezone and approximate location. Set the correct timezone under **Settings → Time**. A Home Assistant `sun.sun` entity is not required.
 
 When clock or solar data is temporarily unavailable, Automatic keeps the last active appearance. A fresh boot falls back to Dark until the required data is known. The **Screen: Active Theme** Home Assistant sensor reports the effective Dark or Light palette even while Automatic is selected.
 
