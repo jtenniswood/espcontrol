@@ -1538,7 +1538,7 @@ inline void climate_style_range_target_button(lv_obj_t *btn, bool selected,
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   if (label) {
     lv_obj_set_style_text_color(label, lv_color_hex(
-      selected ? current_theme().text_primary : current_theme().text_muted), LV_PART_MAIN);
+      selected ? readable_text_color_for_bg(selected_color) : current_theme().text_muted), LV_PART_MAIN);
   }
 }
 

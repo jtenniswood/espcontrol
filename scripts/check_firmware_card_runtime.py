@@ -214,6 +214,7 @@ def check_root(root: Path) -> list[str]:
             or "numeric_selectable_driver_setup_visual( s, p, context, palette, display)" not in compact_grid
             or "numeric_selectable_driver_bind_main( s, p, context, card_palette, display)" not in compact_grid
             or "numeric_selectable_driver_bind_subpage( sub_slot, sb_cfg, context, numeric_environment)" not in compact_grid
+            or "numeric_environment.palette = card_palette;" not in compact_grid
             or "cleaning_driver_setup_visual(s, p, context)" not in compact_grid
             or "cleaning_driver_bind_main( s, p, context)" not in compact_grid
             or "cleaning_driver_bind_subpage( sub_slot, sb_cfg, context, cleaning_environment)" not in compact_grid

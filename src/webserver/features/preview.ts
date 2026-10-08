@@ -91,9 +91,13 @@ const CARD_TYPE_PICKER_DEFAULTS: Readonly<Record<string, string>> = {
 
 export function cardPreviewTextColor(background: string): string {
   const rgb = parseInt(background.replace(/^#/, ""), 16);
-  // Match display_text_color_for_bg in the firmware, including its integer rounding.
-  const brightness = Math.floor((((rgb >> 16) & 255) * 299 + ((rgb >> 8) & 255) * 587 + (rgb & 255) * 114) / 1000);
-  return brightness > 186 ? "#212121" : "#FFFFFF";
+  // Match the firmware's fixed-point relative-luminance contrast calculation.
+  const linear = (channel: number) => {
+    const value = channel / 255;
+    return Math.round((value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4) * 1000000);
+  };
+  const luminance = Math.floor((linear((rgb >> 16) & 255) * 2126 + linear((rgb >> 8) & 255) * 7152 + linear(rgb & 255) * 722) / 10000);
+  return (luminance + 50000) ** 2 >= 1050000 * (linear(33) + 50000) ? "#212121" : "#FFFFFF";
 }
 
 export function previewValue<T>(preview: Record<string, unknown> | null | undefined, key: string, fallback: T): T {

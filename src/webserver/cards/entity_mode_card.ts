@@ -1,4 +1,5 @@
 import { cardContractOptionSpec } from "../application/config_option_core";
+import { preserveCardColorOptions } from "../model/config_primitives";
 
 export function entityModeValues(this: any, cardType?: any, optionName?: any, fallbackModes?: any) {
     const spec: any = cardContractOptionSpec(cardType, optionName);
@@ -28,7 +29,7 @@ export function normalizeEntityModeCardConfig(this: any, button?: any, options?:
         button.unit = "";
     }
     button.precision = "";
-    button.options = "";
+    button.options = preserveCardColorOptions(button.options, "");
     button.icon_on = "Auto";
     if (!button.icon || button.icon === "Auto")
         button.icon = options.defaultIcon(mode);

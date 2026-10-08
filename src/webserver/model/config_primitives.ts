@@ -85,6 +85,10 @@ export function withoutCardColorOptions(options: unknown): string {
   ).filter(Boolean).join(",");
 }
 
+export function preserveCardColorOptions(options: unknown, normalized: unknown): string {
+  return [withoutCardColorOptions(normalized), normalizedCardColorOptions(options)].filter(Boolean).join(",");
+}
+
 export function setCardColor(options: unknown, value: unknown): string {
   const cleaned = String(value || "").replace(/^#/, "").trim().toUpperCase();
   return setConfigOptionValue(withoutCardColorOptions(options), "card_off_color", /^[0-9A-F]{6}$/.test(cleaned) ? cleaned : "");

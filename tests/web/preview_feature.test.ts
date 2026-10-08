@@ -23,9 +23,9 @@ export function runPreviewFeatureTests(): void {
   equal(cardPreviewTextColor("FFFFFF"), "#212121", "white card backgrounds use dark text like the device");
   equal(cardPreviewTextColor("FFEB3B"), "#212121", "bright yellow card backgrounds use dark text");
   equal(cardPreviewTextColor("313131"), "#FFFFFF", "dark card backgrounds retain white text");
-  equal(cardPreviewTextColor("FF8C00"), "#FFFFFF", "the default orange matches the device's white text");
-  equal(cardPreviewTextColor("BABABA"), "#FFFFFF", "brightness 186 retains white text at the device threshold");
-  equal(cardPreviewTextColor("BBBBBB"), "#212121", "brightness 187 switches to dark text at the device threshold");
+  for (const colour of ["FF8C00", "00BCD4", "03A9F4", "4CAF50", "8BC34A", "FF9800", "BABABA", "BBBBBB"]) {
+    equal(cardPreviewTextColor(colour), "#212121", "bright preset " + colour + " uses the higher-contrast dark foreground");
+  }
   equal(previewValue({ iconHtml: "custom" }, "iconHtml", "fallback"), "custom", "custom preview values win");
   equal(previewValue(null, "iconHtml", "fallback"), "fallback", "missing preview values use fallback");
   equal(infoOnlyCardVisible("sensor", true), true, "sensors remain visible in info-only mode");

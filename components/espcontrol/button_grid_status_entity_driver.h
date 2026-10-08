@@ -136,6 +136,10 @@ inline bool status_entity_driver_bind_data(
             btn, lv_color_hex(active ? on_color : sensor_color),
             static_cast<lv_style_selector_t>(LV_PART_MAIN) |
               static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+          lv_obj_set_style_text_color(
+            btn, lv_color_hex(display_text_color_for_bg(active ? on_color : sensor_color)),
+            LV_PART_MAIN);
+          sync_card_checked_text_color(btn);
         }
       })
   );

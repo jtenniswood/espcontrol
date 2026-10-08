@@ -561,12 +561,8 @@ inline uint32_t alarm_theme_off_color(const AlarmCardCtx *ctx) {
 
 inline void alarm_set_card_state_colors(AlarmCardCtx *ctx, uint32_t checked_color) {
   if (!ctx || !ctx->btn) return;
-  lv_obj_set_style_bg_color(ctx->btn, lv_color_hex(alarm_theme_off_color(ctx)),
-    static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
-  lv_obj_set_style_bg_color(ctx->btn, lv_color_hex(checked_color),
-    static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_CHECKED));
-  lv_obj_set_style_bg_color(ctx->btn, lv_color_hex(checked_color),
-    static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
+  apply_button_colors(ctx->btn, true, checked_color, true, alarm_theme_off_color(ctx));
+  sync_card_checked_text_color(ctx->btn);
 }
 
 inline void alarm_apply_home_state(AlarmCardCtx *ctx, const std::string &state) {

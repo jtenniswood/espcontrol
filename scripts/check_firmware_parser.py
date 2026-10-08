@@ -207,7 +207,12 @@ inline const char *lv_label_get_text(lv_obj_t *obj) { return obj ? obj->text.c_s
 inline void lv_obj_align(lv_obj_t *, int, int, int) {}
 constexpr int LV_EVENT_CHILD_CHANGED = 1;
 constexpr int LV_EVENT_DELETE = 2;
-struct lv_event_t { lv_obj_t *target; void *data; };
+constexpr int LV_EVENT_ALL = 0;
+constexpr int LV_EVENT_PRESSED = 3;
+constexpr int LV_EVENT_RELEASED = 4;
+constexpr int LV_EVENT_PRESS_LOST = 5;
+struct lv_event_t { lv_obj_t *target; void *data; int code = 0; };
+inline int lv_event_get_code(lv_event_t *event) { return event->code; }
 inline void *lv_event_get_user_data(lv_event_t *event) { return event->data; }
 inline lv_obj_t *lv_event_get_target(lv_event_t *event) { return event->target; }
 inline void lv_obj_add_event_cb(lv_obj_t *obj, lv_event_cb_t cb, int code, void *data) {
@@ -222,8 +227,8 @@ inline void lv_obj_remove_event_cb_with_user_data(lv_obj_t *obj, lv_event_cb_t c
 inline void test_send_event(lv_obj_t *obj, int code) {
   const auto handlers = obj->handlers;
   for (const auto &h : handlers) {
-    if (h.code != code) continue;
-    lv_event_t event{obj, h.data};
+    if (h.code != code && h.code != LV_EVENT_ALL) continue;
+    lv_event_t event{obj, h.data, code};
     h.callback(&event);
   }
 }
