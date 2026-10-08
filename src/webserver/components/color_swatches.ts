@@ -5,7 +5,7 @@ const COLOR_PRESETS: ReadonlyArray<readonly [string, string]> = [
     ["FF0000", "Red"], ["EB1460", "Pink"], ["9C1AB1", "Purple"], ["6633B9", "Deep purple"], ["3D4DB7", "Indigo"],
     ["46AF4A", "Green"], ["009687", "Teal"], ["00BBD5", "Cyan"], ["00A6F6", "Light blue"], ["1093F5", "Blue"],
     ["88C440", "Lime"], ["CCDD1E", "Yellow green"], ["FFEC16", "Yellow"], ["FFC100", "Amber"], [WEB_UI_COLORS.primary, "Orange"],
-    ["000000", "Black"], ["5E7C8B", "Blue grey"], ["9D9D9D", "Grey"], ["7A5547", "Brown"], ["FFFFFF", "White"],
+    ["313131", "Dark grey"], ["666666", "Medium dark grey"], ["9D9D9D", "Grey"], ["CCCCCC", "Light grey"], ["FFFFFF", "White"],
 ];
 
 export const COLOR_SWATCH_STYLES =
