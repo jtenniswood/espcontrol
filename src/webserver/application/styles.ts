@@ -80,6 +80,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         "cursor:pointer;transition:all .2s;box-sizing:border-box;border:var(--btn-border,2px) solid transparent;" +
         "position:relative;overflow:hidden;min-width:0}" +
         ".sp-btn:hover{filter:brightness(1.15)}" +
+        ".sp-btn.sp-selected:hover{filter:none;border-color:var(--accent)}" +
         ".sp-drag-active .sp-btn:hover{filter:none}" +
         ".sp-btn.sp-selected{border-color:var(--accent)}" +
         ".sp-wifi-qr-card{padding:0;background:#fff!important;align-items:center;justify-content:center}" +
