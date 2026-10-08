@@ -23,6 +23,7 @@ constexpr static const char *const TAG = "touchscreen.gsl3680";
 class GSL3680 : public touchscreen::Touchscreen, public i2c::I2CDevice {
     public:
         void setup() override;
+        void dump_config() override;
         void update_touches() override;
 
         void set_interrupt_pin(InternalGPIOPin *pin) { this->interrupt_pin_ = pin; }

@@ -39,6 +39,11 @@ void GSL3680::setup() {
     ESP_LOGI(TAG, "Setup complete");
 }
 
+void GSL3680::dump_config() {
+    ESP_LOGCONFIG(TAG, "GSL3680 touchscreen: %s",
+                  this->is_failed() ? "FAILED" : "firmware verified and running");
+}
+
 esphome::i2c::ErrorCode GSL3680::init() {
     auto err = esphome::i2c::ERROR_OK;
 

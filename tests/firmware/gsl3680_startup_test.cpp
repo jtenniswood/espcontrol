@@ -12,6 +12,7 @@ template<class... Args> void log(const char *, const char *, Args...) {}
 #define ESP_LOGW(...) esphome::log(__VA_ARGS__)
 #define ESP_LOGE(...) esphome::log(__VA_ARGS__)
 #define ESP_LOGV(...) esphome::log(__VA_ARGS__)
+#define ESP_LOGCONFIG(...) esphome::log(__VA_ARGS__)
 #define LOG_STR(value) value
 unsigned elapsed = 0;
 void delay(unsigned ms) { elapsed += ms; }
@@ -32,12 +33,14 @@ struct Display {
 struct Touchscreen {
     virtual ~Touchscreen() = default;
     virtual void setup() {}
+    virtual void dump_config() {}
     virtual void update_touches() {}
     bool swap_x_y_ = false, failed = false, attached = false;
     int x_raw_min_ = 0, y_raw_min_ = 0, x_raw_max_ = 0, y_raw_max_ = 0;
     Display display;
     Display *get_display() { return &display; }
     void mark_failed(const char *) { failed = true; }
+    bool is_failed() const { return failed; }
     void attach_interrupt_(InternalGPIOPin *, int) { attached = true; }
     void add_raw_touch_position_(int, int, int) {}
 };
