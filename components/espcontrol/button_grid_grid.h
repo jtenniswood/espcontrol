@@ -147,6 +147,8 @@ inline CardPalette card_palette_for_config(const CardPalette &defaults,
     if (valid) {
       palette.has_off = true;
       palette.off_val = display_correct_color(raw, display);
+      palette.has_sensor_color = true;
+      palette.sensor_val = palette.off_val;
       palette.has_on = true;
       palette.on_val = display_correct_color(lighter_card_color(raw), display);
     }

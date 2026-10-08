@@ -54,8 +54,8 @@ inline void apply_sensor_active_color(lv_obj_t *btn, bool active_color,
   uint32_t next_color = active ? on_color : sensor_color;
   lv_obj_set_style_bg_color(btn, lv_color_hex(next_color),
     static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
-  lv_obj_set_style_text_color(btn,
-      lv_color_hex(active ? CARD_ACCENT_TEXT_COLOR : current_theme().text_primary), LV_PART_MAIN);
+  lv_obj_set_style_text_color(btn, lv_color_hex(display_text_color_for_bg(next_color)),
+    static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
   sync_card_checked_text_color(btn);
 }
 
