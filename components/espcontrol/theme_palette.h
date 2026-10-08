@@ -45,9 +45,9 @@ inline constexpr ThemePalette DARK_THEME = make_dark_theme();
 // Raw RGB values for the first Light presentation. The separate setup action
 // role keeps the existing Dark #333333 distinct from other neutral controls.
 inline constexpr ThemePalette LIGHT_THEME = {
-    0xFFFFFF,  // background
+    0xE3E3E3,  // background
     0xB0B0B0,  // surface_primary
-    0xE4E4E4,  // surface_secondary
+    0xFFFFFF,  // surface_secondary
     0x333333,  // text_primary
     0x333333,  // clockbar_text
     0x606060,  // text_muted
