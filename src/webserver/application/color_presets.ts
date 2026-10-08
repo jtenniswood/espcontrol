@@ -2,7 +2,7 @@ import { cardPreviewTextColor } from "../features/preview";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
 
 const COLOR_PRESETS = [
-    "F6402C", "EB1460", "9C1AB1", "6633B9", "3D4DB7",
+    "FF0000", "EB1460", "9C1AB1", "6633B9", "3D4DB7",
     "46AF4A", "009687", "00BBD5", "00A6F6", "1093F5",
     "88C440", "CCDD1E", "FFEC16", "FFC100", WEB_UI_COLORS.primary,
     "000000", "5E7C8B", "9D9D9D", "7A5547", "FF5505",
