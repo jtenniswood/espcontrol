@@ -21,6 +21,7 @@ import {
     SENSOR_TIME_UNIT_OPTION,
     cardContractOptionSupportedFor,
     copyLargeNumbersOption,
+    copySecondaryDataOptions,
     largeNumbersExplicitlyDisabled,
 } from "./config_option_core";
 export function createConfigSensorOptionsFeature(cardRegistry: CardRegistry) {
@@ -165,6 +166,7 @@ export function createConfigSensorOptionsFeature(cardRegistry: CardRegistry) {
         }
         if (precision === "time")
             out = setConfigOptionValue(out, SENSOR_TIME_UNIT_OPTION, normalizeSensorTimeUnit(configOptionValue(options, SENSOR_TIME_UNIT_OPTION)));
+        out = copySecondaryDataOptions(out, options);
         return out;
     }
     function normalizeDateTimeOptions(this: any, type?: any, options?: any, precision?: any) {

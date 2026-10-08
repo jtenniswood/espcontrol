@@ -923,14 +923,7 @@ inline void refresh_secondary_card_label_layout(BtnSlot &slot,
   lv_obj_set_width(slot.secondary_lbl, lv_pct(100));
   lv_label_set_long_mode(slot.secondary_lbl, LV_LABEL_LONG_DOT);
   lv_obj_align(slot.secondary_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
-  const lv_font_t *font = slot.text_lbl
-    ? lv_obj_get_style_text_font(slot.text_lbl, LV_PART_MAIN) : nullptr;
-  const lv_coord_t height = font && font->line_height > 0 ? font->line_height : 16;
-  if (slot.text_lbl) {
-    lv_obj_align(slot.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, -height - 2);
-    lv_obj_move_foreground(slot.text_lbl);
-  }
-  lv_obj_move_foreground(slot.secondary_lbl);
+  layout_button_label_with_secondary(slot.text_lbl, slot.secondary_lbl);
 }
 
 inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,

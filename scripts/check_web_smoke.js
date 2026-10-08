@@ -598,6 +598,23 @@ assert(
   hooks.buttonTypePreviewFor("sensor", { type: "sensor", sensor: "local", entity: "room_temp", unit: "°C", precision: "1" }).iconHtml.includes("0.0"),
   "sensor preview renders the local sensor subtype"
 );
+const secondarySensorOptions = "secondary_entity=sensor.room_humidity,secondary_prefix=Humidity,secondary_unit=pct";
+const secondaryIconSensorPreview = hooks.buttonTypePreviewFor("sensor", {
+  type: "sensor", sensor: "sensor.room_temp", label: "Temperature", precision: "icon",
+  options: secondarySensorOptions,
+});
+assert(
+  secondaryIconSensorPreview.labelHtml.includes("Humidity: 24.0pct"),
+  "icon sensor preview includes configured secondary data"
+);
+const secondaryTextSensorPreview = hooks.buttonTypePreviewFor("sensor", {
+  type: "sensor", sensor: "sensor.room_status", precision: "text",
+  options: secondarySensorOptions,
+});
+assert(
+  secondaryTextSensorPreview.labelHtml.includes("Humidity: 24.0pct"),
+  "text sensor preview includes configured secondary data"
+);
 assert.deepStrictEqual(Array.from(hooks.alarmCardTypeOptionValues(false)), ["control_panel", "away", "home", "night", "vacation", "disarm"]);
 assert.deepStrictEqual(Array.from(hooks.alarmCardTypeOptionValues(true)), ["control_panel", "away", "home", "night", "vacation", "disarm"]);
 assert.deepStrictEqual(Array.from(hooks.alarmVisibleActions(hooks.parseButtonConfig(

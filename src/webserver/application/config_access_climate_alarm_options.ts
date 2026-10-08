@@ -15,6 +15,7 @@ import {
     cardContractOptionDefaultValue,
     cardContractOptionSpec,
     copyLargeNumbersOption,
+    copySecondaryDataOptions,
 } from "./config_option_core";
 import type { ConfigModalTabOptionsFeature } from "./config_modal_tab_options";
 export function createConfigAccessClimateAlarmOptionsFeature(
@@ -169,6 +170,7 @@ export function createConfigAccessClimateAlarmOptionsFeature(
                 out = setConfigOptionValue(out, CLIMATE_CONTROL_TABS_OPTION, tabs.join("|"));
             }
         }
+        out = copySecondaryDataOptions(out, options);
         return out;
     }
     function climateLabelDisplayMode(this: any, b?: any) {

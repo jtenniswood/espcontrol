@@ -343,14 +343,14 @@ export function registerSensorCardTypes(
                 var stateIconName: any = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "cog";
                 return {
                     iconHtml: '<span class="sp-btn-icon mdi mdi-' + stateIconName + '"></span>',
-                    labelHtml: cardBadgeLabelHtml(helpers, b.label || b.sensor || "Sensor", SENSOR_CARD_METADATA.preview.iconBadge),
+                    labelHtml: cardBadgeLabelHtml(helpers, b.label || b.sensor || "Sensor", SENSOR_CARD_METADATA.preview.iconBadge) + secondaryDataPreviewHtml(b, helpers),
                 };
             }
             if (b.precision === "text") {
                 var iconName: any = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "cog";
                 return {
                     iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
-                    labelHtml: cardBadgeLabelHtml(helpers, "State", SENSOR_CARD_METADATA.preview.textBadge),
+                    labelHtml: cardBadgeLabelHtml(helpers, "State", SENSOR_CARD_METADATA.preview.textBadge) + secondaryDataPreviewHtml(b, helpers),
                 };
             }
             if (b.precision === "time") {
@@ -359,7 +359,7 @@ export function registerSensorCardTypes(
                     : "1h";
                 return {
                     iconHtml: cardSensorPreviewHtml(b, helpers, timeValue, ""),
-                labelHtml: cardBadgeLabelHtml(helpers, b.label || b.sensor || "Sensor", SENSOR_CARD_METADATA.preview.numericBadge) + secondaryDataPreviewHtml(b, helpers),
+                    labelHtml: cardBadgeLabelHtml(helpers, b.label || b.sensor || "Sensor", SENSOR_CARD_METADATA.preview.numericBadge) + secondaryDataPreviewHtml(b, helpers),
                 };
             }
             var label: any = b.label || b.sensor || "Sensor";

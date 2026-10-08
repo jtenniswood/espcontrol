@@ -124,7 +124,8 @@ inline ClimateControlCtx *climate_control_driver_bind_data(
       environment.option_title_font, environment.option_value_font,
       environment.option_menu_font, environment.card_icon_font,
       environment.icon_font, environment.width_compensation_percent,
-      slot.sensor_container, slot.sensor_lbl, slot.unit_lbl));
+      slot.sensor_container, slot.sensor_lbl, slot.unit_lbl,
+      slot.secondary_lbl));
   subscribe_climate_control_state(climate);
   return climate;
 }

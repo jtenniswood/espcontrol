@@ -125,6 +125,7 @@ struct ClimateControlCtx {
   lv_obj_t *btn = nullptr;
   lv_obj_t *icon_lbl = nullptr;
   lv_obj_t *label_lbl = nullptr;
+  lv_obj_t *secondary_lbl = nullptr;
   lv_obj_t *sensor_container = nullptr;
   lv_obj_t *value_lbl = nullptr;
   lv_obj_t *unit_lbl = nullptr;
@@ -1078,11 +1079,10 @@ inline void climate_layout_card_sensor(lv_obj_t *sensor_container) {
   lv_obj_move_foreground(sensor_container);
 }
 
-inline void climate_layout_card_label(lv_obj_t *label_lbl) {
+inline void climate_layout_card_label(lv_obj_t *label_lbl,
+                                     lv_obj_t *secondary_lbl = nullptr) {
   if (!label_lbl) return;
-  lv_obj_align(label_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
-  configure_button_label_wrap(label_lbl);
-  lv_obj_move_foreground(label_lbl);
+  layout_button_label_with_secondary(label_lbl, secondary_lbl);
 }
 
 inline void climate_update_card(ClimateControlCtx *ctx) {
@@ -1112,7 +1112,7 @@ inline void climate_update_card(ClimateControlCtx *ctx) {
   if (!show_icon && ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, (value.empty() || value == "--") ? "" : display_temperature_unit_symbol());
   if (ctx->label_lbl) {
     lv_label_set_display_text(ctx->label_lbl, climate_card_label(ctx).c_str());
-    climate_layout_card_label(ctx->label_lbl);
+    climate_layout_card_label(ctx->label_lbl, ctx->secondary_lbl);
   }
   if (ctx->btn) {
     set_card_checked_state(ctx->btn, climate_is_active(ctx));
@@ -2649,7 +2649,8 @@ inline ClimateControlCtx *create_climate_control_context(
     const lv_font_t *option_value_font, const lv_font_t *option_menu_font,
     const lv_font_t *card_icon_font, const lv_font_t *icon_font,
     int width_compensation_percent,
-    lv_obj_t *sensor_container, lv_obj_t *value_lbl, lv_obj_t *unit_lbl) {
+    lv_obj_t *sensor_container, lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
+    lv_obj_t *secondary_lbl = nullptr) {
   ClimateControlCtx *ctx = new ClimateControlCtx();
   ctx->entity_id = p.entity;
   ctx->configured_label = p.label;
@@ -2671,6 +2672,7 @@ inline ClimateControlCtx *create_climate_control_context(
   ctx->btn = btn;
   ctx->icon_lbl = icon_lbl;
   ctx->label_lbl = label_lbl;
+  ctx->secondary_lbl = secondary_lbl;
   ctx->sensor_container = sensor_container;
   ctx->value_lbl = value_lbl;
   ctx->unit_lbl = unit_lbl;

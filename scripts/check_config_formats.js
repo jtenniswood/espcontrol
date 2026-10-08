@@ -675,6 +675,17 @@ assert.strictEqual(
   "climate_tabs=fan",
   "invalid and duplicate climate control tabs are removed"
 );
+const secondaryDataOptions = "secondary_entity=sensor.room_humidity,secondary_prefix=Humidity,secondary_unit=pct";
+assert.strictEqual(
+  hooks.normalizeSensorOptions(secondaryDataOptions, ""),
+  secondaryDataOptions,
+  "sensor option normalization preserves secondary data settings"
+);
+assert.strictEqual(
+  hooks.normalizeClimateOptions(secondaryDataOptions),
+  secondaryDataOptions,
+  "climate option normalization preserves secondary data settings"
+);
 const coverOptionSpecs = hooks.cardContractOptions("cover");
 const coverOptionByName = Object.fromEntries(coverOptionSpecs.map((option) => [option.name, option]));
 assert.deepStrictEqual(
@@ -736,7 +747,7 @@ const switchOptionSpecs = hooks.cardContractOptions("");
 const switchOptionByName = Object.fromEntries(switchOptionSpecs.map((option) => [option.name, option]));
 assert.deepStrictEqual(
   Array.from(switchOptionSpecs, (option) => option.name),
-  ["large_numbers", "confirmation_mode", "on_pattern", "confirm_message", "confirm_yes", "confirm_no"],
+  ["secondary_entity", "secondary_prefix", "secondary_unit", "large_numbers", "confirmation_mode", "on_pattern", "confirm_message", "confirm_yes", "confirm_no"],
   "switch option specs preserve current option order"
 );
 assert.deepStrictEqual(
@@ -762,7 +773,7 @@ const sensorOptionSpecs = hooks.cardContractOptions("sensor");
 const sensorOptionByName = Object.fromEntries(sensorOptionSpecs.map((option) => [option.name, option]));
 assert.deepStrictEqual(
   Array.from(sensorOptionSpecs, (option) => option.name),
-  ["large_numbers", "time_unit", "active_color", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
+  ["secondary_entity", "secondary_prefix", "secondary_unit", "large_numbers", "time_unit", "active_color", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
   "sensor option specs preserve current option order"
 );
 assert.deepStrictEqual(
@@ -984,6 +995,14 @@ assert.strictEqual(hooks.switchConfirmationMode(parsedConfirmSwitch), "off", "sw
 const defaultConfirmSwitch = hooks.parseButtonConfig("switch.printer;Printer;Printer 3D;Auto;;;;;confirm_off");
 assert.strictEqual(hooks.switchConfirmationYesText(defaultConfirmSwitch), "Yes", "switch confirmation default yes text");
 assert.strictEqual(hooks.switchConfirmationNoText(defaultConfirmSwitch), "No", "switch confirmation default no text");
+const secondaryDataSwitch = hooks.parseButtonConfig(
+  "switch.printer;Printer;Printer 3D;Auto;;;;;" + secondaryDataOptions
+);
+assert.strictEqual(
+  secondaryDataSwitch.options,
+  secondaryDataOptions,
+  "switch option normalization preserves secondary data settings"
+);
 const confirmOnSwitch = hooks.parseButtonConfig("switch.printer;Printer;Printer 3D;Auto;;;;;confirm_on");
 assert.strictEqual(hooks.switchConfirmationEnabled(confirmOnSwitch), true, "switch on confirmation enabled");
 assert.strictEqual(hooks.switchConfirmationMode(confirmOnSwitch), "on", "switch on confirmation mode");

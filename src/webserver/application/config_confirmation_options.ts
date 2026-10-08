@@ -19,6 +19,7 @@ import {
     cardContractOptionDefaultValue,
     cardContractOptionSpec,
     copyLargeNumbersOption,
+    copySecondaryDataOptions,
 } from "./config_option_core";
 import {
     ACTION_CARD_LOCAL_ACTION,
@@ -186,6 +187,7 @@ export function createConfigConfirmationOptionsFeature(
         var onPattern: any = normalizeCardOnPattern(configOptionValue(options, CARD_ON_PATTERN_OPTION));
         if (onPattern)
             out = setConfigOptionValue(out, CARD_ON_PATTERN_OPTION, onPattern);
+        out = copySecondaryDataOptions(out, options);
         if (!mode)
             return out;
         var storage: any = switchConfirmationModeStorage();

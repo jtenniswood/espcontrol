@@ -441,6 +441,29 @@ inline void set_wrapped_button_label_text(lv_obj_t *label, const std::string &te
   lv_obj_align(label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
 }
 
+inline void layout_button_label_with_secondary(
+    lv_obj_t *label, lv_obj_t *secondary_lbl) {
+  if (!label) return;
+  configure_button_label_wrap(label);
+  if (secondary_lbl && !lv_obj_has_flag(secondary_lbl, LV_OBJ_FLAG_HIDDEN)) {
+    const lv_font_t *font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+    const lv_coord_t height = font && font->line_height > 0
+      ? font->line_height : 16;
+    lv_obj_align(label, LV_ALIGN_BOTTOM_LEFT, 0, -height - 2);
+    lv_obj_move_foreground(label);
+    lv_obj_move_foreground(secondary_lbl);
+    return;
+  }
+  lv_obj_align(label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+  lv_obj_move_foreground(label);
+}
+
+inline void set_wrapped_button_label_text_with_secondary(
+    lv_obj_t *label, lv_obj_t *secondary_lbl, const std::string &text) {
+  set_wrapped_button_label_text(label, text);
+  layout_button_label_with_secondary(label, secondary_lbl);
+}
+
 inline void set_subpage_chevron_visible(BtnSlot &s, bool visible,
                                         int x_offset = 0,
                                         int y_offset = 2,

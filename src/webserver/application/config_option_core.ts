@@ -21,6 +21,9 @@ import {
     var SENSOR_LARGE_NUMBERS_OFF_VALUE: any = "off";
     var SENSOR_TIME_UNIT_OPTION: any = cardContractOptionName("time_unit");
     var SENSOR_ACTIVE_COLOR_OPTION: any = cardContractOptionName("active_color");
+    var SECONDARY_DATA_ENTITY_OPTION: any = cardContractOptionName("secondary_entity");
+    var SECONDARY_DATA_PREFIX_OPTION: any = cardContractOptionName("secondary_prefix");
+    var SECONDARY_DATA_UNIT_OPTION: any = cardContractOptionName("secondary_unit");
     var SWITCH_CONFIRM_OFF_OPTION: any = cardContractOptionName("confirm_off");
     var SWITCH_CONFIRM_ON_OPTION: any = cardContractOptionName("confirm_on");
     var SWITCH_CONFIRM_MESSAGE_OPTION: any = cardContractOptionName("confirm_message");
@@ -73,6 +76,12 @@ import {
         if (configOptionEnabled(options, SENSOR_LARGE_NUMBERS_OPTION)) {
             return setConfigOption(out, SENSOR_LARGE_NUMBERS_OPTION, true);
         }
+        return out;
+    }
+    function copySecondaryDataOptions(this: any, out?: any, options?: any) {
+        out = setConfigOptionValue(out, SECONDARY_DATA_ENTITY_OPTION, configOptionValue(options, SECONDARY_DATA_ENTITY_OPTION));
+        out = setConfigOptionValue(out, SECONDARY_DATA_PREFIX_OPTION, configOptionValue(options, SECONDARY_DATA_PREFIX_OPTION));
+        out = setConfigOptionValue(out, SECONDARY_DATA_UNIT_OPTION, configOptionValue(options, SECONDARY_DATA_UNIT_OPTION));
         return out;
     }
     function cardContractOptionSpec(this: any, type?: any, name?: any) {
@@ -159,6 +168,7 @@ export {
     WIFI_QR_TABS_OPTION,
     largeNumbersExplicitlyDisabled,
     copyLargeNumbersOption,
+    copySecondaryDataOptions,
     cardContractOptionSpec,
     cardContractOptionSupportedFor,
     cardContractOptionDefaultValue,
