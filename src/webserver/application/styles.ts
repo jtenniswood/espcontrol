@@ -78,12 +78,12 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-main.sp-grid-loading{visibility:hidden;opacity:0;pointer-events:none;transition:opacity .2s,visibility .2s}" +
         ".sp-btn{border-radius:var(--btn-r);padding:var(--btn-pad);" +
         "display:flex;flex-direction:column;justify-content:space-between;" +
-        "cursor:pointer;transition:all .2s;box-sizing:border-box;border:var(--btn-border,2px) solid transparent;" +
+        "cursor:pointer;transition:all .2s;box-sizing:border-box;border:0;" +
         "position:relative;overflow:hidden;min-width:0}" +
         ".sp-btn:hover{filter:brightness(1.15)}" +
-        ".sp-btn.sp-selected:hover{filter:none;border-color:var(--accent)}" +
+        ".sp-btn.sp-selected:hover{filter:none}" +
         ".sp-drag-active .sp-btn:hover{filter:none}" +
-        ".sp-btn.sp-selected{border-color:var(--accent)}" +
+        ".sp-btn.sp-selected{box-shadow:inset 0 0 0 2px var(--accent)}" +
         ".sp-wifi-qr-card{padding:0;background:#fff!important;align-items:center;justify-content:center}" +
         ".sp-wifi-qr-card:hover{filter:none}" +
         ".sp-wifi-qr-preview{display:block;width:84%;height:84%;pointer-events:none}" +
