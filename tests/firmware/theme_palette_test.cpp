@@ -55,7 +55,7 @@ int main() {
   assert(LIGHT_THEME.background == 0xF4F4F4);
   assert(LIGHT_THEME.surface_primary == 0xFFFFFF);
   assert(LIGHT_THEME.surface_secondary == 0xE8E8E8);
-  assert(LIGHT_THEME.text_primary == 0x181818);
+  assert(LIGHT_THEME.text_primary == 0x333333);
   assert(LIGHT_THEME.text_muted == 0x606060);
   assert(LIGHT_THEME.text_inverted == 0xFFFFFF);
   assert(LIGHT_THEME.text_disabled == 0x9A9A9A);

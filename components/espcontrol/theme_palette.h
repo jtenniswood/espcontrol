@@ -46,7 +46,7 @@ inline constexpr ThemePalette LIGHT_THEME = {
     0xF4F4F4,  // background
     0xFFFFFF,  // surface_primary
     0xE8E8E8,  // surface_secondary
-    0x181818,  // text_primary
+    0x333333,  // text_primary
     0x606060,  // text_muted
     0xFFFFFF,  // text_inverted
     0x9A9A9A,  // text_disabled

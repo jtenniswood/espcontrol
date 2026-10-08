@@ -50,7 +50,7 @@ export function runSettingsFeatureTests(): void {
   equal(previewEffectiveTheme({ themeMode: "Auto", themeActive: "Light" }), "Light", "Auto preview follows active firmware theme");
   equal(previewEffectiveTheme({ themeMode: "Dark", themeActive: "Light" }), "Dark", "manual preview follows chosen mode");
   equal(PREVIEW_THEME_COLORS.Light.surfacePrimary, "FFFFFF", "preview Light surface matches device palette");
-  equal(previewThemeCss("Light").includes("--preview-text-primary:#181818"), true, "preview Light foreground is semantic");
+  equal(previewThemeCss("Light").includes("--preview-text-primary:#333333"), true, "preview Light foreground is semantic");
   for (const [mode, palette] of Object.entries(PREVIEW_THEME_COLORS)) {
     equal(contrast(palette.textPrimary, palette.surfacePrimary) >= 4.5, true, `${mode} primary text contrast`);
     equal(contrast(palette.textMuted, palette.surfacePrimary) >= 4.5, true, `${mode} muted text contrast`);
