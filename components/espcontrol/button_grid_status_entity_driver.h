@@ -69,14 +69,14 @@ inline bool status_entity_driver_setup_visual(
     BtnSlot &slot, const ParsedCfg &config, const Context &context,
     const CardPalette &palette) {
   if (!status_entity_driver_matches(context)) return false;
-  if (config.sensor.empty()) return true;
-
   if (palette.has_sensor_color) {
     lv_obj_set_style_bg_color(
-      slot.btn, lv_color_hex(palette.sensor_val),
+      slot.btn, lv_color_hex(palette.surface_sensor_val),
       static_cast<lv_style_selector_t>(LV_PART_MAIN) |
         static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+    lv_obj_add_flag(slot.btn, LV_OBJ_FLAG_USER_5);
   }
+  if (config.sensor.empty()) return true;
   lv_obj_clear_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
   lv_label_set_display_text(
@@ -127,7 +127,7 @@ inline bool status_entity_driver_bind_data(
     std::function<void(esphome::StringRef)>(
       [btn = slot.btn, icon = slot.icon_lbl, type, inactive_icon, active_icon,
        active_color, on_color = palette.on_val,
-       sensor_color = palette.sensor_val](esphome::StringRef state) {
+       sensor_color = palette.surface_sensor_val](esphome::StringRef state) {
         const bool unavailable = ha_state_unavailable_ref(state);
         const bool active = !unavailable &&
           status_entity_driver_state_active(type, state);

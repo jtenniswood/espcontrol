@@ -20,6 +20,11 @@ import type { ScreenRotationFeature } from "./screen_rotation_state";
 import type { ControlsShellFeature } from "./controls_shell";
 import type { GridFeature } from "./grid";
 import type { ButtonSettingsSelectionFeature } from "./button_settings_selection";
+
+const SENSOR_SURFACE_CARD_TYPES: ReadonlySet<string> = new Set([
+    "sensor", "local_sensor", "door_window", "presence", "weather",
+    "weather_forecast", "calendar", "clock", "timezone",
+]);
 export interface PreviewRenderDependencies {
     readonly updateClockBarItemUi: () => void;
     readonly document: Document;
@@ -150,7 +155,9 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 }
                 var iconName: any = resolveIcon(b);
                 var label: any = b.label || b.entity || "Configure";
-                var color: any = previewColors.surfaceSecondary;
+                var color: any = SENSOR_SURFACE_CARD_TYPES.has(b.type || "")
+                    ? previewColors.surfaceSensor
+                    : previewColors.surfaceSecondary;
                 var previewTypeDef: any = dependencies.cards.definitions[b.type || ""] || null;
                 if (previewTypeDef && c.isSub && !buttonTypeRegistryValue(previewTypeDef, "allowInSubpage", false)) {
                     previewTypeDef = null;

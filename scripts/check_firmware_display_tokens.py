@@ -57,6 +57,7 @@ THEME_RGB = {
     "BACKGROUND": 0x303030,
     "SURFACE_PRIMARY": 0x303030,
     "SURFACE_SECONDARY": 0x404040,
+    "SURFACE_SENSOR": 0x404040,
     "TEXT_PRIMARY": 0xFFFFFF,
     "CLOCKBAR_TEXT": 0xFFFFFF,
     "TEXT_MUTED": 0xB0B0B0,
@@ -72,6 +73,7 @@ LIGHT_THEME_RGB = {
     "BACKGROUND": 0xE3E3E3,
     "SURFACE_PRIMARY": 0xB0B0B0,
     "SURFACE_SECONDARY": 0xFFFFFF,
+    "SURFACE_SENSOR": 0xF5F5F5,
     "TEXT_PRIMARY": 0x333333,
     "CLOCKBAR_TEXT": 0x333333,
     "TEXT_MUTED": 0x606060,
@@ -109,7 +111,8 @@ def check_theme_colors(root: Path) -> list[str]:
         preview_text = preview_path.read_text(encoding="utf-8")
         for mode, colors in (("Dark", THEME_RGB), ("Light", LIGHT_THEME_RGB)):
             block = re.search(rf"\b{mode}:\s*\{{([^}}]+)\}}", preview_text)
-            for role in ("BACKGROUND", "SURFACE_PRIMARY", "SURFACE_SECONDARY", "TEXT_PRIMARY",
+            for role in ("BACKGROUND", "SURFACE_PRIMARY", "SURFACE_SECONDARY",
+                         "SURFACE_SENSOR", "TEXT_PRIMARY",
                          "TEXT_MUTED", "TEXT_DISABLED", "BORDER", "TRACK_BACKGROUND", "CONTROL_NEUTRAL"):
                 words = role.lower().split("_")
                 field = words[0] + "".join(word.title() for word in words[1:])

@@ -27,9 +27,10 @@ inline void sensor_driver_apply_background(
     BtnSlot &slot, const CardPalette &palette) {
   if (!palette.has_sensor_color) return;
   lv_obj_set_style_bg_color(
-    slot.btn, lv_color_hex(palette.sensor_val),
+    slot.btn, lv_color_hex(palette.surface_sensor_val),
     static_cast<lv_style_selector_t>(LV_PART_MAIN) |
       static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+  lv_obj_add_flag(slot.btn, LV_OBJ_FLAG_USER_5);
 }
 
 inline bool sensor_driver_setup_visual(
@@ -38,11 +39,11 @@ inline bool sensor_driver_setup_visual(
   if (!sensor_driver_matches(context)) return false;
 
   const bool local = sensor_driver_is_local(config, context);
+  sensor_driver_apply_background(slot, palette);
   if ((local && config.entity.empty()) || (!local && config.sensor.empty())) {
     return true;
   }
 
-  sensor_driver_apply_background(slot, palette);
   lv_obj_clear_flag(slot.btn, LV_OBJ_FLAG_CLICKABLE);
 
   if (sensor_driver_is_text(config, context)) {
@@ -197,7 +198,7 @@ inline bool sensor_driver_bind_data(
     if (!config.sensor.empty()) {
       subscribe_sensor_text_card_value(
         slot.text_lbl, config, slot.btn, sensor_active_color_enabled(config),
-        palette.on_val);
+        palette.on_val, true);
     }
     return true;
   }
@@ -219,7 +220,7 @@ inline bool sensor_driver_bind_data(
       subscribe_sensor_value(
         slot.sensor_lbl, config.sensor, parse_precision(config.precision),
         slot.unit_lbl, config.unit, slot.btn,
-        sensor_active_color_enabled(config), palette.on_val);
+        sensor_active_color_enabled(config), palette.on_val, true);
     }
     if (config.label.empty()) subscribe_friendly_name(slot.text_lbl, config.sensor);
   }

@@ -10,7 +10,8 @@
 // flags affect only the named style part, never exclude an entire subtree.
 // USER_1/USER_3 encode background ownership: content, primary foreground fill,
 // or (both set) control-neutral fill. USER_2 protects content foregrounds;
-// USER_4 protects content pressed fills. No extra per-widget allocation is used.
+// USER_4 protects content pressed fills; USER_5 marks sensor-surface cards.
+// No extra per-widget allocation is used.
 inline void theme_set_content_background(lv_obj_t *obj, bool owned = true) {
   if (!obj) return;
   lv_obj_clear_flag(obj, LV_OBJ_FLAG_USER_3);
@@ -28,6 +29,9 @@ inline void theme_set_primary_foreground_fill(lv_obj_t *obj, bool owned = true) 
 }
 inline void theme_set_control_neutral_fill(lv_obj_t *obj) {
   if (obj) lv_obj_add_flag(obj, static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_USER_1 | LV_OBJ_FLAG_USER_3));
+}
+inline bool theme_uses_sensor_surface(lv_obj_t *obj) {
+  return obj && lv_obj_has_flag(obj, LV_OBJ_FLAG_USER_5);
 }
 inline void theme_set_content_pressed_fill(lv_obj_t *obj, bool owned = true) {
   if (!obj) return;
@@ -54,10 +58,12 @@ inline bool theme_neutral_background(lv_color_t color, const ThemePalette &theme
   return theme_color_matches(color, theme.background) ||
          theme_color_matches(color, theme_display_color(theme.surface_primary)) ||
          theme_color_matches(color, theme_display_color(theme.surface_secondary)) ||
+         theme_color_matches(color, theme_display_color(theme.surface_sensor)) ||
          theme_color_matches(color, theme_display_color(theme.control_neutral)) ||
          theme_color_matches(color, theme_display_color(theme.track_background)) ||
          theme_color_matches(color, theme_tree_corrected(theme.surface_primary, correction)) ||
          theme_color_matches(color, theme_tree_corrected(theme.surface_secondary, correction)) ||
+         theme_color_matches(color, theme_tree_corrected(theme.surface_sensor, correction)) ||
          theme_color_matches(color, theme_tree_corrected(theme.track_background, correction)) ||
          theme_color_matches(color, theme.overlay);
 }
@@ -86,6 +92,12 @@ inline void theme_restyle_tree(lv_obj_t *obj, const ThemePalette &previous,
       lv_obj_set_style_bg_color(obj, lv_color_hex(theme_display_color(theme.control_neutral)), LV_PART_MAIN);
     } else if (explicit_theme_fill) {
       lv_obj_set_style_bg_color(obj, lv_color_hex(theme.text_primary), LV_PART_MAIN);
+    } else if (theme_uses_sensor_surface(obj) &&
+               theme_color_matches(background, theme_tree_corrected(previous.surface_sensor, correction))) {
+      lv_obj_set_style_bg_color(obj, lv_color_hex(theme_tree_corrected(theme.surface_sensor, correction)), LV_PART_MAIN);
+    } else if (theme_uses_sensor_surface(obj) &&
+               theme_color_matches(background, theme_display_color(previous.surface_sensor))) {
+      lv_obj_set_style_bg_color(obj, lv_color_hex(theme_display_color(theme.surface_sensor)), LV_PART_MAIN);
     } else if (theme_color_matches(background, theme_tree_corrected(previous.surface_secondary, correction))) {
       lv_obj_set_style_bg_color(obj, lv_color_hex(theme_tree_corrected(theme.surface_secondary, correction)), LV_PART_MAIN);
     } else if (theme_color_matches(background, theme_tree_corrected(previous.surface_primary, correction))) {

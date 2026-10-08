@@ -40,6 +40,7 @@ int main() {
   assert(current_theme().background == 0x303030);
   assert(current_theme().surface_primary == 0x303030);
   assert(current_theme().surface_secondary == 0x404040);
+  assert(current_theme().surface_sensor == 0x404040);
   assert(current_theme().text_primary == 0xFFFFFF);
   assert(current_theme().text_muted == 0xB0B0B0);
   assert(current_theme().text_inverted == 0x000000);
@@ -55,6 +56,7 @@ int main() {
   assert(LIGHT_THEME.background == 0xE3E3E3);
   assert(LIGHT_THEME.surface_primary == 0xB0B0B0);
   assert(LIGHT_THEME.surface_secondary == 0xFFFFFF);
+  assert(LIGHT_THEME.surface_sensor == 0xF5F5F5);
   assert(LIGHT_THEME.text_primary == 0x333333);
   assert(LIGHT_THEME.clockbar_text == 0x333333);
   assert(LIGHT_THEME.text_muted == 0x606060);
@@ -88,6 +90,7 @@ int main() {
   alternate.background = 0x123456;
   alternate.surface_primary = 0x445566;
   alternate.surface_secondary = 0x112233;
+  alternate.surface_sensor = 0x445566;
   alternate.text_primary = 0xEEEEEE;
   set_active_theme_palette(alternate);
   apply_current_theme();
@@ -105,6 +108,7 @@ int main() {
   assert(card.on_val == DEFAULT_ACCENT_COLOR);
   assert(card.off_val == theme_display_color(alternate.surface_secondary));
   assert(card.sensor_val == theme_display_color(alternate.surface_secondary));
+  assert(card.surface_sensor_val == theme_display_color(alternate.surface_sensor));
   assert(current_button_primary_color() == 0xAABBCC);
   assert(CARD_ACCENT_TEXT_COLOR == 0xFFFFFF);
   assert(readable_text_color_for_bg(0x000000) == CARD_ACCENT_TEXT_COLOR);
@@ -131,6 +135,7 @@ int main() {
   CardPalette light_card;
   assert(light_card.off_val == theme_display_color(LIGHT_THEME.surface_secondary));
   assert(light_card.sensor_val == theme_display_color(LIGHT_THEME.surface_secondary));
+  assert(light_card.surface_sensor_val == theme_display_color(LIGHT_THEME.surface_sensor));
   assert(light_card.on_val == DEFAULT_ACCENT_COLOR);
   assert(current_button_primary_color() == 0xAABBCC);
   set_active_theme_palette(DARK_THEME);

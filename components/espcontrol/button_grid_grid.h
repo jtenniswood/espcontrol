@@ -532,6 +532,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
                               const CardPalette &palette,
                               int row_span = 1,
                               int col_span = 1) {
+  lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_USER_5);
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   const auto family = context.family;
   grid_prepare_timer_visual_reset(s.btn);
@@ -1059,6 +1060,7 @@ inline void grid_phase1(
   uint32_t on_val = parse_hex_color(on_hex, has_on);
   uint32_t off_val = display_correct_color(current_theme().surface_secondary, display);
   uint32_t sensor_val = display_correct_color(current_theme().surface_secondary, display);
+  uint32_t surface_sensor_val = display_correct_color(current_theme().surface_sensor, display);
   if (has_on) on_val = display_correct_color(on_val, display);
 
   CardPalette palette;
@@ -1068,6 +1070,7 @@ inline void grid_phase1(
   palette.on_val = has_on ? on_val : DEFAULT_ACCENT_COLOR;
   palette.off_val = off_val;
   palette.sensor_val = sensor_val;
+  palette.surface_sensor_val = surface_sensor_val;
   set_current_button_primary_color(palette.on_val);
 
   bump_ha_subscription_generation();
@@ -1868,6 +1871,7 @@ inline void grid_phase2(
   uint32_t on_val = parse_hex_color(on_hex, has_on);
   uint32_t off_val = display_correct_color(current_theme().surface_secondary, display);
   uint32_t sensor_val = display_correct_color(current_theme().surface_secondary, display);
+  uint32_t surface_sensor_val = display_correct_color(current_theme().surface_sensor, display);
   if (has_on) on_val = display_correct_color(on_val, display);
 
   CardPalette palette;
@@ -1877,6 +1881,7 @@ inline void grid_phase2(
   palette.on_val = has_on ? on_val : DEFAULT_ACCENT_COLOR;
   palette.off_val = off_val;
   palette.sensor_val = sensor_val;
+  palette.surface_sensor_val = surface_sensor_val;
   set_current_button_primary_color(palette.on_val);
 
   OrderResult parsed, order;

@@ -30,6 +30,10 @@ inline uint32_t current_grid_sensor_color() {
   return theme_grid_correct_color(current_theme().surface_secondary, theme_grid_targets());
 }
 
+inline uint32_t current_grid_sensor_surface_color() {
+  return theme_grid_correct_color(current_theme().surface_sensor, theme_grid_targets());
+}
+
 inline void theme_apply_grid_button(lv_obj_t *button, uint32_t neutral,
                                     const ThemePalette &theme) {
   if (!button) return;
@@ -70,11 +74,12 @@ inline void theme_apply_grid(void *context, const ThemePalette &theme) {
   const ThemeTreeCorrection correction = {targets.red_percent, targets.green_percent,
                                           targets.blue_percent};
   for (int i = 0; i < targets.count; ++i) {
-    if (targets.neutral_buttons[i] && targets.buttons[i]) {
+    const bool sensor_surface = theme_uses_sensor_surface(targets.buttons[i]);
+    if ((targets.neutral_buttons[i] || sensor_surface) && targets.buttons[i]) {
       const bool accent_state = lv_obj_has_state(targets.buttons[i], LV_STATE_CHECKED) ||
                                 lv_obj_has_state(targets.buttons[i], LV_STATE_PRESSED);
       theme_restyle_tree(targets.buttons[i], theme_refresh_previous(), theme, accent_state, correction);
-      theme_apply_grid_button(targets.buttons[i], neutral, theme);
+      if (!sensor_surface) theme_apply_grid_button(targets.buttons[i], neutral, theme);
     }
   }
   for (auto &entry : navigation_subpages()) {
@@ -83,11 +88,12 @@ inline void theme_apply_grid(void *context, const ThemePalette &theme) {
     theme_restyle_tree(entry.back_button, theme_refresh_previous(), theme, false, correction);
     theme_apply_grid_button(entry.back_button, neutral, theme);
     for (auto &card : entry.cards) {
-      if (card.neutral_background && card.button) {
+      const bool sensor_surface = theme_uses_sensor_surface(card.button);
+      if ((card.neutral_background || sensor_surface) && card.button) {
         const bool accent_state = lv_obj_has_state(card.button, LV_STATE_CHECKED) ||
                                   lv_obj_has_state(card.button, LV_STATE_PRESSED);
         theme_restyle_tree(card.button, theme_refresh_previous(), theme, accent_state, correction);
-        theme_apply_grid_button(card.button, neutral, theme);
+        if (!sensor_surface) theme_apply_grid_button(card.button, neutral, theme);
       }
     }
   }
