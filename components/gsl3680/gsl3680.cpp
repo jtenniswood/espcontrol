@@ -55,6 +55,14 @@ void GSL3680::dump_config() {
 esphome::i2c::ErrorCode GSL3680::init() {
     auto err = esphome::i2c::ERROR_OK;
 
+    // Diagnostics must describe this attempt, not an earlier retry.
+    this->startup_stage_ = "hardware reset";
+    this->firmware_verified_ = false;
+    this->diagnostic_page_ = 0;
+    this->diagnostic_register_ = 0;
+    this->diagnostic_actual_ = 0;
+    this->diagnostic_expected_ = 0;
+
     // Hardware reset must precede scan-core configuration; resetting after
     // clear_registers() can discard the touch-count setting on some revisions.
     this->reset_pin_->digital_write(false);
@@ -74,7 +82,6 @@ esphome::i2c::ErrorCode GSL3680::init() {
     this->startup_stage_ = "firmware upload";
     STOP_ON_I2C_ERROR(err, this->load_firmware());
     this->startup_stage_ = "firmware readback";
-    this->firmware_verified_ = false;
     err = this->verify_firmware();
     if (err == esphome::i2c::ERROR_NOT_ACKNOWLEDGED) {
         // Some controllers ACK firmware writes but NACK reads of executable
