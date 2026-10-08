@@ -11,6 +11,7 @@ struct ThemePalette {
   uint32_t surface_primary;
   uint32_t surface_secondary;
   uint32_t text_primary;
+  uint32_t clockbar_text;
   uint32_t text_muted;
   uint32_t text_inverted;
   uint32_t text_disabled;
@@ -27,6 +28,7 @@ constexpr ThemePalette make_dark_theme() {
   theme.surface_primary = 0x303030;
   theme.surface_secondary = 0x404040;
   theme.text_primary = 0xFFFFFF;
+  theme.clockbar_text = 0xFFFFFF;
   theme.text_muted = 0xB0B0B0;
   theme.text_inverted = 0x000000;
   theme.text_disabled = 0x707070;
@@ -43,10 +45,11 @@ inline constexpr ThemePalette DARK_THEME = make_dark_theme();
 // Raw RGB values for the first Light presentation. The separate setup action
 // role keeps the existing Dark #333333 distinct from other neutral controls.
 inline constexpr ThemePalette LIGHT_THEME = {
-    0xD0D0D0,  // background
+    0x000000,  // background
     0xFFFFFF,  // surface_primary
     0xE8E8E8,  // surface_secondary
     0x333333,  // text_primary
+    0xFFFFFF,  // clockbar_text
     0x606060,  // text_muted
     0xFFFFFF,  // text_inverted
     0x9A9A9A,  // text_disabled

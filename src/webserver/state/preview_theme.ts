@@ -5,12 +5,12 @@ import type { AppState } from "./types";
 export const PREVIEW_THEME_COLORS = {
   Dark: {
     background: "303030", surfacePrimary: "303030", surfaceSecondary: "404040",
-    textPrimary: "FFFFFF", textMuted: "B0B0B0", textDisabled: "707070",
+    textPrimary: "FFFFFF", clockbarText: "FFFFFF", textMuted: "B0B0B0", textDisabled: "707070",
     border: "303030", trackBackground: "313131", controlNeutral: "303030",
   },
   Light: {
-    background: "D0D0D0", surfacePrimary: "FFFFFF", surfaceSecondary: "E8E8E8",
-    textPrimary: "333333", textMuted: "606060", textDisabled: "9A9A9A",
+    background: "000000", surfacePrimary: "FFFFFF", surfaceSecondary: "E8E8E8",
+    textPrimary: "333333", clockbarText: "FFFFFF", textMuted: "606060", textDisabled: "9A9A9A",
     border: "D0D0D0", trackBackground: "D0D0D0", controlNeutral: "E0E0E0",
   },
 } as const;
@@ -25,6 +25,7 @@ export function previewThemeCss(mode: "Dark" | "Light"): string {
   const theme = PREVIEW_THEME_COLORS[mode];
   return `--preview-background:#${theme.background};--preview-surface-primary:#${theme.surfacePrimary};` +
     `--preview-surface-secondary:#${theme.surfaceSecondary};--preview-text-primary:#${theme.textPrimary};` +
+    `--preview-clockbar-text:#${theme.clockbarText};` +
     `--preview-text-muted:#${theme.textMuted};--preview-text-disabled:#${theme.textDisabled};` +
     `--preview-border:#${theme.border};--preview-track-background:#${theme.trackBackground};` +
     `--preview-control-neutral:#${theme.controlNeutral};--screen-secondary:#${theme.surfacePrimary};` +

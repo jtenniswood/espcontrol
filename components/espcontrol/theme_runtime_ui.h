@@ -150,7 +150,7 @@ inline void theme_apply_hud(void *context, const ThemePalette &theme) {
   const auto &targets = *static_cast<ThemeHudTargets *>(context);
   lv_obj_t *labels[] = {targets.temperature, targets.time, targets.network, targets.night};
   for (lv_obj_t *label : labels) {
-    if (label) lv_obj_set_style_text_color(label, lv_color_hex(theme.text_primary), LV_PART_MAIN);
+    if (label) lv_obj_set_style_text_color(label, lv_color_hex(theme.clockbar_text), LV_PART_MAIN);
   }
 }
 
