@@ -9,7 +9,7 @@ export const PREVIEW_THEME_COLORS = {
     border: "313131", trackBackground: "313131", controlNeutral: "313131",
   },
   Light: {
-    background: "DDDDDD", surfacePrimary: "B0B0B0", surfaceSecondary: "FFFFFF", surfaceSensor: "F5F5F5", surfaceCard: "FFFFFF",
+    background: "E3E3E3", surfacePrimary: "B0B0B0", surfaceSecondary: "FFFFFF", surfaceSensor: "F5F5F5", surfaceCard: "FFFFFF",
     textPrimary: "333333", clockbarText: "333333", textMuted: "606060", textDisabled: "9A9A9A",
     border: "D0D0D0", trackBackground: "D0D0D0", controlNeutral: "E0E0E0",
   },
