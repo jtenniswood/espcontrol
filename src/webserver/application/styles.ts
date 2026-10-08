@@ -533,7 +533,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-card-color-check{display:none;font-size:20px;line-height:1;font-weight:700}" +
         ".sp-card-color-preset[aria-pressed=true] .sp-card-color-check{display:block}" +
         ".sp-card-color-header{position:relative}" +
-        ".sp-card-color-header .sp-disclosure-button{gap:56px}" +
+        ".sp-disclosure.sp-open .sp-card-color-header .sp-disclosure-button{gap:56px}" +
+        ".sp-disclosure:not(.sp-open) .sp-card-color-header .sp-card-header-action{display:none}" +
         ".sp-card-color-header .sp-card-header-action{position:absolute;right:46px;top:50%;transform:translateY(-50%);margin-right:0}" +
         ".sp-number-row{display:flex;align-items:center;gap:8px;margin-bottom:16px}" +
         ".sp-number-row:last-child{margin-bottom:0}" +
