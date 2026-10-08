@@ -64,9 +64,9 @@ constexpr uint32_t display_relative_luminance(uint32_t rgb) {
 }
 
 constexpr uint32_t display_text_color_for_bg(uint32_t bg_color) {
-  const uint64_t background = display_relative_luminance(bg_color) + 50000;
-  // Compare white and #212121 contrast ratios without division.
-  return background * background >= 1050000ULL * (SRGB_LINEAR_CHANNEL[33] + 50000)
+  // Keep white content on mid-tone colours; switch only on light backgrounds.
+  // Match cardPreviewTextColor in the web preview (luminance scaled by 1,000,000).
+  return display_relative_luminance(bg_color) >= 450000
     ? 0x212121 : 0xFFFFFF;
 }
 

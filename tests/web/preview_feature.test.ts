@@ -23,8 +23,11 @@ export function runPreviewFeatureTests(): void {
   equal(cardPreviewTextColor("FFFFFF"), "#212121", "white card backgrounds use dark text like the device");
   equal(cardPreviewTextColor("FFEB3B"), "#212121", "bright yellow card backgrounds use dark text");
   equal(cardPreviewTextColor("313131"), "#FFFFFF", "dark card backgrounds retain white text");
-  for (const colour of ["FF8C00", "00BCD4", "03A9F4", "4CAF50", "8BC34A", "FF9800", "BABABA", "BBBBBB"]) {
-    equal(cardPreviewTextColor(colour), "#212121", "bright preset " + colour + " uses the higher-contrast dark foreground");
+  for (const colour of ["FF0000", "F6402C", "FF8C00", "1093F5", "46AF4A", "009687", "00BBD5", "FF9800", "B2B2B2"]) {
+    equal(cardPreviewTextColor(colour), "#FFFFFF", "mid-tone colour " + colour + " retains white content");
+  }
+  for (const colour of ["88C440", "CCDD1E", "FFEC16", "FFC100", "B3B3B3", "BABABA", "BBBBBB"]) {
+    equal(cardPreviewTextColor(colour), "#212121", "light colour " + colour + " uses dark content");
   }
   equal(previewValue({ iconHtml: "custom" }, "iconHtml", "fallback"), "custom", "custom preview values win");
   equal(previewValue(null, "iconHtml", "fallback"), "fallback", "missing preview values use fallback");
