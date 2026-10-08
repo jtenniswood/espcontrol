@@ -252,16 +252,14 @@ inline std::string normalize_card_color_value(std::string value) {
 }
 
 inline std::string card_color_options_normalized(const std::string &options) {
-  std::string out;
-  const char *names[] = {"card_on_color", "card_off_color"};
+  const char *names[] = {"card_off_color", "card_on_color"};
   for (const char *name : names) {
     const std::string value = normalize_card_color_value(cfg_option_value(options, name));
     if (!value.empty()) {
-      if (!out.empty()) out += ",";
-      out += std::string(name) + "=" + value;
+      return "card_off_color=" + value;
     }
   }
-  return out;
+  return "";
 }
 
 inline std::string options_without_card_colors(const std::string &options) {

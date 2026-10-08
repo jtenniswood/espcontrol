@@ -10,7 +10,8 @@ import {
   serializeCompactSubpageConfig,
   serializeLegacySubpageConfig,
   setConfigOption,
-  setCardColorOption,
+  setCardColor,
+  lighterCardColor,
   setConfigOptionValue,
   normalizedCardColorOptions,
   withoutCardColorOptions,
@@ -56,12 +57,21 @@ export function runEncodingTests(): void {
   equal(configOptionEnabled(options, "confirm_on"), false, "flag options can be disabled");
 
   options = setConfigOptionValue(options, "large_numbers", "off");
-  options = setCardColorOption(options, "card_on_color", "#e91e63");
-  options = setCardColorOption(options, "card_off_color", "3f51b5");
-  equal(normalizedCardColorOptions(options), "card_on_color=E91E63,card_off_color=3F51B5", "card colours normalize to canonical hex values");
+  options = setConfigOptionValue(options, "card_on_color", "E91E63");
+  options = setCardColor(options, "#3f51b5");
+  equal(normalizedCardColorOptions(options), "card_off_color=3F51B5", "only the selected card colour is saved");
+  equal(configOptionValue(options, "card_on_color"), "", "choosing a card colour removes any old active override");
   equal(withoutCardColorOptions(options), "active_color,confirm_message=Run%2C now?,large_numbers=off", "card colours can be separated before type-specific normalization");
-  options = setCardColorOption(options, "card_on_color", "invalid");
-  equal(normalizedCardColorOptions(options), "card_off_color=3F51B5", "invalid card colours are dropped safely");
+  equal(normalizedCardColorOptions("card_on_color=E91E63,card_off_color=3F51B5"), "card_off_color=3F51B5", "existing card colour takes priority over a separate active override");
+  equal(normalizedCardColorOptions("card_on_color=#e91e63"), "card_off_color=E91E63", "old active-only colour migrates to the single card colour");
+  equal(normalizedCardColorOptions("card_off_color=invalid,card_on_color=00BCD4"), "card_off_color=00BCD4", "a valid legacy colour survives an invalid card colour");
+  equal(lighterCardColor("3F51B5"), "7985CB", "active colour is derived from the selected card colour");
+  equal(lighterCardColor("000000"), "4D4D4D", "active colour channel rounding matches firmware");
+  equal(lighterCardColor("FFFFFF"), "FFFFFF", "white remains white in the active state");
+  equal(lighterCardColor("invalid"), "", "invalid colours do not create an active override");
+  options = setCardColor(options, "invalid");
+  equal(normalizedCardColorOptions(options), "", "invalid card colours are dropped safely");
+  equal(setCardColor("confirm_on,card_on_color=FFFFFF,card_off_color=3F51B5", ""), "confirm_on", "reset clears old and new colour options while retaining other settings");
 
   deepEqual(parseRawButtonConfig("light.kitchen;Kitchen;Lightbulb;Auto;;;;;active_color"), {
     entity: "light.kitchen",

@@ -526,13 +526,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-color-swatch input{position:absolute;inset:-8px;width:calc(100% + 16px);" +
         "height:calc(100% + 16px);cursor:pointer;opacity:0}" +
         ".sp-color-row .sp-input{flex:1}" +
-        ".sp-card-color-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}" +
-        ".sp-card-color-choice{display:flex;flex-direction:column;gap:8px;align-items:stretch;padding:10px;" +
-        "border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font:inherit;cursor:pointer}" +
-        ".sp-card-color-choice:hover,.sp-card-color-choice.sp-selected{border-color:var(--accent)}" +
-        ".sp-card-color-choice:focus-visible,.sp-card-color-preset:focus-visible{outline:2px solid var(--accent);outline-offset:3px}" +
-        ".sp-card-color-chip{width:44px;height:44px;align-self:center;border:1px solid rgba(255,255,255,.2);border-radius:50%}" +
-        ".sp-card-color-editor{margin-top:16px}" +
+        ".sp-card-color-preset:focus-visible{outline:2px solid var(--accent);outline-offset:3px}" +
         ".sp-card-color-editor .sp-color-swatch{width:40px;height:40px;border-radius:50%}" +
         ".sp-card-color-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}" +
         ".sp-card-color-preset{width:100%;max-width:56px;aspect-ratio:1;padding:0;justify-self:center;box-sizing:border-box;" +

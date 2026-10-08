@@ -141,20 +141,14 @@ inline CardPalette card_palette_for_config(const CardPalette &defaults,
                                             const DisplayProfile &display) {
   CardPalette palette = defaults;
   bool valid = false;
-  const std::string on = cfg_option_value(config.options, "card_on_color");
-  if (!on.empty()) {
-    const uint32_t raw = parse_hex_color(on, valid);
-    if (valid) {
-      palette.has_on = true;
-      palette.on_val = display_correct_color(raw, display);
-    }
-  }
   const std::string off = cfg_option_value(config.options, "card_off_color");
   if (!off.empty()) {
     const uint32_t raw = parse_hex_color(off, valid);
     if (valid) {
       palette.has_off = true;
       palette.off_val = display_correct_color(raw, display);
+      palette.has_on = true;
+      palette.on_val = display_correct_color(lighter_card_color(raw), display);
     }
   }
   return palette;

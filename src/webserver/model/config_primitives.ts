@@ -71,12 +71,12 @@ export function setConfigOptionValue(options: unknown, name: string, value: unkn
 const CARD_COLOR_OPTIONS = ["card_on_color", "card_off_color"] as const;
 
 export function normalizedCardColorOptions(options: unknown): string {
-  const out: string[] = [];
-  for (const name of CARD_COLOR_OPTIONS) {
+  // Prefer the card colour; migrate old active-only customisations to the single colour.
+  for (const name of ["card_off_color", "card_on_color"]) {
     const value = configOptionValue(options, name).replace(/^#/, "").toUpperCase();
-    if (/^[0-9A-F]{6}$/.test(value)) out.push(name + "=" + value);
+    if (/^[0-9A-F]{6}$/.test(value)) return "card_off_color=" + value;
   }
-  return out.join(",");
+  return "";
 }
 
 export function withoutCardColorOptions(options: unknown): string {
@@ -85,8 +85,18 @@ export function withoutCardColorOptions(options: unknown): string {
   ).filter(Boolean).join(",");
 }
 
-export function setCardColorOption(options: unknown, name: string, value: unknown): string {
-  if (CARD_COLOR_OPTIONS.indexOf(name as typeof CARD_COLOR_OPTIONS[number]) < 0) return String(options || "");
+export function setCardColor(options: unknown, value: unknown): string {
   const cleaned = String(value || "").replace(/^#/, "").trim().toUpperCase();
-  return setConfigOptionValue(options, name, /^[0-9A-F]{6}$/.test(cleaned) ? cleaned : "");
+  return setConfigOptionValue(withoutCardColorOptions(options), "card_off_color", /^[0-9A-F]{6}$/.test(cleaned) ? cleaned : "");
+}
+
+export function lighterCardColor(color: string): string {
+  const hex = color.replace(/^#/, "");
+  if (!/^[0-9A-F]{6}$/i.test(hex)) return "";
+  // Match lighter_card_color in the firmware, including round-to-nearest channels.
+  return [0, 2, 4].map((offset) => {
+    const channel = parseInt(hex.slice(offset, offset + 2), 16);
+    const lighter = channel + Math.floor(((255 - channel) * 30 + 50) / 100);
+    return ("0" + lighter.toString(16)).slice(-2).toUpperCase();
+  }).join("");
 }

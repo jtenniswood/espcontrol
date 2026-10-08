@@ -27,6 +27,22 @@ constexpr uint32_t display_text_color_for_bg(uint32_t bg_color) {
   return brightness > 186 ? 0x212121 : 0xFFFFFF;
 }
 
+constexpr uint32_t lighter_card_color(uint32_t rgb) {
+  const uint32_t red = (rgb >> 16) & 0xFF;
+  const uint32_t green = (rgb >> 8) & 0xFF;
+  const uint32_t blue = rgb & 0xFF;
+  return ((red + ((255 - red) * 30 + 50) / 100) << 16) |
+         ((green + ((255 - green) * 30 + 50) / 100) << 8) |
+         (blue + ((255 - blue) * 30 + 50) / 100);
+}
+
+static_assert(lighter_card_color(0x000000) == 0x4D4D4D,
+              "active card colour must round lightened channels consistently");
+static_assert(lighter_card_color(0x3F51B5) == 0x7985CB,
+              "active card colour must retain the card colour's hue");
+static_assert(lighter_card_color(0xFFFFFF) == 0xFFFFFF,
+              "white card colour must remain white");
+
 constexpr uint32_t correct_display_color(uint32_t rgb) {
   return correct_display_color(
     rgb, COLOR_CORRECTION_RED_PERCENT, COLOR_CORRECTION_GREEN_PERCENT,
