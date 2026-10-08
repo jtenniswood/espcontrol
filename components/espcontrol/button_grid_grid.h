@@ -532,7 +532,6 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
                               const CardPalette &palette,
                               int row_span = 1,
                               int col_span = 1) {
-  lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_USER_5);
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   const auto family = context.family;
   grid_prepare_timer_visual_reset(s.btn);
@@ -1011,6 +1010,20 @@ inline void grid_refresh_layout(
 
 // ── Phase 1: Visual setup ────────────────────────────────────────────
 
+inline bool grid_card_uses_sensor_surface(
+    const espcontrol::cards::Context &context) {
+  using Driver = card_runtime::CardDriverId;
+  switch (context.runtime.driver) {
+    case Driver::SENSOR:
+    case Driver::STATUS_ENTITY:
+    case Driver::WEATHER:
+    case Driver::DATE_TIME:
+      return true;
+    default:
+      return false;
+  }
+}
+
 inline void grid_phase1(
     BtnSlot *slots, const GridConfig &cfg,
     const std::string &order_str,
@@ -1028,6 +1041,7 @@ inline void grid_phase1(
   espcontrol::cards::image_driver_reset_pool(cfg);
   int NS = bounded_grid_slots(cfg.num_slots);
   bool neutral_buttons[MAX_GRID_SLOTS]{};
+  bool sensor_surfaces[MAX_GRID_SLOTS]{};
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
   if (COLS > MAX_GRID_SLOTS) COLS = MAX_GRID_SLOTS;
   for (int i = 0; i < NS; i++)
@@ -1101,13 +1115,14 @@ inline void grid_phase1(
     const auto context = card_runtime_context(p);
     neutral_buttons[idx - 1] = context.family != espcontrol::cards::Family::IMAGE &&
         espcontrol::cards::media_driver_theme_owned_surface(context, p);
+    sensor_surfaces[idx - 1] = grid_card_uses_sensor_surface(context);
     display_apply_main_width(s.icon_lbl, display);
     display_apply_slot_text_width(s, display);
     setup_card_visual(s, p, context, cfg, palette, row_span, col_span);
     refresh_card_layout(s, p, cfg, row_span, col_span);
   }
   screen_lock_apply();
-  register_theme_grid(main_page_obj, slots, neutral_buttons, NS,
+  register_theme_grid(main_page_obj, slots, neutral_buttons, NS, sensor_surfaces,
                       cfg.color_correction_red_percent,
                       cfg.color_correction_green_percent,
                       cfg.color_correction_blue_percent);
@@ -2129,7 +2144,8 @@ inline void grid_phase2(
       navigation_register_subpage_card(
           si + 1, bn, sub_slot, sb,
           context.family != espcontrol::cards::Family::IMAGE &&
-              espcontrol::cards::media_driver_theme_owned_surface(context, sb_cfg));
+              espcontrol::cards::media_driver_theme_owned_surface(context, sb_cfg),
+          grid_card_uses_sensor_surface(context));
       display_apply_main_width(sub_slot.icon_lbl, display);
       display_apply_slot_text_width(sub_slot, display);
       setup_card_visual(sub_slot, sb_cfg, context, cfg, palette, rs, cs);

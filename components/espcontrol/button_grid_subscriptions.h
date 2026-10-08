@@ -9,6 +9,7 @@
 // The grid owns device colour correction; callbacks sample the live neutral
 // instead of retaining the palette that was active when they subscribed.
 inline uint32_t current_grid_sensor_color();
+inline uint32_t current_grid_sensor_surface_color();
 
 struct ToggleTextSensorCtx {
   lv_obj_t *text_lbl = nullptr;
