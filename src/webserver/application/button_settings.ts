@@ -1,7 +1,7 @@
 import { state } from "../state/app_instance";
-import { WEB_UI_COLORS } from "../state/ui_tokens";
 import * as EspControlModel from "../model";
 import { configOptionValue, setCardColor } from "../model/config_primitives";
+import { cardPreviewTextColor } from "../features/preview";
 import { applySpans, CARD_SIZE_SINGLE, clearSpans } from "../model/grid";
 import { iconSlug, mdiIcon, textSpan } from "./ui_primitives";
 import type { CardEditorDraftController } from "../features/card_editor_draft_controller";
@@ -71,7 +71,7 @@ export function createButtonSettingsFeature(
         renderCardIconPicker, renderCardLargeNumbersToggle, renderCardModeSelector,
         renderCardNumberField, renderCardOptionToggle, renderCardSegmentControl,
         renderCardTextField, segmentControl, selectField, syncCardLargeNumbersToggle,
-        colorField, textInput, toggleRow,
+        textInput, toggleRow,
     } = fields;
     const {
         imageSlotCapacity,
@@ -828,33 +828,44 @@ export function createButtonSettingsFeature(
             panel.appendChild(patternField.field);
         }
         var cardAppearance: any = disclosureSection("Custom Colours", idPrefix + "card-colours", false);
-        var defaultCardColor: any = (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone") ? WEB_UI_COLORS.tertiary : WEB_UI_COLORS.secondary;
         var cardColorPresets: any = ["F6402C", "EB1460", "9C1AB1", "6633B9", "3D4DB7", "46AF4A", "009687", "00BBD5", "00A6F6", "1093F5", "88C440", "CCDD1E", "FFEC16", "FFC100", "FF9800", "000000", "5E7C8B", "9D9D9D", "7A5547", "FF5505"];
         var cardColorEditor: any = document.createElement("div");
         cardColorEditor.className = "sp-card-color-editor";
         function saveCardColor(this: any, hex?: any) {
             b.options = setCardColor(b.options, hex);
-            cardColorPicker._syncColor(configOptionValue(b.options, "card_off_color") || defaultCardColor);
+            syncCardColorPresets();
             saveField("options", b.options);
             renderPreview();
         }
-        var cardColorPicker: any = colorField(idPrefix + "card_off_color", configOptionValue(b.options, "card_off_color") || defaultCardColor, saveCardColor);
-        cardColorEditor.appendChild(fieldWithControl("Card colour", idPrefix + "card_off_color", cardColorPicker));
         var presetGrid: any = document.createElement("div");
         presetGrid.className = "sp-card-color-presets";
+        presetGrid.setAttribute("role", "group");
         presetGrid.setAttribute("aria-label", "Card colour presets");
+        function syncCardColorPresets(this: any) {
+            var selectedColor: any = configOptionValue(b.options, "card_off_color").replace(/^#/, "").toUpperCase();
+            for (var i: any = 0; i < presetGrid.children.length; i++) {
+                var swatch: any = presetGrid.children[i];
+                swatch.setAttribute("aria-pressed", String(swatch.getAttribute("data-color") === selectedColor));
+            }
+        }
         cardColorPresets.forEach(function (this: any, hex?: any) {
             var swatch: any = document.createElement("button");
             swatch.type = "button";
             swatch.className = "sp-card-color-preset";
             swatch.title = "#" + hex;
+            swatch.setAttribute("data-color", hex);
             swatch.setAttribute("aria-label", "Set colour to #" + hex);
             swatch.style.backgroundColor = "#" + hex;
+            swatch.style.color = cardPreviewTextColor(hex);
+            var check: any = textSpan("✓", "sp-card-color-check");
+            check.setAttribute("aria-hidden", "true");
+            swatch.appendChild(check);
             swatch.addEventListener("click", function () {
                 saveCardColor(hex);
             });
             presetGrid.appendChild(swatch);
         });
+        syncCardColorPresets();
         cardColorEditor.appendChild(presetGrid);
         var resetCardColors: any = createActionButton("sp-action-btn sp-card-color-reset", "Reset colours");
         resetCardColors.addEventListener("click", function () {
