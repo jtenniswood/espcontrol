@@ -23,15 +23,15 @@ struct ThemePalette {
 
 constexpr ThemePalette make_dark_theme() {
   ThemePalette theme{};
-  theme.background = 0x404040;
-  theme.surface_primary = 0x404040;
-  theme.surface_secondary = 0x4A4A4A;
+  theme.background = 0x303030;
+  theme.surface_primary = 0x303030;
+  theme.surface_secondary = 0x404040;
   theme.text_primary = 0xFFFFFF;
   theme.text_muted = 0xB0B0B0;
   theme.text_inverted = 0x000000;
   theme.text_disabled = 0x707070;
-  theme.border = 0x404040;
-  theme.control_neutral = 0x404040;
+  theme.border = 0x303030;
+  theme.control_neutral = 0x303030;
   theme.track_background = 0x313131;
   theme.overlay = 0x000000;
   theme.setup_action = 0x333333;

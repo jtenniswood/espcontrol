@@ -37,15 +37,15 @@ double theme_test_contrast(uint32_t foreground, uint32_t background) {
 
 int main() {
   assert(&current_theme() == &DARK_THEME);
-  assert(current_theme().background == 0x404040);
-  assert(current_theme().surface_primary == 0x404040);
-  assert(current_theme().surface_secondary == 0x4A4A4A);
+  assert(current_theme().background == 0x303030);
+  assert(current_theme().surface_primary == 0x303030);
+  assert(current_theme().surface_secondary == 0x404040);
   assert(current_theme().text_primary == 0xFFFFFF);
   assert(current_theme().text_muted == 0xB0B0B0);
   assert(current_theme().text_inverted == 0x000000);
   assert(current_theme().text_disabled == 0x707070);
-  assert(current_theme().border == 0x404040);
-  assert(current_theme().control_neutral == 0x404040);
+  assert(current_theme().border == 0x303030);
+  assert(current_theme().control_neutral == 0x303030);
   assert(current_theme().track_background == 0x313131);
   assert(current_theme().overlay == 0x000000);
   assert(current_theme().setup_action == 0x333333);
