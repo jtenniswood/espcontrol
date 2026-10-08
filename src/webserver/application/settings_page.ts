@@ -92,7 +92,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             postSelect(entityName("screen_theme_mode"), state.themeMode);
             syncThemeSettingsUi(state, runtime);
             renderPreview();
-        }, "sp-segment sp-segment-scroll");
+        }, "sp-segment sp-segment-scroll sp-theme-mode-segment");
         themeModes.segment.id = "sp-set-theme-mode";
         appearBody.appendChild(fieldLabel("Theme"));
         appearBody.appendChild(themeModes.segment);
