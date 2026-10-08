@@ -73,7 +73,7 @@ for marker in ("control_modal_track_theme_tab", "control_modal_track_theme_press
     assert marker in modal, marker
 for marker in ("register_theme_refresh(ui.overlay, network_status_apply_theme",
                "unregister_theme_refresh(lv_event_get_target(event))",
-               "theme_display_color(theme.surface_primary)", "theme.text_primary"):
+               "theme_display_color(theme.surface_card)", "theme.text_primary"):
     assert marker in network, marker
 assert "control_modal_track_theme_disabled(btn)" in climate
 assert "alarm_theme_off_color(ctx)" in alarm

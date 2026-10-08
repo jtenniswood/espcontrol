@@ -54,7 +54,7 @@ inline void network_status_apply_theme(void *context, const ThemePalette &theme)
     lv_obj_t *button = ui.cards[i];
     if (!button) continue;
     lv_obj_set_style_bg_color(button,
-                              lv_color_hex(theme_display_color(theme.surface_primary)),
+                              lv_color_hex(theme_display_color(theme.surface_card)),
                               LV_PART_MAIN);
     lv_obj_set_style_text_color(button, lv_color_hex(theme.text_primary), LV_PART_MAIN);
     if (ui.icons[i]) lv_obj_set_style_text_color(ui.icons[i], lv_color_hex(theme.text_primary), LV_PART_MAIN);
@@ -233,10 +233,9 @@ inline void network_status_open_modal(const std::string &device_name,
                                     : text_font;
   const lv_font_t *card_icon_font = network_status_card_icon_font();
   if (!card_icon_font) card_icon_font = icon_font;
-  const lv_color_t text_color = reference
-                                    ? lv_obj_get_style_text_color(reference,
-                                                                  LV_PART_MAIN)
-                                    : lv_color_hex(current_theme().text_primary);
+  // Share card sizing with the grid, but take neutral colours from the theme:
+  // the reference card may currently have an accent or custom content colour.
+  const lv_color_t text_color = lv_color_hex(current_theme().text_primary);
   const lv_coord_t radius = control_modal_card_radius(reference);
   const lv_coord_t card_pad = reference
                                   ? lv_obj_get_style_pad_top(reference,
@@ -290,7 +289,7 @@ inline void network_status_open_modal(const std::string &device_name,
     const int card_index = ui.card_count++;
     ui.cards[card_index] = button;
     apply_button_colors(button, false, DEFAULT_ACCENT_COLOR, true,
-                        theme_display_color(current_theme().surface_primary));
+                        theme_display_color(current_theme().surface_card));
     // Follow the device's normal card order and let its column count determine
     // where the next row begins.
     const NetworkStatusGridCell cell =
