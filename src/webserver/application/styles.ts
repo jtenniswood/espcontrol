@@ -532,7 +532,9 @@ export function createWebStyles(dragAnimation: boolean): string {
         "display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.35);border-radius:50%;cursor:pointer}" +
         ".sp-card-color-check{display:none;font-size:20px;line-height:1;font-weight:700}" +
         ".sp-card-color-preset[aria-pressed=true] .sp-card-color-check{display:block}" +
-        ".sp-card-color-reset{margin-top:16px}" +
+        ".sp-card-color-header{position:relative}" +
+        ".sp-card-color-header .sp-disclosure-button{gap:56px}" +
+        ".sp-card-color-header .sp-card-header-action{position:absolute;right:46px;top:50%;transform:translateY(-50%);margin-right:0}" +
         ".sp-number-row{display:flex;align-items:center;gap:8px;margin-bottom:16px}" +
         ".sp-number-row:last-child{margin-bottom:0}" +
         ".sp-number{width:80px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);" +

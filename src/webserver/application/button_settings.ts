@@ -867,11 +867,16 @@ export function createButtonSettingsFeature(
         });
         syncCardColorPresets();
         cardColorEditor.appendChild(presetGrid);
-        var resetCardColors: any = createActionButton("sp-action-btn sp-card-color-reset", "Reset colours");
+        var resetCardColors: any = createActionButton("sp-icon-button sp-card-header-action", "", "restore", "Reset colours to defaults");
+        resetCardColors.title = "Reset colours";
         resetCardColors.addEventListener("click", function () {
             saveCardColor("");
         });
-        cardColorEditor.appendChild(resetCardColors);
+        var cardColorHeader: any = document.createElement("div");
+        cardColorHeader.className = "sp-card-color-header";
+        cardAppearance.panel.replaceChild(cardColorHeader, cardAppearance.button);
+        cardColorHeader.appendChild(cardAppearance.button);
+        cardColorHeader.appendChild(resetCardColors);
         cardAppearance.section.appendChild(cardColorEditor);
         panel.appendChild(cardAppearance.panel);
         groupCardSettingsFields(panel, idPrefix);
