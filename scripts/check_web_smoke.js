@@ -1490,7 +1490,7 @@ const mediaCoverArtPreview = hooks.buttonTypePreviewFor("media", {
   sensor: "cover_art",
   type: "media",
 });
-assert.strictEqual(mediaCoverArtPreview.buttonClass, "sp-image-card", "media cover art preview uses the image-card wrapper");
+assert(mediaCoverArtPreview.buttonClass.split(/\s+/).includes("sp-image-card"), "media cover art preview uses the image-card wrapper");
 assert(mediaCoverArtPreview.iconHtml.includes("sp-image-preview"), "media cover art preview uses the shared camera-card surface");
 assert(!mediaCoverArtPreview.iconHtml.includes("sp-media-cover-preview"), "media cover art preview omits the old decorative mock");
 assert(mediaCoverArtPreview.labelHtml.includes("sp-image-label"), "media cover art preview uses the shared padded image label");

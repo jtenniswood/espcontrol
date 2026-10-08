@@ -230,6 +230,7 @@ void grid_delete_media_playlist_runtime_ptr(void *) { CHECK(false); }
 bool media_play_pause_show_state(const ParsedCfg &) { CHECK(false); return false; }
 std::string media_cover_art_secondary_entity(const ParsedCfg &) { CHECK(false); return {}; }
 void subscribe_media_cover_art(MediaNowPlayingCtx *, const std::string &) {}
+void media_cover_art_unregister_theme(MediaNowPlayingCtx *) {}
 template<typename... T> MediaPlaylistCtx *create_media_playlist_context(T...) { CHECK(false); return nullptr; }
 template<typename... T> MediaVolumeCtx *create_media_volume_context(T...) { CHECK(false); return nullptr; }
 template<typename... T> MediaPlaylistCtx *media_driver_track_playlist(T...) { CHECK(false); return nullptr; }
