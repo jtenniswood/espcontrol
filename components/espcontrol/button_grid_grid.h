@@ -1012,7 +1012,7 @@ inline void grid_refresh_layout(
 
 inline bool grid_card_uses_sensor_surface(
     const espcontrol::cards::Context &context) {
-  using Driver = card_runtime::CardDriverId;
+  using Driver = espcontrol::card_runtime::CardDriverId;
   switch (context.runtime.driver) {
     case Driver::SENSOR:
     case Driver::STATUS_ENTITY:
