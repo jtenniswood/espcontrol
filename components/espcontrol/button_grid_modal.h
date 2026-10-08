@@ -390,10 +390,13 @@ inline void control_modal_apply_theme(void *context, const ThemePalette &theme) 
       theme_restyle_pressed_fill(button, theme);
       if (button && lv_obj_has_flag(button, LV_OBJ_FLAG_USER_1) &&
           !lv_obj_has_flag(button, LV_OBJ_FLAG_USER_3)) {
-        const uint32_t button_color = lv_color_to_32(
-            lv_obj_get_style_bg_color(button, LV_PART_MAIN), LV_OPA_COVER) & 0x00FFFFFF;
+        const lv_color32_t button_color = lv_color_to_32(
+            lv_obj_get_style_bg_color(button, LV_PART_MAIN), LV_OPA_COVER);
+        const uint32_t button_rgb = (static_cast<uint32_t>(button_color.red) << 16) |
+                                    (static_cast<uint32_t>(button_color.green) << 8) |
+                                    button_color.blue;
         control_modal_apply_readable_content_foreground(
-            button, readable_text_color_for_bg(button_color));
+            button, readable_text_color_for_bg(button_rgb));
       }
     }
     for (uint8_t i = 0; i < targets.theme_disabled_count; ++i)
