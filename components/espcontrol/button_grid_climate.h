@@ -1729,7 +1729,8 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       if (!click) break;
       bool selected = climate_option_selected(ctx, section_kind, option);
       uint32_t bg_color = selected ? ctx->accent_color : theme_display_color(current_theme().surface_primary);
-      uint32_t text_color = selected ? CARD_ACCENT_TEXT_COLOR : readable_text_color_for_bg(bg_color);
+      uint32_t text_color = selected ? theme_accent_content_text_color(current_theme())
+                                     : readable_text_color_for_bg(bg_color);
       lv_obj_t *btn = lv_btn_create(parent);
       theme_set_content_background(btn, selected);
       lv_obj_set_size(btn, 118, 118);

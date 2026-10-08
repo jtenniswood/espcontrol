@@ -2393,7 +2393,7 @@ inline void cover_control_refresh_preset_selection(CoverControlCtx *ctx) {
     int pct = static_cast<int>(reinterpret_cast<uintptr_t>(lv_obj_get_user_data(btn)));
     bool selected = pct == ui.selected_preset;
     uint32_t bg_color = selected ? ctx->accent_color : theme_display_color(current_theme().surface_primary);
-    uint32_t text_color = selected ? CARD_ACCENT_TEXT_COLOR
+    uint32_t text_color = selected ? theme_accent_content_text_color(current_theme())
                                    : readable_text_color_for_bg(bg_color);
     theme_set_content_background(btn, selected);
     lv_obj_set_style_bg_color(btn, lv_color_hex(bg_color), LV_PART_MAIN);

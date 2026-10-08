@@ -9,6 +9,12 @@ constexpr uint32_t DEFAULT_ACCENT_COLOR = correct_display_color(DEFAULT_ACCENT_C
 constexpr uint32_t CARD_ACCENT_TEXT_COLOR = 0xFFFFFF;
 constexpr uint32_t CARD_CONTRAST_DARK_COLOR = theme_display_color(DARK_THEME.surface_secondary);
 
+inline uint32_t theme_accent_content_text_color(const ThemePalette &theme) {
+  return theme.text_primary == LIGHT_THEME.text_primary
+      ? theme.text_primary
+      : CARD_ACCENT_TEXT_COLOR;
+}
+
 constexpr uint32_t readable_text_color_for_bg(uint32_t bg_color) {
   uint32_t red = (bg_color >> 16) & 0xFF;
   uint32_t green = (bg_color >> 8) & 0xFF;

@@ -2801,7 +2801,8 @@ inline void media_control_refresh_power(MediaControlCtx *ctx) {
   if (ui.power_icon_lbl) {
     lv_label_set_display_text(ui.power_icon_lbl, find_icon("Power"));
     lv_obj_set_style_text_color(
-      ui.power_icon_lbl, lv_color_hex(on ? CARD_ACCENT_TEXT_COLOR : current_theme().text_primary), LV_PART_MAIN);
+      ui.power_icon_lbl, lv_color_hex(on ? theme_accent_content_text_color(current_theme())
+                                         : current_theme().text_primary), LV_PART_MAIN);
   }
   if (ui.power_status_lbl) {
     const std::string status = !ctx->state_known
@@ -2825,7 +2826,8 @@ inline void media_control_style_playback_mode_button(lv_obj_t *btn,
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   if (label) {
     lv_obj_set_style_text_color(
-      label, lv_color_hex(active ? CARD_ACCENT_TEXT_COLOR : current_theme().text_primary), LV_PART_MAIN);
+      label, lv_color_hex(active ? theme_accent_content_text_color(current_theme())
+                                 : current_theme().text_primary), LV_PART_MAIN);
   }
   media_control_apply_availability(btn, btn, interactive);
 }
@@ -3446,7 +3448,7 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
   const bool visible = true;
   const uint32_t bg_color = row->selected ? ctx->accent_color : theme_display_color(current_theme().surface_primary);
   const uint32_t text_color = row->selected
-    ? CARD_ACCENT_TEXT_COLOR : readable_text_color_for_bg(bg_color);
+    ? theme_accent_content_text_color(current_theme()) : readable_text_color_for_bg(bg_color);
   if (row->row) {
     if (visible) lv_obj_clear_flag(row->row, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(row->row, LV_OBJ_FLAG_HIDDEN);

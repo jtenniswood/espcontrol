@@ -355,6 +355,16 @@ inline void control_modal_track_theme_disabled(lv_obj_t *button) {
   }
 }
 
+inline void control_modal_apply_accent_content_foreground(lv_obj_t *obj,
+                                                           uint32_t color) {
+  if (!obj) return;
+  if (lv_obj_check_type(obj, &lv_label_class))
+    lv_obj_set_style_text_color(obj, lv_color_hex(color), LV_PART_MAIN);
+  const uint32_t child_count = lv_obj_get_child_cnt(obj);
+  for (uint32_t i = 0; i < child_count; ++i)
+    control_modal_apply_accent_content_foreground(lv_obj_get_child(obj, i), color);
+}
+
 inline void control_modal_apply_theme(void *context, const ThemePalette &theme) {
   const auto &targets = *static_cast<ControlModalThemeTargets *>(context);
   if (targets.nested && targets.overlay) {
@@ -375,8 +385,14 @@ inline void control_modal_apply_theme(void *context, const ThemePalette &theme) 
   if (!targets.content_owned) {
     for (uint8_t i = 0; i < targets.theme_tab_count; ++i)
       theme_restyle_tab(targets.theme_tabs[i], theme);
-    for (uint8_t i = 0; i < targets.theme_pressed_count; ++i)
-      theme_restyle_pressed_fill(targets.theme_pressed[i], theme);
+    for (uint8_t i = 0; i < targets.theme_pressed_count; ++i) {
+      lv_obj_t *button = targets.theme_pressed[i];
+      theme_restyle_pressed_fill(button, theme);
+      if (button && lv_obj_has_flag(button, LV_OBJ_FLAG_USER_1) &&
+          !lv_obj_has_flag(button, LV_OBJ_FLAG_USER_3))
+        control_modal_apply_accent_content_foreground(
+            button, theme_accent_content_text_color(theme));
+    }
     for (uint8_t i = 0; i < targets.theme_disabled_count; ++i)
       theme_restyle_disabled_step(targets.theme_disabled[i], theme);
   }
