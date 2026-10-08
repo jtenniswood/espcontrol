@@ -49,7 +49,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-config-locked .sp-screen{filter:grayscale(1) brightness(.58);opacity:.62;pointer-events:none}" +
         ".sp-config-locked .sp-screen::after{content:'';position:absolute;inset:0;background:rgba(80,80,84,.28);z-index:5}" +
         ".sp-topbar{position:absolute;top:0;left:0;right:0;height:var(--topbar-h);" +
-        "display:flex;align-items:center;gap:.5cqw;padding:var(--topbar-pad);z-index:1}" +
+        "box-sizing:border-box;display:flex;align-items:center;gap:.5cqw;padding:var(--topbar-pad);z-index:1}" +
         ".sp-topbar.sp-hidden{display:none}" +
         ".sp-clockbar-section{height:100%;min-width:0;flex:1;display:flex;align-items:center;gap:.4cqw;position:relative}" +
         ".sp-clockbar-left{justify-content:flex-start}.sp-clockbar-middle{justify-content:center}.sp-clockbar-right{justify-content:flex-end}" +
