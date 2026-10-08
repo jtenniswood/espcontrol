@@ -526,6 +526,16 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-color-swatch input{position:absolute;inset:-8px;width:calc(100% + 16px);" +
         "height:calc(100% + 16px);cursor:pointer;opacity:0}" +
         ".sp-color-row .sp-input{flex:1}" +
+        ".sp-card-color-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}" +
+        ".sp-card-color-choice{display:flex;flex-direction:column;gap:8px;align-items:stretch;padding:10px;" +
+        "border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font:inherit;cursor:pointer}" +
+        ".sp-card-color-choice:hover,.sp-card-color-choice.sp-selected{border-color:var(--accent)}" +
+        ".sp-card-color-choice:focus-visible,.sp-card-color-preset:focus-visible{outline:2px solid var(--accent);outline-offset:3px}" +
+        ".sp-card-color-chip{height:40px;border:1px solid rgba(255,255,255,.2);border-radius:5px}" +
+        ".sp-card-color-editor{margin-top:16px}" +
+        ".sp-card-color-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}" +
+        ".sp-card-color-preset{height:36px;border:1px solid rgba(255,255,255,.35);border-radius:5px;cursor:pointer}" +
+        ".sp-card-color-reset{margin-top:16px}" +
         ".sp-number-row{display:flex;align-items:center;gap:8px;margin-bottom:16px}" +
         ".sp-number-row:last-child{margin-bottom:0}" +
         ".sp-number{width:80px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);" +
