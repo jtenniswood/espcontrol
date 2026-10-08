@@ -827,7 +827,7 @@ export function createButtonSettingsFeature(
             });
             panel.appendChild(patternField.field);
         }
-        var cardAppearance: any = disclosureSection("Card Colours", idPrefix + "card-colours", false);
+        var cardAppearance: any = disclosureSection("Custom Colours", idPrefix + "card-colours", false);
         var defaultCardOnColor: any = state.onColor || WEB_UI_COLORS.primary;
         var defaultCardOffColor: any = (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone") ? WEB_UI_COLORS.tertiary : WEB_UI_COLORS.secondary;
         var cardColorPresets: any = ["F44336", "E91E63", "9C27B0", "673AB7", "3F51B5", "2196F3", "03A9F4", "00BCD4", "009688", "4CAF50", "8BC34A", "CDDC39", "FFEB3B", "FFC107", "FF9800", "795548"];
