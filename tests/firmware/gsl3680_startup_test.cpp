@@ -46,7 +46,7 @@ struct Touchscreen {
 };
 }
 namespace i2c {
-enum ErrorCode { ERROR_OK = 0, ERROR_TIMEOUT = 3, ERROR_UNKNOWN = 6 };
+enum ErrorCode { ERROR_OK = 0, ERROR_NOT_ACKNOWLEDGED = 2, ERROR_TIMEOUT = 3, ERROR_UNKNOWN = 6 };
 struct Bus {
     std::map<uint32_t, std::array<uint8_t, 128>> ram;
     std::array<uint8_t, 4> page_register{};
@@ -55,6 +55,7 @@ struct Bus {
     unsigned ready_after = 0, ready_at = 0;
     bool corrupt = false, corrupt_once = false, read_error = false, write_error = false;
     bool invalid_page_width = false, never_ready = false, started = false;
+    bool ram_unavailable = false;
     ErrorCode write(uint8_t reg, const uint8_t *data, size_t len) {
         if (write_error) return ERROR_TIMEOUT;
         if (reg == 0xf0) {
@@ -85,9 +86,10 @@ struct Bus {
         if (reg == 0xf0) std::memcpy(data, page_register.data(), len);
         else if (reg == 0xb0) {
             ++status_reads;
-            if (started && count > 0 && !never_ready && elapsed >= ready_at)
+            if (started && count == 3 && !never_ready && elapsed >= ready_at)
                 std::memset(data, 0x5a, len);
         } else if (reg < 0x80) {
+            if (ram_unavailable) return ERROR_NOT_ACKNOWLEDGED;
             assert(len == 4);
             ++verified;
             std::memcpy(data, ram[page].data() + reg, len);
@@ -141,12 +143,23 @@ int main() {
         Fixture f;
         f.driver.setup();
         assert(!f.driver.failed && f.driver.attached);
-        assert(f.bus.count == TOUCH_MAX_POINTS);
+        assert(f.bus.count == 3);
         assert(!f.bus.invalid_page_width);
         unsigned words = 0;
         for (const auto &word : GSLX680_FW) if (word.offset != 0xf0) ++words;
         assert(f.bus.verified == words);
         assert(esphome::App.feeds > 100);
+    }
+    // Production V3 hardware can NACK executable RAM reads. Only the complete
+    // running marker may enable touch in that case.
+    for (bool running : {false, true}) {
+        Fixture f;
+        f.bus.ram_unavailable = true;
+        f.bus.never_ready = !running;
+        f.driver.setup();
+        assert(f.driver.failed == !running);
+        assert(f.driver.attached == running);
+        assert(f.bus.status_reads > 0);
     }
     // Accept a healthy controller that becomes ready after the old 40ms check.
     {

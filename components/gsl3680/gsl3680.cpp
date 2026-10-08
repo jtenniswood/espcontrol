@@ -42,7 +42,8 @@ void GSL3680::setup() {
 
 void GSL3680::dump_config() {
     ESP_LOGCONFIG(TAG, "GSL3680 touchscreen: %s",
-                  this->is_failed() ? "FAILED" : "firmware verified and running");
+                  this->is_failed() ? "FAILED" : "running marker confirmed");
+    ESP_LOGCONFIG(TAG, "  Firmware RAM readback: %s", this->firmware_verified_ ? "verified" : "unavailable");
     if (this->is_failed()) {
         ESP_LOGCONFIG(TAG, "  Failed stage: %s (error %d)", this->startup_stage_, this->startup_error_);
         ESP_LOGCONFIG(TAG, "  Page 0x%lx register 0x%x: got 0x%lx, expected 0x%lx",
@@ -73,7 +74,17 @@ esphome::i2c::ErrorCode GSL3680::init() {
     this->startup_stage_ = "firmware upload";
     STOP_ON_I2C_ERROR(err, this->load_firmware());
     this->startup_stage_ = "firmware readback";
-    STOP_ON_I2C_ERROR(err, this->verify_firmware());
+    this->firmware_verified_ = false;
+    err = this->verify_firmware();
+    if (err == esphome::i2c::ERROR_NOT_ACKNOWLEDGED) {
+        // Some controllers ACK firmware writes but NACK reads of executable
+        // RAM. They must still pass the running-marker check below.
+        ESP_LOGW(TAG, "Firmware RAM readback unavailable; checking controller running marker");
+    } else if (err != esphome::i2c::ERROR_OK) {
+        return err;
+    } else {
+        this->firmware_verified_ = true;
+    }
     this->startup_stage_ = "core start";
     STOP_ON_I2C_ERROR(err, this->start());
     this->startup_stage_ = "running marker";
@@ -131,7 +142,9 @@ esphome::i2c::ErrorCode GSL3680::clear_registers() {
     // 0x88 is the reset command value, not the touch-count register address.
     // Configure the scan core at 0x80 before loading its volatile firmware.
     uint8_t clear_reg_regs[4] = {0xe0, 0x80, 0xe4, 0xe0};
-    uint8_t clear_reg_data[4] = {0x88, TOUCH_MAX_POINTS, 0x04, 0x00};
+    // The bundled JC8012P4A1 firmware uses the vendor's three-contact scan
+    // setting; TOUCH_MAX_POINTS is the decoder's buffer capacity.
+    uint8_t clear_reg_data[4] = {0x88, 3, 0x04, 0x00};
 
     auto err = esphome::i2c::ERROR_OK;
 
@@ -178,10 +191,14 @@ esphome::i2c::ErrorCode GSL3680::verify_firmware() {
     for (const auto &word : GSLX680_FW) {
         if (word.offset == 0xf0) {
             page = word.val;
+            this->diagnostic_page_ = page;
+            this->diagnostic_register_ = 0xf0;
             for (int i = 0; i < 4; i++) buf[i] = (uint8_t)(page >> (i * 8));
             STOP_ON_I2C_ERROR(err, this->write_register(0xf0, buf, 4));
+            esphome::delay(1);
             App.feed_wdt();
         } else {
+            this->diagnostic_register_ = word.offset;
             STOP_ON_I2C_ERROR(err, this->read_register(word.offset, buf, 4));
             const uint32_t actual = (uint32_t)buf[0] | ((uint32_t)buf[1] << 8) |
                                     ((uint32_t)buf[2] << 16) | ((uint32_t)buf[3] << 24);
