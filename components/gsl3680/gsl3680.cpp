@@ -27,6 +27,7 @@ void GSL3680::setup() {
         err = this->init();
     }
     if (err != esphome::i2c::ERROR_OK) {
+        this->startup_error_ = err;
         this->mark_failed(LOG_STR("Touch controller startup failed"));
         return;
     }
@@ -42,6 +43,12 @@ void GSL3680::setup() {
 void GSL3680::dump_config() {
     ESP_LOGCONFIG(TAG, "GSL3680 touchscreen: %s",
                   this->is_failed() ? "FAILED" : "firmware verified and running");
+    if (this->is_failed()) {
+        ESP_LOGCONFIG(TAG, "  Failed stage: %s (error %d)", this->startup_stage_, this->startup_error_);
+        ESP_LOGCONFIG(TAG, "  Page 0x%lx register 0x%x: got 0x%lx, expected 0x%lx",
+                      (unsigned long)this->diagnostic_page_, this->diagnostic_register_,
+                      (unsigned long)this->diagnostic_actual_, (unsigned long)this->diagnostic_expected_);
+    }
 }
 
 esphome::i2c::ErrorCode GSL3680::init() {
@@ -57,12 +64,19 @@ esphome::i2c::ErrorCode GSL3680::init() {
     // Silead controllers need a strict boot sequence: verify the bus, clear old
     // state, reset, load firmware, start, then confirm RAM contains the expected
     // marker bytes.
+    this->startup_stage_ = "bus check";
     STOP_ON_I2C_ERROR(err, this->read_configuration());
+    this->startup_stage_ = "scan configuration";
     STOP_ON_I2C_ERROR(err, this->clear_registers());
+    this->startup_stage_ = "core reset";
     STOP_ON_I2C_ERROR(err, this->reset());
+    this->startup_stage_ = "firmware upload";
     STOP_ON_I2C_ERROR(err, this->load_firmware());
+    this->startup_stage_ = "firmware readback";
     STOP_ON_I2C_ERROR(err, this->verify_firmware());
+    this->startup_stage_ = "core start";
     STOP_ON_I2C_ERROR(err, this->start());
+    this->startup_stage_ = "running marker";
     STOP_ON_I2C_ERROR(err, this->read_ram());
 
     return err;
@@ -172,6 +186,10 @@ esphome::i2c::ErrorCode GSL3680::verify_firmware() {
             const uint32_t actual = (uint32_t)buf[0] | ((uint32_t)buf[1] << 8) |
                                     ((uint32_t)buf[2] << 16) | ((uint32_t)buf[3] << 24);
             if (actual != word.val) {
+                this->diagnostic_page_ = page;
+                this->diagnostic_register_ = word.offset;
+                this->diagnostic_actual_ = actual;
+                this->diagnostic_expected_ = word.val;
                 ESP_LOGE(TAG, "Firmware readback mismatch: page 0x%lx register 0x%x, got 0x%lx, expected 0x%lx",
                          (unsigned long)page, word.offset, (unsigned long)actual, (unsigned long)word.val);
                 return esphome::i2c::ERROR_UNKNOWN;
@@ -202,6 +220,10 @@ esphome::i2c::ErrorCode GSL3680::read_ram() {
     for (int attempt = 0; attempt < 10; attempt++) {
         esphome::delay(30);
         STOP_ON_I2C_ERROR(err, this->read_register(0xb0, buf, 4));
+        this->diagnostic_register_ = 0xb0;
+        this->diagnostic_actual_ = (uint32_t)buf[0] | ((uint32_t)buf[1] << 8) |
+                                  ((uint32_t)buf[2] << 16) | ((uint32_t)buf[3] << 24);
+        this->diagnostic_expected_ = 0x5a5a5a5a;
         if (buf[0] == 0x5a && buf[1] == 0x5a && buf[2] == 0x5a && buf[3] == 0x5a) {
             ESP_LOGI(TAG, "Touch controller running: 5a, 5a, 5a, 5a");
             return err;
