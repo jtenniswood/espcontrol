@@ -606,10 +606,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-fw-btn.sp-fw-btn-busy:hover{background:rgba(35,37,43,.5);border-color:rgba(74,77,84,.45)}" +
         ".sp-btn-label-row{display:flex;align-items:baseline;width:100%;overflow:hidden;position:relative;z-index:1}" +
         ".sp-btn-label-row .sp-btn-label{flex:1;min-width:0}" +
-        ".sp-subpage-badge{font-size:var(--btn-label);line-height:1;opacity:.5;flex-shrink:0;" +
-        "cursor:pointer;padding:0 0 0 2px;border-radius:4px;" +
-        "transition:opacity .15s}" +
-        ".sp-subpage-badge:hover{opacity:1}" +
+        ".sp-subpage-badge{font-size:var(--btn-label);line-height:1;color:var(--preview-text-primary);flex-shrink:0;" +
+        "cursor:pointer;padding:0 0 0 2px;border-radius:4px}" +
         ".sp-hide-subpage-chevrons .sp-subpage-badge{display:none}" +
         "@media(max-width:768px){" +
         ":root{--gap:12px}" +
