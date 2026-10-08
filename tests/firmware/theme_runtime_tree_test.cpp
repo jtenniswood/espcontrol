@@ -704,7 +704,50 @@ static void test_registry_exhaustion() {
   for (auto &owner : owners) unregister_theme_refresh(&owner);
 }
 
+static void test_custom_card_theme_preservation() {
+  set_active_theme_palette(DARK_THEME);
+  apply_current_theme();
+  lv_obj_t page, custom, label, subpage, sub_custom;
+  custom.type = sub_custom.type = &lv_button_class;
+  custom.background = sub_custom.background = lv_color_hex(0x313131);
+  custom.text = sub_custom.text = lv_color_hex(0xFFFFFF);
+  custom.children = {&label};
+  label.parent = &custom;
+  label.text = lv_color_hex(0xFFFFFF);
+  BtnSlot slots[] = {{&custom}};
+  const bool theme_owned[] = {false};
+  const bool sensors[] = {false};
+  register_theme_grid(&page, slots, theme_owned, 1, sensors, 100, 100, 100);
+  navigation_subpages().push_back({&subpage, nullptr, {{false, &sub_custom, false, false}}});
+  for (const auto *theme : {&LIGHT_THEME, &DARK_THEME}) {
+    set_active_theme_palette(*theme);
+    apply_current_theme();
+    assert(custom.background.full == 0x313131 && label.text.full == 0xFFFFFF);
+    assert(sub_custom.background.full == 0x313131 && sub_custom.text.full == 0xFFFFFF);
+  }
+  navigation_subpages().clear();
+  lv_event_t deleted{&page};
+  page.delete_callback(&deleted);
+
+  lv_obj_t active, active_label;
+  active.children = {&active_label};
+  active_label.parent = &active;
+  active.state = LV_STATE_CHECKED;
+  for (const auto *theme : {&DARK_THEME, &LIGHT_THEME}) {
+    set_active_theme_palette(*theme);
+    set_current_button_primary_color(0xFFFFFF);
+    theme_apply_grid_button(&active, theme->surface_card, *theme);
+    assert(active_label.text.full == 0x212121);
+    set_current_button_primary_color(0xFF8C00);
+    theme_apply_grid_button(&active, theme->surface_card, *theme);
+    assert(active_label.text.full == 0xFFFFFF);
+  }
+  set_current_button_primary_color(DEFAULT_ACCENT_COLOR);
+  set_active_theme_palette(DARK_THEME);
+}
+
 int main() {
+  test_custom_card_theme_preservation();
   ThemePalette alternate = DARK_THEME;
   alternate.background = 0x101112;
   alternate.surface_primary = 0x202122;

@@ -190,7 +190,8 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                             " 12px,rgba(255,255,255,.22) 12px,rgba(255,255,255,.22) 20px)";
                 }
                 if (!btn.classList.contains("sp-image-card")) {
-                    btn.style.setProperty("--card-text-color", cardPreviewTextColor(contrastBackground));
+                    btn.style.setProperty("--card-text-color", cardOffColor || contrastBackground !== color
+                        ? cardPreviewTextColor(contrastBackground) : "#" + previewColors.textPrimary);
                 }
                 var badgeIcon: any = b.sensor ? "gauge" : "swap-horizontal";
                 var sensorBadge: any = hasWhenOn

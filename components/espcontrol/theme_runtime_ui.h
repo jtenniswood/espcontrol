@@ -38,7 +38,8 @@ inline uint32_t current_grid_sensor_surface_color() {
 
 inline void theme_apply_grid_button(lv_obj_t *button, uint32_t neutral,
                                     const ThemePalette &theme,
-                                    bool secondary_surface = false) {
+                                    bool secondary_surface = false,
+                                    bool sensor_surface = false) {
   if (!button) return;
   // Change only the neutral/default fill. Checked and pressed backgrounds are
   // owned by the persisted user accent and the card's state callbacks.
@@ -47,16 +48,20 @@ inline void theme_apply_grid_button(lv_obj_t *button, uint32_t neutral,
   if (!content_fill) {
     // Store the surface role explicitly: cards and information panels are
     // both white in Light, but must return to different Dark colors.
-    if (secondary_surface) neutral = current_grid_sensor_color();
+    if (sensor_surface) neutral = current_grid_sensor_surface_color();
+    else if (secondary_surface) neutral = current_grid_sensor_color();
     lv_obj_set_style_bg_color(button, lv_color_hex(neutral), LV_PART_MAIN);
   }
+  const auto background = lv_color_to_32(lv_obj_get_style_bg_color(button, LV_PART_MAIN), 255);
+  const uint32_t background_rgb = (static_cast<uint32_t>(background.red) << 16) |
+      (static_cast<uint32_t>(background.green) << 8) | background.blue;
   lv_obj_set_style_text_color(button,
-      lv_color_hex(content_fill ? CARD_ACCENT_TEXT_COLOR : theme.text_primary), LV_PART_MAIN);
-  // Accent/checked foreground stays white for contrast even when the neutral
-  // palette uses dark text. The accent itself remains card/user-owned.
-  lv_obj_set_style_text_color(button, lv_color_hex(CARD_ACCENT_TEXT_COLOR),
+      lv_color_hex(content_fill ? readable_text_color_for_bg(background_rgb) : theme.text_primary), LV_PART_MAIN);
+  // Accent/checked foreground follows the shared contrast rule independently
+  // of the neutral theme. The accent itself remains card/user-owned.
+  lv_obj_set_style_text_color(button, lv_color_hex(readable_text_color_for_bg(current_button_primary_color())),
                               static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_CHECKED);
-  lv_obj_set_style_text_color(button, lv_color_hex(CARD_ACCENT_TEXT_COLOR),
+  lv_obj_set_style_text_color(button, lv_color_hex(readable_text_color_for_bg(current_button_primary_color())),
                               static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED);
   sync_card_checked_text_color(button);
   set_card_content_disabled(button, lv_obj_has_state(button, LV_STATE_DISABLED));
@@ -76,8 +81,8 @@ inline void theme_apply_grid(void *context, const ThemePalette &theme) {
                                 lv_obj_has_state(targets.buttons[i], LV_STATE_PRESSED);
       theme_restyle_tree(targets.buttons[i], theme_refresh_previous(), theme, accent_state,
                          correction, sensor_surface);
-      if (!sensor_surface) theme_apply_grid_button(
-          targets.buttons[i], neutral, theme, targets.secondary_surfaces[i]);
+      theme_apply_grid_button(
+          targets.buttons[i], neutral, theme, targets.secondary_surfaces[i], sensor_surface);
     }
   }
   for (auto &entry : navigation_subpages()) {
@@ -92,8 +97,8 @@ inline void theme_apply_grid(void *context, const ThemePalette &theme) {
                                   lv_obj_has_state(card.button, LV_STATE_PRESSED);
         theme_restyle_tree(card.button, theme_refresh_previous(), theme, accent_state,
                            correction, sensor_surface);
-        if (!sensor_surface) theme_apply_grid_button(
-            card.button, neutral, theme, card.secondary_surface);
+        theme_apply_grid_button(
+            card.button, neutral, theme, card.secondary_surface, sensor_surface);
       }
     }
   }

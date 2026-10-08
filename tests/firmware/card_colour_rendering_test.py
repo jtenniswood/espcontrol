@@ -39,11 +39,14 @@ struct lv_obj_t {
   std::string content;
 };
 struct BtnSlot { lv_obj_t *btn, *icon_lbl = nullptr, *text_lbl = nullptr; };
-struct AlarmCardCtx { lv_obj_t *btn; uint32_t off_color; };
+struct AlarmCardCtx { lv_obj_t *btn; uint32_t off_color; bool off_theme_owned = false; int theme_red_percent = 100, theme_green_percent = 100, theme_blue_percent = 100; };
 struct DisplayProfile {
   struct { int red_percent = 100, green_percent = 100, blue_percent = 100; } color;
 };
 uint32_t lv_color_hex(uint32_t rgb) { return rgb; }
+void theme_set_content_background(lv_obj_t *, bool) {}
+uint32_t current_grid_sensor_surface_color() { return current_theme().surface_sensor; }
+uint32_t current_grid_sensor_color() { return current_theme().surface_secondary; }
 void lv_obj_set_style_bg_color(lv_obj_t *obj, uint32_t rgb, int selector) { obj->background[selector] = rgb; }
 void lv_obj_set_style_text_color(lv_obj_t *obj, uint32_t rgb, int selector) { obj->text[selector] = rgb; }
 void lv_obj_set_style_bg_opa(lv_obj_t *, int, int) {}
@@ -75,6 +78,7 @@ void ha_subscribe_state(const std::string &entity, std::function<void(esphome::S
 }
 void subscribe_friendly_name(lv_obj_t *, const std::string &) {}
 void lv_label_set_display_text(lv_obj_t *label, const char *text) { label->content = text; }
+void set_wrapped_button_label_text(lv_obj_t *label, const std::string &text) { label->content = text; }
 namespace espcontrol::cards {
 const char *status_entity_driver_inactive_icon(const ParsedCfg &, const Context &) { return "off"; }
 const char *status_entity_driver_active_icon(const ParsedCfg &, const Context &) { return "on"; }
@@ -83,16 +87,16 @@ size_t lv_obj_get_child_cnt(lv_obj_t *obj) { return obj->children.size(); }
 lv_obj_t *lv_obj_get_child(lv_obj_t *obj, size_t index) { return obj->children[index]; }
 '''
 grid = (headers / "button_grid_grid.h").read_text()
-source += grid[grid.index("struct CardPalette {"):grid.index("inline CardPalette card_palette_for_config")]
+
 groups = (
     ("button_grid_display.h", "", ("display_correct_color",)),
     ("button_grid_layout.h", "", ("parse_hex_color", "apply_button_colors", "apply_card_descendant_text_color", "sync_card_checked_text_color", "card_text_contrast_event_cb", "bind_card_text_contrast_events", "set_card_checked_state")),
     ("button_grid_grid.h", "", ("card_palette_for_config",)),
     ("button_grid_sensor_driver.h", "espcontrol::cards", ("sensor_driver_apply_background",)),
     ("button_grid_weather_driver.h", "espcontrol::cards", ("weather_driver_apply_background",)),
-    ("button_grid_subscriptions.h", "", ("apply_sensor_active_color",)),
+    ("button_grid_subscriptions.h", "", ("apply_sensor_active_color", "subscribe_sensor_text_card_value")),
     ("button_grid_status_entity_driver.h", "espcontrol::cards", ("status_entity_driver_matches", "status_entity_driver_state_active", "status_entity_driver_active_color_enabled", "status_entity_driver_bind_data")),
-    ("button_grid_alarm.h", "", ("alarm_set_card_state_colors",)),
+    ("button_grid_alarm.h", "", ("alarm_theme_off_color", "alarm_set_card_state_colors")),
     ("button_grid_fan.h", "", ("fan_control_style_binary_button",)),
     ("button_grid_climate.h", "", ("climate_style_range_target_button",)),
 )
@@ -135,7 +139,7 @@ int main() {
   for (const auto &colour : colours) {
     lv_obj_t modal_button, modal_label;
     modal_button.children = {&modal_label};
-    fan_control_style_binary_button(&modal_button, true, colour.active, SECONDARY_GREY);
+    fan_control_style_binary_button(&modal_button, true, colour.active, theme_display_color(current_theme().surface_primary));
     assert(modal_label.text[0] == display_text_color_for_bg(colour.active));
     climate_style_range_target_button(&modal_button, true, colour.active);
     assert(modal_label.text[0] == display_text_color_for_bg(colour.active));
@@ -158,6 +162,8 @@ int main() {
           apply_button_colors(&button, palette.has_on, palette.on_val, palette.has_off, palette.off_val);
           sync_card_checked_text_color(&button);
           espcontrol::cards::sensor_driver_apply_background(slot, palette);
+          assert(palette.custom_background);
+          assert(palette.surface_sensor_val == colour.base);
           assert(button.background[LV_STATE_DEFAULT] == colour.base);
           assert(button.background[LV_STATE_CHECKED] == colour.active);
           assert(label.text[0] == colour.text && value.text[0] == colour.text && unit.text[0] == colour.text);
@@ -179,13 +185,13 @@ int main() {
           set_card_checked_state(&button, false);
           assert(value.text[0] == colour.text);
           for (const char *state : {"42", "0", "42"}) {
-            apply_sensor_active_color(&button, true, esphome::StringRef(state), palette.on_val, palette.sensor_val, false, true);
+            apply_sensor_active_color(&button, true, esphome::StringRef(state), palette.on_val, palette.sensor_val, false, true, true);
             const auto expected = std::string(state) == "0" ? colour.base : colour.active;
             assert(button.background[0] == expected);
             assert(value.text[0] == display_text_color_for_bg(expected));
             assert(label.text[0] == value.text[0] && unit.text[0] == value.text[0]);
           }
-          apply_sensor_active_color(&button, true, esphome::StringRef("unavailable"), palette.on_val, palette.sensor_val, true);
+          apply_sensor_active_color(&button, true, esphome::StringRef("unavailable"), palette.on_val, palette.sensor_val, true, false, true);
           assert(button.background[0] == colour.base);
           espcontrol::cards::weather_driver_apply_background(slot, palette);
           assert(button.background[0] == colour.base);
@@ -233,6 +239,25 @@ int main() {
   config.options = "card_off_color=FF8C00";
   display.color.red_percent = 50;
   display.color.green_percent = 75;
+  for (const ThemePalette *theme : {&DARK_THEME, &LIGHT_THEME}) {
+    set_active_theme_palette(*theme);
+    const auto neutral = card_palette_for_config(CardPalette{}, ParsedCfg{}, DisplayProfile{});
+    assert(!neutral.custom_background && neutral.surface_sensor_val == theme->surface_sensor);
+    const auto custom = card_palette_for_config(CardPalette{}, config, DisplayProfile{});
+    assert(custom.custom_background && custom.surface_sensor_val == 0xFF8C00);
+    lv_obj_t sensor, label;
+    sensor.children = {&label};
+    ParsedCfg text_config;
+    text_config.sensor = "sensor.text";
+    subscribe_sensor_text_card_value(&label, text_config, &sensor, true, custom.on_val, true, custom.surface_sensor_val);
+    subscriptions.at(text_config.sensor)(esphome::StringRef("unavailable"));
+    assert(sensor.background[0] == custom.surface_sensor_val);
+    assert(label.text[0] == display_text_color_for_bg(custom.surface_sensor_val));
+    subscribe_sensor_text_card_value(&label, text_config, &sensor, true, neutral.on_val, true);
+    subscriptions.at(text_config.sensor)(esphome::StringRef("unavailable"));
+    assert(sensor.background[0] == theme->surface_sensor);
+  }
+  set_active_theme_palette(DARK_THEME);
   const auto corrected = card_palette_for_config(defaults, config, display);
   assert(corrected.sensor_val == 0x7F6900);
   assert(corrected.off_val == corrected.sensor_val);

@@ -137,7 +137,7 @@ inline AlarmCardCtx *alarm_driver_bind_data(
   alarm->theme_red_percent = environment.theme_red_percent;
   alarm->theme_green_percent = environment.theme_green_percent;
   alarm->theme_blue_percent = environment.theme_blue_percent;
-  alarm->off_theme_owned = true;
+  alarm->off_theme_owned = cfg_option_value(effective.options, "card_off_color").empty();
   if (context.surface == Surface::SUBPAGE) {
     alarm->grid_page = environment.grid_page;
   }
