@@ -86,7 +86,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         appearBody.appendChild(onColor);
         els.setOnColor = onColor;
         var themeModes: any = segmentControl([
-            ["Dark", "Dark"], ["Light", "Light"], ["Auto", "Auto"],
+            ["Dark", "Dark"], ["Light", "Light"], ["Auto", "Automatic"],
         ], normalizeThemeMode(state.themeMode), function (this: any, mode?: any) {
             state.themeMode = normalizeThemeMode(mode);
             postSelect(entityName("screen_theme_mode"), state.themeMode);

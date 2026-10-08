@@ -1115,8 +1115,8 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   );
   const themeModes = page.locator("#sp-set-theme-mode");
   assert.deepStrictEqual(await themeModes.locator("button").allTextContents(),
-    ["Dark", "Light", "Auto"], `${label}: theme modes render`);
-  await themeModes.getByRole("button", { name: "Auto" }).click();
+    ["Dark", "Light", "Automatic"], `${label}: theme modes render`);
+  await themeModes.getByRole("button", { name: "Automatic" }).click();
   assert(await page.locator("#sp-set-theme-auto-method").isVisible(),
     `${label}: Auto exposes its method`);
   assert(await page.locator("#sp-set-theme-light-start").isVisible(),
