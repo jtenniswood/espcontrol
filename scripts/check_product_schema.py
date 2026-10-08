@@ -121,7 +121,11 @@ def run_self_test() -> int:
     expect_error(validate_card_contract(invalid_allowed_alias), "must map to an allowed value")
 
     invalid_condition = copy.deepcopy(card_contract)
-    invalid_condition["cards"]["sensor"]["options"][0]["applicability"][0]["operator"] = "matches"
+    applicable_option = next(
+        option for option in invalid_condition["cards"]["sensor"]["options"]
+        if option.get("applicability")
+    )
+    applicable_option["applicability"][0]["operator"] = "matches"
     expect_error(validate_card_contract(invalid_condition), "must be equals, in, or present")
 
     invalid_subpage_codes = copy.deepcopy(card_contract)
