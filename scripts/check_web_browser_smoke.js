@@ -1124,10 +1124,10 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   assert(await page.locator("#sp-set-theme-dark-start").isVisible(),
     `${label}: Time exposes Dark start`);
   await page.locator("#sp-set-theme-auto-method").getByRole("button", { name: "Sunrise / Sunset" }).click();
-  assert(await page.locator("#sp-set-theme-sunrise-offset").isVisible(),
-    `${label}: solar method exposes sunrise offset`);
-  assert(await page.locator("#sp-set-theme-sunset-offset").isVisible(),
-    `${label}: solar method exposes sunset offset`);
+  assert.strictEqual(await page.locator("#sp-set-theme-sunrise-offset").count(), 0,
+    `${label}: solar method does not expose sunrise offset control`);
+  assert.strictEqual(await page.locator("#sp-set-theme-sunset-offset").count(), 0,
+    `${label}: solar method does not expose sunset offset control`);
   assert(!(await page.locator("#sp-set-theme-light-start").isVisible()),
     `${label}: solar method hides time inputs`);
   await themeModes.getByRole("button", { name: "Light" }).click();
@@ -1160,8 +1160,6 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   await themeModes.getByRole("button", { name: "Dark" }).click();
   assert(!(await page.locator("#sp-set-theme-light-start").isVisible()),
     `${label}: manual theme hides Auto inputs`);
-  assert(!(await page.locator("#sp-set-theme-sunrise-offset").isVisible()),
-    `${label}: manual theme hides solar offsets`);
   assert.deepStrictEqual(
     await page
       .locator("#sp-settings .sp-settings-status-title")

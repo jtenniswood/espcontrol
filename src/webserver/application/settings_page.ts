@@ -8,7 +8,6 @@ import {
     normalizeTimeOfDay,
     normalizeThemeMode,
     normalizeThemeAutoMethod,
-    parseThemeSunOffset,
 } from "../model/settings";
 import { syncThemeSettingsUi } from "./theme_settings_ui";
 import type { ConfigCodecFeature } from "./config_codec";
@@ -125,36 +124,6 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setThemeDarkStart = themeDarkStart.input;
         themeAutoFields.appendChild(themeScheduleFields);
         els.setThemeScheduleFields = themeScheduleFields;
-        var themeSunFields: any = condField();
-        function themeOffsetField(label: string, id: string, value: number, key: "themeSunriseOffset" | "themeSunsetOffset", entityKey: "screen_theme_sunrise_offset" | "screen_theme_sunset_offset") {
-            var field: any = document.createElement("div");
-            field.className = "sp-field";
-            field.appendChild(fieldLabel(label + " (minutes)", id));
-            var input: any = textInput(id, String(value), "0");
-            input.type = "number";
-            input.min = "-180";
-            input.max = "180";
-            input.step = "1";
-            input.addEventListener("input", function (this: any) { this.setCustomValidity(""); });
-            input.addEventListener("change", function (this: any) {
-                var parsed = parseThemeSunOffset(this.value);
-                if (parsed === null) {
-                    this.setCustomValidity("Use a whole number from -180 to 180 minutes.");
-                    this.reportValidity();
-                    return;
-                }
-                state[key] = parsed;
-                this.value = String(parsed);
-                postNumber(entityName(entityKey), parsed);
-            });
-            field.appendChild(input);
-            themeSunFields.appendChild(field);
-            return input;
-        }
-        els.setThemeSunriseOffset = themeOffsetField("Sunrise offset", "sp-set-theme-sunrise-offset", state.themeSunriseOffset, "themeSunriseOffset", "screen_theme_sunrise_offset");
-        els.setThemeSunsetOffset = themeOffsetField("Sunset offset", "sp-set-theme-sunset-offset", state.themeSunsetOffset, "themeSunsetOffset", "screen_theme_sunset_offset");
-        themeAutoFields.appendChild(themeSunFields);
-        els.setThemeSunFields = themeSunFields;
         appearBody.appendChild(themeAutoFields);
         els.setThemeAutoFields = themeAutoFields;
         syncThemeSettingsUi(state, runtime);
