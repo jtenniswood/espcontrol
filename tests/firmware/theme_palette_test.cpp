@@ -52,7 +52,7 @@ int main() {
   assert(readable_text_color_for_bg(0xFFFFFF) ==
          theme_display_color(DARK_THEME.surface_secondary));
   assert(readable_text_color_for_bg(0x000000) == DARK_THEME.text_primary);
-  assert(LIGHT_THEME.background == 0x404040);
+  assert(LIGHT_THEME.background == 0x707070);
   assert(LIGHT_THEME.surface_primary == 0xFFFFFF);
   assert(LIGHT_THEME.surface_secondary == 0xE8E8E8);
   assert(LIGHT_THEME.text_primary == 0x333333);
@@ -126,7 +126,7 @@ int main() {
   assert(&current_theme() == &LIGHT_THEME);
   assert(production_switch.applications == 1);
   assert(production_switch.previous == &DARK_THEME);
-  assert(production_switch.background == 0x404040);
+  assert(production_switch.background == 0x707070);
   CardPalette light_card;
   assert(light_card.off_val == theme_display_color(LIGHT_THEME.surface_primary));
   assert(light_card.sensor_val == theme_display_color(LIGHT_THEME.surface_secondary));
