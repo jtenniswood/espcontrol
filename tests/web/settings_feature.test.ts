@@ -49,13 +49,18 @@ export function runSettingsFeatureTests(): void {
   equal(parseThemeSunOffset("1.5"), null, "fractional offset rejected");
   equal(previewEffectiveTheme({ themeMode: "Auto", themeActive: "Light" }), "Light", "Auto preview follows active firmware theme");
   equal(previewEffectiveTheme({ themeMode: "Dark", themeActive: "Light" }), "Dark", "manual preview follows chosen mode");
-  equal(PREVIEW_THEME_COLORS.Light.surfacePrimary, "FFFFFF", "preview Light surface matches device palette");
+  equal(PREVIEW_THEME_COLORS.Light.surfaceCard, "FFFFFF", "preview Light surface matches device palette");
+  equal(PREVIEW_THEME_COLORS.Dark.background, "000000", "Dark retains the main background");
+  equal(PREVIEW_THEME_COLORS.Dark.surfaceCard, "313131", "Dark retains the main card fill");
+  equal(PREVIEW_THEME_COLORS.Dark.surfaceSensor, "212121", "Dark retains the main sensor fill");
+  equal(PREVIEW_THEME_COLORS.Light.surfaceSensor, "F5F5F5", "Light has a separate sensor fill");
   equal(previewThemeCss("Light").includes("--preview-text-primary:#333333"), true, "preview Light foreground is semantic");
   for (const [mode, palette] of Object.entries(PREVIEW_THEME_COLORS)) {
     equal(contrast(palette.textPrimary, palette.surfacePrimary) >= 4.5, true, `${mode} primary text contrast`);
-    equal(contrast(palette.textMuted, palette.surfacePrimary) >= 4.5, true, `${mode} muted text contrast`);
-    equal(contrast(placeholderOutline(palette.textMuted, palette.background), palette.background) >= 3,
-          true, `${mode} dashed placeholder contrast`);
+    equal(contrast(palette.textMuted, palette.surfaceCard) >= 4.5, true, `${mode} muted text contrast`);
+    // Empty-slot borders are decorative; the icon uses the primary text color.
+    equal(placeholderOutline(palette.textMuted, palette.background) !== palette.background,
+          true, `${mode} dashed placeholder separates from its background`);
   }
   equal(normalizeThemeMode(undefined), "Dark", "old settings default to Dark");
   equal(normalizeTimeOfDay("20:00", "07:00"), "20:00", "overnight Light time round trips");

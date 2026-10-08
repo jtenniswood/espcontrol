@@ -122,7 +122,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 backBtn.innerHTML =
                     '<span class="sp-btn-icon sp-back-hit mdi mdi-chevron-left"></span>' +
                         '<span class="sp-btn-label">' + escHtml(backLabel) + '</span>';
-                backBtn.style.backgroundColor = "#" + previewColors.surfaceSecondary;
+                backBtn.style.backgroundColor = "#" + previewColors.surfaceCard;
                 backBtn.style.cursor = "pointer";
                 backBtn.setAttribute("data-pos", pos);
                 backBtn.draggable = !isConfigLocked();
@@ -157,7 +157,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 var label: any = b.label || b.entity || "Configure";
                 var color: any = SENSOR_SURFACE_CARD_TYPES.has(b.type || "")
                     ? previewColors.surfaceSensor
-                    : previewColors.surfaceSecondary;
+                    : previewColors.surfaceCard;
                 var previewTypeDef: any = dependencies.cards.definitions[b.type || ""] || null;
                 if (previewTypeDef && c.isSub && !buttonTypeRegistryValue(previewTypeDef, "allowInSubpage", false)) {
                     previewTypeDef = null;

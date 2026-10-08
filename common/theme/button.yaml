@@ -22,7 +22,7 @@ lvgl:
   # ---------------------------------------------------------------------------
   style_definitions:
     - id: control
-      bg_color: $theme_surface_primary_color
+      bg_color: $theme_surface_card_color
       border_color: $button_border_color
       border_width: $button_border_width
 

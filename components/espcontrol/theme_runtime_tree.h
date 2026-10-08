@@ -55,11 +55,13 @@ inline bool theme_neutral_background(lv_color_t color, const ThemePalette &theme
          theme_color_matches(color, theme_display_color(theme.surface_primary)) ||
          theme_color_matches(color, theme_display_color(theme.surface_secondary)) ||
          theme_color_matches(color, theme_display_color(theme.surface_sensor)) ||
+         theme_color_matches(color, theme_display_color(theme.surface_card)) ||
          theme_color_matches(color, theme_display_color(theme.control_neutral)) ||
          theme_color_matches(color, theme_display_color(theme.track_background)) ||
          theme_color_matches(color, theme_tree_corrected(theme.surface_primary, correction)) ||
          theme_color_matches(color, theme_tree_corrected(theme.surface_secondary, correction)) ||
          theme_color_matches(color, theme_tree_corrected(theme.surface_sensor, correction)) ||
+         theme_color_matches(color, theme_tree_corrected(theme.surface_card, correction)) ||
          theme_color_matches(color, theme_tree_corrected(theme.track_background, correction)) ||
          theme_color_matches(color, theme.overlay);
 }
@@ -103,6 +105,10 @@ inline void theme_restyle_tree(lv_obj_t *obj, const ThemePalette &previous,
       lv_obj_set_style_bg_color(obj, lv_color_hex(theme_display_color(theme.surface_secondary)), LV_PART_MAIN);
     } else if (theme_color_matches(background, theme_display_color(previous.surface_primary))) {
       lv_obj_set_style_bg_color(obj, lv_color_hex(theme_display_color(theme.surface_primary)), LV_PART_MAIN);
+    } else if (theme_color_matches(background, theme_tree_corrected(previous.surface_card, correction))) {
+      lv_obj_set_style_bg_color(obj, lv_color_hex(theme_tree_corrected(theme.surface_card, correction)), LV_PART_MAIN);
+    } else if (theme_color_matches(background, theme_display_color(previous.surface_card))) {
+      lv_obj_set_style_bg_color(obj, lv_color_hex(theme_display_color(theme.surface_card)), LV_PART_MAIN);
     } else if (theme_color_matches(background, previous.background)) {
       lv_obj_set_style_bg_color(obj, lv_color_hex(theme.background), LV_PART_MAIN);
     }

@@ -54,17 +54,18 @@ RULES: tuple[tuple[re.Pattern[str], str, set[str]], ...] = (
 # YAML substitutions and the runtime C++ palette are authored independently.
 # Guard their dark RGB parity until both can consume one shared source.
 THEME_RGB = {
-    "BACKGROUND": 0x303030,
-    "SURFACE_PRIMARY": 0x303030,
-    "SURFACE_SECONDARY": 0x404040,
-    "SURFACE_SENSOR": 0x404040,
+    "BACKGROUND": 0x000000,
+    "SURFACE_PRIMARY": 0x313131,
+    "SURFACE_SECONDARY": 0x212121,
+    "SURFACE_SENSOR": 0x212121,
+    "SURFACE_CARD": 0x313131,
     "TEXT_PRIMARY": 0xFFFFFF,
     "CLOCKBAR_TEXT": 0xFFFFFF,
     "TEXT_MUTED": 0xB0B0B0,
     "TEXT_INVERTED": 0x000000,
     "TEXT_DISABLED": 0x707070,
-    "BORDER": 0x303030,
-    "CONTROL_NEUTRAL": 0x303030,
+    "BORDER": 0x313131,
+    "CONTROL_NEUTRAL": 0x313131,
     "TRACK_BACKGROUND": 0x313131,
     "OVERLAY": 0x000000,
     "SETUP_ACTION": 0x333333,
@@ -74,6 +75,7 @@ LIGHT_THEME_RGB = {
     "SURFACE_PRIMARY": 0xB0B0B0,
     "SURFACE_SECONDARY": 0xFFFFFF,
     "SURFACE_SENSOR": 0xF5F5F5,
+    "SURFACE_CARD": 0xFFFFFF,
     "TEXT_PRIMARY": 0x333333,
     "CLOCKBAR_TEXT": 0x333333,
     "TEXT_MUTED": 0x606060,
@@ -112,7 +114,7 @@ def check_theme_colors(root: Path) -> list[str]:
         for mode, colors in (("Dark", THEME_RGB), ("Light", LIGHT_THEME_RGB)):
             block = re.search(rf"\b{mode}:\s*\{{([^}}]+)\}}", preview_text)
             for role in ("BACKGROUND", "SURFACE_PRIMARY", "SURFACE_SECONDARY",
-                         "SURFACE_SENSOR", "TEXT_PRIMARY",
+                         "SURFACE_SENSOR", "SURFACE_CARD", "TEXT_PRIMARY",
                          "TEXT_MUTED", "TEXT_DISABLED", "BORDER", "TRACK_BACKGROUND", "CONTROL_NEUTRAL"):
                 words = role.lower().split("_")
                 field = words[0] + "".join(word.title() for word in words[1:])
@@ -353,7 +355,7 @@ def run_self_test() -> None:
         cpp_path.write_text(cpp_path.read_text(encoding="utf-8").replace("theme.text_muted = 0xB0B0B0", "theme.text_muted = 0xB0B0B1"), encoding="utf-8")
         assert any("text_muted" in failure for failure in check_theme_colors(root))
         cpp_path.write_text((ROOT / "components/espcontrol/theme_palette.h").read_text(encoding="utf-8"), encoding="utf-8")
-        preview_path.write_text(preview_path.read_text(encoding="utf-8").replace('background: "F4F4F4"', 'background: "F4F4F5"'), encoding="utf-8")
+        preview_path.write_text(preview_path.read_text(encoding="utf-8").replace('background: "E3E3E3"', 'background: "E3E3E4"'), encoding="utf-8")
         assert any("Light background" in failure for failure in check_theme_colors(root))
     print("Firmware display token self-tests passed.")
 

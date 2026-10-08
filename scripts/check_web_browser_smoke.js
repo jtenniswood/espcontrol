@@ -1142,22 +1142,34 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
       background: getComputedStyle(screen).backgroundColor,
       outline: getComputedStyle(placeholder).borderTopColor,
       foreground: getComputedStyle(placeholder.querySelector(".sp-add-icon")).color,
+      card: getComputedStyle(screen).getPropertyValue("--preview-surface-card").trim(),
+      sensor: getComputedStyle(screen).getPropertyValue("--preview-surface-sensor").trim(),
     };
     placeholder.remove();
     return result;
   });
-  assert.strictEqual(lightPreview.background, "rgb(244, 244, 244)", `${label}: preview uses Light background`);
+  assert.strictEqual(lightPreview.background, "rgb(227, 227, 227)", `${label}: preview uses Light background`);
+  assert.strictEqual(lightPreview.card, "#FFFFFF", `${label}: Light cards retain their separate white fill`);
+  assert.strictEqual(lightPreview.sensor, "#F5F5F5", `${label}: Light sensors retain their separate grey fill`);
   assert.notStrictEqual(lightPreview.outline, lightPreview.background,
     `${label}: Light placeholder dashed outline separates from its background`);
-  assert.strictEqual(lightPreview.foreground, "rgb(24, 24, 24)",
+  assert.strictEqual(lightPreview.foreground, "rgb(51, 51, 51)",
     `${label}: Light placeholder icon uses semantic foreground`);
   await page.evaluate(() => window.__seedEspState([{
     id: "text_sensor-screen__active_theme", state: "Light", value: "Light",
   }]));
-  await themeModes.getByRole("button", { name: "Auto" }).click();
+  await themeModes.getByRole("button", { name: "Automatic" }).click();
   assert(await page.locator(".sp-screen").evaluate((screen) => screen.classList.contains("sp-theme-light")),
     `${label}: Auto preview follows Active Theme`);
   await themeModes.getByRole("button", { name: "Dark" }).click();
+  const darkPreview = await page.locator(".sp-screen").evaluate((screen) => ({
+    background: getComputedStyle(screen).backgroundColor,
+    card: getComputedStyle(screen).getPropertyValue("--preview-surface-card").trim(),
+    sensor: getComputedStyle(screen).getPropertyValue("--preview-surface-sensor").trim(),
+  }));
+  assert.strictEqual(darkPreview.background, "rgb(0, 0, 0)", `${label}: Dark restores the main background`);
+  assert.strictEqual(darkPreview.card, "#313131", `${label}: Dark restores the main card fill`);
+  assert.strictEqual(darkPreview.sensor, "#212121", `${label}: Dark restores the main sensor fill`);
   assert(!(await page.locator("#sp-set-theme-light-start").isVisible()),
     `${label}: manual theme hides Auto inputs`);
   assert.deepStrictEqual(

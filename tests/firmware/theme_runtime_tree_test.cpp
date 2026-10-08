@@ -8,8 +8,11 @@ static std::vector<std::string> theme_warnings;
 
 struct lv_color_t { uint32_t full; };
 constexpr lv_color_t lv_color_hex(uint32_t rgb) { return {rgb}; }
-struct lv_color32_t { uint32_t full; };
-constexpr lv_color32_t lv_color_to_32(lv_color_t color, int) { return {color.full}; }
+struct lv_color32_t { uint8_t blue, green, red, alpha; };
+constexpr lv_color32_t lv_color_to_32(lv_color_t color, int alpha) {
+  return {static_cast<uint8_t>(color.full), static_cast<uint8_t>(color.full >> 8),
+          static_cast<uint8_t>(color.full >> 16), static_cast<uint8_t>(alpha)};
+}
 constexpr bool lv_color_eq(lv_color_t left, lv_color_t right) { return left.full == right.full; }
 constexpr int LV_PART_MAIN = 0;
 constexpr int LV_PART_KNOB = 1;
@@ -138,19 +141,25 @@ struct BtnSlot { lv_obj_t *btn = nullptr; };
 struct TestSubpage {
   lv_obj_t *screen = nullptr;
   lv_obj_t *back_button = nullptr;
-  struct Card { bool neutral_background; lv_obj_t *button; };
+  struct Card { bool neutral_background; lv_obj_t *button; bool sensor_surface = false; bool secondary_surface = false; };
   std::vector<Card> cards;
 };
 std::vector<TestSubpage> &navigation_subpages() {
   static std::vector<TestSubpage> pages;
   return pages;
 }
-constexpr uint32_t CARD_ACCENT_TEXT_COLOR = 0xFFFFFF;
+#include "button_grid_style.h"
 void sync_card_checked_text_color(lv_obj_t *button) {
   for (auto *child : button->children) child->text = lv_obj_get_style_text_color(button, LV_PART_MAIN);
 }
 void set_card_content_disabled(lv_obj_t *, bool) {}
 #include "theme_runtime_ui.h"
+
+void register_theme_grid(lv_obj_t *page, BtnSlot *slots, const bool *neutral, int count,
+                         int red, int green, int blue, const bool *secondary = nullptr) {
+  const bool sensors[MAX_GRID_SLOTS]{};
+  register_theme_grid(page, slots, neutral, count, sensors, red, green, blue, secondary);
+}
 #include "theme_settings.h"
 namespace esphome { using StringRef = std::string; }
 bool sensor_active_color_state_ref(const std::string &state, bool) { return state == "on"; }
@@ -187,13 +196,53 @@ static void test_grid_secondary_surface() {
   sensor.background = lv_color_hex(DARK_THEME.surface_secondary);
   BtnSlot slots[] = {{&sensor}};
   const bool neutral[] = {true};
-  register_theme_grid(&page, slots, neutral, 1, 100, 100, 100);
+  const bool secondary[] = {true};
+  register_theme_grid(&page, slots, neutral, 1, 100, 100, 100, secondary);
   set_active_theme_palette(LIGHT_THEME);
   apply_current_theme();
   assert(sensor.background.full == LIGHT_THEME.surface_secondary);
   set_active_theme_palette(DARK_THEME);
   apply_current_theme();
   assert(sensor.background.full == DARK_THEME.surface_secondary);
+  lv_event_t deleted{&page};
+  page.delete_callback(&deleted);
+}
+
+static void test_independent_dark_light_surfaces() {
+  set_active_theme_palette(DARK_THEME);
+  apply_current_theme();
+  lv_obj_t page, card, information, sensor, subpage, sub_card, sub_information, sub_sensor;
+  lv_obj_t *buttons[] = {&card, &information, &sensor, &sub_card, &sub_information, &sub_sensor};
+  for (auto *button : buttons) {
+    button->type = &lv_button_class;
+    button->opacity = LV_OPA_COVER;
+  }
+  card.background = sub_card.background = lv_color_hex(DARK_THEME.surface_card);
+  information.background = sub_information.background = lv_color_hex(DARK_THEME.surface_secondary);
+  sensor.background = sub_sensor.background = lv_color_hex(DARK_THEME.surface_sensor);
+  BtnSlot slots[] = {{&card}, {&information}, {&sensor}};
+  const bool neutral[] = {true, true, true};
+  const bool sensors[] = {false, false, true};
+  const bool secondary[] = {false, true, false};
+  register_theme_grid(&page, slots, neutral, 3, sensors, 100, 100, 100, secondary);
+  navigation_subpages().push_back({&subpage, nullptr,
+      {{true, &sub_card}, {true, &sub_information, false, true}, {true, &sub_sensor, true}}});
+  for (const auto *theme : {&LIGHT_THEME, &DARK_THEME, &LIGHT_THEME, &DARK_THEME}) {
+    set_active_theme_palette(*theme);
+    apply_current_theme();
+    assert(page.background.full == theme->background);
+    assert(subpage.background.full == theme->background);
+    assert(card.background.full == theme->surface_card);
+    assert(sub_card.background.full == theme->surface_card);
+    assert(information.background.full == theme->surface_secondary);
+    assert(sub_information.background.full == theme->surface_secondary);
+    assert(sensor.background.full == theme->surface_sensor);
+    assert(sub_sensor.background.full == theme->surface_sensor);
+  }
+  assert(card.background.full == 0x313131);
+  assert(sensor.background.full == 0x212121);
+  assert(page.background.full == 0x000000);
+  navigation_subpages().clear();
   lv_event_t deleted{&page};
   page.delete_callback(&deleted);
 }
@@ -236,7 +285,7 @@ static void test_restore_grid_theme(ThemeMode mode, EffectiveTheme effective,
   // Restore phase 1 reuses the main page/button but recreates descendants with
   // the ESPHome global theme's Dark defaults, then registers the same owner.
   label.text = lv_color_hex(DARK_THEME.text_primary);
-  button.background = lv_color_hex(current_theme().surface_primary);
+  button.background = lv_color_hex(current_theme().surface_card);
   register_theme_grid(&page, slots, neutral, 1, 100, 100, 100);
   assert(label.text.full == DARK_THEME.text_primary);  // Registration is too early.
 
@@ -279,12 +328,12 @@ static void test_restore_grid_theme(ThemeMode mode, EffectiveTheme effective,
   assert(resolver.effective == expected_effective && &current_theme() == expected_palette);
   assert(settings_notifications == expected_notifications);
   assert(page.background.full == current_theme().background);
-  assert(button.background.full == current_theme().surface_primary);
+  assert(button.background.full == current_theme().surface_card);
   assert(label.text.full == current_theme().text_primary);
   assert(subpage.background.full == current_theme().background);
-  assert(back.background.full == current_theme().surface_primary);
+  assert(back.background.full == current_theme().surface_card);
   assert(back_label.text.full == current_theme().text_primary);
-  assert(sub_button.background.full == current_theme().surface_primary);
+  assert(sub_button.background.full == current_theme().surface_card);
   assert(sub_button.state == preserved_subpage_state);
   assert(sub_button.text.full == current_theme().text_primary);
   assert(sub_label.text.full == CARD_ACCENT_TEXT_COLOR);
@@ -316,7 +365,8 @@ static void test_sensor_state_refresh() {
   label.parent = &sensor;
   BtnSlot slots[] = {{&sensor}};
   const bool neutral[] = {true};
-  register_theme_grid(&page, slots, neutral, 1, 50, 100, 100);
+  const bool secondary[] = {true};
+  register_theme_grid(&page, slots, neutral, 1, 50, 100, 100, secondary);
   // The active accent deliberately collides with a semantic neutral RGB.
   const uint32_t accent = DARK_THEME.surface_secondary;
   apply_sensor_active_color(&sensor, true, "on", accent, current_grid_sensor_color(), false);
@@ -328,7 +378,7 @@ static void test_sensor_state_refresh() {
   assert(label.text.full == LIGHT_THEME.text_primary);
   sub_sensor = sensor;
   sub_sensor.children.clear();
-  navigation_subpages().push_back({&subpage, nullptr, {{true, &sub_sensor}}});
+  navigation_subpages().push_back({&subpage, nullptr, {{true, &sub_sensor, false, true}}});
   sensor.state = LV_STATE_CHECKED;
   set_active_theme_palette(DARK_THEME);
   apply_current_theme();
@@ -914,6 +964,7 @@ int main() {
   late_light_page.delete_callback(&late_light_deleted);
   test_supported_pressed_lists();
   test_grid_secondary_surface();
+  test_independent_dark_light_surfaces();
   test_restore_grid_theme(ThemeMode::LIGHT, EffectiveTheme::LIGHT);
   test_restore_grid_theme(ThemeMode::DARK, EffectiveTheme::DARK);
   test_restore_grid_theme(ThemeMode::DARK, EffectiveTheme::DARK, true);

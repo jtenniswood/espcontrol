@@ -1010,6 +1010,16 @@ inline void grid_refresh_layout(
 
 // ── Phase 1: Visual setup ────────────────────────────────────────────
 
+inline bool grid_card_uses_secondary_surface(
+    const espcontrol::cards::Context &context, const ParsedCfg &config) {
+  if (espcontrol::cards::numeric_selectable_driver_option_select(context, config))
+    return true;
+  if (context.family != espcontrol::cards::Family::MEDIA) return false;
+  const std::string mode = media_card_mode(config.sensor);
+  return mode == "position" ||
+         (mode == "now_playing" && media_now_playing_progress_enabled(config));
+}
+
 inline bool grid_card_uses_sensor_surface(
     const espcontrol::cards::Context &context) {
   using Driver = espcontrol::card_runtime::CardDriverId;
@@ -1042,6 +1052,7 @@ inline void grid_phase1(
   int NS = bounded_grid_slots(cfg.num_slots);
   bool neutral_buttons[MAX_GRID_SLOTS]{};
   bool sensor_surfaces[MAX_GRID_SLOTS]{};
+  bool secondary_surfaces[MAX_GRID_SLOTS]{};
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
   if (COLS > MAX_GRID_SLOTS) COLS = MAX_GRID_SLOTS;
   for (int i = 0; i < NS; i++)
@@ -1072,7 +1083,7 @@ inline void grid_phase1(
 
   bool has_on;
   uint32_t on_val = parse_hex_color(on_hex, has_on);
-  uint32_t off_val = display_correct_color(current_theme().surface_secondary, display);
+  uint32_t off_val = display_correct_color(current_theme().surface_card, display);
   uint32_t sensor_val = display_correct_color(current_theme().surface_secondary, display);
   uint32_t surface_sensor_val = display_correct_color(current_theme().surface_sensor, display);
   if (has_on) on_val = display_correct_color(on_val, display);
@@ -1116,6 +1127,7 @@ inline void grid_phase1(
     neutral_buttons[idx - 1] = context.family != espcontrol::cards::Family::IMAGE &&
         espcontrol::cards::media_driver_theme_owned_surface(context, p);
     sensor_surfaces[idx - 1] = grid_card_uses_sensor_surface(context);
+    secondary_surfaces[idx - 1] = grid_card_uses_secondary_surface(context, p);
     display_apply_main_width(s.icon_lbl, display);
     display_apply_slot_text_width(s, display);
     setup_card_visual(s, p, context, cfg, palette, row_span, col_span);
@@ -1125,7 +1137,7 @@ inline void grid_phase1(
   register_theme_grid(main_page_obj, slots, neutral_buttons, NS, sensor_surfaces,
                       cfg.color_correction_red_percent,
                       cfg.color_correction_green_percent,
-                      cfg.color_correction_blue_percent);
+                      cfg.color_correction_blue_percent, secondary_surfaces);
   ESP_LOGI("sensors", "Phase 1: done (%lu ms)", esphome::millis());
 }
 
@@ -1884,7 +1896,7 @@ inline void grid_phase2(
 
   bool has_on;
   uint32_t on_val = parse_hex_color(on_hex, has_on);
-  uint32_t off_val = display_correct_color(current_theme().surface_secondary, display);
+  uint32_t off_val = display_correct_color(current_theme().surface_card, display);
   uint32_t sensor_val = display_correct_color(current_theme().surface_secondary, display);
   uint32_t surface_sensor_val = display_correct_color(current_theme().surface_sensor, display);
   if (has_on) on_val = display_correct_color(on_val, display);
@@ -2145,7 +2157,8 @@ inline void grid_phase2(
           si + 1, bn, sub_slot, sb,
           context.family != espcontrol::cards::Family::IMAGE &&
               espcontrol::cards::media_driver_theme_owned_surface(context, sb_cfg),
-          grid_card_uses_sensor_surface(context));
+          grid_card_uses_sensor_surface(context),
+          grid_card_uses_secondary_surface(context, sb_cfg));
       display_apply_main_width(sub_slot.icon_lbl, display);
       display_apply_slot_text_width(sub_slot, display);
       setup_card_visual(sub_slot, sb_cfg, context, cfg, palette, rs, cs);

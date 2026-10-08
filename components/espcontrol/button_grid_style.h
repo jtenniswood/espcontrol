@@ -44,7 +44,7 @@ struct CardPalette {
   bool has_off = false;
   bool has_sensor_color = false;
   uint32_t on_val = DEFAULT_ACCENT_COLOR;
-  uint32_t off_val = theme_display_color(current_theme().surface_secondary);
+  uint32_t off_val = theme_display_color(current_theme().surface_card);
   uint32_t sensor_val = theme_display_color(current_theme().surface_secondary);
   uint32_t surface_sensor_val = theme_display_color(current_theme().surface_sensor);
 };

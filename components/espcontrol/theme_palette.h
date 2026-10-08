@@ -11,6 +11,7 @@ struct ThemePalette {
   uint32_t surface_primary;
   uint32_t surface_secondary;
   uint32_t surface_sensor;
+  uint32_t surface_card;
   uint32_t text_primary;
   uint32_t clockbar_text;
   uint32_t text_muted;
@@ -25,17 +26,18 @@ struct ThemePalette {
 
 constexpr ThemePalette make_dark_theme() {
   ThemePalette theme{};
-  theme.background = 0x303030;
-  theme.surface_primary = 0x303030;
-  theme.surface_secondary = 0x404040;
-  theme.surface_sensor = 0x404040;
+  theme.background = 0x000000;
+  theme.surface_primary = 0x313131;
+  theme.surface_secondary = 0x212121;
+  theme.surface_sensor = 0x212121;
+  theme.surface_card = 0x313131;
   theme.text_primary = 0xFFFFFF;
   theme.clockbar_text = 0xFFFFFF;
   theme.text_muted = 0xB0B0B0;
   theme.text_inverted = 0x000000;
   theme.text_disabled = 0x707070;
-  theme.border = 0x303030;
-  theme.control_neutral = 0x303030;
+  theme.border = 0x313131;
+  theme.control_neutral = 0x313131;
   theme.track_background = 0x313131;
   theme.overlay = 0x000000;
   theme.setup_action = 0x333333;
@@ -51,6 +53,7 @@ inline constexpr ThemePalette LIGHT_THEME = {
     0xB0B0B0,  // surface_primary
     0xFFFFFF,  // surface_secondary
     0xF5F5F5,  // surface_sensor
+    0xFFFFFF,  // surface_card
     0x333333,  // text_primary
     0x333333,  // clockbar_text
     0x606060,  // text_muted
