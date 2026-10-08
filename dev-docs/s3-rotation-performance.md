@@ -110,9 +110,14 @@ Stage 2 verification:
 - `npm run prepare:ci` passed all 48 CI tasks, all 76 host firmware tests, docs
   build, and browser installer checks. Regeneration produced no tracked changes.
 - Application size: 4,868,080 bytes; OTA headroom: 2,406,416 bytes.
-- Upload attempted, but the target's web, API, and OTA ports and ICMP all timed
-  out. A second known panel on the same subnet also timed out; the Tailscale
-  route probe received no reply. No Stage 2 image was transferred.
-- The last confirmed running firmware is Stage 1. The compiler reversion and
-  blocked rotation take effect only after connectivity returns and this image
-  is uploaded. Post-Stage-2 RAM observations and physical feedback remain pending.
+- OTA upload succeeded on 2026-10-08; the 4,868,080-byte application transferred
+  in 27.47 seconds. The panel answered ping after reboot and reported firmware
+  `dev`, with its existing 180-degree setting preserved.
+- After excluding the first two startup readings, five readings 65 seconds
+  apart showed 78,715–78,747 bytes of free internal heap and a steady 31,744-byte
+  largest block. Free PSRAM was 2,542,984–2,543,188 bytes. The largest PSRAM
+  block varied from 2,424,832 to 2,097,152 bytes. These short observations show
+  no continuing internal-heap decline; they do not establish long-term or
+  under-load stability.
+- Physical responsiveness, touch alignment, and visual artifact feedback is
+  pending. Wait for that feedback before Stage 3. Stage 4 remains pending.
