@@ -531,10 +531,12 @@ export function createWebStyles(dragAnimation: boolean): string {
         "border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font:inherit;cursor:pointer}" +
         ".sp-card-color-choice:hover,.sp-card-color-choice.sp-selected{border-color:var(--accent)}" +
         ".sp-card-color-choice:focus-visible,.sp-card-color-preset:focus-visible{outline:2px solid var(--accent);outline-offset:3px}" +
-        ".sp-card-color-chip{height:40px;border:1px solid rgba(255,255,255,.2);border-radius:5px}" +
+        ".sp-card-color-chip{width:44px;height:44px;align-self:center;border:1px solid rgba(255,255,255,.2);border-radius:50%}" +
         ".sp-card-color-editor{margin-top:16px}" +
-        ".sp-card-color-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}" +
-        ".sp-card-color-preset{height:36px;border:1px solid rgba(255,255,255,.35);border-radius:5px;cursor:pointer}" +
+        ".sp-card-color-editor .sp-color-swatch{width:40px;height:40px;border-radius:50%}" +
+        ".sp-card-color-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}" +
+        ".sp-card-color-preset{width:100%;max-width:56px;aspect-ratio:1;padding:0;justify-self:center;box-sizing:border-box;" +
+        "border:1px solid rgba(255,255,255,.35);border-radius:50%;cursor:pointer}" +
         ".sp-card-color-reset{margin-top:16px}" +
         ".sp-number-row{display:flex;align-items:center;gap:8px;margin-bottom:16px}" +
         ".sp-number-row:last-child{margin-bottom:0}" +

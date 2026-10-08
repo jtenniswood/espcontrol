@@ -830,7 +830,8 @@ export function createButtonSettingsFeature(
         var cardAppearance: any = disclosureSection("Custom Colours", idPrefix + "card-colours", false);
         var defaultCardOnColor: any = state.onColor || WEB_UI_COLORS.primary;
         var defaultCardOffColor: any = (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone") ? WEB_UI_COLORS.tertiary : WEB_UI_COLORS.secondary;
-        var cardColorPresets: any = ["F44336", "E91E63", "9C27B0", "673AB7", "3F51B5", "2196F3", "03A9F4", "00BCD4", "009688", "4CAF50", "8BC34A", "CDDC39", "FFEB3B", "FFC107", "FF9800", "795548"];
+        // Match the RGB_PRESETS grid in light_control_rebuild_color_grid.
+        var cardColorPresets: any = ["FFE6B3", "FFFFFF", "DCEBFF", "FFD400", "FF7A00", "FF2600", "FF1744", "FF4081", "D500F9", "7C4DFF", "2979FF", "00E5FF", "00B8D4", "00C853", "7ED321", "AEEA00"];
         var activeColorPresets: any = cardColorPresets.map(function (hex: string) {
             return [0, 2, 4].map(function (offset: number) {
                 var channel: number = parseInt(hex.slice(offset, offset + 2), 16);
