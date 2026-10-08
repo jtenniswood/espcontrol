@@ -421,12 +421,16 @@ inline void apply_card_descendant_text_color(lv_obj_t *obj, lv_color_t color) {
 
 inline void sync_card_checked_text_color(lv_obj_t *btn) {
   if (!btn) return;
+#if LVGL_VERSION_MAJOR >= 9
+  const lv_color_t text_color = lv_obj_get_style_text_color(btn, LV_PART_MAIN);
+#else
   const lv_style_selector_t state_selector = lv_obj_has_state(btn, LV_STATE_CHECKED)
     ? static_cast<lv_style_selector_t>(LV_STATE_CHECKED)
     : static_cast<lv_style_selector_t>(LV_STATE_DEFAULT);
-  apply_card_descendant_text_color(
-    btn, lv_obj_get_style_text_color(
-      btn, static_cast<lv_style_selector_t>(LV_PART_MAIN) | state_selector));
+  const lv_color_t text_color = lv_obj_get_style_text_color(
+    btn, static_cast<lv_style_selector_t>(LV_PART_MAIN) | state_selector);
+#endif
+  apply_card_descendant_text_color(btn, text_color);
 }
 
 inline void set_card_checked_state(lv_obj_t *btn, bool checked) {
