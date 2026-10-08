@@ -355,14 +355,14 @@ inline void control_modal_track_theme_disabled(lv_obj_t *button) {
   }
 }
 
-inline void control_modal_apply_accent_content_foreground(lv_obj_t *obj,
-                                                           uint32_t color) {
+inline void control_modal_apply_readable_content_foreground(lv_obj_t *obj,
+                                                             uint32_t color) {
   if (!obj) return;
   if (lv_obj_check_type(obj, &lv_label_class))
     lv_obj_set_style_text_color(obj, lv_color_hex(color), LV_PART_MAIN);
   const uint32_t child_count = lv_obj_get_child_cnt(obj);
   for (uint32_t i = 0; i < child_count; ++i)
-    control_modal_apply_accent_content_foreground(lv_obj_get_child(obj, i), color);
+    control_modal_apply_readable_content_foreground(lv_obj_get_child(obj, i), color);
 }
 
 inline void control_modal_apply_theme(void *context, const ThemePalette &theme) {
@@ -389,9 +389,12 @@ inline void control_modal_apply_theme(void *context, const ThemePalette &theme) 
       lv_obj_t *button = targets.theme_pressed[i];
       theme_restyle_pressed_fill(button, theme);
       if (button && lv_obj_has_flag(button, LV_OBJ_FLAG_USER_1) &&
-          !lv_obj_has_flag(button, LV_OBJ_FLAG_USER_3))
-        control_modal_apply_accent_content_foreground(
-            button, theme_accent_content_text_color(theme));
+          !lv_obj_has_flag(button, LV_OBJ_FLAG_USER_3)) {
+        const uint32_t button_color = lv_color_to_32(
+            lv_obj_get_style_bg_color(button, LV_PART_MAIN), LV_OPA_COVER) & 0x00FFFFFF;
+        control_modal_apply_readable_content_foreground(
+            button, readable_text_color_for_bg(button_color));
+      }
     }
     for (uint8_t i = 0; i < targets.theme_disabled_count; ++i)
       theme_restyle_disabled_step(targets.theme_disabled[i], theme);

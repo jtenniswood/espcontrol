@@ -2793,15 +2793,16 @@ inline void media_control_refresh_power(MediaControlCtx *ctx) {
   const bool interactive = command != espcontrol::media::PowerCommand::NONE;
   const bool on = ctx->state_known && ctx->available && ctx->state_text != "off" &&
                   ctx->state_text != "unknown" && ctx->state_text != "unavailable";
+  const uint32_t bg_color = on ? ctx->accent_color
+                               : theme_display_color(current_theme().surface_primary);
   theme_set_content_background(ui.power_btn, on);
   lv_obj_set_style_bg_color(
-    ui.power_btn,
-    lv_color_hex(on ? ctx->accent_color : theme_display_color(current_theme().surface_primary)), LV_PART_MAIN);
+    ui.power_btn, lv_color_hex(bg_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.power_btn, LV_OPA_COVER, LV_PART_MAIN);
   if (ui.power_icon_lbl) {
     lv_label_set_display_text(ui.power_icon_lbl, find_icon("Power"));
     lv_obj_set_style_text_color(
-      ui.power_icon_lbl, lv_color_hex(on ? theme_accent_content_text_color(current_theme())
+      ui.power_icon_lbl, lv_color_hex(on ? readable_text_color_for_bg(bg_color)
                                          : current_theme().text_primary), LV_PART_MAIN);
   }
   if (ui.power_status_lbl) {
@@ -2820,13 +2821,15 @@ inline void media_control_style_playback_mode_button(lv_obj_t *btn,
                                                       uint32_t accent_color) {
   if (!btn) return;
   theme_set_content_background(btn, active);
+  const uint32_t bg_color = active ? accent_color
+                                   : theme_display_color(current_theme().surface_primary);
   lv_obj_set_style_bg_color(
-    btn, lv_color_hex(active ? accent_color : theme_display_color(current_theme().surface_primary)), LV_PART_MAIN);
+    btn, lv_color_hex(bg_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   if (label) {
     lv_obj_set_style_text_color(
-      label, lv_color_hex(active ? theme_accent_content_text_color(current_theme())
+      label, lv_color_hex(active ? readable_text_color_for_bg(bg_color)
                                  : current_theme().text_primary), LV_PART_MAIN);
   }
   media_control_apply_availability(btn, btn, interactive);
@@ -3447,8 +3450,8 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
   const bool show_volume = media_control_speaker_row_shows_volume(ctx, row);
   const bool visible = true;
   const uint32_t bg_color = row->selected ? ctx->accent_color : theme_display_color(current_theme().surface_primary);
-  const uint32_t text_color = row->selected
-    ? theme_accent_content_text_color(current_theme()) : readable_text_color_for_bg(bg_color);
+  const uint32_t text_color = row->selected ? readable_text_color_for_bg(bg_color)
+                                            : current_theme().text_primary;
   if (row->row) {
     if (visible) lv_obj_clear_flag(row->row, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(row->row, LV_OBJ_FLAG_HIDDEN);
