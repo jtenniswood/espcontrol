@@ -675,16 +675,20 @@ assert.strictEqual(
   "climate_tabs=fan",
   "invalid and duplicate climate control tabs are removed"
 );
-const secondaryDataOptions = "secondary_entity=sensor.room_humidity,secondary_prefix=Humidity,secondary_unit=pct";
 assert.strictEqual(
-  hooks.normalizeSensorOptions(secondaryDataOptions, ""),
-  secondaryDataOptions,
-  "sensor option normalization preserves secondary data settings"
+  hooks.normalizeSensorOptions("secondary_entity=sensor.room_humidity,secondary_prefix=Humidity,secondary_unit=pct", ""),
+  "",
+  "sensor option normalization drops unsupported secondary entities"
 );
 assert.strictEqual(
-  hooks.normalizeClimateOptions(secondaryDataOptions),
-  secondaryDataOptions,
-  "climate option normalization preserves secondary data settings"
+  hooks.normalizeClimateOptions("secondary_enabled,secondary_display=target,secondary_label=Indoor"),
+  "secondary_enabled,secondary_display=target,secondary_label=Indoor",
+  "climate options preserve same-entity secondary label settings"
+);
+assert.strictEqual(
+  hooks.normalizeClimateOptions("secondary_entity=sensor.room_humidity,secondary_prefix=Humidity,secondary_unit=pct"),
+  "",
+  "climate options drop secondary entity configuration"
 );
 const coverOptionSpecs = hooks.cardContractOptions("cover");
 const coverOptionByName = Object.fromEntries(coverOptionSpecs.map((option) => [option.name, option]));
@@ -747,8 +751,8 @@ const switchOptionSpecs = hooks.cardContractOptions("");
 const switchOptionByName = Object.fromEntries(switchOptionSpecs.map((option) => [option.name, option]));
 assert.deepStrictEqual(
   Array.from(switchOptionSpecs, (option) => option.name),
-  ["secondary_entity", "secondary_prefix", "secondary_unit", "large_numbers", "confirmation_mode", "on_pattern", "confirm_message", "confirm_yes", "confirm_no"],
-  "switch option specs preserve current option order"
+  ["large_numbers", "confirmation_mode", "on_pattern", "confirm_message", "confirm_yes", "confirm_no"],
+  "switch option specs omit secondary entity settings"
 );
 assert.deepStrictEqual(
   Array.from(switchOptionByName.confirmation_mode.values),
@@ -773,8 +777,8 @@ const sensorOptionSpecs = hooks.cardContractOptions("sensor");
 const sensorOptionByName = Object.fromEntries(sensorOptionSpecs.map((option) => [option.name, option]));
 assert.deepStrictEqual(
   Array.from(sensorOptionSpecs, (option) => option.name),
-  ["secondary_entity", "secondary_prefix", "secondary_unit", "large_numbers", "time_unit", "active_color", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
-  "sensor option specs preserve current option order"
+  ["large_numbers", "time_unit", "active_color", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
+  "sensor option specs omit secondary entity settings"
 );
 assert.deepStrictEqual(
   Array.from(sensorOptionByName.large_numbers.supportedWhen.precisionNot),
@@ -996,12 +1000,12 @@ const defaultConfirmSwitch = hooks.parseButtonConfig("switch.printer;Printer;Pri
 assert.strictEqual(hooks.switchConfirmationYesText(defaultConfirmSwitch), "Yes", "switch confirmation default yes text");
 assert.strictEqual(hooks.switchConfirmationNoText(defaultConfirmSwitch), "No", "switch confirmation default no text");
 const secondaryDataSwitch = hooks.parseButtonConfig(
-  "switch.printer;Printer;Printer 3D;Auto;;;;;" + secondaryDataOptions
+  "switch.printer;Printer;Printer 3D;Auto;;;;;secondary_entity=sensor.room_humidity"
 );
 assert.strictEqual(
   secondaryDataSwitch.options,
-  secondaryDataOptions,
-  "switch option normalization preserves secondary data settings"
+  "",
+  "switch option normalization drops secondary entity settings"
 );
 const confirmOnSwitch = hooks.parseButtonConfig("switch.printer;Printer;Printer 3D;Auto;;;;;confirm_on");
 assert.strictEqual(hooks.switchConfirmationEnabled(confirmOnSwitch), true, "switch on confirmation enabled");

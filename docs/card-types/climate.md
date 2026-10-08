@@ -32,7 +32,7 @@ A Climate card controls a Home Assistant `climate` entity, such as a thermostat,
    - **0.5 degree** changes the target by half degrees.
    Home Assistant limits still apply, and larger Home Assistant `target_temp_step` values are respected.
 8. Use **Advanced** only if you want to override the minimum or maximum temperature range shown on the panel. Negative values are supported, for example `-25` to `5` for a freezer thermostat.
-9. Optionally set a **Secondary Data Entity** to show another sensor below the card label, such as room humidity. Add a prefix or unit if needed.
+9. Expand **Secondary Label** under **Card Settings** and turn on **Show secondary label** to show a second value from this climate entity below the card label. Choose **Status**, **Actual**, or **Target**. Add an optional label such as `Indoor` to prefix the value.
 
 ## How It Works on the Panel
 

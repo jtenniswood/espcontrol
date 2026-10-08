@@ -3,9 +3,6 @@
   "allowInSubpage": true,
   "domains": ["light", "switch", "input_boolean", "fan"],
   "options": [
-    { "name": "secondary_entity", "label": "Secondary Data Entity", "kind": "text", "omitDefault": true },
-    { "name": "secondary_prefix", "label": "Secondary Data Prefix", "kind": "text", "omitDefault": true },
-    { "name": "secondary_unit", "label": "Secondary Data Unit", "kind": "text", "omitDefault": true },
     { "name": "large_numbers", "label": "Large Active Display Numbers", "kind": "flag", "omitDefault": true },
     { "name": "confirmation_mode", "label": "Confirmation Required", "kind": "choice", "values": ["", "off", "on", "both"], "defaultValue": "", "omitDefault": true, "storage": ["confirm_off", "confirm_on"] },
     { "name": "on_pattern", "label": "On State Pattern", "kind": "choice", "values": ["", "stripes"], "defaultValue": "", "omitDefault": true },
@@ -26,7 +23,7 @@
       "options": { "policy": "hook", "hook": "normalize_switch_options" }
     },
     "unknownOptions": "drop",
-    "canonicalOptionOrder": ["large_numbers", "on_pattern", "confirm_off", "confirm_on", "confirm_message", "confirm_yes", "confirm_no", "secondary_entity", "secondary_prefix", "secondary_unit"],
+    "canonicalOptionOrder": ["large_numbers", "on_pattern", "confirm_off", "confirm_on", "confirm_message", "confirm_yes", "confirm_no"],
     "optionHook": "normalize_switch_options"
   },
   "default": {

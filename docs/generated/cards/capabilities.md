@@ -10,7 +10,7 @@ This generated reference lists stable setup facts from the shared card contract.
 | Card | Type | Entity domains | Subpages | Picker grouping | Main modes and options | Status |
 |---|---|---|---|---|---|---|
 | Timer | timer | timer | Yes | Own picker item | None | Visible |
-| Switch | switch | light, switch, input_boolean, fan | Yes | Own picker item | Secondary Data Entity; Secondary Data Prefix; Secondary Data Unit; Large Active Display Numbers; Confirmation Required: default, off, on, both; On State Pattern: default, stripes; Message; Confirm Button; Cancel Button | Visible |
+| Switch | switch | light, switch, input_boolean, fan | Yes | Own picker item | Large Active Display Numbers; Confirmation Required: default, off, on, both; On State Pattern: default, stripes; Message; Confirm Button; Cancel Button | Visible |
 | Action | action | scene, script, automation, button, input_button, input_boolean, number, input_number, input_select, select | Yes | Own picker item | Large State Numbers; Confirmation Required; Fields; Message; Confirm Button; Cancel Button | Visible |
 | Vacuum | vacuum | vacuum | Yes | Own picker item | Type: status, start_stop, start_dock, dock, pause_resume, clean_spot, locate, clean_area | Visible |
 | Lawn Mower | lawn_mower | lawn_mower | Yes | Own picker item | Type: status, start_mowing, dock, pause_resume | Visible |
@@ -18,8 +18,8 @@ This generated reference lists stable setup facts from the shared card contract.
 | Alarm | alarm_action | alarm_control_panel | Yes | Alarm (alarm) | None | Visible |
 | Date & Time | calendar | sensor | Yes | Own picker item | Type: clock, datetime, default, timezone; Large Clock | Visible |
 | Date & Time | clock | None | Yes | Date & Time (calendar) | Type: clock, datetime, default, timezone; Large Clock; Center Clock | Visible |
-| Climate | climate | climate | Yes | Own picker item | Secondary Data Entity; Secondary Data Prefix; Secondary Data Unit; Label Display: label, status, actual, target; Icon & Temperatures: icon, actual, target; Temperature Step: 1, 0.5; Large Temperature Numbers | Visible |
-| All Controls | climate_control | climate | Yes | Climate (climate) | Secondary Data Entity; Secondary Data Prefix; Secondary Data Unit; Label Display: label, status, actual, target; Icon & Temperatures: icon, actual, target; Temperature Step: 1, 0.5; Large Temperature Numbers; Visible Tabs | Hidden |
+| Climate | climate | climate | Yes | Own picker item | Show Secondary Label; Secondary Value: status, actual, target; Secondary Label Text; Label Display: label, status, actual, target; Icon & Temperatures: icon, actual, target; Temperature Step: 1, 0.5; Large Temperature Numbers | Visible |
+| All Controls | climate_control | climate | Yes | Climate (climate) | Show Secondary Label; Secondary Value: status, actual, target; Secondary Label Text; Label Display: label, status, actual, target; Icon & Temperatures: icon, actual, target; Temperature Step: 1, 0.5; Large Temperature Numbers; Visible Tabs | Hidden |
 | Cover | cover | cover | Yes | Own picker item | Type: modal, default, tilt, toggle, open, close, stop, set_position; Position: 0-100; Visible Tabs: position, controls, tilt, presets | Visible |
 | Doors & Windows | door_window | binary_sensor, sensor | Yes | Own picker item | Lit When Open | Visible |
 | Presence | presence | binary_sensor, sensor, text_sensor | Yes | Own picker item | Lit When Detected | Visible |
@@ -42,7 +42,7 @@ This generated reference lists stable setup facts from the shared card contract.
 | Trigger | push | None | Yes | Own picker item | None | Visible |
 | Screen Lock | screen_lock | None | Yes | Own picker item | None | Visible |
 | Webhook | webhook | None | Yes | Own picker item | Headers | Visible |
-| Sensor | sensor | sensor, binary_sensor, text_sensor | Yes | Own picker item | Secondary Data Entity; Secondary Data Prefix; Secondary Data Unit; Large Sensor Numbers; Incoming Value Unit: default, seconds, minutes, hours, days; Lit When Active; Status Translation; Input Status; Display Text; Input Status 2; Display Text 2 | Visible |
+| Sensor | sensor | sensor, binary_sensor, text_sensor | Yes | Own picker item | Large Sensor Numbers; Incoming Value Unit: default, seconds, minutes, hours, days; Lit When Active; Status Translation; Input Status; Display Text; Input Status 2; Display Text 2 | Visible |
 | Local Sensor | local_sensor | sensor, text_sensor | Yes | Sensor (sensor) | None | Hidden |
 | Slider | slider | light, fan, number, input_number | Yes | Own picker item | None | Visible |
 | Subpage | subpage | None | No | Own picker item | Subpage Type: default, switch, lights, climate, presence, media, alarm, cover, garage, gate, lock, vacuum, lawn_mower, weather, sensor, image; Large State Numbers | Visible |

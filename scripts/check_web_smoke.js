@@ -598,22 +598,21 @@ assert(
   hooks.buttonTypePreviewFor("sensor", { type: "sensor", sensor: "local", entity: "room_temp", unit: "°C", precision: "1" }).iconHtml.includes("0.0"),
   "sensor preview renders the local sensor subtype"
 );
-const secondarySensorOptions = "secondary_entity=sensor.room_humidity,secondary_prefix=Humidity,secondary_unit=pct";
-const secondaryIconSensorPreview = hooks.buttonTypePreviewFor("sensor", {
-  type: "sensor", sensor: "sensor.room_temp", label: "Temperature", precision: "icon",
-  options: secondarySensorOptions,
+const climateSecondaryPreview = hooks.buttonTypePreviewFor("climate", {
+  type: "climate_control", entity: "climate.living_room", label: "Living Room",
+  options: "secondary_enabled,secondary_display=target,secondary_label=Setpoint",
 });
 assert(
-  secondaryIconSensorPreview.labelHtml.includes("Humidity: 24.0pct"),
-  "icon sensor preview includes configured secondary data"
+  climateSecondaryPreview.labelHtml.includes("Setpoint: 20°C"),
+  "climate preview shows the configured same-entity secondary target"
 );
-const secondaryTextSensorPreview = hooks.buttonTypePreviewFor("sensor", {
-  type: "sensor", sensor: "sensor.room_status", precision: "text",
-  options: secondarySensorOptions,
+const climateSecondaryDisabledPreview = hooks.buttonTypePreviewFor("climate", {
+  type: "climate_control", entity: "climate.living_room", label: "Living Room",
+  options: "",
 });
 assert(
-  secondaryTextSensorPreview.labelHtml.includes("Humidity: 24.0pct"),
-  "text sensor preview includes configured secondary data"
+  !climateSecondaryDisabledPreview.labelHtml.includes("sp-btn-secondary-data"),
+  "climate secondary label preview defaults off"
 );
 assert.deepStrictEqual(Array.from(hooks.alarmCardTypeOptionValues(false)), ["control_panel", "away", "home", "night", "vacation", "disarm"]);
 assert.deepStrictEqual(Array.from(hooks.alarmCardTypeOptionValues(true)), ["control_panel", "away", "home", "night", "vacation", "disarm"]);

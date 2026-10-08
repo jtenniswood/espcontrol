@@ -23,8 +23,6 @@ A Sensor card is read-only. It displays a Home Assistant `sensor`, `binary_senso
 | **Text** | The live state beside a chosen icon. Advanced settings can replace up to two raw states with friendlier text. |
 | **Icon** | A normal and optional active icon for a status-style sensor. |
 
-You can also set a **Secondary Data Entity** to show another Home Assistant sensor below the card label. Use **Secondary Data Prefix** and **Secondary Data Unit** to add text such as `Humidity: 48%`. The secondary value updates independently from the main reading.
-
 Choose **Lit When Active** when an active status should use the on colour. It is not available for Time cards. Numeric cards treat values above zero as active; Text and Icon cards follow recognised Home Assistant active states.
 
 ## Useful Details

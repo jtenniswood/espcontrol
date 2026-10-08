@@ -22,7 +22,7 @@ export function registerSwitchCardTypes(
     lightCards: LightCardRegistration,
     fields: ControlsFieldsFeature,
 ): void {
-    const { cardBadgeLabelHtml, cardLargeNumbersActiveForCardSize, cardSensorPreviewHtml, condField, renderSecondaryDataFields, secondaryDataPreviewHtml } = fields;
+    const { cardBadgeLabelHtml, cardLargeNumbersActiveForCardSize, cardSensorPreviewHtml, condField } = fields;
     const {
         controlTypeMetadata: LIGHT_CONTROL_TYPE_METADATA,
         renderControlTypeField: renderLightControlTypeField,
@@ -171,7 +171,6 @@ export function registerSwitchCardTypes(
             helpers.renderCardEntityField(panel, b, helpers, SWITCH_CARD_METADATA);
             var cardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "switch-card-settings", false);
             var cardSettings: any = cardSettingsDisclosure.section;
-            renderSecondaryDataFields(cardSettings, b, helpers);
             helpers.renderBasicCardFields(cardSettings, b, helpers, SWITCH_CARD_METADATA, {
                 entity: false,
             });
@@ -296,7 +295,7 @@ export function registerSwitchCardTypes(
                 ? (b.precision === "text" ? SWITCH_CARD_METADATA.preview.textBadge : SWITCH_CARD_METADATA.preview.numericBadge)
                 : SWITCH_CARD_METADATA.preview.switchBadge;
             var preview: any = {
-                labelHtml: cardBadgeLabelHtml(helpers, label, badgeIcon) + secondaryDataPreviewHtml(b, helpers),
+                labelHtml: cardBadgeLabelHtml(helpers, label, badgeIcon),
             };
             if (b.sensor && b.precision !== "text" &&
                 cardLargeNumbersActiveForCardSize(b, helpers, SWITCH_CARD_METADATA)) {

@@ -1,4 +1,4 @@
-import { configOptionValue, setConfigOptionValue } from "../model/config_primitives";
+import { configOptionEnabled, configOptionValue, setConfigOption, setConfigOptionValue } from "../model/config_primitives";
 import { cardContractCard } from "../generated/card_contract";
 import {
     ALARM_ACTIONS_OPTION,
@@ -10,12 +10,15 @@ import {
     CLIMATE_LABEL_DISPLAY_OPTION,
     CLIMATE_NUMBER_DISPLAY_OPTION,
     CLIMATE_TEMPERATURE_STEP_OPTION,
+    CLIMATE_SECONDARY_ENABLED_OPTION,
+    CLIMATE_SECONDARY_DISPLAY_OPTION,
+    CLIMATE_SECONDARY_LABEL_OPTION,
     GARAGE_LABEL_DISPLAY_OPTION,
     GATE_LABEL_DISPLAY_OPTION,
     cardContractOptionDefaultValue,
     cardContractOptionSpec,
     copyLargeNumbersOption,
-    copySecondaryDataOptions,
+    copyClimateSecondaryOptions,
 } from "./config_option_core";
 import type { ConfigModalTabOptionsFeature } from "./config_modal_tab_options";
 export function createConfigAccessClimateAlarmOptionsFeature(
@@ -147,6 +150,38 @@ export function createConfigAccessClimateAlarmOptionsFeature(
         var values: any = spec && spec.values ? spec.values : [];
         return values.indexOf(value) >= 0 ? value : climateDefaultTemperatureStep();
     }
+    function normalizeClimateSecondaryDisplay(this: any, value?: any) {
+        value = String(value || "").trim();
+        return value === "status" || value === "target" ? value : "actual";
+    }
+    function climateSecondaryEnabled(this: any, b?: any) {
+        return !!(b && configOptionEnabled(b.options, CLIMATE_SECONDARY_ENABLED_OPTION));
+    }
+    function setClimateSecondaryEnabled(this: any, b?: any, enabled?: any) {
+        if (!b) return "";
+        b.options = setConfigOption(b.options, CLIMATE_SECONDARY_ENABLED_OPTION, enabled);
+        b.options = normalizeClimateOptions(b.options, isClimateCardType(b.type));
+        return b.options;
+    }
+    function climateSecondaryDisplay(this: any, b?: any) {
+        return normalizeClimateSecondaryDisplay(configOptionValue(b && b.options, CLIMATE_SECONDARY_DISPLAY_OPTION));
+    }
+    function setClimateSecondaryDisplay(this: any, b?: any, value?: any) {
+        if (!b) return "";
+        var normalized: any = normalizeClimateSecondaryDisplay(value);
+        b.options = setConfigOptionValue(b.options, CLIMATE_SECONDARY_DISPLAY_OPTION, normalized === "actual" ? "" : normalized);
+        b.options = normalizeClimateOptions(b.options, isClimateCardType(b.type));
+        return b.options;
+    }
+    function climateSecondaryLabel(this: any, b?: any) {
+        return configOptionValue(b && b.options, CLIMATE_SECONDARY_LABEL_OPTION);
+    }
+    function setClimateSecondaryLabel(this: any, b?: any, value?: any) {
+        if (!b) return "";
+        b.options = setConfigOptionValue(b.options, CLIMATE_SECONDARY_LABEL_OPTION, String(value || "").trim());
+        b.options = normalizeClimateOptions(b.options, isClimateCardType(b.type));
+        return b.options;
+    }
     function normalizeClimateOptions(this: any, options?: any, includeControlTabs?: any) {
         var labelMode: any = normalizeClimateLabelDisplayMode(configOptionValue(options, CLIMATE_LABEL_DISPLAY_OPTION));
         var numberMode: any = normalizeClimateNumberDisplayMode(configOptionValue(options, CLIMATE_NUMBER_DISPLAY_OPTION));
@@ -170,7 +205,7 @@ export function createConfigAccessClimateAlarmOptionsFeature(
                 out = setConfigOptionValue(out, CLIMATE_CONTROL_TABS_OPTION, tabs.join("|"));
             }
         }
-        out = copySecondaryDataOptions(out, options);
+        out = copyClimateSecondaryOptions(out, options);
         return out;
     }
     function climateLabelDisplayMode(this: any, b?: any) {
@@ -415,6 +450,12 @@ export function createConfigAccessClimateAlarmOptionsFeature(
         setClimateNumberDisplayMode,
         climateTemperatureStep,
         setClimateTemperatureStep,
+        climateSecondaryEnabled,
+        setClimateSecondaryEnabled,
+        climateSecondaryDisplay,
+        setClimateSecondaryDisplay,
+        climateSecondaryLabel,
+        setClimateSecondaryLabel,
         alarmActionInfo,
         alarmActionValues,
         alarmPinRequired,

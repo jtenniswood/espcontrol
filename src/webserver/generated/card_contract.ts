@@ -210,24 +210,6 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     ],
     "options": [
       {
-        "name": "secondary_entity",
-        "label": "Secondary Data Entity",
-        "kind": "text",
-        "omitDefault": true
-      },
-      {
-        "name": "secondary_prefix",
-        "label": "Secondary Data Prefix",
-        "kind": "text",
-        "omitDefault": true
-      },
-      {
-        "name": "secondary_unit",
-        "label": "Secondary Data Unit",
-        "kind": "text",
-        "omitDefault": true
-      },
-      {
         "name": "large_numbers",
         "label": "Large Active Display Numbers",
         "kind": "flag",
@@ -330,10 +312,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "confirm_on",
         "confirm_message",
         "confirm_yes",
-        "confirm_no",
-        "secondary_entity",
-        "secondary_prefix",
-        "secondary_unit"
+        "confirm_no"
       ],
       "optionHook": "normalize_switch_options"
     },
@@ -1172,20 +1151,26 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     ],
     "options": [
       {
-        "name": "secondary_entity",
-        "label": "Secondary Data Entity",
-        "kind": "text",
+        "name": "secondary_enabled",
+        "label": "Show Secondary Label",
+        "kind": "flag",
         "omitDefault": true
       },
       {
-        "name": "secondary_prefix",
-        "label": "Secondary Data Prefix",
-        "kind": "text",
+        "name": "secondary_display",
+        "label": "Secondary Value",
+        "kind": "choice",
+        "values": [
+          "status",
+          "actual",
+          "target"
+        ],
+        "defaultValue": "actual",
         "omitDefault": true
       },
       {
-        "name": "secondary_unit",
-        "label": "Secondary Data Unit",
+        "name": "secondary_label",
+        "label": "Secondary Label Text",
         "kind": "text",
         "omitDefault": true
       },
@@ -1275,9 +1260,9 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "number_display",
         "temperature_step",
         "large_numbers",
-        "secondary_entity",
-        "secondary_prefix",
-        "secondary_unit"
+        "secondary_enabled",
+        "secondary_display",
+        "secondary_label"
       ],
       "optionHook": "normalize_climate_options"
     },
@@ -1316,20 +1301,26 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     ],
     "options": [
       {
-        "name": "secondary_entity",
-        "label": "Secondary Data Entity",
-        "kind": "text",
+        "name": "secondary_enabled",
+        "label": "Show Secondary Label",
+        "kind": "flag",
         "omitDefault": true
       },
       {
-        "name": "secondary_prefix",
-        "label": "Secondary Data Prefix",
-        "kind": "text",
+        "name": "secondary_display",
+        "label": "Secondary Value",
+        "kind": "choice",
+        "values": [
+          "status",
+          "actual",
+          "target"
+        ],
+        "defaultValue": "actual",
         "omitDefault": true
       },
       {
-        "name": "secondary_unit",
-        "label": "Secondary Data Unit",
+        "name": "secondary_label",
+        "label": "Secondary Label Text",
         "kind": "text",
         "omitDefault": true
       },
@@ -1427,9 +1418,9 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "temperature_step",
         "large_numbers",
         "climate_tabs",
-        "secondary_entity",
-        "secondary_prefix",
-        "secondary_unit"
+        "secondary_enabled",
+        "secondary_display",
+        "secondary_label"
       ],
       "optionHook": "normalize_climate_options"
     },
@@ -3206,24 +3197,6 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     ],
     "options": [
       {
-        "name": "secondary_entity",
-        "label": "Secondary Data Entity",
-        "kind": "text",
-        "omitDefault": true
-      },
-      {
-        "name": "secondary_prefix",
-        "label": "Secondary Data Prefix",
-        "kind": "text",
-        "omitDefault": true
-      },
-      {
-        "name": "secondary_unit",
-        "label": "Secondary Data Unit",
-        "kind": "text",
-        "omitDefault": true
-      },
-      {
         "name": "large_numbers",
         "label": "Large Sensor Numbers",
         "kind": "flag",
@@ -3432,9 +3405,6 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       },
       "unknownOptions": "drop",
       "canonicalOptionOrder": [
-        "secondary_entity",
-        "secondary_prefix",
-        "secondary_unit",
         "large_numbers",
         "time_unit",
         "active_color",
@@ -4881,9 +4851,9 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "playlist_content_type": "playlist_content_type",
   "playlist_player_source": "playlist_player_source",
   "script_fields": "script_fields",
-  "secondary_entity": "secondary_entity",
-  "secondary_prefix": "secondary_prefix",
-  "secondary_unit": "secondary_unit",
+  "secondary_display": "secondary_display",
+  "secondary_enabled": "secondary_enabled",
+  "secondary_label": "secondary_label",
   "security": "security",
   "speaker_group_entity": "speaker_group_entity",
   "ssid64": "ssid64",

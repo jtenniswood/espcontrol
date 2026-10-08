@@ -22,7 +22,7 @@ export function registerClimateCardTypes(
     renderQueue: ButtonSettingsRenderQueueFeature,
     fields: ControlsFieldsFeature,
 ): void {
-    const { cardBadgeLabelHtml, cardSensorPreviewHtml, condField, renderSecondaryDataFields, secondaryDataPreviewHtml } = fields;
+    const { cardBadgeLabelHtml, cardSensorPreviewHtml, condField, toggleRow } = fields;
     const { temperatureUnitSymbol } = clockBar;
     const {
         climateControlTabDefinitions,
@@ -38,6 +38,12 @@ export function registerClimateCardTypes(
         setClimateNumberDisplayMode,
         climateTemperatureStep,
         setClimateTemperatureStep,
+        climateSecondaryEnabled,
+        setClimateSecondaryEnabled,
+        climateSecondaryDisplay,
+        setClimateSecondaryDisplay,
+        climateSecondaryLabel,
+        setClimateSecondaryLabel,
         parseClimatePrecisionConfig,
         climatePrecisionConfig,
     } = accessOptions;
@@ -148,7 +154,6 @@ export function registerClimateCardTypes(
             }
             var cardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "climate-card-settings", false);
             var cardSettings: any = cardSettingsDisclosure.section;
-            renderSecondaryDataFields(cardSettings, b, helpers);
             helpers.renderCardSegmentControl(cardSettings, b, helpers, {
                 segment: Object.assign({}, CLIMATE_CARD_METADATA.numberDisplay, {
                     value: function (this: any) { return climateNumberDisplayMode(b); },
@@ -196,6 +201,47 @@ export function registerClimateCardTypes(
             });
             syncLabelField();
             cardSettings.appendChild(labelField);
+            helpers.renderCardLargeNumbersToggle(cardSettings, b, helpers, CLIMATE_CARD_METADATA);
+            var secondaryDisclosure: any = helpers.disclosureSection("Secondary Label", helpers.idPrefix + "climate-secondary-label", false);
+            var secondaryPanel: any = secondaryDisclosure.section;
+            var secondaryToggle: any = toggleRow("Show secondary label", helpers.idPrefix + "climate-secondary-enabled", climateSecondaryEnabled(b));
+            secondaryPanel.appendChild(secondaryToggle.row);
+            var secondaryFields: any = condField();
+            secondaryFields.classList.add("sp-climate-settings-gap");
+            var secondaryDisplayField: any = helpers.selectField("Value", helpers.idPrefix + "climate-secondary-display", [
+                ["status", "Status"],
+                ["actual", "Actual"],
+                ["target", "Target"],
+            ], climateSecondaryDisplay(b));
+            secondaryFields.appendChild(secondaryDisplayField.field);
+            secondaryDisplayField.select.addEventListener("change", function (this: any) {
+                setClimateSecondaryDisplay(b, secondaryDisplayField.select.value);
+                helpers.saveField("options", b.options);
+                renderQueue.schedule();
+            });
+            var secondaryLabelField: any = helpers.textField("Label (optional)", helpers.idPrefix + "climate-secondary-label-text", climateSecondaryLabel(b), "e.g. Indoor");
+            secondaryFields.appendChild(secondaryLabelField.field);
+            secondaryLabelField.input.addEventListener("change", function (this: any) {
+                setClimateSecondaryLabel(b, secondaryLabelField.input.value);
+                helpers.saveField("options", b.options);
+                renderQueue.schedule();
+            });
+            secondaryLabelField.input.addEventListener("blur", function (this: any) {
+                setClimateSecondaryLabel(b, secondaryLabelField.input.value);
+                helpers.saveField("options", b.options);
+            });
+            function syncSecondaryFields(this: any) {
+                secondaryFields.classList.toggle("sp-visible", climateSecondaryEnabled(b));
+            }
+            syncSecondaryFields();
+            secondaryToggle.input.addEventListener("change", function (this: any) {
+                setClimateSecondaryEnabled(b, secondaryToggle.input.checked);
+                helpers.saveField("options", b.options);
+                syncSecondaryFields();
+                renderQueue.schedule();
+            });
+            secondaryPanel.appendChild(secondaryFields);
+            cardSettings.appendChild(secondaryDisclosure.panel);
             var precisionField: any = helpers.selectField("Temperature Settings", helpers.idPrefix + "climate-precision", [
                 ["", "10"],
                 ["1", "10.2"],
@@ -213,7 +259,6 @@ export function registerClimateCardTypes(
                 helpers.saveField("options", b.options);
                 renderQueue.schedule();
             });
-            helpers.renderCardLargeNumbersToggle(cardSettings, b, helpers, CLIMATE_CARD_METADATA);
             panel.appendChild(cardSettingsDisclosure.panel);
             panel.appendChild(modalTabsDisclosure.panel);
             var advancedDisclosure: any = helpers.disclosureSection("Advanced", helpers.idPrefix + "climate-advanced", false);
@@ -241,6 +286,13 @@ export function registerClimateCardTypes(
             var numberMode: any = climateNumberDisplayMode(b);
             var numberVal: any = numberMode === "actual" ? actualVal : targetVal;
             var labelMode: any = climateLabelDisplayMode(b);
+            var secondaryPreview = "";
+            if (climateSecondaryEnabled(b)) {
+                var secondaryDisplay = climateSecondaryDisplay(b);
+                var secondaryValue = secondaryDisplay === "status" ? "Heating" : secondaryDisplay === "target" ? "20" + unit : "21" + unit;
+                var secondaryLabel = climateSecondaryLabel(b);
+                secondaryPreview = '<span class="sp-btn-secondary-data">' + helpers.escHtml((secondaryLabel ? secondaryLabel + ": " : "") + secondaryValue) + "</span>";
+            }
             var label: any = (b.label && b.label.trim()) || "Climate";
             if (labelMode === "status") {
                 label = "Idle";
@@ -252,7 +304,7 @@ export function registerClimateCardTypes(
                 label = targetVal + unit;
             }
             function climateLabelHtml(this: any) {
-                return cardBadgeLabelHtml(helpers, label, CLIMATE_CARD_METADATA.preview.badge) + secondaryDataPreviewHtml(b, helpers);
+                return cardBadgeLabelHtml(helpers, label, CLIMATE_CARD_METADATA.preview.badge) + secondaryPreview;
             }
             if (numberMode === "icon") {
                 var iconName: any = b.icon && b.icon !== "Auto" ? b.icon : "Thermostat";

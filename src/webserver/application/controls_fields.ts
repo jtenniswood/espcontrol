@@ -41,8 +41,6 @@ export interface ControlsFieldsFeature {
     renderCardIconPair(...args: any[]): any;
     renderCardActiveColorToggle(...args: any[]): any;
     renderBasicCardFields(...args: any[]): any;
-    renderSecondaryDataFields(...args: any[]): any;
-    secondaryDataPreviewHtml(...args: any[]): any;
     renderCardSegmentControl(...args: any[]): any;
     cardSensorPreviewHtml(...args: any[]): any;
     cardBadgeLabelHtml(...args: any[]): any;
@@ -522,38 +520,6 @@ export function createControlsFieldsFeature(
             renderCardIconPair(panel, b, helpers, metadata.iconOff, metadata.iconOn);
         }
     }
-    function renderSecondaryDataFields(this: any, panel?: any, b?: any, helpers?: any) {
-        var entityField: any = helpers.entityField(
-            "Secondary Data Entity", helpers.idPrefix + "secondary-entity",
-            configOptionValue(b.options, "secondary_entity"), "e.g. sensor.room_humidity",
-            ["sensor", "binary_sensor", "text_sensor"], null, false);
-        panel.appendChild(entityField.field);
-        var prefixField: any = helpers.textField(
-            "Secondary Data Prefix", helpers.idPrefix + "secondary-prefix",
-            configOptionValue(b.options, "secondary_prefix"), "e.g. Humidity", "", false);
-        panel.appendChild(prefixField.field);
-        var unitField: any = helpers.textField(
-            "Secondary Data Unit", helpers.idPrefix + "secondary-unit",
-            configOptionValue(b.options, "secondary_unit"), "e.g. %", "", false);
-        panel.appendChild(unitField.field);
-        function save(this: any) {
-            b.options = setConfigOptionValue(b.options, "secondary_entity", entityField.input.value);
-            b.options = setConfigOptionValue(b.options, "secondary_prefix", prefixField.input.value);
-            b.options = setConfigOptionValue(b.options, "secondary_unit", unitField.input.value);
-            helpers.saveField("options", b.options);
-        }
-        [entityField.input, prefixField.input, unitField.input].forEach(function (input: any) {
-            input.addEventListener("change", save);
-            input.addEventListener("blur", save);
-        });
-    }
-    function secondaryDataPreviewHtml(this: any, b?: any, helpers?: any) {
-        var entity: any = configOptionValue(b && b.options, "secondary_entity");
-        if (!entity) return "";
-        var prefix: any = configOptionValue(b.options, "secondary_prefix");
-        var unit: any = configOptionValue(b.options, "secondary_unit");
-        return '<span class="sp-btn-secondary-data">' + helpers.escHtml((prefix ? prefix + ": " : "") + "24.0" + unit) + '</span>';
-    }
     function renderCardSegmentControl(this: any, panel?: any, b?: any, helpers?: any, metadata?: any) {
         metadata = metadata || {};
         var segment: any = metadata.segment || metadata;
@@ -639,7 +605,6 @@ export function createControlsFieldsFeature(
         syncCardLargeNumbersToggle, renderCardEntityField, renderCardTextField,
         renderCardNumberField, renderCardIconPicker, renderCardOptionToggle,
         renderCardIconPair, renderCardActiveColorToggle, renderBasicCardFields,
-        renderSecondaryDataFields, secondaryDataPreviewHtml,
         renderCardSegmentControl, cardSensorPreviewHtml, cardBadgeLabelHtml,
         cardIconHtml, cardIconSlug, cardBadgePreview, condField, createRangeSlider,
     };

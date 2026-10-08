@@ -116,6 +116,9 @@ struct ClimateControlCtx {
   int precision = 0;
   std::string label_display = "label";
   std::string number_display = "target";
+  std::string secondary_display = "actual";
+  std::string secondary_label;
+  bool secondary_enabled = false;
   int pending_target_tenths = CLIMATE_DEFAULT_TARGET_TENTHS;
   bool pending_temp_send = false;
   lv_timer_t *debounce_timer = nullptr;
@@ -1112,6 +1115,28 @@ inline void climate_update_card(ClimateControlCtx *ctx) {
   if (!show_icon && ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, (value.empty() || value == "--") ? "" : display_temperature_unit_symbol());
   if (ctx->label_lbl) {
     lv_label_set_display_text(ctx->label_lbl, climate_card_label(ctx).c_str());
+    if (ctx->secondary_lbl) {
+      if (ctx->secondary_enabled) {
+        std::string secondary_value;
+        if (ctx->secondary_display == "status") {
+          secondary_value = climate_action_label(ctx);
+        } else if (ctx->secondary_display == "target") {
+          secondary_value = climate_card_value_with_unit(climate_card_target_value(ctx));
+        } else {
+          secondary_value = climate_card_value_with_unit(climate_card_actual_value(ctx));
+        }
+        if (!ctx->secondary_label.empty())
+          secondary_value = ctx->secondary_label + ": " + secondary_value;
+        lv_label_set_display_text(ctx->secondary_lbl, secondary_value.c_str());
+        lv_obj_set_width(ctx->secondary_lbl, lv_pct(100));
+        lv_label_set_long_mode(ctx->secondary_lbl, LV_LABEL_LONG_DOT);
+        lv_obj_align(ctx->secondary_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+        lv_obj_clear_flag(ctx->secondary_lbl, LV_OBJ_FLAG_HIDDEN);
+      } else {
+        lv_label_set_display_text(ctx->secondary_lbl, "");
+        lv_obj_add_flag(ctx->secondary_lbl, LV_OBJ_FLAG_HIDDEN);
+      }
+    }
     climate_layout_card_label(ctx->label_lbl, ctx->secondary_lbl);
   }
   if (ctx->btn) {
@@ -2658,6 +2683,12 @@ inline ClimateControlCtx *create_climate_control_context(
   climate_apply_saved_range(ctx, p.precision);
   ctx->label_display = normalize_climate_label_display(cfg_option_value(p.options, "label_display"));
   ctx->number_display = normalize_climate_number_display(cfg_option_value(p.options, "number_display"));
+  ctx->secondary_enabled = cfg_option_token_present(p.options, "secondary_enabled");
+  ctx->secondary_display = cfg_option_value(p.options, "secondary_display");
+  if (ctx->secondary_display != "status" && ctx->secondary_display != "target")
+    ctx->secondary_display = "actual";
+  ctx->secondary_label = trim_saved_option_value(
+    cfg_option_value(p.options, "secondary_label"));
   ctx->configured_step_tenths = normalize_climate_temperature_step(
     cfg_option_value(p.options, "temperature_step")) == "0.5"
       ? CLIMATE_DEFAULT_STEP_TENTHS

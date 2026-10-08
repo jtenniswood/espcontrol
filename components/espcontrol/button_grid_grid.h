@@ -910,12 +910,11 @@ inline void refresh_slider_card_layout(BtnSlot &s) {
   if (slider) slider_refresh_geometry(slider);
 }
 
-inline void refresh_secondary_card_label_layout(BtnSlot &slot,
-                                                const ParsedCfg &config) {
+inline void refresh_climate_secondary_label_layout(BtnSlot &slot,
+                                                   const ParsedCfg &config) {
   if (!slot.secondary_lbl) return;
-  const bool supported = config.type.empty() || config.type == "sensor" ||
-                         config.type == "climate_control";
-  if (!supported || cfg_option_value(config.options, "secondary_entity").empty()) {
+  if (config.type != "climate_control" ||
+      !cfg_option_token_present(config.options, "secondary_enabled")) {
     lv_obj_add_flag(slot.secondary_lbl, LV_OBJ_FLAG_HIDDEN);
     return;
   }
@@ -941,7 +940,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   display_apply_main_width(s.icon_lbl, display);
   control_modal_register_card_label(s);
   display_apply_slot_text_width(s, display);
-  refresh_secondary_card_label_layout(s, p);
+  refresh_climate_secondary_label_layout(s, p);
   if (espcontrol::cards::navigation_driver_refresh_layout(
         s, p, context, cfg)) return;
 
@@ -950,7 +949,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
 
   if (espcontrol::cards::climate_control_driver_refresh_layout(
         s, p, context, display, row_span, col_span)) {
-    refresh_secondary_card_label_layout(s, p);
+    refresh_climate_secondary_label_layout(s, p);
     return;
   }
 
@@ -1961,7 +1960,6 @@ inline void grid_phase2(
     int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
     if (cfg.info_only && info_only_hidden_card_type(context)) continue;
     navigation_register_home_target(idx, pos, p.label, scfg, s.btn);
-    subscribe_secondary_card_value(s, p);
     if (espcontrol::cards::image_driver_bind_main(
           s, p, context, cfg)) continue;
     if (espcontrol::cards::wifi_qr_driver_bind_main(s, p, context)) continue;
@@ -2194,7 +2192,6 @@ inline void grid_phase2(
       // cards remove button padding so their fill can reach the edges, so run
       // the card-specific refresh after clamping to restore the captured inset.
       refresh_card_layout(sub_slot, sb_cfg, cfg, rs, cs);
-      subscribe_secondary_card_value(sub_slot, sb_cfg);
 
       if (espcontrol::cards::image_driver_bind_subpage(
             sub_slot, sb_cfg, context, cfg)) continue;

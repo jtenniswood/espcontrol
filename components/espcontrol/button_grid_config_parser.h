@@ -322,25 +322,22 @@ inline std::string trim_saved_option_value(const std::string &value) {
   return value.substr(first, value.find_last_not_of(" \t\r\n") - first + 1);
 }
 
-inline void append_secondary_data_options(std::string &out,
-                                          const std::string &options) {
-  const std::string entity = trim_saved_option_value(
-    cfg_option_value(options, "secondary_entity"));
-  const std::string prefix = trim_saved_option_value(
-    cfg_option_value(options, "secondary_prefix"));
-  const std::string unit = trim_saved_option_value(
-    cfg_option_value(options, "secondary_unit"));
-  if (!entity.empty()) {
+inline void append_climate_secondary_options(std::string &out,
+                                             const std::string &options) {
+  if (cfg_option_token_present(options, "secondary_enabled")) {
     if (!out.empty()) out += ",";
-    out += "secondary_entity=" + encode_compact_field(entity);
+    out += "secondary_enabled";
   }
-  if (!prefix.empty()) {
+  std::string display = cfg_option_value(options, "secondary_display");
+  if (display == "status" || display == "target") {
     if (!out.empty()) out += ",";
-    out += "secondary_prefix=" + encode_compact_field(prefix);
+    out += "secondary_display=" + display;
   }
-  if (!unit.empty()) {
+  std::string label = trim_saved_option_value(
+    cfg_option_value(options, "secondary_label"));
+  if (!label.empty()) {
     if (!out.empty()) out += ",";
-    out += "secondary_unit=" + encode_compact_field(unit);
+    out += "secondary_label=" + encode_compact_field(label);
   }
 }
 
@@ -751,7 +748,6 @@ inline std::string sensor_card_options_normalized(const std::string &options,
       out += std::string(SENSOR_TIME_UNIT_OPTION) + "=" + time_unit;
     }
   }
-  append_secondary_data_options(out, options);
   return out;
 }
 
@@ -891,7 +887,7 @@ inline std::string climate_card_options_normalized(const std::string &options,
       out += std::string(CLIMATE_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
     }
   }
-  append_secondary_data_options(out, options);
+  append_climate_secondary_options(out, options);
   return out;
 }
 
@@ -1060,7 +1056,6 @@ inline std::string switch_card_options_normalized(const std::string &options) {
     out += "on_pattern=" + pattern;
   }
   append_confirm_options(out, options, "Turn off this device?", "Turn on this device?", "Toggle this device?");
-  append_secondary_data_options(out, options);
   return out;
 }
 

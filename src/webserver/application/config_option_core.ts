@@ -21,9 +21,6 @@ import {
     var SENSOR_LARGE_NUMBERS_OFF_VALUE: any = "off";
     var SENSOR_TIME_UNIT_OPTION: any = cardContractOptionName("time_unit");
     var SENSOR_ACTIVE_COLOR_OPTION: any = cardContractOptionName("active_color");
-    var SECONDARY_DATA_ENTITY_OPTION: any = cardContractOptionName("secondary_entity");
-    var SECONDARY_DATA_PREFIX_OPTION: any = cardContractOptionName("secondary_prefix");
-    var SECONDARY_DATA_UNIT_OPTION: any = cardContractOptionName("secondary_unit");
     var SWITCH_CONFIRM_OFF_OPTION: any = cardContractOptionName("confirm_off");
     var SWITCH_CONFIRM_ON_OPTION: any = cardContractOptionName("confirm_on");
     var SWITCH_CONFIRM_MESSAGE_OPTION: any = cardContractOptionName("confirm_message");
@@ -46,6 +43,9 @@ import {
     var CLIMATE_LABEL_DISPLAY_OPTION: any = cardContractOptionName("label_display");
     var CLIMATE_NUMBER_DISPLAY_OPTION: any = cardContractOptionName("number_display");
     var CLIMATE_TEMPERATURE_STEP_OPTION: any = cardContractOptionName("temperature_step");
+    var CLIMATE_SECONDARY_ENABLED_OPTION: any = cardContractOptionName("secondary_enabled");
+    var CLIMATE_SECONDARY_DISPLAY_OPTION: any = cardContractOptionName("secondary_display");
+    var CLIMATE_SECONDARY_LABEL_OPTION: any = cardContractOptionName("secondary_label");
     var MEDIA_VOLUME_MAX_OPTION: any = cardContractOptionName("volume_max");
     var MEDIA_SPEAKER_GROUP_ENTITY_OPTION: any = cardContractOptionName("speaker_group_entity");
     var MEDIA_LABEL_DISPLAY_OPTION: any = cardContractOptionName("label_display");
@@ -78,10 +78,15 @@ import {
         }
         return out;
     }
-    function copySecondaryDataOptions(this: any, out?: any, options?: any) {
-        out = setConfigOptionValue(out, SECONDARY_DATA_ENTITY_OPTION, configOptionValue(options, SECONDARY_DATA_ENTITY_OPTION));
-        out = setConfigOptionValue(out, SECONDARY_DATA_PREFIX_OPTION, configOptionValue(options, SECONDARY_DATA_PREFIX_OPTION));
-        out = setConfigOptionValue(out, SECONDARY_DATA_UNIT_OPTION, configOptionValue(options, SECONDARY_DATA_UNIT_OPTION));
+    function copyClimateSecondaryOptions(this: any, out?: any, options?: any) {
+        if (configOptionEnabled(options, CLIMATE_SECONDARY_ENABLED_OPTION)) {
+            out = setConfigOption(out, CLIMATE_SECONDARY_ENABLED_OPTION, true);
+        }
+        var display: any = configOptionValue(options, CLIMATE_SECONDARY_DISPLAY_OPTION);
+        if (display === "status" || display === "target") {
+            out = setConfigOptionValue(out, CLIMATE_SECONDARY_DISPLAY_OPTION, display);
+        }
+        out = setConfigOptionValue(out, CLIMATE_SECONDARY_LABEL_OPTION, configOptionValue(options, CLIMATE_SECONDARY_LABEL_OPTION).trim());
         return out;
     }
     function cardContractOptionSpec(this: any, type?: any, name?: any) {
@@ -146,6 +151,9 @@ export {
     CLIMATE_LABEL_DISPLAY_OPTION,
     CLIMATE_NUMBER_DISPLAY_OPTION,
     CLIMATE_TEMPERATURE_STEP_OPTION,
+    CLIMATE_SECONDARY_ENABLED_OPTION,
+    CLIMATE_SECONDARY_DISPLAY_OPTION,
+    CLIMATE_SECONDARY_LABEL_OPTION,
     MEDIA_VOLUME_MAX_OPTION,
     MEDIA_SPEAKER_GROUP_ENTITY_OPTION,
     MEDIA_LABEL_DISPLAY_OPTION,
@@ -168,7 +176,7 @@ export {
     WIFI_QR_TABS_OPTION,
     largeNumbersExplicitlyDisabled,
     copyLargeNumbersOption,
-    copySecondaryDataOptions,
+    copyClimateSecondaryOptions,
     cardContractOptionSpec,
     cardContractOptionSupportedFor,
     cardContractOptionDefaultValue,

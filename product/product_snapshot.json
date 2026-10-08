@@ -2473,24 +2473,6 @@
         ],
         "options": [
           {
-            "name": "secondary_entity",
-            "label": "Secondary Data Entity",
-            "kind": "text",
-            "omitDefault": true
-          },
-          {
-            "name": "secondary_prefix",
-            "label": "Secondary Data Prefix",
-            "kind": "text",
-            "omitDefault": true
-          },
-          {
-            "name": "secondary_unit",
-            "label": "Secondary Data Unit",
-            "kind": "text",
-            "omitDefault": true
-          },
-          {
             "name": "large_numbers",
             "label": "Large Active Display Numbers",
             "kind": "flag",
@@ -2593,10 +2575,7 @@
             "confirm_on",
             "confirm_message",
             "confirm_yes",
-            "confirm_no",
-            "secondary_entity",
-            "secondary_prefix",
-            "secondary_unit"
+            "confirm_no"
           ],
           "optionHook": "normalize_switch_options"
         },
@@ -3449,20 +3428,26 @@
         ],
         "options": [
           {
-            "name": "secondary_entity",
-            "label": "Secondary Data Entity",
-            "kind": "text",
+            "name": "secondary_enabled",
+            "label": "Show Secondary Label",
+            "kind": "flag",
             "omitDefault": true
           },
           {
-            "name": "secondary_prefix",
-            "label": "Secondary Data Prefix",
-            "kind": "text",
+            "name": "secondary_display",
+            "label": "Secondary Value",
+            "kind": "choice",
+            "values": [
+              "status",
+              "actual",
+              "target"
+            ],
+            "defaultValue": "actual",
             "omitDefault": true
           },
           {
-            "name": "secondary_unit",
-            "label": "Secondary Data Unit",
+            "name": "secondary_label",
+            "label": "Secondary Label Text",
             "kind": "text",
             "omitDefault": true
           },
@@ -3552,9 +3537,9 @@
             "number_display",
             "temperature_step",
             "large_numbers",
-            "secondary_entity",
-            "secondary_prefix",
-            "secondary_unit"
+            "secondary_enabled",
+            "secondary_display",
+            "secondary_label"
           ],
           "optionHook": "normalize_climate_options"
         },
@@ -3593,20 +3578,26 @@
         ],
         "options": [
           {
-            "name": "secondary_entity",
-            "label": "Secondary Data Entity",
-            "kind": "text",
+            "name": "secondary_enabled",
+            "label": "Show Secondary Label",
+            "kind": "flag",
             "omitDefault": true
           },
           {
-            "name": "secondary_prefix",
-            "label": "Secondary Data Prefix",
-            "kind": "text",
+            "name": "secondary_display",
+            "label": "Secondary Value",
+            "kind": "choice",
+            "values": [
+              "status",
+              "actual",
+              "target"
+            ],
+            "defaultValue": "actual",
             "omitDefault": true
           },
           {
-            "name": "secondary_unit",
-            "label": "Secondary Data Unit",
+            "name": "secondary_label",
+            "label": "Secondary Label Text",
             "kind": "text",
             "omitDefault": true
           },
@@ -3704,9 +3695,9 @@
             "temperature_step",
             "large_numbers",
             "climate_tabs",
-            "secondary_entity",
-            "secondary_prefix",
-            "secondary_unit"
+            "secondary_enabled",
+            "secondary_display",
+            "secondary_label"
           ],
           "optionHook": "normalize_climate_options"
         },
@@ -5483,24 +5474,6 @@
         ],
         "options": [
           {
-            "name": "secondary_entity",
-            "label": "Secondary Data Entity",
-            "kind": "text",
-            "omitDefault": true
-          },
-          {
-            "name": "secondary_prefix",
-            "label": "Secondary Data Prefix",
-            "kind": "text",
-            "omitDefault": true
-          },
-          {
-            "name": "secondary_unit",
-            "label": "Secondary Data Unit",
-            "kind": "text",
-            "omitDefault": true
-          },
-          {
             "name": "large_numbers",
             "label": "Large Sensor Numbers",
             "kind": "flag",
@@ -5709,9 +5682,6 @@
           },
           "unknownOptions": "drop",
           "canonicalOptionOrder": [
-            "secondary_entity",
-            "secondary_prefix",
-            "secondary_unit",
             "large_numbers",
             "time_unit",
             "active_color",
