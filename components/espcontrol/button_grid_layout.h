@@ -458,12 +458,6 @@ inline void layout_button_label_with_secondary(
   lv_obj_move_foreground(label);
 }
 
-inline void set_wrapped_button_label_text_with_secondary(
-    lv_obj_t *label, lv_obj_t *secondary_lbl, const std::string &text) {
-  set_wrapped_button_label_text(label, text);
-  layout_button_label_with_secondary(label, secondary_lbl);
-}
-
 inline void set_subpage_chevron_visible(BtnSlot &s, bool visible,
                                         int x_offset = 0,
                                         int y_offset = 2,

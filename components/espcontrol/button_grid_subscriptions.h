@@ -242,19 +242,16 @@ inline void subscribe_sensor_text_card_value(lv_obj_t *text_lbl, const ParsedCfg
                                              lv_obj_t *availability_obj = nullptr,
                                              bool active_color = false,
                                              uint32_t on_color = DEFAULT_ACCENT_COLOR,
-                                             bool sensor_surface = true,
-                                             lv_obj_t *secondary_lbl = nullptr) {
+                                             bool sensor_surface = true) {
   if (p.sensor.empty()) return;
   ha_subscribe_state(
     p.sensor,
     std::function<void(esphome::StringRef)>(
-      [text_lbl, p, availability_obj, active_color, on_color, sensor_surface,
-       secondary_lbl](esphome::StringRef state) {
+      [text_lbl, p, availability_obj, active_color, on_color, sensor_surface](esphome::StringRef state) {
       bool unavailable = ha_state_unavailable_ref(state);
       apply_sensor_active_color(availability_obj, active_color, state,
         on_color, sensor_surface ? current_grid_sensor_surface_color() : current_grid_sensor_color(), unavailable);
-      set_wrapped_button_label_text_with_secondary(
-        text_lbl, secondary_lbl, sensor_state_display_text(p, state));
+      set_wrapped_button_label_text(text_lbl, sensor_state_display_text(p, state));
     })
   );
 }
@@ -380,14 +377,11 @@ inline void subscribe_friendly_name(ToggleTextSensorCtx *ctx,
   );
 }
 
-inline void subscribe_friendly_name(lv_obj_t *text_lbl, const std::string &entity_id,
-                                    lv_obj_t *secondary_lbl = nullptr) {
+inline void subscribe_friendly_name(lv_obj_t *text_lbl, const std::string &entity_id) {
   ha_subscribe_attribute(
     entity_id, std::string("friendly_name"),
-    std::function<void(esphome::StringRef)>([text_lbl, secondary_lbl](esphome::StringRef name) {
-      set_wrapped_button_label_text_with_secondary(
-        text_lbl, secondary_lbl,
-        string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN));
+    std::function<void(esphome::StringRef)>([text_lbl](esphome::StringRef name) {
+      set_wrapped_button_label_text(text_lbl, string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN));
     })
   );
 }

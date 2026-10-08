@@ -197,7 +197,7 @@ inline bool sensor_driver_bind_data(
     if (!config.sensor.empty()) {
       subscribe_sensor_text_card_value(
         slot.text_lbl, config, slot.btn, sensor_active_color_enabled(config),
-        palette.on_val, true, slot.secondary_lbl);
+        palette.on_val, true);
     }
     return true;
   }
@@ -222,7 +222,7 @@ inline bool sensor_driver_bind_data(
         sensor_active_color_enabled(config), palette.on_val, true);
     }
     if (config.label.empty()) {
-      subscribe_friendly_name(slot.text_lbl, config.sensor, slot.secondary_lbl);
+      subscribe_friendly_name(slot.text_lbl, config.sensor);
     }
   }
   return true;
