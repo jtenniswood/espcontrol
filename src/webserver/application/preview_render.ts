@@ -197,13 +197,6 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     sensorBadge +
                         iconHtml +
                         labelHtml;
-                if (cardOnColor) {
-                    var activeSwatch: any = document.createElement("span");
-                    activeSwatch.className = "sp-card-active-color-preview";
-                    activeSwatch.title = "Active colour";
-                    activeSwatch.style.cssText = "position:absolute;right:5%;top:5%;width:10%;height:10%;min-width:8px;min-height:8px;border-radius:50%;background:#" + cardOnColor + ";border:1px solid rgba(255,255,255,.75);";
-                    btn.appendChild(activeSwatch);
-                }
                 main.appendChild(btn);
             }
             else {
