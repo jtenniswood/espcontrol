@@ -54,7 +54,7 @@ int main() {
   assert(readable_text_color_for_bg(0x000000) == DARK_THEME.text_primary);
   assert(LIGHT_THEME.background == 0xFFFFFF);
   assert(LIGHT_THEME.surface_primary == 0xB0B0B0);
-  assert(LIGHT_THEME.surface_secondary == 0xE8E8E8);
+  assert(LIGHT_THEME.surface_secondary == 0xD8D8D8);
   assert(LIGHT_THEME.text_primary == 0x333333);
   assert(LIGHT_THEME.clockbar_text == 0x333333);
   assert(LIGHT_THEME.text_muted == 0x606060);

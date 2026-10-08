@@ -47,7 +47,7 @@ inline constexpr ThemePalette DARK_THEME = make_dark_theme();
 inline constexpr ThemePalette LIGHT_THEME = {
     0xFFFFFF,  // background
     0xB0B0B0,  // surface_primary
-    0xE8E8E8,  // surface_secondary
+    0xD8D8D8,  // surface_secondary
     0x333333,  // text_primary
     0x333333,  // clockbar_text
     0x606060,  // text_muted
