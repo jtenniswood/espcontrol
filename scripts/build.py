@@ -79,7 +79,7 @@ WEB_FIXED_MDI_ICON_CODEPOINTS = {
     "decimal": "F10A1", "domain": "F01D7", "drag": "F01DB", "eye-off-outline": "F06D1",
     "eye-outline": "F06D0", "factory": "F020F", "file": "F0214", "flag": "F023B", "folder-plus": "F0257",
     "form-dropdown": "F1400", "format-text": "F0284", "function": "F0295", "gesture-tap-button": "F12A8",
-    "grid": "F02C1", "home-automation": "F07D1", "home-import-outline": "F0F9C", "hook": "F06E2",
+    "grid": "F02C1", "group": "F02C3", "home-automation": "F07D1", "home-import-outline": "F0F9C", "hook": "F06E2",
     "information-outline": "F02FD", "keyboard-return": "F0311", "label": "F0315", "lightbulb-on": "F06E8",
     "link": "F0337", "loading": "F0772", "map-clock": "F0D1E", "map-marker-path": "F0D20",
     "map-marker-question": "F0F07", "movie": "F0381", "movie-open": "F0FCE", "network": "F06F3",
