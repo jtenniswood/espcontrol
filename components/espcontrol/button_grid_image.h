@@ -598,6 +598,10 @@ inline void image_card_hide(ImageCardCtx *ctx) {
 
 inline void image_card_apply_media_overlay_tint(ImageCardCtx *ctx);
 
+inline bool image_card_media_artwork_visible(const ImageCardCtx *ctx) {
+  return ctx && ctx->widget && !lv_obj_has_flag(ctx->widget, LV_OBJ_FLAG_HIDDEN);
+}
+
 inline void image_card_sync_media_artwork_visibility(ImageCardCtx *ctx) {
   if (!ctx || !ctx->media_artwork || !ctx->widget) return;
   if (ctx->media_artwork_suppressed || !ctx->image_ready || !ctx->image) {
@@ -614,8 +618,9 @@ inline void image_card_sync_media_artwork_visibility(ImageCardCtx *ctx) {
       lv_obj_clear_flag(ctx->media_overlay, LV_OBJ_FLAG_HIDDEN);
       lv_obj_move_foreground(ctx->media_overlay);
     }
-    if (ctx->media_artwork_applied) ctx->media_artwork_applied();
   }
+  // Consumers also need to refresh their fallback when artwork is hidden.
+  if (ctx->media_artwork_applied) ctx->media_artwork_applied();
   lv_obj_invalidate(ctx->widget);
   if (ctx->btn) lv_obj_invalidate(ctx->btn);
   notify_dashboard_content_changed();
@@ -658,6 +663,7 @@ inline void image_card_clear_media_artwork(ImageCardCtx *ctx) {
   ctx->last_download_completed_ms = 0;
   image_card_hide(ctx);
   if (ctx->media_overlay) lv_obj_add_flag(ctx->media_overlay, LV_OBJ_FLAG_HIDDEN);
+  if (ctx->media_artwork_applied) ctx->media_artwork_applied();
 }
 
 inline void image_card_layout_modal_loading(ImageCardCtx *ctx) {

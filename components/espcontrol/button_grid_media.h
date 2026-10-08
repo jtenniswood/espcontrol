@@ -330,6 +330,7 @@ inline void media_playback_detach_control(MediaControlCtx *ctx);
 inline void media_playback_detach_volume(MediaVolumeCtx *ctx);
 inline void media_playback_detach_playlist(MediaPlaylistCtx *ctx);
 inline void media_playback_detach_now_playing(MediaNowPlayingCtx *ctx);
+inline void media_cover_art_unregister_theme(MediaNowPlayingCtx *ctx);
 inline void media_playback_detach_slider(SliderCtx *ctx);
 inline void media_playback_attach_control(MediaPlaybackState *state, MediaControlCtx *ctx);
 inline void media_playback_subscribe_playback_state(MediaPlaybackState *state);
@@ -752,6 +753,7 @@ inline void delete_media_playlist_context(MediaPlaylistCtx *ctx) {
 
 inline void delete_media_now_playing_context(MediaNowPlayingCtx *ctx) {
   if (!ctx) return;
+  media_cover_art_unregister_theme(ctx);
   media_playback_detach_now_playing(ctx);
   delete ctx;
 }
@@ -1088,6 +1090,52 @@ inline bool media_playback_has_current_content(const MediaPlaybackState *state) 
                            state->artwork_content_mask != 0;
   return espcontrol::cover_art::media_entity_content_available(
     state->has_state, state->available, has_content);
+}
+
+inline bool image_card_media_artwork_visible(const ImageCardCtx *ctx);
+
+inline void media_cover_art_apply_theme(MediaNowPlayingCtx *ctx,
+                                       const ThemePalette &theme) {
+  if (!ctx || !ctx->cover_art_mode || !ctx->btn) return;
+  const bool artwork_visible = image_card_media_artwork_visible(ctx->cover_art);
+  // The fallback is a normal card. White text belongs only to visible artwork,
+  // whose image and contrast overlay remain independent of the UI theme.
+  lv_obj_set_style_bg_color(ctx->btn,
+      lv_color_hex(theme_display_color(theme.surface_card)), LV_PART_MAIN);
+  const lv_color_t foreground = lv_color_hex(
+      artwork_visible ? CARD_ACCENT_TEXT_COLOR : theme.text_primary);
+  lv_obj_set_style_text_color(ctx->btn, foreground, LV_PART_MAIN);
+  lv_obj_t *labels[] = {ctx->icon_lbl, ctx->idle_lbl, ctx->title_lbl, ctx->artist_lbl};
+  for (lv_obj_t *label : labels) {
+    if (label) lv_obj_set_style_text_color(label, foreground, LV_PART_MAIN);
+  }
+  set_card_content_disabled(ctx->btn, lv_obj_has_state(ctx->btn, LV_STATE_DISABLED));
+}
+
+inline std::vector<MediaNowPlayingCtx *> &media_cover_art_theme_cards() {
+  static std::vector<MediaNowPlayingCtx *> cards;
+  return cards;
+}
+
+inline void media_cover_art_apply_theme_cards(void *context,
+                                             const ThemePalette &theme) {
+  for (auto *ctx : *static_cast<std::vector<MediaNowPlayingCtx *> *>(context))
+    media_cover_art_apply_theme(ctx, theme);
+}
+
+inline void media_cover_art_register_theme(MediaNowPlayingCtx *ctx) {
+  auto &cards = media_cover_art_theme_cards();
+  cards.push_back(ctx);
+  // Share one refresh binding across main-grid and subpage cover-art cards.
+  if (!register_theme_refresh(&cards, media_cover_art_apply_theme_cards, &cards))
+    ESP_LOGW("theme", "Refresh registry full; cover-art fallbacks will not follow theme changes");
+  media_cover_art_apply_theme(ctx, current_theme());
+}
+
+inline void media_cover_art_unregister_theme(MediaNowPlayingCtx *ctx) {
+  auto &cards = media_cover_art_theme_cards();
+  media_playback_erase_consumer(cards, ctx);
+  if (cards.empty()) unregister_theme_refresh(&cards);
 }
 
 inline void media_cover_art_set_idle_placeholder(MediaNowPlayingCtx *ctx,
@@ -4717,6 +4765,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
       // Wait for a known, available inactive state before presenting the card
       // as idle. Initial loading and unavailable entities are not idle.
       media_cover_art_set_idle_placeholder(ctx, false);
+      media_cover_art_register_theme(ctx);
       media_position_now_playing_artist(ctx);
       return;
     }

@@ -861,7 +861,7 @@ export function registerMediaCardTypes(
                 };
             }
             if (mode === "cover_art") {
-                var coverArtColor: any = WEB_UI_COLORS.tertiary;
+                var coverArtColor: any = neutralPreview.surfaceCard;
                 if (mediaCoverArtDetailsEnabled(b)) {
                     var singleCoverArtCard: any = ((helpers && helpers.cardSize) || CARD_SIZE_SINGLE) === CARD_SIZE_SINGLE;
                     var controlFontClass: any = (deviceId === "guition-esp32-p4-jc4880p443" ||
@@ -879,7 +879,7 @@ export function registerMediaCardTypes(
                     };
                 }
                 return {
-                    buttonClass: "sp-image-card",
+                    buttonClass: "sp-image-card sp-media-cover-placeholder",
                     iconHtml: '<span class="sp-image-preview" style="background:#' +
                         helpers.escHtml(coverArtColor) + '"></span>',
                     labelHtml: '<span class="sp-image-label"><span class="sp-image-label-stack">' +

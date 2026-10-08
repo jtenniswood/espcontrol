@@ -345,6 +345,8 @@ inline void clear_media_cover_art(MediaNowPlayingCtx *ctx) {
   if (!ctx) return;
   if (ctx->cover_art) {
     lv_obj_t *widget = ctx->cover_art->widget;
+    // Teardown must not restyle labels that are being removed with the owner.
+    ctx->cover_art->media_artwork_applied = nullptr;
     image_card_clear_media_artwork(ctx->cover_art);
     ctx->cover_art->active = false;
     ctx->cover_art->widget = nullptr;
@@ -359,7 +361,6 @@ inline void clear_media_cover_art(MediaNowPlayingCtx *ctx) {
     ctx->cover_art->media_artwork_suppressed = false;
     ctx->cover_art->media_overlay = nullptr;
     ctx->cover_art->media_overlay_artwork_tint = false;
-    ctx->cover_art->media_artwork_applied = nullptr;
     if (widget) lv_obj_del(widget);
     ctx->cover_art = nullptr;
   }
@@ -430,6 +431,7 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   art->media_overlay = overlay;
   art->media_overlay_artwork_tint = show_track_details;
   art->media_artwork_applied = [media_ctx]() {
+    media_cover_art_apply_theme(media_ctx, current_theme());
     media_cover_art_refresh_geometry(media_ctx);
   };
   art->pending_fallback_picture.clear();
@@ -446,6 +448,7 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   if (art->image_ready) {
     image_card_sync_media_artwork_visibility(art);
   }
+  media_cover_art_apply_theme(media_ctx, current_theme());
   media_cover_art_refresh_geometry(media_ctx);
   image_card_log_diagnostics(art, "bind-media-artwork");
 }

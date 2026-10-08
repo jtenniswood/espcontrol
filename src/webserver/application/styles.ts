@@ -122,6 +122,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         "display:block;max-height:var(--btn-label-max-height);overflow:hidden;word-break:break-word;min-height:0}" +
         ".sp-image-label-shadow{position:absolute;inset:1px -1px -1px 1px;color:rgba(0,0,0,.5)}" +
         ".sp-image-label-main{position:relative;color:#fff}" +
+        ".sp-media-cover-placeholder .sp-image-label-main{color:var(--preview-text-primary)}" +
+        ".sp-media-cover-placeholder .sp-image-label-shadow{display:none}" +
         ".sp-btn-double .sp-image-label-text,.sp-btn-wide .sp-image-label-text,.sp-btn-extra-tall .sp-image-label-text,.sp-btn-extra-wide .sp-image-label-text,.sp-btn-big .sp-image-label-text,.sp-btn-extra-large .sp-image-label-text,.sp-btn-max-wide .sp-image-label-text,.sp-btn-max-tall .sp-image-label-text,.sp-btn-portrait-large .sp-image-label-text,.sp-btn-landscape-large .sp-image-label-text,.sp-btn-ultra-wide .sp-image-label-text{max-height:var(--btn-label-max-height-dbl)}" +
         ".sp-media-h-slider{position:absolute;left:8%;right:8%;bottom:10%;height:7.5%;border-radius:999px;" +
         "background:var(--preview-track-background);overflow:hidden;pointer-events:none}" +
