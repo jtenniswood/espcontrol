@@ -188,7 +188,7 @@ Yes, when the Home Assistant climate entity exposes those capabilities. Range th
 
 ### Can I Choose a Different Background Colour for Every Card?
 
-Yes. Open an individual card's settings and expand **Custom Colours** to choose its card colour. Use the same 16-colour preset grid as the light-control modal or enter a custom colour. The active state automatically uses a lighter version of that colour. **Reset colours** removes the custom colour so the card uses the panel's defaults again. The shared active colour remains available in [Appearance](/features/appearance).
+Yes. Open an individual card's settings and expand **Custom Colours** to choose its card colour. Use one of the 20 presets in the compact colour grid or enter a custom colour. The active state automatically uses a lighter version of that colour. **Reset colours** removes the custom colour so the card uses the panel's defaults again. The shared active colour remains available in [Appearance](/features/appearance).
 
 ### Can I Send Blinds to 25, 50, or 75 Percent?
 

@@ -829,8 +829,7 @@ export function createButtonSettingsFeature(
         }
         var cardAppearance: any = disclosureSection("Custom Colours", idPrefix + "card-colours", false);
         var defaultCardColor: any = (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone") ? WEB_UI_COLORS.tertiary : WEB_UI_COLORS.secondary;
-        // Match the RGB_PRESETS grid in light_control_rebuild_color_grid.
-        var cardColorPresets: any = ["FFE6B3", "FFFFFF", "DCEBFF", "FFD400", "FF7A00", "FF2600", "FF1744", "FF4081", "D500F9", "7C4DFF", "2979FF", "00E5FF", "00B8D4", "00C853", "7ED321", "AEEA00"];
+        var cardColorPresets: any = ["F6402C", "EB1460", "9C1AB1", "6633B9", "3D4DB7", "46AF4A", "009687", "00BBD5", "00A6F6", "1093F5", "88C440", "CCDD1E", "FFEC16", "FFC100", "FF9800", "000000", "5E7C8B", "9D9D9D", "7A5547", "FF5505"];
         var cardColorEditor: any = document.createElement("div");
         cardColorEditor.className = "sp-card-color-editor";
         function saveCardColor(this: any, hex?: any) {
