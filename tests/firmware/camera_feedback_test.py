@@ -54,6 +54,7 @@ struct Resettable { void reset() {} };
 struct ImageCardCtx {
  bool active = true, media_artwork = false, image_ready = true;
  bool camera_entity_unavailable = false, download_active = false, modal_fit = false;
+ uint32_t fit_background_color = 0;
  bool diagnostics_enabled = false; uint32_t last_modal_request_started_ms = 0;
  uint8_t camera_download_errors = 0, startup_download_errors = 0;
  uint32_t camera_retry_after_ms = 0, next_download_retry_ms = 0;
@@ -85,6 +86,7 @@ struct ImageCardModalUi {
 struct ImageCardModalCache {
  Image *image = nullptr; std::string entity_id, source_url;
  uint32_t cached_at_ms = 0; bool modal_fit = false; Timer *expiry_timer = nullptr; bool ready = false;
+ uint32_t fit_background_color = 0;
 };
 ImageCardModalUi ui;
 ImageCardModalCache cache;
@@ -289,6 +291,11 @@ int main() {
  assert(!image_card_modal_needs_open_refresh(&ctx));
  ctx.modal_fit = true; assert(image_card_modal_needs_open_refresh(&ctx));
  ctx.modal_fit = false;
+ ctx.fit_background_color = 0x304860;
+ assert(!image_card_modal_cache_matches(&ctx));
+ cache.fit_background_color = ctx.fit_background_color;
+ assert(image_card_modal_cache_matches(&ctx));
+ ctx.fit_background_color = cache.fit_background_color = 0;
  image_card_schedule_modal_cache_expiry(&modal);
  assert(cache.expiry_timer->delay == 2100);
  now_ms = 75000;

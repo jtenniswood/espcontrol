@@ -29,9 +29,11 @@ enum class ImageResizeMode { FIT, COVER };
 struct ArtworkImage {
  int width = 0, height = 0, requests = 0, cancellations = 0;
  ImageResizeMode mode = ImageResizeMode::COVER;
+ uint32_t fit_background_color = 0;
  std::string url;
  void set_target_size(int w, int h) { width = w; height = h; }
  void set_resize_mode(ImageResizeMode m) { mode = m; }
+ void set_fit_background_color(uint32_t color) { fit_background_color = color; }
  void cancel_update() { ++cancellations; }
  std::string request_update_url(const std::string &u, int) {
    url = u; ++requests; return u;
@@ -48,6 +50,7 @@ struct ImageCardCtx {
  std::string entity_id = "camera.front", source_url = "snapshot";
  std::string modal_url, modal_source_url;
  uint32_t next_download_retry_ms = 0, last_modal_request_started_ms = 0;
+ uint32_t fit_background_color = 0x304860;
  espcontrol::camera::RefreshSchedule refresh_schedule;
  espcontrol::camera::ImageRevision revision;
 };
@@ -129,6 +132,7 @@ int main() {
    assert(ui.request_timer == nullptr && errors == 0);
    assert(expanded.requests == 1 && ctx.refresh_schedule.in_flight);
    assert(expanded.width == 1280 && expanded.height == 800);
+   assert(expanded.fit_background_color == ctx.fit_background_color);
    assert(expanded.mode == (fit ? esphome::artwork_image::ImageResizeMode::FIT
                                 : esphome::artwork_image::ImageResizeMode::COVER));
    // A late tile completion must not end the expanded request's refresh clock.

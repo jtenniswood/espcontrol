@@ -43,6 +43,7 @@ struct FakeImage {
 struct ImageCardCtx {
   bool active = true, media_artwork = false, image_ready = true;
   bool modal_fit = false;
+  uint32_t fit_background_color = 0;
   bool access_token_request_pending = false, explicit_picture_refresh = false;
   bool download_active = false, visible = true, modal = false;
   bool scheduled_tile_request = false, download_queued = false, requested_once = false;
@@ -171,19 +172,27 @@ int main() {
     card.modal_fit = true;
     const auto previous_mode = tile.get_resize_mode();
     tile.set_resize_mode(image_card_tile_resize_mode(&card));
-    assert(image_card_reset_cached_tile_if_changed(&card, 100, 100, previous_mode));
+    assert(image_card_reset_cached_tile_if_changed(&card, 100, 100, previous_mode, 0));
     assert(!card.image_ready && !card.requested_once && card.last_download_completed_ms == 0);
     assert(tile.releases == 1 && !card.source_url.empty());
     image_card_handle_picture(&card, card.source_url);
     assert(tile_requests == 1 && tile.get_resize_mode() == esphome::artwork_image::ImageResizeMode::FIT);
     finish_tile();
     card.image_ready = true;
-    assert(!image_card_reset_cached_tile_if_changed(&card, 100, 100, tile.get_resize_mode()));
+    assert(!image_card_reset_cached_tile_if_changed(&card, 100, 100, tile.get_resize_mode(), 0));
     assert(tile.releases == 1);
+    // An unchanged fitted image must be decoded again after its surface color changes.
+    card.fit_background_color = 0x304860;
+    assert(image_card_reset_cached_tile_if_changed(&card, 100, 100, tile.get_resize_mode(), 0));
+    assert(tile.releases == 2 && !card.image_ready);
+    card.image_ready = true;
+    assert(!image_card_reset_cached_tile_if_changed(
+      &card, 100, 100, tile.get_resize_mode(), card.fit_background_color));
     card.modal_fit = false;
     const auto fitted_mode = tile.get_resize_mode();
     tile.set_resize_mode(image_card_tile_resize_mode(&card));
-    assert(image_card_reset_cached_tile_if_changed(&card, 100, 100, fitted_mode));
+    assert(image_card_reset_cached_tile_if_changed(
+      &card, 100, 100, fitted_mode, card.fit_background_color));
     image_card_handle_picture(&card, card.source_url);
     assert(tile_requests == 2 && tile.get_resize_mode() == esphome::artwork_image::ImageResizeMode::COVER);
   }
