@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cmath>
 #include <vector>
+#include <limits>
 
 using namespace esphome::artwork_image;
 
@@ -42,6 +43,31 @@ static double weight(int s, int d, int i, int j) {
 }
 
 int main() {
+  // Exhaust common normalization divisors and adversarial full-width inputs.
+  ResampleDivider32 divider;
+  assert(!divider.configure(0));
+  uint32_t random = 0x9834512;
+  for (uint32_t divisor = 1; divisor <= 65536; ++divisor) {
+    assert(divider.configure(divisor));
+    for (uint32_t value : {uint32_t{0}, uint32_t{1}, divisor - 1, divisor,
+                           std::numeric_limits<uint32_t>::max(),
+                           std::numeric_limits<uint32_t>::max() / 2})
+      assert(divider.divide(value) == value / divisor);
+    for (int sample = 0; sample < 8; ++sample) {
+      random = random * 1664525 + 1013904223;
+      assert(divider.divide(random) == random / divisor);
+    }
+  }
+  for (uint32_t divisor : {uint32_t{417792}, uint32_t{8388608}, uint32_t{0x80000000},
+                           uint32_t{0xfffffffe}, uint32_t{0xffffffff}}) {
+    assert(divider.configure(divisor));
+    for (int sample = 0; sample < 1000; ++sample) {
+      random = random * 1664525 + 1013904223;
+      assert(divider.divide(random) == random / divisor);
+    }
+    assert(divider.divide(std::numeric_limits<uint32_t>::max()) ==
+           std::numeric_limits<uint32_t>::max() / divisor);
+  }
   const std::vector<ResampleColor> checker = {{0,0,0}, {255,255,255}, {255,255,255}, {0,0,0}};
   const auto average = resize(checker, 2, 2, 1, 1, 1, 1);
   assert(average[0].r == 128 && average[0].g == 128 && average[0].b == 128);

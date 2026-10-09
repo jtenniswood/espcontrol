@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <type_traits>
 
 namespace esphome {
 namespace artwork_image {
@@ -40,6 +41,26 @@ struct ResampleAxis {
     return std::min(end, static_cast<int64_t>(pixel + 1) * target_size) -
            std::max(begin, static_cast<int64_t>(pixel) * target_size);
   }
+};
+
+// Exact division by a fixed positive divisor, using the MCU's multiply-high
+// instruction. The floor reciprocal underestimates the quotient by at most
+// one; the remainder correction makes every uint32_t input exact.
+class ResampleDivider32 {
+ public:
+  bool configure(uint32_t divisor) {
+    if (!divisor) return false;
+    divisor_ = divisor;
+    reciprocal_ = divisor == 1 ? 0 : (uint64_t{1} << 32) / divisor;
+    return true;
+  }
+  uint32_t divide(uint32_t value) const {
+    if (divisor_ == 1) return value;
+    const uint32_t quotient = (static_cast<uint64_t>(value) * reciprocal_) >> 32;
+    return quotient + (value - quotient * divisor_ >= divisor_);
+  }
+ private:
+  uint32_t divisor_{1}, reciprocal_{0};
 };
 
 // Bounded images can use the MCU's native division rather than software
@@ -101,6 +122,10 @@ class ScanlineResampler {
     accumulated_ = false;
     horizontal_axes_ = nullptr;
     next_source_y_ = 0;
+    if (fast_dimensions_supported()) {
+      horizontal_divider_.configure(source_width_ >= content_width_ ? source_width_ : content_width_ * 2);
+      vertical_divider_.configure((source_height_ >= content_height_ ? source_height_ : content_height_ * 2) * 256);
+    }
     return true;
   }
 
@@ -133,6 +158,10 @@ class ScanlineResampler {
   }
 
  private:
+  template<typename Sum> Sum divide_(Sum value, Sum divisor, const ResampleDivider32 &cached) const {
+    if constexpr (std::is_same_v<Sum, uint32_t>) return cached.divide(value);
+    else return value / divisor;
+  }
   template<typename Axis, typename Sum, typename ReadPixel, typename Emit>
   bool push_row_(int source_y, ReadPixel read_pixel, Emit emit, const Axis *axes) {
     if (!sum_ || source_y != next_source_y_ || source_y >= source_height_) return false;
@@ -158,9 +187,9 @@ class ScanlineResampler {
         b += color.b * weight;
       }
       const size_t index = static_cast<size_t>(x - x0_) * 3;
-      row[index] = (r * 256 + total / 2) / total;
-      row[index + 1] = (g * 256 + total / 2) / total;
-      row[index + 2] = (b * 256 + total / 2) / total;
+      row[index] = divide_(r * 256 + total / 2, total, horizontal_divider_);
+      row[index + 1] = divide_(g * 256 + total / 2, total, horizontal_divider_);
+      row[index + 2] = divide_(b * 256 + total / 2, total, horizontal_divider_);
     }
 
     while (y_ < y1_ && vertical.first <= source_y) {
@@ -176,9 +205,9 @@ class ScanlineResampler {
       for (int x = x0_; x < x1_; x++) {
         const size_t index = static_cast<size_t>(x - x0_) * 3;
         emit(x, y_, ResampleColor{
-            static_cast<uint8_t>((static_cast<Sum>(sum[index]) + divisor / 2) / divisor),
-            static_cast<uint8_t>((static_cast<Sum>(sum[index + 1]) + divisor / 2) / divisor),
-            static_cast<uint8_t>((static_cast<Sum>(sum[index + 2]) + divisor / 2) / divisor)});
+            static_cast<uint8_t>(divide_(static_cast<Sum>(sum[index]) + divisor / 2, divisor, vertical_divider_)),
+            static_cast<uint8_t>(divide_(static_cast<Sum>(sum[index + 1]) + divisor / 2, divisor, vertical_divider_)),
+            static_cast<uint8_t>(divide_(static_cast<Sum>(sum[index + 2]) + divisor / 2, divisor, vertical_divider_))});
       }
       std::memset(sum, 0, channels_ * sizeof(uint64_t));
       accumulated_ = false;
@@ -193,6 +222,7 @@ class ScanlineResampler {
   size_t channels_{0};
   uint64_t *sum_{nullptr};
   const ResampleAxis32 *horizontal_axes_{nullptr};
+  ResampleDivider32 horizontal_divider_, vertical_divider_;
   uint16_t *rows_[2]{nullptr, nullptr};
   bool accumulated_{false};
 };
