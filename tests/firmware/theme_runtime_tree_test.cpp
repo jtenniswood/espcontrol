@@ -850,7 +850,54 @@ static void test_alarm_state_contrast_during_theme_refresh() {
   set_active_theme_palette(DARK_THEME);
 }
 
+static void test_custom_default_contrast_after_active_theme_refresh() {
+  for (uint32_t base : {0xFF8C00u, 0x9D9D9Du}) {
+    const uint32_t active = lighter_card_color(base);
+    assert(readable_text_color_for_bg(base) == 0xFFFFFF);
+    assert(readable_text_color_for_bg(active) == 0x212121);
+    set_active_theme_palette(DARK_THEME);
+    lv_obj_t page, card, label, subpage, sub_card, sub_label;
+    card.children = {&label};
+    sub_card.children = {&sub_label};
+    label.parent = &card;
+    sub_label.parent = &sub_card;
+    for (auto *button : {&card, &sub_card}) {
+      button->type = &lv_button_class;
+      button->opacity = LV_OPA_COVER;
+      theme_set_content_background(button);
+      lv_obj_set_style_bg_color(button, lv_color_hex(base), LV_PART_MAIN);
+      lv_obj_set_style_bg_color(button, lv_color_hex(active), LV_STATE_CHECKED);
+      lv_obj_set_style_bg_color(button, lv_color_hex(active), LV_STATE_PRESSED);
+    }
+    BtnSlot slots[] = {{&card}};
+    const bool neutral[] = {true};
+    register_theme_grid(&page, slots, neutral, 1, 100, 100, 100);
+    navigation_subpages().push_back({&subpage, nullptr, {{true, &sub_card}}});
+    for (int state : {LV_STATE_CHECKED, LV_STATE_PRESSED, LV_STATE_CHECKED | LV_STATE_PRESSED}) {
+      for (const auto *theme : {&LIGHT_THEME, &DARK_THEME}) {
+        card.state = sub_card.state = state;
+        set_active_theme_palette(*theme);
+        apply_current_theme();
+        for (auto *button : {&card, &sub_card}) {
+          assert(button->state == state);
+          assert(button->background.full == base);
+          assert(button->text.full == 0xFFFFFF);
+          assert(button->children.front()->text.full == 0x212121);
+          lv_obj_clear_state(button, LV_STATE_CHECKED | LV_STATE_PRESSED);
+          // An entity update/release only resynchronizes existing state styles.
+          sync_card_checked_text_color(button);
+          assert(button->children.front()->text.full == 0xFFFFFF);
+        }
+      }
+    }
+    navigation_subpages().clear();
+    lv_event_t deleted{&page};
+    page.delete_callback(&deleted);
+  }
+}
+
 int main() {
+  test_custom_default_contrast_after_active_theme_refresh();
   test_alarm_state_contrast_during_theme_refresh();
   test_custom_card_theme_preservation();
   ThemePalette alternate = DARK_THEME;

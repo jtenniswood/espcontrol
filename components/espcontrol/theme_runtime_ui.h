@@ -66,11 +66,10 @@ inline void theme_apply_grid_button(lv_obj_t *button, uint32_t neutral,
     else if (secondary_surface) neutral = current_grid_sensor_color();
     lv_obj_set_style_bg_color(button, lv_color_hex(neutral), LV_PART_MAIN);
   }
-  const auto background = lv_color_to_32(lv_obj_get_style_bg_color(button, LV_PART_MAIN), 255);
-  const uint32_t background_rgb = (static_cast<uint32_t>(background.red) << 16) |
-      (static_cast<uint32_t>(background.green) << 8) | background.blue;
+  // Default text must follow the default fill even while checked or pressed.
   lv_obj_set_style_text_color(button,
-      lv_color_hex(content_fill ? readable_text_color_for_bg(background_rgb) : theme.text_primary), LV_PART_MAIN);
+      lv_color_hex(content_fill ? theme_grid_state_text_color(button, LV_STATE_DEFAULT)
+                                : theme.text_primary), LV_PART_MAIN);
   // Accent/checked foreground follows the shared contrast rule independently
   // of the neutral theme. The accent itself remains card/user-owned.
   lv_obj_set_style_text_color(button, lv_color_hex(theme_grid_state_text_color(button, LV_STATE_CHECKED)),
