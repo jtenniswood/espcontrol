@@ -54,6 +54,8 @@ export function registerMediaCardTypes(
         setMediaCoverArtDetailsEnabled,
         mediaCoverArtSecondaryEntity,
         setMediaCoverArtSecondaryEntity,
+        mediaPowerEntity,
+        setMediaPowerEntity,
         mediaVolumeMax,
         setMediaVolumeMax,
         mediaSpeakerGroupEntity,
@@ -640,6 +642,41 @@ export function registerMediaCardTypes(
                     placeholder: b.sensor === "position" ? "Position" : "e.g. Living Room Speaker",
                     rerender: true,
                 });
+            }
+            if (b.sensor === "control_modal") {
+                var powerDisclosure: any = helpers.disclosureSection(
+                    "Optional Power", helpers.idPrefix + "media-optional-power",
+                    b._mediaOptionalPowerOpen === true);
+                var powerEntityField: any = helpers.renderCardEntityField(powerDisclosure.section, b, helpers, {
+                    entity: {
+                        label: "Power Entity",
+                        idSuffix: "media-power-entity",
+                        value: function (this: any) { return mediaPowerEntity(b); },
+                        placeholder: "e.g. media_player.living_room_tv",
+                        domains: ["media_player", "switch", "input_boolean", "light", "fan"],
+                        bindName: null,
+                        rerender: false,
+                    },
+                });
+                var powerHint: any = document.createElement("p");
+                powerHint.textContent = "Controls a separate device from the Power tab. Playback and volume use the main entity. Leave blank to use the player's own power control.";
+                powerDisclosure.section.appendChild(powerHint);
+                function syncPowerEntity(this: any) {
+                    setMediaPowerEntity(b, powerEntityField.input.value);
+                    b._mediaOptionalPowerOpen = true;
+                    helpers.saveField("options", b.options);
+                }
+                function savePowerEntity(this: any) {
+                    syncPowerEntity();
+                    renderButtonSettings();
+                }
+                powerEntityField.input.addEventListener("input", syncPowerEntity);
+                powerEntityField.input.addEventListener("change", savePowerEntity);
+                powerEntityField.input.addEventListener("blur", savePowerEntity);
+                powerEntityField.input.addEventListener("keydown", function (this: any, event?: any) {
+                    if (event.key === "Enter") { savePowerEntity(); this.blur(); }
+                });
+                panel.appendChild(powerDisclosure.panel);
             }
             var mediaAdvancedSettings: any = panel;
             if (b.sensor === "control_modal" || b.sensor === "cover_art") {

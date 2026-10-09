@@ -22,6 +22,10 @@ constexpr lv_opa_t MEDIA_CONTROL_SPEAKER_VOLUME_TEXT_OPA = 204;
 
 struct MediaControlCtx {
   std::string entity_id;
+  std::string power_entity;
+  std::string power_state_text = "unknown";
+  bool power_state_known = false;
+  bool power_available = false;
   std::string label;
   std::string friendly_name;
   std::string state_text = "unknown";
@@ -219,8 +223,8 @@ inline bool media_control_progress_supported(MediaControlCtx *ctx) {
 }
 
 inline bool media_control_power_supported(MediaControlCtx *ctx) {
-  return ctx && espcontrol::media::power_toggle_supported(
-    ctx->supported_features_known, ctx->supported_features);
+  return ctx && (!ctx->power_entity.empty() || espcontrol::media::power_toggle_supported(
+    ctx->supported_features_known, ctx->supported_features));
 }
 
 inline bool media_control_shuffle_supported(MediaControlCtx *ctx) {
@@ -236,6 +240,12 @@ inline bool media_control_repeat_supported(MediaControlCtx *ctx) {
 inline espcontrol::media::PowerCommand media_control_power_command(
     MediaControlCtx *ctx) {
   if (!ctx) return espcontrol::media::PowerCommand::NONE;
+  if (!ctx->power_entity.empty()) {
+    // A configured on/off entity need not advertise media-player capabilities.
+    return espcontrol::media::power_command(
+      true, espcontrol::media::SUPPORT_TURN_ON | espcontrol::media::SUPPORT_TURN_OFF,
+      ctx->power_state_known, ctx->power_available, ctx->power_state_text);
+  }
   return espcontrol::media::power_command(
     ctx->supported_features_known, ctx->supported_features,
     ctx->state_known, ctx->available, ctx->state_text);
@@ -243,6 +253,15 @@ inline espcontrol::media::PowerCommand media_control_power_command(
 
 inline void media_control_send_power_action(MediaControlCtx *ctx) {
   const auto command = media_control_power_command(ctx);
+  if (!ctx) return;
+  if (!ctx->power_entity.empty()) {
+    if (command == espcontrol::media::PowerCommand::TURN_ON) {
+      send_media_player_action(ctx->power_entity, "homeassistant.turn_on");
+    } else if (command == espcontrol::media::PowerCommand::TURN_OFF) {
+      send_media_player_action(ctx->power_entity, "homeassistant.turn_off");
+    }
+    return;
+  }
   if (command == espcontrol::media::PowerCommand::TURN_ON) {
     send_media_player_action(ctx->entity_id, "media_player.turn_on");
   } else if (command == espcontrol::media::PowerCommand::TURN_OFF) {
@@ -333,6 +352,7 @@ inline void media_playback_detach_now_playing(MediaNowPlayingCtx *ctx);
 inline void media_cover_art_unregister_theme(MediaNowPlayingCtx *ctx);
 inline void media_playback_detach_slider(SliderCtx *ctx);
 inline void media_playback_attach_control(MediaPlaybackState *state, MediaControlCtx *ctx);
+inline void media_playback_attach_power_control(MediaPlaybackState *state, MediaControlCtx *ctx);
 inline void media_playback_subscribe_playback_state(MediaPlaybackState *state);
 inline void media_playback_subscribe_content(MediaPlaybackState *state);
 inline void media_playback_subscribe_metadata(MediaPlaybackState *state);
@@ -417,6 +437,13 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
   media_playback_subscribe_metadata(state);
   media_playback_subscribe_volume(state);
   media_playback_subscribe_modes(state);
+  if (!ctx->power_entity.empty()) {
+    MediaPlaybackState *power = media_playback_ensure_state(ctx->power_entity);
+    if (power) {
+      media_playback_attach_power_control(power, ctx);
+      media_playback_subscribe_playback_state(power);
+    }
+  }
   if (!ctx->speaker_group_entity.empty()) {
     media_playback_subscribe_grouping(state);
     media_playback_subscribe_speaker_discovery(state, ctx->speaker_group_entity);
@@ -587,7 +614,8 @@ inline void media_set_pending_seek_position(SliderCtx *ctx, int value) {
   media_apply_position(ctx);
 }
 
-constexpr int MEDIA_PLAYBACK_STATE_MAX = MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS;
+// Each card can use a main player plus a separate power or cover-art entity.
+constexpr int MEDIA_PLAYBACK_STATE_MAX = 2 * (MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
 constexpr size_t MEDIA_PLAYBACK_STATE_CONSUMERS_MAX =
   static_cast<size_t>(MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
 
@@ -664,6 +692,7 @@ struct MediaPlaybackState {
   lv_timer_t *progress_timer = nullptr;
   std::vector<SliderCtx *> sliders;
   std::vector<MediaControlCtx *> controls;
+  std::vector<MediaControlCtx *> power_controls;
   std::vector<MediaVolumeCtx *> volumes;
   std::vector<MediaPlaylistCtx *> playlists;
   std::vector<MediaNowPlayingCtx *> now_playing;
@@ -701,6 +730,7 @@ inline void media_playback_detach_control(MediaControlCtx *ctx) {
   for (MediaPlaybackState *state : media_playback_states()) {
     if (!state) continue;
     media_playback_erase_consumer(state->controls, ctx);
+    media_playback_erase_consumer(state->power_controls, ctx);
     media_playback_refresh_progress_timer(state);
   }
 }
@@ -826,6 +856,7 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->artwork_content_mask = 0;
   std::vector<SliderCtx *>().swap(state->sliders);
   std::vector<MediaControlCtx *>().swap(state->controls);
+  std::vector<MediaControlCtx *>().swap(state->power_controls);
   std::vector<MediaVolumeCtx *>().swap(state->volumes);
   std::vector<MediaPlaylistCtx *>().swap(state->playlists);
   std::vector<MediaNowPlayingCtx *>().swap(state->now_playing);
@@ -1329,8 +1360,7 @@ inline void media_playback_apply_state_to_volumes(MediaPlaybackState *state) {
 inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
                                                   MediaControlCtx *ctx) {
   if (!state || !ctx) return;
-  const bool previous_power_supported = espcontrol::media::power_toggle_supported(
-    ctx->supported_features_known, ctx->supported_features);
+  const bool previous_power_supported = media_control_power_supported(ctx);
   const bool previous_shuffle_supported = media_control_shuffle_supported(ctx);
   const bool previous_repeat_supported = media_control_repeat_supported(ctx);
   const bool state_text_changed = state->has_state
@@ -1382,8 +1412,7 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
   ctx->volume_known = state->volume_known;
   ctx->supported_features_known = state->supported_features_known;
   ctx->supported_features = state->supported_features;
-  const bool power_supported = espcontrol::media::power_toggle_supported(
-    ctx->supported_features_known, ctx->supported_features);
+  const bool power_supported = media_control_power_supported(ctx);
   const bool shuffle_supported = media_control_shuffle_supported(ctx);
   const bool repeat_supported = media_control_repeat_supported(ctx);
   ctx->shuffle_known = shuffle_supported && state->shuffle_known;
@@ -1494,7 +1523,36 @@ inline void media_playback_apply_state_to_controls(MediaPlaybackState *state) {
   }
 }
 
+inline void media_playback_apply_state_to_power_control(MediaPlaybackState *state,
+                                                       MediaControlCtx *ctx) {
+  if (!state || !ctx) return;
+  ctx->power_state_known = state->has_state;
+  ctx->power_available = state->available;
+  ctx->power_state_text = state->state_text;
+  media_control_refresh_power(ctx);
+}
+
+inline void media_playback_attach_power_control(MediaPlaybackState *state, MediaControlCtx *ctx) {
+  if (!state || !ctx) return;
+  for (MediaControlCtx *existing : state->power_controls) {
+    if (existing == ctx) {
+      media_playback_apply_state_to_power_control(state, ctx);
+      return;
+    }
+  }
+  if (state->power_controls.size() < MEDIA_PLAYBACK_STATE_CONSUMERS_MAX) {
+    state->power_controls.push_back(ctx);
+    media_playback_apply_state_to_power_control(state, ctx);
+    return;
+  }
+  ESP_LOGW("media", "No shared media power slot available for %s", state->entity_id.c_str());
+}
+
 inline void media_playback_apply_state_to_consumers(MediaPlaybackState *state) {
+  if (!state) return;
+  for (MediaControlCtx *ctx : state->power_controls) {
+    media_playback_apply_state_to_power_control(state, ctx);
+  }
   media_playback_apply_state_to_sliders(state);
   media_playback_apply_state_to_buttons(state);
   media_playback_apply_state_to_now_playing(state);
@@ -2839,8 +2897,7 @@ inline void media_control_refresh_power(MediaControlCtx *ctx) {
   if (!ctx || ui.active != ctx || !ui.power_btn) return;
   const auto command = media_control_power_command(ctx);
   const bool interactive = command != espcontrol::media::PowerCommand::NONE;
-  const bool on = ctx->state_known && ctx->available && ctx->state_text != "off" &&
-                  ctx->state_text != "unknown" && ctx->state_text != "unavailable";
+  const bool on = command == espcontrol::media::PowerCommand::TURN_OFF;
   const uint32_t bg_color = on ? ctx->accent_color
                                : theme_display_color(current_theme().surface_primary);
   theme_set_content_background(ui.power_btn, on);
@@ -2854,7 +2911,7 @@ inline void media_control_refresh_power(MediaControlCtx *ctx) {
                                          : current_theme().text_primary), LV_PART_MAIN);
   }
   if (ui.power_status_lbl) {
-    const std::string status = !ctx->state_known
+    const std::string status = !interactive
       ? espcontrol_i18n(std::string("Unknown"))
       : (on ? espcontrol_i18n(std::string("On"))
             : espcontrol_i18n(std::string("Off")));
@@ -4582,6 +4639,7 @@ inline MediaControlCtx *create_media_control_context(
     int width_compensation_percent) {
   MediaControlCtx *ctx = new MediaControlCtx();
   ctx->entity_id = p.entity;
+  ctx->power_entity = espcontrol::media::decode_config_v1(p).power_entity;
   ctx->label = media_control_card_label(p);
   ctx->cover_art_mode = media_card_mode(p.sensor) == "cover_art";
   ctx->max_pct = media_volume_max_percent(p);

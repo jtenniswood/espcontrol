@@ -15,6 +15,7 @@ import {
     MEDIA_PLAYLIST_CONTENT_TYPE_OPTION,
     MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION,
     MEDIA_SPEAKER_GROUP_ENTITY_OPTION,
+    MEDIA_POWER_ENTITY_OPTION,
     MEDIA_VOLUME_MAX_OPTION,
     cardContractOptionDefaultValue,
     cardContractOptionSpec,
@@ -154,6 +155,8 @@ export function createConfigMediaOptionsFeature(
         mode = mediaEditorMode(mode);
         if (mode === "control_modal") {
             var controlOut: any = "";
+            var powerEntity: any = mediaPowerEntity({ options });
+            if (powerEntity) controlOut = setConfigOptionValue(controlOut, MEDIA_POWER_ENTITY_OPTION, powerEntity);
             var controlGroupEntity: any = normalizeMediaSpeakerGroupEntity(configOptionValue(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
             if (controlGroupEntity) {
                 controlOut = setConfigOptionValue(controlOut, MEDIA_SPEAKER_GROUP_ENTITY_OPTION, controlGroupEntity);
@@ -262,6 +265,15 @@ export function createConfigMediaOptionsFeature(
         var values: any = spec && spec.values ? spec.values : ["icon", "volume"];
         return values.indexOf(value) >= 0 ? value : "icon";
     }
+    function mediaPowerEntity(this: any, b?: any) {
+        return String(configOptionValue(b && b.options, MEDIA_POWER_ENTITY_OPTION) || "").trim();
+    }
+    function setMediaPowerEntity(this: any, b?: any, value?: any) {
+        if (!b) return "";
+        b.options = setConfigOptionValue(b.options, MEDIA_POWER_ENTITY_OPTION, String(value || "").trim());
+        b.options = normalizeMediaOptions(b.options, b.sensor);
+        return b.options;
+    }
     function mediaVolumeMax(this: any, b?: any) {
         return normalizeMediaVolumeMax(configOptionValue(b && b.options, MEDIA_VOLUME_MAX_OPTION));
     }
@@ -367,6 +379,8 @@ export function createConfigMediaOptionsFeature(
         setMediaCoverArtSecondaryEntity,
         normalizeMediaLabelDisplayMode,
         normalizeMediaNumberDisplayMode,
+        mediaPowerEntity,
+        setMediaPowerEntity,
         mediaVolumeMax,
         setMediaVolumeMax,
         normalizeMediaSpeakerGroupEntity,

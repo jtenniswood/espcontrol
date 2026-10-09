@@ -94,6 +94,7 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   coverArtAction: "control_modal",
   showTrackDetails: false,
   secondaryEntity: "",
+  powerEntity: "",
   controlLabelDisplay: "status",
   controlNumberDisplay: "icon",
   maxVolumePercent: 100,
@@ -121,6 +122,12 @@ assert.strictEqual(model.decodeMediaCardConfigV1({
   sensor: "cover_art",
   options: "cover_art_secondary_entity=media_player.apple_tv",
 }).secondaryEntity, "media_player.apple_tv", "Media decoder exposes the external-source player");
+assert.strictEqual(model.decodeMediaCardConfigV1({
+  type: "media", sensor: "control_modal", options: "power_entity=media_player.tv",
+}).powerEntity, "media_player.tv", "Media decoder exposes the separate power entity");
+assert.strictEqual(model.decodeMediaCardConfigV1({
+  type: "media", sensor: "cover_art", options: "power_entity=media_player.tv",
+}).powerEntity, "", "Power override applies only to All Controls");
 const coverArtAdvanced = model.decodeMediaCardConfigV1({
   type: "media",
   sensor: "cover_art",
@@ -142,6 +149,7 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   coverArtAction: "control_modal",
   showTrackDetails: false,
   secondaryEntity: "",
+  powerEntity: "",
   controlLabelDisplay: "status",
   controlNumberDisplay: "icon",
   maxVolumePercent: 1,

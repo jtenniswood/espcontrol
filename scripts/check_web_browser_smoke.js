@@ -3521,6 +3521,26 @@ async function assertSpeakerGroupEditorAndPreview(page, posts, label) {
     await page.waitForSelector(".sp-settings-overlay.sp-visible");
     assert.strictEqual(await page.getByLabel("Name", { exact: true }).inputValue(), name, `${label}: reopening All Controls must preserve ${name}`);
   }
+  await page.getByRole("button", { name: "Optional Power", exact: true }).click();
+  const powerEntity = page.getByLabel("Power Entity", { exact: true });
+  await powerEntity.evaluate((input) => {
+    input.value = "media_player.living_room_tv";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  assert.strictEqual(await powerEntity.inputValue(), "media_player.living_room_tv", `${label}: power entity survives editor rerender`);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay").classList.contains("sp-visible"));
+  await page.locator('.sp-main [data-slot="4"]').click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "Optional Power", exact: true }).click();
+  assert.strictEqual(await powerEntity.inputValue(), "media_player.living_room_tv", `${label}: saved power entity survives reopening`);
+  await powerEntity.evaluate((input) => {
+    input.value = "";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  assert.strictEqual(await powerEntity.inputValue(), "", `${label}: clearing the override restores the default`);
   const advanced = page.locator(".sp-settings-modal .sp-disclosure").filter({
     has: page.locator("#sp-inp-media-advanced"),
   });

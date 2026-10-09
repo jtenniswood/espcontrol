@@ -35,6 +35,7 @@ struct ConfigV1 {
   NowPlayingControl now_playing_control = NowPlayingControl::NONE;
   bool show_track_details = false;
   std::string secondary_entity;
+  std::string power_entity;
   ControlLabelDisplay control_label_display = ControlLabelDisplay::STATUS;
   ControlNumberDisplay control_number_display = ControlNumberDisplay::ICON;
   int max_volume_percent = 100;
@@ -77,6 +78,9 @@ inline ConfigV1 decode_config_v1(const ParsedCfg &saved) {
     } else if (saved.precision == "play_pause") {
       config.now_playing_control = NowPlayingControl::PLAY_PAUSE;
     }
+  }
+  if (config.mode == Mode::CONTROL_MODAL) {
+    config.power_entity = trim_saved_option_value(cfg_option_value(saved.options, MEDIA_POWER_ENTITY_OPTION));
   }
   config.show_track_details = cfg_option_token_present(
       saved.options, MEDIA_COVER_ART_DETAILS_OPTION);

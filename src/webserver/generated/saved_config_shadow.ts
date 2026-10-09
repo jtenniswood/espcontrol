@@ -161,6 +161,7 @@ export const SAVED_CONFIG_SHADOW_PILOT_POLICIES: Readonly<Record<string, CardNor
       "cover_art_details",
       "cover_art_secondary_entity",
       "speaker_group_entity",
+      "power_entity",
       "volume_max",
       "playlist_content_id",
       "playlist_content_type",
@@ -442,6 +443,8 @@ export function normalizeSavedConfigMediaShadow(input: Partial<CardConfig>): Car
   else if (MEDIA_STATE_DISPLAY_MODES.indexOf(config.sensor as typeof MEDIA_STATE_DISPLAY_MODES[number]) < 0 || config.precision !== "state") config.precision = "";
   const out: string[] = []; const maxVolume = normalizedMediaVolume(optionValue(source, "volume_max"));
   if (config.sensor === "control_modal") {
+    const powerEntity = optionValue(source, "power_entity").trim(); if (powerEntity) out.push("power_entity=" + encodeOptionValue(powerEntity));
+    const speakerGroupEntity = optionValue(source, "speaker_group_entity").trim(); if (speakerGroupEntity) out.push("speaker_group_entity=" + encodeOptionValue(speakerGroupEntity));
     if (optionValue(source, "label_display").trim() === "label") out.push("label_display=label"); if (optionValue(source, "number_display").trim() === "volume") out.push("number_display=volume"); if (maxVolume !== MEDIA_VOLUME_DEFAULT) out.push("volume_max=" + maxVolume);
   } else if (config.sensor === "cover_art") {
     if (optionPresent(source, "cover_art_details")) out.push("cover_art_details"); const secondaryEntity = optionValue(source, "cover_art_secondary_entity").trim(); if (secondaryEntity) out.push("cover_art_secondary_entity=" + encodeOptionValue(secondaryEntity)); const speakerGroupEntity = optionValue(source, "speaker_group_entity").trim(); if (speakerGroupEntity) out.push("speaker_group_entity=" + encodeOptionValue(speakerGroupEntity)); if (maxVolume !== MEDIA_VOLUME_DEFAULT) out.push("volume_max=" + maxVolume);

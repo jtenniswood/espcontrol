@@ -193,5 +193,65 @@
       "precision": "",
       "options": "playlist_content_id=morning,playlist_player_source=Kitchen"
     }
+  },
+  {
+    "name": "all controls preserves separate TV power alongside speaker options",
+    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;volume_max=65,power_entity=media_player.tv,speaker_group_entity=sensor.speakers",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "control_modal",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "power_entity=media_player.tv,speaker_group_entity=sensor.speakers,volume_max=65"
+    }
+  },
+  {
+    "name": "all controls preserves a power switch",
+    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;power_entity=switch.tv",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "control_modal",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "power_entity=switch.tv"
+    }
+  },
+  {
+    "name": "empty power override uses the main player",
+    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;power_entity=%20%20",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "control_modal",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "power override is omitted outside all controls",
+    "input": "media_player.sonos;Living Room;Auto;Auto;cover_art;;media;;power_entity=media_player.tv",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "cover_art",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
   }
 ]

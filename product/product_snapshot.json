@@ -5035,6 +5035,20 @@
             ]
           },
           {
+            "name": "power_entity",
+            "label": "Power Entity",
+            "kind": "text",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "sensor",
+                "operator": "equals",
+                "value": "control_modal"
+              }
+            ]
+          },
+          {
             "name": "label_display",
             "label": "Label Display",
             "kind": "choice",
@@ -5178,6 +5192,7 @@
             "cover_art_details",
             "cover_art_secondary_entity",
             "speaker_group_entity",
+            "power_entity",
             "volume_max",
             "playlist_content_id",
             "playlist_content_type",

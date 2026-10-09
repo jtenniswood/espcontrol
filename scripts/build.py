@@ -2677,6 +2677,8 @@ def gen_saved_config_shadow_ts(data):
         "  else if (MEDIA_STATE_DISPLAY_MODES.indexOf(config.sensor as typeof MEDIA_STATE_DISPLAY_MODES[number]) < 0 || config.precision !== \"state\") config.precision = \"\";\n"
         "  const out: string[] = []; const maxVolume = normalizedMediaVolume(optionValue(source, \"volume_max\"));\n"
         "  if (config.sensor === \"control_modal\") {\n"
+        "    const powerEntity = optionValue(source, \"power_entity\").trim(); if (powerEntity) out.push(\"power_entity=\" + encodeOptionValue(powerEntity));\n"
+        "    const speakerGroupEntity = optionValue(source, \"speaker_group_entity\").trim(); if (speakerGroupEntity) out.push(\"speaker_group_entity=\" + encodeOptionValue(speakerGroupEntity));\n"
         "    if (optionValue(source, \"label_display\").trim() === \"label\") out.push(\"label_display=label\"); if (optionValue(source, \"number_display\").trim() === \"volume\") out.push(\"number_display=volume\"); if (maxVolume !== MEDIA_VOLUME_DEFAULT) out.push(\"volume_max=\" + maxVolume);\n"
         "  } else if (config.sensor === \"cover_art\") {\n"
         "    if (optionPresent(source, \"cover_art_details\")) out.push(\"cover_art_details\"); const secondaryEntity = optionValue(source, \"cover_art_secondary_entity\").trim(); if (secondaryEntity) out.push(\"cover_art_secondary_entity=\" + encodeOptionValue(secondaryEntity)); const speakerGroupEntity = optionValue(source, \"speaker_group_entity\").trim(); if (speakerGroupEntity) out.push(\"speaker_group_entity=\" + encodeOptionValue(speakerGroupEntity)); if (maxVolume !== MEDIA_VOLUME_DEFAULT) out.push(\"volume_max=\" + maxVolume);\n"
@@ -2875,6 +2877,8 @@ def gen_saved_config_shadow_h(data):
         "  else if (!saved_config_shadow_string_in(config.sensor, SAVED_CONFIG_SHADOW_MEDIA_STATE_DISPLAY_MODES, sizeof(SAVED_CONFIG_SHADOW_MEDIA_STATE_DISPLAY_MODES) / sizeof(SAVED_CONFIG_SHADOW_MEDIA_STATE_DISPLAY_MODES[0])) || config.precision != \"state\") config.precision.clear();\n",
         "  std::string out; const int max_volume = saved_config_shadow_media_volume(cfg_option_value(source, \"volume_max\"));\n",
         "  if (config.sensor == \"control_modal\") {\n",
+        "    const std::string power_entity = saved_config_shadow_trim(cfg_option_value(source, \"power_entity\")); if (!power_entity.empty()) saved_config_shadow_append_option(out, \"power_entity\", power_entity);\n",
+        "    const std::string speaker_group_entity = saved_config_shadow_trim(cfg_option_value(source, \"speaker_group_entity\")); if (!speaker_group_entity.empty()) saved_config_shadow_append_option(out, \"speaker_group_entity\", speaker_group_entity);\n",
         "    if (saved_config_shadow_trim(cfg_option_value(source, \"label_display\")) == \"label\") saved_config_shadow_append_option(out, \"label_display\", \"label\");\n",
         "    if (saved_config_shadow_trim(cfg_option_value(source, \"number_display\")) == \"volume\") saved_config_shadow_append_option(out, \"number_display\", \"volume\");\n",
         "    if (max_volume != SAVED_CONFIG_SHADOW_MEDIA_VOLUME_DEFAULT) saved_config_shadow_append_option(out, \"volume_max\", std::to_string(max_volume));\n",

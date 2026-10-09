@@ -59,6 +59,7 @@ constexpr const char *LABEL_DISPLAY_OPTION = card_runtime_option_name_label_disp
 constexpr const char *NUMBER_DISPLAY_OPTION = card_runtime_option_name_number_display();
 constexpr const char *TEMPERATURE_STEP_OPTION = card_runtime_option_name_temperature_step();
 constexpr const char *VOLUME_MAX_OPTION = card_runtime_option_name_volume_max();
+constexpr const char *MEDIA_POWER_ENTITY_OPTION = card_runtime_option_name_power_entity();
 constexpr const char *MEDIA_SPEAKER_GROUP_ENTITY_OPTION = card_runtime_option_name_speaker_group_entity();
 constexpr const char *MEDIA_PLAYLIST_CONTENT_ID_OPTION = card_runtime_option_name_playlist_content_id();
 constexpr const char *MEDIA_PLAYLIST_CONTENT_TYPE_OPTION = card_runtime_option_name_playlist_content_type();
@@ -328,10 +329,16 @@ inline std::string media_card_options_normalized(const std::string &options,
                                                  const std::string &mode) {
   if (mode == "control_modal") {
     std::string out;
+    const std::string power_entity = trim_saved_option_value(
+      cfg_option_value(options, MEDIA_POWER_ENTITY_OPTION));
+    if (!power_entity.empty()) {
+      out = std::string(MEDIA_POWER_ENTITY_OPTION) + "=" + encode_compact_field(power_entity);
+    }
     std::string speaker_group_entity = trim_saved_option_value(
       cfg_option_value(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
     if (!speaker_group_entity.empty()) {
-      out = std::string(MEDIA_SPEAKER_GROUP_ENTITY_OPTION) + "=" +
+      if (!out.empty()) out += ",";
+      out += std::string(MEDIA_SPEAKER_GROUP_ENTITY_OPTION) + "=" +
         encode_compact_field(speaker_group_entity);
     }
     if (cfg_option_value(options, "label_display") == "label") {

@@ -30,6 +30,7 @@ export interface MediaCardConfigV1 {
   coverArtAction: MediaCoverArtAction;
   showTrackDetails: boolean;
   secondaryEntity: string;
+  powerEntity: string;
   controlLabelDisplay: MediaControlLabelDisplay;
   controlNumberDisplay: MediaControlNumberDisplay;
   maxVolumePercent: number;
@@ -82,6 +83,7 @@ export function decodeMediaCardConfigV1(config: Partial<CardConfig>): MediaCardC
   const precision = config.precision || "";
   return {
     version: MEDIA_CARD_CONFIG_VERSION,
+    powerEntity: mode === "control_modal" ? configOptionValue(options, "power_entity").trim() : "",
     entity: config.entity || "",
     mode,
     stateDisplay:
