@@ -686,7 +686,6 @@ inline void fan_control_refresh_card(FanCardCtx *ctx) {
   if (!ctx) return;
   fan_apply_card_visual(ctx);
   transient_status_label_set_steady(ctx->status_label, fan_control_card_title(ctx));
-  transient_status_label_show_if_changed(ctx->status_label, fan_status_text(ctx), false);
 }
 
 // Like the light modal, each binary control is one large toggle target.  This
