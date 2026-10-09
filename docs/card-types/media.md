@@ -39,11 +39,15 @@ Add your Sonos, Spotify, Apple TV, Plex, Music Assistant, or other player integr
 - All Controls hides tabs that the selected player does not support. Its speaker tab appears only when compatible speakers are available.
 - For **Track, Album or Playlist**, choose the speaker, then provide the content ID or URI. You can also set the player source or input when the integration uses one.
 
-## Separate Power Device
+## Modal Settings
 
-For **All Controls**, open **Optional Power** and enter a **Power Entity** to control another device from the Power tab. For example, use `media_player.living_room_sonos` as the main entity for playback and volume, and `media_player.living_room_tv` as the Power Entity for the TV. You can also select a `switch`, `input_boolean`, `light`, or `fan` entity.
+For **All Controls** and **Cover Art**, open **Modal Settings** to reorder the popup tabs by dragging or using the up/down arrows, and switch off tabs you do not want. The popup opens the first available tab in your order. Unsupported tabs stay hidden; if none of your selected tabs is available, Controls remains available as a fallback.
 
-The Power tab follows that device's on/off state and stays disabled while its state is unknown or unavailable. Clear Power Entity to return to the main player's supported power control. This option applies to **All Controls** only.
+### Separate Power Device
+
+Inside **Modal Settings**, open **Optional Power** and enter a **Power Entity** to control another device from the Power tab. For example, use `media_player.living_room_sonos` as the main entity for playback and volume, and `media_player.living_room_tv` as the Power Entity for the TV. You can also select a `switch`, `input_boolean`, `light`, or `fan` entity.
+
+The Power tab follows that device's on/off state and stays disabled while its state is unknown or unavailable. Clear Power Entity to return to the main player's supported power control. Both **All Controls** and **Cover Art** use these settings.
 
 ## Cover Art
 

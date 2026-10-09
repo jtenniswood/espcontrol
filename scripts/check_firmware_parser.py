@@ -676,6 +676,15 @@ int main() {
   assert(cover_art_advanced.options == "speaker_group_entity=sensor.cover_art_speakers,volume_max=75");
   assert(media_speaker_group_entity(cover_art_advanced) == "sensor.cover_art_speakers");
   assert(media_volume_max_percent(cover_art_advanced) == 75);
+  auto cover_art_modal_options = parse_cfg("media_player.sonos;Living;Auto;Auto;cover_art;;media;;power_entity=media_player.tv,media_tabs=power%7Cvolume");
+  auto cover_art_modal_config = espcontrol::media::decode_config_v1(cover_art_modal_options);
+  assert(cover_art_modal_config.power_entity == "media_player.tv");
+  assert(cover_art_modal_config.control_tabs.count == 2);
+  assert(cover_art_modal_config.control_tabs.tabs[0] == MediaControlTab::POWER);
+  auto shared_modal_options = parse_cfg("media_player.sonos;Living;Auto;Auto;control_modal;;media;;power_entity=media_player.tv,media_tabs=volume%7Cpower");
+  auto shared_modal_config = espcontrol::media::decode_config_v1(shared_modal_options);
+  assert(shared_modal_config.power_entity == "media_player.tv");
+  assert(shared_modal_config.control_tabs.tabs[0] == MediaControlTab::VOLUME);
   auto legacy_cover_art = parse_cfg("media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art");
   assert(legacy_cover_art.sensor == "cover_art");
   assert(legacy_cover_art.precision == "");
@@ -1094,6 +1103,7 @@ def main() -> int:
         shutil.copy2(LIMITS_HEADER, tmp_path / "button_grid_limits.h")
         shutil.copy2(STRING_HEADER, tmp_path / "button_grid_string.h")
         shutil.copy2(STRING_HEADER.parent / "camera_refresh_policy.h", tmp_path / "camera_refresh_policy.h")
+        shutil.copy2(STRING_HEADER.parent / "media_control_tabs.h", tmp_path / "media_control_tabs.h")
         shutil.copy2(DISPLAY_TEXT_HEADER, tmp_path / "display_text.h")
         lvgl_stub = tmp_path / "esphome" / "components" / "lvgl" / "lvgl_esphome.h"
         lvgl_stub.parent.mkdir(parents=True, exist_ok=True)

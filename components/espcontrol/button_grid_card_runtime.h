@@ -326,6 +326,10 @@ constexpr const char *card_runtime_option_name_volume_max() {
   return CARD_CONTRACT_OPTION_NAME_VOLUME_MAX;
 }
 
+constexpr const char *card_runtime_option_name_media_tabs() {
+  return CARD_CONTRACT_OPTION_NAME_MEDIA_TABS;
+}
+
 constexpr const char *card_runtime_option_name_power_entity() {
   return CARD_CONTRACT_OPTION_NAME_POWER_ENTITY;
 }

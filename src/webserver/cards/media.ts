@@ -13,6 +13,7 @@ import { WEB_UI_COLORS } from "../state/ui_tokens";
 import { PREVIEW_THEME_COLORS, previewEffectiveTheme } from "../state/preview_theme";
 import { escHtml, iconSlug } from "../application/ui_primitives";
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import type { ConfigModalTabOptionsFeature } from "../application/config_modal_tab_options";
 import type { ConfigMediaOptionsFeature } from "../application/config_media_options";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
 import type { SettingsUiFeature } from "../features/settings";
@@ -24,6 +25,7 @@ import { CARD_SIZE_SINGLE } from "../model/grid";
 export function registerMediaCardTypes(
     registry: CardRegistry,
     mediaOptions: ConfigMediaOptionsFeature,
+    modalTabs: ConfigModalTabOptionsFeature,
     deviceId: string,
     fields: ControlsFieldsFeature,
     settingsUi: Pick<SettingsUiFeature, "infoPanel">,
@@ -54,6 +56,9 @@ export function registerMediaCardTypes(
         setMediaCoverArtDetailsEnabled,
         mediaCoverArtSecondaryEntity,
         setMediaCoverArtSecondaryEntity,
+        mediaControlTabDefinitions,
+        mediaControlTabs,
+        setMediaControlTabs,
         mediaPowerEntity,
         setMediaPowerEntity,
         mediaVolumeMax,
@@ -643,7 +648,17 @@ export function registerMediaCardTypes(
                     rerender: true,
                 });
             }
-            if (b.sensor === "control_modal") {
+            if (b.sensor === "control_modal" || b.sensor === "cover_art") {
+                var modalSettingsDisclosure: any = helpers.disclosureSection(
+                    "Modal Settings", helpers.idPrefix + "media-modal-settings", b._modalSettingsOpen === true);
+                modalTabs.renderModalTabSettings(modalSettingsDisclosure.section, b, helpers, {
+                    definitions: mediaControlTabDefinitions,
+                    tabs: mediaControlTabs,
+                    normalizeOptions: function (options: any) { return normalizeMediaOptions(options, b.sensor); },
+                    setTabs: setMediaControlTabs,
+                    idPrefix: "media-tab-",
+                    hideHeading: true,
+                });
                 var powerDisclosure: any = helpers.disclosureSection(
                     "Optional Power", helpers.idPrefix + "media-optional-power",
                     b._mediaOptionalPowerOpen === true);
@@ -658,12 +673,10 @@ export function registerMediaCardTypes(
                         rerender: false,
                     },
                 });
-                powerDisclosure.section.appendChild(infoPanel(
-                    helpers.idPrefix + "media-power-info",
-                    "Controls a separate device from the Power tab. Playback and volume use the main entity. Leave blank to use the player's own power control."));
                 function syncPowerEntity(this: any) {
                     setMediaPowerEntity(b, powerEntityField.input.value);
                     b._mediaOptionalPowerOpen = true;
+                    b._modalSettingsOpen = true;
                     helpers.saveField("options", b.options);
                 }
                 powerEntityField.input.addEventListener("input", syncPowerEntity);
@@ -672,7 +685,8 @@ export function registerMediaCardTypes(
                 powerEntityField.input.addEventListener("keydown", function (this: any, event?: any) {
                     if (event.key === "Enter") { syncPowerEntity(); this.blur(); }
                 });
-                panel.appendChild(powerDisclosure.panel);
+                modalSettingsDisclosure.section.appendChild(powerDisclosure.panel);
+                panel.appendChild(modalSettingsDisclosure.panel);
             }
             var mediaAdvancedSettings: any = panel;
             if (b.sensor === "control_modal" || b.sensor === "cover_art") {

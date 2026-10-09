@@ -1,3 +1,4 @@
+import { normalizeMediaControlTabs, type MediaControlTab } from "./media_control_tabs";
 import type { CardConfig } from "../contracts/types";
 import { configOptionEnabled, configOptionValue } from "./config_primitives";
 
@@ -31,6 +32,7 @@ export interface MediaCardConfigV1 {
   showTrackDetails: boolean;
   secondaryEntity: string;
   powerEntity: string;
+  controlTabs: MediaControlTab[];
   controlLabelDisplay: MediaControlLabelDisplay;
   controlNumberDisplay: MediaControlNumberDisplay;
   maxVolumePercent: number;
@@ -83,7 +85,8 @@ export function decodeMediaCardConfigV1(config: Partial<CardConfig>): MediaCardC
   const precision = config.precision || "";
   return {
     version: MEDIA_CARD_CONFIG_VERSION,
-    powerEntity: mode === "control_modal" ? configOptionValue(options, "power_entity").trim() : "",
+    powerEntity: mode === "control_modal" || mode === "cover_art" ? configOptionValue(options, "power_entity").trim() : "",
+    controlTabs: normalizeMediaControlTabs(mode === "control_modal" || mode === "cover_art" ? configOptionValue(options, "media_tabs") : ""),
     entity: config.entity || "",
     mode,
     stateDisplay:

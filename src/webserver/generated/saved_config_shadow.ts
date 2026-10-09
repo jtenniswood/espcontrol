@@ -4,6 +4,7 @@
 // Test-only shadow code: production normalization does not call this module.
 // =============================================================================
 import type { CardConfig, CardNormalizationSpec, MigrationActionSpec, NormalizationCondition } from "../contracts/types";
+import { MEDIA_CONTROL_DEFAULT_TABS, normalizeMediaControlTabs } from "../model/media_control_tabs";
 
 export const SAVED_CONFIG_SHADOW_PILOT_POLICIES: Readonly<Record<string, CardNormalizationSpec>> = {
   "action": {
@@ -162,6 +163,7 @@ export const SAVED_CONFIG_SHADOW_PILOT_POLICIES: Readonly<Record<string, CardNor
       "cover_art_secondary_entity",
       "speaker_group_entity",
       "power_entity",
+      "media_tabs",
       "volume_max",
       "playlist_content_id",
       "playlist_content_type",
@@ -444,10 +446,12 @@ export function normalizeSavedConfigMediaShadow(input: Partial<CardConfig>): Car
   const out: string[] = []; const maxVolume = normalizedMediaVolume(optionValue(source, "volume_max"));
   if (config.sensor === "control_modal") {
     const powerEntity = optionValue(source, "power_entity").trim(); if (powerEntity) out.push("power_entity=" + encodeOptionValue(powerEntity));
+    const tabs = normalizeMediaControlTabs(optionValue(source, "media_tabs")).join("|"); if (tabs !== MEDIA_CONTROL_DEFAULT_TABS.join("|")) out.push("media_tabs=" + encodeOptionValue(tabs));
     const speakerGroupEntity = optionValue(source, "speaker_group_entity").trim(); if (speakerGroupEntity) out.push("speaker_group_entity=" + encodeOptionValue(speakerGroupEntity));
     if (optionValue(source, "label_display").trim() === "label") out.push("label_display=label"); if (optionValue(source, "number_display").trim() === "volume") out.push("number_display=volume"); if (maxVolume !== MEDIA_VOLUME_DEFAULT) out.push("volume_max=" + maxVolume);
   } else if (config.sensor === "cover_art") {
     if (optionPresent(source, "cover_art_details")) out.push("cover_art_details"); const secondaryEntity = optionValue(source, "cover_art_secondary_entity").trim(); if (secondaryEntity) out.push("cover_art_secondary_entity=" + encodeOptionValue(secondaryEntity)); const speakerGroupEntity = optionValue(source, "speaker_group_entity").trim(); if (speakerGroupEntity) out.push("speaker_group_entity=" + encodeOptionValue(speakerGroupEntity)); if (maxVolume !== MEDIA_VOLUME_DEFAULT) out.push("volume_max=" + maxVolume);
+    const powerEntity = optionValue(source, "power_entity").trim(); if (powerEntity) out.push("power_entity=" + encodeOptionValue(powerEntity)); const tabs = normalizeMediaControlTabs(optionValue(source, "media_tabs")).join("|"); if (tabs !== MEDIA_CONTROL_DEFAULT_TABS.join("|")) out.push("media_tabs=" + encodeOptionValue(tabs));
   } else if (config.sensor === "playlist") {
     for (const [name, defaultValue] of [["playlist_content_id", ""], ["playlist_content_type", "playlist"], ["playlist_player_source", ""]] as const) { const value = optionValue(source, name).trim() || defaultValue; if (value && value !== defaultValue) out.push(name + "=" + encodeOptionValue(value)); }
   } else if (config.sensor === "volume" || config.sensor === "position") {

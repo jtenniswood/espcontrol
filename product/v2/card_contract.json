@@ -1751,7 +1751,32 @@
           "kind": "text",
           "omitDefault": true,
           "applicability": [
-            { "source": "field", "name": "sensor", "operator": "equals", "value": "control_modal" }
+            { "source": "field", "name": "sensor", "operator": "in", "value": ["control_modal", "cover_art"] }
+          ]
+        },
+        {
+          "name": "media_tabs",
+          "label": "Modal Tabs",
+          "kind": "text",
+          "values": [
+            "controls",
+            "progress",
+            "volume",
+            "speakers",
+            "power"
+          ],
+          "defaultValue": "controls|progress|volume|speakers|power",
+          "omitDefault": true,
+          "applicability": [
+            {
+              "source": "field",
+              "name": "sensor",
+              "operator": "in",
+              "value": [
+                "control_modal",
+                "cover_art"
+              ]
+            }
           ]
         },
         {
@@ -1829,7 +1854,7 @@
           "options": { "policy": "hook", "hook": "normalize_media_options" }
         },
         "unknownOptions": "drop",
-        "canonicalOptionOrder": ["label_display", "number_display", "cover_art_details", "cover_art_secondary_entity", "speaker_group_entity", "power_entity", "volume_max", "playlist_content_id", "playlist_content_type", "playlist_player_source", "large_numbers"],
+        "canonicalOptionOrder": ["label_display", "number_display", "cover_art_details", "cover_art_secondary_entity", "speaker_group_entity", "power_entity", "media_tabs", "volume_max", "playlist_content_id", "playlist_content_type", "playlist_player_source", "large_numbers"],
         "optionHook": "normalize_media_options"
       },
       "behavior": {
