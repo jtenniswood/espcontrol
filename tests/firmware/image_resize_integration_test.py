@@ -10,6 +10,8 @@ component = root / "components/artwork_image"
 header = re.sub(r"^#(?:include|pragma).*\n", "", (component / "image_decoder.h").read_text(), flags=re.M)
 implementation = (component / "image_decoder.cpp").read_text().split("DownloadBuffer::DownloadBuffer", 1)[0]
 implementation = re.sub(r"^#include.*\n", "", implementation, flags=re.M)
+resize_geometry = (component / "artwork_image.cpp").read_text().split(
+    "size_t ArtworkImage::resize_(int width_in, int height_in) {", 1)[1].split("  size_t new_size", 1)[0]
 
 source = r'''
 #include <algorithm>
@@ -20,6 +22,7 @@ source = r'''
 #include <vector>
 #include "scanline_resampler.h"
 #include "rgb565_scaler.h"
+#include "image_pipeline_policy.h"
 #define ESP_LOGI(tag, ...) (void)(tag)
 #define ESP_LOGE(tag, ...) (void)(tag)
 bool allocation_fails = false;
@@ -42,14 +45,26 @@ struct Application { void feed_wdt() {} } App;
 source += header
 source += r'''
 namespace esphome { namespace artwork_image {
+enum class ImageResizeMode { FIT, COVER };
 struct ArtworkImage {
+ int fixed_width_=1, fixed_height_=1;
+ ImageResizeMode resize_mode_ = ImageResizeMode::FIT;
  int decode_buffer_width_=1, decode_buffer_height_=1;
  int decode_content_width_=1, decode_content_height_=1;
  int decode_offset_x_=0, decode_offset_y_=0;
  bool big_endian = false;
  std::vector<uint8_t> bytes = std::vector<uint8_t>(3, 0x33);
  uint8_t *decode_buffer_ = bytes.data();
- size_t resize_(int, int) { return bytes.size(); }
+ bool is_auto_resize_() { return fixed_width_ == 0 || fixed_height_ == 0; }
+ size_t resize_(int width_in, int height_in) {
+''' + resize_geometry + r'''
+   decode_buffer_width_ = width; decode_buffer_height_ = height;
+   decode_content_width_ = content_width; decode_content_height_ = content_height;
+   decode_offset_x_ = offset_x; decode_offset_y_ = offset_y;
+   bytes.assign(static_cast<size_t>(width) * height * 3, 0);
+   decode_buffer_ = bytes.data();
+   return bytes.size();
+ }
  int get_bpp() { return 24; }  // RGB565 with an alpha byte.
  bool is_big_endian() { return big_endian; }
  int get_position_(int x, int y) { return (y * decode_buffer_width_ + x) * 3; }
@@ -72,6 +87,43 @@ struct Decoder : ImageDecoder {
  int decode(uint8_t *, size_t) override { return 0; }
 };
 int main() {
+ // The reported 1920x1080 snapshot on a square card must retain both edges
+ // in FIT. COVER intentionally removes them. Run actual resize geometry and
+ // the complete-frame decoder, with both firmware pixel byte orders.
+ for (bool big_endian : {false, true}) {
+  for (auto mode : {ImageResizeMode::FIT, ImageResizeMode::COVER}) {
+   ArtworkImage image;
+   image.big_endian = big_endian;
+   image.fixed_width_ = image.fixed_height_ = 320;
+   image.resize_mode_ = mode;
+   Decoder decoder(&image);
+   assert(decoder.set_size(1920,1080));
+   std::vector<uint8_t> frame(1920 * 1080 * 2);
+   for (int y = 0; y < 1080; ++y) {
+    for (int x = 0; x < 1920; ++x) {
+     const uint16_t color = x < 120 ? 0xf800 : x >= 1800 ? 0x001f : 0x07e0;
+     const size_t p = (y * 1920 + x) * 2;
+     frame[p] = big_endian ? color >> 8 : color;
+     frame[p+1] = big_endian ? color : color >> 8;
+    }
+   }
+   decoder.draw_rgb565_frame(1920,1080,1920*2,frame.data());
+   assert(!decoder.has_failed());
+   auto pixel = [&](int x, int y) {
+    const int p = image.get_position_(x,y);
+    return big_endian ? (image.bytes[p] << 8) | image.bytes[p+1]
+                      : image.bytes[p] | (image.bytes[p+1] << 8);
+   };
+   if (mode == ImageResizeMode::FIT) {
+    assert(image.decode_content_width_ == 320 && image.decode_content_height_ == 180);
+    assert(pixel(0,160) == 0xf800 && pixel(319,160) == 0x001f);
+    assert(pixel(160,0) == 0 && pixel(160,319) == 0); // Letterboxing.
+   } else {
+    assert(pixel(0,160) == 0x07e0 && pixel(319,160) == 0x07e0);
+   }
+   assert(allocations == 0);
+  }
+ }
  for (bool big_endian : {false, true}) {
    ArtworkImage image;
    image.big_endian = big_endian;
@@ -116,7 +168,7 @@ int main() {
    const uint8_t input[8]{};
    decoder.draw_rgb565_frame(2,2,4,input);
    assert(decoder.has_failed());
-   assert(image.bytes == std::vector<uint8_t>(3,0x33));
+   assert(image.bytes == std::vector<uint8_t>(3,0));
  }
  assert(allocations == 0);
 }

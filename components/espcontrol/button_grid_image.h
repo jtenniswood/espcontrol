@@ -441,12 +441,19 @@ inline void image_card_apply_corner_clip(lv_obj_t *obj, lv_coord_t radius) {
   lv_obj_set_style_clip_corner(obj, true, image_card_pressed_selector());
 }
 
-inline void image_card_apply_tile_image_align(lv_obj_t *widget) {
+inline esphome::artwork_image::ImageResizeMode image_card_tile_resize_mode(ImageCardCtx *ctx) {
+  return ctx && !ctx->media_artwork && ctx->modal_fit
+    ? esphome::artwork_image::ImageResizeMode::FIT
+    : esphome::artwork_image::ImageResizeMode::COVER;
+}
+
+inline void image_card_apply_tile_image_align(lv_obj_t *widget, bool fit = false) {
   if (!widget) return;
 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
-  lv_image_set_inner_align(widget, LV_IMAGE_ALIGN_COVER);
+  lv_image_set_inner_align(widget, fit ? LV_IMAGE_ALIGN_CONTAIN : LV_IMAGE_ALIGN_COVER);
 #else
   (void) widget;
+  (void) fit;
 #endif
 }
 
@@ -1201,22 +1208,6 @@ inline bool image_card_position_widget(lv_obj_t *btn, lv_obj_t *widget,
   return true;
 }
 
-inline void image_card_apply_widget_geometry(lv_obj_t *btn, lv_obj_t *widget,
-                                             esphome::artwork_image::ArtworkImage *image,
-                                             lv_coord_t target_width_override = 0) {
-  if (!image) return;
-  lv_coord_t width = 0;
-  lv_coord_t height = 0;
-  if (!image_card_position_widget(btn, widget, &width, &height)) return;
-  lv_coord_t target_width = target_width_override > 0 ? target_width_override : width;
-  image_card_apply_tile_image_align(widget);
-  lv_obj_t *loading = image_card_loading_widget(widget);
-  image_card_position_widget(btn, loading);
-  image_card_refresh_loading_layout(loading);
-  image->set_target_size(target_width, height);
-  image->set_resize_mode(esphome::artwork_image::ImageResizeMode::COVER);
-}
-
 inline lv_coord_t image_card_media_artwork_target_width(ImageCardCtx *ctx, lv_coord_t width) {
   if (!ctx || !ctx->media_artwork || width <= 0) return width;
   int percent = normalize_width_compensation_percent(ctx->media_artwork_width_compensation_percent);
@@ -1247,12 +1238,13 @@ inline void image_card_apply_context_widget_geometry(ImageCardCtx *ctx) {
   lv_coord_t width = 0;
   lv_coord_t height = 0;
   if (!image_card_position_context_widget(ctx, &width, &height)) return;
-  image_card_apply_tile_image_align(ctx->widget);
+  const auto resize_mode = image_card_tile_resize_mode(ctx);
+  image_card_apply_tile_image_align(ctx->widget, resize_mode == esphome::artwork_image::ImageResizeMode::FIT);
   lv_obj_t *loading = image_card_loading_widget(ctx->widget);
   image_card_position_widget(ctx->btn, loading);
   image_card_refresh_loading_layout(loading);
   ctx->image->set_target_size(image_card_media_artwork_target_width(ctx, width), height);
-  ctx->image->set_resize_mode(esphome::artwork_image::ImageResizeMode::COVER);
+  ctx->image->set_resize_mode(resize_mode);
 }
 
 inline void image_card_reset_resized_tile(ImageCardCtx *ctx) {
@@ -1265,15 +1257,32 @@ inline void image_card_reset_resized_tile(ImageCardCtx *ctx) {
   image_card_set_loading_state(ctx, "Loading", true);
 }
 
+inline bool image_card_reset_cached_tile_if_changed(
+    ImageCardCtx *ctx, int previous_width, int previous_height,
+    esphome::artwork_image::ImageResizeMode previous_mode) {
+  if (!ctx || !ctx->image || !ctx->image_ready) return false;
+  if (!esphome::artwork_image::image_pipeline_cached_target_changed(
+        true, previous_width, previous_height,
+        ctx->image->get_fixed_width(), ctx->image->get_fixed_height()) &&
+      previous_mode == ctx->image->get_resize_mode()) return false;
+  // A fitted view cannot recover the edges from an already-cropped buffer.
+  // Discard it so camera and image entities both fetch the source again.
+  image_card_reset_resized_tile(ctx);
+  ctx->last_download_completed_ms = 0;
+  return true;
+}
+
 inline void image_card_refresh_tile_geometry(ImageCardCtx *ctx) {
   if (!ctx || !ctx->image) return;
   int previous_width = ctx->image->get_fixed_width();
   int previous_height = ctx->image->get_fixed_height();
+  const auto previous_mode = ctx->image->get_resize_mode();
   image_card_apply_context_widget_geometry(ctx);
   int current_width = ctx->image->get_fixed_width();
   int current_height = ctx->image->get_fixed_height();
   if (current_width <= 0 || current_height <= 0 ||
-      (current_width == previous_width && current_height == previous_height) ||
+      (current_width == previous_width && current_height == previous_height &&
+       previous_mode == ctx->image->get_resize_mode()) ||
       ctx->source_url.empty()) {
     return;
   }
@@ -2100,8 +2109,7 @@ inline void image_card_request_source_url(ImageCardCtx *ctx, bool source_changed
   }
   lv_coord_t width = 0;
   lv_coord_t height = 0;
-  esphome::artwork_image::ImageResizeMode resize_mode =
-    esphome::artwork_image::ImageResizeMode::COVER;
+  const auto resize_mode = image_card_tile_resize_mode(ctx);
   if (!image_card_position_context_widget(ctx, &width, &height)) return;
   lv_coord_t decode_width = image_card_media_artwork_target_width(ctx, width);
   lv_coord_t decode_height = height;
@@ -3241,11 +3249,10 @@ inline bool image_card_bind_runtime(BtnSlot &s, const ParsedCfg &p,
   image_card_log_diagnostics(ctx, "bind-card");
   int cached_target_width = ctx->image->get_fixed_width();
   int cached_target_height = ctx->image->get_fixed_height();
-  image_card_apply_widget_geometry(ctx->btn, ctx->widget, ctx->image);
-  if (esphome::artwork_image::image_pipeline_cached_target_changed(
-        ctx->image_ready, cached_target_width, cached_target_height,
-        ctx->image->get_fixed_width(), ctx->image->get_fixed_height())) {
-    ctx->last_download_completed_ms = 0;
+  const auto cached_resize_mode = ctx->image->get_resize_mode();
+  image_card_apply_context_widget_geometry(ctx);
+  if (image_card_reset_cached_tile_if_changed(
+        ctx, cached_target_width, cached_target_height, cached_resize_mode)) {
     image_card_log_diagnostics(ctx, "cached-tile-resize-refresh");
   }
   if (ctx->image_ready) {

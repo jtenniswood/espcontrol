@@ -3740,7 +3740,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       },
       {
         "name": "image_modal_mode",
-        "label": "Expanded Image",
+        "label": "Image fit",
         "kind": "choice",
         "values": [
           "fill",
