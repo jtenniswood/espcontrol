@@ -202,10 +202,8 @@ export function registerClimateCardTypes(
             syncLabelField();
             cardSettings.appendChild(labelField);
             helpers.renderCardLargeNumbersToggle(cardSettings, b, helpers, CLIMATE_CARD_METADATA);
-            var secondaryDisclosure: any = helpers.disclosureSection("Secondary Label", helpers.idPrefix + "climate-secondary-label", false);
-            var secondaryPanel: any = secondaryDisclosure.section;
             var secondaryToggle: any = toggleRow("Show secondary label", helpers.idPrefix + "climate-secondary-enabled", climateSecondaryEnabled(b));
-            secondaryPanel.appendChild(secondaryToggle.row);
+            cardSettings.appendChild(secondaryToggle.row);
             var secondaryFields: any = condField();
             secondaryFields.classList.add("sp-climate-settings-gap");
             var secondaryDisplayField: any = helpers.selectField("Value", helpers.idPrefix + "climate-secondary-display", [
@@ -213,6 +211,10 @@ export function registerClimateCardTypes(
                 ["actual", "Actual"],
                 ["target", "Target"],
             ], climateSecondaryDisplay(b));
+            var secondaryDisplayTitle: any = secondaryDisplayField.field.querySelector(".sp-field-label");
+            if (secondaryDisplayTitle)
+                secondaryDisplayTitle.remove();
+            secondaryDisplayField.select.setAttribute("aria-label", "Secondary value to show");
             secondaryFields.appendChild(secondaryDisplayField.field);
             secondaryDisplayField.select.addEventListener("change", function (this: any) {
                 setClimateSecondaryDisplay(b, secondaryDisplayField.select.value);
@@ -220,6 +222,10 @@ export function registerClimateCardTypes(
                 renderQueue.schedule();
             });
             var secondaryLabelField: any = helpers.textField("Label (optional)", helpers.idPrefix + "climate-secondary-label-text", climateSecondaryLabel(b), "e.g. Indoor");
+            var secondaryLabelTitle: any = secondaryLabelField.field.querySelector(".sp-field-label");
+            if (secondaryLabelTitle)
+                secondaryLabelTitle.remove();
+            secondaryLabelField.input.setAttribute("aria-label", "Optional secondary label");
             secondaryFields.appendChild(secondaryLabelField.field);
             secondaryLabelField.input.addEventListener("change", function (this: any) {
                 setClimateSecondaryLabel(b, secondaryLabelField.input.value);
@@ -240,8 +246,7 @@ export function registerClimateCardTypes(
                 syncSecondaryFields();
                 renderQueue.schedule();
             });
-            secondaryPanel.appendChild(secondaryFields);
-            cardSettings.appendChild(secondaryDisclosure.panel);
+            cardSettings.appendChild(secondaryFields);
             var precisionField: any = helpers.selectField("Temperature Settings", helpers.idPrefix + "climate-precision", [
                 ["", "10"],
                 ["1", "10.2"],
