@@ -61,7 +61,7 @@ lvgl:
                 text: "00:00"
             - label:
                 id: clock_date_label
-                text_font: font_text_body
+                text_font: font_text_title
                 text_color: 0xFFFFFF
                 text_align: CENTER
                 text: ""
