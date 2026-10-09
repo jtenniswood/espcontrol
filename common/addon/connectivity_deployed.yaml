@@ -5,12 +5,6 @@
 # omits captive portal and fallback AP support to reduce firmware overhead.
 # =============================================================================
 
-esphome:
-  on_boot:
-    priority: 600
-    then:
-      - lambda: 'espcontrol::reset::apply_wifi_override();'
-
 wifi:
   power_save_mode: none
   reboot_timeout: 30min

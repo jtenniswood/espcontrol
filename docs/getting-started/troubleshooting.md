@@ -73,6 +73,7 @@ Confirm the firmware matches the exact panel revision and use a known-good power
 ## I Want to Start Over
 
 - Save a backup, then use **Settings > System > Factory Reset**. Partial reset keeps WiFi and the Home Assistant encryption key; Complete reset clears those saved credentials too and keeps any WiFi networks compiled into the firmware disabled, so newly provisioned credentials remain selected after reboot.
+- To complete a full reset, type **RESET** in the confirmation dialog. It explains that saved WiFi and the Home Assistant API key will be erased. Reconnect through the setup hotspot to save your network again.
 - Both keep installed firmware and compiled defaults. A normal reflash is not a guaranteed reset. Follow [Reset the display](/features/backup#reset-the-display) for the full procedure and older-firmware limitations.
 
 ## I Need Help With a Bug

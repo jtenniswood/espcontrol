@@ -2,18 +2,17 @@
 from pathlib import Path
 import subprocess
 import tempfile
-import textwrap
 
 ROOT = Path(__file__).resolve().parents[2]
 source = (ROOT / "components/espcontrol/device_reset.cpp").read_text()
 methods = source[source.index("  bool wifi_override"):source.index("  bool read(Journal")]
 verify = source[source.index("  bool verify(Mode"):source.index("\n} storage;")]
-startup = source[source.index("void early_startup("):source.index("void register_handlers(")]
-connectivity = (ROOT / "common/addon/connectivity.yaml").read_text()
-ap_boot = textwrap.dedent(connectivity.split("      - lambda: |-\n", 1)[1].split("\n# ESP Web Tools", 1)[0]).replace("${friendly_name}", "EspControl Test")
+startup = source[source.index("void early_startup("):source.index("void ResetBoot::setup(")]
+boot_setup = source[source.index("void ResetBoot::setup("):source.index("void register_handlers(")]
 harness = r'''
-#include "reset_policy.h"
+#include "device_reset.h"
 #define USE_WIFI
+#define USE_WIFI_AP
 #include <cassert>
 #include <map>
 #include <vector>
@@ -59,9 +58,11 @@ struct NvsStorage : Storage {
 namespace esphome {
 struct Application {
   uint32_t get_config_version_hash() { return 123; }
+  std::string get_friendly_name() { return "EspControl Test"; }
   void feed_wdt() { assert(false && "unexpected retry"); }
 } App;
 void delay(int) {}
+std::string get_mac_address() { return "30:ED:A0:E2:F3:6A"; }
 namespace ota {
 struct Callback { template <typename T> void add_global_state_listener(T *) {} } callback;
 Callback *get_global_ota_callback() { return &callback; }
@@ -88,17 +89,16 @@ const char *auth_username, *auth_password;
 int ota_listener;
 #define ESP_LOGE(...) ((void)0)
 ''' + startup + r'''
-namespace espcontrol::reset { void apply_wifi_override() { ::apply_wifi_override(); } }
-namespace wifi = esphome::wifi;
-std::string get_mac_address() { return "30:ED:A0:E2:F3:6A"; }
-void configure_hotspot() {
-''' + ap_boot + r'''
+namespace espcontrol::reset {
+void apply_wifi_override() { ::apply_wifi_override(); }
+''' + boot_setup + r'''
 }
+void configure_hotspot() { espcontrol::reset::ResetBoot{}.setup(); }
 void boot() {
   storage = NvsStorage{};
   esphome::wifi::wifi.has_compiled_sta = true;
-  early_startup(true, "", "");
-  ::apply_wifi_override();
+  ::early_startup(true, "", "");
+  espcontrol::reset::ResetBoot{}.setup();
 }
 std::string selected_network() {
   auto key = wifi_preference_key(esphome::wifi::wifi.has_compiled_sta, 123);
@@ -106,6 +106,7 @@ std::string selected_network() {
   return credentials[key];
 }
 int main() {
+  assert(espcontrol::reset::ResetBoot{}.get_setup_priority() > esphome::setup_priority::WIFI);
   esphome::wifi::wifi.ap = {"EspControl Test", "setup-password"};
   configure_hotspot();
   assert(esphome::wifi::wifi.ap.ssid == "ESP_E2F36A");
@@ -141,6 +142,9 @@ with tempfile.TemporaryDirectory(prefix="espcontrol-wifi-reset-") as directory:
     path = Path(directory) / "test.cpp"
     path.write_text(harness)
     executable = Path(directory) / "test"
-    subprocess.run(["g++", "-std=c++17", "-I", str(ROOT / "components/espcontrol"), str(path), "-o", str(executable)], check=True)
+    stub = Path(directory) / "esphome/core/component.h"
+    stub.parent.mkdir(parents=True)
+    stub.write_text("#pragma once\nnamespace esphome { namespace setup_priority { constexpr float HARDWARE=800, WIFI=250; } class Component { public: virtual void setup() {} virtual float get_setup_priority() const { return 600; } }; }\n")
+    subprocess.run(["g++", "-std=c++17", "-I", directory, "-I", str(ROOT / "components/espcontrol"), str(path), "-o", str(executable)], check=True)
     subprocess.run([str(executable)], check=True)
 print("WiFi reset: production boot/AP/override code passed custom hotspot/password preservation, factory reset, reprovisioning, three reboots, partial reset and storage failure checks (modeled NVS/WiFi).")

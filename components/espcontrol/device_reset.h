@@ -1,5 +1,6 @@
 #pragma once
 #include "reset_policy.h"
+#include "esphome/core/component.h"
 #include <atomic>
 
 namespace esphome::update { class UpdateEntity; }
@@ -10,6 +11,13 @@ namespace espcontrol::reset {
 void early_startup(bool compiled_networks, const char *username, const char *password);
 // Apply before WiFi starts, after the generated component has been created.
 void apply_wifi_override();
+// A registered component keeps reset recovery independent of package on_boot
+// merging and runs after generated WiFi configuration, before WiFi starts.
+class ResetBoot : public esphome::Component {
+ public:
+  void setup() override;
+  float get_setup_priority() const override { return esphome::setup_priority::HARDWARE + 1.0f; }
+};
 uint32_t epoch();
 bool pending();
 bool ready();

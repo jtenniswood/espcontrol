@@ -11,6 +11,7 @@
 #include <nvs.h>
 #include "esphome/core/application.h"
 #include "esphome/core/hal.h"
+#include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 #include "esphome/components/json/json_util.h"
 #include "esphome/components/wifi/wifi_component.h"
@@ -267,6 +268,26 @@ void apply_wifi_override() {
   if (storage.wifi_override && esphome::wifi::global_wifi_component != nullptr) {
     esphome::wifi::global_wifi_component->clear_sta();
   }
+#endif
+}
+void ResetBoot::setup() {
+  apply_wifi_override();
+#if defined(USE_WIFI) && defined(USE_WIFI_AP)
+  auto *wifi = esphome::wifi::global_wifi_component;
+  if (wifi == nullptr) return;
+  // Keep explicitly configured hotspot credentials/options. Only replace
+  // the empty/default SSID, after the generated WiFiAP has been populated.
+  auto ap = wifi->get_ap();
+  if (!ap.get_ssid().empty() && ap.get_ssid() != esphome::App.get_friendly_name()) return;
+  const std::string mac = esphome::get_mac_address();
+  std::string suffix;
+  for (char c : mac) {
+    if (c != ':' && c != '-') suffix.push_back(c);
+  }
+  if (suffix.size() > 6) suffix = suffix.substr(suffix.size() - 6);
+  if (suffix.empty()) suffix = "SETUP";
+  ap.set_ssid("ESP_" + suffix);
+  wifi->set_ap(ap);
 #endif
 }
 void register_handlers(esphome::web_server_idf::AsyncWebServer &server) { server.addHandler(new ResetHandler()); }

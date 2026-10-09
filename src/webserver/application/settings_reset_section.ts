@@ -1,36 +1,70 @@
 import { resetSession, type ResetMode } from "../api/reset_session";
 
-function confirmCompleteReset(warning: string): Promise<boolean> {
+function confirmCompleteReset(): Promise<boolean> {
   return new Promise(resolve => {
     const dialog = document.createElement("dialog");
-    dialog.className = "sp-reset-dialog";
+    dialog.className = "sp-reset-dialog sp-reset-confirm";
     dialog.setAttribute("aria-labelledby", "sp-reset-confirm-title");
     dialog.setAttribute("aria-describedby", "sp-reset-confirm-message");
     const heading = document.createElement("h2");
     heading.id = "sp-reset-confirm-title";
-    heading.textContent = "Complete reset?";
+    heading.textContent = "Complete reset";
     const message = document.createElement("p");
     message.id = "sp-reset-confirm-message";
-    message.textContent = warning;
+    message.textContent = "Remove all existing configuration and return this display to first-time setup.";
+    const warning = document.createElement("div");
+    warning.className = "sp-reset-warning";
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    icon.setAttribute("aria-hidden", "true");
+    icon.innerHTML = '<circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 4h.01"/>';
+    const warningText = document.createElement("p");
+    warningText.id = "sp-reset-confirm-warning";
+    warningText.textContent = "Saved Wi-Fi credentials and the Home Assistant API key will be erased. Wi-Fi compiled into the firmware will stay disabled. Use Wi-Fi setup to save your network again.";
+    warning.append(icon, warningText);
+    const backupNote = document.createElement("p");
+    backupNote.textContent = "Save a backup first. This reset cannot be undone.";
+    dialog.setAttribute("aria-describedby", "sp-reset-confirm-message sp-reset-confirm-warning");
+    const form = document.createElement("form");
+    const field = document.createElement("div");
+    field.className = "sp-field";
+    const label = document.createElement("label");
+    label.className = "sp-field-label";
+    label.htmlFor = "sp-reset-confirm-input";
+    label.textContent = "Type RESET to confirm";
+    const input = document.createElement("input");
+    input.id = label.htmlFor;
+    input.className = "sp-input";
+    input.type = "text";
+    input.autocomplete = "off";
+    input.setAttribute("autocapitalize", "off");
+    input.spellcheck = false;
+    input.autofocus = true;
+    field.append(label, input);
     const actions = document.createElement("div");
-    actions.className = "sp-btn-row sp-btn-row--save";
+    actions.className = "sp-btn-row sp-reset-confirm-actions";
     const cancel = document.createElement("button");
     cancel.type = "button";
     cancel.className = "sp-action-btn sp-cancel-btn";
     cancel.textContent = "Cancel";
-    cancel.autofocus = true;
     cancel.onclick = () => dialog.close("cancel");
     const confirm = document.createElement("button");
-    confirm.type = "button";
-    confirm.className = "sp-action-btn sp-save-btn";
+    confirm.type = "submit";
+    confirm.className = "sp-action-btn sp-reset-danger";
     confirm.textContent = "Complete reset";
-    confirm.onclick = () => dialog.close("confirm");
+    confirm.disabled = true;
+    input.addEventListener("input", () => { confirm.disabled = input.value !== "RESET"; });
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      if (input.value === "RESET") dialog.close("confirm");
+    });
     dialog.addEventListener("close", () => {
       dialog.remove();
-      resolve(dialog.returnValue === "confirm");
+      resolve(dialog.returnValue === "confirm" && input.value === "RESET");
     }, { once: true });
     actions.append(cancel, confirm);
-    dialog.append(heading, message, actions);
+    form.append(field, actions);
+    dialog.append(heading, message, warning, backupNote, form);
     document.body.append(dialog);
     dialog.showModal();
   });
@@ -69,7 +103,7 @@ export function buildResetSettings(exportBackup: () => void, makeCard: (title: s
     button.textContent = label;
     button.onclick = async () => {
       const warning = description + (description.endsWith(".") ? " " : ". ") + "Settings cannot be recovered without a backup.";
-      if (mode === "factory" ? !await confirmCompleteReset(warning) : !window.confirm(warning)) return;
+      if (mode === "factory" ? !await confirmCompleteReset() : !window.confirm(warning)) return;
       const dialog = document.createElement("dialog");
       dialog.className = "sp-reset-dialog";
       dialog.setAttribute("aria-labelledby", "sp-reset-status-title");
@@ -120,7 +154,7 @@ export function buildResetSettings(exportBackup: () => void, makeCard: (title: s
       return;
     }
     if (status.modes.includes("customization")) addAction("customization", "Partial reset", "Reset cards and preferences. Retains your configuration for Wifi and Home Assistant");
-    if (status.modes.includes("factory")) addAction("factory", "Complete reset", "Remove all existing configuration and reset back to first time setup. Any Wifi networks built into the firmware will stay disabled after you connect to a new network.");
+    if (status.modes.includes("factory")) addAction("factory", "Complete reset", "Remove all existing configuration and return this display to first-time setup.");
   }).catch(() => { /* Leave unavailable actions hidden; write transport fails closed. */ });
   return card;
 }

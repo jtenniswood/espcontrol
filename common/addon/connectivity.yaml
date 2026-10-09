@@ -14,25 +14,6 @@
 #   loading → main_page    (skips setup screens)
 # =============================================================================
 
-esphome:
-  on_boot:
-    priority: 600
-    then:
-      - lambda: |-
-          espcontrol::reset::apply_wifi_override();
-          // Retain a custom setup SSID/password and the other AP options.
-          wifi::WiFiAP ap = wifi::global_wifi_component->get_ap();
-          if (!ap.get_ssid().empty() && ap.get_ssid() != "${friendly_name}") return;
-          std::string mac = get_mac_address();
-          std::string compact;
-          for (char c : mac) {
-            if (c != ':' && c != '-') compact.push_back(c);
-          }
-          std::string suffix = compact.length() > 6 ? compact.substr(compact.length() - 6) : compact;
-          if (suffix.empty()) suffix = "SETUP";
-          ap.set_ssid("ESP_" + suffix);
-          wifi::global_wifi_component->set_ap(ap);
-
 # ESP Web Tools can provision WiFi through USB after installation as well.
 improv_serial:
 
