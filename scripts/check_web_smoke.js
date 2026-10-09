@@ -603,8 +603,9 @@ const climateSecondaryPreview = hooks.buttonTypePreviewFor("climate", {
   options: "secondary_enabled,secondary_display=target,secondary_label=Setpoint",
 });
 assert(
-  climateSecondaryPreview.iconHtml.indexOf("sp-sensor-preview") < climateSecondaryPreview.iconHtml.indexOf("Setpoint 20°C") &&
-    !climateSecondaryPreview.labelHtml.includes("Setpoint 20°C"),
+  climateSecondaryPreview.iconHtml.indexOf("sp-sensor-preview") < climateSecondaryPreview.iconHtml.indexOf("20°C Setpoint") &&
+    !climateSecondaryPreview.iconHtml.includes("Setpoint 20°C") &&
+    !climateSecondaryPreview.labelHtml.includes("20°C Setpoint"),
   "climate preview shows the configured same-entity secondary target"
 );
 const climateSecondaryDisabledPreview = hooks.buttonTypePreviewFor("climate", {
