@@ -507,6 +507,9 @@ add_test(NAME wifi_reset_boot_codegen_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wifi_reset_boot_codegen_test.py)
 add_test(NAME wifi_setup_package_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wifi_setup_package_test.py)
+add_test(NAME wifi_setup_address_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wifi_setup_address_test.py)
 add_executable(panel_identity_test panel_identity_test.cpp)
 target_compile_features(panel_identity_test PRIVATE cxx_std_17)
 target_compile_options(panel_identity_test PRIVATE -Wall -Wextra -Werror)

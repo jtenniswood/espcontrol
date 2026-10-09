@@ -56,7 +56,7 @@ If the browser installer offers **Connect to WiFi** while USB is still connected
 you can enter your network details there. Otherwise, use the hotspot:
 
 1. **The display creates a hotspot.** It can take up to **90 seconds** to appear. Connect to the `EspControl_XXXX` network named on the display from your phone or laptop; `XXXX` is the last four characters of the device MAC address. A custom hotspot name configured in ESPHome is kept.
-2. **A setup page opens automatically** (captive portal). If it doesn't, open a browser and go to `192.168.4.1`.
+2. **A setup page opens automatically** (captive portal). If it doesn't, open a browser and go to the address shown on the display (`192.168.4.1` by default). Custom ESPHome hotspot IP addresses are shown instead when configured.
 3. **Choose your WiFi network** from **Available Networks** and enter your password, then select **Save**. You can also type a network name manually.
 4. When **WiFi details saved** appears, **reconnect your phone or laptop to your home WiFi**, then follow the display's instructions to continue setup.
 

@@ -95,12 +95,22 @@ esphome:
               - lambda: |-
                   lv_label_set_text(id(loading_status_icon), "${icon_wifi_startup}");
                   lv_label_set_text(id(loading_status_title), espcontrol_i18n("Configure your WiFi"));
-                  std::string hotspot_ssid = wifi::global_wifi_component->get_ap().get_ssid().str();
+                  auto hotspot_ap = wifi::global_wifi_component->get_ap();
+                  std::string hotspot_ssid = hotspot_ap.get_ssid().str();
                   if (hotspot_ssid.empty()) hotspot_ssid = "${friendly_name}";
+                  std::string browser_instruction = espcontrol_i18n_key("then_visit_192_168_4_1_in_your_browser");
+                  #ifdef USE_WIFI_MANUAL_IP
+                  const auto &manual_ip = hotspot_ap.get_manual_ip();
+                  if (manual_ip.has_value()) {
+                    const auto address_pos = browser_instruction.find("192.168.4.1");
+                    if (address_pos != std::string::npos)
+                      browser_instruction.replace(address_pos, sizeof("192.168.4.1") - 1, manual_ip->static_ip.str());
+                  }
+                  #endif
                   std::string msg = std::string(espcontrol_i18n_key("connect_to_the_wifi_hotspot")) +
                                     " '" + hotspot_ssid + "' " +
                                     espcontrol_i18n_key("to_configure_your_network") +
-                                    "\n" + espcontrol_i18n_key("then_visit_192_168_4_1_in_your_browser");
+                                    "\n" + browser_instruction;
                   lv_label_set_display_text(id(loading_status_label), msg.c_str());
         - if:
             condition:
