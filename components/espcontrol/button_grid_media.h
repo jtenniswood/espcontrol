@@ -316,6 +316,14 @@ inline size_t media_control_group_size(MediaControlCtx *ctx);
 inline espcontrol::media::ControlTabs media_control_visible_tabs(MediaControlCtx *ctx) {
   if (!ctx) return espcontrol::media::parse_control_tabs("controls");
   if (ctx->group_only) return espcontrol::media::parse_control_tabs("speakers");
+  if (!ctx->available) {
+    espcontrol::media::ControlTabs visible;
+    if (ctx->control_tabs.contains(MediaControlTab::POWER) &&
+        media_control_power_command(ctx) != espcontrol::media::PowerCommand::NONE) {
+      visible.add(MediaControlTab::POWER);
+    }
+    return visible;
+  }
   return espcontrol::media::visible_control_tabs(ctx->control_tabs,
     media_control_progress_supported(ctx),
     media_group_speaker_tab_available(ctx->grouping_supported, ctx->speaker_discovery_available,
@@ -326,6 +334,19 @@ inline espcontrol::media::ControlTabs media_control_visible_tabs(MediaControlCtx
 inline bool media_control_tab_layout_changed(MediaControlCtx *ctx) {
   const MediaControlModalUi &ui = media_control_modal_ui();
   return ctx && ui.active == ctx && !(ui.visible_tabs == media_control_visible_tabs(ctx));
+}
+
+inline bool media_control_can_open_modal(MediaControlCtx *ctx) {
+  if (!ctx || (ctx->group_only && !ctx->grouping_supported)) return false;
+  return ctx->available || (!ctx->group_only &&
+    media_control_visible_tabs(ctx).contains(MediaControlTab::POWER));
+}
+
+inline void media_control_refresh_open_modal(MediaControlCtx *ctx, bool layout_needed = false) {
+  if (!ctx || media_control_modal_ui().active != ctx) return;
+  if (!media_control_can_open_modal(ctx)) media_control_hide_modal();
+  else if (layout_needed || media_control_tab_layout_changed(ctx)) media_control_layout_modal(ctx);
+  else media_control_refresh_modal(ctx);
 }
 
 inline void media_control_ensure_visible_tab(MediaControlCtx *ctx) {
@@ -618,8 +639,8 @@ inline void media_set_pending_seek_position(SliderCtx *ctx, int value) {
   media_apply_position(ctx);
 }
 
-// Each card can use a main player plus a separate power or cover-art entity.
-constexpr int MEDIA_PLAYBACK_STATE_MAX = 2 * (MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
+// Cover Art can use distinct main, secondary artwork, and optional power entities.
+constexpr int MEDIA_PLAYBACK_STATE_MAX = 3 * (MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
 constexpr size_t MEDIA_PLAYBACK_STATE_CONSUMERS_MAX =
   static_cast<size_t>(MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
 
@@ -1494,9 +1515,7 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
                      : ctx->highlight_playing && ctx->playing));
   media_control_refresh_parent_card(ctx);
   MediaControlModalUi &ui = media_control_modal_ui();
-  if (ui.active == ctx && !ctx->available) {
-    media_control_hide_modal();
-  } else if (ui.active == ctx) {
+  if (ui.active == ctx) {
     const bool mode_capabilities_changed =
       previous_shuffle_supported != shuffle_supported ||
       previous_repeat_supported != repeat_supported;
@@ -1516,8 +1535,7 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
     if (!power_supported && ui.tab == MediaControlTab::POWER) {
       layout_needed = true;
     }
-    if (layout_needed) media_control_layout_modal(ctx);
-    else media_control_refresh_modal(ctx);
+    media_control_refresh_open_modal(ctx, layout_needed);
   }
 }
 
@@ -1534,7 +1552,8 @@ inline void media_playback_apply_state_to_power_control(MediaPlaybackState *stat
   ctx->power_state_known = state->has_state;
   ctx->power_available = state->available;
   ctx->power_state_text = state->state_text;
-  media_control_refresh_power(ctx);
+  if (media_control_modal_ui().active == ctx) media_control_refresh_open_modal(ctx);
+  else media_control_refresh_power(ctx);
 }
 
 inline void media_playback_attach_power_control(MediaPlaybackState *state, MediaControlCtx *ctx) {
@@ -4643,10 +4662,6 @@ inline MediaControlCtx *create_media_control_context(
   ctx->top_shows_volume = media_control_card_show_volume_number(p);
   lv_obj_set_user_data(s.btn, ctx);
   return ctx;
-}
-
-inline bool media_control_can_open_modal(MediaControlCtx *ctx) {
-  return !(!ctx || !ctx->available || (ctx->group_only && !ctx->grouping_supported));
 }
 
 inline void media_control_open_modal(MediaControlCtx *ctx) {

@@ -49,6 +49,8 @@ Inside **Modal Settings**, open **Optional Power** and enter a **Power Entity** 
 
 The Power tab follows that device's on/off state and stays disabled while its state is unknown or unavailable. Power stays off and unavailable until a Power Entity is entered. Adding an entity enables the tab automatically; you can still switch it off in the tab list. Clear Power Entity to disable the Power tab again. To control the main player's power, enter its entity here. Both **All Controls** and **Cover Art** use these settings.
 
+If the main player becomes unavailable, you can still open the popup to use the enabled Power tab while the separate power device has a known, available state. The other tabs return when the player becomes available again.
+
 ## Cover Art
 
 Cover Art is available in square **1×1**, **2×2**, and **3×3** card sizes. It uses one of the panel's shared image slots. ESP32-P4 screens have six slots shared between Camera and Cover Art cards across all pages. If the card shows **Too many**, remove one of those image cards.

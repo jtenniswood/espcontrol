@@ -36,6 +36,9 @@ void send_media_player_action(const std::string &entity, const char *service) {
   sent_entity = entity; sent_service = service;
 }
 void media_control_refresh_power(MediaControlCtx*) { ++refreshes; }
+struct MediaControlModalUi { MediaControlCtx *active = nullptr; };
+MediaControlModalUi &media_control_modal_ui() { static MediaControlModalUi ui; return ui; }
+void media_control_refresh_open_modal(MediaControlCtx*) { ++refreshes; }
 void media_playback_refresh_progress_timer(MediaPlaybackState*) {}
 MediaPlaybackState *media_playback_ensure_state(const std::string &entity) {
   for (auto *state : states) if (state->entity_id == entity) return state;
