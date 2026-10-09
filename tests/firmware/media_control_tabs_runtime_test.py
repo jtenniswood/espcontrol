@@ -43,7 +43,7 @@ int main() {
   using namespace espcontrol::media;
   using Tab = MediaControlTab;
   MediaControlCtx ctx;
-  ctx.control_tabs = parse_control_tabs("power|volume|controls|speakers|progress");
+  ctx.control_tabs = parse_control_tabs("power|volume|controls|speakers|progress", true);
   ui.active = &ctx;
   // Opening All Controls and Cover Art uses the first available configured tab.
   assert(media_control_visible_tabs(&ctx).tabs[0] == Tab::POWER);
@@ -60,12 +60,12 @@ int main() {
   ctx.control_tabs = parse_control_tabs("volume");
   media_control_ensure_visible_tab(&ctx);
   assert(ui.tab == Tab::VOLUME && cleared == 3);
-  ctx.control_tabs = parse_control_tabs("progress|speakers|power");
+  ctx.control_tabs = parse_control_tabs("progress|speakers|power", true);
   ctx.progress = false; ctx.power = false;
   media_control_ensure_visible_tab(&ctx);
   assert(ui.tab == Tab::CONTROLS && cleared == 4);
   // Reflow on capability changes even when the tab button was created earlier.
-  ctx.control_tabs = parse_control_tabs("volume|progress|power");
+  ctx.control_tabs = parse_control_tabs("volume|progress|power", true);
   ctx.progress = false; ctx.power = true;
   ui.visible_tabs = media_control_visible_tabs(&ctx);
   assert(!media_control_tab_layout_changed(&ctx));

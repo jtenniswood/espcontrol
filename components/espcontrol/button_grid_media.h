@@ -218,8 +218,7 @@ inline bool media_control_progress_supported(MediaControlCtx *ctx) {
 }
 
 inline bool media_control_power_supported(MediaControlCtx *ctx) {
-  return ctx && (!ctx->power_entity.empty() || espcontrol::media::power_toggle_supported(
-    ctx->supported_features_known, ctx->supported_features));
+  return ctx && !ctx->power_entity.empty();
 }
 
 inline bool media_control_shuffle_supported(MediaControlCtx *ctx) {
@@ -234,33 +233,18 @@ inline bool media_control_repeat_supported(MediaControlCtx *ctx) {
 
 inline espcontrol::media::PowerCommand media_control_power_command(
     MediaControlCtx *ctx) {
-  if (!ctx) return espcontrol::media::PowerCommand::NONE;
-  if (!ctx->power_entity.empty()) {
-    // A configured on/off entity need not advertise media-player capabilities.
-    return espcontrol::media::power_command(
-      true, espcontrol::media::SUPPORT_TURN_ON | espcontrol::media::SUPPORT_TURN_OFF,
-      ctx->power_state_known, ctx->power_available, ctx->power_state_text);
-  }
+  if (!media_control_power_supported(ctx)) return espcontrol::media::PowerCommand::NONE;
   return espcontrol::media::power_command(
-    ctx->supported_features_known, ctx->supported_features,
-    ctx->state_known, ctx->available, ctx->state_text);
+    true, espcontrol::media::SUPPORT_TURN_ON | espcontrol::media::SUPPORT_TURN_OFF,
+    ctx->power_state_known, ctx->power_available, ctx->power_state_text);
 }
 
 inline void media_control_send_power_action(MediaControlCtx *ctx) {
   const auto command = media_control_power_command(ctx);
-  if (!ctx) return;
-  if (!ctx->power_entity.empty()) {
-    if (command == espcontrol::media::PowerCommand::TURN_ON) {
-      send_media_player_action(ctx->power_entity, "homeassistant.turn_on");
-    } else if (command == espcontrol::media::PowerCommand::TURN_OFF) {
-      send_media_player_action(ctx->power_entity, "homeassistant.turn_off");
-    }
-    return;
-  }
   if (command == espcontrol::media::PowerCommand::TURN_ON) {
-    send_media_player_action(ctx->entity_id, "media_player.turn_on");
+    send_media_player_action(ctx->power_entity, "homeassistant.turn_on");
   } else if (command == espcontrol::media::PowerCommand::TURN_OFF) {
-    send_media_player_action(ctx->entity_id, "media_player.turn_off");
+    send_media_player_action(ctx->power_entity, "homeassistant.turn_off");
   }
 }
 

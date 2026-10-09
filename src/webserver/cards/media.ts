@@ -658,6 +658,7 @@ export function registerMediaCardTypes(
                     setTabs: setMediaControlTabs,
                     idPrefix: "media-tab-",
                     hideHeading: true,
+                    tabAvailable: function (button: any, tab: string) { return tab !== "power" || !!mediaPowerEntity(button); },
                 });
                 var powerDisclosure: any = helpers.disclosureSection(
                     "Optional Power", helpers.idPrefix + "media-optional-power",
@@ -673,17 +674,29 @@ export function registerMediaCardTypes(
                         rerender: false,
                     },
                 });
+                var renderedPowerAvailable: boolean = !!mediaPowerEntity(b);
+                var renderedPowerEnabled: boolean = mediaControlTabs(b).indexOf("power") >= 0;
                 function syncPowerEntity(this: any) {
                     setMediaPowerEntity(b, powerEntityField.input.value);
                     b._mediaOptionalPowerOpen = true;
                     b._modalSettingsOpen = true;
                     helpers.saveField("options", b.options);
                 }
+                function savePowerEntity(this: any) {
+                    syncPowerEntity();
+                    var available: boolean = !!mediaPowerEntity(b);
+                    var enabled: boolean = mediaControlTabs(b).indexOf("power") >= 0;
+                    if (available !== renderedPowerAvailable || enabled !== renderedPowerEnabled) {
+                        renderedPowerAvailable = available;
+                        renderedPowerEnabled = enabled;
+                        renderButtonSettings();
+                    }
+                }
                 powerEntityField.input.addEventListener("input", syncPowerEntity);
-                powerEntityField.input.addEventListener("change", syncPowerEntity);
-                powerEntityField.input.addEventListener("blur", syncPowerEntity);
+                powerEntityField.input.addEventListener("change", savePowerEntity);
+                powerEntityField.input.addEventListener("blur", savePowerEntity);
                 powerEntityField.input.addEventListener("keydown", function (this: any, event?: any) {
-                    if (event.key === "Enter") { syncPowerEntity(); this.blur(); }
+                    if (event.key === "Enter") { savePowerEntity(); this.blur(); }
                 });
                 modalSettingsDisclosure.section.appendChild(powerDisclosure.panel);
                 panel.appendChild(modalSettingsDisclosure.panel);

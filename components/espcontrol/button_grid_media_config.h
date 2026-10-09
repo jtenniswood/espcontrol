@@ -82,7 +82,7 @@ inline ConfigV1 decode_config_v1(const ParsedCfg &saved) {
   }
   if (config.mode == Mode::CONTROL_MODAL || config.mode == Mode::COVER_ART) {
     config.power_entity = trim_saved_option_value(cfg_option_value(saved.options, MEDIA_POWER_ENTITY_OPTION));
-    config.control_tabs = espcontrol::media::parse_control_tabs(cfg_option_value(saved.options, MEDIA_CONTROL_TABS_OPTION));
+    config.control_tabs = espcontrol::media::parse_control_tabs(cfg_option_value(saved.options, MEDIA_CONTROL_TABS_OPTION), !config.power_entity.empty());
   }
   config.show_track_details = cfg_option_token_present(
       saved.options, MEDIA_COVER_ART_DETAILS_OPTION);

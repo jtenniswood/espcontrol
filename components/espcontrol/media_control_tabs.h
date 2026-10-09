@@ -13,7 +13,8 @@ enum class MediaControlTab : uint8_t {
 
 namespace espcontrol::media {
 
-constexpr const char *DEFAULT_CONTROL_TABS = "controls|progress|volume|speakers|power";
+constexpr const char *DEFAULT_CONTROL_TABS = "controls|progress|volume|speakers";
+constexpr const char *CONTROL_TABS_WITH_POWER = "controls|progress|volume|speakers|power";
 
 struct ControlTabs {
   MediaControlTab tabs[5] = {};
@@ -46,9 +47,10 @@ inline const char *control_tab_token(MediaControlTab tab) {
   return "controls";
 }
 
-inline ControlTabs parse_control_tabs(const std::string &value) {
+inline ControlTabs parse_control_tabs(const std::string &value, bool power_available = false) {
   const size_t first = value.find_first_not_of(" \t\r\n");
-  const std::string raw = first == std::string::npos ? DEFAULT_CONTROL_TABS : value;
+  const std::string raw = first == std::string::npos
+    ? (power_available ? CONTROL_TABS_WITH_POWER : DEFAULT_CONTROL_TABS) : value;
   ControlTabs result;
   size_t start = 0;
   while (start <= raw.size()) {
@@ -59,7 +61,7 @@ inline ControlTabs parse_control_tabs(const std::string &value) {
       token = token.substr(begin, token.find_last_not_of(" \t\r\n") - begin + 1);
       for (uint8_t i = 0; i < 5; ++i) {
         const auto tab = static_cast<MediaControlTab>(i);
-        if (token == control_tab_token(tab)) result.add(tab);
+        if (token == control_tab_token(tab) && (tab != MediaControlTab::POWER || power_available)) result.add(tab);
       }
     }
     if (end == std::string::npos) break;
@@ -69,8 +71,8 @@ inline ControlTabs parse_control_tabs(const std::string &value) {
   return result;
 }
 
-inline std::string normalize_control_tabs_value(const std::string &value) {
-  const ControlTabs tabs = parse_control_tabs(value);
+inline std::string normalize_control_tabs_value(const std::string &value, bool power_available = false) {
+  const ControlTabs tabs = parse_control_tabs(value, power_available);
   std::string result;
   for (uint8_t i = 0; i < tabs.count; ++i) {
     if (i) result += '|';

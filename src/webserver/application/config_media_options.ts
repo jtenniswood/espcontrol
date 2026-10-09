@@ -1,4 +1,4 @@
-import { MEDIA_CONTROL_DEFAULT_TABS, normalizeMediaControlTabs } from "../model/media_control_tabs";
+import { normalizeMediaControlTabs } from "../model/media_control_tabs";
 import type { DeviceConfig } from "../state/types";
 import {
     configOptionEnabled,
@@ -163,13 +163,13 @@ export function createConfigMediaOptionsFeature(
         ];
     }
     function mediaControlTabs(b: any) {
-        return normalizeMediaControlTabs(configOptionValue(b && b.options, MEDIA_CONTROL_TABS_OPTION));
+        return normalizeMediaControlTabs(configOptionValue(b && b.options, MEDIA_CONTROL_TABS_OPTION), !!mediaPowerEntity(b));
     }
     function normalizeMediaModalOptions(out: string, options: string) {
         var powerEntity: any = mediaPowerEntity({ options });
         if (powerEntity) out = setConfigOptionValue(out, MEDIA_POWER_ENTITY_OPTION, powerEntity);
-        var tabs: any = normalizeMediaControlTabs(configOptionValue(options, MEDIA_CONTROL_TABS_OPTION)).join("|");
-        if (tabs !== MEDIA_CONTROL_DEFAULT_TABS.join("|")) out = setConfigOptionValue(out, MEDIA_CONTROL_TABS_OPTION, tabs);
+        var tabs: any = normalizeMediaControlTabs(configOptionValue(options, MEDIA_CONTROL_TABS_OPTION), !!powerEntity).join("|");
+        if (tabs !== normalizeMediaControlTabs("", !!powerEntity).join("|")) out = setConfigOptionValue(out, MEDIA_CONTROL_TABS_OPTION, tabs);
         return out;
     }
     function setMediaControlTabs(b: any, tabs: string[]) {
@@ -294,7 +294,14 @@ export function createConfigMediaOptionsFeature(
     }
     function setMediaPowerEntity(this: any, b?: any, value?: any) {
         if (!b) return "";
-        b.options = setConfigOptionValue(b.options, MEDIA_POWER_ENTITY_OPTION, String(value || "").trim());
+        var previous: string = mediaPowerEntity(b);
+        var next: string = String(value || "").trim();
+        b.options = setConfigOptionValue(b.options, MEDIA_POWER_ENTITY_OPTION, next);
+        if (next && !previous) {
+            var tabs: any = mediaControlTabs(b);
+            if (tabs.indexOf("power") < 0) tabs.push("power");
+            b.options = setConfigOptionValue(b.options, MEDIA_CONTROL_TABS_OPTION, tabs.join("|"));
+        }
         b.options = normalizeMediaOptions(b.options, b.sensor);
         return b.options;
     }

@@ -328,9 +328,10 @@ inline std::string trim_saved_option_value(const std::string &value) {
 #include "button_grid_media_config.h"
 
 inline void append_media_control_tabs_option(std::string &out, const std::string &options) {
+  const bool power_available = !trim_saved_option_value(cfg_option_value(options, MEDIA_POWER_ENTITY_OPTION)).empty();
   const std::string tabs = espcontrol::media::normalize_control_tabs_value(
-    cfg_option_value(options, MEDIA_CONTROL_TABS_OPTION));
-  if (tabs == espcontrol::media::DEFAULT_CONTROL_TABS) return;
+    cfg_option_value(options, MEDIA_CONTROL_TABS_OPTION), power_available);
+  if (tabs == espcontrol::media::normalize_control_tabs_value("", power_available)) return;
   if (!out.empty()) out += ",";
   out += std::string(MEDIA_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
 }

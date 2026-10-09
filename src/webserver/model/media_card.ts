@@ -83,10 +83,12 @@ export function decodeMediaCardConfigV1(config: Partial<CardConfig>): MediaCardC
     mode = "cover_art";
   }
   const precision = config.precision || "";
+  const modal = mode === "control_modal" || mode === "cover_art";
+  const powerEntity = modal ? configOptionValue(options, "power_entity").trim() : "";
   return {
     version: MEDIA_CARD_CONFIG_VERSION,
-    powerEntity: mode === "control_modal" || mode === "cover_art" ? configOptionValue(options, "power_entity").trim() : "",
-    controlTabs: normalizeMediaControlTabs(mode === "control_modal" || mode === "cover_art" ? configOptionValue(options, "media_tabs") : ""),
+    powerEntity,
+    controlTabs: normalizeMediaControlTabs(modal ? configOptionValue(options, "media_tabs") : "", !!powerEntity),
     entity: config.entity || "",
     mode,
     stateDisplay:

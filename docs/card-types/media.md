@@ -47,7 +47,7 @@ For **All Controls** and **Cover Art**, open **Modal Settings** to reorder the p
 
 Inside **Modal Settings**, open **Optional Power** and enter a **Power Entity** to control another device from the Power tab. For example, use `media_player.living_room_sonos` as the main entity for playback and volume, and `media_player.living_room_tv` as the Power Entity for the TV. You can also select a `switch`, `input_boolean`, `light`, or `fan` entity.
 
-The Power tab follows that device's on/off state and stays disabled while its state is unknown or unavailable. Clear Power Entity to return to the main player's supported power control. Both **All Controls** and **Cover Art** use these settings.
+The Power tab follows that device's on/off state and stays disabled while its state is unknown or unavailable. Power stays off and unavailable until a Power Entity is entered. Adding an entity enables the tab automatically; you can still switch it off in the tab list. Clear Power Entity to disable the Power tab again. To control the main player's power, enter its entity here. Both **All Controls** and **Cover Art** use these settings.
 
 ## Cover Art
 

@@ -226,7 +226,7 @@ inline bool normalize_saved_config_media_shadow(Config &config) {
   std::string out; const int max_volume = saved_config_shadow_media_volume(cfg_option_value(source, "volume_max"));
   if (config.sensor == "control_modal") {
     const std::string power_entity = saved_config_shadow_trim(cfg_option_value(source, "power_entity")); if (!power_entity.empty()) saved_config_shadow_append_option(out, "power_entity", power_entity);
-    const std::string tabs = espcontrol::media::normalize_control_tabs_value(cfg_option_value(source, "media_tabs")); if (tabs != espcontrol::media::DEFAULT_CONTROL_TABS) saved_config_shadow_append_option(out, "media_tabs", tabs);
+    const std::string tabs = espcontrol::media::normalize_control_tabs_value(cfg_option_value(source, "media_tabs"), !power_entity.empty()); if (tabs != espcontrol::media::normalize_control_tabs_value("", !power_entity.empty())) saved_config_shadow_append_option(out, "media_tabs", tabs);
     const std::string speaker_group_entity = saved_config_shadow_trim(cfg_option_value(source, "speaker_group_entity")); if (!speaker_group_entity.empty()) saved_config_shadow_append_option(out, "speaker_group_entity", speaker_group_entity);
     if (saved_config_shadow_trim(cfg_option_value(source, "label_display")) == "label") saved_config_shadow_append_option(out, "label_display", "label");
     if (saved_config_shadow_trim(cfg_option_value(source, "number_display")) == "volume") saved_config_shadow_append_option(out, "number_display", "volume");
@@ -238,7 +238,7 @@ inline bool normalize_saved_config_media_shadow(Config &config) {
     const std::string speaker_group_entity = saved_config_shadow_trim(cfg_option_value(source, "speaker_group_entity"));
     if (!speaker_group_entity.empty()) saved_config_shadow_append_option(out, "speaker_group_entity", speaker_group_entity);
     if (max_volume != SAVED_CONFIG_SHADOW_MEDIA_VOLUME_DEFAULT) saved_config_shadow_append_option(out, "volume_max", std::to_string(max_volume));
-    const std::string power_entity = saved_config_shadow_trim(cfg_option_value(source, "power_entity")); if (!power_entity.empty()) saved_config_shadow_append_option(out, "power_entity", power_entity); const std::string tabs = espcontrol::media::normalize_control_tabs_value(cfg_option_value(source, "media_tabs")); if (tabs != espcontrol::media::DEFAULT_CONTROL_TABS) saved_config_shadow_append_option(out, "media_tabs", tabs);
+    const std::string power_entity = saved_config_shadow_trim(cfg_option_value(source, "power_entity")); if (!power_entity.empty()) saved_config_shadow_append_option(out, "power_entity", power_entity); const std::string tabs = espcontrol::media::normalize_control_tabs_value(cfg_option_value(source, "media_tabs"), !power_entity.empty()); if (tabs != espcontrol::media::normalize_control_tabs_value("", !power_entity.empty())) saved_config_shadow_append_option(out, "media_tabs", tabs);
   } else if (config.sensor == "playlist") {
     const std::string content_id = saved_config_shadow_trim(cfg_option_value(source, "playlist_content_id"));
     const std::string content_type = saved_config_shadow_trim(cfg_option_value(source, "playlist_content_type"));

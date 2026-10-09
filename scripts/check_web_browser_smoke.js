@@ -3523,12 +3523,16 @@ async function assertMediaModalSettingsJourney(browser, testCase) {
     await page.locator("#sp-inp-media-mode").selectOption("control_modal");
     await page.getByRole("button", { name: "Modal Settings", exact: true }).click();
     assert.deepStrictEqual(await order(), defaults, `${testCase.name}: default media tab order`);
+    assert(!(await page.locator("#sp-inp-media-tab-power").isChecked()), `${testCase.name}: Power starts off`);
+    assert(await page.locator("#sp-inp-media-tab-power").isDisabled(), `${testCase.name}: Power needs an optional entity`);
     await page.getByRole("button", { name: "Optional Power", exact: true }).click();
     const power = page.getByLabel("Power Entity", { exact: true });
     assert(await power.evaluate((input) => !!input.closest(".sp-disclosure").parentElement.closest(".sp-disclosure").querySelector("#sp-inp-media-modal-settings")), `${testCase.name}: Optional Power belongs inside Modal Settings`);
     assert.strictEqual(await page.locator("#sp-inp-media-power-info").count(), 0, `${testCase.name}: optional power has no info text`);
     await power.fill("media_player.living_room_tv");
     await power.blur();
+    assert(await page.locator("#sp-inp-media-tab-power").isChecked(), `${testCase.name}: adding an entity enables Power`);
+    assert(!(await page.locator("#sp-inp-media-tab-power").isDisabled()), `${testCase.name}: Power is available with an entity`);
     for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "Move Power up", exact: true }).click();
     assert.strictEqual((await order())[0], "power", `${testCase.name}: arrows move Power first`);
     await page.locator("#sp-inp-media-tab-progress").locator("..").click();
@@ -3555,6 +3559,27 @@ async function assertMediaModalSettingsJourney(browser, testCase) {
     await page.locator("#sp-inp-media-tab-volume").locator("..").click();
     assert(await page.locator("#sp-inp-media-tab-volume").isChecked(), `${testCase.name}: the last tab stays enabled`);
     assert.strictEqual(await power.inputValue(), "media_player.living_room_tv", `${testCase.name}: hiding Power keeps its entity`);
+    await power.fill("");
+    await power.fill("media_player.living_room_tv");
+    await power.blur();
+    assert(await page.locator("#sp-inp-media-tab-power").isChecked(), `${testCase.name}: re-entering an entity enables Power without interrupting typing`);
+    assert.strictEqual((await order())[0], "volume", `${testCase.name}: adding power preserves custom tab order`);
+
+    await power.fill("");
+    await power.blur();
+    assert(!(await page.locator("#sp-inp-media-tab-power").isChecked()), `${testCase.name}: clearing the entity switches Power off`);
+    assert(await page.locator("#sp-inp-media-tab-power").isDisabled(), `${testCase.name}: clearing the entity makes Power unavailable`);
+    await saveEditor();
+    await openEditor();
+    for (const mode of modes) {
+      await page.locator("#sp-inp-media-mode").selectOption(mode);
+      await page.getByRole("button", { name: "Modal Settings", exact: true }).click();
+      assert(!(await page.locator("#sp-inp-media-tab-power").isChecked()), `${testCase.name}: ${mode} keeps Power off after clearing`);
+      assert(await page.locator("#sp-inp-media-tab-power").isDisabled(), `${testCase.name}: ${mode} keeps Power unavailable after clearing`);
+      await saveEditor();
+      await openEditor();
+    }
+
     await page.locator("#sp-inp-media-mode").selectOption("volume");
     assert.strictEqual(await page.getByRole("button", { name: "Modal Settings", exact: true }).count(), 0, `${testCase.name}: simple media types have no modal tab settings`);
     assert.deepStrictEqual(errors, [], `${testCase.name}: media modal settings have no browser errors`);

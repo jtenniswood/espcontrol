@@ -5062,7 +5062,7 @@
               "speakers",
               "power"
             ],
-            "defaultValue": "controls|progress|volume|speakers|power",
+            "defaultValue": "controls|progress|volume|speakers",
             "omitDefault": true,
             "applicability": [
               {

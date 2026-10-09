@@ -2785,7 +2785,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "speakers",
           "power"
         ],
-        "defaultValue": "controls|progress|volume|speakers|power",
+        "defaultValue": "controls|progress|volume|speakers",
         "omitDefault": true,
         "applicability": [
           {

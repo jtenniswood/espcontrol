@@ -120,16 +120,14 @@ int main() {
   assert(sent_entity == "switch.tv" && sent_service == "homeassistant.turn_on");
   media_playback_detach_control(&ctx);
   assert(sonos.controls.empty() && tv.power_controls.empty());
-  // Clearing the override restores native capability gating and services.
+  // Without an optional entity, native power capability must not enable the tab or actions.
   ctx.power_entity.clear(); ctx.available = true; ctx.state_text = "off";
-  assert(!media_control_power_supported(&ctx));
   ctx.supported_features = SUPPORT_TURN_ON | SUPPORT_TURN_OFF;
-  assert(media_control_power_supported(&ctx));
+  sent_entity.clear(); sent_service.clear();
+  assert(!media_control_power_supported(&ctx));
+  assert(media_control_power_command(&ctx) == PowerCommand::NONE);
   media_control_send_power_action(&ctx);
-  assert(sent_entity == "media_player.sonos" && sent_service == "media_player.turn_on");
-  ctx.state_text = "playing";
-  media_control_send_power_action(&ctx);
-  assert(sent_entity == "media_player.sonos" && sent_service == "media_player.turn_off");
+  assert(sent_entity.empty() && sent_service.empty());
   assert(refreshes > 0);
 }
 '''
