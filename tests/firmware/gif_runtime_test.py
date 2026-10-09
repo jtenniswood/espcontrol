@@ -11,7 +11,8 @@ ROOT = Path(__file__).resolve().parents[2]
 COMPONENT = ROOT / "components/artwork_image"
 artwork = (COMPONENT / "artwork_image.cpp").read_text()
 methods = []
-for name in ("retain_animation_", "stop_animation_", "loop_animation_"):
+for name in ("retain_animation_", "pause_animation_for_refresh_", "replace_animation_",
+             "end_connection_", "stop_animation_", "loop_animation_"):
     match = re.search(rf"^void ArtworkImage::{name}\(\) \{{\n.*?^\}}", artwork, re.M | re.S)
     assert match, name
     methods.append(match[0])
@@ -28,7 +29,10 @@ stub = r'''
 #define ESP_LOGI(tag, ...) ((void)(tag))
 namespace esphome::artwork_image {
 enum P4PipelinePriority { P4_PIPELINE_TILE, P4_PIPELINE_MODAL };
+struct Downloader { void end() {} };
 struct ArtworkImage {
+  bool service_active_ = false, p4_pipeline_pending_ = false, s3_transfer_pending_ = false;
+  std::shared_ptr<Downloader> downloader_;
   std::unique_ptr<ImageDecoder> decoder_;
   DownloadBuffer download_buffer_{0};
   esphome::RAMAllocator<uint8_t> allocator_;
@@ -48,6 +52,11 @@ struct ArtworkImage {
   void invalidate_lvgl_cache_() { ++cache_invalidations; }
   void discard_decode_buffer_() { staging.clear(); decode_buffer_ = nullptr; }
   void retain_animation_();
+  void pause_animation_for_refresh_();
+  void replace_animation_();
+  void end_connection_();
+  void cancel_s3_transfer_() { s3_transfer_pending_ = false; }
+  void cancel_p4_pipeline_() { p4_pipeline_pending_ = false; }
   void stop_animation_();
   void loop_animation_();
   void publish_first() { active = std::move(staging); buffer_ = active.data(); decode_buffer_ = nullptr; }
@@ -114,7 +123,9 @@ static std::vector<uint8_t> read(const std::string &path) {
   return {std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>()};
 }
 static void load(ArtworkImage &image, const std::vector<uint8_t> &file, bool unknown_length, bool animated = true) {
-  image.stop_animation_();
+  image.service_active_ = true;
+  image.pause_animation_for_refresh_();
+  image.gif_decoding_ = true;
   if (!image.animation_visible_) image.animation_visible_ = []() { return true; };
   esphome::RAMAllocator<uint8_t> allocator;
   auto *data = allocator.allocate(file.size()); std::memcpy(data, file.data(), file.size());
@@ -132,9 +143,9 @@ static void load(ArtworkImage &image, const std::vector<uint8_t> &file, bool unk
   assert(!std::memcmp(data, file.data(), file.size()));
   assert(image.download_buffer_.adopt(data, file.size()));
   image.publish_first(); image.decoder_ = std::move(decoder);
-  image.retain_animation_();
+  image.replace_animation_();
   assert(bool(image.animation_) == animated);
-  image.decoder_.reset(); image.download_buffer_.shrink_to(0);
+  image.end_connection_(); image.service_active_ = false;
 }
 int main() {
   auto file = read(std::string(GIF_FIXTURE_DIR) + "/disposal.gif");
@@ -226,6 +237,65 @@ int main() {
   large_image.stop_animation_();
   assert(fake_esphome_allocator::external_pointers.empty());
 
+  // Refreshes keep the existing source/player until replacement promotion.
+  // Exercise both an unchanged HTTP response and a failed replacement while
+  // an old frame is halfway through resizing the shared staging surface.
+  auto refresh_file = file;
+  refresh_file[8] = 640 & 255; refresh_file[9] = 640 >> 8;
+  for (int outcome = 0; outcome < 4; ++outcome) {
+    ArtworkImage refreshed;
+    load(refreshed, refresh_file, false);
+    const auto *old_decoder = refreshed.animation_.get();
+    const auto first = refreshed.active;
+    now_ms += 100;
+    refreshed.loop_animation_();
+    assert(refreshed.animation_frame_pending_ && refreshed.decode_buffer_);
+    assert(esphome::HighFrequencyLoopRequester::is_high_frequency());
+    refreshed.service_active_ = true;
+    refreshed.pause_animation_for_refresh_();
+    assert(refreshed.animation_.get() == old_decoder && gif_slots[0] == &refreshed);
+    assert(!refreshed.decode_buffer_ && !esphome::HighFrequencyLoopRequester::is_high_frequency());
+    // Playback must not touch a replacement's partially decoded pixels.
+    refreshed.staging.assign(32, 0xa5); refreshed.decode_buffer_ = refreshed.staging.data();
+    refreshed.loop_animation_();
+    assert(refreshed.staging == std::vector<uint8_t>(32, 0xa5) && refreshed.active == first);
+    if (outcome == 1) {
+      refreshed.decoder_ = std::make_unique<GifDecoder>(&refreshed);
+      refreshed.decoder_->prepare(file.size());
+      refreshed.fail_resize = true;
+      assert(refreshed.decoder_->decode(file.data(), file.size()) < 0);
+      refreshed.fail_resize = false;
+    } else if (outcome == 2) {
+      refreshed.decoder_ = std::make_unique<GifDecoder>(&refreshed);
+      refreshed.decoder_->prepare(file.size());
+      fake_esphome_allocator::external_available = false;
+      assert(refreshed.decoder_->decode(file.data(), file.size()) == DECODE_ERROR_OUT_OF_MEMORY);
+      fake_esphome_allocator::external_available = true;
+    }
+    // HTTP 304, decode/allocation failure and cancellation all clean up only
+    // request resources. Native P4/S3 pending work must be cancelled too.
+    refreshed.p4_pipeline_pending_ = refreshed.s3_transfer_pending_ = true;
+    refreshed.end_connection_(); refreshed.service_active_ = false;
+    assert(refreshed.animation_.get() == old_decoder && refreshed.active == first);
+    for (int i = 0; i < 100 && !refreshed.cache_invalidations; ++i) refreshed.loop_animation_();
+    assert(refreshed.cache_invalidations == 1 && refreshed.animation_.get() == old_decoder);
+    assert(std::equal(refreshed.active.begin(), refreshed.active.begin() + 128,
+                      expected.begin() + 6 + 128));
+    assert(std::equal(refreshed.active.begin() + 128, refreshed.active.end(), first.begin() + 128));
+    // A successfully decoded GIF claims the same slot only after promotion.
+    load(refreshed, file, false);
+    assert(refreshed.animation_ && gif_slots[0] == &refreshed);
+    assert(std::equal(refreshed.active.begin(), refreshed.active.end(), expected.begin() + 6));
+    // A successful static replacement must release the old animation too.
+    refreshed.service_active_ = true; refreshed.pause_animation_for_refresh_();
+    refreshed.staging.assign(128, 0x5a); refreshed.decode_buffer_ = refreshed.staging.data();
+    refreshed.publish_first(); refreshed.gif_decoding_ = false;
+    refreshed.replace_animation_(); refreshed.end_connection_(); refreshed.service_active_ = false;
+    assert(!refreshed.animation_ && !gif_slots[0] && !gif_playing);
+    assert(refreshed.active == std::vector<uint8_t>(128, 0x5a));
+    assert(fake_esphome_allocator::external_pointers.empty());
+  }
+
   // A frame spanning multiple slices requests prompt component loops. Hidden
   // or superseded playback and decoder destruction must release that request.
   auto tall = file;
@@ -287,4 +357,4 @@ with tempfile.TemporaryDirectory(prefix="gif-runtime-") as directory:
         str(temp / "gif_image.cpp"), str(temp / "test.cpp"), "-o", str(executable),
     ], check=True)
     subprocess.run([str(executable)], check=True)
-print("GIF runtime: transfers, frame publication, pause/resume, arbitration, one card per screen, loop scheduling, cleanup and PSRAM failure passed")
+print("GIF runtime: transfers, frame publication, pause/resume, arbitration, one card per screen, refresh recovery, loop scheduling, cleanup and PSRAM failure passed")

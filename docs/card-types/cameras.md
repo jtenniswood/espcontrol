@@ -37,7 +37,9 @@ JPEG, PNG, BMP and GIF images are supported. Animated GIFs, including radar
 images from Rain Incoming, play in the card and expanded view. Media Cover Art
 cards share this playback support. Playback pauses
 when the image is hidden, another modal covers it, or the panel enters its
-screensaver. The expanded view takes priority over card playback.
+screensaver. The expanded view takes priority over card playback. A refresh
+pauses playback while loading; unchanged or failed refreshes resume the existing
+animation.
 
 Each screen keeps one animated GIF card: the first GIF to finish loading.
 Additional GIF cards show their first frame. Opening any GIF in the expanded

@@ -833,7 +833,7 @@ bool ArtworkImage::start_service_update_(uint32_t generation) {
 }
 
 void ArtworkImage::start_update_() {
-  this->stop_animation_();
+  this->pause_animation_for_refresh_();
   this->max_download_buffer_size_ = ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE;
   this->transfer_stamp_ = TransferObserver::instance().begin(this->url_, this->service_generation_);
   this->transfer_failure_ = TransferFailure::CONTENT;
@@ -2068,7 +2068,7 @@ void ArtworkImage::finish_download_() {
            bytes_read, this->width_, this->height_, this->peak_download_buffer_size_,
            this->max_download_buffer_size_);
   ESP_LOGD(TAG, "Total time: %" PRIu32 "s", (uint32_t) (::time(nullptr) - this->start_time_));
-  this->retain_animation_();
+  this->replace_animation_();
   this->end_connection_();
   this->log_state_("download-resources-released");
   App.feed_wdt();
@@ -2188,6 +2188,23 @@ void ArtworkImage::end_connection_() {
   this->download_buffer_.shrink_to(0);
 }
 
+void ArtworkImage::pause_animation_for_refresh_() {
+#ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
+  if (!this->animation_) return;
+  // The request shares the staging surface with playback. Preserve the source
+  // and compositor, but restart an interrupted resize if this request fails.
+  this->animation_->reset_render_target();
+  if (gif_playing == this) gif_playing = nullptr;
+  this->discard_decode_buffer_();
+#endif
+}
+
+void ArtworkImage::replace_animation_() {
+  // Called only after a complete replacement has been promoted successfully.
+  this->stop_animation_();
+  this->retain_animation_();
+}
+
 void ArtworkImage::retain_animation_() {
 #ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
   if (!this->gif_decoding_ || !this->animation_visible_) return;
@@ -2233,6 +2250,11 @@ void ArtworkImage::stop_animation_() {
 void ArtworkImage::loop_animation_() {
 #ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
   if (!this->animation_) return;
+  if (this->service_active_ || this->decoder_ || this->downloader_ ||
+      this->p4_pipeline_pending_ || this->s3_transfer_pending_) {
+    this->animation_->pause();
+    return;
+  }
   if (!this->animation_visible_ || !this->animation_visible_()) {
     this->animation_->pause();
     if (gif_playing == this) gif_playing = nullptr;

@@ -249,6 +249,8 @@ class ArtworkImage : public PollingComponent,
   void finish_download_();
   void fail_download_();
   void retain_animation_();
+  void pause_animation_for_refresh_();
+  void replace_animation_();
   void stop_animation_();
   void loop_animation_();
 

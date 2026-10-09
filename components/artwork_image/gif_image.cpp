@@ -68,13 +68,23 @@ gif::Player::Result GifDecoder::advance() {
   return gif::Player::Result::MORE;
 }
 
+void GifDecoder::reset_render_target() {
+  this->pause();
+  release_filtered_resize();
+  render_row_ = 0;
+  render_target_ready_ = false;
+}
+
 gif::Player::Result GifDecoder::advance_step_() {
   if (!rendering_) {
     const auto result = player_->step();
     if (result != gif::Player::Result::FRAME) return result;
+    rendering_ = true;
+  }
+  if (!render_target_ready_) {
     if (!set_size(player_->width(), player_->height()) ||
         !prepare_filtered_resize(player_->width(), player_->height())) return gif::Player::Result::ERROR;
-    rendering_ = true;
+    render_target_ready_ = true;
     render_row_ = 0;
   }
   // Resize only a few source rows per loop so GIF decoding yields to touch,
@@ -95,6 +105,7 @@ gif::Player::Result GifDecoder::advance_step_() {
   if (render_row_ != player_->height()) return gif::Player::Result::MORE;
   release_filtered_resize();
   rendering_ = false;
+  render_target_ready_ = false;
   return gif::Player::Result::FRAME;
 }
 }  // namespace esphome::artwork_image
