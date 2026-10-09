@@ -62,6 +62,7 @@
     { "key": "screensaver_timeout", "domain": "number", "name": "Screensaver Timeout", "objectIds": ["screensaver_timeout"], "groups": ["settings"] },
     { "key": "home_screen_timeout", "domain": "number", "name": "Home Screen Timeout", "objectIds": ["home_screen_timeout"], "groups": ["settings"] },
     { "key": "screen_saver_clock", "domain": "switch", "name": "Screen Saver: Clock", "objectIds": ["screen_saver__clock", "screen_saver_clock", "clock_screensaver_enabled"], "groups": ["settings"] },
+    { "key": "screen_saver_show_date", "domain": "switch", "name": "Screen Saver: Show Date", "objectIds": ["screen_saver__show_date", "screen_saver_show_date", "clock_screensaver_show_date"], "groups": ["settings"] },
     { "key": "screen_saver_clock_overlay", "domain": "switch", "name": "Screen Saver: Clock Overlay", "objectIds": ["screen_saver__clock_overlay", "screen_saver_clock_overlay", "clock_overlay_enabled"], "groups": ["settings"] },
     { "key": "screen_timezone", "domain": "select", "name": "Screen: Timezone", "groups": ["settings"] },
     { "key": "screen_active_timezone", "domain": "text_sensor", "name": "Screen: Active Timezone", "groups": ["settings"] },

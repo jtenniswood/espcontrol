@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 9,
     "cardTypes": 43,
-    "entityNames": 109,
+    "entityNames": 110,
     "icons": 364,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
@@ -7275,6 +7275,19 @@
           "screen_saver__clock",
           "screen_saver_clock",
           "clock_screensaver_enabled"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_show_date",
+        "domain": "switch",
+        "name": "Screen Saver: Show Date",
+        "objectIds": [
+          "screen_saver__show_date",
+          "screen_saver_show_date",
+          "clock_screensaver_show_date"
         ],
         "groups": [
           "settings"

@@ -263,6 +263,11 @@ export function createAppStateEventHandlersFeature(
                 state.coverArtScreensaverOn = d.value === true || val === "ON";
                 syncCoverArtScreensaverUi();
             },
+            "switch-screen_saver__show_date": function (this: any, val?: any, d?: any) {
+                state.clockDateSupported = true;
+                state.clockDateOn = d.value === true || val === "ON";
+                syncClockScreensaverControls();
+            },
             "switch-screen_saver__clock_overlay": function (this: any, val?: any, d?: any) {
                 state.clockOverlaySupported = true;
                 state.clockOverlayOn = d.value === true || val === "ON";

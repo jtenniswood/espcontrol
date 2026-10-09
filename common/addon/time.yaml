@@ -265,6 +265,7 @@ select:
         - lambda: |-
             set_espcontrol_language(id(language_select).current_option());
             refresh_calendar_cards();
+        - script.execute: time_update
         - script.execute: network_setup_text_refresh
         - script.execute: ha_setup_text_refresh
         - script.execute: ha_actions_text_refresh

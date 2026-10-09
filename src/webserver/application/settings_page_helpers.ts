@@ -43,7 +43,7 @@ export interface SettingsPageHelpersControllers {
     readonly shell: Pick<ControlsShellFeature, "isConfigLocked" | "switchTab">;
     readonly requestApi: Pick<ApplicationApiFeature, "postScreensaverAction" | "postScreensaverDimmedBrightness" | "postScreensaverDimmedBrightnessDay" | "postScreensaverDimmedBrightnessNight" | "postSwitch">;
     readonly statusPreview: Pick<AppStatusPreviewFeature, "syncInput">;
-    readonly clockBarPostApi: Pick<ClockBarPostApiFeature, "postClockBrightnessDay" | "postClockBrightnessNight" | "postClockScreensaver" | "postAlarmDelayAudio" | "postAlarmDelayTts" | "postAlarmDelayEntryAnnouncement" | "postAlarmDelayExitAnnouncement" | "postAlarmDelayBeepVolume" | "postAlarmDelayFinalCountdown">;
+    readonly clockBarPostApi: Pick<ClockBarPostApiFeature, "postClockBrightnessDay" | "postClockBrightnessNight" | "postClockScreensaver" | "postClockDate" | "postAlarmDelayAudio" | "postAlarmDelayTts" | "postAlarmDelayEntryAnnouncement" | "postAlarmDelayExitAnnouncement" | "postAlarmDelayBeepVolume" | "postAlarmDelayFinalCountdown">;
     readonly fields: Pick<ControlsFieldsFeature, "condField" | "createRangeSlider" | "fieldLabel" | "makeCollapsibleCard" | "toggleRow">;
     readonly artworkPostApi: Pick<ArtworkPostApiFeature, "postScreensaverCameraEntity" | "postScreensaverCameraImageMode">;
 }
@@ -90,6 +90,7 @@ export function createSettingsPageHelpersFeature(
         postClockBrightnessDay,
         postClockBrightnessNight,
         postClockScreensaver,
+        postClockDate,
         postAlarmDelayAudio,
         postAlarmDelayTts,
         postAlarmDelayEntryAnnouncement,
@@ -369,6 +370,11 @@ export function createSettingsPageHelpersFeature(
         var automaticBrightness: any = normalizeBrightnessMode(state.brightnessMode) !== "manual";
         state.clockScreensaverOn = mode === "clock";
         syncClockBarUi();
+        for (const toggle of [els.setClockDateToggle, els.setSensorClockDateToggle]) {
+            if (!toggle) continue;
+            toggle.checked = state.clockDateOn;
+            toggle.closest(".sp-toggle-row").style.display = state.clockDateSupported ? "" : "none";
+        }
         if (els.setClockSelect)
             els.setClockSelect.value = mode;
         if (els.setSensorClockSelect)
@@ -656,6 +662,15 @@ export function createSettingsPageHelpersFeature(
         var clockBrightnessField: any = document.createElement("div");
         clockBrightnessField.className = "sp-clock-brightness-field";
         clockBrightnessField.style.display = _screensaverController.uiState(screensaverState()).clockVisible ? "" : "none";
+        var dateToggle = toggleRow("Show date", selectId === "sp-set-sensor-clock-mode"
+            ? "sp-set-sensor-clock-date" : "sp-set-clock-date", state.clockDateOn);
+        dateToggle.row.style.display = state.clockDateSupported ? "" : "none";
+        dateToggle.input.addEventListener("change", function (this: any) {
+            state.clockDateOn = this.checked;
+            syncClockScreensaverControls();
+            postClockDate(state.clockDateOn);
+        });
+        clockBrightnessField.appendChild(dateToggle.row);
         var daySlider: any = createRangeSlider("Daytime Clock Brightness", state.clockBrightnessDay, postClockBrightnessDay);
         daySlider.range.min = "1";
         daySlider.range.step = "1";
@@ -673,6 +688,7 @@ export function createSettingsPageHelpersFeature(
         });
         clockBrightnessField.appendChild(nightSlider.wrap);
         return {
+            dateToggle: dateToggle.input,
             clockField: clockField,
             clockSelect: clockSelect,
             cameraField: cameraField,

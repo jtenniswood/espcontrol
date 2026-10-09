@@ -1600,14 +1600,26 @@ script:
     then:
       - lambda: |-
           apply_clock_screensaver_text_color(id(clock_label), id(schedule_clock_text_color).state);
+          apply_clock_screensaver_text_color(id(clock_date_label), id(schedule_clock_text_color).state);
           auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+          const bool show_date = id(clock_screensaver_show_date).state && time.is_valid();
+          if (show_date) {
+            char date_buf[96];
+            snprintf(date_buf, sizeof(date_buf), "%d %s %d", time.day_of_month,
+                     calendar_month_name(time.month), time.year);
+            lv_label_set_display_text(id(clock_date_label), date_buf);
+            lv_obj_clear_flag(id(clock_date_label), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(id(clock_date_label), LV_OBJ_FLAG_HIDDEN);
+          }
           if (time.is_valid()) {
             char buf[8];
             bool use_12h = id(clock_format_12h);
             format_clock_time_without_suffix(buf, sizeof(buf),
                                              time.hour, time.minute, use_12h);
             lv_label_set_text(id(clock_label), buf);
-            position_clock_screensaver_label(id(clock_screensaver), id(clock_label), time.minute);
+            position_clock_screensaver_label(id(clock_screensaver), id(clock_label), time.minute,
+                                             show_date ? id(clock_date_label) : nullptr);
           }
 
   # Show the clock screensaver overlay

@@ -601,6 +601,7 @@ const panelSettings = model.normalizeBackupPanelSettings({
   home_assistant_artwork_port: "80",
   firmware_auto_update: false,
   firmware_update_frequency: "Weekly",
+  clock_date: true,
   clock_brightness_day: 44,
   clock_brightness_night: 22,
   screensaver_dimmed_brightness: 15,
@@ -644,6 +645,7 @@ assert.strictEqual(panelSettings.screensaverMode, "timer", "panel screensaver mo
 assert.strictEqual(panelSettings.screensaverAction, "dim", "panel screensaver action imports");
 assert.strictEqual(panelSettings.screensaverCameraImageMode, "Fill", "panel camera image mode imports");
 assert.strictEqual(panelSettings.screensaverMetadataEntity, "sensor.current_photo_caption", "panel photo metadata entity imports");
+assert.strictEqual(panelSettings.clockDate, true, "saved date setting is restored");
 assert.strictEqual(panelSettings.metadataOverlay, true, "older backups with a metadata entity keep metadata enabled");
 const metadataSettingsCurrent = {
   ...panelSettings, clockFormatOptions: ["12h", "24h"], screenRotationOptions: ["0"],
@@ -652,6 +654,7 @@ const metadataSettingsCurrent = {
 assert.strictEqual(model.normalizeBackupPanelSettings({
   screensaver_metadata_entity: "sensor.current_photo_caption", metadata_overlay: false,
 }, metadataSettingsCurrent).metadataOverlay, false, "explicitly disabled metadata stays off when restoring a saved entity");
+assert.strictEqual(model.normalizeBackupPanelSettings({}, metadataSettingsCurrent).clockDate, false, "older backups default date off");
 assert.strictEqual(model.normalizeBackupPanelSettings({}, metadataSettingsCurrent).metadataOverlay, false, "metadata defaults off without a saved entity");
 assert.strictEqual(model.normalizeScreensaverCameraImageMode("unexpected"), "Fit", "invalid camera image mode defaults to Fit");
 assert.strictEqual(panelSettings.coverArtHideExternalInput, true, "panel cover art external-input setting imports");

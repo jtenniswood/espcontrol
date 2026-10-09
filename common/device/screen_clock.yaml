@@ -59,6 +59,13 @@ lvgl:
                 text_font: font_clock_display
                 text_color: 0xFFFFFF
                 text: "00:00"
+            - label:
+                id: clock_date_label
+                text_font: font_text_body
+                text_color: 0xFFFFFF
+                text_align: CENTER
+                text: ""
+                hidden: true
       - obj:
           id: clock_image_overlay
           x: 0
