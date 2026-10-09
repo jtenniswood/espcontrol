@@ -308,7 +308,7 @@ export function registerClimateCardTypes(
                 var secondaryDisplay = climateSecondaryDisplay(b);
                 var secondaryValue = secondaryDisplay === "status" ? "Heating" : secondaryDisplay === "target" ? "20" + unit : "21" + unit;
                 var secondaryLabel = climateSecondaryLabel(b);
-                secondaryPreview = '<span class="sp-btn-secondary-data">' + helpers.escHtml((secondaryLabel ? secondaryLabel + ": " : "") + secondaryValue) + "</span>";
+                secondaryPreview = '<span class="sp-btn-secondary-data">' + helpers.escHtml((secondaryLabel ? secondaryLabel + " " : "") + secondaryValue) + "</span>";
             }
             var label: any = (b.label && b.label.trim()) || "Climate";
             if (labelMode === "status") {

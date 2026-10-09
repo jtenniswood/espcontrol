@@ -1139,7 +1139,7 @@ inline void climate_update_card(ClimateControlCtx *ctx) {
           secondary_value = climate_card_value_with_unit(climate_card_actual_value(ctx));
         }
         if (!ctx->secondary_label.empty())
-          secondary_value = ctx->secondary_label + ": " + secondary_value;
+          secondary_value = ctx->secondary_label + " " + secondary_value;
         lv_label_set_display_text(ctx->secondary_lbl, secondary_value.c_str());
         lv_obj_clear_flag(ctx->secondary_lbl, LV_OBJ_FLAG_HIDDEN);
         climate_layout_card_secondary(
