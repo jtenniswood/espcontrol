@@ -38,6 +38,7 @@ using StringRef = std::string;
 namespace artwork_image {
 struct ArtworkImage {
  bool available = true; int released = 0, cancelled = 0;
+ bool animation_needs_reload() const { return false; }
  uint32_t fit_background_color = 0;
  void set_fit_background_color(uint32_t color) { fit_background_color = color; }
  bool has_image() { return available; }

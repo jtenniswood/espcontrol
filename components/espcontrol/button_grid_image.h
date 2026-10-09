@@ -3066,6 +3066,14 @@ inline void image_card_refresh_due(std::function<bool()> page_visible = nullptr)
     const bool connected = ha_api_state_connected();
     const bool visible = image_card_context_on_active_screen(ctx);
     const bool visible_modal = image_card_modal_active_for(ctx) && visible;
+    // Subpages retain their picture when inactive. A still whose playback data
+    // was discarded must reacquire the source even when HA's revision is unchanged.
+    // The image owns slot eligibility; this shared path also covers Media Cover Art.
+    if (connected && image_card_context_visible_on_active_screen(ctx) && ctx->image_ready && !ctx->download_active &&
+        ctx->next_download_retry_ms == 0 && !ctx->camera_entity_unavailable &&
+        ctx->image && ctx->image->animation_needs_reload()) {
+      image_card_request_source_url(ctx);
+    }
     const bool activity = ctx->refresh_schedule.mode == espcontrol::camera::RefreshMode::ACTIVITY;
     const bool periodic = ctx->refresh_schedule.mode == espcontrol::camera::RefreshMode::PERIODIC;
     const bool schedule_visible = visible_modal || ((activity || periodic) && visible);

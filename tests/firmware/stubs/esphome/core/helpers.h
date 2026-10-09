@@ -62,6 +62,8 @@ class RAMAllocator {
     ::operator delete(pointer);
   }
 
+  size_t get_max_free_block_size() const { return 0; }
+
  private:
   // Deliberately internal-only so tests fail if production relies on the
   // stub's default instead of requesting external-first allocation explicitly.

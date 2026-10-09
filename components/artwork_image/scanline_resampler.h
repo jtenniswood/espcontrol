@@ -98,6 +98,7 @@ struct ResampleAxis32 {
 // proportional to the visible target width (about 17 KiB at 480 pixels).
 class ScanlineResampler {
  public:
+  enum class RowResult { MORE, DONE, ERROR };
   static size_t workspace_size(int visible_width) {
     return visible_width > 0 ? static_cast<size_t>(visible_width) * 3 *
                                   (sizeof(uint64_t) + 2 * sizeof(uint16_t)) : 0;
@@ -128,6 +129,7 @@ class ScanlineResampler {
     accumulated_ = false;
     horizontal_axes_ = nullptr;
     next_source_y_ = 0;
+    row_pending_ = false;
     if (fast_dimensions_supported()) {
       horizontal_divider_.configure(source_width_ >= content_width_ ? source_width_ : content_width_ * 2);
       vertical_divider_.configure((source_height_ >= content_height_ ? source_height_ : content_height_ * 2) * 256);
@@ -139,7 +141,7 @@ class ScanlineResampler {
   // emit(x, y, colour) writes directly into the already-allocated target.
   template<typename ReadPixel, typename Emit>
   bool push_row(int source_y, ReadPixel read_pixel, Emit emit) {
-    return push_row_<ResampleAxis, uint64_t>(source_y, read_pixel, emit, nullptr);
+    return push_row_<ResampleAxis, uint64_t>(source_y, read_pixel, emit, nullptr, SIZE_MAX) == RowResult::DONE;
   }
 
   bool fast_dimensions_supported() const {
@@ -160,7 +162,18 @@ class ScanlineResampler {
   template<typename ReadPixel, typename Emit>
   ARTWORK_RESAMPLE_INLINE bool push_row_fast(int source_y, ReadPixel read_pixel, Emit emit) {
     if (!fast_dimensions_supported()) return push_row(source_y, read_pixel, emit);
-    return push_row_<ResampleAxis32, uint32_t>(source_y, read_pixel, emit, horizontal_axes_);
+    return push_row_<ResampleAxis32, uint32_t>(source_y, read_pixel, emit, horizontal_axes_, SIZE_MAX) == RowResult::DONE;
+  }
+
+  // Resume the same source row after MORE. Its horizontal filter stays cached;
+  // output rows are complete before yielding, so no pixel is accumulated twice.
+  template<typename ReadPixel, typename Emit>
+  ARTWORK_RESAMPLE_INLINE RowResult push_row_fast_bounded(int source_y, ReadPixel read_pixel, Emit emit,
+                                                         size_t output_rows) {
+    if (!output_rows) return RowResult::MORE;
+    if (fast_dimensions_supported())
+      return push_row_<ResampleAxis32, uint32_t>(source_y, read_pixel, emit, horizontal_axes_, output_rows);
+    return push_row_<ResampleAxis, uint64_t>(source_y, read_pixel, emit, nullptr, output_rows);
   }
 
  private:
@@ -169,39 +182,44 @@ class ScanlineResampler {
     else return value / divisor;
   }
   template<typename Axis, typename Sum, typename ReadPixel, typename Emit>
-  ARTWORK_RESAMPLE_INLINE bool push_row_(int source_y, ReadPixel read_pixel, Emit emit, const Axis *axes) {
-    if (!sum_ || source_y != next_source_y_ || source_y >= source_height_) return false;
-    next_source_y_++;
-    if (y_ >= y1_) return true;
+  ARTWORK_RESAMPLE_INLINE RowResult push_row_(int source_y, ReadPixel read_pixel, Emit emit, const Axis *axes,
+                                             size_t output_rows) {
+    if (!sum_ || source_y != next_source_y_ || source_y >= source_height_) return RowResult::ERROR;
+    if (y_ >= y1_) { ++next_source_y_; return RowResult::DONE; }
     auto *sum = sum_;
     const auto accumulate = [this, sum](const uint16_t *row, Sum weight) {
       for (size_t i = 0; i < channels_; i++) sum[i] += static_cast<Sum>(row[i]) * weight;
     };
     auto vertical = Axis::at(source_height_, content_height_, y_ - offset_y_);
-    if (source_y < vertical.first) return true;
+    if (source_y < vertical.first) { ++next_source_y_; return RowResult::DONE; }
 
     uint16_t *row = rows_[source_y % 2];
-    for (int x = x0_; x < x1_; x++) {
-      const auto horizontal = axes ? axes[x - x0_] : Axis::at(source_width_, content_width_, x - offset_x_);
-      Sum r = 0, g = 0, b = 0;
-      const Sum total = horizontal.total;
-      for (int sx = horizontal.first; sx <= horizontal.last; sx++) {
-        const auto color = read_pixel(sx);
-        const Sum weight = horizontal.weight(sx);
-        r += color.r * weight;
-        g += color.g * weight;
-        b += color.b * weight;
+    if (!row_pending_) {
+      for (int x = x0_; x < x1_; x++) {
+        const auto horizontal = axes ? axes[x - x0_] : Axis::at(source_width_, content_width_, x - offset_x_);
+        Sum r = 0, g = 0, b = 0;
+        const Sum total = horizontal.total;
+        for (int sx = horizontal.first; sx <= horizontal.last; sx++) {
+          const auto color = read_pixel(sx);
+          const Sum weight = horizontal.weight(sx);
+          r += color.r * weight;
+          g += color.g * weight;
+          b += color.b * weight;
+        }
+        const size_t index = static_cast<size_t>(x - x0_) * 3;
+        row[index] = divide_(r * 256 + total / 2, total, horizontal_divider_);
+        row[index + 1] = divide_(g * 256 + total / 2, total, horizontal_divider_);
+        row[index + 2] = divide_(b * 256 + total / 2, total, horizontal_divider_);
       }
-      const size_t index = static_cast<size_t>(x - x0_) * 3;
-      row[index] = divide_(r * 256 + total / 2, total, horizontal_divider_);
-      row[index + 1] = divide_(g * 256 + total / 2, total, horizontal_divider_);
-      row[index + 2] = divide_(b * 256 + total / 2, total, horizontal_divider_);
+
+      row_pending_ = true;
     }
 
     while (y_ < y1_ && vertical.first <= source_y) {
       // Adjacent enlarged output rows can share the previous source row.
       if (!accumulated_ && vertical.first < source_y) {
-        if (vertical.first != source_y - 1 || source_height_ >= content_height_) return false;
+        if (source_y == 0 || vertical.first != source_y - 1 || source_height_ >= content_height_)
+          return RowResult::ERROR;
         accumulate(rows_[(source_y - 1) % 2], vertical.weight(source_y - 1));
       }
       accumulate(row, vertical.weight(source_y));
@@ -218,9 +236,14 @@ class ScanlineResampler {
       std::memset(sum, 0, channels_ * sizeof(uint64_t));
       accumulated_ = false;
       y_++;
-      if (y_ < y1_) vertical = Axis::at(source_height_, content_height_, y_ - offset_y_);
+      if (y_ < y1_) {
+        vertical = Axis::at(source_height_, content_height_, y_ - offset_y_);
+        if (--output_rows == 0 && vertical.first <= source_y) return RowResult::MORE;
+      }
     }
-    return true;
+    row_pending_ = false;
+    ++next_source_y_;
+    return RowResult::DONE;
   }
 
   int source_width_{0}, source_height_{0}, content_width_{0}, content_height_{0};
@@ -230,7 +253,7 @@ class ScanlineResampler {
   const ResampleAxis32 *horizontal_axes_{nullptr};
   ResampleDivider32 horizontal_divider_, vertical_divider_;
   uint16_t *rows_[2]{nullptr, nullptr};
-  bool accumulated_{false};
+  bool accumulated_{false}, row_pending_{false};
 };
 
 // A reduced JPEG must still have enough pixels for the fitted content, not

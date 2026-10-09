@@ -45,6 +45,30 @@ class Player {
   const uint16_t *canvas() const { return canvas_; }
   uint32_t delay_ms() const { return std::max(MIN_DELAY_MS, static_cast<uint32_t>(delay_) * 10); }
 
+  // Called after the first bitmap. Repeats alone do not make a still GIF an
+  // animation. Skip optional extension sub-blocks without changing playback.
+  bool has_more_frames() const {
+    size_t position = pos_;
+    while (position < size_) {
+      const uint8_t marker = data_[position++];
+      if (marker == 0x2c) return true;
+      if (marker != 0x21 || position == size_) return false;
+      ++position;  // Extension label; the header is also a sized sub-block.
+      uint8_t count;
+      do {
+        if (position == size_) return false;
+        count = data_[position++];
+        if (count > size_ - position) return false;
+        position += count;
+      } while (count);
+    }
+    return false;
+  }
+
+  // Compaction may move the caller-owned compressed allocation. Its contents
+  // and length stay unchanged, so parser offsets and the compositor survive.
+  void rebind_source(const uint8_t *data) { data_ = data; }
+
   Result step(size_t pixel_budget = 4096) {
     if (error_) return Result::ERROR;
     if (ended_) return Result::END;
@@ -183,8 +207,13 @@ class Player {
           } else if (!blocks()) return fail();
         } else if (label == 0xfe) {
           if (!blocks()) return fail();
+        } else if (label == 0x01) {
+          uint8_t length;
+          if (!global_colors_ || !byte(length) || length != 12 || !skip(length) || !blocks()) return fail();
+          // Text rendering is omitted. Its graphic-control extension belongs
+          // to the text, rather than the bitmap that follows it.
+          disposal = 0; delay = 0; transparent = false; transparent_index = 0;
         } else {
-          // Plain-text graphics cannot be represented by a camera snapshot.
           return fail();
         }
         continue;

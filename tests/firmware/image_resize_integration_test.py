@@ -255,6 +255,31 @@ int main() {
    assert(image.bytes[0] == (big_endian ? 0x84 : 0x10));
    assert(image.bytes[1] == (big_endian ? 0x10 : 0x84));
  }
+ // The production writer must yield when a single source row covers a display.
+ // Test both byte orders and the general alpha path as well as opaque RGB565.
+ for (bool big_endian : {false, true}) for (int bytes_per_pixel : {2, 3}) {
+   ArtworkImage image;
+   image.big_endian = big_endian; image.bytes_per_pixel = bytes_per_pixel;
+   image.fixed_width_ = 1280; image.fixed_height_ = 800;
+   image.resize_mode_ = ImageResizeMode::COVER;
+   Decoder decoder(&image);
+   assert(decoder.set_size(1,1) && decoder.prepare_filtered_resize(1,1));
+   const uint16_t red[] = {0xf800};
+   auto result = decoder.draw_fast_filtered_rgb565_row(0, red, 2);
+   assert(result == ScanlineResampler::RowResult::MORE);
+   assert(image.bytes[image.get_position_(0,2)] == 0 && image.bytes[image.get_position_(0,2)+1] == 0);
+   int batches = 1;
+   while (result == ScanlineResampler::RowResult::MORE) {
+     result = decoder.draw_fast_filtered_rgb565_row(0, red, 2); ++batches;
+   }
+   assert(result == ScanlineResampler::RowResult::DONE && batches == 400 && !decoder.has_failed());
+   for (int y = 0; y < 800; ++y) for (int x = 0; x < 1280; ++x) {
+     const auto pos = image.get_position_(x,y);
+     assert(image.bytes[pos] == (big_endian ? 0xf8 : 0));
+     assert(image.bytes[pos+1] == (big_endian ? 0 : 0xf8));
+     if (bytes_per_pixel == 3) assert(image.bytes[pos+2] == 255);
+   }
+ }
  assert(allocations == 0);  // Streaming scratch is released on destruction/cancellation.
  {
    ArtworkImage image;

@@ -4,6 +4,9 @@
 
 #include "esphome/core/log.h"
 #include "esphome/core/application.h"
+#ifdef USE_ESP32
+#include <esp_heap_caps.h>
+#endif
 
 namespace esphome {
 namespace artwork_image {
@@ -53,13 +56,14 @@ void ImageDecoder::draw_filtered_rgb888_row(int y, const uint8_t *data) {
 #if defined(__GNUC__) && !defined(__clang__)
 __attribute__((optimize("O3")))
 #endif
-void ImageDecoder::draw_fast_filtered_rgb565_row(int y, const uint16_t *data) {
+ScanlineResampler::RowResult ImageDecoder::draw_fast_filtered_rgb565_row(int y, const uint16_t *data,
+                                                                      size_t output_rows) {
   const bool opaque_rgb565 = this->image_->get_bpp() == 16 && !this->image_->has_transparency();
   const bool big_endian = this->image_->is_big_endian();
   const int target_width = this->image_->decode_buffer_width_;
   auto *target = this->image_->decode_buffer_;
-  if (!target) { this->failed_ = true; return; }
-  if (!this->resampler_.push_row_fast(y, [data](int x) {
+  if (!target) { this->failed_ = true; return ScanlineResampler::RowResult::ERROR; }
+  const auto result = this->resampler_.push_row_fast_bounded(y, [data](int x) {
         const auto pixel = data[x];
         const uint8_t r = (pixel >> 11) & 31, g = (pixel >> 5) & 63, b = pixel & 31;
         return ResampleColor{static_cast<uint8_t>((r << 3) | (r >> 2)),
@@ -76,7 +80,9 @@ void ImageDecoder::draw_fast_filtered_rgb565_row(int y, const uint16_t *data) {
         } else {
           this->image_->draw_pixel_(x, y, Color(color.r, color.g, color.b, 0xFF));
         }
-      })) this->failed_ = true;
+      }, output_rows);
+  if (result == ScanlineResampler::RowResult::ERROR) this->failed_ = true;
+  return result;
 }
 
 bool ImageDecoder::set_size(int width, int height) {
@@ -89,11 +95,17 @@ bool ImageDecoder::set_size(int width, int height) {
                                                               : this->image_->decode_buffer_width_;
   int content_height = this->image_->decode_content_height_ > 0 ? this->image_->decode_content_height_
                                                                 : this->image_->decode_buffer_height_;
+  const double next_x_scale = static_cast<double>(content_width) / width;
+  const double next_y_scale = static_cast<double>(content_height) / height;
+  const bool geometry_changed = width != this->logged_source_width_ || height != this->logged_source_height_ ||
+      next_x_scale != this->x_scale_ || next_y_scale != this->y_scale_ ||
+      this->x_offset_ != this->image_->decode_offset_x_ || this->y_offset_ != this->image_->decode_offset_y_;
+  this->logged_source_width_ = width; this->logged_source_height_ = height;
   this->x_offset_ = this->image_->decode_offset_x_;
   this->y_offset_ = this->image_->decode_offset_y_;
   this->x_scale_ = static_cast<double>(content_width) / width;
   this->y_scale_ = static_cast<double>(content_height) / height;
-  ESP_LOGI(TAG, "Decoder geometry: source=%dx%d content=%dx%d offset=%d,%d scale=%.4f,%.4f",
+  if (geometry_changed) ESP_LOGI(TAG, "Decoder geometry: source=%dx%d content=%dx%d offset=%d,%d scale=%.4f,%.4f",
            width, height, content_width, content_height, this->x_offset_, this->y_offset_, this->x_scale_,
            this->y_scale_);
   return success;
@@ -289,6 +301,27 @@ bool DownloadBuffer::adopt(uint8_t *buffer, size_t size) {
   }
   this->size_ = size;
   this->unread_ = size;
+  return true;
+}
+
+bool DownloadBuffer::compact(size_t size) {
+  if (!this->buffer_ || size == 0 || size > this->size_) return false;
+  if (size == this->size_) return true;
+#ifdef USE_ESP32
+  // Shrinking a PSRAM block avoids a second full-file allocation at peak use.
+  auto *compact = static_cast<uint8_t *>(heap_caps_realloc(
+      this->buffer_, size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+#else
+  auto *compact = this->allocator_.allocate(size);
+  if (compact) {
+    memcpy(compact, this->buffer_, size);
+    this->allocator_.deallocate(this->buffer_, this->size_);
+  }
+#endif
+  if (!compact) return false;
+  this->buffer_ = compact;
+  this->size_ = size;
+  this->unread_ = std::min(this->unread_, size);
   return true;
 }
 

@@ -155,6 +155,8 @@ class ArtworkImage : public PollingComponent,
     this->animation_redraw_ = std::move(redraw);
     this->animation_screen_active_ = std::move(screen_active);
   }
+  /** A cached animated still needs a new source when its screen becomes eligible. */
+  bool animation_needs_reload() const;
 
   bool is_big_endian() const { return this->is_big_endian_; }
   bool hardware_acceleration_enabled() const { return this->hardware_acceleration_enabled_; }
@@ -279,6 +281,7 @@ class ArtworkImage : public PollingComponent,
   std::unique_ptr<GifDecoder> animation_{nullptr};
 #endif
   bool gif_decoding_{false};
+  bool animation_reload_pending_{false};
   bool animation_frame_pending_{false};
   bool animation_frame_ready_{false};
   uint32_t animation_frame_delay_ms_{0};
@@ -381,7 +384,8 @@ class ArtworkImage : public PollingComponent,
   friend bool ImageDecoder::set_size(int width, int height);
   friend bool ImageDecoder::prepare_filtered_resize(int width, int height);
   friend void ImageDecoder::draw_filtered_rgb888_row(int y, const uint8_t *data);
-  friend void ImageDecoder::draw_fast_filtered_rgb565_row(int y, const uint16_t *data);
+  friend ScanlineResampler::RowResult ImageDecoder::draw_fast_filtered_rgb565_row(int y, const uint16_t *data,
+                                                                                size_t output_rows);
   friend void ImageDecoder::draw(int x, int y, int w, int h, const Color &color);
   friend void ImageDecoder::draw_rgb565_block(int x, int y, int w, int h, const uint8_t *data);
   friend void ImageDecoder::draw_rgb565_frame(int width, int height, size_t stride_bytes,

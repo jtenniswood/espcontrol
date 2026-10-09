@@ -675,6 +675,9 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
   }
   if (this->decode_buffer_) {
     if (new_size <= this->get_decode_buffer_size_()) {
+      const bool geometry_changed = this->decode_buffer_width_ != width || this->decode_buffer_height_ != height ||
+          this->decode_content_width_ != content_width || this->decode_content_height_ != content_height ||
+          this->decode_offset_x_ != offset_x || this->decode_offset_y_ != offset_y;
       this->decode_buffer_width_ = width;
       this->decode_buffer_height_ = height;
       this->decode_content_width_ = content_width;
@@ -683,7 +686,7 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
       this->decode_offset_y_ = offset_y;
       memset(this->decode_buffer_, 0, new_size);
       this->fill_fit_background_();
-      ESP_LOGI(TAG, "Artwork fit: source=%dx%d target=%dx%d content=%dx%d offset=%d,%d",
+      if (geometry_changed) ESP_LOGI(TAG, "Artwork fit: source=%dx%d target=%dx%d content=%dx%d offset=%d,%d",
                width_in, height_in, width, height, content_width, content_height, offset_x, offset_y);
       return new_size;
     }
@@ -2209,6 +2212,8 @@ void ArtworkImage::replace_animation_() {
 void ArtworkImage::retain_animation_() {
 #ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
   if (!this->gif_decoding_ || !this->animation_visible_) return;
+  auto *gif_decoder = static_cast<GifDecoder *>(this->decoder_.get());
+  if (!gif_decoder || !gif_decoder->is_animated()) return;
   // One card keeps playback data on the dashboard. Reserve the second slot
   // for the expanded view so opening another GIF never replaces that card.
   const int slot = this->p4_pipeline_priority_ == P4_PIPELINE_MODAL ? 1 : 0;
@@ -2216,30 +2221,41 @@ void ArtworkImage::retain_animation_() {
       this->animation_screen_active_() && gif_slots[0]->animation_screen_active_ &&
       !gif_slots[0]->animation_screen_active_()) {
     // Cached cards from a previous page must not block the current page.
-    gif_slots[0]->stop_animation_();
+    auto *previous = gif_slots[0];
+    previous->stop_animation_();
+    previous->animation_reload_pending_ = true;
   }
   if (gif_slots[slot]) {
+    this->animation_reload_pending_ = true;
     ESP_LOGI(TAG, "GIF animation already retained for this view; keeping a still frame");
     return;
   }
-  auto *gif_decoder = static_cast<GifDecoder *>(this->decoder_.release());
-  const size_t size = this->download_buffer_.size();
-  auto *data = this->download_buffer_.detach();
-  if (gif_decoder->retain_source(data, size)) {
+  if (gif_decoder->retain_source(this->download_buffer_)) {
+    this->decoder_.release();
     this->animation_.reset(gif_decoder);
     gif_slots[slot] = this;
     this->animation_frame_started_ms_ = millis();
     this->animation_frame_delay_ms_ = gif_decoder->delay_ms();
     this->animation_frame_pending_ = false;
     this->animation_frame_ready_ = false;
-  } else {
-    this->allocator_.deallocate(data, size);
-    delete gif_decoder;
   }
 #endif
 }
 
+bool ArtworkImage::animation_needs_reload() const {
+#ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
+  if (!this->animation_reload_pending_ || this->animation_ || this->service_active_ ||
+      this->p4_pipeline_priority_ == P4_PIPELINE_MODAL ||
+      !this->animation_visible_ || !this->animation_visible_()) return false;
+  auto *owner = gif_slots[0];
+  return !owner || (owner->animation_screen_active_ && !owner->animation_screen_active_());
+#else
+  return false;
+#endif
+}
+
 void ArtworkImage::stop_animation_() {
+  this->animation_reload_pending_ = false;
 #ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
   if (!this->animation_) return;
   if (gif_playing == this) gif_playing = nullptr;

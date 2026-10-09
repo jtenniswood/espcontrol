@@ -9,7 +9,7 @@ using namespace esphome::artwork_image;
 
 static std::vector<ResampleColor> resize(const std::vector<ResampleColor> &source,
                                        int sw, int sh, int cw, int ch,
-                                       int tw, int th, int ox = 0, int oy = 0, bool fast = false, bool cached = false) {
+                                       int tw, int th, int ox = 0, int oy = 0, bool fast = false, bool cached = false, bool bounded = false) {
   std::vector<ResampleColor> result(tw * th, {7, 11, 13});
   std::vector<uint64_t> memory((ScanlineResampler::workspace_size(tw) + 7) / 8);
   ScanlineResampler scaler;
@@ -17,6 +17,8 @@ static std::vector<ResampleColor> resize(const std::vector<ResampleColor> &sourc
   std::vector<ResampleAxis32> axes(tw);
   if (cached && scaler.fast_dimensions_supported())
     assert(scaler.cache_horizontal_axes(axes.data(), axes.size()));
+  std::vector<bool> emitted(tw * th);
+  size_t call_pixels = 0;
   for (int y = 0; y < sh; y++) {
     const auto read = [&](int x) {
       assert(x >= 0 && x < sw);
@@ -24,9 +26,22 @@ static std::vector<ResampleColor> resize(const std::vector<ResampleColor> &sourc
     };
     const auto emit = [&](int x, int dy, ResampleColor color) {
       assert(x >= 0 && x < tw && dy >= 0 && dy < th);
+      assert(!emitted[dy * tw + x]);
+      emitted[dy * tw + x] = true;
+      ++call_pixels;
       result[dy * tw + x] = color;
     };
-    assert(fast ? scaler.push_row_fast(y, read, emit) : scaler.push_row(y, read, emit));
+    if (bounded) {
+      ScanlineResampler::RowResult state;
+      do {
+        call_pixels = 0;
+        state = scaler.push_row_fast_bounded(y, read, emit, 2);
+        assert(state != ScanlineResampler::RowResult::ERROR);
+        assert(call_pixels <= static_cast<size_t>(tw) * 2);
+      } while (state == ScanlineResampler::RowResult::MORE);
+    } else {
+      assert(fast ? scaler.push_row_fast(y, read, emit) : scaler.push_row(y, read, emit));
+    }
   }
   return result;
 }
@@ -87,8 +102,8 @@ int main() {
         if (cw + offset <= 0 || ch - offset <= 0) continue;
         const int tw = cw + 2, th = ch + 2;
         const auto result = resize(source, sw, sh, cw, ch, tw, th, offset, -offset);
-        for (bool cached : {false, true}) {
-          const auto fast = resize(source, sw, sh, cw, ch, tw, th, offset, -offset, true, cached);
+        for (bool cached : {false, true}) for (bool bounded : {false, true}) {
+          const auto fast = resize(source, sw, sh, cw, ch, tw, th, offset, -offset, true, cached, bounded);
           assert(!std::memcmp(result.data(), fast.data(), result.size() * sizeof(ResampleColor)));
         }
         for (int y = 0; y < th; y++) for (int x = 0; x < tw; x++) {
@@ -111,6 +126,17 @@ int main() {
     }
   }
 
+  // A single tiny source row expands to a full display. Each resumable call
+  // emits at most two output rows, including the wide-arithmetic fallback.
+  for (int source_height : {1, 2}) {
+    const std::vector<ResampleColor> source(2 * source_height, {213, 41, 109});
+    for (int content_height : {800, 20000}) {
+      const auto wide = resize(source, 2, source_height, 1280, content_height, 1280, 800);
+      const auto bounded = resize(source, 2, source_height, 1280, content_height, 1280, 800, 0, 0, true, true, true);
+      assert(!std::memcmp(wide.data(), bounded.data(), wide.size() * sizeof(ResampleColor)));
+    }
+  }
+
   // Large reductions must not overflow or lose the brightness of a flat field.
   const auto white = resize(std::vector<ResampleColor>(65535, {255,255,255}), 65535, 1, 1, 1, 1, 1);
   assert(white[0].r == 255 && white[0].g == 255 && white[0].b == 255);
@@ -125,7 +151,7 @@ int main() {
     const int width = expanded ? 790 : 524, height = expanded ? 610 : 403;
     const int x = expanded ? -1 : 0, y = expanded ? -91 : -60;
     const auto wide = resize(radar, 640, 640, content, content, width, height, x, y);
-    const auto fast = resize(radar, 640, 640, content, content, width, height, x, y, true, true);
+    const auto fast = resize(radar, 640, 640, content, content, width, height, x, y, true, true, true);
     assert(!std::memcmp(wide.data(), fast.data(), wide.size() * sizeof(ResampleColor)));
   }
 
@@ -137,7 +163,7 @@ int main() {
     const int sw = dimensions.first, cw = dimensions.second;
     const auto source = std::vector<ResampleColor>(sw, {255,255,255});
     const auto wide = resize(source, sw, 1, cw, 1, cw, 1);
-    const auto fast = resize(source, sw, 1, cw, 1, cw, 1, 0, 0, true, true);
+    const auto fast = resize(source, sw, 1, cw, 1, cw, 1, 0, 0, true, true, true);
     assert(!std::memcmp(wide.data(), fast.data(), wide.size() * sizeof(ResampleColor)));
   }
   for (int ch : {16384, 16385}) {

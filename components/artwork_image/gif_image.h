@@ -18,7 +18,8 @@ class GifDecoder : public ImageDecoder {
   void pause() { decode_loop_.stop(); }
   void reset_render_target(bool completed_frame = false);
   uint32_t delay_ms() const { return player_->delay_ms(); }
-  bool retain_source(uint8_t *data, size_t size) { return source_.adopt(data, size); }
+  bool is_animated() const { return player_ && player_->has_more_frames(); }
+  bool retain_source(DownloadBuffer &transfer);
 
  protected:
   gif::Player::Result advance_step_();
@@ -26,6 +27,7 @@ class GifDecoder : public ImageDecoder {
   RAMAllocator<gif::Player> player_allocator_{RAMAllocator<gif::Player>::ALLOC_EXTERNAL};
   gif::Player *player_{nullptr};
   DownloadBuffer source_;
+  size_t source_length_{0};
   RAMAllocator<uint16_t> canvas_allocator_{RAMAllocator<uint16_t>::ALLOC_EXTERNAL};
   uint16_t *workspace_{nullptr};
   size_t workspace_pixels_{0};

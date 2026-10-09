@@ -40,6 +40,7 @@ static void fixture(const std::string &name, bool loops) {
   for (size_t cycle = 0; cycle < (loops ? 2u : 1u); ++cycle) {
     for (size_t n = 0; n < frames; ++n) {
       assert(frame(player) == Player::Result::FRAME);
+      assert(player.has_more_frames() == (n + 1 < frames));
       for (size_t i = 0; i < pixels; ++i)
         assert(canvas[i] == word(expected, 6 + (n * pixels + i) * 2));
       if (loops) assert(player.delay_ms() == (n + 1) * 100);
@@ -62,6 +63,35 @@ int main() {
   fixture("disposal", true);
   fixture("interlaced", false);
   fixture("static87", false);
+
+  // Plain-text graphics are omitted, but consume their own control extension.
+  // Compare following bitmap pixels with the independent static fixture.
+  const auto original_static = read(std::string(GIF_FIXTURE_DIR) + "/static87.gif");
+  const auto static_pixels = read(std::string(GIF_FIXTURE_DIR) + "/static87.rgb565");
+  const size_t palette_end = 13 + 3u * (1u << ((original_static[10] & 7) + 1));
+  const std::vector<uint8_t> text{0x21,0xf9,4,1,30,0,1,0,
+                                0x21,0x01,12,0,0,0,0,2,0,2,0,1,1,1,0,1,'A',0};
+  for (bool between : {false, true}) {
+    auto with_text = original_static;
+    with_text[4] = '9';
+    if (between) {
+      with_text.pop_back();
+      with_text.insert(with_text.end(), text.begin(), text.end());
+      with_text.insert(with_text.end(), original_static.begin() + palette_end, original_static.end());
+    } else {
+      with_text.insert(with_text.begin() + palette_end, text.begin(), text.end());
+    }
+    uint16_t canvas[4], restore[4];
+    Player player;
+    assert(player.open(with_text.data(), with_text.size(), canvas, restore));
+    for (int n = 0; n < (between ? 2 : 1); ++n) {
+      assert(frame(player) == Player::Result::FRAME);
+      assert(player.delay_ms() == 100);
+      assert(player.has_more_frames() == (between && n == 0));
+      for (int pixel = 0; pixel < 4; ++pixel) assert(canvas[pixel] == word(static_pixels, 6 + pixel * 2));
+    }
+    assert(frame(player) == Player::Result::END);
+  }
 
   auto data = read(std::string(GIF_FIXTURE_DIR) + "/static87.gif");
   uint16_t width, height;

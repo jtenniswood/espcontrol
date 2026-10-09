@@ -37,6 +37,7 @@ int GifDecoder::decode(uint8_t *buffer, size_t size) {
     if (!workspace_) return DECODE_ERROR_OUT_OF_MEMORY;
     if (!player_->open(buffer, size, workspace_, workspace_ + workspace_pixels_ / 2))
       return DECODE_ERROR_INVALID_TYPE;
+    source_length_ = size;
     initialized_ = true;
   }
   const auto result = advance();
@@ -47,6 +48,16 @@ int GifDecoder::decode(uint8_t *buffer, size_t size) {
     decoded_bytes_ = download_size_;
   }
   return 0;
+}
+
+bool GifDecoder::retain_source(DownloadBuffer &transfer) {
+  if (!player_ || !transfer.data() || transfer.size() < source_length_) return false;
+  transfer.compact(source_length_);  // Keep the safe allocation if shrinking fails.
+  const size_t capacity = transfer.size();
+  auto *data = transfer.detach();
+  source_.adopt(data, capacity);
+  player_->rebind_source(data);
+  return true;
 }
 
 gif::Player::Result GifDecoder::advance() {
@@ -99,14 +110,12 @@ gif::Player::Result GifDecoder::advance_step_() {
     render_target_ready_ = true;
     render_row_ = 0;
   }
-  // Resize only a few source rows per loop so GIF decoding yields to touch,
-  // network and display work. Composite disposal/transparency precedes resize.
-  const int end = std::min(render_row_ + 8, static_cast<int>(player_->height()));
-  while (render_row_ < end) {
-    const auto *source = player_->canvas() + static_cast<size_t>(render_row_) * player_->width();
-    draw_fast_filtered_rgb565_row(render_row_++, source);
-    if (has_failed()) return gif::Player::Result::ERROR;
-  }
+  // A tiny source can expand into a whole screen. Bound output work as well
+  // as source work; resume this row before accepting another source row.
+  const auto *source = player_->canvas() + static_cast<size_t>(render_row_) * player_->width();
+  const auto row_result = draw_fast_filtered_rgb565_row(render_row_, source, 2);
+  if (row_result == ScanlineResampler::RowResult::ERROR) return gif::Player::Result::ERROR;
+  if (row_result == ScanlineResampler::RowResult::DONE) ++render_row_;
   resize_work_us_ += micros() - resize_started;
   if (render_row_ != player_->height()) return gif::Player::Result::MORE;
   ESP_LOGD(TAG, "GIF frame work: decode=%lu ms resize=%lu ms",

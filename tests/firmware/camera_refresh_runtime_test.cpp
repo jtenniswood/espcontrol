@@ -23,6 +23,8 @@ struct FakeImage {
   int width = 100, height = 100, releases = 0;
   std::string url;
   bool cancelled = false, active = false;
+  bool gif_reload = false;
+  bool animation_needs_reload() const { return gif_reload; }
   bool has_image() const { return true; }
   const std::string &get_url() const { return url; }
   bool request_is_active() const { return active; }
@@ -106,6 +108,7 @@ HaCoordinator &ha_read_coordinator() { static HaCoordinator value; return value;
 bool image_card_context_current(ImageCardCtx *, const std::string &, uint32_t) { return true; }
 bool image_card_modal_active_for(ImageCardCtx *ctx) { return ctx->modal; }
 bool image_card_context_on_active_screen(ImageCardCtx *ctx) { return ctx->visible && (!image_card_page_visible() || image_card_page_visible()()); }
+bool image_card_context_visible_on_active_screen(ImageCardCtx *ctx) { return image_card_context_on_active_screen(ctx); }
 bool image_card_has_separate_modal_image(ImageCardCtx *) { return true; }
 std::string string_ref_limited(const std::string &s, size_t n) { return s.substr(0, n); }
 std::string image_card_base_url(ImageCardCtx *) { return "http://ha"; }
@@ -163,6 +166,35 @@ void finish_tile() {
   ctx.revision.tile_applied = ctx.revision.tile_requested;
 }
 int main() {
+  // Returning to a cached image on a subpage must reload discarded playback
+  // even when its HA revision and URL are unchanged. Hidden pages stay quiet.
+  reset();
+  tile.gif_reload = true;
+  contexts[0].visible = false;
+  image_card_refresh_due();
+  assert(tile_requests == 0);
+  contexts[0].visible = true;
+  connected = false;
+  image_card_refresh_due();
+  assert(tile_requests == 0);
+  connected = true;
+  image_card_refresh_due();
+  assert(tile_requests == 1 && contexts[0].download_active);
+  image_card_refresh_due();
+  assert(tile_requests == 1);  // Coalesce while the source is loading.
+  tile.gif_reload = false;
+  finish_tile();
+  image_card_refresh_due();
+  assert(tile_requests == 1);
+
+  // Cover Art subpages use the same recovery without changing track metadata.
+  reset();
+  tile.gif_reload = true;
+  contexts[0].entity_id = "media_player.test";
+  contexts[0].media_artwork = true;
+  image_card_refresh_due();
+  assert(tile_requests == 1);
+
   // The saved full-image choice must reach the actual tile download, including
   // after a previously cropped image has been cached at the same card size.
   for (const auto *entity : {"camera.test", "image.test"}) {

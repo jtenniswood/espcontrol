@@ -98,7 +98,8 @@ class ImageDecoder {
 
   bool prepare_filtered_resize(int width, int height);
   void draw_filtered_rgb888_row(int y, const uint8_t *data);
-  void draw_fast_filtered_rgb565_row(int y, const uint16_t *data);
+  ScanlineResampler::RowResult draw_fast_filtered_rgb565_row(int y, const uint16_t *data,
+                                                          size_t output_rows = SIZE_MAX);
 
  protected:
   void release_filtered_resize();
@@ -113,6 +114,7 @@ class ImageDecoder {
   size_t decoded_bytes_ = 0;
   double x_scale_ = 1.0;
   double y_scale_ = 1.0;
+  int logged_source_width_{0}, logged_source_height_{0};
   int x_offset_ = 0;
   int y_offset_ = 0;
   bool failed_{false};
@@ -142,6 +144,9 @@ class DownloadBuffer {
 
   size_t resize(size_t size);
   void shrink_to(size_t size);
+
+  /** Best-effort compaction that preserves the original allocation on failure. */
+  bool compact(size_t size);
 
   /** Replace the current allocation and take ownership of a complete transfer. */
   bool adopt(uint8_t *buffer, size_t size);
