@@ -16,7 +16,7 @@ class GifDecoder : public ImageDecoder {
   bool is_decoding() const override { return initialized_ && !first_frame_ready_; }
   gif::Player::Result advance();
   void pause() { decode_loop_.stop(); }
-  void reset_render_target();
+  void reset_render_target(bool completed_frame = false);
   uint32_t delay_ms() const { return player_->delay_ms(); }
   bool retain_source(uint8_t *data, size_t size) { return source_.adopt(data, size); }
 
@@ -29,9 +29,9 @@ class GifDecoder : public ImageDecoder {
   RAMAllocator<uint16_t> canvas_allocator_{RAMAllocator<uint16_t>::ALLOC_EXTERNAL};
   uint16_t *workspace_{nullptr};
   size_t workspace_pixels_{0};
-  RAMAllocator<uint8_t> row_allocator_{RAMAllocator<uint8_t>::ALLOC_EXTERNAL};
-  uint8_t *row_{nullptr};
-  size_t row_bytes_{0};
+  RAMAllocator<ResampleAxis32> axis_allocator_{RAMAllocator<ResampleAxis32>::ALLOC_EXTERNAL};
+  ResampleAxis32 *horizontal_axes_{nullptr};
+  size_t horizontal_axes_size_{0};
   int render_row_{0};
   bool initialized_{false}, rendering_{false}, render_target_ready_{false}, first_frame_ready_{false};
 };

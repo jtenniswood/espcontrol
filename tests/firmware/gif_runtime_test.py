@@ -19,12 +19,14 @@ for name in ("retain_animation_", "pause_animation_for_refresh_", "replace_anima
 
 stub = r'''
 #pragma once
+#include <cassert>
 #include <cstring>
 #include <functional>
 #include <memory>
 #include <vector>
 #include "gif_image.h"
 #include "esphome/core/log.h"
+#define ESP_LOGD(tag, ...) ((void)(tag))
 #define ESP_LOGW(tag, ...) ((void)(tag))
 #define ESP_LOGI(tag, ...) ((void)(tag))
 namespace esphome::artwork_image {
@@ -39,8 +41,8 @@ struct ArtworkImage {
   bool gif_decoding_ = true;
   P4PipelinePriority p4_pipeline_priority_ = P4_PIPELINE_TILE;
   std::unique_ptr<GifDecoder> animation_;
-  bool animation_frame_pending_ = false, fail_resize = false;
-  uint32_t animation_frame_started_ms_ = 0;
+  bool animation_frame_pending_ = false, animation_frame_ready_ = false, fail_resize = false;
+  uint32_t animation_frame_started_ms_ = 0, animation_frame_delay_ms_ = 0;
   std::function<bool()> animation_visible_;
   std::function<bool()> animation_screen_active_;
   std::function<void()> animation_redraw_;
@@ -50,6 +52,12 @@ struct ArtworkImage {
   size_t get_buffer_size_() const { return active.size(); }
   size_t get_decode_buffer_size_() const { return staging.size(); }
   void invalidate_lvgl_cache_() { ++cache_invalidations; }
+  void draw_pixel_(int x, int y, Color color) {
+    assert(x >= 0 && x < width && y >= 0 && y < height);
+    const auto pixel = ((color.r & 248) << 8) | ((color.g & 252) << 3) | (color.b >> 3);
+    const auto pos = (y * width + x) * 2;
+    staging.at(pos) = pixel; staging.at(pos + 1) = pixel >> 8;
+  }
   void discard_decode_buffer_() { staging.clear(); decode_buffer_ = nullptr; }
   void retain_animation_();
   void pause_animation_for_refresh_();
@@ -115,6 +123,8 @@ bool DownloadBuffer::adopt(uint8_t *buffer, size_t size) {
 }
 }
 '''
+
+source += '\nnamespace esphome::artwork_image {\n' + 'void ImageDecoder::draw_fast_filtered_rgb565_row(int y, const uint16_t *data) {\n  if (!this->resampler_.push_row_fast(y, [data](int x) {\n        const auto pixel = data[x];\n        const uint8_t r = (pixel >> 11) & 31, g = (pixel >> 5) & 63, b = pixel & 31;\n        return ResampleColor{static_cast<uint8_t>((r << 3) | (r >> 2)),\n                             static_cast<uint8_t>((g << 2) | (g >> 4)),\n                             static_cast<uint8_t>((b << 3) | (b >> 2))};\n      }, [this](int x, int y, ResampleColor color) {\n        this->image_->draw_pixel_(x, y, Color(color.r, color.g, color.b, 0xFF));\n      })) this->failed_ = true;\n}' + '\n}\n'
 
 main = r'''
 using namespace esphome::artwork_image;
@@ -237,6 +247,51 @@ int main() {
   large_image.stop_animation_();
   assert(fake_esphome_allocator::external_pointers.empty());
 
+  // Prefetching overlaps decode with the displayed frame's delay. Preparing
+  // a different-delay next frame must not publish early or use its delay for
+  // the current frame. A refresh must replay a prepared frame, not skip it.
+  for (bool refresh : {false, true}) {
+    ArtworkImage timed;
+    load(timed, file, false);
+    const auto first = timed.active;
+    const auto start = now_ms;
+    now_ms += 1; timed.loop_animation_();
+    assert(timed.animation_frame_ready_ && timed.active == first && !timed.cache_invalidations);
+    assert(!esphome::HighFrequencyLoopRequester::is_high_frequency());
+    assert(timed.animation_frame_delay_ms_ == 100 && timed.animation_->delay_ms() == 200);
+    if (refresh) {
+      timed.service_active_ = true; timed.pause_animation_for_refresh_();
+      timed.end_connection_(); timed.service_active_ = false;
+      assert(!timed.animation_frame_ready_ && timed.active == first);
+    }
+    now_ms = start + 99;
+    timed.loop_animation_(); assert(!timed.cache_invalidations);
+    now_ms = start + 100;
+    timed.loop_animation_(); assert(timed.cache_invalidations == 1);
+    assert(std::equal(timed.active.begin(), timed.active.end(), expected.begin() + 6 + 128));
+    const auto second = timed.active;
+    now_ms += 1; timed.loop_animation_();
+    assert(timed.animation_frame_ready_ && timed.animation_frame_delay_ms_ == 200);
+    now_ms = start + 299;
+    timed.loop_animation_(); assert(timed.active == second && timed.cache_invalidations == 1);
+    now_ms = start + 300;
+    timed.loop_animation_(); assert(timed.cache_invalidations == 2);
+    assert(std::equal(timed.active.begin(), timed.active.end(), expected.begin() + 6 + 256));
+    now_ms = start + 600;
+    timed.loop_animation_(); assert(timed.cache_invalidations == 3);
+    const auto fourth = timed.active;
+    now_ms += 1; timed.loop_animation_();
+    assert(timed.animation_frame_ready_ && timed.animation_->delay_ms() == 100);
+    assert(timed.animation_frame_delay_ms_ == 400);
+    now_ms = start + 999;
+    timed.loop_animation_(); assert(timed.active == fourth && timed.cache_invalidations == 3);
+    now_ms = start + 1000;
+    timed.loop_animation_(); assert(timed.cache_invalidations == 4);
+    assert(std::equal(timed.active.begin(), timed.active.end(), expected.begin() + 6));
+    timed.stop_animation_();
+    assert(fake_esphome_allocator::external_pointers.empty());
+  }
+
   // Refreshes keep the existing source/player until replacement promotion.
   // Exercise both an unchanged HTTP response and a failed replacement while
   // an old frame is halfway through resizing the shared staging surface.
@@ -344,7 +399,7 @@ with tempfile.TemporaryDirectory(prefix="gif-runtime-") as directory:
     (temp / "esphome/core/hal.h").write_text(
         "#pragma once\n#include <cstdint>\nnamespace esphome { uint32_t millis(); }\n")
     (temp / "esphome/core/color.h").write_text(
-        '#pragma once\n#include "esphome/core/helpers.h"\nnamespace esphome { struct Color {}; }\n')
+        '#pragma once\n#include "esphome/core/helpers.h"\nnamespace esphome { struct Color { uint8_t r,g,b,w; Color(uint8_t r,uint8_t g,uint8_t b,uint8_t w=0) : r(r),g(g),b(b),w(w) {} }; }\n')
     (temp / "artwork_image.h").write_text(stub)
     (temp / "gif_image.cpp").write_text((COMPONENT / "gif_image.cpp").read_text())
     (temp / "test.cpp").write_text(source + "\nnamespace esphome::artwork_image {\n" +
@@ -357,4 +412,4 @@ with tempfile.TemporaryDirectory(prefix="gif-runtime-") as directory:
         str(temp / "gif_image.cpp"), str(temp / "test.cpp"), "-o", str(executable),
     ], check=True)
     subprocess.run([str(executable)], check=True)
-print("GIF runtime: transfers, frame publication, pause/resume, arbitration, one card per screen, refresh recovery, loop scheduling, cleanup and PSRAM failure passed")
+print("GIF runtime: transfers, frame publication, pause/resume, arbitration, one card per screen, refresh recovery, frame timing, loop scheduling, cleanup and PSRAM failure passed")

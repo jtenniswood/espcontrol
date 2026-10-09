@@ -98,6 +98,7 @@ class ImageDecoder {
 
   bool prepare_filtered_resize(int width, int height);
   void draw_filtered_rgb888_row(int y, const uint8_t *data);
+  void draw_fast_filtered_rgb565_row(int y, const uint16_t *data);
 
  protected:
   void release_filtered_resize();

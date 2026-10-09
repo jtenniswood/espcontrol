@@ -14,7 +14,7 @@ GifDecoder::~GifDecoder() {
     player_allocator_.deallocate(player_, 1);
   }
   canvas_allocator_.deallocate(workspace_, workspace_pixels_);
-  row_allocator_.deallocate(row_, row_bytes_);
+  axis_allocator_.deallocate(horizontal_axes_, horizontal_axes_size_);
 }
 
 int GifDecoder::decode(uint8_t *buffer, size_t size) {
@@ -34,9 +34,7 @@ int GifDecoder::decode(uint8_t *buffer, size_t size) {
     new (player_) gif::Player();
     workspace_pixels_ = static_cast<size_t>(width) * height * 2;
     workspace_ = canvas_allocator_.allocate(workspace_pixels_);
-    row_bytes_ = static_cast<size_t>(width) * 3;
-    row_ = row_allocator_.allocate(row_bytes_);
-    if (!workspace_ || !row_) return DECODE_ERROR_OUT_OF_MEMORY;
+    if (!workspace_) return DECODE_ERROR_OUT_OF_MEMORY;
     if (!player_->open(buffer, size, workspace_, workspace_ + workspace_pixels_ / 2))
       return DECODE_ERROR_INVALID_TYPE;
     initialized_ = true;
@@ -68,7 +66,8 @@ gif::Player::Result GifDecoder::advance() {
   return gif::Player::Result::MORE;
 }
 
-void GifDecoder::reset_render_target() {
+void GifDecoder::reset_render_target(bool completed_frame) {
+  if (completed_frame) rendering_ = true;
   this->pause();
   release_filtered_resize();
   render_row_ = 0;
@@ -84,6 +83,16 @@ gif::Player::Result GifDecoder::advance_step_() {
   if (!render_target_ready_) {
     if (!set_size(player_->width(), player_->height()) ||
         !prepare_filtered_resize(player_->width(), player_->height())) return gif::Player::Result::ERROR;
+    if (resampler_.fast_dimensions_supported()) {
+      const size_t count = resampler_.visible_width();
+      if (count != horizontal_axes_size_) {
+        axis_allocator_.deallocate(horizontal_axes_, horizontal_axes_size_);
+        horizontal_axes_ = axis_allocator_.allocate(count);
+        horizontal_axes_size_ = horizontal_axes_ ? count : 0;
+      }
+      // Cache allocation is optional; native arithmetic also works without it.
+      resampler_.cache_horizontal_axes(horizontal_axes_, horizontal_axes_size_);
+    }
     render_target_ready_ = true;
     render_row_ = 0;
   }
@@ -92,14 +101,7 @@ gif::Player::Result GifDecoder::advance_step_() {
   const int end = std::min(render_row_ + 8, static_cast<int>(player_->height()));
   while (render_row_ < end) {
     const auto *source = player_->canvas() + static_cast<size_t>(render_row_) * player_->width();
-    for (int x = 0; x < player_->width(); ++x) {
-      const auto pixel = source[x];
-      const uint8_t r = (pixel >> 11) & 31, g = (pixel >> 5) & 63, b = pixel & 31;
-      row_[x * 3] = (r << 3) | (r >> 2);
-      row_[x * 3 + 1] = (g << 2) | (g >> 4);
-      row_[x * 3 + 2] = (b << 3) | (b >> 2);
-    }
-    draw_filtered_rgb888_row(render_row_++, row_);
+    draw_fast_filtered_rgb565_row(render_row_++, source);
     if (has_failed()) return gif::Player::Result::ERROR;
   }
   if (render_row_ != player_->height()) return gif::Player::Result::MORE;

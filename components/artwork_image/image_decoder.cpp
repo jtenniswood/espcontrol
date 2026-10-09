@@ -49,6 +49,18 @@ void ImageDecoder::draw_filtered_rgb888_row(int y, const uint8_t *data) {
       })) this->failed_ = true;
 }
 
+void ImageDecoder::draw_fast_filtered_rgb565_row(int y, const uint16_t *data) {
+  if (!this->resampler_.push_row_fast(y, [data](int x) {
+        const auto pixel = data[x];
+        const uint8_t r = (pixel >> 11) & 31, g = (pixel >> 5) & 63, b = pixel & 31;
+        return ResampleColor{static_cast<uint8_t>((r << 3) | (r >> 2)),
+                             static_cast<uint8_t>((g << 2) | (g >> 4)),
+                             static_cast<uint8_t>((b << 3) | (b >> 2))};
+      }, [this](int x, int y, ResampleColor color) {
+        this->image_->draw_pixel_(x, y, Color(color.r, color.g, color.b, 0xFF));
+      })) this->failed_ = true;
+}
+
 bool ImageDecoder::set_size(int width, int height) {
   bool success = this->image_->resize_(width, height) > 0;
   if (!success) {

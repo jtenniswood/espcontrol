@@ -213,6 +213,13 @@ int main() {
    assert(pixel == 0x8410);  // Average grey, not a selected black/white pixel.
    assert(image.bytes[2] == 255);  // JPEG output remains opaque.
    assert(allocations == 0);      // Complete-frame scratch is released immediately.
+   const uint16_t native_pixels[] = {0, 65535, 65535, 0};
+   assert(decoder.prepare_filtered_resize(2,2));
+   decoder.draw_fast_filtered_rgb565_row(0, native_pixels);
+   decoder.draw_fast_filtered_rgb565_row(1, native_pixels + 2);
+   assert(image.bytes[0] == (big_endian ? 0x84 : 0x10));
+   assert(image.bytes[1] == (big_endian ? 0x10 : 0x84));
+   assert(image.bytes[2] == 255);  // Native GIF canvas input also stays opaque.
    uint8_t colors[8];
    for (int i = 0; i < 4; i++) {
      const uint16_t color = i < 2 ? 0xf800 : 0x001f;  // Red and blue rows.

@@ -280,6 +280,8 @@ class ArtworkImage : public PollingComponent,
 #endif
   bool gif_decoding_{false};
   bool animation_frame_pending_{false};
+  bool animation_frame_ready_{false};
+  uint32_t animation_frame_delay_ms_{0};
   uint32_t animation_frame_started_ms_{0};
   std::function<bool()> animation_visible_;
   std::function<bool()> animation_screen_active_;
@@ -379,6 +381,7 @@ class ArtworkImage : public PollingComponent,
   friend bool ImageDecoder::set_size(int width, int height);
   friend bool ImageDecoder::prepare_filtered_resize(int width, int height);
   friend void ImageDecoder::draw_filtered_rgb888_row(int y, const uint8_t *data);
+  friend void ImageDecoder::draw_fast_filtered_rgb565_row(int y, const uint16_t *data);
   friend void ImageDecoder::draw(int x, int y, int w, int h, const Color &color);
   friend void ImageDecoder::draw_rgb565_block(int x, int y, int w, int h, const uint8_t *data);
   friend void ImageDecoder::draw_rgb565_frame(int width, int height, size_t stride_bytes,

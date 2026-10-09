@@ -2193,7 +2193,8 @@ void ArtworkImage::pause_animation_for_refresh_() {
   if (!this->animation_) return;
   // The request shares the staging surface with playback. Preserve the source
   // and compositor, but restart an interrupted resize if this request fails.
-  this->animation_->reset_render_target();
+  this->animation_->reset_render_target(this->animation_frame_ready_);
+  this->animation_frame_ready_ = false;
   if (gif_playing == this) gif_playing = nullptr;
   this->discard_decode_buffer_();
 #endif
@@ -2228,7 +2229,9 @@ void ArtworkImage::retain_animation_() {
     this->animation_.reset(gif_decoder);
     gif_slots[slot] = this;
     this->animation_frame_started_ms_ = millis();
+    this->animation_frame_delay_ms_ = gif_decoder->delay_ms();
     this->animation_frame_pending_ = false;
+    this->animation_frame_ready_ = false;
   } else {
     this->allocator_.deallocate(data, size);
     delete gif_decoder;
@@ -2243,6 +2246,7 @@ void ArtworkImage::stop_animation_() {
   for (auto &slot : gif_slots) if (slot == this) slot = nullptr;
   this->animation_.reset();
   this->animation_frame_pending_ = false;
+  this->animation_frame_ready_ = false;
   this->discard_decode_buffer_();
 #endif
 }
@@ -2269,17 +2273,22 @@ void ArtworkImage::loop_animation_() {
     gif_playing = nullptr;
   }
   gif_playing = this;
-  const uint32_t now = millis();
-  if (!this->animation_frame_pending_ &&
-      now - this->animation_frame_started_ms_ < this->animation_->delay_ms()) return;
-  this->animation_frame_pending_ = true;
-  const auto result = this->animation_->advance();
-  if (result == gif::Player::Result::MORE) return;
-  if (result != gif::Player::Result::FRAME) {
-    if (result == gif::Player::Result::ERROR) ESP_LOGW(TAG, "Invalid GIF frame; keeping the last completed image");
-    this->stop_animation_();
-    return;
+  if (!this->animation_frame_ready_) {
+    // Prepare the next frame during the displayed frame's delay. Keep its
+    // complete staging surface until that delay expires, rather than adding
+    // decoding time after every delay. The active surface remains untouched.
+    this->animation_frame_pending_ = true;
+    const auto result = this->animation_->advance();
+    if (result == gif::Player::Result::MORE) return;
+    if (result != gif::Player::Result::FRAME) {
+      if (result == gif::Player::Result::ERROR) ESP_LOGW(TAG, "Invalid GIF frame; keeping the last completed image");
+      this->stop_animation_();
+      return;
+    }
+    this->animation_frame_ready_ = true;
   }
+  const uint32_t now = millis();
+  if (now - this->animation_frame_started_ms_ < this->animation_frame_delay_ms_) return;
   // The LVGL descriptor keeps its stable allocation. Publish only a complete
   // resized frame; playback never fires network/cache completion callbacks.
   if (!this->decode_buffer_ || this->get_decode_buffer_size_() != this->get_buffer_size_()) {
@@ -2287,8 +2296,13 @@ void ArtworkImage::loop_animation_() {
     return;
   }
   memcpy(this->buffer_, this->decode_buffer_, this->get_buffer_size_());
+  ESP_LOGD(TAG, "GIF frame published: interval=%lu ms delay=%lu ms",
+           static_cast<unsigned long>(now - this->animation_frame_started_ms_),
+           static_cast<unsigned long>(this->animation_frame_delay_ms_));
   this->invalidate_lvgl_cache_();
   this->animation_frame_pending_ = false;
+  this->animation_frame_ready_ = false;
+  this->animation_frame_delay_ms_ = this->animation_->delay_ms();
   this->animation_frame_started_ms_ = now;
   if (this->animation_redraw_) this->animation_redraw_();
 #endif
