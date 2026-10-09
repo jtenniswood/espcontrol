@@ -1,3 +1,4 @@
+import { preserveCardColorOptions } from "../model/config_primitives";
 import { state } from "../state/app_instance";
 import { iconSlug } from "../application/ui_primitives";
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
@@ -128,7 +129,7 @@ export function registerActionCardTypes(
             b.icon = "Flash";
             b.icon_on = "Auto";
             b.precision = "";
-            b.options = "";
+            b.options = preserveCardColorOptions(b.options, "");
         },
         renderSettingsBeforeLabel: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
             normalizeActionCardConfig(b);
@@ -148,12 +149,12 @@ export function registerActionCardTypes(
                             helpers.saveField("unit", "");
                         }
                         if (actionCardIsOptionSelect(b)) {
-                            b.options = "";
-                            helpers.saveField("options", "");
+                            b.options = preserveCardColorOptions(b.options, "");
+                            helpers.saveField("options", b.options);
                         }
                         else if (actionCardIsLocal(b)) {
-                            b.options = "";
-                            helpers.saveField("options", "");
+                            b.options = preserveCardColorOptions(b.options, "");
+                            helpers.saveField("options", b.options);
                             if (!b.icon || b.icon === "Auto" || b.icon === "Flash") {
                                 b.icon = "Gesture Tap";
                                 helpers.saveField("icon", b.icon);

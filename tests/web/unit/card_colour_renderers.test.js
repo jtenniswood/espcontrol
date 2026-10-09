@@ -29,8 +29,17 @@ function editor() {
   loadTypescriptTest("src/webserver/cards/vacuum.ts").registerVacuumCardTypes(registry, robot, fields, ui);
   loadTypescriptTest("src/webserver/cards/lawn_mower.ts").registerLawnMowerCardTypes(registry, robot, fields, ui);
   loadTypescriptTest("src/webserver/cards/fan.ts").registerFanCardTypes(registry, tabs, fields, ui);
+  const access = loadTypescriptTest("src/webserver/application/config_access_climate_alarm_options.ts")
+    .createConfigAccessClimateAlarmOptionsFeature(tabs);
+  const confirmation = loadTypescriptTest("src/webserver/application/config_confirmation_options.ts")
+    .createConfigConfirmationOptionsFeature(access);
+  const lightCards = loadTypescriptTest("src/webserver/cards/light_temperature.ts")
+    .registerLightTemperatureCardTypes(registry, tabs, fields, ui);
+  loadTypescriptTest("src/webserver/cards/switch.ts").registerSwitchCardTypes(registry, confirmation, lightCards, fields);
   loadTypescriptTest("src/webserver/cards/slider.ts").registerSliderCardTypes(
-    registry, tabs, { renderControlTypeField() {} }, fields, { inlineDisclosure: () => element() });
+    registry, tabs, lightCards, fields, { inlineDisclosure: () => element() });
+  loadTypescriptTest("src/webserver/cards/action.ts").registerActionCardTypes(
+    registry, confirmation, { refreshEntityDatalist() {} }, fields, ui);
   loadTypescriptTest("src/webserver/cards/wifi_qr.ts").registerWifiQrCardTypes(
     registry, tabs, fields, ui, { supported: () => true });
   const saved = {}, inputs = {}, modes = [];
@@ -47,7 +56,7 @@ function editor() {
     selectField(_label, id, _options, value) { const result = field(value); inputs[id] = result.select; return result; },
     toggleRow(_label, id, checked) { const result = { row: element(), input: element() }; result.input.checked = checked; inputs[id] = result.input; return result; },
   };
-  return { registry, document, helpers, saved, inputs, modes };
+  return { registry, document, helpers, saved, inputs, modes, lightCards };
 }
 
 test("reopening robot, fan and cover editors keeps the chosen colour", () => {
@@ -99,4 +108,33 @@ test("Connect-card normalization and credential edits retain colour and Wi-Fi ta
   assert.equal(e.saved.options, button.options);
   definition.normalizeConfig(button);
   assert.equal(button.options, e.saved.options);
+});
+
+
+test("Action mode changes keep the colour while clearing obsolete mode options", () => {
+  for (const target of ["input_select.select_option", "local"]) {
+    const e = editor();
+    const button = { type: "action", sensor: "scene.turn_on", entity: "scene.movie", icon: "Flash", options: "state_entity=sensor.old,card_off_color=00BCD4" };
+    e.registry.definitions.action.renderSettingsBeforeLabel(element(), button, 1, e.helpers);
+    e.modes[0].onChange.call({ value: target });
+    assert.equal(button.sensor, target);
+    assert.equal(button.options, "card_off_color=00BCD4", target);
+    assert.equal(e.saved.options, button.options, target);
+    e.registry.definitions.action.renderSettingsBeforeLabel(element(), button, 1, e.helpers);
+    assert.equal(button.options, "card_off_color=00BCD4", target + " reopened");
+  }
+});
+
+test("Light mode initializers retain the colour across every supported mode", () => {
+  const types = ["light_control", "light_switch", "light_brightness", "light_temperature"];
+  for (const from of types) for (const target of types) {
+    if (from === target) continue;
+    const e = editor();
+    const button = { type: from, entity: "light.living_room", icon: "Auto", options: "card_off_color=FFEC16" };
+    e.lightCards.renderControlTypeField(element(), button, e.helpers);
+    e.modes[0].onChange.call({ value: target }, button, e.helpers);
+    assert.equal(button.type, target);
+    assert.equal(button.options, "card_off_color=FFEC16", from + " -> " + target);
+    assert.equal(e.saved.options, button.options);
+  }
 });
