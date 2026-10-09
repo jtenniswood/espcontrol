@@ -165,12 +165,16 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     previewTypeDef = null;
                 }
                 var slotSz: any = c.sizes[slot];
-                var typePreview: any = previewTypeDef && previewTypeDef.renderPreview
-                    ? previewTypeDef.renderPreview(b, { escHtml: escHtml, cardSize: slotSz || 1 })
-                    : null;
                 var cardOffColor: any = configOptionValue(b.options, "card_off_color").replace(/^#/, "").toUpperCase();
                 if (!/^[0-9A-F]{6}$/.test(cardOffColor)) cardOffColor = "";
                 var cardOnColor: any = lighterCardColor(cardOffColor);
+                var typePreview: any = previewTypeDef && previewTypeDef.renderPreview
+                    ? previewTypeDef.renderPreview(b, {
+                        escHtml: escHtml, cardSize: slotSz || 1,
+                        cardBackgroundColor: cardOffColor,
+                        cardTextColor: cardOffColor ? cardPreviewTextColor(cardOffColor) : "#" + previewColors.textPrimary,
+                    })
+                    : null;
                 var btn: any = document.createElement("div");
                 btn.className = "sp-btn" +
                     (typePreview && typePreview.buttonClass ? " " + typePreview.buttonClass : "") +
