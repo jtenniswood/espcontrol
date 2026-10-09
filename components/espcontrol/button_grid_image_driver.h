@@ -14,8 +14,12 @@ inline bool image_driver_matches(const Context &context) {
 }
 
 inline bool image_driver_setup_visual(
-    BtnSlot &slot, const ParsedCfg &, const Context &context) {
+    BtnSlot &slot, const ParsedCfg &config, const Context &context,
+    const CardPalette &palette) {
   if (!image_driver_matches(context)) return false;
+  if (image_card_modal_fit_enabled(config)) {
+    sensor_driver_apply_background(slot, palette);
+  }
   setup_image_card(slot);
   return true;
 }
