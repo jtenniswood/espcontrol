@@ -1,3 +1,5 @@
+import { lighterCardColor } from "../model/config_primitives";
+
 export interface Point {
   readonly x: number;
   readonly y: number;
@@ -102,6 +104,17 @@ export function cardPreviewTextColor(background: string): string {
   // Saturated blue/cyan active shades retain white content after lightening.
   const crossover = green >= red + 32 && blue >= red + 32 ? 550000 : 450000;
   return luminance >= crossover ? "#212121" : "#FFFFFF";
+}
+
+export function cardProgressColor(background: string): string {
+  const hex = background.replace(/^#/, "").toUpperCase();
+  if (!/^[0-9A-F]{6}$/.test(hex)) return "";
+  if (cardPreviewTextColor(hex) === "#FFFFFF") return lighterCardColor(hex);
+  // Match the firmware's rounded 30% darkening on pale backgrounds.
+  return [0, 2, 4].map((offset) => {
+    const channel = parseInt(hex.slice(offset, offset + 2), 16);
+    return Math.floor((channel * 70 + 50) / 100).toString(16).padStart(2, "0");
+  }).join("").toUpperCase();
 }
 
 export function previewValue<T>(preview: Record<string, unknown> | null | undefined, key: string, fallback: T): T {

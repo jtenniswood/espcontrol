@@ -82,7 +82,8 @@ inline bool media_driver_setup_visual(
       : large_cover_art
       ? display_media_cover_art_artist_font(display)
       : nullptr,
-    display_main_width_percent(display), row_span, col_span, palette.custom_background);
+    display_main_width_percent(display), row_span, col_span,
+    palette.custom_background, palette.progress_val);
 
   // Visual setup can run well before Home Assistant data binding. Own every
   // visual context immediately so a second setup pass can retire its timers

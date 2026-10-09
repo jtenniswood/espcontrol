@@ -4693,7 +4693,8 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
                              int width_compensation_percent = 100,
                              int row_span = 1,
                              int col_span = 1,
-                             bool custom_background = false) {
+                             bool custom_background = false,
+                             uint32_t progress_color = DEFAULT_ACCENT_COLOR) {
   lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   std::string mode = media_card_mode(p.sensor);
   if (mode == "playlist") {
@@ -4729,7 +4730,8 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     ctx->show_track_details = mode != "cover_art" || media_cover_art_details_enabled(p);
     ctx->play_pause_background = mode == "now_playing" && media_now_playing_play_pause_enabled(p);
     if (mode == "now_playing" && media_now_playing_progress_enabled(p)) {
-      ctx->progress_slider = setup_media_progress_background(s.btn, secondary_color, tertiary_color, p.entity);
+      ctx->progress_slider = setup_media_progress_background(
+        s.btn, custom_background ? progress_color : secondary_color, tertiary_color, p.entity);
     }
     const CardPadding layout_padding = ctx->progress_slider ? padding : CardPadding{};
     lv_obj_set_user_data(s.sensor_container, (void *)ctx);
@@ -4792,7 +4794,8 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     const CardPadding padding = capture_card_padding(s.btn);
     lv_color_t text_color = lv_obj_get_style_text_color(s.sensor_lbl, LV_PART_MAIN);
     lv_obj_t *slider = setup_media_position_layout(
-      s.btn, s.icon_lbl, s.text_lbl, p, secondary_color, tertiary_color,
+      s.btn, s.icon_lbl, s.text_lbl, p,
+      custom_background ? progress_color : secondary_color, tertiary_color,
       sensor_font, text_color, padding, width_compensation_percent);
     lv_obj_set_user_data(s.sensor_container, (void *)slider);
     return;

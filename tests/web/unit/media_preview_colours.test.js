@@ -53,6 +53,7 @@ function mediaPreviewFixtures() {
         ui.state.themeMode = theme;
         const base = /^#?[0-9a-f]{6}$/i.test(colour) ? colour.replace(/^#/, "").toUpperCase() : "";
         const neutral = ui.PREVIEW_THEME_COLORS[theme];
+        const progressColours = { "00BCD4": "4DD0E1", "FFEC16": "B3A50F", "FFFFFF": "B3B3B3", "9D9D9D": "BABABA" };
         const main = element();
         const button = { type: "media", sensor: mode, precision, label: "Living room", options: [extra, colour ? "card_off_color=" + colour : ""].filter(Boolean).join(",") };
         ui.createPreviewRenderFeature({
@@ -70,7 +71,7 @@ function mediaPreviewFixtures() {
           html: card.innerHTML, className: card.className,
           style: Object.fromEntries(Object.entries(card.style).filter(([, value]) => typeof value === "string")),
           expectedBackground: "#" + (base || (mode === "cover_art" ? neutral.surfaceCard : neutral.surfacePrimary)),
-          expectedFill: mode === "position" || precision === "progress" ? "#" + (base || neutral.trackBackground) : null,
+          expectedFill: mode === "position" || precision === "progress" ? "#" + (base ? progressColours[base] : neutral.trackBackground) : null,
           artworkDetails: extra === "cover_art_details",
           expectedForeground: base ? ui.cardPreviewTextColor(base) : "#" + neutral.textPrimary,
           placeholder: mode === "cover_art" && !extra,

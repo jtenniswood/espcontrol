@@ -797,6 +797,7 @@ export function registerMediaCardTypes(
         renderPreview: function (this: any, b?: any, helpers?: any) {
             const neutralPreview = PREVIEW_THEME_COLORS[previewEffectiveTheme(state)];
             const customBackground = helpers && helpers.cardBackgroundColor || "";
+            const customProgress = helpers && helpers.cardProgressColor || "";
             const fallbackTextColor = helpers && helpers.cardTextColor || "#" + neutralPreview.textPrimary;
             function modeInfo(this: any, value?: any) {
                 if (value === "controls")
@@ -849,7 +850,7 @@ export function registerMediaCardTypes(
             }
             if (mode === "position") {
                 var bgColor: any = customBackground || neutralPreview.surfacePrimary;
-                var progressColor: any = customBackground || neutralPreview.trackBackground;
+                var progressColor: any = customProgress || neutralPreview.trackBackground;
                 var positionLabel: any = b.precision === "state" ? "Paused" : label;
                 var positionClass: any = "sp-sensor-preview sp-media-position-time" +
                     (cardLargeNumbersActiveForCardSize(b, helpers, MEDIA_CARD_METADATA) ? " sp-sensor-preview-large" : "");
@@ -893,7 +894,7 @@ export function registerMediaCardTypes(
                 var progressBg: any = "";
                 if (mediaNowPlayingProgressEnabled(b)) {
                     var nowBgColor: any = customBackground || neutralPreview.surfacePrimary;
-                    var nowProgressColor: any = customBackground || neutralPreview.trackBackground;
+                    var nowProgressColor: any = customProgress || neutralPreview.trackBackground;
                     progressBg =
                         '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(nowBgColor) + '">' +
                             '<span class="sp-slider-track"><span class="sp-slider-fill" style="width:50%;height:100%;background:#' + helpers.escHtml(nowProgressColor) + '">' +

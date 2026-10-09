@@ -6,6 +6,7 @@ import { escHtml } from "./ui_primitives";
 import {
     buttonConfigDisabledForDevice as isButtonConfigDisabledForDevice,
     cardPreviewTextColor,
+    cardProgressColor,
     cardTypePickerDetails,
     cardTypePickerOptions,
     defaultCardTypeForPicker,
@@ -172,6 +173,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     ? previewTypeDef.renderPreview(b, {
                         escHtml: escHtml, cardSize: slotSz || 1,
                         cardBackgroundColor: cardOffColor,
+                        cardProgressColor: cardProgressColor(cardOffColor),
                         cardTextColor: cardOffColor ? cardPreviewTextColor(cardOffColor) : "#" + previewColors.textPrimary,
                     })
                     : null;

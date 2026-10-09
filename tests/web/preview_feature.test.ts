@@ -1,5 +1,6 @@
 import {
   cardPreviewTextColor,
+  cardProgressColor,
   cardTypePickerOptions,
   clampMenuPosition,
   closestGridCell,
@@ -29,6 +30,10 @@ export function runPreviewFeatureTests(): void {
   for (const colour of ["88C440", "CCDD1E", "FFEC16", "FFC100", "B3B3B3", "BABABA", "BBBBBB", "BFEAFF"]) {
     equal(cardPreviewTextColor(colour), "#212121", "light colour " + colour + " uses dark content");
   }
+  for (const [base, fill] of [["00BCD4", "4DD0E1"], ["FFEC16", "B3A50F"], ["FFFFFF", "B3B3B3"], ["FF8C00", "FFAF4D"], ["9D9D9D", "BABABA"]]) {
+    equal(cardProgressColor(base!), fill!, "media progress stays distinct on " + base);
+  }
+  equal(cardProgressColor("invalid"), "", "invalid progress colours use the theme default");
   equal(previewValue({ iconHtml: "custom" }, "iconHtml", "fallback"), "custom", "custom preview values win");
   equal(previewValue(null, "iconHtml", "fallback"), "fallback", "missing preview values use fallback");
   equal(infoOnlyCardVisible("sensor", true), true, "sensors remain visible in info-only mode");

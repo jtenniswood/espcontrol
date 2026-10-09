@@ -201,6 +201,8 @@ int main() {
   defaults.off_val = 0x313131;
   defaults.sensor_val = 0x212121;
   DisplayProfile display;
+  assert(card_progress_color(0xFF8C00) == 0xFFAF4D);
+  assert(card_progress_color(0x9D9D9D) == 0xBABABA);
   assert(display_text_color_for_bg(0x00BCD4) == 0xFFFFFF);
   assert(display_text_color_for_bg(lighter_card_color(0x00BCD4)) == 0xFFFFFF);
   assert(display_text_color_for_bg(0xBFEAFF) == 0x212121);
@@ -250,6 +252,8 @@ int main() {
           sync_card_checked_text_color(&button);
           espcontrol::cards::sensor_driver_apply_background(slot, palette);
           assert(palette.custom_background);
+          assert(palette.progress_val == card_progress_color(colour.base));
+          assert(palette.progress_val != colour.base);
           assert(palette.surface_sensor_val == colour.base);
           assert(button.background[LV_STATE_DEFAULT] == colour.base);
           assert(button.background[LV_STATE_CHECKED] == colour.active);
@@ -326,6 +330,8 @@ int main() {
   config.options = "card_off_color=FF8C00";
   display.color.red_percent = 50;
   display.color.green_percent = 75;
+  const auto corrected_progress = card_palette_for_config(defaults, config, display);
+  assert(corrected_progress.progress_val == display_correct_color(0xFFAF4D, display));
   for (const ThemePalette *theme : {&DARK_THEME, &LIGHT_THEME}) {
     set_active_theme_palette(*theme);
     const auto neutral = card_palette_for_config(CardPalette{}, ParsedCfg{}, DisplayProfile{});

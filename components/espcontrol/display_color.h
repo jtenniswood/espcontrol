@@ -85,6 +85,21 @@ constexpr uint32_t lighter_card_color(uint32_t rgb) {
          (blue + ((255 - blue) * 30 + 50) / 100);
 }
 
+// Progress must stay visible on both dark and pale custom backgrounds.
+constexpr uint32_t card_progress_color(uint32_t rgb) {
+  if (display_text_color_for_bg(rgb) == 0xFFFFFF) return lighter_card_color(rgb);
+  return (((((rgb >> 16) & 0xFF) * 70 + 50) / 100) << 16) |
+         (((((rgb >> 8) & 0xFF) * 70 + 50) / 100) << 8) |
+         (((rgb & 0xFF) * 70 + 50) / 100);
+}
+
+static_assert(card_progress_color(0x00BCD4) == 0x4DD0E1,
+              "dark progress backgrounds use a lighter fill");
+static_assert(card_progress_color(0xFFFFFF) == 0xB3B3B3,
+              "white progress backgrounds need a darker fill");
+static_assert(card_progress_color(0xFFEC16) == 0xB3A50F,
+              "pale progress backgrounds use a darker shade of the same hue");
+
 static_assert(lighter_card_color(0x000000) == 0x4D4D4D,
               "active card colour must round lightened channels consistently");
 static_assert(lighter_card_color(0x3F51B5) == 0x7985CB,

@@ -29,7 +29,7 @@ Backups include the theme mode, automatic method, times and offsets. Older backu
 
 Text and icons stay white on mid-tone backgrounds, including orange, blue, green and teal. Cyan also keeps white content in its lighter active state. Pale backgrounds use dark content, with the same rules on the panel and web preview.
 
-Custom card colours stay in place when changing a card’s controls, reopening its editor or switching themes. Media Cover Art uses the chosen card colour while artwork is loading or unavailable; visible artwork keeps white text.
+Custom card colours stay in place when changing a card’s controls, reopening its editor or switching themes. Media Cover Art uses the chosen card colour while artwork is loading or unavailable; visible artwork keeps white text. Media progress bars use a lighter or darker shade of the chosen card colour so progress remains visible.
 
 Disabled Home Assistant cards keep their background colour and show muted labels and icons. Their normal text and icon colours return when the card becomes available again.
 
