@@ -107,6 +107,7 @@ struct MediaControlModalUi {
   lv_obj_t *panel = nullptr;
   lv_obj_t *back_btn = nullptr;
   lv_obj_t *tab_row = nullptr;
+  espcontrol::media::ControlTabs visible_tabs;
   lv_obj_t *controls_tab = nullptr;
   lv_obj_t *progress_tab = nullptr;
   lv_obj_t *volume_tab = nullptr;
@@ -336,6 +337,11 @@ inline espcontrol::media::ControlTabs media_control_visible_tabs(MediaControlCtx
     media_group_speaker_tab_available(ctx->grouping_supported, ctx->speaker_discovery_available,
                                      media_control_group_size(ctx) > 1),
     media_control_power_supported(ctx));
+}
+
+inline bool media_control_tab_layout_changed(MediaControlCtx *ctx) {
+  const MediaControlModalUi &ui = media_control_modal_ui();
+  return ctx && ui.active == ctx && !(ui.visible_tabs == media_control_visible_tabs(ctx));
 }
 
 inline void media_control_ensure_visible_tab(MediaControlCtx *ctx) {
@@ -1512,6 +1518,7 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
       previous_repeat_supported != repeat_supported;
     bool layout_needed = metadata_changed || grouping_changed ||
                          previous_power_supported != power_supported ||
+                         media_control_tab_layout_changed(ctx) ||
                          mode_capabilities_changed;
     if (mode_capabilities_changed && ui.tab == MediaControlTab::CONTROLS) {
       media_control_clear_tab_content();
@@ -4309,6 +4316,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   control_modal_apply_back_button_layout(ui.back_btn, layout);
 
   const auto visible_tabs = media_control_visible_tabs(ctx);
+  ui.visible_tabs = visible_tabs;
   const bool show_tabs = !ctx->group_only && visible_tabs.count > 1;
   const int media_control_tab_count = show_tabs ? visible_tabs.count : 0;
   ControlModalTabLayout tabs_layout = {};

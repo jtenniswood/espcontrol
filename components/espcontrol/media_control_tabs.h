@@ -24,6 +24,12 @@ struct ControlTabs {
     return false;
   }
 
+  bool operator==(const ControlTabs &other) const {
+    if (count != other.count) return false;
+    for (uint8_t i = 0; i < count; ++i) if (tabs[i] != other.tabs[i]) return false;
+    return true;
+  }
+
   void add(MediaControlTab tab) {
     if (count < 5 && !contains(tab)) tabs[count++] = tab;
   }

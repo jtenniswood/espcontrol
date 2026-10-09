@@ -20,6 +20,7 @@ struct MediaControlCtx {
 };
 struct MediaControlModalUi {
   MediaControlCtx *active = nullptr;
+  espcontrol::media::ControlTabs visible_tabs;
   MediaControlTab tab = MediaControlTab::CONTROLS;
   int speaker_generation = 0;
 };
@@ -34,7 +35,7 @@ bool media_group_speaker_tab_available(bool supported, bool discovered, bool gro
   return supported && (discovered || grouped);
 }
 '''
-for name in ('media_control_visible_tabs', 'media_control_ensure_visible_tab'):
+for name in ('media_control_visible_tabs', 'media_control_tab_layout_changed', 'media_control_ensure_visible_tab'):
     line, body = definition(media, name)
     source += f'\n#line {line} "button_grid_media.h"\n{body}\n'
 source += r'''
@@ -63,6 +64,20 @@ int main() {
   ctx.progress = false; ctx.power = false;
   media_control_ensure_visible_tab(&ctx);
   assert(ui.tab == Tab::CONTROLS && cleared == 4);
+  // Reflow on capability changes even when the tab button was created earlier.
+  ctx.control_tabs = parse_control_tabs("volume|progress|power");
+  ctx.progress = false; ctx.power = true;
+  ui.visible_tabs = media_control_visible_tabs(&ctx);
+  assert(!media_control_tab_layout_changed(&ctx));
+  ctx.progress = true;
+  assert(media_control_tab_layout_changed(&ctx));
+  ui.visible_tabs = media_control_visible_tabs(&ctx);
+  assert(!media_control_tab_layout_changed(&ctx));
+  ctx.power = false;
+  assert(media_control_tab_layout_changed(&ctx));
+  ui.visible_tabs = media_control_visible_tabs(&ctx);
+  ctx.power = true; ctx.progress = false;
+  assert(media_control_tab_layout_changed(&ctx)); // Same count, different available tabs.
   ctx.group_only = true;
   media_control_ensure_visible_tab(&ctx);
   assert(ui.tab == Tab::SPEAKERS); // Standalone speaker groups retain their own screen.
