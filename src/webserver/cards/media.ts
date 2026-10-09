@@ -658,9 +658,9 @@ export function registerMediaCardTypes(
                         rerender: false,
                     },
                 });
-                var powerHint: any = document.createElement("p");
-                powerHint.textContent = "Controls a separate device from the Power tab. Playback and volume use the main entity. Leave blank to use the player's own power control.";
-                powerDisclosure.section.appendChild(powerHint);
+                powerDisclosure.section.appendChild(infoPanel(
+                    helpers.idPrefix + "media-power-info",
+                    "Controls a separate device from the Power tab. Playback and volume use the main entity. Leave blank to use the player's own power control."));
                 function syncPowerEntity(this: any) {
                     setMediaPowerEntity(b, powerEntityField.input.value);
                     b._mediaOptionalPowerOpen = true;
