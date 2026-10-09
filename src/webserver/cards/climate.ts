@@ -206,21 +206,33 @@ export function registerClimateCardTypes(
             cardSettings.appendChild(secondaryToggle.row);
             var secondaryFields: any = condField();
             secondaryFields.classList.add("sp-climate-settings-gap");
-            var secondaryDisplayField: any = helpers.selectField("Value", helpers.idPrefix + "climate-secondary-display", [
+            var secondaryDisplayOptions: any = [
                 ["status", "Status"],
                 ["actual", "Actual"],
                 ["target", "Target"],
-            ], climateSecondaryDisplay(b));
-            var secondaryDisplayTitle: any = secondaryDisplayField.field.querySelector(".sp-field-label");
-            if (secondaryDisplayTitle)
-                secondaryDisplayTitle.remove();
-            secondaryDisplayField.select.setAttribute("aria-label", "Secondary value to show");
-            secondaryFields.appendChild(secondaryDisplayField.field);
-            secondaryDisplayField.select.addEventListener("change", function (this: any) {
-                setClimateSecondaryDisplay(b, secondaryDisplayField.select.value);
-                helpers.saveField("options", b.options);
-                renderQueue.schedule();
-            });
+            ];
+            var secondaryDisplayControl: any = helpers.segmentControl(
+                secondaryDisplayOptions,
+                climateSecondaryDisplay(b),
+                function (this: any, value?: any) {
+                    setClimateSecondaryDisplay(b, value);
+                    helpers.saveField("options", b.options);
+                    syncSecondaryDisplayPressed();
+                    renderQueue.schedule();
+                },
+            );
+            secondaryDisplayControl.segment.setAttribute("role", "group");
+            secondaryDisplayControl.segment.setAttribute("aria-label", "Secondary value to show");
+            function syncSecondaryDisplayPressed(this: any) {
+                Object.keys(secondaryDisplayControl.buttons).forEach(function (this: any, value?: any) {
+                    secondaryDisplayControl.buttons[value].setAttribute(
+                        "aria-pressed",
+                        climateSecondaryDisplay(b) === value ? "true" : "false",
+                    );
+                });
+            }
+            syncSecondaryDisplayPressed();
+            secondaryFields.appendChild(secondaryDisplayControl.segment);
             var secondaryLabelField: any = helpers.textField("Label (optional)", helpers.idPrefix + "climate-secondary-label-text", climateSecondaryLabel(b), "e.g. Indoor");
             var secondaryLabelTitle: any = secondaryLabelField.field.querySelector(".sp-field-label");
             if (secondaryLabelTitle)
