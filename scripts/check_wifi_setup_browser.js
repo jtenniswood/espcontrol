@@ -32,7 +32,12 @@ assert.equal(brotliDecompressSync(savedArrays[1]).toString(), savedSource);
 assert.ok(!/<(?:script|link)\b[^>]*(?:src|href)=["']?https?:/i.test(savedSource));
 const names = ["Unifi-Devices", 'Guest & "Family" café', "<img src=x onerror=alert(1)>"];
 (async () => {
-  const browser = await chromium.launch({ executablePath: process.env.CHROME_BIN || "/usr/bin/google-chrome", headless: true });
+  const executablePath = [process.env.CHROME_BIN, process.env.CHROME_PATH,
+    chromium.executablePath(), "/usr/bin/google-chrome", "/usr/bin/chromium",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"]
+    .find(candidate => candidate && fs.existsSync(candidate));
+  assert.ok(executablePath, "Install Chromium with npx playwright install chromium, or set CHROME_BIN");
+  const browser = await chromium.launch({ executablePath, headless: true });
   try {
     for (const width of [320, 360, 640]) {
       for (const scenario of ["selection", "empty", "offline", "saved", "confirmation"]) {

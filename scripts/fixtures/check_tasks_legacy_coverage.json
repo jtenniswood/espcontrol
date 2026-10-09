@@ -17,6 +17,7 @@
     "device-slots", "icon-groups", "status-icon-glyphs", "timezones", "public-firmware-script"
   ],
   "ci": [
+    "wifi-setup",
     "firmware-tests", "web-unit", "generated", "device-manifest", "device-manifest-output", "product-schema", "product-model-v2",
     "product-snapshot", "local-artifacts", "local-esphome", "ci-tooling", "pr-process",
     "pr-testing-guidance", "config", "backup-contract", "model-contract", "state-contract", "device-api",
@@ -27,6 +28,7 @@
     "device-slots", "icon-groups", "status-icon-glyphs", "timezones", "public-firmware-script"
   ],
   "all": [
+    "wifi-setup",
     "firmware-tests", "web-unit", "generated", "device-manifest", "device-manifest-output", "product-schema", "product-model-v2",
     "product-snapshot", "local-artifacts", "local-esphome", "ci-tooling", "pr-process",
     "pr-testing-guidance", "config", "backup-contract", "model-contract", "state-contract", "device-api",
@@ -38,6 +40,7 @@
     "docs-build"
   ],
   "release": [
+    "wifi-setup",
     "firmware-tests", "web-unit", "generated", "device-manifest-output", "product-schema", "product-model-v2", "product-snapshot",
     "backup-contract", "model-contract", "state-contract", "device-api", "preview-features",
     "web-smoke", "web-asset-manifest", "saved-config-parity", "firmware-card-runtime",

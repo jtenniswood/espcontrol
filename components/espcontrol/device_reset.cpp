@@ -261,11 +261,13 @@ void early_startup(bool compiled_networks, const char *username, const char *pas
   esphome::ota::get_global_ota_callback()->add_global_state_listener(&ota_listener);
 }
 void apply_wifi_override() {
+#ifdef USE_WIFI
   // Never clear this override on connection: ESPHome must keep selecting the
   // fallback WiFi preference containing the portal/USB-provisioned network.
   if (storage.wifi_override && esphome::wifi::global_wifi_component != nullptr) {
     esphome::wifi::global_wifi_component->clear_sta();
   }
+#endif
 }
 void register_handlers(esphome::web_server_idf::AsyncWebServer &server) { server.addHandler(new ResetHandler()); }
 }  // namespace espcontrol::reset

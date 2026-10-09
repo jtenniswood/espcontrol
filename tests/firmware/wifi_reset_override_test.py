@@ -10,6 +10,7 @@ verify = source[source.index("  bool verify(Mode"):source.index("\n} storage;")]
 startup = source[source.index("void early_startup("):source.index("void register_handlers(")]
 harness = r'''
 #include "reset_policy.h"
+#define USE_WIFI
 #include <cassert>
 #include <map>
 #include <vector>
