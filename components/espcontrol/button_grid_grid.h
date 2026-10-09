@@ -1938,7 +1938,7 @@ inline void grid_phase2(
     if (cfg.info_only && info_only_hidden_card_type(context)) continue;
     navigation_register_home_target(idx, pos, p.label, scfg, s.btn);
     if (espcontrol::cards::image_driver_bind_main(
-          s, p, context, cfg)) continue;
+          s, p, context, cfg, palette)) continue;
     if (espcontrol::cards::wifi_qr_driver_bind_main(s, p, context)) continue;
     auto light_control_environment =
       espcontrol::cards::light_control_driver_environment(
@@ -2171,7 +2171,7 @@ inline void grid_phase2(
       refresh_card_layout(sub_slot, sb_cfg, cfg, rs, cs);
 
       if (espcontrol::cards::image_driver_bind_subpage(
-            sub_slot, sb_cfg, context, cfg)) continue;
+            sub_slot, sb_cfg, context, cfg, palette)) continue;
       if (espcontrol::cards::wifi_qr_driver_bind_subpage(
             sub_slot, sb_cfg, context)) continue;
       auto light_control_environment =

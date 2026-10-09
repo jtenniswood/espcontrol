@@ -638,6 +638,7 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
       this->decode_offset_x_ = offset_x;
       this->decode_offset_y_ = offset_y;
       memset(this->decode_buffer_, 0, new_size);
+      this->fill_fit_background_();
       ESP_LOGI(TAG, "Artwork fit: source=%dx%d target=%dx%d content=%dx%d offset=%d,%d",
                width_in, height_in, width, height, content_width, content_height, offset_x, offset_y);
       return new_size;
@@ -666,9 +667,39 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
   this->decode_offset_x_ = offset_x;
   this->decode_offset_y_ = offset_y;
   memset(this->decode_buffer_, 0, new_size);
+  this->fill_fit_background_();
   ESP_LOGI(TAG, "Artwork fit: source=%dx%d target=%dx%d content=%dx%d offset=%d,%d",
            width_in, height_in, width, height, content_width, content_height, offset_x, offset_y);
   return new_size;
+}
+
+void ArtworkImage::fill_fit_background_() {
+  if (this->resize_mode_ != ImageResizeMode::FIT ||
+      (this->decode_content_width_ >= this->decode_buffer_width_ &&
+       this->decode_content_height_ >= this->decode_buffer_height_)) {
+    return;
+  }
+  const int left = std::max(0, this->decode_offset_x_);
+  const int top = std::max(0, this->decode_offset_y_);
+  const int right = std::min(this->decode_buffer_width_,
+                             this->decode_offset_x_ + this->decode_content_width_);
+  const int bottom = std::min(this->decode_buffer_height_,
+                              this->decode_offset_y_ + this->decode_content_height_);
+  const Color background(
+      static_cast<uint8_t>((this->fit_background_color_ >> 16) & 0xFF),
+      static_cast<uint8_t>((this->fit_background_color_ >> 8) & 0xFF),
+      static_cast<uint8_t>(this->fit_background_color_ & 0xFF), 0xFF);
+  auto fill_row = [this, &background](int y, int start_x, int end_x) {
+    for (int x = start_x; x < end_x; x++) this->draw_pixel_(x, y, background);
+  };
+  for (int y = 0; y < this->decode_buffer_height_; y++) {
+    if (y < top || y >= bottom) {
+      fill_row(y, 0, this->decode_buffer_width_);
+    } else {
+      fill_row(y, 0, left);
+      fill_row(y, right, this->decode_buffer_width_);
+    }
+  }
 }
 
 std::string ArtworkImage::request_update_url(const std::string &url, int max_source_dim) {
