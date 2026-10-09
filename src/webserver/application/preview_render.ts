@@ -177,6 +177,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     sizeClass(slotSz) +
                     (c.selected.indexOf(slot) !== -1 ? " sp-selected" : "");
                 btn.style.backgroundColor = "#" + (cardOffColor || color);
+                btn.style.setProperty("--card-active-color", "#" + (cardOnColor || state.onColor || WEB_UI_COLORS.primary));
                 var contrastBackground: any = cardOffColor || color;
                 btn.draggable = !isConfigLocked();
                 btn.setAttribute("data-pos", pos);

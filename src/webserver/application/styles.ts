@@ -109,7 +109,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:var(--card-text-color,var(--preview-text-primary))}" +
         ".sp-slider-preview{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;pointer-events:none}" +
         ".sp-slider-track{width:100%;height:100%;position:relative}" +
-        ".sp-slider-fill{position:absolute;left:0;bottom:0;width:100%;height:80%;background:var(--accent);" +
+        ".sp-slider-fill{position:absolute;left:0;bottom:0;width:100%;height:80%;background:var(--card-active-color,var(--screen-primary));" +
         "border-radius:var(--r)}" +
         ".sp-image-card{padding:0}" +
         ".sp-image-preview{position:absolute;inset:0;display:block;overflow:hidden;border-radius:var(--btn-r);" +
