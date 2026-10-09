@@ -3,7 +3,7 @@ import { WEB_UI_COLORS } from "../state/ui_tokens";
 
 const COLOR_PRESETS: ReadonlyArray<readonly [string, string]> = [
     ["FF0000", "Red"], ["EB1460", "Pink"], ["9C1AB1", "Purple"], ["6633B9", "Deep purple"], ["3949AB", "Indigo"],
-    ["46AF4A", "Green"], ["009687", "Teal"], ["00BCD4", "Cyan"], ["29B6F6", "Sky blue"], ["2962FF", "Blue"],
+    ["46AF4A", "Green"], ["009687", "Teal"], ["00BCD4", "Cyan"], ["039BE5", "Sky blue"], ["2962FF", "Blue"],
     ["88C440", "Lime"], ["CCDD1E", "Yellow green"], ["FFEC16", "Yellow"], ["FFC100", "Amber"], [WEB_UI_COLORS.primary, "Orange"],
     ["313131", "Dark grey"], ["666666", "Medium dark grey"], ["9D9D9D", "Grey"], ["CCCCCC", "Light grey"], ["FFFFFF", "White"],
 ];
