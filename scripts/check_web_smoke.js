@@ -603,8 +603,8 @@ const climateSecondaryPreview = hooks.buttonTypePreviewFor("climate", {
   options: "secondary_enabled,secondary_display=target,secondary_label=Setpoint",
 });
 assert(
-  climateSecondaryPreview.labelHtml.includes("Setpoint 20°C") &&
-    !climateSecondaryPreview.labelHtml.includes("Setpoint: 20°C"),
+  climateSecondaryPreview.iconHtml.indexOf("sp-sensor-preview") < climateSecondaryPreview.iconHtml.indexOf("Setpoint 20°C") &&
+    !climateSecondaryPreview.labelHtml.includes("Setpoint 20°C"),
   "climate preview shows the configured same-entity secondary target"
 );
 const climateSecondaryDisabledPreview = hooks.buttonTypePreviewFor("climate", {
@@ -697,7 +697,7 @@ const climateIconPreview = hooks.buttonTypePreviewFor("climate", {
   temperatureUnit: "\u00b0C",
 });
 assert(climateIconPreview.iconHtml.includes("mdi-thermostat"), "climate icon mode preview uses the selected icon");
-assert.strictEqual(climateIconPreview.buttonClass, undefined, "climate icon mode uses a standard card wrapper");
+assert.strictEqual(climateIconPreview.buttonClass, "sp-climate-temp-card", "climate icon mode uses the climate value stack layout");
 assert(!climateIconPreview.iconHtml.includes("sp-climate-card-icon"), "climate icon mode uses standard card icon layout");
 assert(!climateIconPreview.iconHtml.includes("\u00b0C"), "climate icon mode preview does not show a large temperature");
 

@@ -321,18 +321,19 @@ export function registerClimateCardTypes(
                 label = targetVal + unit;
             }
             function climateLabelHtml(this: any) {
-                return cardBadgeLabelHtml(helpers, label, CLIMATE_CARD_METADATA.preview.badge) + secondaryPreview;
+                return cardBadgeLabelHtml(helpers, label, CLIMATE_CARD_METADATA.preview.badge);
             }
             if (numberMode === "icon") {
                 var iconName: any = b.icon && b.icon !== "Auto" ? b.icon : "Thermostat";
                 return {
-                    iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconSlug(iconName) + '"></span>',
+                    buttonClass: "sp-climate-temp-card",
+                    iconHtml: '<span class="sp-climate-value-stack"><span class="sp-btn-icon mdi mdi-' + iconSlug(iconName) + '"></span>' + secondaryPreview + '</span>',
                     labelHtml: climateLabelHtml(),
                 };
             }
             return {
                 buttonClass: "sp-climate-temp-card",
-                iconHtml: cardSensorPreviewHtml(b, helpers, numberVal, unit),
+                iconHtml: '<span class="sp-climate-value-stack">' + cardSensorPreviewHtml(b, helpers, numberVal, unit) + secondaryPreview + '</span>',
                 labelHtml: climateLabelHtml(),
             };
         },
