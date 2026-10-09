@@ -14,8 +14,12 @@ inline bool image_driver_matches(const Context &context) {
 }
 
 inline bool image_driver_setup_visual(
-    BtnSlot &slot, const ParsedCfg &, const Context &context) {
+    BtnSlot &slot, const ParsedCfg &config, const Context &context,
+    const CardPalette &palette) {
   if (!image_driver_matches(context)) return false;
+  if (image_card_modal_fit_enabled(config)) {
+    sensor_driver_apply_background(slot, palette);
+  }
   setup_image_card(slot);
   return true;
 }
@@ -66,18 +70,18 @@ inline void image_driver_reset_pool(const GridConfig &grid) {
 
 inline bool image_driver_bind_main(
     BtnSlot &slot, const ParsedCfg &config, const Context &context,
-    const GridConfig &grid) {
+    const GridConfig &grid, const CardPalette &palette) {
   if (!image_driver_matches(context) ||
       context.surface != Surface::MAIN_GRID) return false;
-  return image_card_bind_runtime(slot, config, grid, false);
+  return image_card_bind_runtime(slot, config, grid, palette.surface_sensor_val, false);
 }
 
 inline bool image_driver_bind_subpage(
     BtnSlot &slot, const ParsedCfg &config, const Context &context,
-    const GridConfig &grid) {
+    const GridConfig &grid, const CardPalette &palette) {
   if (!image_driver_matches(context) ||
       context.surface != Surface::SUBPAGE) return false;
-  return image_card_bind_runtime(slot, config, grid, true);
+  return image_card_bind_runtime(slot, config, grid, palette.surface_sensor_val, true);
 }
 
 inline bool image_driver_handle_main_click(

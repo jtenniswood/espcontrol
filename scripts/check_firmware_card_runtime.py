@@ -229,9 +229,9 @@ def check_root(root: Path) -> list[str]:
             or "navigation_driver_setup_visual( s, p, context, cfg, display)" not in compact_grid
             or "navigation_driver_bind_main( s, p, context, navigation_state)" not in compact_grid
             or "navigation_driver_own_subpage( slots[si], p, parent_context, si + 1, display_order, sub_scr)" not in compact_grid
-            or "image_driver_setup_visual(s, p, context)" not in compact_grid
-            or "image_driver_bind_main( s, p, context, cfg)" not in compact_grid
-            or "image_driver_bind_subpage( sub_slot, sb_cfg, context, cfg)" not in compact_grid
+            or "image_driver_setup_visual(s, p, context, palette)" not in compact_grid
+            or "image_driver_bind_main( s, p, context, cfg, palette)" not in compact_grid
+            or "image_driver_bind_subpage( sub_slot, sb_cfg, context, cfg, palette)" not in compact_grid
             or "light_control_driver_setup_visual(s, p, context)" not in compact_grid
             or "light_control_driver_bind_main( s, p, context, light_control_environment)" not in compact_grid
             or "light_control_driver_bind_subpage( sub_slot, sb_cfg, context, light_control_environment)" not in compact_grid

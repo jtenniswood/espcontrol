@@ -99,6 +99,8 @@ class ArtworkImage : public PollingComponent,
     this->fixed_height_ = height;
   }
   void set_resize_mode(ImageResizeMode resize_mode) { this->resize_mode_ = resize_mode; }
+  void set_fit_background_color(uint32_t color);
+  uint32_t get_fit_background_color() const { return this->fit_background_color_; }
   void set_request_priority(ImageRequestPriority priority) { this->request_priority_ = priority; }
   void set_p4_pipeline_priority(P4PipelinePriority priority) {
     this->p4_pipeline_priority_ = priority;
@@ -211,6 +213,10 @@ class ArtworkImage : public PollingComponent,
    */
   size_t resize_(int width, int height);
   size_t get_decode_buffer_size_() const { return get_buffer_size_(this->decode_buffer_width_, this->decode_buffer_height_); }
+  void fill_fit_background_();
+  bool fill_fit_background_(uint8_t *buffer, int width, int height,
+                            int content_width, int content_height,
+                            int offset_x, int offset_y);
   void discard_decode_buffer_();
   bool promote_decode_buffer_();
   void retire_active_buffer_();
@@ -243,6 +249,7 @@ class ArtworkImage : public PollingComponent,
    * @param color 32 bit color to put into the pixel.
    */
   void draw_pixel_(int x, int y, Color color);
+  void draw_pixel_to_buffer_(uint8_t *buffer, int width, int x, int y, Color color);
 
   void end_connection_();
 
@@ -266,6 +273,7 @@ class ArtworkImage : public PollingComponent,
 
   const ImageFormat format_;
   ImageResizeMode resize_mode_;
+  uint32_t fit_background_color_{0};
   ImageRequestPriority request_priority_{ImageRequestPriority::BACKGROUND};
   image::Image *placeholder_{nullptr};
 

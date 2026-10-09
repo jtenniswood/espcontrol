@@ -153,6 +153,8 @@ void sync_card_checked_text_color(lv_obj_t *button) {
   for (auto *child : button->children) child->text = lv_obj_get_style_text_color(button, LV_PART_MAIN);
 }
 void set_card_content_disabled(lv_obj_t *, bool) {}
+std::vector<uint32_t> image_theme_colors;
+inline void image_card_refresh_theme(uint32_t color) { image_theme_colors.push_back(color); }
 #include "theme_runtime_ui.h"
 
 void register_theme_grid(lv_obj_t *page, BtnSlot *slots, const bool *neutral, int count,
@@ -211,8 +213,8 @@ static void test_grid_secondary_surface() {
 static void test_independent_dark_light_surfaces() {
   set_active_theme_palette(DARK_THEME);
   apply_current_theme();
-  lv_obj_t page, card, information, sensor, subpage, sub_card, sub_information, sub_sensor;
-  lv_obj_t *buttons[] = {&card, &information, &sensor, &sub_card, &sub_information, &sub_sensor};
+  lv_obj_t page, card, information, sensor, image, subpage, sub_card, sub_information, sub_sensor, sub_image;
+  lv_obj_t *buttons[] = {&card, &information, &sensor, &image, &sub_card, &sub_information, &sub_sensor, &sub_image};
   for (auto *button : buttons) {
     button->type = &lv_button_class;
     button->opacity = LV_OPA_COVER;
@@ -220,13 +222,15 @@ static void test_independent_dark_light_surfaces() {
   card.background = sub_card.background = lv_color_hex(DARK_THEME.surface_card);
   information.background = sub_information.background = lv_color_hex(DARK_THEME.surface_secondary);
   sensor.background = sub_sensor.background = lv_color_hex(DARK_THEME.surface_sensor);
-  BtnSlot slots[] = {{&card}, {&information}, {&sensor}};
-  const bool neutral[] = {true, true, true};
-  const bool sensors[] = {false, false, true};
-  const bool secondary[] = {false, true, false};
-  register_theme_grid(&page, slots, neutral, 3, sensors, 100, 100, 100, secondary);
+  image.background = sub_image.background = lv_color_hex(DARK_THEME.surface_sensor);
+  BtnSlot slots[] = {{&card}, {&information}, {&sensor}, {&image}};
+  const bool neutral[] = {true, true, true, false};
+  const bool sensors[] = {false, false, true, true};
+  const bool secondary[] = {false, true, false, false};
+  register_theme_grid(&page, slots, neutral, 4, sensors, 100, 100, 100, secondary);
   navigation_subpages().push_back({&subpage, nullptr,
-      {{true, &sub_card}, {true, &sub_information, false, true}, {true, &sub_sensor, true}}});
+      {{true, &sub_card}, {true, &sub_information, false, true}, {true, &sub_sensor, true},
+       {false, &sub_image, true}}});
   for (const auto *theme : {&LIGHT_THEME, &DARK_THEME, &LIGHT_THEME, &DARK_THEME}) {
     set_active_theme_palette(*theme);
     apply_current_theme();
@@ -238,6 +242,12 @@ static void test_independent_dark_light_surfaces() {
     assert(sub_information.background.full == theme->surface_secondary);
     assert(sensor.background.full == theme->surface_sensor);
     assert(sub_sensor.background.full == theme->surface_sensor);
+    assert(image.background.full == theme->surface_sensor);
+    assert(sub_image.background.full == theme->surface_sensor);
+    assert(image_theme_colors.back() == current_grid_sensor_surface_color());
+    const auto refresh_count = image_theme_colors.size();
+    apply_current_theme();
+    assert(image_theme_colors.size() == refresh_count);
   }
   assert(card.background.full == 0x313131);
   assert(sensor.background.full == 0x212121);

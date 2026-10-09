@@ -83,6 +83,7 @@ struct ImageCardCtx {
   bool download_active = false;
   bool show_label = false;
   bool modal_fit = false;
+  uint32_t fit_background_color = 0;
   bool diagnostics_enabled = false;
   bool access_token_request_pending = false;
   uint32_t access_token_request_started_ms = 0;
@@ -130,6 +131,7 @@ struct ImageCardModalCache {
   std::string entity_id;
   std::string source_url;
   uint32_t cached_at_ms = 0;
+  uint32_t fit_background_color = 0;
   bool modal_fit = false;
   lv_timer_t *expiry_timer = nullptr;
   bool ready = false;
@@ -441,12 +443,19 @@ inline void image_card_apply_corner_clip(lv_obj_t *obj, lv_coord_t radius) {
   lv_obj_set_style_clip_corner(obj, true, image_card_pressed_selector());
 }
 
-inline void image_card_apply_tile_image_align(lv_obj_t *widget) {
+inline esphome::artwork_image::ImageResizeMode image_card_tile_resize_mode(ImageCardCtx *ctx) {
+  return ctx && !ctx->media_artwork && ctx->modal_fit
+    ? esphome::artwork_image::ImageResizeMode::FIT
+    : esphome::artwork_image::ImageResizeMode::COVER;
+}
+
+inline void image_card_apply_tile_image_align(lv_obj_t *widget, bool fit = false) {
   if (!widget) return;
 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
-  lv_image_set_inner_align(widget, LV_IMAGE_ALIGN_COVER);
+  lv_image_set_inner_align(widget, fit ? LV_IMAGE_ALIGN_CONTAIN : LV_IMAGE_ALIGN_COVER);
 #else
   (void) widget;
+  (void) fit;
 #endif
 }
 
@@ -963,6 +972,7 @@ inline void image_card_apply_modal_downloaded(ImageCardCtx *ctx) {
   cache.entity_id = ctx->entity_id;
   cache.source_url = ctx->modal_source_url;
   cache.modal_fit = ctx->modal_fit;
+  cache.fit_background_color = ctx->fit_background_color;
   cache.cached_at_ms = esphome::millis();
   cache.ready = true;
   // A successful expanded image must also recover the hidden tile after close.
@@ -1201,22 +1211,6 @@ inline bool image_card_position_widget(lv_obj_t *btn, lv_obj_t *widget,
   return true;
 }
 
-inline void image_card_apply_widget_geometry(lv_obj_t *btn, lv_obj_t *widget,
-                                             esphome::artwork_image::ArtworkImage *image,
-                                             lv_coord_t target_width_override = 0) {
-  if (!image) return;
-  lv_coord_t width = 0;
-  lv_coord_t height = 0;
-  if (!image_card_position_widget(btn, widget, &width, &height)) return;
-  lv_coord_t target_width = target_width_override > 0 ? target_width_override : width;
-  image_card_apply_tile_image_align(widget);
-  lv_obj_t *loading = image_card_loading_widget(widget);
-  image_card_position_widget(btn, loading);
-  image_card_refresh_loading_layout(loading);
-  image->set_target_size(target_width, height);
-  image->set_resize_mode(esphome::artwork_image::ImageResizeMode::COVER);
-}
-
 inline lv_coord_t image_card_media_artwork_target_width(ImageCardCtx *ctx, lv_coord_t width) {
   if (!ctx || !ctx->media_artwork || width <= 0) return width;
   int percent = normalize_width_compensation_percent(ctx->media_artwork_width_compensation_percent);
@@ -1247,12 +1241,14 @@ inline void image_card_apply_context_widget_geometry(ImageCardCtx *ctx) {
   lv_coord_t width = 0;
   lv_coord_t height = 0;
   if (!image_card_position_context_widget(ctx, &width, &height)) return;
-  image_card_apply_tile_image_align(ctx->widget);
+  const auto resize_mode = image_card_tile_resize_mode(ctx);
+  image_card_apply_tile_image_align(ctx->widget, resize_mode == esphome::artwork_image::ImageResizeMode::FIT);
   lv_obj_t *loading = image_card_loading_widget(ctx->widget);
   image_card_position_widget(ctx->btn, loading);
   image_card_refresh_loading_layout(loading);
   ctx->image->set_target_size(image_card_media_artwork_target_width(ctx, width), height);
-  ctx->image->set_resize_mode(esphome::artwork_image::ImageResizeMode::COVER);
+  ctx->image->set_fit_background_color(ctx->fit_background_color);
+  ctx->image->set_resize_mode(resize_mode);
 }
 
 inline void image_card_reset_resized_tile(ImageCardCtx *ctx) {
@@ -1265,15 +1261,38 @@ inline void image_card_reset_resized_tile(ImageCardCtx *ctx) {
   image_card_set_loading_state(ctx, "Loading", true);
 }
 
+inline bool image_card_reset_cached_tile_if_changed(
+    ImageCardCtx *ctx, int previous_width, int previous_height,
+    esphome::artwork_image::ImageResizeMode previous_mode,
+    uint32_t previous_fit_background_color) {
+  if (!ctx || !ctx->image || !ctx->image_ready) return false;
+  if (!esphome::artwork_image::image_pipeline_cached_target_changed(
+        true, previous_width, previous_height,
+        ctx->image->get_fixed_width(), ctx->image->get_fixed_height()) &&
+      previous_mode == ctx->image->get_resize_mode() &&
+      (ctx->image->get_resize_mode() != esphome::artwork_image::ImageResizeMode::FIT ||
+       previous_fit_background_color == ctx->fit_background_color)) return false;
+  // Rebuild the fitted buffer so its letterboxed pixels use the current card
+  // surface color instead of preserving the previous decode's background.
+  image_card_reset_resized_tile(ctx);
+  ctx->last_download_completed_ms = 0;
+  return true;
+}
+
 inline void image_card_refresh_tile_geometry(ImageCardCtx *ctx) {
   if (!ctx || !ctx->image) return;
   int previous_width = ctx->image->get_fixed_width();
   int previous_height = ctx->image->get_fixed_height();
+  const auto previous_mode = ctx->image->get_resize_mode();
+  const uint32_t previous_fit_background_color = ctx->image->get_fit_background_color();
   image_card_apply_context_widget_geometry(ctx);
-  int current_width = ctx->image->get_fixed_width();
-  int current_height = ctx->image->get_fixed_height();
+  const int current_width = ctx->image->get_fixed_width();
+  const int current_height = ctx->image->get_fixed_height();
   if (current_width <= 0 || current_height <= 0 ||
-      (current_width == previous_width && current_height == previous_height) ||
+      (current_width == previous_width && current_height == previous_height &&
+       previous_mode == ctx->image->get_resize_mode() &&
+       (ctx->image->get_resize_mode() != esphome::artwork_image::ImageResizeMode::FIT ||
+        previous_fit_background_color == ctx->fit_background_color)) ||
       ctx->source_url.empty()) {
     return;
   }
@@ -1331,7 +1350,8 @@ inline bool image_card_modal_cache_matches(ImageCardCtx *ctx) {
   ImageCardModalCache &cache = image_card_modal_cache();
   return esphome::artwork_image::image_pipeline_modal_cache_matches(
       cache.ready && cache.modal_fit == ctx->modal_fit, cache.image == ctx->modal_image,
-      cache.entity_id == ctx->entity_id, cache.source_url == ctx->source_url,
+      cache.entity_id == ctx->entity_id, cache.source_url == ctx->source_url &&
+        cache.fit_background_color == ctx->fit_background_color,
       image_card_constrained_memory_profile(), image_card_modal_cache_expired());
 }
 
@@ -2100,8 +2120,7 @@ inline void image_card_request_source_url(ImageCardCtx *ctx, bool source_changed
   }
   lv_coord_t width = 0;
   lv_coord_t height = 0;
-  esphome::artwork_image::ImageResizeMode resize_mode =
-    esphome::artwork_image::ImageResizeMode::COVER;
+  const auto resize_mode = image_card_tile_resize_mode(ctx);
   if (!image_card_position_context_widget(ctx, &width, &height)) return;
   lv_coord_t decode_width = image_card_media_artwork_target_width(ctx, width);
   lv_coord_t decode_height = height;
@@ -2181,6 +2200,7 @@ inline bool image_card_request_modal_source_url(ImageCardCtx *ctx) {
   ctx->modal_url = image_card_sized_url(ctx->source_url, width, height);
   ctx->modal_source_url = ctx->source_url;
   ctx->modal_image->set_target_size(width, height);
+  ctx->modal_image->set_fit_background_color(ctx->fit_background_color);
   ctx->modal_image->set_resize_mode(
     ctx->modal_fit ? esphome::artwork_image::ImageResizeMode::FIT
                    : esphome::artwork_image::ImageResizeMode::COVER);
@@ -2228,6 +2248,10 @@ inline bool image_card_queue_modal_source_request(ImageCardCtx *ctx) {
     return false;
   }
   if (!image_card_context_on_active_screen(ctx) || !ha_api_state_connected()) return false;
+  // The expanded view needs its own image and fit mode. A scheduled tile
+  // download shares this refresh clock and would otherwise block that request,
+  // leaving the already-cropped tile preview on screen indefinitely.
+  image_card_cancel_scheduled_tile_request(ctx);
   if (ctx->refresh_schedule.in_flight) return true;
   ImageCardModalUi &ui = image_card_modal_ui();
   if (ui.request_timer) return true;
@@ -3157,8 +3181,34 @@ inline void image_card_handle_activity_state(ImageCardCtx *ctx, const std::strin
   ctx->refresh_schedule.activate(esphome::millis());
 }
 
+inline void image_card_refresh_theme(uint32_t fit_background_color) {
+  ImageCardCtx *contexts = image_card_contexts();
+  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; ++i) {
+    ImageCardCtx *ctx = &contexts[i];
+    if (!ctx->active || ctx->media_artwork || !ctx->modal_fit || !ctx->image ||
+        ctx->fit_background_color == fit_background_color) continue;
+    ctx->fit_background_color = fit_background_color;
+    ctx->image->set_fit_background_color(fit_background_color);
+    if (ctx->btn) lv_obj_set_style_bg_color(ctx->btn, lv_color_hex(fit_background_color), LV_PART_MAIN);
+    if (ctx->widget) lv_obj_invalidate(ctx->widget);
+    if (image_card_modal_active_for(ctx)) {
+      if (image_card_has_separate_modal_image(ctx))
+        ctx->modal_image->set_fit_background_color(fit_background_color);
+      if (image_card_modal_ui().image_widget) lv_obj_invalidate(image_card_modal_ui().image_widget);
+    }
+  }
+  // The expanded decoder is shared and can retain an image from an inactive
+  // subpage. Update that cache as well so reopening it uses the new palette.
+  ImageCardModalCache &cache = image_card_modal_cache();
+  if (cache.ready && cache.modal_fit && cache.image) {
+    cache.image->set_fit_background_color(fit_background_color);
+    cache.fit_background_color = fit_background_color;
+  }
+}
+
 inline bool image_card_bind_runtime(BtnSlot &s, const ParsedCfg &p,
                                     const GridConfig &cfg,
+                                    uint32_t fit_background_color,
                                     bool bind_click_handler = false) {
   lv_obj_t *widget = s.sensor_container
     ? static_cast<lv_obj_t *>(lv_obj_get_user_data(s.sensor_container))
@@ -3206,6 +3256,7 @@ inline bool image_card_bind_runtime(BtnSlot &s, const ParsedCfg &p,
   ctx->begin_display_takeover = cfg.begin_display_takeover;
   ctx->end_display_takeover = cfg.end_display_takeover;
   ctx->modal_fit = image_card_modal_fit_enabled(p);
+  ctx->fit_background_color = fit_background_color & 0xFFFFFF;
   ctx->refresh_schedule = {};
   ctx->scheduled_tile_request = false;
   ctx->activity_trigger = {};
@@ -3237,11 +3288,12 @@ inline bool image_card_bind_runtime(BtnSlot &s, const ParsedCfg &p,
   image_card_log_diagnostics(ctx, "bind-card");
   int cached_target_width = ctx->image->get_fixed_width();
   int cached_target_height = ctx->image->get_fixed_height();
-  image_card_apply_widget_geometry(ctx->btn, ctx->widget, ctx->image);
-  if (esphome::artwork_image::image_pipeline_cached_target_changed(
-        ctx->image_ready, cached_target_width, cached_target_height,
-        ctx->image->get_fixed_width(), ctx->image->get_fixed_height())) {
-    ctx->last_download_completed_ms = 0;
+  const auto cached_resize_mode = ctx->image->get_resize_mode();
+  const uint32_t cached_fit_background_color = ctx->image->get_fit_background_color();
+  image_card_apply_context_widget_geometry(ctx);
+  if (image_card_reset_cached_tile_if_changed(
+        ctx, cached_target_width, cached_target_height, cached_resize_mode,
+        cached_fit_background_color)) {
     image_card_log_diagnostics(ctx, "cached-tile-resize-refresh");
   }
   if (ctx->image_ready) {
