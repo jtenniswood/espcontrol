@@ -42,6 +42,9 @@ function editor() {
     registry, confirmation, { refreshEntityDatalist() {} }, fields, ui);
   loadTypescriptTest("src/webserver/cards/wifi_qr.ts").registerWifiQrCardTypes(
     registry, tabs, fields, ui, { supported: () => true });
+  const webhook = loadTypescriptTest("src/webserver/application/config_webhook_options.ts")
+    .createConfigWebhookOptionsFeature();
+  loadTypescriptTest("src/webserver/cards/webhook.ts").registerWebhookCardTypes(registry, webhook, fields, ui);
   const saved = {}, inputs = {}, modes = [];
   function field(value = "") { return { field: element(), input: element(value), select: element(value) }; }
   const helpers = {
@@ -56,7 +59,7 @@ function editor() {
     selectField(_label, id, _options, value) { const result = field(value); inputs[id] = result.select; return result; },
     toggleRow(_label, id, checked) { const result = { row: element(), input: element() }; result.input.checked = checked; inputs[id] = result.input; return result; },
   };
-  return { registry, document, helpers, saved, inputs, modes, lightCards };
+  return { registry, document, helpers, saved, inputs, modes, lightCards, webhook };
 }
 
 test("reopening robot, fan and cover editors keeps the chosen colour", () => {
@@ -136,5 +139,31 @@ test("Light mode initializers retain the colour across every supported mode", ()
     assert.equal(button.type, target);
     assert.equal(button.options, "card_off_color=FFEC16", from + " -> " + target);
     assert.equal(e.saved.options, button.options);
+  }
+});
+
+test("Webhook editors preserve colour when reopening and editing or clearing headers", () => {
+  for (const method of ["GET", "POST", "DELETE"]) for (const headers of ["", "Content-Type: application/json; X-Test: one,two"]) {
+    const e = editor();
+    const button = { type: "webhook", sensor: method, entity: "http://panel.test/action", options: "obsolete,card_off_color=00BCD4" };
+    e.webhook.setWebhookHeaders(button, headers);
+    const definition = e.registry.definitions.webhook;
+    for (let reopen = 0; reopen < 2; reopen++) {
+      definition.renderSettingsBeforeLabel(element(), button, 1, e.helpers);
+      definition.renderSettings(element(), button, 1, e.helpers);
+      assert(button.options.includes("card_off_color=00BCD4"), `${method}/${headers}`);
+      assert(!button.options.includes("obsolete"));
+      assert.equal(e.webhook.webhookHeaders(button), headers);
+    }
+    for (const edited of ["X-Test: changed,retained", ""]) {
+      e.inputs["test-webhook-headers"].value = edited;
+      e.inputs["test-webhook-headers"].listeners.change();
+      assert(button.options.includes("card_off_color=00BCD4"));
+      assert.equal(e.webhook.webhookHeaders(button), edited);
+      assert.equal(e.saved.options, button.options);
+      definition.renderSettingsBeforeLabel(element(), button, 1, e.helpers);
+      definition.renderSettings(element(), button, 1, e.helpers);
+      assert.deepEqual(button.options.split(",").sort(), e.saved.options.split(",").sort());
+    }
   }
 });
