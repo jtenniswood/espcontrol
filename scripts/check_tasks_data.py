@@ -79,7 +79,7 @@ TASKS = (
     task("wifi-setup", ("python3", "scripts/build.py", "portal", "--check"),
          ("python3", "scripts/test_captive_portal_dns.py"),
          ("python3", "tests/firmware/wifi_reset_override_test.py"),
-         ("node", "scripts/check_wifi_setup_browser.js"), profiles=CI + RELEASE,
+         ("node", "scripts/check_wifi_setup_browser.js"), profiles=FAST + RELEASE,
          domains=("firmware", "web"),
          inputs=("components/captive_portal/**", "components/espcontrol/device_reset.*",
                  "common/addon/connectivity*.yaml", "devices/*/device/device.yaml",
