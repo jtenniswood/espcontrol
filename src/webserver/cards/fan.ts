@@ -1,3 +1,4 @@
+import { preserveCardColorOptions } from "../model/config_primitives";
 import { iconSlug } from "../application/ui_primitives";
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ConfigModalTabOptionsFeature } from "../application/config_modal_tab_options";
@@ -178,7 +179,7 @@ export function registerFanCardTypes(
                 b.sensor = "";
                 b.unit = "";
                 b.precision = "";
-                b.options = opts.type === "fan_control" ? normalizeFanControlOptions(b.options) : "";
+                b.options = opts.type === "fan_control" ? normalizeFanControlOptions(b.options) : preserveCardColorOptions(b.options, "");
                 b.icon = fanControlDefaultIcon(opts.type);
                 b.icon_on = opts.type === "fan_switch" ? "Fan" : "Auto";
             },
@@ -186,7 +187,7 @@ export function registerFanCardTypes(
                 b.sensor = "";
                 b.unit = "";
                 b.precision = "";
-                b.options = b.type === "fan_control" ? normalizeFanControlOptions(b.options) : "";
+                b.options = b.type === "fan_control" ? normalizeFanControlOptions(b.options) : preserveCardColorOptions(b.options, "");
                 if (!b.icon || b.icon === "Auto")
                     b.icon = fanControlDefaultIcon(b.type);
                 if (b.type === "fan_switch") {

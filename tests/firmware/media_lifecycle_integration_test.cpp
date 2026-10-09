@@ -152,7 +152,10 @@ bool media_playback_button_mode(const std::string &mode) { return mode == "play_
 bool media_control_modal_mode(const std::string &mode) { return mode == "control_modal"; }
 struct lv_font_t {};
 constexpr unsigned DEFAULT_ACCENT_COLOR = 0;
-struct CardPalette { bool has_on = false; unsigned on_val = 0, off_val = 0, sensor_val = 0; };
+struct CardPalette {
+  bool custom_background = false, has_on = false;
+  unsigned on_val = 0, off_val = 0, sensor_val = 0;
+};
 enum class DisplayModalLayoutFamily { COMPACT_PORTRAIT };
 struct DisplayProfile { struct { DisplayModalLayoutFamily layout_family; } modal{}; };
 struct GridConfig {};
@@ -168,7 +171,7 @@ FONT_STUB(display_media_title_font)
 FONT_STUB(display_media_cover_art_title_font)
 int display_main_width_percent(const DisplayProfile &) { return 100; }
 void setup_media_card(BtnSlot &slot, const ParsedCfg &config, unsigned, unsigned, unsigned,
-                      const lv_font_t *, const lv_font_t *, const lv_font_t *, int, int, int) {
+                      const lv_font_t *, const lv_font_t *, const lv_font_t *, int, int, int, bool) {
   lv_obj_t *slider = nullptr;
   if (config.sensor != "cover_art") {
     slider = create_widget(slot.btn);

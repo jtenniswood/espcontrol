@@ -53,6 +53,8 @@ struct lv_obj_t {
   lv_color_t arc{0};
   lv_color_t knob{0};
   lv_color_t border{0};
+  lv_color_t checked_background{0};
+  bool has_checked_background = false;
   lv_color_t pressed_background{0};
   bool has_pressed_background = false;
   lv_color_t disabled_border{0};
@@ -77,8 +79,17 @@ bool lv_obj_check_type(const lv_obj_t *obj, const lv_obj_class_t *type) {
 bool lv_obj_has_flag(const lv_obj_t *obj, lv_obj_flag_t flag) { return (obj->flags & flag) != 0; }
 bool lv_obj_has_state(const lv_obj_t *obj, int state) { return (obj->state & state) != 0; }
 lv_style_res_t lv_obj_get_local_style_prop(lv_obj_t *obj, lv_style_prop_t prop, lv_style_value_t *value, int selector) {
-  assert(prop == LV_STYLE_BG_COLOR && selector == LV_PART_MAIN);
-  value->color = obj->background;
+  assert(prop == LV_STYLE_BG_COLOR);
+  if (selector == LV_STATE_CHECKED) {
+    if (!obj->has_checked_background) return LV_STYLE_RES_NOT_FOUND;
+    value->color = obj->checked_background;
+  } else if (selector == LV_STATE_PRESSED) {
+    if (!obj->has_pressed_background) return LV_STYLE_RES_NOT_FOUND;
+    value->color = obj->pressed_background;
+  } else {
+    assert(selector == LV_PART_MAIN);
+    value->color = obj->background;
+  }
   return LV_STYLE_RES_FOUND;
 }
 void lv_obj_add_flag(lv_obj_t *obj, lv_obj_flag_t flag) { obj->flags |= flag; }
@@ -88,6 +99,8 @@ int lv_obj_get_style_bg_opa(const lv_obj_t *obj, int) { return obj->opacity; }
 lv_color_t lv_obj_get_style_bg_color(const lv_obj_t *obj, int part) {
   if (part == LV_PART_MAIN && (obj->state & LV_STATE_PRESSED) && obj->has_pressed_background)
     return obj->pressed_background;
+  if (part == LV_PART_MAIN && (obj->state & LV_STATE_CHECKED) && obj->has_checked_background)
+    return obj->checked_background;
   return part == LV_PART_KNOB ? obj->knob : obj->background;
 }
 lv_color_t lv_obj_get_style_text_color(const lv_obj_t *obj, int) {
@@ -100,6 +113,11 @@ lv_color_t lv_obj_get_style_arc_color(const lv_obj_t *obj, int) { return obj->ar
 lv_color_t lv_obj_get_style_border_color(const lv_obj_t *obj, int) { return obj->border; }
 int lv_obj_get_style_border_width(const lv_obj_t *obj, int) { return obj->border_width; }
 void lv_obj_set_style_bg_color(lv_obj_t *obj, lv_color_t color, int part) {
+  if (part == LV_STATE_CHECKED) {
+    obj->has_checked_background = true;
+    obj->checked_background = color;
+    return;
+  }
   if (part == LV_STATE_PRESSED) obj->has_pressed_background = true;
   (part == LV_STATE_PRESSED ? obj->pressed_background :
    part == LV_PART_KNOB ? obj->knob : obj->background) = color;
@@ -756,7 +774,52 @@ static void test_custom_card_theme_preservation() {
   set_active_theme_palette(DARK_THEME);
 }
 
+static void test_alarm_state_contrast_during_theme_refresh() {
+  set_active_theme_palette(DARK_THEME);
+  set_current_button_primary_color(0xFFEC16);
+  lv_obj_t page, alarm, label, subpage, sub_alarm, sub_label;
+  for (auto *button : {&alarm, &sub_alarm}) {
+    button->type = &lv_button_class;
+    button->opacity = LV_OPA_COVER;
+    button->state = LV_STATE_CHECKED;
+    lv_obj_set_style_bg_color(button, lv_color_hex(0xC62828), LV_STATE_CHECKED);
+    lv_obj_set_style_bg_color(button, lv_color_hex(0xC62828), LV_STATE_PRESSED);
+  }
+  alarm.children = {&label};
+  sub_alarm.children = {&sub_label};
+  label.parent = &alarm;
+  sub_label.parent = &sub_alarm;
+  BtnSlot slots[] = {{&alarm}};
+  const bool neutral[] = {true};
+  register_theme_grid(&page, slots, neutral, 1, 100, 100, 100);
+  navigation_subpages().push_back({&subpage, nullptr, {{true, &sub_alarm}}});
+  for (const auto *theme : {&LIGHT_THEME, &DARK_THEME}) {
+    set_active_theme_palette(*theme);
+    apply_current_theme();
+    for (auto *button : {&alarm, &sub_alarm}) {
+      assert(button->state == LV_STATE_CHECKED);
+      assert(button->checked_background.full == 0xC62828);
+      assert(button->checked_text.full == 0xFFFFFF);
+      assert(button->pressed_text.full == 0xFFFFFF);
+      assert(button->children.front()->text.full == 0xFFFFFF);
+      // Armed state returns to the configured bright accent.
+      lv_obj_set_style_bg_color(button, lv_color_hex(0xFFEC16), LV_STATE_CHECKED);
+      lv_obj_set_style_bg_color(button, lv_color_hex(0xFFEC16), LV_STATE_PRESSED);
+      theme_apply_grid_button(button, theme->surface_card, *theme);
+      assert(button->children.front()->text.full == 0x212121);
+      lv_obj_set_style_bg_color(button, lv_color_hex(0xC62828), LV_STATE_CHECKED);
+      lv_obj_set_style_bg_color(button, lv_color_hex(0xC62828), LV_STATE_PRESSED);
+    }
+  }
+  navigation_subpages().clear();
+  lv_event_t deleted{&page};
+  page.delete_callback(&deleted);
+  set_current_button_primary_color(DEFAULT_ACCENT_COLOR);
+  set_active_theme_palette(DARK_THEME);
+}
+
 int main() {
+  test_alarm_state_contrast_during_theme_refresh();
   test_custom_card_theme_preservation();
   ThemePalette alternate = DARK_THEME;
   alternate.background = 0x101112;

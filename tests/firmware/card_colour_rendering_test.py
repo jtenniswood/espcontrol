@@ -12,6 +12,8 @@ source = r'''
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
+#include <cstdio>
+#include <cstring>
 #include <functional>
 #include <map>
 #include <string>
@@ -34,6 +36,7 @@ using lv_event_cb_t = void (*)(lv_event_t *);
 struct lv_obj_t {
   uint32_t background[3] = {}, text[3] = {};
   int state = 0;
+  int flags = 0;
   std::vector<lv_event_cb_t> events;
   std::vector<lv_obj_t *> children;
   std::string content;
@@ -83,6 +86,48 @@ namespace espcontrol::cards {
 const char *status_entity_driver_inactive_icon(const ParsedCfg &, const Context &) { return "off"; }
 const char *status_entity_driver_active_icon(const ParsedCfg &, const Context &) { return "on"; }
 }
+struct ImageCardCtx { bool artwork_visible = false; };
+struct MediaNowPlayingCtx {
+  lv_obj_t *btn, *icon_lbl, *idle_lbl, *title_lbl, *artist_lbl;
+  ImageCardCtx *cover_art;
+  bool cover_art_mode = true, custom_fallback_background = false;
+  uint32_t fallback_background_color = 0;
+};
+bool image_card_media_artwork_visible(const ImageCardCtx *ctx) { return ctx && ctx->artwork_visible; }
+void set_card_content_disabled(lv_obj_t *, bool) {}
+constexpr int LV_STATE_DISABLED = 4, LV_OBJ_FLAG_HIDDEN = 1, LV_OBJ_FLAG_CLICKABLE = 2;
+constexpr int LV_OPA_50 = 128, MEDIA_CONTROL_SPEAKER_VOLUME_TEXT_OPA = 204;
+using lv_coord_t = int;
+void lv_obj_add_flag(lv_obj_t *obj, int flag) { obj->flags |= flag; }
+void lv_obj_clear_flag(lv_obj_t *obj, int flag) { obj->flags &= ~flag; }
+void lv_obj_set_style_opa(lv_obj_t *, int, int) {}
+void lv_obj_set_style_text_opa(lv_obj_t *, int, int) {}
+int lv_obj_get_height(lv_obj_t *) { return 40; }
+void lv_obj_set_height(lv_obj_t *, int) {}
+struct MediaControlCtx {
+  uint32_t accent_color;
+  std::string entity_id = "media_player.primary";
+  int width_compensation_percent = 100;
+  bool selected = true;
+};
+struct MediaSpeakerRowState {
+  std::string entity_id = "media_player.speaker", friendly_name = "Speaker";
+  bool selected = false, pending = false, available = true, volume_known = true;
+  int volume_pct = 50;
+  lv_obj_t *row = nullptr, *name_label = nullptr, *speaker_icon = nullptr;
+  lv_obj_t *volume_controls = nullptr, *volume_minus_btn = nullptr, *volume_plus_btn = nullptr, *volume_label = nullptr;
+};
+bool media_control_group_contains(MediaControlCtx *ctx, const std::string &) { return ctx->selected; }
+bool media_control_speaker_row_shows_volume(MediaControlCtx *, MediaSpeakerRowState *) { return true; }
+struct ControlModalLayout { int short_side = 480; };
+struct TestMediaModal { MediaControlCtx *active = nullptr; };
+TestMediaModal &media_control_modal_ui() { static TestMediaModal ui; return ui; }
+ControlModalLayout control_modal_calc_layout(int) { return {}; }
+int media_control_speaker_row_height(MediaControlCtx *, MediaSpeakerRowState *, int) { return 40; }
+std::string media_control_speaker_fallback_name(const std::string &) { return "Speaker"; }
+const char *find_icon(const char *name) { return name; }
+void media_volume_set_button_enabled(lv_obj_t *, bool) {}
+int media_control_volume_max_pct(MediaControlCtx *) { return 100; }
 size_t lv_obj_get_child_cnt(lv_obj_t *obj) { return obj->children.size(); }
 lv_obj_t *lv_obj_get_child(lv_obj_t *obj, size_t index) { return obj->children[index]; }
 '''
@@ -97,6 +142,7 @@ groups = (
     ("button_grid_subscriptions.h", "", ("apply_sensor_active_color", "subscribe_sensor_text_card_value")),
     ("button_grid_status_entity_driver.h", "espcontrol::cards", ("status_entity_driver_matches", "status_entity_driver_state_active", "status_entity_driver_active_color_enabled", "status_entity_driver_bind_data")),
     ("button_grid_alarm.h", "", ("alarm_theme_off_color", "alarm_set_card_state_colors")),
+    ("button_grid_media.h", "", ("media_cover_art_apply_theme", "media_control_refresh_speaker_row")),
     ("button_grid_fan.h", "", ("fan_control_style_binary_button",)),
     ("button_grid_climate.h", "", ("climate_style_range_target_button",)),
 )
@@ -112,6 +158,43 @@ for filename, namespace, names in groups:
 source += r'''
 #line 1 "card_colour_rendering_cases"
 int main() {
+  for (const ThemePalette *theme : {&DARK_THEME, &LIGHT_THEME}) {
+    set_active_theme_palette(*theme);
+    for (uint32_t background : {0xFFEC16u, 0x88C440u, 0xFFFFFFu, 0x00BCD4u}) {
+      // A selected media speaker row must use contrast on its actual fill.
+      lv_obj_t row_button, name, icon, volume;
+      MediaControlCtx media{background};
+      MediaSpeakerRowState row;
+      row.row = &row_button; row.name_label = &name;
+      row.speaker_icon = &icon; row.volume_label = &volume;
+      media_control_refresh_speaker_row(&media, &row);
+      assert(row_button.background[0] == background);
+      for (auto *label : {&name, &icon, &volume})
+        assert(label->text[0] == readable_text_color_for_bg(background));
+      media.selected = false;
+      media_control_refresh_speaker_row(&media, &row);
+      assert(row_button.background[0] == theme->surface_primary);
+      for (auto *label : {&name, &icon, &volume})
+        assert(label->text[0] == theme->text_primary);
+      // Cover-art fallbacks preserve a calibrated custom fill through themes.
+      lv_obj_t card, idle, title, artist, music;
+      ImageCardCtx art;
+      MediaNowPlayingCtx cover{&card, &music, &idle, &title, &artist, &art};
+      cover.custom_fallback_background = true;
+      cover.fallback_background_color = background;
+      for (bool visible : {false, true, false}) {
+        art.artwork_visible = visible;
+        media_cover_art_apply_theme(&cover, *theme);
+        assert(card.background[0] == background);
+        for (auto *label : {&card, &music, &idle, &title, &artist})
+          assert(label->text[0] == (visible ? CARD_ACCENT_TEXT_COLOR : readable_text_color_for_bg(background)));
+      }
+      cover.custom_fallback_background = false;
+      media_cover_art_apply_theme(&cover, *theme);
+      assert(card.background[0] == theme->surface_card);
+      assert(idle.text[0] == theme->text_primary);
+    }
+  }
   CardPalette defaults;
   defaults.has_on = defaults.has_off = defaults.has_sensor_color = true;
   defaults.on_val = 0xFF8C00;

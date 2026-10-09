@@ -53,11 +53,11 @@ export function applyEntityModeCardModeChange(
         helpers.saveField("unit", "");
     }
     button.precision = "";
-    button.options = "";
+    button.options = preserveCardColorOptions(button.options, "");
     button.icon_on = "Auto";
     helpers.saveField("sensor", nextMode);
     helpers.saveField("precision", "");
-    helpers.saveField("options", "");
+    helpers.saveField("options", button.options);
     helpers.saveField("icon_on", "Auto");
     if (hadDefaultIcon || button.icon === options.defaultIcon(previousMode)) {
         button.icon = options.defaultIcon(nextMode);
