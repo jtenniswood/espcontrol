@@ -284,9 +284,9 @@ void ResetBoot::setup() {
   for (char c : mac) {
     if (c != ':' && c != '-') suffix.push_back(c);
   }
-  if (suffix.size() > 6) suffix = suffix.substr(suffix.size() - 6);
+  if (suffix.size() > 4) suffix = suffix.substr(suffix.size() - 4);
   if (suffix.empty()) suffix = "SETUP";
-  ap.set_ssid("ESP_" + suffix);
+  ap.set_ssid("EspControl_" + suffix);
   wifi->set_ap(ap);
 #endif
 }

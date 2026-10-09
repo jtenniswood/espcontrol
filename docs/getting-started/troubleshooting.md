@@ -62,7 +62,7 @@ If saving or importing a backup fails, try opening `http://YOUR-DISPLAY-IP/?espc
 ## WiFi Does Not Connect
 
 - Use 2.4 GHz WiFi, check the password, and move closer to the access point during setup.
-- If saved WiFi cannot reconnect, wait up to **90 seconds** for the `ESP_xxxxxx` setup hotspot, then repeat [WiFi setup](/getting-started/install#connect-to-wifi).
+- If saved WiFi cannot reconnect, wait up to **90 seconds** for the `EspControl_XXXX` setup hotspot, then repeat [WiFi setup](/getting-started/install#connect-to-wifi).
 - Ethernet-only custom builds have no WiFi hotspot. Check the wired connection and DHCP lease instead.
 - For repeated P4 disconnections, use the [P4 WiFi checks](#a-p4-panel-has-unreliable-wifi).
 

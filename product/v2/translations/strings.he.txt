@@ -259,3 +259,6 @@ timer=טיימר
 timer_confirm=לאישור
 guest_wifi=רשת אורחים
 wifi_did_not_change=מצב ה-WiFi לא השתנה
+connect_to_the_wifi_hotspot=התחברו לנקודת הגישה של WiFi
+to_configure_your_network=כדי להגדיר את הרשת שלכם.
+then_visit_192_168_4_1_in_your_browser=לאחר מכן פתחו את 192.168.4.1 בדפדפן

@@ -258,3 +258,6 @@ timer=Temporizador
 timer_confirm=Confirmar
 guest_wifi=Wi-Fi de invitados
 wifi_did_not_change=El Wi-Fi no ha cambiado
+connect_to_the_wifi_hotspot=Conéctate al punto de acceso WiFi
+to_configure_your_network=para configurar tu red.
+then_visit_192_168_4_1_in_your_browser=Después abre 192.168.4.1 en tu navegador

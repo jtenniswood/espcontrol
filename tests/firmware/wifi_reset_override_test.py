@@ -109,7 +109,7 @@ int main() {
   assert(espcontrol::reset::ResetBoot{}.get_setup_priority() > esphome::setup_priority::WIFI);
   esphome::wifi::wifi.ap = {"EspControl Test", "setup-password"};
   configure_hotspot();
-  assert(esphome::wifi::wifi.ap.ssid == "ESP_E2F36A");
+  assert(esphome::wifi::wifi.ap.ssid == "EspControl_F36A");
   assert(esphome::wifi::wifi.ap.password == "setup-password");
   esphome::wifi::wifi.ap = {"Custom Setup", "custom-password"};
   configure_hotspot();
