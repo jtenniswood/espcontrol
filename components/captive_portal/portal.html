@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:image">
+<title>EspControl WiFi setup</title>
+<script type=module crossorigin>document.location.search===`?save`&&(document.getElementsByTagName(`aside`)[0].style.display=`block`);function e(e){let n=Math.max(Math.min(2*(e+100),100),0)/100;return t(`<path d="M12 19.25L.7 4.25c7-5 14-5 22.5 0z" fill="none" stroke="currentColor"/>
+<path d="M12 19.25L.7 4.25c7-5 14-5 22.5 0z" transform="scale(${n} ${n})" transform-origin="12 18"/>`)}function t(e){return r([`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">${e}</svg>`])}function n(e){return e?t(`<path d='M12 17a2 2 0 0 0 2-2 2 2 0 0 0-2-2 2 2 0 0 0-2 2 2 2 0 0 0 2 2m6-9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h1V6a5 5 0 0 1 5-5 5 5 0 0 1 5 5v2h1m-6-5a3 3 0 0 0-3 3v2h6V6a3 3 0 0 0-3-3z'/>`):``}function r(e){return e.join(``)}fetch(`/config.json`).then(function(t){t.json().then(function(t){document.title=`EspControl WiFi setup`;let r=document.getElementById(`net`),i=document.getElementById(`ssid`),a=document.getElementById(`psk`);t.aps.slice(1).forEach(function(t){let o=document.createElement(`div`);o.className=`network`,o.innerHTML=`<a href="#" class="network-left">${e(t.rssi)}<span class="network-ssid"></span></a>${n(t.lock)}`,o.querySelector(`.network-ssid`).textContent=t.ssid,o.onclick=function(event){event.preventDefault();i.value=t.ssid,a.focus()},r.appendChild(o)}),document.querySelector(`link[rel~='icon']`).href=`data:image/svg+xml,${e(-65)}`})});</script>
+<style>
+/* __ESPCONTROL_WEB_STYLE__ */
+:root { color-scheme:dark; --success-soft:rgba(48,164,108,.16); }
+* { box-sizing:border-box; }
+h1, h3 { margin-top:0; }
+#sp-app { max-width:640px; }
+.sp-brand-title { color:var(--text); }
+.sp-brand-name { font-size:.875rem; }
+.sp-settings-wrap { padding:24px 16px; }
+#net { display:block; margin-bottom:22px; }
+.network { display:flex; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid var(--border); }
+.network:last-child { border-bottom:0; }
+.network-left { display:flex; align-items:center; gap:12px; min-width:0; flex:1; padding:12px 0; color:var(--text); text-decoration:none; font-size:.875rem; }
+.network-left:hover { color:var(--accent-hover); }
+.network-left:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
+.network svg { flex-shrink:0; fill:currentColor; color:var(--text2); }
+.network-ssid { overflow-wrap:anywhere; min-width:0; }
+aside { display:none; padding:14px; margin-bottom:20px; border:1px solid var(--success); border-radius:10px; color:var(--text); background:var(--success-soft); font-size:.875rem; }
+.btn-block { min-height:44px; width:100%; }
+@media (max-width:480px) { .card { padding:20px; } .sp-settings-wrap { padding:20px 12px; } }
+</style>
+</head>
+<body>
+<div id="sp-app">
+<header class="sp-header"><div class="sp-brand"><span class="sp-brand-title">EspControl</span><span class="sp-brand-name">WiFi setup</span></div></header>
+<main class="sp-settings-wrap">
+<aside role="status" aria-live="polite">Connecting to network...<br>Please wait.</aside>
+<section class="card" aria-label="WiFi setup">
+<h3 id="available-networks-heading">Available Networks</h3>
+<div id="net" role="group" aria-labelledby="available-networks-heading"></div>
+<form action="/wifisave">
+<div class="sp-field"><label class="sp-field-label" for="ssid">Network name (SSID)</label><input class="sp-input" id="ssid" name="ssid" type="text" placeholder="SSID" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
+<div class="sp-field"><label class="sp-field-label" for="psk">Password</label><input class="sp-input" id="psk" name="psk" type="password" placeholder="Password" autocomplete="current-password"></div>
+<button class="sp-action-btn sp-save-btn btn-block" type="submit">Save</button>
+</form>
+</section>
+</main>
+</div>
+</body>
+</html>

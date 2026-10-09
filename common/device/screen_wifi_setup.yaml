@@ -80,7 +80,8 @@ script:
           lv_label_set_text(id(wifi_setup_title), espcontrol_i18n("Configure your WiFi"));
           std::string hotspot_ssid = wifi::global_wifi_component->get_ap().get_ssid().str();
           if (hotspot_ssid.empty()) hotspot_ssid = "${friendly_name}";
-          std::string msg = std::string(espcontrol_i18n_key("connect_to")) +
+          std::string msg = std::string(espcontrol_i18n_key("connect_to_the_wifi_hotspot")) +
                             " '" + hotspot_ssid + "' " +
-                            espcontrol_i18n_key("to_configure_your_network_settings");
+                            espcontrol_i18n_key("to_configure_your_network") +
+                            "\n" + espcontrol_i18n_key("then_visit_192_168_4_1_in_your_browser");
           lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());

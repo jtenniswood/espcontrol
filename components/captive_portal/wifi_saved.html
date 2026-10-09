@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:image">
+<title>EspControl WiFi setup</title>
+<style>
+/* __ESPCONTROL_WEB_STYLE__ */
+:root { color-scheme:dark; --success-soft:rgba(48,164,108,.16); }
+* { box-sizing:border-box; }
+h1, h3 { margin-top:0; }
+#sp-app { max-width:640px; }
+.sp-settings-wrap { padding:24px 16px; }
+.saved-icon { display:flex; align-items:center; justify-content:center; width:48px; height:48px; margin-bottom:20px; border-radius:50%; background:var(--success-soft); color:var(--success); }
+.saved-icon svg { width:24px; height:24px; }
+h1 { font-size:1.25rem; margin-bottom:24px; }
+.setup-steps { padding:0; margin:0; list-style:none; display:grid; gap:18px; counter-reset:setup-step; }
+.setup-steps li { display:flex; align-items:flex-start; gap:12px; font-size:.875rem; line-height:1.6; }
+.setup-steps li::before { counter-increment:setup-step; content:counter(setup-step); display:flex; align-items:center; justify-content:center; flex:none; width:26px; height:26px; border-radius:50%; background:var(--accent-soft); color:var(--accent-hover); font-size:.75rem; font-weight:600; }
+@media (max-width:480px) { .card { padding:20px; } .sp-settings-wrap { padding:20px 12px; } }
+</style>
+</head>
+<body>
+<div id="sp-app">
+<header class="sp-header"><div class="sp-brand"><span class="sp-brand-title">EspControl</span><span class="sp-brand-name">WiFi setup</span></div></header>
+<main class="sp-settings-wrap">
+<section class="card" aria-labelledby="saved-heading">
+<div class="saved-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg></div>
+<h1 id="saved-heading">WiFi details saved</h1>
+<ol class="setup-steps">
+<li>Reconnect your phone or computer to your home WiFi.</li>
+<li>Follow the instructions on your display’s screen to continue setup.</li>
+</ol>
+</section>
+</main>
+</div>
+</body>
+</html>

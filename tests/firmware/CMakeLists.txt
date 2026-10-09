@@ -504,6 +504,12 @@ target_include_directories(reset_policy_test PRIVATE ../../components/espcontrol
 add_test(NAME reset_policy_test COMMAND reset_policy_test)
 add_test(NAME reset_ota_wrapper_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/reset_ota_wrapper_test.py)
+add_test(NAME wifi_reset_override_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wifi_reset_override_test.py)
+add_test(NAME wifi_reset_boot_codegen_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wifi_reset_boot_codegen_test.py)
+add_test(NAME wifi_setup_package_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wifi_setup_package_test.py)
 add_executable(panel_identity_test panel_identity_test.cpp)
 target_compile_features(panel_identity_test PRIVATE cxx_std_17)
 target_compile_options(panel_identity_test PRIVATE -Wall -Wextra -Werror)

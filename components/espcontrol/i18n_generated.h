@@ -253,6 +253,9 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Potvrdit";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi pro hosty";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Stav Wi-Fi se nezměnil";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Připojte se k WiFi hotspotu";
+  if (std::strcmp(text, "to configure your network.") == 0) return "a nastavte svou síť.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Poté v prohlížeči otevřete 192.168.4.1";
   return text;
 }
 
@@ -487,6 +490,9 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Bekræft";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Gæste-Wi-Fi";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Wi-Fi blev ikke ændret";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Opret forbindelse til WiFi-hotspottet";
+  if (std::strcmp(text, "to configure your network.") == 0) return "for at konfigurere dit netværk.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Åbn derefter 192.168.4.1 i din browser";
   return text;
 }
 
@@ -719,6 +725,9 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Bestätigen";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Gast-WLAN";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "WLAN wurde nicht geändert";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Verbinde dich mit dem WLAN-Hotspot";
+  if (std::strcmp(text, "to configure your network.") == 0) return "um dein Netzwerk einzurichten.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Öffne dann 192.168.4.1 in deinem Browser";
   return text;
 }
 
@@ -959,6 +968,9 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Confirmar";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi de invitados";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "El Wi-Fi no ha cambiado";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Conéctate al punto de acceso WiFi";
+  if (std::strcmp(text, "to configure your network.") == 0) return "para configurar tu red.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Después abre 192.168.4.1 en tu navegador";
   return text;
 }
 
@@ -1209,6 +1221,9 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Vahvista";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Vieras-Wi-Fi";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Wi-Fi ei muuttunut";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Yhdistä WiFi-tukiasemaan";
+  if (std::strcmp(text, "to configure your network.") == 0) return "määrittääksesi verkkosi.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Avaa sitten selaimessa 192.168.4.1";
   return text;
 }
 
@@ -1442,6 +1457,9 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Confirmer";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi invité";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Le Wi-Fi n’a pas changé";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Connectez-vous au point d’accès WiFi";
+  if (std::strcmp(text, "to configure your network.") == 0) return "pour configurer votre réseau.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Ouvrez ensuite 192.168.4.1 dans votre navigateur";
   return text;
 }
 
@@ -1701,6 +1719,9 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "לאישור";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "רשת אורחים";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "מצב ה-WiFi לא השתנה";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "התחברו לנקודת הגישה של WiFi";
+  if (std::strcmp(text, "to configure your network.") == 0) return "כדי להגדיר את הרשת שלכם.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "לאחר מכן פתחו את 192.168.4.1 בדפדפן";
   return text;
 }
 
@@ -1951,6 +1972,9 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Megerősítés";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Vendég Wi-Fi";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "A Wi-Fi állapota nem változott";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Csatlakozzon a WiFi-hotspothoz";
+  if (std::strcmp(text, "to configure your network.") == 0) return "a hálózat beállításához.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Ezután nyissa meg a 192.168.4.1 címet a böngészőben";
   return text;
 }
 
@@ -2191,6 +2215,9 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Confermare";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi ospiti";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Il Wi-Fi non è cambiato";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Connettiti all’hotspot WiFi";
+  if (std::strcmp(text, "to configure your network.") == 0) return "per configurare la tua rete.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Poi apri 192.168.4.1 nel browser";
   return text;
 }
 
@@ -2429,6 +2456,9 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Bekreft";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Gjeste-Wi-Fi";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Wi-Fi ble ikke endret";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Koble til WiFi-hotspotet";
+  if (std::strcmp(text, "to configure your network.") == 0) return "for å konfigurere nettverket ditt.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Åpne deretter 192.168.4.1 i nettleseren";
   return text;
 }
 
@@ -2667,6 +2697,9 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Bevestigen";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Gastwifi";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Wifi is niet gewijzigd";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Maak verbinding met de WiFi-hotspot";
+  if (std::strcmp(text, "to configure your network.") == 0) return "om je netwerk in te stellen.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Open daarna 192.168.4.1 in je browser";
   return text;
 }
 
@@ -2905,6 +2938,9 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Potwierdzić";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi dla gości";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Stan Wi-Fi nie zmienił się";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Połącz się z hotspotem WiFi";
+  if (std::strcmp(text, "to configure your network.") == 0) return "aby skonfigurować swoją sieć.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Następnie otwórz 192.168.4.1 w przeglądarce";
   return text;
 }
 
@@ -3145,6 +3181,9 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Confirmar";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi de convidados";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "O Wi-Fi não mudou";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Conecte-se ao ponto de acesso WiFi";
+  if (std::strcmp(text, "to configure your network.") == 0) return "para configurar sua rede.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Depois abra 192.168.4.1 no navegador";
   return text;
 }
 
@@ -3386,6 +3425,9 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Confirmar";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi de convidados";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "O Wi-Fi não mudou";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Ligue-se ao ponto de acesso WiFi";
+  if (std::strcmp(text, "to configure your network.") == 0) return "para configurar a sua rede.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Depois abra 192.168.4.1 no navegador";
   return text;
 }
 
@@ -3636,6 +3678,9 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Confirmați";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi pentru oaspeți";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Starea Wi-Fi nu s-a schimbat";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Conectați-vă la hotspotul WiFi";
+  if (std::strcmp(text, "to configure your network.") == 0) return "pentru a configura rețeaua.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Apoi deschideți 192.168.4.1 în browser";
   return text;
 }
 
@@ -3893,6 +3938,9 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Подтвердить";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Гостевой Wi-Fi";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Состояние Wi-Fi не изменилось";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Подключитесь к точке доступа WiFi";
+  if (std::strcmp(text, "to configure your network.") == 0) return "чтобы настроить сеть.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Затем откройте 192.168.4.1 в браузере";
   return text;
 }
 
@@ -4135,6 +4183,9 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Potvrdiť";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi pre hostí";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Stav Wi-Fi sa nezmenil";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Pripojte sa k WiFi hotspotu";
+  if (std::strcmp(text, "to configure your network.") == 0) return "a nastavte svoju sieť.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Potom v prehliadači otvorte 192.168.4.1";
   return text;
 }
 
@@ -4381,6 +4432,9 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Potrdi";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi za goste";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Stanje Wi-Fi se ni spremenilo";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Povežite se z dostopno točko WiFi";
+  if (std::strcmp(text, "to configure your network.") == 0) return "da nastavite omrežje.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Nato v brskalniku odprite 192.168.4.1";
   return text;
 }
 
@@ -4618,6 +4672,9 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Bekräfta";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Gäst-Wi-Fi";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Wi-Fi ändrades inte";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Anslut till WiFi-hotspotten";
+  if (std::strcmp(text, "to configure your network.") == 0) return "för att konfigurera ditt nätverk.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Öppna sedan 192.168.4.1 i din webbläsare";
   return text;
 }
 
@@ -4868,6 +4925,9 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Onayla";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Misafir Wi-Fi";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Wi-Fi durumu değişmedi";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "WiFi erişim noktasına bağlanın";
+  if (std::strcmp(text, "to configure your network.") == 0) return "ve ağınızı yapılandırın.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Ardından tarayıcınızda 192.168.4.1 adresini açın";
   return text;
 }
 
@@ -5120,6 +5180,9 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Підтвердити";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Гостьовий Wi-Fi";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Стан Wi-Fi не змінився";
+  if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Підключіться до точки доступу WiFi";
+  if (std::strcmp(text, "to configure your network.") == 0) return "щоб налаштувати мережу.";
+  if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Потім відкрийте 192.168.4.1 у браузері";
   return text;
 }
 
@@ -5381,6 +5444,9 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirm";
   if (std::strcmp(key, "guest_wifi") == 0) return "Guest Wi-Fi";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wi-Fi did not change";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Connect to the WiFi hotspot";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "to configure your network.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Then visit 192.168.4.1 in your browser";
   return key;
 }
 
@@ -5623,6 +5689,9 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Potvrdit";
   if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi pro hosty";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Stav Wi-Fi se nezměnil";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Připojte se k WiFi hotspotu";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "a nastavte svou síť.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Poté v prohlížeči otevřete 192.168.4.1";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5858,6 +5927,9 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Bekræft";
   if (std::strcmp(key, "guest_wifi") == 0) return "Gæste-Wi-Fi";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wi-Fi blev ikke ændret";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Opret forbindelse til WiFi-hotspottet";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "for at konfigurere dit netværk.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Åbn derefter 192.168.4.1 i din browser";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6091,6 +6163,9 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Bestätigen";
   if (std::strcmp(key, "guest_wifi") == 0) return "Gast-WLAN";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "WLAN wurde nicht geändert";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Verbinde dich mit dem WLAN-Hotspot";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "um dein Netzwerk einzurichten.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Öffne dann 192.168.4.1 in deinem Browser";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6332,6 +6407,9 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmar";
   if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi de invitados";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "El Wi-Fi no ha cambiado";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Conéctate al punto de acceso WiFi";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "para configurar tu red.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Después abre 192.168.4.1 en tu navegador";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6583,6 +6661,9 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Vahvista";
   if (std::strcmp(key, "guest_wifi") == 0) return "Vieras-Wi-Fi";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wi-Fi ei muuttunut";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Yhdistä WiFi-tukiasemaan";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "määrittääksesi verkkosi.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Avaa sitten selaimessa 192.168.4.1";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6817,6 +6898,9 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmer";
   if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi invité";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Le Wi-Fi n’a pas changé";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Connectez-vous au point d’accès WiFi";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "pour configurer votre réseau.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Ouvrez ensuite 192.168.4.1 dans votre navigateur";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7077,6 +7161,9 @@ inline const char *espcontrol_i18n_key_he(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "לאישור";
   if (std::strcmp(key, "guest_wifi") == 0) return "רשת אורחים";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "מצב ה-WiFi לא השתנה";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "התחברו לנקודת הגישה של WiFi";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "כדי להגדיר את הרשת שלכם.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "לאחר מכן פתחו את 192.168.4.1 בדפדפן";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7328,6 +7415,9 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Megerősítés";
   if (std::strcmp(key, "guest_wifi") == 0) return "Vendég Wi-Fi";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "A Wi-Fi állapota nem változott";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Csatlakozzon a WiFi-hotspothoz";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "a hálózat beállításához.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Ezután nyissa meg a 192.168.4.1 címet a böngészőben";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7569,6 +7659,9 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Confermare";
   if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi ospiti";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Il Wi-Fi non è cambiato";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Connettiti all’hotspot WiFi";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "per configurare la tua rete.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Poi apri 192.168.4.1 nel browser";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7808,6 +7901,9 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Bekreft";
   if (std::strcmp(key, "guest_wifi") == 0) return "Gjeste-Wi-Fi";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wi-Fi ble ikke endret";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Koble til WiFi-hotspotet";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "for å konfigurere nettverket ditt.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Åpne deretter 192.168.4.1 i nettleseren";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8046,6 +8142,9 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Bevestigen";
   if (std::strcmp(key, "guest_wifi") == 0) return "Gastwifi";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wifi is niet gewijzigd";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Maak verbinding met de WiFi-hotspot";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "om je netwerk in te stellen.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Open daarna 192.168.4.1 in je browser";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8285,6 +8384,9 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Potwierdzić";
   if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi dla gości";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Stan Wi-Fi nie zmienił się";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Połącz się z hotspotem WiFi";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "aby skonfigurować swoją sieć.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Następnie otwórz 192.168.4.1 w przeglądarce";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8526,6 +8628,9 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmar";
   if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi de convidados";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "O Wi-Fi não mudou";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Conecte-se ao ponto de acesso WiFi";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "para configurar sua rede.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Depois abra 192.168.4.1 no navegador";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8768,6 +8873,9 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmar";
   if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi de convidados";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "O Wi-Fi não mudou";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Ligue-se ao ponto de acesso WiFi";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "para configurar a sua rede.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Depois abra 192.168.4.1 no navegador";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9019,6 +9127,9 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmați";
   if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi pentru oaspeți";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Starea Wi-Fi nu s-a schimbat";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Conectați-vă la hotspotul WiFi";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "pentru a configura rețeaua.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Apoi deschideți 192.168.4.1 în browser";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9277,6 +9388,9 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Подтвердить";
   if (std::strcmp(key, "guest_wifi") == 0) return "Гостевой Wi-Fi";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Состояние Wi-Fi не изменилось";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Подключитесь к точке доступа WiFi";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "чтобы настроить сеть.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Затем откройте 192.168.4.1 в браузере";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9520,6 +9634,9 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Potvrdiť";
   if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi pre hostí";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Stav Wi-Fi sa nezmenil";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Pripojte sa k WiFi hotspotu";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "a nastavte svoju sieť.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Potom v prehliadači otvorte 192.168.4.1";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9767,6 +9884,9 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Potrdi";
   if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi za goste";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Stanje Wi-Fi se ni spremenilo";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Povežite se z dostopno točko WiFi";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "da nastavite omrežje.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Nato v brskalniku odprite 192.168.4.1";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10005,6 +10125,9 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Bekräfta";
   if (std::strcmp(key, "guest_wifi") == 0) return "Gäst-Wi-Fi";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wi-Fi ändrades inte";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Anslut till WiFi-hotspotten";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "för att konfigurera ditt nätverk.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Öppna sedan 192.168.4.1 i din webbläsare";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10256,6 +10379,9 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Onayla";
   if (std::strcmp(key, "guest_wifi") == 0) return "Misafir Wi-Fi";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wi-Fi durumu değişmedi";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "WiFi erişim noktasına bağlanın";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "ve ağınızı yapılandırın.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Ardından tarayıcınızda 192.168.4.1 adresini açın";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10509,6 +10635,9 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Підтвердити";
   if (std::strcmp(key, "guest_wifi") == 0) return "Гостьовий Wi-Fi";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Стан Wi-Fi не змінився";
+  if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Підключіться до точки доступу WiFi";
+  if (std::strcmp(key, "to_configure_your_network") == 0) return "щоб налаштувати мережу.";
+  if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Потім відкрийте 192.168.4.1 у браузері";
   return espcontrol_i18n_key_en(key);
 }
 

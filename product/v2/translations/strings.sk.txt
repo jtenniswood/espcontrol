@@ -258,3 +258,6 @@ timer=Časovač
 timer_confirm=Potvrdiť
 guest_wifi=Wi-Fi pre hostí
 wifi_did_not_change=Stav Wi-Fi sa nezmenil
+connect_to_the_wifi_hotspot=Pripojte sa k WiFi hotspotu
+to_configure_your_network=a nastavte svoju sieť.
+then_visit_192_168_4_1_in_your_browser=Potom v prehliadači otvorte 192.168.4.1

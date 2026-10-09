@@ -14,21 +14,12 @@
 #   loading → main_page    (skips setup screens)
 # =============================================================================
 
-esphome:
-  on_boot:
-    priority: 600
-    then:
-      - lambda: |-
-          std::string mac = get_mac_address();
-          std::string compact;
-          for (char c : mac) {
-            if (c != ':' && c != '-') compact.push_back(c);
-          }
-          std::string suffix = compact.length() > 6 ? compact.substr(compact.length() - 6) : compact;
-          if (suffix.empty()) suffix = "SETUP";
-          wifi::WiFiAP ap;
-          ap.set_ssid("ESP_" + suffix);
-          wifi::global_wifi_component->set_ap(ap);
+# Include wireless provisioning in development and adopted device packages,
+# as well as release build entry points. An AP alone has no setup DNS/form.
+captive_portal:
+
+# ESP Web Tools can provision WiFi through USB after installation as well.
+improv_serial:
 
 wifi:
   power_save_mode: none
@@ -131,9 +122,10 @@ script:
       - lambda: |-
           std::string hotspot_ssid = wifi::global_wifi_component->get_ap().get_ssid().str();
           if (hotspot_ssid.empty()) hotspot_ssid = "${friendly_name}";
-          std::string msg = std::string(espcontrol_i18n_key("connect_to")) +
+          std::string msg = std::string(espcontrol_i18n_key("connect_to_the_wifi_hotspot")) +
                             " '" + hotspot_ssid + "' " +
-                            espcontrol_i18n_key("to_configure_your_network_settings");
+                            espcontrol_i18n_key("to_configure_your_network") +
+                            "\n" + espcontrol_i18n_key("then_visit_192_168_4_1_in_your_browser");
           lv_label_set_text(id(wifi_setup_title), espcontrol_i18n("Configure your WiFi"));
           lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());
       - lvgl.page.show: wifi_setup_page
