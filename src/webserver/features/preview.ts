@@ -96,8 +96,11 @@ export function cardPreviewTextColor(background: string): string {
     const value = channel / 255;
     return Math.round((value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4) * 1000000);
   };
-  const luminance = Math.floor((linear((rgb >> 16) & 255) * 2126 + linear((rgb >> 8) & 255) * 7152 + linear(rgb & 255) * 722) / 10000);
-  return luminance >= 450000 ? "#212121" : "#FFFFFF";
+  const red = (rgb >> 16) & 255, green = (rgb >> 8) & 255, blue = rgb & 255;
+  const luminance = Math.floor((linear(red) * 2126 + linear(green) * 7152 + linear(blue) * 722) / 10000);
+  // Saturated blue/cyan active shades retain white content after lightening.
+  const crossover = green >= red + 32 && blue >= red + 32 ? 550000 : 450000;
+  return luminance >= crossover ? "#212121" : "#FFFFFF";
 }
 
 export function previewValue<T>(preview: Record<string, unknown> | null | undefined, key: string, fallback: T): T {

@@ -27,7 +27,7 @@ Backups include the theme mode, automatic method, times and offsets. Older backu
 - **Primary** — the colour cards show when an entity is active. Choose from the same compact grid of 20 round swatches used in individual card settings. A checkmark shows the selected colour. The orange swatch is `FF8C00`, the panel's default active colour.
 - Secondary inactive cards and tertiary information cards use fixed panel colours so setup stays simpler and modal styling remains consistent.
 
-Text and icons stay white on mid-tone backgrounds, including orange, blue, green and teal. Light backgrounds use dark content, with the same crossover point on the panel and web preview.
+Text and icons stay white on mid-tone backgrounds, including orange, blue, green and teal. Cyan also keeps white content in its lighter active state. Pale backgrounds use dark content, with the same rules on the panel and web preview.
 
 Disabled Home Assistant cards keep their background colour and show muted labels and icons. Their normal text and icon colours return when the card becomes available again.
 

@@ -118,6 +118,9 @@ int main() {
   defaults.off_val = 0x313131;
   defaults.sensor_val = 0x212121;
   DisplayProfile display;
+  assert(display_text_color_for_bg(0x00BCD4) == 0xFFFFFF);
+  assert(display_text_color_for_bg(lighter_card_color(0x00BCD4)) == 0xFFFFFF);
+  assert(display_text_color_for_bg(0xBFEAFF) == 0x212121);
   struct Colour { const char *hex; uint32_t base, active, text; };
   const Colour colours[] = {
     {"6633B9", 0x6633B9, 0x9470CE, 0xFFFFFF},
@@ -128,6 +131,7 @@ int main() {
     {"46AF4A", 0x46AF4A, 0x7EC780, 0xFFFFFF},
     {"009687", 0x009687, 0x4DB6AB, 0xFFFFFF},
     {"00BBD5", 0x00BBD5, 0x4DCFE2, 0xFFFFFF},
+    {"00BCD4", 0x00BCD4, 0x4DD0E1, 0xFFFFFF},
     {"B2B2B2", 0xB2B2B2, 0xC9C9C9, 0xFFFFFF},
     {"B3B3B3", 0xB3B3B3, 0xCACACA, 0x212121},
     {"88C440", 0x88C440, 0xACD679, 0x212121},
