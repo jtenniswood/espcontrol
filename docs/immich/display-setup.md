@@ -34,7 +34,7 @@ Start with **Photo fit → Show full image** in the companion to keep the whole 
 3. Select **Timer** and choose an inactivity delay, or select **Sensor** and enter your Home Assistant presence sensor.
 4. Set **Then → Camera**. This option accepts both cameras and photo image entities.
 5. Enter the companion frame's `image.*` entity ID in **Camera Entity**.
-6. Under **Image Settings > Image fit**, choose **Show full image** (Fit) to preserve the complete companion image on the card and in its larger view, or **Crop to fit** (Fill) to crop it to fill each view. This is a second sizing step after the companion's own Photo fit setting.
+6. Under **Expanded Image**, choose **Show full image** (Fit) to keep the complete companion image visible on the full screen, or **Crop to fit** (Fill) to fill the screen by trimming the edges. This is a second sizing step after the companion's own Photo fit setting.
 7. Finish editing the entity field so the setting saves, then let the screensaver activate. Settings save automatically.
 
 The companion's **Slideshow Timer** controls how often the photo changes, while the EspControl screensaver timer controls when the panel starts showing photos. The companion starts with a 30-second slideshow interval. EspControl refreshes the image when Home Assistant reports an update and retains the previous successful image while downloading the next one.
