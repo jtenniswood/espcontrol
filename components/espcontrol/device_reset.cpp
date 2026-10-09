@@ -14,7 +14,9 @@
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 #include "esphome/components/json/json_util.h"
+#ifdef USE_WIFI
 #include "esphome/components/wifi/wifi_component.h"
+#endif
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "esphome/components/ota/ota_backend.h"
 #ifdef USE_SWITCH
