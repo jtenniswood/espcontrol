@@ -67,6 +67,7 @@ struct ArtworkImage {
  int decode_content_width_=1, decode_content_height_=1;
  int decode_offset_x_=0, decode_offset_y_=0;
  bool big_endian = false;
+ int bytes_per_pixel = 3;
  std::vector<uint8_t> bytes = std::vector<uint8_t>(3, 0x33);
  uint8_t *decode_buffer_ = bytes.data();
  bool is_auto_resize_() { return fixed_width_ == 0 || fixed_height_ == 0; }
@@ -75,24 +76,25 @@ struct ArtworkImage {
    decode_buffer_width_ = width; decode_buffer_height_ = height;
    decode_content_width_ = content_width; decode_content_height_ = content_height;
    decode_offset_x_ = offset_x; decode_offset_y_ = offset_y;
-   bytes.assign(static_cast<size_t>(width) * height * 3, 0);
+   bytes.assign(static_cast<size_t>(width) * height * bytes_per_pixel, 0);
    decode_buffer_ = bytes.data();
    fill_fit_background_();
    return bytes.size();
  }
- int get_bpp() { return 24; }  // RGB565 with an alpha byte.
+ int get_bpp() { return bytes_per_pixel * 8; }
+ bool has_transparency() const { return bytes_per_pixel == 3; }
  bool is_big_endian() { return big_endian; }
- int get_position_(int x, int y) { return (y * decode_buffer_width_ + x) * 3; }
+ int get_position_(int x, int y) { return (y * decode_buffer_width_ + x) * bytes_per_pixel; }
  void draw_pixel_(int x, int y, Color c) {
    assert(x >= 0 && x < decode_buffer_width_ && y >= 0 && y < decode_buffer_height_);
    draw_pixel_to_buffer_(decode_buffer_, decode_buffer_width_, x, y, c);
  }
  void draw_pixel_to_buffer_(uint8_t *buffer, int width, int x, int y, Color c) {
    const uint16_t pixel = ((c.r & 0xf8) << 8) | ((c.g & 0xfc) << 3) | (c.b >> 3);
-   const int p = (y * width + x) * 3;
+   const int p = (y * width + x) * bytes_per_pixel;
    buffer[p] = big_endian ? pixel >> 8 : pixel;
    buffer[p+1] = big_endian ? pixel : pixel >> 8;
-   buffer[p+2] = c.w;
+   if (bytes_per_pixel == 3) buffer[p+2] = c.w;
  }
 };
 }}
@@ -240,6 +242,18 @@ int main() {
    decoder.draw_filtered_rgb888_row(0,red);
    decoder.draw_filtered_rgb888_row(1,red);
    assert(image.bytes[0] == 0 && image.bytes[1] == 0xf8 && image.bytes[2] == 255);
+ }
+ for (bool big_endian : {false, true}) {
+   ArtworkImage image;
+   image.big_endian = big_endian; image.bytes_per_pixel = 2;
+   image.bytes.assign(2, 0x33); image.decode_buffer_ = image.bytes.data();
+   Decoder decoder(&image);
+   assert(decoder.set_size(2,2) && decoder.prepare_filtered_resize(2,2));
+   const uint16_t pixels[] = {0, 65535, 65535, 0};
+   decoder.draw_fast_filtered_rgb565_row(0, pixels);
+   decoder.draw_fast_filtered_rgb565_row(1, pixels + 2);
+   assert(image.bytes[0] == (big_endian ? 0x84 : 0x10));
+   assert(image.bytes[1] == (big_endian ? 0x10 : 0x84));
  }
  assert(allocations == 0);  // Streaming scratch is released on destruction/cancellation.
  {

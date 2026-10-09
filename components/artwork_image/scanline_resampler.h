@@ -6,6 +6,12 @@
 #include <cstring>
 #include <type_traits>
 
+#if defined(__GNUC__)
+#define ARTWORK_RESAMPLE_INLINE __attribute__((always_inline))
+#else
+#define ARTWORK_RESAMPLE_INLINE
+#endif
+
 namespace esphome {
 namespace artwork_image {
 
@@ -54,7 +60,7 @@ class ResampleDivider32 {
     reciprocal_ = divisor == 1 ? 0 : (uint64_t{1} << 32) / divisor;
     return true;
   }
-  uint32_t divide(uint32_t value) const {
+  ARTWORK_RESAMPLE_INLINE uint32_t divide(uint32_t value) const {
     if (divisor_ == 1) return value;
     const uint32_t quotient = (static_cast<uint64_t>(value) * reciprocal_) >> 32;
     return quotient + (value - quotient * divisor_ >= divisor_);
@@ -152,18 +158,18 @@ class ScanlineResampler {
   // Use one push method consistently for a configured frame. Large or extreme
   // fitted dimensions retain the original wide-arithmetic filter.
   template<typename ReadPixel, typename Emit>
-  bool push_row_fast(int source_y, ReadPixel read_pixel, Emit emit) {
+  ARTWORK_RESAMPLE_INLINE bool push_row_fast(int source_y, ReadPixel read_pixel, Emit emit) {
     if (!fast_dimensions_supported()) return push_row(source_y, read_pixel, emit);
     return push_row_<ResampleAxis32, uint32_t>(source_y, read_pixel, emit, horizontal_axes_);
   }
 
  private:
-  template<typename Sum> Sum divide_(Sum value, Sum divisor, const ResampleDivider32 &cached) const {
+  template<typename Sum> ARTWORK_RESAMPLE_INLINE Sum divide_(Sum value, Sum divisor, const ResampleDivider32 &cached) const {
     if constexpr (std::is_same_v<Sum, uint32_t>) return cached.divide(value);
     else return value / divisor;
   }
   template<typename Axis, typename Sum, typename ReadPixel, typename Emit>
-  bool push_row_(int source_y, ReadPixel read_pixel, Emit emit, const Axis *axes) {
+  ARTWORK_RESAMPLE_INLINE bool push_row_(int source_y, ReadPixel read_pixel, Emit emit, const Axis *axes) {
     if (!sum_ || source_y != next_source_y_ || source_y >= source_height_) return false;
     next_source_y_++;
     if (y_ >= y1_) return true;
@@ -238,3 +244,5 @@ constexpr bool jpeg_decode_size_sufficient(int width, int height, int target_wid
 
 }  // namespace artwork_image
 }  // namespace esphome
+
+#undef ARTWORK_RESAMPLE_INLINE

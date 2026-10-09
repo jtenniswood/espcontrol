@@ -76,10 +76,13 @@ void GifDecoder::reset_render_target(bool completed_frame) {
 
 gif::Player::Result GifDecoder::advance_step_() {
   if (!rendering_) {
+    const uint32_t started = micros();
     const auto result = player_->step();
+    decode_work_us_ += micros() - started;
     if (result != gif::Player::Result::FRAME) return result;
     rendering_ = true;
   }
+  const uint32_t resize_started = micros();
   if (!render_target_ready_) {
     if (!set_size(player_->width(), player_->height()) ||
         !prepare_filtered_resize(player_->width(), player_->height())) return gif::Player::Result::ERROR;
@@ -104,7 +107,12 @@ gif::Player::Result GifDecoder::advance_step_() {
     draw_fast_filtered_rgb565_row(render_row_++, source);
     if (has_failed()) return gif::Player::Result::ERROR;
   }
+  resize_work_us_ += micros() - resize_started;
   if (render_row_ != player_->height()) return gif::Player::Result::MORE;
+  ESP_LOGD(TAG, "GIF frame work: decode=%lu ms resize=%lu ms",
+           static_cast<unsigned long>(decode_work_us_ / 1000),
+           static_cast<unsigned long>(resize_work_us_ / 1000));
+  decode_work_us_ = resize_work_us_ = 0;
   release_filtered_resize();
   rendering_ = false;
   render_target_ready_ = false;

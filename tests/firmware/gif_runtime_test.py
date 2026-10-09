@@ -48,7 +48,10 @@ struct ArtworkImage {
   std::function<void()> animation_redraw_;
   std::vector<uint8_t> active, staging;
   uint8_t *buffer_ = nullptr, *decode_buffer_ = nullptr;
-  int cache_invalidations = 0, width = 0, height = 0;
+  int cache_invalidations = 0, width = 0, height = 0, decode_buffer_width_ = 0;
+  int get_bpp() const { return 16; }
+  bool has_transparency() const { return false; }
+  bool is_big_endian() const { return false; }
   size_t get_buffer_size_() const { return active.size(); }
   size_t get_decode_buffer_size_() const { return staging.size(); }
   void invalidate_lvgl_cache_() { ++cache_invalidations; }
@@ -80,6 +83,7 @@ source = r'''
 uint32_t now_ms = 0;
 namespace esphome {
 uint32_t millis() { return now_ms; }
+uint32_t micros() { return now_ms * 1000; }
 namespace artwork_image {
 static ArtworkImage *gif_slots[2] = {nullptr, nullptr};
 static ArtworkImage *gif_playing = nullptr;
@@ -91,7 +95,7 @@ void ImageDecoder::release_filtered_resize() {
 }
 bool ImageDecoder::set_size(int width, int height) {
   if (image_->fail_resize) return false;
-  image_->width = width; image_->height = height;
+  image_->width = image_->decode_buffer_width_ = width; image_->height = height;
   image_->staging.assign(static_cast<size_t>(width) * height * 2, 0);
   image_->decode_buffer_ = image_->staging.data(); return true;
 }
@@ -397,7 +401,7 @@ with tempfile.TemporaryDirectory(prefix="gif-runtime-") as directory:
     (temp / "esphome/core").mkdir(parents=True)
     (temp / "esphome/core/defines.h").write_text("#pragma once\n#define USE_ARTWORK_IMAGE_GIF_SUPPORT 1\n")
     (temp / "esphome/core/hal.h").write_text(
-        "#pragma once\n#include <cstdint>\nnamespace esphome { uint32_t millis(); }\n")
+        "#pragma once\n#include <cstdint>\nnamespace esphome { uint32_t millis(); uint32_t micros(); }\n")
     (temp / "esphome/core/color.h").write_text(
         '#pragma once\n#include "esphome/core/helpers.h"\nnamespace esphome { struct Color { uint8_t r,g,b,w; Color(uint8_t r,uint8_t g,uint8_t b,uint8_t w=0) : r(r),g(g),b(b),w(w) {} }; }\n')
     (temp / "artwork_image.h").write_text(stub)

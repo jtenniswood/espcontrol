@@ -33,6 +33,7 @@ class GifDecoder : public ImageDecoder {
   ResampleAxis32 *horizontal_axes_{nullptr};
   size_t horizontal_axes_size_{0};
   int render_row_{0};
+  uint32_t decode_work_us_{0}, resize_work_us_{0};
   bool initialized_{false}, rendering_{false}, render_target_ready_{false}, first_frame_ready_{false};
 };
 

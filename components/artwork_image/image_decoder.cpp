@@ -49,15 +49,33 @@ void ImageDecoder::draw_filtered_rgb888_row(int y, const uint8_t *data) {
       })) this->failed_ = true;
 }
 
+// Keep the pixel loop optimised even when the firmware favours code size.
+#if defined(__GNUC__) && !defined(__clang__)
+__attribute__((optimize("O3")))
+#endif
 void ImageDecoder::draw_fast_filtered_rgb565_row(int y, const uint16_t *data) {
+  const bool opaque_rgb565 = this->image_->get_bpp() == 16 && !this->image_->has_transparency();
+  const bool big_endian = this->image_->is_big_endian();
+  const int target_width = this->image_->decode_buffer_width_;
+  auto *target = this->image_->decode_buffer_;
+  if (!target) { this->failed_ = true; return; }
   if (!this->resampler_.push_row_fast(y, [data](int x) {
         const auto pixel = data[x];
         const uint8_t r = (pixel >> 11) & 31, g = (pixel >> 5) & 63, b = pixel & 31;
         return ResampleColor{static_cast<uint8_t>((r << 3) | (r >> 2)),
                              static_cast<uint8_t>((g << 2) | (g >> 4)),
                              static_cast<uint8_t>((b << 3) | (b >> 2))};
-      }, [this](int x, int y, ResampleColor color) {
-        this->image_->draw_pixel_(x, y, Color(color.r, color.g, color.b, 0xFF));
+      }, [this, opaque_rgb565, big_endian, target_width, target](int x, int y, ResampleColor color) {
+        // The resampler clips every output coordinate. Opaque RGB565 needs
+        // neither colour-key mapping nor the general per-pixel type dispatch.
+        if (opaque_rgb565) {
+          const uint16_t pixel = ((color.r & 0xf8) << 8) | ((color.g & 0xfc) << 3) | (color.b >> 3);
+          const size_t pos = (static_cast<size_t>(y) * target_width + x) * 2;
+          target[pos] = big_endian ? pixel >> 8 : pixel;
+          target[pos + 1] = big_endian ? pixel : pixel >> 8;
+        } else {
+          this->image_->draw_pixel_(x, y, Color(color.r, color.g, color.b, 0xFF));
+        }
       })) this->failed_ = true;
 }
 
