@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 COMPONENT = ROOT / "components/artwork_image"
 artwork = (COMPONENT / "artwork_image.cpp").read_text()
 methods = []
-for name in ("stop_animation_", "loop_animation_"):
+for name in ("retain_animation_", "stop_animation_", "loop_animation_"):
     match = re.search(rf"^void ArtworkImage::{name}\(\) \{{\n.*?^\}}", artwork, re.M | re.S)
     assert match, name
     methods.append(match[0])
@@ -27,7 +27,13 @@ stub = r'''
 #define ESP_LOGW(tag, ...) ((void)(tag))
 #define ESP_LOGI(tag, ...) ((void)(tag))
 namespace esphome::artwork_image {
+enum P4PipelinePriority { P4_PIPELINE_TILE, P4_PIPELINE_MODAL };
 struct ArtworkImage {
+  std::unique_ptr<ImageDecoder> decoder_;
+  DownloadBuffer download_buffer_{0};
+  esphome::RAMAllocator<uint8_t> allocator_;
+  bool gif_decoding_ = true;
+  P4PipelinePriority p4_pipeline_priority_ = P4_PIPELINE_TILE;
   std::unique_ptr<GifDecoder> animation_;
   bool animation_frame_pending_ = false, fail_resize = false;
   uint32_t animation_frame_started_ms_ = 0;
@@ -40,6 +46,7 @@ struct ArtworkImage {
   size_t get_decode_buffer_size_() const { return staging.size(); }
   void invalidate_lvgl_cache_() { ++cache_invalidations; }
   void discard_decode_buffer_() { staging.clear(); decode_buffer_ = nullptr; }
+  void retain_animation_();
   void stop_animation_();
   void loop_animation_();
   void publish_first() { active = std::move(staging); buffer_ = active.data(); decode_buffer_ = nullptr; }
@@ -86,6 +93,10 @@ void ImageDecoder::draw_filtered_rgb888_row(int y, const uint8_t *data) {
     image_->staging.at(pos) = pixel; image_->staging.at(pos + 1) = pixel >> 8;
   }));
 }
+void DownloadBuffer::shrink_to(size_t size) {
+  assert(size == 0); allocator_.deallocate(buffer_, size_);
+  buffer_ = nullptr; size_ = unread_ = 0;
+}
 DownloadBuffer::DownloadBuffer(size_t size) : buffer_(nullptr), size_(size), unread_(0) { assert(!size); }
 bool DownloadBuffer::adopt(uint8_t *buffer, size_t size) {
   assert(!buffer_); if (!buffer || !size) return false;
@@ -101,7 +112,9 @@ static std::vector<uint8_t> read(const std::string &path) {
   std::ifstream f(path, std::ios::binary); assert(f.good());
   return {std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>()};
 }
-static void load(ArtworkImage &image, const std::vector<uint8_t> &file, bool unknown_length) {
+static void load(ArtworkImage &image, const std::vector<uint8_t> &file, bool unknown_length, bool animated = true) {
+  image.stop_animation_();
+  if (!image.animation_visible_) image.animation_visible_ = []() { return true; };
   esphome::RAMAllocator<uint8_t> allocator;
   auto *data = allocator.allocate(file.size()); std::memcpy(data, file.data(), file.size());
   auto decoder = std::make_unique<GifDecoder>(&image);
@@ -116,9 +129,11 @@ static void load(ArtworkImage &image, const std::vector<uint8_t> &file, bool unk
   assert(decoder->is_finished());
   assert(!esphome::HighFrequencyLoopRequester::is_high_frequency());
   assert(!std::memcmp(data, file.data(), file.size()));
-  assert(decoder->retain_source(data, file.size()));
-  image.publish_first(); image.animation_ = std::move(decoder);
-  image.animation_frame_started_ms_ = now_ms;
+  assert(image.download_buffer_.adopt(data, file.size()));
+  image.publish_first(); image.decoder_ = std::move(decoder);
+  image.retain_animation_();
+  assert(bool(image.animation_) == animated);
+  image.decoder_.reset(); image.download_buffer_.shrink_to(0);
 }
 int main() {
   auto file = read(std::string(GIF_FIXTURE_DIR) + "/disposal.gif");
@@ -130,7 +145,6 @@ int main() {
     image.animation_redraw_ = [&]() { ++redraws; };
     load(image, file, unknown);
     assert(std::equal(image.active.begin(), image.active.end(), expected.begin() + 6));
-    gif_slots[0] = &image;
     const auto first = image.active;
     now_ms += 99; image.loop_animation_(); assert(redraws == 0);
     visible = false; now_ms += 1000;
@@ -142,7 +156,7 @@ int main() {
     assert(redraws == 1 && image.cache_invalidations == 1);
     assert(std::equal(image.active.begin(), image.active.end(), expected.begin() + 6 + 128));
     // A second visible decoder yields while this image owns playback.
-    ArtworkImage other; load(other, file, false);
+    ArtworkImage other; other.p4_pipeline_priority_ = P4_PIPELINE_MODAL; load(other, file, false);
     other.animation_visible_ = []() { return true; };
     now_ms += 1000; other.loop_animation_(); assert(!other.cache_invalidations);
     visible = false; image.loop_animation_();
@@ -166,6 +180,31 @@ int main() {
     assert(!image.animation_ && !gif_slots[0] && !gif_playing && image.active == last);
     assert(fake_esphome_allocator::external_pointers.empty());
   }
+  // Multiple GIF cards share one animation slot. The expanded view has its
+  // own slot, leaves the chosen card resident, and releases it on close.
+  ArtworkImage card, second, expanded;
+  load(card, file, false);
+  const auto *card_decoder = card.animation_.get();
+  const auto retained_allocations = fake_esphome_allocator::external_pointers.size();
+  load(second, file, false, false);
+  assert(!second.animation_ && second.active == card.active);
+  assert(fake_esphome_allocator::external_pointers.size() == retained_allocations);
+  expanded.p4_pipeline_priority_ = P4_PIPELINE_MODAL;
+  load(expanded, file, false);
+  assert(gif_slots[0] == &card && gif_slots[1] == &expanded);
+  assert(card.animation_.get() == card_decoder);
+  expanded.stop_animation_();
+  assert(gif_slots[0] == &card && !gif_slots[1]);
+  // Refreshing the chosen card preserves its eligibility. Releasing the page
+  // allows a GIF on the next page to take the card slot.
+  load(card, file, false);
+  assert(gif_slots[0] == &card);
+  card.stop_animation_();
+  load(second, file, false);
+  assert(gif_slots[0] == &second);
+  second.stop_animation_();
+  assert(fake_esphome_allocator::external_pointers.empty());
+
   // A valid GIF with a large comment exercises complete-file ownership and
   // first-frame decoding above the previous 2 MiB limit without a huge fixture.
   auto large_file = file;
@@ -242,4 +281,4 @@ with tempfile.TemporaryDirectory(prefix="gif-runtime-") as directory:
         str(temp / "gif_image.cpp"), str(temp / "test.cpp"), "-o", str(executable),
     ], check=True)
     subprocess.run([str(executable)], check=True)
-print("GIF runtime: transfers, frame publication, pause/resume, arbitration, loop scheduling, cleanup and PSRAM failure passed")
+print("GIF runtime: transfers, frame publication, pause/resume, arbitration, one card per screen, loop scheduling, cleanup and PSRAM failure passed")

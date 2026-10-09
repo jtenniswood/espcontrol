@@ -2068,33 +2068,7 @@ void ArtworkImage::finish_download_() {
            bytes_read, this->width_, this->height_, this->peak_download_buffer_size_,
            this->max_download_buffer_size_);
   ESP_LOGD(TAG, "Total time: %" PRIu32 "s", (uint32_t) (::time(nullptr) - this->start_time_));
-#ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
-  if (this->gif_decoding_ && this->animation_visible_) {
-    int slot = -1;
-    for (int i = 0; i < 2; ++i) if (!gif_slots[i]) { slot = i; break; }
-    // Give the expanded view priority when both resident slots are occupied.
-    if (slot < 0 && this->p4_pipeline_priority_ == P4_PIPELINE_MODAL) {
-      gif_slots[0]->stop_animation_();
-      slot = 0;
-    }
-    if (slot >= 0) {
-      auto *gif_decoder = static_cast<GifDecoder *>(this->decoder_.release());
-      const size_t size = this->download_buffer_.size();
-      auto *data = this->download_buffer_.detach();
-      if (gif_decoder->retain_source(data, size)) {
-        this->animation_.reset(gif_decoder);
-        gif_slots[slot] = this;
-        this->animation_frame_started_ms_ = millis();
-        this->animation_frame_pending_ = false;
-      } else {
-        this->allocator_.deallocate(data, size);
-        delete gif_decoder;
-      }
-    } else {
-      ESP_LOGI(TAG, "GIF animation slots occupied; keeping a still frame");
-    }
-  }
-#endif
+  this->retain_animation_();
   this->end_connection_();
   this->log_state_("download-resources-released");
   App.feed_wdt();
@@ -2212,6 +2186,31 @@ void ArtworkImage::end_connection_() {
   // Staging memory belongs to the active service request only. Completed image
   // surfaces stay resident, but compressed transfer bytes are returned to PSRAM.
   this->download_buffer_.shrink_to(0);
+}
+
+void ArtworkImage::retain_animation_() {
+#ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
+  if (!this->gif_decoding_ || !this->animation_visible_) return;
+  // One card keeps playback data on the dashboard. Reserve the second slot
+  // for the expanded view so opening another GIF never replaces that card.
+  const int slot = this->p4_pipeline_priority_ == P4_PIPELINE_MODAL ? 1 : 0;
+  if (gif_slots[slot]) {
+    ESP_LOGI(TAG, "GIF animation already retained for this view; keeping a still frame");
+    return;
+  }
+  auto *gif_decoder = static_cast<GifDecoder *>(this->decoder_.release());
+  const size_t size = this->download_buffer_.size();
+  auto *data = this->download_buffer_.detach();
+  if (gif_decoder->retain_source(data, size)) {
+    this->animation_.reset(gif_decoder);
+    gif_slots[slot] = this;
+    this->animation_frame_started_ms_ = millis();
+    this->animation_frame_pending_ = false;
+  } else {
+    this->allocator_.deallocate(data, size);
+    delete gif_decoder;
+  }
+#endif
 }
 
 void ArtworkImage::stop_animation_() {

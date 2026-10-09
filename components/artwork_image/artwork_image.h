@@ -246,6 +246,7 @@ class ArtworkImage : public PollingComponent,
   void log_timing_(const char *result, size_t bytes_read) const;
   void finish_download_();
   void fail_download_();
+  void retain_animation_();
   void stop_animation_();
   void loop_animation_();
 

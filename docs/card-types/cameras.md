@@ -39,8 +39,11 @@ cards share this playback support. Playback pauses
 when the image is hidden, another modal covers it, or the panel enters its
 screensaver. The expanded view takes priority over card playback.
 
-One GIF animation plays at a time, with up to two GIFs retained for playback.
-Additional GIFs show a still frame. GIF files can be up to 8 MiB on ESP32-P4 panels,
+Each screen keeps one animated GIF card: the first GIF to finish loading.
+Additional GIF cards show their first frame. Opening any GIF in the expanded
+view plays it there and pauses the card; closing the view resumes the card.
+The panel retains at most one card animation and one expanded animation.
+GIF files can be up to 8 MiB on ESP32-P4 panels,
 subject to available memory; the 4-inch S3 keeps its 2 MiB download limit. GIFs
 must have at most 409,600 source pixels (for example, 640 × 640), with neither
 side exceeding 1,024 pixels, and have no more than 512 frames per playthrough.
