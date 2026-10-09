@@ -13,7 +13,7 @@ Use Fan cards when you want fan-specific controls. Use [Slider](/card-types/slid
 ## Setting Up a Fan Card
 
 1. Select a card and change its type to **Fans**.
-2. Choose the fan **Type**:
+2. The fan **Type** defaults to **All Controls**. Keep it or choose another type:
    - **All Controls** opens one larger control view with the fan features your Home Assistant integration supports.
    - **Switch** turns the fan on or off.
    - **Speed** lets you drag a vertical slider from 0 to 100 percent.
