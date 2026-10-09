@@ -29,6 +29,8 @@ Before starting, confirm the `camera` or `image` entity shows an image in Home A
    - **Crop to fit** fills the expanded view and may crop the edges.
    - **Show full image** keeps the whole image visible and may leave empty space around it.
 
+This setting applies after tapping the card to open the larger view. The grid tile always crops to fill its card; its preview may remain briefly while the larger image loads.
+
 The card accepts both `camera.*` and `image.*` entities, so `image.latest_package_snapshot` works as well as `camera.front_door`.
 
 If your Home Assistant instance uses a custom port, open **Settings > System > Home Assistant Settings** and set **Home Assistant Port** to match it. Camera and image cards use this port when downloading snapshots.

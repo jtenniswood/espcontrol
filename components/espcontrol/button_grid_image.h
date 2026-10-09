@@ -2228,6 +2228,10 @@ inline bool image_card_queue_modal_source_request(ImageCardCtx *ctx) {
     return false;
   }
   if (!image_card_context_on_active_screen(ctx) || !ha_api_state_connected()) return false;
+  // The expanded view needs its own image and fit mode. A scheduled tile
+  // download shares this refresh clock and would otherwise block that request,
+  // leaving the already-cropped tile preview on screen indefinitely.
+  image_card_cancel_scheduled_tile_request(ctx);
   if (ctx->refresh_schedule.in_flight) return true;
   ImageCardModalUi &ui = image_card_modal_ui();
   if (ui.request_timer) return true;
