@@ -3523,11 +3523,11 @@ async function assertSpeakerGroupEditorAndPreview(page, posts, label) {
   }
   await page.getByRole("button", { name: "Optional Power", exact: true }).click();
   const powerEntity = page.getByLabel("Power Entity", { exact: true });
-  await powerEntity.evaluate((input) => {
-    input.value = "media_player.living_room_tv";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  await powerEntity.fill("media_player.living_room_tv");
+  await powerEntity.blur();
+  assert.strictEqual(await powerEntity.inputValue(), "media_player.living_room_tv", `${label}: typing and blurring retain the power entity`);
+  await page.getByRole("button", { name: "Card Settings", exact: true }).click();
+  await page.locator(".sp-settings-modal").getByRole("button", { name: "Volume", exact: true }).click();
   assert.strictEqual(await powerEntity.inputValue(), "media_player.living_room_tv", `${label}: power entity survives editor rerender`);
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay").classList.contains("sp-visible"));
@@ -3535,11 +3535,8 @@ async function assertSpeakerGroupEditorAndPreview(page, posts, label) {
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("button", { name: "Optional Power", exact: true }).click();
   assert.strictEqual(await powerEntity.inputValue(), "media_player.living_room_tv", `${label}: saved power entity survives reopening`);
-  await powerEntity.evaluate((input) => {
-    input.value = "";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  await powerEntity.fill("");
+  await powerEntity.blur();
   assert.strictEqual(await powerEntity.inputValue(), "", `${label}: clearing the override restores the default`);
   const advanced = page.locator(".sp-settings-modal .sp-disclosure").filter({
     has: page.locator("#sp-inp-media-advanced"),

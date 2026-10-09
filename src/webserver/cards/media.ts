@@ -666,15 +666,11 @@ export function registerMediaCardTypes(
                     b._mediaOptionalPowerOpen = true;
                     helpers.saveField("options", b.options);
                 }
-                function savePowerEntity(this: any) {
-                    syncPowerEntity();
-                    renderButtonSettings();
-                }
                 powerEntityField.input.addEventListener("input", syncPowerEntity);
-                powerEntityField.input.addEventListener("change", savePowerEntity);
-                powerEntityField.input.addEventListener("blur", savePowerEntity);
+                powerEntityField.input.addEventListener("change", syncPowerEntity);
+                powerEntityField.input.addEventListener("blur", syncPowerEntity);
                 powerEntityField.input.addEventListener("keydown", function (this: any, event?: any) {
-                    if (event.key === "Enter") { savePowerEntity(); this.blur(); }
+                    if (event.key === "Enter") { syncPowerEntity(); this.blur(); }
                 });
                 panel.appendChild(powerDisclosure.panel);
             }
