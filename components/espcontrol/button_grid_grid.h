@@ -1024,7 +1024,7 @@ inline bool grid_card_uses_secondary_surface(
 }
 
 inline bool grid_card_uses_sensor_surface(
-    const espcontrol::cards::Context &context) {
+    const espcontrol::cards::Context &context, const ParsedCfg &config) {
   using Driver = espcontrol::card_runtime::CardDriverId;
   switch (context.runtime.driver) {
     case Driver::SENSOR:
@@ -1032,6 +1032,8 @@ inline bool grid_card_uses_sensor_surface(
     case Driver::WEATHER:
     case Driver::DATE_TIME:
       return true;
+    case Driver::IMAGE:
+      return image_card_modal_fit_enabled(config);
     default:
       return false;
   }
@@ -1129,7 +1131,7 @@ inline void grid_phase1(
     const auto context = card_runtime_context(p);
     neutral_buttons[idx - 1] = context.family != espcontrol::cards::Family::IMAGE &&
         espcontrol::cards::media_driver_theme_owned_surface(context, p);
-    sensor_surfaces[idx - 1] = grid_card_uses_sensor_surface(context);
+    sensor_surfaces[idx - 1] = grid_card_uses_sensor_surface(context, p);
     secondary_surfaces[idx - 1] = grid_card_uses_secondary_surface(context, p);
     display_apply_main_width(s.icon_lbl, display);
     display_apply_slot_text_width(s, display);
@@ -2160,7 +2162,7 @@ inline void grid_phase2(
           si + 1, bn, sub_slot, sb,
           context.family != espcontrol::cards::Family::IMAGE &&
               espcontrol::cards::media_driver_theme_owned_surface(context, sb_cfg),
-          grid_card_uses_sensor_surface(context),
+          grid_card_uses_sensor_surface(context, sb_cfg),
           grid_card_uses_secondary_surface(context, sb_cfg));
       display_apply_main_width(sub_slot.icon_lbl, display);
       display_apply_slot_text_width(sub_slot, display);

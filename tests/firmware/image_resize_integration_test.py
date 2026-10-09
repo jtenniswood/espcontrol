@@ -13,8 +13,9 @@ implementation = re.sub(r"^#include.*\n", "", implementation, flags=re.M)
 artwork_implementation = (component / "artwork_image.cpp").read_text()
 resize_geometry = artwork_implementation.split(
     "size_t ArtworkImage::resize_(int width_in, int height_in) {", 1)[1].split("  size_t new_size", 1)[0]
-fit_background = re.search(r"^void ArtworkImage::fill_fit_background_\(\) \{\n.*?^\}",
-                           artwork_implementation, re.M | re.S).group()
+fit_background = "\n".join(re.findall(
+    r"^(?:void|bool) ArtworkImage::(?:set_fit_background_color|fill_fit_background_)\([^)]*\) \{\n.*?^\}",
+    artwork_implementation, re.M | re.S))
 
 source = r'''
 #include <algorithm>
@@ -54,6 +55,14 @@ struct ArtworkImage {
  ImageResizeMode resize_mode_ = ImageResizeMode::FIT;
  uint32_t fit_background_color_ = 0;
  void fill_fit_background_();
+ bool fill_fit_background_(uint8_t *, int, int, int, int, int, int);
+ void set_fit_background_color(uint32_t color);
+ int cache_invalidations = 0;
+ void invalidate_lvgl_cache_() { ++cache_invalidations; }
+ uint8_t *buffer_ = nullptr;
+ int buffer_width_=0, buffer_height_=0;
+ int buffer_content_width_=0, buffer_content_height_=0;
+ int buffer_offset_x_=0, buffer_offset_y_=0;
  int decode_buffer_width_=1, decode_buffer_height_=1;
  int decode_content_width_=1, decode_content_height_=1;
  int decode_offset_x_=0, decode_offset_y_=0;
@@ -76,11 +85,14 @@ struct ArtworkImage {
  int get_position_(int x, int y) { return (y * decode_buffer_width_ + x) * 3; }
  void draw_pixel_(int x, int y, Color c) {
    assert(x >= 0 && x < decode_buffer_width_ && y >= 0 && y < decode_buffer_height_);
+   draw_pixel_to_buffer_(decode_buffer_, decode_buffer_width_, x, y, c);
+ }
+ void draw_pixel_to_buffer_(uint8_t *buffer, int width, int x, int y, Color c) {
    const uint16_t pixel = ((c.r & 0xf8) << 8) | ((c.g & 0xfc) << 3) | (c.b >> 3);
-   const int p = get_position_(x,y);
-   bytes[p] = big_endian ? pixel >> 8 : pixel;
-   bytes[p+1] = big_endian ? pixel : pixel >> 8;
-   bytes[p+2] = c.w;
+   const int p = (y * width + x) * 3;
+   buffer[p] = big_endian ? pixel >> 8 : pixel;
+   buffer[p+1] = big_endian ? pixel : pixel >> 8;
+   buffer[p+2] = c.w;
  }
 };
 }}
@@ -131,6 +143,35 @@ int main() {
    } else {
     assert(pixel(0,160) == 0x07e0 && pixel(319,160) == 0x07e0);
    }
+   // A theme change repaints both the displayed frame and its replacement.
+   // Photo pixels stay identical, and repeated refreshes do no cache work.
+   const auto before = image.bytes;
+   auto active = before;
+   image.buffer_ = active.data();
+   image.buffer_width_ = image.decode_buffer_width_;
+   image.buffer_height_ = image.decode_buffer_height_;
+   image.buffer_content_width_ = image.decode_content_width_;
+   image.buffer_content_height_ = image.decode_content_height_;
+   image.buffer_offset_x_ = image.decode_offset_x_;
+   image.buffer_offset_y_ = image.decode_offset_y_;
+   image.set_fit_background_color(0xffffff);
+   assert(active == image.bytes);
+   for (int y = 0; y < 320; ++y) {
+    for (int x = 0; x < 320; ++x) {
+     const int p = image.get_position_(x,y);
+     if (mode == ImageResizeMode::FIT && (y < 70 || y >= 250)) {
+      assert(pixel(x,y) == 0xffff && image.bytes[p+2] == 255);
+     } else {
+      assert(image.bytes[p] == before[p] && image.bytes[p+1] == before[p+1] &&
+             image.bytes[p+2] == before[p+2]);
+     }
+    }
+   }
+   assert(image.cache_invalidations == (mode == ImageResizeMode::FIT ? 1 : 0));
+   image.set_fit_background_color(0xffffff);
+   assert(image.cache_invalidations == (mode == ImageResizeMode::FIT ? 1 : 0));
+   image.set_fit_background_color(background);
+   assert(active == before && image.bytes == before);
    assert(allocations == 0);
   }
   }

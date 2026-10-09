@@ -3181,6 +3181,31 @@ inline void image_card_handle_activity_state(ImageCardCtx *ctx, const std::strin
   ctx->refresh_schedule.activate(esphome::millis());
 }
 
+inline void image_card_refresh_theme(uint32_t fit_background_color) {
+  ImageCardCtx *contexts = image_card_contexts();
+  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; ++i) {
+    ImageCardCtx *ctx = &contexts[i];
+    if (!ctx->active || ctx->media_artwork || !ctx->modal_fit || !ctx->image ||
+        ctx->fit_background_color == fit_background_color) continue;
+    ctx->fit_background_color = fit_background_color;
+    ctx->image->set_fit_background_color(fit_background_color);
+    if (ctx->btn) lv_obj_set_style_bg_color(ctx->btn, lv_color_hex(fit_background_color), LV_PART_MAIN);
+    if (ctx->widget) lv_obj_invalidate(ctx->widget);
+    if (image_card_modal_active_for(ctx)) {
+      if (image_card_has_separate_modal_image(ctx))
+        ctx->modal_image->set_fit_background_color(fit_background_color);
+      if (image_card_modal_ui().image_widget) lv_obj_invalidate(image_card_modal_ui().image_widget);
+    }
+  }
+  // The expanded decoder is shared and can retain an image from an inactive
+  // subpage. Update that cache as well so reopening it uses the new palette.
+  ImageCardModalCache &cache = image_card_modal_cache();
+  if (cache.ready && cache.modal_fit && cache.image) {
+    cache.image->set_fit_background_color(fit_background_color);
+    cache.fit_background_color = fit_background_color;
+  }
+}
+
 inline bool image_card_bind_runtime(BtnSlot &s, const ParsedCfg &p,
                                     const GridConfig &cfg,
                                     uint32_t fit_background_color,
