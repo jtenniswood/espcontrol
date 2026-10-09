@@ -2229,12 +2229,16 @@ void ArtworkImage::loop_animation_() {
 #ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
   if (!this->animation_) return;
   if (!this->animation_visible_ || !this->animation_visible_()) {
+    this->animation_->pause();
     if (gif_playing == this) gif_playing = nullptr;
     this->animation_frame_started_ms_ = millis();
     return;
   }
   if (gif_playing && gif_playing != this) {
-    if (gif_playing->animation_visible_ && gif_playing->animation_visible_()) return;
+    if (gif_playing->animation_visible_ && gif_playing->animation_visible_()) {
+      this->animation_->pause();
+      return;
+    }
     gif_playing = nullptr;
   }
   gif_playing = this;

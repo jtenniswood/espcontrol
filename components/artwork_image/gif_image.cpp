@@ -8,6 +8,7 @@ namespace esphome::artwork_image {
 static const char *const TAG = "artwork_image.gif";
 
 GifDecoder::~GifDecoder() {
+  this->pause();
   if (player_) {
     player_->~Player();
     player_allocator_.deallocate(player_, 1);
@@ -51,10 +52,18 @@ int GifDecoder::decode(uint8_t *buffer, size_t size) {
 }
 
 gif::Player::Result GifDecoder::advance() {
+  // Avoid the normal 16 ms component-loop delay between bounded decode slices.
+  // Other components still run between slices; idle/hidden animations release
+  // the request so ordinary firmware scheduling resumes.
+  decode_loop_.start();
   const uint32_t started = millis();
   for (int slice = 0; slice < 8; ++slice) {
     const auto result = advance_step_();
-    if (result != gif::Player::Result::MORE || millis() - started >= 4) return result;
+    if (result != gif::Player::Result::MORE) {
+      this->pause();
+      return result;
+    }
+    if (millis() - started >= 4) return result;
   }
   return gif::Player::Result::MORE;
 }

@@ -16,6 +16,17 @@ inline uint8_t last_allocation_flags = 0;
 
 namespace esphome {
 
+class HighFrequencyLoopRequester {
+ public:
+  void start() { if (!started_) { started_ = true; ++requests; } }
+  void stop() { if (started_) { started_ = false; --requests; } }
+  static bool is_high_frequency() { return requests != 0; }
+
+ private:
+  inline static unsigned requests = 0;
+  bool started_ = false;
+};
+
 template<typename T>
 class RAMAllocator {
  public:

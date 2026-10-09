@@ -4,6 +4,7 @@
 #ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
 #include "gif_player.h"
 #include "image_decoder.h"
+#include "esphome/core/helpers.h"
 
 namespace esphome::artwork_image {
 
@@ -14,11 +15,13 @@ class GifDecoder : public ImageDecoder {
   int decode(uint8_t *buffer, size_t size) override;
   bool is_decoding() const override { return initialized_ && !first_frame_ready_; }
   gif::Player::Result advance();
+  void pause() { decode_loop_.stop(); }
   uint32_t delay_ms() const { return player_->delay_ms(); }
   bool retain_source(uint8_t *data, size_t size) { return source_.adopt(data, size); }
 
  protected:
   gif::Player::Result advance_step_();
+  HighFrequencyLoopRequester decode_loop_;
   RAMAllocator<gif::Player> player_allocator_{RAMAllocator<gif::Player>::ALLOC_EXTERNAL};
   gif::Player *player_{nullptr};
   DownloadBuffer source_;

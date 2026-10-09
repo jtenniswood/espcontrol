@@ -114,6 +114,7 @@ static void load(ArtworkImage &image, const std::vector<uint8_t> &file, bool unk
   }
   for (int i = 0; !decoder->is_finished() && i < 1000; ++i) assert(decoder->decode(data, file.size()) == 0);
   assert(decoder->is_finished());
+  assert(!esphome::HighFrequencyLoopRequester::is_high_frequency());
   assert(!std::memcmp(data, file.data(), file.size()));
   assert(decoder->retain_source(data, file.size()));
   image.publish_first(); image.animation_ = std::move(decoder);
@@ -135,6 +136,7 @@ int main() {
     visible = false; now_ms += 1000;
     for (int i = 0; i < 100; ++i) image.loop_animation_();
     assert(redraws == 0 && image.active == first && !gif_playing);
+    assert(!esphome::HighFrequencyLoopRequester::is_high_frequency());
     visible = true; now_ms += 100;
     for (int i = 0; i < 100 && !redraws; ++i) image.loop_animation_();
     assert(redraws == 1 && image.cache_invalidations == 1);
@@ -179,6 +181,34 @@ int main() {
   large_image.stop_animation_();
   assert(fake_esphome_allocator::external_pointers.empty());
 
+  // A frame spanning multiple slices requests prompt component loops. Hidden
+  // or superseded playback and decoder destruction must release that request.
+  auto tall = file;
+  tall[8] = 640 & 255; tall[9] = 640 >> 8;
+  ArtworkImage sliced;
+  load(sliced, tall, false);
+  sliced.animation_visible_ = []() { return true; };
+  now_ms += 100;
+  sliced.loop_animation_();
+  assert(esphome::HighFrequencyLoopRequester::is_high_frequency());
+  sliced.animation_visible_ = []() { return false; };
+  sliced.loop_animation_();
+  assert(!esphome::HighFrequencyLoopRequester::is_high_frequency());
+  sliced.animation_visible_ = []() { return true; };
+  sliced.loop_animation_();
+  assert(esphome::HighFrequencyLoopRequester::is_high_frequency());
+  ArtworkImage owner;
+  owner.animation_visible_ = []() { return true; };
+  gif_playing = &owner;
+  sliced.loop_animation_();
+  assert(!esphome::HighFrequencyLoopRequester::is_high_frequency());
+  gif_playing = nullptr;
+  sliced.loop_animation_();
+  assert(esphome::HighFrequencyLoopRequester::is_high_frequency());
+  sliced.stop_animation_();
+  assert(!esphome::HighFrequencyLoopRequester::is_high_frequency());
+  assert(fake_esphome_allocator::external_pointers.empty());
+
   // Exhausted PSRAM fails cleanly; it must not fall back to internal RAM.
   ArtworkImage image;
   GifDecoder decoder(&image); decoder.prepare(file.size());
@@ -212,4 +242,4 @@ with tempfile.TemporaryDirectory(prefix="gif-runtime-") as directory:
         str(temp / "gif_image.cpp"), str(temp / "test.cpp"), "-o", str(executable),
     ], check=True)
     subprocess.run([str(executable)], check=True)
-print("GIF runtime: complete transfers, frame publication, pause/resume, arbitration, cleanup and PSRAM failure passed")
+print("GIF runtime: transfers, frame publication, pause/resume, arbitration, loop scheduling, cleanup and PSRAM failure passed")
