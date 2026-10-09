@@ -170,7 +170,9 @@ std::vector<TestSubpage> &navigation_subpages() {
 void sync_card_checked_text_color(lv_obj_t *button) {
   for (auto *child : button->children) child->text = lv_obj_get_style_text_color(button, LV_PART_MAIN);
 }
-void set_card_content_disabled(lv_obj_t *, bool) {}
+inline void set_card_content_disabled(lv_obj_t *, bool);
+void lv_obj_add_state(lv_obj_t *obj, int state) { obj->state |= state; }
+void lv_obj_clear_state(lv_obj_t *obj, int state) { obj->state &= ~state; }
 std::vector<uint32_t> image_theme_colors;
 inline void image_card_refresh_theme(uint32_t color) { image_theme_colors.push_back(color); }
 #include "theme_runtime_ui.h"
@@ -735,24 +737,54 @@ static void test_registry_exhaustion() {
 static void test_custom_card_theme_preservation() {
   set_active_theme_palette(DARK_THEME);
   apply_current_theme();
-  lv_obj_t page, custom, label, subpage, sub_custom;
+  lv_obj_t page, custom, label, track, subpage, sub_custom, sub_label, sub_track;
   custom.type = sub_custom.type = &lv_button_class;
   custom.background = sub_custom.background = lv_color_hex(0x313131);
   custom.text = sub_custom.text = lv_color_hex(0xFFFFFF);
-  custom.children = {&label};
+  custom.opacity = sub_custom.opacity = LV_OPA_COVER;
+  theme_set_content_background(&custom);
+  theme_set_content_background(&sub_custom);
+  custom.children = {&label, &track};
+  sub_custom.children = {&sub_label, &sub_track};
+  label.type = sub_label.type = &lv_label_class;
   label.parent = &custom;
+  sub_label.parent = &sub_custom;
+  track.parent = &custom;
+  sub_track.parent = &sub_custom;
+  for (auto *slider : {&track, &sub_track}) {
+    slider->type = &lv_slider_class;
+    slider->background = lv_color_hex(DARK_THEME.track_background);
+    slider->knob = lv_color_hex(DARK_THEME.text_primary);
+  }
+  custom.state = sub_custom.state = LV_STATE_DISABLED;
+  set_card_content_disabled(&custom, true);
+  set_card_content_disabled(&sub_custom, true);
   label.text = lv_color_hex(0xFFFFFF);
   BtnSlot slots[] = {{&custom}};
-  const bool theme_owned[] = {false};
+  const bool theme_owned[] = {true};
   const bool sensors[] = {false};
   register_theme_grid(&page, slots, theme_owned, 1, sensors, 100, 100, 100);
-  navigation_subpages().push_back({&subpage, nullptr, {{false, &sub_custom, false, false}}});
+  navigation_subpages().push_back({&subpage, nullptr, {{true, &sub_custom, false, false}}});
   for (const auto *theme : {&LIGHT_THEME, &DARK_THEME}) {
     set_active_theme_palette(*theme);
     apply_current_theme();
     assert(custom.background.full == 0x313131 && label.text.full == 0xFFFFFF);
     assert(sub_custom.background.full == 0x313131 && sub_custom.text.full == 0xFFFFFF);
+    for (auto *child : {&label, &sub_label}) {
+      assert(child->state & LV_STATE_DISABLED);
+      assert(lv_obj_get_style_text_color(child, LV_PART_MAIN).full == theme->text_disabled);
+    }
+    for (auto *slider : {&track, &sub_track}) {
+      assert(slider->background.full == theme->track_background);
+      assert(slider->knob.full == theme->text_primary);
+    }
   }
+  lv_obj_clear_state(&custom, LV_STATE_DISABLED);
+  lv_obj_clear_state(&sub_custom, LV_STATE_DISABLED);
+  set_active_theme_palette(LIGHT_THEME);
+  apply_current_theme();
+  assert(!(label.state & LV_STATE_DISABLED) && label.text.full == 0xFFFFFF);
+  assert(!(sub_label.state & LV_STATE_DISABLED) && sub_label.text.full == 0xFFFFFF);
   navigation_subpages().clear();
   lv_event_t deleted{&page};
   page.delete_callback(&deleted);

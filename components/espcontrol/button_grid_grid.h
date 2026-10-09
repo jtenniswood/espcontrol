@@ -579,6 +579,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   espcontrol::cards::alarm_driver_cleanup(s, p, context);
   espcontrol::cards::media_driver_cleanup(s, p, context);
   reset_card_slot_dynamic_children(s);
+  theme_set_content_background(s.btn, palette.custom_background);
   apply_button_colors(s.btn, palette.has_on, palette.on_val,
     palette.has_off, palette.off_val);
   sync_card_checked_text_color(s.btn);
@@ -1154,7 +1155,7 @@ inline void grid_phase1(
     ParsedCfg p = parse_cfg(scfg);
     const auto context = card_runtime_context(p);
     const bool custom_background = card_palette_for_config(palette, p, display).custom_background;
-    neutral_buttons[idx - 1] = !custom_background && context.family != espcontrol::cards::Family::IMAGE &&
+    neutral_buttons[idx - 1] = context.family != espcontrol::cards::Family::IMAGE &&
         espcontrol::cards::media_driver_theme_owned_surface(context, p);
     sensor_surfaces[idx - 1] = !custom_background && grid_card_uses_sensor_surface(context, p);
     secondary_surfaces[idx - 1] = grid_card_uses_secondary_surface(context, p);
@@ -2187,7 +2188,7 @@ inline void grid_phase2(
         cfg.subpage_chevron_font);
       navigation_register_subpage_card(
           si + 1, bn, sub_slot, sb,
-          !card_palette.custom_background && context.family != espcontrol::cards::Family::IMAGE &&
+          context.family != espcontrol::cards::Family::IMAGE &&
               espcontrol::cards::media_driver_theme_owned_surface(context, sb_cfg),
           !card_palette.custom_background && grid_card_uses_sensor_surface(context, sb_cfg),
           grid_card_uses_secondary_surface(context, sb_cfg));

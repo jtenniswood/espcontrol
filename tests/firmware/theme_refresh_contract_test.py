@@ -45,6 +45,9 @@ grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(enc
 assert 'media_card_mode(config.sensor) != "cover_art"' in media_driver
 assert "media_driver_theme_owned_surface(context, p)" in grid
 assert "media_driver_theme_owned_surface(context, sb_cfg)" in grid
+assert "theme_set_content_background(s.btn, palette.custom_background)" in grid
+assert "neutral_buttons[idx - 1] = context.family" in grid
+assert "!card_palette.custom_background && context.family" not in grid
 assert "grid_card_uses_sensor_surface(context, p)" in grid
 assert "grid_card_uses_sensor_surface(context, sb_cfg)" in grid
 sensor_surface = grid[grid.index("inline bool grid_card_uses_sensor_surface("):grid.index("inline void grid_phase1(")]
