@@ -38,6 +38,7 @@ struct ArtworkImage {
   bool animation_frame_pending_ = false, fail_resize = false;
   uint32_t animation_frame_started_ms_ = 0;
   std::function<bool()> animation_visible_;
+  std::function<bool()> animation_screen_active_;
   std::function<void()> animation_redraw_;
   std::vector<uint8_t> active, staging;
   uint8_t *buffer_ = nullptr, *decode_buffer_ = nullptr;
@@ -183,9 +184,13 @@ int main() {
   // Multiple GIF cards share one animation slot. The expanded view has its
   // own slot, leaves the chosen card resident, and releases it on close.
   ArtworkImage card, second, expanded;
+  card.animation_screen_active_ = []() { return true; };
+  second.animation_screen_active_ = []() { return true; };
   load(card, file, false);
   const auto *card_decoder = card.animation_.get();
   const auto retained_allocations = fake_esphome_allocator::external_pointers.size();
+  // A covered widget is still on this page and must keep its reservation.
+  card.animation_visible_ = []() { return false; };
   load(second, file, false, false);
   assert(!second.animation_ && second.active == card.active);
   assert(fake_esphome_allocator::external_pointers.size() == retained_allocations);
@@ -199,9 +204,10 @@ int main() {
   // allows a GIF on the next page to take the card slot.
   load(card, file, false);
   assert(gif_slots[0] == &card);
-  card.stop_animation_();
+  card.animation_screen_active_ = []() { return false; };
+  second.animation_screen_active_ = []() { return true; };
   load(second, file, false);
-  assert(gif_slots[0] == &second);
+  assert(!card.animation_ && gif_slots[0] == &second);
   second.stop_animation_();
   assert(fake_esphome_allocator::external_pointers.empty());
 

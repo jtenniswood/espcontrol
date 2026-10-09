@@ -1038,6 +1038,14 @@ inline void image_card_bind_callbacks(ImageCardCtx *ctx) {
            image_card_context_visible_on_active_screen(ctx);
   }, [ctx, bound_image]() {
     if (ctx->image == bound_image && ctx->widget) lv_obj_invalidate(ctx->widget);
+  }, [ctx, bound_image]() {
+    // Covering a card with a modal does not move it to another page. Also
+    // admit newly loaded cards before their image widget is made visible.
+    if (ctx->image != bound_image || !ctx->active || !ctx->btn ||
+        lv_obj_has_flag(ctx->btn, LV_OBJ_FLAG_HIDDEN)) return false;
+    auto *screen = ctx->btn;
+    while (lv_obj_get_parent(screen)) screen = lv_obj_get_parent(screen);
+    return screen == lv_scr_act();
   });
 }
 

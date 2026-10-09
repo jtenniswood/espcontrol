@@ -149,9 +149,11 @@ class ArtworkImage : public PollingComponent,
   bool has_on_error_callbacks() const { return this->download_error_callback_.size() != 0; }
 
   /** Bind playback visibility and redraw without treating frames as downloads. */
-  void set_animation_callbacks(std::function<bool()> visible, std::function<void()> redraw) {
+  void set_animation_callbacks(std::function<bool()> visible, std::function<void()> redraw,
+                               std::function<bool()> screen_active = {}) {
     this->animation_visible_ = std::move(visible);
     this->animation_redraw_ = std::move(redraw);
+    this->animation_screen_active_ = std::move(screen_active);
   }
 
   bool is_big_endian() const { return this->is_big_endian_; }
@@ -278,6 +280,7 @@ class ArtworkImage : public PollingComponent,
   bool animation_frame_pending_{false};
   uint32_t animation_frame_started_ms_{0};
   std::function<bool()> animation_visible_;
+  std::function<bool()> animation_screen_active_;
   std::function<void()> animation_redraw_;
 
   uint8_t *buffer_;

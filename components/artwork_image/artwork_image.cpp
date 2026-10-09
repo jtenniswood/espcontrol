@@ -2194,6 +2194,12 @@ void ArtworkImage::retain_animation_() {
   // One card keeps playback data on the dashboard. Reserve the second slot
   // for the expanded view so opening another GIF never replaces that card.
   const int slot = this->p4_pipeline_priority_ == P4_PIPELINE_MODAL ? 1 : 0;
+  if (slot == 0 && gif_slots[0] && this->animation_screen_active_ &&
+      this->animation_screen_active_() && gif_slots[0]->animation_screen_active_ &&
+      !gif_slots[0]->animation_screen_active_()) {
+    // Cached cards from a previous page must not block the current page.
+    gif_slots[0]->stop_animation_();
+  }
   if (gif_slots[slot]) {
     ESP_LOGI(TAG, "GIF animation already retained for this view; keeping a still frame");
     return;

@@ -43,6 +43,7 @@ Each screen keeps one animated GIF card: the first GIF to finish loading.
 Additional GIF cards show their first frame. Opening any GIF in the expanded
 view plays it there and pauses the card; closing the view resumes the card.
 The panel retains at most one card animation and one expanded animation.
+Loading a GIF on another page releases the previous page's playback data.
 GIF files can be up to 8 MiB on ESP32-P4 panels,
 subject to available memory; the 4-inch S3 keeps its 2 MiB download limit. GIFs
 must have at most 409,600 source pixels (for example, 640 × 640), with neither
