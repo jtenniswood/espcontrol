@@ -52,11 +52,19 @@ static constexpr int LOCAL_ARTWORK_HTTP_TIMEOUT_MS = 6500;
 #ifdef USE_ARTWORK_IMAGE_BMP_SUPPORT
 #include "bmp_image.h"
 #endif
+#ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
+#include "gif_image.h"
+#endif
 
 namespace esphome {
 namespace artwork_image {
 
 using image::ImageType;
+
+#ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
+static ArtworkImage *gif_slots[2] = {nullptr, nullptr};
+static ArtworkImage *gif_playing = nullptr;
+#endif
 
 static std::string sanitize_artwork_url_for_log(const std::string &url) {
   auto query = url.find('?');
@@ -573,6 +581,7 @@ ArtworkImage::ArtworkImage(const std::string &url, int width, int height, ImageF
 }
 
 ArtworkImage::~ArtworkImage() {
+  this->stop_animation_();
   this->end_connection_();
   this->cancel_service_request_();
 }
@@ -586,6 +595,7 @@ void ArtworkImage::draw(int x, int y, display::Display *display, Color color_on,
 }
 
 void ArtworkImage::release() {
+  this->stop_animation_();
   this->update_pending_ = false;
   this->pending_url_.clear();
   this->end_connection_();
@@ -657,7 +667,7 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
   if (this->decode_buffer_ == nullptr) {
     ESP_LOGE(TAG, "allocation of %zu bytes failed. Biggest block in heap: %zu Bytes", new_size,
              this->allocator_.get_max_free_block_size());
-    this->end_connection_();
+    // Report failure after the decoder returns, preserving its stack frame.
     return 0;
   }
   this->decode_buffer_width_ = width;
@@ -789,6 +799,7 @@ bool ArtworkImage::start_service_update_(uint32_t generation) {
 }
 
 void ArtworkImage::start_update_() {
+  this->stop_animation_();
   this->transfer_stamp_ = TransferObserver::instance().begin(this->url_, this->service_generation_);
   this->transfer_failure_ = TransferFailure::CONTENT;
   this->last_http_status_ = 0;
@@ -811,7 +822,7 @@ void ArtworkImage::start_update_() {
   std::string accept_mime_type;
   switch (this->format_) {
     case ImageFormat::AUTO:
-      accept_mime_type = "image/jpeg, image/png, image/bmp";
+      accept_mime_type = "image/jpeg, image/png, image/bmp, image/gif";
       break;
 #ifdef USE_ARTWORK_IMAGE_JPEG_SUPPORT
     case ImageFormat::JPEG:
@@ -823,6 +834,11 @@ void ArtworkImage::start_update_() {
       accept_mime_type = "image/png";
       break;
 #endif  // USE_ARTWORK_IMAGE_PNG_SUPPORT
+#ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
+    case ImageFormat::GIF:
+      accept_mime_type = "image/gif";
+      break;
+#endif
 #ifdef USE_ARTWORK_IMAGE_BMP_SUPPORT
     case ImageFormat::BMP:
       accept_mime_type = "image/bmp";
@@ -1076,6 +1092,7 @@ size_t ArtworkImage::get_sane_content_length_() const {
 }
 
 void ArtworkImage::loop() {
+  this->loop_animation_();
   ImageService::instance().process_pending();
   this->cleanup_retired_buffers_(false);
   if (this->s3_transfer_pending_) {
@@ -1087,7 +1104,11 @@ void ArtworkImage::loop() {
     return;
   }
   if (!this->decoder_ && !this->downloader_) {
-    if (this->retired_buffers_.empty()) {
+    if (this->retired_buffers_.empty()
+#ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
+        && !this->animation_
+#endif
+    ) {
       this->disable_loop();
     }
     return;
@@ -1648,6 +1669,11 @@ ImageFormat ArtworkImage::detect_format_() {
     }
   }
 
+  if (this->download_buffer_.unread() >= 6) {
+    const auto *data = this->download_buffer_.data();
+    if (memcmp(data, "GIF87a", 6) == 0 || memcmp(data, "GIF89a", 6) == 0) return ImageFormat::GIF;
+  }
+
   // Fallback: Content-Type header
   if (this->downloader_) {
     std::string ct = str_lower_case(this->downloader_->get_response_header(CONTENT_TYPE_HEADER_NAME));
@@ -1659,6 +1685,7 @@ ImageFormat ArtworkImage::detect_format_() {
       ESP_LOGD(TAG, "Detected PNG from Content-Type: %s", ct.c_str());
       return ImageFormat::PNG;
     }
+    if (ct.find("image/gif") != std::string::npos) return ImageFormat::GIF;
     if (ct.find("image/bmp") != std::string::npos || ct.find("image/x-ms-bmp") != std::string::npos) {
       ESP_LOGD(TAG, "Detected BMP from Content-Type: %s", ct.c_str());
       return ImageFormat::BMP;
@@ -1731,6 +1758,13 @@ bool ArtworkImage::detect_heic_() {
 }
 
 bool ArtworkImage::create_decoder_(ImageFormat format, size_t total_size) {
+  this->gif_decoding_ = false;
+#ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
+  if (format == ImageFormat::GIF) {
+    this->decoder_ = make_unique<GifDecoder>(this);
+    this->gif_decoding_ = true;
+  }
+#endif
   if (format == ImageFormat::HEIC) {
     ESP_LOGE(TAG, "HEIC/HEIF artwork detected, but no native HEIC decoder is bundled for this firmware; source=%s",
              classify_artwork_url_for_log(this->url_));
@@ -1984,6 +2018,33 @@ void ArtworkImage::finish_download_() {
            bytes_read, this->width_, this->height_, this->peak_download_buffer_size_,
            this->max_download_buffer_size_);
   ESP_LOGD(TAG, "Total time: %" PRIu32 "s", (uint32_t) (::time(nullptr) - this->start_time_));
+#ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
+  if (this->gif_decoding_ && this->animation_visible_) {
+    int slot = -1;
+    for (int i = 0; i < 2; ++i) if (!gif_slots[i]) { slot = i; break; }
+    // Give the expanded view priority when both resident slots are occupied.
+    if (slot < 0 && this->p4_pipeline_priority_ == P4_PIPELINE_MODAL) {
+      gif_slots[0]->stop_animation_();
+      slot = 0;
+    }
+    if (slot >= 0) {
+      auto *gif_decoder = static_cast<GifDecoder *>(this->decoder_.release());
+      const size_t size = this->download_buffer_.size();
+      auto *data = this->download_buffer_.detach();
+      if (gif_decoder->retain_source(data, size)) {
+        this->animation_.reset(gif_decoder);
+        gif_slots[slot] = this;
+        this->animation_frame_started_ms_ = millis();
+        this->animation_frame_pending_ = false;
+      } else {
+        this->allocator_.deallocate(data, size);
+        delete gif_decoder;
+      }
+    } else {
+      ESP_LOGI(TAG, "GIF animation slots occupied; keeping a still frame");
+    }
+  }
+#endif
   this->end_connection_();
   this->log_state_("download-resources-released");
   App.feed_wdt();
@@ -2095,11 +2156,61 @@ void ArtworkImage::end_connection_() {
     this->downloader_ = nullptr;
   }
   this->decoder_.reset();
+  this->gif_decoding_ = false;
   this->discard_decode_buffer_();
   this->download_buffer_.reset();
   // Staging memory belongs to the active service request only. Completed image
   // surfaces stay resident, but compressed transfer bytes are returned to PSRAM.
   this->download_buffer_.shrink_to(0);
+}
+
+void ArtworkImage::stop_animation_() {
+#ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
+  if (!this->animation_) return;
+  if (gif_playing == this) gif_playing = nullptr;
+  for (auto &slot : gif_slots) if (slot == this) slot = nullptr;
+  this->animation_.reset();
+  this->animation_frame_pending_ = false;
+  this->discard_decode_buffer_();
+#endif
+}
+
+void ArtworkImage::loop_animation_() {
+#ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
+  if (!this->animation_) return;
+  if (!this->animation_visible_ || !this->animation_visible_()) {
+    if (gif_playing == this) gif_playing = nullptr;
+    this->animation_frame_started_ms_ = millis();
+    return;
+  }
+  if (gif_playing && gif_playing != this) {
+    if (gif_playing->animation_visible_ && gif_playing->animation_visible_()) return;
+    gif_playing = nullptr;
+  }
+  gif_playing = this;
+  const uint32_t now = millis();
+  if (!this->animation_frame_pending_ &&
+      now - this->animation_frame_started_ms_ < this->animation_->delay_ms()) return;
+  this->animation_frame_pending_ = true;
+  const auto result = this->animation_->advance();
+  if (result == gif::Player::Result::MORE) return;
+  if (result != gif::Player::Result::FRAME) {
+    if (result == gif::Player::Result::ERROR) ESP_LOGW(TAG, "Invalid GIF frame; keeping the last completed image");
+    this->stop_animation_();
+    return;
+  }
+  // The LVGL descriptor keeps its stable allocation. Publish only a complete
+  // resized frame; playback never fires network/cache completion callbacks.
+  if (!this->decode_buffer_ || this->get_decode_buffer_size_() != this->get_buffer_size_()) {
+    this->stop_animation_();
+    return;
+  }
+  memcpy(this->buffer_, this->decode_buffer_, this->get_buffer_size_());
+  this->invalidate_lvgl_cache_();
+  this->animation_frame_pending_ = false;
+  this->animation_frame_started_ms_ = now;
+  if (this->animation_redraw_) this->animation_redraw_();
+#endif
 }
 
 bool ArtworkImage::validate_url_(const std::string &url) {

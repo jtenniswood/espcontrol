@@ -69,12 +69,14 @@ struct ArtworkImage {
   int decode_content_width_ = 0, decode_content_height_ = 0;
   int decode_offset_x_ = 0, decode_offset_y_ = 0;
   bool update_pending_ = false, service_pending_ = false, cache_invalidated = false;
+  bool gif_decoding_ = false;
   std::string pending_url_;
   std::vector<RetiredBuffer> retired_buffers_;
   std::unique_ptr<Decoder> decoder_;
   DownloadBuffer download_buffer_;
   Downloader *downloader_ = nullptr;
   void cancel_s3_transfer_() {}
+  void stop_animation_() {}
   void cancel_p4_pipeline_() {}
   void cancel_service_request_() { service_pending_ = false; }
   void invalidate_lvgl_cache_() { cache_invalidated = true; }

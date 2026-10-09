@@ -1012,6 +1012,8 @@ inline void image_card_handle_modal_download_error(ImageCardCtx *ctx) {
   }
 }
 
+inline bool image_card_context_visible_on_active_screen(ImageCardCtx *ctx);
+
 inline void image_card_bind_callbacks(ImageCardCtx *ctx) {
   if (!ctx || !ctx->image) return;
   auto *bound_image = ctx->image;
@@ -1029,6 +1031,14 @@ inline void image_card_bind_callbacks(ImageCardCtx *ctx) {
     });
   }
   ctx->callbacks_bound_image = bound_image;
+  bound_image->set_animation_callbacks([ctx, bound_image]() {
+    return ctx->image == bound_image && ctx->active && !image_card_pipeline_suspended() &&
+           !image_card_modal_ui().active && ctx->widget &&
+           !lv_obj_has_flag(ctx->widget, LV_OBJ_FLAG_HIDDEN) &&
+           image_card_context_visible_on_active_screen(ctx);
+  }, [ctx, bound_image]() {
+    if (ctx->image == bound_image && ctx->widget) lv_obj_invalidate(ctx->widget);
+  });
 }
 
 inline void image_card_bind_modal_callbacks(
@@ -1036,6 +1046,16 @@ inline void image_card_bind_modal_callbacks(
   static esphome::artwork_image::ArtworkImage *bound_image = nullptr;
   if (!modal_image || bound_image == modal_image) return;
   bound_image = modal_image;
+  modal_image->set_animation_callbacks([modal_image]() {
+    auto *ctx = image_card_modal_ui().active;
+    return ctx && ctx->modal_image == modal_image && !image_card_pipeline_suspended() &&
+           control_modal_active().kind == ControlModalKind::IMAGE_CARD &&
+           image_card_modal_ui().image_widget &&
+           !lv_obj_has_flag(image_card_modal_ui().image_widget, LV_OBJ_FLAG_HIDDEN);
+  }, []() {
+    auto *widget = image_card_modal_ui().image_widget;
+    if (widget) lv_obj_invalidate(widget);
+  });
   modal_image->add_on_finished_callback([modal_image](bool) {
     ImageCardCtx *ctx = image_card_modal_ui().active;
     if (ctx && ctx->modal_image == modal_image && !image_card_pipeline_suspended())

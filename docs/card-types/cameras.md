@@ -6,7 +6,7 @@ description:
 
 # Show Home Assistant Camera Snapshots
 
-A Camera card shows a still image from a Home Assistant `camera` or `image` entity. It is useful for doorbells, driveway cameras, room snapshots, weather cameras, or any Home Assistant image entity you want visible on the panel.
+A Camera card shows an image from a Home Assistant `camera` or `image` entity, including animated GIFs. It is useful for doorbells, driveway cameras, room snapshots, weather radar, or any Home Assistant image entity you want visible on the panel.
 
 Camera cards are display cards. They do not stream live video, pan the camera, or send camera control actions. Tapping the card opens a larger view of the latest loaded image.
 
@@ -32,6 +32,21 @@ Before starting, confirm the `camera` or `image` entity shows an image in Home A
 This setting applies to both the grid card and the larger view opened by tapping it. Changing the setting reloads the image so **Show full image** can restore edges previously cropped from the card.
 
 The card accepts both `camera.*` and `image.*` entities, so `image.latest_package_snapshot` works as well as `camera.front_door`.
+
+JPEG, PNG, BMP and GIF images are supported. Animated GIFs, including radar
+images from Rain Incoming, play in the card and expanded view. Media Cover Art
+cards share this playback support. Playback pauses
+when the image is hidden, another modal covers it, or the panel enters its
+screensaver. The expanded view takes priority over card playback.
+
+One GIF animation plays at a time, with up to two GIFs retained for playback.
+Additional GIFs show a still frame. GIF files must fit within the 2 MiB download
+limit and have at most 409,600 source pixels (for example, 640 × 640), with neither
+side exceeding 1,024 pixels, and have no more than 512 frames per playthrough.
+Frame delays are honoured with a minimum of 100 ms;
+large images may play more slowly. Camera and Cover Art screensavers show a still
+frame from GIFs. Memory availability can also limit loading, especially on the
+4-inch S3.
 
 If your Home Assistant instance uses a custom port, open **Settings > System > Home Assistant Settings** and set **Home Assistant Port** to match it. Camera and image cards use this port when downloading snapshots.
 

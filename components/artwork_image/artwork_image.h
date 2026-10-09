@@ -14,6 +14,8 @@
 namespace esphome {
 namespace artwork_image {
 
+class GifDecoder;
+
 using t_http_codes = enum {
   HTTP_CODE_OK = 200,
   HTTP_CODE_NOT_MODIFIED = 304,
@@ -34,6 +36,8 @@ enum ImageFormat {
   BMP,
   /** HEIC/HEIF image format. Detected for clear error reporting; decoder not bundled. */
   HEIC,
+  /** GIF87a/89a, with bounded animation playback when a visible consumer is bound. */
+  GIF,
 };
 
 enum ImageResizeMode {
@@ -144,6 +148,12 @@ class ArtworkImage : public PollingComponent,
   bool has_on_finished_callbacks() const { return this->download_finished_callback_.size() != 0; }
   bool has_on_error_callbacks() const { return this->download_error_callback_.size() != 0; }
 
+  /** Bind playback visibility and redraw without treating frames as downloads. */
+  void set_animation_callbacks(std::function<bool()> visible, std::function<void()> redraw) {
+    this->animation_visible_ = std::move(visible);
+    this->animation_redraw_ = std::move(redraw);
+  }
+
   bool is_big_endian() const { return this->is_big_endian_; }
   bool hardware_acceleration_enabled() const { return this->hardware_acceleration_enabled_; }
   void set_hardware_acceleration(bool enabled) { this->hardware_acceleration_enabled_ = enabled; }
@@ -236,6 +246,8 @@ class ArtworkImage : public PollingComponent,
   void log_timing_(const char *result, size_t bytes_read) const;
   void finish_download_();
   void fail_download_();
+  void stop_animation_();
+  void loop_animation_();
 
   /**
    * @brief Draw a pixel into the buffer.
@@ -258,6 +270,14 @@ class ArtworkImage : public PollingComponent,
 
   std::shared_ptr<http_request::HttpContainer> downloader_{nullptr};
   std::unique_ptr<ImageDecoder> decoder_{nullptr};
+#ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
+  std::unique_ptr<GifDecoder> animation_{nullptr};
+#endif
+  bool gif_decoding_{false};
+  bool animation_frame_pending_{false};
+  uint32_t animation_frame_started_ms_{0};
+  std::function<bool()> animation_visible_;
+  std::function<void()> animation_redraw_;
 
   uint8_t *buffer_;
   uint8_t *decode_buffer_{nullptr};

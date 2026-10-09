@@ -145,6 +145,15 @@ class DownloadBuffer {
   /** Replace the current allocation and take ownership of a complete transfer. */
   bool adopt(uint8_t *buffer, size_t size);
 
+  /** Transfer a complete allocation without copying compressed animation data. */
+  uint8_t *detach() {
+    auto *buffer = this->buffer_;
+    this->buffer_ = nullptr;
+    this->size_ = 0;
+    this->unread_ = 0;
+    return buffer;
+  }
+
  protected:
   RAMAllocator<uint8_t> allocator_{};
   uint8_t *buffer_;
