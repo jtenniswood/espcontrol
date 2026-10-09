@@ -120,7 +120,7 @@ export function buildResetSettings(exportBackup: () => void, makeCard: (title: s
       return;
     }
     if (status.modes.includes("customization")) addAction("customization", "Partial reset", "Reset cards and preferences. Retains your configuration for Wifi and Home Assistant");
-    if (status.modes.includes("factory")) addAction("factory", "Complete reset", "Remove all existing configuration and reset back to first time setup.");
+    if (status.modes.includes("factory")) addAction("factory", "Complete reset", "Remove all existing configuration and reset back to first time setup. Any Wifi networks built into the firmware will stay disabled after you connect to a new network.");
   }).catch(() => { /* Leave unavailable actions hidden; write transport fails closed. */ });
   return card;
 }

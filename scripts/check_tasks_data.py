@@ -76,6 +76,18 @@ WEB_BUNDLE_BUILD_HELPERS = (
 
 # Declaration order is the stable tie-breaker used by the planner.
 TASKS = (
+    task("wifi-setup", ("python3", "scripts/build.py", "portal", "--check"),
+         ("python3", "scripts/test_captive_portal_dns.py"),
+         ("python3", "tests/firmware/wifi_reset_override_test.py"),
+         ("node", "scripts/check_wifi_setup_browser.js"), profiles=CI + RELEASE,
+         domains=("firmware", "web"),
+         inputs=("components/captive_portal/**", "components/espcontrol/device_reset.*",
+                 "common/addon/connectivity*.yaml", "devices/*/device/device.yaml",
+                 "src/webserver/application/styles.ts", "src/webserver/state/**",
+                 "scripts/captive_portal_assets.js", "scripts/test_captive_portal_dns.py",
+                 "scripts/check_wifi_setup_browser.js", "scripts/build.py",
+                 "tests/captive_portal_dns_tests.cpp", "tests/captive_portal_stubs/**",
+                 "tests/firmware/wifi_reset_override_test.py"), cache="never"),
     task("firmware-tests", ("cmake", "-E", "remove_directory", "build/tests/firmware"),
          ("cmake", "-S", "tests/firmware", "-B", "build/tests/firmware"),
          ("cmake", "--build", "build/tests/firmware"),
@@ -147,7 +159,7 @@ TASKS = (
          cache="never"),
     task("generated", ("python3", "scripts/build.py", "--check"),
          ("python3", "scripts/build.py", "--self-test"), profiles=PRODUCT,
-         domains=("product", "firmware", "web", "docs"), inputs=("common/**", "devices/**", "builds/**", "components/espcontrol/**", "src/webserver/**", "compatibility/**", "scripts/build.py", "scripts/build_web_bundle.js", "scripts/web_source.js"),
+         domains=("product", "firmware", "web", "docs"), inputs=("common/**", "devices/**", "builds/**", "components/espcontrol/**", "components/captive_portal/**", "src/webserver/**", "compatibility/**", "scripts/build.py", "scripts/captive_portal_assets.js", "scripts/build_web_bundle.js", "scripts/web_source.js"),
          generated_inputs=("components/espcontrol/*_generated.h", "docs/generated/**", "docs/public/**", "product/product_snapshot.json"),
          parallel_safe=True, cache="never"),
     task("device-manifest", ("python3", "scripts/check_device_manifest.py"),

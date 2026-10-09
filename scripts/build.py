@@ -10,6 +10,7 @@ Usage:
     python scripts/build.py icons         # sync icons only
     python scripts/build.py i18n          # sync firmware translations only
     python scripts/build.py www           # build www.js only
+    python scripts/build.py portal        # build offline WiFi setup pages only
     python scripts/build.py www --retain-current-bundle  # retain a release bundle
     python scripts/build.py www --legacy-web-manifest PATH  # use the published bundle as the legacy bundle
     python scripts/build.py www --temporary-output DIR  # isolated fresh bundles
@@ -4207,6 +4208,26 @@ def build_www(
 # Main
 # ===========================================================================
 
+def sync_captive_portal(check_only=False):
+    result = subprocess.run(
+        ["node", str(ROOT / "scripts/captive_portal_assets.js")],
+        cwd=ROOT, capture_output=True, text=True,
+    )
+    if result.returncode:
+        raise BuildError(result.stderr or "Captive portal asset generation failed")
+    dirty = []
+    for relative, generated in json.loads(result.stdout).items():
+        path = ROOT / relative
+        if path.exists() and path.read_text() == generated:
+            continue
+        dirty.append(Path(relative))
+        if check_only:
+            print(f"Stale captive portal asset: {relative}; run python3 scripts/build.py portal")
+        else:
+            write_generated_text(path, generated)
+    return dirty
+
+
 def main():
     global GENERATED_TRANSACTION
     args = sys.argv[1:]
@@ -4250,6 +4271,7 @@ def main():
     try:
         for cmd in commands:
             if cmd == "all":
+                portal_dirty = sync_captive_portal(check_only=check_only)
                 entity_dirty = sync_entity_names(check_only=check_only)
                 i18n_dirty = sync_i18n(check_only=check_only)
                 contract_dirty = sync_card_contract(check_only=check_only)
@@ -4260,16 +4282,24 @@ def main():
                     retain_current_bundle=retain_current_bundle,
                     legacy_web_manifest=legacy_web_manifest,
                 )
-                if check_only and (entity_dirty or i18n_dirty or contract_dirty or device_dirty or icon_dirty or www_dirty):
+                if check_only and (portal_dirty or entity_dirty or i18n_dirty or contract_dirty or device_dirty or icon_dirty or www_dirty):
                     exit_code = 1
-                elif not entity_dirty and not i18n_dirty and not contract_dirty and not device_dirty and not icon_dirty and not www_dirty:
+                elif not portal_dirty and not entity_dirty and not i18n_dirty and not contract_dirty and not device_dirty and not icon_dirty and not www_dirty:
                     print("All outputs are up to date.")
                 else:
                     total = (
                         len(entity_dirty) + len(i18n_dirty) + len(contract_dirty) + len(device_dirty) +
-                        len(icon_dirty) + len(www_dirty)
+                        len(icon_dirty) + len(www_dirty) + len(portal_dirty)
                     )
                     print(f"Updated {total} target(s).")
+            elif cmd == "portal":
+                dirty = sync_captive_portal(check_only=check_only)
+                if check_only and dirty:
+                    exit_code = 1
+                elif not dirty:
+                    print("Captive portal assets are in sync.")
+                else:
+                    print(f"Built {len(dirty)} captive portal asset(s).")
             elif cmd == "entities":
                 dirty = sync_entity_names(check_only=check_only)
                 if check_only and dirty:
@@ -4328,7 +4358,7 @@ def main():
                 print(f"Unknown command: {cmd}")
                 print(
                     "Usage: python scripts/build.py "
-                    "[all|entities|contract|devices|icons|i18n|www] [--check] "
+                    "[all|entities|contract|devices|icons|i18n|portal|www] [--check] "
                     "[--retain-current-bundle] [--legacy-web-manifest PATH]"
                 )
                 exit_code = 1

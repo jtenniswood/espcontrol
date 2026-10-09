@@ -56,6 +56,7 @@ If saving or importing a backup fails, try opening `http://YOUR-DISPLAY-IP/?espc
 ## The Web Page Looks Broken or Unstyled
 
 - The setup page loads hosted web resources through your **browser**. Check that the browser can reach them, even if the panel itself is on a restricted IoT network.
+- The WiFi hotspot setup page works entirely offline. If it does not open automatically, browse to `http://192.168.4.1` while connected to the hotspot.
 - Force-refresh the page or try a private window. If loading still fails, try the [embedded-editor fallback](#web-configuration-changes-won-t-save).
 
 ## WiFi Does Not Connect
@@ -71,7 +72,7 @@ Confirm the firmware matches the exact panel revision and use a known-good power
 
 ## I Want to Start Over
 
-- Save a backup, then use **Settings > System > Factory Reset**. Partial reset keeps WiFi and the Home Assistant encryption key; Complete reset clears those saved credentials too.
+- Save a backup, then use **Settings > System > Factory Reset**. Partial reset keeps WiFi and the Home Assistant encryption key; Complete reset clears those saved credentials too and keeps any WiFi networks compiled into the firmware disabled, so newly provisioned credentials remain selected after reboot.
 - Both keep installed firmware and compiled defaults. A normal reflash is not a guaranteed reset. Follow [Reset the display](/features/backup#reset-the-display) for the full procedure and older-firmware limitations.
 
 ## I Need Help With a Bug

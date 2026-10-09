@@ -1,0 +1,187 @@
+#include "captive_portal.h"
+#ifdef USE_CAPTIVE_PORTAL
+#include "esphome/core/log.h"
+#include "esphome/core/application.h"
+#include "esphome/core/helpers.h"
+#include "esphome/core/string_ref.h"
+#include "esphome/components/wifi/scan_list.h"
+#include "esphome/components/wifi/wifi_component.h"
+#ifdef USE_PROVISIONING
+#include "esphome/components/provisioning/provisioning.h"
+#endif
+#include "captive_index.h"
+#include "wifi_saved.h"
+
+namespace esphome::captive_portal {
+
+static const char *const TAG = "captive_portal";
+
+void CaptivePortal::handle_config(AsyncWebServerRequest *request) {
+  AsyncResponseStream *stream = request->beginResponseStream(ESPHOME_F("application/json"));
+  stream->addHeader(ESPHOME_F("Cache-Control"), ESPHOME_F("no-store, no-cache, must-revalidate, max-age=0"));
+  char mac_s[MAC_ADDRESS_PRETTY_BUFFER_SIZE];
+  const char *mac_str = get_mac_address_pretty_into_buffer(mac_s);
+#ifdef USE_ESP8266
+  stream->print(ESPHOME_F("{\"mac\":\""));
+  stream->print(mac_str);
+  stream->print(ESPHOME_F("\",\"name\":\""));
+  stream->print(App.get_name().c_str());
+  stream->print(ESPHOME_F("\",\"aps\":[{}"));
+#else
+  stream->printf(R"({"mac":"%s","name":"%s","aps":[{})", mac_str, App.get_name().c_str());
+#endif
+
+  // An SSID can contain a " or \ that would break the JSON, so escape it before writing it out. An SSID is at most
+  // 32 bytes (IEEE 802.11), so this is large enough that nothing is ever dropped. Reused for every scan result.
+  char escaped_ssid[32 * JSON_ESCAPE_MAX_EXPANSION + 1];
+  {
+    // Invariant: only bounded in-memory work under the lock; the network send
+    // happens later in request->send()
+    wifi::ScanResultsLock lock(wifi::global_wifi_component);
+    const auto &results = wifi::global_wifi_component->get_scan_result();
+    for (const auto &scan : results) {
+      bool with_auth = false;
+      if (!wifi::should_show_scan_entry(results, scan, with_auth))
+        continue;
+
+      json_escape_into_buffer(escaped_ssid, scan.get_ssid());
+#ifdef USE_ESP8266
+      stream->print(ESPHOME_F(",{\"ssid\":\""));
+      stream->print(escaped_ssid);
+      stream->print(ESPHOME_F("\",\"rssi\":"));
+      stream->print(scan.get_rssi());
+      stream->print(ESPHOME_F(",\"lock\":"));
+      stream->print(with_auth);
+      stream->print(ESPHOME_F("}"));
+#else
+      stream->printf(R"(,{"ssid":"%s","rssi":%d,"lock":%d})", escaped_ssid, scan.get_rssi(), with_auth);
+#endif
+    }
+  }
+  stream->print(ESPHOME_F("]}"));
+  request->send(stream);
+}
+void CaptivePortal::handle_wifisave(AsyncWebServerRequest *request) {
+  const auto &ssid = request->arg("ssid");
+  const auto &psk = request->arg("psk");
+  ESP_LOGI(TAG,
+           "Requested WiFi Settings Change:\n"
+           "  SSID='%s'\n"
+           "  Password=" LOG_SECRET("'%s'"),
+           ssid.c_str(), psk.c_str());
+#ifdef USE_ESP8266
+  // ESP8266 is single-threaded, call directly
+  wifi::global_wifi_component->save_wifi_sta(ssid.c_str(), psk.c_str());
+#else
+  // Defer save to main loop thread to avoid NVS operations from HTTP thread
+  this->defer([ssid, psk]() { wifi::global_wifi_component->save_wifi_sta(ssid.c_str(), psk.c_str()); });
+#endif
+  // Serve the confirmation directly so it remains readable as the AP disconnects.
+#ifndef USE_ESP8266
+  auto *response = request->beginResponse(200, ESPHOME_F("text/html"), WIFI_SAVED_GZ, sizeof(WIFI_SAVED_GZ));
+#else
+  auto *response = request->beginResponse_P(200, ESPHOME_F("text/html"), WIFI_SAVED_GZ, sizeof(WIFI_SAVED_GZ));
+#endif
+#ifdef USE_CAPTIVE_PORTAL_GZIP
+  response->addHeader(ESPHOME_F("Content-Encoding"), ESPHOME_F("gzip"));
+#else
+  response->addHeader(ESPHOME_F("Content-Encoding"), ESPHOME_F("br"));
+#endif
+  response->addHeader(ESPHOME_F("Cache-Control"), ESPHOME_F("no-store, no-cache, must-revalidate, max-age=0"));
+  response->addHeader(ESPHOME_F("Pragma"), ESPHOME_F("no-cache"));
+  response->addHeader(ESPHOME_F("Expires"), ESPHOME_F("0"));
+  request->send(response);
+}
+
+void CaptivePortal::setup() {
+  // Disable loop by default - will be enabled when captive portal starts
+  this->disable_loop();
+#ifdef USE_PROVISIONING
+  // The captive portal is a provisioning surface: once the provisioning window
+  // has closed, stop serving it. WiFi's own closed-callback shuts down the
+  // access point the portal runs on, and the gated fallback in WiFiComponent's
+  // loop() ensures neither is started again afterwards.
+  if (provisioning::global_provisioning_manager != nullptr) {
+    provisioning::global_provisioning_manager->add_on_closed_callback([this]() {
+      if (this->active_) {
+        ESP_LOGD(TAG, "Provisioning window closed; stopping captive portal");
+        this->end();
+      }
+    });
+  }
+#endif
+}
+void CaptivePortal::start() {
+  this->base_->init();
+  if (!this->initialized_) {
+    this->base_->add_handler_without_auth(this);
+  }
+
+  network::IPAddress ip = wifi::global_wifi_component->wifi_soft_ap_ip();
+
+#if defined(USE_ESP32)
+  // Create DNS server instance for ESP-IDF
+  this->dns_server_ = make_unique<DNSServer>();
+  this->dns_server_->start(ip);
+#elif defined(USE_ARDUINO)
+  this->dns_server_ = make_unique<DNSServer>();
+  this->dns_server_->setErrorReplyCode(DNSReplyCode::NoError);
+  this->dns_server_->start(53, ESPHOME_F("*"), ip);
+#endif
+
+  this->initialized_ = true;
+  this->active_ = true;
+
+  // Enable loop() now that captive portal is active
+  this->enable_loop();
+
+  ESP_LOGV(TAG, "Captive portal started");
+}
+
+void CaptivePortal::handleRequest(AsyncWebServerRequest *req) {
+#ifdef USE_ESP32
+  char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
+  StringRef url = req->url_to(url_buf);
+#else
+  const auto &url = req->url();
+#endif
+  if (url == ESPHOME_F("/config.json")) {
+    this->handle_config(req);
+    return;
+  } else if (url == ESPHOME_F("/wifisave")) {
+    this->handle_wifisave(req);
+    return;
+  }
+
+  // All other requests get the captive portal page
+  // This includes OS captive portal detection endpoints which will trigger
+  // the captive portal when they don't receive their expected responses
+#ifndef USE_ESP8266
+  auto *response = req->beginResponse(200, ESPHOME_F("text/html"), INDEX_GZ, sizeof(INDEX_GZ));
+#else
+  auto *response = req->beginResponse_P(200, ESPHOME_F("text/html"), INDEX_GZ, sizeof(INDEX_GZ));
+#endif
+#ifdef USE_CAPTIVE_PORTAL_GZIP
+  response->addHeader(ESPHOME_F("Content-Encoding"), ESPHOME_F("gzip"));
+#else
+  response->addHeader(ESPHOME_F("Content-Encoding"), ESPHOME_F("br"));
+#endif
+  // Match EspControl's web_server_idf response policy for the setup form.
+  response->addHeader(ESPHOME_F("Cache-Control"), ESPHOME_F("no-store, no-cache, must-revalidate, max-age=0"));
+  response->addHeader(ESPHOME_F("Pragma"), ESPHOME_F("no-cache"));
+  response->addHeader(ESPHOME_F("Expires"), ESPHOME_F("0"));
+  req->send(response);
+}
+
+CaptivePortal::CaptivePortal(web_server_base::WebServerBase *base) : base_(base) { global_captive_portal = this; }
+float CaptivePortal::get_setup_priority() const {
+  // Before WiFi
+  return setup_priority::WIFI + 1.0f;
+}
+void CaptivePortal::dump_config() { ESP_LOGCONFIG(TAG, "Captive Portal:"); }
+
+CaptivePortal *global_captive_portal = nullptr;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+
+}  // namespace esphome::captive_portal
+
+#endif

@@ -8,6 +8,8 @@ namespace esphome::web_server_idf { class AsyncWebServer; }
 namespace espcontrol::reset {
 // Called directly by generated setup before safe mode or restoring components.
 void early_startup(bool compiled_networks, const char *username, const char *password);
+// Apply before WiFi starts, after the generated component has been created.
+void apply_wifi_override();
 uint32_t epoch();
 bool pending();
 bool ready();
