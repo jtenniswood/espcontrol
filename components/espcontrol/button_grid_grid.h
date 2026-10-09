@@ -916,13 +916,16 @@ inline void refresh_climate_secondary_label_layout(BtnSlot &slot,
   if (config.type != "climate_control" ||
       !cfg_option_token_present(config.options, "secondary_enabled")) {
     lv_obj_add_flag(slot.secondary_lbl, LV_OBJ_FLAG_HIDDEN);
+    if (config.type == "climate_control" && slot.text_lbl)
+      lv_obj_align(slot.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
     return;
   }
   lv_obj_clear_flag(slot.secondary_lbl, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_set_width(slot.secondary_lbl, lv_pct(100));
-  lv_label_set_long_mode(slot.secondary_lbl, LV_LABEL_LONG_DOT);
-  lv_obj_align(slot.secondary_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
-  layout_button_label_with_secondary(slot.text_lbl, slot.secondary_lbl);
+  if (slot.text_lbl) lv_obj_align(slot.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+  const bool show_icon = normalize_climate_number_display(
+    cfg_option_value(config.options, "number_display")) == "icon";
+  climate_layout_card_secondary(slot.secondary_lbl,
+    show_icon ? slot.icon_lbl : slot.sensor_container);
 }
 
 inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,

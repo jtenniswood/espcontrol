@@ -1082,10 +1082,23 @@ inline void climate_layout_card_sensor(lv_obj_t *sensor_container) {
   lv_obj_move_foreground(sensor_container);
 }
 
-inline void climate_layout_card_label(lv_obj_t *label_lbl,
-                                     lv_obj_t *secondary_lbl = nullptr) {
+inline void climate_layout_card_label(lv_obj_t *label_lbl) {
   if (!label_lbl) return;
-  layout_button_label_with_secondary(label_lbl, secondary_lbl);
+  layout_button_label_with_secondary(label_lbl, nullptr);
+}
+
+inline void climate_layout_card_secondary(lv_obj_t *secondary_lbl,
+                                          lv_obj_t *value_container) {
+  if (!secondary_lbl) return;
+  lv_obj_set_width(secondary_lbl, lv_pct(100));
+  lv_label_set_long_mode(secondary_lbl, LV_LABEL_LONG_DOT);
+  if (value_container) {
+    lv_obj_align_to(secondary_lbl, value_container, LV_ALIGN_OUT_BOTTOM_LEFT,
+                    0, 2);
+  } else {
+    lv_obj_align(secondary_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
+  }
+  lv_obj_move_foreground(secondary_lbl);
 }
 
 inline void climate_update_card(ClimateControlCtx *ctx) {
@@ -1128,16 +1141,15 @@ inline void climate_update_card(ClimateControlCtx *ctx) {
         if (!ctx->secondary_label.empty())
           secondary_value = ctx->secondary_label + ": " + secondary_value;
         lv_label_set_display_text(ctx->secondary_lbl, secondary_value.c_str());
-        lv_obj_set_width(ctx->secondary_lbl, lv_pct(100));
-        lv_label_set_long_mode(ctx->secondary_lbl, LV_LABEL_LONG_DOT);
-        lv_obj_align(ctx->secondary_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
         lv_obj_clear_flag(ctx->secondary_lbl, LV_OBJ_FLAG_HIDDEN);
+        climate_layout_card_secondary(
+          ctx->secondary_lbl, show_icon ? ctx->icon_lbl : ctx->sensor_container);
       } else {
         lv_label_set_display_text(ctx->secondary_lbl, "");
         lv_obj_add_flag(ctx->secondary_lbl, LV_OBJ_FLAG_HIDDEN);
       }
     }
-    climate_layout_card_label(ctx->label_lbl, ctx->secondary_lbl);
+    climate_layout_card_label(ctx->label_lbl);
   }
   if (ctx->btn) {
     set_card_checked_state(ctx->btn, climate_is_active(ctx));
