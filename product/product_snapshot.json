@@ -6017,7 +6017,7 @@
           },
           {
             "name": "image_modal_mode",
-            "label": "Expanded Image",
+            "label": "Image fit",
             "kind": "choice",
             "values": [
               "fill",

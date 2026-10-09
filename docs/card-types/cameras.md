@@ -25,9 +25,11 @@ Before starting, confirm the `camera` or `image` entity shows an image in Home A
 2. Enter a **Camera Entity**, for example `camera.front_door`.
 3. Enter an optional **Name** below Camera Entity. It appears in the clock bar when the larger view is open. Turn on **Show Label** in Card Settings to show the same name on the card. If Name is blank, EspControl uses the entity name from Home Assistant.
 4. Optionally turn on **Show Icon** and choose an icon. The default icon is **Camera**.
-5. Choose **Expanded Image**:
-   - **Crop to fit** fills the expanded view and may crop the edges.
+5. Under **Image Settings**, choose **Image fit**:
+   - **Crop to fit** fills the card and expanded view and may crop the edges.
    - **Show full image** keeps the whole image visible and may leave empty space around it.
+
+This setting applies to both the grid card and the larger view opened by tapping it. Changing the setting reloads the image so **Show full image** can restore edges previously cropped from the card.
 
 The card accepts both `camera.*` and `image.*` entities, so `image.latest_package_snapshot` works as well as `camera.front_door`.
 
@@ -111,7 +113,7 @@ Camera performance also depends on the connection between the panel and Home Ass
 | The card says **Configure** | Add a `camera.*` or `image.*` entity to the card. |
 | The card says **Unavailable** | Check that the entity exists in Home Assistant and has an image available. |
 | The card says **Too many** | Remove or move some Camera cards so the panel has enough image download slots. |
-| The picture is cropped | Change **Expanded Image** to **Show full image**. |
+| The picture is cropped | Change **Image fit** to **Show full image**. |
 | The picture does not update often | For a camera, enable periodic refresh or set an activity trigger, and check snapshot freshness in Home Assistant. For an image entity, check that its image-update timestamp changes. |
 | Images remain slow on several cards | Check the panel's WiFi signal and Home Assistant response time. On supported Ethernet models, consider the advanced wired firmware option. |
 

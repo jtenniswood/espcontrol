@@ -85,6 +85,7 @@ const CARD_TYPE_PICKER_DETAILS: Readonly<Record<string, PickerDetails>> = {
 
 const CARD_TYPE_PICKER_DEFAULTS: Readonly<Record<string, string>> = {
   climate: "climate_control",
+  fan_speed: "fan_control",
   light_brightness: "light_control",
   media_control: "media",
 };

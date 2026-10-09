@@ -38,6 +38,8 @@ using StringRef = std::string;
 namespace artwork_image {
 struct ArtworkImage {
  bool available = true; int released = 0, cancelled = 0;
+ uint32_t fit_background_color = 0;
+ void set_fit_background_color(uint32_t color) { fit_background_color = color; }
  bool has_image() { return available; }
  int get_width() { return 320; } int get_height() { return 240; }
  void release() { available = false; ++released; }
@@ -49,18 +51,19 @@ namespace espcontrol { enum class DisplayTakeoverKind { INTERACTIVE }; }
 using Image = esphome::artwork_image::ArtworkImage;
 struct Timer { void *data; uint32_t delay; };
 using lv_timer_t = Timer;
-struct Widget { bool hidden = false; };
+struct Widget { bool hidden = false; uint32_t background = 0; int invalidations = 0; };
 struct Resettable { void reset() {} };
 struct ImageCardCtx {
  bool active = true, media_artwork = false, image_ready = true;
  bool camera_entity_unavailable = false, download_active = false, modal_fit = false;
+ uint32_t fit_background_color = 0;
  bool diagnostics_enabled = false; uint32_t last_modal_request_started_ms = 0;
  uint8_t camera_download_errors = 0, startup_download_errors = 0;
  uint32_t camera_retry_after_ms = 0, next_download_retry_ms = 0;
  uint32_t access_token_request_started_ms = 0;
  uint32_t next_picture_retry_ms = 0, last_download_completed_ms = 0;
  Image *image = nullptr, *modal_image = nullptr;
- Widget *widget = nullptr;
+ Widget *widget = nullptr, *btn = nullptr;
  std::string entity_id = "camera.front", source_url = "snapshot", url = "snapshot";
  std::string modal_url = "snapshot", modal_source_url = "snapshot";
  std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover;
@@ -85,6 +88,7 @@ struct ImageCardModalUi {
 struct ImageCardModalCache {
  Image *image = nullptr; std::string entity_id, source_url;
  uint32_t cached_at_ms = 0; bool modal_fit = false; Timer *expiry_timer = nullptr; bool ready = false;
+ uint32_t fit_background_color = 0;
 };
 ImageCardModalUi ui;
 ImageCardModalCache cache;
@@ -137,7 +141,10 @@ constexpr int LV_OBJ_FLAG_HIDDEN = 1;
 bool lv_obj_has_flag(Widget *w, int) { return w->hidden; }
 void lv_obj_move_background(Widget *) {}
 void lv_obj_move_foreground(Widget *) {}
-void lv_obj_invalidate(Widget *) {}
+constexpr int LV_PART_MAIN = 0;
+uint32_t lv_color_hex(uint32_t color) { return color; }
+void lv_obj_set_style_bg_color(Widget *w, uint32_t color, int) { w->background = color; }
+void lv_obj_invalidate(Widget *w) { ++w->invalidations; }
 void image_card_set_widget_source(Widget *, Image *) {}
 void image_card_hide_modal_loading(ImageCardCtx *) { modal_status.clear(); }
 bool image_card_has_separate_modal_image(ImageCardCtx *ctx) { return ctx->modal_image != ctx->image; }
@@ -189,7 +196,8 @@ for name in ('image_card_startup_retry_active', 'image_card_schedule_picture_ret
              'image_card_modal_cache_matches', 'image_card_modal_needs_open_refresh',
              'image_card_apply_entity_state', 'subscribe_image_card_entity_state',
              'image_card_refresh_entity_state',
-             'image_card_hide_modal', 'image_card_apply_modal_downloaded'):
+             'image_card_hide_modal', 'image_card_apply_modal_downloaded',
+             'image_card_refresh_theme'):
     source += definition(name) + '\n'
 # The polling callback checks get_url as well as availability.
 source = source.replace('bool has_image() {', 'std::string get_url() { return "snapshot"; }\n bool has_image() {')
@@ -231,6 +239,46 @@ void screensaver_download_error() {
 ''' + error_callback + '\n}\n'
 source += r'''
 int main() {
+ // Follow runtime palette changes on tiles, open expanded images, and a
+ // retained modal cache. Crop and media artwork remain image-owned.
+ for (bool fit : {false, true}) {
+  for (bool media : {false, true}) {
+   Image tile, expanded;
+   Widget button, tile_widget, expanded_widget;
+   auto &card = contexts[0]; card = {};
+   card.image = &tile; card.modal_image = &expanded;
+   card.btn = &button; card.widget = &tile_widget;
+   card.modal_fit = fit; card.media_artwork = media;
+   ui = {}; ui.active = &card; ui.image_widget = &expanded_widget;
+   cache = {}; cache.image = &expanded;
+   cache.ready = fit && !media; cache.modal_fit = fit;
+   for (uint32_t color : {0x212121u, 0xffffffu, 0x212121u}) {
+    image_card_refresh_theme(color);
+    if (fit && !media) {
+     assert(card.fit_background_color == color && tile.fit_background_color == color);
+     assert(expanded.fit_background_color == color && cache.fit_background_color == color);
+     assert(button.background == color && tile_widget.invalidations > 0);
+     assert(expanded_widget.invalidations > 0);
+    } else {
+     assert(card.fit_background_color == 0 && tile.fit_background_color == 0);
+     assert(expanded.fit_background_color == 0 && button.background == 0);
+     assert(tile_widget.invalidations == 0 && expanded_widget.invalidations == 0);
+    }
+    const int invalidations = tile_widget.invalidations;
+    image_card_refresh_theme(color);
+    assert(tile_widget.invalidations == invalidations);
+    assert(tile.released == 0 && expanded.released == 0);
+    assert(tile.cancelled == 0 && expanded.cancelled == 0);
+   }
+   if (fit && !media) {
+    card.active = false; ui.active = nullptr;
+    image_card_refresh_theme(0xffffff);
+    assert(expanded.fit_background_color == 0xffffff && cache.fit_background_color == 0xffffff);
+    assert(tile.fit_background_color == 0x212121);
+   }
+  }
+ }
+ contexts[0] = {}; ui = {}; cache = {};
  // Pending camera cards leave the startup spinner after its grace period,
  // retry missing HA state, and preserve an already displayed image.
  ImageCardCtx waiting;
@@ -289,6 +337,11 @@ int main() {
  assert(!image_card_modal_needs_open_refresh(&ctx));
  ctx.modal_fit = true; assert(image_card_modal_needs_open_refresh(&ctx));
  ctx.modal_fit = false;
+ ctx.fit_background_color = 0x304860;
+ assert(!image_card_modal_cache_matches(&ctx));
+ cache.fit_background_color = ctx.fit_background_color;
+ assert(image_card_modal_cache_matches(&ctx));
+ ctx.fit_background_color = cache.fit_background_color = 0;
  image_card_schedule_modal_cache_expiry(&modal);
  assert(cache.expiry_timer->delay == 2100);
  now_ms = 75000;

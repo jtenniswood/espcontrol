@@ -638,6 +638,7 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
       this->decode_offset_x_ = offset_x;
       this->decode_offset_y_ = offset_y;
       memset(this->decode_buffer_, 0, new_size);
+      this->fill_fit_background_();
       ESP_LOGI(TAG, "Artwork fit: source=%dx%d target=%dx%d content=%dx%d offset=%d,%d",
                width_in, height_in, width, height, content_width, content_height, offset_x, offset_y);
       return new_size;
@@ -666,9 +667,58 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
   this->decode_offset_x_ = offset_x;
   this->decode_offset_y_ = offset_y;
   memset(this->decode_buffer_, 0, new_size);
+  this->fill_fit_background_();
   ESP_LOGI(TAG, "Artwork fit: source=%dx%d target=%dx%d content=%dx%d offset=%d,%d",
            width_in, height_in, width, height, content_width, content_height, offset_x, offset_y);
   return new_size;
+}
+
+void ArtworkImage::set_fit_background_color(uint32_t color) {
+  color &= 0xFFFFFF;
+  if (color == this->fit_background_color_) return;
+  this->fit_background_color_ = color;
+  // Repaint only the margins. Keep the photo, including a partially decoded
+  // replacement, intact when the runtime palette changes.
+  if (this->fill_fit_background_(this->buffer_, this->buffer_width_, this->buffer_height_,
+                                this->buffer_content_width_, this->buffer_content_height_,
+                                this->buffer_offset_x_, this->buffer_offset_y_)) {
+    this->invalidate_lvgl_cache_();
+  }
+  this->fill_fit_background_();
+}
+
+void ArtworkImage::fill_fit_background_() {
+  if (this->resize_mode_ != ImageResizeMode::FIT) return;
+  this->fill_fit_background_(this->decode_buffer_, this->decode_buffer_width_, this->decode_buffer_height_,
+                             this->decode_content_width_, this->decode_content_height_,
+                             this->decode_offset_x_, this->decode_offset_y_);
+}
+
+bool ArtworkImage::fill_fit_background_(uint8_t *buffer, int width, int height,
+                                       int content_width, int content_height,
+                                       int offset_x, int offset_y) {
+  if (!buffer || width <= 0 || height <= 0 || content_width <= 0 || content_height <= 0 ||
+      (content_width >= width && content_height >= height)) return false;
+  const int left = std::max(0, offset_x);
+  const int top = std::max(0, offset_y);
+  const int right = std::min(width, offset_x + content_width);
+  const int bottom = std::min(height, offset_y + content_height);
+  const Color background(
+      static_cast<uint8_t>((this->fit_background_color_ >> 16) & 0xFF),
+      static_cast<uint8_t>((this->fit_background_color_ >> 8) & 0xFF),
+      static_cast<uint8_t>(this->fit_background_color_ & 0xFF), 0xFF);
+  auto fill_row = [this, buffer, width, &background](int y, int start_x, int end_x) {
+    for (int x = start_x; x < end_x; x++) this->draw_pixel_to_buffer_(buffer, width, x, y, background);
+  };
+  for (int y = 0; y < height; y++) {
+    if (y < top || y >= bottom) {
+      fill_row(y, 0, width);
+    } else {
+      fill_row(y, 0, left);
+      fill_row(y, right, width);
+    }
+  }
+  return true;
 }
 
 std::string ArtworkImage::request_update_url(const std::string &url, int max_source_dim) {
@@ -1502,10 +1552,14 @@ void ArtworkImage::draw_pixel_(int x, int y, Color color) {
     ESP_LOGE(TAG, "Tried to paint a pixel (%d,%d) outside the image!", x, y);
     return;
   }
-  uint32_t pos = this->get_position_(x, y);
+  this->draw_pixel_to_buffer_(this->decode_buffer_, this->decode_buffer_width_, x, y, color);
+}
+
+void ArtworkImage::draw_pixel_to_buffer_(uint8_t *buffer, int width, int x, int y, Color color) {
+  uint32_t pos = (x + y * width) * this->get_bpp() / 8;
   switch (this->type_) {
     case ImageType::IMAGE_TYPE_BINARY: {
-      const uint32_t width_8 = ((this->decode_buffer_width_ + 7u) / 8u) * 8u;
+      const uint32_t width_8 = ((width + 7u) / 8u) * 8u;
       pos = x + y * width_8;
       auto bitno = 0x80 >> (pos % 8u);
       pos /= 8u;
@@ -1513,9 +1567,9 @@ void ArtworkImage::draw_pixel_(int x, int y, Color color) {
       if (this->has_transparency() && color.w < 0x80)
         on = false;
       if (on) {
-        this->decode_buffer_[pos] |= bitno;
+        buffer[pos] |= bitno;
       } else {
-        this->decode_buffer_[pos] &= ~bitno;
+        buffer[pos] &= ~bitno;
       }
       break;
     }
@@ -1532,31 +1586,31 @@ void ArtworkImage::draw_pixel_(int x, int y, Color color) {
         if (color.w != 0xFF)
           gray = color.w;
       }
-      this->decode_buffer_[pos] = gray;
+      buffer[pos] = gray;
       break;
     }
     case ImageType::IMAGE_TYPE_RGB565: {
       this->map_chroma_key(color);
       uint16_t col565 = display::ColorUtil::color_to_565(color);
       if (this->is_big_endian_) {
-        this->decode_buffer_[pos + 0] = static_cast<uint8_t>((col565 >> 8) & 0xFF);
-        this->decode_buffer_[pos + 1] = static_cast<uint8_t>(col565 & 0xFF);
+        buffer[pos + 0] = static_cast<uint8_t>((col565 >> 8) & 0xFF);
+        buffer[pos + 1] = static_cast<uint8_t>(col565 & 0xFF);
       } else {
-        this->decode_buffer_[pos + 0] = static_cast<uint8_t>(col565 & 0xFF);
-        this->decode_buffer_[pos + 1] = static_cast<uint8_t>((col565 >> 8) & 0xFF);
+        buffer[pos + 0] = static_cast<uint8_t>(col565 & 0xFF);
+        buffer[pos + 1] = static_cast<uint8_t>((col565 >> 8) & 0xFF);
       }
       if (this->transparency_ == image::TRANSPARENCY_ALPHA_CHANNEL) {
-        this->decode_buffer_[pos + 2] = color.w;
+        buffer[pos + 2] = color.w;
       }
       break;
     }
     case ImageType::IMAGE_TYPE_RGB: {
       this->map_chroma_key(color);
-      this->decode_buffer_[pos + 0] = color.r;
-      this->decode_buffer_[pos + 1] = color.g;
-      this->decode_buffer_[pos + 2] = color.b;
+      buffer[pos + 0] = color.r;
+      buffer[pos + 1] = color.g;
+      buffer[pos + 2] = color.b;
       if (this->transparency_ == image::TRANSPARENCY_ALPHA_CHANNEL) {
-        this->decode_buffer_[pos + 3] = color.w;
+        buffer[pos + 3] = color.w;
       }
       break;
     }
