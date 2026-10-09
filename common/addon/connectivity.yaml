@@ -14,6 +14,10 @@
 #   loading → main_page    (skips setup screens)
 # =============================================================================
 
+# Include wireless provisioning in development and adopted device packages,
+# as well as release build entry points. An AP alone has no setup DNS/form.
+captive_portal:
+
 # ESP Web Tools can provision WiFi through USB after installation as well.
 improv_serial:
 

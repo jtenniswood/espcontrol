@@ -40,6 +40,11 @@ required. Custom AP names/passwords are retained. USB Improv provisioning is
 enabled in profiles with setup support; deployed S3 OTA profiles retain their
 existing smaller configuration.
 
+The shared `connectivity.yaml` enables the captive portal for development and
+adopted device packages as well as factory builds. A setup AP without this
+component has no setup DNS server, network scan form or credential-save route.
+Package-expansion regressions cover all development and factory entry points.
+
 C/C++ files use ESPHome's GPLv3 license; Python uses its MIT license (`LICENSE`).
 The page originated in esphome/esphome-webserver under MIT (`PORTAL_LICENSE`).
 Recheck these patches when upgrading ESPHome and remove the local component
