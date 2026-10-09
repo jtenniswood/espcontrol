@@ -25,6 +25,7 @@ stub = r'''
 #include "gif_image.h"
 #include "esphome/core/log.h"
 #define ESP_LOGW(tag, ...) ((void)(tag))
+#define ESP_LOGI(tag, ...) ((void)(tag))
 namespace esphome::artwork_image {
 struct ArtworkImage {
   std::unique_ptr<GifDecoder> animation_;
@@ -163,6 +164,21 @@ int main() {
     assert(!image.animation_ && !gif_slots[0] && !gif_playing && image.active == last);
     assert(fake_esphome_allocator::external_pointers.empty());
   }
+  // A valid GIF with a large comment exercises complete-file ownership and
+  // first-frame decoding above the previous 2 MiB limit without a huge fixture.
+  auto large_file = file;
+  std::vector<uint8_t> comment{0x21, 0xfe};
+  while (comment.size() < 3 * 1024 * 1024) {
+    comment.push_back(255); comment.insert(comment.end(), 255, 'a');
+  }
+  comment.push_back(0);
+  const size_t palette_end = 13 + ((file[10] & 0x80) ? 3u * (1u << ((file[10] & 7) + 1)) : 0);
+  large_file.insert(large_file.begin() + palette_end, comment.begin(), comment.end());
+  ArtworkImage large_image; load(large_image, large_file, false);
+  assert(std::equal(large_image.active.begin(), large_image.active.end(), expected.begin() + 6));
+  large_image.stop_animation_();
+  assert(fake_esphome_allocator::external_pointers.empty());
+
   // Exhausted PSRAM fails cleanly; it must not fall back to internal RAM.
   ArtworkImage image;
   GifDecoder decoder(&image); decoder.prepare(file.size());

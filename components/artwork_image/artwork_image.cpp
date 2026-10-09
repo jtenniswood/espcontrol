@@ -189,6 +189,10 @@ struct P4PipelineTransfer {
   size_t size{0};
   size_t capacity{0};
   bool allocation_failed{false};
+  bool size_limit_exceeded{false};
+  bool gif_response{false};
+  uint8_t signature[6]{};
+  size_t signature_size{0};
   uint32_t request_started_ms{0};
   uint32_t response_ready_ms{0};
   uint32_t first_byte_ms{0};
@@ -380,30 +384,59 @@ class P4ImagePipeline {
     if (evt->event_id == HTTP_EVENT_ON_HEADER && transfer->response_ready_ms == 0) {
       transfer->response_ready_ms = now;
     }
+    if (evt->event_id == HTTP_EVENT_ON_HEADER && evt->header_key && evt->header_value &&
+        strcasecmp(evt->header_key, "content-type") == 0 &&
+        strncasecmp(evt->header_value, "image/gif", 9) == 0 &&
+        (evt->header_value[9] == '\0' || evt->header_value[9] == ';')) {
+      transfer->gif_response = true;
+    }
     if (evt->event_id != HTTP_EVENT_ON_DATA || evt->data_len <= 0) return ESP_OK;
     if (transfer->first_byte_ms == 0) transfer->first_byte_ms = now;
     size_t incoming = static_cast<size_t>(evt->data_len);
-    if (incoming > ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE - transfer->size) {
-      transfer->allocation_failed = true;
+    const size_t signature_bytes = std::min(incoming, sizeof(transfer->signature) - transfer->signature_size);
+    memcpy(transfer->signature + transfer->signature_size, evt->data, signature_bytes);
+    transfer->signature_size += signature_bytes;
+    transfer->gif_response = transfer->gif_response ||
+        image_pipeline_gif_signature(transfer->signature, transfer->signature_size);
+    const size_t maximum = image_pipeline_transfer_limit(true, transfer->gif_response);
+    if (incoming > maximum - transfer->size) {
+      transfer->size_limit_exceeded = true;
+      ESP_LOGE(TAG, "Image response exceeds download limit: bytes=%zu incoming=%zu limit=%zu",
+               transfer->size, incoming, maximum);
       return ESP_FAIL;
     }
     size_t required = transfer->size + incoming;
+    size_t reported_content_length = 0;
+    if (evt->client != nullptr) {
+      const int64_t length = esp_http_client_get_content_length(evt->client);
+      if (length > 0) reported_content_length = static_cast<uint64_t>(length) > maximum
+          ? maximum + 1 : static_cast<size_t>(length);
+    }
+    // Wait for the six signature bytes if the first network chunk was split.
+    // A correct GIF Content-Type can establish the limit even earlier.
+    if (!transfer->gif_response && transfer->signature_size < sizeof(transfer->signature))
+      reported_content_length = 0;
+    if (reported_content_length > maximum) {
+      transfer->size_limit_exceeded = true;
+      ESP_LOGE(TAG, "Image response exceeds download limit: content_length=%lld limit=%zu format=%s",
+               static_cast<long long>(esp_http_client_get_content_length(evt->client)), maximum,
+               transfer->gif_response ? "GIF" : "image");
+      return ESP_FAIL;
+    }
     if (required > transfer->capacity) {
-      size_t reported_content_length = 0;
-      if (transfer->capacity == 0 && evt->client != nullptr) {
-        int64_t content_length = esp_http_client_get_content_length(evt->client);
-        if (content_length > 0) {
-          reported_content_length = static_cast<uint64_t>(content_length) >
-                                            ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE
-                                        ? ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE + 1
-                                        : static_cast<size_t>(content_length);
-        }
-      }
       size_t next_capacity = p4_pipeline_transfer_capacity(
           transfer->capacity, required, reported_content_length, 16384,
-          ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE);
+          maximum);
       if (next_capacity == 0) {
         transfer->allocation_failed = true;
+        return ESP_FAIL;
+      }
+      if (transfer->gif_response && !background_transfer_psram_growth_preserves_reserve(
+            heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT),
+            transfer->capacity, next_capacity, IMAGE_PIPELINE_P4_GIF_PSRAM_HEADROOM_BYTES)) {
+        transfer->allocation_failed = true;
+        ESP_LOGE(TAG, "GIF download cannot preserve %zu bytes of free PSRAM",
+                 IMAGE_PIPELINE_P4_GIF_PSRAM_HEADROOM_BYTES);
         return ESP_FAIL;
       }
       uint8_t *resized = static_cast<uint8_t *>(heap_caps_realloc(
@@ -482,7 +515,8 @@ class P4ImagePipeline {
     }
 
     result->status = esp_http_client_get_status_code(this->client_);
-    result->error = transfer.allocation_failed ? ESP_ERR_NO_MEM : error;
+    result->error = transfer.size_limit_exceeded ? ESP_ERR_INVALID_SIZE
+        : transfer.allocation_failed ? ESP_ERR_NO_MEM : error;
     result->data = transfer.data;
     result->size = transfer.size;
     result->request_started_ms = transfer.request_started_ms;
@@ -800,6 +834,7 @@ bool ArtworkImage::start_service_update_(uint32_t generation) {
 
 void ArtworkImage::start_update_() {
   this->stop_animation_();
+  this->max_download_buffer_size_ = ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE;
   this->transfer_stamp_ = TransferObserver::instance().begin(this->url_, this->service_generation_);
   this->transfer_failure_ = TransferFailure::CONTENT;
   this->last_http_status_ = 0;
@@ -1505,6 +1540,8 @@ bool ArtworkImage::consume_p4_pipeline_result_() {
     this->complete_service_request_();
     return true;
   }
+  this->max_download_buffer_size_ = image_pipeline_transfer_limit(
+      true, image_pipeline_gif_signature(result->data, result->size));
   if (result->size < 12 || result->size > this->max_download_buffer_size_) {
     ESP_LOGE(TAG, "ESP32-P4 image pipeline returned an invalid image size: %zu", result->size);
     delete result;
@@ -1761,6 +1798,10 @@ bool ArtworkImage::create_decoder_(ImageFormat format, size_t total_size) {
   this->gif_decoding_ = false;
 #ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
   if (format == ImageFormat::GIF) {
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
+    this->max_download_buffer_size_ = image_pipeline_transfer_limit(true, true);
+    if (total_size == 0 && this->downloader_) total_size = this->get_sane_content_length_();
+#endif
     this->decoder_ = make_unique<GifDecoder>(this);
     this->gif_decoding_ = true;
   }
@@ -1946,6 +1987,15 @@ bool ArtworkImage::ensure_download_buffer_capacity_() {
   }
 
   ESP_LOGD(TAG, "Growing download buffer from %zu to %zu bytes", current_size, target_size);
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
+  if (this->gif_decoding_ && !background_transfer_psram_growth_preserves_reserve(
+        heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT),
+        current_size, target_size, IMAGE_PIPELINE_P4_GIF_PSRAM_HEADROOM_BYTES)) {
+    ESP_LOGE(TAG, "GIF download cannot preserve %zu bytes of free PSRAM",
+             IMAGE_PIPELINE_P4_GIF_PSRAM_HEADROOM_BYTES);
+    return false;
+  }
+#endif
   bool resized = this->download_buffer_.resize(target_size) == target_size;
   if (resized) this->peak_download_buffer_size_ = std::max(this->peak_download_buffer_size_, target_size);
   return resized;

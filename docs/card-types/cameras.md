@@ -40,8 +40,9 @@ when the image is hidden, another modal covers it, or the panel enters its
 screensaver. The expanded view takes priority over card playback.
 
 One GIF animation plays at a time, with up to two GIFs retained for playback.
-Additional GIFs show a still frame. GIF files must fit within the 2 MiB download
-limit and have at most 409,600 source pixels (for example, 640 × 640), with neither
+Additional GIFs show a still frame. GIF files can be up to 8 MiB on ESP32-P4 panels,
+subject to available memory; the 4-inch S3 keeps its 2 MiB download limit. GIFs
+must have at most 409,600 source pixels (for example, 640 × 640), with neither
 side exceeding 1,024 pixels, and have no more than 512 frames per playthrough.
 Frame delays are honoured with a minimum of 100 ms;
 large images may play more slowly. Camera and Cover Art screensavers show a still

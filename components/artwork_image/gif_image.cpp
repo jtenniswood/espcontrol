@@ -21,11 +21,13 @@ int GifDecoder::decode(uint8_t *buffer, size_t size) {
   // HTTP responses. Keep staging bytes unread until the first frame is ready.
   if (!download_size_ || size < download_size_) return 0;
   if (!initialized_) {
-    uint16_t width, height;
+    uint16_t width = 0, height = 0;
     if (!gif::Player::dimensions(buffer, size, width, height)) {
-      ESP_LOGE(TAG, "Invalid GIF or GIF exceeds the 409600-pixel source limit");
+      ESP_LOGE(TAG, "Invalid GIF or source exceeds limits: source=%ux%u compressed=%zu max_pixels=%zu",
+               width, height, size, gif::Player::MAX_PIXELS);
       return DECODE_ERROR_UNSUPPORTED_FORMAT;
     }
+    ESP_LOGI(TAG, "GIF source: %ux%u compressed=%zu bytes", width, height, size);
     player_ = player_allocator_.allocate(1);
     if (!player_) return DECODE_ERROR_OUT_OF_MEMORY;
     new (player_) gif::Player();

@@ -14,7 +14,8 @@ class Player {
  public:
   enum class Result { MORE, FRAME, END, ERROR };
   static constexpr size_t MAX_PIXELS = 640 * 640;
-  static constexpr size_t MAX_BYTES = 2 * 1024 * 1024;
+  // The transfer pipeline applies the tighter 2 MiB limit on ESP32-S3.
+  static constexpr size_t MAX_BYTES = 8 * 1024 * 1024;
   static constexpr uint32_t MIN_DELAY_MS = 100;
 
   static bool dimensions(const uint8_t *data, size_t size, uint16_t &width, uint16_t &height) {

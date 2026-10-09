@@ -263,6 +263,21 @@ int main() {
   assert(p4_pipeline_transfer_capacity(1024 * 1024, 3 * 1024 * 1024, 0, 16384,
                                        2 * 1024 * 1024) == 0);
 
+  // An animated radar GIF can exceed the still-image transfer budget. Only
+  // P4 GIFs receive the larger bound; ordinary images and S3 keep 2 MiB.
+  using esphome::artwork_image::image_pipeline_transfer_limit;
+  using esphome::artwork_image::image_pipeline_gif_signature;
+  assert(image_pipeline_transfer_limit(true, true) == 8 * 1024 * 1024);
+  assert(image_pipeline_transfer_limit(true, false) == 2 * 1024 * 1024);
+  assert(image_pipeline_transfer_limit(false, true) == 2 * 1024 * 1024);
+  assert(image_pipeline_transfer_limit(false, false) == 2 * 1024 * 1024);
+  assert(p4_pipeline_transfer_capacity(0, 4096, 3 * 1024 * 1024, 16384,
+                                      image_pipeline_transfer_limit(true, true)) == 3 * 1024 * 1024);
+  const uint8_t gif[] = {'G', 'I', 'F', '8', '9', 'a'};
+  assert(image_pipeline_gif_signature(gif, sizeof(gif)));
+  assert(!image_pipeline_gif_signature(gif, 5));
+  assert(!image_pipeline_gif_signature(nullptr, 6));
+
   // Reusing a ready tile at a different card size keeps the preview but must
   // force a correctly sized refresh. Stable or not-yet-ready targets do not.
   assert(image_pipeline_cached_target_changed(true, 320, 240, 480, 320));

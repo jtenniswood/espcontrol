@@ -394,6 +394,9 @@ add_test(NAME gif_player_test COMMAND gif_player_test)
 add_test(NAME gif_runtime_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/gif_runtime_test.py)
+add_test(NAME p4_gif_transfer_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/p4_gif_transfer_test.py)
 
 add_executable(p4_scaling_test p4_scaling_test.cpp)
 target_compile_features(p4_scaling_test PRIVATE cxx_std_17)

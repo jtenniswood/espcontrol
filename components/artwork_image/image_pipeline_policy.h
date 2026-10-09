@@ -17,6 +17,19 @@ constexpr int IMAGE_PIPELINE_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX = 480;
 constexpr size_t IMAGE_PIPELINE_S3_COMPRESSED_TRANSFER_ALLOWANCE_BYTES =
     128 * 1024;
 constexpr size_t IMAGE_PIPELINE_S3_PSRAM_HEADROOM_BYTES = 96 * 1024;
+constexpr size_t IMAGE_PIPELINE_STANDARD_TRANSFER_LIMIT_BYTES = 2 * 1024 * 1024;
+constexpr size_t IMAGE_PIPELINE_P4_GIF_TRANSFER_LIMIT_BYTES = 8 * 1024 * 1024;
+constexpr size_t IMAGE_PIPELINE_P4_GIF_PSRAM_HEADROOM_BYTES = 4 * 1024 * 1024;
+
+inline bool image_pipeline_gif_signature(const uint8_t *data, size_t size) {
+  return data && size >= 6 && data[0] == 'G' && data[1] == 'I' && data[2] == 'F' &&
+         data[3] == '8' && (data[4] == '7' || data[4] == '9') && data[5] == 'a';
+}
+
+constexpr size_t image_pipeline_transfer_limit(bool p4, bool gif) {
+  return p4 && gif ? IMAGE_PIPELINE_P4_GIF_TRANSFER_LIMIT_BYTES
+                  : IMAGE_PIPELINE_STANDARD_TRANSFER_LIMIT_BYTES;
+}
 
 constexpr int image_pipeline_modal_max_target_side(bool constrained) {
   return constrained ? IMAGE_PIPELINE_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX
