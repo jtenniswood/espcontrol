@@ -43,6 +43,8 @@ import {
     var CLIMATE_LABEL_DISPLAY_OPTION: any = cardContractOptionName("label_display");
     var CLIMATE_NUMBER_DISPLAY_OPTION: any = cardContractOptionName("number_display");
     var CLIMATE_TEMPERATURE_STEP_OPTION: any = cardContractOptionName("temperature_step");
+    var MEDIA_CONTROL_TABS_OPTION: any = cardContractOptionName("media_tabs");
+    var MEDIA_POWER_ENTITY_OPTION: any = cardContractOptionName("power_entity");
     var MEDIA_VOLUME_MAX_OPTION: any = cardContractOptionName("volume_max");
     var MEDIA_SPEAKER_GROUP_ENTITY_OPTION: any = cardContractOptionName("speaker_group_entity");
     var MEDIA_LABEL_DISPLAY_OPTION: any = cardContractOptionName("label_display");
@@ -137,6 +139,8 @@ export {
     CLIMATE_LABEL_DISPLAY_OPTION,
     CLIMATE_NUMBER_DISPLAY_OPTION,
     CLIMATE_TEMPERATURE_STEP_OPTION,
+    MEDIA_CONTROL_TABS_OPTION,
+    MEDIA_POWER_ENTITY_OPTION,
     MEDIA_VOLUME_MAX_OPTION,
     MEDIA_SPEAKER_GROUP_ENTITY_OPTION,
     MEDIA_LABEL_DISPLAY_OPTION,

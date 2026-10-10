@@ -5,15 +5,8 @@
 #include "cover_art.h"
 #include "media_playback_modes.h"
 #include "media_power_capability.h"
+#include "media_control_tabs.h"
 #include "media_metadata_policy.h"
-
-enum class MediaControlTab : uint8_t {
-  CONTROLS = 0,
-  PROGRESS = 1,
-  VOLUME = 2,
-  SPEAKERS = 3,
-  POWER = 4,
-};
 
 constexpr lv_coord_t MEDIA_CONTROL_VOLUME_VALUE_Y_REF_PX = -8;
 constexpr int MEDIA_CONTROL_SPEAKERS_TAB_ICON_SCALE_PERCENT = 80;
@@ -22,6 +15,11 @@ constexpr lv_opa_t MEDIA_CONTROL_SPEAKER_VOLUME_TEXT_OPA = 204;
 
 struct MediaControlCtx {
   std::string entity_id;
+  std::string power_entity;
+  espcontrol::media::ControlTabs control_tabs = espcontrol::media::parse_control_tabs("");
+  std::string power_state_text = "unknown";
+  bool power_state_known = false;
+  bool power_available = false;
   std::string label;
   std::string friendly_name;
   std::string state_text = "unknown";
@@ -109,6 +107,7 @@ struct MediaControlModalUi {
   lv_obj_t *panel = nullptr;
   lv_obj_t *back_btn = nullptr;
   lv_obj_t *tab_row = nullptr;
+  espcontrol::media::ControlTabs visible_tabs;
   lv_obj_t *controls_tab = nullptr;
   lv_obj_t *progress_tab = nullptr;
   lv_obj_t *volume_tab = nullptr;
@@ -219,8 +218,7 @@ inline bool media_control_progress_supported(MediaControlCtx *ctx) {
 }
 
 inline bool media_control_power_supported(MediaControlCtx *ctx) {
-  return ctx && espcontrol::media::power_toggle_supported(
-    ctx->supported_features_known, ctx->supported_features);
+  return ctx && !ctx->power_entity.empty();
 }
 
 inline bool media_control_shuffle_supported(MediaControlCtx *ctx) {
@@ -235,18 +233,18 @@ inline bool media_control_repeat_supported(MediaControlCtx *ctx) {
 
 inline espcontrol::media::PowerCommand media_control_power_command(
     MediaControlCtx *ctx) {
-  if (!ctx) return espcontrol::media::PowerCommand::NONE;
+  if (!media_control_power_supported(ctx)) return espcontrol::media::PowerCommand::NONE;
   return espcontrol::media::power_command(
-    ctx->supported_features_known, ctx->supported_features,
-    ctx->state_known, ctx->available, ctx->state_text);
+    true, espcontrol::media::SUPPORT_TURN_ON | espcontrol::media::SUPPORT_TURN_OFF,
+    ctx->power_state_known, ctx->power_available, ctx->power_state_text);
 }
 
 inline void media_control_send_power_action(MediaControlCtx *ctx) {
   const auto command = media_control_power_command(ctx);
   if (command == espcontrol::media::PowerCommand::TURN_ON) {
-    send_media_player_action(ctx->entity_id, "media_player.turn_on");
+    send_media_player_action(ctx->power_entity, "homeassistant.turn_on");
   } else if (command == espcontrol::media::PowerCommand::TURN_OFF) {
-    send_media_player_action(ctx->entity_id, "media_player.turn_off");
+    send_media_player_action(ctx->power_entity, "homeassistant.turn_off");
   }
 }
 
@@ -315,6 +313,52 @@ inline void media_control_clear_tab_content();
 inline void media_control_refresh_speakers(MediaControlCtx *ctx);
 inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx);
 inline size_t media_control_group_size(MediaControlCtx *ctx);
+inline espcontrol::media::ControlTabs media_control_visible_tabs(MediaControlCtx *ctx) {
+  if (!ctx) return espcontrol::media::parse_control_tabs("controls");
+  if (ctx->group_only) return espcontrol::media::parse_control_tabs("speakers");
+  if (!ctx->available) {
+    espcontrol::media::ControlTabs visible;
+    if (ctx->control_tabs.contains(MediaControlTab::POWER) &&
+        media_control_power_command(ctx) != espcontrol::media::PowerCommand::NONE) {
+      visible.add(MediaControlTab::POWER);
+    }
+    return visible;
+  }
+  return espcontrol::media::visible_control_tabs(ctx->control_tabs,
+    media_control_progress_supported(ctx),
+    media_group_speaker_tab_available(ctx->grouping_supported, ctx->speaker_discovery_available,
+                                     media_control_group_size(ctx) > 1),
+    media_control_power_supported(ctx));
+}
+
+inline bool media_control_tab_layout_changed(MediaControlCtx *ctx) {
+  const MediaControlModalUi &ui = media_control_modal_ui();
+  return ctx && ui.active == ctx && !(ui.visible_tabs == media_control_visible_tabs(ctx));
+}
+
+inline bool media_control_can_open_modal(MediaControlCtx *ctx) {
+  if (!ctx || (ctx->group_only && !ctx->grouping_supported)) return false;
+  return ctx->available || (!ctx->group_only &&
+    media_control_visible_tabs(ctx).contains(MediaControlTab::POWER));
+}
+
+inline void media_control_refresh_open_modal(MediaControlCtx *ctx, bool layout_needed = false) {
+  if (!ctx || media_control_modal_ui().active != ctx) return;
+  if (!media_control_can_open_modal(ctx)) media_control_hide_modal();
+  else if (layout_needed || media_control_tab_layout_changed(ctx)) media_control_layout_modal(ctx);
+  else media_control_refresh_modal(ctx);
+}
+
+inline void media_control_ensure_visible_tab(MediaControlCtx *ctx) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || ui.active != ctx) return;
+  const auto visible = media_control_visible_tabs(ctx);
+  if (visible.contains(ui.tab)) return;
+  if (ui.tab == MediaControlTab::SPEAKERS) ui.speaker_generation++;
+  media_control_clear_tab_content();
+  ui.tab = visible.tabs[0];
+}
+
 inline bool media_control_group_volume_percent(MediaControlCtx *ctx, int *pct);
 inline void media_control_apply_group_volume_percent(MediaControlCtx *ctx, int pct,
                                                       bool send_action = true);
@@ -333,6 +377,7 @@ inline void media_playback_detach_now_playing(MediaNowPlayingCtx *ctx);
 inline void media_cover_art_unregister_theme(MediaNowPlayingCtx *ctx);
 inline void media_playback_detach_slider(SliderCtx *ctx);
 inline void media_playback_attach_control(MediaPlaybackState *state, MediaControlCtx *ctx);
+inline void media_playback_attach_power_control(MediaPlaybackState *state, MediaControlCtx *ctx);
 inline void media_playback_subscribe_playback_state(MediaPlaybackState *state);
 inline void media_playback_subscribe_content(MediaPlaybackState *state);
 inline void media_playback_subscribe_metadata(MediaPlaybackState *state);
@@ -417,6 +462,13 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
   media_playback_subscribe_metadata(state);
   media_playback_subscribe_volume(state);
   media_playback_subscribe_modes(state);
+  if (!ctx->power_entity.empty()) {
+    MediaPlaybackState *power = media_playback_ensure_state(ctx->power_entity);
+    if (power) {
+      media_playback_attach_power_control(power, ctx);
+      media_playback_subscribe_playback_state(power);
+    }
+  }
   if (!ctx->speaker_group_entity.empty()) {
     media_playback_subscribe_grouping(state);
     media_playback_subscribe_speaker_discovery(state, ctx->speaker_group_entity);
@@ -587,7 +639,8 @@ inline void media_set_pending_seek_position(SliderCtx *ctx, int value) {
   media_apply_position(ctx);
 }
 
-constexpr int MEDIA_PLAYBACK_STATE_MAX = MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS;
+// Cover Art can use distinct main, secondary artwork, and optional power entities.
+constexpr int MEDIA_PLAYBACK_STATE_MAX = 3 * (MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
 constexpr size_t MEDIA_PLAYBACK_STATE_CONSUMERS_MAX =
   static_cast<size_t>(MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
 
@@ -664,6 +717,7 @@ struct MediaPlaybackState {
   lv_timer_t *progress_timer = nullptr;
   std::vector<SliderCtx *> sliders;
   std::vector<MediaControlCtx *> controls;
+  std::vector<MediaControlCtx *> power_controls;
   std::vector<MediaVolumeCtx *> volumes;
   std::vector<MediaPlaylistCtx *> playlists;
   std::vector<MediaNowPlayingCtx *> now_playing;
@@ -701,6 +755,7 @@ inline void media_playback_detach_control(MediaControlCtx *ctx) {
   for (MediaPlaybackState *state : media_playback_states()) {
     if (!state) continue;
     media_playback_erase_consumer(state->controls, ctx);
+    media_playback_erase_consumer(state->power_controls, ctx);
     media_playback_refresh_progress_timer(state);
   }
 }
@@ -826,6 +881,7 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->artwork_content_mask = 0;
   std::vector<SliderCtx *>().swap(state->sliders);
   std::vector<MediaControlCtx *>().swap(state->controls);
+  std::vector<MediaControlCtx *>().swap(state->power_controls);
   std::vector<MediaVolumeCtx *>().swap(state->volumes);
   std::vector<MediaPlaylistCtx *>().swap(state->playlists);
   std::vector<MediaNowPlayingCtx *>().swap(state->now_playing);
@@ -1332,8 +1388,7 @@ inline void media_playback_apply_state_to_volumes(MediaPlaybackState *state) {
 inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
                                                   MediaControlCtx *ctx) {
   if (!state || !ctx) return;
-  const bool previous_power_supported = espcontrol::media::power_toggle_supported(
-    ctx->supported_features_known, ctx->supported_features);
+  const bool previous_power_supported = media_control_power_supported(ctx);
   const bool previous_shuffle_supported = media_control_shuffle_supported(ctx);
   const bool previous_repeat_supported = media_control_repeat_supported(ctx);
   const bool state_text_changed = state->has_state
@@ -1385,8 +1440,7 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
   ctx->volume_known = state->volume_known;
   ctx->supported_features_known = state->supported_features_known;
   ctx->supported_features = state->supported_features;
-  const bool power_supported = espcontrol::media::power_toggle_supported(
-    ctx->supported_features_known, ctx->supported_features);
+  const bool power_supported = media_control_power_supported(ctx);
   const bool shuffle_supported = media_control_shuffle_supported(ctx);
   const bool repeat_supported = media_control_repeat_supported(ctx);
   ctx->shuffle_known = shuffle_supported && state->shuffle_known;
@@ -1464,14 +1518,13 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
                      : ctx->highlight_playing && ctx->playing));
   media_control_refresh_parent_card(ctx);
   MediaControlModalUi &ui = media_control_modal_ui();
-  if (ui.active == ctx && !ctx->available) {
-    media_control_hide_modal();
-  } else if (ui.active == ctx) {
+  if (ui.active == ctx) {
     const bool mode_capabilities_changed =
       previous_shuffle_supported != shuffle_supported ||
       previous_repeat_supported != repeat_supported;
     bool layout_needed = metadata_changed || grouping_changed ||
                          previous_power_supported != power_supported ||
+                         media_control_tab_layout_changed(ctx) ||
                          mode_capabilities_changed;
     if (mode_capabilities_changed && ui.tab == MediaControlTab::CONTROLS) {
       media_control_clear_tab_content();
@@ -1485,8 +1538,7 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
     if (!power_supported && ui.tab == MediaControlTab::POWER) {
       layout_needed = true;
     }
-    if (layout_needed) media_control_layout_modal(ctx);
-    else media_control_refresh_modal(ctx);
+    media_control_refresh_open_modal(ctx, layout_needed);
   }
 }
 
@@ -1497,7 +1549,37 @@ inline void media_playback_apply_state_to_controls(MediaPlaybackState *state) {
   }
 }
 
+inline void media_playback_apply_state_to_power_control(MediaPlaybackState *state,
+                                                       MediaControlCtx *ctx) {
+  if (!state || !ctx) return;
+  ctx->power_state_known = state->has_state;
+  ctx->power_available = state->available;
+  ctx->power_state_text = state->state_text;
+  if (media_control_modal_ui().active == ctx) media_control_refresh_open_modal(ctx);
+  else media_control_refresh_power(ctx);
+}
+
+inline void media_playback_attach_power_control(MediaPlaybackState *state, MediaControlCtx *ctx) {
+  if (!state || !ctx) return;
+  for (MediaControlCtx *existing : state->power_controls) {
+    if (existing == ctx) {
+      media_playback_apply_state_to_power_control(state, ctx);
+      return;
+    }
+  }
+  if (state->power_controls.size() < MEDIA_PLAYBACK_STATE_CONSUMERS_MAX) {
+    state->power_controls.push_back(ctx);
+    media_playback_apply_state_to_power_control(state, ctx);
+    return;
+  }
+  ESP_LOGW("media", "No shared media power slot available for %s", state->entity_id.c_str());
+}
+
 inline void media_playback_apply_state_to_consumers(MediaPlaybackState *state) {
+  if (!state) return;
+  for (MediaControlCtx *ctx : state->power_controls) {
+    media_playback_apply_state_to_power_control(state, ctx);
+  }
   media_playback_apply_state_to_sliders(state);
   media_playback_apply_state_to_buttons(state);
   media_playback_apply_state_to_now_playing(state);
@@ -2842,8 +2924,7 @@ inline void media_control_refresh_power(MediaControlCtx *ctx) {
   if (!ctx || ui.active != ctx || !ui.power_btn) return;
   const auto command = media_control_power_command(ctx);
   const bool interactive = command != espcontrol::media::PowerCommand::NONE;
-  const bool on = ctx->state_known && ctx->available && ctx->state_text != "off" &&
-                  ctx->state_text != "unknown" && ctx->state_text != "unavailable";
+  const bool on = command == espcontrol::media::PowerCommand::TURN_OFF;
   const uint32_t bg_color = on ? ctx->accent_color
                                : theme_display_color(current_theme().surface_primary);
   theme_set_content_background(ui.power_btn, on);
@@ -2857,7 +2938,7 @@ inline void media_control_refresh_power(MediaControlCtx *ctx) {
                                          : current_theme().text_primary), LV_PART_MAIN);
   }
   if (ui.power_status_lbl) {
-    const std::string status = !ctx->state_known
+    const std::string status = !interactive
       ? espcontrol_i18n(std::string("Unknown"))
       : (on ? espcontrol_i18n(std::string("On"))
             : espcontrol_i18n(std::string("Off")));
@@ -2981,33 +3062,25 @@ inline void media_control_style_tab(lv_obj_t *btn, bool active) {
 
 inline void media_control_apply_tab_visibility() {
   MediaControlModalUi &ui = media_control_modal_ui();
-  bool progress_supported = media_control_progress_supported(ui.active);
-  bool speakers_supported = ui.active && media_group_speaker_tab_available(
-    ui.active->grouping_supported, ui.active->speaker_discovery_available,
-    media_control_group_size(ui.active) > 1);
-  bool power_supported = media_control_power_supported(ui.active);
-  bool show_controls = ui.tab == MediaControlTab::CONTROLS;
-  bool show_progress = progress_supported && ui.tab == MediaControlTab::PROGRESS;
-  bool show_volume = ui.tab == MediaControlTab::VOLUME;
-  bool show_speakers = ui.tab == MediaControlTab::SPEAKERS;
-  bool show_power = power_supported && ui.tab == MediaControlTab::POWER;
-  if (ui.progress_tab) {
-    if (progress_supported) lv_obj_clear_flag(ui.progress_tab, LV_OBJ_FLAG_HIDDEN);
-    else lv_obj_add_flag(ui.progress_tab, LV_OBJ_FLAG_HIDDEN);
+  if (!ui.active) return;
+  const auto visible = media_control_visible_tabs(ui.active);
+  if (ui.tab_row) {
+    if (!ui.active->group_only && visible.count > 1) lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.tab_row, LV_OBJ_FLAG_HIDDEN);
   }
-  if (ui.speakers_tab) {
-    if (speakers_supported) lv_obj_clear_flag(ui.speakers_tab, LV_OBJ_FLAG_HIDDEN);
-    else lv_obj_add_flag(ui.speakers_tab, LV_OBJ_FLAG_HIDDEN);
+  const struct { lv_obj_t *btn; MediaControlTab tab; } buttons[] = {
+    {ui.controls_tab, MediaControlTab::CONTROLS},
+    {ui.progress_tab, MediaControlTab::PROGRESS},
+    {ui.volume_tab, MediaControlTab::VOLUME},
+    {ui.speakers_tab, MediaControlTab::SPEAKERS},
+    {ui.power_tab, MediaControlTab::POWER},
+  };
+  for (const auto &button : buttons) {
+    if (!button.btn) continue;
+    if (visible.contains(button.tab)) lv_obj_clear_flag(button.btn, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(button.btn, LV_OBJ_FLAG_HIDDEN);
+    media_control_style_tab(button.btn, button.tab == ui.tab);
   }
-  if (ui.power_tab) {
-    if (power_supported) lv_obj_clear_flag(ui.power_tab, LV_OBJ_FLAG_HIDDEN);
-    else lv_obj_add_flag(ui.power_tab, LV_OBJ_FLAG_HIDDEN);
-  }
-  media_control_style_tab(ui.controls_tab, show_controls);
-  media_control_style_tab(ui.progress_tab, show_progress);
-  media_control_style_tab(ui.volume_tab, show_volume);
-  media_control_style_tab(ui.speakers_tab, show_speakers);
-  media_control_style_tab(ui.power_tab, show_power);
 }
 
 inline void media_control_layout_modal(MediaControlCtx *ctx);
@@ -3023,14 +3096,7 @@ inline lv_obj_t *media_control_create_tab_button(lv_obj_t *parent, const char *i
     MediaControlTab tab = static_cast<MediaControlTab>(
       reinterpret_cast<uintptr_t>(lv_event_get_user_data(e)));
     MediaControlModalUi &ui = media_control_modal_ui();
-    if (tab == MediaControlTab::PROGRESS &&
-        !media_control_progress_supported(ui.active)) {
-      return;
-    }
-    if (tab == MediaControlTab::POWER &&
-        !media_control_power_supported(ui.active)) {
-      return;
-    }
+    if (!media_control_visible_tabs(ui.active).contains(tab)) return;
     if (ui.tab == tab) return;
     if (ui.tab == MediaControlTab::SPEAKERS) {
       ui.speaker_generation++;
@@ -3072,11 +3138,7 @@ inline bool media_control_ensure_speakers_tab_button(MediaControlCtx *ctx) {
     media_control_group_size(ctx) > 1);
   if (!supported) {
     if (ui.speakers_tab) lv_obj_add_flag(ui.speakers_tab, LV_OBJ_FLAG_HIDDEN);
-    if (ui.tab == MediaControlTab::SPEAKERS) {
-      ui.speaker_generation++;
-      media_control_clear_tab_content();
-      ui.tab = MediaControlTab::CONTROLS;
-    }
+    media_control_ensure_visible_tab(ctx);
     return true;
   }
   if (!ui.speakers_tab) {
@@ -4227,14 +4289,7 @@ inline void media_control_clear_tab_content() {
 inline void media_control_ensure_tab_content(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
-  if (ui.tab == MediaControlTab::PROGRESS && !media_control_progress_supported(ctx)) {
-    media_control_clear_tab_content();
-    ui.tab = MediaControlTab::CONTROLS;
-  }
-  if (ui.tab == MediaControlTab::POWER && !media_control_power_supported(ctx)) {
-    media_control_clear_tab_content();
-    ui.tab = MediaControlTab::CONTROLS;
-  }
+  media_control_ensure_visible_tab(ctx);
   if (ui.tab == MediaControlTab::CONTROLS) {
     ui.controls_box = ui.content_box;
     media_control_create_controls_tab_content(ctx);
@@ -4266,16 +4321,10 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   control_modal_apply_panel_layout(ui.overlay, ui.panel, layout, control_modal_card_radius(ctx->btn));
   control_modal_apply_back_button_layout(ui.back_btn, layout);
 
-  const bool progress_supported = media_control_progress_supported(ctx);
-  const bool speakers_supported = media_group_speaker_tab_available(
-    ctx->grouping_supported, ctx->speaker_discovery_available,
-    media_control_group_size(ctx) > 1);
-  const bool power_supported = media_control_power_supported(ctx);
-  const bool show_tabs = !ctx->group_only;
-  const int media_control_tab_count = show_tabs
-    ? espcontrol::media::media_control_tab_count(
-        progress_supported, power_supported, speakers_supported)
-    : 0;
+  const auto visible_tabs = media_control_visible_tabs(ctx);
+  ui.visible_tabs = visible_tabs;
+  const bool show_tabs = !ctx->group_only && visible_tabs.count > 1;
+  const int media_control_tab_count = show_tabs ? visible_tabs.count : 0;
   ControlModalTabLayout tabs_layout = {};
   if (show_tabs) {
     tabs_layout = control_modal_calc_tab_layout(layout, media_control_tab_count, true);
@@ -4288,14 +4337,19 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     MediaControlTab tab;
   };
   MediaControlTabLayout tabs[5] = {};
-  int tab_count = 0;
-  tabs[tab_count++] = {ui.controls_tab, MediaControlTab::CONTROLS};
-  if (progress_supported) tabs[tab_count++] = {ui.progress_tab, MediaControlTab::PROGRESS};
-  tabs[tab_count++] = {ui.volume_tab, MediaControlTab::VOLUME};
-  if (speakers_supported) tabs[tab_count++] = {ui.speakers_tab, MediaControlTab::SPEAKERS};
-  if (power_supported) tabs[tab_count++] = {ui.power_tab, MediaControlTab::POWER};
-  for (int i = 0; i < tab_count; i++) {
-    if (!tabs[i].btn) continue;
+  const int tab_count = visible_tabs.count;
+  for (int i = 0; i < tab_count; ++i) {
+    const auto tab = visible_tabs.tabs[i];
+    lv_obj_t *btn = nullptr;
+    switch (tab) {
+      case MediaControlTab::CONTROLS: btn = ui.controls_tab; break;
+      case MediaControlTab::PROGRESS: btn = ui.progress_tab; break;
+      case MediaControlTab::VOLUME: btn = ui.volume_tab; break;
+      case MediaControlTab::SPEAKERS: btn = ui.speakers_tab; break;
+      case MediaControlTab::POWER: btn = ui.power_tab; break;
+    }
+    tabs[i] = {btn, tab};
+    if (!show_tabs || !tabs[i].btn) continue;
     bool active = tabs[i].tab == ui.tab;
     control_modal_layout_tab_button(tabs[i].btn, layout, tabs_layout, i, active);
     if (tabs[i].tab == MediaControlTab::SPEAKERS) {
@@ -4311,8 +4365,8 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     }
   }
 
-  // A standalone Speaker Group has no tab bar, so its list would otherwise
-  // start behind the Back control. Keep the first row below that touch target.
+  // Without a tab bar, keep content below the Back control. This also covers
+  // a standalone Speaker Group or a popup with one visible tab.
   lv_coord_t content_safe_top = 0;
   if (!show_tabs) {
     content_safe_top = layout.back_inset_y + layout.back_size +
@@ -4585,6 +4639,9 @@ inline MediaControlCtx *create_media_control_context(
     int width_compensation_percent) {
   MediaControlCtx *ctx = new MediaControlCtx();
   ctx->entity_id = p.entity;
+  const auto media_config = espcontrol::media::decode_config_v1(p);
+  ctx->power_entity = media_config.power_entity;
+  ctx->control_tabs = media_config.control_tabs;
   ctx->label = media_control_card_label(p);
   ctx->cover_art_mode = media_card_mode(p.sensor) == "cover_art";
   ctx->max_pct = media_volume_max_percent(p);
@@ -4610,10 +4667,6 @@ inline MediaControlCtx *create_media_control_context(
   return ctx;
 }
 
-inline bool media_control_can_open_modal(MediaControlCtx *ctx) {
-  return !(!ctx || !ctx->available || (ctx->group_only && !ctx->grouping_supported));
-}
-
 inline void media_control_open_modal(MediaControlCtx *ctx) {
   if (!media_control_can_open_modal(ctx)) return;
   ControlModalShell shell = control_modal_open_shell(
@@ -4628,7 +4681,7 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   ui.back_btn = shell.close_btn;
   static uint32_t speaker_generation = 1;
   ui.speaker_generation = speaker_generation++;
-  ui.tab = ctx->group_only ? MediaControlTab::SPEAKERS : MediaControlTab::CONTROLS;
+  ui.tab = media_control_visible_tabs(ctx).tabs[0];
   if (!ui.panel) return;
   if (!ctx->group_only) set_clock_bar_modal_label(ctx->label);
 

@@ -1,8 +1,9 @@
-import { preserveCardColorOptions } from "../model/config_primitives";
+import { normalizeMediaControlTabs } from "../model/media_control_tabs";
 import type { DeviceConfig } from "../state/types";
 import {
     configOptionEnabled,
     configOptionValue,
+    preserveCardColorOptions,
     setConfigOption,
     setConfigOptionValue,
 } from "../model/config_primitives";
@@ -16,6 +17,8 @@ import {
     MEDIA_PLAYLIST_CONTENT_TYPE_OPTION,
     MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION,
     MEDIA_SPEAKER_GROUP_ENTITY_OPTION,
+    MEDIA_CONTROL_TABS_OPTION,
+    MEDIA_POWER_ENTITY_OPTION,
     MEDIA_VOLUME_MAX_OPTION,
     cardContractOptionDefaultValue,
     cardContractOptionSpec,
@@ -151,10 +154,34 @@ export function createConfigMediaOptionsFeature(
             parsed = spec.max;
         return String(parsed);
     }
+    function mediaControlTabDefinitions() {
+        return [
+            { value: "controls", label: "Controls" },
+            { value: "progress", label: "Track Position" },
+            { value: "volume", label: "Volume" },
+            { value: "speakers", label: "Speakers" },
+            { value: "power", label: "Power" },
+        ];
+    }
+    function mediaControlTabs(b: any) {
+        return normalizeMediaControlTabs(configOptionValue(b && b.options, MEDIA_CONTROL_TABS_OPTION), !!mediaPowerEntity(b));
+    }
+    function normalizeMediaModalOptions(out: string, options: string) {
+        var powerEntity: any = mediaPowerEntity({ options });
+        if (powerEntity) out = setConfigOptionValue(out, MEDIA_POWER_ENTITY_OPTION, powerEntity);
+        var tabs: any = normalizeMediaControlTabs(configOptionValue(options, MEDIA_CONTROL_TABS_OPTION), !!powerEntity).join("|");
+        if (tabs !== normalizeMediaControlTabs("", !!powerEntity).join("|")) out = setConfigOptionValue(out, MEDIA_CONTROL_TABS_OPTION, tabs);
+        return out;
+    }
+    function setMediaControlTabs(b: any, tabs: string[]) {
+        b.options = setConfigOptionValue(b.options, MEDIA_CONTROL_TABS_OPTION, tabs.join("|"));
+        b.options = normalizeMediaOptions(b.options, b.sensor);
+        return b.options;
+    }
     function normalizeMediaOptions(this: any, options?: any, mode?: any) {
         mode = mediaEditorMode(mode);
         if (mode === "control_modal") {
-            var controlOut: any = "";
+            var controlOut: any = normalizeMediaModalOptions("", options);
             var controlGroupEntity: any = normalizeMediaSpeakerGroupEntity(configOptionValue(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
             if (controlGroupEntity) {
                 controlOut = setConfigOptionValue(controlOut, MEDIA_SPEAKER_GROUP_ENTITY_OPTION, controlGroupEntity);
@@ -217,7 +244,7 @@ export function createConfigMediaOptionsFeature(
             if (coverArtMaxVolume !== cardContractOptionDefaultValue("media", MEDIA_VOLUME_MAX_OPTION, "100")) {
                 coverArtOut = setConfigOptionValue(coverArtOut, MEDIA_VOLUME_MAX_OPTION, coverArtMaxVolume);
             }
-            return preserveCardColorOptions(options, coverArtOut);
+            return preserveCardColorOptions(options, normalizeMediaModalOptions(coverArtOut, options));
         }
         if (mode !== "volume" && mode !== "position")
             return preserveCardColorOptions(options, "");
@@ -262,6 +289,22 @@ export function createConfigMediaOptionsFeature(
         var spec: any = cardContractOptionSpec("media", MEDIA_NUMBER_DISPLAY_OPTION);
         var values: any = spec && spec.values ? spec.values : ["icon", "volume"];
         return values.indexOf(value) >= 0 ? value : "icon";
+    }
+    function mediaPowerEntity(this: any, b?: any) {
+        return String(configOptionValue(b && b.options, MEDIA_POWER_ENTITY_OPTION) || "").trim();
+    }
+    function setMediaPowerEntity(this: any, b?: any, value?: any) {
+        if (!b) return "";
+        var previous: string = mediaPowerEntity(b);
+        var next: string = String(value || "").trim();
+        b.options = setConfigOptionValue(b.options, MEDIA_POWER_ENTITY_OPTION, next);
+        if (next && !previous) {
+            var tabs: any = mediaControlTabs(b);
+            if (tabs.indexOf("power") < 0) tabs.push("power");
+            b.options = setConfigOptionValue(b.options, MEDIA_CONTROL_TABS_OPTION, tabs.join("|"));
+        }
+        b.options = normalizeMediaOptions(b.options, b.sensor);
+        return b.options;
     }
     function mediaVolumeMax(this: any, b?: any) {
         return normalizeMediaVolumeMax(configOptionValue(b && b.options, MEDIA_VOLUME_MAX_OPTION));
@@ -368,6 +411,11 @@ export function createConfigMediaOptionsFeature(
         setMediaCoverArtSecondaryEntity,
         normalizeMediaLabelDisplayMode,
         normalizeMediaNumberDisplayMode,
+        mediaControlTabDefinitions,
+        mediaControlTabs,
+        setMediaControlTabs,
+        mediaPowerEntity,
+        setMediaPowerEntity,
         mediaVolumeMax,
         setMediaVolumeMax,
         normalizeMediaSpeakerGroupEntity,

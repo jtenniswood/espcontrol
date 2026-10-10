@@ -142,6 +142,48 @@
       ]
     },
     {
+      "name": "power_entity",
+      "label": "Power Entity",
+      "kind": "text",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "sensor",
+          "operator": "in",
+          "value": [
+            "control_modal",
+            "cover_art"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "media_tabs",
+      "label": "Modal Tabs",
+      "kind": "text",
+      "values": [
+        "controls",
+        "progress",
+        "volume",
+        "speakers",
+        "power"
+      ],
+      "defaultValue": "controls|progress|volume|speakers",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "sensor",
+          "operator": "in",
+          "value": [
+            "control_modal",
+            "cover_art"
+          ]
+        }
+      ]
+    },
+    {
       "name": "label_display",
       "label": "Label Display",
       "kind": "choice",
@@ -285,6 +327,8 @@
       "cover_art_details",
       "cover_art_secondary_entity",
       "speaker_group_entity",
+      "power_entity",
+      "media_tabs",
       "volume_max",
       "playlist_content_id",
       "playlist_content_type",

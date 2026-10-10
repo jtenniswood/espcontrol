@@ -48,3 +48,29 @@ test("card colours survive other editor option changes", () => {
     assert(normalize().includes(colour));
   }
 });
+
+test("media colours and modal settings survive changes in both views", () => {
+  const codec = loadCodec();
+  const colour = "card_off_color=6633B9";
+  for (const mode of ["control_modal", "cover_art"]) {
+    const media = {
+      type: "media", sensor: mode,
+      options: colour + ",power_entity=switch.tv,media_tabs=power|volume|controls",
+    };
+    media.options = codec.normalizeMediaOptions(media.options, mode);
+    assert(media.options.includes(colour));
+    assert(media.options.includes("power_entity=switch.tv"));
+    assert(media.options.includes("media_tabs=power%7Cvolume%7Ccontrols"));
+    if (mode === "cover_art") {
+      codec.setMediaCoverArtDetailsEnabled(media, true);
+      assert(media.options.includes(colour));
+      assert(media.options.includes("power_entity=switch.tv"));
+      assert(media.options.includes("media_tabs=power%7Cvolume%7Ccontrols"));
+    }
+    media.sensor = mode === "cover_art" ? "control_modal" : "cover_art";
+    media.options = codec.normalizeMediaOptions(media.options, media.sensor);
+    assert(media.options.includes(colour));
+    assert(media.options.includes("power_entity=switch.tv"));
+    assert(media.options.includes("media_tabs=power%7Cvolume%7Ccontrols"));
+  }
+});

@@ -193,5 +193,215 @@
       "precision": "",
       "options": "playlist_content_id=morning,playlist_player_source=Kitchen"
     }
+  },
+  {
+    "name": "all controls preserves separate TV power alongside speaker options",
+    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;volume_max=65,power_entity=media_player.tv,speaker_group_entity=sensor.speakers",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "control_modal",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "power_entity=media_player.tv,speaker_group_entity=sensor.speakers,volume_max=65"
+    }
+  },
+  {
+    "name": "all controls preserves a power switch",
+    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;power_entity=switch.tv",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "control_modal",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "power_entity=switch.tv"
+    }
+  },
+  {
+    "name": "empty power override uses the main player",
+    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;power_entity=%20%20",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "control_modal",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "power override is omitted outside media modals",
+    "input": "media_player.sonos;Living Room;Auto;Auto;play_pause;;media;;power_entity=media_player.tv",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "play_pause",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "media tab order is preserved with separate power",
+    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;media_tabs=power%7Cvolume%7Ccontrols,power_entity=media_player.tv",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "control_modal",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "power_entity=media_player.tv,media_tabs=power%7Cvolume%7Ccontrols"
+    }
+  },
+  {
+    "name": "media default tabs are omitted",
+    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;media_tabs=controls%7Cprogress%7Cvolume%7Cspeakers%7Cpower",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "control_modal",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "media tabs discard duplicate and unknown values",
+    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;media_tabs=%20power%20%7Cpower%7Cinvalid%7Cvolume,power_entity=media_player.tv",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "control_modal",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "power_entity=media_player.tv,media_tabs=power%7Cvolume"
+    }
+  },
+  {
+    "name": "invalid media tabs retain a usable control",
+    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;media_tabs=invalid%7Cinvalid",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "control_modal",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "media_tabs=controls"
+    }
+  },
+  {
+    "name": "cover art preserves power and ordered modal tabs",
+    "input": "media_player.sonos;Living Room;Auto;Auto;cover_art;;media;;media_tabs=power%7Cvolume,power_entity=media_player.tv,cover_art_details,volume_max=65",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "cover_art",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "cover_art_details,volume_max=65,power_entity=media_player.tv,media_tabs=power%7Cvolume"
+    }
+  },
+  {
+    "name": "other media modes omit modal tabs",
+    "input": "media_player.sonos;Living Room;Auto;Auto;volume;;media;;media_tabs=power%7Cvolume,power_entity=media_player.tv",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "volume",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "Power needs an optional entity even when explicitly selected",
+    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;media_tabs=power%7Cvolume",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "control_modal",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "media_tabs=volume"
+    }
+  },
+  {
+    "name": "Cover Art Power needs an optional entity",
+    "input": "media_player.sonos;Living Room;Auto;Auto;cover_art;;media;;media_tabs=power",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "cover_art",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "media_tabs=controls"
+    }
+  },
+  {
+    "name": "power entity adds Power to the default tabs",
+    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;power_entity=media_player.tv,media_tabs=controls%7Cprogress%7Cvolume%7Cspeakers%7Cpower",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "control_modal",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "power_entity=media_player.tv"
+    }
+  },
+  {
+    "name": "an explicitly hidden Power tab stays hidden with an entity",
+    "input": "media_player.sonos;Living Room;Auto;Auto;cover_art;;media;;power_entity=media_player.tv,media_tabs=controls%7Cprogress%7Cvolume%7Cspeakers",
+    "expected": {
+      "entity": "media_player.sonos",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "cover_art",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "power_entity=media_player.tv,media_tabs=controls%7Cprogress%7Cvolume%7Cspeakers"
+    }
   }
 ]

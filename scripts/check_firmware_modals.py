@@ -715,6 +715,8 @@ def firmware_media_modal_power_tab_errors(root: Path) -> list[str]:
         return ["components/espcontrol/button_grid_media.h: keep the conditional media Power tab"]
 
     text = path.read_text(encoding="utf-8")
+    tabs_path = path.parent / "media_control_tabs.h"
+    if tabs_path.exists(): text += tabs_path.read_text(encoding="utf-8")
     required = (
         "POWER = 4",
         "media_control_power_supported",
@@ -722,14 +724,14 @@ def firmware_media_modal_power_tab_errors(root: Path) -> list[str]:
         "media_control_create_power_tab_content",
         "media_control_refresh_power",
         "previous_power_supported != power_supported",
-        "ui.tab == MediaControlTab::POWER && !media_control_power_supported(ctx)",
-        "ui.tab = MediaControlTab::CONTROLS",
-        "media_control_tab_count(",
+        "media_control_ensure_visible_tab(ctx)",
+        "ui.tab = visible.tabs[0]",
+        "visible_tabs.count",
         "MediaControlTabLayout tabs[5]",
     )
     if any(needle not in text for needle in required):
         return [
-            "components/espcontrol/button_grid_media.h: keep the conditional media Power tab, dynamic relayout, and safe Controls fallback"
+            "components/espcontrol/button_grid_media.h: keep the conditional media Power tab, dynamic relayout, and safe visible-tab fallback"
         ]
     return []
 
@@ -1510,10 +1512,10 @@ def valid_media_modal_power_tab_text() -> str:
         "inline void media_control_create_power_tab_content() {}\n"
         "inline void media_control_refresh_power() {}\n"
         "bool changed = previous_power_supported != power_supported;\n"
-        "if (ui.tab == MediaControlTab::POWER && !media_control_power_supported(ctx)) {\n"
-        "  ui.tab = MediaControlTab::CONTROLS;\n"
+        "media_control_ensure_visible_tab(ctx);\n"
+        "  ui.tab = visible.tabs[0];\n"
         "}\n"
-        "int count = media_control_tab_count(progress_supported, power_supported);\n"
+        "int count = visible_tabs.count;\n"
         "MediaControlTabLayout tabs[5] = {};\n"
     )
 
@@ -2285,9 +2287,9 @@ def run_self_test() -> int:
     expect_media_modal_power_tab_errors(
         "media Power tab loses safe fallback",
         valid_media_modal_power_tab_text().replace(
-            "  ui.tab = MediaControlTab::CONTROLS;\n", ""
+            "  ui.tab = visible.tabs[0];\n", ""
         ),
-        ("safe Controls fallback",),
+        ("safe visible-tab fallback",),
     )
     valid_playback_modes = valid_media_modal_playback_mode_text()
     expect_media_modal_playback_mode_errors(

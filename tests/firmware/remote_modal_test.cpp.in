@@ -7,6 +7,7 @@
 #include "button_grid_limits.h"
 #include "button_grid_card_runtime.h"
 #include "card_modal_target.h"
+#include "media_control_tabs.h"
 #include "../artwork_image/image_pipeline_policy.h"
 
 struct ParsedCfg {
@@ -19,6 +20,7 @@ struct Runtime {
   bool media_artwork = false;
   std::string entity_id;
   bool available = true;
+  bool power_usable = false;
   bool group_only = false;
   bool grouping_supported = true;
   bool active = true;
@@ -127,6 +129,11 @@ bool option_select_entity_supported(const std::string &entity) { return entity.f
 bool fan_light_supported(Runtime *) { return false; }
 struct Tabs { int count = 1; };
 Tabs fan_control_visible_tabs(Runtime *) { return {}; }
+espcontrol::media::ControlTabs media_control_visible_tabs(Runtime *runtime) {
+  espcontrol::media::ControlTabs tabs;
+  if (runtime->power_usable) tabs.add(MediaControlTab::POWER);
+  return tabs;
+}
 Runtime *grid_media_control_runtime_for_owner(lv_obj_t *button) { return button ? button->runtime : nullptr; }
 bool wifi_qr_payload_from_config(const ParsedCfg &config, std::string *payload,
                                  std::string *ssid, std::string *) {
@@ -202,6 +209,11 @@ int main() {
       runtime.group_only = true; runtime.grouping_supported = false;
       assert(!espcontrol_open_modal(test.entity, true));
       runtime.group_only = false;
+      runtime.available = false; runtime.power_usable = true;
+      assert(espcontrol_open_modal(test.entity, true) && opened == &runtime);
+      runtime.power_usable = false;
+      assert(!espcontrol_open_modal(test.entity, true));
+      runtime.available = true;
     }
     if (test.kind == ControlModalKind::IMAGE_CARD) {
       runtime.image_ready = false; runtime.source_url = "http://example.test/image";

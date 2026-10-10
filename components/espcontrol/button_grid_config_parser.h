@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "button_grid_card_runtime.h"
+#include "media_control_tabs.h"
 #include "button_grid_string.h"
 #include "camera_refresh_policy.h"
 #include "button_grid_saved_config_action_generated.h"
@@ -59,6 +60,8 @@ constexpr const char *LABEL_DISPLAY_OPTION = card_runtime_option_name_label_disp
 constexpr const char *NUMBER_DISPLAY_OPTION = card_runtime_option_name_number_display();
 constexpr const char *TEMPERATURE_STEP_OPTION = card_runtime_option_name_temperature_step();
 constexpr const char *VOLUME_MAX_OPTION = card_runtime_option_name_volume_max();
+constexpr const char *MEDIA_CONTROL_TABS_OPTION = card_runtime_option_name_media_tabs();
+constexpr const char *MEDIA_POWER_ENTITY_OPTION = card_runtime_option_name_power_entity();
 constexpr const char *MEDIA_SPEAKER_GROUP_ENTITY_OPTION = card_runtime_option_name_speaker_group_entity();
 constexpr const char *MEDIA_PLAYLIST_CONTENT_ID_OPTION = card_runtime_option_name_playlist_content_id();
 constexpr const char *MEDIA_PLAYLIST_CONTENT_TYPE_OPTION = card_runtime_option_name_playlist_content_type();
@@ -364,14 +367,30 @@ inline std::string trim_saved_option_value(const std::string &value) {
 
 #include "button_grid_media_config.h"
 
+inline void append_media_control_tabs_option(std::string &out, const std::string &options) {
+  const bool power_available = !trim_saved_option_value(cfg_option_value(options, MEDIA_POWER_ENTITY_OPTION)).empty();
+  const std::string tabs = espcontrol::media::normalize_control_tabs_value(
+    cfg_option_value(options, MEDIA_CONTROL_TABS_OPTION), power_available);
+  if (tabs == espcontrol::media::normalize_control_tabs_value("", power_available)) return;
+  if (!out.empty()) out += ",";
+  out += std::string(MEDIA_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
+}
+
 inline std::string media_card_options_normalized(const std::string &options,
                                                  const std::string &mode) {
   if (mode == "control_modal") {
     std::string out;
+    const std::string power_entity = trim_saved_option_value(
+      cfg_option_value(options, MEDIA_POWER_ENTITY_OPTION));
+    if (!power_entity.empty()) {
+      out = std::string(MEDIA_POWER_ENTITY_OPTION) + "=" + encode_compact_field(power_entity);
+    }
+    append_media_control_tabs_option(out, options);
     std::string speaker_group_entity = trim_saved_option_value(
       cfg_option_value(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
     if (!speaker_group_entity.empty()) {
-      out = std::string(MEDIA_SPEAKER_GROUP_ENTITY_OPTION) + "=" +
+      if (!out.empty()) out += ",";
+      out += std::string(MEDIA_SPEAKER_GROUP_ENTITY_OPTION) + "=" +
         encode_compact_field(speaker_group_entity);
     }
     if (cfg_option_value(options, "label_display") == "label") {
@@ -456,6 +475,12 @@ inline std::string media_card_options_normalized(const std::string &options,
       if (!out.empty()) out += ",";
       out += std::string(VOLUME_MAX_OPTION) + "=" + std::to_string(max_pct);
     }
+    const std::string power_entity = trim_saved_option_value(cfg_option_value(options, MEDIA_POWER_ENTITY_OPTION));
+    if (!power_entity.empty()) {
+      if (!out.empty()) out += ",";
+      out += std::string(MEDIA_POWER_ENTITY_OPTION) + "=" + encode_compact_field(power_entity);
+    }
+    append_media_control_tabs_option(out, options);
     return out;
   }
   if (mode != "volume" && mode != "position") return "";

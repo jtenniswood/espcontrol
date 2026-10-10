@@ -13,6 +13,7 @@ function mediaPreviewFixtures() {
       export {createPreviewRenderFeature} from "./src/webserver/application/preview_render";
       export {registerMediaCardTypes} from "./src/webserver/cards/media";
       export {createConfigMediaOptionsFeature} from "./src/webserver/application/config_media_options";
+      export {createConfigModalTabOptionsFeature} from "./src/webserver/application/config_modal_tab_options";
       export {initializeAppState,state} from "./src/webserver/state/app_instance";
       export {initializeDeviceConfig} from "./src/webserver/device_config";
       export {PREVIEW_THEME_COLORS} from "./src/webserver/state/preview_theme";
@@ -32,7 +33,8 @@ function mediaPreviewFixtures() {
   ui.initializeDeviceConfig();
   ui.initializeAppState();
   const registry = { definitions: {}, register(type, definition) { this.definitions[type] = definition; } };
-  ui.registerMediaCardTypes(registry, ui.createConfigMediaOptionsFeature({ disabledCardTypes: [] }), "test", {
+  ui.registerMediaCardTypes(registry, ui.createConfigMediaOptionsFeature({ disabledCardTypes: [] }),
+    ui.createConfigModalTabOptionsFeature({ document: {}, renderButtonSettings() {} }), "test", {
     cardBadgeLabelHtml(helpers, label) { return '<span class="sp-btn-label">' + helpers.escHtml(label) + '</span>'; },
     cardLargeNumbersActiveForCardSize() { return false; }, cardSensorPreviewHtml() { return ""; },
   }, { infoPanel() {} }, { renderButtonSettings() {}, renderPreview() {} });

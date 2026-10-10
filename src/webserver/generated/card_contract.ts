@@ -2758,6 +2758,48 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         ]
       },
       {
+        "name": "power_entity",
+        "label": "Power Entity",
+        "kind": "text",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "sensor",
+            "operator": "in",
+            "value": [
+              "control_modal",
+              "cover_art"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "media_tabs",
+        "label": "Modal Tabs",
+        "kind": "text",
+        "values": [
+          "controls",
+          "progress",
+          "volume",
+          "speakers",
+          "power"
+        ],
+        "defaultValue": "controls|progress|volume|speakers",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "sensor",
+            "operator": "in",
+            "value": [
+              "control_modal",
+              "cover_art"
+            ]
+          }
+        ]
+      },
+      {
         "name": "label_display",
         "label": "Label Display",
         "kind": "choice",
@@ -2901,6 +2943,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "cover_art_details",
         "cover_art_secondary_entity",
         "speaker_group_entity",
+        "power_entity",
+        "media_tabs",
         "volume_max",
         "playlist_content_id",
         "playlist_content_type",
@@ -4788,6 +4832,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "media_display": "media_display",
   "media_mode": "media_mode",
   "media_now_playing_controls": "media_now_playing_controls",
+  "media_tabs": "media_tabs",
   "number_display": "number_display",
   "on_pattern": "on_pattern",
   "pass64": "pass64",
@@ -4796,6 +4841,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "playlist_content_id": "playlist_content_id",
   "playlist_content_type": "playlist_content_type",
   "playlist_player_source": "playlist_player_source",
+  "power_entity": "power_entity",
   "script_fields": "script_fields",
   "security": "security",
   "speaker_group_entity": "speaker_group_entity",

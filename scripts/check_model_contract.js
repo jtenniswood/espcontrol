@@ -94,6 +94,8 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   coverArtAction: "control_modal",
   showTrackDetails: false,
   secondaryEntity: "",
+  powerEntity: "",
+  controlTabs: ["controls", "progress", "volume", "speakers"],
   controlLabelDisplay: "status",
   controlNumberDisplay: "icon",
   maxVolumePercent: 100,
@@ -121,6 +123,17 @@ assert.strictEqual(model.decodeMediaCardConfigV1({
   sensor: "cover_art",
   options: "cover_art_secondary_entity=media_player.apple_tv",
 }).secondaryEntity, "media_player.apple_tv", "Media decoder exposes the external-source player");
+assert.strictEqual(model.decodeMediaCardConfigV1({
+  type: "media", sensor: "control_modal", options: "power_entity=media_player.tv",
+}).powerEntity, "media_player.tv", "Media decoder exposes the separate power entity");
+assert.strictEqual(model.decodeMediaCardConfigV1({
+  type: "media", sensor: "cover_art", options: "power_entity=media_player.tv",
+}).powerEntity, "media_player.tv", "Cover Art shares the separate power entity");
+for (const mode of ["control_modal", "cover_art"]) {
+  const modal = model.decodeMediaCardConfigV1({type: "media", sensor: mode, options: "media_tabs=power%7Cvolume%7Cpower,power_entity=media_player.tv"});
+  assert.deepStrictEqual(plain(modal.controlTabs), ["power", "volume"], `${mode} exposes ordered unique modal tabs`);
+  assert.strictEqual(modal.powerEntity, "media_player.tv", `${mode} exposes the separate power device`);
+}
 const coverArtAdvanced = model.decodeMediaCardConfigV1({
   type: "media",
   sensor: "cover_art",
@@ -142,6 +155,8 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   coverArtAction: "control_modal",
   showTrackDetails: false,
   secondaryEntity: "",
+  powerEntity: "",
+  controlTabs: ["controls", "progress", "volume", "speakers"],
   controlLabelDisplay: "status",
   controlNumberDisplay: "icon",
   maxVolumePercent: 1,
