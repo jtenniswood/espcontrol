@@ -30,7 +30,7 @@ export async function runPanelIdentityTests() {
   const title = createAppTitleFeature({ document, panelName: () => custom, eventStreamEnabled: () => false,
     eventSourceAvailable: () => false, createEventSource: () => { throw new Error("unused"); } });
   title.handleWebServerPingEvent({ data: '{"title":"Old model name"}' });
-  assert(document.title === "EspControl — Kitchen", "server events cannot overwrite custom title");
+  assert(document.title === "EspControl - Kitchen", "server events cannot overwrite custom title");
   custom = "";
   title.handleWebServerPingEvent({ data: '{"title":"Original"}' });
   assert(String(document.title) === "Original", "default title restored");
