@@ -444,7 +444,7 @@
           "fontSize": 4.5
         },
         "grid": {
-          "top": 15.5,
+          "top": 14.5,
           "compactTop": 1.5,
           "left": 1.5,
           "right": 1.5,
@@ -633,7 +633,7 @@
           "fontSize": 4.5
         },
         "grid": {
-          "top": 15.5,
+          "top": 14.5,
           "compactTop": 1.5,
           "left": 1.5,
           "right": 1.5,
