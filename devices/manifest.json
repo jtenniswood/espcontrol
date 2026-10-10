@@ -439,12 +439,12 @@
           }
         },
         "topbar": {
-          "height": 10,
+          "height": 14,
           "padding": "0.9cqw 0.59cqw",
           "fontSize": 4.5
         },
         "grid": {
-          "top": 11.5,
+          "top": 15.5,
           "compactTop": 1.5,
           "left": 1.5,
           "right": 1.5,
@@ -628,12 +628,12 @@
           }
         },
         "topbar": {
-          "height": 10,
+          "height": 14,
           "padding": "0.9cqw 0.59cqw",
           "fontSize": 4.5
         },
         "grid": {
-          "top": 11.5,
+          "top": 15.5,
           "compactTop": 1.5,
           "left": 1.5,
           "right": 1.5,
