@@ -13,6 +13,9 @@
 # Both use matching text shadows instead of blur to keep S3 overhead low.
 # =============================================================================
 
+substitutions:
+  clock_date_font: font_text_title
+
 globals:
   - id: photo_metadata_subscribed_entity
     type: std::string
@@ -61,7 +64,7 @@ lvgl:
                 text: "00:00"
             - label:
                 id: clock_date_label
-                text_font: font_text_title
+                text_font: ${clock_date_font}
                 text_color: 0xFFFFFF
                 text_align: CENTER
                 text: ""
