@@ -59,6 +59,10 @@ export class NativePanelConfigController {
     return this.client_?.supported() ?? false;
   }
 
+  sensorColourRulesSupported(): boolean {
+    return this.client_?.sensorColourRulesSupported() ?? false;
+  }
+
   private report(result: NativePanelConfigSaveOutcome): NativePanelConfigSaveOutcome {
     if (result === "conflict") {
       this.dependencies.showBanner("Configuration changed in another browser. Reload before saving again.", "error");

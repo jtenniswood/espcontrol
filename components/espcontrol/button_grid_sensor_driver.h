@@ -32,6 +32,45 @@ inline void sensor_driver_apply_background(
       static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
 }
 
+inline void sensor_driver_apply_content_colour(lv_obj_t *obj, uint32_t colour) {
+  if (!obj) return;
+  if (lv_obj_check_type(obj, &lv_label_class)) {
+    lv_obj_set_style_text_color(obj, lv_color_hex(colour),
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) |
+        static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+  }
+  for (uint32_t i = 0; i < lv_obj_get_child_cnt(obj); i++) {
+    sensor_driver_apply_content_colour(lv_obj_get_child(obj, i), colour);
+  }
+}
+
+inline void sensor_driver_apply_colour(lv_obj_t *btn, uint32_t colour, bool custom_colour = true) {
+  if (!btn) return;
+  theme_set_content_background(btn, custom_colour);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(colour),
+    static_cast<lv_style_selector_t>(LV_PART_MAIN) |
+      static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+  const uint32_t text_colour = custom_colour ? readable_text_color_for_bg(colour) : current_theme().text_primary;
+  lv_obj_set_style_text_color(btn, lv_color_hex(text_colour),
+    static_cast<lv_style_selector_t>(LV_PART_MAIN) |
+      static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+  sensor_driver_apply_content_colour(btn, text_colour);
+}
+
+inline uint32_t sensor_driver_default_colour(const SensorColourRules &rules) {
+  return rules.has_default_colour ? correct_display_color(rules.default_colour) : current_grid_sensor_surface_color();
+}
+
+inline std::function<void(esphome::StringRef)> sensor_driver_colour_observer(
+    lv_obj_t *btn, const SensorColourRules &rules) {
+  return [btn, rules](esphome::StringRef state) {
+    uint32_t colour = sensor_driver_default_colour(rules);
+    const bool matched = sensor_colour_matches(rules, state, colour);
+    if (matched) colour = correct_display_color(colour);
+    sensor_driver_apply_colour(btn, colour, matched || rules.has_default_colour);
+  };
+}
+
 inline bool sensor_driver_setup_visual(
     BtnSlot &slot, const ParsedCfg &config, const Context &context,
     const CardPalette &palette) {
@@ -193,18 +232,36 @@ inline bool sensor_driver_bind_data(
     if (!config.entity.empty()) sensor_driver_register_local_value(slot, config);
     return true;
   }
+  const SensorColourRules colour_rules = parse_sensor_colour_rules(config);
+  const bool custom_colour = colour_rules.valid;
+  const uint32_t fallback_colour = custom_colour
+    ? sensor_driver_default_colour(colour_rules)
+    : palette.surface_sensor_val;
+  if (custom_colour) sensor_driver_apply_colour(slot.btn, fallback_colour, colour_rules.has_default_colour);
+  const std::optional<uint32_t> sensor_colour_override = palette.custom_background
+    ? std::optional<uint32_t>{palette.surface_sensor_val} : std::nullopt;
+  const std::string colour_entity = colour_rules.source.empty() ? config.sensor : colour_rules.source;
+  const bool colour_uses_displayed_sensor = custom_colour && colour_entity == config.sensor;
+  const auto colour_observer = custom_colour
+    ? sensor_driver_colour_observer(slot.btn, colour_rules)
+    : std::function<void(esphome::StringRef)>{};
+  if (custom_colour && !colour_uses_displayed_sensor && !colour_entity.empty()) {
+    ha_subscribe_state(colour_entity, colour_observer);
+  }
   if (is_text_sensor_card(config)) {
     if (!config.sensor.empty()) {
       subscribe_sensor_text_card_value(
         slot.text_lbl, config, slot.btn, sensor_active_color_enabled(config),
-        palette.on_val, true, palette.custom_background ? palette.surface_sensor_val : UINT32_MAX);
+        palette.on_val, true, sensor_colour_override,
+        colour_uses_displayed_sensor ? colour_observer : std::function<void(esphome::StringRef)>{});
     }
     return true;
   }
   if (!config.sensor.empty()) {
     if (config.precision == "icon") {
       subscribe_sensor_icon_state(
-        slot.btn, slot.icon_lbl, config, sensor_active_color_enabled(config));
+        slot.btn, slot.icon_lbl, config, sensor_active_color_enabled(config),
+        colour_uses_displayed_sensor ? colour_observer : std::function<void(esphome::StringRef)>{}, custom_colour);
     } else if (config.precision == "time") {
       TimeSensorCtx *time = slot.config == nullptr
         ? grid_delete_with_owner(slot.btn, new TimeSensorCtx())
@@ -214,12 +271,15 @@ inline bool sensor_driver_bind_data(
       subscribe_time_sensor_value(
         time, config.sensor,
         cfg_option_value(config.options, SENSOR_TIME_UNIT_OPTION),
-        col_span > 1 ? 2 : 1);
+        col_span > 1 ? 2 : 1,
+        colour_uses_displayed_sensor ? colour_observer : std::function<void(esphome::StringRef)>{});
     } else {
       subscribe_sensor_value(
         slot.sensor_lbl, config.sensor, parse_precision(config.precision),
         slot.unit_lbl, config.unit, slot.btn,
-        sensor_active_color_enabled(config), palette.on_val, true, palette.custom_background ? palette.surface_sensor_val : UINT32_MAX);
+        sensor_active_color_enabled(config), palette.on_val,
+        true, sensor_colour_override,
+        colour_uses_displayed_sensor ? colour_observer : std::function<void(esphome::StringRef)>{});
     }
     if (config.label.empty()) subscribe_friendly_name(slot.text_lbl, config.sensor);
   }

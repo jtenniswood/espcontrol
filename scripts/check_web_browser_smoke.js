@@ -305,6 +305,10 @@ async function installRoutes(context, slug, options = {}) {
       requestUrl.hostname === "espcontrol.test" &&
       requestUrl.pathname === "/api/v1/capabilities"
     ) {
+      if (options.capabilityStartup) {
+        await route.fulfill({ status: 503, body: "Starting up" });
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -313,6 +317,7 @@ async function installRoutes(context, slug, options = {}) {
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           configuration: { read: true, write: true, document_versions: [1] },
+          sensor_colour_rules: options.sensorColourRules ? 2 : undefined,
           web_assets: { versions: [1] },
         }),
       });
@@ -2526,19 +2531,12 @@ async function assertEmptyCellSettings(page, posts, label) {
     ["Numeric", "Time", "Text", "Icon"],
     `${label}: Home Assistant Sensor uses the Numeric, Time, Text, and Icon Type dropdown`,
   );
-  const sensorActiveColor = page.locator("#sp-inp-sensor-active-color");
-  const sensorActiveColorRow = sensorActiveColor.locator("xpath=../..");
-  assert(
-    await sensorActiveColorRow.isVisible(),
-    `${label}: Numeric Sensor exposes Lit When Active`,
-  );
-  await sensorActiveColorRow.getByText("Lit When Active", { exact: true }).click();
+  await page.getByRole("button", { name: "Custom Colours", exact: true }).click();
+  const sensorColourMode = page.locator("#sp-inp-sensor-colour-mode");
+  assert(await sensorColourMode.isVisible(), `${label}: Sensor exposes Card colour`);
+  await sensorColourMode.selectOption("active");
   await page.locator("#sp-inp-sensor-type").selectOption("time");
-  assert.strictEqual(
-    await sensorActiveColorRow.isVisible(),
-    false,
-    `${label}: Time Sensor hides Lit When Active`,
-  );
+  assert(await sensorColourMode.isVisible(), `${label}: Time Sensor keeps Card colour available`);
   assert(
     await page.locator("#sp-inp-time-unit").isVisible(),
     `${label}: Time type shows the input unit dropdown`,
@@ -2564,8 +2562,8 @@ async function assertEmptyCellSettings(page, posts, label) {
   await page.locator("#sp-inp-time-unit").selectOption("hours");
   await page.locator("#sp-inp-sensor-type").selectOption("numeric");
   assert.strictEqual(
-    await sensorActiveColor.isChecked(),
-    false,
+    await sensorColourMode.inputValue(),
+    "default",
     `${label}: switching through Time clears Lit When Active`,
   );
   await page.locator("#sp-inp-sensor-type").selectOption("time");
@@ -2813,7 +2811,7 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
         `${label}: Screen Lock should not show an unused Entity field`,
       );
       assert.strictEqual(
-        await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
+        await page.locator(".sp-settings-modal #sp-inp-card-settings").count(),
         0,
         `${label}: Screen Lock should not show unused generic Card Settings`,
       );
@@ -2821,7 +2819,7 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
 
     if (cardOption.value === "weather") {
       assert.strictEqual(
-        await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
+        await page.locator(".sp-settings-modal #sp-inp-card-settings").count(),
         0,
         `${label}: Weather current conditions should not show empty Card Settings`,
       );
@@ -2848,7 +2846,7 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
         await assertGrouped(`${cardOption.label} / ${typeValue || "default"}`);
         if (cardOption.value === "weather" && typeValue) {
           assert.strictEqual(
-            await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
+            await page.locator(".sp-settings-modal #sp-inp-card-settings").count(),
             1,
             `${label}: Weather forecasts should group their extra settings`,
           );
@@ -6371,6 +6369,396 @@ async function assertPanelNaming(browser) {
   } finally { await context.close(); }
 }
 
+async function assertSensorColourConditions(browser) {
+  for (const [width, theme] of [[1100, "Dark"], [390, "Dark"], [390, "Light"]]) {
+    const testCase = CASES.find(entry => entry.slug === "guition-esp32-p4-jc1060p470");
+    const nativeState = nativeConfigState(testCase.slug);
+    const context = await browser.newContext({ viewport: { width, height: 1000 } });
+    const routeOptions = { nativeState, sensorColourRules: true, capabilityStartup: true };
+    await installRoutes(context, testCase.slug, routeOptions);
+    const page = await context.newPage();
+    const errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await installFakeEventSource(page);
+    const open = async () => {
+      await page.locator('.sp-main [data-slot="2"]').click();
+      await page.getByRole("button", { name: "Edit", exact: true }).click();
+      const colours = page.getByRole("button", { name: "Custom Colours", exact: true });
+      if (await colours.getAttribute("aria-expanded") === "false") await colours.click();
+    };
+    try {
+      await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+      await page.waitForSelector("#sp-app");
+      await page.waitForFunction(() => window.__eventSources?.length > 0);
+      await seedNativeDocument(page, nativeState);
+      await page.evaluate(theme => window.__seedEspState([{
+        id: "select-screen__theme_mode", state: theme, value: theme,
+      }]), theme);
+      await open();
+      const customMode = page.locator('#sp-inp-sensor-colour-mode option[value="custom"]');
+      assert(await customMode.isDisabled(), "custom colours wait for startup capability discovery");
+      routeOptions.capabilityStartup = false;
+      await page.waitForFunction(() => !document.querySelector('#sp-inp-sensor-colour-mode option[value="custom"]').disabled);
+      // Let startup's queued picker redraw finish before interacting with its fields.
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      assert.strictEqual(await page.getByText("Update the panel firmware to use custom colour conditions.", { exact: true }).isVisible(), false, "startup retry removes the update notice without reloading the editor");
+      // Startup refreshes the general card picker; reopen Custom Colours if it collapsed.
+      if (!await page.locator("#sp-inp-sensor-colour-mode").isVisible()) {
+        await page.getByRole("button", { name: "Custom Colours", exact: true }).click();
+      }
+      const colourSection = page.locator("#sp-inp-card-colours").locator("..").locator("..");
+      assert.strictEqual(await colourSection.getByLabel("Colour mode", { exact: true }).count(), 1, "colour modes live inside the existing Custom Colours section");
+      await colourSection.getByLabel("Colour mode", { exact: true }).selectOption("default");
+      const fixedPalette = colourSection.getByRole("group", { name: "Card colour presets", exact: true });
+      await fixedPalette.waitFor({ state: "visible" });
+      const fixedColours = await fixedPalette.locator("[data-color]").evaluateAll(nodes => nodes.map(node => node.dataset.color));
+      await fixedPalette.getByRole("button", { name: "Set colour to deep purple", exact: true }).click();
+      await page.locator("#sp-inp-sensor-colour-mode").selectOption("custom");
+      assert.strictEqual(await fixedPalette.isVisible(), false, "condition mode replaces the fixed colour picker");
+      const rules = page.locator(".sp-sensor-colour-rule");
+      assert.strictEqual(await rules.count(), 1, "custom mode starts with one simple condition");
+      assert.deepStrictEqual(await rules.first().getByLabel("When the value is", { exact: true }).locator("option").allTextContents(),
+        ["Below", "Above", "Exactly", "Between", "Text is"], "comparison choices stay simple");
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      assert.strictEqual(nativeState.puts.length, 0, "an incomplete condition cannot save");
+      assert(await page.locator(".sp-settings-overlay.sp-visible").isVisible());
+      await rules.first().getByLabel("When the value is", { exact: true }).selectOption("below");
+      await rules.first().getByLabel("Value", { exact: true }).fill("8");
+      assert.strictEqual(await rules.first().getByRole("heading").textContent(), "Value below 8", "the condition summary is its title");
+      const deleteCondition = page.getByRole("button", { name: "Delete condition 1", exact: true });
+      assert.strictEqual(await deleteCondition.textContent(), "", "delete has an icon instead of a text label");
+      assert.strictEqual(await deleteCondition.locator(".mdi-trash-can-outline").count(), 1);
+      const palette = rules.first().getByRole("group", { name: "Colour for condition 1", exact: true });
+      assert.deepStrictEqual(await palette.locator("[data-color]").evaluateAll(nodes => nodes.map(node => node.dataset.color)), fixedColours, "fixed and conditional colours use the identical shared palette");
+      assert.strictEqual(await palette.getByRole("button").count(), 20, "conditions use the same 20-colour palette as the card picker");
+      assert.strictEqual(await rules.first().locator('input[type="color"], [id*="sensor-colour-hex"]').count(), 0, "colour selection needs only swatches");
+      assert.strictEqual(await palette.locator('[aria-pressed="true"]').getAttribute("data-color"), "FF8C00");
+      const blue = palette.getByRole("button", { name: "Set colour to sky blue", exact: true });
+      await blue.click();
+      assert.strictEqual(await palette.locator('[aria-pressed="true"]').count(), 1, "one swatch is selected");
+      assert.strictEqual(await blue.getAttribute("aria-pressed"), "true");
+      assert(await blue.locator(".sp-card-color-check").isVisible(), "selected colour has a checkmark");
+      const paletteLayout = await palette.evaluate(grid => {
+        const swatches = Array.from(grid.children);
+        const firstRow = swatches.filter(swatch => Math.abs(swatch.getBoundingClientRect().top - swatches[0].getBoundingClientRect().top) < 1);
+        return { columns: firstRow.length, round: swatches.every(swatch => {
+          const bounds = swatch.getBoundingClientRect();
+          return Math.abs(bounds.width - bounds.height) < 1 && getComputedStyle(swatch).borderRadius === "50%";
+        }) };
+      });
+      assert.deepStrictEqual(paletteLayout, { columns: 5, round: true }, "palette uses five columns of round swatches");
+      const sample = page.getByLabel("Test state", { exact: true });
+      const result = page.locator(".sp-sensor-colour-result");
+      const testPanel = page.getByRole("button", { name: "Test your conditions", exact: true });
+      assert.strictEqual(await testPanel.getAttribute("aria-expanded"), "false", "test controls start collapsed");
+      assert.strictEqual(await sample.isVisible(), false);
+      await testPanel.click();
+      assert.strictEqual(await testPanel.getAttribute("aria-expanded"), "true");
+      const testCopy = page.locator(".sp-sensor-colour-test .sp-sensor-colour-note");
+      assert.strictEqual(await testCopy.count(), 1, "test panel has one supporting sentence");
+      assert.strictEqual(await testCopy.textContent(), "Enter a sample value to test your conditions.");
+      await sample.fill("7");
+      const previewCard = page.locator(".sp-sensor-colour-preview .sp-btn");
+      const previewBounds = await previewCard.boundingBox();
+      assert(Math.abs(previewBounds.width - previewBounds.height) < 1, "test card is square");
+      assert.strictEqual(await previewCard.locator(".sp-sensor-value").textContent(), "7");
+      assert.strictEqual(await previewCard.locator(".sp-sensor-unit").textContent(), "W", "test card uses the same unit layout as the main card");
+      assert.strictEqual(await previewCard.locator(".sp-btn-label").textContent(), "Energy");
+      assert.strictEqual(await previewCard.locator(".sp-sensor-preview").count(), 1, "test card reuses the main sensor value markup");
+      assert((await result.textContent()).includes("Condition 1 matches"));
+      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).backgroundColor), "rgb(3, 155, 229)");
+      await palette.getByRole("button", { name: "Set colour to red", exact: true }).click();
+      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).backgroundColor), "rgb(255, 0, 0)", "choosing the shared red swatch updates the matching sample immediately");
+      await blue.click();
+      await testPanel.click();
+      assert.strictEqual(await sample.isVisible(), false);
+      await testPanel.click();
+      assert.strictEqual(await sample.inputValue(), "7", "collapsing the test panel preserves the sample");
+      await sample.fill("8");
+      assert((await result.textContent()).includes("No condition matches"), "Below excludes its boundary");
+      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).backgroundColor), (theme === "Light" ? "rgb(245, 245, 245)" : "rgb(33, 33, 33)"), "unmatched conditions restore the theme instead of an earlier single card colour");
+      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).color), theme === "Light" ? "rgb(51, 51, 51)" : "rgb(255, 255, 255)", "theme fallback restores semantic foreground");
+      const defaultRow = page.locator(".sp-sensor-colour-default");
+      const defaultMode = defaultRow.getByLabel("Default colour", { exact: true });
+      const defaultPalette = defaultRow.getByRole("group", { name: "Default colour presets", exact: true });
+      assert.strictEqual(await defaultMode.inputValue(), "", "fallback starts on Theme default");
+      assert.strictEqual(await defaultRow.getByRole("button", { name: /Move|Delete/ }).count(), 0, "fallback has no reorder or delete controls");
+      await defaultMode.selectOption("custom");
+      await defaultPalette.getByRole("button", { name: "Set colour to white", exact: true }).click();
+      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).backgroundColor), "rgb(255, 255, 255)", "unmatched samples use the selected default colour");
+      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).color), "rgb(33, 33, 33)", "fallback foreground remains readable");
+      await sample.fill("7");
+      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).backgroundColor), "rgb(3, 155, 229)", "matching conditions take priority over the fallback");
+      await sample.fill("unavailable");
+      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).backgroundColor), "rgb(255, 255, 255)", "unavailable samples use the fallback");
+      await defaultMode.selectOption("");
+      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).backgroundColor), (theme === "Light" ? "rgb(245, 245, 245)" : "rgb(33, 33, 33)"), "clearing the fallback restores the theme immediately");
+      await defaultMode.selectOption("custom");
+      await sample.fill("8");
+      await rules.first().getByLabel("When the value is", { exact: true }).selectOption("above");
+      assert((await result.textContent()).includes("No condition matches"), "Above excludes its boundary");
+      await sample.fill("9");
+      assert((await result.textContent()).includes("Condition 1 matches"));
+      await rules.first().getByLabel("When the value is", { exact: true }).selectOption("below");
+      assert((await result.textContent()).includes("No condition matches"));
+      await rules.first().getByLabel("Value", { exact: true }).fill("10");
+      assert.strictEqual(await rules.first().getByRole("heading").textContent(), "Value below 10", "titles update while editing");
+      assert((await result.textContent()).includes("Condition 1 matches"), "preview updates immediately when a condition changes");
+      await page.getByRole("button", { name: "+ Add condition", exact: true }).click();
+      await rules.nth(1).getByLabel("When the value is", { exact: true }).selectOption("text");
+      await rules.nth(1).getByLabel("State", { exact: true }).fill("running");
+      assert.strictEqual(await rules.nth(1).getByRole("heading").textContent(), "Text is running", "text titles do not add quotation marks");
+      const white = rules.nth(1).getByRole("button", { name: "Set colour to white", exact: true });
+      await white.focus();
+      await white.press("Enter");
+      assert.strictEqual(await white.getAttribute("aria-pressed"), "true", "swatches support keyboard selection");
+      assert.strictEqual(await white.evaluate(node => getComputedStyle(node).color), "rgb(33, 33, 33)", "bright swatches have a readable checkmark");
+      await sample.fill("RUNNING");
+      assert((await result.textContent()).includes("Condition 2 matches"));
+      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).color), "rgb(33, 33, 33)");
+      await page.getByRole("button", { name: "Move condition 2 up", exact: true }).click();
+      assert(await defaultRow.evaluate(row => Boolean(row.compareDocumentPosition(document.querySelector(".sp-sensor-colour-list")) & Node.DOCUMENT_POSITION_PRECEDING)), "default colour stays below reordered conditions");
+      assert.strictEqual(await sample.inputValue(), "RUNNING", "reordering preserves test state");
+      assert((await result.textContent()).includes("Condition 1 matches"), "preview follows new priority");
+      await page.getByRole("button", { name: "Delete condition 1", exact: true }).click();
+      await rules.first().getByLabel("When the value is", { exact: true }).selectOption("between");
+      await rules.first().getByLabel("From", { exact: true }).fill("6");
+      await rules.first().getByLabel("To", { exact: true }).fill("8");
+      await sample.fill("8");
+      assert((await result.textContent()).includes("Condition 1 matches"));
+      assert.strictEqual(await rules.first().getByRole("checkbox").count(), 0, "Between has no boundary toggles");
+      await sample.fill("6");
+      assert((await result.textContent()).includes("Condition 1 matches"), "Between includes its start");
+      await sample.fill("8.1");
+      assert((await result.textContent()).includes("No condition matches"));
+      await rules.first().getByLabel("When the value is", { exact: true }).selectOption("below");
+      await rules.first().getByLabel("Value", { exact: true }).fill("8");
+      await sample.fill("7");
+      const overflow = await page.locator(".sp-sensor-colours").evaluate(root => Array.from(root.querySelectorAll("input,select,button")).filter(node => !node.closest("[hidden]") && node.getBoundingClientRect().width > 0).some(node => node.getBoundingClientRect().right > root.getBoundingClientRect().right + 1));
+      assert(!overflow, `colour controls fit the ${width}px viewport`);
+      const gap = await rules.first().evaluate(row => parseFloat(getComputedStyle(row).gap));
+      assert(gap >= 16, "condition form elements have deliberate spacing");
+      if (process.env.ESPCONTROL_SENSOR_COLOURS_SCREENSHOTS) {
+        fs.mkdirSync(process.env.ESPCONTROL_SENSOR_COLOURS_SCREENSHOTS, { recursive: true });
+        // Capture the real rendered form without clipping it inside the modal scroll area.
+        const snapshot = await page.locator("#sp-inp-card-colours").locator("..").locator("..").evaluate(root => {
+          const clone = root.cloneNode(true);
+          const copies = clone.querySelectorAll("input,select");
+          root.querySelectorAll("input,select").forEach((control, index) => {
+            const copy = copies[index];
+            if (control.tagName === "SELECT") {
+              Array.from(copy.options).forEach(option => option.toggleAttribute("selected", option.value === control.value));
+            } else {
+              copy.setAttribute("value", control.value);
+              copy.toggleAttribute("checked", control.checked);
+            }
+          });
+          const styles = Array.from(document.querySelectorAll("style")).map(style => style.outerHTML).join("");
+          return `${styles}<main id="sp-app" style="width:420px;max-width:100%;padding:24px;box-sizing:border-box"><div class="sp-panel">${clone.outerHTML}</div></main>`;
+        });
+        const screenshotPage = await context.newPage();
+        await screenshotPage.setContent(snapshot);
+        await screenshotPage.locator("#sp-app").screenshot({ path: path.join(process.env.ESPCONTROL_SENSOR_COLOURS_SCREENSHOTS, `sensor-colours-${width}.png`) });
+        await screenshotPage.locator(".sp-sensor-colour-test-panel").evaluate(panel => {
+          panel.classList.remove("sp-open");
+          panel.querySelector(":scope > .sp-disclosure-button").setAttribute("aria-expanded", "false");
+        });
+        await screenshotPage.locator("#sp-app").screenshot({ path: path.join(process.env.ESPCONTROL_SENSOR_COLOURS_SCREENSHOTS, `sensor-colours-${width}-closed.png`), animations: "disabled" });
+        await screenshotPage.close();
+      }
+      await page.getByLabel("Use value from", { exact: true }).selectOption("other");
+      await page.getByLabel("Sensor controlling the colour", { exact: true }).fill("sensor.battery_power");
+      await page.getByLabel("Sensor controlling the colour", { exact: true }).dispatchEvent("change");
+      await page.getByLabel("Sensor controlling the colour", { exact: true }).fill("Sensor.Battery_Power");
+      await page.getByLabel("Sensor controlling the colour", { exact: true }).dispatchEvent("change");
+      const rejectedPuts = nativeState.puts.length;
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      assert.strictEqual(nativeState.puts.length, rejectedPuts, "uppercase source IDs cannot save");
+      await page.getByLabel("Sensor controlling the colour", { exact: true }).fill("sensor.battery_power");
+      await page.getByLabel("Sensor controlling the colour", { exact: true }).dispatchEvent("change");
+      assert((await result.textContent()).includes("Condition 1 matches"), "secondary source uses the same sample state");
+      assert.strictEqual(await previewCard.locator(".sp-sensor-value").textContent(), "0", "secondary-source samples do not replace the displayed reading");
+      await page.getByLabel("Use value from", { exact: true }).selectOption("");
+      const previousPuts = nativeState.puts.length;
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await waitForNativeState(nativeState, () => nativeState.puts.length > previousPuts, "sensor conditions save");
+      const saved = nativeState.document.buttons[2];
+      assert(saved.includes("sensor_colours="), "rules persist in the card options");
+      assert(saved.includes("card_off_color=6633B9"), "the separate single colour is retained alongside conditions");
+      assert(!saved.includes("RUNNING") && !saved.includes("test_state"), "sample preview stays out of saved configuration");
+      await open();
+      assert.strictEqual(await defaultMode.inputValue(), "custom", "fallback mode survives reload");
+      assert.strictEqual(await defaultPalette.locator('[aria-pressed="true"]').getAttribute("data-color"), "FFFFFF", "fallback colour survives reload");
+      assert.strictEqual(await rules.first().getByLabel("Value", { exact: true }).inputValue(), "8", "conditions survive reload");
+      assert.strictEqual(await rules.first().locator('[aria-pressed="true"]').getAttribute("data-color"), "039BE5", "saved swatch is selected on reopen");
+      for (const otherMode of ["default", "active"]) {
+        await page.locator("#sp-inp-sensor-colour-mode").selectOption(otherMode);
+        await page.locator("#sp-inp-sensor-colour-mode").selectOption("custom");
+        const modePuts = nativeState.puts.length;
+        await page.getByRole("button", { name: "Save", exact: true }).click();
+        await waitForNativeState(nativeState, () => nativeState.puts.length > modePuts, "reselected custom conditions save");
+        assert.strictEqual(nativeState.document.buttons[2], saved, "switching colour modes restores the retained rules");
+        await open();
+      }
+      for (const displayMode of ["time", "text", "icon", "numeric"]) {
+        await page.locator("#sp-inp-sensor-type").selectOption(displayMode);
+        assert.strictEqual(await rules.first().getByLabel("Value", { exact: true }).inputValue(), "8", "conditions survive display-mode changes");
+        assert.strictEqual(await page.locator('#sp-inp-sensor-colour-mode option[value="active"]').isDisabled(), displayMode === "time", "Time cards cannot select Lit When Active");
+      }
+      await rules.first().getByLabel("Value", { exact: true }).fill("100");
+      await rules.first().getByRole("button", { name: "Set colour to dark grey", exact: true }).click();
+      await defaultMode.selectOption("");
+      await page.locator(".sp-settings-close").click();
+      assert.strictEqual(nativeState.document.buttons[2], saved, "Cancel discards condition and fallback changes");
+      // Older saved custom colours remain selected and survive an unchanged save.
+      const customSaved = saved.replace("039BE5", "123456");
+      assert.notStrictEqual(customSaved, saved);
+      nativeState.document.buttons[2] = customSaved;
+      await seedNativeDocument(page, nativeState);
+      await open();
+      assert.strictEqual(await rules.first().getByRole("button").filter({ has: page.locator(".sp-card-color-check") }).count(), 21, "saved non-palette colour has an extra swatch");
+      assert.strictEqual(await rules.first().locator('[aria-pressed="true"]').getAttribute("data-color"), "123456");
+      const customPuts = nativeState.puts.length;
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await waitForNativeState(nativeState, () => nativeState.puts.length > customPuts, "unchanged custom colour saves");
+      assert.strictEqual(nativeState.document.buttons[2], customSaved, "reopening preserves existing custom colours");
+      await open();
+      const reset = page.getByRole("button", { name: "Reset colours to defaults", exact: true });
+      await reset.click();
+      assert.strictEqual(await page.getByLabel("Colour mode", { exact: true }).inputValue(), "default");
+      assert.strictEqual(await page.getByRole("button", { name: "Custom Colours", exact: true }).getAttribute("aria-expanded"), "true", "reset keeps the shared colour section open");
+      assert(await fixedPalette.isVisible(), "reset restores the single colour picker");
+      assert.strictEqual(await fixedPalette.locator('[aria-pressed="true"]').count(), 0, "reset clears the fixed colour selection");
+      await page.locator(".sp-settings-close").click();
+      assert.strictEqual(nativeState.document.buttons[2], customSaved, "Cancel discards reset for both fixed colour and conditions");
+      await open();
+      await reset.click();
+      const resetPuts = nativeState.puts.length;
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await waitForNativeState(nativeState, () => nativeState.puts.length > resetPuts, "shared colour reset saves");
+      assert(!nativeState.document.buttons[2].includes("sensor_colours=") && !nativeState.document.buttons[2].includes("card_off_color="), "reset clears both colour options on Save");
+      assert.deepStrictEqual(errors, [], "sensor colour journey has no browser errors");
+    } finally { await context.close(); }
+  }
+}
+
+async function assertSavedCardColours(browser) {
+  const testCase = CASES.find(entry => entry.slug === "guition-esp32-p4-jc1060p470");
+  const nativeState = nativeConfigState(testCase.slug);
+  const context = await browser.newContext({ viewport: { width: 390, height: 1000 } });
+  await installRoutes(context, testCase.slug, { nativeState });
+  const page = await context.newPage();
+  const errors = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await installFakeEventSource(page);
+  const colour = "card_off_color=6633B9";
+  const cardCases = [
+    { type: "vacuum", config: `vacuum.kitchen;Vacuum;Robot Vacuum;Auto;start_pause;;vacuum;;${colour}`, mode: "#sp-inp-vacuum-type", nextMode: "dock" },
+    { type: "lawn_mower", config: `lawn_mower.garden;Mower;Robot Mower;Auto;start_mowing;;lawn_mower;;${colour}`, mode: "#sp-inp-lawn-mower-type", nextMode: "dock" },
+    { type: "wifi_qr", config: `;Connect;Wifi;Auto;;;wifi_qr;;ssid64=VGVzdCBuZXR3b3Jr,pass64=dGVzdC1wYXNzd29yZA,${colour}` },
+    { type: "webhook", config: `https://example.com/hook;Webhook;Webhook;Auto;POST;{};webhook;;webhook_headers=%7B%22X-Test%22%3A%22keep%22%7D,${colour}` },
+    ...["fan_control", "fan_switch", "fan_speed", "fan_oscillate", "fan_direction", "fan_preset"].map(type => ({
+      type, config: `fan.bedroom;Fan;Fan;Auto;;;${type};;${colour}`,
+      mode: "#sp-inp-fan-control-type", nextMode: type === "fan_speed" ? "fan_switch" : "fan_speed",
+    })),
+    ...["modal", "", "tilt", "toggle", "open", "close", "stop", "set_position"].map(mode => ({
+      type: `cover ${mode || "position"}`, config: `cover.blind;Cover;Blinds;Blinds Open;${mode};${mode === "set_position" ? "50" : ""};cover;;${colour}`,
+      mode: "#sp-inp-cover-interaction", nextMode: mode === "modal" ? "toggle" : "modal",
+    })),
+    ...["light_switch", "light_brightness", "light_temperature", "light_control"].map(type => ({
+      type, config: `light.kitchen;Light;Lightbulb;Auto;;${type === "light_temperature" ? "2000-6500" : ""};${type};;${colour}`,
+      mode: "#sp-inp-light-control-type", nextMode: type === "light_switch" ? "light_control" : "light_switch",
+    })),
+    { type: "action select", config: `input_select.house_mode;Action;Flash;Auto;input_select.select_option;;action;;${colour}`, mode: "#sp-inp-action", nextMode: "input_select.select_option" },
+    { type: "action local draft", config: `script.test;Action;Flash;Auto;script.turn_on;;action;;${colour}`, mode: "#sp-inp-action", nextMode: "local", cancelAfterMode: true },
+  ];
+  const open = async () => {
+    await page.locator('.sp-main [data-slot="2"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+  };
+  const colourPalette = async () => {
+    const control = page.getByRole("button", { name: "Custom Colours", exact: true });
+    if (await control.getAttribute("aria-expanded") === "false") await control.click();
+    return page.getByRole("group", { name: "Card colour presets", exact: true });
+  };
+  const assertColour = async type => {
+    const palette = await colourPalette();
+    assert.strictEqual(await palette.locator('[aria-pressed="true"]').getAttribute("data-color"), "6633B9", `${type}: saved colour stays selected`);
+  };
+  const save = async type => {
+    const puts = nativeState.puts.length;
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await waitForNativeState(nativeState, () => nativeState.puts.length > puts, `${type}: save`);
+    assert(nativeState.document.buttons[2].includes(colour), `${type}: save retains colour`);
+  };
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    for (const card of cardCases) {
+      nativeState.document.buttons[2] = card.config;
+      await seedNativeDocument(page, nativeState);
+      await open();
+      await assertColour(card.type);
+      await save(card.type);
+      await open();
+      if (card.mode) await page.locator(card.mode).selectOption(card.nextMode);
+      else if (card.type === "wifi_qr") {
+        await page.getByRole("button", { name: "Wifi Network", exact: true }).click();
+        await page.locator("#sp-inp-wifi-ssid").fill("Edited test network");
+        await page.locator("#sp-inp-wifi-ssid").dispatchEvent("change");
+      } else {
+        const settings = page.getByRole("button", { name: "Webhook Settings", exact: true });
+        if (await settings.getAttribute("aria-expanded") === "false") await settings.click();
+        await page.locator("#sp-inp-webhook-method").selectOption("PUT");
+      }
+      await assertColour(card.type);
+      if (card.cancelAfterMode) await page.locator(".sp-settings-close").click();
+      else await save(card.type);
+      await open();
+      await assertColour(card.type);
+      if (card.type === "fan_speed" || card.type === "cover toggle") {
+        await page.getByRole("button", { name: "Reset colours to defaults", exact: true }).click();
+        assert.strictEqual(await (await colourPalette()).locator('[aria-pressed="true"]').count(), 0, `${card.type}: reset clears the selection`);
+        const puts = nativeState.puts.length;
+        await page.getByRole("button", { name: "Save", exact: true }).click();
+        await waitForNativeState(nativeState, () => nativeState.puts.length > puts, `${card.type}: reset saves`);
+        assert(!nativeState.document.buttons[2].includes("card_off_color="), `${card.type}: reset removes the saved colour`);
+        await open();
+        assert.strictEqual(await (await colourPalette()).locator('[aria-pressed="true"]').count(), 0, `${card.type}: reset survives reopen`);
+      }
+      await page.locator(".sp-settings-close").click();
+    }
+    const sensorConfig = `sensor.energy;Sensor;Gauge;Auto;sensor.energy;W;sensor;0;${colour}`;
+    const selectSensorSource = async name => {
+      const settings = page.getByRole("button", { name: "Card Settings", exact: true });
+      if (await settings.getAttribute("aria-expanded") === "false") await settings.click();
+      await page.getByRole("button", { name, exact: true }).click();
+    };
+    nativeState.document.buttons[2] = sensorConfig;
+    await seedNativeDocument(page, nativeState);
+    await open();
+    await selectSensorSource("Local Sensor");
+    await assertColour("sensor local source draft");
+    await page.locator(".sp-settings-close").click();
+    assert.strictEqual(nativeState.document.buttons[2], sensorConfig, "Cancel discards the source change");
+    await open();
+    await selectSensorSource("Local Sensor");
+    await assertColour("sensor local source");
+    await selectSensorSource("Home Assistant");
+    await assertColour("sensor Home Assistant source");
+    const settings = page.getByRole("button", { name: "Card Settings", exact: true });
+    if (await settings.getAttribute("aria-expanded") === "false") await settings.click();
+    await page.locator("#sp-inp-sensor").fill("sensor.energy");
+    await page.locator("#sp-inp-sensor").dispatchEvent("change");
+    await save("sensor source changes");
+    await open();
+    await assertColour("sensor source changes after reopen");
+    await page.locator(".sp-settings-close").click();
+    assert.deepStrictEqual(errors, [], "saved card colour journey has no browser errors");
+  } finally { await context.close(); }
+}
+
 (async function main() {
   const browser = await chromium.launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
@@ -6378,6 +6766,15 @@ async function assertPanelNaming(browser) {
     if (process.env.ESPCONTROL_RESET_ONLY === "1") {
       await assertResetControls(browser);
       console.log("Factory reset confirmation browser checks passed.");
+      return;
+    }
+    await assertSavedCardColours(browser);
+    if (process.env.ESPCONTROL_CARD_COLOURS_ONLY === "1") { console.log("Saved card colour browser checks passed."); return; }
+    await assertSensorColourConditions(browser);
+    if (process.env.ESPCONTROL_SENSOR_COLOURS_ONLY === "1") { console.log("Sensor colour editor browser checks passed."); return; }
+    if (process.env.ESPCONTROL_EDITOR_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) await runCase(browser, testCase);
+      console.log(`Editor browser checks passed for ${ACTIVE_CASES.length} generated layouts.`);
       return;
     }
     await assertNamingOfflineBackups(browser);

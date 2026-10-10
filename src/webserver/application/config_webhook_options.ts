@@ -43,8 +43,7 @@ export function createConfigWebhookOptionsFeature() {
         if (!button.icon)
             button.icon = "Auto";
         const headers = webhookHeaders(button);
-        button.options = preserveCardColorOptions(button.options,
-            headers ? setConfigOptionValue("", WEBHOOK_HEADERS_OPTION, headers) : "");
+        button.options = preserveCardColorOptions(button.options, headers ? setConfigOptionValue("", WEBHOOK_HEADERS_OPTION, headers) : "");
     }
 
     return {

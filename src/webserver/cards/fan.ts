@@ -1,5 +1,5 @@
-import { preserveCardColorOptions } from "../model/config_primitives";
 import { iconSlug } from "../application/ui_primitives";
+import { normalizedCardColorOptions, preserveCardColorOptions } from "../model/config_primitives";
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ConfigModalTabOptionsFeature } from "../application/config_modal_tab_options";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
@@ -95,10 +95,12 @@ export function registerFanCardTypes(
         var nextType: any = normalizeFanControlType(type);
         if (b.type === nextType)
             return;
+        var previousOptions: any = b.options;
         b.type = nextType;
         var td: any = registry.definitions[nextType];
         if (td && td.onSelect)
             td.onSelect(b);
+        b.options = preserveCardColorOptions(previousOptions, b.options);
         helpers.saveField("type", nextType);
         helpers.saveField("sensor", b.sensor || "");
         helpers.saveField("unit", b.unit || "");
@@ -187,7 +189,7 @@ export function registerFanCardTypes(
                 b.sensor = "";
                 b.unit = "";
                 b.precision = "";
-                b.options = b.type === "fan_control" ? normalizeFanControlOptions(b.options) : preserveCardColorOptions(b.options, "");
+                b.options = b.type === "fan_control" ? normalizeFanControlOptions(b.options) : normalizedCardColorOptions(b.options);
                 if (!b.icon || b.icon === "Auto")
                     b.icon = fanControlDefaultIcon(b.type);
                 if (b.type === "fan_switch") {

@@ -3262,6 +3262,12 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         }
       },
       {
+        "name": "sensor_colours",
+        "label": "Sensor Colour Conditions",
+        "kind": "text",
+        "omitDefault": true
+      },
+      {
         "name": "state_labels",
         "label": "Status Translation",
         "kind": "flag",
@@ -3398,6 +3404,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "large_numbers",
         "time_unit",
         "active_color",
+        "sensor_colours",
         "state_labels",
         "state_input",
         "state_output",
@@ -4844,6 +4851,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "power_entity": "power_entity",
   "script_fields": "script_fields",
   "security": "security",
+  "sensor_colours": "sensor_colours",
   "speaker_group_entity": "speaker_group_entity",
   "ssid64": "ssid64",
   "state_entity": "state_entity",

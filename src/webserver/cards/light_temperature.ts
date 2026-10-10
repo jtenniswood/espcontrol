@@ -182,6 +182,7 @@ export function registerLightTemperatureCardTypes(
         var nextType: any = normalizeLightControlType(type);
         if (b.type === nextType)
             return;
+        var previousOptions: any = b.options;
         b.type = nextType;
         var previousOptions: any = b.options;
         var td: any = registry.definitions[nextType];

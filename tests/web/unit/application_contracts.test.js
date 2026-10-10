@@ -716,7 +716,7 @@ describe("browserless application contracts", () => {
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
     assert.doesNotMatch(card, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal)\b/);
     assert.match(options, /sensorCardLocalSource = LOCAL_SENSOR_SOURCE/);
-    assert.match(entry, /registerSensorCardTypes\(registry, context\.configuration\.options, fields, cardUi\);/);
+    assert.match(entry, /registerSensorCardTypes\(registry, context\.configuration\.options, fields, cardUi, context\.configuration\.native\);/);
     assert.doesNotMatch(entry, /registerCompatibility\(registerSensorCardTypes/);
     assert.doesNotMatch(globals, /\bvar (?:SENSOR_CARD_LOCAL_SENSOR|SENSOR_CARD_METADATA|renderSensorLocalSettings|sensorCardIsLocal|sensorLocalPreview):/);
   });

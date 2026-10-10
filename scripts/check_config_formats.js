@@ -762,7 +762,7 @@ const sensorOptionSpecs = hooks.cardContractOptions("sensor");
 const sensorOptionByName = Object.fromEntries(sensorOptionSpecs.map((option) => [option.name, option]));
 assert.deepStrictEqual(
   Array.from(sensorOptionSpecs, (option) => option.name),
-  ["large_numbers", "time_unit", "active_color", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
+  ["large_numbers", "time_unit", "active_color", "sensor_colours", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
   "sensor option specs preserve current option order"
 );
 assert.deepStrictEqual(

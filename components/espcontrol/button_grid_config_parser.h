@@ -13,6 +13,7 @@
 #include "button_grid_card_runtime.h"
 #include "media_control_tabs.h"
 #include "button_grid_string.h"
+#include "sensor_colour_casefold_generated.h"
 #include "camera_refresh_policy.h"
 #include "button_grid_saved_config_action_generated.h"
 #include "button_grid_saved_config_access_generated.h"
@@ -746,14 +747,19 @@ inline std::string media_cover_art_secondary_entity(const ParsedCfg &p) {
 inline std::string sensor_card_options_normalized(const std::string &options,
                                                   const std::string &precision) {
   std::string out;
+  const std::string sensor_colours = cfg_option_value(options, "sensor_colours");
   if (precision != "icon" && precision != "text" && precision != "time" &&
       (cfg_option_token_present(options, "large_numbers") ||
        large_numbers_explicitly_disabled(options))) {
     append_large_numbers_option(out, options);
   }
-  if (precision != "time" && cfg_option_token_present(options, "active_color")) {
+  if (sensor_colours.empty() && precision != "time" && cfg_option_token_present(options, "active_color")) {
     if (!out.empty()) out += ",";
     out += "active_color";
+  }
+  if (!sensor_colours.empty()) {
+    if (!out.empty()) out += ",";
+    out += std::string("sensor_colours=") + encode_compact_field(sensor_colours);
   }
   if (precision == "text" && cfg_option_token_present(options, SENSOR_STATE_LABELS_OPTION)) {
     if (!out.empty()) out += ",";
@@ -1544,7 +1550,126 @@ inline bool sensor_large_numbers_enabled(const ParsedCfg &p) {
 }
 
 inline bool sensor_active_color_enabled(const ParsedCfg &p) {
-  return p.type == "sensor" && cfg_option_enabled(p.options, "active_color");
+  return p.type == "sensor" && cfg_option_enabled(p.options, "active_color") &&
+         cfg_option_value(p.options, "sensor_colours").empty();
+}
+
+struct SensorColourCondition {
+  bool text = false;
+  bool has_lower = false;
+  bool lower_inclusive = true;
+  bool has_upper = false;
+  bool upper_inclusive = true;
+  double lower = 0;
+  double upper = 0;
+  std::string state;
+  uint32_t colour = 0;
+};
+
+struct SensorColourRules {
+  bool valid = false;
+  bool has_default_colour = false;
+  uint32_t default_colour = 0;
+  std::string source;
+  std::vector<SensorColourCondition> conditions;
+};
+
+inline std::vector<std::string> sensor_colour_split(const std::string &value, char delimiter) {
+  std::vector<std::string> out;
+  size_t start = 0;
+  while (start <= value.size()) {
+    size_t end = value.find(delimiter, start);
+    if (end == std::string::npos) end = value.size();
+    out.push_back(value.substr(start, end - start));
+    if (end == value.size()) break;
+    start = end + 1;
+  }
+  return out;
+}
+
+inline bool sensor_colour_parse_number(const std::string &text, double &value) {
+  if (text.empty()) return false;
+  size_t i = 0;
+  if (text[i] == '+' || text[i] == '-') i++;
+  size_t digits = 0;
+  while (i < text.size() && std::isdigit(static_cast<unsigned char>(text[i]))) { i++; digits++; }
+  if (i < text.size() && text[i] == '.') {
+    i++;
+    while (i < text.size() && std::isdigit(static_cast<unsigned char>(text[i]))) { i++; digits++; }
+  }
+  if (digits == 0) return false;
+  if (i < text.size() && (text[i] == 'e' || text[i] == 'E')) {
+    i++;
+    if (i < text.size() && (text[i] == '+' || text[i] == '-')) i++;
+    size_t exponent_digits = 0;
+    while (i < text.size() && std::isdigit(static_cast<unsigned char>(text[i]))) { i++; exponent_digits++; }
+    if (exponent_digits == 0) return false;
+  }
+  if (i != text.size()) return false;
+  char *end = nullptr;
+  value = std::strtod(text.c_str(), &end);
+  return end != text.c_str() && *end == '\0' && std::isfinite(value);
+}
+
+inline bool sensor_colour_parse_hex(const std::string &text, uint32_t &value) {
+  if (text.size() != 6) return false;
+  for (unsigned char ch : text) if (!std::isxdigit(ch)) return false;
+  char *end = nullptr;
+  value = static_cast<uint32_t>(std::strtoul(text.c_str(), &end, 16));
+  return end == text.c_str() + text.size();
+}
+
+inline SensorColourRules parse_sensor_colour_rules(const ParsedCfg &config) {
+  SensorColourRules result;
+  if (config.type != "sensor") return result;
+  const std::string payload = cfg_option_value(config.options, "sensor_colours");
+  if (payload.empty()) return result;
+  const auto parts = sensor_colour_split(payload, '|');
+  const std::string version = decode_compact_field(parts[0]);
+  if (!((version == "v1" && parts.size() == 3) || (version == "v2" && parts.size() == 4))) return result;
+  if (version == "v2" && !parts[3].empty()) {
+    if (!sensor_colour_parse_hex(decode_compact_field(parts[3]), result.default_colour)) return result;
+    result.has_default_colour = true;
+  }
+  result.source = decode_compact_field(parts[1]);
+  if (result.source == "local") return result;
+  if (!result.source.empty()) {
+    const size_t dot = result.source.find('.');
+    const std::string domain = result.source.substr(0, dot);
+    if (dot == std::string::npos || dot + 1 == result.source.size() ||
+        (domain != "sensor" && domain != "binary_sensor" && domain != "text_sensor")) return result;
+    for (size_t i = dot + 1; i < result.source.size(); i++) {
+      const char ch = result.source[i];
+      if (!((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_')) return result;
+    }
+  }
+  const auto raw_conditions = sensor_colour_split(parts[2], ';');
+  if (raw_conditions.empty() || raw_conditions.size() > 6) return result;
+  for (const auto &raw : raw_conditions) {
+    const auto fields = sensor_colour_split(raw, ',');
+    SensorColourCondition condition;
+    if (!fields.empty() && decode_compact_field(fields[0]) == "t" && fields.size() == 3) {
+      condition.text = true;
+      condition.state = decode_compact_field(fields[1]);
+      if (condition.state.empty() || !sensor_colour_parse_hex(decode_compact_field(fields[2]), condition.colour)) return SensorColourRules{};
+    } else if (!fields.empty() && decode_compact_field(fields[0]) == "n" && fields.size() == 6) {
+      const std::string lower = decode_compact_field(fields[1]);
+      const std::string upper = decode_compact_field(fields[3]);
+      condition.has_lower = !lower.empty();
+      condition.has_upper = !upper.empty();
+      condition.lower_inclusive = decode_compact_field(fields[2]) == "1";
+      condition.upper_inclusive = decode_compact_field(fields[4]) == "1";
+      if ((!condition.has_lower && !condition.has_upper) ||
+          (condition.has_lower && !sensor_colour_parse_number(lower, condition.lower)) ||
+          (condition.has_upper && !sensor_colour_parse_number(upper, condition.upper)) ||
+          (condition.has_lower && condition.has_upper &&
+           (condition.lower > condition.upper || (condition.lower == condition.upper && (!condition.lower_inclusive || !condition.upper_inclusive)))) ||
+          !sensor_colour_parse_hex(decode_compact_field(fields[5]), condition.colour)) return SensorColourRules{};
+    } else return SensorColourRules{};
+    result.conditions.push_back(condition);
+  }
+  result.valid = !result.conditions.empty();
+  return result;
 }
 
 inline bool sensor_state_labels_enabled(const ParsedCfg &p) {
@@ -1944,6 +2069,52 @@ inline std::string normalized_state_text(esphome::StringRef value,
   return text;
 }
 
+// Match ECMAScript String.trim(), including its Unicode WhiteSpace/LineTerminator set.
+inline bool sensor_colour_whitespace(uint32_t codepoint) {
+  return (codepoint >= 0x09 && codepoint <= 0x0D) || codepoint == 0x20 ||
+    codepoint == 0xA0 || codepoint == 0x1680 ||
+    (codepoint >= 0x2000 && codepoint <= 0x200A) ||
+    codepoint == 0x2028 || codepoint == 0x2029 || codepoint == 0x202F ||
+    codepoint == 0x205F || codepoint == 0x3000 || codepoint == 0xFEFF;
+}
+
+inline std::string sensor_colour_trim(const std::string &text) {
+  size_t begin = 0, end = 0;
+  bool has_content = false;
+  for (size_t offset = 0; offset < text.size();) {
+    uint32_t codepoint = 0;
+    size_t length = 0;
+    const auto status = decode_utf8_codepoint(text, offset, codepoint, length);
+    const bool whitespace = status == Utf8DecodeStatus::VALID && sensor_colour_whitespace(codepoint);
+    if (status != Utf8DecodeStatus::VALID) length = 1;
+    if (!whitespace) {
+      if (!has_content) begin = offset;
+      has_content = true;
+      end = offset + length;
+    }
+    offset += length;
+  }
+  return text.substr(begin, end - begin);
+}
+
+inline std::string sensor_colour_casefold(const std::string &text) {
+  std::string out;
+  for (size_t offset = 0; offset < text.size();) {
+    uint32_t codepoint = 0;
+    size_t length = 0;
+    const auto status = decode_utf8_codepoint(text, offset, codepoint, length);
+    if (status == Utf8DecodeStatus::INVALID || status == Utf8DecodeStatus::INCOMPLETE) {
+      out.push_back(text[offset++]);
+      continue;
+    }
+    const char *folded = espcontrol::sensor_colour::casefold(codepoint);
+    if (folded) out += folded;
+    else append_utf8_codepoint(out, codepoint);
+    offset += length;
+  }
+  return out;
+}
+
 inline std::string text_sensor_display_text(esphome::StringRef value,
                                             size_t max_len = HA_TEXT_SENSOR_STATE_MAX_LEN) {
   std::string raw = string_ref_limited(value, max_len);
@@ -2068,6 +2239,32 @@ inline bool presence_detected_ref(esphome::StringRef state) {
 inline bool ha_state_unavailable_ref(esphome::StringRef state) {
   std::string value = normalized_state_text(state);
   return value.empty() || value == "unavailable" || value == "unknown";
+}
+
+inline bool sensor_colour_matches(const SensorColourRules &rules,
+                                  esphome::StringRef raw_state,
+                                  uint32_t &colour) {
+  if (!rules.valid) return false;
+  const std::string value(raw_state.c_str(), raw_state.size());
+  const std::string trimmed = sensor_colour_trim(value);
+  if (ha_state_unavailable_ref(esphome::StringRef(trimmed.c_str(), trimmed.size()))) return false;
+  for (const auto &condition : rules.conditions) {
+    if (condition.text) {
+      std::string lhs = sensor_colour_casefold(trimmed);
+      std::string rhs = sensor_colour_casefold(sensor_colour_trim(condition.state));
+      if (lhs == rhs) { colour = condition.colour; return true; }
+      continue;
+    }
+    double numeric = 0;
+    if (!sensor_colour_parse_number(trimmed, numeric)) continue;
+    if (condition.has_lower &&
+        (condition.lower_inclusive ? numeric < condition.lower : numeric <= condition.lower)) continue;
+    if (condition.has_upper &&
+        (condition.upper_inclusive ? numeric > condition.upper : numeric >= condition.upper)) continue;
+    colour = condition.colour;
+    return true;
+  }
+  return false;
 }
 
 inline bool ha_entity_accepts_unknown_state(const std::string &entity_id) {

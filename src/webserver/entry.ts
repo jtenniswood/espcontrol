@@ -194,7 +194,7 @@ function registerCards(context: ApplicationContext) {
   registerPresenceCardTypes(registry, context.configuration.options, fields);
   registerPushCardTypes(registry, fields);
   registerScreenLockCardTypes(registry, fields);
-  registerSensorCardTypes(registry, context.configuration.options, fields, cardUi);
+  registerSensorCardTypes(registry, context.configuration.options, fields, cardUi, context.configuration.native);
   registerSliderCardTypes(registry, context.configuration.modalTabs, lightCards, fields, context.controllers.settingsUi);
   registerSubpageCardTypes(registry, context.configuration.codec, context.core, context.controllers.selection, fields, cardUi);
   registerSwitchCardTypes(registry, context.configuration.confirmationOptions, lightCards, fields);

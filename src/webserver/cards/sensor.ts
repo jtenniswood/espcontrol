@@ -13,11 +13,14 @@ import { escHtml, iconSlug } from "../application/ui_primitives";
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ConfigSensorOptionsFeature } from "../application/config_sensor_options";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
+import { renderSensorColourEditor } from "./sensor_colour_editor";
+import type { NativePanelConfigController } from "../controllers/native_panel_config_controller";
 export function registerSensorCardTypes(
     registry: CardRegistry,
     sensorOptions: ConfigSensorOptionsFeature,
     fields: ControlsFieldsFeature,
     cardUi: CardUiServices,
+    nativeConfig?: Pick<NativePanelConfigController, "sensorColourRulesSupported" | "begin" | "waitForDiscovery">,
 ): void {
     const { renderButtonSettings } = cardUi;
     const { cardBadgeLabelHtml, cardSensorPreviewHtml, condField, toggleRow } = fields;
@@ -26,10 +29,8 @@ export function registerSensorCardTypes(
         sensorCardModeController,
         sensorCardIsLocal,
         normalizeSensorOptions,
-        sensorActiveColorEnabled,
         sensorTimeUnit,
         setSensorTimeUnit,
-        setSensorActiveColorEnabled,
         sensorStateLabelsEnabled,
         sensorStateInput,
         sensorStateOutput,
@@ -81,11 +82,6 @@ export function registerSensorCardTypes(
             supported: function (this: any, b?: any) {
                 return !sensorCardIsLocal(b) && b.precision !== "icon" && b.precision !== "text" && b.precision !== "time";
             },
-        },
-        activeColor: {
-            label: "Lit When Active",
-            idSuffix: "sensor-active-color",
-            checked: sensorActiveColorEnabled,
         },
         preview: {
             iconBadge: "toggle-switch",
@@ -217,7 +213,6 @@ export function registerSensorCardTypes(
                 label: "On Icon",
             });
             panel.appendChild(iconSection);
-            var activeColorToggle: any = helpers.renderCardActiveColorToggle(panel, b, helpers, SENSOR_CARD_METADATA.activeColor, setSensorActiveColorEnabled);
             var hasStateLabels: any = sensorStateLabelsEnabled(b);
             var advancedToggleSection: any = helpers.toggleSection("Advanced", helpers.idPrefix + "sensor-advanced-toggle", hasStateLabels);
             var advancedToggle: any = advancedToggleSection.toggle;
@@ -285,7 +280,6 @@ export function registerSensorCardTypes(
                 timeSection.classList.toggle("sp-visible", displayMode === "time");
                 textSection.classList.toggle("sp-visible", isTextMode);
                 iconSection.classList.toggle("sp-visible", displayMode === "icon");
-                activeColorToggle.row.style.display = displayMode === "time" ? "none" : "";
                 syncAdvancedVisibility();
                 if (displayMode === "time")
                     timeUnitField.select.value = sensorTimeUnit(b);
@@ -331,9 +325,26 @@ export function registerSensorCardTypes(
                     precisionSelect.value = "0";
                 }
                 transition.fields.forEach(function (field: any) { helpers.saveField(field, b[field]); });
-                activeColorToggle.input.checked = sensorActiveColorEnabled(b);
+                helpers.syncColourMode?.();
             }
             setMode(displayMode, false);
+            helpers.syncColourMode?.();
+        },
+        renderColourSettings: (panel, b, _slot, helpers, swatches) => {
+            if (sensorCardIsLocal(b)) return null;
+            const controls = renderSensorColourEditor(panel, b, helpers, sensorOptions, !!nativeConfig?.sensorColourRulesSupported(), sample => {
+                const preview: any = registry.definitions.sensor?.renderPreview?.(b, {
+                    escHtml, cardSize: CARD_SIZE_SINGLE, sensorSampleValue: sample,
+                });
+                return (preview?.iconHtml || "") + (preview?.labelHtml || "");
+            }, swatches);
+            helpers.syncColourMode = controls.sync;
+            controls.sync();
+            // Retry startup capability failures and update this draft without rebuilding it.
+            void nativeConfig?.begin().then(() => nativeConfig.waitForDiscovery()).then(() => {
+                if (panel.isConnected) controls.sync(nativeConfig.sensorColourRulesSupported());
+            });
+            return controls;
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             if (sensorCardIsLocal(b))
@@ -349,7 +360,7 @@ export function registerSensorCardTypes(
                 var iconName: any = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "cog";
                 return {
                     iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
-                    labelHtml: cardBadgeLabelHtml(helpers, "State", SENSOR_CARD_METADATA.preview.textBadge),
+                    labelHtml: cardBadgeLabelHtml(helpers, helpers?.sensorSampleValue ?? "State", SENSOR_CARD_METADATA.preview.textBadge),
                 };
             }
             if (b.precision === "time") {
@@ -364,7 +375,9 @@ export function registerSensorCardTypes(
             var label: any = b.label || b.sensor || "Sensor";
             var unit: any = b.unit || "";
             var prec: any = parseInt(b.precision || "0", 10) || 0;
-            var sampleVal: any = (0).toFixed(prec);
+            const sample = helpers?.sensorSampleValue;
+            var sampleVal: any = sample == null ? (0).toFixed(prec)
+                : String(sample).trim() && Number.isFinite(Number(sample)) ? Number(sample).toFixed(prec) : "—";
             return {
                 iconHtml: cardSensorPreviewHtml(b, helpers, sampleVal, unit),
                 labelHtml: cardBadgeLabelHtml(helpers, label, SENSOR_CARD_METADATA.preview.numericBadge),

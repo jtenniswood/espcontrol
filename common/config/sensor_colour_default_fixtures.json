@@ -1,0 +1,14 @@
+[
+  { "payload": "v1||t,running,00FF00", "valid": true },
+  { "payload": "v2||t,running,00FF00|", "valid": true },
+  { "payload": "v2||t,running,00FF00|FFFFFF", "valid": true, "defaultColour": "FFFFFF" },
+  { "payload": "v2||t,running,00FF00|000000", "valid": true, "defaultColour": "000000" },
+  { "payload": "v2|sensor.battery_power|n,,1,8,0,FF0000|aabbcc", "valid": true, "defaultColour": "AABBCC" },
+  { "payload": "v2||t,L%C3%B8bning%2C%20running%7Cagain,00FF00|FFFFFF", "valid": true, "defaultColour": "FFFFFF" },
+  { "payload": "v2||t,running,00FF00", "valid": false },
+  { "payload": "v2||t,running,00FF00|invalid", "valid": false },
+  { "payload": "v2||t,running,00FF00|+12345", "valid": false },
+  { "payload": "v2||t,running,00FF00|#FFFFFF", "valid": false },
+  { "payload": "v2||t,running,00FF00|FFFFFF|extra", "valid": false },
+  { "payload": "v3||t,running,00FF00|FFFFFF", "valid": false }
+]

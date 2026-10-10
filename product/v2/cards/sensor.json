@@ -83,6 +83,12 @@
       }
     },
     {
+      "name": "sensor_colours",
+      "label": "Sensor Colour Conditions",
+      "kind": "text",
+      "omitDefault": true
+    },
+    {
       "name": "state_labels",
       "label": "Status Translation",
       "kind": "flag",
@@ -219,6 +225,7 @@
       "large_numbers",
       "time_unit",
       "active_color",
+      "sensor_colours",
       "state_labels",
       "state_input",
       "state_output",

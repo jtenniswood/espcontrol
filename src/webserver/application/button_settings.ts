@@ -364,11 +364,11 @@ export function createButtonSettingsFeature(
         }
         function validateSaveLimits(this: any) {
             var validation: any = cardEditorValidationController.validateSave({
-                fields: [], isSubpage: c.isSub, serializedConfigLength: serializeButtonConfig(b).length,
+                fields: [], isSubpage: c.isSub, serializedConfigLength: new TextEncoder().encode(serializeButtonConfig(b)).length,
                 imageCardCount: 0, imageCardCapacity: imageSlotCapacity(),
             });
             if (validation.reason === "config-size") {
-                showBanner("Card settings are too large to save. Shorten confirmation text, labels, or entity IDs.", "error");
+                showBanner("Card settings are too large to save. Remove a condition or shorten its state, labels, or entity IDs.", "error");
             }
             return validation;
         }
@@ -836,12 +836,15 @@ export function createButtonSettingsFeature(
                 presetGrid._syncColor(configOptionValue(b.options, "card_off_color"));
                 saveField("options", b.options);
                 renderPreview();
+                colourSettings?.sync();
             }
             var presetGrid = createColorSwatches(configOptionValue(b.options, "card_off_color"), saveCardColor, "Card colour presets");
             cardColorEditor.appendChild(presetGrid);
+            const colourSettings = typeDef?.renderColourSettings?.(cardColorEditor, b, slot, typeHelpers, presetGrid);
             var resetCardColors: any = createActionButton("sp-icon-button sp-card-header-action", "", "restore", "Reset colours to defaults");
             resetCardColors.title = "Reset colours";
             resetCardColors.addEventListener("click", function () {
+                colourSettings?.reset();
                 saveCardColor("");
             });
             var cardColorHeader: any = document.createElement("div");

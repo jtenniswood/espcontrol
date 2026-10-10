@@ -1,4 +1,5 @@
 import type { CardConfig, SavedConfigField } from "../contracts/types";
+import { normalizedCardColorOptions } from "../model/config_primitives";
 
 export const LOCAL_SENSOR_SOURCE = "local";
 
@@ -56,7 +57,7 @@ export class SensorCardModeController {
     button.icon = "Auto";
     button.icon_on = "Auto";
     button.precision = "";
-    button.options = "";
+    button.options = normalizedCardColorOptions(button.options);
     return sourceFields;
   }
 

@@ -1,7 +1,7 @@
 import { state } from "../state/app_instance";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
-import { PREVIEW_THEME_COLORS, previewEffectiveTheme } from "../state/preview_theme";
 import { configOptionValue, lighterCardColor } from "../model/config_primitives";
+import { PREVIEW_THEME_COLORS, previewEffectiveTheme } from "../state/preview_theme";
 import { escHtml } from "./ui_primitives";
 import {
     buttonConfigDisabledForDevice as isButtonConfigDisabledForDevice,
