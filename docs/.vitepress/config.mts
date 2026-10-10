@@ -456,14 +456,8 @@ export default defineConfig({
       {
         text: 'Community',
         items: [
-          {
-            text: 'Contributing',
-            link: '/reference/contributing',
-            collapsed: true,
-            items: [
-              { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
-            ],
-          },
+          { text: 'Contributing', link: '/reference/contributing' },
+          { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
         ],
       },
       {
