@@ -154,7 +154,7 @@ export function renderSensorColourEditor(panel: HTMLElement, button: any, helper
         editor.hidden = mode.value !== "custom";
         paletteField.hidden = !editor.hidden;
         if (editor.hidden) return;
-        if (!rules.conditions.length) rules.conditions.push(conditionFor("below", "", "FF8C00"));
+        if (!rules.conditions.length) rules.conditions.push(conditionFor("below", "", "DA5125"));
 
         const sourceFields = element("div", "sp-sensor-colour-source-fields");
         const source = select([["", "Main Entity"], ["other", "Another sensor"]]);
@@ -247,7 +247,7 @@ export function renderSensorColourEditor(panel: HTMLElement, button: any, helper
                 row.appendChild(colourField);
                 list.appendChild(row);
             });
-            const add = action("+ Add condition", () => { rules.conditions.push(conditionFor("below", "", "FF8C00")); renderRows(); changed(); });
+            const add = action("+ Add condition", () => { rules.conditions.push(conditionFor("below", "", "DA5125")); renderRows(); changed(); });
             add.disabled = rules.conditions.length >= SENSOR_COLOUR_RULES_MAX;
             list.appendChild(add);
             if (add.disabled) list.appendChild(element("p", "sp-sensor-colour-note", "Maximum of six conditions per card."));

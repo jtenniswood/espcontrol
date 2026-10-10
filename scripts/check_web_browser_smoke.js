@@ -6433,7 +6433,7 @@ async function assertSensorColourConditions(browser) {
       assert.deepStrictEqual(await palette.locator("[data-color]").evaluateAll(nodes => nodes.map(node => node.dataset.color)), fixedColours, "fixed and conditional colours use the identical shared palette");
       assert.strictEqual(await palette.getByRole("button").count(), 20, "conditions use the same 20-colour palette as the card picker");
       assert.strictEqual(await rules.first().locator('input[type="color"], [id*="sensor-colour-hex"]').count(), 0, "colour selection needs only swatches");
-      assert.strictEqual(await palette.locator('[aria-pressed="true"]').getAttribute("data-color"), "FF8C00");
+      assert.strictEqual(await palette.locator('[aria-pressed="true"]').getAttribute("data-color"), "DA5125");
       const blue = palette.getByRole("button", { name: "Set colour to sky blue", exact: true });
       await blue.click();
       assert.strictEqual(await palette.locator('[aria-pressed="true"]').count(), 1, "one swatch is selected");
@@ -6467,9 +6467,9 @@ async function assertSensorColourConditions(browser) {
       assert.strictEqual(await previewCard.locator(".sp-btn-label").textContent(), "Energy");
       assert.strictEqual(await previewCard.locator(".sp-sensor-preview").count(), 1, "test card reuses the main sensor value markup");
       assert((await result.textContent()).includes("Condition 1 matches"));
-      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).backgroundColor), "rgb(3, 155, 229)");
+      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).backgroundColor), "rgb(62, 138, 199)");
       await palette.getByRole("button", { name: "Set colour to red", exact: true }).click();
-      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).backgroundColor), "rgb(255, 0, 0)", "choosing the shared red swatch updates the matching sample immediately");
+      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).backgroundColor), "rgb(234, 51, 35)", "choosing the shared red swatch updates the matching sample immediately");
       await blue.click();
       await testPanel.click();
       assert.strictEqual(await sample.isVisible(), false);
@@ -6489,7 +6489,7 @@ async function assertSensorColourConditions(browser) {
       assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).backgroundColor), "rgb(255, 255, 255)", "unmatched samples use the selected default colour");
       assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).color), "rgb(33, 33, 33)", "fallback foreground remains readable");
       await sample.fill("7");
-      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).backgroundColor), "rgb(3, 155, 229)", "matching conditions take priority over the fallback");
+      assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).backgroundColor), "rgb(62, 138, 199)", "matching conditions take priority over the fallback");
       await sample.fill("unavailable");
       assert.strictEqual(await page.locator(".sp-sensor-colour-preview").evaluate(node => getComputedStyle(node).backgroundColor), "rgb(255, 255, 255)", "unavailable samples use the fallback");
       await defaultMode.selectOption("");
@@ -6585,7 +6585,7 @@ async function assertSensorColourConditions(browser) {
       await waitForNativeState(nativeState, () => nativeState.puts.length > previousPuts, "sensor conditions save");
       const saved = nativeState.document.buttons[2];
       assert(saved.includes("sensor_colours="), "rules persist in the card options");
-      assert(saved.includes("card_off_color=6633B9"), "the separate single colour is retained alongside conditions");
+      assert(saved.includes("card_off_color=6036B2"), "the separate single colour is retained alongside conditions");
       assert.strictEqual(await layoutCard.evaluate(node => getComputedStyle(node).backgroundColor), "rgb(255, 255, 255)", "saved conditional layout uses its fallback instead of the retained purple colour");
       assert.strictEqual(await layoutCard.evaluate(node => getComputedStyle(node).getPropertyValue("--card-text-color").trim()), "#212121", "saved layout fallback has readable text");
       assert(!saved.includes("RUNNING") && !saved.includes("test_state"), "sample preview stays out of saved configuration");
@@ -6593,7 +6593,7 @@ async function assertSensorColourConditions(browser) {
       assert.strictEqual(await defaultMode.inputValue(), "custom", "fallback mode survives reload");
       assert.strictEqual(await defaultPalette.locator('[aria-pressed="true"]').getAttribute("data-color"), "FFFFFF", "fallback colour survives reload");
       assert.strictEqual(await rules.first().getByLabel("Value", { exact: true }).inputValue(), "8", "conditions survive reload");
-      assert.strictEqual(await rules.first().locator('[aria-pressed="true"]').getAttribute("data-color"), "039BE5", "saved swatch is selected on reopen");
+      assert.strictEqual(await rules.first().locator('[aria-pressed="true"]').getAttribute("data-color"), "3E8AC7", "saved swatch is selected on reopen");
       for (const otherMode of ["default", "active"]) {
         await page.locator("#sp-inp-sensor-colour-mode").selectOption(otherMode);
         await page.locator("#sp-inp-sensor-colour-mode").selectOption("custom");
@@ -6614,7 +6614,7 @@ async function assertSensorColourConditions(browser) {
       await page.locator(".sp-settings-close").click();
       assert.strictEqual(nativeState.document.buttons[2], saved, "Cancel discards condition and fallback changes");
       // Older saved custom colours remain selected and survive an unchanged save.
-      const customSaved = saved.replace("039BE5", "123456");
+      const customSaved = saved.replace("3E8AC7", "123456");
       assert.notStrictEqual(customSaved, saved);
       nativeState.document.buttons[2] = customSaved;
       await seedNativeDocument(page, nativeState);
@@ -6654,7 +6654,7 @@ async function assertSavedCardColours(browser) {
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
   await installFakeEventSource(page);
-  const colour = "card_off_color=6633B9";
+  const colour = "card_off_color=6036B2";
   const cardCases = [
     { type: "vacuum", config: `vacuum.kitchen;Vacuum;Robot Vacuum;Auto;start_pause;;vacuum;;${colour}`, mode: "#sp-inp-vacuum-type", nextMode: "dock" },
     { type: "lawn_mower", config: `lawn_mower.garden;Mower;Robot Mower;Auto;start_mowing;;lawn_mower;;${colour}`, mode: "#sp-inp-lawn-mower-type", nextMode: "dock" },
@@ -6686,7 +6686,7 @@ async function assertSavedCardColours(browser) {
   };
   const assertColour = async type => {
     const palette = await colourPalette();
-    assert.strictEqual(await palette.locator('[aria-pressed="true"]').getAttribute("data-color"), "6633B9", `${type}: saved colour stays selected`);
+    assert.strictEqual(await palette.locator('[aria-pressed="true"]').getAttribute("data-color"), "6036B2", `${type}: saved colour stays selected`);
   };
   const save = async type => {
     const puts = nativeState.puts.length;
