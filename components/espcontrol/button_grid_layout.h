@@ -359,18 +359,27 @@ inline void set_grid_card_cell(lv_obj_t *btn,
 // ── Button visuals ────────────────────────────────────────────────────
 
 // Apply on/off background colors to a button's checked/pressed/default states
+inline void bind_card_text_contrast_events(lv_obj_t *btn);
+
 inline void apply_button_colors(lv_obj_t *btn, bool has_on, uint32_t on_val,
                                 bool has_off, uint32_t off_val) {
   if (has_on) {
     lv_obj_set_style_bg_color(btn, lv_color_hex(on_val),
       static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_CHECKED));
+    lv_obj_set_style_text_color(btn, lv_color_hex(display_text_color_for_bg(on_val)),
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_CHECKED));
     lv_obj_set_style_bg_color(btn, lv_color_hex(on_val),
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
+    lv_obj_set_style_text_color(btn, lv_color_hex(display_text_color_for_bg(on_val)),
       static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
   }
   if (has_off) {
     lv_obj_set_style_bg_color(btn, lv_color_hex(off_val),
       static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+    lv_obj_set_style_text_color(btn, lv_color_hex(display_text_color_for_bg(off_val)),
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
   }
+  if (has_on || has_off) bind_card_text_contrast_events(btn);
 }
 
 inline uint32_t card_pattern_highlight_color(uint32_t color) {
@@ -415,8 +424,20 @@ inline void apply_card_descendant_text_color(lv_obj_t *obj, lv_color_t color) {
 
 inline void sync_card_checked_text_color(lv_obj_t *btn) {
   if (!btn) return;
-  apply_card_descendant_text_color(
-    btn, lv_obj_get_style_text_color(btn, LV_PART_MAIN));
+  const lv_color_t text_color = lv_obj_get_style_text_color(btn, LV_PART_MAIN);
+  apply_card_descendant_text_color(btn, text_color);
+}
+
+inline void card_text_contrast_event_cb(lv_event_t *event) {
+  const auto code = lv_event_get_code(event);
+  if (code == LV_EVENT_PRESSED || code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+    sync_card_checked_text_color(static_cast<lv_obj_t *>(lv_event_get_target(event)));
+  }
+}
+
+inline void bind_card_text_contrast_events(lv_obj_t *btn) {
+  lv_obj_remove_event_cb_with_user_data(btn, card_text_contrast_event_cb, nullptr);
+  lv_obj_add_event_cb(btn, card_text_contrast_event_cb, LV_EVENT_ALL, nullptr);
 }
 
 inline void set_card_checked_state(lv_obj_t *btn, bool checked) {

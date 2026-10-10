@@ -258,3 +258,6 @@ timer=Timer
 timer_confirm=Bevestigen
 guest_wifi=Gastwifi
 wifi_did_not_change=Wifi is niet gewijzigd
+connect_to_the_wifi_hotspot=Maak verbinding met de WiFi-hotspot
+to_configure_your_network=om je netwerk in te stellen.
+then_visit_192_168_4_1_in_your_browser=Open daarna 192.168.4.1 in je browser

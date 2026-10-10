@@ -796,6 +796,9 @@ export function registerMediaCardTypes(
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             const neutralPreview = PREVIEW_THEME_COLORS[previewEffectiveTheme(state)];
+            const customBackground = helpers && helpers.cardBackgroundColor || "";
+            const customProgress = helpers && helpers.cardProgressColor || "";
+            const fallbackTextColor = helpers && helpers.cardTextColor || "#" + neutralPreview.textPrimary;
             function modeInfo(this: any, value?: any) {
                 if (value === "controls")
                     value = "play_pause";
@@ -846,8 +849,8 @@ export function registerMediaCardTypes(
                 };
             }
             if (mode === "position") {
-                var bgColor: any = neutralPreview.surfacePrimary;
-                var progressColor: any = neutralPreview.trackBackground;
+                var bgColor: any = customBackground || neutralPreview.surfacePrimary;
+                var progressColor: any = customProgress || neutralPreview.trackBackground;
                 var positionLabel: any = b.precision === "state" ? "Paused" : label;
                 var positionClass: any = "sp-sensor-preview sp-media-position-time" +
                     (cardLargeNumbersActiveForCardSize(b, helpers, MEDIA_CARD_METADATA) ? " sp-sensor-preview-large" : "");
@@ -861,7 +864,7 @@ export function registerMediaCardTypes(
                 };
             }
             if (mode === "cover_art") {
-                var coverArtColor: any = neutralPreview.surfaceCard;
+                var coverArtColor: any = customBackground || neutralPreview.surfaceCard;
                 if (mediaCoverArtDetailsEnabled(b)) {
                     var singleCoverArtCard: any = ((helpers && helpers.cardSize) || CARD_SIZE_SINGLE) === CARD_SIZE_SINGLE;
                     var controlFontClass: any = (deviceId === "guition-esp32-p4-jc4880p443" ||
@@ -884,20 +887,21 @@ export function registerMediaCardTypes(
                         helpers.escHtml(coverArtColor) + '"></span>',
                     labelHtml: '<span class="sp-image-label"><span class="sp-image-label-stack">' +
                         '<span class="sp-image-label-text sp-image-label-shadow" aria-hidden="true">Cover Art</span>' +
-                        '<span class="sp-image-label-text sp-image-label-main">Cover Art</span></span></span>',
+                        '<span class="sp-image-label-text sp-image-label-main" style="color:' + helpers.escHtml(fallbackTextColor) + '">Cover Art</span></span></span>',
                 };
             }
             if (mode === "now_playing") {
                 var progressBg: any = "";
                 if (mediaNowPlayingProgressEnabled(b)) {
-                    var nowBgColor: any = neutralPreview.surfacePrimary;
+                    var nowBgColor: any = customBackground || neutralPreview.surfacePrimary;
+                    var nowProgressColor: any = customProgress || neutralPreview.trackBackground;
                     progressBg =
                         '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(nowBgColor) + '">' +
-                            '<span class="sp-slider-track"><span class="sp-slider-fill" style="width:50%;height:100%;background:#' + neutralPreview.trackBackground + '">' +
+                            '<span class="sp-slider-track"><span class="sp-slider-fill" style="width:50%;height:100%;background:#' + helpers.escHtml(nowProgressColor) + '">' +
                             '</span></span></span>';
                 }
                 else if (mediaNowPlayingPlayPauseEnabled(b)) {
-                    var playBgColor: any = neutralPreview.surfacePrimary;
+                    var playBgColor: any = customBackground || neutralPreview.surfacePrimary;
                     progressBg =
                         '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(playBgColor) + '">' +
                             '</span>';

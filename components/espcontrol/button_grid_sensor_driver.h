@@ -197,7 +197,7 @@ inline bool sensor_driver_bind_data(
     if (!config.sensor.empty()) {
       subscribe_sensor_text_card_value(
         slot.text_lbl, config, slot.btn, sensor_active_color_enabled(config),
-        palette.on_val, true);
+        palette.on_val, true, palette.custom_background ? palette.surface_sensor_val : UINT32_MAX);
     }
     return true;
   }
@@ -219,7 +219,7 @@ inline bool sensor_driver_bind_data(
       subscribe_sensor_value(
         slot.sensor_lbl, config.sensor, parse_precision(config.precision),
         slot.unit_lbl, config.unit, slot.btn,
-        sensor_active_color_enabled(config), palette.on_val, true);
+        sensor_active_color_enabled(config), palette.on_val, true, palette.custom_background ? palette.surface_sensor_val : UINT32_MAX);
     }
     if (config.label.empty()) subscribe_friendly_name(slot.text_lbl, config.sensor);
   }

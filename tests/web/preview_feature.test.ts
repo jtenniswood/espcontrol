@@ -1,4 +1,6 @@
 import {
+  cardPreviewTextColor,
+  cardProgressColor,
   cardTypePickerOptions,
   clampMenuPosition,
   closestGridCell,
@@ -19,6 +21,19 @@ function deepEqual(actual: unknown, expected: unknown, message: string): void {
 }
 
 export function runPreviewFeatureTests(): void {
+  equal(cardPreviewTextColor("FFFFFF"), "#212121", "white card backgrounds use dark text like the device");
+  equal(cardPreviewTextColor("FFEB3B"), "#212121", "bright yellow card backgrounds use dark text");
+  equal(cardPreviewTextColor("313131"), "#FFFFFF", "dark card backgrounds retain white text");
+  for (const colour of ["FF0000", "F6402C", "FF8C00", "1093F5", "46AF4A", "009687", "00BBD5", "00BCD4", "4DD0E1", "039BE5", "4FB9ED", "FF9800", "B2B2B2"]) {
+    equal(cardPreviewTextColor(colour), "#FFFFFF", "mid-tone colour " + colour + " retains white content");
+  }
+  for (const colour of ["88C440", "CCDD1E", "FFEC16", "FFC100", "B3B3B3", "BABABA", "BBBBBB", "BFEAFF"]) {
+    equal(cardPreviewTextColor(colour), "#212121", "light colour " + colour + " uses dark content");
+  }
+  for (const [base, fill] of [["00BCD4", "4DD0E1"], ["FFEC16", "B3A50F"], ["FFFFFF", "B3B3B3"], ["FF8C00", "FFAF4D"], ["9D9D9D", "BABABA"]]) {
+    equal(cardProgressColor(base!), fill!, "media progress stays distinct on " + base);
+  }
+  equal(cardProgressColor("invalid"), "", "invalid progress colours use the theme default");
   equal(previewValue({ iconHtml: "custom" }, "iconHtml", "fallback"), "custom", "custom preview values win");
   equal(previewValue(null, "iconHtml", "fallback"), "fallback", "missing preview values use fallback");
   equal(infoOnlyCardVisible("sensor", true), true, "sensors remain visible in info-only mode");

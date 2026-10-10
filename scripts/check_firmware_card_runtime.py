@@ -209,11 +209,12 @@ def check_root(root: Path) -> list[str]:
             or "weather_driver_setup_visual( s, p, context, palette, display)" not in compact_grid
             or "weather_driver_bind_data(s, p, context)" not in compact_grid
             or "basic_action_driver_setup_visual(s, p, context)" not in compact_grid
-            or "basic_action_driver_bind_main( s, p, context, cfg, palette, display, main_page_obj, COLS, toggle_state)" not in compact_grid
+            or "basic_action_driver_bind_main( s, p, context, cfg, card_palette, display, main_page_obj, COLS, toggle_state)" not in compact_grid
             or "basic_action_driver_bind_subpage( sub_slot, sb_cfg, context, action_environment)" not in compact_grid
             or "numeric_selectable_driver_setup_visual( s, p, context, palette, display)" not in compact_grid
-            or "numeric_selectable_driver_bind_main( s, p, context, palette, display)" not in compact_grid
+            or "numeric_selectable_driver_bind_main( s, p, context, card_palette, display)" not in compact_grid
             or "numeric_selectable_driver_bind_subpage( sub_slot, sb_cfg, context, numeric_environment)" not in compact_grid
+            or "numeric_environment.palette = card_palette;" not in compact_grid
             or "cleaning_driver_setup_visual(s, p, context)" not in compact_grid
             or "cleaning_driver_bind_main( s, p, context)" not in compact_grid
             or "cleaning_driver_bind_subpage( sub_slot, sb_cfg, context, cleaning_environment)" not in compact_grid
@@ -244,8 +245,10 @@ def check_root(root: Path) -> list[str]:
             or "alarm_driver_setup_visual(s, p, context)" not in compact_grid
             or "alarm_driver_bind_main( s, p, context, alarm_environment)" not in compact_grid
             or "alarm_driver_bind_subpage( sub_slot, sb_cfg, context, alarm_environment)" not in compact_grid
-            or "bind_basic_sensor_card(s, p, context, palette, col_span)" not in compact_grid
-            or "bind_basic_sensor_card(sub_slot, sb_cfg, context, palette, cs)" not in compact_grid
+            or "card_palette_for_config(palette, p, display)" not in compact_grid
+            or "card_palette_for_config(palette, sb_cfg, display)" not in compact_grid
+            or "bind_basic_sensor_card(s, p, context, card_palette, col_span)" not in compact_grid
+            or "bind_basic_sensor_card(sub_slot, sb_cfg, context, card_palette, cs)" not in compact_grid
         ):
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: route main and subpage migrated cards through shared drivers"

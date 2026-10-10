@@ -1,3 +1,4 @@
+import { preserveCardColorOptions } from "../model/config_primitives";
 import { configOptionValue, setConfigOptionValue } from "../model/config_primitives";
 import { cardContractCard } from "../generated/card_contract";
 import {
@@ -85,7 +86,7 @@ export function createConfigAccessClimateAlarmOptionsFeature(
             ? setConfigOptionValue("", GARAGE_LABEL_DISPLAY_OPTION, labelMode)
             : "";
         var confirmationMode: any = mode === "open" ? "on" : mode === "close" ? "off" : "";
-        return normalizeGarageConfirmation(out, options, confirmationMode);
+        return preserveCardColorOptions(options, normalizeGarageConfirmation(out, options, confirmationMode));
     }
     function garageLabelDisplayMode(this: any, b?: any) {
         return normalizeGarageLabelDisplayMode(configOptionValue(b && b.options, GARAGE_LABEL_DISPLAY_OPTION));
@@ -114,9 +115,9 @@ export function createConfigAccessClimateAlarmOptionsFeature(
     }
     function normalizeGateOptions(this: any, options?: any, mode?: any) {
         var labelMode: any = normalizeGateLabelDisplayMode(configOptionValue(options, GATE_LABEL_DISPLAY_OPTION));
-        return labelMode !== cardContractOptionDefaultValue("gate", GATE_LABEL_DISPLAY_OPTION, "label")
+        return preserveCardColorOptions(options, labelMode !== cardContractOptionDefaultValue("gate", GATE_LABEL_DISPLAY_OPTION, "label")
             ? setConfigOptionValue("", GATE_LABEL_DISPLAY_OPTION, labelMode)
-            : "";
+            : "");
     }
     function gateLabelDisplayMode(this: any, b?: any) {
         return normalizeGateLabelDisplayMode(configOptionValue(b && b.options, GATE_LABEL_DISPLAY_OPTION));
@@ -169,7 +170,7 @@ export function createConfigAccessClimateAlarmOptionsFeature(
                 out = setConfigOptionValue(out, CLIMATE_CONTROL_TABS_OPTION, tabs.join("|"));
             }
         }
-        return out;
+        return preserveCardColorOptions(options, out);
     }
     function climateLabelDisplayMode(this: any, b?: any) {
         return normalizeClimateLabelDisplayMode(configOptionValue(b && b.options, CLIMATE_LABEL_DISPLAY_OPTION));
@@ -322,7 +323,7 @@ export function createConfigAccessClimateAlarmOptionsFeature(
         if (labelMode !== "status") {
             out = setConfigOptionValue(out, ALARM_LABEL_DISPLAY_OPTION, labelMode);
         }
-        return out;
+        return preserveCardColorOptions(options, out);
     }
     function parseClimatePrecisionConfig(this: any, value?: any) {
         var raw: any = String(value || "");

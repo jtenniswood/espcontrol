@@ -10,11 +10,7 @@ constexpr uint32_t CARD_ACCENT_TEXT_COLOR = 0xFFFFFF;
 constexpr uint32_t CARD_CONTRAST_DARK_COLOR = theme_display_color(DARK_THEME.surface_secondary);
 
 constexpr uint32_t readable_text_color_for_bg(uint32_t bg_color) {
-  uint32_t red = (bg_color >> 16) & 0xFF;
-  uint32_t green = (bg_color >> 8) & 0xFF;
-  uint32_t blue = bg_color & 0xFF;
-  uint32_t brightness = (red * 299 + green * 587 + blue * 114) / 1000;
-  return brightness > 186 ? CARD_CONTRAST_DARK_COLOR : CARD_ACCENT_TEXT_COLOR;
+  return display_text_color_for_bg(bg_color);
 }
 
 static_assert(readable_text_color_for_bg(0xFFFFFF) ==
@@ -43,8 +39,10 @@ struct CardPalette {
   bool has_on = false;
   bool has_off = false;
   bool has_sensor_color = false;
+  bool custom_background = false;
   uint32_t on_val = DEFAULT_ACCENT_COLOR;
   uint32_t off_val = theme_display_color(current_theme().surface_card);
   uint32_t sensor_val = theme_display_color(current_theme().surface_secondary);
   uint32_t surface_sensor_val = theme_display_color(current_theme().surface_sensor);
+  uint32_t progress_val = DEFAULT_ACCENT_COLOR;
 };

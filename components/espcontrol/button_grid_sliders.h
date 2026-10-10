@@ -149,6 +149,8 @@ struct MediaNowPlayingCtx {
   bool external_source = false;
   bool external_source_fallback = false;
   bool cover_art_mode = false;
+  bool custom_fallback_background = false;
+  uint32_t fallback_background_color = DARK_THEME.surface_card;
   bool show_track_details = true;
   bool play_pause_background = false;
   bool artist_below_title = false;

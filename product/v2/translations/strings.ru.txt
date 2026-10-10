@@ -258,3 +258,6 @@ timer=Таймер
 timer_confirm=Подтвердить
 guest_wifi=Гостевой Wi-Fi
 wifi_did_not_change=Состояние Wi-Fi не изменилось
+connect_to_the_wifi_hotspot=Подключитесь к точке доступа WiFi
+to_configure_your_network=чтобы настроить сеть.
+then_visit_192_168_4_1_in_your_browser=Затем откройте 192.168.4.1 в браузере

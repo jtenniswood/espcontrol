@@ -626,7 +626,7 @@ inline void fan_control_style_binary_button(lv_obj_t *btn, bool active,
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
   if (label) {
     lv_obj_set_style_text_color(
-      label, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
+      label, lv_color_hex(active ? readable_text_color_for_bg(active_color) : current_theme().text_primary), LV_PART_MAIN);
   }
 }
 

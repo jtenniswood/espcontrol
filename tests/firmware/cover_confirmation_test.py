@@ -24,6 +24,7 @@ struct lv_obj_t { bool checked = false; };
 constexpr int LV_STATE_CHECKED = 1;
 void lv_obj_add_state(lv_obj_t *button, int) { button->checked = true; }
 void lv_obj_clear_state(lv_obj_t *button, int) { button->checked = false; }
+void set_card_checked_state(lv_obj_t *button, bool checked) { button->checked = checked; }
 struct SwitchConfirmationModalUi {
   void *overlay = nullptr;
   lv_obj_t *btn_obj = nullptr;

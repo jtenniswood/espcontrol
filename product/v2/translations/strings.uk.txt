@@ -258,3 +258,6 @@ timer=Таймер
 timer_confirm=Підтвердити
 guest_wifi=Гостьовий Wi-Fi
 wifi_did_not_change=Стан Wi-Fi не змінився
+connect_to_the_wifi_hotspot=Підключіться до точки доступу WiFi
+to_configure_your_network=щоб налаштувати мережу.
+then_visit_192_168_4_1_in_your_browser=Потім відкрийте 192.168.4.1 у браузері

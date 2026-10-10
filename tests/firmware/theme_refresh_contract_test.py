@@ -45,6 +45,9 @@ grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(enc
 assert 'media_card_mode(config.sensor) != "cover_art"' in media_driver
 assert "media_driver_theme_owned_surface(context, p)" in grid
 assert "media_driver_theme_owned_surface(context, sb_cfg)" in grid
+assert "theme_set_content_background(s.btn, palette.custom_background)" in grid
+assert "neutral_buttons[idx - 1] = context.family" in grid
+assert "!card_palette.custom_background && context.family" not in grid
 assert "grid_card_uses_sensor_surface(context, p)" in grid
 assert "grid_card_uses_sensor_surface(context, sb_cfg)" in grid
 sensor_surface = grid[grid.index("inline bool grid_card_uses_sensor_surface("):grid.index("inline void grid_phase1(")]
@@ -70,7 +73,8 @@ climate = (firmware / "button_grid_climate.h").read_text(encoding="utf-8")
 alarm = (firmware / "button_grid_alarm.h").read_text(encoding="utf-8")
 for marker in ("register_theme_grid", "register_theme_hud", "navigation_subpages()",
                "theme_restyle_tree(entry.back_button", "theme_restyle_tree(card.button",
-               "CARD_ACCENT_TEXT_COLOR", "image_card_refresh_theme(theme_grid_correct_color(theme.surface_sensor, targets))"):
+               "readable_text_color_for_bg(current_button_primary_color())",
+               "image_card_refresh_theme(theme_grid_correct_color(theme.surface_sensor, targets))"):
     assert marker in runtime, marker
 for marker in ("control_modal_track_theme_tab", "control_modal_track_theme_pressed",
                "control_modal_track_theme_disabled", "control_modal_theme_child_deleted",

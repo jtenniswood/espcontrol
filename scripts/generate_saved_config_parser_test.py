@@ -139,6 +139,40 @@ def generate() -> str:
             "  assert(subpage_image_hidden.options.empty());",
         )
     )
+    # Custom colours must survive subpage normalization before becoming ParsedCfg.
+    colour_cases = (
+        ("card_off_color=#ff8c00,card_on_color=3F51B5", "FF8C00"),
+        ("card_on_color=#6633b9", "6633B9"),
+        ("card_off_color=000000", "000000"),
+        ("card_off_color=invalid,card_on_color=00BBD5", "00BBD5"),
+        ("card_off_color=invalid,card_on_color=bad", ""),
+    )
+    for card_type in ("", "light_switch", "light_control", "fan_switch", "fan_control",
+                      "sensor", "media", "climate", "cover", "alarm", "weather",
+                      "calendar", "action", "presence"):
+        for colour_options, expected_colour in colour_cases:
+            options = ("large_numbers=off," if card_type == "sensor" else "") + colour_options
+            encodings = (
+                "1,B|light.kitchen:Kitchen:Auto:Auto:::" + card_type + "::" + options,
+                "~1,B|" + card_type + ",light.kitchen,Kitchen,,,,,," + quote(options, safe=""),
+            )
+            for encoded in encodings:
+                lines.extend((
+                    "  { // Subpage custom colours: " + (card_type or "toggle"),
+                    f"    const auto buttons = parse_subpage_config({cpp_string(encoded)});",
+                    "    assert(buttons.size() == 1);",
+                    f'    assert(cfg_option_value(buttons[0].options, "card_off_color") == {cpp_string(expected_colour)});',
+                    '    assert(cfg_option_value(buttons[0].options, "card_on_color").empty());',
+                    "    const auto config = parsed_cfg_from_subpage_btn(buttons[0]);",
+                    f'    assert(cfg_option_value(config.options, "card_off_color") == {cpp_string(expected_colour)});',
+                    '    assert(cfg_option_value(config.options, "card_on_color").empty());',
+                ))
+                if card_type == "sensor":
+                    lines.extend((
+                        '    assert(cfg_option_value(buttons[0].options, "large_numbers") == "off");',
+                        '    assert(cfg_option_value(config.options, "large_numbers") == "off");',
+                    ))
+                lines.append("  }")
     # Issue 1946: both Wi-Fi card styles must retain options on subpages.
     for card_type in ("wifi_qr", "wifi_qr_card"):
         for security in ("wpa", "open"):
