@@ -238,6 +238,9 @@ inline void option_select_refresh_modal_rows(OptionSelectCtx *ctx) {
     bool active = !ctx->current_option.empty() && ctx->options[i] == ctx->current_option;
     lv_obj_set_style_bg_color(
       row, lv_color_hex(active ? ctx->accent_color : theme_display_color(current_theme().surface_primary)), LV_PART_MAIN);
+    theme_set_content_background(row, active);
+    apply_card_descendant_text_color(row, lv_color_hex(active
+        ? readable_text_color_for_bg(ctx->accent_color) : current_theme().text_primary));
   }
 }
 

@@ -1,3 +1,4 @@
+import { preserveCardColorOptions } from "../model/config_primitives";
 import {
     cardContractAllowInSubpage,
     cardContractCard,
@@ -81,7 +82,7 @@ export function registerVacuumCardTypes(
                 helpers.saveField("sensor", mode);
             }
             b.precision = "";
-            b.options = "";
+            b.options = preserveCardColorOptions(b.options, "");
             b.icon_on = "Auto";
             if (!vacuumModeNeedsArea(mode) && b.unit) {
                 b.unit = "";

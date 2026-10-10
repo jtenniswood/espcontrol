@@ -6192,12 +6192,28 @@ async function assertResetControls(browser) {
           await dialog.dismiss();
           assert.fail("Complete reset must not open a browser prompt");
         });
-        const confirmation = page.getByRole("dialog", { name: "Complete reset?", exact: true });
+        const confirmation = page.getByRole("dialog", { name: "Complete reset", exact: true });
         await card.getByRole("button", { name: label, exact: true }).click();
         assert(await confirmation.isVisible());
-        assert.strictEqual(await confirmation.locator("input").count(), 0);
+        if (process.env.ESPCONTROL_RESET_SCREENSHOT) {
+          await page.screenshot({ path: process.env.ESPCONTROL_RESET_SCREENSHOT });
+        }
+        const confirmationInput = confirmation.getByRole("textbox", { name: "Type RESET to confirm", exact: true });
+        const resetButton = confirmation.getByRole("button", { name: label, exact: true });
+        assert(await confirmationInput.evaluate(el => el === document.activeElement));
+        assert(await resetButton.isDisabled());
+        assert(await confirmation.locator(".sp-reset-warning").isVisible());
+        await page.setViewportSize({ width: 320, height: 700 });
+        assert(await confirmation.evaluate(el => el.scrollWidth <= el.clientWidth), "confirmation must fit a narrow phone");
+        await page.setViewportSize(testCase.viewport);
+        assert((await confirmation.innerText()).includes("Saved Wi-Fi credentials and the Home Assistant API key will be erased."));
+        for (const text of ["", "reset", " RESET", "RESET ", "RESE"]) {
+          await confirmationInput.fill(text);
+          await confirmationInput.press("Enter");
+          assert(await resetButton.isDisabled());
+          assert.strictEqual(resetState.requests.length, 0, "invalid typed confirmation must not reset");
+        }
         assert.strictEqual(resetState.requests.length, 0, "opening confirmation must not reset");
-        assert(await confirmation.getByRole("button", { name: "Cancel", exact: true }).evaluate(el => el === document.activeElement));
         await confirmation.getByRole("button", { name: "Cancel", exact: true }).click();
         await confirmation.waitFor({ state: "detached" });
         assert.strictEqual(resetState.requests.length, 0, "cancel must not reset");
@@ -6206,7 +6222,13 @@ async function assertResetControls(browser) {
         await confirmation.waitFor({ state: "detached" });
         assert.strictEqual(resetState.requests.length, 0, "Escape must not reset");
         await card.getByRole("button", { name: label, exact: true }).click();
-        await confirmation.getByRole("button", { name: label, exact: true }).click();
+        assert.strictEqual(await confirmationInput.inputValue(), "", "reopening must clear confirmation");
+        await confirmationInput.fill("RESET");
+        assert(await resetButton.isEnabled());
+        await confirmationInput.fill("RESE");
+        assert(await resetButton.isDisabled(), "editing confirmation must disable reset again");
+        await confirmationInput.fill("RESET");
+        await resetButton.click();
       } else {
         page.once("dialog", dialog => dialog.dismiss());
         await card.getByRole("button", { name: label, exact: true }).click();
@@ -6330,6 +6352,11 @@ async function assertPanelNaming(browser) {
   const browser = await chromium.launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_RESET_ONLY === "1") {
+      await assertResetControls(browser);
+      console.log("Factory reset confirmation browser checks passed.");
+      return;
+    }
     await assertNamingOfflineBackups(browser);
     await assertPanelNaming(browser);
     if (process.env.ESPCONTROL_NAMING_ONLY === "1") { console.log("Panel naming browser checks passed."); return; }

@@ -258,3 +258,6 @@ timer=Timer
 timer_confirm=Bekræft
 guest_wifi=Gæste-Wi-Fi
 wifi_did_not_change=Wi-Fi blev ikke ændret
+connect_to_the_wifi_hotspot=Opret forbindelse til WiFi-hotspottet
+to_configure_your_network=for at konfigurere dit netværk.
+then_visit_192_168_4_1_in_your_browser=Åbn derefter 192.168.4.1 i din browser

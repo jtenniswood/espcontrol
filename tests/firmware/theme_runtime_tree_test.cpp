@@ -53,6 +53,8 @@ struct lv_obj_t {
   lv_color_t arc{0};
   lv_color_t knob{0};
   lv_color_t border{0};
+  lv_color_t checked_background{0};
+  bool has_checked_background = false;
   lv_color_t pressed_background{0};
   bool has_pressed_background = false;
   lv_color_t disabled_border{0};
@@ -77,8 +79,17 @@ bool lv_obj_check_type(const lv_obj_t *obj, const lv_obj_class_t *type) {
 bool lv_obj_has_flag(const lv_obj_t *obj, lv_obj_flag_t flag) { return (obj->flags & flag) != 0; }
 bool lv_obj_has_state(const lv_obj_t *obj, int state) { return (obj->state & state) != 0; }
 lv_style_res_t lv_obj_get_local_style_prop(lv_obj_t *obj, lv_style_prop_t prop, lv_style_value_t *value, int selector) {
-  assert(prop == LV_STYLE_BG_COLOR && selector == LV_PART_MAIN);
-  value->color = obj->background;
+  assert(prop == LV_STYLE_BG_COLOR);
+  if (selector == LV_STATE_CHECKED) {
+    if (!obj->has_checked_background) return LV_STYLE_RES_NOT_FOUND;
+    value->color = obj->checked_background;
+  } else if (selector == LV_STATE_PRESSED) {
+    if (!obj->has_pressed_background) return LV_STYLE_RES_NOT_FOUND;
+    value->color = obj->pressed_background;
+  } else {
+    assert(selector == LV_PART_MAIN);
+    value->color = obj->background;
+  }
   return LV_STYLE_RES_FOUND;
 }
 void lv_obj_add_flag(lv_obj_t *obj, lv_obj_flag_t flag) { obj->flags |= flag; }
@@ -88,6 +99,8 @@ int lv_obj_get_style_bg_opa(const lv_obj_t *obj, int) { return obj->opacity; }
 lv_color_t lv_obj_get_style_bg_color(const lv_obj_t *obj, int part) {
   if (part == LV_PART_MAIN && (obj->state & LV_STATE_PRESSED) && obj->has_pressed_background)
     return obj->pressed_background;
+  if (part == LV_PART_MAIN && (obj->state & LV_STATE_CHECKED) && obj->has_checked_background)
+    return obj->checked_background;
   return part == LV_PART_KNOB ? obj->knob : obj->background;
 }
 lv_color_t lv_obj_get_style_text_color(const lv_obj_t *obj, int) {
@@ -100,6 +113,11 @@ lv_color_t lv_obj_get_style_arc_color(const lv_obj_t *obj, int) { return obj->ar
 lv_color_t lv_obj_get_style_border_color(const lv_obj_t *obj, int) { return obj->border; }
 int lv_obj_get_style_border_width(const lv_obj_t *obj, int) { return obj->border_width; }
 void lv_obj_set_style_bg_color(lv_obj_t *obj, lv_color_t color, int part) {
+  if (part == LV_STATE_CHECKED) {
+    obj->has_checked_background = true;
+    obj->checked_background = color;
+    return;
+  }
   if (part == LV_STATE_PRESSED) obj->has_pressed_background = true;
   (part == LV_STATE_PRESSED ? obj->pressed_background :
    part == LV_PART_KNOB ? obj->knob : obj->background) = color;
@@ -152,7 +170,9 @@ std::vector<TestSubpage> &navigation_subpages() {
 void sync_card_checked_text_color(lv_obj_t *button) {
   for (auto *child : button->children) child->text = lv_obj_get_style_text_color(button, LV_PART_MAIN);
 }
-void set_card_content_disabled(lv_obj_t *, bool) {}
+inline void set_card_content_disabled(lv_obj_t *, bool);
+void lv_obj_add_state(lv_obj_t *obj, int state) { obj->state |= state; }
+void lv_obj_clear_state(lv_obj_t *obj, int state) { obj->state &= ~state; }
 std::vector<uint32_t> image_theme_colors;
 inline void image_card_refresh_theme(uint32_t color) { image_theme_colors.push_back(color); }
 #include "theme_runtime_ui.h"
@@ -714,7 +734,172 @@ static void test_registry_exhaustion() {
   for (auto &owner : owners) unregister_theme_refresh(&owner);
 }
 
+static void test_custom_card_theme_preservation() {
+  set_active_theme_palette(DARK_THEME);
+  apply_current_theme();
+  lv_obj_t page, custom, label, track, subpage, sub_custom, sub_label, sub_track;
+  custom.type = sub_custom.type = &lv_button_class;
+  custom.background = sub_custom.background = lv_color_hex(0x313131);
+  custom.text = sub_custom.text = lv_color_hex(0xFFFFFF);
+  custom.opacity = sub_custom.opacity = LV_OPA_COVER;
+  theme_set_content_background(&custom);
+  theme_set_content_background(&sub_custom);
+  custom.children = {&label, &track};
+  sub_custom.children = {&sub_label, &sub_track};
+  label.type = sub_label.type = &lv_label_class;
+  label.parent = &custom;
+  sub_label.parent = &sub_custom;
+  track.parent = &custom;
+  sub_track.parent = &sub_custom;
+  for (auto *slider : {&track, &sub_track}) {
+    slider->type = &lv_slider_class;
+    slider->background = lv_color_hex(DARK_THEME.track_background);
+    slider->knob = lv_color_hex(DARK_THEME.text_primary);
+  }
+  custom.state = sub_custom.state = LV_STATE_DISABLED;
+  set_card_content_disabled(&custom, true);
+  set_card_content_disabled(&sub_custom, true);
+  label.text = lv_color_hex(0xFFFFFF);
+  BtnSlot slots[] = {{&custom}};
+  const bool theme_owned[] = {true};
+  const bool sensors[] = {false};
+  register_theme_grid(&page, slots, theme_owned, 1, sensors, 100, 100, 100);
+  navigation_subpages().push_back({&subpage, nullptr, {{true, &sub_custom, false, false}}});
+  for (const auto *theme : {&LIGHT_THEME, &DARK_THEME}) {
+    set_active_theme_palette(*theme);
+    apply_current_theme();
+    assert(custom.background.full == 0x313131 && label.text.full == 0xFFFFFF);
+    assert(sub_custom.background.full == 0x313131 && sub_custom.text.full == 0xFFFFFF);
+    for (auto *child : {&label, &sub_label}) {
+      assert(child->state & LV_STATE_DISABLED);
+      assert(lv_obj_get_style_text_color(child, LV_PART_MAIN).full == theme->text_disabled);
+    }
+    for (auto *slider : {&track, &sub_track}) {
+      assert(slider->background.full == theme->track_background);
+      assert(slider->knob.full == theme->text_primary);
+    }
+  }
+  lv_obj_clear_state(&custom, LV_STATE_DISABLED);
+  lv_obj_clear_state(&sub_custom, LV_STATE_DISABLED);
+  set_active_theme_palette(LIGHT_THEME);
+  apply_current_theme();
+  assert(!(label.state & LV_STATE_DISABLED) && label.text.full == 0xFFFFFF);
+  assert(!(sub_label.state & LV_STATE_DISABLED) && sub_label.text.full == 0xFFFFFF);
+  navigation_subpages().clear();
+  lv_event_t deleted{&page};
+  page.delete_callback(&deleted);
+
+  lv_obj_t active, active_label;
+  active.children = {&active_label};
+  active_label.parent = &active;
+  active.state = LV_STATE_CHECKED;
+  for (const auto *theme : {&DARK_THEME, &LIGHT_THEME}) {
+    set_active_theme_palette(*theme);
+    set_current_button_primary_color(0xFFFFFF);
+    theme_apply_grid_button(&active, theme->surface_card, *theme);
+    assert(active_label.text.full == 0x212121);
+    set_current_button_primary_color(0xFF8C00);
+    theme_apply_grid_button(&active, theme->surface_card, *theme);
+    assert(active_label.text.full == 0xFFFFFF);
+  }
+  set_current_button_primary_color(DEFAULT_ACCENT_COLOR);
+  set_active_theme_palette(DARK_THEME);
+}
+
+static void test_alarm_state_contrast_during_theme_refresh() {
+  set_active_theme_palette(DARK_THEME);
+  set_current_button_primary_color(0xFFEC16);
+  lv_obj_t page, alarm, label, subpage, sub_alarm, sub_label;
+  for (auto *button : {&alarm, &sub_alarm}) {
+    button->type = &lv_button_class;
+    button->opacity = LV_OPA_COVER;
+    button->state = LV_STATE_CHECKED;
+    lv_obj_set_style_bg_color(button, lv_color_hex(0xC62828), LV_STATE_CHECKED);
+    lv_obj_set_style_bg_color(button, lv_color_hex(0xC62828), LV_STATE_PRESSED);
+  }
+  alarm.children = {&label};
+  sub_alarm.children = {&sub_label};
+  label.parent = &alarm;
+  sub_label.parent = &sub_alarm;
+  BtnSlot slots[] = {{&alarm}};
+  const bool neutral[] = {true};
+  register_theme_grid(&page, slots, neutral, 1, 100, 100, 100);
+  navigation_subpages().push_back({&subpage, nullptr, {{true, &sub_alarm}}});
+  for (const auto *theme : {&LIGHT_THEME, &DARK_THEME}) {
+    set_active_theme_palette(*theme);
+    apply_current_theme();
+    for (auto *button : {&alarm, &sub_alarm}) {
+      assert(button->state == LV_STATE_CHECKED);
+      assert(button->checked_background.full == 0xC62828);
+      assert(button->checked_text.full == 0xFFFFFF);
+      assert(button->pressed_text.full == 0xFFFFFF);
+      assert(button->children.front()->text.full == 0xFFFFFF);
+      // Armed state returns to the configured bright accent.
+      lv_obj_set_style_bg_color(button, lv_color_hex(0xFFEC16), LV_STATE_CHECKED);
+      lv_obj_set_style_bg_color(button, lv_color_hex(0xFFEC16), LV_STATE_PRESSED);
+      theme_apply_grid_button(button, theme->surface_card, *theme);
+      assert(button->children.front()->text.full == 0x212121);
+      lv_obj_set_style_bg_color(button, lv_color_hex(0xC62828), LV_STATE_CHECKED);
+      lv_obj_set_style_bg_color(button, lv_color_hex(0xC62828), LV_STATE_PRESSED);
+    }
+  }
+  navigation_subpages().clear();
+  lv_event_t deleted{&page};
+  page.delete_callback(&deleted);
+  set_current_button_primary_color(DEFAULT_ACCENT_COLOR);
+  set_active_theme_palette(DARK_THEME);
+}
+
+static void test_custom_default_contrast_after_active_theme_refresh() {
+  for (uint32_t base : {0xFF8C00u, 0x9D9D9Du}) {
+    const uint32_t active = lighter_card_color(base);
+    assert(readable_text_color_for_bg(base) == 0xFFFFFF);
+    assert(readable_text_color_for_bg(active) == 0x212121);
+    set_active_theme_palette(DARK_THEME);
+    lv_obj_t page, card, label, subpage, sub_card, sub_label;
+    card.children = {&label};
+    sub_card.children = {&sub_label};
+    label.parent = &card;
+    sub_label.parent = &sub_card;
+    for (auto *button : {&card, &sub_card}) {
+      button->type = &lv_button_class;
+      button->opacity = LV_OPA_COVER;
+      theme_set_content_background(button);
+      lv_obj_set_style_bg_color(button, lv_color_hex(base), LV_PART_MAIN);
+      lv_obj_set_style_bg_color(button, lv_color_hex(active), LV_STATE_CHECKED);
+      lv_obj_set_style_bg_color(button, lv_color_hex(active), LV_STATE_PRESSED);
+    }
+    BtnSlot slots[] = {{&card}};
+    const bool neutral[] = {true};
+    register_theme_grid(&page, slots, neutral, 1, 100, 100, 100);
+    navigation_subpages().push_back({&subpage, nullptr, {{true, &sub_card}}});
+    for (int state : {LV_STATE_CHECKED, LV_STATE_PRESSED, LV_STATE_CHECKED | LV_STATE_PRESSED}) {
+      for (const auto *theme : {&LIGHT_THEME, &DARK_THEME}) {
+        card.state = sub_card.state = state;
+        set_active_theme_palette(*theme);
+        apply_current_theme();
+        for (auto *button : {&card, &sub_card}) {
+          assert(button->state == state);
+          assert(button->background.full == base);
+          assert(button->text.full == 0xFFFFFF);
+          assert(button->children.front()->text.full == 0x212121);
+          lv_obj_clear_state(button, LV_STATE_CHECKED | LV_STATE_PRESSED);
+          // An entity update/release only resynchronizes existing state styles.
+          sync_card_checked_text_color(button);
+          assert(button->children.front()->text.full == 0xFFFFFF);
+        }
+      }
+    }
+    navigation_subpages().clear();
+    lv_event_t deleted{&page};
+    page.delete_callback(&deleted);
+  }
+}
+
 int main() {
+  test_custom_default_contrast_after_active_theme_refresh();
+  test_alarm_state_contrast_during_theme_refresh();
+  test_custom_card_theme_preservation();
   ThemePalette alternate = DARK_THEME;
   alternate.background = 0x101112;
   alternate.surface_primary = 0x202122;

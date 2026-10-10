@@ -1156,10 +1156,13 @@ inline void media_cover_art_apply_theme(MediaNowPlayingCtx *ctx,
   const bool artwork_visible = image_card_media_artwork_visible(ctx->cover_art);
   // The fallback is a normal card. White text belongs only to visible artwork,
   // whose image and contrast overlay remain independent of the UI theme.
-  lv_obj_set_style_bg_color(ctx->btn,
-      lv_color_hex(theme_display_color(theme.surface_card)), LV_PART_MAIN);
+  const uint32_t background = ctx->custom_fallback_background
+      ? ctx->fallback_background_color : theme_display_color(theme.surface_card);
+  lv_obj_set_style_bg_color(ctx->btn, lv_color_hex(background), LV_PART_MAIN);
+  const uint32_t fallback_foreground = ctx->custom_fallback_background
+      ? readable_text_color_for_bg(background) : theme.text_primary;
   const lv_color_t foreground = lv_color_hex(
-      artwork_visible ? CARD_ACCENT_TEXT_COLOR : theme.text_primary);
+      artwork_visible ? CARD_ACCENT_TEXT_COLOR : fallback_foreground);
   lv_obj_set_style_text_color(ctx->btn, foreground, LV_PART_MAIN);
   lv_obj_t *labels[] = {ctx->icon_lbl, ctx->idle_lbl, ctx->title_lbl, ctx->artist_lbl};
   for (lv_obj_t *label : labels) {
@@ -4742,7 +4745,9 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
                              const lv_font_t *media_artist_font,
                              int width_compensation_percent = 100,
                              int row_span = 1,
-                             int col_span = 1) {
+                             int col_span = 1,
+                             bool custom_background = false,
+                             uint32_t progress_color = DEFAULT_ACCENT_COLOR) {
   lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   std::string mode = media_card_mode(p.sensor);
   if (mode == "playlist") {
@@ -4773,10 +4778,13 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     ctx->idle_lbl = s.text_lbl;
     ctx->content_padding = padding;
     ctx->cover_art_mode = mode == "cover_art";
+    ctx->custom_fallback_background = custom_background;
+    ctx->fallback_background_color = secondary_color;
     ctx->show_track_details = mode != "cover_art" || media_cover_art_details_enabled(p);
     ctx->play_pause_background = mode == "now_playing" && media_now_playing_play_pause_enabled(p);
     if (mode == "now_playing" && media_now_playing_progress_enabled(p)) {
-      ctx->progress_slider = setup_media_progress_background(s.btn, secondary_color, tertiary_color, p.entity);
+      ctx->progress_slider = setup_media_progress_background(
+        s.btn, custom_background ? progress_color : secondary_color, tertiary_color, p.entity);
     }
     const CardPadding layout_padding = ctx->progress_slider ? padding : CardPadding{};
     lv_obj_set_user_data(s.sensor_container, (void *)ctx);
@@ -4839,7 +4847,8 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     const CardPadding padding = capture_card_padding(s.btn);
     lv_color_t text_color = lv_obj_get_style_text_color(s.sensor_lbl, LV_PART_MAIN);
     lv_obj_t *slider = setup_media_position_layout(
-      s.btn, s.icon_lbl, s.text_lbl, p, secondary_color, tertiary_color,
+      s.btn, s.icon_lbl, s.text_lbl, p,
+      custom_background ? progress_color : secondary_color, tertiary_color,
       sensor_font, text_color, padding, width_compensation_percent);
     lv_obj_set_user_data(s.sensor_container, (void *)slider);
     return;

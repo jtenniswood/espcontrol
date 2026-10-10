@@ -1,6 +1,12 @@
 import { state } from "../state/app_instance";
 import * as EspControlModel from "../model";
-import { configOptionEnabled, configOptionValue, setConfigOptionValue } from "../model/config_primitives";
+import {
+    configOptionEnabled,
+    configOptionValue,
+    normalizedCardColorOptions,
+    setConfigOptionValue,
+    withoutCardColorOptions,
+} from "../model/config_primitives";
 import {
     CARD_SIZE_EXTRA_LARGE,
     CARD_SIZE_LANDSCAPE_LARGE,
@@ -447,8 +453,9 @@ export function createConfigCodecFeature(
         return normalizeSubpageOptions(options || "", b && b.sensor, b && b.precision);
     }
     function normalizeButtonConfig(this: any, b?: any) {
+        var cardColorOptions: any = b ? normalizedCardColorOptions(b.options) : "";
         if (b)
-            b.options = b.options || "";
+            b.options = withoutCardColorOptions(b.options || "");
         if (b)
             migrateSavedConfigActionLegacy(b);
         var wasLegacyTextSensor: any = !!(b && b.type === "text_sensor");
@@ -490,6 +497,7 @@ export function createConfigCodecFeature(
         if (b && !normalizedSavedSensor && !normalizedSavedSwitch && !normalizedSavedAccess && !normalizedSavedOccupancy && !normalizedSavedStatic && !normalizedSavedFan && !normalizedSavedMower && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && !isClimateCardType(b.type) && b.type !== "webhook" && b.type !== "media" && b.type !== "subpage" && b.type !== "image" && b.type !== "wifi_qr" && b.type !== "wifi_qr_card" && b.type !== "light_control" && b.type !== "vacuum" && !cardLargeNumbersSupported(b)) {
             b.options = "";
         }
+        if (b && cardColorOptions) b.options = [b.options || "", cardColorOptions].filter(Boolean).join(",");
         return b;
     }
     function isBrightnessSliderType(this: any, type?: any) {
@@ -617,6 +625,8 @@ export function createConfigCodecFeature(
         if (type === "door_window")
             precision = normalizeDoorWindowSubtype(precision);
         var options: any = b && b.options || "";
+        var cardColorOptions: any = normalizedCardColorOptions(options);
+        options = withoutCardColorOptions(options);
         if (type === "") {
             options = normalizeSwitchConfirmationOptions(options);
         }
@@ -746,6 +756,7 @@ export function createConfigCodecFeature(
             unit = "";
             precision = "";
         }
+        if (cardColorOptions) options = [options || "", cardColorOptions].filter(Boolean).join(",");
         return trimConfigFields([
             (type === "door_window" || type === "presence" || type === "screen_lock") ? "" : (b && b.entity || ""),
             label,

@@ -1,3 +1,4 @@
+import { preserveCardColorOptions } from "../model/config_primitives";
 import {
     cardContractAllowInSubpage,
     cardContractCard,
@@ -182,9 +183,11 @@ export function registerLightTemperatureCardTypes(
         if (b.type === nextType)
             return;
         b.type = nextType;
+        var previousOptions: any = b.options;
         var td: any = registry.definitions[nextType];
         if (td && td.onSelect)
             td.onSelect(b);
+        b.options = preserveCardColorOptions(previousOptions, b.options);
         helpers.saveField("type", nextType);
         helpers.saveField("sensor", b.sensor || "");
         helpers.saveField("unit", b.unit || "");

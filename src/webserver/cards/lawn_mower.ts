@@ -1,3 +1,4 @@
+import { preserveCardColorOptions } from "../model/config_primitives";
 import {
     cardContractAllowInSubpage,
     cardContractCard,
@@ -82,7 +83,7 @@ export function registerLawnMowerCardTypes(
             }
             b.unit = "";
             b.precision = "";
-            b.options = "";
+            b.options = preserveCardColorOptions(b.options, "");
             b.icon_on = "Auto";
             if (!b.icon || b.icon === "Auto") {
                 b.icon = lawnMowerModeDefaultIcon(mode);

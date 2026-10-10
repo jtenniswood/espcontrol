@@ -47,15 +47,16 @@ inline void apply_sensor_active_color(lv_obj_t *btn, bool active_color,
                                       esphome::StringRef state,
                                       uint32_t on_color, uint32_t sensor_color,
                                       bool unavailable,
-                                      bool numeric_mode = false) {
+                                      bool numeric_mode = false,
+                                      bool custom_background = false) {
   if (!btn || !active_color) return;
   const bool active = !unavailable && sensor_active_color_state_ref(state, numeric_mode);
-  theme_set_content_background(btn, active);
+  theme_set_content_background(btn, active || custom_background);
   uint32_t next_color = active ? on_color : sensor_color;
   lv_obj_set_style_bg_color(btn, lv_color_hex(next_color),
     static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
-  lv_obj_set_style_text_color(btn,
-      lv_color_hex(active ? CARD_ACCENT_TEXT_COLOR : current_theme().text_primary), LV_PART_MAIN);
+  lv_obj_set_style_text_color(btn, lv_color_hex(active || custom_background ? display_text_color_for_bg(next_color) : current_theme().text_primary),
+    static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
   sync_card_checked_text_color(btn);
 }
 
@@ -98,17 +99,19 @@ inline void subscribe_sensor_value(lv_obj_t *sensor_lbl, const std::string &sens
                                    lv_obj_t *availability_obj = nullptr,
                                    bool active_color = false,
                                    uint32_t on_color = DEFAULT_ACCENT_COLOR,
-                                   bool sensor_surface = false) {
+                                   bool sensor_surface = false,
+                                   uint32_t custom_sensor_color = UINT32_MAX) {
   std::string display_unit = trim_display_unit(unit);
   ha_subscribe_state(
     sensor_id,
     std::function<void(esphome::StringRef)>(
       [sensor_lbl, precision, unit_lbl, display_unit, availability_obj,
-       active_color, on_color, sensor_surface](esphome::StringRef state) {
+       active_color, on_color, sensor_surface, custom_sensor_color](esphome::StringRef state) {
       bool unavailable = ha_state_unavailable_ref(state);
       apply_sensor_active_color(availability_obj, active_color, state,
-        on_color, sensor_surface ? current_grid_sensor_surface_color() : current_grid_sensor_color(),
-        unavailable, true);
+        on_color, custom_sensor_color != UINT32_MAX ? custom_sensor_color
+          : (sensor_surface ? current_grid_sensor_surface_color() : current_grid_sensor_color()),
+        unavailable, true, custom_sensor_color != UINT32_MAX);
 
       float val = 0.0f;
       if (!unavailable && parse_float_ref(state, val) && std::isfinite(val)) {
@@ -203,14 +206,17 @@ inline void subscribe_text_sensor_value(lv_obj_t *text_lbl, const std::string &s
                                         lv_obj_t *availability_obj = nullptr,
                                         bool active_color = false,
                                         uint32_t on_color = DEFAULT_ACCENT_COLOR,
-                                        bool sensor_surface = false) {
+                                        bool sensor_surface = false,
+                                        uint32_t custom_sensor_color = UINT32_MAX) {
   ha_subscribe_state(
     sensor_id,
     std::function<void(esphome::StringRef)>(
-      [text_lbl, availability_obj, active_color, on_color, sensor_surface](esphome::StringRef state) {
+      [text_lbl, availability_obj, active_color, on_color, sensor_surface, custom_sensor_color](esphome::StringRef state) {
       bool unavailable = ha_state_unavailable_ref(state);
       apply_sensor_active_color(availability_obj, active_color, state,
-        on_color, sensor_surface ? current_grid_sensor_surface_color() : current_grid_sensor_color(), unavailable);
+        on_color, custom_sensor_color != UINT32_MAX ? custom_sensor_color
+          : (sensor_surface ? current_grid_sensor_surface_color() : current_grid_sensor_color()),
+        unavailable, false, custom_sensor_color != UINT32_MAX);
       set_wrapped_button_label_text(text_lbl, text_sensor_display_text(state));
     })
   );
@@ -242,15 +248,18 @@ inline void subscribe_sensor_text_card_value(lv_obj_t *text_lbl, const ParsedCfg
                                              lv_obj_t *availability_obj = nullptr,
                                              bool active_color = false,
                                              uint32_t on_color = DEFAULT_ACCENT_COLOR,
-                                             bool sensor_surface = true) {
+                                             bool sensor_surface = true,
+                                             uint32_t custom_sensor_color = UINT32_MAX) {
   if (p.sensor.empty()) return;
   ha_subscribe_state(
     p.sensor,
     std::function<void(esphome::StringRef)>(
-      [text_lbl, p, availability_obj, active_color, on_color, sensor_surface](esphome::StringRef state) {
+      [text_lbl, p, availability_obj, active_color, on_color, sensor_surface, custom_sensor_color](esphome::StringRef state) {
       bool unavailable = ha_state_unavailable_ref(state);
       apply_sensor_active_color(availability_obj, active_color, state,
-        on_color, sensor_surface ? current_grid_sensor_surface_color() : current_grid_sensor_color(), unavailable);
+        on_color, custom_sensor_color != UINT32_MAX ? custom_sensor_color
+          : (sensor_surface ? current_grid_sensor_surface_color() : current_grid_sensor_color()),
+        unavailable, false, custom_sensor_color != UINT32_MAX);
       set_wrapped_button_label_text(text_lbl, sensor_state_display_text(p, state));
     })
   );

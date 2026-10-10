@@ -69,8 +69,7 @@ inline void switch_confirmation_confirm() {
     else send_turn_off_action(ui.cfg.entity);
   }
   if (ui.btn_obj && !action_script_confirmation_enabled(ui.cfg) && !is_garage_command) {
-    if (ui.turn_on) lv_obj_add_state(ui.btn_obj, LV_STATE_CHECKED);
-    else lv_obj_clear_state(ui.btn_obj, LV_STATE_CHECKED);
+    set_card_checked_state(ui.btn_obj, ui.turn_on);
   }
   switch_confirmation_hide_modal();
 }

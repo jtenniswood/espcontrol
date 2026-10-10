@@ -11,8 +11,12 @@
 #include <nvs.h>
 #include "esphome/core/application.h"
 #include "esphome/core/hal.h"
+#include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 #include "esphome/components/json/json_util.h"
+#ifdef USE_WIFI
+#include "esphome/components/wifi/wifi_component.h"
+#endif
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "esphome/components/ota/ota_backend.h"
 #ifdef USE_SWITCH
@@ -40,6 +44,26 @@ struct Entry { std::string ns; std::string key; };
 class NvsStorage final : public Storage {
  public:
   uint32_t wifi_key{88491487UL};
+  bool wifi_override{false};
+  bool read_wifi_override() {
+    nvs_handle_t handle;
+    auto err = nvs_open(JOURNAL_NAMESPACE, NVS_READONLY, &handle);
+    if (err == ESP_ERR_NVS_NOT_FOUND) { wifi_override = false; return true; }
+    if (err != ESP_OK) return false;
+    uint8_t value = 0;
+    err = nvs_get_u8(handle, "wifi_reset", &value);
+    nvs_close(handle);
+    if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) return false;
+    wifi_override = value != 0;
+    return true;
+  }
+  bool save_wifi_override() {
+    nvs_handle_t handle;
+    if (nvs_open(JOURNAL_NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) return false;
+    bool ok = nvs_set_u8(handle, "wifi_reset", 1) == ESP_OK && nvs_commit(handle) == ESP_OK;
+    nvs_close(handle);
+    return ok && read_wifi_override() && wifi_override;
+  }
   bool read(Journal &out) override {
     nvs_handle_t handle;
     const auto opened = nvs_open(JOURNAL_NAMESPACE, NVS_READONLY, &handle);
@@ -102,7 +126,10 @@ class NvsStorage final : public Storage {
   }
   bool verify(Mode mode) override {
     std::vector<Entry> remaining;
-    return panel(false) && entries(mode, remaining) && remaining.empty();
+    // Persist before completing the journal, so an interrupted reset retries
+    // this step. The reset namespace is preserved by both reset modes.
+    return panel(false) && entries(mode, remaining) && remaining.empty() &&
+           (mode != Mode::FACTORY || save_wifi_override());
   }
 } storage;
 class OtaListener : public esphome::ota::OTAGlobalStateListener {
@@ -215,9 +242,17 @@ void watch_update(esphome::update::UpdateEntity *entity) {
 void early_startup(bool compiled_networks, const char *username, const char *password) {
   auth_username = username;
   auth_password = password;
-  storage.wifi_key = wifi_preference_key(compiled_networks, esphome::App.get_config_version_hash());
   for (;;) {
-    if (storage.read(journal) && resume(storage, journal)) break;
+    if (storage.read(journal) && storage.read_wifi_override()) {
+      storage.wifi_key = wifi_preference_key(compiled_networks && !storage.wifi_override,
+                                           esphome::App.get_config_version_hash());
+      if (resume(storage, journal)) {
+        // A factory reset may have enabled the override during this boot.
+        storage.wifi_key = wifi_preference_key(compiled_networks && !storage.wifi_override,
+                                             esphome::App.get_config_version_hash());
+        break;
+      }
+    }
     // No components or networking have restored stale settings yet. Keep that
     // invariant on failure; serial recovery remains available, with automatic
     // retries instead of booting a partially reset panel or reboot-looping.
@@ -227,6 +262,35 @@ void early_startup(bool compiled_networks, const char *username, const char *pas
   current_epoch.store(journal.epoch);
   initialized.store(true);
   esphome::ota::get_global_ota_callback()->add_global_state_listener(&ota_listener);
+}
+void apply_wifi_override() {
+#ifdef USE_WIFI
+  // Never clear this override on connection: ESPHome must keep selecting the
+  // fallback WiFi preference containing the portal/USB-provisioned network.
+  if (storage.wifi_override && esphome::wifi::global_wifi_component != nullptr) {
+    esphome::wifi::global_wifi_component->clear_sta();
+  }
+#endif
+}
+void ResetBoot::setup() {
+  apply_wifi_override();
+#if defined(USE_WIFI) && defined(USE_WIFI_AP)
+  auto *wifi = esphome::wifi::global_wifi_component;
+  if (wifi == nullptr) return;
+  // Keep explicitly configured hotspot credentials/options. Only replace
+  // the empty/default SSID, after the generated WiFiAP has been populated.
+  auto ap = wifi->get_ap();
+  if (!ap.get_ssid().empty() && ap.get_ssid() != esphome::App.get_friendly_name()) return;
+  const std::string mac = esphome::get_mac_address();
+  std::string suffix;
+  for (char c : mac) {
+    if (c != ':' && c != '-') suffix.push_back(c);
+  }
+  if (suffix.size() > 4) suffix = suffix.substr(suffix.size() - 4);
+  if (suffix.empty()) suffix = "SETUP";
+  ap.set_ssid("EspControl_" + suffix);
+  wifi->set_ap(ap);
+#endif
 }
 void register_handlers(esphome::web_server_idf::AsyncWebServer &server) { server.addHandler(new ResetHandler()); }
 }  // namespace espcontrol::reset

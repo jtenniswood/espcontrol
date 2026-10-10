@@ -7,6 +7,7 @@ import {
 import {
     configOptionEnabled,
     configOptionValue,
+    preserveCardColorOptions,
     setConfigOption,
     setConfigOptionValue,
 } from "../model/config_primitives";
@@ -119,13 +120,13 @@ export function registerWifiQrCardTypes(
         if (security === "open") options = setConfigOptionValue(options, SECURITY_OPTION, "open");
         else if (password) options = setConfigOptionValue(options, PASSWORD_OPTION, base64urlEncode(password));
         if (wifiQrHidden(b)) options = setConfigOption(options, HIDDEN_OPTION, true);
-        b.options = options;
+        b.options = preserveCardColorOptions(b.options, options);
         setWifiQrTabs(b, tabs);
     }
     function updateOptions(this: any, b?: any, ssid?: any, security?: any, password?: any, hidden?: any) {
         if (!b) return;
         var tabs: any = wifiQrTabs(b);
-        b.options = "";
+        b.options = preserveCardColorOptions(b.options, "");
         if (ssid) b.options = setConfigOptionValue(b.options, SSID_OPTION, base64urlEncode(ssid));
         if (security === "open") b.options = setConfigOptionValue(b.options, SECURITY_OPTION, "open");
         else if (password) b.options = setConfigOptionValue(b.options, PASSWORD_OPTION, base64urlEncode(password));

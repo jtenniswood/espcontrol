@@ -51,6 +51,9 @@ inline std::string decode_compact_subpage_field(const std::string &value, size_t
 }
 
 inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
+  // Shared colours must survive the card-specific option cleanup below.
+  const std::string card_colors = card_color_options_normalized(b.options);
+  b.options = options_without_card_colors(b.options);
   if (brightness_slider_type(b.type) && !b.sensor.empty()) b.sensor.clear();
   if (fan_card_type(b.type)) {
     b.sensor.clear();
@@ -227,6 +230,10 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   }
   if (b.type == "sensor") {
     b.options = sensor_card_options_normalized(b.options, b.precision);
+  }
+  if (!card_colors.empty()) {
+    if (!b.options.empty()) b.options += ",";
+    b.options += card_colors;
   }
   return b;
 }

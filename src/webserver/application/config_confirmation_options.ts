@@ -1,3 +1,4 @@
+import { preserveCardColorOptions } from "../model/config_primitives";
 import {
     configOptionEnabled,
     configOptionValue,
@@ -106,10 +107,10 @@ export function createConfigConfirmationOptionsFeature(
         button.precision = "";
         if (actionCardStateDisplayMode(button) !== "icon") button.icon_on = "Auto";
         if (actionCardIsOptionSelect(button)) {
-            button.unit = ""; button.options = "";
+            button.unit = ""; button.options = preserveCardColorOptions(button.options, "");
             if (!button.icon || button.icon === "Auto" || button.icon === "Chevron Down") button.icon = "Flash";
         } else if (actionCardIsLocal(button)) {
-            button.unit = ""; button.precision = ""; button.options = ""; button.icon_on = "Auto";
+            button.unit = ""; button.precision = ""; button.options = preserveCardColorOptions(button.options, ""); button.icon_on = "Auto";
             if (!button.icon || button.icon === "Auto" || button.icon === "Flash") button.icon = "Gesture Tap";
         }
     }
@@ -187,7 +188,7 @@ export function createConfigConfirmationOptionsFeature(
         if (onPattern)
             out = setConfigOptionValue(out, CARD_ON_PATTERN_OPTION, onPattern);
         if (!mode)
-            return out;
+            return preserveCardColorOptions(options, out);
         var storage: any = switchConfirmationModeStorage();
         out = setConfigOption(out, storage[0], mode === "off" || mode === "both");
         out = setConfigOption(out, storage[1], mode === "on" || mode === "both");
@@ -203,7 +204,7 @@ export function createConfigConfirmationOptionsFeature(
         if (no && no !== cardContractOptionDefaultValue("", SWITCH_CONFIRM_NO_OPTION, SWITCH_CONFIRM_DEFAULT_NO)) {
             out = setConfigOptionValue(out, SWITCH_CONFIRM_NO_OPTION, no);
         }
-        return out;
+        return preserveCardColorOptions(options, out);
     }
     function setSwitchConfirmationOptions(this: any, b?: any, mode?: any, message?: any, yesText?: any, noText?: any) {
         if (!b)
@@ -226,7 +227,7 @@ export function createConfigConfirmationOptionsFeature(
                 out = setConfigOptionValue(out, SWITCH_CONFIRM_NO_OPTION, noText);
             }
         }
-        b.options = out;
+        b.options = preserveCardColorOptions(b.options, out);
         return b.options;
     }
     function garageConfirmationModeStorage(this: any) {
@@ -276,7 +277,7 @@ export function createConfigConfirmationOptionsFeature(
             ? requestedMode
             : storedMode;
         if (!mode)
-            return out;
+            return preserveCardColorOptions(options, out);
         var storage: any = garageConfirmationModeStorage();
         out = setConfigOption(out, storage[0], mode === "off" || mode === "both");
         out = setConfigOption(out, storage[1], mode === "on" || mode === "both");
@@ -293,7 +294,7 @@ export function createConfigConfirmationOptionsFeature(
         if (no && no !== cardContractOptionDefaultValue("garage", SWITCH_CONFIRM_NO_OPTION, SWITCH_CONFIRM_DEFAULT_NO)) {
             out = setConfigOptionValue(out, SWITCH_CONFIRM_NO_OPTION, no);
         }
-        return out;
+        return preserveCardColorOptions(options, out);
     }
     accessOptions.connectGarageConfirmationNormalizer(
         (out, options, requestedMode) => normalizeGarageConfirmationOptions(out, options, requestedMode),
@@ -364,16 +365,16 @@ export function createConfigConfirmationOptionsFeature(
     }
     function normalizeActionOptions(this: any, options?: any, action?: any) {
         if (action === ACTION_CARD_LOCAL_ACTION)
-            return "";
+            return preserveCardColorOptions(options, "");
         var out: any = copyActionCardStateOptions("", options);
         if (action !== "script.turn_on") {
-            return out;
+            return preserveCardColorOptions(options, out);
         }
         var fields: any = configOptionValue(options, ACTION_SCRIPT_FIELDS_OPTION).trim();
         if (fields)
             out = setConfigOptionValue(out, ACTION_SCRIPT_FIELDS_OPTION, fields);
         if (!configOptionEnabled(options, SWITCH_CONFIRM_ON_OPTION))
-            return out;
+            return preserveCardColorOptions(options, out);
         out = setConfigOption(out, SWITCH_CONFIRM_ON_OPTION, true);
         var msg: any = configOptionValue(options, SWITCH_CONFIRM_MESSAGE_OPTION).trim();
         var yes: any = configOptionValue(options, SWITCH_CONFIRM_YES_OPTION).trim();
@@ -387,7 +388,7 @@ export function createConfigConfirmationOptionsFeature(
         if (no && no !== cardContractOptionDefaultValue("action", SWITCH_CONFIRM_NO_OPTION, SWITCH_CONFIRM_DEFAULT_NO)) {
             out = setConfigOptionValue(out, SWITCH_CONFIRM_NO_OPTION, no);
         }
-        return out;
+        return preserveCardColorOptions(options, out);
     }
     function setActionScriptConfirmationOptions(this: any, b?: any, enabled?: any, message?: any, yesText?: any, noText?: any) {
         if (!b)
@@ -408,7 +409,7 @@ export function createConfigConfirmationOptionsFeature(
                 out = setConfigOptionValue(out, SWITCH_CONFIRM_NO_OPTION, noText);
             }
         }
-        b.options = out;
+        b.options = preserveCardColorOptions(b.options, out);
         return b.options;
     }
     function setActionScriptFields(this: any, b?: any, fields?: any) {

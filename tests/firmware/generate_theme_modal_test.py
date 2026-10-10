@@ -23,6 +23,10 @@ media = (args.header.parent / "button_grid_media.h").read_text(encoding="utf-8")
 start = media.index("inline void media_control_style_playback_mode_button(")
 end = media.index("\n}", start) + 2
 definitions.append(media[start:end])
+availability = (args.header.parent / "card_availability.h").read_text(encoding="utf-8")
+start = availability.index("inline void set_card_content_disabled(")
+end = availability.index("\n}", start) + 2
+definitions.append(availability[start:end])
 args.output.write_text(
     "// Extracted from button_grid_modal.h; do not edit.\n" + "\n".join(definitions),
     encoding="utf-8",
