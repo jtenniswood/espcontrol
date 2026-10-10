@@ -6424,6 +6424,7 @@ async function assertSensorColourConditions(browser) {
       assert(await page.locator(".sp-settings-overlay.sp-visible").isVisible());
       await rules.first().getByLabel("When the value is", { exact: true }).selectOption("below");
       await rules.first().getByLabel("Value", { exact: true }).fill("8");
+      const layoutCard = page.locator('.sp-main [data-slot="2"]');
       assert.strictEqual(await rules.first().getByRole("heading").textContent(), "Value below 8", "the condition summary is its title");
       const deleteCondition = page.getByRole("button", { name: "Delete condition 1", exact: true });
       assert.strictEqual(await deleteCondition.textContent(), "", "delete has an icon instead of a text label");
@@ -6585,6 +6586,8 @@ async function assertSensorColourConditions(browser) {
       const saved = nativeState.document.buttons[2];
       assert(saved.includes("sensor_colours="), "rules persist in the card options");
       assert(saved.includes("card_off_color=6633B9"), "the separate single colour is retained alongside conditions");
+      assert.strictEqual(await layoutCard.evaluate(node => getComputedStyle(node).backgroundColor), "rgb(255, 255, 255)", "saved conditional layout uses its fallback instead of the retained purple colour");
+      assert.strictEqual(await layoutCard.evaluate(node => getComputedStyle(node).getPropertyValue("--card-text-color").trim()), "#212121", "saved layout fallback has readable text");
       assert(!saved.includes("RUNNING") && !saved.includes("test_state"), "sample preview stays out of saved configuration");
       await open();
       assert.strictEqual(await defaultMode.inputValue(), "custom", "fallback mode survives reload");

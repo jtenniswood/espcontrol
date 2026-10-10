@@ -3,6 +3,7 @@ import { WEB_UI_COLORS } from "../state/ui_tokens";
 import { configOptionValue, lighterCardColor } from "../model/config_primitives";
 import { PREVIEW_THEME_COLORS, previewEffectiveTheme } from "../state/preview_theme";
 import { escHtml } from "./ui_primitives";
+import { parseSensorColourRules, SENSOR_COLOUR_RULES_OPTION } from "../features/sensor_colour_rules";
 import {
     buttonConfigDisabledForDevice as isButtonConfigDisabledForDevice,
     cardPreviewTextColor,
@@ -168,6 +169,10 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 var slotSz: any = c.sizes[slot];
                 var cardOffColor: any = configOptionValue(b.options, "card_off_color").replace(/^#/, "").toUpperCase();
                 if (!/^[0-9A-F]{6}$/.test(cardOffColor)) cardOffColor = "";
+                // No live source state is available here: show the same fallback as the panel.
+                const colourRules = b.type === "sensor"
+                    ? parseSensorColourRules(configOptionValue(b.options, SENSOR_COLOUR_RULES_OPTION)) : null;
+                if (colourRules) cardOffColor = colourRules.defaultColour || "";
                 var cardOnColor: any = lighterCardColor(cardOffColor);
                 var typePreview: any = previewTypeDef && previewTypeDef.renderPreview
                     ? previewTypeDef.renderPreview(b, {
