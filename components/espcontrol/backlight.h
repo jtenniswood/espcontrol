@@ -360,7 +360,7 @@ inline void apply_clock_screensaver_text_color(lv_obj_t *label,
 }
 
 inline void position_clock_screensaver_label(lv_obj_t *overlay, lv_obj_t *label,
-                                             int minute) {
+                                             int minute, lv_obj_t *date_label = nullptr) {
   if (!label) return;
   if (!overlay) overlay = lv_obj_get_parent(label);
   screensaver_fill_screen(overlay);
@@ -379,8 +379,26 @@ inline void position_clock_screensaver_label(lv_obj_t *overlay, lv_obj_t *label,
   lv_coord_t h = lv_obj_get_height(label);
   int ox = (minute * 7) % 61 - 30;
   int oy = (minute * 13) % 41 - 20;
-  lv_obj_set_pos(label, screen_w / 2 + ox - w / 2,
-                 screen_h / 2 + oy - h / 2);
+  if (!date_label) {
+    lv_obj_set_pos(label, screen_w / 2 + ox - w / 2,
+                   screen_h / 2 + oy - h / 2);
+    return;
+  }
+
+  // Center and drift the clock/date as one block, keeping both on screen.
+  lv_obj_set_width(date_label, LV_SIZE_CONTENT);
+  lv_obj_update_layout(date_label);
+  const lv_coord_t date_w = lv_obj_get_width(date_label);
+  const lv_coord_t date_h = lv_obj_get_height(date_label);
+  const lv_coord_t gap = std::max<lv_coord_t>(4, date_h / 3);
+  const lv_coord_t block_w = std::max(w, date_w);
+  const lv_coord_t block_h = h + gap + date_h;
+  const lv_coord_t left = std::max<lv_coord_t>(0, std::min<lv_coord_t>(
+      screen_w - block_w, (screen_w - block_w) / 2 + ox));
+  const lv_coord_t top = std::max<lv_coord_t>(0, std::min<lv_coord_t>(
+      screen_h - block_h, (screen_h - block_h) / 2 + oy));
+  lv_obj_set_pos(label, left + (block_w - w) / 2, top);
+  lv_obj_set_pos(date_label, left + (block_w - date_w) / 2, top + h + gap);
 }
 
 inline void position_clock_image_overlay(lv_obj_t *overlay, lv_obj_t *shadow,

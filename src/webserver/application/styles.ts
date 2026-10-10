@@ -471,6 +471,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-brightness-mode-segment{margin-bottom:28px}" +
         ".sp-screensaver-mode{margin-bottom:24px}" +
         ".sp-clock-brightness-field{margin:18px 0 22px}" +
+        ".sp-clock-brightness-field>.sp-toggle-row{padding:12px 0}" +
         ".sp-cond-field{padding:0 0 4px;display:none}" +
         ".sp-cond-field.sp-visible{display:block}" +
         ".sp-action-confirm-section.sp-visible{margin-bottom:28px}" +

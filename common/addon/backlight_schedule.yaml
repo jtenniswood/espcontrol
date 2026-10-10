@@ -480,6 +480,8 @@ text:
                   apply_clock_screensaver_text_color(
                       id(clock_label), id(schedule_clock_text_color).state);
                   apply_clock_screensaver_text_color(
+                      id(clock_date_label), id(schedule_clock_text_color).state);
+                  apply_clock_screensaver_text_color(
                       id(clock_image_overlay_label), id(schedule_clock_text_color).state);
 
   - platform: template

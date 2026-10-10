@@ -56,7 +56,7 @@
       "coverArtSecondaryMediaPlayerEntity": "", "coverArtPlaybackControl": true,
       "coverArtAttributeConditions": "", "coverArtDelay": 10, "coverArtTrackOverlayDuration": 5,
       "coverArtHideExternalInput": true, "coverArtHomeAssistantHost": "", "coverArtHomeAssistantEndpointMode": "Manual", "coverArtHomeAssistantProtocol": "https", "coverArtHomeAssistantPort": 8123,
-      "autoUpdate": true, "updateFrequency": "Weekly", "screensaverAction": "off", "clockScreensaver": false, "clockOverlay": false,
+      "autoUpdate": true, "updateFrequency": "Weekly", "screensaverAction": "off", "clockScreensaver": false, "clockDate": false, "clockOverlay": false,
       "clockBrightnessDay": 35, "clockBrightnessNight": 35, "screensaverDimmedBrightness": 10,
       "screensaverDimmedBrightnessDay": 10, "screensaverDimmedBrightnessNight": 10,
       "screensaverTimeout": 300, "homeScreenTimeout": 60, "screenRotation": "90"

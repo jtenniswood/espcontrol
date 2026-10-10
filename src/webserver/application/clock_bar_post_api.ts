@@ -4,6 +4,7 @@ export interface ClockBarPostApiFeature {
     postClockBrightnessDay(value?: any): void;
     postClockBrightnessNight(value?: any): void;
     postClockScreensaver(on?: any): any;
+    postClockDate(on?: any): any;
     postClockBar(on?: any): void;
     postClockBarTemperatureEntities(value?: any): any;
     postClockBarTime(on?: any): void;
@@ -37,6 +38,9 @@ export function createClockBarPostApiFeature(
     }
     function postClockScreensaver(this: any, on?: any) {
         return postSwitchWithObjectIds(entityName("screen_saver_clock"), entityObjectIds("screen_saver_clock"), on);
+    }
+    function postClockDate(on?: any) {
+        return postSwitchWithObjectIds(entityName("screen_saver_show_date"), entityObjectIds("screen_saver_show_date"), on);
     }
     var CLOCK_BAR_UNAVAILABLE: any = "Clock bar setting is not available on this firmware. Update the device firmware, then reload this page.";
     function postClockBar(this: any, on?: any) {
@@ -100,6 +104,7 @@ export function createClockBarPostApiFeature(
         postClockBrightnessDay,
         postClockBrightnessNight,
         postClockScreensaver,
+        postClockDate,
         postClockBar,
         postClockBarTemperatureEntities,
         postClockBarTime,
