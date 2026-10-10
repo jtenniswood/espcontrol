@@ -1,11 +1,10 @@
 import { cardPreviewTextColor } from "../features/preview";
-import { WEB_UI_COLORS } from "../state/ui_tokens";
 
 const COLOR_PRESETS: ReadonlyArray<readonly [string, string]> = [
-    ["FF0000", "Red"], ["EB1460", "Pink"], ["9C1AB1", "Purple"], ["6633B9", "Deep purple"], ["3949AB", "Indigo"],
-    ["46AF4A", "Green"], ["009687", "Teal"], ["00BCD4", "Cyan"], ["039BE5", "Sky blue"], ["2962FF", "Blue"],
-    ["88C440", "Lime"], ["CCDD1E", "Yellow green"], ["FFEC16", "Yellow"], ["FFC100", "Amber"], [WEB_UI_COLORS.primary, "Orange"],
-    ["313131", "Dark grey"], ["666666", "Medium dark grey"], ["9D9D9D", "Grey"], ["CCCCCC", "Light grey"], ["FFFFFF", "White"],
+    ["EA3323", "Red"], ["D83462", "Pink"], ["8F28AB", "Purple"], ["6036B2", "Deep purple"], ["3C49A5", "Indigo"],
+    ["64AD54", "Green"], ["429471", "Teal"], ["54B7C8", "Cyan"], ["3E8AC7", "Sky blue"], ["3C64DE", "Blue"],
+    ["AAC93F", "Lime"], ["D8D245", "Yellow green"], ["EED146", "Yellow"], ["DE8831", "Amber"], ["DA5125", "Orange"],
+    ["2B2A2F", "Dark grey"], ["53515A", "Medium dark grey"], ["898890", "Grey"], ["BEBEC2", "Light grey"], ["FFFFFF", "White"],
 ];
 
 export const COLOR_SWATCH_STYLES =
