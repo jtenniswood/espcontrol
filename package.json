@@ -72,7 +72,7 @@
   "overrides": {
     "esp-web-tools": {
       "esptool-js": "0.7.0",
-      "@material/web": "2.5.0"
+      "@material/web": "2.4.1"
     }
   }
 }
