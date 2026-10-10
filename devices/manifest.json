@@ -439,12 +439,12 @@
           }
         },
         "topbar": {
-          "height": 6.45,
-          "padding": "1.2cqw 0.59cqw 0.59cqw",
+          "height": 10,
+          "padding": "0.9cqw 0.59cqw",
           "fontSize": 4.5
         },
         "grid": {
-          "top": 8.58,
+          "top": 11.5,
           "compactTop": 1.5,
           "left": 1.5,
           "right": 1.5,
@@ -628,12 +628,12 @@
           }
         },
         "topbar": {
-          "height": 6.45,
-          "padding": "1.2cqw 0.59cqw 0.59cqw",
+          "height": 10,
+          "padding": "0.9cqw 0.59cqw",
           "fontSize": 4.5
         },
         "grid": {
-          "top": 8.58,
+          "top": 11.5,
           "compactTop": 1.5,
           "left": 1.5,
           "right": 1.5,
