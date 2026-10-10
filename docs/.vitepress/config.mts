@@ -345,6 +345,7 @@ export default defineConfig({
           },
           {
             text: '4.3-inch JC4880P443',
+            collapsed: true,
             items: [
               { text: 'Original', link: '/screens/jc4880p443' },
               { text: 'V3', link: '/screens/jc4880p443-v3' },
