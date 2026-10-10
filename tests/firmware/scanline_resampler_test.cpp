@@ -157,7 +157,7 @@ int main() {
 
   // Native-arithmetic bounds, extreme fit dimensions and fallback must
   // preserve the wide filter exactly, including fully bright colour sums.
-  for (const auto dimensions : {std::pair{16384, 1}, std::pair{1, 16384},
+  for (const auto &dimensions : {std::pair{16384, 1}, std::pair{1, 16384},
                                  std::pair{16385, 1}, std::pair{1, 16385},
                                  std::pair{65535, 1}, std::pair{1, 65535}}) {
     const int sw = dimensions.first, cw = dimensions.second;
