@@ -295,7 +295,7 @@ export function createFirmwareUpdateFeature(
             if (installWindowActive && updateState === "UPDATE AVAILABLE") {
                 state.firmwareInstallPostPending = false;
                 clearFirmwareWebOtaFallback();
-                state.firmwareInstallStatus = "Installing update\u2026";
+                state.firmwareInstallStatus = "";
                 dependencies.postInstall();
                 updateState = "INSTALLING";
             }
