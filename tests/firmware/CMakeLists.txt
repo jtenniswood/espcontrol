@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.20)
 project(espcontrol_firmware_tests LANGUAGES CXX)
 
 enable_testing()
+add_executable(rgb565_rotation_test rgb565_rotation_test.cpp)
+target_compile_features(rgb565_rotation_test PRIVATE cxx_std_17)
+target_compile_options(rgb565_rotation_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(rgb565_rotation_test PRIVATE ../../components/mipi_rgb)
+add_test(NAME rgb565_rotation_test COMMAND rgb565_rotation_test)
 include(CheckCXXSourceCompiles)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 

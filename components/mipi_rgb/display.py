@@ -9,6 +9,7 @@ from esphome.components.const import (
     BYTE_ORDER_LITTLE,
     CONF_BYTE_ORDER,
     CONF_DRAW_ROUNDING,
+    CONF_COLOR_DEPTH,
 )
 from esphome.components.display import CONF_SHOW_TEST_CARD
 from esphome.components.esp32 import VARIANT_ESP32P4, VARIANT_ESP32S3, only_on_variant
@@ -79,6 +80,7 @@ mipi_rgb_spi = mipi_rgb_ns.class_(
     "MipiRgbSpi", mipi_rgb, display.Display, cg.Component, spi.SPIDevice
 )
 ColorOrder = display.display_ns.enum("ColorMode")
+CONF_ROTATION_BACKEND = "rotation_backend"
 
 DATA_PIN_SCHEMA = pins.internal_gpio_output_pin_schema
 
@@ -153,6 +155,9 @@ def model_schema(config):
             ),
             model.option(CONF_COLOR_ORDER, MODE_RGB): cv.enum(COLOR_ORDERS, upper=True),
             model.option(CONF_DRAW_ROUNDING, 2): power_of_two,
+            cv.Optional(CONF_ROTATION_BACKEND, default="lvgl"): cv.one_of(
+                "lvgl", "driver", lower=True
+            ),
             model.option(CONF_PIXEL_MODE, PIXEL_MODE_16BIT): cv.one_of(
                 *pixel_modes, lower=True
             ),
@@ -228,12 +233,19 @@ def _config_schema(config):
     model = MODELS[config[CONF_MODEL].upper()]
     width, height = model_dimensions(config, model)
     has_writer = requires_buffer(config) or config.get(CONF_AUTO_CLEAR_ENABLED) is True
+    driver_rotation = config[CONF_ROTATION_BACKEND] == "driver"
+    if driver_rotation:
+        only_on_variant(supported=[VARIANT_ESP32S3])(config)
+        if has_writer:
+            raise cv.Invalid("Driver rotation requires LVGL without a display writer")
     try:
         display.add_metadata(
             config[CONF_ID],
             width,
             height,
-            has_hardware_rotation=False,
+            # This metadata delegates rotation to the driver; the S3 still
+            # performs the rotation in software, using blocked pixel copies.
+            has_hardware_rotation=driver_rotation,
             byte_order=config[CONF_BYTE_ORDER],
             has_writer=has_writer,
             rotation=model.rotation_as_transform(config),
@@ -247,7 +259,7 @@ def _config_schema(config):
             width,
             height,
             has_writer=has_writer,
-            has_hardware_rotation=False,
+            has_hardware_rotation=driver_rotation,
         )
     return config
 
@@ -259,6 +271,15 @@ def _final_validate(config):
     global_config = full_config.get()
 
     from esphome.components.lvgl import DOMAIN as LVGL_DOMAIN
+
+    if config[CONF_ROTATION_BACKEND] == "driver" and LVGL_DOMAIN not in global_config:
+        raise cv.Invalid("Driver rotation requires LVGL")
+    if config[CONF_ROTATION_BACKEND] == "driver":
+        lvgl_configs = global_config[LVGL_DOMAIN]
+        if isinstance(lvgl_configs, dict):
+            lvgl_configs = [lvgl_configs]
+        if any(item.get(CONF_COLOR_DEPTH, 16) != 16 for item in lvgl_configs):
+            raise cv.Invalid("Driver rotation requires LVGL color_depth: 16")
 
     if not requires_buffer(config) and LVGL_DOMAIN not in global_config:
         # If no drawing methods are configured, and LVGL is not enabled, show a test card
@@ -277,6 +298,8 @@ async def to_code(config):
     model = MODELS[config[CONF_MODEL].upper()]
     width, height = model_dimensions(config, model)
     var = cg.new_Pvariable(config[CONF_ID], width, height)
+    if config[CONF_ROTATION_BACKEND] == "driver":
+        cg.add(var.set_driver_rotation(True))
     cg.add(var.set_model(model.name))
     if enable_pin := config.get(CONF_ENABLE_PIN):
         enable = [await cg.gpio_pin_expression(pin) for pin in enable_pin]

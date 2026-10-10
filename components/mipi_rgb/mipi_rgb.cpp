@@ -8,6 +8,10 @@
 #include <driver/gpio.h>
 #include <esp_lcd_panel_rgb.h>
 #include <span>
+#ifdef USE_ESP32_VARIANT_ESP32S3
+#include "rgb565_rotation.h"
+#include <esp_heap_caps.h>
+#endif
 
 namespace esphome::mipi_rgb {
 
@@ -16,6 +20,12 @@ static const uint8_t DELAY_FLAG = 0xFF;
 // Maximum bytes to log for init commands (truncated if larger)
 static constexpr size_t MIPI_RGB_MAX_CMD_LOG_BYTES = 64;
 static constexpr uint8_t RGB_BOUNCE_BUFFER_ROWS = 20;
+#ifdef USE_ESP32_VARIANT_ESP32S3
+static_assert(static_cast<uint16_t>(display::DISPLAY_ROTATION_0_DEGREES) == 0);
+static_assert(static_cast<uint16_t>(display::DISPLAY_ROTATION_90_DEGREES) == 90);
+static_assert(static_cast<uint16_t>(display::DISPLAY_ROTATION_180_DEGREES) == 180);
+static_assert(static_cast<uint16_t>(display::DISPLAY_ROTATION_270_DEGREES) == 270);
+#endif
 static constexpr uint8_t MADCTL_MY = 0x80;     // Bit 7 Bottom to top
 static constexpr uint8_t MADCTL_MX = 0x40;     // Bit 6 Right to left
 static constexpr uint8_t MADCTL_MV = 0x20;     // Bit 5 Swap axes
@@ -178,6 +188,21 @@ void MipiRgb::common_setup_() {
     ESP_LOGE(TAG, "lcd setup failed: %s", esp_err_to_name(err));
     this->mark_failed(LOG_STR("lcd setup failed"));
   }
+#ifdef USE_ESP32_VARIANT_ESP32S3
+  if (err == ESP_OK && this->driver_rotation_) {
+    // Replace LVGL's 1/8-frame rotation buffer with an equally sized PSRAM
+    // buffer. Large flushes are split into strips, so this never needs to grow.
+    this->rotation_buffer_pixels_ = std::max(this->width_ * this->height_ / 8,
+                                            std::max(this->width_, this->height_));
+    const size_t bytes = (this->rotation_buffer_pixels_ * sizeof(uint16_t) + 63) & ~size_t(63);
+    this->rotation_buffer_ = static_cast<uint16_t *>(
+        heap_caps_aligned_alloc(64, bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    if (this->rotation_buffer_ == nullptr) {
+      ESP_LOGE(TAG, "Could not allocate PSRAM rotation buffer (%zu bytes)", bytes);
+      this->mark_failed(LOG_STR("Could not allocate PSRAM rotation buffer"));
+    }
+  }
+#endif
   ESP_LOGCONFIG(TAG, "MipiRgb setup complete: pclk=%" PRIu32 "Hz bounce_rows=%u", this->pclk_frequency_,
                 RGB_BOUNCE_BUFFER_ROWS);
 }
@@ -220,6 +245,12 @@ void MipiRgb::draw_pixels_at(int x_start, int y_start, int w, int h, const uint8
                              display::ColorBitness bitness, bool big_endian, int x_offset, int y_offset, int x_pad) {
   if (w <= 0 || h <= 0 || this->is_failed())
     return;
+#ifdef USE_ESP32_VARIANT_ESP32S3
+  if (this->driver_rotation_ && bitness == display::COLOR_BITNESS_565) {
+    this->draw_rotated_pixels_(x_start, y_start, w, h, ptr, x_offset, y_offset, x_pad);
+    return;
+  }
+#endif
   // if color mapping is required, pass the buck.
   // note that endianness is not considered here - it is assumed to match!
   if (bitness != display::COLOR_BITNESS_565) {
@@ -230,6 +261,25 @@ void MipiRgb::draw_pixels_at(int x_start, int y_start, int w, int h, const uint8
     this->write_to_display_(x_start, y_start, w, h, ptr, x_offset, y_offset, x_pad);
   }
 }
+
+#ifdef USE_ESP32_VARIANT_ESP32S3
+void MipiRgb::draw_rotated_pixels_(int x, int y, int width, int height, const uint8_t *pixels,
+                                   int x_offset, int y_offset, int x_pad) {
+  if (pixels == nullptr || x_offset < 0 || y_offset < 0 || x_pad < 0)
+    return;
+  const size_t source_stride = x_offset + width + x_pad;
+  if (source_stride < static_cast<size_t>(width))
+    return;
+  const auto angle = static_cast<rotation::Angle>(this->rotation_);
+  const uint16_t *source = reinterpret_cast<const uint16_t *>(pixels) + y_offset * source_stride + x_offset;
+  rotation::flush_rgb565(source, source_stride, this->rotation_buffer_, this->rotation_buffer_pixels_,
+                        {x, y, width, height}, this->width_, this->height_, angle,
+                        [this](rotation::Area area, const uint16_t *data, size_t stride) {
+    this->write_to_display_(area.x, area.y, area.width, area.height,
+                            reinterpret_cast<const uint8_t *>(data), 0, 0, stride - area.width);
+  });
+}
+#endif
 
 void MipiRgb::write_to_display_(int x_start, int y_start, int w, int h, const uint8_t *ptr, int x_offset, int y_offset,
                                 int x_pad) {
@@ -397,6 +447,9 @@ void MipiRgb::dump_config() {
                 (unsigned) (this->pclk_frequency_ / 1000000), get_pin_name(this->reset_pin_, reset_buf),
                 get_pin_name(this->de_pin_, de_buf), get_pin_name(this->pclk_pin_, pclk_buf),
                 get_pin_name(this->hsync_pin_, hsync_buf), get_pin_name(this->vsync_pin_, vsync_buf));
+#ifdef USE_ESP32_VARIANT_ESP32S3
+  ESP_LOGCONFIG(TAG, "  Rotation backend: %s", this->driver_rotation_ ? "driver (blocked software)" : "LVGL");
+#endif
 
   this->dump_pins_(8, 13, "Blue", 0);
   this->dump_pins_(13, 16, "Green", 0);

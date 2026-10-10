@@ -64,10 +64,21 @@ class MipiRgb : public display::Display {
   void dump_config() override;
   void draw_pixel_at(int x, int y, Color color) override;
 
+#ifdef USE_ESP32_VARIANT_ESP32S3
+  void set_driver_rotation(bool enabled) { this->driver_rotation_ = enabled; }
+#endif
+
   // this will be horribly slow.
  protected:
   void setup_enables_();
   void common_setup_();
+#ifdef USE_ESP32_VARIANT_ESP32S3
+  void draw_rotated_pixels_(int x, int y, int width, int height, const uint8_t *pixels,
+                            int x_offset, int y_offset, int x_pad);
+  bool driver_rotation_{false};
+  uint16_t *rotation_buffer_{nullptr};
+  size_t rotation_buffer_pixels_{0};
+#endif
   InternalGPIOPin *de_pin_{nullptr};
   InternalGPIOPin *pclk_pin_{nullptr};
   InternalGPIOPin *hsync_pin_{nullptr};
