@@ -37,7 +37,7 @@ GROUPS = (
 
 
 def definition(text: str, name: str) -> tuple[int, str]:
-    match = re.search(rf"^inline\s+[^;{{}}]*\b{re.escape(name)}\s*\([^;{{}}]*\)\s*\{{", text, re.M)
+    match = re.search(rf"^inline\s+[^;{{}}]*\b{re.escape(name)}\s*\([^;{{}}]*(?:\{{\}}[^;{{}}]*)*\)\s*\{{", text, re.M)
     if not match:
         raise ValueError(f"Missing production definition: {name}")
     # Ignore comments and literals while finding the matching closing brace.

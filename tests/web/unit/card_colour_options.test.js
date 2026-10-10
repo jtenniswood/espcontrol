@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const vm = require("node:vm");
 const { test } = require("node:test");
 const { loadBuiltWebSource } = require("../../../scripts/web_source");
+const { loadTypescriptTest } = require("./helpers/load_typescript_test");
 
 function loadCodec() {
   const sandbox = {
@@ -72,5 +73,18 @@ test("media colours and modal settings survive changes in both views", () => {
     assert(media.options.includes(colour));
     assert(media.options.includes("power_entity=switch.tv"));
     assert(media.options.includes("media_tabs=power%7Cvolume%7Ccontrols"));
+  }
+});
+
+test("Webhook normalization retains colour and headers for every HTTP method", () => {
+  const { createConfigWebhookOptionsFeature } = loadTypescriptTest("src/webserver/application/config_webhook_options.ts");
+  const feature = createConfigWebhookOptionsFeature();
+  for (const [method] of feature.methods) {
+    const card = { sensor: method, unit: "body", options: "card_off_color=6633B9" };
+    feature.setWebhookHeaders(card, '{"X-Test":"value,with|delimiters"}');
+    feature.normalizeWebhookConfig(card);
+    assert(card.options.includes("card_off_color=6633B9"));
+    assert.equal(feature.webhookHeaders(card), '{"X-Test":"value,with|delimiters"}');
+    assert.equal(card.unit, ["GET", "DELETE"].includes(method) ? "" : "body");
   }
 });

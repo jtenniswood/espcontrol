@@ -30,6 +30,7 @@ export type NativePanelConfigSaveResult = "saved" | "unsupported" | "conflict" |
 export type NativePanelConfigCollection = "buttons" | "subpages" | "settings";
 
 interface Capabilities {
+  sensor_colour_rules?: unknown;
   configuration?: {
     read?: unknown;
     write?: unknown;
@@ -75,10 +76,12 @@ export class NativePanelConfigClient {
   private retryable_ = false;
   private confirmedUnsupported_ = false;
   private discovery_: Promise<boolean> | null = null;
+  private sensorColourRulesVersion_ = 0;
 
   constructor(private readonly fetch_: NativePanelConfigFetch) {}
 
   supported(): boolean { return this.supported_; }
+  sensorColourRulesSupported(): boolean { return this.supported_ && this.sensorColourRulesVersion_ >= 2; }
   retryable(): boolean { return this.retryable_; }
   confirmedUnsupported(): boolean { return this.confirmedUnsupported_; }
 
@@ -99,7 +102,10 @@ export class NativePanelConfigClient {
         this.retryable_ = response.status === 404 || response.status === 503;
         this.confirmedUnsupported_ = false;
         if (!response.ok) return false;
-        const supported = supportedCapabilities(await response.json());
+        const capabilities = await response.json() as Capabilities & { sensor_colour_rules?: unknown };
+        this.sensorColourRulesVersion_ = capabilities && Number.isInteger(capabilities.sensor_colour_rules)
+          ? Number(capabilities.sensor_colour_rules) : 0;
+        const supported = supportedCapabilities(capabilities);
         this.confirmedUnsupported_ = supported === false;
         return supported === true;
       })

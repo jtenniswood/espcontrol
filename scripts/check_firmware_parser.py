@@ -75,11 +75,13 @@ namespace esphome {
 namespace text { class Text {}; }
 class StringRef {
  public:
-  StringRef(const char *value) : value_(value ? value : "") {}
+  StringRef(const char *value) : value_(value ? value : ""), size_(std::strlen(value_)) {}
+  StringRef(const char *value, size_t size) : value_(value ? value : ""), size_(value ? size : 0) {}
   const char *c_str() const { return value_; }
-  size_t size() const { return std::strlen(value_); }
+  size_t size() const { return size_; }
  private:
   const char *value_;
+  size_t size_;
 };
 }
 
@@ -456,6 +458,32 @@ int main() {
   auto state_labels = parse_cfg(";;;;sensor.bin_level;;sensor;text;state_labels,state_input=high,state_output=Please%20empty,state_input_2=low,state_output_2=Full");
   assert(sensor_state_labels_enabled(state_labels));
   assert(state_labels.options == "state_labels,state_input=high,state_output=Please empty,state_input_2=low,state_output_2=Full");
+  ParsedCfg colour_cfg;
+  colour_cfg.type = "sensor";
+  colour_cfg.sensor = "sensor.battery_power";
+  colour_cfg.options = "sensor_colours=" + encode_compact_field("v1||n,,1,-1000,0,FF0000;n,-1000,1,0,0,FFFF00;n,0,1,0,1,0000FF;t,L%C3%B8bning%2C%20running%7Cagain,00FF00");
+  const auto colour_rules = parse_sensor_colour_rules(colour_cfg);
+  assert(colour_rules.valid && colour_rules.conditions.size() == 4);
+  uint32_t matched_colour = 0;
+  assert(sensor_colour_matches(colour_rules, esphome::StringRef("-1000.1"), matched_colour) && matched_colour == 0xFF0000);
+  assert(sensor_colour_matches(colour_rules, esphome::StringRef("-1000"), matched_colour) && matched_colour == 0xFFFF00);
+  assert(sensor_colour_matches(colour_rules, esphome::StringRef("-0.04"), matched_colour) && matched_colour == 0xFFFF00);
+  assert(sensor_colour_matches(colour_rules, esphome::StringRef("0"), matched_colour) && matched_colour == 0x0000FF);
+  assert(sensor_colour_matches(colour_rules, esphome::StringRef(u8"  LØBNING, RUNNING|AGAIN  "), matched_colour) && matched_colour == 0x00FF00);
+  assert(!sensor_colour_matches(colour_rules, esphome::StringRef("unavailable"), matched_colour));
+  assert(!colour_rules.has_default_colour);
+  colour_cfg.options = "sensor_colours=" + encode_compact_field("v2||t,running,00FF00|FFFFFF");
+  auto default_rules = parse_sensor_colour_rules(colour_cfg);
+  assert(default_rules.valid && default_rules.has_default_colour && default_rules.default_colour == 0xFFFFFF);
+  assert(sensor_colour_matches(default_rules, esphome::StringRef("running"), matched_colour) && matched_colour == 0x00FF00);
+  assert(!sensor_colour_matches(default_rules, esphome::StringRef("stopped"), matched_colour));
+  colour_cfg.options = "sensor_colours=" + encode_compact_field("v2||t,running,00FF00|000000");
+  default_rules = parse_sensor_colour_rules(colour_cfg);
+  assert(default_rules.valid && default_rules.has_default_colour && default_rules.default_colour == 0);
+  colour_cfg.options = "sensor_colours=" + encode_compact_field("v2||t,running,00FF00|");
+  assert(parse_sensor_colour_rules(colour_cfg).valid && !parse_sensor_colour_rules(colour_cfg).has_default_colour);
+  colour_cfg.options = "sensor_colours=" + encode_compact_field("v2||t,running,00FF00|invalid");
+  assert(!parse_sensor_colour_rules(colour_cfg).valid);
   assert(sensor_state_display_text(state_labels, "low") == "Full");
   assert(sensor_state_display_text(state_labels, "high") == "Please empty");
   assert(sensor_state_display_text(state_labels, "High") == "Please empty");
@@ -1065,6 +1093,58 @@ def check_button_grid_facade() -> None:
         )
 
 
+def generated_sensor_colour_assertions() -> str:
+    from sensor_colour_casefold import mappings
+    def literal(value):
+        return '"' + "".join(f"\\x{byte:02X}" for byte in value.encode("utf-8")) + '"'
+    lines = []
+    whitespace = json.loads((CONFIG_DIR / "sensor_colour_whitespace_fixtures.json").read_text(encoding="utf-8"))
+    for codepoint in whitespace["trimCodepoints"]:
+        space = chr(codepoint)
+        lines.extend([
+            f'  assert(sensor_colour_trim({literal(space + "ready" + space)}) == "ready");',
+            '  colour_cfg.options = "sensor_colours=" + encode_compact_field("v2||t," + encode_compact_field(' + literal(space + "ready" + space) + ') + ",00FF00|");',
+            f'  assert(sensor_colour_matches(parse_sensor_colour_rules(colour_cfg), esphome::StringRef({literal(space + "READY" + space)}), matched_colour) && matched_colour == 0x00FF00);',
+            '  assert(sensor_colour_matches(parse_sensor_colour_rules(colour_cfg), esphome::StringRef("ready"), matched_colour) && matched_colour == 0x00FF00);',
+            f'  assert(!sensor_colour_matches(parse_sensor_colour_rules(colour_cfg), esphome::StringRef({literal(space)}), matched_colour));',
+            '  colour_cfg.options = "sensor_colours=" + encode_compact_field("v2||n,,1,10,0,00FF00|");',
+            f'  assert(sensor_colour_matches(parse_sensor_colour_rules(colour_cfg), esphome::StringRef({literal(space + "8" + space)}), matched_colour) && matched_colour == 0x00FF00);',
+        ])
+        for state in ["unknown", "unavailable"]:
+            lines.extend([
+                f'  colour_cfg.options = "sensor_colours=" + encode_compact_field("v2||t,{state},00FF00|");',
+                f'  assert(!sensor_colour_matches(parse_sensor_colour_rules(colour_cfg), esphome::StringRef({literal(space + state + space)}), matched_colour));',
+            ])
+    for codepoint in whitespace["retainedCodepoints"]:
+        text = literal(chr(codepoint) + "ready" + chr(codepoint))
+        lines.append(f'  assert(sensor_colour_trim({text}) == {text});')
+    for fixture in json.loads((CONFIG_DIR / "sensor_colour_default_fixtures.json").read_text(encoding="utf-8")):
+        lines.append('  {')
+        lines.append('  colour_cfg.options = "sensor_colours=" + encode_compact_field(' + literal(fixture["payload"]) + ');')
+        lines.append('  const auto default_rules = parse_sensor_colour_rules(colour_cfg);')
+        lines.append(f'  assert(default_rules.valid == {str(fixture["valid"]).lower()});')
+        if fixture["valid"]:
+            default_colour = fixture.get("defaultColour")
+            lines.append(f'  assert(default_rules.has_default_colour == {str(default_colour is not None).lower()});')
+            if default_colour is not None:
+                lines.append(f'  assert(default_rules.default_colour == 0x{default_colour});')
+        lines.append('  }')
+    for code, folded in mappings():
+        lines.append(f"  assert(sensor_colour_casefold({literal(chr(code))}) == {literal(folded)});")
+    for state, incoming in [("привет", "ПРИВЕТ"), ("κόσμος", "ΚΌΣΜΟΣ"), ("straße", "STRASSE"), ("ﬃ", "FFI"), ("հայերեն", "ՀԱՅԵՐԵՆ"), ("𐐨", "𐐀")]:
+        lines.extend([
+            '  colour_cfg.options = "sensor_colours=" + encode_compact_field("v1||t," + encode_compact_field(' + literal(state) + ') + ",00FF00");',
+            f'  assert(sensor_colour_matches(parse_sensor_colour_rules(colour_cfg), esphome::StringRef({literal(incoming)}), matched_colour) && matched_colour == 0x00FF00);',
+        ])
+    lines.extend([
+        '  colour_cfg.options = "sensor_colours=" + encode_compact_field("v1|Sensor.Battery_Power|t,running,00FF00");',
+        '  assert(!parse_sensor_colour_rules(colour_cfg).valid);',
+        '  colour_cfg.options = "sensor_colours=" + encode_compact_field("v1|sensor.battery_power|t,running,00FF00");',
+        '  assert(parse_sensor_colour_rules(colour_cfg).valid);',
+    ])
+    return "\n".join(lines) + "\n"
+
+
 def main() -> int:
     check_button_grid_facade()
     check_clock_bar_visual_gaps()
@@ -1075,7 +1155,7 @@ def main() -> int:
     with TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         shutil.copy2(PARSER_HEADER, tmp_path / "button_grid_config_parser.h")
-        shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
+        shutil.copy2(ROOT / "components/espcontrol/sensor_colour_casefold_generated.h", tmp_path / "sensor_colour_casefold_generated.h")
         shutil.copy2(MEDIA_CONFIG_HEADER, tmp_path / "button_grid_media_config.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "temperature_unit.h", tmp_path / "temperature_unit.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "sun_calc.h", tmp_path / "sun_calc.h")
@@ -1140,6 +1220,7 @@ def main() -> int:
             CPP_SOURCE.replace(
                 "  return 0;\n}",
                 generated_card_normalization_assertions()
+                + generated_sensor_colour_assertions()
                 + generated_card_runtime_assertions()
                 + "\n  return 0;\n}",
             ),

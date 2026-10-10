@@ -2053,6 +2053,12 @@
           }
         },
         {
+          "name": "sensor_colours",
+          "label": "Sensor Colour Conditions",
+          "kind": "text",
+          "omitDefault": true
+        },
+        {
           "name": "state_labels",
           "label": "Status Translation",
           "kind": "flag",
@@ -2126,7 +2132,7 @@
           "options": { "policy": "hook", "hook": "normalize_sensor_options" }
         },
         "unknownOptions": "drop",
-        "canonicalOptionOrder": ["large_numbers", "time_unit", "active_color", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
+        "canonicalOptionOrder": ["large_numbers", "time_unit", "active_color", "sensor_colours", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
         "optionHook": "normalize_sensor_options",
         "migrationActions": ["legacy_local_sensor", "legacy_text_sensor", "legacy_sensor_state_high_label", "legacy_sensor_state_low_label"]
       },

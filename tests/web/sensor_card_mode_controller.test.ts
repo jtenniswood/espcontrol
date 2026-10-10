@@ -20,6 +20,14 @@ export function runSensorCardModeControllerTests(): void {
   equal(local.sensor, "local", "local source uses the stable local marker");
   equal(local.entity, "", "source changes clear the previous entity");
   equal(controller.isLocal(local), true, "local source is detected after transition");
+  equal(local.options, "", "source changes clear source-specific options");
+
+  const coloured = card({ options: "active_color,state_input=high,sensor_colours=v2%7C%7C%7C,card_off_color=6633B9" });
+  controller.selectSource(coloured, "local");
+  equal(coloured.options, "card_off_color=6633B9", "local source retains the shared colour and clears conditional options");
+  controller.selectSource(coloured, "ha");
+  equal(coloured.options, "card_off_color=6633B9", "Home Assistant source retains the shared colour");
+  equal(controller.selectSource(coloured, "ha").length, 0, "reselecting the source makes no changes");
 
   const text = card();
   const textTransition = controller.selectDisplayMode(text, "text");

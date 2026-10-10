@@ -8,6 +8,7 @@ import {
 } from "../model/config_primitives";
 import { cardContractLargeNumbersSupported } from "../generated/card_contract";
 import { createSensorCardModeController, LOCAL_SENSOR_SOURCE } from "../features/sensor_card_mode_controller";
+import { SENSOR_COLOUR_RULES_OPTION, parseSensorColourRules, serializeSensorColourRules, type SensorColourRules } from "../features/sensor_colour_rules";
 import {
     SENSOR_ACTIVE_COLOR_OPTION,
     SENSOR_LARGE_NUMBERS_OFF_VALUE,
@@ -80,6 +81,15 @@ export function createConfigSensorOptionsFeature(cardRegistry: CardRegistry) {
         return !!(b && b.type === "sensor" &&
             configOptionEnabled(b.options, SENSOR_ACTIVE_COLOR_OPTION));
     }
+    function sensorColourRules(this: any, b?: any): SensorColourRules | null {
+        return b && b.type === "sensor" ? parseSensorColourRules(configOptionValue(b.options, SENSOR_COLOUR_RULES_OPTION)) : null;
+    }
+    function setSensorColourRules(this: any, b?: any, rules?: SensorColourRules | null) {
+        if (!b || b.type !== "sensor") return "";
+        b.options = setConfigOptionValue(b.options, SENSOR_COLOUR_RULES_OPTION, rules ? serializeSensorColourRules(rules) : "");
+        if (rules) b.options = setConfigOption(b.options, SENSOR_ACTIVE_COLOR_OPTION, false);
+        return b.options;
+    }
     function setSensorActiveColorEnabled(this: any, b?: any, enabled?: any) {
         if (!b)
             return "";
@@ -145,6 +155,7 @@ export function createConfigSensorOptionsFeature(cardRegistry: CardRegistry) {
     }
     function normalizeSensorOptions(this: any, options?: any, precision?: any) {
         var out: any = "";
+        const colourRules = configOptionValue(options, SENSOR_COLOUR_RULES_OPTION);
         if (configOptionEnabled(options, SENSOR_LARGE_NUMBERS_OPTION) &&
             cardContractOptionSupportedFor("sensor", SENSOR_LARGE_NUMBERS_OPTION, { precision: precision })) {
             out = copyLargeNumbersOption(out, options);
@@ -153,10 +164,11 @@ export function createConfigSensorOptionsFeature(cardRegistry: CardRegistry) {
             cardContractOptionSupportedFor("sensor", SENSOR_LARGE_NUMBERS_OPTION, { precision: precision })) {
             out = copyLargeNumbersOption(out, options);
         }
-        if (configOptionEnabled(options, SENSOR_ACTIVE_COLOR_OPTION) &&
+        if (!colourRules && configOptionEnabled(options, SENSOR_ACTIVE_COLOR_OPTION) &&
             cardContractOptionSupportedFor("sensor", SENSOR_ACTIVE_COLOR_OPTION, { precision: precision })) {
             out = setConfigOption(out, SENSOR_ACTIVE_COLOR_OPTION, true);
         }
+        if (colourRules) out = setConfigOptionValue(out, SENSOR_COLOUR_RULES_OPTION, colourRules);
         if (precision === "text" && configOptionEnabled(options, SENSOR_STATE_LABELS_OPTION)) {
             out = setConfigOption(out, SENSOR_STATE_LABELS_OPTION, true);
             out = setConfigOptionValue(out, SENSOR_STATE_INPUT_OPTION, configOptionValue(options, SENSOR_STATE_INPUT_OPTION) || legacySensorStateInput(options));
@@ -238,6 +250,8 @@ export function createConfigSensorOptionsFeature(cardRegistry: CardRegistry) {
         sensorTimeUnit,
         setSensorTimeUnit,
         sensorActiveColorEnabled,
+        sensorColourRules,
+        setSensorColourRules,
         setSensorActiveColorEnabled,
         sensorStateLabelsEnabled,
         legacySensorStateInput,

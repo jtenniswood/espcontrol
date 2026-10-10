@@ -2,6 +2,11 @@ import { CARD_RUNTIME_SPECS } from "../generated/card_contract";
 
 export type CardDefinitionValue<T> = T | (() => T);
 
+export interface CardColourSettingsController {
+  sync(): void;
+  reset(): void;
+}
+
 export interface CardDefinition {
   readonly key?: string;
   readonly label?: CardDefinitionValue<string>;
@@ -14,6 +19,7 @@ export interface CardDefinition {
   readonly onSelect?: ((button: any) => void) | null;
   readonly renderSettingsBeforeLabel?: ((...args: any[]) => unknown) | null;
   readonly renderSettings?: ((...args: any[]) => unknown) | null;
+  readonly renderColourSettings?: ((panel: HTMLElement, button: any, slot: number, helpers: any, swatches: HTMLElement) => CardColourSettingsController | null) | null;
   readonly renderPreview?: ((...args: any[]) => unknown) | null;
   readonly contextMenuItems?: ((...args: any[]) => unknown) | null;
   readonly cardMetadata?: Record<string, any> | null;

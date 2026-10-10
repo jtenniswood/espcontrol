@@ -4,6 +4,8 @@ project(espcontrol_firmware_tests LANGUAGES CXX)
 enable_testing()
 include(CheckCXXSourceCompiles)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_test(NAME sensor_colour_icon_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/sensor_colour_icon_test.py ${CMAKE_CXX_COMPILER})
 
 add_test(NAME gsl3680_startup_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"

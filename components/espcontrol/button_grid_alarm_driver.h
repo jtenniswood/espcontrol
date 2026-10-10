@@ -50,6 +50,7 @@ struct AlarmDriverEnvironment {
   int slot_count = 0;
   int grid_cols = 1;
   uint32_t on_color = DEFAULT_ACCENT_COLOR;
+  bool off_theme_owned = true;
   uint32_t off_color = theme_display_color(current_theme().surface_primary);
   uint32_t tertiary_color = theme_display_color(current_theme().surface_secondary);
   int theme_red_percent = 100;
@@ -77,6 +78,7 @@ inline AlarmDriverEnvironment alarm_driver_environment(
   environment.grid_cols = grid_cols;
   environment.on_color = palette.has_on
     ? palette.on_val : DEFAULT_ACCENT_COLOR;
+  environment.off_theme_owned = !palette.custom_background;
   environment.off_color = palette.off_val;
   environment.tertiary_color = palette.sensor_val;
   environment.theme_red_percent = display.color.red_percent;
@@ -137,7 +139,7 @@ inline AlarmCardCtx *alarm_driver_bind_data(
   alarm->theme_red_percent = environment.theme_red_percent;
   alarm->theme_green_percent = environment.theme_green_percent;
   alarm->theme_blue_percent = environment.theme_blue_percent;
-  alarm->off_theme_owned = cfg_option_value(effective.options, "card_off_color").empty();
+  alarm->off_theme_owned = environment.off_theme_owned;
   if (context.surface == Surface::SUBPAGE) {
     alarm->grid_page = environment.grid_page;
   }

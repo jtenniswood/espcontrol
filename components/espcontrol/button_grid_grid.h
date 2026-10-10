@@ -136,6 +136,13 @@ inline void configure_grid_layout(lv_obj_t *page, int num_slots, int cols) {
   lv_obj_update_layout(page);
 }
 
+inline bool grid_sensor_surface_is_theme_owned(const CardPalette &palette,
+                                               const ParsedCfg &config) {
+  // Conditional colours use the sensor theme surface whenever no rule matches,
+  // even when a separate single colour remains stored for the other mode.
+  return !palette.custom_background || parse_sensor_colour_rules(config).valid;
+}
+
 inline CardPalette card_palette_for_config(const CardPalette &defaults,
                                             const ParsedCfg &config,
                                             const DisplayProfile &display) {
@@ -583,6 +590,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   theme_set_content_background(s.btn, palette.custom_background);
   apply_button_colors(s.btn, palette.has_on, palette.on_val,
     palette.has_off, palette.off_val);
+  if (!palette.custom_background) lv_obj_set_style_text_color(s.btn, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
   sync_card_checked_text_color(s.btn);
   apply_button_on_pattern(s.btn, p.options, palette.has_on, palette.on_val);
   apply_standard_sensor_number_style(s, display);
@@ -1155,10 +1163,11 @@ inline void grid_phase1(
 
     ParsedCfg p = parse_cfg(scfg);
     const auto context = card_runtime_context(p);
-    const bool custom_background = card_palette_for_config(palette, p, display).custom_background;
+    const auto card_palette = card_palette_for_config(palette, p, display);
     neutral_buttons[idx - 1] = context.family != espcontrol::cards::Family::IMAGE &&
         espcontrol::cards::media_driver_theme_owned_surface(context, p);
-    sensor_surfaces[idx - 1] = !custom_background && grid_card_uses_sensor_surface(context, p);
+    sensor_surfaces[idx - 1] = grid_sensor_surface_is_theme_owned(card_palette, p) &&
+        grid_card_uses_sensor_surface(context, p);
     secondary_surfaces[idx - 1] = grid_card_uses_secondary_surface(context, p);
     display_apply_main_width(s.icon_lbl, display);
     display_apply_slot_text_width(s, display);
@@ -2191,7 +2200,8 @@ inline void grid_phase2(
           si + 1, bn, sub_slot, sb,
           context.family != espcontrol::cards::Family::IMAGE &&
               espcontrol::cards::media_driver_theme_owned_surface(context, sb_cfg),
-          !card_palette.custom_background && grid_card_uses_sensor_surface(context, sb_cfg),
+          grid_sensor_surface_is_theme_owned(card_palette, sb_cfg) &&
+              grid_card_uses_sensor_surface(context, sb_cfg),
           grid_card_uses_secondary_surface(context, sb_cfg));
       display_apply_main_width(sub_slot.icon_lbl, display);
       display_apply_slot_text_width(sub_slot, display);

@@ -15,6 +15,7 @@ source = r'''
 #include <cstdio>
 #include <cstring>
 #include <functional>
+#include <optional>
 #include <map>
 #include <string>
 #include <vector>
@@ -48,7 +49,7 @@ struct DisplayProfile {
 };
 uint32_t lv_color_hex(uint32_t rgb) { return rgb; }
 void theme_set_content_background(lv_obj_t *, bool) {}
-uint32_t current_grid_sensor_surface_color() { return current_theme().surface_sensor; }
+uint32_t current_grid_sensor_surface_color() { return theme_display_color(current_theme().surface_sensor); }
 uint32_t current_grid_sensor_color() { return current_theme().surface_secondary; }
 void lv_obj_set_style_bg_color(lv_obj_t *obj, uint32_t rgb, int selector) { obj->background[selector] = rgb; }
 void lv_obj_set_style_text_color(lv_obj_t *obj, uint32_t rgb, int selector) { obj->text[selector] = rgb; }
@@ -136,7 +137,7 @@ grid = (headers / "button_grid_grid.h").read_text()
 groups = (
     ("button_grid_display.h", "", ("display_correct_color",)),
     ("button_grid_layout.h", "", ("parse_hex_color", "apply_button_colors", "apply_card_descendant_text_color", "sync_card_checked_text_color", "card_text_contrast_event_cb", "bind_card_text_contrast_events", "set_card_checked_state")),
-    ("button_grid_grid.h", "", ("card_palette_for_config",)),
+    ("button_grid_grid.h", "", ("grid_sensor_surface_is_theme_owned", "card_palette_for_config")),
     ("button_grid_sensor_driver.h", "espcontrol::cards", ("sensor_driver_apply_background",)),
     ("button_grid_weather_driver.h", "espcontrol::cards", ("weather_driver_apply_background",)),
     ("button_grid_subscriptions.h", "", ("apply_sensor_active_color", "subscribe_sensor_text_card_value")),
@@ -323,11 +324,20 @@ int main() {
     ParsedCfg config;
     config.options = options;
     const auto palette = card_palette_for_config(defaults, config, display);
+    assert(grid_sensor_surface_is_theme_owned(palette, config));
     assert(palette.on_val == defaults.on_val && palette.off_val == defaults.off_val);
     assert(palette.sensor_val == defaults.sensor_val);
   }
   ParsedCfg config;
   config.options = "card_off_color=FF8C00";
+  assert(!grid_sensor_surface_is_theme_owned(card_palette_for_config(defaults, config, display), config));
+  ParsedCfg conditional = config;
+  conditional.type = "sensor";
+  conditional.options += ",sensor_colours=v2%7C%7Ct%2Con%2CFFFFFF%7C";
+  assert(parse_sensor_colour_rules(conditional).valid);
+  assert(grid_sensor_surface_is_theme_owned(card_palette_for_config(defaults, conditional, display), conditional));
+  conditional.options = config.options + ",sensor_colours=invalid";
+  assert(!grid_sensor_surface_is_theme_owned(card_palette_for_config(defaults, conditional, display), conditional));
   display.color.red_percent = 50;
   display.color.green_percent = 75;
   const auto corrected_progress = card_palette_for_config(defaults, config, display);

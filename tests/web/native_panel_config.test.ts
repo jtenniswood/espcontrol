@@ -52,7 +52,7 @@ function response(
     ok: status >= 200 && status < 300,
     status,
     headers: { get: (name: string) => name === "ETag" ? etag : null },
-    json: async () => ({ configuration: { read: true, write: true, document_versions: [1] } }),
+    json: async () => ({ configuration: { read: true, write: true, document_versions: [1] }, sensor_colour_rules: 2 }),
     arrayBuffer: async () => new Uint8Array(body).buffer as ArrayBuffer,
   };
 }
@@ -84,6 +84,13 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
     return response(200, document, "\"7\"");
   });
   equal(await client.discover(), true, "native capabilities are detected");
+  equal(client.sensorColourRulesSupported(), true, "sensor colour rules capability is detected");
+  const oldColourClient = createNativePanelConfigClient(async () => ({
+    ...response(200),
+    json: async () => ({ configuration: { read: true, write: true, document_versions: [1] }, sensor_colour_rules: 1 }),
+  }));
+  equal(await oldColourClient.discover(), true, "older condition firmware still supports native configuration");
+  equal(oldColourClient.sensorColourRulesSupported(), false, "saving fallback colours requires version two support");
   equal(await client.save((current) => ({ ...current, settings: { ...current.settings, button_order: "1d" } })), "saved", "guarded native save succeeds");
   const put = requests.find((entry) => entry.request?.method === "PUT");
   equal(put?.request?.headers?.["If-Match"], "\"7\"", "native save uses the document generation");
@@ -146,6 +153,7 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
     json: async () => ({ configuration: { read: false, write: false, document_versions: [] } }),
   }));
   equal(await legacyClient.save((current) => current), "unsupported", "legacy firmware stays on the entity path");
+  equal(legacyClient.sensorColourRulesSupported(), false, "legacy firmware cannot create sensor colour rules");
   equal(legacyClient.confirmedUnsupported(), true,
     "a valid capabilities response can confirm that native configuration is unsupported");
 

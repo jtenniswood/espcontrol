@@ -4217,6 +4217,19 @@ def build_www(
 # Main
 # ===========================================================================
 
+def sync_sensor_colour_casefold(check_only=False):
+    from sensor_colour_casefold import outputs
+    dirty = []
+    for path, content in outputs().items():
+        if not path.exists() or path.read_text(encoding="utf-8") != content:
+            dirty.append(path.relative_to(ROOT))
+            if check_only:
+                print(f"Out of date: {path.relative_to(ROOT)}")
+            else:
+                write_generated_text(path, content)
+    return dirty
+
+
 def sync_captive_portal(check_only=False):
     result = subprocess.run(
         ["node", str(ROOT / "scripts/captive_portal_assets.js")],
@@ -4282,6 +4295,7 @@ def main():
             if cmd == "all":
                 portal_dirty = sync_captive_portal(check_only=check_only)
                 entity_dirty = sync_entity_names(check_only=check_only)
+                casefold_dirty = sync_sensor_colour_casefold(check_only=check_only)
                 i18n_dirty = sync_i18n(check_only=check_only)
                 contract_dirty = sync_card_contract(check_only=check_only)
                 device_dirty = sync_device_capabilities(check_only=check_only)
@@ -4291,16 +4305,22 @@ def main():
                     retain_current_bundle=retain_current_bundle,
                     legacy_web_manifest=legacy_web_manifest,
                 )
-                if check_only and (portal_dirty or entity_dirty or i18n_dirty or contract_dirty or device_dirty or icon_dirty or www_dirty):
+                if check_only and (portal_dirty or entity_dirty or casefold_dirty or i18n_dirty or contract_dirty or device_dirty or icon_dirty or www_dirty):
                     exit_code = 1
-                elif not portal_dirty and not entity_dirty and not i18n_dirty and not contract_dirty and not device_dirty and not icon_dirty and not www_dirty:
+                elif not portal_dirty and not entity_dirty and not casefold_dirty and not i18n_dirty and not contract_dirty and not device_dirty and not icon_dirty and not www_dirty:
                     print("All outputs are up to date.")
                 else:
                     total = (
-                        len(entity_dirty) + len(i18n_dirty) + len(contract_dirty) + len(device_dirty) +
+                        len(entity_dirty) + len(casefold_dirty) + len(i18n_dirty) + len(contract_dirty) + len(device_dirty) +
                         len(icon_dirty) + len(www_dirty) + len(portal_dirty)
                     )
                     print(f"Updated {total} target(s).")
+            elif cmd == "sensor-casefold":
+                dirty = sync_sensor_colour_casefold(check_only=check_only)
+                if check_only and dirty:
+                    exit_code = 1
+                elif not dirty:
+                    print("Sensor colour case-folding outputs are in sync.")
             elif cmd == "portal":
                 dirty = sync_captive_portal(check_only=check_only)
                 if check_only and dirty:

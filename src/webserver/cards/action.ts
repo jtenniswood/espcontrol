@@ -1,6 +1,7 @@
 import { preserveCardColorOptions } from "../model/config_primitives";
 import { state } from "../state/app_instance";
 import { iconSlug } from "../application/ui_primitives";
+import { normalizedCardColorOptions } from "../model/config_primitives";
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ConfigConfirmationOptionsFeature } from "../application/config_confirmation_options";
 import type { EntityStateFeature } from "../application/entity_state";
@@ -149,11 +150,11 @@ export function registerActionCardTypes(
                             helpers.saveField("unit", "");
                         }
                         if (actionCardIsOptionSelect(b)) {
-                            b.options = preserveCardColorOptions(b.options, "");
+                            b.options = normalizedCardColorOptions(b.options);
                             helpers.saveField("options", b.options);
                         }
                         else if (actionCardIsLocal(b)) {
-                            b.options = preserveCardColorOptions(b.options, "");
+                            b.options = normalizedCardColorOptions(b.options);
                             helpers.saveField("options", b.options);
                             if (!b.icon || b.icon === "Auto" || b.icon === "Flash") {
                                 b.icon = "Gesture Tap";

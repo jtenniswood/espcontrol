@@ -9,6 +9,7 @@ import {
     cardContractPickerKey,
 } from "../generated/card_contract";
 import { iconSlug } from "../application/ui_primitives";
+import { normalizedCardColorOptions } from "../model/config_primitives";
 import type { CardRegistry } from "../application/card_registry";
 import {
     coverCommandMode,
@@ -147,7 +148,7 @@ export function registerSliderCardTypes(
                     if (modalSettingsDisclosure)
                         modalSettingsDisclosure.style.display = "none";
                     var previousOptions: any = b.options || "";
-                    b.options = preserveCardColorOptions(b.options, "");
+                    b.options = normalizedCardColorOptions(b.options);
                     if (b.options !== previousOptions)
                         helpers.saveField("options", b.options);
                 }

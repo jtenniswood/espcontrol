@@ -22,6 +22,7 @@ int main() {
                           nullptr &&
                       std::strstr(capabilities.data(), "\"read\":false") != nullptr &&
                       std::strstr(capabilities.data(), "\"write\":false") != nullptr &&
+                      std::strstr(capabilities.data(), "\"sensor_colour_rules\":2") != nullptr &&
                       std::strstr(capabilities.data(), "\"web_assets\"") != nullptr &&
                       std::strstr(capabilities.data(), "\"delivery\":\"manifest\"") !=
                           nullptr &&

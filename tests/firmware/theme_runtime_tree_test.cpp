@@ -896,7 +896,37 @@ static void test_custom_default_contrast_after_active_theme_refresh() {
   }
 }
 
+static void test_custom_card_contrast_survives_theme() {
+  lv_obj_t button, label;
+  button.type = &lv_button_class;
+  button.opacity = LV_OPA_COVER;
+  button.background = lv_color_hex(0xFFFFFF);
+  lv_obj_set_style_bg_color(&button, lv_color_hex(0xFFFFFF), LV_STATE_CHECKED);
+  lv_obj_set_style_bg_color(&button, lv_color_hex(0xFFFFFF), LV_STATE_PRESSED);
+  button.text = lv_color_hex(0x212121);
+  button.checked_text = lv_color_hex(0x212121);
+  button.has_checked_text = true;
+  button.children = {&label};
+  label.type = &lv_label_class;
+  label.parent = &button;
+  label.text = button.text;
+  theme_set_content_background(&button);
+  const ThemePalette *previous = &DARK_THEME;
+  for (const ThemePalette *theme : {&LIGHT_THEME, &DARK_THEME}) {
+    set_active_theme_palette(*theme);
+    for (int state : {LV_STATE_DEFAULT, LV_STATE_CHECKED, LV_STATE_PRESSED}) {
+      button.state = state;
+      theme_restyle_tree(&button, *previous, *theme);
+      theme_apply_grid_button(&button, theme_display_color(theme->surface_card), *theme);
+      assert(button.background.full == 0xFFFFFF);
+      assert(label.text.full == 0x212121);
+    }
+    previous = theme;
+  }
+}
+
 int main() {
+  test_custom_card_contrast_survives_theme();
   test_custom_default_contrast_after_active_theme_refresh();
   test_alarm_state_contrast_during_theme_refresh();
   test_custom_card_theme_preservation();

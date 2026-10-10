@@ -26,7 +26,7 @@ export function createColorSwatches(value: string, onChange: (hex: string) => vo
         const swatch = document.createElement("button");
         swatch.type = "button";
         swatch.className = "sp-card-color-preset";
-        swatch.title = name + " (#" + hex + ")";
+        swatch.title = name;
         swatch.setAttribute("data-color", hex);
         swatch.setAttribute("aria-label", "Set colour to " + name.toLowerCase() +
             (name === "Custom colour" ? " (#" + hex + ")" : ""));
