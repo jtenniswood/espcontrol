@@ -132,7 +132,6 @@ export function createSettingsSystemSectionFeature(
                 state.firmwareChecking = false;
                 if (installAction === "install") {
                     state.firmwareUpdateState = "INSTALLING";
-                    state.firmwareInstallStatus = "Installing update\u2026";
                     renderFirmwareUpdateStatus();
                     clearFirmwareWebOtaFallback();
                     postFirmwareUpdateInstall();
