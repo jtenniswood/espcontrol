@@ -2215,8 +2215,15 @@ void ArtworkImage::retain_animation_() {
   auto *gif_decoder = static_cast<GifDecoder *>(this->decoder_.get());
   if (!gif_decoder || !gif_decoder->is_animated()) return;
   // One card keeps playback data on the dashboard. Reserve the second slot
-  // for the expanded view so opening another GIF never replaces that card.
-  const int slot = this->p4_pipeline_priority_ == P4_PIPELINE_MODAL ? 1 : 0;
+  // for expanded images and the camera screensaver, preserving the card.
+  const int slot = this->animation_fullscreen_ || this->p4_pipeline_priority_ == P4_PIPELINE_MODAL ? 1 : 0;
+  if (slot == 1 && gif_slots[1] && this->animation_fullscreen_ &&
+      this->animation_screen_active_ && this->animation_screen_active_() &&
+      gif_slots[1]->animation_visible_ && !gif_slots[1]->animation_visible_()) {
+    // A closed expanded view may still be cached when the screensaver starts.
+    // Release its playback data before retaining the visible full-screen GIF.
+    gif_slots[1]->stop_animation_();
+  }
   if (slot == 0 && gif_slots[0] && this->animation_screen_active_ &&
       this->animation_screen_active_() && gif_slots[0]->animation_screen_active_ &&
       !gif_slots[0]->animation_screen_active_()) {
@@ -2245,7 +2252,7 @@ void ArtworkImage::retain_animation_() {
 bool ArtworkImage::animation_needs_reload() const {
 #ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
   if (!this->animation_reload_pending_ || this->animation_ || this->service_active_ ||
-      this->p4_pipeline_priority_ == P4_PIPELINE_MODAL ||
+      this->animation_fullscreen_ || this->p4_pipeline_priority_ == P4_PIPELINE_MODAL ||
       !this->animation_visible_ || !this->animation_visible_()) return false;
   auto *owner = gif_slots[0];
   return !owner || (owner->animation_screen_active_ && !owner->animation_screen_active_());

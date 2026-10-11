@@ -42,6 +42,8 @@ When Screen Dimmed is selected, Manual brightness mode uses **Dimmed Screen Brig
 
 The 4-inch ESP32-S3 camera screensaver uses the panel's native 480×480 resolution. The screensaver requests the original Home Assistant snapshot to avoid extra compression, then resizes it on the panel. If downloading or decoding it fails, subsequent requests ask Home Assistant for display-sized snapshots for the rest of that screensaver session. Sharpness still depends on the source image; filtered JPEG resizing preserves detail when reducing images and smooths edges when enlarging them.
 
+Animated GIFs from the selected `camera.*` or `image.*` entity play automatically in the Camera screensaver, with both **Fit** and **Fill** supported. Playback stops when you wake the panel or leave Camera mode. The usual [GIF file, size and memory limits](/card-types/cameras#setting-up-a-camera-card) apply; large images may play more slowly. Single-frame GIFs remain still. The media Cover Art screensaver continues to show a still frame.
+
 ### Photos from Immich
 
 Use [EspControl Immich Companion](/immich/) to show photos from your Immich library, albums, Memories or keyword searches. Its Home Assistant integration provides an `image.*` entity that works with **Then → Camera**, plus slideshow controls and photo-detail sensors.
