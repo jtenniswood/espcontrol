@@ -256,6 +256,8 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Připojte se k WiFi hotspotu";
   if (std::strcmp(text, "to configure your network.") == 0) return "a nastavte svou síť.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Poté v prohlížeči otevřete 192.168.4.1";
+  if (std::strcmp(text, "Screensaver") == 0) return "Spořič obrazovky";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "Nesprávný PIN";
   return text;
 }
 
@@ -493,6 +495,8 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Opret forbindelse til WiFi-hotspottet";
   if (std::strcmp(text, "to configure your network.") == 0) return "for at konfigurere dit netværk.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Åbn derefter 192.168.4.1 i din browser";
+  if (std::strcmp(text, "Screensaver") == 0) return "Pauseskærm";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "Forkert PIN";
   return text;
 }
 
@@ -728,6 +732,8 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Verbinde dich mit dem WLAN-Hotspot";
   if (std::strcmp(text, "to configure your network.") == 0) return "um dein Netzwerk einzurichten.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Öffne dann 192.168.4.1 in deinem Browser";
+  if (std::strcmp(text, "Screensaver") == 0) return "Bildschirmschoner";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "Falsche PIN";
   return text;
 }
 
@@ -971,6 +977,8 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Conéctate al punto de acceso WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "para configurar tu red.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Después abre 192.168.4.1 en tu navegador";
+  if (std::strcmp(text, "Screensaver") == 0) return "Salvapantallas";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "PIN incorrecto";
   return text;
 }
 
@@ -1224,6 +1232,8 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Yhdistä WiFi-tukiasemaan";
   if (std::strcmp(text, "to configure your network.") == 0) return "määrittääksesi verkkosi.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Avaa sitten selaimessa 192.168.4.1";
+  if (std::strcmp(text, "Screensaver") == 0) return "Näytönsäästäjä";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "Väärä PIN";
   return text;
 }
 
@@ -1460,6 +1470,8 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Connectez-vous au point d’accès WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "pour configurer votre réseau.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Ouvrez ensuite 192.168.4.1 dans votre navigateur";
+  if (std::strcmp(text, "Screensaver") == 0) return "Économiseur d’écran";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "PIN incorrect";
   return text;
 }
 
@@ -1722,6 +1734,8 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "התחברו לנקודת הגישה של WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "כדי להגדיר את הרשת שלכם.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "לאחר מכן פתחו את 192.168.4.1 בדפדפן";
+  if (std::strcmp(text, "Screensaver") == 0) return "שומר מסך";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "קוד PIN שגוי";
   return text;
 }
 
@@ -1975,6 +1989,8 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Csatlakozzon a WiFi-hotspothoz";
   if (std::strcmp(text, "to configure your network.") == 0) return "a hálózat beállításához.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Ezután nyissa meg a 192.168.4.1 címet a böngészőben";
+  if (std::strcmp(text, "Screensaver") == 0) return "Képernyőkímélő";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "Helytelen PIN";
   return text;
 }
 
@@ -2218,6 +2234,8 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Connettiti all’hotspot WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "per configurare la tua rete.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Poi apri 192.168.4.1 nel browser";
+  if (std::strcmp(text, "Screensaver") == 0) return "Salvaschermo";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "PIN errato";
   return text;
 }
 
@@ -2459,6 +2477,8 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Koble til WiFi-hotspotet";
   if (std::strcmp(text, "to configure your network.") == 0) return "for å konfigurere nettverket ditt.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Åpne deretter 192.168.4.1 i nettleseren";
+  if (std::strcmp(text, "Screensaver") == 0) return "Skjermsparer";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "Feil PIN";
   return text;
 }
 
@@ -2700,6 +2720,8 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Maak verbinding met de WiFi-hotspot";
   if (std::strcmp(text, "to configure your network.") == 0) return "om je netwerk in te stellen.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Open daarna 192.168.4.1 in je browser";
+  if (std::strcmp(text, "Screensaver") == 0) return "Schermbeveiliging";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "Onjuiste pincode";
   return text;
 }
 
@@ -2941,6 +2963,8 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Połącz się z hotspotem WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "aby skonfigurować swoją sieć.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Następnie otwórz 192.168.4.1 w przeglądarce";
+  if (std::strcmp(text, "Screensaver") == 0) return "Wygaszacz ekranu";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "Nieprawidłowy PIN";
   return text;
 }
 
@@ -3184,6 +3208,8 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Conecte-se ao ponto de acesso WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "para configurar sua rede.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Depois abra 192.168.4.1 no navegador";
+  if (std::strcmp(text, "Screensaver") == 0) return "Protetor de tela";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "PIN incorreto";
   return text;
 }
 
@@ -3428,6 +3454,8 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Ligue-se ao ponto de acesso WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "para configurar a sua rede.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Depois abra 192.168.4.1 no navegador";
+  if (std::strcmp(text, "Screensaver") == 0) return "Proteção de ecrã";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "PIN incorreto";
   return text;
 }
 
@@ -3681,6 +3709,8 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Conectați-vă la hotspotul WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "pentru a configura rețeaua.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Apoi deschideți 192.168.4.1 în browser";
+  if (std::strcmp(text, "Screensaver") == 0) return "Economizor de ecran";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "PIN incorect";
   return text;
 }
 
@@ -3941,6 +3971,8 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Подключитесь к точке доступа WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "чтобы настроить сеть.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Затем откройте 192.168.4.1 в браузере";
+  if (std::strcmp(text, "Screensaver") == 0) return "Заставка";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "Неверный PIN";
   return text;
 }
 
@@ -4186,6 +4218,8 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Pripojte sa k WiFi hotspotu";
   if (std::strcmp(text, "to configure your network.") == 0) return "a nastavte svoju sieť.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Potom v prehliadači otvorte 192.168.4.1";
+  if (std::strcmp(text, "Screensaver") == 0) return "Šetrič obrazovky";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "Nesprávny PIN";
   return text;
 }
 
@@ -4435,6 +4469,8 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Povežite se z dostopno točko WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "da nastavite omrežje.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Nato v brskalniku odprite 192.168.4.1";
+  if (std::strcmp(text, "Screensaver") == 0) return "Ohranjevalnik zaslona";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "Napačen PIN";
   return text;
 }
 
@@ -4675,6 +4711,8 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Anslut till WiFi-hotspotten";
   if (std::strcmp(text, "to configure your network.") == 0) return "för att konfigurera ditt nätverk.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Öppna sedan 192.168.4.1 i din webbläsare";
+  if (std::strcmp(text, "Screensaver") == 0) return "Skärmsläckare";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "Felaktig PIN";
   return text;
 }
 
@@ -4928,6 +4966,8 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "WiFi erişim noktasına bağlanın";
   if (std::strcmp(text, "to configure your network.") == 0) return "ve ağınızı yapılandırın.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Ardından tarayıcınızda 192.168.4.1 adresini açın";
+  if (std::strcmp(text, "Screensaver") == 0) return "Ekran koruyucu";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "Yanlış PIN";
   return text;
 }
 
@@ -5183,6 +5223,8 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Підключіться до точки доступу WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "щоб налаштувати мережу.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Потім відкрийте 192.168.4.1 у браузері";
+  if (std::strcmp(text, "Screensaver") == 0) return "Заставка";
+  if (std::strcmp(text, "Incorrect PIN") == 0) return "Неправильний PIN";
   return text;
 }
 
@@ -5447,6 +5489,8 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Connect to the WiFi hotspot";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "to configure your network.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Then visit 192.168.4.1 in your browser";
+  if (std::strcmp(key, "screensaver") == 0) return "Screensaver";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "Incorrect PIN";
   return key;
 }
 
@@ -5692,6 +5736,8 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Připojte se k WiFi hotspotu";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "a nastavte svou síť.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Poté v prohlížeči otevřete 192.168.4.1";
+  if (std::strcmp(key, "screensaver") == 0) return "Spořič obrazovky";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "Nesprávný PIN";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5930,6 +5976,8 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Opret forbindelse til WiFi-hotspottet";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "for at konfigurere dit netværk.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Åbn derefter 192.168.4.1 i din browser";
+  if (std::strcmp(key, "screensaver") == 0) return "Pauseskærm";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "Forkert PIN";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6166,6 +6214,8 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Verbinde dich mit dem WLAN-Hotspot";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "um dein Netzwerk einzurichten.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Öffne dann 192.168.4.1 in deinem Browser";
+  if (std::strcmp(key, "screensaver") == 0) return "Bildschirmschoner";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "Falsche PIN";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6410,6 +6460,8 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Conéctate al punto de acceso WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "para configurar tu red.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Después abre 192.168.4.1 en tu navegador";
+  if (std::strcmp(key, "screensaver") == 0) return "Salvapantallas";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "PIN incorrecto";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6664,6 +6716,8 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Yhdistä WiFi-tukiasemaan";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "määrittääksesi verkkosi.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Avaa sitten selaimessa 192.168.4.1";
+  if (std::strcmp(key, "screensaver") == 0) return "Näytönsäästäjä";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "Väärä PIN";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6901,6 +6955,8 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Connectez-vous au point d’accès WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "pour configurer votre réseau.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Ouvrez ensuite 192.168.4.1 dans votre navigateur";
+  if (std::strcmp(key, "screensaver") == 0) return "Économiseur d’écran";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "PIN incorrect";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7164,6 +7220,8 @@ inline const char *espcontrol_i18n_key_he(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "התחברו לנקודת הגישה של WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "כדי להגדיר את הרשת שלכם.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "לאחר מכן פתחו את 192.168.4.1 בדפדפן";
+  if (std::strcmp(key, "screensaver") == 0) return "שומר מסך";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "קוד PIN שגוי";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7418,6 +7476,8 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Csatlakozzon a WiFi-hotspothoz";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "a hálózat beállításához.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Ezután nyissa meg a 192.168.4.1 címet a böngészőben";
+  if (std::strcmp(key, "screensaver") == 0) return "Képernyőkímélő";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "Helytelen PIN";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7662,6 +7722,8 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Connettiti all’hotspot WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "per configurare la tua rete.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Poi apri 192.168.4.1 nel browser";
+  if (std::strcmp(key, "screensaver") == 0) return "Salvaschermo";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "PIN errato";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7904,6 +7966,8 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Koble til WiFi-hotspotet";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "for å konfigurere nettverket ditt.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Åpne deretter 192.168.4.1 i nettleseren";
+  if (std::strcmp(key, "screensaver") == 0) return "Skjermsparer";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "Feil PIN";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8145,6 +8209,8 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Maak verbinding met de WiFi-hotspot";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "om je netwerk in te stellen.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Open daarna 192.168.4.1 in je browser";
+  if (std::strcmp(key, "screensaver") == 0) return "Schermbeveiliging";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "Onjuiste pincode";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8387,6 +8453,8 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Połącz się z hotspotem WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "aby skonfigurować swoją sieć.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Następnie otwórz 192.168.4.1 w przeglądarce";
+  if (std::strcmp(key, "screensaver") == 0) return "Wygaszacz ekranu";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "Nieprawidłowy PIN";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8631,6 +8699,8 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Conecte-se ao ponto de acesso WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "para configurar sua rede.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Depois abra 192.168.4.1 no navegador";
+  if (std::strcmp(key, "screensaver") == 0) return "Protetor de tela";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "PIN incorreto";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8876,6 +8946,8 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Ligue-se ao ponto de acesso WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "para configurar a sua rede.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Depois abra 192.168.4.1 no navegador";
+  if (std::strcmp(key, "screensaver") == 0) return "Proteção de ecrã";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "PIN incorreto";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9130,6 +9202,8 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Conectați-vă la hotspotul WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "pentru a configura rețeaua.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Apoi deschideți 192.168.4.1 în browser";
+  if (std::strcmp(key, "screensaver") == 0) return "Economizor de ecran";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "PIN incorect";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9391,6 +9465,8 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Подключитесь к точке доступа WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "чтобы настроить сеть.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Затем откройте 192.168.4.1 в браузере";
+  if (std::strcmp(key, "screensaver") == 0) return "Заставка";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "Неверный PIN";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9637,6 +9713,8 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Pripojte sa k WiFi hotspotu";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "a nastavte svoju sieť.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Potom v prehliadači otvorte 192.168.4.1";
+  if (std::strcmp(key, "screensaver") == 0) return "Šetrič obrazovky";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "Nesprávny PIN";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9887,6 +9965,8 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Povežite se z dostopno točko WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "da nastavite omrežje.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Nato v brskalniku odprite 192.168.4.1";
+  if (std::strcmp(key, "screensaver") == 0) return "Ohranjevalnik zaslona";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "Napačen PIN";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10128,6 +10208,8 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Anslut till WiFi-hotspotten";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "för att konfigurera ditt nätverk.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Öppna sedan 192.168.4.1 i din webbläsare";
+  if (std::strcmp(key, "screensaver") == 0) return "Skärmsläckare";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "Felaktig PIN";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10382,6 +10464,8 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "WiFi erişim noktasına bağlanın";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "ve ağınızı yapılandırın.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Ardından tarayıcınızda 192.168.4.1 adresini açın";
+  if (std::strcmp(key, "screensaver") == 0) return "Ekran koruyucu";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "Yanlış PIN";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10638,6 +10722,8 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Підключіться до точки доступу WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "щоб налаштувати мережу.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Потім відкрийте 192.168.4.1 у браузері";
+  if (std::strcmp(key, "screensaver") == 0) return "Заставка";
+  if (std::strcmp(key, "incorrect_pin") == 0) return "Неправильний PIN";
   return espcontrol_i18n_key_en(key);
 }
 

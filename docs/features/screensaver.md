@@ -103,3 +103,15 @@ When Night Schedule is using fixed **Time** hours, it has priority over screensa
 If you want presence to control when the panel is in night mode, set Night Schedule to **Sensor** mode instead of **Time** mode.
 
 On the first start after updating to the separate-sensor firmware, the existing Screensaver Presence Entity is copied to the Night Schedule Sensor Entity once. You can then change either setting independently without affecting the other.
+
+## PIN protection after wake
+
+In **Settings > Sleep & Schedule > Screensaver**, enter a numeric **PIN** (1–16 digits), choose **Save PIN**, and enable **Require PIN after wake**. Use the same field and button to change it. **Clear PIN** removes it; disabling the toggle keeps the saved PIN for later use. These settings are saved on the panel and survive a restart. Update the panel firmware if the controls are not shown.
+
+After a screensaver or manual sleep, the touchscreen shows a keypad with scrambled digit positions. Enter the PIN and press the checkmark to unlock. A wrong PIN clears the entry and keeps the controls blocked. The clear key resets the entry. Touch wake, presence wake, scheduled wake, and the local Screensaver card all use the same protection. With protection disabled or no PIN saved, wake works as before.
+
+This protects local touchscreen controls, including status buttons and alarm modals. It does not protect network, Home Assistant, OTA, or web administration access. Someone with web setup access can change or clear the PIN; configure [web authentication](/getting-started/manual-esphome-setup#advanced-password-protect-the-web-page) separately if needed. The PIN is never returned by the settings API or included in backup JSON. Importing a backup clears the destination panel's PIN, so set a new PIN on its web setup page afterward.
+
+## Start the screensaver with a card
+
+Add the **Screensaver** card to the home screen or a subpage. It needs no Home Assistant entity. Tapping it immediately starts the selected **Then** action: Display Off, Screen Dimmed, Clock, or Camera on supported panels. It works even when automatic screensavers are disabled, presence is detected, or media is playing. Tap the screen to wake it, then enter the PIN if protection is enabled.

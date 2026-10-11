@@ -4,7 +4,7 @@
 // The same visual, binding, interaction, layout, and cleanup entry points serve
 // main-grid and subpage cards while preserving their established ownership.
 // Contract coverage markers: type == "", "action", "alarm_action",
-// "fan_switch", "internal", "light_switch", "push", "screen_lock", "webhook".
+// "fan_switch", "internal", "light_switch", "push", "screen_lock", "screensaver", "webhook".
 
 namespace espcontrol::cards {
 
@@ -19,6 +19,7 @@ inline bool basic_action_driver_matches(const Context &context,
     case Driver::INTERNAL:
     case Driver::PUSH:
     case Driver::SCREEN_LOCK:
+    case Driver::SCREENSAVER:
     case Driver::WEBHOOK:
       return !action_card_option_select(config);
     case Driver::FAN:
@@ -33,6 +34,11 @@ inline bool basic_action_driver_setup_visual(
   using Driver = card_runtime::CardDriverId;
   if (!basic_action_driver_matches(context, config)) return false;
   switch (context.runtime.driver) {
+    case Driver::SCREENSAVER:
+      lv_label_set_display_text(slot.icon_lbl, find_icon("Monitor"));
+      lv_label_set_display_text(slot.text_lbl, espcontrol_i18n("Screensaver"));
+      apply_push_button_transition(slot.btn);
+      break;
     case Driver::SCREEN_LOCK:
       setup_screen_lock_card(slot, config);
       break;
@@ -283,6 +289,11 @@ inline bool basic_action_driver_bind_subpage(
   using Driver = card_runtime::CardDriverId;
   if (!basic_action_driver_matches(context, config)) return false;
   switch (context.runtime.driver) {
+    case Driver::SCREENSAVER:
+      lv_obj_add_event_cb(slot.btn, [](lv_event_t *) {
+        if (force_screensaver_action()) force_screensaver_action()();
+      }, LV_EVENT_CLICKED, nullptr);
+      break;
     case Driver::SCREEN_LOCK:
       lv_obj_add_event_cb(slot.btn, [](lv_event_t *) {
         screen_lock_toggle();
@@ -445,6 +456,9 @@ inline bool basic_action_driver_handle_main_click(
   using Driver = card_runtime::CardDriverId;
   if (!basic_action_driver_matches(context, config)) return false;
   switch (context.runtime.driver) {
+    case Driver::SCREENSAVER:
+      if (force_screensaver_action()) force_screensaver_action()();
+      break;
     case Driver::SCREEN_LOCK:
       screen_lock_toggle();
       break;

@@ -1,3 +1,4 @@
+import { buildScreensaverPinSettings } from "./screensaver_pin";
 import { state } from "../state/app_instance";
 import { NTP_SERVER_DEFAULTS } from "../state/app_state";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
@@ -557,6 +558,9 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         }
         els.setSsMode = setSsMode;
         setSsMode(ssMode);
+        const pinSettings = buildScreensaverPinSettings(document, fetch, fields);
+        els.syncScreensaverPinUi = pinSettings.refresh;
+        ssBody.appendChild(pinSettings.body);
         var screensaverCard: any = makeCollapsibleCard("Screensaver", ssBody, true, ssBadge);
         var idleBody: any = document.createElement("div");
         idleBody.appendChild(fieldLabel("Return Home After"));

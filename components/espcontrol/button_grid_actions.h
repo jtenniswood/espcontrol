@@ -1,4 +1,5 @@
 #pragma once
+#include "screensaver_pin.h"
 
 #include "media_playback_modes.h"
 #include "media_volume_capability.h"
@@ -855,6 +856,7 @@ inline bool button_press_opens_modal(const ParsedCfg &config, lv_obj_t *button) 
 
 inline void handle_button_press(const std::string &cfg, int slot_num,
                                 lv_obj_t *btn_obj) {
+  if (espcontrol::screensaver_pin().locked()) return;
   if (slot_num <= 0 || slot_num > MAX_GRID_SLOTS) return;
   ParsedCfg p = parse_cfg(cfg);
   if (btn_obj && button_press_opens_modal(p, btn_obj)) {
@@ -934,6 +936,7 @@ inline bool media_driver_handle_main_click(
 // slider toggle, or entity toggle based on the config string.
 inline void handle_button_click(const std::string &cfg, int slot_num,
                                 lv_obj_t *btn_obj) {
+  if (espcontrol::screensaver_pin().locked()) return;
   (void) btn_obj;
   if (media_fast_press_consume(slot_num)) return;
   ParsedCfg p = parse_cfg(cfg);

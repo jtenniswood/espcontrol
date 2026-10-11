@@ -288,6 +288,11 @@
       "lifecycle": { "subscriptions": ["none"], "actions": ["local"], "modalOwner": "none" },
       "modes": [{ "name": "event", "config": { "label": "Trigger" } }]
     },
+    "screensaver": {
+      "classification": "canonical", "canonicalType": "screensaver", "webRegistration": "screensaver", "firmwareFamily": "SCREENSAVER",
+      "lifecycle": { "subscriptions": ["none"], "actions": ["local"], "modalOwner": "none" },
+      "modes": [{ "name": "force", "config": {} }]
+    },
     "screen_lock": {
       "classification": "canonical", "canonicalType": "screen_lock", "webRegistration": "screen_lock", "firmwareFamily": "SCREEN_LOCK",
       "lifecycle": { "subscriptions": ["local"], "actions": ["local"], "modalOwner": "none" },

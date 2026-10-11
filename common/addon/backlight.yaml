@@ -99,6 +99,7 @@ esphome:
     priority: -240
     then:
       - lambda: |-
+          force_screensaver_action() = []() { id(force_screensaver).execute(); };
           auto update_screensaver_action_cache = []() {
             std::string action = id(screensaver_action).current_option();
             id(screensaver_action_clock) = screensaver_action_clock_mode(action);
@@ -175,6 +176,20 @@ esphome:
       - lambda: 'id(clock_brightness_legacy_sync_ready) = true;'
 
 script:
+  - id: screensaver_pin_refresh_ui
+    mode: single
+    then:
+      - lambda: |-
+          const auto &controller = id(espcontrol_app).display();
+          const bool active = controller.target_mode_is(espcontrol::DisplayMode::ACTIVE);
+          if (!active && !controller.target_mode_is(espcontrol::DisplayMode::SETUP_DIMMED)) {
+            espcontrol::screensaver_pin().arm();
+          }
+          screensaver_pin_refresh(active, id(${media_title_font})->get_lv_font(),
+                                 id(${media_title_font})->get_lv_font(),
+                                 id(${icon_font})->get_lv_font(),
+                                 id(screensaver_wake_touch_guard_active));
+
   # The controller owns decisions; this adapter is the only path that applies
   # migrated ACTIVE, SETUP_DIMMED, DIMMED, CLOCK, COVER_ART, and DISPLAY_OFF transitions.
   - id: display_mode_apply_transition
@@ -191,6 +206,14 @@ script:
                   static_cast<uint32_t>(generation),
                   static_cast<espcontrol::DisplayMode>(target_mode));
           then:
+            - lambda: |-
+                const auto mode = static_cast<espcontrol::DisplayMode>(target_mode);
+                if (mode != espcontrol::DisplayMode::ACTIVE &&
+                    mode != espcontrol::DisplayMode::SETUP_DIMMED) {
+                  espcontrol::screensaver_pin().arm();
+                  screensaver_pin_hide();
+                }
+
             - lambda: |-
                 const auto transition = id(espcontrol_app).display().resolve();
                 const bool schedule_owned = transition.winning_source.has_value() &&
@@ -364,6 +387,7 @@ script:
       previous_mode: int
     then:
       - lvgl.resume:
+      - script.execute: screensaver_pin_refresh_ui
       - lvgl.widget.hide: dim_screensaver_touch_guard
       - if:
           condition:
@@ -1118,6 +1142,21 @@ script:
           then:
             - script.execute: screen_schedule_manual_sleep
 
+  # A local card forces the selected action even with timers disabled, presence
+  # detected, or media playing. MANUAL_SLEEP is cleared by the usual wake path.
+  - id: force_screensaver
+    mode: restart
+    then:
+      - script.stop: screensaver_idle_check
+      - lambda: |-
+          const auto mode = id(screensaver_action_clock) ? espcontrol::DisplayMode::CLOCK
+              : id(screensaver_action_dimmed) ? espcontrol::DisplayMode::DIMMED
+              : id(screensaver_action_camera) ? espcontrol::DisplayMode::CAMERA
+              : espcontrol::DisplayMode::DISPLAY_OFF;
+          id(espcontrol_app).display().request(
+              espcontrol::DisplayRequestSource::MANUAL_SLEEP, mode);
+      - script.execute: display_mode_reconcile
+
   # Touchscreen long-press sleep. This is stronger than the automatic schedule;
   # the next tap wakes it.
   - id: screen_schedule_manual_sleep
@@ -1781,6 +1820,10 @@ script:
 # Screensaver layering and brightness/image-overlay maintenance
 # -----------------------------------------------------------------------------
 interval:
+  # Web changes are applied on the firmware loop, never from an HTTP callback.
+  - interval: 100ms
+    then:
+      - script.execute: screensaver_pin_refresh_ui
   - interval: 1s
     then:
       - script.execute: clock_screensaver_keep_on_top

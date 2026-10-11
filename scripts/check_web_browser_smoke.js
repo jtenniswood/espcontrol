@@ -293,6 +293,20 @@ async function installRoutes(context, slug, options = {}) {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(identity.info) });
       return;
     }
+    if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/screensaver-pin") {
+      const pin = options.screensaverPinState;
+      if (!pin) { await route.fulfill({ status: 404, body: "Not found" }); return; }
+      if (route.request().method() === "POST") {
+        const settings = route.request().postDataJSON();
+        pin.posts.push(settings);
+        if (pin.failSave) { await route.fulfill({ status: 500, body: "Failed" }); return; }
+        pin.enabled = settings.enabled;
+        if (typeof settings.pin === "string") pin.pin = settings.pin;
+      }
+      await route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({ enabled: pin.enabled, has_pin: !!pin.pin }) });
+      return;
+    }
     if (nativeState && requestUrl.pathname.startsWith("/api/v1/")) {
       const suppliedGeneration = route.request().headers()["if-match"];
       nativeState.requests.push(
@@ -312,6 +326,7 @@ async function installRoutes(context, slug, options = {}) {
           api: { version: 1 },
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
+          screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
           configuration: { read: true, write: true, document_versions: [1] },
           web_assets: { versions: [1] },
         }),
@@ -330,6 +345,7 @@ async function installRoutes(context, slug, options = {}) {
           api: { version: 1 },
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
+          screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
           configuration: { read: false, write: false, document_versions: [] },
         }),
       });
@@ -6344,7 +6360,7 @@ async function assertPanelNaming(browser) {
     if (process.env.ESPCONTROL_NAMING_SCREENSHOT) await page.screenshot({ path: process.env.ESPCONTROL_NAMING_SCREENSHOT, fullPage: true });
     identityState.failSave = true;
     await save.click();
-    await page.waitForFunction(() => document.querySelector('[role="status"]')?.textContent?.includes("Could not save"));
+    await page.waitForFunction(() => document.querySelector('#sp-panel-name')?.closest('.card')?.querySelector('[role="status"]')?.textContent?.includes("Could not save"));
     assert.strictEqual(restartRequests.length, 0, "failed save must not restart");
     assert.strictEqual(await page.title(), "EspControl - Kitchen");
     identityState.failSave = false;
@@ -6379,10 +6395,67 @@ async function assertPanelNaming(browser) {
   } finally { await context.close(); }
 }
 
+async function assertScreensaverPinSettings(browser) {
+  const testCase = ACTIVE_CASES[0];
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  const pin = { enabled: false, pin: "", posts: [], failSave: false };
+  await installRoutes(context, testCase.slug, { screensaverPinState: pin });
+  const page = await context.newPage();
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.getByRole("tab", { name: "Settings" }).click();
+    const card = page.locator("#sp-settings .card").filter({ has: page.locator("#sp-set-screensaver-pin") });
+    await card.locator(".card-header").click();
+    const input = page.locator("#sp-set-screensaver-pin");
+    await input.waitFor({ state: "visible" });
+    assert.strictEqual(await input.getAttribute("type"), "password");
+    await input.fill("0042");
+    await card.getByRole("button", { name: "Save PIN", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector("#sp-set-screensaver-pin").value === "");
+    assert.strictEqual(pin.pin, "0042");
+    await page.locator("#sp-set-screensaver-pin-enabled + .sp-toggle-track").click();
+    await page.waitForFunction(() => !document.querySelector("#sp-set-screensaver-pin-enabled").disabled);
+    assert.strictEqual(pin.enabled, true);
+    await page.locator("#sp-set-screensaver-pin-enabled + .sp-toggle-track").click();
+    await page.waitForFunction(() => !document.querySelector("#sp-set-screensaver-pin-enabled").disabled);
+    assert.strictEqual(pin.pin, "0042", "disable preserves secret");
+    await input.fill("12bad");
+    const count = pin.posts.length;
+    await card.getByRole("button", { name: "Save PIN", exact: true }).click();
+    assert.strictEqual(pin.posts.length, count, "invalid PIN stays local");
+    await input.fill("6789");
+    await card.getByRole("button", { name: "Save PIN", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector("#sp-set-screensaver-pin").value === "");
+    assert.strictEqual(pin.pin, "6789");
+    pin.failSave = true;
+    await input.fill("1111");
+    await card.getByRole("button", { name: "Save PIN", exact: true }).click();
+    await card.getByText("Could not save or read PIN settings. Check the connection and try again.", { exact: true }).waitFor();
+    assert.strictEqual(pin.pin, "6789", "failed save preserves stored secret");
+    pin.failSave = false;
+    await card.getByRole("button", { name: "Clear PIN", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector("#sp-set-screensaver-pin-enabled").checked === false &&
+      document.querySelector("#sp-set-screensaver-pin").disabled === false);
+    assert.strictEqual(pin.pin, "");
+    // A protected destination importing an ordinary backup must clear its PIN.
+    pin.pin = "2468"; pin.enabled = true;
+    await importBackup(page, backupFixture(testCase.slug, testCase.slots), "screensaver-pin-restore");
+    await page.waitForSelector(".sp-banner.sp-success");
+    assert.strictEqual(pin.pin, "");
+    assert.strictEqual(pin.enabled, false);
+  } finally { await context.close(); }
+}
+
 (async function main() {
   const browser = await chromium.launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    await assertScreensaverPinSettings(browser);
+    if (process.env.ESPCONTROL_PIN_ONLY === "1") { console.log("Screensaver PIN browser checks passed."); return; }
     if (process.env.ESPCONTROL_RESET_ONLY === "1") {
       await assertResetControls(browser);
       console.log("Factory reset confirmation browser checks passed.");
