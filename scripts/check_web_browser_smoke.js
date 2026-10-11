@@ -2776,6 +2776,14 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
     );
   }
 
+  async function cardSettingsSectionCount() {
+    return page
+      .locator(".sp-settings-modal .sp-panel > .sp-disclosure > .sp-disclosure-button > span:first-child")
+      .evaluateAll((labels) =>
+        labels.filter((label) => String(label.textContent || "").trim() === "Card Settings").length,
+      );
+  }
+
   const cardOptions = await page
     .locator(".sp-card-type-option:not([disabled])")
     .evaluateAll((options) =>
@@ -2813,7 +2821,7 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
         `${label}: Screen Lock should not show an unused Entity field`,
       );
       assert.strictEqual(
-        await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
+        await cardSettingsSectionCount(),
         0,
         `${label}: Screen Lock should not show unused generic Card Settings`,
       );
@@ -2821,7 +2829,7 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
 
     if (cardOption.value === "weather") {
       assert.strictEqual(
-        await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
+        await cardSettingsSectionCount(),
         0,
         `${label}: Weather current conditions should not show empty Card Settings`,
       );
@@ -2848,7 +2856,7 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
         await assertGrouped(`${cardOption.label} / ${typeValue || "default"}`);
         if (cardOption.value === "weather" && typeValue) {
           assert.strictEqual(
-            await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
+            await cardSettingsSectionCount(),
             1,
             `${label}: Weather forecasts should group their extra settings`,
           );

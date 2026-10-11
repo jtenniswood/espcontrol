@@ -148,12 +148,15 @@ class ArtworkImage : public PollingComponent,
   bool has_on_finished_callbacks() const { return this->download_finished_callback_.size() != 0; }
   bool has_on_error_callbacks() const { return this->download_error_callback_.size() != 0; }
 
-  /** Bind playback visibility and redraw without treating frames as downloads. */
+  /** Bind playback visibility and redraw without treating frames as downloads.
+   * Fullscreen consumers share the expanded-view slot instead of the card slot.
+   */
   void set_animation_callbacks(std::function<bool()> visible, std::function<void()> redraw,
-                               std::function<bool()> screen_active = {}) {
+                               std::function<bool()> screen_active = {}, bool fullscreen = false) {
     this->animation_visible_ = std::move(visible);
     this->animation_redraw_ = std::move(redraw);
     this->animation_screen_active_ = std::move(screen_active);
+    this->animation_fullscreen_ = fullscreen;
   }
   /** A cached animated still needs a new source when its screen becomes eligible. */
   bool animation_needs_reload() const;
@@ -282,6 +285,7 @@ class ArtworkImage : public PollingComponent,
 #endif
   bool gif_decoding_{false};
   bool animation_reload_pending_{false};
+  bool animation_fullscreen_{false};
   bool animation_frame_pending_{false};
   bool animation_frame_ready_{false};
   uint32_t animation_frame_delay_ms_{0};

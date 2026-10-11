@@ -12,7 +12,7 @@
     "deviceProfiles": 9,
     "cardTypes": 43,
     "entityNames": 110,
-    "icons": 364,
+    "icons": 366,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
   },
@@ -465,12 +465,12 @@
           }
         },
         "topbar": {
-          "height": 6.45,
-          "padding": "1.2cqw 0.59cqw 0.59cqw",
+          "height": 12,
+          "padding": "2.9cqw 0.59cqw 0.9cqw",
           "fontSize": 4.5
         },
         "grid": {
-          "top": 8.58,
+          "top": 12.5,
           "compactTop": 1.5,
           "left": 1.5,
           "right": 1.5,
@@ -515,6 +515,7 @@
           "mediaCoverArtTitle": "font_cover_art_title",
           "mediaCoverArtArtist": "font_cover_art_artist",
           "volumeNumber": "font_number_value_large",
+          "volumeNumberCompact": "font_clock_display",
           "volumeLabel": "font_text_body",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
@@ -659,12 +660,12 @@
           }
         },
         "topbar": {
-          "height": 6.45,
-          "padding": "1.2cqw 0.59cqw 0.59cqw",
+          "height": 12,
+          "padding": "2.9cqw 0.59cqw 0.9cqw",
           "fontSize": 4.5
         },
         "grid": {
-          "top": 8.58,
+          "top": 12.5,
           "compactTop": 1.5,
           "left": 1.5,
           "right": 1.5,
@@ -709,6 +710,7 @@
           "mediaCoverArtTitle": "font_cover_art_title",
           "mediaCoverArtArtist": "font_cover_art_artist",
           "volumeNumber": "font_number_value_large",
+          "volumeNumberCompact": "font_clock_display",
           "volumeLabel": "font_text_body",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
@@ -8259,6 +8261,11 @@
         "mdi": "broom"
       },
       {
+        "name": "Bus",
+        "codepoint": "F00E7",
+        "mdi": "bus"
+      },
+      {
         "name": "Camera",
         "codepoint": "F0100",
         "mdi": "camera"
@@ -9517,6 +9524,11 @@
         "name": "Track Light Off",
         "codepoint": "F1B01",
         "mdi": "track-light-off"
+      },
+      {
+        "name": "Train",
+        "codepoint": "F052C",
+        "mdi": "train"
       },
       {
         "name": "Transmission Tower",

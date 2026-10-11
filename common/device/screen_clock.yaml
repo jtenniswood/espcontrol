@@ -28,8 +28,8 @@ globals:
     initial_value: '""'
 
 font:
-  # Keep this font dedicated to the full-screen clock. The small glyph set and
-  # 2-bit anti-aliasing limit flash and RAM use on resource-constrained panels.
+  # The small glyph set and 2-bit anti-aliasing limit flash and RAM use.
+  # The 4.3-inch P4 also reuses these digits for its landscape volume dial.
   - file: "gfonts://Roboto@Light"
     id: font_clock_display
     size: ${clock_font_size}

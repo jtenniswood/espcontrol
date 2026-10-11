@@ -374,6 +374,7 @@
             "mediaCoverArtTitle": "font_cover_art_title",
             "mediaCoverArtArtist": "font_cover_art_artist",
             "volumeNumber": "font_number_value_large",
+            "volumeNumberCompact": "font_clock_display",
             "volumeLabel": "font_text_body",
             "climateCardIcon": "font_icon_card",
             "subpageChevron": "font_icon_status",
@@ -642,12 +643,12 @@
             }
           },
           "topbar": {
-            "height": 6.45,
-            "padding": "1.2cqw 0.59cqw 0.59cqw",
+            "height": 12,
+            "padding": "2.9cqw 0.59cqw 0.9cqw",
             "fontSize": 4.5
           },
           "grid": {
-            "top": 8.58,
+            "top": 12.5,
             "compactTop": 1.5,
             "left": 1.5,
             "right": 1.5,
@@ -812,12 +813,12 @@
             }
           },
           "topbar": {
-            "height": 6.45,
-            "padding": "1.2cqw 0.59cqw 0.59cqw",
+            "height": 12,
+            "padding": "2.9cqw 0.59cqw 0.9cqw",
             "fontSize": 4.5
           },
           "grid": {
-            "top": 8.58,
+            "top": 12.5,
             "compactTop": 1.5,
             "left": 1.5,
             "right": 1.5,
