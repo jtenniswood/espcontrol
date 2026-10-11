@@ -4571,9 +4571,9 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     control_modal_apply_step_buttons_layout(
       ui.volume_minus_btn, ui.volume_plus_btn, volume_buttons_layout);
     if (ui.volume_pct_lbl) {
-      const lv_font_t *compact_font = display_active_compact_landscape_font();
-      if (compact_font) {
-        lv_obj_set_style_text_font(ui.volume_pct_lbl, compact_font, LV_PART_MAIN);
+      const lv_font_t *number_font = display_modal_volume_number_font(ctx->number_font);
+      if (number_font) {
+        lv_obj_set_style_text_font(ui.volume_pct_lbl, number_font, LV_PART_MAIN);
       }
       apply_text_width_compensation(ui.volume_pct_lbl);
       lv_obj_align(ui.volume_pct_lbl, LV_ALIGN_CENTER, 0,

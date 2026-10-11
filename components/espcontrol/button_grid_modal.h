@@ -796,13 +796,11 @@ inline void control_modal_apply_step_buttons_layout(lv_obj_t *minus_btn,
     lv_obj_align(plus_btn, LV_ALIGN_CENTER,
       (button_size + layout.controls_gap) / 2, layout.controls_center_y);
   }
-  if (compact_landscape) {
-    for (lv_obj_t *button : {minus_btn, plus_btn}) {
-      lv_obj_t *label = button ? lv_obj_get_child(button, 0) : nullptr;
-      if (!label) continue;
-      lv_obj_set_style_transform_zoom(label, 200, LV_PART_MAIN);
-      control_modal_center_tab_icon(label);
-    }
+  for (lv_obj_t *button : {minus_btn, plus_btn}) {
+    lv_obj_t *label = button ? lv_obj_get_child(button, 0) : nullptr;
+    if (!label) continue;
+    lv_obj_set_style_transform_zoom(label, compact_landscape ? 200 : 256, LV_PART_MAIN);
+    control_modal_center_tab_icon(label);
   }
 }
 

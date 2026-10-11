@@ -107,8 +107,9 @@ inline bool display_modal_is_constrained(const DisplayModalProfile &profile) {
 inline bool display_is_landscape() {
   lv_disp_t *disp = lv_disp_get_default();
   if (!disp) return false;
-  const auto rotation = lv_disp_get_rotation(disp);
-  return rotation == LV_DISP_ROTATION_90 || rotation == LV_DISP_ROTATION_270;
+  // ESPHome's software rotation changes the viewport resolution without
+  // setting LVGL's rotation flag. Use the actual layout dimensions.
+  return lv_disp_get_hor_res(disp) > lv_disp_get_ver_res(disp);
 }
 
 inline bool display_modal_uses_compact_landscape_controls(
@@ -117,9 +118,12 @@ inline bool display_modal_uses_compact_landscape_controls(
          display_is_landscape();
 }
 
-inline const lv_font_t *display_active_compact_landscape_font() {
-  return display_modal_uses_compact_landscape_controls(display_active_modal_profile())
-    ? display_active_sensor_font() : nullptr;
+inline const lv_font_t *display_modal_volume_number_font(const lv_font_t *fallback) {
+  if (display_active_sensor_font() &&
+      display_modal_uses_compact_landscape_controls(display_active_modal_profile())) {
+    return display_active_sensor_font();
+  }
+  return fallback;
 }
 
 inline int display_main_width_percent(const DisplayProfile &profile) {
@@ -219,9 +223,6 @@ inline const lv_font_t *display_switch_confirmation_message_font(const DisplayPr
 }
 
 inline const lv_font_t *display_volume_number_font(const DisplayProfile &profile) {
-  if (profile.fonts.sensor && display_modal_uses_compact_landscape_controls(profile.modal)) {
-    return profile.fonts.sensor;
-  }
   return profile.fonts.volume_number ? profile.fonts.volume_number : profile.fonts.sensor;
 }
 
