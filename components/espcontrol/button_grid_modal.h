@@ -776,8 +776,8 @@ inline void control_modal_apply_step_buttons_layout(lv_obj_t *minus_btn,
                                                     lv_obj_t *plus_btn,
                                                     const ControlModalLayout &layout) {
   lv_coord_t button_size = layout.btn_size;
-  const bool compact_landscape = display_modal_uses_compact_landscape_controls(
-    layout.profile, layout.sw, layout.sh);
+  const bool compact_landscape =
+    display_modal_uses_compact_landscape_controls(layout.profile);
   if (compact_landscape) {
     lv_coord_t compact_size = control_modal_scaled_px(56, layout.short_side);
     if (compact_size < layout.profile.base_touch_target)

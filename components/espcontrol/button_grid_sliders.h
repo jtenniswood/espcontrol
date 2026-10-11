@@ -3622,6 +3622,12 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   control_modal_apply_arc_layout(ui.arc, layout, ctx->width_compensation_percent);
   control_modal_apply_step_buttons_layout(
     ui.minus_btn, ui.plus_btn, media_volume_step_button_layout(layout));
+  if (ui.pct_lbl) {
+    const lv_font_t *compact_font = display_active_compact_landscape_font();
+    if (compact_font) {
+      lv_obj_set_style_text_font(ui.pct_lbl, compact_font, LV_PART_MAIN);
+    }
+  }
   lv_obj_set_style_translate_y(ui.pct_unit_lbl,
     control_modal_scaled_px(MEDIA_VOLUME_UNIT_Y_REF_PX, layout.short_side), LV_PART_MAIN);
   lv_obj_align(ui.title_lbl, LV_ALIGN_CENTER, 0, title_center_y);

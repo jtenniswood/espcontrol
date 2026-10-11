@@ -80,9 +80,15 @@ inline DisplayModalProfile &display_active_modal_profile() {
   return profile;
 }
 
+inline const lv_font_t *&display_active_sensor_font() {
+  static const lv_font_t *font = nullptr;
+  return font;
+}
+
 inline void display_activate_profile(const DisplayProfile &profile) {
   display_set_width_axis(profile);
   display_active_modal_profile() = profile.modal;
+  display_active_sensor_font() = profile.fonts.sensor;
 }
 
 inline bool display_modal_uses_family(const DisplayModalProfile &profile,
@@ -98,10 +104,22 @@ inline bool display_modal_is_constrained(const DisplayModalProfile &profile) {
   return espcontrol::modal::is_constrained(profile);
 }
 
+inline bool display_is_landscape() {
+  lv_disp_t *disp = lv_disp_get_default();
+  if (!disp) return false;
+  const auto rotation = lv_disp_get_rotation(disp);
+  return rotation == LV_DISP_ROTATION_90 || rotation == LV_DISP_ROTATION_270;
+}
+
 inline bool display_modal_uses_compact_landscape_controls(
-    const DisplayModalProfile &profile, lv_coord_t width, lv_coord_t height) {
+    const DisplayModalProfile &profile) {
   return display_modal_uses_family(profile, DisplayModalLayoutFamily::COMPACT_PORTRAIT) &&
-         width > height;
+         display_is_landscape();
+}
+
+inline const lv_font_t *display_active_compact_landscape_font() {
+  return display_modal_uses_compact_landscape_controls(display_active_modal_profile())
+    ? display_active_sensor_font() : nullptr;
 }
 
 inline int display_main_width_percent(const DisplayProfile &profile) {
@@ -201,9 +219,7 @@ inline const lv_font_t *display_switch_confirmation_message_font(const DisplayPr
 }
 
 inline const lv_font_t *display_volume_number_font(const DisplayProfile &profile) {
-  lv_disp_t *disp = lv_disp_get_default();
-  if (disp && profile.fonts.sensor && display_modal_uses_compact_landscape_controls(
-        profile.modal, lv_disp_get_hor_res(disp), lv_disp_get_ver_res(disp))) {
+  if (profile.fonts.sensor && display_modal_uses_compact_landscape_controls(profile.modal)) {
     return profile.fonts.sensor;
   }
   return profile.fonts.volume_number ? profile.fonts.volume_number : profile.fonts.sensor;
