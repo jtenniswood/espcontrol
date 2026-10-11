@@ -2414,10 +2414,10 @@
           "capabilities": {
             "informationOnly": true,
             "subscriptions": true,
-            "actions": false,
+            "actions": true,
             "numericControl": false,
-            "modal": false,
-            "runtimeAllocation": false,
+            "modal": true,
+            "runtimeAllocation": true,
             "subpage": true
           }
         },
@@ -6061,7 +6061,8 @@
             "values": [
               "",
               "today",
-              "tomorrow"
+              "tomorrow",
+              "daily"
             ],
             "defaultValue": "",
             "storageField": "precision",

@@ -266,3 +266,10 @@ then_visit_192_168_4_1_in_your_browser=Then visit 192.168.4.1 in your browser
 
 screensaver=Screensaver
 incorrect_pin=Incorrect PIN
+
+forecast_unavailable=Forecast unavailable
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast

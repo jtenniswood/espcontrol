@@ -265,3 +265,10 @@ then_visit_192_168_4_1_in_your_browser=Nato v brskalniku odprite 192.168.4.1
 
 screensaver=Ohranjevalnik zaslona
 incorrect_pin=Napačen PIN
+
+forecast_unavailable=Forecast unavailable
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast

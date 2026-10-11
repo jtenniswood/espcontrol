@@ -650,3 +650,12 @@ add_test(NAME screensaver_pin_ui_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/screensaver_pin_ui_test.py ${CMAKE_CXX_COMPILER})
 add_test(NAME screensaver_pin_cover_art_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/screensaver_pin_cover_art_test.py ${CMAKE_CXX_COMPILER})
+
+add_executable(weather_daily_forecast_test weather_daily_forecast_test.cpp)
+target_compile_features(weather_daily_forecast_test PRIVATE cxx_std_17)
+target_compile_options(weather_daily_forecast_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(weather_daily_forecast_test PRIVATE ../../components/espcontrol)
+add_test(NAME weather_daily_forecast_test COMMAND weather_daily_forecast_test)
+
+add_test(NAME weather_daily_template_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/weather_daily_template_test.py)

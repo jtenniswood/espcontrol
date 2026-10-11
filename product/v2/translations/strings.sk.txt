@@ -265,3 +265,10 @@ then_visit_192_168_4_1_in_your_browser=Potom v prehliadači otvorte 192.168.4.1
 
 screensaver=Šetrič obrazovky
 incorrect_pin=Nesprávny PIN
+
+forecast_unavailable=Forecast unavailable
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast

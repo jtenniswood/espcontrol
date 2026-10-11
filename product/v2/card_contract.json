@@ -162,7 +162,7 @@
       "slider": {"driver": "numeric", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": false, "runtimeAllocation": true, "subpage": true}},
       "subpage": {"driver": "subpage", "capabilities": {"informationOnly": false, "subscriptions": false, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": false}},
       "timezone": {"driver": "date_time", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
-      "weather": {"driver": "weather", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "weather": {"driver": "weather", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": true, "subpage": true}},
       "image": {"driver": "image", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": true, "subpage": true}},
       "wifi_qr": {"driver": "wifi_qr", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": false, "subpage": true}},
       "wifi_qr_card": {"driver": "wifi_qr", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": false, "subpage": true}},
@@ -2355,7 +2355,7 @@
           "name": "weather_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["", "today", "tomorrow"],
+          "values": ["", "today", "tomorrow", "daily"],
           "defaultValue": "",
           "storageField": "precision",
           "omitDefault": true

@@ -530,7 +530,7 @@ inline void normalize_saved_config_media_fields(ParsedCfg &p) {
 
 inline std::string weather_card_options_normalized(const std::string &options,
                                                    const ParsedCfg &p) {
-  if (!card_runtime_weather_forecast_precision(p.precision)) return "";
+  if (!card_runtime_weather_forecast_precision(p.precision) || p.precision == "daily") return "";
   std::string out;
   append_large_numbers_option(out, options);
   return out;

@@ -265,3 +265,10 @@ then_visit_192_168_4_1_in_your_browser=Потім відкрийте 192.168.4.1
 
 screensaver=Заставка
 incorrect_pin=Неправильний PIN
+
+forecast_unavailable=Forecast unavailable
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast

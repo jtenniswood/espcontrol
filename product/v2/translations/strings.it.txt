@@ -265,3 +265,10 @@ then_visit_192_168_4_1_in_your_browser=Poi apri 192.168.4.1 nel browser
 
 screensaver=Salvaschermo
 incorrect_pin=PIN errato
+
+forecast_unavailable=Previsioni non disponibili
+rain_chance=Probabilità di pioggia
+rainfall=Precipitazioni
+wind=Vento
+humidity=Umidità
+last_forecast=Ultime previsioni

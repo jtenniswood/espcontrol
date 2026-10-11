@@ -3750,7 +3750,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "values": [
           "",
           "today",
-          "tomorrow"
+          "tomorrow",
+          "daily"
         ],
         "defaultValue": "",
         "storageField": "precision",
@@ -4672,10 +4673,10 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
     "capabilities": {
       "informationOnly": true,
       "subscriptions": true,
-      "actions": false,
+      "actions": true,
       "numericControl": false,
-      "modal": false,
-      "runtimeAllocation": false,
+      "modal": true,
+      "runtimeAllocation": true,
       "subpage": true
     }
   },

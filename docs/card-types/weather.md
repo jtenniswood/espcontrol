@@ -8,7 +8,7 @@ description:
 
 A weather card displays weather information from a Home Assistant weather entity. It can show either the current condition, such as **Sunny**, **Cloudy**, or **Rainy**, or the high / low temperatures for today or tomorrow, such as **18/10°C**.
 
-Weather cards are read-only — tapping them does nothing.
+Weather cards display information without changing anything in Home Assistant. In **Daily Forecast** mode, tap the card to open forecast details. The other weather modes do nothing when tapped.
 
 ![Weather card showing today's high and low temperatures](/images/card-weather.png)
 
@@ -20,8 +20,9 @@ Weather cards are read-only — tapping them does nothing.
    - **Current Conditions** shows the live weather condition icon and label.
    - **Temperatures Today** shows today's high / low temperature.
    - **Temperatures Tomorrow** shows tomorrow's high / low temperature.
+   - **Daily Forecast** shows the upcoming forecast, adding more days as the card gets wider.
 4. For temperature displays, optionally enter a **Label** to override the default card label.
-5. On a **Large** card, turn on **Large Temperature Numbers** if you want the high / low reading scaled much larger.
+5. For Today and Tomorrow temperatures, on a **Large** card, turn on **Large Temperature Numbers** if you want the high / low reading scaled much larger.
 
 Today and Tomorrow temperature displays are available on all supported panels, including the 4-inch Guition 4848S040 (ESP32-S3). After updating an S3 panel that previously only offered Current Conditions, select the temperature type again and save the card.
 
@@ -45,6 +46,16 @@ The temperature displays need the same **Allow the device to perform Home Assist
 To show tomorrow's forecast high and low, create a **Weather** card and set **Type** to **Temperatures Tomorrow**. Enable [Home Assistant actions](/getting-started/home-assistant-actions) so the panel can request the forecast.
 
 Older configurations containing a separate **Weather Forecast** card load as a Weather card with this setting. You do not need to recreate them.
+
+## Daily Forecast
+
+Choose **Daily Forecast** to show up to seven upcoming days from your weather entity. Each day shows its date and high / low temperatures. Condition icons appear when there is enough height; taller cards can also show rain chance. Widening a card adds more day columns based on the space and font size available. The editor shows sample data; the panel loads the actual forecast from Home Assistant.
+
+Tap the card to open a details modal. Use the previous and next buttons to browse all available days, including days that do not fit on the card. The modal shows the condition, high / low temperatures, and any rain chance, rainfall amount, wind speed, and humidity supplied by your provider. Missing details are omitted. Rainfall and wind use the units supplied by Home Assistant; temperatures use the panel's Temperature Unit setting.
+
+The weather entity must provide a **daily** forecast, and Home Assistant actions must be enabled. The panel uses actual forecast dates, so a provider whose forecast starts tomorrow is not shown as Today. Providers may return fewer than seven days. An empty forecast shows **Forecast unavailable**. After a request fails or Home Assistant disconnects, the panel keeps the last successful forecast and labels it **Last forecast** until it receives fresh data. Forecasts refresh hourly and after reconnecting.
+
+To keep memory use bounded, daily cards share one compact forecast per weather entity. The panel supports up to eight different daily forecast entities and sixteen daily cards across the home screen and subpages. Widgets are created only for the days that fit on each card; the modal holds one day's detail view at a time. A configuration beyond those limits shows an unavailable forecast instead of allocating more memory.
 
 ## Supported Conditions
 

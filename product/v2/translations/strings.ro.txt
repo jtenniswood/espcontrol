@@ -265,3 +265,10 @@ then_visit_192_168_4_1_in_your_browser=Apoi deschideți 192.168.4.1 în browser
 
 screensaver=Economizor de ecran
 incorrect_pin=PIN incorect
+
+forecast_unavailable=Forecast unavailable
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast

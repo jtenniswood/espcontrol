@@ -265,3 +265,10 @@ then_visit_192_168_4_1_in_your_browser=Open daarna 192.168.4.1 in je browser
 
 screensaver=Schermbeveiliging
 incorrect_pin=Onjuiste pincode
+
+forecast_unavailable=Verwachting niet beschikbaar
+rain_chance=Kans op regen
+rainfall=Neerslag
+wind=Wind
+humidity=Luchtvochtigheid
+last_forecast=Laatste verwachting

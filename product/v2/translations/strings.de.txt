@@ -265,3 +265,10 @@ then_visit_192_168_4_1_in_your_browser=Öffne dann 192.168.4.1 in deinem Browser
 
 screensaver=Bildschirmschoner
 incorrect_pin=Falsche PIN
+
+forecast_unavailable=Vorhersage nicht verfügbar
+rain_chance=Regenwahrscheinlichkeit
+rainfall=Niederschlag
+wind=Wind
+humidity=Luftfeuchtigkeit
+last_forecast=Letzte Vorhersage

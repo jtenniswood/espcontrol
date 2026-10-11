@@ -265,3 +265,10 @@ then_visit_192_168_4_1_in_your_browser=Ouvrez ensuite 192.168.4.1 dans votre nav
 
 screensaver=Économiseur d’écran
 incorrect_pin=PIN incorrect
+
+forecast_unavailable=Prévisions indisponibles
+rain_chance=Risque de pluie
+rainfall=Précipitations
+wind=Vent
+humidity=Humidité
+last_forecast=Dernières prévisions
