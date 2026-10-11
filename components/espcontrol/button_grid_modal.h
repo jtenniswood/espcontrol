@@ -775,17 +775,34 @@ inline void control_modal_apply_arc_layout(lv_obj_t *arc,
 inline void control_modal_apply_step_buttons_layout(lv_obj_t *minus_btn,
                                                     lv_obj_t *plus_btn,
                                                     const ControlModalLayout &layout) {
+  lv_coord_t button_size = layout.btn_size;
+  const bool compact_landscape = display_modal_uses_compact_landscape_controls(
+    layout.profile, layout.sw, layout.sh);
+  if (compact_landscape) {
+    lv_coord_t compact_size = control_modal_scaled_px(56, layout.short_side);
+    if (compact_size < layout.profile.base_touch_target)
+      compact_size = layout.profile.base_touch_target;
+    if (button_size > compact_size) button_size = compact_size;
+  }
   if (minus_btn) {
-    lv_obj_set_size(minus_btn, layout.btn_size, layout.btn_size);
-    lv_obj_set_style_radius(minus_btn, layout.btn_size / 2, LV_PART_MAIN);
+    lv_obj_set_size(minus_btn, button_size, button_size);
+    lv_obj_set_style_radius(minus_btn, button_size / 2, LV_PART_MAIN);
     lv_obj_align(minus_btn, LV_ALIGN_CENTER,
-      -(layout.btn_size + layout.controls_gap) / 2, layout.controls_center_y);
+      -(button_size + layout.controls_gap) / 2, layout.controls_center_y);
   }
   if (plus_btn) {
-    lv_obj_set_size(plus_btn, layout.btn_size, layout.btn_size);
-    lv_obj_set_style_radius(plus_btn, layout.btn_size / 2, LV_PART_MAIN);
+    lv_obj_set_size(plus_btn, button_size, button_size);
+    lv_obj_set_style_radius(plus_btn, button_size / 2, LV_PART_MAIN);
     lv_obj_align(plus_btn, LV_ALIGN_CENTER,
-      (layout.btn_size + layout.controls_gap) / 2, layout.controls_center_y);
+      (button_size + layout.controls_gap) / 2, layout.controls_center_y);
+  }
+  if (compact_landscape) {
+    for (lv_obj_t *button : {minus_btn, plus_btn}) {
+      lv_obj_t *label = button ? lv_obj_get_child(button, 0) : nullptr;
+      if (!label) continue;
+      lv_obj_set_style_transform_zoom(label, 200, LV_PART_MAIN);
+      control_modal_center_tab_icon(label);
+    }
   }
 }
 

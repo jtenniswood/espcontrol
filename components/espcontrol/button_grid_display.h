@@ -98,6 +98,12 @@ inline bool display_modal_is_constrained(const DisplayModalProfile &profile) {
   return espcontrol::modal::is_constrained(profile);
 }
 
+inline bool display_modal_uses_compact_landscape_controls(
+    const DisplayModalProfile &profile, lv_coord_t width, lv_coord_t height) {
+  return display_modal_uses_family(profile, DisplayModalLayoutFamily::COMPACT_PORTRAIT) &&
+         width > height;
+}
+
 inline int display_main_width_percent(const DisplayProfile &profile) {
   return display_width_percent(profile.width.main_percent);
 }
@@ -195,6 +201,11 @@ inline const lv_font_t *display_switch_confirmation_message_font(const DisplayPr
 }
 
 inline const lv_font_t *display_volume_number_font(const DisplayProfile &profile) {
+  lv_disp_t *disp = lv_disp_get_default();
+  if (disp && profile.fonts.sensor && display_modal_uses_compact_landscape_controls(
+        profile.modal, lv_disp_get_hor_res(disp), lv_disp_get_ver_res(disp))) {
+    return profile.fonts.sensor;
+  }
   return profile.fonts.volume_number ? profile.fonts.volume_number : profile.fonts.sensor;
 }
 
