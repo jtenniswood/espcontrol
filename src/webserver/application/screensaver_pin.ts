@@ -61,6 +61,7 @@ export async function loadScreensaverPinSettings(request: typeof fetch): Promise
 export function buildScreensaverPinSettings(
   document: Document, request: typeof fetch,
   fields: Pick<ControlsFieldsFeature, "toggleRow" | "fieldLabel" | "textInput">,
+  badge: HTMLElement,
 ): { body: HTMLElement; refresh: () => Promise<void> } {
   const body = document.createElement("div");
   body.hidden = true;
@@ -107,6 +108,7 @@ export function buildScreensaverPinSettings(
     errorNotice.hidden = !message;
   }
   function sync(): void {
+    badge.classList.toggle("sp-hidden", !(info?.enabled && info.has_pin));
     if (!busy) enabled.checked = pendingSetup || !!(info?.enabled && info.has_pin);
     if (!busy && !pendingSetup) randomize.checked = info?.randomize_keypad ?? true;
     randomizeToggle.row.hidden = typeof info?.randomize_keypad !== "boolean";
@@ -165,6 +167,7 @@ export function buildScreensaverPinSettings(
       pin.value = "";
       sync();
     } catch (error) {
+      badge.classList.add("sp-hidden");
       body.hidden = false;
       enabled.disabled = randomize.disabled = save.disabled = clear.disabled = pin.disabled = true;
       showError((error as Error).message);

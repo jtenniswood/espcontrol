@@ -559,10 +559,12 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         }
         els.setSsMode = setSsMode;
         setSsMode(ssMode);
-        const pinSettings = buildScreensaverPinSettings(document, resetAwareFetch, fields);
+        const pinBadge = statusBadge("PIN protection on");
+        pinBadge.className = "sp-card-badge sp-hidden";
+        const pinSettings = buildScreensaverPinSettings(document, resetAwareFetch, fields, pinBadge);
         els.syncScreensaverPinUi = pinSettings.refresh;
         var screensaverCard: any = makeCollapsibleCard("Screensaver", ssBody, true, ssBadge);
-        var screensaverPinCard: any = makeCollapsibleCard("Pin Protection", pinSettings.body, true);
+        var screensaverPinCard: any = makeCollapsibleCard("Pin Protection", pinSettings.body, true, pinBadge);
         var idleBody: any = document.createElement("div");
         idleBody.appendChild(fieldLabel("Return Home After"));
         var hsSelect: any = document.createElement("select");
