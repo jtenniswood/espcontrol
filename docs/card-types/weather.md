@@ -16,12 +16,14 @@ Weather cards are read-only — tapping them does nothing.
 
 1. Select a card and change its type to **Weather**.
 2. Enter a **Weather Entity** — the Home Assistant weather entity ID you want to display, for example `weather.forecast_home`.
-3. Choose **Display**:
+3. Choose **Type**:
    - **Current Conditions** shows the live weather condition icon and label.
    - **Temperatures Today** shows today's high / low temperature.
    - **Temperatures Tomorrow** shows tomorrow's high / low temperature.
 4. For temperature displays, optionally enter a **Label** to override the default card label.
 5. On a **Large** card, turn on **Large Temperature Numbers** if you want the high / low reading scaled much larger.
+
+Today and Tomorrow temperature displays are available on all supported panels, including the 4-inch Guition 4848S040 (ESP32-S3). After updating an S3 panel that previously only offered Current Conditions, select the temperature type again and save the card.
 
 ## How It Works on the Panel
 
@@ -40,7 +42,7 @@ The temperature displays need the same **Allow the device to perform Home Assist
 
 ## Temperatures Tomorrow
 
-To show tomorrow's forecast high and low, create a **Weather** card and set **Display** to **Temperatures Tomorrow**. Enable [Home Assistant actions](/getting-started/home-assistant-actions) so the panel can request the forecast.
+To show tomorrow's forecast high and low, create a **Weather** card and set **Type** to **Temperatures Tomorrow**. Enable [Home Assistant actions](/getting-started/home-assistant-actions) so the panel can request the forecast.
 
 Older configurations containing a separate **Weather Forecast** card load as a Weather card with this setting. You do not need to recreate them.
 

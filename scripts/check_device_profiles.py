@@ -125,6 +125,16 @@ def test_s3_exposes_camera_and_media_cover_art(profiles: dict[str, dict]) -> Non
     )
 
 
+def test_s3_exposes_weather_forecasts(profiles: dict[str, dict]) -> None:
+    slug = "guition-esp32-s3-4848s040"
+    disabled = set(web_config(profiles[slug]).get("disabledCardTypes", []))
+    assert "weather_forecast" not in disabled, f"{slug}: Today and Tomorrow forecasts must be available"
+    device = S3_DEVICE_YAML.read_text(encoding="utf-8")
+    assert "-DESPCONTROL_DISABLE_WEATHER_FORECAST=1" not in device, (
+        f"{slug}: firmware must retain forecast modes and request Home Assistant forecasts"
+    )
+
+
 def test_public_device_capabilities(profile_slugs: list[str]) -> None:
     expected = public_device_capabilities()
     actual = read_json(DEVICE_CAPABILITIES_JSON)
@@ -1033,6 +1043,7 @@ def main() -> int:
     test_web_grid_spacing_matches_across_screen_sizes()
     test_setup_icon_glyphs()
     test_weather_card_visual_matches_preview()
+    test_s3_exposes_weather_forecasts(profiles)
     test_weather_card_mode_visibility_reset()
     test_grid_phase2_uses_cleaned_spanned_layout()
     test_card_label_line_clamp_matches_preview_on_subpages()
