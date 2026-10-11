@@ -516,6 +516,10 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-panel-name-row{display:flex;align-items:center;gap:12px}" +
         ".sp-panel-name-row .sp-input{flex:1;min-width:0;margin:0}" +
         ".sp-panel-name-row .sp-fw-btn{flex:none;white-space:nowrap;margin:0}" +
+        ".sp-pin-row{display:flex;align-items:center;gap:12px;width:100%}" +
+        ".sp-pin-row .sp-input{flex:1;min-width:0;margin:0}" +
+        ".sp-pin-actions{display:flex;align-items:center;gap:8px;flex:none}" +
+        ".sp-pin-actions .sp-fw-btn{margin:0}" +
         "#sp-panel-name-info{margin:16px 0 0;overflow-wrap:anywhere;min-width:0;align-items:center}" +
         "#sp-panel-name-info .mdi{margin-top:0}" +
         "#sp-panel-name-info>span:last-child{min-width:0}" +

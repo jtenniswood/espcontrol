@@ -64,18 +64,24 @@ export function buildScreensaverPinSettings(
   const save = document.createElement("button");
   save.type = "button";
   save.className = "sp-fw-btn";
-  save.textContent = "Save PIN";
+  save.textContent = "Save";
   const clear = document.createElement("button");
   clear.type = "button";
   clear.className = "sp-fw-btn";
-  clear.textContent = "Clear PIN";
+  clear.textContent = "Clear";
+  const row = document.createElement("div");
+  row.className = "sp-pin-row";
+  const actions = document.createElement("div");
+  actions.className = "sp-pin-actions";
+  actions.append(save, clear);
+  row.append(pin, actions);
   const status = document.createElement("p");
   status.className = "sp-note";
   status.setAttribute("role", "status");
   const note = document.createElement("p");
   note.className = "sp-note";
   note.textContent = "Protects local touchscreen controls. The PIN is not included in backups. Network and web access use separate security settings.";
-  body.append(toggle.row, label, pin, save, clear, status, note);
+  body.append(toggle.row, label, row, status, note);
   let info: ScreensaverPinInfo | null = null;
   let busy = false;
   function sync(): void {
