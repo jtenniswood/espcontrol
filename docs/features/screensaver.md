@@ -106,7 +106,9 @@ On the first start after updating to the separate-sensor firmware, the existing 
 
 ## PIN protection after wake
 
-In **Settings > Sleep & Schedule > Screensaver**, enter a numeric **PIN** (1–16 digits), choose **Save PIN**, and enable **Require PIN after wake**. Use the same field and button to change it. **Clear PIN** removes it; disabling the toggle keeps the saved PIN for later use. These settings are saved on the panel and survive a restart. Update the panel firmware if the controls are not shown.
+In **Settings > Sleep & Schedule > PIN Protection**, turn on **Require PIN after wake** to show the PIN controls. Enter a numeric **PIN** (1–16 digits) and choose **Save** to enable protection. Until a PIN is saved, turning on the toggle only opens setup; refreshing the page returns it to off.
+
+Use the same field and **Save** button to change the PIN. **Clear** removes it and disables protection; turning off the toggle keeps the saved PIN for later use. Saved settings survive a restart. Update the panel firmware if the controls are not shown.
 
 After a screensaver or manual sleep, the touchscreen shows a keypad with scrambled digit positions. Enter the PIN and press the checkmark to unlock. A wrong PIN clears the entry and keeps the controls blocked. The clear key resets the entry. Touch wake, presence wake, scheduled wake, and the local Screensaver card all use the same protection. With protection disabled or no PIN saved, wake works as before. When protection is active, tapping a Cover Art playback button wakes the PIN keypad without changing playback; use your media controls after unlocking.
 
