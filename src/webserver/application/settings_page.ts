@@ -562,7 +562,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         const pinSettings = buildScreensaverPinSettings(document, resetAwareFetch, fields);
         els.syncScreensaverPinUi = pinSettings.refresh;
         var screensaverCard: any = makeCollapsibleCard("Screensaver", ssBody, true, ssBadge);
-        var screensaverPinCard: any = makeCollapsibleCard("PIN Protection", pinSettings.body, true);
+        var screensaverPinCard: any = makeCollapsibleCard("Pin Protection", pinSettings.body, true);
         var idleBody: any = document.createElement("div");
         idleBody.appendChild(fieldLabel("Return Home After"));
         var hsSelect: any = document.createElement("select");

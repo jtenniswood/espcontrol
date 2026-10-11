@@ -106,7 +106,7 @@ On the first start after updating to the separate-sensor firmware, the existing 
 
 ## PIN protection after wake
 
-In **Settings > Sleep & Schedule > PIN Protection**, turn on **Require PIN after wake** to show the PIN controls. Enter a numeric **PIN** (1–16 digits) and choose **Save** to enable protection. Until a PIN is saved, turning on the toggle only opens setup; refreshing the page returns it to off.
+In **Settings > Sleep & Schedule > Pin Protection**, turn on **Require PIN after wake** to show the PIN controls. Enter a numeric **PIN** (1–16 digits) and choose **Save** to enable protection. Until a PIN is saved, turning on the toggle only opens setup; refreshing the page returns it to off.
 
 Use the same field and **Save** button to change the PIN. **Clear** removes it and disables protection; turning off the toggle keeps the saved PIN for later use. Saved settings survive a restart. Update the panel firmware if the controls are not shown.
 
