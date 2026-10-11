@@ -308,7 +308,7 @@ async function installRoutes(context, slug, options = {}) {
         if (typeof settings.pin === "string") pin.pin = settings.pin;
       }
       await route.fulfill({ status: 200, contentType: "application/json",
-        body: JSON.stringify({ enabled: pin.enabled, has_pin: !!pin.pin }) });
+        body: JSON.stringify({ enabled: pin.enabled, has_pin: !!pin.pin, pin_length: pin.pin.length }) });
       return;
     }
     if (nativeState && requestUrl.pathname.startsWith("/api/v1/")) {
@@ -6429,6 +6429,7 @@ async function assertScreensaverPinSettings(browser) {
     await page.waitForFunction(() => document.querySelector("#sp-set-screensaver-pin").value === "");
     assert.strictEqual(pin.pin, "0042");
     assert.strictEqual(pin.enabled, true, "saving the required PIN enables protection");
+    assert.strictEqual(await input.getAttribute("placeholder"), "••••", "mask length matches saved PIN");
     await enable.click();
     await page.waitForFunction(() => !document.querySelector("#sp-set-screensaver-pin-enabled").disabled);
     assert.strictEqual(pin.enabled, false);

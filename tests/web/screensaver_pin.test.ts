@@ -16,11 +16,11 @@ export async function runScreensaverPinTests(): Promise<void> {
       enabled = settings.enabled;
       if (typeof settings.pin === "string") pin = settings.pin;
     }
-    return Response.json({ enabled, has_pin: !!pin });
+    return Response.json({ enabled, has_pin: !!pin, pin_length: pin.length });
   }) as typeof fetch;
   assert((await screensaverPinRequest(request))?.has_pin === false, "empty PIN status");
   const saved = await screensaverPinRequest(request, { enabled: true, pin: "0042" });
-  assert(saved?.enabled && saved.has_pin, "save and enable");
+  assert(saved?.enabled && saved.has_pin && saved.pin_length === 4, "save and enable reports digit count");
   assert(!JSON.stringify(saved).includes("0042"), "response holds no secret");
   await screensaverPinRequest(request, { enabled: false });
   assert(pin === "0042", "disabling keeps PIN");
@@ -30,6 +30,7 @@ export async function runScreensaverPinTests(): Promise<void> {
   await clearScreensaverPinForRestore(request);
   assert(String(pin) === "" && !enabled, "import clears destination PIN and protection");
   assert(JSON.parse(String(calls.at(-1)?.body)).pin === "", "restore explicitly clears, never imports a secret");
+  assert((await screensaverPinRequest(request))?.pin_length === 0, "cleared PIN reports zero digits");
   fail = true;
   let rejected = false;
   try { await screensaverPinRequest(request, { enabled: true }); } catch { rejected = true; }

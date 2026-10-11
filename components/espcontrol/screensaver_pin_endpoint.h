@@ -68,6 +68,7 @@ class ScreensaverPinHandler final : public esphome::web_server_idf::AsyncWebHand
     const std::string response = esphome::json::build_json([](JsonObject root) {
       root["enabled"] = screensaver_pin().enabled();
       root["has_pin"] = screensaver_pin().has_pin();
+      root["pin_length"] = screensaver_pin().pin_length();
     });
     httpd_resp_set_type(raw, "application/json");
     httpd_resp_set_hdr(raw, "Cache-Control", "no-store");

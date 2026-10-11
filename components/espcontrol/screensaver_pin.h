@@ -1,11 +1,12 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <mutex>
 #include <string>
 
 namespace espcontrol {
-// Local touchscreen policy. The web API exposes only enabled/has_pin, never the PIN.
+// Local touchscreen policy. The web API exposes status and PIN length, never the PIN.
 class ScreensaverPin {
   using Guard = std::lock_guard<std::mutex>;
  public:
@@ -13,6 +14,7 @@ class ScreensaverPin {
   bool ready() const { Guard guard(mutex_); return ready_; }
   bool enabled() const { Guard guard(mutex_); return enabled_; }
   bool has_pin() const { Guard guard(mutex_); return !pin_.empty(); }
+  std::size_t pin_length() const { Guard guard(mutex_); return pin_.size(); }
   bool locked() const { Guard guard(mutex_); return locked_ && enabled_ && !pin_.empty(); }
   void arm() {
     Guard guard(mutex_);

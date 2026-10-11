@@ -3,6 +3,7 @@ import type { ControlsFieldsFeature } from "./controls_fields";
 export interface ScreensaverPinInfo {
   enabled: boolean;
   has_pin: boolean;
+  pin_length: number;
 }
 
 export async function screensaverPinRequest(
@@ -19,7 +20,11 @@ export async function screensaverPinRequest(
   if (typeof info?.enabled !== "boolean" || typeof info?.has_pin !== "boolean") {
     throw new Error("Invalid PIN settings response.");
   }
-  return { enabled: info.enabled, has_pin: info.has_pin };
+  // Fall back for firmware that supports PIN settings but predates pin_length.
+  const pinLength = Number.isInteger(info.pin_length) && info.pin_length >= 0 && info.pin_length <= 16
+    ? info.pin_length
+    : info.has_pin ? 8 : 0;
+  return { enabled: info.enabled, has_pin: info.has_pin, pin_length: pinLength };
 }
 
 // Backups never carry the secret. Import also clears the destination's old PIN,
@@ -98,7 +103,7 @@ export function buildScreensaverPinSettings(
     if (!busy) enabled.checked = !!info?.enabled;
     enabled.disabled = save.disabled = clear.disabled = pin.disabled = busy;
     clear.disabled = busy || !info?.has_pin;
-    pin.placeholder = info?.has_pin ? "••••••••" : "1–16 digits";
+    pin.placeholder = info?.has_pin ? "•".repeat(info.pin_length) : "1–16 digits";
     controls.hidden = !enabled.checked;
     showStatus(info?.has_pin ? "PIN saved." : "No PIN set. Touchscreen PIN protection is inactive.");
   }

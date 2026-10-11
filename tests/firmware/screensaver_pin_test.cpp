@@ -10,9 +10,9 @@ int main() {
   using espcontrol::ScreensaverPin;
   ScreensaverPin pin;
   pin.setup();
-  assert(pin.ready() && !pin.has_pin() && !pin.locked());
+  assert(pin.ready() && !pin.has_pin() && pin.pin_length() == 0 && !pin.locked());
   std::string code = "0042";
-  assert(pin.save(true, &code));
+  assert(pin.save(true, &code) && pin.pin_length() == 4);
   pin.arm(); pin.wake();
   assert(pin.locked());
   assert(!pin.submit("42") && pin.locked());
@@ -25,7 +25,7 @@ int main() {
   ScreensaverPin rebooted;
   rebooted.setup();
   rebooted.arm(); rebooted.wake();
-  assert(rebooted.has_pin() && !rebooted.enabled() && !rebooted.locked());
+  assert(rebooted.has_pin() && rebooted.pin_length() == 4 && !rebooted.enabled() && !rebooted.locked());
   assert(rebooted.save(true, nullptr));
   rebooted.arm(); rebooted.wake();
   assert(rebooted.locked());
@@ -38,7 +38,7 @@ int main() {
   fail_commit = false;
   assert(!rebooted.submit(changed));
   assert(rebooted.submit(code));
-  assert(rebooted.save(true, &changed));
+  assert(rebooted.save(true, &changed) && rebooted.pin_length() == 16);
   rebooted.arm(); rebooted.wake();
   assert(!rebooted.submit(code) && rebooted.locked());
   assert(rebooted.submit(changed));
@@ -49,14 +49,14 @@ int main() {
   std::string empty;
   rebooted.arm(); rebooted.wake();
   assert(rebooted.save(true, &empty));
-  assert(!rebooted.has_pin() && !rebooted.locked());
+  assert(!rebooted.has_pin() && rebooted.pin_length() == 0 && !rebooted.locked());
   rebooted.arm(); rebooted.wake();
   assert(!rebooted.locked());
   // The same clear operation is used by backup import.
   assert(rebooted.save(false, &empty));
   ScreensaverPin cleared;
   cleared.setup();
-  assert(!cleared.has_pin() && !cleared.enabled() && !cleared.locked());
+  assert(!cleared.has_pin() && cleared.pin_length() == 0 && !cleared.enabled() && !cleared.locked());
 
   // Enabling while asleep is effective on the very next wake, even before
   // the periodic display callback runs. Enabling after an unprotected wake
