@@ -297,6 +297,10 @@ async function installRoutes(context, slug, options = {}) {
       const pin = options.screensaverPinState;
       if (!pin) { await route.fulfill({ status: 404, body: "Not found" }); return; }
       if (route.request().method() === "POST") {
+        if (options.resetState && route.request().headers()["x-espcontrol-epoch"] !== String(options.resetState.epoch)) {
+          await route.fulfill({ status: 428, contentType: "application/json", body: '{"error":"Reload the page before changing settings"}' });
+          return;
+        }
         const settings = route.request().postDataJSON();
         pin.posts.push(settings);
         if (pin.failSave) { await route.fulfill({ status: 500, body: "Failed" }); return; }
@@ -6399,7 +6403,8 @@ async function assertScreensaverPinSettings(browser) {
   const testCase = ACTIVE_CASES[0];
   const context = await browser.newContext({ viewport: testCase.viewport });
   const pin = { enabled: false, pin: "", posts: [], failSave: false };
-  await installRoutes(context, testCase.slug, { screensaverPinState: pin });
+  const resetState = { epoch: 3, pending: false, requests: [] };
+  await installRoutes(context, testCase.slug, { screensaverPinState: pin, resetState });
   const page = await context.newPage();
   await installFakeEventSource(page);
   try {
