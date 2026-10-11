@@ -774,7 +774,10 @@ inline void control_modal_apply_arc_layout(lv_obj_t *arc,
 
 inline void control_modal_apply_step_buttons_layout(lv_obj_t *minus_btn,
                                                     lv_obj_t *plus_btn,
-                                                    const ControlModalLayout &layout) {
+                                                    const ControlModalLayout &layout,
+                                                    bool align_bottom = false,
+                                                    lv_coord_t bottom_inset = 0,
+                                                    int fallback_icon_zoom = 0) {
   lv_coord_t button_size = layout.btn_size;
   const bool compact_landscape =
     display_modal_uses_compact_landscape_controls(layout.profile);
@@ -784,22 +787,27 @@ inline void control_modal_apply_step_buttons_layout(lv_obj_t *minus_btn,
       compact_size = layout.profile.base_touch_target;
     if (button_size > compact_size) button_size = compact_size;
   }
+  const auto alignment = align_bottom ? LV_ALIGN_BOTTOM_MID : LV_ALIGN_CENTER;
+  const lv_coord_t offset_y = align_bottom ? -bottom_inset : layout.controls_center_y;
   if (minus_btn) {
     lv_obj_set_size(minus_btn, button_size, button_size);
     lv_obj_set_style_radius(minus_btn, button_size / 2, LV_PART_MAIN);
-    lv_obj_align(minus_btn, LV_ALIGN_CENTER,
-      -(button_size + layout.controls_gap) / 2, layout.controls_center_y);
+    lv_obj_align(minus_btn, alignment,
+      -(button_size + layout.controls_gap) / 2, offset_y);
   }
   if (plus_btn) {
     lv_obj_set_size(plus_btn, button_size, button_size);
     lv_obj_set_style_radius(plus_btn, button_size / 2, LV_PART_MAIN);
-    lv_obj_align(plus_btn, LV_ALIGN_CENTER,
-      (button_size + layout.controls_gap) / 2, layout.controls_center_y);
+    lv_obj_align(plus_btn, alignment,
+      (button_size + layout.controls_gap) / 2, offset_y);
   }
+  // Preserve caller-owned sizing unless the volume view supplies its baseline.
+  if (fallback_icon_zoom <= 0) return;
+  const int icon_zoom = compact_landscape ? 200 : fallback_icon_zoom;
   for (lv_obj_t *button : {minus_btn, plus_btn}) {
     lv_obj_t *label = button ? lv_obj_get_child(button, 0) : nullptr;
     if (!label) continue;
-    lv_obj_set_style_transform_zoom(label, compact_landscape ? 200 : 256, LV_PART_MAIN);
+    lv_obj_set_style_transform_zoom(label, icon_zoom, LV_PART_MAIN);
     control_modal_center_tab_icon(label);
   }
 }

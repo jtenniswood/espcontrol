@@ -18,6 +18,7 @@ struct DisplayFontRoles {
   const lv_font_t *media_cover_art_artist = nullptr;
   const lv_font_t *option_select_value = nullptr;
   const lv_font_t *volume_number = nullptr;
+  const lv_font_t *volume_number_compact = nullptr;
   const lv_font_t *volume_label = nullptr;
   const lv_font_t *climate_card_icon = nullptr;
   const lv_font_t *climate_option_title = nullptr;
@@ -80,7 +81,7 @@ inline DisplayModalProfile &display_active_modal_profile() {
   return profile;
 }
 
-inline const lv_font_t *&display_active_sensor_font() {
+inline const lv_font_t *&display_active_compact_volume_number_font() {
   static const lv_font_t *font = nullptr;
   return font;
 }
@@ -88,7 +89,7 @@ inline const lv_font_t *&display_active_sensor_font() {
 inline void display_activate_profile(const DisplayProfile &profile) {
   display_set_width_axis(profile);
   display_active_modal_profile() = profile.modal;
-  display_active_sensor_font() = profile.fonts.sensor;
+  display_active_compact_volume_number_font() = profile.fonts.volume_number_compact;
 }
 
 inline bool display_modal_uses_family(const DisplayModalProfile &profile,
@@ -119,9 +120,9 @@ inline bool display_modal_uses_compact_landscape_controls(
 }
 
 inline const lv_font_t *display_modal_volume_number_font(const lv_font_t *fallback) {
-  if (display_active_sensor_font() &&
+  if (display_active_compact_volume_number_font() &&
       display_modal_uses_compact_landscape_controls(display_active_modal_profile())) {
-    return display_active_sensor_font();
+    return display_active_compact_volume_number_font();
   }
   return fallback;
 }
