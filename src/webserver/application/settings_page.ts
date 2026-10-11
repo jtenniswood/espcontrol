@@ -561,8 +561,8 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         setSsMode(ssMode);
         const pinSettings = buildScreensaverPinSettings(document, resetAwareFetch, fields);
         els.syncScreensaverPinUi = pinSettings.refresh;
-        ssBody.appendChild(pinSettings.body);
         var screensaverCard: any = makeCollapsibleCard("Screensaver", ssBody, true, ssBadge);
+        var screensaverPinCard: any = makeCollapsibleCard("PIN Protection", pinSettings.body, true);
         var idleBody: any = document.createElement("div");
         idleBody.appendChild(fieldLabel("Return Home After"));
         var hsSelect: any = document.createElement("select");
@@ -607,6 +607,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         appendSettingsSection(config, "Sleep & Schedule", [
             coverArtCard,
             screensaverCard,
+            screensaverPinCard,
             scheduleCard,
         ]);
         appendSettingsSection(config, "Preferences", [

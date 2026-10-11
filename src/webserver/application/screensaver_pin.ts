@@ -54,6 +54,9 @@ export function buildScreensaverPinSettings(
   body.className = "sp-field";
   const toggle = fields.toggleRow("Require PIN after wake", "sp-set-screensaver-pin-enabled", false);
   const enabled = toggle.input as HTMLInputElement;
+  const controls = document.createElement("div");
+  controls.className = "sp-pin-controls";
+  controls.hidden = true;
   const label = fields.fieldLabel("PIN", "sp-set-screensaver-pin");
   const pin = fields.textInput("sp-set-screensaver-pin", "", "1–16 digits") as HTMLInputElement;
   pin.type = "password";
@@ -83,7 +86,8 @@ export function buildScreensaverPinSettings(
   statusIcon.setAttribute("aria-hidden", "true");
   const statusMessage = document.createElement("span");
   status.append(statusIcon, statusMessage);
-  body.append(toggle.row, label, row, status);
+  controls.append(label, row, status);
+  body.append(toggle.row, controls);
   let info: ScreensaverPinInfo | null = null;
   let busy = false;
   function showStatus(message: string, error = false): void {
@@ -95,6 +99,7 @@ export function buildScreensaverPinSettings(
     enabled.disabled = save.disabled = clear.disabled = pin.disabled = busy;
     clear.disabled = busy || !info?.has_pin;
     pin.placeholder = info?.has_pin ? "••••••••" : "1–16 digits";
+    controls.hidden = !enabled.checked;
     showStatus(info?.has_pin ? "PIN saved." : "No PIN set. Touchscreen PIN protection is inactive.");
   }
   async function update(settings: { enabled: boolean; pin?: string }): Promise<void> {
@@ -112,9 +117,9 @@ export function buildScreensaverPinSettings(
     }
   }
   enabled.addEventListener("change", () => {
+    controls.hidden = !enabled.checked;
     if (enabled.checked && !info?.has_pin) {
-      enabled.checked = false;
-      showStatus("Enter and save a PIN before enabling PIN protection.", true);
+      showStatus("Enter and save a PIN to enable protection.", true);
       pin.focus();
       return;
     }
