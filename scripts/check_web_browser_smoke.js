@@ -6422,9 +6422,32 @@ async function assertScreensaverPinSettings(browser) {
     await enable.click();
     assert.strictEqual(await page.locator("#sp-set-screensaver-pin-enabled").isChecked(), true);
     await input.waitFor({ state: "visible" });
-    await card.getByRole("alert").getByText("Enter and save a PIN to enable protection.", { exact: true }).waitFor();
+    await card.getByRole("status").getByText("Enter and save a PIN to enable protection.", { exact: true }).waitFor();
     assert.strictEqual(pin.posts.length, 0, "cannot enable protection without a saved PIN");
+    assert.strictEqual(pin.enabled, false, "opening PIN setup does not persist protection");
     await input.fill("0042");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.getByRole("tab", { name: "Settings" }).click();
+    await card.locator(".card-header").click();
+    await page.waitForFunction(() => !document.querySelector("#sp-set-screensaver-pin-enabled").disabled);
+    assert.strictEqual(await page.locator("#sp-set-screensaver-pin-enabled").isChecked(), false,
+      "refresh discards setup without a saved PIN");
+    await input.waitFor({ state: "hidden" });
+    assert.strictEqual(await input.inputValue(), "", "refresh clears the unsaved PIN");
+    await enable.click();
+    await input.waitFor({ state: "visible" });
+    pin.failSave = true;
+    await input.fill("0042");
+    await card.getByRole("button", { name: "Save", exact: true }).click();
+    await card.getByRole("alert").getByText("Could not save or read PIN settings. Check the connection and try again.", { exact: true }).waitFor();
+    assert.strictEqual(await page.locator("#sp-set-screensaver-pin-enabled").isChecked(), true,
+      "failed save keeps PIN setup open");
+    assert.strictEqual(await input.inputValue(), "0042", "failed save preserves the entry for retry");
+    assert.strictEqual(pin.enabled, false, "failed save leaves protection disabled");
+    pin.failSave = false;
     await card.getByRole("button", { name: "Save", exact: true }).click();
     await page.waitForFunction(() => document.querySelector("#sp-set-screensaver-pin").value === "");
     assert.strictEqual(pin.pin, "0042");

@@ -95,37 +95,43 @@ export function buildScreensaverPinSettings(
   body.append(toggle.row, controls);
   let info: ScreensaverPinInfo | null = null;
   let busy = false;
+  let pendingSetup = false;
   function showStatus(message: string, error = false): void {
     status.setAttribute("role", error ? "alert" : "status");
     statusMessage.textContent = message;
   }
   function sync(): void {
-    if (!busy) enabled.checked = !!info?.enabled;
+    if (!busy) enabled.checked = pendingSetup || !!(info?.enabled && info.has_pin);
     enabled.disabled = save.disabled = clear.disabled = pin.disabled = busy;
     clear.disabled = busy || !info?.has_pin;
     pin.placeholder = info?.has_pin ? "•".repeat(info.pin_length) : "1–16 digits";
     controls.hidden = !enabled.checked;
-    showStatus(info?.has_pin ? "PIN saved." : "No PIN set. Touchscreen PIN protection is inactive.");
+    showStatus(pendingSetup ? "Enter and save a PIN to enable protection." :
+      info?.has_pin ? "PIN saved." : "No PIN set. Touchscreen PIN protection is inactive.");
   }
   async function update(settings: { enabled: boolean; pin?: string }): Promise<void> {
     if (busy) return;
     busy = true;
     sync();
     let errorMessage = "";
-    try { info = await screensaverPinRequest(request, settings); }
+    try {
+      info = await screensaverPinRequest(request, settings);
+      pendingSetup = false;
+      pin.value = "";
+    }
     catch (error) { errorMessage = (error as Error).message; }
     finally {
-      pin.value = "";
       busy = false;
       sync();
       if (errorMessage) showStatus(errorMessage, true);
     }
   }
   enabled.addEventListener("change", () => {
-    controls.hidden = !enabled.checked;
-    if (enabled.checked && !info?.has_pin) {
-      showStatus("Enter and save a PIN to enable protection.", true);
-      pin.focus();
+    if (!info?.has_pin) {
+      pendingSetup = enabled.checked;
+      sync();
+      if (pendingSetup) pin.focus();
+      else pin.value = "";
       return;
     }
     void update({ enabled: enabled.checked });
@@ -142,6 +148,7 @@ export function buildScreensaverPinSettings(
   async function refresh(): Promise<void> {
     try {
       info = await loadScreensaverPinSettings(request);
+      pendingSetup = false;
       body.hidden = info === null;
       pin.value = "";
       sync();

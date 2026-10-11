@@ -49,7 +49,10 @@ int main() {
   std::string empty;
   rebooted.arm(); rebooted.wake();
   assert(rebooted.save(true, &empty));
-  assert(!rebooted.has_pin() && rebooted.pin_length() == 0 && !rebooted.locked());
+  assert(!rebooted.has_pin() && rebooted.pin_length() == 0 && !rebooted.enabled() && !rebooted.locked());
+  ScreensaverPin empty_reboot;
+  empty_reboot.setup();
+  assert(!empty_reboot.enabled() && !empty_reboot.has_pin());
   rebooted.arm(); rebooted.wake();
   assert(!rebooted.locked());
   // The same clear operation is used by backup import.

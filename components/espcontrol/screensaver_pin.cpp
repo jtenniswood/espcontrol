@@ -28,7 +28,7 @@ void ScreensaverPin::setup() {
         std::memchr(record.pin, 0, sizeof(record.pin)) == nullptr ||
         !valid_pin(record.pin)) return;
     pin_ = record.pin;
-    enabled_ = record.enabled;
+    enabled_ = record.enabled && !pin_.empty();
   } else if (result != ESP_ERR_NVS_NOT_FOUND) {
     return;
   }
@@ -41,7 +41,8 @@ bool ScreensaverPin::save(bool enabled, const std::string *pin) {
   const auto &next_pin = pin ? *pin : pin_;
   PinRecord record;
   std::memcpy(record.pin, next_pin.data(), next_pin.size());
-  record.enabled = enabled;
+  const bool next_enabled = enabled && !next_pin.empty();
+  record.enabled = next_enabled;
   nvs_handle_t handle;
   if (nvs_open(PIN_NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) return false;
   auto result = nvs_set_blob(handle, "settings", &record, sizeof(record));
@@ -49,7 +50,7 @@ bool ScreensaverPin::save(bool enabled, const std::string *pin) {
   nvs_close(handle);
   if (result != ESP_OK) return false;
   pin_ = next_pin;
-  enabled_ = enabled;
+  enabled_ = next_enabled;
   if (!enabled_ || pin_.empty()) locked_ = false;
   else if (sleeping_) locked_ = true;
   return true;
