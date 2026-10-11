@@ -392,6 +392,8 @@ const ICON_GROUPS = {
   'Car Electric': 'Vehicles',
   'EV Charger': 'Vehicles',
   'Airplane': 'Vehicles',
+  'Bus': 'Vehicles',
+  'Train': 'Vehicles',
 
   'Medication': 'Health',
   'Medication Outline': 'Health',

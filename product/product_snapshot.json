@@ -12,7 +12,7 @@
     "deviceProfiles": 9,
     "cardTypes": 43,
     "entityNames": 110,
-    "icons": 364,
+    "icons": 366,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
   },
@@ -8261,6 +8261,11 @@
         "mdi": "broom"
       },
       {
+        "name": "Bus",
+        "codepoint": "F00E7",
+        "mdi": "bus"
+      },
+      {
         "name": "Camera",
         "codepoint": "F0100",
         "mdi": "camera"
@@ -9519,6 +9524,11 @@
         "name": "Track Light Off",
         "codepoint": "F1B01",
         "mdi": "track-light-off"
+      },
+      {
+        "name": "Train",
+        "codepoint": "F052C",
+        "mdi": "train"
       },
       {
         "name": "Transmission Tower",
