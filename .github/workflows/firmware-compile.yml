@@ -61,6 +61,7 @@ jobs:
             common/assets/*.yaml
             common/assets/fonts/*
             common/assets/icons.json
+            common/device/screen_clock.yaml
             product/v2/card_contract.json
             common/config/entity_names.json
             common/config/strings.*.txt

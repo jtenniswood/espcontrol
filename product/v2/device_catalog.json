@@ -374,6 +374,7 @@
             "mediaCoverArtTitle": "font_cover_art_title",
             "mediaCoverArtArtist": "font_cover_art_artist",
             "volumeNumber": "font_number_value_large",
+            "volumeNumberCompact": "font_clock_display",
             "volumeLabel": "font_text_body",
             "climateCardIcon": "font_icon_card",
             "subpageChevron": "font_icon_status",

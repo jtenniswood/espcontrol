@@ -442,6 +442,10 @@ def cfg_lines(device: dict) -> list[str]:
             f"            cfg.media_cover_art_artist_font = id({device['media_cover_art_artist_font']})->get_lv_font();"
         )
     lines.append(f"            cfg.volume_number_font = id({device['volume_number_font']})->get_lv_font();")
+    if device.get("volume_number_compact_font"):
+        lines.append(
+            f"            cfg.volume_number_compact_font = id({device['volume_number_compact_font']})->get_lv_font();"
+        )
     lines.append(f"            cfg.volume_label_font = id({device['volume_label_font']})->get_lv_font();")
     if device.get("climate_card_icon_font"):
         lines.append(

@@ -4568,8 +4568,11 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_coord_t volume_buttons_up = control_modal_scaled_px(18, layout.short_side);
     if (volume_buttons_up < 12) volume_buttons_up = 12;
     volume_buttons_layout.controls_center_y -= volume_buttons_up;
+    const bool compact_landscape =
+      display_modal_uses_compact_landscape_controls(layout.profile);
     control_modal_apply_step_buttons_layout(
-      ui.volume_minus_btn, ui.volume_plus_btn, volume_buttons_layout);
+      ui.volume_minus_btn, ui.volume_plus_btn, volume_buttons_layout,
+      compact_landscape, control_modal_scaled_px(4, layout.short_side), 256);
     if (ui.volume_pct_lbl) {
       const lv_font_t *number_font = display_modal_volume_number_font(ctx->number_font);
       if (number_font) {
@@ -4577,7 +4580,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
       }
       apply_text_width_compensation(ui.volume_pct_lbl);
       lv_obj_align(ui.volume_pct_lbl, LV_ALIGN_CENTER, 0,
-        volume_layout.arc_center_y +
+        (compact_landscape ? 0 : volume_layout.arc_center_y) +
         control_modal_scaled_px(MEDIA_CONTROL_VOLUME_VALUE_Y_REF_PX, volume_layout.short_side));
     }
     if (ui.volume_group_lbl && ui.volume_pct_lbl) {

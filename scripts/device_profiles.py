@@ -338,6 +338,7 @@ def common_font_ids() -> set[str]:
     ids: set[str] = set()
     for path in sorted(COMMON_ASSETS.glob("*.yaml")):
         ids.update(font_ids_from(path))
+    ids.update(font_ids_from(ROOT / "common" / "device" / "screen_clock.yaml"))
     return ids
 
 
@@ -954,6 +955,7 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "media_cover_art_title_font": fonts.get("mediaCoverArtTitle"),
         "media_cover_art_artist_font": fonts.get("mediaCoverArtArtist"),
         "volume_number_font": fonts["volumeNumber"],
+        "volume_number_compact_font": fonts.get("volumeNumberCompact"),
         "volume_label_font": fonts["volumeLabel"],
         "cover_art": copy.deepcopy(display["coverArt"]),
         "climate_card_icon_font": fonts.get("climateCardIcon"),
