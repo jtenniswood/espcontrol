@@ -22,11 +22,25 @@ int main() {
   assert(pin.locked());
   // A toggle preserves the existing secret; reboot restores both settings.
   assert(pin.save(false, nullptr) && pin.has_pin() && !pin.locked());
+  // Upgrade the old on-device record without losing the PIN or changing its randomized layout.
+  struct LegacyPinRecord { uint32_t version{1}; char pin[17]{}; uint8_t enabled{0}; } legacy;
+  std::memcpy(legacy.pin, code.data(), code.size());
+  const auto *legacy_bytes = reinterpret_cast<const uint8_t *>(&legacy);
+  identity_flash.assign(legacy_bytes, legacy_bytes + sizeof(legacy));
   ScreensaverPin rebooted;
   rebooted.setup();
   rebooted.arm(); rebooted.wake();
   assert(rebooted.has_pin() && rebooted.pin_length() == 4 && !rebooted.enabled() && !rebooted.locked());
-  assert(rebooted.save(true, nullptr));
+  assert(rebooted.randomize_keypad());
+  bool randomize = false;
+  assert(rebooted.save(true, nullptr, &randomize));
+  ScreensaverPin layout_reboot;
+  layout_reboot.setup();
+  assert(layout_reboot.enabled() && layout_reboot.pin_length() == 4 && !layout_reboot.randomize_keypad());
+  randomize = true;
+  fail_commit = true;
+  assert(!rebooted.save(true, nullptr, &randomize) && !rebooted.randomize_keypad());
+  fail_commit = false;
   rebooted.arm(); rebooted.wake();
   assert(rebooted.locked());
   std::string changed = "1234567890123456";
@@ -103,6 +117,15 @@ int main() {
     for (int i = 0; i < 10; ++i) assert(sorted[i] == i);
   }
   assert(different);
+  int random_calls = 0;
+  const auto ordered = pin_keypad_digits(false, [&]() { ++random_calls; return random(); });
+  const std::array<uint8_t, 10> expected{{1, 2, 3, 4, 5, 6, 7, 8, 9, 0}};
+  assert(ordered == expected && random_calls == 0);
+  const auto shuffled = pin_keypad_digits(true, [&]() { ++random_calls; return random(); });
+  assert(random_calls == 9);
+  auto sorted_shuffled = shuffled;
+  std::sort(sorted_shuffled.begin(), sorted_shuffled.end());
+  for (int i = 0; i < 10; ++i) assert(sorted_shuffled[i] == i);
 
   using namespace espcontrol;
   for (auto mode : {DisplayMode::DISPLAY_OFF, DisplayMode::DIMMED,

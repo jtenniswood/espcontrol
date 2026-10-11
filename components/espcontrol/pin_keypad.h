@@ -64,7 +64,7 @@ inline lv_obj_t *pin_keypad_create(lv_obj_t *panel, const ControlModalLayout &la
                                         const lv_font_t *key_label_font,
                                         const lv_font_t *icon_font,
                                         int width_compensation_percent,
-                                        lv_event_cb_t key_cb) {
+                                        lv_event_cb_t key_cb, bool randomize = true) {
   lv_obj_t *pin_lbl = nullptr;
   pin_lbl = lv_label_create(panel);
   lv_obj_set_style_text_color(pin_lbl, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
@@ -101,8 +101,8 @@ inline lv_obj_t *pin_keypad_create(lv_obj_t *panel, const ControlModalLayout &la
     "back", "0", "submit",
   };
 
-  // Every opening gets a new Fisher-Yates permutation; clear/submit stay fixed.
-  const auto digits = scrambled_pin_digits([]() { return esphome::random_uint32(); });
+  // Randomized openings get a new permutation; clear/submit always stay fixed.
+  const auto digits = pin_keypad_digits(randomize, []() { return esphome::random_uint32(); });
   static const char *digit_text[] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
   for (int i = 0; i < 10; ++i) key_data[i < 9 ? i : 10] = digit_text[digits[i]];
 

@@ -306,9 +306,11 @@ async function installRoutes(context, slug, options = {}) {
         if (pin.failSave) { await route.fulfill({ status: 500, body: "Failed" }); return; }
         pin.enabled = settings.enabled;
         if (typeof settings.pin === "string") pin.pin = settings.pin;
+        if (typeof settings.randomize_keypad === "boolean") pin.randomize = settings.randomize_keypad;
       }
       await route.fulfill({ status: 200, contentType: "application/json",
-        body: JSON.stringify({ enabled: pin.enabled, has_pin: !!pin.pin, pin_length: pin.pin.length }) });
+        body: JSON.stringify({ enabled: pin.enabled, has_pin: !!pin.pin, pin_length: pin.pin.length,
+          randomize_keypad: pin.randomize ?? true }) });
       return;
     }
     if (nativeState && requestUrl.pathname.startsWith("/api/v1/")) {
@@ -6402,7 +6404,7 @@ async function assertPanelNaming(browser) {
 async function assertScreensaverPinSettings(browser) {
   const testCase = ACTIVE_CASES[0];
   const context = await browser.newContext({ viewport: testCase.viewport });
-  const pin = { enabled: false, pin: "", posts: [], failSave: false };
+  const pin = { enabled: false, pin: "", randomize: true, posts: [], failSave: false };
   const resetState = { epoch: 3, pending: false, requests: [] };
   await installRoutes(context, testCase.slug, { screensaverPinState: pin, resetState });
   const page = await context.newPage();
@@ -6419,10 +6421,13 @@ async function assertScreensaverPinSettings(browser) {
     await input.waitFor({ state: "hidden" });
     assert.strictEqual(await input.getAttribute("type"), "password");
     const enable = page.locator("#sp-set-screensaver-pin-enabled + .sp-toggle-track");
+    const randomize = page.locator("#sp-set-screensaver-pin-randomize");
+    const randomizeTrack = page.locator("#sp-set-screensaver-pin-randomize + .sp-toggle-track");
     await enable.click();
     assert.strictEqual(await page.locator("#sp-set-screensaver-pin-enabled").isChecked(), true);
     await input.waitFor({ state: "visible" });
     await card.getByRole("status").getByText("Enter and save a PIN to enable protection.", { exact: true }).waitFor();
+    await randomizeTrack.click();
     assert.strictEqual(pin.posts.length, 0, "cannot enable protection without a saved PIN");
     assert.strictEqual(pin.enabled, false, "opening PIN setup does not persist protection");
     await input.fill("0042");
@@ -6437,8 +6442,10 @@ async function assertScreensaverPinSettings(browser) {
       "refresh discards setup without a saved PIN");
     await input.waitFor({ state: "hidden" });
     assert.strictEqual(await input.inputValue(), "", "refresh clears the unsaved PIN");
+    assert.strictEqual(await randomize.isChecked(), true, "refresh discards the unsaved layout choice");
     await enable.click();
     await input.waitFor({ state: "visible" });
+    await randomizeTrack.click();
     pin.failSave = true;
     await input.fill("0042");
     await card.getByRole("button", { name: "Save", exact: true }).click();
@@ -6452,7 +6459,14 @@ async function assertScreensaverPinSettings(browser) {
     await page.waitForFunction(() => document.querySelector("#sp-set-screensaver-pin").value === "");
     assert.strictEqual(pin.pin, "0042");
     assert.strictEqual(pin.enabled, true, "saving the required PIN enables protection");
+    assert.strictEqual(pin.randomize, false, "first PIN save includes the layout preference");
     assert.strictEqual(await input.getAttribute("placeholder"), "••••", "mask length matches saved PIN");
+    await input.fill("004200");
+    await randomizeTrack.click();
+    await page.waitForFunction(() => !document.querySelector("#sp-set-screensaver-pin-randomize").disabled);
+    assert.strictEqual(pin.randomize, true, "saved PIN layout can be changed independently");
+    assert.strictEqual(pin.pin, "0042", "layout update preserves stored PIN");
+    assert.strictEqual(await input.inputValue(), "004200", "layout update preserves an unsaved replacement PIN");
     await enable.click();
     await page.waitForFunction(() => !document.querySelector("#sp-set-screensaver-pin-enabled").disabled);
     assert.strictEqual(pin.enabled, false);

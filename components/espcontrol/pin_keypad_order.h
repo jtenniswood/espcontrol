@@ -13,3 +13,9 @@ std::array<uint8_t, 10> scrambled_pin_digits(Random random) {
   }
   return digits;
 }
+
+template<typename Random>
+std::array<uint8_t, 10> pin_keypad_digits(bool randomize, Random random) {
+  if (randomize) return scrambled_pin_digits(random);
+  return {{1, 2, 3, 4, 5, 6, 7, 8, 9, 0}};
+}

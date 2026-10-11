@@ -15,6 +15,7 @@ class ScreensaverPin {
   bool enabled() const { Guard guard(mutex_); return enabled_; }
   bool has_pin() const { Guard guard(mutex_); return !pin_.empty(); }
   std::size_t pin_length() const { Guard guard(mutex_); return pin_.size(); }
+  bool randomize_keypad() const { Guard guard(mutex_); return randomize_keypad_; }
   bool locked() const { Guard guard(mutex_); return locked_ && enabled_ && !pin_.empty(); }
   void arm() {
     Guard guard(mutex_);
@@ -34,7 +35,7 @@ class ScreensaverPin {
     locked_ = false;
     return true;
   }
-  bool save(bool enabled, const std::string *pin);
+  bool save(bool enabled, const std::string *pin, const bool *randomize_keypad = nullptr);
   static bool valid_pin(const std::string &pin) {
     if (pin.size() > 16) return false;
     for (char c : pin) if (c < '0' || c > '9') return false;
@@ -45,6 +46,7 @@ class ScreensaverPin {
   mutable std::mutex mutex_;
   std::string pin_;
   bool enabled_{false}, locked_{false}, sleeping_{false}, ready_{false};
+  bool randomize_keypad_{true};
 };
 ScreensaverPin &screensaver_pin();
 }  // namespace espcontrol

@@ -44,10 +44,16 @@ class ScreensaverPinHandler final : public esphome::web_server_idf::AsyncWebHand
       }
       std::string pin;
       bool enabled = false, has_pin_value = false;
+      bool randomize_keypad = true, has_randomize_value = false;
       const bool parsed = valid_ && received_ == expected_ &&
           esphome::json::parse_json(body_.data(), received_, [&](JsonObject root) {
             if (!root["enabled"].is<bool>()) return false;
             enabled = root["enabled"].as<bool>();
+            has_randomize_value = !root["randomize_keypad"].isUnbound();
+            if (has_randomize_value) {
+              if (!root["randomize_keypad"].is<bool>()) return false;
+              randomize_keypad = root["randomize_keypad"].as<bool>();
+            }
             has_pin_value = !root["pin"].isUnbound();
             if (!has_pin_value) return true;  // Toggle without changing the saved PIN.
             if (!root["pin"].is<const char *>()) return false;
@@ -57,10 +63,11 @@ class ScreensaverPinHandler final : public esphome::web_server_idf::AsyncWebHand
           });
       valid_ = false;
       if (!parsed) {
-        httpd_resp_send_err(raw, HTTPD_400_BAD_REQUEST, "PIN must contain up to 16 digits");
+        httpd_resp_send_err(raw, HTTPD_400_BAD_REQUEST, "Invalid PIN settings");
         return;
       }
-      if (!screensaver_pin().save(enabled, has_pin_value ? &pin : nullptr)) {
+      if (!screensaver_pin().save(enabled, has_pin_value ? &pin : nullptr,
+                                  has_randomize_value ? &randomize_keypad : nullptr)) {
         httpd_resp_send_err(raw, HTTPD_500_INTERNAL_SERVER_ERROR, "PIN settings could not be saved");
         return;
       }
@@ -69,6 +76,7 @@ class ScreensaverPinHandler final : public esphome::web_server_idf::AsyncWebHand
       root["enabled"] = screensaver_pin().enabled();
       root["has_pin"] = screensaver_pin().has_pin();
       root["pin_length"] = screensaver_pin().pin_length();
+      root["randomize_keypad"] = screensaver_pin().randomize_keypad();
     });
     httpd_resp_set_type(raw, "application/json");
     httpd_resp_set_hdr(raw, "Cache-Control", "no-store");

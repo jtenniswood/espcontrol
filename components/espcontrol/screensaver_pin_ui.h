@@ -61,7 +61,7 @@ inline void screensaver_pin_refresh(bool active, const lv_font_t *label_font,
   control_modal_style_panel(panel, control_modal_card_radius(nullptr));
   control_modal_apply_panel_layout(ui.overlay, panel, layout, 0);
   ui.label = pin_keypad_create(panel, layout, label_font, key_font, icon_font,
-                              100, screensaver_pin_key_cb);
+                              100, screensaver_pin_key_cb, espcontrol::screensaver_pin().randomize_keypad());
 }
 
 inline std::function<void()> &force_screensaver_action() {

@@ -4,11 +4,18 @@ export interface ScreensaverPinInfo {
   enabled: boolean;
   has_pin: boolean;
   pin_length: number;
+  randomize_keypad?: boolean;
+}
+
+interface ScreensaverPinSettings {
+  enabled: boolean;
+  pin?: string;
+  randomize_keypad?: boolean;
 }
 
 export async function screensaverPinRequest(
   request: typeof fetch,
-  settings?: { enabled: boolean; pin?: string },
+  settings?: ScreensaverPinSettings,
 ): Promise<ScreensaverPinInfo | null> {
   const response = await request("/api/v1/screensaver-pin", {
     method: settings ? "POST" : "GET", credentials: "include", cache: "no-store",
@@ -24,7 +31,8 @@ export async function screensaverPinRequest(
   const pinLength = Number.isInteger(info.pin_length) && info.pin_length >= 0 && info.pin_length <= 16
     ? info.pin_length
     : info.has_pin ? 8 : 0;
-  return { enabled: info.enabled, has_pin: info.has_pin, pin_length: pinLength };
+  return { enabled: info.enabled, has_pin: info.has_pin, pin_length: pinLength,
+    ...(typeof info.randomize_keypad === "boolean" ? { randomize_keypad: info.randomize_keypad } : {}) };
 }
 
 // Backups never carry the secret. Import also clears the destination's old PIN,
@@ -62,6 +70,8 @@ export function buildScreensaverPinSettings(
   const controls = document.createElement("div");
   controls.className = "sp-pin-controls";
   controls.hidden = true;
+  const randomizeToggle = fields.toggleRow("Randomize keypad layout", "sp-set-screensaver-pin-randomize", true);
+  const randomize = randomizeToggle.input as HTMLInputElement;
   const label = fields.fieldLabel("PIN", "sp-set-screensaver-pin");
   const pin = fields.textInput("sp-set-screensaver-pin", "", "1–16 digits") as HTMLInputElement;
   pin.type = "password";
@@ -91,7 +101,7 @@ export function buildScreensaverPinSettings(
   statusIcon.setAttribute("aria-hidden", "true");
   const statusMessage = document.createElement("span");
   status.append(statusIcon, statusMessage);
-  controls.append(label, row, status);
+  controls.append(randomizeToggle.row, label, row, status);
   body.append(toggle.row, controls);
   let info: ScreensaverPinInfo | null = null;
   let busy = false;
@@ -102,14 +112,16 @@ export function buildScreensaverPinSettings(
   }
   function sync(): void {
     if (!busy) enabled.checked = pendingSetup || !!(info?.enabled && info.has_pin);
-    enabled.disabled = save.disabled = clear.disabled = pin.disabled = busy;
+    if (!busy && !pendingSetup) randomize.checked = info?.randomize_keypad ?? true;
+    randomizeToggle.row.hidden = typeof info?.randomize_keypad !== "boolean";
+    enabled.disabled = randomize.disabled = save.disabled = clear.disabled = pin.disabled = busy;
     clear.disabled = busy || !info?.has_pin;
     pin.placeholder = info?.has_pin ? "•".repeat(info.pin_length) : "1–16 digits";
     controls.hidden = !enabled.checked;
     showStatus(pendingSetup ? "Enter and save a PIN to enable protection." :
       info?.has_pin ? "PIN saved." : "No PIN set. Touchscreen PIN protection is inactive.");
   }
-  async function update(settings: { enabled: boolean; pin?: string }): Promise<void> {
+  async function update(settings: ScreensaverPinSettings): Promise<void> {
     if (busy) return;
     busy = true;
     sync();
@@ -117,7 +129,7 @@ export function buildScreensaverPinSettings(
     try {
       info = await screensaverPinRequest(request, settings);
       pendingSetup = false;
-      pin.value = "";
+      if (settings.pin !== undefined) pin.value = "";
     }
     catch (error) { errorMessage = (error as Error).message; }
     finally {
@@ -136,13 +148,18 @@ export function buildScreensaverPinSettings(
     }
     void update({ enabled: enabled.checked });
   });
+  randomize.addEventListener("change", () => {
+    if (!info?.has_pin) return; // Keep the layout choice local until the first PIN is saved.
+    void update({ enabled: enabled.checked, randomize_keypad: randomize.checked });
+  });
   save.addEventListener("click", () => {
     if (!/^[0-9]{1,16}$/.test(pin.value)) {
       showStatus(pin.value ? "Enter a PIN containing 1–16 digits." : "Enter a PIN before saving.", true);
       pin.focus();
       return;
     }
-    void update({ enabled: enabled.checked, pin: pin.value });
+    void update({ enabled: enabled.checked, pin: pin.value,
+      ...(typeof info?.randomize_keypad === "boolean" ? { randomize_keypad: randomize.checked } : {}) });
   });
   clear.addEventListener("click", () => { void update({ enabled: false, pin: "" }); });
   async function refresh(): Promise<void> {
@@ -154,7 +171,7 @@ export function buildScreensaverPinSettings(
       sync();
     } catch (error) {
       body.hidden = false;
-      enabled.disabled = save.disabled = clear.disabled = pin.disabled = true;
+      enabled.disabled = randomize.disabled = save.disabled = clear.disabled = pin.disabled = true;
       showStatus((error as Error).message, true);
     }
   }
