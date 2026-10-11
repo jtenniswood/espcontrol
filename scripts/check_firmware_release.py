@@ -187,6 +187,7 @@ def test_release_workflow_uses_current_ota_output() -> None:
 
 def test_device_matrix_sparse_checkouts_include_product_model() -> None:
     required_paths = (
+        "common/device/screen_clock.yaml",
         "product/model_v2.json",
         "scripts/product_model_v2.py",
         "product/v2/icons.json",
