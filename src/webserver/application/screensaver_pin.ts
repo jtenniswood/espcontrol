@@ -83,18 +83,19 @@ export function buildScreensaverPinSettings(
   statusIcon.setAttribute("aria-hidden", "true");
   const statusMessage = document.createElement("span");
   status.append(statusIcon, statusMessage);
-  const note = document.createElement("p");
-  note.className = "sp-note";
-  note.textContent = "Protects local touchscreen controls. The PIN is not included in backups. Network and web access use separate security settings.";
-  body.append(toggle.row, label, row, status, note);
+  body.append(toggle.row, label, row, status);
   let info: ScreensaverPinInfo | null = null;
   let busy = false;
+  function showStatus(message: string, error = false): void {
+    status.setAttribute("role", error ? "alert" : "status");
+    statusMessage.textContent = message;
+  }
   function sync(): void {
     if (!busy) enabled.checked = !!info?.enabled;
     enabled.disabled = save.disabled = clear.disabled = pin.disabled = busy;
     clear.disabled = busy || !info?.has_pin;
     pin.placeholder = info?.has_pin ? "••••••••" : "1–16 digits";
-    statusMessage.textContent = info?.has_pin ? "PIN saved. Leave the field blank to keep it." : "No PIN set. Touchscreen PIN protection is inactive.";
+    showStatus(info?.has_pin ? "PIN saved." : "No PIN set. Touchscreen PIN protection is inactive.");
   }
   async function update(settings: { enabled: boolean; pin?: string }): Promise<void> {
     if (busy) return;
@@ -107,13 +108,22 @@ export function buildScreensaverPinSettings(
       pin.value = "";
       busy = false;
       sync();
-      if (errorMessage) statusMessage.textContent = errorMessage;
+      if (errorMessage) showStatus(errorMessage, true);
     }
   }
-  enabled.addEventListener("change", () => { void update({ enabled: enabled.checked }); });
+  enabled.addEventListener("change", () => {
+    if (enabled.checked && !info?.has_pin) {
+      enabled.checked = false;
+      showStatus("Enter and save a PIN before enabling PIN protection.", true);
+      pin.focus();
+      return;
+    }
+    void update({ enabled: enabled.checked });
+  });
   save.addEventListener("click", () => {
     if (!/^[0-9]{1,16}$/.test(pin.value)) {
-      statusMessage.textContent = "Enter a PIN containing 1–16 digits.";
+      showStatus(pin.value ? "Enter a PIN containing 1–16 digits." : "Enter a PIN before saving.", true);
+      pin.focus();
       return;
     }
     void update({ enabled: enabled.checked, pin: pin.value });
@@ -128,7 +138,7 @@ export function buildScreensaverPinSettings(
     } catch (error) {
       body.hidden = false;
       enabled.disabled = save.disabled = clear.disabled = pin.disabled = true;
-      statusMessage.textContent = (error as Error).message;
+      showStatus((error as Error).message, true);
     }
   }
   void refresh();
