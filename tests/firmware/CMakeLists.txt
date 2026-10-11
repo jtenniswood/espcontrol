@@ -626,3 +626,5 @@ target_link_libraries(screensaver_pin_test PRIVATE Threads::Threads)
 add_test(NAME screensaver_pin_test COMMAND screensaver_pin_test)
 add_test(NAME screensaver_pin_ui_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/screensaver_pin_ui_test.py ${CMAKE_CXX_COMPILER})
+add_test(NAME screensaver_pin_cover_art_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/screensaver_pin_cover_art_test.py ${CMAKE_CXX_COMPILER})
