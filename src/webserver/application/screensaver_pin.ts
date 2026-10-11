@@ -93,22 +93,18 @@ export function buildScreensaverPinSettings(
   actions.className = "sp-pin-actions";
   actions.append(save, clear);
   row.append(pin, actions);
-  const status = document.createElement("div");
-  status.className = "sp-info-panel";
-  status.setAttribute("role", "status");
-  const statusIcon = document.createElement("span");
-  statusIcon.className = "mdi mdi-information-outline";
-  statusIcon.setAttribute("aria-hidden", "true");
-  const statusMessage = document.createElement("span");
-  status.append(statusIcon, statusMessage);
-  controls.append(randomizeToggle.row, label, row, status);
-  body.append(toggle.row, controls);
+  const errorNotice = document.createElement("div");
+  errorNotice.className = "sp-field-error";
+  errorNotice.setAttribute("role", "alert");
+  errorNotice.hidden = true;
+  controls.append(randomizeToggle.row, label, row);
+  body.append(toggle.row, controls, errorNotice);
   let info: ScreensaverPinInfo | null = null;
   let busy = false;
   let pendingSetup = false;
-  function showStatus(message: string, error = false): void {
-    status.setAttribute("role", error ? "alert" : "status");
-    statusMessage.textContent = message;
+  function showError(message: string): void {
+    errorNotice.textContent = message;
+    errorNotice.hidden = !message;
   }
   function sync(): void {
     if (!busy) enabled.checked = pendingSetup || !!(info?.enabled && info.has_pin);
@@ -118,8 +114,7 @@ export function buildScreensaverPinSettings(
     clear.disabled = busy || !info?.has_pin;
     pin.placeholder = info?.has_pin ? "•".repeat(info.pin_length) : "1–16 digits";
     controls.hidden = !enabled.checked;
-    showStatus(pendingSetup ? "Enter and save a PIN to enable protection." :
-      info?.has_pin ? "PIN saved." : "No PIN set. Touchscreen PIN protection is inactive.");
+    showError("");
   }
   async function update(settings: ScreensaverPinSettings): Promise<void> {
     if (busy) return;
@@ -135,7 +130,7 @@ export function buildScreensaverPinSettings(
     finally {
       busy = false;
       sync();
-      if (errorMessage) showStatus(errorMessage, true);
+      if (errorMessage) showError(errorMessage);
     }
   }
   enabled.addEventListener("change", () => {
@@ -154,7 +149,7 @@ export function buildScreensaverPinSettings(
   });
   save.addEventListener("click", () => {
     if (!/^[0-9]{1,16}$/.test(pin.value)) {
-      showStatus(pin.value ? "Enter a PIN containing 1–16 digits." : "Enter a PIN before saving.", true);
+      showError(pin.value ? "Enter a PIN containing 1–16 digits." : "Enter a PIN before saving.");
       pin.focus();
       return;
     }
@@ -172,7 +167,7 @@ export function buildScreensaverPinSettings(
     } catch (error) {
       body.hidden = false;
       enabled.disabled = randomize.disabled = save.disabled = clear.disabled = pin.disabled = true;
-      showStatus((error as Error).message, true);
+      showError((error as Error).message);
     }
   }
   void refresh();

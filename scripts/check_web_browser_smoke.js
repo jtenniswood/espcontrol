@@ -6426,7 +6426,6 @@ async function assertScreensaverPinSettings(browser) {
     await enable.click();
     assert.strictEqual(await page.locator("#sp-set-screensaver-pin-enabled").isChecked(), true);
     await input.waitFor({ state: "visible" });
-    await card.getByRole("status").getByText("Enter and save a PIN to enable protection.", { exact: true }).waitFor();
     await randomizeTrack.click();
     assert.strictEqual(pin.posts.length, 0, "cannot enable protection without a saved PIN");
     assert.strictEqual(pin.enabled, false, "opening PIN setup does not persist protection");
