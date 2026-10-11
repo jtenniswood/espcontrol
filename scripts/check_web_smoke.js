@@ -870,6 +870,14 @@ const weatherCurrentPreview = hooks.buttonTypePreviewFor("weather", {
 assert(weatherCurrentPreview.iconHtml.includes("mdi-weather-cloudy"), "weather current preview uses the current-condition icon");
 assert(!weatherCurrentPreview.labelHtml.includes("sp-type-badge"), "weather current preview omits the card-type badge");
 
+const weatherDailyPreview = hooks.buttonTypePreviewFor("weather", {
+  entity: "weather.home", type: "weather", precision: "daily", label: "Garden",
+});
+assert.strictEqual(weatherDailyPreview.buttonClass, "sp-weather-daily-card");
+assert.strictEqual((weatherDailyPreview.iconHtml.match(/class="sp-weather-day"/g) || []).length, 7,
+  "daily preview exposes the seven sample days for width-responsive CSS");
+assert(weatherDailyPreview.labelHtml.includes("Garden"), "daily preview preserves the location label");
+
 const weatherForecastPreview = hooks.buttonTypePreviewFor("weather", {
   entity: "weather.forecast_home",
   label: "Garden",

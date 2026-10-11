@@ -7124,6 +7124,24 @@ async function assertContinuousPreview(browser, testCase) {
   } finally { await context.close(); }
 }
 
+async function assertWeatherWidthScaling(browser) {
+  const { createWebStyles } = loadTypeScriptModule(path.join(ROOT, "src/webserver/application/styles.ts"));
+  const page = await browser.newPage();
+  try {
+    await page.setContent('<style>' + createWebStyles(false) + '</style><div id="weather" class="sp-btn sp-weather-daily-card" style="position:relative;width:120px;height:180px;--btn-label:16px;--btn-icon:32px;--btn-pad:8px;--r:8px"><span class="sp-weather-days">' +
+      Array.from({ length: 7 }, (_, i) => '<span class="sp-weather-day"><span>' + (i ? '12/10' : 'Today') + '</span><span class="mdi">☀</span><span>18/10</span></span>').join('') + '</span></div>');
+    const counts = [];
+    for (const width of [120, 240, 420, 700]) {
+      await page.locator('#weather').evaluate((card, value) => { card.style.width = value + 'px'; card.getBoundingClientRect(); }, width);
+      await page.waitForFunction(value => Math.abs(document.querySelector("#weather").getBoundingClientRect().width - value) < 1, width);
+      counts.push(await page.locator('.sp-weather-day').evaluateAll(days => days.filter(day => getComputedStyle(day).display !== 'none').length));
+    }
+    assert(counts[0] === 1 && counts[3] === 7 && counts.every((count, i) => i === 0 || count > counts[i - 1]),
+      'Daily forecast preview adds complete day columns as its width increases: ' + counts.join(','));
+    console.log('Daily forecast browser scaling passed: ' + counts.join(',') + ' complete columns.');
+  } finally { await page.close(); }
+}
+
 (async function main() {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
@@ -7185,6 +7203,8 @@ async function assertContinuousPreview(browser, testCase) {
     if (process.env.ESPCONTROL_CORNERS_ONLY === "1") { console.log(`Continuous preview checks passed for ${ACTIVE_CASES.length} generated layouts.`); return; }
     await assertScreensaverPinSettings(browser);
     if (process.env.ESPCONTROL_PIN_ONLY === "1") { console.log("Screensaver PIN browser checks passed."); return; }
+
+    await assertWeatherWidthScaling(browser);
     if (process.env.ESPCONTROL_RESET_ONLY === "1") {
       await assertResetControls(browser);
       console.log("Factory reset confirmation browser checks passed.");

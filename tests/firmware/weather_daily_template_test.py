@@ -35,4 +35,6 @@ assert render([]).splitlines() == [lines[0]]
 assert render([items[0],items[0]]).count('2026-10-12|rainy') == 1
 missing = render([{'datetime':'2026-10-13T00:00:00+00:00'}])
 assert missing.splitlines()[1] == '2026-10-13|||||||', missing
+aliases = render([{'datetime':'2026-10-12T00:00:00+00:00', 'max_temp':18, 'temperature_min':0}])
+assert aliases.splitlines()[1] == '2026-10-12||18|0||||', aliases
 print('Daily forecast template: sorted/capped provider dates, duplicate dates, tomorrow-first, negative/zero/missing fields, empty and both response shapes passed.')

@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <vector>
 #include "weather_daily_forecast.h"
 
 // Only configured multi-day cards allocate a source. Cards for the same entity
@@ -46,16 +47,19 @@ inline std::string weather_daily_response_template(const std::string &entity_id)
     "{% set forecasts = r.get('forecast', []) or [] %}"
     "{% set today = now().date() %}{% set tomorrow = (now() + timedelta(days=1)).date() %}"
     "{{ 'WF1|' ~ today ~ '|' ~ tomorrow ~ '|' ~ (state_attr(entity, 'temperature_unit') or '') ~ '|' ~ (state_attr(entity, 'precipitation_unit') or '') ~ '|' ~ (state_attr(entity, 'wind_speed_unit') or '') ~ '\\n' }}"
+    "{% set high_keys = ['temperature','native_temperature','temperature_high','native_temperature_high','high_temperature','max_temperature','temperature_max','temp_high','max_temp','high'] %}"
+    "{% set low_keys = ['templow','native_templow','temperature_low','native_temperature_low','low_temperature','min_temperature','temperature_min','temp_low','min_temp','low'] %}"
     "{% set ns = namespace(count=0, last='') %}"
     "{% for item in forecasts | sort(attribute='datetime') %}"
     "{% set dt = as_datetime(item.get('datetime')) %}"
     "{% if dt is not none %}{% set date = as_local(dt).date() | string %}"
     "{% if date >= today|string and date != ns.last and ns.count < 7 %}"
     "{% set ns.last = date %}{% set ns.count = ns.count + 1 %}"
-    "{% set high = item.get('temperature', item.get('native_temperature', '')) %}"
-    "{% set low = item.get('templow', item.get('native_templow', '')) %}"
+    "{% set values = namespace(high='', low='') %}"
+    "{% for key in high_keys %}{% if values.high == '' and item.get(key) is number %}{% set values.high = item[key] %}{% endif %}{% endfor %}"
+    "{% for key in low_keys %}{% if values.low == '' and item.get(key) is number %}{% set values.low = item[key] %}{% endif %}{% endfor %}"
     "{{ date ~ '|' ~ (item.get('condition', '') or '')[:32] | replace('|', '-') | replace('\\n', ' ') }}"
-    "{{ '|' ~ (high if high is number else '') ~ '|' ~ (low if low is number else '') }}"
+    "{{ '|' ~ values.high ~ '|' ~ values.low }}"
     "{% for key in ['precipitation_probability', 'precipitation', 'wind_speed', 'humidity'] %}"
     "{% set value = item.get(key) %}{{ '|' ~ (value if value is number else '') }}{% endfor %}{{ '\\n' }}"
     "{% endif %}{% endif %}{% endfor %}";
