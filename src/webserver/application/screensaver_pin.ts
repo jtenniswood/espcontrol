@@ -82,6 +82,7 @@ export function buildScreensaverPinSettings(
     if (!busy) enabled.checked = !!info?.enabled;
     enabled.disabled = save.disabled = clear.disabled = pin.disabled = busy;
     clear.disabled = busy || !info?.has_pin;
+    pin.placeholder = info?.has_pin ? "••••••••" : "1–16 digits";
     status.textContent = info?.has_pin ? "PIN saved. Leave the field blank to keep it." : "No PIN set. Touchscreen PIN protection is inactive.";
   }
   async function update(settings: { enabled: boolean; pin?: string }): Promise<void> {
