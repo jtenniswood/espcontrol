@@ -367,6 +367,19 @@ script:
       - lvgl.widget.hide: dim_screensaver_touch_guard
       - lambda: |-
           image_card_suspend_pipeline();
+          id(camera_screensaver_downloaded_image)->set_animation_callbacks([]() {
+            return id(camera_screensaver_transition_generation) != 0 &&
+                   id(espcontrol_app).display().transition_is_current(
+                     id(camera_screensaver_transition_generation), espcontrol::DisplayMode::CAMERA) &&
+                   !id(camera_screensaver_entity_unavailable) &&
+                   id(camera_screensaver_image_available) &&
+                   !lv_obj_has_flag(id(camera_screensaver), LV_OBJ_FLAG_HIDDEN) &&
+                   !lv_obj_has_flag(id(camera_screensaver_image), LV_OBJ_FLAG_HIDDEN);
+          }, []() {
+            lv_obj_invalidate(id(camera_screensaver_image));
+          }, []() {
+            return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::CAMERA);
+          }, true);
       - globals.set:
           id: camera_screensaver_transition_generation
           value: !lambda 'return static_cast<uint32_t>(generation);'

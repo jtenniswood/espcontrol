@@ -57,8 +57,9 @@ side exceeding 1,024 pixels, and have no more than 512 frames per playthrough.
 Frame delays are honoured with a minimum of 100 ms;
 large images may play more slowly. Resizing yields between output batches,
 including when a small GIF is enlarged. Optional GIF text blocks are skipped;
-their text is not rendered. Camera and Cover Art screensavers show a still
-frame from GIFs. Memory availability can also limit loading, especially on the
+their text is not rendered. The Camera screensaver plays animated GIFs and
+shares the expanded animation slot; the Cover Art screensaver shows a still
+frame. Memory availability can also limit loading, especially on the
 4-inch S3.
 
 If your Home Assistant instance uses a custom port, open **Settings > System > Home Assistant Settings** and set **Home Assistant Port** to match it. Camera and image cards use this port when downloading snapshots.
