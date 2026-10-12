@@ -1,6 +1,6 @@
 import { state } from "../state/app_instance";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
-import { PREVIEW_THEME_COLORS, previewEffectiveTheme } from "../state/preview_theme";
+import { PREVIEW_THEME_COLORS, defaultCardBackgroundColor, previewEffectiveTheme } from "../state/preview_theme";
 import { configOptionValue, lighterCardColor } from "../model/config_primitives";
 import { escHtml } from "./ui_primitives";
 import {
@@ -24,10 +24,6 @@ import type { ControlsShellFeature } from "./controls_shell";
 import type { GridFeature } from "./grid";
 import type { ButtonSettingsSelectionFeature } from "./button_settings_selection";
 
-const SENSOR_SURFACE_CARD_TYPES: ReadonlySet<string> = new Set([
-    "sensor", "local_sensor", "door_window", "presence", "weather",
-    "weather_forecast", "calendar", "clock", "timezone",
-]);
 export interface PreviewRenderDependencies {
     readonly updateClockBarItemUi: () => void;
     readonly document: Document;
@@ -158,9 +154,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 }
                 var iconName: any = resolveIcon(b);
                 var label: any = b.label || b.entity || "Configure";
-                var color: any = SENSOR_SURFACE_CARD_TYPES.has(b.type || "")
-                    ? previewColors.surfaceSensor
-                    : previewColors.surfaceCard;
+                var color: any = defaultCardBackgroundColor(b.type || "", state);
                 var previewTypeDef: any = dependencies.cards.definitions[b.type || ""] || null;
                 if (previewTypeDef && c.isSub && !buttonTypeRegistryValue(previewTypeDef, "allowInSubpage", false)) {
                     previewTypeDef = null;

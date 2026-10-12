@@ -15,6 +15,16 @@ export const PREVIEW_THEME_COLORS = {
   },
 } as const;
 
+const SENSOR_SURFACE_CARD_TYPES: ReadonlySet<string> = new Set([
+  "sensor", "local_sensor", "door_window", "presence", "weather",
+  "weather_forecast", "calendar", "clock", "timezone",
+]);
+
+export function defaultCardBackgroundColor(type: string, state: Pick<AppState, "themeMode" | "themeActive">): string {
+  const theme = PREVIEW_THEME_COLORS[previewEffectiveTheme(state)];
+  return SENSOR_SURFACE_CARD_TYPES.has(type) ? theme.surfaceSensor : theme.surfaceCard;
+}
+
 export function previewEffectiveTheme(state: Pick<AppState, "themeMode" | "themeActive"> | undefined): "Dark" | "Light" {
   if (!state) return "Dark";
   if (state.themeMode === "Dark" || state.themeMode === "Light") return state.themeMode;

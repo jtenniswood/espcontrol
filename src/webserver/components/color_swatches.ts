@@ -4,7 +4,7 @@ const COLOR_PRESETS: ReadonlyArray<readonly [string, string]> = [
     ["EA3323", "Red"], ["D83462", "Pink"], ["8F28AB", "Purple"], ["6036B2", "Deep purple"], ["3C49A5", "Indigo"],
     ["64AD54", "Green"], ["429471", "Teal"], ["54B7C8", "Cyan"], ["3E8AC7", "Sky blue"], ["3C64DE", "Blue"],
     ["AAC93F", "Lime"], ["D8D245", "Yellow green"], ["EED146", "Yellow"], ["FF8C00", "Orange"], ["DA5125", "Deep orange"],
-    ["2B2A2F", "Dark grey"], ["53515A", "Medium dark grey"], ["898890", "Grey"], ["BEBEC2", "Light grey"], ["FFFFFF", "White"],
+    ["212121", "Dark grey"], ["313131", "Medium dark grey"], ["7B797F", "Grey"], ["F5F5F5", "Light grey"], ["FFFFFF", "White"],
 ];
 
 export const COLOR_SWATCH_STYLES =
@@ -15,7 +15,7 @@ export const COLOR_SWATCH_STYLES =
     ".sp-card-color-check{display:none;font-size:20px;line-height:1;font-weight:700}" +
     ".sp-card-color-preset[aria-pressed=true] .sp-card-color-check{display:block}";
 
-export function createColorSwatches(value: string, onChange: (hex: string) => void, label: string) {
+export function createColorSwatches(value: string | (() => string), onChange: (hex: string) => void, label: string) {
     const grid = document.createElement("div");
     grid.className = "sp-card-color-presets";
     grid.setAttribute("role", "group");
@@ -44,8 +44,9 @@ export function createColorSwatches(value: string, onChange: (hex: string) => vo
         return swatch;
     }
 
-    function syncColor(value: string) {
-        const selected = value.trim().replace(/^#/, "").toUpperCase();
+    function syncColor(nextValue?: string) {
+        const currentValue = nextValue ?? (typeof value === "function" ? value() : value);
+        const selected = currentValue.trim().replace(/^#/, "").toUpperCase();
         // Keep a saved custom colour available, including values received after
         // construction. Replace that extra swatch instead of growing the grid.
         if (/^[0-9A-F]{6}$/.test(selected) && !COLOR_PRESETS.some(([hex]) => hex === selected) &&
@@ -60,6 +61,6 @@ export function createColorSwatches(value: string, onChange: (hex: string) => vo
     }
 
     for (const [hex, name] of COLOR_PRESETS) grid.appendChild(createSwatch(hex, name));
-    syncColor(value);
+    syncColor();
     return Object.assign(grid, { _syncColor: syncColor });
 }

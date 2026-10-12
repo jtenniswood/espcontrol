@@ -2,6 +2,7 @@ import { state } from "../state/app_instance";
 import * as EspControlModel from "../model";
 import { configOptionValue, setCardColor } from "../model/config_primitives";
 import { createColorSwatches } from "../components/color_swatches";
+import { defaultCardBackgroundColor } from "../state/preview_theme";
 import { applySpans, CARD_SIZE_SINGLE, clearSpans } from "../model/grid";
 import { iconSlug, mdiIcon, textSpan } from "./ui_primitives";
 import type { CardEditorDraftController } from "../features/card_editor_draft_controller";
@@ -140,6 +141,7 @@ export function createButtonSettingsFeature(
         return true;
     }
     function renderButtonSettings(this: any, forceOpen?: any) {
+        els.cardColorPresets = null;
         var container: any = els.buttonSettings;
         container.innerHTML = "";
         var settingsModal: any = els.settingsOverlay ? els.settingsOverlay.querySelector(".sp-settings-modal") : null;
@@ -833,11 +835,14 @@ export function createButtonSettingsFeature(
             cardColorEditor.className = "sp-card-color-editor";
             function saveCardColor(this: any, hex?: any) {
                 b.options = setCardColor(b.options, hex);
-                presetGrid._syncColor(configOptionValue(b.options, "card_off_color"));
+                presetGrid._syncColor();
                 saveField("options", b.options);
                 renderPreview();
             }
-            var presetGrid = createColorSwatches(configOptionValue(b.options, "card_off_color"), saveCardColor, "Card colour presets");
+            var presetGrid = createColorSwatches(() =>
+                configOptionValue(b.options, "card_off_color") || defaultCardBackgroundColor(b.type || "", state),
+                saveCardColor, "Card colour presets");
+            els.cardColorPresets = presetGrid;
             cardColorEditor.appendChild(presetGrid);
             var resetCardColors: any = createActionButton("sp-icon-button sp-card-header-action", "", "restore", "Reset colours to defaults");
             resetCardColors.title = "Reset colours";

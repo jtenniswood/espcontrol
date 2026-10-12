@@ -4,6 +4,8 @@ import { previewEffectiveTheme } from "../state/preview_theme";
 
 export function syncThemeSettingsUi(state: AppState, runtime: UiRuntimeState): void {
   const els = runtime.els;
+  if (els.cardColorPresets)
+    els.cardColorPresets._syncColor();
   const buttons = els.setThemeModeButtons || {};
   for (const mode of ["Dark", "Light", "Auto"]) {
     const button = buttons[mode];
