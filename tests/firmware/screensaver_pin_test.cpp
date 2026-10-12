@@ -6,7 +6,55 @@
 #include "pin_keypad_order.h"
 #include "display_mode_controller.h"
 
+void invalid_records_can_be_replaced() {
+  struct Record { uint32_t version{2}; char pin[17]{"0042"}; uint8_t enabled{1}; uint8_t randomize{0}; };
+  static_assert(sizeof(Record) == 24);
+  auto bytes = [](const Record &record) {
+    const auto *first = reinterpret_cast<const uint8_t *>(&record);
+    return std::vector<uint8_t>(first, first + sizeof(record));
+  };
+  std::vector<std::vector<uint8_t>> invalid;
+  Record record;
+  record.version = 99; invalid.push_back(bytes(record));
+  record = {}; record.enabled = 2; invalid.push_back(bytes(record));
+  record = {}; record.randomize = 2; invalid.push_back(bytes(record));
+  record = {}; record.pin[1] = 'x'; invalid.push_back(bytes(record));
+  record = {}; std::memset(record.pin, '1', sizeof(record.pin)); invalid.push_back(bytes(record));
+  record = {};
+  auto truncated = bytes(record); truncated.pop_back(); invalid.push_back(truncated);
+  auto oversized = bytes(record); oversized.push_back(0); invalid.push_back(oversized);
+  for (const auto &blob : invalid) {
+    identity_flash = blob;
+    espcontrol::ScreensaverPin recovered;
+    recovered.setup();
+    assert(recovered.ready() && !recovered.has_pin() && !recovered.enabled() && !recovered.locked());
+    assert(!recovered.randomize_keypad());
+    std::string replacement = "9876";
+    assert(recovered.save(true, &replacement));
+    espcontrol::ScreensaverPin rebooted;
+    rebooted.setup();
+    assert(rebooted.ready() && rebooted.locked() && rebooted.submit(replacement));
+  }
+  read_error = ESP_ERR_NVS_TYPE_MISMATCH;
+  espcontrol::ScreensaverPin wrong_type;
+  wrong_type.setup();
+  assert(wrong_type.ready() && !wrong_type.has_pin());
+  read_error = 2; // Genuine NVS read failure keeps writes unavailable.
+  espcontrol::ScreensaverPin read_failed;
+  read_failed.setup();
+  std::string code = "0042";
+  assert(!read_failed.ready() && !read_failed.save(true, &code));
+  read_error = ESP_OK;
+  fail_open = true;
+  espcontrol::ScreensaverPin open_failed;
+  open_failed.setup();
+  assert(!open_failed.ready() && !open_failed.save(true, &code));
+  fail_open = false;
+  identity_flash.clear();
+}
+
 int main() {
+  invalid_records_can_be_replaced();
   using espcontrol::ScreensaverPin;
   ScreensaverPin pin;
   pin.setup();

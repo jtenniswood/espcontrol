@@ -6,6 +6,8 @@
 struct ScreensaverPinUi {
   lv_obj_t *overlay{nullptr};
   lv_obj_t *label{nullptr};
+  lv_coord_t screen_w{0};
+  lv_coord_t screen_h{0};
   std::string entry;
   bool touch_blocked{false};
 };
@@ -17,6 +19,12 @@ inline void screensaver_pin_hide() {
   auto &ui = screensaver_pin_ui();
   if (ui.overlay) lv_obj_del(ui.overlay);
   ui = {};
+}
+inline void screensaver_pin_update_entry_label() {
+  auto &ui = screensaver_pin_ui();
+  std::string masked;
+  for (size_t i = 0; i < ui.entry.size(); ++i) masked += "\u2022";
+  lv_label_set_display_text(ui.label, ui.entry.empty() ? espcontrol_i18n("Enter Pin") : masked.c_str());
 }
 inline std::function<void()> &return_screen_lock_view() {
   static std::function<void()> action;
@@ -65,9 +73,7 @@ inline void screensaver_pin_key_cb(lv_event_t *event) {
     ui.entry.clear();
   }
   else if (ui.entry.size() < 16 && key[0] >= '0' && key[0] <= '9') ui.entry += key[0];
-  std::string masked;
-  for (size_t i = 0; i < ui.entry.size(); ++i) masked += "\u2022";
-  lv_label_set_display_text(ui.label, ui.entry.empty() ? espcontrol_i18n("Enter Pin") : masked.c_str());
+  screensaver_pin_update_entry_label();
 }
 inline void screensaver_pin_guard_cb(lv_event_t *) {
   if (screensaver_pin_ui().touch_blocked) return;
@@ -91,8 +97,16 @@ inline void screensaver_pin_refresh(bool active, const lv_font_t *label_font,
   // The tap that woke a dark screen must finish before it can enter a digit.
   ui.touch_blocked = touch_blocked;
   const bool keypad_requested = espcontrol::screensaver_pin().keypad_requested();
-  if (ui.overlay && (ui.label != nullptr) == keypad_requested) return;
+  auto *display = lv_disp_get_default();
+  const lv_coord_t screen_w = display ? lv_disp_get_hor_res(display) : 480;
+  const lv_coord_t screen_h = display ? lv_disp_get_ver_res(display) : 480;
+  if (ui.overlay && (ui.label != nullptr) == keypad_requested &&
+      ui.screen_w == screen_w && ui.screen_h == screen_h) return;
+  std::string entry = ui.label && keypad_requested ? ui.entry : "";
   if (ui.overlay) screensaver_pin_hide();
+  ui.entry = std::move(entry);
+  ui.screen_w = screen_w;
+  ui.screen_h = screen_h;
   ui.touch_blocked = touch_blocked;
   // The system layer is above clock, artwork, status icons, and all control
   // modals. Its full-screen clickable surface consumes every underlying touch.
@@ -118,4 +132,5 @@ inline void screensaver_pin_refresh(bool active, const lv_font_t *label_font,
   ui.label = pin_keypad_create(panel, layout, label_font, key_font, icon_font,
                               100, screensaver_pin_key_cb, espcontrol::screensaver_pin().randomize_keypad(), true,
                               prompt_top);
+  screensaver_pin_update_entry_label();
 }

@@ -25,18 +25,21 @@ void ScreensaverPin::setup() {
   size_t size = sizeof(record);
   const auto result = nvs_get_blob(handle, "settings", &record, &size);
   nvs_close(handle);
-  if (result == ESP_OK) {
-    if (size != sizeof(record) || (record.version != 1 && record.version != 2) || record.enabled > 1 ||
-        (record.version == 2 && record.randomize_keypad > 1) ||
-        std::memchr(record.pin, 0, sizeof(record.pin)) == nullptr ||
-        !valid_pin(record.pin)) return;
-    pin_ = record.pin;
-    enabled_ = record.enabled && !pin_.empty();
-    // Version 1 had no layout preference; use the current fixed-order default.
-    randomize_keypad_ = record.version == 2 && record.randomize_keypad;
-  } else if (result != ESP_ERR_NVS_NOT_FOUND) {
+  if (result != ESP_OK && result != ESP_ERR_NVS_NOT_FOUND &&
+      result != ESP_ERR_NVS_INVALID_LENGTH && result != ESP_ERR_NVS_TYPE_MISMATCH) {
     return;
   }
+  const bool valid_record = result == ESP_OK && size == sizeof(record) &&
+      (record.version == 1 || record.version == 2) && record.enabled <= 1 &&
+      (record.version == 1 || record.randomize_keypad <= 1) &&
+      std::memchr(record.pin, 0, sizeof(record.pin)) != nullptr && valid_pin(record.pin);
+  // Bad/unknown records must remain replaceable through the settings API.
+  // Genuine storage failures still leave the service unavailable.
+  if (!valid_record) record = PinRecord{};
+  pin_ = record.pin;
+  enabled_ = record.enabled && !pin_.empty();
+  // Version 1 had no layout preference; use the current fixed-order default.
+  randomize_keypad_ = record.version == 2 && record.randomize_keypad;
   ready_ = true;
   locked_ = enabled_ && !pin_.empty();
 }

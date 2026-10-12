@@ -11,6 +11,7 @@ struct MemoryStorage : Storage {
       {{"esphome", "820818174"}, "true"}, {{"esphome", "layout"}, "legacy"}, {{"esphome", "volume"}, "0.9"},
       {{"espcontrol_id", "identity"}, "old panel name"},
       {{"espcontrol_cfg", "slot_a"}, "old"}, {{"espcontrol_cfg", "slot_b"}, "older"},
+      {{"espcontrol_pin", "settings"}, "saved PIN and enabled state"},
       {{"espcontrol_rst", "journal"}, "intent"}, {{"wifi", "platform"}, "network"}};
   bool slot_a = true, slot_b = true;
   int calls = 0, fail_at = -1;
@@ -69,6 +70,7 @@ void interrupted_resets_resume(Mode mode) {
       assert(s.records.count({"esphome", "820818174"}) == (mode == Mode::CUSTOMIZATION ? 1 : 0));
       if (mode == Mode::CUSTOMIZATION) assert(s.records.at({"esphome", "88491487"}) == "wifi secret");
       assert(!s.records.count({"espcontrol_id", "identity"}));
+      assert(!s.records.count({"espcontrol_pin", "settings"}));
       assert(!s.records.count({"esphome", "layout"}) && !s.records.count({"espcontrol_cfg", "slot_b"}));
     }
   }

@@ -561,10 +561,14 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         setSsMode(ssMode);
         const pinBadge = statusBadge("PIN protection on");
         pinBadge.className = "sp-card-badge sp-hidden";
-        const pinSettings = buildScreensaverPinSettings(document, resetAwareFetch, fields, pinBadge);
+        var screensaverPinCard: any = null;
+        const pinSettings = buildScreensaverPinSettings(document, resetAwareFetch, fields, pinBadge, {
+            onVisibilityChange: visible => { if (screensaverPinCard) screensaverPinCard.hidden = !visible; },
+        });
         els.syncScreensaverPinUi = pinSettings.refresh;
         var screensaverCard: any = makeCollapsibleCard("Screensaver", ssBody, true, ssBadge);
-        var screensaverPinCard: any = makeCollapsibleCard("Pin Protection", pinSettings.body, true, pinBadge);
+        screensaverPinCard = makeCollapsibleCard("Pin Protection", pinSettings.body, true, pinBadge);
+        screensaverPinCard.hidden = pinSettings.body.hidden;
         var idleBody: any = document.createElement("div");
         idleBody.appendChild(fieldLabel("Return Home After"));
         var hsSelect: any = document.createElement("select");

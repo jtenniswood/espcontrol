@@ -1,4 +1,4 @@
-import { clearScreensaverPinForRestore, screensaverPinRequest } from "../../src/webserver/application/screensaver_pin";
+import { clearScreensaverPinForRestore, loadScreensaverPinSettings, screensaverPinRequest } from "../../src/webserver/application/screensaver_pin";
 
 function assert(value: unknown, message: string): asserts value { if (!value) throw new Error(message); }
 export async function runScreensaverPinTests(): Promise<void> {
@@ -45,4 +45,28 @@ export async function runScreensaverPinTests(): Promise<void> {
   const before = calls.length;
   await clearScreensaverPinForRestore(request);
   assert(calls.length === before + 1, "legacy restore does not post unsupported settings");
+
+  const originalTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = ((callback: () => void) => { queueMicrotask(callback); return 0; }) as typeof setTimeout;
+  try {
+    for (const statuses of [[404, 503, 200], [404, 404, 404, 404], [503, 503, 503, 503]]) {
+      let attempts = 0, pinReads = 0;
+      const bootRequest = (async (url: string) => {
+        if (url === "/api/v1/screensaver-pin") {
+          pinReads++;
+          return Response.json({ enabled: false, has_pin: false });
+        }
+        const status = statuses[attempts++];
+        assert(status !== undefined, "capability discovery stays within its retry limit");
+        return status === 200 ? Response.json({ screensaver_pin: { version: 1 } })
+          : new Response("Not ready", { status });
+      }) as typeof fetch;
+      let failed = false, info = null;
+      try { info = await loadScreensaverPinSettings(bootRequest); } catch { failed = true; }
+      assert(attempts === statuses.length, "startup errors use bounded retries");
+      if (statuses.at(-1) === 200) assert(info && pinReads === 1 && !failed, "startup 404/503 recovers PIN controls");
+      else if (statuses[0] === 404) assert(info === null && pinReads === 0 && !failed, "legacy 404 hides controls after retries");
+      else assert(failed && pinReads === 0, "persistent service failure remains an error");
+    }
+  } finally { globalThis.setTimeout = originalTimeout; }
 }

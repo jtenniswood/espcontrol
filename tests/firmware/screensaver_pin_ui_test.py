@@ -25,6 +25,10 @@ stubs = r'''
 #include "network_status_layout.h"
 using lv_coord_t = int;
 struct lv_font_t {};
+struct lv_disp_t { int width{720}, height{1280}; } display;
+lv_disp_t *lv_disp_get_default() { return &display; }
+int lv_disp_get_hor_res(lv_disp_t *value) { return value->width; }
+int lv_disp_get_ver_res(lv_disp_t *value) { return value->height; }
 struct lv_event_t { const char *key; };
 struct lv_obj_t { lv_obj_t *parent{}; bool full_screen{}; unsigned flags{}; std::string text; void (*on_release)(lv_event_t *){}; const lv_font_t *font{}; int align{}, text_align{}, x{}, y{}; };
 struct ControlModalLayout { int panel_w{720}; int inset{18}; };
@@ -47,6 +51,7 @@ std::vector<void (*)(void *)> deferred;
 bool rendered_randomize = true;
 bool rendered_center_prompt = false;
 int rendered_prompt_top = 0;
+int rendered_keypad_width = 0;
 lv_obj_t *rendered_title = nullptr;
 lv_obj_t *lv_layer_sys() { return &system_layer; }
 lv_obj_t *lv_obj_create(lv_obj_t *parent) {
@@ -71,7 +76,7 @@ void lv_obj_add_event_cb(lv_obj_t *obj, void (*callback)(lv_event_t *), unsigned
   assert(code == LV_EVENT_RELEASED); obj->on_release = callback;
 }
 void control_modal_style_overlay(lv_obj_t *obj) { obj->full_screen = true; }
-ControlModalLayout control_modal_calc_layout(int) { return {}; }
+ControlModalLayout control_modal_calc_layout(int) { ControlModalLayout layout; layout.panel_w = display.width; return layout; }
 int control_modal_card_radius(lv_obj_t *) { return 0; }
 void control_modal_style_panel(lv_obj_t *, int) {}
 void control_modal_apply_panel_layout(lv_obj_t *, lv_obj_t *, const ControlModalLayout &, int) {}
@@ -93,12 +98,13 @@ lv_obj_t *lv_obj_get_parent(lv_obj_t *obj) { return obj->parent; }
 void set_card_checked_state(lv_obj_t *, bool) {}
 void lv_label_set_display_text(lv_obj_t *obj, const char *text) { obj->text = text; }
 void lv_async_call(void (*callback)(void *), void *) { deferred.push_back(callback); }
-lv_obj_t *pin_keypad_create(lv_obj_t *panel, const ControlModalLayout &, const lv_font_t *,
+lv_obj_t *pin_keypad_create(lv_obj_t *panel, const ControlModalLayout &layout, const lv_font_t *,
                            const lv_font_t *, const lv_font_t *, int, void (*)(lv_event_t *), bool randomize,
                            bool center_prompt, int prompt_top) {
   rendered_randomize = randomize;
   rendered_center_prompt = center_prompt;
   rendered_prompt_top = prompt_top;
+  rendered_keypad_width = layout.panel_w;
   return lv_obj_create(panel);
 }
 '''
@@ -259,6 +265,26 @@ int main() {
   assert(!screen_lock_enabled() && !ui.overlay);
   screen_lock_activate(true);
   assert(screensaver_calls == 1); // A card without a PIN cannot lock or start sleep.
+
+  // Live rotation rebuilds the keypad in the new viewport without losing entry.
+  assert(pin.save(false, &code) && pin.lock());
+  screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false);
+  screensaver_pin_key_cb(&zero);
+  int before_rotation = deleted;
+  display.width = 1280; display.height = 720;
+  screensaver_pin_refresh(true, nullptr, nullptr, nullptr, true);
+  assert(deleted == before_rotation + 1 && rendered_keypad_width == 1280);
+  assert(ui.screen_w == 1280 && ui.screen_h == 720 && pin.locked());
+  assert(ui.entry == "0" && ui.label->text == "\u2022" && ui.touch_blocked);
+  display.width = 720; display.height = 1280;
+  screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false);
+  assert(deleted == before_rotation + 2 && rendered_keypad_width == 720);
+  assert(ui.entry == "0" && !ui.touch_blocked);
+  screensaver_pin_key_cb(&four);
+  screensaver_pin_key_cb(&submit);
+  deferred.front()(nullptr); deferred.clear();
+  assert(!pin.locked() && !ui.overlay);
+  assert(pin.save(false, &empty));
 
   // Settings follows the saved PIN even when automatic wake protection is off.
   lv_obj_t settings_page, settings_lock;

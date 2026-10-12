@@ -6571,6 +6571,22 @@ async function assertScreensaverPinSettings(browser) {
     assert.strictEqual(pin.pin, "");
     assert.strictEqual(pin.enabled, false);
   } finally { await context.close(); }
+
+  const legacyContext = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(legacyContext, testCase.slug);
+  const legacyPage = await legacyContext.newPage();
+  await installFakeEventSource(legacyPage);
+  try {
+    await legacyPage.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await legacyPage.waitForSelector("#sp-app");
+    await legacyPage.getByRole("tab", { name: "Settings" }).click();
+    await legacyPage.waitForFunction(() => {
+      const input = document.querySelector("#sp-set-screensaver-pin");
+      return input && input.closest(".card").hidden;
+    });
+    const legacyCard = legacyPage.locator("#sp-settings .card").filter({ has: legacyPage.locator("#sp-set-screensaver-pin") });
+    assert.strictEqual(await legacyCard.isVisible(), false, "unsupported firmware hides the whole PIN panel");
+  } finally { await legacyContext.close(); }
 }
 
 (async function main() {

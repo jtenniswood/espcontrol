@@ -46,11 +46,11 @@ export async function clearScreensaverPinForRestore(request: typeof fetch): Prom
 export async function loadScreensaverPinSettings(request: typeof fetch): Promise<ScreensaverPinInfo | null> {
   for (let attempt = 0; attempt < 4; attempt++) {
     const response = await request("/api/v1/capabilities", { credentials: "include", cache: "no-store" });
-    if (response.status === 404) return null;
-    if (response.status === 503 && attempt < 3) {
+    if ((response.status === 404 || response.status === 503) && attempt < 3) {
       await new Promise(resolve => setTimeout(resolve, 2000));
       continue;
     }
+    if (response.status === 404) return null;
     if (!response.ok) throw new Error("Could not read PIN support. Check the connection and try again.");
     const capabilities = await response.json();
     return capabilities?.screensaver_pin?.version === 1 ? screensaverPinRequest(request) : null;
@@ -62,7 +62,7 @@ export function buildScreensaverPinSettings(
   document: Document, request: typeof fetch,
   fields: Pick<ControlsFieldsFeature, "toggleRow" | "fieldLabel" | "textInput">,
   badge: HTMLElement | null,
-  options: { idPrefix?: string; requirePin?: boolean } = {},
+  options: { idPrefix?: string; requirePin?: boolean; onVisibilityChange?: (visible: boolean) => void } = {},
 ): { body: HTMLElement; refresh: () => Promise<void>; pinInput: HTMLInputElement; hasSavedPin: () => boolean } {
   const idPrefix = options.idPrefix ?? "sp-set-screensaver-pin";
   const body = document.createElement("div");
@@ -113,6 +113,10 @@ export function buildScreensaverPinSettings(
   let loading = true;
   let pendingSetup = false;
   let revision = 0;
+  function setVisible(visible: boolean): void {
+    body.hidden = !visible;
+    options.onVisibilityChange?.(visible);
+  }
   function showError(message: string): void {
     errorNotice.textContent = message;
     errorNotice.hidden = !message;
@@ -185,7 +189,7 @@ export function buildScreensaverPinSettings(
       info = loadedInfo;
       loading = false;
       pendingSetup = false;
-      body.hidden = info === null && !options.requirePin;
+      setVisible(info !== null || !!options.requirePin);
       pin.value = "";
       sync();
       pin.dispatchEvent(new Event("change"));
@@ -194,7 +198,7 @@ export function buildScreensaverPinSettings(
       if (readRevision !== revision) return;
       loading = false;
       badge?.classList.add("sp-hidden");
-      body.hidden = false;
+      setVisible(true);
       enabled.disabled = randomize.disabled = save.disabled = clear.disabled = pin.disabled = true;
       showError((error as Error).message);
     }
@@ -204,7 +208,7 @@ export function buildScreensaverPinSettings(
     revision++;
     loading = false;
     pendingSetup = false;
-    body.hidden = false;
+    setVisible(true);
     sync();
     pin.dispatchEvent(new Event("change"));
   });
