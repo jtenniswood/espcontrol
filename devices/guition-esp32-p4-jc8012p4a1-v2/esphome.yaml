@@ -12,6 +12,8 @@
 substitutions:
   name: "your-device-name"
   friendly_name: "Your Device Name"
+  # Set to "true" to include the onboard speaker media player.
+  enable_speaker_output: "false"
 
 # ---------------------------------------------------------------------------
 # WiFi credentials (stored in secrets.yaml)

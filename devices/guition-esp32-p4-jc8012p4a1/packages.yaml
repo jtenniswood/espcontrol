@@ -90,6 +90,8 @@ substitutions:
   battery_status_hide_code: |-
     lv_obj_add_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);
   image_card_slot_capacity: "6"
+  enable_speaker_output: "false"
+  speaker_output_package_suffix: ${ "_enabled" if enable_speaker_output == "true" else "_disabled" }
 
 esphome:
   build_flags:
@@ -150,6 +152,7 @@ packages:
   memory_diag:     !include ../../common/addon/memory_diagnostics.yaml
   fw_update:       !include ../../common/addon/firmware_update.yaml
   battery:         !include device/battery.yaml
+  speaker_output:  !include ../../common/device/speaker_output_jc8012p4a1${speaker_output_package_suffix}.yaml
 
   # ---------------------------------------------------------------------------
   # Screens (loading must be first page for LVGL startup)

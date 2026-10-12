@@ -1,0 +1,2 @@
+# Speaker playback is excluded from default JC8012P4A1 builds.
+substitutions: {}
