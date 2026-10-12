@@ -665,3 +665,7 @@ target_compile_features(weather_daily_ui_test PRIVATE cxx_std_17)
 target_compile_options(weather_daily_ui_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(weather_daily_ui_test PRIVATE ../../components/espcontrol)
 add_test(NAME weather_daily_ui_test COMMAND weather_daily_ui_test)
+
+add_test(NAME weather_daily_requests_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/weather_daily_requests_test.py)

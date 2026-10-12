@@ -2659,7 +2659,7 @@
         },
         "preview": {
           "available": true,
-          "fingerprint": "2fd6d3bf08d3c1d8"
+          "fingerprint": "41fe3d70c24bcd4b"
         }
       },
       "firmware": {
@@ -2667,14 +2667,12 @@
       },
       "lifecycle": {
         "subscriptions": [
-          "state",
-          "attributes",
           "action_response"
         ],
         "actions": [
-          "none"
+          "modal"
         ],
-        "modalOwner": "none"
+        "modalOwner": "weather"
       }
     },
     {
@@ -2692,7 +2690,7 @@
         },
         "preview": {
           "available": true,
-          "fingerprint": "39e3dc19b6902dae"
+          "fingerprint": "78c9c357d72263ad"
         }
       },
       "firmware": {
@@ -2700,14 +2698,12 @@
       },
       "lifecycle": {
         "subscriptions": [
-          "state",
-          "attributes",
           "action_response"
         ],
         "actions": [
-          "none"
+          "modal"
         ],
-        "modalOwner": "none"
+        "modalOwner": "weather"
       }
     },
     {
@@ -2725,7 +2721,7 @@
         },
         "preview": {
           "available": true,
-          "fingerprint": "713831fc1312da13"
+          "fingerprint": "100979199b6be0a3"
         }
       },
       "firmware": {
@@ -2924,14 +2920,12 @@
       },
       "lifecycle": {
         "subscriptions": [
-          "state",
-          "attributes",
           "action_response"
         ],
         "actions": [
-          "none"
+          "modal"
         ],
-        "modalOwner": "none"
+        "modalOwner": "weather"
       }
     },
     {

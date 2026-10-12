@@ -242,6 +242,7 @@ const ICON_GROUPS = {
   'Sun': 'Weather',
   'Weather Cloudy': 'Weather',
   'Weather Cloudy Alert': 'Weather',
+  'Weather Cloudy Clock': 'Weather',
   'Weather Dust': 'Weather',
   'Weather Fog': 'Weather',
   'Weather Hail': 'Weather',

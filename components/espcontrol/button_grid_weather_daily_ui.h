@@ -163,20 +163,30 @@ inline void weather_daily_card_resized(lv_event_t *event) {
 inline void weather_daily_cleanup(lv_obj_t *owner) {
   if (auto *card = weather_daily_card_for(owner)) lv_obj_del(card->root);
 }
+inline void weather_daily_reset_cards() {
+  // Delete old home and subpage roots before any replacement source is allocated.
+  // Their delete callbacks release sources, modal ownership and resize handlers.
+  while (!weather_daily_cards().empty()) lv_obj_del(weather_daily_cards().back()->root);
+}
+inline void weather_daily_unavailable_slot(BtnSlot &slot) {
+  lv_label_set_display_text(slot.text_lbl, espcontrol_i18n(std::string("Forecast unavailable")).c_str());
+  lv_obj_clear_flag(slot.text_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_label_set_display_text(slot.icon_lbl, weather_icon_for_state("unavailable"));
+  lv_obj_clear_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(slot.btn, LV_OBJ_FLAG_CLICKABLE);
+}
 inline void weather_daily_setup(BtnSlot &slot, const ParsedCfg &config,
                                 const DisplayProfile &display) {
-  if (config.entity.empty() || weather_daily_cards().size() >= 16) {
-    lv_label_set_display_text(slot.text_lbl, espcontrol_i18n(std::string("Forecast unavailable")).c_str());
-    lv_obj_clear_flag(slot.btn, LV_OBJ_FLAG_CLICKABLE); return;
+  if (!espcontrol::weather::entity_id_safe(config.entity) || weather_daily_cards().size() >= 16) {
+    weather_daily_unavailable_slot(slot); return;
   }
   auto *source = weather_daily_acquire_source(config.entity);
   if (!source) {
-    lv_label_set_display_text(slot.text_lbl, espcontrol_i18n(std::string("Forecast unavailable")).c_str());
-    lv_obj_clear_flag(slot.btn, LV_OBJ_FLAG_CLICKABLE);
+    weather_daily_unavailable_slot(slot);
     ESP_LOGW("weather_forecast", "Daily forecast source limit reached (8)"); return;
   }
   auto *card = new (std::nothrow) WeatherDailyCard;
-  if (!card) { weather_daily_release_source(source); return; }
+  if (!card) { weather_daily_release_source(source); weather_daily_unavailable_slot(slot); return; }
   card->owner = slot.btn; card->source = source; card->caption = slot.text_lbl;
   card->view = config.precision == "today" ? WeatherForecastView::TODAY
     : config.precision == "tomorrow" || config.type == "weather_forecast"
@@ -190,7 +200,7 @@ inline void weather_daily_setup(BtnSlot &slot, const ParsedCfg &config,
   if (!card->summary_font) card->summary_font = card->font;
   card->detail_font = display_volume_label_font(display, card->font);
   card->root = lv_obj_create(slot.btn);
-  if (!card->root) { weather_daily_release_source(source); delete card; return; }
+  if (!card->root) { weather_daily_release_source(source); delete card; weather_daily_unavailable_slot(slot); return; }
   lv_obj_set_style_bg_opa(card->root, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(card->root, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(card->root, 0, LV_PART_MAIN);

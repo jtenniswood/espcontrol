@@ -52,7 +52,7 @@ It records the pre-migration baseline; it does not move executable behaviour int
 | image | canonical | image | informationOnly, subscriptions, actions, modal, runtimeAllocation, subpage | image | image | IMAGE | 1 |
 | wifi_qr | canonical | wifi_qr | subscriptions, actions, modal, subpage | wifi_qr | wifi_qr | WIFI_QR | 2 |
 | wifi_qr_card | canonical | wifi_qr | subscriptions, actions, modal, subpage | wifi_qr_card | wifi_qr_card | WIFI_QR | 2 |
-| weather_forecast | accepted_legacy_input | weather | informationOnly, subscriptions, subpage | weather | weather_forecast | WEATHER | 1 |
+| weather_forecast | accepted_legacy_input | weather | informationOnly, subscriptions, actions, modal, runtimeAllocation, subpage | weather | weather_forecast | WEATHER | 1 |
 
 ## Runtime-only type decisions
 

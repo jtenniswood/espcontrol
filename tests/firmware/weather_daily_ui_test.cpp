@@ -7,6 +7,13 @@
 #include <vector>
 #include "button_grid_weather_daily_data.h"
 #include "icons.h"
+// Inject the two setup allocation failures without changing the production allocator.
+bool fail_nothrow_allocation=false, fail_lvgl_allocation=false;
+void *operator new(std::size_t size, const std::nothrow_t &) noexcept {
+  if (fail_nothrow_allocation) { fail_nothrow_allocation=false; return nullptr; }
+  try { return ::operator new(size); } catch (...) { return nullptr; }
+}
+void operator delete(void *ptr, const std::nothrow_t &) noexcept { ::operator delete(ptr); }
 struct lv_obj_t;
 struct lv_event_t { lv_obj_t *target; void *data; };
 using Callback = void (*)(lv_event_t *);
@@ -40,7 +47,7 @@ void *lv_event_get_target(lv_event_t *e) { return e->target; }
 void lv_obj_add_event_cb(lv_obj_t *obj, Callback cb, int code, void *data) { obj->events.push_back({cb,code,data}); }
 void lv_obj_remove_event_cb(lv_obj_t *obj, Callback cb) { auto &e=obj->events; e.erase(std::remove_if(e.begin(),e.end(),[cb](auto &b){return b.callback==cb;}),e.end()); }
 void emit(lv_obj_t *obj, int code) { const auto bindings=obj->events; for(auto &b:bindings) if(b.code==code){lv_event_t event{obj,b.data}; b.callback(&event);} }
-lv_obj_t *lv_obj_create(lv_obj_t *parent) { return new lv_obj_t(parent); }
+lv_obj_t *lv_obj_create(lv_obj_t *parent) { if(fail_lvgl_allocation){fail_lvgl_allocation=false;return nullptr;} return new lv_obj_t(parent); }
 lv_obj_t *lv_label_create(lv_obj_t *parent) { return lv_obj_create(parent); }
 lv_obj_t *lv_btn_create(lv_obj_t *parent) { return lv_obj_create(parent); }
 void lv_obj_del(lv_obj_t *obj);
@@ -328,6 +335,48 @@ int main(){
   modal_width=300;
   weather_daily_cleanup(wide_owner);lv_obj_del(wide_owner);
   assert(weather_daily_sources().empty() && lv_obj_t::live==0);
+
+  // Imported/unsafe entity IDs fail visibly without allocating a loading source.
+  for(const auto *entity:{"", "sensor.temperature", "weather.", "weather.bad.id", "weather.bad'", "weather.bad name"}) {
+    auto *owner=lv_obj_create(nullptr);BtnSlot slot{owner,lv_label_create(owner),lv_label_create(owner)};
+    lv_obj_add_flag(slot.icon_lbl,LV_OBJ_FLAG_HIDDEN);
+    weather_daily_setup(slot,{entity,""},{});
+    assert(slot.text_lbl->text=="Forecast unavailable" && slot.icon_lbl->text=="unavailable-icon");
+    assert(!(slot.icon_lbl->flags & LV_OBJ_FLAG_HIDDEN) && !(owner->flags & LV_OBJ_FLAG_CLICKABLE));
+    assert(weather_daily_cards().empty() && weather_daily_sources().empty());
+    lv_obj_del(owner);assert(lv_obj_t::live==0);
+  }
+  for(bool root_failure:{false,true}) {
+    auto *owner=lv_obj_create(nullptr);BtnSlot slot{owner,lv_label_create(owner),lv_label_create(owner)};
+    auto *source=weather_daily_acquire_source("weather.allocation"); // The next nothrow new belongs to the card.
+    assert(source && source->users==1);
+    lv_obj_add_flag(slot.icon_lbl,LV_OBJ_FLAG_HIDDEN);
+    if(root_failure)fail_lvgl_allocation=true;else fail_nothrow_allocation=true;
+    weather_daily_setup(slot,{"weather.allocation",""},{});
+    assert(!weather_daily_card_for(owner) && source->users==1);
+    assert(slot.text_lbl->text=="Forecast unavailable" && !(slot.icon_lbl->flags & LV_OBJ_FLAG_HIDDEN));
+    weather_daily_release_source(source);lv_obj_del(owner);
+    assert(lv_obj_t::live==0 && weather_daily_sources().empty());
+  }
+  // Replacing a full subpage with new main-screen entities must free the old cap first.
+  // All forecast modes share the eight-source cap; a ninth entity is unavailable.
+  for(int rebuild=0;rebuild<2;++rebuild) {
+    std::vector<lv_obj_t *> owners;
+    for(int i=0;i<9;++i) {
+      auto *owner=lv_obj_create(nullptr);owners.push_back(owner);
+      BtnSlot slot{owner,lv_label_create(owner),lv_label_create(owner)};
+      const std::string mode=i%3==0?"today":i%3==1?"tomorrow":"daily";
+      weather_daily_setup(slot,{"weather.rebuild_"+std::to_string(rebuild)+"_"+std::to_string(i),"",mode},{});
+      assert((weather_daily_card_for(owner)!=nullptr)==(i<8));
+      if(i==8)assert(slot.text_lbl->text=="Forecast unavailable");
+    }
+    assert(weather_daily_sources().size()==8 && weather_daily_cards().size()==8);
+    weather_daily_open_modal(weather_daily_card_for(owners[2])); // Reset also releases an open modal's reference.
+    weather_daily_reset_cards();
+    assert(weather_daily_sources().empty() && weather_daily_cards().empty() && ha_bindings.empty());
+    for(auto *owner:owners){assert(owner->events.empty());lv_obj_del(owner);}
+    assert(lv_obj_t::live==0);
+  }
 
   // Single-day cards select dates exactly and share the multi-day source.
   auto *daily_owner=lv_obj_create(nullptr);

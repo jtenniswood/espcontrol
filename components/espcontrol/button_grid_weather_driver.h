@@ -104,7 +104,9 @@ inline ModalTarget weather_driver_modal_target(
   ModalTarget target;
   target.entity = config.entity; target.kind = ControlModalKind::WEATHER_FORECAST;
   auto *card = weather_daily_card_for(button);
-  target.available = card && card->source;
+  target.available = card && card->source &&
+    (card->view == WeatherForecastView::DAILY ||
+     weather_daily_selected_day(*card) < card->source->forecast.count);
   if (card) target.open = [card]() { weather_daily_open_modal(card); };
   return target;
 }

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -26,6 +27,12 @@ struct Forecast {
   char today[11]{}, tomorrow[11]{};
   char temperature_unit[13]{}, precipitation_unit[13]{}, wind_unit[13]{};
 };
+inline bool entity_id_safe(const std::string &entity) {
+  if (entity.size() <= 8 || entity.compare(0, 8, "weather.") != 0) return false;
+  for (size_t i = 8; i < entity.size(); ++i)
+    if (!(std::isalnum(static_cast<unsigned char>(entity[i])) || entity[i] == '_')) return false;
+  return true;
+}
 inline bool valid_date(const std::string &value) {
   if (value.size() != 10 || value[4] != '-' || value[7] != '-') return false;
   for (size_t i = 0; i < 10; ++i)

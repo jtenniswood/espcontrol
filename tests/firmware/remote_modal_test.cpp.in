@@ -16,6 +16,8 @@ struct ParsedCfg {
 };
 using SubpageBtn = ParsedCfg;
 struct lv_obj_t;
+enum class WeatherForecastView { DAILY, TODAY, TOMORROW };
+struct ForecastSource { struct { size_t count = 2; } forecast; } forecast_source;
 struct Runtime {
   lv_obj_t *btn = nullptr;
   bool media_artwork = false;
@@ -27,7 +29,9 @@ struct Runtime {
   bool active = true;
   void *image = this;
   bool image_ready = true;
-  void *source = this;
+  ForecastSource *source = &forecast_source;
+  WeatherForecastView view = WeatherForecastView::DAILY;
+  size_t selected_day = 0;
   std::string source_url;
   std::string type;
   bool oscillation_known = true, direction_known = true;
@@ -119,6 +123,7 @@ OPEN(fan_preset_open, FAN_PRESET)
 OPEN(image_card_open_modal, IMAGE_CARD)
 OPEN(option_select_open_modal, OPTION_SELECT)
 OPEN(weather_daily_open_modal, WEATHER_FORECAST)
+size_t weather_daily_selected_day(const Runtime &card) { return card.selected_day; }
 Runtime *weather_daily_card_for(lv_obj_t *button) { return button ? button->runtime : nullptr; }
 void wifi_qr_open_modal(const ParsedCfg &, lv_obj_t *) { show(nullptr, ControlModalKind::WIFI_QR); }
 // Any accidental re-use of a command/click path must fail these tests.
@@ -200,6 +205,19 @@ int main() {
     assert(!espcontrol_can_open_modal("weather.home", true));
     configs["daily"].precision = "today";
     assert(!espcontrol_can_open_modal("weather.home", true));
+    runtime.source = &forecast_source;
+    for (const auto *mode : {"today", "tomorrow"}) {
+      configs["daily"].precision = mode;
+      runtime.view = std::string(mode)=="today" ? WeatherForecastView::TODAY : WeatherForecastView::TOMORROW;
+      runtime.selected_day = forecast_source.forecast.count;
+      const int before_closes = closes, before_opens = opens;
+      assert(!espcontrol_can_open_modal("weather.home", true));
+      assert(!espcontrol_open_modal("weather.home", true));
+      assert(before_closes==closes && before_opens==opens && modal.overlay);
+      runtime.selected_day = 0;
+      assert(espcontrol_can_open_modal("weather.home", true));
+      assert(espcontrol_open_modal("weather.home", true));
+    }
   }
   for (const auto &test : cases) {
     Runtime runtime; runtime.entity_id = test.entity; runtime.type = test.type;

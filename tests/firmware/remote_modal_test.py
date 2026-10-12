@@ -63,6 +63,7 @@ helpers += 'namespace espcontrol::cards {\n'
 for driver in ['light_control', 'cover_modal', 'climate_control', 'fan_control',
                'alarm', 'image', 'media', 'wifi_qr', 'weather']:
     helpers += function('button_grid_' + driver + '_driver.h', driver + '_driver_matches')
+helpers += function('button_grid_weather_driver.h', 'weather_driver_shows_forecast')
 helpers += function('button_grid_numeric_selectable_driver.h', 'numeric_selectable_driver_option_select')
 for driver in ['light_control', 'cover_modal', 'climate_control', 'fan_control',
                'numeric_selectable', 'media', 'image', 'alarm', 'wifi_qr', 'weather']:

@@ -180,7 +180,7 @@ inline void register_weather_forecast_card(lv_obj_t *btn,
   (void) label;
 }
 
-inline void weather_forecast_cancel_pending_requests() {}
+inline void weather_forecast_cancel_pending_requests(bool = true) {}
 
 inline bool weather_forecast_cancel_stale_requests() { return false; }
 
@@ -445,11 +445,7 @@ inline void register_weather_forecast_card(lv_obj_t *btn,
 }
 
 inline bool weather_forecast_entity_id_safe(const std::string &entity_id) {
-  if (entity_id.compare(0, 8, "weather.") != 0) return false;
-  for (char ch : entity_id) {
-    if (!(std::isalnum(static_cast<unsigned char>(ch)) || ch == '_' || ch == '.')) return false;
-  }
-  return true;
+  return espcontrol::weather::entity_id_safe(entity_id);
 }
 
 inline bool parse_weather_forecast_temp(const std::string &value, float &out) {
@@ -738,12 +734,16 @@ inline bool weather_forecast_enqueue_due_retries() {
 
 inline void weather_forecast_send_next_queued();
 
-inline void weather_forecast_cancel_pending_requests() {
-  for (const auto &source : weather_daily_sources()) {
-    source->loading = false;
-    source->stale = source->forecast.count > 0;
+inline void weather_forecast_cancel_pending_requests(bool disconnected = true) {
+  // Grid rebuilds invalidate callbacks but have not failed the new sources.
+  // Only a real disconnect changes loading/stale presentation here.
+  if (disconnected) {
+    for (const auto &source : weather_daily_sources()) {
+      source->loading = false;
+      source->stale = source->forecast.count > 0;
+    }
+    if (!weather_daily_sources().empty()) weather_forecast_schedule_visual_refresh();
   }
-  if (!weather_daily_sources().empty()) weather_forecast_schedule_visual_refresh();
   weather_forecast_action_ready_ms() = 0;
   weather_forecast_clear_queue();
   weather_forecast_clear_retries();
