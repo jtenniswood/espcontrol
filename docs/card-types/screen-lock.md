@@ -20,6 +20,8 @@ The card uses the same PIN and keypad layout preference as **Settings > Sleep & 
 
 Screen Lock does not need an entity. Its label and icon change automatically to show whether the touchscreen is locked or unlocked. The PIN is stored on the panel, never in the card configuration or backups.
 
+After saving a PIN, you can also lock the screen from the **Screen Lock** button on the panel's Settings page (opened by tapping the clock bar's network icon). This uses the same PIN and keeps the current view visible; no Screen Lock card is required.
+
 ## How It Works on the Panel
 
 - **Screensaver on lock**, in the card's **Screensaver** panel below **Pin Protection**, is off by default. Tapping the card locks the controls while keeping the current screen visible. The normal return-to-home timeout still applies. Any touch opens the PIN keypad instead of activating a control; that first touch does not enter a digit.

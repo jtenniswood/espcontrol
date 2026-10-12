@@ -6,6 +6,7 @@
 #include "button_grid_limits.h"
 #include "display_text.h"
 #include "network_status_layout.h"
+#include "screen_lock_state.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -28,6 +29,9 @@ struct NetworkStatusModalUi {
   lv_obj_t *icons[NETWORK_STATUS_CARD_COUNT]{};
   lv_obj_t *labels[NETWORK_STATUS_CARD_COUNT]{};
   int card_count = 0;
+  lv_obj_t *lock_button = nullptr;
+  int grid_columns = 1;
+  int configured_rows = 1;
   lv_obj_t *ip_lbl = nullptr;
   lv_obj_t *wifi_label = nullptr;
   float (*wifi_quality)() = nullptr;
@@ -190,9 +194,31 @@ inline void network_status_hide_modal() {
   }
 }
 
+inline void network_status_refresh_lock_button() {
+  auto &ui = network_status_modal_ui();
+  if (!ui.overlay || !ui.lock_button) return;
+  const bool has_pin = espcontrol::screensaver_pin().has_pin();
+  const bool hidden = lv_obj_has_flag(ui.lock_button, LV_OBJ_FLAG_HIDDEN);
+  if (hidden == !has_pin) return;
+  if (has_pin) lv_obj_clear_flag(ui.lock_button, LV_OBJ_FLAG_HIDDEN);
+  else lv_obj_add_flag(ui.lock_button, LV_OBJ_FLAG_HIDDEN);
+
+  // The optional lock button is last, so hiding it leaves no gap between cards.
+  const int visible_cards = ui.card_count - (has_pin ? 0 : 1);
+  const int rows = network_status_grid_rows(ui.grid_columns, ui.configured_rows, visible_cards);
+  for (int i = 0; i < rows; ++i) ui.rows[i] = LV_GRID_FR(1);
+  ui.rows[rows] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_grid_dsc_array(ui.overlay, ui.columns, ui.rows);
+}
+
+inline void network_status_lock_cb(lv_event_t *) {
+  screen_lock_activate();
+}
+
 inline void network_status_refresh_page() {
   auto &ui = network_status_modal_ui();
   if (!ui.overlay) return;
+  network_status_refresh_lock_button();
   if (ui.wifi_label && ui.wifi_quality) {
     const float quality = ui.wifi_quality();
     const std::string label = std::isfinite(quality)
@@ -267,6 +293,8 @@ inline void network_status_open_modal(const std::string &device_name,
 
   const int cols = std::max(1, std::min(metrics.cols, MAX_GRID_SLOTS));
   const int configured_rows = std::max(1, std::min(metrics.rows, MAX_GRID_SLOTS));
+  ui.grid_columns = cols;
+  ui.configured_rows = configured_rows;
   const int card_count = NETWORK_STATUS_CARD_COUNT - (wifi_quality ? 0 : 1);
   const int rows = network_status_grid_rows(cols, configured_rows, card_count);
   for (int i = 0; i < cols; ++i) ui.columns[i] = LV_GRID_FR(1);
@@ -277,9 +305,9 @@ inline void network_status_open_modal(const std::string &device_name,
   lv_obj_set_grid_dsc_array(ui.overlay, ui.columns, ui.rows);
 
   const char *labels[] = {espcontrol_i18n("Back"), ip_address.c_str(), "", "",
-                          device_name.c_str()};
+                          device_name.c_str(), espcontrol_i18n("Screen Lock")};
   const char *icons[] = {"\U000F0141", "\U000F0200", "\U000F05A9", "\U000F035B",
-                         "\U000F0200"};
+                         "\U000F0200", find_icon("Lock")};
 
   int visible_index = 0;
   for (int i = 0; i < NETWORK_STATUS_CARD_COUNT; ++i) {
@@ -310,6 +338,12 @@ inline void network_status_open_modal(const std::string &device_name,
       lv_obj_add_event_cb(
           button, [](lv_event_t *) { network_status_hide_modal(); },
           LV_EVENT_CLICKED, nullptr);
+      continue;
+    }
+    if (i == NETWORK_STATUS_LOCK_CARD_INDEX) {
+      ui.lock_button = button;
+      lv_obj_add_event_cb(button, network_status_lock_cb,
+                          LV_EVENT_CLICKED, nullptr);
       continue;
     }
     lv_obj_clear_flag(button, LV_OBJ_FLAG_CLICKABLE);

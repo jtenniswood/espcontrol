@@ -12,6 +12,8 @@ lock = (ROOT / 'components/espcontrol/screen_lock_state.h').read_text()
 lock = lock[lock.index('struct ScreenLockCardRef'):]
 navigation = (ROOT / 'components/espcontrol/button_grid_navigation.h').read_text()
 navigation = navigation[navigation.index('inline bool navigation_return_home'):navigation.index('inline void navigation_clear_home_targets')]
+settings = (ROOT / 'components/espcontrol/network_status.h').read_text()
+settings = settings[settings.index('inline void network_status_refresh_lock_button'):settings.index('inline void network_status_refresh_page')]
 stubs = r'''
 #include <cassert>
 #include <cstring>
@@ -20,6 +22,7 @@ stubs = r'''
 #include <functional>
 #include <algorithm>
 #include "screensaver_pin.h"
+#include "network_status_layout.h"
 using lv_coord_t = int;
 struct lv_font_t {};
 struct lv_event_t { const char *key; };
@@ -27,6 +30,9 @@ struct lv_obj_t { lv_obj_t *parent{}; bool full_screen{}; unsigned flags{}; std:
 struct ControlModalLayout { int panel_w{720}; int inset{18}; };
 constexpr unsigned LV_OBJ_FLAG_CLICKABLE = 1;
 constexpr unsigned LV_EVENT_RELEASED = 2;
+constexpr unsigned LV_OBJ_FLAG_HIDDEN = 8;
+constexpr int LV_GRID_TEMPLATE_LAST = -1;
+int LV_GRID_FR(int value) { return value; }
 constexpr int LV_TEXT_ALIGN_RIGHT = 3, LV_ALIGN_TOP_RIGHT = 4, LV_PART_MAIN = 0;
 lv_obj_t system_layer;
 lv_obj_t *active_page;
@@ -51,6 +57,16 @@ void lv_obj_del(lv_obj_t *root) {
   objects.clear(); (void) root; ++deleted;
 }
 void lv_obj_add_flag(lv_obj_t *obj, unsigned flag) { obj->flags |= flag; }
+void lv_obj_clear_flag(lv_obj_t *obj, unsigned flag) { obj->flags &= ~flag; }
+bool lv_obj_has_flag(lv_obj_t *obj, unsigned flag) { return (obj->flags & flag) != 0; }
+struct SettingsUi {
+  lv_obj_t *overlay{}, *lock_button{};
+  int card_count{6}, grid_columns{5}, configured_rows{1};
+  int columns[7]{}, rows[7]{};
+} settings_ui;
+SettingsUi &network_status_modal_ui() { return settings_ui; }
+int settings_layout_updates = 0;
+void lv_obj_set_grid_dsc_array(lv_obj_t *, int *, int *) { ++settings_layout_updates; }
 void lv_obj_add_event_cb(lv_obj_t *obj, void (*callback)(lv_event_t *), unsigned code, void *) {
   assert(code == LV_EVENT_RELEASED); obj->on_release = callback;
 }
@@ -243,15 +259,55 @@ int main() {
   assert(!screen_lock_enabled() && !ui.overlay);
   screen_lock_activate(true);
   assert(screensaver_calls == 1); // A card without a PIN cannot lock or start sleep.
+
+  // Settings follows the saved PIN even when automatic wake protection is off.
+  lv_obj_t settings_page, settings_lock;
+  settings_ui.overlay = &settings_page;
+  settings_ui.lock_button = &settings_lock;
+  network_status_refresh_lock_button();
+  assert(lv_obj_has_flag(&settings_lock, LV_OBJ_FLAG_HIDDEN));
+  assert(settings_ui.rows[1] == LV_GRID_TEMPLATE_LAST); // No empty second row.
+  network_status_lock_cb(nullptr);
+  assert(!pin.locked() && !ui.overlay); // Cannot lock without a PIN.
+  assert(pin.save(false, &code));
+  network_status_refresh_lock_button();
+  assert(!lv_obj_has_flag(&settings_lock, LV_OBJ_FLAG_HIDDEN) && !pin.enabled());
+  assert(settings_ui.rows[2] == LV_GRID_TEMPLATE_LAST);
+  int previous_updates = settings_layout_updates;
+  network_status_refresh_lock_button();
+  assert(settings_layout_updates == previous_updates); // Stable timer is a no-op.
+  network_status_lock_cb(nullptr);
+  assert(pin.locked() && ui.overlay && !ui.label);
+  assert(settings_ui.overlay == &settings_page && screensaver_calls == 1);
+  ui.overlay->on_release(&released);
+  deferred.front()(nullptr); deferred.clear();
+  assert(ui.label && ui.entry.empty());
+  screensaver_pin_key_cb(&zero);
+  screensaver_pin_key_cb(&four);
+  screensaver_pin_key_cb(&submit);
+  deferred.front()(nullptr); deferred.clear();
+  assert(!pin.locked() && !ui.overlay && settings_ui.overlay == &settings_page);
+  assert(pin.save(false, &empty));
+  network_status_refresh_lock_button();
+  assert(lv_obj_has_flag(&settings_lock, LV_OBJ_FLAG_HIDDEN));
+  assert(settings_ui.rows[1] == LV_GRID_TEMPLATE_LAST);
+  // Ethernet omits Wi-Fi and still shows the lock without expanding its grid.
+  settings_ui.card_count = 5;
+  assert(pin.save(false, &code));
+  network_status_refresh_lock_button();
+  assert(!lv_obj_has_flag(&settings_lock, LV_OBJ_FLAG_HIDDEN));
+  assert(settings_ui.rows[1] == LV_GRID_TEMPLATE_LAST);
+  settings_ui.overlay = nullptr;
+  network_status_refresh_lock_button(); // Closing Settings stops touching its widgets.
 }
 '''
 with tempfile.TemporaryDirectory() as directory:
     source = Path(directory) / 'test.cpp'
     binary = Path(directory) / 'test'
-    source.write_text(stubs + lock + ui + navigation + checks)
+    source.write_text(stubs + lock + ui + navigation + settings + checks)
     subprocess.run([sys.argv[1] if len(sys.argv) > 1 else 'c++', '-std=c++17', '-pthread',
                     '-Wall', '-Wextra', '-Werror', '-I', str(ROOT / 'components/espcontrol'),
                     '-I', str(ROOT / 'tests/firmware/screensaver_pin_stubs'), str(source),
                     str(ROOT / 'components/espcontrol/screensaver_pin.cpp'), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
-print('PIN blocking, wake-tap guard, masking, rejection, deferred unlock and empty-X return views passed')
+print('PIN interaction, cancellation, Settings lock visibility and shared-PIN unlock checks passed')
