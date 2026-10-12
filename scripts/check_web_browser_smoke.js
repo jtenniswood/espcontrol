@@ -2844,8 +2844,8 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
       );
       assert.strictEqual(
         await cardSettingsSectionCount(),
-        1,
-        `${label}: Screen Lock should group its lock behavior in Card Settings`,
+        0,
+        `${label}: Screen Lock uses dedicated Pin Protection and Screensaver panels`,
       );
     }
 

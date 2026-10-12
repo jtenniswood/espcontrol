@@ -36,7 +36,7 @@ export function registerScreenLockCardTypes(
             Object.keys(defaults).forEach(function (this: any, key?: any) { b[key] = defaults[key]; });
         },
         renderSettings: function (_panel: HTMLElement, button: any, _slot: number, helpers: any) {
-            const behavior = helpers.disclosureSection("Card Settings", helpers.idPrefix + "screen-lock-behavior", false);
+            const behavior = helpers.disclosureSection("Screensaver", helpers.idPrefix + "screen-lock-behavior", false);
             const screensaver = fields.toggleRow("Screensaver on lock", helpers.idPrefix + "screensaver-on-lock",
                 configOptionEnabled(button.options, "screensaver_on_lock"));
             screensaver.input.addEventListener("change", () => {
@@ -44,13 +44,13 @@ export function registerScreenLockCardTypes(
                 helpers.saveField("options", button.options);
             });
             behavior.section.appendChild(screensaver.row);
-            _panel.appendChild(behavior.panel);
             const section = helpers.disclosureSection("Pin Protection", helpers.idPrefix + "screen-lock-settings", true);
             const pinSettings = buildScreensaverPinSettings(document, request, fields, null, {
                 idPrefix: helpers.idPrefix + "screen-lock-pin", requirePin: true,
             });
             section.section.appendChild(pinSettings.body);
             _panel.appendChild(section.panel);
+            _panel.appendChild(behavior.panel);
             helpers.requireField(pinSettings.pinInput, "Save a PIN before saving this card.", undefined, pinSettings.hasSavedPin);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
