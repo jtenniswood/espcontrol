@@ -115,16 +115,16 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-clock-centered{justify-content:center;align-items:center}" +
         ".sp-forecast-preview{white-space:nowrap;gap:0}" +
         ".sp-weather-daily-card{container-type:inline-size;font-size:var(--btn-label)}" +
-        ".sp-weather-days{display:flex;width:100%;height:100%;align-items:center;overflow:hidden;gap:.75em}" +
+        ".sp-weather-days{display:flex;width:100%;height:100%;align-items:center;overflow:hidden;gap:1em}" +
         ".sp-weather-day{flex:1 1 0;display:none;flex-direction:column;align-items:center;gap:.2em;font-size:var(--btn-label);white-space:nowrap}" +
         ".sp-weather-day:first-child{display:flex}.sp-weather-day .mdi{font-size:var(--btn-icon)}" +
         ".sp-weather-temperature-high{white-space:nowrap}" +
-        "@container (min-width:11.5em){.sp-weather-day:nth-child(2){display:flex}}" +
-        "@container (min-width:17.5em){.sp-weather-day:nth-child(3){display:flex}}" +
-        "@container (min-width:23.5em){.sp-weather-day:nth-child(4){display:flex}}" +
-        "@container (min-width:29.5em){.sp-weather-day:nth-child(5){display:flex}}" +
-        "@container (min-width:35.5em){.sp-weather-day:nth-child(6){display:flex}}" +
-        "@container (min-width:41.5em){.sp-weather-day:nth-child(7){display:flex}}" +
+        "@container (min-width:12.75em){.sp-weather-day:nth-child(2){display:flex}}" +
+        "@container (min-width:19.75em){.sp-weather-day:nth-child(3){display:flex}}" +
+        "@container (min-width:26.75em){.sp-weather-day:nth-child(4){display:flex}}" +
+        "@container (min-width:33.75em){.sp-weather-day:nth-child(5){display:flex}}" +
+        "@container (min-width:40.75em){.sp-weather-day:nth-child(6){display:flex}}" +
+        "@container (min-width:47.75em){.sp-weather-day:nth-child(7){display:flex}}" +
         ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
         ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:var(--card-text-color,var(--preview-text-primary))}" +
         ".sp-slider-preview{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;pointer-events:none}" +

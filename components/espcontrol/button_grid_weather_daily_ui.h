@@ -133,10 +133,10 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   const int height = lv_obj_get_content_height(card->owner);
   if (width <= 0 || height <= 0) return;
   const int font_height = lv_font_get_line_height(card->font);
-  const int day_gap = std::max(8, font_height * 3 / 4);
+  const int day_gap = std::max(8, font_height);
   lv_point_t measured;
   lv_text_get_size(&measured, "-18.8\u00B0", card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-  const size_t count = espcontrol::weather::visible_days(width, measured.x + 16,
+  const size_t count = espcontrol::weather::visible_days(width, measured.x + 32,
     forecast.count ? forecast.count : 1, day_gap);
   // Rebuild only when geometry or the number of visible days changes. Refreshes
   // and unit changes reuse the labels instead of allocating new widget trees.

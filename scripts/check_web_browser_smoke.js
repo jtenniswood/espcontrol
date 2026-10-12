@@ -7133,7 +7133,7 @@ async function assertWeatherWidthScaling(browser) {
     const firstDayRows = await page.locator('.sp-weather-day').first().evaluate(day => Array.from(day.children).map(child => child.textContent));
     assert.deepStrictEqual(firstDayRows, ['☀', 'Today', '18°'], 'Daily preview matches the device order and omits a separate low temperature row.');
     const counts = [];
-    for (const width of [120, 240, 420, 700]) {
+    for (const width of [120, 240, 420, 900]) {
       await page.locator('#weather').evaluate((card, value) => { card.style.width = value + 'px'; card.getBoundingClientRect(); }, width);
       await page.waitForFunction(value => Math.abs(document.querySelector("#weather").getBoundingClientRect().width - value) < 1, width);
       counts.push(await page.locator('.sp-weather-day').evaluateAll(days => days.filter(day => getComputedStyle(day).display !== 'none').length));
@@ -7145,7 +7145,7 @@ async function assertWeatherWidthScaling(browser) {
       const visible = days.filter(day => getComputedStyle(day).display !== 'none');
       return visible[1].getBoundingClientRect().left - visible[0].getBoundingClientRect().right;
     });
-    assert(columnGap >= 11, 'Daily forecast preview keeps a visible gap between columns: ' + columnGap);
+    assert(columnGap >= 15, 'Daily forecast preview keeps a wider gap between columns: ' + columnGap);
     console.log('Daily forecast browser scaling passed: ' + counts.join(',') + ' complete columns.');
   } finally { await page.close(); }
 }
