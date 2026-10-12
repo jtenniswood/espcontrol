@@ -156,7 +156,7 @@ assert.strictEqual(
 );
 assert.strictEqual(hooks.cardContractSubpageTypeFromCode("H"), "climate", "generated contract exposes compact type decode");
 assert.strictEqual(hooks.cardContractLargeNumbersSupported("sensor", "text"), false, "generated contract blocks text sensor large numbers");
-assert.strictEqual(hooks.cardContractLargeNumbersSupported("weather", "tomorrow"), true, "generated contract allows weather forecast large numbers");
+assert.strictEqual(hooks.cardContractLargeNumbersSupported("weather", "tomorrow"), false, "single-day weather uses the standard forecast layout");
 current.generatedContract.requiredCards.forEach((type) => {
   assert(hooks.cardContractCardKeys().includes(type), `generated contract exposes ${type || "switch"} card identity`);
 });
@@ -308,8 +308,8 @@ assert.strictEqual(buttonShape(hooks.parseButtonConfig("weather.home;Garden;Auto
 assert.strictEqual(hooks.normalizeWeatherCardMode("bad"), "", "weather invalid mode falls back to current conditions");
 assert.strictEqual(
   hooks.cardContractOptionSupportedFor("weather", "large_numbers", { precision: "today" }),
-  true,
-  "weather large-number option supports forecast modes"
+  false,
+  "weather forecast layout has no large-number option"
 );
 assert.strictEqual(
   hooks.cardContractOptionSupportedFor("weather", "large_numbers", { precision: "" }),
@@ -1851,7 +1851,7 @@ assertButtonRoundTrip(hooks, "weather today card", {
   precision: "today",
 }, false);
 
-assertButtonRoundTrip(hooks, "weather large temperature numbers option", {
+assertButtonRoundTrip(hooks, "weather single-day forecast layout", {
   entity: "weather.forecast_home",
   label: "Today",
   icon: "Auto",
@@ -1860,13 +1860,13 @@ assertButtonRoundTrip(hooks, "weather large temperature numbers option", {
   unit: "",
   type: "weather",
   precision: "today",
-  options: "large_numbers",
+  options: "",
 }, false);
 
 assert.strictEqual(
   buttonShape(hooks.parseButtonConfig("weather.forecast_home;;;;;;weather;today;large_numbers")).options,
-  "large_numbers",
-  "weather forecast preserves large numbers option");
+  "",
+  "weather forecast clears obsolete large numbers option");
 assert.strictEqual(
   buttonShape(hooks.parseButtonConfig("weather.forecast_home;;;;;;weather;;large_numbers")).options,
   "",

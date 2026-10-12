@@ -1,11 +1,15 @@
 #pragma once
 
-// Forecast widgets exist only on configured daily cards. The modal allocates
+#include <cstdint>
+
+// Forecast widgets exist only on configured forecast cards. The modal allocates
 // one day's detail view on demand and reads the same source as its owner.
+enum class WeatherForecastView : uint8_t { DAILY, TODAY, TOMORROW };
 struct WeatherDailyColumn { lv_obj_t *icon, *day, *high; };
 struct WeatherDailyCard {
   lv_obj_t *owner = nullptr, *root = nullptr, *caption = nullptr, *placeholder_icon = nullptr;
   WeatherDailySource *source = nullptr;
+  WeatherForecastView view = WeatherForecastView::DAILY;
   const lv_font_t *font = nullptr, *icon_font = nullptr;
   std::vector<WeatherDailyColumn> columns;
   int width = 0, height = 0;
@@ -42,6 +46,16 @@ inline std::string weather_daily_date_label(const espcontrol::weather::Day &day,
   const int index = espcontrol::weather::weekday(day.date);
   if (index < 0 || index >= 7) return "";
   return espcontrol_i18n(std::string(weekdays[index]));
+}
+// Select by Home Assistant's local date, rather than assuming the first entry is today.
+// A provider may omit either requested day. Do not substitute a different date.
+inline size_t weather_daily_selected_day(const WeatherDailyCard &card) {
+  const auto &forecast = card.source->forecast;
+  if (card.view == WeatherForecastView::DAILY) return 0;
+  const char *date = card.view == WeatherForecastView::TODAY ? forecast.today : forecast.tomorrow;
+  for (size_t i = 0; i < forecast.count; ++i)
+    if (std::strcmp(forecast.days[i].date, date) == 0) return i;
+  return forecast.count;
 }
 inline std::string weather_daily_reading(float value, const char *unit) {
   if (!std::isfinite(value)) return "--";
@@ -88,11 +102,14 @@ inline lv_obj_t *weather_daily_label(lv_obj_t *parent, const lv_font_t *font) {
 }
 inline void weather_daily_open_modal(WeatherDailyCard *card) {
   if (!card || !card->source || !card->owner) return;
+  const size_t selected = weather_daily_selected_day(*card);
+  if (card->view != WeatherForecastView::DAILY && selected >= card->source->forecast.count) return;
   auto shell = control_modal_open_shell(ControlModalKind::WEATHER_FORECAST,
     card->owner, 100, card->icon_font, weather_daily_hide_modal);
   if (!shell.overlay || !shell.panel) return;
   auto &ui = weather_daily_modal();
   ui.overlay = shell.overlay; ui.owner = card->owner; ui.source = card->source;
+  ui.day = selected;
   ++ui.source->users;
   set_clock_bar_modal_label(espcontrol_i18n(std::string("Weather")));
   // A scrollable detail area keeps long translations and small/rotated panels usable.
@@ -133,7 +150,8 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   const int width = lv_obj_get_content_width(card->owner);
   const int height = lv_obj_get_content_height(card->owner);
   if (width <= 0 || height <= 0) return;
-  if (!forecast.count) {
+  const size_t first = weather_daily_selected_day(*card);
+  if (!forecast.count || first >= forecast.count) {
     // Reuse the normal card icon until real days arrive; no placeholder columns.
     if (!card->columns.empty()) {
       lv_obj_clean(card->root);
@@ -155,7 +173,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   lv_text_get_size(&measured, "-18.8\u00B0", card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
   const int minimum_day_width = measured.x + 24;
   const size_t count = espcontrol::weather::visible_days(width, minimum_day_width,
-    forecast.count, day_gap);
+    card->view == WeatherForecastView::DAILY ? forecast.count : 1, day_gap);
   const int icon_height = lv_font_get_line_height(card->icon_font);
   const int caption_height = card->source->stale ? font_height + 2 : 0;
   const int high_y = std::max(icon_height + font_height + 4, height - caption_height - font_height);
@@ -167,8 +185,9 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     card->width = width; card->height = height;
     lv_obj_set_size(card->root, width, height);
     lv_obj_align(card->root, LV_ALIGN_TOP_LEFT, 0, 0);
-    const int column_width = std::max(1, std::min(minimum_day_width,
-      (width - day_gap * static_cast<int>(count - 1)) / static_cast<int>(count)));
+    const int column_width = card->view != WeatherForecastView::DAILY ? width
+      : std::max(1, std::min(minimum_day_width,
+        (width - day_gap * static_cast<int>(count - 1)) / static_cast<int>(count)));
     for (size_t i = 0; i < count; ++i) {
       WeatherDailyColumn col{};
       auto make = [&](const lv_font_t *font, int y) {
@@ -188,11 +207,12 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   lv_label_set_display_text(card->caption, caption.c_str());
   for (size_t i = 0; i < card->columns.size(); ++i) {
     const auto &col = card->columns[i];
-    const auto &day = forecast.days[i];
+    const auto &day = forecast.days[first + i];
     // Reserve the bottom status row only for stale data, without rebuilding labels.
     lv_obj_set_y(col.day, day_y);
     lv_obj_set_y(col.high, high_y);
-    std::string date = weather_daily_date_label(day, forecast);
+    std::string date = card->view == WeatherForecastView::TOMORROW
+      ? espcontrol_i18n(std::string("Tomorrow")) : weather_daily_date_label(day, forecast);
     lv_label_set_display_text(col.day, date.c_str());
     lv_label_set_display_text(col.icon, weather_icon_for_state(day.condition));
     std::string high = weather_daily_temperature(day.high, forecast.temperature_unit) + "\u00B0";
@@ -234,6 +254,9 @@ inline void weather_daily_setup(BtnSlot &slot, const ParsedCfg &config,
   auto *card = new (std::nothrow) WeatherDailyCard;
   if (!card) { weather_daily_release_source(source); return; }
   card->owner = slot.btn; card->source = source; card->caption = slot.text_lbl;
+  card->view = config.precision == "today" ? WeatherForecastView::TODAY
+    : config.precision == "tomorrow" || config.type == "weather_forecast"
+      ? WeatherForecastView::TOMORROW : WeatherForecastView::DAILY;
   card->placeholder_icon = slot.icon_lbl;
   card->font = lv_obj_get_style_text_font(slot.text_lbl, LV_PART_MAIN);
   if (!card->font) card->font = LV_FONT_DEFAULT;

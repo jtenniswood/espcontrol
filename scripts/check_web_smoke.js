@@ -883,20 +883,18 @@ assert(weatherDailyPreview.iconHtml.includes("18\u00B0") && !weatherDailyPreview
   "daily preview displays a degree symbol without a unit letter");
 assert(!weatherDailyPreview.iconHtml.includes("16.9"), "daily preview omits the low/night temperature");
 
-const weatherForecastPreview = hooks.buttonTypePreviewFor("weather", {
-  entity: "weather.forecast_home",
-  label: "Garden",
-  type: "weather",
-  precision: "today",
-  options: "",
-}, {
-  cardSize: 4,
-  temperatureUnit: "\u00b0F",
-});
-assert(weatherForecastPreview.iconHtml.includes("sp-forecast-value"), "weather forecast preview uses forecast value styling");
-assert(weatherForecastPreview.iconHtml.includes("sp-sensor-preview-large"), "weather forecast preview supports large numbers");
-assert(weatherForecastPreview.iconHtml.includes("\u00b0F"), "weather forecast preview uses the selected temperature unit");
-assert(weatherForecastPreview.labelHtml.includes("Garden"), "weather forecast preview uses the custom label");
+for (const [mode, label, icon] of [["today", "Today", "rainy"], ["tomorrow", "Tomorrow", "sunny"]]) {
+  const preview = hooks.buttonTypePreviewFor("weather", {
+    entity: "weather.home", label: "Old label", type: "weather", precision: mode, options: "large_numbers",
+  }, {cardSize: 4, temperatureUnit: "°F"});
+  assert.strictEqual(preview.buttonClass, "sp-weather-daily-card");
+  assert.strictEqual((preview.iconHtml.match(/class="sp-weather-day"/g) || []).length, 1,
+    `${mode} forecast always previews one day`);
+  assert(preview.iconHtml.includes(label) && preview.iconHtml.includes(`mdi-weather-${icon}`));
+  assert(preview.iconHtml.indexOf(`mdi-weather-${icon}`) < preview.iconHtml.indexOf(label));
+  assert(preview.iconHtml.includes("°") && !preview.iconHtml.includes("°F") && !preview.iconHtml.includes("/10"));
+  assert.strictEqual(preview.labelHtml, "", "single-day forecasts omit the separate label row");
+}
 
 const imagePreview = hooks.buttonTypePreviewFor("image", {
   entity: "camera.seaside",

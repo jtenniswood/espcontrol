@@ -14,8 +14,8 @@ export function createConfigWeatherOptionsFeature(
     function weatherModeOptions(this: any) {
         const options: any = [
             ["", "Current Conditions"],
-            ["today", "Temperatures Today"],
-            ["tomorrow", "Temperatures Tomorrow"],
+            ["today", "Today's Forecast"],
+            ["tomorrow", "Tomorrow's Forecast"],
             ["daily", "Daily Forecast"],
         ];
         return weatherForecastCardsSupported() ? options : [options[0]];

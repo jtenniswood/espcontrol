@@ -7254,6 +7254,40 @@ async function assertS3ForecastEditorLayout(browser) {
     }
     await page.locator('.sp-screen').screenshot({ path: '/tmp/weather-preview-s3-editor-after.png' });
     console.log('S3 editor integration: 3×1 forecast shows four left-aligned days before and after resizing.');
+    await page.locator('.sp-main [data-slot="1"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible");
+    const modeSelect = page.locator('.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select');
+    assert.deepStrictEqual(await modeSelect.locator('option').allTextContents(),
+      ["Current Conditions", "Today's Forecast", "Tomorrow's Forecast", "Daily Forecast"]);
+    for (const [mode, label] of [["today", "Today"], ["tomorrow", "Tomorrow"]]) {
+      await page.locator('.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select').selectOption(mode);
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await page.waitForSelector(".sp-settings-overlay.sp-visible", {state: "hidden"});
+      const days = page.locator('.sp-main [data-slot="1"] .sp-weather-day:not([hidden])');
+      await page.waitForFunction(expected => {
+        const days = document.querySelectorAll('.sp-main [data-slot="1"] .sp-weather-day:not([hidden])');
+        return days.length === 1 && days[0].textContent.includes(expected);
+      }, label);
+      assert.strictEqual(await days.count(), 1);
+      const geometry = await days.first().evaluate(day => {
+        const spans = day.querySelectorAll(':scope > span');
+        return {left: getComputedStyle(day).alignItems, icon: spans[0].getBoundingClientRect().top,
+          text: spans[1].getBoundingClientRect().top, high: spans[2].textContent};
+      });
+      assert.strictEqual(geometry.left, 'flex-start');
+      assert(geometry.icon < geometry.text && /^\d+°$/.test(geometry.high));
+      await page.setViewportSize({width: 1000, height: 1000});
+      assert.strictEqual(await days.count(), 1, 'Single-day mode stays one day on a 3×1 card after resizing.');
+      await page.locator('.sp-screen').screenshot({path: `/tmp/weather-preview-s3-${mode}-after.png`});
+      await page.locator('.sp-main [data-slot="1"]').click();
+      await page.getByRole("button", { name: "Edit", exact: true }).click();
+      await page.waitForSelector(".sp-settings-overlay.sp-visible");
+      assert.strictEqual(await page.getByText("Large Temperature Numbers", {exact: true}).count(), 0);
+      assert.strictEqual(await page.locator('.sp-settings-modal #sp-inp-label').count(), 0);
+    }
+    console.log('S3 editor: renamed Today/Tomorrow modes each show one forecast day and omit obsolete controls.');
+
   } finally { await context.close(); }
 }
 

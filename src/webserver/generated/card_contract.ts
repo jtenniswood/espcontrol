@@ -3756,18 +3756,6 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "defaultValue": "",
         "storageField": "precision",
         "omitDefault": true
-      },
-      {
-        "name": "large_numbers",
-        "label": "Large Temperature Numbers",
-        "kind": "flag",
-        "omitDefault": true,
-        "supportedWhen": {
-          "precision": [
-            "today",
-            "tomorrow"
-          ]
-        }
       }
     ],
     "normalization": {
@@ -3805,9 +3793,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         }
       },
       "unknownOptions": "drop",
-      "canonicalOptionOrder": [
-        "large_numbers"
-      ],
+      "canonicalOptionOrder": [],
       "migrationActions": [
         "legacy_weather_forecast"
       ],
@@ -4852,12 +4838,6 @@ export const CARD_CONTRACT_LARGE_NUMBERS: Readonly<Record<string, LargeNumbersRu
     "excludedPrecisions": [
       "icon",
       "text"
-    ]
-  },
-  "weather": {
-    "precisions": [
-      "today",
-      "tomorrow"
     ]
   },
   "calendar": true,

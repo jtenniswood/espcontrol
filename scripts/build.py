@@ -3411,7 +3411,6 @@ def gen_card_contract_h(data):
         "\n",
         "inline bool card_contract_large_numbers_supported(const std::string &type, const std::string &precision) {\n",
         "  if (type == \"sensor\") return precision != \"icon\" && precision != \"text\";\n",
-        "  if (type == \"weather\") return precision == \"today\" || precision == \"tomorrow\";\n",
         "  return type == \"\" || type == \"action\" || type == \"calendar\" || type == \"clock\" ||\n",
         "         type == \"climate\" || type == \"media\" || type == \"subpage\" ||\n",
         "         type == \"timezone\";\n",

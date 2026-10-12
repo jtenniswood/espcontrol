@@ -81,7 +81,7 @@ std::string weather_label_for_state(const std::string &s){return s;}
 void notify_dashboard_content_changed(){}
 struct DisplayProfile{};
 const lv_font_t *display_icon_font(const DisplayProfile &){return &icons;}
-struct ParsedCfg{std::string entity,label;};
+struct ParsedCfg{std::string entity,label;std::string precision="daily",type="weather";};
 struct BtnSlot{lv_obj_t *btn,*text_lbl,*icon_lbl;};
 enum class ControlModalKind{WEATHER_FORECAST};
 struct ControlModalShell{lv_obj_t *overlay,*panel;int content_w=300;struct{int back_size=40,inset=10,panel_h=400;}layout;};
@@ -166,4 +166,45 @@ int main(){
     weather_daily_cleanup(owner);assert(owner->events.empty());
     lv_obj_del(owner);assert(lv_obj_t::live==0);
   }
+
+  // Single-day cards select dates exactly and share the multi-day source.
+  auto *daily_owner=lv_obj_create(nullptr);
+  BtnSlot daily_slot{daily_owner,lv_label_create(daily_owner),lv_label_create(daily_owner)};
+  weather_daily_setup(daily_slot,{"weather.home",""},{});
+  auto *daily=weather_daily_card_for(daily_owner);
+  const auto payload="WF1|2026-10-11|2026-10-12|°C|mm|km/h\n2026-10-11|sunny|18.8|10||||\n2026-10-12|rainy|16.6|9||||\n2026-10-13|cloudy|14|8||||\n";
+  assert(espcontrol::weather::parse(payload,daily->source->forecast));
+  daily->source->loading=false;weather_daily_refresh_visuals();
+  for(const auto &mode:{"today","tomorrow"}) {
+    auto *owner=lv_obj_create(nullptr);
+    BtnSlot slot{owner,lv_label_create(owner),lv_label_create(owner)};
+    weather_daily_setup(slot,{"weather.home","Old label",mode},{});
+    auto *card=weather_daily_card_for(owner);
+    const bool tomorrow=std::string(mode)=="tomorrow";
+    assert(card->source==daily->source && weather_daily_sources().size()==1 && card->source->users==2);
+    assert(card->columns.size()==1 && card->columns[0].day->text==(tomorrow?"Tomorrow":"Today"));
+    assert(card->columns[0].high->text==(tomorrow?"17°":"19°"));
+    assert(card->columns[0].icon->x==0 && card->columns[0].icon->y==0);
+    assert(card->columns[0].day->text_align==LV_TEXT_ALIGN_LEFT && card->columns[0].high->y==144);
+    lv_obj_set_size(owner,900,240);assert(card->columns.size()==1 && card->columns[0].high->y==224);
+    const int live=lv_obj_t::live;
+    for(int i=0;i<20;++i)weather_daily_refresh_visuals();
+    assert(lv_obj_t::live==live); // Single-day refreshes also reuse widgets.
+    weather_daily_open_modal(card);
+    assert(weather_daily_modal().day==(tomorrow?1u:0u));
+    weather_daily_hide_modal();
+    // Omit the requested day while other dates are still available.
+    auto &f=card->source->forecast;
+    if(tomorrow){f.days[1]=f.days[2];f.count=2;}
+    else{f.days[0]=f.days[1];f.days[1]=f.days[2];f.count=2;}
+    weather_daily_refresh_visuals();
+    assert(card->columns.empty() && slot.text_lbl->text=="Forecast unavailable");
+    assert(slot.icon_lbl->text=="unavailable-icon");
+    weather_daily_open_modal(card);assert(!weather_daily_modal().overlay);
+    assert(espcontrol::weather::parse(payload,f));weather_daily_refresh_visuals();
+    assert(card->columns.size()==1 && card->columns[0].day->text==(tomorrow?"Tomorrow":"Today"));
+    weather_daily_cleanup(owner);lv_obj_del(owner);assert(daily->source->users==1);
+  }
+  weather_daily_cleanup(daily_owner);lv_obj_del(daily_owner);
+  assert(weather_daily_sources().empty() && lv_obj_t::live==0);
 }

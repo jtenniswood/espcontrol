@@ -11,13 +11,6 @@
       "defaultValue": "",
       "storageField": "precision",
       "omitDefault": true
-    },
-    {
-      "name": "large_numbers",
-      "label": "Large Temperature Numbers",
-      "kind": "flag",
-      "omitDefault": true,
-      "supportedWhen": { "precision": ["today", "tomorrow"] }
     }
   ],
   "normalization": {
@@ -33,7 +26,7 @@
       "options": { "policy": "hook", "hook": "normalize_weather_options" }
     },
     "unknownOptions": "drop",
-    "canonicalOptionOrder": ["large_numbers"],
+    "canonicalOptionOrder": [],
     "migrationActions": ["legacy_weather_forecast"],
     "optionHook": "normalize_weather_options"
   },

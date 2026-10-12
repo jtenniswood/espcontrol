@@ -766,8 +766,8 @@ def test_weather_card_visual_matches_preview() -> None:
     assert '"HA Actions"' not in weather_forecast, (
         "forecast weather errors should keep the configured/default label like the web preview"
     )
-    assert 'lv_label_set_display_text(slot.unit_lbl, display_temperature_unit_symbol())' in weather_driver, (
-        "forecast weather placeholder should show the configured unit like the web preview"
+    assert 'weather_daily_setup(slot, config, display)' in weather_driver, (
+        "all forecast modes should use the shared forecast layout"
     )
     assert 'lv_label_set_display_text(ref.unit_lbl, normalized_unit.c_str())' in weather_forecast, (
         "forecast weather unavailable state should keep showing the configured unit"

@@ -1,6 +1,5 @@
 import {
     cardContractAllowInSubpage,
-    cardContractCard,
     cardContractCardLabel,
     cardContractDefaultConfig,
     cardContractDomains,
@@ -20,20 +19,18 @@ export interface WeatherCardRegistration {
 export function registerWeatherCardTypes(
     registry: CardRegistry,
     weatherOptions: ConfigWeatherOptionsFeature,
-    clockBar: Pick<ClockBarFeature, "temperatureUnitSymbol">,
+    _clockBar: Pick<ClockBarFeature, "temperatureUnitSymbol">,
     fields: ControlsFieldsFeature,
     cardUi: CardUiServices,
 ): WeatherCardRegistration {
     const { renderButtonSettings } = cardUi;
-    const { cardBadgeLabelHtml, cardSensorPreviewHtml } = fields;
-    const { temperatureUnitSymbol } = clockBar;
+    const { cardBadgeLabelHtml } = fields;
     const {
-        weatherCardDefaultForecastLabel,
         weatherCardIsForecastMode,
         weatherModeOptions,
         normalizeWeatherCardMode,
     } = weatherOptions;
-    // Read-only weather card: displays either current conditions or high / low temperatures.
+    // Current conditions or a shared forecast layout for one or several days.
     const WEATHER_CARD_METADATA: any = {
         mode: {
             label: "Type",
@@ -56,18 +53,6 @@ export function registerWeatherCardTypes(
             bindName: "entity",
             rerender: true,
             requiredMessage: "Add an entity before saving.",
-        },
-        labelField: {
-            label: "Label",
-            idSuffix: "label",
-            placeholder: function (this: any, b?: any) {
-                return "e.g. " + (b.precision === "daily" ? "Home" : weatherCardDefaultForecastLabel(b));
-            },
-        },
-        largeNumbers: {
-            label: "Large Temperature Numbers",
-            idSuffix: "large-weather-numbers",
-            supported: (b: any) => weatherCardIsForecastMode(b) && b.precision !== "daily",
         },
         preview: {
             forecastBadge: "weather-partly-cloudy",
@@ -94,28 +79,16 @@ export function registerWeatherCardTypes(
         renderSettings: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
             helpers.renderCardModeSelector(panel, b, helpers, WEATHER_CARD_METADATA);
             helpers.renderCardEntityField(panel, b, helpers, WEATHER_CARD_METADATA);
-            if (!weatherCardIsForecastMode(b) || b.precision === "daily")
-                return;
-            var labelControl: any = helpers.renderCardTextField(panel, b, helpers, WEATHER_CARD_METADATA.labelField);
-            var labelInp: any = labelControl.input;
-            labelInp.placeholder = "e.g. " + weatherCardDefaultForecastLabel(b);
-            helpers.renderCardLargeNumbersToggle(panel, b, helpers, WEATHER_CARD_METADATA);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
-            if (b.precision === "daily" && weatherCardIsForecastMode(b)) {
-                const samples = [["Today", "weather-rainy", "18"], ["Tues", "weather-sunny", "20"], ["Weds", "weather-partly-cloudy", "18"], ["Thurs", "weather-rainy", "20"], ["Fri", "weather-sunny", "14"], ["Sat", "weather-cloudy", "18"], ["Sun", "weather-sunny", "19"]];
+            if (weatherCardIsForecastMode(b)) {
+                let samples: [string, string, string][] = [["Today", "weather-rainy", "18"], ["Tues", "weather-sunny", "20"], ["Weds", "weather-partly-cloudy", "18"], ["Thurs", "weather-rainy", "20"], ["Fri", "weather-sunny", "14"], ["Sat", "weather-cloudy", "18"], ["Sun", "weather-sunny", "19"]];
+                if (b.precision === "today") samples = samples.slice(0, 1);
+                else if (b.precision === "tomorrow") samples = samples.slice(1, 2).map(([, condition, temperature]) => ["Tomorrow", condition, temperature]);
                 return {
                     buttonClass: "sp-weather-daily-card",
                     iconHtml: '<span class="sp-weather-days">' + samples.map((day) => '<span class="sp-weather-day"><span class="mdi mdi-' + day[1] + '"></span><span>' + day[0] + '</span><span class="sp-weather-temperature-high">' + day[2] + '\u00B0</span></span>').join("") + '</span>',
                     labelHtml: "",
-                };
-            }
-            if (weatherCardIsForecastMode(b)) {
-                var defaultLabel: any = weatherCardDefaultForecastLabel(b);
-                var label: any = b.label || defaultLabel;
-                return {
-                    iconHtml: cardSensorPreviewHtml(b, helpers, "18/10", temperatureUnitSymbol(), "sp-forecast-preview", "sp-forecast-value"),
-                    labelHtml: cardBadgeLabelHtml(helpers, label, WEATHER_CARD_METADATA.preview.forecastBadge),
                 };
             }
             return {

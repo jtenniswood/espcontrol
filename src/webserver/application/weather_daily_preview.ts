@@ -35,7 +35,9 @@ export function createWeatherDailyPreviewLayout(
         const width = (card.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)) / scale;
         const minimumDayWidth = measured + 24;
         const count = Math.max(1, Math.min(days.length, Math.floor((width + gap) / (minimumDayWidth + gap))));
-        const columnWidth = Math.max(1, Math.min(minimumDayWidth, Math.floor((width - gap * (count - 1)) / count)));
+        const singleDay = days.length === 1;
+        const columnWidth = singleDay ? Math.max(1, width)
+            : Math.max(1, Math.min(minimumDayWidth, Math.floor((width - gap * (count - 1)) / count)));
         row.style.gap = (gap * scale) + "px";
         row.style.setProperty("--weather-day-width", (columnWidth * scale) + "px");
         days.forEach((day, index) => { day.hidden = index >= count; });
