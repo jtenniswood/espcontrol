@@ -7140,6 +7140,12 @@ async function assertWeatherWidthScaling(browser) {
     }
     assert(counts[0] === 1 && counts[3] === 7 && counts.every((count, i) => i === 0 || count > counts[i - 1]),
       'Daily forecast preview adds complete day columns as its width increases: ' + counts.join(','));
+    await page.locator('#weather').evaluate(card => { card.style.width = '420px'; card.getBoundingClientRect(); });
+    const columnGap = await page.locator('.sp-weather-day').evaluateAll(days => {
+      const visible = days.filter(day => getComputedStyle(day).display !== 'none');
+      return visible[1].getBoundingClientRect().left - visible[0].getBoundingClientRect().right;
+    });
+    assert(columnGap >= 11, 'Daily forecast preview keeps a visible gap between columns: ' + columnGap);
     console.log('Daily forecast browser scaling passed: ' + counts.join(',') + ' complete columns.');
   } finally { await page.close(); }
 }

@@ -96,9 +96,12 @@ inline bool parse(const std::string &payload, Forecast &out) {
   return out.count > 0;
 }
 // Width per day derives from the actual display font, rather than device size.
-inline size_t visible_days(int width, int minimum_day_width, size_t available = MAX_DAYS) {
+inline size_t visible_days(int width, int minimum_day_width, size_t available = MAX_DAYS,
+                           int gap = 0) {
   if (available == 0) return 0;
-  int count = width / (minimum_day_width > 0 ? minimum_day_width : 1);
+  const int column_width = minimum_day_width > 0 ? minimum_day_width : 1;
+  const int column_gap = std::max(0, gap);
+  int count = (width + column_gap) / (column_width + column_gap);
   return std::min(available, std::min(MAX_DAYS, static_cast<size_t>(std::max(1, count))));
 }
 static_assert(sizeof(Forecast) < 640, "Keep one shared week below 640 bytes");

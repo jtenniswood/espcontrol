@@ -133,10 +133,11 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   const int height = lv_obj_get_content_height(card->owner);
   if (width <= 0 || height <= 0) return;
   const int font_height = lv_font_get_line_height(card->font);
+  const int day_gap = std::max(8, font_height * 3 / 4);
   lv_point_t measured;
   lv_text_get_size(&measured, "-18.8\u00B0", card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
   const size_t count = espcontrol::weather::visible_days(width, measured.x + 16,
-    forecast.count ? forecast.count : 1);
+    forecast.count ? forecast.count : 1, day_gap);
   // Rebuild only when geometry or the number of visible days changes. Refreshes
   // and unit changes reuse the labels instead of allocating new widget trees.
   if (card->width != width || card->height != height || card->columns.size() != count) {
@@ -144,13 +145,14 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     card->width = width; card->height = height;
     lv_obj_set_size(card->root, width, height);
     lv_obj_align(card->root, LV_ALIGN_TOP_LEFT, 0, 0);
-    const int column_width = width / count;
+    const int column_width = std::max(1, (width - day_gap * static_cast<int>(count - 1)) / static_cast<int>(count));
     const int icon_height = lv_font_get_line_height(card->icon_font);
     for (size_t i = 0; i < count; ++i) {
       WeatherDailyColumn col{};
       auto make = [&](const lv_font_t *font, int y) {
         auto *label = weather_daily_label(card->root, font);
-        lv_obj_set_width(label, column_width); lv_obj_set_pos(label, i * column_width, y); return label;
+        const int x = i * (column_width + day_gap);
+        lv_obj_set_width(label, column_width); lv_obj_set_pos(label, x, y); return label;
       };
       col.icon = make(card->icon_font, 0);
       col.day = make(card->font, icon_height + 2);
