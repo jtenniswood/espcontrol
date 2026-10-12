@@ -94,15 +94,8 @@ export function registerWeatherCardTypes(
         renderSettings: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
             helpers.renderCardModeSelector(panel, b, helpers, WEATHER_CARD_METADATA);
             helpers.renderCardEntityField(panel, b, helpers, WEATHER_CARD_METADATA);
-            if (!weatherCardIsForecastMode(b))
+            if (!weatherCardIsForecastMode(b) || b.precision === "daily")
                 return;
-            if (b.precision === "daily") {
-                const hint = document.createElement("div");
-                hint.className = "hint";
-                hint.textContent = "Shows more days as the card gets wider. Tap the card on the panel for all seven days and weather details.";
-                panel.appendChild(hint);
-                return;
-            }
             var labelControl: any = helpers.renderCardTextField(panel, b, helpers, WEATHER_CARD_METADATA.labelField);
             var labelInp: any = labelControl.input;
             labelInp.placeholder = "e.g. " + weatherCardDefaultForecastLabel(b);
