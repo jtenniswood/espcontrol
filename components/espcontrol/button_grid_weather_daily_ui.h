@@ -3,34 +3,20 @@
 #include <cstdint>
 
 // Forecast widgets exist only on configured forecast cards. The modal allocates
-// one day's detail view on demand and reads the same source as its owner.
+// only visible forecast columns and one detail view, sharing the owner's source.
 enum class WeatherForecastView : uint8_t { DAILY, TODAY, TOMORROW };
 struct WeatherDailyColumn { lv_obj_t *icon, *day, *high; };
 struct WeatherDailyCard {
   lv_obj_t *owner = nullptr, *root = nullptr, *caption = nullptr, *placeholder_icon = nullptr;
   WeatherDailySource *source = nullptr;
   WeatherForecastView view = WeatherForecastView::DAILY;
-  const lv_font_t *font = nullptr, *icon_font = nullptr;
+  const lv_font_t *font = nullptr, *icon_font = nullptr, *summary_font = nullptr, *detail_font = nullptr;
   std::vector<WeatherDailyColumn> columns;
   int width = 0, height = 0;
 };
 inline std::vector<WeatherDailyCard *> &weather_daily_cards() {
   static std::vector<WeatherDailyCard *> cards;
   return cards;
-}
-struct WeatherDailyModal {
-  lv_obj_t *overlay = nullptr, *owner = nullptr, *date = nullptr, *icon = nullptr, *details = nullptr;
-  lv_obj_t *previous = nullptr, *next = nullptr;
-  WeatherDailySource *source = nullptr;
-  size_t day = 0;
-};
-inline WeatherDailyModal &weather_daily_modal() { static WeatherDailyModal ui; return ui; }
-inline void weather_daily_hide_modal() {
-  auto &ui = weather_daily_modal();
-  auto *source = ui.source;
-  control_modal_delete_overlay(ControlModalKind::WEATHER_FORECAST, ui.overlay);
-  ui = WeatherDailyModal{};
-  weather_daily_release_source(source);
 }
 inline std::string weather_daily_temperature(float value, const char *unit) {
   if (!std::isfinite(value)) return "--";
@@ -61,36 +47,6 @@ inline std::string weather_daily_reading(float value, const char *unit) {
   if (!std::isfinite(value)) return "--";
   char text[32]; std::snprintf(text, sizeof(text), "%.1f%s", value, unit); return text;
 }
-inline void weather_daily_refresh_modal() {
-  auto &ui = weather_daily_modal();
-  if (!ui.overlay || !ui.source) return;
-  const auto &forecast = ui.source->forecast;
-  if (!forecast.count) {
-    const char *status_key = ui.source->loading ? "Loading forecast" : "Forecast unavailable";
-    lv_label_set_display_text(ui.date, espcontrol_i18n(std::string(status_key)).c_str());
-    lv_label_set_display_text(ui.icon, ui.source->loading
-      ? find_icon("Weather Cloudy Clock") : weather_icon_for_state("unavailable"));
-    lv_label_set_display_text(ui.details, "--/--");
-    lv_obj_add_state(ui.previous, LV_STATE_DISABLED); lv_obj_add_state(ui.next, LV_STATE_DISABLED);
-    return;
-  }
-  ui.day = std::min(ui.day, forecast.count - 1);
-  const auto &day = forecast.days[ui.day];
-  std::string title = weather_daily_date_label(day, forecast);
-  lv_label_set_display_text(ui.date, title.c_str());
-  lv_label_set_display_text(ui.icon, weather_icon_for_state(day.condition));
-  std::string details = weather_label_for_state(day.condition) + "\n" +
-    weather_daily_temperature(day.high, forecast.temperature_unit) + "\u00B0/" +
-    weather_daily_temperature(day.low, forecast.temperature_unit) + "\u00B0";
-  if (std::isfinite(day.rain_probability)) details += "\n" + espcontrol_i18n(std::string("Rain chance")) + ": " + weather_daily_reading(day.rain_probability, "%");
-  if (std::isfinite(day.precipitation)) details += "\n" + espcontrol_i18n(std::string("Rainfall")) + ": " + weather_daily_reading(day.precipitation, forecast.precipitation_unit);
-  if (std::isfinite(day.wind)) details += "\n" + espcontrol_i18n(std::string("Wind")) + ": " + weather_daily_reading(day.wind, forecast.wind_unit);
-  if (std::isfinite(day.humidity)) details += "\n" + espcontrol_i18n(std::string("Humidity")) + ": " + weather_daily_reading(day.humidity, "%");
-  if (ui.source->stale) details += "\n" + espcontrol_i18n(std::string("Last forecast"));
-  lv_label_set_display_text(ui.details, details.c_str());
-  if (ui.day == 0) lv_obj_add_state(ui.previous, LV_STATE_DISABLED); else lv_obj_clear_state(ui.previous, LV_STATE_DISABLED);
-  if (ui.day + 1 >= forecast.count) lv_obj_add_state(ui.next, LV_STATE_DISABLED); else lv_obj_clear_state(ui.next, LV_STATE_DISABLED);
-}
 inline lv_obj_t *weather_daily_label(lv_obj_t *parent, const lv_font_t *font) {
   auto *label = lv_label_create(parent);
   if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
@@ -101,50 +57,20 @@ inline lv_obj_t *weather_daily_label(lv_obj_t *parent, const lv_font_t *font) {
   apply_text_width_compensation(label);
   return label;
 }
-inline void weather_daily_open_modal(WeatherDailyCard *card) {
-  if (!card || !card->source || !card->owner) return;
-  const size_t selected = weather_daily_selected_day(*card);
-  if (card->view != WeatherForecastView::DAILY && selected >= card->source->forecast.count) return;
-  auto shell = control_modal_open_shell(ControlModalKind::WEATHER_FORECAST,
-    card->owner, 100, card->icon_font, weather_daily_hide_modal);
-  if (!shell.overlay || !shell.panel) return;
-  auto &ui = weather_daily_modal();
-  ui.overlay = shell.overlay; ui.owner = card->owner; ui.source = card->source;
-  ui.day = selected;
-  ++ui.source->users;
-  set_clock_bar_modal_label(espcontrol_i18n(std::string("Weather")));
-  // A scrollable detail area keeps long translations and small/rotated panels usable.
-  const int top = shell.layout.back_size + shell.layout.inset * 2;
-  auto *list = control_modal_create_scroll_list(shell.panel, shell.content_w,
-    std::max(60, static_cast<int>(shell.layout.panel_h) - top - 60), 8);
-  lv_obj_align(list, LV_ALIGN_TOP_MID, 0, top);
-  ui.date = weather_daily_label(list, card->font); lv_obj_set_width(ui.date, lv_pct(100));
-  ui.icon = weather_daily_label(list, card->icon_font); lv_obj_set_width(ui.icon, lv_pct(100));
-  ui.details = weather_daily_label(list, card->font); lv_obj_set_width(ui.details, lv_pct(100));
-  lv_label_set_long_mode(ui.details, LV_LABEL_LONG_WRAP);
-  const int button_size = std::max(40, static_cast<int>(shell.layout.back_size));
-  auto create_nav = [&](bool next) {
-    auto *button = lv_btn_create(shell.panel);
-    lv_obj_set_size(button, button_size, button_size);
-    lv_obj_align(button, next ? LV_ALIGN_BOTTOM_RIGHT : LV_ALIGN_BOTTOM_LEFT,
-      next ? -shell.layout.inset : shell.layout.inset, -shell.layout.inset);
-    lv_obj_set_style_bg_color(button, lv_color_hex(current_theme().surface_secondary), LV_PART_MAIN);
-    control_modal_apply_pressed_fill(button);
-    auto *label = weather_daily_label(button, card->font);
-    lv_label_set_text(label, next ? ">" : "<"); lv_obj_center(label);
-    lv_obj_add_event_cb(button, [](lv_event_t *event) {
-      auto &modal = weather_daily_modal();
-      bool next = lv_event_get_user_data(event) != nullptr;
-      if (!modal.source) return;
-      if (next && modal.day + 1 < modal.source->forecast.count) ++modal.day;
-      else if (!next && modal.day > 0) --modal.day;
-      weather_daily_refresh_modal();
-    }, LV_EVENT_CLICKED, next ? reinterpret_cast<void *>(1) : nullptr);
-    return button;
-  };
-  ui.previous = create_nav(false); ui.next = create_nav(true);
-  weather_daily_refresh_modal();
+inline int weather_daily_minimum_width(const lv_font_t *font, const lv_font_t *icon_font, int padding) {
+  lv_point_t measured;
+  lv_text_get_size(&measured, "-188\u00B0", font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+  int width = std::max(static_cast<int>(measured.x), static_cast<int>(lv_font_get_line_height(icon_font)));
+  static const char *const labels[] = {"Today", "Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"};
+  for (const char *key : labels) {
+    const auto text = espcontrol_i18n(std::string(key));
+    lv_text_get_size(&measured, text.c_str(), font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    width = std::max(width, static_cast<int>(measured.x));
+  }
+  return width + padding;
 }
+#include "button_grid_weather_modal.h"
+
 inline void weather_daily_render_card(WeatherDailyCard *card) {
   if (!card || !card->source || !card->root) return;
   auto &forecast = card->source->forecast;
@@ -171,16 +97,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   const int font_height = lv_font_get_line_height(card->font);
   const int day_gap = std::max(8, font_height);
   const int icon_height = lv_font_get_line_height(card->icon_font);
-  lv_point_t measured;
-  lv_text_get_size(&measured, "-188\u00B0", card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-  int minimum_day_width = std::max(static_cast<int>(measured.x), icon_height);
-  static const char *day_labels[] = {"Today", "Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"};
-  for (const char *key : day_labels) {
-    const auto label = espcontrol_i18n(std::string(key));
-    lv_text_get_size(&measured, label.c_str(), card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-    minimum_day_width = std::max(minimum_day_width, static_cast<int>(measured.x));
-  }
-  minimum_day_width += 24;
+  const int minimum_day_width = weather_daily_minimum_width(card->font, card->icon_font, 24);
   const size_t count = espcontrol::weather::visible_days(width, minimum_day_width,
     card->view == WeatherForecastView::DAILY ? forecast.count : 1, day_gap);
   const int caption_height = card->source->stale ? font_height + 2 : 0;
@@ -273,6 +190,9 @@ inline void weather_daily_setup(BtnSlot &slot, const ParsedCfg &config,
   if (!card->font) card->font = LV_FONT_DEFAULT;
   card->icon_font = display_icon_font(display);
   if (!card->icon_font) card->icon_font = card->font;
+  card->summary_font = display_media_title_font(display);
+  if (!card->summary_font) card->summary_font = card->font;
+  card->detail_font = display_volume_label_font(display, card->font);
   card->root = lv_obj_create(slot.btn);
   if (!card->root) { weather_daily_release_source(source); delete card; return; }
   lv_obj_set_style_bg_opa(card->root, LV_OPA_TRANSP, LV_PART_MAIN);

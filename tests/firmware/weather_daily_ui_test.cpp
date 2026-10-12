@@ -12,7 +12,7 @@ struct lv_event_t { lv_obj_t *target; void *data; };
 using Callback = void (*)(lv_event_t *);
 struct Binding { Callback callback; int code; void *data; };
 struct lv_font_t { int line_height; };
-lv_font_t font{16}, icons{32};
+lv_font_t font{16}, icons{32}, small_font{12}, summary_font{24};
 #define LV_FONT_DEFAULT (&font)
 struct lv_obj_t {
   static int live;
@@ -27,8 +27,10 @@ struct lv_obj_t {
 };
 int lv_obj_t::live = 0;
 constexpr int LV_PART_MAIN=0, LV_STATE_DISABLED=1, LV_TEXT_ALIGN_CENTER=0, LV_LABEL_LONG_DOT=0, LV_LABEL_LONG_WRAP=1;
-constexpr int LV_TEXT_ALIGN_LEFT=1;
+using lv_text_align_t=int;
+constexpr int LV_TEXT_ALIGN_LEFT=1, LV_TEXT_ALIGN_RIGHT=2;
 constexpr int LV_ALIGN_TOP_MID=0, LV_ALIGN_TOP_LEFT=0, LV_ALIGN_BOTTOM_RIGHT=0, LV_ALIGN_BOTTOM_LEFT=0;
+constexpr int LV_OPA_70=70, LV_OPA_COVER=255;
 constexpr int LV_OPA_TRANSP=0, LV_OBJ_FLAG_SCROLLABLE=1, LV_OBJ_FLAG_CLICKABLE=2, LV_COORD_MAX=32767, LV_TEXT_FLAG_NONE=0;
 constexpr int LV_OBJ_FLAG_HIDDEN=4;
 constexpr int LV_EVENT_DELETE=1, LV_EVENT_SIZE_CHANGED=2, LV_EVENT_CLICKED=3;
@@ -55,7 +57,7 @@ void lv_label_set_text(lv_obj_t *obj,const char *text){obj->text=text;}
 void lv_obj_set_style_text_font(lv_obj_t *obj,const lv_font_t *f,int){obj->font=f;}
 const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *obj,int){return obj->font;}
 #define NOOP(name) template<class... T> void name(T...) {}
-NOOP(lv_obj_set_style_text_color) NOOP(lv_label_set_long_mode)
+NOOP(lv_obj_set_style_text_color) NOOP(lv_label_set_long_mode) NOOP(lv_obj_set_style_text_opa)
 void lv_obj_set_style_text_align(lv_obj_t *obj,int align,int){obj->text_align=align;}
 void lv_obj_set_pos(lv_obj_t *obj,int x,int y){obj->x=x;obj->y=y;}
 void lv_obj_set_y(lv_obj_t *obj,int y){obj->y=y;}
@@ -69,8 +71,8 @@ int lv_color_hex(int c){return c;} int lv_pct(int n){return n;}
 struct Theme { int text_primary=0, surface_secondary=0; } theme;
 const Theme &current_theme(){return theme;}
 std::string espcontrol_i18n(const std::string &s){return s;}
-const char *display_temperature_unit_symbol(){return "°C";}
 bool use_fahrenheit=false;
+const char *display_temperature_unit_symbol(){return use_fahrenheit?"°F":"°C";}
 float convert_temperature_value_for_display_float(float v,const char *unit){
   const bool fahrenheit=std::string(unit)=="°F";
   if(use_fahrenheit && !fahrenheit)return v*9.0f/5.0f+32.0f;
@@ -82,6 +84,28 @@ std::string weather_label_for_state(const std::string &s){return s;}
 void notify_dashboard_content_changed(){}
 struct DisplayProfile{};
 const lv_font_t *display_icon_font(const DisplayProfile &){return &icons;}
+const lv_font_t *display_media_title_font(const DisplayProfile &){return &summary_font;}
+const lv_font_t *display_volume_label_font(const DisplayProfile &, const lv_font_t *){return &small_font;}
+namespace esphome { using StringRef = std::string; }
+std::string string_ref_limited(const std::string &state,size_t size){return state.substr(0,size);}
+struct HaBinding{void *owner;std::string key;std::function<void(esphome::StringRef)> callback;};
+std::vector<HaBinding> ha_bindings;
+void *ha_owner=nullptr;
+struct HaCallbackOwnerScope{
+  void *previous;
+  explicit HaCallbackOwnerScope(void *owner):previous(ha_owner){ha_owner=owner;}
+  ~HaCallbackOwnerScope(){ha_owner=previous;}
+};
+void ha_release_callbacks_for_owner(void *owner){
+  ha_bindings.erase(std::remove_if(ha_bindings.begin(),ha_bindings.end(),[owner](const auto &binding){return binding.owner==owner;}),ha_bindings.end());
+}
+bool ha_subscribe_state(const std::string &,std::function<void(esphome::StringRef)> cb){ha_bindings.push_back({ha_owner,"",std::move(cb)});return true;}
+bool ha_subscribe_attribute(const std::string &,const std::string &key,std::function<void(esphome::StringRef)> cb){ha_bindings.push_back({ha_owner,key,std::move(cb)});return true;}
+void ha_reannounce_state_subscriptions(){}
+void publish_weather(const std::string &key,const std::string &value){
+  const auto bindings=ha_bindings;
+  for(const auto &binding:bindings)if(binding.key==key)binding.callback(value);
+}
 struct ParsedCfg{std::string entity,label;std::string precision="daily",type="weather";};
 struct BtnSlot{lv_obj_t *btn,*text_lbl,*icon_lbl;};
 enum class ControlModalKind{WEATHER_FORECAST};
@@ -115,7 +139,7 @@ int main(){
     assert(!(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN));
     assert(placeholder_icon->text=="\U000F18F6" && caption->text=="Loading forecast");
     weather_daily_open_modal(card);
-    assert(weather_daily_modal().date->text=="Loading forecast");
+    assert(weather_daily_modal().condition->text=="Loading forecast");
     assert(weather_daily_modal().icon->text=="\U000F18F6");
     weather_daily_hide_modal();
 
@@ -162,8 +186,25 @@ int main(){
     assert(card->columns.size()==4 && lv_obj_t::live==live);
     for(int i=0;i<10;++i){
       weather_daily_open_modal(card);assert(card->source->users==2);
-      emit(weather_daily_modal().next,LV_EVENT_CLICKED);assert(weather_daily_modal().day==1);
-      weather_daily_hide_modal();assert(card->source->users==1 && lv_obj_t::live==live);
+      auto &modal=weather_daily_modal();
+      assert(modal.columns.size()==4 && ha_bindings.size()==4);
+      publish_weather("","rainy");publish_weather("friendly_name","Home");publish_weather("temperature","15.2");
+      assert(modal.temperature->text=="--°C"); // Do not guess the source unit while attributes arrive.
+      publish_weather("temperature_unit","°C");
+      assert(modal.condition->text=="rainy" && modal.name->text=="Home" && modal.temperature->text=="15°C");
+      assert(modal.range->text=="18° / 10°");
+      const auto &column=modal.columns[0];
+      assert(column.day->text=="Today" && column.high->text=="18°" && column.low->text=="10°");
+      assert(column.day->y < column.icon->y && column.icon->y < column.high->y && column.high->y < column.low->y);
+      assert(modal.name->y>modal.condition->y && modal.range->y>modal.temperature->y);
+      assert(modal.temperature->text_align==LV_TEXT_ALIGN_RIGHT && modal.name->text_align==LV_TEXT_ALIGN_LEFT);
+      assert(modal.details->text.find("Rain chance: 0.0%")!=std::string::npos);
+      const int modal_live=lv_obj_t::live;
+      for(int refresh=0;refresh<20;++refresh)weather_daily_refresh_modal();
+      assert(lv_obj_t::live==modal_live && ha_bindings.size()==4);
+
+      emit(weather_daily_modal().columns[1].button,LV_EVENT_CLICKED);assert(weather_daily_modal().day==1);
+      weather_daily_hide_modal();assert(card->source->users==1 && lv_obj_t::live==live && ha_bindings.empty());
     }
     weather_daily_open_modal(card);weather_daily_cleanup(owner);
     assert(!weather_daily_modal().overlay && weather_daily_cards().empty() && weather_daily_sources().empty());
@@ -201,6 +242,37 @@ int main(){
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     assert(lv_obj_t::live==live);
   }
+  weather_daily_open_modal(wide_card);
+  auto &paged=weather_daily_modal();
+  assert(paged.columns.size()==paged.capacity && paged.capacity<7);
+  assert(!(paged.navigation->flags & LV_OBJ_FLAG_HIDDEN));
+  const size_t page_size=paged.capacity;
+  emit(paged.next,LV_EVENT_CLICKED);
+  assert(paged.first==page_size && paged.day==page_size && paged.columns.size()==7-page_size);
+  assert(paged.columns.front().day->text==weather_daily_date_label(paged.source->forecast.days[page_size],paged.source->forecast));
+  emit(paged.previous,LV_EVENT_CLICKED);assert(paged.first==0 && paged.columns.size()==page_size);
+  publish_weather("","sunny");publish_weather("temperature","68");publish_weather("temperature_unit","°F");
+  assert(paged.temperature->text=="20°C");
+  use_fahrenheit=true;weather_daily_refresh_modal();
+  assert(paged.temperature->text=="68°F" && paged.range->text=="64° / 50°");
+  assert(paged.columns[0].high->text=="64°" && paged.columns[0].low->text=="50°");
+  use_fahrenheit=false;weather_daily_refresh_modal();
+  publish_weather("temperature","99999");assert(paged.temperature->text=="--°C");
+  publish_weather("temperature","68");publish_weather("","unavailable");assert(paged.temperature->text=="--°C");
+  publish_weather("friendly_name",std::string(200,'x'));assert(std::strlen(paged.friendly_name)==64);
+  const auto saved_week=paged.source->forecast;
+  paged.source->forecast=espcontrol::weather::Forecast{};paged.source->loading=true;
+  weather_daily_refresh_modal();
+  assert(paged.columns.empty() && paged.condition->text=="Loading forecast");
+  assert(paged.icon->text=="\U000F18F6" && (paged.days->flags & LV_OBJ_FLAG_HIDDEN));
+  paged.source->forecast=saved_week;weather_daily_refresh_modal();assert(paged.columns.size()==page_size);
+  const size_t old_capacity=paged.capacity;
+  paged.source->forecast.count=1;weather_daily_refresh_modal();
+  assert(paged.columns.size()==1 && (paged.navigation->flags & LV_OBJ_FLAG_HIDDEN));
+  assert(paged.capacity==old_capacity && paged.columns[0].button->width==paged.row_width);
+  const auto old_callback=ha_bindings[0].callback;
+  weather_daily_hide_modal();assert(ha_bindings.empty());
+  old_callback("rainy");assert(!weather_daily_modal().overlay);
   weather_daily_cleanup(wide_owner);lv_obj_del(wide_owner);
   assert(weather_daily_sources().empty() && lv_obj_t::live==0);
 

@@ -42,7 +42,12 @@ All forecast modes share one compact forecast per weather entity. The panel supp
 
 ## Forecast Details
 
-Tap any forecast card to open its details modal. Today and Tomorrow cards open on their selected day. Use the previous and next buttons to browse all available days, including days that do not fit on a Daily Forecast card. The modal shows the condition, high / low temperatures, and any rain chance, rainfall amount, wind speed, and humidity supplied by your provider. Missing details are omitted. Rainfall and wind use the units supplied by Home Assistant; temperatures use the panel's Temperature Unit setting.
+Tap any forecast card to open its details modal. A summary at the top shows the entity's current condition and name on the left, with its current temperature and today's forecast high / low on the right. Temperatures are rounded to whole degrees and follow the panel's Temperature Unit setting. Missing current readings show **--**, and the range is omitted if today's forecast is unavailable.
+
+Below the summary, each forecast column shows the day, condition icon, high and low temperature. Smaller screens show the days that fit comfortably; use the previous and next buttons to reach the remaining days. Today and Tomorrow cards start with their selected day in view. Tap a day to see its provider-supplied rain chance, rainfall, wind and humidity below the row. Missing details are omitted, and rainfall and wind use the units supplied by Home Assistant. The modal scrolls vertically when needed.
+
+Forecast columns reuse the card's shared forecast. Only visible day panels are created, and live current-condition callbacks are attached while the modal is open and released on close.
+
 
 ## Supported Conditions
 
