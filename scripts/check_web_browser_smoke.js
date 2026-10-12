@@ -7129,7 +7129,9 @@ async function assertWeatherWidthScaling(browser) {
   const page = await browser.newPage();
   try {
     await page.setContent('<style>' + createWebStyles(false) + '</style><div id="weather" class="sp-btn sp-weather-daily-card" style="position:relative;width:120px;height:180px;--btn-label:16px;--btn-icon:32px;--btn-pad:8px;--r:8px"><span class="sp-weather-days">' +
-      Array.from({ length: 7 }, (_, i) => '<span class="sp-weather-day"><span>' + (i ? '12/10' : 'Today') + '</span><span class="mdi">☀</span><span>18/10</span></span>').join('') + '</span></div>');
+      Array.from({ length: 7 }, (_, i) => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + (i ? 'Tues' : 'Today') + '</span><span class="sp-weather-temperature-high">18.0°C</span><span class="sp-weather-temperature-low">10.0°C</span></span>').join('') + '</span></div>');
+    const firstDayRows = await page.locator('.sp-weather-day').first().evaluate(day => Array.from(day.children).map(child => child.textContent));
+    assert.deepStrictEqual(firstDayRows, ['☀', 'Today', '18.0°C', '10.0°C'], 'Daily preview orders icon, weekday, high, and low on separate unwrapped rows.');
     const counts = [];
     for (const width of [120, 240, 420, 700]) {
       await page.locator('#weather').evaluate((card, value) => { card.style.width = value + 'px'; card.getBoundingClientRect(); }, width);

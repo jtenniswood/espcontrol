@@ -96,9 +96,6 @@ export function registerWeatherCardTypes(
             helpers.renderCardEntityField(panel, b, helpers, WEATHER_CARD_METADATA);
             if (!weatherCardIsForecastMode(b))
                 return;
-            var labelControl: any = helpers.renderCardTextField(panel, b, helpers, WEATHER_CARD_METADATA.labelField);
-            var labelInp: any = labelControl.input;
-            labelInp.placeholder = "e.g. " + (b.precision === "daily" ? "Home" : weatherCardDefaultForecastLabel(b));
             if (b.precision === "daily") {
                 const hint = document.createElement("div");
                 hint.className = "hint";
@@ -106,15 +103,18 @@ export function registerWeatherCardTypes(
                 panel.appendChild(hint);
                 return;
             }
+            var labelControl: any = helpers.renderCardTextField(panel, b, helpers, WEATHER_CARD_METADATA.labelField);
+            var labelInp: any = labelControl.input;
+            labelInp.placeholder = "e.g. " + weatherCardDefaultForecastLabel(b);
             helpers.renderCardLargeNumbersToggle(panel, b, helpers, WEATHER_CARD_METADATA);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             if (b.precision === "daily" && weatherCardIsForecastMode(b)) {
-                const samples = [["Today", "weather-sunny", "18/10"], ["12/10", "weather-cloudy", "17/11"], ["13/10", "weather-rainy", "15/9"], ["14/10", "weather-cloudy", "16/8"], ["15/10", "weather-sunny", "19/10"], ["16/10", "weather-sunny", "20/11"], ["17/10", "weather-cloudy", "18/12"]];
+                const samples = [["Today", "weather-rainy", "17.8", "16.9"], ["Tues", "weather-sunny", "20.2", "9.4"], ["Weds", "weather-partly-cloudy", "18.1", "13.7"], ["Thurs", "weather-rainy", "20.1", "12.9"], ["Fri", "weather-sunny", "14.3", "5.9"], ["Sat", "weather-cloudy", "18.0", "12.0"], ["Sun", "weather-sunny", "19.0", "10.0"]];
                 return {
                     buttonClass: "sp-weather-daily-card",
-                    iconHtml: '<span class="sp-weather-days">' + samples.map((day) => '<span class="sp-weather-day"><span>' + day[0] + '</span><span class="mdi mdi-' + day[1] + '"></span><span>' + day[2] + '</span></span>').join("") + '</span>',
-                    labelHtml: cardBadgeLabelHtml(helpers, (b.label ? b.label + " · " : "") + temperatureUnitSymbol(), WEATHER_CARD_METADATA.preview.forecastBadge),
+                    iconHtml: '<span class="sp-weather-days">' + samples.map((day) => '<span class="sp-weather-day"><span class="mdi mdi-' + day[1] + '"></span><span>' + day[0] + '</span><span class="sp-weather-temperature-high">' + day[2] + temperatureUnitSymbol() + '</span><span class="sp-weather-temperature-low">' + day[3] + temperatureUnitSymbol() + '</span></span>').join("") + '</span>',
+                    labelHtml: "",
                 };
             }
             if (weatherCardIsForecastMode(b)) {

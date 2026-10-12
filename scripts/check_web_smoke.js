@@ -876,7 +876,11 @@ const weatherDailyPreview = hooks.buttonTypePreviewFor("weather", {
 assert.strictEqual(weatherDailyPreview.buttonClass, "sp-weather-daily-card");
 assert.strictEqual((weatherDailyPreview.iconHtml.match(/class="sp-weather-day"/g) || []).length, 7,
   "daily preview exposes the seven sample days for width-responsive CSS");
-assert(weatherDailyPreview.labelHtml.includes("Garden"), "daily preview preserves the location label");
+assert.strictEqual(weatherDailyPreview.labelHtml, "", "daily preview omits the separate label row");
+assert(weatherDailyPreview.iconHtml.indexOf("mdi-weather-rainy") < weatherDailyPreview.iconHtml.indexOf("Today"),
+  "daily preview places the condition icon above the weekday");
+assert(weatherDailyPreview.iconHtml.includes("17.8\u00B0C") && weatherDailyPreview.iconHtml.includes("16.9\u00B0C"),
+  "daily preview keeps each temperature and unit together on its own line");
 
 const weatherForecastPreview = hooks.buttonTypePreviewFor("weather", {
   entity: "weather.forecast_home",

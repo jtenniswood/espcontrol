@@ -2,14 +2,13 @@
 
 // Forecast widgets exist only on configured daily cards. The modal allocates
 // one day's detail view on demand and reads the same source as its owner.
-struct WeatherDailyColumn { lv_obj_t *day, *icon, *value, *rain; };
+struct WeatherDailyColumn { lv_obj_t *icon, *day, *high, *low; };
 struct WeatherDailyCard {
   lv_obj_t *owner = nullptr, *root = nullptr, *caption = nullptr;
   WeatherDailySource *source = nullptr;
   const lv_font_t *font = nullptr, *icon_font = nullptr;
   std::vector<WeatherDailyColumn> columns;
   int width = 0, height = 0;
-  std::string label;
 };
 inline std::vector<WeatherDailyCard *> &weather_daily_cards() {
   static std::vector<WeatherDailyCard *> cards;
@@ -32,7 +31,7 @@ inline void weather_daily_hide_modal() {
 inline std::string weather_daily_temperature(float value, const char *unit) {
   if (!std::isfinite(value)) return "--";
   char text[16];
-  std::snprintf(text, sizeof(text), "%d", static_cast<int>(std::round(convert_temperature_value_for_display_float(value, unit))));
+  std::snprintf(text, sizeof(text), "%.1f", convert_temperature_value_for_display_float(value, unit));
   return text;
 }
 inline std::string weather_daily_date_label(const espcontrol::weather::Day &day,
@@ -65,7 +64,7 @@ inline void weather_daily_refresh_modal() {
   lv_label_set_display_text(ui.date, title.c_str());
   lv_label_set_display_text(ui.icon, weather_icon_for_state(day.condition));
   std::string details = weather_label_for_state(day.condition) + "\n" +
-    weather_daily_temperature(day.high, forecast.temperature_unit) + "/" +
+    weather_daily_temperature(day.high, forecast.temperature_unit) + display_temperature_unit_symbol() + "/" +
     weather_daily_temperature(day.low, forecast.temperature_unit) + display_temperature_unit_symbol();
   if (std::isfinite(day.rain_probability)) details += "\n" + espcontrol_i18n(std::string("Rain chance")) + ": " + weather_daily_reading(day.rain_probability, "%");
   if (std::isfinite(day.precipitation)) details += "\n" + espcontrol_i18n(std::string("Rainfall")) + ": " + weather_daily_reading(day.precipitation, forecast.precipitation_unit);
@@ -135,7 +134,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   if (width <= 0 || height <= 0) return;
   const int font_height = lv_font_get_line_height(card->font);
   lv_point_t measured;
-  lv_text_get_size(&measured, "-12/-12", card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+  lv_text_get_size(&measured, "-18.8\u00B0C", card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
   const size_t count = espcontrol::weather::visible_days(width, measured.x + 16,
     forecast.count ? forecast.count : 1);
   // Rebuild only when geometry or the number of visible days changes. Refreshes
@@ -143,43 +142,38 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   if (card->width != width || card->height != height || card->columns.size() != count) {
     lv_obj_clean(card->root); card->columns.clear();
     card->width = width; card->height = height;
-    lv_obj_set_size(card->root, width, std::max(1, height - font_height - 4));
+    lv_obj_set_size(card->root, width, height);
     lv_obj_align(card->root, LV_ALIGN_TOP_LEFT, 0, 0);
     const int column_width = width / count;
     const int icon_height = lv_font_get_line_height(card->icon_font);
-    const int content_height = std::max(1, height - font_height - 4);
-    const bool show_rain = content_height >= font_height * 3 + icon_height + 8;
     for (size_t i = 0; i < count; ++i) {
       WeatherDailyColumn col{};
       auto make = [&](const lv_font_t *font, int y) {
         auto *label = weather_daily_label(card->root, font);
         lv_obj_set_width(label, column_width); lv_obj_set_pos(label, i * column_width, y); return label;
       };
-      col.day = make(card->font, 0);
-      // Compact height uses a text-only strip; no icon is clipped into the title.
-      if (content_height >= font_height * 2 + icon_height) col.icon = make(card->icon_font, font_height + 2);
-      col.value = make(card->font, col.icon ? font_height + icon_height + 4 : font_height + 2);
-      if (show_rain) col.rain = make(card->font, font_height * 2 + icon_height + 6);
+      col.icon = make(card->icon_font, 0);
+      col.day = make(card->font, icon_height + 2);
+      col.high = make(card->font, icon_height + font_height + 4);
+      col.low = make(card->font, icon_height + font_height * 2 + 6);
       card->columns.push_back(col);
     }
   }
-  std::string caption = (card->label.empty() ? "" : card->label + " · ") + display_temperature_unit_symbol();
+  std::string caption;
   if (!forecast.count) caption = espcontrol_i18n(std::string(
     card->source->loading ? "Loading forecast" : "Forecast unavailable"));
-  else if (card->source->stale) caption += " · " + espcontrol_i18n(std::string("Last forecast"));
+  else if (card->source->stale) caption = espcontrol_i18n(std::string("Last forecast"));
   lv_label_set_display_text(card->caption, caption.c_str());
   for (size_t i = 0; i < card->columns.size(); ++i) {
     const auto &col = card->columns[i];
     const auto &day = forecast.days[i];
     std::string date = forecast.count ? weather_daily_date_label(day, forecast) : "--";
     lv_label_set_display_text(col.day, date.c_str());
-    if (col.icon) lv_label_set_display_text(col.icon, weather_icon_for_state(forecast.count ? day.condition : "unavailable"));
-    std::string temperature = weather_daily_temperature(day.high, forecast.temperature_unit) + "/" + weather_daily_temperature(day.low, forecast.temperature_unit);
-    lv_label_set_display_text(col.value, temperature.c_str());
-    if (col.rain) {
-      std::string rain = std::isfinite(day.rain_probability) ? weather_daily_reading(day.rain_probability, "%") : "";
-      lv_label_set_display_text(col.rain, rain.c_str());
-    }
+    lv_label_set_display_text(col.icon, weather_icon_for_state(forecast.count ? day.condition : "unavailable"));
+    std::string high = weather_daily_temperature(day.high, forecast.temperature_unit) + display_temperature_unit_symbol();
+    std::string low = weather_daily_temperature(day.low, forecast.temperature_unit) + display_temperature_unit_symbol();
+    lv_label_set_display_text(col.high, high.c_str());
+    lv_label_set_display_text(col.low, low.c_str());
   }
 }
 inline void weather_daily_card_clicked(lv_event_t *event);
@@ -216,7 +210,7 @@ inline void weather_daily_setup(BtnSlot &slot, const ParsedCfg &config,
   }
   auto *card = new (std::nothrow) WeatherDailyCard;
   if (!card) { weather_daily_release_source(source); return; }
-  card->owner = slot.btn; card->source = source; card->caption = slot.text_lbl; card->label = config.label;
+  card->owner = slot.btn; card->source = source; card->caption = slot.text_lbl;
   card->font = lv_obj_get_style_text_font(slot.text_lbl, LV_PART_MAIN);
   if (!card->font) card->font = LV_FONT_DEFAULT;
   card->icon_font = display_icon_font(display);
