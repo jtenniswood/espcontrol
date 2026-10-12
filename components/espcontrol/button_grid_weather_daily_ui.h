@@ -38,9 +38,10 @@ inline std::string weather_daily_temperature(float value, const char *unit) {
 inline std::string weather_daily_date_label(const espcontrol::weather::Day &day,
                                            const espcontrol::weather::Forecast &forecast) {
   if (std::strcmp(day.date, forecast.today) == 0) return espcontrol_i18n(std::string("Today"));
-  // Dates remain explicit even when the provider starts tomorrow or skips days.
-  char text[12]; std::snprintf(text, sizeof(text), "%d/%d", std::atoi(day.date + 8), std::atoi(day.date + 5));
-  return text;
+  static const char *weekdays[] = {"Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"};
+  const int index = espcontrol::weather::weekday(day.date);
+  if (index < 0 || index >= 7) return "";
+  return espcontrol_i18n(std::string(weekdays[index]));
 }
 inline std::string weather_daily_reading(float value, const char *unit) {
   if (!std::isfinite(value)) return "--";
@@ -60,7 +61,7 @@ inline void weather_daily_refresh_modal() {
   }
   ui.day = std::min(ui.day, forecast.count - 1);
   const auto &day = forecast.days[ui.day];
-  std::string title = std::string(day.date);
+  std::string title = weather_daily_date_label(day, forecast);
   lv_label_set_display_text(ui.date, title.c_str());
   lv_label_set_display_text(ui.icon, weather_icon_for_state(day.condition));
   std::string details = weather_label_for_state(day.condition) + "\n" +
