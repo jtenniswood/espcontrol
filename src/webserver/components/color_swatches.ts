@@ -3,7 +3,7 @@ import { cardPreviewTextColor } from "../features/preview";
 const COLOR_PRESETS: ReadonlyArray<readonly [string, string]> = [
     ["EA3323", "Red"], ["D83462", "Pink"], ["8F28AB", "Purple"], ["6036B2", "Deep purple"], ["3C49A5", "Indigo"],
     ["64AD54", "Green"], ["429471", "Teal"], ["54B7C8", "Cyan"], ["3E8AC7", "Sky blue"], ["3C64DE", "Blue"],
-    ["AAC93F", "Lime"], ["D8D245", "Yellow green"], ["EED146", "Yellow"], ["DE8831", "Amber"], ["DA5125", "Orange"],
+    ["AAC93F", "Lime"], ["D8D245", "Yellow green"], ["EED146", "Yellow"], ["FF8C00", "Orange"], ["DA5125", "Deep orange"],
     ["2B2A2F", "Dark grey"], ["53515A", "Medium dark grey"], ["898890", "Grey"], ["BEBEC2", "Light grey"], ["FFFFFF", "White"],
 ];
 
