@@ -24,6 +24,7 @@ int deleted = 0;
 std::vector<lv_obj_t *> objects;
 std::vector<void (*)(void *)> deferred;
 bool rendered_randomize = true;
+bool rendered_center_prompt = false;
 lv_obj_t *lv_layer_sys() { return &system_layer; }
 lv_obj_t *lv_obj_create(lv_obj_t *parent) {
   auto *obj = new lv_obj_t; obj->parent = parent; objects.push_back(obj); return obj;
@@ -43,8 +44,10 @@ const char *espcontrol_i18n(const char *text) { return text; }
 void lv_label_set_display_text(lv_obj_t *obj, const char *text) { obj->text = text; }
 void lv_async_call(void (*callback)(void *), void *) { deferred.push_back(callback); }
 lv_obj_t *pin_keypad_create(lv_obj_t *panel, const ControlModalLayout &, const lv_font_t *,
-                           const lv_font_t *, const lv_font_t *, int, void (*)(lv_event_t *), bool randomize) {
+                           const lv_font_t *, const lv_font_t *, int, void (*)(lv_event_t *), bool randomize,
+                           bool center_prompt) {
   rendered_randomize = randomize;
+  rendered_center_prompt = center_prompt;
   return lv_obj_create(panel);
 }
 '''
@@ -59,6 +62,7 @@ int main() {
   auto &ui = screensaver_pin_ui();
   assert(ui.overlay && ui.overlay->parent == &system_layer);
   assert(rendered_randomize);
+  assert(rendered_center_prompt);
   assert(ui.overlay->full_screen && (ui.overlay->flags & LV_OBJ_FLAG_CLICKABLE));
   // A press on a card/status/modal behind this full-screen system-layer object
   // is intercepted before LVGL searches the top layer and active page.
@@ -67,7 +71,7 @@ int main() {
   assert(ui.entry.empty());  // Original wake tap does not become the first digit.
   screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false);
   screensaver_pin_key_cb(&zero);
-  assert(ui.entry == "0" && ui.label->text == "*");
+  assert(ui.entry == "0" && ui.label->text == "\u2022");
   lv_event_t submit{"submit"};
   screensaver_pin_key_cb(&submit);
   assert(pin.locked() && ui.overlay && ui.entry.empty());

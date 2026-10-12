@@ -185,7 +185,7 @@ script:
           if (!active && !controller.target_mode_is(espcontrol::DisplayMode::SETUP_DIMMED)) {
             espcontrol::screensaver_pin().arm();
           }
-          screensaver_pin_refresh(active, id(${media_title_font})->get_lv_font(),
+          screensaver_pin_refresh(active, id(${cover_art_title_font})->get_lv_font(),
                                  id(${media_title_font})->get_lv_font(),
                                  id(${icon_font})->get_lv_font(),
                                  id(screensaver_wake_touch_guard_active));

@@ -35,7 +35,8 @@ inline void screensaver_pin_key_cb(lv_event_t *event) {
   }
   if (std::strcmp(key, "back") == 0) ui.entry.clear();
   else if (ui.entry.size() < 16 && key[0] >= '0' && key[0] <= '9') ui.entry += key[0];
-  const std::string masked(ui.entry.size(), '*');
+  std::string masked;
+  for (size_t i = 0; i < ui.entry.size(); ++i) masked += "\u2022";
   lv_label_set_display_text(ui.label, ui.entry.empty() ? espcontrol_i18n("Enter Pin") : masked.c_str());
 }
 inline void screensaver_pin_refresh(bool active, const lv_font_t *label_font,
@@ -61,7 +62,7 @@ inline void screensaver_pin_refresh(bool active, const lv_font_t *label_font,
   control_modal_style_panel(panel, control_modal_card_radius(nullptr));
   control_modal_apply_panel_layout(ui.overlay, panel, layout, 0);
   ui.label = pin_keypad_create(panel, layout, label_font, key_font, icon_font,
-                              100, screensaver_pin_key_cb, espcontrol::screensaver_pin().randomize_keypad());
+                              100, screensaver_pin_key_cb, espcontrol::screensaver_pin().randomize_keypad(), true);
 }
 
 inline std::function<void()> &force_screensaver_action() {
