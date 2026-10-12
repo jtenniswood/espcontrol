@@ -7146,6 +7146,26 @@ async function assertWeatherWidthScaling(browser) {
       return visible[1].getBoundingClientRect().left - visible[0].getBoundingClientRect().right;
     });
     assert(columnGap >= 19, 'Daily forecast preview matches the wider device gap between columns: ' + columnGap);
+    for (const height of [120, 240]) {
+      await page.locator('#weather').evaluate((card, value) => { card.style.height = value + 'px'; }, height);
+      await page.waitForFunction(value => Math.abs(document.querySelector('#weather').getBoundingClientRect().height - value) < 1, height);
+      const columns = await page.locator('.sp-weather-day').evaluateAll(days => days
+        .filter(day => getComputedStyle(day).display !== 'none').map(day => {
+          const column = day.getBoundingClientRect();
+          const [icon, weekday, temperature] = Array.from(day.children).map(child => child.getBoundingClientRect());
+          return { left: column.left, top: column.top, bottom: column.bottom,
+            iconLeft: icon.left, iconTop: icon.top, iconBottom: icon.bottom,
+            dayLeft: weekday.left, dayTop: weekday.top,
+            temperatureLeft: temperature.left, temperatureBottom: temperature.bottom };
+        }));
+      for (const column of columns) {
+        assert([column.iconLeft, column.dayLeft, column.temperatureLeft].every(left => Math.abs(left - column.left) < 1),
+          'Each forecast day aligns its icon and text to the left.');
+        assert(Math.abs(column.iconTop - column.top) < 1 && Math.abs(column.temperatureBottom - column.bottom) < 1,
+          'Forecast icons stay at the top and temperatures stay at the bottom as the card height changes.');
+        assert(column.dayTop - column.iconBottom > 10, 'Forecast text has open space above it.');
+      }
+    }
     console.log('Daily forecast browser scaling passed: ' + counts.join(',') + ' complete columns.');
   } finally { await page.close(); }
 }

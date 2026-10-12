@@ -19,13 +19,14 @@ struct lv_obj_t {
   std::vector<lv_obj_t *> children;
   std::vector<Binding> events;
   const lv_font_t *font = &::font;
-  int width = 460, height = 160, flags = 0;
+  int width = 460, height = 160, flags = 0, x = 0, y = 0, text_align = 0;
   std::string text;
   explicit lv_obj_t(lv_obj_t *parent) : parent(parent) { ++live; if (parent) parent->children.push_back(this); }
   ~lv_obj_t() { --live; }
 };
 int lv_obj_t::live = 0;
 constexpr int LV_PART_MAIN=0, LV_STATE_DISABLED=1, LV_TEXT_ALIGN_CENTER=0, LV_LABEL_LONG_DOT=0, LV_LABEL_LONG_WRAP=1;
+constexpr int LV_TEXT_ALIGN_LEFT=1;
 constexpr int LV_ALIGN_TOP_MID=0, LV_ALIGN_TOP_LEFT=0, LV_ALIGN_BOTTOM_RIGHT=0, LV_ALIGN_BOTTOM_LEFT=0;
 constexpr int LV_OPA_TRANSP=0, LV_OBJ_FLAG_SCROLLABLE=1, LV_OBJ_FLAG_CLICKABLE=2, LV_COORD_MAX=32767, LV_TEXT_FLAG_NONE=0;
 constexpr int LV_OBJ_FLAG_HIDDEN=4;
@@ -53,12 +54,15 @@ void lv_label_set_text(lv_obj_t *obj,const char *text){obj->text=text;}
 void lv_obj_set_style_text_font(lv_obj_t *obj,const lv_font_t *f,int){obj->font=f;}
 const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *obj,int){return obj->font;}
 #define NOOP(name) template<class... T> void name(T...) {}
-NOOP(lv_obj_set_style_text_color) NOOP(lv_obj_set_style_text_align) NOOP(lv_label_set_long_mode)
+NOOP(lv_obj_set_style_text_color) NOOP(lv_label_set_long_mode)
+void lv_obj_set_style_text_align(lv_obj_t *obj,int align,int){obj->text_align=align;}
+void lv_obj_set_pos(lv_obj_t *obj,int x,int y){obj->x=x;obj->y=y;}
+void lv_obj_set_y(lv_obj_t *obj,int y){obj->y=y;}
 void lv_obj_add_flag(lv_obj_t *obj,int flag){obj->flags|=flag;}
 void lv_obj_clear_flag(lv_obj_t *obj,int flag){obj->flags&=~flag;}
 NOOP(lv_obj_align) NOOP(lv_obj_set_style_bg_color) NOOP(lv_obj_center)
 NOOP(lv_obj_set_style_bg_opa) NOOP(lv_obj_set_style_border_width) NOOP(lv_obj_set_style_pad_all)
-NOOP(lv_obj_add_state) NOOP(lv_obj_clear_state) NOOP(lv_obj_set_pos) NOOP(apply_text_width_compensation)
+NOOP(lv_obj_add_state) NOOP(lv_obj_clear_state) NOOP(apply_text_width_compensation)
 NOOP(control_modal_apply_pressed_fill) NOOP(set_clock_bar_modal_label)
 int lv_color_hex(int c){return c;} int lv_pct(int n){return n;}
 struct Theme { int text_primary=0, surface_secondary=0; } theme;
@@ -124,12 +128,21 @@ int main(){
     assert(card->columns.front().day->text=="Today" && card->columns.front().high->text=="19°");
     assert(espcontrol::weather::parse("WF1|2026-10-11|2026-10-12|°C|mm|km/h\n2026-10-11|sunny|18|10|0|0|10|75\n2026-10-12|rainy|17|11|80|2|20|80\n2026-10-13|cloudy|16|9||||\n2026-10-14|sunny|18|10||||\n",f));
     weather_daily_render_card(card);assert(card->columns.size()==4);
+    for(const auto &col:card->columns){
+      assert(col.icon->text_align==LV_TEXT_ALIGN_LEFT && col.day->text_align==LV_TEXT_ALIGN_LEFT && col.high->text_align==LV_TEXT_ALIGN_LEFT);
+      assert(col.icon->x==col.day->x && col.day->x==col.high->x);
+      assert(col.icon->y==0 && col.day->y==126 && col.high->y==144);
+    }
     int live=lv_obj_t::live;
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     assert(lv_obj_t::live==live); // Refreshes do not grow the widget tree.
     weather_daily_set_unavailable("weather.home");weather_daily_render_card(card);
     assert(card->columns.size()==4 && caption->text=="Last forecast" && lv_obj_t::live==live);
+    assert(card->columns.front().high->y==126); // Keep stale status below the temperatures.
     card->source->stale=false;
+    lv_obj_set_size(owner,460,240);
+    assert(card->columns.front().icon->y==0 && card->columns.front().day->y==206 && card->columns.front().high->y==224);
+    assert(lv_obj_t::live==live);
     lv_obj_set_size(owner,100,160);assert(card->columns.size()==1);
     lv_obj_set_size(owner,460,160);assert(card->columns.size()==4 && lv_obj_t::live==live);
     const auto saved_forecast=f;

@@ -155,6 +155,10 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   lv_text_get_size(&measured, "-18.8\u00B0", card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
   const size_t count = espcontrol::weather::visible_days(width, measured.x + 32,
     forecast.count, day_gap);
+  const int icon_height = lv_font_get_line_height(card->icon_font);
+  const int caption_height = card->source->stale ? font_height + 2 : 0;
+  const int high_y = std::max(icon_height + font_height + 4, height - caption_height - font_height);
+  const int day_y = high_y - font_height - 2;
   // Rebuild only when geometry or the number of visible days changes. Refreshes
   // and unit changes reuse the labels instead of allocating new widget trees.
   if (card->width != width || card->height != height || card->columns.size() != count) {
@@ -163,17 +167,17 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     lv_obj_set_size(card->root, width, height);
     lv_obj_align(card->root, LV_ALIGN_TOP_LEFT, 0, 0);
     const int column_width = std::max(1, (width - day_gap * static_cast<int>(count - 1)) / static_cast<int>(count));
-    const int icon_height = lv_font_get_line_height(card->icon_font);
     for (size_t i = 0; i < count; ++i) {
       WeatherDailyColumn col{};
       auto make = [&](const lv_font_t *font, int y) {
         auto *label = weather_daily_label(card->root, font);
+        lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
         const int x = i * (column_width + day_gap);
         lv_obj_set_width(label, column_width); lv_obj_set_pos(label, x, y); return label;
       };
       col.icon = make(card->icon_font, 0);
-      col.day = make(card->font, icon_height + 2);
-      col.high = make(card->font, icon_height + font_height + 4);
+      col.day = make(card->font, day_y);
+      col.high = make(card->font, high_y);
       card->columns.push_back(col);
     }
   }
@@ -183,6 +187,9 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   for (size_t i = 0; i < card->columns.size(); ++i) {
     const auto &col = card->columns[i];
     const auto &day = forecast.days[i];
+    // Reserve the bottom status row only for stale data, without rebuilding labels.
+    lv_obj_set_y(col.day, day_y);
+    lv_obj_set_y(col.high, high_y);
     std::string date = weather_daily_date_label(day, forecast);
     lv_label_set_display_text(col.day, date.c_str());
     lv_label_set_display_text(col.icon, weather_icon_for_state(day.condition));

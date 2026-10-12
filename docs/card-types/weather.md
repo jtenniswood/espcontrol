@@ -49,7 +49,7 @@ Older configurations containing a separate **Weather Forecast** card load as a W
 
 ## Daily Forecast
 
-Choose **Daily Forecast** to show up to seven upcoming days from your weather entity. Each column shows a condition icon above **Today** or the weekday, followed by the high temperature rounded to whole degrees (for example, **18°**). Wider columns leave space between days, and widening the card adds more days when they fit. Daily cards have no separate label or low-temperature row. The editor shows sample data; the panel loads the actual forecast from Home Assistant.
+Choose **Daily Forecast** to show up to seven upcoming days from your weather entity. Each column is left-aligned, with its condition icon at the top and **Today** or the weekday plus the high temperature at the bottom. Temperatures are rounded to whole degrees (for example, **18°**). Wider columns leave space between days, and widening the card adds more days when they fit. Daily cards have no separate label or low-temperature row. The editor shows sample data; the panel loads the actual forecast from Home Assistant.
 
 Tap the card to open a details modal. Use the previous and next buttons to browse all available days, including days that do not fit on the card. The modal shows the condition, high / low temperatures, and any rain chance, rainfall amount, wind speed, and humidity supplied by your provider. Missing details are omitted. Rainfall and wind use the units supplied by Home Assistant; temperatures use the panel's Temperature Unit setting.
 
