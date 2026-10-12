@@ -18,6 +18,21 @@ inline void screensaver_pin_hide() {
   if (ui.overlay) lv_obj_del(ui.overlay);
   ui = {};
 }
+inline std::function<void()> &return_screen_lock_view() {
+  static std::function<void()> action;
+  return action;
+}
+inline bool screensaver_pin_restore_previous_mode(espcontrol::DisplayModeController &controller) {
+  const auto mode = espcontrol::screensaver_pin().return_mode();
+  if (mode == espcontrol::DisplayMode::ACTIVE || mode == espcontrol::DisplayMode::SETUP_DIMMED) return false;
+  if (mode == espcontrol::DisplayMode::COVER_ART) {
+    controller.clear(espcontrol::DisplayRequestSource::USER_WAKE);
+    controller.request(espcontrol::DisplayRequestSource::MEDIA_PLAYBACK, mode);
+  } else {
+    controller.request(espcontrol::DisplayRequestSource::MANUAL_SLEEP, mode);
+  }
+  return true;
+}
 inline void screensaver_pin_key_cb(lv_event_t *event) {
   auto &ui = screensaver_pin_ui();
   const char *key = static_cast<const char *>(lv_event_get_user_data(event));
@@ -35,7 +50,20 @@ inline void screensaver_pin_key_cb(lv_event_t *event) {
     lv_label_set_display_text(ui.label, espcontrol_i18n("Incorrect PIN"));
     return;
   }
-  if (std::strcmp(key, "back") == 0) ui.entry.clear();
+  if (std::strcmp(key, "back") == 0) {
+    if (ui.entry.empty()) {
+      espcontrol::screensaver_pin().dismiss_keypad();
+      // The originating X click must finish before the keypad is removed.
+      lv_async_call([](void *) {
+        if (espcontrol::screensaver_pin().locked() && !espcontrol::screensaver_pin().keypad_requested()) {
+          if (return_screen_lock_view()) return_screen_lock_view()();
+          else if (show_screen_lock_pin()) show_screen_lock_pin()();
+        }
+      }, nullptr);
+      return;
+    }
+    ui.entry.clear();
+  }
   else if (ui.entry.size() < 16 && key[0] >= '0' && key[0] <= '9') ui.entry += key[0];
   std::string masked;
   for (size_t i = 0; i < ui.entry.size(); ++i) masked += "\u2022";
@@ -68,7 +96,8 @@ inline void screensaver_pin_refresh(bool active, const lv_font_t *label_font,
   ui.touch_blocked = touch_blocked;
   // The system layer is above clock, artwork, status icons, and all control
   // modals. Its full-screen clickable surface consumes every underlying touch.
-  // It is independent of the dismissible modal service and has no close button.
+  // It is independent of the modal service; returning to a previous view
+  // keeps PIN protection active.
   ui.overlay = lv_obj_create(lv_layer_sys());
   control_modal_style_overlay(ui.overlay);
   lv_obj_add_flag(ui.overlay, LV_OBJ_FLAG_CLICKABLE);

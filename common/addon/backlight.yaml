@@ -101,6 +101,19 @@ esphome:
       - lambda: |-
           force_screensaver_action() = []() { id(force_screensaver).execute(); };
           show_screen_lock_pin() = []() { id(screensaver_pin_refresh_ui).execute(); };
+          return_screen_lock_view() = []() {
+            if (!screensaver_pin_restore_previous_mode(id(espcontrol_app).display())) {
+              id(screensaver_pin_refresh_ui).execute();
+              return;
+            }
+            id(manual_wake_ms) = 0;
+            id(screen_schedule_wake_timeout_check).stop();
+            id(cover_art_delay_timer).stop();
+            if (espcontrol::screensaver_pin().return_mode() == espcontrol::DisplayMode::COVER_ART) {
+              id(cover_art_manual_pause_until_ms) = 0;
+            }
+            id(display_mode_reconcile).execute();
+          };
           auto update_screensaver_action_cache = []() {
             std::string action = id(screensaver_action).current_option();
             id(screensaver_action_clock) = screensaver_action_clock_mode(action);
@@ -184,7 +197,7 @@ script:
           const auto &controller = id(espcontrol_app).display();
           const bool active = controller.target_mode_is(espcontrol::DisplayMode::ACTIVE);
           if (!active && !controller.target_mode_is(espcontrol::DisplayMode::SETUP_DIMMED)) {
-            espcontrol::screensaver_pin().arm();
+            espcontrol::screensaver_pin().arm(controller.target_mode());
           }
           screensaver_pin_refresh(active, id(${cover_art_title_font})->get_lv_font(),
                                  id(${media_title_font})->get_lv_font(),
@@ -211,7 +224,7 @@ script:
                 const auto mode = static_cast<espcontrol::DisplayMode>(target_mode);
                 if (mode != espcontrol::DisplayMode::ACTIVE &&
                     mode != espcontrol::DisplayMode::SETUP_DIMMED) {
-                  espcontrol::screensaver_pin().arm();
+                  espcontrol::screensaver_pin().arm(mode);
                   screensaver_pin_hide();
                 }
 
