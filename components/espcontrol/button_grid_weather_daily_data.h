@@ -38,6 +38,9 @@ inline void weather_daily_release_source(WeatherDailySource *source) {
   if (sources.empty()) std::vector<std::unique_ptr<WeatherDailySource>>().swap(sources);
 }
 inline void weather_daily_refresh_visuals();
+inline void weather_daily_set_loading(const std::string &entity) {
+  if (auto *source = weather_daily_find_source(entity)) source->loading = true;
+}
 inline void weather_daily_set_unavailable(const std::string &entity) {
   if (auto *source = weather_daily_find_source(entity)) {
     source->loading = false;

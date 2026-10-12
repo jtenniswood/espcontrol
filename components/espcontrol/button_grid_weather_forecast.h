@@ -686,6 +686,8 @@ inline bool weather_forecast_enqueue(const std::string &entity_id,
   if (weather_forecast_pending_key(entity_id, day) ||
       weather_forecast_queue_key(entity_id, day)) {
     weather_forecast_clear_retry(entity_id, day);
+    weather_daily_set_loading(entity_id);
+    if (weather_daily_find_source(entity_id)) weather_forecast_schedule_visual_refresh();
     return true;
   }
   auto &requests = weather_forecast_queued_requests();
@@ -703,6 +705,8 @@ inline bool weather_forecast_enqueue(const std::string &entity_id,
   slot->entity_id = entity_id;
   slot->day = day;
   weather_forecast_clear_retry(entity_id, day);
+  weather_daily_set_loading(entity_id);
+  if (weather_daily_find_source(entity_id)) weather_forecast_schedule_visual_refresh();
   return true;
 }
 
@@ -886,8 +890,8 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
     apply_weather_forecast_unavailable_for_entity(entity_id);
     return;
   }
-  if (auto *source = weather_daily_find_source(entity_id); source && !source->forecast.count) {
-    source->loading = true;
+  if (weather_daily_find_source(entity_id)) {
+    weather_daily_set_loading(entity_id);
     weather_forecast_schedule_visual_refresh();
   }
   ESP_LOGI("weather_forecast", "Requesting daily forecast for %s", entity_id.c_str());

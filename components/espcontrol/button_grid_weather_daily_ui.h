@@ -161,8 +161,8 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     lv_label_set_display_text(card->placeholder_icon,
       weather_icon_for_state(card->source->loading ? "cloudy" : "unavailable"));
     lv_obj_clear_flag(card->placeholder_icon, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_display_text(card->caption, card->source->loading ? "" :
-      espcontrol_i18n(std::string("Forecast unavailable")).c_str());
+    const char *status_key = card->source->loading ? "Loading forecast" : "Forecast unavailable";
+    lv_label_set_display_text(card->caption, espcontrol_i18n(std::string(status_key)).c_str());
     return;
   }
   lv_obj_add_flag(card->placeholder_icon, LV_OBJ_FLAG_HIDDEN);

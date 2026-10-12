@@ -112,14 +112,14 @@ int main(){
     assert(card->columns.empty() && card->root->children.empty());
     assert(card->root->flags & LV_OBJ_FLAG_HIDDEN);
     assert(!(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN));
-    assert(placeholder_icon->text=="cloudy-icon" && caption->text.empty());
+    assert(placeholder_icon->text=="cloudy-icon" && caption->text=="Loading forecast");
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     lv_obj_set_size(owner,100,160);lv_obj_set_size(owner,460,160);
     assert(lv_obj_t::live==baseline+1 && card->columns.empty());
     weather_daily_set_unavailable("weather.home");weather_daily_render_card(card);
     assert(caption->text=="Forecast unavailable" && placeholder_icon->text=="unavailable-icon");
     assert(card->columns.empty());
-    card->source->loading=true;weather_daily_render_card(card);assert(caption->text.empty());
+    weather_daily_set_loading("weather.home");weather_daily_render_card(card);assert(caption->text=="Loading forecast");
     auto &f=card->source->forecast;
     assert(espcontrol::weather::parse("WF1|2026-10-11|2026-10-12|°C|mm|km/h\n2026-10-11|sunny|18.8|10|0|0|10|75\n",f));
     weather_daily_render_card(card);assert(card->columns.size()==1);
@@ -151,7 +151,7 @@ int main(){
     f=espcontrol::weather::Forecast{};card->source->loading=true;
     weather_daily_render_card(card);
     assert(card->columns.empty() && card->root->children.empty() && lv_obj_t::live==baseline+1);
-    assert(!(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN) && caption->text.empty());
+    assert(!(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN) && caption->text=="Loading forecast");
     f=saved_forecast;weather_daily_render_card(card);
     assert(card->columns.size()==4 && lv_obj_t::live==live);
     for(int i=0;i<10;++i){
@@ -201,6 +201,11 @@ int main(){
     assert(card->columns.empty() && slot.text_lbl->text=="Forecast unavailable");
     assert(slot.icon_lbl->text=="unavailable-icon");
     weather_daily_open_modal(card);assert(!weather_daily_modal().overlay);
+    weather_daily_set_loading("weather.home");weather_daily_refresh_visuals();
+    assert(card->columns.empty() && slot.text_lbl->text=="Loading forecast");
+    assert(slot.icon_lbl->text=="cloudy-icon");
+    card->source->loading=false;
+
     assert(espcontrol::weather::parse(payload,f));weather_daily_refresh_visuals();
     assert(card->columns.size()==1 && card->columns[0].day->text==(tomorrow?"Tomorrow":"Today"));
     weather_daily_cleanup(owner);lv_obj_del(owner);assert(daily->source->users==1);
