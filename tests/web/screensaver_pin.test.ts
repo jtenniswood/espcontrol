@@ -4,7 +4,7 @@ function assert(value: unknown, message: string): asserts value { if (!value) th
 export async function runScreensaverPinTests(): Promise<void> {
   const calls: RequestInit[] = [];
   let enabled = false, pin = "", fail = false, supported = true;
-  let randomize = true;
+  let randomize = false;
   const request = (async (url: any, options: RequestInit) => {
     assert(url === "/api/v1/screensaver-pin" || url === "/api/v1/capabilities", "use device-local settings API");
     assert(options.credentials === "include" && options.cache === "no-store", "authenticated uncached requests");

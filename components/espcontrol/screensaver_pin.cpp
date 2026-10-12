@@ -8,7 +8,7 @@ struct PinRecord {
   uint32_t version{2};
   char pin[17]{};
   uint8_t enabled{0};
-  uint8_t randomize_keypad{1};
+  uint8_t randomize_keypad{0};
 };
 static_assert(sizeof(PinRecord) == 24, "PIN settings must preserve the version 1 record size");
 constexpr char PIN_NAMESPACE[] = "espcontrol_pin";
@@ -32,8 +32,8 @@ void ScreensaverPin::setup() {
         !valid_pin(record.pin)) return;
     pin_ = record.pin;
     enabled_ = record.enabled && !pin_.empty();
-    // Version 1 always randomized. The new flag uses a former padding byte.
-    randomize_keypad_ = record.version == 1 || record.randomize_keypad;
+    // Version 1 had no layout preference; use the current fixed-order default.
+    randomize_keypad_ = record.version == 2 && record.randomize_keypad;
   } else if (result != ESP_ERR_NVS_NOT_FOUND) {
     return;
   }

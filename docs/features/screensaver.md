@@ -110,7 +110,7 @@ In **Settings > Sleep & Schedule > Pin Protection**, turn on **Require PIN after
 
 Use the same field and **Save** button to change the PIN. **Clear** removes it and disables protection; turning off the toggle keeps the saved PIN for later use. Saved settings survive a restart. Update the panel firmware if the controls are not shown.
 
-**Randomize keypad layout** is on by default. Turn it off to use the standard `1–9, 0` digit layout. The choice is saved on the panel and applies the next time the PIN keypad opens.
+**Randomize keypad layout** is off by default. Turn it on to shuffle the digit layout each time the PIN keypad opens. The choice is saved on the panel.
 
 After a screensaver or manual sleep, the touchscreen shows the PIN keypad. Enter the PIN and press the checkmark to unlock. A wrong PIN clears the entry and keeps the controls blocked. The clear key resets the entry. Touch wake, presence wake, scheduled wake, and the local Screensaver card all use the same protection. With protection disabled or no PIN saved, wake works as before. When protection is active, tapping a Cover Art playback button wakes the PIN keypad without changing playback; use your media controls after unlocking.
 

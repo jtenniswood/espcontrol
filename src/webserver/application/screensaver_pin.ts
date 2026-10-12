@@ -71,7 +71,7 @@ export function buildScreensaverPinSettings(
   const controls = document.createElement("div");
   controls.className = "sp-pin-controls";
   controls.hidden = true;
-  const randomizeToggle = fields.toggleRow("Randomize keypad layout", "sp-set-screensaver-pin-randomize", true);
+  const randomizeToggle = fields.toggleRow("Randomize keypad layout", "sp-set-screensaver-pin-randomize", false);
   const randomize = randomizeToggle.input as HTMLInputElement;
   const label = fields.fieldLabel("PIN", "sp-set-screensaver-pin");
   const pin = fields.textInput("sp-set-screensaver-pin", "", "1–16 digits") as HTMLInputElement;
@@ -110,7 +110,7 @@ export function buildScreensaverPinSettings(
   function sync(): void {
     badge.classList.toggle("sp-hidden", !(info?.enabled && info.has_pin));
     if (!busy) enabled.checked = pendingSetup || !!(info?.enabled && info.has_pin);
-    if (!busy && !pendingSetup) randomize.checked = info?.randomize_keypad ?? true;
+    if (!busy && !pendingSetup) randomize.checked = info?.randomize_keypad ?? false;
     randomizeToggle.row.hidden = typeof info?.randomize_keypad !== "boolean";
     enabled.disabled = randomize.disabled = save.disabled = clear.disabled = pin.disabled = busy;
     clear.disabled = busy || !info?.has_pin;

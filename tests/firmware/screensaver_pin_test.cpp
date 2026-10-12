@@ -22,7 +22,7 @@ int main() {
   assert(pin.locked());
   // A toggle preserves the existing secret; reboot restores both settings.
   assert(pin.save(false, nullptr) && pin.has_pin() && !pin.locked());
-  // Upgrade the old on-device record without losing the PIN or changing its randomized layout.
+  // Upgrade the old on-device record without losing the PIN; records without a saved preference use fixed order.
   struct LegacyPinRecord { uint32_t version{1}; char pin[17]{}; uint8_t enabled{0}; } legacy;
   std::memcpy(legacy.pin, code.data(), code.size());
   const auto *legacy_bytes = reinterpret_cast<const uint8_t *>(&legacy);
@@ -31,7 +31,7 @@ int main() {
   rebooted.setup();
   rebooted.arm(); rebooted.wake();
   assert(rebooted.has_pin() && rebooted.pin_length() == 4 && !rebooted.enabled() && !rebooted.locked());
-  assert(rebooted.randomize_keypad());
+  assert(!rebooted.randomize_keypad());
   bool randomize = false;
   assert(rebooted.save(true, nullptr, &randomize));
   ScreensaverPin layout_reboot;

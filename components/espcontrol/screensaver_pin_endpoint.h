@@ -44,7 +44,7 @@ class ScreensaverPinHandler final : public esphome::web_server_idf::AsyncWebHand
       }
       std::string pin;
       bool enabled = false, has_pin_value = false;
-      bool randomize_keypad = true, has_randomize_value = false;
+      bool randomize_keypad = false, has_randomize_value = false;
       const bool parsed = valid_ && received_ == expected_ &&
           esphome::json::parse_json(body_.data(), received_, [&](JsonObject root) {
             if (!root["enabled"].is<bool>()) return false;

@@ -46,7 +46,7 @@ class ScreensaverPin {
   mutable std::mutex mutex_;
   std::string pin_;
   bool enabled_{false}, locked_{false}, sleeping_{false}, ready_{false};
-  bool randomize_keypad_{true};
+  bool randomize_keypad_{false};
 };
 ScreensaverPin &screensaver_pin();
 }  // namespace espcontrol
