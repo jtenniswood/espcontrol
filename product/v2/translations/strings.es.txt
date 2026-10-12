@@ -152,6 +152,7 @@ relay=Relé
 returning=Volviendo
 run_this_script=¿Ejecutar este script?
 screen_dimmed=Pantalla atenuada
+screen_lock=Bloqueo de pantalla
 screen_locked=Pantalla bloqueada
 screen_unlocked=Pantalla desbloqueada
 skip_next=Saltar siguiente

@@ -152,6 +152,7 @@ relay=Releu
 returning=Revine
 run_this_script=Rulați acest script?
 screen_dimmed=Ecran estompat
+screen_lock=Blocare ecran
 screen_locked=Ecran blocat
 screen_unlocked=Ecran deblocat
 skip_next=Următorul

@@ -152,6 +152,7 @@ relay=Реле
 returning=Возвращается
 run_this_script=Запустить этот сценарий?
 screen_dimmed=Экран приглушён
+screen_lock=Блокировка экрана
 screen_locked=Экран заблокирован
 screen_unlocked=Экран разблокирован
 skip_next=Следующий трек

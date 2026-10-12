@@ -152,6 +152,7 @@ relay=Relé
 returning=Vracia sa
 run_this_script=Spustiť tento skript?
 screen_dimmed=Obrazovka stlmená
+screen_lock=Zámok obrazovky
 screen_locked=Obrazovka uzamknutá
 screen_unlocked=Obrazovka odomknutá
 skip_next=Preskočiť ďalšie

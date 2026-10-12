@@ -152,6 +152,7 @@ relay=Relé
 returning=Visszatérés
 run_this_script=Futtatja ezt a szkriptet?
 screen_dimmed=Képernyő halványítva
+screen_lock=Képernyőzár
 screen_locked=Képernyő lezárva
 screen_unlocked=Képernyő feloldva
 skip_next=Ugrás a következőre

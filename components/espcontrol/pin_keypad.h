@@ -65,7 +65,8 @@ inline lv_obj_t *pin_keypad_create(lv_obj_t *panel, const ControlModalLayout &la
                                         const lv_font_t *icon_font,
                                         int width_compensation_percent,
                                         lv_event_cb_t key_cb, bool randomize = true,
-                                        bool center_prompt = false) {
+                                        bool center_prompt = false,
+                                        lv_coord_t prompt_top = 0) {
   lv_coord_t pin_button_gap = control_modal_scaled_px(24, layout.short_side);
   if (pin_button_gap < 10) pin_button_gap = 10;
   lv_coord_t keypad_top = layout.inset + layout.back_size + pin_button_gap;
@@ -83,10 +84,10 @@ inline lv_obj_t *pin_keypad_create(lv_obj_t *panel, const ControlModalLayout &la
   lv_obj_t *label_parent = panel;
   lv_coord_t pin_w = layout.panel_w - (layout.inset + layout.back_size) * 2;
   if (pin_w < 60 || center_prompt) pin_w = layout.panel_w - layout.inset * 2;
-  lv_coord_t prompt_h = start_y - gap;
+  lv_coord_t prompt_h = start_y - gap - (center_prompt ? prompt_top : 0);
   if (prompt_h < 1) prompt_h = 1;
   if (center_prompt) {
-    // Center within the actual empty space above the first row of keys.
+    // Center below any page title and above the first row of keys.
     // Keeping the label aligned to this container also centers it as text changes.
     label_parent = lv_obj_create(panel);
     lv_obj_set_style_bg_opa(label_parent, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -94,7 +95,7 @@ inline lv_obj_t *pin_keypad_create(lv_obj_t *panel, const ControlModalLayout &la
     lv_obj_set_style_pad_all(label_parent, 0, LV_PART_MAIN);
     lv_obj_clear_flag(label_parent, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(label_parent, pin_w, prompt_h);
-    lv_obj_align(label_parent, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_align(label_parent, LV_ALIGN_TOP_MID, 0, prompt_top);
   }
   lv_obj_t *pin_lbl = lv_label_create(label_parent);
   lv_obj_set_style_text_color(pin_lbl, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);

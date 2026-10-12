@@ -20,12 +20,14 @@ stubs = r'''
 #include <functional>
 #include <algorithm>
 #include "screensaver_pin.h"
+using lv_coord_t = int;
 struct lv_font_t {};
 struct lv_event_t { const char *key; };
-struct lv_obj_t { lv_obj_t *parent{}; bool full_screen{}; unsigned flags{}; std::string text; void (*on_release)(lv_event_t *){}; };
-struct ControlModalLayout {};
+struct lv_obj_t { lv_obj_t *parent{}; bool full_screen{}; unsigned flags{}; std::string text; void (*on_release)(lv_event_t *){}; const lv_font_t *font{}; int align{}, text_align{}, x{}, y{}; };
+struct ControlModalLayout { int panel_w{720}; int inset{18}; };
 constexpr unsigned LV_OBJ_FLAG_CLICKABLE = 1;
 constexpr unsigned LV_EVENT_RELEASED = 2;
+constexpr int LV_TEXT_ALIGN_RIGHT = 3, LV_ALIGN_TOP_RIGHT = 4, LV_PART_MAIN = 0;
 lv_obj_t system_layer;
 lv_obj_t *active_page;
 constexpr int LV_SCR_LOAD_ANIM_NONE = 0;
@@ -38,6 +40,8 @@ std::vector<lv_obj_t *> objects;
 std::vector<void (*)(void *)> deferred;
 bool rendered_randomize = true;
 bool rendered_center_prompt = false;
+int rendered_prompt_top = 0;
+lv_obj_t *rendered_title = nullptr;
 lv_obj_t *lv_layer_sys() { return &system_layer; }
 lv_obj_t *lv_obj_create(lv_obj_t *parent) {
   auto *obj = new lv_obj_t; obj->parent = parent; objects.push_back(obj); return obj;
@@ -55,6 +59,16 @@ ControlModalLayout control_modal_calc_layout(int) { return {}; }
 int control_modal_card_radius(lv_obj_t *) { return 0; }
 void control_modal_style_panel(lv_obj_t *, int) {}
 void control_modal_apply_panel_layout(lv_obj_t *, lv_obj_t *, const ControlModalLayout &, int) {}
+lv_obj_t *control_modal_create_title(lv_obj_t *parent, const std::string &text, int,
+                                   const lv_font_t *font, int) {
+  rendered_title = lv_obj_create(parent);
+  rendered_title->text = text; rendered_title->font = font;
+  return rendered_title;
+}
+void lv_obj_set_style_text_align(lv_obj_t *obj, int align, int) { obj->text_align = align; }
+void lv_obj_align(lv_obj_t *obj, int align, int x, int y) { obj->align = align; obj->x = x; obj->y = y; }
+void lv_obj_update_layout(lv_obj_t *) {}
+int lv_obj_get_height(lv_obj_t *) { return 30; }
 void *lv_event_get_user_data(lv_event_t *event) { return const_cast<char *>(event->key); }
 const char *espcontrol_i18n(const char *text) { return text; }
 struct BtnSlot {};
@@ -65,9 +79,10 @@ void lv_label_set_display_text(lv_obj_t *obj, const char *text) { obj->text = te
 void lv_async_call(void (*callback)(void *), void *) { deferred.push_back(callback); }
 lv_obj_t *pin_keypad_create(lv_obj_t *panel, const ControlModalLayout &, const lv_font_t *,
                            const lv_font_t *, const lv_font_t *, int, void (*)(lv_event_t *), bool randomize,
-                           bool center_prompt) {
+                           bool center_prompt, int prompt_top) {
   rendered_randomize = randomize;
   rendered_center_prompt = center_prompt;
+  rendered_prompt_top = prompt_top;
   return lv_obj_create(panel);
 }
 '''
@@ -78,11 +93,16 @@ int main() {
   std::string code = "04";
   assert(pin.save(true, &code));
   pin.arm();
-  screensaver_pin_refresh(true, nullptr, nullptr, nullptr, true);
+  lv_font_t header_font;
+  screensaver_pin_refresh(true, nullptr, nullptr, nullptr, true, &header_font);
   auto &ui = screensaver_pin_ui();
   assert(ui.overlay && ui.overlay->parent == &system_layer);
   assert(!rendered_randomize);
   assert(rendered_center_prompt);
+  assert(rendered_title && rendered_title->text == "Screen Lock" && rendered_title->font == &header_font);
+  assert(rendered_title->align == LV_ALIGN_TOP_RIGHT && rendered_title->text_align == LV_TEXT_ALIGN_RIGHT);
+  assert(rendered_title->x < 0 && rendered_title->y > 0);
+  assert(rendered_prompt_top > rendered_title->y + lv_obj_get_height(rendered_title));
   assert(ui.overlay->full_screen && (ui.overlay->flags & LV_OBJ_FLAG_CLICKABLE));
   // A press on a card/status/modal behind this full-screen system-layer object
   // is intercepted before LVGL searches the top layer and active page.

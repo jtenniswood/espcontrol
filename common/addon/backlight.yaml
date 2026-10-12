@@ -202,7 +202,8 @@ script:
           screensaver_pin_refresh(active, id(${cover_art_title_font})->get_lv_font(),
                                  id(${media_title_font})->get_lv_font(),
                                  id(${icon_font})->get_lv_font(),
-                                 id(screensaver_wake_touch_guard_active));
+                                 id(screensaver_wake_touch_guard_active),
+                                 id(${label_font})->get_lv_font());
 
   # The controller owns decisions; this adapter is the only path that applies
   # migrated ACTIVE, SETUP_DIMMED, DIMMED, CLOCK, COVER_ART, and DISPLAY_OFF transitions.

@@ -152,6 +152,7 @@ relay=Relais
 returning=Kehrt zurück
 run_this_script=Dieses Skript ausführen?
 screen_dimmed=Bildschirm gedimmt
+screen_lock=Bildschirmsperre
 screen_locked=Bildschirm gesperrt
 screen_unlocked=Bildschirm entsperrt
 skip_next=Weiter springen

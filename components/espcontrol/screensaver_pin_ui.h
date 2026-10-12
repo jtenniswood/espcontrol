@@ -80,7 +80,7 @@ inline void screensaver_pin_guard_cb(lv_event_t *) {
 }
 inline void screensaver_pin_refresh(bool active, const lv_font_t *label_font,
                                     const lv_font_t *key_font, const lv_font_t *icon_font,
-                                    bool touch_blocked) {
+                                    bool touch_blocked, const lv_font_t *title_font = nullptr) {
   if (active) espcontrol::screensaver_pin().wake();
   screen_lock_apply();
   if (!active || !espcontrol::screensaver_pin().locked()) {
@@ -109,6 +109,13 @@ inline void screensaver_pin_refresh(bool active, const lv_font_t *label_font,
   auto *panel = lv_obj_create(ui.overlay);
   control_modal_style_panel(panel, control_modal_card_radius(nullptr));
   control_modal_apply_panel_layout(ui.overlay, panel, layout, 0);
+  auto *title = control_modal_create_title(panel, espcontrol_i18n("Screen Lock"),
+                                          layout.panel_w - layout.inset * 2, title_font, 100);
+  lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+  lv_obj_align(title, LV_ALIGN_TOP_RIGHT, -layout.inset, layout.inset);
+  lv_obj_update_layout(title);
+  const lv_coord_t prompt_top = layout.inset * 2 + lv_obj_get_height(title);
   ui.label = pin_keypad_create(panel, layout, label_font, key_font, icon_font,
-                              100, screensaver_pin_key_cb, espcontrol::screensaver_pin().randomize_keypad(), true);
+                              100, screensaver_pin_key_cb, espcontrol::screensaver_pin().randomize_keypad(), true,
+                              prompt_top);
 }

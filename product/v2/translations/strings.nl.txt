@@ -152,6 +152,7 @@ relay=Relais
 returning=Keert terug
 run_this_script=Dit script uitvoeren?
 screen_dimmed=Scherm gedimd
+screen_lock=Schermvergrendeling
 screen_locked=Scherm vergrendeld
 screen_unlocked=Scherm ontgrendeld
 skip_next=Volgende overslaan

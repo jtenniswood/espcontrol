@@ -152,6 +152,7 @@ relay=Rele
 returning=Vračanje
 run_this_script=Zagnati ta skript?
 screen_dimmed=Zaslon zatemnjen
+screen_lock=Zaklep zaslona
 screen_locked=Zaslon zaklenjen
 screen_unlocked=Zaslon odklenjen
 skip_next=Preskoči naprej

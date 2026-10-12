@@ -152,6 +152,7 @@ relay=Rele
 returning=Palaa
 run_this_script=Suoritetaanko tämä skripti?
 screen_dimmed=Näyttö himmennetty
+screen_lock=Näytön lukitus
 screen_locked=Näyttö lukittu
 screen_unlocked=Näyttö avattu
 skip_next=Seuraava kappale

@@ -152,6 +152,7 @@ relay=Реле
 returning=Повертається
 run_this_script=Запустити цей скрипт?
 screen_dimmed=Екран приглушено
+screen_lock=Блокування екрана
 screen_locked=Екран заблоковано
 screen_unlocked=Екран розблоковано
 skip_next=Наступний

@@ -152,6 +152,7 @@ relay=Przekaźnik
 returning=Powraca
 run_this_script=Uruchomić ten skrypt?
 screen_dimmed=Ekran przyciemniony
+screen_lock=Blokada ekranu
 screen_locked=Ekran zablokowany
 screen_unlocked=Ekran odblokowany
 skip_next=Pomiń następny

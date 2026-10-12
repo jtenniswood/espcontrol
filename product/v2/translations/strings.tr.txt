@@ -152,6 +152,7 @@ relay=Röle
 returning=Geri dönüyor
 run_this_script=Bu betik çalıştırılsın mı?
 screen_dimmed=Ekran kısılmış
+screen_lock=Ekran Kilidi
 screen_locked=Ekran kilitli
 screen_unlocked=Ekran kilidi açık
 skip_next=Sonrakine geç

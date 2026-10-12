@@ -152,6 +152,7 @@ relay=Relé
 returning=Returnerer
 run_this_script=Kjør dette skriptet?
 screen_dimmed=Skjerm neddimmet
+screen_lock=Skjermlås
 screen_locked=Skjerm låst
 screen_unlocked=Skjerm låst opp
 skip_next=Hopp til neste

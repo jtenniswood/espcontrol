@@ -152,6 +152,7 @@ relay=Relä
 returning=Återvänder
 run_this_script=Kör detta skript?
 screen_dimmed=Skärm nedtonad
+screen_lock=Skärmlås
 screen_locked=Skärm låst
 screen_unlocked=Skärm upplåst
 skip_next=Hoppa till nästa

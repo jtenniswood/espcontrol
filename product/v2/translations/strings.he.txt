@@ -152,6 +152,7 @@ relay=ממסר
 returning=חוזר לעגינה
 run_this_script=להריץ את הסקריפט?
 screen_dimmed=המסך מעומעם
+screen_lock=נעילת מסך
 screen_locked=המסך נעול
 screen_unlocked=נעילת המסך בוטלה
 skip_next=הרצועה הבאה

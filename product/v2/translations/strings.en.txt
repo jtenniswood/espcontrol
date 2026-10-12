@@ -152,6 +152,7 @@ relay=Relay
 returning=Returning
 run_this_script=Run this script?
 screen_dimmed=Screen Dimmed
+screen_lock=Screen Lock
 screen_locked=Screen Locked
 screen_unlocked=Screen Unlocked
 skip_next=Skip Next

@@ -152,6 +152,7 @@ relay=Relais
 returning=Retour
 run_this_script=Exécuter ce script ?
 screen_dimmed=Écran tamisé
+screen_lock=Verrouillage de l’écran
 screen_locked=Écran verrouillé
 screen_unlocked=Écran déverrouillé
 skip_next=Passer au suivant
