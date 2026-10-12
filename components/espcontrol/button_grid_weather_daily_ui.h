@@ -2,7 +2,7 @@
 
 // Forecast widgets exist only on configured daily cards. The modal allocates
 // one day's detail view on demand and reads the same source as its owner.
-struct WeatherDailyColumn { lv_obj_t *icon, *day, *high, *low; };
+struct WeatherDailyColumn { lv_obj_t *icon, *day, *high; };
 struct WeatherDailyCard {
   lv_obj_t *owner = nullptr, *root = nullptr, *caption = nullptr;
   WeatherDailySource *source = nullptr;
@@ -64,8 +64,8 @@ inline void weather_daily_refresh_modal() {
   lv_label_set_display_text(ui.date, title.c_str());
   lv_label_set_display_text(ui.icon, weather_icon_for_state(day.condition));
   std::string details = weather_label_for_state(day.condition) + "\n" +
-    weather_daily_temperature(day.high, forecast.temperature_unit) + display_temperature_unit_symbol() + "/" +
-    weather_daily_temperature(day.low, forecast.temperature_unit) + display_temperature_unit_symbol();
+    weather_daily_temperature(day.high, forecast.temperature_unit) + "\u00B0/" +
+    weather_daily_temperature(day.low, forecast.temperature_unit) + "\u00B0";
   if (std::isfinite(day.rain_probability)) details += "\n" + espcontrol_i18n(std::string("Rain chance")) + ": " + weather_daily_reading(day.rain_probability, "%");
   if (std::isfinite(day.precipitation)) details += "\n" + espcontrol_i18n(std::string("Rainfall")) + ": " + weather_daily_reading(day.precipitation, forecast.precipitation_unit);
   if (std::isfinite(day.wind)) details += "\n" + espcontrol_i18n(std::string("Wind")) + ": " + weather_daily_reading(day.wind, forecast.wind_unit);
@@ -134,7 +134,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   if (width <= 0 || height <= 0) return;
   const int font_height = lv_font_get_line_height(card->font);
   lv_point_t measured;
-  lv_text_get_size(&measured, "-18.8\u00B0C", card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+  lv_text_get_size(&measured, "-18.8\u00B0", card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
   const size_t count = espcontrol::weather::visible_days(width, measured.x + 16,
     forecast.count ? forecast.count : 1);
   // Rebuild only when geometry or the number of visible days changes. Refreshes
@@ -155,7 +155,6 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
       col.icon = make(card->icon_font, 0);
       col.day = make(card->font, icon_height + 2);
       col.high = make(card->font, icon_height + font_height + 4);
-      col.low = make(card->font, icon_height + font_height * 2 + 6);
       card->columns.push_back(col);
     }
   }
@@ -170,10 +169,8 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     std::string date = forecast.count ? weather_daily_date_label(day, forecast) : "--";
     lv_label_set_display_text(col.day, date.c_str());
     lv_label_set_display_text(col.icon, weather_icon_for_state(forecast.count ? day.condition : "unavailable"));
-    std::string high = weather_daily_temperature(day.high, forecast.temperature_unit) + display_temperature_unit_symbol();
-    std::string low = weather_daily_temperature(day.low, forecast.temperature_unit) + display_temperature_unit_symbol();
+    std::string high = weather_daily_temperature(day.high, forecast.temperature_unit) + "\u00B0";
     lv_label_set_display_text(col.high, high.c_str());
-    lv_label_set_display_text(col.low, low.c_str());
   }
 }
 inline void weather_daily_card_clicked(lv_event_t *event);

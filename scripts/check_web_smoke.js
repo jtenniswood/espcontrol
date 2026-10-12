@@ -879,8 +879,9 @@ assert.strictEqual((weatherDailyPreview.iconHtml.match(/class="sp-weather-day"/g
 assert.strictEqual(weatherDailyPreview.labelHtml, "", "daily preview omits the separate label row");
 assert(weatherDailyPreview.iconHtml.indexOf("mdi-weather-rainy") < weatherDailyPreview.iconHtml.indexOf("Today"),
   "daily preview places the condition icon above the weekday");
-assert(weatherDailyPreview.iconHtml.includes("17.8\u00B0C") && weatherDailyPreview.iconHtml.includes("16.9\u00B0C"),
-  "daily preview keeps each temperature and unit together on its own line");
+assert(weatherDailyPreview.iconHtml.includes("17.8\u00B0") && !weatherDailyPreview.iconHtml.includes("\u00B0C"),
+  "daily preview displays a degree symbol without a unit letter");
+assert(!weatherDailyPreview.iconHtml.includes("16.9"), "daily preview omits the low/night temperature");
 
 const weatherForecastPreview = hooks.buttonTypePreviewFor("weather", {
   entity: "weather.forecast_home",

@@ -118,7 +118,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-weather-days{display:flex;width:100%;height:100%;align-items:center;overflow:hidden;gap:.3em}" +
         ".sp-weather-day{flex:1 1 0;display:none;flex-direction:column;align-items:center;gap:.2em;font-size:var(--btn-label);white-space:nowrap}" +
         ".sp-weather-day:first-child{display:flex}.sp-weather-day .mdi{font-size:var(--btn-icon)}" +
-        ".sp-weather-temperature-high,.sp-weather-temperature-low{white-space:nowrap}.sp-weather-temperature-low{opacity:.68}" +
+        ".sp-weather-temperature-high{white-space:nowrap}" +
         "@container (min-width:11.0em){.sp-weather-day:nth-child(2){display:flex}}" +
         "@container (min-width:16.5em){.sp-weather-day:nth-child(3){display:flex}}" +
         "@container (min-width:22.0em){.sp-weather-day:nth-child(4){display:flex}}" +
