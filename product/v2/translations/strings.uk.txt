@@ -81,6 +81,7 @@ lightning=Блискавка
 lightning_and_rain=Блискавка і дощ
 light=Світло
 loading=Завантаження
+loading_forecast=Loading forecast
 locate=Знайти
 lock=Замок
 lawn_mower=Газонокосарка

@@ -81,6 +81,7 @@ lightning=Fulger
 lightning_and_rain=Fulger și ploaie
 light=Lumină
 loading=Se încarcă
+loading_forecast=Loading forecast
 locate=Localizare
 lock=Încuietoare
 lawn_mower=Mașină de tuns iarba

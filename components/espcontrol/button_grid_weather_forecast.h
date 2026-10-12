@@ -374,6 +374,10 @@ inline void apply_weather_forecast_unavailable_for_entity(const std::string &ent
 
 inline void apply_weather_forecast_unavailable_all() {
   ESP_LOGW("weather_forecast", "Marking all forecast cards unavailable");
+  for (const auto &source : weather_daily_sources()) {
+    source->loading = false;
+    source->stale = source->forecast.count > 0;
+  }
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
   int count = weather_forecast_card_count();
   for (int i = 0; i < count; i++) {
@@ -731,7 +735,10 @@ inline bool weather_forecast_enqueue_due_retries() {
 inline void weather_forecast_send_next_queued();
 
 inline void weather_forecast_cancel_pending_requests() {
-  for (const auto &source : weather_daily_sources()) source->stale = true;
+  for (const auto &source : weather_daily_sources()) {
+    source->loading = false;
+    source->stale = source->forecast.count > 0;
+  }
   if (!weather_daily_sources().empty()) weather_forecast_schedule_visual_refresh();
   weather_forecast_action_ready_ms() = 0;
   weather_forecast_clear_queue();
@@ -836,7 +843,9 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
         espcontrol::weather::Forecast parsed;
         valid = espcontrol::weather::parse(payload, parsed);
         if (valid) {
-          source->forecast = parsed; source->stale = false;
+          source->forecast = parsed;
+          source->loading = false;
+          source->stale = false;
           forecast.unit = parsed.temperature_unit;
           for (size_t i = 0; i < parsed.count; ++i) {
             const auto &entry = parsed.days[i];
@@ -851,7 +860,10 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
               forecast.tomorrow_high = high; forecast.tomorrow_low = low;
             }
           }
-        } else source->stale = true;
+        } else {
+          source->loading = false;
+          source->stale = source->forecast.count > 0;
+        }
         weather_forecast_schedule_visual_refresh();
       } else valid = parse_weather_forecast_payload(payload, forecast);
       if (!valid) {
@@ -873,6 +885,10 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
     ha_cancel_action_response_callback(req.call_id, "too many pending forecasts");
     apply_weather_forecast_unavailable_for_entity(entity_id);
     return;
+  }
+  if (auto *source = weather_daily_find_source(entity_id); source && !source->forecast.count) {
+    source->loading = true;
+    weather_forecast_schedule_visual_refresh();
   }
   ESP_LOGI("weather_forecast", "Requesting daily forecast for %s", entity_id.c_str());
   if (!ha_action_send(req)) {

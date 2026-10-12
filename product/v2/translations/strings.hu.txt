@@ -81,6 +81,7 @@ lightning=Villámlás
 lightning_and_rain=Villámlás és eső
 light=Fény
 loading=Betöltés
+loading_forecast=Loading forecast
 locate=Keresés
 lock=Zár
 lawn_mower=Fűnyíró

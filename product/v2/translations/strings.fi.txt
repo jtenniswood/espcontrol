@@ -81,6 +81,7 @@ lightning=Ukkonen
 lightning_and_rain=Ukkosta ja sadetta
 light=Valo
 loading=Ladataan
+loading_forecast=Loading forecast
 locate=Paikanna
 lock=Lukko
 lawn_mower=Ruohonleikkuri

@@ -81,6 +81,7 @@ lightning=Raios
 lightning_and_rain=Raios e chuva
 light=Luz
 loading=Carregando
+loading_forecast=Carregando previsão
 locate=Localizar
 lock=Bloquear
 lawn_mower=Cortador de grama

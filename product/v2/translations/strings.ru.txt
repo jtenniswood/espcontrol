@@ -81,6 +81,7 @@ lightning=Молния
 lightning_and_rain=Гроза с дождём
 light=Свет
 loading=Загрузка
+loading_forecast=Loading forecast
 locate=Найти
 lock=Замок
 lawn_mower=Газонокосилка

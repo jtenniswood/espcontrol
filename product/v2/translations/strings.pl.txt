@@ -81,6 +81,7 @@ lightning=Błyskawice
 lightning_and_rain=Błyskawice i deszcz
 light=Światło
 loading=Ładowanie
+loading_forecast=Loading forecast
 locate=Zlokalizuj
 lock=Zablokuj
 lawn_mower=Kosiarka

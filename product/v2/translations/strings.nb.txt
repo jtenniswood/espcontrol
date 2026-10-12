@@ -81,6 +81,7 @@ lightning=Lyn
 lightning_and_rain=Lyn og regn
 light=Lys
 loading=Laster
+loading_forecast=Loading forecast
 locate=Finn
 lock=Lås
 lawn_mower=Gressklipper

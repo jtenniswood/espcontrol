@@ -81,6 +81,7 @@ lightning=Relâmpagos
 lightning_and_rain=Relâmpagos e chuva
 light=Luz
 loading=A carregar
+loading_forecast=A carregar previsão
 locate=Localizar
 lock=Bloquear
 lawn_mower=Corta-relva

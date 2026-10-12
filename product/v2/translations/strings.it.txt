@@ -81,6 +81,7 @@ lightning=Fulmini
 lightning_and_rain=Fulmini e pioggia
 light=Luce
 loading=Caricamento
+loading_forecast=Caricamento previsioni
 locate=Localizza
 lock=Blocca
 lawn_mower=Tagliaerba

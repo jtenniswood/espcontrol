@@ -81,6 +81,7 @@ lightning=Gewitter
 lightning_and_rain=Gewitter und Regen
 light=Licht
 loading=Laden
+loading_forecast=Wettervorhersage wird geladen
 locate=Orten
 lock=Sperren
 lawn_mower=Rasenmäher

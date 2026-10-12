@@ -81,6 +81,7 @@ lightning=Strele
 lightning_and_rain=Strele in dež
 light=Luč
 loading=Nalaganje
+loading_forecast=Loading forecast
 locate=Poišči
 lock=Ključavnica
 lawn_mower=Kosilnica

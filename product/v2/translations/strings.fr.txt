@@ -81,6 +81,7 @@ lightning=Orage
 lightning_and_rain=Orage et pluie
 light=Lumière
 loading=Chargement
+loading_forecast=Chargement des prévisions
 locate=Localiser
 lock=Verrouiller
 lawn_mower=Tondeuse

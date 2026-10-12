@@ -81,6 +81,7 @@ lightning=Blesky
 lightning_and_rain=Blesky a dážď
 light=Svetlo
 loading=Načítanie
+loading_forecast=Loading forecast
 locate=Nájsť
 lock=Zamknúť
 lawn_mower=Kosačka

@@ -81,6 +81,7 @@ lightning=ברקים
 lightning_and_rain=ברקים וגשם
 light=תאורה
 loading=טוען
+loading_forecast=Loading forecast
 locate=איתור
 lock=נעילה
 lawn_mower=מכסחת דשא

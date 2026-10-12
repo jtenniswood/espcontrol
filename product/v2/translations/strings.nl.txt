@@ -81,6 +81,7 @@ lightning=Bliksem
 lightning_and_rain=Bliksem en regen
 light=Licht
 loading=Laden
+loading_forecast=Weersverwachting laden
 locate=Lokaliseren
 lock=Vergrendelen
 lawn_mower=Grasmaaier

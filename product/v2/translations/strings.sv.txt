@@ -81,6 +81,7 @@ lightning=Blixtar
 lightning_and_rain=Blixtar och regn
 light=Ljus
 loading=Laddar
+loading_forecast=Loading forecast
 locate=Hitta
 lock=Lås
 lawn_mower=Gräsklippare

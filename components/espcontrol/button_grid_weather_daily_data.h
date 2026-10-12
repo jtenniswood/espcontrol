@@ -9,6 +9,7 @@ struct WeatherDailySource {
   std::string entity_id;
   espcontrol::weather::Forecast forecast;
   unsigned users = 0;
+  bool loading = true;
   bool stale = false;
 };
 inline std::vector<std::unique_ptr<WeatherDailySource>> &weather_daily_sources() {
@@ -38,7 +39,10 @@ inline void weather_daily_release_source(WeatherDailySource *source) {
 }
 inline void weather_daily_refresh_visuals();
 inline void weather_daily_set_unavailable(const std::string &entity) {
-  if (auto *source = weather_daily_find_source(entity)) source->stale = true;
+  if (auto *source = weather_daily_find_source(entity)) {
+    source->loading = false;
+    source->stale = source->forecast.count > 0;
+  }
 }
 inline std::string weather_daily_response_template(const std::string &entity_id) {
   return std::string("{% set entity = '") + entity_id + "' %}"

@@ -51,7 +51,8 @@ inline void weather_daily_refresh_modal() {
   if (!ui.overlay || !ui.source) return;
   const auto &forecast = ui.source->forecast;
   if (!forecast.count) {
-    lv_label_set_display_text(ui.date, espcontrol_i18n(std::string("Forecast unavailable")).c_str());
+    const char *status_key = ui.source->loading ? "Loading forecast" : "Forecast unavailable";
+    lv_label_set_display_text(ui.date, espcontrol_i18n(std::string(status_key)).c_str());
     lv_label_set_display_text(ui.icon, weather_icon_for_state("unavailable"));
     lv_label_set_display_text(ui.details, "--/--");
     lv_obj_add_state(ui.previous, LV_STATE_DISABLED); lv_obj_add_state(ui.next, LV_STATE_DISABLED);
@@ -162,7 +163,8 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     }
   }
   std::string caption = (card->label.empty() ? "" : card->label + " · ") + display_temperature_unit_symbol();
-  if (!forecast.count) caption = espcontrol_i18n(std::string("Forecast unavailable"));
+  if (!forecast.count) caption = espcontrol_i18n(std::string(
+    card->source->loading ? "Loading forecast" : "Forecast unavailable"));
   else if (card->source->stale) caption += " · " + espcontrol_i18n(std::string("Last forecast"));
   lv_label_set_display_text(card->caption, caption.c_str());
   for (size_t i = 0; i < card->columns.size(); ++i) {

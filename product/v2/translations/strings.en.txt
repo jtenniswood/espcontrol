@@ -81,6 +81,7 @@ lightning=Lightning
 lightning_and_rain=Lightning And Rain
 light=Light
 loading=Loading
+loading_forecast=Loading forecast
 locate=Locate
 lock=Lock
 lawn_mower=Lawn Mower

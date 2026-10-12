@@ -81,6 +81,7 @@ lightning=Şimşek
 lightning_and_rain=Şimşek ve yağmur
 light=Işık
 loading=Yükleniyor
+loading_forecast=Loading forecast
 locate=Bul
 lock=Kilit
 lawn_mower=Çim biçme makinesi
