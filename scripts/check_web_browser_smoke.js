@@ -7145,7 +7145,7 @@ async function assertWeatherWidthScaling(browser) {
       const visible = days.filter(day => getComputedStyle(day).display !== 'none');
       return visible[1].getBoundingClientRect().left - visible[0].getBoundingClientRect().right;
     });
-    assert(columnGap >= 15, 'Daily forecast preview keeps a wider gap between columns: ' + columnGap);
+    assert(columnGap >= 19, 'Daily forecast preview matches the wider device gap between columns: ' + columnGap);
     console.log('Daily forecast browser scaling passed: ' + counts.join(',') + ' complete columns.');
   } finally { await page.close(); }
 }
