@@ -34,7 +34,7 @@ Forecast modes request the daily forecast from Home Assistant. **Today's Forecas
 
 Forecasts refresh hourly and after reconnecting. Providers must supply a daily forecast and may return fewer than seven days.
 
-While loading, forecast cards show a single weather icon and **Loading forecast**. The day layout appears when data arrives. A failed refresh keeps the last available forecast and marks it **Last forecast**; if no forecast is available, the card shows **Forecast unavailable**.
+While loading, forecast cards show a single cloud-and-clock icon and **Loading forecast**. The day layout appears when data arrives. A failed refresh keeps the last available forecast and marks it **Last forecast**; if no forecast is available, the card shows **Forecast unavailable**.
 
 Weather cards use the fixed **tertiary** background colour, like Sensor, Date, Clock, and World Clock cards.
 

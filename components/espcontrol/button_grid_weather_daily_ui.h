@@ -68,7 +68,8 @@ inline void weather_daily_refresh_modal() {
   if (!forecast.count) {
     const char *status_key = ui.source->loading ? "Loading forecast" : "Forecast unavailable";
     lv_label_set_display_text(ui.date, espcontrol_i18n(std::string(status_key)).c_str());
-    lv_label_set_display_text(ui.icon, weather_icon_for_state("unavailable"));
+    lv_label_set_display_text(ui.icon, ui.source->loading
+      ? find_icon("Weather Cloudy Clock") : weather_icon_for_state("unavailable"));
     lv_label_set_display_text(ui.details, "--/--");
     lv_obj_add_state(ui.previous, LV_STATE_DISABLED); lv_obj_add_state(ui.next, LV_STATE_DISABLED);
     return;
@@ -158,8 +159,8 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
       card->columns.clear();
     }
     lv_obj_add_flag(card->root, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_display_text(card->placeholder_icon,
-      weather_icon_for_state(card->source->loading ? "cloudy" : "unavailable"));
+    lv_label_set_display_text(card->placeholder_icon, card->source->loading
+      ? find_icon("Weather Cloudy Clock") : weather_icon_for_state("unavailable"));
     lv_obj_clear_flag(card->placeholder_icon, LV_OBJ_FLAG_HIDDEN);
     const char *status_key = card->source->loading ? "Loading forecast" : "Forecast unavailable";
     lv_label_set_display_text(card->caption, espcontrol_i18n(std::string(status_key)).c_str());

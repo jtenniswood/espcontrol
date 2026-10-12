@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include "button_grid_weather_daily_data.h"
+#include "icons.h"
 struct lv_obj_t;
 struct lv_event_t { lv_obj_t *target; void *data; };
 using Callback = void (*)(lv_event_t *);
@@ -112,7 +113,12 @@ int main(){
     assert(card->columns.empty() && card->root->children.empty());
     assert(card->root->flags & LV_OBJ_FLAG_HIDDEN);
     assert(!(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN));
-    assert(placeholder_icon->text=="cloudy-icon" && caption->text=="Loading forecast");
+    assert(placeholder_icon->text=="\U000F18F6" && caption->text=="Loading forecast");
+    weather_daily_open_modal(card);
+    assert(weather_daily_modal().date->text=="Loading forecast");
+    assert(weather_daily_modal().icon->text=="\U000F18F6");
+    weather_daily_hide_modal();
+
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     lv_obj_set_size(owner,100,160);lv_obj_set_size(owner,460,160);
     assert(lv_obj_t::live==baseline+1 && card->columns.empty());
@@ -203,7 +209,7 @@ int main(){
     weather_daily_open_modal(card);assert(!weather_daily_modal().overlay);
     weather_daily_set_loading("weather.home");weather_daily_refresh_visuals();
     assert(card->columns.empty() && slot.text_lbl->text=="Loading forecast");
-    assert(slot.icon_lbl->text=="cloudy-icon");
+    assert(slot.icon_lbl->text=="\U000F18F6");
     card->source->loading=false;
 
     assert(espcontrol::weather::parse(payload,f));weather_daily_refresh_visuals();
