@@ -134,8 +134,8 @@ int main(){
     assert(card->columns.front().day->text=="Today" && card->columns.front().high->text=="19°");
     assert(espcontrol::weather::parse("WF1|2026-10-11|2026-10-12|°C|mm|km/h\n2026-10-11|sunny|18|10|0|0|10|75\n2026-10-12|rainy|17|11|80|2|20|80\n2026-10-13|cloudy|16|9||||\n2026-10-14|sunny|18|10||||\n",f));
     weather_daily_render_card(card);assert(card->columns.size()==4);
-    assert(card->columns.front().day->width==80);
-    assert(card->columns[1].day->x==96); // Compact columns keep the gap without stretching across the card.
+    assert(card->columns.front().day->width==103);
+    assert(card->columns[1].day->x==119); // Visible columns share the available width after gaps.
     for(const auto &col:card->columns){
       assert(col.icon->text_align==LV_TEXT_ALIGN_LEFT && col.day->text_align==LV_TEXT_ALIGN_LEFT && col.high->text_align==LV_TEXT_ALIGN_LEFT);
       assert(col.icon->x==col.day->x && col.day->x==col.high->x);
@@ -172,6 +172,37 @@ int main(){
     weather_daily_cleanup(owner);assert(owner->events.empty());
     lv_obj_del(owner);assert(lv_obj_t::live==0);
   }
+
+  // Add days at the minimum-width boundaries and fill the width even after all seven fit.
+  auto *wide_owner=lv_obj_create(nullptr);
+  BtnSlot wide_slot{wide_owner,lv_label_create(wide_owner),lv_label_create(wide_owner)};
+  weather_daily_setup(wide_slot,{"weather.week",""},{});
+  auto *wide_card=weather_daily_card_for(wide_owner);
+  std::string week="WF1|2026-10-11|2026-10-12|°C|mm|km/h\n";
+  for(int day=11;day<18;++day)week+="2026-10-"+std::to_string(day)+"|sunny|18|10||||\n";
+  assert(espcontrol::weather::parse(week,wide_card->source->forecast));
+  const int boundaries[][2]={{100,1},{159,1},{160,2},{247,2},{248,3},{335,3},{336,4},
+    {423,4},{424,5},{511,5},{512,6},{599,6},{600,7},{901,7}};
+  for(const auto &test:boundaries){
+    lv_obj_set_size(wide_owner,test[0],160);
+    const auto &columns=wide_card->columns;
+    assert(columns.size()==static_cast<size_t>(test[1]));
+    assert(columns.front().day->x==0);
+    assert(columns.back().day->x+columns.back().day->width==test[0]);
+    int smallest=test[0],largest=0;
+    for(size_t i=0;i<columns.size();++i){
+      smallest=std::min(smallest,columns[i].day->width);
+      largest=std::max(largest,columns[i].day->width);
+      assert(columns[i].day->width>=72);
+      if(i)assert(columns[i].day->x-(columns[i-1].day->x+columns[i-1].day->width)==16);
+    }
+    assert(largest-smallest<=1);
+    const int live=lv_obj_t::live;
+    for(int i=0;i<20;++i)weather_daily_refresh_visuals();
+    assert(lv_obj_t::live==live);
+  }
+  weather_daily_cleanup(wide_owner);lv_obj_del(wide_owner);
+  assert(weather_daily_sources().empty() && lv_obj_t::live==0);
 
   // Single-day cards select dates exactly and share the multi-day source.
   auto *daily_owner=lv_obj_create(nullptr);

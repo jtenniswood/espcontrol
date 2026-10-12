@@ -170,12 +170,19 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   lv_obj_clear_flag(card->root, LV_OBJ_FLAG_HIDDEN);
   const int font_height = lv_font_get_line_height(card->font);
   const int day_gap = std::max(8, font_height);
+  const int icon_height = lv_font_get_line_height(card->icon_font);
   lv_point_t measured;
-  lv_text_get_size(&measured, "-18.8\u00B0", card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-  const int minimum_day_width = measured.x + 24;
+  lv_text_get_size(&measured, "-188\u00B0", card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+  int minimum_day_width = std::max(static_cast<int>(measured.x), icon_height);
+  static const char *day_labels[] = {"Today", "Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"};
+  for (const char *key : day_labels) {
+    const auto label = espcontrol_i18n(std::string(key));
+    lv_text_get_size(&measured, label.c_str(), card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    minimum_day_width = std::max(minimum_day_width, static_cast<int>(measured.x));
+  }
+  minimum_day_width += 24;
   const size_t count = espcontrol::weather::visible_days(width, minimum_day_width,
     card->view == WeatherForecastView::DAILY ? forecast.count : 1, day_gap);
-  const int icon_height = lv_font_get_line_height(card->icon_font);
   const int caption_height = card->source->stale ? font_height + 2 : 0;
   const int high_y = std::max(icon_height + font_height + 4, height - caption_height - font_height);
   const int day_y = high_y - font_height - 2;
@@ -186,16 +193,19 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     card->width = width; card->height = height;
     lv_obj_set_size(card->root, width, height);
     lv_obj_align(card->root, LV_ALIGN_TOP_LEFT, 0, 0);
-    const int column_width = card->view != WeatherForecastView::DAILY ? width
-      : std::max(1, std::min(minimum_day_width,
-        (width - day_gap * static_cast<int>(count - 1)) / static_cast<int>(count)));
+    const int available = width - day_gap * static_cast<int>(count - 1);
+    const int column_width = available / static_cast<int>(count);
+    const int remainder = available % static_cast<int>(count);
     for (size_t i = 0; i < count; ++i) {
       WeatherDailyColumn col{};
       auto make = [&](const lv_font_t *font, int y) {
         auto *label = weather_daily_label(card->root, font);
         lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-        const int x = i * (column_width + day_gap);
-        lv_obj_set_width(label, column_width); lv_obj_set_pos(label, x, y); return label;
+        // Share leftover pixels between the first columns so the last one reaches the edge.
+        const int index = static_cast<int>(i);
+        const int x = index * (column_width + day_gap) + std::min(index, remainder);
+        lv_obj_set_width(label, column_width + (index < remainder ? 1 : 0));
+        lv_obj_set_pos(label, x, y); return label;
       };
       col.icon = make(card->icon_font, 0);
       col.day = make(card->font, day_y);

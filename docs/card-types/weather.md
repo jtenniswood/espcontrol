@@ -30,7 +30,7 @@ Forecasts need **Allow the device to perform Home Assistant actions** enabled so
 
 **Current Conditions** watches the weather entity's current state. The icon uses the normalized weather condition, while the label keeps provider-specific text, such as **Light Rain**. Unknown or unavailable states show a fallback icon and readable label.
 
-Forecast modes request the daily forecast from Home Assistant. **Today's Forecast** and **Tomorrow's Forecast** each show exactly one day, even on a wide card. They select the requested local date; if the provider omits that date, the card shows **Forecast unavailable**. **Daily Forecast** shows **Today** or short weekday names in compact columns with padding and a gap between days.
+Forecast modes request the daily forecast from Home Assistant. **Today's Forecast** and **Tomorrow's Forecast** each show exactly one day, even on a wide card. They select the requested local date; if the provider omits that date, the card shows **Forecast unavailable**. **Daily Forecast** shows **Today** or short weekday names in columns with padding and a gap between days. A minimum column width keeps the icon, weekday and temperature readable. As the card widens, it adds more days, up to seven, and shares the remaining width evenly between the visible columns. Once all available days fit, the columns continue stretching to fill the card.
 
 Forecasts refresh hourly and after reconnecting. Providers must supply a daily forecast and may return fewer than seven days.
 

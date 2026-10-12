@@ -28,18 +28,18 @@ export function createWeatherDailyPreviewLayout(
         // preview sizes cannot change the number of days that fit.
         fontContext.font = textStyle.font.replace(textStyle.fontSize, nativeFontSize + "px");
         // ESPHome rounds each glyph advance to display pixels before measuring.
-        const measured = Array.from("-18.8°").reduce((width, glyph) =>
+        const measure = (text: string) => Array.from(text).reduce((width, glyph) =>
             width + Math.round(fontContext.measureText(glyph).width), 0);
+        const icon = firstDay.querySelector<HTMLElement>(".mdi");
+        const iconSize = icon ? Math.round(parseFloat(view.getComputedStyle(icon).fontSize) / scale) : 0;
+        const measured = Math.max(iconSize, ...["-188°", "Today", "Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"].map(measure));
         const fontHeight = Math.round(nativeFontSize * 1.2);
         const gap = Math.max(8, fontHeight);
         const width = (card.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)) / scale;
         const minimumDayWidth = measured + 24;
         const count = Math.max(1, Math.min(days.length, Math.floor((width + gap) / (minimumDayWidth + gap))));
-        const singleDay = days.length === 1;
-        const columnWidth = singleDay ? Math.max(1, width)
-            : Math.max(1, Math.min(minimumDayWidth, Math.floor((width - gap * (count - 1)) / count)));
         row.style.gap = (gap * scale) + "px";
-        row.style.setProperty("--weather-day-width", (columnWidth * scale) + "px");
+        // Flex shares the remaining width equally between the visible days.
         days.forEach((day, index) => { day.hidden = index >= count; });
     }
     const Observer = view && (view as Window & typeof globalThis).ResizeObserver;

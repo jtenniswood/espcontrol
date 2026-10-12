@@ -7143,6 +7143,16 @@ async function assertWeatherWidthScaling(browser) {
       await page.waitForFunction(value => Math.abs(document.querySelector("#weather").getBoundingClientRect().width - value) < 1, width);
       await page.evaluate(() => new Promise(requestAnimationFrame));
       counts.push(await page.locator('.sp-weather-day').evaluateAll(days => days.filter(day => getComputedStyle(day).display !== 'none').length));
+      const fill = await page.locator('.sp-weather-days').evaluate(row => {
+        const columns = Array.from(row.children).filter(day => !day.hidden).map(day => day.getBoundingClientRect());
+        const bounds = row.getBoundingClientRect();
+        return {left: columns[0].left - bounds.left, right: bounds.right - columns[columns.length - 1].right,
+          widths: columns.map(column => column.width)};
+      });
+      assert(Math.abs(fill.left) < 1 && Math.abs(fill.right) < 1,
+        'Visible forecast days fill the row at every card width, including when all seven fit: ' + JSON.stringify(fill));
+      assert(Math.max(...fill.widths) - Math.min(...fill.widths) < 1, 'Forecast panels share the remaining space equally.');
+
     }
     assert(counts[0] === 1 && counts[3] === 7 && counts.every((count, i) => i === 0 || count > counts[i - 1]),
       'Daily forecast preview adds complete day columns as its width increases: ' + counts.join(','));
@@ -7219,10 +7229,16 @@ async function assertWeatherWidthScaling(browser) {
           const spacing = await page.locator('#weather').evaluate(card => {
             const days = Array.from(card.querySelectorAll('.sp-weather-day')).filter(day => !day.hidden);
             const scale = card.closest('.sp-screen').clientWidth / 480;
-            return { width: days[0].getBoundingClientRect().width / scale,
-              pitch: (days[1].getBoundingClientRect().left - days[0].getBoundingClientRect().left) / scale };
+            const row = card.querySelector('.sp-weather-days').getBoundingClientRect();
+            const bounds = days.map(day => day.getBoundingClientRect());
+            return { widths: bounds.map(day => day.width / scale),
+              gap: (bounds[1].left - bounds[0].right) / scale,
+              unused: (row.right - bounds[bounds.length - 1].right) / scale };
           });
-          assert(spacing.width <= 82 && spacing.pitch <= 108, 'Forecast days retain the narrower width at every preview scale: ' + JSON.stringify(spacing));
+          assert(Math.abs(spacing.unused) < 1 && Math.max(...spacing.widths) - Math.min(...spacing.widths) < 1,
+            'S3 forecast panels stretch equally to fill the row at every preview scale: ' + JSON.stringify(spacing));
+          assert(spacing.widths.every(width => width >= 80) && spacing.gap >= 24,
+            'S3 forecast days retain readable minimum widths and gaps: ' + JSON.stringify(spacing));
         }
       }
     }
