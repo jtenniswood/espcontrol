@@ -42,11 +42,11 @@ All forecast modes share one compact forecast per weather entity. The panel supp
 
 ## Forecast Details
 
-Tap any forecast card to open its details modal. A summary at the top shows the entity's current condition and name on the left, with its current temperature and today's forecast high / low on the right. Temperatures are rounded to whole degrees and follow the panel's Temperature Unit setting. Missing current readings show **--**, and the range is omitted if today's forecast is unavailable.
+Tap any forecast card to open its details modal. The forecast fills the upper area, with the day, condition icon, high and low temperature for each day. Temperatures are rounded to whole degrees and follow the panel's Temperature Unit setting. The 4-inch and 4.3-inch displays show up to five days; 7-inch and 10-inch displays show up to seven. Narrow displays wrap the days into balanced rows.
 
-Below the summary, each forecast column shows the day, condition icon, high and low temperature. The 4-inch and 4.3-inch displays show up to five days; 7-inch and 10-inch displays show up to seven. All included days are visible without paging controls, wrapping into balanced rows when needed. Today and Tomorrow cards start with their selected day highlighted. Tap a day to update the compact rain, wind and humidity tiles below the forecast. Rain chance and rainfall share one tile; the selected day and condition appear above the tiles. Missing details are omitted, and rainfall and wind use the units supplied by Home Assistant. The modal scrolls vertically when needed.
+Today and Tomorrow cards start with their selected day highlighted. Tap a day to update the rain, wind and humidity tiles below the forecast. Rain chance and rainfall share one tile; the selected day and forecast condition appear above the tiles. Missing details are omitted, and rainfall and wind use the units supplied by Home Assistant. The layout fits the display without scrolling or paging controls, including the **Last forecast** notice beside the detail heading for stale data. Short displays use a compact tile layout with existing fonts.
 
-Forecast columns reuse the card's shared forecast. Only visible day panels are created, and live current-condition callbacks are attached while the modal is open and released on close.
+The modal reads the card's shared forecast snapshot and allocates only the displayed day panels and up to three detail tiles.
 
 
 ## Supported Conditions

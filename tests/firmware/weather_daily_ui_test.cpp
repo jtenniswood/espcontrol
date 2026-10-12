@@ -7,6 +7,7 @@
 #include <vector>
 #include "button_grid_weather_daily_data.h"
 #include "icons.h"
+#include "button_grid_modal_layout.h"
 // Inject the two setup allocation failures without changing the production allocator.
 bool fail_nothrow_allocation=false, fail_lvgl_allocation=false;
 void *operator new(std::size_t size, const std::nothrow_t &) noexcept {
@@ -20,6 +21,7 @@ using Callback = void (*)(lv_event_t *);
 struct Binding { Callback callback; int code; void *data; };
 struct lv_font_t { int line_height; };
 lv_font_t font{16}, icons{32}, small_font{12}, summary_font{24};
+int measured_font_pixels=0;
 #define LV_FONT_DEFAULT (&font)
 struct lv_obj_t {
   static int live;
@@ -59,10 +61,15 @@ void lv_obj_set_height(lv_obj_t *obj,int h){obj->height=h;}
 int lv_obj_get_content_width(lv_obj_t *obj){return obj->width;}
 int lv_obj_get_content_height(lv_obj_t *obj){return obj->height;}
 int lv_font_get_line_height(const lv_font_t *f){return f->line_height;}
-void lv_text_get_size(lv_point_t *point,const char *text,const lv_font_t *,int,int,int,int){point->x=std::strlen(text)*8;point->y=16;}
+void lv_text_get_size(lv_point_t *point,const char *text,const lv_font_t *,int,int,int,int){
+  if(!measured_font_pixels){point->x=std::strlen(text)*8;point->y=16;return;}
+  // Conservative text widths for device-size layout tests; count UTF-8 glyphs once.
+  int glyphs=0;for(const auto *ch=reinterpret_cast<const unsigned char *>(text);*ch;++ch)if((*ch & 0xc0)!=0x80)++glyphs;
+  point->x=static_cast<int>(std::ceil(glyphs*measured_font_pixels*0.6));point->y=font.line_height;
+}
 void lv_label_set_display_text(lv_obj_t *obj,const char *text){obj->text=text;}
 void lv_label_set_text(lv_obj_t *obj,const char *text){obj->text=text;}
-void lv_obj_set_style_text_font(lv_obj_t *obj,const lv_font_t *f,int){obj->font=f;}
+void lv_obj_set_style_text_font(lv_obj_t *obj,const lv_font_t *f,int){obj->font=f;obj->height=f->line_height;}
 const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *obj,int){return obj->font;}
 #define NOOP(name) template<class... T> void name(T...) {}
 NOOP(lv_obj_set_style_text_color) NOOP(lv_label_set_long_mode) NOOP(lv_obj_set_style_text_opa)
@@ -71,14 +78,16 @@ void lv_obj_set_pos(lv_obj_t *obj,int x,int y){obj->x=x;obj->y=y;}
 void lv_obj_set_y(lv_obj_t *obj,int y){obj->y=y;}
 void lv_obj_add_flag(lv_obj_t *obj,int flag){obj->flags|=flag;}
 void lv_obj_clear_flag(lv_obj_t *obj,int flag){obj->flags&=~flag;}
-NOOP(lv_obj_align) NOOP(lv_obj_set_style_bg_color) NOOP(lv_obj_center)
+void lv_obj_align(lv_obj_t *obj,int,int x,int y){obj->x=(obj->parent?obj->parent->width-obj->width:0)/2+x;obj->y=y;}
+NOOP(lv_obj_set_style_bg_color) NOOP(lv_obj_center)
 NOOP(lv_obj_set_style_radius) NOOP(lv_obj_set_style_bg_opa) NOOP(lv_obj_set_style_border_width) NOOP(lv_obj_set_style_pad_all)
 NOOP(lv_obj_add_state) NOOP(lv_obj_clear_state) NOOP(apply_text_width_compensation)
 NOOP(control_modal_apply_pressed_fill) NOOP(set_clock_bar_modal_label)
 int lv_color_hex(int c){return c;} int lv_pct(int n){return n;}
 struct Theme { int text_primary=0, surface_secondary=0; } theme;
 const Theme &current_theme(){return theme;}
-std::string espcontrol_i18n(const std::string &s){return s;}
+std::string translated_today;
+std::string espcontrol_i18n(const std::string &s){return s=="Today" && !translated_today.empty()?translated_today:s;}
 bool use_fahrenheit=false;
 const char *display_temperature_unit_symbol(){return use_fahrenheit?"°F":"°C";}
 float convert_temperature_value_for_display_float(float v,const char *unit){
@@ -118,16 +127,48 @@ struct ParsedCfg{std::string entity,label;std::string precision="daily",type="we
 struct BtnSlot{lv_obj_t *btn,*text_lbl,*icon_lbl;};
 enum class ControlModalKind{WEATHER_FORECAST};
 long modal_width=300, screen_width=480, screen_height=480;
+long modal_back=40, modal_inset=10, modal_top_padding=0, modal_bottom_padding=0;
+int scroll_list_creations=0;
 struct ControlModalShell{lv_obj_t *overlay,*panel;long content_w=300;struct{long back_size=40,inset=10,panel_h=400,sw=480,sh=480;}layout;};
 void weather_daily_hide_modal();
 void control_modal_force_close_active(){weather_daily_hide_modal();}
 void control_modal_delete_overlay(ControlModalKind,lv_obj_t *&overlay){if(overlay)lv_obj_del(overlay);overlay=nullptr;}
 ControlModalShell control_modal_open_shell(ControlModalKind,lv_obj_t *,int,const lv_font_t *,void(*)()) {
-  weather_daily_hide_modal();auto *overlay=lv_obj_create(nullptr);return {overlay,lv_obj_create(overlay),modal_width,{40,10,screen_height,screen_width,screen_height}};
+  weather_daily_hide_modal();auto *overlay=lv_obj_create(nullptr);auto *panel=lv_obj_create(overlay);
+  lv_obj_set_size(panel,modal_width+modal_inset*2,screen_height-modal_top_padding-modal_bottom_padding);
+  return {overlay,panel,modal_width,{modal_back,modal_inset,screen_height-modal_top_padding-modal_bottom_padding,screen_width,screen_height}};
 }
-lv_obj_t *control_modal_create_scroll_list(lv_obj_t *parent,int,int,int){return lv_obj_create(parent);}
+lv_obj_t *control_modal_create_scroll_list(lv_obj_t *parent,int,int,int){++scroll_list_creations;return lv_obj_create(parent);}
 #define ESP_LOGW(...) ((void)0)
 #include "button_grid_weather_daily_ui.h"
+void check_modal_fit(){
+  const auto &ui=weather_daily_modal();
+  assert(ui.body && !(ui.body->flags & LV_OBJ_FLAG_SCROLLABLE) && scroll_list_creations==0);
+  assert(ha_bindings.empty()); // Forecast-only modals have no live current-condition subscriptions.
+  auto within=[](const lv_obj_t *parent,const lv_obj_t *child){
+    if(child->flags & LV_OBJ_FLAG_HIDDEN)return;
+    assert(child->x>=0 && child->y>=0 && child->x+child->width<=parent->width && child->y+child->height<=parent->height);
+    assert(!(child->flags & LV_OBJ_FLAG_SCROLLABLE));
+  };
+  within(ui.body->parent,ui.body);
+  for(const auto *child:ui.body->children)within(ui.body,child);
+  for(const auto &column:ui.columns){
+    within(ui.days,column.button);
+    for(const auto *child:column.button->children)within(column.button,child);
+    assert(column.day->y+column.day->height<=column.icon->y);
+    assert(column.icon->y+column.icon->height<=column.high->y);
+    assert(column.high->y+column.high->height<=column.low->y);
+  }
+  for(const auto &metric:ui.metric_tiles){
+    within(ui.metrics,metric.tile);
+    for(const auto *child:metric.tile->children)within(metric.tile,child);
+    assert(metric.label->y+metric.label->height<=metric.value->y);
+    if(metric.unit)assert(metric.value->y+metric.value->height<=metric.unit->y);
+  }
+  assert(ui.days->y+ui.days->height<=ui.details->y);
+  assert(ui.details->y+ui.details->height<=ui.metrics->y);
+  if(!(ui.status->flags & LV_OBJ_FLAG_HIDDEN))assert(ui.details->x+ui.details->width<=ui.status->x);
+}
 int main(){
   assert(weather_daily_temperature(17.8f,"°C")=="18");
   assert(weather_daily_temperature(-2.6f,"°C")=="-3");
@@ -148,8 +189,8 @@ int main(){
     assert(!(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN));
     assert(placeholder_icon->text=="\U000F18F6" && caption->text=="Loading forecast");
     weather_daily_open_modal(card);
-    assert(weather_daily_modal().condition->text=="Loading forecast");
-    assert(weather_daily_modal().icon->text=="\U000F18F6");
+    assert(weather_daily_modal().message->text=="Loading forecast");
+    assert(weather_daily_modal().placeholder_icon->text=="\U000F18F6");
     weather_daily_hide_modal();
 
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
@@ -196,17 +237,11 @@ int main(){
     for(int i=0;i<10;++i){
       weather_daily_open_modal(card);assert(card->source->users==2);
       auto &modal=weather_daily_modal();
-      assert(modal.columns.size()==4 && ha_bindings.size()==4);
-      publish_weather("","rainy");publish_weather("friendly_name","Home");publish_weather("temperature","15.2");
-      assert(modal.temperature->text=="--°C"); // Do not guess the source unit while attributes arrive.
-      publish_weather("temperature_unit","°C");
-      assert(modal.condition->text=="rainy" && modal.name->text=="Home" && modal.temperature->text=="15°C");
-      assert(modal.range->text=="18° / 10°");
+      assert(modal.columns.size()==4 && ha_bindings.empty());
+      check_modal_fit();
       const auto &column=modal.columns[0];
       assert(column.day->text=="Today" && column.high->text=="18°" && column.low->text=="10°");
       assert(column.day->y < column.icon->y && column.icon->y < column.high->y && column.high->y < column.low->y);
-      assert(modal.name->y>modal.condition->y && modal.range->y>modal.temperature->y);
-      assert(modal.temperature->text_align==LV_TEXT_ALIGN_RIGHT && modal.name->text_align==LV_TEXT_ALIGN_LEFT);
       assert(modal.details->text=="Today - sunny");
       assert(modal.metric_tiles.size()==3);
       assert(modal.metric_tiles[0].label->text=="Rain chance" && modal.metric_tiles[0].value->text=="0%");
@@ -216,7 +251,7 @@ int main(){
       assert(modal.metric_tiles.back().tile->x+modal.metric_tiles.back().tile->width==modal.row_width);
       const int modal_live=lv_obj_t::live;
       for(int refresh=0;refresh<20;++refresh)weather_daily_refresh_modal();
-      assert(lv_obj_t::live==modal_live && ha_bindings.size()==4);
+      assert(lv_obj_t::live==modal_live && ha_bindings.empty());
 
       emit(modal.columns[1].button,LV_EVENT_CLICKED);assert(modal.day==1);
       assert(modal.details->text=="Mon - rainy" && modal.metric_tiles[0].value->text=="80%" && modal.metric_tiles[0].unit->text=="2 mm");
@@ -225,6 +260,7 @@ int main(){
       assert((modal.details->flags & LV_OBJ_FLAG_HIDDEN) && (modal.metrics->flags & LV_OBJ_FLAG_HIDDEN));
       modal.source->stale=true;weather_daily_refresh_modal();
       assert(modal.status->text=="Last forecast" && !(modal.status->flags & LV_OBJ_FLAG_HIDDEN));
+      check_modal_fit();
       modal.source->stale=false;
       emit(modal.columns[0].button,LV_EVENT_CLICKED);assert(lv_obj_t::live==modal_live);
       weather_daily_hide_modal();assert(card->source->users==1 && lv_obj_t::live==live && ha_bindings.empty());
@@ -273,28 +309,20 @@ int main(){
   assert(paged.columns[2].button->x+paged.columns[2].button->width==paged.row_width);
   assert(paged.columns[4].button->x+paged.columns[4].button->width==paged.row_width);
   emit(paged.columns[4].button,LV_EVENT_CLICKED);assert(paged.day==4);
-  publish_weather("","sunny");publish_weather("temperature","68");publish_weather("temperature_unit","°F");
-  assert(paged.temperature->text=="20°C");
   use_fahrenheit=true;weather_daily_refresh_modal();
-  assert(paged.temperature->text=="68°F" && paged.range->text=="64° / 50°");
   assert(paged.columns[0].high->text=="64°" && paged.columns[0].low->text=="50°");
   use_fahrenheit=false;weather_daily_refresh_modal();
-  publish_weather("temperature","99999");assert(paged.temperature->text=="--°C");
-  publish_weather("temperature","68");publish_weather("","unavailable");assert(paged.temperature->text=="--°C");
-  publish_weather("friendly_name",std::string(200,'x'));assert(std::strlen(paged.friendly_name)==64);
   const auto saved_week=paged.source->forecast;
   paged.source->forecast=espcontrol::weather::Forecast{};paged.source->loading=true;
   weather_daily_refresh_modal();
-  assert(paged.columns.empty() && paged.condition->text=="Loading forecast");
-  assert(paged.icon->text=="\U000F18F6" && (paged.days->flags & LV_OBJ_FLAG_HIDDEN));
+  assert(paged.columns.empty() && paged.message->text=="Loading forecast");
+  assert(paged.placeholder_icon->text=="\U000F18F6" && (paged.days->flags & LV_OBJ_FLAG_HIDDEN));
   paged.source->forecast=saved_week;weather_daily_refresh_modal();assert(paged.columns.size()==5);
   const size_t old_capacity=paged.columns_per_row;
   paged.source->forecast.count=1;weather_daily_refresh_modal();
   assert(paged.columns.size()==1 && paged.day==0);
   assert(paged.columns_per_row==old_capacity && paged.columns[0].button->width==paged.row_width);
-  const auto old_callback=ha_bindings[0].callback;
   weather_daily_hide_modal();assert(ha_bindings.empty());
-  old_callback("rainy");assert(!weather_daily_modal().overlay);
   wide_card->source->forecast=saved_week;
   const long screens[][3]={{480,480,5},{720,720,5},{480,800,5},{800,480,5},
     {1024,600,7},{600,1024,7},{1280,800,7},{800,1280,7}};
@@ -308,7 +336,7 @@ int main(){
       assert(button->width>=weather_daily_minimum_width(modal.font,modal.icon_font,12));
       if(i && button->y==modal.columns[i-1].button->y){
         const auto *previous=modal.columns[i-1].button;
-        assert(button->x==previous->x+previous->width+12);
+        assert(button->x==previous->x+previous->width+modal.gap);
       } else assert(button->x==0);
       if(i+1==modal.columns.size() || button->y!=modal.columns[i+1].button->y)
         assert(button->x+button->width==modal.row_width);
@@ -316,6 +344,45 @@ int main(){
     emit(modal.columns.back().button,LV_EVENT_CLICKED);assert(modal.day==modal.day_limit-1);
     weather_daily_hide_modal();assert(ha_bindings.empty());
   }
+  // Supported resolutions, both rotations, conservative real font line heights,
+  // and the production shell geometry including the clock-bar/page padding.
+  const int displays[][7]={{480,480,22,26,44,41,40},{720,720,33,40,66,63,60},
+    {480,800,29,35,62,68,50},{1024,600,22,26,55,52,42},{1280,800,24,29,56,56,46}};
+  for(const auto &display:displays)for(bool rotated:{false,true})for(const char *today_label:{"Today","Aujourd'hui"}) {
+    translated_today=today_label;
+    font.line_height=display[3];icons.line_height=display[4];summary_font.line_height=display[5];
+    measured_font_pixels=display[2];
+    screen_width=display[rotated?1:0];screen_height=display[rotated?0:1];
+    modal_top_padding=display[6];modal_bottom_padding=4;
+    espcontrol::modal::FrameRequest request;
+    request.screen_width=screen_width;request.screen_height=screen_height;
+    request.panel_left=5;request.panel_right=5;request.panel_top=modal_top_padding;request.panel_bottom=modal_bottom_padding;
+    const auto frame=espcontrol::modal::calculate_frame({},request);
+    modal_back=frame.back_size;modal_inset=frame.inset;modal_width=frame.panel_width-frame.inset*2;
+    auto &forecast=wide_card->source->forecast;forecast=saved_week;
+    for(auto &day:forecast.days){day.rain_probability=80;day.precipitation=2.4f;day.wind=12;day.humidity=82;}
+    for(size_t available:{7u,1u,3u}){
+      forecast.count=available;wide_card->source->loading=false;wide_card->source->stale=true;
+      weather_daily_open_modal(wide_card);
+      auto &ui=weather_daily_modal();
+      assert(ui.columns.size()==std::min(ui.day_limit,available) && ui.metric_tiles.size()==3);
+      assert(ui.message->flags & LV_OBJ_FLAG_HIDDEN);
+      check_modal_fit();
+      const int widgets=lv_obj_t::live;
+      for(size_t i=0;i<ui.columns.size();++i){
+        emit(ui.columns[i].button,LV_EVENT_CLICKED);check_modal_fit();assert(lv_obj_t::live==widgets);
+      }
+      forecast.count=0;wide_card->source->loading=true;weather_daily_refresh_modal();
+      assert(ui.message->text=="Loading forecast" && ui.placeholder_icon->text=="\U000F18F6");
+      check_modal_fit();
+      forecast.count=available;weather_daily_refresh_modal();check_modal_fit();
+      weather_daily_hide_modal();assert(ha_bindings.empty());
+    }
+  }
+  translated_today.clear();
+  font.line_height=16;icons.line_height=32;summary_font.line_height=24;measured_font_pixels=0;
+  modal_top_padding=0;modal_bottom_padding=0;modal_back=40;modal_inset=10;
+  wide_card->source->forecast=saved_week;wide_card->source->stale=false;
   screen_width=480;screen_height=480;modal_width=436;
   auto &rain_day=wide_card->source->forecast.days[0];
   rain_day.precipitation=2.4f;rain_day.wind=0;rain_day.humidity=82.4f;

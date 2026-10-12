@@ -993,7 +993,7 @@ def test_current_weather_state_keeps_normal_card_visuals() -> None:
     assert "bump_ha_subscription_generation();" in grid, (
         "dashboard reconfiguration must invalidate stale current weather subscriptions"
     )
-    assert "weather_forecast_cancel_pending_requests();" in grid, (
+    assert "weather_forecast_cancel_pending_requests(false);" in grid, (
         "dashboard reconfiguration must cancel stale weather forecast action responses"
     )
     assert grid.count("if (bind_basic_sensor_card(") >= 2, (

@@ -25,13 +25,15 @@ inline std::string weather_daily_temperature(float value, const char *unit) {
     convert_temperature_value_for_display_float(value, unit))));
   return text;
 }
-inline std::string weather_daily_date_label(const espcontrol::weather::Day &day,
-                                           const espcontrol::weather::Forecast &forecast) {
-  if (std::strcmp(day.date, forecast.today) == 0) return espcontrol_i18n(std::string("Today"));
-  static const char *weekdays[] = {"Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"};
+inline std::string weather_daily_weekday_label(const espcontrol::weather::Day &day) {
+  static const char *const weekdays[] = {"Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"};
   const int index = espcontrol::weather::weekday(day.date);
   if (index < 0 || index >= 7) return "";
   return espcontrol_i18n(std::string(weekdays[index]));
+}
+inline std::string weather_daily_date_label(const espcontrol::weather::Day &day,
+                                           const espcontrol::weather::Forecast &forecast) {
+  return std::strcmp(day.date, forecast.today) == 0 ? espcontrol_i18n(std::string("Today")) : weather_daily_weekday_label(day);
 }
 // Select by Home Assistant's local date, rather than assuming the first entry is today.
 // A provider may omit either requested day. Do not substitute a different date.
@@ -53,12 +55,13 @@ inline lv_obj_t *weather_daily_label(lv_obj_t *parent, const lv_font_t *font) {
   apply_text_width_compensation(label);
   return label;
 }
-inline int weather_daily_minimum_width(const lv_font_t *font, const lv_font_t *icon_font, int padding) {
+inline int weather_daily_minimum_width(const lv_font_t *font, const lv_font_t *icon_font, int padding, bool include_today = true) {
   lv_point_t measured;
   lv_text_get_size(&measured, "-188\u00B0", font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
   int width = std::max(static_cast<int>(measured.x), static_cast<int>(lv_font_get_line_height(icon_font)));
   static const char *const labels[] = {"Today", "Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"};
   for (const char *key : labels) {
+    if (!include_today && std::strcmp(key, "Today") == 0) continue;
     const auto text = espcontrol_i18n(std::string(key));
     lv_text_get_size(&measured, text.c_str(), font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
     width = std::max(width, static_cast<int>(measured.x));
@@ -198,7 +201,7 @@ inline void weather_daily_setup(BtnSlot &slot, const ParsedCfg &config,
   if (!card->icon_font) card->icon_font = card->font;
   card->summary_font = display_media_title_font(display);
   if (!card->summary_font) card->summary_font = card->font;
-  card->detail_font = display_volume_label_font(display, card->font);
+  card->detail_font = card->font; // Match card labels; volume-label fonts are larger on some panels.
   card->root = lv_obj_create(slot.btn);
   if (!card->root) { weather_daily_release_source(source); delete card; weather_daily_unavailable_slot(slot); return; }
   lv_obj_set_style_bg_opa(card->root, LV_OPA_TRANSP, LV_PART_MAIN);

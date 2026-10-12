@@ -342,9 +342,9 @@
       "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["none"], "modalOwner": "none" },
       "modes": [
         { "name": "current", "config": { "entity": "weather.example", "precision": "" } },
-        { "name": "today", "config": { "entity": "weather.example", "precision": "today" }, "lifecycle": { "subscriptions": ["state", "attributes", "action_response"], "actions": ["modal"], "modalOwner": "weather" } },
-        { "name": "tomorrow", "config": { "entity": "weather.example", "precision": "tomorrow" }, "lifecycle": { "subscriptions": ["state", "attributes", "action_response"], "actions": ["modal"], "modalOwner": "weather" } },
-        { "name": "daily", "config": { "entity": "weather.example", "precision": "daily" }, "lifecycle": { "subscriptions": ["state", "attributes", "action_response"], "actions": ["modal"], "modalOwner": "weather" } }
+        { "name": "today", "config": { "entity": "weather.example", "precision": "today" }, "lifecycle": { "subscriptions": ["action_response"], "actions": ["modal"], "modalOwner": "weather" } },
+        { "name": "tomorrow", "config": { "entity": "weather.example", "precision": "tomorrow" }, "lifecycle": { "subscriptions": ["action_response"], "actions": ["modal"], "modalOwner": "weather" } },
+        { "name": "daily", "config": { "entity": "weather.example", "precision": "daily" }, "lifecycle": { "subscriptions": ["action_response"], "actions": ["modal"], "modalOwner": "weather" } }
       ]
     },
     "image": {
@@ -364,7 +364,7 @@
     },
     "weather_forecast": {
       "classification": "accepted_legacy_input", "canonicalType": "weather", "webRegistration": "weather_forecast", "firmwareFamily": "WEATHER",
-      "lifecycle": { "subscriptions": ["state", "attributes", "action_response"], "actions": ["modal"], "modalOwner": "weather" },
+      "lifecycle": { "subscriptions": ["action_response"], "actions": ["modal"], "modalOwner": "weather" },
       "modes": [{ "name": "legacy_forecast", "config": { "entity": "weather.example", "type": "weather_forecast" } }]
     }
   },
