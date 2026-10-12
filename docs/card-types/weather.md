@@ -6,7 +6,7 @@ description:
 
 # Weather
 
-A weather card shows current Home Assistant conditions or a daily forecast. Forecast cards use a left-aligned layout with the condition icon at the top, and the day and high temperature at the bottom. Temperatures are rounded to whole degrees, such as **18°**, and use the panel's **Temperature Unit** setting. Cards have no separate label or low-temperature row.
+A weather card shows current Home Assistant conditions or a daily forecast. Forecast cards use a left-aligned layout with the condition icon at the top, and the day and high temperature at the bottom. Temperatures are rounded to whole degrees, such as **18°**, and use the panel's **Temperature Unit** setting. Forecast cards have no separate label or low-temperature row.
 
 ## Setting Up a Weather Card
 
@@ -32,9 +32,13 @@ Forecasts need **Allow the device to perform Home Assistant actions** enabled so
 
 Forecast modes request the daily forecast from Home Assistant. **Today's Forecast** and **Tomorrow's Forecast** each show exactly one day, even on a wide card. They select the requested local date; if the provider omits that date, the card shows **Forecast unavailable**. **Daily Forecast** shows **Today** or short weekday names in compact columns with padding and a gap between days.
 
+Forecasts refresh hourly and after reconnecting. Providers must supply a daily forecast and may return fewer than seven days.
+
 While loading, forecast cards show a single weather icon. The day layout appears when data arrives. A failed refresh keeps the last available forecast and marks it **Last forecast**; if no forecast is available, the card shows **Forecast unavailable**.
 
 Weather cards use the fixed **tertiary** background colour, like Sensor, Date, Clock, and World Clock cards.
+
+All forecast modes share one compact forecast per weather entity. The panel supports up to eight forecast entities and sixteen forecast cards across the home screen and subpages. It creates widgets only for visible days, and the modal holds one day's detail view at a time. Configurations beyond these limits show an unavailable forecast.
 
 ## Forecast Details
 
