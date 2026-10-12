@@ -3114,6 +3114,14 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "label": "Screen Lock",
     "allowInSubpage": true,
     "domains": [],
+    "options": [
+      {
+        "name": "screensaver_on_lock",
+        "label": "Screensaver on lock",
+        "kind": "flag",
+        "omitDefault": true
+      }
+    ],
     "normalization": {
       "fields": {
         "entity": {
@@ -3144,11 +3152,13 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "policy": "clear"
         },
         "options": {
-          "policy": "clear"
+          "policy": "keep"
         }
       },
       "unknownOptions": "drop",
-      "canonicalOptionOrder": []
+      "canonicalOptionOrder": [
+        "screensaver_on_lock"
+      ]
     },
     "default": {
       "entity": "",
@@ -4908,6 +4918,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "playlist_content_type": "playlist_content_type",
   "playlist_player_source": "playlist_player_source",
   "power_entity": "power_entity",
+  "screensaver_on_lock": "screensaver_on_lock",
   "script_fields": "script_fields",
   "security": "security",
   "speaker_group_entity": "speaker_group_entity",

@@ -7,9 +7,11 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 ui = (ROOT / 'components/espcontrol/screensaver_pin_ui.h').read_text()
-ui = ui[ui.index('struct ScreensaverPinUi'):ui.index('inline std::function<void()>')]
+ui = ui[ui.index('struct ScreensaverPinUi'):]
 lock = (ROOT / 'components/espcontrol/screen_lock_state.h').read_text()
 lock = lock[lock.index('struct ScreenLockCardRef'):]
+navigation = (ROOT / 'components/espcontrol/button_grid_navigation.h').read_text()
+navigation = navigation[navigation.index('inline bool navigation_return_home'):navigation.index('inline void navigation_clear_home_targets')]
 stubs = r'''
 #include <cassert>
 #include <cstring>
@@ -19,11 +21,18 @@ stubs = r'''
 #include <algorithm>
 #include "screensaver_pin.h"
 struct lv_font_t {};
-struct lv_obj_t { lv_obj_t *parent{}; bool full_screen{}; unsigned flags{}; std::string text; };
 struct lv_event_t { const char *key; };
+struct lv_obj_t { lv_obj_t *parent{}; bool full_screen{}; unsigned flags{}; std::string text; void (*on_release)(lv_event_t *){}; };
 struct ControlModalLayout {};
 constexpr unsigned LV_OBJ_FLAG_CLICKABLE = 1;
+constexpr unsigned LV_EVENT_RELEASED = 2;
 lv_obj_t system_layer;
+lv_obj_t *active_page;
+constexpr int LV_SCR_LOAD_ANIM_NONE = 0;
+#define ESP_LOGW(...) ((void)0)
+void navigation_hide_modals() {}
+lv_obj_t *lv_scr_act() { return active_page; }
+void lv_scr_load_anim(lv_obj_t *page, int, int, int, bool) { active_page = page; }
 int deleted = 0;
 std::vector<lv_obj_t *> objects;
 std::vector<void (*)(void *)> deferred;
@@ -38,6 +47,9 @@ void lv_obj_del(lv_obj_t *root) {
   objects.clear(); (void) root; ++deleted;
 }
 void lv_obj_add_flag(lv_obj_t *obj, unsigned flag) { obj->flags |= flag; }
+void lv_obj_add_event_cb(lv_obj_t *obj, void (*callback)(lv_event_t *), unsigned code, void *) {
+  assert(code == LV_EVENT_RELEASED); obj->on_release = callback;
+}
 void control_modal_style_overlay(lv_obj_t *obj) { obj->full_screen = true; }
 ControlModalLayout control_modal_calc_layout(int) { return {}; }
 int control_modal_card_radius(lv_obj_t *) { return 0; }
@@ -107,15 +119,29 @@ int main() {
   assert(pin.save(false, nullptr));
   screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false);
   assert(!ui.overlay);
-  // The actual card action must open the shared keypad without clearing widget
-  // clickability. Manual locks survive sleep with automatic PIN protection off.
+  // A manual card lock preserves the page and intercepts every gesture with a
+  // transparent guard; its opening touch must not enter a keypad digit.
   lv_obj_t card, icon, label, other_card;
   card.flags = other_card.flags = LV_OBJ_FLAG_CLICKABLE;
   screen_lock_card_refs().push_back({&card, &icon, &label, "locked", "unlocked"});
   show_screen_lock_pin() = [] { screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false); };
   screen_lock_activate();
-  assert(ui.overlay && screen_lock_enabled() && label.text == "Screen Locked");
+  assert(ui.overlay && !ui.label && screen_lock_enabled() && label.text == "Screen Locked");
   assert(card.flags == LV_OBJ_FLAG_CLICKABLE && other_card.flags == LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_t home, subpage;
+  active_page = &subpage;
+  auto *guard = ui.overlay;
+  assert(navigation_return_home(&home)); // The unchanged idle timer's navigation path.
+  assert(active_page == &home && ui.overlay == guard && !ui.label && pin.locked());
+  lv_event_t released{""};
+  ui.touch_blocked = true;
+  ui.overlay->on_release(&released);
+  assert(!pin.keypad_requested() && deferred.empty());
+  ui.touch_blocked = false;
+  ui.overlay->on_release(&released);
+  assert(pin.keypad_requested() && !ui.label && deferred.size() == 1);
+  deferred.front()(nullptr); deferred.clear();
+  assert(ui.label && ui.entry.empty());
   screensaver_pin_key_cb(&zero);
   screensaver_pin_key_cb(&submit);
   assert(screen_lock_enabled() && ui.overlay);
@@ -129,6 +155,21 @@ int main() {
   assert(!screen_lock_enabled() && label.text == "Screen Unlocked" && icon.text == "unlocked");
   deferred.front()(nullptr); deferred.clear();
   assert(!ui.overlay && other_card.flags == LV_OBJ_FLAG_CLICKABLE);
+  int screensaver_calls = 0;
+  force_screensaver_action() = [&] {
+    ++screensaver_calls;
+    pin.arm();
+    screensaver_pin_refresh(false, nullptr, nullptr, nullptr, false);
+  };
+  screen_lock_activate(true);
+  assert(screensaver_calls == 1 && pin.locked() && !ui.overlay);
+  screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false);
+  assert(ui.label); // Wake from the immediate screensaver uses the shared keypad.
+  screensaver_pin_key_cb(&zero);
+  screensaver_pin_key_cb(&four);
+  screensaver_pin_key_cb(&submit);
+  deferred.front()(nullptr); deferred.clear();
+  assert(!pin.locked() && !ui.overlay);
   screen_lock_activate();
   assert(pin.locked());
   screen_lock_reset_registry();
@@ -138,12 +179,14 @@ int main() {
   screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false);
   screen_lock_activate();
   assert(!screen_lock_enabled() && !ui.overlay);
+  screen_lock_activate(true);
+  assert(screensaver_calls == 1); // A card without a PIN cannot lock or start sleep.
 }
 '''
 with tempfile.TemporaryDirectory() as directory:
     source = Path(directory) / 'test.cpp'
     binary = Path(directory) / 'test'
-    source.write_text(stubs + lock + ui + checks)
+    source.write_text(stubs + lock + ui + navigation + checks)
     subprocess.run([sys.argv[1] if len(sys.argv) > 1 else 'c++', '-std=c++17', '-pthread',
                     '-Wall', '-Wextra', '-Werror', '-I', str(ROOT / 'components/espcontrol'),
                     '-I', str(ROOT / 'tests/firmware/screensaver_pin_stubs'), str(source),

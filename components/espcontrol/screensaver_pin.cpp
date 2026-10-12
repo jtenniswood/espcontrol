@@ -61,7 +61,7 @@ bool ScreensaverPin::save(bool enabled, const std::string *pin, const bool *rand
   randomize_keypad_ = next_randomize;
   if (!enabled_ || pin_.empty()) locked_ = false;
   else if (sleeping_) locked_ = true;
-  if (pin_.empty()) manual_locked_ = false;
+  if (pin_.empty()) manual_locked_ = wait_for_touch_ = false;
   return true;
 }
 }  // namespace espcontrol

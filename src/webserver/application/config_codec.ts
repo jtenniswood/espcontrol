@@ -665,8 +665,11 @@ export function createConfigCodecFeature(
             precision = webhookButton.precision || "";
             options = webhookButton.options || "";
         }
-        else if (type === "lock" || type === "screen_lock") {
+        else if (type === "lock") {
             options = "";
+        }
+        else if (type === "screen_lock") {
+            options = configOptionEnabled(options, "screensaver_on_lock") ? "screensaver_on_lock" : "";
         }
         else if (type === "calendar" || type === "clock" || type === "timezone") {
             options = normalizeDateTimeOptions(type, options, precision);

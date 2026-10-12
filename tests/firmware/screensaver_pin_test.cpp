@@ -20,10 +20,16 @@ int main() {
   assert(pin.submit("0042") && !pin.locked());
   // Manual Screen Lock uses the same PIN even when automatic wake locking is off.
   assert(pin.save(false, nullptr));
-  assert(pin.lock() && pin.locked());
+  assert(pin.lock(true) && pin.locked() && !pin.keypad_requested());
+  pin.request_keypad();
+  assert(pin.keypad_requested());
   pin.arm(); pin.wake();
   assert(pin.locked() && !pin.submit("wrong"));
   assert(pin.submit(code) && !pin.locked());
+  assert(pin.lock(true) && !pin.keypad_requested());
+  pin.arm(); pin.wake();
+  assert(pin.locked() && pin.keypad_requested());
+  assert(pin.submit(code));
   // A screensaver unlock also releases a preceding manual card lock.
   assert(pin.save(true, nullptr) && pin.lock());
   pin.arm(); pin.wake();

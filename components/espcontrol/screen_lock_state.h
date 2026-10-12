@@ -74,8 +74,14 @@ inline std::function<void()> &show_screen_lock_pin() {
   return action;
 }
 
-inline void screen_lock_activate() {
-  if (!espcontrol::screensaver_pin().lock()) return;
+inline std::function<void()> &force_screensaver_action() {
+  static std::function<void()> action;
+  return action;
+}
+
+inline void screen_lock_activate(bool screensaver_on_lock = false) {
+  if (!espcontrol::screensaver_pin().lock(true)) return;
   screen_lock_apply();
   if (show_screen_lock_pin()) show_screen_lock_pin()();
+  if (screensaver_on_lock && force_screensaver_action()) force_screensaver_action()();
 }

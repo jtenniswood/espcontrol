@@ -2844,8 +2844,8 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
       );
       assert.strictEqual(
         await cardSettingsSectionCount(),
-        0,
-        `${label}: Screen Lock should not show unused generic Card Settings`,
+        1,
+        `${label}: Screen Lock should group its lock behavior in Card Settings`,
       );
     }
 
@@ -6503,6 +6503,10 @@ async function assertScreensaverPinSettings(browser) {
     await lockInput.waitFor({ state: "visible" });
     await page.waitForFunction(() => !document.querySelector('.sp-settings-modal input[type="password"]').disabled);
     assert.strictEqual(await lockSettings.locator('input[id$="-randomize"]').isChecked(), false);
+    const behavior = page.locator('.sp-settings-modal .sp-disclosure').filter({ hasText: 'Screensaver on lock' });
+    await behavior.locator('> .sp-disclosure-button').click();
+    const screensaverToggle = page.locator('.sp-settings-modal input[id$="screensaver-on-lock"]');
+    assert.strictEqual(await screensaverToggle.isChecked(), false, 'screensaver on lock defaults off');
     await page.locator(".sp-settings-modal .sp-save-btn").click();
     await page.getByText("Save a PIN before saving this card.", { exact: true }).waitFor();
     await lockInput.fill("12bad");
@@ -6520,6 +6524,7 @@ async function assertScreensaverPinSettings(browser) {
     assert.strictEqual(pin.pin, "123456");
     assert.strictEqual(pin.enabled, false, "card PIN can be saved without enabling automatic wake protection");
     assert.strictEqual(await input.getAttribute("placeholder"), "••••••", "card save updates screensaver PIN controls");
+    await page.locator('.sp-settings-modal input[id$="screensaver-on-lock"] + .sp-toggle-track').click();
     await page.locator(".sp-settings-modal .sp-save-btn").click();
     await page.locator(".sp-settings-overlay.sp-visible").waitFor({ state: "hidden" });
     await page.getByRole("tab", { name: "Settings" }).click();
@@ -6535,6 +6540,15 @@ async function assertScreensaverPinSettings(browser) {
     await lockInput.waitFor({ state: "visible" });
     await page.waitForFunction(() => !document.querySelector('.sp-settings-modal input[type="password"]').disabled);
     assert.strictEqual(await lockInput.getAttribute("placeholder"), "••••", "screensaver PIN save is visible in the card editor");
+    assert.strictEqual(await screensaverToggle.isChecked(), true, 'screensaver preference survives saving and re-opening the card');
+    await behavior.locator('> .sp-disclosure-button').click();
+    await page.locator('.sp-settings-modal input[id$="screensaver-on-lock"] + .sp-toggle-track').click();
+    await page.locator('.sp-settings-modal .sp-save-btn').click();
+    await page.locator('.sp-settings-overlay.sp-visible').waitFor({ state: 'hidden' });
+    await page.locator('.sp-main [data-slot]').filter({ hasText: 'Screen Unlocked' }).first().click();
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector('.sp-settings-modal input[type="password"]').disabled);
+    assert.strictEqual(await screensaverToggle.isChecked(), false, 'screensaver preference can be disabled');
     await lockSettings.getByRole("button", { name: "Clear", exact: true }).click();
     await page.waitForFunction(() => document.querySelector('.sp-settings-modal input[type="password"]').placeholder === "1–16 digits");
     assert.strictEqual(pin.pin, "");

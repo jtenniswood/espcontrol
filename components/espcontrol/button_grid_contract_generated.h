@@ -348,6 +348,7 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_PLAYLIST_CONTENT_ID = "playlist_
 constexpr const char *CARD_CONTRACT_OPTION_NAME_PLAYLIST_CONTENT_TYPE = "playlist_content_type";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_PLAYLIST_PLAYER_SOURCE = "playlist_player_source";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_POWER_ENTITY = "power_entity";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_SCREENSAVER_ON_LOCK = "screensaver_on_lock";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_SCRIPT_FIELDS = "script_fields";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_SECURITY = "security";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_SPEAKER_GROUP_ENTITY = "speaker_group_entity";

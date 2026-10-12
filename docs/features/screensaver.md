@@ -112,7 +112,7 @@ Use the same field and **Save** button to change the PIN. **Clear** removes it a
 
 **Randomize keypad layout** is off by default. Turn it on to shuffle the digit layout each time the PIN keypad opens. The choice is saved on the panel.
 
-The [Screen Lock card](/card-types/screen-lock) manages the same PIN and keypad preference in its card editor. Tapping the card opens the PIN keypad immediately, even with **Require PIN after wake** turned off. Unlocking after a screensaver also releases a preceding card lock. Clearing the PIN in either editor releases the lock and disables automatic PIN protection.
+The [Screen Lock card](/card-types/screen-lock) manages the same PIN and keypad preference in its card editor. It works with **Require PIN after wake** turned off. Its **Screensaver on lock** option can start the screensaver immediately; with the option off, the current screen remains visible and touching it opens the PIN keypad. Unlocking after a screensaver also releases a preceding card lock. Clearing the PIN in either editor releases the lock and disables automatic PIN protection.
 
 After a screensaver or manual sleep, the touchscreen shows the PIN keypad. Enter the PIN and press the checkmark to unlock. A wrong PIN clears the entry and keeps the controls blocked. The clear key resets the entry. Touch wake, presence wake, scheduled wake, and the local Screensaver card all use the same protection. With protection disabled or no PIN saved, wake works as before. When protection is active, tapping a Cover Art playback button wakes the PIN keypad without changing playback; use your media controls after unlocking.
 

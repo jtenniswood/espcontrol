@@ -4,6 +4,8 @@
 // =============================================================================
 import type { CardConfig } from "../contracts/types";
 
+import { configOptionEnabled } from "../model/config_primitives";
+
 export function normalizeSavedConfigStatic(config: CardConfig): boolean {
   if (config.type === "internal") {
     config.type = "internal";
@@ -43,7 +45,7 @@ export function normalizeSavedConfigStatic(config: CardConfig): boolean {
     config.unit = "";
     config.type = "screen_lock";
     config.precision = "";
-    config.options = "";
+    config.options = ["screensaver_on_lock"].filter(name => configOptionEnabled(config.options, name)).join(",");
     return true;
   }
   if (config.type === "screensaver") {

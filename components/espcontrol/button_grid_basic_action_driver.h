@@ -294,11 +294,14 @@ inline bool basic_action_driver_bind_subpage(
         if (force_screensaver_action()) force_screensaver_action()();
       }, LV_EVENT_CLICKED, nullptr);
       break;
-    case Driver::SCREEN_LOCK:
-      lv_obj_add_event_cb(slot.btn, [](lv_event_t *) {
-        screen_lock_activate();
-      }, LV_EVENT_CLICKED, nullptr);
+    case Driver::SCREEN_LOCK: {
+      auto *screensaver_on_lock = grid_delete_with_owner(slot.btn,
+          new bool(cfg_option_enabled(config.options, "screensaver_on_lock")));
+      lv_obj_add_event_cb(slot.btn, [](lv_event_t *event) {
+        screen_lock_activate(*static_cast<const bool *>(lv_event_get_user_data(event)));
+      }, LV_EVENT_CLICKED, screensaver_on_lock);
       break;
+    }
     case Driver::PUSH: {
       std::string label = config.label.empty()
         ? espcontrol_i18n(std::string("Push")) : config.label;
@@ -460,7 +463,7 @@ inline bool basic_action_driver_handle_main_click(
       if (force_screensaver_action()) force_screensaver_action()();
       break;
     case Driver::SCREEN_LOCK:
-      screen_lock_activate();
+      screen_lock_activate(cfg_option_enabled(config.options, "screensaver_on_lock"));
       break;
     case Driver::PUSH: {
       std::string label = config.label;
