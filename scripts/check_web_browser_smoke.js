@@ -7129,9 +7129,9 @@ async function assertWeatherWidthScaling(browser) {
   const page = await browser.newPage();
   try {
     await page.setContent('<style>' + createWebStyles(false) + '</style><div id="weather" class="sp-btn sp-weather-daily-card" style="position:relative;width:120px;height:180px;--btn-label:16px;--btn-icon:32px;--btn-pad:8px;--r:8px"><span class="sp-weather-days">' +
-      Array.from({ length: 7 }, (_, i) => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + (i ? 'Tues' : 'Today') + '</span><span class="sp-weather-temperature-high">18.0°</span></span>').join('') + '</span></div>');
+      Array.from({ length: 7 }, (_, i) => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + (i ? 'Tues' : 'Today') + '</span><span class="sp-weather-temperature-high">18°</span></span>').join('') + '</span></div>');
     const firstDayRows = await page.locator('.sp-weather-day').first().evaluate(day => Array.from(day.children).map(child => child.textContent));
-    assert.deepStrictEqual(firstDayRows, ['☀', 'Today', '18.0°'], 'Daily preview matches the device order and omits a separate low temperature row.');
+    assert.deepStrictEqual(firstDayRows, ['☀', 'Today', '18°'], 'Daily preview matches the device order and omits a separate low temperature row.');
     const counts = [];
     for (const width of [120, 240, 420, 700]) {
       await page.locator('#weather').evaluate((card, value) => { card.style.width = value + 'px'; card.getBoundingClientRect(); }, width);

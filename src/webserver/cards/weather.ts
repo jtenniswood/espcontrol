@@ -110,7 +110,7 @@ export function registerWeatherCardTypes(
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             if (b.precision === "daily" && weatherCardIsForecastMode(b)) {
-                const samples = [["Today", "weather-rainy", "17.8"], ["Tues", "weather-sunny", "20.2"], ["Weds", "weather-partly-cloudy", "18.1"], ["Thurs", "weather-rainy", "20.1"], ["Fri", "weather-sunny", "14.3"], ["Sat", "weather-cloudy", "18.0"], ["Sun", "weather-sunny", "19.0"]];
+                const samples = [["Today", "weather-rainy", "18"], ["Tues", "weather-sunny", "20"], ["Weds", "weather-partly-cloudy", "18"], ["Thurs", "weather-rainy", "20"], ["Fri", "weather-sunny", "14"], ["Sat", "weather-cloudy", "18"], ["Sun", "weather-sunny", "19"]];
                 return {
                     buttonClass: "sp-weather-daily-card",
                     iconHtml: '<span class="sp-weather-days">' + samples.map((day) => '<span class="sp-weather-day"><span class="mdi mdi-' + day[1] + '"></span><span>' + day[0] + '</span><span class="sp-weather-temperature-high">' + day[2] + '\u00B0</span></span>').join("") + '</span>',
