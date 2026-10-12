@@ -95,7 +95,8 @@ export function buildScreensaverPinSettings(
   row.className = "sp-pin-row";
   const actions = document.createElement("div");
   actions.className = "sp-pin-actions";
-  actions.append(save, clear);
+  actions.append(save);
+  if (!options.requirePin) actions.append(clear);
   row.append(pin, actions);
   const errorNotice = document.createElement("div");
   errorNotice.className = "sp-field-error";
@@ -104,8 +105,9 @@ export function buildScreensaverPinSettings(
   const pinField = document.createElement("div");
   pinField.className = "sp-field";
   pinField.append(label, row);
-  controls.append(randomizeToggle.row, pinField);
-  body.append(toggle.row, controls, errorNotice);
+  controls.append(pinField, randomizeToggle.row);
+  if (!options.requirePin) body.append(toggle.row);
+  body.append(controls, errorNotice);
   let info: ScreensaverPinInfo | null = null;
   let busy = false;
   let loading = true;

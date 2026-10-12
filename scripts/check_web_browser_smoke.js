@@ -6503,6 +6503,14 @@ async function assertScreensaverPinSettings(browser) {
     await lockInput.waitFor({ state: "visible" });
     await page.waitForFunction(() => !document.querySelector('.sp-settings-modal input[type="password"]').disabled);
     assert.strictEqual(await lockSettings.locator('input[id$="-randomize"]').isChecked(), false);
+    assert.strictEqual(await lockSettings.getByText('Require PIN after wake', { exact: true }).count(), 0,
+      'manual Screen Lock always requires its saved PIN');
+    assert.strictEqual(await lockSettings.getByRole('button', { name: 'Clear', exact: true }).count(), 0);
+    assert(await lockSettings.evaluate(form => {
+      const pin = form.querySelector('input[type="password"]');
+      const randomize = form.querySelector('input[id$="-randomize"]');
+      return !!(pin.compareDocumentPosition(randomize) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }), 'randomize appears below the PIN field');
     const behavior = page.locator('.sp-settings-modal .sp-disclosure').filter({ hasText: 'Screensaver on lock' });
     await behavior.locator('> .sp-disclosure-button').click();
     const screensaverToggle = page.locator('.sp-settings-modal input[id$="screensaver-on-lock"]');
@@ -6549,12 +6557,13 @@ async function assertScreensaverPinSettings(browser) {
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.waitForFunction(() => !document.querySelector('.sp-settings-modal input[type="password"]').disabled);
     assert.strictEqual(await screensaverToggle.isChecked(), false, 'screensaver preference can be disabled');
-    await lockSettings.getByRole("button", { name: "Clear", exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('.sp-settings-modal input[type="password"]').placeholder === "1–16 digits");
-    assert.strictEqual(pin.pin, "");
-    assert.strictEqual(pin.enabled, false);
     await page.locator(".sp-settings-close").click();
     await page.getByRole("tab", { name: "Settings" }).click();
+    await card.getByRole('button', { name: 'Clear', exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector('#sp-set-screensaver-pin-enabled').checked &&
+      !document.querySelector('#sp-set-screensaver-pin').disabled);
+    assert.strictEqual(pin.pin, '');
+    assert.strictEqual(pin.enabled, false, 'shared PIN can still be cleared from screensaver settings');
     // A protected destination importing an ordinary backup must clear its PIN.
     pin.pin = "2468"; pin.enabled = true;
     await importBackup(page, backupFixture(testCase.slug, testCase.slots), "screensaver-pin-restore");
