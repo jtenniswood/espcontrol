@@ -8,20 +8,25 @@ description:
 
 A Screen Lock card locks and unlocks the panel's touchscreen controls locally. It does not need a Home Assistant entity and does not send a Home Assistant action.
 
-Use this when a panel is in a shared area and you want a quick way to prevent accidental taps.
+Use this when a panel is in a shared area and you want to require a PIN before its controls can be used.
 
 ## Setting Up a Screen Lock Card
 
 1. Select a card and change its type to **Screen Lock**.
-2. Save the card and apply the configuration.
+2. In **Pin Protection**, enter a numeric PIN (1–16 digits) and choose **Save**. If a PIN is already set, the field shows masked dots; you can keep it or enter a replacement.
+3. Save the card and apply the configuration. A saved PIN is required before the card can be saved.
 
-Screen Lock does not need an entity or any additional card settings. Its label and icon change automatically to show whether the touchscreen is locked or unlocked.
+The card uses the same PIN and keypad layout preference as **Settings > Sleep & Schedule > Pin Protection**. Changes made in either place apply to both. **Clear** removes the shared PIN and releases the lock. **Randomize keypad layout** is off by default. Turn on **Require PIN after wake** if you also want automatic PIN protection when waking from a screensaver; the card works with that toggle off.
+
+Screen Lock does not need an entity. Its label and icon change automatically to show whether the touchscreen is locked or unlocked. The PIN is stored on the panel, never in the card configuration or backups.
 
 ## How It Works on the Panel
 
-- Tapping the card switches the panel between locked and unlocked states.
+- Tapping the card locks the controls and immediately opens the PIN keypad. Enter the PIN and press the checkmark to unlock.
+- A wrong PIN keeps the panel locked. Tapping the card cannot bypass PIN entry.
+- If the screensaver starts while manually locked, waking shows the same keypad. A successful PIN entry releases both the screensaver lock and the card lock.
 - The lock state is local to the panel.
-- Other cards are protected while the screen is locked.
+- Other cards and local controls are protected while the screen is locked; the keypad remains responsive.
 - The card can be used on the home screen or inside a subpage.
 - It does not depend on Home Assistant availability.
 

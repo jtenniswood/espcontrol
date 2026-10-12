@@ -61,20 +61,23 @@ export async function loadScreensaverPinSettings(request: typeof fetch): Promise
 export function buildScreensaverPinSettings(
   document: Document, request: typeof fetch,
   fields: Pick<ControlsFieldsFeature, "toggleRow" | "fieldLabel" | "textInput">,
-  badge: HTMLElement,
-): { body: HTMLElement; refresh: () => Promise<void> } {
+  badge: HTMLElement | null,
+  options: { idPrefix?: string; requirePin?: boolean } = {},
+): { body: HTMLElement; refresh: () => Promise<void>; pinInput: HTMLInputElement; hasSavedPin: () => boolean } {
+  const idPrefix = options.idPrefix ?? "sp-set-screensaver-pin";
   const body = document.createElement("div");
-  body.hidden = true;
+  body.hidden = !options.requirePin;
   body.className = "sp-field";
-  const toggle = fields.toggleRow("Require PIN after wake", "sp-set-screensaver-pin-enabled", false);
+  body.setAttribute("data-sp-pin-settings", "");
+  const toggle = fields.toggleRow("Require PIN after wake", idPrefix + "-enabled", false);
   const enabled = toggle.input as HTMLInputElement;
   const controls = document.createElement("div");
   controls.className = "sp-pin-controls";
   controls.hidden = true;
-  const randomizeToggle = fields.toggleRow("Randomize keypad layout", "sp-set-screensaver-pin-randomize", false);
+  const randomizeToggle = fields.toggleRow("Randomize keypad layout", idPrefix + "-randomize", false);
   const randomize = randomizeToggle.input as HTMLInputElement;
-  const label = fields.fieldLabel("PIN", "sp-set-screensaver-pin");
-  const pin = fields.textInput("sp-set-screensaver-pin", "", "1–16 digits") as HTMLInputElement;
+  const label = fields.fieldLabel("PIN", idPrefix);
+  const pin = fields.textInput(idPrefix, "", "1–16 digits") as HTMLInputElement;
   pin.type = "password";
   pin.inputMode = "numeric";
   pin.maxLength = 16;
@@ -98,40 +101,52 @@ export function buildScreensaverPinSettings(
   errorNotice.className = "sp-field-error";
   errorNotice.setAttribute("role", "alert");
   errorNotice.hidden = true;
-  controls.append(randomizeToggle.row, label, row);
+  const pinField = document.createElement("div");
+  pinField.className = "sp-field";
+  pinField.append(label, row);
+  controls.append(randomizeToggle.row, pinField);
   body.append(toggle.row, controls, errorNotice);
   let info: ScreensaverPinInfo | null = null;
   let busy = false;
+  let loading = true;
   let pendingSetup = false;
+  let revision = 0;
   function showError(message: string): void {
     errorNotice.textContent = message;
     errorNotice.hidden = !message;
   }
   function sync(): void {
-    badge.classList.toggle("sp-hidden", !(info?.enabled && info.has_pin));
+    badge?.classList.toggle("sp-hidden", !(info?.enabled && info.has_pin));
     if (!busy) enabled.checked = pendingSetup || !!(info?.enabled && info.has_pin);
     if (!busy && !pendingSetup) randomize.checked = info?.randomize_keypad ?? false;
     randomizeToggle.row.hidden = typeof info?.randomize_keypad !== "boolean";
-    enabled.disabled = randomize.disabled = save.disabled = clear.disabled = pin.disabled = busy;
-    clear.disabled = busy || !info?.has_pin;
+    enabled.disabled = randomize.disabled = save.disabled = clear.disabled = pin.disabled = busy || loading || !info;
+    clear.disabled = busy || loading || !info?.has_pin;
     pin.placeholder = info?.has_pin ? "•".repeat(info.pin_length) : "1–16 digits";
-    controls.hidden = !enabled.checked;
+    controls.hidden = !enabled.checked && !options.requirePin;
     showError("");
   }
   async function update(settings: ScreensaverPinSettings): Promise<void> {
-    if (busy) return;
+    if (busy || loading || !info) return;
     busy = true;
     sync();
     let errorMessage = "";
     try {
       info = await screensaverPinRequest(request, settings);
+      revision++;
       pendingSetup = false;
       if (settings.pin !== undefined) pin.value = "";
+      // Both editors manage one device setting. Notify connected controls only;
+      // discarded card drafts retain no document-level listeners or PIN copies.
+      for (const node of document.querySelectorAll("[data-sp-pin-settings]")) {
+        if (node !== body) node.dispatchEvent(new CustomEvent("sp-pin-settings-changed", { detail: info }));
+      }
     }
     catch (error) { errorMessage = (error as Error).message; }
     finally {
       busy = false;
       sync();
+      pin.dispatchEvent(new Event("change"));
       if (errorMessage) showError(errorMessage);
     }
   }
@@ -160,19 +175,38 @@ export function buildScreensaverPinSettings(
   });
   clear.addEventListener("click", () => { void update({ enabled: false, pin: "" }); });
   async function refresh(): Promise<void> {
+    const readRevision = ++revision;
+    loading = true;
     try {
-      info = await loadScreensaverPinSettings(request);
+      const loadedInfo = await loadScreensaverPinSettings(request);
+      if (readRevision !== revision) return;
+      info = loadedInfo;
+      loading = false;
       pendingSetup = false;
-      body.hidden = info === null;
+      body.hidden = info === null && !options.requirePin;
       pin.value = "";
       sync();
+      pin.dispatchEvent(new Event("change"));
+      if (!info && options.requirePin) showError("Update the panel firmware to set up a Screen Lock PIN.");
     } catch (error) {
-      badge.classList.add("sp-hidden");
+      if (readRevision !== revision) return;
+      loading = false;
+      badge?.classList.add("sp-hidden");
       body.hidden = false;
       enabled.disabled = randomize.disabled = save.disabled = clear.disabled = pin.disabled = true;
       showError((error as Error).message);
     }
   }
+  body.addEventListener("sp-pin-settings-changed", event => {
+    info = (event as CustomEvent<ScreensaverPinInfo>).detail;
+    revision++;
+    loading = false;
+    pendingSetup = false;
+    body.hidden = false;
+    sync();
+    pin.dispatchEvent(new Event("change"));
+  });
+  sync();
   void refresh();
-  return { body, refresh };
+  return { body, refresh, pinInput: pin, hasSavedPin: () => !loading && !busy && !!info?.has_pin };
 }

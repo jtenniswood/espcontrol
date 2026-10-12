@@ -16,7 +16,13 @@ class ScreensaverPin {
   bool has_pin() const { Guard guard(mutex_); return !pin_.empty(); }
   std::size_t pin_length() const { Guard guard(mutex_); return pin_.size(); }
   bool randomize_keypad() const { Guard guard(mutex_); return randomize_keypad_; }
-  bool locked() const { Guard guard(mutex_); return locked_ && enabled_ && !pin_.empty(); }
+  bool locked() const { Guard guard(mutex_); return (locked_ || manual_locked_) && !pin_.empty(); }
+  bool lock() {
+    Guard guard(mutex_);
+    if (!ready_ || pin_.empty()) return false;
+    manual_locked_ = true;
+    return true;
+  }
   void arm() {
     Guard guard(mutex_);
     sleeping_ = true;
@@ -30,9 +36,10 @@ class ScreensaverPin {
   }
   bool submit(const std::string &entry) {
     Guard guard(mutex_);
-    if (!locked_ || !enabled_ || pin_.empty()) return true;
+    if ((!locked_ && !manual_locked_) || pin_.empty()) return true;
     if (entry != pin_) return false;
     locked_ = false;
+    manual_locked_ = false;
     return true;
   }
   bool save(bool enabled, const std::string *pin, const bool *randomize_keypad = nullptr);
@@ -46,6 +53,7 @@ class ScreensaverPin {
   mutable std::mutex mutex_;
   std::string pin_;
   bool enabled_{false}, locked_{false}, sleeping_{false}, ready_{false};
+  bool manual_locked_{false};
   bool randomize_keypad_{false};
 };
 ScreensaverPin &screensaver_pin();

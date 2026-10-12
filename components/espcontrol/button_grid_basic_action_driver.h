@@ -296,7 +296,7 @@ inline bool basic_action_driver_bind_subpage(
       break;
     case Driver::SCREEN_LOCK:
       lv_obj_add_event_cb(slot.btn, [](lv_event_t *) {
-        screen_lock_toggle();
+        screen_lock_activate();
       }, LV_EVENT_CLICKED, nullptr);
       break;
     case Driver::PUSH: {
@@ -460,7 +460,7 @@ inline bool basic_action_driver_handle_main_click(
       if (force_screensaver_action()) force_screensaver_action()();
       break;
     case Driver::SCREEN_LOCK:
-      screen_lock_toggle();
+      screen_lock_activate();
       break;
     case Driver::PUSH: {
       std::string label = config.label;

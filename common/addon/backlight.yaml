@@ -100,6 +100,7 @@ esphome:
     then:
       - lambda: |-
           force_screensaver_action() = []() { id(force_screensaver).execute(); };
+          show_screen_lock_pin() = []() { id(screensaver_pin_refresh_ui).execute(); };
           auto update_screensaver_action_cache = []() {
             std::string action = id(screensaver_action).current_option();
             id(screensaver_action_clock) = screensaver_action_clock_mode(action);

@@ -8,11 +8,15 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[2]
 ui = (ROOT / 'components/espcontrol/screensaver_pin_ui.h').read_text()
 ui = ui[ui.index('struct ScreensaverPinUi'):ui.index('inline std::function<void()>')]
+lock = (ROOT / 'components/espcontrol/screen_lock_state.h').read_text()
+lock = lock[lock.index('struct ScreenLockCardRef'):]
 stubs = r'''
 #include <cassert>
 #include <cstring>
 #include <string>
 #include <vector>
+#include <functional>
+#include <algorithm>
 #include "screensaver_pin.h"
 struct lv_font_t {};
 struct lv_obj_t { lv_obj_t *parent{}; bool full_screen{}; unsigned flags{}; std::string text; };
@@ -41,6 +45,10 @@ void control_modal_style_panel(lv_obj_t *, int) {}
 void control_modal_apply_panel_layout(lv_obj_t *, lv_obj_t *, const ControlModalLayout &, int) {}
 void *lv_event_get_user_data(lv_event_t *event) { return const_cast<char *>(event->key); }
 const char *espcontrol_i18n(const char *text) { return text; }
+struct BtnSlot {};
+struct ParsedCfg {};
+lv_obj_t *lv_obj_get_parent(lv_obj_t *obj) { return obj->parent; }
+void set_card_checked_state(lv_obj_t *, bool) {}
 void lv_label_set_display_text(lv_obj_t *obj, const char *text) { obj->text = text; }
 void lv_async_call(void (*callback)(void *), void *) { deferred.push_back(callback); }
 lv_obj_t *pin_keypad_create(lv_obj_t *panel, const ControlModalLayout &, const lv_font_t *,
@@ -61,7 +69,7 @@ int main() {
   screensaver_pin_refresh(true, nullptr, nullptr, nullptr, true);
   auto &ui = screensaver_pin_ui();
   assert(ui.overlay && ui.overlay->parent == &system_layer);
-  assert(rendered_randomize);
+  assert(!rendered_randomize);
   assert(rendered_center_prompt);
   assert(ui.overlay->full_screen && (ui.overlay->flags & LV_OBJ_FLAG_CLICKABLE));
   // A press on a card/status/modal behind this full-screen system-layer object
@@ -99,12 +107,43 @@ int main() {
   assert(pin.save(false, nullptr));
   screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false);
   assert(!ui.overlay);
+  // The actual card action must open the shared keypad without clearing widget
+  // clickability. Manual locks survive sleep with automatic PIN protection off.
+  lv_obj_t card, icon, label, other_card;
+  card.flags = other_card.flags = LV_OBJ_FLAG_CLICKABLE;
+  screen_lock_card_refs().push_back({&card, &icon, &label, "locked", "unlocked"});
+  show_screen_lock_pin() = [] { screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false); };
+  screen_lock_activate();
+  assert(ui.overlay && screen_lock_enabled() && label.text == "Screen Locked");
+  assert(card.flags == LV_OBJ_FLAG_CLICKABLE && other_card.flags == LV_OBJ_FLAG_CLICKABLE);
+  screensaver_pin_key_cb(&zero);
+  screensaver_pin_key_cb(&submit);
+  assert(screen_lock_enabled() && ui.overlay);
+  pin.arm();
+  screensaver_pin_refresh(false, nullptr, nullptr, nullptr, false);
+  assert(screen_lock_enabled() && !ui.overlay);
+  screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false);
+  screensaver_pin_key_cb(&zero);
+  screensaver_pin_key_cb(&four);
+  screensaver_pin_key_cb(&submit);
+  assert(!screen_lock_enabled() && label.text == "Screen Unlocked" && icon.text == "unlocked");
+  deferred.front()(nullptr); deferred.clear();
+  assert(!ui.overlay && other_card.flags == LV_OBJ_FLAG_CLICKABLE);
+  screen_lock_activate();
+  assert(pin.locked());
+  screen_lock_reset_registry();
+  assert(pin.locked()); // Rebuilding/removing cards must not bypass the shared lock.
+  std::string empty;
+  assert(pin.save(false, &empty));
+  screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false);
+  screen_lock_activate();
+  assert(!screen_lock_enabled() && !ui.overlay);
 }
 '''
 with tempfile.TemporaryDirectory() as directory:
     source = Path(directory) / 'test.cpp'
     binary = Path(directory) / 'test'
-    source.write_text(stubs + ui + checks)
+    source.write_text(stubs + lock + ui + checks)
     subprocess.run([sys.argv[1] if len(sys.argv) > 1 else 'c++', '-std=c++17', '-pthread',
                     '-Wall', '-Wextra', '-Werror', '-I', str(ROOT / 'components/espcontrol'),
                     '-I', str(ROOT / 'tests/firmware/screensaver_pin_stubs'), str(source),

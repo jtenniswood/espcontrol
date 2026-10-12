@@ -18,6 +18,16 @@ int main() {
   assert(!pin.submit("42") && pin.locked());
   assert(!pin.submit("") && pin.locked());
   assert(pin.submit("0042") && !pin.locked());
+  // Manual Screen Lock uses the same PIN even when automatic wake locking is off.
+  assert(pin.save(false, nullptr));
+  assert(pin.lock() && pin.locked());
+  pin.arm(); pin.wake();
+  assert(pin.locked() && !pin.submit("wrong"));
+  assert(pin.submit(code) && !pin.locked());
+  // A screensaver unlock also releases a preceding manual card lock.
+  assert(pin.save(true, nullptr) && pin.lock());
+  pin.arm(); pin.wake();
+  assert(pin.submit(code) && !pin.locked());
   pin.arm(); pin.wake();
   assert(pin.locked());
   // A toggle preserves the existing secret; reboot restores both settings.
@@ -64,6 +74,7 @@ int main() {
   rebooted.arm(); rebooted.wake();
   assert(rebooted.save(true, &empty));
   assert(!rebooted.has_pin() && rebooted.pin_length() == 0 && !rebooted.enabled() && !rebooted.locked());
+  assert(!rebooted.lock() && !rebooted.locked());
   ScreensaverPin empty_reboot;
   empty_reboot.setup();
   assert(!empty_reboot.enabled() && !empty_reboot.has_pin());
@@ -86,6 +97,9 @@ int main() {
   assert(cleared.save(false, nullptr));
   cleared.arm(); cleared.wake();
   assert(cleared.save(true, nullptr) && !cleared.locked());
+  assert(cleared.lock());
+  assert(cleared.save(false, nullptr) && cleared.locked());
+  assert(cleared.save(false, &empty) && !cleared.locked());
 
   // Web saves and touchscreen entry share the production object's mutex.
   std::thread web([&]() {

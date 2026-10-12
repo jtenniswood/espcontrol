@@ -194,7 +194,7 @@ function registerCards(context: ApplicationContext) {
   registerMediaCardTypes(registry, context.configuration.mediaOptions, context.configuration.modalTabs, context.device.id, fields, context.controllers.settingsUi, cardUi);
   registerPresenceCardTypes(registry, context.configuration.options, fields);
   registerPushCardTypes(registry, fields);
-  registerScreenLockCardTypes(registry, fields);
+  registerScreenLockCardTypes(registry, fields, context.dom.document, context.dom.fetch);
   registerScreensaverCardTypes(registry, fields);
   registerSensorCardTypes(registry, context.configuration.options, fields, cardUi);
   registerSliderCardTypes(registry, context.configuration.modalTabs, lightCards, fields, context.controllers.settingsUi);

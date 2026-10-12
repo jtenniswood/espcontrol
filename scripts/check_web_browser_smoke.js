@@ -6492,6 +6492,55 @@ async function assertScreensaverPinSettings(browser) {
     await page.waitForFunction(() => document.querySelector("#sp-set-screensaver-pin-enabled").checked === false &&
       document.querySelector("#sp-set-screensaver-pin").disabled === false);
     assert.strictEqual(pin.pin, "");
+    // A Screen Lock card edits the same PIN and cannot be saved before the
+    // device has accepted one. Manual locking does not require wake locking.
+    pin.randomize = false;
+    await page.getByRole("tab", { name: "Screen" }).click();
+    await page.locator(".sp-empty-cell:not(.sp-info-only-hidden)").first().click();
+    await page.locator('.sp-card-type-option[data-card-type="screen_lock"]').click();
+    const lockSettings = page.locator('.sp-settings-modal [data-sp-pin-settings]');
+    const lockInput = lockSettings.locator('input[type="password"]');
+    await lockInput.waitFor({ state: "visible" });
+    await page.waitForFunction(() => !document.querySelector('.sp-settings-modal input[type="password"]').disabled);
+    assert.strictEqual(await lockSettings.locator('input[id$="-randomize"]').isChecked(), false);
+    await page.locator(".sp-settings-modal .sp-save-btn").click();
+    await page.getByText("Save a PIN before saving this card.", { exact: true }).waitFor();
+    await lockInput.fill("12bad");
+    await lockSettings.getByRole("button", { name: "Save", exact: true }).click();
+    await lockSettings.getByRole("alert").getByText("Enter a PIN containing 1–16 digits.").waitFor();
+    await lockInput.fill("123456");
+    pin.failSave = true;
+    await lockSettings.getByRole("button", { name: "Save", exact: true }).click();
+    await lockSettings.getByRole("alert").getByText("Could not save or read PIN settings. Check the connection and try again.").waitFor();
+    await page.locator(".sp-settings-modal .sp-save-btn").click();
+    assert(await page.locator(".sp-settings-overlay.sp-visible").isVisible(), "failed PIN write cannot save the card");
+    pin.failSave = false;
+    await lockSettings.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('.sp-settings-modal input[type="password"]').value === "");
+    assert.strictEqual(pin.pin, "123456");
+    assert.strictEqual(pin.enabled, false, "card PIN can be saved without enabling automatic wake protection");
+    assert.strictEqual(await input.getAttribute("placeholder"), "••••••", "card save updates screensaver PIN controls");
+    await page.locator(".sp-settings-modal .sp-save-btn").click();
+    await page.locator(".sp-settings-overlay.sp-visible").waitFor({ state: "hidden" });
+    await page.getByRole("tab", { name: "Settings" }).click();
+    await enable.click();
+    await input.waitFor({ state: "visible" });
+    assert.strictEqual(await input.getAttribute("placeholder"), "••••••");
+    await input.fill("9876");
+    await card.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector("#sp-set-screensaver-pin").value === "");
+    await page.getByRole("tab", { name: "Screen" }).click();
+    await page.locator('.sp-main [data-slot]').filter({ hasText: "Screen Unlocked" }).first().click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await lockInput.waitFor({ state: "visible" });
+    await page.waitForFunction(() => !document.querySelector('.sp-settings-modal input[type="password"]').disabled);
+    assert.strictEqual(await lockInput.getAttribute("placeholder"), "••••", "screensaver PIN save is visible in the card editor");
+    await lockSettings.getByRole("button", { name: "Clear", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('.sp-settings-modal input[type="password"]').placeholder === "1–16 digits");
+    assert.strictEqual(pin.pin, "");
+    assert.strictEqual(pin.enabled, false);
+    await page.locator(".sp-settings-close").click();
+    await page.getByRole("tab", { name: "Settings" }).click();
     // A protected destination importing an ordinary backup must clear its PIN.
     pin.pin = "2468"; pin.enabled = true;
     await importBackup(page, backupFixture(testCase.slug, testCase.slots), "screensaver-pin-restore");

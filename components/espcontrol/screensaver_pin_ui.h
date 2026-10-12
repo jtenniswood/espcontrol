@@ -1,5 +1,6 @@
 #pragma once
 #include "screensaver_pin.h"
+#include "screen_lock_state.h"
 #include "pin_keypad.h"
 
 struct ScreensaverPinUi {
@@ -23,6 +24,7 @@ inline void screensaver_pin_key_cb(lv_event_t *event) {
   if (!key || !ui.label || ui.touch_blocked) return;
   if (std::strcmp(key, "submit") == 0) {
     if (espcontrol::screensaver_pin().submit(ui.entry)) {
+      screen_lock_apply();
       // Defer deletion until LVGL has finished dispatching this click.
       lv_async_call([](void *) {
         if (!espcontrol::screensaver_pin().locked()) screensaver_pin_hide();
@@ -43,6 +45,7 @@ inline void screensaver_pin_refresh(bool active, const lv_font_t *label_font,
                                     const lv_font_t *key_font, const lv_font_t *icon_font,
                                     bool touch_blocked) {
   if (active) espcontrol::screensaver_pin().wake();
+  screen_lock_apply();
   if (!active || !espcontrol::screensaver_pin().locked()) {
     screensaver_pin_hide();
     return;

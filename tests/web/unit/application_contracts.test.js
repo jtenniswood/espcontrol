@@ -354,7 +354,7 @@ describe("browserless application contracts", () => {
       assert.match(source, /registry\.register\(/, `${relativePath} should use the typed card registry`);
       assert.doesNotMatch(source, /\bregisterButtonType\s*\(/, `${relativePath} should not read ambient registration state`);
       assert.match(entry, new RegExp(
-        `${registrationFunction}\\(\\s*registry(?:,\\s*(?:context\\.(?:configuration\\.[A-Za-z]+|controllers\\.[A-Za-z]+|core|device\\.id)|lightCards|fields|cardUi))*[,]?\\s*\\)`,
+        `${registrationFunction}\\(\\s*registry(?:,\\s*(?:context\\.(?:configuration\\.[A-Za-z]+|controllers\\.[A-Za-z]+|dom\\.(?:document|fetch)|core|device\\.id)|lightCards|fields|cardUi))*[,]?\\s*\\)`,
       ));
     }
   });
@@ -556,7 +556,7 @@ describe("browserless application contracts", () => {
       assert.doesNotMatch(source, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal)\b/);
     }
     for (const registration of ["registerPushCardTypes", "registerScreenLockCardTypes"]) {
-      assert.match(entry, new RegExp(`^  ${registration}\\(registry, fields\\);`, "m"));
+      assert.match(entry, new RegExp(`^  ${registration}\\(registry, fields(?:, [^\\n]+)?\\);`, "m"));
       assert.doesNotMatch(entry, new RegExp(`registerCompatibility\\(${registration}`));
     }
     assert.doesNotMatch(globals, /\bvar (?:PUSH_CARD_METADATA|SCREEN_LOCK_CARD_METADATA|pushActionSpec|pushDefaultIcon|pushDefaultIconOn):/);

@@ -112,6 +112,8 @@ Use the same field and **Save** button to change the PIN. **Clear** removes it a
 
 **Randomize keypad layout** is off by default. Turn it on to shuffle the digit layout each time the PIN keypad opens. The choice is saved on the panel.
 
+The [Screen Lock card](/card-types/screen-lock) manages the same PIN and keypad preference in its card editor. Tapping the card opens the PIN keypad immediately, even with **Require PIN after wake** turned off. Unlocking after a screensaver also releases a preceding card lock. Clearing the PIN in either editor releases the lock and disables automatic PIN protection.
+
 After a screensaver or manual sleep, the touchscreen shows the PIN keypad. Enter the PIN and press the checkmark to unlock. A wrong PIN clears the entry and keeps the controls blocked. The clear key resets the entry. Touch wake, presence wake, scheduled wake, and the local Screensaver card all use the same protection. With protection disabled or no PIN saved, wake works as before. When protection is active, tapping a Cover Art playback button wakes the PIN keypad without changing playback; use your media controls after unlocking.
 
 This protects local touchscreen controls, including status buttons and alarm modals. It does not protect network, Home Assistant, OTA, or web administration access. Someone with web setup access can change or clear the PIN; configure [web authentication](/getting-started/manual-esphome-setup#advanced-password-protect-the-web-page) separately if needed. The PIN is never returned by the settings API or included in backup JSON. Importing a backup clears the destination panel's PIN, so set a new PIN on its web setup page afterward.
