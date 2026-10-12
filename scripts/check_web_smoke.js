@@ -335,10 +335,10 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
   } else {
     assert.deepStrictEqual(
       Array.from(generatedHooks.weatherModeOptionValues()),
-      ["", "today", "tomorrow"],
-      `${slug}: generated web UI must offer current conditions and both forecast days`
+      ["", "today", "tomorrow", "daily"],
+      `${slug}: generated web UI must offer current conditions and all forecast modes`
     );
-    for (const day of ["today", "tomorrow"]) {
+    for (const day of ["today", "tomorrow", "daily"]) {
       assert.strictEqual(generatedHooks.normalizeWeatherCardMode(day), day,
         `${slug}: generated web UI must preserve the ${day} forecast setting`);
       assert.strictEqual(generatedHooks.weatherCardIsForecastMode({ precision: day }), true,
