@@ -24,6 +24,8 @@ export interface DeviceConfig {
   readonly cols: number;
   readonly rows: number;
   readonly screenSize: string;
+  readonly displayWidth?: number;
+  readonly displayHeight?: number;
   readonly dragMode: "swap" | "displace";
   readonly dragAnimation: boolean;
   readonly imageSlotCapacity: number;

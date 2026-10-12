@@ -7126,16 +7126,22 @@ async function assertContinuousPreview(browser, testCase) {
 
 async function assertWeatherWidthScaling(browser) {
   const { createWebStyles } = loadTypeScriptModule(path.join(ROOT, "src/webserver/application/styles.ts"));
+  const { createWeatherDailyPreviewLayout } = loadTypeScriptModule(path.join(ROOT, "src/webserver/application/weather_daily_preview.ts"));
   const page = await browser.newPage();
   try {
     await page.setContent('<style>' + createWebStyles(false) + '</style><div id="weather" class="sp-btn sp-weather-daily-card" style="position:relative;width:120px;height:180px;--btn-label:16px;--btn-icon:32px;--btn-pad:8px;--r:8px"><span class="sp-weather-days">' +
       Array.from({ length: 7 }, (_, i) => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + (i ? 'Tues' : 'Today') + '</span><span class="sp-weather-temperature-high">18°</span></span>').join('') + '</span></div>');
     const firstDayRows = await page.locator('.sp-weather-day').first().evaluate(day => Array.from(day.children).map(child => child.textContent));
     assert.deepStrictEqual(firstDayRows, ['☀', 'Today', '18°'], 'Daily preview matches the device order and omits a separate low temperature row.');
+    await page.evaluate(factory => {
+      window.weatherLayout = (0, eval)('(' + factory + ')')(document, { displayWidth: 480, displayHeight: 480 }, () => false);
+      window.weatherLayout.observe(document.querySelector('#weather'));
+    }, createWeatherDailyPreviewLayout.toString());
     const counts = [];
     for (const width of [120, 240, 420, 900]) {
       await page.locator('#weather').evaluate((card, value) => { card.style.width = value + 'px'; card.getBoundingClientRect(); }, width);
       await page.waitForFunction(value => Math.abs(document.querySelector("#weather").getBoundingClientRect().width - value) < 1, width);
+      await page.evaluate(() => new Promise(requestAnimationFrame));
       counts.push(await page.locator('.sp-weather-day').evaluateAll(days => days.filter(day => getComputedStyle(day).display !== 'none').length));
     }
     assert(counts[0] === 1 && counts[3] === 7 && counts.every((count, i) => i === 0 || count > counts[i - 1]),
@@ -7167,7 +7173,79 @@ async function assertWeatherWidthScaling(browser) {
       }
     }
     console.log('Daily forecast browser scaling passed: ' + counts.join(',') + ' complete columns.');
+    await page.evaluate(() => window.weatherLayout.disconnect());
+    const profile = readManifest().devices['guition-esp32-s3-4848s040'].web;
+    const vars = { '--screen-w': '480px', '--screen-aspect': '1/1', '--grid-cols': 'repeat(3,1fr)', '--grid-rows': 'repeat(3,1fr)' };
+    for (const [key, value] of Object.entries(profile.grid)) {
+      if (typeof value === 'number') vars['--grid-' + key] = value + 'cqw';
+    }
+    for (const [key, variable] of [['padding', '--btn-pad'], ['radius', '--btn-r'], ['labelSize', '--btn-label'], ['iconSize', '--btn-icon']]) {
+      vars[variable] = profile.btn[key] + 'cqw';
+    }
+    const roboto = fs.readFileSync(path.join(ROOT, 'common/assets/fonts/roboto-latin.woff2')).toString('base64');
+    await page.setContent('<style>@font-face{font-family:Roboto;src:url(data:font/woff2;base64,' + roboto + ')}' + createWebStyles(false) + '</style>' +
+      '<div class="sp-screen" style="' + Object.entries(vars).map(([key, value]) => key + ':' + value).join(';') + '"><div class="sp-main">' +
+      '<div id="weather" class="sp-btn sp-weather-daily-card" style="grid-column:span 3"><span class="sp-weather-days">' +
+      Array.from({ length: 7 }, (_, i) => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + (i ? 'Tues' : 'Today') + '</span><span class="sp-weather-temperature-high">18°</span></span>').join('') + '</span></div></div></div>');
+    await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(factory => {
+      window.weatherLayout = (0, eval)('(' + factory + ')')(document, { displayWidth: 480, displayHeight: 480 }, () => false);
+      window.weatherLayout.observe(document.querySelector('#weather'));
+    }, createWeatherDailyPreviewLayout.toString());
+    for (const width of [360, 480, 960]) {
+      await page.locator('.sp-screen').evaluate((screen, value) => screen.style.setProperty('--screen-w', value + 'px'), width);
+      for (const [span, expected] of [[1, 1], [2, 2], [3, 4]]) {
+        await page.locator('#weather').evaluate((card, value) => card.style.gridColumn = 'span ' + value, span);
+        await page.waitForFunction(count => Array.from(document.querySelectorAll('.sp-weather-day')).filter(day => !day.hidden).length === count, expected, { timeout: 5000 }).catch(async error => {
+          const geometry = await page.locator('#weather').evaluate(card => {
+            const context = document.createElement('canvas').getContext('2d');
+            context.font = getComputedStyle(card.querySelector('.sp-weather-day')).font;
+            const scale = card.closest('.sp-screen').clientWidth / 480;
+            return { width: card.clientWidth, screen: card.closest('.sp-screen').clientWidth,
+              padding: getComputedStyle(card).paddingLeft, font: context.font,
+              glyphs: Array.from('-18.8°').map(glyph => context.measureText(glyph).width / scale),
+              gap: card.querySelector('.sp-weather-days').style.gap,
+              days: Array.from(card.querySelectorAll('.sp-weather-day')).filter(day => !day.hidden).length };
+          });
+          throw new Error('S3 forecast mismatch at preview width ' + width + ', span ' + span + ': ' + JSON.stringify(geometry), { cause: error });
+        });
+        await page.waitForFunction(() => {
+          const day = document.querySelector('.sp-weather-day');
+          return getComputedStyle(day).fontSize === getComputedStyle(day.parentElement.parentElement).fontSize;
+        });
+        const typography = await page.locator('.sp-weather-day').first().evaluate(day => ({ day: getComputedStyle(day).fontSize, card: getComputedStyle(day.parentElement.parentElement).fontSize }));
+        assert.strictEqual(typography.day, typography.card, 'Daily text keeps the device font size instead of scaling against its own card.');
+      }
+    }
+    await page.locator('.sp-screen').screenshot({ path: '/tmp/weather-preview-s3-after.png' });
+    console.log('S3 forecast preview matches device spans 1×1, 2×1, 3×1: 1,2,4 days at three preview scales.');
   } finally { await page.close(); }
+}
+
+async function assertS3ForecastEditorLayout(browser) {
+  const slug = 'guition-esp32-s3-4848s040';
+  const nativeState = nativeConfigState(slug);
+  nativeState.document.buttons[1] = 'weather.home;;Auto;Auto;;;weather;daily';
+  nativeState.document.settings.button_order = '1x,2,3w,4,5,6';
+  const context = await browser.newContext({ viewport: { width: 1000, height: 900 } });
+  await installRoutes(context, slug, { nativeState });
+  const page = await context.newPage();
+  await installFakeEventSource(page);
+  try {
+    await page.goto('http://espcontrol.test/' + slug + '?events=1');
+    await page.waitForSelector('#sp-app');
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await seedNativeDocument(page, nativeState);
+    await page.evaluate(() => document.fonts.ready);
+    for (const width of [1000, 1400]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.waitForFunction(() => document.querySelectorAll('.sp-weather-daily-card .sp-weather-day:not([hidden])').length === 4);
+      const day = page.locator('.sp-weather-day:not([hidden])').first();
+      assert.strictEqual(await day.evaluate(element => getComputedStyle(element).alignItems), 'flex-start');
+    }
+    await page.locator('.sp-screen').screenshot({ path: '/tmp/weather-preview-s3-editor-after.png' });
+    console.log('S3 editor integration: 3×1 forecast shows four left-aligned days before and after resizing.');
+  } finally { await context.close(); }
 }
 
 (async function main() {
@@ -7233,6 +7311,7 @@ async function assertWeatherWidthScaling(browser) {
     if (process.env.ESPCONTROL_PIN_ONLY === "1") { console.log("Screensaver PIN browser checks passed."); return; }
 
     await assertWeatherWidthScaling(browser);
+    await assertS3ForecastEditorLayout(browser);
     if (process.env.ESPCONTROL_RESET_ONLY === "1") {
       await assertResetControls(browser);
       console.log("Factory reset confirmation browser checks passed.");

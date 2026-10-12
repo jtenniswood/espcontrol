@@ -919,6 +919,8 @@ def web_config(profile: dict[str, Any]) -> dict[str, Any]:
         "cols": layout["cols"],
         "rows": layout["rows"],
         "screenSize": profile["public"]["screenSize"],
+        "displayWidth": int(profile["public"]["resolution"].split(" x ")[0]),
+        "displayHeight": int(profile["public"]["resolution"].split(" x ")[1]),
         "largeSensorUnitOffsetPercent": profile["settings"]["largeSensorUnitOffsetPercent"],
         "imageSlotCapacity": image_slot_capacity,
         "cardRadiusPixels": int(profile["firmware"]["package"]["substitutions"]["radius"].removesuffix("px")),

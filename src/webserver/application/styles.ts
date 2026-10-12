@@ -114,17 +114,11 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-clock-left-mid{justify-content:center;align-items:flex-start}" +
         ".sp-clock-centered{justify-content:center;align-items:center}" +
         ".sp-forecast-preview{white-space:nowrap;gap:0}" +
-        ".sp-weather-daily-card{container-type:inline-size;font-size:var(--btn-label)}" +
+        ".sp-weather-daily-card{font-size:var(--btn-label)}" +
         ".sp-weather-days{display:flex;width:100%;height:100%;align-items:stretch;overflow:hidden;gap:1.25em}" +
-        ".sp-weather-day{flex:1 1 0;display:none;flex-direction:column;align-items:flex-start;text-align:left;gap:.2em;font-size:var(--btn-label);white-space:nowrap}" +
-        ".sp-weather-day:first-child{display:flex}.sp-weather-day .mdi{font-size:var(--btn-icon);line-height:1;margin-bottom:auto}" +
+        ".sp-weather-day{flex:1 1 0;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:.2em;font-size:var(--btn-label);white-space:nowrap}" +
+        ".sp-weather-day[hidden]{display:none}.sp-weather-day .mdi{font-size:var(--btn-icon);line-height:1;margin-bottom:auto}" +
         ".sp-weather-temperature-high{white-space:nowrap}" +
-        "@container (min-width:12.95em){.sp-weather-day:nth-child(2){display:flex}}" +
-        "@container (min-width:20.2em){.sp-weather-day:nth-child(3){display:flex}}" +
-        "@container (min-width:27.45em){.sp-weather-day:nth-child(4){display:flex}}" +
-        "@container (min-width:34.7em){.sp-weather-day:nth-child(5){display:flex}}" +
-        "@container (min-width:41.95em){.sp-weather-day:nth-child(6){display:flex}}" +
-        "@container (min-width:49.2em){.sp-weather-day:nth-child(7){display:flex}}" +
         ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
         ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:var(--card-text-color,var(--preview-text-primary))}" +
         ".sp-slider-preview{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;pointer-events:none}" +
