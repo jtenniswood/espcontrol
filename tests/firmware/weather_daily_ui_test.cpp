@@ -19,7 +19,7 @@ struct lv_obj_t {
   std::vector<lv_obj_t *> children;
   std::vector<Binding> events;
   const lv_font_t *font = &::font;
-  int width = 300, height = 160;
+  int width = 460, height = 160, flags = 0;
   std::string text;
   explicit lv_obj_t(lv_obj_t *parent) : parent(parent) { ++live; if (parent) parent->children.push_back(this); }
   ~lv_obj_t() { --live; }
@@ -28,6 +28,7 @@ int lv_obj_t::live = 0;
 constexpr int LV_PART_MAIN=0, LV_STATE_DISABLED=1, LV_TEXT_ALIGN_CENTER=0, LV_LABEL_LONG_DOT=0, LV_LABEL_LONG_WRAP=1;
 constexpr int LV_ALIGN_TOP_MID=0, LV_ALIGN_TOP_LEFT=0, LV_ALIGN_BOTTOM_RIGHT=0, LV_ALIGN_BOTTOM_LEFT=0;
 constexpr int LV_OPA_TRANSP=0, LV_OBJ_FLAG_SCROLLABLE=1, LV_OBJ_FLAG_CLICKABLE=2, LV_COORD_MAX=32767, LV_TEXT_FLAG_NONE=0;
+constexpr int LV_OBJ_FLAG_HIDDEN=4;
 constexpr int LV_EVENT_DELETE=1, LV_EVENT_SIZE_CHANGED=2, LV_EVENT_CLICKED=3;
 struct lv_point_t { int x,y; };
 void *lv_event_get_user_data(lv_event_t *e) { return e->data; }
@@ -53,7 +54,9 @@ void lv_obj_set_style_text_font(lv_obj_t *obj,const lv_font_t *f,int){obj->font=
 const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *obj,int){return obj->font;}
 #define NOOP(name) template<class... T> void name(T...) {}
 NOOP(lv_obj_set_style_text_color) NOOP(lv_obj_set_style_text_align) NOOP(lv_label_set_long_mode)
-NOOP(lv_obj_clear_flag) NOOP(lv_obj_align) NOOP(lv_obj_set_style_bg_color) NOOP(lv_obj_center)
+void lv_obj_add_flag(lv_obj_t *obj,int flag){obj->flags|=flag;}
+void lv_obj_clear_flag(lv_obj_t *obj,int flag){obj->flags&=~flag;}
+NOOP(lv_obj_align) NOOP(lv_obj_set_style_bg_color) NOOP(lv_obj_center)
 NOOP(lv_obj_set_style_bg_opa) NOOP(lv_obj_set_style_border_width) NOOP(lv_obj_set_style_pad_all)
 NOOP(lv_obj_add_state) NOOP(lv_obj_clear_state) NOOP(lv_obj_set_pos) NOOP(apply_text_width_compensation)
 NOOP(control_modal_apply_pressed_fill) NOOP(set_clock_bar_modal_label)
@@ -62,14 +65,20 @@ struct Theme { int text_primary=0, surface_secondary=0; } theme;
 const Theme &current_theme(){return theme;}
 std::string espcontrol_i18n(const std::string &s){return s;}
 const char *display_temperature_unit_symbol(){return "°C";}
-float convert_temperature_value_for_display_float(float v,const char *){return v;}
-const char *weather_icon_for_state(const std::string &){return "icon";}
+bool use_fahrenheit=false;
+float convert_temperature_value_for_display_float(float v,const char *unit){
+  const bool fahrenheit=std::string(unit)=="°F";
+  if(use_fahrenheit && !fahrenheit)return v*9.0f/5.0f+32.0f;
+  if(!use_fahrenheit && fahrenheit)return (v-32.0f)*5.0f/9.0f;
+  return v;
+}
+const char *weather_icon_for_state(const std::string &state){return state=="cloudy"?"cloudy-icon":state=="unavailable"?"unavailable-icon":"icon";}
 std::string weather_label_for_state(const std::string &s){return s;}
 void notify_dashboard_content_changed(){}
 struct DisplayProfile{};
 const lv_font_t *display_icon_font(const DisplayProfile &){return &icons;}
 struct ParsedCfg{std::string entity,label;};
-struct BtnSlot{lv_obj_t *btn,*text_lbl;};
+struct BtnSlot{lv_obj_t *btn,*text_lbl,*icon_lbl;};
 enum class ControlModalKind{WEATHER_FORECAST};
 struct ControlModalShell{lv_obj_t *overlay,*panel;int content_w=300;struct{int back_size=40,inset=10,panel_h=400;}layout;};
 void weather_daily_hide_modal();
@@ -82,18 +91,54 @@ lv_obj_t *control_modal_create_scroll_list(lv_obj_t *parent,int,int,int){return 
 #define ESP_LOGW(...) ((void)0)
 #include "button_grid_weather_daily_ui.h"
 int main(){
+  assert(weather_daily_temperature(17.8f,"°C")=="18");
+  assert(weather_daily_temperature(-2.6f,"°C")=="-3");
+  assert(weather_daily_temperature(-0.2f,"°C")=="0");
+  assert(weather_daily_temperature(espcontrol::weather::MISSING,"°C")=="--");
+  use_fahrenheit=true;
+  assert(weather_daily_temperature(17.8f,"°C")=="64");
+  use_fahrenheit=false;
+  assert(weather_daily_temperature(64.0f,"°F")=="18");
   for(int cycle=0;cycle<30;++cycle){
-    auto *owner=lv_obj_create(nullptr);auto *caption=lv_label_create(owner);BtnSlot slot{owner,caption};
+    auto *owner=lv_obj_create(nullptr);auto *caption=lv_label_create(owner);
+    auto *placeholder_icon=lv_label_create(owner);BtnSlot slot{owner,caption,placeholder_icon};
     const int baseline=lv_obj_t::live;
     weather_daily_setup(slot,{"weather.home","Garden"},{});
     auto *card=weather_daily_card_for(owner);assert(card && card->source->users==1);
-    auto &f=card->source->forecast;assert(espcontrol::weather::parse("WF1|2026-10-11|2026-10-12|°C|mm|km/h\n2026-10-11|sunny|18|10|0|0|10|75\n2026-10-12|rainy|17|11|80|2|20|80\n2026-10-13|cloudy|16|9||||\n2026-10-14|sunny|18|10||||\n",f));
+    assert(card->columns.empty() && card->root->children.empty());
+    assert(card->root->flags & LV_OBJ_FLAG_HIDDEN);
+    assert(!(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN));
+    assert(placeholder_icon->text=="cloudy-icon" && caption->text.empty());
+    for(int i=0;i<20;++i)weather_daily_refresh_visuals();
+    lv_obj_set_size(owner,100,160);lv_obj_set_size(owner,460,160);
+    assert(lv_obj_t::live==baseline+1 && card->columns.empty());
+    weather_daily_set_unavailable("weather.home");weather_daily_render_card(card);
+    assert(caption->text=="Forecast unavailable" && placeholder_icon->text=="unavailable-icon");
+    assert(card->columns.empty());
+    card->source->loading=true;weather_daily_render_card(card);assert(caption->text.empty());
+    auto &f=card->source->forecast;
+    assert(espcontrol::weather::parse("WF1|2026-10-11|2026-10-12|°C|mm|km/h\n2026-10-11|sunny|18.8|10|0|0|10|75\n",f));
+    weather_daily_render_card(card);assert(card->columns.size()==1);
+    assert(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN);
+    assert(!(card->root->flags & LV_OBJ_FLAG_HIDDEN));
+    assert(card->columns.front().day->text=="Today" && card->columns.front().high->text=="19°");
+    assert(espcontrol::weather::parse("WF1|2026-10-11|2026-10-12|°C|mm|km/h\n2026-10-11|sunny|18|10|0|0|10|75\n2026-10-12|rainy|17|11|80|2|20|80\n2026-10-13|cloudy|16|9||||\n2026-10-14|sunny|18|10||||\n",f));
     weather_daily_render_card(card);assert(card->columns.size()==4);
     int live=lv_obj_t::live;
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     assert(lv_obj_t::live==live); // Refreshes do not grow the widget tree.
+    weather_daily_set_unavailable("weather.home");weather_daily_render_card(card);
+    assert(card->columns.size()==4 && caption->text=="Last forecast" && lv_obj_t::live==live);
+    card->source->stale=false;
     lv_obj_set_size(owner,100,160);assert(card->columns.size()==1);
-    lv_obj_set_size(owner,300,160);assert(card->columns.size()==4 && lv_obj_t::live==live);
+    lv_obj_set_size(owner,460,160);assert(card->columns.size()==4 && lv_obj_t::live==live);
+    const auto saved_forecast=f;
+    f=espcontrol::weather::Forecast{};card->source->loading=true;
+    weather_daily_render_card(card);
+    assert(card->columns.empty() && card->root->children.empty() && lv_obj_t::live==baseline+1);
+    assert(!(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN) && caption->text.empty());
+    f=saved_forecast;weather_daily_render_card(card);
+    assert(card->columns.size()==4 && lv_obj_t::live==live);
     for(int i=0;i<10;++i){
       weather_daily_open_modal(card);assert(card->source->users==2);
       emit(weather_daily_modal().next,LV_EVENT_CLICKED);assert(weather_daily_modal().day==1);

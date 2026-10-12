@@ -4,7 +4,7 @@
 // one day's detail view on demand and reads the same source as its owner.
 struct WeatherDailyColumn { lv_obj_t *icon, *day, *high; };
 struct WeatherDailyCard {
-  lv_obj_t *owner = nullptr, *root = nullptr, *caption = nullptr;
+  lv_obj_t *owner = nullptr, *root = nullptr, *caption = nullptr, *placeholder_icon = nullptr;
   WeatherDailySource *source = nullptr;
   const lv_font_t *font = nullptr, *icon_font = nullptr;
   std::vector<WeatherDailyColumn> columns;
@@ -31,7 +31,8 @@ inline void weather_daily_hide_modal() {
 inline std::string weather_daily_temperature(float value, const char *unit) {
   if (!std::isfinite(value)) return "--";
   char text[16];
-  std::snprintf(text, sizeof(text), "%.1f", convert_temperature_value_for_display_float(value, unit));
+  std::snprintf(text, sizeof(text), "%d", static_cast<int>(std::round(
+    convert_temperature_value_for_display_float(value, unit))));
   return text;
 }
 inline std::string weather_daily_date_label(const espcontrol::weather::Day &day,
@@ -132,12 +133,28 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   const int width = lv_obj_get_content_width(card->owner);
   const int height = lv_obj_get_content_height(card->owner);
   if (width <= 0 || height <= 0) return;
+  if (!forecast.count) {
+    // Reuse the normal card icon until real days arrive; no placeholder columns.
+    if (!card->columns.empty()) {
+      lv_obj_clean(card->root);
+      card->columns.clear();
+    }
+    lv_obj_add_flag(card->root, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_display_text(card->placeholder_icon,
+      weather_icon_for_state(card->source->loading ? "cloudy" : "unavailable"));
+    lv_obj_clear_flag(card->placeholder_icon, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_display_text(card->caption, card->source->loading ? "" :
+      espcontrol_i18n(std::string("Forecast unavailable")).c_str());
+    return;
+  }
+  lv_obj_add_flag(card->placeholder_icon, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(card->root, LV_OBJ_FLAG_HIDDEN);
   const int font_height = lv_font_get_line_height(card->font);
   const int day_gap = std::max(8, font_height);
   lv_point_t measured;
   lv_text_get_size(&measured, "-18.8\u00B0", card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
   const size_t count = espcontrol::weather::visible_days(width, measured.x + 32,
-    forecast.count ? forecast.count : 1, day_gap);
+    forecast.count, day_gap);
   // Rebuild only when geometry or the number of visible days changes. Refreshes
   // and unit changes reuse the labels instead of allocating new widget trees.
   if (card->width != width || card->height != height || card->columns.size() != count) {
@@ -161,16 +178,14 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     }
   }
   std::string caption;
-  if (!forecast.count) caption = espcontrol_i18n(std::string(
-    card->source->loading ? "Loading forecast" : "Forecast unavailable"));
-  else if (card->source->stale) caption = espcontrol_i18n(std::string("Last forecast"));
+  if (card->source->stale) caption = espcontrol_i18n(std::string("Last forecast"));
   lv_label_set_display_text(card->caption, caption.c_str());
   for (size_t i = 0; i < card->columns.size(); ++i) {
     const auto &col = card->columns[i];
     const auto &day = forecast.days[i];
-    std::string date = forecast.count ? weather_daily_date_label(day, forecast) : "--";
+    std::string date = weather_daily_date_label(day, forecast);
     lv_label_set_display_text(col.day, date.c_str());
-    lv_label_set_display_text(col.icon, weather_icon_for_state(forecast.count ? day.condition : "unavailable"));
+    lv_label_set_display_text(col.icon, weather_icon_for_state(day.condition));
     std::string high = weather_daily_temperature(day.high, forecast.temperature_unit) + "\u00B0";
     lv_label_set_display_text(col.high, high.c_str());
   }
@@ -210,6 +225,7 @@ inline void weather_daily_setup(BtnSlot &slot, const ParsedCfg &config,
   auto *card = new (std::nothrow) WeatherDailyCard;
   if (!card) { weather_daily_release_source(source); return; }
   card->owner = slot.btn; card->source = source; card->caption = slot.text_lbl;
+  card->placeholder_icon = slot.icon_lbl;
   card->font = lv_obj_get_style_text_font(slot.text_lbl, LV_PART_MAIN);
   if (!card->font) card->font = LV_FONT_DEFAULT;
   card->icon_font = display_icon_font(display);
