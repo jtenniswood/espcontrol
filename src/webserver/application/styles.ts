@@ -116,7 +116,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-forecast-preview{white-space:nowrap;gap:0}" +
         ".sp-weather-daily-card{font-size:var(--btn-label)}" +
         ".sp-weather-days{display:flex;width:100%;height:100%;align-items:stretch;overflow:hidden;gap:1.25em}" +
-        ".sp-weather-day{flex:1 1 0;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:.2em;font-size:var(--btn-label);white-space:nowrap}" +
+        ".sp-weather-day{flex:0 0 var(--weather-day-width,auto);display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:.2em;font-size:var(--btn-label);white-space:nowrap}" +
         ".sp-weather-day[hidden]{display:none}.sp-weather-day .mdi{font-size:var(--btn-icon);line-height:1;margin-bottom:auto}" +
         ".sp-weather-temperature-high{white-space:nowrap}" +
         ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +

@@ -128,6 +128,8 @@ int main(){
     assert(card->columns.front().day->text=="Today" && card->columns.front().high->text=="19°");
     assert(espcontrol::weather::parse("WF1|2026-10-11|2026-10-12|°C|mm|km/h\n2026-10-11|sunny|18|10|0|0|10|75\n2026-10-12|rainy|17|11|80|2|20|80\n2026-10-13|cloudy|16|9||||\n2026-10-14|sunny|18|10||||\n",f));
     weather_daily_render_card(card);assert(card->columns.size()==4);
+    assert(card->columns.front().day->width==80);
+    assert(card->columns[1].day->x==96); // Compact columns keep the gap without stretching across the card.
     for(const auto &col:card->columns){
       assert(col.icon->text_align==LV_TEXT_ALIGN_LEFT && col.day->text_align==LV_TEXT_ALIGN_LEFT && col.high->text_align==LV_TEXT_ALIGN_LEFT);
       assert(col.icon->x==col.day->x && col.day->x==col.high->x);

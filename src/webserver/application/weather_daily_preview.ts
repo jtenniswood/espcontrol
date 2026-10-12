@@ -33,8 +33,11 @@ export function createWeatherDailyPreviewLayout(
         const fontHeight = Math.round(nativeFontSize * 1.2);
         const gap = Math.max(8, fontHeight);
         const width = (card.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)) / scale;
-        const count = Math.max(1, Math.min(days.length, Math.floor((width + gap) / (measured + 32 + gap))));
+        const minimumDayWidth = measured + 24;
+        const count = Math.max(1, Math.min(days.length, Math.floor((width + gap) / (minimumDayWidth + gap))));
+        const columnWidth = Math.max(1, Math.min(minimumDayWidth, Math.floor((width - gap * (count - 1)) / count)));
         row.style.gap = (gap * scale) + "px";
+        row.style.setProperty("--weather-day-width", (columnWidth * scale) + "px");
         days.forEach((day, index) => { day.hidden = index >= count; });
     }
     const Observer = view && (view as Window & typeof globalThis).ResizeObserver;

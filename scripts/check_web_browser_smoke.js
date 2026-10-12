@@ -7215,6 +7215,15 @@ async function assertWeatherWidthScaling(browser) {
         });
         const typography = await page.locator('.sp-weather-day').first().evaluate(day => ({ day: getComputedStyle(day).fontSize, card: getComputedStyle(day.parentElement.parentElement).fontSize }));
         assert.strictEqual(typography.day, typography.card, 'Daily text keeps the device font size instead of scaling against its own card.');
+        if (span === 3) {
+          const spacing = await page.locator('#weather').evaluate(card => {
+            const days = Array.from(card.querySelectorAll('.sp-weather-day')).filter(day => !day.hidden);
+            const scale = card.closest('.sp-screen').clientWidth / 480;
+            return { width: days[0].getBoundingClientRect().width / scale,
+              pitch: (days[1].getBoundingClientRect().left - days[0].getBoundingClientRect().left) / scale };
+          });
+          assert(spacing.width <= 82 && spacing.pitch <= 108, 'Forecast days retain the narrower width at every preview scale: ' + JSON.stringify(spacing));
+        }
       }
     }
     await page.locator('.sp-screen').screenshot({ path: '/tmp/weather-preview-s3-after.png' });

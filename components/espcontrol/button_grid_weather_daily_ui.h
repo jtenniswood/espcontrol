@@ -153,7 +153,8 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   const int day_gap = std::max(8, font_height);
   lv_point_t measured;
   lv_text_get_size(&measured, "-18.8\u00B0", card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-  const size_t count = espcontrol::weather::visible_days(width, measured.x + 32,
+  const int minimum_day_width = measured.x + 24;
+  const size_t count = espcontrol::weather::visible_days(width, minimum_day_width,
     forecast.count, day_gap);
   const int icon_height = lv_font_get_line_height(card->icon_font);
   const int caption_height = card->source->stale ? font_height + 2 : 0;
@@ -166,7 +167,8 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     card->width = width; card->height = height;
     lv_obj_set_size(card->root, width, height);
     lv_obj_align(card->root, LV_ALIGN_TOP_LEFT, 0, 0);
-    const int column_width = std::max(1, (width - day_gap * static_cast<int>(count - 1)) / static_cast<int>(count));
+    const int column_width = std::max(1, std::min(minimum_day_width,
+      (width - day_gap * static_cast<int>(count - 1)) / static_cast<int>(count)));
     for (size_t i = 0; i < count; ++i) {
       WeatherDailyColumn col{};
       auto make = [&](const lv_font_t *font, int y) {
