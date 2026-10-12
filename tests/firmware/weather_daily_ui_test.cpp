@@ -109,7 +109,7 @@ void publish_weather(const std::string &key,const std::string &value){
 struct ParsedCfg{std::string entity,label;std::string precision="daily",type="weather";};
 struct BtnSlot{lv_obj_t *btn,*text_lbl,*icon_lbl;};
 enum class ControlModalKind{WEATHER_FORECAST};
-struct ControlModalShell{lv_obj_t *overlay,*panel;int content_w=300;struct{int back_size=40,inset=10,panel_h=400;}layout;};
+struct ControlModalShell{lv_obj_t *overlay,*panel;long content_w=300;struct{long back_size=40,inset=10,panel_h=400;}layout;};
 void weather_daily_hide_modal();
 void control_modal_force_close_active(){weather_daily_hide_modal();}
 void control_modal_delete_overlay(ControlModalKind,lv_obj_t *&overlay){if(overlay)lv_obj_del(overlay);overlay=nullptr;}

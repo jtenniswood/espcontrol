@@ -186,7 +186,7 @@ inline void weather_daily_open_modal(WeatherDailyCard *card) {
   set_clock_bar_modal_label(espcontrol_i18n(std::string("Weather")));
   const int top = shell.layout.back_size + shell.layout.inset * 2;
   auto *list = control_modal_create_scroll_list(shell.panel, shell.content_w,
-    std::max(60, static_cast<int>(shell.layout.panel_h) - top - shell.layout.inset), 12);
+    std::max(60, static_cast<int>(shell.layout.panel_h - shell.layout.inset) - top), 12);
   lv_obj_align(list, LV_ALIGN_TOP_MID, 0, top);
   const int icon_height = lv_font_get_line_height(card->icon_font);
   const int title_height = lv_font_get_line_height(card->summary_font);
