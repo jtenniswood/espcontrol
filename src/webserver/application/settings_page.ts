@@ -609,8 +609,8 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         appendSettingsSection(config, "Sleep & Schedule", [
             coverArtCard,
             screensaverCard,
-            screensaverPinCard,
             scheduleCard,
+            screensaverPinCard,
         ]);
         appendSettingsSection(config, "Preferences", [
             languageCard,
