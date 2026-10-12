@@ -43,10 +43,6 @@ inline size_t weather_daily_selected_day(const WeatherDailyCard &card) {
     if (std::strcmp(forecast.days[i].date, date) == 0) return i;
   return forecast.count;
 }
-inline std::string weather_daily_reading(float value, const char *unit) {
-  if (!std::isfinite(value)) return "--";
-  char text[32]; std::snprintf(text, sizeof(text), "%.1f%s", value, unit); return text;
-}
 inline lv_obj_t *weather_daily_label(lv_obj_t *parent, const lv_font_t *font) {
   auto *label = lv_label_create(parent);
   if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
