@@ -46,8 +46,8 @@ inline void wallpaper_bind_screen(lv_obj_t *screen) {
 inline void wallpaper_apply_card(lv_obj_t *card, lv_opa_t opacity) {
   if (!card) return;
   lv_obj_set_style_bg_opa(card, opacity, LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(card, opacity, LV_PART_MAIN | LV_STATE_CHECKED);
-  lv_obj_set_style_bg_opa(card, opacity, LV_PART_MAIN | LV_STATE_PRESSED);
+  lv_obj_set_style_bg_opa(card, opacity, static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_CHECKED);
+  lv_obj_set_style_bg_opa(card, opacity, static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED);
 }
 inline void wallpaper_apply_cards() {
   const lv_opa_t opacity = wallpaper_ui().pixels ? 204 : LV_OPA_COVER;
