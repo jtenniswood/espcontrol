@@ -163,6 +163,7 @@ export interface SubpageConfig {
   order: readonly string[];
   buttons: readonly CardConfig[];
   backLabel?: string;
+  backColor?: string;
   grid?: readonly number[];
   sizes?: Readonly<Record<string, number>>;
 }

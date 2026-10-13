@@ -262,6 +262,7 @@ export function createPreviewClipboardFeature(
             grid: grid,
             sizes: sizes,
             backLabel: parsed.backLabel || "Back",
+            backColor: parsed.backColor || "",
         };
         subpage.order = serializeSubpageGrid(subpage);
         return { subpage: subpage, resized: resized };
@@ -411,6 +412,7 @@ export function createPreviewClipboardFeature(
             grid: (sp.grid || []).slice(),
             sizes: cloneSizeMap(sp.sizes),
             backLabel: sp.backLabel || "Back",
+            backColor: sp.backColor || "",
         };
     }
     function planSubpageClipboardPaste(entries: any, pos: any) {

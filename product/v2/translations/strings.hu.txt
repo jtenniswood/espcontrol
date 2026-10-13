@@ -152,6 +152,7 @@ relay=Relé
 returning=Visszatérés
 run_this_script=Futtatja ezt a szkriptet?
 screen_dimmed=Képernyő halványítva
+screen_lock=Képernyőzár
 screen_locked=Képernyő lezárva
 screen_unlocked=Képernyő feloldva
 skip_next=Ugrás a következőre
@@ -261,3 +262,6 @@ wifi_did_not_change=A Wi-Fi állapota nem változott
 connect_to_the_wifi_hotspot=Csatlakozzon a WiFi-hotspothoz
 to_configure_your_network=a hálózat beállításához.
 then_visit_192_168_4_1_in_your_browser=Ezután nyissa meg a 192.168.4.1 címet a böngészőben
+
+screensaver=Képernyőkímélő
+incorrect_pin=Helytelen PIN

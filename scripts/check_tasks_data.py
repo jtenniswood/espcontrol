@@ -107,6 +107,8 @@ TASKS = (
              "components/espcontrol/backlight.h",
              "components/espcontrol/theme_settings.h",
              "components/espcontrol/display_mode_controller.h",
+             "components/espcontrol/screensaver_pin.*",
+             "components/espcontrol/pin_keypad*.h",
              "components/espcontrol/device_reset.*",
              "components/espcontrol/reset_policy.h",
              "components/espcontrol/reset_interlock.h",

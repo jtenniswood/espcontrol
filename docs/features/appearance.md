@@ -24,14 +24,14 @@ Backups include the theme mode, automatic method, times and offsets. Older backu
 
 ## Active colour
 
-- **Primary** — the colour cards show when an entity is active. Choose from the same compact grid of 20 round swatches used in individual card settings. A checkmark shows the selected colour. The orange swatch is `FF8C00`, the panel's default active colour.
+- **Primary** — the colour cards show when an entity is active. Choose from the same compact grid used in individual card settings. It contains 19 preset colours and a final transparent, dashed swatch with an eyedropper icon that opens your browser's native colour picker for any colour, including white. A checkmark shows the selected preset; an accent outline highlights a custom colour. The orange swatch is `FF8C00`, the panel's default active colour.
 - Secondary inactive cards and tertiary information cards use fixed panel colours so setup stays simpler and modal styling remains consistent.
 
 Text and icons stay white on mid-tone backgrounds, including orange, blue, green and teal. Cyan also keeps white content in its lighter active state. Pale backgrounds use dark content, with the same rules on the panel and web preview.
 
 Custom card colours stay in place when changing a card’s controls, reopening its editor or switching themes. Media Cover Art uses the chosen card colour while artwork is loading or unavailable; visible artwork keeps white text. Media progress bars use a lighter or darker shade of the chosen card colour so progress remains visible.
 
-Cards using their default background show a checkmark on the matching swatch for the current theme. Resetting a card’s colours restores this default selection.
+Cards using their default background highlight the matching preset or custom picker for the current theme. Resetting a card’s colours restores this default selection.
 
 Disabled Home Assistant cards keep their background colour and show muted labels and icons. Their normal text and icon colours return when the card becomes available again.
 

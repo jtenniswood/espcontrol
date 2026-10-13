@@ -39,7 +39,7 @@ inline bool write_panel_config_capabilities_json(char *output,
     return false;
   const int written = std::snprintf(
       output, output_capacity,
-      "{\"identity\":{\"version\":1},\"api\":{\"version\":%u},\"configuration\":{\"document_versions\":[%u],"
+      "{\"screensaver_pin\":{\"version\":1},\"identity\":{\"version\":1},\"api\":{\"version\":%u},\"configuration\":{\"document_versions\":[%u],"
       "\"read\":%s,\"write\":%s},\"web_assets\":{\"versions\":[%u],"
       "\"delivery\":\"%s\"},\"reset\":{\"modes\":[\"customization\",\"factory\"],\"status\":\"/api/v1/reset\"}}",
       static_cast<unsigned>(PANEL_CONFIG_API_VERSION),

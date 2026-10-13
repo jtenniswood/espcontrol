@@ -10,7 +10,7 @@
   },
   "summary": {
     "deviceProfiles": 9,
-    "cardTypes": 43,
+    "cardTypes": 44,
     "entityNames": 110,
     "icons": 366,
     "structuralIcons": 22,
@@ -1879,6 +1879,7 @@
         "option_select",
         "push",
         "screen_lock",
+        "screensaver",
         "webhook",
         "sensor",
         "subpage",
@@ -2300,6 +2301,18 @@
           "capabilities": {
             "informationOnly": false,
             "subscriptions": true,
+            "actions": true,
+            "numericControl": false,
+            "modal": false,
+            "runtimeAllocation": false,
+            "subpage": true
+          }
+        },
+        "screensaver": {
+          "driver": "screensaver",
+          "capabilities": {
+            "informationOnly": false,
+            "subscriptions": false,
             "actions": true,
             "numericControl": false,
             "modal": false,
@@ -5339,10 +5352,70 @@
           "options": ""
         }
       },
+      "screensaver": {
+        "label": "Screensaver",
+        "allowInSubpage": true,
+        "domains": [],
+        "normalization": {
+          "fields": {
+            "entity": {
+              "policy": "clear"
+            },
+            "label": {
+              "policy": "clear"
+            },
+            "icon": {
+              "policy": "default",
+              "value": "Monitor"
+            },
+            "icon_on": {
+              "policy": "default",
+              "value": "Auto"
+            },
+            "sensor": {
+              "policy": "clear"
+            },
+            "unit": {
+              "policy": "clear"
+            },
+            "type": {
+              "policy": "default",
+              "value": "screensaver"
+            },
+            "precision": {
+              "policy": "clear"
+            },
+            "options": {
+              "policy": "clear"
+            }
+          },
+          "unknownOptions": "drop",
+          "canonicalOptionOrder": []
+        },
+        "default": {
+          "entity": "",
+          "label": "",
+          "icon": "Monitor",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "screensaver",
+          "precision": "",
+          "options": ""
+        }
+      },
       "screen_lock": {
         "label": "Screen Lock",
         "allowInSubpage": true,
         "domains": [],
+        "options": [
+          {
+            "name": "screensaver_on_lock",
+            "label": "Screensaver on lock",
+            "kind": "flag",
+            "omitDefault": true
+          }
+        ],
         "normalization": {
           "fields": {
             "entity": {
@@ -5373,11 +5446,13 @@
               "policy": "clear"
             },
             "options": {
-              "policy": "clear"
+              "policy": "keep"
             }
           },
           "unknownOptions": "drop",
-          "canonicalOptionOrder": []
+          "canonicalOptionOrder": [
+            "screensaver_on_lock"
+          ]
         },
         "default": {
           "entity": "",
@@ -6671,6 +6746,7 @@
       "climate_control": "HC",
       "push": "P",
       "screen_lock": "SL",
+      "screensaver": "SS",
       "webhook": "WH",
       "internal": "I",
       "subpage": "G"

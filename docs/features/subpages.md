@@ -23,6 +23,8 @@ A subpage has one fewer usable slot than the home screen because it includes a *
 5. The preview switches to the subpage. Add and arrange cards here the same way you would on the home screen.
 6. Click the **Back** card to return to the home screen.
 
+To customise the **Back** card, select it in the web preview and click **Edit**. You can change its label and choose a preset or custom background under **Custom Colours**. Use the reset button beside **Custom Colours** to restore the theme default. Each subpage can have its own Back card colour.
+
 You can also right-click an empty space on the home screen and choose **Create Subpage**.
 
 Subpages can contain Switch, Lights, Action, Local Action, Option Select, Webhook, Trigger, Sensor, Local Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Lawn Mower, Cover, Garage Door, Lock, Alarm, Date & Time, Clock, World Clock, Weather, Camera, Media, Climate, Internal Switches, and Screen Lock cards. Subpages cannot contain another Subpage card.

@@ -1,3 +1,5 @@
+import { clearScreensaverPinForRestore } from "./screensaver_pin";
+import { resetAwareFetch } from "../api/reset_session";
 import type { PanelIdentityBackup } from "../model/panel_identity";
 import type { PanelIdentityFeature } from "./panel_identity";
 import { state } from "../state/app_instance";
@@ -777,6 +779,10 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 renderButtonSettings();
                 switchTab("screen");
                 await requestApi.postQueue;
+                if (!requestApi.postQueueError) {
+                    await clearScreensaverPinForRestore(resetAwareFetch);
+                    await els.syncScreensaverPinUi?.();
+                }
                 if (typeof restoredName === "string" && !requestApi.postQueueError) {
                     try { await controllers.identity?.saveAndRestart(restoredName); }
                     catch (error) {
