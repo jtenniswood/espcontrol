@@ -42,12 +42,11 @@ All forecast modes share one compact forecast per weather entity. The panel supp
 
 ## Forecast Details
 
-Tap any forecast card to open its details modal. Each day is left aligned, with its condition icon at the top, the day below, and the high/low temperatures together on one line in smaller grey text. Temperatures are rounded to whole degrees and follow the panel's Temperature Unit setting. The 4-inch and 4.3-inch displays show up to five days; 7-inch and 10-inch displays show up to seven. Day panels share the wide forecast card’s minimum width and horizontal gap. Only the days that fit in a single row are shown, so a four-day-wide modal shows four days. Selected days have padding around their content. Icons sit close above the day labels.
+Tap any forecast card to open a **3×2 grid** of up to six forecast days. Each day panel includes its condition icon, day, whole-degree high/low temperatures in smaller grey text, rain chance and wind speed. Wind uses the provider's units, and rainfall is shown when the provider gives an amount without a rain percentage. Missing values are omitted and zero values remain visible. Short displays abbreviate labels where needed to keep values and units readable; short landscape panels place the icon beside the day and temperatures.
 
-Today and Tomorrow cards start with their selected day highlighted. Tap a day to update the rain, wind and humidity tiles below the forecast. The tiles use larger main numbers at the top left and labels at the bottom left. The **Rain** tile shows the chance above the rainfall amount in smaller grey text; wind units use the same grey style. The selected day and forecast condition appear above the tiles. Missing details are omitted, and rainfall and wind use the units supplied by Home Assistant. The layout fits the display without scrolling or paging controls, including the **Last forecast** notice beside the detail heading for stale data. Short displays use a compact tile layout with existing fonts.
+Today and Tomorrow cards start with their selected day highlighted. Tap a day to update a compact footer showing its rainfall amount and humidity. The **Last forecast** notice shares that footer when data is stale. The layout fits supported displays in both orientations without scrolling or paging controls and has no separate Weather heading.
 
-The modal reads the card's shared forecast snapshot and allocates only the displayed day panels and up to three detail tiles.
-
+The modal allocates only available day panels, up to six, with one reusable two-line rain/wind label per day. It shares the card's bounded forecast snapshot and uses existing fonts.
 
 ## Supported Conditions
 
