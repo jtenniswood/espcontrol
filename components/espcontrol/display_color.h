@@ -93,15 +93,15 @@ constexpr uint32_t active_card_color(uint32_t rgb) {
   const uint32_t blue = rgb & 0xFF;
   const bool pale = red * 299 + green * 587 + blue * 114 >= 160000;
   const auto active_channel = [pale](uint32_t channel) {
-    return pale ? (channel * 60 + 50) / 100
-                : channel + ((255 - channel) * 50 + 50) / 100;
+    return pale ? (channel * 75 + 50) / 100
+                : channel + ((255 - channel) * 40 + 50) / 100;
   };
   return (active_channel(red) << 16) | (active_channel(green) << 8) |
          active_channel(blue);
 }
 
 // Slider labels span the base and fill without changing checked state.
-// Keep the stronger active shade only when the base foreground remains readable.
+// Keep the active shade only when the base foreground remains readable.
 constexpr uint32_t card_slider_fill_color(uint32_t rgb) {
   const uint32_t active = active_card_color(rgb);
   const uint32_t foreground = display_text_color_for_bg(rgb);

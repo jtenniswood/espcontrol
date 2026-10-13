@@ -101,8 +101,8 @@ export function activeCardColor(color: string): string {
   // Match active_card_color in the firmware, including round-to-nearest channels.
   const pale = channels[0] * 299 + channels[1] * 587 + channels[2] * 114 >= 160000;
   return channels.map(channel => {
-    const active = pale ? Math.floor((channel * 60 + 50) / 100)
-      : channel + Math.floor(((255 - channel) * 50 + 50) / 100);
+    const active = pale ? Math.floor((channel * 75 + 50) / 100)
+      : channel + Math.floor(((255 - channel) * 40 + 50) / 100);
     return active.toString(16).padStart(2, "0").toUpperCase();
   }).join("");
 }

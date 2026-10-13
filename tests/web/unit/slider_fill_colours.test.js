@@ -21,11 +21,11 @@ function contrast(a, b) {
 }
 
 test("slider fills retain readable foregrounds without changing toggle on colours", () => {
-  assert.equal(activeCardColor("6633B9"), "B399DC");
-  assert(contrast("FFFFFF", activeCardColor("6633B9")) < 2.5);
-  assert.equal(cardSliderFillColor("6633B9"), "7D6B9A");
+  assert.equal(activeCardColor("6633B9"), "A385D5");
+  assert(contrast("FFFFFF", activeCardColor("6633B9")) < 4.5);
+  assert.equal(cardSliderFillColor("6633B9"), "826AAA");
   assert(contrast("FFFFFF", cardSliderFillColor("6633B9")) > 4.5);
-  assert.equal(cardSliderFillColor("#ffffff"), "999999");
+  assert.equal(cardSliderFillColor("#ffffff"), "BFBFBF");
   assert.equal(cardSliderFillColor("invalid"), "");
 });
 
