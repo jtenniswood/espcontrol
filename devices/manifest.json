@@ -1614,7 +1614,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 3.333333,
+          "radius": 6.25,
           "padding": 2.92,
           "iconSize": 9.58,
           "labelSize": 4.583333,
@@ -1625,7 +1625,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 3.333333
+          "radius": 6.25
         },
         "sensorBadge": {
           "top": 2.08,
@@ -1727,7 +1727,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "14px",
-            "radius": "16px",
+            "radius": "30px",
             "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"40\"",
             "main_page_compact_pad_top": "\"4\"",
