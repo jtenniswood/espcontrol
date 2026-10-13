@@ -73,6 +73,7 @@ If your Home Assistant instance uses a custom port, open **Settings > System > H
 - Recently loaded images are kept for reuse when you move between pages, so returning to a camera page does not normally start from a blank tile.
 - Camera entities refresh in response to Home Assistant picture or state updates. Image entities refresh when their image-update timestamp changes, even if their URL stays the same; credential changes alone do not reload a current image.
 - If the image cannot be loaded, the card shows **Loading**, **Unavailable**, **Configure**, or **Too many** instead of leaving a blank tile.
+- The card's custom colour is used behind these messages when no image is displayed, with a contrasting icon and text.
 - Camera cards can be used on the main page or inside subpages.
 
 ## Refreshing Camera Images
