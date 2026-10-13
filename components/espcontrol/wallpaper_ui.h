@@ -55,7 +55,7 @@ inline void wallpaper_apply_card(lv_obj_t *card, lv_opa_t opacity) {
   lv_obj_set_style_bg_opa(card, opacity, static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED);
 }
 inline void wallpaper_apply_card_opacity() {
-  const lv_opa_t opacity = wallpaper_ui().pixels ? wallpaper_opacity_byte(wallpaper_ui().opacity_percent) : LV_OPA_COVER;
+  const lv_opa_t opacity = wallpaper_ui().pixels ? wallpaper_opacity_byte(wallpaper_ui().opacity_percent) : static_cast<lv_opa_t>(LV_OPA_COVER);
   auto &targets = theme_grid_targets();
   for (int i = 0; i < targets.count; ++i)
     wallpaper_apply_card(targets.buttons[i], opacity);
