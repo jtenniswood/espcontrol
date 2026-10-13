@@ -82,6 +82,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         "cursor:pointer;transition:all .2s;box-sizing:border-box;border:0;" +
         "position:relative;overflow:hidden;min-width:0;color:var(--card-text-color,var(--preview-text-primary))}" +
         ".sp-btn:hover{filter:brightness(1.15)}" +
+        "@supports(corner-shape:superellipse(2)){.sp-continuous-corners .sp-btn{border-radius:calc(var(--btn-r)*2);corner-shape:superellipse(2)}" +
+        ".sp-continuous-corners .sp-empty-cell{border-radius:calc(var(--empty-r)*2);corner-shape:superellipse(2)}}" +
         ".sp-btn.sp-selected:hover{filter:none}" +
         ".sp-drag-active .sp-btn:hover{filter:none}" +
         ".sp-btn.sp-selected{box-shadow:inset 0 0 0 2px var(--accent)}" +

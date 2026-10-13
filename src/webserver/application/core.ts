@@ -107,6 +107,9 @@ export function createCoreFeature(
         r.setProperty("--grid-bottom", scaledCqw(grid.bottom, scale));
         r.setProperty("--grid-gap", scaledCqw(grid.gap, scale));
         r.setProperty("--btn-r", scaledCqw(btn.radius, scale));
+        var previewScreen = document.querySelector(".sp-screen");
+        if (previewScreen)
+            previewScreen.classList.toggle("sp-continuous-corners", !!applicationLayout.config.continuousCorners);
         r.setProperty("--btn-pad", scaledCqw(btn.padding, scale));
         if (btn.borderWidth != null)
             r.setProperty("--btn-border", scaledCqw(btn.borderWidth, scale));

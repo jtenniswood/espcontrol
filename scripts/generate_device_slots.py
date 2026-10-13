@@ -360,6 +360,8 @@ def cfg_lines(device: dict) -> list[str]:
     else:
         lines.append(f"            cfg.cols = {device['cols']};")
     lines.append("            cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;")
+    if device.get("continuous_card_corners"):
+        lines.append("            cfg.continuous_card_corners = true;")
     if device.get("info_only"):
         lines.append("            cfg.info_only = true;")
     if device.get("subpage_chevron_x", 0) != 0:

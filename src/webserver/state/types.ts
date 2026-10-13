@@ -17,6 +17,7 @@ export interface DeviceConfigFeatures {
 }
 
 export interface DeviceConfig {
+  readonly continuousCorners?: boolean;
   readonly slots: number;
   readonly cols: number;
   readonly rows: number;
