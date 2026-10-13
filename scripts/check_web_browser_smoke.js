@@ -6691,6 +6691,11 @@ async function assertWallpaperSettings(browser) {
       await page.getByRole("tab", { name: "Settings", exact: true }).click();
     }
     const transparency = page.locator("#sp-set-card-transparency");
+    const assertCardAlpha = async expected => {
+      const color = await page.locator(".sp-btn").first().evaluate(btn => getComputedStyle(btn).backgroundColor);
+      const alpha = color.startsWith("rgba(") ? parseFloat(color.split(",").at(-1)) : 1;
+      assert(Math.abs(alpha - expected) < .004, `Expected alpha ${expected}, got ${color}`);
+    };
     await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
     assert.strictEqual(await transparency.inputValue(), "20");
     const setTransparency = async (percent, commit = true) => {
@@ -6703,7 +6708,7 @@ async function assertWallpaperSettings(browser) {
     // Preview changes while dragging; persistence happens only on release.
     await setTransparency(50, false);
     assert.strictEqual(wallpaper.opacityPosts.length, 0);
-    assert(await page.locator(".sp-btn").first().evaluate(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0.502)")));
+    await assertCardAlpha(128 / 255);
     await transparency.dispatchEvent("change");
     await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
     assert.strictEqual(wallpaper.opacity, 50);
@@ -6714,20 +6719,20 @@ async function assertWallpaperSettings(browser) {
     // Theme changes and grid rebuilds keep the wallpaper and alpha fill.
     await page.locator("#sp-set-theme-mode").getByRole("button", { name: "Light", exact: true }).click();
     assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), savedBackground);
-    assert(await page.locator(".sp-btn").first().evaluate(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0.502)")));
+    await assertCardAlpha(128 / 255);
     await setTransparency(0);
     assert.strictEqual(wallpaper.opacity, 100);
-    assert(await page.locator(".sp-btn").first().evaluate(btn => getComputedStyle(btn).backgroundColor.startsWith("rgb(")));
+    await assertCardAlpha(1);
     await setTransparency(100);
     assert.strictEqual(wallpaper.opacity, 0);
-    assert(await page.locator(".sp-btn").first().evaluate(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0)")));
+    await assertCardAlpha(0);
     await setTransparency(50);
     wallpaper.failOpacity = true;
     await setTransparency(75);
     await page.getByText("Could not save card transparency. Check the connection and try again.").waitFor();
     assert.strictEqual(await transparency.inputValue(), "50");
     assert.strictEqual(wallpaper.opacity, 50);
-    assert(await page.locator(".sp-btn").first().evaluate(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0.502)")));
+    await assertCardAlpha(128 / 255);
     wallpaper.failOpacity = false;
     wallpaper.failSave = true;
     await page.locator("#sp-set-wallpaper").setInputFiles(upload);
@@ -6746,7 +6751,7 @@ async function assertWallpaperSettings(browser) {
     await page.locator("#sp-set-wallpaper").setInputFiles(upload);
     await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
     assert.strictEqual(await transparency.inputValue(), "50");
-    assert(await page.locator(".sp-btn").first().evaluate(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0.502)")));
+    await assertCardAlpha(128 / 255);
   } finally { await context.close(); }
   // Firmware with the original fixed opacity keeps uploads working and disables the slider.
   const legacy = await browser.newContext({ viewport: testCase.viewport });
