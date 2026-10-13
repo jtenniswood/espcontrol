@@ -31,6 +31,14 @@ The theme changes the panel's neutral backgrounds, controls and text, including 
 
 Backups include the theme mode, automatic method, times and offsets. Older backups without these fields leave the panel's current theme settings unchanged. Older Schedule and Sun selections migrate to Automatic with the corresponding method.
 
+## Wallpaper
+
+Upload a JPEG, PNG or WebP image under **Wallpaper** to place it behind the cards on the physical panel and in the browser preview. Images are resized to a maximum of 480 pixels on the longest side and centred to fill the screen. Choose an image with a similar aspect ratio to your display for less cropping.
+
+Use **Card transparency** to choose how much wallpaper shows through the cards: **0%** gives solid fills and **100%** makes the fills completely clear. Labels and icons keep their normal colours and remain visible. The default is **20%** transparency (an 80% fill). Camera images, cover art and QR codes keep their own content. The wallpaper also appears on subpages; setup screens, modals and screensavers keep their existing backgrounds.
+
+Uploads and **Remove wallpaper** apply immediately. The image and transparency setting are stored on the display and survive restarts. Transparency is remembered when replacing or removing the wallpaper; it applies when a wallpaper is present. Removing it restores solid card backgrounds. Wallpapers and their transparency setting are separate from configuration backups and are cleared by resetting customisation or factory settings. Older firmware or partition layouts without image storage show the wallpaper control as unavailable.
+
 ## Active colour
 
 - **Primary** — the colour cards show when an entity is active. Choose from the same compact grid used in individual card settings. It contains 19 preset colours and a final transparent, dashed swatch with an eyedropper icon that opens your browser's native colour picker for any colour, including white. A checkmark shows the selected preset; an accent outline highlights a custom colour. The orange swatch is `FF8C00`, the panel's default active colour.

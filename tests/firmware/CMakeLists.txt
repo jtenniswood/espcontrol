@@ -18,6 +18,21 @@ add_executable(continuous_corners_test continuous_corners_test.cpp)
 target_compile_features(continuous_corners_test PRIVATE cxx_std_17)
 target_compile_options(continuous_corners_test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME continuous_corners_test COMMAND continuous_corners_test)
+add_test(NAME wallpaper_upload_lifecycle_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/wallpaper_upload_lifecycle_test.py)
+
+add_executable(wallpaper_store_test wallpaper_store_test.cpp ../../components/espcontrol/wallpaper.cpp)
+target_compile_features(wallpaper_store_test PRIVATE cxx_std_17)
+target_compile_options(wallpaper_store_test PRIVATE -Wall -Wextra -Werror)
+target_compile_definitions(wallpaper_store_test PRIVATE USE_ESP32)
+target_include_directories(wallpaper_store_test PRIVATE wallpaper_stubs ../../components/espcontrol)
+add_test(NAME wallpaper_store_test COMMAND wallpaper_store_test)
+
+add_executable(wallpaper_format_test wallpaper_format_test.cpp)
+target_compile_features(wallpaper_format_test PRIVATE cxx_std_17)
+target_compile_options(wallpaper_format_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(wallpaper_format_test PRIVATE ../../components/espcontrol)
+add_test(NAME wallpaper_format_test COMMAND wallpaper_format_test)
 
 add_executable(theme_palette_test theme_palette_test.cpp)
 target_compile_features(theme_palette_test PRIVATE cxx_std_17)
