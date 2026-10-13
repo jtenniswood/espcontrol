@@ -1,7 +1,7 @@
 import { state } from "../state/app_instance";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
 import { PREVIEW_THEME_COLORS, defaultCardBackgroundColor, previewEffectiveTheme } from "../state/preview_theme";
-import { configOptionValue, lighterCardColor } from "../model/config_primitives";
+import { configOptionValue, activeCardColor } from "../model/config_primitives";
 import { escHtml } from "./ui_primitives";
 import {
     buttonConfigDisabledForDevice as isButtonConfigDisabledForDevice,
@@ -162,7 +162,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 var slotSz: any = c.sizes[slot];
                 var cardOffColor: any = configOptionValue(b.options, "card_off_color").replace(/^#/, "").toUpperCase();
                 if (!/^[0-9A-F]{6}$/.test(cardOffColor)) cardOffColor = "";
-                var cardOnColor: any = lighterCardColor(cardOffColor);
+                var cardOnColor: any = activeCardColor(cardOffColor);
                 var typePreview: any = previewTypeDef && previewTypeDef.renderPreview
                     ? previewTypeDef.renderPreview(b, {
                         escHtml: escHtml, cardSize: slotSz || 1,

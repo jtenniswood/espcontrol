@@ -852,7 +852,7 @@ static void test_alarm_state_contrast_during_theme_refresh() {
 
 static void test_custom_default_contrast_after_active_theme_refresh() {
   for (uint32_t base : {0xFF8C00u, 0x9D9D9Du}) {
-    const uint32_t active = lighter_card_color(base);
+    const uint32_t active = active_card_color(base);
     assert(readable_text_color_for_bg(base) == 0xFFFFFF);
     assert(readable_text_color_for_bg(active) == 0x212121);
     set_active_theme_palette(DARK_THEME);

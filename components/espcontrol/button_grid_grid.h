@@ -154,7 +154,7 @@ inline CardPalette card_palette_for_config(const CardPalette &defaults,
       palette.surface_sensor_val = palette.off_val;
       palette.custom_background = true;
       palette.has_on = true;
-      palette.on_val = display_correct_color(lighter_card_color(raw), display);
+      palette.on_val = display_correct_color(active_card_color(raw), display);
       palette.progress_val = display_correct_color(card_progress_color(raw), display);
     }
   }

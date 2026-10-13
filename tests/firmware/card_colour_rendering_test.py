@@ -208,22 +208,22 @@ int main() {
   assert(display_text_color_for_bg(0xBFEAFF) == 0x212121);
   struct Colour { const char *hex; uint32_t base, active, text; };
   const Colour colours[] = {
-    {"6633B9", 0x6633B9, 0x9470CE, 0xFFFFFF},
-    {"FF0000", 0xFF0000, 0xFF4D4D, 0xFFFFFF},
-    {"F6402C", 0xF6402C, 0xF9796B, 0xFFFFFF},
-    {"FF8C00", 0xFF8C00, 0xFFAF4D, 0xFFFFFF},
-    {"1093F5", 0x1093F5, 0x58B3F8, 0xFFFFFF},
-    {"46AF4A", 0x46AF4A, 0x7EC780, 0xFFFFFF},
-    {"009687", 0x009687, 0x4DB6AB, 0xFFFFFF},
-    {"00BBD5", 0x00BBD5, 0x4DCFE2, 0xFFFFFF},
-    {"00BCD4", 0x00BCD4, 0x4DD0E1, 0xFFFFFF},
-    {"B2B2B2", 0xB2B2B2, 0xC9C9C9, 0xFFFFFF},
-    {"B3B3B3", 0xB3B3B3, 0xCACACA, 0x212121},
-    {"88C440", 0x88C440, 0xACD679, 0x212121},
-    {"CCDD1E", 0xCCDD1E, 0xDBE762, 0x212121},
-    {"FFFFFF", 0xFFFFFF, 0xFFFFFF, 0x212121},
-    {"FFEC16", 0xFFEC16, 0xFFF25C, 0x212121},
-    {"000000", 0x000000, 0x4D4D4D, 0xFFFFFF},
+    {"6633B9", 0x6633B9, 0xB399DC, 0xFFFFFF},
+    {"FF0000", 0xFF0000, 0xFF8080, 0xFFFFFF},
+    {"F6402C", 0xF6402C, 0xFBA096, 0xFFFFFF},
+    {"FF8C00", 0xFF8C00, 0xFFC680, 0xFFFFFF},
+    {"1093F5", 0x1093F5, 0x88C9FA, 0xFFFFFF},
+    {"46AF4A", 0x46AF4A, 0xA3D7A5, 0xFFFFFF},
+    {"009687", 0x009687, 0x80CBC3, 0xFFFFFF},
+    {"00BBD5", 0x00BBD5, 0x80DDEA, 0xFFFFFF},
+    {"00BCD4", 0x00BCD4, 0x80DEEA, 0xFFFFFF},
+    {"B2B2B2", 0xB2B2B2, 0x6B6B6B, 0xFFFFFF},
+    {"B3B3B3", 0xB3B3B3, 0x6B6B6B, 0x212121},
+    {"88C440", 0x88C440, 0x527626, 0x212121},
+    {"CCDD1E", 0xCCDD1E, 0x7A8512, 0x212121},
+    {"FFFFFF", 0xFFFFFF, 0x999999, 0x212121},
+    {"FFEC16", 0xFFEC16, 0x998E0D, 0x212121},
+    {"000000", 0x000000, 0x808080, 0xFFFFFF},
   };
   for (const auto &colour : colours) {
     lv_obj_t modal_button, modal_label;
@@ -252,6 +252,7 @@ int main() {
           sync_card_checked_text_color(&button);
           espcontrol::cards::sensor_driver_apply_background(slot, palette);
           assert(palette.custom_background);
+          assert(palette.on_val != palette.off_val);
           assert(palette.progress_val == card_progress_color(colour.base));
           assert(palette.progress_val != colour.base);
           assert(palette.surface_sensor_val == colour.base);
@@ -354,7 +355,7 @@ int main() {
   const auto corrected = card_palette_for_config(defaults, config, display);
   assert(corrected.sensor_val == 0x7F6900);
   assert(corrected.off_val == corrected.sensor_val);
-  assert(corrected.on_val == 0x7F834D);
+  assert(corrected.on_val == 0x7F9480);
   assert(defaults.sensor_val == 0x212121);
   const auto explicit_colour = card_palette_for_config(CardPalette{}, config, DisplayProfile{});
   assert(explicit_colour.has_on && explicit_colour.has_off && explicit_colour.has_sensor_color);
