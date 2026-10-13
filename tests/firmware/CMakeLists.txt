@@ -14,6 +14,11 @@ target_compile_features(foundation_test PRIVATE cxx_std_17)
 target_compile_options(foundation_test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME foundation_test COMMAND foundation_test)
 
+add_executable(continuous_corners_test continuous_corners_test.cpp)
+target_compile_features(continuous_corners_test PRIVATE cxx_std_17)
+target_compile_options(continuous_corners_test PRIVATE -Wall -Wextra -Werror)
+add_test(NAME continuous_corners_test COMMAND continuous_corners_test)
+
 add_executable(theme_palette_test theme_palette_test.cpp)
 target_compile_features(theme_palette_test PRIVATE cxx_std_17)
 target_compile_options(theme_palette_test PRIVATE -Wall -Wextra -Werror)
