@@ -6,7 +6,7 @@ description:
 
 # Weather
 
-A weather card shows current Home Assistant conditions or a daily forecast. Forecast cards use a left-aligned layout with the condition icon at the top, and the day and high temperature at the bottom. Temperatures are rounded to whole degrees, such as **18°**, and use the panel's **Temperature Unit** setting. Forecast cards have no separate label or low-temperature row.
+A weather card shows current Home Assistant conditions or a daily forecast. Forecast cards use a left-aligned layout with the condition icon at the top, and the day and high/low temperatures at the bottom. Temperatures share one line and are rounded to whole degrees, such as **18°/2°**, and use the panel's **Temperature Unit** setting. Forecast cards have no separate label or low-temperature row.
 
 ## Setting Up a Weather Card
 
@@ -14,8 +14,8 @@ A weather card shows current Home Assistant conditions or a daily forecast. Fore
 2. Enter a **Weather Entity**, for example `weather.forecast_home`.
 3. Choose **Type**:
    - **Current Conditions** shows the live weather condition icon and label.
-   - **Today's Forecast** shows today's condition and high temperature.
-   - **Tomorrow's Forecast** shows tomorrow's condition and high temperature.
+   - **Today's Forecast** shows today's condition and high/low temperatures.
+   - **Tomorrow's Forecast** shows tomorrow's condition and high/low temperatures.
    - **Daily Forecast** shows up to seven upcoming days, adding more days as the card gets wider.
 
 All forecast modes are available on supported panels, including the 4-inch Guition 4848S040 (ESP32-S3). The editor shows sample data; the panel loads the actual forecast from Home Assistant.

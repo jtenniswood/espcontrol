@@ -82,12 +82,12 @@ export function registerWeatherCardTypes(
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             if (weatherCardIsForecastMode(b)) {
-                let samples: [string, string, string][] = [["Today", "weather-rainy", "18"], ["Tues", "weather-sunny", "20"], ["Weds", "weather-partly-cloudy", "18"], ["Thurs", "weather-rainy", "20"], ["Fri", "weather-sunny", "14"], ["Sat", "weather-cloudy", "18"], ["Sun", "weather-sunny", "19"]];
+                let samples: [string, string, string][] = [["Today", "weather-rainy", "18°/2°"], ["Tues", "weather-sunny", "20°/9°"], ["Weds", "weather-partly-cloudy", "18°/14°"], ["Thurs", "weather-rainy", "20°/13°"], ["Fri", "weather-sunny", "14°/6°"], ["Sat", "weather-cloudy", "18°/10°"], ["Sun", "weather-sunny", "19°/11°"]];
                 if (b.precision === "today") samples = samples.slice(0, 1);
                 else if (b.precision === "tomorrow") samples = samples.slice(1, 2).map(([, condition, temperature]) => ["Tomorrow", condition, temperature]);
                 return {
                     buttonClass: "sp-weather-daily-card",
-                    iconHtml: '<span class="sp-weather-days">' + samples.map((day) => '<span class="sp-weather-day"><span class="mdi mdi-' + day[1] + '"></span><span>' + day[0] + '</span><span class="sp-weather-temperature-high">' + day[2] + '\u00B0</span></span>').join("") + '</span>',
+                    iconHtml: '<span class="sp-weather-days">' + samples.map((day) => '<span class="sp-weather-day"><span class="mdi mdi-' + day[1] + '"></span><span>' + day[0] + '</span><span class="sp-weather-temperature-high">' + day[2] + '</span></span>').join("") + '</span>',
                     labelHtml: "",
                 };
             }

@@ -25,6 +25,9 @@ inline std::string weather_daily_temperature(float value, const char *unit) {
     convert_temperature_value_for_display_float(value, unit))));
   return text;
 }
+inline std::string weather_daily_temperature_range(const espcontrol::weather::Day &day, const char *unit) {
+  return weather_daily_temperature(day.high, unit) + "\u00B0/" + weather_daily_temperature(day.low, unit) + "\u00B0";
+}
 inline std::string weather_daily_weekday_label(const espcontrol::weather::Day &day) {
   static const char *const weekdays[] = {"Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"};
   const int index = espcontrol::weather::weekday(day.date);
@@ -97,7 +100,15 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   const int temperature_height = lv_font_get_line_height(card->temperature_font);
   const int day_gap = std::max(8, font_height);
   const int icon_height = lv_font_get_line_height(card->icon_font);
-  const int minimum_day_width = weather_daily_minimum_width(card->font, card->icon_font, 24);
+  int minimum_day_width = weather_daily_minimum_width(card->font, card->icon_font, 24);
+  // Measure the actual high/low pairs in the smaller font so both numbers fit.
+  const size_t available_days = card->view == WeatherForecastView::DAILY ? forecast.count : 1;
+  for (size_t i = 0; i < available_days; ++i) {
+    const auto temperature = weather_daily_temperature_range(forecast.days[first + i], forecast.temperature_unit);
+    lv_point_t measured;
+    lv_text_get_size(&measured, temperature.c_str(), card->temperature_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    minimum_day_width = std::max(minimum_day_width, static_cast<int>(measured.x) + 24);
+  }
   const size_t count = espcontrol::weather::visible_days(width, minimum_day_width,
     card->view == WeatherForecastView::DAILY ? forecast.count : 1, day_gap);
   const int caption_height = card->source->stale ? font_height + 2 : 0;
@@ -144,7 +155,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
       ? espcontrol_i18n(std::string("Tomorrow")) : weather_daily_date_label(day, forecast);
     lv_label_set_display_text(col.day, date.c_str());
     lv_label_set_display_text(col.icon, weather_icon_for_state(day.condition));
-    std::string high = weather_daily_temperature(day.high, forecast.temperature_unit) + "\u00B0";
+    const auto high = weather_daily_temperature_range(day, forecast.temperature_unit);
     lv_label_set_display_text(col.high, high.c_str());
   }
 }

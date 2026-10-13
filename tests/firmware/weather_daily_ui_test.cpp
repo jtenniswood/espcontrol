@@ -206,7 +206,7 @@ int main(){
     weather_daily_render_card(card);assert(card->columns.size()==1);
     assert(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN);
     assert(!(card->root->flags & LV_OBJ_FLAG_HIDDEN));
-    assert(card->columns.front().day->text=="Today" && card->columns.front().high->text=="19°");
+    assert(card->columns.front().day->text=="Today" && card->columns.front().high->text=="19°/10°");
     assert(espcontrol::weather::parse("WF1|2026-10-11|2026-10-12|°C|mm|km/h\n2026-10-11|sunny|18|10|0|0|10|75\n2026-10-12|rainy|17|11|80|2|20|80\n2026-10-13|cloudy|16|9||||\n2026-10-14|sunny|18|10||||\n",f));
     weather_daily_render_card(card);assert(card->columns.size()==4);
     assert(card->columns.front().day->width==103);
@@ -282,8 +282,8 @@ int main(){
   std::string week="WF1|2026-10-11|2026-10-12|°C|mm|km/h\n";
   for(int day=11;day<18;++day)week+="2026-10-"+std::to_string(day)+"|sunny|18|10||||\n";
   assert(espcontrol::weather::parse(week,wide_card->source->forecast));
-  const int boundaries[][2]={{100,1},{159,1},{160,2},{247,2},{248,3},{335,3},{336,4},
-    {423,4},{424,5},{511,5},{512,6},{599,6},{600,7},{901,7}};
+  const int boundaries[][2]={{100,1},{207,1},{208,2},{319,2},{320,3},{431,3},{432,4},
+    {543,4},{544,5},{655,5},{656,6},{767,6},{768,7},{901,7}};
   for(const auto &test:boundaries){
     lv_obj_set_size(wide_owner,test[0],160);
     const auto &columns=wide_card->columns;
@@ -294,7 +294,7 @@ int main(){
     for(size_t i=0;i<columns.size();++i){
       smallest=std::min(smallest,columns[i].day->width);
       largest=std::max(largest,columns[i].day->width);
-      assert(columns[i].day->width>=72);
+      assert(columns[i].day->width>=96);
       if(i)assert(columns[i].day->x-(columns[i-1].day->x+columns[i-1].day->width)==16);
     }
     assert(largest-smallest<=1);
@@ -462,7 +462,7 @@ int main(){
     const bool tomorrow=std::string(mode)=="tomorrow";
     assert(card->source==daily->source && weather_daily_sources().size()==1 && card->source->users==2);
     assert(card->columns.size()==1 && card->columns[0].day->text==(tomorrow?"Tomorrow":"Today"));
-    assert(card->columns[0].high->text==(tomorrow?"17°":"19°"));
+    assert(card->columns[0].high->text==(tomorrow?"17°/9°":"19°/10°"));
     assert(card->columns[0].icon->x==0 && card->columns[0].icon->y==0);
     assert(card->columns[0].day->text_align==LV_TEXT_ALIGN_LEFT && card->columns[0].high->y==148);
     lv_obj_set_size(owner,900,240);assert(card->columns.size()==1 && card->columns[0].high->y==228);

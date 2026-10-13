@@ -32,7 +32,14 @@ export function createWeatherDailyPreviewLayout(
             width + Math.round(fontContext.measureText(glyph).width), 0);
         const icon = firstDay.querySelector<HTMLElement>(".mdi");
         const iconSize = icon ? Math.round(parseFloat(view.getComputedStyle(icon).fontSize) / scale) : 0;
-        const measured = Math.max(iconSize, ...["-188°", "Today", "Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"].map(measure));
+        let measured = Math.max(iconSize, ...["-188°", "Today", "Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"].map(measure));
+        const temperature = firstDay.querySelector<HTMLElement>(".sp-weather-temperature-high");
+        if (temperature) {
+            const temperatureStyle = view.getComputedStyle(temperature);
+            const temperatureSize = Number((parseFloat(temperatureStyle.fontSize) / scale).toFixed(3));
+            fontContext.font = temperatureStyle.font.replace(temperatureStyle.fontSize, temperatureSize + "px");
+            measured = Math.max(measured, ...days.map(day => measure(day.querySelector(".sp-weather-temperature-high")?.textContent || "")));
+        }
         const fontHeight = Math.round(nativeFontSize * 1.2);
         const gap = Math.max(8, fontHeight);
         const width = (card.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)) / scale;
