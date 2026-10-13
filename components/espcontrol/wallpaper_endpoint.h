@@ -43,23 +43,27 @@ class WallpaperHandler final : public esphome::web_server_idf::AsyncWebHandler {
     char path[esphome::web_server_idf::AsyncWebServerRequest::URL_BUF_SIZE];
     if (request->url_to(path) == "/api/v1/wallpaper-opacity") {
       if (request->method() == HTTP_PUT) {
-        int opacity = -1;
+        int opacity = -1, active_opacity = -1;
         const auto type = request->get_header("Content-Type");
         const bool valid = type.has_value() && *type == "application/json" && body_ && received_ == expected_ &&
             esphome::json::parse_json(body_, received_, [&](JsonObject root) {
               if (!root["opacity"].is<int>()) return false;
               opacity = root["opacity"].as<int>();
-              return opacity >= 0 && opacity <= 100;
+              // Original browser editors send one value for both states.
+              if (root["active_opacity"].isUnbound()) active_opacity = opacity;
+              else if (root["active_opacity"].is<int>()) active_opacity = root["active_opacity"].as<int>();
+              return wallpaper_opacity_valid(opacity, active_opacity);
             });
         reset();
         if (!valid) { httpd_resp_send_err(raw, HTTPD_400_BAD_REQUEST, "Invalid card opacity"); return; }
-        if (!wallpaper_store().save_opacity_percent(opacity)) {
+        if (!wallpaper_store().save_opacities(opacity, active_opacity)) {
           httpd_resp_send_err(raw, HTTPD_500_INTERNAL_SERVER_ERROR, "Card opacity could not be saved"); return;
         }
       }
-      char response[32];
-      const int size = std::snprintf(response, sizeof(response), "{\"opacity\":%u}",
-                                    static_cast<unsigned>(wallpaper_store().opacity_percent()));
+      const auto opacities = wallpaper_store().opacities();
+      char response[64];
+      const int size = std::snprintf(response, sizeof(response), "{\"opacity\":%u,\"active_opacity\":%u}",
+                                    static_cast<unsigned>(opacities.off), static_cast<unsigned>(opacities.active));
       httpd_resp_set_type(raw, "application/json");
       httpd_resp_send(raw, response, size);
       return;

@@ -88,6 +88,11 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-btn.sp-resizing>.sp-resize-handle{color:var(--accent)}" +
         ".sp-btn.sp-resizing{transition:none;z-index:6;filter:none}" +
         "@media(hover:none){.sp-resize-handle{opacity:1}}" +
+        "@supports(corner-shape:superellipse(2)){.sp-continuous-corners .sp-btn{border-radius:calc(var(--btn-r)*2);corner-shape:superellipse(2)}" +
+        ".sp-continuous-corners .sp-empty-cell{border-radius:calc(var(--empty-r)*2);corner-shape:superellipse(2)}}" +
+        ".sp-btn:not(.sp-image-card):not(.sp-wifi-qr-card):not(.sp-on-pattern):active{" +
+        "background-color:var(--card-active-color,var(--screen-primary))!important;" +
+        "--card-text-color:var(--card-active-text-color,var(--preview-text-primary))}" +
         ".sp-btn.sp-selected:hover{filter:none}" +
         ".sp-drag-active .sp-btn:hover{filter:none}" +
         ".sp-card-outline{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;display:none;" +

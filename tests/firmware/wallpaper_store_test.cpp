@@ -14,6 +14,7 @@ static std::vector<uint8_t> flash(PANEL_DATA_PARTITION_BYTES, 0xff);
 static esp_partition_t partition{PANEL_DATA_PARTITION_BYTES, 0x40, false};
 static bool present = true, allocation_fails = false;
 static int writes_until_failure = -1;
+static int saved_pair = -1, pending_pair = -1;
 static int saved_opacity = -1, pending_opacity = -1, opacity_writes = 0;
 static bool nvs_fails_open = false, nvs_fails_write = false, nvs_fails_commit = false;
 esp_err_t nvs_open(const char *name, int, nvs_handle_t *handle) {
@@ -29,11 +30,23 @@ esp_err_t nvs_set_u8(nvs_handle_t, const char *, uint8_t value) {
   if (nvs_fails_write) return -1;
   pending_opacity = value; ++opacity_writes; return ESP_OK;
 }
+esp_err_t nvs_get_u16(nvs_handle_t, const char *key, uint16_t *value) {
+  assert(std::strcmp(key, "opacities") == 0);
+  if (saved_pair < 0) return -1;
+  *value = saved_pair; return ESP_OK;
+}
+esp_err_t nvs_set_u16(nvs_handle_t, const char *key, uint16_t value) {
+  assert(std::strcmp(key, "opacities") == 0);
+  if (nvs_fails_write) return -1;
+  pending_pair = value; ++opacity_writes; return ESP_OK;
+}
 esp_err_t nvs_commit(nvs_handle_t) {
   if (nvs_fails_commit) return -1;
-  saved_opacity = pending_opacity; return ESP_OK;
+  if (pending_opacity >= 0) saved_opacity = pending_opacity;
+  if (pending_pair >= 0) saved_pair = pending_pair;
+  return ESP_OK;
 }
-void nvs_close(nvs_handle_t) { pending_opacity = -1; }
+void nvs_close(nvs_handle_t) { pending_opacity = pending_pair = -1; }
 const esp_partition_t *esp_partition_find_first(int, int, const char *name) {
   assert(std::strcmp(name, "card_images") == 0);
   return present ? &partition : nullptr;
@@ -74,7 +87,17 @@ void expect_image(WallpaperStore &store, const std::vector<uint8_t> &expected) {
 }
 int main() {
   present = false; WallpaperStore unsupported; assert(!unsupported.available());
-  present = true; WallpaperStore store; assert(store.available());
+  present = true;
+  saved_opacity = 35;
+  WallpaperStore migration;
+  assert(migration.opacities().off == 35 && migration.opacities().active == 35);
+  assert(migration.save_opacities(40, 90));
+  WallpaperStore split_reboot;
+  assert(split_reboot.opacities().off == 40 && split_reboot.opacities().active == 90);
+  assert(split_reboot.save_opacity_percent(60));  // Original clients still set both.
+  assert(split_reboot.opacities().off == 60 && split_reboot.opacities().active == 60);
+  saved_opacity = saved_pair = -1;
+  WallpaperStore store; assert(store.available());
   const auto first = image(1), second = image(2);
   assert(store.save(first.data(), first.size()));
   expect_image(store, first);
@@ -89,14 +112,26 @@ int main() {
   nvs_fails_open = true; assert(!store.save_opacity_percent(60)); nvs_fails_open = false;
   nvs_fails_write = true; assert(!store.save_opacity_percent(60)); nvs_fails_write = false;
   nvs_fails_commit = true; assert(!store.save_opacity_percent(60)); nvs_fails_commit = false;
-  assert(store.opacity_percent() == 50 && saved_opacity == 50);
+  assert(store.opacity_percent() == 50 && saved_pair == (50 | (50 << 8)));
   const int writes = opacity_writes;
   assert(store.save_opacity_percent(50) && opacity_writes == writes);
   assert(store.save_opacity_percent(0) && store.opacity_percent() == 0);
   assert(store.save_opacity_percent(100) && store.opacity_percent() == 100);
-  saved_opacity = 200;
+  saved_opacity = 200; saved_pair = (101 << 8);
   WallpaperStore invalid_opacity; assert(invalid_opacity.opacity_percent() == 80);
-  saved_opacity = 50;
+  saved_opacity = 50; saved_pair = -1;
+  const auto unchanged_image = flash;
+  assert(!store.save_opacities(101, 50) && !store.save_opacities(50, -1));
+  assert(store.save_opacities(25, 85));
+  assert(store.opacities().off == 25 && store.opacities().active == 85);
+  WallpaperStore independent; assert(independent.opacities().off == 25 && independent.opacities().active == 85);
+  nvs_fails_commit = true; assert(!store.save_opacities(75, 10)); nvs_fails_commit = false;
+  assert(store.opacities().off == 25 && store.opacities().active == 85);
+  WallpaperStore after_failure; assert(after_failure.opacities().off == 25 && after_failure.opacities().active == 85);
+  assert(flash == unchanged_image && store.revision() == wallpaper_revision);
+  assert(store.save_opacities(0, 100));
+  assert(store.opacities().off == 0 && store.opacities().active == 100);
+  assert(store.save_opacity_percent(50));
   // Simulate a failed write at each durability boundary; old slot survives reboot.
   for (int boundary = 0; boundary < 3; ++boundary) {
     writes_until_failure = boundary;
@@ -134,8 +169,8 @@ int main() {
   WallpaperStore jpeg_reboot; expect_image(jpeg_reboot, compressed);
   assert(jpeg_reboot.opacity_percent() == 50);
   // Resetting preferences clears the saved setting and restores the default.
-  saved_opacity = -1;
-  WallpaperStore reset; assert(reset.opacity_percent() == 80);
+  saved_opacity = saved_pair = -1;
+  WallpaperStore reset; assert(reset.opacities().off == 80 && reset.opacities().active == 80);
   assert(std::all_of(flash.begin(), flash.begin() + WALLPAPER_STORAGE_OFFSET, [](uint8_t b) { return b == 0xff; }));
   assert(std::all_of(flash.begin() + WALLPAPER_STORAGE_OFFSET + WALLPAPER_STORAGE_SLOT_BYTES * 2, flash.end(), [](uint8_t b) { return b == 0xff; }));
 }

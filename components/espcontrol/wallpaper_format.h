@@ -7,6 +7,13 @@
 
 namespace espcontrol {
 constexpr uint8_t WALLPAPER_DEFAULT_OPACITY_PERCENT = 80;
+struct WallpaperOpacity {
+  uint8_t off = WALLPAPER_DEFAULT_OPACITY_PERCENT;
+  uint8_t active = WALLPAPER_DEFAULT_OPACITY_PERCENT;
+};
+inline bool wallpaper_opacity_valid(int off, int active) {
+  return off >= 0 && off <= 100 && active >= 0 && active <= 100;
+}
 inline uint8_t wallpaper_opacity_byte(unsigned percent) {
   return static_cast<uint8_t>((percent * 255 + 50) / 100);
 }

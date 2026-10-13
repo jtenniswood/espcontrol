@@ -97,6 +97,12 @@ export function parseWallpaperOpacity(value: unknown): number {
   return value;
 }
 
+export function parseWallpaperOpacities(value: unknown, separate: boolean): { off: number; active: number } {
+  const settings = value as Record<string, unknown> | null;
+  const off = parseWallpaperOpacity(settings?.opacity);
+  return { off, active: separate ? parseWallpaperOpacity(settings?.active_opacity) : off };
+}
+
 function wallpaperCanvas(document: Document, buffer: ArrayBuffer): HTMLCanvasElement {
   const { width, height, rgba } = decodeWallpaper(buffer);
   const canvas = document.createElement("canvas");
@@ -149,7 +155,7 @@ async function prepareWallpaper(document: Document, file: File, limits: Wallpape
 }
 
 export function buildWallpaperSettings(
-  document: Document, request: typeof fetch, onChange: (url: string, opacity: number) => void,
+  document: Document, request: typeof fetch, onChange: (url: string, opacity: number, activeOpacity: number) => void,
   fields: Pick<ControlsFieldsFeature, "createRangeSlider">,
 ): HTMLElement {
   const body = document.createElement("div");
@@ -170,7 +176,13 @@ export function buildWallpaperSettings(
   status.className = "sp-field-hint";
   status.setAttribute("role", "status");
   status.textContent = "Loading wallpaper…";
-  const control = fields.createRangeSlider("Card transparency", 20, () => { void saveOpacity(); });
+  const control = fields.createRangeSlider("Off card transparency", 20, () => { void saveOpacity(); });
+  const activeControl = fields.createRangeSlider("Active card transparency", 20, () => { void saveOpacity(); });
+  const activeRange = activeControl.range as HTMLInputElement;
+  activeRange.id = "sp-set-active-card-transparency";
+  activeRange.min = "0"; activeRange.max = "100"; activeRange.step = "1";
+  activeControl.wrap.querySelector("label").htmlFor = activeRange.id;
+  activeControl.wrap.hidden = true;
   const range = control.range as HTMLInputElement;
   range.id = "sp-set-card-transparency";
   range.min = "0"; range.max = "100"; range.step = "1";
@@ -179,25 +191,34 @@ export function buildWallpaperSettings(
   hint.className = "sp-field-hint";
   hint.textContent = "0% is solid; 100% is clear. Text and icons stay visible.";
   control.wrap.appendChild(hint);
-  body.append(label, upload, remove, control.wrap, status);
+  body.append(label, upload, remove, control.wrap, activeControl.wrap, status);
   let hasWallpaper = false, supported = false, busy = false, opacitySupported = false;
-  let opacity = 80, savedOpacity = 80, previewUrl = "";
+  let opacity = 80, activeOpacity = 80, savedOpacity = 80, savedActiveOpacity = 80, previewUrl = "";
+  let separateOpacity = false;
   let limits = LEGACY_LIMITS;
   function sync() {
     upload.disabled = !supported || busy;
     remove.disabled = !supported || busy || !hasWallpaper;
     range.disabled = !opacitySupported || busy || !hasWallpaper;
+    activeRange.disabled = !separateOpacity || !opacitySupported || busy || !hasWallpaper;
+    activeRange.value = String(100 - activeOpacity);
+    activeControl.val.textContent = activeRange.value + "%";
     range.value = String(100 - opacity);
     control.val.textContent = range.value + "%";
   }
   range.addEventListener("input", () => {
     opacity = 100 - Number(range.value);
-    onChange(previewUrl, opacity);
+    if (!separateOpacity) activeOpacity = opacity;
+    onChange(previewUrl, opacity, activeOpacity);
+  });
+  activeRange.addEventListener("input", () => {
+    activeOpacity = 100 - Number(activeRange.value);
+    onChange(previewUrl, opacity, activeOpacity);
   });
   function apply(buffer: ArrayBuffer | null) {
     previewUrl = buffer ? wallpaperPreview(document, buffer) : "";
     hasWallpaper = !!buffer;
-    onChange(previewUrl, opacity);
+    onChange(previewUrl, opacity, activeOpacity);
     status.textContent = buffer ? `Wallpaper saved (${new DataView(buffer).getUint32(4, true)} × ${new DataView(buffer).getUint32(8, true)}). Changes apply immediately.`
       : "JPEG, PNG or WebP. Saved on this display; images are resized automatically. Changes apply immediately.";
   }
@@ -218,10 +239,15 @@ export function buildWallpaperSettings(
         return;
       }
       limits = wallpaperLimits(capabilities.wallpaper);
+      separateOpacity = capabilities.wallpaper.state_opacity === true;
+      activeControl.wrap.hidden = !separateOpacity;
+      if (!separateOpacity) control.wrap.querySelector("label").textContent = "Card transparency";
       if (capabilities.wallpaper.opacity === true) {
         const settings = await request("/api/v1/wallpaper-opacity", { credentials: "include", cache: "no-store" });
         if (!settings.ok) throw new Error("Could not load card transparency. Reload the page to try again.");
-        opacity = savedOpacity = parseWallpaperOpacity((await settings.json()).opacity);
+        const values = parseWallpaperOpacities(await settings.json(), separateOpacity);
+        opacity = savedOpacity = values.off;
+        activeOpacity = savedActiveOpacity = values.active;
         opacitySupported = true;
       } else {
         hint.textContent = "Install updated firmware to adjust card transparency.";
@@ -257,15 +283,18 @@ export function buildWallpaperSettings(
     try {
       const response = await request("/api/v1/wallpaper-opacity", {
         method: "PUT", credentials: "include", cache: "no-store",
-        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ opacity }),
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify(separateOpacity ? { opacity, active_opacity: activeOpacity } : { opacity }),
       });
       if (!response.ok) throw new Error("Could not save card transparency. Check the connection and try again.");
-      opacity = savedOpacity = parseWallpaperOpacity((await response.json()).opacity);
-      onChange(previewUrl, opacity);
+      const values = parseWallpaperOpacities(await response.json(), separateOpacity);
+      opacity = savedOpacity = values.off;
+      activeOpacity = savedActiveOpacity = values.active;
+      onChange(previewUrl, opacity, activeOpacity);
       status.textContent = "Card transparency saved. Changes apply immediately.";
     } catch (error) {
       opacity = savedOpacity;
-      onChange(previewUrl, opacity);
+      activeOpacity = savedActiveOpacity;
+      onChange(previewUrl, opacity, activeOpacity);
       status.textContent = error instanceof Error ? error.message : "Could not save card transparency.";
     } finally { busy = false; sync(); }
   }

@@ -36,7 +36,10 @@ bool WallpaperStore::begin_locked() {
   if (nvs_open("espcontrol_wall", NVS_READWRITE, &settings) == ESP_OK) {
     uint8_t opacity = WALLPAPER_DEFAULT_OPACITY_PERCENT;
     if (nvs_get_u8(settings, "opacity", &opacity) == ESP_OK && opacity <= 100)
-      opacity_percent_ = opacity;
+      opacities_ = {opacity, opacity};
+    uint16_t pair;
+    if (nvs_get_u16(settings, "opacities", &pair) == ESP_OK && wallpaper_opacity_valid(pair & 0xff, pair >> 8))
+      opacities_ = {static_cast<uint8_t>(pair & 0xff), static_cast<uint8_t>(pair >> 8)};
     nvs_close(settings);
   }
   for (int slot = 0; slot < 2; ++slot) {
@@ -62,24 +65,27 @@ bool WallpaperStore::begin_locked() {
 }
 bool WallpaperStore::available() { std::lock_guard<std::mutex> lock(mutex_); return begin_locked(); }
 uint32_t WallpaperStore::revision() { std::lock_guard<std::mutex> lock(mutex_); begin_locked(); return revision_; }
-uint8_t WallpaperStore::opacity_percent() {
+WallpaperOpacity WallpaperStore::opacities() {
   std::lock_guard<std::mutex> lock(mutex_);
   begin_locked();
-  return opacity_percent_;
+  return opacities_;
 }
-bool WallpaperStore::save_opacity_percent(int percent) {
-  if (percent < 0 || percent > 100) return false;
+uint8_t WallpaperStore::opacity_percent() { return opacities().off; }
+bool WallpaperStore::save_opacity_percent(int percent) { return save_opacities(percent, percent); }
+bool WallpaperStore::save_opacities(int off, int active) {
+  if (!wallpaper_opacity_valid(off, active)) return false;
   std::lock_guard<std::mutex> lock(mutex_);
 #ifdef USE_ESP32
   if (!begin_locked()) return false;
-  if (percent == opacity_percent_) return true;
+  if (off == opacities_.off && active == opacities_.active) return true;
   nvs_handle_t settings;
   if (nvs_open("espcontrol_wall", NVS_READWRITE, &settings) != ESP_OK) return false;
-  auto result = nvs_set_u8(settings, "opacity", static_cast<uint8_t>(percent));
+  // One NVS value keeps the pair atomic even if saving is interrupted.
+  auto result = nvs_set_u16(settings, "opacities", static_cast<uint16_t>(off | (active << 8)));
   if (result == ESP_OK) result = nvs_commit(settings);
   nvs_close(settings);
   if (result != ESP_OK) return false;
-  opacity_percent_ = static_cast<uint8_t>(percent);
+  opacities_ = {static_cast<uint8_t>(off), static_cast<uint8_t>(active)};
   return true;
 #else
   return false;

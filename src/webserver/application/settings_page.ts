@@ -168,9 +168,10 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             event.stopPropagation();
             resetAppearanceColors(true);
         });
-        const wallpaperSettings = buildWallpaperSettings(document, resetAwareFetch, (url, opacity) => {
+        const wallpaperSettings = buildWallpaperSettings(document, resetAwareFetch, (url, opacity, activeOpacity) => {
             runtime.els.wallpaperUrl = url;
             runtime.els.wallpaperOpacityPercent = opacity;
+            runtime.els.wallpaperActiveOpacityPercent = activeOpacity;
             renderPreview();
         }, fields);
         var activeColourCard: any = makeCollapsibleCard("Active Colour", activeColourBody, true, null, appearanceResetButton);

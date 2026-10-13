@@ -1,4 +1,4 @@
-import { wallpaperDimensions, encodeWallpaper, decodeWallpaper, wallpaperCardColor, parseWallpaperOpacity, wallpaperLimits, encodeJpegWallpaper } from "../../src/webserver/application/wallpaper";
+import { wallpaperDimensions, encodeWallpaper, decodeWallpaper, wallpaperCardColor, parseWallpaperOpacity, parseWallpaperOpacities, wallpaperLimits, encodeJpegWallpaper } from "../../src/webserver/application/wallpaper";
 
 function equal(actual: unknown, expected: unknown): void {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
@@ -48,6 +48,11 @@ export function runWallpaperTests(): void {
   equal(wallpaperCardColor("313131", true, 50), "#31313180");
   equal(wallpaperCardColor("313131", true, 100), "#313131FF");
   equal(wallpaperCardColor("313131", false, 0), "#313131");
+  equal(parseWallpaperOpacities({ opacity: 40, active_opacity: 90 }, true), { off: 40, active: 90 });
+  equal(parseWallpaperOpacities({ opacity: 65 }, false), { off: 65, active: 65 });
+  equal(parseWallpaperOpacities({ opacity: 0, active_opacity: 100 }, true), { off: 0, active: 100 });
+  for (const value of [null, { opacity: 40 }, { opacity: 40, active_opacity: 101 }, { opacity: 40, active_opacity: "90" }])
+    rejects(() => parseWallpaperOpacities(value, true));
   for (const opacity of [0, 50, 80, 100]) equal(parseWallpaperOpacity(opacity), opacity);
   for (const opacity of [-1, 101, 20.5, "80", false, null]) rejects(() => parseWallpaperOpacity(opacity));
 }

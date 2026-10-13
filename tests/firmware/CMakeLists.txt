@@ -28,6 +28,10 @@ add_test(NAME network_status_corners_test COMMAND
 add_test(NAME wallpaper_upload_lifecycle_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/wallpaper_upload_lifecycle_test.py)
 
+add_test(NAME wallpaper_card_opacity_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wallpaper_card_opacity_test.py)
+
 add_executable(wallpaper_store_test wallpaper_store_test.cpp ../../components/espcontrol/wallpaper.cpp)
 target_compile_features(wallpaper_store_test PRIVATE cxx_std_17)
 target_compile_options(wallpaper_store_test PRIVATE -Wall -Wextra -Werror)

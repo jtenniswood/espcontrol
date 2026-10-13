@@ -9,7 +9,7 @@ struct WallpaperUi {
   uint8_t *pixels = nullptr;
   uint32_t revision = 0;
   bool loaded = false;
-  uint8_t opacity_percent = WALLPAPER_DEFAULT_OPACITY_PERCENT;
+  WallpaperOpacity opacities;
   lv_image_dsc_t image{};
   uint8_t *retired_pixels = nullptr;
   uint32_t retired_at = 0;
@@ -49,21 +49,23 @@ inline void wallpaper_bind_screen(lv_obj_t *screen) {
       (lv_obj_get_style_pad_bottom(screen, LV_PART_MAIN) - lv_obj_get_style_pad_top(screen, LV_PART_MAIN)) / 2);
   lv_obj_move_background(widget);
 }
-inline void wallpaper_apply_card(lv_obj_t *card, lv_opa_t opacity) {
+inline void wallpaper_apply_card(lv_obj_t *card, lv_opa_t off, lv_opa_t active) {
   if (!card) return;
-  lv_obj_set_style_bg_opa(card, opacity, LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(card, opacity, static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_CHECKED);
-  lv_obj_set_style_bg_opa(card, opacity, static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED);
+  lv_obj_set_style_bg_opa(card, off, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(card, active, static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_CHECKED);
+  lv_obj_set_style_bg_opa(card, active, static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED);
 }
 inline void wallpaper_apply_card_opacity() {
-  const lv_opa_t opacity = wallpaper_ui().pixels ? wallpaper_opacity_byte(wallpaper_ui().opacity_percent) : static_cast<lv_opa_t>(LV_OPA_COVER);
+  const auto &ui = wallpaper_ui();
+  const lv_opa_t off = ui.pixels ? wallpaper_opacity_byte(ui.opacities.off) : static_cast<lv_opa_t>(LV_OPA_COVER);
+  const lv_opa_t active = ui.pixels ? wallpaper_opacity_byte(ui.opacities.active) : static_cast<lv_opa_t>(LV_OPA_COVER);
   auto &targets = theme_grid_targets();
   for (int i = 0; i < targets.count; ++i)
-    wallpaper_apply_card(targets.buttons[i], opacity);
+    wallpaper_apply_card(targets.buttons[i], off, active);
   for (auto &page : navigation_subpages()) {
-    wallpaper_apply_card(page.back_button, opacity);
+    wallpaper_apply_card(page.back_button, off, active);
     for (auto &card : page.cards)
-      wallpaper_apply_card(card.button, opacity);
+      wallpaper_apply_card(card.button, off, active);
   }
 }
 inline void wallpaper_apply_cards() {
@@ -80,9 +82,9 @@ inline void wallpaper_tick() {
   ui.retired_pixels = nullptr;
   auto &store = wallpaper_store();
   if (!theme_grid_targets().main_page || !store.available()) return;
-  const uint8_t opacity = store.opacity_percent();
-  if (opacity != ui.opacity_percent) {
-    ui.opacity_percent = opacity;
+  const auto opacities = store.opacities();
+  if (opacities.off != ui.opacities.off || opacities.active != ui.opacities.active) {
+    ui.opacities = opacities;
     wallpaper_apply_card_opacity();
   }
   const uint32_t revision = store.revision();

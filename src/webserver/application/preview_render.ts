@@ -225,7 +225,8 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     sizeClass(slotSz) +
                     (c.selected.indexOf(slot) !== -1 ? " sp-selected" : "");
                 btn.style.backgroundColor = wallpaperCardColor(cardOffColor || color, hasWallpaper, els.wallpaperOpacityPercent);
-                btn.style.setProperty("--card-active-color", wallpaperCardColor(cardOnColor || state.onColor || WEB_UI_COLORS.primary, hasWallpaper));
+                btn.style.setProperty("--card-active-color", wallpaperCardColor(cardOnColor || state.onColor || WEB_UI_COLORS.primary, hasWallpaper, els.wallpaperActiveOpacityPercent));
+                btn.style.setProperty("--card-active-text-color", cardPreviewTextColor(cardOnColor || state.onColor || WEB_UI_COLORS.primary));
                 var activeMode: any = configOptionValue(b.options, "card_active_color");
                 var customActive: any = configOptionValue(b.options, "card_on_color").replace(/^#/, "");
                 var explicitActive: any = activeMode === "theme" || (activeMode === "custom" && /^[0-9A-F]{6}$/i.test(customActive));
@@ -239,9 +240,13 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 if (!typePreview && hasWhenOn && typeof cardOnPattern === "function" && cardOnPattern(b) === "stripes") {
                     var onColor: any = cardOnColor || (state.onColor && state.onColor.length === 6 ? state.onColor : WEB_UI_COLORS.primary);
                     contrastBackground = onColor;
-                    btn.style.backgroundImage =
-                        "repeating-linear-gradient(135deg,#" + onColor + " 0,#" + onColor +
-                            " 12px,#" + cardPatternHighlightColor(onColor) + " 12px,#" + cardPatternHighlightColor(onColor) + " 20px)";
+                    var highlight = cardPatternHighlightColor(onColor);
+                    var patternFill = wallpaperCardColor(onColor, hasWallpaper, els.wallpaperActiveOpacityPercent);
+                    var patternHighlight = wallpaperCardColor(highlight, hasWallpaper, els.wallpaperActiveOpacityPercent);
+                    btn.classList.add("sp-on-pattern");
+                    btn.style.backgroundColor = "transparent";
+                    btn.style.backgroundImage = "repeating-linear-gradient(135deg," + patternFill + " 0," + patternFill +
+                        " 12px," + patternHighlight + " 12px," + patternHighlight + " 20px)";
                 }
                 if (!btn.classList.contains("sp-image-card")) {
                     btn.style.setProperty("--card-text-color", cardOffColor || contrastBackground !== color

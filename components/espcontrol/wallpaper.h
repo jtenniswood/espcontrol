@@ -13,6 +13,8 @@ class WallpaperStore {
   bool save(const uint8_t *data, size_t size);  // size zero removes the wallpaper
   uint8_t *load(size_t &size, uint32_t &revision);
   uint32_t revision();
+  WallpaperOpacity opacities();
+  bool save_opacities(int off, int active);
   uint8_t opacity_percent();
   bool save_opacity_percent(int percent);
  private:
@@ -22,7 +24,7 @@ class WallpaperStore {
   int slot_{-1};
   uint32_t revision_{0};
   size_t size_{0};
-  uint8_t opacity_percent_{WALLPAPER_DEFAULT_OPACITY_PERCENT};
+  WallpaperOpacity opacities_;
   bool initialized_{false};
 };
 WallpaperStore &wallpaper_store();
