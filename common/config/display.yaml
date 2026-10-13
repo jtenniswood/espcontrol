@@ -577,6 +577,28 @@ switch:
 
 select:
   - platform: template
+    name: "${entity_screen_card_curve}"
+    id: card_curve_select
+    entity_category: config
+    icon: "mdi:rounded-corner"
+    optimistic: true
+    restore_value: true
+    initial_option: "Large"
+    options:
+      - "Small"
+      - "Medium"
+      - "Large"
+    web_server:
+      sorting_group_id: sg_display
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return grid_phase2_complete();'
+            then:
+              - script.execute: refresh_subpage_grid
+
+  - platform: template
     name: "${entity_screen_saver_action}"
     internal: true
     id: screensaver_action

@@ -6654,6 +6654,70 @@ async function assertScreensaverPinSettings(browser) {
   } finally { await legacyContext.close(); }
 }
 
+async function assertCardCurveSettings(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  let savedPreset = "Large";
+  try {
+    await installRoutes(context, testCase.slug);
+    await context.route("**/select/screen__card_curve/set**", async route => {
+      savedPreset = new URL(route.request().url()).searchParams.get("option");
+      assert(["Small", "Medium", "Large"].includes(savedPreset));
+      await route.fulfill({ status: 200, contentType: "text/plain", body: "" });
+    });
+    const page = await context.newPage();
+    await installFakeEventSource(page);
+    const seed = async () => page.evaluate(events => window.__seedEspState(events), [
+      ...seededEvents(),
+      { id: "select-screen__rotation", state: "0", value: "0", option: ["0", "90", "180", "270"] },
+      { id: "select-screen__card_curve", state: savedPreset, value: savedPreset, option: ["Small", "Medium", "Large"] },
+    ]);
+    const open = async () => {
+      await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+      await page.waitForFunction(() => window.__eventSources?.length > 0);
+      await seed();
+      await page.getByRole("tab", { name: "Settings", exact: true }).click();
+      const appearance = page.locator("#sp-settings .card").filter({ has: page.locator("#sp-set-card-curve") });
+      if (!(await page.locator("#sp-set-card-curve").isVisible())) await appearance.locator(".card-header").click();
+      await page.locator("#sp-set-card-curve").waitFor({ state: "visible" });
+    };
+    await open();
+    const profile = readManifest().devices[testCase.slug];
+    const substitutions = profile.firmware.package.substitutions;
+    const width = Number(substitutions.screen_width.replaceAll('"', ""));
+    const base = Number(substitutions.radius.replace("px", ""));
+    for (const [preset, expected] of [["Small", Math.round(base / 2)], ["Medium", Math.round(base * .75)], ["Large", base]]) {
+      const posted = page.waitForResponse(response => response.url().includes(`/select/screen__card_curve/set?option=${preset}`));
+      await page.locator("#sp-set-card-curve").getByRole("button", { name: preset, exact: true }).click();
+      await posted;
+      assert.strictEqual(savedPreset, preset, "curve changes must reach the saved firmware select");
+      const radius = await page.evaluate(logicalWidth => parseFloat(document.documentElement.style.getPropertyValue("--btn-r")) * logicalWidth / 100, width);
+      assert(Math.abs(radius - expected) < .001, `${testCase.slug}: ${preset} must match the firmware radius ${expected}`);
+      await page.getByRole("tab", { name: "Screen", exact: true }).click();
+      await page.waitForFunction(() => getComputedStyle(document.querySelector(".sp-btn")).clipPath.startsWith("path("));
+      const shape = await page.locator(".sp-btn").first().evaluate(card => {
+        const clip = getComputedStyle(card).clipPath;
+        const path = new Path2D(clip.slice(6, -2));
+        const radius = parseFloat(document.documentElement.style.getPropertyValue("--btn-r")) * document.querySelector(".sp-screen").clientWidth / 100;
+        const ctx = document.createElement("canvas").getContext("2d");
+        return !ctx.isPointInPath(path, radius, radius * .02) && ctx.isPointInPath(path, radius, radius * .1);
+      });
+      assert(shape, `${preset}: the preview must retain the gradual curve`);
+      await page.getByRole("tab", { name: "Settings", exact: true }).click();
+    }
+    const posted = page.waitForResponse(response => response.url().includes("/select/screen__card_curve/set?option=Medium"));
+    await page.locator("#sp-set-card-curve").getByRole("button", { name: "Medium", exact: true }).click();
+    await posted;
+    await open();
+    assert.strictEqual(await page.locator("#sp-set-card-curve").getByRole("button", { name: "Medium", exact: true }).getAttribute("aria-pressed"), "true", "reload follows the saved curve");
+    await openBackupControls(page);
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const download = await downloadPromise;
+    const backup = JSON.parse(fs.readFileSync(await download.path(), "utf8"));
+    assert.strictEqual(backup.screen.card_curve, "Medium", "export includes the saved curve");
+  } finally { await context.close(); }
+}
+
 async function assertContinuousPreview(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   try {
@@ -6846,6 +6910,12 @@ async function assertWallpaperSettings(browser) {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_CURVE_PRESETS_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) await assertCardCurveSettings(browser, testCase);
+      console.log(`Card curve preset checks passed for ${ACTIVE_CASES.length} generated layouts.`);
+      return;
+    }
+    await assertCardCurveSettings(browser, ACTIVE_CASES[0]);
     for (const testCase of ACTIVE_CASES) await assertContinuousPreview(browser, testCase);
     if (process.env.ESPCONTROL_CORNERS_ONLY === "1") { console.log(`Continuous preview checks passed for ${ACTIVE_CASES.length} generated layouts.`); return; }
     await assertWallpaperSettings(browser);

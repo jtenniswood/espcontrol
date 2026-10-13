@@ -53,6 +53,7 @@ int dropped = 0;
 void lv_image_cache_drop(const void *) { ++dropped; }
 void lv_image_header_cache_drop(const void *) { ++dropped; }
 #include "../../components/espcontrol/button_grid_continuous_corners.h"
+#include "../../components/espcontrol/card_curve.h"
 
 int main() {
   using namespace espcontrol::corners;
@@ -107,4 +108,22 @@ int main() {
   assert(second.mask && mask_cache());
   send(second, LV_EVENT_DELETE);
   assert(mask_cache() == nullptr && dropped == 6);
+  // Switching saved presets must replace the outline and release the old
+  // mask. Exercise the S3's rounded whole-pixel sizes on a real card footprint.
+  assert(card_curve_radius(35, "Small") == 18);
+  assert(card_curve_radius(35, "Medium") == 26);
+  assert(card_curve_radius(22, "Medium") == 17);
+  assert(card_curve_radius(30, "invalid") == 30);
+  lv_obj_t adjustable;
+  adjustable.width = 145; adjustable.height = 140; adjustable.radius = 30;
+  attach(&adjustable);
+  for (const auto &preset : {std::pair{"Small", 15}, std::pair{"Medium", 23}, std::pair{"Large", 30}}) {
+    adjustable.radius = card_curve_radius(30, preset.first);
+    assert(adjustable.radius == preset.second);
+    send(adjustable, LV_EVENT_STYLE_CHANGED);
+    assert(mask_cache() && mask_cache()->radius == preset.second);
+    assert(mask_cache()->owners == 1 && !mask_cache()->next);
+  }
+  send(adjustable, LV_EVENT_DELETE);
+  assert(mask_cache() == nullptr && dropped == 14);
 }

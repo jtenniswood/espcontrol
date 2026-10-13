@@ -78,6 +78,7 @@
     { "key": "display_backlight", "domain": "light", "name": "Display Backlight", "objectIds": ["display_backlight"], "groups": ["settings"] },
     { "key": "screen_brightness_mode", "domain": "select", "name": "Screen: Brightness Mode", "objectIds": ["screen__brightness_mode", "screen_brightness_mode", "brightness_mode"], "groups": ["settings"] },
     { "key": "screen_theme_mode", "domain": "select", "name": "Screen: Theme Mode", "groups": ["settings"] },
+    { "key": "screen_card_curve", "domain": "select", "name": "Screen: Card Curve", "objectIds": ["screen__card_curve", "screen_card_curve", "card_curve_select"], "groups": ["settings"] },
     { "key": "screen_theme_auto_method", "domain": "select", "name": "Screen: Theme Auto Method", "groups": ["settings"] },
     { "key": "screen_theme_light_start", "domain": "text", "name": "Screen: Theme Light Start", "groups": ["settings"] },
     { "key": "screen_theme_dark_start", "domain": "text", "name": "Screen: Theme Dark Start", "groups": ["settings"] },

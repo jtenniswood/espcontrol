@@ -6,7 +6,7 @@ import { createMediaPlaybackController } from "../../src/webserver/features/medi
 import { createVoiceServicesController } from "../../src/webserver/features/voice_services_controller";
 import { createClockBarController } from "../../src/webserver/features/clock_bar_controller";
 import { createScreenScheduleController } from "../../src/webserver/features/screen_schedule_controller";
-import { normalizeThemeAutoMethod, normalizeThemeMode, normalizeTimeOfDay, parseThemeSunOffset } from "../../src/webserver/model/settings";
+import { cardCurveRadius, normalizeCardCurve, normalizeThemeAutoMethod, normalizeThemeMode, normalizeTimeOfDay, parseThemeSunOffset } from "../../src/webserver/model/settings";
 import { PREVIEW_THEME_COLORS, previewEffectiveTheme, previewThemeCss } from "../../src/webserver/state/preview_theme";
 import { createBackupEnvelope, normalizeBackupEnvelope } from "../../src/webserver/model/backup";
 
@@ -37,6 +37,16 @@ function placeholderOutline(textMuted: string, background: string): string {
 }
 
 export function runSettingsFeatureTests(): void {
+  equal(normalizeCardCurve(undefined), "Large", "older firmware retains the existing curve");
+  equal(normalizeCardCurve("medium"), "Medium", "curve values normalize for backup restore");
+  equal(cardCurveRadius(30, "Small"), 15, "S3 Small radius");
+  equal(cardCurveRadius(30, "Medium"), 23, "S3 Medium uses the same pixel rounding as firmware");
+  equal(cardCurveRadius(30, "Large"), 30, "S3 Large retains the current radius");
+  equal(cardCurveRadius(35, "Small"), 18, "P4-86 Small rounds half pixels consistently");
+  equal(cardCurveRadius(22, "Medium"), 17, "10-inch Medium matches firmware rounding");
+  const curveBackup = createBackupEnvelope({ device: "panel", slots: 0, screen: { card_curve: "Medium" } }, { buttons: [], subpages: {} });
+  equal(normalizeBackupEnvelope(curveBackup as unknown as Record<string, unknown>, { buttons: [], subpages: {} }).screen?.card_curve,
+    "Medium", "backup preserves the chosen card curve");
   for (const mode of ["Dark", "Light", "Auto"])
     equal(normalizeThemeMode(mode.toLowerCase()), mode, "theme mode backup round trip");
   equal(normalizeThemeMode("Sun"), "Auto", "old Sun backups migrate to Auto");

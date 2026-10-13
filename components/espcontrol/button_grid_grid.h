@@ -1,5 +1,7 @@
 #pragma once
 
+#include "card_curve.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 #ifdef ESP_PLATFORM
@@ -18,6 +20,7 @@ struct GridConfig {
   int cols;
   bool width_compensation_vertical = false;
   bool continuous_card_corners = false;
+  int card_corner_radius = -1;
   bool wrap_tall_labels;
   bool info_only = false;
   bool subpage_chevrons_enabled = true;
@@ -583,6 +586,11 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   espcontrol::cards::alarm_driver_cleanup(s, p, context);
   espcontrol::cards::media_driver_cleanup(s, p, context);
   reset_card_slot_dynamic_children(s);
+  if (cfg.card_corner_radius >= 0) {
+    lv_obj_set_style_radius(s.btn, cfg.card_corner_radius, LV_PART_MAIN);
+    lv_obj_set_style_radius(s.btn, cfg.card_corner_radius,
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
+  }
   theme_set_content_background(s.btn, palette.custom_background);
   apply_button_colors(s.btn, palette.has_on, palette.on_val,
     palette.has_off, palette.off_val);

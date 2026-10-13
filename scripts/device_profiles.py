@@ -921,6 +921,7 @@ def web_config(profile: dict[str, Any]) -> dict[str, Any]:
         "screenSize": profile["public"]["screenSize"],
         "largeSensorUnitOffsetPercent": profile["settings"]["largeSensorUnitOffsetPercent"],
         "imageSlotCapacity": image_slot_capacity,
+        "cardRadiusPixels": int(profile["firmware"]["package"]["substitutions"]["radius"].removesuffix("px")),
     }
     for key, value in profile["web"].items():
         cfg[key] = copy.deepcopy(value)

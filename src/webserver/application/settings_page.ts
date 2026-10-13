@@ -14,6 +14,8 @@ import {
     normalizeThemeAutoMethod,
 } from "../model/settings";
 import { syncThemeSettingsUi } from "./theme_settings_ui";
+import { syncCardCurveUi } from "./card_curve_ui";
+import { normalizeCardCurve } from "../model/settings";
 import type { ConfigCodecFeature } from "./config_codec";
 import type { UiRuntimeState } from "./state";
 import type { CoreFeature } from "./core";
@@ -92,6 +94,20 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         onColor.id = "sp-set-on-color";
         appearBody.appendChild(onColor);
         els.setOnColor = onColor;
+        const cardCurve = segmentControl(["Small", "Medium", "Large"], normalizeCardCurve(state.cardCurve), (value: string) => {
+            state.cardCurve = normalizeCardCurve(value);
+            syncCardCurveUi(state, runtime);
+            syncPreviewOrientation(true);
+            renderPreview();
+            postSelect(entityName("screen_card_curve"), state.cardCurve);
+        });
+        cardCurve.segment.id = "sp-set-card-curve";
+        cardCurve.segment.setAttribute("role", "group");
+        cardCurve.segment.setAttribute("aria-label", "Card curve");
+        appearBody.appendChild(fieldLabel("Card curve"));
+        appearBody.appendChild(cardCurve.segment);
+        els.setCardCurveButtons = cardCurve.buttons;
+        syncCardCurveUi(state, runtime);
         var themeModes: any = segmentControl([
             ["Dark", "Dark"], ["Light", "Light"], ["Auto", "Automatic"],
         ], normalizeThemeMode(state.themeMode), function (this: any, mode?: any) {

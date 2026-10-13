@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 9,
     "cardTypes": 44,
-    "entityNames": 110,
+    "entityNames": 111,
     "icons": 366,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
@@ -7559,6 +7559,19 @@
         "key": "screen_theme_mode",
         "domain": "select",
         "name": "Screen: Theme Mode",
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_card_curve",
+        "domain": "select",
+        "name": "Screen: Card Curve",
+        "objectIds": [
+          "screen__card_curve",
+          "screen_card_curve",
+          "card_curve_select"
+        ],
         "groups": [
           "settings"
         ]

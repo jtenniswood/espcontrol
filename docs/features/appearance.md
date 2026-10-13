@@ -6,17 +6,25 @@ description:
 
 # Appearance
 
-Cards use larger rounded corners, with the same proportions on the panel and
-setup-page preview. Corner sizes scale for each display and are fixed by the
-firmware; there is no corner-radius setting.
+Cards use continuous corners, with the same proportions on the panel and
+setup-page preview. Choose **Card curve → Small, Medium or Large** in
+**Settings → Appearance**. The choice applies to home and subpage cards,
+is saved on the display and survives restarts.
 
 All supported displays use continuous corners that ease gradually into the
-card edges. Each display keeps its own nominal corner size: 30 px on S3,
+card edges. **Large** is the default and keeps the current nominal corner size: 30 px on S3,
 20 px on the 7-inch and 4.3-inch panels, 22 px on the 10-inch panels,
 and 35 px on P4-86.
+**Small** uses half that size and **Medium** uses three quarters, rounded to
+whole pixels. On S3, the three sizes are 15 px, 23 px and 30 px.
 Images, artwork and slider fills follow the same outline. The web preview
 uses the same curve, including in browsers without native continuous-corner
 support, and scales the card gaps to match the physical display.
+
+The curve setting is included in configuration backups. Restoring an older
+backup without it keeps the current choice. Home Assistant can also change
+the **Screen: Card Curve** select. Changes update the preview immediately
+and redraw the physical cards after the display's brief refresh delay.
 
 Find these controls in **Settings → Appearance** on the [Setup](/features/setup) page. Your selection is saved on the panel and applies without a reboot. Existing panels default to Dark.
 
