@@ -40,7 +40,11 @@ inline void wallpaper_bind_screen(lv_obj_t *screen) {
   const int zoom = std::max((width * 256 + int(ui.image.header.w) - 1) / int(ui.image.header.w),
                             (height * 256 + int(ui.image.header.h) - 1) / int(ui.image.header.h));
   lv_image_set_scale(widget, zoom);
-  lv_obj_center(widget);
+  // Grid padding reserves space for the clock bar. Centre the wallpaper on
+  // the whole screen rather than the padded card area, so it covers the HUD.
+  lv_obj_align(widget, LV_ALIGN_CENTER,
+      (lv_obj_get_style_pad_right(screen, LV_PART_MAIN) - lv_obj_get_style_pad_left(screen, LV_PART_MAIN)) / 2,
+      (lv_obj_get_style_pad_bottom(screen, LV_PART_MAIN) - lv_obj_get_style_pad_top(screen, LV_PART_MAIN)) / 2);
   lv_obj_move_background(widget);
 }
 inline void wallpaper_apply_card(lv_obj_t *card, lv_opa_t opacity) {
