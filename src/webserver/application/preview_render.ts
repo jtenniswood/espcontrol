@@ -164,7 +164,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 backBtn.innerHTML =
                     '<span class="sp-btn-icon sp-back-hit mdi mdi-chevron-left"></span>' +
                         '<span class="sp-btn-label">' + escHtml(backLabel) + '</span>';
-                backBtn.style.backgroundColor = wallpaperCardColor(backColor, hasWallpaper);
+                backBtn.style.backgroundColor = wallpaperCardColor(backColor, hasWallpaper, els.wallpaperOpacityPercent);
                 backBtn.style.setProperty("--card-text-color", subpage?.backColor
                     ? cardPreviewTextColor(backColor) : "#" + previewColors.textPrimary);
                 backBtn.style.cursor = "pointer";
@@ -224,7 +224,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     (typePreview && typePreview.buttonClass ? " " + typePreview.buttonClass : "") +
                     sizeClass(slotSz) +
                     (c.selected.indexOf(slot) !== -1 ? " sp-selected" : "");
-                btn.style.backgroundColor = wallpaperCardColor(cardOffColor || color, hasWallpaper);
+                btn.style.backgroundColor = wallpaperCardColor(cardOffColor || color, hasWallpaper, els.wallpaperOpacityPercent);
                 btn.style.setProperty("--card-active-color", wallpaperCardColor(cardOnColor || state.onColor || WEB_UI_COLORS.primary, hasWallpaper));
                 var activeMode: any = configOptionValue(b.options, "card_active_color");
                 var customActive: any = configOptionValue(b.options, "card_on_color").replace(/^#/, "");
