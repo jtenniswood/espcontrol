@@ -2,6 +2,7 @@ import * as EspControlModel from "../model";
 import type { ApplicationLayoutState } from "./application_context";
 import type { AppState } from "../state/types";
 import type { UiRuntimeState } from "./state";
+import { syncPreviewCorners } from "./preview_corners";
 
 export interface CoreFeatureDependencies {
     readonly state: AppState;
@@ -108,8 +109,10 @@ export function createCoreFeature(
         r.setProperty("--grid-gap", scaledCqw(grid.gap, scale));
         r.setProperty("--btn-r", scaledCqw(btn.radius, scale));
         var previewScreen = document.querySelector(".sp-screen");
-        if (previewScreen)
+        if (previewScreen) {
             previewScreen.classList.toggle("sp-continuous-corners", !!applicationLayout.config.continuousCorners);
+            syncPreviewCorners(previewScreen as HTMLElement, btn.radius * scale, emptyCell.radius * scale, !!applicationLayout.config.continuousCorners);
+        }
         r.setProperty("--btn-pad", scaledCqw(btn.padding, scale));
         if (btn.borderWidth != null)
             r.setProperty("--btn-border", scaledCqw(btn.borderWidth, scale));

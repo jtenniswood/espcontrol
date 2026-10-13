@@ -5,7 +5,7 @@ const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { chromium } = require("playwright");
+const { chromium, webkit } = require("playwright");
 const { loadTypeScriptModule } = require("./load_typescript_module");
 const { freshWebOutputDir } = require("./web_source");
 
@@ -222,6 +222,11 @@ async function installRoutes(context, slug, options = {}) {
 
   await context.route("**/*", async (route) => {
     const requestUrl = new URL(route.request().url());
+    // WebKit routes local image URLs too; let the browser decode their pixels.
+    if (requestUrl.protocol === "blob:" || requestUrl.protocol === "data:") {
+      await route.continue();
+      return;
+    }
     if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/wallpaper-opacity") {
       const wallpaper = options.wallpaperState;
       assert(wallpaper && wallpaper.opacitySupported !== false, "unsupported firmware must not receive opacity requests");
@@ -6649,6 +6654,53 @@ async function assertScreensaverPinSettings(browser) {
   } finally { await legacyContext.close(); }
 }
 
+async function assertContinuousPreview(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  try {
+    await installRoutes(context, testCase.slug);
+    const page = await context.newPage();
+    await installFakeEventSource(page);
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    // Emulate browsers that only draw circular border-radius corners.
+    await page.addStyleTag({ content: ".sp-continuous-corners .sp-btn,.sp-continuous-corners .sp-empty-cell{corner-shape:round!important;border-radius:var(--btn-r)!important;transition:none!important}" });
+    await page.waitForFunction(() => [...document.querySelectorAll(".sp-btn")].some(card => getComputedStyle(card).clipPath.startsWith("path(")));
+    const checkShape = async () => {
+      const shape = await page.locator(".sp-btn").first().evaluate(card => {
+        const style = getComputedStyle(card);
+        const screen = document.querySelector(".sp-screen");
+        const radius = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--btn-r")) * screen.clientWidth / 100;
+        const clip = style.clipPath;
+        const path = new Path2D(clip.slice(6, -2));
+        const ctx = document.createElement("canvas").getContext("2d");
+        return { clip, circle: style.cornerShape, nativeSupported: CSS.supports("corner-shape", "superellipse(2)"),
+          nativeRadius: parseFloat(style.borderRadius), radius,
+          edgeClear: !ctx.isPointInPath(path, radius, radius * .02),
+          interiorSolid: ctx.isPointInPath(path, radius, radius * .1),
+          cornerClear: !ctx.isPointInPath(path, 0, 0),
+          centerSolid: ctx.isPointInPath(path, parseFloat(style.width) / 2, parseFloat(style.height) / 2) };
+      });
+      assert(!shape.nativeSupported || ["round", "superellipse(1)"].includes(shape.circle), "the fallback test must force circular native corners");
+      assert(Math.abs(shape.nativeRadius - shape.radius) < .05, "the fallback fixture must retain the nominal circular radius");
+      assert(shape.edgeClear && shape.interiorSolid && shape.cornerClear && shape.centerSolid,
+        `${testCase.slug}: the fallback must follow the firmware curve rather than a circular arc`);
+      return shape.clip;
+    };
+    const before = await checkShape();
+    await page.setViewportSize({ width: 700, height: 900 });
+    await page.waitForFunction(old => getComputedStyle(document.querySelector(".sp-btn")).clipPath !== old, before);
+    await checkShape();
+    const gaps = await page.locator(".sp-main").evaluate(grid => ({
+      row: parseFloat(getComputedStyle(grid).rowGap),
+      column: parseFloat(getComputedStyle(grid).columnGap),
+      expected: parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--grid-gap")) * document.querySelector(".sp-screen").clientWidth / 100,
+    }));
+    assert(Math.abs(gaps.row - gaps.expected) < .05 && Math.abs(gaps.column - gaps.expected) < .05,
+      "preview card gaps must retain the configured scale after resizing");
+  } finally { await context.close(); }
+}
+
 async function assertWallpaperSettings(browser) {
   const testCase = ACTIVE_CASES[0];
   const context = await browser.newContext({ viewport: testCase.viewport });
@@ -6680,11 +6732,23 @@ async function assertWallpaperSettings(browser) {
     });
     const upload = { name: "wallpaper.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") };
     await page.locator("#sp-set-wallpaper").setInputFiles(upload);
-    await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
+    try {
+      await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
+    } catch (error) {
+      console.error("Wallpaper upload status:", await page.locator("#sp-set-wallpaper").evaluate(input => input.closest(".sp-field").querySelector("[role=status]").textContent));
+      throw error;
+    }
     assert.strictEqual(wallpaper.image.readUInt32LE(4), 480);
     assert.strictEqual(wallpaper.image.readUInt32LE(8), 320);
     assert.strictEqual(wallpaper.image.length, 16 + 480 * 320 * 2);
-    await page.waitForFunction(() => Array.from(document.querySelectorAll(".sp-btn")).some(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0.8)")));
+    await page.waitForFunction(() => {
+      const canvas = document.createElement("canvas"); canvas.width = canvas.height = 1;
+      const ctx = canvas.getContext("2d");
+      return Array.from(document.querySelectorAll(".sp-btn")).some(btn => {
+        ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = getComputedStyle(btn).backgroundColor; ctx.fillRect(0, 0, 1, 1);
+        return Math.abs(ctx.getImageData(0, 0, 1, 1).data[3] / 255 - .8) < .004;
+      });
+    });
     if (process.env.ESPCONTROL_WALLPAPER_SCREENSHOT) {
       await page.getByRole("tab", { name: "Screen", exact: true }).click();
       await page.locator(".sp-screen").screenshot({ path: process.env.ESPCONTROL_WALLPAPER_SCREENSHOT });
@@ -6692,13 +6756,16 @@ async function assertWallpaperSettings(browser) {
     }
     const transparency = page.locator("#sp-set-card-transparency");
     const assertCardAlpha = async expected => {
-      const style = await page.locator(".sp-btn").first().evaluate(btn => ({
-        color: getComputedStyle(btn).backgroundColor,
-        cornerShape: getComputedStyle(btn).cornerShape,
-        continuousSupported: CSS.supports("corner-shape", "superellipse(2)"),
-      }));
+      const style = await page.locator(".sp-btn").first().evaluate(btn => {
+        const color = getComputedStyle(btn).backgroundColor;
+        const canvas = document.createElement("canvas"); canvas.width = canvas.height = 1;
+        const ctx = canvas.getContext("2d"); ctx.fillStyle = color; ctx.fillRect(0, 0, 1, 1);
+        return { color, alpha: ctx.getImageData(0, 0, 1, 1).data[3] / 255,
+          cornerShape: getComputedStyle(btn).cornerShape,
+          continuousSupported: CSS.supports("corner-shape", "superellipse(2)") };
+      });
       const color = style.color;
-      const alpha = color.startsWith("rgba(") ? parseFloat(color.split(",").at(-1)) : 1;
+      const alpha = style.alpha;
       assert(Math.abs(alpha - expected) < .004, `Expected alpha ${expected}, got ${color}`);
       if (readManifest().devices[testCase.slug].web.continuousCorners && style.continuousSupported) {
         assert.strictEqual(style.cornerShape, "superellipse(2)",
@@ -6776,9 +6843,11 @@ async function assertWallpaperSettings(browser) {
 }
 
 (async function main() {
-  const browser = await chromium.launch();
+  const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    for (const testCase of ACTIVE_CASES) await assertContinuousPreview(browser, testCase);
+    if (process.env.ESPCONTROL_CORNERS_ONLY === "1") { console.log(`Continuous preview checks passed for ${ACTIVE_CASES.length} generated layouts.`); return; }
     await assertWallpaperSettings(browser);
     if (process.env.ESPCONTROL_WALLPAPER_ONLY === "1") { console.log("Wallpaper browser checks passed."); return; }
     await assertScreensaverPinSettings(browser);

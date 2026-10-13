@@ -15,8 +15,8 @@ card edges. Each display keeps its own nominal corner size: 30 px on S3,
 20 px on the 7-inch and 4.3-inch panels, 22 px on the 10-inch panels,
 and 35 px on P4-86.
 Images, artwork and slider fills follow the same outline. The web preview
-matches this shape in browsers that support continuous corners; older
-browsers show ordinary rounded corners.
+uses the same curve, including in browsers without native continuous-corner
+support, and scales the card gaps to match the physical display.
 
 Find these controls in **Settings → Appearance** on the [Setup](/features/setup) page. Your selection is saved on the panel and applies without a reboot. Existing panels default to Dark.
 

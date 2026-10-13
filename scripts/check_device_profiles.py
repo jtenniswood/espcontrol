@@ -683,17 +683,22 @@ def test_web_screen_aspect_matches_public_resolution() -> None:
             )
 
 
-def test_web_grid_spacing_matches_across_screen_sizes() -> None:
+def test_web_card_geometry_matches_firmware() -> None:
     profiles = load_device_profiles()
-    expected = None
     for slug, profile in profiles.items():
-        grid = profile["web"]["grid"]
-        rendered_gap = float(grid["gap"]) * web_screen_width_percent(profile) / 100.0
-        if expected is None:
-            expected = rendered_gap
-        assert abs(rendered_gap - expected) <= 0.01, (
-            f"{slug}: web preview grid spacing must match the other generated screen layouts"
-        )
+        substitutions = profile["firmware"]["package"]["substitutions"]
+        width = float(substitutions["screen_width"].strip('"'))
+        gap = float(substitutions["main_page_card_gap"].strip('"'))
+        radius = float(substitutions["radius"].removesuffix("px"))
+        for field, web_value, expected in (
+            ("grid.gap", profile["web"]["grid"]["gap"], gap),
+            ("btn.radius", profile["web"]["btn"]["radius"], radius),
+            ("emptyCell.radius", profile["web"]["emptyCell"]["radius"], radius),
+        ):
+            preview_pixels = float(web_value) * width / 100.0
+            assert abs(preview_pixels - expected) <= 0.0001, (
+                f"{slug}: web.{field} must scale to the firmware's {expected}px"
+            )
 
 
 def test_setup_icon_glyphs() -> None:
@@ -1030,7 +1035,7 @@ def main() -> int:
     test_seven_inch_width_compensation_rotates_with_screen()
     test_subpage_config_changes_schedule_live_refresh()
     test_web_screen_aspect_matches_public_resolution()
-    test_web_grid_spacing_matches_across_screen_sizes()
+    test_web_card_geometry_matches_firmware()
     test_setup_icon_glyphs()
     test_weather_card_visual_matches_preview()
     test_weather_card_mode_visibility_reset()
