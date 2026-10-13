@@ -41,7 +41,8 @@ export function createColorSwatches(value: string | (() => string), onChange: (h
         syncColor(hex);
         onChange(hex);
     }
-    picker.addEventListener("input", pickCustomColor);
+    // Native dialogs can emit input events for every drag movement. Save once
+    // when the choice is committed so Appearance does not queue device writes.
     picker.addEventListener("change", pickCustomColor);
 
     function createSwatch(hex: string, name: string) {

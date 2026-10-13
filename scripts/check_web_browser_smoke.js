@@ -1113,6 +1113,34 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     true,
     `${label}: color controls should be visible`,
   );
+  if (options.exerciseInteractions) {
+    const picker = page.locator('#sp-set-on-color input[type="color"]');
+    const originalColour = await picker.inputValue();
+    const colourPosts = () => posts.filter(post => post.domain === "text" && post.name === "button_on_color");
+    const savesBefore = colourPosts().length;
+    await picker.evaluate(input => {
+      for (const hex of ["#112233", "#223344", "#123abc"]) {
+        input.value = hex;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+    await page.waitForTimeout(100);
+    assert.strictEqual(colourPosts().length, savesBefore,
+      `${label}: dragging the native picker must not save intermediate colours`);
+    const committed = page.waitForRequest(request => request.method() === "POST" &&
+      postRecord(request.url()).name === "button_on_color");
+    await picker.dispatchEvent("change");
+    await committed;
+    assert.strictEqual(colourPosts().length, savesBefore + 1,
+      `${label}: confirming the native picker saves exactly once`);
+    assert.strictEqual(colourPosts().at(-1).value, "123ABC",
+      `${label}: the committed colour is saved as uppercase hex`);
+    await picker.dispatchEvent("change");
+    await page.waitForTimeout(100);
+    assert.strictEqual(colourPosts().length, savesBefore + 1,
+      `${label}: repeated confirmation of the same colour does not save again`);
+    await picker.fill(originalColour);
+  }
   const themeModes = page.locator("#sp-set-theme-mode");
   assert.deepStrictEqual(await themeModes.locator("button").allTextContents(),
     ["Dark", "Light", "Automatic"], `${label}: theme modes render`);
