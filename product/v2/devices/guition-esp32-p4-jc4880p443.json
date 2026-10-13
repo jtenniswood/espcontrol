@@ -84,7 +84,8 @@
         "bottom": 1.52,
         "right": 1.52,
         "fontSize": 4.03
-      }
+      },
+      "continuousCorners": true
     },
     "firmware": {
       "display": {

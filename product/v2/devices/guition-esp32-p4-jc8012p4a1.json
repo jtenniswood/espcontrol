@@ -18,6 +18,9 @@
           "battery": "!include device/battery.yaml"
         }
       }
+    },
+    "web": {
+      "continuousCorners": true
     }
   },
   "overrides": {

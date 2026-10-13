@@ -546,6 +546,9 @@
         "public": {
           "name": "Guition JC1060P470",
           "docsPath": "/screens/jc1060p470"
+        },
+        "web": {
+          "continuousCorners": true
         }
       },
       "overrides": {
@@ -579,6 +582,9 @@
         "public": {
           "name": "Guition JC1060P470 new panel (V2 label)",
           "docsPath": "/screens/jc1060p470-v2"
+        },
+        "web": {
+          "continuousCorners": true
         }
       },
       "overrides": {
@@ -678,7 +684,8 @@
             "bottom": 1.52,
             "right": 1.52,
             "fontSize": 4.03
-          }
+          },
+          "continuousCorners": true
         },
         "firmware": {
           "display": {
@@ -848,7 +855,8 @@
             "bottom": 1.52,
             "right": 1.52,
             "fontSize": 4.03
-          }
+          },
+          "continuousCorners": true
         },
         "firmware": {
           "display": {
@@ -952,6 +960,9 @@
               "battery": "!include device/battery.yaml"
             }
           }
+        },
+        "web": {
+          "continuousCorners": true
         }
       },
       "overrides": {
@@ -977,6 +988,9 @@
         "public": {
           "name": "Guition JC8012P4A1 new panel (2628+)",
           "docsPath": "/screens/jc8012p4a1-v2"
+        },
+        "web": {
+          "continuousCorners": true
         }
       },
       "overrides": {
@@ -1317,7 +1331,8 @@
             "bottom": 2.08,
             "right": 2.08,
             "fontSize": 4
-          }
+          },
+          "continuousCorners": true
         },
         "firmware": {
           "display": {

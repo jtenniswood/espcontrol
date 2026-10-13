@@ -10,8 +10,10 @@ Cards use larger rounded corners, with the same proportions on the panel and
 setup-page preview. Corner sizes scale for each display and are fixed by the
 firmware; there is no corner-radius setting.
 
-The 10-inch JC8012P4A1 V3 and 4-inch P4-86 use continuous corners that ease
-gradually into the card edges, with nominal sizes of 22 px and 35 px respectively.
+All supported displays use continuous corners that ease gradually into the
+card edges. Each display keeps its own nominal corner size: 16 px on S3,
+20 px on the 7-inch and 4.3-inch panels, 22 px on the 10-inch panels,
+and 35 px on P4-86.
 Images, artwork and slider fills follow the same outline. The web preview
 matches this shape in browsers that support continuous corners; older
 browsers show ordinary rounded corners.

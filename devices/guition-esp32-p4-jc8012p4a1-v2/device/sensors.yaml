@@ -63,6 +63,7 @@ script:
           bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
           cfg.cols = portrait ? 4 : 5;
           cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
+          cfg.continuous_card_corners = true;
           cfg.subpage_chevron_x = 4;
           cfg.subpage_chevron_y = -2;
           cfg.wrap_tall_labels = true;
@@ -251,6 +252,7 @@ script:
           bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
           cfg.cols = portrait ? 4 : 5;
           cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
+          cfg.continuous_card_corners = true;
           cfg.subpage_chevron_x = 4;
           cfg.subpage_chevron_y = -2;
           cfg.wrap_tall_labels = true;
@@ -478,6 +480,7 @@ esphome:
             bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
             cfg.cols = portrait ? 4 : 5;
             cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
+            cfg.continuous_card_corners = true;
             cfg.subpage_chevron_x = 4;
             cfg.subpage_chevron_y = -2;
             cfg.wrap_tall_labels = true;
@@ -657,6 +660,7 @@ esphome:
             bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
             cfg.cols = portrait ? 4 : 5;
             cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
+            cfg.continuous_card_corners = true;
             cfg.subpage_chevron_x = 4;
             cfg.subpage_chevron_y = -2;
             cfg.wrap_tall_labels = true;

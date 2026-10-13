@@ -15,6 +15,9 @@
     "public": {
       "name": "Guition JC1060P470",
       "docsPath": "/screens/jc1060p470"
+    },
+    "web": {
+      "continuousCorners": true
     }
   },
   "overrides": {

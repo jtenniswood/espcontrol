@@ -83,7 +83,8 @@
           "bottom": 1,
           "right": 1,
           "fontSize": 2
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
@@ -279,7 +280,8 @@
           "bottom": 1,
           "right": 1,
           "fontSize": 2
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
@@ -474,7 +476,8 @@
           "bottom": 1.52,
           "right": 1.52,
           "fontSize": 4.03
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
@@ -664,7 +667,8 @@
           "bottom": 1.52,
           "right": 1.52,
           "fontSize": 4.03
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
@@ -854,7 +858,8 @@
           "bottom": 0.86,
           "right": 0.86,
           "fontSize": 1.56
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
@@ -1044,7 +1049,8 @@
           "bottom": 0.86,
           "right": 0.86,
           "fontSize": 1.56
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
@@ -1630,7 +1636,8 @@
           "bottom": 2.08,
           "right": 2.08,
           "fontSize": 4
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
