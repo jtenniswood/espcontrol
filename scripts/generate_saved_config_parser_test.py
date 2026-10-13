@@ -141,16 +141,21 @@ def generate() -> str:
     )
     # Custom colours must survive subpage normalization before becoming ParsedCfg.
     colour_cases = (
-        ("card_off_color=#ff8c00,card_on_color=3F51B5", "FF8C00"),
-        ("card_on_color=#6633b9", "6633B9"),
-        ("card_off_color=000000", "000000"),
-        ("card_off_color=invalid,card_on_color=00BBD5", "00BBD5"),
-        ("card_off_color=invalid,card_on_color=bad", ""),
+        ("card_off_color=#ff8c00,card_on_color=3F51B5", "FF8C00", "", ""),
+        ("card_on_color=#6633b9", "6633B9", "", ""),
+        ("card_off_color=000000", "000000", "", ""),
+        ("card_off_color=invalid,card_on_color=00BBD5", "00BBD5", "", ""),
+        ("card_off_color=invalid,card_on_color=bad", "", "", ""),
+        ("card_off_color=6633B9,card_active_color=theme", "6633B9", "theme", ""),
+        ("card_off_color=6633B9,card_active_color=custom,card_on_color=#00bcd4", "6633B9", "custom", "00BCD4"),
+        ("card_active_color=custom,card_on_color=000000", "", "custom", "000000"),
+        ("card_active_color=custom,card_on_color=bad", "", "custom", ""),
+        ("card_active_color=theme", "", "theme", ""),
     )
     for card_type in ("", "light_switch", "light_control", "fan_switch", "fan_control",
                       "sensor", "media", "climate", "cover", "alarm", "weather",
                       "calendar", "action", "presence"):
-        for colour_options, expected_colour in colour_cases:
+        for colour_options, expected_colour, expected_mode, expected_on in colour_cases:
             options = ("large_numbers=off," if card_type == "sensor" else "") + colour_options
             encodings = (
                 "1,B|light.kitchen:Kitchen:Auto:Auto:::" + card_type + "::" + options,
@@ -162,10 +167,12 @@ def generate() -> str:
                     f"    const auto buttons = parse_subpage_config({cpp_string(encoded)});",
                     "    assert(buttons.size() == 1);",
                     f'    assert(cfg_option_value(buttons[0].options, "card_off_color") == {cpp_string(expected_colour)});',
-                    '    assert(cfg_option_value(buttons[0].options, "card_on_color").empty());',
+                    f'    assert(cfg_option_value(buttons[0].options, "card_on_color") == {cpp_string(expected_on)});',
+                    f'    assert(cfg_option_value(buttons[0].options, "card_active_color") == {cpp_string(expected_mode)});',
                     "    const auto config = parsed_cfg_from_subpage_btn(buttons[0]);",
                     f'    assert(cfg_option_value(config.options, "card_off_color") == {cpp_string(expected_colour)});',
-                    '    assert(cfg_option_value(config.options, "card_on_color").empty());',
+                    f'    assert(cfg_option_value(config.options, "card_on_color") == {cpp_string(expected_on)});',
+                    f'    assert(cfg_option_value(config.options, "card_active_color") == {cpp_string(expected_mode)});',
                 ))
                 if card_type == "sensor":
                     lines.extend((

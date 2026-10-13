@@ -255,14 +255,18 @@ inline std::string normalize_card_color_value(std::string value) {
 }
 
 inline std::string card_color_options_normalized(const std::string &options) {
-  const char *names[] = {"card_off_color", "card_on_color"};
-  for (const char *name : names) {
-    const std::string value = normalize_card_color_value(cfg_option_value(options, name));
-    if (!value.empty()) {
-      return "card_off_color=" + value;
-    }
+  const std::string mode = cfg_option_value(options, "card_active_color");
+  const bool explicit_mode = mode == "theme" || mode == "custom";
+  const std::string on = normalize_card_color_value(cfg_option_value(options, "card_on_color"));
+  std::string off = normalize_card_color_value(cfg_option_value(options, "card_off_color"));
+  if (off.empty() && !explicit_mode) off = on;
+  std::string out = off.empty() ? "" : "card_off_color=" + off;
+  if (explicit_mode) {
+    if (!out.empty()) out += ",";
+    out += "card_active_color=" + mode;
   }
-  return "";
+  if (mode == "custom" && !on.empty()) out += ",card_on_color=" + on;
+  return out;
 }
 
 inline std::string options_without_card_colors(const std::string &options) {
@@ -273,7 +277,8 @@ inline std::string options_without_card_colors(const std::string &options) {
     if (end == std::string::npos) end = options.size();
     const std::string token = options.substr(start, end - start);
     if (token.compare(0, 14, "card_on_color=") != 0 &&
-        token.compare(0, 15, "card_off_color=") != 0) {
+        token.compare(0, 15, "card_off_color=") != 0 &&
+        token.compare(0, 18, "card_active_color=") != 0) {
       if (!token.empty()) {
         if (!out.empty()) out += ",";
         out += token;

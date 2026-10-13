@@ -282,6 +282,38 @@ int main() {
   defaults.sensor_val = 0x212121;
   assert(card_slider_fill_color(defaults) == defaults.on_val);
   DisplayProfile display;
+  for (const std::string type : {"", "sensor", "presence", "door_window", "light_control", "fan_control", "media", "cover"}) {
+    for (const std::string mode : {"matching", "theme", "custom"}) {
+      const std::string options = "card_off_color=6633B9,card_active_color=" + mode + ",card_on_color=FFFFFF";
+      const ParsedCfg configs[] = {
+        parse_cfg("light.test;Test;Auto;Auto;sensor.test;;" + type + ";;" + options),
+        parsed_cfg_from_subpage_btn(parse_subpage_config("B,1|light.test:Test:Auto:Auto:sensor.test::" + type + "::" + options).at(0)),
+        parsed_cfg_from_subpage_btn(parse_subpage_config("~B,1|" + type + ",light.test,Test,,,sensor.test,,," + encode_compact_field(options)).at(0)),
+      };
+      for (const auto &config : configs) {
+        for (uint32_t accent : {0xFF8C00u, 0x00BCD4u}) {
+          defaults.on_val = accent;
+          for (int calibration : {100, 50}) {
+            display.color.red_percent = calibration;
+            const auto palette = card_palette_for_config(defaults, config, display);
+            const uint32_t expected = mode == "theme" ? accent : display_correct_color(mode == "custom" ? 0xFFFFFF : 0xA385D5, display);
+            assert(palette.on_val == expected);
+            assert(palette.off_val == display_correct_color(0x6633B9, display));
+            lv_obj_t button, label;
+            button.children = {&label};
+            apply_button_colors(&button, palette.has_on, palette.on_val, palette.has_off, palette.off_val);
+            set_card_checked_state(&button, true);
+            assert(button.background[LV_STATE_CHECKED] == expected);
+            assert(label.text[0] == display_text_color_for_bg(expected));
+            set_card_checked_state(&button, false);
+            assert(label.text[0] == display_text_color_for_bg(palette.off_val));
+          }
+        }
+      }
+    }
+  }
+  display.color.red_percent = 100;
+  defaults.on_val = 0xFF8C00;
   assert(card_progress_color(0xFF8C00) == 0xFFAF4D);
   assert(card_progress_color(0x9D9D9D) == 0xBABABA);
   assert(display_text_color_for_bg(0x00BCD4) == 0x212121);

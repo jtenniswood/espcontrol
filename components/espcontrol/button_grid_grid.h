@@ -143,6 +143,7 @@ inline CardPalette card_palette_for_config(const CardPalette &defaults,
                                             const DisplayProfile &display) {
   CardPalette palette = defaults;
   bool valid = false;
+  const std::string active_mode = cfg_option_value(config.options, "card_active_color");
   const std::string off = cfg_option_value(config.options, "card_off_color");
   if (!off.empty()) {
     const uint32_t raw = parse_hex_color(off, valid);
@@ -153,9 +154,18 @@ inline CardPalette card_palette_for_config(const CardPalette &defaults,
       palette.sensor_val = palette.off_val;
       palette.surface_sensor_val = palette.off_val;
       palette.custom_background = true;
-      palette.has_on = true;
-      palette.on_val = display_correct_color(active_card_color(raw), display);
+      if (active_mode != "theme") {
+        palette.has_on = true;
+        palette.on_val = display_correct_color(active_card_color(raw), display);
+      }
       palette.progress_val = display_correct_color(card_progress_color(raw), display);
+    }
+  }
+  if (active_mode == "custom") {
+    const uint32_t on = parse_hex_color(cfg_option_value(config.options, "card_on_color"), valid);
+    if (valid) {
+      palette.has_on = true;
+      palette.on_val = display_correct_color(on, display);
     }
   }
   return palette;

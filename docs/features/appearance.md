@@ -37,6 +37,14 @@ Custom card colours stay in place when changing a card’s controls, reopening i
 
 Cards using their default background highlight the matching preset or custom picker for the current theme. Resetting a card’s colours restores this default selection.
 
+In a card’s **Custom Colours** controls, **Active state colour** offers three choices:
+
+- **Matching** keeps the existing behaviour: a brighter shade of a darker custom card colour or a darker shade of a pale colour, or the Appearance active colour when the card uses its default background.
+- **Theme** uses the active colour selected in **Settings → Appearance**, including when the card has a custom background.
+- **Custom** shows a second colour picker for a separate active colour.
+
+These choices apply on the main screen and subpages wherever a card normally uses an active colour. Sensor, Door/Window and Presence cards still need their **Active Colour** option enabled to highlight their active state. Resetting colours also restores **Matching**.
+
 Disabled Home Assistant cards keep their background colour and show muted labels and icons. Their normal text and icon colours return when the card becomes available again.
 
 Colour changes apply to the panel automatically after a brief pause (about 200 ms), plus the time needed to redraw the cards, including cards on subpages. You do not need to restart the panel. The reset icon beside the **Appearance** arrow applies the default orange in the same way.

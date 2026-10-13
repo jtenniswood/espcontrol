@@ -142,5 +142,69 @@
       "precision": "",
       "options": ""
     }
+  },
+  {
+    "name": "custom active colour retains separate background",
+    "input": "light.kitchen;Kitchen;Lightbulb;Lightbulb;;;;;card_on_color=#ffffff,card_active_color=custom,card_off_color=#6633b9",
+    "canonical": "light.kitchen;Kitchen;Lightbulb;Lightbulb;;;;;card_off_color=6633B9,card_active_color=custom,card_on_color=FFFFFF",
+    "expected": {
+      "entity": "light.kitchen",
+      "label": "Kitchen",
+      "icon": "Lightbulb",
+      "icon_on": "Lightbulb",
+      "sensor": "",
+      "unit": "",
+      "type": "",
+      "precision": "",
+      "options": "card_off_color=6633B9,card_active_color=custom,card_on_color=FFFFFF"
+    }
+  },
+  {
+    "name": "theme active colour retains custom background",
+    "input": "light.kitchen;Kitchen;Lightbulb;Lightbulb;;;;;card_active_color=theme,card_off_color=6633B9,card_on_color=FFFFFF",
+    "canonical": "light.kitchen;Kitchen;Lightbulb;Lightbulb;;;;;card_off_color=6633B9,card_active_color=theme",
+    "expected": {
+      "entity": "light.kitchen",
+      "label": "Kitchen",
+      "icon": "Lightbulb",
+      "icon_on": "Lightbulb",
+      "sensor": "",
+      "unit": "",
+      "type": "",
+      "precision": "",
+      "options": "card_off_color=6633B9,card_active_color=theme"
+    }
+  },
+  {
+    "name": "custom active colour works with default background",
+    "input": "light.kitchen;Kitchen;Lightbulb;Lightbulb;;;;;card_active_color=custom,card_on_color=000000",
+    "canonical": "light.kitchen;Kitchen;Lightbulb;Lightbulb;;;;;card_active_color=custom,card_on_color=000000",
+    "expected": {
+      "entity": "light.kitchen",
+      "label": "Kitchen",
+      "icon": "Lightbulb",
+      "icon_on": "Lightbulb",
+      "sensor": "",
+      "unit": "",
+      "type": "",
+      "precision": "",
+      "options": "card_active_color=custom,card_on_color=000000"
+    }
+  },
+  {
+    "name": "invalid custom active colour is dropped",
+    "input": "light.kitchen;Kitchen;Lightbulb;Lightbulb;;;;;card_off_color=6633B9,card_active_color=custom,card_on_color=bad",
+    "canonical": "light.kitchen;Kitchen;Lightbulb;Lightbulb;;;;;card_off_color=6633B9,card_active_color=custom",
+    "expected": {
+      "entity": "light.kitchen",
+      "label": "Kitchen",
+      "icon": "Lightbulb",
+      "icon_on": "Lightbulb",
+      "sensor": "",
+      "unit": "",
+      "type": "",
+      "precision": "",
+      "options": "card_off_color=6633B9,card_active_color=custom"
+    }
   }
 ]

@@ -68,15 +68,27 @@ export function setConfigOptionValue(options: unknown, name: string, value: unkn
   return out.join(",");
 }
 
-const CARD_COLOR_OPTIONS = ["card_on_color", "card_off_color"] as const;
+const CARD_COLOR_OPTIONS = ["card_on_color", "card_off_color", "card_active_color"] as const;
+
+function normalizedColor(value: unknown): string {
+  const hex = String(value || "").replace(/^#/, "").toUpperCase();
+  return /^[0-9A-F]{6}$/.test(hex) ? hex : "";
+}
+
+export function cardActiveColorMode(options: unknown): "matching" | "theme" | "custom" {
+  const mode = configOptionValue(options, "card_active_color");
+  return mode === "theme" || mode === "custom" ? mode : "matching";
+}
 
 export function normalizedCardColorOptions(options: unknown): string {
-  // Prefer the card colour; migrate old active-only customisations to the single colour.
-  for (const name of ["card_off_color", "card_on_color"]) {
-    const value = configOptionValue(options, name).replace(/^#/, "").toUpperCase();
-    if (/^[0-9A-F]{6}$/.test(value)) return "card_off_color=" + value;
-  }
-  return "";
+  const mode = cardActiveColorMode(options);
+  const on = normalizedColor(configOptionValue(options, "card_on_color"));
+  // Unmarked legacy active-only customisations still migrate to the card colour.
+  const off = normalizedColor(configOptionValue(options, "card_off_color")) || (mode === "matching" ? on : "");
+  const out = off ? ["card_off_color=" + off] : [];
+  if (mode !== "matching") out.push("card_active_color=" + mode);
+  if (mode === "custom" && on) out.push("card_on_color=" + on);
+  return out.join(",");
 }
 
 export function withoutCardColorOptions(options: unknown): string {
@@ -90,8 +102,27 @@ export function preserveCardColorOptions(options: unknown, normalized: unknown):
 }
 
 export function setCardColor(options: unknown, value: unknown): string {
-  const cleaned = String(value || "").replace(/^#/, "").trim().toUpperCase();
-  return setConfigOptionValue(withoutCardColorOptions(options), "card_off_color", /^[0-9A-F]{6}$/.test(cleaned) ? cleaned : "");
+  const normalized = preserveCardColorOptions(options, options);
+  return setConfigOptionValue(normalized, "card_off_color", normalizedColor(String(value || "").replace(/^#/, "").trim()));
+}
+
+export function setCardActiveColor(options: unknown, mode: "matching" | "theme" | "custom", color?: string): string {
+  let out = preserveCardColorOptions(options, options);
+  out = setConfigOptionValue(out, "card_active_color", mode === "matching" ? "" : mode);
+  return setConfigOptionValue(out, "card_on_color", mode === "custom" ? normalizedColor(color) : "");
+}
+
+export function cardActiveColor(options: unknown, themeColor: string): string {
+  const mode = cardActiveColorMode(options);
+  if (mode === "custom") {
+    const color = normalizedColor(configOptionValue(options, "card_on_color"));
+    if (color) return color;
+  }
+  if (mode !== "theme") {
+    const matching = activeCardColor(configOptionValue(options, "card_off_color"));
+    if (matching) return matching;
+  }
+  return normalizedColor(themeColor) || "FF8C00";
 }
 
 export function activeCardColor(color: string): string {

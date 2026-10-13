@@ -546,6 +546,9 @@ export function createWebStyles(dragAnimation: boolean): string {
         "height:calc(100% + 16px);cursor:pointer;opacity:0}" +
         ".sp-color-row .sp-input{flex:1}" +
         COLOR_SWATCH_STYLES +
+        ".sp-card-color-editor{display:flex;flex-direction:column;gap:24px}" +
+        ".sp-card-color-editor .sp-field{margin-bottom:0}" +
+        ".sp-card-color-editor .sp-segment{margin-bottom:16px}" +
         ".sp-card-color-header{position:relative}" +
         ".sp-disclosure.sp-open .sp-card-color-header .sp-disclosure-button{gap:56px}" +
         ".sp-disclosure:not(.sp-open) .sp-card-color-header .sp-card-header-action{display:none}" +
