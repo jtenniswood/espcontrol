@@ -271,6 +271,8 @@ class AsyncWebHandler {
   virtual void handleBody(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {}
   virtual size_t maximumBodySize() const { return SIZE_MAX; }
   virtual bool canReceiveBody(AsyncWebServerRequest *request) { return true; }
+  // Called on every raw-body exit, including authorization, size and receive failures.
+  virtual void handleBodyEnd(AsyncWebServerRequest *request) {}
   // NOLINTNEXTLINE(readability-identifier-naming)
   virtual bool isRequestHandlerTrivial() const { return true; }
 };

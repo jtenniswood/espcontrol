@@ -30,6 +30,7 @@ class WallpaperHandler final : public esphome::web_server_idf::AsyncWebHandler {
     std::memcpy(body_ + received_, data, len);
     received_ += len;
   }
+  void handleBodyEnd(esphome::web_server_idf::AsyncWebServerRequest *) override { reset(); }
   void handleRequest(esphome::web_server_idf::AsyncWebServerRequest *request) override {
     if (!authorize(request)) { reset(); return; }
     httpd_req_t *raw = *request;

@@ -14,6 +14,9 @@ target_compile_features(foundation_test PRIVATE cxx_std_17)
 target_compile_options(foundation_test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME foundation_test COMMAND foundation_test)
 
+add_test(NAME wallpaper_upload_lifecycle_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/wallpaper_upload_lifecycle_test.py)
+
 add_executable(wallpaper_store_test wallpaper_store_test.cpp ../../components/espcontrol/wallpaper.cpp)
 target_compile_features(wallpaper_store_test PRIVATE cxx_std_17)
 target_compile_options(wallpaper_store_test PRIVATE -Wall -Wextra -Werror)
