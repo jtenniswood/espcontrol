@@ -14,9 +14,8 @@ struct WeatherDailyModal {
   std::vector<WeatherDailyModalMetric> metric_tiles;
   size_t day = 0, day_limit = 5, columns_per_row = 1;
   int row_width = 0, row_height = 0, forecast_height = 0;
-  int gap = 6, day_gap = 0, row_gap = 6, day_padding = 12, day_vertical_padding = 8, text_gap = 2;
+  int gap = 6, day_gap = 0, day_padding = 12, day_vertical_padding = 8, text_gap = 2;
   int metric_height = 0, metric_padding = 6, metric_label_lines = 2;
-  bool weekday_labels = false;
 };
 inline WeatherDailyModal &weather_daily_modal() { static WeatherDailyModal ui; return ui; }
 inline void weather_daily_hide_modal() {
@@ -35,6 +34,10 @@ inline lv_obj_t *weather_daily_modal_container(lv_obj_t *parent, int width, int 
   lv_obj_clear_flag(container, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_clear_flag(container, LV_OBJ_FLAG_CLICKABLE);
   return container;
+}
+inline int weather_daily_modal_minimum_width(const WeatherDailyModal &ui) {
+  return weather_daily_forecast_minimum_width(ui.font, ui.icon_font, ui.temperature_font,
+    ui.source->forecast, 0, ui.day_limit, ui.day_padding * 2);
 }
 inline void weather_daily_refresh_modal();
 inline void weather_daily_modal_select_day(lv_event_t *event) {
@@ -176,14 +179,16 @@ inline void weather_daily_refresh_modal() {
   }
   lv_obj_add_flag(ui.message, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(ui.placeholder_icon, LV_OBJ_FLAG_HIDDEN);
-  const size_t count = std::min(ui.day_limit, forecast.count);
+  ui.columns_per_row = espcontrol::weather::visible_days(ui.row_width,
+    weather_daily_modal_minimum_width(ui), ui.day_limit, ui.day_gap);
+  const size_t count = std::min({ui.day_limit, ui.columns_per_row, forecast.count});
   ui.day = std::min(ui.day, count - 1);
   lv_obj_clear_flag(ui.days, LV_OBJ_FLAG_HIDDEN);
-  // Show the complete limited forecast. Narrow/rotated displays wrap rows with consistent day widths.
+  // Show only the days that fit in one row; never allocate a partial second row.
   // Data updates and day selection reuse widgets when the count is unchanged.
   if (ui.columns.size() != count) {
     lv_obj_clean(ui.days); ui.columns.clear();
-    const size_t columns = std::min(count, ui.columns_per_row);
+    const size_t columns = count;
     lv_obj_set_height(ui.days, ui.forecast_height);
     const int text_height = lv_font_get_line_height(ui.font);
     const int icon_y = ui.day_vertical_padding;
@@ -192,10 +197,10 @@ inline void weather_daily_refresh_modal() {
     const int available = ui.row_width - ui.day_gap * static_cast<int>(columns - 1);
     const int width = available / static_cast<int>(columns), remainder = available % static_cast<int>(columns);
     for (size_t i = 0; i < count; ++i) {
-      const int column = static_cast<int>(i % columns), row = static_cast<int>(i / columns);
+      const int column = static_cast<int>(i);
       const int column_width = width + (column < remainder ? 1 : 0);
       auto *button = weather_daily_modal_container(ui.days, column_width, ui.row_height);
-      lv_obj_set_pos(button, column * (width + ui.day_gap) + std::min(column, remainder), row * (ui.row_height + ui.row_gap));
+      lv_obj_set_pos(button, column * (width + ui.day_gap) + std::min(column, remainder), 0);
       lv_obj_set_style_bg_color(button, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
       lv_obj_set_style_radius(button, text_height / 2, LV_PART_MAIN);
       lv_obj_add_flag(button, LV_OBJ_FLAG_CLICKABLE);
@@ -217,17 +222,13 @@ inline void weather_daily_refresh_modal() {
     const auto &day = forecast.days[i];
     const auto &col = ui.columns[i];
     lv_obj_set_style_bg_opa(col.button, i == ui.day ? LV_OPA_10 : LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_label_set_display_text(col.day, (ui.weekday_labels ? weather_daily_weekday_label(day) : weather_daily_date_label(day, forecast)).c_str());
+    lv_label_set_display_text(col.day, weather_daily_date_label(day, forecast).c_str());
     lv_obj_set_style_text_opa(col.day, i == ui.day ? LV_OPA_COVER : LV_OPA_70, LV_PART_MAIN);
     lv_label_set_display_text(col.icon, weather_icon_for_state(day.condition));
     const auto temperature = weather_daily_temperature_range(day, forecast.temperature_unit);
     lv_label_set_display_text(col.temperature, temperature.c_str());
   }
   weather_daily_modal_refresh_metrics(ui);
-}
-inline int weather_daily_modal_minimum_width(const WeatherDailyModal &ui, bool include_today = true) {
-  return weather_daily_forecast_minimum_width(ui.font, ui.icon_font, ui.temperature_font,
-    ui.source->forecast, 0, ui.day_limit, ui.day_padding * 2, include_today);
 }
 inline void weather_daily_open_modal(WeatherDailyCard *card) {
   if (!card || !card->source || !card->owner) return;
@@ -256,33 +257,23 @@ inline void weather_daily_open_modal(WeatherDailyCard *card) {
   const int small_height = lv_font_get_line_height(ui.temperature_font);
   const int value_height = lv_font_get_line_height(ui.value_font);
   ui.day_gap = weather_daily_day_gap(ui.font);
-  auto columns_for = [&](bool today) {
-    return espcontrol::weather::visible_days(ui.row_width, weather_daily_modal_minimum_width(ui, today), ui.day_limit, ui.day_gap);
-  };
-  ui.columns_per_row = columns_for(true);
-  int rows = static_cast<int>((ui.day_limit + ui.columns_per_row - 1) / ui.columns_per_row);
   const int content_height = icon_height + text_height + small_height + ui.text_gap + 2;
   auto metric_minimum = [&]() {
     return value_height + small_height + text_height * ui.metric_label_lines + ui.metric_padding * 2 + 4;
   };
   int minimum_metric = metric_minimum();
   auto forecast_budget = [&]() { return height - minimum_metric - small_height - ui.gap * 2; };
-  auto forecast_minimum = [&]() { return rows * (content_height + 8) + (rows - 1) * ui.row_gap; };
+  const int forecast_minimum = content_height + 8;
   // Reserve space for full-sized metric numbers and a separate grey rainfall line.
   // Short panels use one bottom-label line; main numbers keep the larger font.
-  if (forecast_minimum() > forecast_budget()) {
+  if (forecast_minimum > forecast_budget()) {
     ui.metric_label_lines = 1;
     minimum_metric = metric_minimum();
   }
-  if (forecast_minimum() > forecast_budget()) {
-    ui.weekday_labels = true;
-    ui.columns_per_row = columns_for(false);
-    rows = static_cast<int>((ui.day_limit + ui.columns_per_row - 1) / ui.columns_per_row);
-  }
-  const int maximum_row = (forecast_budget() - (rows - 1) * ui.row_gap) / rows;
+  const int maximum_row = forecast_budget();
   ui.day_vertical_padding = std::max(4, std::min(8, (maximum_row - content_height) / 2));
   ui.row_height = content_height + ui.day_vertical_padding * 2;
-  ui.forecast_height = rows * ui.row_height + (rows - 1) * ui.row_gap;
+  ui.forecast_height = ui.row_height;
   ui.metric_height = height - ui.forecast_height - small_height - ui.gap * 2;
   ui.days = weather_daily_modal_container(ui.body, ui.row_width, ui.forecast_height);
   lv_obj_set_pos(ui.days, 0, 0);
