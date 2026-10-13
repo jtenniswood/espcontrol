@@ -2,10 +2,10 @@
 
 // Included by the weather widget layer after its shared formatting helpers.
 // Allocate at most seven day panels and three metric tiles, sharing the card snapshot.
-struct WeatherDailyModalColumn { lv_obj_t *button, *day, *icon, *high, *low; };
-struct WeatherDailyModalMetric { lv_obj_t *tile, *label, *value, *unit; };
+struct WeatherDailyModalColumn { lv_obj_t *button, *day, *icon, *temperature; };
+struct WeatherDailyModalMetric { lv_obj_t *tile, *label, *value; };
 struct WeatherDailyModal {
-  lv_obj_t *overlay = nullptr, *owner = nullptr, *body = nullptr;
+  lv_obj_t *overlay = nullptr, *owner = nullptr, *body = nullptr, *title = nullptr;
   lv_obj_t *placeholder_icon = nullptr, *message = nullptr, *details = nullptr;
   lv_obj_t *days = nullptr, *metrics = nullptr, *status = nullptr;
   WeatherDailySource *source = nullptr;
@@ -76,10 +76,9 @@ inline void weather_daily_modal_refresh_metrics(WeatherDailyModal &ui) {
     lv_obj_clean(ui.metrics); ui.metric_tiles.clear();
     if (count) {
       const int gap = ui.gap, text_height = lv_font_get_line_height(ui.font);
-      const int value_height = lv_font_get_line_height(ui.value_font);
       const int height = ui.metric_height;
-      const int value_y = ui.metric_padding + ui.metric_label_lines * text_height;
-      const int unit_y = value_y + value_height + ui.metric_padding;
+      const int value_y = ui.metric_padding;
+      const int label_y = height - ui.metric_padding - ui.metric_label_lines * text_height;
       const int available = ui.row_width - gap * static_cast<int>(count - 1);
       const int width = available / static_cast<int>(count), remainder = available % static_cast<int>(count);
       lv_obj_set_height(ui.metrics, height);
@@ -87,31 +86,44 @@ inline void weather_daily_modal_refresh_metrics(WeatherDailyModal &ui) {
         const int index = static_cast<int>(i), tile_width = width + (index < remainder ? 1 : 0);
         auto *tile = weather_daily_modal_container(ui.metrics, tile_width, height);
         lv_obj_set_pos(tile, index * (width + gap) + std::min(index, remainder), 0);
-        lv_obj_set_style_bg_color(tile, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(tile, LV_OPA_10, LV_PART_MAIN);
+        lv_obj_set_style_bg_color(tile, lv_color_hex(current_theme().surface_card), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(tile, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_style_radius(tile, text_height / 2, LV_PART_MAIN);
         auto label = [&](const lv_font_t *font, int y) {
           auto *obj = weather_daily_label(tile, font);
+          lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
           lv_obj_set_width(obj, tile_width - ui.metric_padding * 2);
           lv_obj_set_pos(obj, ui.metric_padding, y); return obj;
         };
-        WeatherDailyModalMetric metric{tile, label(ui.font, ui.metric_padding),
-          label(ui.value_font, value_y), ui.metric_label_lines == 2 ? label(ui.font, unit_y) : nullptr};
+        WeatherDailyModalMetric metric{tile, label(ui.font, label_y), label(ui.value_font, value_y)};
         lv_label_set_long_mode(metric.label, ui.metric_label_lines == 2 ? LV_LABEL_LONG_WRAP : LV_LABEL_LONG_DOT);
         lv_obj_set_height(metric.label, text_height * ui.metric_label_lines);
-        lv_obj_set_style_text_opa(metric.label, LV_OPA_70, LV_PART_MAIN);
-        if (metric.unit) lv_obj_set_style_text_opa(metric.unit, LV_OPA_70, LV_PART_MAIN);
         ui.metric_tiles.push_back(metric);
       }
     }
   }
   for (size_t i = 0; i < count; ++i) {
-    lv_label_set_display_text(ui.metric_tiles[i].label, espcontrol_i18n(std::string(values[i].key)).c_str());
     const auto &tile = ui.metric_tiles[i];
+    const auto label = espcontrol_i18n(std::string(values[i].key));
+    lv_label_set_display_text(tile.label, label.c_str());
+    lv_point_t label_size;
+    lv_text_get_size(&label_size, label.c_str(), ui.font, 0, 0, lv_obj_get_width(tile.label), LV_TEXT_FLAG_NONE);
+    const int text_height = lv_font_get_line_height(ui.font);
+    const int label_height = std::min(text_height * ui.metric_label_lines, std::max(text_height, static_cast<int>(label_size.y)));
+    lv_obj_set_height(tile.label, label_height);
+    lv_obj_set_y(tile.label, ui.metric_height - ui.metric_padding - label_height);
     std::string value = values[i].value;
-    if (!tile.unit && !values[i].unit.empty()) value += (std::strcmp(values[i].key, "Rain chance") == 0 ? " / " : " ") + values[i].unit;
+    if (!values[i].unit.empty()) value += (std::strcmp(values[i].key, "Rain chance") == 0 ? " / " : " ") + values[i].unit;
+    // Keep value and units together at the top left, choosing an existing font
+    // that fits. The bottom label and widget count stay stable when selecting days.
+    const lv_font_t *value_font = ui.value_font;
+    lv_point_t measured;
+    lv_text_get_size(&measured, value.c_str(), value_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    if (measured.x > lv_obj_get_width(tile.value)) value_font = ui.font;
+    lv_text_get_size(&measured, value.c_str(), value_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    if (measured.x > lv_obj_get_width(tile.value)) value_font = ui.temperature_font;
+    lv_obj_set_style_text_font(tile.value, value_font, LV_PART_MAIN);
     lv_label_set_display_text(tile.value, value.c_str());
-    if (tile.unit) lv_label_set_display_text(tile.unit, values[i].unit.c_str());
   }
   if (count) {
     const std::string heading = weather_daily_date_label(day, forecast) + " - " + weather_label_for_state(day.condition);
@@ -167,9 +179,10 @@ inline void weather_daily_refresh_modal() {
     ui.row_height = (ui.forecast_height - gap * static_cast<int>(rows - 1)) / static_cast<int>(rows);
     lv_obj_set_height(ui.days, ui.forecast_height);
     const int text_height = lv_font_get_line_height(ui.font);
-    const int icon_y = text_height + ui.text_gap;
+    const int icon_y = 0;
     const int temperature_height = lv_font_get_line_height(ui.temperature_font);
-    const int high_y = ui.row_height - temperature_height * 2 - 4;
+    const int temperature_y = ui.row_height - temperature_height;
+    const int day_y = temperature_y - text_height - ui.text_gap;
     size_t row = 0, column = 0;
     for (size_t i = 0; i < count; ++i) {
       const size_t row_count = count / rows + (row < count % rows ? 1 : 0);
@@ -188,13 +201,12 @@ inline void weather_daily_refresh_modal() {
         reinterpret_cast<void *>(i + 1));
       auto make = [&](const lv_font_t *font, int y) {
         auto *label = weather_daily_label(button, font);
+        lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
         lv_obj_set_width(label, column_width); lv_obj_set_pos(label, 0, y); return label;
       };
-      WeatherDailyModalColumn col{button, make(ui.font, 0), make(ui.icon_font, icon_y),
-        make(ui.temperature_font, high_y), make(ui.temperature_font, high_y + temperature_height + 4)};
-      lv_obj_set_style_text_color(col.high, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
-      lv_obj_set_style_text_color(col.low, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
-      lv_obj_set_style_text_opa(col.day, LV_OPA_70, LV_PART_MAIN);
+      WeatherDailyModalColumn col{button, make(ui.font, day_y), make(ui.icon_font, icon_y),
+        make(ui.temperature_font, temperature_y)};
+      lv_obj_set_style_text_color(col.temperature, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
       ui.columns.push_back(col);
     }
   }
@@ -205,11 +217,21 @@ inline void weather_daily_refresh_modal() {
     lv_label_set_display_text(col.day, (ui.weekday_labels ? weather_daily_weekday_label(day) : weather_daily_date_label(day, forecast)).c_str());
     lv_obj_set_style_text_opa(col.day, i == ui.day ? LV_OPA_COVER : LV_OPA_70, LV_PART_MAIN);
     lv_label_set_display_text(col.icon, weather_icon_for_state(day.condition));
-    const std::string high = weather_daily_temperature(day.high, forecast.temperature_unit) + "\u00B0";
-    const std::string low = weather_daily_temperature(day.low, forecast.temperature_unit) + "\u00B0";
-    lv_label_set_display_text(col.high, high.c_str()); lv_label_set_display_text(col.low, low.c_str());
+    const auto temperature = weather_daily_temperature_range(day, forecast.temperature_unit);
+    lv_label_set_display_text(col.temperature, temperature.c_str());
   }
   weather_daily_modal_refresh_metrics(ui);
+}
+inline int weather_daily_modal_minimum_width(const WeatherDailyModal &ui, bool include_today = true) {
+  int minimum = weather_daily_minimum_width(ui.font, ui.icon_font, 12, include_today);
+  const auto &forecast = ui.source->forecast;
+  for (size_t i = 0; i < std::min(ui.day_limit, forecast.count); ++i) {
+    const auto temperature = weather_daily_temperature_range(forecast.days[i], forecast.temperature_unit);
+    lv_point_t measured;
+    lv_text_get_size(&measured, temperature.c_str(), ui.temperature_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    minimum = std::max(minimum, static_cast<int>(measured.x) + 12);
+  }
+  return minimum;
 }
 inline void weather_daily_open_modal(WeatherDailyCard *card) {
   if (!card || !card->source || !card->owner) return;
@@ -230,32 +252,39 @@ inline void weather_daily_open_modal(WeatherDailyCard *card) {
   const int top = shell.layout.back_size + shell.layout.inset * 2;
   const int height = std::max(60, static_cast<int>(shell.layout.panel_h - shell.layout.inset) - top);
   ui.row_width = shell.content_w;
+  const lv_font_t *title_font = lv_font_get_line_height(card->summary_font) <= shell.layout.back_size ? card->summary_font : ui.font;
+  ui.title = weather_daily_label(shell.panel, title_font);
+  lv_label_set_display_text(ui.title, espcontrol_i18n(std::string("Weather")).c_str());
+  lv_obj_set_style_text_align(ui.title, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+  lv_obj_set_width(ui.title, std::max(1, ui.row_width - static_cast<int>(shell.layout.back_size) - ui.gap));
+  lv_obj_set_pos(ui.title, shell.layout.inset, shell.layout.inset +
+    std::max(0, (static_cast<int>(shell.layout.back_size) - static_cast<int>(lv_font_get_line_height(title_font))) / 2));
   ui.body = weather_daily_modal_container(shell.panel, ui.row_width, height);
   lv_obj_align(ui.body, LV_ALIGN_TOP_MID, 0, top);
   lv_obj_clear_flag(shell.panel, LV_OBJ_FLAG_SCROLLABLE);
   const int icon_height = lv_font_get_line_height(ui.icon_font);
   const int text_height = lv_font_get_line_height(ui.font);
   const int value_height = lv_font_get_line_height(ui.value_font);
-  int minimum = weather_daily_minimum_width(ui.font, ui.icon_font, 12);
+  int minimum = weather_daily_modal_minimum_width(ui);
   ui.columns_per_row = espcontrol::weather::visible_days(ui.row_width, minimum, ui.day_limit, ui.gap);
   int rows = static_cast<int>((ui.day_limit + ui.columns_per_row - 1) / ui.columns_per_row);
-  ui.metric_height = text_height * 3 + value_height + ui.metric_padding * 2;
-  const int minimum_row_height = text_height * 3 + icon_height + ui.text_gap * 2 + 4;
+  ui.metric_height = text_height * ui.metric_label_lines + value_height + ui.metric_padding * 2 + 4;
+  const int minimum_row_height = text_height + lv_font_get_line_height(ui.temperature_font) + icon_height + ui.text_gap * 2;
   // Budget the fullest forecast, three metrics, a heading shared with the stale-data notice.
-  // Short displays use single-line tile labels and the existing body font for values.
+  // Short displays use single-line bottom labels and the existing body font for values.
   // No new font asset or scrollable container is required.
   if (rows * minimum_row_height + (rows - 1) * ui.gap + ui.metric_height + text_height + ui.gap * 2 > height) {
     ui.gap = 6; ui.text_gap = 4; ui.metric_padding = 4; ui.metric_label_lines = 1;
     ui.value_font = ui.font;
-    ui.metric_height = text_height * 2 + ui.metric_padding * 3;
+    ui.metric_height = text_height * 2 + ui.metric_padding * 2 + 4;
   }
   ui.forecast_height = height - ui.metric_height - text_height - ui.gap * 2;
-  const int compact_row_height = text_height * 3 + icon_height + ui.text_gap * 2 + 4;
+  const int compact_row_height = text_height + lv_font_get_line_height(ui.temperature_font) + icon_height + ui.text_gap * 2;
   if (rows * compact_row_height + (rows - 1) * ui.gap > ui.forecast_height) {
     // Long translated Today labels can force an extra row. Use the short weekday
     // in the forecast grid while the selected-day heading retains the full label.
     ui.weekday_labels = true;
-    minimum = weather_daily_minimum_width(ui.font, ui.icon_font, 12, false);
+    minimum = weather_daily_modal_minimum_width(ui, false);
     ui.columns_per_row = espcontrol::weather::visible_days(ui.row_width, minimum, ui.day_limit, ui.gap);
   }
   ui.days = weather_daily_modal_container(ui.body, ui.row_width, ui.forecast_height);
