@@ -1,3 +1,4 @@
+import { buildWallpaperSettings } from "./wallpaper";
 import { buildScreensaverPinSettings } from "./screensaver_pin";
 import { resetAwareFetch } from "../api/reset_session";
 import { state } from "../state/app_instance";
@@ -167,9 +168,14 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             event.stopPropagation();
             resetAppearanceColors(true);
         });
+        const wallpaperSettings = buildWallpaperSettings(document, resetAwareFetch, url => {
+            runtime.els.wallpaperUrl = url;
+            renderPreview();
+        });
         var activeColourCard: any = makeCollapsibleCard("Active Colour", activeColourBody, true, null, appearanceResetButton);
         var cardStyleCard: any = makeCollapsibleCard("Card Style", cardStyleBody, true);
         var themeCard: any = makeCollapsibleCard("Theme", themeBody, true);
+        var wallpaperCard: any = makeCollapsibleCard("Wallpaper", wallpaperSettings, true);
         var languageBody: any = document.createElement("div");
         var languageField: any = document.createElement("div");
         languageField.className = "sp-field";
@@ -632,6 +638,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             activeColourCard,
             cardStyleCard,
             themeCard,
+            wallpaperCard,
             idleCard,
             clockBarCard,
         ]);

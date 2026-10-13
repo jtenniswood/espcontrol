@@ -2,6 +2,11 @@
 
 #include "theme_runtime_static.h"
 
+inline auto &theme_grid_wallpaper_refresh() {
+  static void (*refresh)() = nullptr;
+  return refresh;
+}
+
 inline void image_card_refresh_theme(uint32_t fit_background_color);
 
 // Runtime LVGL targets for the palette refresh boundary. Dark -> Dark leaves
@@ -121,6 +126,7 @@ inline void theme_apply_grid(void *context, const ThemePalette &theme) {
     }
   }
   image_card_refresh_theme(theme_grid_correct_color(theme.surface_sensor, targets));
+  if (theme_grid_wallpaper_refresh()) theme_grid_wallpaper_refresh()();
 }
 
 inline void register_theme_grid(lv_obj_t *main_page, BtnSlot *slots,
