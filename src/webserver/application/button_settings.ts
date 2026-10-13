@@ -902,7 +902,7 @@ export function createButtonSettingsFeature(
                 b.options = setCardActiveColor(b.options, "custom", hex);
                 saveField("options", b.options);
                 renderPreview();
-            }, "Active state colour presets");
+            }, "Active state colour presets", "active");
             activeColorField.appendChild(activeColorPicker);
             function syncActiveColorControls() {
                 var mode = cardActiveColorMode(b.options);

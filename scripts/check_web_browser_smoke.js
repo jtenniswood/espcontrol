@@ -14,6 +14,7 @@ const {
   createPanelConfigBackupPayload,
   decodePanelConfig,
   encodePanelConfig,
+  activeCardColor,
 } = loadTypeScriptModule(path.join(ROOT, "src", "webserver", "model", "index.ts"));
 const MANIFEST_PATH = path.join(ROOT, "devices", "manifest.json");
 const WEB_OUTPUT_DIR = freshWebOutputDir();
@@ -2809,6 +2810,15 @@ async function assertCardActiveColourControls(page, posts, label) {
   assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#" + themeColor);
   await tabs.getByRole("button", { name: "Custom", exact: true }).click();
   assert(await active.isVisible(), `${label}: Custom shows another picker`);
+  const backgroundPresets = await background.locator("button[data-color]").evaluateAll(buttons => buttons.map(button => button.dataset.color));
+  const activePresets = await active.locator("button[data-color]").evaluateAll(buttons => buttons.map(button => button.dataset.color));
+  assert.deepStrictEqual(activePresets, backgroundPresets.map(activeCardColor),
+    `${label}: active presets use Matching's lighter shades`);
+  await active.locator('[data-color="FFBA66"]').click();
+  assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#FFBA66",
+    `${label}: selecting a lighter swatch uses its displayed colour`);
+  assert.strictEqual(await active.locator('[data-color="FFBA66"]').getAttribute("aria-pressed"), "true");
+  assert.strictEqual(await active.locator(".sp-card-color-custom").getAttribute("data-selected"), "false");
   await active.locator('input[type="color"]').fill("#ffffff");
   assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#FFFFFF");
   await background.locator('[data-color="212121"]').click();

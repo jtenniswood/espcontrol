@@ -41,7 +41,7 @@ In a card’s **Custom Colours** controls, **Active state colour** offers three 
 
 - **Matching** keeps the existing behaviour: a brighter shade of a darker custom card colour or a darker shade of a pale colour, or the Appearance active colour when the card uses its default background.
 - **Theme** uses the active colour selected in **Settings → Appearance**, including when the card has a custom background.
-- **Custom** shows a second colour picker for a separate active colour.
+- **Custom** shows a second colour picker for a separate active colour. Its presets use the same shades as Matching; the eyedropper still lets you choose any colour.
 
 These choices apply on the main screen and subpages wherever a card normally uses an active colour. Sensor, Door/Window and Presence cards still need their **Active Colour** option enabled to highlight their active state. Resetting colours also restores **Matching**.
 

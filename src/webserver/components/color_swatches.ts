@@ -1,4 +1,5 @@
 import { cardPreviewTextColor } from "../features/preview";
+import { activeCardColor } from "../model/config_primitives";
 
 const COLOR_PRESETS: ReadonlyArray<readonly [string, string]> = [
     ["EA3323", "Red"], ["D83462", "Pink"], ["8F28AB", "Purple"], ["6036B2", "Deep purple"], ["3C49A5", "Indigo"],
@@ -19,7 +20,8 @@ export const COLOR_SWATCH_STYLES =
     ".sp-card-color-custom:focus-within{outline:2px solid var(--accent);outline-offset:3px}" +
     ".sp-card-color-custom input{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;opacity:0;cursor:pointer}";
 
-export function createColorSwatches(value: string | (() => string), onChange: (hex: string) => void, label: string) {
+export function createColorSwatches(value: string | (() => string), onChange: (hex: string) => void, label: string, tone: "standard" | "active" = "standard") {
+    const presets = COLOR_PRESETS.map(([hex, name]) => [tone === "active" ? activeCardColor(hex) : hex, name] as const);
     const grid = document.createElement("div");
     grid.className = "sp-card-color-presets";
     grid.setAttribute("role", "group");
@@ -73,7 +75,7 @@ export function createColorSwatches(value: string | (() => string), onChange: (h
         const valid = /^[0-9A-F]{6}$/.test(selected);
         picker.value = "#" + (valid ? selected : "000000");
         customSwatch.title = "Choose custom colour" + (valid ? " (#" + selected + ")" : "");
-        const customSelected = valid && !COLOR_PRESETS.some(([hex]) => hex === selected);
+        const customSelected = valid && !presets.some(([hex]) => hex === selected);
         customSwatch.setAttribute("data-selected", String(customSelected));
         customSwatch.style.backgroundColor = customSelected ? "#" + selected : "transparent";
         customSwatch.style.color = customSelected ? cardPreviewTextColor(selected) : "";
@@ -82,7 +84,7 @@ export function createColorSwatches(value: string | (() => string), onChange: (h
         }
     }
 
-    for (const [hex, name] of COLOR_PRESETS) grid.appendChild(createSwatch(hex, name));
+    for (const [hex, name] of presets) grid.appendChild(createSwatch(hex, name));
     grid.appendChild(customSwatch);
     syncColor();
     return Object.assign(grid, { _syncColor: syncColor });
