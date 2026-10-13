@@ -869,6 +869,7 @@ export function createButtonSettingsFeature(
                 configOptionValue(b.options, "card_off_color") || defaultCardBackgroundColor(b.type || "", state),
                 (hex: string) => {
                     b.options = setCardColor(b.options, hex);
+                    activeColorPicker._syncColor();
                     saveField("options", b.options);
                     renderPreview();
                 }, () => {
@@ -885,9 +886,6 @@ export function createButtonSettingsFeature(
             var activeColorTabs = segmentControl([
                 ["matching", "Matching"], ["theme", "Theme"], ["custom", "Custom"],
             ], cardActiveColorMode(b.options), function (mode: "matching" | "theme" | "custom") {
-                if (mode === "custom" && !customActiveColor) {
-                    customActiveColor = cardActiveColor(b.options, state.onColor);
-                }
                 b.options = setCardActiveColor(b.options, mode, customActiveColor);
                 syncActiveColorControls();
                 saveField("options", b.options);

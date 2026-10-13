@@ -2802,7 +2802,7 @@ async function assertCardActiveColourControls(page, posts, label) {
   assert.strictEqual(await active.isVisible(), false, `${label}: Matching hides the active picker`);
   const before = posts.length;
   await background.locator('[data-color="6036B2"]').click();
-  assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#A087D1");
+  assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#A086D1");
   await tabs.getByRole("button", { name: "Theme", exact: true }).click();
   assert.strictEqual(await active.isVisible(), false, `${label}: Theme hides the active picker`);
   const themePicker = page.locator('#sp-set-on-color input[type="color"]');
@@ -2810,13 +2810,28 @@ async function assertCardActiveColourControls(page, posts, label) {
   assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#" + themeColor);
   await tabs.getByRole("button", { name: "Custom", exact: true }).click();
   assert(await active.isVisible(), `${label}: Custom shows another picker`);
+  assert.strictEqual(await active.locator('[data-color="A086D1"]').getAttribute("aria-pressed"), "true",
+    `${label}: entering Custom from Theme starts with Matching's shade selected`);
+  await background.locator('[data-color="64AD54"]').click();
+  assert.strictEqual(await active.locator('input[type="color"]').inputValue(), "#a2ce98",
+    `${label}: Custom follows the background until an alternative is chosen`);
+  assert.strictEqual(await active.locator('[data-color="A2CE98"]').getAttribute("aria-pressed"), "true");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible", { state: "hidden" });
+  await card.click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "Custom Colours", exact: true }).click();
+  await background.locator('[data-color="6036B2"]').click();
+  assert.strictEqual(await active.locator('[data-color="A086D1"]').getAttribute("aria-pressed"), "true",
+    `${label}: automatic matching survives saving and reopening Custom`);
+  const afterDefaultSave = posts.length;
   const backgroundPresets = await background.locator("button[data-color]").evaluateAll(buttons => buttons.map(button => button.dataset.color));
   const activePresets = await active.locator("button[data-color]").evaluateAll(buttons => buttons.map(button => button.dataset.color));
   assert.deepStrictEqual(activePresets, backgroundPresets.map(activeCardColor),
-    `${label}: active presets use Matching's lighter shades`);
+    `${label}: active presets use Matching's shades`);
   await active.locator('[data-color="FFBA66"]').click();
   assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#FFBA66",
-    `${label}: selecting a lighter swatch uses its displayed colour`);
+    `${label}: selecting a matching swatch uses its displayed colour`);
   assert.strictEqual(await active.locator('[data-color="FFBA66"]').getAttribute("aria-pressed"), "true");
   assert.strictEqual(await active.locator(".sp-card-color-custom").getAttribute("data-selected"), "false");
   await active.locator('input[type="color"]').fill("#ffffff");
@@ -2827,7 +2842,8 @@ async function assertCardActiveColourControls(page, posts, label) {
   await tabs.getByRole("button", { name: "Matching", exact: true }).click();
   await tabs.getByRole("button", { name: "Custom", exact: true }).click();
   assert.strictEqual(await active.locator('input[type="color"]').inputValue(), "#ffffff");
-  assert.strictEqual(posts.length, before, `${label}: colour edits stay in the draft until Save`);
+  assert(posts.length > before, `${label}: saving the matching default persists the draft`);
+  assert.strictEqual(posts.length, afterDefaultSave, `${label}: colour edits stay in the draft until Save`);
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible", { state: "hidden" });
   await card.click();
