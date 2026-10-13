@@ -59,7 +59,7 @@ Backups include the theme mode, automatic method, times and offsets. Older backu
 
 ## Wallpaper
 
-Upload a JPEG, PNG or WebP image under **Wallpaper** to place it behind the cards on the physical panel and in the browser preview. Images are resized to a maximum of 480 pixels on the longest side and centred to fill the screen. Choose an image with a similar aspect ratio to your display for less cropping.
+Upload a JPEG, PNG or WebP image under **Wallpaper** to place it behind the cards on the physical panel and in the browser preview. Updated P4 firmware supports high-quality compressed wallpapers up to 1280 pixels on the longest side and 1,024,000 pixels in total (including 1280 × 800). The panel keeps full-colour image data before drawing to the display. S3 displays use a 480-pixel limit and smoother 16-bit colour conversion to suit their memory. Images are centred to fill the screen; very detailed images may be compressed further or resized to fit storage. Older wallpaper firmware continues to use 480-pixel uploads. Re-upload the original image after updating firmware to benefit from the higher quality. Choose an image with a similar aspect ratio to your display for less cropping.
 
 Use **Card transparency** to choose how much wallpaper shows through the cards: **0%** gives solid fills and **100%** makes the fills completely clear. Labels and icons keep their normal colours and remain visible. The default is **20%** transparency (an 80% fill). Camera images, cover art and QR codes keep their own content. The wallpaper also appears on subpages; setup screens, modals and screensavers keep their existing backgrounds.
 

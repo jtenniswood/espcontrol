@@ -280,7 +280,7 @@ async function installRoutes(context, slug, options = {}) {
         assert.strictEqual(route.request().headers()["x-espcontrol-epoch"], String(options.resetState.epoch));
         if (wallpaper.failSave) { await route.fulfill({ status: 500, body: "Save failed" }); return; }
         const payload = route.request().postDataBuffer();
-        assert.strictEqual(payload.readUInt32LE(0), 0x31505745);
+        assert.strictEqual(payload.readUInt32LE(0), payload.readUInt32LE(4) === 0 || wallpaper.jpeg === false ? 0x31505745 : 0x32505745);
         wallpaper.posts.push(payload);
         wallpaper.image = payload.readUInt32LE(4) === 0 ? null : payload;
         await route.fulfill({ status: 204 }); return;
@@ -400,7 +400,7 @@ async function installRoutes(context, slug, options = {}) {
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
-          wallpaper: options.wallpaperState ? { version: 1, available: true, opacity: options.wallpaperState.opacitySupported !== false } : undefined,
+          wallpaper: options.wallpaperState ? { version: 1, available: true, opacity: options.wallpaperState.opacitySupported !== false, ...(options.wallpaperState.jpeg === false ? {} : { jpeg: true, max_side: 1280, max_pixels: 1024000, max_bytes: 524272, ...options.wallpaperState.limits }) } : undefined,
           configuration: { read: true, write: true, document_versions: [1] },
           web_assets: { versions: [1] },
         }),
@@ -420,7 +420,7 @@ async function installRoutes(context, slug, options = {}) {
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
-          wallpaper: options.wallpaperState ? { version: 1, available: true, opacity: options.wallpaperState.opacitySupported !== false } : undefined,
+          wallpaper: options.wallpaperState ? { version: 1, available: true, opacity: options.wallpaperState.opacitySupported !== false, ...(options.wallpaperState.jpeg === false ? {} : { jpeg: true, max_side: 1280, max_pixels: 1024000, max_bytes: 524272, ...options.wallpaperState.limits }) } : undefined,
           configuration: { read: false, write: false, document_versions: [] },
         }),
       });
@@ -7552,19 +7552,33 @@ async function assertWallpaperSettings(browser) {
     await open();
     assert.strictEqual(await page.locator("#sp-set-card-transparency").isDisabled(), true);
     const png = await page.evaluate(() => {
-      const canvas = document.createElement("canvas"); canvas.width = 1200; canvas.height = 800;
+      const canvas = document.createElement("canvas"); canvas.width = 2560; canvas.height = 1600;
       const ctx = canvas.getContext("2d");
       const gradient = ctx.createLinearGradient(0, 0, 1200, 800);
       gradient.addColorStop(0, "#157779"); gradient.addColorStop(.5, "#13274a"); gradient.addColorStop(1, "#ba506b");
-      ctx.fillStyle = gradient; ctx.fillRect(0, 0, 1200, 800);
+      ctx.fillStyle = gradient; ctx.fillRect(0, 0, 2560, 1600);
       return canvas.toDataURL("image/png").split(",")[1];
     });
     const upload = { name: "wallpaper.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") };
     await page.locator("#sp-set-wallpaper").setInputFiles(upload);
     await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
-    assert.strictEqual(wallpaper.image.readUInt32LE(4), 480);
-    assert.strictEqual(wallpaper.image.readUInt32LE(8), 320);
-    assert.strictEqual(wallpaper.image.length, 16 + 480 * 320 * 2);
+    assert.strictEqual(wallpaper.image.readUInt32LE(0), 0x32505745);
+    assert.strictEqual(wallpaper.image.readUInt32LE(4), 1280);
+    assert.strictEqual(wallpaper.image.readUInt32LE(8), 800);
+    assert.strictEqual(wallpaper.image.length, 16 + wallpaper.image.readUInt32LE(12));
+    assert(wallpaper.image.length <= 524272);
+    assert.strictEqual(wallpaper.image.readUInt16BE(16), 0xffd8);
+    const previewPixels = await page.evaluate(async () => {
+      const source = document.querySelector(".sp-screen").style.backgroundImage;
+      const image = new Image(); image.src = source.slice(5, -2);
+      await image.decode();
+      const canvas = document.createElement("canvas"); canvas.width = image.width; canvas.height = image.height;
+      const ctx = canvas.getContext("2d"); ctx.drawImage(image, 0, 0);
+      return { width: image.width, height: image.height, colors: new Set(Array.from(ctx.getImageData(0, 0, 1280, 1).data).filter((_, i) => i % 4 === 0)).size };
+    });
+    assert.strictEqual(previewPixels.width, 1280);
+    assert.strictEqual(previewPixels.height, 800);
+    assert(previewPixels.colors > 32, "JPEG preview should preserve more than 5-bit red colour detail");
     await page.waitForFunction(() => Array.from(document.querySelectorAll(".sp-btn")).some(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0.8)")));
     if (process.env.ESPCONTROL_WALLPAPER_SCREENSHOT) {
       await page.getByRole("tab", { name: "Screen", exact: true }).click();
@@ -7637,14 +7651,53 @@ async function assertWallpaperSettings(browser) {
   // Firmware with the original fixed opacity keeps uploads working and disables the slider.
   const legacy = await browser.newContext({ viewport: testCase.viewport });
   try {
-    await installRoutes(legacy, testCase.slug, { wallpaperState: { image: wallpaper.image, posts: [], opacitySupported: false }, resetState });
+    const legacyWallpaper = { image: null, posts: [], opacitySupported: false, jpeg: false };
+    await installRoutes(legacy, testCase.slug, { wallpaperState: legacyWallpaper, resetState });
     const oldPage = await legacy.newPage();
     await installFakeEventSource(oldPage);
     await oldPage.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
     await oldPage.waitForFunction(() => document.querySelector("#sp-set-wallpaper") && !document.querySelector("#sp-set-wallpaper").disabled);
     assert.strictEqual(await oldPage.locator("#sp-set-card-transparency").isDisabled(), true);
     assert.strictEqual(await oldPage.locator("#sp-set-card-transparency").inputValue(), "20");
+    const oldImage = await oldPage.evaluate(() => {
+      const canvas = document.createElement("canvas"); canvas.width = 1200; canvas.height = 800;
+      return canvas.toDataURL("image/png").split(",")[1];
+    });
+    await oldPage.locator("#sp-set-wallpaper").setInputFiles({ name: "old.png", mimeType: "image/png", buffer: Buffer.from(oldImage, "base64") });
+    await oldPage.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
+    assert.strictEqual(legacyWallpaper.image.readUInt32LE(0), 0x31505745);
+    assert.strictEqual(legacyWallpaper.image.readUInt32LE(4), 480);
+    assert.strictEqual(legacyWallpaper.image.readUInt32LE(8), 320);
+    await oldPage.reload();
+    await oldPage.waitForSelector(".sp-screen");
+    await oldPage.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
   } finally { await legacy.close(); }
+  // A smaller display/storage budget still produces a valid JPEG, reducing
+  // detailed images automatically when quality adjustments alone cannot fit.
+  const limited = await browser.newContext({ viewport: testCase.viewport });
+  try {
+    const compactWallpaper = { image: null, posts: [], limits: { max_side: 480, max_pixels: 230400, max_bytes: 8192 } };
+    await installRoutes(limited, testCase.slug, { wallpaperState: compactWallpaper, resetState });
+    const compactPage = await limited.newPage(); await installFakeEventSource(compactPage);
+    await compactPage.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await compactPage.waitForFunction(() => document.querySelector("#sp-set-wallpaper") && !document.querySelector("#sp-set-wallpaper").disabled);
+    const noise = await compactPage.evaluate(() => {
+      const canvas = document.createElement("canvas"); canvas.width = 1200; canvas.height = 800;
+      const ctx = canvas.getContext("2d"), pixels = ctx.createImageData(1200, 800);
+      let seed = 7;
+      for (let i = 0; i < pixels.data.length; i++) {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        pixels.data[i] = i % 4 === 3 ? 255 : seed >>> 24;
+      }
+      ctx.putImageData(pixels, 0, 0); return canvas.toDataURL("image/png").split(",")[1];
+    });
+    await compactPage.locator("#sp-set-wallpaper").setInputFiles({ name: "detail.png", mimeType: "image/png", buffer: Buffer.from(noise, "base64") });
+    await compactPage.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
+    assert.strictEqual(compactWallpaper.image.readUInt32LE(0), 0x32505745);
+    assert(compactWallpaper.image.length <= 8192);
+    assert(compactWallpaper.image.readUInt32LE(4) < 480, "Detailed image should shrink to fit storage");
+    assert(compactWallpaper.image.readUInt32LE(4) * compactWallpaper.image.readUInt32LE(8) <= 230400);
+  } finally { await limited.close(); }
 }
 
 (async function main() {

@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <vector>
+#include <fstream>
+#include <iterator>
 #include "esp_partition.h"
 #include "nvs.h"
 #include "wallpaper.h"
@@ -116,6 +118,21 @@ int main() {
   assert(!removed.load(size, revision) && size == first.size());
   allocation_fails = false;
   expect_image(removed, first);
+  std::ifstream input(WALLPAPER_TEST_JPEG, std::ios::binary);
+  std::vector<uint8_t> jpeg{std::istreambuf_iterator<char>(input), {}};
+  std::vector<uint8_t> compressed(16);
+  compressed.insert(compressed.end(), jpeg.begin(), jpeg.end());
+  unsigned values[] = {WALLPAPER_JPEG_MAGIC, 32, 16, unsigned(jpeg.size())};
+  for (int j = 0; j < 4; ++j) for (int i = 0; i < 4; ++i) compressed[4 * j + i] = values[j] >> (i * 8);
+  for (int boundary = 0; boundary < 3; ++boundary) {
+    writes_until_failure = boundary;
+    assert(!removed.save(compressed.data(), compressed.size()));
+    WallpaperStore failed_jpeg; expect_image(failed_jpeg, first);
+  }
+  writes_until_failure = -1;
+  assert(removed.save(compressed.data(), compressed.size()));
+  WallpaperStore jpeg_reboot; expect_image(jpeg_reboot, compressed);
+  assert(jpeg_reboot.opacity_percent() == 50);
   // Resetting preferences clears the saved setting and restores the default.
   saved_opacity = -1;
   WallpaperStore reset; assert(reset.opacity_percent() == 80);

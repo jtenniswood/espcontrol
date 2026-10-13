@@ -1,5 +1,6 @@
 #pragma once
 #include "wallpaper.h"
+#include "wallpaper_decode.h"
 #include "src/misc/cache/instance/lv_image_cache.h"
 
 // Included after theme_runtime_ui.h; all LVGL work stays on the main task.
@@ -87,22 +88,26 @@ inline void wallpaper_tick() {
   const uint32_t revision = store.revision();
   if (ui.loaded && revision == ui.revision) return;
   size_t size; uint32_t loaded_revision;
-  uint8_t *pixels = store.load(size, loaded_revision);
-  if (size && !pixels) return;  // Keep the old image and retry if allocation fails.
+  uint8_t *packet = store.load(size, loaded_revision);
+  if (size && !packet) return;  // Keep the old image and retry if allocation fails.
+  DecodedWallpaper decoded;
+  const bool decoded_ok = !packet || wallpaper_decode(packet, size, decoded);
+  free(packet);
+  if (!decoded_ok) return;
   lv_image_cache_drop(&ui.image);
   auto *previous = ui.pixels;
-  ui.pixels = pixels;
+  ui.pixels = decoded.pixels;
   ui.revision = loaded_revision;
   ui.loaded = true;
   ui.image = {};
-  if (pixels) {
+  if (ui.pixels) {
     ui.image.header.magic = LV_IMAGE_HEADER_MAGIC;
-    ui.image.header.cf = LV_COLOR_FORMAT_RGB565;
-    ui.image.header.w = wallpaper_u32(pixels + 4);
-    ui.image.header.h = wallpaper_u32(pixels + 8);
-    ui.image.header.stride = ui.image.header.w * 2;
-    ui.image.data_size = size - WALLPAPER_HEADER_BYTES;
-    ui.image.data = pixels + WALLPAPER_HEADER_BYTES;
+    ui.image.header.cf = decoded.rgb888 ? LV_COLOR_FORMAT_RGB888 : LV_COLOR_FORMAT_RGB565;
+    ui.image.header.w = decoded.width;
+    ui.image.header.h = decoded.height;
+    ui.image.header.stride = ui.image.header.w * (decoded.rgb888 ? 3 : 2);
+    ui.image.data_size = decoded.size;
+    ui.image.data = decoded.pixels;
   }
   wallpaper_apply_cards();
   ui.retired_pixels = previous;

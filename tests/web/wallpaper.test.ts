@@ -1,4 +1,4 @@
-import { wallpaperDimensions, encodeWallpaper, decodeWallpaper, wallpaperCardColor, parseWallpaperOpacity } from "../../src/webserver/application/wallpaper";
+import { wallpaperDimensions, encodeWallpaper, decodeWallpaper, wallpaperCardColor, parseWallpaperOpacity, wallpaperLimits, encodeJpegWallpaper } from "../../src/webserver/application/wallpaper";
 
 function equal(actual: unknown, expected: unknown): void {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
@@ -13,6 +13,23 @@ export function runWallpaperTests(): void {
   equal(wallpaperDimensions(32, 16), { width: 32, height: 16 });
   rejects(() => wallpaperDimensions(0, 4));
   rejects(() => wallpaperDimensions(Infinity, 4));
+  const limits = wallpaperLimits({ jpeg: true, max_side: 1280, max_pixels: 1280 * 800, max_bytes: 524272 });
+  equal(wallpaperDimensions(2560, 1600, limits), { width: 1280, height: 800 });
+  equal(wallpaperDimensions(1200, 800, limits), { width: 1200, height: 800 });
+  equal(wallpaperDimensions(100, 50, limits), { width: 100, height: 50 });
+  const square = wallpaperDimensions(2000, 2000, limits);
+  if (square.width * square.height > limits.maxPixels) throw new Error("Pixel budget exceeded");
+  equal(wallpaperLimits({}), wallpaperLimits(null));
+  rejects(() => wallpaperLimits({ jpeg: true, max_side: 4000, max_pixels: 1024000, max_bytes: 524272 }));
+  rejects(() => wallpaperLimits({ jpeg: true, max_side: 1280, max_pixels: 1024001, max_bytes: 524272 }));
+  rejects(() => wallpaperLimits({ jpeg: true, max_side: 1280, max_pixels: 1024000, max_bytes: 524273 }));
+  const jpeg = new Uint8Array([255, 216, 255, 217]).buffer;
+  const compressed = encodeJpegWallpaper(1280, 800, jpeg);
+  equal(new DataView(compressed).getUint32(0, true), 0x32505745);
+  equal(new DataView(compressed).getUint32(12, true), 4);
+  equal(Array.from(new Uint8Array(compressed, 16)), [255, 216, 255, 217]);
+  rejects(() => encodeJpegWallpaper(1280, 801, jpeg));
+  rejects(() => encodeJpegWallpaper(1281, 1, jpeg));
   const pixels = new Uint8ClampedArray([255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255]);
   const encoded = encodeWallpaper(3, 1, pixels);
   equal(Array.from(new Uint8Array(encoded).slice(16)), [0, 248, 224, 7, 31, 0]);

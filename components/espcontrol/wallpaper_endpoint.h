@@ -8,6 +8,7 @@
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "panel_identity.h"
 #include "wallpaper.h"
+#include "wallpaper_decode.h"
 
 namespace espcontrol {
 class WallpaperHandler final : public esphome::web_server_idf::AsyncWebHandler {
@@ -81,6 +82,13 @@ class WallpaperHandler final : public esphome::web_server_idf::AsyncWebHandler {
           received_ != expected_ || (!wallpaper_valid(body_, received_) && !wallpaper_is_removal(body_, received_))) {
         reset(); httpd_resp_send_err(raw, HTTPD_400_BAD_REQUEST, "Invalid wallpaper"); return;
       }
+    }
+    if (body_ && wallpaper_u32(body_) == WALLPAPER_JPEG_MAGIC) {
+      DecodedWallpaper decoded;
+      if (!wallpaper_decode(body_, received_, decoded)) {
+        reset(); httpd_resp_send_err(raw, HTTPD_400_BAD_REQUEST, "Wallpaper could not be decoded"); return;
+      }
+      free(decoded.pixels);
     }
     const bool saved = wallpaper_store().save(body_, wallpaper_is_removal(body_, received_) ? 0 : received_);
     reset();

@@ -2,14 +2,27 @@ import type { ControlsFieldsFeature } from "./controls_fields";
 
 const MAGIC = 0x31505745;
 const MAX_SIDE = 480;
+const JPEG_MAGIC = 0x32505745;
+export interface WallpaperLimits { jpeg: boolean; maxSide: number; maxPixels: number; maxBytes: number }
+const LEGACY_LIMITS: WallpaperLimits = { jpeg: false, maxSide: 480, maxPixels: 480 * 480, maxBytes: 16 + 480 * 480 * 2 };
+export function wallpaperLimits(capability: unknown): WallpaperLimits {
+  const value = capability as Record<string, unknown> | null;
+  if (value?.jpeg !== true) return LEGACY_LIMITS;
+  const maxSide = value.max_side, maxPixels = value.max_pixels, maxBytes = value.max_bytes;
+  if (typeof maxSide !== "number" || !Number.isInteger(maxSide) || maxSide < 1 || maxSide > 1280 ||
+      typeof maxPixels !== "number" || !Number.isInteger(maxPixels) || maxPixels < 1 || maxPixels > 1280 * 800 ||
+      typeof maxBytes !== "number" || !Number.isInteger(maxBytes) || maxBytes <= 16 || maxBytes > 512 * 1024 - 16)
+    throw new Error("Invalid wallpaper capabilities. Reload the page to try again.");
+  return { jpeg: true, maxSide, maxPixels, maxBytes };
+}
 const HEADER_BYTES = 16;
 const MEDIA_TYPE = "application/vnd.espcontrol.wallpaper";
 
-export function wallpaperDimensions(width: number, height: number): { width: number; height: number } {
+export function wallpaperDimensions(width: number, height: number, limits: WallpaperLimits = LEGACY_LIMITS): { width: number; height: number } {
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0)
     throw new Error("This image has invalid dimensions.");
-  const scale = Math.min(1, MAX_SIDE / Math.max(width, height));
-  return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
+  const scale = Math.min(1, limits.maxSide / Math.max(width, height), Math.sqrt(limits.maxPixels / (width * height)));
+  return { width: Math.max(1, Math.floor(width * scale)), height: Math.max(1, Math.floor(height * scale)) };
 }
 
 export function encodeWallpaper(width: number, height: number, rgba: Uint8ClampedArray): ArrayBuffer {
@@ -45,6 +58,33 @@ export function decodeWallpaper(buffer: ArrayBuffer): { width: number; height: n
   return { width, height, rgba };
 }
 
+export function encodeJpegWallpaper(width: number, height: number, jpeg: ArrayBuffer): ArrayBuffer {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 ||
+      width > 1280 || height > 1280 || width * height > 1280 * 800 || jpeg.byteLength < 4 ||
+      jpeg.byteLength > 512 * 1024 - 32) throw new Error("Invalid wallpaper image.");
+  const buffer = new ArrayBuffer(HEADER_BYTES + jpeg.byteLength);
+  const view = new DataView(buffer);
+  [JPEG_MAGIC, width, height, jpeg.byteLength].forEach((value, index) => view.setUint32(index * 4, value, true));
+  new Uint8Array(buffer, HEADER_BYTES).set(new Uint8Array(jpeg));
+  return buffer;
+}
+function wallpaperPreview(document: Document, buffer: ArrayBuffer): string {
+  if (buffer.byteLength >= HEADER_BYTES && new DataView(buffer).getUint32(0, true) === JPEG_MAGIC) {
+    const view = new DataView(buffer);
+    const width = view.getUint32(4, true), height = view.getUint32(8, true);
+    if (width < 1 || height < 1 || width > 1280 || height > 1280 || width * height > 1280 * 800 ||
+        view.getUint32(12, true) !== buffer.byteLength - HEADER_BYTES || buffer.byteLength > 512 * 1024 - 16)
+      throw new Error("Invalid wallpaper response.");
+    // A data URL remains stable across reloads, without retaining object URLs.
+    const bytes = new Uint8Array(buffer, HEADER_BYTES);
+    let binary = "";
+    for (let offset = 0; offset < bytes.length; offset += 8192)
+      binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+    return "data:image/jpeg;base64," + btoa(binary);
+  }
+  return wallpaperCanvas(document, buffer).toDataURL("image/png");
+}
+
 export function wallpaperCardColor(hex: string, enabled: boolean, opacityPercent = 80): string {
   const percent = Number.isFinite(opacityPercent) ? Math.max(0, Math.min(100, opacityPercent)) : 80;
   const alpha = Math.round(percent * 255 / 100).toString(16).padStart(2, "0").toUpperCase();
@@ -69,7 +109,7 @@ function wallpaperCanvas(document: Document, buffer: ArrayBuffer): HTMLCanvasEle
   return canvas;
 }
 
-async function prepareWallpaper(document: Document, file: File): Promise<ArrayBuffer> {
+async function prepareWallpaper(document: Document, file: File, limits: WallpaperLimits): Promise<ArrayBuffer> {
   if (!["image/jpeg", "image/png", "image/webp"].includes(file.type))
     throw new Error("Choose a JPEG, PNG or WebP image.");
   if (file.size > 20 * 1024 * 1024) throw new Error("Choose an image smaller than 20 MB.");
@@ -81,15 +121,30 @@ async function prepareWallpaper(document: Document, file: File): Promise<ArrayBu
       image.onerror = () => reject(new Error("This image could not be opened. Try another file."));
       image.src = url;
     });
-    const { width, height } = wallpaperDimensions(image.naturalWidth, image.naturalHeight);
+    let { width, height } = wallpaperDimensions(image.naturalWidth, image.naturalHeight, limits);
     const canvas = document.createElement("canvas");
-    canvas.width = width; canvas.height = height;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Your browser cannot prepare a wallpaper.");
-    context.fillStyle = "#000"; // Flatten transparent source images before RGB565 conversion.
-    context.fillRect(0, 0, width, height);
-    context.drawImage(image, 0, 0, width, height);
-    return encodeWallpaper(width, height, context.getImageData(0, 0, width, height).data);
+    for (;;) {
+      canvas.width = width; canvas.height = height;
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.fillStyle = "#000"; // Flatten transparent source images.
+      context.fillRect(0, 0, width, height);
+      context.drawImage(image, 0, 0, width, height);
+      if (!limits.jpeg) return encodeWallpaper(width, height, context.getImageData(0, 0, width, height).data);
+      // Start at high quality. Very detailed images may need more compression
+      // or a smaller size to fit the display's existing flash storage.
+      for (const quality of [0.95, 0.9, 0.85, 0.8]) {
+        const jpeg = await new Promise<Blob>((resolve, reject) => canvas.toBlob(
+          blob => blob ? resolve(blob) : reject(new Error("Your browser cannot prepare a wallpaper.")), "image/jpeg", quality));
+        if (jpeg.type !== "image/jpeg") throw new Error("Your browser cannot prepare a JPEG wallpaper.");
+        if (jpeg.size + HEADER_BYTES <= limits.maxBytes)
+          return encodeJpegWallpaper(width, height, await jpeg.arrayBuffer());
+      }
+      if (width === 1 && height === 1) throw new Error("This image cannot fit on the display.");
+      width = Math.max(1, Math.floor(width * 0.85)); height = Math.max(1, Math.floor(height * 0.85));
+    }
   } finally { URL.revokeObjectURL(url); }
 }
 
@@ -127,6 +182,7 @@ export function buildWallpaperSettings(
   body.append(label, upload, remove, control.wrap, status);
   let hasWallpaper = false, supported = false, busy = false, opacitySupported = false;
   let opacity = 80, savedOpacity = 80, previewUrl = "";
+  let limits = LEGACY_LIMITS;
   function sync() {
     upload.disabled = !supported || busy;
     remove.disabled = !supported || busy || !hasWallpaper;
@@ -139,10 +195,10 @@ export function buildWallpaperSettings(
     onChange(previewUrl, opacity);
   });
   function apply(buffer: ArrayBuffer | null) {
-    previewUrl = buffer ? wallpaperCanvas(document, buffer).toDataURL("image/png") : "";
+    previewUrl = buffer ? wallpaperPreview(document, buffer) : "";
     hasWallpaper = !!buffer;
     onChange(previewUrl, opacity);
-    status.textContent = buffer ? "Wallpaper saved. Changes apply immediately."
+    status.textContent = buffer ? `Wallpaper saved (${new DataView(buffer).getUint32(4, true)} × ${new DataView(buffer).getUint32(8, true)}). Changes apply immediately.`
       : "JPEG, PNG or WebP. Saved on this display; images are resized automatically. Changes apply immediately.";
   }
   async function load() {
@@ -161,6 +217,7 @@ export function buildWallpaperSettings(
         status.textContent = "Wallpaper requires firmware with wallpaper support and image storage.";
         return;
       }
+      limits = wallpaperLimits(capabilities.wallpaper);
       if (capabilities.wallpaper.opacity === true) {
         const settings = await request("/api/v1/wallpaper-opacity", { credentials: "include", cache: "no-store" });
         if (!settings.ok) throw new Error("Could not load card transparency. Reload the page to try again.");
@@ -183,7 +240,7 @@ export function buildWallpaperSettings(
   async function save(file: File | null) {
     busy = true; sync(); status.textContent = file ? "Uploading wallpaper…" : "Removing wallpaper…";
     try {
-      const buffer = file ? await prepareWallpaper(document, file) : null;
+      const buffer = file ? await prepareWallpaper(document, file, limits) : null;
       const payload = buffer ?? new ArrayBuffer(HEADER_BYTES);
       if (!buffer) new DataView(payload).setUint32(0, MAGIC, true);
       const response = await request("/api/v1/wallpaper", {

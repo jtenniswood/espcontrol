@@ -3,13 +3,14 @@
 #include <cstdio>
 
 #include "panel_config_document.h"
+#include "wallpaper_format.h"
 
 namespace espcontrol::configuration {
 
 constexpr uint16_t PANEL_CONFIG_API_VERSION = 1;
 // Version 2 editors send the reset epoch on configuration writes.
 constexpr uint16_t PANEL_CONFIG_WEB_ASSET_VERSION = 2;
-constexpr size_t PANEL_CONFIG_CAPABILITIES_MAX_JSON_BYTES = 448;
+constexpr size_t PANEL_CONFIG_CAPABILITIES_MAX_JSON_BYTES = 512;
 constexpr const char *PANEL_CONFIG_WEB_ASSET_DELIVERY = "manifest";
 
 inline bool &panel_config_read_supported() {
@@ -40,10 +41,18 @@ inline bool write_panel_config_capabilities_json(char *output,
     return false;
   const int written = std::snprintf(
       output, output_capacity,
-      "{\"wallpaper\":{\"version\":1,\"available\":%s,\"opacity\":true},\"screensaver_pin\":{\"version\":1},\"identity\":{\"version\":1},\"api\":{\"version\":%u},\"configuration\":{\"document_versions\":[%u],"
+      "{\"wallpaper\":{\"version\":1,\"available\":%s,\"opacity\":true,\"jpeg\":%s,\"max_side\":%u,\"max_pixels\":%u,\"max_bytes\":%u},\"screensaver_pin\":{\"version\":1},\"identity\":{\"version\":1},\"api\":{\"version\":%u},\"configuration\":{\"document_versions\":[%u],"
       "\"read\":%s,\"write\":%s},\"web_assets\":{\"versions\":[%u],"
       "\"delivery\":\"%s\"},\"reset\":{\"modes\":[\"customization\",\"factory\"],\"status\":\"/api/v1/reset\"}}",
       wallpaper_available ? "true" : "false",
+#ifdef USE_ARTWORK_IMAGE_JPEG_SUPPORT
+      "true",
+#else
+      "false",
+#endif
+      static_cast<unsigned>(WALLPAPER_JPEG_MAX_SIDE),
+      static_cast<unsigned>(WALLPAPER_JPEG_MAX_PIXELS),
+      static_cast<unsigned>(WALLPAPER_MAX_BYTES),
       static_cast<unsigned>(PANEL_CONFIG_API_VERSION),
       static_cast<unsigned>(PANEL_CONFIG_DOCUMENT_VERSION),
       panel_config_read_supported() ? "true" : "false",
