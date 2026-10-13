@@ -269,6 +269,7 @@ screensaver=שומר מסך
 incorrect_pin=קוד PIN שגוי
 
 forecast_unavailable=Forecast unavailable
+rain=גשם
 rain_chance=Rain chance
 rainfall=Rainfall
 wind=Wind

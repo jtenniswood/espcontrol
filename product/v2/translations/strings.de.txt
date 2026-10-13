@@ -268,6 +268,7 @@ screensaver=Bildschirmschoner
 incorrect_pin=Falsche PIN
 
 forecast_unavailable=Vorhersage nicht verfügbar
+rain=Regen
 rain_chance=Regenwahrscheinlichkeit
 rainfall=Niederschlag
 wind=Wind

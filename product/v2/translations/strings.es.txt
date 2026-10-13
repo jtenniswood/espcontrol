@@ -268,6 +268,7 @@ screensaver=Salvapantallas
 incorrect_pin=PIN incorrecto
 
 forecast_unavailable=Pronóstico no disponible
+rain=Lluvia
 rain_chance=Probabilidad de lluvia
 rainfall=Precipitación
 wind=Viento

@@ -62,11 +62,16 @@ int lv_obj_get_content_width(lv_obj_t *obj){return obj->width;}
 int lv_obj_get_width(lv_obj_t *obj){return obj->width;}
 int lv_obj_get_content_height(lv_obj_t *obj){return obj->height;}
 int lv_font_get_line_height(const lv_font_t *f){return f->line_height;}
-void lv_text_get_size(lv_point_t *point,const char *text,const lv_font_t *,int,int,int,int){
-  if(!measured_font_pixels){point->x=std::strlen(text)*8;point->y=16;return;}
-  // Conservative text widths for device-size layout tests; count UTF-8 glyphs once.
-  int glyphs=0;for(const auto *ch=reinterpret_cast<const unsigned char *>(text);*ch;++ch)if((*ch & 0xc0)!=0x80)++glyphs;
-  point->x=static_cast<int>(std::ceil(glyphs*measured_font_pixels*0.6));point->y=font.line_height;
+void lv_text_get_size(lv_point_t *point,const char *text,const lv_font_t *measured_font,int,int,int,int){
+  if(!measured_font_pixels){point->x=std::strlen(text)*8;point->y=measured_font->line_height;return;}
+  const double pixels=measured_font_pixels*static_cast<double>(measured_font->line_height)/font.line_height;
+  double advance=0;
+  for(const auto *ch=reinterpret_cast<const unsigned char *>(text);*ch;++ch){
+    if((*ch & 0xc0)==0x80)continue;
+    const double width=(*ch=='/' || *ch=='-' || *ch=='.' || *ch==0xc2)?0.3:(*ch>='0' && *ch<='9')?0.55:0.6;
+    advance+=pixels*width;
+  }
+  point->x=static_cast<int>(std::ceil(advance));point->y=measured_font->line_height;
 }
 void lv_label_set_display_text(lv_obj_t *obj,const char *text){obj->text=text;}
 void lv_label_set_text(lv_obj_t *obj,const char *text){obj->text=text;}
@@ -153,14 +158,14 @@ void check_modal_fit(){
     assert(!(child->flags & LV_OBJ_FLAG_SCROLLABLE));
   };
   within(ui.body->parent,ui.body);
-  within(ui.body->parent,ui.title);
-  assert(ui.title->text=="Weather" && ui.title->text_align==LV_TEXT_ALIGN_LEFT);
-  assert(ui.title->y+ui.title->height<=ui.body->y);
+  assert(ui.day_gap==weather_daily_day_gap(ui.font));
   for(const auto *child:ui.body->children)within(ui.body,child);
   for(const auto &column:ui.columns){
     within(ui.days,column.button);
     for(const auto *child:column.button->children)within(column.button,child);
-    assert(column.icon->y==0 && column.icon->y+column.icon->height<=column.day->y);
+    assert(column.icon->y==ui.day_vertical_padding && column.icon->y+column.icon->height+ui.text_gap==column.day->y);
+    assert(column.icon->x==ui.day_padding && column.day->x==ui.day_padding && column.temperature->x==ui.day_padding);
+    assert(column.temperature->y+column.temperature->height+ui.day_vertical_padding==column.button->height);
     assert(column.day->y+column.day->height<=column.temperature->y);
     assert(column.icon->text_align==LV_TEXT_ALIGN_LEFT && column.day->text_align==LV_TEXT_ALIGN_LEFT && column.temperature->text_align==LV_TEXT_ALIGN_LEFT);
   }
@@ -168,6 +173,11 @@ void check_modal_fit(){
     within(ui.metrics,metric.tile);
     for(const auto *child:metric.tile->children)within(metric.tile,child);
     assert(metric.value->y+metric.value->height<=metric.label->y);
+    assert(metric.value->font==ui.value_font && ui.value_font==&summary_font);
+    if(!(metric.secondary->flags & LV_OBJ_FLAG_HIDDEN)) {
+      assert(metric.secondary->y+metric.secondary->height<=metric.label->y);
+      if(metric.label->text=="Rain")assert(metric.secondary->y==metric.value->y+metric.value->height+2);
+    }
     assert(metric.label->text_align==LV_TEXT_ALIGN_LEFT && metric.value->text_align==LV_TEXT_ALIGN_LEFT);
     assert(metric.value->x==metric.label->x && metric.value->y==ui.metric_padding);
     assert(metric.label->y+metric.label->height==ui.metric_height-ui.metric_padding);
@@ -251,8 +261,8 @@ int main(){
       assert(column.icon->y < column.day->y && column.day->y < column.temperature->y);
       assert(modal.details->text=="Today - sunny");
       assert(modal.metric_tiles.size()==3);
-      assert(modal.metric_tiles[0].label->text=="Rain chance" && modal.metric_tiles[0].value->text=="0% / 0 mm");
-      assert(modal.metric_tiles[1].label->text=="Wind" && modal.metric_tiles[1].value->text=="10 km/h");
+      assert(modal.metric_tiles[0].label->text=="Rain" && modal.metric_tiles[0].value->text=="0%" && modal.metric_tiles[0].secondary->text=="0 mm");
+      assert(modal.metric_tiles[1].label->text=="Wind" && modal.metric_tiles[1].value->text=="10" && modal.metric_tiles[1].secondary->text=="km/h");
       assert(modal.metric_tiles[2].value->text=="75%");
       assert(modal.metric_tiles.back().tile->x+modal.metric_tiles.back().tile->width==modal.row_width);
       const int modal_live=lv_obj_t::live;
@@ -260,7 +270,7 @@ int main(){
       assert(lv_obj_t::live==modal_live && ha_bindings.empty());
 
       emit(modal.columns[1].button,LV_EVENT_CLICKED);assert(modal.day==1);
-      assert(modal.details->text=="Mon - rainy" && modal.metric_tiles[0].value->text=="80% / 2 mm");
+      assert(modal.details->text=="Mon - rainy" && modal.metric_tiles[0].value->text=="80%" && modal.metric_tiles[0].secondary->text=="2 mm");
       assert(lv_obj_t::live==modal_live); // Selecting another complete day reuses all tiles.
       emit(modal.columns[2].button,LV_EVENT_CLICKED);assert(modal.metric_tiles.empty());
       assert((modal.details->flags & LV_OBJ_FLAG_HIDDEN) && (modal.metrics->flags & LV_OBJ_FLAG_HIDDEN));
@@ -310,10 +320,10 @@ int main(){
   weather_daily_open_modal(wide_card);
   auto &paged=weather_daily_modal();
   assert(paged.day_limit==5 && paged.columns.size()==5);
-  assert(paged.columns_per_row==3); // A narrow row wraps all five days into 3+2.
-  assert(paged.columns[2].button->y==0 && paged.columns[3].button->y>0);
-  assert(paged.columns[2].button->x+paged.columns[2].button->width==paged.row_width);
-  assert(paged.columns[4].button->x+paged.columns[4].button->width==paged.row_width);
+  assert(paged.columns_per_row==2); // Match the wide-card gap; a partial row keeps the same day width.
+  assert(paged.columns[1].button->y==0 && paged.columns[2].button->y>0);
+  assert(paged.columns[1].button->x+paged.columns[1].button->width==paged.row_width);
+  assert(paged.columns[4].button->x==0 && paged.columns[4].button->width==paged.columns[0].button->width);
   emit(paged.columns[4].button,LV_EVENT_CLICKED);assert(paged.day==4);
   use_fahrenheit=true;weather_daily_refresh_modal();
   assert(paged.columns[0].temperature->text=="64°/50°");
@@ -339,13 +349,12 @@ int main(){
     assert(modal.day_limit==static_cast<size_t>(screen[2]) && modal.columns.size()==modal.day_limit);
     for(size_t i=0;i<modal.columns.size();++i){
       const auto *button=modal.columns[i].button;
-      assert(button->width>=weather_daily_minimum_width(modal.font,modal.icon_font,12));
+      assert(button->width>=weather_daily_modal_minimum_width(modal,!modal.weekday_labels));
       if(i && button->y==modal.columns[i-1].button->y){
         const auto *previous=modal.columns[i-1].button;
-        assert(button->x==previous->x+previous->width+modal.gap);
+        assert(button->x==previous->x+previous->width+modal.day_gap);
       } else assert(button->x==0);
-      if(i+1==modal.columns.size() || button->y!=modal.columns[i+1].button->y)
-        assert(button->x+button->width==modal.row_width);
+      if((i+1)%modal.columns_per_row==0)assert(button->x+button->width==modal.row_width);
     }
     emit(modal.columns.back().button,LV_EVENT_CLICKED);assert(modal.day==modal.day_limit-1);
     weather_daily_hide_modal();assert(ha_bindings.empty());
@@ -395,13 +404,13 @@ int main(){
   rain_day.precipitation=2.4f;rain_day.wind=0;rain_day.humidity=82.4f;
   weather_daily_open_modal(wide_card);
   auto &metrics=weather_daily_modal();
-  assert(metrics.metric_tiles.size()==3 && metrics.metric_tiles[0].label->text=="Rainfall");
-  assert(metrics.metric_tiles[0].value->text=="2.4 mm");
-  assert(metrics.metric_tiles[1].value->text=="0 km/h" && metrics.metric_tiles[2].value->text=="82%");
+  assert(metrics.metric_tiles.size()==3 && metrics.metric_tiles[0].label->text=="Rain");
+  assert(metrics.metric_tiles[0].value->text=="2.4" && metrics.metric_tiles[0].secondary->text=="mm");
+  assert(metrics.metric_tiles[1].value->text=="0" && metrics.metric_tiles[1].secondary->text=="km/h" && metrics.metric_tiles[2].value->text=="82%");
   const auto first_tile=metrics.metric_tiles[0].tile;
   rain_day.rain_probability=79.8f;weather_daily_refresh_modal();
-  assert(metrics.metric_tiles[0].tile==first_tile && metrics.metric_tiles[0].label->text=="Rain chance");
-  assert(metrics.metric_tiles[0].value->text=="80% / 2.4 mm");
+  assert(metrics.metric_tiles[0].tile==first_tile && metrics.metric_tiles[0].label->text=="Rain");
+  assert(metrics.metric_tiles[0].value->text=="80%" && metrics.metric_tiles[0].secondary->text=="2.4 mm");
   rain_day.wind=espcontrol::weather::MISSING;rain_day.humidity=espcontrol::weather::MISSING;
   weather_daily_refresh_modal();
   assert(metrics.metric_tiles.size()==1 && metrics.metric_tiles[0].tile->width==metrics.row_width);

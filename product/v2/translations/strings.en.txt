@@ -269,6 +269,7 @@ screensaver=Screensaver
 incorrect_pin=Incorrect PIN
 
 forecast_unavailable=Forecast unavailable
+rain=Rain
 rain_chance=Rain chance
 rainfall=Rainfall
 wind=Wind

@@ -71,6 +71,21 @@ inline int weather_daily_minimum_width(const lv_font_t *font, const lv_font_t *i
   }
   return width + padding;
 }
+inline int weather_daily_day_gap(const lv_font_t *font) {
+  return std::max(8, static_cast<int>(lv_font_get_line_height(font)));
+}
+inline int weather_daily_forecast_minimum_width(const lv_font_t *font, const lv_font_t *icon_font,
+    const lv_font_t *temperature_font, const espcontrol::weather::Forecast &forecast,
+    size_t first, size_t count, int padding = 24, bool include_today = true) {
+  int minimum = weather_daily_minimum_width(font, icon_font, padding, include_today);
+  for (size_t i = first; i < std::min(first + count, forecast.count); ++i) {
+    const auto temperature = weather_daily_temperature_range(forecast.days[i], forecast.temperature_unit);
+    lv_point_t measured;
+    lv_text_get_size(&measured, temperature.c_str(), temperature_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    minimum = std::max(minimum, static_cast<int>(measured.x) + padding);
+  }
+  return minimum;
+}
 #include "button_grid_weather_modal.h"
 
 inline void weather_daily_render_card(WeatherDailyCard *card) {
@@ -98,17 +113,11 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   lv_obj_clear_flag(card->root, LV_OBJ_FLAG_HIDDEN);
   const int font_height = lv_font_get_line_height(card->font);
   const int temperature_height = lv_font_get_line_height(card->temperature_font);
-  const int day_gap = std::max(8, font_height);
+  const int day_gap = weather_daily_day_gap(card->font);
   const int icon_height = lv_font_get_line_height(card->icon_font);
-  int minimum_day_width = weather_daily_minimum_width(card->font, card->icon_font, 24);
-  // Measure the actual high/low pairs in the smaller font so both numbers fit.
   const size_t available_days = card->view == WeatherForecastView::DAILY ? forecast.count : 1;
-  for (size_t i = 0; i < available_days; ++i) {
-    const auto temperature = weather_daily_temperature_range(forecast.days[first + i], forecast.temperature_unit);
-    lv_point_t measured;
-    lv_text_get_size(&measured, temperature.c_str(), card->temperature_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-    minimum_day_width = std::max(minimum_day_width, static_cast<int>(measured.x) + 24);
-  }
+  const int minimum_day_width = weather_daily_forecast_minimum_width(card->font, card->icon_font,
+    card->temperature_font, forecast, first, available_days);
   const size_t count = espcontrol::weather::visible_days(width, minimum_day_width,
     card->view == WeatherForecastView::DAILY ? forecast.count : 1, day_gap);
   const int caption_height = card->source->stale ? font_height + 2 : 0;
