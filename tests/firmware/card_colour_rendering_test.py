@@ -195,11 +195,20 @@ int main() {
       assert(idle.text[0] == theme->text_primary);
     }
   }
+  assert(card_slider_fill_color(0x6633B9) == 0x7D6B9A);
+  assert(active_card_color(0x6633B9) == 0xB399DC);
+  assert(card_slider_fill_color(0xFFFFFF) == 0x999999);
+  const auto contrast = [](uint32_t text, uint32_t background) {
+    const double a = display_relative_luminance(text) + 50000;
+    const double b = display_relative_luminance(background) + 50000;
+    return a > b ? a / b : b / a;
+  };
   CardPalette defaults;
   defaults.has_on = defaults.has_off = defaults.has_sensor_color = true;
   defaults.on_val = 0xFF8C00;
   defaults.off_val = 0x313131;
   defaults.sensor_val = 0x212121;
+  assert(card_slider_fill_color(defaults) == defaults.on_val);
   DisplayProfile display;
   assert(card_progress_color(0xFF8C00) == 0xFFAF4D);
   assert(card_progress_color(0x9D9D9D) == 0xBABABA);
@@ -252,6 +261,10 @@ int main() {
           sync_card_checked_text_color(&button);
           espcontrol::cards::sensor_driver_apply_background(slot, palette);
           assert(palette.custom_background);
+          const auto fill = card_slider_fill_color(palette);
+          const auto foreground = readable_text_color_for_bg(palette.off_val);
+          assert(contrast(foreground, fill) >= std::min(4.5, contrast(foreground, palette.off_val)));
+          assert(fill != palette.off_val);
           assert(palette.on_val != palette.off_val);
           assert(palette.progress_val == card_progress_color(colour.base));
           assert(palette.progress_val != colour.base);
@@ -356,6 +369,7 @@ int main() {
   assert(corrected.sensor_val == 0x7F6900);
   assert(corrected.off_val == corrected.sensor_val);
   assert(corrected.on_val == 0x7F9480);
+  assert(card_slider_fill_color(corrected) == card_slider_fill_color(corrected.off_val));
   assert(defaults.sensor_val == 0x212121);
   const auto explicit_colour = card_palette_for_config(CardPalette{}, config, DisplayProfile{});
   assert(explicit_colour.has_on && explicit_colour.has_off && explicit_colour.has_sensor_color);

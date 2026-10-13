@@ -72,14 +72,14 @@ inline bool numeric_selectable_driver_setup_visual(
   } else if (context.runtime.driver == Driver::LIGHT_TEMPERATURE) {
     setup_light_temp_visual(
       slot, config,
-      palette.has_on ? palette.on_val : DEFAULT_ACCENT_COLOR);
+      card_slider_fill_color(palette));
     numeric_selectable_driver_track_slider_cleanup(slot);
   } else if (numeric_selectable_driver_fan_action(context)) {
     setup_fan_card(slot, config);
   } else {
     setup_slider_visual(
       slot, config,
-      palette.has_on ? palette.on_val : DEFAULT_ACCENT_COLOR);
+      card_slider_fill_color(palette));
     numeric_selectable_driver_track_slider_cleanup(slot);
   }
   return true;

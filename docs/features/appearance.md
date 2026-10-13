@@ -29,6 +29,8 @@ Backups include the theme mode, automatic method, times and offsets. Older backu
 
 Text and icons automatically switch between white and dark content to suit the background, with the same rules on the panel and web preview. Custom cards use a noticeably brighter tint when active for darker colours, or a darker shade for pale colours and white, making on and off easier to distinguish.
 
+Slider cards use a contrasting fill that keeps labels readable as values change.
+
 Custom card colours stay in place when changing a card’s controls, reopening its editor or switching themes. Media Cover Art uses the chosen card colour while artwork is loading or unavailable; visible artwork keeps white text. Media progress bars use a lighter or darker shade of the chosen card colour so progress remains visible.
 
 Cards using their default background show a checkmark on the matching swatch for the current theme. Resetting a card’s colours restores this default selection.

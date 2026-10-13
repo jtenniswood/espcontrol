@@ -1,4 +1,4 @@
-import { lighterCardColor } from "../model/config_primitives";
+import { activeCardColor, lighterCardColor } from "../model/config_primitives";
 
 export interface Point {
   readonly x: number;
@@ -92,7 +92,7 @@ const CARD_TYPE_PICKER_DEFAULTS: Readonly<Record<string, string>> = {
   media_control: "media",
 };
 
-export function cardPreviewTextColor(background: string): string {
+function cardRelativeLuminance(background: string): number {
   const rgb = parseInt(background.replace(/^#/, ""), 16);
   // Match the firmware's fixed-point luminance calculation and light-background threshold.
   const linear = (channel: number) => {
@@ -101,9 +101,37 @@ export function cardPreviewTextColor(background: string): string {
   };
   const red = (rgb >> 16) & 255, green = (rgb >> 8) & 255, blue = rgb & 255;
   const luminance = Math.floor((linear(red) * 2126 + linear(green) * 7152 + linear(blue) * 722) / 10000);
+  return luminance;
+}
+
+export function cardPreviewTextColor(background: string): string {
+  const rgb = parseInt(background.replace(/^#/, ""), 16);
+  const red = (rgb >> 16) & 255, green = (rgb >> 8) & 255, blue = rgb & 255;
   // Saturated blue/cyan active shades retain white content after lightening.
   const crossover = green >= red + 32 && blue >= red + 32 ? 550000 : 450000;
-  return luminance >= crossover ? "#212121" : "#FFFFFF";
+  return cardRelativeLuminance(background) >= crossover ? "#212121" : "#FFFFFF";
+}
+
+export function cardSliderFillColor(background: string): string {
+  const active = activeCardColor(background);
+  if (!active) return "";
+  const foreground = cardPreviewTextColor(background);
+  const text = cardRelativeLuminance(foreground);
+  const readable = (color: string) => {
+    const fill = cardRelativeLuminance(color);
+    return (Math.max(text, fill) + 50000) * 1000 >= (Math.min(text, fill) + 50000) * 4500;
+  };
+  if (readable(active)) return active;
+  for (let amount = 10; amount <= 100; amount += 10) {
+    const shade = [0, 2, 4].map(offset => {
+      const channel = parseInt(active.slice(offset, offset + 2), 16);
+      const value = foreground === "#FFFFFF" ? Math.floor((channel * (100 - amount) + 50) / 100)
+        : channel + Math.floor(((255 - channel) * amount + 50) / 100);
+      return value.toString(16).padStart(2, "0").toUpperCase();
+    }).join("");
+    if (readable(shade)) return shade;
+  }
+  return active;
 }
 
 export function cardProgressColor(background: string): string {
