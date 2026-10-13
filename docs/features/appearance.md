@@ -22,6 +22,14 @@ The theme changes the panel's neutral backgrounds, controls and text, including 
 
 Backups include the theme mode, automatic method, times and offsets. Older backups without these fields leave the panel's current theme settings unchanged. Older Schedule and Sun selections migrate to Automatic with the corresponding method.
 
+## Wallpaper
+
+Upload a JPEG, PNG or WebP image under **Wallpaper** to place it behind the cards on the physical panel and in the browser preview. Images are resized to a maximum of 480 pixels on the longest side and centred to fill the screen. Choose an image with a similar aspect ratio to your display for less cropping.
+
+With a wallpaper, card backgrounds use an 80% fill so the image shows through while labels and icons retain their normal colours. Camera images, cover art and QR codes keep their own content. The wallpaper also appears on subpages; setup screens, modals and screensavers keep their existing backgrounds.
+
+Uploads and **Remove wallpaper** apply immediately. The image is stored on the display and survives restarts. Removing it restores solid card backgrounds. Wallpapers are separate from configuration backups and are cleared by resetting customisation or factory settings. Older firmware or partition layouts without image storage show the wallpaper control as unavailable.
+
 ## Active colour
 
 - **Primary** — the colour cards show when an entity is active. Choose from the same compact grid used in individual card settings. It contains 19 preset colours and a final transparent, dashed swatch with an eyedropper icon that opens your browser's native colour picker for any colour, including white. A checkmark shows the selected preset; an accent outline highlights a custom colour. The orange swatch is `FF8C00`, the panel's default active colour.

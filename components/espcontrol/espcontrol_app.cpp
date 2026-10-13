@@ -29,6 +29,7 @@
 #include "panel_config_http_context.h"
 #include "panel_identity_endpoint.h"
 #include "screensaver_pin_endpoint.h"
+#include "wallpaper_endpoint.h"
 #include "button_grid.h"
 
 extern "C" void espcontrol_register_web_server_handlers(
@@ -38,6 +39,7 @@ extern "C" void espcontrol_register_web_server_handlers(
   espcontrol::reset::register_handlers(*server);
   espcontrol::register_panel_identity_endpoint(*server);
   espcontrol::register_screensaver_pin_endpoint(*server);
+  espcontrol::register_wallpaper_endpoint(*server);
   register_local_sensor_endpoint(*server);
   register_local_action_endpoint(*server);
   espcontrol::configuration::register_panel_config_capabilities_endpoint(*server);
@@ -369,6 +371,7 @@ void EspControlApp::initialize_native_configuration() {
 }
 
 void EspControlApp::loop() {
+  wallpaper_tick();
   home_assistant_endpoint_.loop();
   core_.run_once();
   // The app core starts before WiFi so Home Assistant boot automations are
