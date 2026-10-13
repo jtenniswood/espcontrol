@@ -265,3 +265,11 @@ then_visit_192_168_4_1_in_your_browser=Åpne deretter 192.168.4.1 i nettleseren
 
 screensaver=Skjermsparer
 incorrect_pin=Feil PIN
+
+# Notification card
+notification=Varsel
+information=Informasjon
+warning=Advarsel
+alert=Alarm
+acknowledge=Kvitter
+no_notifications=Ingen varsler

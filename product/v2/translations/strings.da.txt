@@ -265,3 +265,11 @@ then_visit_192_168_4_1_in_your_browser=Åbn derefter 192.168.4.1 i din browser
 
 screensaver=Pauseskærm
 incorrect_pin=Forkert PIN
+
+# Notification card
+notification=Notifikation
+information=Information
+warning=Advarsel
+alert=Alarm
+acknowledge=Kvittér
+no_notifications=Ingen notifikationer

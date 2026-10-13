@@ -265,3 +265,11 @@ then_visit_192_168_4_1_in_your_browser=Öffne dann 192.168.4.1 in deinem Browser
 
 screensaver=Bildschirmschoner
 incorrect_pin=Falsche PIN
+
+# Notification card
+notification=Benachrichtigung
+information=Information
+warning=Warnung
+alert=Alarm
+acknowledge=Bestätigen
+no_notifications=Keine Benachrichtigungen

@@ -265,3 +265,11 @@ then_visit_192_168_4_1_in_your_browser=Avaa sitten selaimessa 192.168.4.1
 
 screensaver=Näytönsäästäjä
 incorrect_pin=Väärä PIN
+
+# Notification card
+notification=Ilmoitus
+information=Tiedote
+warning=Varoitus
+alert=Hälytys
+acknowledge=Kuittaa
+no_notifications=Ei ilmoituksia

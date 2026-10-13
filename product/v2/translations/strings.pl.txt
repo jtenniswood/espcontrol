@@ -265,3 +265,11 @@ then_visit_192_168_4_1_in_your_browser=Następnie otwórz 192.168.4.1 w przeglą
 
 screensaver=Wygaszacz ekranu
 incorrect_pin=Nieprawidłowy PIN
+
+# Notification card
+notification=Powiadomienie
+information=Informacja
+warning=Ostrzeżenie
+alert=Alarm
+acknowledge=Potwierdź
+no_notifications=Brak powiadomień

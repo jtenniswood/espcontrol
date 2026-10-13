@@ -44,6 +44,17 @@
         "type": "alarm",
         "precision": "",
         "options": "pin_arm=0,actions=away%7Cdisarm"
+      },
+      "notification": {
+        "entity": "sensor.house_notice",
+        "label": "House Notice",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "notification",
+        "precision": "",
+        "options": "level_attribute=severity,ack_action=script.ack_notice"
       }
     },
     "subpage": {

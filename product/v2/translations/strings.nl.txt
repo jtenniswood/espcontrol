@@ -265,3 +265,11 @@ then_visit_192_168_4_1_in_your_browser=Open daarna 192.168.4.1 in je browser
 
 screensaver=Schermbeveiliging
 incorrect_pin=Onjuiste pincode
+
+# Notification card
+notification=Melding
+information=Informatie
+warning=Waarschuwing
+alert=Alarm
+acknowledge=Bevestigen
+no_notifications=Geen meldingen

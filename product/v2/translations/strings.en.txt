@@ -266,3 +266,11 @@ then_visit_192_168_4_1_in_your_browser=Then visit 192.168.4.1 in your browser
 
 screensaver=Screensaver
 incorrect_pin=Incorrect PIN
+
+# Notification card
+notification=Notification
+information=Information
+warning=Warning
+alert=Alert
+acknowledge=Acknowledge
+no_notifications=No notifications

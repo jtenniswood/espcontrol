@@ -265,3 +265,11 @@ then_visit_192_168_4_1_in_your_browser=Apoi deschideți 192.168.4.1 în browser
 
 screensaver=Economizor de ecran
 incorrect_pin=PIN incorect
+
+# Notification card
+notification=Notificare
+information=Informație
+warning=Avertisment
+alert=Alertă
+acknowledge=Confirmă
+no_notifications=Nicio notificare
