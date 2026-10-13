@@ -1435,7 +1435,7 @@ inline void image_card_apply_active_geometry(ImageCardCtx *ctx) {
   image_card_apply_context_widget_geometry(ctx);
 }
 
-inline void setup_image_card(BtnSlot &s) {
+inline void setup_image_card(BtnSlot &s, const CardPalette &palette) {
   lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
   clear_push_button_transition(s.btn);
@@ -1458,7 +1458,12 @@ inline void setup_image_card(BtnSlot &s) {
 
   lv_obj_t *loading = lv_obj_create(s.btn);
   lv_obj_set_size(loading, lv_pct(100), lv_pct(100));
-  lv_obj_set_style_bg_color(loading, lv_color_hex(theme_display_color(current_theme().surface_secondary)), LV_PART_MAIN);
+  const uint32_t loading_background = palette.custom_background
+    ? palette.off_val : theme_display_color(current_theme().surface_secondary);
+  const uint32_t loading_text = palette.custom_background
+    ? display_text_color_for_bg(loading_background) : current_theme().text_primary;
+  theme_set_content_background(loading, palette.custom_background);
+  lv_obj_set_style_bg_color(loading, lv_color_hex(loading_background), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(loading, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(loading, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(loading, 0, LV_PART_MAIN);
@@ -1471,14 +1476,16 @@ inline void setup_image_card(BtnSlot &s) {
   const lv_font_t *loading_icon_font = image_card_icon_font_for_slot(s);
   const lv_font_t *loading_label_font = image_card_label_font_for_slot(s);
   image_card_apply_loading_fonts(loading, loading_icon_font, loading_label_font);
-  lv_obj_set_style_text_color(loading_icon, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
+  if (palette.custom_background) theme_set_content_foreground(loading_icon);
+  lv_obj_set_style_text_color(loading_icon, lv_color_hex(loading_text), LV_PART_MAIN);
   lv_obj_set_style_text_opa(loading_icon, LV_OPA_COVER, LV_PART_MAIN);
   lv_label_set_display_text(loading_icon, IMAGE_CARD_LOADING_ICON);
   apply_icon_width_compensation(loading_icon);
 
   lv_obj_t *loading_label = lv_label_create(loading);
   image_card_apply_loading_fonts(loading, loading_icon_font, loading_label_font);
-  lv_obj_set_style_text_color(loading_label, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
+  if (palette.custom_background) theme_set_content_foreground(loading_label);
+  lv_obj_set_style_text_color(loading_label, lv_color_hex(loading_text), LV_PART_MAIN);
   lv_obj_set_style_text_opa(loading_label, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_text_align(loading_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
   lv_label_set_display_text(loading_label, espcontrol_i18n("Loading"));

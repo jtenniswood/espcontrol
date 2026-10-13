@@ -184,8 +184,16 @@ jobs:
               -e PLATFORMIO_SETTING_ENABLE_TELEMETRY=false \
               -v "${shared_platformio_cache}:/config/.esphome" \
               -v "${build_cache}:/config/${build_input_dir}/.esphome" \
-              "${ESPHOME_IMAGE}" \
-              compile "/config/${build_input_dir}/${target}")
+              --entrypoint /bin/sh \
+              "${ESPHOME_IMAGE}" -c '
+                /entrypoint.sh compile "$1"
+                compile_status=$?
+                python3 /config/scripts/report_firmware_size.py \
+                  --target "$2" --build-root "$3" \
+                  --compile-status "$compile_status" \
+                  --summary "$3/firmware-size-summary.md"
+              ' sh "/config/${build_input_dir}/${target}" "${target}" \
+              "/config/${build_input_dir}/.esphome")
             create_status=$?
             if [ "${create_status}" -ne 0 ]; then
               rm -rf "${target_cache_root}"
@@ -207,9 +215,20 @@ jobs:
 
             ${DOCKER} start -a "${container}"
             compile_status=$?
-            python3 scripts/report_firmware_size.py \
-              --target "${target}" --build-root "${build_cache}" \
-              --compile-status "${compile_status}" || compile_status=1
+            # A containerized self-hosted runner cannot read the Docker host's
+            # bind-mount paths. Measure inside the build container, then copy
+            # only the report back before removing the container.
+            size_summary="${target_cache_root}/firmware-size-summary.md"
+            if ${DOCKER} cp "${container}:/config/${build_input_dir}/.esphome/firmware-size-summary.md" "${size_summary}"; then
+              if [ -f "$GITHUB_STEP_SUMMARY" ] && grep -Fq '## Firmware size and headroom' "$GITHUB_STEP_SUMMARY"; then
+                tail -n +5 "${size_summary}" >> "$GITHUB_STEP_SUMMARY"
+              else
+                cat "${size_summary}" >> "$GITHUB_STEP_SUMMARY"
+              fi
+            else
+              echo "::error::Could not retrieve firmware size report for ${target}"
+              compile_status=1
+            fi
             cleanup_container
             trap - EXIT
             bash scripts/reclaim_actions_disk.sh
