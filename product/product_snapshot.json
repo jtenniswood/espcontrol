@@ -1472,7 +1472,8 @@
           "bottom": 2.08,
           "right": 2.08,
           "fontSize": 4
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
