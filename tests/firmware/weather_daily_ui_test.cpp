@@ -84,7 +84,7 @@ NOOP(lv_obj_set_style_radius) NOOP(lv_obj_set_style_bg_opa) NOOP(lv_obj_set_styl
 NOOP(lv_obj_add_state) NOOP(lv_obj_clear_state) NOOP(apply_text_width_compensation)
 NOOP(control_modal_apply_pressed_fill) NOOP(set_clock_bar_modal_label)
 int lv_color_hex(int c){return c;} int lv_pct(int n){return n;}
-struct Theme { int text_primary=0, surface_secondary=0; } theme;
+struct Theme { int text_primary=0, surface_secondary=0, text_muted=0xB0B0B0; } theme;
 const Theme &current_theme(){return theme;}
 std::string translated_today;
 std::string espcontrol_i18n(const std::string &s){return s=="Today" && !translated_today.empty()?translated_today:s;}
@@ -100,6 +100,7 @@ const char *weather_icon_for_state(const std::string &state){return state=="clou
 std::string weather_label_for_state(const std::string &s){return s;}
 void notify_dashboard_content_changed(){}
 struct DisplayProfile{};
+const lv_font_t *display_small_text_font(const DisplayProfile &, const lv_font_t *){return &small_font;}
 const lv_font_t *display_icon_font(const DisplayProfile &){return &icons;}
 const lv_font_t *display_media_title_font(const DisplayProfile &){return &summary_font;}
 const lv_font_t *display_volume_label_font(const DisplayProfile &, const lv_font_t *){return &small_font;}
@@ -213,17 +214,17 @@ int main(){
     for(const auto &col:card->columns){
       assert(col.icon->text_align==LV_TEXT_ALIGN_LEFT && col.day->text_align==LV_TEXT_ALIGN_LEFT && col.high->text_align==LV_TEXT_ALIGN_LEFT);
       assert(col.icon->x==col.day->x && col.day->x==col.high->x);
-      assert(col.icon->y==0 && col.day->y==126 && col.high->y==144);
+      assert(col.icon->y==0 && col.day->y==130 && col.high->y==148);
     }
     int live=lv_obj_t::live;
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     assert(lv_obj_t::live==live); // Refreshes do not grow the widget tree.
     weather_daily_set_unavailable("weather.home");weather_daily_render_card(card);
     assert(card->columns.size()==4 && caption->text=="Last forecast" && lv_obj_t::live==live);
-    assert(card->columns.front().high->y==126); // Keep stale status below the temperatures.
+    assert(card->columns.front().high->y==130); // Keep stale status below the temperatures.
     card->source->stale=false;
     lv_obj_set_size(owner,460,240);
-    assert(card->columns.front().icon->y==0 && card->columns.front().day->y==206 && card->columns.front().high->y==224);
+    assert(card->columns.front().icon->y==0 && card->columns.front().day->y==210 && card->columns.front().high->y==228);
     assert(lv_obj_t::live==live);
     lv_obj_set_size(owner,100,160);assert(card->columns.size()==1);
     lv_obj_set_size(owner,460,160);assert(card->columns.size()==4 && lv_obj_t::live==live);
@@ -463,8 +464,8 @@ int main(){
     assert(card->columns.size()==1 && card->columns[0].day->text==(tomorrow?"Tomorrow":"Today"));
     assert(card->columns[0].high->text==(tomorrow?"17°":"19°"));
     assert(card->columns[0].icon->x==0 && card->columns[0].icon->y==0);
-    assert(card->columns[0].day->text_align==LV_TEXT_ALIGN_LEFT && card->columns[0].high->y==144);
-    lv_obj_set_size(owner,900,240);assert(card->columns.size()==1 && card->columns[0].high->y==224);
+    assert(card->columns[0].day->text_align==LV_TEXT_ALIGN_LEFT && card->columns[0].high->y==148);
+    lv_obj_set_size(owner,900,240);assert(card->columns.size()==1 && card->columns[0].high->y==228);
     const int live=lv_obj_t::live;
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     assert(lv_obj_t::live==live); // Single-day refreshes also reuse widgets.

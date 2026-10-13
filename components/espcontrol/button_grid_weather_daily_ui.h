@@ -10,7 +10,7 @@ struct WeatherDailyCard {
   lv_obj_t *owner = nullptr, *root = nullptr, *caption = nullptr, *placeholder_icon = nullptr;
   WeatherDailySource *source = nullptr;
   WeatherForecastView view = WeatherForecastView::DAILY;
-  const lv_font_t *font = nullptr, *icon_font = nullptr, *summary_font = nullptr, *detail_font = nullptr;
+  const lv_font_t *font = nullptr, *icon_font = nullptr, *summary_font = nullptr, *detail_font = nullptr, *temperature_font = nullptr;
   std::vector<WeatherDailyColumn> columns;
   int width = 0, height = 0;
 };
@@ -94,13 +94,14 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   lv_obj_add_flag(card->placeholder_icon, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_flag(card->root, LV_OBJ_FLAG_HIDDEN);
   const int font_height = lv_font_get_line_height(card->font);
+  const int temperature_height = lv_font_get_line_height(card->temperature_font);
   const int day_gap = std::max(8, font_height);
   const int icon_height = lv_font_get_line_height(card->icon_font);
   const int minimum_day_width = weather_daily_minimum_width(card->font, card->icon_font, 24);
   const size_t count = espcontrol::weather::visible_days(width, minimum_day_width,
     card->view == WeatherForecastView::DAILY ? forecast.count : 1, day_gap);
   const int caption_height = card->source->stale ? font_height + 2 : 0;
-  const int high_y = std::max(icon_height + font_height + 4, height - caption_height - font_height);
+  const int high_y = std::max(icon_height + font_height + 4, height - caption_height - temperature_height);
   const int day_y = high_y - font_height - 2;
   // Rebuild only when geometry or the number of visible days changes. Refreshes
   // and unit changes reuse the labels instead of allocating new widget trees.
@@ -125,7 +126,8 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
       };
       col.icon = make(card->icon_font, 0);
       col.day = make(card->font, day_y);
-      col.high = make(card->font, high_y);
+      col.high = make(card->temperature_font, high_y);
+      lv_obj_set_style_text_color(col.high, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
       card->columns.push_back(col);
     }
   }
@@ -197,6 +199,7 @@ inline void weather_daily_setup(BtnSlot &slot, const ParsedCfg &config,
   card->placeholder_icon = slot.icon_lbl;
   card->font = lv_obj_get_style_text_font(slot.text_lbl, LV_PART_MAIN);
   if (!card->font) card->font = LV_FONT_DEFAULT;
+  card->temperature_font = display_small_text_font(display, card->font);
   card->icon_font = display_icon_font(display);
   if (!card->icon_font) card->icon_font = card->font;
   card->summary_font = display_media_title_font(display);

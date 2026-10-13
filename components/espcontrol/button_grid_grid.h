@@ -34,6 +34,7 @@ struct GridConfig {
   int color_correction_red_percent = COLOR_CORRECTION_RED_PERCENT;
   int color_correction_green_percent = COLOR_CORRECTION_GREEN_PERCENT;
   int color_correction_blue_percent = COLOR_CORRECTION_BLUE_PERCENT;
+  const lv_font_t *small_text_font = nullptr;
   const lv_font_t *icon_font;
   const lv_font_t *sp_sensor_font;
   const lv_font_t *sp_large_sensor_font = nullptr;
@@ -94,6 +95,7 @@ inline bool grid_phase2_complete() {
 
 inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   DisplayProfile profile;
+  profile.fonts.small_text = cfg.small_text_font;
   profile.fonts.icon = cfg.icon_font;
   profile.fonts.sensor = cfg.sp_sensor_font;
   profile.fonts.large_sensor = cfg.sp_large_sensor_font;

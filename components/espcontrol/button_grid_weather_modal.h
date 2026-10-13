@@ -9,7 +9,7 @@ struct WeatherDailyModal {
   lv_obj_t *placeholder_icon = nullptr, *message = nullptr, *details = nullptr;
   lv_obj_t *days = nullptr, *metrics = nullptr, *status = nullptr;
   WeatherDailySource *source = nullptr;
-  const lv_font_t *font = nullptr, *icon_font = nullptr, *value_font = nullptr;
+  const lv_font_t *font = nullptr, *icon_font = nullptr, *value_font = nullptr, *temperature_font = nullptr;
   std::vector<WeatherDailyModalColumn> columns;
   std::vector<WeatherDailyModalMetric> metric_tiles;
   size_t day = 0, day_limit = 5, columns_per_row = 1;
@@ -168,7 +168,8 @@ inline void weather_daily_refresh_modal() {
     lv_obj_set_height(ui.days, ui.forecast_height);
     const int text_height = lv_font_get_line_height(ui.font);
     const int icon_y = text_height + ui.text_gap;
-    const int high_y = ui.row_height - text_height * 2 - 4;
+    const int temperature_height = lv_font_get_line_height(ui.temperature_font);
+    const int high_y = ui.row_height - temperature_height * 2 - 4;
     size_t row = 0, column = 0;
     for (size_t i = 0; i < count; ++i) {
       const size_t row_count = count / rows + (row < count % rows ? 1 : 0);
@@ -190,9 +191,10 @@ inline void weather_daily_refresh_modal() {
         lv_obj_set_width(label, column_width); lv_obj_set_pos(label, 0, y); return label;
       };
       WeatherDailyModalColumn col{button, make(ui.font, 0), make(ui.icon_font, icon_y),
-        make(ui.font, high_y), make(ui.font, high_y + text_height + 4)};
+        make(ui.temperature_font, high_y), make(ui.temperature_font, high_y + temperature_height + 4)};
+      lv_obj_set_style_text_color(col.high, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
+      lv_obj_set_style_text_color(col.low, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
       lv_obj_set_style_text_opa(col.day, LV_OPA_70, LV_PART_MAIN);
-      lv_obj_set_style_text_opa(col.low, LV_OPA_70, LV_PART_MAIN);
       ui.columns.push_back(col);
     }
   }
@@ -219,7 +221,7 @@ inline void weather_daily_open_modal(WeatherDailyCard *card) {
   auto &ui = weather_daily_modal();
   ui.overlay = shell.overlay; ui.owner = card->owner; ui.source = card->source;
   ui.day = selected; ui.font = card->detail_font; ui.icon_font = card->icon_font;
-  ui.value_font = card->summary_font;
+  ui.value_font = card->summary_font; ui.temperature_font = card->temperature_font;
   // Resolution separates the supported 4/4.3-inch panels from 7/10-inch panels,
   // independently of orientation (the square P4 has a large-layout font profile).
   ui.day_limit = std::max(shell.layout.sw, shell.layout.sh) <= 800 ? 5 : 7;
