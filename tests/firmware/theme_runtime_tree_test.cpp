@@ -161,6 +161,7 @@ struct TestSubpage {
   lv_obj_t *back_button = nullptr;
   struct Card { bool neutral_background; lv_obj_t *button; bool sensor_surface = false; bool secondary_surface = false; };
   std::vector<Card> cards;
+  bool back_neutral_background = true;
 };
 std::vector<TestSubpage> &navigation_subpages() {
   static std::vector<TestSubpage> pages;
@@ -896,7 +897,38 @@ static void test_custom_default_contrast_after_active_theme_refresh() {
   }
 }
 
+static void test_custom_back_button_theme_preservation() {
+  set_active_theme_palette(DARK_THEME);
+  apply_current_theme();
+  lv_obj_t page, subpage, back, label;
+  // Even a custom colour matching a theme surface must remain explicitly owned.
+  back.background = lv_color_hex(0x313131);
+  back.text = label.text = lv_color_hex(0xFFFFFF);
+  back.children = {&label};
+  label.parent = &back;
+  label.type = &lv_label_class;
+  BtnSlot slots[] = {{nullptr}};
+  const bool neutral[] = {false};
+  register_theme_grid(&page, slots, neutral, 0, 100, 100, 100);
+  navigation_subpages().push_back({&subpage, &back, {}, false});
+  for (const auto *theme : {&LIGHT_THEME, &DARK_THEME}) {
+    set_active_theme_palette(*theme);
+    apply_current_theme();
+    assert(back.background.full == 0x313131 && label.text.full == 0xFFFFFF);
+  }
+  navigation_subpages()[0].back_neutral_background = true;
+  set_active_theme_palette(LIGHT_THEME);
+  apply_current_theme();
+  assert(back.background.full == LIGHT_THEME.surface_card);
+  assert(label.text.full == LIGHT_THEME.text_primary);
+  navigation_subpages().clear();
+  lv_event_t deleted{&page};
+  page.delete_callback(&deleted);
+  set_active_theme_palette(DARK_THEME);
+}
+
 int main() {
+  test_custom_back_button_theme_preservation();
   test_custom_default_contrast_after_active_theme_refresh();
   test_alarm_state_contrast_during_theme_refresh();
   test_custom_card_theme_preservation();

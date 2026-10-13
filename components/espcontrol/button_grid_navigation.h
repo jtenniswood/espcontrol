@@ -27,6 +27,7 @@ struct NavigationSubpageEntry {
   std::string kind;
   lv_obj_t *screen = nullptr;
   lv_obj_t *back_button = nullptr;
+  bool back_neutral_background = true;
   BtnSlot back_slot{};
   struct Card {
     int index = 0;
@@ -267,10 +268,12 @@ inline bool navigation_restore_subpage_slot(int slot) {
 }
 
 inline void navigation_register_subpage_back_button(int slot,
-                                                    const BtnSlot &back_slot) {
+                                                    const BtnSlot &back_slot,
+                                                    bool neutral_background = true) {
   NavigationSubpageEntry *entry = navigation_find_slot(slot);
   if (entry != nullptr) {
     entry->back_button = back_slot.btn;
+    entry->back_neutral_background = neutral_background;
     entry->back_slot = back_slot;
   }
 }

@@ -70,7 +70,7 @@ function serializeSubpage(subpage: FeatureSubpage): string {
     button.options,
   ]);
   return serializeLegacySubpageConfig(
-    subpageOrderForSerialize(subpage.order, subpage.backLabel),
+    subpageOrderForSerialize(subpage.order, subpage.backLabel, subpage.backColor),
     fields,
   );
 }
@@ -125,12 +125,16 @@ export function runBackupFeatureTests(migrationFixture?: MigrationFixture): void
       "1": {
         order: ["1", "B"],
         backLabel: "Return",
+        backColor: "FFEC16",
         buttons: [cloneCardConfig({ entity: "switch.fan", label: "Fan" })],
       },
     },
   });
   equal(backup.button_order, "1,2d", "backup preserves exact size tokens");
   equal(backup.subpage_objects["1"]?.back_label, "Return", "backup preserves subpage back labels");
+  equal(backup.subpage_objects["1"]?.back_color, "FFEC16", "backup preserves subpage back colours");
+  equal(feature.planBackupImport(backup, { device: "panel-a", slots: 6 }).subpages["1"]?.backColor,
+    "FFEC16", "backup import restores subpage back colours");
 
   const nativeDocument = encodePanelConfig({
     deviceProfile: "panel-a",

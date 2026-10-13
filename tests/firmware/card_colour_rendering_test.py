@@ -1,5 +1,6 @@
 """Exercise production colour palettes, sensor backgrounds and state updates."""
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -20,7 +21,8 @@ source = r'''
 #include <vector>
 struct lv_obj_t;
 void lv_label_set_text(lv_obj_t *, const char *) {}
-std::string espcontrol_i18n(const std::string &text) { return text; }
+bool translate_back = false;
+std::string espcontrol_i18n(const std::string &text) { return translate_back && text == "Back" ? "Zurück" : text; }
 #include "button_grid_config_parser.h"
 #define ESPCONTROL_SUBPAGE_PARSER_ONLY
 #include "button_grid_subpages.h"
@@ -132,11 +134,15 @@ size_t lv_obj_get_child_cnt(lv_obj_t *obj) { return obj->children.size(); }
 lv_obj_t *lv_obj_get_child(lv_obj_t *obj, size_t index) { return obj->children[index]; }
 '''
 grid = (headers / "button_grid_grid.h").read_text()
+layout = (headers / "button_grid_layout.h").read_text()
+source += "\n" + "\n".join(re.findall(r"^constexpr char CARD_SIZE_.*?;$", layout, re.MULTILINE))
 
 groups = (
     ("button_grid_display.h", "", ("display_correct_color",)),
-    ("button_grid_layout.h", "", ("parse_hex_color", "apply_button_colors", "apply_card_descendant_text_color", "sync_card_checked_text_color", "card_text_contrast_event_cb", "bind_card_text_contrast_events", "set_card_checked_state")),
+    ("button_grid_layout.h", "", ("grid_token_has_span_suffix", "parse_hex_color", "apply_button_colors", "apply_card_descendant_text_color", "sync_card_checked_text_color", "card_text_contrast_event_cb", "bind_card_text_contrast_events", "set_card_checked_state")),
     ("button_grid_grid.h", "", ("card_palette_for_config",)),
+    ("button_grid_subpages.h", "", ("get_subpage_order", "subpage_back_token_span", "get_subpage_back_label", "get_subpage_back_color")),
+    ("button_grid_grid.h", "", ("apply_subpage_back_colors",)),
     ("button_grid_sensor_driver.h", "espcontrol::cards", ("sensor_driver_apply_background",)),
     ("button_grid_weather_driver.h", "espcontrol::cards", ("weather_driver_apply_background",)),
     ("button_grid_subscriptions.h", "", ("apply_sensor_active_color", "subscribe_sensor_text_card_value")),
@@ -158,6 +164,35 @@ for filename, namespace, names in groups:
 source += r'''
 #line 1 "card_colour_rendering_cases"
 int main() {
+  for (const std::string token : {"B", "Bd", "Bw", "Bb", "Bt", "Bx"}) {
+    for (const std::string prefix : {"", "~"}) {
+      const auto order = get_subpage_order(prefix + "1," + token + "=Return%3AHome%2C50%25:#ffec16,2|ignored");
+      assert(get_subpage_back_label(order) == "Return:Home,50%");
+      assert(get_subpage_back_color(order) == "FFEC16");
+      lv_obj_t back, icon, label;
+      back.children = {&icon, &label};
+      assert(!apply_subpage_back_colors(&back, order, DisplayProfile{}));
+      assert(back.background[0] == 0xFFEC16);
+      assert(icon.text[0] == 0x212121 && label.text[0] == 0x212121);
+      back.state = LV_STATE_PRESSED;
+      send_event(&back, LV_EVENT_PRESSED);
+      assert(back.background[LV_STATE_PRESSED] == lighter_card_color(0xFFEC16));
+      assert(label.text[0] == display_text_color_for_bg(lighter_card_color(0xFFEC16)));
+      back.state = 0;
+      assert(apply_subpage_back_colors(&back, "B", DisplayProfile{}));
+      assert(back.background[0] == current_theme().surface_card);
+      assert(back.background[LV_STATE_PRESSED] == current_theme().surface_card);
+      assert(label.text[0] == display_text_color_for_bg(current_theme().surface_card));
+    }
+  }
+  for (const std::string order : {"", "B", "B=Return%3AHome", "B=Back:invalid", "B=Back:12345", "1=Back:FFEC16"})
+    assert(get_subpage_back_color(order).empty());
+  assert(get_subpage_back_label("B=Back:invalid") == "Back");
+  translate_back = true;
+  assert(get_subpage_back_label("B=:FFEC16") == "Zurück");
+  assert(get_subpage_back_label("B") == "Zurück");
+  assert(get_subpage_back_label("B=Return:FFEC16") == "Return");
+  translate_back = false;
   for (const ThemePalette *theme : {&DARK_THEME, &LIGHT_THEME}) {
     set_active_theme_palette(*theme);
     for (uint32_t background : {0xFFEC16u, 0x88C440u, 0xFFFFFFu, 0x00BCD4u}) {
