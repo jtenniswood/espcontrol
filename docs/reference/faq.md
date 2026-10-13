@@ -188,7 +188,7 @@ Yes, when the Home Assistant climate entity exposes those capabilities. Range th
 
 ### Can I Choose a Different Background Colour for Every Card?
 
-Open an individual card's settings and expand **Custom Colours** to choose a preset from the compact grid, or select the final dashed eyedropper swatch to open your browser's native colour picker. A checkmark shows the selected preset; an accent outline highlights a custom colour. The active state automatically uses a lighter version of that colour, and text adjusts for readability. While the section is open, the reset icon beside its arrow removes the custom colour so the card uses the panel's defaults again. Image and full QR cards use fixed backgrounds and do not offer this control. The shared active colour remains available in [Appearance](/features/appearance).
+Open an individual card's settings and expand **Custom Colours** to choose a preset from the compact grid, or select the final dashed eyedropper swatch to open your browser's native colour picker. A checkmark shows the selected preset; a custom colour fills the eyedropper swatch and is highlighted by an accent outline. The active state automatically uses a lighter version of that colour, and text adjusts for readability. While the section is open, the reset icon beside its arrow removes the custom colour so the card uses the panel's defaults again. Image and full QR cards use fixed backgrounds and do not offer this control. The shared active colour remains available in [Appearance](/features/appearance).
 
 ### Can I Send Blinds to 25, 50, or 75 Percent?
 

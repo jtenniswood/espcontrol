@@ -15,7 +15,7 @@ export const COLOR_SWATCH_STYLES =
     ".sp-card-color-check{display:none;font-size:20px;line-height:1;font-weight:700}" +
     ".sp-card-color-preset[aria-pressed=true] .sp-card-color-check{display:block}" +
     ".sp-card-color-custom{position:relative;background:transparent;border:2px dashed var(--accent);color:var(--text);font-size:20px}" +
-    ".sp-card-color-custom[data-selected=true]{color:var(--accent);outline:2px solid var(--accent);outline-offset:3px}" +
+    ".sp-card-color-custom[data-selected=true]{outline:2px solid var(--accent);outline-offset:3px}" +
     ".sp-card-color-custom:focus-within{outline:2px solid var(--accent);outline-offset:3px}" +
     ".sp-card-color-custom input{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;opacity:0;cursor:pointer}";
 
@@ -73,7 +73,10 @@ export function createColorSwatches(value: string | (() => string), onChange: (h
         const valid = /^[0-9A-F]{6}$/.test(selected);
         picker.value = "#" + (valid ? selected : "000000");
         customSwatch.title = "Choose custom colour" + (valid ? " (#" + selected + ")" : "");
-        customSwatch.setAttribute("data-selected", String(valid && !COLOR_PRESETS.some(([hex]) => hex === selected)));
+        const customSelected = valid && !COLOR_PRESETS.some(([hex]) => hex === selected);
+        customSwatch.setAttribute("data-selected", String(customSelected));
+        customSwatch.style.backgroundColor = customSelected ? "#" + selected : "transparent";
+        customSwatch.style.color = customSelected ? cardPreviewTextColor(selected) : "";
         for (const swatch of Array.from(grid.querySelectorAll("button"))) {
             swatch.setAttribute("aria-pressed", String(swatch.getAttribute("data-color") === selected));
         }
