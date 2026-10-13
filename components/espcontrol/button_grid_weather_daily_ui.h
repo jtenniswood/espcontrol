@@ -147,7 +147,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
       col.icon = make(card->icon_font, 0);
       col.day = make(card->font, day_y);
       col.high = make(card->temperature_font, high_y);
-      lv_obj_set_style_text_color(col.high, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
+      theme_set_content_foreground(col.high);
       card->columns.push_back(col);
     }
   }
@@ -165,6 +165,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     lv_label_set_display_text(col.day, date.c_str());
     lv_label_set_display_text(col.icon, weather_icon_for_state(day.condition));
     const auto high = weather_daily_temperature_range(day, forecast.temperature_unit);
+    lv_obj_set_style_text_color(col.high, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
     lv_label_set_display_text(col.high, high.c_str());
   }
 }
@@ -183,6 +184,8 @@ inline void weather_daily_card_clicked(lv_event_t *event) {
   weather_daily_open_modal(weather_daily_card_for(static_cast<lv_obj_t *>(lv_event_get_target(event))));
 }
 inline void weather_daily_card_resized(lv_event_t *event) {
+  const auto code = lv_event_get_code(event);
+  if (code != LV_EVENT_SIZE_CHANGED && code != LV_EVENT_STYLE_CHANGED) return;
   weather_daily_render_card(weather_daily_card_for(static_cast<lv_obj_t *>(lv_event_get_target(event))));
 }
 inline void weather_daily_cleanup(lv_obj_t *owner) {
@@ -243,6 +246,6 @@ inline void weather_daily_setup(BtnSlot &slot, const ParsedCfg &config,
     if (cards.empty()) std::vector<WeatherDailyCard *>().swap(cards);
   }, LV_EVENT_DELETE, card);
   // Register once per owner; subsequent configuration changes reuse this callback.
-  lv_obj_add_event_cb(slot.btn, weather_daily_card_resized, LV_EVENT_SIZE_CHANGED, nullptr);
+  lv_obj_add_event_cb(slot.btn, weather_daily_card_resized, LV_EVENT_ALL, nullptr);
   weather_daily_render_card(card);
 }

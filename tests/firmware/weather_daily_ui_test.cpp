@@ -16,7 +16,7 @@ void *operator new(std::size_t size, const std::nothrow_t &) noexcept {
 }
 void operator delete(void *ptr, const std::nothrow_t &) noexcept { ::operator delete(ptr); }
 struct lv_obj_t;
-struct lv_event_t { lv_obj_t *target; void *data; };
+struct lv_event_t { lv_obj_t *target; void *data; int code = 0; };
 using Callback = void (*)(lv_event_t *);
 struct Binding { Callback callback; int code; void *data; };
 struct lv_font_t { int line_height; };
@@ -29,7 +29,7 @@ struct lv_obj_t {
   std::vector<lv_obj_t *> children;
   std::vector<Binding> events;
   const lv_font_t *font = &::font;
-  int width = 460, height = 160, flags = 0, x = 0, y = 0, text_align = 0;
+  int width = 460, height = 160, flags = 0, x = 0, y = 0, text_align = 0, text_color = 0;
   std::string text;
   explicit lv_obj_t(lv_obj_t *parent) : parent(parent) { ++live; if (parent) parent->children.push_back(this); }
   ~lv_obj_t() { --live; }
@@ -41,14 +41,15 @@ constexpr int LV_TEXT_ALIGN_LEFT=1, LV_TEXT_ALIGN_RIGHT=2;
 constexpr int LV_ALIGN_TOP_MID=0, LV_ALIGN_TOP_LEFT=0, LV_ALIGN_BOTTOM_RIGHT=0, LV_ALIGN_BOTTOM_LEFT=0;
 constexpr int LV_OPA_10=25, LV_OPA_70=70, LV_OPA_COVER=255;
 constexpr int LV_OPA_TRANSP=0, LV_OBJ_FLAG_SCROLLABLE=1, LV_OBJ_FLAG_CLICKABLE=2, LV_COORD_MAX=32767, LV_TEXT_FLAG_NONE=0;
-constexpr int LV_OBJ_FLAG_HIDDEN=4;
-constexpr int LV_EVENT_DELETE=1, LV_EVENT_SIZE_CHANGED=2, LV_EVENT_CLICKED=3;
+constexpr int LV_OBJ_FLAG_HIDDEN=4, LV_OBJ_FLAG_USER_2=1<<28;
+constexpr int LV_EVENT_ALL=0, LV_EVENT_DELETE=1, LV_EVENT_SIZE_CHANGED=2, LV_EVENT_CLICKED=3, LV_EVENT_STYLE_CHANGED=4;
+int lv_event_get_code(lv_event_t *e){return e->code;}
 struct lv_point_t { int x,y; };
 void *lv_event_get_user_data(lv_event_t *e) { return e->data; }
 void *lv_event_get_target(lv_event_t *e) { return e->target; }
 void lv_obj_add_event_cb(lv_obj_t *obj, Callback cb, int code, void *data) { obj->events.push_back({cb,code,data}); }
 void lv_obj_remove_event_cb(lv_obj_t *obj, Callback cb) { auto &e=obj->events; e.erase(std::remove_if(e.begin(),e.end(),[cb](auto &b){return b.callback==cb;}),e.end()); }
-void emit(lv_obj_t *obj, int code) { const auto bindings=obj->events; for(auto &b:bindings) if(b.code==code){lv_event_t event{obj,b.data}; b.callback(&event);} }
+void emit(lv_obj_t *obj, int code) { const auto bindings=obj->events; for(auto &b:bindings) if(b.code==code || b.code==LV_EVENT_ALL){lv_event_t event{obj,b.data,code}; b.callback(&event);} }
 lv_obj_t *lv_obj_create(lv_obj_t *parent) { if(fail_lvgl_allocation){fail_lvgl_allocation=false;return nullptr;} return new lv_obj_t(parent); }
 lv_obj_t *lv_label_create(lv_obj_t *parent) { return lv_obj_create(parent); }
 lv_obj_t *lv_btn_create(lv_obj_t *parent) { return lv_obj_create(parent); }
@@ -78,7 +79,9 @@ void lv_label_set_text(lv_obj_t *obj,const char *text){obj->text=text;}
 void lv_obj_set_style_text_font(lv_obj_t *obj,const lv_font_t *f,int){obj->font=f;obj->height=f->line_height;}
 const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *obj,int){return obj->font;}
 #define NOOP(name) template<class... T> void name(T...) {}
-NOOP(lv_obj_set_style_text_color) NOOP(lv_label_set_long_mode) NOOP(lv_obj_set_style_text_opa)
+void lv_obj_set_style_text_color(lv_obj_t *obj,int color,int){obj->text_color=color;}
+void theme_set_content_foreground(lv_obj_t *obj){obj->flags|=LV_OBJ_FLAG_USER_2;}
+NOOP(lv_label_set_long_mode) NOOP(lv_obj_set_style_text_opa)
 void lv_obj_set_style_text_align(lv_obj_t *obj,int align,int){obj->text_align=align;}
 void lv_obj_set_pos(lv_obj_t *obj,int x,int y){obj->x=x;obj->y=y;}
 void lv_obj_set_y(lv_obj_t *obj,int y){obj->y=y;}
@@ -230,8 +233,13 @@ int main(){
     for(const auto &col:card->columns){
       assert(col.icon->text_align==LV_TEXT_ALIGN_LEFT && col.day->text_align==LV_TEXT_ALIGN_LEFT && col.high->text_align==LV_TEXT_ALIGN_LEFT);
       assert(col.icon->x==col.day->x && col.day->x==col.high->x);
+      assert(col.high->text_color==theme.text_muted && (col.high->flags & LV_OBJ_FLAG_USER_2));
       assert(col.icon->y==0 && col.day->y==130 && col.high->y==148);
     }
+    theme.text_muted=0x606060;emit(owner,LV_EVENT_STYLE_CHANGED);
+    assert(card->columns.front().high->text_color==theme.text_muted);
+    theme.text_muted=0xB0B0B0;emit(owner,LV_EVENT_STYLE_CHANGED);
+    assert(card->columns.front().high->text_color==theme.text_muted);
     int live=lv_obj_t::live;
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     assert(lv_obj_t::live==live); // Refreshes do not grow the widget tree.

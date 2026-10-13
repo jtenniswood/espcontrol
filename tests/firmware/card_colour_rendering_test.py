@@ -104,7 +104,8 @@ struct MediaNowPlayingCtx {
 };
 bool image_card_media_artwork_visible(const ImageCardCtx *ctx) { return ctx && ctx->artwork_visible; }
 void set_card_content_disabled(lv_obj_t *, bool) {}
-constexpr int LV_STATE_DISABLED = 4, LV_OBJ_FLAG_HIDDEN = 1, LV_OBJ_FLAG_CLICKABLE = 2;
+constexpr int LV_STATE_DISABLED = 4, LV_OBJ_FLAG_HIDDEN = 1, LV_OBJ_FLAG_CLICKABLE = 2, LV_OBJ_FLAG_USER_2 = 1<<28;
+bool lv_obj_has_flag(lv_obj_t *obj,int flag){return (obj->flags & flag)!=0;}
 constexpr int LV_OPA_50 = 128, MEDIA_CONTROL_SPEAKER_VOLUME_TEXT_OPA = 204;
 using lv_coord_t = int;
 void lv_obj_add_flag(lv_obj_t *obj, int flag) { obj->flags |= flag; }
@@ -261,6 +262,20 @@ int main() {
   translate_back = false;
   for (const ThemePalette *theme : {&DARK_THEME, &LIGHT_THEME}) {
     set_active_theme_palette(*theme);
+    // Forecast temperatures retain muted grey through card contrast updates.
+    lv_obj_t forecast_card, forecast_day, forecast_icon, forecast_temperature;
+    forecast_card.children={&forecast_day,&forecast_icon,&forecast_temperature};
+    forecast_temperature.flags=LV_OBJ_FLAG_USER_2;
+    forecast_temperature.text[0]=theme->text_muted;
+    apply_button_colors(&forecast_card,true,0xFFEC16,true,0x212121);
+    sync_card_checked_text_color(&forecast_card);
+    for(int event:{LV_EVENT_PRESSED,LV_EVENT_RELEASED,LV_EVENT_PRESS_LOST}){
+      forecast_card.state=event==LV_EVENT_PRESSED?LV_STATE_PRESSED:0;
+      send_event(&forecast_card,event);
+      assert(forecast_temperature.text[0]==theme->text_muted);
+      assert(forecast_day.text[0]==lv_obj_get_style_text_color(&forecast_card,LV_PART_MAIN));
+      assert(forecast_icon.text[0]==forecast_day.text[0]);
+    }
     for (uint32_t background : {0xFFEC16u, 0x88C440u, 0xFFFFFFu, 0x00BCD4u}) {
       // A selected media speaker row must use contrast on its actual fill.
       lv_obj_t row_button, name, icon, volume;
