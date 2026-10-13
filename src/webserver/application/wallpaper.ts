@@ -116,6 +116,20 @@ export function buildWallpaperSettings(
   }
   async function load() {
     try {
+      let capabilityResponse: Response | undefined;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        capabilityResponse = await request("/api/v1/capabilities", { credentials: "include", cache: "no-store" });
+        if ((capabilityResponse.status === 404 || capabilityResponse.status === 503) && attempt < 3) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        }
+        break;
+      }
+      const capabilities = capabilityResponse?.ok ? await capabilityResponse.json() : null;
+      if (capabilities?.wallpaper?.version !== 1 || capabilities.wallpaper.available !== true) {
+        status.textContent = "Wallpaper requires firmware with wallpaper support and image storage.";
+        return;
+      }
       const response = await request("/api/v1/wallpaper", { credentials: "include", cache: "no-store" });
       if (response.status === 404 || response.status === 501) {
         status.textContent = "Wallpaper requires firmware with wallpaper support and image storage.";

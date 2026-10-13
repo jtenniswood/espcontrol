@@ -16,6 +16,7 @@ int main() {
                           capabilities.data(), capabilities.size(),
                           &capabilities_size) &&
                       capabilities_size > 0 &&
+                      std::strstr(capabilities.data(), "\"wallpaper\":{\"version\":1,\"available\":false}") != nullptr &&
                       std::strstr(capabilities.data(), "\"screensaver_pin\":{\"version\":1}") != nullptr &&
                       std::strstr(capabilities.data(), "\"identity\":{\"version\":1}") != nullptr &&
                       std::strstr(capabilities.data(), "\"reset\":{\"modes\":[\"customization\",\"factory\"]") != nullptr &&
@@ -34,7 +35,8 @@ int main() {
   const bool read_capability_is_advertised =
       write_panel_config_capabilities_json(capabilities.data(),
                                            capabilities.size(),
-                                           &capabilities_size) &&
+                                           &capabilities_size, true) &&
+      std::strstr(capabilities.data(), "\"wallpaper\":{\"version\":1,\"available\":true}") != nullptr &&
       std::strstr(capabilities.data(), "\"read\":true") != nullptr &&
       std::strstr(capabilities.data(), "\"write\":true") != nullptr;
   set_panel_config_http_context_initialization_complete(false);
