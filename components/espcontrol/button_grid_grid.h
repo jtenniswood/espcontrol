@@ -17,6 +17,7 @@ struct GridConfig {
   int num_slots;
   int cols;
   bool width_compensation_vertical = false;
+  bool continuous_card_corners = false;
   bool wrap_tall_labels;
   bool info_only = false;
   bool subpage_chevrons_enabled = true;
@@ -1082,6 +1083,9 @@ inline void grid_phase1(
   // Clear image references before visual setup removes their old LVGL widgets.
   espcontrol::cards::image_driver_reset_pool(cfg);
   int NS = bounded_grid_slots(cfg.num_slots);
+  if (cfg.continuous_card_corners) {
+    for (int i = 0; i < NS; ++i) apply_continuous_card_corners(slots[i].btn);
+  }
   bool neutral_buttons[MAX_GRID_SLOTS]{};
   bool sensor_surfaces[MAX_GRID_SLOTS]{};
   bool secondary_surfaces[MAX_GRID_SLOTS]{};
@@ -2115,6 +2119,7 @@ inline void grid_phase2(
 
     lv_obj_t *back_btn = create_grid_card_button(
       sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color);
+    if (cfg.continuous_card_corners) apply_continuous_card_corners(back_btn);
     apply_button_colors(back_btn, false, DEFAULT_ACCENT_COLOR, true, off_val);
     set_grid_card_cell(
       back_btn, sub_scr,
@@ -2182,6 +2187,7 @@ inline void grid_phase2(
 
       lv_obj_t *sb_btn = create_grid_card_button(
         sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color);
+      if (cfg.continuous_card_corners) apply_continuous_card_corners(sb_btn);
       int cs = sp_ord.col_span[bn - 1] > 0 ? sp_ord.col_span[bn - 1] : 1;
       set_grid_card_cell(sb_btn, sub_scr, col, row, cs, rs, COLS, ROWS);
       BtnSlot sub_slot = create_dynamic_card_slot(

@@ -6,6 +6,15 @@ description:
 
 # Appearance
 
+Cards use larger rounded corners, with the same proportions on the panel and
+setup-page preview. Corner sizes scale for each display and are fixed by the
+firmware; there is no corner-radius setting.
+
+The 10-inch JC8012P4A1 V3 uses continuous corners that ease gradually into the
+card edges. Images, artwork and slider fills follow the same outline. Its web
+preview matches this shape in browsers that support continuous corners; older
+browsers show ordinary rounded corners.
+
 Find these controls in **Settings → Appearance** on the [Setup](/features/setup) page. Your selection is saved on the panel and applies without a reboot. Existing panels default to Dark.
 
 ## Theme
