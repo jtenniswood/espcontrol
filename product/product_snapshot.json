@@ -869,7 +869,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 1.25,
+          "radius": 1.71875,
           "padding": 1.41,
           "iconSize": 4.1,
           "labelSize": 1.88,
@@ -879,7 +879,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 1.25
+          "radius": 1.71875
         },
         "sensorBadge": {
           "top": 0.86,
@@ -978,7 +978,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "18px",
-            "radius": "16px",
+            "radius": "22px",
             "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"46\"",
             "main_page_compact_pad_top": "\"5\"",
@@ -1064,7 +1064,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 1.25,
+          "radius": 1.71875,
           "padding": 1.41,
           "iconSize": 4.1,
           "labelSize": 1.88,
@@ -1074,7 +1074,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 1.25
+          "radius": 1.71875
         },
         "sensorBadge": {
           "top": 0.86,
@@ -1173,7 +1173,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "18px",
-            "radius": "16px",
+            "radius": "22px",
             "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"46\"",
             "main_page_compact_pad_top": "\"5\"",
@@ -1258,7 +1258,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 1.25,
+          "radius": 1.71875,
           "padding": 1.41,
           "iconSize": 4.1,
           "labelSize": 1.88,
@@ -1268,7 +1268,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 1.25
+          "radius": 1.71875
         },
         "sensorBadge": {
           "top": 0.86,
@@ -1368,7 +1368,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "18px",
-            "radius": "16px",
+            "radius": "22px",
             "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"46\"",
             "main_page_compact_pad_top": "\"5\"",
