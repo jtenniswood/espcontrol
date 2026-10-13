@@ -6,6 +6,10 @@ description:
 
 # Appearance
 
+Cards use larger rounded corners, with the same proportions on the panel and
+setup-page preview. Corner sizes scale for each display and are fixed by the
+firmware; there is no corner-radius setting.
+
 Find these controls in **Settings → Appearance** on the [Setup](/features/setup) page. Your selection is saved on the panel and applies without a reboot. Existing panels default to Dark.
 
 ## Theme
