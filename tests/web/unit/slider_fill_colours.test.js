@@ -58,7 +58,7 @@ test("grey slider fills stay visible, including colours near the former rounding
 
 test("stripe tones preserve the label contrast of the active background", () => {
   assert.equal(activeCardColor("A0A0A0"), "787878");
-  assert.equal(cardPatternHighlightColor("787878"), "4E4E4E");
+  assert.equal(cardPatternHighlightColor("787878"), "A7A7A7");
   assert.equal(cardPatternHighlightColor("#bfbfbf"), "D5D5D5");
   assert.equal(cardPatternHighlightColor("invalid"), "");
   for (const base of ["A0A0A0", "6D6D6D", "6633B9", "FF0000", "FF8C00", "00BCD4", "FFEC16", "FFFFFF", "000000"]) {
@@ -110,9 +110,33 @@ test("striped custom cards render the readable stripe tones on both pages and th
       selection: { renderSelectionBar() {}, updatePreviewHint() {} },
     }).render();
     const card = main.children[0];
-    assert.equal(card.style["--card-text-color"], "#FFFFFF", `${theme}/${subpage}`);
+    assert.equal(card.style["--card-text-color"], "#000000", `${theme}/${subpage}`);
     assert(card.style.backgroundImage.includes("#787878"));
-    assert(card.style.backgroundImage.includes("#4E4E4E"));
+    assert(card.style.backgroundImage.includes("#A7A7A7"));
     assert(!card.style.backgroundImage.includes("rgba(255,255,255"));
+  }
+});
+
+test("active presets choose a readable foreground for solid and striped cards", () => {
+  assert.equal(activeCardColor("AAC93F"), "80972F");
+  assert.equal(activeCardColor("EED146"), "B39D35");
+  assert.equal(cardPreviewTextColor("80972F"), "#212121");
+  assert.equal(cardPreviewTextColor("B39D35"), "#212121");
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const swatches = fs.readFileSync(path.resolve(__dirname, "../../../src/webserver/components/color_swatches.ts"), "utf8");
+  const presets = Array.from(swatches.matchAll(/\["([A-F0-9]{6})", "[^"]+"\]/g), match => match[1]);
+  for (const base of [...presets, "FFFFFF", "A0A0A0"]) {
+    const active = activeCardColor(base);
+    const foreground = cardPreviewTextColor(active);
+    assert(contrast(foreground, active) >= 4.5, base);
+    assert(contrast(foreground, cardPatternHighlightColor(active)) >= 4.5, base + " stripes");
+  }
+});
+
+test("foreground selection meets contrast across a sample of the full RGB space", () => {
+  for (let red = 0; red <= 255; red += 17) for (let green = 0; green <= 255; green += 17) for (let blue = 0; blue <= 255; blue += 17) {
+    const color = [red, green, blue].map(channel => channel.toString(16).padStart(2, "0")).join("");
+    assert(contrast(cardPreviewTextColor(color), color) >= 4.5 - 0.00005, color);
   }
 });

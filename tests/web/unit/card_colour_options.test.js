@@ -74,3 +74,24 @@ test("media colours and modal settings survive changes in both views", () => {
     assert(media.options.includes("media_tabs=power%7Cvolume%7Ccontrols"));
   }
 });
+
+
+test("back button colours survive saving, reloading, resizing and reset", () => {
+  const codec = loadCodec();
+  const button = { entity: "switch.test", label: "Test", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", precision: "", options: "" };
+  for (const buttons of [[], [button]]) {
+    const subpage = { order: ["Bw", ...(buttons.length ? ["1"] : [])], buttons, backLabel: "Return:Home", backColor: "F5F5F5" };
+    let encoded = codec.serializeSubpageConfig(subpage);
+    assert(encoded.includes("Bw=Return%3AHome:F5F5F5"));
+    let reloaded = codec.parseSubpageConfig(encoded);
+    assert.equal(reloaded.backColor, "F5F5F5");
+    assert.equal(reloaded.backLabel, "Return:Home");
+    reloaded.order[0] = "Bt";
+    encoded = codec.serializeSubpageConfig(reloaded);
+    assert(encoded.includes("Bt=Return%3AHome:F5F5F5"));
+    reloaded.backColor = "";
+    encoded = codec.serializeSubpageConfig(reloaded);
+    assert(!encoded.includes(":F5F5F5"));
+    assert.equal(codec.parseSubpageConfig(encoded).backColor, undefined);
+  }
+});

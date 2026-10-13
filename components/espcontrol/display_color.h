@@ -64,16 +64,24 @@ constexpr uint32_t display_relative_luminance(uint32_t rgb) {
 }
 
 constexpr uint32_t display_text_color_for_bg(uint32_t bg_color) {
-  // Keep white content on mid-tone colours; switch only on light backgrounds.
+  // Choose a foreground with at least 4.5:1 contrast. Prefer the existing
+  // dark grey where it is readable; black covers the small mid-tone gap.
   // Match cardPreviewTextColor in the web preview (luminance scaled by 1,000,000).
+  const uint32_t background = display_relative_luminance(bg_color);
+  if (uint64_t(background + 50000) * 4500 <= uint64_t(1050000) * 1000) return 0xFFFFFF;
+  if (uint64_t(background + 50000) * 1000 >=
+      uint64_t(display_relative_luminance(0x212121) + 50000) * 4500) return 0x212121;
+  return 0x000000;
+}
+
+// Progress fill direction is independent of the foreground contrast choice.
+constexpr bool display_progress_uses_dark_fill(uint32_t bg_color) {
   const uint32_t red = (bg_color >> 16) & 0xFF;
   const uint32_t green = (bg_color >> 8) & 0xFF;
   const uint32_t blue = bg_color & 0xFF;
-  // Saturated blue/cyan active shades retain white content after lightening.
   const bool blue_green_tone = green >= red + 32 && blue >= red + 32;
   const uint32_t crossover = blue_green_tone ? 550000 : 450000;
-  return display_relative_luminance(bg_color) >= crossover
-    ? 0x212121 : 0xFFFFFF;
+  return display_relative_luminance(bg_color) >= crossover;
 }
 
 constexpr uint32_t lighter_card_color(uint32_t rgb) {
@@ -138,7 +146,7 @@ constexpr uint32_t card_pattern_highlight_color(uint32_t rgb) {
 
 // Progress must stay visible on both dark and pale custom backgrounds.
 constexpr uint32_t card_progress_color(uint32_t rgb) {
-  if (display_text_color_for_bg(rgb) == 0xFFFFFF) return lighter_card_color(rgb);
+  if (!display_progress_uses_dark_fill(rgb)) return lighter_card_color(rgb);
   return (((((rgb >> 16) & 0xFF) * 70 + 50) / 100) << 16) |
          (((((rgb >> 8) & 0xFF) * 70 + 50) / 100) << 8) |
          (((rgb & 0xFF) * 70 + 50) / 100);

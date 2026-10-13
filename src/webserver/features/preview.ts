@@ -105,11 +105,10 @@ function cardRelativeLuminance(background: string): number {
 }
 
 export function cardPreviewTextColor(background: string): string {
-  const rgb = parseInt(background.replace(/^#/, ""), 16);
-  const red = (rgb >> 16) & 255, green = (rgb >> 8) & 255, blue = rgb & 255;
-  // Saturated blue/cyan active shades retain white content after lightening.
-  const crossover = green >= red + 32 && blue >= red + 32 ? 550000 : 450000;
-  return cardRelativeLuminance(background) >= crossover ? "#212121" : "#FFFFFF";
+  const luminance = cardRelativeLuminance(background);
+  if ((luminance + 50000) * 4500 <= 1050000 * 1000) return "#FFFFFF";
+  if ((luminance + 50000) * 1000 >= (cardRelativeLuminance("212121") + 50000) * 4500) return "#212121";
+  return "#000000";
 }
 
 export function cardSliderFillColor(background: string): string {
@@ -150,7 +149,11 @@ export function cardPatternHighlightColor(background: string): string {
 export function cardProgressColor(background: string): string {
   const hex = background.replace(/^#/, "").toUpperCase();
   if (!/^[0-9A-F]{6}$/.test(hex)) return "";
-  if (cardPreviewTextColor(hex) === "#FFFFFF") return lighterCardColor(hex);
+  // Keep progress shades independent of the foreground contrast rule.
+  const rgb = parseInt(hex, 16);
+  const red = (rgb >> 16) & 255, green = (rgb >> 8) & 255, blue = rgb & 255;
+  const crossover = green >= red + 32 && blue >= red + 32 ? 550000 : 450000;
+  if (cardRelativeLuminance(hex) < crossover) return lighterCardColor(hex);
   // Match the firmware's rounded 30% darkening on pale backgrounds.
   return [0, 2, 4].map((offset) => {
     const channel = parseInt(hex.slice(offset, offset + 2), 16);

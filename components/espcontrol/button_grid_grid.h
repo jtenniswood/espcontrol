@@ -161,6 +161,21 @@ inline CardPalette card_palette_for_config(const CardPalette &defaults,
   return palette;
 }
 
+inline bool apply_subpage_back_colors(lv_obj_t *button, const std::string &order,
+                                      const DisplayProfile &display) {
+  ParsedCfg config;
+  const std::string color = get_subpage_back_color(order);
+  if (!color.empty()) config.options = "card_off_color=" + color;
+  CardPalette defaults;
+  defaults.has_on = defaults.has_off = true;
+  defaults.off_val = display_correct_color(current_theme().surface_card, display);
+  defaults.on_val = defaults.off_val;
+  const CardPalette palette = card_palette_for_config(defaults, config, display);
+  apply_button_colors(button, palette.has_on, palette.on_val, palette.has_off, palette.off_val);
+  sync_card_checked_text_color(button);
+  return !palette.custom_background;
+}
+
 template<typename T>
 inline T *grid_track_runtime_allocation(lv_obj_t *owner, T *ptr);
 
@@ -1262,6 +1277,7 @@ inline bool grid_refresh_subpage_layouts(
     // Change the descriptor only when the preserved cards will be repositioned
     // below. A deferred structural edit must keep its current grid intact.
     lv_obj_set_grid_dsc_array(entry->screen, subpage_cols, subpage_rows);
+    entry->back_neutral_background = apply_subpage_back_colors(entry->back_button, order, display);
     const std::string back_label = get_subpage_back_label(order);
     if (entry->back_slot.text_lbl != nullptr) {
       lv_label_set_display_text(entry->back_slot.text_lbl, back_label.c_str());
@@ -2115,7 +2131,6 @@ inline void grid_phase2(
 
     lv_obj_t *back_btn = create_grid_card_button(
       sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color);
-    apply_button_colors(back_btn, false, DEFAULT_ACCENT_COLOR, true, off_val);
     set_grid_card_cell(
       back_btn, sub_scr,
       sp_ord.back_pos % COLS, sp_ord.back_pos / COLS,
@@ -2130,12 +2145,13 @@ inline void grid_phase2(
     lv_label_set_display_text(back_slot.text_lbl, sp_back_label.c_str());
     apply_card_label_line_clamp(back_slot.text_lbl, cfg, sp_ord.back_row_span);
     configure_button_label_wrap(back_slot.text_lbl);
+    const bool back_neutral_background = apply_subpage_back_colors(back_btn, sp_order_str, display);
 
     lv_obj_add_event_cb(back_btn, [](lv_event_t *e) {
       lv_scr_load_anim((lv_obj_t *)lv_event_get_user_data(e), LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
       refresh_visible_image_cards();
     }, LV_EVENT_CLICKED, main_page_obj);
-    navigation_register_subpage_back_button(si + 1, back_slot);
+    navigation_register_subpage_back_button(si + 1, back_slot, back_neutral_background);
 
     auto add_parent_indicator = [&](const std::string &entity_id,
                                     bool (*is_active_state)(esphome::StringRef) = is_entity_on_ref) {

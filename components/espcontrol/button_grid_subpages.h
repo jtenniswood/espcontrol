@@ -417,7 +417,9 @@ inline std::string get_subpage_back_label(const std::string &order_str) {
       size_t label_start = std::string::npos;
       if (subpage_back_token_span(order_str, st, cm, suffix, &label_start)) {
         if (label_start != std::string::npos) {
-          std::string label = decode_compact_subpage_field(order_str, label_start, cm - label_start);
+          size_t label_end = order_str.find(':', label_start);
+          if (label_end == std::string::npos || label_end > cm) label_end = cm;
+          std::string label = decode_compact_subpage_field(order_str, label_start, label_end - label_start);
           return label.empty() ? espcontrol_i18n(std::string("Back")) : label;
         }
         return espcontrol_i18n(std::string("Back"));
@@ -426,6 +428,25 @@ inline std::string get_subpage_back_label(const std::string &order_str) {
     st = cm + 1;
   }
   return espcontrol_i18n(std::string("Back"));
+}
+
+// A colour suffix follows the encoded label: B=Return%3AHome:FF8C00.
+inline std::string get_subpage_back_color(const std::string &order_str) {
+  size_t start = 0;
+  while (start < order_str.size()) {
+    size_t end = order_str.find(',', start);
+    if (end == std::string::npos) end = order_str.size();
+    char suffix = '\0';
+    size_t label_start = std::string::npos;
+    if (subpage_back_token_span(order_str, start, end, suffix, &label_start)) {
+      if (label_start == std::string::npos) return "";
+      const size_t separator = order_str.find(':', label_start);
+      if (separator == std::string::npos || separator >= end) return "";
+      return normalize_card_color_value(order_str.substr(separator + 1, end - separator - 1));
+    }
+    start = end + 1;
+  }
+  return "";
 }
 
 // Subpage grid layout with support for a back button token ("B")
