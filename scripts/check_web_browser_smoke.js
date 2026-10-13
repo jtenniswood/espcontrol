@@ -222,6 +222,22 @@ async function installRoutes(context, slug, options = {}) {
 
   await context.route("**/*", async (route) => {
     const requestUrl = new URL(route.request().url());
+    if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/wallpaper") {
+      const wallpaper = options.wallpaperState;
+      if (!wallpaper) { await route.fulfill({ status: 501, body: "Unsupported" }); return; }
+      if (route.request().method() === "PUT") {
+        assert.strictEqual(route.request().headers()["x-espcontrol-epoch"], String(options.resetState.epoch));
+        if (wallpaper.failSave) { await route.fulfill({ status: 500, body: "Save failed" }); return; }
+        const payload = route.request().postDataBuffer();
+        assert.strictEqual(payload.readUInt32LE(0), 0x31505745);
+        wallpaper.posts.push(payload);
+        wallpaper.image = payload.readUInt32LE(4) === 0 ? null : payload;
+        await route.fulfill({ status: 204 }); return;
+      }
+      await route.fulfill({ status: wallpaper.image ? 200 : 204,
+        contentType: "application/vnd.espcontrol.wallpaper", body: wallpaper.image || "" });
+      return;
+    }
     if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/reset") {
       const reset = options.resetState;
       if (!reset) {
@@ -6617,10 +6633,73 @@ async function assertScreensaverPinSettings(browser) {
   } finally { await legacyContext.close(); }
 }
 
+async function assertWallpaperSettings(browser) {
+  const testCase = ACTIVE_CASES[0];
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  const wallpaper = { image: null, posts: [], failSave: false };
+  const resetState = { epoch: 3, pending: false, requests: [] };
+  await installRoutes(context, testCase.slug, { wallpaperState: wallpaper, resetState });
+  const page = await context.newPage();
+  await installFakeEventSource(page);
+  async function open() {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.getByRole("tab", { name: "Settings" }).click();
+    const card = page.locator("#sp-settings .card").filter({ has: page.locator("#sp-set-wallpaper") });
+    if (!(await page.locator("#sp-set-wallpaper").isVisible())) await card.locator(".card-header").click();
+    await page.waitForFunction(() => !document.querySelector("#sp-set-wallpaper").disabled);
+  }
+  try {
+    await open();
+    const png = await page.evaluate(() => {
+      const canvas = document.createElement("canvas"); canvas.width = 1200; canvas.height = 800;
+      const ctx = canvas.getContext("2d");
+      const gradient = ctx.createLinearGradient(0, 0, 1200, 800);
+      gradient.addColorStop(0, "#157779"); gradient.addColorStop(.5, "#13274a"); gradient.addColorStop(1, "#ba506b");
+      ctx.fillStyle = gradient; ctx.fillRect(0, 0, 1200, 800);
+      return canvas.toDataURL("image/png").split(",")[1];
+    });
+    const upload = { name: "wallpaper.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") };
+    await page.locator("#sp-set-wallpaper").setInputFiles(upload);
+    await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
+    assert.strictEqual(wallpaper.image.readUInt32LE(4), 480);
+    assert.strictEqual(wallpaper.image.readUInt32LE(8), 320);
+    assert.strictEqual(wallpaper.image.length, 16 + 480 * 320 * 2);
+    await page.waitForFunction(() => Array.from(document.querySelectorAll(".sp-btn")).some(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0.8)")));
+    if (process.env.ESPCONTROL_WALLPAPER_SCREENSHOT) {
+      await page.getByRole("tab", { name: "Screen", exact: true }).click();
+      await page.locator(".sp-screen").screenshot({ path: process.env.ESPCONTROL_WALLPAPER_SCREENSHOT });
+      await page.getByRole("tab", { name: "Settings", exact: true }).click();
+    }
+    const savedBackground = await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage);
+    await open();
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), savedBackground);
+    // Theme changes and grid rebuilds keep the wallpaper and alpha fill.
+    await page.locator("#sp-set-theme-mode").getByRole("button", { name: "Light", exact: true }).click();
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), savedBackground);
+    wallpaper.failSave = true;
+    await page.locator("#sp-set-wallpaper").setInputFiles(upload);
+    await page.getByText("Could not save wallpaper. Check the connection and try again.").waitFor();
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), savedBackground);
+    wallpaper.failSave = false;
+    await page.getByRole("button", { name: "Remove wallpaper" }).click();
+    await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage === "");
+    assert.strictEqual(wallpaper.image, null);
+    assert.strictEqual(wallpaper.posts.at(-1).length, 16);
+    await open();
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), "");
+    assert.strictEqual(await page.getByRole("button", { name: "Remove wallpaper" }).isDisabled(), true);
+  } finally { await context.close(); }
+}
+
 (async function main() {
   const browser = await chromium.launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    await assertWallpaperSettings(browser);
+    if (process.env.ESPCONTROL_WALLPAPER_ONLY === "1") { console.log("Wallpaper browser checks passed."); return; }
     await assertScreensaverPinSettings(browser);
     if (process.env.ESPCONTROL_PIN_ONLY === "1") { console.log("Screensaver PIN browser checks passed."); return; }
     if (process.env.ESPCONTROL_RESET_ONLY === "1") {
