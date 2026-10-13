@@ -4,6 +4,7 @@
 #include <cstring>
 #include <vector>
 #include "esp_partition.h"
+#include "nvs.h"
 #include "wallpaper.h"
 #include "panel_flash_layout.h"
 using namespace espcontrol;
@@ -11,6 +12,26 @@ static std::vector<uint8_t> flash(PANEL_DATA_PARTITION_BYTES, 0xff);
 static esp_partition_t partition{PANEL_DATA_PARTITION_BYTES, 0x40, false};
 static bool present = true, allocation_fails = false;
 static int writes_until_failure = -1;
+static int saved_opacity = -1, pending_opacity = -1, opacity_writes = 0;
+static bool nvs_fails_open = false, nvs_fails_write = false, nvs_fails_commit = false;
+esp_err_t nvs_open(const char *name, int, nvs_handle_t *handle) {
+  assert(std::strcmp(name, "espcontrol_wall") == 0);
+  *handle = 1; return nvs_fails_open ? -1 : ESP_OK;
+}
+esp_err_t nvs_get_u8(nvs_handle_t, const char *key, uint8_t *value) {
+  assert(std::strcmp(key, "opacity") == 0);
+  if (saved_opacity < 0) return -1;
+  *value = saved_opacity; return ESP_OK;
+}
+esp_err_t nvs_set_u8(nvs_handle_t, const char *, uint8_t value) {
+  if (nvs_fails_write) return -1;
+  pending_opacity = value; ++opacity_writes; return ESP_OK;
+}
+esp_err_t nvs_commit(nvs_handle_t) {
+  if (nvs_fails_commit) return -1;
+  saved_opacity = pending_opacity; return ESP_OK;
+}
+void nvs_close(nvs_handle_t) { pending_opacity = -1; }
 const esp_partition_t *esp_partition_find_first(int, int, const char *name) {
   assert(std::strcmp(name, "card_images") == 0);
   return present ? &partition : nullptr;
@@ -55,6 +76,25 @@ int main() {
   const auto first = image(1), second = image(2);
   assert(store.save(first.data(), first.size()));
   expect_image(store, first);
+  assert(store.opacity_percent() == 80);
+  const auto wallpaper_revision = store.revision();
+  const auto old_flash = flash;
+  assert(!store.save_opacity_percent(-1) && !store.save_opacity_percent(101));
+  assert(store.save_opacity_percent(50));
+  assert(store.opacity_percent() == 50 && store.revision() == wallpaper_revision && old_flash == flash);
+  WallpaperStore opacity_reboot; assert(opacity_reboot.opacity_percent() == 50);
+  expect_image(opacity_reboot, first);
+  nvs_fails_open = true; assert(!store.save_opacity_percent(60)); nvs_fails_open = false;
+  nvs_fails_write = true; assert(!store.save_opacity_percent(60)); nvs_fails_write = false;
+  nvs_fails_commit = true; assert(!store.save_opacity_percent(60)); nvs_fails_commit = false;
+  assert(store.opacity_percent() == 50 && saved_opacity == 50);
+  const int writes = opacity_writes;
+  assert(store.save_opacity_percent(50) && opacity_writes == writes);
+  assert(store.save_opacity_percent(0) && store.opacity_percent() == 0);
+  assert(store.save_opacity_percent(100) && store.opacity_percent() == 100);
+  saved_opacity = 200;
+  WallpaperStore invalid_opacity; assert(invalid_opacity.opacity_percent() == 80);
+  saved_opacity = 50;
   // Simulate a failed write at each durability boundary; old slot survives reboot.
   for (int boundary = 0; boundary < 3; ++boundary) {
     writes_until_failure = boundary;
@@ -70,11 +110,15 @@ int main() {
   assert(corrupt.save(nullptr, 0));
   WallpaperStore removed; size_t size; uint32_t revision;
   assert(removed.available()); assert(!removed.load(size, revision) && size == 0);
+  assert(removed.opacity_percent() == 50);
   assert(removed.save(first.data(), first.size()));
   allocation_fails = true;
   assert(!removed.load(size, revision) && size == first.size());
   allocation_fails = false;
   expect_image(removed, first);
+  // Resetting preferences clears the saved setting and restores the default.
+  saved_opacity = -1;
+  WallpaperStore reset; assert(reset.opacity_percent() == 80);
   assert(std::all_of(flash.begin(), flash.begin() + WALLPAPER_STORAGE_OFFSET, [](uint8_t b) { return b == 0xff; }));
   assert(std::all_of(flash.begin() + WALLPAPER_STORAGE_OFFSET + WALLPAPER_STORAGE_SLOT_BYTES * 2, flash.end(), [](uint8_t b) { return b == 0xff; }));
 }

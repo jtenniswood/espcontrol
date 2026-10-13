@@ -7,6 +7,10 @@ void put(std::vector<uint8_t> &data, size_t offset, uint32_t value) {
   for (int i = 0; i < 4; ++i) data[offset + i] = value >> (i * 8);
 }
 int main() {
+  assert(wallpaper_opacity_byte(0) == 0);
+  assert(wallpaper_opacity_byte(50) == 128);
+  assert(wallpaper_opacity_byte(80) == 204);
+  assert(wallpaper_opacity_byte(100) == 255);
   std::vector<uint8_t> data(16 + 480 * 320 * 2);
   put(data, 0, WALLPAPER_MAGIC); put(data, 4, 480); put(data, 8, 320); put(data, 12, 480 * 320 * 2);
   assert(wallpaper_valid(data.data(), data.size()));

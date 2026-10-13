@@ -1,3 +1,5 @@
+import type { ControlsFieldsFeature } from "./controls_fields";
+
 const MAGIC = 0x31505745;
 const MAX_SIDE = 480;
 const HEADER_BYTES = 16;
@@ -43,8 +45,16 @@ export function decodeWallpaper(buffer: ArrayBuffer): { width: number; height: n
   return { width, height, rgba };
 }
 
-export function wallpaperCardColor(hex: string, enabled: boolean): string {
-  return "#" + hex + (enabled ? "CC" : ""); // 80% fill, matching LVGL's 204/255.
+export function wallpaperCardColor(hex: string, enabled: boolean, opacityPercent = 80): string {
+  const percent = Number.isFinite(opacityPercent) ? Math.max(0, Math.min(100, opacityPercent)) : 80;
+  const alpha = Math.round(percent * 255 / 100).toString(16).padStart(2, "0").toUpperCase();
+  return "#" + hex + (enabled ? alpha : "");
+}
+
+export function parseWallpaperOpacity(value: unknown): number {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 100)
+    throw new Error("Invalid card transparency response.");
+  return value;
 }
 
 function wallpaperCanvas(document: Document, buffer: ArrayBuffer): HTMLCanvasElement {
@@ -84,7 +94,8 @@ async function prepareWallpaper(document: Document, file: File): Promise<ArrayBu
 }
 
 export function buildWallpaperSettings(
-  document: Document, request: typeof fetch, onChange: (url: string) => void,
+  document: Document, request: typeof fetch, onChange: (url: string, opacity: number) => void,
+  fields: Pick<ControlsFieldsFeature, "createRangeSlider">,
 ): HTMLElement {
   const body = document.createElement("div");
   body.className = "sp-field";
@@ -104,14 +115,34 @@ export function buildWallpaperSettings(
   status.className = "sp-field-hint";
   status.setAttribute("role", "status");
   status.textContent = "Loading wallpaper…";
-  body.append(label, upload, remove, status);
-  let hasWallpaper = false, supported = false, busy = false;
-  function sync() { upload.disabled = !supported || busy; remove.disabled = !supported || busy || !hasWallpaper; }
+  const control = fields.createRangeSlider("Card transparency", 20, () => { void saveOpacity(); });
+  const range = control.range as HTMLInputElement;
+  range.id = "sp-set-card-transparency";
+  range.min = "0"; range.max = "100"; range.step = "1";
+  control.wrap.querySelector("label").htmlFor = range.id;
+  const hint = document.createElement("div");
+  hint.className = "sp-field-hint";
+  hint.textContent = "0% is solid; 100% is clear. Text and icons stay visible.";
+  control.wrap.appendChild(hint);
+  body.append(label, upload, remove, control.wrap, status);
+  let hasWallpaper = false, supported = false, busy = false, opacitySupported = false;
+  let opacity = 80, savedOpacity = 80, previewUrl = "";
+  function sync() {
+    upload.disabled = !supported || busy;
+    remove.disabled = !supported || busy || !hasWallpaper;
+    range.disabled = !opacitySupported || busy || !hasWallpaper;
+    range.value = String(100 - opacity);
+    control.val.textContent = range.value + "%";
+  }
+  range.addEventListener("input", () => {
+    opacity = 100 - Number(range.value);
+    onChange(previewUrl, opacity);
+  });
   function apply(buffer: ArrayBuffer | null) {
-    const url = buffer ? wallpaperCanvas(document, buffer).toDataURL("image/png") : "";
+    previewUrl = buffer ? wallpaperCanvas(document, buffer).toDataURL("image/png") : "";
     hasWallpaper = !!buffer;
-    onChange(url);
-    status.textContent = buffer ? "Wallpaper saved. Cards use an 80% fill. Changes apply immediately."
+    onChange(previewUrl, opacity);
+    status.textContent = buffer ? "Wallpaper saved. Changes apply immediately."
       : "JPEG, PNG or WebP. Saved on this display; images are resized automatically. Changes apply immediately.";
   }
   async function load() {
@@ -129,6 +160,14 @@ export function buildWallpaperSettings(
       if (capabilities?.wallpaper?.version !== 1 || capabilities.wallpaper.available !== true) {
         status.textContent = "Wallpaper requires firmware with wallpaper support and image storage.";
         return;
+      }
+      if (capabilities.wallpaper.opacity === true) {
+        const settings = await request("/api/v1/wallpaper-opacity", { credentials: "include", cache: "no-store" });
+        if (!settings.ok) throw new Error("Could not load card transparency. Reload the page to try again.");
+        opacity = savedOpacity = parseWallpaperOpacity((await settings.json()).opacity);
+        opacitySupported = true;
+      } else {
+        hint.textContent = "Install updated firmware to adjust card transparency.";
       }
       const response = await request("/api/v1/wallpaper", { credentials: "include", cache: "no-store" });
       if (response.status === 404 || response.status === 501) {
@@ -155,6 +194,23 @@ export function buildWallpaperSettings(
       apply(buffer);
     } catch (error) { status.textContent = error instanceof Error ? error.message : "Could not save wallpaper."; }
     finally { busy = false; upload.value = ""; sync(); }
+  }
+  async function saveOpacity() {
+    busy = true; sync(); status.textContent = "Saving card transparency…";
+    try {
+      const response = await request("/api/v1/wallpaper-opacity", {
+        method: "PUT", credentials: "include", cache: "no-store",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ opacity }),
+      });
+      if (!response.ok) throw new Error("Could not save card transparency. Check the connection and try again.");
+      opacity = savedOpacity = parseWallpaperOpacity((await response.json()).opacity);
+      onChange(previewUrl, opacity);
+      status.textContent = "Card transparency saved. Changes apply immediately.";
+    } catch (error) {
+      opacity = savedOpacity;
+      onChange(previewUrl, opacity);
+      status.textContent = error instanceof Error ? error.message : "Could not save card transparency.";
+    } finally { busy = false; sync(); }
   }
   upload.addEventListener("change", () => { const file = upload.files?.[0]; if (file) void save(file); });
   remove.addEventListener("click", () => void save(null));

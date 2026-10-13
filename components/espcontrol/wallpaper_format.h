@@ -3,6 +3,10 @@
 #include <cstdint>
 
 namespace espcontrol {
+constexpr uint8_t WALLPAPER_DEFAULT_OPACITY_PERCENT = 80;
+inline uint8_t wallpaper_opacity_byte(unsigned percent) {
+  return static_cast<uint8_t>((percent * 255 + 50) / 100);
+}
 constexpr size_t WALLPAPER_HEADER_BYTES = 16;
 constexpr uint32_t WALLPAPER_MAGIC = 0x31505745;  // EWP1, little endian
 constexpr uint32_t WALLPAPER_MAX_SIDE = 480;

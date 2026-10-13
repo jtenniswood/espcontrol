@@ -145,10 +145,11 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             event.stopPropagation();
             resetAppearanceColors(true);
         });
-        appearBody.appendChild(buildWallpaperSettings(document, resetAwareFetch, url => {
+        appearBody.appendChild(buildWallpaperSettings(document, resetAwareFetch, (url, opacity) => {
             runtime.els.wallpaperUrl = url;
+            runtime.els.wallpaperOpacityPercent = opacity;
             renderPreview();
-        }));
+        }, fields));
         var appearanceCard: any = makeCollapsibleCard("Appearance", appearBody, true, null, appearanceResetButton);
         var languageBody: any = document.createElement("div");
         var languageField: any = document.createElement("div");

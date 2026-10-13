@@ -26,9 +26,9 @@ Backups include the theme mode, automatic method, times and offsets. Older backu
 
 Upload a JPEG, PNG or WebP image under **Wallpaper** to place it behind the cards on the physical panel and in the browser preview. Images are resized to a maximum of 480 pixels on the longest side and centred to fill the screen. Choose an image with a similar aspect ratio to your display for less cropping.
 
-With a wallpaper, card backgrounds use an 80% fill so the image shows through while labels and icons retain their normal colours. Camera images, cover art and QR codes keep their own content. The wallpaper also appears on subpages; setup screens, modals and screensavers keep their existing backgrounds.
+Use **Card transparency** to choose how much wallpaper shows through the cards: **0%** gives solid fills and **100%** makes the fills completely clear. Labels and icons keep their normal colours and remain visible. The default is **20%** transparency (an 80% fill). Camera images, cover art and QR codes keep their own content. The wallpaper also appears on subpages; setup screens, modals and screensavers keep their existing backgrounds.
 
-Uploads and **Remove wallpaper** apply immediately. The image is stored on the display and survives restarts. Removing it restores solid card backgrounds. Wallpapers are separate from configuration backups and are cleared by resetting customisation or factory settings. Older firmware or partition layouts without image storage show the wallpaper control as unavailable.
+Uploads and **Remove wallpaper** apply immediately. The image and transparency setting are stored on the display and survive restarts. Transparency is remembered when replacing or removing the wallpaper; it applies when a wallpaper is present. Removing it restores solid card backgrounds. Wallpapers and their transparency setting are separate from configuration backups and are cleared by resetting customisation or factory settings. Older firmware or partition layouts without image storage show the wallpaper control as unavailable.
 
 ## Active colour
 

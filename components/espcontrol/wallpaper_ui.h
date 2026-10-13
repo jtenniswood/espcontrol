@@ -8,6 +8,7 @@ struct WallpaperUi {
   uint8_t *pixels = nullptr;
   uint32_t revision = 0;
   bool loaded = false;
+  uint8_t opacity_percent = WALLPAPER_DEFAULT_OPACITY_PERCENT;
   lv_image_dsc_t image{};
   uint8_t *retired_pixels = nullptr;
   uint32_t retired_at = 0;
@@ -53,18 +54,21 @@ inline void wallpaper_apply_card(lv_obj_t *card, lv_opa_t opacity) {
   lv_obj_set_style_bg_opa(card, opacity, static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_CHECKED);
   lv_obj_set_style_bg_opa(card, opacity, static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED);
 }
-inline void wallpaper_apply_cards() {
-  const lv_opa_t opacity = wallpaper_ui().pixels ? 204 : LV_OPA_COVER;
+inline void wallpaper_apply_card_opacity() {
+  const lv_opa_t opacity = wallpaper_ui().pixels ? wallpaper_opacity_byte(wallpaper_ui().opacity_percent) : LV_OPA_COVER;
   auto &targets = theme_grid_targets();
-  wallpaper_bind_screen(targets.main_page);
   for (int i = 0; i < targets.count; ++i)
     wallpaper_apply_card(targets.buttons[i], opacity);
   for (auto &page : navigation_subpages()) {
-    wallpaper_bind_screen(page.screen);
     wallpaper_apply_card(page.back_button, opacity);
     for (auto &card : page.cards)
       wallpaper_apply_card(card.button, opacity);
   }
+}
+inline void wallpaper_apply_cards() {
+  wallpaper_bind_screen(theme_grid_targets().main_page);
+  for (auto &page : navigation_subpages()) wallpaper_bind_screen(page.screen);
+  wallpaper_apply_card_opacity();
 }
 inline void wallpaper_tick() {
   theme_grid_wallpaper_refresh() = wallpaper_apply_cards;
@@ -75,6 +79,11 @@ inline void wallpaper_tick() {
   ui.retired_pixels = nullptr;
   auto &store = wallpaper_store();
   if (!theme_grid_targets().main_page || !store.available()) return;
+  const uint8_t opacity = store.opacity_percent();
+  if (opacity != ui.opacity_percent) {
+    ui.opacity_percent = opacity;
+    wallpaper_apply_card_opacity();
+  }
   const uint32_t revision = store.revision();
   if (ui.loaded && revision == ui.revision) return;
   size_t size; uint32_t loaded_revision;

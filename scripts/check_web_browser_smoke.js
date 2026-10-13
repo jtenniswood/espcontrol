@@ -222,6 +222,20 @@ async function installRoutes(context, slug, options = {}) {
 
   await context.route("**/*", async (route) => {
     const requestUrl = new URL(route.request().url());
+    if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/wallpaper-opacity") {
+      const wallpaper = options.wallpaperState;
+      assert(wallpaper && wallpaper.opacitySupported !== false, "unsupported firmware must not receive opacity requests");
+      if (route.request().method() === "PUT") {
+        assert.strictEqual(route.request().headers()["x-espcontrol-epoch"], String(options.resetState.epoch));
+        if (wallpaper.failOpacity) { await route.fulfill({ status: 500, body: "Save failed" }); return; }
+        const settings = JSON.parse(route.request().postData());
+        assert(Number.isInteger(settings.opacity) && settings.opacity >= 0 && settings.opacity <= 100);
+        wallpaper.opacityPosts.push(settings);
+        wallpaper.opacity = settings.opacity;
+      }
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ opacity: wallpaper.opacity ?? 80 }) });
+      return;
+    }
     if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/wallpaper") {
       const wallpaper = options.wallpaperState;
       if (!wallpaper) { await route.fulfill({ status: 501, body: "Unsupported" }); return; }
@@ -349,7 +363,7 @@ async function installRoutes(context, slug, options = {}) {
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
-          wallpaper: options.wallpaperState ? { version: 1, available: true } : undefined,
+          wallpaper: options.wallpaperState ? { version: 1, available: true, opacity: options.wallpaperState.opacitySupported !== false } : undefined,
           configuration: { read: true, write: true, document_versions: [1] },
           web_assets: { versions: [1] },
         }),
@@ -369,7 +383,7 @@ async function installRoutes(context, slug, options = {}) {
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
-          wallpaper: options.wallpaperState ? { version: 1, available: true } : undefined,
+          wallpaper: options.wallpaperState ? { version: 1, available: true, opacity: options.wallpaperState.opacitySupported !== false } : undefined,
           configuration: { read: false, write: false, document_versions: [] },
         }),
       });
@@ -6638,7 +6652,7 @@ async function assertScreensaverPinSettings(browser) {
 async function assertWallpaperSettings(browser) {
   const testCase = ACTIVE_CASES[0];
   const context = await browser.newContext({ viewport: testCase.viewport });
-  const wallpaper = { image: null, posts: [], failSave: false };
+  const wallpaper = { image: null, posts: [], failSave: false, opacity: 80, opacityPosts: [], failOpacity: false };
   const resetState = { epoch: 3, pending: false, requests: [] };
   await installRoutes(context, testCase.slug, { wallpaperState: wallpaper, resetState });
   const page = await context.newPage();
@@ -6655,6 +6669,7 @@ async function assertWallpaperSettings(browser) {
   }
   try {
     await open();
+    assert.strictEqual(await page.locator("#sp-set-card-transparency").isDisabled(), true);
     const png = await page.evaluate(() => {
       const canvas = document.createElement("canvas"); canvas.width = 1200; canvas.height = 800;
       const ctx = canvas.getContext("2d");
@@ -6675,12 +6690,45 @@ async function assertWallpaperSettings(browser) {
       await page.locator(".sp-screen").screenshot({ path: process.env.ESPCONTROL_WALLPAPER_SCREENSHOT });
       await page.getByRole("tab", { name: "Settings", exact: true }).click();
     }
+    const transparency = page.locator("#sp-set-card-transparency");
+    await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
+    assert.strictEqual(await transparency.inputValue(), "20");
+    const setTransparency = async (percent, commit = true) => {
+      await transparency.evaluate((range, value) => {
+        range.value = String(value.percent); range.dispatchEvent(new Event("input", { bubbles: true }));
+        if (value.commit) range.dispatchEvent(new Event("change", { bubbles: true }));
+      }, { percent, commit });
+      if (commit) await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
+    };
+    // Preview changes while dragging; persistence happens only on release.
+    await setTransparency(50, false);
+    assert.strictEqual(wallpaper.opacityPosts.length, 0);
+    assert(await page.locator(".sp-btn").first().evaluate(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0.502)")));
+    await transparency.dispatchEvent("change");
+    await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
+    assert.strictEqual(wallpaper.opacity, 50);
     const savedBackground = await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage);
     await open();
     assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), savedBackground);
+    assert.strictEqual(await transparency.inputValue(), "50");
     // Theme changes and grid rebuilds keep the wallpaper and alpha fill.
     await page.locator("#sp-set-theme-mode").getByRole("button", { name: "Light", exact: true }).click();
     assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), savedBackground);
+    assert(await page.locator(".sp-btn").first().evaluate(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0.502)")));
+    await setTransparency(0);
+    assert.strictEqual(wallpaper.opacity, 100);
+    assert(await page.locator(".sp-btn").first().evaluate(btn => getComputedStyle(btn).backgroundColor.startsWith("rgb(")));
+    await setTransparency(100);
+    assert.strictEqual(wallpaper.opacity, 0);
+    assert(await page.locator(".sp-btn").first().evaluate(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0)")));
+    await setTransparency(50);
+    wallpaper.failOpacity = true;
+    await setTransparency(75);
+    await page.getByText("Could not save card transparency. Check the connection and try again.").waitFor();
+    assert.strictEqual(await transparency.inputValue(), "50");
+    assert.strictEqual(wallpaper.opacity, 50);
+    assert(await page.locator(".sp-btn").first().evaluate(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0.502)")));
+    wallpaper.failOpacity = false;
     wallpaper.failSave = true;
     await page.locator("#sp-set-wallpaper").setInputFiles(upload);
     await page.getByText("Could not save wallpaper. Check the connection and try again.").waitFor();
@@ -6693,7 +6741,24 @@ async function assertWallpaperSettings(browser) {
     await open();
     assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), "");
     assert.strictEqual(await page.getByRole("button", { name: "Remove wallpaper" }).isDisabled(), true);
+    assert.strictEqual(await transparency.isDisabled(), true);
+    assert.strictEqual(await transparency.inputValue(), "50");
+    await page.locator("#sp-set-wallpaper").setInputFiles(upload);
+    await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
+    assert.strictEqual(await transparency.inputValue(), "50");
+    assert(await page.locator(".sp-btn").first().evaluate(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0.502)")));
   } finally { await context.close(); }
+  // Firmware with the original fixed opacity keeps uploads working and disables the slider.
+  const legacy = await browser.newContext({ viewport: testCase.viewport });
+  try {
+    await installRoutes(legacy, testCase.slug, { wallpaperState: { image: wallpaper.image, posts: [], opacitySupported: false }, resetState });
+    const oldPage = await legacy.newPage();
+    await installFakeEventSource(oldPage);
+    await oldPage.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await oldPage.waitForFunction(() => document.querySelector("#sp-set-wallpaper") && !document.querySelector("#sp-set-wallpaper").disabled);
+    assert.strictEqual(await oldPage.locator("#sp-set-card-transparency").isDisabled(), true);
+    assert.strictEqual(await oldPage.locator("#sp-set-card-transparency").inputValue(), "20");
+  } finally { await legacy.close(); }
 }
 
 (async function main() {

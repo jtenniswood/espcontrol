@@ -40,7 +40,7 @@ inline bool write_panel_config_capabilities_json(char *output,
     return false;
   const int written = std::snprintf(
       output, output_capacity,
-      "{\"wallpaper\":{\"version\":1,\"available\":%s},\"screensaver_pin\":{\"version\":1},\"identity\":{\"version\":1},\"api\":{\"version\":%u},\"configuration\":{\"document_versions\":[%u],"
+      "{\"wallpaper\":{\"version\":1,\"available\":%s,\"opacity\":true},\"screensaver_pin\":{\"version\":1},\"identity\":{\"version\":1},\"api\":{\"version\":%u},\"configuration\":{\"document_versions\":[%u],"
       "\"read\":%s,\"write\":%s},\"web_assets\":{\"versions\":[%u],"
       "\"delivery\":\"%s\"},\"reset\":{\"modes\":[\"customization\",\"factory\"],\"status\":\"/api/v1/reset\"}}",
       wallpaper_available ? "true" : "false",

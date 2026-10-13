@@ -128,7 +128,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 backBtn.innerHTML =
                     '<span class="sp-btn-icon sp-back-hit mdi mdi-chevron-left"></span>' +
                         '<span class="sp-btn-label">' + escHtml(backLabel) + '</span>';
-                backBtn.style.backgroundColor = wallpaperCardColor(previewColors.surfaceCard, hasWallpaper);
+                backBtn.style.backgroundColor = wallpaperCardColor(previewColors.surfaceCard, hasWallpaper, els.wallpaperOpacityPercent);
                 backBtn.style.cursor = "pointer";
                 backBtn.setAttribute("data-pos", pos);
                 backBtn.draggable = !isConfigLocked();
@@ -183,8 +183,8 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     (typePreview && typePreview.buttonClass ? " " + typePreview.buttonClass : "") +
                     sizeClass(slotSz) +
                     (c.selected.indexOf(slot) !== -1 ? " sp-selected" : "");
-                btn.style.backgroundColor = wallpaperCardColor(cardOffColor || color, hasWallpaper);
-                btn.style.setProperty("--card-active-color", wallpaperCardColor(cardOnColor || state.onColor || WEB_UI_COLORS.primary, hasWallpaper));
+                btn.style.backgroundColor = wallpaperCardColor(cardOffColor || color, hasWallpaper, els.wallpaperOpacityPercent);
+                btn.style.setProperty("--card-active-color", wallpaperCardColor(cardOnColor || state.onColor || WEB_UI_COLORS.primary, hasWallpaper, els.wallpaperOpacityPercent));
                 var contrastBackground: any = cardOffColor || color;
                 btn.draggable = !isConfigLocked();
                 btn.setAttribute("data-pos", pos);

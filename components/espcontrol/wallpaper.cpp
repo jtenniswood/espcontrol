@@ -4,6 +4,7 @@
 #include <esp_partition.h>
 #include <esp_heap_caps.h>
 #include <esp_rom_crc.h>
+#include <nvs.h>
 #endif
 #include <cstdlib>
 
@@ -31,6 +32,13 @@ bool WallpaperStore::begin_locked() {
   if (!partition || partition->subtype != 0x40 || partition->encrypted ||
       panel_config_partition_bytes(partition->size) < OFFSET + STRIDE * 2) return false;
   partition_ = partition;
+  nvs_handle_t settings;
+  if (nvs_open("espcontrol_wall", NVS_READWRITE, &settings) == ESP_OK) {
+    uint8_t opacity = WALLPAPER_DEFAULT_OPACITY_PERCENT;
+    if (nvs_get_u8(settings, "opacity", &opacity) == ESP_OK && opacity <= 100)
+      opacity_percent_ = opacity;
+    nvs_close(settings);
+  }
   for (int slot = 0; slot < 2; ++slot) {
     Record record{};
     if (esp_partition_read(partition, OFFSET + slot * STRIDE, &record, sizeof(record)) != ESP_OK ||
@@ -54,6 +62,29 @@ bool WallpaperStore::begin_locked() {
 }
 bool WallpaperStore::available() { std::lock_guard<std::mutex> lock(mutex_); return begin_locked(); }
 uint32_t WallpaperStore::revision() { std::lock_guard<std::mutex> lock(mutex_); begin_locked(); return revision_; }
+uint8_t WallpaperStore::opacity_percent() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  begin_locked();
+  return opacity_percent_;
+}
+bool WallpaperStore::save_opacity_percent(int percent) {
+  if (percent < 0 || percent > 100) return false;
+  std::lock_guard<std::mutex> lock(mutex_);
+#ifdef USE_ESP32
+  if (!begin_locked()) return false;
+  if (percent == opacity_percent_) return true;
+  nvs_handle_t settings;
+  if (nvs_open("espcontrol_wall", NVS_READWRITE, &settings) != ESP_OK) return false;
+  auto result = nvs_set_u8(settings, "opacity", static_cast<uint8_t>(percent));
+  if (result == ESP_OK) result = nvs_commit(settings);
+  nvs_close(settings);
+  if (result != ESP_OK) return false;
+  opacity_percent_ = static_cast<uint8_t>(percent);
+  return true;
+#else
+  return false;
+#endif
+}
 bool WallpaperStore::save(const uint8_t *data, size_t size) {
   if (size && !wallpaper_valid(data, size)) return false;
   std::lock_guard<std::mutex> lock(mutex_);
