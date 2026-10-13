@@ -34,7 +34,8 @@ constexpr int LV_OPA_COVER = 255, LV_OPA_TRANSP = 0;
 struct lv_event_t { lv_obj_t *target; int code; };
 using lv_event_cb_t = void (*)(lv_event_t *);
 struct lv_obj_t {
-  uint32_t background[3] = {}, text[3] = {};
+  uint32_t background[3] = {}, text[3] = {}, gradient[3] = {};
+  int gradient_direction[3] = {};
   int state = 0;
   int flags = 0;
   std::vector<lv_event_cb_t> events;
@@ -52,6 +53,9 @@ uint32_t current_grid_sensor_surface_color() { return current_theme().surface_se
 uint32_t current_grid_sensor_color() { return current_theme().surface_secondary; }
 void lv_obj_set_style_bg_color(lv_obj_t *obj, uint32_t rgb, int selector) { obj->background[selector] = rgb; }
 void lv_obj_set_style_text_color(lv_obj_t *obj, uint32_t rgb, int selector) { obj->text[selector] = rgb; }
+constexpr int LV_GRAD_DIR_HOR = 1;
+void lv_obj_set_style_bg_grad_color(lv_obj_t *obj, uint32_t rgb, int selector) { obj->gradient[selector] = rgb; }
+void lv_obj_set_style_bg_grad_dir(lv_obj_t *obj, int direction, int selector) { obj->gradient_direction[selector] = direction; }
 void lv_obj_set_style_bg_opa(lv_obj_t *, int, int) {}
 void lv_obj_set_style_border_color(lv_obj_t *, uint32_t, int) {}
 void lv_obj_set_style_border_width(lv_obj_t *, int, int) {}
@@ -135,7 +139,7 @@ grid = (headers / "button_grid_grid.h").read_text()
 
 groups = (
     ("button_grid_display.h", "", ("display_correct_color",)),
-    ("button_grid_layout.h", "", ("parse_hex_color", "apply_button_colors", "apply_card_descendant_text_color", "sync_card_checked_text_color", "card_text_contrast_event_cb", "bind_card_text_contrast_events", "set_card_checked_state")),
+    ("button_grid_layout.h", "", ("parse_hex_color", "apply_button_colors", "apply_button_on_pattern", "apply_card_descendant_text_color", "sync_card_checked_text_color", "card_text_contrast_event_cb", "bind_card_text_contrast_events", "set_card_checked_state")),
     ("button_grid_grid.h", "", ("card_palette_for_config",)),
     ("button_grid_sensor_driver.h", "espcontrol::cards", ("sensor_driver_apply_background",)),
     ("button_grid_weather_driver.h", "espcontrol::cards", ("weather_driver_apply_background",)),
@@ -203,6 +207,29 @@ int main() {
     const double b = display_relative_luminance(background) + 50000;
     return a > b ? a / b : b / a;
   };
+  assert(card_pattern_highlight_color(active_card_color(0xA0A0A0)) == 0x4E4E4E);
+  assert(card_pattern_highlight_color(0xBFBFBF) == 0xD5D5D5);
+  lv_obj_t striped, striped_label;
+  striped.children = {&striped_label};
+  const auto stripe_base = active_card_color(0xA0A0A0);
+  apply_button_colors(&striped, true, stripe_base, true, 0xA0A0A0);
+  apply_button_on_pattern(&striped, "on_pattern=stripes", true, stripe_base);
+  set_card_checked_state(&striped, true);
+  assert(striped.gradient[LV_STATE_CHECKED] == 0x4E4E4E);
+  assert(striped.gradient[LV_STATE_PRESSED] == 0x4E4E4E);
+  assert(striped.gradient_direction[LV_STATE_CHECKED] == LV_GRAD_DIR_HOR);
+  assert(striped_label.text[0] == display_text_color_for_bg(stripe_base));
+  for (uint32_t value = 0; value <= 255; ++value) {
+    const uint32_t background = value * 0x010101;
+    assert(card_slider_fill_color(background) != background);
+    const auto active = active_card_color(background);
+    const auto foreground = display_text_color_for_bg(active);
+    assert(contrast(foreground, card_pattern_highlight_color(active)) >= contrast(foreground, active));
+  }
+  for (uint32_t background : {0x6D6D6Du, 0x6D6D6Eu, 0x6D6E6Du, 0x6E6D6Du, 0x6E6E6Du, 0x6D6E6Eu, 0x6E6D6Eu, 0x6E6E6Eu}) {
+    assert(card_slider_fill_color(background) != background);
+    assert(contrast(display_text_color_for_bg(background), card_slider_fill_color(background)) >= 4.5);
+  }
   CardPalette defaults;
   defaults.has_on = defaults.has_off = defaults.has_sensor_color = true;
   defaults.on_val = 0xFF8C00;

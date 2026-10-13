@@ -8,6 +8,7 @@ import {
     cardPreviewTextColor,
     cardProgressColor,
     cardSliderFillColor,
+    cardPatternHighlightColor,
     cardTypePickerDetails,
     cardTypePickerOptions,
     defaultCardTypeForPicker,
@@ -190,7 +191,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     contrastBackground = onColor;
                     btn.style.backgroundImage =
                         "repeating-linear-gradient(135deg,#" + onColor + " 0,#" + onColor +
-                            " 12px,rgba(255,255,255,.22) 12px,rgba(255,255,255,.22) 20px)";
+                            " 12px,#" + cardPatternHighlightColor(onColor) + " 12px,#" + cardPatternHighlightColor(onColor) + " 20px)";
                 }
                 if (!btn.classList.contains("sp-image-card")) {
                     btn.style.setProperty("--card-text-color", cardOffColor || contrastBackground !== color

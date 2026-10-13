@@ -64,7 +64,6 @@ inline void screen_lock_register_card(const BtnSlot &s, const ParsedCfg &p) {
   ref.locked_icon = screen_lock_locked_icon(p);
   ref.unlocked_icon = screen_lock_unlocked_icon(p);
   screen_lock_card_refs().push_back(ref);
-  screen_lock_register_controlled_button(s.btn);
 }
 
 inline void setup_screen_lock_card(BtnSlot &s, const ParsedCfg &p) {

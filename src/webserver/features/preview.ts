@@ -115,13 +115,14 @@ export function cardPreviewTextColor(background: string): string {
 export function cardSliderFillColor(background: string): string {
   const active = activeCardColor(background);
   if (!active) return "";
+  const base = background.replace(/^#/, "").toUpperCase();
   const foreground = cardPreviewTextColor(background);
   const text = cardRelativeLuminance(foreground);
   const readable = (color: string) => {
     const fill = cardRelativeLuminance(color);
     return (Math.max(text, fill) + 50000) * 1000 >= (Math.min(text, fill) + 50000) * 4500;
   };
-  if (readable(active)) return active;
+  if (active !== base && readable(active)) return active;
   for (let amount = 10; amount <= 100; amount += 10) {
     const shade = [0, 2, 4].map(offset => {
       const channel = parseInt(active.slice(offset, offset + 2), 16);
@@ -129,9 +130,21 @@ export function cardSliderFillColor(background: string): string {
         : channel + Math.floor(((255 - channel) * amount + 50) / 100);
       return value.toString(16).padStart(2, "0").toUpperCase();
     }).join("");
-    if (readable(shade)) return shade;
+    if (shade !== base && readable(shade)) return shade;
   }
   return active;
+}
+
+export function cardPatternHighlightColor(background: string): string {
+  const hex = background.replace(/^#/, "").toUpperCase();
+  if (!/^[0-9A-F]{6}$/.test(hex)) return "";
+  const whiteText = cardPreviewTextColor(hex) === "#FFFFFF";
+  return [0, 2, 4].map(offset => {
+    const channel = parseInt(hex.slice(offset, offset + 2), 16);
+    const shade = whiteText ? Math.floor(channel * 65 / 100)
+      : channel + Math.floor((255 - channel) * 35 / 100);
+    return shade.toString(16).padStart(2, "0").toUpperCase();
+  }).join("");
 }
 
 export function cardProgressColor(background: string): string {

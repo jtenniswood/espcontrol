@@ -20,7 +20,7 @@ inline bool image_driver_setup_visual(
   if (image_card_modal_fit_enabled(config)) {
     sensor_driver_apply_background(slot, palette);
   }
-  setup_image_card(slot);
+  setup_image_card(slot, palette);
   return true;
 }
 

@@ -152,6 +152,7 @@ relay=Relé
 returning=Returnerer
 run_this_script=Kjør dette skriptet?
 screen_dimmed=Skjerm neddimmet
+screen_lock=Skjermlås
 screen_locked=Skjerm låst
 screen_unlocked=Skjerm låst opp
 skip_next=Hopp til neste
@@ -261,3 +262,6 @@ wifi_did_not_change=Wi-Fi ble ikke endret
 connect_to_the_wifi_hotspot=Koble til WiFi-hotspotet
 to_configure_your_network=for å konfigurere nettverket ditt.
 then_visit_192_168_4_1_in_your_browser=Åpne deretter 192.168.4.1 i nettleseren
+
+screensaver=Skjermsparer
+incorrect_pin=Feil PIN

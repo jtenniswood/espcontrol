@@ -112,7 +112,7 @@ constexpr uint32_t card_slider_fill_color(uint32_t rgb) {
     const uint32_t dark = fill > text ? text : fill;
     return uint64_t(light + 50000) * 1000 >= uint64_t(dark + 50000) * 4500;
   };
-  if (readable(active)) return active;
+  if (active != rgb && readable(active)) return active;
   // Move the fill away from the foreground until it reaches 4.5:1.
   for (uint32_t amount = 10; amount <= 100; amount += 10) {
     const auto channel = [foreground, amount](uint32_t value) {
@@ -121,9 +121,19 @@ constexpr uint32_t card_slider_fill_color(uint32_t rgb) {
     };
     const uint32_t shade = (channel((active >> 16) & 255) << 16) |
       (channel((active >> 8) & 255) << 8) | channel(active & 255);
-    if (readable(shade)) return shade;
+    if (shade != rgb && readable(shade)) return shade;
   }
   return active;
+}
+
+// Stripes must preserve the foreground contrast of the active background.
+constexpr uint32_t card_pattern_highlight_color(uint32_t rgb) {
+  const bool white_text = display_text_color_for_bg(rgb) == 0xFFFFFF;
+  const auto channel = [white_text](uint32_t value) {
+    return white_text ? value * 65 / 100 : value + (255 - value) * 35 / 100;
+  };
+  return (channel((rgb >> 16) & 255) << 16) |
+         (channel((rgb >> 8) & 255) << 8) | channel(rgb & 255);
 }
 
 // Progress must stay visible on both dark and pale custom backgrounds.

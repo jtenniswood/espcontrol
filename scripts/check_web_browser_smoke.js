@@ -293,6 +293,26 @@ async function installRoutes(context, slug, options = {}) {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(identity.info) });
       return;
     }
+    if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/screensaver-pin") {
+      const pin = options.screensaverPinState;
+      if (!pin) { await route.fulfill({ status: 404, body: "Not found" }); return; }
+      if (route.request().method() === "POST") {
+        if (options.resetState && route.request().headers()["x-espcontrol-epoch"] !== String(options.resetState.epoch)) {
+          await route.fulfill({ status: 428, contentType: "application/json", body: '{"error":"Reload the page before changing settings"}' });
+          return;
+        }
+        const settings = route.request().postDataJSON();
+        pin.posts.push(settings);
+        if (pin.failSave) { await route.fulfill({ status: 500, body: "Failed" }); return; }
+        pin.enabled = settings.enabled;
+        if (typeof settings.pin === "string") pin.pin = settings.pin;
+        if (typeof settings.randomize_keypad === "boolean") pin.randomize = settings.randomize_keypad;
+      }
+      await route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({ enabled: pin.enabled, has_pin: !!pin.pin, pin_length: pin.pin.length,
+          randomize_keypad: pin.randomize ?? true }) });
+      return;
+    }
     if (nativeState && requestUrl.pathname.startsWith("/api/v1/")) {
       const suppliedGeneration = route.request().headers()["if-match"];
       nativeState.requests.push(
@@ -312,6 +332,7 @@ async function installRoutes(context, slug, options = {}) {
           api: { version: 1 },
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
+          screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
           configuration: { read: true, write: true, document_versions: [1] },
           web_assets: { versions: [1] },
         }),
@@ -330,6 +351,7 @@ async function installRoutes(context, slug, options = {}) {
           api: { version: 1 },
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
+          screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
           configuration: { read: false, write: false, document_versions: [] },
         }),
       });
@@ -1113,6 +1135,34 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     true,
     `${label}: color controls should be visible`,
   );
+  if (options.exerciseInteractions) {
+    const picker = page.locator('#sp-set-on-color input[type="color"]');
+    const originalColour = await picker.inputValue();
+    const colourPosts = () => posts.filter(post => post.domain === "text" && post.name === "button_on_color");
+    const savesBefore = colourPosts().length;
+    await picker.evaluate(input => {
+      for (const hex of ["#112233", "#223344", "#123abc"]) {
+        input.value = hex;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+    await page.waitForTimeout(100);
+    assert.strictEqual(colourPosts().length, savesBefore,
+      `${label}: dragging the native picker must not save intermediate colours`);
+    const committed = page.waitForRequest(request => request.method() === "POST" &&
+      postRecord(request.url()).name === "button_on_color");
+    await picker.dispatchEvent("change");
+    await committed;
+    assert.strictEqual(colourPosts().length, savesBefore + 1,
+      `${label}: confirming the native picker saves exactly once`);
+    assert.strictEqual(colourPosts().at(-1).value, "123ABC",
+      `${label}: the committed colour is saved as uppercase hex`);
+    await picker.dispatchEvent("change");
+    await page.waitForTimeout(100);
+    assert.strictEqual(colourPosts().length, savesBefore + 1,
+      `${label}: repeated confirmation of the same colour does not save again`);
+    await picker.fill(originalColour);
+  }
   const themeModes = page.locator("#sp-set-theme-mode");
   assert.deepStrictEqual(await themeModes.locator("button").allTextContents(),
     ["Dark", "Light", "Automatic"], `${label}: theme modes render`);
@@ -2823,7 +2873,7 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
       assert.strictEqual(
         await cardSettingsSectionCount(),
         0,
-        `${label}: Screen Lock should not show unused generic Card Settings`,
+        `${label}: Screen Lock uses dedicated Pin Protection and Screensaver panels`,
       );
     }
 
@@ -6344,7 +6394,7 @@ async function assertPanelNaming(browser) {
     if (process.env.ESPCONTROL_NAMING_SCREENSHOT) await page.screenshot({ path: process.env.ESPCONTROL_NAMING_SCREENSHOT, fullPage: true });
     identityState.failSave = true;
     await save.click();
-    await page.waitForFunction(() => document.querySelector('[role="status"]')?.textContent?.includes("Could not save"));
+    await page.waitForFunction(() => document.querySelector('#sp-panel-name')?.closest('.card')?.querySelector('[role="status"]')?.textContent?.includes("Could not save"));
     assert.strictEqual(restartRequests.length, 0, "failed save must not restart");
     assert.strictEqual(await page.title(), "EspControl - Kitchen");
     identityState.failSave = false;
@@ -6379,10 +6429,200 @@ async function assertPanelNaming(browser) {
   } finally { await context.close(); }
 }
 
+async function assertScreensaverPinSettings(browser) {
+  const testCase = ACTIVE_CASES[0];
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  const pin = { enabled: false, pin: "", randomize: true, posts: [], failSave: false };
+  const resetState = { epoch: 3, pending: false, requests: [] };
+  await installRoutes(context, testCase.slug, { screensaverPinState: pin, resetState });
+  const page = await context.newPage();
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.getByRole("tab", { name: "Settings" }).click();
+    const card = page.locator("#sp-settings .card").filter({ has: page.locator("#sp-set-screensaver-pin") });
+    await card.locator(".card-header").click();
+    const input = page.locator("#sp-set-screensaver-pin");
+    await input.waitFor({ state: "hidden" });
+    assert.strictEqual(await input.getAttribute("type"), "password");
+    const enable = page.locator("#sp-set-screensaver-pin-enabled + .sp-toggle-track");
+    const randomize = page.locator("#sp-set-screensaver-pin-randomize");
+    const randomizeTrack = page.locator("#sp-set-screensaver-pin-randomize + .sp-toggle-track");
+    await enable.click();
+    assert.strictEqual(await page.locator("#sp-set-screensaver-pin-enabled").isChecked(), true);
+    await input.waitFor({ state: "visible" });
+    await randomizeTrack.click();
+    assert.strictEqual(pin.posts.length, 0, "cannot enable protection without a saved PIN");
+    assert.strictEqual(pin.enabled, false, "opening PIN setup does not persist protection");
+    await input.fill("0042");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.getByRole("tab", { name: "Settings" }).click();
+    await card.locator(".card-header").click();
+    await page.waitForFunction(() => !document.querySelector("#sp-set-screensaver-pin-enabled").disabled);
+    assert.strictEqual(await page.locator("#sp-set-screensaver-pin-enabled").isChecked(), false,
+      "refresh discards setup without a saved PIN");
+    await input.waitFor({ state: "hidden" });
+    assert.strictEqual(await input.inputValue(), "", "refresh clears the unsaved PIN");
+    assert.strictEqual(await randomize.isChecked(), true, "refresh discards the unsaved layout choice");
+    await enable.click();
+    await input.waitFor({ state: "visible" });
+    await randomizeTrack.click();
+    pin.failSave = true;
+    await input.fill("0042");
+    await card.getByRole("button", { name: "Save", exact: true }).click();
+    await card.getByRole("alert").getByText("Could not save or read PIN settings. Check the connection and try again.", { exact: true }).waitFor();
+    assert.strictEqual(await page.locator("#sp-set-screensaver-pin-enabled").isChecked(), true,
+      "failed save keeps PIN setup open");
+    assert.strictEqual(await input.inputValue(), "0042", "failed save preserves the entry for retry");
+    assert.strictEqual(pin.enabled, false, "failed save leaves protection disabled");
+    pin.failSave = false;
+    await card.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector("#sp-set-screensaver-pin").value === "");
+    assert.strictEqual(pin.pin, "0042");
+    assert.strictEqual(pin.enabled, true, "saving the required PIN enables protection");
+    assert.strictEqual(pin.randomize, false, "first PIN save includes the layout preference");
+    assert.strictEqual(await input.getAttribute("placeholder"), "••••", "mask length matches saved PIN");
+    await input.fill("004200");
+    await randomizeTrack.click();
+    await page.waitForFunction(() => !document.querySelector("#sp-set-screensaver-pin-randomize").disabled);
+    assert.strictEqual(pin.randomize, true, "saved PIN layout can be changed independently");
+    assert.strictEqual(pin.pin, "0042", "layout update preserves stored PIN");
+    assert.strictEqual(await input.inputValue(), "004200", "layout update preserves an unsaved replacement PIN");
+    await enable.click();
+    await page.waitForFunction(() => !document.querySelector("#sp-set-screensaver-pin-enabled").disabled);
+    assert.strictEqual(pin.enabled, false);
+    await input.waitFor({ state: "hidden" });
+    await enable.click();
+    await page.waitForFunction(() => !document.querySelector("#sp-set-screensaver-pin-enabled").disabled);
+    assert.strictEqual(pin.pin, "0042", "disable preserves secret");
+    await input.waitFor({ state: "visible" });
+    await input.fill("12bad");
+    const count = pin.posts.length;
+    await card.getByRole("button", { name: "Save", exact: true }).click();
+    assert.strictEqual(pin.posts.length, count, "invalid PIN stays local");
+    await input.fill("6789");
+    await card.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector("#sp-set-screensaver-pin").value === "");
+    assert.strictEqual(pin.pin, "6789");
+    pin.failSave = true;
+    await input.fill("1111");
+    await card.getByRole("button", { name: "Save", exact: true }).click();
+    await card.getByText("Could not save or read PIN settings. Check the connection and try again.", { exact: true }).waitFor();
+    assert.strictEqual(pin.pin, "6789", "failed save preserves stored secret");
+    pin.failSave = false;
+    await card.getByRole("button", { name: "Clear", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector("#sp-set-screensaver-pin-enabled").checked === false &&
+      document.querySelector("#sp-set-screensaver-pin").disabled === false);
+    assert.strictEqual(pin.pin, "");
+    // A Screen Lock card edits the same PIN and cannot be saved before the
+    // device has accepted one. Manual locking does not require wake locking.
+    pin.randomize = false;
+    await page.getByRole("tab", { name: "Screen" }).click();
+    await page.locator(".sp-empty-cell:not(.sp-info-only-hidden)").first().click();
+    await page.locator('.sp-card-type-option[data-card-type="screen_lock"]').click();
+    const lockSettings = page.locator('.sp-settings-modal [data-sp-pin-settings]');
+    const lockInput = lockSettings.locator('input[type="password"]');
+    await lockInput.waitFor({ state: "visible" });
+    await page.waitForFunction(() => !document.querySelector('.sp-settings-modal input[type="password"]').disabled);
+    assert.strictEqual(await lockSettings.locator('input[id$="-randomize"]').isChecked(), false);
+    assert.strictEqual(await lockSettings.getByText('Require PIN after wake', { exact: true }).count(), 0,
+      'manual Screen Lock always requires its saved PIN');
+    assert.strictEqual(await lockSettings.getByRole('button', { name: 'Clear', exact: true }).count(), 0);
+    assert(await lockSettings.evaluate(form => {
+      const pin = form.querySelector('input[type="password"]');
+      const randomize = form.querySelector('input[id$="-randomize"]');
+      return !!(pin.compareDocumentPosition(randomize) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }), 'randomize appears below the PIN field');
+    const behavior = page.locator('.sp-settings-modal .sp-disclosure').filter({ hasText: 'Screensaver on lock' });
+    await behavior.locator('> .sp-disclosure-button').click();
+    const screensaverToggle = page.locator('.sp-settings-modal input[id$="screensaver-on-lock"]');
+    assert.strictEqual(await screensaverToggle.isChecked(), false, 'screensaver on lock defaults off');
+    await page.locator(".sp-settings-modal .sp-save-btn").click();
+    await page.getByText("Save a PIN before saving this card.", { exact: true }).waitFor();
+    await lockInput.fill("12bad");
+    await lockSettings.getByRole("button", { name: "Save", exact: true }).click();
+    await lockSettings.getByRole("alert").getByText("Enter a PIN containing 1–16 digits.").waitFor();
+    await lockInput.fill("123456");
+    pin.failSave = true;
+    await lockSettings.getByRole("button", { name: "Save", exact: true }).click();
+    await lockSettings.getByRole("alert").getByText("Could not save or read PIN settings. Check the connection and try again.").waitFor();
+    await page.locator(".sp-settings-modal .sp-save-btn").click();
+    assert(await page.locator(".sp-settings-overlay.sp-visible").isVisible(), "failed PIN write cannot save the card");
+    pin.failSave = false;
+    await lockSettings.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('.sp-settings-modal input[type="password"]').value === "");
+    assert.strictEqual(pin.pin, "123456");
+    assert.strictEqual(pin.enabled, false, "card PIN can be saved without enabling automatic wake protection");
+    assert.strictEqual(await input.getAttribute("placeholder"), "••••••", "card save updates screensaver PIN controls");
+    await page.locator('.sp-settings-modal input[id$="screensaver-on-lock"] + .sp-toggle-track').click();
+    await page.locator(".sp-settings-modal .sp-save-btn").click();
+    await page.locator(".sp-settings-overlay.sp-visible").waitFor({ state: "hidden" });
+    await page.getByRole("tab", { name: "Settings" }).click();
+    await enable.click();
+    await input.waitFor({ state: "visible" });
+    assert.strictEqual(await input.getAttribute("placeholder"), "••••••");
+    await input.fill("9876");
+    await card.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector("#sp-set-screensaver-pin").value === "");
+    await page.getByRole("tab", { name: "Screen" }).click();
+    await page.locator('.sp-main [data-slot]').filter({ hasText: "Screen Unlocked" }).first().click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await lockInput.waitFor({ state: "visible" });
+    await page.waitForFunction(() => !document.querySelector('.sp-settings-modal input[type="password"]').disabled);
+    assert.strictEqual(await lockInput.getAttribute("placeholder"), "••••", "screensaver PIN save is visible in the card editor");
+    assert.strictEqual(await screensaverToggle.isChecked(), true, 'screensaver preference survives saving and re-opening the card');
+    await behavior.locator('> .sp-disclosure-button').click();
+    await page.locator('.sp-settings-modal input[id$="screensaver-on-lock"] + .sp-toggle-track').click();
+    await page.locator('.sp-settings-modal .sp-save-btn').click();
+    await page.locator('.sp-settings-overlay.sp-visible').waitFor({ state: 'hidden' });
+    await page.locator('.sp-main [data-slot]').filter({ hasText: 'Screen Unlocked' }).first().click();
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector('.sp-settings-modal input[type="password"]').disabled);
+    assert.strictEqual(await screensaverToggle.isChecked(), false, 'screensaver preference can be disabled');
+    await page.locator(".sp-settings-close").click();
+    await page.getByRole("tab", { name: "Settings" }).click();
+    await card.getByRole('button', { name: 'Clear', exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector('#sp-set-screensaver-pin-enabled').checked &&
+      !document.querySelector('#sp-set-screensaver-pin').disabled);
+    assert.strictEqual(pin.pin, '');
+    assert.strictEqual(pin.enabled, false, 'shared PIN can still be cleared from screensaver settings');
+    // A protected destination importing an ordinary backup must clear its PIN.
+    pin.pin = "2468"; pin.enabled = true;
+    await importBackup(page, backupFixture(testCase.slug, testCase.slots), "screensaver-pin-restore");
+    await page.waitForSelector(".sp-banner.sp-success");
+    assert.strictEqual(pin.pin, "");
+    assert.strictEqual(pin.enabled, false);
+  } finally { await context.close(); }
+
+  const legacyContext = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(legacyContext, testCase.slug);
+  const legacyPage = await legacyContext.newPage();
+  await installFakeEventSource(legacyPage);
+  try {
+    await legacyPage.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await legacyPage.waitForSelector("#sp-app");
+    await legacyPage.getByRole("tab", { name: "Settings" }).click();
+    await legacyPage.waitForFunction(() => {
+      const input = document.querySelector("#sp-set-screensaver-pin");
+      return input && input.closest(".card").hidden;
+    });
+    const legacyCard = legacyPage.locator("#sp-settings .card").filter({ has: legacyPage.locator("#sp-set-screensaver-pin") });
+    assert.strictEqual(await legacyCard.isVisible(), false, "unsupported firmware hides the whole PIN panel");
+  } finally { await legacyContext.close(); }
+}
+
 (async function main() {
   const browser = await chromium.launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    await assertScreensaverPinSettings(browser);
+    if (process.env.ESPCONTROL_PIN_ONLY === "1") { console.log("Screensaver PIN browser checks passed."); return; }
     if (process.env.ESPCONTROL_RESET_ONLY === "1") {
       await assertResetControls(browser);
       console.log("Factory reset confirmation browser checks passed.");
