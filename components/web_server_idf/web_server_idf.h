@@ -4,6 +4,7 @@
 #include "esphome/core/defines.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/string_ref.h"
+#include "esphome/core/version.h"
 #include <esp_http_server.h>
 
 #include <atomic>
@@ -278,7 +279,11 @@ class AsyncWebHandler {
 class AsyncEventSource;
 class AsyncEventSourceResponse;
 
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 10, 0)
+using message_generator_t = void(esphome::web_server::WebServer *, void *, json::JsonBuilder &);
+#else
 using message_generator_t = json::SerializationBuffer<>(esphome::web_server::WebServer *, void *);
+#endif
 
 /*
   This class holds a pointer to the source component that wants to publish a state event, and a pointer to a function
@@ -319,6 +324,7 @@ class AsyncEventSourceResponse {
                            esphome::web_server::WebServer *ws);
 
   void deq_push_back_with_dedup_(void *source, message_generator_t *message_generator);
+  json::SerializationBuffer<> generate_state_json_(void *source, message_generator_t *message_generator);
   void process_deferred_queue_();
   void process_buffer_();
 

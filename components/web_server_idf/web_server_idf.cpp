@@ -1132,10 +1132,22 @@ void AsyncEventSourceResponse::deq_push_back_with_dedup_(void *source, message_g
   this->deferred_queue_.push_back(item);
 }
 
+json::SerializationBuffer<> AsyncEventSourceResponse::generate_state_json_(void *source,
+                                                                         message_generator_t *message_generator) {
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 10, 0)
+  // ESPHome 2026.10 fills a caller-owned builder instead of returning JSON.
+  json::JsonBuilder builder;
+  message_generator(this->web_server_, source, builder);
+  return builder.serialize();
+#else
+  return message_generator(this->web_server_, source);
+#endif
+}
+
 void AsyncEventSourceResponse::process_deferred_queue_() {
   while (!deferred_queue_.empty()) {
     DeferredEvent &de = deferred_queue_.front();
-    auto message = de.message_generator_(web_server_, de.source_);
+    auto message = this->generate_state_json_(de.source_, de.message_generator_);
     if (this->try_send_nodefer(message.c_str(), message.size(), "state")) {
       // O(n) but memory efficiency is more important than speed here which is why std::vector was chosen
       deferred_queue_.erase(deferred_queue_.begin());
@@ -1370,7 +1382,7 @@ void AsyncEventSourceResponse::deferrable_send_state(void *source, const char *e
     // trying to send first
     deq_push_back_with_dedup_(source, message_generator);
   } else {
-    auto message = message_generator(web_server_, source);
+    auto message = this->generate_state_json_(source, message_generator);
     if (!this->try_send_nodefer(message.c_str(), message.size(), "state")) {
       deq_push_back_with_dedup_(source, message_generator);
     }
