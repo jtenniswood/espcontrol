@@ -7,7 +7,7 @@ description:
 # Appearance
 
 The **Appearance** section is at the top of **Screen**. Its panels are
-**Active Colour**, **Card Style** (curve), **Theme**, [Idle](/features/idle) and [Clock Bar](/features/clock-bar).
+**Active Colour**, **Card Style** (curve), **Theme**, **Wallpaper** (image and transparency controls), [Idle](/features/idle) and [Clock Bar](/features/clock-bar).
 
 Cards use continuous corners, with the same proportions on the panel and
 setup-page preview. Choose **Card curve → Small, Medium or Large** in
@@ -63,7 +63,7 @@ Use **Add image** under **Wallpaper** to upload a JPEG, PNG or WebP background f
 
 Updated P4 firmware supports high-quality compressed wallpapers up to 1280 pixels on the longest side and 1,024,000 pixels in total (including 1280 × 800). The panel keeps full-colour image data before drawing to the display. S3 displays use a 480-pixel limit and smoother 16-bit colour conversion to suit their memory. Images are centred to fill the screen; very detailed images may be compressed further or resized to fit storage. Older wallpaper firmware continues to use 480-pixel uploads. Re-upload the original image after updating firmware to benefit from the higher quality. Choose an image with a similar aspect ratio to your display for less cropping.
 
-Use **Off card transparency** and **Active card transparency** to choose independently how much wallpaper shows through inactive and active card fills: **0%** gives solid fills and **100%** makes the fills completely clear. Labels and icons keep their normal colours and remain visible. Both default to **20%** transparency (an 80% fill). Pressed cards use the active setting. Updating from a single transparency setting carries that value over to both controls. Camera images, cover art and QR codes keep their own content. The wallpaper also appears on subpages; setup screens, modals and screensavers keep their existing backgrounds.
+Use **Off card transparency** and **Active card transparency** to choose independently how much wallpaper shows through inactive and active card fills: **0%** gives solid fills and **100%** makes the fills completely clear. Labels and icons keep their normal colours and remain visible. Both controls appear only while a wallpaper is enabled. Both default to **20%** transparency (an 80% fill). Pressed cards use the active setting. Updating from a single transparency setting carries that value over to both controls. Camera images, cover art and QR codes keep their own content. The wallpaper also appears on subpages; setup screens, modals and screensavers keep their existing backgrounds.
 
 Uploads and **Clear** apply immediately. The image and both transparency settings are stored on the display and survive restarts. Both transparency values are remembered when replacing or removing the wallpaper; they apply when a wallpaper is present. Removing it restores solid card backgrounds. Wallpapers and their transparency settings are separate from configuration backups and are cleared by resetting customisation or factory settings. Older firmware with one adjustable transparency value keeps its single **Card transparency** control. Older firmware or partition layouts without image storage show the wallpaper control as unavailable.
 

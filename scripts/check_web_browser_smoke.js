@@ -259,6 +259,11 @@ async function installRoutes(context, slug, options = {}) {
 
   await context.route("**/*", async (route) => {
     const requestUrl = new URL(route.request().url());
+    // WebKit also routes local images; preserve their browser decoding.
+    if (requestUrl.protocol === "blob:" || requestUrl.protocol === "data:") {
+      await route.continue();
+      return;
+    }
     if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/wallpaper-opacity") {
       const wallpaper = options.wallpaperState;
       assert(wallpaper && wallpaper.opacitySupported !== false, "unsupported firmware must not receive opacity requests");
@@ -1253,6 +1258,9 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     assert.strictEqual(colourPosts().at(-1).value, "123ABC", `${label}: clicking the custom swatch restores its retained colour`);
     assert.strictEqual(await customSwatch.getAttribute("data-selected"), "true");
     await picker.fill(originalColour);
+  }
+  if (!(await page.locator("#sp-set-theme-mode").isVisible())) {
+    await page.getByRole("heading", { name: "Theme", exact: true }).click();
   }
   const themeModes = page.locator("#sp-set-theme-mode");
   if (!(await themeModes.isVisible())) await page.getByRole("heading", { name: "Theme", exact: true }).click();
@@ -7550,10 +7558,13 @@ async function assertWallpaperSettings(browser) {
     const card = page.locator("#sp-settings .card").filter({ has: page.locator("#sp-set-wallpaper") });
     if (!(await card.getByRole("button", { name: /Add image|Replace image/ }).isVisible())) await card.locator(".card-header").click();
     await page.waitForFunction(() => !document.querySelector("#sp-set-wallpaper").disabled);
+    if (!(await page.locator("#sp-set-theme-mode").isVisible())) await page.getByRole("heading", { name: "Theme", exact: true }).click();
   }
   try {
     await open();
     assert.strictEqual(await page.locator("#sp-set-card-transparency").isDisabled(), true);
+    assert.strictEqual(await page.locator("#sp-set-card-transparency").isVisible(), false);
+    assert.strictEqual(await page.locator("#sp-set-active-card-transparency").isVisible(), false);
     assert.strictEqual(await page.locator("#sp-set-wallpaper").isVisible(), false);
     await page.getByRole("img", { name: "No wallpaper uploaded", exact: true }).waitFor();
     assert.strictEqual(await page.getByRole("button", { name: "Clear wallpaper" }).isDisabled(), true);
@@ -7627,11 +7638,17 @@ async function assertWallpaperSettings(browser) {
       if (commit) await page.waitForFunction(() => !document.querySelector("#sp-set-active-card-transparency").disabled);
     };
     const assertCardAlpha = async expected => {
-      const color = await page.locator(".sp-btn").first().evaluate(btn => getComputedStyle(btn).backgroundColor);
-      const alpha = color.startsWith("rgba(") ? parseFloat(color.split(",").at(-1)) : 1;
+      const { color, alpha } = await page.locator(".sp-btn").first().evaluate(btn => {
+        const color = getComputedStyle(btn).backgroundColor;
+        const canvas = document.createElement("canvas"); canvas.width = canvas.height = 1;
+        const context = canvas.getContext("2d"); context.fillStyle = color; context.fillRect(0, 0, 1, 1);
+        return { color, alpha: context.getImageData(0, 0, 1, 1).data[3] / 255 };
+      });
       assert(Math.abs(alpha - expected) < .004, `Expected alpha ${expected}, got ${color}`);
     };
     await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
+    assert.strictEqual(await transparency.isVisible(), true);
+    assert.strictEqual(await activeTransparency.isVisible(), true);
     assert.strictEqual(await transparency.inputValue(), "20");
     const setTransparency = async (percent, commit = true) => {
       await transparency.evaluate((range, value) => {
@@ -7727,6 +7744,8 @@ async function assertWallpaperSettings(browser) {
     assert.strictEqual(await page.getByRole("button", { name: "Clear wallpaper" }).isDisabled(), true);
     assert.strictEqual(await transparency.isDisabled(), true);
     assert.strictEqual(await activeTransparency.isDisabled(), true);
+    assert.strictEqual(await transparency.isVisible(), false);
+    assert.strictEqual(await activeTransparency.isVisible(), false);
     assert.strictEqual(await activeTransparency.inputValue(), "10");
     assert.strictEqual(await transparency.inputValue(), "50");
     await page.locator("#sp-set-wallpaper").setInputFiles(upload);

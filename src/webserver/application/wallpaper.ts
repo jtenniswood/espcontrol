@@ -229,6 +229,8 @@ export function buildWallpaperSettings(
     uploadTitle.textContent = hasWallpaper ? "Replace image" : "Add image";
     imageField.setAttribute("aria-busy", String(busy));
     remove.disabled = !supported || busy || !hasWallpaper;
+    control.wrap.hidden = !hasWallpaper;
+    activeControl.wrap.hidden = !hasWallpaper || !separateOpacity;
     range.disabled = !opacitySupported || busy || !hasWallpaper;
     activeRange.disabled = !separateOpacity || !opacitySupported || busy || !hasWallpaper;
     activeRange.value = String(100 - activeOpacity);
@@ -277,7 +279,6 @@ export function buildWallpaperSettings(
       }
       limits = wallpaperLimits(capabilities.wallpaper);
       separateOpacity = capabilities.wallpaper.state_opacity === true;
-      activeControl.wrap.hidden = !separateOpacity;
       if (!separateOpacity) control.wrap.querySelector("label").textContent = "Card transparency";
       if (capabilities.wallpaper.opacity === true) {
         const settings = await request("/api/v1/wallpaper-opacity", { credentials: "include", cache: "no-store" });
