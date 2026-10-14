@@ -1,4 +1,4 @@
-import { sizeColSpan, sizeRowSpan } from "../model/grid";
+import { CARD_SIZE_DEFINITIONS, cardSizeClass, sizeColSpan, sizeRowSpan } from "../model/grid";
 
 interface ResizeTarget { size: number; width: number; height: number }
 interface PreviewResizeDependencies {
@@ -30,6 +30,21 @@ export function installPreviewResize(dependencies: PreviewResizeDependencies): v
         const rect = card.getBoundingClientRect();
         let target = targets.reduce((best, item) => distance(item, rect.width, rect.height) < distance(best, rect.width, rect.height) ? item : best);
         const previousStyle = card.getAttribute("style");
+        const previousDraggable = card.draggable;
+        const previousSizeClasses = CARD_SIZE_DEFINITIONS.map(item => item.className).filter(Boolean);
+        const originalSizeClasses = previousSizeClasses.filter(name => card.classList.contains(name));
+        const grid = card.parentElement!;
+        const gridStyle = document.defaultView!.getComputedStyle(grid);
+        const previousRows = grid.style.gridTemplateRows;
+        const previousColumns = grid.style.gridTemplateColumns;
+        const cardStyle = document.defaultView!.getComputedStyle(card);
+        // Fractional tracks otherwise grow to accommodate the preview's minimum size.
+        grid.style.gridTemplateRows = gridStyle.gridTemplateRows;
+        grid.style.gridTemplateColumns = gridStyle.gridTemplateColumns;
+        // Keep the original grid footprint until release while applying size-specific visuals.
+        card.style.gridRow = cardStyle.gridRow;
+        card.style.gridColumn = cardStyle.gridColumn;
+        card.draggable = false;
         let finished = false;
         card.classList.add("sp-resizing");
         handle.setPointerCapture(event.pointerId);
@@ -39,6 +54,9 @@ export function installPreviewResize(dependencies: PreviewResizeDependencies): v
             const width = rect.width + next.clientX - event.clientX;
             const height = rect.height + next.clientY - event.clientY;
             target = targets.reduce((best, item) => distance(item, width, height) < distance(best, width, height) ? item : best);
+            card.classList.remove(...previousSizeClasses);
+            const sizeClass = cardSizeClass(target.size);
+            if (sizeClass) card.classList.add(sizeClass);
             card.style.width = target.width + "px";
             card.style.height = target.height + "px";
         };
@@ -60,6 +78,11 @@ export function installPreviewResize(dependencies: PreviewResizeDependencies): v
             handle.removeEventListener("lostpointercapture", cancel);
             if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
             card.classList.remove("sp-resizing");
+            card.classList.remove(...previousSizeClasses);
+            card.classList.add(...originalSizeClasses);
+            card.draggable = previousDraggable;
+            grid.style.gridTemplateRows = previousRows;
+            grid.style.gridTemplateColumns = previousColumns;
             if (previousStyle === null) card.removeAttribute("style");
             else card.setAttribute("style", previousStyle);
             if (commit && card.isConnected && !dependencies.isConfigLocked()) dependencies.commit(slot, target.size);

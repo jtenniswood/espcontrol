@@ -219,6 +219,10 @@ export function createPreviewInteractionsFeature(
         });
         // Drag delegation
         container.addEventListener("dragstart", function (this: any, e?: any) {
+            if (e.target.closest(".sp-resize-handle,.sp-resizing")) {
+                e.preventDefault();
+                return;
+            }
             if (isConfigLocked()) {
                 e.preventDefault();
                 return;
