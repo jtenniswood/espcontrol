@@ -7273,8 +7273,8 @@ async function assertWeatherWidthScaling(browser) {
                 rowGap:previous?(icon.top-previous.bottom)/scale:null};
             });
           },columns);
-          assert(spacing.every(day=>day.iconGap>=1 && day.iconGap<=3),
-            'Grid icons stay close to their data at every preview scale: '+JSON.stringify(spacing));
+          assert(spacing.every(day=>day.iconGap>=7 && day.iconGap<=9),
+            'Grid icons have a visible gap before the day at every preview scale: '+JSON.stringify(spacing));
           assert(spacing.every(day=>day.rowGap===null || day.rowGap>=13),
             'Grid rows have more separation than icon/data lines: '+JSON.stringify(spacing));
         }

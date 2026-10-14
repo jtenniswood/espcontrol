@@ -164,7 +164,8 @@ void check_card_fit(const WeatherDailyCard *card){
     else {
       assert(column.icon->y+column.icon->height<=column.day->y);
       if(card->layout.rows>1){
-        assert(column.day->y==column.icon->y+column.icon->height+2);
+        const int gap=column.day->y-column.icon->y-column.icon->height;
+        assert(gap>=2 && gap<=std::max(6,lv_font_get_line_height(card->font)/3));
         const auto index=static_cast<size_t>(&column-card->columns.data());
         if(index>=card->layout.columns){
           const auto &previous=card->columns[index-card->layout.columns];
@@ -367,6 +368,8 @@ int main(){
     assert(wide_card->layout.columns==static_cast<size_t>(span[2]) && wide_card->layout.rows==static_cast<size_t>(span[3]) && wide_card->layout.list==static_cast<bool>(span[4]));
     const auto expected=std::min(8,span[2]*span[3]);
     assert(wide_card->columns.size()==static_cast<size_t>(expected));check_card_fit(wide_card);
+    if(!wide_card->layout.list && wide_card->layout.rows>1)
+      assert(wide_card->columns.front().day->y-wide_card->columns.front().icon->y-icons.line_height==8);
     const int widgets=lv_obj_t::live;
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     assert(lv_obj_t::live==widgets);

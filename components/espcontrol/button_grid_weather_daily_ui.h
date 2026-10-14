@@ -134,9 +134,13 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     minimum_height, icon_height + list_gap + list_text_width,
     std::max(icon_height, font_height + temperature_height + 2), day_gap, row_gap, available_days);
   const bool grid = !layout.list && layout.rows > 1;
+  const int icon_gap = grid ? std::min(std::max(6, font_height / 3),
+    (content_height - row_gap * static_cast<int>(layout.rows - 1)) / static_cast<int>(layout.rows)
+      - icon_height - font_height - temperature_height - 2) : 2;
+  const int group_height = icon_height + icon_gap + font_height + temperature_height + 2;
   // Group each icon with its text; use spare height to separate whole rows.
   const int grid_row_gap = grid ? std::min(std::max(row_gap, font_height),
-    (content_height - minimum_height * static_cast<int>(layout.rows)) / static_cast<int>(layout.rows - 1)) : row_gap;
+    (content_height - group_height * static_cast<int>(layout.rows)) / static_cast<int>(layout.rows - 1)) : row_gap;
   // Keep widgets stable on refresh; rebuild only when the geometry or layout changes.
   if (card->width != width || card->height != height || card->columns.size() != layout.count ||
       card->layout.columns != layout.columns || card->layout.rows != layout.rows || card->layout.list != layout.list) {
@@ -172,11 +176,11 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     const int x = column * (base_width + day_gap) + std::min(column, remainder_width);
     const int y = row * (base_height + grid_row_gap) + std::min(row, remainder_height);
     const int icon_y = y + (layout.list ? (cell_height - icon_height) / 2
-      : grid ? (cell_height - minimum_height) / 2 : 0);
+      : grid ? (cell_height - group_height) / 2 : 0);
     const int text_x = x + (layout.list ? icon_height + list_gap : 0);
     const int text_width = cell_width - (text_x - x);
     const int text_top = layout.list ? y + (cell_height - font_height - temperature_height - 2) / 2
-      : grid ? icon_y + icon_height + 2
+      : grid ? icon_y + icon_height + icon_gap
       : y + std::max(icon_height + 2, cell_height - temperature_height - font_height - 2);
     lv_obj_set_width(col.icon, layout.list ? icon_height : cell_width);
     lv_obj_set_pos(col.icon, x, icon_y);
