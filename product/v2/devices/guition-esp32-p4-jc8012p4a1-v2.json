@@ -14,6 +14,13 @@
     },
     "web": {
       "continuousCorners": true
+    },
+    "firmware": {
+      "package": {
+        "substitutions": {
+          "button_radius": "11px"
+        }
+      }
     }
   },
   "overrides": {

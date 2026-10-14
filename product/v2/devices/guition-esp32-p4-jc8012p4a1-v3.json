@@ -20,6 +20,13 @@
         "slots": 18
       },
       "continuousCorners": true
+    },
+    "firmware": {
+      "package": {
+        "substitutions": {
+          "button_radius": "11px"
+        }
+      }
     }
   },
   "overrides": {

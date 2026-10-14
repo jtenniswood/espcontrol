@@ -21,6 +21,7 @@ and 35 px on P4-86.
 On S3, **Small**, **Medium** and **Large** are 14 px, 20 px and 26 px.
 On the other panels, **Small** uses half the Large size and **Medium** uses
 three quarters, rounded to whole pixels.
+The same curve applies to the network-status Settings cards, including Back and Screen Lock. Ordinary modal controls and colour swatches keep their existing button radius.
 Images, artwork and slider fills follow the same outline. The web preview
 uses the same curve, including in browsers without native continuous-corner
 support, and scales the card gaps to match the physical display.

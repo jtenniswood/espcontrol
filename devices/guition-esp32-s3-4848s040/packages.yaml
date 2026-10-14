@@ -45,6 +45,7 @@ substitutions:
   screen_schedule_clock_default_brightness: "10"
   card_curve_small_radius: 14px
   card_curve_medium_radius: 20px
+  button_radius: 8px
   cover_art_size: "480"
   cover_art_decode_size: "320"
   cover_art_x: "0"

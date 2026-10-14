@@ -172,7 +172,8 @@
           "screen_schedule_clock_min_brightness": "\"1\"",
           "screen_schedule_clock_default_brightness": "\"10\"",
           "card_curve_small_radius": "14px",
-          "card_curve_medium_radius": "20px"
+          "card_curve_medium_radius": "20px",
+          "button_radius": "8px"
         },
         "apiNavigateAction": true
       }

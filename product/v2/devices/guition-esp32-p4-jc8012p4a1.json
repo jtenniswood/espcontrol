@@ -16,6 +16,9 @@
       "package": {
         "extraPackages": {
           "battery": "!include device/battery.yaml"
+        },
+        "substitutions": {
+          "button_radius": "11px"
         }
       }
     },

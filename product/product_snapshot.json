@@ -202,7 +202,8 @@
             "screen_saver_clock_min_brightness": "\"1\"",
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
-            "screen_schedule_clock_default_brightness": "\"10\""
+            "screen_schedule_clock_default_brightness": "\"10\"",
+            "button_radius": "10px"
           },
           "deviceFontPackageKey": "fonts_device",
           "networkCoprocessor": true,
@@ -404,7 +405,8 @@
             "screen_saver_clock_min_brightness": "\"1\"",
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
-            "screen_schedule_clock_default_brightness": "\"10\""
+            "screen_schedule_clock_default_brightness": "\"10\"",
+            "button_radius": "10px"
           },
           "deviceFontPackageKey": "fonts_device",
           "networkCoprocessor": true,
@@ -606,7 +608,8 @@
             "screen_saver_clock_min_brightness": "\"1\"",
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
-            "screen_schedule_clock_default_brightness": "\"10\""
+            "screen_schedule_clock_default_brightness": "\"10\"",
+            "button_radius": "10px"
           },
           "deviceFontPackageKey": "fonts_lg",
           "esp32C6FirmwareUpdate": true,
@@ -802,7 +805,8 @@
             "screen_saver_clock_min_brightness": "\"1\"",
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
-            "screen_schedule_clock_default_brightness": "\"10\""
+            "screen_schedule_clock_default_brightness": "\"10\"",
+            "button_radius": "10px"
           },
           "deviceFontPackageKey": "fonts_lg",
           "esp32C6FirmwareUpdate": true,
@@ -995,7 +999,8 @@
             "screen_saver_clock_min_brightness": "\"1\"",
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
-            "screen_schedule_clock_default_brightness": "\"10\""
+            "screen_schedule_clock_default_brightness": "\"10\"",
+            "button_radius": "11px"
           },
           "deviceFontPackageKey": "fonts_device",
           "esp32C6FirmwareUpdate": true,
@@ -1191,7 +1196,8 @@
             "screen_saver_clock_min_brightness": "\"1\"",
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
-            "screen_schedule_clock_default_brightness": "\"10\""
+            "screen_schedule_clock_default_brightness": "\"10\"",
+            "button_radius": "11px"
           },
           "deviceFontPackageKey": "fonts_device",
           "esp32C6FirmwareUpdate": true,
@@ -1386,7 +1392,8 @@
             "screen_saver_clock_min_brightness": "\"1\"",
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
-            "screen_schedule_clock_default_brightness": "\"10\""
+            "screen_schedule_clock_default_brightness": "\"10\"",
+            "button_radius": "11px"
           },
           "deviceFontPackageKey": "fonts_device",
           "esp32C6FirmwareUpdate": true,
@@ -1578,7 +1585,8 @@
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
             "screen_schedule_clock_default_brightness": "\"10\"",
-            "speaker_amplifier_pin": "\"GPIO53\""
+            "speaker_amplifier_pin": "\"GPIO53\"",
+            "button_radius": "12px"
           },
           "deviceFontPackageKey": "fonts_device",
           "touchscreenPackage": true,
@@ -1792,7 +1800,8 @@
             "screen_schedule_clock_min_brightness": "\"1\"",
             "screen_schedule_clock_default_brightness": "\"10\"",
             "card_curve_small_radius": "14px",
-            "card_curve_medium_radius": "20px"
+            "card_curve_medium_radius": "20px",
+            "button_radius": "8px"
           },
           "deviceFontPackageKey": "fonts_device",
           "apiNavigateAction": true,
