@@ -8,7 +8,7 @@ description:
 
 Cards use continuous corners, with the same proportions on the panel and
 setup-page preview. Choose **Card curve → Small, Medium or Large** in
-**Settings → Appearance**. The choice applies to home and subpage cards,
+**Settings → Appearance**. The choice applies to home and subpage cards, including Back,
 is saved on the display and survives restarts.
 
 All supported displays use continuous corners that ease gradually into the

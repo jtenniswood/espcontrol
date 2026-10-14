@@ -6668,6 +6668,8 @@ async function assertCardCurveSettings(browser, testCase) {
     await installFakeEventSource(page);
     const seed = async () => page.evaluate(events => window.__seedEspState(events), [
       ...seededEvents(),
+      { id: "text-button_3_config", state: ";Rooms;Home;Auto;;;subpage" },
+      { id: "text-subpage_3_config", state: "~B,1|,light.kitchen,Kitchen,Lightbulb,Lightbulb" },
       { id: "select-screen__rotation", state: "0", value: "0", option: ["0", "90", "180", "270"] },
       { id: "select-screen__card_curve", state: savedPreset, value: savedPreset, option: ["Small", "Medium", "Large"] },
     ]);
@@ -6695,15 +6697,23 @@ async function assertCardCurveSettings(browser, testCase) {
       const radius = await page.evaluate(logicalWidth => parseFloat(document.documentElement.style.getPropertyValue("--btn-r")) * logicalWidth / 100, width);
       assert(Math.abs(radius - expected) < .001, `${testCase.slug}: ${preset} must match the firmware radius ${expected}`);
       await page.getByRole("tab", { name: "Screen", exact: true }).click();
-      await page.waitForFunction(() => getComputedStyle(document.querySelector(".sp-btn")).clipPath.startsWith("path("));
-      const shape = await page.locator(".sp-btn").first().evaluate(card => {
-        const clip = getComputedStyle(card).clipPath;
-        const path = new Path2D(clip.slice(6, -2));
-        const radius = parseFloat(document.documentElement.style.getPropertyValue("--btn-r")) * document.querySelector(".sp-screen").clientWidth / 100;
-        const ctx = document.createElement("canvas").getContext("2d");
-        return !ctx.isPointInPath(path, radius, radius * .02) && ctx.isPointInPath(path, radius, radius * .1);
-      });
-      assert(shape, `${preset}: the preview must retain the gradual curve`);
+      const checkCards = async surface => {
+        await page.waitForFunction(() => [...document.querySelectorAll(".sp-main .sp-btn")].every(card => getComputedStyle(card).clipPath.startsWith("path(")));
+        const shapes = await page.locator(".sp-main .sp-btn").evaluateAll(cards => cards.map(card => {
+          const clip = getComputedStyle(card).clipPath;
+          const path = new Path2D(clip.slice(6, -2));
+          const radius = parseFloat(document.documentElement.style.getPropertyValue("--btn-r")) * document.querySelector(".sp-screen").clientWidth / 100;
+          const ctx = document.createElement("canvas").getContext("2d");
+          return !ctx.isPointInPath(path, radius, radius * .02) && ctx.isPointInPath(path, radius, radius * .1);
+        }));
+        assert(shapes.length >= 2 && shapes.every(Boolean), `${preset}: every ${surface} card must retain the gradual curve`);
+      };
+      await checkCards("home");
+      await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+      await page.waitForSelector(".sp-back-btn");
+      await checkCards("subpage, including Back");
+      await page.locator(".sp-back-btn .sp-back-hit").click();
+      await page.waitForSelector(".sp-back-btn", { state: "detached" });
       await page.getByRole("tab", { name: "Settings", exact: true }).click();
     }
     const posted = page.waitForResponse(response => response.url().includes("/select/screen__card_curve/set?option=Medium"));

@@ -1410,7 +1410,8 @@ inline AlarmCardCtx *create_alarm_card_context(
   lv_coord_t radius = lv_obj_get_style_radius(slot.btn, LV_PART_MAIN);
   lv_coord_t pad = lv_obj_get_style_pad_top(slot.btn, LV_PART_MAIN);
 
-  lv_obj_t *back_btn = create_grid_card_button(ctx->page, radius, pad, label_font, text_color);
+  const bool continuous_corners = card_uses_continuous_corners(slot.btn);
+  lv_obj_t *back_btn = create_grid_card_button(ctx->page, radius, pad, label_font, text_color, continuous_corners);
   apply_button_colors(back_btn, false, DEFAULT_ACCENT_COLOR, true, off_color);
   lv_obj_set_grid_cell(back_btn, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
   BtnSlot back_slot = create_dynamic_card_slot(back_btn, icon_font, value_font, label_font, text_color);
@@ -1429,7 +1430,7 @@ inline AlarmCardCtx *create_alarm_card_context(
   for (int i = 0; i < mode_count && page_pos < NS; i++) {
     std::string mode = modes[i];
 
-    lv_obj_t *action_btn = create_grid_card_button(ctx->page, radius, pad, label_font, text_color);
+    lv_obj_t *action_btn = create_grid_card_button(ctx->page, radius, pad, label_font, text_color, continuous_corners);
     apply_button_colors(action_btn, false, DEFAULT_ACCENT_COLOR, true, off_color);
     int col = page_pos % COLS;
     int row = page_pos / COLS;

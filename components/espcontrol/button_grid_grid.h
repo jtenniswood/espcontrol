@@ -586,11 +586,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   espcontrol::cards::alarm_driver_cleanup(s, p, context);
   espcontrol::cards::media_driver_cleanup(s, p, context);
   reset_card_slot_dynamic_children(s);
-  if (cfg.card_corner_radius >= 0) {
-    lv_obj_set_style_radius(s.btn, cfg.card_corner_radius, LV_PART_MAIN);
-    lv_obj_set_style_radius(s.btn, cfg.card_corner_radius,
-      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
-  }
+  apply_grid_card_corners(s.btn, cfg.card_corner_radius, cfg.continuous_card_corners);
   theme_set_content_background(s.btn, palette.custom_background);
   apply_button_colors(s.btn, palette.has_on, palette.on_val,
     palette.has_off, palette.off_val);
@@ -1091,9 +1087,6 @@ inline void grid_phase1(
   // Clear image references before visual setup removes their old LVGL widgets.
   espcontrol::cards::image_driver_reset_pool(cfg);
   int NS = bounded_grid_slots(cfg.num_slots);
-  if (cfg.continuous_card_corners) {
-    for (int i = 0; i < NS; ++i) apply_continuous_card_corners(slots[i].btn);
-  }
   bool neutral_buttons[MAX_GRID_SLOTS]{};
   bool sensor_surfaces[MAX_GRID_SLOTS]{};
   bool secondary_surfaces[MAX_GRID_SLOTS]{};
@@ -2066,7 +2059,8 @@ inline void grid_phase2(
       break;
     }
   }
-  lv_coord_t sp_radius = lv_obj_get_style_radius(ref_btn, LV_PART_MAIN);
+  lv_coord_t sp_radius = cfg.card_corner_radius >= 0
+    ? cfg.card_corner_radius : lv_obj_get_style_radius(ref_btn, LV_PART_MAIN);
   lv_coord_t sp_pad = lv_obj_get_style_pad_top(ref_btn, LV_PART_MAIN);
   const lv_font_t *sp_btn_fnt = lv_obj_get_style_text_font(ref_btn, LV_PART_MAIN);
   lv_color_t sp_txt_color = lv_obj_get_style_text_color(ref_btn, LV_PART_MAIN);
@@ -2126,8 +2120,7 @@ inline void grid_phase2(
     clock_bar_clear_responsive_grid_cards(sub_scr);
 
     lv_obj_t *back_btn = create_grid_card_button(
-      sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color);
-    if (cfg.continuous_card_corners) apply_continuous_card_corners(back_btn);
+      sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color, cfg.continuous_card_corners);
     apply_button_colors(back_btn, false, DEFAULT_ACCENT_COLOR, true, off_val);
     set_grid_card_cell(
       back_btn, sub_scr,
@@ -2194,8 +2187,7 @@ inline void grid_phase2(
       int rs = sp_ord.row_span[bn - 1] > 0 ? sp_ord.row_span[bn - 1] : 1;
 
       lv_obj_t *sb_btn = create_grid_card_button(
-        sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color);
-      if (cfg.continuous_card_corners) apply_continuous_card_corners(sb_btn);
+        sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color, cfg.continuous_card_corners);
       int cs = sp_ord.col_span[bn - 1] > 0 ? sp_ord.col_span[bn - 1] : 1;
       set_grid_card_cell(sb_btn, sub_scr, col, row, cs, rs, COLS, ROWS);
       BtnSlot sub_slot = create_dynamic_card_slot(
