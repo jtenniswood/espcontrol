@@ -65,11 +65,13 @@ lvgl:
           widgets:
             - label:
                 id: clock_label
+                styles: clock_bar_shadow
                 text_font: font_clock_display
                 text_color: 0xFFFFFF
                 text: "00:00"
             - label:
                 id: clock_date_label
+                styles: clock_bar_shadow
                 text_font: ${clock_date_font}
                 text_color: 0xFFFFFF
                 text_align: CENTER
