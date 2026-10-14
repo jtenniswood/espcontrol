@@ -57,7 +57,7 @@ Backups include the theme mode, automatic method, times and offsets. Older backu
 
 The eyedropper swatch has a dashed border while empty and a solid border once a custom colour is chosen. Choosing a preset keeps the custom colour visible in the swatch while selecting the preset. Click the eyedropper again to restore that custom colour and open the picker. This retained colour is kept while editing the current panel; the selected colour is what is saved.
 
-Text and icons automatically choose white, dark grey or black to keep at least 4.5:1 contrast against the background, with the same rules on the panel and web preview. Custom cards use a brighter tint when active for darker colours, or a darker shade for pale colours and white, making on and off easier to distinguish.
+Text and icons keep white on dark and mid-tone backgrounds, including the orange, green, teal and blue presets. Pale backgrounds use dark grey content. The panel and web preview use the same rule. Custom cards use a brighter tint when active for darker colours, or a darker shade for pale colours and white, making on and off easier to distinguish.
 
 Slider cards use a contrasting fill that keeps labels readable as values change.
 
