@@ -9,7 +9,7 @@ const { loadTypeScriptModule } = require("./load_typescript_module");
 (async () => {
   const root = path.resolve(__dirname, "..");
   const { createWebStyles } = loadTypeScriptModule(path.join(root, "src/webserver/application/styles.ts"));
-  const bundle = esbuild.buildSync({ entryPoints: [path.join(root, "src/webserver/application/preview_resize.ts")], bundle: true, format: "iife", globalName: "resize", write: false });
+  const bundle = esbuild.buildSync({ stdin: { contents: 'export * from "./src/webserver/application/preview_resize"; export { syncPreviewCorners } from "./src/webserver/application/preview_corners";', resolveDir: root }, bundle: true, format: "iife", globalName: "resize", write: false });
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
@@ -19,6 +19,7 @@ const { loadTypeScriptModule } = require("./load_typescript_module");
       window.commits = [];
       window.locked = false;
       window.clicks = 0;
+      resize.syncPreviewCorners(document.querySelector("#grid"), 5, 5, true);
       resize.installPreviewResize({ document, isConfigLocked: () => window.locked,
         targets: () => [1, 2, 3].map(size => resize.resizeTargetDimensions(size, 100, 100, 10)),
         commit: (slot, size) => window.commits.push([slot, size]) });
@@ -40,6 +41,7 @@ const { loadTypeScriptModule } = require("./load_typescript_module");
       await page.locator(".sp-btn").hover();
       assert.equal(await opacity(), "1");
       const box = await page.locator(".sp-resize-handle").boundingBox();
+      assert.equal(await page.evaluate(({x, y}) => !!document.elementFromPoint(x, y)?.closest(".sp-resize-handle"), {x: box.x + 16, y: box.y + 16}), true, "the rounded clip must leave the resize handle clickable");
       await page.mouse.move(box.x + 16, box.y + 16);
       await page.mouse.down();
       await page.mouse.move(box.x + 16 + dx, box.y + 16 + dy);
