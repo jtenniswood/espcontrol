@@ -262,7 +262,7 @@ inline void navigation_refresh_subpage_label() {
 inline bool navigation_restore_subpage_slot(int slot) {
   NavigationSubpageEntry *entry = navigation_find_slot(slot);
   if (entry == nullptr || entry->screen == nullptr) return false;
-  lv_scr_load_anim(entry->screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+  button_grid_load_screen(entry->screen);
   refresh_visible_image_cards();
   return true;
 }

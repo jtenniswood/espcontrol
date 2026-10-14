@@ -329,7 +329,7 @@ export function registerMediaCardTypes(
                             b.label = mediaActionLabel(b.sensor);
                             helpers.saveField("label", b.label);
                         }
-                        var normalizedOptions: any = normalizeMediaOptions(b.options, b.sensor);
+                        var normalizedOptions: any = normalizeMediaOptions(b.options, b.sensor, b);
                         if (b.options !== normalizedOptions) {
                             b.options = normalizedOptions;
                             helpers.saveField("options", b.options);
@@ -355,7 +355,7 @@ export function registerMediaCardTypes(
                 ? mediaNowPlayingControls(b)
                 : ((b.sensor === "play_pause" || b.sensor === "position") && b.precision === "state" ? "state" : "");
             b.icon_on = "Auto";
-            var normalizedOptions: any = normalizeMediaOptions(b.options, b.sensor);
+            var normalizedOptions: any = normalizeMediaOptions(b.options, b.sensor, b);
             if (b.options !== normalizedOptions) {
                 b.options = normalizedOptions;
                 helpers.saveField("options", b.options);
@@ -654,7 +654,7 @@ export function registerMediaCardTypes(
                 modalTabs.renderModalTabSettings(modalSettingsDisclosure.section, b, helpers, {
                     definitions: mediaControlTabDefinitions,
                     tabs: mediaControlTabs,
-                    normalizeOptions: function (options: any) { return normalizeMediaOptions(options, b.sensor); },
+                    normalizeOptions: function (options: any) { return normalizeMediaOptions(options, b.sensor, b); },
                     setTabs: setMediaControlTabs,
                     idPrefix: "media-tab-",
                     hideHeading: true,
@@ -998,7 +998,7 @@ export function registerMediaCardTypes(
             config.unit = "";
             config.precision = "";
             config.icon_on = "Auto";
-            config.options = normalizeMediaOptions(config.options, config.sensor);
+            config.options = normalizeMediaOptions(config.options, config.sensor, config);
         },
     });
 }

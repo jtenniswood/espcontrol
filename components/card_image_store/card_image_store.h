@@ -173,7 +173,7 @@ class CardImageStore {
   static_assert(sizeof(CardImageCacheHeader) == 128, "Card image cache header must remain 128 bytes");
 
   const esp_partition_t *partition_();
-  size_t data_capacity_();
+  size_t data_region_end_();
   size_t index_slot_offset_(size_t slot);
   bool load_index_();
   bool read_index_slot_(size_t slot, CardImageIndexHeader &header,

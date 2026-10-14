@@ -652,7 +652,7 @@ export function createConfigCodecFeature(
             options = normalizeClimateOptions(options, true);
         }
         else if (type === "media") {
-            options = normalizeMediaOptions(options, sensor);
+            options = normalizeMediaOptions(options, sensor, b);
         }
         else if (type === "weather") {
             options = cardLargeNumbersSupported({ type: type, precision: precision }) ? copyLargeNumbersOption("", options) : "";

@@ -1,5 +1,6 @@
 #include "card_image_store.h"
 #include "card_asset_service.h"
+#include "panel_flash_layout.h"
 #include "panel_config_asset_references.h"
 #include <map>
 
@@ -633,17 +634,17 @@ void test_overlapping_uploads_reserve_distinct_flash_spans() {
 }
 
 size_t newest_index_offset() {
-  return PARTITION_SIZE - CARD_IMAGE_FLASH_SECTOR_SIZE;
+  return espcontrol::panel_config_partition_bytes(PARTITION_SIZE) - CARD_IMAGE_FLASH_SECTOR_SIZE;
 }
 
 size_t index_slot_offset(size_t slot) {
-  return PARTITION_SIZE -
+  return espcontrol::panel_config_partition_bytes(PARTITION_SIZE) -
          (CARD_IMAGE_INDEX_SECTORS - slot) * CARD_IMAGE_FLASH_SECTOR_SIZE;
 }
 
 uint32_t index_generation(size_t slot) {
   StoredIndexHeader header{};
-  size_t offset = PARTITION_SIZE -
+  size_t offset = espcontrol::panel_config_partition_bytes(PARTITION_SIZE) -
                   (CARD_IMAGE_INDEX_SECTORS - slot) * CARD_IMAGE_FLASH_SECTOR_SIZE;
   std::memcpy(&header, flash.bytes.data() + offset, sizeof(header));
   return header.generation;
@@ -681,7 +682,7 @@ void write_legacy_index(size_t slot, uint32_t generation,
 }
 
 size_t data_capacity() {
-  return PARTITION_SIZE - CARD_IMAGE_INDEX_SECTORS * CARD_IMAGE_FLASH_SECTOR_SIZE;
+  return espcontrol::panel_config_partition_bytes(PARTITION_SIZE) - CARD_IMAGE_INDEX_SECTORS * CARD_IMAGE_FLASH_SECTOR_SIZE;
 }
 
 size_t find_magic(uint32_t magic) {
@@ -897,7 +898,7 @@ void test_failed_record_erase_stops_upload() {
   flash.reset();
   TestCardImageStore store;
   expect(store.list().empty(), "fresh store should initialise its journal");
-  flash.fail_erase_at = 0;
+  flash.fail_erase_at = espcontrol::PANEL_CONFIG_STORAGE_BYTES;
   CardImageUpload transaction;
   expect(store.begin_upload(1024, transaction) == ESP_FAIL,
          "failed data-sector erase should stop the upload before writing");
@@ -944,7 +945,7 @@ void test_recovered_index_stays_ahead_of_surviving_slot() {
     id = upload(store).id;
   }
   expect(index_generation(1) == 2, "latest index fixture should use generation 2");
-  flash.corrupt(PARTITION_SIZE - CARD_IMAGE_INDEX_SECTORS * CARD_IMAGE_FLASH_SECTOR_SIZE);
+  flash.corrupt(index_slot_offset(0));
 
   {
     TestCardImageStore recovered;
@@ -984,8 +985,9 @@ void test_cache_is_confined_to_disposable_region() {
                                   pixels.data(), pixels.size()) == ESP_OK,
          "decoded cache should be stored");
   size_t offset = find_magic(CACHE_MAGIC);
-  size_t cache_start = esphome::card_image_store::layout::cache_region_start(
-      data_capacity(), CARD_IMAGE_FLASH_SECTOR_SIZE);
+  size_t cache_start = espcontrol::PANEL_CONFIG_STORAGE_BYTES +
+      esphome::card_image_store::layout::cache_region_start(
+          data_capacity() - espcontrol::PANEL_CONFIG_STORAGE_BYTES, CARD_IMAGE_FLASH_SECTOR_SIZE);
   expect(offset != static_cast<size_t>(-1), "cache record should exist in flash");
   expect(offset >= cache_start, "cache record must stay inside the disposable region");
 }
@@ -1031,6 +1033,91 @@ void test_upload_evicts_cache_when_index_is_full() {
          "full index should retain every source image after cache eviction");
   expect(find_magic(CACHE_MAGIC) == static_cast<size_t>(-1),
          "index-space eviction should erase the disposable cache record");
+}
+
+void test_images_preserve_shared_configuration_and_identity() {
+  flash.reset();
+  const size_t start = espcontrol::PANEL_CONFIG_STORAGE_BYTES;
+  const size_t identity = espcontrol::panel_config_partition_bytes(PARTITION_SIZE);
+  std::fill(flash.bytes.begin(), flash.bytes.begin() + start, 0xA5);
+  std::fill(flash.bytes.begin() + identity, flash.bytes.end(), 0x5A);
+  TestCardImageStore store;
+  expect(store.capacity() == identity - start - 2 * CARD_IMAGE_FLASH_SECTOR_SIZE,
+         "reported capacity must exclude native configuration, identity and image journals");
+  const auto first = upload(store);
+  const auto second = upload(store);
+  expect(first.offset >= start && second.offset >= start,
+         "both uploaded records must follow the native configuration slots");
+  std::vector<uint8_t> pixels(16 * 16 * 2, 0x7B);
+  expect(store.write_rgb565_cache(first.id, first.crc32, 16, 16,
+                                  pixels.data(), pixels.size()) == ESP_OK,
+         "cache should use the shared image region");
+  CardImageInfo renamed;
+  expect(store.rename(second.id, "Second", renamed) == ESP_OK, "second image should rename");
+  expect(store.erase(first.id) == ESP_OK, "image deletion should work in the bounded region");
+  expect(std::all_of(flash.bytes.begin(), flash.bytes.begin() + start,
+                     [](uint8_t byte) { return byte == 0xA5; }),
+         "image uploads, caches, journals and deletion must preserve configuration bytes");
+  expect(std::all_of(flash.bytes.begin() + identity, flash.bytes.end(),
+                     [](uint8_t byte) { return byte == 0x5A; }),
+         "image initialization and mutations must preserve panel identity bytes");
+  // Native configuration writes must not remove the second image on reboot.
+  std::fill(flash.bytes.begin(), flash.bytes.begin() + start, 0x33);
+  TestCardImageStore rebooted;
+  expect(rebooted.find(second.id, renamed), "settings saves must not erase uploaded images");
+  auto reader = rebooted.open(second.id);
+  std::vector<uint8_t> actual(second.size);
+  expect(reader && reader->read(actual.data(), actual.size()) == static_cast<int>(actual.size()) &&
+         actual == jpeg_bytes(second.size), "image bytes must survive configuration writes");
+}
+
+void test_recovery_ignores_records_in_reserved_regions() {
+  flash.reset();
+  TestCardImageStore store;
+  const auto image = upload(store);
+  const auto record = std::vector<uint8_t>(flash.bytes.begin() + image.offset,
+      flash.bytes.begin() + image.offset + CardImageStore::record_size(image.size));
+  std::copy(record.begin(), record.end(), flash.bytes.begin());
+  const size_t identity = espcontrol::panel_config_partition_bytes(PARTITION_SIZE);
+  std::copy(record.begin(), record.end(), flash.bytes.begin() + identity);
+  flash.corrupt(index_slot_offset(0));
+  flash.corrupt(index_slot_offset(1));
+  TestCardImageStore recovered;
+  expect(recovered.list().size() == 1,
+         "journal recovery must ignore image-looking bytes in settings and identity");
+  expect(std::equal(record.begin(), record.end(), flash.bytes.begin()) &&
+         std::equal(record.begin(), record.end(), flash.bytes.begin() + identity),
+         "recovery must not write either reserved region");
+}
+
+void test_deleted_record_does_not_return_after_failed_erase() {
+  flash.reset();
+  std::string id;
+  {
+    TestCardImageStore store;
+    const auto image = upload(store);
+    id = image.id;
+    flash.fail_erase_at = image.offset;
+    expect(store.erase(id) == ESP_OK, "durable invalidation permits orphaned payload cleanup later");
+    flash.fail_erase_at.reset();
+  }
+  flash.corrupt(index_slot_offset(0));
+  flash.corrupt(index_slot_offset(1));
+  TestCardImageStore recovered;
+  expect(recovered.list().empty(), "a deleted image must not return when journals are damaged");
+}
+
+void test_failed_delete_invalidation_retains_record() {
+  flash.reset();
+  TestCardImageStore store;
+  const auto image = upload(store);
+  flash.fail_write_at = image.offset;
+  expect(store.erase(image.id) == ESP_FAIL, "failed header invalidation must not acknowledge deletion");
+  flash.fail_write_at.reset();
+  CardImageInfo retained;
+  expect(store.find(image.id, retained), "failed invalidation must retain the image for retry");
+  TestCardImageStore rebooted;
+  expect(rebooted.find(image.id, retained), "failed invalidation must retain the durable image entry");
 }
 
 }  // namespace
@@ -1089,6 +1176,10 @@ uint32_t esp_rom_crc32_le(uint32_t seed, const uint8_t *data, uint32_t size) {
 }
 
 int main() {
+  test_images_preserve_shared_configuration_and_identity();
+  test_recovery_ignores_records_in_reserved_regions();
+  test_deleted_record_does_not_return_after_failed_erase();
+  test_failed_delete_invalidation_retains_record();
   test_persistent_recovery_uses_native_document_after_startup();
   test_persistent_commit_interruption_boundaries();
   test_persistent_recovery_finishes_committed_cleanup();

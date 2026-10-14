@@ -348,7 +348,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
         data = addNativeConfigToBackup(data);
         if (identity) data.identity = identity;
         var archiveName: any = backupExportController.fileName(controllers.layout.config.screenSize, undefined, identity).replace(/\.json$/i, ".zip");
-        await exportBackupArchive({
+        const exported = await exportBackupArchive({
             createImageEntries: () => cardImageBackupAssetProvider.createArchiveEntries(),
             download: (entries) => backupFileController.downloadArchive(data, entries, archiveName),
             showBanner: controllers.shell.showBanner,
@@ -359,8 +359,9 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
             },
         }).catch((error: unknown) => {
             controllers.shell.showBanner(error instanceof Error ? error.message : "Could not export backup.", "error");
+            return false;
         });
-        if (identityUnavailable) controllers.shell.showBanner(
+        if (exported && identityUnavailable) controllers.shell.showBanner(
             "Backup exported without the panel name because naming is unavailable.", "warning");
     }
     function importConfig(this: any) {

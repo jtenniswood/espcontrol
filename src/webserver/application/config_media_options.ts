@@ -1,5 +1,6 @@
 import { normalizeMediaControlTabs } from "../model/media_control_tabs";
 import type { DeviceConfig } from "../state/types";
+import { setCardBackgroundAssetId } from "../model/card";
 import {
     configOptionEnabled,
     configOptionValue,
@@ -176,11 +177,12 @@ export function createConfigMediaOptionsFeature(
     }
     function setMediaControlTabs(b: any, tabs: string[]) {
         b.options = setConfigOptionValue(b.options, MEDIA_CONTROL_TABS_OPTION, tabs.join("|"));
-        b.options = normalizeMediaOptions(b.options, b.sensor);
+        b.options = normalizeMediaOptions(b.options, b.sensor, b);
         return b.options;
     }
-    function normalizeMediaOptions(this: any, options?: any, mode?: any) {
+    function normalizeMediaOptions(this: any, options?: any, mode?: any, card?: any) {
         mode = mediaEditorMode(mode);
+        if (mode === "cover_art" && card) setCardBackgroundAssetId(card, "");
         function withBackground(this: any, out?: any) {
             return copyCardBackgroundOptions(out, options, { type: "media" });
         }
@@ -267,7 +269,7 @@ export function createConfigMediaOptionsFeature(
         if (!b)
             return "";
         b.options = setConfigOption(b.options, MEDIA_COVER_ART_DETAILS_OPTION, !!enabled);
-        b.options = normalizeMediaOptions(b.options, b.sensor);
+        b.options = normalizeMediaOptions(b.options, b.sensor, b);
         return b.options;
     }
     function mediaCoverArtSecondaryEntity(this: any, b?: any) {
@@ -278,7 +280,7 @@ export function createConfigMediaOptionsFeature(
             return "";
         b.options = setConfigOptionValue(
             b.options, MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION, String(entity || "").trim());
-        b.options = normalizeMediaOptions(b.options, b.sensor);
+        b.options = normalizeMediaOptions(b.options, b.sensor, b);
         return b.options;
     }
     function normalizeMediaLabelDisplayMode(this: any, value?: any) {
@@ -307,7 +309,7 @@ export function createConfigMediaOptionsFeature(
             if (tabs.indexOf("power") < 0) tabs.push("power");
             b.options = setConfigOptionValue(b.options, MEDIA_CONTROL_TABS_OPTION, tabs.join("|"));
         }
-        b.options = normalizeMediaOptions(b.options, b.sensor);
+        b.options = normalizeMediaOptions(b.options, b.sensor, b);
         return b.options;
     }
     function mediaVolumeMax(this: any, b?: any) {
@@ -323,7 +325,7 @@ export function createConfigMediaOptionsFeature(
         if (!b)
             return "";
         b.options = setConfigOptionValue(b.options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION, normalizeMediaSpeakerGroupEntity(value));
-        b.options = normalizeMediaOptions(b.options, b.sensor);
+        b.options = normalizeMediaOptions(b.options, b.sensor, b);
         return b.options;
     }
     function setMediaVolumeMax(this: any, b?: any, value?: any) {
@@ -331,7 +333,7 @@ export function createConfigMediaOptionsFeature(
             return "";
         var normalized: any = normalizeMediaVolumeMax(value);
         b.options = setConfigOptionValue(b.options, MEDIA_VOLUME_MAX_OPTION, normalized === "100" ? "" : normalized);
-        b.options = normalizeMediaOptions(b.options, b.sensor);
+        b.options = normalizeMediaOptions(b.options, b.sensor, b);
         return b.options;
     }
     function mediaLabelDisplayMode(this: any, b?: any) {
@@ -342,7 +344,7 @@ export function createConfigMediaOptionsFeature(
             return "";
         var normalized: any = normalizeMediaLabelDisplayMode(mode);
         b.options = setConfigOptionValue(b.options, MEDIA_LABEL_DISPLAY_OPTION, normalized === "status" ? "" : normalized);
-        b.options = normalizeMediaOptions(b.options, b.sensor);
+        b.options = normalizeMediaOptions(b.options, b.sensor, b);
         return b.options;
     }
     function mediaNumberDisplayMode(this: any, b?: any) {
@@ -353,7 +355,7 @@ export function createConfigMediaOptionsFeature(
             return "";
         var normalized: any = normalizeMediaNumberDisplayMode(mode);
         b.options = setConfigOptionValue(b.options, MEDIA_NUMBER_DISPLAY_OPTION, normalized === "icon" ? "" : normalized);
-        b.options = normalizeMediaOptions(b.options, b.sensor);
+        b.options = normalizeMediaOptions(b.options, b.sensor, b);
         return b.options;
     }
     function mediaPlaylistContentId(this: any, b?: any) {
@@ -367,7 +369,7 @@ export function createConfigMediaOptionsFeature(
         if (!b)
             return "";
         b.options = setConfigOptionValue(b.options, MEDIA_PLAYLIST_CONTENT_ID_OPTION, value || "");
-        b.options = normalizeMediaOptions(b.options, b.sensor);
+        b.options = normalizeMediaOptions(b.options, b.sensor, b);
         return b.options;
     }
     function setMediaPlaylistContentType(this: any, b?: any, value?: any) {
@@ -376,7 +378,7 @@ export function createConfigMediaOptionsFeature(
         var defaultType: any = cardContractOptionDefaultValue("media", MEDIA_PLAYLIST_CONTENT_TYPE_OPTION, "playlist");
         value = String(value || "").trim() || defaultType;
         b.options = setConfigOptionValue(b.options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION, value === defaultType ? "" : value);
-        b.options = normalizeMediaOptions(b.options, b.sensor);
+        b.options = normalizeMediaOptions(b.options, b.sensor, b);
         return b.options;
     }
     function mediaPlaylistPlayerSource(this: any, b?: any) {
@@ -386,7 +388,7 @@ export function createConfigMediaOptionsFeature(
         if (!b)
             return "";
         b.options = setConfigOptionValue(b.options, MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION, value || "");
-        b.options = normalizeMediaOptions(b.options, b.sensor);
+        b.options = normalizeMediaOptions(b.options, b.sensor, b);
         return b.options;
     }
     return {

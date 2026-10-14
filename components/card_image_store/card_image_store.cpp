@@ -1,4 +1,5 @@
 #include "card_image_store.h"
+#include "../espcontrol/panel_flash_layout.h"
 
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
@@ -68,8 +69,8 @@ const esp_partition_t *CardImageStore::partition_() {
     ESP_LOGE(TAG, "card_images partition size does not match the generated device capability");
     this->partition_cache_ = nullptr;
 #endif
-  } else if (this->partition_cache_->size < CARD_IMAGE_FLASH_SECTOR_SIZE) {
-    ESP_LOGE(TAG, "card_images partition is too small");
+  } else if (espcontrol::panel_config_partition_bytes(this->partition_cache_->size) == 0) {
+    ESP_LOGE(TAG, "card_images partition has an unsupported shared storage layout");
     this->partition_cache_ = nullptr;
   }
   return this->partition_cache_;
@@ -80,22 +81,25 @@ bool CardImageStore::available() {
   return this->partition_() != nullptr;
 }
 
-size_t CardImageStore::data_capacity_() {
+size_t CardImageStore::data_region_end_() {
   const esp_partition_t *partition = this->partition_();
   if (partition == nullptr) return 0;
   size_t index_bytes = CARD_IMAGE_INDEX_SECTORS * CARD_IMAGE_FLASH_SECTOR_SIZE;
-  return partition->size > index_bytes ? partition->size - index_bytes : 0;
+  size_t end = espcontrol::panel_config_partition_bytes(partition->size);
+  return end > espcontrol::PANEL_CONFIG_STORAGE_BYTES + index_bytes ? end - index_bytes : 0;
 }
 
 size_t CardImageStore::capacity() {
   LockGuard lock(this);
-  return this->data_capacity_();
+  size_t end = this->data_region_end_();
+  return end > espcontrol::PANEL_CONFIG_STORAGE_BYTES ? end - espcontrol::PANEL_CONFIG_STORAGE_BYTES : 0;
 }
 
 size_t CardImageStore::index_slot_offset_(size_t slot) {
   const esp_partition_t *partition = this->partition_();
   if (partition == nullptr || slot >= CARD_IMAGE_INDEX_SECTORS) return 0;
-  return partition->size - (CARD_IMAGE_INDEX_SECTORS - slot) * CARD_IMAGE_FLASH_SECTOR_SIZE;
+  return espcontrol::panel_config_partition_bytes(partition->size) -
+         (CARD_IMAGE_INDEX_SECTORS - slot) * CARD_IMAGE_FLASH_SECTOR_SIZE;
 }
 
 size_t CardImageStore::record_size(size_t image_size) {
@@ -184,7 +188,10 @@ bool CardImageStore::header_valid_(const CardImageHeader &header, size_t offset)
   if (header.size == 0 || header.size > CARD_IMAGE_MAX_BYTES) return false;
   if (header.id[sizeof(header.id) - 1] != '\0' || header.name[sizeof(header.name) - 1] != '\0') return false;
   if (!id_valid(header.id)) return false;
-  return this->partition_cache_ != nullptr && offset + record_size(header.size) <= this->partition_cache_->size;
+  return this->partition_cache_ != nullptr && layout::span_within_region(
+      {offset, record_size(header.size)}, espcontrol::PANEL_CONFIG_STORAGE_BYTES,
+      espcontrol::panel_config_partition_bytes(this->partition_cache_->size) -
+          CARD_IMAGE_INDEX_SECTORS * CARD_IMAGE_FLASH_SECTOR_SIZE);
 }
 
 bool CardImageStore::cache_header_valid_(const CardImageCacheHeader &header, size_t offset) const {
@@ -194,7 +201,10 @@ bool CardImageStore::cache_header_valid_(const CardImageCacheHeader &header, siz
   }
   if (header.size != static_cast<size_t>(header.width) * header.height * 2) return false;
   if (header.id[sizeof(header.id) - 1] != '\0' || !id_valid(header.id)) return false;
-  return this->partition_cache_ != nullptr && offset + record_size(header.size) <= this->partition_cache_->size;
+  return this->partition_cache_ != nullptr && layout::span_within_region(
+      {offset, record_size(header.size)}, espcontrol::PANEL_CONFIG_STORAGE_BYTES,
+      espcontrol::panel_config_partition_bytes(this->partition_cache_->size) -
+          CARD_IMAGE_INDEX_SECTORS * CARD_IMAGE_FLASH_SECTOR_SIZE);
 }
 
 bool CardImageStore::verify_record_(const CardImageHeader &header, size_t offset) {
@@ -332,7 +342,8 @@ bool CardImageStore::load_index_() {
       uint32_t raw_offset = offsets[candidate][entry_index];
       size_t offset = raw_offset;
       uint32_t magic = 0;
-      if ((offset % CARD_IMAGE_FLASH_SECTOR_SIZE) != 0 || offset >= this->data_capacity_() ||
+      if ((offset % CARD_IMAGE_FLASH_SECTOR_SIZE) != 0 || offset < espcontrol::PANEL_CONFIG_STORAGE_BYTES ||
+          offset >= this->data_region_end_() ||
           esp_partition_read(this->partition_(), offset, &magic, sizeof(magic)) != ESP_OK) {
         records_valid = false;
         break;
@@ -340,7 +351,7 @@ bool CardImageStore::load_index_() {
       if (magic == CARD_IMAGE_MAGIC) {
         CardImageHeader record{};
         if (!this->read_header_(offset, record) || !this->header_valid_(record, offset) ||
-            offset + record_size(record.size) > this->data_capacity_() ||
+            offset + record_size(record.size) > this->data_region_end_() ||
             !this->verify_record_(record, offset)) {
           records_valid = false;
           break;
@@ -352,7 +363,7 @@ bool CardImageStore::load_index_() {
         CardImageCacheHeader record{};
         if (esp_partition_read(this->partition_(), offset, &record, sizeof(record)) != ESP_OK ||
             !this->cache_header_valid_(record, offset) ||
-            offset + record_size(record.size) > this->data_capacity_()) {
+            offset + record_size(record.size) > this->data_region_end_()) {
           records_valid = false;
           break;
         }
@@ -377,13 +388,15 @@ bool CardImageStore::load_index_() {
 
 bool CardImageStore::index_region_available_() const {
   if (this->partition_cache_ == nullptr) return false;
-  size_t data_capacity = this->partition_cache_->size -
+  size_t data_capacity = espcontrol::panel_config_partition_bytes(this->partition_cache_->size) -
                          CARD_IMAGE_INDEX_SECTORS * CARD_IMAGE_FLASH_SECTOR_SIZE;
   for (const auto &image : this->images_) {
-    if (image.offset + record_size(image.size) > data_capacity) return false;
+    if (!layout::span_within_region({image.offset, record_size(image.size)},
+                                   espcontrol::PANEL_CONFIG_STORAGE_BYTES, data_capacity)) return false;
   }
   for (const auto &cache : this->caches_) {
-    if (cache.offset + record_size(cache.size) > data_capacity) return false;
+    if (!layout::span_within_region({cache.offset, record_size(cache.size)},
+                                   espcontrol::PANEL_CONFIG_STORAGE_BYTES, data_capacity)) return false;
   }
   return true;
 }
@@ -449,7 +462,8 @@ bool CardImageStore::persist_index_(int name_override_index,
 void CardImageStore::scan_legacy_index_() {
   const esp_partition_t *partition = this->partition_();
   if (partition == nullptr) return;
-  for (size_t offset = 0; offset + sizeof(CardImageHeader) <= partition->size;
+  for (size_t offset = espcontrol::PANEL_CONFIG_STORAGE_BYTES;
+       offset + sizeof(CardImageHeader) <= this->data_region_end_();
        offset += CARD_IMAGE_FLASH_SECTOR_SIZE) {
     uint32_t magic = 0;
     if (esp_partition_read(partition, offset, &magic, sizeof(magic)) != ESP_OK) continue;
@@ -537,12 +551,13 @@ size_t CardImageStore::free_bytes() {
 }
 
 size_t CardImageStore::cache_region_start_() {
-  return layout::cache_region_start(this->capacity(), CARD_IMAGE_FLASH_SECTOR_SIZE);
+  return espcontrol::PANEL_CONFIG_STORAGE_BYTES +
+         layout::cache_region_start(this->capacity(), CARD_IMAGE_FLASH_SECTOR_SIZE);
 }
 
 bool CardImageStore::purge_caches_outside_cache_region_() {
   size_t cache_start = this->cache_region_start_();
-  size_t cache_end = this->capacity();
+  size_t cache_end = this->data_region_end_();
   bool changed = false;
   auto cache = this->caches_.begin();
   while (cache != this->caches_.end()) {
@@ -574,10 +589,10 @@ int CardImageStore::find_empty_offset_(size_t image_size, bool cache_only) {
   for (const auto &upload : this->upload_reservations_) {
     records.push_back(upload.span);
   }
-  size_t start = cache_only ? this->cache_region_start_() : 0;
-  return layout::find_empty_offset(this->capacity(), CARD_IMAGE_FLASH_SECTOR_SIZE,
+  size_t start = cache_only ? this->cache_region_start_() : espcontrol::PANEL_CONFIG_STORAGE_BYTES;
+  return layout::find_empty_offset(this->data_region_end_(), CARD_IMAGE_FLASH_SECTOR_SIZE,
                                    record_size(image_size), records, start,
-                                   this->capacity());
+                                   this->data_region_end_());
 }
 
 std::string CardImageStore::next_id_() {
@@ -957,6 +972,16 @@ esp_err_t CardImageStore::erase(const std::string &id) {
     this->images_.insert(this->images_.begin() + index, image);
     ESP_LOGE(TAG, "Could not persist card image deletion for %s", id.c_str());
     return ESP_FAIL;
+  }
+  // Recovery scans records when a journal is damaged. Invalidate the durable
+  // header before acknowledging deletion, even if erasing the payload fails.
+  const uint32_t deleted_magic = 0;
+  esp_err_t invalidate_error = esp_partition_write(this->partition_(), image.offset,
+                                                   &deleted_magic, sizeof(deleted_magic));
+  if (invalidate_error != ESP_OK) {
+    this->images_.insert(this->images_.begin() + index, image);
+    this->persist_index_();
+    return invalidate_error;
   }
   esp_err_t err = esp_partition_erase_range(this->partition_(), image.offset, record_size(image.size));
   if (err != ESP_OK) {

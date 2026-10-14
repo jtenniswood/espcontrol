@@ -8,7 +8,7 @@ description:
 
 Uploaded card backgrounds need a dedicated area in the display's flash memory. Some displays still have an older partition layout without this image-storage area. They can run current firmware, but need one full USB reinstall to enable image support.
 
-The explicit layout reserves **2 MB for image storage**. It was introduced on 11 August 2026 and included in v2.8.0, released on 16 August. A display installed with an older layout keeps it when updated over the air: OTA updates replace the firmware, not the partition table. The installed firmware version alone therefore does not tell you whether image storage is available.
+The explicit layout includes a **2 MB storage partition**. Some of that space is reserved for saved settings and panel identity; images use a separate region. The layout was introduced on 11 August 2026 and included in v2.8.0, released on 16 August. A display installed with an older layout keeps it when updated over the air: OTA updates replace the firmware, not the partition table. The installed firmware version alone therefore does not tell you whether image storage is available.
 
 ## What Works on the Old Layout?
 
