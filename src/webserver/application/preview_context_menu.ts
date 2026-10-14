@@ -116,47 +116,6 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         div.className = "sp-ctx-divider";
         ctxMenu.appendChild(div);
     }
-    function addCtxSubmenu(this: any, icon?: any, text?: any, buildFn?: any) {
-        var wrapper: any = document.createElement("div");
-        wrapper.className = "sp-ctx-item sp-ctx-sub";
-        wrapper.appendChild(mdiIcon(icon));
-        wrapper.appendChild(document.createTextNode(text));
-        var sub: any = document.createElement("div");
-        sub.className = "sp-ctx-submenu";
-        buildFn(sub);
-        wrapper.appendChild(sub);
-        wrapper.addEventListener("mouseenter", function (this: any) {
-            sub.style.left = "100%";
-            sub.style.right = "auto";
-            var r: any = sub.getBoundingClientRect();
-            if (r.right > window.innerWidth - 4) {
-                sub.style.left = "auto";
-                sub.style.right = "100%";
-            }
-        });
-        wrapper.addEventListener("mousedown", function (this: any, ev?: any) { ev.preventDefault(); ev.stopPropagation(); });
-        ctxMenu.appendChild(wrapper);
-    }
-    function addSubItem(this: any, container?: any, icon?: any, text?: any, handler?: any, active?: any) {
-        var item: any = document.createElement("div");
-        item.className = "sp-ctx-item";
-        if (active) {
-            item.appendChild(mdiIcon("check", "sp-ctx-check mdi"));
-        }
-        else {
-            var spacer: any = document.createElement("span");
-            spacer.style.width = "18px";
-            item.appendChild(spacer);
-        }
-        item.appendChild(document.createTextNode(text));
-        item.addEventListener("mousedown", function (this: any, ev?: any) {
-            ev.preventDefault();
-            ev.stopPropagation();
-            hideContextMenu();
-            handler();
-        });
-        container.appendChild(item);
-    }
     function resizeSlot(this: any, slot?: any, targetSz?: any) {
         if (isConfigLocked())
             return;
@@ -241,12 +200,6 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
             (!c.isSub || buttonTypeRegistryValue(ctxTypeDef, "allowInSubpage", false))) {
             ctxTypeDef.contextMenuItems(slot, b, { addCtxItem: addCtxItem });
         }
-        var sz: any = c.sizes[slot] || 1;
-        addCtxSubmenu("arrow-expand-all", "Size", function (this: any, sub?: any) {
-            cardSizeMenuOptions(b).forEach(function (this: any, option?: any) {
-                addSubItem(sub, "", option.label, function (this: any) { resizeSlot(slot, option.size); }, sz === option.size);
-            });
-        });
         addCtxDivider();
         addCtxItem("content-copy", "Duplicate", function (this: any) {
             if (c.isSub) {
@@ -353,21 +306,8 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         positionMenu(ctxMenu, e);
     }
     function addBackButtonMenuItems(this: any) {
-        var sp: any = getSubpage(state.editingSubpage);
-        var bkSz: any = sp.sizes[-2] || 1;
         addCtxItem("pencil", "Edit Label", function (this: any) { openCardSettings(-2); });
         addCtxItem("keyboard-return", "Exit Subpage", function (this: any) { exitSubpage(); });
-        addCtxDivider();
-        addCtxSubmenu("arrow-expand-all", "Size", function (this: any, sub?: any) {
-            addSubItem(sub, "", "Single (1x1)", function (this: any) { resizeSlot(-2, 1); }, bkSz === 1);
-            addSubItem(sub, "", "Tall (2x1)", function (this: any) { resizeSlot(-2, 2); }, bkSz === 2);
-            addSubItem(sub, "", "Extra Tall (3x1)", function (this: any) { resizeSlot(-2, 5); }, bkSz === 5);
-            addSubItem(sub, "", "Wide (1x2)", function (this: any) { resizeSlot(-2, 3); }, bkSz === 3);
-            addSubItem(sub, "", "Extra Wide (1x3)", function (this: any) { resizeSlot(-2, 6); }, bkSz === 6);
-            if (cardSupportsUltraWideSize(null))
-                addSubItem(sub, "", "Ultra Wide (1x5)", function (this: any) { resizeSlot(-2, CARD_SIZE_ULTRA_WIDE); }, bkSz === CARD_SIZE_ULTRA_WIDE);
-            addSubItem(sub, "", "Large (2x2)", function (this: any) { resizeSlot(-2, 4); }, bkSz === 4);
-        });
     }
     function showEmptySlotMenu(this: any, e?: any, pos?: any) {
         if (isConfigLocked())
@@ -416,7 +356,8 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
             const gap = parseFloat(window.getComputedStyle(card.parentElement!).gap) || 0;
             const cellWidth = (rect.width - (sizeColSpan(currentSize) - 1) * gap) / sizeColSpan(currentSize);
             const cellHeight = (rect.height - (sizeRowSpan(currentSize) - 1) * gap) / sizeRowSpan(currentSize);
-            return cardSizeMenuOptions(c.buttons[slot - 1])
+            return cardSizeMenuOptions(slot === -2 ? null : c.buttons[slot - 1])
+                .filter((option: { size: number }) => slot !== -2 || [CARD_SIZE_SINGLE, CARD_SIZE_TALL, CARD_SIZE_EXTRA_TALL, CARD_SIZE_WIDE, CARD_SIZE_EXTRA_WIDE, CARD_SIZE_ULTRA_WIDE, CARD_SIZE_LARGE].includes(option.size))
                 .filter((option: { size: number }) => resizeGridSlot(c.grid, c.sizes, slot, pos, option.size, c.maxSlots, dependencies.layout.gridCols, !c.isSub).accepted)
                 .map((option: { size: number }) => resizeTargetDimensions(option.size, cellWidth, cellHeight, gap));
         },

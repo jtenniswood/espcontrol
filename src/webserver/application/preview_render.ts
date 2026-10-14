@@ -97,6 +97,16 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
     function buttonTypeVisibleInPicker(this: any, key?: any, isSub?: any) {
         return buttonTypePickerKeys(!!isSub, null).indexOf(key) >= 0;
     }
+    function appendResizeHandle(card: HTMLElement) {
+        if (isConfigLocked()) return;
+        const handle = document.createElement("button");
+        handle.type = "button";
+        handle.className = "sp-resize-handle";
+        handle.setAttribute("aria-label", "Resize card");
+        handle.title = "Drag to resize";
+        handle.innerHTML = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M 27 8 Q 24 24 8 27"/></svg>';
+        card.appendChild(handle);
+    }
     function renderPreview(this: any) {
         const previewColors = PREVIEW_THEME_COLORS[previewEffectiveTheme(state)];
         dependencies.updateClockBarItemUi();
@@ -132,6 +142,8 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 backBtn.style.cursor = "pointer";
                 backBtn.setAttribute("data-pos", pos);
                 backBtn.draggable = !isConfigLocked();
+                backBtn.setAttribute("data-slot", "-2");
+                appendResizeHandle(backBtn);
                 main.appendChild(backBtn);
             }
             else if (slot > 0) {
@@ -216,15 +228,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     sensorBadge +
                         iconHtml +
                         labelHtml;
-                if (!isConfigLocked()) {
-                    const handle = document.createElement("button");
-                    handle.type = "button";
-                    handle.className = "sp-resize-handle";
-                    handle.setAttribute("aria-label", "Resize card");
-                    handle.title = "Drag to resize";
-                    handle.innerHTML = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M 27 8 Q 24 24 8 27"/></svg>';
-                    btn.appendChild(handle);
-                }
+                appendResizeHandle(btn);
                 main.appendChild(btn);
                 if (["light_brightness", "fan_speed", "cover", "slider", "light_temperature"].indexOf(b.type) !== -1) {
                     applySliderPreviewTextContrast(btn, cardOffColor ? cardPreviewTextColor(cardOffColor) : "#" + previewColors.textPrimary, sliderFillColor);
