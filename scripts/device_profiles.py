@@ -923,6 +923,14 @@ def web_config(profile: dict[str, Any]) -> dict[str, Any]:
         "imageSlotCapacity": image_slot_capacity,
         "cardRadiusPixels": int(profile["firmware"]["package"]["substitutions"]["radius"].removesuffix("px")),
     }
+    substitutions = profile["firmware"]["package"]["substitutions"]
+    curve_radii = {
+        preset: int(substitutions[key].removesuffix("px"))
+        for preset, key in (("Small", "card_curve_small_radius"), ("Medium", "card_curve_medium_radius"))
+        if key in substitutions
+    }
+    if curve_radii:
+        cfg["cardCurveRadii"] = curve_radii
     for key, value in profile["web"].items():
         cfg[key] = copy.deepcopy(value)
         if key == "dragAnimation" and features:

@@ -51,8 +51,9 @@ export function normalizeCardCurve(value: unknown): string {
   return preset === "small" ? "Small" : preset === "medium" ? "Medium" : "Large";
 }
 
-export function cardCurveRadius(baseRadius: number, preset: unknown): number {
+export function cardCurveRadius(baseRadius: number, preset: unknown, radii?: Readonly<Record<string, number>>): number {
   const curve = normalizeCardCurve(preset);
+  if (radii?.[curve] !== undefined) return radii[curve];
   return Math.round(baseRadius * (curve === "Small" ? .5 : curve === "Medium" ? .75 : 1));
 }
 

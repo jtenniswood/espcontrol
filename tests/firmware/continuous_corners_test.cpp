@@ -115,10 +115,10 @@ int main() {
   assert(card_curve_radius(22, "Medium") == 17);
   assert(card_curve_radius(30, "invalid") == 30);
   lv_obj_t adjustable;
-  adjustable.width = 145; adjustable.height = 140; adjustable.radius = 30;
+  adjustable.width = 145; adjustable.height = 140; adjustable.radius = 26;
   attach(&adjustable);
-  for (const auto &preset : {std::pair{"Small", 15}, std::pair{"Medium", 23}, std::pair{"Large", 30}}) {
-    adjustable.radius = card_curve_radius(30, preset.first);
+  for (const auto &preset : {std::pair{"Small", 14}, std::pair{"Medium", 20}, std::pair{"Large", 26}}) {
+    adjustable.radius = card_curve_radius(26, preset.first, 14, 20);
     assert(adjustable.radius == preset.second);
     send(adjustable, LV_EVENT_STYLE_CHANGED);
     assert(mask_cache() && mask_cache()->radius == preset.second);

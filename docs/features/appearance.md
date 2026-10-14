@@ -12,11 +12,12 @@ setup-page preview. Choose **Card curve → Small, Medium or Large** in
 is saved on the display and survives restarts.
 
 All supported displays use continuous corners that ease gradually into the
-card edges. **Large** is the default and keeps the current nominal corner size: 30 px on S3,
+card edges. **Large** is the default with these nominal corner sizes: 26 px on S3,
 20 px on the 7-inch and 4.3-inch panels, 22 px on the 10-inch panels,
 and 35 px on P4-86.
-**Small** uses half that size and **Medium** uses three quarters, rounded to
-whole pixels. On S3, the three sizes are 15 px, 23 px and 30 px.
+On S3, **Small**, **Medium** and **Large** are 14 px, 20 px and 26 px.
+On the other panels, **Small** uses half the Large size and **Medium** uses
+three quarters, rounded to whole pixels.
 Images, artwork and slider fills follow the same outline. The web preview
 uses the same curve, including in browsers without native continuous-corner
 support, and scales the card gaps to match the physical display.

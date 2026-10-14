@@ -39,9 +39,10 @@ function placeholderOutline(textMuted: string, background: string): string {
 export function runSettingsFeatureTests(): void {
   equal(normalizeCardCurve(undefined), "Large", "older firmware retains the existing curve");
   equal(normalizeCardCurve("medium"), "Medium", "curve values normalize for backup restore");
-  equal(cardCurveRadius(30, "Small"), 15, "S3 Small radius");
-  equal(cardCurveRadius(30, "Medium"), 23, "S3 Medium uses the same pixel rounding as firmware");
-  equal(cardCurveRadius(30, "Large"), 30, "S3 Large retains the current radius");
+  const s3Radii = { Small: 14, Medium: 20 };
+  equal(cardCurveRadius(26, "Small", s3Radii), 14, "S3 Small radius");
+  equal(cardCurveRadius(26, "Medium", s3Radii), 20, "S3 Medium radius");
+  equal(cardCurveRadius(26, "Large", s3Radii), 26, "S3 Large radius");
   equal(cardCurveRadius(35, "Small"), 18, "P4-86 Small rounds half pixels consistently");
   equal(cardCurveRadius(22, "Medium"), 17, "10-inch Medium matches firmware rounding");
   const curveBackup = createBackupEnvelope({ device: "panel", slots: 0, screen: { card_curve: "Medium" } }, { buttons: [], subpages: {} });
