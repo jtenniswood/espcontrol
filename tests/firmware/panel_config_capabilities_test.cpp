@@ -16,6 +16,7 @@ int main() {
                           capabilities.data(), capabilities.size(),
                           &capabilities_size) &&
                       capabilities_size > 0 &&
+                      std::strstr(capabilities.data(), "\"background\":{\"version\":1}") != nullptr &&
                       std::strstr(capabilities.data(), "\"wallpaper\":{\"version\":1,\"available\":false,\"opacity\":true,\"state_opacity\":true,\"jpeg\":false,\"max_side\":480,\"max_pixels\":230400,\"max_bytes\":524272}") != nullptr &&
                       std::strstr(capabilities.data(), "\"screensaver_pin\":{\"version\":1}") != nullptr &&
                       std::strstr(capabilities.data(), "\"identity\":{\"version\":1}") != nullptr &&

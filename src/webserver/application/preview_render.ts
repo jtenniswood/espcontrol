@@ -125,13 +125,15 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
     function renderPreview(this: any) {
         const previewColors = PREVIEW_THEME_COLORS[previewEffectiveTheme(state)];
         const hasWallpaper = !!els.wallpaperUrl;
+        const hasBackground = hasWallpaper || !!els.backgroundColour;
         const wallpaperPreview = document.getElementById("sp-wallpaper-preview");
         if (wallpaperPreview) {
-            wallpaperPreview.style.setProperty("--wallpaper-standard-color", wallpaperCardColor(previewColors.surfaceCard, hasWallpaper, els.wallpaperOpacityPercent));
-            wallpaperPreview.style.setProperty("--wallpaper-active-color", wallpaperCardColor(state.onColor || WEB_UI_COLORS.primary, hasWallpaper, els.wallpaperActiveOpacityPercent));
+            wallpaperPreview.style.setProperty("--wallpaper-standard-color", wallpaperCardColor(previewColors.surfaceCard, hasBackground, els.wallpaperOpacityPercent));
+            wallpaperPreview.style.setProperty("--wallpaper-active-color", wallpaperCardColor(state.onColor || WEB_UI_COLORS.primary, hasBackground, els.wallpaperActiveOpacityPercent));
         }
         if (els.previewScreen) {
             els.previewScreen.style.backgroundImage = hasWallpaper ? 'url("' + els.wallpaperUrl + '")' : "";
+            els.previewScreen.style.backgroundColor = els.backgroundColour ? "#" + els.backgroundColour : "";
             els.previewScreen.style.backgroundSize = "cover";
             els.previewScreen.style.backgroundPosition = "center";
         }
@@ -169,10 +171,10 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 backBtn.innerHTML =
                     '<span class="sp-btn-icon sp-back-hit mdi mdi-chevron-left"></span>' +
                         '<span class="sp-btn-label">' + escHtml(backLabel) + '</span>';
-                backBtn.style.backgroundColor = wallpaperCardColor(backColor, hasWallpaper, els.wallpaperOpacityPercent);
+                backBtn.style.backgroundColor = wallpaperCardColor(backColor, hasBackground, els.wallpaperOpacityPercent);
                 backBtn.style.setProperty("--card-text-color", subpage?.backColor
                     ? cardPreviewTextColor(backColor) : "#" + previewColors.textPrimary);
-                backBtn.style.setProperty("--card-active-color", wallpaperCardColor(state.onColor || WEB_UI_COLORS.primary, hasWallpaper, els.wallpaperActiveOpacityPercent));
+                backBtn.style.setProperty("--card-active-color", wallpaperCardColor(state.onColor || WEB_UI_COLORS.primary, hasBackground, els.wallpaperActiveOpacityPercent));
                 backBtn.style.setProperty("--card-active-text-color", cardPreviewTextColor(state.onColor || WEB_UI_COLORS.primary));
                 backBtn.style.cursor = "pointer";
                 backBtn.setAttribute("data-pos", pos);
@@ -231,8 +233,8 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     (typePreview && typePreview.buttonClass ? " " + typePreview.buttonClass : "") +
                     sizeClass(slotSz) +
                     (c.selected.indexOf(slot) !== -1 ? " sp-selected" : "");
-                btn.style.backgroundColor = wallpaperCardColor(cardOffColor || color, hasWallpaper, els.wallpaperOpacityPercent);
-                btn.style.setProperty("--card-active-color", wallpaperCardColor(cardOnColor || state.onColor || WEB_UI_COLORS.primary, hasWallpaper, els.wallpaperActiveOpacityPercent));
+                btn.style.backgroundColor = wallpaperCardColor(cardOffColor || color, hasBackground, els.wallpaperOpacityPercent);
+                btn.style.setProperty("--card-active-color", wallpaperCardColor(cardOnColor || state.onColor || WEB_UI_COLORS.primary, hasBackground, els.wallpaperActiveOpacityPercent));
                 btn.style.setProperty("--card-active-text-color", cardPreviewTextColor(cardOnColor || state.onColor || WEB_UI_COLORS.primary));
                 var activeMode: any = configOptionValue(b.options, "card_active_color");
                 var customActive: any = configOptionValue(b.options, "card_on_color").replace(/^#/, "");
@@ -248,8 +250,8 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     var onColor: any = cardOnColor || (state.onColor && state.onColor.length === 6 ? state.onColor : WEB_UI_COLORS.primary);
                     contrastBackground = onColor;
                     var highlight = cardPatternHighlightColor(onColor);
-                    var patternFill = wallpaperCardColor(onColor, hasWallpaper, els.wallpaperActiveOpacityPercent);
-                    var patternHighlight = wallpaperCardColor(highlight, hasWallpaper, els.wallpaperActiveOpacityPercent);
+                    var patternFill = wallpaperCardColor(onColor, hasBackground, els.wallpaperActiveOpacityPercent);
+                    var patternHighlight = wallpaperCardColor(highlight, hasBackground, els.wallpaperActiveOpacityPercent);
                     btn.classList.add("sp-on-pattern");
                     btn.style.backgroundColor = "transparent";
                     btn.style.backgroundImage = "repeating-linear-gradient(135deg," + patternFill + " 0," + patternFill +

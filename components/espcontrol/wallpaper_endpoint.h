@@ -16,18 +16,19 @@ class WallpaperHandler final : public esphome::web_server_idf::AsyncWebHandler {
   bool canHandle(esphome::web_server_idf::AsyncWebServerRequest *request) const override {
     char path[esphome::web_server_idf::AsyncWebServerRequest::URL_BUF_SIZE];
     return (request->method() == HTTP_GET || request->method() == HTTP_PUT) &&
-           (request->url_to(path) == "/api/v1/wallpaper" || request->url_to(path) == "/api/v1/wallpaper-opacity");
+           (request->url_to(path) == "/api/v1/wallpaper" || request->url_to(path) == "/api/v1/wallpaper-opacity" ||
+            request->url_to(path) == "/api/v1/background");
   }
-  size_t maximumBodySize() const override { return opacity_request_ ? 64 : WALLPAPER_MAX_BYTES; }
+  size_t maximumBodySize() const override { return settings_request_ ? 64 : WALLPAPER_MAX_BYTES; }
   bool canReceiveBody(esphome::web_server_idf::AsyncWebServerRequest *request) override {
     reset();
     char path[esphome::web_server_idf::AsyncWebServerRequest::URL_BUF_SIZE];
-    opacity_request_ = request->url_to(path) == "/api/v1/wallpaper-opacity";
+    settings_request_ = request->url_to(path) != "/api/v1/wallpaper";
     return authorize(request);
   }
   void handleBody(esphome::web_server_idf::AsyncWebServerRequest *, uint8_t *data,
                   size_t len, size_t index, size_t total) override {
-    if (index == 0 && total >= (opacity_request_ ? 1 : WALLPAPER_HEADER_BYTES) && total <= maximumBodySize()) {
+    if (index == 0 && total >= (settings_request_ ? 1 : WALLPAPER_HEADER_BYTES) && total <= maximumBodySize()) {
       expected_ = total;
       body_ = static_cast<uint8_t *>(heap_caps_malloc(total, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
     }
@@ -41,6 +42,38 @@ class WallpaperHandler final : public esphome::web_server_idf::AsyncWebHandler {
     httpd_req_t *raw = *request;
     httpd_resp_set_hdr(raw, "Cache-Control", "no-store");
     char path[esphome::web_server_idf::AsyncWebServerRequest::URL_BUF_SIZE];
+    if (request->url_to(path) == "/api/v1/background") {
+      if (request->method() == HTTP_PUT) {
+        bool colour = false; uint32_t rgb = 0;
+        const auto type = request->get_header("Content-Type");
+        const bool valid = type.has_value() && *type == "application/json" && body_ && received_ == expected_ &&
+            esphome::json::parse_json(body_, received_, [&](JsonObject root) {
+              if (!root["mode"].is<const char *>() || !root["colour"].is<const char *>()) return false;
+              const char *mode = root["mode"].as<const char *>();
+              if (std::strcmp(mode, "wallpaper") && std::strcmp(mode, "colour")) return false;
+              const char *hex = root["colour"].as<const char *>();
+              if (std::strlen(hex) != 6) return false;
+              for (int i = 0; i < 6; ++i) {
+                const char c = hex[i];
+                if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'))) return false;
+              }
+              colour = std::strcmp(mode, "colour") == 0;
+              rgb = static_cast<uint32_t>(std::strtoul(hex, nullptr, 16));
+              return true;
+            });
+        reset();
+        if (!valid) { httpd_resp_send_err(raw, HTTPD_400_BAD_REQUEST, "Invalid background"); return; }
+        if (!wallpaper_store().save_background(colour, rgb)) {
+          httpd_resp_send_err(raw, HTTPD_500_INTERNAL_SERVER_ERROR, "Background could not be saved"); return;
+        }
+      }
+      const auto background = wallpaper_store().background();
+      char response[64];
+      const int size = std::snprintf(response, sizeof(response), "{\"mode\":\"%s\",\"colour\":\"%06X\"}",
+          background.colour ? "colour" : "wallpaper", static_cast<unsigned>(background.rgb));
+      httpd_resp_set_type(raw, "application/json"); httpd_resp_send(raw, response, size);
+      return;
+    }
     if (request->url_to(path) == "/api/v1/wallpaper-opacity") {
       if (request->method() == HTTP_PUT) {
         int opacity = -1, active_opacity = -1;
@@ -107,7 +140,8 @@ class WallpaperHandler final : public esphome::web_server_idf::AsyncWebHandler {
       request->requestAuthentication(); return false;
     }
 #endif
-    if (!wallpaper_store().available()) {
+    char path[esphome::web_server_idf::AsyncWebServerRequest::URL_BUF_SIZE];
+    if (request->url_to(path) == "/api/v1/wallpaper" && !wallpaper_store().available()) {
       httpd_req_t *raw = *request;
       httpd_resp_set_status(raw, "501 Not Implemented");
       httpd_resp_send(raw, "Wallpaper storage is unavailable on this panel", HTTPD_RESP_USE_STRLEN);
@@ -116,7 +150,7 @@ class WallpaperHandler final : public esphome::web_server_idf::AsyncWebHandler {
     return true;
   }
   void reset() { free(body_); body_ = nullptr; received_ = expected_ = 0; }
-  bool opacity_request_{false};
+  bool settings_request_{false};
   uint8_t *body_{nullptr};
   size_t received_{0}, expected_{0};
 };

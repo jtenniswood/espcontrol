@@ -16,6 +16,7 @@ static bool present = true, allocation_fails = false, erase_fails = false;
 static int saved_layout = -1, pending_layout = -1;
 static std::vector<size_t> erased_offsets, written_offsets;
 static int writes_until_failure = -1;
+static int saved_background = -1, pending_background = -1, background_writes = 0;
 static int saved_pair = -1, pending_pair = -1;
 static int saved_opacity = -1, pending_opacity = -1, opacity_writes = 0;
 static bool nvs_fails_open = false, nvs_fails_write = false, nvs_fails_commit = false;
@@ -47,14 +48,25 @@ esp_err_t nvs_set_u16(nvs_handle_t, const char *key, uint16_t value) {
   if (nvs_fails_write) return -1;
   pending_pair = value; ++opacity_writes; return ESP_OK;
 }
+esp_err_t nvs_get_u32(nvs_handle_t, const char *key, uint32_t *value) {
+  assert(std::strcmp(key, "background") == 0);
+  if (saved_background < 0) return -1;
+  *value = saved_background; return ESP_OK;
+}
+esp_err_t nvs_set_u32(nvs_handle_t, const char *key, uint32_t value) {
+  assert(std::strcmp(key, "background") == 0);
+  if (nvs_fails_write) return -1;
+  pending_background = value; ++background_writes; return ESP_OK;
+}
 esp_err_t nvs_commit(nvs_handle_t) {
   if (nvs_fails_commit) return -1;
   if (pending_opacity >= 0) saved_opacity = pending_opacity;
   if (pending_pair >= 0) saved_pair = pending_pair;
   if (pending_layout >= 0) saved_layout = pending_layout;
+  if (pending_background >= 0) saved_background = pending_background;
   return ESP_OK;
 }
-void nvs_close(nvs_handle_t) { pending_opacity = pending_pair = pending_layout = -1; }
+void nvs_close(nvs_handle_t) { pending_opacity = pending_pair = pending_layout = pending_background = -1; }
 const esp_partition_t *esp_partition_find_first(int, int, const char *name) {
   assert(std::strcmp(name, "card_images") == 0);
   return present ? &partition : nullptr;
@@ -145,6 +157,40 @@ int main() {
   assert(store.save_opacities(0, 100));
   assert(store.opacities().off == 0 && store.opacities().active == 100);
   assert(store.save_opacity_percent(50));
+  // Background settings survive reboot without rewriting the image slot.
+  assert(!store.background().colour && store.background().rgb == 0x212121);
+  assert(store.save_background(true, 0x3C64DE));
+  assert(store.background().colour && store.background().rgb == 0x3C64DE);
+  WallpaperStore colour_reboot;
+  assert(colour_reboot.background().colour && colour_reboot.background().rgb == 0x3C64DE);
+  expect_image(colour_reboot, first);
+  assert(store.revision() == wallpaper_revision && flash == unchanged_image);
+  assert(!store.save_background(true, 0x1000000));
+  nvs_fails_open = true; assert(!store.save_background(false, 0xABCDEF)); nvs_fails_open = false;
+  nvs_fails_write = true; assert(!store.save_background(false, 0xABCDEF)); nvs_fails_write = false;
+  nvs_fails_commit = true; assert(!store.save_background(false, 0xABCDEF)); nvs_fails_commit = false;
+  assert(store.background().colour && store.background().rgb == 0x3C64DE);
+  WallpaperStore failed_colour_reboot;
+  assert(failed_colour_reboot.background().colour && failed_colour_reboot.background().rgb == 0x3C64DE);
+  const auto background_write_count = background_writes;
+  assert(store.save_background(true, 0x3C64DE) && background_writes == background_write_count);
+  assert(store.save_background(false, 0x3C64DE));
+  expect_image(store, first);
+  assert(!store.background().colour && flash == unchanged_image);
+  saved_background = 0x2000000;
+  WallpaperStore invalid_background;
+  assert(!invalid_background.background().colour && invalid_background.background().rgb == 0x212121);
+  saved_background = -1;
+  present = false;
+  WallpaperStore colour_without_partition;
+  assert(!colour_without_partition.available());
+  assert(colour_without_partition.save_background(true, 0x123456));
+  assert(colour_without_partition.save_opacities(80, 98));
+  WallpaperStore no_partition_reboot;
+  assert(no_partition_reboot.background().colour && no_partition_reboot.background().rgb == 0x123456);
+  assert(no_partition_reboot.opacities().off == 80 && no_partition_reboot.opacities().active == 98);
+  assert(no_partition_reboot.save_opacity_percent(50));
+  present = true; saved_background = -1;
   // Once erasure succeeds, failures cannot retain the old image in one slot.
   for (int boundary = 0; boundary < 3; ++boundary) {
     writes_until_failure = -1; assert(store.save(first.data(), first.size()));

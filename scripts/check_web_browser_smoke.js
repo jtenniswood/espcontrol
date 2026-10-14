@@ -266,6 +266,20 @@ async function installRoutes(context, slug, options = {}) {
       await route.continue();
       return;
     }
+    if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/background") {
+      const wallpaper = options.wallpaperState;
+      assert(wallpaper && wallpaper.backgroundSupported !== false, "unsupported firmware must not receive background requests");
+      if (route.request().method() === "PUT") {
+        assert.strictEqual(route.request().headers()["x-espcontrol-epoch"], String(options.resetState.epoch));
+        if (wallpaper.failBackground) { await route.fulfill({ status: 500, body: "Save failed" }); return; }
+        const settings = JSON.parse(route.request().postData());
+        assert(["wallpaper", "colour"].includes(settings.mode) && /^[0-9A-F]{6}$/.test(settings.colour));
+        (wallpaper.backgroundPosts ??= []).push(settings);
+        wallpaper.background = settings;
+      }
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(wallpaper.background ?? {mode: "wallpaper", colour: "212121"}) });
+      return;
+    }
     if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/wallpaper-opacity") {
       const wallpaper = options.wallpaperState;
       assert(wallpaper && wallpaper.opacitySupported !== false, "unsupported firmware must not receive opacity requests");
@@ -410,6 +424,7 @@ async function installRoutes(context, slug, options = {}) {
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
+          background: options.wallpaperState && options.wallpaperState.backgroundSupported !== false ? {version: 1} : undefined,
           wallpaper: options.wallpaperState ? { version: 1, available: true, opacity: options.wallpaperState.opacitySupported !== false, state_opacity: options.wallpaperState.separateOpacity !== false, ...(options.wallpaperState.jpeg === false ? {} : { jpeg: true, max_side: 1280, max_pixels: 1024000, max_bytes: 524272, ...options.wallpaperState.limits }) } : undefined,
           configuration: { read: true, write: true, document_versions: [1] },
           web_assets: { versions: [1] },
@@ -430,6 +445,7 @@ async function installRoutes(context, slug, options = {}) {
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
+          background: options.wallpaperState && options.wallpaperState.backgroundSupported !== false ? {version: 1} : undefined,
           wallpaper: options.wallpaperState ? { version: 1, available: true, opacity: options.wallpaperState.opacitySupported !== false, state_opacity: options.wallpaperState.separateOpacity !== false, ...(options.wallpaperState.jpeg === false ? {} : { jpeg: true, max_side: 1280, max_pixels: 1024000, max_bytes: 524272, ...options.wallpaperState.limits }) } : undefined,
           configuration: { read: false, write: false, document_versions: [] },
         }),
@@ -7576,6 +7592,8 @@ async function assertWallpaperSettings(browser) {
   }
   try {
     await open();
+    assert.strictEqual(await page.getByRole("tab", {name: "Wallpaper", exact: true}).getAttribute("aria-selected"), "true");
+    assert.strictEqual(await page.locator("#sp-background-colour").isVisible(), false);
     assert.strictEqual(await page.locator("#sp-set-card-transparency").isDisabled(), true);
     assert.strictEqual(await page.locator("#sp-set-card-transparency").isVisible(), false);
     assert.strictEqual(await page.locator("#sp-set-active-card-transparency").isVisible(), false);
@@ -7588,6 +7606,13 @@ async function assertWallpaperSettings(browser) {
     assert.strictEqual(await page.locator("#sp-set-active-card-transparency").inputValue(), "0");
     assert.strictEqual(await page.getByRole("button", { name: "Delete wallpaper" }).textContent(), "");
     assert.strictEqual(await page.getByRole("button", { name: "Delete wallpaper" }).isDisabled(), true);
+    await page.getByRole("tab", {name: "Colour", exact: true}).click();
+    await page.waitForFunction(() => !document.querySelector("#sp-background-tab-colour").disabled);
+    assert.strictEqual(await page.locator("#sp-set-card-transparency").inputValue(), "20");
+    assert.strictEqual(await page.locator("#sp-set-active-card-transparency").inputValue(), "2");
+    await page.getByRole("tab", {name: "Wallpaper", exact: true}).click();
+    await page.waitForFunction(() => !document.querySelector("#sp-background-tab-wallpaper").disabled);
+    assert.strictEqual(wallpaper.posts.length, 0);
     const chooseFile = page.waitForEvent("filechooser");
     await page.getByRole("button", { name: "Upload Image", exact: true }).click();
     const initialFileChooser = await chooseFile;
@@ -7847,17 +7872,81 @@ async function assertWallpaperSettings(browser) {
     assert.strictEqual(await transparency.inputValue(), "50");
     await assertCardAlpha(128 / 255);
     await assertActiveAlpha(230);
+    const retainedImage = Buffer.from(wallpaper.image);
+    const imageWrites = wallpaper.posts.length;
+    const wallpaperTab = page.getByRole("tab", {name: "Wallpaper", exact: true});
+    const colourTab = page.getByRole("tab", {name: "Colour", exact: true});
+    async function waitForBackground() {
+      await page.waitForFunction(() => !document.querySelector("#sp-background-tab-colour").disabled);
+    }
+    await colourTab.click(); await waitForBackground();
+    assert.strictEqual(await colourTab.getAttribute("aria-selected"), "true");
+    assert.strictEqual(await page.getByRole("button", {name: "Upload Image", exact: true}).isVisible(), false);
+    const swatches = page.getByRole("group", {name: "Background colour presets", exact: true});
+    assert.strictEqual(await swatches.locator(".sp-card-color-preset").count(), 20);
+    await swatches.getByRole("button", {name: "Set colour to blue", exact: true}).click();
+    await waitForBackground();
+    assert.deepStrictEqual(wallpaper.background, {mode: "colour", colour: "3C64DE"});
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(el => el.style.backgroundColor), "rgb(60, 100, 222)");
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(el => el.style.backgroundImage), "");
+    assert.strictEqual(await page.locator(".sp-wallpaper-preview").evaluate(el => getComputedStyle(el).backgroundImage), "none");
+    await assertCardAlpha(128 / 255); await assertActiveAlpha(230);
+    const custom = swatches.getByLabel("Choose custom colour", {exact: true});
+    await custom.evaluate(input => { input.value = "#123456"; input.dispatchEvent(new Event("change", {bubbles: true})); });
+    await waitForBackground();
+    assert.deepStrictEqual(wallpaper.background, {mode: "colour", colour: "123456"});
+    wallpaper.failBackground = true;
+    await wallpaperTab.click(); await waitForBackground();
+    await page.getByText("Could not save background. Check the connection and try again.").waitFor();
+    assert.strictEqual(await colourTab.getAttribute("aria-selected"), "true");
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(el => el.style.backgroundColor), "rgb(18, 52, 86)");
+    wallpaper.failBackground = false;
+    // Reload restores mode, colour and opacity without uploading the image again.
+    reviewFixture = true;
+    await open();
+    await page.waitForFunction(() => document.querySelector(".sp-screen")?.style.backgroundColor === "rgb(18, 52, 86)");
+    const backgroundCard = page.locator("#sp-settings .card").filter({has: page.locator("#sp-set-wallpaper")});
+    if (!(await colourTab.isVisible())) await backgroundCard.locator(".card-header").click();
+    await waitForBackground();
+    assert.strictEqual(await transparency.inputValue(), "50");
+    assert.strictEqual(await activeTransparency.inputValue(), "10");
+    assert.strictEqual(await page.locator(".sp-settings-modal").evaluate(el => getComputedStyle(el).backgroundImage), "none");
+    await page.getByRole("tab", {name: "Screen", exact: true}).click();
+    await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+    await page.locator(".sp-back-btn").waitFor();
+    await assertCardAlpha(128 / 255); await assertActiveAlpha(230);
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(el => el.style.backgroundColor), "rgb(18, 52, 86)");
+    await page.locator(".sp-back-btn .sp-back-hit").click();
+    reviewFixture = false; await open();
+    await page.screenshot({path: "/tmp/background-colour-preview.png"});
+    await wallpaperTab.click(); await waitForBackground();
+    await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
+    assert.deepStrictEqual(wallpaper.image, retainedImage);
+    assert.strictEqual(wallpaper.posts.length, imageWrites);
+    await page.getByRole("img", {name: "Saved wallpaper, 1280 by 800 pixels", exact: true}).waitFor();
+    // Colour still shows and applies the saved transparency with no image.
+    await page.getByRole("button", {name: "Delete wallpaper"}).click();
+    await page.waitForFunction(() => document.querySelector("#sp-set-card-transparency").disabled);
+    await colourTab.click(); await waitForBackground();
+    assert.strictEqual(wallpaper.image, null);
+    assert.strictEqual(await transparency.isVisible(), true);
+    assert.strictEqual(await transparency.inputValue(), "50");
+    await assertCardAlpha(128 / 255); await assertActiveAlpha(230);
+    await wallpaperTab.click(); await waitForBackground();
+    await page.locator("#sp-set-wallpaper").setInputFiles(upload);
+    await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
   } finally { await context.close(); }
   // Firmware with the original fixed opacity keeps uploads working and disables the slider.
   const legacy = await browser.newContext({ viewport: testCase.viewport });
   try {
-    const legacyWallpaper = { image: null, posts: [], opacitySupported: false, separateOpacity: false, jpeg: false };
+    const legacyWallpaper = { image: null, posts: [], backgroundSupported: false, opacitySupported: false, separateOpacity: false, jpeg: false };
     await installRoutes(legacy, testCase.slug, { wallpaperState: legacyWallpaper, resetState });
     const oldPage = await legacy.newPage();
     await installFakeEventSource(oldPage);
     await oldPage.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
     await oldPage.waitForFunction(() => document.querySelector("#sp-set-wallpaper") && !document.querySelector("#sp-set-wallpaper").disabled);
     assert.strictEqual(await oldPage.locator("#sp-set-card-transparency").isDisabled(), true);
+    assert.strictEqual(await oldPage.locator("#sp-background-tab-colour").isDisabled(), true);
     assert.strictEqual(await oldPage.locator("#sp-set-card-transparency").inputValue(), "0");
     const oldImage = await oldPage.evaluate(() => {
       const canvas = document.createElement("canvas"); canvas.width = 1200; canvas.height = 800;

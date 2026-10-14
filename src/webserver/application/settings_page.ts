@@ -168,8 +168,9 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             event.stopPropagation();
             resetAppearanceColors(true);
         });
-        const wallpaperSettings = buildWallpaperSettings(document, resetAwareFetch, (url, opacity, activeOpacity) => {
+        const wallpaperSettings = buildWallpaperSettings(document, resetAwareFetch, (url, opacity, activeOpacity, colour) => {
             runtime.els.wallpaperUrl = url;
+            runtime.els.backgroundColour = colour;
             runtime.els.wallpaperOpacityPercent = opacity;
             runtime.els.wallpaperActiveOpacityPercent = activeOpacity;
             renderPreview();
@@ -177,7 +178,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         var activeColourCard: any = makeCollapsibleCard("Active Colour", activeColourBody, true, null, appearanceResetButton);
         var cardStyleCard: any = makeCollapsibleCard("Card Style", cardStyleBody, true);
         var themeCard: any = makeCollapsibleCard("Theme", themeBody, true);
-        var wallpaperCard: any = makeCollapsibleCard("Wallpaper", wallpaperSettings, true);
+        var wallpaperCard: any = makeCollapsibleCard("Background", wallpaperSettings, true);
         var languageBody: any = document.createElement("div");
         var languageField: any = document.createElement("div");
         languageField.className = "sp-field";

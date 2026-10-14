@@ -1,3 +1,4 @@
+import { createColorSwatches } from "../components/color_swatches";
 import type { ControlsFieldsFeature } from "./controls_fields";
 
 const MAGIC = 0x31505745;
@@ -103,6 +104,15 @@ export function parseWallpaperOpacities(value: unknown, separate: boolean): { of
   return { off, active: separate ? parseWallpaperOpacity(settings?.active_opacity) : off };
 }
 
+export interface BackgroundSettings { mode: "wallpaper" | "colour"; colour: string }
+export function parseBackgroundSettings(value: unknown): BackgroundSettings {
+  const settings = value as Record<string, unknown> | null;
+  if ((settings?.mode !== "wallpaper" && settings?.mode !== "colour") ||
+      typeof settings.colour !== "string" || !/^[0-9a-f]{6}$/i.test(settings.colour))
+    throw new Error("Invalid background response. Reload the page to try again.");
+  return { mode: settings.mode, colour: settings.colour.toUpperCase() };
+}
+
 function wallpaperCanvas(document: Document, buffer: ArrayBuffer): HTMLCanvasElement {
   const { width, height, rgba } = decodeWallpaper(buffer);
   const canvas = document.createElement("canvas");
@@ -155,13 +165,40 @@ async function prepareWallpaper(document: Document, file: File, limits: Wallpape
 }
 
 export function buildWallpaperSettings(
-  document: Document, request: typeof fetch, onChange: (url: string, opacity: number, activeOpacity: number) => void,
-  fields: Pick<ControlsFieldsFeature, "createRangeSlider">,
+  document: Document, request: typeof fetch, onChange: (url: string, opacity: number, activeOpacity: number, colour: string) => void,
+  fields: Pick<ControlsFieldsFeature, "createRangeSlider" | "segmentControl">,
 ): HTMLElement {
   const body = document.createElement("div");
   body.className = "sp-field";
+  let background: BackgroundSettings = { mode: "wallpaper", colour: "212121" };
+  let backgroundSupported = false;
+  const tabs = fields.segmentControl([["wallpaper", "Wallpaper"], ["colour", "Colour"]], "wallpaper", (mode: string) => {
+    void saveBackground({ mode: mode as BackgroundSettings["mode"], colour: background.colour });
+  });
+  tabs.segment.id = "sp-set-background-mode";
+  tabs.segment.setAttribute("role", "tablist");
+  tabs.segment.setAttribute("aria-label", "Background type");
+  for (const mode of ["wallpaper", "colour"]) {
+    tabs.buttons[mode].id = "sp-background-tab-" + mode;
+    tabs.buttons[mode].setAttribute("role", "tab");
+    tabs.buttons[mode].setAttribute("aria-controls", "sp-background-" + mode);
+  }
+  const colourField = document.createElement("div");
+  colourField.id = "sp-background-colour";
+  colourField.setAttribute("role", "tabpanel");
+  colourField.setAttribute("aria-labelledby", "sp-background-tab-colour");
+  const swatches = createColorSwatches(() => background.colour, hex => {
+    void saveBackground({ mode: "colour", colour: hex });
+  }, "Background colour presets");
+  colourField.appendChild(swatches);
+  const backgroundStatus = document.createElement("div");
+  backgroundStatus.className = "sp-field-hint";
+  backgroundStatus.setAttribute("role", "status");
   const imageField = document.createElement("div");
   imageField.className = "sp-field sp-card-bg-field";
+  imageField.id = "sp-background-wallpaper";
+  imageField.setAttribute("role", "tabpanel");
+  imageField.setAttribute("aria-labelledby", "sp-background-tab-wallpaper");
   const upload = document.createElement("input");
   upload.id = "sp-set-wallpaper";
   upload.type = "file";
@@ -218,10 +255,11 @@ export function buildWallpaperSettings(
   const hintText = document.createElement("span");
   hintText.textContent = "0% is solid; 100% is clear. Text and icons stay visible.";
   hint.append(hintIcon, hintText);
-  imageField.append(preview, actions, status);
-  body.append(imageField, hint, control.wrap, activeControl.wrap);
+  imageField.append(actions, status);
+  body.append(tabs.segment, preview, imageField, colourField, backgroundStatus, hint, control.wrap, activeControl.wrap);
   let hasWallpaper = false, supported = false, busy = false, opacitySupported = false;
   let opacity = 80, activeOpacity = 98, savedOpacity = 80, savedActiveOpacity = 98, previewUrl = "";
+  let wallpaperLabel = "No wallpaper uploaded";
   let separateOpacity = false;
   let limits = LEGACY_LIMITS;
   function sync() {
@@ -229,14 +267,26 @@ export function buildWallpaperSettings(
     uploadButton.disabled = upload.disabled;
     imageField.setAttribute("aria-busy", String(busy));
     remove.disabled = !supported || busy || !hasWallpaper;
-    hint.hidden = !hasWallpaper;
-    control.wrap.hidden = !hasWallpaper;
-    activeControl.wrap.hidden = !hasWallpaper || !separateOpacity;
-    range.disabled = !opacitySupported || busy || !hasWallpaper;
-    activeRange.disabled = !separateOpacity || !opacitySupported || busy || !hasWallpaper;
-    activeRange.value = String(hasWallpaper ? 100 - activeOpacity : 0);
+    const hasBackground = background.mode === "colour" || hasWallpaper;
+    imageField.hidden = background.mode !== "wallpaper";
+    colourField.hidden = background.mode !== "colour";
+    for (const mode of ["wallpaper", "colour"]) {
+      tabs.buttons[mode].disabled = busy || (mode === "colour" && !backgroundSupported);
+      tabs.buttons[mode].classList.toggle("active", background.mode === mode);
+      tabs.buttons[mode].setAttribute("aria-selected", String(background.mode === mode));
+      tabs.buttons[mode].tabIndex = background.mode === mode ? 0 : -1;
+    }
+    for (const input of Array.from(swatches.querySelectorAll<HTMLButtonElement | HTMLInputElement>("button,input")))
+      input.disabled = !backgroundSupported || busy;
+    swatches._syncColor();
+    hint.hidden = !hasBackground;
+    control.wrap.hidden = !hasBackground;
+    activeControl.wrap.hidden = !hasBackground || !separateOpacity;
+    range.disabled = !opacitySupported || busy || !hasBackground;
+    activeRange.disabled = !separateOpacity || !opacitySupported || busy || !hasBackground;
+    activeRange.value = String(hasBackground ? 100 - activeOpacity : 0);
     activeControl.val.textContent = activeRange.value + "%";
-    range.value = String(hasWallpaper ? 100 - opacity : 0);
+    range.value = String(hasBackground ? 100 - opacity : 0);
     control.val.textContent = range.value + "%";
   }
   range.addEventListener("input", () => {
@@ -249,15 +299,21 @@ export function buildWallpaperSettings(
     updatePreview();
   });
   function updatePreview() {
-    onChange(previewUrl, hasWallpaper ? opacity : 100, hasWallpaper ? activeOpacity : 100);
+    const colourMode = background.mode === "colour";
+    const enabled = colourMode || hasWallpaper;
+    preview.style.backgroundImage = colourMode ? "none" : previewUrl ? `url("${previewUrl}")` : "";
+    preview.style.backgroundColor = colourMode ? "#" + background.colour : "";
+    preview.setAttribute("aria-label", colourMode ? "Background colour #" + background.colour : wallpaperLabel);
+    onChange(colourMode ? "" : previewUrl, enabled ? opacity : 100, enabled ? activeOpacity : 100,
+      colourMode ? background.colour : "");
   }
   function apply(buffer: ArrayBuffer | null) {
     previewUrl = buffer ? wallpaperPreview(document, buffer) : "";
     hasWallpaper = !!buffer;
     preview.style.backgroundImage = previewUrl ? `url("${previewUrl}")` : "";
-    preview.setAttribute("aria-label", buffer
+    wallpaperLabel = buffer
       ? `Saved wallpaper, ${new DataView(buffer).getUint32(4, true)} by ${new DataView(buffer).getUint32(8, true)} pixels`
-      : "No wallpaper uploaded");
+      : "No wallpaper uploaded";
     updatePreview();
     status.textContent = buffer ? `Wallpaper saved (${new DataView(buffer).getUint32(4, true)} × ${new DataView(buffer).getUint32(8, true)}). Changes apply immediately.`
       : "JPEG, PNG or WebP. Saved on this display; images are resized automatically. Changes apply immediately.";
@@ -274,7 +330,14 @@ export function buildWallpaperSettings(
         break;
       }
       const capabilities = capabilityResponse?.ok ? await capabilityResponse.json() : null;
-      if (capabilities?.wallpaper?.version !== 1 || capabilities.wallpaper.available !== true) {
+      if (capabilities?.background?.version === 1) {
+        const settings = await request("/api/v1/background", { credentials: "include", cache: "no-store" });
+        if (!settings.ok) throw new Error("Could not load background. Reload the page to try again.");
+        background = parseBackgroundSettings(await settings.json());
+        backgroundSupported = true;
+        updatePreview();
+      }
+      if (capabilities?.wallpaper?.version !== 1) {
         status.textContent = "Wallpaper requires firmware with wallpaper support and image storage.";
         return;
       }
@@ -292,6 +355,11 @@ export function buildWallpaperSettings(
         hintText.textContent = "Install updated firmware to adjust card transparency.";
         activeOpacity = opacity;
       }
+      if (capabilities.wallpaper.available !== true) {
+        status.textContent = "Wallpaper requires image storage on this display.";
+        updatePreview();
+        return;
+      }
       const response = await request("/api/v1/wallpaper", { credentials: "include", cache: "no-store" });
       if (response.status === 404 || response.status === 501) {
         status.textContent = "Wallpaper requires firmware with wallpaper support and image storage.";
@@ -300,9 +368,36 @@ export function buildWallpaperSettings(
       if (!response.ok) throw new Error("Could not load wallpaper. Reload the page to try again.");
       apply(response.status === 204 ? null : await response.arrayBuffer());
       supported = true;
-    } catch (error) { status.textContent = error instanceof Error ? error.message : "Could not load wallpaper."; }
+    } catch (error) { backgroundStatus.textContent = error instanceof Error ? error.message : "Could not load background."; }
     finally { sync(); }
   }
+  async function saveBackground(next: BackgroundSettings) {
+    if (!backgroundSupported || busy) { sync(); return; }
+    const previous = background;
+    background = next;
+    busy = true; sync(); updatePreview();
+    backgroundStatus.textContent = "Saving background…";
+    try {
+      const response = await request("/api/v1/background", {
+        method: "PUT", credentials: "include", cache: "no-store",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify(next),
+      });
+      if (!response.ok) throw new Error("Could not save background. Check the connection and try again.");
+      background = parseBackgroundSettings(await response.json());
+      backgroundStatus.textContent = "";
+    } catch (error) {
+      background = previous;
+      backgroundStatus.textContent = error instanceof Error ? error.message : "Could not save background.";
+    } finally { busy = false; sync(); updatePreview(); }
+  }
+  tabs.segment.addEventListener("keydown", (event: KeyboardEvent) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    const mode = event.key === "Home" ? "wallpaper" : event.key === "End" ? "colour"
+      : background.mode === "wallpaper" ? "colour" : "wallpaper";
+    const button = tabs.buttons[mode] as HTMLButtonElement;
+    if (button.disabled) return;
+    event.preventDefault(); button.focus(); button.click();
+  });
   async function save(file: File | null) {
     let submitted = false;
     busy = true; sync(); status.textContent = file ? "Uploading wallpaper…" : "Removing wallpaper…";
@@ -331,7 +426,7 @@ export function buildWallpaperSettings(
     finally { busy = false; upload.value = ""; sync(); }
   }
   async function saveOpacity() {
-    busy = true; sync(); status.textContent = "Saving card transparency…";
+    busy = true; sync(); backgroundStatus.textContent = "Saving card transparency…";
     try {
       const response = await request("/api/v1/wallpaper-opacity", {
         method: "PUT", credentials: "include", cache: "no-store",
@@ -342,12 +437,12 @@ export function buildWallpaperSettings(
       opacity = savedOpacity = values.off;
       activeOpacity = savedActiveOpacity = values.active;
       updatePreview();
-      status.textContent = "";
+      backgroundStatus.textContent = "";
     } catch (error) {
       opacity = savedOpacity;
       activeOpacity = savedActiveOpacity;
       updatePreview();
-      status.textContent = error instanceof Error ? error.message : "Could not save card transparency.";
+      backgroundStatus.textContent = error instanceof Error ? error.message : "Could not save card transparency.";
     } finally { busy = false; sync(); }
   }
   upload.addEventListener("change", () => { const file = upload.files?.[0]; if (file) void save(file); });

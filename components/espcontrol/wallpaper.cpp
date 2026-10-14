@@ -25,6 +25,27 @@ uint8_t *allocate(size_t size) {
 #endif
 }
 WallpaperStore &wallpaper_store() { static WallpaperStore store; return store; }
+bool WallpaperStore::preferences_locked() {
+#ifdef USE_ESP32
+  if (preferences_initialized_) return true;
+  nvs_handle_t settings;
+  if (nvs_open("espcontrol_wall", NVS_READWRITE, &settings) != ESP_OK) return false;
+  uint8_t opacity;
+  if (nvs_get_u8(settings, "opacity", &opacity) == ESP_OK && opacity <= 100)
+    opacities_ = {opacity, opacity};
+  uint16_t pair;
+  if (nvs_get_u16(settings, "opacities", &pair) == ESP_OK && wallpaper_opacity_valid(pair & 0xff, pair >> 8))
+    opacities_ = {static_cast<uint8_t>(pair & 0xff), static_cast<uint8_t>(pair >> 8)};
+  uint32_t background;
+  if (nvs_get_u32(settings, "background", &background) == ESP_OK && background <= 0x1FFFFFF)
+    background_ = {bool(background & 0x1000000), background & 0xFFFFFF};
+  nvs_close(settings);
+  preferences_initialized_ = true;
+  return true;
+#else
+  return false;
+#endif
+}
 bool WallpaperStore::begin_locked() {
 #ifdef USE_ESP32
   if (initialized_) return partition_ != nullptr;
@@ -34,17 +55,11 @@ bool WallpaperStore::begin_locked() {
       panel_config_partition_bytes(partition->size) < OFFSET + WALLPAPER_STORAGE_BYTES) return false;
   partition_ = partition;
   nvs_handle_t settings;
-  if (nvs_open("espcontrol_wall", NVS_READWRITE, &settings) != ESP_OK) {
+  if (!preferences_locked() || nvs_open("espcontrol_wall", NVS_READWRITE, &settings) != ESP_OK) {
     initialized_ = false; partition_ = nullptr; return false;
   }
   bool single_slot = false;
   {
-    uint8_t opacity = WALLPAPER_DEFAULT_OPACITY_PERCENT;
-    if (nvs_get_u8(settings, "opacity", &opacity) == ESP_OK && opacity <= 100)
-      opacities_ = {opacity, opacity};
-    uint16_t pair;
-    if (nvs_get_u16(settings, "opacities", &pair) == ESP_OK && wallpaper_opacity_valid(pair & 0xff, pair >> 8))
-      opacities_ = {static_cast<uint8_t>(pair & 0xff), static_cast<uint8_t>(pair >> 8)};
     uint8_t layout = 0;
     single_slot = nvs_get_u8(settings, "layout", &layout) == ESP_OK && layout == 1;
     nvs_close(settings);
@@ -98,7 +113,7 @@ bool WallpaperStore::available() { std::lock_guard<std::mutex> lock(mutex_); ret
 uint32_t WallpaperStore::revision() { std::lock_guard<std::mutex> lock(mutex_); begin_locked(); return revision_; }
 WallpaperOpacity WallpaperStore::opacities() {
   std::lock_guard<std::mutex> lock(mutex_);
-  begin_locked();
+  preferences_locked();
   return opacities_;
 }
 uint8_t WallpaperStore::opacity_percent() { return opacities().off; }
@@ -107,7 +122,7 @@ bool WallpaperStore::save_opacities(int off, int active) {
   if (!wallpaper_opacity_valid(off, active)) return false;
   std::lock_guard<std::mutex> lock(mutex_);
 #ifdef USE_ESP32
-  if (!begin_locked()) return false;
+  if (!preferences_locked()) return false;
   if (off == opacities_.off && active == opacities_.active) return true;
   nvs_handle_t settings;
   if (nvs_open("espcontrol_wall", NVS_READWRITE, &settings) != ESP_OK) return false;
@@ -120,6 +135,30 @@ bool WallpaperStore::save_opacities(int off, int active) {
   return true;
 #else
   return false;
+#endif
+}
+WallpaperBackgroundSetting WallpaperStore::background() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  preferences_locked();
+  return background_;
+}
+bool WallpaperStore::save_background(bool colour, uint32_t rgb) {
+  if (rgb > 0xFFFFFF) return false;
+  std::lock_guard<std::mutex> lock(mutex_);
+#ifdef USE_ESP32
+  if (!preferences_locked()) return false;
+  if (background_.colour == colour && background_.rgb == rgb) return true;
+  nvs_handle_t settings;
+  if (nvs_open("espcontrol_wall", NVS_READWRITE, &settings) != ESP_OK) return false;
+  // Mode and colour stay atomic without using or rewriting an image slot.
+  auto result = nvs_set_u32(settings, "background", rgb | (colour ? 0x1000000 : 0));
+  if (result == ESP_OK) result = nvs_commit(settings);
+  nvs_close(settings);
+  if (result != ESP_OK) return false;
+  background_ = {colour, rgb};
+  return true;
+#else
+  (void) colour; return false;
 #endif
 }
 bool WallpaperStore::save(const uint8_t *data, size_t size) {

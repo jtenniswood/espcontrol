@@ -15,10 +15,13 @@ class WallpaperStore {
   uint32_t revision();
   WallpaperOpacity opacities();
   bool save_opacities(int off, int active);
+  WallpaperBackgroundSetting background();
+  bool save_background(bool colour, uint32_t rgb);
   uint8_t opacity_percent();
   bool save_opacity_percent(int percent);
  private:
   bool begin_locked();
+  bool preferences_locked();
   bool write_primary_locked(const uint8_t *data, size_t size);
   std::mutex mutex_;
   const void *partition_{nullptr};
@@ -26,6 +29,8 @@ class WallpaperStore {
   uint32_t revision_{0};
   size_t size_{0};
   WallpaperOpacity opacities_;
+  WallpaperBackgroundSetting background_;
+  bool preferences_initialized_{false};
   bool initialized_{false};
 };
 WallpaperStore &wallpaper_store();

@@ -1,4 +1,4 @@
-import { wallpaperDimensions, encodeWallpaper, decodeWallpaper, wallpaperCardColor, parseWallpaperOpacity, parseWallpaperOpacities, wallpaperLimits, encodeJpegWallpaper } from "../../src/webserver/application/wallpaper";
+import { wallpaperDimensions, encodeWallpaper, decodeWallpaper, wallpaperCardColor, parseWallpaperOpacity, parseWallpaperOpacities, wallpaperLimits, encodeJpegWallpaper, parseBackgroundSettings } from "../../src/webserver/application/wallpaper";
 
 function equal(actual: unknown, expected: unknown): void {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
@@ -8,6 +8,10 @@ function rejects(action: () => unknown): void {
   throw new Error("Expected invalid wallpaper to be rejected");
 }
 export function runWallpaperTests(): void {
+  equal(parseBackgroundSettings({mode: "wallpaper", colour: "212121"}), {mode: "wallpaper", colour: "212121"});
+  equal(parseBackgroundSettings({mode: "colour", colour: "abcdef"}), {mode: "colour", colour: "ABCDEF"});
+  for (const value of [null, {}, {mode: "color", colour: "ABCDEF"}, {mode: "colour", colour: "#ABCDEF"}, {mode: "wallpaper", colour: "ABCDEX"}, {mode: "colour", colour: 123456}])
+    rejects(() => parseBackgroundSettings(value));
   equal(wallpaperDimensions(1200, 800), { width: 480, height: 320 });
   equal(wallpaperDimensions(480, 800), { width: 288, height: 480 });
   equal(wallpaperDimensions(32, 16), { width: 32, height: 16 });

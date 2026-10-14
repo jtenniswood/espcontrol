@@ -14,6 +14,7 @@ struct MemoryStorage : Storage {
       {{"espcontrol_pin", "settings"}, "saved PIN and enabled state"},
       {{"espcontrol_wall", "opacity"}, "legacy transparency"},
       {{"espcontrol_wall", "opacities"}, "standard and active transparency"},
+      {{"espcontrol_wall", "background"}, "background mode and colour"},
       {{"espcontrol_wall", "layout"}, "wallpaper storage version"},
       {{"espcontrol_rst", "journal"}, "intent"}, {{"wifi", "platform"}, "network"}};
   bool slot_a = true, slot_b = true;
@@ -77,6 +78,7 @@ void interrupted_resets_resume(Mode mode) {
       assert(!s.records.count({"espcontrol_wall", "opacity"}));
       assert(!s.records.count({"espcontrol_wall", "opacities"}));
       assert(!s.records.count({"espcontrol_wall", "layout"}));
+      assert(!s.records.count({"espcontrol_wall", "background"}));
       assert(!s.records.count({"esphome", "layout"}) && !s.records.count({"espcontrol_cfg", "slot_b"}));
     }
   }

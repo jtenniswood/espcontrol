@@ -19,7 +19,7 @@ constexpr unsigned LV_PART_MAIN = 0, LV_STATE_CHECKED = 1, LV_STATE_PRESSED = 32
 constexpr uint8_t LV_OPA_COVER = 255;
 struct lv_obj_t { std::map<unsigned, uint8_t> opacity; };
 void lv_obj_set_style_bg_opa(lv_obj_t *card, uint8_t opacity, unsigned selector) { card->opacity[selector] = opacity; }
-struct WallpaperUi { uint8_t *pixels = nullptr; WallpaperOpacity opacities; } ui;
+struct WallpaperUi { uint8_t *pixels = nullptr; WallpaperOpacity opacities; WallpaperBackgroundSetting background; } ui;
 WallpaperUi &wallpaper_ui() { return ui; }
 struct Targets { int count = 2; lv_obj_t *buttons[2]; } targets;
 Targets &theme_grid_targets() { return targets; }
@@ -49,6 +49,10 @@ int main() {
   wallpaper_apply_card_opacity();
   for (auto *card : {&first, &second, &back, &sub})
     for (unsigned state : {LV_PART_MAIN, LV_STATE_CHECKED, LV_STATE_PRESSED}) assert(card->opacity.at(state) == 255);
+  ui.background.colour = true;
+  wallpaper_apply_card_opacity();
+  assert(sub.opacity.at(LV_PART_MAIN) == 128 && sub.opacity.at(LV_STATE_PRESSED) == 0);
+  ui.background.colour = false;
   ui.pixels = reinterpret_cast<uint8_t *>(1);
   wallpaper_apply_card_opacity();
   assert(sub.opacity.at(LV_PART_MAIN) == 128 && sub.opacity.at(LV_STATE_PRESSED) == 0);

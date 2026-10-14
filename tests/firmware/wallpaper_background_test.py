@@ -70,9 +70,10 @@ void lv_obj_move_background(lv_obj_t *obj) {
   children.insert(children.begin(), obj);
 }
 #include "wallpaper_background.h"
+#include "wallpaper_format.h"
 namespace espcontrol {
 struct Image { struct { int w = 1280, h = 800; } header; };
-struct WallpaperUi { uint8_t *pixels = nullptr; Image image; std::vector<lv_obj_t *> widgets; } ui;
+struct WallpaperUi { uint8_t *pixels = nullptr; Image image, colour_image; WallpaperBackgroundSetting background; std::vector<lv_obj_t *> widgets; } ui;
 WallpaperUi &wallpaper_ui() { return ui; }
 struct Grid { lv_obj_t *main_page = nullptr; } grid;
 Grid &theme_grid_targets() { return grid; }
@@ -121,6 +122,17 @@ int main() {
   wallpaper_apply_cards();
   assert(ui.widgets.size() == 7 && modal->children.size() == 1 && modal->children.front() == foreground);
   assert(nested->children.empty());
+  // Colour replaces the shared source without allocating another image widget.
+  auto *same_widget = home->children.front();
+  ui.colour_image.header = {8, 8}; ui.background.colour = true;
+  wallpaper_apply_cards();
+  assert(ui.widgets.size() == 7 && home->children.front() == same_widget);
+  assert(same_widget->source == &ui.colour_image && same_widget->zoom == 23040);
+  assert(initial_subpage->children.front()->source == &ui.colour_image);
+  assert(modal->children.front() == foreground && nested->children.empty());
+  ui.pixels = nullptr; wallpaper_apply_cards();
+  assert(ui.widgets.size() == 7);  // Colour needs no uploaded wallpaper.
+  ui.background.colour = false;
   ui.pixels = nullptr; wallpaper_apply_cards();
   assert(ui.widgets.empty() && modal->children.size() == 1 && modal->children.front() == foreground);
   assert(!modal->clip_corner && !nested->clip_corner);
