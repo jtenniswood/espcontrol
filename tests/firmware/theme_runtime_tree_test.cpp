@@ -806,7 +806,7 @@ static void test_custom_card_theme_preservation() {
     assert(active_label.text.full == 0x212121);
     set_current_button_primary_color(0xFF8C00);
     theme_apply_grid_button(&active, theme->surface_card, *theme);
-    assert(active_label.text.full == 0x212121);
+    assert(active_label.text.full == 0xFFFFFF);
   }
   set_current_button_primary_color(DEFAULT_ACCENT_COLOR);
   set_active_theme_palette(DARK_THEME);
@@ -859,9 +859,10 @@ static void test_alarm_state_contrast_during_theme_refresh() {
 static void test_custom_default_contrast_after_active_theme_refresh() {
   for (uint32_t base : {0x6633B9u, 0xFF8C00u, 0x9D9D9Du}) {
     const uint32_t active = active_card_color(base);
-    const uint32_t base_text = base == 0x6633B9 ? 0xFFFFFF : 0x212121;
+    const uint32_t base_text = 0xFFFFFF;
+    const uint32_t active_text = base == 0x6633B9 ? 0xFFFFFF : 0x212121;
     assert(readable_text_color_for_bg(base) == base_text);
-    assert(readable_text_color_for_bg(active) == 0x212121);
+    assert(readable_text_color_for_bg(active) == active_text);
     set_active_theme_palette(DARK_THEME);
     lv_obj_t page, card, label, subpage, sub_card, sub_label;
     card.children = {&label};
@@ -889,7 +890,7 @@ static void test_custom_default_contrast_after_active_theme_refresh() {
           assert(button->state == state);
           assert(button->background.full == base);
           assert(button->text.full == base_text);
-          assert(button->children.front()->text.full == 0x212121);
+          assert(button->children.front()->text.full == active_text);
           lv_obj_clear_state(button, LV_STATE_CHECKED | LV_STATE_PRESSED);
           // An entity update/release only resynchronizes existing state styles.
           sync_card_checked_text_color(button);

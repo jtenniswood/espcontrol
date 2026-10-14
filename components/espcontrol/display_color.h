@@ -64,14 +64,9 @@ constexpr uint32_t display_relative_luminance(uint32_t rgb) {
 }
 
 constexpr uint32_t display_text_color_for_bg(uint32_t bg_color) {
-  // Choose a foreground with at least 4.5:1 contrast. Prefer the existing
-  // dark grey where it is readable; black covers the small mid-tone gap.
-  // Match cardPreviewTextColor in the web preview (luminance scaled by 1,000,000).
-  const uint32_t background = display_relative_luminance(bg_color);
-  if (uint64_t(background + 50000) * 4500 <= uint64_t(1050000) * 1000) return 0xFFFFFF;
-  if (uint64_t(background + 50000) * 1000 >=
-      uint64_t(display_relative_luminance(0x212121) + 50000) * 4500) return 0x212121;
-  return 0x000000;
+  // Prefer white on mid-tone card colours; switch to dark grey on pale fills.
+  // Match cardPreviewTextColor (luminance scaled by 1,000,000).
+  return display_relative_luminance(bg_color) < 450000 ? 0xFFFFFF : 0x212121;
 }
 
 // Progress fill direction is independent of the foreground contrast choice.

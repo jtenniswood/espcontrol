@@ -105,10 +105,8 @@ function cardRelativeLuminance(background: string): number {
 }
 
 export function cardPreviewTextColor(background: string): string {
-  const luminance = cardRelativeLuminance(background);
-  if ((luminance + 50000) * 4500 <= 1050000 * 1000) return "#FFFFFF";
-  if ((luminance + 50000) * 1000 >= (cardRelativeLuminance("212121") + 50000) * 4500) return "#212121";
-  return "#000000";
+  // Prefer white on mid-tone card colours, matching the firmware's crossover.
+  return cardRelativeLuminance(background) < 450000 ? "#FFFFFF" : "#212121";
 }
 
 export function cardSliderFillColor(background: string): string {
