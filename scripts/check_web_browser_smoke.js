@@ -6953,12 +6953,12 @@ async function assertCardCurveSettings(browser, testCase) {
 // corners fail even when the CSS reports the expected selection state.
 async function assertPreviewOutlinePixels(page, card, label) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  const png = await page.screenshot({ animations: "disabled", scale: "device" });
+  const png = await page.screenshot({ animations: "disabled", scale: "device", fullPage: true });
   const geometry = await card.evaluate(card => {
     const style = getComputedStyle(card);
     const radiusName = card.classList.contains("sp-empty-cell") ? "--empty-r" : "--btn-r";
     const bounds = card.getBoundingClientRect();
-    return { width: bounds.width, height: bounds.height, left: bounds.left, top: bounds.top, scale: window.devicePixelRatio,
+    return { width: bounds.width, height: bounds.height, left: bounds.left + window.scrollX, top: bounds.top + window.scrollY, scale: window.devicePixelRatio,
       radius: parseFloat(getComputedStyle(document.documentElement).getPropertyValue(radiusName)) * document.querySelector(".sp-screen").clientWidth / 100,
       continuous: style.clipPath.startsWith("path("), dashed: card.classList.contains("sp-empty-cell") };
   });
@@ -7009,7 +7009,6 @@ async function assertPreviewOutlinePixels(page, card, label) {
   for (const [index, measurement] of thicknesses.entries()) {
     assert(measurement.samples >= 3 && measurement.width > 1.2 && measurement.width < 2.8,
       `${label}: ${index < 4 ? "corner " + index : "straight sides"} must show an even 2px outline: ${JSON.stringify(thicknesses)}`);
-
   }
   // Average opposing corners to cancel pixel-phase differences when card
   // bounds land between device pixels. Each corner still has its own limit.
