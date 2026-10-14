@@ -6,6 +6,10 @@ description:
 
 # Appearance
 
+The **Appearance** section sits above **Display** in Settings. Its panels are
+**Global Active Colour**, **Card Style** (curve and transparency), **Theme**
+and **Wallpaper** (upload and removal).
+
 Cards use continuous corners, with the same proportions on the panel and
 setup-page preview. Choose **Card curve → Small, Medium or Large** in
 **Settings → Appearance**. The choice applies to home and subpage cards, including Back,
@@ -47,7 +51,7 @@ Backups include the theme mode, automatic method, times and offsets. Older backu
 
 Upload a JPEG, PNG or WebP image under **Wallpaper** to place it behind the cards on the physical panel and in the browser preview. Images are resized to a maximum of 480 pixels on the longest side and centred to fill the screen. Choose an image with a similar aspect ratio to your display for less cropping.
 
-Use **Card transparency** to choose how much wallpaper shows through the cards: **0%** gives solid fills and **100%** makes the fills completely clear. Labels and icons keep their normal colours and remain visible. The default is **20%** transparency (an 80% fill). Camera images, cover art and QR codes keep their own content. The wallpaper also appears on subpages; setup screens, modals and screensavers keep their existing backgrounds.
+Use **Card Style → Card transparency** to choose how much wallpaper shows through the cards: **0%** gives solid fills and **100%** makes the fills completely clear. Labels and icons keep their normal colours and remain visible. The default is **20%** transparency (an 80% fill). Camera images, cover art and QR codes keep their own content. The wallpaper also appears on subpages; setup screens, modals and screensavers keep their existing backgrounds.
 
 Uploads and **Remove wallpaper** apply immediately. The image and transparency setting are stored on the display and survive restarts. Transparency is remembered when replacing or removing the wallpaper; it applies when a wallpaper is present. Removing it restores solid card backgrounds. Wallpapers and their transparency setting are separate from configuration backups and are cleared by resetting customisation or factory settings. Older firmware or partition layouts without image storage show the wallpaper control as unavailable.
 
@@ -64,4 +68,4 @@ Cards using their default background highlight the matching preset or custom pic
 
 Disabled Home Assistant cards keep their background colour and show muted labels and icons. Their normal text and icon colours return when the card becomes available again.
 
-Colour changes apply to the panel automatically after a brief pause (about 200 ms), plus the time needed to redraw the cards, including cards on subpages. You do not need to restart the panel. The reset icon beside the **Appearance** arrow applies the default orange in the same way.
+Colour changes apply to the panel automatically after a brief pause (about 200 ms), plus the time needed to redraw the cards, including cards on subpages. You do not need to restart the panel. The reset icon in **Global Active Colour** applies the default orange in the same way.

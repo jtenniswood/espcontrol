@@ -96,13 +96,13 @@ async function prepareWallpaper(document: Document, file: File): Promise<ArrayBu
 export function buildWallpaperSettings(
   document: Document, request: typeof fetch, onChange: (url: string, opacity: number) => void,
   fields: Pick<ControlsFieldsFeature, "createRangeSlider">,
-): HTMLElement {
+): { wallpaper: HTMLElement; cardStyle: HTMLElement } {
   const body = document.createElement("div");
   body.className = "sp-field";
   const label = document.createElement("label");
   label.className = "sp-field-label";
   label.htmlFor = "sp-set-wallpaper";
-  label.textContent = "Wallpaper";
+  label.textContent = "Image";
   const upload = document.createElement("input");
   upload.id = "sp-set-wallpaper";
   upload.type = "file";
@@ -124,7 +124,11 @@ export function buildWallpaperSettings(
   hint.className = "sp-field-hint";
   hint.textContent = "0% is solid; 100% is clear. Text and icons stay visible.";
   control.wrap.appendChild(hint);
-  body.append(label, upload, remove, control.wrap, status);
+  const opacityStatus = document.createElement("div");
+  opacityStatus.className = "sp-field-hint";
+  opacityStatus.setAttribute("role", "status");
+  control.wrap.appendChild(opacityStatus);
+  body.append(label, upload, remove, status);
   let hasWallpaper = false, supported = false, busy = false, opacitySupported = false;
   let opacity = 80, savedOpacity = 80, previewUrl = "";
   function sync() {
@@ -177,7 +181,10 @@ export function buildWallpaperSettings(
       if (!response.ok) throw new Error("Could not load wallpaper. Reload the page to try again.");
       apply(response.status === 204 ? null : await response.arrayBuffer());
       supported = true;
-    } catch (error) { status.textContent = error instanceof Error ? error.message : "Could not load wallpaper."; }
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : "Could not load wallpaper.";
+      if (!opacitySupported) opacityStatus.textContent = status.textContent;
+    }
     finally { sync(); }
   }
   async function save(file: File | null) {
@@ -196,7 +203,7 @@ export function buildWallpaperSettings(
     finally { busy = false; upload.value = ""; sync(); }
   }
   async function saveOpacity() {
-    busy = true; sync(); status.textContent = "Saving card transparency…";
+    busy = true; sync(); opacityStatus.textContent = "Saving card transparency…";
     try {
       const response = await request("/api/v1/wallpaper-opacity", {
         method: "PUT", credentials: "include", cache: "no-store",
@@ -205,15 +212,15 @@ export function buildWallpaperSettings(
       if (!response.ok) throw new Error("Could not save card transparency. Check the connection and try again.");
       opacity = savedOpacity = parseWallpaperOpacity((await response.json()).opacity);
       onChange(previewUrl, opacity);
-      status.textContent = "Card transparency saved. Changes apply immediately.";
+      opacityStatus.textContent = "Card transparency saved. Changes apply immediately.";
     } catch (error) {
       opacity = savedOpacity;
       onChange(previewUrl, opacity);
-      status.textContent = error instanceof Error ? error.message : "Could not save card transparency.";
+      opacityStatus.textContent = error instanceof Error ? error.message : "Could not save card transparency.";
     } finally { busy = false; sync(); }
   }
   upload.addEventListener("change", () => { const file = upload.files?.[0]; if (file) void save(file); });
   remove.addEventListener("click", () => void save(null));
   sync(); void load();
-  return body;
+  return { wallpaper: body, cardStyle: control.wrap };
 }

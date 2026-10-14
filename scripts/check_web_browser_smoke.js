@@ -1162,7 +1162,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     .first()
     .isVisible();
   if (!(await page.locator("#sp-set-on-color").isVisible())) {
-    await page.getByText("Appearance", { exact: true }).click();
+    await page.getByRole("heading", { name: "Global Active Colour", exact: true }).click();
   }
   const onColorVisible = await page.locator("#sp-set-on-color").isVisible();
   assert(settingsVisible, `${label}: settings page should be visible`);
@@ -1201,6 +1201,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     await picker.fill(originalColour);
   }
   const themeModes = page.locator("#sp-set-theme-mode");
+  if (!(await themeModes.isVisible())) await page.getByRole("heading", { name: "Theme", exact: true }).click();
   assert.deepStrictEqual(await themeModes.locator("button").allTextContents(),
     ["Dark", "Light", "Automatic"], `${label}: theme modes render`);
   await themeModes.getByRole("button", { name: "Automatic" }).click();
@@ -1263,7 +1264,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     await page
       .locator("#sp-settings .sp-settings-status-title")
       .evaluateAll((nodes) => nodes.map((node) => node.textContent)),
-    ["Display", "Sleep & Schedule", "Preferences", "System"],
+    ["Appearance", "Display", "Sleep & Schedule", "Preferences", "System"],
     `${label}: settings groups should be ordered by purpose`,
   );
   const settingsPlacement = await page.locator("#sp-settings .sp-config").evaluate((config) => {
@@ -6791,8 +6792,10 @@ async function assertWallpaperSettings(browser) {
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await page.evaluate(events => window.__seedEspState(events), seededEvents());
     await page.getByRole("tab", { name: "Settings" }).click();
-    const card = page.locator("#sp-settings .card").filter({ has: page.locator("#sp-set-wallpaper") });
-    if (!(await page.locator("#sp-set-wallpaper").isVisible())) await card.locator(".card-header").click();
+    for (const id of ["sp-set-wallpaper", "sp-set-card-transparency", "sp-set-theme-mode"]) {
+      const card = page.locator("#sp-settings .card").filter({ has: page.locator("#" + id) });
+      if (!(await page.locator("#" + id).isVisible())) await card.locator(".card-header").click();
+    }
     await page.waitForFunction(() => !document.querySelector("#sp-set-wallpaper").disabled);
   }
   try {

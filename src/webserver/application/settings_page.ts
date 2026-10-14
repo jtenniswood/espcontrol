@@ -85,14 +85,16 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         page.className = "sp-page";
         var config: any = document.createElement("div");
         config.className = "sp-config fade-in";
-        var appearBody: any = document.createElement("div");
+        var activeColourBody: any = document.createElement("div");
+        var cardStyleBody: any = document.createElement("div");
+        var themeBody: any = document.createElement("div");
         var onColor = createColorSwatches(state.onColor || WEB_UI_COLORS.primary, function (hex) {
             state.onColor = hex;
             renderPreview();
             postText(entityName("button_on_color"), hex);
         }, "Active colour presets");
         onColor.id = "sp-set-on-color";
-        appearBody.appendChild(onColor);
+        activeColourBody.appendChild(onColor);
         els.setOnColor = onColor;
         const cardCurve = segmentControl(["Small", "Medium", "Large"], normalizeCardCurve(state.cardCurve), (value: string) => {
             state.cardCurve = normalizeCardCurve(value);
@@ -104,8 +106,8 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         cardCurve.segment.id = "sp-set-card-curve";
         cardCurve.segment.setAttribute("role", "group");
         cardCurve.segment.setAttribute("aria-label", "Card curve");
-        appearBody.appendChild(fieldLabel("Card curve"));
-        appearBody.appendChild(cardCurve.segment);
+        cardStyleBody.appendChild(fieldLabel("Card curve"));
+        cardStyleBody.appendChild(cardCurve.segment);
         els.setCardCurveButtons = cardCurve.buttons;
         syncCardCurveUi(state, runtime);
         var themeModes: any = segmentControl([
@@ -117,8 +119,8 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             renderPreview();
         }, "sp-segment sp-segment-scroll sp-theme-mode-segment");
         themeModes.segment.id = "sp-set-theme-mode";
-        appearBody.appendChild(fieldLabel("Theme"));
-        appearBody.appendChild(themeModes.segment);
+        themeBody.appendChild(fieldLabel("Mode"));
+        themeBody.appendChild(themeModes.segment);
         els.setThemeModeButtons = themeModes.buttons;
         var themeAutoFields: any = condField();
         var themeAutoMethods: any = segmentControl([
@@ -152,7 +154,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setThemeDarkStart = themeDarkStart.input;
         themeAutoFields.appendChild(themeScheduleFields);
         els.setThemeScheduleFields = themeScheduleFields;
-        appearBody.appendChild(themeAutoFields);
+        themeBody.appendChild(themeAutoFields);
         els.setThemeAutoFields = themeAutoFields;
         syncThemeSettingsUi(state, runtime);
         var appearanceResetButton: any = createActionButton("sp-icon-button sp-card-header-action", "", "restore", "Reset colours to defaults");
@@ -161,12 +163,16 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             event.stopPropagation();
             resetAppearanceColors(true);
         });
-        appearBody.appendChild(buildWallpaperSettings(document, resetAwareFetch, (url, opacity) => {
+        const wallpaperSettings = buildWallpaperSettings(document, resetAwareFetch, (url, opacity) => {
             runtime.els.wallpaperUrl = url;
             runtime.els.wallpaperOpacityPercent = opacity;
             renderPreview();
-        }, fields));
-        var appearanceCard: any = makeCollapsibleCard("Appearance", appearBody, true, null, appearanceResetButton);
+        }, fields);
+        cardStyleBody.appendChild(wallpaperSettings.cardStyle);
+        var activeColourCard: any = makeCollapsibleCard("Global Active Colour", activeColourBody, true, null, appearanceResetButton);
+        var cardStyleCard: any = makeCollapsibleCard("Card Style", cardStyleBody, true);
+        var themeCard: any = makeCollapsibleCard("Theme", themeBody, true);
+        var wallpaperCard: any = makeCollapsibleCard("Wallpaper", wallpaperSettings.wallpaper, true);
         var languageBody: any = document.createElement("div");
         var languageField: any = document.createElement("div");
         languageField.className = "sp-field";
@@ -625,8 +631,13 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         syncIdleUi(runtime);
         var idleCard: any = makeCollapsibleCard("Idle", idleBody, true, idleBadge);
         var systemSettingsCards: any = buildSystemSettingsCards();
+        appendSettingsSection(config, "Appearance", [
+            activeColourCard,
+            cardStyleCard,
+            themeCard,
+            wallpaperCard,
+        ]);
         appendSettingsSection(config, "Display", [
-            appearanceCard,
             backlightCard,
             idleCard,
             clockBarCard,
