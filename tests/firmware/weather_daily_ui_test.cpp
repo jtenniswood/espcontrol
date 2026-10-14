@@ -181,8 +181,14 @@ void check_modal_fit(){
     }
     assert(column.icon->text_align==LV_TEXT_ALIGN_LEFT && column.day->text_align==LV_TEXT_ALIGN_LEFT && column.temperature->text_align==LV_TEXT_ALIGN_LEFT && column.conditions->text_align==LV_TEXT_ALIGN_LEFT);
   }
-  assert(ui.days->y+ui.days->height<=ui.details->y);
-  if(!(ui.status->flags & LV_OBJ_FLAG_HIDDEN))assert(ui.details->x+ui.details->width<=ui.status->x);
+  assert(ui.days->y+ui.days->height<=ui.status->y);
+  assert(ui.body->children.size()==4); // No selected-day rainfall/humidity footer.
+  for(const auto &column:ui.columns){
+    assert(!(column.button->flags & LV_OBJ_FLAG_CLICKABLE) && column.button->events.empty());
+    assert(column.day->text_color==0xFFFFFF && (column.day->flags & LV_OBJ_FLAG_USER_2));
+    assert(column.icon->text_color==theme.text_muted && column.temperature->text_color==theme.text_muted && column.conditions->text_color==theme.text_muted);
+    assert(column.conditions->text.find("Humidity")==std::string::npos);
+  }
 }
 int main(){
   assert(weather_daily_temperature(17.8f,"°C")=="18");
@@ -262,7 +268,7 @@ int main(){
       const auto &column=modal.columns[0];
       assert(column.day->text=="Today" && column.temperature->text=="18°/10°");
       assert(column.icon->y < column.day->y && column.day->y < column.temperature->y);
-      assert(modal.details->text=="Rain 0 mm / Humidity 75%");
+      assert(column.conditions->text.find("0 mm")!=std::string::npos);
       assert(column.conditions->text.find("0%")!=std::string::npos && column.conditions->text.find("10 km/h")!=std::string::npos);
       assert(modal.columns[1].conditions->text.find("80%")!=std::string::npos && modal.columns[1].conditions->text.find("20 km/h")!=std::string::npos);
       assert(modal.columns[2].conditions->flags & LV_OBJ_FLAG_HIDDEN);
@@ -270,13 +276,13 @@ int main(){
       for(int refresh=0;refresh<20;++refresh)weather_daily_refresh_modal();
       assert(lv_obj_t::live==modal_live && ha_bindings.empty());
 
-      emit(modal.columns[1].button,LV_EVENT_CLICKED);assert(modal.day==1);
-      assert(modal.details->text=="Rain 2 mm / Humidity 80%");
-      assert(lv_obj_t::live==modal_live); // Selecting another complete day reuses all tiles.
+      const auto second_day_text=modal.columns[1].conditions->text;
+      emit(modal.columns[1].button,LV_EVENT_CLICKED);
+      assert(modal.columns[1].conditions->text==second_day_text && second_day_text.find("2 mm")!=std::string::npos);
+      assert(lv_obj_t::live==modal_live); // Tapping a day has no selection or allocation effect.
       const auto rainy_day=f.days[1];
       f.days[1].rain_probability=f.days[1].precipitation=f.days[1].wind=f.days[1].humidity=espcontrol::weather::MISSING;
       weather_daily_refresh_modal();assert(modal.columns[1].conditions->flags & LV_OBJ_FLAG_HIDDEN);
-      assert(modal.details->flags & LV_OBJ_FLAG_HIDDEN);
       modal.source->stale=true;weather_daily_refresh_modal();
       assert(modal.status->text=="Last forecast" && !(modal.status->flags & LV_OBJ_FLAG_HIDDEN));
       check_modal_fit();
@@ -327,7 +333,7 @@ int main(){
   assert(paged.columns[2].button->y==0 && paged.columns[3].button->y>0);
   assert(paged.columns[2].button->x+paged.columns[2].button->width==paged.row_width);
   assert(paged.columns[5].button->x+paged.columns[5].button->width==paged.row_width);
-  emit(paged.columns[5].button,LV_EVENT_CLICKED);assert(paged.day==5);
+  emit(paged.columns[5].button,LV_EVENT_CLICKED);check_modal_fit();
   use_fahrenheit=true;weather_daily_refresh_modal();
   assert(paged.columns[0].temperature->text=="64°/50°");
   use_fahrenheit=false;weather_daily_refresh_modal();
@@ -339,7 +345,7 @@ int main(){
   paged.source->forecast=saved_week;weather_daily_refresh_modal();assert(paged.columns.size()==6);
   const size_t old_capacity=paged.columns_per_row;
   paged.source->forecast.count=1;weather_daily_refresh_modal();
-  assert(paged.columns.size()==1 && paged.day==0);
+  assert(paged.columns.size()==1);
   assert(paged.columns_per_row==old_capacity && paged.columns[0].button->width<paged.row_width);
   weather_daily_hide_modal();assert(ha_bindings.empty());
   wide_card->source->forecast=saved_week;
@@ -359,7 +365,7 @@ int main(){
       } else assert(button->x==0);
       if((i+1)%modal.columns_per_row==0)assert(button->x+button->width==modal.row_width);
     }
-    emit(modal.columns.back().button,LV_EVENT_CLICKED);assert(modal.day==modal.columns.size()-1);
+    emit(modal.columns.back().button,LV_EVENT_CLICKED);check_modal_fit();
     weather_daily_hide_modal();assert(ha_bindings.empty());
   }
   // Supported resolutions, both rotations, conservative real font line heights,
@@ -409,14 +415,23 @@ int main(){
   auto &metrics=weather_daily_modal();
   assert(metrics.columns[0].conditions->text.find("2.4 mm")!=std::string::npos);
   assert(metrics.columns[0].conditions->text.find("0 km/h")!=std::string::npos);
-  assert(metrics.details->text=="Rain 2.4 mm / Humidity 82%");
+  assert(metrics.columns[0].conditions->text.find("2.4 mm")!=std::string::npos);
   const auto first_tile=metrics.columns[0].button;
   rain_day.rain_probability=79.8f;weather_daily_refresh_modal();
   assert(metrics.columns[0].button==first_tile && metrics.columns[0].conditions->text.find("80%")!=std::string::npos);
-  assert(metrics.details->text=="Rain 2.4 mm / Humidity 82%");
+  assert(metrics.columns[0].conditions->text.find("2.4 mm")!=std::string::npos);
   rain_day.wind=espcontrol::weather::MISSING;rain_day.humidity=espcontrol::weather::MISSING;
   weather_daily_refresh_modal();
-  assert(metrics.columns[0].conditions->text.find("km/h")==std::string::npos && metrics.details->text=="Rain 2.4 mm");
+  assert(metrics.columns[0].conditions->text.find("km/h")==std::string::npos && metrics.columns[0].conditions->text.find("2.4 mm")!=std::string::npos);
+  const auto mm_text=metrics.columns[0].conditions->text;
+  std::strcpy(metrics.source->forecast.precipitation_unit,"in");
+  weather_daily_refresh_modal();
+  assert(metrics.columns[0].conditions->text.find("2.4 in")!=std::string::npos); // Never mislabel a provider amount as mm.
+  std::strcpy(metrics.source->forecast.precipitation_unit,"mm");
+  theme.text_muted=0x888888;weather_daily_refresh_modal();
+  check_modal_fit();
+  assert(metrics.columns[0].conditions->text==mm_text);
+  theme.text_muted=0xB0B0B0;
   weather_daily_hide_modal();
   modal_width=300;
   weather_daily_cleanup(wide_owner);lv_obj_del(wide_owner);
@@ -488,7 +503,7 @@ int main(){
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     assert(lv_obj_t::live==live); // Single-day refreshes also reuse widgets.
     weather_daily_open_modal(card);
-    assert(weather_daily_modal().day==(tomorrow?1u:0u));
+    check_modal_fit(); // Single-day cards open the same non-selectable forecast grid.
     weather_daily_hide_modal();
     // Omit the requested day while other dates are still available.
     auto &f=card->source->forecast;

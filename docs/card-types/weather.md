@@ -42,9 +42,9 @@ All forecast modes share one compact forecast per weather entity. The panel supp
 
 ## Forecast Details
 
-Tap any forecast card to open a **3×2 grid** of up to six forecast days. Each day panel includes its condition icon, day, whole-degree high/low temperatures in smaller grey text, rain chance and wind speed. Wind uses the provider's units, and rainfall is shown when the provider gives an amount without a rain percentage. Missing values are omitted and zero values remain visible. Short displays abbreviate labels where needed to keep values and units readable; short landscape panels place the icon beside the day and temperatures.
+Tap any forecast card to open a **3×2 grid** of up to six forecast days. Each day panel shows its day in white and its condition icon, whole-degree high/low temperatures, rain chance, rainfall amount and wind speed in grey. Rain chance and rainfall share one row, such as **80% / 2.4 mm**, with wind below. Rainfall and wind keep the provider's units. Missing values are omitted and zero values remain visible. Short displays abbreviate labels where needed to keep values and units readable; short landscape panels place the icon beside the day and temperatures.
 
-Today and Tomorrow cards start with their selected day highlighted. Tap a day to update a compact footer showing its rainfall amount and humidity. The **Last forecast** notice shares that footer when data is stale. The layout fits supported displays in both orientations without scrolling or paging controls and has no separate Weather heading.
+Day panels have no selection highlight or tap action, and there is no separate rain/humidity footer. The grey **Last forecast** notice appears below the grid when data is stale. The layout fits supported displays in both orientations without scrolling or paging controls and has no separate Weather heading.
 
 The modal allocates only available day panels, up to six, with one reusable two-line rain/wind label per day. It shares the card's bounded forecast snapshot and uses existing fonts.
 

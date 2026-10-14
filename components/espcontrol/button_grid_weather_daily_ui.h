@@ -3,7 +3,7 @@
 #include <cstdint>
 
 // Forecast widgets exist only on configured forecast cards. The modal allocates
-// only visible forecast columns and one detail view, sharing the owner's source.
+// only visible forecast columns and a stale-status label, sharing the owner's source.
 enum class WeatherForecastView : uint8_t { DAILY, TODAY, TOMORROW };
 struct WeatherDailyColumn { lv_obj_t *icon, *day, *high; };
 struct WeatherDailyCard {
