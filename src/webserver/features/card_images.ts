@@ -1,6 +1,7 @@
 import { createCardImageApi, type CardImageHttpRequest, type CardImageHttpResponse } from "../api/card_image_api";
 export type { CardImageHttpRequest, CardImageHttpResponse } from "../api/card_image_api";
 import type { CardConfig } from "../contracts/types";
+import { CARD_IMAGE_STORAGE_GUIDE_URL, CARD_IMAGE_STORAGE_SETUP_MESSAGE } from "./card_image_storage";
 import type {
   BackupArchiveEntries,
   BackupArchiveEntry,
@@ -8,7 +9,7 @@ import type {
 } from "./backup";
 
 export class CardImageStorageUnavailableError extends Error {
-  constructor() { super("This display does not have card image storage."); }
+  constructor() { super(CARD_IMAGE_STORAGE_SETUP_MESSAGE + " Guide: " + CARD_IMAGE_STORAGE_GUIDE_URL); }
 }
 
 export interface CardImageItem {
@@ -216,7 +217,12 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
   const list = async (force = false): Promise<CardImageItem[]> => {
     if (!force && loaded) return images.slice();
     const response = await api.list();
-    if (response.status === 404) throw new CardImageStorageUnavailableError();
+    if (response.status === 404) {
+      images = [];
+      libraryInfo = { ...libraryInfo, available: false, requiresUsbFlash: true };
+      loaded = true;
+      throw new CardImageStorageUnavailableError();
+    }
     if (!response.ok) throw new Error("Could not load images.");
     const payload = await response.json() as CardImageListPayload;
     const rawImages = Array.isArray(payload?.images) ? payload.images : [];
@@ -254,8 +260,14 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
     bytes: Uint8Array,
     failureMessage = "Could not upload image.",
     restoreSession?: string,
-  ): Promise<CardImageItem> =>
-    api.upload(bytes, restoreSession).then((response) => decodeUploadResponse(response, failureMessage));
+  ): Promise<CardImageItem> => requireStorage().then(() =>
+    api.upload(bytes, restoreSession).then((response) => decodeUploadResponse(response, failureMessage)));
+
+  const requireStorage = async (): Promise<void> => {
+    await list();
+    if (libraryInfo.requiresUsbFlash) throw new CardImageStorageUnavailableError();
+    if (!libraryInfo.available) throw new Error("Could not access card image storage. Reload the page and try again.");
+  };
 
   const resize = (file: Blob): Promise<OptimizedCardImage> => {
     if (!dependencies.optimize) return Promise.reject(new Error("Image optimization is unavailable."));
@@ -274,11 +286,13 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
     invalidate,
     resize,
     async upload(file) {
+      await requireStorage();
       const optimized = await resize(file);
       return decodeUploadResponse(await api.upload(optimized), "Could not upload image.");
     },
     uploadBytes,
     async rename(value, name) {
+      await requireStorage();
       const id = dependencies.normalizeId(value);
       if (!id) throw new Error("Could not rename image.");
       return decodeUploadResponse(await api.rename(id, String(name || "")), "Could not rename image.");
@@ -286,6 +300,7 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
     async delete(value) {
       const id = dependencies.normalizeId(value);
       if (!id) return;
+      await requireStorage();
       const response = await api.delete(id);
       if (!response.ok) {
         const message = await response.text();
@@ -301,6 +316,7 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
       return new Uint8Array(await response.arrayBuffer());
     },
     async beginRestore() {
+      await requireStorage();
       if (!libraryInfo.restoreTransactions) return null;
       const response = await api.beginRestore();
       if (!response.ok) throw new Error((await response.text()) || "Could not start backup restore.");
@@ -396,6 +412,7 @@ export function createCardImageBackupAssetProvider(
       const references: Record<string, string> = {};
       const existing = await cardImages.list(true);
       const info = cardImages.info();
+      if (info.requiresUsbFlash) throw new CardImageStorageUnavailableError();
       if (!info.available) throw new Error("Card image storage is unavailable on this display.");
       const existingById = new Map(existing.map((image) => [image.id, image]));
       const existingIds = new Set(existingById.keys());

@@ -905,6 +905,7 @@ function composeApplicationContext(): ApplicationContext {
     fields, settingsHelpers, coverArtScreensaver, mediaPlayback,
   );
   const systemSection = createSettingsSystemSectionFeature({
+    cardImages,
     buildIdentityCard: identity.buildCard,
     exportBackup: backupApplication.exportConfig,
     importBackup: backupApplication.importConfig,

@@ -13,6 +13,8 @@ You can save your entire panel configuration as a file and restore it later. You
 
 If an image cannot be read during export, you can retry, cancel, or explicitly export a configuration-only backup without images. Displays without image storage export their configuration normally.
 
+If Backup shows the image-storage information banner, export your configuration before reinstalling over USB. Image-file restore is unavailable until the required storage is installed; configuration-only backups can still be restored. Follow [Enable Image Storage](/features/image-storage) for the backup, reinstall and restore steps.
+
 Restored presence and screen-schedule sensors reconnect automatically without restarting the display.
 
 Backup files are versioned so newer EspControl releases can keep importing older backups safely. Older version 1 backups still import, and new exports use version 2 while keeping the same readable layout fields for compatibility.

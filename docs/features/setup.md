@@ -71,7 +71,7 @@ Useful button-style cards, including Switch, Action, Trigger, Media, Internal Sw
 
 Every supported card position can have its own background image. The maximum therefore follows the size of the display grid: 6 on the 4.3-inch panel, 9 on the 4-inch and P4-86 panels, 15 on the 7-inch panel, and 20 on either 10.1-inch panel.
 
-Displays that were already running EspControl before background images were added need one full USB reflash to install the image-storage area. Until then, the setup page keeps image uploads disabled and explains what is required. Normal over-the-air updates can be used again afterwards.
+Displays with an older partition layout need one full USB reinstall to enable image storage. The setup page disables the affected image controls and links to the [Enable Image Storage guide](/features/image-storage), which explains how to export a backup, reinstall and restore it. Other cards and settings continue working. OTA updates can be used again afterwards.
 
 The setup page resizes uploads in the browser before sending them to the panel, and each card only stores a compact image reference. The preview shows the selected image before you apply the configuration.
 

@@ -6,6 +6,7 @@ import type { ConfigSensorOptionsFeature } from "./config_sensor_options";
 import type { ControlsShellFeature } from "./controls_shell";
 import type { ApplicationApiFeature } from "./api";
 import type { CardImageService } from "./card_image_service";
+import { createCardImageStorageBanner, syncCardImageStorageBanner } from "./card_image_storage_banner";
 import {
     SENSOR_LARGE_NUMBERS_OPTION,
     cardBackgroundImage,
@@ -578,8 +579,7 @@ export function createControlsFieldsFeature(
         deleteBtn.title = "Delete image";
         actions.append(upload, uploadBtn, renameBtn, deleteBtn);
         field.appendChild(actions);
-        var availability: any = document.createElement("div");
-        availability.className = "sp-card-image-storage";
+        var availability: any = createCardImageStorageBanner();
         field.appendChild(availability);
         const selectedImage = () => cardBackgroundImage(b);
         const refreshPreview = () => {
@@ -589,10 +589,11 @@ export function createControlsFieldsFeature(
             const iconName = iconSlug(b.icon && b.icon !== "Auto" ? b.icon : "gesture-tap-button");
             preview.innerHTML = '<span class="sp-card-bg-preview-icon mdi mdi-' + iconName + '"></span>' +
                 '<span class="sp-card-bg-preview-title">' + escHtml(b.label || b.entity || "Configure") + '</span>';
-            renameBtn.disabled = !id;
-            deleteBtn.disabled = !id;
+            renameBtn.disabled = !cardImages.info().available || !id;
+            deleteBtn.disabled = !cardImages.info().available || !id;
         };
         const setBackground = (value: unknown) => {
+            if (!cardImages.info().available) return;
             setCardBackgroundImage(b, normalizeCardBackgroundImageId(value));
             helpers.saveField("options", b.options);
             refreshPreview();
@@ -603,10 +604,8 @@ export function createControlsFieldsFeature(
             const info = cardImages.info();
             select.disabled = !info.available;
             uploadBtn.disabled = !info.available;
-            availability.textContent = info.requiresUsbFlash
-                ? "Background images need one USB reflash to install image storage on this display."
-                : "";
-            availability.hidden = !info.requiresUsbFlash;
+            upload.disabled = !info.available;
+            syncCardImageStorageBanner(availability, info);
             select.innerHTML = "";
             const none = document.createElement("option");
             none.value = "";
@@ -629,6 +628,7 @@ export function createControlsFieldsFeature(
         };
         select.addEventListener("change", function (this: HTMLSelectElement) { setBackground(this.value); });
         renameBtn.addEventListener("click", () => {
+            if (!cardImages.info().available) return;
             const id = selectedImage();
             if (!id) return;
             const selected = Array.from(select.options).find((option: any) => option.value === id) as any;
@@ -639,10 +639,11 @@ export function createControlsFieldsFeature(
                 showBanner("Image renamed.", "success");
             }).catch((error) => {
                 showBanner(error?.message || "Could not rename image.", "error");
-            }).finally(() => { renameBtn.disabled = !selectedImage(); });
+            }).finally(() => { renameBtn.disabled = !cardImages.info().available || !selectedImage(); });
         });
         uploadBtn.addEventListener("click", () => upload.click());
         upload.addEventListener("change", () => {
+            if (!cardImages.info().available) return;
             const file = upload.files && upload.files[0];
             if (!file) return;
             uploadBtn.disabled = true;
@@ -657,6 +658,7 @@ export function createControlsFieldsFeature(
             });
         });
         deleteBtn.addEventListener("click", () => {
+            if (!cardImages.info().available) return;
             const id = selectedImage();
             if (!id) return;
             const used = cardImages.countUsage(id);
@@ -672,7 +674,7 @@ export function createControlsFieldsFeature(
             }).catch((error) => {
                 showBanner(error?.message || "Could not delete image.", "error");
                 if (deleteBtn.isConnected) {
-                    deleteBtn.disabled = false;
+                    deleteBtn.disabled = !cardImages.info().available || !selectedImage();
                     deleteBtn.removeAttribute("aria-busy");
                 }
             });

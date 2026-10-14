@@ -1,8 +1,10 @@
 import type { CardConfig } from "../../src/webserver/contracts/types";
+import { CARD_IMAGE_STORAGE_GUIDE_URL } from "../../src/webserver/features/card_image_storage";
 import {
   CARD_IMAGE_SAVE_FAILURE_MESSAGE,
   createCardImageBackupAssetProvider,
   createCardImagesFeature,
+  CardImageStorageUnavailableError,
   deleteCardImageConfigurationFirst,
   deleteCardImageWithDeviceTransaction,
   type CardImageHttpRequest,
@@ -115,6 +117,44 @@ export async function runCardImagesFeatureTests(): Promise<void> {
     freeBytes: 4096,
     maxBytes: 45056,
   }, "storage metadata is normalized once");
+
+  const unavailableRequests: string[] = [];
+  const unavailable = featureFor(async (url, request) => {
+    unavailableRequests.push(`${request?.method || "GET"} ${url}`);
+    return response({ json: { available: false, requires_usb_flash: true, images: [] } });
+  });
+  for (const operation of [
+    () => unavailable.upload(new Blob()),
+    () => unavailable.uploadBytes(new Uint8Array([0xff, 0xd8, 0xff, 0xd9])),
+    () => unavailable.rename("saved-image", "Kitchen"),
+    () => unavailable.delete("saved-image"),
+    () => unavailable.beginRestore(),
+  ]) {
+    let blocked = false;
+    try { await operation(); } catch (error) {
+      blocked = error instanceof CardImageStorageUnavailableError &&
+        error.message.includes("Export a backup") && error.message.includes(CARD_IMAGE_STORAGE_GUIDE_URL);
+    }
+    equal(blocked, true, "old partitions block image operations with backup and USB guidance");
+  }
+  deepEqual(unavailableRequests, ["GET /api/card-images"],
+    "unavailable image operations never optimize or mutate storage");
+
+  const unavailableRestore = providerFor(async () => response({
+    json: { available: false, requires_usb_flash: true, images: [] },
+  })).provider;
+  let restoreBlocked = false;
+  try {
+    await unavailableRestore.createRestore(manifestEntries([{ id: "saved-image", name: "Kitchen" }])).stage();
+  } catch (error) { restoreBlocked = error instanceof CardImageStorageUnavailableError; }
+  equal(restoreBlocked, true, "image restore explains the USB requirement before applying references");
+
+  const oldFirmware = featureFor(async () => ({ ...response({ ok: false }), status: 404 }));
+  try { await oldFirmware.list(); } catch (error) {
+    equal(error instanceof CardImageStorageUnavailableError, true, "older firmware reports missing image support");
+  }
+  equal(oldFirmware.info().available, false, "404 leaves image controls disabled");
+  equal(oldFirmware.info().requiresUsbFlash, true, "404 exposes the migration banner");
 
   let emptyRequests = 0;
   const emptyProvider = providerFor(async () => {

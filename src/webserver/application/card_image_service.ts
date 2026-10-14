@@ -6,6 +6,7 @@ import type { ConfigPersistenceFeature } from "./config_post_api";
 import {
   createCardImageBackupAssetProvider,
   createCardImagesFeature,
+  CardImageStorageUnavailableError,
   deleteCardImageConfigurationFirst,
   deleteCardImageWithDeviceTransaction,
   type CardImageHttpRequest,
@@ -73,6 +74,9 @@ export function createCardImageService(dependencies: CardImageServiceDependencie
     const id = normalizeCardBackgroundImageId(value);
     if (!id) throw new Error("Invalid card image ID.");
     await cardImages.list(true);
+    const info = cardImages.info();
+    if (info.requiresUsbFlash) throw new CardImageStorageUnavailableError();
+    if (!info.available) throw new Error("Could not access card image storage. Reload the page and try again.");
     if (cardImages.info().referenceTransactions) {
       return deleteCardImageWithDeviceTransaction({
         waitForPendingPosts: dependencies.requestApi.postQueueIdle,
