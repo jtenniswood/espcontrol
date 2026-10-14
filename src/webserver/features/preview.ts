@@ -105,8 +105,12 @@ function cardRelativeLuminance(background: string): number {
 }
 
 export function cardPreviewTextColor(background: string): string {
-  // Prefer white on mid-tone card colours, matching the firmware's crossover.
-  return cardRelativeLuminance(background) < 450000 ? "#FFFFFF" : "#212121";
+  const rgb = parseInt(background.replace(/^#/, ""), 16);
+  const red = (rgb >> 16) & 255, green = (rgb >> 8) & 255, blue = rgb & 255;
+  // Keep white content on mid-tones, including saturated blue/cyan shades.
+  // Match the panel's original light-background crossover.
+  const crossover = green >= red + 32 && blue >= red + 32 ? 550000 : 450000;
+  return cardRelativeLuminance(background) >= crossover ? "#212121" : "#FFFFFF";
 }
 
 export function cardSliderFillColor(background: string, selectedActiveColor = ""): string {

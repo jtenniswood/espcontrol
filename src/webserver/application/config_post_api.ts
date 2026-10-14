@@ -9,6 +9,11 @@ import type { EntityStateFeature } from "./entity_state";
 import type { ControlsShellFeature } from "./controls_shell";
 import type { ApplicationApiFeature } from "./api";
 import { serializedConfigContainsWifiSharing } from "../features/wifi_sharing_config";
+import {
+    cardBackgroundImage,
+    normalizeCardBackgroundImageId,
+    setCardBackgroundImage,
+} from "./config_option_core";
 
 export interface ConfigPersistenceFeature {
     connectCodec(codec: Pick<ConfigCodecFeature, "serializeButtonConfig" | "serializeSubpageConfig">): void;
@@ -17,8 +22,15 @@ export interface ConfigPersistenceFeature {
     saveButtonConfig(slot: number): Promise<any>;
     saveButtonConfigAndOrder(slot: number, order: string): Promise<any>;
     saveSubpageEntity(slot: number): unknown;
+    clearCardImageReferences(id: unknown, persistChanges?: boolean): CardImageReferenceSnapshot;
     subpageChunkShouldPost(slot?: any, keys?: any, chunks?: any, index?: any, previousPendingChunks?: any): boolean;
     scheduleSliderSubpageMigration(slot?: any): void;
+}
+
+export interface CardImageReferenceSnapshot {
+    changed: number;
+    restore(): void;
+    persist(): void;
 }
 
 export function createConfigPersistenceFeature(
@@ -104,6 +116,59 @@ export function createConfigPersistenceFeature(
         var api: any = requests();
         api.postQueue = api.postQueue.then(saveLegacy);
         return api.postQueue;
+    }
+    function clearCardImageReferences(this: any, id?: any, persistChanges?: any): CardImageReferenceSnapshot {
+        const shouldPersist = persistChanges !== false;
+        const imageId = normalizeCardBackgroundImageId(id);
+        const entries: Array<{ button: any; imageId: string }> = [];
+        const mainSlots: number[] = [];
+        const subpageKeys: string[] = [];
+        const seen = new Set<any>();
+        const snapshot: CardImageReferenceSnapshot = {
+            changed: 0,
+            restore() {
+                entries.forEach((entry) => setCardBackgroundImage(entry.button, entry.imageId));
+            },
+            persist() {
+                mainSlots.forEach((slot) => saveButtonConfig(slot));
+                subpageKeys.forEach((key) => saveSubpageEntity(key));
+            },
+        };
+        if (!imageId)
+            return snapshot;
+
+        const clearButtons = (buttons: any[], saveSlot?: (index: number) => void): number => {
+            let changed = 0;
+            (buttons || []).forEach((button, index) => {
+                if (cardBackgroundImage(button) !== imageId)
+                    return;
+                if (!seen.has(button)) {
+                    seen.add(button);
+                    entries.push({ button, imageId: cardBackgroundImage(button) });
+                }
+                setCardBackgroundImage(button, "");
+                changed++;
+                saveSlot?.(index);
+            });
+            return changed;
+        };
+
+        snapshot.changed += clearButtons(state.buttons, shouldPersist ? (index) => {
+            const slot = index + 1;
+            saveButtonConfig(slot);
+            mainSlots.push(slot);
+        } : undefined);
+        if (state.settingsDraft?.button)
+            snapshot.changed += clearButtons([state.settingsDraft.button]);
+        Object.keys(state.subpages || {}).forEach((key) => {
+            const changed = clearButtons(state.subpages[key]?.buttons || []);
+            snapshot.changed += changed;
+            if (changed && shouldPersist) {
+                saveSubpageEntity(key);
+                subpageKeys.push(key);
+            }
+        });
+        return snapshot;
     }
     function subpageEntityKeys(this: any) {
         var keys: any = ENTITY_CATALOG.groups.subpage_slot || [];
@@ -193,6 +258,7 @@ export function createConfigPersistenceFeature(
         saveButtonConfig: (slot) => saveButtonConfig(slot),
         saveButtonConfigAndOrder: (slot, order) => saveButtonConfigAndOrder(slot, order),
         saveSubpageEntity: (slot) => saveSubpageEntity(slot),
+        clearCardImageReferences,
         subpageChunkShouldPost,
         scheduleSliderSubpageMigration,
     };

@@ -144,7 +144,7 @@ test("striped custom cards render the readable stripe tones on both pages and th
   }
 });
 
-test("active presets choose a readable foreground for solid and striped cards", () => {
+test("active presets retain white mid-tone content and preserve it across stripes", () => {
   assert.equal(activeCardColor("AAC93F"), "80972F");
   assert.equal(activeCardColor("EED146"), "B39D35");
   assert.equal(cardPreviewTextColor("80972F"), "#FFFFFF");
@@ -156,7 +156,9 @@ test("active presets choose a readable foreground for solid and striped cards", 
   for (const base of [...presets, "FFFFFF", "A0A0A0"]) {
     const active = activeCardColor(base);
     const foreground = cardPreviewTextColor(active);
-    assert(contrast(foreground, active) >= 2.1, base);
+    const [red, green, blue] = active.match(/../g).map(channel => parseInt(channel, 16));
+    const minimumContrast = green >= red + 32 && blue >= red + 32 ? 1.75 : 2.1;
+    assert(contrast(foreground, active) >= minimumContrast, base);
     assert(contrast(foreground, cardPatternHighlightColor(active)) >= 4.5, base + " stripes");
   }
 });
@@ -164,7 +166,8 @@ test("active presets choose a readable foreground for solid and striped cards", 
 test("white-preferring foreground selection keeps its contrast floor across the RGB space", () => {
   for (let red = 0; red <= 255; red += 17) for (let green = 0; green <= 255; green += 17) for (let blue = 0; blue <= 255; blue += 17) {
     const color = [red, green, blue].map(channel => channel.toString(16).padStart(2, "0")).join("");
-    assert(contrast(cardPreviewTextColor(color), color) >= 2.1 - 0.00005, color);
+    const minimumContrast = green >= red + 32 && blue >= red + 32 ? 1.75 : 2.1;
+    assert(contrast(cardPreviewTextColor(color), color) >= minimumContrast - 0.00005, color);
   }
 });
 
@@ -175,4 +178,15 @@ test("white content stays on mid-tones until the pale-background crossover", () 
   for (const colour of ["B3B3B3", "FFFFFF", "F5F5F5", "EED146"]) {
     assert.equal(cardPreviewTextColor(colour), "#212121", colour);
   }
+});
+
+test("foreground selection restores the previous grey and cyan crossovers", () => {
+  for (const [background, expected] of [
+    ["6E6E6E", "#FFFFFF"], ["787878", "#FFFFFF"],
+    ["B2B2B2", "#FFFFFF"], ["B3B3B3", "#212121"],
+    ["00D9D9", "#FFFFFF"], ["00DADA", "#212121"],
+    ["00BCD4", "#FFFFFF"], ["66D7E5", "#212121"],
+    ["80972F", "#FFFFFF"], ["B39D35", "#FFFFFF"],
+    ["FFFFFF", "#212121"], ["FFEC16", "#212121"],
+  ]) assert.equal(cardPreviewTextColor(background), expected, background);
 });

@@ -51,6 +51,7 @@ inline std::string decode_compact_subpage_field(const std::string &value, size_t
 }
 
 inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
+  std::string original_options = b.options;
   // Shared colours must survive the card-specific option cleanup below.
   const std::string card_colors = card_color_options_normalized(b.options);
   b.options = options_without_card_colors(b.options);
@@ -230,6 +231,9 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   }
   if (b.type == "sensor") {
     b.options = sensor_card_options_normalized(b.options, b.precision);
+  }
+  if (card_background_supported_card(b.type, b.sensor)) {
+    append_card_background_options(b.options, original_options);
   }
   if (!card_colors.empty()) {
     if (!b.options.empty()) b.options += ",";

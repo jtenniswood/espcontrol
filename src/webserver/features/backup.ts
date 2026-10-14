@@ -56,6 +56,25 @@ export interface BackupImportPlan {
   readonly screen: Record<string, unknown> | null;
 }
 
+export interface BackupArchiveEntry {
+  readonly name: string;
+  readonly bytes: Uint8Array;
+}
+
+export type BackupArchiveEntries = Readonly<Record<string, Uint8Array>>;
+
+export interface BackupAssetRestore<TImportPlan> {
+  stage(): Promise<void>;
+  remapImportedReferences(plan: TImportPlan): void;
+  commit(): Promise<void>;
+  rollback(): Promise<void>;
+}
+
+export interface BackupAssetProvider<TImportPlan = BackupImportPlan> {
+  createArchiveEntries(): Promise<BackupArchiveEntry[]>;
+  createRestore(entries?: BackupArchiveEntries | null): BackupAssetRestore<TImportPlan>;
+}
+
 export interface BackupFeatureDependencies {
   readonly deviceId: string;
   readonly gridCols: number;

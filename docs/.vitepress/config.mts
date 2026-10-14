@@ -420,6 +420,7 @@ export default defineConfig({
           { text: 'Temperature Settings', link: '/features/temperature' },
           { text: 'Device Name', link: '/features/setup#naming-your-panel' },
           { text: 'Backup', link: '/features/backup' },
+          { text: 'Enable Image Storage', link: '/features/image-storage' },
           { text: 'Factory Reset', link: '/features/backup#reset-the-display' },
           { text: 'Firmware', link: '/features/firmware-updates' },
           { text: 'Built-in Relays', link: '/features/relays' },

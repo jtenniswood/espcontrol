@@ -1,4 +1,6 @@
 import { buildResetSettings } from "./settings_reset_section";
+import { createCardImageStorageBanner, syncCardImageStorageBanner } from "./card_image_storage_banner";
+import type { CardImageService } from "./card_image_service";
 import { state } from "../state/app_instance";
 import { normalizeHomeAssistantArtworkEndpointMode, normalizeHomeAssistantArtworkPort, normalizeHomeAssistantArtworkProtocol } from "../model/settings";
 import type { UiRuntimeState } from "./state";
@@ -21,6 +23,7 @@ import type { ControlsFieldsFeature } from "./controls_fields";
 import { formatHomeAssistantArtworkEndpointStatus, type SettingsPageHelpersFeature } from "./settings_page_helpers";
 
 export interface SettingsSystemSectionActions {
+    cardImages: Pick<CardImageService, "list" | "info">;
     buildIdentityCard?(): HTMLElement;
     exportBackup(): void;
     importBackup(): void;
@@ -77,6 +80,11 @@ export function createSettingsSystemSectionFeature(
     // ── Settings System Section ────────────────────────────────────────
     function buildSystemSettingsCards(this: any) {
         var backupBody: any = document.createElement("div");
+        const imageStorageBanner = createCardImageStorageBanner();
+        backupBody.appendChild(imageStorageBanner);
+        const syncImageStorage = () => syncCardImageStorageBanner(imageStorageBanner, actions.cardImages.info());
+        syncImageStorage();
+        void actions.cardImages.list().then(syncImageStorage).catch(syncImageStorage);
         var backupRow: any = document.createElement("div");
         backupRow.className = "sp-backup-btns";
         var exportBtn: any = createActionButton("sp-backup-btn", "Export", "download");

@@ -10,6 +10,7 @@
 #endif
 
 #include "esphome/core/version.h"
+#include "card_asset_service.h"
 #include "artwork_controller.h"
 #include "cover_art.h"
 #include "../artwork_image/image_pipeline_policy.h"
@@ -156,6 +157,7 @@ inline void image_card_resume_pipeline();
 
 inline void image_card_schedule_source_refresh(ImageCardCtx *ctx, uint32_t delay_ms,
                                                const char *reason);
+inline void card_background_refresh_due();
 inline void image_card_request_source_url(ImageCardCtx *ctx, bool source_changed = false);
 inline size_t image_card_estimated_buffer_bytes(int width, int height);
 inline size_t image_card_estimated_pipeline_bytes(int width, int height);
@@ -812,7 +814,6 @@ inline bool image_card_memory_available(ImageCardCtx *ctx, const char *stage,
 #endif
   return true;
 }
-
 inline void image_card_apply_media_overlay_tint(ImageCardCtx *ctx) {
   if (!ctx || !ctx->media_overlay || !ctx->media_overlay_artwork_tint || !ctx->image) return;
   const int width = ctx->image->get_width();
@@ -1239,6 +1240,28 @@ inline bool image_card_position_widget(lv_obj_t *btn, lv_obj_t *widget,
   return true;
 }
 
+inline lv_obj_t *image_card_label_shadow(lv_obj_t *label, lv_obj_t *btn);
+inline void image_card_delete_label_shadow(lv_obj_t *label, lv_obj_t *btn);
+inline void image_card_parent_offset_from_button(lv_obj_t *obj, lv_obj_t *btn,
+                                                 lv_coord_t &x, lv_coord_t &y,
+                                                 lv_coord_t &height);
+
+inline void image_card_apply_widget_geometry(lv_obj_t *btn, lv_obj_t *widget,
+                                             esphome::artwork_image::ArtworkImage *image,
+                                             lv_coord_t target_width_override = 0) {
+  if (!image) return;
+  lv_coord_t width = 0;
+  lv_coord_t height = 0;
+  if (!image_card_position_widget(btn, widget, &width, &height)) return;
+  lv_coord_t target_width = target_width_override > 0 ? target_width_override : width;
+  image_card_apply_tile_image_align(widget);
+  lv_obj_t *loading = image_card_loading_widget(widget);
+  image_card_position_widget(btn, loading);
+  image_card_refresh_loading_layout(loading);
+  image->set_target_size(target_width, height);
+  image->set_resize_mode(esphome::artwork_image::ImageResizeMode::COVER);
+}
+
 inline lv_coord_t image_card_media_artwork_target_width(ImageCardCtx *ctx, lv_coord_t width) {
   if (!ctx || !ctx->media_artwork || width <= 0) return width;
   int percent = normalize_width_compensation_percent(ctx->media_artwork_width_compensation_percent);
@@ -1658,10 +1681,11 @@ inline void image_card_configure_label(BtnSlot &s, const ParsedCfg &p) {
     shadow = lv_label_create(s.btn);
     lv_obj_set_user_data(shadow, s.text_lbl);
   }
+  lv_obj_add_flag(shadow, CARD_TEXT_COLOR_PROTECTED_FLAG);
   const lv_font_t *font = lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN);
   if (font) lv_obj_set_style_text_font(shadow, font, LV_PART_MAIN);
   lv_obj_set_style_text_color(shadow, lv_color_hex(0x000000), LV_PART_MAIN);
-  lv_obj_set_style_text_opa(shadow, LV_OPA_50, LV_PART_MAIN);
+  lv_obj_set_style_text_opa(shadow, LV_OPA_80, LV_PART_MAIN);
   lv_obj_set_style_text_align(shadow, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
   lv_obj_set_style_bg_opa(shadow, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_radius(shadow, 0, LV_PART_MAIN);
@@ -3065,6 +3089,7 @@ inline void image_card_begin_refresh_schedule(ImageCardCtx *ctx) {
 
 inline void image_card_refresh_due(std::function<bool()> page_visible = nullptr) {
   if (page_visible) image_card_page_visible() = page_visible;
+  card_background_refresh_due();
   ImageCardCtx *contexts = image_card_contexts();
   uint32_t now = esphome::millis();
   for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {

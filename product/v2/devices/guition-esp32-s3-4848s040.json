@@ -2,7 +2,8 @@
   "profiles": {
     "platform": "esp32-s3",
     "modal": "compact-square-constrained",
-    "fonts": "compact-panel"
+    "fonts": "compact-panel",
+    "assets": "card-backgrounds-9"
   },
   "config": {
     "slots": 9,

@@ -108,7 +108,7 @@ inline bool navigation_return_home(lv_obj_t *main_page_obj) {
     return false;
   }
   if (lv_scr_act() != main_page_obj) {
-    lv_scr_load_anim(main_page_obj, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+    button_grid_load_screen(main_page_obj);
   }
   return true;
 }
@@ -262,7 +262,7 @@ inline void navigation_refresh_subpage_label() {
 inline bool navigation_restore_subpage_slot(int slot) {
   NavigationSubpageEntry *entry = navigation_find_slot(slot);
   if (entry == nullptr || entry->screen == nullptr) return false;
-  lv_scr_load_anim(entry->screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+  button_grid_load_screen(entry->screen);
   refresh_visible_image_cards();
   return true;
 }
@@ -331,7 +331,7 @@ inline bool navigation_open_first_kind(const std::string &kind,
     ESP_LOGW("navigation", "No subpage of kind '%s'", navigation_trim(kind).c_str());
     return false;
   }
-  lv_scr_load_anim(target->screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+  button_grid_load_screen(target->screen);
   refresh_visible_image_cards();
   return true;
 }

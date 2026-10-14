@@ -7,6 +7,7 @@ import {
 import {
     SENSOR_LARGE_NUMBERS_OPTION,
     SUBPAGE_KIND_OPTION,
+    copyCardBackgroundOptions,
     copyLargeNumbersOption,
     largeNumbersExplicitlyDisabled,
 } from "./config_option_core";
@@ -66,7 +67,7 @@ import {
         b.precision = "";
     }
     function normalizeSubpageOptions(this: any, options?: any, sensor?: any, precision?: any) {
-        var out: any = "";
+        var out: any = copyCardBackgroundOptions("", options, { type: "subpage" });
         var kind: any = normalizeSubpageKind(configOptionValue(options, SUBPAGE_KIND_OPTION));
         if (kind)
             out = setConfigOptionValue(out, SUBPAGE_KIND_OPTION, kind);

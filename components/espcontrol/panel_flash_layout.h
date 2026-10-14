@@ -5,6 +5,10 @@ namespace espcontrol {
 // Reserve the final four sectors for an independent NVS store for panel identity.
 constexpr size_t PANEL_IDENTITY_STORAGE_BYTES = 16 * 1024;
 constexpr size_t PANEL_DATA_PARTITION_BYTES = 2 * 1024 * 1024;
+constexpr size_t PANEL_CONFIG_STORAGE_SLOT_CAPACITY = 40 * 1024;
+constexpr size_t PANEL_CONFIG_PARTITION_SLOT_BYTES =
+    ((16 + PANEL_CONFIG_STORAGE_SLOT_CAPACITY + 4095) / 4096) * 4096;
+constexpr size_t PANEL_CONFIG_STORAGE_BYTES = 2 * PANEL_CONFIG_PARTITION_SLOT_BYTES;
 inline size_t panel_config_partition_bytes(size_t size) {
   return size == PANEL_DATA_PARTITION_BYTES ? size - PANEL_IDENTITY_STORAGE_BYTES : 0;
 }

@@ -8,8 +8,12 @@ description:
 
 You can save your entire panel configuration as a file and restore it later. You'll find these options in the **Settings** tab on the [Setup](/features/setup) page, under the **Backup** section.
 
-- **Export** - saves your entire setup (cards, subpages, colours, brightness, screen schedule, display settings, Home Assistant artwork settings, and firmware update preferences) as a file you can keep as a backup.
-- **Import** - loads a previously saved file to restore your setup. If you're loading a backup from a different-sized panel, the cards are rearranged to fit automatically.
+- **Export** - saves your entire setup (cards, subpages, card background images, colours, brightness, screen schedule, display settings, Home Assistant artwork settings, and firmware update preferences) as a file you can keep as a backup.
+- **Import** - loads a previously saved file to restore your setup. If you're loading a backup from a different-sized panel, the cards are rearranged to fit automatically. New images are staged until the panel confirms that the restored card settings were saved; an interrupted import is cleaned up when the panel restarts.
+
+If an image cannot be read during export, you can retry, cancel, or explicitly export a configuration-only backup without images. Displays without image storage export their configuration normally.
+
+If Backup shows the image-storage information banner, export your configuration before reinstalling over USB. Image-file restore is unavailable until the required storage is installed; configuration-only backups can still be restored. Follow [Enable Image Storage](/features/image-storage) for the backup, reinstall and restore steps.
 
 Restored presence and screen-schedule sensors reconnect automatically without restarting the display.
 
