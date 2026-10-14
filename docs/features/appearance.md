@@ -49,4 +49,6 @@ Slider cards also use the selected Theme or Custom colour for their fill. Text a
 
 Disabled Home Assistant cards keep their background colour and show muted labels and icons. Their normal text and icon colours return when the card becomes available again.
 
+Uploaded card backgrounds stay fully opaque, including when a card is pressed, active or unavailable. The web preview also shows these images at full opacity.
+
 Colour changes apply to the panel automatically after a brief pause (about 200 ms), plus the time needed to redraw the cards, including cards on subpages. You do not need to restart the panel. The reset icon beside the **Appearance** arrow applies the default orange in the same way.

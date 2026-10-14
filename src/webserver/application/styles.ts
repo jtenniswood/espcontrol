@@ -90,7 +90,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-wifi-qr-preview{display:block;width:84%;height:84%;pointer-events:none}" +
         ".sp-wifi-qr-card.sp-btn-big .sp-wifi-qr-preview,.sp-wifi-qr-card.sp-btn-extra-large .sp-wifi-qr-preview," +
         ".sp-wifi-qr-card.sp-btn-max-tall .sp-wifi-qr-preview,.sp-wifi-qr-card.sp-btn-portrait-large .sp-wifi-qr-preview{width:97%;height:97%}" +
-        ".sp-btn-has-bg{background-repeat:no-repeat}" +
+        ".sp-btn-has-bg{background-repeat:no-repeat;opacity:1}" +
         ".sp-btn-has-bg .sp-btn-icon,.sp-btn-has-bg .sp-btn-label,.sp-btn-has-bg .sp-sensor-badge," +
         ".sp-btn-has-bg .sp-sensor-preview,.sp-btn-has-bg .sp-media-now-title,.sp-btn-has-bg .sp-media-now-artist{" +
         "color:#fff;filter:drop-shadow(0 2px 3px rgba(0,0,0,.72)) drop-shadow(0 0 8px rgba(0,0,0,.35))}" +

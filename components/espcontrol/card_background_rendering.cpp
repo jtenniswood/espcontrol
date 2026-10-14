@@ -750,7 +750,18 @@ void apply_image(BtnSlot &s, const ParsedCfg &p,
   lv_obj_clear_flag(img, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_set_style_pad_all(img, 0, LV_PART_MAIN);
   lv_obj_set_style_border_width(img, 0, LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(img, LV_OPA_TRANSP, LV_PART_MAIN);
+  // Image backgrounds stay solid even when the button changes state. Override
+  // theme opacity and recolouring on both the card and its image widget.
+  for (lv_state_t state : {LV_STATE_DEFAULT, LV_STATE_PRESSED,
+                           LV_STATE_CHECKED, LV_STATE_DISABLED}) {
+    const auto selector = static_cast<lv_style_selector_t>(LV_PART_MAIN) | state;
+    lv_obj_set_style_opa(s.btn, LV_OPA_COVER, selector);
+    lv_obj_set_style_bg_opa(s.btn, LV_OPA_COVER, selector);
+    lv_obj_set_style_opa(img, LV_OPA_COVER, selector);
+    lv_obj_set_style_bg_opa(img, LV_OPA_COVER, selector);
+    lv_obj_set_style_img_opa(img, LV_OPA_COVER, selector);
+    lv_obj_set_style_img_recolor_opa(img, LV_OPA_TRANSP, selector);
+  }
   lv_obj_add_flag(img, LV_OBJ_FLAG_HIDDEN);
   image_card_apply_tile_image_align(img);
   card_background_register_widget(s.btn, img, id);
