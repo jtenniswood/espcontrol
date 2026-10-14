@@ -2813,7 +2813,7 @@ async function assertCardActiveColourControls(page, posts, label) {
   assert.strictEqual(await active.locator('[data-color="A086D1"]').getAttribute("aria-pressed"), "true",
     `${label}: entering Custom from Theme starts with Matching's shade selected`);
   await background.locator('[data-color="64AD54"]').click();
-  assert.strictEqual(await active.locator('input[type="color"]').inputValue(), "#a2ce98",
+  assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#A2CE98",
     `${label}: Custom follows the background until an alternative is chosen`);
   assert.strictEqual(await active.locator('[data-color="A2CE98"]').getAttribute("aria-pressed"), "true");
   await page.getByRole("button", { name: "Save", exact: true }).click();
@@ -2836,6 +2836,18 @@ async function assertCardActiveColourControls(page, posts, label) {
   assert.strictEqual(await active.locator(".sp-card-color-custom").getAttribute("data-selected"), "false");
   await active.locator('input[type="color"]').fill("#ffffff");
   assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#FFFFFF");
+  const customSwatch = active.locator(".sp-card-color-custom");
+  assert.strictEqual(await customSwatch.evaluate(el => getComputedStyle(el).borderTopStyle), "solid",
+    `${label}: a picked custom colour has no dotted border`);
+  await active.locator('[data-color="FFBA66"]').click();
+  assert.strictEqual(await customSwatch.getAttribute("data-selected"), "false");
+  assert.strictEqual(await customSwatch.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(255, 255, 255)",
+    `${label}: picking a preset retains the custom swatch's colour`);
+  assert.strictEqual(await active.locator('input[type="color"]').inputValue(), "#ffffff");
+  assert.strictEqual(await customSwatch.evaluate(el => getComputedStyle(el).borderTopStyle), "solid");
+  await active.locator('input[type="color"]').dispatchEvent("click");
+  assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#FFFFFF",
+    `${label}: the retained custom colour can be selected again`);
   await background.locator('[data-color="212121"]').click();
   assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#FFFFFF",
     `${label}: changing the background retains a separate active colour`);
