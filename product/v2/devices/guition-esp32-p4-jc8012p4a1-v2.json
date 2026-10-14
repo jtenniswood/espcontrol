@@ -13,7 +13,10 @@
       "docsPath": "/screens/jc8012p4a1-v2"
     },
     "web": {
-      "continuousCorners": true
+      "continuousCorners": true,
+      "btn": {
+        "smallTextSize": 1.5625
+      }
     },
     "firmware": {
       "package": {

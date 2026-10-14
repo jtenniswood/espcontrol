@@ -35,9 +35,11 @@ source = r'''
 #include <cassert>
 #include <cstdint>
 #include <set>
+#include "button_grid_limits.h"
 #include "button_grid_weather_daily_data.h"
 #define ESP_LOGW(...) ((void)0)
 constexpr int WEATHER_FORECAST_PENDING_MAX = 8;
+constexpr int WEATHER_FORECAST_WAITING_MAX = MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS;
 struct WeatherForecastPendingRequest { uint32_t call_id=0, started_ms=0; std::string entity_id,day; };
 struct WeatherForecastQueuedRequest { std::string entity_id,day; };
 struct WeatherForecastRetryRequest { std::string entity_id,day; uint32_t due_ms=0; };

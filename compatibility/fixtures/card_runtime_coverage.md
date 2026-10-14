@@ -5,7 +5,7 @@ It records the pre-migration baseline; it does not move executable behaviour int
 
 - Contract types: 44
 - Runtime-only types: 3
-- Baseline cases: 95
+- Baseline cases: 96
 
 | Contract type | Classification | Runtime driver | Capabilities | Canonical saved type | Web registration | Firmware family | Cases |
 |---|---|---|---|---|---|---|---:|

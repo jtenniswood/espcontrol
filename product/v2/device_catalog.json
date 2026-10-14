@@ -356,7 +356,8 @@
             "climateCardIcon": "font_icon_card",
             "subpageChevron": "font_icon_status",
             "climateOptionTitle": "font_text_body",
-            "climateOptionValue": "font_text_body"
+            "climateOptionValue": "font_text_body",
+            "smallText": "font_text_small"
           },
           "package": {
             "deviceFontPackageKey": "fonts_device"
@@ -379,7 +380,8 @@
             "climateCardIcon": "font_icon_card",
             "subpageChevron": "font_icon_status",
             "climateOptionTitle": "font_text_body",
-            "climateOptionValue": "font_text_body"
+            "climateOptionValue": "font_text_body",
+            "smallText": "font_text_small"
           },
           "package": {
             "deviceFontPackageKey": "fonts_lg"
@@ -401,7 +403,8 @@
             "climateCardIcon": "font_icon_card",
             "subpageChevron": "font_icon_status",
             "climateOptionTitle": "font_text_body",
-            "climateOptionValue": "font_text_body"
+            "climateOptionValue": "font_text_body",
+            "smallText": "font_text_small"
           },
           "package": {
             "deviceFontPackageKey": "fonts_device"
@@ -548,7 +551,10 @@
           "docsPath": "/screens/jc1060p470"
         },
         "web": {
-          "continuousCorners": true
+          "continuousCorners": true,
+          "btn": {
+            "smallTextSize": 1.757812
+          }
         },
         "firmware": {
           "package": {
@@ -596,7 +602,10 @@
           "docsPath": "/screens/jc1060p470-v2"
         },
         "web": {
-          "continuousCorners": true
+          "continuousCorners": true,
+          "btn": {
+            "smallTextSize": 1.757812
+          }
         },
         "firmware": {
           "package": {
@@ -993,7 +1002,10 @@
           }
         },
         "web": {
-          "continuousCorners": true
+          "continuousCorners": true,
+          "btn": {
+            "smallTextSize": 1.5625
+          }
         }
       },
       "overrides": {
@@ -1026,7 +1038,10 @@
           "docsPath": "/screens/jc8012p4a1-v2"
         },
         "web": {
-          "continuousCorners": true
+          "continuousCorners": true,
+          "btn": {
+            "smallTextSize": 1.5625
+          }
         },
         "firmware": {
           "package": {
@@ -1072,7 +1087,10 @@
           "portrait": {
             "slots": 18
           },
-          "continuousCorners": true
+          "continuousCorners": true,
+          "btn": {
+            "smallTextSize": 1.5625
+          }
         },
         "firmware": {
           "package": {

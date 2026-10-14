@@ -7292,7 +7292,8 @@ async function assertS3ForecastEditorLayout(browser) {
           text: spans[1].getBoundingClientRect().top, high: spans[2].textContent};
       });
       assert.strictEqual(geometry.left, 'flex-start');
-      assert(geometry.icon < geometry.text && /^\d+°$/.test(geometry.high));
+      assert(geometry.icon < geometry.text && /^\d+°\/\d+°$/.test(geometry.high),
+        'Single-day forecasts keep the icon above the day and show the high/low pair.');
       await page.setViewportSize({width: 1000, height: 1000});
       assert.strictEqual(await days.count(), 1, 'Single-day mode stays one day on a 3×1 card after resizing.');
       await page.locator('.sp-screen').screenshot({path: `/tmp/weather-preview-s3-${mode}-after.png`});

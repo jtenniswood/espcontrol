@@ -12,7 +12,7 @@
     "deviceProfiles": 9,
     "cardTypes": 44,
     "entityNames": 111,
-    "icons": 366,
+    "icons": 367,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
   },
@@ -2480,10 +2480,10 @@
           "capabilities": {
             "informationOnly": true,
             "subscriptions": true,
-            "actions": false,
+            "actions": true,
             "numericControl": false,
-            "modal": false,
-            "runtimeAllocation": false,
+            "modal": true,
+            "runtimeAllocation": true,
             "subpage": true
           }
         }
@@ -6085,18 +6085,6 @@
             "defaultValue": "",
             "storageField": "precision",
             "omitDefault": true
-          },
-          {
-            "name": "large_numbers",
-            "label": "Large Temperature Numbers",
-            "kind": "flag",
-            "omitDefault": true,
-            "supportedWhen": {
-              "precision": [
-                "today",
-                "tomorrow"
-              ]
-            }
           }
         ],
         "normalization": {
@@ -6134,9 +6122,7 @@
             }
           },
           "unknownOptions": "drop",
-          "canonicalOptionOrder": [
-            "large_numbers"
-          ],
+          "canonicalOptionOrder": [],
           "migrationActions": [
             "legacy_weather_forecast"
           ],
@@ -6728,12 +6714,6 @@
         "excludedPrecisions": [
           "icon",
           "text"
-        ]
-      },
-      "weather": {
-        "precisions": [
-          "today",
-          "tomorrow"
         ]
       },
       "calendar": true,
@@ -9774,6 +9754,11 @@
         "name": "Weather Cloudy Alert",
         "codepoint": "F0F2F",
         "mdi": "weather-cloudy-alert"
+      },
+      {
+        "name": "Weather Cloudy Clock",
+        "codepoint": "F18F6",
+        "mdi": "weather-cloudy-clock"
       },
       {
         "name": "Weather Dust",

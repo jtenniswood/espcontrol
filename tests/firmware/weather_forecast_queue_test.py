@@ -21,6 +21,7 @@ harness = r'''
 #include <string>
 #include <vector>
 #include "button_grid_limits.h"
+#include "button_grid_weather_daily_data.h"
 struct lv_obj_t {};
 template<typename... Args> void log_warning(Args...) {}
 #define ESP_LOGW(...) log_warning(__VA_ARGS__)
@@ -29,6 +30,7 @@ namespace esphome { uint32_t millis() { return now_ms; } }
 bool connected = true;
 bool ha_api_state_connected() { return connected; }
 void weather_forecast_send_next_queued() {} // Inspect the queue before dispatch.
+void weather_forecast_schedule_visual_refresh() {}
 '''
 for name in ("WeatherForecastCardRef", "WeatherForecastPendingRequest",
              "WeatherForecastQueuedRequest", "WeatherForecastRetryRequest"):
