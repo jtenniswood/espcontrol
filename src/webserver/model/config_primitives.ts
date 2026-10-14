@@ -94,6 +94,19 @@ export function setCardColor(options: unknown, value: unknown): string {
   return setConfigOptionValue(withoutCardColorOptions(options), "card_off_color", /^[0-9A-F]{6}$/.test(cleaned) ? cleaned : "");
 }
 
+export function activeCardColor(color: string): string {
+  const hex = color.replace(/^#/, "");
+  if (!/^[0-9A-F]{6}$/i.test(hex)) return "";
+  const channels = [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)] as const;
+  // Match active_card_color in the firmware, including round-to-nearest channels.
+  const pale = channels[0] * 299 + channels[1] * 587 + channels[2] * 114 >= 160000;
+  return channels.map(channel => {
+    const active = pale ? Math.floor((channel * 75 + 50) / 100)
+      : channel + Math.floor(((255 - channel) * 40 + 50) / 100);
+    return active.toString(16).padStart(2, "0").toUpperCase();
+  }).join("");
+}
+
 export function lighterCardColor(color: string): string {
   const hex = color.replace(/^#/, "");
   if (!/^[0-9A-F]{6}$/i.test(hex)) return "";

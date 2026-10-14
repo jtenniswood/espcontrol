@@ -346,7 +346,12 @@ static void test_restore_grid_theme(ThemeMode mode, EffectiveTheme effective,
   accent_card.background = lv_color_hex(DARK_THEME.surface_secondary);
   theme_set_content_background(&accent_card);
   navigation_subpages().push_back({&subpage, &back, {{true, &sub_button}, {true, &accent_card}}});
+  // Restored cards receive their checked foreground during normal colour
+  // setup, before theme reconciliation or an entity state update.
+  lv_obj_set_style_text_color(&sub_button,
+      lv_color_hex(readable_text_color_for_bg(current_button_primary_color())), LV_STATE_CHECKED);
   sub_button.state = LV_STATE_CHECKED;
+  sync_card_checked_text_color(&sub_button);
   const int preserved_subpage_state = sub_button.state;
 
   refresh_theme_grid_after_rebuild();  // Final boundary: no mode transition.
@@ -367,7 +372,7 @@ static void test_restore_grid_theme(ThemeMode mode, EffectiveTheme effective,
   assert(sub_button.background.full == current_theme().surface_card);
   assert(sub_button.state == preserved_subpage_state);
   assert(sub_button.text.full == current_theme().text_primary);
-  assert(sub_label.text.full == CARD_ACCENT_TEXT_COLOR);
+  assert(sub_label.text.full == readable_text_color_for_bg(current_button_primary_color()));
   assert(accent_card.background.full == DARK_THEME.surface_secondary);
   int grid_bindings = 0;
   for (const auto &binding : theme_refresh_bindings())
@@ -801,7 +806,7 @@ static void test_custom_card_theme_preservation() {
     assert(active_label.text.full == 0x212121);
     set_current_button_primary_color(0xFF8C00);
     theme_apply_grid_button(&active, theme->surface_card, *theme);
-    assert(active_label.text.full == 0xFFFFFF);
+    assert(active_label.text.full == 0x212121);
   }
   set_current_button_primary_color(DEFAULT_ACCENT_COLOR);
   set_active_theme_palette(DARK_THEME);
@@ -852,9 +857,10 @@ static void test_alarm_state_contrast_during_theme_refresh() {
 }
 
 static void test_custom_default_contrast_after_active_theme_refresh() {
-  for (uint32_t base : {0xFF8C00u, 0x9D9D9Du}) {
-    const uint32_t active = lighter_card_color(base);
-    assert(readable_text_color_for_bg(base) == 0xFFFFFF);
+  for (uint32_t base : {0x6633B9u, 0xFF8C00u, 0x9D9D9Du}) {
+    const uint32_t active = active_card_color(base);
+    const uint32_t base_text = base == 0x6633B9 ? 0xFFFFFF : 0x212121;
+    assert(readable_text_color_for_bg(base) == base_text);
     assert(readable_text_color_for_bg(active) == 0x212121);
     set_active_theme_palette(DARK_THEME);
     lv_obj_t page, card, label, subpage, sub_card, sub_label;
@@ -882,12 +888,12 @@ static void test_custom_default_contrast_after_active_theme_refresh() {
         for (auto *button : {&card, &sub_card}) {
           assert(button->state == state);
           assert(button->background.full == base);
-          assert(button->text.full == 0xFFFFFF);
+          assert(button->text.full == base_text);
           assert(button->children.front()->text.full == 0x212121);
           lv_obj_clear_state(button, LV_STATE_CHECKED | LV_STATE_PRESSED);
           // An entity update/release only resynchronizes existing state styles.
           sync_card_checked_text_color(button);
-          assert(button->children.front()->text.full == 0xFFFFFF);
+          assert(button->children.front()->text.full == base_text);
         }
       }
     }
