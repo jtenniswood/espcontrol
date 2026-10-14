@@ -44,12 +44,6 @@ export function installPreviewResize(dependencies: PreviewResizeDependencies): v
         if (hoveredCard && !hoveredCard.classList.contains("sp-resizing") &&
             !hoveredCard.contains(event.relatedTarget as Node | null)) restoreHover();
     }, true);
-    document.addEventListener("mousedown", (event) => {
-        if (handleAt(event) || document.querySelector(".sp-resizing")) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-        }
-    }, true);
     document.addEventListener("dragstart", (event) => {
         if ((event.target as Element).closest(".sp-resize-handle,.sp-resizing") ||
             (hoveredCard && hoveredCard.contains(event.target as Node))) {
@@ -63,10 +57,10 @@ export function installPreviewResize(dependencies: PreviewResizeDependencies): v
             event.stopImmediatePropagation();
         }
     }, true);
-    document.addEventListener("pointerdown", (event) => {
+    function startResize(event: MouseEvent, pointerId: number | null) {
         const handle = handleAt(event);
         const card = handle?.closest<HTMLElement>(".sp-btn[data-slot]");
-        if (!handle || !card || event.button !== 0 || !event.isPrimary) return;
+        if (!handle || !card || event.button !== 0) return;
         event.preventDefault();
         event.stopImmediatePropagation();
         if (dependencies.isConfigLocked() || document.querySelector(".sp-resizing")) return;
@@ -93,9 +87,11 @@ export function installPreviewResize(dependencies: PreviewResizeDependencies): v
         card.draggable = false;
         let finished = false;
         card.classList.add("sp-resizing");
-        handle.setPointerCapture(event.pointerId);
-        const move = (next: PointerEvent) => {
-            if (next.pointerId !== event.pointerId) return;
+        const moveEvent = pointerId === null ? "mousemove" : "pointermove";
+        const upEvent = pointerId === null ? "mouseup" : "pointerup";
+        if (pointerId !== null) handle.setPointerCapture(pointerId);
+        const move = (next: MouseEvent) => {
+            if (pointerId !== null && (next as PointerEvent).pointerId !== pointerId) return;
             if (!card.isConnected || dependencies.isConfigLocked()) { finish(false); return; }
             const width = rect.width + next.clientX - event.clientX;
             const height = rect.height + next.clientY - event.clientY;
@@ -106,10 +102,10 @@ export function installPreviewResize(dependencies: PreviewResizeDependencies): v
             card.style.width = target.width + "px";
             card.style.height = target.height + "px";
         };
-        const end = (next: PointerEvent) => {
-            if (next.pointerId !== event.pointerId) return;
-            if (next.type === "pointerup") move(next);
-            finish(next.type === "pointerup");
+        const end = (next: MouseEvent) => {
+            if (pointerId !== null && (next as PointerEvent).pointerId !== pointerId) return;
+            if (next.type === upEvent) move(next);
+            finish(next.type === upEvent);
         };
         const key = (next: KeyboardEvent) => {
             if (next.key === "Escape") { next.preventDefault(); finish(false); }
@@ -117,12 +113,13 @@ export function installPreviewResize(dependencies: PreviewResizeDependencies): v
         const finish = (commit: boolean) => {
             if (finished) return;
             finished = true;
-            document.removeEventListener("pointermove", move, true);
-            document.removeEventListener("pointerup", end, true);
+            document.removeEventListener(moveEvent, move, true);
+            document.removeEventListener(upEvent, end, true);
             document.removeEventListener("pointercancel", end, true);
             document.removeEventListener("keydown", key, true);
             handle.removeEventListener("lostpointercapture", cancel);
-            if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
+            document.defaultView!.removeEventListener("blur", cancel);
+            if (pointerId !== null && handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
             card.classList.remove("sp-resizing");
             card.classList.remove(...previousSizeClasses);
             card.classList.add(...originalSizeClasses);
@@ -135,11 +132,25 @@ export function installPreviewResize(dependencies: PreviewResizeDependencies): v
             if (commit && card.isConnected && !dependencies.isConfigLocked()) dependencies.commit(slot, target.size);
         };
         const cancel = () => finish(false);
-        document.addEventListener("pointermove", move, true);
-        document.addEventListener("pointerup", end, true);
-        document.addEventListener("pointercancel", end, true);
+        document.addEventListener(moveEvent, move, true);
+        document.addEventListener(upEvent, end, true);
+        if (pointerId !== null) document.addEventListener("pointercancel", end, true);
         document.addEventListener("keydown", key, true);
-        handle.addEventListener("lostpointercapture", cancel);
+        if (pointerId !== null) handle.addEventListener("lostpointercapture", cancel);
+        document.defaultView!.addEventListener("blur", cancel);
+    }
+    document.addEventListener("pointerdown", (event) => {
+        if (event.isPrimary) startResize(event, event.pointerId);
+    }, true);
+    // WebKit may omit pointerdown immediately after a native HTML card drag.
+    // The corresponding mouse events still arrive; use them for that gesture.
+    document.addEventListener("mousedown", (event) => {
+        if (document.querySelector(".sp-resizing")) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return;
+        }
+        startResize(event, null);
     }, true);
 }
 
