@@ -10,14 +10,14 @@ The panel can display a clock in the top bar, updated every minute from network 
 
 ## Settings
 
-Configured in **Settings > Preferences > Time** in [Setup](/features/setup).
+Configured in **Device > Preferences > Time** in [Setup](/features/setup).
 
 - **Timezone** — use **Auto (Home Assistant)** to follow the timezone Home Assistant sends to the panel, or select a fixed timezone from the dropdown. This also determines sunrise and sunset times used by the [backlight schedule](/features/backlight).
 - **Clock Format** — choose **12-hour** for time without an AM/PM suffix, or **24-hour** for 24-hour time. Defaults to 24h.
 - **Custom NTP Servers** — turn this on to show and edit the NTP server fields. When it is off, the panel uses the defaults: `0.pool.ntp.org`, `1.pool.ntp.org`, and `2.pool.ntp.org`.
 - **NTP Server 1 / 2 / 3** — choose the network time servers used to keep the panel clock accurate when custom NTP servers are enabled.
 
-The **Clock Bar** section controls whether the top bar is shown. The clock bar uses a fixed layout with one temperature reading, the time, and status icons. Select an item in the screen preview to edit or hide it. The temperature unit itself is set in the **Temperature** section. When the connectivity icon is shown, tap it on the panel to see the device name, IP address, WiFi strength, and firmware version.
+**Settings > Appearance > Clock Bar** controls whether the top bar is shown. The clock bar uses a fixed layout with one temperature reading, the time, and status icons. Select an item in the screen preview to edit or hide it. The temperature unit itself is set in **Device > Preferences > Temperature**. When the connectivity icon is shown, tap it on the panel to see the device name, IP address, WiFi strength, and firmware version.
 
 The network status icon is on by default. Hide the **Connectivity** item in the screen preview if you only want the clock and temperature items in the top bar.
 
@@ -35,4 +35,4 @@ The clock format setting affects three things:
 
 The setting is saved on the device and persists across restarts.
 
-Sunrise and sunset times are shown under **Settings > Display > Backlight** when **Automatic** is selected.
+Sunrise and sunset times are shown under **Device > Display > Backlight** when **Automatic** is selected.

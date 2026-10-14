@@ -45,6 +45,7 @@ test("slider preview text changes contrast exactly where the fill crosses each l
     { top: 70, height: 20 }, // Inside the fill.
   ].map(bounds => ({ style: {}, getBoundingClientRect() { return bounds; } }));
   const card = {
+    classList: { contains() { return false; } },
     querySelector() { return { getBoundingClientRect() { return { top: 50 }; } }; },
     querySelectorAll() { return labels; },
   };

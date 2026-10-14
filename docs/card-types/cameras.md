@@ -62,7 +62,7 @@ shares the expanded animation slot; the Cover Art screensaver shows a still
 frame. Memory availability can also limit loading, especially on the
 4-inch S3.
 
-If your Home Assistant instance uses a custom port, open **Settings > System > Home Assistant Settings** and set **Home Assistant Port** to match it. Camera and image cards use this port when downloading snapshots.
+If your Home Assistant instance uses a custom port, open **Device > System > Home Assistant Settings** and set **Home Assistant Port** to match it. Camera and image cards use this port when downloading snapshots.
 
 ## How It Works on the Panel
 

@@ -6,8 +6,8 @@ description:
 
 # Appearance
 
-The **Appearance** section sits above **Display** in Settings. Its panels are
-**Active Colour**, **Card Style** (curve) and **Theme**.
+The **Appearance** section is at the top of **Settings**. Its panels are
+**Active Colour**, **Card Style** (curve), **Theme**, [Idle](/features/idle) and [Clock Bar](/features/clock-bar).
 
 Cards use continuous corners, with the same proportions on the panel and
 setup-page preview. Choose **Card curve → Small, Medium or Large** in
@@ -39,7 +39,7 @@ Find these controls in **Settings → Appearance** on the [Setup](/features/setu
 ## Theme
 
 - **Dark** and **Light** select a fixed appearance.
-- Under **Automatic theme**, **Sunrise & Sunset** switches to Light at sunrise and Dark at sunset. The panel shows the calculated sunrise and sunset times when this method is selected. It uses its existing on-device calculation based on the configured timezone and approximate location. Set the correct timezone under **Settings → Time**. A Home Assistant `sun.sun` entity is not required.
+- Under **Automatic theme**, **Sunrise & Sunset** switches to Light at sunrise and Dark at sunset. The panel shows the calculated sunrise and sunset times when this method is selected. It uses its existing on-device calculation based on the configured timezone and approximate location. Set the correct timezone under **Device → Preferences → Time**. A Home Assistant `sun.sun` entity is not required.
 - Under **Automatic theme**, **Manual** uses the panel's local clock. Set **Light from** and **Dark from** in 24-hour `HH:MM` format. The Light period can cross midnight. If both times are the same, Dark remains active.
 
 When clock or solar data is temporarily unavailable, Automatic keeps the last active appearance. A fresh boot falls back to Dark until the required data is known. The **Screen: Active Theme** Home Assistant sensor reports the effective Dark or Light palette even while Automatic is selected.
@@ -70,12 +70,12 @@ Cards using their default background highlight the matching preset or custom pic
 In a card’s **Custom Colours** controls, **Active state colour** offers three choices:
 
 - **Matching** uses a brighter shade of a darker custom card colour, a darker shade of a pale colour, or the Appearance active colour when the card uses its default background.
-- **Theme** uses the active colour selected in **Settings → Appearance**, including when the card has a custom background.
+- **Global** uses the active colour selected in **Settings → Appearance**, including when the card has a custom background.
 - **Custom** shows a second colour picker for a separate active colour. It starts with Matching’s shade selected and follows the card colour until you choose an alternative. Its presets use the same shades as Matching; the eyedropper still lets you choose any colour.
 
 These choices apply on the main screen and subpages wherever a card normally uses an active colour. Sensor, Door/Window and Presence cards still need their **Active Colour** option enabled to highlight their active state. Resetting colours also restores **Matching**.
 
-Slider cards also use the selected Theme or Custom colour for their fill. Text and icons change contrast where the fill passes behind them. Matching keeps its existing shade adjustment for readable slider content.
+Slider cards also use the selected Global or Custom colour for their fill. Text and icons change contrast where the fill passes behind them. Matching keeps its existing shade adjustment for readable slider content.
 
 Disabled Home Assistant cards keep their background colour and show muted labels and icons. Their normal text and icon colours return when the card becomes available again.
 
