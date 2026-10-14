@@ -1,6 +1,7 @@
 #pragma once
 #include "wallpaper.h"
 #include "wallpaper_decode.h"
+#include "wallpaper_background.h"
 #include "src/misc/cache/instance/lv_image_cache.h"
 
 // Included after theme_runtime_ui.h; all LVGL work stays on the main task.
@@ -21,12 +22,15 @@ inline void wallpaper_widget_deleted(lv_event_t *event) {
   auto *widget = lv_event_get_target(event);
   widgets.erase(std::remove(widgets.begin(), widgets.end(), widget), widgets.end());
 }
-inline void wallpaper_bind_screen(lv_obj_t *screen) {
+inline void wallpaper_bind_screen(lv_obj_t *screen, bool modal = false) {
   if (!screen) return;
   auto &ui = wallpaper_ui();
   lv_obj_t *widget = nullptr;
   for (auto *candidate : ui.widgets) if (lv_obj_get_parent(candidate) == screen) { widget = candidate; break; }
+  if (modal) lv_obj_set_style_clip_corner(screen, ui.pixels != nullptr, LV_PART_MAIN);
   if (!ui.pixels) { if (widget) lv_obj_del(widget); return; }
+  const int width = lv_obj_get_width(screen), height = lv_obj_get_height(screen);
+  if (width <= 0 || height <= 0) return;
   if (!widget) {
     widget = lv_image_create(screen);
     lv_obj_add_flag(widget, LV_OBJ_FLAG_IGNORE_LAYOUT);
@@ -37,8 +41,8 @@ inline void wallpaper_bind_screen(lv_obj_t *screen) {
     ui.widgets.push_back(widget);
   }
   lv_image_set_src(widget, &ui.image);
-  lv_obj_update_layout(screen);
-  const int width = lv_obj_get_width(screen), height = lv_obj_get_height(screen);
+  // Modal controls retain a readable neutral tint over the same shared image.
+  lv_obj_set_style_image_opa(widget, modal ? LV_OPA_30 : LV_OPA_COVER, LV_PART_MAIN);
   const int zoom = std::max((width * 256 + int(ui.image.header.w) - 1) / int(ui.image.header.w),
                             (height * 256 + int(ui.image.header.h) - 1) / int(ui.image.header.h));
   lv_image_set_scale(widget, zoom);
@@ -69,19 +73,23 @@ inline void wallpaper_apply_card_opacity() {
   }
 }
 inline void wallpaper_apply_cards() {
-  wallpaper_bind_screen(theme_grid_targets().main_page);
-  for (auto &page : navigation_subpages()) wallpaper_bind_screen(page.screen);
+  wallpaper_register_background(theme_grid_targets().main_page);
+  for (auto &page : navigation_subpages()) wallpaper_register_background(page.screen);
+  for (auto &page : theme_static_pages()) wallpaper_register_background(page.page);
+  for (const auto &background : wallpaper_backgrounds())
+    wallpaper_bind_screen(background.root, background.modal);
   wallpaper_apply_card_opacity();
 }
 inline void wallpaper_tick() {
   theme_grid_wallpaper_refresh() = wallpaper_apply_cards;
+  wallpaper_background_refresh() = wallpaper_bind_screen;
   auto &ui = wallpaper_ui();
   // Keep the old buffer through in-flight display drawing, like artwork images.
   if (ui.retired_pixels && esphome::millis() - ui.retired_at < 1000) return;
   free(ui.retired_pixels);
   ui.retired_pixels = nullptr;
   auto &store = wallpaper_store();
-  if (!theme_grid_targets().main_page || !store.available()) return;
+  if (!lv_is_initialized() || !lv_display_get_default() || !store.available()) return;
   const auto opacities = store.opacities();
   if (opacities.off != ui.opacities.off || opacities.active != ui.opacities.active) {
     ui.opacities = opacities;

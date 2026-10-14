@@ -152,6 +152,9 @@ globals:
 esphome:
   # Keep this a list so device startup hooks append instead of replacing it.
   on_boot:
+    - priority: -210
+      then:
+        - lambda: 'espcontrol::wallpaper_register_background(id(cover_art_screensaver));'
     - priority: 250
       then:
         - lambda: |-

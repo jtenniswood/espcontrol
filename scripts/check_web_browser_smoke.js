@@ -7598,6 +7598,8 @@ async function assertWallpaperSettings(browser) {
     await page.getByRole("button", { name: "Upload Image", exact: true }).waitFor();
     await page.getByRole("img", { name: "Saved wallpaper, 1280 by 800 pixels" }).waitFor();
     await assertClockBarTypographyAndIconLayout(page, "Wallpaper loaded");
+    assert(await page.locator(".sp-settings-modal").evaluate(el => el.style.backgroundImage.includes("data:image/jpeg;base64,")),
+      "The browser modal should share the uploaded wallpaper");
     assert.strictEqual(await page.locator(".sp-wallpaper-preview").evaluate(el => el.style.backgroundImage),
       await page.locator(".sp-screen").evaluate(el => el.style.backgroundImage));
     assert.strictEqual(wallpaper.image.readUInt32LE(0), 0x32505745);
@@ -7780,6 +7782,7 @@ async function assertWallpaperSettings(browser) {
     await page.getByRole("button", { name: "Delete wallpaper" }).click();
     await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage === "");
     assert.strictEqual(wallpaper.image, null);
+    assert.strictEqual(await page.locator(".sp-settings-modal").evaluate(el => el.style.backgroundImage), "");
     assert.strictEqual(await page.locator(".sp-wallpaper-info").isVisible(), false);
     await assertMiniatureAlpha(false, 1);
     await assertMiniatureAlpha(true, 1);

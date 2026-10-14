@@ -6,6 +6,7 @@
 
 #include "control_modal_service.h"
 #include "espcontrol_app_core.h"
+#include "wallpaper_background.h"
 
 constexpr lv_coord_t CONTROL_MODAL_REFERENCE_SIDE_PX = DISPLAY_MODAL_REFERENCE_SIDE_PX;
 constexpr lv_coord_t CONTROL_MODAL_ARC_STROKE_REF_PX = DISPLAY_MODAL_ARC_STROKE_REF_PX;
@@ -740,6 +741,7 @@ inline void control_modal_style_panel(lv_obj_t *panel, lv_coord_t radius) {
   lv_obj_set_style_radius(panel, radius, LV_PART_MAIN);
   lv_obj_set_style_pad_all(panel, 0, LV_PART_MAIN);
   lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+  espcontrol::wallpaper_register_background(panel, true);
 }
 
 inline void control_modal_apply_panel_layout(lv_obj_t *overlay, lv_obj_t *panel,
@@ -1063,6 +1065,7 @@ inline void control_modal_style_nested_panel(lv_obj_t *panel, lv_coord_t radius)
   lv_obj_set_style_flex_flow(panel, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
   lv_obj_align(panel, LV_ALIGN_CENTER, 0, 0);
   lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+  espcontrol::wallpaper_register_background(panel, true);
 }
 
 inline ControlModalNestedShell control_modal_open_nested_menu(lv_coord_t width,
