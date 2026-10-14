@@ -1,6 +1,5 @@
 import { normalizeMediaControlTabs } from "../model/media_control_tabs";
 import type { DeviceConfig } from "../state/types";
-import { setCardBackgroundAssetId } from "../model/card";
 import {
     configOptionEnabled,
     configOptionValue,
@@ -182,7 +181,7 @@ export function createConfigMediaOptionsFeature(
     }
     function normalizeMediaOptions(this: any, options?: any, mode?: any, card?: any) {
         mode = mediaEditorMode(mode);
-        if (mode === "cover_art" && card) setCardBackgroundAssetId(card, "");
+        if (mode === "cover_art" && card?.appearance) card.appearance.backgroundAssetId = "";
         function withBackground(this: any, out?: any) {
             return copyCardBackgroundOptions(out, options, { type: "media" });
         }

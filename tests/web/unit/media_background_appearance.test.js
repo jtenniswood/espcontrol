@@ -10,7 +10,10 @@ test("switching Media to Cover Art clears the typed background permanently", () 
   const card = cloneCardConfig({ type: "media", sensor: "play_pause", options: "bg_image=saved-image" });
   assert.equal(cardBackgroundAssetId(card), "saved-image");
   card.sensor = "cover_art";
-  card.options = media.normalizeMediaOptions(card.options, card.sensor, card);
+  const previousOptions = card.options;
+  const normalized = media.normalizeMediaOptions(card.options, card.sensor, card);
+  assert.equal(card.options, previousOptions, "the editor must still detect the options change and save it");
+  card.options = normalized;
   assert.equal(card.appearance.backgroundAssetId, "");
   assert.equal(cardBackgroundAssetId(card), "");
   card.sensor = "play_pause";
