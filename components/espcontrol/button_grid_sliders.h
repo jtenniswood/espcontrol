@@ -1,6 +1,7 @@
 #pragma once
 
 #include "button_grid_slider_geometry.h"
+#include "button_grid_slider_contrast.h"
 #include "clock_bar.h"
 #include "media_volume_capability.h"
 #include "number_slider_policy.h"
@@ -2893,6 +2894,9 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
     return;
   }
   // Intentionally leaked -- lives for the lifetime of the display
+  slider_bind_text_contrast(s.icon_lbl, fill);
+  slider_bind_text_contrast(s.text_lbl, fill);
+  slider_bind_text_contrast(s.sensor_container, fill);
   SliderCtx *ctx = new SliderCtx();
   ctx->entity_id = p.entity;
   ctx->fill = fill;
@@ -3303,6 +3307,9 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
   lv_obj_set_user_data(s.sensor_container, (void *)slider);
 
   lv_obj_t *fill = lv_obj_get_child(s.btn, 0);
+  slider_bind_text_contrast(s.icon_lbl, fill);
+  slider_bind_text_contrast(s.text_lbl, fill);
+  slider_bind_text_contrast(s.sensor_container, fill);
   // Intentionally leaked -- lives for the lifetime of the display
   SliderCtx *ctx = new SliderCtx();
   ctx->entity_id = p.entity;

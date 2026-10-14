@@ -8,6 +8,7 @@ import {
     cardPreviewTextColor,
     cardProgressColor,
     cardSliderFillColor,
+    applySliderPreviewTextContrast,
     cardPatternHighlightColor,
     cardTypePickerDetails,
     cardTypePickerOptions,
@@ -184,7 +185,11 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     (c.selected.indexOf(slot) !== -1 ? " sp-selected" : "");
                 btn.style.backgroundColor = "#" + (cardOffColor || color);
                 btn.style.setProperty("--card-active-color", "#" + (cardOnColor || state.onColor || WEB_UI_COLORS.primary));
-                if (cardOffColor) btn.style.setProperty("--card-slider-fill-color", "#" + cardSliderFillColor(cardOffColor));
+                var activeMode: any = configOptionValue(b.options, "card_active_color");
+                var customActive: any = configOptionValue(b.options, "card_on_color").replace(/^#/, "");
+                var explicitActive: any = activeMode === "theme" || (activeMode === "custom" && /^[0-9A-F]{6}$/i.test(customActive));
+                var sliderFillColor: any = cardSliderFillColor(cardOffColor, explicitActive ? cardOnColor : "") || cardOnColor;
+                if (sliderFillColor) btn.style.setProperty("--card-slider-fill-color", "#" + sliderFillColor);
                 var contrastBackground: any = cardOffColor || color;
                 btn.draggable = !isConfigLocked();
                 btn.setAttribute("data-pos", pos);
@@ -212,6 +217,9 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                         iconHtml +
                         labelHtml;
                 main.appendChild(btn);
+                if (["light_brightness", "fan_speed", "cover", "slider", "light_temperature"].indexOf(b.type) !== -1) {
+                    applySliderPreviewTextContrast(btn, cardOffColor ? cardPreviewTextColor(cardOffColor) : "#" + previewColors.textPrimary, sliderFillColor);
+                }
             }
             else {
                 var empty: any = document.createElement("div");

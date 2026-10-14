@@ -3057,6 +3057,44 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
   );
 }
 
+async function assertSliderActiveColours(page, label) {
+  for (const theme of ["Dark", "Light"]) {
+    for (const mode of ["matching", "theme", "custom"]) {
+      const types = ["light_brightness", "fan_speed", "cover", "slider", "light_temperature"];
+      const events = [
+        { id: "text-button_order", state: "1,2,3,4,5" },
+        { id: "text-button_on_color", state: "FFFFFF" },
+        { id: "select-screen__theme_mode", state: theme, value: theme },
+        ...types.map((type, index) => ({
+          id: `text-button_${index + 1}_config`,
+          state: `light.test;${type};Lightbulb;Auto;;;${type};;card_off_color=313131,card_active_color=${mode},card_on_color=FFFFFF`,
+        })),
+      ];
+      await page.evaluate(events => window.__seedEspState(events), events);
+      await page.getByRole("tab", { name: "Screen" }).click();
+      const cards = page.locator(".sp-main > .sp-btn");
+      await cards.first().locator(".sp-slider-fill").waitFor({ state: "visible" });
+      const rendered = await cards.evaluateAll(cards => cards.map(card => ({
+        fill: card.style.getPropertyValue("--card-slider-fill-color"),
+        texts: Array.from(card.querySelectorAll(".sp-btn-icon,.sp-btn-label")).map(label => ({
+          gradient: label.style.backgroundImage,
+          clip: getComputedStyle(label).backgroundClip,
+        })),
+      })));
+      for (const [index, card] of rendered.entries()) {
+        assert.strictEqual(card.fill, mode === "matching" ? "#767676" : "#FFFFFF", `${label}: ${theme}/${types[index]}/${mode} fill`);
+        if (mode !== "matching") {
+          assert(card.texts.every(text => text.clip === "text" && text.gradient.includes("rgb(33, 33, 33)")),
+            `${label}: ${theme}/${types[index]}/${mode} text contrasts with the pale fill`);
+        }
+      }
+      if (mode === "custom" && theme === "Dark" && process.env.ESPCONTROL_SLIDER_COLOUR_SCREENSHOT) {
+        await page.screenshot({ path: process.env.ESPCONTROL_SLIDER_COLOUR_SCREENSHOT, fullPage: true });
+      }
+    }
+  }
+}
+
 async function assertFanOptionalLightSettings(page, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
@@ -6777,6 +6815,7 @@ async function assertScreensaverPinSettings(browser) {
         await page.evaluate(events => window.__seedEspState(events), seededEvents());
         await page.waitForSelector(".sp-main > .sp-btn");
         await assertCardActiveColourControls(page, posts, testCase.name);
+        await assertSliderActiveColours(page, testCase.name);
       } finally { await context.close(); }
       console.log("Card active colour browser checks passed.");
       return;

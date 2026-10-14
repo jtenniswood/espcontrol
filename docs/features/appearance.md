@@ -45,6 +45,8 @@ In a card’s **Custom Colours** controls, **Active state colour** offers three 
 
 These choices apply on the main screen and subpages wherever a card normally uses an active colour. Sensor, Door/Window and Presence cards still need their **Active Colour** option enabled to highlight their active state. Resetting colours also restores **Matching**.
 
+Slider cards also use the selected Theme or Custom colour for their fill. Text and icons change contrast where the fill passes behind them. Matching keeps its existing shade adjustment for readable slider content.
+
 Disabled Home Assistant cards keep their background colour and show muted labels and icons. Their normal text and icon colours return when the card becomes available again.
 
 Colour changes apply to the panel automatically after a brief pause (about 200 ms), plus the time needed to redraw the cards, including cards on subpages. You do not need to restart the panel. The reset icon beside the **Appearance** arrow applies the default orange in the same way.

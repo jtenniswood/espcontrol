@@ -40,6 +40,7 @@ struct CardPalette {
   bool has_off = false;
   bool has_sensor_color = false;
   bool custom_background = false;
+  bool explicit_active_color = false;
   uint32_t on_val = DEFAULT_ACCENT_COLOR;
   uint32_t off_val = theme_display_color(current_theme().surface_card);
   uint32_t sensor_val = theme_display_color(current_theme().surface_secondary);
@@ -48,6 +49,7 @@ struct CardPalette {
 };
 
 inline uint32_t card_slider_fill_color(const CardPalette &palette) {
+  if (palette.explicit_active_color) return palette.on_val;
   return palette.custom_background ? card_slider_fill_color(palette.off_val)
     : (palette.has_on ? palette.on_val : DEFAULT_ACCENT_COLOR);
 }

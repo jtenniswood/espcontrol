@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { loadTypescriptTest } = require("./helpers/load_typescript_test");
-const { cardSliderFillColor, cardPreviewTextColor, cardPatternHighlightColor } = loadTypescriptTest("src/webserver/features/preview.ts");
+const { cardSliderFillColor, cardPreviewTextColor, cardPatternHighlightColor, applySliderPreviewTextContrast } = loadTypescriptTest("src/webserver/features/preview.ts");
 const { activeCardColor } = loadTypescriptTest("src/webserver/model/config_primitives.ts");
 
 function luminance(hex) {
@@ -27,6 +27,33 @@ test("slider fills retain readable foregrounds without changing toggle on colour
   assert(contrast("FFFFFF", cardSliderFillColor("6633B9")) > 4.5);
   assert.equal(cardSliderFillColor("#ffffff"), "BFBFBF");
   assert.equal(cardSliderFillColor("invalid"), "");
+});
+
+test("selected Theme and Custom slider fills preserve the resolved active colour", () => {
+  for (const background of ["313131", "FFFFFF", "6633B9"]) {
+    for (const active of ["FFFFFF", "FF8C00", "00BCD4", "000000"]) {
+      assert.equal(cardSliderFillColor(background, active), active);
+    }
+  }
+  assert.equal(cardSliderFillColor("6633B9", "invalid"), "826AAA");
+});
+
+test("slider preview text changes contrast exactly where the fill crosses each label", () => {
+  const labels = [
+    { top: 10, height: 20 }, // Above the fill.
+    { top: 40, height: 20 }, // Crosses the fill boundary.
+    { top: 70, height: 20 }, // Inside the fill.
+  ].map(bounds => ({ style: {}, getBoundingClientRect() { return bounds; } }));
+  const card = {
+    querySelector() { return { getBoundingClientRect() { return { top: 50 }; } }; },
+    querySelectorAll() { return labels; },
+  };
+  applySliderPreviewTextContrast(card, "#FFFFFF", "FFFFFF");
+  for (const [index, split] of [100, 50, 0].entries()) {
+    assert.equal(labels[index].style.backgroundImage, `linear-gradient(to bottom,#FFFFFF ${split}%,#212121 ${split}%)`);
+    assert.equal(labels[index].style.backgroundClip, "text");
+    assert.equal(labels[index].style.color, "transparent");
+  }
 });
 
 test("custom fills maintain contrast at partial and full values across the preset palette", () => {
