@@ -67,11 +67,11 @@
         "left": 1.04,
         "right": 1.04,
         "bottom": 0.83,
-        "gap": 1.39,
+        "gap": 2.083333,
         "fr": "1fr"
       },
       "btn": {
-        "radius": 3.333333,
+        "radius": 4.861111,
         "padding": 2.92,
         "iconSize": 9.58,
         "labelSize": 3.96,
@@ -81,7 +81,7 @@
         "labelLinesDouble": 3
       },
       "emptyCell": {
-        "radius": 3.333333
+        "radius": 4.861111
       },
       "sensorBadge": {
         "top": 2.08,
@@ -92,7 +92,8 @@
         "bottom": 2.08,
         "right": 2.08,
         "fontSize": 4
-      }
+      },
+      "continuousCorners": true
     },
     "firmware": {
       "display": {
@@ -154,7 +155,7 @@
           "unit_font": "font_text_body",
           "sensor_value_font": "font_number_value",
           "padding": "21px",
-          "radius": "24px",
+          "radius": "35px",
           "main_page_card_gap": "\"15\"",
           "main_page_pad_top": "\"60\"",
           "main_page_compact_pad_top": "\"6\"",

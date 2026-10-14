@@ -58,7 +58,7 @@
           "left": 0.49,
           "right": 0.49,
           "bottom": 0.49,
-          "gap": 0.76,
+          "gap": 0.976562,
           "fr": "1fr"
         },
         "btn": {
@@ -83,7 +83,8 @@
           "bottom": 1,
           "right": 1,
           "fontSize": 2
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
@@ -254,7 +255,7 @@
           "left": 0.49,
           "right": 0.49,
           "bottom": 0.49,
-          "gap": 0.76,
+          "gap": 0.976562,
           "fr": "1fr"
         },
         "btn": {
@@ -279,7 +280,8 @@
           "bottom": 1,
           "right": 1,
           "fontSize": 2
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
@@ -449,7 +451,7 @@
           "left": 1.5,
           "right": 1.5,
           "bottom": 1.5,
-          "gap": 1.74,
+          "gap": 2.916667,
           "fr": "1fr"
         },
         "btn": {
@@ -474,7 +476,8 @@
           "bottom": 1.52,
           "right": 1.52,
           "fontSize": 4.03
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
@@ -639,7 +642,7 @@
           "left": 1.5,
           "right": 1.5,
           "bottom": 1.5,
-          "gap": 1.74,
+          "gap": 2.916667,
           "fr": "1fr"
         },
         "btn": {
@@ -664,7 +667,8 @@
           "bottom": 1.52,
           "right": 1.52,
           "fontSize": 4.03
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
@@ -829,7 +833,7 @@
           "left": 0.39,
           "right": 0.39,
           "bottom": 0.39,
-          "gap": 0.76,
+          "gap": 0.78125,
           "fr": "1fr"
         },
         "btn": {
@@ -854,7 +858,8 @@
           "bottom": 0.86,
           "right": 0.86,
           "fontSize": 1.56
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
@@ -1019,7 +1024,7 @@
           "left": 0.39,
           "right": 0.39,
           "bottom": 0.39,
-          "gap": 0.76,
+          "gap": 0.78125,
           "fr": "1fr"
         },
         "btn": {
@@ -1044,7 +1049,8 @@
           "bottom": 0.86,
           "right": 0.86,
           "fontSize": 1.56
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
@@ -1208,7 +1214,7 @@
           "left": 0.39,
           "right": 0.39,
           "bottom": 0.39,
-          "gap": 0.76,
+          "gap": 0.78125,
           "fr": "1fr"
         },
         "btn": {
@@ -1397,11 +1403,11 @@
           "left": 1.04,
           "right": 1.04,
           "bottom": 0.83,
-          "gap": 1.39,
+          "gap": 2.083333,
           "fr": "1fr"
         },
         "btn": {
-          "radius": 3.333333,
+          "radius": 4.861111,
           "padding": 2.92,
           "iconSize": 9.58,
           "labelSize": 3.96,
@@ -1411,7 +1417,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 3.333333
+          "radius": 4.861111
         },
         "sensorBadge": {
           "top": 2.08,
@@ -1422,7 +1428,8 @@
           "bottom": 2.08,
           "right": 2.08,
           "fontSize": 4
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
@@ -1508,7 +1515,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "21px",
-            "radius": "24px",
+            "radius": "35px",
             "main_page_card_gap": "\"15\"",
             "main_page_pad_top": "\"60\"",
             "main_page_compact_pad_top": "\"6\"",
@@ -1600,11 +1607,11 @@
           "left": 1.04,
           "right": 1.04,
           "bottom": 0.83,
-          "gap": 1.39,
+          "gap": 2.083333,
           "fr": "1fr"
         },
         "btn": {
-          "radius": 3.333333,
+          "radius": 5.416667,
           "padding": 2.92,
           "iconSize": 9.58,
           "labelSize": 4.583333,
@@ -1615,7 +1622,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 3.333333
+          "radius": 5.416667
         },
         "sensorBadge": {
           "top": 2.08,
@@ -1626,7 +1633,8 @@
           "bottom": 2.08,
           "right": 2.08,
           "fontSize": 4
-        }
+        },
+        "continuousCorners": true
       },
       "firmware": {
         "build": {
@@ -1716,7 +1724,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "14px",
-            "radius": "16px",
+            "radius": "26px",
             "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"40\"",
             "main_page_compact_pad_top": "\"4\"",
@@ -1728,7 +1736,9 @@
             "screen_saver_clock_min_brightness": "\"1\"",
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
-            "screen_schedule_clock_default_brightness": "\"10\""
+            "screen_schedule_clock_default_brightness": "\"10\"",
+            "card_curve_small_radius": "14px",
+            "card_curve_medium_radius": "20px"
           },
           "deviceFontPackageKey": "fonts_device",
           "apiNavigateAction": true,

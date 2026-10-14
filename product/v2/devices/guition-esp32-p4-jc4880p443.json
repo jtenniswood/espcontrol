@@ -59,7 +59,7 @@
         "left": 1.5,
         "right": 1.5,
         "bottom": 1.5,
-        "gap": 1.74,
+        "gap": 2.916667,
         "fr": "1fr"
       },
       "btn": {
@@ -84,7 +84,8 @@
         "bottom": 1.52,
         "right": 1.52,
         "fontSize": 4.03
-      }
+      },
+      "continuousCorners": true
     },
     "firmware": {
       "display": {

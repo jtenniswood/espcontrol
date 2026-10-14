@@ -46,6 +46,17 @@ export function normalizeThemeMode(value: unknown): string {
   return "Dark";
 }
 
+export function normalizeCardCurve(value: unknown): string {
+  const preset = String(value || "").trim().toLowerCase();
+  return preset === "small" ? "Small" : preset === "large" ? "Large" : "Medium";
+}
+
+export function cardCurveRadius(baseRadius: number, preset: unknown, radii?: Readonly<Record<string, number>>): number {
+  const curve = normalizeCardCurve(preset);
+  if (radii?.[curve] !== undefined) return radii[curve];
+  return Math.round(baseRadius * (curve === "Small" ? .5 : curve === "Medium" ? .75 : 1));
+}
+
 export function normalizeThemeAutoMethod(value: unknown): string {
   const method = String(value || "").trim().toLowerCase();
   return method === "sun" || method === "sunrise / sunset" || method === "sunrise_sunset"

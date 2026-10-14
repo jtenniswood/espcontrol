@@ -6,14 +6,32 @@ description:
 
 # Appearance
 
-Cards use larger rounded corners, with the same proportions on the panel and
-setup-page preview. Corner sizes scale for each display and are fixed by the
-firmware; there is no corner-radius setting.
+The **Appearance** section sits above **Display** in Settings. Its panels are
+**Global Active Colour**, **Card Style** (curve) and **Theme**.
 
-The 10-inch JC8012P4A1 V3 uses continuous corners that ease gradually into the
-card edges. Images, artwork and slider fills follow the same outline. Its web
-preview matches this shape in browsers that support continuous corners; older
-browsers show ordinary rounded corners.
+Cards use continuous corners, with the same proportions on the panel and
+setup-page preview. Choose **Card curve → Small, Medium or Large** in
+**Settings → Appearance**. The choice applies to home and subpage cards, including Back,
+is saved on the display and survives restarts.
+
+All supported displays use continuous corners that ease gradually into the
+card edges. **Medium** is the default. The **Large** corner sizes are: 26 px on S3,
+20 px on the 7-inch and 4.3-inch panels, 22 px on the 10-inch panels,
+and 35 px on P4-86.
+On S3, **Small**, **Medium** and **Large** are 14 px, 20 px and 26 px.
+On the other panels, **Small** uses half the Large size and **Medium** uses
+three quarters, rounded to whole pixels.
+Images, artwork and slider fills follow the same outline. The web preview
+uses the same curve, including in browsers without native continuous-corner
+support, and scales the card gaps to match the physical display.
+
+On the first boot after installing this update, new and existing displays switch
+to Medium once. Choices made afterward are saved across restarts and future updates.
+
+The curve setting is included in configuration backups. Restoring an older
+backup without it keeps the current choice. Home Assistant can also change
+the **Screen: Card Curve** select. Changes update the preview immediately
+and redraw the physical cards after the display's brief refresh delay.
 
 Find these controls in **Settings → Appearance** on the [Setup](/features/setup) page. Your selection is saved on the panel and applies without a reboot. Existing panels default to Dark.
 
@@ -58,4 +76,4 @@ Slider cards also use the selected Theme or Custom colour for their fill. Text a
 
 Disabled Home Assistant cards keep their background colour and show muted labels and icons. Their normal text and icon colours return when the card becomes available again.
 
-Colour changes apply to the panel automatically after a brief pause (about 200 ms), plus the time needed to redraw the cards, including cards on subpages. You do not need to restart the panel. The reset icon beside the **Appearance** arrow applies the default orange in the same way.
+Colour changes apply to the panel automatically after a brief pause (about 200 ms), plus the time needed to redraw the cards, including cards on subpages. You do not need to restart the panel. The reset icon in **Global Active Colour** applies the default orange in the same way.

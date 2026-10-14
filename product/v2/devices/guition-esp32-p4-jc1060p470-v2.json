@@ -15,6 +15,9 @@
     "public": {
       "name": "Guition JC1060P470 new panel (V2 label)",
       "docsPath": "/screens/jc1060p470-v2"
+    },
+    "web": {
+      "continuousCorners": true
     }
   },
   "overrides": {
@@ -24,6 +27,11 @@
           "wifi": "1000Hz",
           "ethernet": "20000Hz"
         }
+      }
+    },
+    "web": {
+      "grid": {
+        "gap": 0.976562
       }
     }
   }

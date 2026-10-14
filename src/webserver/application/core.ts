@@ -2,6 +2,8 @@ import * as EspControlModel from "../model";
 import type { ApplicationLayoutState } from "./application_context";
 import type { AppState } from "../state/types";
 import type { UiRuntimeState } from "./state";
+import { syncPreviewCorners } from "./preview_corners";
+import { cardCurveRadius } from "../model/settings";
 
 export interface CoreFeatureDependencies {
     readonly state: AppState;
@@ -91,6 +93,8 @@ export function createCoreFeature(
         var topbar: any = layoutSection(layout, "topbar");
         var grid: any = layoutSection(layout, "grid");
         var btn: any = layoutSection(layout, "btn");
+        const baseRadius = applicationLayout.config.cardRadiusPixels || 1;
+        const curveScale = cardCurveRadius(baseRadius, state.cardCurveSupported ? state.cardCurve : "Large", applicationLayout.config.cardCurveRadii) / baseRadius;
         var sensorBadge: any = layoutSection(layout, "sensorBadge");
         var emptyCell: any = layoutSection(layout, "emptyCell");
         var subpageBadge: any = layoutSection(layout, "subpageBadge");
@@ -106,10 +110,12 @@ export function createCoreFeature(
         r.setProperty("--grid-right", scaledCqw(grid.right, scale));
         r.setProperty("--grid-bottom", scaledCqw(grid.bottom, scale));
         r.setProperty("--grid-gap", scaledCqw(grid.gap, scale));
-        r.setProperty("--btn-r", scaledCqw(btn.radius, scale));
+        r.setProperty("--btn-r", scaledCqw(btn.radius * curveScale, scale));
         var previewScreen = document.querySelector(".sp-screen");
-        if (previewScreen)
+        if (previewScreen) {
             previewScreen.classList.toggle("sp-continuous-corners", !!applicationLayout.config.continuousCorners);
+            syncPreviewCorners(previewScreen as HTMLElement, btn.radius * curveScale * scale, emptyCell.radius * curveScale * scale, !!applicationLayout.config.continuousCorners);
+        }
         r.setProperty("--btn-pad", scaledCqw(btn.padding, scale));
         if (btn.borderWidth != null)
             r.setProperty("--btn-border", scaledCqw(btn.borderWidth, scale));
@@ -130,7 +136,7 @@ export function createCoreFeature(
         r.setProperty("--sensor-top", scaledCqw(sensorBadge.top, scale));
         r.setProperty("--sensor-right", scaledCqw(sensorBadge.right, scale));
         r.setProperty("--sensor-fs", scaledCqw(sensorBadge.fontSize, scale));
-        r.setProperty("--empty-r", scaledCqw(emptyCell.radius, scale));
+        r.setProperty("--empty-r", scaledCqw(emptyCell.radius * curveScale, scale));
         r.setProperty("--subpage-bottom", scaledCqw(subpageBadge.bottom, scale));
         r.setProperty("--subpage-right", scaledCqw(subpageBadge.right, scale));
         r.setProperty("--subpage-fs", scaledCqw(subpageBadge.fontSize, scale));

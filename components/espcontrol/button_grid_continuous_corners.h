@@ -116,14 +116,22 @@ inline void on_event(lv_event_t *event) {
   }
 }
 
-inline void attach(lv_obj_t *obj) {
-  if (!obj) return;
+inline Binding *binding_for(lv_obj_t *obj) {
+  if (!obj) return nullptr;
   for (uint32_t i = 0; i < lv_obj_get_event_count(obj); ++i) {
     auto *event = lv_obj_get_event_dsc(obj, i);
     if (lv_event_dsc_get_cb(event) == on_event) {
-      update(obj, *static_cast<Binding *>(lv_event_dsc_get_user_data(event)));
-      return;
+      return static_cast<Binding *>(lv_event_dsc_get_user_data(event));
     }
+  }
+  return nullptr;
+}
+
+inline void attach(lv_obj_t *obj) {
+  if (!obj) return;
+  if (auto *binding = binding_for(obj)) {
+    update(obj, *binding);
+    return;
   }
   auto *binding = new (std::nothrow) Binding;
   if (!binding) return;
@@ -139,6 +147,22 @@ inline void attach(lv_obj_t *obj) {
 inline void apply_continuous_card_corners(lv_obj_t *obj) {
   espcontrol::corners::attach(obj);
 }
+inline bool card_uses_continuous_corners(lv_obj_t *obj) {
+  return espcontrol::corners::binding_for(obj) != nullptr;
+}
 #else
 inline void apply_continuous_card_corners(lv_obj_t *) {}
+inline bool card_uses_continuous_corners(lv_obj_t *) { return false; }
 #endif
+
+inline void apply_grid_card_corners(lv_obj_t *obj, int radius, bool continuous) {
+  if (!obj) return;
+  if (radius >= 0) {
+    lv_obj_set_style_radius(obj, radius, LV_PART_MAIN);
+    lv_obj_set_style_radius(obj, radius,
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
+  }
+  // LVGL's radius property has no layout-update flag, so setting it does not
+  // emit STYLE_CHANGED. Refresh an existing mask explicitly after the change.
+  if (continuous) apply_continuous_card_corners(obj);
+}

@@ -360,6 +360,14 @@ def cfg_lines(device: dict) -> list[str]:
     else:
         lines.append(f"            cfg.cols = {device['cols']};")
     lines.append("            cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;")
+    base_radius = int(device["package"]["substitutions"]["radius"].removesuffix("px"))
+    substitutions = device["package"]["substitutions"]
+    radius_overrides = ""
+    if "card_curve_small_radius" in substitutions or "card_curve_medium_radius" in substitutions:
+        small_radius = int(substitutions.get("card_curve_small_radius", "-1px").removesuffix("px"))
+        medium_radius = int(substitutions.get("card_curve_medium_radius", "-1px").removesuffix("px"))
+        radius_overrides = f", {small_radius}, {medium_radius}"
+    lines.append(f"            cfg.card_corner_radius = card_curve_radius({base_radius}, id(card_curve_select).current_option(){radius_overrides});")
     if device.get("continuous_card_corners"):
         lines.append("            cfg.continuous_card_corners = true;")
     if device.get("info_only"):
