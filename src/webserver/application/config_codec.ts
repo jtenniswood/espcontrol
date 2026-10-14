@@ -665,8 +665,11 @@ export function createConfigCodecFeature(
             precision = webhookButton.precision || "";
             options = webhookButton.options || "";
         }
-        else if (type === "lock" || type === "screen_lock") {
+        else if (type === "lock") {
             options = "";
+        }
+        else if (type === "screen_lock") {
+            options = configOptionEnabled(options, "screensaver_on_lock") ? "screensaver_on_lock" : "";
         }
         else if (type === "calendar" || type === "clock" || type === "timezone") {
             options = normalizeDateTimeOptions(type, options, precision);
@@ -812,7 +815,7 @@ export function createConfigCodecFeature(
         return EspControlModel.parseSubpageOrder(orderStr);
     }
     function subpageOrderForSerialize(this: any, sp?: any) {
-        return EspControlModel.subpageOrderForSerialize((sp && sp.order) || [], sp && sp.backLabel);
+        return EspControlModel.subpageOrderForSerialize((sp && sp.order) || [], sp && sp.backLabel, sp && sp.backColor);
     }
     function subpageSerializedOrder(this: any, sp?: any) {
         if (!sp)
@@ -989,7 +992,7 @@ export function createConfigCodecFeature(
         return JSON.stringify(sp.order) !== previousOrder;
     }
     function serializeSubpageGrid(this: any, sp?: any) {
-        return EspControlModel.serializeSubpageGrid(sp.grid, sp.sizes || {}, sp.backLabel || "Back");
+        return EspControlModel.serializeSubpageGrid(sp.grid, sp.sizes || {}, sp.backLabel || "Back", sp.backColor);
     }
     function enterSubpage(this: any, homeSlot?: any) {
         state.editingSubpage = homeSlot;

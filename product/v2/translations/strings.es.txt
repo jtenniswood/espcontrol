@@ -152,6 +152,7 @@ relay=Relé
 returning=Volviendo
 run_this_script=¿Ejecutar este script?
 screen_dimmed=Pantalla atenuada
+screen_lock=Bloqueo de pantalla
 screen_locked=Pantalla bloqueada
 screen_unlocked=Pantalla desbloqueada
 skip_next=Saltar siguiente
@@ -261,3 +262,6 @@ wifi_did_not_change=El Wi-Fi no ha cambiado
 connect_to_the_wifi_hotspot=Conéctate al punto de acceso WiFi
 to_configure_your_network=para configurar tu red.
 then_visit_192_168_4_1_in_your_browser=Después abre 192.168.4.1 en tu navegador
+
+screensaver=Salvapantallas
+incorrect_pin=PIN incorrecto

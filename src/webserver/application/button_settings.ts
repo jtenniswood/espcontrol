@@ -2,6 +2,7 @@ import { state } from "../state/app_instance";
 import * as EspControlModel from "../model";
 import { configOptionValue, setCardColor } from "../model/config_primitives";
 import { createColorSwatches } from "../components/color_swatches";
+import { defaultCardBackgroundColor } from "../state/preview_theme";
 import { applySpans, CARD_SIZE_SINGLE, clearSpans } from "../model/grid";
 import { iconSlug, mdiIcon, textSpan } from "./ui_primitives";
 import type { CardEditorDraftController } from "../features/card_editor_draft_controller";
@@ -98,6 +99,31 @@ export function createButtonSettingsFeature(
         }
         renderButtonSettings(true);
     }
+    function renderColourSettings(panel: HTMLElement, idPrefix: string, value: () => string, onChange: (hex: string) => void) {
+        var cardAppearance: any = disclosureSection("Custom Colours", idPrefix + "card-colours", false);
+        var cardColorEditor: any = document.createElement("div");
+        cardColorEditor.className = "sp-card-color-editor";
+        function saveCardColor(this: any, hex?: any) {
+            onChange(hex);
+            presetGrid._syncColor();
+        }
+        var presetGrid = createColorSwatches(value,
+            saveCardColor, "Card colour presets");
+        els.cardColorPresets = presetGrid;
+        cardColorEditor.appendChild(presetGrid);
+        var resetCardColors: any = createActionButton("sp-icon-button sp-card-header-action", "", "restore", "Reset colours to defaults");
+        resetCardColors.title = "Reset colours";
+        resetCardColors.addEventListener("click", function () {
+            saveCardColor("");
+        });
+        var cardColorHeader: any = document.createElement("div");
+        cardColorHeader.className = "sp-card-color-header";
+        cardAppearance.panel.replaceChild(cardColorHeader, cardAppearance.button);
+        cardColorHeader.appendChild(cardAppearance.button);
+        cardColorHeader.appendChild(resetCardColors);
+        cardAppearance.section.appendChild(cardColorEditor);
+        panel.appendChild(cardAppearance.panel);
+    }
     function renderBackButtonSettings(this: any, container?: any, c?: any) {
         if (!c.isSub || c.selected[0] !== -2)
             return false;
@@ -130,6 +156,12 @@ export function createButtonSettingsFeature(
                 this.blur();
             }
         });
+        renderColourSettings(panel, "sp-sp-back-", () =>
+            sp.backColor || defaultCardBackgroundColor("", state), (hex: string) => {
+                sp.backColor = hex;
+                saveSubpageConfig(state.editingSubpage);
+                renderPreview();
+            });
         var doneRow: any = document.createElement("div");
         doneRow.className = "sp-btn-row sp-btn-row--save";
         var doneBtn: any = createActionButton("sp-action-btn sp-save-btn", "Done");
@@ -140,6 +172,7 @@ export function createButtonSettingsFeature(
         return true;
     }
     function renderButtonSettings(this: any, forceOpen?: any) {
+        els.cardColorPresets = null;
         var container: any = els.buttonSettings;
         container.innerHTML = "";
         var settingsModal: any = els.settingsOverlay ? els.settingsOverlay.querySelector(".sp-settings-modal") : null;
@@ -828,29 +861,13 @@ export function createButtonSettingsFeature(
             panel.appendChild(patternField.field);
         }
         if (b.type !== "image" && b.type !== "wifi_qr_card") {
-            var cardAppearance: any = disclosureSection("Custom Colours", idPrefix + "card-colours", false);
-            var cardColorEditor: any = document.createElement("div");
-            cardColorEditor.className = "sp-card-color-editor";
-            function saveCardColor(this: any, hex?: any) {
-                b.options = setCardColor(b.options, hex);
-                presetGrid._syncColor(configOptionValue(b.options, "card_off_color"));
-                saveField("options", b.options);
-                renderPreview();
-            }
-            var presetGrid = createColorSwatches(configOptionValue(b.options, "card_off_color"), saveCardColor, "Card colour presets");
-            cardColorEditor.appendChild(presetGrid);
-            var resetCardColors: any = createActionButton("sp-icon-button sp-card-header-action", "", "restore", "Reset colours to defaults");
-            resetCardColors.title = "Reset colours";
-            resetCardColors.addEventListener("click", function () {
-                saveCardColor("");
-            });
-            var cardColorHeader: any = document.createElement("div");
-            cardColorHeader.className = "sp-card-color-header";
-            cardAppearance.panel.replaceChild(cardColorHeader, cardAppearance.button);
-            cardColorHeader.appendChild(cardAppearance.button);
-            cardColorHeader.appendChild(resetCardColors);
-            cardAppearance.section.appendChild(cardColorEditor);
-            panel.appendChild(cardAppearance.panel);
+            renderColourSettings(panel, idPrefix, () =>
+                configOptionValue(b.options, "card_off_color") || defaultCardBackgroundColor(b.type || "", state),
+                (hex: string) => {
+                    b.options = setCardColor(b.options, hex);
+                    saveField("options", b.options);
+                    renderPreview();
+                });
         }
         groupCardSettingsFields(panel, idPrefix);
         var saveRow: any = document.createElement("div");

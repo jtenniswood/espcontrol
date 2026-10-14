@@ -11,6 +11,7 @@ import {
   serializeLegacySubpageConfig,
   setConfigOption,
   setCardColor,
+  activeCardColor,
   lighterCardColor,
   setConfigOptionValue,
   normalizedCardColorOptions,
@@ -65,10 +66,15 @@ export function runEncodingTests(): void {
   equal(normalizedCardColorOptions("card_on_color=E91E63,card_off_color=3F51B5"), "card_off_color=3F51B5", "existing card colour takes priority over a separate active override");
   equal(normalizedCardColorOptions("card_on_color=#e91e63"), "card_off_color=E91E63", "old active-only colour migrates to the single card colour");
   equal(normalizedCardColorOptions("card_off_color=invalid,card_on_color=00BCD4"), "card_off_color=00BCD4", "a valid legacy colour survives an invalid card colour");
-  equal(lighterCardColor("3F51B5"), "7985CB", "active colour is derived from the selected card colour");
-  equal(lighterCardColor("000000"), "4D4D4D", "active colour channel rounding matches firmware");
-  equal(lighterCardColor("FFFFFF"), "FFFFFF", "white remains white in the active state");
-  equal(lighterCardColor("invalid"), "", "invalid colours do not create an active override");
+  equal(activeCardColor("3F51B5"), "8C97D3", "darker cards get a distinct brighter active tint");
+  equal(activeCardColor("000000"), "666666", "black has a visible active state with firmware rounding");
+  equal(activeCardColor("FFFFFF"), "BFBFBF", "white gets a distinct darker active state");
+  equal(activeCardColor("FFEC16"), "BFB111", "pale yellow gets a darker shade of the selected colour");
+  equal(activeCardColor("#bfeaff"), "8FB0BF", "pale blue darkens and accepts hash-prefixed lowercase colours");
+  equal(activeCardColor("9F9F9F"), "C5C5C5", "grey below the brightness boundary lightens");
+  equal(activeCardColor("A0A0A0"), "787878", "grey at the brightness boundary darkens");
+  equal(activeCardColor("invalid"), "", "invalid colours do not create an active override");
+  equal(lighterCardColor("3F51B5"), "7985CB", "progress fill retains its existing lighter tint");
   options = setCardColor(options, "invalid");
   equal(normalizedCardColorOptions(options), "", "invalid card colours are dropped safely");
   equal(setCardColor("confirm_on,card_on_color=FFFFFF,card_off_color=3F51B5", ""), "confirm_on", "reset clears old and new colour options while retaining other settings");

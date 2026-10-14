@@ -8,20 +8,30 @@ description:
 
 A Screen Lock card locks and unlocks the panel's touchscreen controls locally. It does not need a Home Assistant entity and does not send a Home Assistant action.
 
-Use this when a panel is in a shared area and you want a quick way to prevent accidental taps.
+Use this when a panel is in a shared area and you want to require a PIN before its controls can be used.
 
 ## Setting Up a Screen Lock Card
 
 1. Select a card and change its type to **Screen Lock**.
-2. Save the card and apply the configuration.
+2. In **Pin Protection**, enter a numeric PIN (1–16 digits) and choose **Save**. If a PIN is already set, the field shows masked dots; you can keep it or enter a replacement.
+3. Save the card and apply the configuration. A saved PIN is required before the card can be saved.
 
-Screen Lock does not need an entity or any additional card settings. Its label and icon change automatically to show whether the touchscreen is locked or unlocked.
+The card uses the same PIN and keypad layout preference as **Settings > Sleep & Schedule > Pin Protection**. Changes made in either place apply to both. The card always requires a PIN and shows **PIN**, **Save**, then **Randomize keypad layout** (off by default). Automatic wake protection and clearing the shared PIN are managed in the screensaver settings; clearing the PIN there releases the lock. The card works with automatic wake protection off.
+
+Screen Lock does not need an entity. Its label and icon change automatically to show whether the touchscreen is locked or unlocked. The PIN is stored on the panel, never in the card configuration or backups.
+
+After saving a PIN, you can also lock the screen from the **Screen Lock** button on the panel's Settings page (opened by tapping the clock bar's network icon). This uses the same PIN and keeps the current view visible; no Screen Lock card is required.
 
 ## How It Works on the Panel
 
-- Tapping the card switches the panel between locked and unlocked states.
+- **Screensaver on lock**, in the card's **Screensaver** panel below **Pin Protection**, is off by default. Tapping the card locks the controls while keeping the current screen visible. The normal return-to-home timeout still applies. Any touch opens the PIN keypad instead of activating a control; that first touch does not enter a digit.
+- Turn **Screensaver on lock** on to start the configured screensaver immediately when locking. Wake the panel to show the PIN keypad.
+- Enter the shared PIN and press the checkmark to unlock.
+- **X** clears entered digits. With no digits entered, it returns to the previous cards or screensaver view while keeping the screen locked.
+- A wrong PIN keeps the panel locked. Tapping the card cannot bypass PIN entry.
+- If the screensaver starts while manually locked, waking shows the same keypad. A successful PIN entry releases both the screensaver lock and the card lock.
 - The lock state is local to the panel.
-- Other cards are protected while the screen is locked.
+- Other cards and local controls are protected while the screen is locked; the keypad remains responsive.
 - The card can be used on the home screen or inside a subpage.
 - It does not depend on Home Assistant availability.
 

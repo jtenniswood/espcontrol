@@ -109,7 +109,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:var(--card-text-color,var(--preview-text-primary))}" +
         ".sp-slider-preview{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;pointer-events:none}" +
         ".sp-slider-track{width:100%;height:100%;position:relative}" +
-        ".sp-slider-fill{position:absolute;left:0;bottom:0;width:100%;height:80%;background:var(--card-active-color,var(--screen-primary));" +
+        ".sp-slider-fill{position:absolute;left:0;bottom:0;width:100%;height:80%;background:var(--card-slider-fill-color,var(--card-active-color,var(--screen-primary)));" +
         "border-radius:var(--r)}" +
         ".sp-image-card{padding:0}" +
         ".sp-image-preview{position:absolute;inset:0;display:block;overflow:hidden;border-radius:var(--btn-r);" +
@@ -463,6 +463,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-segment-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}" +
         ".sp-segment-scroll::-webkit-scrollbar{display:none}" +
         ".sp-theme-mode-segment{margin-bottom:30px}" +
+        "#sp-set-on-color{margin-bottom:16px}" +
         ".sp-segment.sp-segment-scroll button{flex:1 0 auto;min-width:112px;padding-left:12px;padding-right:12px}" +
         ".sp-segment button{flex:1;padding:8px 0;background:var(--surface2);color:var(--text2);" +
         "border:none;font-size:.8rem;font-weight:500;cursor:pointer;transition:all .25s;font-family:inherit}" +
@@ -516,6 +517,10 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-panel-name-row{display:flex;align-items:center;gap:12px}" +
         ".sp-panel-name-row .sp-input{flex:1;min-width:0;margin:0}" +
         ".sp-panel-name-row .sp-fw-btn{flex:none;white-space:nowrap;margin:0}" +
+        ".sp-pin-row{display:flex;align-items:center;gap:12px;width:100%}" +
+        ".sp-pin-row .sp-input{flex:1;min-width:0;margin:0}" +
+        ".sp-pin-actions{display:flex;align-items:center;gap:8px;flex:none}" +
+        ".sp-pin-actions .sp-fw-btn{margin:0}" +
         "#sp-panel-name-info{margin:16px 0 0;overflow-wrap:anywhere;min-width:0;align-items:center}" +
         "#sp-panel-name-info .mdi{margin-top:0}" +
         "#sp-panel-name-info>span:last-child{min-width:0}" +

@@ -553,6 +553,13 @@ target_compile_options(panel_identity_runtime_test PRIVATE -Wall -Wextra -Werror
 target_include_directories(panel_identity_runtime_test PRIVATE panel_identity_stubs ../../components/espcontrol)
 add_test(NAME panel_identity_runtime_test COMMAND panel_identity_runtime_test)
 
+add_executable(panel_identity_runtime_beta_test panel_identity_runtime_test.cpp ../../components/espcontrol/panel_identity.cpp)
+target_compile_features(panel_identity_runtime_beta_test PRIVATE cxx_std_17)
+target_compile_options(panel_identity_runtime_beta_test PRIVATE -Wall -Wextra -Werror)
+target_compile_definitions(panel_identity_runtime_beta_test PRIVATE TEST_ESPHOME_MINOR=10)
+target_include_directories(panel_identity_runtime_beta_test PRIVATE panel_identity_stubs ../../components/espcontrol)
+add_test(NAME panel_identity_runtime_beta_test COMMAND panel_identity_runtime_beta_test)
+
 set(CLOCK_BAR_TITLE_TEST_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/clock_bar_title_test.cpp)
 add_custom_command(
   OUTPUT ${CLOCK_BAR_TITLE_TEST_SOURCE}
@@ -616,3 +623,15 @@ add_test(NAME home_assistant_endpoint_probe_test COMMAND home_assistant_endpoint
 
 add_test(NAME clock_screensaver_time_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/clock_screensaver_time_test.py)
+
+add_executable(screensaver_pin_test screensaver_pin_test.cpp
+  ../../components/espcontrol/screensaver_pin.cpp)
+target_compile_features(screensaver_pin_test PRIVATE cxx_std_17)
+target_compile_options(screensaver_pin_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(screensaver_pin_test PRIVATE screensaver_pin_stubs ../../components/espcontrol)
+target_link_libraries(screensaver_pin_test PRIVATE Threads::Threads)
+add_test(NAME screensaver_pin_test COMMAND screensaver_pin_test)
+add_test(NAME screensaver_pin_ui_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/screensaver_pin_ui_test.py ${CMAKE_CXX_COMPILER})
+add_test(NAME screensaver_pin_cover_art_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/screensaver_pin_cover_art_test.py ${CMAKE_CXX_COMPILER})

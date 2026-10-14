@@ -497,7 +497,8 @@ script:
       - if:
           condition:
             lambda: |-
-              return !id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) ||
+              return espcontrol::screensaver_pin().locked() ||
+                     !id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) ||
                      lv_obj_has_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN) ||
                      id(screensaver_wake_touch_guard_active);
           then:
@@ -550,7 +551,8 @@ script:
           if (${cover_art_square_overlay} && !id(cover_art_playback_control_enabled).state) return;
           if (!id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) ||
               lv_obj_has_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN) ||
-              id(screensaver_wake_touch_guard_active) || !ha_api_state_connected()) return;
+              id(screensaver_wake_touch_guard_active) || espcontrol::screensaver_pin().locked() ||
+              !ha_api_state_connected()) return;
           auto &control = id(cover_art_playback_control);
           const std::string entity = id(cover_art_active_media_player_entity);
           const auto command = control.begin(entity, id(cover_art_last_playback_state), millis());

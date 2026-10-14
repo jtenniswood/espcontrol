@@ -304,8 +304,10 @@ class DisplayModeController {
       case DisplayRequestSource::ONBOARDING:
         return mode == DisplayMode::ACTIVE;
       case DisplayRequestSource::BOOT_GUARD:
-      case DisplayRequestSource::MANUAL_SLEEP:
         return mode == DisplayMode::DISPLAY_OFF;
+      case DisplayRequestSource::MANUAL_SLEEP:
+        return mode == DisplayMode::DISPLAY_OFF || mode == DisplayMode::DIMMED ||
+               mode == DisplayMode::CLOCK || mode == DisplayMode::CAMERA;
       case DisplayRequestSource::USER_WAKE:
         return mode == DisplayMode::ACTIVE;
       case DisplayRequestSource::MEDIA_PLAYBACK:

@@ -2209,6 +2209,37 @@
       }
     },
     {
+      "name": "screensaver: force",
+      "sourceKind": "contract",
+      "sourceType": "screensaver",
+      "mode": "force",
+      "canonicalType": "screensaver",
+      "web": {
+        "registration": "screensaver",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "4b2af138327433d6"
+        }
+      },
+      "firmware": {
+        "family": "SCREENSAVER"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "none"
+        ],
+        "actions": [
+          "local"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
       "name": "screen_lock: toggle",
       "sourceKind": "contract",
       "sourceType": "screen_lock",

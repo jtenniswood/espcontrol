@@ -189,10 +189,12 @@ export function registerImageCardTypes(
             panel.appendChild(refreshSettings.panel);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
-            var tertiaryColor: any = PREVIEW_THEME_COLORS[previewEffectiveTheme(state)].surfaceSecondary;
+            var customBackground: any = helpers && helpers.cardBackgroundColor || "";
+            var tertiaryColor: any = customBackground || PREVIEW_THEME_COLORS[previewEffectiveTheme(state)].surfaceSecondary;
             var label: any = imageLabelEnabled(b) ? String((b && b.label) || "Camera").trim() : "";
             var iconName: any = b && b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "camera";
-            var icon: any = imageIconEnabled(b) ? '<span class="sp-image-preview-icon mdi mdi-' + iconName + '"></span>' : "";
+            var iconColor: any = customBackground ? ' style="color:' + helpers.escHtml(helpers.cardTextColor) + '"' : "";
+            var icon: any = imageIconEnabled(b) ? '<span class="sp-image-preview-icon mdi mdi-' + iconName + '"' + iconColor + '></span>' : "";
             return {
                 buttonClass: "sp-image-card",
                 iconHtml: '<span class="sp-image-preview" style="background:#' + helpers.escHtml(tertiaryColor) + '">' +

@@ -12,7 +12,8 @@ constexpr int NETWORK_STATUS_IP_CARD_INDEX = 1;
 constexpr int NETWORK_STATUS_WIFI_CARD_INDEX = 2;
 constexpr int NETWORK_STATUS_BUILD_CARD_INDEX = 3;
 constexpr int NETWORK_STATUS_NAME_CARD_INDEX = 4;
-constexpr int NETWORK_STATUS_CARD_COUNT = 5;
+constexpr int NETWORK_STATUS_LOCK_CARD_INDEX = 5;
+constexpr int NETWORK_STATUS_CARD_COUNT = 6;
 
 inline NetworkStatusGridCell network_status_grid_cell(int card_index,
                                                        int columns) {
