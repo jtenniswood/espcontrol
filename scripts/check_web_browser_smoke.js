@@ -7598,7 +7598,7 @@ async function assertClockWallpaperSettings(browser) {
         ...seededEvents(),
         {id: "switch-screen_saver__show_date", state: "OFF", value: false},
         ...(supported ? [{id: "switch-clock_screensaver_show_wallpaper", state: savedWallpaper ? "ON" : "OFF", value: savedWallpaper}] : []),
-        ...(supported ? [{id: "number-clock_wallpaper_dimming", state: String(savedDimming), value: savedDimming}] : []),
+        ...(supported ? [{id: "number/Screen Saver: Wallpaper Dimming", name: "Screen Saver: Wallpaper Dimming", state: savedDimming + " %", value: String(savedDimming)}] : []),
       ]);
       await page.getByRole("tab", {name: "Settings", exact: true}).click();
       await page.getByRole("heading", {name: "Screensaver", exact: true}).click();
