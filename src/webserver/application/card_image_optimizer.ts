@@ -67,4 +67,3 @@ export const optimizeCardImage = (file: Blob, options: CardImageOptimizationOpti
     };
     source.src = objectUrl;
   });
-
