@@ -637,6 +637,11 @@ assert.strictEqual(
   "playlist_content_id=spotify%3Aplaylist%3Aabc,bg_image=img-1121238-0",
   "media card background image survives media option normalization without legacy dim"
 );
+const mediaBackgroundWithColour = { ...mediaBackgroundButton,
+  options: "playlist_content_id=spotify%3Aplaylist%3Aabc,bg_image=img-1121238-0,card_off_color=3F51B5" };
+assertButtonRoundTrip(hooks, "media background and custom colour", mediaBackgroundWithColour, false);
+assert.strictEqual(hooks.normalizeMediaOptions(mediaBackgroundWithColour.options, "playlist"),
+  mediaBackgroundWithColour.options, "media background and custom colour survive together");
 const backgroundOption = "bg_image=img-1121238-0";
 assert(
   hooks.normalizeSwitchConfirmationOptions(backgroundOption + ",confirm_on=true").includes(backgroundOption),
