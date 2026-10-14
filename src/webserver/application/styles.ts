@@ -113,6 +113,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-slider-track{display:block;width:100%;height:100%;position:relative}" +
         ".sp-slider-fill{position:absolute;left:0;bottom:0;width:100%;height:80%;background:var(--card-slider-fill-color,var(--card-active-color,var(--screen-primary)));" +
         "border-radius:var(--r)}" +
+        ".sp-cover-preview .sp-slider-fill{top:0;bottom:auto}" +
         ".sp-image-card{padding:0}" +
         ".sp-image-preview{position:absolute;inset:0;display:block;overflow:hidden;border-radius:var(--btn-r);" +
         "background:var(--screen-tertiary)}" +

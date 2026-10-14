@@ -3100,6 +3100,10 @@ async function assertSliderActiveColours(page, label) {
       await cards.first().locator(".sp-slider-fill").waitFor({ state: "visible" });
       const rendered = await cards.evaluateAll(cards => cards.map(card => ({
         fill: card.style.getPropertyValue("--card-slider-fill-color"),
+        fillTop: card.querySelector(".sp-slider-fill").getBoundingClientRect().top,
+        fillBottom: card.querySelector(".sp-slider-fill").getBoundingClientRect().bottom,
+        trackTop: card.querySelector(".sp-slider-track").getBoundingClientRect().top,
+        trackBottom: card.querySelector(".sp-slider-track").getBoundingClientRect().bottom,
         texts: Array.from(card.querySelectorAll(".sp-btn-icon,.sp-btn-label")).map(label => ({
           gradient: label.style.backgroundImage,
           clip: getComputedStyle(label).backgroundClip,
@@ -3107,9 +3111,14 @@ async function assertSliderActiveColours(page, label) {
       })));
       for (const [index, card] of rendered.entries()) {
         assert.strictEqual(card.fill, mode === "matching" ? "#767676" : "#FFFFFF", `${label}: ${theme}/${types[index]}/${mode} fill`);
+        const fromTop = types[index] === "cover";
+        assert(Math.abs(fromTop ? card.fillTop - card.trackTop : card.fillBottom - card.trackBottom) < .1,
+          `${label}: ${types[index]} fill grows from the ${fromTop ? "top" : "bottom"}`);
         if (mode !== "matching") {
           assert(card.texts.every(text => text.clip === "text" && text.gradient.includes("rgb(33, 33, 33)")),
             `${label}: ${theme}/${types[index]}/${mode}${renderWhileHidden ? " after returning from Settings" : ""} text contrasts with the pale fill`);
+          assert(card.texts.every(text => text.gradient.startsWith(`linear-gradient(rgb(${fromTop ? "33, 33, 33" : "255, 255, 255"})`)),
+            `${label}: ${types[index]} text contrast follows the fill direction`);
         }
       }
       if (mode === "custom" && theme === "Dark" && process.env.ESPCONTROL_SLIDER_COLOUR_SCREENSHOT) {
