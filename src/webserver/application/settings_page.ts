@@ -123,7 +123,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setThemeModeButtons = themeModes.buttons;
         var themeAutoFields: any = condField();
         var themeAutoMethods: any = segmentControl([
-            ["Time", "Time"], ["Sunrise / Sunset", "Automatic"],
+            ["Sunrise / Sunset", "Sunrise & Sunset"], ["Time", "Manual"],
         ], normalizeThemeAutoMethod(state.themeAutoMethod), function (this: any, method?: any) {
             state.themeAutoMethod = normalizeThemeAutoMethod(method);
             postSelect(entityName("screen_theme_auto_method"), state.themeAutoMethod);
