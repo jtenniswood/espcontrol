@@ -7548,12 +7548,18 @@ async function assertWallpaperSettings(browser) {
     await page.evaluate(events => window.__seedEspState(events), seededEvents());
     await page.getByRole("tab", { name: "Settings" }).click();
     const card = page.locator("#sp-settings .card").filter({ has: page.locator("#sp-set-wallpaper") });
-    if (!(await page.locator("#sp-set-wallpaper").isVisible())) await card.locator(".card-header").click();
+    if (!(await card.getByRole("button", { name: /Add image|Replace image/ }).isVisible())) await card.locator(".card-header").click();
     await page.waitForFunction(() => !document.querySelector("#sp-set-wallpaper").disabled);
   }
   try {
     await open();
     assert.strictEqual(await page.locator("#sp-set-card-transparency").isDisabled(), true);
+    assert.strictEqual(await page.locator("#sp-set-wallpaper").isVisible(), false);
+    await page.getByRole("img", { name: "No wallpaper uploaded", exact: true }).waitFor();
+    assert.strictEqual(await page.getByRole("button", { name: "Clear wallpaper" }).isDisabled(), true);
+    const chooseFile = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "Add image", exact: true }).click();
+    const initialFileChooser = await chooseFile;
     const png = await page.evaluate(() => {
       const canvas = document.createElement("canvas"); canvas.width = 2560; canvas.height = 1600;
       const ctx = canvas.getContext("2d");
@@ -7563,8 +7569,12 @@ async function assertWallpaperSettings(browser) {
       return canvas.toDataURL("image/png").split(",")[1];
     });
     const upload = { name: "wallpaper.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") };
-    await page.locator("#sp-set-wallpaper").setInputFiles(upload);
+    await initialFileChooser.setFiles(upload);
     await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
+    await page.getByRole("button", { name: "Replace image", exact: true }).waitFor();
+    await page.getByRole("img", { name: "Saved wallpaper, 1280 by 800 pixels" }).waitFor();
+    assert.strictEqual(await page.locator(".sp-card-bg-preview").evaluate(el => el.style.backgroundImage),
+      await page.locator(".sp-screen").evaluate(el => el.style.backgroundImage));
     assert.strictEqual(wallpaper.image.readUInt32LE(0), 0x32505745);
     assert.strictEqual(wallpaper.image.readUInt32LE(4), 1280);
     assert.strictEqual(wallpaper.image.readUInt32LE(8), 800);
@@ -7583,6 +7593,18 @@ async function assertWallpaperSettings(browser) {
     assert.strictEqual(previewPixels.height, 800);
     assert(previewPixels.colors > 32, "JPEG preview should preserve more than 5-bit red colour detail");
     await page.waitForFunction(() => Array.from(document.querySelectorAll(".sp-btn")).some(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0.8)")));
+    if (process.env.ESPCONTROL_WALLPAPER_SETTINGS_SCREENSHOT)
+      await page.locator(".sp-card-bg-field").locator("..").screenshot({ path: process.env.ESPCONTROL_WALLPAPER_SETTINGS_SCREENSHOT });
+    await page.setViewportSize({ width: 360, height: 800 });
+    const uploadLayout = await page.locator(".sp-card-bg-field").evaluate(field => {
+      const bounds = field.getBoundingClientRect();
+      return Array.from(field.querySelectorAll(".sp-card-bg-preview,.sp-card-bg-actions button")).every(element => {
+        const rect = element.getBoundingClientRect();
+        return rect.left >= bounds.left - 1 && rect.right <= bounds.right + 1;
+      });
+    });
+    assert(uploadLayout, "Wallpaper preview and actions should fit a narrow settings panel");
+    await page.setViewportSize(testCase.viewport);
     if (process.env.ESPCONTROL_WALLPAPER_SCREENSHOT) {
       await page.getByRole("tab", { name: "Screen", exact: true }).click();
       await page.locator(".sp-screen").screenshot({ path: process.env.ESPCONTROL_WALLPAPER_SCREENSHOT });
@@ -7654,12 +7676,14 @@ async function assertWallpaperSettings(browser) {
     const savedBackground = await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage);
     await open();
     assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), savedBackground);
+    assert.strictEqual(await page.locator(".sp-card-bg-preview").evaluate(el => el.style.backgroundImage), savedBackground);
     assert.strictEqual(await transparency.inputValue(), "50");
     assert.strictEqual(await activeTransparency.inputValue(), "10");
     await assertActiveAlpha(230);
     // Theme changes and grid rebuilds keep the wallpaper and alpha fill.
     await page.locator("#sp-set-theme-mode").getByRole("button", { name: "Light", exact: true }).click();
     assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), savedBackground);
+    assert.strictEqual(await page.locator(".sp-card-bg-preview").evaluate(el => el.style.backgroundImage), savedBackground);
     await assertCardAlpha(128 / 255);
     await setTransparency(0);
     assert.strictEqual(wallpaper.opacity, 100);
@@ -7689,14 +7713,18 @@ async function assertWallpaperSettings(browser) {
     await page.locator("#sp-set-wallpaper").setInputFiles(upload);
     await page.getByText("Could not save wallpaper. Check the connection and try again.").waitFor();
     assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), savedBackground);
+    assert.strictEqual(await page.locator(".sp-card-bg-preview").evaluate(el => el.style.backgroundImage), savedBackground);
     wallpaper.failSave = false;
-    await page.getByRole("button", { name: "Remove wallpaper" }).click();
+    await page.getByRole("button", { name: "Clear wallpaper" }).click();
     await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage === "");
     assert.strictEqual(wallpaper.image, null);
+    await page.getByRole("button", { name: "Add image", exact: true }).waitFor();
+    await page.getByRole("img", { name: "No wallpaper uploaded", exact: true }).waitFor();
+    assert.strictEqual(await page.locator(".sp-card-bg-preview").evaluate(el => el.style.backgroundImage), "");
     assert.strictEqual(wallpaper.posts.at(-1).length, 16);
     await open();
     assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), "");
-    assert.strictEqual(await page.getByRole("button", { name: "Remove wallpaper" }).isDisabled(), true);
+    assert.strictEqual(await page.getByRole("button", { name: "Clear wallpaper" }).isDisabled(), true);
     assert.strictEqual(await transparency.isDisabled(), true);
     assert.strictEqual(await activeTransparency.isDisabled(), true);
     assert.strictEqual(await activeTransparency.inputValue(), "10");

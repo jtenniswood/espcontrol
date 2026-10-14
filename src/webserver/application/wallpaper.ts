@@ -160,6 +160,8 @@ export function buildWallpaperSettings(
 ): HTMLElement {
   const body = document.createElement("div");
   body.className = "sp-field";
+  const imageField = document.createElement("div");
+  imageField.className = "sp-field sp-card-bg-field";
   const label = document.createElement("label");
   label.className = "sp-field-label";
   label.htmlFor = "sp-set-wallpaper";
@@ -168,10 +170,34 @@ export function buildWallpaperSettings(
   upload.id = "sp-set-wallpaper";
   upload.type = "file";
   upload.accept = "image/jpeg,image/png,image/webp";
+  upload.className = "sp-card-bg-file";
+  upload.hidden = true;
+  const preview = document.createElement("div");
+  preview.className = "sp-card-bg-preview sp-card-bg-preview-empty";
+  preview.setAttribute("role", "img");
+  preview.setAttribute("aria-label", "No wallpaper uploaded");
+  const previewIcon = document.createElement("span");
+  previewIcon.className = "sp-card-bg-preview-icon mdi mdi-image";
+  previewIcon.setAttribute("aria-hidden", "true");
+  const previewTitle = document.createElement("span");
+  previewTitle.className = "sp-card-bg-preview-title";
+  previewTitle.textContent = "No wallpaper";
+  preview.append(previewIcon, previewTitle);
+  const actions = document.createElement("div");
+  actions.className = "sp-card-bg-actions";
+  const uploadButton = document.createElement("button");
+  uploadButton.type = "button";
+  uploadButton.className = "sp-action-btn";
+  uploadButton.innerHTML = '<span class="mdi mdi-plus" aria-hidden="true"></span><span>Add image</span>';
+  const uploadTitle = uploadButton.lastElementChild!;
+  uploadButton.addEventListener("click", () => upload.click());
   const remove = document.createElement("button");
   remove.type = "button";
-  remove.className = "sp-fw-btn";
-  remove.textContent = "Remove wallpaper";
+  remove.className = "sp-action-btn";
+  remove.innerHTML = '<span class="mdi mdi-close" aria-hidden="true"></span>Clear';
+  remove.setAttribute("aria-label", "Clear wallpaper");
+  remove.title = "Clear wallpaper";
+  actions.append(upload, uploadButton, remove);
   const status = document.createElement("div");
   status.className = "sp-field-hint";
   status.setAttribute("role", "status");
@@ -191,13 +217,17 @@ export function buildWallpaperSettings(
   hint.className = "sp-field-hint";
   hint.textContent = "0% is solid; 100% is clear. Text and icons stay visible.";
   control.wrap.appendChild(hint);
-  body.append(label, upload, remove, control.wrap, activeControl.wrap, status);
+  imageField.append(label, preview, actions, status);
+  body.append(imageField, control.wrap, activeControl.wrap);
   let hasWallpaper = false, supported = false, busy = false, opacitySupported = false;
   let opacity = 80, activeOpacity = 80, savedOpacity = 80, savedActiveOpacity = 80, previewUrl = "";
   let separateOpacity = false;
   let limits = LEGACY_LIMITS;
   function sync() {
     upload.disabled = !supported || busy;
+    uploadButton.disabled = upload.disabled;
+    uploadTitle.textContent = hasWallpaper ? "Replace image" : "Add image";
+    imageField.setAttribute("aria-busy", String(busy));
     remove.disabled = !supported || busy || !hasWallpaper;
     range.disabled = !opacitySupported || busy || !hasWallpaper;
     activeRange.disabled = !separateOpacity || !opacitySupported || busy || !hasWallpaper;
@@ -218,6 +248,13 @@ export function buildWallpaperSettings(
   function apply(buffer: ArrayBuffer | null) {
     previewUrl = buffer ? wallpaperPreview(document, buffer) : "";
     hasWallpaper = !!buffer;
+    preview.style.backgroundImage = previewUrl ? `url("${previewUrl}")` : "";
+    preview.classList.toggle("sp-card-bg-preview-empty", !hasWallpaper);
+    previewIcon.hidden = hasWallpaper;
+    previewTitle.hidden = hasWallpaper;
+    preview.setAttribute("aria-label", buffer
+      ? `Saved wallpaper, ${new DataView(buffer).getUint32(4, true)} by ${new DataView(buffer).getUint32(8, true)} pixels`
+      : "No wallpaper uploaded");
     onChange(previewUrl, opacity, activeOpacity);
     status.textContent = buffer ? `Wallpaper saved (${new DataView(buffer).getUint32(4, true)} × ${new DataView(buffer).getUint32(8, true)}). Changes apply immediately.`
       : "JPEG, PNG or WebP. Saved on this display; images are resized automatically. Changes apply immediately.";
