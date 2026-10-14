@@ -300,9 +300,10 @@ inline std::vector<SubpageBtn> parse_subpage_config(const std::string &sp_cfg) {
 inline lv_obj_t *create_grid_card_button(lv_obj_t *parent, lv_coord_t radius,
                                          lv_coord_t pad,
                                          const lv_font_t *label_font,
-                                         lv_color_t text_color) {
+                                         lv_color_t text_color,
+                                         bool continuous_corners = false) {
   lv_obj_t *btn = lv_btn_create(parent);
-  lv_obj_set_style_radius(btn, radius, LV_PART_MAIN);
+  apply_grid_card_corners(btn, radius, continuous_corners);
   lv_obj_set_style_pad_all(btn, pad, LV_PART_MAIN);
   if (label_font) lv_obj_set_style_text_font(btn, label_font, LV_PART_MAIN);
   lv_obj_set_style_text_color(btn, text_color, LV_PART_MAIN);

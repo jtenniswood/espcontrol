@@ -5,7 +5,7 @@ const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { chromium } = require("playwright");
+const { chromium, webkit } = require("playwright");
 const { loadTypeScriptModule } = require("./load_typescript_module");
 const { freshWebOutputDir } = require("./web_source");
 
@@ -14,6 +14,7 @@ const {
   createPanelConfigBackupPayload,
   decodePanelConfig,
   encodePanelConfig,
+  activeCardColor,
 } = loadTypeScriptModule(path.join(ROOT, "src", "webserver", "model", "index.ts"));
 const MANIFEST_PATH = path.join(ROOT, "devices", "manifest.json");
 const WEB_OUTPUT_DIR = freshWebOutputDir();
@@ -1160,7 +1161,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     .first()
     .isVisible();
   if (!(await page.locator("#sp-set-on-color").isVisible())) {
-    await page.getByText("Appearance", { exact: true }).click();
+    await page.getByRole("heading", { name: "Active Colour", exact: true }).click();
   }
   const onColorVisible = await page.locator("#sp-set-on-color").isVisible();
   assert(settingsVisible, `${label}: settings page should be visible`);
@@ -1196,9 +1197,29 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     await page.waitForTimeout(100);
     assert.strictEqual(colourPosts().length, savesBefore + 1,
       `${label}: repeated confirmation of the same colour does not save again`);
+    const customSwatch = page.locator("#sp-set-on-color .sp-card-color-custom");
+    assert.strictEqual(await customSwatch.evaluate(el => getComputedStyle(el).borderTopStyle), "solid",
+      `${label}: choosing a custom colour fills its swatch with a solid border`);
+    const presetSaved = page.waitForRequest(request => request.method() === "POST" &&
+      postRecord(request.url()).name === "button_on_color");
+    await page.locator('#sp-set-on-color [data-color="FF8C00"]').click();
+    await presetSaved;
+    assert.strictEqual(colourPosts().at(-1).value, "FF8C00", `${label}: preset selection still saves its colour`);
+    assert.strictEqual(await customSwatch.getAttribute("data-selected"), "false");
+    assert.strictEqual(await customSwatch.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(18, 58, 188)",
+      `${label}: selecting a preset retains the custom swatch colour`);
+    assert.strictEqual(await customSwatch.evaluate(el => getComputedStyle(el).borderTopStyle), "solid");
+    assert.strictEqual(await picker.inputValue(), "#123abc");
+    const customSaved = page.waitForRequest(request => request.method() === "POST" &&
+      postRecord(request.url()).name === "button_on_color");
+    await picker.dispatchEvent("click");
+    await customSaved;
+    assert.strictEqual(colourPosts().at(-1).value, "123ABC", `${label}: clicking the custom swatch restores its retained colour`);
+    assert.strictEqual(await customSwatch.getAttribute("data-selected"), "true");
     await picker.fill(originalColour);
   }
   const themeModes = page.locator("#sp-set-theme-mode");
+  if (!(await themeModes.isVisible())) await page.getByRole("heading", { name: "Theme", exact: true }).click();
   assert.deepStrictEqual(await themeModes.locator("button").allTextContents(),
     ["Dark", "Light", "Automatic"], `${label}: theme modes render`);
   await themeModes.getByRole("button", { name: "Automatic" }).click();
@@ -1208,7 +1229,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: Time exposes Light start`);
   assert(await page.locator("#sp-set-theme-dark-start").isVisible(),
     `${label}: Time exposes Dark start`);
-  await page.locator("#sp-set-theme-auto-method").getByRole("button", { name: "Automatic" }).click();
+  await page.locator("#sp-set-theme-auto-method").getByRole("button", { name: "Sunrise & Sunset", exact: true }).click();
   assert.strictEqual(await page.locator("#sp-set-theme-sunrise-offset").count(), 0,
     `${label}: solar method does not expose sunrise offset control`);
   assert.strictEqual(await page.locator("#sp-set-theme-sunset-offset").count(), 0,
@@ -1261,7 +1282,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     await page
       .locator("#sp-settings .sp-settings-status-title")
       .evaluateAll((nodes) => nodes.map((node) => node.textContent)),
-    ["Display", "Sleep & Schedule", "Preferences", "System"],
+    ["Appearance", "Display", "Sleep & Schedule", "Preferences", "System"],
     `${label}: settings groups should be ordered by purpose`,
   );
   const settingsPlacement = await page.locator("#sp-settings .sp-config").evaluate((config) => {
@@ -2787,6 +2808,91 @@ async function assertNewMediaCardDefaults(page, posts, label, mediaCoverArtSuppo
   );
 }
 
+async function assertCardActiveColourControls(page, posts, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  const card = page.locator('.sp-main [data-slot="1"]');
+  await card.click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "Custom Colours", exact: true }).click();
+  const controls = page.locator(".sp-card-color-editor");
+  const tabs = controls.getByRole("group", { name: "Active state colour", exact: true });
+  const background = controls.getByRole("group", { name: "Card colour presets", exact: true });
+  const active = controls.getByRole("group", { name: "Active state colour presets", exact: true });
+  assert.deepStrictEqual(await tabs.locator("button").allTextContents(), ["Matching", "Theme", "Custom"]);
+  assert.strictEqual(await active.isVisible(), false, `${label}: Matching hides the active picker`);
+  const before = posts.length;
+  await background.locator('[data-color="6036B2"]').click();
+  assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#A086D1");
+  await tabs.getByRole("button", { name: "Theme", exact: true }).click();
+  assert.strictEqual(await active.isVisible(), false, `${label}: Theme hides the active picker`);
+  const themePicker = page.locator('#sp-set-on-color input[type="color"]');
+  const themeColor = (await themePicker.inputValue()).slice(1).toUpperCase();
+  assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#" + themeColor);
+  await tabs.getByRole("button", { name: "Custom", exact: true }).click();
+  assert(await active.isVisible(), `${label}: Custom shows another picker`);
+  assert.strictEqual(await active.locator('[data-color="A086D1"]').getAttribute("aria-pressed"), "true",
+    `${label}: entering Custom from Theme starts with Matching's shade selected`);
+  await background.locator('[data-color="64AD54"]').click();
+  assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#A2CE98",
+    `${label}: Custom follows the background until an alternative is chosen`);
+  assert.strictEqual(await active.locator('[data-color="A2CE98"]').getAttribute("aria-pressed"), "true");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible", { state: "hidden" });
+  await card.click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "Custom Colours", exact: true }).click();
+  await background.locator('[data-color="6036B2"]').click();
+  assert.strictEqual(await active.locator('[data-color="A086D1"]').getAttribute("aria-pressed"), "true",
+    `${label}: automatic matching survives saving and reopening Custom`);
+  const afterDefaultSave = posts.length;
+  const backgroundPresets = await background.locator("button[data-color]").evaluateAll(buttons => buttons.map(button => button.dataset.color));
+  const activePresets = await active.locator("button[data-color]").evaluateAll(buttons => buttons.map(button => button.dataset.color));
+  assert.deepStrictEqual(activePresets, backgroundPresets.map(activeCardColor),
+    `${label}: active presets use Matching's shades`);
+  await active.locator('[data-color="FFBA66"]').click();
+  assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#FFBA66",
+    `${label}: selecting a matching swatch uses its displayed colour`);
+  assert.strictEqual(await active.locator('[data-color="FFBA66"]').getAttribute("aria-pressed"), "true");
+  assert.strictEqual(await active.locator(".sp-card-color-custom").getAttribute("data-selected"), "false");
+  await active.locator('input[type="color"]').fill("#ffffff");
+  assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#FFFFFF");
+  const customSwatch = active.locator(".sp-card-color-custom");
+  assert.strictEqual(await customSwatch.evaluate(el => getComputedStyle(el).borderTopStyle), "solid",
+    `${label}: a picked custom colour has no dotted border`);
+  await active.locator('[data-color="FFBA66"]').click();
+  assert.strictEqual(await customSwatch.getAttribute("data-selected"), "false");
+  assert.strictEqual(await customSwatch.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(255, 255, 255)",
+    `${label}: picking a preset retains the custom swatch's colour`);
+  assert.strictEqual(await active.locator('input[type="color"]').inputValue(), "#ffffff");
+  assert.strictEqual(await customSwatch.evaluate(el => getComputedStyle(el).borderTopStyle), "solid");
+  await active.locator('input[type="color"]').dispatchEvent("click");
+  assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#FFFFFF",
+    `${label}: the retained custom colour can be selected again`);
+  await background.locator('[data-color="212121"]').click();
+  assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#FFFFFF",
+    `${label}: changing the background retains a separate active colour`);
+  await tabs.getByRole("button", { name: "Matching", exact: true }).click();
+  await tabs.getByRole("button", { name: "Custom", exact: true }).click();
+  assert.strictEqual(await active.locator('input[type="color"]').inputValue(), "#ffffff");
+  assert(posts.length > before, `${label}: saving the matching default persists the draft`);
+  assert.strictEqual(posts.length, afterDefaultSave, `${label}: colour edits stay in the draft until Save`);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible", { state: "hidden" });
+  await card.click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "Custom Colours", exact: true }).click();
+  assert.strictEqual(await tabs.getByRole("button", { name: "Custom", exact: true }).getAttribute("aria-pressed"), "true");
+  assert.strictEqual(await active.locator('input[type="color"]').inputValue(), "#ffffff");
+  if (process.env.ESPCONTROL_ACTIVE_COLOUR_SCREENSHOT) {
+    await page.screenshot({ path: process.env.ESPCONTROL_ACTIVE_COLOUR_SCREENSHOT, fullPage: true });
+  }
+  await page.getByRole("button", { name: "Reset colours to defaults", exact: true }).click();
+  assert.strictEqual(await active.isVisible(), false);
+  assert.strictEqual(await tabs.getByRole("button", { name: "Matching", exact: true }).getAttribute("aria-pressed"), "true");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible", { state: "hidden" });
+}
+
 async function assertAllCardSettingsGrouped(page, posts, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
@@ -2969,6 +3075,48 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
     before,
     `${label}: grouping audit should not save a card`,
   );
+}
+
+async function assertSliderActiveColours(page, label) {
+  for (const theme of ["Dark", "Light"]) {
+    for (const mode of ["matching", "theme", "custom"]) for (const renderWhileHidden of [false, true]) {
+      const types = ["light_brightness", "fan_speed", "cover", "slider", "light_temperature"];
+      const events = [
+        { id: "text-button_order", state: "1,2,3,4,5" },
+        { id: "text-button_on_color", state: "FFFFFF" },
+        { id: "select-screen__theme_mode", state: theme, value: theme },
+        ...types.map((type, index) => ({
+          id: `text-button_${index + 1}_config`,
+          state: `light.test;${type};Lightbulb;Auto;;;${type};;card_off_color=313131,card_active_color=${mode},card_on_color=FFFFFF`,
+        })),
+      ];
+      if (renderWhileHidden) {
+        await page.getByRole("tab", { name: "Settings", exact: true }).click();
+        assert.strictEqual(await page.locator("#sp-screen").isVisible(), false);
+      }
+      await page.evaluate(events => window.__seedEspState(events), events);
+      await page.getByRole("tab", { name: "Screen" }).click();
+      const cards = page.locator(".sp-main > .sp-btn");
+      await cards.first().locator(".sp-slider-fill").waitFor({ state: "visible" });
+      const rendered = await cards.evaluateAll(cards => cards.map(card => ({
+        fill: card.style.getPropertyValue("--card-slider-fill-color"),
+        texts: Array.from(card.querySelectorAll(".sp-btn-icon,.sp-btn-label")).map(label => ({
+          gradient: label.style.backgroundImage,
+          clip: getComputedStyle(label).backgroundClip,
+        })),
+      })));
+      for (const [index, card] of rendered.entries()) {
+        assert.strictEqual(card.fill, mode === "matching" ? "#767676" : "#FFFFFF", `${label}: ${theme}/${types[index]}/${mode} fill`);
+        if (mode !== "matching") {
+          assert(card.texts.every(text => text.clip === "text" && text.gradient.includes("rgb(33, 33, 33)")),
+            `${label}: ${theme}/${types[index]}/${mode}${renderWhileHidden ? " after returning from Settings" : ""} text contrasts with the pale fill`);
+        }
+      }
+      if (mode === "custom" && theme === "Dark" && process.env.ESPCONTROL_SLIDER_COLOUR_SCREENSHOT) {
+        await page.screenshot({ path: process.env.ESPCONTROL_SLIDER_COLOUR_SCREENSHOT, fullPage: true });
+      }
+    }
+  }
 }
 
 async function assertFanOptionalLightSettings(page, label) {
@@ -6116,6 +6264,7 @@ async function runCase(browser, testCase) {
     await assertPlaylistValidationOpensSourcePanel(page, testCase.name);
     await assertSpeakerGroupEditorAndPreview(page, posts, testCase.name);
     if (testCase.exerciseInteractions) {
+      await assertCardActiveColourControls(page, posts, testCase.name);
       await assertMobileTabLayout(page, testCase.name, testCase.viewport);
       await assertAllCardSettingsGrouped(page, posts, testCase.name);
       await assertFanOptionalLightSettings(page, testCase.name);
@@ -6652,8 +6801,135 @@ async function assertScreensaverPinSettings(browser) {
   } finally { await legacyContext.close(); }
 }
 
+async function assertCardCurveSettings(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  let savedPreset = "Large";
+  try {
+    await installRoutes(context, testCase.slug);
+    await context.route("**/select/screen__card_curve/set**", async route => {
+      savedPreset = new URL(route.request().url()).searchParams.get("option");
+      assert(["Small", "Medium", "Large"].includes(savedPreset));
+      await route.fulfill({ status: 200, contentType: "text/plain", body: "" });
+    });
+    const page = await context.newPage();
+    await installFakeEventSource(page);
+    const seed = async () => page.evaluate(events => window.__seedEspState(events), [
+      ...seededEvents(),
+      { id: "text-button_3_config", state: ";Rooms;Home;Auto;;;subpage" },
+      { id: "text-subpage_3_config", state: "~B,1|,light.kitchen,Kitchen,Lightbulb,Lightbulb" },
+      { id: "select-screen__rotation", state: "0", value: "0", option: ["0", "90", "180", "270"] },
+      { id: "select-screen__card_curve", state: savedPreset, value: savedPreset, option: ["Small", "Medium", "Large"] },
+    ]);
+    const open = async () => {
+      await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+      await page.waitForFunction(() => window.__eventSources?.length > 0);
+      await seed();
+      await page.getByRole("tab", { name: "Settings", exact: true }).click();
+      const appearance = page.locator("#sp-settings .card").filter({ has: page.locator("#sp-set-card-curve") });
+      if (!(await page.locator("#sp-set-card-curve").isVisible())) await appearance.locator(".card-header").click();
+      await page.locator("#sp-set-card-curve").waitFor({ state: "visible" });
+      assert.deepStrictEqual(await page.locator("#sp-settings .card-header h3").allTextContents().then(titles => titles.slice(0, 3)),
+        ["Active Colour", "Card Style", "Theme"], "corner settings must own only the three non-wallpaper Appearance panels");
+      assert.strictEqual(await page.locator("#sp-set-wallpaper, #sp-set-card-transparency, #sp-set-active-card-transparency").count(), 0,
+        "wallpaper controls belong exclusively to the wallpaper PR");
+    };
+    await open();
+    const profile = readManifest().devices[testCase.slug];
+    const substitutions = profile.firmware.package.substitutions;
+    const width = Number(substitutions.screen_width.replaceAll('"', ""));
+    const base = Number(substitutions.radius.replace("px", ""));
+    const small = Number((substitutions.card_curve_small_radius || '').replace('px', '')) || Math.round(base / 2);
+    const medium = Number((substitutions.card_curve_medium_radius || '').replace('px', '')) || Math.round(base * .75);
+    for (const [preset, expected] of [["Small", small], ["Medium", medium], ["Large", base]]) {
+      const posted = page.waitForResponse(response => response.url().includes(`/select/screen__card_curve/set?option=${preset}`));
+      await page.locator("#sp-set-card-curve").getByRole("button", { name: preset, exact: true }).click();
+      await posted;
+      assert.strictEqual(savedPreset, preset, "curve changes must reach the saved firmware select");
+      const radius = await page.evaluate(logicalWidth => parseFloat(document.documentElement.style.getPropertyValue("--btn-r")) * logicalWidth / 100, width);
+      assert(Math.abs(radius - expected) < .001, `${testCase.slug}: ${preset} must match the firmware radius ${expected}`);
+      await page.getByRole("tab", { name: "Screen", exact: true }).click();
+      const checkCards = async surface => {
+        await page.waitForFunction(() => [...document.querySelectorAll(".sp-main .sp-btn")].every(card => getComputedStyle(card).clipPath.startsWith("path(")));
+        const shapes = await page.locator(".sp-main .sp-btn").evaluateAll(cards => cards.map(card => {
+          const clip = getComputedStyle(card).clipPath;
+          const path = new Path2D(clip.slice(6, -2));
+          const radius = parseFloat(document.documentElement.style.getPropertyValue("--btn-r")) * document.querySelector(".sp-screen").clientWidth / 100;
+          const ctx = document.createElement("canvas").getContext("2d");
+          return !ctx.isPointInPath(path, radius, radius * .02) && ctx.isPointInPath(path, radius, radius * .1);
+        }));
+        assert(shapes.length >= 2 && shapes.every(Boolean), `${preset}: every ${surface} card must retain the gradual curve`);
+      };
+      await checkCards("home");
+      await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+      await page.waitForSelector(".sp-back-btn");
+      await checkCards("subpage, including Back");
+      await page.locator(".sp-back-btn .sp-back-hit").click();
+      await page.waitForSelector(".sp-back-btn", { state: "detached" });
+      await page.getByRole("tab", { name: "Settings", exact: true }).click();
+    }
+    const posted = page.waitForResponse(response => response.url().includes("/select/screen__card_curve/set?option=Medium"));
+    await page.locator("#sp-set-card-curve").getByRole("button", { name: "Medium", exact: true }).click();
+    await posted;
+    await open();
+    assert.strictEqual(await page.locator("#sp-set-card-curve").getByRole("button", { name: "Medium", exact: true }).getAttribute("aria-pressed"), "true", "reload follows the saved curve");
+    await openBackupControls(page);
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const download = await downloadPromise;
+    const backup = JSON.parse(fs.readFileSync(await download.path(), "utf8"));
+    assert.strictEqual(backup.screen.card_curve, "Medium", "export includes the saved curve");
+  } finally { await context.close(); }
+}
+
+async function assertContinuousPreview(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  try {
+    await installRoutes(context, testCase.slug);
+    const page = await context.newPage();
+    await installFakeEventSource(page);
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    // Emulate browsers that only draw circular border-radius corners.
+    await page.addStyleTag({ content: ".sp-continuous-corners .sp-btn,.sp-continuous-corners .sp-empty-cell{corner-shape:round!important;border-radius:var(--btn-r)!important;transition:none!important}" });
+    await page.waitForFunction(() => [...document.querySelectorAll(".sp-btn")].some(card => getComputedStyle(card).clipPath.startsWith("path(")));
+    const checkShape = async () => {
+      const shape = await page.locator(".sp-btn").first().evaluate(card => {
+        const style = getComputedStyle(card);
+        const screen = document.querySelector(".sp-screen");
+        const radius = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--btn-r")) * screen.clientWidth / 100;
+        const clip = style.clipPath;
+        const path = new Path2D(clip.slice(6, -2));
+        const ctx = document.createElement("canvas").getContext("2d");
+        return { clip, circle: style.cornerShape, nativeSupported: CSS.supports("corner-shape", "superellipse(2)"),
+          nativeRadius: parseFloat(style.borderRadius), radius,
+          edgeClear: !ctx.isPointInPath(path, radius, radius * .02),
+          interiorSolid: ctx.isPointInPath(path, radius, radius * .1),
+          cornerClear: !ctx.isPointInPath(path, 0, 0),
+          centerSolid: ctx.isPointInPath(path, parseFloat(style.width) / 2, parseFloat(style.height) / 2) };
+      });
+      assert(!shape.nativeSupported || ["round", "superellipse(1)"].includes(shape.circle), "the fallback test must force circular native corners");
+      assert(Math.abs(shape.nativeRadius - shape.radius) < .05, "the fallback fixture must retain the nominal circular radius");
+      assert(shape.edgeClear && shape.interiorSolid && shape.cornerClear && shape.centerSolid,
+        `${testCase.slug}: the fallback must follow the firmware curve rather than a circular arc`);
+      return shape.clip;
+    };
+    const before = await checkShape();
+    await page.setViewportSize({ width: 700, height: 900 });
+    await page.waitForFunction(old => getComputedStyle(document.querySelector(".sp-btn")).clipPath !== old, before);
+    await checkShape();
+    const gaps = await page.locator(".sp-main").evaluate(grid => ({
+      row: parseFloat(getComputedStyle(grid).rowGap),
+      column: parseFloat(getComputedStyle(grid).columnGap),
+      expected: parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--grid-gap")) * document.querySelector(".sp-screen").clientWidth / 100,
+    }));
+    assert(Math.abs(gaps.row - gaps.expected) < .05 && Math.abs(gaps.column - gaps.expected) < .05,
+      "preview card gaps must retain the configured scale after resizing");
+  } finally { await context.close(); }
+}
+
 (async function main() {
-  const browser = await chromium.launch();
+  const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
     if (process.env.ESPCONTROL_SUBPAGE_BACK_ONLY === "1") {
@@ -6673,6 +6949,36 @@ async function assertScreensaverPinSettings(browser) {
       console.log(`Subpage Back colour browser checks passed for ${ACTIVE_CASES.length} layouts.`);
       return;
     }
+    if (process.env.ESPCONTROL_ACTIVE_COLOUR_ONLY === "1") {
+      const testCase = ACTIVE_CASES.find(item => item.exerciseInteractions) || ACTIVE_CASES[0];
+      const context = await browser.newContext({ viewport: testCase.viewport });
+      await installRoutes(context, testCase.slug);
+      const page = await context.newPage();
+      const posts = [];
+      page.on("request", request => {
+        if (request.method() === "POST") posts.push(postRecord(request.url()));
+      });
+      await installFakeEventSource(page);
+      try {
+        await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+        await page.waitForSelector("#sp-app");
+        await page.waitForFunction(() => window.__eventSources?.length > 0);
+        await page.evaluate(events => window.__seedEspState(events), seededEvents());
+        await page.waitForSelector(".sp-main > .sp-btn");
+        await assertCardActiveColourControls(page, posts, testCase.name);
+        await assertSliderActiveColours(page, testCase.name);
+      } finally { await context.close(); }
+      console.log("Card active colour browser checks passed.");
+      return;
+    }
+    if (process.env.ESPCONTROL_CURVE_PRESETS_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) await assertCardCurveSettings(browser, testCase);
+      console.log(`Card curve preset checks passed for ${ACTIVE_CASES.length} generated layouts.`);
+      return;
+    }
+    await assertCardCurveSettings(browser, ACTIVE_CASES[0]);
+    for (const testCase of ACTIVE_CASES) await assertContinuousPreview(browser, testCase);
+    if (process.env.ESPCONTROL_CORNERS_ONLY === "1") { console.log(`Continuous preview checks passed for ${ACTIVE_CASES.length} generated layouts.`); return; }
     await assertScreensaverPinSettings(browser);
     if (process.env.ESPCONTROL_PIN_ONLY === "1") { console.log("Screensaver PIN browser checks passed."); return; }
     if (process.env.ESPCONTROL_RESET_ONLY === "1") {

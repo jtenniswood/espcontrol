@@ -10,6 +10,8 @@
 # Button-specific substitutions. Neutral UI colors live in colors.yaml.
 # ---------------------------------------------------------------------------
 substitutions:
+  # Ordinary controls keep their own radius; $radius is the grid card base.
+  button_radius: $radius
   button_on_color: "0xFF8C00"
   # Border width is zero; preserve its existing black color independently of
   # the visible semantic border color.
@@ -33,7 +35,7 @@ lvgl:
     button:
       text_font: $label_font
       scroll_on_focus: false
-      radius: $radius
+      radius: $button_radius
       pad_all: $padding
       shadow_width: 0
       text_color: $theme_text_primary_color

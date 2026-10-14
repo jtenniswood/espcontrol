@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { loadTypescriptTest } = require("./helpers/load_typescript_test");
-const { cardSliderFillColor, cardPreviewTextColor, cardPatternHighlightColor } = loadTypescriptTest("src/webserver/features/preview.ts");
+const { cardSliderFillColor, cardPreviewTextColor, cardPatternHighlightColor, applySliderPreviewTextContrast } = loadTypescriptTest("src/webserver/features/preview.ts");
 const { activeCardColor } = loadTypescriptTest("src/webserver/model/config_primitives.ts");
 
 function luminance(hex) {
@@ -27,6 +27,33 @@ test("slider fills retain readable foregrounds without changing toggle on colour
   assert(contrast("FFFFFF", cardSliderFillColor("6633B9")) > 4.5);
   assert.equal(cardSliderFillColor("#ffffff"), "BFBFBF");
   assert.equal(cardSliderFillColor("invalid"), "");
+});
+
+test("selected Theme and Custom slider fills preserve the resolved active colour", () => {
+  for (const background of ["313131", "FFFFFF", "6633B9"]) {
+    for (const active of ["FFFFFF", "FF8C00", "00BCD4", "000000"]) {
+      assert.equal(cardSliderFillColor(background, active), active);
+    }
+  }
+  assert.equal(cardSliderFillColor("6633B9", "invalid"), "826AAA");
+});
+
+test("slider preview text changes contrast exactly where the fill crosses each label", () => {
+  const labels = [
+    { top: 10, height: 20 }, // Above the fill.
+    { top: 40, height: 20 }, // Crosses the fill boundary.
+    { top: 70, height: 20 }, // Inside the fill.
+  ].map(bounds => ({ style: {}, getBoundingClientRect() { return bounds; } }));
+  const card = {
+    querySelector() { return { getBoundingClientRect() { return { top: 50 }; } }; },
+    querySelectorAll() { return labels; },
+  };
+  applySliderPreviewTextContrast(card, "#FFFFFF", "FFFFFF");
+  for (const [index, split] of [100, 50, 0].entries()) {
+    assert.equal(labels[index].style.backgroundImage, `linear-gradient(to bottom,#FFFFFF ${split}%,#212121 ${split}%)`);
+    assert.equal(labels[index].style.backgroundClip, "text");
+    assert.equal(labels[index].style.color, "transparent");
+  }
 });
 
 test("custom fills maintain contrast at partial and full values across the preset palette", () => {
@@ -58,7 +85,7 @@ test("grey slider fills stay visible, including colours near the former rounding
 
 test("stripe tones preserve the label contrast of the active background", () => {
   assert.equal(activeCardColor("A0A0A0"), "787878");
-  assert.equal(cardPatternHighlightColor("787878"), "A7A7A7");
+  assert.equal(cardPatternHighlightColor("787878"), "4E4E4E");
   assert.equal(cardPatternHighlightColor("#bfbfbf"), "D5D5D5");
   assert.equal(cardPatternHighlightColor("invalid"), "");
   for (const base of ["A0A0A0", "6D6D6D", "6633B9", "FF0000", "FF8C00", "00BCD4", "FFEC16", "FFFFFF", "000000"]) {
@@ -110,9 +137,9 @@ test("striped custom cards render the readable stripe tones on both pages and th
       selection: { renderSelectionBar() {}, updatePreviewHint() {} },
     }).render();
     const card = main.children[0];
-    assert.equal(card.style["--card-text-color"], "#000000", `${theme}/${subpage}`);
+    assert.equal(card.style["--card-text-color"], "#FFFFFF", `${theme}/${subpage}`);
     assert(card.style.backgroundImage.includes("#787878"));
-    assert(card.style.backgroundImage.includes("#A7A7A7"));
+    assert(card.style.backgroundImage.includes("#4E4E4E"));
     assert(!card.style.backgroundImage.includes("rgba(255,255,255"));
   }
 });
@@ -120,8 +147,8 @@ test("striped custom cards render the readable stripe tones on both pages and th
 test("active presets choose a readable foreground for solid and striped cards", () => {
   assert.equal(activeCardColor("AAC93F"), "80972F");
   assert.equal(activeCardColor("EED146"), "B39D35");
-  assert.equal(cardPreviewTextColor("80972F"), "#212121");
-  assert.equal(cardPreviewTextColor("B39D35"), "#212121");
+  assert.equal(cardPreviewTextColor("80972F"), "#FFFFFF");
+  assert.equal(cardPreviewTextColor("B39D35"), "#FFFFFF");
   const fs = require("node:fs");
   const path = require("node:path");
   const swatches = fs.readFileSync(path.resolve(__dirname, "../../../src/webserver/components/color_swatches.ts"), "utf8");
@@ -129,14 +156,23 @@ test("active presets choose a readable foreground for solid and striped cards", 
   for (const base of [...presets, "FFFFFF", "A0A0A0"]) {
     const active = activeCardColor(base);
     const foreground = cardPreviewTextColor(active);
-    assert(contrast(foreground, active) >= 4.5, base);
+    assert(contrast(foreground, active) >= 2.1, base);
     assert(contrast(foreground, cardPatternHighlightColor(active)) >= 4.5, base + " stripes");
   }
 });
 
-test("foreground selection meets contrast across a sample of the full RGB space", () => {
+test("white-preferring foreground selection keeps its contrast floor across the RGB space", () => {
   for (let red = 0; red <= 255; red += 17) for (let green = 0; green <= 255; green += 17) for (let blue = 0; blue <= 255; blue += 17) {
     const color = [red, green, blue].map(channel => channel.toString(16).padStart(2, "0")).join("");
-    assert(contrast(cardPreviewTextColor(color), color) >= 4.5 - 0.00005, color);
+    assert(contrast(cardPreviewTextColor(color), color) >= 2.1 - 0.00005, color);
+  }
+});
+
+test("white content stays on mid-tones until the pale-background crossover", () => {
+  for (const colour of ["FF8C00", "64AD54", "429471", "3C64DE", "B2B2B2"]) {
+    assert.equal(cardPreviewTextColor(colour), "#FFFFFF", colour);
+  }
+  for (const colour of ["B3B3B3", "FFFFFF", "F5F5F5", "EED146"]) {
+    assert.equal(cardPreviewTextColor(colour), "#212121", colour);
   }
 });

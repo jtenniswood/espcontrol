@@ -105,13 +105,13 @@ function cardRelativeLuminance(background: string): number {
 }
 
 export function cardPreviewTextColor(background: string): string {
-  const luminance = cardRelativeLuminance(background);
-  if ((luminance + 50000) * 4500 <= 1050000 * 1000) return "#FFFFFF";
-  if ((luminance + 50000) * 1000 >= (cardRelativeLuminance("212121") + 50000) * 4500) return "#212121";
-  return "#000000";
+  // Prefer white on mid-tone card colours, matching the firmware's crossover.
+  return cardRelativeLuminance(background) < 450000 ? "#FFFFFF" : "#212121";
 }
 
-export function cardSliderFillColor(background: string): string {
+export function cardSliderFillColor(background: string, selectedActiveColor = ""): string {
+  const selected = selectedActiveColor.replace(/^#/, "").toUpperCase();
+  if (/^[0-9A-F]{6}$/.test(selected)) return selected;
   const active = activeCardColor(background);
   if (!active) return "";
   const base = background.replace(/^#/, "").toUpperCase();
@@ -144,6 +144,24 @@ export function cardPatternHighlightColor(background: string): string {
       : channel + Math.floor((255 - channel) * 35 / 100);
     return shade.toString(16).padStart(2, "0").toUpperCase();
   }).join("");
+}
+
+export function applySliderPreviewTextContrast(card: HTMLElement, baseTextColor: string, fillColor: string): void {
+  const fill = card.querySelector<HTMLElement>(".sp-slider-fill");
+  if (!fill) return;
+  const fillTextColor = cardPreviewTextColor(fillColor);
+  if (fillTextColor === baseTextColor) return;
+  const edge = fill.getBoundingClientRect().top;
+  for (const label of card.querySelectorAll<HTMLElement>(".sp-btn-icon,.sp-btn-label,.sp-sensor-badge,.sp-btn-label-row .mdi")) {
+    const bounds = label.getBoundingClientRect();
+    if (bounds.height <= 0) continue;
+    const split = Math.max(0, Math.min(100, (edge - bounds.top) / bounds.height * 100));
+    // A sharp text gradient follows the same boundary as the slider fill,
+    // including when it crosses an icon or a wrapped label.
+    label.style.backgroundImage = `linear-gradient(to bottom,${baseTextColor} ${split}%,${fillTextColor} ${split}%)`;
+    label.style.backgroundClip = "text";
+    label.style.color = "transparent";
+  }
 }
 
 export function cardProgressColor(background: string): string {

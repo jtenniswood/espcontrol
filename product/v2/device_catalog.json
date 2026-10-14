@@ -83,7 +83,7 @@
             "fr": "1fr"
           },
           "btn": {
-            "radius": 0.78,
+            "radius": 1.953125,
             "padding": 1.37,
             "iconSize": 4.69,
             "labelSize": 1.8,
@@ -93,7 +93,7 @@
             "labelLinesDouble": 3
           },
           "emptyCell": {
-            "radius": 0.78
+            "radius": 1.953125
           },
           "sensorBadge": {
             "top": 1,
@@ -136,7 +136,7 @@
               "unit_font": "font_text_body",
               "sensor_value_font": "font_number_value",
               "padding": "16px",
-              "radius": "10px",
+              "radius": "20px",
               "main_page_card_gap": "\"10\"",
               "main_page_pad_top": "\"42\"",
               "main_page_compact_pad_top": "\"5\"",
@@ -209,7 +209,7 @@
             "fr": "1fr"
           },
           "btn": {
-            "radius": 0.86,
+            "radius": 1.71875,
             "padding": 1.41,
             "iconSize": 4.1,
             "labelSize": 1.88,
@@ -219,7 +219,7 @@
             "labelLinesDouble": 3
           },
           "emptyCell": {
-            "radius": 0.86
+            "radius": 1.71875
           },
           "sensorBadge": {
             "top": 0.86,
@@ -260,7 +260,7 @@
               "unit_font": "font_text_body",
               "sensor_value_font": "font_number_value",
               "padding": "18px",
-              "radius": "11px",
+              "radius": "22px",
               "main_page_card_gap": "\"10\"",
               "main_page_pad_top": "\"46\"",
               "main_page_compact_pad_top": "\"5\"",
@@ -546,6 +546,16 @@
         "public": {
           "name": "Guition JC1060P470",
           "docsPath": "/screens/jc1060p470"
+        },
+        "web": {
+          "continuousCorners": true
+        },
+        "firmware": {
+          "package": {
+            "substitutions": {
+              "button_radius": "10px"
+            }
+          }
         }
       },
       "overrides": {
@@ -558,6 +568,11 @@
               "wifi": "1000Hz",
               "ethernet": "20000Hz"
             }
+          }
+        },
+        "web": {
+          "grid": {
+            "gap": 0.976562
           }
         }
       }
@@ -579,6 +594,16 @@
         "public": {
           "name": "Guition JC1060P470 new panel (V2 label)",
           "docsPath": "/screens/jc1060p470-v2"
+        },
+        "web": {
+          "continuousCorners": true
+        },
+        "firmware": {
+          "package": {
+            "substitutions": {
+              "button_radius": "10px"
+            }
+          }
         }
       },
       "overrides": {
@@ -588,6 +613,11 @@
               "wifi": "1000Hz",
               "ethernet": "20000Hz"
             }
+          }
+        },
+        "web": {
+          "grid": {
+            "gap": 0.976562
           }
         }
       }
@@ -653,11 +683,11 @@
             "left": 1.5,
             "right": 1.5,
             "bottom": 1.5,
-            "gap": 1.74,
+            "gap": 2.916667,
             "fr": "1fr"
           },
           "btn": {
-            "radius": 1.18,
+            "radius": 4.166667,
             "padding": 2.73,
             "iconSize": 14,
             "labelSize": 5.5,
@@ -667,7 +697,7 @@
             "labelLinesDouble": 3
           },
           "emptyCell": {
-            "radius": 1.18
+            "radius": 4.166667
           },
           "sensorBadge": {
             "top": 1.52,
@@ -678,7 +708,8 @@
             "bottom": 1.52,
             "right": 1.52,
             "fontSize": 4.03
-          }
+          },
+          "continuousCorners": true
         },
         "firmware": {
           "display": {
@@ -743,7 +774,7 @@
               "unit_font": "font_text_body",
               "sensor_value_font": "font_number_value",
               "padding": "21px",
-              "radius": "10px",
+              "radius": "20px",
               "main_page_card_gap": "\"14\"",
               "main_page_pad_top": "\"50\"",
               "main_page_compact_pad_top": "\"5\"",
@@ -756,7 +787,8 @@
               "screen_saver_clock_min_brightness": "\"1\"",
               "screen_saver_clock_default_brightness": "\"35\"",
               "screen_schedule_clock_min_brightness": "\"1\"",
-              "screen_schedule_clock_default_brightness": "\"10\""
+              "screen_schedule_clock_default_brightness": "\"10\"",
+              "button_radius": "10px"
             }
           }
         }
@@ -823,11 +855,11 @@
             "left": 1.5,
             "right": 1.5,
             "bottom": 1.5,
-            "gap": 1.74,
+            "gap": 2.916667,
             "fr": "1fr"
           },
           "btn": {
-            "radius": 1.18,
+            "radius": 4.166667,
             "padding": 2.73,
             "iconSize": 14,
             "labelSize": 5.5,
@@ -837,7 +869,7 @@
             "labelLinesDouble": 3
           },
           "emptyCell": {
-            "radius": 1.18
+            "radius": 4.166667
           },
           "sensorBadge": {
             "top": 1.52,
@@ -848,7 +880,8 @@
             "bottom": 1.52,
             "right": 1.52,
             "fontSize": 4.03
-          }
+          },
+          "continuousCorners": true
         },
         "firmware": {
           "display": {
@@ -913,7 +946,7 @@
               "unit_font": "font_text_body",
               "sensor_value_font": "font_number_value",
               "padding": "21px",
-              "radius": "10px",
+              "radius": "20px",
               "main_page_card_gap": "\"14\"",
               "main_page_pad_top": "\"50\"",
               "main_page_compact_pad_top": "\"5\"",
@@ -926,7 +959,8 @@
               "screen_saver_clock_min_brightness": "\"1\"",
               "screen_saver_clock_default_brightness": "\"35\"",
               "screen_schedule_clock_min_brightness": "\"1\"",
-              "screen_schedule_clock_default_brightness": "\"10\""
+              "screen_schedule_clock_default_brightness": "\"10\"",
+              "button_radius": "10px"
             }
           }
         }
@@ -950,8 +984,14 @@
           "package": {
             "extraPackages": {
               "battery": "!include device/battery.yaml"
+            },
+            "substitutions": {
+              "button_radius": "11px"
             }
           }
+        },
+        "web": {
+          "continuousCorners": true
         }
       },
       "overrides": {
@@ -960,6 +1000,11 @@
             "substitutions": {
               "clock_font_size": "\"160\""
             }
+          }
+        },
+        "web": {
+          "grid": {
+            "gap": 0.78125
           }
         }
       }
@@ -977,6 +1022,16 @@
         "public": {
           "name": "Guition JC8012P4A1 new panel (2628+)",
           "docsPath": "/screens/jc8012p4a1-v2"
+        },
+        "web": {
+          "continuousCorners": true
+        },
+        "firmware": {
+          "package": {
+            "substitutions": {
+              "button_radius": "11px"
+            }
+          }
         }
       },
       "overrides": {
@@ -985,6 +1040,11 @@
             "substitutions": {
               "clock_font_size": "\"200\""
             }
+          }
+        },
+        "web": {
+          "grid": {
+            "gap": 0.78125
           }
         }
       }
@@ -1009,6 +1069,14 @@
         "web": {
           "portrait": {
             "slots": 18
+          },
+          "continuousCorners": true
+        },
+        "firmware": {
+          "package": {
+            "substitutions": {
+              "button_radius": "11px"
+            }
           }
         }
       },
@@ -1020,6 +1088,9 @@
           "portrait": {
             "cols": 3,
             "rows": 6
+          },
+          "grid": {
+            "gap": 0.78125
           }
         },
         "firmware": {
@@ -1100,11 +1171,11 @@
             "left": 1.04,
             "right": 1.04,
             "bottom": 0.83,
-            "gap": 1.39,
+            "gap": 2.083333,
             "fr": "1fr"
           },
           "btn": {
-            "radius": 1.67,
+            "radius": 4.861111,
             "padding": 2.92,
             "iconSize": 9.58,
             "labelSize": 3.96,
@@ -1114,7 +1185,7 @@
             "labelLinesDouble": 3
           },
           "emptyCell": {
-            "radius": 1.67
+            "radius": 4.861111
           },
           "sensorBadge": {
             "top": 2.08,
@@ -1125,7 +1196,8 @@
             "bottom": 2.08,
             "right": 2.08,
             "fontSize": 4
-          }
+          },
+          "continuousCorners": true
         },
         "firmware": {
           "display": {
@@ -1187,7 +1259,7 @@
               "unit_font": "font_text_body",
               "sensor_value_font": "font_number_value",
               "padding": "21px",
-              "radius": "12px",
+              "radius": "35px",
               "main_page_card_gap": "\"15\"",
               "main_page_pad_top": "\"60\"",
               "main_page_compact_pad_top": "\"6\"",
@@ -1200,7 +1272,8 @@
               "screen_saver_clock_default_brightness": "\"35\"",
               "screen_schedule_clock_min_brightness": "\"1\"",
               "screen_schedule_clock_default_brightness": "\"10\"",
-              "speaker_amplifier_pin": "\"GPIO53\""
+              "speaker_amplifier_pin": "\"GPIO53\"",
+              "button_radius": "12px"
             },
             "extraPackages": {
               "speaker_output": "!include ../../common/device/speaker_output_p4.yaml"
@@ -1271,9 +1344,6 @@
           "coverArtSquareOverlay": true,
           "dragMode": "displace",
           "dragAnimation": true,
-          "disabledCardTypes": [
-            "weather_forecast"
-          ],
           "screen": {
             "width": "55%",
             "aspect": "1/1"
@@ -1289,11 +1359,11 @@
             "left": 1.04,
             "right": 1.04,
             "bottom": 0.83,
-            "gap": 1.39,
+            "gap": 2.083333,
             "fr": "1fr"
           },
           "btn": {
-            "radius": 1.67,
+            "radius": 5.416667,
             "padding": 2.92,
             "iconSize": 9.58,
             "labelSize": 4.583333,
@@ -1304,7 +1374,7 @@
             "labelLinesDouble": 3
           },
           "emptyCell": {
-            "radius": 1.67
+            "radius": 5.416667
           },
           "sensorBadge": {
             "top": 2.08,
@@ -1315,7 +1385,8 @@
             "bottom": 2.08,
             "right": 2.08,
             "fontSize": 4
-          }
+          },
+          "continuousCorners": true
         },
         "firmware": {
           "display": {
@@ -1381,7 +1452,7 @@
               "unit_font": "font_text_body",
               "sensor_value_font": "font_number_value",
               "padding": "14px",
-              "radius": "8px",
+              "radius": "26px",
               "main_page_card_gap": "\"10\"",
               "main_page_pad_top": "\"40\"",
               "main_page_compact_pad_top": "\"4\"",
@@ -1393,7 +1464,10 @@
               "screen_saver_clock_min_brightness": "\"1\"",
               "screen_saver_clock_default_brightness": "\"35\"",
               "screen_schedule_clock_min_brightness": "\"1\"",
-              "screen_schedule_clock_default_brightness": "\"10\""
+              "screen_schedule_clock_default_brightness": "\"10\"",
+              "card_curve_small_radius": "14px",
+              "card_curve_medium_radius": "20px",
+              "button_radius": "8px"
             },
             "apiNavigateAction": true
           }

@@ -1,13 +1,14 @@
 import { state } from "../state/app_instance";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
 import { PREVIEW_THEME_COLORS, defaultCardBackgroundColor, previewEffectiveTheme } from "../state/preview_theme";
-import { configOptionValue, activeCardColor } from "../model/config_primitives";
+import { configOptionValue, cardActiveColor } from "../model/config_primitives";
 import { escHtml } from "./ui_primitives";
 import {
     buttonConfigDisabledForDevice as isButtonConfigDisabledForDevice,
     cardPreviewTextColor,
     cardProgressColor,
     cardSliderFillColor,
+    applySliderPreviewTextContrast,
     cardPatternHighlightColor,
     cardTypePickerDetails,
     cardTypePickerOptions,
@@ -168,7 +169,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 var slotSz: any = c.sizes[slot];
                 var cardOffColor: any = configOptionValue(b.options, "card_off_color").replace(/^#/, "").toUpperCase();
                 if (!/^[0-9A-F]{6}$/.test(cardOffColor)) cardOffColor = "";
-                var cardOnColor: any = activeCardColor(cardOffColor);
+                var cardOnColor: any = cardActiveColor(b.options, state.onColor || WEB_UI_COLORS.primary);
                 var typePreview: any = previewTypeDef && previewTypeDef.renderPreview
                     ? previewTypeDef.renderPreview(b, {
                         escHtml: escHtml, cardSize: slotSz || 1,
@@ -184,7 +185,11 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     (c.selected.indexOf(slot) !== -1 ? " sp-selected" : "");
                 btn.style.backgroundColor = "#" + (cardOffColor || color);
                 btn.style.setProperty("--card-active-color", "#" + (cardOnColor || state.onColor || WEB_UI_COLORS.primary));
-                if (cardOffColor) btn.style.setProperty("--card-slider-fill-color", "#" + cardSliderFillColor(cardOffColor));
+                var activeMode: any = configOptionValue(b.options, "card_active_color");
+                var customActive: any = configOptionValue(b.options, "card_on_color").replace(/^#/, "");
+                var explicitActive: any = activeMode === "theme" || (activeMode === "custom" && /^[0-9A-F]{6}$/i.test(customActive));
+                var sliderFillColor: any = cardSliderFillColor(cardOffColor, explicitActive ? cardOnColor : "") || cardOnColor;
+                if (sliderFillColor) btn.style.setProperty("--card-slider-fill-color", "#" + sliderFillColor);
                 var contrastBackground: any = cardOffColor || color;
                 btn.draggable = !isConfigLocked();
                 btn.setAttribute("data-pos", pos);
@@ -212,6 +217,9 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                         iconHtml +
                         labelHtml;
                 main.appendChild(btn);
+                if (["light_brightness", "fan_speed", "cover", "slider", "light_temperature"].indexOf(b.type) !== -1) {
+                    applySliderPreviewTextContrast(btn, cardOffColor ? cardPreviewTextColor(cardOffColor) : "#" + previewColors.textPrimary, sliderFillColor);
+                }
             }
             else {
                 var empty: any = document.createElement("div");

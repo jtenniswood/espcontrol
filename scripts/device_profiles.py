@@ -758,6 +758,8 @@ def validate_web(slug: str, device: dict[str, Any], errors: list[str]) -> None:
         errors.append(device_error(slug, "web.dragAnimation must be true or false"))
     if "infoOnly" in web and not isinstance(web["infoOnly"], bool):
         errors.append(device_error(slug, "web.infoOnly must be true or false when set"))
+    if "continuousCorners" in web and not isinstance(web["continuousCorners"], bool):
+        errors.append(device_error(slug, "web.continuousCorners must be true or false when set"))
     if "coverArtSquareOverlay" in web and not isinstance(web["coverArtSquareOverlay"], bool):
         errors.append(device_error(slug, "web.coverArtSquareOverlay must be true or false when set"))
     disabled_card_types = web.get("disabledCardTypes", [])
@@ -919,7 +921,16 @@ def web_config(profile: dict[str, Any]) -> dict[str, Any]:
         "screenSize": profile["public"]["screenSize"],
         "largeSensorUnitOffsetPercent": profile["settings"]["largeSensorUnitOffsetPercent"],
         "imageSlotCapacity": image_slot_capacity,
+        "cardRadiusPixels": int(profile["firmware"]["package"]["substitutions"]["radius"].removesuffix("px")),
     }
+    substitutions = profile["firmware"]["package"]["substitutions"]
+    curve_radii = {
+        preset: int(substitutions[key].removesuffix("px"))
+        for preset, key in (("Small", "card_curve_small_radius"), ("Medium", "card_curve_medium_radius"))
+        if key in substitutions
+    }
+    if curve_radii:
+        cfg["cardCurveRadii"] = curve_radii
     for key, value in profile["web"].items():
         cfg[key] = copy.deepcopy(value)
         if key == "dragAnimation" and features:
@@ -963,6 +974,7 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "climate_option_title_font": fonts.get("climateOptionTitle"),
         "climate_option_value_font": fonts.get("climateOptionValue"),
         "wrap_tall_labels": display["wrapTallLabels"],
+        "continuous_card_corners": bool(profile["web"].get("continuousCorners")),
         "label_lines": profile["web"]["btn"]["labelLines"],
         "label_lines_tall": profile["web"]["btn"]["labelLinesDouble"],
         "info_only": bool(display.get("infoOnly")),

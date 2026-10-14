@@ -127,6 +127,16 @@ def test_s3_exposes_camera_and_media_cover_art(profiles: dict[str, dict]) -> Non
     )
 
 
+def test_s3_exposes_weather_forecasts(profiles: dict[str, dict]) -> None:
+    slug = "guition-esp32-s3-4848s040"
+    disabled = set(web_config(profiles[slug]).get("disabledCardTypes", []))
+    assert "weather_forecast" not in disabled, f"{slug}: Today and Tomorrow forecasts must be available"
+    device = S3_DEVICE_YAML.read_text(encoding="utf-8")
+    assert "-DESPCONTROL_DISABLE_WEATHER_FORECAST=1" not in device, (
+        f"{slug}: firmware must retain forecast modes and request Home Assistant forecasts"
+    )
+
+
 def test_public_device_capabilities(profile_slugs: list[str]) -> None:
     expected = public_device_capabilities()
     actual = read_json(DEVICE_CAPABILITIES_JSON)
@@ -698,17 +708,22 @@ def test_web_screen_aspect_matches_public_resolution() -> None:
             )
 
 
-def test_web_grid_spacing_matches_across_screen_sizes() -> None:
+def test_web_card_geometry_matches_firmware() -> None:
     profiles = load_device_profiles()
-    expected = None
     for slug, profile in profiles.items():
-        grid = profile["web"]["grid"]
-        rendered_gap = float(grid["gap"]) * web_screen_width_percent(profile) / 100.0
-        if expected is None:
-            expected = rendered_gap
-        assert abs(rendered_gap - expected) <= 0.01, (
-            f"{slug}: web preview grid spacing must match the other generated screen layouts"
-        )
+        substitutions = profile["firmware"]["package"]["substitutions"]
+        width = float(substitutions["screen_width"].strip('"'))
+        gap = float(substitutions["main_page_card_gap"].strip('"'))
+        radius = float(substitutions["radius"].removesuffix("px"))
+        for field, web_value, expected in (
+            ("grid.gap", profile["web"]["grid"]["gap"], gap),
+            ("btn.radius", profile["web"]["btn"]["radius"], radius),
+            ("emptyCell.radius", profile["web"]["emptyCell"]["radius"], radius),
+        ):
+            preview_pixels = float(web_value) * width / 100.0
+            assert abs(preview_pixels - expected) <= 0.0001, (
+                f"{slug}: web.{field} must scale to the firmware's {expected}px"
+            )
 
 
 def test_setup_icon_glyphs() -> None:
@@ -1045,9 +1060,10 @@ def main() -> int:
     test_seven_inch_width_compensation_rotates_with_screen()
     test_subpage_config_changes_schedule_live_refresh()
     test_web_screen_aspect_matches_public_resolution()
-    test_web_grid_spacing_matches_across_screen_sizes()
+    test_web_card_geometry_matches_firmware()
     test_setup_icon_glyphs()
     test_weather_card_visual_matches_preview()
+    test_s3_exposes_weather_forecasts(profiles)
     test_weather_card_mode_visibility_reset()
     test_grid_phase2_uses_cleaned_spanned_layout()
     test_card_label_line_clamp_matches_preview_on_subpages()

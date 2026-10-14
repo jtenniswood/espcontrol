@@ -1,5 +1,7 @@
 #pragma once
 
+#include "card_curve.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 #ifdef ESP_PLATFORM
@@ -17,6 +19,8 @@ struct GridConfig {
   int num_slots;
   int cols;
   bool width_compensation_vertical = false;
+  bool continuous_card_corners = false;
+  int card_corner_radius = -1;
   bool wrap_tall_labels;
   bool info_only = false;
   bool subpage_chevrons_enabled = true;
@@ -143,6 +147,8 @@ inline CardPalette card_palette_for_config(const CardPalette &defaults,
                                             const DisplayProfile &display) {
   CardPalette palette = defaults;
   bool valid = false;
+  const std::string active_mode = cfg_option_value(config.options, "card_active_color");
+  palette.explicit_active_color = active_mode == "theme";
   const std::string off = cfg_option_value(config.options, "card_off_color");
   if (!off.empty()) {
     const uint32_t raw = parse_hex_color(off, valid);
@@ -153,9 +159,19 @@ inline CardPalette card_palette_for_config(const CardPalette &defaults,
       palette.sensor_val = palette.off_val;
       palette.surface_sensor_val = palette.off_val;
       palette.custom_background = true;
-      palette.has_on = true;
-      palette.on_val = display_correct_color(active_card_color(raw), display);
+      if (active_mode != "theme") {
+        palette.has_on = true;
+        palette.on_val = display_correct_color(active_card_color(raw), display);
+      }
       palette.progress_val = display_correct_color(card_progress_color(raw), display);
+    }
+  }
+  if (active_mode == "custom") {
+    const uint32_t on = parse_hex_color(cfg_option_value(config.options, "card_on_color"), valid);
+    if (valid) {
+      palette.has_on = true;
+      palette.on_val = display_correct_color(on, display);
+      palette.explicit_active_color = true;
     }
   }
   return palette;
@@ -337,6 +353,9 @@ inline bool card_slot_static_child(const BtnSlot &s, lv_obj_t *child) {
 
 inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   if (!s.btn) return;
+  slider_bind_text_contrast(s.icon_lbl, nullptr);
+  slider_bind_text_contrast(s.text_lbl, nullptr);
+  slider_bind_text_contrast(s.sensor_container, nullptr);
   lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_state(s.btn, LV_STATE_CHECKED);
   sync_card_checked_text_color(s.btn);
@@ -597,6 +616,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   espcontrol::cards::alarm_driver_cleanup(s, p, context);
   espcontrol::cards::media_driver_cleanup(s, p, context);
   reset_card_slot_dynamic_children(s);
+  apply_grid_card_corners(s.btn, cfg.card_corner_radius, cfg.continuous_card_corners);
   theme_set_content_background(s.btn, palette.custom_background);
   apply_button_colors(s.btn, palette.has_on, palette.on_val,
     palette.has_off, palette.off_val);
@@ -2070,7 +2090,8 @@ inline void grid_phase2(
       break;
     }
   }
-  lv_coord_t sp_radius = lv_obj_get_style_radius(ref_btn, LV_PART_MAIN);
+  lv_coord_t sp_radius = cfg.card_corner_radius >= 0
+    ? cfg.card_corner_radius : lv_obj_get_style_radius(ref_btn, LV_PART_MAIN);
   lv_coord_t sp_pad = lv_obj_get_style_pad_top(ref_btn, LV_PART_MAIN);
   const lv_font_t *sp_btn_fnt = lv_obj_get_style_text_font(ref_btn, LV_PART_MAIN);
   lv_color_t sp_txt_color = lv_obj_get_style_text_color(ref_btn, LV_PART_MAIN);
@@ -2130,7 +2151,7 @@ inline void grid_phase2(
     clock_bar_clear_responsive_grid_cards(sub_scr);
 
     lv_obj_t *back_btn = create_grid_card_button(
-      sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color);
+      sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color, cfg.continuous_card_corners);
     set_grid_card_cell(
       back_btn, sub_scr,
       sp_ord.back_pos % COLS, sp_ord.back_pos / COLS,
@@ -2197,7 +2218,7 @@ inline void grid_phase2(
       int rs = sp_ord.row_span[bn - 1] > 0 ? sp_ord.row_span[bn - 1] : 1;
 
       lv_obj_t *sb_btn = create_grid_card_button(
-        sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color);
+        sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color, cfg.continuous_card_corners);
       int cs = sp_ord.col_span[bn - 1] > 0 ? sp_ord.col_span[bn - 1] : 1;
       set_grid_card_cell(sb_btn, sub_scr, col, row, cs, rs, COLS, ROWS);
       BtnSlot sub_slot = create_dynamic_card_slot(

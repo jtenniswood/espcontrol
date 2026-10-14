@@ -127,6 +127,7 @@ TASKS = (
              "components/espcontrol/clock_bar.h",
              "components/espcontrol/button_grid_modal.h",
              "components/espcontrol/button_grid_limits.h",
+             "components/espcontrol/button_grid_weather_forecast.h",
              "components/espcontrol/button_grid_slider_geometry.h",
              "components/espcontrol/button_grid_string.h",
              "components/espcontrol/button_grid_config_parser.h",

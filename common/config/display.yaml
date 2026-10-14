@@ -6,6 +6,10 @@
 # =============================================================================
 
 globals:
+  - id: card_curve_medium_default_migrated
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
   - id: metadata_overlay_toggle_migrated
     type: bool
     restore_value: yes
@@ -28,6 +32,19 @@ globals:
 
 esphome:
   on_boot:
+    # Apply the new default before the grid's -100 boot phase uses the radius.
+    - priority: -90
+      then:
+        - lambda: |-
+            if (!id(card_curve_medium_default_migrated)) {
+              auto call = id(card_curve_select).make_call();
+              call.set_option("Medium");
+              call.perform();
+              id(card_curve_medium_default_migrated) = true;
+              // Store the marker now, rather than waiting for the global's poll.
+              card_curve_medium_default_migrated->update();
+              global_preferences->sync();
+            }
     - priority: -100
       then:
         - lambda: |-
@@ -576,6 +593,28 @@ switch:
       - script.execute: cover_art_apply_external_input_policy
 
 select:
+  - platform: template
+    name: "${entity_screen_card_curve}"
+    id: card_curve_select
+    entity_category: config
+    icon: "mdi:rounded-corner"
+    optimistic: true
+    restore_value: true
+    initial_option: "Medium"
+    options:
+      - "Small"
+      - "Medium"
+      - "Large"
+    web_server:
+      sorting_group_id: sg_display
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return grid_phase2_complete();'
+            then:
+              - script.execute: refresh_subpage_grid
+
   - platform: template
     name: "${entity_screen_saver_action}"
     internal: true

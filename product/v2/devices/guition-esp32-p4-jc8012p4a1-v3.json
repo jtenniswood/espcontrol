@@ -18,6 +18,14 @@
     "web": {
       "portrait": {
         "slots": 18
+      },
+      "continuousCorners": true
+    },
+    "firmware": {
+      "package": {
+        "substitutions": {
+          "button_radius": "11px"
+        }
       }
     }
   },
@@ -29,6 +37,9 @@
       "portrait": {
         "cols": 3,
         "rows": 6
+      },
+      "grid": {
+        "gap": 0.78125
       }
     },
     "firmware": {

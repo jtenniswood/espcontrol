@@ -263,6 +263,7 @@ inline void network_status_open_modal(const std::string &device_name,
   // the reference card may currently have an accent or custom content colour.
   const lv_color_t text_color = lv_color_hex(current_theme().text_primary);
   const lv_coord_t radius = control_modal_card_radius(reference);
+  const bool continuous_corners = card_uses_continuous_corners(reference);
   const lv_coord_t card_pad = reference
                                   ? lv_obj_get_style_pad_top(reference,
                                                              LV_PART_MAIN)
@@ -313,7 +314,7 @@ inline void network_status_open_modal(const std::string &device_name,
   for (int i = 0; i < NETWORK_STATUS_CARD_COUNT; ++i) {
     if (i == NETWORK_STATUS_WIFI_CARD_INDEX && !wifi_quality) continue;
     auto *button = create_grid_card_button(ui.overlay, radius, card_pad,
-                                           label_font, text_color);
+                                           label_font, text_color, continuous_corners);
     const int card_index = ui.card_count++;
     ui.cards[card_index] = button;
     apply_button_colors(button, false, DEFAULT_ACCENT_COLOR, true,

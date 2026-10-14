@@ -249,6 +249,7 @@ export function createControlsShellFeature(
         return bar;
     }
     function switchTab(this: any, tab?: any) {
+        const returningToScreen = tab === "screen" && state.activeTab !== "screen";
         state.activeTab = tab;
         if (els.root)
             els.root.setAttribute("data-active-tab", tab);
@@ -259,6 +260,7 @@ export function createControlsShellFeature(
         els.screenPage.className = "sp-page" + (tab === "screen" ? " active" : "");
         els.settingsPage.className = "sp-page" + (tab === "settings" ? " active" : "");
         syncTabChrome();
+        if (returningToScreen) dependencies.renderPreview();
     }
     function syncTabChrome(this: any) {
         var support: any = document.querySelector(".sp-support-btn");

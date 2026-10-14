@@ -33,7 +33,8 @@ using lv_style_selector_t = int;
 constexpr int LV_PART_MAIN = 0, LV_STATE_DEFAULT = 0, LV_STATE_CHECKED = 1, LV_STATE_PRESSED = 2;
 constexpr int LV_EVENT_ALL = 0, LV_EVENT_PRESSED = 3, LV_EVENT_RELEASED = 4, LV_EVENT_PRESS_LOST = 5;
 constexpr int LV_OPA_COVER = 255, LV_OPA_TRANSP = 0;
-struct lv_event_t { lv_obj_t *target; int code; };
+struct lv_event_t { lv_obj_t *target; int code; void *user_data = nullptr; void *param = nullptr; };
+struct lv_area_t { int x1 = 0, y1 = 0, x2 = 39, y2 = 39; };
 using lv_event_cb_t = void (*)(lv_event_t *);
 struct lv_obj_t {
   uint32_t background[3] = {}, text[3] = {}, gradient[3] = {};
@@ -43,6 +44,8 @@ struct lv_obj_t {
   std::vector<lv_event_cb_t> events;
   std::vector<lv_obj_t *> children;
   std::string content;
+  lv_area_t area;
+  lv_obj_t *parent = nullptr;
 };
 struct BtnSlot { lv_obj_t *btn, *icon_lbl = nullptr, *text_lbl = nullptr; };
 struct AlarmCardCtx { lv_obj_t *btn; uint32_t off_color; bool off_theme_owned = false; int theme_red_percent = 100, theme_green_percent = 100, theme_blue_percent = 100; };
@@ -108,7 +111,7 @@ void lv_obj_add_flag(lv_obj_t *obj, int flag) { obj->flags |= flag; }
 void lv_obj_clear_flag(lv_obj_t *obj, int flag) { obj->flags &= ~flag; }
 void lv_obj_set_style_opa(lv_obj_t *, int, int) {}
 void lv_obj_set_style_text_opa(lv_obj_t *, int, int) {}
-int lv_obj_get_height(lv_obj_t *) { return 40; }
+int lv_obj_get_height(lv_obj_t *obj) { return obj->area.y2 - obj->area.y1 + 1; }
 void lv_obj_set_height(lv_obj_t *, int) {}
 struct MediaControlCtx {
   uint32_t accent_color;
@@ -136,12 +139,37 @@ void media_volume_set_button_enabled(lv_obj_t *, bool) {}
 int media_control_volume_max_pct(MediaControlCtx *) { return 100; }
 size_t lv_obj_get_child_cnt(lv_obj_t *obj) { return obj->children.size(); }
 lv_obj_t *lv_obj_get_child(lv_obj_t *obj, size_t index) { return obj->children[index]; }
+int lv_obj_get_width(lv_obj_t *obj) { return obj->area.x2 - obj->area.x1 + 1; }
+lv_obj_t *lv_obj_get_parent(lv_obj_t *obj) { return obj->parent; }
+void lv_obj_get_coords(lv_obj_t *obj, lv_area_t *area) { *area = obj->area; }
+uint32_t lv_obj_get_style_bg_color(lv_obj_t *obj, int) { return obj->background[0]; }
+uint32_t lv_color_to_int(uint32_t color) { return color; }
+bool lv_color_eq(uint32_t a, uint32_t b) { return a == b; }
+void *lv_event_get_user_data(lv_event_t *event) { return event->user_data; }
+void *lv_event_get_param(lv_event_t *event) { return event->param; }
+bool lv_area_intersect(lv_area_t *result, const lv_area_t *a, const lv_area_t *b) {
+  *result = {std::max(a->x1, b->x1), std::max(a->y1, b->y1), std::min(a->x2, b->x2), std::min(a->y2, b->y2)};
+  return result->x1 <= result->x2 && result->y1 <= result->y2;
+}
+constexpr int LV_DRAW_TASK_TYPE_LABEL = 1;
+struct lv_layer_t { lv_area_t _clip_area; };
+struct lv_draw_label_dsc_t { struct { lv_layer_t *layer; } base; uint32_t color; int text_local = 0; };
+struct lv_draw_task_t { int type; lv_area_t area, clip_area; lv_draw_label_dsc_t *descriptor; };
+struct DrawnLabel { lv_area_t area, clip; uint32_t color; };
+std::vector<DrawnLabel> drawn_labels;
+int lv_draw_task_get_type(lv_draw_task_t *task) { return task->type; }
+void *lv_draw_task_get_draw_dsc(lv_draw_task_t *task) { return task->descriptor; }
+void lv_draw_label(lv_layer_t *layer, lv_draw_label_dsc_t *descriptor, lv_area_t *area) {
+  assert(descriptor->text_local == 1);
+  drawn_labels.push_back({*area, layer->_clip_area, descriptor->color});
+}
 '''
 grid = (headers / "button_grid_grid.h").read_text()
 layout = (headers / "button_grid_layout.h").read_text()
 source += "\n" + "\n".join(re.findall(r"^constexpr char CARD_SIZE_.*?;$", layout, re.MULTILINE))
 
 groups = (
+    ("button_grid_slider_contrast.h", "", ("slider_text_contrast_event_cb",)),
     ("button_grid_display.h", "", ("display_correct_color",)),
     ("button_grid_layout.h", "", ("grid_token_has_span_suffix", "parse_hex_color", "apply_button_colors", "apply_button_on_pattern", "apply_card_descendant_text_color", "sync_card_checked_text_color", "card_text_contrast_event_cb", "bind_card_text_contrast_events", "set_card_checked_state")),
     ("button_grid_grid.h", "", ("card_palette_for_config",)),
@@ -168,6 +196,40 @@ for filename, namespace, names in groups:
 source += r'''
 #line 1 "card_colour_rendering_cases"
 int main() {
+  // Exercise a glyph crossing each fill edge, including reversed cover fills.
+  // Every visible pixel must use the foreground of the surface beneath it.
+  for (bool pale_base : {false, true}) for (bool horizontal : {false, true})
+    for (bool inverted : {false, true}) for (int percent : {0, 1, 10, 50, 90, 99, 100}) {
+      lv_obj_t button, fill;
+      button.area = {0, 0, 99, 99};
+      button.background[0] = pale_base ? 0xFFFFFF : 0x313131;
+      button.text[0] = display_text_color_for_bg(button.background[0]);
+      fill.parent = &button;
+      fill.background[0] = pale_base ? 0x000000 : 0xFFFFFF;
+      fill.area = horizontal
+        ? (inverted ? lv_area_t{100-percent, 0, 99, 99} : lv_area_t{0, 0, percent-1, 99})
+        : (inverted ? lv_area_t{0, 0, 99, percent-1} : lv_area_t{0, 100-percent, 99, 99});
+      lv_layer_t layer{{0, 0, 99, 99}};
+      lv_draw_label_dsc_t descriptor{{&layer}, button.text[0]};
+      lv_draw_task_t task{LV_DRAW_TASK_TYPE_LABEL, {0, 0, 99, 99}, layer._clip_area, &descriptor};
+      lv_event_t event{nullptr, 0, &fill, &task};
+      drawn_labels.clear();
+      slider_text_contrast_event_cb(&event);
+      drawn_labels.push_back({task.area, task.clip_area, descriptor.color});
+      assert(layer._clip_area.x1 == 0 && layer._clip_area.y1 == 0 && layer._clip_area.x2 == 99 && layer._clip_area.y2 == 99);
+      for (int y = 0; y < 100; ++y) for (int x = 0; x < 100; ++x) {
+        int matches = 0;
+        const bool filled = x >= fill.area.x1 && x <= fill.area.x2 && y >= fill.area.y1 && y <= fill.area.y2;
+        const uint32_t expected = display_text_color_for_bg(filled ? fill.background[0] : button.background[0]);
+        for (const auto &draw : drawn_labels) {
+          if (x >= draw.clip.x1 && x <= draw.clip.x2 && y >= draw.clip.y1 && y <= draw.clip.y2) {
+            ++matches;
+            assert(draw.color == expected);
+          }
+        }
+        assert(matches == 1);
+      }
+    }
   for (const std::string token : {"B", "Bd", "Bw", "Bb", "Bt", "Bx"}) {
     for (const std::string prefix : {"", "~"}) {
       const auto order = get_subpage_order(prefix + "1," + token + "=Return%3AHome%2C50%25:#ffec16,2|ignored");
@@ -242,7 +304,7 @@ int main() {
     const double b = display_relative_luminance(background) + 50000;
     return a > b ? a / b : b / a;
   };
-  assert(card_pattern_highlight_color(active_card_color(0xA0A0A0)) == 0xA7A7A7);
+  assert(card_pattern_highlight_color(active_card_color(0xA0A0A0)) == 0x4E4E4E);
   assert(card_pattern_highlight_color(0xBFBFBF) == 0xD5D5D5);
   lv_obj_t striped, striped_label;
   striped.children = {&striped_label};
@@ -250,8 +312,8 @@ int main() {
   apply_button_colors(&striped, true, stripe_base, true, 0xA0A0A0);
   apply_button_on_pattern(&striped, "on_pattern=stripes", true, stripe_base);
   set_card_checked_state(&striped, true);
-  assert(striped.gradient[LV_STATE_CHECKED] == 0xA7A7A7);
-  assert(striped.gradient[LV_STATE_PRESSED] == 0xA7A7A7);
+  assert(striped.gradient[LV_STATE_CHECKED] == 0x4E4E4E);
+  assert(striped.gradient[LV_STATE_PRESSED] == 0x4E4E4E);
   assert(striped.gradient_direction[LV_STATE_CHECKED] == LV_GRAD_DIR_HOR);
   assert(striped_label.text[0] == display_text_color_for_bg(stripe_base));
   for (uint32_t value = 0; value <= 255; ++value) {
@@ -268,13 +330,13 @@ int main() {
   for (uint32_t base : {0xAAC93Fu, 0xEED146u, 0xEA3323u, 0x8F28ABu, 0xA0A0A0u}) {
     const auto active = active_card_color(base);
     const auto foreground = display_text_color_for_bg(active);
-    assert(contrast(foreground, active) >= 4.5);
+    assert(contrast(foreground, active) >= 2.1);
     assert(contrast(foreground, card_pattern_highlight_color(active)) >= 4.5);
   }
   assert(active_card_color(0xAAC93F) == 0x80972F);
   assert(active_card_color(0xEED146) == 0xB39D35);
-  assert(display_text_color_for_bg(0x80972F) == 0x212121);
-  assert(display_text_color_for_bg(0xB39D35) == 0x212121);
+  assert(display_text_color_for_bg(0x80972F) == 0xFFFFFF);
+  assert(display_text_color_for_bg(0xB39D35) == 0xFFFFFF);
   CardPalette defaults;
   defaults.has_on = defaults.has_off = defaults.has_sensor_color = true;
   defaults.on_val = 0xFF8C00;
@@ -282,9 +344,43 @@ int main() {
   defaults.sensor_val = 0x212121;
   assert(card_slider_fill_color(defaults) == defaults.on_val);
   DisplayProfile display;
+  for (const std::string type : {"", "sensor", "presence", "door_window", "light_control", "fan_control", "media", "cover"}) {
+    for (const std::string mode : {"matching", "theme", "custom"}) {
+      const std::string options = "card_off_color=6633B9,card_active_color=" + mode + ",card_on_color=FFFFFF";
+      const ParsedCfg configs[] = {
+        parse_cfg("light.test;Test;Auto;Auto;sensor.test;;" + type + ";;" + options),
+        parsed_cfg_from_subpage_btn(parse_subpage_config("B,1|light.test:Test:Auto:Auto:sensor.test::" + type + "::" + options).at(0)),
+        parsed_cfg_from_subpage_btn(parse_subpage_config("~B,1|" + type + ",light.test,Test,,,sensor.test,,," + encode_compact_field(options)).at(0)),
+      };
+      for (const auto &config : configs) {
+        for (uint32_t accent : {0xFF8C00u, 0x00BCD4u}) {
+          defaults.on_val = accent;
+          for (int calibration : {100, 50}) {
+            display.color.red_percent = calibration;
+            const auto palette = card_palette_for_config(defaults, config, display);
+            const uint32_t expected = mode == "theme" ? accent : display_correct_color(mode == "custom" ? 0xFFFFFF : 0xA385D5, display);
+            assert(palette.on_val == expected);
+            assert(card_slider_fill_color(palette) == (mode == "matching"
+              ? card_slider_fill_color(palette.off_val) : expected));
+            assert(palette.off_val == display_correct_color(0x6633B9, display));
+            lv_obj_t button, label;
+            button.children = {&label};
+            apply_button_colors(&button, palette.has_on, palette.on_val, palette.has_off, palette.off_val);
+            set_card_checked_state(&button, true);
+            assert(button.background[LV_STATE_CHECKED] == expected);
+            assert(label.text[0] == display_text_color_for_bg(expected));
+            set_card_checked_state(&button, false);
+            assert(label.text[0] == display_text_color_for_bg(palette.off_val));
+          }
+        }
+      }
+    }
+  }
+  display.color.red_percent = 100;
+  defaults.on_val = 0xFF8C00;
   assert(card_progress_color(0xFF8C00) == 0xFFAF4D);
   assert(card_progress_color(0x9D9D9D) == 0xBABABA);
-  assert(display_text_color_for_bg(0x00BCD4) == 0x212121);
+  assert(display_text_color_for_bg(0x00BCD4) == 0xFFFFFF);
   assert(display_text_color_for_bg(lighter_card_color(0x00BCD4)) == 0x212121);
   assert(display_text_color_for_bg(0xBFEAFF) == 0x212121);
   struct Colour { const char *hex; uint32_t base, active, text; };
@@ -292,15 +388,15 @@ int main() {
     {"AAC93F", 0xAAC93F, 0x80972F, 0x212121},
     {"EED146", 0xEED146, 0xB39D35, 0x212121},
     {"6633B9", 0x6633B9, 0xA385D5, 0xFFFFFF},
-    {"FF0000", 0xFF0000, 0xFF6666, 0x000000},
-    {"F6402C", 0xF6402C, 0xFA8C80, 0x000000},
-    {"FF8C00", 0xFF8C00, 0xFFBA66, 0x212121},
-    {"1093F5", 0x1093F5, 0x70BEF9, 0x212121},
-    {"46AF4A", 0x46AF4A, 0x90CF92, 0x212121},
-    {"009687", 0x009687, 0x66C0B7, 0x000000},
-    {"00BBD5", 0x00BBD5, 0x66D6E6, 0x212121},
-    {"00BCD4", 0x00BCD4, 0x66D7E5, 0x212121},
-    {"B2B2B2", 0xB2B2B2, 0x868686, 0x212121},
+    {"FF0000", 0xFF0000, 0xFF6666, 0xFFFFFF},
+    {"F6402C", 0xF6402C, 0xFA8C80, 0xFFFFFF},
+    {"FF8C00", 0xFF8C00, 0xFFBA66, 0xFFFFFF},
+    {"1093F5", 0x1093F5, 0x70BEF9, 0xFFFFFF},
+    {"46AF4A", 0x46AF4A, 0x90CF92, 0xFFFFFF},
+    {"009687", 0x009687, 0x66C0B7, 0xFFFFFF},
+    {"00BBD5", 0x00BBD5, 0x66D6E6, 0xFFFFFF},
+    {"00BCD4", 0x00BCD4, 0x66D7E5, 0xFFFFFF},
+    {"B2B2B2", 0xB2B2B2, 0x868686, 0xFFFFFF},
     {"B3B3B3", 0xB3B3B3, 0x868686, 0x212121},
     {"88C440", 0x88C440, 0x669330, 0x212121},
     {"CCDD1E", 0xCCDD1E, 0x99A617, 0x212121},

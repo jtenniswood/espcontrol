@@ -82,6 +82,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         "cursor:pointer;transition:all .2s;box-sizing:border-box;border:0;" +
         "position:relative;overflow:hidden;min-width:0;color:var(--card-text-color,var(--preview-text-primary))}" +
         ".sp-btn:hover{filter:brightness(1.15)}" +
+        "@supports(corner-shape:superellipse(2)){.sp-continuous-corners .sp-btn{border-radius:calc(var(--btn-r)*2);corner-shape:superellipse(2)}" +
+        ".sp-continuous-corners .sp-empty-cell{border-radius:calc(var(--empty-r)*2);corner-shape:superellipse(2)}}" +
         ".sp-btn.sp-selected:hover{filter:none}" +
         ".sp-drag-active .sp-btn:hover{filter:none}" +
         ".sp-btn.sp-selected{box-shadow:inset 0 0 0 2px var(--accent)}" +
@@ -108,7 +110,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
         ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:var(--card-text-color,var(--preview-text-primary))}" +
         ".sp-slider-preview{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;pointer-events:none}" +
-        ".sp-slider-track{width:100%;height:100%;position:relative}" +
+        ".sp-slider-track{display:block;width:100%;height:100%;position:relative}" +
         ".sp-slider-fill{position:absolute;left:0;bottom:0;width:100%;height:80%;background:var(--card-slider-fill-color,var(--card-active-color,var(--screen-primary)));" +
         "border-radius:var(--r)}" +
         ".sp-image-card{padding:0}" +
@@ -546,6 +548,9 @@ export function createWebStyles(dragAnimation: boolean): string {
         "height:calc(100% + 16px);cursor:pointer;opacity:0}" +
         ".sp-color-row .sp-input{flex:1}" +
         COLOR_SWATCH_STYLES +
+        ".sp-card-color-editor{display:flex;flex-direction:column;gap:24px}" +
+        ".sp-card-color-editor .sp-field{margin-bottom:0}" +
+        ".sp-card-color-editor .sp-segment{margin-bottom:16px}" +
         ".sp-card-color-header{position:relative}" +
         ".sp-disclosure.sp-open .sp-card-color-header .sp-disclosure-button{gap:56px}" +
         ".sp-disclosure:not(.sp-open) .sp-card-color-header .sp-card-header-action{display:none}" +

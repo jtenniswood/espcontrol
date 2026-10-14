@@ -16,8 +16,14 @@
       "package": {
         "extraPackages": {
           "battery": "!include device/battery.yaml"
+        },
+        "substitutions": {
+          "button_radius": "11px"
         }
       }
+    },
+    "web": {
+      "continuousCorners": true
     }
   },
   "overrides": {
@@ -26,6 +32,11 @@
         "substitutions": {
           "clock_font_size": "\"160\""
         }
+      }
+    },
+    "web": {
+      "grid": {
+        "gap": 0.78125
       }
     }
   }
