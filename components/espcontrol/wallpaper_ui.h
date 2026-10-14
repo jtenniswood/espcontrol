@@ -29,14 +29,14 @@ inline const auto *wallpaper_image_source() {
   const auto &ui = wallpaper_ui();
   return ui.background.colour ? &ui.colour_image : ui.pixels ? &ui.image : nullptr;
 }
-inline void wallpaper_bind_screen(lv_obj_t *screen, bool modal = false) {
+inline void wallpaper_bind_screen(lv_obj_t *screen, bool solid = false) {
   if (!screen) return;
   auto &ui = wallpaper_ui();
   lv_obj_t *widget = nullptr;
   for (auto *candidate : ui.widgets) if (lv_obj_get_parent(candidate) == screen) { widget = candidate; break; }
-  // Modal panels keep their solid theme fill, regardless of card opacity.
+  // Modal panels and screens with backgrounds disabled keep their solid fill.
   const auto *image = wallpaper_image_source();
-  if (modal || !image) { if (widget) lv_obj_del(widget); return; }
+  if (solid || !image) { if (widget) lv_obj_del(widget); return; }
   const int width = lv_obj_get_width(screen), height = lv_obj_get_height(screen);
   if (width <= 0 || height <= 0) return;
   if (!widget) {
@@ -85,7 +85,7 @@ inline void wallpaper_apply_cards() {
   for (auto &page : navigation_subpages()) wallpaper_register_background(page.screen);
   for (auto &page : theme_static_pages()) wallpaper_register_background(page.page);
   for (const auto &background : wallpaper_backgrounds())
-    wallpaper_bind_screen(background.root, background.modal);
+    wallpaper_refresh_background(background);
   wallpaper_apply_card_opacity();
 }
 inline void wallpaper_tick() {

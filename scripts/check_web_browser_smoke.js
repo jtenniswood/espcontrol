@@ -7564,6 +7564,80 @@ async function assertS3ForecastEditorLayout(browser) {
   } finally { await context.close(); }
 }
 
+async function assertClockWallpaperSettings(browser) {
+  const testCase = ACTIVE_CASES[0];
+  const context = await browser.newContext({viewport: testCase.viewport});
+  let savedWallpaper = true;
+  const posts = [];
+  try {
+    await installRoutes(context, testCase.slug);
+    await context.route("**/switch/**", async route => {
+      const url = decodeURIComponent(route.request().url());
+      if (!url.includes("Show Wallpaper") && !url.includes("show_wallpaper")) { await route.fallback(); return; }
+      assert.strictEqual(route.request().method(), "POST");
+      savedWallpaper = new URL(url).pathname.endsWith("turn_on");
+      posts.push(savedWallpaper);
+      await route.fulfill({status: 200, body: ""});
+    });
+    const page = await context.newPage();
+    await installFakeEventSource(page);
+    const open = async (supported = true) => {
+      await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, {waitUntil: "domcontentloaded"});
+      await page.waitForFunction(() => window.__eventSources?.length > 0);
+      await page.evaluate(events => window.__seedEspState(events), [
+        ...seededEvents(),
+        {id: "switch-screen_saver__show_date", state: "OFF", value: false},
+        ...(supported ? [{id: "switch-clock_screensaver_show_wallpaper", state: savedWallpaper ? "ON" : "OFF", value: savedWallpaper}] : []),
+      ]);
+      await page.getByRole("tab", {name: "Settings", exact: true}).click();
+      await page.getByRole("heading", {name: "Screensaver", exact: true}).click();
+      await page.getByRole("button", {name: "Timer", exact: true}).click();
+      await page.locator("#sp-set-clock-mode").selectOption("clock");
+    };
+    const toggleAndSave = async selector => {
+      const response = page.waitForResponse(response => response.request().method() === "POST" &&
+        /Show Wallpaper|show_wallpaper/.test(decodeURIComponent(response.url())));
+      await page.locator(selector).click();
+      await response;
+    };
+    const wallpaper = page.locator("#sp-set-clock-wallpaper");
+    const sensorWallpaper = page.locator("#sp-set-sensor-clock-wallpaper");
+    const wallpaperRow = wallpaper.locator("..").locator("..");
+    const sensorWallpaperRow = sensorWallpaper.locator("..").locator("..");
+    await open(false);
+    assert.strictEqual(await wallpaperRow.isVisible(), false, "older firmware hides unsupported Show Wallpaper");
+    assert.strictEqual(posts.length, 0);
+    await open();
+    assert.strictEqual(await wallpaperRow.isVisible(), true);
+    assert.strictEqual(await wallpaper.isChecked(), true, "Show Wallpaper defaults on");
+    assert(await wallpaper.evaluate(input => {
+      const row = input.closest(".sp-toggle-row"), date = document.querySelector("#sp-set-clock-date").closest(".sp-toggle-row");
+      return !!(row.compareDocumentPosition(date) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }), "Show Wallpaper appears above Show date");
+    await toggleAndSave('label[for="sp-set-clock-wallpaper"]');
+    await page.waitForFunction(() => !document.querySelector("#sp-set-sensor-clock-wallpaper").checked);
+    await page.getByRole("button", {name: "Sensor", exact: true}).click();
+    assert.strictEqual(await sensorWallpaperRow.isVisible(), true);
+    assert.strictEqual(await sensorWallpaper.isChecked(), false, "Timer changes synchronize with Sensor");
+    await toggleAndSave('label[for="sp-set-sensor-clock-wallpaper"]');
+    await page.getByRole("button", {name: "Timer", exact: true}).click();
+    assert.strictEqual(await wallpaper.isChecked(), true, "Sensor changes synchronize with Timer");
+    assert.deepStrictEqual(posts, [false, true], "each toggle saves once to the correct device switch");
+    await toggleAndSave('label[for="sp-set-clock-wallpaper"]');
+    await open();
+    assert.strictEqual(await wallpaper.isChecked(), false, "the saved device state is restored after reload");
+    await page.locator("#sp-set-clock-mode").selectOption("dim");
+    assert.strictEqual(await wallpaperRow.isVisible(), false, "wallpaper toggle appears only for Clock");
+    await page.locator("#sp-set-clock-mode").selectOption("off");
+    assert.strictEqual(await wallpaperRow.isVisible(), false);
+    await openBackupControls(page);
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", {name: "Export", exact: true}).click();
+    const backup = JSON.parse(fs.readFileSync(await (await downloadPromise).path(), "utf8"));
+    assert.strictEqual(backup.settings.clock_wallpaper, false, "export includes the saved Show Wallpaper choice");
+  } finally { await context.close(); }
+}
+
 async function assertWallpaperPreviewLayout(browser, testCase) {
   const context = await browser.newContext({viewport: testCase.viewport});
   try {
@@ -8159,6 +8233,8 @@ async function assertWallpaperSettings(browser) {
       console.log(`Card curve preset checks passed for ${ACTIVE_CASES.length} generated layouts.`);
       return;
     }
+    await assertClockWallpaperSettings(browser);
+    if (process.env.ESPCONTROL_CLOCK_WALLPAPER_ONLY === "1") { console.log("Clock screensaver Show Wallpaper checks passed."); return; }
     for (const testCase of ACTIVE_CASES) await assertWallpaperPreviewLayout(browser, testCase);
     if (process.env.ESPCONTROL_WALLPAPER_LAYOUT_ONLY === "1") { console.log(`Wallpaper preview layout checks passed for ${ACTIVE_CASES.length} devices.`); return; }
     await assertWallpaperSettings(browser);

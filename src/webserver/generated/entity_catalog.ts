@@ -420,6 +420,15 @@ export const ENTITY_CATALOG = {
         "clock_screensaver_enabled"
       ]
     },
+    "screen_saver_show_wallpaper": {
+      "domain": "switch",
+      "name": "Screen Saver: Show Wallpaper",
+      "objectIds": [
+        "screen_saver__show_wallpaper",
+        "screen_saver_show_wallpaper",
+        "clock_screensaver_show_wallpaper"
+      ]
+    },
     "screen_saver_show_date": {
       "domain": "switch",
       "name": "Screen Saver: Show Date",
@@ -828,6 +837,7 @@ export const ENTITY_CATALOG = {
       "screensaver_timeout",
       "home_screen_timeout",
       "screen_saver_clock",
+      "screen_saver_show_wallpaper",
       "screen_saver_show_date",
       "screen_saver_clock_overlay",
       "screen_timezone",

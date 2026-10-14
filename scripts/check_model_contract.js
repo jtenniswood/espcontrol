@@ -643,6 +643,7 @@ const panelSettings = model.normalizeBackupPanelSettings({
   home_assistant_artwork_port: "80",
   firmware_auto_update: false,
   firmware_update_frequency: "Weekly",
+  clock_wallpaper: false,
   clock_date: true,
   clock_brightness_day: 44,
   clock_brightness_night: 22,
@@ -792,6 +793,7 @@ assert.strictEqual(
   "media_player.apple_tv",
   "secondary cover art media player survives backup import"
 );
+assert.strictEqual(panelSettings.clockWallpaper, false, "clock wallpaper disabled preference survives backup normalization");
 assert.strictEqual(panelSettings.clockBrightnessDay, 44, "panel day clock brightness imports");
 assert.strictEqual(panelSettings.clockBrightnessNight, 22, "panel night clock brightness imports");
 assert.strictEqual(panelSettings.screensaverDimmedBrightnessDay, 30, "panel day dimmed brightness imports");
@@ -851,6 +853,7 @@ const legacyPanelSettings = model.normalizeBackupPanelSettings({}, {
   updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
   screenRotationOptions: ["0", "90", "180", "270"],
 });
+assert.strictEqual(legacyPanelSettings.clockWallpaper, undefined, "older backups leave the saved clock wallpaper choice unchanged");
 assert.strictEqual(legacyPanelSettings.clockBarTime, true, "legacy panel settings default clock bar time on");
 assert.strictEqual(legacyPanelSettings.clockBarNightMode, false, "legacy panel settings default clock bar night mode icon off");
 assert.strictEqual(legacyPanelSettings.voiceServices, false, "legacy panel settings default voice services off");

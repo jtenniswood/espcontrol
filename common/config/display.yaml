@@ -543,6 +543,21 @@ switch:
       - script.execute: cover_art_disable
 
   - platform: template
+    name: "${entity_screen_saver_show_wallpaper}"
+    internal: true
+    id: clock_screensaver_show_wallpaper
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    icon: "mdi:image"
+    entity_category: config
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_turn_on:
+      - lambda: 'espcontrol::wallpaper_set_background_enabled(id(clock_screensaver), true);'
+    on_turn_off:
+      - lambda: 'espcontrol::wallpaper_set_background_enabled(id(clock_screensaver), false);'
+
+  - platform: template
     name: "${entity_screen_saver_show_date}"
     internal: true
     id: clock_screensaver_show_date

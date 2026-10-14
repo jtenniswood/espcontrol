@@ -290,6 +290,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 media_player_sleep_prevention: state.mediaPlayerSleepPreventionOn,
                 media_player_sleep_prevention_entity: state.mediaPlayerSleepPreventionEntity || state.coverArtMediaPlayerEntity,
                 cover_art_screensaver: state.coverArtScreensaverOn,
+                ...(state.clockWallpaperSupported ? {clock_wallpaper: state.clockWallpaperOn} : {}),
                 clock_date: state.clockDateOn,
                 clock_overlay: state.clockOverlayOn,
                 cover_art_media_player_entity: state.coverArtMediaPlayerEntity,
@@ -553,6 +554,8 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     postMediaPlayerSleepPreventionEntity(importedSettings.mediaPlayerSleepPreventionEntity);
                     postCoverArtPlaybackControl(importedSettings.coverArtPlaybackControl);
                     postCoverArtScreensaver(importedSettings.coverArtScreensaver);
+                    if (state.clockWallpaperSupported && importedSettings.clockWallpaper != null)
+                        controllers.clockBarPostApi.postClockWallpaper(importedSettings.clockWallpaper);
                     if (state.clockDateSupported) controllers.clockBarPostApi.postClockDate(importedSettings.clockDate);
                     if (state.clockOverlaySupported) postClockOverlay(importedSettings.clockOverlay);
                     if (controllers.layout.config.features?.cameraScreensaver && state.screensaverCameraSupported)
@@ -629,6 +632,8 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     state.mediaPlayerSleepPreventionOn = importedSettings.mediaPlayerSleepPrevention;
                     state.mediaPlayerSleepPreventionEntity = importedSettings.mediaPlayerSleepPreventionEntity;
                     state.coverArtScreensaverOn = importedSettings.coverArtScreensaver;
+                    if (state.clockWallpaperSupported && importedSettings.clockWallpaper != null)
+                        state.clockWallpaperOn = importedSettings.clockWallpaper;
                     state.clockDateOn = importedSettings.clockDate;
                     state.clockOverlayOn = importedSettings.clockOverlay;
                     state.coverArtMediaPlayerEntity = importedSettings.coverArtMediaPlayerEntity;

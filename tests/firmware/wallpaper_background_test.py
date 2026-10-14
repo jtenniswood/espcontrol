@@ -93,13 +93,19 @@ int main() {
   auto *modal = new lv_obj_t, *nested = new lv_obj_t;
   subpages.push_back({initial_subpage}); setup.push_back({setup_page});
   home->pads[2] = 60;
-  for (auto *screen : {clock, camera, cover_art}) wallpaper_register_background(screen);
+  for (auto *screen : {camera, cover_art}) wallpaper_register_background(screen);
+  wallpaper_register_background(clock, false, false);
   wallpaper_register_background(modal, true); wallpaper_register_background(nested, true);
   wallpaper_register_background(modal, true);
   assert(wallpaper_backgrounds().size() == 5 && ui.widgets.empty());
   wallpaper_background_refresh() = wallpaper_bind_screen;
+  // A restored disabled clock remains black when the image first loads.
   ui.pixels = reinterpret_cast<uint8_t *>(1);
   wallpaper_apply_cards();
+  assert(clock->children.empty() && ui.widgets.size() == 4);
+  emit(clock, LV_EVENT_SIZE_CHANGED); emit(clock, LV_EVENT_SCREEN_LOAD_START);
+  assert(clock->children.empty());
+  wallpaper_set_background_enabled(clock, true);
   assert(ui.widgets.size() == 5);  // Setup/backgrounds work before a home grid exists.
   grid.main_page = home; wallpaper_apply_cards();
   assert(ui.widgets.size() == 6);
@@ -122,10 +128,20 @@ int main() {
   wallpaper_apply_cards();
   assert(ui.widgets.size() == 7 && modal->children.size() == 1 && modal->children.front() == foreground);
   assert(nested->children.empty());
+  wallpaper_set_background_enabled(clock, false);
+  wallpaper_apply_cards();
+  emit(clock, LV_EVENT_SIZE_CHANGED); emit(clock, LV_EVENT_SCREEN_LOAD_START);
+  assert(clock->children.empty() && ui.widgets.size() == 6);
+  assert(home->children.front()->source == &ui.image && camera->children.front()->source == &ui.image);
+  wallpaper_set_background_enabled(modal, true);
+  assert(modal->children.size() == 1 && modal->children.front() == foreground);
   // Colour replaces the shared source without allocating another image widget.
   auto *same_widget = home->children.front();
   ui.colour_image.header = {8, 8}; ui.background.colour = true;
   wallpaper_apply_cards();
+  assert(clock->children.empty() && ui.widgets.size() == 6);
+  wallpaper_set_background_enabled(clock, true);
+  assert(clock->children.front()->source == &ui.colour_image);
   assert(ui.widgets.size() == 7 && home->children.front() == same_widget);
   assert(same_widget->source == &ui.colour_image && same_widget->zoom == 23040);
   assert(initial_subpage->children.front()->source == &ui.colour_image);

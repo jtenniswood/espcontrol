@@ -487,6 +487,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setClockBrightnessNight = timerClockControls.clockBrightnessNight;
         els.setClockBrightnessNightVal = timerClockControls.clockBrightnessNightVal;
         els.setClockBrightnessField = timerClockControls.brightnessField;
+        els.setClockWallpaperToggle = timerClockControls.wallpaperToggle;
         els.setClockDateToggle = timerClockControls.dateToggle;
         var coverArtCard: any = buildCoverArtSettingsCard();
         ssBody.appendChild(timerPanel);
@@ -570,6 +571,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setSensorClockBrightnessNight = sensorClockControls.clockBrightnessNight;
         els.setSensorClockBrightnessNightVal = sensorClockControls.clockBrightnessNightVal;
         els.setSensorClockBrightnessField = sensorClockControls.brightnessField;
+        els.setSensorClockWallpaperToggle = sensorClockControls.wallpaperToggle;
         els.setSensorClockDateToggle = sensorClockControls.dateToggle;
         syncClockScreensaverControls();
         syncMediaPlayerSleepPreventionUi();

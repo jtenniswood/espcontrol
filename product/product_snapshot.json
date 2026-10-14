@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 9,
     "cardTypes": 44,
-    "entityNames": 111,
+    "entityNames": 112,
     "icons": 367,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
@@ -7415,6 +7415,19 @@
           "screen_saver__clock",
           "screen_saver_clock",
           "clock_screensaver_enabled"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_show_wallpaper",
+        "domain": "switch",
+        "name": "Screen Saver: Show Wallpaper",
+        "objectIds": [
+          "screen_saver__show_wallpaper",
+          "screen_saver_show_wallpaper",
+          "clock_screensaver_show_wallpaper"
         ],
         "groups": [
           "settings"

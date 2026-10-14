@@ -4,6 +4,7 @@ export interface ClockBarPostApiFeature {
     postClockBrightnessDay(value?: any): void;
     postClockBrightnessNight(value?: any): void;
     postClockScreensaver(on?: any): any;
+    postClockWallpaper(on?: any): any;
     postClockDate(on?: any): any;
     postClockBar(on?: any): void;
     postClockBarTemperatureEntities(value?: any): any;
@@ -38,6 +39,9 @@ export function createClockBarPostApiFeature(
     }
     function postClockScreensaver(this: any, on?: any) {
         return postSwitchWithObjectIds(entityName("screen_saver_clock"), entityObjectIds("screen_saver_clock"), on);
+    }
+    function postClockWallpaper(on?: any) {
+        return postSwitchWithObjectIds(entityName("screen_saver_show_wallpaper"), entityObjectIds("screen_saver_show_wallpaper"), on);
     }
     function postClockDate(on?: any) {
         return postSwitchWithObjectIds(entityName("screen_saver_show_date"), entityObjectIds("screen_saver_show_date"), on);
@@ -104,6 +108,7 @@ export function createClockBarPostApiFeature(
         postClockBrightnessDay,
         postClockBrightnessNight,
         postClockScreensaver,
+        postClockWallpaper,
         postClockDate,
         postClockBar,
         postClockBarTemperatureEntities,
