@@ -24,7 +24,9 @@ three quarters, rounded to whole pixels.
 The same curve applies to the network-status Settings cards, including Back and Screen Lock. Ordinary modal controls and colour swatches keep their existing button radius.
 Images, artwork and slider fills follow the same outline. The web preview
 uses the same curve, including in browsers without native continuous-corner
-support, and scales the card gaps to match the physical display.
+support, and scales the card gaps to match the physical display. Selection
+outlines stay visible above every card type, including Cover Art. Selected-card
+and dashed empty-card outlines follow the chosen curve with even thickness.
 
 On the first boot after installing this update, new and existing displays switch
 to Medium once. Choices made afterward are saved across restarts and future updates.

@@ -6949,6 +6949,131 @@ async function assertCardCurveSettings(browser, testCase) {
   } finally { await context.close(); }
 }
 
+// Read the actual rasterized border so covered outlines and thin clipped
+// corners fail even when the CSS reports the expected selection state.
+async function assertPreviewOutlinePixels(page, card, label) {
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const png = await page.screenshot({ animations: "disabled", scale: "device" });
+  const geometry = await card.evaluate(card => {
+    const style = getComputedStyle(card);
+    const radiusName = card.classList.contains("sp-empty-cell") ? "--empty-r" : "--btn-r";
+    const bounds = card.getBoundingClientRect();
+    return { width: bounds.width, height: bounds.height, left: bounds.left, top: bounds.top, scale: window.devicePixelRatio,
+      radius: parseFloat(getComputedStyle(document.documentElement).getPropertyValue(radiusName)) * document.querySelector(".sp-screen").clientWidth / 100,
+      continuous: style.clipPath.startsWith("path("), dashed: card.classList.contains("sp-empty-cell") };
+  });
+
+
+  const thicknesses = await page.evaluate(async ({ geometry: g, png }) => {
+    const image = new Image(); image.src = png; await image.decode();
+    const canvas = document.createElement("canvas"); canvas.width = image.width; canvas.height = image.height;
+    const ctx = canvas.getContext("2d"); ctx.drawImage(image, 0, 0);
+    const pixels = ctx.getImageData(0, 0, image.width, image.height).data;
+    const ink = (x, y) => {
+      // Interpolate pixel centers to avoid diagonal sampling bias at low DPI.
+      x = (x + g.left) * g.scale - .5; y = (y + g.top) * g.scale - .5;
+      const px = Math.floor(x), py = Math.floor(y), fx = x - px, fy = y - py;
+      const sample = (sx, sy) => {
+        if (sx < 0 || sy < 0 || sx >= image.width || sy >= image.height) return 0;
+        const i = (sy * image.width + sx) * 4;
+        return Math.max(0, Math.min(1, (Math.min(pixels[i], pixels[i + 2]) - pixels[i + 1]) / 255));
+      };
+      return sample(px, py) * (1 - fx) * (1 - fy) + sample(px + 1, py) * fx * (1 - fy) +
+        sample(px, py + 1) * (1 - fx) * fy + sample(px + 1, py + 1) * fx * fy;
+    };
+    const thickness = (x, y, nx, ny) => {
+      let total = 0;
+      // Include antialiased pixels immediately outside the mathematical edge.
+      for (let d = -1; d < 5; d += .25) total += ink(x + nx * d, y + ny * d) * .25;
+      return total;
+    };
+    const groups = [[], [], [], [], []];
+    for (let i = 6; i <= 26; ++i) {
+      const a = i * Math.PI / 64, c = Math.cos(a), s = Math.sin(a);
+      const x = g.continuous ? g.radius * 2 * (1 - Math.sqrt(c)) : g.radius * (1 - c);
+      const y = g.continuous ? g.radius * 2 * (1 - Math.sqrt(s)) : g.radius * (1 - s);
+      const gx = g.continuous ? c ** 1.5 : c, gy = g.continuous ? s ** 1.5 : s;
+      const length = Math.hypot(gx, gy), nx = gx / length, ny = gy / length;
+      groups[0].push(thickness(x, y, nx, ny));
+      groups[1].push(thickness(g.width - x, y, -nx, ny));
+      groups[2].push(thickness(x, g.height - y, nx, -ny));
+      groups[3].push(thickness(g.width - x, g.height - y, -nx, -ny));
+      const edge = g.width / 2 + i - 16;
+      groups[4].push(thickness(edge, 0, 0, 1), thickness(edge, g.height, 0, -1));
+    }
+    return groups.map(group => {
+      const inked = g.dashed ? group.filter(value => value > 1) : group;
+      return { samples: inked.length, width: inked.reduce((sum, value) => sum + value, 0) / inked.length };
+    });
+  }, { geometry, png: `data:image/png;base64,${png.toString("base64")}` });
+  for (const [index, measurement] of thicknesses.entries()) {
+    assert(measurement.samples >= 3 && measurement.width > 1.2 && measurement.width < 2.8,
+      `${label}: ${index < 4 ? "corner " + index : "straight sides"} must show an even 2px outline: ${JSON.stringify(thicknesses)}`);
+
+  }
+  // Average opposing corners to cancel pixel-phase differences when card
+  // bounds land between device pixels. Each corner still has its own limit.
+  const cornerWidth = thicknesses.slice(0, 4).reduce((sum, value) => sum + value.width, 0) / 4;
+  assert(Math.abs(cornerWidth - thicknesses[4].width) < .65,
+    `${label}: corner thickness must match the sides: ${JSON.stringify(thicknesses)}`);
+}
+
+async function assertPreviewOutlines(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport, deviceScaleFactor: 2 });
+  try {
+    await installRoutes(context, testCase.slug);
+    const page = await context.newPage();
+    await installFakeEventSource(page);
+    await page.addInitScript(() => { window.__ESPCONTROL_TEST_HOOKS__ = {}; });
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.locator('.sp-main > .sp-btn[data-slot="1"]').click();
+    await page.waitForSelector('.sp-main > .sp-btn[data-slot="1"].sp-selected');
+    const outlineStyle = await page.addStyleTag({ content: ".sp-btn,.sp-empty-cell{transition:none!important;--accent:#ff00ff!important;--card-outline-color:#ff00ff!important}" });
+    const fixtures = await page.evaluate(() => {
+      const hooks = window.__ESPCONTROL_TEST_HOOKS__.config;
+      const keys = [...new Set([...hooks.cardContractCardKeys(), ...hooks.buttonTypePickerKeysFor(false), "media_cover_art"])];
+      return keys.map(key => {
+        const config = hooks.buttonTypeDefaultConfig(key);
+        return config ? { key, config: hooks.serializeButtonConfig(config) } : null;
+      }).filter(Boolean);
+    });
+    assert(fixtures.some(fixture => fixture.key === "image"), "outline sweep must include image cards");
+    if (testCase.mediaCoverArtSupported) assert(fixtures.some(fixture => fixture.key === "media_cover_art"), "outline sweep must include Cover Art");
+    for (const preset of ["Small", "Medium", "Large"]) {
+      await page.evaluate(preset => window.__seedEspState([{ id: "select-screen__card_curve", state: preset, value: preset }]), preset);
+      for (const fixture of fixtures) {
+        await page.evaluate(config => window.__seedEspState([
+          { id: "text-button_order", state: "1" }, { id: "text-button_1_config", state: config },
+        ]), fixture.config);
+        const card = page.locator('.sp-main > .sp-btn[data-slot="1"]');
+        // Info-only profiles deliberately hide unsupported cards.
+        if (!(await card.count())) continue;
+        await page.waitForSelector('.sp-main > .sp-btn[data-slot="1"].sp-selected');
+        await assertPreviewOutlinePixels(page, page.locator('.sp-main > .sp-btn[data-slot="1"]'), `${testCase.slug}/${preset}/${fixture.key}`);
+      }
+      const empty = page.locator(".sp-main > .sp-empty-cell:not(.sp-info-only-hidden)").first();
+      await empty.hover();
+      await assertPreviewOutlinePixels(page, empty, `${testCase.slug}/${preset}/empty`);
+    }
+    // A resized, large artwork card exercises mask regeneration as well as layering.
+    if (testCase.mediaCoverArtSupported) {
+      const art = fixtures.find(fixture => fixture.key === "media_cover_art");
+      await page.evaluate(config => window.__seedEspState([
+        { id: "text-button_order", state: "1b" }, { id: "text-button_1_config", state: config },
+      ]), art.config);
+      await page.setViewportSize({ width: 700, height: 900 });
+      const card = page.locator('.sp-main > .sp-btn[data-slot="1"]');
+      if (!(await card.evaluate(card => card.classList.contains("sp-selected")))) await card.click();
+      await page.waitForSelector('.sp-main > .sp-btn[data-slot="1"].sp-selected');
+      await assertPreviewOutlinePixels(page, page.locator('.sp-main > .sp-btn[data-slot="1"]'), `${testCase.slug}/resized artwork`);
+    }
+    await outlineStyle.evaluate(style => style.remove());
+    if (process.env.ESPCONTROL_OUTLINE_SCREENSHOT) await page.locator(".sp-screen").screenshot({ path: process.env.ESPCONTROL_OUTLINE_SCREENSHOT });
+  } finally { await context.close(); }
+}
+
 async function assertContinuousPreview(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   try {
@@ -7039,13 +7164,21 @@ async function assertContinuousPreview(browser, testCase) {
       console.log("Card active colour browser checks passed.");
       return;
     }
+    if (process.env.ESPCONTROL_OUTLINES_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) await assertPreviewOutlines(browser, testCase);
+      console.log(`Preview outline pixel checks passed for ${ACTIVE_CASES.length} generated layouts.`);
+      return;
+    }
     if (process.env.ESPCONTROL_CURVE_PRESETS_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) await assertCardCurveSettings(browser, testCase);
       console.log(`Card curve preset checks passed for ${ACTIVE_CASES.length} generated layouts.`);
       return;
     }
     await assertCardCurveSettings(browser, ACTIVE_CASES[0]);
-    for (const testCase of ACTIVE_CASES) await assertContinuousPreview(browser, testCase);
+    for (const testCase of ACTIVE_CASES) {
+      await assertContinuousPreview(browser, testCase);
+      await assertPreviewOutlines(browser, testCase);
+    }
     if (process.env.ESPCONTROL_CORNERS_ONLY === "1") { console.log(`Continuous preview checks passed for ${ACTIVE_CASES.length} generated layouts.`); return; }
     await assertScreensaverPinSettings(browser);
     if (process.env.ESPCONTROL_PIN_ONLY === "1") { console.log("Screensaver PIN browser checks passed."); return; }
