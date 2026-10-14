@@ -250,7 +250,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         "z-index:180;align-items:center;justify-content:center;" +
         "backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}" +
         ".sp-settings-overlay.sp-visible{display:flex}" +
-        ".sp-settings-modal{position:relative;background:var(--bg);border:1px solid var(--border);" +
+        // Card editors keep their solid theme fill over legacy inline wallpaper styles.
+        ".sp-settings-modal{position:relative;background:var(--bg)!important;border:1px solid var(--border);" +
         "border-radius:var(--radius);width:90%;max-width:420px;max-height:80vh;" +
         "overflow-y:auto;box-shadow:var(--shadow-3);margin:40px;scrollbar-color:#fff transparent}" +
         ".sp-settings-modal.sp-card-type-picker-open{max-width:720px}" +

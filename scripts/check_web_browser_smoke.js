@@ -7630,6 +7630,41 @@ async function assertWallpaperSettings(browser) {
     await page.getByRole("button", { name: "Upload Image", exact: true }).waitFor();
     await page.getByRole("img", { name: "Saved wallpaper, 1280 by 800 pixels" }).waitFor();
     await assertClockBarTypographyAndIconLayout(page, "Wallpaper loaded");
+    // Reproduce the older renderer's inline wallpaper styling on an actual
+    // open editor, including its translucent theme overlay.
+    const editor = page.locator(".sp-settings-modal");
+    await editor.evaluate(el => {
+      const image = document.querySelector(".sp-screen").style.backgroundImage;
+      el.style.backgroundImage = `linear-gradient(color-mix(in srgb,var(--bg) 70%,transparent),color-mix(in srgb,var(--bg) 70%,transparent)),${image}`;
+      el.style.backgroundColor = "transparent";
+    });
+    async function assertSolidEditor(label) {
+      assert.strictEqual(await editor.isVisible(), true, `${label}: editor is actually open`);
+      const fill = await editor.evaluate(el => ({
+        image: getComputedStyle(el).backgroundImage,
+        colour: getComputedStyle(el).backgroundColor,
+        expected: getComputedStyle(document.querySelector("#sp-app")).getPropertyValue("--bg").trim(),
+      }));
+      assert.strictEqual(fill.image, "none", `${label}: editor must never show wallpaper`);
+      assert(fill.colour.startsWith("rgb("), `${label}: editor has a fully opaque theme fill`);
+      const expected = await page.evaluate(hex => {
+        const sample = document.createElement("div"); sample.style.backgroundColor = hex;
+        document.body.appendChild(sample); const colour = getComputedStyle(sample).backgroundColor; sample.remove(); return colour;
+      }, fill.expected);
+      assert.strictEqual(fill.colour, expected, `${label}: editor uses the original theme background`);
+    }
+    await page.getByRole("tab", {name: "Screen", exact: true}).click();
+    await page.locator(".sp-empty-cell:not(.sp-info-only-hidden)").first().click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible");
+    await assertSolidEditor("Card type chooser");
+    await page.getByRole("button", {name: "Camera Card card type", exact: true}).click();
+    await page.locator("#sp-inp-entity").fill("image.rain_incoming_home_radar_128km");
+    await editor.getByLabel("Name", {exact: true}).fill("Weather");
+    await assertSolidEditor("Camera Card");
+    await editor.screenshot({path: "/tmp/solid-camera-card-editor.png"});
+    await page.locator(".sp-settings-close").click();
+    await editor.evaluate(el => { el.style.removeProperty("background-image"); el.style.removeProperty("background-color"); });
+    await page.getByRole("tab", {name: "Settings", exact: true}).click();
     const modalFill = await page.locator(".sp-settings-modal").evaluate(el => ({
       image: getComputedStyle(el).backgroundImage,
       color: getComputedStyle(el).backgroundColor,
