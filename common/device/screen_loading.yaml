@@ -70,7 +70,10 @@ esphome:
   on_boot:
     - priority: -210
       then:
-        - lambda: 'register_theme_static_page(id(loading_page)->obj);'
+        - lambda: |-
+            // Keep startup and update status pages on their solid theme fill.
+            espcontrol::wallpaper_register_background(id(loading_page)->obj, false, false);
+            register_theme_static_page(id(loading_page)->obj);
     - priority: -200
       then:
         - lvgl.resume:

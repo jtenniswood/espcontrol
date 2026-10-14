@@ -3,11 +3,17 @@ from pathlib import Path
 import os
 import subprocess
 import tempfile
+import yaml
 
 root = Path(__file__).resolve().parents[2]
 source = (root / 'components/espcontrol/wallpaper_ui.h').read_text()
 binding = source[source.index('inline void wallpaper_widget_deleted('):source.index('inline void wallpaper_apply_card(')]
 refresh = source[source.index('inline void wallpaper_apply_cards('):source.index('inline void wallpaper_tick(')]
+loading_hooks = []
+for name in ('screen_loading.yaml', 'screen_loading_ethernet.yaml'):
+    config = yaml.safe_load((root / 'common/device' / name).read_text())
+    boot = next(action for action in config['esphome']['on_boot'] if action['priority'] == -210)
+    loading_hooks.append(boot['then'][0]['lambda'].replace('id(loading_page)->obj', 'loading_page->obj'))
 fixture = r'''
 #include <algorithm>
 #include <cassert>
@@ -83,6 +89,7 @@ std::vector<Page> &navigation_subpages() { return subpages; }
 struct StaticPage { lv_obj_t *page; };
 std::vector<StaticPage> setup;
 std::vector<StaticPage> &theme_static_pages() { return setup; }
+void register_theme_static_page(lv_obj_t *page) { setup.push_back({page}); }
 void wallpaper_apply_card_opacity() {}
 /* PRODUCTION */
 }
@@ -91,17 +98,24 @@ int main() {
   auto *home = new lv_obj_t, *initial_subpage = new lv_obj_t, *setup_page = new lv_obj_t;
   auto *clock = new lv_obj_t, *camera = new lv_obj_t, *cover_art = new lv_obj_t;
   auto *modal = new lv_obj_t, *nested = new lv_obj_t;
+  auto *loading = new lv_obj_t, *ethernet_loading = new lv_obj_t;
+  struct PageRef { lv_obj_t *obj; } ref{loading};
+  auto *loading_page = &ref;
+  /* WIFI LOADING */
+  loading_page->obj = ethernet_loading;
+  /* ETHERNET LOADING */
   subpages.push_back({initial_subpage}); setup.push_back({setup_page});
   home->pads[2] = 60;
   for (auto *screen : {camera, cover_art}) wallpaper_register_background(screen);
   wallpaper_register_background(clock, false, false);
   wallpaper_register_background(modal, true); wallpaper_register_background(nested, true);
   wallpaper_register_background(modal, true);
-  assert(wallpaper_backgrounds().size() == 5 && ui.widgets.empty());
+  assert(ui.widgets.empty());
   wallpaper_background_refresh() = wallpaper_bind_screen;
   // A restored disabled clock remains black when the image first loads.
   ui.pixels = reinterpret_cast<uint8_t *>(1);
   wallpaper_apply_cards();
+  assert(loading->children.empty() && ethernet_loading->children.empty());
   assert(clock->children.empty() && ui.widgets.size() == 4);
   emit(clock, LV_EVENT_SIZE_CHANGED); emit(clock, LV_EVENT_SCREEN_LOAD_START);
   assert(clock->children.empty());
@@ -145,6 +159,10 @@ int main() {
   assert(ui.widgets.size() == 7 && home->children.front() == same_widget);
   assert(same_widget->source == &ui.colour_image && same_widget->zoom == 23040);
   assert(initial_subpage->children.front()->source == &ui.colour_image);
+  for (auto *screen : {loading, ethernet_loading}) {
+    emit(screen, LV_EVENT_SIZE_CHANGED); emit(screen, LV_EVENT_SCREEN_LOAD_START);
+    assert(screen->children.empty());
+  }
   assert(modal->children.front() == foreground && nested->children.empty());
   ui.pixels = nullptr; wallpaper_apply_cards();
   assert(ui.widgets.size() == 7);  // Colour needs no uploaded wallpaper.
@@ -155,15 +173,15 @@ int main() {
   ui.pixels = reinterpret_cast<uint8_t *>(2); wallpaper_apply_cards();
   assert(ui.widgets.size() == 7);
   lv_obj_del(late); lv_obj_del(nested);
-  assert(ui.widgets.size() == 6 && wallpaper_backgrounds().size() == 7);
-  for (auto *screen : {home, initial_subpage, setup_page, clock, camera, cover_art, modal}) lv_obj_del(screen);
+  assert(ui.widgets.size() == 6 && wallpaper_backgrounds().size() == 9);
+  for (auto *screen : {home, initial_subpage, setup_page, clock, camera, cover_art, modal, loading, ethernet_loading}) lv_obj_del(screen);
   assert(ui.widgets.empty() && wallpaper_backgrounds().empty());
 }
 '''
 with tempfile.TemporaryDirectory() as directory:
     path = Path(directory)
-    (path / 'test.cpp').write_text(fixture.replace('/* PRODUCTION */', binding + refresh))
+    (path / 'test.cpp').write_text(fixture.replace('/* PRODUCTION */', binding + refresh).replace('/* WIFI LOADING */', loading_hooks[0]).replace('/* ETHERNET LOADING */', loading_hooks[1]))
     subprocess.run([os.environ.get('CXX', 'g++'), '-std=c++17', '-Wall', '-Wextra', '-Werror',
                     '-I', str(root / 'components/espcontrol'), str(path / 'test.cpp'), '-o', str(path / 'test')], check=True)
     subprocess.run([str(path / 'test')], check=True)
-print('Shared wallpaper backgrounds, solid modals, late screens, resizing and cleanup checks passed.')
+print('Shared wallpaper backgrounds, solid startup/loading pages and modals, late screens, resizing and cleanup checks passed.')
