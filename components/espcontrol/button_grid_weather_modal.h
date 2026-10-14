@@ -1,7 +1,7 @@
 #pragma once
 
 // Six visible day panels share the card's bounded eight-day forecast snapshot.
-// Each panel reuses one two-line label for rain chance/amount and wind speed.
+// Each panel reuses one evenly spaced two-line label for wind and rain data.
 struct WeatherDailyModalColumn { lv_obj_t *button, *day, *icon, *temperature, *conditions; };
 struct WeatherDailyModal {
   lv_obj_t *overlay = nullptr, *owner = nullptr, *body = nullptr;
@@ -64,12 +64,12 @@ inline std::string weather_daily_modal_conditions(const WeatherDailyModal &ui,
     rain += weather_daily_modal_number(day.precipitation);
     if (forecast.precipitation_unit[0]) rain += " " + std::string(forecast.precipitation_unit);
   }
-  if (!rain.empty()) append("Rain", rain);
   if (std::isfinite(day.wind)) {
     auto value = weather_daily_modal_number(day.wind);
     if (forecast.wind_unit[0]) value += " " + std::string(forecast.wind_unit);
     append("Wind", value);
   }
+  if (!rain.empty()) append("Rain", rain);
   return result;
 }
 inline void weather_daily_modal_refresh_status(WeatherDailyModal &ui) {
@@ -87,7 +87,7 @@ inline void weather_daily_modal_refresh_status(WeatherDailyModal &ui) {
 inline void weather_daily_refresh_modal() {
   auto &ui = weather_daily_modal();
   if (!ui.overlay || !ui.source) return;
-  lv_obj_set_style_text_color(ui.placeholder_icon, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
+  lv_obj_set_style_text_color(ui.placeholder_icon, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
   lv_obj_set_style_text_color(ui.message, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
   const auto &forecast = ui.source->forecast;
   if (!forecast.count) {
@@ -115,9 +115,9 @@ inline void weather_daily_refresh_modal() {
     const int small_height = lv_font_get_line_height(ui.temperature_font);
     const int icon_y = ui.day_vertical_padding;
     const int day_y = ui.side_header ? icon_y : icon_y + icon_height + ui.text_gap;
-    const int temperature_y = day_y + text_height + 2;
-    const int info_y = ui.side_header ? std::max(icon_y + icon_height, temperature_y + small_height) + 4
-      : temperature_y + small_height + 4;
+    const int temperature_y = day_y + text_height + ui.text_gap;
+    const int info_y = ui.side_header ? std::max(icon_y + icon_height, temperature_y + small_height) + ui.text_gap
+      : temperature_y + small_height + ui.text_gap;
     for (size_t i = 0; i < count; ++i) {
       const int column = static_cast<int>(i % 3), row = static_cast<int>(i / 3);
       const int column_width = width + (column < remainder ? 1 : 0);
@@ -133,8 +133,10 @@ inline void weather_daily_refresh_modal() {
       WeatherDailyModalColumn col{button, make(ui.font, day_y, header_x), make(ui.icon_font, icon_y, ui.day_padding),
         make(ui.temperature_font, temperature_y, header_x), make(ui.temperature_font, info_y, ui.day_padding)};
       lv_obj_set_width(col.icon, icon_height);
-      lv_obj_set_height(col.conditions, small_height * 2);
+      lv_obj_set_style_text_line_space(col.conditions, ui.text_gap, LV_PART_MAIN);
+      lv_obj_set_height(col.conditions, small_height * 2 + ui.text_gap);
       theme_set_content_foreground(col.day);
+      theme_set_content_foreground(col.icon);
       ui.columns.push_back(col);
     }
   }
@@ -149,7 +151,8 @@ inline void weather_daily_refresh_modal() {
       date = weather_daily_weekday_label(day);
     lv_label_set_display_text(col.day, date.c_str());
     lv_obj_set_style_text_color(col.day, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
-    for (auto *data : {col.icon, col.temperature, col.conditions})
+    lv_obj_set_style_text_color(col.icon, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+    for (auto *data : {col.temperature, col.conditions})
       lv_obj_set_style_text_color(data, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
     lv_label_set_display_text(col.icon, weather_icon_for_state(day.condition));
     lv_label_set_display_text(col.temperature, weather_daily_temperature_range(day, forecast.temperature_unit).c_str());
@@ -182,9 +185,10 @@ inline void weather_daily_open_modal(WeatherDailyCard *card) {
   ui.forecast_height = height - small_height - ui.gap;
   ui.row_height = (ui.forecast_height - ui.gap) / 2;
   // A side-by-side icon/header preserves readable existing fonts on short landscape panels.
-  const int vertical_content = icon_height + text_height + small_height * 3 + ui.text_gap + 6;
+  const int vertical_content = icon_height + text_height + small_height * 3 + ui.text_gap * 4;
   ui.side_header = vertical_content + 8 > ui.row_height;
-  const int content_height = ui.side_header ? std::max(icon_height, text_height + 2 + small_height) + 4 + small_height * 2
+  const int content_height = ui.side_header ? std::max(icon_height, text_height + ui.text_gap + small_height)
+      + ui.text_gap * 2 + small_height * 2
     : vertical_content;
   ui.day_vertical_padding = std::max(4, std::min(8, (ui.row_height - content_height) / 2));
   ui.body = weather_daily_modal_container(shell.panel, ui.row_width, height);

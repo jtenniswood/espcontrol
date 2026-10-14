@@ -29,7 +29,7 @@ struct lv_obj_t {
   std::vector<lv_obj_t *> children;
   std::vector<Binding> events;
   const lv_font_t *font = &::font;
-  int width = 460, height = 160, flags = 0, x = 0, y = 0, text_align = 0, text_color = 0;
+  int width = 460, height = 160, flags = 0, x = 0, y = 0, text_align = 0, text_color = 0, line_space = 0;
   std::string text;
   explicit lv_obj_t(lv_obj_t *parent) : parent(parent) { ++live; if (parent) parent->children.push_back(this); }
   ~lv_obj_t() { --live; }
@@ -80,6 +80,7 @@ void lv_obj_set_style_text_font(lv_obj_t *obj,const lv_font_t *f,int){obj->font=
 const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *obj,int){return obj->font;}
 #define NOOP(name) template<class... T> void name(T...) {}
 void lv_obj_set_style_text_color(lv_obj_t *obj,int color,int){obj->text_color=color;}
+void lv_obj_set_style_text_line_space(lv_obj_t *obj,int space,int){obj->line_space=space;}
 void theme_set_content_foreground(lv_obj_t *obj){obj->flags|=LV_OBJ_FLAG_USER_2;}
 NOOP(lv_label_set_long_mode) NOOP(lv_obj_set_style_text_opa)
 void lv_obj_set_style_text_align(lv_obj_t *obj,int align,int){obj->text_align=align;}
@@ -185,12 +186,14 @@ void check_modal_fit(){
     assert(column.conditions->y+column.conditions->height+ui.day_vertical_padding<=column.button->height);
     if(ui.side_header){
       assert(column.day->x>=column.icon->x+column.icon->width);
-      assert(column.conditions->y>=std::max(column.icon->y+column.icon->height,column.temperature->y+column.temperature->height));
+      assert(column.conditions->y==std::max(column.icon->y+column.icon->height,column.temperature->y+column.temperature->height)+ui.text_gap);
     } else {
       assert(column.icon->y+column.icon->height+ui.text_gap==column.day->y);
-      assert(column.day->y+column.day->height<=column.temperature->y);
-      assert(column.temperature->y+column.temperature->height<=column.conditions->y);
+      assert(column.temperature->y+column.temperature->height+ui.text_gap==column.conditions->y);
     }
+    assert(column.day->y+column.day->height+ui.text_gap==column.temperature->y);
+    assert(column.conditions->line_space==ui.text_gap);
+    assert(column.conditions->height==2*lv_font_get_line_height(ui.temperature_font)+ui.text_gap);
     assert(column.icon->text_align==LV_TEXT_ALIGN_LEFT && column.day->text_align==LV_TEXT_ALIGN_LEFT && column.temperature->text_align==LV_TEXT_ALIGN_LEFT && column.conditions->text_align==LV_TEXT_ALIGN_LEFT);
   }
   assert(ui.days->y+ui.days->height<=ui.status->y);
@@ -198,8 +201,11 @@ void check_modal_fit(){
   for(const auto &column:ui.columns){
     assert(!(column.button->flags & LV_OBJ_FLAG_CLICKABLE) && column.button->events.empty());
     assert(column.day->text_color==0xFFFFFF && (column.day->flags & LV_OBJ_FLAG_USER_2));
-    assert(column.icon->text_color==theme.text_muted && column.temperature->text_color==theme.text_muted && column.conditions->text_color==theme.text_muted);
+    assert(column.icon->text_color==0xFFFFFF && (column.icon->flags & LV_OBJ_FLAG_USER_2));
+    assert(column.temperature->text_color==theme.text_muted && column.conditions->text_color==theme.text_muted);
     assert(column.conditions->text.find("Humidity")==std::string::npos);
+    const auto wind=column.conditions->text.find("km/h"),rain=column.conditions->text.find("mm");
+    if(wind!=std::string::npos && rain!=std::string::npos)assert(wind<rain);
   }
 }
 int main(){
@@ -224,6 +230,7 @@ int main(){
     weather_daily_open_modal(card);
     assert(weather_daily_modal().message->text=="Loading forecast");
     assert(weather_daily_modal().placeholder_icon->text=="\U000F18F6");
+    assert(weather_daily_modal().placeholder_icon->text_color==0xFFFFFF);
     weather_daily_hide_modal();
 
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();

@@ -58,11 +58,11 @@ All forecast modes share one compact eight-day forecast per weather entity. The 
 
 ## Forecast Details
 
-Tap any forecast card to open a **3×2 grid** of up to six forecast days. Each day panel shows its day in white and its condition icon, whole-degree high/low temperatures, rain chance, rainfall amount and wind speed in grey. Rain chance and rainfall share one row, such as **80% / 2.4 mm**, with wind below. Rainfall and wind keep the provider's units. Missing values are omitted and zero values remain visible. Short displays abbreviate labels where needed to keep values and units readable; short landscape panels place the icon beside the day and temperatures.
+Tap any forecast card to open a **3×2 grid** of up to six forecast days. Each day panel shows its day and weather icon in white, with whole-degree high/low temperatures, wind speed and rain data in grey. Lines use equal spacing, with wind above the rain chance and rainfall row, such as **80% / 2.4 mm**. Rainfall and wind keep the provider's units. Missing values are omitted and zero values remain visible. Short displays abbreviate labels where needed to keep values and units readable; short landscape panels place the icon beside the day and temperatures.
 
 Day panels have no selection highlight or tap action, and there is no separate rain/humidity footer. The grey **Last forecast** notice appears below the grid when data is stale. The layout fits supported displays in both orientations without scrolling or paging controls and has no separate Weather heading.
 
-The modal allocates only available day panels, up to six, with one reusable two-line rain/wind label per day. It shares the card's bounded forecast snapshot and uses existing fonts.
+The modal allocates only available day panels, up to six, with one reusable two-line wind/rain label per day. It shares the card's bounded forecast snapshot and uses existing fonts.
 
 ## Supported Conditions
 
