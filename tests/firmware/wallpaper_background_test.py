@@ -134,6 +134,19 @@ int main() {
     assert(image->opacity == LV_OPA_COVER);
   }
   assert(home->children.front()->y == -30);
+  // Clock-only dimming fades the wallpaper against black without touching text.
+  auto *clock_text = new lv_obj_t; clock_text->parent = clock; clock->children.push_back(clock_text);
+  wallpaper_set_background_dimming(clock, 40);
+  assert(clock->children.front()->opacity == 153 && clock_text->opacity == 255);
+  assert(home->children.front()->opacity == 255 && camera->children.front()->opacity == 255);
+  emit(clock, LV_EVENT_SIZE_CHANGED); emit(clock, LV_EVENT_SCREEN_LOAD_START);
+  assert(clock->children.front()->opacity == 153);
+  wallpaper_set_background_dimming(clock, 200);
+  assert(clock->children.front()->opacity == 0 && clock_text->opacity == 255);
+  wallpaper_set_background_dimming(clock, -10);
+  assert(clock->children.front()->opacity == 255);
+  wallpaper_set_background_dimming(clock, 40);
+  lv_obj_del(clock_text);
   auto *late = new lv_obj_t;
   wallpaper_register_background(late);
   assert(late->children.size() == 1 && ui.widgets.size() == 7);
@@ -156,6 +169,7 @@ int main() {
   assert(clock->children.empty() && ui.widgets.size() == 6);
   wallpaper_set_background_enabled(clock, true);
   assert(clock->children.front()->source == &ui.colour_image);
+  assert(clock->children.front()->opacity == 153);
   assert(ui.widgets.size() == 7 && home->children.front() == same_widget);
   assert(same_widget->source == &ui.colour_image && same_widget->zoom == 23040);
   assert(initial_subpage->children.front()->source == &ui.colour_image);

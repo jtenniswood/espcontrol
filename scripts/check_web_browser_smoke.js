@@ -7568,6 +7568,8 @@ async function assertClockWallpaperSettings(browser) {
   const testCase = ACTIVE_CASES[0];
   const context = await browser.newContext({viewport: testCase.viewport});
   let savedWallpaper = true;
+  let savedDimming = 0;
+  const dimmingPosts = [];
   const posts = [];
   try {
     await installRoutes(context, testCase.slug);
@@ -7579,6 +7581,14 @@ async function assertClockWallpaperSettings(browser) {
       posts.push(savedWallpaper);
       await route.fulfill({status: 200, body: ""});
     });
+    await context.route("**/number/**", async route => {
+      const url = new URL(route.request().url());
+      if (!/Wallpaper Dimming|wallpaper_dimming/.test(decodeURIComponent(url.pathname))) { await route.fallback(); return; }
+      assert.strictEqual(route.request().method(), "POST");
+      savedDimming = Number(url.searchParams.get("value"));
+      dimmingPosts.push(savedDimming);
+      await route.fulfill({status: 200, body: ""});
+    });
     const page = await context.newPage();
     await installFakeEventSource(page);
     const open = async (supported = true) => {
@@ -7588,6 +7598,7 @@ async function assertClockWallpaperSettings(browser) {
         ...seededEvents(),
         {id: "switch-screen_saver__show_date", state: "OFF", value: false},
         ...(supported ? [{id: "switch-clock_screensaver_show_wallpaper", state: savedWallpaper ? "ON" : "OFF", value: savedWallpaper}] : []),
+        ...(supported ? [{id: "number-clock_wallpaper_dimming", state: String(savedDimming), value: savedDimming}] : []),
       ]);
       await page.getByRole("tab", {name: "Settings", exact: true}).click();
       await page.getByRole("heading", {name: "Screensaver", exact: true}).click();
@@ -7600,6 +7611,8 @@ async function assertClockWallpaperSettings(browser) {
       await page.locator(selector).click();
       await response;
     };
+    const dimming = page.locator("#sp-set-clock-wallpaper-dimming");
+    const sensorDimming = page.locator("#sp-set-sensor-clock-wallpaper-dimming");
     const wallpaper = page.locator("#sp-set-clock-wallpaper");
     const sensorWallpaper = page.locator("#sp-set-sensor-clock-wallpaper");
     const wallpaperRow = wallpaper.locator("..").locator("..");
@@ -7607,9 +7620,20 @@ async function assertClockWallpaperSettings(browser) {
     await open(false);
     assert.strictEqual(await wallpaperRow.isVisible(), false, "older firmware hides unsupported Show Wallpaper");
     assert.strictEqual(posts.length, 0);
+    assert.strictEqual(await dimming.isVisible(), false, "older firmware hides the unsupported dimming slider");
     await open();
     assert.strictEqual(await wallpaperRow.isVisible(), true);
     assert.strictEqual(await wallpaper.isChecked(), true, "Show Wallpaper defaults on");
+    assert.strictEqual(await dimming.isVisible(), true);
+    assert.strictEqual(await dimming.inputValue(), "0", "wallpaper dimming defaults to zero");
+    const setDimming = async (slider, value) => {
+      const response = page.waitForResponse(response => response.request().method() === "POST" &&
+        /Wallpaper Dimming|wallpaper_dimming/.test(decodeURIComponent(response.url())));
+      await slider.fill(String(value));
+      await response;
+    };
+    await setDimming(dimming, 40);
+    assert.strictEqual(await sensorDimming.inputValue(), "40", "Timer changes synchronize dimming with Sensor");
     assert(await wallpaper.evaluate(input => {
       const row = input.closest(".sp-toggle-row"), date = document.querySelector("#sp-set-clock-date").closest(".sp-toggle-row");
       return !!(row.compareDocumentPosition(date) & Node.DOCUMENT_POSITION_FOLLOWING);
@@ -7619,13 +7643,21 @@ async function assertClockWallpaperSettings(browser) {
     await page.getByRole("button", {name: "Sensor", exact: true}).click();
     assert.strictEqual(await sensorWallpaperRow.isVisible(), true);
     assert.strictEqual(await sensorWallpaper.isChecked(), false, "Timer changes synchronize with Sensor");
+    assert.strictEqual(await sensorDimming.isVisible(), false, "dimming hides with Show Wallpaper off");
     await toggleAndSave('label[for="sp-set-sensor-clock-wallpaper"]');
+    assert.strictEqual(await sensorDimming.isVisible(), true);
+    await setDimming(sensorDimming, 100);
+    await setDimming(sensorDimming, 0);
+    await setDimming(sensorDimming, 65);
+    assert.deepStrictEqual(dimmingPosts, [40, 100, 0, 65], "each slider change saves once, including both endpoints");
     await page.getByRole("button", {name: "Timer", exact: true}).click();
+    assert.strictEqual(await dimming.inputValue(), "65");
     assert.strictEqual(await wallpaper.isChecked(), true, "Sensor changes synchronize with Timer");
     assert.deepStrictEqual(posts, [false, true], "each toggle saves once to the correct device switch");
     await toggleAndSave('label[for="sp-set-clock-wallpaper"]');
     await open();
     assert.strictEqual(await wallpaper.isChecked(), false, "the saved device state is restored after reload");
+    assert.strictEqual(await dimming.inputValue(), "65", "saved dimming restores on reload even when hidden");
     await page.locator("#sp-set-clock-mode").selectOption("dim");
     assert.strictEqual(await wallpaperRow.isVisible(), false, "wallpaper toggle appears only for Clock");
     await page.locator("#sp-set-clock-mode").selectOption("off");
@@ -7635,6 +7667,7 @@ async function assertClockWallpaperSettings(browser) {
     await page.getByRole("button", {name: "Export", exact: true}).click();
     const backup = JSON.parse(fs.readFileSync(await (await downloadPromise).path(), "utf8"));
     assert.strictEqual(backup.settings.clock_wallpaper, false, "export includes the saved Show Wallpaper choice");
+    assert.strictEqual(backup.settings.clock_wallpaper_dimming, 65, "backup includes wallpaper dimming");
   } finally { await context.close(); }
 }
 

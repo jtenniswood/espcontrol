@@ -644,6 +644,7 @@ const panelSettings = model.normalizeBackupPanelSettings({
   firmware_auto_update: false,
   firmware_update_frequency: "Weekly",
   clock_wallpaper: false,
+  clock_wallpaper_dimming: 42,
   clock_date: true,
   clock_brightness_day: 44,
   clock_brightness_night: 22,
@@ -794,6 +795,7 @@ assert.strictEqual(
   "secondary cover art media player survives backup import"
 );
 assert.strictEqual(panelSettings.clockWallpaper, false, "clock wallpaper disabled preference survives backup normalization");
+assert.strictEqual(panelSettings.clockWallpaperDimming, 42, "panel wallpaper dimming imports");
 assert.strictEqual(panelSettings.clockBrightnessDay, 44, "panel day clock brightness imports");
 assert.strictEqual(panelSettings.clockBrightnessNight, 22, "panel night clock brightness imports");
 assert.strictEqual(panelSettings.screensaverDimmedBrightnessDay, 30, "panel day dimmed brightness imports");

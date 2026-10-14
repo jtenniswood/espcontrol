@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 9,
     "cardTypes": 44,
-    "entityNames": 112,
+    "entityNames": 113,
     "icons": 367,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
@@ -7428,6 +7428,19 @@
           "screen_saver__show_wallpaper",
           "screen_saver_show_wallpaper",
           "clock_screensaver_show_wallpaper"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_wallpaper_dimming",
+        "domain": "number",
+        "name": "Screen Saver: Wallpaper Dimming",
+        "objectIds": [
+          "screen_saver__wallpaper_dimming",
+          "screen_saver_wallpaper_dimming",
+          "clock_wallpaper_dimming"
         ],
         "groups": [
           "settings"

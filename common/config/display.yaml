@@ -1056,6 +1056,27 @@ number:
               - script.execute: screensaver_dimmed_refresh_brightness
 
   - platform: template
+    name: "${entity_screen_saver_wallpaper_dimming}"
+    internal: true
+    id: clock_wallpaper_dimming
+    min_value: 0
+    max_value: 100
+    step: 1
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "%"
+    entity_category: config
+    icon: "mdi:brightness-6"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - lambda: |-
+            espcontrol::wallpaper_set_background_dimming(id(clock_screensaver), x);
+            global_preferences->sync();
+
+  - platform: template
     name: "${entity_screen_saver_daytime_clock_brightness}"
     internal: true
     id: clock_brightness_day

@@ -429,6 +429,15 @@ export const ENTITY_CATALOG = {
         "clock_screensaver_show_wallpaper"
       ]
     },
+    "screen_saver_wallpaper_dimming": {
+      "domain": "number",
+      "name": "Screen Saver: Wallpaper Dimming",
+      "objectIds": [
+        "screen_saver__wallpaper_dimming",
+        "screen_saver_wallpaper_dimming",
+        "clock_wallpaper_dimming"
+      ]
+    },
     "screen_saver_show_date": {
       "domain": "switch",
       "name": "Screen Saver: Show Date",
@@ -838,6 +847,7 @@ export const ENTITY_CATALOG = {
       "home_screen_timeout",
       "screen_saver_clock",
       "screen_saver_show_wallpaper",
+      "screen_saver_wallpaper_dimming",
       "screen_saver_show_date",
       "screen_saver_clock_overlay",
       "screen_timezone",

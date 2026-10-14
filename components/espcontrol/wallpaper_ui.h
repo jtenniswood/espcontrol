@@ -49,7 +49,11 @@ inline void wallpaper_bind_screen(lv_obj_t *screen, bool solid = false) {
     ui.widgets.push_back(widget);
   }
   lv_image_set_src(widget, image);
-  lv_obj_set_style_image_opa(widget, LV_OPA_COVER, LV_PART_MAIN);
+  int dimming = 0;
+  for (const auto &background : wallpaper_backgrounds())
+    if (background.root == screen) { dimming = background.dimming; break; }
+  // Fade only the background image against the root's solid fill; text stays bright.
+  lv_obj_set_style_image_opa(widget, (255 * (100 - dimming) + 50) / 100, LV_PART_MAIN);
   const int zoom = std::max((width * 256 + int(image->header.w) - 1) / int(image->header.w),
                             (height * 256 + int(image->header.h) - 1) / int(image->header.h));
   lv_image_set_scale(widget, zoom);

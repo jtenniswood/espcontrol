@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdint>
 #include <vector>
 
 namespace espcontrol {
@@ -8,6 +9,7 @@ struct WallpaperBackground {
   lv_obj_t *root;
   bool modal;
   bool enabled = true;
+  uint8_t dimming = 0;
 };
 inline std::vector<WallpaperBackground> &wallpaper_backgrounds() {
   static std::vector<WallpaperBackground> backgrounds;
@@ -26,6 +28,14 @@ inline void wallpaper_set_background_enabled(lv_obj_t *root, bool enabled) {
   for (auto &background : wallpaper_backgrounds()) {
     if (background.root != root) continue;
     background.enabled = enabled;
+    wallpaper_refresh_background(background);
+    return;
+  }
+}
+inline void wallpaper_set_background_dimming(lv_obj_t *root, int percent) {
+  for (auto &background : wallpaper_backgrounds()) {
+    if (background.root != root) continue;
+    background.dimming = static_cast<uint8_t>(std::max(0, std::min(100, percent)));
     wallpaper_refresh_background(background);
     return;
   }

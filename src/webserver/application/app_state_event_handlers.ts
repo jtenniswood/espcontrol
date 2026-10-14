@@ -265,6 +265,13 @@ export function createAppStateEventHandlersFeature(
                 state.coverArtScreensaverOn = d.value === true || val === "ON";
                 syncCoverArtScreensaverUi();
             },
+            "number-screen_saver__wallpaper_dimming": function (this: any, val?: any) {
+                var percent = Number(val);
+                if (!Number.isFinite(percent)) return;
+                state.clockWallpaperDimmingSupported = true;
+                state.clockWallpaperDimming = Math.max(0, Math.min(100, Math.round(percent)));
+                syncClockScreensaverControls();
+            },
             "switch-screen_saver__show_wallpaper": function (this: any, val?: any, d?: any) {
                 state.clockWallpaperSupported = true;
                 state.clockWallpaperOn = d.value === true || val === "ON";

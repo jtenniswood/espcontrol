@@ -405,6 +405,7 @@ export interface BackupPanelSettingsState {
   mediaPlayerSleepPreventionEntity: string;
   coverArtScreensaver: boolean;
   clockWallpaper?: boolean | undefined;
+  clockWallpaperDimming?: number | undefined;
   clockDate: boolean;
   clockOverlay: boolean;
   coverArtMediaPlayerEntity: string;
@@ -566,6 +567,8 @@ export function normalizeBackupPanelSettings(
     mediaPlayerSleepPreventionEntity: String(settings.media_player_sleep_prevention_entity || settings.cover_art_media_player_entity || ""),
     coverArtScreensaver: !!settings.cover_art_screensaver,
     clockWallpaper: typeof settings.clock_wallpaper === "boolean" ? settings.clock_wallpaper : undefined,
+    clockWallpaperDimming: typeof settings.clock_wallpaper_dimming === "number" && Number.isFinite(settings.clock_wallpaper_dimming)
+      ? Math.max(0, Math.min(100, Math.round(settings.clock_wallpaper_dimming))) : undefined,
     clockDate: !!settings.clock_date,
     clockOverlay: objectValue(settings, "clock_overlay") != null
       ? !!settings.clock_overlay
