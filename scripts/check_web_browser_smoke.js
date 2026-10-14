@@ -7556,11 +7556,18 @@ async function assertWallpaperSettings(browser) {
   await installRoutes(context, testCase.slug, { wallpaperState: wallpaper, resetState });
   const page = await context.newPage();
   await installFakeEventSource(page);
+  let reviewFixture = false;
   async function open() {
     await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector("#sp-app");
     await page.waitForFunction(() => window.__eventSources?.length > 0);
-    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    const events = seededEvents();
+    if (reviewFixture) {
+      events.find(event => event.id === "text-button_1_config").state = "light.kitchen;Striped;Lightbulb;Lightbulb;;;;;on_pattern=stripes";
+      events.find(event => event.id === "text-button_3_config").state = ";Rooms;Home;Auto;;;subpage";
+      events.push({ id: "text-subpage_3_config", state: "~B,1|,light.kitchen,Kitchen,Lightbulb,Lightbulb" });
+    }
+    await page.evaluate(events => window.__seedEspState(events), events);
     await page.getByRole("tab", { name: "Settings" }).click();
     const card = page.locator("#sp-settings .card").filter({ has: page.locator("#sp-set-wallpaper") });
     if (!(await card.getByRole("button", { name: "Upload Image" }).isVisible())) await card.locator(".card-header").click();
@@ -7726,6 +7733,30 @@ async function assertWallpaperSettings(browser) {
     } finally { await page.mouse.up(); }
     await page.getByRole("tab", { name: "Settings", exact: true }).click();
     await assertCardAlpha(128 / 255);
+    // Striped fills use active transparency in every gradient stop.
+    reviewFixture = true; await open();
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"]')?.classList.contains("sp-on-pattern"));
+    const stripedFill = await page.locator('.sp-main [data-slot="1"]').evaluate(card => getComputedStyle(card).backgroundImage);
+    const stripeStops = [...stripedFill.matchAll(/rgba\([^)]+,\s*([\d.]+)\)/g)];
+    assert.strictEqual(stripeStops.length, 4, "All striped gradient stops carry alpha");
+    for (const stop of stripeStops) assert(Math.abs(Number(stop[1]) - 230 / 255) < .004);
+    await page.getByRole("tab", { name: "Screen", exact: true }).click();
+    await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+    const backCard = page.locator(".sp-back-btn");
+    await backCard.waitFor();
+    assert.strictEqual(parseInt((await backCard.evaluate(card => card.style.getPropertyValue("--card-active-color"))).slice(-2), 16), 230);
+    await backCard.evaluate(card => card.addEventListener("click", event => {
+      event.preventDefault(); event.stopImmediatePropagation();
+    }, { capture: true, once: true }));
+    await backCard.hover(); await page.mouse.down();
+    try {
+      await page.waitForFunction(() => {
+        const color = getComputedStyle(document.querySelector(".sp-back-btn")).backgroundColor;
+        return color.startsWith("rgba(") && Math.abs(parseFloat(color.split(",").at(-1)) - 230 / 255) < .004;
+      });
+    } finally { await page.mouse.up(); }
+    await page.locator(".sp-back-btn .sp-back-hit").click();
+    reviewFixture = false; await open();
     const savedBackground = await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage);
     await open();
     assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), savedBackground);

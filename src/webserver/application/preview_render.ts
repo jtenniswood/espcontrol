@@ -180,6 +180,8 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 backBtn.style.backgroundColor = wallpaperCardColor(backColor, hasWallpaper, els.wallpaperOpacityPercent);
                 backBtn.style.setProperty("--card-text-color", subpage?.backColor
                     ? cardPreviewTextColor(backColor) : "#" + previewColors.textPrimary);
+                backBtn.style.setProperty("--card-active-color", wallpaperCardColor(state.onColor || WEB_UI_COLORS.primary, hasWallpaper, els.wallpaperActiveOpacityPercent));
+                backBtn.style.setProperty("--card-active-text-color", cardPreviewTextColor(state.onColor || WEB_UI_COLORS.primary));
                 backBtn.style.cursor = "pointer";
                 backBtn.setAttribute("data-pos", pos);
                 backBtn.draggable = !isConfigLocked();
@@ -250,7 +252,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 btn.setAttribute("data-pos", pos);
                 btn.setAttribute("data-slot", slot);
                 var hasWhenOn: any = !typePreview && (b.sensor || (b.icon_on && b.icon_on !== "Auto"));
-                if (!typePreview && hasWhenOn && typeof cardOnPattern === "function" && cardOnPattern(b) === "stripes") {
+                if ((hasWhenOn || (b.type || "") === "") && typeof cardOnPattern === "function" && cardOnPattern(b) === "stripes") {
                     var onColor: any = cardOnColor || (state.onColor && state.onColor.length === 6 ? state.onColor : WEB_UI_COLORS.primary);
                     contrastBackground = onColor;
                     var highlight = cardPatternHighlightColor(onColor);
