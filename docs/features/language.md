@@ -5,7 +5,7 @@ description: Choose the panel language and learn how to contribute translations 
 
 # Language
 
-Open the panel web page, go to **Settings**, then choose **Language**.
+Open the panel web page, go to **Device > Preferences > Language**.
 
 The language setting is stored on the device as the Home Assistant select entity **Screen: Language**. It is also included when you export a backup from the panel setup page.
 

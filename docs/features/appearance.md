@@ -6,8 +6,8 @@ description:
 
 # Appearance
 
-The **Appearance** section sits above **Display** in Settings. Its panels are
-**Active Colour**, **Card Style** (curve) and **Theme**.
+The **Appearance** section is at the top of **Settings**. Its panels are
+**Active Colour**, **Card Style** (curve), **Theme**, [Idle](/features/idle) and [Clock Bar](/features/clock-bar).
 
 Cards use continuous corners, with the same proportions on the panel and
 setup-page preview. Choose **Card curve → Small, Medium or Large** in
@@ -39,7 +39,7 @@ Find these controls in **Settings → Appearance** on the [Setup](/features/setu
 ## Theme
 
 - **Dark** and **Light** select a fixed appearance.
-- Under **Automatic theme**, **Sunrise & Sunset** switches to Light at sunrise and Dark at sunset. The panel shows the calculated sunrise and sunset times when this method is selected. It uses its existing on-device calculation based on the configured timezone and approximate location. Set the correct timezone under **Settings → Time**. A Home Assistant `sun.sun` entity is not required.
+- Under **Automatic theme**, **Sunrise & Sunset** switches to Light at sunrise and Dark at sunset. The panel shows the calculated sunrise and sunset times when this method is selected. It uses its existing on-device calculation based on the configured timezone and approximate location. Set the correct timezone under **Device → Preferences → Time**. A Home Assistant `sun.sun` entity is not required.
 - Under **Automatic theme**, **Manual** uses the panel's local clock. Set **Light from** and **Dark from** in 24-hour `HH:MM` format. The Light period can cross midnight. If both times are the same, Dark remains active.
 
 When clock or solar data is temporarily unavailable, Automatic keeps the last active appearance. A fresh boot falls back to Dark until the required data is known. The **Screen: Active Theme** Home Assistant sensor reports the effective Dark or Light palette even while Automatic is selected.

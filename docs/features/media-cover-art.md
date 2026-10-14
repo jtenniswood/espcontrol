@@ -65,14 +65,14 @@ If cover art is shown for `TV` or `Line-in` instead of hidden, the artist line s
 
 Cover art is separate from the normal [Screensaver](/features/screensaver) mode. Use Screensaver when you want the panel to dim, show a clock, or turn off after inactivity.
 
-For artwork downloads, open **Settings > System > Home Assistant Settings**. **Connection > Automatic** discovers a local Home Assistant endpoint. **Manual** lets you choose **Home Assistant Host** (optional), **Home Assistant Protocol** (`http` or `https`), and **Home Assistant Port**. Leave Host blank to use the address from the ESPHome connection. Enter a DNS name such as `homeassistant.example.com` when HTTPS uses a certificate issued to that name. A self-signed certificate still needs to be trusted by the panel; this setting does not disable certificate verification. The card shows the current artwork endpoint. See [Home Assistant Settings](/features/setup#home-assistant-settings) for discovery and fallback behavior.
+For artwork downloads, open **Device > System > Home Assistant Settings**. **Connection > Automatic** discovers a local Home Assistant endpoint. **Manual** lets you choose **Home Assistant Host** (optional), **Home Assistant Protocol** (`http` or `https`), and **Home Assistant Port**. Leave Host blank to use the address from the ESPHome connection. Enter a DNS name such as `homeassistant.example.com` when HTTPS uses a certificate issued to that name. A self-signed certificate still needs to be trusted by the panel; this setting does not disable certificate verification. The card shows the current artwork endpoint. See [Home Assistant Settings](/features/setup#home-assistant-settings) for discovery and fallback behavior.
 
 ## Track Details Work but Artwork Is Missing
 
 Playback metadata uses the native ESPHome connection; image downloads use HTTP or HTTPS. One can work while the other fails.
 
 1. Confirm the selected player has artwork in Home Assistant.
-2. Open **Settings > System > Home Assistant Settings** and check the displayed artwork endpoint.
+2. Open **Device > System > Home Assistant Settings** and check the displayed artwork endpoint.
 3. If automatic discovery chooses an unreachable endpoint, use **Manual** and enter the host, protocol, and port that work from the panel's network. Leave the host blank to use the panel's Home Assistant API address. Automatic discovery only trusts an advertised URL on that same IP; use Manual for a hostname-based proxy or a proxy on a different host.
 4. Retry playback. Confirm both the small Cover Art card and its expanded view load an image.
 

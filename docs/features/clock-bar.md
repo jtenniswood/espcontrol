@@ -8,7 +8,7 @@ description:
 
 The clock bar is the narrow status area at the top of the panel. It uses a fixed layout: one temperature reading on the left, the current time in the middle, and the connectivity icon on the right.
 
-You will find these controls in **Settings > Display > Clock Bar** on the panel web page.
+You will find these controls in **Settings > Appearance > Clock Bar** on the panel web page.
 
 ## Settings
 
