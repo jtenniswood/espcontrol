@@ -79,9 +79,15 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-main.sp-grid-loading{visibility:hidden;opacity:0;pointer-events:none;transition:opacity .2s,visibility .2s}" +
         ".sp-btn{border-radius:var(--btn-r);padding:var(--btn-pad);" +
         "display:flex;flex-direction:column;justify-content:space-between;" +
-        "cursor:pointer;transition:all .2s;box-sizing:border-box;border:0;" +
+        "cursor:pointer;transition:background-color .2s,box-shadow .2s,filter .2s,opacity .2s,transform .2s,color .2s;box-sizing:border-box;border:0;" +
         "position:relative;overflow:hidden;min-width:0;color:var(--card-text-color,var(--preview-text-primary))}" +
         ".sp-btn:hover{filter:brightness(1.15)}" +
+        ".sp-resize-handle{position:absolute;right:2px;bottom:2px;width:32px;height:32px;padding:0;border:0;background:transparent;color:var(--card-text-color,#fff);cursor:nwse-resize;touch-action:none;opacity:0;z-index:5}" +
+        ".sp-resize-handle svg{width:100%;height:100%;pointer-events:none;fill:none;stroke:currentColor;stroke-width:5;stroke-linecap:round}" +
+        ".sp-btn:hover>.sp-resize-handle,.sp-resize-handle:focus-visible,.sp-btn.sp-resizing>.sp-resize-handle{opacity:1}" +
+        ".sp-btn.sp-resizing>.sp-resize-handle{color:var(--accent)}" +
+        ".sp-btn.sp-resizing{transition:none;z-index:6;filter:none}" +
+        "@media(hover:none){.sp-resize-handle{opacity:1}}" +
         ".sp-btn.sp-selected:hover{filter:none}" +
         ".sp-drag-active .sp-btn:hover{filter:none}" +
         ".sp-card-outline{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;display:none;" +
@@ -642,6 +648,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-btn-label-row .sp-btn-label{flex:1;min-width:0}" +
         ".sp-subpage-badge{font-size:var(--btn-label);line-height:1;color:var(--card-text-color,var(--preview-text-primary));flex-shrink:0;" +
         "cursor:pointer;padding:0 0 0 2px;border-radius:4px}" +
+        ".sp-btn:has(>.sp-resize-handle) .sp-subpage-badge{margin-right:max(0px,calc(40px - var(--btn-pad)))}" +
         ".sp-hide-subpage-chevrons .sp-subpage-badge{display:none}" +
         "@media(max-width:768px){" +
         ":root{--gap:12px}" +

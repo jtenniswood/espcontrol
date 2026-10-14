@@ -29,6 +29,7 @@ Start here: **[Choose your screen](/screens/)** or **[install EspControl](/getti
 - **Browser-based installer** - flash supported screens from Chrome or Edge using a USB-C data cable.
 - **Built-in setup page** - configure cards, pages, icons, labels, active colour, display settings, backups, and firmware updates from a phone, tablet, or computer browser.
 - **Drag-and-drop grid layout** - each supported display has a layout sized for its resolution, with Single, Tall, Wide, and Large card sizes.
+  Hover over a card in the web editor and drag its bottom-right corner handle to resize it. The handle stays visible while dragging, and the card snaps to supported sizes that fit the layout. Release to save, or press Escape to cancel.
 - **Subpages** - open folder-like pages for rooms, device types, or extra controls while keeping the home screen tidy.
 - **Home Assistant controls** - control lights, switches, fans, covers, locks, alarms, climate devices, media players, scenes, scripts, automations, buttons, helpers, webhooks, and built-in relays.
 - **Live Home Assistant information** - show sensors, binary sensors, weather, clocks, time zones, doors, windows, presence, camera images, and media player status.
