@@ -8,8 +8,6 @@
 #include <esp_heap_caps.h>
 #endif
 
-#include <vector>
-
 namespace esphome {
 namespace artwork_image {
 

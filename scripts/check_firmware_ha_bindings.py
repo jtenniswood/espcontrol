@@ -2924,7 +2924,10 @@ def firmware_display_active_finalization_errors(
         )
         if navigation_body is None:
             continue
-        page_index = navigation_body.find("lvgl.page.show: main_page")
+        page_index = max(
+            navigation_body.find("lvgl.page.show: main_page"),
+            navigation_body.find("button_grid_load_screen(id(main_page)->obj);"),
+        )
         finalize_index = navigation_body.find("script.execute: display_active_finalize")
         if not (0 <= page_index < finalize_index):
             errors.append(

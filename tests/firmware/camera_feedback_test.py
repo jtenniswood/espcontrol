@@ -168,6 +168,7 @@ bool ha_read_retained_state(const std::string &, std::function<void(std::string)
  cb(retained_state);
  return true;
 }
+void card_background_refresh_due() {}
 void image_card_request_picture(ImageCardCtx *) { ++pictures; }
 void image_card_request_current_picture(ImageCardCtx *) { ++pictures; }
 void image_card_refresh_current_picture(ImageCardCtx *) { ++pictures; }

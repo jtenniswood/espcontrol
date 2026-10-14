@@ -9,6 +9,7 @@ test("image mutations retain the editor epoch and stop after reset", async () =>
   let epoch = 4;
   const writes = [];
   const session = new ResetSession(async (url, init) => {
+    if (url === "/api/v1/capabilities") return new Response(JSON.stringify({ api: { version: 1 }, reset: { status: "/api/v1/reset", modes: ["factory"] } }));
     if (url === "/api/v1/reset") return new Response(JSON.stringify({ modes: ["factory"], epoch, pending: false }));
     writes.push([url, init.method, init.headers.get("X-EspControl-Epoch"), init.body]);
     return new Response("{}", { status: epoch === 4 ? 200 : 409 });

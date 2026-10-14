@@ -69,6 +69,8 @@ uint32_t lv_obj_get_style_text_color(lv_obj_t *obj, int) {
   return obj->text[(obj->state & LV_STATE_PRESSED) ? LV_STATE_PRESSED
     : ((obj->state & LV_STATE_CHECKED) ? LV_STATE_CHECKED : LV_STATE_DEFAULT)];
 }
+constexpr int CARD_TEXT_COLOR_PROTECTED_FLAG = 16;
+bool lv_obj_has_flag(lv_obj_t *obj, int flag) { return (obj->flags & flag) != 0; }
 bool lv_obj_has_state(lv_obj_t *obj, int state) { return (obj->state & state) != 0; }
 void lv_obj_add_state(lv_obj_t *obj, int state) { obj->state |= state; }
 void lv_obj_clear_state(lv_obj_t *obj, int state) { obj->state &= ~state; }
@@ -230,6 +232,17 @@ int main() {
         assert(matches == 1);
       }
     }
+  auto background = parse_cfg("light.kitchen;Kitchen;Auto;Auto;;;;;bg_image=kitchen-scene,card_off_color=3F51B5");
+  assert(cfg_option_value(background.options, "bg_image") == "kitchen-scene");
+  assert(cfg_option_value(background.options, "card_off_color") == "3F51B5");
+  lv_obj_t background_button, background_text, background_shadow;
+  background_button.children = {&background_text, &background_shadow};
+  background_shadow.flags = CARD_TEXT_COLOR_PROTECTED_FLAG;
+  background_shadow.text[0] = 0;
+  apply_card_descendant_text_color(&background_button, 0xFFFFFF);
+  assert(background_text.text[0] == 0xFFFFFF);
+  assert(background_shadow.text[0] == 0);
+
   for (const std::string token : {"B", "Bd", "Bw", "Bb", "Bt", "Bx"}) {
     for (const std::string prefix : {"", "~"}) {
       const auto order = get_subpage_order(prefix + "1," + token + "=Return%3AHome%2C50%25:#ffec16,2|ignored");

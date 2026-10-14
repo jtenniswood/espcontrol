@@ -45,6 +45,7 @@ constexpr int LV_SCR_LOAD_ANIM_NONE = 0;
 void navigation_hide_modals() {}
 lv_obj_t *lv_scr_act() { return active_page; }
 void lv_scr_load_anim(lv_obj_t *page, int, int, int, bool) { active_page = page; }
+void button_grid_load_screen(lv_obj_t *page) { lv_scr_load_anim(page, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); }
 int deleted = 0;
 std::vector<lv_obj_t *> objects;
 std::vector<void (*)(void *)> deferred;

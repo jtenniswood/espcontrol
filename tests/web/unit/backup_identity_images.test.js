@@ -21,7 +21,7 @@ for (const succeeds of [true, false]) {
         chooseRestoreName: async () => "Kitchen",
         saveAndRestart: async (name) => events.push(`restart:${name}`),
       },
-      backupImport: { plan: () => ({}) },
+      backupImport: { plan: () => ({ backupPlan: { screen: {} } }) },
       backupFile: { import: (receive) => receive({}, []) },
       cardImages: { backupAssetProvider: { createRestore: () => ({
         stage: async () => events.push("stage"),
