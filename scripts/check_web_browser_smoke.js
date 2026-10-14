@@ -175,6 +175,8 @@ async function assertSubpageTitleTypography(page, label, nativeState) {
   assert.strictEqual(await page.locator(".sp-back-btn").evaluate(el => getComputedStyle(el).backgroundColor),
     initialColor, `${label}: reset restores the theme colour`);
   await page.getByRole("button", { name: "Done", exact: true }).click();
+  assert.strictEqual(await page.locator(".sp-clockbar-subpage-title").evaluate(el => getComputedStyle(el).textShadow),
+    "rgba(0, 0, 0, 0.5) 1px 1px 0px", `${label}: subpage title keeps the crisp image-label shadow`);
   await page.locator(".sp-back-btn .sp-back-hit").click();
   await page.waitForSelector(".sp-clockbar-subpage-title", { state: "detached" });
 }
@@ -2176,6 +2178,9 @@ async function assertClockBarTypographyAndIconLayout(page, label) {
       cardFontWeight: cardStyle.fontWeight,
       clockFontSize: clockStyle.fontSize,
       clockFontWeight: clockStyle.fontWeight,
+      clockShadow: clockStyle.textShadow,
+      temperatureShadow: temperatureStyle.textShadow,
+      iconShadow: networkGlyphStyle.textShadow,
       temperatureFontSize: temperatureStyle.fontSize,
       temperatureFontWeight: temperatureStyle.fontWeight,
       iconFontSize: networkStyle.fontSize,
@@ -2187,6 +2192,8 @@ async function assertClockBarTypographyAndIconLayout(page, label) {
     };
   });
   assert(metrics, `${label}: clock bar typography is measurable`);
+  for (const key of ["clockShadow", "temperatureShadow", "iconShadow"])
+    assert.strictEqual(metrics[key], "rgba(0, 0, 0, 0.5) 1px 1px 0px", `${label}: ${key} matches the crisp image-label shadow`);
   assert.strictEqual(
     metrics.clockFontSize,
     metrics.cardFontSize,
@@ -7590,6 +7597,7 @@ async function assertWallpaperSettings(browser) {
     await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
     await page.getByRole("button", { name: "Upload Image", exact: true }).waitFor();
     await page.getByRole("img", { name: "Saved wallpaper, 1280 by 800 pixels" }).waitFor();
+    await assertClockBarTypographyAndIconLayout(page, "Wallpaper loaded");
     assert.strictEqual(await page.locator(".sp-wallpaper-preview").evaluate(el => el.style.backgroundImage),
       await page.locator(".sp-screen").evaluate(el => el.style.backgroundImage));
     assert.strictEqual(wallpaper.image.readUInt32LE(0), 0x32505745);

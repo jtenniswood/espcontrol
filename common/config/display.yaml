@@ -48,6 +48,10 @@ esphome:
     - priority: -100
       then:
         - lambda: |-
+            clock_bar_apply_label_shadow(id(temperatures));
+            clock_bar_apply_label_shadow(id(display_time));
+            clock_bar_apply_label_shadow(id(network_status_icon_label));
+            clock_bar_apply_label_shadow(id(night_mode_status_icon_label));
             clock_bar_enable_settings_access(id(network_status_button));
             navigation_subpage_clock_bar_refresh() = []() {
               navigation_refresh_subpage_label();

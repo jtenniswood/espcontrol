@@ -8,6 +8,8 @@ description:
 
 The clock bar is the narrow status area at the top of the panel. It uses a fixed layout: one temperature reading on the left, the current time in the middle, and the connectivity icon on the right.
 
+Clock-bar text, titles and status icons have the same crisp, dark offset shadow as image-card labels, helping them stand out over a wallpaper on both the panel and browser preview.
+
 You will find these controls in **Screen > Appearance > Clock Bar** on the panel web page.
 
 ## Settings

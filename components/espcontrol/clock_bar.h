@@ -16,6 +16,18 @@
 #include "display_mode_controller.h"
 #include "temperature_unit.h"
 
+// Match image-card labels: a crisp black glyph copy one pixel down and right.
+// Keeping this on the label makes text, font, visibility and title changes
+// follow automatically, including the connectivity glyph and night indicator.
+inline void clock_bar_apply_label_shadow(lv_obj_t *label) {
+  if (!label) return;
+  lv_obj_set_style_drop_shadow_color(label, lv_color_hex(0x000000), LV_PART_MAIN);
+  lv_obj_set_style_drop_shadow_opa(label, LV_OPA_50, LV_PART_MAIN);
+  lv_obj_set_style_drop_shadow_radius(label, 0, LV_PART_MAIN);
+  lv_obj_set_style_drop_shadow_offset_x(label, 1, LV_PART_MAIN);
+  lv_obj_set_style_drop_shadow_offset_y(label, 1, LV_PART_MAIN);
+}
+
 inline void format_clock_time_without_suffix(char *buf, size_t size,
                                              int hour, int minute,
                                              bool use_12h) {

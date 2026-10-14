@@ -84,6 +84,7 @@ def battery_substitution_lines(device: dict) -> list[str]:
         ]
     return [
         "  battery_status_apply_code: |-",
+        "    clock_bar_apply_label_shadow(id(battery_status_icon_label));",
         "    if (id(battery_status_enabled).state) {",
         *clock_bar_icon_offset_lines("battery_status_icon_x", "battery_status_button",
                                      "battery_status_icon_label"),

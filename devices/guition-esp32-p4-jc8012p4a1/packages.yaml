@@ -77,6 +77,7 @@ substitutions:
   cover_art_square_overlay: "false"
   cover_art_live_image_updates: "false"
   battery_status_apply_code: |-
+    clock_bar_apply_label_shadow(id(battery_status_icon_label));
     if (id(battery_status_enabled).state) {
       const int battery_status_icon_x_box = lv_obj_get_width(id(battery_status_button));
       const int battery_status_icon_x = clock_bar_right_icons_next_x(
