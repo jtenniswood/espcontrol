@@ -18,10 +18,15 @@ class GifDecoder : public ImageDecoder {
   void pause() { decode_loop_.stop(); }
   void reset_render_target(bool completed_frame = false);
   uint32_t delay_ms() const { return player_->delay_ms(); }
-  bool is_animated() const { return player_ && player_->has_more_frames(); }
+  bool is_animated() const { return !FINAL_FRAME_ONLY && player_ && player_->has_more_frames(); }
   bool retain_source(DownloadBuffer &transfer);
 
  protected:
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
+  static constexpr bool FINAL_FRAME_ONLY = true;
+#else
+  static constexpr bool FINAL_FRAME_ONLY = false;
+#endif
   gif::Player::Result advance_step_();
   HighFrequencyLoopRequester decode_loop_;
   RAMAllocator<gif::Player> player_allocator_{RAMAllocator<gif::Player>::ALLOC_EXTERNAL};

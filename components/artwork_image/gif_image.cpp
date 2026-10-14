@@ -18,8 +18,8 @@ GifDecoder::~GifDecoder() {
 }
 
 int GifDecoder::decode(uint8_t *buffer, size_t size) {
-  // GIF playback needs the complete compressed file, including unknown-length
-  // HTTP responses. Keep staging bytes unread until the first frame is ready.
+  // GIF decoding needs the complete compressed file, including unknown-length
+  // HTTP responses. Keep staging bytes unread until the display frame is ready.
   if (!download_size_ || size < download_size_) return 0;
   if (!initialized_) {
     uint16_t width = 0, height = 0;
@@ -91,6 +91,10 @@ gif::Player::Result GifDecoder::advance_step_() {
     const auto result = player_->step();
     decode_work_us_ += micros() - started;
     if (result != gif::Player::Result::FRAME) return result;
+    // S3 shows one still image. Compose each frame (including transparency and
+    // disposal), but resize only the final one. Stop before advancing past it:
+    // that would apply its disposal or restart a looping GIF.
+    if (FINAL_FRAME_ONLY && player_->has_more_frames()) return gif::Player::Result::MORE;
     rendering_ = true;
   }
   const uint32_t resize_started = micros();

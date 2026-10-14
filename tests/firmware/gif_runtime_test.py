@@ -251,6 +251,62 @@ static void load(ArtworkImage &image, const std::vector<uint8_t> &file, bool unk
                        (compact_fails ? capacity : file.size()));
   image.end_connection_(); image.service_active_ = false;
 }
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+int main() {
+  // Independently generated composited pixels include transparency, local
+  // palettes, restore/background disposal, interlacing and a single-frame GIF.
+  for (const std::string name : {"disposal", "interlaced", "static87"}) {
+    auto file = read(std::string(GIF_FIXTURE_DIR) + "/" + name + ".gif");
+    const auto expected = read(std::string(GIF_FIXTURE_DIR) + "/" + name + ".rgb565");
+    const size_t pixels = (expected[0] | (expected[1] << 8)) * (expected[2] | (expected[3] << 8));
+    const size_t frames = expected[4] | (expected[5] << 8);
+    const auto last = expected.begin() + 6 + (frames - 1) * pixels * 2;
+    // Infinite and very long repeat counts must also stop at the last frame
+    // of the first playthrough, without waiting for animation delays.
+    for (uint16_t repeats : {0, 1, 65535}) {
+      if (name == "disposal") {
+        const std::string marker = "NETSCAPE2.0";
+        const auto extension = std::search(file.begin(), file.end(), marker.begin(), marker.end());
+        assert(extension != file.end());
+        const auto offset = static_cast<size_t>(extension - file.begin()) + marker.size() + 2;
+        file.at(offset) = repeats; file.at(offset + 1) = repeats >> 8;
+      }
+      for (bool unknown : {false, true}) {
+        ArtworkImage image;
+        int redraws = 0;
+        image.animation_redraw_ = [&]() { ++redraws; };
+        load(image, file, unknown, false);
+        assert(image.active.size() == pixels * 2);
+        assert(std::equal(image.active.begin(), image.active.end(), last));
+        assert(!image.animation_ && !image.animation_needs_reload());
+        assert(!image.download_buffer_.size());
+        assert(fake_esphome_allocator::external_pointers.empty());
+        for (int i = 0; i < 100; ++i) { now_ms += 1000; image.loop_animation_(); }
+        assert(redraws == 0 && !gif_slots[0] && !gif_slots[1]);
+        assert(std::equal(image.active.begin(), image.active.end(), last));
+      }
+    }
+  }
+  // Longer animations must yield while decoding, without allocating or exposing
+  // a display surface for intermediate frames.
+  auto file = read(std::string(GIF_FIXTURE_DIR) + "/disposal.gif");
+  const size_t palette_end = 13 + 3u * (1u << ((file[10] & 7) + 1));
+  const std::vector<uint8_t> pass(file.begin() + palette_end, file.end() - 1);
+  file.pop_back();
+  file.insert(file.end(), pass.begin(), pass.end());
+  file.insert(file.end(), pass.begin(), pass.end());
+  file.push_back(0x3b);
+  ArtworkImage image;
+  GifDecoder decoder(&image);
+  assert(decoder.prepare(file.size()) == 0);
+  assert(decoder.decode(file.data(), file.size()) == 0);
+  assert(!decoder.is_finished() && image.staging.empty());
+  for (int i = 0; !decoder.is_finished() && i < 1000; ++i)
+    assert(decoder.decode(file.data(), file.size()) == 0);
+  assert(decoder.is_finished() && !decoder.is_animated());
+  assert(!esphome::HighFrequencyLoopRequester::is_high_frequency());
+}
+#else
 int main() {
   auto file = read(std::string(GIF_FIXTURE_DIR) + "/disposal.gif");
   auto expected = read(std::string(GIF_FIXTURE_DIR) + "/disposal.rgb565");
@@ -674,6 +730,8 @@ int main() {
 }
 '''
 
+main += "\n#endif\n"
+
 with tempfile.TemporaryDirectory(prefix="gif-runtime-") as directory:
     temp = Path(directory)
     (temp / "esphome/core").mkdir(parents=True)
@@ -703,14 +761,15 @@ inline void *heap_caps_realloc(void *pointer, size_t size, int caps) {
   return replacement;
 }
 """)
-    for native_heap in (False, True):
-        executable = temp / ("test-esp32-heap" if native_heap else "test")
+    for native_heap, s3 in ((False, False), (True, False), (True, True)):
+        executable = temp / ("test-s3" if s3 else "test-esp32-heap" if native_heap else "test")
         subprocess.run(shlex.split(os.environ.get("CXX", "c++")) + [
             "-std=c++17", "-Wall", "-Wextra", "-Werror", "-DUSE_ARTWORK_IMAGE_GIF_SUPPORT",
             *(["-DUSE_ESP32"] if native_heap else []),
+            *(["-DUSE_ESP_IDF", "-DCONFIG_IDF_TARGET_ESP32S3"] if s3 else []),
             "-I", str(temp), "-I", str(COMPONENT), "-I", str(ROOT / "tests/firmware/stubs"),
             '-DGIF_FIXTURE_DIR="' + str(ROOT / "tests/firmware/fixtures/gif") + '"',
             str(temp / "gif_image.cpp"), str(temp / "test.cpp"), "-o", str(executable),
         ], check=True)
         subprocess.run([str(executable)], check=True)
-print("GIF runtime: subpage navigation, camera screensaver playback/recovery, modal/sleep recovery, still admission, source compaction, bounded frames, refresh recovery and PSRAM failures passed")
+print("GIF runtime: S3 final-frame stills, playback/recovery, still admission, source compaction, bounded frames, refresh recovery and PSRAM failures passed")

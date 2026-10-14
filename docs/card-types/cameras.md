@@ -33,7 +33,12 @@ This setting applies to both the grid card and the larger view opened by tapping
 
 The card accepts both `camera.*` and `image.*` entities, so `image.latest_package_snapshot` works as well as `camera.front_door`.
 
-JPEG, PNG, BMP and GIF images are supported. Animated GIFs, including radar
+JPEG, PNG, BMP and GIF images are supported. On the 4-inch ESP32-S3, GIFs show
+the final frame of the animation as a static image in cards, expanded views and
+screensavers. Loading works through the frames without waiting for their delays,
+and looping GIFs use the final frame of the first playthrough.
+
+On ESP32-P4 panels, animated GIFs, including radar
 images from Rain Incoming, play in the card and expanded view. Media Cover Art
 cards share this playback support. Playback pauses
 when the image is hidden, another modal covers it, or the panel enters its
@@ -57,7 +62,7 @@ side exceeding 1,024 pixels, and have no more than 512 frames per playthrough.
 Frame delays are honoured with a minimum of 100 ms;
 large images may play more slowly. Resizing yields between output batches,
 including when a small GIF is enlarged. Optional GIF text blocks are skipped;
-their text is not rendered. The Camera screensaver plays animated GIFs and
+their text is not rendered. On ESP32-P4, the Camera screensaver plays animated GIFs and
 shares the expanded animation slot; the Cover Art screensaver shows a still
 frame. Memory availability can also limit loading, especially on the
 4-inch S3.
