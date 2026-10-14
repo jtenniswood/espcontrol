@@ -151,6 +151,18 @@ ControlModalShell control_modal_open_shell(ControlModalKind,lv_obj_t *,int,const
 lv_obj_t *control_modal_create_scroll_list(lv_obj_t *parent,int,int,int){++scroll_list_creations;return lv_obj_create(parent);}
 #define ESP_LOGW(...) ((void)0)
 #include "button_grid_weather_daily_ui.h"
+void check_card_fit(const WeatherDailyCard *card){
+  const int height=card->height-(card->source->stale?lv_font_get_line_height(card->font)+2:0);
+  assert(card->columns.size()<=8 && card->layout.count==card->columns.size());
+  for(const auto &column:card->columns){
+    for(const auto *label:{column.icon,column.day,column.high}){
+      assert(label->x>=0 && label->y>=0 && label->x+label->width<=card->width && label->y+label->height<=height);
+    }
+    assert(column.day->y+column.day->height<=column.high->y);
+    if(card->layout.list)assert(column.icon->x+column.icon->width<=column.day->x);
+    else assert(column.icon->y+column.icon->height<=column.day->y);
+  }
+}
 void check_modal_fit(){
   const auto &ui=weather_daily_modal();
   assert(ui.body && !(ui.body->flags & LV_OBJ_FLAG_SCROLLABLE) && scroll_list_creations==0);
@@ -249,9 +261,9 @@ int main(){
     assert(card->columns.front().high->y==130); // Keep stale status below the temperatures.
     card->source->stale=false;
     lv_obj_set_size(owner,460,240);
-    assert(card->columns.front().icon->y==0 && card->columns.front().day->y==210 && card->columns.front().high->y==228);
+    assert(card->layout.columns==2 && card->layout.rows==2);check_card_fit(card);
     assert(lv_obj_t::live==live);
-    lv_obj_set_size(owner,100,160);assert(card->columns.size()==1);
+    lv_obj_set_size(owner,100,160);assert(card->columns.size()==2);check_card_fit(card);
     lv_obj_set_size(owner,460,160);assert(card->columns.size()==4 && lv_obj_t::live==live);
     const auto saved_forecast=f;
     f=espcontrol::weather::Forecast{};card->source->loading=true;
@@ -298,18 +310,18 @@ int main(){
     lv_obj_del(owner);assert(lv_obj_t::live==0);
   }
 
-  // Add days at the minimum-width boundaries and fill the width even after all seven fit.
+  // Add days at the minimum-width boundaries and fill the width even after all eight fit.
   auto *wide_owner=lv_obj_create(nullptr);
   BtnSlot wide_slot{wide_owner,lv_label_create(wide_owner),lv_label_create(wide_owner)};
   weather_daily_setup(wide_slot,{"weather.week",""},{});
   auto *wide_card=weather_daily_card_for(wide_owner);
   std::string week="WF1|2026-10-11|2026-10-12|°C|mm|km/h\n";
-  for(int day=11;day<18;++day)week+="2026-10-"+std::to_string(day)+"|sunny|18|10||||\n";
+  for(int day=11;day<19;++day)week+="2026-10-"+std::to_string(day)+"|sunny|18|10||||\n";
   assert(espcontrol::weather::parse(week,wide_card->source->forecast));
   const int boundaries[][2]={{100,1},{207,1},{208,2},{319,2},{320,3},{431,3},{432,4},
-    {543,4},{544,5},{655,5},{656,6},{767,6},{768,7},{901,7}};
+    {543,4},{544,5},{655,5},{656,6},{767,6},{768,7},{879,7},{880,8},{901,8}};
   for(const auto &test:boundaries){
-    lv_obj_set_size(wide_owner,test[0],160);
+    lv_obj_set_size(wide_owner,test[0],90);
     const auto &columns=wide_card->columns;
     assert(columns.size()==static_cast<size_t>(test[1]));
     assert(columns.front().day->x==0);
@@ -321,11 +333,34 @@ int main(){
       assert(columns[i].day->width>=96);
       if(i)assert(columns[i].day->x-(columns[i-1].day->x+columns[i-1].day->width)==16);
     }
-    assert(largest-smallest<=1);
+    assert(largest-smallest<=1);check_card_fit(wide_card);
     const int live=lv_obj_t::live;
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     assert(lv_obj_t::live==live);
   }
+  // S3's native 3x3 grid, using conservative line heights and measured glyphs.
+  font.line_height=26;small_font.line_height=22;icons.line_height=44;measured_font_pixels=22;
+  const int spans[][5]={{1,1,1,1,0},{2,1,2,1,0},{3,1,4,1,0},
+    {1,2,1,4,1},{2,2,2,2,0},{3,2,4,2,0},
+    {1,3,1,6,1},{2,3,2,3,0},{3,3,3,3,0}};
+  for(const auto &span:spans){
+    const int width=150*span[0]+10*(span[0]-1)-28;
+    const int height=138*span[1]+10*(span[1]-1)-28;
+    lv_obj_set_size(wide_owner,width,height);
+    assert(wide_card->layout.columns==static_cast<size_t>(span[2]) && wide_card->layout.rows==static_cast<size_t>(span[3]) && wide_card->layout.list==static_cast<bool>(span[4]));
+    const auto expected=std::min(8,span[2]*span[3]);
+    assert(wide_card->columns.size()==static_cast<size_t>(expected));check_card_fit(wide_card);
+    const int widgets=lv_obj_t::live;
+    for(int i=0;i<20;++i)weather_daily_refresh_visuals();
+    assert(lv_obj_t::live==widgets);
+    wide_card->source->stale=true;weather_daily_refresh_visuals();check_card_fit(wide_card);
+    wide_card->source->stale=false;weather_daily_refresh_visuals();check_card_fit(wide_card);
+  }
+  // Fewer provider days rebalance the grid without creating empty widgets.
+  wide_card->source->forecast.count=6;lv_obj_set_size(wide_owner,442,258);
+  assert(wide_card->layout.columns==3 && wide_card->layout.rows==2 && wide_card->columns.size()==6);check_card_fit(wide_card);
+  wide_card->source->forecast.count=8;
+  font.line_height=16;small_font.line_height=12;icons.line_height=32;measured_font_pixels=0;
   weather_daily_open_modal(wide_card);
   auto &paged=weather_daily_modal();
   assert(paged.day_limit==6 && paged.columns.size()==6);

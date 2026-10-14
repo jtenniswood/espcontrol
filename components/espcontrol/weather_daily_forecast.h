@@ -11,7 +11,7 @@
 #include <string>
 
 namespace espcontrol::weather {
-constexpr size_t MAX_DAYS = 7;
+constexpr size_t MAX_DAYS = 8;
 constexpr size_t MAX_SOURCES = 8;
 constexpr size_t MAX_PAYLOAD_BYTES = 2048;
 constexpr float MISSING = std::numeric_limits<float>::quiet_NaN();
@@ -102,14 +102,42 @@ inline bool parse(const std::string &payload, Forecast &out) {
   }
   return out.count > 0;
 }
-// Width per day derives from the actual display font, rather than device size.
-inline size_t visible_days(int width, int minimum_day_width, size_t available = MAX_DAYS,
-                           int gap = 0) {
-  if (available == 0) return 0;
-  const int column_width = minimum_day_width > 0 ? minimum_day_width : 1;
-  const int column_gap = std::max(0, gap);
-  int count = (width + column_gap) / (column_width + column_gap);
-  return std::min(available, std::min(MAX_DAYS, static_cast<size_t>(std::max(1, count))));
+struct CardLayout {
+  size_t count = 0, columns = 0, rows = 0;
+  bool list = false;
+};
+// Maximise visible days first, then balance the grid's cell proportions.
+// Tall single-column cards use icon-and-text rows when those rows fit in width.
+inline CardLayout card_layout(int width, int height, int minimum_width, int minimum_height,
+    int list_width, int list_height, int column_gap, int row_gap, size_t available) {
+  available = std::min(available, MAX_DAYS);
+  if (!available || width <= 0 || height <= 0) return {};
+  auto fit = [](int space, int minimum, int gap) {
+    return std::max(1, (space + gap) / (std::max(1, minimum) + gap));
+  };
+  const bool compact = height < minimum_height && width >= list_width;
+  const int max_columns = std::min(static_cast<int>(available), fit(width, compact ? list_width : minimum_width, column_gap));
+  if (max_columns == 1 && width >= list_width && height >= minimum_height * 2 + row_gap) {
+    const size_t count = std::min(available, static_cast<size_t>(fit(height, list_height, row_gap)));
+    if (count > 1) return {count, 1, count, true};
+  }
+  const int max_rows = std::min(static_cast<int>(available), fit(height, compact ? list_height : minimum_height, row_gap));
+  const size_t count = std::min(available, static_cast<size_t>(max_columns * max_rows));
+  CardLayout best{count, count, 1, compact};
+  double best_score = std::numeric_limits<double>::infinity();
+  for (int rows = 1; rows <= std::min(max_rows, static_cast<int>(count)); ++rows) {
+    const int columns = (static_cast<int>(count) + rows - 1) / rows;
+    if (columns > max_columns) continue;
+    const int cell_width = (width - (columns - 1) * column_gap) / columns;
+    const int cell_height = (height - (rows - 1) * row_gap) / rows;
+    const double score = static_cast<double>(std::abs(cell_width - cell_height)) /
+      std::max(1, std::max(cell_width, cell_height)) + (columns * rows - count) * 0.15;
+    if (score < best_score) {
+      best_score = score;
+      best = {count, static_cast<size_t>(columns), static_cast<size_t>(rows), compact};
+    }
+  }
+  return best;
 }
-static_assert(sizeof(Forecast) < 640, "Keep one shared week below 640 bytes");
+static_assert(sizeof(Forecast) < 640, "Keep one shared eight-day forecast below 640 bytes");
 }  // namespace espcontrol::weather

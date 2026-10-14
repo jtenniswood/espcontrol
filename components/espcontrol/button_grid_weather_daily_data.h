@@ -4,7 +4,7 @@
 #include "weather_daily_forecast.h"
 
 // Only configured multi-day cards allocate a source. Cards for the same entity
-// share one compact week; the legacy per-slot registry is not enlarged.
+// share one compact forecast; the legacy per-slot registry is not enlarged.
 struct WeatherDailySource {
   std::string entity_id;
   espcontrol::weather::Forecast forecast;
@@ -69,7 +69,7 @@ inline std::string weather_daily_response_template(const std::string &entity_id)
     "{% endfor %}"
     "{% set ns = namespace(entries=[], last='', unit='') %}"
     "{% for dated in dates.items | sort(attribute='date') %}"
-    "{% if dated.date != ns.last and ns.entries|length < 7 %}"
+    "{% if dated.date != ns.last and ns.entries|length < 8 %}"
     "{% set ns.last = dated.date %}{% set item = dated.item %}{% set values = namespace(high='', low='', high_key='', low_key='') %}"
     "{% for key in high_keys %}{% if values.high == '' and item.get(key) is number %}{% set values.high = item[key] %}{% set values.high_key = key %}{% endif %}{% endfor %}"
     "{% for key in low_keys %}{% if values.low == '' and item.get(key) is number %}{% set values.low = item[key] %}{% set values.low_key = key %}{% endif %}{% endfor %}"

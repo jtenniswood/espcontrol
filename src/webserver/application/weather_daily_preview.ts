@@ -1,12 +1,14 @@
 import type { DeviceConfig } from "../state/types";
+import { planWeatherCardLayout } from "./weather_daily_layout";
 
-// Use the firmware's width + gap rule in display pixels. One observer serves
+// Use the firmware's grid/list rules in display pixels. One observer serves
 // all weather cards and is disconnected whenever the preview is rebuilt.
 export function createWeatherDailyPreviewLayout(
     document: Document,
     config: Pick<DeviceConfig, "displayWidth" | "displayHeight">,
     isPortraitRotation: () => boolean,
 ) {
+    const fontHeightFor = (size: number) => Math.round(size * 1.2);
     const view = document.defaultView;
     const cards = new Set<HTMLElement>();
     let context: CanvasRenderingContext2D | null = null;
@@ -34,20 +36,45 @@ export function createWeatherDailyPreviewLayout(
         const iconSize = icon ? Math.round(parseFloat(view.getComputedStyle(icon).fontSize) / scale) : 0;
         let measured = Math.max(iconSize, ...["-188°", "Today", "Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"].map(measure));
         const temperature = firstDay.querySelector<HTMLElement>(".sp-weather-temperature-high");
+        let temperatureHeight = fontHeightFor(nativeFontSize);
+        let temperatureWidth = 0;
         if (temperature) {
             const temperatureStyle = view.getComputedStyle(temperature);
             const temperatureSize = Number((parseFloat(temperatureStyle.fontSize) / scale).toFixed(3));
+            temperatureHeight = fontHeightFor(temperatureSize);
             fontContext.font = temperatureStyle.font.replace(temperatureStyle.fontSize, temperatureSize + "px");
-            measured = Math.max(measured, ...days.map(day => measure(day.querySelector(".sp-weather-temperature-high")?.textContent || "")));
+            temperatureWidth = Math.max(...days.map(day => measure(day.querySelector(".sp-weather-temperature-high")?.textContent || "")));
+            measured = Math.max(measured, temperatureWidth);
         }
-        const fontHeight = Math.round(nativeFontSize * 1.2);
+        const fontHeight = fontHeightFor(nativeFontSize);
         const gap = Math.max(8, fontHeight);
-        const width = (card.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)) / scale;
-        const minimumDayWidth = measured + 24;
-        const count = Math.max(1, Math.min(days.length, Math.floor((width + gap) / (minimumDayWidth + gap))));
-        row.style.gap = (gap * scale) + "px";
-        // Flex shares the remaining width equally between the visible days.
-        days.forEach((day, index) => { day.hidden = index >= count; });
+        const rowGap = Math.max(8, Math.floor(fontHeight / 2));
+        const listGap = Math.max(8, Math.floor(fontHeight / 3));
+        const width = Math.floor((card.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)) / scale);
+        const height = Math.floor((card.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)) / scale);
+        const plan = planWeatherCardLayout(width, height, measured + 24,
+            iconSize + fontHeight + temperatureHeight + 4, iconSize + listGap + temperatureWidth,
+            Math.max(iconSize, fontHeight + temperatureHeight + 2), gap, rowGap, days.length);
+        row.classList.toggle("sp-weather-list", plan.list);
+        row.style.gridTemplateColumns = `repeat(${plan.columns}, minmax(0, 1fr))`;
+        row.style.gridTemplateRows = `repeat(${plan.rows}, minmax(0, 1fr))`;
+        row.style.columnGap = (gap * scale) + "px";
+        row.style.rowGap = (rowGap * scale) + "px";
+        row.style.setProperty("--weather-list-gap", (listGap * scale) + "px");
+        card.dataset.weatherColumns = String(plan.columns);
+        card.dataset.weatherRows = String(plan.rows);
+        days.forEach((day, index) => {
+            day.hidden = index >= plan.count;
+            day.style.gap = (2 * scale) + "px";
+            const label = day.children[1] as HTMLElement | undefined;
+            if (!label) return;
+            const fullLabel = label.dataset.weatherFullLabel || label.textContent || "";
+            label.dataset.weatherFullLabel = fullLabel;
+            // The browser preview uses English labels; restore them on wider cards.
+            fontContext.font = textStyle.font.replace(textStyle.fontSize, nativeFontSize + "px");
+            label.textContent = plan.list && measure(fullLabel) > width / plan.columns - iconSize - listGap
+                ? day.dataset.weatherWeekday || fullLabel.slice(0, 3) : fullLabel;
+        });
     }
     const Observer = view && (view as Window & typeof globalThis).ResizeObserver;
     let observer: ResizeObserver | null = null;

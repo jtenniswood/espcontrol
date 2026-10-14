@@ -16,7 +16,7 @@ A weather card shows current Home Assistant conditions or a daily forecast. Fore
    - **Current Conditions** shows the live weather condition icon and label.
    - **Today's Forecast** shows today's condition and high/low temperatures.
    - **Tomorrow's Forecast** shows tomorrow's condition and high/low temperatures.
-   - **Daily Forecast** shows up to seven upcoming days, adding more days as the card gets wider.
+   - **Daily Forecast** shows up to eight upcoming days, reflowing into a row, grid or vertical list as the card changes size.
 
 All forecast modes are available on supported panels, including the 4-inch Guition 4848S040 (ESP32-S3). The editor shows sample data; the panel loads the actual forecast from Home Assistant.
 
@@ -30,15 +30,31 @@ Forecasts need **Allow the device to perform Home Assistant actions** enabled so
 
 **Current Conditions** watches the weather entity's current state. The icon uses the normalized weather condition, while the label keeps provider-specific text, such as **Light Rain**. Unknown or unavailable states show a fallback icon and readable label.
 
-Forecast modes request the daily forecast from Home Assistant. **Today's Forecast** and **Tomorrow's Forecast** each show exactly one day, even on a wide card. They select the requested local date; if the provider omits that date, the card shows **Forecast unavailable**. **Daily Forecast** shows **Today** or short weekday names in columns with padding and a gap between days. A minimum column width keeps the icon, weekday and temperature readable. As the card widens, it adds more days, up to seven, and shares the remaining width evenly between the visible columns. Once all available days fit, the columns continue stretching to fill the card.
+Forecast modes request the daily forecast from Home Assistant. **Today's Forecast** and **Tomorrow's Forecast** each show exactly one day, even on a wide card. They select the requested local date; if the provider omits that date, the card shows **Forecast unavailable**. **Daily Forecast** shows **Today** or short weekday names with whole-degree high/low temperatures. Its layout uses both card width and height: single-height cards use a horizontal row, larger cards use a grid, and tall narrow cards use a vertical list with icons beside the day and temperatures when there is enough width. Fonts stay readable rather than shrinking to fit more days. The grid balances its rows and columns when a provider returns fewer days. Short cards use compact rows when needed to leave room for **Last forecast**.
 
-Forecasts refresh hourly and after reconnecting. Providers must supply a daily forecast and may return fewer than seven days.
+On the 480×480 S3 with the default font sizes and eight available days:
+
+| Card size | Layout | Days shown |
+|---|---|---|
+| 1w × 1h | One day | 1 |
+| 2w × 1h | Horizontal row | 2 |
+| 3w × 1h | Horizontal row | 4 |
+| 1w × 2h | Vertical list | 4 |
+| 2w × 2h | 2×2 grid | 4 |
+| 3w × 2h | 4×2 grid | 8 |
+| 1w × 3h | Vertical list | 6 |
+| 2w × 3h | 2×3 grid | 6 |
+| 3w × 3h | 3×3 grid, one space unused | 8 |
+
+The exact count depends on the panel's fonts, available forecast days, translated labels and stale-data status. The editor preview uses the same layout rules and updates when the card is resized.
+
+Forecasts refresh hourly and after reconnecting. Providers must supply a daily forecast and may return fewer than eight days.
 
 While loading, forecast cards show a single cloud-and-clock icon and **Loading forecast**. The day layout appears when data arrives. A failed refresh keeps the last available forecast and marks it **Last forecast**; if no forecast is available, the card shows **Forecast unavailable**.
 
 Weather cards use the fixed **tertiary** background colour, like Sensor, Date, Clock, and World Clock cards.
 
-All forecast modes share one compact forecast per weather entity. The panel supports up to eight forecast entities and sixteen forecast cards across the home screen and subpages. It creates widgets only for visible days, and the modal holds one day's detail view at a time. Configurations beyond these limits show an unavailable forecast.
+All forecast modes share one compact eight-day forecast per weather entity. The panel supports up to eight forecast entities and sixteen forecast cards across the home screen and subpages. It creates widgets only for visible days, and the modal shows up to six day panels. Configurations beyond these limits show an unavailable forecast.
 
 ## Forecast Details
 

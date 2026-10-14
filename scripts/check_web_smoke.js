@@ -874,8 +874,8 @@ const weatherDailyPreview = hooks.buttonTypePreviewFor("weather", {
   entity: "weather.home", type: "weather", precision: "daily", label: "Garden",
 });
 assert.strictEqual(weatherDailyPreview.buttonClass, "sp-weather-daily-card");
-assert.strictEqual((weatherDailyPreview.iconHtml.match(/class="sp-weather-day"/g) || []).length, 7,
-  "daily preview exposes the seven sample days for width-responsive CSS");
+assert.strictEqual((weatherDailyPreview.iconHtml.match(/class="sp-weather-day"/g) || []).length, 8,
+  "daily preview exposes eight sample days for width/height reflow");
 assert.strictEqual(weatherDailyPreview.labelHtml, "", "daily preview omits the separate label row");
 assert(weatherDailyPreview.iconHtml.indexOf("mdi-weather-rainy") < weatherDailyPreview.iconHtml.indexOf("Today"),
   "daily preview places the condition icon above the weekday");

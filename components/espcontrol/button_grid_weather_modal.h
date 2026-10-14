@@ -1,6 +1,6 @@
 #pragma once
 
-// Six visible day panels share the card's bounded seven-day forecast snapshot.
+// Six visible day panels share the card's bounded eight-day forecast snapshot.
 // Each panel reuses one two-line label for rain chance/amount and wind speed.
 struct WeatherDailyModalColumn { lv_obj_t *button, *day, *icon, *temperature, *conditions; };
 struct WeatherDailyModal {
