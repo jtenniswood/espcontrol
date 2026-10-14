@@ -1197,6 +1197,25 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     await page.waitForTimeout(100);
     assert.strictEqual(colourPosts().length, savesBefore + 1,
       `${label}: repeated confirmation of the same colour does not save again`);
+    const customSwatch = page.locator("#sp-set-on-color .sp-card-color-custom");
+    assert.strictEqual(await customSwatch.evaluate(el => getComputedStyle(el).borderTopStyle), "solid",
+      `${label}: choosing a custom colour fills its swatch with a solid border`);
+    const presetSaved = page.waitForRequest(request => request.method() === "POST" &&
+      postRecord(request.url()).name === "button_on_color");
+    await page.locator('#sp-set-on-color [data-color="FF8C00"]').click();
+    await presetSaved;
+    assert.strictEqual(colourPosts().at(-1).value, "FF8C00", `${label}: preset selection still saves its colour`);
+    assert.strictEqual(await customSwatch.getAttribute("data-selected"), "false");
+    assert.strictEqual(await customSwatch.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(18, 58, 188)",
+      `${label}: selecting a preset retains the custom swatch colour`);
+    assert.strictEqual(await customSwatch.evaluate(el => getComputedStyle(el).borderTopStyle), "solid");
+    assert.strictEqual(await picker.inputValue(), "#123abc");
+    const customSaved = page.waitForRequest(request => request.method() === "POST" &&
+      postRecord(request.url()).name === "button_on_color");
+    await picker.dispatchEvent("click");
+    await customSaved;
+    assert.strictEqual(colourPosts().at(-1).value, "123ABC", `${label}: clicking the custom swatch restores its retained colour`);
+    assert.strictEqual(await customSwatch.getAttribute("data-selected"), "true");
     await picker.fill(originalColour);
   }
   const themeModes = page.locator("#sp-set-theme-mode");
