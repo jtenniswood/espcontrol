@@ -7017,7 +7017,7 @@ async function assertPreviewOutlinePixels(page, card, label) {
     `${label}: corner thickness must match the sides: ${JSON.stringify(thicknesses)}`);
 }
 
-async function assertPreviewOutlines(browser, testCase) {
+async function assertPreviewOutlines(browser, testCase, exhaustive = false) {
   const context = await browser.newContext({ viewport: testCase.viewport, deviceScaleFactor: 2 });
   try {
     await installRoutes(context, testCase.slug);
@@ -7030,17 +7030,21 @@ async function assertPreviewOutlines(browser, testCase) {
     await page.locator('.sp-main > .sp-btn[data-slot="1"]').click();
     await page.waitForSelector('.sp-main > .sp-btn[data-slot="1"].sp-selected');
     const outlineStyle = await page.addStyleTag({ content: ".sp-btn,.sp-empty-cell{transition:none!important;--accent:#ff00ff!important;--card-outline-color:#ff00ff!important}" });
-    const fixtures = await page.evaluate(() => {
+    // Keep the normal smoke run bounded: cover plain, image, artwork, slider
+    // and QR content. The opt-in sweep covers every card and curve preset.
+    const fixtures = await page.evaluate(exhaustive => {
       const hooks = window.__ESPCONTROL_TEST_HOOKS__.config;
-      const keys = [...new Set([...hooks.cardContractCardKeys(), ...hooks.buttonTypePickerKeysFor(false), "media_cover_art"])];
+      const keys = exhaustive
+        ? [...new Set([...hooks.cardContractCardKeys(), ...hooks.buttonTypePickerKeysFor(false), "media_cover_art"])]
+        : ["weather", "image", "media_cover_art", "light_brightness", "wifi_qr_card"];
       return keys.map(key => {
         const config = hooks.buttonTypeDefaultConfig(key);
         return config ? { key, config: hooks.serializeButtonConfig(config) } : null;
       }).filter(Boolean);
-    });
+    }, exhaustive);
     assert(fixtures.some(fixture => fixture.key === "image"), "outline sweep must include image cards");
     if (testCase.mediaCoverArtSupported) assert(fixtures.some(fixture => fixture.key === "media_cover_art"), "outline sweep must include Cover Art");
-    for (const preset of ["Small", "Medium", "Large"]) {
+    for (const preset of (exhaustive ? ["Small", "Medium", "Large"] : ["Medium"])) {
       await page.evaluate(preset => window.__seedEspState([{ id: "select-screen__card_curve", state: preset, value: preset }]), preset);
       for (const fixture of fixtures) {
         await page.evaluate(config => window.__seedEspState([
@@ -7164,7 +7168,7 @@ async function assertContinuousPreview(browser, testCase) {
       return;
     }
     if (process.env.ESPCONTROL_OUTLINES_ONLY === "1") {
-      for (const testCase of ACTIVE_CASES) await assertPreviewOutlines(browser, testCase);
+      for (const testCase of ACTIVE_CASES) await assertPreviewOutlines(browser, testCase, true);
       console.log(`Preview outline pixel checks passed for ${ACTIVE_CASES.length} generated layouts.`);
       return;
     }
