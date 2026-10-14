@@ -162,48 +162,44 @@ export function buildWallpaperSettings(
   body.className = "sp-field";
   const imageField = document.createElement("div");
   imageField.className = "sp-field sp-card-bg-field";
-  const label = document.createElement("label");
-  label.className = "sp-field-label";
-  label.htmlFor = "sp-set-wallpaper";
-  label.textContent = "Wallpaper";
   const upload = document.createElement("input");
   upload.id = "sp-set-wallpaper";
   upload.type = "file";
+  upload.setAttribute("aria-label", "Upload Image");
   upload.accept = "image/jpeg,image/png,image/webp";
   upload.className = "sp-card-bg-file";
   upload.hidden = true;
   const preview = document.createElement("div");
-  preview.className = "sp-card-bg-preview sp-card-bg-preview-empty";
+  preview.id = "sp-wallpaper-preview";
+  preview.className = "sp-wallpaper-preview";
   preview.setAttribute("role", "img");
   preview.setAttribute("aria-label", "No wallpaper uploaded");
-  const previewIcon = document.createElement("span");
-  previewIcon.className = "sp-card-bg-preview-icon mdi mdi-image";
-  previewIcon.setAttribute("aria-hidden", "true");
-  const previewTitle = document.createElement("span");
-  previewTitle.className = "sp-card-bg-preview-title";
-  previewTitle.textContent = "No wallpaper";
-  preview.append(previewIcon, previewTitle);
+  for (let index = 0; index < 9; index++) {
+    const box = document.createElement("span");
+    box.className = "sp-wallpaper-preview-box" + (index === 2 || index === 4 ? " sp-wallpaper-preview-box-active" : "");
+    box.setAttribute("aria-hidden", "true");
+    preview.appendChild(box);
+  }
   const actions = document.createElement("div");
   actions.className = "sp-card-bg-actions";
   const uploadButton = document.createElement("button");
   uploadButton.type = "button";
   uploadButton.className = "sp-action-btn";
-  uploadButton.innerHTML = '<span class="mdi mdi-plus" aria-hidden="true"></span><span>Add image</span>';
-  const uploadTitle = uploadButton.lastElementChild!;
+  uploadButton.innerHTML = '<span class="mdi mdi-upload" aria-hidden="true"></span><span>Upload Image</span>';
   uploadButton.addEventListener("click", () => upload.click());
   const remove = document.createElement("button");
   remove.type = "button";
-  remove.className = "sp-action-btn";
-  remove.innerHTML = '<span class="mdi mdi-close" aria-hidden="true"></span>Clear';
-  remove.setAttribute("aria-label", "Clear wallpaper");
-  remove.title = "Clear wallpaper";
+  remove.className = "sp-action-btn sp-wallpaper-delete";
+  remove.innerHTML = '<span class="mdi mdi-delete-outline" aria-hidden="true"></span>';
+  remove.setAttribute("aria-label", "Delete wallpaper");
+  remove.title = "Delete wallpaper";
   actions.append(upload, uploadButton, remove);
   const status = document.createElement("div");
   status.className = "sp-field-hint";
   status.setAttribute("role", "status");
   status.textContent = "Loading wallpaper…";
-  const control = fields.createRangeSlider("Off card transparency", 20, () => { void saveOpacity(); });
-  const activeControl = fields.createRangeSlider("Active card transparency", 20, () => { void saveOpacity(); });
+  const control = fields.createRangeSlider("Standard Card Transparency", 20, () => { void saveOpacity(); });
+  const activeControl = fields.createRangeSlider("Active Card Transparency", 2, () => { void saveOpacity(); });
   const activeRange = activeControl.range as HTMLInputElement;
   activeRange.id = "sp-set-active-card-transparency";
   activeRange.min = "0"; activeRange.max = "100"; activeRange.step = "1";
@@ -214,50 +210,55 @@ export function buildWallpaperSettings(
   range.min = "0"; range.max = "100"; range.step = "1";
   control.wrap.querySelector("label").htmlFor = range.id;
   const hint = document.createElement("div");
-  hint.className = "sp-field-hint";
-  hint.textContent = "0% is solid; 100% is clear. Text and icons stay visible.";
-  control.wrap.appendChild(hint);
-  imageField.append(label, preview, actions, status);
-  body.append(imageField, control.wrap, activeControl.wrap);
+  hint.className = "sp-info-panel sp-wallpaper-info";
+  hint.setAttribute("role", "note");
+  const hintIcon = document.createElement("span");
+  hintIcon.className = "mdi mdi-information-outline";
+  hintIcon.setAttribute("aria-hidden", "true");
+  const hintText = document.createElement("span");
+  hintText.textContent = "0% is solid; 100% is clear. Text and icons stay visible.";
+  hint.append(hintIcon, hintText);
+  imageField.append(preview, actions, status);
+  body.append(imageField, hint, control.wrap, activeControl.wrap);
   let hasWallpaper = false, supported = false, busy = false, opacitySupported = false;
-  let opacity = 80, activeOpacity = 80, savedOpacity = 80, savedActiveOpacity = 80, previewUrl = "";
+  let opacity = 80, activeOpacity = 98, savedOpacity = 80, savedActiveOpacity = 98, previewUrl = "";
   let separateOpacity = false;
   let limits = LEGACY_LIMITS;
   function sync() {
     upload.disabled = !supported || busy;
     uploadButton.disabled = upload.disabled;
-    uploadTitle.textContent = hasWallpaper ? "Replace image" : "Add image";
     imageField.setAttribute("aria-busy", String(busy));
     remove.disabled = !supported || busy || !hasWallpaper;
+    hint.hidden = !hasWallpaper;
     control.wrap.hidden = !hasWallpaper;
     activeControl.wrap.hidden = !hasWallpaper || !separateOpacity;
     range.disabled = !opacitySupported || busy || !hasWallpaper;
     activeRange.disabled = !separateOpacity || !opacitySupported || busy || !hasWallpaper;
-    activeRange.value = String(100 - activeOpacity);
+    activeRange.value = String(hasWallpaper ? 100 - activeOpacity : 0);
     activeControl.val.textContent = activeRange.value + "%";
-    range.value = String(100 - opacity);
+    range.value = String(hasWallpaper ? 100 - opacity : 0);
     control.val.textContent = range.value + "%";
   }
   range.addEventListener("input", () => {
     opacity = 100 - Number(range.value);
     if (!separateOpacity) activeOpacity = opacity;
-    onChange(previewUrl, opacity, activeOpacity);
+    updatePreview();
   });
   activeRange.addEventListener("input", () => {
     activeOpacity = 100 - Number(activeRange.value);
-    onChange(previewUrl, opacity, activeOpacity);
+    updatePreview();
   });
+  function updatePreview() {
+    onChange(previewUrl, hasWallpaper ? opacity : 100, hasWallpaper ? activeOpacity : 100);
+  }
   function apply(buffer: ArrayBuffer | null) {
     previewUrl = buffer ? wallpaperPreview(document, buffer) : "";
     hasWallpaper = !!buffer;
     preview.style.backgroundImage = previewUrl ? `url("${previewUrl}")` : "";
-    preview.classList.toggle("sp-card-bg-preview-empty", !hasWallpaper);
-    previewIcon.hidden = hasWallpaper;
-    previewTitle.hidden = hasWallpaper;
     preview.setAttribute("aria-label", buffer
       ? `Saved wallpaper, ${new DataView(buffer).getUint32(4, true)} by ${new DataView(buffer).getUint32(8, true)} pixels`
       : "No wallpaper uploaded");
-    onChange(previewUrl, opacity, activeOpacity);
+    updatePreview();
     status.textContent = buffer ? `Wallpaper saved (${new DataView(buffer).getUint32(4, true)} × ${new DataView(buffer).getUint32(8, true)}). Changes apply immediately.`
       : "JPEG, PNG or WebP. Saved on this display; images are resized automatically. Changes apply immediately.";
   }
@@ -288,7 +289,8 @@ export function buildWallpaperSettings(
         activeOpacity = savedActiveOpacity = values.active;
         opacitySupported = true;
       } else {
-        hint.textContent = "Install updated firmware to adjust card transparency.";
+        hintText.textContent = "Install updated firmware to adjust card transparency.";
+        activeOpacity = opacity;
       }
       const response = await request("/api/v1/wallpaper", { credentials: "include", cache: "no-store" });
       if (response.status === 404 || response.status === 501) {
@@ -339,12 +341,12 @@ export function buildWallpaperSettings(
       const values = parseWallpaperOpacities(await response.json(), separateOpacity);
       opacity = savedOpacity = values.off;
       activeOpacity = savedActiveOpacity = values.active;
-      onChange(previewUrl, opacity, activeOpacity);
+      updatePreview();
       status.textContent = "";
     } catch (error) {
       opacity = savedOpacity;
       activeOpacity = savedActiveOpacity;
-      onChange(previewUrl, opacity, activeOpacity);
+      updatePreview();
       status.textContent = error instanceof Error ? error.message : "Could not save card transparency.";
     } finally { busy = false; sync(); }
   }

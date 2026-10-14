@@ -113,6 +113,7 @@ int main() {
   assert(store.save(first.data(), first.size()));
   expect_image(store, first);
   assert(store.opacity_percent() == 80);
+  assert(store.opacities().active == 98);
   const auto wallpaper_revision = store.revision();
   const auto old_flash = flash;
   assert(!store.save_opacity_percent(-1) && !store.save_opacity_percent(101));
@@ -130,6 +131,7 @@ int main() {
   assert(store.save_opacity_percent(100) && store.opacity_percent() == 100);
   saved_opacity = 200; saved_pair = (101 << 8);
   WallpaperStore invalid_opacity; assert(invalid_opacity.opacity_percent() == 80);
+  assert(invalid_opacity.opacities().active == 98);
   saved_opacity = 50; saved_pair = -1;
   const auto unchanged_image = flash;
   assert(!store.save_opacities(101, 50) && !store.save_opacities(50, -1));
@@ -250,7 +252,7 @@ int main() {
   WallpaperStore migrated_removal; assert(!migrated_removal.load(size, revision) && size == 0);
   // Resetting preferences clears the saved setting and restores the default.
   saved_opacity = saved_pair = -1;
-  WallpaperStore reset; assert(reset.opacities().off == 80 && reset.opacities().active == 80);
+  WallpaperStore reset; assert(reset.opacities().off == 80 && reset.opacities().active == 98);
   assert(std::all_of(flash.begin(), flash.begin() + WALLPAPER_STORAGE_OFFSET, [](uint8_t b) { return b == 0xff; }));
   assert(std::all_of(flash.begin() + WALLPAPER_STORAGE_OFFSET + WALLPAPER_STORAGE_BYTES, flash.end(), [](uint8_t b) { return b == 0xff; }));
 }

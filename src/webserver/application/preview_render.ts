@@ -125,6 +125,11 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
     function renderPreview(this: any) {
         const previewColors = PREVIEW_THEME_COLORS[previewEffectiveTheme(state)];
         const hasWallpaper = !!els.wallpaperUrl;
+        const wallpaperPreview = document.getElementById("sp-wallpaper-preview");
+        if (wallpaperPreview) {
+            wallpaperPreview.style.setProperty("--wallpaper-standard-color", wallpaperCardColor(previewColors.surfaceCard, hasWallpaper, els.wallpaperOpacityPercent));
+            wallpaperPreview.style.setProperty("--wallpaper-active-color", wallpaperCardColor(state.onColor || WEB_UI_COLORS.primary, hasWallpaper, els.wallpaperActiveOpacityPercent));
+        }
         if (els.previewScreen) {
             els.previewScreen.style.backgroundImage = hasWallpaper ? 'url("' + els.wallpaperUrl + '")' : "";
             els.previewScreen.style.backgroundSize = "cover";

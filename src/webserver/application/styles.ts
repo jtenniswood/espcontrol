@@ -429,6 +429,14 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-card-bg-file{display:none}" +
         ".sp-card-bg-actions .sp-action-btn{padding:8px 12px;display:inline-flex;align-items:center;gap:6px}" +
         ".sp-card-bg-actions .sp-action-btn:disabled{opacity:.45;cursor:not-allowed}" +
+        ".sp-wallpaper-preview{width:min(280px,100%);aspect-ratio:1/1;box-sizing:border-box;padding:10px;" +
+        "display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:8px;" +
+        "border:1px solid var(--border);border-radius:6px;background:var(--surface) center/cover no-repeat}" +
+        ".sp-wallpaper-preview-box{border-radius:5px;background:var(--wallpaper-standard-color,var(--screen-secondary))}" +
+        ".sp-wallpaper-preview-box-active{background:var(--wallpaper-active-color,var(--screen-primary))}" +
+        ".sp-info-panel.sp-wallpaper-info{background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.3)}" +
+        ".sp-info-panel.sp-wallpaper-info .mdi{color:#60a5fa}" +
+        ".sp-card-bg-actions .sp-wallpaper-delete{padding:8px;min-width:36px;justify-content:center;font-size:18px}" +
         ".sp-icon-picker{position:relative}" +
         ".sp-icon-picker-input{width:100%;padding:10px 12px;padding-left:36px;background:var(--surface2);" +
         "border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.875rem;" +
