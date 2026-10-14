@@ -548,13 +548,13 @@ export function createControlsFieldsFeature(
         var disclosure: any = helpers.disclosureSection("Card Image", helpers.idPrefix + "card-image-settings", false);
         var field: any = document.createElement("div");
         field.className = "sp-field sp-card-bg-field";
-        field.appendChild(fieldLabel("Background Image", helpers.idPrefix + "bg-image"));
         var preview: any = document.createElement("div");
         preview.className = "sp-card-bg-preview";
         field.appendChild(preview);
         var select: any = document.createElement("select");
         select.className = "sp-select";
         select.id = helpers.idPrefix + "bg-image";
+        select.setAttribute("aria-label", "Card image");
         field.appendChild(select);
         var actions: any = document.createElement("div");
         actions.className = "sp-card-bg-actions";
@@ -565,11 +565,7 @@ export function createControlsFieldsFeature(
         var uploadBtn: any = document.createElement("button");
         uploadBtn.type = "button";
         uploadBtn.className = "sp-action-btn";
-        uploadBtn.innerHTML = '<span class="mdi mdi-plus"></span>Add image';
-        var clearBtn: any = document.createElement("button");
-        clearBtn.type = "button";
-        clearBtn.className = "sp-action-btn";
-        clearBtn.innerHTML = '<span class="mdi mdi-close"></span>Clear';
+        uploadBtn.innerHTML = '<span class="mdi mdi-plus"></span>Upload image';
         var renameBtn: any = document.createElement("button");
         renameBtn.type = "button";
         renameBtn.className = "sp-action-btn";
@@ -580,7 +576,7 @@ export function createControlsFieldsFeature(
         deleteBtn.innerHTML = '<span class="mdi mdi-trash-can-outline"></span>';
         deleteBtn.setAttribute("aria-label", "Delete image");
         deleteBtn.title = "Delete image";
-        actions.append(upload, uploadBtn, clearBtn, renameBtn, deleteBtn);
+        actions.append(upload, uploadBtn, renameBtn, deleteBtn);
         field.appendChild(actions);
         var availability: any = document.createElement("div");
         availability.className = "sp-card-image-storage";
@@ -593,7 +589,6 @@ export function createControlsFieldsFeature(
             const iconName = iconSlug(b.icon && b.icon !== "Auto" ? b.icon : "gesture-tap-button");
             preview.innerHTML = '<span class="sp-card-bg-preview-icon mdi mdi-' + iconName + '"></span>' +
                 '<span class="sp-card-bg-preview-title">' + escHtml(b.label || b.entity || "Configure") + '</span>';
-            clearBtn.disabled = !id;
             renameBtn.disabled = !id;
             deleteBtn.disabled = !id;
         };
@@ -610,7 +605,8 @@ export function createControlsFieldsFeature(
             uploadBtn.disabled = !info.available;
             availability.textContent = info.requiresUsbFlash
                 ? "Background images need one USB reflash to install image storage on this display."
-                : "Every card position on this display can use a background image.";
+                : "";
+            availability.hidden = !info.requiresUsbFlash;
             select.innerHTML = "";
             const none = document.createElement("option");
             none.value = "";
@@ -632,7 +628,6 @@ export function createControlsFieldsFeature(
             refreshPreview();
         };
         select.addEventListener("change", function (this: HTMLSelectElement) { setBackground(this.value); });
-        clearBtn.addEventListener("click", () => { select.value = ""; setBackground(""); });
         renameBtn.addEventListener("click", () => {
             const id = selectedImage();
             if (!id) return;

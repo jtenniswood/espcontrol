@@ -67,7 +67,7 @@ Most cards also let you choose an icon and set a label. If the label is left bla
 
 ### Card Background Images
 
-Useful button-style cards, including Switch, Action, Trigger, Media, Internal Switch, Subpage, and Garage Door cards, can use a custom background image. In the card settings, use **Background Image** to upload a picture, choose one already stored on the panel, clear the image from that card, or delete it from the panel's small image library.
+Useful button-style cards, including Switch, Action, Trigger, Media, Internal Switch, Subpage, and Garage Door cards, can use a custom background image. In the card settings, expand **Card Image** and use **Upload image** to add a picture, choose one already stored on the panel, select **No image** to remove it from that card, or delete it from the panel's small image library.
 
 Every supported card position can have its own background image. The maximum therefore follows the size of the display grid: 6 on the 4.3-inch panel, 9 on the 4-inch and P4-86 panels, 15 on the 7-inch panel, and 20 on either 10.1-inch panel.
 
