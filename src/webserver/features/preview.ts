@@ -151,14 +151,18 @@ export function applySliderPreviewTextContrast(card: HTMLElement, baseTextColor:
   if (!fill) return;
   const fillTextColor = cardPreviewTextColor(fillColor);
   if (fillTextColor === baseTextColor) return;
-  const edge = fill.getBoundingClientRect().top;
+  const fromTop = card.classList.contains("sp-cover-preview");
+  const fillBounds = fill.getBoundingClientRect();
+  const edge = fromTop ? fillBounds.bottom : fillBounds.top;
+  const topTextColor = fromTop ? fillTextColor : baseTextColor;
+  const bottomTextColor = fromTop ? baseTextColor : fillTextColor;
   for (const label of card.querySelectorAll<HTMLElement>(".sp-btn-icon,.sp-btn-label,.sp-sensor-badge,.sp-btn-label-row .mdi")) {
     const bounds = label.getBoundingClientRect();
     if (bounds.height <= 0) continue;
     const split = Math.max(0, Math.min(100, (edge - bounds.top) / bounds.height * 100));
     // A sharp text gradient follows the same boundary as the slider fill,
     // including when it crosses an icon or a wrapped label.
-    label.style.backgroundImage = `linear-gradient(to bottom,${baseTextColor} ${split}%,${fillTextColor} ${split}%)`;
+    label.style.backgroundImage = `linear-gradient(to bottom,${topTextColor} ${split}%,${bottomTextColor} ${split}%)`;
     label.style.backgroundClip = "text";
     label.style.color = "transparent";
   }
