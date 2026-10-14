@@ -82,6 +82,11 @@ export function createWebStyles(dragAnimation: boolean): string {
         "cursor:pointer;transition:all .2s;box-sizing:border-box;border:0;" +
         "position:relative;overflow:hidden;min-width:0;color:var(--card-text-color,var(--preview-text-primary))}" +
         ".sp-btn:hover{filter:brightness(1.15)}" +
+        ".sp-resize-handle{position:absolute;right:2px;bottom:2px;width:32px;height:32px;padding:0;border:0;background:transparent;color:var(--card-text-color,#fff);cursor:nwse-resize;touch-action:none;opacity:0;z-index:5}" +
+        ".sp-resize-handle svg{width:100%;height:100%;pointer-events:none;fill:none;stroke:currentColor;stroke-width:5;stroke-linecap:round}" +
+        ".sp-btn:hover>.sp-resize-handle,.sp-resize-handle:focus-visible,.sp-btn.sp-resizing>.sp-resize-handle{opacity:1}" +
+        ".sp-btn.sp-resizing{transition:none;z-index:6;filter:none}" +
+        "@media(hover:none){.sp-resize-handle{opacity:1}}" +
         "@supports(corner-shape:superellipse(2)){.sp-continuous-corners .sp-btn{border-radius:calc(var(--btn-r)*2);corner-shape:superellipse(2)}" +
         ".sp-continuous-corners .sp-empty-cell{border-radius:calc(var(--empty-r)*2);corner-shape:superellipse(2)}}" +
         ".sp-btn.sp-selected:hover{filter:none}" +

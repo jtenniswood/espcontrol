@@ -18,6 +18,7 @@ import {
 import { mdiIcon } from "./ui_primitives";
 import { clampMenuPosition } from "../features/preview";
 import { resizeGridSlot } from "../features/preview_grid";
+import { installPreviewResize, resizeTargetDimensions } from "./preview_resize";
 import type { ApplicationLayoutState } from "./application_context";
 import type { CardRegistry } from "./card_registry";
 import type { ConfigCodecFeature } from "./config_codec";
@@ -403,6 +404,23 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         }
         ctxMenu = null;
     }
+    installPreviewResize({
+        document,
+        isConfigLocked,
+        commit: resizeSlot,
+        targets(slot, card) {
+            const c = ctx();
+            const pos = c.grid.indexOf(slot);
+            const currentSize = c.sizes[slot] || 1;
+            const rect = card.getBoundingClientRect();
+            const gap = parseFloat(window.getComputedStyle(card.parentElement!).gap) || 0;
+            const cellWidth = (rect.width - (sizeColSpan(currentSize) - 1) * gap) / sizeColSpan(currentSize);
+            const cellHeight = (rect.height - (sizeRowSpan(currentSize) - 1) * gap) / sizeRowSpan(currentSize);
+            return cardSizeMenuOptions(c.buttons[slot - 1])
+                .filter((option: { size: number }) => resizeGridSlot(c.grid, c.sizes, slot, pos, option.size, c.maxSlots, dependencies.layout.gridCols, !c.isSub).accepted)
+                .map((option: { size: number }) => resizeTargetDimensions(option.size, cellWidth, cellHeight, gap));
+        },
+    });
     return {
         hide: hideContextMenu,
         contains: (target) => !!(ctxMenu && ctxMenu.contains(target)),

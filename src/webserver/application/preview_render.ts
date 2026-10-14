@@ -216,6 +216,15 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     sensorBadge +
                         iconHtml +
                         labelHtml;
+                if (!isConfigLocked()) {
+                    const handle = document.createElement("button");
+                    handle.type = "button";
+                    handle.className = "sp-resize-handle";
+                    handle.setAttribute("aria-label", "Resize card");
+                    handle.title = "Drag to resize";
+                    handle.innerHTML = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M 27 8 Q 24 24 8 27"/></svg>';
+                    btn.appendChild(handle);
+                }
                 main.appendChild(btn);
                 if (["light_brightness", "fan_speed", "cover", "slider", "light_temperature"].indexOf(b.type) !== -1) {
                     applySliderPreviewTextContrast(btn, cardOffColor ? cardPreviewTextColor(cardOffColor) : "#" + previewColors.textPrimary, sliderFillColor);
