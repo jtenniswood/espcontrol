@@ -340,7 +340,7 @@ export function buildWallpaperSettings(
       opacity = savedOpacity = values.off;
       activeOpacity = savedActiveOpacity = values.active;
       onChange(previewUrl, opacity, activeOpacity);
-      status.textContent = "Card transparency saved. Changes apply immediately.";
+      status.textContent = "";
     } catch (error) {
       opacity = savedOpacity;
       activeOpacity = savedActiveOpacity;
