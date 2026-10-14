@@ -1,12 +1,14 @@
 import { state } from "../state/app_instance";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
-import { PREVIEW_THEME_COLORS, previewEffectiveTheme } from "../state/preview_theme";
-import { configOptionValue, lighterCardColor } from "../model/config_primitives";
+import { PREVIEW_THEME_COLORS, defaultCardBackgroundColor, previewEffectiveTheme } from "../state/preview_theme";
+import { configOptionValue, activeCardColor } from "../model/config_primitives";
 import { escHtml } from "./ui_primitives";
 import {
     buttonConfigDisabledForDevice as isButtonConfigDisabledForDevice,
     cardPreviewTextColor,
     cardProgressColor,
+    cardSliderFillColor,
+    cardPatternHighlightColor,
     cardTypePickerDetails,
     cardTypePickerOptions,
     defaultCardTypeForPicker,
@@ -24,10 +26,6 @@ import type { ControlsShellFeature } from "./controls_shell";
 import type { GridFeature } from "./grid";
 import type { ButtonSettingsSelectionFeature } from "./button_settings_selection";
 
-const SENSOR_SURFACE_CARD_TYPES: ReadonlySet<string> = new Set([
-    "sensor", "local_sensor", "door_window", "presence", "weather",
-    "weather_forecast", "calendar", "clock", "timezone",
-]);
 export interface PreviewRenderDependencies {
     readonly updateClockBarItemUi: () => void;
     readonly document: Document;
@@ -119,13 +117,17 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
             if (slot === -2) {
                 var backBtn: any = document.createElement("div");
                 var bkSz: any = c.sizes[-2];
-                var backLabel: any = c.isSub ? (getSubpage(state.editingSubpage).backLabel || "Back") : "Back";
+                var subpage = c.isSub ? getSubpage(state.editingSubpage) : null;
+                var backLabel = subpage?.backLabel || "Back";
+                var backColor = subpage?.backColor || previewColors.surfaceCard;
                 backBtn.className = "sp-btn sp-back-btn" + sizeClass(bkSz) +
                     (c.selected.indexOf(-2) !== -1 ? " sp-selected" : "");
                 backBtn.innerHTML =
                     '<span class="sp-btn-icon sp-back-hit mdi mdi-chevron-left"></span>' +
                         '<span class="sp-btn-label">' + escHtml(backLabel) + '</span>';
-                backBtn.style.backgroundColor = "#" + previewColors.surfaceCard;
+                backBtn.style.backgroundColor = "#" + backColor;
+                backBtn.style.setProperty("--card-text-color", subpage?.backColor
+                    ? cardPreviewTextColor(backColor) : "#" + previewColors.textPrimary);
                 backBtn.style.cursor = "pointer";
                 backBtn.setAttribute("data-pos", pos);
                 backBtn.draggable = !isConfigLocked();
@@ -158,9 +160,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 }
                 var iconName: any = resolveIcon(b);
                 var label: any = b.label || b.entity || "Configure";
-                var color: any = SENSOR_SURFACE_CARD_TYPES.has(b.type || "")
-                    ? previewColors.surfaceSensor
-                    : previewColors.surfaceCard;
+                var color: any = defaultCardBackgroundColor(b.type || "", state);
                 var previewTypeDef: any = dependencies.cards.definitions[b.type || ""] || null;
                 if (previewTypeDef && c.isSub && !buttonTypeRegistryValue(previewTypeDef, "allowInSubpage", false)) {
                     previewTypeDef = null;
@@ -168,7 +168,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 var slotSz: any = c.sizes[slot];
                 var cardOffColor: any = configOptionValue(b.options, "card_off_color").replace(/^#/, "").toUpperCase();
                 if (!/^[0-9A-F]{6}$/.test(cardOffColor)) cardOffColor = "";
-                var cardOnColor: any = lighterCardColor(cardOffColor);
+                var cardOnColor: any = activeCardColor(cardOffColor);
                 var typePreview: any = previewTypeDef && previewTypeDef.renderPreview
                     ? previewTypeDef.renderPreview(b, {
                         escHtml: escHtml, cardSize: slotSz || 1,
@@ -184,6 +184,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     (c.selected.indexOf(slot) !== -1 ? " sp-selected" : "");
                 btn.style.backgroundColor = "#" + (cardOffColor || color);
                 btn.style.setProperty("--card-active-color", "#" + (cardOnColor || state.onColor || WEB_UI_COLORS.primary));
+                if (cardOffColor) btn.style.setProperty("--card-slider-fill-color", "#" + cardSliderFillColor(cardOffColor));
                 var contrastBackground: any = cardOffColor || color;
                 btn.draggable = !isConfigLocked();
                 btn.setAttribute("data-pos", pos);
@@ -194,7 +195,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     contrastBackground = onColor;
                     btn.style.backgroundImage =
                         "repeating-linear-gradient(135deg,#" + onColor + " 0,#" + onColor +
-                            " 12px,rgba(255,255,255,.22) 12px,rgba(255,255,255,.22) 20px)";
+                            " 12px,#" + cardPatternHighlightColor(onColor) + " 12px,#" + cardPatternHighlightColor(onColor) + " 20px)";
                 }
                 if (!btn.classList.contains("sp-image-card")) {
                     btn.style.setProperty("--card-text-color", cardOffColor || contrastBackground !== color

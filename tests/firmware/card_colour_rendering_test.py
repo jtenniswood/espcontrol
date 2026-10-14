@@ -1,5 +1,6 @@
 """Exercise production colour palettes, sensor backgrounds and state updates."""
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -20,7 +21,8 @@ source = r'''
 #include <vector>
 struct lv_obj_t;
 void lv_label_set_text(lv_obj_t *, const char *) {}
-std::string espcontrol_i18n(const std::string &text) { return text; }
+bool translate_back = false;
+std::string espcontrol_i18n(const std::string &text) { return translate_back && text == "Back" ? "Zurück" : text; }
 #include "button_grid_config_parser.h"
 #define ESPCONTROL_SUBPAGE_PARSER_ONLY
 #include "button_grid_subpages.h"
@@ -34,7 +36,8 @@ constexpr int LV_OPA_COVER = 255, LV_OPA_TRANSP = 0;
 struct lv_event_t { lv_obj_t *target; int code; };
 using lv_event_cb_t = void (*)(lv_event_t *);
 struct lv_obj_t {
-  uint32_t background[3] = {}, text[3] = {};
+  uint32_t background[3] = {}, text[3] = {}, gradient[3] = {};
+  int gradient_direction[3] = {};
   int state = 0;
   int flags = 0;
   std::vector<lv_event_cb_t> events;
@@ -52,6 +55,9 @@ uint32_t current_grid_sensor_surface_color() { return current_theme().surface_se
 uint32_t current_grid_sensor_color() { return current_theme().surface_secondary; }
 void lv_obj_set_style_bg_color(lv_obj_t *obj, uint32_t rgb, int selector) { obj->background[selector] = rgb; }
 void lv_obj_set_style_text_color(lv_obj_t *obj, uint32_t rgb, int selector) { obj->text[selector] = rgb; }
+constexpr int LV_GRAD_DIR_HOR = 1;
+void lv_obj_set_style_bg_grad_color(lv_obj_t *obj, uint32_t rgb, int selector) { obj->gradient[selector] = rgb; }
+void lv_obj_set_style_bg_grad_dir(lv_obj_t *obj, int direction, int selector) { obj->gradient_direction[selector] = direction; }
 void lv_obj_set_style_bg_opa(lv_obj_t *, int, int) {}
 void lv_obj_set_style_border_color(lv_obj_t *, uint32_t, int) {}
 void lv_obj_set_style_border_width(lv_obj_t *, int, int) {}
@@ -132,11 +138,15 @@ size_t lv_obj_get_child_cnt(lv_obj_t *obj) { return obj->children.size(); }
 lv_obj_t *lv_obj_get_child(lv_obj_t *obj, size_t index) { return obj->children[index]; }
 '''
 grid = (headers / "button_grid_grid.h").read_text()
+layout = (headers / "button_grid_layout.h").read_text()
+source += "\n" + "\n".join(re.findall(r"^constexpr char CARD_SIZE_.*?;$", layout, re.MULTILINE))
 
 groups = (
     ("button_grid_display.h", "", ("display_correct_color",)),
-    ("button_grid_layout.h", "", ("parse_hex_color", "apply_button_colors", "apply_card_descendant_text_color", "sync_card_checked_text_color", "card_text_contrast_event_cb", "bind_card_text_contrast_events", "set_card_checked_state")),
+    ("button_grid_layout.h", "", ("grid_token_has_span_suffix", "parse_hex_color", "apply_button_colors", "apply_button_on_pattern", "apply_card_descendant_text_color", "sync_card_checked_text_color", "card_text_contrast_event_cb", "bind_card_text_contrast_events", "set_card_checked_state")),
     ("button_grid_grid.h", "", ("card_palette_for_config",)),
+    ("button_grid_subpages.h", "", ("get_subpage_order", "subpage_back_token_span", "get_subpage_back_label", "get_subpage_back_color")),
+    ("button_grid_grid.h", "", ("apply_subpage_back_colors",)),
     ("button_grid_sensor_driver.h", "espcontrol::cards", ("sensor_driver_apply_background",)),
     ("button_grid_weather_driver.h", "espcontrol::cards", ("weather_driver_apply_background",)),
     ("button_grid_subscriptions.h", "", ("apply_sensor_active_color", "subscribe_sensor_text_card_value")),
@@ -158,6 +168,35 @@ for filename, namespace, names in groups:
 source += r'''
 #line 1 "card_colour_rendering_cases"
 int main() {
+  for (const std::string token : {"B", "Bd", "Bw", "Bb", "Bt", "Bx"}) {
+    for (const std::string prefix : {"", "~"}) {
+      const auto order = get_subpage_order(prefix + "1," + token + "=Return%3AHome%2C50%25:#ffec16,2|ignored");
+      assert(get_subpage_back_label(order) == "Return:Home,50%");
+      assert(get_subpage_back_color(order) == "FFEC16");
+      lv_obj_t back, icon, label;
+      back.children = {&icon, &label};
+      assert(!apply_subpage_back_colors(&back, order, DisplayProfile{}));
+      assert(back.background[0] == 0xFFEC16);
+      assert(icon.text[0] == 0x212121 && label.text[0] == 0x212121);
+      back.state = LV_STATE_PRESSED;
+      send_event(&back, LV_EVENT_PRESSED);
+      assert(back.background[LV_STATE_PRESSED] == active_card_color(0xFFEC16));
+      assert(label.text[0] == display_text_color_for_bg(active_card_color(0xFFEC16)));
+      back.state = 0;
+      assert(apply_subpage_back_colors(&back, "B", DisplayProfile{}));
+      assert(back.background[0] == current_theme().surface_card);
+      assert(back.background[LV_STATE_PRESSED] == current_theme().surface_card);
+      assert(label.text[0] == display_text_color_for_bg(current_theme().surface_card));
+    }
+  }
+  for (const std::string order : {"", "B", "B=Return%3AHome", "B=Back:invalid", "B=Back:12345", "1=Back:FFEC16"})
+    assert(get_subpage_back_color(order).empty());
+  assert(get_subpage_back_label("B=Back:invalid") == "Back");
+  translate_back = true;
+  assert(get_subpage_back_label("B=:FFEC16") == "Zurück");
+  assert(get_subpage_back_label("B") == "Zurück");
+  assert(get_subpage_back_label("B=Return:FFEC16") == "Return");
+  translate_back = false;
   for (const ThemePalette *theme : {&DARK_THEME, &LIGHT_THEME}) {
     set_active_theme_palette(*theme);
     for (uint32_t background : {0xFFEC16u, 0x88C440u, 0xFFFFFFu, 0x00BCD4u}) {
@@ -195,35 +234,79 @@ int main() {
       assert(idle.text[0] == theme->text_primary);
     }
   }
+  assert(card_slider_fill_color(0x6633B9) == 0x826AAA);
+  assert(active_card_color(0x6633B9) == 0xA385D5);
+  assert(card_slider_fill_color(0xFFFFFF) == 0xBFBFBF);
+  const auto contrast = [](uint32_t text, uint32_t background) {
+    const double a = display_relative_luminance(text) + 50000;
+    const double b = display_relative_luminance(background) + 50000;
+    return a > b ? a / b : b / a;
+  };
+  assert(card_pattern_highlight_color(active_card_color(0xA0A0A0)) == 0xA7A7A7);
+  assert(card_pattern_highlight_color(0xBFBFBF) == 0xD5D5D5);
+  lv_obj_t striped, striped_label;
+  striped.children = {&striped_label};
+  const auto stripe_base = active_card_color(0xA0A0A0);
+  apply_button_colors(&striped, true, stripe_base, true, 0xA0A0A0);
+  apply_button_on_pattern(&striped, "on_pattern=stripes", true, stripe_base);
+  set_card_checked_state(&striped, true);
+  assert(striped.gradient[LV_STATE_CHECKED] == 0xA7A7A7);
+  assert(striped.gradient[LV_STATE_PRESSED] == 0xA7A7A7);
+  assert(striped.gradient_direction[LV_STATE_CHECKED] == LV_GRAD_DIR_HOR);
+  assert(striped_label.text[0] == display_text_color_for_bg(stripe_base));
+  for (uint32_t value = 0; value <= 255; ++value) {
+    const uint32_t background = value * 0x010101;
+    assert(card_slider_fill_color(background) != background);
+    const auto active = active_card_color(background);
+    const auto foreground = display_text_color_for_bg(active);
+    assert(contrast(foreground, card_pattern_highlight_color(active)) >= contrast(foreground, active));
+  }
+  for (uint32_t background : {0x6D6D6Du, 0x6D6D6Eu, 0x6D6E6Du, 0x6E6D6Du, 0x6E6E6Du, 0x6D6E6Eu, 0x6E6D6Eu, 0x6E6E6Eu}) {
+    assert(card_slider_fill_color(background) != background);
+    assert(contrast(display_text_color_for_bg(background), card_slider_fill_color(background)) >= 4.5);
+  }
+  for (uint32_t base : {0xAAC93Fu, 0xEED146u, 0xEA3323u, 0x8F28ABu, 0xA0A0A0u}) {
+    const auto active = active_card_color(base);
+    const auto foreground = display_text_color_for_bg(active);
+    assert(contrast(foreground, active) >= 4.5);
+    assert(contrast(foreground, card_pattern_highlight_color(active)) >= 4.5);
+  }
+  assert(active_card_color(0xAAC93F) == 0x80972F);
+  assert(active_card_color(0xEED146) == 0xB39D35);
+  assert(display_text_color_for_bg(0x80972F) == 0x212121);
+  assert(display_text_color_for_bg(0xB39D35) == 0x212121);
   CardPalette defaults;
   defaults.has_on = defaults.has_off = defaults.has_sensor_color = true;
   defaults.on_val = 0xFF8C00;
   defaults.off_val = 0x313131;
   defaults.sensor_val = 0x212121;
+  assert(card_slider_fill_color(defaults) == defaults.on_val);
   DisplayProfile display;
   assert(card_progress_color(0xFF8C00) == 0xFFAF4D);
   assert(card_progress_color(0x9D9D9D) == 0xBABABA);
-  assert(display_text_color_for_bg(0x00BCD4) == 0xFFFFFF);
-  assert(display_text_color_for_bg(lighter_card_color(0x00BCD4)) == 0xFFFFFF);
+  assert(display_text_color_for_bg(0x00BCD4) == 0x212121);
+  assert(display_text_color_for_bg(lighter_card_color(0x00BCD4)) == 0x212121);
   assert(display_text_color_for_bg(0xBFEAFF) == 0x212121);
   struct Colour { const char *hex; uint32_t base, active, text; };
   const Colour colours[] = {
-    {"6633B9", 0x6633B9, 0x9470CE, 0xFFFFFF},
-    {"FF0000", 0xFF0000, 0xFF4D4D, 0xFFFFFF},
-    {"F6402C", 0xF6402C, 0xF9796B, 0xFFFFFF},
-    {"FF8C00", 0xFF8C00, 0xFFAF4D, 0xFFFFFF},
-    {"1093F5", 0x1093F5, 0x58B3F8, 0xFFFFFF},
-    {"46AF4A", 0x46AF4A, 0x7EC780, 0xFFFFFF},
-    {"009687", 0x009687, 0x4DB6AB, 0xFFFFFF},
-    {"00BBD5", 0x00BBD5, 0x4DCFE2, 0xFFFFFF},
-    {"00BCD4", 0x00BCD4, 0x4DD0E1, 0xFFFFFF},
-    {"B2B2B2", 0xB2B2B2, 0xC9C9C9, 0xFFFFFF},
-    {"B3B3B3", 0xB3B3B3, 0xCACACA, 0x212121},
-    {"88C440", 0x88C440, 0xACD679, 0x212121},
-    {"CCDD1E", 0xCCDD1E, 0xDBE762, 0x212121},
-    {"FFFFFF", 0xFFFFFF, 0xFFFFFF, 0x212121},
-    {"FFEC16", 0xFFEC16, 0xFFF25C, 0x212121},
-    {"000000", 0x000000, 0x4D4D4D, 0xFFFFFF},
+    {"AAC93F", 0xAAC93F, 0x80972F, 0x212121},
+    {"EED146", 0xEED146, 0xB39D35, 0x212121},
+    {"6633B9", 0x6633B9, 0xA385D5, 0xFFFFFF},
+    {"FF0000", 0xFF0000, 0xFF6666, 0x000000},
+    {"F6402C", 0xF6402C, 0xFA8C80, 0x000000},
+    {"FF8C00", 0xFF8C00, 0xFFBA66, 0x212121},
+    {"1093F5", 0x1093F5, 0x70BEF9, 0x212121},
+    {"46AF4A", 0x46AF4A, 0x90CF92, 0x212121},
+    {"009687", 0x009687, 0x66C0B7, 0x000000},
+    {"00BBD5", 0x00BBD5, 0x66D6E6, 0x212121},
+    {"00BCD4", 0x00BCD4, 0x66D7E5, 0x212121},
+    {"B2B2B2", 0xB2B2B2, 0x868686, 0x212121},
+    {"B3B3B3", 0xB3B3B3, 0x868686, 0x212121},
+    {"88C440", 0x88C440, 0x669330, 0x212121},
+    {"CCDD1E", 0xCCDD1E, 0x99A617, 0x212121},
+    {"FFFFFF", 0xFFFFFF, 0xBFBFBF, 0x212121},
+    {"FFEC16", 0xFFEC16, 0xBFB111, 0x212121},
+    {"000000", 0x000000, 0x666666, 0xFFFFFF},
   };
   for (const auto &colour : colours) {
     lv_obj_t modal_button, modal_label;
@@ -252,6 +335,11 @@ int main() {
           sync_card_checked_text_color(&button);
           espcontrol::cards::sensor_driver_apply_background(slot, palette);
           assert(palette.custom_background);
+          const auto fill = card_slider_fill_color(palette);
+          const auto foreground = readable_text_color_for_bg(palette.off_val);
+          assert(contrast(foreground, fill) >= std::min(4.5, contrast(foreground, palette.off_val)));
+          assert(fill != palette.off_val);
+          assert(palette.on_val != palette.off_val);
           assert(palette.progress_val == card_progress_color(colour.base));
           assert(palette.progress_val != colour.base);
           assert(palette.surface_sensor_val == colour.base);
@@ -354,7 +442,8 @@ int main() {
   const auto corrected = card_palette_for_config(defaults, config, display);
   assert(corrected.sensor_val == 0x7F6900);
   assert(corrected.off_val == corrected.sensor_val);
-  assert(corrected.on_val == 0x7F834D);
+  assert(corrected.on_val == 0x7F8B66);
+  assert(card_slider_fill_color(corrected) == card_slider_fill_color(corrected.off_val));
   assert(defaults.sensor_val == 0x212121);
   const auto explicit_colour = card_palette_for_config(CardPalette{}, config, DisplayProfile{});
   assert(explicit_colour.has_on && explicit_colour.has_off && explicit_colour.has_sensor_color);

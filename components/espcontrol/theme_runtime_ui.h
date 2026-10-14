@@ -101,8 +101,13 @@ inline void theme_apply_grid(void *context, const ThemePalette &theme) {
   for (auto &entry : navigation_subpages()) {
     if (!entry.screen) continue;
     lv_obj_set_style_bg_color(entry.screen, lv_color_hex(theme.background), LV_PART_MAIN);
-    theme_restyle_tree(entry.back_button, theme_refresh_previous(), theme, false, correction);
-    theme_apply_grid_button(entry.back_button, neutral, theme);
+    if (entry.back_neutral_background && entry.back_button) {
+      theme_restyle_tree(entry.back_button, theme_refresh_previous(), theme, false, correction);
+      // Neutral Back cards use the same fill while pressed; custom cards own theirs.
+      lv_obj_set_style_bg_color(entry.back_button, lv_color_hex(neutral),
+          static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED);
+      theme_apply_grid_button(entry.back_button, neutral, theme);
+    }
     for (auto &card : entry.cards) {
       const bool sensor_surface = card.sensor_surface;
       if ((card.neutral_background || sensor_surface) && card.button) {

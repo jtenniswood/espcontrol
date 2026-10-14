@@ -64,16 +64,24 @@ constexpr uint32_t display_relative_luminance(uint32_t rgb) {
 }
 
 constexpr uint32_t display_text_color_for_bg(uint32_t bg_color) {
-  // Keep white content on mid-tone colours; switch only on light backgrounds.
+  // Choose a foreground with at least 4.5:1 contrast. Prefer the existing
+  // dark grey where it is readable; black covers the small mid-tone gap.
   // Match cardPreviewTextColor in the web preview (luminance scaled by 1,000,000).
+  const uint32_t background = display_relative_luminance(bg_color);
+  if (uint64_t(background + 50000) * 4500 <= uint64_t(1050000) * 1000) return 0xFFFFFF;
+  if (uint64_t(background + 50000) * 1000 >=
+      uint64_t(display_relative_luminance(0x212121) + 50000) * 4500) return 0x212121;
+  return 0x000000;
+}
+
+// Progress fill direction is independent of the foreground contrast choice.
+constexpr bool display_progress_uses_dark_fill(uint32_t bg_color) {
   const uint32_t red = (bg_color >> 16) & 0xFF;
   const uint32_t green = (bg_color >> 8) & 0xFF;
   const uint32_t blue = bg_color & 0xFF;
-  // Saturated blue/cyan active shades retain white content after lightening.
   const bool blue_green_tone = green >= red + 32 && blue >= red + 32;
   const uint32_t crossover = blue_green_tone ? 550000 : 450000;
-  return display_relative_luminance(bg_color) >= crossover
-    ? 0x212121 : 0xFFFFFF;
+  return display_relative_luminance(bg_color) >= crossover;
 }
 
 constexpr uint32_t lighter_card_color(uint32_t rgb) {
@@ -85,9 +93,60 @@ constexpr uint32_t lighter_card_color(uint32_t rgb) {
          (blue + ((255 - blue) * 30 + 50) / 100);
 }
 
+// Give custom cards a distinct on state, including pale colours and white.
+// Match activeCardColor in the browser before applying display correction.
+constexpr uint32_t active_card_color(uint32_t rgb) {
+  const uint32_t red = (rgb >> 16) & 0xFF;
+  const uint32_t green = (rgb >> 8) & 0xFF;
+  const uint32_t blue = rgb & 0xFF;
+  const bool pale = red * 299 + green * 587 + blue * 114 >= 160000;
+  const auto active_channel = [pale](uint32_t channel) {
+    return pale ? (channel * 75 + 50) / 100
+                : channel + ((255 - channel) * 40 + 50) / 100;
+  };
+  return (active_channel(red) << 16) | (active_channel(green) << 8) |
+         active_channel(blue);
+}
+
+// Slider labels span the base and fill without changing checked state.
+// Keep the active shade only when the base foreground remains readable.
+constexpr uint32_t card_slider_fill_color(uint32_t rgb) {
+  const uint32_t active = active_card_color(rgb);
+  const uint32_t foreground = display_text_color_for_bg(rgb);
+  const uint32_t text = display_relative_luminance(foreground);
+  const auto readable = [text](uint32_t color) {
+    const uint32_t fill = display_relative_luminance(color);
+    const uint32_t light = fill > text ? fill : text;
+    const uint32_t dark = fill > text ? text : fill;
+    return uint64_t(light + 50000) * 1000 >= uint64_t(dark + 50000) * 4500;
+  };
+  if (active != rgb && readable(active)) return active;
+  // Move the fill away from the foreground until it reaches 4.5:1.
+  for (uint32_t amount = 10; amount <= 100; amount += 10) {
+    const auto channel = [foreground, amount](uint32_t value) {
+      return foreground == 0xFFFFFF ? (value * (100 - amount) + 50) / 100
+        : value + ((255 - value) * amount + 50) / 100;
+    };
+    const uint32_t shade = (channel((active >> 16) & 255) << 16) |
+      (channel((active >> 8) & 255) << 8) | channel(active & 255);
+    if (shade != rgb && readable(shade)) return shade;
+  }
+  return active;
+}
+
+// Stripes must preserve the foreground contrast of the active background.
+constexpr uint32_t card_pattern_highlight_color(uint32_t rgb) {
+  const bool white_text = display_text_color_for_bg(rgb) == 0xFFFFFF;
+  const auto channel = [white_text](uint32_t value) {
+    return white_text ? value * 65 / 100 : value + (255 - value) * 35 / 100;
+  };
+  return (channel((rgb >> 16) & 255) << 16) |
+         (channel((rgb >> 8) & 255) << 8) | channel(rgb & 255);
+}
+
 // Progress must stay visible on both dark and pale custom backgrounds.
 constexpr uint32_t card_progress_color(uint32_t rgb) {
-  if (display_text_color_for_bg(rgb) == 0xFFFFFF) return lighter_card_color(rgb);
+  if (!display_progress_uses_dark_fill(rgb)) return lighter_card_color(rgb);
   return (((((rgb >> 16) & 0xFF) * 70 + 50) / 100) << 16) |
          (((((rgb >> 8) & 0xFF) * 70 + 50) / 100) << 8) |
          (((rgb & 0xFF) * 70 + 50) / 100);
@@ -101,9 +160,9 @@ static_assert(card_progress_color(0xFFEC16) == 0xB3A50F,
               "pale progress backgrounds use a darker shade of the same hue");
 
 static_assert(lighter_card_color(0x000000) == 0x4D4D4D,
-              "active card colour must round lightened channels consistently");
+              "lighter card colour must round channels consistently");
 static_assert(lighter_card_color(0x3F51B5) == 0x7985CB,
-              "active card colour must retain the card colour's hue");
+              "lighter card colour must retain the card colour's hue");
 static_assert(lighter_card_color(0xFFFFFF) == 0xFFFFFF,
               "white card colour must remain white");
 

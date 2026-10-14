@@ -152,6 +152,7 @@ relay=Relay
 returning=Returning
 run_this_script=Run this script?
 screen_dimmed=Screen Dimmed
+screen_lock=Screen Lock
 screen_locked=Screen Locked
 screen_unlocked=Screen Unlocked
 skip_next=Skip Next
@@ -262,3 +263,6 @@ wifi_did_not_change=Wi-Fi did not change
 connect_to_the_wifi_hotspot=Connect to the WiFi hotspot
 to_configure_your_network=to configure your network.
 then_visit_192_168_4_1_in_your_browser=Then visit 192.168.4.1 in your browser
+
+screensaver=Screensaver
+incorrect_pin=Incorrect PIN

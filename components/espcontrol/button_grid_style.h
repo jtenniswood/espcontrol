@@ -46,3 +46,8 @@ struct CardPalette {
   uint32_t surface_sensor_val = theme_display_color(current_theme().surface_sensor);
   uint32_t progress_val = DEFAULT_ACCENT_COLOR;
 };
+
+inline uint32_t card_slider_fill_color(const CardPalette &palette) {
+  return palette.custom_background ? card_slider_fill_color(palette.off_val)
+    : (palette.has_on ? palette.on_val : DEFAULT_ACCENT_COLOR);
+}

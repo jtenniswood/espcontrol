@@ -1,3 +1,5 @@
+import { buildScreensaverPinSettings } from "./screensaver_pin";
+import { resetAwareFetch } from "../api/reset_session";
 import { state } from "../state/app_instance";
 import { NTP_SERVER_DEFAULTS } from "../state/app_state";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
@@ -557,7 +559,16 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         }
         els.setSsMode = setSsMode;
         setSsMode(ssMode);
+        const pinBadge = statusBadge("PIN protection on");
+        pinBadge.className = "sp-card-badge sp-hidden";
+        var screensaverPinCard: any = null;
+        const pinSettings = buildScreensaverPinSettings(document, resetAwareFetch, fields, pinBadge, {
+            onVisibilityChange: visible => { if (screensaverPinCard) screensaverPinCard.hidden = !visible; },
+        });
+        els.syncScreensaverPinUi = pinSettings.refresh;
         var screensaverCard: any = makeCollapsibleCard("Screensaver", ssBody, true, ssBadge);
+        screensaverPinCard = makeCollapsibleCard("Pin Protection", pinSettings.body, true, pinBadge);
+        screensaverPinCard.hidden = pinSettings.body.hidden;
         var idleBody: any = document.createElement("div");
         idleBody.appendChild(fieldLabel("Return Home After"));
         var hsSelect: any = document.createElement("select");
@@ -603,6 +614,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             coverArtCard,
             screensaverCard,
             scheduleCard,
+            screensaverPinCard,
         ]);
         appendSettingsSection(config, "Preferences", [
             languageCard,

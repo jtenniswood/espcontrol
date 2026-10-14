@@ -152,6 +152,7 @@ relay=Rele
 returning=Vračanje
 run_this_script=Zagnati ta skript?
 screen_dimmed=Zaslon zatemnjen
+screen_lock=Zaklep zaslona
 screen_locked=Zaslon zaklenjen
 screen_unlocked=Zaslon odklenjen
 skip_next=Preskoči naprej
@@ -261,3 +262,6 @@ wifi_did_not_change=Stanje Wi-Fi se ni spremenilo
 connect_to_the_wifi_hotspot=Povežite se z dostopno točko WiFi
 to_configure_your_network=da nastavite omrežje.
 then_visit_192_168_4_1_in_your_browser=Nato v brskalniku odprite 192.168.4.1
+
+screensaver=Ohranjevalnik zaslona
+incorrect_pin=Napačen PIN
