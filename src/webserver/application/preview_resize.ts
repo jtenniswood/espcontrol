@@ -11,6 +11,52 @@ interface PreviewResizeDependencies {
 /** Keep the rendered card alive during the gesture; save and rerender on release. */
 export function installPreviewResize(dependencies: PreviewResizeDependencies): void {
     const { document } = dependencies;
+    let hoveredCard: HTMLElement | null = null;
+    let hoveredDraggable = false;
+    const restoreHover = () => {
+        if (hoveredCard) hoveredCard.draggable = hoveredDraggable && !dependencies.isConfigLocked();
+        hoveredCard = null;
+    };
+    const handleAt = (event: MouseEvent): HTMLElement | null => {
+        const element = event.target as Element;
+        const card = element.closest<HTMLElement>(".sp-btn[data-slot]");
+        const handle = card?.querySelector<HTMLElement>(".sp-resize-handle");
+        if (!handle) return null;
+        const rect = handle.getBoundingClientRect();
+        // Include the visible corner even when an overlapping card decoration receives the event.
+        return event.clientX >= rect.left - 6 && event.clientX <= rect.right &&
+            event.clientY >= rect.top - 6 && event.clientY <= rect.bottom ? handle : null;
+    };
+    const hover = (event: PointerEvent) => {
+        if (document.querySelector(".sp-resizing")) return;
+        const card = handleAt(event)?.closest<HTMLElement>(".sp-btn[data-slot]") || null;
+        if (card === hoveredCard) return;
+        restoreHover();
+        if (card && !dependencies.isConfigLocked()) {
+            hoveredCard = card;
+            hoveredDraggable = card.draggable;
+            card.draggable = false;
+        }
+    };
+    document.addEventListener("pointerover", hover, true);
+    document.addEventListener("pointermove", hover, true);
+    document.addEventListener("pointerout", (event) => {
+        if (hoveredCard && !hoveredCard.classList.contains("sp-resizing") &&
+            !hoveredCard.contains(event.relatedTarget as Node | null)) restoreHover();
+    }, true);
+    document.addEventListener("mousedown", (event) => {
+        if (handleAt(event) || document.querySelector(".sp-resizing")) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+    }, true);
+    document.addEventListener("dragstart", (event) => {
+        if ((event.target as Element).closest(".sp-resize-handle,.sp-resizing") ||
+            (hoveredCard && hoveredCard.contains(event.target as Node))) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+    }, true);
     document.addEventListener("click", (event) => {
         if ((event.target as Element).closest(".sp-resize-handle")) {
             event.preventDefault();
@@ -18,7 +64,7 @@ export function installPreviewResize(dependencies: PreviewResizeDependencies): v
         }
     }, true);
     document.addEventListener("pointerdown", (event) => {
-        const handle = (event.target as Element).closest<HTMLElement>(".sp-resize-handle");
+        const handle = handleAt(event);
         const card = handle?.closest<HTMLElement>(".sp-btn[data-slot]");
         if (!handle || !card || event.button !== 0 || !event.isPrimary) return;
         event.preventDefault();
@@ -30,7 +76,7 @@ export function installPreviewResize(dependencies: PreviewResizeDependencies): v
         const rect = card.getBoundingClientRect();
         let target = targets.reduce((best, item) => distance(item, rect.width, rect.height) < distance(best, rect.width, rect.height) ? item : best);
         const previousStyle = card.getAttribute("style");
-        const previousDraggable = card.draggable;
+        const previousDraggable = hoveredCard === card ? hoveredDraggable : card.draggable;
         const previousSizeClasses = CARD_SIZE_DEFINITIONS.map(item => item.className).filter(Boolean);
         const originalSizeClasses = previousSizeClasses.filter(name => card.classList.contains(name));
         const grid = card.parentElement!;
@@ -81,6 +127,7 @@ export function installPreviewResize(dependencies: PreviewResizeDependencies): v
             card.classList.remove(...previousSizeClasses);
             card.classList.add(...originalSizeClasses);
             card.draggable = previousDraggable;
+            if (hoveredCard === card) restoreHover();
             grid.style.gridTemplateRows = previousRows;
             grid.style.gridTemplateColumns = previousColumns;
             if (previousStyle === null) card.removeAttribute("style");
