@@ -3059,7 +3059,7 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
 
 async function assertSliderActiveColours(page, label) {
   for (const theme of ["Dark", "Light"]) {
-    for (const mode of ["matching", "theme", "custom"]) {
+    for (const mode of ["matching", "theme", "custom"]) for (const renderWhileHidden of [false, true]) {
       const types = ["light_brightness", "fan_speed", "cover", "slider", "light_temperature"];
       const events = [
         { id: "text-button_order", state: "1,2,3,4,5" },
@@ -3070,6 +3070,10 @@ async function assertSliderActiveColours(page, label) {
           state: `light.test;${type};Lightbulb;Auto;;;${type};;card_off_color=313131,card_active_color=${mode},card_on_color=FFFFFF`,
         })),
       ];
+      if (renderWhileHidden) {
+        await page.getByRole("tab", { name: "Settings", exact: true }).click();
+        assert.strictEqual(await page.locator("#sp-screen").isVisible(), false);
+      }
       await page.evaluate(events => window.__seedEspState(events), events);
       await page.getByRole("tab", { name: "Screen" }).click();
       const cards = page.locator(".sp-main > .sp-btn");
@@ -3085,7 +3089,7 @@ async function assertSliderActiveColours(page, label) {
         assert.strictEqual(card.fill, mode === "matching" ? "#767676" : "#FFFFFF", `${label}: ${theme}/${types[index]}/${mode} fill`);
         if (mode !== "matching") {
           assert(card.texts.every(text => text.clip === "text" && text.gradient.includes("rgb(33, 33, 33)")),
-            `${label}: ${theme}/${types[index]}/${mode} text contrasts with the pale fill`);
+            `${label}: ${theme}/${types[index]}/${mode}${renderWhileHidden ? " after returning from Settings" : ""} text contrasts with the pale fill`);
         }
       }
       if (mode === "custom" && theme === "Dark" && process.env.ESPCONTROL_SLIDER_COLOUR_SCREENSHOT) {
