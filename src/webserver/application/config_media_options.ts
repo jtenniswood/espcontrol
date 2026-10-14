@@ -22,6 +22,7 @@ import {
     MEDIA_VOLUME_MAX_OPTION,
     cardContractOptionDefaultValue,
     cardContractOptionSpec,
+    copyCardBackgroundOptions,
     copyLargeNumbersOption,
 } from "./config_option_core";
 export function createConfigMediaOptionsFeature(
@@ -180,6 +181,9 @@ export function createConfigMediaOptionsFeature(
     }
     function normalizeMediaOptions(this: any, options?: any, mode?: any) {
         mode = mediaEditorMode(mode);
+        function withBackground(this: any, out?: any) {
+            return copyCardBackgroundOptions(out, options, { type: "media" });
+        }
         if (mode === "control_modal") {
             var controlOut: any = normalizeMediaModalOptions("", options);
             var controlGroupEntity: any = normalizeMediaSpeakerGroupEntity(configOptionValue(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
@@ -198,7 +202,7 @@ export function createConfigMediaOptionsFeature(
             if (controlMaxVolume !== cardContractOptionDefaultValue("media", MEDIA_VOLUME_MAX_OPTION, "100")) {
                 controlOut = setConfigOptionValue(controlOut, MEDIA_VOLUME_MAX_OPTION, controlMaxVolume);
             }
-            return preserveCardColorOptions(options, controlOut);
+            return preserveCardColorOptions(options, withBackground(controlOut));
         }
         if (mode === "speaker_group") {
             var groupOut: any = "";
@@ -210,7 +214,7 @@ export function createConfigMediaOptionsFeature(
             if (groupMaxVolume !== cardContractOptionDefaultValue("media", MEDIA_VOLUME_MAX_OPTION, "100")) {
                 groupOut = setConfigOptionValue(groupOut, MEDIA_VOLUME_MAX_OPTION, groupMaxVolume);
             }
-            return preserveCardColorOptions(options, groupOut);
+            return preserveCardColorOptions(options, withBackground(groupOut));
         }
         if (mode === "playlist") {
             var playlistOut: any = "";
@@ -225,7 +229,7 @@ export function createConfigMediaOptionsFeature(
             var playerSource: any = configOptionValue(options, MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION).trim();
             if (playerSource)
                 playlistOut = setConfigOptionValue(playlistOut, MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION, playerSource);
-            return preserveCardColorOptions(options, playlistOut);
+            return preserveCardColorOptions(options, withBackground(playlistOut));
         }
         if (mode === "cover_art") {
             var coverArtOut: any = "";
@@ -247,14 +251,14 @@ export function createConfigMediaOptionsFeature(
             return preserveCardColorOptions(options, normalizeMediaModalOptions(coverArtOut, options));
         }
         if (mode !== "volume" && mode !== "position")
-            return preserveCardColorOptions(options, "");
+            return preserveCardColorOptions(options, withBackground(""));
         var out: any = "";
         var maxVolume: any = normalizeMediaVolumeMax(configOptionValue(options, MEDIA_VOLUME_MAX_OPTION));
         if (mode === "volume" && maxVolume !== cardContractOptionDefaultValue("media", MEDIA_VOLUME_MAX_OPTION, "100")) {
             out = setConfigOptionValue(out, MEDIA_VOLUME_MAX_OPTION, maxVolume);
         }
         out = copyLargeNumbersOption(out, options);
-        return preserveCardColorOptions(options, out);
+        return preserveCardColorOptions(options, withBackground(out));
     }
     function mediaCoverArtDetailsEnabled(this: any, b?: any) {
         return !!(b && configOptionEnabled(b.options, MEDIA_COVER_ART_DETAILS_OPTION));

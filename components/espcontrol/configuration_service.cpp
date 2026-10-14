@@ -119,6 +119,20 @@ ServiceLoadResult ConfigurationService::load(uint8_t *output,
   return load_unlocked(output, output_capacity);
 }
 
+ServiceSaveResult ConfigurationService::transform_current(
+    uint8_t *buffer, size_t capacity, DocumentTransform transform, void *context) {
+  std::lock_guard<std::mutex> lock(operation_mutex_);
+  if (buffer == nullptr || transform == nullptr)
+    return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT};
+  const auto loaded = load_unlocked(buffer, capacity);
+  if (!loaded.ok()) return {loaded.status, loaded.store_status, loaded.document_version,
+                            loaded.generation, loaded.document_size};
+  size_t size = loaded.document_size;
+  if (!transform(context, buffer, size) || size > capacity)
+    return {ServiceStatus::INVALID_DOCUMENT, StoreStatus::INVALID_ARGUMENT};
+  return save_unlocked(loaded.document_version, buffer, size);
+}
+
 ServiceLoadResult ConfigurationService::load_and_apply_runtime(
     uint8_t *output, size_t output_capacity) {
   std::lock_guard<std::mutex> lock(operation_mutex_);

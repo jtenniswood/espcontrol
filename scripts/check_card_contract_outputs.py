@@ -89,6 +89,9 @@ def assert_ts_contract(data: dict, ts: str) -> None:
         f"export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {json.dumps(option_names(data), indent=2)};",
         "typed web card contract option names",
     )
+    background_types = data["appearance"]["backgroundImage"]["supportedCardTypes"]
+    assert_contains(ts, f"export const CARD_CONTRACT_BACKGROUND_IMAGE_TYPES = [{', '.join(json.dumps(value) for value in background_types)}] as const;", "typed web background-image card types")
+    assert_contains(ts, "export function cardContractSupportsBackground", "typed web background-image capability helper")
     assert_contains(
         ts,
         f"export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {json.dumps(data['runtime']['specs'], indent=2)};",
@@ -118,6 +121,8 @@ def assert_h_contract(data: dict, header: str) -> None:
         f"constexpr int CARD_CONTRACT_VERSION = {data['contractVersion']};",
         "firmware card contract version",
     )
+    assert_contains(header, "CARD_CONTRACT_BACKGROUND_IMAGE_TYPES", "firmware background-image card types")
+    assert_contains(header, "card_contract_supports_background", "firmware background-image capability helper")
     for card_type, card in data["cards"].items():
         escaped_type = re.escape(cpp_string(card_type))
         escaped_label = re.escape(cpp_string(card["label"]))

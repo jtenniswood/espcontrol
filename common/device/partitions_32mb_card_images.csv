@@ -1,6 +1,6 @@
 # Name,       Type, SubType, Offset,    Size,      Flags
 #
-# This is the deployed layout for the 32 MB P4-86 panel.  Keep it explicit:
+# This is the deployed layout for 32 MB EspControl panels.  Keep it explicit:
 # an OTA update replaces the application image, not the partition table.
 nvs,           data, nvs,     0x9000,    0xd000,
 otadata,       data, ota,     0x16000,   0x2000,

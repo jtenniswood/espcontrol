@@ -1,5 +1,8 @@
 import {
+  cardBackgroundAssetId,
+  cardOptionsWithAppearance,
   chooseSerializedSubpageConfig,
+  cloneCardConfig,
   configOptionEnabled,
   configOptionValue,
   decodeConfigField,
@@ -14,6 +17,7 @@ import {
   activeCardColor,
   lighterCardColor,
   setConfigOptionValue,
+  setCardBackgroundAssetId,
   normalizedCardColorOptions,
   withoutCardColorOptions,
   splitSubpageConfigChunks,
@@ -57,6 +61,17 @@ export function runEncodingTests(): void {
   options = setConfigOption(options, "confirm_on", false);
   equal(configOptionEnabled(options, "confirm_on"), false, "flag options can be disabled");
 
+  const appearanceCard = cloneCardConfig({ options: "active_color,bg_image=Kitchen-Scene" });
+  equal(cardBackgroundAssetId(appearanceCard), "kitchen-scene", "appearance is normalized from legacy options");
+  equal(Object.keys(appearanceCard).includes("appearance"), false,
+    "typed appearance does not change saved or backup JSON");
+  appearanceCard.options = "confirm_on";
+  equal(cardOptionsWithAppearance(appearanceCard.options, appearanceCard),
+    "confirm_on,bg_image=kitchen-scene", "typed appearance survives unrelated option normalization");
+  setCardBackgroundAssetId(appearanceCard, "new-scene");
+  equal(appearanceCard.appearance.backgroundAssetId, "new-scene", "typed appearance updates with the card");
+  equal(configOptionValue(appearanceCard.options, "bg_image"), "new-scene",
+    "legacy options stay synchronized at the compatibility boundary");
   options = setConfigOptionValue(options, "large_numbers", "off");
   options = setConfigOptionValue(options, "card_on_color", "E91E63");
   options = setCardColor(options, "#3f51b5");

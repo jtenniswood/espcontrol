@@ -132,6 +132,12 @@ class ConfigurationService {
         legacy_mode_(legacy_mode) {}
 
   ServiceLoadResult load(uint8_t *output, size_t output_capacity);
+  // Transform the latest durable document under the same lock as browser
+  // saves, then commit, mirror and apply through the normal persistence path.
+  using DocumentTransform = bool (*)(void *, uint8_t *, size_t &);
+  ServiceSaveResult transform_current(uint8_t *buffer, size_t capacity,
+                                     DocumentTransform transform, void *context);
+
   // Restores the durable document and publishes it to the live panel as one
   // operation. This prevents an HTTP save from landing between a boot read
   // and its corresponding live apply.
