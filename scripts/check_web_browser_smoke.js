@@ -6792,7 +6792,7 @@ async function assertWallpaperSettings(browser) {
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await page.evaluate(events => window.__seedEspState(events), seededEvents());
     await page.getByRole("tab", { name: "Settings" }).click();
-    for (const id of ["sp-set-wallpaper", "sp-set-card-transparency", "sp-set-theme-mode"]) {
+    for (const id of ["sp-set-wallpaper", "sp-set-theme-mode"]) {
       const card = page.locator("#sp-settings .card").filter({ has: page.locator("#" + id) });
       if (!(await page.locator("#" + id).isVisible())) await card.locator(".card-header").click();
     }
@@ -6801,6 +6801,7 @@ async function assertWallpaperSettings(browser) {
   try {
     await open();
     assert.strictEqual(await page.locator("#sp-set-card-transparency").isDisabled(), true);
+    assert.strictEqual(await page.locator("#sp-set-card-transparency").isVisible(), false);
     const png = await page.evaluate(() => {
       const canvas = document.createElement("canvas"); canvas.width = 1200; canvas.height = 800;
       const ctx = canvas.getContext("2d");
@@ -6852,6 +6853,7 @@ async function assertWallpaperSettings(browser) {
       }
     };
     await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
+    assert.strictEqual(await page.locator("#sp-set-card-transparency").isVisible(), true);
     assert.strictEqual(await transparency.inputValue(), "20");
     const setTransparency = async (percent, commit = true) => {
       await transparency.evaluate((range, value) => {
@@ -6902,6 +6904,7 @@ async function assertWallpaperSettings(browser) {
     assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), "");
     assert.strictEqual(await page.getByRole("button", { name: "Remove wallpaper" }).isDisabled(), true);
     assert.strictEqual(await transparency.isDisabled(), true);
+    assert.strictEqual(await transparency.isVisible(), false);
     assert.strictEqual(await transparency.inputValue(), "50");
     await page.locator("#sp-set-wallpaper").setInputFiles(upload);
     await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);

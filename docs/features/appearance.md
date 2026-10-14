@@ -7,8 +7,7 @@ description:
 # Appearance
 
 The **Appearance** section sits above **Display** in Settings. Its panels are
-**Global Active Colour**, **Card Style** (curve and transparency), **Theme**
-and **Wallpaper** (upload and removal).
+**Global Active Colour**, **Card Style** (curve), **Theme** and **Wallpaper** (upload, removal and transparency).
 
 Cards use continuous corners, with the same proportions on the panel and
 setup-page preview. Choose **Card curve → Small, Medium or Large** in
@@ -16,7 +15,7 @@ setup-page preview. Choose **Card curve → Small, Medium or Large** in
 is saved on the display and survives restarts.
 
 All supported displays use continuous corners that ease gradually into the
-card edges. **Large** is the default with these nominal corner sizes: 26 px on S3,
+card edges. **Medium** is the default. The **Large** corner sizes are: 26 px on S3,
 20 px on the 7-inch and 4.3-inch panels, 22 px on the 10-inch panels,
 and 35 px on P4-86.
 On S3, **Small**, **Medium** and **Large** are 14 px, 20 px and 26 px.
@@ -25,6 +24,9 @@ three quarters, rounded to whole pixels.
 Images, artwork and slider fills follow the same outline. The web preview
 uses the same curve, including in browsers without native continuous-corner
 support, and scales the card gaps to match the physical display.
+
+On the first boot after installing this update, new and existing displays switch
+to Medium once. Choices made afterward are saved across restarts and future updates.
 
 The curve setting is included in configuration backups. Restoring an older
 backup without it keeps the current choice. Home Assistant can also change
@@ -51,7 +53,7 @@ Backups include the theme mode, automatic method, times and offsets. Older backu
 
 Upload a JPEG, PNG or WebP image under **Wallpaper** to place it behind the cards on the physical panel and in the browser preview. Images are resized to a maximum of 480 pixels on the longest side and centred to fill the screen. Choose an image with a similar aspect ratio to your display for less cropping.
 
-Use **Card Style → Card transparency** to choose how much wallpaper shows through the cards: **0%** gives solid fills and **100%** makes the fills completely clear. Labels and icons keep their normal colours and remain visible. The default is **20%** transparency (an 80% fill). Camera images, cover art and QR codes keep their own content. The wallpaper also appears on subpages; setup screens, modals and screensavers keep their existing backgrounds.
+Use **Wallpaper → Card transparency** to choose how much wallpaper shows through the cards: **0%** gives solid fills and **100%** makes the fills completely clear. Labels and icons keep their normal colours and remain visible. The control appears only while a wallpaper is set. The default is **20%** transparency (an 80% fill). Camera images, cover art and QR codes keep their own content. The wallpaper also appears on subpages; setup screens, modals and screensavers keep their existing backgrounds.
 
 Uploads and **Remove wallpaper** apply immediately. The image and transparency setting are stored on the display and survive restarts. Transparency is remembered when replacing or removing the wallpaper; it applies when a wallpaper is present. Removing it restores solid card backgrounds. Wallpapers and their transparency setting are separate from configuration backups and are cleared by resetting customisation or factory settings. Older firmware or partition layouts without image storage show the wallpaper control as unavailable.
 

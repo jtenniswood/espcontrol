@@ -168,11 +168,10 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             runtime.els.wallpaperOpacityPercent = opacity;
             renderPreview();
         }, fields);
-        cardStyleBody.appendChild(wallpaperSettings.cardStyle);
         var activeColourCard: any = makeCollapsibleCard("Global Active Colour", activeColourBody, true, null, appearanceResetButton);
         var cardStyleCard: any = makeCollapsibleCard("Card Style", cardStyleBody, true);
         var themeCard: any = makeCollapsibleCard("Theme", themeBody, true);
-        var wallpaperCard: any = makeCollapsibleCard("Wallpaper", wallpaperSettings.wallpaper, true);
+        var wallpaperCard: any = makeCollapsibleCard("Wallpaper", wallpaperSettings, true);
         var languageBody: any = document.createElement("div");
         var languageField: any = document.createElement("div");
         languageField.className = "sp-field";

@@ -121,7 +121,7 @@ int main() {
   assert(card_curve_radius(35, "Small") == 18);
   assert(card_curve_radius(35, "Medium") == 26);
   assert(card_curve_radius(22, "Medium") == 17);
-  assert(card_curve_radius(30, "invalid") == 30);
+  assert(card_curve_radius(30, "invalid") == 23);
   lv_obj_t adjustable;
   adjustable.width = 145; adjustable.height = 140; adjustable.radius = 26;
   attach(&adjustable);

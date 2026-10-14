@@ -6,6 +6,10 @@
 # =============================================================================
 
 globals:
+  - id: card_curve_medium_default_migrated
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
   - id: metadata_overlay_toggle_migrated
     type: bool
     restore_value: yes
@@ -28,6 +32,19 @@ globals:
 
 esphome:
   on_boot:
+    # Apply the new default before the grid's -100 boot phase uses the radius.
+    - priority: -90
+      then:
+        - lambda: |-
+            if (!id(card_curve_medium_default_migrated)) {
+              auto call = id(card_curve_select).make_call();
+              call.set_option("Medium");
+              call.perform();
+              id(card_curve_medium_default_migrated) = true;
+              // Store the marker now, rather than waiting for the global's poll.
+              card_curve_medium_default_migrated->update();
+              global_preferences->sync();
+            }
     - priority: -100
       then:
         - lambda: |-
@@ -583,7 +600,7 @@ select:
     icon: "mdi:rounded-corner"
     optimistic: true
     restore_value: true
-    initial_option: "Large"
+    initial_option: "Medium"
     options:
       - "Small"
       - "Medium"

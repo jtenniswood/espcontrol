@@ -37,7 +37,7 @@ function placeholderOutline(textMuted: string, background: string): string {
 }
 
 export function runSettingsFeatureTests(): void {
-  equal(normalizeCardCurve(undefined), "Large", "older firmware retains the existing curve");
+  equal(normalizeCardCurve(undefined), "Medium", "new curve settings default to Medium");
   equal(normalizeCardCurve("medium"), "Medium", "curve values normalize for backup restore");
   const s3Radii = { Small: 14, Medium: 20 };
   equal(cardCurveRadius(26, "Small", s3Radii), 14, "S3 Small radius");

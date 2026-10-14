@@ -94,7 +94,7 @@ export function createCoreFeature(
         var grid: any = layoutSection(layout, "grid");
         var btn: any = layoutSection(layout, "btn");
         const baseRadius = applicationLayout.config.cardRadiusPixels || 1;
-        const curveScale = cardCurveRadius(baseRadius, state.cardCurve, applicationLayout.config.cardCurveRadii) / baseRadius;
+        const curveScale = cardCurveRadius(baseRadius, state.cardCurveSupported ? state.cardCurve : "Large", applicationLayout.config.cardCurveRadii) / baseRadius;
         var sensorBadge: any = layoutSection(layout, "sensorBadge");
         var emptyCell: any = layoutSection(layout, "emptyCell");
         var subpageBadge: any = layoutSection(layout, "subpageBadge");

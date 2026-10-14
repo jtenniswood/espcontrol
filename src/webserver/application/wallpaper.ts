@@ -96,7 +96,7 @@ async function prepareWallpaper(document: Document, file: File): Promise<ArrayBu
 export function buildWallpaperSettings(
   document: Document, request: typeof fetch, onChange: (url: string, opacity: number) => void,
   fields: Pick<ControlsFieldsFeature, "createRangeSlider">,
-): { wallpaper: HTMLElement; cardStyle: HTMLElement } {
+): HTMLElement {
   const body = document.createElement("div");
   body.className = "sp-field";
   const label = document.createElement("label");
@@ -128,13 +128,14 @@ export function buildWallpaperSettings(
   opacityStatus.className = "sp-field-hint";
   opacityStatus.setAttribute("role", "status");
   control.wrap.appendChild(opacityStatus);
-  body.append(label, upload, remove, status);
+  body.append(label, upload, remove, status, control.wrap);
   let hasWallpaper = false, supported = false, busy = false, opacitySupported = false;
   let opacity = 80, savedOpacity = 80, previewUrl = "";
   function sync() {
     upload.disabled = !supported || busy;
     remove.disabled = !supported || busy || !hasWallpaper;
     range.disabled = !opacitySupported || busy || !hasWallpaper;
+    control.wrap.hidden = !hasWallpaper;
     range.value = String(100 - opacity);
     control.val.textContent = range.value + "%";
   }
@@ -145,6 +146,7 @@ export function buildWallpaperSettings(
   function apply(buffer: ArrayBuffer | null) {
     previewUrl = buffer ? wallpaperCanvas(document, buffer).toDataURL("image/png") : "";
     hasWallpaper = !!buffer;
+    opacityStatus.textContent = "";
     onChange(previewUrl, opacity);
     status.textContent = buffer ? "Wallpaper saved. Changes apply immediately."
       : "JPEG, PNG or WebP. Saved on this display; images are resized automatically. Changes apply immediately.";
@@ -222,5 +224,5 @@ export function buildWallpaperSettings(
   upload.addEventListener("change", () => { const file = upload.files?.[0]; if (file) void save(file); });
   remove.addEventListener("click", () => void save(null));
   sync(); void load();
-  return { wallpaper: body, cardStyle: control.wrap };
+  return body;
 }
