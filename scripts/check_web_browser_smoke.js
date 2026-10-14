@@ -286,7 +286,7 @@ async function installRoutes(context, slug, options = {}) {
       if (!wallpaper) { await route.fulfill({ status: 501, body: "Unsupported" }); return; }
       if (route.request().method() === "PUT") {
         assert.strictEqual(route.request().headers()["x-espcontrol-epoch"], String(options.resetState.epoch));
-        if (wallpaper.failSave) { await route.fulfill({ status: 500, body: "Save failed" }); return; }
+        if (wallpaper.failSave) { if (wallpaper.eraseOnFailure) wallpaper.image = null; await route.fulfill({ status: 500, body: "Save failed" }); return; }
         const payload = route.request().postDataBuffer();
         assert.strictEqual(payload.readUInt32LE(0), payload.readUInt32LE(4) === 0 || wallpaper.jpeg === false ? 0x31505745 : 0x32505745);
         wallpaper.posts.push(payload);
@@ -7602,6 +7602,14 @@ async function assertWallpaperSettings(browser) {
     });
     assert.strictEqual(previewPixels.width, 1280);
     assert.strictEqual(previewPixels.height, 800);
+    const higherQualityBytes = await page.evaluate(async png => {
+      const source = new Image(); source.src = "data:image/png;base64," + png; await source.decode();
+      const canvas = document.createElement("canvas"); canvas.width = 1280; canvas.height = 800;
+      const context = canvas.getContext("2d"); context.imageSmoothingQuality = "high";
+      context.drawImage(source, 0, 0, 1280, 800);
+      return (await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", .95))).size;
+    }, png);
+    assert(wallpaper.image.length - 16 < higherQualityBytes * .8, "75% JPEG should be substantially smaller at the same resolution");
     assert(previewPixels.colors > 32, "JPEG preview should preserve more than 5-bit red colour detail");
     await page.waitForFunction(() => Array.from(document.querySelectorAll(".sp-btn")).some(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0.8)")));
     if (process.env.ESPCONTROL_WALLPAPER_SETTINGS_SCREENSHOT)
@@ -7731,7 +7739,18 @@ async function assertWallpaperSettings(browser) {
     await page.getByText("Could not save wallpaper. Check the connection and try again.").waitFor();
     assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), savedBackground);
     assert.strictEqual(await page.locator(".sp-card-bg-preview").evaluate(el => el.style.backgroundImage), savedBackground);
+    // In-place storage can lose the previous image after erase succeeds.
+    wallpaper.eraseOnFailure = true;
+    await page.locator("#sp-set-wallpaper").setInputFiles(upload);
+    await page.getByText("Could not save wallpaper. Check the connection and try again.").waitFor();
+    await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage === "");
+    assert.strictEqual(await transparency.isDisabled(), true);
+    assert.strictEqual(await page.getByRole("button", { name: "Clear wallpaper" }).isDisabled(), true);
+    await page.getByRole("button", { name: "Add image", exact: true }).waitFor();
+    wallpaper.eraseOnFailure = false;
     wallpaper.failSave = false;
+    await page.locator("#sp-set-wallpaper").setInputFiles(upload);
+    await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
     await page.getByRole("button", { name: "Clear wallpaper" }).click();
     await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage === "");
     assert.strictEqual(wallpaper.image, null);

@@ -19,6 +19,7 @@ class WallpaperStore {
   bool save_opacity_percent(int percent);
  private:
   bool begin_locked();
+  bool write_primary_locked(const uint8_t *data, size_t size);
   std::mutex mutex_;
   const void *partition_{nullptr};
   int slot_{-1};

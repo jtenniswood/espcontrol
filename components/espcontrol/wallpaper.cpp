@@ -11,7 +11,8 @@
 namespace espcontrol {
 namespace {
 // Configuration occupies two 44 KiB slots at the front; identity uses the
-// final 16 KiB. Keep a separate pair of atomic 512 KiB wallpaper slots.
+// final 16 KiB. Reserve one 512 KiB wallpaper slot. The former second slot is only
+// inspected once during migration, then released for other storage.
 constexpr size_t OFFSET = WALLPAPER_STORAGE_OFFSET;
 constexpr size_t STRIDE = WALLPAPER_STORAGE_SLOT_BYTES;
 constexpr uint32_t MARKER = 0x31535057;
@@ -30,22 +31,31 @@ bool WallpaperStore::begin_locked() {
   initialized_ = true;
   auto *partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "card_images");
   if (!partition || partition->subtype != 0x40 || partition->encrypted ||
-      panel_config_partition_bytes(partition->size) < OFFSET + STRIDE * 2) return false;
+      panel_config_partition_bytes(partition->size) < OFFSET + WALLPAPER_STORAGE_BYTES) return false;
   partition_ = partition;
   nvs_handle_t settings;
-  if (nvs_open("espcontrol_wall", NVS_READWRITE, &settings) == ESP_OK) {
+  if (nvs_open("espcontrol_wall", NVS_READWRITE, &settings) != ESP_OK) {
+    initialized_ = false; partition_ = nullptr; return false;
+  }
+  bool single_slot = false;
+  {
     uint8_t opacity = WALLPAPER_DEFAULT_OPACITY_PERCENT;
     if (nvs_get_u8(settings, "opacity", &opacity) == ESP_OK && opacity <= 100)
       opacities_ = {opacity, opacity};
     uint16_t pair;
     if (nvs_get_u16(settings, "opacities", &pair) == ESP_OK && wallpaper_opacity_valid(pair & 0xff, pair >> 8))
       opacities_ = {static_cast<uint8_t>(pair & 0xff), static_cast<uint8_t>(pair >> 8)};
+    uint8_t layout = 0;
+    single_slot = nvs_get_u8(settings, "layout", &layout) == ESP_OK && layout == 1;
     nvs_close(settings);
   }
-  for (int slot = 0; slot < 2; ++slot) {
+  slot_ = -1; revision_ = 0; size_ = 0;
+  bool legacy_backup = false;
+  for (int slot = 0; slot < (single_slot ? 1 : 2); ++slot) {
     Record record{};
     if (esp_partition_read(partition, OFFSET + slot * STRIDE, &record, sizeof(record)) != ESP_OK ||
         record.marker != MARKER || record.size > WALLPAPER_MAX_BYTES) continue;
+    if (slot == 1) legacy_backup = true;
     bool valid = record.size == 0 && record.crc == 0;
     if (record.size) {
       auto *data = allocate(record.size);
@@ -57,6 +67,27 @@ bool WallpaperStore::begin_locked() {
     if (valid && (slot_ < 0 || static_cast<int32_t>(record.revision - revision_) > 0)) {
       slot_ = slot; revision_ = record.revision; size_ = record.size;
     }
+  }
+  if (!single_slot) {
+    // Copy the newest legacy second-slot image before releasing that region.
+    // Slot zero already has the correct format and needs no rewrite.
+    if (slot_ == 1) {
+      auto *data = size_ ? allocate(size_) : nullptr;
+      const bool copied = (!size_ || (data && esp_partition_read(partition,
+          OFFSET + STRIDE + sizeof(Record), data, size_) == ESP_OK)) && write_primary_locked(data, size_);
+      free(data);
+      if (!copied) { initialized_ = false; partition_ = nullptr; return false; }
+    }
+    // Persist the layout before cleanup. Future boots must never inspect the
+    // released region, which may now contain unrelated files or old bytes.
+    if (nvs_open("espcontrol_wall", NVS_READWRITE, &settings) != ESP_OK) {
+      initialized_ = false; partition_ = nullptr; return false;
+    }
+    auto result = nvs_set_u8(settings, "layout", 1);
+    if (result == ESP_OK) result = nvs_commit(settings);
+    nvs_close(settings);
+    if (result != ESP_OK) { initialized_ = false; partition_ = nullptr; return false; }
+    if (legacy_backup) esp_partition_erase_range(partition, OFFSET + STRIDE, STRIDE);
   }
   return true;
 #else
@@ -94,18 +125,22 @@ bool WallpaperStore::save_opacities(int off, int active) {
 bool WallpaperStore::save(const uint8_t *data, size_t size) {
   if (size && !wallpaper_valid(data, size)) return false;
   std::lock_guard<std::mutex> lock(mutex_);
-#ifdef USE_ESP32
   if (!begin_locked()) return false;
+  return write_primary_locked(data, size);
+}
+bool WallpaperStore::write_primary_locked(const uint8_t *data, size_t size) {
+#ifdef USE_ESP32
   const auto *partition = static_cast<const esp_partition_t *>(partition_);
-  const int slot = slot_ == 0 ? 1 : 0;
-  const size_t offset = OFFSET + slot * STRIDE;
-  Record record{MARKER, revision_ + 1, static_cast<uint32_t>(size), size ? esp_rom_crc32_le(0, data, size) : 0};
-  if (esp_partition_erase_range(partition, offset, STRIDE) != ESP_OK ||
-      (size && esp_partition_write(partition, offset + sizeof(record), data, size) != ESP_OK) ||
-      esp_partition_write(partition, offset + sizeof(record.marker), reinterpret_cast<uint8_t *>(&record) + sizeof(record.marker),
+  if (esp_partition_erase_range(partition, OFFSET, STRIDE) != ESP_OK) return false;
+  // Erasing a single slot removes the old image. Keep GET and the display
+  // consistent even if a later write fails; a partial record is never valid.
+  slot_ = 0; size_ = 0; ++revision_;
+  Record record{MARKER, revision_, static_cast<uint32_t>(size), size ? esp_rom_crc32_le(0, data, size) : 0};
+  if ((size && esp_partition_write(partition, OFFSET + sizeof(record), data, size) != ESP_OK) ||
+      esp_partition_write(partition, OFFSET + sizeof(record.marker), reinterpret_cast<uint8_t *>(&record) + sizeof(record.marker),
                           sizeof(record) - sizeof(record.marker)) != ESP_OK ||
-      esp_partition_write(partition, offset, &record.marker, sizeof(record.marker)) != ESP_OK) return false;
-  slot_ = slot; revision_ = record.revision; size_ = size;
+      esp_partition_write(partition, OFFSET, &record.marker, sizeof(record.marker)) != ESP_OK) return false;
+  size_ = size;
   return true;
 #else
   (void) data; (void) size; return false;

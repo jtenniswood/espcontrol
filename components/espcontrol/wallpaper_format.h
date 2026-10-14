@@ -30,7 +30,7 @@ constexpr uint32_t WALLPAPER_JPEG_MAX_SIDE = 480;
 constexpr uint32_t WALLPAPER_JPEG_MAX_PIXELS = 480 * 480;
 constexpr bool WALLPAPER_RGB888 = false;
 #endif
-// Preserve the existing atomic flash slots, including their 16-byte record.
+// Fit the single 512 KiB flash slot, including its 16-byte record.
 constexpr size_t WALLPAPER_MAX_BYTES = 512 * 1024 - 16;
 inline uint32_t wallpaper_u32(const uint8_t *data) {
   return uint32_t(data[0]) | (uint32_t(data[1]) << 8) |

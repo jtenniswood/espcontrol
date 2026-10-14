@@ -24,6 +24,7 @@ int main() {
   assert(!wallpaper_valid(data.data(), data.size()));
   put(data, 8, 1); assert(!wallpaper_is_removal(data.data(), data.size()));
   assert(2 * (44 * 1024) <= WALLPAPER_STORAGE_OFFSET);
-  assert(WALLPAPER_STORAGE_OFFSET + 2 * WALLPAPER_STORAGE_SLOT_BYTES < panel_config_partition_bytes(PANEL_DATA_PARTITION_BYTES));
+  assert(WALLPAPER_STORAGE_OFFSET + WALLPAPER_STORAGE_BYTES < panel_config_partition_bytes(PANEL_DATA_PARTITION_BYTES));
+  assert(WALLPAPER_STORAGE_BYTES == 512 * 1024);
   assert(16 + WALLPAPER_MAX_BYTES <= WALLPAPER_STORAGE_SLOT_BYTES);
 }

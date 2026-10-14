@@ -139,9 +139,9 @@ async function prepareWallpaper(document: Document, file: File, limits: Wallpape
       context.fillRect(0, 0, width, height);
       context.drawImage(image, 0, 0, width, height);
       if (!limits.jpeg) return encodeWallpaper(width, height, context.getImageData(0, 0, width, height).data);
-      // Start at high quality. Very detailed images may need more compression
-      // or a smaller size to fit the display's existing flash storage.
-      for (const quality of [0.95, 0.9, 0.85, 0.8]) {
+      // Keep resolution first, using smaller JPEGs for typical photos.
+      // Reduce dimensions only after stronger compression cannot fit.
+      for (const quality of [0.75, 0.7, 0.65, 0.6]) {
         const jpeg = await new Promise<Blob>((resolve, reject) => canvas.toBlob(
           blob => blob ? resolve(blob) : reject(new Error("Your browser cannot prepare a wallpaper.")), "image/jpeg", quality));
         if (jpeg.type !== "image/jpeg") throw new Error("Your browser cannot prepare a JPEG wallpaper.");
@@ -302,18 +302,30 @@ export function buildWallpaperSettings(
     finally { sync(); }
   }
   async function save(file: File | null) {
+    let submitted = false;
     busy = true; sync(); status.textContent = file ? "Uploading wallpaper…" : "Removing wallpaper…";
     try {
       const buffer = file ? await prepareWallpaper(document, file, limits) : null;
       const payload = buffer ?? new ArrayBuffer(HEADER_BYTES);
       if (!buffer) new DataView(payload).setUint32(0, MAGIC, true);
+      submitted = true;
       const response = await request("/api/v1/wallpaper", {
         method: "PUT", credentials: "include", cache: "no-store",
         headers: { "Content-Type": MEDIA_TYPE }, body: payload,
       });
       if (!response.ok) throw new Error("Could not save wallpaper. Check the connection and try again.");
       apply(buffer);
-    } catch (error) { status.textContent = error instanceof Error ? error.message : "Could not save wallpaper."; }
+    } catch (error) {
+      // A single-slot write can remove the previous image before failing.
+      // Reload only after a submitted request; invalid files never touch flash.
+      if (submitted) {
+        try {
+          const response = await request("/api/v1/wallpaper", { credentials: "include", cache: "no-store" });
+          if (response.ok) apply(response.status === 204 ? null : await response.arrayBuffer());
+        } catch { /* Keep the last known preview if the display cannot be reached. */ }
+      }
+      status.textContent = error instanceof Error ? error.message : "Could not save wallpaper.";
+    }
     finally { busy = false; upload.value = ""; sync(); }
   }
   async function saveOpacity() {
