@@ -128,6 +128,15 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
         const hasBackground = hasWallpaper || !!els.backgroundColour;
         const wallpaperPreview = document.getElementById("sp-wallpaper-preview");
         if (wallpaperPreview) {
+            const grid = wallpaperPreview.querySelector(".sp-wallpaper-preview-grid");
+            if (grid && grid.childElementCount !== dependencies.layout.previewSlots) {
+                grid.replaceChildren();
+                for (let index = 0; index < dependencies.layout.previewSlots; index++) {
+                    const box = document.createElement("span");
+                    box.className = "sp-wallpaper-preview-box" + (index === 2 || index === 4 ? " sp-wallpaper-preview-box-active" : "");
+                    grid.appendChild(box);
+                }
+            }
             wallpaperPreview.style.setProperty("--wallpaper-standard-color", wallpaperCardColor(previewColors.surfaceCard, hasBackground, els.wallpaperOpacityPercent));
             wallpaperPreview.style.setProperty("--wallpaper-active-color", wallpaperCardColor(state.onColor || WEB_UI_COLORS.primary, hasBackground, els.wallpaperActiveOpacityPercent));
         }

@@ -75,7 +75,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-topbar .sp-network-preview::before,.sp-topbar .sp-voice-preview::before{font-size:inherit;line-height:inherit}" +
         ".sp-network-preview.sp-visible,.sp-voice-preview.sp-visible{opacity:1}" +
         ".sp-voice-preview:not(.sp-visible){display:none}" +
-        ".sp-main{position:absolute;top:var(--grid-top);left:var(--grid-left);right:var(--grid-right);bottom:var(--grid-bottom);" +
+        ".sp-main,.sp-wallpaper-preview-grid{position:absolute;top:var(--grid-top);left:var(--grid-left);right:var(--grid-right);bottom:var(--grid-bottom);" +
         "display:grid;grid-template-columns:var(--grid-cols);grid-template-rows:var(--grid-rows);gap:var(--grid-gap);overflow:hidden}" +
         ".sp-main.sp-grid-loading{visibility:hidden;opacity:0;pointer-events:none;transition:opacity .2s,visibility .2s}" +
         ".sp-btn{border-radius:var(--btn-r);padding:var(--btn-pad);" +
@@ -431,8 +431,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-card-bg-file{display:none}" +
         ".sp-card-bg-actions .sp-action-btn{padding:8px 12px;display:inline-flex;align-items:center;gap:6px}" +
         ".sp-card-bg-actions .sp-action-btn:disabled{opacity:.45;cursor:not-allowed}" +
-        ".sp-wallpaper-preview{width:min(280px,100%);aspect-ratio:1/1;box-sizing:border-box;padding:10px;" +
-        "display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:8px;" +
+        ".sp-wallpaper-preview{width:min(280px,100%);aspect-ratio:var(--screen-aspect);box-sizing:border-box;" +
+        "position:relative;container-type:inline-size;overflow:hidden;" +
         "border:1px solid var(--border);border-radius:6px;background:var(--surface) center/cover no-repeat}" +
         ".sp-wallpaper-preview-box{border-radius:5px;background:var(--wallpaper-standard-color,var(--screen-secondary))}" +
         ".sp-wallpaper-preview-box-active{background:var(--wallpaper-active-color,var(--screen-primary))}" +

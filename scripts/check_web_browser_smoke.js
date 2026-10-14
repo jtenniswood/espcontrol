@@ -7564,6 +7564,72 @@ async function assertS3ForecastEditorLayout(browser) {
   } finally { await context.close(); }
 }
 
+async function assertWallpaperPreviewLayout(browser, testCase) {
+  const context = await browser.newContext({viewport: testCase.viewport});
+  try {
+    const wallpaper = {image: null, posts: [], opacity: 80, activeOpacity: 98, opacityPosts: []};
+    await installRoutes(context, testCase.slug, {wallpaperState: wallpaper, resetState: {epoch: 3, pending: false, requests: []}});
+    const page = await context.newPage();
+    await installFakeEventSource(page);
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, {waitUntil: "domcontentloaded"});
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.getByRole("tab", {name: "Settings", exact: true}).click();
+    await page.getByRole("heading", {name: "Background", exact: true}).click();
+    await page.waitForFunction(() => !document.querySelector("#sp-background-tab-colour").disabled);
+    const profile = readManifest().devices[testCase.slug];
+    const checkLayout = async (rotation, viewport) => {
+      const rotated = ["90", "270"].includes(rotation);
+      const layout = rotated && profile.web.portrait ? profile.web.portrait : profile.layout;
+      const aspect = parseAspect(rotated && profile.web.portrait ? layout.screen.aspect : profile.web.screen.aspect).ratio;
+      const slots = layout.slots || profile.slots;
+      await page.setViewportSize(viewport);
+      await page.getByRole("tab", {name: "Screen", exact: true}).click();
+      const mainSpacing = await page.locator(".sp-screen").evaluate(screen => {
+        const grid = screen.querySelector(".sp-main");
+        const outer = screen.getBoundingClientRect(), inner = grid.getBoundingClientRect();
+        return [(inner.left - outer.left) / screen.clientWidth, (inner.top - outer.top) / screen.clientWidth,
+          parseFloat(getComputedStyle(grid).gap) / screen.clientWidth];
+      });
+      await page.getByRole("tab", {name: "Settings", exact: true}).click();
+      const geometry = await page.locator(".sp-wallpaper-preview").evaluate(el => {
+        const bounds = el.getBoundingClientRect();
+        const grid = el.querySelector(".sp-wallpaper-preview-grid");
+        const styles = getComputedStyle(grid);
+        const fraction = (grid, parent) => {
+          const outer = parent.getBoundingClientRect(), inner = grid.getBoundingClientRect();
+          return [(inner.left - outer.left) / parent.clientWidth, (inner.top - outer.top) / parent.clientWidth,
+            parseFloat(getComputedStyle(grid).gap) / parent.clientWidth];
+        };
+        return {ratio: bounds.width / bounds.height, columns: styles.gridTemplateColumns.split(" ").length,
+          rows: styles.gridTemplateRows.split(" ").length, count: grid.childElementCount,
+          miniature: fraction(grid, el),
+          boxesFit: [...grid.children].every(box => {const rect = box.getBoundingClientRect();
+            return rect.left >= bounds.left && rect.right <= bounds.right && rect.top >= bounds.top && rect.bottom <= bounds.bottom;})};
+      });
+      assert(Math.abs(geometry.ratio - aspect) < .01, `${testCase.slug}/${rotation}: screen ratio matches device`);
+      assert.strictEqual(geometry.columns, layout.cols);
+      assert.strictEqual(geometry.rows, layout.rows);
+      assert.strictEqual(geometry.count, slots);
+      assert(geometry.boxesFit, `${testCase.slug}/${rotation}: all preview cards fit the screen`);
+      geometry.miniature.forEach((value, index) => assert(Math.abs(value - mainSpacing[index]) < .015,
+        `${testCase.slug}/${rotation}: card spacing scales with the screen`));
+    };
+    for (const rotation of ["0", "90", "180", "270"]) {
+      await page.evaluate(value => window.__seedEspState([{id: "select-screen__rotation", state: value, value, option: ["0", "90", "180", "270"]}]), rotation);
+      await checkLayout(rotation, testCase.viewport);
+      await checkLayout(rotation, {width: 360, height: 800});
+      await page.getByRole("tab", {name: "Colour", exact: true}).click();
+      await page.waitForFunction(() => !document.querySelector("#sp-background-tab-colour").disabled);
+      await checkLayout(rotation, testCase.viewport);
+      await page.getByRole("tab", {name: "Wallpaper", exact: true}).click();
+      await page.waitForFunction(() => !document.querySelector("#sp-background-tab-wallpaper").disabled);
+    }
+    if (testCase.slug === "guition-esp32-p4-jc8012p4a1-v3")
+      await page.locator("#sp-wallpaper-preview").screenshot({path: "/tmp/wallpaper-device-preview.png"});
+  } finally { await context.close(); }
+}
+
 async function assertWallpaperSettings(browser) {
   const testCase = ACTIVE_CASES[0];
   const context = await browser.newContext({ viewport: testCase.viewport });
@@ -7599,7 +7665,7 @@ async function assertWallpaperSettings(browser) {
     assert.strictEqual(await page.locator("#sp-set-active-card-transparency").isVisible(), false);
     assert.strictEqual(await page.locator("#sp-set-wallpaper").isVisible(), false);
     await page.getByRole("img", { name: "No wallpaper uploaded", exact: true }).waitFor();
-    assert.strictEqual(await page.locator(".sp-wallpaper-preview-box").count(), 9);
+    assert.strictEqual(await page.locator(".sp-wallpaper-preview-box").count(), testCase.slots);
     assert.strictEqual(await page.locator(".sp-wallpaper-preview .mdi,.sp-card-bg-field > label").count(), 0);
     assert.strictEqual(await page.locator(".sp-wallpaper-info").isVisible(), false);
     assert.strictEqual(await page.locator("#sp-set-card-transparency").inputValue(), "0");
@@ -8093,6 +8159,8 @@ async function assertWallpaperSettings(browser) {
       console.log(`Card curve preset checks passed for ${ACTIVE_CASES.length} generated layouts.`);
       return;
     }
+    for (const testCase of ACTIVE_CASES) await assertWallpaperPreviewLayout(browser, testCase);
+    if (process.env.ESPCONTROL_WALLPAPER_LAYOUT_ONLY === "1") { console.log(`Wallpaper preview layout checks passed for ${ACTIVE_CASES.length} devices.`); return; }
     await assertWallpaperSettings(browser);
     if (process.env.ESPCONTROL_WALLPAPER_ONLY === "1") { console.log("Wallpaper browser checks passed."); return; }
     await assertCardCurveSettings(browser, ACTIVE_CASES[0]);

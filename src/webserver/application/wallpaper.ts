@@ -211,12 +211,10 @@ export function buildWallpaperSettings(
   preview.className = "sp-wallpaper-preview";
   preview.setAttribute("role", "img");
   preview.setAttribute("aria-label", "No wallpaper uploaded");
-  for (let index = 0; index < 9; index++) {
-    const box = document.createElement("span");
-    box.className = "sp-wallpaper-preview-box" + (index === 2 || index === 4 ? " sp-wallpaper-preview-box-active" : "");
-    box.setAttribute("aria-hidden", "true");
-    preview.appendChild(box);
-  }
+  const previewGrid = document.createElement("div");
+  previewGrid.className = "sp-wallpaper-preview-grid";
+  previewGrid.setAttribute("aria-hidden", "true");
+  preview.appendChild(previewGrid);
   const actions = document.createElement("div");
   actions.className = "sp-card-bg-actions";
   const uploadButton = document.createElement("button");
