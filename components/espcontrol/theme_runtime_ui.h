@@ -176,6 +176,9 @@ inline void refresh_theme_grid_after_rebuild() {
   if (!register_theme_refresh(targets.main_page, theme_apply_grid, &targets))
     ESP_LOGW("theme", "Refresh registry full; rebuilt grid will not follow theme changes");
   apply_current_theme();
+  // Dark -> Dark can skip the palette callback. New subpage cards still need
+  // the saved wallpaper opacity after phase 2 has finished creating them.
+  if (theme_grid_wallpaper_refresh()) theme_grid_wallpaper_refresh()();
 }
 
 struct ThemeHudTargets {

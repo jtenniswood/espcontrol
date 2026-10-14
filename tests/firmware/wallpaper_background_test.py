@@ -99,33 +99,35 @@ int main() {
   wallpaper_background_refresh() = wallpaper_bind_screen;
   ui.pixels = reinterpret_cast<uint8_t *>(1);
   wallpaper_apply_cards();
-  assert(ui.widgets.size() == 7);  // Setup/backgrounds work before a home grid exists.
+  assert(ui.widgets.size() == 5);  // Setup/backgrounds work before a home grid exists.
   grid.main_page = home; wallpaper_apply_cards();
-  assert(ui.widgets.size() == 8);
-  assert(modal->clip_corner && nested->clip_corner);
+  assert(ui.widgets.size() == 6);
+  assert(modal->children.empty() && nested->children.empty());
+  assert(!modal->clip_corner && !nested->clip_corner);
   auto *foreground = new lv_obj_t; foreground->parent = modal; modal->children.push_back(foreground);
-  for (auto *screen : {home, initial_subpage, setup_page, clock, camera, cover_art, modal, nested}) {
+  for (auto *screen : {home, initial_subpage, setup_page, clock, camera, cover_art}) {
     auto *image = screen->children.front();
     assert(image->source == &ui.image && image->zoom == 231);
     assert((image->flags & (LV_OBJ_FLAG_IGNORE_LAYOUT | LV_OBJ_FLAG_FLOATING)) == 3);
     assert(!(image->flags & (LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE)));
-    assert(image->opacity == ((screen == modal || screen == nested) ? LV_OPA_30 : LV_OPA_COVER));
+    assert(image->opacity == LV_OPA_COVER);
   }
   assert(home->children.front()->y == -30);
   auto *late = new lv_obj_t;
   wallpaper_register_background(late);
-  assert(late->children.size() == 1 && ui.widgets.size() == 9);
+  assert(late->children.size() == 1 && ui.widgets.size() == 7);
   late->width = 200; late->height = 400; emit(late, LV_EVENT_SIZE_CHANGED);
   assert(late->children.front()->zoom == 128);
   wallpaper_apply_cards();
-  assert(ui.widgets.size() == 9 && modal->children.back() == foreground);
+  assert(ui.widgets.size() == 7 && modal->children.size() == 1 && modal->children.front() == foreground);
+  assert(nested->children.empty());
   ui.pixels = nullptr; wallpaper_apply_cards();
   assert(ui.widgets.empty() && modal->children.size() == 1 && modal->children.front() == foreground);
   assert(!modal->clip_corner && !nested->clip_corner);
   ui.pixels = reinterpret_cast<uint8_t *>(2); wallpaper_apply_cards();
-  assert(ui.widgets.size() == 9);
+  assert(ui.widgets.size() == 7);
   lv_obj_del(late); lv_obj_del(nested);
-  assert(ui.widgets.size() == 7 && wallpaper_backgrounds().size() == 7);
+  assert(ui.widgets.size() == 6 && wallpaper_backgrounds().size() == 7);
   for (auto *screen : {home, initial_subpage, setup_page, clock, camera, cover_art, modal}) lv_obj_del(screen);
   assert(ui.widgets.empty() && wallpaper_backgrounds().empty());
 }
@@ -136,4 +138,4 @@ with tempfile.TemporaryDirectory() as directory:
     subprocess.run([os.environ.get('CXX', 'g++'), '-std=c++17', '-Wall', '-Wextra', '-Werror',
                     '-I', str(root / 'components/espcontrol'), str(path / 'test.cpp'), '-o', str(path / 'test')], check=True)
     subprocess.run([str(path / 'test')], check=True)
-print('Shared wallpaper backgrounds, late screens, resizing and cleanup checks passed.')
+print('Shared wallpaper backgrounds, solid modals, late screens, resizing and cleanup checks passed.')

@@ -177,6 +177,7 @@ void lv_obj_clear_state(lv_obj_t *obj, int state) { obj->state &= ~state; }
 std::vector<uint32_t> image_theme_colors;
 inline void image_card_refresh_theme(uint32_t color) { image_theme_colors.push_back(color); }
 #include "theme_runtime_ui.h"
+static int wallpaper_rebuild_refreshes = 0;
 
 void register_theme_grid(lv_obj_t *page, BtnSlot *slots, const bool *neutral, int count,
                          int red, int green, int blue, const bool *secondary = nullptr) {
@@ -354,7 +355,19 @@ static void test_restore_grid_theme(ThemeMode mode, EffectiveTheme effective,
   sync_card_checked_text_color(&sub_button);
   const int preserved_subpage_state = sub_button.state;
 
+  wallpaper_rebuild_refreshes = 0;
+  theme_grid_wallpaper_refresh() = []() {
+    ++wallpaper_rebuild_refreshes;
+    assert(theme_grid_targets().count == 1);
+    assert(navigation_subpages().size() == 1);
+    assert(navigation_subpages().front().back_button != nullptr);
+    assert(navigation_subpages().front().cards.size() == 2);
+  };
   refresh_theme_grid_after_rebuild();  // Final boundary: no mode transition.
+  // Wallpaper must refresh after late cards exist, even when Dark -> Dark
+  // legitimately skips the palette callback.
+  assert(wallpaper_rebuild_refreshes > 0);
+  theme_grid_wallpaper_refresh() = nullptr;
   assert(settings.mode == expected_settings.mode);
   assert(settings.auto_method == expected_settings.auto_method);
   assert(settings.light_start == expected_settings.light_start);

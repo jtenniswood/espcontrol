@@ -27,8 +27,8 @@ inline void wallpaper_bind_screen(lv_obj_t *screen, bool modal = false) {
   auto &ui = wallpaper_ui();
   lv_obj_t *widget = nullptr;
   for (auto *candidate : ui.widgets) if (lv_obj_get_parent(candidate) == screen) { widget = candidate; break; }
-  if (modal) lv_obj_set_style_clip_corner(screen, ui.pixels != nullptr, LV_PART_MAIN);
-  if (!ui.pixels) { if (widget) lv_obj_del(widget); return; }
+  // Modal panels keep their solid theme fill, regardless of card opacity.
+  if (modal || !ui.pixels) { if (widget) lv_obj_del(widget); return; }
   const int width = lv_obj_get_width(screen), height = lv_obj_get_height(screen);
   if (width <= 0 || height <= 0) return;
   if (!widget) {
@@ -41,8 +41,7 @@ inline void wallpaper_bind_screen(lv_obj_t *screen, bool modal = false) {
     ui.widgets.push_back(widget);
   }
   lv_image_set_src(widget, &ui.image);
-  // Modal controls retain a readable neutral tint over the same shared image.
-  lv_obj_set_style_image_opa(widget, modal ? LV_OPA_30 : LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_image_opa(widget, LV_OPA_COVER, LV_PART_MAIN);
   const int zoom = std::max((width * 256 + int(ui.image.header.w) - 1) / int(ui.image.header.w),
                             (height * 256 + int(ui.image.header.h) - 1) / int(ui.image.header.h));
   lv_image_set_scale(widget, zoom);

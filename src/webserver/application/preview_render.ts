@@ -125,14 +125,6 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
     function renderPreview(this: any) {
         const previewColors = PREVIEW_THEME_COLORS[previewEffectiveTheme(state)];
         const hasWallpaper = !!els.wallpaperUrl;
-        const settingsModal = els.settingsOverlay?.querySelector(".sp-settings-modal") as HTMLElement | null | undefined;
-        if (settingsModal) {
-            settingsModal.style.backgroundImage = hasWallpaper
-                ? 'linear-gradient(color-mix(in srgb,var(--bg) 70%,transparent),color-mix(in srgb,var(--bg) 70%,transparent)),url("' + els.wallpaperUrl + '")'
-                : "";
-            settingsModal.style.backgroundSize = "cover";
-            settingsModal.style.backgroundPosition = "center";
-        }
         const wallpaperPreview = document.getElementById("sp-wallpaper-preview");
         if (wallpaperPreview) {
             wallpaperPreview.style.setProperty("--wallpaper-standard-color", wallpaperCardColor(previewColors.surfaceCard, hasWallpaper, els.wallpaperOpacityPercent));

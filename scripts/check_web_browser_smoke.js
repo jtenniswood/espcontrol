@@ -7605,8 +7605,12 @@ async function assertWallpaperSettings(browser) {
     await page.getByRole("button", { name: "Upload Image", exact: true }).waitFor();
     await page.getByRole("img", { name: "Saved wallpaper, 1280 by 800 pixels" }).waitFor();
     await assertClockBarTypographyAndIconLayout(page, "Wallpaper loaded");
-    assert(await page.locator(".sp-settings-modal").evaluate(el => el.style.backgroundImage.includes("data:image/jpeg;base64,")),
-      "The browser modal should share the uploaded wallpaper");
+    const modalFill = await page.locator(".sp-settings-modal").evaluate(el => ({
+      image: getComputedStyle(el).backgroundImage,
+      color: getComputedStyle(el).backgroundColor,
+    }));
+    assert.strictEqual(modalFill.image, "none", "The browser modal has no wallpaper");
+    assert(modalFill.color.startsWith("rgb("), "The browser modal keeps a completely solid fill");
     assert.strictEqual(await page.locator(".sp-wallpaper-preview").evaluate(el => el.style.backgroundImage),
       await page.locator(".sp-screen").evaluate(el => el.style.backgroundImage));
     assert.strictEqual(wallpaper.image.readUInt32LE(0), 0x32505745);
@@ -7744,6 +7748,14 @@ async function assertWallpaperSettings(browser) {
     await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
     const backCard = page.locator(".sp-back-btn");
     await backCard.waitFor();
+    await assertCardAlpha(128 / 255);
+    const subpageCard = page.locator('.sp-main [data-slot="1"]');
+    assert(Math.abs(await subpageCard.evaluate(card => {
+      const color = getComputedStyle(card).backgroundColor;
+      return color.startsWith("rgba(") ? parseFloat(color.split(",").at(-1)) : 1;
+    }) - 128 / 255) < .004, "Subpage cards use the same standard transparency as home cards");
+    assert.strictEqual(parseInt((await subpageCard.evaluate(card => card.style.getPropertyValue("--card-active-color"))).slice(-2), 16), 230,
+      "Subpage cards use the same active transparency as home cards");
     assert.strictEqual(parseInt((await backCard.evaluate(card => card.style.getPropertyValue("--card-active-color"))).slice(-2), 16), 230);
     await backCard.evaluate(card => card.addEventListener("click", event => {
       event.preventDefault(); event.stopImmediatePropagation();
