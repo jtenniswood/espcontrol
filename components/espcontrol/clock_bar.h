@@ -19,6 +19,8 @@
 // Match image-card labels: a crisp black glyph copy one pixel down and right.
 // Keeping this on the label makes text, font, visibility and title changes
 // follow automatically, including the connectivity glyph and night indicator.
+// Shared YAML declares clock_bar_shadow to enable the A8 renderer required by
+// these runtime setters (used by the optional battery status glyph).
 inline void clock_bar_apply_label_shadow(lv_obj_t *label) {
   if (!label) return;
   lv_obj_set_style_drop_shadow_color(label, lv_color_hex(0x000000), LV_PART_MAIN);

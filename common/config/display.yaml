@@ -5,6 +5,17 @@
 # All values persist across reboots and are editable via the webserver v3 UI.
 # =============================================================================
 
+lvgl:
+  # Declaring the shadow here also enables LVGL's A8 draw-buffer support.
+  # Runtime C++ setters alone do not tell ESPHome to include that renderer.
+  style_definitions:
+    - id: clock_bar_shadow
+      drop_shadow_color: 0x000000
+      drop_shadow_opa: 50%
+      drop_shadow_radius: 0
+      drop_shadow_offset_x: 1
+      drop_shadow_offset_y: 1
+
 globals:
   - id: card_curve_medium_default_migrated
     type: bool
@@ -47,11 +58,10 @@ esphome:
             }
     - priority: -100
       then:
+        - lvgl.label.update:
+            id: [temperatures, display_time, network_status_icon_label, night_mode_status_icon_label]
+            styles: clock_bar_shadow
         - lambda: |-
-            clock_bar_apply_label_shadow(id(temperatures));
-            clock_bar_apply_label_shadow(id(display_time));
-            clock_bar_apply_label_shadow(id(network_status_icon_label));
-            clock_bar_apply_label_shadow(id(night_mode_status_icon_label));
             clock_bar_enable_settings_access(id(network_status_button));
             navigation_subpage_clock_bar_refresh() = []() {
               navigation_refresh_subpage_label();
