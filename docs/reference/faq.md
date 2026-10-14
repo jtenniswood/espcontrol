@@ -92,7 +92,7 @@ Yes, through a Home Assistant `image` entity. The separate Immich Companion mana
 
 ### How Do I Update the Firmware?
 
-Standard firmware offers **Auto Update** and **Check for Update** under Firmware settings. Custom, Ethernet-only, and V3 installation paths have exceptions. Follow [Firmware Updates](/features/firmware-updates) for the correct method and release status.
+Standard firmware offers **Auto Update** and **Check for Update** under **Device > System > Firmware**. Custom, Ethernet-only, and V3 installation paths have exceptions. Follow [Firmware Updates](/features/firmware-updates) for the correct method and release status.
 
 ### Will Automatic Updates Keep My Custom ESPHome YAML?
 
@@ -108,7 +108,7 @@ Yes. Use **Device > System > Device Name > Save & Restart**. Entity IDs stay unc
 
 ### Can I Back Up My Setup?
 
-Yes. Use **Export** and **Import** under Backup to save cards and settings or copy a setup to another panel. Layouts adapt to different screen sizes. See [Backup and restore](/features/backup) for exclusions.
+Yes. Use **Export** and **Import** under **Device > System > Backup** to save cards and settings or copy a setup to another panel. Layouts adapt to different screen sizes. See [Backup and restore](/features/backup) for exclusions.
 
 ### Can I Copy Just a Few Cards to Another Panel?
 

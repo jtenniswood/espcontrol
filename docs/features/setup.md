@@ -8,6 +8,8 @@ description:
 
 Your EspControl panel has a built-in web page where you can set everything up. Open it by typing the panel's address into any browser on your phone or computer.
 
+Use **Screen** to add and arrange cards, **Settings** for appearance and sleep options, and **Device** for display, preferences, and system controls. The **Device** tab sits next to **Settings**.
+
 ![Screen setup page](/images/screen-setup.png)
 
 ![Webserver card grid with examples of lights, climate, media, weather, covers, locks, actions, sensors, and date cards](/images/webserver-card-gallery.png)
@@ -107,7 +109,7 @@ The **Settings** and **Device** tabs group the current controls as follows. Open
 
 | Tab | Section | Controls |
 |---|---|---|
-| **Settings** | **Appearance** | [Appearance](/features/appearance), [Idle](/features/idle), [Clock Bar](/features/clock-bar) |
+| **Settings** | **Appearance** | [Active Colour, Card Style, Theme](/features/appearance), [Idle](/features/idle), [Clock Bar](/features/clock-bar) |
 | **Settings** | **Sleep & Schedule** | [Cover Art Screen Saver](/features/media-cover-art), [Screensaver](/features/screensaver), [Night Schedule](/features/screen-schedule), [Pin Protection](/features/screensaver#pin-protection-after-wake) |
 | **Device** | **Display** | [Backlight](/features/backlight), [Rotation](/features/rotation) |
 | **Device** | **Preferences** | [Language](/features/language), [Time](/features/clock), [Temperature](/features/temperature) |
@@ -129,7 +131,7 @@ The native ESPHome connection and image downloads are separate connections. If c
 
 ## Apply Configuration
 
-After making changes, tap **Apply Configuration** at the bottom of the page. The panel restarts and loads your new settings — you'll see a message while it reconnects.
+After making changes, tap **Apply Configuration** at the bottom of the **Screen**, **Settings**, or **Device** tab. The panel restarts and loads your new settings — you'll see a message while it reconnects.
 
 ## Restart From Home Assistant
 

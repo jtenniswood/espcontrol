@@ -17,7 +17,7 @@ Configured in **Device > Preferences > Time** in [Setup](/features/setup).
 - **Custom NTP Servers** — turn this on to show and edit the NTP server fields. When it is off, the panel uses the defaults: `0.pool.ntp.org`, `1.pool.ntp.org`, and `2.pool.ntp.org`.
 - **NTP Server 1 / 2 / 3** — choose the network time servers used to keep the panel clock accurate when custom NTP servers are enabled.
 
-The **Clock Bar** section controls whether the top bar is shown. The clock bar uses a fixed layout with one temperature reading, the time, and status icons. Select an item in the screen preview to edit or hide it. The temperature unit itself is set in the **Temperature** section. When the connectivity icon is shown, tap it on the panel to see the device name, IP address, WiFi strength, and firmware version.
+**Settings > Appearance > Clock Bar** controls whether the top bar is shown. The clock bar uses a fixed layout with one temperature reading, the time, and status icons. Select an item in the screen preview to edit or hide it. The temperature unit itself is set in **Device > Preferences > Temperature**. When the connectivity icon is shown, tap it on the panel to see the device name, IP address, WiFi strength, and firmware version.
 
 The network status icon is on by default. Hide the **Connectivity** item in the screen preview if you only want the clock and temperature items in the top bar.
 
