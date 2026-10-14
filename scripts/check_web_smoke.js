@@ -332,6 +332,18 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
       false,
       `${slug}: generated web UI must not preview disabled weather forecast modes`
     );
+  } else {
+    assert.deepStrictEqual(
+      Array.from(generatedHooks.weatherModeOptionValues()),
+      ["", "today", "tomorrow"],
+      `${slug}: generated web UI must offer current conditions and both forecast days`
+    );
+    for (const day of ["today", "tomorrow"]) {
+      assert.strictEqual(generatedHooks.normalizeWeatherCardMode(day), day,
+        `${slug}: generated web UI must preserve the ${day} forecast setting`);
+      assert.strictEqual(generatedHooks.weatherCardIsForecastMode({ precision: day }), true,
+        `${slug}: generated web UI must preview the ${day} forecast`);
+    }
   }
   if (device.capabilities.imageSlots === 0) {
     assert(
