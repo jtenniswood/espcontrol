@@ -162,7 +162,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             event.stopPropagation();
             resetAppearanceColors(true);
         });
-        var activeColourCard: any = makeCollapsibleCard("Global Active Colour", activeColourBody, true, null, appearanceResetButton);
+        var activeColourCard: any = makeCollapsibleCard("Active Colour", activeColourBody, true, null, appearanceResetButton);
         var cardStyleCard: any = makeCollapsibleCard("Card Style", cardStyleBody, true);
         var themeCard: any = makeCollapsibleCard("Theme", themeBody, true);
         var languageBody: any = document.createElement("div");

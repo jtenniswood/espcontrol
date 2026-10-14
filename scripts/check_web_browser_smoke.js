@@ -1161,7 +1161,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     .first()
     .isVisible();
   if (!(await page.locator("#sp-set-on-color").isVisible())) {
-    await page.getByRole("heading", { name: "Global Active Colour", exact: true }).click();
+    await page.getByRole("heading", { name: "Active Colour", exact: true }).click();
   }
   const onColorVisible = await page.locator("#sp-set-on-color").isVisible();
   assert(settingsVisible, `${label}: settings page should be visible`);
@@ -6810,7 +6810,7 @@ async function assertCardCurveSettings(browser, testCase) {
       if (!(await page.locator("#sp-set-card-curve").isVisible())) await appearance.locator(".card-header").click();
       await page.locator("#sp-set-card-curve").waitFor({ state: "visible" });
       assert.deepStrictEqual(await page.locator("#sp-settings .card-header h3").allTextContents().then(titles => titles.slice(0, 3)),
-        ["Global Active Colour", "Card Style", "Theme"], "corner settings must own only the three non-wallpaper Appearance panels");
+        ["Active Colour", "Card Style", "Theme"], "corner settings must own only the three non-wallpaper Appearance panels");
       assert.strictEqual(await page.locator("#sp-set-wallpaper, #sp-set-card-transparency, #sp-set-active-card-transparency").count(), 0,
         "wallpaper controls belong exclusively to the wallpaper PR");
     };

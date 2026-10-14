@@ -7,7 +7,7 @@ description:
 # Appearance
 
 The **Appearance** section sits above **Display** in Settings. Its panels are
-**Global Active Colour**, **Card Style** (curve) and **Theme**.
+**Active Colour**, **Card Style** (curve) and **Theme**.
 
 Cards use continuous corners, with the same proportions on the panel and
 setup-page preview. Choose **Card curve → Small, Medium or Large** in
@@ -76,4 +76,4 @@ Slider cards also use the selected Theme or Custom colour for their fill. Text a
 
 Disabled Home Assistant cards keep their background colour and show muted labels and icons. Their normal text and icon colours return when the card becomes available again.
 
-Colour changes apply to the panel automatically after a brief pause (about 200 ms), plus the time needed to redraw the cards, including cards on subpages. You do not need to restart the panel. The reset icon in **Global Active Colour** applies the default orange in the same way.
+Colour changes apply to the panel automatically after a brief pause (about 200 ms), plus the time needed to redraw the cards, including cards on subpages. You do not need to restart the panel. The reset icon in **Active Colour** applies the default orange in the same way.
