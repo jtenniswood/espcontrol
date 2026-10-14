@@ -32,6 +32,8 @@ Forecasts need **Allow the device to perform Home Assistant actions** enabled so
 
 Forecast modes request the daily forecast from Home Assistant. **Today's Forecast** and **Tomorrow's Forecast** each show exactly one day, even on a wide card. They select the requested local date; if the provider omits that date, the card shows **Forecast unavailable**. **Daily Forecast** shows **Today** or short weekday names with whole-degree high/low temperatures. Its layout uses both card width and height: single-height cards use a horizontal row, larger cards use a grid, and tall narrow cards use a vertical list with icons beside the day and temperatures when there is enough width. Fonts stay readable rather than shrinking to fit more days. The grid balances its rows and columns when a provider returns fewer days. Short cards use compact rows when needed to leave room for **Last forecast**.
 
+Grid layouts keep each icon close to its day and temperatures, with extra space between complete forecast rows.
+
 On the 480×480 S3 with the default font sizes and eight available days:
 
 | Card size | Layout | Days shown |

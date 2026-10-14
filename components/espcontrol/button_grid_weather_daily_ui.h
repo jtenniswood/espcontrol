@@ -133,6 +133,10 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   const auto layout = espcontrol::weather::card_layout(width, content_height, minimum_day_width,
     minimum_height, icon_height + list_gap + list_text_width,
     std::max(icon_height, font_height + temperature_height + 2), day_gap, row_gap, available_days);
+  const bool grid = !layout.list && layout.rows > 1;
+  // Group each icon with its text; use spare height to separate whole rows.
+  const int grid_row_gap = grid ? std::min(std::max(row_gap, font_height),
+    (content_height - minimum_height * static_cast<int>(layout.rows)) / static_cast<int>(layout.rows - 1)) : row_gap;
   // Keep widgets stable on refresh; rebuild only when the geometry or layout changes.
   if (card->width != width || card->height != height || card->columns.size() != layout.count ||
       card->layout.columns != layout.columns || card->layout.rows != layout.rows || card->layout.list != layout.list) {
@@ -160,19 +164,22 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     const auto &day = forecast.days[first + i];
     const int column = static_cast<int>(i % layout.columns), row = static_cast<int>(i / layout.columns);
     const int usable_width = width - day_gap * static_cast<int>(layout.columns - 1);
-    const int usable_height = content_height - row_gap * static_cast<int>(layout.rows - 1);
+    const int usable_height = content_height - grid_row_gap * static_cast<int>(layout.rows - 1);
     const int base_width = usable_width / static_cast<int>(layout.columns), remainder_width = usable_width % layout.columns;
     const int base_height = usable_height / static_cast<int>(layout.rows), remainder_height = usable_height % layout.rows;
     const int cell_width = base_width + (column < remainder_width ? 1 : 0);
     const int cell_height = base_height + (row < remainder_height ? 1 : 0);
     const int x = column * (base_width + day_gap) + std::min(column, remainder_width);
-    const int y = row * (base_height + row_gap) + std::min(row, remainder_height);
+    const int y = row * (base_height + grid_row_gap) + std::min(row, remainder_height);
+    const int icon_y = y + (layout.list ? (cell_height - icon_height) / 2
+      : grid ? (cell_height - minimum_height) / 2 : 0);
     const int text_x = x + (layout.list ? icon_height + list_gap : 0);
     const int text_width = cell_width - (text_x - x);
     const int text_top = layout.list ? y + (cell_height - font_height - temperature_height - 2) / 2
+      : grid ? icon_y + icon_height + 2
       : y + std::max(icon_height + 2, cell_height - temperature_height - font_height - 2);
     lv_obj_set_width(col.icon, layout.list ? icon_height : cell_width);
-    lv_obj_set_pos(col.icon, x, y + (layout.list ? (cell_height - icon_height) / 2 : 0));
+    lv_obj_set_pos(col.icon, x, icon_y);
     lv_obj_set_width(col.day, text_width); lv_obj_set_width(col.high, text_width);
     lv_obj_set_pos(col.day, text_x, text_top);
     lv_obj_set_pos(col.high, text_x, text_top + font_height + 2);

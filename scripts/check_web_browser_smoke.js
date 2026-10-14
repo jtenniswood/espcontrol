@@ -7262,6 +7262,22 @@ async function assertWeatherWidthScaling(browser) {
           }));
         });
         assert(bounds,`${wide}w ${tall}h forecast content fits at preview width ${previewWidth}`);
+        if(rows>1 && !list){
+          const spacing=await page.locator('#weather').evaluate((card,columns)=>{
+            const scale=card.closest('.sp-screen').clientWidth/480;
+            const days=[...card.querySelectorAll('.sp-weather-day:not([hidden])')];
+            return days.map((day,index)=>{
+              const [icon,label,temperature]=[...day.children].map(child=>child.getBoundingClientRect());
+              const previous=index>=columns?days[index-columns].lastElementChild.getBoundingClientRect():null;
+              return {iconGap:(label.top-icon.bottom)/scale,
+                rowGap:previous?(icon.top-previous.bottom)/scale:null};
+            });
+          },columns);
+          assert(spacing.every(day=>day.iconGap>=1 && day.iconGap<=3),
+            'Grid icons stay close to their data at every preview scale: '+JSON.stringify(spacing));
+          assert(spacing.every(day=>day.rowGap===null || day.rowGap>=13),
+            'Grid rows have more separation than icon/data lines: '+JSON.stringify(spacing));
+        }
       }
     }
     console.log('All nine S3 forecast spans reflow into rows, grids or vertical lists at three preview scales; 3w2h shows eight days.');

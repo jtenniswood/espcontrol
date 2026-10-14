@@ -161,7 +161,17 @@ void check_card_fit(const WeatherDailyCard *card){
     }
     assert(column.day->y+column.day->height<=column.high->y);
     if(card->layout.list)assert(column.icon->x+column.icon->width<=column.day->x);
-    else assert(column.icon->y+column.icon->height<=column.day->y);
+    else {
+      assert(column.icon->y+column.icon->height<=column.day->y);
+      if(card->layout.rows>1){
+        assert(column.day->y==column.icon->y+column.icon->height+2);
+        const auto index=static_cast<size_t>(&column-card->columns.data());
+        if(index>=card->layout.columns){
+          const auto &previous=card->columns[index-card->layout.columns];
+          assert(column.icon->y-(previous.high->y+previous.high->height)>=lv_font_get_line_height(card->font)/2);
+        }
+      }
+    }
   }
 }
 void check_modal_fit(){

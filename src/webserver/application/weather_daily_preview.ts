@@ -55,11 +55,15 @@ export function createWeatherDailyPreviewLayout(
         const plan = planWeatherCardLayout(width, height, measured + 24,
             iconSize + fontHeight + temperatureHeight + 4, iconSize + listGap + temperatureWidth,
             Math.max(iconSize, fontHeight + temperatureHeight + 2), gap, rowGap, days.length);
+        const grid = !plan.list && plan.rows > 1;
+        const gridRowGap = grid ? Math.min(Math.max(rowGap, fontHeight),
+            Math.floor((height - (iconSize + fontHeight + temperatureHeight + 4) * plan.rows) / (plan.rows - 1))) : rowGap;
         row.classList.toggle("sp-weather-list", plan.list);
+        row.classList.toggle("sp-weather-grid", grid);
         row.style.gridTemplateColumns = `repeat(${plan.columns}, minmax(0, 1fr))`;
         row.style.gridTemplateRows = `repeat(${plan.rows}, minmax(0, 1fr))`;
         row.style.columnGap = (gap * scale) + "px";
-        row.style.rowGap = (rowGap * scale) + "px";
+        row.style.rowGap = (gridRowGap * scale) + "px";
         row.style.setProperty("--weather-list-gap", (listGap * scale) + "px");
         card.dataset.weatherColumns = String(plan.columns);
         card.dataset.weatherRows = String(plan.rows);
