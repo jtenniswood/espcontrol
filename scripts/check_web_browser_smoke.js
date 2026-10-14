@@ -2818,20 +2818,20 @@ async function assertCardActiveColourControls(page, posts, label) {
   const tabs = controls.getByRole("group", { name: "Active state colour", exact: true });
   const background = controls.getByRole("group", { name: "Card colour presets", exact: true });
   const active = controls.getByRole("group", { name: "Active state colour presets", exact: true });
-  assert.deepStrictEqual(await tabs.locator("button").allTextContents(), ["Matching", "Theme", "Custom"]);
+  assert.deepStrictEqual(await tabs.locator("button").allTextContents(), ["Matching", "Global", "Custom"]);
   assert.strictEqual(await active.isVisible(), false, `${label}: Matching hides the active picker`);
   const before = posts.length;
   await background.locator('[data-color="6036B2"]').click();
   assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#A086D1");
-  await tabs.getByRole("button", { name: "Theme", exact: true }).click();
-  assert.strictEqual(await active.isVisible(), false, `${label}: Theme hides the active picker`);
+  await tabs.getByRole("button", { name: "Global", exact: true }).click();
+  assert.strictEqual(await active.isVisible(), false, `${label}: Global hides the active picker`);
   const themePicker = page.locator('#sp-set-on-color input[type="color"]');
   const themeColor = (await themePicker.inputValue()).slice(1).toUpperCase();
   assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#" + themeColor);
   await tabs.getByRole("button", { name: "Custom", exact: true }).click();
   assert(await active.isVisible(), `${label}: Custom shows another picker`);
   assert.strictEqual(await active.locator('[data-color="A086D1"]').getAttribute("aria-pressed"), "true",
-    `${label}: entering Custom from Theme starts with Matching's shade selected`);
+    `${label}: entering Custom from Global starts with Matching's shade selected`);
   await background.locator('[data-color="64AD54"]').click();
   assert.strictEqual(await card.evaluate(el => el.style.getPropertyValue("--card-active-color")), "#A2CE98",
     `${label}: Custom follows the background until an alternative is chosen`);
