@@ -222,7 +222,8 @@ inline void reset_weather_forecast_cards() {
 }
 
 constexpr float WEATHER_FORECAST_TEMP_MISSING = 32767.0f;
-constexpr int WEATHER_FORECAST_PENDING_MAX = 8;
+// A full grid can use a different weather entity in every slot.
+constexpr int WEATHER_FORECAST_PENDING_MAX = MAX_GRID_SLOTS;
 constexpr uint32_t WEATHER_FORECAST_REQUEST_TIMEOUT_MS = 60000;
 constexpr uint32_t WEATHER_FORECAST_RETRY_DELAY_MS = 300000;
 

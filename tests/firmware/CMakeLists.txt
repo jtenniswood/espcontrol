@@ -160,6 +160,9 @@ add_test(NAME media_power_override_test COMMAND
 add_test(NAME media_playback_pool_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/media_playback_pool_test.py)
+add_test(NAME weather_forecast_queue_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/weather_forecast_queue_test.py)
 
 add_executable(media_control_tabs_test media_control_tabs_test.cpp)
 target_compile_features(media_control_tabs_test PRIVATE cxx_std_17)
