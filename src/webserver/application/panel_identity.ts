@@ -108,7 +108,7 @@ export function createPanelIdentityFeature(deps: PanelIdentityDependencies): Pan
         const message = reconnectDialog(saved);
         try { await deps.restart(); }
         catch (error) {
-          message.textContent = "Name saved, but the restart failed. Reopen Settings and choose Save & Restart to retry.";
+          message.textContent = "Name saved, but the restart failed. Open Device > System > Device Name and choose Save & Restart to retry.";
           throw error;
         }
       }

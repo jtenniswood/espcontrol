@@ -10,7 +10,7 @@ If you navigate to a [subpage](/features/subpages) or leave a popup open and wal
 
 ## Settings
 
-Configured in **Settings > Display > Idle** in [Setup](/features/setup).
+Configured in **Settings > Appearance > Idle** in [Setup](/features/setup).
 
 **Return Home After** — how long the panel waits without a touch before switching back to the home screen. Choose from:
 

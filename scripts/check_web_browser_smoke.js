@@ -1282,7 +1282,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     await page
       .locator("#sp-settings .sp-settings-status-title")
       .evaluateAll((nodes) => nodes.map((node) => node.textContent)),
-    ["Appearance", "Display", "Sleep & Schedule", "Preferences", "System"],
+    ["Appearance", "Sleep & Schedule"],
     `${label}: settings groups should be ordered by purpose`,
   );
   const settingsPlacement = await page.locator("#sp-settings .sp-config").evaluate((config) => {
@@ -1305,17 +1305,44 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   );
   assert.strictEqual(
     settingsPlacement.Idle?.section,
-    "Display",
-    `${label}: idle settings should be grouped with display controls`,
+    "Appearance",
+    `${label}: idle settings should be grouped with appearance controls`,
   );
   assert.strictEqual(
     settingsPlacement.Idle?.index,
-    settingsPlacement.Backlight?.index + 1,
-    `${label}: idle settings should appear immediately below Backlight`,
+    settingsPlacement.Theme?.index + 1,
+    `${label}: idle settings should appear immediately below Theme`,
   );
+  assert.strictEqual(settingsPlacement["Clock Bar"]?.section, "Appearance",
+    `${label}: clock bar settings should be grouped with appearance controls`);
+  assert.deepStrictEqual(await page.locator(".sp-nav [role='tab']").allTextContents(),
+    ["Screen", "Settings", "Device"], `${label}: Device follows Settings in primary navigation`);
+  await page.getByRole("tab", { name: "Device", exact: true }).click();
+  await page.waitForSelector("#sp-device.sp-page.active");
+  assert(!(await page.locator("#sp-settings").isVisible()), `${label}: Device hides Settings`);
+  assert.strictEqual(await page.getByRole("tab", { name: "Device", exact: true }).getAttribute("aria-selected"), "true");
+  assert.deepStrictEqual(await page.locator("#sp-device .sp-settings-status-title").allTextContents(),
+    ["Display", "Preferences", "System"], `${label}: device groups should be ordered by purpose`);
+  const devicePlacement = await page.locator("#sp-device .sp-config").evaluate(config => {
+    let section = "";
+    const placement = {};
+    for (const child of config.children) {
+      if (child.classList.contains("sp-settings-status-header")) {
+        section = child.querySelector(".sp-settings-status-title").textContent;
+      } else {
+        const title = child.querySelector(":scope > .card-header h3")?.textContent;
+        if (title) placement[title] = section;
+      }
+    }
+    return placement;
+  });
+  assert.strictEqual(devicePlacement.Backlight, "Display", `${label}: Backlight is under Device > Display`);
+  assert.strictEqual(devicePlacement.Language, "Preferences", `${label}: Language is under Device > Preferences`);
+  assert.strictEqual(devicePlacement.Firmware, "System", `${label}: Firmware is under Device > System`);
+  assert(await page.locator("#sp-device .sp-apply-btn").isVisible(), `${label}: Device has Apply Configuration`);
   if (options.slug === "guition-esp32-p4-jc8012p4a1") {
     assert.strictEqual(
-      settingsPlacement.Battery?.section,
+      devicePlacement.Battery,
       "System",
       `${label}: battery settings should be grouped with system controls`,
     );
@@ -1326,7 +1353,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     );
   }
   const firmwareCard = page
-    .locator("#sp-settings .card")
+    .locator("#sp-device .card")
     .filter({
       has: page.locator(".card-header h3", { hasText: /^Firmware$/ }),
     })
@@ -1434,7 +1461,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     await installClick;
     assert.strictEqual(
       await page
-        .locator("#sp-settings .card-header h3")
+        .locator("#sp-device .card-header h3")
         .filter({ hasText: /^WiFi$/ })
         .count(),
       0,
@@ -1494,6 +1521,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
       `${label}: install progress should not be duplicated below the action`,
     );
   }
+  await page.getByRole("tab", { name: "Settings", exact: true }).click();
   const clockBarCard = page
     .locator("#sp-settings .card")
     .filter({ hasText: "Clock Bar" })
@@ -1521,7 +1549,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     })
     .first();
   const brightnessCard = page
-    .locator("#sp-settings .card")
+    .locator("#sp-device .card")
     .filter({
       has: page.locator(".card-header h3", { hasText: /^Backlight$/ }),
     })
@@ -1532,9 +1560,11 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
       has: page.locator(".card-header h3", { hasText: /^Screensaver$/ }),
     })
     .first();
+  await page.getByRole("tab", { name: "Device", exact: true }).click();
   assert(await brightnessCard.isVisible(), `${label}: backlight settings should render`);
-  assert(await screensaverCard.isVisible(), `${label}: screensaver settings should render`);
   await brightnessCard.locator(".card-header").click();
+  await page.getByRole("tab", { name: "Settings", exact: true }).click();
+  assert(await screensaverCard.isVisible(), `${label}: screensaver settings should render`);
   await screensaverCard.locator(".card-header").click();
   await screensaverCard.getByRole("button", { name: "Timer", exact: true }).click();
   const dimmedAction = screensaverCard.locator("#sp-set-clock-mode");
@@ -1648,11 +1678,15 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   const manualDimmedBrightness = screensaverCard.locator("#sp-set-dimmed-brightness");
   const daytimeDimmedBrightness = screensaverCard.locator("#sp-set-daytime-dimmed-brightness");
   const nighttimeDimmedBrightness = screensaverCard.locator("#sp-set-nighttime-dimmed-brightness");
+  await page.getByRole("tab", { name: "Device", exact: true }).click();
   await brightnessCard.getByRole("button", { name: "Manual", exact: true }).click();
+  await page.getByRole("tab", { name: "Settings", exact: true }).click();
   assert(await manualDimmedBrightness.isVisible(), `${label}: Manual mode shows one dimmed-screen brightness`);
   assert.strictEqual(await daytimeDimmedBrightness.isVisible(), false, `${label}: Manual mode hides daytime dimmed brightness`);
   assert.strictEqual(await nighttimeDimmedBrightness.isVisible(), false, `${label}: Manual mode hides nighttime dimmed brightness`);
+  await page.getByRole("tab", { name: "Device", exact: true }).click();
   await brightnessCard.getByRole("button", { name: "Automatic", exact: true }).click();
+  await page.getByRole("tab", { name: "Settings", exact: true }).click();
   assert.strictEqual(await manualDimmedBrightness.isVisible(), false, `${label}: Automatic mode hides the manual dimmed brightness`);
   assert(await daytimeDimmedBrightness.isVisible(), `${label}: Automatic mode shows daytime dimmed brightness`);
   assert(await nighttimeDimmedBrightness.isVisible(), `${label}: Automatic mode shows nighttime dimmed brightness`);
@@ -1668,7 +1702,9 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: Automatic mode posts daytime dimmed brightness`,
     dimmedBrightnessPostStart,
   );
+  await page.getByRole("tab", { name: "Device", exact: true }).click();
   await brightnessCard.getByRole("button", { name: "Timed", exact: true }).click();
+  await page.getByRole("tab", { name: "Settings", exact: true }).click();
   assert(await daytimeDimmedBrightness.isVisible(), `${label}: Timed mode keeps daytime dimmed brightness visible`);
   assert(await nighttimeDimmedBrightness.isVisible(), `${label}: Timed mode keeps nighttime dimmed brightness visible`);
   assert(
@@ -1960,8 +1996,9 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     0,
     `${label}: sensor cover art override should not render`,
   );
+  await page.getByRole("tab", { name: "Device", exact: true }).click();
   const homeAssistantSettingsCard = page
-    .locator("#sp-settings .card")
+    .locator("#sp-device .card")
     .filter({
       has: page.locator(".card-header h3", {
         hasText: /^Home Assistant Settings$/,
@@ -2395,6 +2432,24 @@ async function assertMobileDeviceViewport(browser, testCase) {
       mobile.supportVisible,
       `${testCase.name}: support button remains visible on settings on mobile devices`,
     );
+    for (const width of [360, 320]) {
+      await page.setViewportSize({ width, height: 740 });
+      for (const tab of ["Device", "Settings", "Screen"]) {
+        await page.getByRole("tab", { name: tab, exact: true }).click();
+        assert(await page.locator(`#sp-${tab.toLowerCase()}.active`).isVisible(),
+          `${testCase.name}: ${tab} opens at ${width}px`);
+        assert.strictEqual(await page.locator(".sp-page.active").count(), 1,
+          `${testCase.name}: only the selected page is shown`);
+        assert(await page.locator(".sp-nav").evaluate(nav => {
+          const rect = nav.getBoundingClientRect();
+          return rect.left >= 0 && rect.right <= innerWidth + 1 &&
+            document.documentElement.scrollWidth <= innerWidth + 1;
+        }), `${testCase.name}: navigation fits ${width}px`);
+        assert(await page.locator(".sp-brand").evaluate(brand =>
+          brand.querySelector(".sp-brand-title").getBoundingClientRect().right <= brand.getBoundingClientRect().right + 1),
+          `${testCase.name}: EspControl title fits beside navigation at ${width}px`);
+      }
+    }
   } catch (error) {
     fs.mkdirSync(FAILURE_DIR, { recursive: true });
     await page.screenshot({
@@ -4140,8 +4195,8 @@ function writeJsonFixture(name, value) {
 }
 
 async function openBackupControls(page) {
-  await page.getByRole("tab", { name: "Settings" }).click();
-  await page.waitForSelector("#sp-settings.sp-page.active");
+  await page.getByRole("tab", { name: "Device" }).click();
+  await page.waitForSelector("#sp-device.sp-page.active");
   if (!(await page.getByRole("button", { name: "Import" }).isVisible())) {
     await page.getByText("Backup", { exact: true }).click();
   }
@@ -6357,7 +6412,7 @@ async function assertHostedCompatibility(browser) {
       assert.equal(request.credentials, "omit", "public metadata must not include browser credentials");
     }
     assert(requests.some(item => item.url.endsWith("/espcontrol/version") && item.credentials === "include"), "device state requests retain authentication");
-    await page.getByRole("tab", { name: "Settings" }).click();
+    await page.getByRole("tab", { name: "Device" }).click();
     await page.evaluate(() => window.__seedEspState([
       { id: "select/Home Assistant Artwork Connection", state: "Manual" },
       { id: "text_sensor/Home Assistant Artwork Endpoint", state: "Manual — http://ha.test:8123" },
@@ -6407,7 +6462,7 @@ async function assertFirmwareRetryFeedback(browser) {
       await page.waitForSelector("#sp-app");
       await page.waitForFunction(() => window.__eventSources?.length > 0);
       await page.evaluate(events => window.__seedEspState(events), seededEvents());
-      await page.getByRole("tab", { name: "Settings" }).click();
+      await page.getByRole("tab", { name: "Device" }).click();
       const card = page.locator(".card").filter({ has: page.locator(".card-header h3", { hasText: /^Firmware$/ }) });
       await card.locator(":scope > .card-header").click();
       await page.locator("#sp-fw-previous-panel .sp-disclosure-button").click();
@@ -6442,7 +6497,7 @@ async function assertResetControls(browser) {
       await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`);
       await page.waitForSelector("#sp-app");
       await seedNativeDocument(page, nativeConfigState(testCase.slug));
-      await page.getByRole("tab", { name: "Settings" }).click();
+      await page.getByRole("tab", { name: "Device" }).click();
       const card = page.locator(".card").filter({ has: page.locator("h3", { hasText: /^Factory Reset$/ }) });
       if (mode === "unsupported") { assert(!(await card.isVisible())); continue; }
       await card.waitFor({ state: "visible" });
@@ -6563,7 +6618,7 @@ async function assertPanelNaming(browser) {
     await page.waitForSelector("#sp-app");
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await page.evaluate(events => window.__seedEspState(events), seededEvents());
-    await page.getByRole("tab", { name: "Settings" }).click();
+    await page.getByRole("tab", { name: "Device" }).click();
     const card = page.locator(".card").filter({ has: page.locator(".card-header", { hasText: "Device Name" }) });
     await card.locator(".card-header").click();
     await card.getByText("Could not read the panel name. Check the connection and try again.").waitFor();

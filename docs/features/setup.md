@@ -103,20 +103,21 @@ If a card already occupies the space needed for a larger size, the setup page tr
 
 ## Device Settings
 
-The **Settings** tab groups the current controls as follows. Open a card to see its options; some options appear only when their feature is enabled.
+The **Settings** and **Device** tabs group the current controls as follows. Open a card to see its options; some options appear only when their feature is enabled.
 
-| Section | Settings |
-|---|---|
-| **Display** | [Appearance](/features/appearance), [Backlight](/features/backlight), [Idle](/features/idle), [Clock Bar](/features/clock-bar), [Rotation](/features/rotation) |
-| **Sleep & Schedule** | [Cover Art Screen Saver](/features/media-cover-art), [Screensaver](/features/screensaver), [Night Schedule](/features/screen-schedule) |
-| **Preferences** | [Language](/features/language), [Time](/features/clock), [Temperature](/features/temperature) |
-| **System** | [Device Name](#naming-your-panel), [Backup](/features/backup), [Firmware](/features/firmware-updates), [Home Assistant Settings](#home-assistant-settings), [Battery](/features/battery), [Factory Reset](/features/backup#reset-the-display) |
+| Tab | Section | Controls |
+|---|---|---|
+| **Settings** | **Appearance** | [Appearance](/features/appearance), [Idle](/features/idle), [Clock Bar](/features/clock-bar) |
+| **Settings** | **Sleep & Schedule** | [Cover Art Screen Saver](/features/media-cover-art), [Screensaver](/features/screensaver), [Night Schedule](/features/screen-schedule), [Pin Protection](/features/screensaver#pin-protection-after-wake) |
+| **Device** | **Display** | [Backlight](/features/backlight), [Rotation](/features/rotation) |
+| **Device** | **Preferences** | [Language](/features/language), [Time](/features/clock), [Temperature](/features/temperature) |
+| **Device** | **System** | [Device Name](#naming-your-panel), [Backup](/features/backup), [Firmware](/features/firmware-updates), [Home Assistant Settings](#home-assistant-settings), [Battery](/features/battery), [Factory Reset](/features/backup#reset-the-display) |
 
 Device-specific settings, including Rotation and Battery, appear only on supported panels. Device Name and Factory Reset also require firmware that supports them.
 
 ### Home Assistant Settings
 
-Open **Settings > System > Home Assistant Settings** to manage camera/image and media artwork connections. **Automatic** can use the local URL advertised by the connected Home Assistant instance when the URL uses the same IP address as the native ESPHome connection; it keeps the advertised protocol and port together. Home Assistant's separate Internet URL is not used.
+Open **Device > System > Home Assistant Settings** to manage camera/image and media artwork connections. **Automatic** can use the local URL advertised by the connected Home Assistant instance when the URL uses the same IP address as the native ESPHome connection; it keeps the advertised protocol and port together. Home Assistant's separate Internet URL is not used.
 
 The panel checks candidates in the background. If the advertised local URL cannot be reached, it checks the connected server's advertised HTTP port with the configured protocol, then the other protocol for a local/private address. Its final fallback uses the configured protocol and port with the connected server's IP. If multicast discovery is blocked or ambiguous, only that configured fallback is used; EspControl does not scan ports or guess hostnames.
 
@@ -159,7 +160,7 @@ The web setup page's **Apply Configuration** button remains separate: use it aft
 
 ## Naming Your Panel
 
-On firmware that supports panel naming, open **Settings > System > Device Name**.
+On firmware that supports panel naming, open **Device > System > Device Name**.
 Enter a name such as **Kitchen**, check the address preview, then choose
 **Save & Restart**. The name appears in the web interface, browser tab, the
 panel's network information and Home Assistant. The address becomes something

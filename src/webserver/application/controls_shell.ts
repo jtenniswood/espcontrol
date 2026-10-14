@@ -135,6 +135,7 @@ export function createControlsShellFeature(
         var tabs: any = [
             { id: "screen", label: "Screen" },
             { id: "settings", label: "Settings" },
+            { id: "device", label: "Device" },
         ];
         tabs.forEach(function (this: any, t?: any) {
             var tab: any = document.createElement("div");
@@ -253,12 +254,13 @@ export function createControlsShellFeature(
         state.activeTab = tab;
         if (els.root)
             els.root.setAttribute("data-active-tab", tab);
-        ["screen", "settings"].forEach(function (this: any, t?: any) {
+        ["screen", "settings", "device"].forEach(function (this: any, t?: any) {
             els["tab_" + t].className = "sp-tab" + (tab === t ? " active" : "");
             els["tab_" + t].setAttribute("aria-selected", tab === t ? "true" : "false");
         });
         els.screenPage.className = "sp-page" + (tab === "screen" ? " active" : "");
         els.settingsPage.className = "sp-page" + (tab === "settings" ? " active" : "");
+        els.devicePage.className = "sp-page" + (tab === "device" ? " active" : "");
         syncTabChrome();
         if (returningToScreen) dependencies.renderPreview();
     }

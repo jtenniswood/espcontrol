@@ -10,7 +10,7 @@ The panel can display a clock in the top bar, updated every minute from network 
 
 ## Settings
 
-Configured in **Settings > Preferences > Time** in [Setup](/features/setup).
+Configured in **Device > Preferences > Time** in [Setup](/features/setup).
 
 - **Timezone** — use **Auto (Home Assistant)** to follow the timezone Home Assistant sends to the panel, or select a fixed timezone from the dropdown. This also determines sunrise and sunset times used by the [backlight schedule](/features/backlight).
 - **Clock Format** — choose **12-hour** for time without an AM/PM suffix, or **24-hour** for 24-hour time. Defaults to 24h.
@@ -35,4 +35,4 @@ The clock format setting affects three things:
 
 The setting is saved on the device and persists across restarts.
 
-Sunrise and sunset times are shown under **Settings > Display > Backlight** when **Automatic** is selected.
+Sunrise and sunset times are shown under **Device > Display > Backlight** when **Automatic** is selected.

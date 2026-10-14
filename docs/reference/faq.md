@@ -104,7 +104,7 @@ Mixed custom and stock firmware can change encryption behaviour. Keep the device
 
 ### Can I Rename a Panel Without Compiling Firmware?
 
-Yes. Use **Settings > System > Device Name > Save & Restart**. Entity IDs stay unchanged, but hostname-based ESPHome action names change. Update affected automations. See [Naming Your Panel](/features/setup#naming-your-panel).
+Yes. Use **Device > System > Device Name > Save & Restart**. Entity IDs stay unchanged, but hostname-based ESPHome action names change. Update affected automations. See [Naming Your Panel](/features/setup#naming-your-panel).
 
 ### Can I Back Up My Setup?
 
@@ -120,7 +120,7 @@ Yes. Home Assistant exposes a [Restart button](/features/setup#restart-from-home
 
 ### How Do I Reset the Device?
 
-Back up first, then use **Settings > System > Factory Reset**. Partial reset keeps WiFi and the Home Assistant key; Complete reset clears them. Both retain firmware. Follow [Reset the display](/features/backup#reset-the-display).
+Back up first, then use **Device > System > Factory Reset**. Partial reset keeps WiFi and the Home Assistant key; Complete reset clears them. Both retain firmware. Follow [Reset the display](/features/backup#reset-the-display).
 
 ### Can I Stay on Releases While Managing the Panel in ESPHome?
 
@@ -246,7 +246,7 @@ Power and measurement are separate hardware features. [Battery Status](/features
 
 ### Can I Use a 10-inch Display in Portrait Mode?
 
-Use **Settings > Display > Rotation**. Available orientations depend on panel and firmware. Check the preview and usable card space after rotating. See [Rotation](/features/rotation).
+Use **Device > Display > Rotation**. Available orientations depend on panel and firmware. Check the preview and usable card space after rotating. See [Rotation](/features/rotation).
 
 ### Does It Have a Room Temperature Sensor?
 

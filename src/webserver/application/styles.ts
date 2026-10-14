@@ -655,14 +655,14 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".card-header{margin:-16px -16px 0 -16px;padding:16px 16px 0 16px}" +
         ".card-body{padding-top:14px}" +
         ".sp-config{padding:var(--gap)}" +
-        "#sp-settings .sp-config{padding-bottom:6px}" +
-        "#sp-settings .sp-apply-bar{padding-top:6px;padding-bottom:max(var(--gap),env(safe-area-inset-bottom))}" +
+        "#sp-settings .sp-config,#sp-device .sp-config{padding-bottom:6px}" +
+        "#sp-settings .sp-apply-bar,#sp-device .sp-apply-bar{padding-top:6px;padding-bottom:max(var(--gap),env(safe-area-inset-bottom))}" +
         "}" +
         "@media(max-width:480px){" +
         ":root{--gap:10px}" +
         ".sp-header{padding:0 10px}" +
-        ".sp-tab{padding:0 10px;font-size:.75rem}" +
-        ".sp-tab-docs{margin-left:2px;padding-left:16px;gap:4px}" +
+        ".sp-tab{padding:0 4px;font-size:.75rem}" +
+        ".sp-tab-docs{margin-left:2px;padding-left:10px;gap:4px}" +
         ".sp-settings-status-header{margin:40px 2px 12px}" +
         ".sp-config>.sp-settings-status-header:first-child{margin-top:12px}" +
         ".card{border-radius:10px;margin-bottom:10px}" +

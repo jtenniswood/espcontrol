@@ -84,6 +84,11 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         page.className = "sp-page";
         var config: any = document.createElement("div");
         config.className = "sp-config fade-in";
+        var devicePage: any = document.createElement("div");
+        devicePage.id = "sp-device";
+        devicePage.className = "sp-page";
+        var deviceConfig: any = document.createElement("div");
+        deviceConfig.className = "sp-config fade-in";
         var activeColourBody: any = document.createElement("div");
         var cardStyleBody: any = document.createElement("div");
         var themeBody: any = document.createElement("div");
@@ -627,12 +632,8 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             activeColourCard,
             cardStyleCard,
             themeCard,
-        ]);
-        appendSettingsSection(config, "Display", [
-            backlightCard,
             idleCard,
             clockBarCard,
-            rotationCard,
         ]);
         appendSettingsSection(config, "Sleep & Schedule", [
             coverArtCard,
@@ -640,12 +641,16 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             scheduleCard,
             screensaverPinCard,
         ]);
-        appendSettingsSection(config, "Preferences", [
+        appendSettingsSection(deviceConfig, "Display", [
+            backlightCard,
+            rotationCard,
+        ]);
+        appendSettingsSection(deviceConfig, "Preferences", [
             languageCard,
             timeSettingsCard,
             temperatureCard,
         ]);
-        appendSettingsSection(config, "System", [
+        appendSettingsSection(deviceConfig, "System", [
             systemSettingsCards.identityCard,
             systemSettingsCards.backupCard,
             systemSettingsCards.firmwareCard,
@@ -657,6 +662,10 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         page.appendChild(buildApplyBar());
         parent.appendChild(page);
         els.settingsPage = page;
+        devicePage.appendChild(deviceConfig);
+        devicePage.appendChild(buildApplyBar());
+        parent.appendChild(devicePage);
+        els.devicePage = devicePage;
     }
     return {
         buildSettingsPage,

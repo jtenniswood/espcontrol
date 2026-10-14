@@ -23,7 +23,7 @@ INFO-level logging to fit the C6 image in the existing OTA partition. Its Cover
 Art title uses fewer shading levels; the glyphs, font size and layout stay the same.
 
 ::: warning This reinstalls EspControl
-Export your configuration from **Settings > Backup** first when the panel is still
+Export your configuration from **Device > System > Backup** first when the panel is still
 accessible. Recovery normally preserves saved configuration, but preservation
 cannot be guaranteed after damaged or previously erased flash.
 :::
