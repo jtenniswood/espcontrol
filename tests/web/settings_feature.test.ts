@@ -39,12 +39,15 @@ function placeholderOutline(textMuted: string, background: string): string {
 export function runSettingsFeatureTests(): void {
   equal(normalizeCardCurve(undefined), "Medium", "new curve settings default to Medium");
   equal(normalizeCardCurve("medium"), "Medium", "curve values normalize for backup restore");
-  const s3Radii = { Small: 14, Medium: 20 };
-  equal(cardCurveRadius(26, "Small", s3Radii), 14, "S3 Small radius");
-  equal(cardCurveRadius(26, "Medium", s3Radii), 20, "S3 Medium radius");
-  equal(cardCurveRadius(26, "Large", s3Radii), 26, "S3 Large radius");
-  equal(cardCurveRadius(35, "Small"), 18, "P4-86 Small rounds half pixels consistently");
-  equal(cardCurveRadius(22, "Medium"), 17, "10-inch Medium matches firmware rounding");
+  for (const [large, small, medium] of [[25, 15, 20], [28, 17, 22], [44, 26, 35], [33, 20, 26]]) {
+    equal(cardCurveRadius(large!, "Small"), small, "Small radius matches firmware rounding");
+    equal(cardCurveRadius(large!, "Medium"), medium, "Medium radius matches firmware rounding");
+    equal(cardCurveRadius(large!, "Large"), large, "Large uses the configured panel radius");
+  }
+  const s3Radii = { Small: 20, Medium: 26 };
+  equal(cardCurveRadius(33, "Small", s3Radii), 20, "S3 Small radius");
+  equal(cardCurveRadius(33, "Medium", s3Radii), 26, "S3 Medium radius");
+  equal(cardCurveRadius(33, "Large", s3Radii), 33, "S3 Large radius");
   const curveBackup = createBackupEnvelope({ device: "panel", slots: 0, screen: { card_curve: "Medium" } }, { buttons: [], subpages: {} });
   equal(normalizeBackupEnvelope(curveBackup as unknown as Record<string, unknown>, { buttons: [], subpages: {} }).screen?.card_curve,
     "Medium", "backup preserves the chosen card curve");

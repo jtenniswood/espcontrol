@@ -30,7 +30,7 @@ substitutions:
   unit_font: font_text_body
   sensor_value_font: font_number_value
   padding: 21px
-  radius: 35px
+  radius: 44px
   main_page_card_gap: "15"
   main_page_pad_top: "60"
   main_page_compact_pad_top: "6"

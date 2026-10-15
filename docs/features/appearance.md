@@ -15,12 +15,16 @@ setup-page preview. Choose **Card curve → Small, Medium or Large** in
 is saved on the display and survives restarts.
 
 All supported displays use continuous corners that ease gradually into the
-card edges. **Medium** is the default. The **Large** corner sizes are: 26 px on S3,
-20 px on the 7-inch and 4.3-inch panels, 22 px on the 10-inch panels,
-and 35 px on P4-86.
-On S3, **Small**, **Medium** and **Large** are 14 px, 20 px and 26 px.
-On the other panels, **Small** uses half the Large size and **Medium** uses
-three quarters, rounded to whole pixels.
+card edges. **Medium** is the default. Corner sizes in pixels are:
+
+| Display | Small | Medium | Large |
+| --- | ---: | ---: | ---: |
+| 7-inch and 4.3-inch panels | 15 | 20 | 25 |
+| 10-inch panels (all versions) | 17 | 22 | 28 |
+| P4-86 | 26 | 35 | 44 |
+| S3 | 20 | 26 | 33 |
+
+Small uses 60% of Large and Medium uses 80%, rounded to whole pixels.
 The same curve applies to the network-status Settings cards, including Back and Screen Lock. Ordinary modal controls and colour swatches keep their existing button radius.
 Images, artwork and slider fills follow the same outline. The web preview
 uses the same curve, including in browsers without native continuous-corner

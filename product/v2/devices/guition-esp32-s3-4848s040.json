@@ -69,7 +69,7 @@
         "fr": "1fr"
       },
       "btn": {
-        "radius": 5.416667,
+        "radius": 6.875,
         "padding": 2.92,
         "iconSize": 9.58,
         "labelSize": 4.583333,
@@ -80,7 +80,7 @@
         "labelLinesDouble": 3
       },
       "emptyCell": {
-        "radius": 5.416667
+        "radius": 6.875
       },
       "sensorBadge": {
         "top": 2.08,
@@ -158,7 +158,7 @@
           "unit_font": "font_text_body",
           "sensor_value_font": "font_number_value",
           "padding": "14px",
-          "radius": "26px",
+          "radius": "33px",
           "main_page_card_gap": "\"10\"",
           "main_page_pad_top": "\"40\"",
           "main_page_compact_pad_top": "\"4\"",
@@ -171,8 +171,8 @@
           "screen_saver_clock_default_brightness": "\"35\"",
           "screen_schedule_clock_min_brightness": "\"1\"",
           "screen_schedule_clock_default_brightness": "\"10\"",
-          "card_curve_small_radius": "14px",
-          "card_curve_medium_radius": "20px",
+          "card_curve_small_radius": "20px",
+          "card_curve_medium_radius": "26px",
           "button_radius": "8px"
         },
         "apiNavigateAction": true

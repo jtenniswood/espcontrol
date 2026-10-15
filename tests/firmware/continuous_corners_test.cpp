@@ -1,3 +1,4 @@
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <vector>
@@ -118,15 +119,18 @@ int main() {
   assert(mask_cache() == nullptr && dropped == 6);
   // Switching saved presets must replace the outline and release the old
   // mask. Exercise the S3's rounded whole-pixel sizes on a real card footprint.
-  assert(card_curve_radius(35, "Small") == 18);
-  assert(card_curve_radius(35, "Medium") == 26);
-  assert(card_curve_radius(22, "Medium") == 17);
-  assert(card_curve_radius(30, "invalid") == 23);
+  for (const auto &radii : {std::array{25, 15, 20}, std::array{28, 17, 22},
+                            std::array{44, 26, 35}, std::array{33, 20, 26}}) {
+    assert(card_curve_radius(radii[0], "Small") == radii[1]);
+    assert(card_curve_radius(radii[0], "Medium") == radii[2]);
+    assert(card_curve_radius(radii[0], "Large") == radii[0]);
+  }
+  assert(card_curve_radius(25, "invalid") == 20);
   lv_obj_t adjustable;
-  adjustable.width = 145; adjustable.height = 140; adjustable.radius = 26;
+  adjustable.width = 145; adjustable.height = 140; adjustable.radius = 33;
   attach(&adjustable);
-  for (const auto &preset : {std::pair{"Small", 14}, std::pair{"Medium", 20}, std::pair{"Large", 26}}) {
-    apply_grid_card_corners(&adjustable, card_curve_radius(26, preset.first, 14, 20), true);
+  for (const auto &preset : {std::pair{"Small", 20}, std::pair{"Medium", 26}, std::pair{"Large", 33}}) {
+    apply_grid_card_corners(&adjustable, card_curve_radius(33, preset.first, 20, 26), true);
     assert(adjustable.radius == preset.second);
     assert(adjustable.pressed_radius == preset.second);
     assert(mask_cache() && mask_cache()->radius == preset.second);
