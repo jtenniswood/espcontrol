@@ -49,7 +49,7 @@ script:
           cfg.num_slots = 9;
           cfg.cols = 3;
           cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
-          cfg.card_corner_radius = card_curve_radius(33, id(card_curve_select).current_option(), 20, 26);
+          cfg.card_corner_radius = card_curve_radius(26, id(card_curve_select).current_option(), 16, 21);
           cfg.continuous_card_corners = true;
           cfg.subpage_chevron_x = 3;
           cfg.subpage_chevron_y = -2;
@@ -179,7 +179,7 @@ script:
           cfg.num_slots = 9;
           cfg.cols = 3;
           cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
-          cfg.card_corner_radius = card_curve_radius(33, id(card_curve_select).current_option(), 20, 26);
+          cfg.card_corner_radius = card_curve_radius(26, id(card_curve_select).current_option(), 16, 21);
           cfg.continuous_card_corners = true;
           cfg.subpage_chevron_x = 3;
           cfg.subpage_chevron_y = -2;
@@ -348,7 +348,7 @@ esphome:
             cfg.num_slots = 9;
             cfg.cols = 3;
             cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
-            cfg.card_corner_radius = card_curve_radius(33, id(card_curve_select).current_option(), 20, 26);
+            cfg.card_corner_radius = card_curve_radius(26, id(card_curve_select).current_option(), 16, 21);
             cfg.continuous_card_corners = true;
             cfg.subpage_chevron_x = 3;
             cfg.subpage_chevron_y = -2;
@@ -469,7 +469,7 @@ esphome:
             cfg.num_slots = 9;
             cfg.cols = 3;
             cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
-            cfg.card_corner_radius = card_curve_radius(33, id(card_curve_select).current_option(), 20, 26);
+            cfg.card_corner_radius = card_curve_radius(26, id(card_curve_select).current_option(), 16, 21);
             cfg.continuous_card_corners = true;
             cfg.subpage_chevron_x = 3;
             cfg.subpage_chevron_y = -2;

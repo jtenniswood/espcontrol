@@ -78,7 +78,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 2.441406,
+          "radius": 1.953125,
           "padding": 1.37,
           "iconSize": 4.69,
           "labelSize": 1.8,
@@ -88,7 +88,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 2.441406
+          "radius": 1.953125
         },
         "sensorBadge": {
           "top": 1,
@@ -190,7 +190,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "16px",
-            "radius": "25px",
+            "radius": "20px",
             "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"42\"",
             "main_page_compact_pad_top": "\"5\"",
@@ -281,7 +281,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 2.441406,
+          "radius": 1.953125,
           "padding": 1.37,
           "iconSize": 4.69,
           "labelSize": 1.8,
@@ -291,7 +291,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 2.441406
+          "radius": 1.953125
         },
         "sensorBadge": {
           "top": 1,
@@ -393,7 +393,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "16px",
-            "radius": "25px",
+            "radius": "20px",
             "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"42\"",
             "main_page_compact_pad_top": "\"5\"",
@@ -483,7 +483,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 5.208333,
+          "radius": 4.166667,
           "padding": 2.73,
           "iconSize": 14,
           "labelSize": 5.5,
@@ -493,7 +493,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 5.208333
+          "radius": 4.166667
         },
         "sensorBadge": {
           "top": 1.52,
@@ -595,7 +595,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "21px",
-            "radius": "25px",
+            "radius": "20px",
             "main_page_card_gap": "\"14\"",
             "main_page_pad_top": "\"50\"",
             "main_page_compact_pad_top": "\"5\"",
@@ -680,7 +680,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 5.208333,
+          "radius": 4.166667,
           "padding": 2.73,
           "iconSize": 14,
           "labelSize": 5.5,
@@ -690,7 +690,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 5.208333
+          "radius": 4.166667
         },
         "sensorBadge": {
           "top": 1.52,
@@ -792,7 +792,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "21px",
-            "radius": "25px",
+            "radius": "20px",
             "main_page_card_gap": "\"14\"",
             "main_page_pad_top": "\"50\"",
             "main_page_compact_pad_top": "\"5\"",
@@ -877,7 +877,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 2.1875,
+          "radius": 1.71875,
           "padding": 1.41,
           "iconSize": 4.1,
           "labelSize": 1.88,
@@ -887,7 +887,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 2.1875
+          "radius": 1.71875
         },
         "sensorBadge": {
           "top": 0.86,
@@ -987,7 +987,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "18px",
-            "radius": "28px",
+            "radius": "22px",
             "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"46\"",
             "main_page_compact_pad_top": "\"5\"",
@@ -1074,7 +1074,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 2.1875,
+          "radius": 1.71875,
           "padding": 1.41,
           "iconSize": 4.1,
           "labelSize": 1.88,
@@ -1084,7 +1084,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 2.1875
+          "radius": 1.71875
         },
         "sensorBadge": {
           "top": 0.86,
@@ -1184,7 +1184,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "18px",
-            "radius": "28px",
+            "radius": "22px",
             "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"46\"",
             "main_page_compact_pad_top": "\"5\"",
@@ -1270,7 +1270,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 2.1875,
+          "radius": 1.71875,
           "padding": 1.41,
           "iconSize": 4.1,
           "labelSize": 1.88,
@@ -1280,7 +1280,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 2.1875
+          "radius": 1.71875
         },
         "sensorBadge": {
           "top": 0.86,
@@ -1380,7 +1380,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "18px",
-            "radius": "28px",
+            "radius": "22px",
             "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"46\"",
             "main_page_compact_pad_top": "\"5\"",
@@ -1464,7 +1464,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 6.111111,
+          "radius": 4.861111,
           "padding": 2.92,
           "iconSize": 9.58,
           "labelSize": 3.96,
@@ -1474,7 +1474,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 6.111111
+          "radius": 4.861111
         },
         "sensorBadge": {
           "top": 2.08,
@@ -1572,7 +1572,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "21px",
-            "radius": "44px",
+            "radius": "35px",
             "main_page_card_gap": "\"15\"",
             "main_page_pad_top": "\"60\"",
             "main_page_compact_pad_top": "\"6\"",
@@ -1673,7 +1673,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 6.875,
+          "radius": 5.416667,
           "padding": 2.92,
           "iconSize": 9.58,
           "labelSize": 4.583333,
@@ -1684,7 +1684,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 6.875
+          "radius": 5.416667
         },
         "sensorBadge": {
           "top": 2.08,
@@ -1786,7 +1786,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "14px",
-            "radius": "33px",
+            "radius": "26px",
             "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"40\"",
             "main_page_compact_pad_top": "\"4\"",
@@ -1799,8 +1799,8 @@
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
             "screen_schedule_clock_default_brightness": "\"10\"",
-            "card_curve_small_radius": "20px",
-            "card_curve_medium_radius": "26px",
+            "card_curve_small_radius": "16px",
+            "card_curve_medium_radius": "21px",
             "button_radius": "8px"
           },
           "deviceFontPackageKey": "fonts_device",

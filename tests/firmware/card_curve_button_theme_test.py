@@ -42,6 +42,6 @@ for slug, profile in profiles.items():
     assert web_config(profile)["cardRadiusPixels"] == card_radius, slug
 
 s3 = profiles["guition-esp32-s3-4848s040"]
-assert web_config(s3)["cardRadiusPixels"] == 33
-assert web_config(s3)["cardCurveRadii"] == {"Small": 20, "Medium": 26}
+assert web_config(s3)["cardRadiusPixels"] == 26
+assert web_config(s3)["cardCurveRadii"] == {"Small": 16, "Medium": 21}
 print("Ordinary button radii stay independent of card curves on all nine profiles.")
