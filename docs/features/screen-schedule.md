@@ -8,7 +8,7 @@ description:
 
 Screen schedule controls what the panel does overnight, then returns it to normal when the schedule says it should be available again.
 
-You will find it in **Settings > Sleep & Schedule > Night Schedule** on the [Setup](/features/setup) page.
+You will find it in **Screen > Sleep & Schedule > Night Schedule** on the [Setup](/features/setup) page.
 
 ## Settings
 

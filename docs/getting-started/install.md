@@ -80,8 +80,8 @@ With the display connected to WiFi and paired with Home Assistant, you're ready 
 
 1. **Find the device's address.** It's shown on the display screen. You can also find it in your router's device list or in **Home Assistant > Settings > Devices & Services > ESPHome** (click the device, then look for the IP address).
 2. **Open that address in a browser** — for example, `http://espcontrol.local`. This opens the device's built-in web page.
-3. **Add your cards.** On the **Screen** tab, tap an empty slot and choose the card type you want. For example, a **Switch** card controls a Home Assistant entity, while a **Sensor** card displays a reading.
-4. **Adjust your settings.** Use **Settings** for appearance and sleep options, and **Device** for brightness, rotation, language, time, temperature, and system controls.
+3. **Add your cards.** On the **Layout** tab, tap an empty slot and choose the card type you want. For example, a **Switch** card controls a Home Assistant entity, while a **Sensor** card displays a reading.
+4. **Adjust your settings.** Use **Screen** for appearance, brightness, rotation, and sleep options, and **System** for language, time, temperature, and system controls.
 5. **Tap "Apply Configuration"** when you're done. The display restarts with your new settings.
 
 That's it — your panel is ready to use. See the [Setup](/features/setup) guide for a full walkthrough of every setting.

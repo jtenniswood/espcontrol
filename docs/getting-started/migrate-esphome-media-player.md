@@ -22,7 +22,7 @@ The two projects do not share their saved settings. Before changing firmware, no
 
 This is the closest match to the old media-player behaviour. Your normal EspControl cards remain available, but artwork takes over the screen when the selected player starts playing.
 
-1. Open the panel's address in a browser and select **Settings**.
+1. Open the panel's address in a browser and select **Screen**.
 2. Open **Sleep & Schedule > Cover Art Screen Saver**.
 3. Turn on **Show Cover Art**.
 4. Set **Media Player Entity** to the player you previously controlled, for example `media_player.living_room`.
@@ -44,14 +44,14 @@ See [Media Cover Art](/features/media-cover-art) for filtering, custom Home Assi
 
 This layout is best on the 4-inch square **4848S040** and **ESP32-P4 86 Panel**, where a 3 x 3 card fills the card area.
 
-1. Open the **Screen** tab on the panel web page.
+1. Open the **Layout** tab on the panel web page.
 2. Remove or move any existing home-screen cards so the grid is empty.
 3. Select an empty space and choose **Media > Cover Art**.
 4. Enter the same Home Assistant `media_player` entity.
 5. Turn on **Show Track Details** if you want the title and artist over the artwork.
 6. Tapping the artwork opens playback and volume controls.
 7. Hover over the card and drag its bottom-right resize handle to **Extra Large (3x3)**.
-8. Open **Settings > Appearance > Clock Bar** and turn off **Show Clock Bar** so the artwork can use the full display height.
+8. Open **Screen > Appearance > Clock Bar** and turn off **Show Clock Bar** so the artwork can use the full display height.
 9. Select **Apply Configuration**.
 
 On rectangular panels, use the largest square Cover Art card that suits the grid. It will not fill the entire rectangular screen, so automatic cover art is usually the better choice when you want a true full-screen now-playing view.
@@ -64,7 +64,7 @@ See [Media cards](/card-types/media#cover-art) for the other card sizes and Cove
 
 Automatic cover art and the normal EspControl screensaver are separate. This lets the panel remain awake while media plays, then switch to a clock or turn off after you stop using it.
 
-1. Open **Settings > Sleep & Schedule > Screensaver**.
+1. Open **Screen > Sleep & Schedule > Screensaver**.
 2. Choose **Timer**.
 3. Choose how long EspControl should wait after the last touch.
 4. Choose **Clock** for the drifting clock, **Display Off** for a dark panel, or **Screen Dimmed** to leave the cards faintly visible.
@@ -76,7 +76,7 @@ Use [Night Schedule](/features/screen-schedule) as well if the panel should alwa
 
 | ESPHome Media Player | EspControl equivalent |
 | --- | --- |
-| Full-screen album art during playback | **Settings > Sleep & Schedule > Cover Art Screen Saver** |
+| Full-screen album art during playback | **Screen > Sleep & Schedule > Cover Art Screen Saver** |
 | Always-visible artwork | **Media > Cover Art** card |
 | Title and artist overlay | **Show Track Details For** or **Show Track Details** |
 | Playback and volume panel | Tap a Cover Art card, or add a **Media > All Controls** card |

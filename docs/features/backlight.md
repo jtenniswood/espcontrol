@@ -20,7 +20,7 @@ Sunrise and sunset are calculated on-device from your selected timezone using a 
 
 ## Settings
 
-Configured in **Settings > Display > Backlight** in [Setup](/features/setup).
+Configured in **Screen > Display > Backlight** in [Setup](/features/setup).
 
 - Choose **Manual**, **Automatic**, or **Timed** at the top of the card.
 - **Brightness** — shown in Manual mode and sets the normal screen brightness (10%–100% in the web slider).

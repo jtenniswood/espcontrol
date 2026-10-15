@@ -1153,7 +1153,7 @@ async function assertRotationStartupOrdering(browser) {
 }
 
 async function assertSettingsPage(page, label, options = {}, posts = []) {
-  await page.getByRole("tab", { name: "Settings" }).click();
+  await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-settings.sp-page.active");
   const settingsVisible = await page.locator("#sp-settings").isVisible();
   const appearanceVisible = await page
@@ -1316,13 +1316,13 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   assert.strictEqual(settingsPlacement["Clock Bar"]?.section, "Appearance",
     `${label}: clock bar settings should be grouped with appearance controls`);
   assert.deepStrictEqual(await page.locator(".sp-nav [role='tab']").allTextContents(),
-    ["Screen", "Settings", "Device"], `${label}: Device follows Settings in primary navigation`);
-  await page.getByRole("tab", { name: "Device", exact: true }).click();
+    ["Layout", "Screen", "System"], `${label}: System follows Screen in primary navigation`);
+  await page.getByRole("tab", { name: "System", exact: true }).click();
   await page.waitForSelector("#sp-device.sp-page.active");
-  assert(!(await page.locator("#sp-settings").isVisible()), `${label}: Device hides Settings`);
-  assert.strictEqual(await page.getByRole("tab", { name: "Device", exact: true }).getAttribute("aria-selected"), "true");
+  assert(!(await page.locator("#sp-settings").isVisible()), `${label}: System hides Screen`);
+  assert.strictEqual(await page.getByRole("tab", { name: "System", exact: true }).getAttribute("aria-selected"), "true");
   assert.deepStrictEqual(await page.locator("#sp-device .sp-settings-status-title").allTextContents(),
-    ["Preferences", "System"], `${label}: device groups should be ordered by purpose`);
+    ["Preferences", "System"], `${label}: system groups should be ordered by purpose`);
   const devicePlacement = await page.locator("#sp-device .sp-config").evaluate(config => {
     let section = "";
     const placement = {};
@@ -1336,14 +1336,14 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     }
     return placement;
   });
-  assert.strictEqual(settingsPlacement.Backlight?.section, "Display", `${label}: Backlight is under Settings > Display`);
+  assert.strictEqual(settingsPlacement.Backlight?.section, "Display", `${label}: Backlight is under Screen > Display`);
   if (settingsPlacement.Rotation) {
-    assert.strictEqual(settingsPlacement.Rotation.section, "Display", `${label}: Rotation is under Settings > Display`);
+    assert.strictEqual(settingsPlacement.Rotation.section, "Display", `${label}: Rotation is under Screen > Display`);
   }
-  assert(!devicePlacement.Backlight && !devicePlacement.Rotation, `${label}: Device does not duplicate display controls`);
-  assert.strictEqual(devicePlacement.Language, "Preferences", `${label}: Language is under Device > Preferences`);
-  assert.strictEqual(devicePlacement.Firmware, "System", `${label}: Firmware is under Device > System`);
-  assert(await page.locator("#sp-device .sp-apply-btn").isVisible(), `${label}: Device has Apply Configuration`);
+  assert(!devicePlacement.Backlight && !devicePlacement.Rotation, `${label}: System does not duplicate display controls`);
+  assert.strictEqual(devicePlacement.Language, "Preferences", `${label}: Language is under System > Preferences`);
+  assert.strictEqual(devicePlacement.Firmware, "System", `${label}: Firmware is under System > System`);
+  assert(await page.locator("#sp-device .sp-apply-btn").isVisible(), `${label}: System has Apply Configuration`);
   if (options.slug === "guition-esp32-p4-jc8012p4a1") {
     assert.strictEqual(
       devicePlacement.Battery,
@@ -1525,7 +1525,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
       `${label}: install progress should not be duplicated below the action`,
     );
   }
-  await page.getByRole("tab", { name: "Settings", exact: true }).click();
+  await page.getByRole("tab", { name: "Screen", exact: true }).click();
   const clockBarCard = page
     .locator("#sp-settings .card")
     .filter({ hasText: "Clock Bar" })
@@ -1992,7 +1992,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     0,
     `${label}: sensor cover art override should not render`,
   );
-  await page.getByRole("tab", { name: "Device", exact: true }).click();
+  await page.getByRole("tab", { name: "System", exact: true }).click();
   const homeAssistantSettingsCard = page
     .locator("#sp-device .card")
     .filter({
@@ -2100,7 +2100,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     () => document.documentElement.scrollWidth > window.innerWidth + 1,
   );
   assert(!overflow, `${label}: settings page has horizontal overflow`);
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
   await assertVoiceClockBarPreview(page, label);
 }
@@ -2186,7 +2186,7 @@ async function assertClockBarTypographyAndIconLayout(page, label) {
 async function assertMobileTabLayout(page, label, restoreViewport) {
   await page.setViewportSize({ width: 360, height: 740 });
   await page.waitForTimeout(100);
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
   let mobile = await page.evaluate(() => {
     var support = document.querySelector(".sp-support-btn");
@@ -2295,7 +2295,7 @@ async function assertMobileTabLayout(page, label, restoreViewport) {
     `${label}: mobile card selection bar has horizontal overflow`,
   );
 
-  await page.getByRole("tab", { name: "Settings" }).click();
+  await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-settings.sp-page.active");
   const nightScheduleCard = page
     .locator("#sp-settings .card")
@@ -2364,7 +2364,7 @@ async function assertMobileTabLayout(page, label, restoreViewport) {
     `${label}: mobile settings tab has horizontal overflow`,
   );
   await page.setViewportSize(restoreViewport);
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
   await page.waitForTimeout(100);
 }
@@ -2392,7 +2392,7 @@ async function assertMobileDeviceViewport(browser, testCase) {
       seededEvents(),
     );
     await page.waitForSelector(".sp-main > .sp-btn");
-    await page.getByRole("tab", { name: "Settings" }).click();
+    await page.getByRole("tab", { name: "Screen" }).click();
     await page.waitForSelector("#sp-settings.sp-page.active");
     const mobile = await page.evaluate(() => {
       var support = document.querySelector(".sp-support-btn");
@@ -2860,7 +2860,7 @@ async function assertNewMediaCardDefaults(page, posts, label, mediaCoverArtSuppo
 }
 
 async function assertCardActiveColourControls(page, posts, label) {
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   const card = page.locator('.sp-main [data-slot="1"]');
   await card.click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
@@ -2945,7 +2945,7 @@ async function assertCardActiveColourControls(page, posts, label) {
 }
 
 async function assertAllCardSettingsGrouped(page, posts, label) {
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
   const emptyCell = page
     .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
@@ -3142,11 +3142,11 @@ async function assertSliderActiveColours(page, label) {
         })),
       ];
       if (renderWhileHidden) {
-        await page.getByRole("tab", { name: "Settings", exact: true }).click();
+        await page.getByRole("tab", { name: "Screen", exact: true }).click();
         assert.strictEqual(await page.locator("#sp-screen").isVisible(), false);
       }
       await page.evaluate(events => window.__seedEspState(events), events);
-      await page.getByRole("tab", { name: "Screen" }).click();
+      await page.getByRole("tab", { name: "Layout" }).click();
       const cards = page.locator(".sp-main > .sp-btn");
       await cards.first().locator(".sp-slider-fill").waitFor({ state: "visible" });
       const rendered = await cards.evaluateAll(cards => cards.map(card => ({
@@ -3180,7 +3180,7 @@ async function assertSliderActiveColours(page, label) {
 }
 
 async function assertFanOptionalLightSettings(page, label) {
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
   const emptyCell = page
     .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
@@ -3249,7 +3249,7 @@ async function assertFanOptionalLightSettings(page, label) {
 }
 
 async function assertInternalControlsPanel(page, posts, label) {
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
   const emptyCell = page
     .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
@@ -3328,7 +3328,7 @@ async function assertInternalControlsPanel(page, posts, label) {
 }
 
 async function assertWebhookSettingsPanel(page, posts, label) {
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
   const emptyCell = page
     .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
@@ -3418,7 +3418,7 @@ async function assertWebhookSettingsPanel(page, posts, label) {
 }
 
 async function assertCoverSettingsPanels(page, label) {
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
   await page.locator('.sp-main [data-slot="5"]').click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
@@ -3469,7 +3469,7 @@ async function assertCoverSettingsPanels(page, label) {
 }
 
 async function assertCameraRefreshSettings(page, posts, label) {
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   const before = posts.length;
   await page.locator(".sp-empty-cell:not(.sp-info-only-hidden)").first().click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
@@ -3510,7 +3510,7 @@ async function assertCameraRefreshSettings(page, posts, label) {
 }
 
 async function assertMediaCoverArtSettingsPanels(page, label) {
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
   await page.locator('.sp-main [data-slot="4"]').click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
@@ -3624,7 +3624,7 @@ async function assertMediaCoverArtSettingsPanels(page, label) {
 }
 
 async function assertAlarmSettingsPanels(page, label) {
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
   await page.locator('.sp-main [data-slot="6"]').click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
@@ -3714,7 +3714,7 @@ async function assertAlarmSettingsPanels(page, label) {
 }
 
 async function assertPlaylistValidationOpensSourcePanel(page, label) {
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
   await page.locator('.sp-main [data-slot="4"]').click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
@@ -3765,7 +3765,7 @@ async function assertPlaylistValidationOpensSourcePanel(page, label) {
 }
 
 async function assertNumberActionRequiresValue(page, posts, label) {
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
   const emptyCell = page
     .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
@@ -3842,7 +3842,7 @@ async function assertMediaModalSettingsJourney(browser, testCase) {
     await page.waitForSelector("#sp-app");
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await page.evaluate((events) => window.__seedEspState(events), seededEvents());
-    await page.getByRole("tab", { name: "Screen" }).click();
+    await page.getByRole("tab", { name: "Layout" }).click();
     await openEditor();
     await page.locator("#sp-inp-media-mode").selectOption("control_modal");
     await page.getByRole("button", { name: "Modal Settings", exact: true }).click();
@@ -3913,7 +3913,7 @@ async function assertMediaModalSettingsJourney(browser, testCase) {
 }
 
 async function assertSpeakerGroupEditorAndPreview(page, posts, label) {
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
   await page.locator('.sp-main [data-slot="4"]').click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
@@ -4200,7 +4200,7 @@ function writeJsonFixture(name, value) {
 }
 
 async function openBackupControls(page) {
-  await page.getByRole("tab", { name: "Device" }).click();
+  await page.getByRole("tab", { name: "System" }).click();
   await page.waitForSelector("#sp-device.sp-page.active");
   if (!(await page.getByRole("button", { name: "Import" }).isVisible())) {
     await page.getByText("Backup", { exact: true }).click();
@@ -4668,7 +4668,7 @@ async function entitySuggestionValues(
 
 async function assertEditSmoke(page, posts, errors) {
   const before = posts.length;
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
 
   await page.locator('.sp-main [data-slot="1"]').click();
@@ -4830,7 +4830,7 @@ async function openPasteCardCodeDialog(page) {
 }
 
 async function assertCardTransferSmoke(page, posts, label) {
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.locator('.sp-main [data-slot="1"]').click({ button: "right", force: true });
   await page.locator(".sp-ctx-menu").waitFor({ state: "visible" });
   assert(
@@ -5079,7 +5079,7 @@ async function assertCardTransferSmoke(page, posts, label) {
 }
 
 async function assertClockBarEditorSmoke(page, posts, label) {
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
 
   async function openClockBarContextMenu(item, expectedAction) {
@@ -5496,7 +5496,7 @@ async function assertClockBarEditorSmoke(page, posts, label) {
     `${label}: network status stays clear of the first card row`,
   );
 
-  await page.getByRole("tab", { name: "Device", exact: true }).click();
+  await page.getByRole("tab", { name: "System", exact: true }).click();
   await page.waitForSelector("#sp-device.sp-page.active");
   const timeSettingsCard = page
     .locator("#sp-device .card")
@@ -5504,7 +5504,7 @@ async function assertClockBarEditorSmoke(page, posts, label) {
       has: page.locator(".card-header h3", { hasText: /^Time$/ }),
     })
     .first();
-  assert(await timeSettingsCard.isVisible(), `${label}: Time is visible on the Device tab`);
+  assert(await timeSettingsCard.isVisible(), `${label}: Time is visible on the System tab`);
   const timeSettingsText = await timeSettingsCard.textContent();
   assert(
     timeSettingsText.includes("Timezone"),
@@ -5514,13 +5514,13 @@ async function assertClockBarEditorSmoke(page, posts, label) {
     timeSettingsText.includes("Clock Format"),
     `${label}: clock format remains in global time settings`,
   );
-  await page.getByRole("tab", { name: "Settings", exact: true }).click();
+  await page.getByRole("tab", { name: "Screen", exact: true }).click();
   await page.waitForSelector("#sp-settings.sp-page.active");
   const clockBarCard = page
     .locator("#sp-settings .card")
     .filter({ hasText: "Clock Bar" })
     .first();
-  assert(await clockBarCard.isVisible(), `${label}: Clock Bar is visible on the Settings tab`);
+  assert(await clockBarCard.isVisible(), `${label}: Clock Bar is visible on the Screen tab`);
   const clockBarText = await clockBarCard.textContent();
   assert(
     clockBarText.includes("Show Clock Bar"),
@@ -5542,11 +5542,11 @@ async function assertClockBarEditorSmoke(page, posts, label) {
     !clockBarText.includes("Show Degree Symbol"),
     `${label}: degree-symbol control moved out of clock bar settings`,
   );
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
 }
 
 async function assertNightScheduleSensorControls(page, posts, label) {
-  await page.getByRole("tab", { name: "Settings" }).click();
+  await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-settings.sp-page.active");
   const card = page
     .locator("#sp-settings .card")
@@ -5796,7 +5796,7 @@ async function assertNightScheduleSensorControls(page, posts, label) {
     `${label}: Disabled should hide shared night action controls`,
   );
 
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
 }
 
 function panelConfigLabel(document, slot) {
@@ -5834,7 +5834,7 @@ async function seedNativeDocument(page, nativeState) {
 }
 
 async function assertGuestWifiSettings(page, label) {
-  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.getByRole("tab", { name: "Layout" }).click();
   const emptyCell = page.locator(".sp-empty-cell:not(.sp-info-only-hidden)").first();
   assert(await emptyCell.count(), `${label}: guest Wi-Fi test needs an empty slot`);
   await emptyCell.click();
@@ -6421,7 +6421,7 @@ async function assertHostedCompatibility(browser) {
       assert.equal(request.credentials, "omit", "public metadata must not include browser credentials");
     }
     assert(requests.some(item => item.url.endsWith("/espcontrol/version") && item.credentials === "include"), "device state requests retain authentication");
-    await page.getByRole("tab", { name: "Device" }).click();
+    await page.getByRole("tab", { name: "System" }).click();
     await page.evaluate(() => window.__seedEspState([
       { id: "select/Home Assistant Artwork Connection", state: "Manual" },
       { id: "text_sensor/Home Assistant Artwork Endpoint", state: "Manual — http://ha.test:8123" },
@@ -6471,7 +6471,7 @@ async function assertFirmwareRetryFeedback(browser) {
       await page.waitForSelector("#sp-app");
       await page.waitForFunction(() => window.__eventSources?.length > 0);
       await page.evaluate(events => window.__seedEspState(events), seededEvents());
-      await page.getByRole("tab", { name: "Device" }).click();
+      await page.getByRole("tab", { name: "System" }).click();
       const card = page.locator(".card").filter({ has: page.locator(".card-header h3", { hasText: /^Firmware$/ }) });
       await card.locator(":scope > .card-header").click();
       await page.locator("#sp-fw-previous-panel .sp-disclosure-button").click();
@@ -6506,7 +6506,7 @@ async function assertResetControls(browser) {
       await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`);
       await page.waitForSelector("#sp-app");
       await seedNativeDocument(page, nativeConfigState(testCase.slug));
-      await page.getByRole("tab", { name: "Device" }).click();
+      await page.getByRole("tab", { name: "System" }).click();
       const card = page.locator(".card").filter({ has: page.locator("h3", { hasText: /^Factory Reset$/ }) });
       if (mode === "unsupported") { assert(!(await card.isVisible())); continue; }
       await card.waitFor({ state: "visible" });
@@ -6627,7 +6627,7 @@ async function assertPanelNaming(browser) {
     await page.waitForSelector("#sp-app");
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await page.evaluate(events => window.__seedEspState(events), seededEvents());
-    await page.getByRole("tab", { name: "Device" }).click();
+    await page.getByRole("tab", { name: "System" }).click();
     const card = page.locator(".card").filter({ has: page.locator(".card-header", { hasText: "Device Name" }) });
     await card.locator(".card-header").click();
     await card.getByText("Could not read the panel name. Check the connection and try again.").waitFor();
@@ -6690,7 +6690,7 @@ async function assertScreensaverPinSettings(browser) {
     await page.waitForSelector("#sp-app");
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await page.evaluate(events => window.__seedEspState(events), seededEvents());
-    await page.getByRole("tab", { name: "Settings" }).click();
+    await page.getByRole("tab", { name: "Screen" }).click();
     const card = page.locator("#sp-settings .card").filter({ has: page.locator("#sp-set-screensaver-pin") });
     await card.locator(".card-header").click();
     const input = page.locator("#sp-set-screensaver-pin");
@@ -6710,7 +6710,7 @@ async function assertScreensaverPinSettings(browser) {
     await page.waitForSelector("#sp-app");
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await page.evaluate(events => window.__seedEspState(events), seededEvents());
-    await page.getByRole("tab", { name: "Settings" }).click();
+    await page.getByRole("tab", { name: "Screen" }).click();
     await card.locator(".card-header").click();
     await page.waitForFunction(() => !document.querySelector("#sp-set-screensaver-pin-enabled").disabled);
     assert.strictEqual(await page.locator("#sp-set-screensaver-pin-enabled").isChecked(), false,
@@ -6771,7 +6771,7 @@ async function assertScreensaverPinSettings(browser) {
     // A Screen Lock card edits the same PIN and cannot be saved before the
     // device has accepted one. Manual locking does not require wake locking.
     pin.randomize = false;
-    await page.getByRole("tab", { name: "Screen" }).click();
+    await page.getByRole("tab", { name: "Layout" }).click();
     await page.locator(".sp-empty-cell:not(.sp-info-only-hidden)").first().click();
     await page.locator('.sp-card-type-option[data-card-type="screen_lock"]').click();
     const lockSettings = page.locator('.sp-settings-modal [data-sp-pin-settings]');
@@ -6811,14 +6811,14 @@ async function assertScreensaverPinSettings(browser) {
     await page.locator('.sp-settings-modal input[id$="screensaver-on-lock"] + .sp-toggle-track').click();
     await page.locator(".sp-settings-modal .sp-save-btn").click();
     await page.locator(".sp-settings-overlay.sp-visible").waitFor({ state: "hidden" });
-    await page.getByRole("tab", { name: "Settings" }).click();
+    await page.getByRole("tab", { name: "Screen" }).click();
     await enable.click();
     await input.waitFor({ state: "visible" });
     assert.strictEqual(await input.getAttribute("placeholder"), "••••••");
     await input.fill("9876");
     await card.getByRole("button", { name: "Save", exact: true }).click();
     await page.waitForFunction(() => document.querySelector("#sp-set-screensaver-pin").value === "");
-    await page.getByRole("tab", { name: "Screen" }).click();
+    await page.getByRole("tab", { name: "Layout" }).click();
     await page.locator('.sp-main [data-slot]').filter({ hasText: "Screen Unlocked" }).first().click();
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await lockInput.waitFor({ state: "visible" });
@@ -6834,7 +6834,7 @@ async function assertScreensaverPinSettings(browser) {
     await page.waitForFunction(() => !document.querySelector('.sp-settings-modal input[type="password"]').disabled);
     assert.strictEqual(await screensaverToggle.isChecked(), false, 'screensaver preference can be disabled');
     await page.locator(".sp-settings-close").click();
-    await page.getByRole("tab", { name: "Settings" }).click();
+    await page.getByRole("tab", { name: "Screen" }).click();
     await card.getByRole('button', { name: 'Clear', exact: true }).click();
     await page.waitForFunction(() => !document.querySelector('#sp-set-screensaver-pin-enabled').checked &&
       !document.querySelector('#sp-set-screensaver-pin').disabled);
@@ -6855,7 +6855,7 @@ async function assertScreensaverPinSettings(browser) {
   try {
     await legacyPage.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
     await legacyPage.waitForSelector("#sp-app");
-    await legacyPage.getByRole("tab", { name: "Settings" }).click();
+    await legacyPage.getByRole("tab", { name: "Screen" }).click();
     await legacyPage.waitForFunction(() => {
       const input = document.querySelector("#sp-set-screensaver-pin");
       return input && input.closest(".card").hidden;
@@ -6888,7 +6888,7 @@ async function assertCardCurveSettings(browser, testCase) {
       await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
       await page.waitForFunction(() => window.__eventSources?.length > 0);
       await seed();
-      await page.getByRole("tab", { name: "Settings", exact: true }).click();
+      await page.getByRole("tab", { name: "Screen", exact: true }).click();
       const appearance = page.locator("#sp-settings .card").filter({ has: page.locator("#sp-set-card-curve") });
       if (!(await page.locator("#sp-set-card-curve").isVisible())) await appearance.locator(".card-header").click();
       await page.locator("#sp-set-card-curve").waitFor({ state: "visible" });
@@ -6911,7 +6911,7 @@ async function assertCardCurveSettings(browser, testCase) {
       assert.strictEqual(savedPreset, preset, "curve changes must reach the saved firmware select");
       const radius = await page.evaluate(logicalWidth => parseFloat(document.documentElement.style.getPropertyValue("--btn-r")) * logicalWidth / 100, width);
       assert(Math.abs(radius - expected) < .001, `${testCase.slug}: ${preset} must match the firmware radius ${expected}`);
-      await page.getByRole("tab", { name: "Screen", exact: true }).click();
+      await page.getByRole("tab", { name: "Layout", exact: true }).click();
       const checkCards = async surface => {
         await page.waitForFunction(() => [...document.querySelectorAll(".sp-main .sp-btn")].every(card => getComputedStyle(card).clipPath.startsWith("path(")));
         const shapes = await page.locator(".sp-main .sp-btn").evaluateAll(cards => cards.map(card => {
@@ -6929,7 +6929,7 @@ async function assertCardCurveSettings(browser, testCase) {
       await checkCards("subpage, including Back");
       await page.locator(".sp-back-btn .sp-back-hit").click();
       await page.waitForSelector(".sp-back-btn", { state: "detached" });
-      await page.getByRole("tab", { name: "Settings", exact: true }).click();
+      await page.getByRole("tab", { name: "Screen", exact: true }).click();
     }
     const posted = page.waitForResponse(response => response.url().includes("/select/screen__card_curve/set?option=Medium"));
     await page.locator("#sp-set-card-curve").getByRole("button", { name: "Medium", exact: true }).click();
