@@ -69,6 +69,7 @@ void lv_image_cache_drop(const void *) { ++dropped; }
 void lv_image_header_cache_drop(const void *) { ++dropped; }
 #include "../../components/espcontrol/button_grid_continuous_corners.h"
 #include "../../components/espcontrol/card_curve.h"
+#include "../../components/espcontrol/badge_policy.h"
 
 int main() {
   using namespace espcontrol::corners;
@@ -172,6 +173,22 @@ int main() {
   assert(binding_for(&hidden)->mask->radius == 14);
   send(hidden, LV_EVENT_DELETE);
   assert(mask_cache() == nullptr);
+  for (int card_radius : {21, 28, 35}) {
+    lv_obj_t badge;
+    badge.width = 160; badge.height = 64;
+    const int radius = espcontrol::badge::corner_radius(card_radius, badge.height);
+    assert(radius == std::min(card_radius, 16));
+    apply_grid_card_corners(&badge, radius, true);
+    auto *binding = binding_for(&badge);
+    assert(binding && binding->mask);
+    auto *mask = binding->mask;
+    const int stride = mask->image.header.stride;
+    const int sample = (radius * 2 * 3) / 16;
+    assert(mask->pixels[sample * stride + sample] > 0);
+    assert(mask->pixels[0] == 0);
+    send(badge, LV_EVENT_DELETE);
+    assert(mask_cache() == nullptr);
+  }
   // Switching a badge back to an ordinary card must release its mask and handler.
   lv_obj_t reused;
   attach(&reused);

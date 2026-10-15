@@ -43,6 +43,12 @@ inline int pill_height(int line_height) {
   return line_height * 23 / 10;
 }
 
+// Keep the card family's curve, scaled to a compact control. The quarter-height
+// cap leaves room for the renderer's continuous-corner transition on both ends.
+inline int corner_radius(int card_radius, int height) {
+  return std::max(1, std::min(card_radius, height / 4));
+}
+
 inline int content_left_padding(int line_height) {
   return line_height / 4;
 }

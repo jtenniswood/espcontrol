@@ -45,12 +45,14 @@ export function syncPreviewCorners(screen: HTMLElement, radius: number, emptyRad
             for (const card of cards) {
                 const style = getComputedStyle(card);
                 const empty = card.classList.contains("sp-empty-cell");
-                const nominal = (empty ? settings.emptyRadius : settings.radius) * screenWidth / 100;
+                let nominal = (empty ? settings.emptyRadius : settings.radius) * screenWidth / 100;
                 const borderBox = (size: string, extras: string[]) => parseFloat(size) +
                     (style.boxSizing === "border-box" ? 0 : extras.reduce((sum, value) => sum + parseFloat(value || "0"), 0));
                 const width = borderBox(style.width, [style.paddingLeft, style.paddingRight, style.borderLeftWidth, style.borderRightWidth]);
                 const height = borderBox(style.height, [style.paddingTop, style.paddingBottom, style.borderTopWidth, style.borderBottomWidth]);
                 if (!(width > 0 && height > 0)) continue;
+                if (card.classList.contains("sp-badge-card") || card.classList.contains("sp-badge-add"))
+                    nominal = Math.min(nominal, width / 4, height / 4);
                 const key = `${width}:${height}:${nominal}:${settings.enabled}:${empty}`;
                 let shape = cache.get(key);
                 if (shape === undefined) {

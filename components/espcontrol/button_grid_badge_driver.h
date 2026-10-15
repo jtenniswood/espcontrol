@@ -41,6 +41,7 @@ struct BadgeCtx {
   bool fit_width = false;
   bool slider_action = false;
   int line_height = 24;
+  int corner_radius = 0;
   uint32_t active_fill = 0;
   int text_width_percent = 100;
   bool dragging = false;
@@ -229,6 +230,7 @@ inline bool badge_driver_refresh_layout(BtnSlot &slot, const ParsedCfg &, const 
   lv_obj_set_style_grid_cell_x_align(slot.btn, LV_GRID_ALIGN_STRETCH, LV_PART_MAIN);
   lv_obj_set_style_grid_cell_y_align(slot.btn, LV_GRID_ALIGN_CENTER, LV_PART_MAIN);
   lv_obj_set_height(slot.btn, espcontrol::badge::pill_height(ctx->line_height));
+  apply_grid_card_corners(slot.btn, ctx->corner_radius, card_uses_continuous_corners(slot.btn));
 
   return true;
 }
@@ -315,6 +317,9 @@ inline bool badge_driver_setup_visual(BtnSlot &slot, const ParsedCfg &config,
   const lv_font_t *label_font = slot.text_lbl ? lv_obj_get_style_text_font(slot.text_lbl, LV_PART_MAIN) : nullptr;
   const lv_coord_t line = label_font ? label_font->line_height : 24;
   ctx->line_height = line;
+  ctx->corner_radius = espcontrol::badge::corner_radius(
+    lv_obj_get_style_radius(slot.btn, LV_PART_MAIN), espcontrol::badge::pill_height(line));
+  apply_grid_card_corners(slot.btn, ctx->corner_radius, card_uses_continuous_corners(slot.btn));
   ctx->text_width_percent = display.width.vertical_axis ? 100 : display_text_width_percent(display);
   lv_obj_set_style_pad_left(ctx->content, espcontrol::badge::content_left_padding(line), LV_PART_MAIN);
   lv_obj_set_style_pad_right(ctx->content, espcontrol::badge::content_right_padding(line), LV_PART_MAIN);

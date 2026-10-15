@@ -105,7 +105,14 @@ for controls, as with cards. Opening a control modal uses the full modal size.
 The web editor uses sample values to preview the layout. Test live values and
 touch interactions on the physical panel.
 
-Badges and their add button use the same **Card Curve** radius as the card grid.
+Badges and their add button follow the grid’s **Card Curve** setting, with a
+smaller radius suited to their height.
 Custom Colours are available in badge settings. Badge rows travel with ordinary
 Subpage cards when copied, cut or duplicated, and are included in portable backups.
 Use backups to transfer rows between panels; badge transfer codes are unavailable.
+
+Badges use the card radius capped at a quarter of the badge height, so the
+continuous transitions occupy almost the full height with very short straight
+sides. This
+keeps the continuous curve transition inside the compact surface, with the same
+shape on the panel and in the preview.

@@ -7155,12 +7155,18 @@ async function assertBadgeJourney(browser, testCase) {
     assert(compact.transparentIcon && compact.centredIcon && compact.inset && compact.singleLine && compact.fits && compact.text === "21.4°C",
       "One reading fits beside an inset icon centred in the taller badge");
     const matchingCorners = await page.locator('.sp-badge-row [data-badge-index="0"]').evaluate(badge => {
-      const card = document.querySelector('.sp-main > .sp-btn');
       const add = document.querySelector('.sp-badge-add');
-      return [badge, add, card].map(element => getComputedStyle(element).borderTopLeftRadius);
+      return [badge, add].map(element => {
+        const style = getComputedStyle(element);
+        return { radius: parseFloat(style.borderTopLeftRadius), height: parseFloat(style.height), clip: style.clipPath };
+      });
     });
-    assert.equal(matchingCorners[0], matchingCorners[2], "Badges share the card corner radius");
-    assert.equal(matchingCorners[1], matchingCorners[2], "The add button shares the card corner radius");
+    for (const shape of matchingCorners) {
+      assert(shape.clip.startsWith('path('), "Compact badges and the add button retain the continuous outline");
+      assert(shape.radius > 0 && shape.radius <= shape.height / 4 + .05, "Badge radius fits the continuous rendering bounds");
+      assert(shape.radius >= shape.height / 4 - 1, "Curves occupy almost the full height with very short straight sides");
+    }
+    assert(Math.abs(matchingCorners[0].radius - matchingCorners[1].radius) < 1, "The add button shares the badge curve");
     assert.strictEqual(await page.locator('.sp-badge-row [data-badge-index="1"] .sp-badge-text').count(), 1,
       "Label-only badges retain one line");
     assert(await page.locator(".sp-badge-slider > .sp-badge-fill").evaluate(fill => {
