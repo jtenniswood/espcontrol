@@ -2868,8 +2868,15 @@ async function assertContextColourPicker(browser, testCase) {
     const context = await browser.newContext({ viewport: testCase.viewport });
     await installRoutes(context, testCase.slug, { nativeState: native ? fixture : null, legacyTextState });
     const page = await context.newPage();
+    await page.addInitScript(() => { window.__ESPCONTROL_TEST_HOOKS__ = {}; });
     const errors = [];
+    const configurationWrites = [];
     page.on("pageerror", error => errors.push(error.message));
+    page.on("request", request => {
+      const url = new URL(request.url());
+      if ((request.method() === "POST" && url.pathname.startsWith("/text/")) ||
+          (request.method() === "PUT" && url.pathname === "/api/v1/config")) configurationWrites.push(request.url());
+    });
     await installFakeEventSource(page);
     const label = `${testCase.name}/${native ? "native" : "legacy"}`;
     const storedButton = slot => native ? fixture.document.buttons[slot] : legacyTextState[`button_${slot}_config`];
@@ -2983,6 +2990,62 @@ async function assertContextColourPicker(browser, testCase) {
       await submenu.locator('[data-color="6036B2"]').hover();
       assert(await submenu.isVisible(), `${label}: moving across to the palette keeps it open`);
       await page.keyboard.press("Escape");
+      const limitConfigs = await page.evaluate(() => {
+        const codec = window.__ESPCONTROL_TEST_HOOKS__.config;
+        return [255, 256].map(length => {
+          const button = codec.parseButtonConfig("light.kitchen;Large;Lightbulb;Lightbulb");
+          button.options = "card_off_color=6036B2";
+          button.label = "L".repeat(length - codec.serializeButtonConfig({ ...button, label: "" }).length);
+          return {
+            before: codec.serializeButtonConfig({ ...button, options: "" }),
+            after: codec.serializeButtonConfig(button),
+          };
+        });
+      });
+      assert.strictEqual(limitConfigs[0].after.length, 255);
+      assert.strictEqual(limitConfigs[1].after.length, 256);
+      for (const [index, limitConfig] of limitConfigs.entries()) {
+        fixture.document.buttons[1] = limitConfig.before;
+        await seedNativeDocument(page, fixture);
+        await page.locator(".sp-brand").click();
+        const originalBackground = await card(1).evaluate(el => el.style.backgroundColor);
+        const writesBefore = configurationWrites.length;
+        await openPicker(card(1));
+        await menu.locator('[data-color="6036B2"]').click();
+        if (index === 0) {
+          await waitForSaved(() => storedButton(1) === limitConfig.after);
+        } else {
+          await page.getByText("Card settings are too large to save. Shorten confirmation text, labels, or entity IDs.", { exact: true })
+            .waitFor({ state: "visible", timeout: 2000 });
+          // Allow the normal save debounce to pass before asserting no request was queued.
+          await page.waitForTimeout(500);
+          assert.strictEqual(configurationWrites.length, writesBefore, `${label}: an oversized colour change sends no write`);
+          assert.strictEqual(await card(1).evaluate(el => el.style.backgroundColor), originalBackground,
+            `${label}: a rejected colour does not change the preview`);
+          await openPicker(card(1));
+          assert.strictEqual(await menu.locator('[data-color="6036B2"]').getAttribute("aria-pressed"), "false",
+            `${label}: a rejected colour does not change local card settings`);
+          await page.keyboard.press("Escape");
+        }
+      }
+      // The first selected card fits; the later card would exceed the limit.
+      fixture.document.buttons[1] = BUTTON_FIXTURES[0];
+      fixture.document.buttons[2] = limitConfigs[1].before;
+      await seedNativeDocument(page, fixture);
+      await page.locator(".sp-brand").click();
+      await card(1).click({ position: { x: 12, y: 12 } });
+      await card(2).click({ modifiers: ["ControlOrMeta"] });
+      const originalBackgrounds = await Promise.all([1, 2].map(slot => card(slot).evaluate(el => el.style.backgroundColor)));
+      const writesBeforeBulk = configurationWrites.length;
+      await openPicker(card(1));
+      await menu.locator('[data-color="6036B2"]').click();
+      await page.getByText("Card settings are too large to save. Shorten confirmation text, labels, or entity IDs.", { exact: true })
+        .waitFor({ state: "visible", timeout: 2000 });
+      await page.waitForTimeout(500);
+      assert.strictEqual(configurationWrites.length, writesBeforeBulk, `${label}: oversized bulk recolouring sends no partial write`);
+      assert.deepStrictEqual(await Promise.all([1, 2].map(slot => card(slot).evaluate(el => el.style.backgroundColor))), originalBackgrounds,
+        `${label}: oversized bulk recolouring leaves every selected card unchanged`);
+      await page.locator(".sp-brand").click();
       for (const type of ["image", "wifi_qr_card"]) {
         await page.evaluate(type => window.__seedEspState([
           { id: "text-button_1_config", state: `camera.garden;Fixed Background;Auto;Auto;;;${type}` },

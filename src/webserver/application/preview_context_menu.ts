@@ -41,7 +41,7 @@ export interface PreviewContextMenuDependencies {
     readonly codec: ConfigCodecFeature;
     readonly configPersistence: Pick<ConfigPersistenceFeature, "saveButtonConfig">;
     readonly clockBar: Pick<ClockBarFeature, "setItemVisible">;
-    readonly shell: Pick<ControlsShellFeature, "isConfigLocked">;
+    readonly shell: Pick<ControlsShellFeature, "isConfigLocked" | "showBanner">;
     readonly statusPreview: Pick<AppStatusPreviewFeature, "clockBarItemActive" | "clockBarItemLabel" | "clockBarItems" | "isClockBarTemperatureItem" | "updateClockBarItemUi">;
     readonly grid: Pick<GridFeature, "ctx" | "scheduleMainGridSave">;
     readonly selection: Pick<ButtonSettingsSelectionFeature, "hideSettingsOverlay" | "openClockBarTemperatureSettings">;
@@ -72,7 +72,7 @@ export interface PreviewContextMenuFeature {
 export function createPreviewContextMenuFeature(dependencies: PreviewContextMenuDependencies): PreviewContextMenuFeature {
     const document = dependencies.document;
     const window = dependencies.window;
-    const { isConfigLocked } = dependencies.shell;
+    const { isConfigLocked, showBanner } = dependencies.shell;
     const { setItemVisible: setClockBarItemVisible } = dependencies.clockBar;
     const { clockBarItemActive, clockBarItemLabel, clockBarItems, isClockBarTemperatureItem, updateClockBarItemUi } = dependencies.statusPreview;
     const { ctx, scheduleMainGridSave } = dependencies.grid;
@@ -90,6 +90,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         cardSupportsLandscapeLargeSize,
         cardSupportsUltraWideSize,
         normalizeCardSizeForConfig,
+        serializeButtonConfig,
         getSubpage,
         serializeSubpageGrid,
         exitSubpage,
@@ -225,6 +226,14 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
             if (isConfigLocked() || state.editingSubpage !== homeSlot) return;
             const current = ctx();
             if (slots.some(slot => !current.grid.includes(slot) || !supportsCardColour(slot))) return;
+            if (!current.isSub && slots.some(slot => {
+                const button = current.buttons[slot - 1];
+                return serializeButtonConfig({ ...button, options: setCardColor(button.options, hex) }).length > 255;
+            })) {
+                hideContextMenu();
+                showBanner("Card settings are too large to save. Shorten confirmation text, labels, or entity IDs.", "error");
+                return;
+            }
             for (const slot of slots) {
                 if (slot === -2) getSubpage(homeSlot).backColor = hex;
                 else {
