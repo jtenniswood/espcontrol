@@ -219,7 +219,7 @@ export function buildWallpaperSettings(
   actions.className = "sp-card-bg-actions";
   const uploadButton = document.createElement("button");
   uploadButton.type = "button";
-  uploadButton.className = "sp-action-btn";
+  uploadButton.className = "sp-action-btn sp-wallpaper-upload";
   uploadButton.innerHTML = '<span class="mdi mdi-upload" aria-hidden="true"></span><span>Upload Image</span>';
   uploadButton.addEventListener("click", () => upload.click());
   const remove = document.createElement("button");
