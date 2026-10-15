@@ -10,6 +10,9 @@ struct WallpaperUi {
   uint8_t *pixels = nullptr;
   uint32_t revision = 0;
   bool loaded = false;
+  bool retry_pending = false;
+  uint32_t retry_revision = 0;
+  uint32_t retry_started_at = 0;
   WallpaperOpacity opacities;
   WallpaperBackgroundSetting background;
   lv_image_dsc_t image{};
@@ -123,9 +126,29 @@ inline void wallpaper_tick() {
     ui.opacities = opacities;
     wallpaper_apply_card_opacity();
   }
-  if (ui.background.colour || !store.available()) return;
+  if (ui.background.colour) {
+    if (ui.pixels) {
+      // Widgets already use colour_image; keep pixels alive until drawing finishes.
+      lv_image_cache_drop(&ui.image);
+      ui.retired_pixels = ui.pixels;
+      ui.retired_at = esphome::millis();
+      ui.pixels = nullptr;
+      ui.image = {};
+    }
+    ui.loaded = false;  // Reload the preserved flash copy when Wallpaper returns.
+    ui.retry_pending = false;
+    return;
+  }
+  if (!store.available()) return;
   const uint32_t revision = store.revision();
   if (ui.loaded && revision == ui.revision) return;
+  // Retry an unchanged image at most once every five seconds, including across
+  // millis() rollover. A replacement upload can be attempted immediately.
+  if (ui.retry_pending && ui.retry_revision == revision &&
+      uint32_t(esphome::millis() - ui.retry_started_at) < 5000) return;
+  ui.retry_pending = true;
+  ui.retry_revision = revision;
+  ui.retry_started_at = esphome::millis();
   size_t size; uint32_t loaded_revision;
   uint8_t *packet = store.load(size, loaded_revision);
   if (size && !packet) return;  // Keep the old image and retry if allocation fails.
@@ -138,6 +161,7 @@ inline void wallpaper_tick() {
   ui.pixels = decoded.pixels;
   ui.revision = loaded_revision;
   ui.loaded = true;
+  ui.retry_pending = false;
   ui.image = {};
   if (ui.pixels) {
     ui.image.header.magic = LV_IMAGE_HEADER_MAGIC;
