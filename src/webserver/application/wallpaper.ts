@@ -314,7 +314,7 @@ export function buildWallpaperSettings(
       : "No wallpaper uploaded";
     updatePreview();
     status.textContent = buffer ? `Wallpaper saved (${new DataView(buffer).getUint32(4, true)} × ${new DataView(buffer).getUint32(8, true)}). Changes apply immediately.`
-      : "JPEG, PNG or WebP. Saved on this display; images are resized automatically. Changes apply immediately.";
+      : "";
   }
   async function load() {
     try {
