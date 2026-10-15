@@ -635,7 +635,7 @@ function composeApplicationContext(): ApplicationContext {
   });
   badgeRows = createBadgeRowFeature({
     document: dom.document, runtime, cards, native: nativePanelConfig,
-    deviceProfile: layout.deviceId,
+    deviceProfile: layout.deviceId, infoOnly: !!layout.config.infoOnly,
     codec: configurationCodec,
     fields, iconPicker, entities: entityState, shell,
     imageOptions: imageConfigurationOptions,

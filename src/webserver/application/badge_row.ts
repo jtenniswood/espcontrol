@@ -37,7 +37,7 @@ export interface BadgeRowFeature {
 
 export function createBadgeRowFeature(deps: {
   document: Document; runtime: UiRuntimeState; cards: CardRegistry;
-  native: NativePanelConfigController; deviceProfile: string;
+  native: NativePanelConfigController; deviceProfile: string; infoOnly?: boolean;
   codec: Pick<ConfigCodecFeature, "normalizeButtonConfig">;
   fields: ControlsFieldsFeature; iconPicker: ButtonSettingsIconPickerFeature;
   entities: Pick<EntityStateFeature, "entityInput">;
@@ -138,7 +138,7 @@ export function createBadgeRowFeature(deps: {
     if (bulkDraft && bulkDraft.page === pageIndex()) {
       for (const index of bulkDraft.indices) items[index] = bulkDraft.settings.apply(items[index]!);
     }
-    const badgeRowAvailable = state.badgeRowsSupported && state.badgeRowsReady;
+    const badgeRowAvailable = state.badgeRowsSupported && state.badgeRowsReady && !deps.infoOnly;
     els.previewScreen.classList.toggle("sp-has-badge-row", badgeRowAvailable && !badgesHidden);
     row.hidden = !badgeRowAvailable || badgesHidden;
     const group = document.createElement("div");
@@ -385,7 +385,7 @@ export function createBadgeRowFeature(deps: {
 
   function renderSelectionControl(container: HTMLElement) {
     ensureUi();
-    if (!state.badgeRowsSupported) return;
+    if (!state.badgeRowsSupported || deps.infoOnly) return;
     const control = button(badgesHidden ? "Show badges" : "Hide badges", () => {
       badgesHidden = !badgesHidden;
       deps.renderPreview();
@@ -648,7 +648,12 @@ export function createBadgeRowFeature(deps: {
       if (!current.card && configOptionValue(current.button.options, "badge_action") === "modal") {
         const configured = [...state.grid.filter(slot => slot > 0).map(slot => state.buttons[slot - 1]!),
           ...Object.values(state.subpages).flatMap((page: any) => (page.grid || []).filter((slot: number) => slot > 0).map((slot: number) => page.buttons[slot - 1]))];
-        if (!configured.some(card => card && card.type !== "badge" && card.entity === current.button.entity && ["light_control", "cover_modal", "climate", "fan_control", "option_select", "fan_preset", "media", "image", "alarm", "wifi_qr", "weather"].includes(resolveCardRuntimeSpec(card)?.driver || ""))) {
+        if (!configured.some(card => {
+          if (!card || card.type === "badge" || card.entity !== current.button.entity) return false;
+          const driver = resolveCardRuntimeSpec(card)?.driver || "";
+          if (driver === "weather") return card.type === "weather_forecast" || ["today", "tomorrow", "daily"].includes(card.precision);
+          return card.type === "fan_preset" || ["light_control", "cover_modal", "climate", "fan_control", "option_select", "media_control", "media_group", "media_volume", "media_cover_art", "image", "alarm", "wifi_qr"].includes(driver);
+        })) {
           shell.showBanner("Choose an entity belonging to a configured card with a control modal.", "error"); return;
         }
       }
