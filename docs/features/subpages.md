@@ -12,7 +12,7 @@ A Subpage card works like a folder. Tapping it on the panel opens a new page wit
 
 Opening any named subpage shows its label on the left of the clock bar, both on the panel and in the web editor preview, replacing the usual item there. Returning home restores that item.
 
-A subpage has one fewer usable slot than the home screen because it includes a **Back** card. Subpage cards on the home screen can show a small chevron marker so you can spot them easily. You can turn this marker on or off with **Screen: Subpage Chevron** in **Settings > Appearance > Clock Bar**.
+A subpage has one fewer usable slot than the home screen because it includes a **Back** card. Subpage cards on the home screen can show a small chevron marker so you can spot them easily. You can turn this marker on or off with **Screen: Subpage Chevron** in **Screen > Appearance > Clock Bar**.
 
 ## Setting Up a Subpage
 

@@ -8,7 +8,7 @@ description:
 
 Some Guition JC8012P4A1 (10.1") units ship with an IP5306-based battery add-on board. EspControl can show a battery icon in the top bar for these units, but the wiring (GPIO52, post-divider voltage range) is based on community and third-party BSP reports and has **not** been confirmed by the firmware maintainer. It may not work, or may read incorrectly, on every unit.
 
-Because of this, the feature is off by default and only appears in **Device > System > Battery** on JC8012P4A1 panels.
+Because of this, the feature is off by default and only appears in **System > Battery** on JC8012P4A1 panels.
 
 - **Enable battery support** - turns battery readings and the battery icon in the top bar on or off. While this setting is off, the "Battery" diagnostic entity in Home Assistant is unavailable. When enabled, its percentage is estimated from the raw ADC voltage using a linear approximation between an empty and full voltage.
 

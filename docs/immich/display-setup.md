@@ -30,7 +30,7 @@ Start with **Photo fit → Show full image** in the companion to keep the whole 
 ## Use the photo screensaver
 
 1. Open the EspControl panel's web setup page.
-2. Go to **Settings → Sleep & Schedule → Screensaver**.
+2. Go to **Screen → Sleep & Schedule → Screensaver**.
 3. Select **Timer** and choose an inactivity delay, or select **Sensor** and enter your Home Assistant presence sensor.
 4. Set **Then → Camera**. This option accepts both cameras and photo image entities.
 5. Enter the companion frame's `image.*` entity ID in **Camera Entity**.

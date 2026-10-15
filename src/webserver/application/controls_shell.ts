@@ -133,9 +133,9 @@ export function createControlsShellFeature(
         nav.className = "sp-nav";
         nav.setAttribute("aria-label", "Primary");
         var tabs: any = [
-            { id: "screen", label: "Screen" },
-            { id: "settings", label: "Settings" },
-            { id: "device", label: "Device" },
+            { id: "screen", label: "Layout" },
+            { id: "settings", label: "Screen" },
+            { id: "device", label: "System" },
         ];
         tabs.forEach(function (this: any, t?: any) {
             var tab: any = document.createElement("div");

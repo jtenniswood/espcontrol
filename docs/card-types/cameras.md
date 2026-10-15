@@ -13,7 +13,7 @@ Camera cards are display cards. They do not stream live video, pan the camera, o
 ::: info Display limits
 ESP32-P4 screens support up to six Camera or Media Cover Art cards. The 4-inch ESP32-S3 supports two shared image cards, allowing one Camera Card alongside one Media Cover Art card.
 
-On ESP32-P4 panels and the 4-inch ESP32-S3, the same `camera.*` and `image.*` entities can also be selected as the **Camera** screensaver action in **Settings > Sleep & Schedule > Screensaver**. That full-screen view is separate from the Camera-card pool, supports **Fit** (the whole image remains visible, with black space where needed) and **Fill** (the image covers the screen and may be cropped), and does not consume a Camera-card slot.
+On ESP32-P4 panels and the 4-inch ESP32-S3, the same `camera.*` and `image.*` entities can also be selected as the **Camera** screensaver action in **Screen > Sleep & Schedule > Screensaver**. That full-screen view is separate from the Camera-card pool, supports **Fit** (the whole image remains visible, with black space where needed) and **Fill** (the image covers the screen and may be cropped), and does not consume a Camera-card slot.
 
 :::
 
@@ -62,7 +62,7 @@ shares the expanded animation slot; the Cover Art screensaver shows a still
 frame. Memory availability can also limit loading, especially on the
 4-inch S3.
 
-If your Home Assistant instance uses a custom port, open **Device > System > Home Assistant Settings** and set **Home Assistant Port** to match it. Camera and image cards use this port when downloading snapshots.
+If your Home Assistant instance uses a custom port, open **System > Home Assistant Settings** and set **Home Assistant Port** to match it. Camera and image cards use this port when downloading snapshots.
 
 ## How It Works on the Panel
 

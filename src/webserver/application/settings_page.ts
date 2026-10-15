@@ -635,15 +635,15 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             idleCard,
             clockBarCard,
         ]);
+        appendSettingsSection(config, "Display", [
+            backlightCard,
+            rotationCard,
+        ]);
         appendSettingsSection(config, "Sleep & Schedule", [
             coverArtCard,
             screensaverCard,
             scheduleCard,
             screensaverPinCard,
-        ]);
-        appendSettingsSection(deviceConfig, "Display", [
-            backlightCard,
-            rotationCard,
         ]);
         appendSettingsSection(deviceConfig, "Preferences", [
             languageCard,

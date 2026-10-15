@@ -92,7 +92,7 @@ Yes, through a Home Assistant `image` entity. The separate Immich Companion mana
 
 ### How Do I Update the Firmware?
 
-Standard firmware offers **Auto Update** and **Check for Update** under **Device > System > Firmware**. Custom, Ethernet-only, and V3 installation paths have exceptions. Follow [Firmware Updates](/features/firmware-updates) for the correct method and release status.
+Standard firmware offers **Auto Update** and **Check for Update** under **System > Firmware**. Custom, Ethernet-only, and V3 installation paths have exceptions. Follow [Firmware Updates](/features/firmware-updates) for the correct method and release status.
 
 ### Will Automatic Updates Keep My Custom ESPHome YAML?
 
@@ -104,11 +104,11 @@ Mixed custom and stock firmware can change encryption behaviour. Keep the device
 
 ### Can I Rename a Panel Without Compiling Firmware?
 
-Yes. Use **Device > System > Device Name > Save & Restart**. Entity IDs stay unchanged, but hostname-based ESPHome action names change. Update affected automations. See [Naming Your Panel](/features/setup#naming-your-panel).
+Yes. Use **System > Device Name > Save & Restart**. Entity IDs stay unchanged, but hostname-based ESPHome action names change. Update affected automations. See [Naming Your Panel](/features/setup#naming-your-panel).
 
 ### Can I Back Up My Setup?
 
-Yes. Use **Export** and **Import** under **Device > System > Backup** to save cards and settings or copy a setup to another panel. Layouts adapt to different screen sizes. See [Backup and restore](/features/backup) for exclusions.
+Yes. Use **Export** and **Import** under **System > Backup** to save cards and settings or copy a setup to another panel. Layouts adapt to different screen sizes. See [Backup and restore](/features/backup) for exclusions.
 
 ### Can I Copy Just a Few Cards to Another Panel?
 
@@ -120,7 +120,7 @@ Yes. Home Assistant exposes a [Restart button](/features/setup#restart-from-home
 
 ### How Do I Reset the Device?
 
-Back up first, then use **Device > System > Factory Reset**. Partial reset keeps WiFi and the Home Assistant key; Complete reset clears them. Both retain firmware. Follow [Reset the display](/features/backup#reset-the-display).
+Back up first, then use **System > Factory Reset**. Partial reset keeps WiFi and the Home Assistant key; Complete reset clears them. Both retain firmware. Follow [Reset the display](/features/backup#reset-the-display).
 
 ### Can I Stay on Releases While Managing the Panel in ESPHome?
 
@@ -246,7 +246,7 @@ Power and measurement are separate hardware features. [Battery Status](/features
 
 ### Can I Use a 10-inch Display in Portrait Mode?
 
-Use **Device > Display > Rotation**. Available orientations depend on panel and firmware. Check the preview and usable card space after rotating. See [Rotation](/features/rotation).
+Use **Screen > Display > Rotation**. Available orientations depend on panel and firmware. Check the preview and usable card space after rotating. See [Rotation](/features/rotation).
 
 ### Does It Have a Room Temperature Sensor?
 
