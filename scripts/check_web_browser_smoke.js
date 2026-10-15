@@ -7719,6 +7719,14 @@ async function assertWallpaperPreviewLayout(browser, testCase) {
         return [(inner.left - outer.left) / screen.clientWidth, (inner.top - outer.top) / screen.clientWidth,
           parseFloat(getComputedStyle(grid).gap) / screen.clientWidth];
       });
+      if (!rotated && testCase.slug.includes("jc8012p4a1")) {
+        const packages = fs.readFileSync(path.join(ROOT, "devices", testCase.slug, "packages.yaml"), "utf8");
+        const nativeTop = Number(packages.match(/main_page_pad_top: "(\d+)"/)[1]);
+        const actualTop = await page.locator(".sp-screen").evaluate(screen =>
+          parseFloat(getComputedStyle(screen.querySelector(".sp-main")).top) / screen.clientWidth);
+        assert(Math.abs(actualTop - nativeTop / 1280) < .0001,
+          `${testCase.slug}: preview card top matches the device's ${nativeTop}px clock-bar reservation`);
+      }
       await page.getByRole("tab", {name: "Screen", exact: true}).click();
       const geometry = await page.locator(".sp-wallpaper-preview").evaluate(el => {
         const bounds = el.getBoundingClientRect();
