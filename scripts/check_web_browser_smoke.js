@@ -7384,21 +7384,30 @@ async function assertWeatherWidthScaling(browser) {
     for (const height of [120, 240]) {
       await page.locator('#weather').evaluate((card, value) => { card.style.height = value + 'px'; }, height);
       await page.waitForFunction(value => Math.abs(document.querySelector('#weather').getBoundingClientRect().height - value) < 1, height);
+      await page.evaluate(() => new Promise(requestAnimationFrame));
+      const grid = await page.locator('.sp-weather-days').evaluate(row => row.classList.contains('sp-weather-grid'));
       const columns = await page.locator('.sp-weather-day').evaluateAll(days => days
         .filter(day => getComputedStyle(day).display !== 'none').map(day => {
           const column = day.getBoundingClientRect();
           const [icon, weekday, temperature] = Array.from(day.children).map(child => child.getBoundingClientRect());
           return { left: column.left, top: column.top, bottom: column.bottom,
             iconLeft: icon.left, iconTop: icon.top, iconBottom: icon.bottom,
-            dayLeft: weekday.left, dayTop: weekday.top,
-            temperatureLeft: temperature.left, temperatureBottom: temperature.bottom };
+            dayLeft: weekday.left, dayTop: weekday.top, dayBottom: weekday.bottom,
+            temperatureLeft: temperature.left, temperatureTop: temperature.top, temperatureBottom: temperature.bottom };
         }));
       for (const column of columns) {
         assert([column.iconLeft, column.dayLeft, column.temperatureLeft].every(left => Math.abs(left - column.left) < 1),
           'Each forecast day aligns its icon and text to the left.');
-        assert(Math.abs(column.iconTop - column.top) < 1 && Math.abs(column.temperatureBottom - column.bottom) < 1,
-          'Forecast icons stay at the top and temperatures stay at the bottom as the card height changes.');
-        assert(column.dayTop - column.iconBottom > 10, 'Forecast text has open space above it.');
+        if (grid) {
+          assert(Math.abs((column.iconTop - column.top) - (column.bottom - column.temperatureBottom)) < 1,
+            'Multi-row forecasts center each icon and text group in its row.');
+          assert(column.dayTop - column.iconBottom >= 2, 'Grid forecast text stays below the icon.');
+        } else {
+          assert(Math.abs(column.iconTop - column.top) < 1 && Math.abs(column.temperatureBottom - column.bottom) < 1,
+            'Single-row forecasts keep icons at the top and temperatures at the bottom.');
+          assert(column.dayTop - column.iconBottom > 10, 'Forecast text has open space above it.');
+        }
+        assert(column.temperatureTop - column.dayBottom >= 5.9, 'Forecast days have breathing room before temperatures.');
       }
     }
     console.log('Daily forecast browser scaling passed: ' + counts.join(',') + ' complete columns.');
@@ -7476,11 +7485,15 @@ async function assertWeatherWidthScaling(browser) {
         },[columns,rows,list],{timeout:5000});
         const bounds=await page.locator('#weather').evaluate(card=>{
           const area=card.querySelector('.sp-weather-days').getBoundingClientRect();
-          return [...card.querySelectorAll('.sp-weather-day:not([hidden])')].every(day=>[...day.children].every(label=>{
-            const r=label.getBoundingClientRect();return r.left>=area.left-1 && r.top>=area.top-1 && r.right<=area.right+1 && r.bottom<=area.bottom+1;
-          }));
+          const scale=card.closest('.sp-screen').clientWidth/480;
+          return [...card.querySelectorAll('.sp-weather-day:not([hidden])')].every(day=>{
+            const label=day.children[1].getBoundingClientRect(),temperature=day.children[2].getBoundingClientRect();
+            return temperature.top-label.bottom>=5.9*scale && [...day.children].every(label=>{
+              const r=label.getBoundingClientRect();return r.left>=area.left-1 && r.top>=area.top-1 && r.right<=area.right+1 && r.bottom<=area.bottom+1;
+            });
+          });
         });
-        assert(bounds,`${wide}w ${tall}h forecast content fits at preview width ${previewWidth}`);
+        assert(bounds,`${wide}w ${tall}h forecast content fits with a day/temperature gap at preview width ${previewWidth}`);
         if(wide===1 && tall>1){
           assert.deepEqual(await page.locator('#weather .sp-weather-day:not([hidden])>span:nth-child(2)').allTextContents(),
             ['Today','Tues','Weds'].slice(0,rows),'Narrow stacked cards show consecutive days without skipping entries');

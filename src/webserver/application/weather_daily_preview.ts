@@ -47,19 +47,20 @@ export function createWeatherDailyPreviewLayout(
             measured = Math.max(measured, temperatureWidth);
         }
         const fontHeight = fontHeightFor(nativeFontSize);
+        const textGap = 6;
         const gap = Math.max(8, fontHeight);
         const rowGap = Math.max(8, Math.floor(fontHeight / 2));
         const listGap = Math.max(8, Math.floor(fontHeight / 3));
         const width = Math.floor((card.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)) / scale);
         const height = Math.floor((card.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)) / scale);
         const plan = planWeatherCardLayout(width, height, measured + 24,
-            iconSize + fontHeight + temperatureHeight + 4, iconSize + listGap + temperatureWidth,
-            Math.max(iconSize, fontHeight + temperatureHeight + 2), gap, rowGap, days.length);
+            iconSize + fontHeight + temperatureHeight + 2 + textGap, iconSize + listGap + temperatureWidth,
+            Math.max(iconSize, fontHeight + temperatureHeight + textGap), gap, rowGap, days.length);
         const grid = !plan.list && plan.rows > 1;
         const iconGap = grid ? Math.min(Math.max(6, Math.floor(fontHeight / 3)),
             Math.floor((height - rowGap * (plan.rows - 1)) / plan.rows)
-                - iconSize - fontHeight - temperatureHeight - 2) : 2;
-        const groupHeight = iconSize + iconGap + fontHeight + temperatureHeight + 2;
+                - iconSize - fontHeight - temperatureHeight - textGap) : 2;
+        const groupHeight = iconSize + iconGap + fontHeight + temperatureHeight + textGap;
         const gridRowGap = grid ? Math.min(Math.max(rowGap, fontHeight),
             Math.floor((height - groupHeight * plan.rows) / (plan.rows - 1))) : rowGap;
         row.classList.toggle("sp-weather-list", plan.list);
@@ -69,12 +70,12 @@ export function createWeatherDailyPreviewLayout(
         row.style.columnGap = (gap * scale) + "px";
         row.style.rowGap = (gridRowGap * scale) + "px";
         row.style.setProperty("--weather-list-gap", (listGap * scale) + "px");
-        row.style.setProperty("--weather-icon-gap", ((iconGap - 2) * scale) + "px");
+        row.style.setProperty("--weather-icon-gap", ((iconGap - textGap) * scale) + "px");
         card.dataset.weatherColumns = String(plan.columns);
         card.dataset.weatherRows = String(plan.rows);
         days.forEach((day, index) => {
             day.hidden = index >= plan.count;
-            day.style.gap = (2 * scale) + "px";
+            day.style.gap = (textGap * scale) + "px";
             const label = day.children[1] as HTMLElement | undefined;
             if (!label) return;
             const fullLabel = label.dataset.weatherFullLabel || label.textContent || "";

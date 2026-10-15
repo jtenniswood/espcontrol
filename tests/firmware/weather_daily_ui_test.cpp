@@ -161,7 +161,7 @@ void check_card_fit(const WeatherDailyCard *card){
     for(const auto *label:{column.icon,column.day,column.high}){
       assert(label->x>=0 && label->y>=0 && label->x+label->width<=card->width && label->y+label->height<=height);
     }
-    assert(column.day->y+column.day->height<=column.high->y);
+    assert(column.high->y-column.day->y-column.day->height>=6);
     if(card->layout.list)assert(column.icon->x+column.icon->width<=column.day->x);
     else {
       assert(column.icon->y+column.icon->height<=column.day->y);
@@ -270,7 +270,7 @@ int main(){
       assert(col.icon->text_align==LV_TEXT_ALIGN_LEFT && col.day->text_align==LV_TEXT_ALIGN_LEFT && col.high->text_align==LV_TEXT_ALIGN_LEFT);
       assert(col.icon->x==col.day->x && col.day->x==col.high->x);
       assert(col.high->text_color==owner->text_color && col.high->text_opa==LV_OPA_70 && (col.high->flags & LV_OBJ_FLAG_USER_2));
-      assert(col.icon->y==0 && col.day->y+col.day->height+2==col.high->y);
+      assert(col.icon->y==0 && col.day->y+col.day->height+6==col.high->y);
       assert(col.high->y+col.high->height==card->height);
     }
     theme.text_primary=0x333333;theme.text_muted=0x606060;emit(owner,LV_EVENT_STYLE_CHANGED);

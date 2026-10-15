@@ -114,6 +114,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   lv_obj_clear_flag(card->root, LV_OBJ_FLAG_HIDDEN);
   const int font_height = lv_font_get_line_height(card->font);
   const int temperature_height = font_height;
+  const int text_gap = 6;
   const int day_gap = weather_daily_day_gap(card->font);
   const int icon_height = lv_font_get_line_height(card->icon_font);
   const size_t available_days = card->view == WeatherForecastView::DAILY ? forecast.count : 1;
@@ -122,7 +123,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   const int caption_height = card->source->stale ? font_height + 2 : 0;
   const int content_height = std::max(1, height - caption_height);
   const int row_gap = std::max(8, font_height / 2), list_gap = std::max(8, font_height / 3);
-  const int minimum_height = icon_height + font_height + temperature_height + 4;
+  const int minimum_height = icon_height + font_height + temperature_height + 2 + text_gap;
   int list_text_width = 0;
   for (size_t i = first; i < first + available_days; ++i) {
     lv_point_t measured;
@@ -132,12 +133,12 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   }
   const auto layout = espcontrol::weather::card_layout(width, content_height, minimum_day_width,
     minimum_height, icon_height + list_gap + list_text_width,
-    std::max(icon_height, font_height + temperature_height + 2), day_gap, row_gap, available_days);
+    std::max(icon_height, font_height + temperature_height + text_gap), day_gap, row_gap, available_days);
   const bool grid = !layout.list && layout.rows > 1;
   const int icon_gap = grid ? std::min(std::max(6, font_height / 3),
     (content_height - row_gap * static_cast<int>(layout.rows - 1)) / static_cast<int>(layout.rows)
-      - icon_height - font_height - temperature_height - 2) : 2;
-  const int group_height = icon_height + icon_gap + font_height + temperature_height + 2;
+      - icon_height - font_height - temperature_height - text_gap) : 2;
+  const int group_height = icon_height + icon_gap + font_height + temperature_height + text_gap;
   // Group each icon with its text; use spare height to separate whole rows.
   const int grid_row_gap = grid ? std::min(std::max(row_gap, font_height),
     (content_height - group_height * static_cast<int>(layout.rows)) / static_cast<int>(layout.rows - 1)) : row_gap;
@@ -179,14 +180,14 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
       : grid ? (cell_height - group_height) / 2 : 0);
     const int text_x = x + (layout.list ? icon_height + list_gap : 0);
     const int text_width = cell_width - (text_x - x);
-    const int text_top = layout.list ? y + (cell_height - font_height - temperature_height - 2) / 2
+    const int text_top = layout.list ? y + (cell_height - font_height - temperature_height - text_gap) / 2
       : grid ? icon_y + icon_height + icon_gap
-      : y + std::max(icon_height + 2, cell_height - temperature_height - font_height - 2);
+      : y + std::max(icon_height + 2, cell_height - temperature_height - font_height - text_gap);
     lv_obj_set_width(col.icon, layout.list ? icon_height : cell_width);
     lv_obj_set_pos(col.icon, x, icon_y);
     lv_obj_set_width(col.day, text_width); lv_obj_set_width(col.high, text_width);
     lv_obj_set_pos(col.day, text_x, text_top);
-    lv_obj_set_pos(col.high, text_x, text_top + font_height + 2);
+    lv_obj_set_pos(col.high, text_x, text_top + font_height + text_gap);
     std::string date = card->view == WeatherForecastView::TOMORROW
       ? espcontrol_i18n(std::string("Tomorrow")) : weather_daily_date_label(day, forecast);
     if (layout.list) {
