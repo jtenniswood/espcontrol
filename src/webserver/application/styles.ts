@@ -57,6 +57,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-clockbar-editable .sp-clockbar-custom,.sp-clockbar-editable .sp-clockbar-subpage-title{position:absolute;top:50%;transform:translateY(-50%);max-width:35%;padding:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:var(--btn-label);color:var(--preview-clockbar-text)}" +
         ".sp-clockbar-editable .sp-clockbar-subpage-title{max-width:none}" +
         ".sp-clockbar-custom>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
+        ".sp-clockbar-custom{gap:4px}.sp-clockbar-custom>.sp-clockbar-sensor-icon{flex:none;overflow:visible}.sp-clockbar-custom>.sp-clockbar-value{min-width:0}" +
         ".sp-clockbar-section.sp-clockbar-drop{background:var(--accent-soft);outline:1px dashed var(--accent)}" +
         ".sp-clockbar-custom.sp-clockbar-insert{border-left:3px solid var(--accent)}" +
         ".sp-clockbar-left{justify-content:flex-start}.sp-clockbar-middle{justify-content:center}.sp-clockbar-right{justify-content:flex-end}" +

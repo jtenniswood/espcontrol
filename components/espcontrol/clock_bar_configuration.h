@@ -35,6 +35,12 @@ inline bool parse(const std::string &value, std::vector<Element> &output) {
       for (char c : item.id) if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_' && c != '-') return false;
       item.precision = raw["precision"].as<int>();
       if (item.precision < 0 || item.precision > 3) return false;
+      if (!raw["icon"].isUnbound()) {
+        if (!raw["icon"].is<const char *>()) return false;
+        const JsonString icon = raw["icon"].as<JsonString>();
+        item.icon.assign(icon.c_str(), icon.size());
+        if (item.icon.size() > 48 || item.icon.find('\0') != std::string::npos) return false;
+      }
       for (const auto &other : items) if (other.id == item.id) return false;
       items.push_back(std::move(item));
     }

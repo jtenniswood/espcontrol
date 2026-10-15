@@ -7531,15 +7531,26 @@ async function assertEditableClockBar(browser, testCase) {
     await page.locator("[data-clockbar-add]").click();
     await page.locator("#sp-clockbar-add-type").selectOption("humidity");
     await page.locator("#sp-clockbar-entity").fill("sensor.room_humidity");
+    await page.locator("#sp-clockbar-icon").fill("Water Percent");
+    await page.locator(".sp-icon-dropdown").getByText("Water Percent", { exact: true }).click();
     await page.locator(".sp-settings-overlay").getByRole("button", { name: "Add element", exact: true }).click();
     await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
     const humidity = clockBar.layout.items.find(item => item.type === "humidity");
     assert(humidity, "humidity is saved as an explicit sensor type");
+    assert.equal(humidity.icon, "Water Percent", "sensor icon is saved with the element");
+    const humidityItem = page.locator(`[data-clockbar-item="${humidity.id}"]`);
+    assert.equal(await humidityItem.locator('.sp-clockbar-sensor-icon.mdi-water-percent').count(), 1);
+    assert(await humidityItem.evaluate(element => {
+      const icon = element.querySelector('.sp-clockbar-sensor-icon').getBoundingClientRect();
+      const text = element.querySelector('.sp-clockbar-value').getBoundingClientRect();
+      return icon.right <= text.left && text.right <= element.getBoundingClientRect().right + 1;
+    }), "sensor icon sits to the left of the reading without overlap");
     assert(JSON.stringify(clockBar.layout).length > 255, "complete layout exceeds the old text setting limit");
     await page.locator(`[data-clockbar-item="${humidity.id}"]`).click();
     await page.getByRole("button", { name: "Duplicate", exact: true }).click();
     await page.waitForSelector("#sp-clockbar-group");
     const duplicate = clockBar.layout.items.filter(item => item.type === "humidity").at(-1);
+    assert.equal(duplicate.icon, "Water Percent", "duplicating a sensor preserves its icon");
     await page.locator("#sp-clockbar-group").selectOption("right");
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await page.waitForFunction(id => document.querySelector(`[data-clockbar-item="${id}"]`)?.dataset.clockbarSection === "right", duplicate.id);
@@ -7549,9 +7560,11 @@ async function assertEditableClockBar(browser, testCase) {
     await page.locator(".sp-selection-bar").getByRole("button", { name: "Add element", exact: true }).click();
     await page.locator("#sp-clockbar-source").selectOption("local");
     await page.locator("#sp-clockbar-entity").fill("room_temp");
+    await page.locator("#sp-clockbar-icon").fill("Thermometer");
+    await page.locator(".sp-icon-dropdown").getByText("Thermometer", { exact: true }).click();
     await page.locator(".sp-settings-overlay").getByRole("button", { name: "Add element", exact: true }).click();
     await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
-    assert(clockBar.layout.items.some(item => item.source === "local" && item.entity === "room_temp"));
+    assert(clockBar.layout.items.some(item => item.source === "local" && item.entity === "room_temp" && item.icon === "Thermometer"));
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await seedNativeDocument(page, nativeState);
@@ -7560,6 +7573,9 @@ async function assertEditableClockBar(browser, testCase) {
     // A failed save must leave the existing preview and configuration intact.
     await page.locator(`[data-clockbar-item="${humidity.id}"]`).click();
     await page.getByRole("button", { name: "Edit", exact: true }).click();
+    assert.equal(await page.locator("#sp-clockbar-icon").inputValue(), "Water Percent", "reload and edit restore the selected icon");
+    await page.locator("#sp-clockbar-icon").fill("None");
+    await page.locator(".sp-icon-dropdown").getByText("None", { exact: true }).click();
     clockBar.failSave = true;
     await page.locator("#sp-clockbar-label").fill("Failed edit");
     await page.getByRole("button", { name: "Save", exact: true }).click();
@@ -7568,6 +7584,8 @@ async function assertEditableClockBar(browser, testCase) {
     clockBar.failSave = false;
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
+    assert.equal(clockBar.layout.items.find(item => item.id === humidity.id).icon, "", "None removes the sensor icon");
+    assert.equal(await humidityItem.locator('.sp-clockbar-sensor-icon').count(), 0);
     await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
     await page.waitForSelector(".sp-clockbar-subpage-title");
     assert.equal(await page.locator('.sp-clockbar-left [data-clockbar-item]:visible').count(), 0, "subpage title replaces left elements");

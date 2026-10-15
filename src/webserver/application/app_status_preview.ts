@@ -1,5 +1,6 @@
 import { CLOCK_BAR_CATALOG, isClockBarSensor } from "../model/clock_bar";
 import { placeClockBarItems } from "../model/clock_bar_layout";
+import { mdiIcon } from "./ui_primitives";
 import { state } from "../state/app_instance";
 import { normalizeBrightnessMode } from "../model/settings";
 import type { UiRuntimeState } from "./state";
@@ -274,6 +275,7 @@ export function createAppStatusPreviewFeature(runtime: UiRuntimeState, core: Cor
             element.setAttribute("aria-label", clockBarItemLabel(item.id));
             const content = document.createElement("span");
             if (isClockBarSensor(item.type)) {
+                if (item.icon) element.appendChild(mdiIcon(item.icon, "sp-clockbar-sensor-icon mdi"));
                 content.textContent = (item.label ? item.label + " " : "") + (item.entity ? CLOCK_BAR_CATALOG[item.type].sample : "--") + item.unit;
                 content.className = "sp-clockbar-value";
             } else if (item.type === "time") {
@@ -297,7 +299,9 @@ export function createAppStatusPreviewFeature(runtime: UiRuntimeState, core: Cor
                 const element = els.clockBarItems[item.id];
                 element.style.display = "";
                 element.style.width = "";
-                const desired = Math.min(width * .35, Math.max(28, (element.firstElementChild?.scrollWidth || element.scrollWidth) + 4));
+                const children = Array.from(element.children) as HTMLElement[];
+                const contentWidth = children.reduce((sum, child) => sum + child.scrollWidth, 0);
+                const desired = Math.min(width * .35, Math.max(28, contentWidth + (children.length > 1 ? 4 : 0) + 4));
                 return { id: item.id, group: item.group, width: desired };
             });
             if (title) { title.style.width = ""; title.style.display = ""; }

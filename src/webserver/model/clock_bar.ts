@@ -1,3 +1,5 @@
+import { GENERATED_ICON_NAMES } from "../generated/icons";
+
 /** Compact clock bar elements. Catalogue entries can be added without changing the editor. */
 export const CLOCK_BAR_CATALOG = {
   temperature: { label: "Temperature", unit: "°", sample: "21.5", precision: 1 },
@@ -24,6 +26,7 @@ export interface ClockBarElement {
   label: string;
   unit: string;
   precision: number;
+  icon?: string;
 }
 export interface ClockBarLayout { version: 1; items: ClockBarElement[] }
 export const CLOCK_BAR_MAX_ITEMS = 12;
@@ -49,11 +52,14 @@ export function parseClockBarLayout(value: unknown): ClockBarLayout | null {
         !Object.hasOwn(CLOCK_BAR_CATALOG, item.type) || !["left", "middle", "right"].includes(item.group) ||
         !["ha", "local"].includes(item.source) || typeof item.entity !== "string" || item.entity.length > 120 ||
         typeof item.label !== "string" || item.label.length > 32 || typeof item.unit !== "string" || item.unit.length > 12 ||
-        !Number.isInteger(item.precision) || item.precision < 0 || item.precision > 3)
+        !Number.isInteger(item.precision) || item.precision < 0 || item.precision > 3 ||
+        (item.icon !== undefined && (typeof item.icon !== "string" || item.icon.length > 48 ||
+          (item.icon !== "" && !GENERATED_ICON_NAMES.includes(item.icon)))))
       throw new Error("Invalid clock bar element");
     ids.add(item.id);
     return { id: item.id, type: item.type, group: item.group, source: item.source, entity: item.entity,
-      label: item.label, unit: item.unit, precision: item.precision };
+      label: item.label, unit: item.unit, precision: item.precision,
+      ...(item.icon === undefined ? {} : { icon: item.icon }) };
   });
   const result: ClockBarLayout = { version: 1, items };
   if (new TextEncoder().encode(JSON.stringify(result)).length > CLOCK_BAR_MAX_BYTES)

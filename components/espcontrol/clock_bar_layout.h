@@ -9,6 +9,7 @@ constexpr size_t MAX_BYTES = 4096;
 struct Element {
   std::string id, type, group, source, entity, label, unit;
   int precision = 0;
+  std::string icon;
 };
 inline bool sensor_type(const std::string &type) {
   for (const char *name : {"temperature", "humidity", "battery", "power", "energy", "illuminance", "pressure", "co2"})

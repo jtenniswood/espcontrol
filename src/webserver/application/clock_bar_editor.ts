@@ -3,6 +3,8 @@ import { CLOCK_BAR_CATALOG, CLOCK_BAR_MAX_ITEMS, createClockBarElement, isClockB
   type ClockBarElement, type ClockBarGroup, type ClockBarType } from "../model/clock_bar";
 import type { ClockBarFeature } from "./clock_bar_state";
 import type { UiRuntimeState } from "./state";
+import { createButtonSettingsIconPickerFeature } from "./button_settings_icon_picker";
+import { iconOptions, mdiIcon } from "./ui_primitives";
 
 export function createClockBarEditor(runtime: UiRuntimeState, clockBar: ClockBarFeature, dependencies: {
   entityInput(id: string, value: string, placeholder: string, domains: string[]): HTMLInputElement;
@@ -50,12 +52,24 @@ export function createClockBarEditor(runtime: UiRuntimeState, clockBar: ClockBar
     const localList = document.createElement("datalist"); localList.id = "sp-clockbar-local-sensors"; panel.appendChild(localList);
     let localSensors: { key: string; name: string; unit?: string; type: string }[] = [];
     const label = text("sp-clockbar-label", draft.label, 32); const labelField = field("Short label (optional)", label);
+    let selectedIcon = draft.icon || "";
+    const iconPicker = document.createElement("div"); iconPicker.className = "sp-icon-picker";
+    iconPicker.appendChild(mdiIcon(selectedIcon || "None", "sp-icon-picker-preview mdi"));
+    const iconInput = text("sp-clockbar-icon", selectedIcon || "None", 48);
+    iconInput.className = "sp-icon-picker-input"; iconInput.placeholder = "Search icons…"; iconInput.autocomplete = "off";
+    const iconDropdown = document.createElement("div"); iconDropdown.className = "sp-icon-dropdown";
+    iconPicker.append(iconInput, iconDropdown);
+    const iconField = field("Icon (optional)", iconPicker);
+    iconField.querySelector("label")!.htmlFor = iconInput.id;
+    createButtonSettingsIconPickerFeature(document, () => {}).init(iconPicker, selectedIcon || "None", icon => {
+      selectedIcon = icon === "None" ? "" : icon;
+    }, ["None", ...iconOptions.filter(icon => icon !== "Auto")]);
     const unit = text("sp-clockbar-unit", draft.unit, 12); const unitField = field("Unit", unit);
     const precision = select("sp-clockbar-precision", [["0", "0"], ["1", "1"], ["2", "2"], ["3", "3"]], String(draft.precision));
     const precisionField = field("Decimal places", precision);
     function updateFields(changeSource = false) {
       const sensor = isClockBarSensor(type.value as ClockBarType);
-      for (const wrapper of [sourceField, entityField, labelField, unitField, precisionField]) wrapper.hidden = !sensor;
+      for (const wrapper of [sourceField, entityField, labelField, iconField, unitField, precisionField]) wrapper.hidden = !sensor;
       if (changeSource) {
         const next = source.value === "local" ? text("sp-clockbar-entity", "", 120) : dependencies.entityInput("sp-clockbar-entity", "", "sensor.room_temperature", ["sensor"]);
         entity.replaceWith(next); entity = next;
@@ -90,11 +104,11 @@ export function createClockBarEditor(runtime: UiRuntimeState, clockBar: ClockBar
       if (!selected && layout.items.length >= CLOCK_BAR_MAX_ITEMS) { showError("A clock bar supports up to 12 elements."); return; }
       if (label.value.length > 32 || unit.value.length > 12) { showError("Shorten the label or unit before saving."); return; }
       const next: ClockBarElement = { ...draft, type: type.value as ClockBarType, group: group.value as ClockBarGroup,
-        source: source.value as "ha" | "local", entity: entity.value.trim(), label: label.value.trim(), unit: unit.value, precision: Number(precision.value) };
+        source: source.value as "ha" | "local", entity: entity.value.trim(), label: label.value.trim(), unit: unit.value, precision: Number(precision.value), icon: selectedIcon };
       if (isClockBarSensor(next.type) && (!next.entity || (next.source === "ha" && !/^sensor\.[a-z0-9_]+$/.test(next.entity)))) {
         showError(next.source === "ha" ? "Choose a sensor entity before saving." : "Choose a local sensor or enter its object_id."); return;
       }
-      if (!isClockBarSensor(next.type)) { next.entity = ""; next.label = ""; next.unit = ""; next.source = "ha"; next.precision = 0; }
+      if (!isClockBarSensor(next.type)) { next.entity = ""; next.label = ""; next.unit = ""; next.source = "ha"; next.precision = 0; delete next.icon; }
       save.disabled = true;
       try {
         const current = clockBar.layout();

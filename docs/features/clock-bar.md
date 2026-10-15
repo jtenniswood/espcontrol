@@ -26,7 +26,7 @@ Long readings are truncated. When the bar is full, middle elements are omitted f
 - **Night mode:** shows a moon while the [Night Schedule](/features/screen-schedule) is in its night period. Its space closes up when inactive.
 - **Device battery status:** available on battery-capable hardware.
 
-Sensor elements support a short optional label, unit suffix and decimal places. Set the unit to match the sensor's reading; changing the suffix does not convert its value. All styling follows the panel theme. Missing or unavailable readings show `--`.
+Sensor elements support an optional icon, short label, unit suffix and decimal places. Choose an icon using the same searchable picker as cards; it appears to the left of the label and reading. Choose **None** to remove it. Set the unit to match the sensor's reading; changing the suffix does not convert its value. All styling follows the panel theme. Missing or unavailable readings show `--`.
 
 A bar supports up to 12 elements, including duplicates. Every built-in element can be deleted and added again. If you delete every connectivity/settings element, add one back through the web editor to restore that settings entry point on the panel.
 

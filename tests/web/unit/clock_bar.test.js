@@ -20,6 +20,19 @@ test("clock bar rejects unsupported versions, duplicate IDs, unknown types and i
     assert.throws(() => model.parseClockBarLayout(value));
   }
 });
+test("sensor icons are optional, survive round trips and reject malformed or unknown choices", () => {
+  const sensor = item(); sensor.icon = "Thermometer";
+  const value = { version: 1, items: [sensor] };
+  assert.deepEqual(model.parseClockBarLayout(JSON.stringify(value)), value);
+  assert.equal(model.parseClockBarLayout({ version: 1, items: [{ ...sensor, icon: "" }] }).items[0].icon, "");
+  const legacy = item();
+  assert.deepEqual(model.parseClockBarLayout({ version: 1, items: [legacy] }).items[0], legacy);
+  for (const icon of [null, 42, "Unknown Icon", "x".repeat(49), "Thermometer\0"])
+    assert.throws(() => model.parseClockBarLayout({ version: 1, items: [{ ...sensor, icon }] }));
+  const duplicate = { ...sensor, id: "copy" };
+  const moved = model.moveClockBarElement({ version: 1, items: [sensor, duplicate] }, duplicate.id, "right");
+  assert.equal(moved.items.find(i => i.id === duplicate.id).icon, "Thermometer");
+});
 test("moving elements inserts within and between groups without losing duplicate types", () => {
   const a = item(), b = item("humidity", "left", [a]), c = item("network", "right", [a, b]);
   let layout = model.moveClockBarElement({ version: 1, items: [a, b, c] }, b.id, "right", c.id);

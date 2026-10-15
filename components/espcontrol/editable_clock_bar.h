@@ -7,7 +7,12 @@
 // Included after button_grid.h: uses its shared HA binding and numeric parsing helpers.
 namespace espcontrol::clockbar {
 constexpr uint32_t SUBSCRIPTION_SCOPE = 1u << 4;
-struct Widget { Element config; lv_obj_t *box = nullptr; lv_obj_t *label = nullptr; float value = NAN; };
+struct Widget {
+  Element config;
+  lv_obj_t *box = nullptr, *label = nullptr, *sensor_icon = nullptr;
+  int sensor_icon_width = 0;
+  float value = NAN;
+};
 struct Runtime {
   std::string serialized;
   std::vector<Widget> widgets;
@@ -90,6 +95,11 @@ inline void rebuild(const std::string &serialized, const std::vector<Element> &i
     lv_obj_clear_flag(widget.label, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_width(widget.label, lv_pct(100));
     lv_obj_align(widget.label, LV_ALIGN_CENTER, 0, 0);
+    if (sensor_type(item.type) && !item.icon.empty()) {
+      widget.sensor_icon = lv_label_create(widget.box);
+      lv_obj_clear_flag(widget.sensor_icon, LV_OBJ_FLAG_CLICKABLE);
+      lv_label_set_display_text(widget.sensor_icon, find_icon(item.icon.c_str()));
+    }
     if (item.type == "network") {
       lv_obj_add_flag(widget.box, LV_OBJ_FLAG_CLICKABLE);
       lv_obj_add_event_cb(widget.box, [](lv_event_t *) {
@@ -108,6 +118,21 @@ inline int text_width(lv_obj_t *label, const std::string &text) {
   lv_text_get_size(&size, text.c_str(), lv_obj_get_style_text_font(label, LV_PART_MAIN),
                   lv_obj_get_style_text_letter_space(label, LV_PART_MAIN), 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
   return size.x;
+}
+inline int sensor_icon_prefix(Widget &widget, lv_obj_t *prototype, int height) {
+  if (!widget.sensor_icon) return 0;
+  const lv_font_t *font = lv_obj_get_style_text_font(prototype, LV_PART_MAIN);
+  lv_obj_set_style_text_font(widget.sensor_icon, font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(widget.sensor_icon, lv_obj_get_style_text_color(widget.label, LV_PART_MAIN), LV_PART_MAIN);
+  widget.sensor_icon_width = text_width(widget.sensor_icon, lv_label_get_text(widget.sensor_icon));
+  lv_obj_set_size(widget.sensor_icon, widget.sensor_icon_width, std::min(height, static_cast<int>(lv_font_get_line_height(font))));
+  lv_obj_align(widget.sensor_icon, LV_ALIGN_LEFT_MID, 0, 0);
+  return widget.sensor_icon_width + 4;
+}
+inline void size_content(Widget &widget, int width) {
+  const int prefix = widget.sensor_icon ? widget.sensor_icon_width + 4 : 0;
+  lv_obj_set_width(widget.label, std::max(0, width - prefix));
+  lv_obj_align(widget.label, prefix ? LV_ALIGN_LEFT_MID : LV_ALIGN_CENTER, prefix, 0);
 }
 inline void refresh(bool visible) {
   auto &state = runtime();
@@ -158,7 +183,8 @@ inline void refresh(bool visible) {
     lv_obj_set_style_text_color(widget.label, lv_obj_get_style_text_color(prototype, LV_PART_MAIN), LV_PART_MAIN);
     lv_obj_set_style_text_align(widget.label, icon ? LV_TEXT_ALIGN_CENTER : LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     lv_label_set_display_text(widget.label, text.c_str());
-    const int desired = std::min(max_item_width, std::max(icon ? 44 : 24, text_width(widget.label, text) + (icon ? 12 : 2)));
+    const int prefix = sensor_icon_prefix(widget, state.network, state.height);
+    const int desired = std::min(max_item_width, std::max(icon ? 44 : 24, text_width(widget.label, text) + prefix + (icon ? 12 : 2)));
     measured.push_back({index, item.group, desired});
   }
   const auto &title = clock_bar_left_title();
@@ -182,6 +208,7 @@ inline void refresh(bool visible) {
   for (const auto &placement : layout.items) {
     auto &widget = state.widgets[placement.index];
     lv_obj_set_size(widget.box, placement.width, state.height);
+    size_content(widget, placement.width);
     lv_obj_align(widget.box, LV_ALIGN_TOP_LEFT, margin + placement.x, 0);
     clock_bar_set_widget_hidden(widget.box, false);
   }
