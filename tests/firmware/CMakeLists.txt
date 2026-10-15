@@ -32,6 +32,9 @@ add_test(NAME wallpaper_card_opacity_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wallpaper_card_opacity_test.py)
 
+add_test(NAME wallpaper_lifecycle_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wallpaper_lifecycle_test.py)
+
 add_test(NAME wallpaper_background_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wallpaper_background_test.py)
 
