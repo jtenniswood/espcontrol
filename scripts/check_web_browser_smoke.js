@@ -2887,6 +2887,9 @@ async function assertContextColourPicker(browser, testCase) {
       await trigger.hover();
       await menu.getByRole("group", { name: "Card colour presets", exact: true }).waitFor();
       assert.strictEqual(await trigger.getAttribute("aria-expanded"), "true");
+      assert.strictEqual(await trigger.locator(".mdi-palette").count(), 1, `${label}: Change Colour uses the palette icon`);
+      assert.strictEqual(await menu.getByText(/^Card Colours?$/, { exact: true }).count(), 0,
+        `${label}: the colour panel has no redundant title`);
       assert(await trigger.evaluate(el => !["none", "normal", '""'].includes(getComputedStyle(el, "::after").content)),
         `${label}: Change Colour shows a submenu chevron`);
       assert(await menu.locator(":scope > .sp-ctx-item").count() > 0,
@@ -2939,7 +2942,8 @@ async function assertContextColourPicker(browser, testCase) {
 
       await card(2).click({ modifiers: ["ControlOrMeta"] });
       await openPicker(card(1));
-      assert.strictEqual(await menu.getByText("Card Colours", { exact: true }).count(), 1);
+      assert.strictEqual(await menu.locator('.sp-card-color-preset[aria-pressed="true"]').count(), 0,
+        `${label}: mixed card backgrounds leave all presets unselected`);
       await menu.locator('[data-color="64AD54"]').click();
       await waitForSaved(() => [1, 2].every(slot => storedButton(slot)?.includes("card_off_color=64AD54")));
       assert(storedButton(2).includes("sensor.energy"), `${label}: bulk recolour keeps card configuration`);

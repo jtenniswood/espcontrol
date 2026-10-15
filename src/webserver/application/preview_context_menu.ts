@@ -171,7 +171,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         trigger.setAttribute("aria-label", "Change Colour");
         trigger.setAttribute("aria-haspopup", "true");
         trigger.setAttribute("aria-expanded", "false");
-        trigger.appendChild(mdiIcon("eyedropper"));
+        trigger.appendChild(mdiIcon("palette"));
         trigger.appendChild(document.createTextNode("Change Colour"));
         const submenu = createColourPicker(colourSlots);
         item.append(trigger, submenu);
@@ -240,10 +240,6 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         }
         const submenu = document.createElement("div");
         submenu.className = "sp-ctx-submenu sp-ctx-colours";
-        const title = document.createElement("div");
-        title.className = "sp-ctx-colour-title";
-        title.textContent = slots.length > 1 ? "Card Colours" : "Card Colour";
-        submenu.appendChild(title);
         const firstColour = colour(slots[0]!);
         const selectedColour = slots.every(slot => colour(slot) === firstColour) ? firstColour : "";
         submenu.appendChild(createColorSwatches(selectedColour, saveColour, "Card colour presets"));

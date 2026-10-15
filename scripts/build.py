@@ -84,7 +84,7 @@ WEB_FIXED_MDI_ICON_CODEPOINTS = {
     "information-outline": "F02FD", "keyboard-return": "F0311", "label": "F0315", "lightbulb-on": "F06E8",
     "link": "F0337", "loading": "F0772", "map-clock": "F0D1E", "map-marker-path": "F0D20",
     "map-marker-question": "F0F07", "movie": "F0381", "movie-open": "F0FCE", "network": "F06F3",
-    "note": "F039A", "numeric": "F03A0", "pencil": "F03EB", "plex": "F06BA", "podcast": "F0994",
+    "note": "F039A", "numeric": "F03A0", "palette": "F03D8", "pencil": "F03EB", "plex": "F06BA", "podcast": "F0994",
     "post": "F1008", "restore": "F099B", "script": "F0BC1", "script-text-play": "F1727",
     "security": "F0483", "select": "F0485", "spotify": "F04C7", "svg": "F0721", "switch": "F04E4", "sync": "F04E6",
     "tab": "F04E9", "target": "F04FE", "text": "F09A8", "timer": "F13AB",

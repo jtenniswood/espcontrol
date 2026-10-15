@@ -598,7 +598,6 @@ export function createWebStyles(dragAnimation: boolean): string {
         "border-radius:var(--radius);padding:4px 0;min-width:160px;box-shadow:var(--shadow-3);" +
         "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}" +
         ".sp-ctx-colours>.sp-card-color-presets{margin:4px 14px 10px}" +
-        ".sp-ctx-colour-title{padding:8px 14px;font-size:.8rem;font-weight:600;color:var(--text)}" +
         ".sp-ctx-item{display:flex;align-items:center;gap:10px;padding:8px 14px;" +
         "cursor:pointer;font-size:.8rem;color:var(--text);transition:background .15s;white-space:nowrap}" +
         ".sp-ctx-item:hover{background:var(--accent-soft)}" +
