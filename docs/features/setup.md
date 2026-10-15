@@ -10,7 +10,7 @@ Your EspControl panel has a built-in web page where you can set everything up. O
 
 Use **Layout** to add and arrange cards, **Screen** for appearance, display, and sleep options, and **System** for preferences and system controls.
 
-![Layout setup page](/images/screen-setup.png)
+![Example card layout on a portrait panel](/images/screen-setup.png)
 
 ![Webserver card grid with examples of lights, climate, media, weather, covers, locks, actions, sensors, and date cards](/images/webserver-card-gallery.png)
 
@@ -105,7 +105,11 @@ If a card already occupies the space needed for a larger size, the setup page tr
 
 ## Device Settings
 
-The **Screen** and **System** tabs group the current controls as follows. Open a card to see its options; some options appear only when their feature is enabled.
+In **Screen**, the groups appear in this order: **Appearance**, **Display**, then **Sleep & Schedule**. **Display** contains Backlight and, on supported panels, Rotation. Use **System** for preferences, backups, and firmware updates.
+
+![Screen tab showing Display between Appearance and Sleep & Schedule](/images/screen-settings.png)
+
+The table below lists the controls in each group. Open a card to see its options; some options appear only when their feature is enabled.
 
 | Tab | Section | Controls |
 |---|---|---|
@@ -119,7 +123,7 @@ Device-specific settings, including Rotation and Battery, appear only on support
 
 ### Home Assistant Settings
 
-Open **System > System > Home Assistant Settings** to manage camera/image and media artwork connections. **Automatic** can use the local URL advertised by the connected Home Assistant instance when the URL uses the same IP address as the native ESPHome connection; it keeps the advertised protocol and port together. Home Assistant's separate Internet URL is not used.
+Open **System > Home Assistant Settings** to manage camera/image and media artwork connections. **Automatic** can use the local URL advertised by the connected Home Assistant instance when the URL uses the same IP address as the native ESPHome connection; it keeps the advertised protocol and port together. Home Assistant's separate Internet URL is not used.
 
 The panel checks candidates in the background. If the advertised local URL cannot be reached, it checks the connected server's advertised HTTP port with the configured protocol, then the other protocol for a local/private address. Its final fallback uses the configured protocol and port with the connected server's IP. If multicast discovery is blocked or ambiguous, only that configured fallback is used; EspControl does not scan ports or guess hostnames.
 
@@ -162,7 +166,7 @@ The web setup page's **Apply Configuration** button remains separate: use it aft
 
 ## Naming Your Panel
 
-On firmware that supports panel naming, open **System > System > Device Name**.
+On firmware that supports panel naming, open **System > Device Name**.
 Enter a name such as **Kitchen**, check the address preview, then choose
 **Save & Restart**. The name appears in the web interface, browser tab, the
 panel's network information and Home Assistant. The address becomes something

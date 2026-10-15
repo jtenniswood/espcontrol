@@ -25,7 +25,7 @@ When importing a backup from a different-sized panel, EspControl keeps the saved
 
 ## Reset the Display
 
-Open **System > System > Factory Reset** on the [Setup](/features/setup) page. Choose **Save backup** to keep a copy of your settings, then choose a reset option and confirm:
+Open **System > Factory Reset** on the [Setup](/features/setup) page. Choose **Save backup** to keep a copy of your settings, then choose a reset option and confirm:
 
 - **Partial reset** removes cards, layouts, subpages, actions, the custom device name and device preferences, while keeping the saved Wi-Fi connection and Home Assistant encryption key. The display restarts into card setup.
 - **Complete reset** also removes saved Wi-Fi credentials and the Home Assistant encryption key. Confirm the reset in the web dialog, then follow the display's first-time setup instructions. Ethernet displays remain accessible through their wired network. Home Assistant may need to be configured again; its integration records and automations are not deleted.
