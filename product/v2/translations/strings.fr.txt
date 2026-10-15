@@ -81,6 +81,7 @@ lightning=Orage
 lightning_and_rain=Orage et pluie
 light=Lumière
 loading=Chargement
+loading_forecast=Chargement des prévisions
 locate=Localiser
 lock=Verrouiller
 lawn_mower=Tondeuse
@@ -265,3 +266,18 @@ then_visit_192_168_4_1_in_your_browser=Ouvrez ensuite 192.168.4.1 dans votre nav
 
 screensaver=Économiseur d’écran
 incorrect_pin=PIN incorrect
+
+forecast_unavailable=Prévisions indisponibles
+rain=Pluie
+rain_chance=Risque de pluie
+rainfall=Précipitations
+wind=Vent
+humidity=Humidité
+last_forecast=Dernières prévisions
+weekday_sun=dim.
+weekday_mon=lun.
+weekday_tues=mar.
+weekday_weds=mer.
+weekday_thurs=jeu.
+weekday_fri=ven.
+weekday_sat=sam.

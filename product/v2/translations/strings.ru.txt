@@ -81,6 +81,7 @@ lightning=Молния
 lightning_and_rain=Гроза с дождём
 light=Свет
 loading=Загрузка
+loading_forecast=Loading forecast
 locate=Найти
 lock=Замок
 lawn_mower=Газонокосилка
@@ -265,3 +266,18 @@ then_visit_192_168_4_1_in_your_browser=Затем откройте 192.168.4.1 �
 
 screensaver=Заставка
 incorrect_pin=Неверный PIN
+
+forecast_unavailable=Forecast unavailable
+rain=Дождь
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast
+weekday_sun=вс
+weekday_mon=пн
+weekday_tues=вт
+weekday_weds=ср
+weekday_thurs=чт
+weekday_fri=пт
+weekday_sat=сб

@@ -81,6 +81,7 @@ lightning=Blixtar
 lightning_and_rain=Blixtar och regn
 light=Ljus
 loading=Laddar
+loading_forecast=Loading forecast
 locate=Hitta
 lock=Lås
 lawn_mower=Gräsklippare
@@ -265,3 +266,18 @@ then_visit_192_168_4_1_in_your_browser=Öppna sedan 192.168.4.1 i din webbläsar
 
 screensaver=Skärmsläckare
 incorrect_pin=Felaktig PIN
+
+forecast_unavailable=Forecast unavailable
+rain=Regn
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast
+weekday_sun=sön
+weekday_mon=mån
+weekday_tues=tis
+weekday_weds=ons
+weekday_thurs=tor
+weekday_fri=fre
+weekday_sat=lör

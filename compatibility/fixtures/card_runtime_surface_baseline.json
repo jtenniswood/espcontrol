@@ -2659,7 +2659,7 @@
         },
         "preview": {
           "available": true,
-          "fingerprint": "2fd6d3bf08d3c1d8"
+          "fingerprint": "e2078b7b0537e87b"
         }
       },
       "firmware": {
@@ -2667,14 +2667,12 @@
       },
       "lifecycle": {
         "subscriptions": [
-          "state",
-          "attributes",
           "action_response"
         ],
         "actions": [
-          "none"
+          "modal"
         ],
-        "modalOwner": "none"
+        "modalOwner": "weather"
       }
     },
     {
@@ -2692,7 +2690,7 @@
         },
         "preview": {
           "available": true,
-          "fingerprint": "39e3dc19b6902dae"
+          "fingerprint": "c47d4c5a2619764b"
         }
       },
       "firmware": {
@@ -2700,14 +2698,43 @@
       },
       "lifecycle": {
         "subscriptions": [
-          "state",
-          "attributes",
           "action_response"
         ],
         "actions": [
-          "none"
+          "modal"
         ],
-        "modalOwner": "none"
+        "modalOwner": "weather"
+      }
+    },
+    {
+      "name": "weather: daily",
+      "sourceKind": "contract",
+      "sourceType": "weather",
+      "mode": "daily",
+      "canonicalType": "weather",
+      "web": {
+        "registration": "weather",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": true
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "05d178f035420519"
+        }
+      },
+      "firmware": {
+        "family": "WEATHER"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "action_response"
+        ],
+        "actions": [
+          "modal"
+        ],
+        "modalOwner": "weather"
       }
     },
     {
@@ -2893,14 +2920,12 @@
       },
       "lifecycle": {
         "subscriptions": [
-          "state",
-          "attributes",
           "action_response"
         ],
         "actions": [
-          "none"
+          "modal"
         ],
-        "modalOwner": "none"
+        "modalOwner": "weather"
       }
     },
     {

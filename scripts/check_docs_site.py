@@ -203,7 +203,7 @@ def check_build(dist):
 
     redirects = {
         'reference/request-device-support': BASE + 'screens/',
-        'card-types/weather-forecast': BASE + 'card-types/weather#temperatures-tomorrow',
+        'card-types/weather-forecast': BASE + 'card-types/weather#setting-up-a-weather-card',
         'generated/cards/capabilities': BASE + 'reference/card-capabilities',
         'generated/cards/runtime-coverage': BASE + 'reference/card-capabilities',
     }

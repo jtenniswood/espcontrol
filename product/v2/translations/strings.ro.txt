@@ -81,6 +81,7 @@ lightning=Fulger
 lightning_and_rain=Fulger și ploaie
 light=Lumină
 loading=Se încarcă
+loading_forecast=Loading forecast
 locate=Localizare
 lock=Încuietoare
 lawn_mower=Mașină de tuns iarba
@@ -265,3 +266,18 @@ then_visit_192_168_4_1_in_your_browser=Apoi deschideți 192.168.4.1 în browser
 
 screensaver=Economizor de ecran
 incorrect_pin=PIN incorect
+
+forecast_unavailable=Forecast unavailable
+rain=Ploaie
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast
+weekday_sun=dum.
+weekday_mon=lun.
+weekday_tues=mar.
+weekday_weds=mie.
+weekday_thurs=joi
+weekday_fri=vin.
+weekday_sat=sâm.

@@ -184,7 +184,7 @@ Yes, when the Home Assistant climate entity exposes those capabilities. Range th
 
 ### Why Does My Weather Card Only Show Cloudy Instead of a Temperature?
 
-**Current Conditions** shows the state. Select **Temperatures Today** or **Temperatures Tomorrow** for forecast highs/lows and enable actions permission. Use a Sensor card for measured temperature. See [Weather](/card-types/weather).
+**Current Conditions** shows the state. Select **Today's Forecast** or **Tomorrow's Forecast** for forecast conditions and high temperatures and enable actions permission. Use a Sensor card for measured temperature. See [Weather](/card-types/weather).
 
 ### Can I Choose a Different Background Colour for Every Card?
 

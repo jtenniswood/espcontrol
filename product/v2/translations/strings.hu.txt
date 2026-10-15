@@ -81,6 +81,7 @@ lightning=Villámlás
 lightning_and_rain=Villámlás és eső
 light=Fény
 loading=Betöltés
+loading_forecast=Loading forecast
 locate=Keresés
 lock=Zár
 lawn_mower=Fűnyíró
@@ -265,3 +266,18 @@ then_visit_192_168_4_1_in_your_browser=Ezután nyissa meg a 192.168.4.1 címet a
 
 screensaver=Képernyőkímélő
 incorrect_pin=Helytelen PIN
+
+forecast_unavailable=Forecast unavailable
+rain=Eső
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast
+weekday_sun=vas.
+weekday_mon=hétf.
+weekday_tues=kedd
+weekday_weds=szer.
+weekday_thurs=csüt.
+weekday_fri=pén.
+weekday_sat=szomb.

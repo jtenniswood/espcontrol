@@ -81,6 +81,7 @@ lightning=Blesky
 lightning_and_rain=Blesky a déšť
 light=Světlo
 loading=Načítání
+loading_forecast=Loading forecast
 locate=Najít
 lock=Zamknout
 lawn_mower=Sekačka
@@ -265,3 +266,18 @@ then_visit_192_168_4_1_in_your_browser=Poté v prohlížeči otevřete 192.168.4
 
 screensaver=Spořič obrazovky
 incorrect_pin=Nesprávný PIN
+
+forecast_unavailable=Forecast unavailable
+rain=Déšť
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast
+weekday_sun=ne
+weekday_mon=po
+weekday_tues=út
+weekday_weds=st
+weekday_thurs=čt
+weekday_fri=pá
+weekday_sat=so

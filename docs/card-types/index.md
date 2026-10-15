@@ -76,7 +76,7 @@ Some names in the setup page group several related modes:
 | **Cover** | All Controls, Position, Tilt, Toggle, Open, Close, Stop, Set Position |
 | **Subpage** | Generic, Switch, Lights, Climate, Presence, Media, Alarm, Cover, Garage Door, Gate, Lock, Vacuum, Lawn Mower, Weather, Sensor, Camera / Image |
 
-Older configurations may also show **Weather Forecast**. It is kept for compatibility and is now set up as a **Weather** card with **Temperatures Tomorrow** selected.
+Older configurations may also show **Weather Forecast**. It is kept for compatibility and is now set up as a **Weather** card with **Tomorrow's Forecast** selected.
 
 ## Permissions
 

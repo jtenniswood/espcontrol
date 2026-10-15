@@ -12,7 +12,7 @@
     "deviceProfiles": 9,
     "cardTypes": 44,
     "entityNames": 111,
-    "icons": 366,
+    "icons": 367,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
   },
@@ -85,7 +85,8 @@
           "coverArtTitleSize": 7.421875,
           "coverArtArtistSize": 3.90625,
           "labelLines": 2,
-          "labelLinesDouble": 3
+          "labelLinesDouble": 3,
+          "smallTextSize": 1.757812
         },
         "emptyCell": {
           "radius": 1.953125
@@ -119,7 +120,8 @@
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_body"
+          "climateOptionValue": "font_text_body",
+          "smallText": "font_text_small"
         },
         "display": {
           "wrapTallLabels": true,
@@ -288,7 +290,8 @@
           "coverArtTitleSize": 7.421875,
           "coverArtArtistSize": 3.90625,
           "labelLines": 2,
-          "labelLinesDouble": 3
+          "labelLinesDouble": 3,
+          "smallTextSize": 1.757812
         },
         "emptyCell": {
           "radius": 1.953125
@@ -322,7 +325,8 @@
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_body"
+          "climateOptionValue": "font_text_body",
+          "smallText": "font_text_small"
         },
         "display": {
           "wrapTallLabels": true,
@@ -490,7 +494,8 @@
           "coverArtTitleSize": 7.375,
           "coverArtArtistSize": 5,
           "labelLines": 2,
-          "labelLinesDouble": 3
+          "labelLinesDouble": 3,
+          "smallTextSize": 5.208333
         },
         "emptyCell": {
           "radius": 4.166667
@@ -525,7 +530,8 @@
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_body"
+          "climateOptionValue": "font_text_body",
+          "smallText": "font_text_small"
         },
         "display": {
           "modal": {
@@ -687,7 +693,8 @@
           "coverArtTitleSize": 7.375,
           "coverArtArtistSize": 5,
           "labelLines": 2,
-          "labelLinesDouble": 3
+          "labelLinesDouble": 3,
+          "smallTextSize": 5.208333
         },
         "emptyCell": {
           "radius": 4.166667
@@ -722,7 +729,8 @@
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_body"
+          "climateOptionValue": "font_text_body",
+          "smallText": "font_text_small"
         },
         "display": {
           "modal": {
@@ -884,7 +892,8 @@
           "coverArtTitleSize": 6.875,
           "coverArtArtistSize": 3.125,
           "labelLines": 2,
-          "labelLinesDouble": 3
+          "labelLinesDouble": 3,
+          "smallTextSize": 1.5625
         },
         "emptyCell": {
           "radius": 1.71875
@@ -918,7 +927,8 @@
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_body"
+          "climateOptionValue": "font_text_body",
+          "smallText": "font_text_small"
         },
         "display": {
           "wrapTallLabels": true,
@@ -1081,7 +1091,8 @@
           "coverArtTitleSize": 6.875,
           "coverArtArtistSize": 3.125,
           "labelLines": 2,
-          "labelLinesDouble": 3
+          "labelLinesDouble": 3,
+          "smallTextSize": 1.5625
         },
         "emptyCell": {
           "radius": 1.71875
@@ -1115,7 +1126,8 @@
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_body"
+          "climateOptionValue": "font_text_body",
+          "smallText": "font_text_small"
         },
         "display": {
           "wrapTallLabels": true,
@@ -1277,7 +1289,8 @@
           "coverArtTitleSize": 6.875,
           "coverArtArtistSize": 3.125,
           "labelLines": 2,
-          "labelLinesDouble": 3
+          "labelLinesDouble": 3,
+          "smallTextSize": 1.5625
         },
         "emptyCell": {
           "radius": 1.71875
@@ -1311,7 +1324,8 @@
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_body"
+          "climateOptionValue": "font_text_body",
+          "smallText": "font_text_small"
         },
         "display": {
           "wrapTallLabels": true,
@@ -1471,7 +1485,8 @@
           "coverArtTitleSize": 14.583333,
           "coverArtArtistSize": 8.333333,
           "labelLines": 2,
-          "labelLinesDouble": 3
+          "labelLinesDouble": 3,
+          "smallTextSize": 3.75
         },
         "emptyCell": {
           "radius": 4.861111
@@ -1505,7 +1520,8 @@
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_body"
+          "climateOptionValue": "font_text_body",
+          "smallText": "font_text_small"
         },
         "display": {
           "modal": {
@@ -1681,7 +1697,8 @@
           "coverArtTitleSize": 14.583333,
           "coverArtArtistSize": 8.333333,
           "labelLines": 2,
-          "labelLinesDouble": 3
+          "labelLinesDouble": 3,
+          "smallTextSize": 3.75
         },
         "emptyCell": {
           "radius": 5.416667
@@ -1715,7 +1732,8 @@
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_body"
+          "climateOptionValue": "font_text_body",
+          "smallText": "font_text_small"
         },
         "display": {
           "modal": {
@@ -2414,10 +2432,10 @@
           "capabilities": {
             "informationOnly": true,
             "subscriptions": true,
-            "actions": false,
+            "actions": true,
             "numericControl": false,
-            "modal": false,
-            "runtimeAllocation": false,
+            "modal": true,
+            "runtimeAllocation": true,
             "subpage": true
           }
         },
@@ -2462,10 +2480,10 @@
           "capabilities": {
             "informationOnly": true,
             "subscriptions": true,
-            "actions": false,
+            "actions": true,
             "numericControl": false,
-            "modal": false,
-            "runtimeAllocation": false,
+            "modal": true,
+            "runtimeAllocation": true,
             "subpage": true
           }
         }
@@ -6061,23 +6079,12 @@
             "values": [
               "",
               "today",
-              "tomorrow"
+              "tomorrow",
+              "daily"
             ],
             "defaultValue": "",
             "storageField": "precision",
             "omitDefault": true
-          },
-          {
-            "name": "large_numbers",
-            "label": "Large Temperature Numbers",
-            "kind": "flag",
-            "omitDefault": true,
-            "supportedWhen": {
-              "precision": [
-                "today",
-                "tomorrow"
-              ]
-            }
           }
         ],
         "normalization": {
@@ -6115,9 +6122,7 @@
             }
           },
           "unknownOptions": "drop",
-          "canonicalOptionOrder": [
-            "large_numbers"
-          ],
+          "canonicalOptionOrder": [],
           "migrationActions": [
             "legacy_weather_forecast"
           ],
@@ -6709,12 +6714,6 @@
         "excludedPrecisions": [
           "icon",
           "text"
-        ]
-      },
-      "weather": {
-        "precisions": [
-          "today",
-          "tomorrow"
         ]
       },
       "calendar": true,
@@ -9755,6 +9754,11 @@
         "name": "Weather Cloudy Alert",
         "codepoint": "F0F2F",
         "mdi": "weather-cloudy-alert"
+      },
+      {
+        "name": "Weather Cloudy Clock",
+        "codepoint": "F18F6",
+        "mdi": "weather-cloudy-clock"
       },
       {
         "name": "Weather Dust",

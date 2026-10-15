@@ -81,6 +81,7 @@ lightning=Lightning
 lightning_and_rain=Lightning And Rain
 light=Light
 loading=Loading
+loading_forecast=Loading forecast
 locate=Locate
 lock=Lock
 lawn_mower=Lawn Mower
@@ -266,3 +267,18 @@ then_visit_192_168_4_1_in_your_browser=Then visit 192.168.4.1 in your browser
 
 screensaver=Screensaver
 incorrect_pin=Incorrect PIN
+
+forecast_unavailable=Forecast unavailable
+rain=Rain
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast
+weekday_sun=Sun
+weekday_mon=Mon
+weekday_tues=Tues
+weekday_weds=Weds
+weekday_thurs=Thurs
+weekday_fri=Fri
+weekday_sat=Sat
