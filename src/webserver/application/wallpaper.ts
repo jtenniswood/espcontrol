@@ -86,6 +86,13 @@ function wallpaperPreview(document: Document, buffer: ArrayBuffer): string {
   return wallpaperCanvas(document, buffer).toDataURL("image/png");
 }
 
+export function wallpaperBackgroundImage(url: string, dimming = 0): string {
+  if (!url) return "";
+  const image = `url("${url}")`;
+  const alpha = Math.max(0, Math.min(100, dimming)) / 100;
+  return alpha ? `linear-gradient(rgba(0,0,0,${alpha}),rgba(0,0,0,${alpha})),${image}` : image;
+}
+
 export function wallpaperCardColor(hex: string, enabled: boolean, opacityPercent = 80): string {
   const percent = Number.isFinite(opacityPercent) ? Math.max(0, Math.min(100, opacityPercent)) : 80;
   const alpha = Math.round(percent * 255 / 100).toString(16).padStart(2, "0").toUpperCase();
@@ -165,13 +172,14 @@ async function prepareWallpaper(document: Document, file: File, limits: Wallpape
 }
 
 export function buildWallpaperSettings(
-  document: Document, request: typeof fetch, onChange: (url: string, opacity: number, activeOpacity: number, colour: string) => void,
+  document: Document, request: typeof fetch, onChange: (url: string, opacity: number, activeOpacity: number, colour: string, dimming: number) => void,
   fields: Pick<ControlsFieldsFeature, "createRangeSlider" | "segmentControl">,
 ): HTMLElement {
   const body = document.createElement("div");
   body.className = "sp-field";
   let background: BackgroundSettings = { mode: "wallpaper", colour: "212121" };
   let backgroundSupported = false;
+  let dimmingSupported = false, dimming = 0, savedDimming = 0;
   const tabs = fields.segmentControl([["wallpaper", "Wallpaper"], ["colour", "Colour"]], "wallpaper", (mode: string) => {
     void saveBackground({ mode: mode as BackgroundSettings["mode"], colour: background.colour });
   });
@@ -245,7 +253,17 @@ export function buildWallpaperSettings(
   range.id = "sp-set-card-transparency";
   range.min = "0"; range.max = "100"; range.step = "1";
   control.wrap.querySelector("label").htmlFor = range.id;
-  imageField.append(actions, status);
+  const dimmingControl = fields.createRangeSlider("Wallpaper Dimming", 0, () => { void saveDimming(); });
+  dimmingControl.range.id = "sp-set-wallpaper-dimming";
+  dimmingControl.range.min = "0";
+  dimmingControl.range.max = "100";
+  dimmingControl.range.step = "1";
+  dimmingControl.wrap.querySelector("label").htmlFor = dimmingControl.range.id;
+  dimmingControl.range.addEventListener("input", () => {
+    dimming = Number(dimmingControl.range.value);
+    updatePreview();
+  });
+  imageField.append(actions, status, dimmingControl.wrap);
   body.append(tabs.segment, preview, imageField, colourField, backgroundStatus, control.wrap, activeControl.wrap);
   let hasWallpaper = false, supported = false, busy = false, opacitySupported = false;
   let opacity = 80, activeOpacity = 98, savedOpacity = 80, savedActiveOpacity = 98, previewUrl = "";
@@ -258,6 +276,10 @@ export function buildWallpaperSettings(
     imageField.setAttribute("aria-busy", String(busy));
     remove.hidden = !hasWallpaper;
     remove.disabled = !supported || busy || !hasWallpaper;
+    dimmingControl.wrap.hidden = !hasWallpaper || !dimmingSupported;
+    dimmingControl.range.disabled = busy || !hasWallpaper || !dimmingSupported;
+    dimmingControl.range.value = String(dimming);
+    dimmingControl.val.textContent = dimming + "%";
     const hasBackground = background.mode === "colour" || hasWallpaper;
     imageField.hidden = background.mode !== "wallpaper";
     colourField.hidden = background.mode !== "colour";
@@ -291,11 +313,11 @@ export function buildWallpaperSettings(
   function updatePreview() {
     const colourMode = background.mode === "colour";
     const enabled = colourMode || hasWallpaper;
-    preview.style.backgroundImage = colourMode ? "none" : previewUrl ? `url("${previewUrl}")` : "";
+    preview.style.backgroundImage = colourMode ? "none" : wallpaperBackgroundImage(previewUrl, dimming);
     preview.style.backgroundColor = colourMode ? "#" + background.colour : "";
     preview.setAttribute("aria-label", colourMode ? "Background colour #" + background.colour : wallpaperLabel);
     onChange(colourMode ? "" : previewUrl, enabled ? opacity : 100, enabled ? activeOpacity : 100,
-      colourMode ? background.colour : "");
+      colourMode ? background.colour : "", colourMode ? 0 : dimming);
   }
   function apply(buffer: ArrayBuffer | null) {
     previewUrl = buffer ? wallpaperPreview(document, buffer) : "";
@@ -324,6 +346,13 @@ export function buildWallpaperSettings(
         if (!settings.ok) throw new Error("Could not load background. Reload the page to try again.");
         background = parseBackgroundSettings(await settings.json());
         backgroundSupported = true;
+        updatePreview();
+      }
+      if (capabilities?.background?.wallpaper_dimming === true) {
+        const response = await request("/api/v1/wallpaper-dimming", { credentials: "include", cache: "no-store" });
+        if (!response.ok) throw new Error("Could not load wallpaper dimming. Reload the page to try again.");
+        dimming = savedDimming = parseWallpaperOpacity((await response.json()).dimming);
+        dimmingSupported = true;
         updatePreview();
       }
       if (capabilities?.wallpaper?.version !== 1) {
@@ -358,6 +387,22 @@ export function buildWallpaperSettings(
       supported = true;
     } catch (error) { backgroundStatus.textContent = error instanceof Error ? error.message : "Could not load background."; }
     finally { sync(); }
+  }
+  async function saveDimming() {
+    if (!dimmingSupported || busy) return;
+    busy = true; sync(); backgroundStatus.textContent = "Saving wallpaper dimming…";
+    try {
+      const response = await request("/api/v1/wallpaper-dimming", {
+        method: "PUT", credentials: "include", cache: "no-store",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({dimming}),
+      });
+      if (!response.ok) throw new Error("Could not save wallpaper dimming. Check the connection and try again.");
+      dimming = savedDimming = parseWallpaperOpacity((await response.json()).dimming);
+      backgroundStatus.textContent = "";
+    } catch (error) {
+      dimming = savedDimming;
+      backgroundStatus.textContent = error instanceof Error ? error.message : "Could not save wallpaper dimming.";
+    } finally { busy = false; sync(); updatePreview(); }
   }
   async function saveBackground(next: BackgroundSettings) {
     if (!backgroundSupported || busy) { sync(); return; }

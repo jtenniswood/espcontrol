@@ -266,6 +266,18 @@ async function installRoutes(context, slug, options = {}) {
       await route.continue();
       return;
     }
+    if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/wallpaper-dimming") {
+      const wallpaper = options.wallpaperState;
+      assert(wallpaper && wallpaper.dimmingSupported !== false);
+      if (route.request().method() === "PUT") {
+        assert.strictEqual(route.request().headers()["x-espcontrol-epoch"], String(options.resetState.epoch));
+        if (wallpaper.failDimming) { await route.fulfill({status: 500, body: "Save failed"}); return; }
+        wallpaper.dimming = JSON.parse(route.request().postData()).dimming;
+        (wallpaper.dimmingPosts ??= []).push(wallpaper.dimming);
+      }
+      await route.fulfill({status: 200, contentType: "application/json", body: JSON.stringify({dimming: wallpaper.dimming ?? 0})});
+      return;
+    }
     if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/background") {
       const wallpaper = options.wallpaperState;
       assert(wallpaper && wallpaper.backgroundSupported !== false, "unsupported firmware must not receive background requests");
@@ -424,7 +436,7 @@ async function installRoutes(context, slug, options = {}) {
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
-          background: options.wallpaperState && options.wallpaperState.backgroundSupported !== false ? {version: 1} : undefined,
+          background: options.wallpaperState && options.wallpaperState.backgroundSupported !== false ? {version: 1, wallpaper_dimming: options.wallpaperState.dimmingSupported !== false} : undefined,
           wallpaper: options.wallpaperState ? { version: 1, available: true, opacity: options.wallpaperState.opacitySupported !== false, state_opacity: options.wallpaperState.separateOpacity !== false, ...(options.wallpaperState.jpeg === false ? {} : { jpeg: true, max_side: 1280, max_pixels: 1024000, max_bytes: 524272, ...options.wallpaperState.limits }) } : undefined,
           configuration: { read: true, write: true, document_versions: [1] },
           web_assets: { versions: [1] },
@@ -445,7 +457,7 @@ async function installRoutes(context, slug, options = {}) {
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
-          background: options.wallpaperState && options.wallpaperState.backgroundSupported !== false ? {version: 1} : undefined,
+          background: options.wallpaperState && options.wallpaperState.backgroundSupported !== false ? {version: 1, wallpaper_dimming: options.wallpaperState.dimmingSupported !== false} : undefined,
           wallpaper: options.wallpaperState ? { version: 1, available: true, opacity: options.wallpaperState.opacitySupported !== false, state_opacity: options.wallpaperState.separateOpacity !== false, ...(options.wallpaperState.jpeg === false ? {} : { jpeg: true, max_side: 1280, max_pixels: 1024000, max_bytes: 524272, ...options.wallpaperState.limits }) } : undefined,
           configuration: { read: false, write: false, document_versions: [] },
         }),
@@ -7782,6 +7794,7 @@ async function assertWallpaperSettings(browser) {
     assert.strictEqual(await page.locator("#sp-set-wallpaper").isVisible(), false);
     await page.getByRole("img", { name: "No wallpaper uploaded", exact: true }).waitFor();
     assert.strictEqual(await page.locator(".sp-wallpaper-preview-box").count(), testCase.slots);
+    assert.strictEqual(await page.locator("#sp-set-wallpaper-dimming").isVisible(), false, "dimming hides without an image");
     assert.strictEqual(await page.locator(".sp-wallpaper-info").count(), 0, "background controls omit the information panel");
     assert.strictEqual(await page.locator(".sp-wallpaper-preview .mdi,.sp-card-bg-field > label").count(), 0);
     assert.strictEqual(await page.locator("#sp-set-card-transparency").inputValue(), "0");
@@ -8009,6 +8022,30 @@ async function assertWallpaperSettings(browser) {
     } finally { await page.mouse.up(); }
     await page.locator(".sp-back-btn .sp-back-hit").click();
     reviewFixture = false; await open();
+    const dimming = page.locator("#sp-set-wallpaper-dimming");
+    assert.strictEqual(await dimming.inputValue(), "0");
+    const setDimming = async value => {
+      const response = page.waitForResponse(response => response.url().endsWith("/api/v1/wallpaper-dimming") && response.request().method() === "PUT");
+      await dimming.fill(String(value)); await response;
+    };
+    const originalCardFill = await page.locator(".sp-btn").first().evaluate(card => getComputedStyle(card).backgroundColor);
+    await setDimming(50);
+    await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.includes("0.5"));
+    assert.strictEqual(await page.locator(".sp-wallpaper-preview").evaluate(el => el.style.backgroundImage),
+      await page.locator(".sp-screen").evaluate(el => el.style.backgroundImage));
+    assert.strictEqual(await page.locator(".sp-btn").first().evaluate(card => getComputedStyle(card).backgroundColor), originalCardFill);
+    await open(); assert.strictEqual(await dimming.inputValue(), "50", "wallpaper dimming survives reload");
+    wallpaper.failDimming = true; await setDimming(75);
+    await page.getByText("Could not save wallpaper dimming. Check the connection and try again.").waitFor();
+    assert.strictEqual(await dimming.inputValue(), "50", "failed dimming saves roll back");
+    wallpaper.failDimming = false; await setDimming(100);
+    await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.includes("rgb(0, 0, 0)"));
+    await page.getByRole("tab", {name: "Colour", exact: true}).click();
+    assert.strictEqual(await dimming.isVisible(), false);
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(el => el.style.backgroundImage), "");
+    await page.getByRole("tab", {name: "Wallpaper", exact: true}).click();
+    assert.strictEqual(await dimming.inputValue(), "100");
+    await setDimming(0);
     const savedBackground = await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage);
     await open();
     assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), savedBackground);
@@ -8169,6 +8206,7 @@ async function assertWallpaperSettings(browser) {
     await oldPage.locator("#sp-set-wallpaper").setInputFiles({ name: "old.png", mimeType: "image/png", buffer: Buffer.from(oldImage, "base64") });
     await oldPage.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
     assert.strictEqual(legacyWallpaper.image.readUInt32LE(0), 0x31505745);
+    assert.strictEqual(await oldPage.locator("#sp-set-wallpaper-dimming").isVisible(), false, "older firmware hides unsupported wallpaper dimming");
     assert.strictEqual(legacyWallpaper.image.readUInt32LE(4), 480);
     assert.strictEqual(legacyWallpaper.image.readUInt32LE(8), 320);
     await oldPage.reload();

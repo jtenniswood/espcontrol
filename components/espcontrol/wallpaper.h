@@ -17,6 +17,7 @@ class WallpaperStore {
   bool save_opacities(int off, int active);
   WallpaperBackgroundSetting background();
   bool save_background(bool colour, uint32_t rgb);
+  bool save_dimming(int percent);
   uint8_t opacity_percent();
   bool save_opacity_percent(int percent);
  private:

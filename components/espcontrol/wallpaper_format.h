@@ -15,6 +15,7 @@ struct WallpaperOpacity {
 struct WallpaperBackgroundSetting {
   bool colour = false;
   uint32_t rgb = 0x212121;
+  uint8_t dimming = 0;
 };
 inline bool wallpaper_opacity_valid(int off, int active) {
   return off >= 0 && off <= 100 && active >= 0 && active <= 100;

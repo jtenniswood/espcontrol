@@ -168,8 +168,9 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             event.stopPropagation();
             resetAppearanceColors(true);
         });
-        const wallpaperSettings = buildWallpaperSettings(document, resetAwareFetch, (url, opacity, activeOpacity, colour) => {
+        const wallpaperSettings = buildWallpaperSettings(document, resetAwareFetch, (url, opacity, activeOpacity, colour, dimming) => {
             runtime.els.wallpaperUrl = url;
+            runtime.els.wallpaperDimming = dimming;
             runtime.els.backgroundColour = colour;
             runtime.els.wallpaperOpacityPercent = opacity;
             runtime.els.wallpaperActiveOpacityPercent = activeOpacity;

@@ -14,6 +14,7 @@ static std::vector<uint8_t> flash(PANEL_DATA_PARTITION_BYTES, 0xff);
 static esp_partition_t partition{PANEL_DATA_PARTITION_BYTES, 0x40, false};
 static bool present = true, allocation_fails = false, erase_fails = false;
 static int saved_layout = -1, pending_layout = -1;
+static int saved_dimming = -1, pending_dimming = -1;
 static std::vector<size_t> erased_offsets, written_offsets;
 static int writes_until_failure = -1;
 static int saved_background = -1, pending_background = -1, background_writes = 0;
@@ -29,6 +30,10 @@ esp_err_t nvs_get_u8(nvs_handle_t, const char *key, uint8_t *value) {
     if (saved_layout < 0) return -1;
     *value = saved_layout; return ESP_OK;
   }
+  if (std::strcmp(key, "dimming") == 0) {
+    if (saved_dimming < 0) return -1;
+    *value = saved_dimming; return ESP_OK;
+  }
   assert(std::strcmp(key, "opacity") == 0);
   if (saved_opacity < 0) return -1;
   *value = saved_opacity; return ESP_OK;
@@ -36,6 +41,7 @@ esp_err_t nvs_get_u8(nvs_handle_t, const char *key, uint8_t *value) {
 esp_err_t nvs_set_u8(nvs_handle_t, const char *key, uint8_t value) {
   if (nvs_fails_write) return -1;
   if (std::strcmp(key, "layout") == 0) { pending_layout = value; return ESP_OK; }
+  if (std::strcmp(key, "dimming") == 0) { pending_dimming = value; return ESP_OK; }
   pending_opacity = value; ++opacity_writes; return ESP_OK;
 }
 esp_err_t nvs_get_u16(nvs_handle_t, const char *key, uint16_t *value) {
@@ -60,13 +66,14 @@ esp_err_t nvs_set_u32(nvs_handle_t, const char *key, uint32_t value) {
 }
 esp_err_t nvs_commit(nvs_handle_t) {
   if (nvs_fails_commit) return -1;
+  if (pending_dimming >= 0) saved_dimming = pending_dimming;
   if (pending_opacity >= 0) saved_opacity = pending_opacity;
   if (pending_pair >= 0) saved_pair = pending_pair;
   if (pending_layout >= 0) saved_layout = pending_layout;
   if (pending_background >= 0) saved_background = pending_background;
   return ESP_OK;
 }
-void nvs_close(nvs_handle_t) { pending_opacity = pending_pair = pending_layout = pending_background = -1; }
+void nvs_close(nvs_handle_t) { pending_opacity = pending_pair = pending_layout = pending_background = pending_dimming = -1; }
 const esp_partition_t *esp_partition_find_first(int, int, const char *name) {
   assert(std::strcmp(name, "card_images") == 0);
   return present ? &partition : nullptr;
@@ -159,6 +166,20 @@ int main() {
   assert(store.save_opacity_percent(50));
   // Background settings survive reboot without rewriting the image slot.
   assert(!store.background().colour && store.background().rgb == 0x212121);
+  const auto before_dimming = flash;
+  assert(store.background().dimming == 0);
+  for (int value : {0, 50, 100}) {
+    assert(store.save_dimming(value));
+    WallpaperStore reboot;
+    assert(reboot.background().dimming == value);
+  }
+  assert(!store.save_dimming(-1) && !store.save_dimming(101));
+  nvs_fails_open = true; assert(!store.save_dimming(25)); nvs_fails_open = false;
+  nvs_fails_write = true; assert(!store.save_dimming(25)); nvs_fails_write = false;
+  nvs_fails_commit = true; assert(!store.save_dimming(25)); nvs_fails_commit = false;
+  assert(store.background().dimming == 100 && flash == before_dimming);
+  WallpaperStore failed_dimming_reboot; assert(failed_dimming_reboot.background().dimming == 100);
+  assert(store.save_dimming(0));
   assert(store.save_background(true, 0x3C64DE));
   assert(store.background().colour && store.background().rgb == 0x3C64DE);
   WallpaperStore colour_reboot;

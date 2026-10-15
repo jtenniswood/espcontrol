@@ -53,8 +53,14 @@ inline void wallpaper_bind_screen(lv_obj_t *screen, bool solid = false) {
   }
   lv_image_set_src(widget, image);
   int dimming = 0;
+  bool screensaver_dimming = false;
   for (const auto &background : wallpaper_backgrounds())
-    if (background.root == screen) { dimming = background.dimming; break; }
+    if (background.root == screen) { dimming = background.dimming; screensaver_dimming = background.dimming_override; break; }
+  // Recolour the wallpaper itself toward black; cards and text remain unchanged.
+  // The clock has its own dimming, applied by image opacity against its black root.
+  lv_obj_set_style_image_recolor(widget, lv_color_hex(0x000000), LV_PART_MAIN);
+  lv_obj_set_style_image_recolor_opa(widget,
+      !ui.background.colour && !screensaver_dimming ? wallpaper_opacity_byte(ui.background.dimming) : 0, LV_PART_MAIN);
   // Fade only the background image against the root's solid fill; text stays bright.
   lv_obj_set_style_image_opa(widget, (255 * (100 - dimming) + 50) / 100, LV_PART_MAIN);
   const int zoom = std::max((width * 256 + int(image->header.w) - 1) / int(image->header.w),
@@ -106,7 +112,7 @@ inline void wallpaper_tick() {
   auto &store = wallpaper_store();
   if (!lv_is_initialized() || !lv_display_get_default()) return;
   const auto background = store.background();
-  if (background.colour != ui.background.colour || background.rgb != ui.background.rgb) {
+  if (background.colour != ui.background.colour || background.rgb != ui.background.rgb || background.dimming != ui.background.dimming) {
     ui.background = background;
     const uint32_t rgb = correct_display_color(background.rgb);
     const uint16_t pixel = ((rgb >> 19) << 11) | (((rgb >> 10) & 63) << 5) | ((rgb >> 3) & 31);

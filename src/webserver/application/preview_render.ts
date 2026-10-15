@@ -1,4 +1,4 @@
-import { wallpaperCardColor } from "./wallpaper";
+import { wallpaperCardColor, wallpaperBackgroundImage } from "./wallpaper";
 import { state } from "../state/app_instance";
 import { cardContractCard } from "../generated/card_contract";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
@@ -141,7 +141,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
             wallpaperPreview.style.setProperty("--wallpaper-active-color", wallpaperCardColor(state.onColor || WEB_UI_COLORS.primary, hasBackground, els.wallpaperActiveOpacityPercent));
         }
         if (els.previewScreen) {
-            els.previewScreen.style.backgroundImage = hasWallpaper ? 'url("' + els.wallpaperUrl + '")' : "";
+            els.previewScreen.style.backgroundImage = wallpaperBackgroundImage(els.wallpaperUrl || "", els.wallpaperDimming || 0);
             els.previewScreen.style.backgroundColor = els.backgroundColour ? "#" + els.backgroundColour : "";
             els.previewScreen.style.backgroundSize = "cover";
             els.previewScreen.style.backgroundPosition = "center";

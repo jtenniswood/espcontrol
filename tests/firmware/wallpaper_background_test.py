@@ -29,6 +29,7 @@ struct lv_obj_t {
   std::vector<EventBinding> events;
   int width = 720, height = 720, flags = 0, zoom = 0, opacity = 255;
   int x = 0, y = 0, pads[4] = {};
+  int recolor_opacity = 0;
   const void *source = nullptr;
   bool clip_corner = false;
 };
@@ -67,6 +68,9 @@ int lv_obj_get_style_pad_top(lv_obj_t *obj, int) { return obj->pads[2]; }
 int lv_obj_get_style_pad_bottom(lv_obj_t *obj, int) { return obj->pads[3]; }
 void lv_image_set_src(lv_obj_t *obj, const void *source) { obj->source = source; }
 void lv_image_set_scale(lv_obj_t *obj, int zoom) { obj->zoom = zoom; }
+int lv_color_hex(int value) { return value; }
+void lv_obj_set_style_image_recolor(lv_obj_t *, int color, int) { assert(color == 0); }
+void lv_obj_set_style_image_recolor_opa(lv_obj_t *obj, int opacity, int) { obj->recolor_opacity = opacity; }
 void lv_obj_set_style_image_opa(lv_obj_t *obj, int opacity, int) { obj->opacity = opacity; }
 void lv_obj_set_style_clip_corner(lv_obj_t *obj, bool clip, int) { obj->clip_corner = clip; }
 void lv_obj_align(lv_obj_t *obj, int, int x, int y) { obj->x = x; obj->y = y; }
@@ -134,6 +138,15 @@ int main() {
     assert(image->opacity == LV_OPA_COVER);
   }
   assert(home->children.front()->y == -30);
+  // Regular wallpaper dims independently; the clock uses its own setting.
+  ui.background.dimming = 50;
+  wallpaper_set_background_dimming(clock, 0);
+  wallpaper_apply_cards();
+  assert(home->children.front()->recolor_opacity == 128);
+  assert(initial_subpage->children.front()->recolor_opacity == 128);
+  assert(clock->children.front()->recolor_opacity == 0);
+  ui.background.dimming = 100; wallpaper_apply_cards();
+  assert(home->children.front()->recolor_opacity == 255);
   // Clock-only dimming fades the wallpaper against black without touching text.
   auto *clock_text = new lv_obj_t; clock_text->parent = clock; clock->children.push_back(clock_text);
   wallpaper_set_background_dimming(clock, 40);
@@ -172,6 +185,7 @@ int main() {
   assert(clock->children.front()->opacity == 153);
   assert(ui.widgets.size() == 7 && home->children.front() == same_widget);
   assert(same_widget->source == &ui.colour_image && same_widget->zoom == 23040);
+  assert(same_widget->recolor_opacity == 0);  // Colour is unaffected by wallpaper dimming.
   assert(initial_subpage->children.front()->source == &ui.colour_image);
   for (auto *screen : {loading, ethernet_loading}) {
     emit(screen, LV_EVENT_SIZE_CHANGED); emit(screen, LV_EVENT_SCREEN_LOAD_START);

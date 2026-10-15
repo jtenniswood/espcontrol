@@ -17,7 +17,7 @@ class WallpaperHandler final : public esphome::web_server_idf::AsyncWebHandler {
     char path[esphome::web_server_idf::AsyncWebServerRequest::URL_BUF_SIZE];
     return (request->method() == HTTP_GET || request->method() == HTTP_PUT) &&
            (request->url_to(path) == "/api/v1/wallpaper" || request->url_to(path) == "/api/v1/wallpaper-opacity" ||
-            request->url_to(path) == "/api/v1/background");
+            request->url_to(path) == "/api/v1/background" || request->url_to(path) == "/api/v1/wallpaper-dimming");
   }
   size_t maximumBodySize() const override { return settings_request_ ? 64 : WALLPAPER_MAX_BYTES; }
   bool canReceiveBody(esphome::web_server_idf::AsyncWebServerRequest *request) override {
@@ -42,6 +42,28 @@ class WallpaperHandler final : public esphome::web_server_idf::AsyncWebHandler {
     httpd_req_t *raw = *request;
     httpd_resp_set_hdr(raw, "Cache-Control", "no-store");
     char path[esphome::web_server_idf::AsyncWebServerRequest::URL_BUF_SIZE];
+    if (request->url_to(path) == "/api/v1/wallpaper-dimming") {
+      if (request->method() == HTTP_PUT) {
+        int dimming = -1;
+        const auto type = request->get_header("Content-Type");
+        const bool valid = type.has_value() && *type == "application/json" && body_ && received_ == expected_ &&
+            esphome::json::parse_json(body_, received_, [&](JsonObject root) {
+              if (!root["dimming"].is<int>()) return false;
+              dimming = root["dimming"].as<int>();
+              return dimming >= 0 && dimming <= 100;
+            });
+        reset();
+        if (!valid) { httpd_resp_send_err(raw, HTTPD_400_BAD_REQUEST, "Invalid wallpaper dimming"); return; }
+        if (!wallpaper_store().save_dimming(dimming)) {
+          httpd_resp_send_err(raw, HTTPD_500_INTERNAL_SERVER_ERROR, "Wallpaper dimming could not be saved"); return;
+        }
+      }
+      char response[32];
+      const int size = std::snprintf(response, sizeof(response), "{\"dimming\":%u}",
+          static_cast<unsigned>(wallpaper_store().background().dimming));
+      httpd_resp_set_type(raw, "application/json"); httpd_resp_send(raw, response, size);
+      return;
+    }
     if (request->url_to(path) == "/api/v1/background") {
       if (request->method() == HTTP_PUT) {
         bool colour = false; uint32_t rgb = 0;
