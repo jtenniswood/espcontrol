@@ -112,6 +112,7 @@ void notify_dashboard_content_changed(){}
 struct DisplayProfile{};
 const lv_font_t *display_small_text_font(const DisplayProfile &, const lv_font_t *){return &small_font;}
 const lv_font_t *display_icon_font(const DisplayProfile &){return &icons;}
+const lv_font_t *display_weather_large_icon_font(const DisplayProfile &){return &icons;}
 const lv_font_t *display_media_title_font(const DisplayProfile &){return &summary_font;}
 const lv_font_t *display_volume_label_font(const DisplayProfile &, const lv_font_t *){return &small_font;}
 namespace esphome { using StringRef = std::string; }
@@ -165,11 +166,11 @@ void check_card_fit(const WeatherDailyCard *card){
       assert(column.icon->y+column.icon->height<=column.day->y);
       if(card->layout.rows>1){
         const int gap=column.day->y-column.icon->y-column.icon->height;
-        assert(gap>=2 && gap<=std::max(6,lv_font_get_line_height(card->font)/3));
+        assert(gap>=2 && gap<=std::max(6,lv_font_get_line_height(column.day->font)/3));
         const auto index=static_cast<size_t>(&column-card->columns.data());
         if(index>=card->layout.columns){
           const auto &previous=card->columns[index-card->layout.columns];
-          assert(column.icon->y-(previous.high->y+previous.high->height)>=lv_font_get_line_height(card->font)/2);
+          assert(column.icon->y-(previous.high->y+previous.high->height)>=lv_font_get_line_height(column.day->font)/2);
         }
       }
     }
@@ -382,6 +383,27 @@ int main(){
     wide_card->source->stale=false;weather_daily_refresh_visuals();check_card_fit(wide_card);
   }
   // Fewer provider days rebalance the grid without creating empty widgets.
+  lv_font_t larger_icons{55};summary_font.line_height=41;
+  wide_card->large_icon_font=&larger_icons;wide_card->large_font=&summary_font;
+  wide_card->view=WeatherForecastView::TODAY;
+  lv_obj_set_size(wide_owner,282,258);
+  assert(wide_card->enlarged && wide_card->columns.size()==1);check_card_fit(wide_card);
+  assert(wide_card->columns[0].day->font==&summary_font && wide_card->columns[0].icon->font==&larger_icons);
+  assert(wide_card->columns[0].high->font==&font);
+  const int larger_widgets=lv_obj_t::live;
+  for(int i=0;i<20;++i)weather_daily_refresh_visuals();
+  assert(lv_obj_t::live==larger_widgets && wide_card->enlarged);
+  weather_daily_open_modal(wide_card);
+  assert(weather_daily_modal().font==&font && weather_daily_modal().icon_font==&icons);check_modal_fit();
+  weather_daily_hide_modal();
+  lv_obj_set_size(wide_owner,122,110);
+  assert(!wide_card->enlarged && wide_card->columns[0].day->font==&font && wide_card->columns[0].icon->font==&icons);
+  wide_card->view=WeatherForecastView::DAILY;
+  lv_obj_set_size(wide_owner,442,258);
+  assert(!wide_card->enlarged && wide_card->columns.size()==8);check_card_fit(wide_card);
+  wide_card->source->forecast.count=2;weather_daily_refresh_visuals();
+  assert(wide_card->enlarged && wide_card->columns.size()==2);check_card_fit(wide_card);
+  wide_card->large_icon_font=&icons;summary_font.line_height=24;
   wide_card->source->forecast.count=6;lv_obj_set_size(wide_owner,442,258);
   assert(wide_card->layout.columns==3 && wide_card->layout.rows==2 && wide_card->columns.size()==6);check_card_fit(wide_card);
   wide_card->source->forecast.count=8;

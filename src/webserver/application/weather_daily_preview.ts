@@ -24,37 +24,58 @@ export function createWeatherDailyPreviewLayout(
         const row = card.querySelector<HTMLElement>(".sp-weather-days");
         const firstDay = days[0];
         if (!firstDay || !row) return;
-        const textStyle = view.getComputedStyle(firstDay);
-        const nativeFontSize = Number((parseFloat(textStyle.fontSize) / scale).toFixed(3));
-        // Measure at the panel's font size so browser font hinting at enlarged
-        // preview sizes cannot change the number of days that fit.
-        fontContext.font = textStyle.font.replace(textStyle.fontSize, nativeFontSize + "px");
-        // ESPHome rounds each glyph advance to display pixels before measuring.
-        const measure = (text: string) => Array.from(text).reduce((width, glyph) =>
-            width + Math.round(fontContext.measureText(glyph).width), 0);
-        const icon = firstDay.querySelector<HTMLElement>(".mdi");
-        const iconSize = icon ? Math.round(parseFloat(view.getComputedStyle(icon).fontSize) / scale) : 0;
-        let measured = Math.max(iconSize, ...["-188°", "Today", "Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"].map(measure));
-        const temperature = firstDay.querySelector<HTMLElement>(".sp-weather-temperature-high");
-        let temperatureHeight = fontHeightFor(nativeFontSize);
-        let temperatureWidth = 0;
-        if (temperature) {
-            const temperatureStyle = view.getComputedStyle(temperature);
-            const temperatureSize = Number((parseFloat(temperatureStyle.fontSize) / scale).toFixed(3));
-            temperatureHeight = fontHeightFor(temperatureSize);
-            fontContext.font = temperatureStyle.font.replace(temperatureStyle.fontSize, temperatureSize + "px");
-            temperatureWidth = Math.max(...days.map(day => measure(day.querySelector(".sp-weather-temperature-high")?.textContent || "")));
-            measured = Math.max(measured, temperatureWidth);
-        }
-        const fontHeight = fontHeightFor(nativeFontSize);
-        const gap = Math.max(8, fontHeight);
-        const rowGap = Math.max(8, Math.floor(fontHeight / 2));
-        const listGap = Math.max(8, Math.floor(fontHeight / 3));
+        // Reset inherited sizes before measuring so repeated observer callbacks
+        // cannot compound the enlargement or depend on browser zoom.
+        row.style.removeProperty("--weather-label");
+        row.style.removeProperty("--weather-icon");
+        row.style.removeProperty("--weather-temperature");
         const width = Math.floor((card.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)) / scale);
         const height = Math.floor((card.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)) / scale);
-        const plan = planWeatherCardLayout(width, height, measured + 24,
-            iconSize + fontHeight + temperatureHeight + 4, iconSize + listGap + temperatureWidth,
-            Math.max(iconSize, fontHeight + temperatureHeight + 2), gap, rowGap, days.length);
+        const measureFonts = () => {
+            const textStyle = view.getComputedStyle(firstDay);
+            const nativeFontSize = Number((parseFloat(textStyle.fontSize) / scale).toFixed(3));
+            fontContext.font = textStyle.font.replace(textStyle.fontSize, nativeFontSize + "px");
+            const measure = (text: string) => Array.from(text).reduce((width, glyph) =>
+                width + Math.round(fontContext.measureText(glyph).width), 0);
+            const icon = firstDay.querySelector<HTMLElement>(".mdi");
+            const iconSize = icon ? Math.round(parseFloat(view.getComputedStyle(icon).fontSize) / scale) : 0;
+            let measured = Math.max(iconSize, ...["-188°", "Today", "Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"].map(measure));
+            const temperature = firstDay.querySelector<HTMLElement>(".sp-weather-temperature-high");
+            let temperatureHeight = fontHeightFor(nativeFontSize), temperatureWidth = 0;
+            if (temperature) {
+                const ts = view.getComputedStyle(temperature);
+                const size = Number((parseFloat(ts.fontSize) / scale).toFixed(3));
+                temperatureHeight = fontHeightFor(size);
+                fontContext.font = ts.font.replace(ts.fontSize, size + "px");
+                temperatureWidth = Math.max(...days.map(day => measure(day.querySelector(".sp-weather-temperature-high")?.textContent || "")));
+                measured = Math.max(measured, temperatureWidth);
+            }
+            const fontHeight = fontHeightFor(nativeFontSize), gap = Math.max(8, fontHeight);
+            const rowGap = Math.max(8, Math.floor(fontHeight / 2)), listGap = Math.max(8, Math.floor(fontHeight / 3));
+            const minimumWidth = measured + 24, minimumHeight = iconSize + fontHeight + temperatureHeight + 4;
+            const plan = planWeatherCardLayout(width, height, minimumWidth, minimumHeight,
+                iconSize + listGap + temperatureWidth, Math.max(iconSize, fontHeight + temperatureHeight + 2), gap, rowGap, days.length);
+            return { textStyle, nativeFontSize, measure, iconSize, fontHeight, temperatureHeight,
+                gap, rowGap, listGap, minimumWidth, minimumHeight, plan };
+        };
+        let metrics = measureFonts();
+        let enlarged = false;
+        if (width >= metrics.minimumWidth * 2 + metrics.gap && height >= metrics.minimumHeight * 2 + metrics.rowGap) {
+            row.style.setProperty("--weather-label", "var(--weather-large-label,var(--btn-label))");
+            row.style.setProperty("--weather-icon", "var(--weather-large-icon,var(--btn-icon))");
+            row.style.setProperty("--weather-temperature", "var(--btn-label)");
+            const larger = measureFonts();
+            if (larger.plan.count >= metrics.plan.count && !larger.plan.list &&
+                larger.nativeFontSize > metrics.nativeFontSize && larger.iconSize > metrics.iconSize) {
+                metrics = larger; enlarged = true;
+            } else {
+                row.style.removeProperty("--weather-label");
+                row.style.removeProperty("--weather-icon");
+                row.style.removeProperty("--weather-temperature");
+            }
+        }
+        card.dataset.weatherEnlarged = String(enlarged);
+        const { textStyle, nativeFontSize, measure, iconSize, fontHeight, temperatureHeight, gap, rowGap, listGap, plan } = metrics;
         const grid = !plan.list && plan.rows > 1;
         const iconGap = grid ? Math.min(Math.max(6, Math.floor(fontHeight / 3)),
             Math.floor((height - rowGap * (plan.rows - 1)) / plan.rows)

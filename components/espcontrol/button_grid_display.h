@@ -10,6 +10,7 @@
 struct DisplayFontRoles {
   const lv_font_t *small_text = nullptr;
   const lv_font_t *icon = nullptr;
+  const lv_font_t *weather_large_icon = nullptr;
   const lv_font_t *sensor = nullptr;
   const lv_font_t *large_sensor = nullptr;
   const lv_font_t *media_title = nullptr;
@@ -161,6 +162,9 @@ inline uint32_t display_correct_color(uint32_t rgb, const DisplayProfile &profil
 
 inline const lv_font_t *display_icon_font(const DisplayProfile &profile) {
   return profile.fonts.icon;
+}
+inline const lv_font_t *display_weather_large_icon_font(const DisplayProfile &profile) {
+  return profile.fonts.weather_large_icon ? profile.fonts.weather_large_icon : profile.fonts.icon;
 }
 
 inline const lv_font_t *display_sensor_font(const DisplayProfile &profile) {

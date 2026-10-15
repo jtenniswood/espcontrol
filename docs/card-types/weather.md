@@ -34,6 +34,8 @@ Forecast modes request the daily forecast from Home Assistant. **Today's Forecas
 
 Grid layouts leave a visible gap between each icon and its day, with extra space between complete forecast rows. On the S3 this icon-to-day gap is eight display pixels when space allows.
 
+Roomy cards use one larger font size for the icon, day and temperatures when all the same forecast days still fit. Resizing back down restores the standard sizes. This applies to Daily, Today and Tomorrow cards; the details modal keeps its own sizing.
+
 On the 480×480 S3 with the default font sizes and eight available days:
 
 | Card size | Layout | Days shown |

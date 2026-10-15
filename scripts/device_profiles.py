@@ -973,6 +973,7 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "volume_label_font": fonts["volumeLabel"],
         "cover_art": copy.deepcopy(display["coverArt"]),
         "climate_card_icon_font": fonts.get("climateCardIcon"),
+        "weather_large_icon_font": fonts.get("weatherLargeIcon"),
         "subpage_chevron_font": fonts.get("subpageChevron"),
         "climate_option_title_font": fonts.get("climateOptionTitle"),
         "climate_option_value_font": fonts.get("climateOptionValue"),

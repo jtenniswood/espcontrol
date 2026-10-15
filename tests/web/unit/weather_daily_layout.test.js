@@ -12,6 +12,20 @@ const root = path.resolve(__dirname, "../../..");
 const { planWeatherCardLayout } = loadTypeScriptModule(path.join(root, "src/webserver/application/weather_daily_layout.ts"));
 const metrics = [84, 96, 112, 50, 26, 13];
 
+test("larger weather font contains every rendered condition and loading glyph", () => {
+  const source = fs.readFileSync(path.join(root,"components/espcontrol/button_grid_weather_forecast.h"),"utf8");
+  const icons = fs.readFileSync(path.join(root,"components/espcontrol/icons.h"),"utf8");
+  const glyphs = fs.readFileSync(path.join(root,"common/assets/weather_icon_glyphs.yaml"),"utf8");
+  const names = new Set([...source.matchAll(/find_icon\("([^"]+)"\)/g)].map(match=>match[1]));
+  names.add("Weather Cloudy Clock");
+  for(const name of names){
+    const entry = icons.split("\n").find(line=>line.includes('"'+name+'"'));
+    assert(entry,"Known weather icon: "+name);
+    const code = entry.match(/\\U[0-9A-Fa-f]+/)[0];
+    assert(glyphs.includes(code),"Larger weather font includes "+name);
+  }
+});
+
 test("S3 card spans choose readable rows and grids with stacked narrow tiles", () => {
   const spans = [
     [1, 1, 1, 1, false], [2, 1, 2, 1, false], [3, 1, 4, 1, false],

@@ -357,7 +357,8 @@
             "subpageChevron": "font_icon_status",
             "climateOptionTitle": "font_text_body",
             "climateOptionValue": "font_text_body",
-            "smallText": "font_text_small"
+            "smallText": "font_text_small",
+            "weatherLargeIcon": "font_icon_weather_large"
           },
           "package": {
             "deviceFontPackageKey": "fonts_device"
@@ -381,7 +382,8 @@
             "subpageChevron": "font_icon_status",
             "climateOptionTitle": "font_text_body",
             "climateOptionValue": "font_text_body",
-            "smallText": "font_text_small"
+            "smallText": "font_text_small",
+            "weatherLargeIcon": "font_icon_weather_large"
           },
           "package": {
             "deviceFontPackageKey": "fonts_lg"
@@ -404,7 +406,8 @@
             "subpageChevron": "font_icon_status",
             "climateOptionTitle": "font_text_body",
             "climateOptionValue": "font_text_body",
-            "smallText": "font_text_small"
+            "smallText": "font_text_small",
+            "weatherLargeIcon": "font_icon_weather_large"
           },
           "package": {
             "deviceFontPackageKey": "fonts_device"
@@ -553,7 +556,9 @@
         "web": {
           "continuousCorners": true,
           "btn": {
-            "smallTextSize": 1.757812
+            "smallTextSize": 1.757812,
+            "weatherLargeIconSize": 6.738281,
+            "weatherLargeLabelSize": 2.734375
           }
         },
         "firmware": {
@@ -604,7 +609,9 @@
         "web": {
           "continuousCorners": true,
           "btn": {
-            "smallTextSize": 1.757812
+            "smallTextSize": 1.757812,
+            "weatherLargeIconSize": 6.738281,
+            "weatherLargeLabelSize": 2.734375
           }
         },
         "firmware": {
@@ -704,7 +711,9 @@
             "coverArtArtistSize": 5,
             "labelLines": 2,
             "labelLinesDouble": 3,
-            "smallTextSize": 5.208333
+            "smallTextSize": 5.208333,
+            "weatherLargeIconSize": 16.25,
+            "weatherLargeLabelSize": 11.666667
           },
           "emptyCell": {
             "radius": 4.166667
@@ -877,7 +886,9 @@
             "coverArtArtistSize": 5,
             "labelLines": 2,
             "labelLinesDouble": 3,
-            "smallTextSize": 5.208333
+            "smallTextSize": 5.208333,
+            "weatherLargeIconSize": 16.25,
+            "weatherLargeLabelSize": 11.666667
           },
           "emptyCell": {
             "radius": 4.166667
@@ -1004,7 +1015,9 @@
         "web": {
           "continuousCorners": true,
           "btn": {
-            "smallTextSize": 1.5625
+            "smallTextSize": 1.5625,
+            "weatherLargeIconSize": 5.46875,
+            "weatherLargeLabelSize": 2.890625
           }
         }
       },
@@ -1040,7 +1053,9 @@
         "web": {
           "continuousCorners": true,
           "btn": {
-            "smallTextSize": 1.5625
+            "smallTextSize": 1.5625,
+            "weatherLargeIconSize": 5.46875,
+            "weatherLargeLabelSize": 2.890625
           }
         },
         "firmware": {
@@ -1089,7 +1104,9 @@
           },
           "continuousCorners": true,
           "btn": {
-            "smallTextSize": 1.5625
+            "smallTextSize": 1.5625,
+            "weatherLargeIconSize": 5.46875,
+            "weatherLargeLabelSize": 2.890625
           }
         },
         "firmware": {
@@ -1203,7 +1220,9 @@
             "coverArtArtistSize": 8.333333,
             "labelLines": 2,
             "labelLinesDouble": 3,
-            "smallTextSize": 3.75
+            "smallTextSize": 3.75,
+            "weatherLargeIconSize": 11.527778,
+            "weatherLargeLabelSize": 7.222222
           },
           "emptyCell": {
             "radius": 4.861111
@@ -1393,7 +1412,9 @@
             "coverArtArtistSize": 8.333333,
             "labelLines": 2,
             "labelLinesDouble": 3,
-            "smallTextSize": 3.75
+            "smallTextSize": 3.75,
+            "weatherLargeIconSize": 11.458333,
+            "weatherLargeLabelSize": 7.083333
           },
           "emptyCell": {
             "radius": 5.416667
