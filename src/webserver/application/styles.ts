@@ -522,6 +522,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-segment button.active{background:var(--accent);color:#fff}" +
         ".sp-brightness-mode-segment{margin-bottom:28px}" +
         ".sp-screensaver-mode{margin-bottom:24px}" +
+        ".sp-screensaver-brightness-title{margin:20px 0 12px;font-size:.95rem;font-weight:600;color:var(--text)}" +
         ".sp-clock-brightness-field{margin:18px 0 22px}" +
         ".sp-clock-brightness-field>.sp-toggle-row{padding:0;margin-bottom:8px}" +
         ".sp-cond-field{padding:0 0 4px;display:none}" +

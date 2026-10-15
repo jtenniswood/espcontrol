@@ -1062,7 +1062,7 @@ number:
     min_value: 0
     max_value: 100
     step: 1
-    initial_value: 0
+    initial_value: 25
     restore_value: true
     optimistic: true
     unit_of_measurement: "%"

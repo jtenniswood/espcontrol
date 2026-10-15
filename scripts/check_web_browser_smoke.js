@@ -7568,7 +7568,7 @@ async function assertClockWallpaperSettings(browser) {
   const testCase = ACTIVE_CASES[0];
   const context = await browser.newContext({viewport: testCase.viewport});
   let savedWallpaper = true;
-  let savedDimming = 0;
+  let savedDimming = 25;
   const dimmingPosts = [];
   const posts = [];
   try {
@@ -7625,7 +7625,7 @@ async function assertClockWallpaperSettings(browser) {
     assert.strictEqual(await wallpaperRow.isVisible(), true);
     assert.strictEqual(await wallpaper.isChecked(), true, "Show Wallpaper defaults on");
     assert.strictEqual(await dimming.isVisible(), true);
-    assert.strictEqual(await dimming.inputValue(), "0", "wallpaper dimming defaults to zero");
+    assert.strictEqual(await dimming.inputValue(), "25", "wallpaper dimming defaults to 25 percent");
     const setDimming = async (slider, value) => {
       const response = page.waitForResponse(response => response.request().method() === "POST" &&
         /Wallpaper Dimming|wallpaper_dimming/.test(decodeURIComponent(response.url())));
@@ -7636,8 +7636,17 @@ async function assertClockWallpaperSettings(browser) {
     assert.strictEqual(await sensorDimming.inputValue(), "40", "Timer changes synchronize dimming with Sensor");
     assert(await wallpaper.evaluate(input => {
       const row = input.closest(".sp-toggle-row"), date = document.querySelector("#sp-set-clock-date").closest(".sp-toggle-row");
-      return !!(row.compareDocumentPosition(date) & Node.DOCUMENT_POSITION_FOLLOWING);
-    }), "Show Wallpaper appears above Show date");
+      return !!(date.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }), "Show date appears above Show Wallpaper");
+    const brightnessTitle = page.getByRole("heading", {name: "Screensaver Brightness", exact: true});
+    assert.strictEqual(await brightnessTitle.filter({visible: true}).count(), 1);
+    const brightnessOrder = await page.locator("#sp-set-clock-wallpaper").evaluate(input => {
+      const group = input.closest(".sp-clock-brightness-field");
+      const title = group.querySelector(".sp-screensaver-brightness-title");
+      const labels = Array.from(group.querySelectorAll("label")).filter(label => /(?:Daytime|Nighttime) Clock Brightness/.test(label.textContent));
+      return labels.length === 2 && labels.every(label => !!(title.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING));
+    });
+    assert(brightnessOrder, "Screensaver Brightness appears above both clock brightness controls");
     await toggleAndSave('label[for="sp-set-clock-wallpaper"]');
     await page.waitForFunction(() => !document.querySelector("#sp-set-sensor-clock-wallpaper").checked);
     await page.getByRole("button", {name: "Sensor", exact: true}).click();

@@ -44,7 +44,7 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     temperatureDegreeSymbolOn: true, subpageChevronsOn: true, presenceEntity: "",
     screensaverCameraEntity: "", screensaverCameraImageMode: "Fit", screensaverCameraSupported: false,
     clockWallpaperSupported: false, clockWallpaperOn: true,
-    clockWallpaperDimmingSupported: false, clockWallpaperDimming: 0,
+    clockWallpaperDimmingSupported: false, clockWallpaperDimming: 25,
     clockDateSupported: false, clockDateOn: false,
     clockOverlaySupported: false,
     screensaverMetadataEntity: "",

@@ -676,6 +676,15 @@ export function createSettingsPageHelpersFeature(
         var clockBrightnessField: any = document.createElement("div");
         clockBrightnessField.className = "sp-clock-brightness-field";
         clockBrightnessField.style.display = _screensaverController.uiState(screensaverState()).clockVisible ? "" : "none";
+        var dateToggle = toggleRow("Show date", selectId === "sp-set-sensor-clock-mode"
+            ? "sp-set-sensor-clock-date" : "sp-set-clock-date", state.clockDateOn);
+        dateToggle.row.style.display = state.clockDateSupported ? "" : "none";
+        dateToggle.input.addEventListener("change", function (this: any) {
+            state.clockDateOn = this.checked;
+            syncClockScreensaverControls();
+            postClockDate(state.clockDateOn);
+        });
+        clockBrightnessField.appendChild(dateToggle.row);
         var wallpaperToggle = toggleRow("Show Wallpaper", selectId === "sp-set-sensor-clock-mode"
             ? "sp-set-sensor-clock-wallpaper" : "sp-set-clock-wallpaper", state.clockWallpaperOn);
         wallpaperToggle.row.style.display = state.clockWallpaperSupported ? "" : "none";
@@ -698,15 +707,10 @@ export function createSettingsPageHelpersFeature(
             syncClockScreensaverControls();
         });
         clockBrightnessField.appendChild(wallpaperDimming.wrap);
-        var dateToggle = toggleRow("Show date", selectId === "sp-set-sensor-clock-mode"
-            ? "sp-set-sensor-clock-date" : "sp-set-clock-date", state.clockDateOn);
-        dateToggle.row.style.display = state.clockDateSupported ? "" : "none";
-        dateToggle.input.addEventListener("change", function (this: any) {
-            state.clockDateOn = this.checked;
-            syncClockScreensaverControls();
-            postClockDate(state.clockDateOn);
-        });
-        clockBrightnessField.appendChild(dateToggle.row);
+        var brightnessTitle = document.createElement("h4");
+        brightnessTitle.className = "sp-screensaver-brightness-title";
+        brightnessTitle.textContent = "Screensaver Brightness";
+        clockBrightnessField.appendChild(brightnessTitle);
         var daySlider: any = createRangeSlider("Daytime Clock Brightness", state.clockBrightnessDay, postClockBrightnessDay);
         daySlider.range.min = "1";
         daySlider.range.step = "1";
