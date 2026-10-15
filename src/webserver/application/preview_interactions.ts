@@ -29,7 +29,7 @@ export interface PreviewInteractionsDependencies {
     readonly shell: Pick<ControlsShellFeature, "isConfigLocked">;
     readonly requestApi: Pick<ApplicationApiFeature, "postText">;
     readonly grid: Pick<GridFeature, "ctx" | "serializeGrid">;
-    readonly selection: Pick<ButtonSettingsSelectionFeature, "hideSettingsOverlay" | "selectClockBarItem">;
+    readonly selection: Pick<ButtonSettingsSelectionFeature, "hideSettingsOverlay" | "selectClockBarItem" | "openClockBarEditor">;
     readonly placement: Pick<PreviewGridPlacementFeature, "findDuplicatePlacement" | "getCellFromEvent" | "moveSelectedToCell" | "moveToCell" | "placeSlotAt">;
     readonly contextMenu: PreviewContextMenuFeature;
     readonly renderPreview: () => void;
@@ -203,6 +203,12 @@ export function createPreviewInteractionsFeature(
                 if (isConfigLocked()) {
                     e.preventDefault();
                     e.stopPropagation();
+                    return;
+                }
+                const add = e.target.closest("[data-clockbar-add]");
+                if (add) {
+                    e.preventDefault(); e.stopPropagation();
+                    if (!add.disabled && !state.clockBarLayoutSaving) dependencies.selection.openClockBarEditor();
                     return;
                 }
                 var target: any = e.target.closest("[data-clockbar-item]");

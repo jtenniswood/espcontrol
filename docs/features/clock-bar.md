@@ -10,7 +10,7 @@ The clock bar is the narrow status area at the top of the panel. Enable it in **
 
 ## Add and arrange elements
 
-With no card selected, choose **Add clock bar element** or **Manage clock bar** above the preview. Select an existing element to **Edit**, **Duplicate**, or **Delete** it. Right-clicking an element offers the same actions.
+Tap the dashed **+** slot at the end of the clock bar in the **Layout** preview to add an element. It stays available while a card or clock bar element is selected. The slot is an editor control and is not shown on the physical panel; it becomes disabled at the 12-element limit. With no card selected, **Manage clock bar** above the preview also lists all configured elements. Select an existing element to **Edit**, **Duplicate**, or **Delete** it. Right-clicking an element offers the same actions.
 
 Choose **Left**, **Middle**, or **Right** in the element editor. Elements sit side by side. Drag an element within its group to reorder it, or into another group to move it. **Move earlier** and **Move later** provide the same ordering controls without dragging.
 

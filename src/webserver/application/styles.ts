@@ -58,6 +58,11 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-clockbar-editable .sp-clockbar-subpage-title{max-width:none}" +
         ".sp-clockbar-custom>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
         ".sp-clockbar-custom{gap:4px}.sp-clockbar-custom>.sp-clockbar-sensor-icon{flex:none;overflow:visible}.sp-clockbar-custom>.sp-clockbar-value{min-width:0}" +
+        ".sp-clockbar-add-target{position:absolute;top:50%;transform:translateY(-50%);height:min(32px,calc(100% - 4px));" +
+        "display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:0;border:1px dashed color-mix(in srgb,var(--preview-text-muted) 70%,var(--preview-background));" +
+        "border-radius:8px;background:transparent;color:var(--preview-clockbar-text);font:inherit;font-size:min(22px,calc(var(--topbar-h) - 6px));line-height:1;cursor:pointer;pointer-events:auto}" +
+        ".sp-clockbar-add-target:hover:not(:disabled),.sp-clockbar-add-target:focus-visible{border-color:var(--accent);background:var(--accent-soft)}" +
+        ".sp-clockbar-add-target:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.sp-clockbar-add-target:disabled{opacity:.45;cursor:not-allowed}" +
         ".sp-clockbar-section.sp-clockbar-drop{background:var(--accent-soft);outline:1px dashed var(--accent)}" +
         ".sp-clockbar-custom.sp-clockbar-insert{border-left:3px solid var(--accent)}" +
         ".sp-clockbar-left{justify-content:flex-start}.sp-clockbar-middle{justify-content:center}.sp-clockbar-right{justify-content:flex-end}" +

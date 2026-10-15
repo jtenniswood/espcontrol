@@ -1,4 +1,4 @@
-import { CLOCK_BAR_CATALOG, isClockBarSensor } from "../model/clock_bar";
+import { CLOCK_BAR_CATALOG, CLOCK_BAR_MAX_ITEMS, isClockBarSensor } from "../model/clock_bar";
 import { placeClockBarItems } from "../model/clock_bar_layout";
 import { mdiIcon } from "./ui_primitives";
 import { state } from "../state/app_instance";
@@ -290,6 +290,16 @@ export function createAppStatusPreviewFeature(runtime: UiRuntimeState, core: Cor
             els.clockBarSections[item.group].appendChild(element);
             elements[item.id] = element;
         }
+        const add = document.createElement("button");
+        add.type = "button";
+        add.className = "sp-clockbar-add-target";
+        add.setAttribute("data-clockbar-add", "");
+        add.setAttribute("aria-label", "Add clock bar element");
+        add.disabled = state.configLocked || state.clockBarLayoutSaving || items.length >= CLOCK_BAR_MAX_ITEMS;
+        add.title = items.length >= CLOCK_BAR_MAX_ITEMS ? "Clock bar limit reached (12 elements)" : "Add clock bar element";
+        const plus = document.createElement("span"); plus.textContent = "+"; plus.setAttribute("aria-hidden", "true");
+        add.appendChild(plus);
+        els.clockBarSections.right.appendChild(add);
         updateClockText();
         const fit = () => {
             if (els.clockBarItems !== elements) return;
@@ -311,15 +321,19 @@ export function createAppStatusPreviewFeature(runtime: UiRuntimeState, core: Cor
                 range.selectNodeContents(title);
                 titleWidth = Math.min(width, Math.ceil(range.getBoundingClientRect().width) + 2);
             }
-            const result = placeClockBarItems(measured, width, gap, titleWidth);
+            // Reserve an editor-only empty slot, so the add target never covers a reading or title.
+            // The sentinel cannot collide with saved IDs, which only allow letters, digits, _ and -.
+            const addId = "@add";
+            const result = placeClockBarItems([...measured, { id: addId, group: "right", width: Math.min(32, width) }], width, gap, titleWidth);
             const visible = new Set(result.items.map(item => item.id));
+            add.style.display = visible.has(addId) ? "" : "none";
             for (const item of items) {
                 const el = els.clockBarItems[item.id];
                 el.style.display = visible.has(item.id) ? "" : "none";
                 el.dataset.overflow = visible.has(item.id) ? "false" : "true";
             }
             for (const item of result.items) {
-                const el = els.clockBarItems[item.id];
+                const el = item.id === addId ? add : els.clockBarItems[item.id];
                 el.style.left = (item.x + 6) + "px";
                 el.style.width = item.width + "px";
             }

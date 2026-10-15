@@ -7528,7 +7528,14 @@ async function assertEditableClockBar(browser, testCase) {
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await seedNativeDocument(page, nativeState);
     await page.waitForSelector("[data-clockbar-add]");
-    await page.locator("[data-clockbar-add]").click();
+    const addTarget = page.locator(".sp-topbar [data-clockbar-add]");
+    await page.locator('.sp-topbar').screenshot({ path: path.join(FAILURE_DIR, `clock-bar-add-target-${testCase.slug}.png`) });
+    assert.equal(await addTarget.count(), 1, "add touch point is inside the clock bar preview");
+    assert.equal(await page.locator('.sp-selection-bar [data-clockbar-add]').count(), 0, "adding does not depend on the selection toolbar");
+    await page.locator('.sp-main [data-slot="1"]').click();
+    assert(await addTarget.isVisible(), "add touch point remains visible with a card selected");
+    await addTarget.focus();
+    await addTarget.press("Enter");
     await page.locator("#sp-clockbar-add-type").selectOption("humidity");
     await page.locator("#sp-clockbar-entity").fill("sensor.room_humidity");
     await page.locator("#sp-clockbar-icon").fill("Water Percent");
@@ -7557,7 +7564,8 @@ async function assertEditableClockBar(browser, testCase) {
     await page.locator(`[data-clockbar-item="${duplicate.id}"]`).dragTo(page.locator('.sp-clockbar-section[data-clockbar-section="middle"]'), { targetPosition: { x: 5, y: 5 } });
     await page.waitForFunction(id => document.querySelector(`[data-clockbar-item="${id}"]`)?.dataset.clockbarSection === "middle", duplicate.id);
     await page.locator(`[data-clockbar-item="${duplicate.id}"]`).click();
-    await page.locator(".sp-selection-bar").getByRole("button", { name: "Add element", exact: true }).click();
+    assert(await addTarget.isVisible(), "add touch point remains visible with an element selected");
+    await addTarget.click();
     await page.locator("#sp-clockbar-source").selectOption("local");
     await page.locator("#sp-clockbar-entity").fill("room_temp");
     await page.locator("#sp-clockbar-icon").fill("Thermometer");
@@ -7593,7 +7601,7 @@ async function assertEditableClockBar(browser, testCase) {
       const range = document.createRange(); range.selectNodeContents(title);
       return range.getBoundingClientRect().width <= title.clientWidth + 1;
     }), "short titles remain complete when there is room");
-    const boxes = await page.locator('.sp-topbar [data-clockbar-item]:visible,.sp-clockbar-subpage-title:visible').evaluateAll(elements => elements.map(el => { const b = el.getBoundingClientRect(); return { x: b.x, right: b.right }; }).sort((a,b) => a.x-b.x));
+    const boxes = await page.locator('.sp-topbar [data-clockbar-item]:visible,.sp-clockbar-subpage-title:visible,.sp-topbar [data-clockbar-add]:visible').evaluateAll(elements => elements.map(el => { const b = el.getBoundingClientRect(); return { x: b.x, right: b.right }; }).sort((a,b) => a.x-b.x));
     for (let i=1; i<boxes.length; i++) assert(boxes[i].x >= boxes[i-1].right - 1, "visible clock bar elements do not overlap");
     const network = clockBar.layout.items.find(item => item.type === "network");
     if (network) {
@@ -7610,6 +7618,12 @@ async function assertEditableClockBar(browser, testCase) {
       assert(clockBar.layout.items.some(item => item.type === "network"), "deleted connectivity can be added again");
     }
     await page.setViewportSize({ width: 320, height: 740 });
+    assert(await addTarget.isVisible(), "add touch point remains visible on a phone");
+    await page.waitForFunction(() => {
+      const button = document.querySelector('.sp-topbar [data-clockbar-add]');
+      const target = button.getBoundingClientRect(), bar = button.closest('.sp-topbar').getBoundingClientRect();
+      return target.left >= bar.left - 1 && target.right <= bar.right + 1 && target.top >= bar.top - 1 && target.bottom <= bar.bottom + 1;
+    });
     const visibleItem = page.locator(".sp-topbar [data-clockbar-item]:visible").first();
     await visibleItem.click();
     assert(await page.locator(".sp-selection-bar").evaluate(bar => {
@@ -7621,6 +7635,33 @@ async function assertEditableClockBar(browser, testCase) {
     await page.setViewportSize(testCase.viewport);
     assert.deepEqual(errors, [], "clock bar editor raises no browser errors");
     await page.screenshot({ path: path.join(FAILURE_DIR, `editable-clock-bar-${testCase.slug}.png`) });
+    // Empty and crowded layouts must both keep the add location discoverable.
+    clockBar.layout = { version: 1, items: [] };
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await seedNativeDocument(page, nativeState);
+    await addTarget.waitFor({ state: "visible" });
+    assert(await addTarget.isEnabled(), "an empty bar retains the add touch point");
+    assert.equal(await page.locator('.sp-topbar [data-clockbar-item]').count(), 0, "the placeholder is never a saved element");
+    await addTarget.click();
+    await page.locator("#sp-clockbar-add-type").selectOption("network");
+    await page.locator(".sp-settings-overlay").getByRole("button", { name: "Add element", exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
+    assert.equal(clockBar.layout.items.length, 1, "the empty bar can be populated directly from its touch point");
+    const networkTemplate = clockBar.layout.items[0];
+    clockBar.layout.items = Array.from({ length: 12 }, (_, index) => ({ ...networkTemplate, id: "full" + index, group: "right" }));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await seedNativeDocument(page, nativeState);
+    await addTarget.waitFor({ state: "visible" });
+    await page.waitForFunction(() => document.querySelector('[data-clockbar-add]')?.disabled);
+    assert.equal(await addTarget.getAttribute('title'), "Clock bar limit reached (12 elements)");
+    const crowded = await page.locator('.sp-topbar [data-clockbar-item]:visible,.sp-topbar [data-clockbar-add]').evaluateAll(elements => elements.map(el => { const b = el.getBoundingClientRect(); return { left: b.left, right: b.right }; }).sort((a,b) => a.left-b.left));
+    for (let i=1; i<crowded.length; i++) assert(crowded[i].left >= crowded[i-1].right - 1, "crowded bar keeps the add target separate from readings");
+    await addTarget.evaluate(button => button.click());
+    assert.equal(await page.locator('.sp-settings-overlay.sp-visible').count(), 0, "disabled add target cannot exceed the limit");
+    assert.equal(clockBar.layout.items.length, 12);
+    assert.deepEqual(errors, [], "empty and full clock bars raise no browser errors");
     console.log(`${testCase.name}: editable clock bar add/edit/duplicate/drag/local/save failure/reload/title checks passed.`);
   } finally { await context.close(); }
 }
