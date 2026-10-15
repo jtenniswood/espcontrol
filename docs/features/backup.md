@@ -23,6 +23,8 @@ New backup exports continue to use `version: 2` with `format: "espcontrol.backup
 
 When importing a backup from a different-sized panel, EspControl keeps the saved card order where it can and rearranges cards that no longer fit the target screen. Subpages are moved with their parent card when the parent card is kept.
 
+Current firmware supports up to 8 KB of settings per card or subpage, within the panel's total configuration storage. This gives colour options and other card settings more room. The editor checks the connected panel's capacity; older firmware retains its smaller limits. If a larger configuration cannot be copied into the older-firmware format, the editor warns that the configuration is saved but should not be downgraded. Export a backup before changing firmware versions.
+
 ## Reset the Display
 
 Open **System > Factory Reset** on the [Setup](/features/setup) page. Choose **Save backup** to keep a copy of your settings, then choose a reset option and confirm:

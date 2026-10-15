@@ -32,6 +32,12 @@ export function runCardEditorValidationControllerTests(): void {
   equal(result.reason, "config-size", "main-panel card configurations retain their firmware size limit");
 
   result = controller.validateSave({
+    fields: [], isSubpage: false, serializedConfigLength: 1024, configByteLimit: 8191,
+    imageCardCount: 0, imageCardCapacity: 1,
+  });
+  equal(result.valid, true, "native cards use the advertised capacity");
+
+  result = controller.validateSave({
     fields: [{ value: "image.example" }], isSubpage: true, serializedConfigLength: 256,
     imageCardCount: 2, imageCardCapacity: 1,
   });

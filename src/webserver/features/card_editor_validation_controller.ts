@@ -35,12 +35,13 @@ export class CardEditorValidationController {
     readonly fields: readonly RequiredCardField[];
     readonly isSubpage: boolean;
     readonly serializedConfigLength: number;
+    readonly configByteLimit?: number;
     readonly imageCardCount: number;
     readonly imageCardCapacity: number;
   }): CardEditorValidationResult {
     const required = this.validateRequiredFields(options.fields);
     if (!required.valid) return { valid: false, reason: "required-field", firstInvalidIndex: required.firstInvalidIndex };
-    if (!options.isSubpage && options.serializedConfigLength > 255) {
+    if (!options.isSubpage && options.serializedConfigLength > (options.configByteLimit ?? 255)) {
       return { valid: false, reason: "config-size", firstInvalidIndex: -1 };
     }
     if (options.imageCardCount > options.imageCardCapacity) {

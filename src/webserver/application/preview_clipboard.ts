@@ -346,7 +346,7 @@ export function createPreviewClipboardFeature(
     }
     function clipboardSubpageFits(sp: any) {
         var serialized: any = serializeSubpageConfig(sp);
-        return !!EspControlModel.splitSubpageConfigChunks(serialized, configPersistence.subpageEntityKeys().length, 255);
+        return configPersistence.subpageConfigFits(serialized);
     }
     function planMainClipboardPaste(entries: any, pos: any) {
         var nextGrid: any = state.grid.slice();
@@ -371,7 +371,7 @@ export function createPreviewClipboardFeature(
             if (placement.size !== requestedSize)
                 resized++;
             var buttonConfig: any = clipboardButtonConfig(entry);
-            if (serializeButtonConfig(buttonConfig).length > 255) {
+            if (new TextEncoder().encode(serializeButtonConfig(buttonConfig)).length > configPersistence.buttonConfigByteLimit()) {
                 return { error: "A copied card's settings are too large for this controller." };
             }
             nextButtons[newSlot - 1] = buttonConfig;
