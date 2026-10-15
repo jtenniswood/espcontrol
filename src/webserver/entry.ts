@@ -640,6 +640,7 @@ function composeApplicationContext(): ApplicationContext {
     emptyButtonConfig: () => interactions.emptyButtonConfig(),
   });
   contextMenu = createPreviewContextMenuFeature({
+    configPersistence: configurationPersistence,
     document: dom.document,
     window: dom.window,
     layout,

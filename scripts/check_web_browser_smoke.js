@@ -2860,6 +2860,99 @@ async function assertNewMediaCardDefaults(page, posts, label, mediaCoverArtSuppo
   );
 }
 
+async function assertContextColourPicker(browser, testCase) {
+  for (const native of [false, true]) {
+    const fixture = nativeConfigState(testCase.slug);
+    fixture.document.buttons[1] += ";;;;;card_active_color=custom,card_on_color=FFFFFF";
+    const legacyTextState = {};
+    const context = await browser.newContext({ viewport: testCase.viewport });
+    await installRoutes(context, testCase.slug, { nativeState: native ? fixture : null, legacyTextState });
+    const page = await context.newPage();
+    const errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await installFakeEventSource(page);
+    const label = `${testCase.name}/${native ? "native" : "legacy"}`;
+    const storedButton = slot => native ? fixture.document.buttons[slot] : legacyTextState[`button_${slot}_config`];
+    const storedSubpage = () => native ? fixture.document.subpages[3] : legacyTextState.subpage_3_config;
+    const waitForSaved = async predicate => {
+      const deadline = Date.now() + 10000;
+      while (!predicate() && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 25));
+      assert(predicate(), `${label}: colour change persisted`);
+    };
+    const card = slot => page.locator(`.sp-main [data-slot="${slot}"]`);
+    const menu = page.locator(".sp-ctx-menu");
+    const openPicker = async target => {
+      await target.click({ button: "right" });
+      await menu.getByText("Change Colour", { exact: true }).click();
+      await menu.getByRole("group", { name: "Card colour presets", exact: true }).waitFor();
+      assert.strictEqual(await page.locator(".sp-settings-overlay.sp-visible").count(), 0,
+        `${label}: quick colour picker does not open card settings`);
+    };
+    try {
+      await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+      await page.waitForFunction(() => window.__eventSources?.length > 0);
+      await seedNativeDocument(page, fixture);
+      await openPicker(card(1));
+      await menu.locator('[data-color="6036B2"]').click();
+      await waitForSaved(() => storedButton(1)?.includes("card_off_color=6036B2"));
+      assert(storedButton(1).includes("card_on_color=FFFFFF"), `${label}: separate active colour survives`);
+      await openPicker(card(1));
+      assert.strictEqual(await menu.locator('[data-color="6036B2"]').getAttribute("aria-pressed"), "true");
+      const picker = menu.getByLabel("Choose custom colour");
+      await picker.dispatchEvent("click");
+      assert.strictEqual(await menu.count(), 1, `${label}: native picker stays attached after click`);
+      await picker.fill("#123abc");
+      await waitForSaved(() => storedButton(1)?.includes("card_off_color=123ABC"));
+      await openPicker(card(1));
+      assert.strictEqual(await menu.locator(".sp-card-color-custom").getAttribute("data-selected"), "true");
+      if (process.env.ESPCONTROL_CONTEXT_COLOUR_SCREENSHOT && native) {
+        await page.screenshot({ path: process.env.ESPCONTROL_CONTEXT_COLOUR_SCREENSHOT });
+      }
+      await menu.getByText("Reset Colour", { exact: true }).click();
+      await waitForSaved(() => !storedButton(1)?.includes("card_off_color="));
+      assert(storedButton(1).includes("card_on_color=FFFFFF"));
+
+      await card(2).click({ modifiers: ["ControlOrMeta"] });
+      await openPicker(card(1));
+      assert.strictEqual(await menu.getByText("Card Colours", { exact: true }).count(), 1);
+      await menu.locator('[data-color="64AD54"]').click();
+      await waitForSaved(() => [1, 2].every(slot => storedButton(slot)?.includes("card_off_color=64AD54")));
+      assert(storedButton(2).includes("sensor.energy"), `${label}: bulk recolour keeps card configuration`);
+      await page.locator(".sp-brand").click();
+      await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+      await page.locator(".sp-back-btn").waitFor();
+      await openPicker(card(1));
+      await menu.locator('[data-color="DA5125"]').click();
+      await waitForSaved(() => storedSubpage()?.includes("card_off_color=DA5125"));
+      await page.locator(".sp-brand").click();
+      await openPicker(page.locator(".sp-back-btn"));
+      await menu.locator('[data-color="3C64DE"]').click();
+      await waitForSaved(() => storedSubpage()?.includes(":3C64DE"));
+      await openPicker(page.locator(".sp-back-btn"));
+      await menu.getByText("Reset Colour", { exact: true }).click();
+      await waitForSaved(() => !storedSubpage()?.includes(":3C64DE"));
+      await page.locator(".sp-back-btn .sp-back-hit").click();
+      await card(1).click({ button: "right" });
+      await menu.getByText("Change Colour", { exact: true }).click();
+      await page.keyboard.press("Escape");
+      assert.strictEqual(await menu.count(), 0, `${label}: Escape dismisses the picker`);
+      await openPicker(card(1));
+      await page.locator(".sp-brand").click();
+      assert.strictEqual(await menu.count(), 0, `${label}: clicking outside dismisses the picker`);
+      for (const type of ["image", "wifi_qr_card"]) {
+        await page.evaluate(type => window.__seedEspState([
+          { id: "text-button_1_config", state: `camera.garden;Fixed Background;Auto;Auto;;;${type}` },
+        ]), type);
+        await card(1).click({ button: "right" });
+        assert.strictEqual(await menu.getByText("Change Colour", { exact: true }).count(), 0,
+          `${label}: ${type} keeps its fixed background`);
+        await page.keyboard.press("Escape");
+      }
+      assert.deepStrictEqual(errors, [], `${label}: colour menu has no browser errors`);
+    } finally { await context.close(); }
+  }
+}
+
 async function assertCardActiveColourControls(page, posts, label) {
   await page.getByRole("tab", { name: "Layout" }).click();
   const card = page.locator('.sp-main [data-slot="1"]');
@@ -6479,6 +6572,7 @@ async function runCase(browser, testCase) {
     await assertPlaylistValidationOpensSourcePanel(page, testCase.name);
     await assertSpeakerGroupEditorAndPreview(page, posts, testCase.name);
     if (testCase.exerciseInteractions) {
+      await assertContextColourPicker(browser, testCase);
       await assertCardActiveColourControls(page, posts, testCase.name);
       await assertMobileTabLayout(page, testCase.name, testCase.viewport);
       await assertAllCardSettingsGrouped(page, posts, testCase.name);
@@ -7518,6 +7612,11 @@ async function assertS3ForecastEditorLayout(browser) {
         } finally { await context.close(); }
       }
       console.log(`Card title browser checks passed for ${ACTIVE_CASES.length} layouts.`);
+      return;
+    }
+    if (process.env.ESPCONTROL_CONTEXT_COLOUR_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) await assertContextColourPicker(browser, testCase);
+      console.log(`Context colour picker browser checks passed for ${ACTIVE_CASES.length} layouts, native and legacy saves.`);
       return;
     }
     if (process.env.ESPCONTROL_ACTIVE_COLOUR_ONLY === "1") {

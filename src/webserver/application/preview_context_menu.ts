@@ -1,3 +1,7 @@
+import { createColorSwatches } from "../components/color_swatches";
+import { configOptionValue, setCardColor } from "../model/config_primitives";
+import { defaultCardBackgroundColor } from "../state/preview_theme";
+import type { ConfigPersistenceFeature } from "./config_post_api";
 import { state } from "../state/app_instance";
 import {
     CARD_SIZE_EXTRA_LARGE,
@@ -35,6 +39,7 @@ export interface PreviewContextMenuDependencies {
     readonly layout: ApplicationLayoutState;
     readonly cards: CardRegistry;
     readonly codec: ConfigCodecFeature;
+    readonly configPersistence: Pick<ConfigPersistenceFeature, "saveButtonConfig">;
     readonly clockBar: Pick<ClockBarFeature, "setItemVisible">;
     readonly shell: Pick<ControlsShellFeature, "isConfigLocked">;
     readonly statusPreview: Pick<AppStatusPreviewFeature, "clockBarItemActive" | "clockBarItemLabel" | "clockBarItems" | "isClockBarTemperatureItem" | "updateClockBarItemUi">;
@@ -107,7 +112,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
             ev.preventDefault();
             ev.stopPropagation();
             hideContextMenu();
-            handler();
+            handler(ev);
         });
         ctxMenu.appendChild(item);
     }
@@ -148,7 +153,63 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         renderPreview();
         renderButtonSettings();
     }
+    function supportsCardColour(slot: number) {
+        const c = ctx();
+        if (slot === -2) return c.isSub;
+        const button = c.buttons[slot - 1];
+        return !!button && button.type !== "image" && button.type !== "wifi_qr_card";
+    }
+    function addColourMenuItem(slots: number[]) {
+        const colourSlots = slots.filter(supportsCardColour);
+        if (colourSlots.length) {
+            addCtxItem("eyedropper", "Change Colour", (event: MouseEvent) => showColourPicker(event, colourSlots));
+        }
+    }
+    function showColourPicker(event: MouseEvent, slots: number[]) {
+        if (isConfigLocked()) return;
+        const c = ctx();
+        const homeSlot = state.editingSubpage;
+        function colour(slot: number): string {
+            if (slot === -2) return getSubpage(homeSlot).backColor || defaultCardBackgroundColor("", state);
+            const button = c.buttons[slot - 1];
+            return configOptionValue(button.options, "card_off_color") || defaultCardBackgroundColor(button.type || "", state);
+        }
+        function saveColour(hex: string) {
+            if (isConfigLocked() || state.editingSubpage !== homeSlot) return;
+            const current = ctx();
+            if (slots.some(slot => !current.grid.includes(slot) || !supportsCardColour(slot))) return;
+            for (const slot of slots) {
+                if (slot === -2) getSubpage(homeSlot).backColor = hex;
+                else {
+                    const button = current.buttons[slot - 1];
+                    button.options = setCardColor(button.options, hex);
+                    if (!c.isSub) dependencies.configPersistence.saveButtonConfig(slot);
+                }
+            }
+            if (c.isSub) saveSubpageConfig(homeSlot);
+            renderPreview();
+            renderButtonSettings();
+            hideContextMenu();
+        }
+        hideContextMenu();
+        ctxMenu = document.createElement("div");
+        ctxMenu.className = "sp-ctx-menu sp-ctx-colours";
+        const title = document.createElement("div");
+        title.className = "sp-ctx-colour-title";
+        title.textContent = slots.length > 1 ? "Card Colours" : "Card Colour";
+        ctxMenu.appendChild(title);
+        const firstColour = colour(slots[0]!);
+        const selectedColour = slots.every(slot => colour(slot) === firstColour) ? firstColour : "";
+        ctxMenu.appendChild(createColorSwatches(selectedColour, saveColour, "Card colour presets"));
+        // Keep the native picker attached until its change event commits the colour.
+        ctxMenu.addEventListener("click", (e: MouseEvent) => e.stopPropagation());
+        addCtxDivider();
+        addCtxItem("restore", "Reset Colour", () => saveColour(""));
+        document.body.appendChild(ctxMenu);
+        positionMenu(ctxMenu, event);
+    }
     function addBulkCardMenuItems(this: any, slots?: any) {
+        addColourMenuItem(slots);
         addCtxItem("clipboard-outline", "Copy " + slots.length + " Cards", function (this: any) { copyButtons(slots); });
         addCtxItem("code-json", "Copy " + slots.length + " Cards as Code", function (this: any) { showCopyCardCode(slots); });
         addCtxItem("content-cut", "Cut " + slots.length + " Cards", function (this: any) { cutButtons(slots); });
@@ -195,6 +256,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         var c: any = ctx();
         var b: any = c.buttons[slot - 1];
         addCtxItem("pencil", "Edit Card", function (this: any) { openCardSettings(slot); });
+        addColourMenuItem([slot]);
         var ctxTypeDef: any = dependencies.cards.definitions[(b && b.type) || ""];
         if (ctxTypeDef && ctxTypeDef.contextMenuItems &&
             (!c.isSub || buttonTypeRegistryValue(ctxTypeDef, "allowInSubpage", false))) {
@@ -307,6 +369,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
     }
     function addBackButtonMenuItems(this: any) {
         addCtxItem("pencil", "Edit Label", function (this: any) { openCardSettings(-2); });
+        addColourMenuItem([-2]);
         addCtxItem("keyboard-return", "Exit Subpage", function (this: any) { exitSubpage(); });
     }
     function showEmptySlotMenu(this: any, e?: any, pos?: any) {
