@@ -65,6 +65,15 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-clockbar-add-target:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.sp-clockbar-add-target:disabled{opacity:.45;cursor:not-allowed}" +
         ".sp-clockbar-section.sp-clockbar-drop{background:var(--accent-soft);outline:1px dashed var(--accent)}" +
         ".sp-clockbar-custom.sp-clockbar-insert{border-left:3px solid var(--accent)}" +
+        ".sp-clockbar-custom.sp-clockbar-insert-after{border-right:3px solid var(--accent)}" +
+        ".sp-screen.sp-clockbar-dragging{overflow:visible}.sp-clockbar-dragging .sp-topbar{z-index:4}" +
+        ".sp-clockbar-dragging .sp-clockbar-add-target{visibility:hidden}.sp-clockbar-drag-source{opacity:.4}" +
+        ".sp-clockbar-drop-targets{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:8px;" +
+        "box-sizing:border-box;border:1px solid var(--preview-border);border-radius:10px;background:var(--preview-background);color:var(--preview-clockbar-text);box-shadow:0 4px 16px rgba(0,0,0,.3);max-height:60vh;overflow:auto}" +
+        ".sp-clockbar-drop-group{display:flex;flex-direction:column;gap:4px;min-width:0}.sp-clockbar-drop-heading{font-size:12px;line-height:1.4;color:var(--preview-text-muted);text-align:center}" +
+        ".sp-clockbar-drop-slot{min-width:0;min-height:28px;box-sizing:border-box;padding:4px 6px;border:1px dashed color-mix(in srgb,var(--preview-text-muted) 70%,var(--preview-background));" +
+        "border-radius:8px;font-size:clamp(10px,1.8cqw,12px);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}" +
+        ".sp-clockbar-drop-slot.sp-clockbar-drop{border-color:var(--accent);background:var(--accent-soft);color:var(--preview-clockbar-text)}" +
         ".sp-clockbar-left{justify-content:flex-start}.sp-clockbar-middle{justify-content:center}.sp-clockbar-right{justify-content:flex-end}" +
         ".sp-clockbar-subpage-title,.sp-temp,.sp-clock{font-size:var(--btn-label);line-height:1.2;color:var(--preview-clockbar-text);font-weight:var(--btn-label-weight,400)}" +
         ".sp-btn-label{font-size:var(--btn-label);line-height:1.2;color:var(--card-text-color,var(--preview-text-primary));font-weight:var(--btn-label-weight,400)}" +

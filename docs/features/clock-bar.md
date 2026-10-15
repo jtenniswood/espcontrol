@@ -12,7 +12,7 @@ The clock bar is the narrow status area at the top of the panel. Enable it in **
 
 Tap the dashed **+** slot at the end of the clock bar in the **Layout** preview to add an element. It stays available while a card or clock bar element is selected. The slot is an editor control and is not shown on the physical panel; it becomes disabled at the 12-element limit. With no card selected, **Manage clock bar** above the preview also lists all configured elements. Select an existing element to **Edit**, **Duplicate**, or **Delete** it. Right-clicking an element offers the same actions.
 
-Choose **Left**, **Middle**, or **Right** in the element editor. Elements sit side by side. Drag an element within its group to reorder it, or into another group to move it. **Move earlier** and **Move later** provide the same ordering controls without dragging.
+Choose **Left**, **Middle**, or **Right** in the element editor. Elements sit side by side. While dragging, a drop area opens below the clock bar with all insertion positions across the three groups, including empty groups and elements hidden by overflow. Drop on a dashed slot to insert before an element or at the end of a group; the hovered slot is highlighted. Release outside the clock bar and its drop area, or press **Escape**, to cancel. **Move earlier** and **Move later** provide ordering controls without dragging.
 
 The middle group is centred in the space between the outer groups. All pages share one layout. On subpages and while a card control or Settings is open, the page or control title replaces the left group and can temporarily displace middle elements. Closing the control restores the normal arrangement.
 
