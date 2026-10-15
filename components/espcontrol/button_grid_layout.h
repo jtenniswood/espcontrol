@@ -446,8 +446,8 @@ inline void configure_button_label_wrap(lv_obj_t *label) {
   lv_obj_set_width(label, lv_pct(100));
 }
 
-inline int card_icon_zoom(bool simple_content, int row_span, int col_span) {
-  return simple_content && row_span >= 2 && col_span >= 2 ? 384 : 256;
+inline int card_icon_zoom(int row_span, int col_span) {
+  return row_span >= 2 && col_span >= 2 ? 512 : 256;
 }
 
 inline void apply_card_icon_zoom(const BtnSlot &s, int zoom, int icon_percent) {

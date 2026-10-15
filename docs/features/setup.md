@@ -105,11 +105,12 @@ Right-click a card and open **Size** to choose:
 
 If a card already occupies the space needed for a larger size, the setup page tries to move it to the next available slot. If there is not enough room, the size change is not applied.
 
-For simple switch, button, action and subpage cards, **Large (2 x 2)** makes
-the icon 50% larger, on both the panel and the setup preview. Labels and state
-values keep their usual font sizes. Returning to Single, Tall or Wide restores
-the usual icon size. Cards with dedicated controls, such as media players and
-sliders, keep their own layouts.
+Cards with a top-left icon use twice the normal icon size on **Large (2 x 2)**
+and larger cards, on both the panel and the setup preview. This also applies to
+sliders, media controls, sensor icons and image overlays. Labels and state values
+keep their usual font sizes. Returning to Single, Tall or Wide restores the
+usual icon size. Forecast groups, artwork and numeric displays keep their own
+layouts.
 
 ## Device Settings
 

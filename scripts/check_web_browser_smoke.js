@@ -7231,10 +7231,14 @@ async function assertSimpleCardScaling(browser, testCase) {
   try {
     await installRoutes(context, testCase.slug);
     const page = await context.newPage();
+    await page.addInitScript(() => { window.__ESPCONTROL_TEST_HOOKS__ = {}; });
     await installFakeEventSource(page);
     await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
     await page.waitForFunction(() => window.__eventSources?.length > 0);
-    const seed = events => page.evaluate(events => window.__seedEspState(events), events);
+    const seed = async events => {
+      await page.evaluate(events => window.__seedEspState(events), events);
+      await page.evaluate(() => new Promise(requestAnimationFrame));
+    };
     await seed([...seededEvents(), { id: "text-button_order", state: "1" }]);
     const card = page.locator('.sp-main .sp-btn[data-slot="1"]');
     const typography = async () => {
@@ -7261,11 +7265,11 @@ async function assertSimpleCardScaling(browser, testCase) {
       'light.kitchen;Kitchen and dining room lighting controls;Lightbulb;Auto',
     ]) {
       await seed([{ id: "text-button_1_config", state: config }, { id: "text-button_order", state: "1" }]);
-      await page.waitForSelector('.sp-main [data-slot="1"].sp-scalable-content:not(.sp-btn-big)');
+      await page.waitForSelector('.sp-main [data-slot="1"]:not(.sp-btn-big) .sp-btn-icon');
       const normal = await typography();
       for (const [order, className, factor] of [
-        ["1b", "sp-btn-big", 1.5], ["1d", "sp-btn-double", 1],
-        ["1w", "sp-btn-wide", 1], ["1b", "sp-btn-big", 1.5], ["1", "", 1],
+        ["1b", "sp-btn-big", 2], ["1d", "sp-btn-double", 1],
+        ["1w", "sp-btn-wide", 1], ["1b", "sp-btn-big", 2], ["1", "", 1],
       ]) {
         await seed([{ id: "text-button_order", state: order }]);
         await page.waitForFunction(({ className }) => {
@@ -7291,7 +7295,58 @@ async function assertSimpleCardScaling(browser, testCase) {
     assert(Math.abs(valueSize - normal.icon * 2.5) < .02, `${testCase.slug}: existing large numbers must not be enlarged twice`);
     await seed([{ id: "text-button_1_config", state: 'sensor.energy;Energy;Gauge;Auto;;;sensor;0' },
       { id: "text-button_order", state: "1b" }]);
-    await page.waitForSelector('.sp-main [data-slot="1"]:not(.sp-scalable-content)');
+    await page.waitForSelector('.sp-main [data-slot="1"] .sp-sensor-value');
+    const fixtures = await page.evaluate(() => {
+      const hooks = window.__ESPCONTROL_TEST_HOOKS__.config;
+      const cases = [...new Set([...hooks.cardContractCardKeys(), ...hooks.buttonTypePickerKeysFor(false)])]
+        .map(key => ({ key }));
+      cases.push(
+        ...['fan_control', 'fan_speed', 'fan_switch', 'fan_oscillate', 'fan_direction', 'fan_preset']
+          .map(key => ({ key, entity: 'fan.bedroom' })),
+        { key: 'sensor', variant: 'icon', precision: 'icon' },
+        { key: 'sensor', variant: 'text', precision: 'text' },
+        { key: 'climate_control', variant: 'icon', options: 'number_display=icon' },
+        { key: 'media', variant: 'controls', sensor: 'control_modal', options: 'number_display=icon' },
+        { key: 'image', variant: 'overlay', options: 'image_icon,image_label' },
+      );
+      return cases.map(({ key, variant, ...overrides }) => {
+        const config = hooks.buttonTypeDefaultConfig(key) ||
+          { ...hooks.buttonTypeDefaultConfig(''), type: key, entity: 'switch.test' };
+        return { key: (key || 'switch') + (variant ? '/' + variant : ''),
+          config: hooks.serializeButtonConfig({ ...config, label: 'Icon', ...overrides }) };
+      }).filter(Boolean);
+    });
+    const iconMetrics = () => card.evaluate(card => {
+      const icon = card.querySelector('.sp-btn-icon,.sp-image-preview-icon');
+      if (!icon) return null;
+      const label = card.querySelector('.sp-btn-label,.sp-image-label-main');
+      const bounds = card.getBoundingClientRect(), glyph = icon.getBoundingClientRect();
+      const text = label?.getBoundingClientRect();
+      return { size: parseFloat(getComputedStyle(icon).fontSize),
+        label: label ? getComputedStyle(label).fontSize : null,
+        weight: label ? getComputedStyle(label).fontWeight : null,
+        fits: glyph.left >= bounds.left && glyph.top >= bounds.top && glyph.right <= bounds.right + .5
+          && glyph.bottom <= bounds.bottom && (!text || glyph.bottom <= text.top) };
+    });
+    const covered = [];
+    for (const fixture of fixtures) {
+      await seed([{ id: 'text-button_1_config', state: fixture.config }, { id: 'text-button_order', state: '1' }]);
+      if (!(await card.count())) continue; // Unsupported cards are hidden on some profiles.
+      const single = await iconMetrics();
+      if (!single) continue; // Numeric displays, artwork and forecast groups have their own layouts.
+      for (const [order, factor] of [['1b', 2], ['1', 1]]) {
+        await seed([{ id: 'text-button_order', state: order }]);
+        const metrics = await iconMetrics();
+        assert(Math.abs(metrics.size - normal.icon * factor) < .02,
+          `${testCase.slug}/${fixture.key}: all top-left icons use the same ${factor}x size (${metrics.size} vs ${normal.icon * factor})`);
+        assert.strictEqual(metrics.label, single.label, `${fixture.key}: label size stays unchanged`);
+        assert.strictEqual(metrics.weight, single.weight, `${fixture.key}: label weight stays unchanged`);
+        if (factor === 2) assert(metrics.fits, `${testCase.slug}/${fixture.key}: enlarged icon fits above the label`);
+      }
+      covered.push(fixture.key);
+    }
+    assert(covered.length >= 10, `${testCase.slug}: cover top-left icons across card families`);
+    console.log(`${testCase.slug}: consistent top-left icons checked on ${covered.join(', ')}.`);
   } finally { await context.close(); }
 }
 

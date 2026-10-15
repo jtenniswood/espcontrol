@@ -982,7 +982,9 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
     lv_label_set_long_mode(s.text_lbl, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(s.text_lbl, lv_pct(100));
   }
-  apply_card_icon_zoom(s, card_icon_zoom(card_simple_content(p), row_span, col_span),
+  // Every card's standard icon occupies the same top-left position. Drivers
+  // that show numbers, artwork, or forecast groups hide this icon instead.
+  apply_card_icon_zoom(s, card_icon_zoom(row_span, col_span),
     display_main_width_percent(display));
   control_modal_register_card_label(s);
   display_apply_slot_text_width(s, display);
@@ -1316,7 +1318,7 @@ inline bool grid_refresh_subpage_layouts(
       sp_order.back_pos % COLS, sp_order.back_pos / COLS,
       sp_order.back_col_span, sp_order.back_row_span, COLS, ROWS);
     apply_card_icon_zoom(entry->back_slot,
-      card_icon_zoom(true, sp_order.back_row_span, sp_order.back_col_span),
+      card_icon_zoom(sp_order.back_row_span, sp_order.back_col_span),
       display_main_width_percent(display));
     apply_card_label_line_clamp(entry->back_slot.text_lbl, cfg,
                                 sp_order.back_row_span);
@@ -2177,7 +2179,7 @@ inline void grid_phase2(
     lv_label_set_display_text(back_slot.icon_lbl, "\U000F0141");
     lv_label_set_display_text(back_slot.text_lbl, sp_back_label.c_str());
     apply_card_icon_zoom(back_slot,
-      card_icon_zoom(true, sp_ord.back_row_span, sp_ord.back_col_span),
+      card_icon_zoom(sp_ord.back_row_span, sp_ord.back_col_span),
       display_main_width_percent(display));
     apply_card_label_line_clamp(back_slot.text_lbl, cfg, sp_ord.back_row_span);
     configure_button_label_wrap(back_slot.text_lbl);

@@ -209,16 +209,6 @@ inline bool action_card_option_select(const ParsedCfg &p) {
   return p.type == "action" && action_card_option_select_action(p.sensor);
 }
 
-// These cards share the standard icon, optional state value, and bottom label.
-// Cards with their own controls or value layouts keep their existing sizing.
-inline bool card_simple_content(const ParsedCfg &p) {
-  return p.type.empty() || p.type == "light_switch" || p.type == "fan_switch" ||
-         p.type == "push" || p.type == "internal" || p.type == "webhook" ||
-         p.type == "subpage" || p.type == "local" || p.type == "alarm_action" ||
-         p.type == "screen_lock" || p.type == "screensaver" ||
-         (p.type == "action" && !action_card_option_select(p));
-}
-
 inline bool action_card_local_action(const ParsedCfg &p) {
   return p.type == "action" && p.sensor == "local";
 }

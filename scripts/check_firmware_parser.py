@@ -857,13 +857,13 @@ int main() {
     enlarged.icon_lbl = &icon;
     enlarged.text_lbl = &label;
     enlarged.sensor_container = &value;
-    assert(card_icon_zoom(true, 2, 2) == 384);
-    assert(card_icon_zoom(true, 2, 1) == 256);
-    assert(card_icon_zoom(true, 1, 2) == 256);
-    assert(card_icon_zoom(false, 2, 2) == 256);
-    apply_card_icon_zoom(enlarged, 384, 95);
-    assert(icon.transform_scale_x == (vertical ? 384 : 364));
-    assert(icon.transform_scale_y == (vertical ? 364 : 384));
+    assert(card_icon_zoom(2, 2) == 512);
+    assert(card_icon_zoom(3, 3) == 512);
+    assert(card_icon_zoom(2, 1) == 256);
+    assert(card_icon_zoom(1, 2) == 256);
+    apply_card_icon_zoom(enlarged, card_icon_zoom(2, 2), 95);
+    assert(icon.transform_scale_x == (vertical ? 512 : 486));
+    assert(icon.transform_scale_y == (vertical ? 486 : 512));
     assert(label.font == &normal_font);
     assert(label.width == 100);
     assert(label.transform_scale_x == (vertical ? 256 : 243));
@@ -882,23 +882,6 @@ int main() {
   }
   set_width_compensation_vertical_axis(false);
   set_text_width_compensation_percent(100);
-  for (const char *type : {"", "light_switch", "fan_switch", "push", "internal", "webhook",
-                           "subpage", "local", "alarm_action", "screen_lock", "screensaver", "action"}) {
-    ParsedCfg simple;
-    simple.type = type;
-    assert(card_simple_content(simple));
-  }
-  for (const char *type : {"sensor", "media", "slider", "climate", "option_select", "image"}) {
-    ParsedCfg custom;
-    custom.type = type;
-    assert(!card_simple_content(custom));
-  }
-  ParsedCfg select_action;
-  select_action.type = "action";
-  select_action.sensor = "input_select.select_option";
-  assert(!card_simple_content(select_action));
-  select_action.sensor = "select.select_option";
-  assert(!card_simple_content(select_action));
   assert(clamp_percent_value(-1) == 0);
   assert(clamp_percent_value(101) == 100);
   int brightness_pct = -1;
