@@ -13,6 +13,7 @@ import {
     applySliderPreviewTextContrast,
     cardPatternHighlightColor,
     cardTypePickerDetails,
+    cardSimpleContent,
     cardTypePickerOptions,
     defaultCardTypeForPicker,
     infoOnlyCardVisible,
@@ -152,7 +153,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 var subpage = c.isSub ? getSubpage(state.editingSubpage) : null;
                 var backLabel = subpage?.backLabel || "Back";
                 var backColor = subpage?.backColor || previewColors.surfaceCard;
-                backBtn.className = "sp-btn sp-back-btn" + sizeClass(bkSz) +
+                backBtn.className = "sp-btn sp-back-btn sp-scalable-content" + sizeClass(bkSz) +
                     (c.selected.indexOf(-2) !== -1 ? " sp-selected" : "");
                 backBtn.innerHTML =
                     '<span class="sp-btn-icon sp-back-hit mdi mdi-chevron-left"></span>' +
@@ -214,6 +215,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     : null;
                 var btn: any = document.createElement("div");
                 btn.className = "sp-btn" +
+                    (cardSimpleContent(b.type || "", b.sensor || "") ? " sp-scalable-content" : "") +
                     (typePreview && typePreview.buttonClass ? " " + typePreview.buttonClass : "") +
                     sizeClass(slotSz) +
                     (c.selected.indexOf(slot) !== -1 ? " sp-selected" : "");

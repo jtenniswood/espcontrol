@@ -1,5 +1,11 @@
 import { activeCardColor, lighterCardColor } from "../model/config_primitives";
 
+export function cardSimpleContent(type: string, sensor = ""): boolean {
+  return ["", "light_switch", "fan_switch", "push", "internal", "webhook",
+    "subpage", "local", "alarm_action", "screen_lock", "screensaver"].includes(type) ||
+    (type === "action" && !["input_select.select_option", "select.select_option"].includes(sensor));
+}
+
 export interface Point {
   readonly x: number;
   readonly y: number;

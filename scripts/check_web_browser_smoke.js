@@ -7224,6 +7224,75 @@ async function assertPreviewOutlines(browser, testCase, exhaustive = false) {
   } finally { await context.close(); }
 }
 
+async function assertSimpleCardScaling(browser, testCase) {
+  if (readManifest().devices[testCase.slug].web.infoOnly) return;
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  try {
+    await installRoutes(context, testCase.slug);
+    const page = await context.newPage();
+    await installFakeEventSource(page);
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    const seed = events => page.evaluate(events => window.__seedEspState(events), events);
+    await seed([...seededEvents(), { id: "text-button_order", state: "1" }]);
+    const card = page.locator('.sp-main .sp-btn[data-slot="1"]');
+    const typography = async () => {
+      // WebKit can briefly expose unresolved container-unit font sizes while
+      // the seeded profile and its card layout are being applied.
+      const snapshot = await page.waitForFunction(() => {
+        const card = document.querySelector('.sp-main .sp-btn[data-slot="1"]');
+        const icon = card.querySelector('.sp-btn-icon');
+        const label = card.querySelector('.sp-btn-label');
+        const bounds = card.getBoundingClientRect();
+        const text = label.getBoundingClientRect();
+        const iconSize = parseFloat(getComputedStyle(icon).fontSize);
+        const labelSize = parseFloat(getComputedStyle(label).fontSize);
+        if (!Number.isFinite(iconSize) || !Number.isFinite(labelSize)) return false;
+        return { icon: iconSize, label: labelSize,
+          fits: text.left >= bounds.left && text.right <= bounds.right + .5 &&
+            text.bottom <= bounds.bottom && text.top >= icon.getBoundingClientRect().bottom };
+      });
+      return snapshot.jsonValue();
+    };
+    for (const config of [
+      'light.kitchen;Features;Lightbulb;Auto',
+      ';Features;Lightbulb;Auto;;;subpage',
+      'light.kitchen;Kitchen and dining room lighting controls;Lightbulb;Auto',
+    ]) {
+      await seed([{ id: "text-button_1_config", state: config }, { id: "text-button_order", state: "1" }]);
+      await page.waitForSelector('.sp-main [data-slot="1"].sp-scalable-content:not(.sp-btn-big)');
+      const normal = await typography();
+      for (const [order, className, factor] of [
+        ["1b", "sp-btn-big", 1.5], ["1d", "sp-btn-double", 1],
+        ["1w", "sp-btn-wide", 1], ["1b", "sp-btn-big", 1.5], ["1", "", 1],
+      ]) {
+        await seed([{ id: "text-button_order", state: order }]);
+        await page.waitForFunction(({ className }) => {
+          const card = document.querySelector('.sp-main [data-slot="1"]');
+          return className ? card.classList.contains(className)
+            : !['sp-btn-big', 'sp-btn-double', 'sp-btn-wide'].some(name => card.classList.contains(name));
+        }, { className });
+        const scaled = await typography();
+        assert(Math.abs(scaled.icon - normal.icon * factor) < .02, `${testCase.slug}: ${order} icon scale ${scaled.icon} vs ${normal.icon * factor}`);
+        assert(Math.abs(scaled.label - normal.label * factor) < .02, `${testCase.slug}: ${order} label scale ${scaled.label} vs ${normal.label * factor}`);
+        if (factor > 1) assert(scaled.fits, `${testCase.slug}: enlarged label must fit below the icon`);
+        if (process.env.ESPCONTROL_CARD_SCALE_SCREENSHOT && config.startsWith(';Features') && factor > 1) {
+          await page.locator('.sp-screen').screenshot({ path: process.env.ESPCONTROL_CARD_SCALE_SCREENSHOT });
+        }
+      }
+    }
+    const normal = await typography();
+    await seed([{ id: "text-button_1_config", state: ';Temperature;Thermometer;Auto;sensor.temp;°C;subpage;1' },
+      { id: "text-button_order", state: "1b" }]);
+    await page.waitForSelector('.sp-main [data-slot="1"] .sp-sensor-preview-large');
+    const valueSize = await card.locator('.sp-sensor-value').evaluate(value => parseFloat(getComputedStyle(value).fontSize));
+    assert(Math.abs(valueSize - normal.icon * 2.5) < .02, `${testCase.slug}: existing large numbers must not be enlarged twice`);
+    await seed([{ id: "text-button_1_config", state: 'sensor.energy;Energy;Gauge;Auto;;;sensor;0' },
+      { id: "text-button_order", state: "1b" }]);
+    await page.waitForSelector('.sp-main [data-slot="1"]:not(.sp-scalable-content)');
+  } finally { await context.close(); }
+}
+
 async function assertContinuousPreview(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   try {
@@ -7502,6 +7571,11 @@ async function assertS3ForecastEditorLayout(browser) {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_CARD_SCALE_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) await assertSimpleCardScaling(browser, testCase);
+      console.log(`Large card content checks passed for ${ACTIVE_CASES.length} layouts.`);
+      return;
+    }
     if (process.env.ESPCONTROL_SUBPAGE_BACK_ONLY === "1" || process.env.ESPCONTROL_CARD_NAMES_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) {
         const nativeState = nativeConfigState(testCase.slug);
@@ -7554,6 +7628,7 @@ async function assertS3ForecastEditorLayout(browser) {
     }
     await assertCardCurveSettings(browser, ACTIVE_CASES[0]);
     for (const testCase of ACTIVE_CASES) {
+      await assertSimpleCardScaling(browser, testCase);
       await assertContinuousPreview(browser, testCase);
       await assertPreviewOutlines(browser, testCase);
     }

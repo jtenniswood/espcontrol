@@ -93,6 +93,8 @@ struct lv_obj_t {
   int flags = 0;
   int transform_scale_x = 256;
   int transform_scale_y = 256;
+  int transform_pivot_x = 0;
+  int transform_pivot_y = 0;
   std::string text;
   int width = 480;
   void *user_data = nullptr;
@@ -160,6 +162,10 @@ inline void lv_obj_set_style_transform_scale_x(lv_obj_t *obj, int scale, int) {
 inline void lv_obj_set_style_transform_scale_y(lv_obj_t *obj, int scale, int) {
   if (obj) obj->transform_scale_y = scale;
 }
+inline int lv_obj_get_style_transform_scale_x(lv_obj_t *obj, int) { return obj->transform_scale_x; }
+inline int lv_obj_get_style_transform_scale_y(lv_obj_t *obj, int) { return obj->transform_scale_y; }
+inline void lv_obj_set_style_transform_pivot_x(lv_obj_t *obj, int value, int) { obj->transform_pivot_x = value; }
+inline void lv_obj_set_style_transform_pivot_y(lv_obj_t *obj, int value, int) { obj->transform_pivot_y = value; }
 inline void lv_obj_set_style_bg_color(lv_obj_t *, int, lv_style_selector_t) {}
 inline void lv_obj_set_style_bg_grad_color(lv_obj_t *, lv_color_t, lv_style_selector_t) {}
 inline void lv_obj_set_style_bg_grad_dir(lv_obj_t *, int, lv_style_selector_t) {}
@@ -833,6 +839,55 @@ int main() {
   assert(compensated_obj.transform_scale_x == 256);
   assert(compensated_obj.transform_scale_y == 256);
   set_width_compensation_vertical_axis(false);
+  for (bool vertical : {false, true}) {
+    set_width_compensation_vertical_axis(vertical);
+    set_text_width_compensation_percent(95);
+    lv_obj_t icon, label, value;
+    BtnSlot enlarged;
+    enlarged.icon_lbl = &icon;
+    enlarged.text_lbl = &label;
+    enlarged.sensor_container = &value;
+    assert(card_content_zoom(true, 2, 2) == 384);
+    assert(card_content_zoom(true, 2, 1) == 256);
+    assert(card_content_zoom(true, 1, 2) == 256);
+    assert(card_content_zoom(false, 2, 2) == 256);
+    apply_card_content_zoom(enlarged, 384, 95);
+    assert(icon.transform_scale_x == (vertical ? 384 : 364));
+    assert(icon.transform_scale_y == (vertical ? 364 : 384));
+    assert(label.width == 66);
+    assert(label.transform_pivot_x == 0 && label.transform_pivot_y == lv_pct(100));
+    assert(value.transform_scale_x == icon.transform_scale_x);
+    set_wrapped_button_label_text(&label, "Updated friendly name");
+    assert(label.width == 66);  // Live updates must preserve the scaled wrap width.
+    apply_card_content_zoom(enlarged, 384, 95, true);
+    assert(value.transform_scale_x == (vertical ? 256 : 243));
+    assert(value.transform_scale_y == (vertical ? 243 : 256));
+    assert(label.width == 66);  // Existing large-number fonts must not be enlarged twice.
+    apply_card_content_zoom(enlarged, 256, 95);
+    assert(label.width == 100);
+    assert(label.transform_pivot_y == 0);
+    assert(icon.transform_scale_x == (vertical ? 256 : 243));
+    assert(icon.transform_scale_y == (vertical ? 243 : 256));
+  }
+  set_width_compensation_vertical_axis(false);
+  set_text_width_compensation_percent(100);
+  for (const char *type : {"", "light_switch", "fan_switch", "push", "internal", "webhook",
+                           "subpage", "local", "alarm_action", "screen_lock", "screensaver", "action"}) {
+    ParsedCfg simple;
+    simple.type = type;
+    assert(card_simple_content(simple));
+  }
+  for (const char *type : {"sensor", "media", "slider", "climate", "option_select", "image"}) {
+    ParsedCfg custom;
+    custom.type = type;
+    assert(!card_simple_content(custom));
+  }
+  ParsedCfg select_action;
+  select_action.type = "action";
+  select_action.sensor = "input_select.select_option";
+  assert(!card_simple_content(select_action));
+  select_action.sensor = "select.select_option";
+  assert(!card_simple_content(select_action));
   assert(clamp_percent_value(-1) == 0);
   assert(clamp_percent_value(101) == 100);
   int brightness_pct = -1;

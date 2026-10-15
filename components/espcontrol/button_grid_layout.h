@@ -54,11 +54,11 @@ inline lv_coord_t compensated_width(lv_coord_t width, int percent) {
   return width * percent / 100;
 }
 
-inline void apply_width_compensation(lv_obj_t *obj, int percent) {
+inline void apply_width_compensation(lv_obj_t *obj, int percent, int zoom = 256) {
   if (!obj) return;
-  int scale = width_compensation_scale(percent);
-  lv_obj_set_style_transform_scale_x(obj, width_compensation_vertical_axis() ? 256 : scale, LV_PART_MAIN);
-  lv_obj_set_style_transform_scale_y(obj, width_compensation_vertical_axis() ? scale : 256, LV_PART_MAIN);
+  int scale = zoom * normalize_width_compensation_percent(percent) / 100;
+  lv_obj_set_style_transform_scale_x(obj, width_compensation_vertical_axis() ? zoom : scale, LV_PART_MAIN);
+  lv_obj_set_style_transform_scale_y(obj, width_compensation_vertical_axis() ? scale : zoom, LV_PART_MAIN);
 }
 
 inline void apply_text_width_compensation(lv_obj_t *obj) {
@@ -443,7 +443,37 @@ inline void set_card_checked_state(lv_obj_t *btn, bool checked) {
 inline void configure_button_label_wrap(lv_obj_t *label) {
   if (!label) return;
   lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-  lv_obj_set_width(label, lv_pct(100));
+  // Wrap before scaling so enlarged text still fits within the card. Keep
+  // this here because live state/friendly-name updates also reapply wrapping.
+  const int zoom = width_compensation_vertical_axis()
+    ? lv_obj_get_style_transform_scale_x(label, LV_PART_MAIN)
+    : lv_obj_get_style_transform_scale_y(label, LV_PART_MAIN);
+  if (zoom > 256) lv_obj_set_width(label, lv_pct(25600 / zoom));
+  else lv_obj_set_width(label, lv_pct(100));
+}
+
+inline int card_content_zoom(bool simple_content, int row_span, int col_span) {
+  return simple_content && row_span >= 2 && col_span >= 2 ? 384 : 256;
+}
+
+inline void apply_card_content_zoom(const BtnSlot &s, int zoom, int icon_percent,
+                                    bool large_numbers = false) {
+  apply_width_compensation(s.icon_lbl, icon_percent, zoom);
+  apply_width_compensation(s.sensor_container, text_width_compensation_percent(), large_numbers ? 256 : zoom);
+  apply_width_compensation(s.text_lbl, text_width_compensation_percent(), zoom);
+  if (s.icon_lbl) {
+    lv_obj_set_style_transform_pivot_x(s.icon_lbl, 0, LV_PART_MAIN);
+    lv_obj_set_style_transform_pivot_y(s.icon_lbl, 0, LV_PART_MAIN);
+  }
+  if (s.sensor_container) {
+    lv_obj_set_style_transform_pivot_x(s.sensor_container, 0, LV_PART_MAIN);
+    lv_obj_set_style_transform_pivot_y(s.sensor_container, 0, LV_PART_MAIN);
+  }
+  if (s.text_lbl) {
+    lv_obj_set_style_transform_pivot_x(s.text_lbl, 0, LV_PART_MAIN);
+    lv_obj_set_style_transform_pivot_y(s.text_lbl, zoom == 256 ? 0 : lv_pct(100), LV_PART_MAIN);
+    configure_button_label_wrap(s.text_lbl);
+  }
 }
 
 inline void set_wrapped_button_label_text(lv_obj_t *label, const std::string &text) {

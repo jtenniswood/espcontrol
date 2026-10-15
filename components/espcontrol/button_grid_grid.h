@@ -338,7 +338,7 @@ inline void apply_card_label_line_clamp(lv_obj_t *label, const GridConfig &cfg,
     : cfg.label_lines;
   if (lines <= 0) return;
   lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-  lv_obj_set_width(label, lv_pct(100));
+  configure_button_label_wrap(label);
   const lv_font_t *font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
   lv_coord_t line_height = font && font->line_height > 0 ? font->line_height : 16;
   lv_coord_t line_space = lv_obj_get_style_text_line_space(label, LV_PART_MAIN);
@@ -976,15 +976,17 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
                                 int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   const auto context = card_runtime_context(p);
+  display_apply_slot_text_width(s, display);
+  apply_card_content_zoom(s, card_content_zoom(card_simple_content(p), row_span, col_span),
+                          display_main_width_percent(display),
+                          card_large_numbers_active_for_layout(p, row_span, col_span));
   if (cfg.label_lines > 0) {
     apply_card_label_line_clamp(s.text_lbl, cfg, row_span);
   } else if (cfg.wrap_tall_labels && row_span > 1) {
     lv_label_set_long_mode(s.text_lbl, LV_LABEL_LONG_WRAP);
-    lv_obj_set_width(s.text_lbl, lv_pct(100));
+    configure_button_label_wrap(s.text_lbl);
   }
-  display_apply_main_width(s.icon_lbl, display);
   control_modal_register_card_label(s);
-  display_apply_slot_text_width(s, display);
   if (espcontrol::cards::weather_driver_matches(context) &&
       espcontrol::cards::weather_driver_shows_forecast(p)) {
     espcontrol::cards::weather_driver_refresh_layout(s, p, context, display, row_span, col_span);
@@ -1314,6 +1316,9 @@ inline bool grid_refresh_subpage_layouts(
       entry->back_button, entry->screen,
       sp_order.back_pos % COLS, sp_order.back_pos / COLS,
       sp_order.back_col_span, sp_order.back_row_span, COLS, ROWS);
+    apply_card_content_zoom(entry->back_slot,
+      card_content_zoom(true, sp_order.back_row_span, sp_order.back_col_span),
+      display_main_width_percent(display));
     apply_card_label_line_clamp(entry->back_slot.text_lbl, cfg,
                                 sp_order.back_row_span);
     configure_button_label_wrap(entry->back_slot.text_lbl);
@@ -2172,6 +2177,9 @@ inline void grid_phase2(
     display_apply_slot_text_width(back_slot, display);
     lv_label_set_display_text(back_slot.icon_lbl, "\U000F0141");
     lv_label_set_display_text(back_slot.text_lbl, sp_back_label.c_str());
+    apply_card_content_zoom(back_slot,
+      card_content_zoom(true, sp_ord.back_row_span, sp_ord.back_col_span),
+      display_main_width_percent(display));
     apply_card_label_line_clamp(back_slot.text_lbl, cfg, sp_ord.back_row_span);
     configure_button_label_wrap(back_slot.text_lbl);
     const bool back_neutral_background = apply_subpage_back_colors(back_btn, sp_order_str, display);
