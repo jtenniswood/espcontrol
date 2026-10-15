@@ -1,5 +1,6 @@
 import { createColorSwatches } from "../components/color_swatches";
 import { configOptionValue, setCardColor } from "../model/config_primitives";
+import { splitSubpageConfigChunks } from "../model/subpage";
 import { defaultCardBackgroundColor } from "../state/preview_theme";
 import type { ConfigPersistenceFeature } from "./config_post_api";
 import { state } from "../state/app_instance";
@@ -39,7 +40,7 @@ export interface PreviewContextMenuDependencies {
     readonly layout: ApplicationLayoutState;
     readonly cards: CardRegistry;
     readonly codec: ConfigCodecFeature;
-    readonly configPersistence: Pick<ConfigPersistenceFeature, "saveButtonConfig">;
+    readonly configPersistence: Pick<ConfigPersistenceFeature, "saveButtonConfig" | "subpageEntityKeys">;
     readonly clockBar: Pick<ClockBarFeature, "setItemVisible">;
     readonly shell: Pick<ControlsShellFeature, "isConfigLocked" | "showBanner">;
     readonly statusPreview: Pick<AppStatusPreviewFeature, "clockBarItemActive" | "clockBarItemLabel" | "clockBarItems" | "isClockBarTemperatureItem" | "updateClockBarItemUi">;
@@ -91,6 +92,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         cardSupportsUltraWideSize,
         normalizeCardSizeForConfig,
         serializeButtonConfig,
+        serializeSubpageConfig,
         getSubpage,
         serializeSubpageGrid,
         exitSubpage,
@@ -233,6 +235,20 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
                 hideContextMenu();
                 showBanner("Card settings are too large to save. Shorten confirmation text, labels, or entity IDs.", "error");
                 return;
+            }
+            if (current.isSub) {
+                const subpage = getSubpage(homeSlot);
+                const candidate = { ...subpage, buttons: subpage.buttons.map((button: any) => ({ ...button })) };
+                for (const slot of slots) {
+                    if (slot === -2) candidate.backColor = hex;
+                    else candidate.buttons[slot - 1].options = setCardColor(candidate.buttons[slot - 1].options, hex);
+                }
+                candidate.order = serializeSubpageGrid(candidate);
+                if (!splitSubpageConfigChunks(serializeSubpageConfig(candidate), dependencies.configPersistence.subpageEntityKeys().length, 255)) {
+                    hideContextMenu();
+                    showBanner("Subpage is too large to save. Shorten labels or entity IDs.", "error");
+                    return;
+                }
             }
             for (const slot of slots) {
                 if (slot === -2) getSubpage(homeSlot).backColor = hex;
