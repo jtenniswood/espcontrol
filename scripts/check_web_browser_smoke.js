@@ -7786,8 +7786,8 @@ async function assertWallpaperSettings(browser) {
     assert.strictEqual(await page.locator(".sp-wallpaper-info").isVisible(), false);
     assert.strictEqual(await page.locator("#sp-set-card-transparency").inputValue(), "0");
     assert.strictEqual(await page.locator("#sp-set-active-card-transparency").inputValue(), "0");
-    assert.strictEqual(await page.getByRole("button", { name: "Delete wallpaper" }).textContent(), "");
-    assert.strictEqual(await page.getByRole("button", { name: "Delete wallpaper" }).isDisabled(), true);
+    assert.strictEqual(await page.locator(".sp-wallpaper-delete").textContent(), "");
+    assert.strictEqual(await page.locator(".sp-wallpaper-delete").isVisible(), false, "trash is hidden without an uploaded image");
     await page.getByRole("tab", {name: "Colour", exact: true}).click();
     await page.waitForFunction(() => !document.querySelector("#sp-background-tab-colour").disabled);
     assert.strictEqual(await page.locator("#sp-set-card-transparency").inputValue(), "20");
@@ -7901,6 +7901,7 @@ async function assertWallpaperSettings(browser) {
     const transparency = page.locator("#sp-set-card-transparency");
     const activeTransparency = page.locator("#sp-set-active-card-transparency");
     assert.strictEqual(await page.locator(".sp-wallpaper-info").isVisible(), true);
+    assert.strictEqual(await page.getByRole("button", { name: "Delete wallpaper" }).isVisible(), true, "trash appears for an uploaded image");
     assert.strictEqual(await page.locator(".sp-wallpaper-info").textContent(), "0% is solid; 100% is clear. Text and icons stay visible.");
     assert.strictEqual(await page.locator(".sp-wallpaper-info").evaluate(el => getComputedStyle(el).backgroundColor), "rgba(59, 130, 246, 0.12)");
     assert.strictEqual(await page.getByLabel("Standard Card Transparency", { exact: true }).count(), 1);
@@ -8058,7 +8059,7 @@ async function assertWallpaperSettings(browser) {
     await page.getByText("Could not save wallpaper. Check the connection and try again.").waitFor();
     await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage === "");
     assert.strictEqual(await transparency.isDisabled(), true);
-    assert.strictEqual(await page.getByRole("button", { name: "Delete wallpaper" }).isDisabled(), true);
+    assert.strictEqual(await page.locator(".sp-wallpaper-delete").isVisible(), false, "trash is hidden without an uploaded image");
     await page.getByRole("button", { name: "Upload Image", exact: true }).waitFor();
     wallpaper.eraseOnFailure = false;
     wallpaper.failSave = false;
@@ -8077,7 +8078,7 @@ async function assertWallpaperSettings(browser) {
     assert.strictEqual(wallpaper.posts.at(-1).length, 16);
     await open();
     assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), "");
-    assert.strictEqual(await page.getByRole("button", { name: "Delete wallpaper" }).isDisabled(), true);
+    assert.strictEqual(await page.locator(".sp-wallpaper-delete").isVisible(), false, "trash is hidden without an uploaded image");
     assert.strictEqual(await transparency.isDisabled(), true);
     assert.strictEqual(await activeTransparency.isDisabled(), true);
     assert.strictEqual(await transparency.isVisible(), false);

@@ -224,6 +224,7 @@ export function buildWallpaperSettings(
   uploadButton.addEventListener("click", () => upload.click());
   const remove = document.createElement("button");
   remove.type = "button";
+  remove.hidden = true;
   remove.className = "sp-action-btn sp-wallpaper-delete";
   remove.innerHTML = '<span class="mdi mdi-delete-outline" aria-hidden="true"></span>';
   remove.setAttribute("aria-label", "Delete wallpaper");
@@ -264,6 +265,7 @@ export function buildWallpaperSettings(
     upload.disabled = !supported || busy;
     uploadButton.disabled = upload.disabled;
     imageField.setAttribute("aria-busy", String(busy));
+    remove.hidden = !hasWallpaper;
     remove.disabled = !supported || busy || !hasWallpaper;
     const hasBackground = background.mode === "colour" || hasWallpaper;
     imageField.hidden = background.mode !== "wallpaper";
