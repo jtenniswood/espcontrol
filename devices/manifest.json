@@ -466,7 +466,7 @@
         },
         "btn": {
           "radius": 6.666667,
-          "padding": 2.73,
+          "padding": 4.375,
           "iconSize": 14,
           "labelSize": 5.5,
           "coverArtTitleSize": 7.375,
@@ -662,7 +662,7 @@
         },
         "btn": {
           "radius": 6.666667,
-          "padding": 2.73,
+          "padding": 4.375,
           "iconSize": 14,
           "labelSize": 5.5,
           "coverArtTitleSize": 7.375,
