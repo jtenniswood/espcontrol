@@ -29,7 +29,8 @@ functions = ''.join(function(name) for name in [
     'weather_forecast_pending_key', 'weather_forecast_queue_key', 'weather_forecast_any_pending',
     'weather_forecast_clear_queue', 'weather_forecast_clear_retry', 'weather_forecast_clear_retries',
     'weather_forecast_enqueue', 'weather_forecast_dequeue',
-    'weather_forecast_cancel_pending_requests',
+    'weather_forecast_cancel_pending_requests', 'weather_forecast_retry_key',
+    'weather_forecast_schedule_retry', 'weather_forecast_cancel_stale_requests',
 ])
 source = r'''
 #include <cassert>
@@ -37,7 +38,10 @@ source = r'''
 #include <set>
 #include "button_grid_limits.h"
 #include "button_grid_weather_daily_data.h"
-#define ESP_LOGW(...) ((void)0)
+template<class... T> void test_log(T...) {}
+#define ESP_LOGW(...) test_log(__VA_ARGS__)
+namespace esphome { uint32_t millis() { return 60000; } }
+constexpr uint32_t WEATHER_FORECAST_REQUEST_TIMEOUT_MS=30000, WEATHER_FORECAST_RETRY_DELAY_MS=10000;
 constexpr int WEATHER_FORECAST_PENDING_MAX = 8;
 constexpr int WEATHER_FORECAST_WAITING_MAX = MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS;
 struct WeatherForecastPendingRequest { uint32_t call_id=0, started_ms=0; std::string entity_id,day; };
@@ -52,6 +56,9 @@ void ha_cancel_action_response_callback(uint32_t, const char *) { ++cancelled; }
 bool ready=false;
 bool weather_forecast_actions_ready() { return ready; }
 bool weather_forecast_enqueue_due_retries() { return false; }
+void apply_weather_forecast_unavailable_for_entity(const std::string &entity) {
+  weather_daily_set_unavailable(entity); weather_forecast_schedule_visual_refresh();
+}
 ''' + functions + r'''
 std::vector<std::string> sent;
 void request_weather_forecast_entity(const std::string &entity, const std::string &day) {
@@ -83,6 +90,16 @@ int main() {
   assert(cancelled==1 && !empty->loading && cached->stale);
   ready=false;refresh_weather_forecast_cards();assert(empty->loading);
   weather_forecast_cancel_pending_requests(false);assert(empty->loading && cached->stale);
+  weather_forecast_clear_retries();
+  for(auto *source : {empty,cached}) {
+    source->loading=true; source->stale=false;
+    weather_forecast_pending_requests()[0]={2,0,source->entity_id,"today"};
+    assert(weather_forecast_cancel_stale_requests());
+    assert(!source->loading && source->stale==(source->forecast.count>0));
+    assert(weather_forecast_retry_key(source->entity_id,"today"));
+    assert(!weather_forecast_any_pending());
+  }
+  assert(!weather_forecast_cancel_stale_requests());
   while(!weather_daily_sources().empty())weather_daily_release_source(weather_daily_sources().back().get());
 }
 '''
