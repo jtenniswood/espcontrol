@@ -370,7 +370,8 @@ async function installRoutes(context, slug, options = {}) {
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
-          configuration: { read: true, write: true, document_versions: [1] },
+          configuration: { read: true, write: true, document_versions: [1],
+            max_record_body_bytes: nativeState.maxRecordBodyBytes },
           web_assets: { versions: [1] },
         }),
       });
@@ -2863,6 +2864,7 @@ async function assertNewMediaCardDefaults(page, posts, label, mediaCoverArtSuppo
 async function assertContextColourPicker(browser, testCase) {
   for (const native of [false, true]) {
     const fixture = nativeConfigState(testCase.slug);
+    fixture.maxRecordBodyBytes = 4096;
     fixture.document.buttons[1] += ";;;;;card_active_color=custom,card_on_color=FFFFFF";
     const legacyTextState = {};
     const context = await browser.newContext({ viewport: testCase.viewport });
@@ -2992,7 +2994,8 @@ async function assertContextColourPicker(browser, testCase) {
       assert(await submenu.isVisible(), `${label}: moving across to the palette keeps it open`);
       await page.keyboard.press("Escape");
       const chunkCount = readManifest().devices[testCase.slug].firmware.package.subpageConfigChunks || 8;
-      const subpageLimits = await page.evaluate(chunkCount => {
+      const subpageByteLimit = native ? fixture.maxRecordBodyBytes - 1 : chunkCount * 255;
+      const subpageLimits = await page.evaluate(({ byteLimit, native }) => {
         const codec = window.__ESPCONTROL_TEST_HOOKS__.config;
         return ["card", "back", "both"].flatMap(target => [0, 1].map(overflow => {
           const original = codec.parseSubpageConfig("~B,1|,light.kitchen,Capacity,Lightbulb,Lightbulb");
@@ -3001,21 +3004,24 @@ async function assertContextColourPicker(browser, testCase) {
           if (target !== "back") proposed.buttons[0].options = "card_off_color=6036B2";
           if (target !== "card") proposed.backColor = "6036B2";
           proposed.order = codec.serializeSubpageGrid(proposed);
-          proposed.buttons[0].label = "L".repeat(chunkCount * 255 + overflow - codec.serializeSubpageConfig(proposed).length);
+          const labelBytes = byteLimit + overflow - new TextEncoder().encode(codec.serializeSubpageConfig(proposed)).length;
+          proposed.buttons[0].label = native
+            ? "é".repeat(Math.floor(labelBytes / 2)) + "L".repeat(labelBytes % 2)
+            : "L".repeat(labelBytes);
           original.buttons[0].label = proposed.buttons[0].label;
           return { target, overflow, before: codec.serializeSubpageConfig(original), after: codec.serializeSubpageConfig(proposed) };
         }));
-      }, chunkCount);
+      }, { byteLimit: subpageByteLimit, native });
       async function seedSubpage(full) {
-        await page.evaluate(({ full, chunkCount, names }) => {
-          const chunks = window.__ESPCONTROL_TEST_HOOKS__.config.splitSubpageConfigChunks(full, chunkCount, 255);
+        await page.evaluate(({ full, chunkCount, names, native }) => {
+          const chunks = native ? [full] : window.__ESPCONTROL_TEST_HOOKS__.config.splitSubpageConfigChunks(full, chunkCount, 255);
           window.__seedEspState(names.map((name, index) => ({ id: "text-" + name, state: chunks[index] || "" })));
-        }, { full, chunkCount, names: subpageChunkNames });
+        }, { full, chunkCount, names: subpageChunkNames, native });
       }
       await seedSubpage(storedSubpage());
       for (const limit of subpageLimits) {
-        assert(limit.before.length <= chunkCount * 255);
-        assert.strictEqual(limit.after.length, chunkCount * 255 + limit.overflow);
+        assert(Buffer.byteLength(limit.before) <= subpageByteLimit);
+        assert.strictEqual(Buffer.byteLength(limit.after), subpageByteLimit + limit.overflow);
         fixture.document.subpages[3] = limit.before;
         await seedSubpage(limit.before);
         await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
@@ -3049,20 +3055,22 @@ async function assertContextColourPicker(browser, testCase) {
         await page.locator(".sp-brand").click();
         await page.locator(".sp-back-btn .sp-back-hit").click();
       }
-      const limitConfigs = await page.evaluate(() => {
+      const buttonByteLimit = native ? fixture.maxRecordBodyBytes - 1 : 255;
+      const limitConfigs = await page.evaluate(byteLimit => {
         const codec = window.__ESPCONTROL_TEST_HOOKS__.config;
-        return [255, 256].map(length => {
+        return [byteLimit, byteLimit + 1].map(length => {
           const button = codec.parseButtonConfig("light.kitchen;Large;Lightbulb;Lightbulb");
           button.options = "card_off_color=6036B2";
-          button.label = "L".repeat(length - codec.serializeButtonConfig({ ...button, label: "" }).length);
+          const labelBytes = length - new TextEncoder().encode(codec.serializeButtonConfig({ ...button, label: "" })).length;
+          button.label = "é".repeat(Math.floor(labelBytes / 2)) + "L".repeat(labelBytes % 2);
           return {
             before: codec.serializeButtonConfig({ ...button, options: "" }),
             after: codec.serializeButtonConfig(button),
           };
         });
-      });
-      assert.strictEqual(limitConfigs[0].after.length, 255);
-      assert.strictEqual(limitConfigs[1].after.length, 256);
+      }, buttonByteLimit);
+      assert.strictEqual(Buffer.byteLength(limitConfigs[0].after), buttonByteLimit);
+      assert.strictEqual(Buffer.byteLength(limitConfigs[1].after), buttonByteLimit + 1);
       for (const [index, limitConfig] of limitConfigs.entries()) {
         fixture.document.buttons[1] = limitConfig.before;
         await seedNativeDocument(page, fixture);
