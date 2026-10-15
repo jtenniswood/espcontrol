@@ -245,17 +245,8 @@ export function buildWallpaperSettings(
   range.id = "sp-set-card-transparency";
   range.min = "0"; range.max = "100"; range.step = "1";
   control.wrap.querySelector("label").htmlFor = range.id;
-  const hint = document.createElement("div");
-  hint.className = "sp-info-panel sp-wallpaper-info";
-  hint.setAttribute("role", "note");
-  const hintIcon = document.createElement("span");
-  hintIcon.className = "mdi mdi-information-outline";
-  hintIcon.setAttribute("aria-hidden", "true");
-  const hintText = document.createElement("span");
-  hintText.textContent = "0% is solid; 100% is clear. Text and icons stay visible.";
-  hint.append(hintIcon, hintText);
   imageField.append(actions, status);
-  body.append(tabs.segment, preview, imageField, colourField, backgroundStatus, hint, control.wrap, activeControl.wrap);
+  body.append(tabs.segment, preview, imageField, colourField, backgroundStatus, control.wrap, activeControl.wrap);
   let hasWallpaper = false, supported = false, busy = false, opacitySupported = false;
   let opacity = 80, activeOpacity = 98, savedOpacity = 80, savedActiveOpacity = 98, previewUrl = "";
   let wallpaperLabel = "No wallpaper uploaded";
@@ -279,7 +270,6 @@ export function buildWallpaperSettings(
     for (const input of Array.from(swatches.querySelectorAll<HTMLButtonElement | HTMLInputElement>("button,input")))
       input.disabled = !backgroundSupported || busy;
     swatches._syncColor();
-    hint.hidden = !hasBackground;
     control.wrap.hidden = !hasBackground;
     activeControl.wrap.hidden = !hasBackground || !separateOpacity;
     range.disabled = !opacitySupported || busy || !hasBackground;
@@ -351,7 +341,6 @@ export function buildWallpaperSettings(
         activeOpacity = savedActiveOpacity = values.active;
         opacitySupported = true;
       } else {
-        hintText.textContent = "Install updated firmware to adjust card transparency.";
         activeOpacity = opacity;
       }
       if (capabilities.wallpaper.available !== true) {

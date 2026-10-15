@@ -7782,8 +7782,8 @@ async function assertWallpaperSettings(browser) {
     assert.strictEqual(await page.locator("#sp-set-wallpaper").isVisible(), false);
     await page.getByRole("img", { name: "No wallpaper uploaded", exact: true }).waitFor();
     assert.strictEqual(await page.locator(".sp-wallpaper-preview-box").count(), testCase.slots);
+    assert.strictEqual(await page.locator(".sp-wallpaper-info").count(), 0, "background controls omit the information panel");
     assert.strictEqual(await page.locator(".sp-wallpaper-preview .mdi,.sp-card-bg-field > label").count(), 0);
-    assert.strictEqual(await page.locator(".sp-wallpaper-info").isVisible(), false);
     assert.strictEqual(await page.locator("#sp-set-card-transparency").inputValue(), "0");
     assert.strictEqual(await page.locator("#sp-set-active-card-transparency").inputValue(), "0");
     assert.strictEqual(await page.locator(".sp-wallpaper-delete").textContent(), "");
@@ -7900,10 +7900,7 @@ async function assertWallpaperSettings(browser) {
     }
     const transparency = page.locator("#sp-set-card-transparency");
     const activeTransparency = page.locator("#sp-set-active-card-transparency");
-    assert.strictEqual(await page.locator(".sp-wallpaper-info").isVisible(), true);
     assert.strictEqual(await page.getByRole("button", { name: "Delete wallpaper" }).isVisible(), true, "trash appears for an uploaded image");
-    assert.strictEqual(await page.locator(".sp-wallpaper-info").textContent(), "0% is solid; 100% is clear. Text and icons stay visible.");
-    assert.strictEqual(await page.locator(".sp-wallpaper-info").evaluate(el => getComputedStyle(el).backgroundColor), "rgba(59, 130, 246, 0.12)");
     assert.strictEqual(await page.getByLabel("Standard Card Transparency", { exact: true }).count(), 1);
     assert.strictEqual(await page.getByLabel("Active Card Transparency", { exact: true }).count(), 1);
     assert.strictEqual(await activeTransparency.inputValue(), "2");
@@ -8069,7 +8066,6 @@ async function assertWallpaperSettings(browser) {
     await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage === "");
     assert.strictEqual(wallpaper.image, null);
     assert.strictEqual(await page.locator(".sp-settings-modal").evaluate(el => el.style.backgroundImage), "");
-    assert.strictEqual(await page.locator(".sp-wallpaper-info").isVisible(), false);
     await assertMiniatureAlpha(false, 1);
     await assertMiniatureAlpha(true, 1);
     await page.getByRole("button", { name: "Upload Image", exact: true }).waitFor();
