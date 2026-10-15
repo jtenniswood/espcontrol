@@ -1,12 +1,12 @@
-// Match the firmware's fourth-power corner mask, including browsers that
+// Match the firmware’s continuous card and softer pill masks, including browsers that
 // cannot draw CSS corner-shape. Coordinates stay in the card's own pixels.
-export function continuousCornerPath(width: number, height: number, radius: number): string {
+export function continuousCornerPath(width: number, height: number, radius: number, pill = false): string {
     if (![width, height, radius].every(Number.isFinite) || radius <= 0 || width < radius * 4 || height < radius * 4) return "";
     const extent = radius * 2;
     const point = (step: number): [number, number] => {
         const angle = step * Math.PI / 64;
-        return [extent * (1 - Math.sqrt(Math.cos(angle))),
-            extent * (1 - Math.sqrt(Math.sin(angle)))];
+        return [extent * (1 - Math.pow(Math.cos(angle), pill ? .8 : .5)),
+            extent * (1 - Math.pow(Math.sin(angle), pill ? .8 : .5))];
     };
     const coordinate = (value: number) => value.toFixed(3);
     let path = `M ${coordinate(extent)} 0 L ${coordinate(width - extent)} 0`;
@@ -51,12 +51,13 @@ export function syncPreviewCorners(screen: HTMLElement, radius: number, emptyRad
                 const width = borderBox(style.width, [style.paddingLeft, style.paddingRight, style.borderLeftWidth, style.borderRightWidth]);
                 const height = borderBox(style.height, [style.paddingTop, style.paddingBottom, style.borderTopWidth, style.borderBottomWidth]);
                 if (!(width > 0 && height > 0)) continue;
-                if (card.classList.contains("sp-badge-card") || card.classList.contains("sp-badge-add"))
+                const pill = card.classList.contains("sp-badge-card") || card.classList.contains("sp-badge-add");
+                if (pill)
                     nominal = Math.min(nominal, width / 4, height / 4);
-                const key = `${width}:${height}:${nominal}:${settings.enabled}:${empty}`;
+                const key = `${width}:${height}:${nominal}:${settings.enabled}:${empty}:${pill}`;
                 let shape = cache.get(key);
                 if (shape === undefined) {
-                    const path = settings.enabled ? continuousCornerPath(width, height, nominal) : "";
+                    const path = settings.enabled ? continuousCornerPath(width, height, nominal, pill) : "";
                     const edge = path ? `<path d="${path}"/>` : `<rect width="${width}" height="${height}" rx="${nominal}"/>`;
                     shape = { clip: path ? `path("${path}")` : "", edge };
                     if (cache.size >= 64) cache.clear();

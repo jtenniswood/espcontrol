@@ -189,6 +189,25 @@ int main() {
     send(badge, LV_EVENT_DELETE);
     assert(mask_cache() == nullptr);
   }
+  // Badge profiles stay closer to a pill than cards without becoming circles.
+  assert(coverage(6, 6, 32, true) < coverage(6, 6, 32));
+  assert(coverage(8, 8, 32, true) > 0);
+  assert(std::hypot(32 - 8.5, 32 - 8.5) > 32); // Outside a circular end.
+  lv_obj_t card_profile, badge_profile, badge_copy;
+  for (auto *obj : {&card_profile, &badge_profile, &badge_copy}) {
+    obj->width = 160; obj->height = 64; obj->radius = 16;
+  }
+  attach(&card_profile);
+  attach(&badge_profile, true);
+  attach(&badge_copy, true);
+  assert(card_profile.mask != badge_profile.mask);
+  assert(badge_profile.mask == badge_copy.mask);
+  assert(binding_for(&badge_profile)->mask->pill);
+  badge_profile.width = 200;
+  send(badge_profile, LV_EVENT_SIZE_CHANGED);
+  assert(binding_for(&badge_profile)->mask->pill);
+  for (auto *obj : {&card_profile, &badge_profile, &badge_copy}) send(*obj, LV_EVENT_DELETE);
+  assert(mask_cache() == nullptr);
   // Switching a badge back to an ordinary card must release its mask and handler.
   lv_obj_t reused;
   attach(&reused);

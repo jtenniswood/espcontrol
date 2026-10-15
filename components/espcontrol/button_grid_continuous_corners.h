@@ -20,6 +20,7 @@ struct Mask {
   int width = 0;
   int height = 0;
   int radius = 0;
+  bool pill = false;
   unsigned owners = 0;
   uint8_t *pixels = nullptr;
   lv_image_dsc_t image{};
@@ -30,12 +31,12 @@ inline Mask *&mask_cache() {
   return head;
 }
 
-inline Mask *acquire(int width, int height, int radius) {
+inline Mask *acquire(int width, int height, int radius, bool pill = false) {
   // Bound allocations to panel-sized cards. Thin widgets use native rounding.
   if (radius <= 0 || width < radius * 4 || height < radius * 4 ||
       width > 1280 || height > 1280) return nullptr;
   for (Mask *mask = mask_cache(); mask; mask = mask->next) {
-    if (mask->width == width && mask->height == height && mask->radius == radius) {
+    if (mask->width == width && mask->height == height && mask->radius == radius && mask->pill == pill) {
       ++mask->owners;
       return mask;
     }
@@ -53,10 +54,11 @@ inline Mask *acquire(int width, int height, int radius) {
     delete mask;
     return nullptr;
   }
-  fill_mask(mask->pixels, width, height, stride, radius);
+  fill_mask(mask->pixels, width, height, stride, radius, pill);
   mask->width = width;
   mask->height = height;
   mask->radius = radius;
+  mask->pill = pill;
   mask->owners = 1;
   mask->image.header.magic = LV_IMAGE_HEADER_MAGIC;
   mask->image.header.cf = LV_COLOR_FORMAT_A8;
@@ -84,6 +86,7 @@ inline void release(Mask *mask) {
 struct Binding {
   Mask *mask = nullptr;
   bool updating = false;
+  bool pill = false;
 };
 
 inline void update(lv_obj_t *obj, Binding &binding) {
@@ -92,10 +95,10 @@ inline void update(lv_obj_t *obj, Binding &binding) {
   const int height = lv_obj_get_height(obj);
   const int radius = lv_obj_get_style_radius(obj, LV_PART_MAIN);
   if (binding.mask && binding.mask->width == width &&
-      binding.mask->height == height && binding.mask->radius == radius) return;
+      binding.mask->height == height && binding.mask->radius == radius && binding.mask->pill == binding.pill) return;
   binding.updating = true;
   Mask *previous = binding.mask;
-  binding.mask = acquire(width, height, radius);
+  binding.mask = acquire(width, height, radius, binding.pill);
   // Allocation failure leaves a usable card with its native circular radius.
   lv_obj_set_style_bitmap_mask_src(obj, binding.mask ? &binding.mask->image : nullptr, LV_PART_MAIN);
   release(previous);
@@ -127,9 +130,10 @@ inline Binding *binding_for(lv_obj_t *obj) {
   return nullptr;
 }
 
-inline void attach(lv_obj_t *obj) {
+inline void attach(lv_obj_t *obj, bool pill = false) {
   if (!obj) return;
   if (auto *binding = binding_for(obj)) {
+    binding->pill = pill;
     update(obj, *binding);
     return;
   }
@@ -139,6 +143,7 @@ inline void attach(lv_obj_t *obj) {
     delete binding;
     return;
   }
+  binding->pill = pill;
   update(obj, *binding);
 }
 
@@ -158,20 +163,20 @@ inline void detach(lv_obj_t *obj) {
 
 }  // namespace espcontrol::corners
 
-inline void apply_continuous_card_corners(lv_obj_t *obj) {
-  espcontrol::corners::attach(obj);
+inline void apply_continuous_card_corners(lv_obj_t *obj, bool pill = false) {
+  espcontrol::corners::attach(obj, pill);
 }
 inline bool card_uses_continuous_corners(lv_obj_t *obj) {
   return espcontrol::corners::binding_for(obj) != nullptr;
 }
 inline void remove_continuous_card_corners(lv_obj_t *obj) { espcontrol::corners::detach(obj); }
 #else
-inline void apply_continuous_card_corners(lv_obj_t *) {}
+inline void apply_continuous_card_corners(lv_obj_t *, bool = false) {}
 inline void remove_continuous_card_corners(lv_obj_t *) {}
 inline bool card_uses_continuous_corners(lv_obj_t *) { return false; }
 #endif
 
-inline void apply_grid_card_corners(lv_obj_t *obj, int radius, bool continuous) {
+inline void apply_grid_card_corners(lv_obj_t *obj, int radius, bool continuous, bool pill = false) {
   if (!obj) return;
   if (radius >= 0) {
     lv_obj_set_style_radius(obj, radius, LV_PART_MAIN);
@@ -180,5 +185,5 @@ inline void apply_grid_card_corners(lv_obj_t *obj, int radius, bool continuous) 
   }
   // LVGL's radius property has no layout-update flag, so setting it does not
   // emit STYLE_CHANGED. Refresh an existing mask explicitly after the change.
-  if (continuous) apply_continuous_card_corners(obj);
+  if (continuous) apply_continuous_card_corners(obj, pill);
 }

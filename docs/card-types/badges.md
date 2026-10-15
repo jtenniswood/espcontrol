@@ -116,3 +116,6 @@ continuous transitions occupy almost the full height with very short straight
 sides. This
 keeps the continuous curve transition inside the compact surface, with the same
 shape on the panel and in the preview.
+
+Badge ends use a softer continuous curve than the larger cards, giving a pill
+silhouette with subtly flattened tips rather than circular ends.
