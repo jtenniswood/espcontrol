@@ -34,7 +34,7 @@ export async function runConfigCapacityTests(): Promise<void> {
     ok: status >= 200 && status < 300, status,
     headers: { get: () => '"1"' },
     json: async () => ({ configuration: { read: true, write: true, document_versions: [1],
-      ...(legacy ? {} : { max_record_body_bytes: 8192 }) } }),
+      ...(legacy ? {} : { max_record_body_bytes: 4096 }) } }),
     arrayBuffer: async () => encodePanelConfig(document).buffer as ArrayBuffer,
   });
   const controller = new NativePanelConfigController({
@@ -67,14 +67,24 @@ export async function runConfigCapacityTests(): Promise<void> {
   equal(persistence.buttonConfigByteLimit(), 255, "undiscovered firmware keeps the safe card limit");
   equal(persistence.subpageConfigFits(largeSubpage), false, "undiscovered firmware keeps the configured chunk limit");
   await controller.begin();
-  equal(persistence.buttonConfigByteLimit(), 8191, "current firmware advertises larger card capacity");
+  equal(persistence.buttonConfigByteLimit(), 4095, "current firmware advertises larger card capacity");
   equal(persistence.subpageConfigFits(largeSubpage), true, "coloured subpages can exceed the old chunks");
-  equal(persistence.subpageConfigFits("é".repeat(4096)), false, "native capacity counts UTF-8 bytes");
+  equal(persistence.subpageConfigFits("x".repeat(4095)), true, "the complete 4 KB record budget fits");
+  equal(persistence.subpageConfigFits("x".repeat(4096)), false, "the slot byte counts towards the 4 KB record limit");
+  equal(persistence.subpageConfigFits("é".repeat(2048)), false, "native capacity counts UTF-8 bytes");
   state.subpages[1] = {} as any;
   equal(await persistence.saveSubpageEntity(1), "saved", "large subpages use native storage");
   equal(postedValue, largeSubpage, "native saves retain every byte");
   equal(legacyPosts, 0, "native overflow never spills into legacy text calls");
   equal(banners.length, 0, "supported native saves produce no errors");
+
+  const largerPrototype = createNativePanelConfigClient(async () => ({
+    ...response(200),
+    json: async () => ({ configuration: { read: true, write: true, document_versions: [1], max_record_body_bytes: 8192 } }),
+  }));
+  await largerPrototype.discover();
+  equal(largerPrototype.maxConfigValueBytes(), 4095,
+    "an older 8 KB prototype cannot raise the current editor's 4 KB ceiling");
 
   legacy = true;
   controller.client = createNativePanelConfigClient(async () => response(200));

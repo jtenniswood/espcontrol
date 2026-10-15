@@ -284,8 +284,8 @@ bool expanded_native_configuration_preserves_every_byte() {
     bindings.set_button_order(&order);
     bindings.set_button(1, &button, chunks);
     const std::string large_button(400, 'b');
-    // 8191 bytes, with multi-byte characters crossing old chunk boundaries.
-    const std::string large_subpage = std::string(250, 's') + "é😀" + std::string(7935, 'c');
+    // 4095 bytes, with multi-byte characters crossing old chunk boundaries.
+    const std::string large_subpage = std::string(250, 's') + "é😀" + std::string(3839, 'c');
     std::array<uint8_t, 10000> document{};
     PanelConfigWriter writer(document.data(), document.size());
     size_t size = 0;

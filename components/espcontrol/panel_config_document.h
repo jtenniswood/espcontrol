@@ -13,7 +13,7 @@ namespace espcontrol::configuration {
 constexpr uint16_t PANEL_CONFIG_DOCUMENT_VERSION = 1;
 constexpr size_t PANEL_CONFIG_HEADER_SIZE = 16;
 constexpr size_t PANEL_CONFIG_MAX_DEVICE_PROFILE_BYTES = 64;
-constexpr size_t PANEL_CONFIG_MAX_RECORD_BODY_BYTES = 8192;
+constexpr size_t PANEL_CONFIG_MAX_RECORD_BODY_BYTES = 4096;
 constexpr uint16_t PANEL_CONFIG_MAX_RECORD_COUNT = 128;
 constexpr uint8_t PANEL_CONFIG_MAX_SLOT_COUNT = 32;
 constexpr size_t PANEL_CONFIG_MAX_SETTING_KEY_BYTES = 63;

@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstring>
 #include <stdexcept>
+#include <string>
 
 #include "panel_config_document.h"
 
@@ -129,10 +130,43 @@ void malformed_documents_are_rejected() {
                 "invalid UTF-8 is rejected");
 }
 
+void four_kib_record_limit_is_enforced() {
+  for (bool subpage : {false, true}) {
+    std::array<uint8_t, 5000> buffer{};
+    PanelConfigWriter writer(buffer.data(), buffer.size());
+    const std::string value(4096, 'x');
+    expect_status(writer.begin(), PanelConfigStatus::OK, "boundary writer starts");
+    expect_status(writer.append_device_profile(bytes("a"), 1), PanelConfigStatus::OK,
+                  "boundary profile is written");
+    expect_status(subpage ? writer.append_subpage(1, bytes(value.data()), 4095)
+                          : writer.append_button(1, bytes(value.data()), 4095),
+                  PanelConfigStatus::OK, "4095-byte content fits the 4 KiB record");
+    size_t size = 0;
+    expect_status(writer.finish(&size), PanelConfigStatus::OK, "boundary document finishes");
+    PanelConfigReader reader(buffer.data(), size);
+    expect_status(reader.validate(), PanelConfigStatus::OK, "boundary record reads intact");
+    // The slot record follows the 16-byte header and four-byte profile record.
+    buffer[21] = 1;
+    buffer[22] = 16;  // 4097-byte body, including its slot byte.
+    buffer[size++] = 'x';
+    const size_t payload_size = size - 16;
+    for (size_t index = 0; index < 4; ++index)
+      buffer[8 + index] = static_cast<uint8_t>(payload_size >> (8 * index));
+    PanelConfigReader oversized_reader(buffer.data(), size);
+    expect_status(oversized_reader.validate(), PanelConfigStatus::INVALID_DOCUMENT,
+                  "incoming records above 4 KiB are rejected");
+    expect_status(writer.begin(), PanelConfigStatus::OK, "oversize writer starts");
+    expect_status(subpage ? writer.append_subpage(1, bytes(value.data()), value.size())
+                          : writer.append_button(1, bytes(value.data()), value.size()),
+                  PanelConfigStatus::INVALID_ARGUMENT, "4096-byte content exceeds the record budget");
+  }
+}
+
 } // namespace
 
 int main() {
   canonical_document_round_trips();
   malformed_documents_are_rejected();
+  four_kib_record_limit_is_enforced();
   return 0;
 }
