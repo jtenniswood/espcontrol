@@ -194,6 +194,10 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
       lv_text_get_size(&measured, date.c_str(), card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
       if (measured.x > text_width) date = weather_daily_weekday_label(day);
     }
+    // Columns may be created after the card foreground was synchronized.
+    const auto foreground = lv_obj_get_style_text_color(card->owner, LV_PART_MAIN);
+    lv_obj_set_style_text_color(col.day, foreground, LV_PART_MAIN);
+    lv_obj_set_style_text_color(col.icon, foreground, LV_PART_MAIN);
     lv_label_set_display_text(col.day, date.c_str());
     lv_label_set_display_text(col.icon, weather_icon_for_state(day.condition));
     const auto high = weather_daily_temperature_range(day, forecast.temperature_unit);
