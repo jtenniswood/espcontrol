@@ -7703,7 +7703,7 @@ async function assertWallpaperPreviewLayout(browser, testCase) {
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await page.evaluate(events => window.__seedEspState(events), seededEvents());
     await page.getByRole("tab", {name: "Screen", exact: true}).click();
-    await page.getByRole("heading", {name: "Background", exact: true}).click();
+    await page.getByRole("heading", {name: "Wallpaper", exact: true}).click();
     await page.waitForFunction(() => !document.querySelector("#sp-background-tab-colour").disabled);
     const profile = readManifest().devices[testCase.slug];
     const checkLayout = async (rotation, viewport) => {

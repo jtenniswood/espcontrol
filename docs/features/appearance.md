@@ -7,7 +7,7 @@ description:
 # Appearance
 
 The **Appearance** section is at the top of **Screen**. Its panels are
-**Active Colour**, **Card Style** (curve), **Theme**, **Background** (wallpaper, colour and transparency controls), [Idle](/features/idle) and [Clock Bar](/features/clock-bar).
+**Active Colour**, **Card Style** (curve), **Theme**, **Wallpaper** (image, colour and transparency controls), [Idle](/features/idle) and [Clock Bar](/features/clock-bar).
 
 Cards use continuous corners, with the same proportions on the panel and
 setup-page preview. Choose **Card curve → Small, Medium or Large** in
@@ -57,9 +57,9 @@ The theme changes the panel's neutral backgrounds, controls and text, including 
 
 Backups include the theme mode, automatic method, times and offsets. Older backups without these fields leave the panel's current theme settings unchanged. Older Schedule and Sun selections migrate to Automatic with the corresponding method.
 
-## Background
+## Wallpaper {#background}
 
-Choose **Wallpaper** or **Colour** under **Background**. Wallpaper is the default. Colour uses the same preset swatches and custom colour picker as the other appearance controls. Switching to Colour keeps your uploaded wallpaper, so you can switch back without uploading it again. Your mode and colour are saved on the display and survive restarts.
+Choose **Wallpaper** or **Colour** under the **Wallpaper** panel. Wallpaper is the default. Colour uses the same preset swatches and custom colour picker as the other appearance controls. Switching to Colour keeps your uploaded wallpaper, so you can switch back without uploading it again. Your mode and colour are saved on the display and survive restarts.
 
 Use **Upload Image** in the **Wallpaper** tab to upload a JPEG, PNG or WebP background for the physical panel and browser preview. The preview matches your display’s screen ratio and card grid, including rotation. It shows standard and active card fills over the selected background and updates as you adjust transparency. Use **Upload Image** again to replace it, or the trash icon to remove it.
 

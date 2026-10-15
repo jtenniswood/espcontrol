@@ -179,7 +179,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         var activeColourCard: any = makeCollapsibleCard("Active Colour", activeColourBody, true, null, appearanceResetButton);
         var cardStyleCard: any = makeCollapsibleCard("Card Style", cardStyleBody, true);
         var themeCard: any = makeCollapsibleCard("Theme", themeBody, true);
-        var wallpaperCard: any = makeCollapsibleCard("Background", wallpaperSettings, true);
+        var wallpaperCard: any = makeCollapsibleCard("Wallpaper", wallpaperSettings, true);
         var languageBody: any = document.createElement("div");
         var languageField: any = document.createElement("div");
         languageField.className = "sp-field";
