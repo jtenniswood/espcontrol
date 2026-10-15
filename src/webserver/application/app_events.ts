@@ -48,6 +48,7 @@ export function createAppEventsFeature(
     shell: Pick<ControlsShellFeature, "setConfigLocked" | "showBanner">,
     stateLoader: Pick<StateLoaderFeature, "refreshFirmwareVersion" | "refreshScreensaverTimeout">,
     gridMigration: Pick<GridMigrationFeature, "schedule">,
+    refreshClockBar: () => void = () => {},
 ): AppEventsFeature {
     const { rememberEntityPostPath } = entityState;
     const { setConfigLocked, showBanner } = shell;
@@ -78,6 +79,7 @@ export function createAppEventsFeature(
             runtime.pendingSliderSubpageMigrations = {};
             stateLoader.refreshFirmwareVersion();
             stateLoader.refreshScreensaverTimeout();
+            refreshClockBar();
         }
         function handleDisconnected(this: any) {
             setConfigLocked(true, "Reconnecting to device\u2026");

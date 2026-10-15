@@ -30,6 +30,7 @@
 #include "panel_identity_endpoint.h"
 #include "screensaver_pin_endpoint.h"
 #include "button_grid.h"
+#include "clock_bar_endpoint.h"
 
 extern "C" void espcontrol_register_web_server_handlers(
     esphome::web_server_idf::AsyncWebServer *server) {
@@ -38,6 +39,7 @@ extern "C" void espcontrol_register_web_server_handlers(
   espcontrol::reset::register_handlers(*server);
   espcontrol::register_panel_identity_endpoint(*server);
   espcontrol::register_screensaver_pin_endpoint(*server);
+  espcontrol::clockbar::register_endpoint(*server);
   register_local_sensor_endpoint(*server);
   register_local_action_endpoint(*server);
   espcontrol::configuration::register_panel_config_capabilities_endpoint(*server);

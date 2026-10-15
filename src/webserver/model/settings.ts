@@ -1,3 +1,4 @@
+import { parseClockBarLayout, type ClockBarLayout } from "./clock_bar";
 export function normalizeTemperatureUnit(value: unknown): string {
   const unit = String(value == null ? "" : value).trim().toLowerCase();
   if (unit === "f" || unit === "\u00B0f" || unit === "fahrenheit") return "\u00B0F";
@@ -371,6 +372,7 @@ export interface BackupPanelSettingsState {
   outdoorTempEnable: boolean;
   indoorTempEntity: string;
   outdoorTempEntity: string;
+  clockBarLayout: ClockBarLayout | null;
   clockBarTemperatureEntities: string[];
   clockBar: boolean;
   clockBarTime: boolean;
@@ -509,6 +511,7 @@ export function normalizeBackupPanelSettings(
     outdoorTempEnable: hasOutdoorTempEnable ? !!settings.outdoor_temp_enable : clockBarTemperatureEntities.length > 0,
     indoorTempEntity: "",
     outdoorTempEntity: clockBarTemperatureEntities[0] || "",
+    clockBarLayout: parseClockBarLayout(objectValue(settings, "clock_bar_layout")),
     clockBarTemperatureEntities,
     clockBar: objectValue(settings, "clock_bar") != null ? !!settings.clock_bar : false,
     clockBarTime: objectValue(settings, "clock_bar_time") != null ? !!settings.clock_bar_time : true,

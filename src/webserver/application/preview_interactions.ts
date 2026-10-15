@@ -1,3 +1,5 @@
+import { moveClockBarElement, type ClockBarGroup } from "../model/clock_bar";
+import type { ClockBarFeature } from "./clock_bar_state";
 import { state } from "../state/app_instance";
 import * as EspControlModel from "../model";
 import { coveredCells } from "../model/grid";
@@ -15,6 +17,7 @@ import type { ButtonSettingsSelectionFeature } from "./button_settings_selection
 import type { PreviewGridPlacementFeature } from "./preview_grid_placement";
 import type { PreviewContextMenuFeature } from "./preview_context_menu";
 export interface PreviewInteractionsDependencies {
+    readonly clockBar: Pick<ClockBarFeature, "layout" | "saveLayout">;
     readonly cardEditorDraft: CardEditorDraftController;
     readonly configPersistence: ConfigPersistenceFeature;
     readonly layout: ApplicationLayoutState;
@@ -157,7 +160,46 @@ export function createPreviewInteractionsFeature(
         var pendingCellIdx: any = -1;
         state.clockBarDragItem = "";
         if (els.topbar) {
+            let clockBarDidDrag = false;
+            const clearClockBarDrop = () => {
+                els.topbar.querySelectorAll(".sp-clockbar-drop,.sp-clockbar-insert").forEach((el: HTMLElement) => el.classList.remove("sp-clockbar-drop", "sp-clockbar-insert"));
+            };
+            els.topbar.addEventListener("dragstart", (event: DragEvent) => {
+                const target = (event.target as HTMLElement).closest<HTMLElement>("[data-clockbar-item]");
+                if (!target || !state.clockBarLayoutSupported || isConfigLocked() || state.clockBarLayoutSaving) { event.preventDefault(); return; }
+                state.clockBarDragItem = target.dataset.clockbarItem || "";
+                clockBarDidDrag = true;
+                event.dataTransfer?.setData("application/x-espcontrol-clockbar", state.clockBarDragItem);
+                if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+            });
+            els.topbar.addEventListener("dragover", (event: DragEvent) => {
+                if (!state.clockBarDragItem || isConfigLocked()) return;
+                event.preventDefault(); clearClockBarDrop();
+                const target = event.target as HTMLElement;
+                const item = target.closest<HTMLElement>("[data-clockbar-item]");
+                const section = target.closest<HTMLElement>("[data-clockbar-section]");
+                (item || section)?.classList.add(item ? "sp-clockbar-insert" : "sp-clockbar-drop");
+                if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+            });
+            els.topbar.addEventListener("drop", (event: DragEvent) => {
+                if (!state.clockBarDragItem || isConfigLocked()) return;
+                event.preventDefault(); event.stopPropagation(); clearClockBarDrop();
+                const target = event.target as HTMLElement;
+                const item = target.closest<HTMLElement>("[data-clockbar-item]");
+                const section = target.closest<HTMLElement>("[data-clockbar-section]");
+                const group = section?.dataset.clockbarSection as ClockBarGroup | undefined;
+                const id = state.clockBarDragItem; state.clockBarDragItem = "";
+                if (!group) return;
+                const before = item && event.clientX < item.getBoundingClientRect().left + item.getBoundingClientRect().width / 2
+                    ? item.dataset.clockbarItem : item ? dependencies.clockBar.layout().items.filter(entry => entry.group === group)[dependencies.clockBar.layout().items.filter(entry => entry.group === group).findIndex(entry => entry.id === item.dataset.clockbarItem) + 1]?.id : undefined;
+                void dependencies.clockBar.saveLayout(moveClockBarElement(dependencies.clockBar.layout(), id, group, before));
+            });
+            els.topbar.addEventListener("dragend", () => {
+                state.clockBarDragItem = ""; clearClockBarDrop();
+                setTimeout(() => { clockBarDidDrag = false; }, 0);
+            });
             els.topbar.addEventListener("click", function (this: any, e?: any) {
+                if (clockBarDidDrag) return;
                 if (isConfigLocked()) {
                     e.preventDefault();
                     e.stopPropagation();

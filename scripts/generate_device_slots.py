@@ -80,6 +80,7 @@ def battery_substitution_lines(device: dict) -> list[str]:
     if device["slug"] != "guition-esp32-p4-jc8012p4a1":
         return [
             '  battery_status_apply_code: ""',
+            '  clock_bar_battery_label: "nullptr"',
             '  battery_status_hide_code: ""',
         ]
     return [
@@ -93,6 +94,7 @@ def battery_substitution_lines(device: dict) -> list[str]:
         "    } else {",
         "      lv_obj_add_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);",
         "    }",
+        '  clock_bar_battery_label: "id(battery_status_icon_label)"',
         "  battery_status_hide_code: |-",
         "    lv_obj_add_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);",
     ]

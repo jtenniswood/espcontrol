@@ -434,11 +434,17 @@ inline void clock_bar_set_widget_hidden(lv_obj_t *obj, bool hidden) {
   else lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
 }
 
+inline auto &clock_bar_extra_hide() {
+  static void (*callback)() = nullptr;
+  return callback;
+}
+
 inline void hide_clock_bar_top_layer_widgets(lv_obj_t **temperature_labels,
                                              size_t temperature_label_count,
                                              lv_obj_t *display_time,
                                              lv_obj_t *network_status_button) {
   clock_bar_left_text_state().bar_visible = false;
+  if (clock_bar_extra_hide()) clock_bar_extra_hide()();
   set_clock_bar_temperature_labels(temperature_labels, temperature_label_count);
   for (size_t i = 0; temperature_labels && i < temperature_label_count; i++) {
     clock_bar_set_widget_hidden(temperature_labels[i], true);

@@ -43,7 +43,7 @@ sensor:
     id: battery_percent
     filters:
       - lambda: |-
-          if (!id(battery_status_enabled).state) {
+          if (!id(battery_status_enabled).state && !espcontrol::clockbar::configuration().contains("device_battery")) {
             return NAN;
           }
           return min(max((x - ${battery_empty_voltage}f) /

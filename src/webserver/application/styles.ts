@@ -53,6 +53,12 @@ export function createWebStyles(dragAnimation: boolean): string {
         "box-sizing:border-box;display:flex;align-items:center;gap:.5cqw;padding:var(--topbar-pad);z-index:1}" +
         ".sp-topbar.sp-hidden{display:none}" +
         ".sp-clockbar-section{height:100%;min-width:0;flex:1;display:flex;align-items:center;gap:.4cqw;position:relative}" +
+        ".sp-clockbar-editable .sp-clockbar-section{position:static;flex:1;min-width:12px}" +
+        ".sp-clockbar-editable .sp-clockbar-custom,.sp-clockbar-editable .sp-clockbar-subpage-title{position:absolute;top:50%;transform:translateY(-50%);max-width:35%;padding:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:var(--btn-label);color:var(--preview-clockbar-text)}" +
+        ".sp-clockbar-editable .sp-clockbar-subpage-title{max-width:none}" +
+        ".sp-clockbar-custom>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
+        ".sp-clockbar-section.sp-clockbar-drop{background:var(--accent-soft);outline:1px dashed var(--accent)}" +
+        ".sp-clockbar-custom.sp-clockbar-insert{border-left:3px solid var(--accent)}" +
         ".sp-clockbar-left{justify-content:flex-start}.sp-clockbar-middle{justify-content:center}.sp-clockbar-right{justify-content:flex-end}" +
         ".sp-clockbar-subpage-title,.sp-temp,.sp-clock{font-size:var(--btn-label);line-height:1.2;color:var(--preview-clockbar-text);font-weight:var(--btn-label-weight,400)}" +
         ".sp-btn-label{font-size:var(--btn-label);line-height:1.2;color:var(--card-text-color,var(--preview-text-primary));font-weight:var(--btn-label-weight,400)}" +

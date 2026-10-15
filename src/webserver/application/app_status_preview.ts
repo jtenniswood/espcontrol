@@ -1,3 +1,5 @@
+import { CLOCK_BAR_CATALOG, isClockBarSensor } from "../model/clock_bar";
+import { placeClockBarItems } from "../model/clock_bar_layout";
 import { state } from "../state/app_instance";
 import { normalizeBrightnessMode } from "../model/settings";
 import type { UiRuntimeState } from "./state";
@@ -126,6 +128,10 @@ export function createAppStatusPreviewFeature(runtime: UiRuntimeState, core: Cor
             var mn: any = String(now.getUTCMinutes()).padStart(2, "0");
             els.clock.textContent = String(hr).padStart(2, "0") + ":" + mn;
         }
+        if (state.clockBarLayoutSupported && els.clock) {
+            els.topbar?.querySelectorAll(".sp-clockbar-clock").forEach((el: HTMLElement) => { el.textContent = els.clock.textContent; });
+            refitClockBar?.();
+        }
     }
     function updateClock(this: any) {
         updateClockText();
@@ -151,6 +157,7 @@ export function createAppStatusPreviewFeature(runtime: UiRuntimeState, core: Cor
         return ["temperature"];
     }
     function clockBarItems(this: any) {
+        if (state.clockBarLayoutSupported) return clockBar.layout().items.map(item => item.id);
         var items: any = ["temperature", "time"];
         if (voiceServicesUiState().clockBarItemVisible)
             items.push("voice");
@@ -169,6 +176,7 @@ export function createAppStatusPreviewFeature(runtime: UiRuntimeState, core: Cor
         return "left";
     }
     function clockBarItemActive(this: any, item?: any) {
+        if (state.clockBarLayoutSupported) return clockBar.layout().items.some(entry => entry.id === item);
         var tempIndex: any = clockBarTemperatureItemIndex(item);
         if (tempIndex >= 0)
             return clockBarTemperatureVisible();
@@ -184,6 +192,8 @@ export function createAppStatusPreviewFeature(runtime: UiRuntimeState, core: Cor
         return els.clockBarItems && els.clockBarItems[item] || null;
     }
     function clockBarItemLabel(this: any, item?: any) {
+        const custom = state.clockBarLayoutSupported && clockBar.layout().items.find(entry => entry.id === item);
+        if (custom) return custom.label || CLOCK_BAR_CATALOG[custom.type].label;
         if (isClockBarTemperatureItem(item))
             return "Temperature";
         if (item === "time")
@@ -232,7 +242,89 @@ export function createAppStatusPreviewFeature(runtime: UiRuntimeState, core: Cor
         }
         return button;
     }
+    let resizeObserver: ResizeObserver | null = null;
+    let refitClockBar: (() => void) | null = null;
+    function renderEditableClockBar() {
+        if (!els.topbar || !els.clockBarSections) return;
+        els.topbar.classList.add("sp-clockbar-editable");
+        refitClockBar = null;
+        const elements: Record<string, HTMLDivElement> = {};
+        els.clockBarItems = elements;
+        els.temps = {};
+        els.clock = null;
+        els.networkPreview = null;
+        els.voicePreview = null;
+        for (const group of ["left", "middle", "right"] as const) els.clockBarSections[group].innerHTML = "";
+        const items = clockBar.layout().items;
+        let title: HTMLElement | null = null;
+        if (state.editingSubpage != null) {
+            title = document.createElement("span");
+            title.className = "sp-clockbar-subpage-title";
+            title.textContent = String(state.buttons[state.editingSubpage - 1]?.label || "Subpage");
+            els.clockBarSections.left.appendChild(title);
+        }
+        for (const item of items) {
+            const element = document.createElement("div");
+            element.className = "sp-clockbar-item sp-clockbar-custom";
+            element.dataset.clockbarItem = item.id;
+            element.dataset.clockbarSection = item.group;
+            element.setAttribute("role", "button");
+            element.tabIndex = 0;
+            element.draggable = !state.configLocked && !state.clockBarLayoutSaving;
+            element.setAttribute("aria-label", clockBarItemLabel(item.id));
+            const content = document.createElement("span");
+            if (isClockBarSensor(item.type)) {
+                content.textContent = (item.label ? item.label + " " : "") + (item.entity ? CLOCK_BAR_CATALOG[item.type].sample : "--") + item.unit;
+                content.className = "sp-clockbar-value";
+            } else if (item.type === "time") {
+                content.textContent = "--:--";
+                content.className = "sp-clockbar-clock";
+                if (!els.clock) els.clock = content;
+            } else {
+                const icon = item.type === "network" ? networkPreviewIconSlug(state.networkTransport, state.wifiStrengthPercent) : item.type === "night" ? "weather-night" : "battery";
+                content.className = "mdi mdi-" + icon;
+            }
+            element.appendChild(content);
+            els.clockBarSections[item.group].appendChild(element);
+            elements[item.id] = element;
+        }
+        updateClockText();
+        const fit = () => {
+            if (els.clockBarItems !== elements) return;
+            const width = Math.max(0, els.topbar.clientWidth - 12);
+            const gap = Math.max(4, width * .006);
+            const measured = items.map(item => {
+                const element = els.clockBarItems[item.id];
+                element.style.display = "";
+                element.style.width = "";
+                const desired = Math.min(width * .35, Math.max(28, (element.firstElementChild?.scrollWidth || element.scrollWidth) + 4));
+                return { id: item.id, group: item.group, width: desired };
+            });
+            if (title) { title.style.width = ""; title.style.display = ""; }
+            const result = placeClockBarItems(measured, width, gap, title ? Math.min(width, title.scrollWidth) : 0);
+            const visible = new Set(result.items.map(item => item.id));
+            for (const item of items) {
+                const el = els.clockBarItems[item.id];
+                el.style.display = visible.has(item.id) ? "" : "none";
+                el.dataset.overflow = visible.has(item.id) ? "false" : "true";
+            }
+            for (const item of result.items) {
+                const el = els.clockBarItems[item.id];
+                el.style.left = (item.x + 6) + "px";
+                el.style.width = item.width + "px";
+            }
+            if (title) { title.style.width = result.titleWidth + "px"; title.style.left = "6px"; }
+        };
+        refitClockBar = fit;
+        fit();
+        resizeObserver?.disconnect();
+        resizeObserver = new ResizeObserver(fit);
+        resizeObserver.observe(els.topbar);
+        void document.fonts?.ready.then(fit);
+    }
     function renderClockBarLayout(this: any) {
+        if (state.clockBarLayoutSupported) { renderEditableClockBar(); return; }
+        els.topbar?.classList.remove("sp-clockbar-editable");
         if (!els.clockBarSections)
             return;
         var layout: any = {

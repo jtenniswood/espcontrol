@@ -49,6 +49,8 @@ esphome:
       then:
         - lambda: |-
             clock_bar_enable_settings_access(id(network_status_button));
+            espcontrol::clockbar::configuration().load();
+            clock_bar_extra_hide() = []() { espcontrol::clockbar::hide(); };
             navigation_subpage_clock_bar_refresh() = []() {
               navigation_refresh_subpage_label();
               refresh_clock_bar_temperature_label_values(
@@ -115,6 +117,11 @@ interval:
       - lambda: |-
           auto &refresh_clock_bar = navigation_subpage_clock_bar_refresh();
           if (refresh_clock_bar) refresh_clock_bar();
+          if (espcontrol::clockbar::configuration().take_changed()) id(clock_bar_apply).execute();
+          espcontrol::clockbar::refresh(clock_bar_should_show(
+              id(clock_bar_enabled).state, id(main_page)->obj,
+              id(espcontrol_app).display().target_mode(),
+              id(espcontrol_app).display().target_schedule_inactive()));
 
 script:
   - id: clock_bar_hide
@@ -146,7 +153,8 @@ script:
           bool reserve_clock_bar_space = visibility.reserve_space;
           bool visible = visibility.visible;
           bool show_time = visible && id(clock_bar_time_enabled).state;
-          bool show_network = visible && id(network_status_enabled).state;
+          const auto &custom_bar = espcontrol::clockbar::configuration();
+          bool show_network = visible && (custom_bar.value().empty() ? id(network_status_enabled).state : custom_bar.contains("network"));
           bool show_night_mode = visible && id(clock_bar_night_mode_enabled).state &&
                                  id(clock_bar_night_mode_active);
           int clock_bar_screen_width = clock_bar_current_screen_width(${screen_width});
@@ -241,6 +249,11 @@ script:
                                     id(indoor_temp_enable).state,
                                     id(outdoor_temp_enable).state,
                                     id(indoor_temp), id(outdoor_temp));
+          espcontrol::clockbar::apply(
+              espcontrol::clockbar::configuration().value(), visible, ${main_page_pad_top},
+              id(temperatures), id(display_time), id(network_status_icon_label),
+              id(night_mode_status_icon_label), id(network_status_button), id(clock_bar_night_mode_active),
+              ${clock_bar_battery_label});
 
 switch:
   - platform: template

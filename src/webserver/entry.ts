@@ -532,6 +532,24 @@ function composeApplicationContext(): ApplicationContext {
   clockBarState = createClockBarFeature(clockBar, runtime, core, environment, {
     hideSettingsOverlay: () => selection.hideSettingsOverlay(),
     timezoneId: (value) => statusPreview.getTzId(value),
+    batterySupported: () => !!layout.config.features?.battery,
+    getLayout: async () => {
+      const capabilitiesResponse = await resetAwareFetch("/api/v1/capabilities", { credentials: "include", cache: "no-store" });
+      if (!capabilitiesResponse.ok || (await capabilitiesResponse.json())?.clock_bar?.version !== 1) return undefined;
+      const response = await resetAwareFetch("/api/v1/clock-bar", { credentials: "include", cache: "no-store" });
+      return response.ok ? response.json() : undefined;
+    },
+    postLayout: async (value) => {
+      try {
+        const response = await resetAwareFetch("/api/v1/clock-bar", {
+          method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+          body: value || '{"legacy":true}',
+        });
+        if (!response.ok) shell.showBanner("Could not save the clock bar. Please reconnect and try again.", "error");
+        else if (runtime.els.banner) runtime.els.banner.className = "sp-banner";
+        return response.ok;
+      } catch { shell.showBanner("Could not reach the device to save the clock bar.", "error"); return false; }
+    },
     postTemperatureEntities: (value) => clockBarPostApi.postClockBarTemperatureEntities(value),
     postSwitch: (name, value) => requestApi.postSwitch(name, value),
     entityName: (key) => entityState.entityName(key),
@@ -664,6 +682,7 @@ function composeApplicationContext(): ApplicationContext {
     deleteButtons: (slots) => interactions.deleteButtons(slots),
   });
   interactions = createPreviewInteractionsFeature({
+    clockBar: clockBarState,
     cardEditorDraft,
     configPersistence: configurationPersistence,
     layout,
@@ -864,6 +883,7 @@ function composeApplicationContext(): ApplicationContext {
     shell,
     stateLoader,
     gridMigration,
+    () => { void clockBarState.loadLayout(); },
   );
   publicFirmwareInstall = createPublicFirmwareInstallFeature(
     deviceApi,

@@ -302,6 +302,20 @@ async function installRoutes(context, slug, options = {}) {
         return;
       }
     }
+    if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/clock-bar") {
+      const clockBar = options.clockBarState;
+      if (!clockBar) { await route.fulfill({ status: 404, body: "Not found" }); return; }
+      if (route.request().method() === "POST") {
+        const value = route.request().postDataJSON();
+        clockBar.posts.push(value);
+        if (clockBar.failSave) { await route.fulfill({ status: 500, body: "Save failed" }); return; }
+        clockBar.layout = value;
+      }
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(clockBar.layout) }); return;
+    }
+    if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/local_sensors" && options.clockBarState) {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ key: "room_temp", name: "Room temperature", unit: "°C", type: "numeric" }]) }); return;
+    }
     if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/identity") {
       const identity = options.identityState;
       if (!identity) {
@@ -369,6 +383,7 @@ async function installRoutes(context, slug, options = {}) {
           api: { version: 1 },
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
+          clock_bar: options.clockBarState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
           configuration: { read: true, write: true, document_versions: [1] },
           web_assets: { versions: [1] },
@@ -388,6 +403,7 @@ async function installRoutes(context, slug, options = {}) {
           api: { version: 1 },
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
+          clock_bar: options.clockBarState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
           configuration: { read: false, write: false, document_versions: [] },
         }),
@@ -7498,10 +7514,94 @@ async function assertS3ForecastEditorLayout(browser) {
   } finally { await context.close(); }
 }
 
+async function assertEditableClockBar(browser, testCase) {
+  const clockBar = { layout: { legacy: true }, posts: [], failSave: false };
+  const nativeState = nativeConfigState(testCase.slug);
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, testCase.slug, { clockBarState: clockBar, nativeState });
+  const page = await context.newPage();
+  const errors = []; page.on("pageerror", error => errors.push(error.message));
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await seedNativeDocument(page, nativeState);
+    await page.waitForSelector("[data-clockbar-add]");
+    await page.locator("[data-clockbar-add]").click();
+    await page.locator("#sp-clockbar-add-type").selectOption("humidity");
+    await page.locator("#sp-clockbar-entity").fill("sensor.room_humidity");
+    await page.locator(".sp-settings-overlay").getByRole("button", { name: "Add element", exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
+    const humidity = clockBar.layout.items.find(item => item.type === "humidity");
+    assert(humidity, "humidity is saved as an explicit sensor type");
+    assert(JSON.stringify(clockBar.layout).length > 255, "complete layout exceeds the old text setting limit");
+    await page.locator(`[data-clockbar-item="${humidity.id}"]`).click();
+    await page.getByRole("button", { name: "Duplicate", exact: true }).click();
+    await page.waitForSelector("#sp-clockbar-group");
+    const duplicate = clockBar.layout.items.filter(item => item.type === "humidity").at(-1);
+    await page.locator("#sp-clockbar-group").selectOption("right");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForFunction(id => document.querySelector(`[data-clockbar-item="${id}"]`)?.dataset.clockbarSection === "right", duplicate.id);
+    await page.locator(`[data-clockbar-item="${duplicate.id}"]`).dragTo(page.locator('.sp-clockbar-section[data-clockbar-section="middle"]'), { targetPosition: { x: 5, y: 5 } });
+    await page.waitForFunction(id => document.querySelector(`[data-clockbar-item="${id}"]`)?.dataset.clockbarSection === "middle", duplicate.id);
+    await page.locator(`[data-clockbar-item="${duplicate.id}"]`).click();
+    await page.locator(".sp-selection-bar").getByRole("button", { name: "Add element", exact: true }).click();
+    await page.locator("#sp-clockbar-source").selectOption("local");
+    await page.locator("#sp-clockbar-entity").fill("room_temp");
+    await page.locator(".sp-settings-overlay").getByRole("button", { name: "Add element", exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
+    assert(clockBar.layout.items.some(item => item.source === "local" && item.entity === "room_temp"));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await seedNativeDocument(page, nativeState);
+    await page.waitForSelector(`[data-clockbar-item="${humidity.id}"]`);
+    assert.equal(await page.locator("[data-clockbar-item]").count(), clockBar.layout.items.length, "reload restores saved elements");
+    // A failed save must leave the existing preview and configuration intact.
+    await page.locator(`[data-clockbar-item="${humidity.id}"]`).click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    clockBar.failSave = true;
+    await page.locator("#sp-clockbar-label").fill("Failed edit");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForSelector(".sp-banner.sp-error:not([hidden])");
+    assert.notEqual(clockBar.layout.items.find(item => item.id === humidity.id).label, "Failed edit");
+    clockBar.failSave = false;
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
+    await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+    await page.waitForSelector(".sp-clockbar-subpage-title");
+    assert.equal(await page.locator('.sp-clockbar-left [data-clockbar-item]:visible').count(), 0, "subpage title replaces left elements");
+    const boxes = await page.locator('.sp-topbar [data-clockbar-item]:visible,.sp-clockbar-subpage-title:visible').evaluateAll(elements => elements.map(el => { const b = el.getBoundingClientRect(); return { x: b.x, right: b.right }; }).sort((a,b) => a.x-b.x));
+    for (let i=1; i<boxes.length; i++) assert(boxes[i].x >= boxes[i-1].right - 1, "visible clock bar elements do not overlap");
+    const network = clockBar.layout.items.find(item => item.type === "network");
+    if (network) {
+      await page.getByRole("button", { name: "Manage clock bar", exact: true }).click();
+      await page.getByRole("button", { name: "Connectivity / settings · right", exact: true }).click();
+      await page.locator(".sp-settings-overlay").getByRole("button", { name: "Delete", exact: true }).click();
+      await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
+      assert(!clockBar.layout.items.some(item => item.type === "network"), "connectivity can be deleted");
+      await page.getByRole("button", { name: "Manage clock bar", exact: true }).click();
+      await page.locator("#sp-clockbar-add-type").selectOption("network");
+      await page.locator("#sp-clockbar-group").selectOption("right");
+      await page.locator(".sp-settings-overlay").getByRole("button", { name: "Add element", exact: true }).click();
+      await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
+      assert(clockBar.layout.items.some(item => item.type === "network"), "deleted connectivity can be added again");
+    }
+    assert.deepEqual(errors, [], "clock bar editor raises no browser errors");
+    await page.screenshot({ path: path.join(FAILURE_DIR, `editable-clock-bar-${testCase.slug}.png`) });
+    console.log(`${testCase.name}: editable clock bar add/edit/duplicate/drag/local/save failure/reload/title checks passed.`);
+  } finally { await context.close(); }
+}
+
 (async function main() {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_CLOCK_BAR_ONLY === "1") {
+      fs.mkdirSync(FAILURE_DIR, { recursive: true });
+      for (const testCase of ACTIVE_CASES) await assertEditableClockBar(browser, testCase);
+      return;
+    }
     if (process.env.ESPCONTROL_SUBPAGE_BACK_ONLY === "1" || process.env.ESPCONTROL_CARD_NAMES_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) {
         const nativeState = nativeConfigState(testCase.slug);
@@ -7512,6 +7612,7 @@ async function assertS3ForecastEditorLayout(browser) {
         try {
           await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
           await page.waitForSelector("#sp-app");
+          await page.waitForFunction(() => window.__eventSources?.length > 0);
           await seedNativeDocument(page, nativeState);
           if (process.env.ESPCONTROL_CARD_NAMES_ONLY === "1") await assertInlineCardNames(page, nativeState, testCase.name);
           else await assertSubpageTitleTypography(page, testCase.name, nativeState);
@@ -7552,6 +7653,7 @@ async function assertS3ForecastEditorLayout(browser) {
       console.log(`Card curve preset checks passed for ${ACTIVE_CASES.length} generated layouts.`);
       return;
     }
+    await assertEditableClockBar(browser, ACTIVE_CASES[0]);
     await assertCardCurveSettings(browser, ACTIVE_CASES[0]);
     for (const testCase of ACTIVE_CASES) {
       await assertContinuousPreview(browser, testCase);

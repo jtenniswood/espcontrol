@@ -669,3 +669,12 @@ add_test(NAME weather_daily_ui_test COMMAND weather_daily_ui_test)
 add_test(NAME weather_daily_requests_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/weather_daily_requests_test.py)
+
+add_executable(clock_bar_layout_test clock_bar_layout_test.cpp)
+target_compile_features(clock_bar_layout_test PRIVATE cxx_std_17)
+target_compile_options(clock_bar_layout_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(clock_bar_layout_test PRIVATE ../../components/espcontrol)
+add_test(NAME clock_bar_layout_test COMMAND clock_bar_layout_test)
+add_test(NAME clock_bar_configuration_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/clock_bar_configuration_test.py)

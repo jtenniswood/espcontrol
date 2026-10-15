@@ -258,6 +258,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
             settings: {
                 indoor_temp_enable: state._indoorOn,
                 outdoor_temp_enable: state._outdoorOn,
+                clock_bar_layout: state.clockBarLayout,
                 clock_bar_temperature_entities: serializeClockBarTemperatureEntities(clockBarTemperatureEntities()),
                 indoor_temp_entity: state.indoorEntity,
                 outdoor_temp_entity: state.outdoorEntity,
@@ -362,6 +363,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     if (Object.prototype.hasOwnProperty.call(themeScreen, key) && parseThemeSunOffset(themeScreen[key]) === null)
                         throw new Error("Invalid " + key.replace(/_/g, " ") + " in backup; use a whole number from -180 to 180 minutes.");
                 }
+                if (validatedPlan.importedSettings?.clockBarLayout && !state.clockBarLayoutSupported) throw new Error("Update the device firmware before restoring an editable clock bar.");
                 const restoredName = await controllers.identity?.chooseRestoreName(data);
                 if (restoredName === null) return;
                 async function applyBackupRestorePlan(this: any, plannedImport: any) {
@@ -489,6 +491,10 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     els.setOnColor._syncColor(state.onColor);
                 if (backupPlan.settings) {
                     var s: any = backupPlan.settings;
+                    if (state.clockBarLayoutSupported) {
+                        const response = await resetAwareFetch("/api/v1/clock-bar", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: importedSettings.clockBarLayout ? JSON.stringify(importedSettings.clockBarLayout) : '{"legacy":true}' });
+                        if (!response.ok) throw new Error("Could not restore clock bar layout.");
+                    }
                     state._clockBarTemperatureVisibilityReceived = true;
                     state._outdoorOn = importedSettings.outdoorTempEnable;
                     state._indoorOn = importedSettings.indoorTempEnable;
@@ -592,6 +598,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     var importedScreenRotation: any = importedSettings.screenRotation;
                     if (controllers.layout.config.features && controllers.layout.config.features.screenRotation)
                         postSelect(entityName("screen_rotation"), importedScreenRotation);
+                    state.clockBarLayout = importedSettings.clockBarLayout;
                     state.clockBarTemperatureEntities = importedSettings.clockBarTemperatureEntities;
                     state._clockBarTemperatureEntitiesReceived = true;
                     state._indoorOn = importedSettings.indoorTempEnable;
