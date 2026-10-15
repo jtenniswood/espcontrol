@@ -764,10 +764,13 @@ inline bool weather_forecast_cancel_stale_requests() {
     if (call_id == 0) continue;
     if (now - requests[i].started_ms < WEATHER_FORECAST_REQUEST_TIMEOUT_MS) continue;
     std::string entity_id = requests[i].entity_id;
+    std::string day = requests[i].day;
     requests[i] = WeatherForecastPendingRequest();
     ESP_LOGW("weather_forecast", "Cancelling forecast request %u for %s: timeout",
       (unsigned) call_id, entity_id.c_str());
     ha_cancel_action_response_callback(call_id, "timeout");
+    apply_weather_forecast_unavailable_for_entity(entity_id);
+    weather_forecast_schedule_retry(entity_id, day, "timeout");
     return true;
   }
   return false;
