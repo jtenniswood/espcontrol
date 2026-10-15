@@ -62,7 +62,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 1.953125,
+          "radius": 3.125,
           "padding": 1.37,
           "iconSize": 4.69,
           "labelSize": 1.8,
@@ -73,7 +73,7 @@
           "smallTextSize": 1.757812
         },
         "emptyCell": {
-          "radius": 1.953125
+          "radius": 3.125
         },
         "sensorBadge": {
           "top": 1,
@@ -176,7 +176,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "16px",
-            "radius": "20px",
+            "radius": "32px",
             "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"42\"",
             "main_page_compact_pad_top": "\"5\"",
@@ -189,6 +189,8 @@
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
             "screen_schedule_clock_default_brightness": "\"10\"",
+            "card_curve_small_radius": "8px",
+            "card_curve_medium_radius": "20px",
             "button_radius": "10px"
           },
           "deviceFontPackageKey": "fonts_device",
@@ -262,7 +264,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 1.953125,
+          "radius": 3.125,
           "padding": 1.37,
           "iconSize": 4.69,
           "labelSize": 1.8,
@@ -273,7 +275,7 @@
           "smallTextSize": 1.757812
         },
         "emptyCell": {
-          "radius": 1.953125
+          "radius": 3.125
         },
         "sensorBadge": {
           "top": 1,
@@ -376,7 +378,7 @@
             "unit_font": "font_text_body",
             "sensor_value_font": "font_number_value",
             "padding": "16px",
-            "radius": "20px",
+            "radius": "32px",
             "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"42\"",
             "main_page_compact_pad_top": "\"5\"",
@@ -389,6 +391,8 @@
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
             "screen_schedule_clock_default_brightness": "\"10\"",
+            "card_curve_small_radius": "8px",
+            "card_curve_medium_radius": "20px",
             "button_radius": "10px"
           },
           "deviceFontPackageKey": "fonts_device",
