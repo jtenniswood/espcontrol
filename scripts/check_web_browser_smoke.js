@@ -5913,6 +5913,29 @@ async function assertInlineCardNames(page, nativeState, label) {
   await input.press("Enter");
   await waitForNativeState(nativeState, () => fields(nativeState.document.buttons[1])[1] === "Garden camera", `${label}: image title saves`);
   assert.strictEqual(await title.locator(".sp-image-label-main").textContent(), "Garden camera");
+  for (const [type, config] of [
+    ["calendar", "sensor.date;;Auto;Auto;;;calendar"],
+    ["calendar datetime", "sensor.date;;Auto;Auto;;;calendar;datetime"],
+    ["clock", ";;Auto;Auto;;;clock"],
+    ["timezone", "Europe/London;;Auto;Auto;;;timezone"],
+    ["screen_lock", ";;Lock;Lock Open;;;screen_lock"],
+  ]) {
+    nativeState.document.buttons[1] = config;
+    await seedNativeDocument(page, nativeState);
+    const card = page.locator('.sp-main [data-slot="1"]');
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.strictEqual(await card.locator(".sp-editable-title").count(), 0,
+      `${label}: ${type} does not offer a name that cannot be saved`);
+    const generatedLabel = card.locator(".sp-btn-label");
+    if (await generatedLabel.count()) {
+      assert.strictEqual(await generatedLabel.getAttribute("tabindex"), null);
+      await page.locator(".sp-preview-hint, .sp-hint").first().click();
+      await generatedLabel.click();
+      assert(await card.evaluate(el => el.classList.contains("sp-selected")),
+        `${label}: clicking ${type} text still selects its card`);
+      assert.strictEqual(await input.count(), 0);
+    }
+  }
   nativeState.document.buttons[1] = original;
   await seedNativeDocument(page, nativeState);
 }

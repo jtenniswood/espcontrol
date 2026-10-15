@@ -1,4 +1,5 @@
 import { state } from "../state/app_instance";
+import { cardContractCard } from "../generated/card_contract";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
 import { PREVIEW_THEME_COLORS, defaultCardBackgroundColor, previewEffectiveTheme } from "../state/preview_theme";
 import { configOptionValue, cardActiveColor } from "../model/config_primitives";
@@ -249,7 +250,10 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     sensorBadge +
                         iconHtml +
                         labelHtml;
-                makeTitleEditable(btn, b.type === "image");
+                // Generated date, timezone, and lock text cannot persist a custom name.
+                if (cardContractCard(b.type)?.normalization?.fields.label.policy !== "clear") {
+                    makeTitleEditable(btn, b.type === "image");
+                }
                 appendResizeHandle(btn);
                 main.appendChild(btn);
                 if (["light_brightness", "fan_speed", "cover", "slider", "light_temperature"].indexOf(b.type) !== -1) {
