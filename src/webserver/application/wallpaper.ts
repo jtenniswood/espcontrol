@@ -315,8 +315,7 @@ export function buildWallpaperSettings(
       ? `Saved wallpaper, ${new DataView(buffer).getUint32(4, true)} by ${new DataView(buffer).getUint32(8, true)} pixels`
       : "No wallpaper uploaded";
     updatePreview();
-    status.textContent = buffer ? `Wallpaper saved (${new DataView(buffer).getUint32(4, true)} × ${new DataView(buffer).getUint32(8, true)}). Changes apply immediately.`
-      : "";
+    status.textContent = "";
   }
   async function load() {
     try {
