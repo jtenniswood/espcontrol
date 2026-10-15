@@ -103,7 +103,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         menu.style.left = position.x + "px";
         menu.style.top = position.y + "px";
     }
-    function addCtxItem(this: any, icon?: any, text?: any, handler?: any, danger?: any) {
+    function addCtxItem(this: any, icon?: any, text?: any, handler?: any, danger?: any, container: HTMLElement = ctxMenu) {
         var item: any = document.createElement("div");
         item.className = "sp-ctx-item" + (danger ? " sp-ctx-danger" : "");
         item.appendChild(mdiIcon(icon));
@@ -112,14 +112,14 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
             ev.preventDefault();
             ev.stopPropagation();
             hideContextMenu();
-            handler(ev);
+            handler();
         });
-        ctxMenu.appendChild(item);
+        container.appendChild(item);
     }
-    function addCtxDivider(this: any) {
+    function addCtxDivider(container: HTMLElement = ctxMenu) {
         var div: any = document.createElement("div");
         div.className = "sp-ctx-divider";
-        ctxMenu.appendChild(div);
+        container.appendChild(div);
     }
     function resizeSlot(this: any, slot?: any, targetSz?: any) {
         if (isConfigLocked())
@@ -161,12 +161,59 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
     }
     function addColourMenuItem(slots: number[]) {
         const colourSlots = slots.filter(supportsCardColour);
-        if (colourSlots.length) {
-            addCtxItem("eyedropper", "Change Colour", (event: MouseEvent) => showColourPicker(event, colourSlots));
+        if (!colourSlots.length) return;
+        const item = document.createElement("div");
+        item.className = "sp-ctx-sub";
+        const trigger = document.createElement("div");
+        trigger.className = "sp-ctx-item sp-ctx-sub-trigger";
+        trigger.tabIndex = 0;
+        trigger.setAttribute("role", "button");
+        trigger.setAttribute("aria-label", "Change Colour");
+        trigger.setAttribute("aria-haspopup", "true");
+        trigger.setAttribute("aria-expanded", "false");
+        trigger.appendChild(mdiIcon("eyedropper"));
+        trigger.appendChild(document.createTextNode("Change Colour"));
+        const submenu = createColourPicker(colourSlots);
+        item.append(trigger, submenu);
+        ctxMenu.appendChild(item);
+        let closeTimer: number | undefined;
+        function open() {
+            window.clearTimeout(closeTimer);
+            if (isConfigLocked()) return;
+            submenu.style.display = "block";
+            const bounds = trigger.getBoundingClientRect();
+            const width = submenu.offsetWidth;
+            const x = bounds.right + width <= window.innerWidth - 4 ? bounds.right : bounds.left - width;
+            positionMenu(submenu, { clientX: x, clientY: bounds.top });
+            trigger.setAttribute("aria-expanded", "true");
         }
+        function close() {
+            window.clearTimeout(closeTimer);
+            submenu.style.display = "none";
+            trigger.setAttribute("aria-expanded", "false");
+        }
+        item.addEventListener("mouseenter", open);
+        item.addEventListener("mouseleave", () => {
+            closeTimer = window.setTimeout(close, 150);
+        });
+        trigger.addEventListener("mousedown", e => e.preventDefault());
+        trigger.addEventListener("click", e => {
+            e.stopPropagation();
+            open();
+        });
+        item.addEventListener("keydown", e => {
+            if (e.target === trigger && ["ArrowRight", "Enter", " "].includes(e.key)) {
+                e.preventDefault();
+                open();
+                submenu.querySelector("button")?.focus();
+            } else if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                close();
+                trigger.focus();
+            }
+        });
     }
-    function showColourPicker(event: MouseEvent, slots: number[]) {
-        if (isConfigLocked()) return;
+    function createColourPicker(slots: number[]) {
         const c = ctx();
         const homeSlot = state.editingSubpage;
         function colour(slot: number): string {
@@ -191,22 +238,20 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
             renderButtonSettings();
             hideContextMenu();
         }
-        hideContextMenu();
-        ctxMenu = document.createElement("div");
-        ctxMenu.className = "sp-ctx-menu sp-ctx-colours";
+        const submenu = document.createElement("div");
+        submenu.className = "sp-ctx-submenu sp-ctx-colours";
         const title = document.createElement("div");
         title.className = "sp-ctx-colour-title";
         title.textContent = slots.length > 1 ? "Card Colours" : "Card Colour";
-        ctxMenu.appendChild(title);
+        submenu.appendChild(title);
         const firstColour = colour(slots[0]!);
         const selectedColour = slots.every(slot => colour(slot) === firstColour) ? firstColour : "";
-        ctxMenu.appendChild(createColorSwatches(selectedColour, saveColour, "Card colour presets"));
+        submenu.appendChild(createColorSwatches(selectedColour, saveColour, "Card colour presets"));
         // Keep the native picker attached until its change event commits the colour.
-        ctxMenu.addEventListener("click", (e: MouseEvent) => e.stopPropagation());
-        addCtxDivider();
-        addCtxItem("restore", "Reset Colour", () => saveColour(""));
-        document.body.appendChild(ctxMenu);
-        positionMenu(ctxMenu, event);
+        submenu.addEventListener("click", e => e.stopPropagation());
+        addCtxDivider(submenu);
+        addCtxItem("restore", "Reset Colour", () => saveColour(""), false, submenu);
+        return submenu;
     }
     function addBulkCardMenuItems(this: any, slots?: any) {
         addColourMenuItem(slots);

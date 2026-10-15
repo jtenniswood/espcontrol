@@ -2883,8 +2883,14 @@ async function assertContextColourPicker(browser, testCase) {
     const menu = page.locator(".sp-ctx-menu");
     const openPicker = async target => {
       await target.click({ button: "right" });
-      await menu.getByText("Change Colour", { exact: true }).click();
+      const trigger = menu.getByRole("button", { name: "Change Colour", exact: true });
+      await trigger.hover();
       await menu.getByRole("group", { name: "Card colour presets", exact: true }).waitFor();
+      assert.strictEqual(await trigger.getAttribute("aria-expanded"), "true");
+      assert(await trigger.evaluate(el => !["none", "normal", '""'].includes(getComputedStyle(el, "::after").content)),
+        `${label}: Change Colour shows a submenu chevron`);
+      assert(await menu.locator(":scope > .sp-ctx-item").count() > 0,
+        `${label}: the original menu remains alongside the palette`);
       assert.strictEqual(await page.locator(".sp-settings-overlay.sp-visible").count(), 0,
         `${label}: quick colour picker does not open card settings`);
     };
@@ -2893,6 +2899,25 @@ async function assertContextColourPicker(browser, testCase) {
       await page.waitForFunction(() => window.__eventSources?.length > 0);
       await seedNativeDocument(page, fixture);
       await openPicker(card(1));
+      const submenu = menu.locator(".sp-ctx-submenu");
+      const trigger = menu.getByRole("button", { name: "Change Colour", exact: true });
+      let menuBounds = await menu.boundingBox();
+      let paletteBounds = await submenu.boundingBox();
+      assert(paletteBounds.x >= menuBounds.x + menuBounds.width - 1,
+        `${label}: the palette pops out to the right when space allows`);
+      await menu.getByText("Duplicate", { exact: true }).hover();
+      await submenu.waitFor({ state: "hidden" });
+      assert.strictEqual(await submenu.isVisible(), false, `${label}: leaving the row closes its submenu`);
+      await trigger.click();
+      assert(await submenu.isVisible(), `${label}: clicking also opens the submenu`);
+      await trigger.focus();
+      await page.keyboard.press("ArrowRight");
+      assert(await submenu.locator("button").first().evaluate(el => el === document.activeElement),
+        `${label}: keyboard navigation enters the palette`);
+      await page.keyboard.press("ArrowLeft");
+      assert.strictEqual(await submenu.isVisible(), false);
+      assert(await trigger.evaluate(el => el === document.activeElement));
+      await trigger.click();
       await menu.locator('[data-color="6036B2"]').click();
       await waitForSaved(() => storedButton(1)?.includes("card_off_color=6036B2"));
       assert(storedButton(1).includes("card_on_color=FFFFFF"), `${label}: separate active colour survives`);
@@ -2939,6 +2964,21 @@ async function assertContextColourPicker(browser, testCase) {
       await openPicker(card(1));
       await page.locator(".sp-brand").click();
       assert.strictEqual(await menu.count(), 0, `${label}: clicking outside dismisses the picker`);
+      await card(1).evaluate((el, viewport) => el.dispatchEvent(new MouseEvent("contextmenu", {
+        bubbles: true, cancelable: true, clientX: viewport.width - 5, clientY: viewport.height - 5,
+      })), testCase.viewport);
+      await trigger.hover();
+      menuBounds = await menu.boundingBox();
+      paletteBounds = await submenu.boundingBox();
+      assert(paletteBounds.x + paletteBounds.width <= menuBounds.x + 1,
+        `${label}: the submenu flips left near the right edge`);
+      assert(paletteBounds.x >= 4 && paletteBounds.y >= 4 &&
+        paletteBounds.x + paletteBounds.width <= testCase.viewport.width - 4 &&
+        paletteBounds.y + paletteBounds.height <= testCase.viewport.height - 4,
+        `${label}: the complete palette remains within the viewport`);
+      await submenu.locator('[data-color="6036B2"]').hover();
+      assert(await submenu.isVisible(), `${label}: moving across to the palette keeps it open`);
+      await page.keyboard.press("Escape");
       for (const type of ["image", "wifi_qr_card"]) {
         await page.evaluate(type => window.__seedEspState([
           { id: "text-button_1_config", state: `camera.garden;Fixed Background;Auto;Auto;;;${type}` },
@@ -2949,6 +2989,9 @@ async function assertContextColourPicker(browser, testCase) {
         await page.keyboard.press("Escape");
       }
       assert.deepStrictEqual(errors, [], `${label}: colour menu has no browser errors`);
+    } catch (error) {
+      console.error(`${label}: browser errors`, errors);
+      throw error;
     } finally { await context.close(); }
   }
 }
