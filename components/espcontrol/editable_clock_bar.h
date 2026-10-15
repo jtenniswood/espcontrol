@@ -48,17 +48,19 @@ inline void bind() {
   auto &state = runtime();
   ha_reset_subscription_callbacks(SUBSCRIPTION_SCOPE);
   state.generation = ha_subscription_generation();
+  bool subscribed = false;
   for (size_t index = 0; index < state.widgets.size(); index++) {
     const auto &item = state.widgets[index].config;
     if (!sensor_type(item.type) || item.source != "ha" || item.entity.empty()) continue;
-    ha_subscribe_state(item.entity, [index](esphome::StringRef value) {
+    subscribed = ha_subscribe_state(item.entity, [index](esphome::StringRef value) {
       auto &current = runtime();
       if (index >= current.widgets.size()) return;
       float number = NAN;
       if (!parse_float_ref(value, number) || !std::isfinite(number)) number = NAN;
       current.widgets[index].value = number;
-    }, SUBSCRIPTION_SCOPE, true);
+    }, SUBSCRIPTION_SCOPE, true) || subscribed;
   }
+  if (subscribed) ha_reannounce_state_subscriptions();
 }
 inline void rebuild(const std::string &serialized, const std::vector<Element> &items) {
   auto &state = runtime();
