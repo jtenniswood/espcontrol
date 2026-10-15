@@ -267,19 +267,19 @@ int main(){
     for(const auto &col:card->columns){
       assert(col.icon->text_align==LV_TEXT_ALIGN_LEFT && col.day->text_align==LV_TEXT_ALIGN_LEFT && col.high->text_align==LV_TEXT_ALIGN_LEFT);
       assert(col.icon->x==col.day->x && col.day->x==col.high->x);
-      assert(col.high->text_color==theme.text_primary && col.high->text_opa==LV_OPA_70 && (col.high->flags & LV_OBJ_FLAG_USER_2));
+      assert(col.high->text_color==owner->text_color && col.high->text_opa==LV_OPA_70 && (col.high->flags & LV_OBJ_FLAG_USER_2));
       assert(col.icon->y==0 && col.day->y==130 && col.high->y==148);
     }
     theme.text_primary=0x333333;theme.text_muted=0x606060;emit(owner,LV_EVENT_STYLE_CHANGED);
-    card->owner->text_color=0x123456;
+    card->owner->text_color=0x212121;
     weather_daily_render_card(card);
     for(const auto &column:card->columns) {
-      assert(column.day->text_color==0x123456);
-      assert(column.icon->text_color==0x123456);
+      assert(column.day->text_color==0x212121);
+      assert(column.icon->text_color==0x212121);
     }
-    assert(card->columns.front().high->text_color==theme.text_primary && card->columns.front().high->text_opa==LV_OPA_70);
-    theme.text_primary=0xFFFFFF;theme.text_muted=0xB0B0B0;emit(owner,LV_EVENT_STYLE_CHANGED);
-    assert(card->columns.front().high->text_color==theme.text_primary && card->columns.front().high->text_opa==LV_OPA_70);
+    assert(card->columns.front().high->text_color==owner->text_color && card->columns.front().high->text_opa==LV_OPA_70);
+    owner->text_color=0xFFFFFF;theme.text_primary=0xFFFFFF;theme.text_muted=0xB0B0B0;emit(owner,LV_EVENT_STYLE_CHANGED);
+    assert(card->columns.front().high->text_color==owner->text_color && card->columns.front().high->text_opa==LV_OPA_70);
     int live=lv_obj_t::live;
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     assert(lv_obj_t::live==live); // Refreshes do not grow the widget tree.
