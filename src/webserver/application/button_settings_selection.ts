@@ -78,6 +78,7 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
             return false;
         els.selectionBar.className = "sp-selection-bar sp-visible";
         if (state.clockBarLayoutSupported) {
+            els.selectionBar.classList.add("sp-clockbar-selection");
             const id = state.clockBarSelectedItem;
             const label = document.createElement("span"); label.className = "sp-selection-label"; label.textContent = clockBarItemLabel(id) + " selected";
             els.selectionBar.appendChild(label);
@@ -132,7 +133,7 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
         if (!isConfigLocked() && renderClockBarSelectionBar())
             return;
         if (!isConfigLocked() && !c.selected.length && state.clockBarLayoutSupported && state.clockBarOn) {
-            els.selectionBar.className = "sp-selection-bar sp-visible";
+            els.selectionBar.className = "sp-selection-bar sp-visible sp-clockbar-selection";
             const add = createActionButton("sp-selection-btn sp-selection-btn-primary", "Add clock bar element", "plus");
             add.setAttribute("data-clockbar-add", ""); add.addEventListener("click", () => editor.open()); els.selectionBar.appendChild(add);
             const manage = createActionButton("sp-selection-btn", "Manage clock bar"); manage.addEventListener("click", () => editor.open()); els.selectionBar.appendChild(manage);

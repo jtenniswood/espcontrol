@@ -64,3 +64,28 @@ test("backups retain editable and deliberately empty clock bars and reject malfo
   for (let i = 0; i < 13; i++) many.push(item("temperature", "left", many));
   assert.throws(() => model.parseClockBarLayout({ version: 1, items: many }));
 });
+
+test("clock bar discovery only requests the endpoint when firmware advertises it", async () => {
+  const { loadEditableClockBarLayout } = loadTypeScriptModule("src/webserver/application/clock_bar_post_api.ts");
+  const urls = [];
+  const result = await loadEditableClockBarLayout(async url => { urls.push(url); return new Response('{"api":{"version":1}}'); });
+  assert.equal(result, undefined);
+  assert.deepEqual(urls, ["/api/v1/capabilities"]);
+});
+test("clock bar discovery retries startup responses and reads the saved layout", async () => {
+  const { loadEditableClockBarLayout } = loadTypeScriptModule("src/webserver/application/clock_bar_post_api.ts");
+  let calls = 0; const delays = [];
+  const responses = [new Response("Starting", { status: 503 }), new Response('{"clock_bar":{"version":1}}'), new Response("Starting", { status: 503 }), new Response('{"clock_bar":{"version":1}}'), new Response('{"version":1,"items":[]}')];
+  const result = await loadEditableClockBarLayout(async () => responses[calls++], async ms => { delays.push(ms); });
+  assert.deepEqual(result, { version: 1, items: [] });
+  assert.deepEqual(delays, [2000, 2000]);
+});
+test("clock bar discovery stops after bounded startup retries and does not retry auth failures", async () => {
+  const { loadEditableClockBarLayout } = loadTypeScriptModule("src/webserver/application/clock_bar_post_api.ts");
+  let calls = 0;
+  assert.equal(await loadEditableClockBarLayout(async () => { calls++; return new Response("Starting", { status: 503 }); }, async () => {}), undefined);
+  assert.equal(calls, 4);
+  calls = 0;
+  assert.equal(await loadEditableClockBarLayout(async () => { calls++; return new Response("Authenticate", { status: 401 }); }), undefined);
+  assert.equal(calls, 1);
+});

@@ -123,3 +123,19 @@ export function createClockBarPostApiFeature(
         postSubpageChevron,
     };
 }
+
+/** Capability discovery keeps older firmware quiet and retries the normal boot-time 503 window. */
+export async function loadEditableClockBarLayout(
+    request: typeof fetch,
+    wait: (milliseconds: number) => Promise<void> = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)),
+): Promise<unknown> {
+    for (let attempt = 0; attempt < 4; attempt++) {
+        const capabilities = await request("/api/v1/capabilities", { credentials: "include", cache: "no-store" });
+        if (capabilities.status === 503 && attempt < 3) { await wait(2000); continue; }
+        if (!capabilities.ok || (await capabilities.json())?.clock_bar?.version !== 1) return undefined;
+        const response = await request("/api/v1/clock-bar", { credentials: "include", cache: "no-store" });
+        if (response.status === 503 && attempt < 3) { await wait(2000); continue; }
+        return response.ok ? response.json() : undefined;
+    }
+    return undefined;
+}

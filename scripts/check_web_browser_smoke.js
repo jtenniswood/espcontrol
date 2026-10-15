@@ -2447,9 +2447,9 @@ async function assertMobileDeviceViewport(browser, testCase) {
     );
     for (const width of [360, 320]) {
       await page.setViewportSize({ width, height: 740 });
-      for (const [tab, id] of [["System", "device"], ["Screen", "settings"], ["Layout", "screen"]]) {
+      for (const tab of ["Device", "Settings", "Screen"]) {
         await page.getByRole("tab", { name: tab, exact: true }).click();
-        assert(await page.locator(`#sp-${id}.active`).isVisible(),
+        assert(await page.locator(`#sp-${tab.toLowerCase()}.active`).isVisible(),
           `${testCase.name}: ${tab} opens at ${width}px`);
         assert.strictEqual(await page.locator(".sp-page.active").count(), 1,
           `${testCase.name}: only the selected page is shown`);
@@ -7591,6 +7591,16 @@ async function assertEditableClockBar(browser, testCase) {
       await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
       assert(clockBar.layout.items.some(item => item.type === "network"), "deleted connectivity can be added again");
     }
+    await page.setViewportSize({ width: 320, height: 740 });
+    const visibleItem = page.locator(".sp-topbar [data-clockbar-item]:visible").first();
+    await visibleItem.click();
+    assert(await page.locator(".sp-selection-bar").evaluate(bar => {
+      const bounds = bar.getBoundingClientRect();
+      return bar.scrollWidth <= bar.clientWidth + 1 && [...bar.querySelectorAll("button")].every(button => {
+        const box = button.getBoundingClientRect(); return box.left >= bounds.left && box.right <= bounds.right + 1;
+      });
+    }), "clock bar editing actions fit a 320px phone viewport");
+    await page.setViewportSize(testCase.viewport);
     assert.deepEqual(errors, [], "clock bar editor raises no browser errors");
     await page.screenshot({ path: path.join(FAILURE_DIR, `editable-clock-bar-${testCase.slug}.png`) });
     console.log(`${testCase.name}: editable clock bar add/edit/duplicate/drag/local/save failure/reload/title checks passed.`);

@@ -127,7 +127,10 @@ inline void refresh(bool visible) {
       if (!state.battery) continue;
       prototype = state.battery; text = lv_label_get_text(prototype); icon = true;
     }
-    lv_obj_set_style_text_font(widget.label, lv_obj_get_style_text_font(prototype, LV_PART_MAIN), LV_PART_MAIN);
+    const lv_font_t *font = lv_obj_get_style_text_font(prototype, LV_PART_MAIN);
+    lv_obj_set_style_text_font(widget.label, font, LV_PART_MAIN);
+    // DOT mode needs a bounded height; content height would wrap long readings into the card area.
+    lv_obj_set_height(widget.label, std::min(state.height, static_cast<int>(lv_font_get_line_height(font))));
     lv_obj_set_style_text_color(widget.label, lv_obj_get_style_text_color(prototype, LV_PART_MAIN), LV_PART_MAIN);
     lv_obj_set_style_text_align(widget.label, icon ? LV_TEXT_ALIGN_CENTER : LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     lv_label_set_display_text(widget.label, text.c_str());
@@ -135,7 +138,10 @@ inline void refresh(bool visible) {
     measured.push_back({index, item.group, desired});
   }
   const auto &title = clock_bar_left_title();
-  lv_obj_set_style_text_font(state.title, lv_obj_get_style_text_font(state.clock, LV_PART_MAIN), LV_PART_MAIN);
+  const lv_font_t *title_font = lv_obj_get_style_text_font(state.clock, LV_PART_MAIN);
+  const int title_height = std::min(state.height, static_cast<int>(lv_font_get_line_height(title_font)));
+  lv_obj_set_style_text_font(state.title, title_font, LV_PART_MAIN);
+  lv_obj_set_height(state.title, title_height);
   lv_obj_set_style_text_color(state.title, lv_obj_get_style_text_color(state.clock, LV_PART_MAIN), LV_PART_MAIN);
   lv_label_set_display_text(state.title, title.c_str());
   const auto layout = place(measured, width, gap, title.empty() ? 0 : std::min(width, text_width(state.title, title)));
@@ -146,7 +152,7 @@ inline void refresh(bool visible) {
   }
   if (layout.title_width > 0) {
     lv_obj_set_width(state.title, layout.title_width);
-    lv_obj_align(state.title, LV_ALIGN_TOP_LEFT, margin, (state.height - lv_obj_get_height(state.title)) / 2);
+    lv_obj_align(state.title, LV_ALIGN_TOP_LEFT, margin, (state.height - title_height) / 2);
     clock_bar_set_widget_hidden(state.title, false);
   }
   for (const auto &placement : layout.items) {

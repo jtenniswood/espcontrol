@@ -52,7 +52,7 @@ import { createStateLoaderFeature, type StateLoaderFeature } from "./application
 import { createGridMigrationFeature } from "./application/grid_migration";
 import { createArtworkPostApiFeature } from "./application/artwork_post_api";
 import { createScreenSchedulePostApiFeature } from "./application/screen_schedule_post_api";
-import { createClockBarPostApiFeature } from "./application/clock_bar_post_api";
+import { createClockBarPostApiFeature, loadEditableClockBarLayout } from "./application/clock_bar_post_api";
 import { createControlsShellFeature, renderPanelBrand } from "./application/controls_shell";
 import { createSettingsPageHelpersFeature, type SettingsPageHelpersFeature } from "./application/settings_page_helpers";
 import { createSettingsScheduleSectionFeature } from "./application/settings_schedule_section";
@@ -533,12 +533,7 @@ function composeApplicationContext(): ApplicationContext {
     hideSettingsOverlay: () => selection.hideSettingsOverlay(),
     timezoneId: (value) => statusPreview.getTzId(value),
     batterySupported: () => !!layout.config.features?.battery,
-    getLayout: async () => {
-      const capabilitiesResponse = await resetAwareFetch("/api/v1/capabilities", { credentials: "include", cache: "no-store" });
-      if (!capabilitiesResponse.ok || (await capabilitiesResponse.json())?.clock_bar?.version !== 1) return undefined;
-      const response = await resetAwareFetch("/api/v1/clock-bar", { credentials: "include", cache: "no-store" });
-      return response.ok ? response.json() : undefined;
-    },
+    getLayout: () => loadEditableClockBarLayout(resetAwareFetch),
     postLayout: async (value) => {
       try {
         const response = await resetAwareFetch("/api/v1/clock-bar", {

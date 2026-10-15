@@ -225,6 +225,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         "padding:14px var(--gap);background:var(--surface);" +
         "color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;user-select:none}" +
         ".sp-selection-bar.sp-visible{display:flex}" +
+        ".sp-clockbar-selection{flex-wrap:wrap}.sp-clockbar-selection .sp-selection-actions{flex-wrap:wrap;flex-shrink:1}" +
         ".sp-selection-label{font-size:.85rem;color:var(--text2);margin-right:auto;min-width:0;" +
         "overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
         ".sp-selection-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}" +
