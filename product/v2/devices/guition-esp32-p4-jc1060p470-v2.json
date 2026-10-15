@@ -19,9 +19,7 @@
     "web": {
       "continuousCorners": true,
       "btn": {
-        "smallTextSize": 1.757812,
-        "weatherLargeIconSize": 6.738281,
-        "weatherLargeLabelSize": 2.734375
+        "smallTextSize": 1.757812
       }
     },
     "firmware": {

@@ -70,9 +70,7 @@
           "coverArtArtistSize": 3.90625,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 1.757812,
-          "weatherLargeIconSize": 6.738281,
-          "weatherLargeLabelSize": 2.734375
+          "smallTextSize": 1.757812
         },
         "emptyCell": {
           "radius": 1.953125
@@ -107,8 +105,7 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small",
-          "weatherLargeIcon": "font_icon_weather_large"
+          "smallText": "font_text_small"
         },
         "display": {
           "wrapTallLabels": true,
@@ -273,9 +270,7 @@
           "coverArtArtistSize": 3.90625,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 1.757812,
-          "weatherLargeIconSize": 6.738281,
-          "weatherLargeLabelSize": 2.734375
+          "smallTextSize": 1.757812
         },
         "emptyCell": {
           "radius": 1.953125
@@ -310,8 +305,7 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small",
-          "weatherLargeIcon": "font_icon_weather_large"
+          "smallText": "font_text_small"
         },
         "display": {
           "wrapTallLabels": true,
@@ -475,9 +469,7 @@
           "coverArtArtistSize": 5,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 5.208333,
-          "weatherLargeIconSize": 16.25,
-          "weatherLargeLabelSize": 11.666667
+          "smallTextSize": 5.208333
         },
         "emptyCell": {
           "radius": 4.166667
@@ -513,8 +505,7 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small",
-          "weatherLargeIcon": "font_icon_weather_large"
+          "smallText": "font_text_small"
         },
         "display": {
           "modal": {
@@ -672,9 +663,7 @@
           "coverArtArtistSize": 5,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 5.208333,
-          "weatherLargeIconSize": 16.25,
-          "weatherLargeLabelSize": 11.666667
+          "smallTextSize": 5.208333
         },
         "emptyCell": {
           "radius": 4.166667
@@ -710,8 +699,7 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small",
-          "weatherLargeIcon": "font_icon_weather_large"
+          "smallText": "font_text_small"
         },
         "display": {
           "modal": {
@@ -869,9 +857,7 @@
           "coverArtArtistSize": 3.125,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 1.5625,
-          "weatherLargeIconSize": 5.46875,
-          "weatherLargeLabelSize": 2.890625
+          "smallTextSize": 1.5625
         },
         "emptyCell": {
           "radius": 1.71875
@@ -906,8 +892,7 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small",
-          "weatherLargeIcon": "font_icon_weather_large"
+          "smallText": "font_text_small"
         },
         "display": {
           "wrapTallLabels": true,
@@ -1066,9 +1051,7 @@
           "coverArtArtistSize": 3.125,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 1.5625,
-          "weatherLargeIconSize": 5.46875,
-          "weatherLargeLabelSize": 2.890625
+          "smallTextSize": 1.5625
         },
         "emptyCell": {
           "radius": 1.71875
@@ -1103,8 +1086,7 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small",
-          "weatherLargeIcon": "font_icon_weather_large"
+          "smallText": "font_text_small"
         },
         "display": {
           "wrapTallLabels": true,
@@ -1262,9 +1244,7 @@
           "coverArtArtistSize": 3.125,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 1.5625,
-          "weatherLargeIconSize": 5.46875,
-          "weatherLargeLabelSize": 2.890625
+          "smallTextSize": 1.5625
         },
         "emptyCell": {
           "radius": 1.71875
@@ -1299,8 +1279,7 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small",
-          "weatherLargeIcon": "font_icon_weather_large"
+          "smallText": "font_text_small"
         },
         "display": {
           "wrapTallLabels": true,
@@ -1457,9 +1436,7 @@
           "coverArtArtistSize": 8.333333,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 3.75,
-          "weatherLargeIconSize": 11.527778,
-          "weatherLargeLabelSize": 7.222222
+          "smallTextSize": 3.75
         },
         "emptyCell": {
           "radius": 4.861111
@@ -1494,8 +1471,7 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small",
-          "weatherLargeIcon": "font_icon_weather_large"
+          "smallText": "font_text_small"
         },
         "display": {
           "modal": {
@@ -1668,9 +1644,7 @@
           "coverArtArtistSize": 8.333333,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 3.75,
-          "weatherLargeIconSize": 11.458333,
-          "weatherLargeLabelSize": 7.083333
+          "smallTextSize": 3.75
         },
         "emptyCell": {
           "radius": 5.416667
@@ -1705,8 +1679,7 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small",
-          "weatherLargeIcon": "font_icon_weather_large"
+          "smallText": "font_text_small"
         },
         "display": {
           "modal": {

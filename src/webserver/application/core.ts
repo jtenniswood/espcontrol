@@ -122,8 +122,6 @@ export function createCoreFeature(
         else
             r.removeProperty("--btn-border");
         r.setProperty("--btn-icon", scaledCqw(btn.iconSize, scale));
-        r.setProperty("--weather-large-icon", scaledCqw(btn.weatherLargeIconSize || btn.iconSize * 1.25, scale));
-        r.setProperty("--weather-large-label", scaledCqw(btn.weatherLargeLabelSize || btn.mediaTitleSize || btn.labelSize, scale));
         r.setProperty("--btn-label", scaledCqw(btn.labelSize, scale));
         r.setProperty("--btn-small-text", scaledCqw(btn.smallTextSize || btn.labelSize, scale));
         r.setProperty("--media-title", scaledCqw(btn.mediaTitleSize || btn.labelSize * 1.75, scale));

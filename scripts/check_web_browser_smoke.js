@@ -7190,7 +7190,7 @@ async function assertWeatherWidthScaling(browser) {
     for (const [key, value] of Object.entries(profile.grid)) {
       if (typeof value === 'number') vars['--grid-' + key] = value + 'cqw';
     }
-    for (const [key, variable] of [['padding', '--btn-pad'], ['radius', '--btn-r'], ['labelSize', '--btn-label'], ['iconSize', '--btn-icon'], ['smallTextSize', '--btn-small-text'], ['weatherLargeIconSize','--weather-large-icon'], ['weatherLargeLabelSize','--weather-large-label']]) {
+    for (const [key, variable] of [['padding', '--btn-pad'], ['radius', '--btn-r'], ['labelSize', '--btn-label'], ['iconSize', '--btn-icon'], ['smallTextSize', '--btn-small-text']]) {
       vars[variable] = profile.btn[key] + 'cqw';
     }
     const roboto = fs.readFileSync(path.join(ROOT, 'common/assets/fonts/roboto-latin.woff2')).toString('base64');
@@ -7285,27 +7285,6 @@ async function assertWeatherWidthScaling(browser) {
       }
     }
     console.log('All nine S3 forecast spans reflow into stacked rows and grids at three preview scales; 3w2h shows eight days.');
-    await page.locator('#weather').evaluate(card=>{
-      [...card.querySelectorAll('.sp-weather-day')].slice(1).forEach(day=>day.remove());
-    });
-    for(const previewWidth of [360,480,960]){
-      await page.locator('.sp-screen').evaluate((screen,width)=>screen.style.setProperty('--screen-w',width+'px'),previewWidth);
-      for(const [wide,tall,enlarged] of [[2,2,true],[1,1,false],[3,3,true],[1,1,false]]){
-        await page.locator('#weather').evaluate((card,span)=>{card.style.gridColumn='span '+span[0];card.style.gridRow='span '+span[1];},[wide,tall]);
-        await page.waitForFunction(expected=>document.querySelector('#weather').dataset.weatherEnlarged===String(expected),enlarged);
-        const sizes=await page.locator('#weather .sp-weather-day').evaluate(day=>{
-          const scale=day.closest('.sp-screen').clientWidth/480;
-          return {day:parseFloat(getComputedStyle(day).fontSize)/scale,
-            icon:parseFloat(getComputedStyle(day.firstElementChild).fontSize)/scale,
-            temperature:parseFloat(getComputedStyle(day.lastElementChild).fontSize)/scale};
-        });
-        assert(Math.abs(sizes.day-(enlarged?34:22))<0.1 && Math.abs(sizes.temperature-(enlarged?22:18))<0.1,
-          'Forecast text changes by one font size and restores on shrink: '+JSON.stringify(sizes));
-        assert(enlarged?Math.abs(sizes.icon-55)<0.1:sizes.icon<47,
-          'Forecast icons enlarge with the text and restore on shrink: '+JSON.stringify(sizes));
-      }
-    }
-    console.log('Roomy forecast cards enlarge icons/day/temperatures at three scales and restore their base fonts when resized down.');
     await page.locator('.sp-screen').screenshot({ path: '/tmp/weather-preview-s3-after.png' });
     console.log('S3 forecast preview matches device spans 1×1, 2×1, 3×1: 1,2,4 days at three preview scales.');
   } finally { await page.close(); }

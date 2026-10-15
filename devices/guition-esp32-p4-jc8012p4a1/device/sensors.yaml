@@ -86,7 +86,6 @@ script:
           cfg.volume_label_font = id(font_text_large)->get_lv_font();
           cfg.small_text_font = id(font_text_small)->get_lv_font();
           cfg.climate_card_icon_font = id(font_icon_card)->get_lv_font();
-          cfg.weather_large_icon_font = id(font_icon_weather_large)->get_lv_font();
           cfg.subpage_chevron_font = id(font_icon_status)->get_lv_font();
           cfg.climate_option_title_font = id(font_text_body)->get_lv_font();
           cfg.climate_option_value_font = id(font_text_body)->get_lv_font();
@@ -278,7 +277,6 @@ script:
           cfg.volume_label_font = id(font_text_large)->get_lv_font();
           cfg.small_text_font = id(font_text_small)->get_lv_font();
           cfg.climate_card_icon_font = id(font_icon_card)->get_lv_font();
-          cfg.weather_large_icon_font = id(font_icon_weather_large)->get_lv_font();
           cfg.subpage_chevron_font = id(font_icon_status)->get_lv_font();
           cfg.climate_option_title_font = id(font_text_body)->get_lv_font();
           cfg.climate_option_value_font = id(font_text_body)->get_lv_font();
@@ -509,7 +507,6 @@ esphome:
             cfg.volume_label_font = id(font_text_large)->get_lv_font();
             cfg.small_text_font = id(font_text_small)->get_lv_font();
             cfg.climate_card_icon_font = id(font_icon_card)->get_lv_font();
-            cfg.weather_large_icon_font = id(font_icon_weather_large)->get_lv_font();
             cfg.subpage_chevron_font = id(font_icon_status)->get_lv_font();
             cfg.climate_option_title_font = id(font_text_body)->get_lv_font();
             cfg.climate_option_value_font = id(font_text_body)->get_lv_font();
@@ -692,7 +689,6 @@ esphome:
             cfg.volume_label_font = id(font_text_large)->get_lv_font();
             cfg.small_text_font = id(font_text_small)->get_lv_font();
             cfg.climate_card_icon_font = id(font_icon_card)->get_lv_font();
-            cfg.weather_large_icon_font = id(font_icon_weather_large)->get_lv_font();
             cfg.subpage_chevron_font = id(font_icon_status)->get_lv_font();
             cfg.climate_option_title_font = id(font_text_body)->get_lv_font();
             cfg.climate_option_value_font = id(font_text_body)->get_lv_font();

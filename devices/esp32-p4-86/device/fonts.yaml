@@ -13,13 +13,6 @@ font:
     bpp: 4
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
-  # Larger forecast-card weather icons
-  - file: '${mdi_font_file}'
-    id: font_icon_weather_large
-    size: 83
-    bpp: 4
-    glyphs: !include ../../../common/assets/weather_icon_glyphs.yaml
-
   # Smaller card icons
   - file: '${mdi_font_file}'
     id: font_icon_card

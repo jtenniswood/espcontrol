@@ -25,9 +25,7 @@
     "web": {
       "continuousCorners": true,
       "btn": {
-        "smallTextSize": 1.5625,
-        "weatherLargeIconSize": 5.46875,
-        "weatherLargeLabelSize": 2.890625
+        "smallTextSize": 1.5625
       }
     }
   },

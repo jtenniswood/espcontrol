@@ -71,9 +71,7 @@
         "coverArtArtistSize": 5,
         "labelLines": 2,
         "labelLinesDouble": 3,
-        "smallTextSize": 5.208333,
-        "weatherLargeIconSize": 16.25,
-        "weatherLargeLabelSize": 11.666667
+        "smallTextSize": 5.208333
       },
       "emptyCell": {
         "radius": 4.166667

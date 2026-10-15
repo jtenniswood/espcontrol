@@ -49,7 +49,6 @@ struct GridConfig {
   const lv_font_t *volume_number_compact_font = nullptr;
   const lv_font_t *volume_label_font = nullptr;
   const lv_font_t *climate_card_icon_font = nullptr;
-  const lv_font_t *weather_large_icon_font = nullptr;
   const lv_font_t *climate_option_title_font = nullptr;
   const lv_font_t *climate_option_value_font = nullptr;
   const lv_font_t *volume_icon_font = nullptr;
@@ -110,7 +109,6 @@ inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   profile.fonts.volume_number_compact = cfg.volume_number_compact_font;
   profile.fonts.volume_label = cfg.volume_label_font;
   profile.fonts.climate_card_icon = cfg.climate_card_icon_font;
-  profile.fonts.weather_large_icon = cfg.weather_large_icon_font;
   profile.fonts.climate_option_title = cfg.climate_option_title_font;
   profile.fonts.climate_option_value = cfg.climate_option_value_font;
   profile.fonts.volume_icon = cfg.volume_icon_font;
