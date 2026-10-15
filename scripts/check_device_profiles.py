@@ -719,6 +719,24 @@ def test_setup_icon_glyphs() -> None:
         assert glyph in glyphs, f"shared icon font missing {icon_name} for light control modal"
 
 
+def test_large_card_icon_fonts(profiles) -> None:
+    for slug, profile in profiles.items():
+        fonts = profile["firmware"]["fonts"]
+        assert fonts.get("largeIcon") == "font_icon_large", f"{slug}: missing native Large card icon font"
+        text = (ROOT / "devices" / slug / "device" / "fonts.yaml").read_text(encoding="utf-8")
+        def font_spec(font_id):
+            match = re.search(r"id: " + font_id + r"\n\s*size: (\d+)\n\s*bpp: (\d+)\n\s*glyphs: ([^\n]+)", text)
+            assert match, f"{slug}: missing {font_id} glyph configuration"
+            return int(match[1]), int(match[2]), match[3]
+        normal, large = font_spec(fonts["icon"]), font_spec(fonts["largeIcon"])
+        assert large[0] == normal[0] * 2, f"{slug}: Large glyphs must be rendered at twice the native size"
+        assert large[1:] == normal[1:], f"{slug}: Large icons must support the same glyphs and depth"
+        sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
+        assert sensors.count("cfg.large_icon_font = id(font_icon_large)->get_lv_font();") == sensors.count("cfg.icon_font ="), (
+            f"{slug}: every grid setup and refresh must receive the Large icon font"
+        )
+
+
 def test_climate_card_icon_glyphs() -> None:
     icons = read_json(ROOT / "common" / "assets" / "icons.json")
     icon_by_name = {icon["name"]: icon for icon in icons["icons"]}
@@ -1033,6 +1051,7 @@ def main() -> int:
     test_zero_image_capacity_disables_all_image_card_pickers(profiles)
     test_s3_exposes_camera_and_media_cover_art(profiles)
     test_generated_yaml(profiles)
+    test_large_card_icon_fonts(profiles)
     test_v3_release_configuration()
     test_jc4880p443_v3_configuration()
     test_public_api_encryption_policy(profile_slugs)

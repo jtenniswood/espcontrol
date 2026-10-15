@@ -36,6 +36,7 @@ struct GridConfig {
   int color_correction_blue_percent = COLOR_CORRECTION_BLUE_PERCENT;
   const lv_font_t *small_text_font = nullptr;
   const lv_font_t *icon_font;
+  const lv_font_t *large_icon_font = nullptr;
   const lv_font_t *sp_sensor_font;
   const lv_font_t *sp_large_sensor_font = nullptr;
   int large_sensor_unit_offset_percent = -10;
@@ -97,6 +98,7 @@ inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   DisplayProfile profile;
   profile.fonts.small_text = cfg.small_text_font;
   profile.fonts.icon = cfg.icon_font;
+  profile.fonts.large_icon = cfg.large_icon_font;
   profile.fonts.sensor = cfg.sp_sensor_font;
   profile.fonts.large_sensor = cfg.sp_large_sensor_font;
   profile.fonts.media_title = cfg.media_title_font;
@@ -970,7 +972,7 @@ inline void refresh_slider_card_layout(BtnSlot &s) {
   if (slider) slider_refresh_geometry(slider);
 }
 
-inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
+inline void refresh_card_content_layout(BtnSlot &s, const ParsedCfg &p,
                                 const GridConfig &cfg,
                                 int row_span = 1,
                                 int col_span = 1) {
@@ -982,10 +984,6 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
     lv_label_set_long_mode(s.text_lbl, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(s.text_lbl, lv_pct(100));
   }
-  // Every card's standard icon occupies the same top-left position. Drivers
-  // that show numbers, artwork, or forecast groups hide this icon instead.
-  apply_card_icon_zoom(s, card_icon_zoom(row_span, col_span),
-    display_main_width_percent(display));
   control_modal_register_card_label(s);
   display_apply_slot_text_width(s, display);
   if (espcontrol::cards::weather_driver_matches(context) &&
@@ -1021,6 +1019,17 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
     espcontrol::cards::access_cover_driver_refresh_layout(
       s, p, card_runtime_context(p));
   }
+}
+
+inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
+                                const GridConfig &cfg,
+                                int row_span = 1, int col_span = 1) {
+  refresh_card_content_layout(s, p, cfg, row_span, col_span);
+  const DisplayProfile display = display_profile_from_grid_config(cfg);
+  // Apply the final native icon font after the card's own layout. Labels,
+  // numbers and forecast groups keep their independent fonts and geometry.
+  apply_card_icon_zoom(s, card_icon_zoom(row_span, col_span),
+    display_main_width_percent(display), display.fonts.icon, display.fonts.large_icon);
 }
 
 inline void grid_refresh_layout(
@@ -1319,7 +1328,7 @@ inline bool grid_refresh_subpage_layouts(
       sp_order.back_col_span, sp_order.back_row_span, COLS, ROWS);
     apply_card_icon_zoom(entry->back_slot,
       card_icon_zoom(sp_order.back_row_span, sp_order.back_col_span),
-      display_main_width_percent(display));
+      display_main_width_percent(display), display.fonts.icon, display.fonts.large_icon);
     apply_card_label_line_clamp(entry->back_slot.text_lbl, cfg,
                                 sp_order.back_row_span);
     configure_button_label_wrap(entry->back_slot.text_lbl);
@@ -2180,7 +2189,7 @@ inline void grid_phase2(
     lv_label_set_display_text(back_slot.text_lbl, sp_back_label.c_str());
     apply_card_icon_zoom(back_slot,
       card_icon_zoom(sp_ord.back_row_span, sp_ord.back_col_span),
-      display_main_width_percent(display));
+      display_main_width_percent(display), display.fonts.icon, display.fonts.large_icon);
     apply_card_label_line_clamp(back_slot.text_lbl, cfg, sp_ord.back_row_span);
     configure_button_label_wrap(back_slot.text_lbl);
     const bool back_neutral_background = apply_subpage_back_colors(back_btn, sp_order_str, display);

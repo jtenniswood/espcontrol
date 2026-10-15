@@ -879,6 +879,16 @@ int main() {
     assert(label.transform_pivot_y == 0);
     assert(icon.transform_scale_x == (vertical ? 256 : 243));
     assert(icon.transform_scale_y == (vertical ? 243 : 256));
+    const lv_font_t icon_font{44}, large_icon_font{88};
+    apply_card_icon_zoom(enlarged, card_icon_zoom(2, 2), 95, &icon_font, &large_icon_font);
+    assert(icon.font == &large_icon_font && icon.font->line_height == 88);
+    // The native glyph is already large; only the screen's width correction remains.
+    assert(icon.transform_scale_x == (vertical ? 256 : 243));
+    assert(icon.transform_scale_y == (vertical ? 243 : 256));
+    assert(label.font == &normal_font);
+    apply_card_icon_zoom(enlarged, card_icon_zoom(1, 1), 95, &icon_font, &large_icon_font);
+    assert(icon.font == &icon_font && icon.font->line_height == 44);
+    assert(label.font == &normal_font);
   }
   set_width_compensation_vertical_axis(false);
   set_text_width_compensation_percent(100);

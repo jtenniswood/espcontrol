@@ -93,6 +93,7 @@
         },
         "fonts": {
           "icon": "font_icon_main",
+          "largeIcon": "font_icon_large",
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
@@ -293,6 +294,7 @@
         },
         "fonts": {
           "icon": "font_icon_main",
+          "largeIcon": "font_icon_large",
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
@@ -492,6 +494,7 @@
         },
         "fonts": {
           "icon": "font_icon_main",
+          "largeIcon": "font_icon_large",
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
@@ -686,6 +689,7 @@
         },
         "fonts": {
           "icon": "font_icon_main",
+          "largeIcon": "font_icon_large",
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
@@ -880,6 +884,7 @@
         },
         "fonts": {
           "icon": "font_icon_main",
+          "largeIcon": "font_icon_large",
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
@@ -1074,6 +1079,7 @@
         },
         "fonts": {
           "icon": "font_icon_main",
+          "largeIcon": "font_icon_large",
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
@@ -1267,6 +1273,7 @@
         },
         "fonts": {
           "icon": "font_icon_main",
+          "largeIcon": "font_icon_large",
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
@@ -1459,6 +1466,7 @@
         },
         "fonts": {
           "icon": "font_icon_main",
+          "largeIcon": "font_icon_large",
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
@@ -1667,6 +1675,7 @@
         },
         "fonts": {
           "icon": "font_icon_main",
+          "largeIcon": "font_icon_large",
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",

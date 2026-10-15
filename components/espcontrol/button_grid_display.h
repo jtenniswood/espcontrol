@@ -10,6 +10,7 @@
 struct DisplayFontRoles {
   const lv_font_t *small_text = nullptr;
   const lv_font_t *icon = nullptr;
+  const lv_font_t *large_icon = nullptr;
   const lv_font_t *sensor = nullptr;
   const lv_font_t *large_sensor = nullptr;
   const lv_font_t *media_title = nullptr;

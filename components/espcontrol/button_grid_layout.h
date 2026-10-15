@@ -450,8 +450,13 @@ inline int card_icon_zoom(int row_span, int col_span) {
   return row_span >= 2 && col_span >= 2 ? 512 : 256;
 }
 
-inline void apply_card_icon_zoom(const BtnSlot &s, int zoom, int icon_percent) {
-  apply_width_compensation(s.icon_lbl, icon_percent, zoom);
+inline void apply_card_icon_zoom(const BtnSlot &s, int zoom, int icon_percent,
+                                 const lv_font_t *normal_font = nullptr,
+                                 const lv_font_t *large_font = nullptr) {
+  const bool native_large = zoom > 256 && large_font;
+  const lv_font_t *font = native_large ? large_font : normal_font;
+  if (s.icon_lbl && font) lv_obj_set_style_text_font(s.icon_lbl, font, LV_PART_MAIN);
+  apply_width_compensation(s.icon_lbl, icon_percent, native_large ? 256 : zoom);
   if (s.icon_lbl) {
     lv_obj_set_style_transform_pivot_x(s.icon_lbl, 0, LV_PART_MAIN);
     lv_obj_set_style_transform_pivot_y(s.icon_lbl, 0, LV_PART_MAIN);

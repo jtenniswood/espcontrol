@@ -13,6 +13,13 @@ font:
     bpp: 4
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
+  # Native glyphs for the Large card state
+  - file: '${mdi_font_file}'
+    id: font_icon_large
+    size: 132
+    bpp: 4
+    glyphs: !include ../../../common/assets/icon_glyphs.yaml
+
   # Smaller card icons
   - file: '${mdi_font_file}'
     id: font_icon_card

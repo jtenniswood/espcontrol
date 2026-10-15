@@ -961,6 +961,7 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "grid": layout["firmwareGrid"],
         "small_text_font": fonts.get("smallText"),
         "icon_font": fonts["icon"],
+        "large_icon_font": fonts.get("largeIcon"),
         "sensor_font": fonts["sensor"],
         "large_sensor_font": fonts["largeSensor"],
         "large_sensor_unit_offset_percent": profile["settings"]["largeSensorUnitOffsetPercent"],
