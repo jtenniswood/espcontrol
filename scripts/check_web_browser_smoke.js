@@ -7514,6 +7514,54 @@ async function assertS3ForecastEditorLayout(browser) {
   } finally { await context.close(); }
 }
 
+async function assertClockBarSelectionDiscovery(browser) {
+  const testCase = ACTIVE_CASES.find(item => item.slug === 'esp32-p4-86') || ACTIVE_CASES[0];
+  for (const scenario of ['saved', 'legacy', 'empty']) {
+    const saved = { id: 'cb1', type: 'network', group: 'right', source: 'ha', entity: '', label: '', unit: '', precision: 0 };
+    const clockBar = { layout: scenario === 'legacy' ? { legacy: true } : { version: 1, items: scenario === 'empty' ? [] : [saved] }, posts: [] };
+    const nativeState = nativeConfigState(testCase.slug);
+    const context = await browser.newContext({ viewport: testCase.viewport });
+    await installRoutes(context, testCase.slug, { nativeState, clockBarState: clockBar });
+    let release; const gate = new Promise(resolve => { release = resolve; });
+    let requested; const firstRequest = new Promise(resolve => { requested = resolve; });
+    await context.route('**/api/v1/clock-bar', async route => {
+      if (route.request().method() !== 'GET') { await route.fallback(); return; }
+      requested(); await gate; await route.fallback();
+    });
+    const page = await context.newPage();
+    const errors = []; page.on('pageerror', error => errors.push(error.message));
+    await page.addInitScript(() => { Object.hasOwn = undefined; });
+    await installFakeEventSource(page);
+    try {
+      await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => window.__eventSources?.length > 0);
+      await seedNativeDocument(page, nativeState);
+      await firstRequest;
+      await page.locator('[data-clockbar-item="network"]').click();
+      assert.equal(await page.locator('.sp-selection-label').textContent(), 'Connectivity selected');
+      release();
+      await page.locator('[data-clockbar-add]').waitFor();
+      assert.equal(await page.locator('.sp-selection-label').count(), 0, 'discovery clears the stale fixed-layout selection');
+      assert.equal(await page.locator('.sp-clockbar-item[aria-pressed="true"]').count(), 0);
+      if (scenario === 'empty') {
+        assert.equal(await page.locator('.sp-clockbar-custom').count(), 0);
+        await page.locator('[data-clockbar-add]').click();
+        await page.getByRole('button', { name: 'Add element', exact: true }).waitFor();
+      } else {
+        const network = page.locator('.sp-clockbar-custom[aria-label="Connectivity / settings"]');
+        await network.click();
+        await page.getByRole('button', { name: 'Edit', exact: true }).click();
+        await page.getByText('Edit clock bar element', { exact: true }).waitFor();
+        assert.equal(await page.locator('#sp-clockbar-add-type').inputValue(), 'network', 'new selection edits the discovered element');
+        await page.getByRole('button', { name: 'Save', exact: true }).waitFor();
+      }
+      assert.equal(clockBar.posts.length, 0, 'discovery and selection do not change the saved layout');
+      assert.deepEqual(errors, [], scenario + ': discovery works without Object.hasOwn');
+      console.log('Clock bar selection discovery ' + scenario + ' passed without Object.hasOwn.');
+    } finally { release(); await context.close(); }
+  }
+}
+
 async function assertClockBarBackupDiscovery(browser) {
   const testCase = ACTIVE_CASES.find(item => item.slug === 'esp32-p4-86') || ACTIVE_CASES[0];
   for (const scenario of ['pending-export', 'pending-import', 'failed-discovery', 'unsupported']) {
@@ -7772,6 +7820,7 @@ async function assertEditableClockBar(browser, testCase) {
       return;
     }
     if (process.env.ESPCONTROL_CLOCK_BAR_ONLY === "1") {
+      await assertClockBarSelectionDiscovery(browser);
       await assertClockBarBackupDiscovery(browser);
       fs.mkdirSync(FAILURE_DIR, { recursive: true });
       for (const testCase of ACTIVE_CASES) await assertEditableClockBar(browser, testCase);
@@ -7828,6 +7877,7 @@ async function assertEditableClockBar(browser, testCase) {
       console.log(`Card curve preset checks passed for ${ACTIVE_CASES.length} generated layouts.`);
       return;
     }
+    await assertClockBarSelectionDiscovery(browser);
     await assertClockBarBackupDiscovery(browser);
     await assertEditableClockBar(browser, ACTIVE_CASES[0]);
     await assertCardCurveSettings(browser, ACTIVE_CASES[0]);

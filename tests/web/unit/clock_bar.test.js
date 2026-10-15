@@ -13,6 +13,18 @@ test("clock bar round trips duplicate sensor types and preserves empty layouts",
   assert.deepEqual(model.parseClockBarLayout('{"version":1,"items":[]}'), { version: 1, items: [] });
   assert.equal(model.parseClockBarLayout(""), null);
 });
+test("clock bar parsing works without the ES2022 Object.hasOwn API", () => {
+  const original = Object.getOwnPropertyDescriptor(Object, "hasOwn");
+  Object.defineProperty(Object, "hasOwn", { ...original, value: undefined });
+  try {
+    const layout = { version: 1, items: [item()] };
+    assert.deepEqual(model.parseClockBarLayout(JSON.stringify(layout)), layout);
+    for (const type of ["toString", "constructor", "__proto__"])
+      assert.throws(() => model.parseClockBarLayout({ version: 1, items: [{ ...layout.items[0], type }] }));
+  } finally {
+    Object.defineProperty(Object, "hasOwn", original);
+  }
+});
 test("clock bar rejects unsupported versions, duplicate IDs, unknown types and invalid formatting", () => {
   const first = item();
   for (const value of ["{", { version: 2, items: [] }, { version: 1, items: [first, first] },

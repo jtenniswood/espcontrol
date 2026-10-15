@@ -93,6 +93,8 @@ export function createClockBarFeature(
                 const next = value === undefined || (value && typeof value === "object" && "legacy" in value && value.legacy === true) ? null : parseClockBarLayout(value);
                 state.clockBarLayoutSupported = value !== undefined;
                 state.clockBarLayout = next;
+                if (state.clockBarLayoutSupported && !currentLayout().items.some(item => item.id === state.clockBarSelectedItem))
+                    state.clockBarSelectedItem = "";
                 discoveryKnown = true;
                 syncClockBarUi();
             } catch {

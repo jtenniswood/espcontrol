@@ -49,7 +49,7 @@ export function parseClockBarLayout(value: unknown): ClockBarLayout | null {
   const ids = new Set<string>();
   const items: ClockBarElement[] = raw.items.map((item: any) => {
     if (!item || typeof item.id !== "string" || !/^[a-zA-Z0-9_-]{1,24}$/.test(item.id) || ids.has(item.id) ||
-        !Object.hasOwn(CLOCK_BAR_CATALOG, item.type) || !["left", "middle", "right"].includes(item.group) ||
+        !Object.prototype.hasOwnProperty.call(CLOCK_BAR_CATALOG, item.type) || !["left", "middle", "right"].includes(item.group) ||
         !["ha", "local"].includes(item.source) || typeof item.entity !== "string" || item.entity.length > 120 ||
         typeof item.label !== "string" || item.label.length > 32 || typeof item.unit !== "string" || item.unit.length > 12 ||
         !Number.isInteger(item.precision) || item.precision < 0 || item.precision > 3 ||
