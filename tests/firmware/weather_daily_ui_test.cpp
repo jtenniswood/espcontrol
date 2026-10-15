@@ -29,7 +29,7 @@ struct lv_obj_t {
   std::vector<lv_obj_t *> children;
   std::vector<Binding> events;
   const lv_font_t *font = &::font;
-  int width = 460, height = 160, flags = 0, x = 0, y = 0, text_align = 0, text_color = 0, line_space = 0;
+  int width = 460, height = 160, flags = 0, x = 0, y = 0, text_align = 0, text_color = 0, text_opa = 255, line_space = 0;
   std::string text;
   explicit lv_obj_t(lv_obj_t *parent) : parent(parent) { ++live; if (parent) parent->children.push_back(this); }
   ~lv_obj_t() { --live; }
@@ -39,7 +39,7 @@ constexpr int LV_PART_MAIN=0, LV_STATE_DISABLED=1, LV_TEXT_ALIGN_CENTER=0, LV_LA
 using lv_text_align_t=int;
 constexpr int LV_TEXT_ALIGN_LEFT=1, LV_TEXT_ALIGN_RIGHT=2;
 constexpr int LV_ALIGN_TOP_MID=0, LV_ALIGN_TOP_LEFT=0, LV_ALIGN_BOTTOM_RIGHT=0, LV_ALIGN_BOTTOM_LEFT=0;
-constexpr int LV_OPA_10=25, LV_OPA_70=70, LV_OPA_COVER=255;
+constexpr int LV_OPA_10=25, LV_OPA_70=178, LV_OPA_COVER=255;
 constexpr int LV_OPA_TRANSP=0, LV_OBJ_FLAG_SCROLLABLE=1, LV_OBJ_FLAG_CLICKABLE=2, LV_COORD_MAX=32767, LV_TEXT_FLAG_NONE=0;
 constexpr int LV_OBJ_FLAG_HIDDEN=4, LV_OBJ_FLAG_USER_2=1<<28;
 constexpr int LV_EVENT_ALL=0, LV_EVENT_DELETE=1, LV_EVENT_SIZE_CHANGED=2, LV_EVENT_CLICKED=3, LV_EVENT_STYLE_CHANGED=4;
@@ -80,10 +80,11 @@ void lv_obj_set_style_text_font(lv_obj_t *obj,const lv_font_t *f,int){obj->font=
 const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *obj,int){return obj->font;}
 #define NOOP(name) template<class... T> void name(T...) {}
 void lv_obj_set_style_text_color(lv_obj_t *obj,int color,int){obj->text_color=color;}
+void lv_obj_set_style_text_opa(lv_obj_t *obj,int opacity,int){obj->text_opa=opacity;}
 int lv_obj_get_style_text_color(lv_obj_t *obj,int){return obj->text_color;}
 void lv_obj_set_style_text_line_space(lv_obj_t *obj,int space,int){obj->line_space=space;}
 void theme_set_content_foreground(lv_obj_t *obj){obj->flags|=LV_OBJ_FLAG_USER_2;}
-NOOP(lv_label_set_long_mode) NOOP(lv_obj_set_style_text_opa)
+NOOP(lv_label_set_long_mode)
 void lv_obj_set_style_text_align(lv_obj_t *obj,int align,int){obj->text_align=align;}
 void lv_obj_set_pos(lv_obj_t *obj,int x,int y){obj->x=x;obj->y=y;}
 void lv_obj_set_y(lv_obj_t *obj,int y){obj->y=y;}
@@ -266,19 +267,19 @@ int main(){
     for(const auto &col:card->columns){
       assert(col.icon->text_align==LV_TEXT_ALIGN_LEFT && col.day->text_align==LV_TEXT_ALIGN_LEFT && col.high->text_align==LV_TEXT_ALIGN_LEFT);
       assert(col.icon->x==col.day->x && col.day->x==col.high->x);
-      assert(col.high->text_color==theme.text_muted && (col.high->flags & LV_OBJ_FLAG_USER_2));
+      assert(col.high->text_color==theme.text_primary && col.high->text_opa==LV_OPA_70 && (col.high->flags & LV_OBJ_FLAG_USER_2));
       assert(col.icon->y==0 && col.day->y==130 && col.high->y==148);
     }
-    theme.text_muted=0x606060;emit(owner,LV_EVENT_STYLE_CHANGED);
+    theme.text_primary=0x333333;theme.text_muted=0x606060;emit(owner,LV_EVENT_STYLE_CHANGED);
     card->owner->text_color=0x123456;
     weather_daily_render_card(card);
     for(const auto &column:card->columns) {
       assert(column.day->text_color==0x123456);
       assert(column.icon->text_color==0x123456);
     }
-    assert(card->columns.front().high->text_color==theme.text_muted);
-    theme.text_muted=0xB0B0B0;emit(owner,LV_EVENT_STYLE_CHANGED);
-    assert(card->columns.front().high->text_color==theme.text_muted);
+    assert(card->columns.front().high->text_color==theme.text_primary && card->columns.front().high->text_opa==LV_OPA_70);
+    theme.text_primary=0xFFFFFF;theme.text_muted=0xB0B0B0;emit(owner,LV_EVENT_STYLE_CHANGED);
+    assert(card->columns.front().high->text_color==theme.text_primary && card->columns.front().high->text_opa==LV_OPA_70);
     int live=lv_obj_t::live;
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     assert(lv_obj_t::live==live); // Refreshes do not grow the widget tree.

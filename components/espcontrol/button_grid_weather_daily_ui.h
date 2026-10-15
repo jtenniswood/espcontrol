@@ -201,7 +201,9 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     lv_label_set_display_text(col.day, date.c_str());
     lv_label_set_display_text(col.icon, weather_icon_for_state(day.condition));
     const auto high = weather_daily_temperature_range(day, forecast.temperature_unit);
-    lv_obj_set_style_text_color(col.high, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
+    // Blend secondary text with the card surface instead of painting opaque grey.
+    lv_obj_set_style_text_color(col.high, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
+    lv_obj_set_style_text_opa(col.high, LV_OPA_70, LV_PART_MAIN);
     lv_label_set_display_text(col.high, high.c_str());
   }
 }
