@@ -94,6 +94,7 @@ export function registerWeatherCardTypes(
             return {
                 iconHtml: '<span class="sp-btn-icon mdi mdi-weather-cloudy"></span>',
                 labelHtml: cardBadgeLabelHtml(helpers, "Cloudy", WEATHER_CARD_METADATA.preview.currentBadge),
+                labelEditable: false,
             };
         },
     });

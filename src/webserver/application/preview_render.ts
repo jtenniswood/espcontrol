@@ -250,8 +250,9 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     sensorBadge +
                         iconHtml +
                         labelHtml;
-                // Generated date, timezone, and lock text cannot persist a custom name.
-                if (cardContractCard(b.type)?.normalization?.fields.label.policy !== "clear") {
+                // Offer renaming only when the preview displays a name that can be saved.
+                if (cardContractCard(b.type)?.normalization?.fields.label.policy !== "clear" &&
+                    previewHtmlValue(typePreview, "labelEditable", true)) {
                     makeTitleEditable(btn, b.type === "image");
                 }
                 appendResizeHandle(btn);

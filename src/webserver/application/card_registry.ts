@@ -14,6 +14,7 @@ export interface CardDefinition {
   readonly onSelect?: ((button: any) => void) | null;
   readonly renderSettingsBeforeLabel?: ((...args: any[]) => unknown) | null;
   readonly renderSettings?: ((...args: any[]) => unknown) | null;
+  /** Preview results set labelEditable to false when their label shows generated state instead of the card name. */
   readonly renderPreview?: ((...args: any[]) => unknown) | null;
   readonly contextMenuItems?: ((...args: any[]) => unknown) | null;
   readonly cardMetadata?: Record<string, any> | null;

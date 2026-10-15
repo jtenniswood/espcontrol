@@ -340,6 +340,7 @@ export function registerAlarmCardTypes(
             return {
                 iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
                 labelHtml: '<span class="sp-btn-label">' + helpers.escHtml(label) + '</span>',
+                labelEditable: alarmLabelDisplayMode(b) === "name",
             };
         },
     });

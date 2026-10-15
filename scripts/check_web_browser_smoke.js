@@ -5914,6 +5914,23 @@ async function assertInlineCardNames(page, nativeState, label) {
   await waitForNativeState(nativeState, () => fields(nativeState.document.buttons[1])[1] === "Garden camera", `${label}: image title saves`);
   assert.strictEqual(await title.locator(".sp-image-label-main").textContent(), "Garden camera");
   for (const [type, config] of [
+    ["climate status", "climate.hall;Hidden name;Thermostat;Auto;;;climate;;label_display=status"],
+    ["climate actual", "climate.hall;Hidden name;Thermostat;Auto;;;climate;;label_display=actual"],
+    ["climate target", "climate.hall;Hidden name;Thermostat;Auto;;;climate;;label_display=target"],
+    ["climate status with icon", "climate.hall;Hidden name;Thermostat;Auto;;;climate;;label_display=status,number_display=icon"],
+    ["sensor text", ";Hidden name;Cog;Auto;sensor.machine;;sensor;text"],
+    ["local sensor text", "room_temp;Hidden name;Cog;Auto;local;;sensor;text"],
+    ["subpage text", ";Hidden name;Home;Auto;sensor.machine;;subpage;text"],
+    ["media play status", "media_player.living;Hidden name;Auto;Auto;play_pause;;media;state"],
+    ["media position status", "media_player.living;Hidden name;Auto;Auto;position;;media;state"],
+    ["media controls status", "media_player.living;Hidden name;Auto;Auto;control_modal;;media;;label_display=status"],
+    ["media controls default status", "media_player.living;Hidden name;Auto;Auto;control_modal;;media"],
+    ["media track details", "media_player.living;Hidden name;Auto;Auto;now_playing;;media"],
+    ["alarm status", "alarm_control_panel.home;Hidden name;Security;Auto;;;alarm;;label_display=status"],
+    ["garage status", "cover.garage;Hidden name;Garage;Auto;;;garage;;label_display=status"],
+    ["gate status", "cover.gate;Hidden name;Gate;Auto;;;gate;;label_display=status"],
+    ["weather condition", "weather.home;Hidden name;Auto;Auto;;;weather"],
+    ["legacy weather forecast", "weather.home;Hidden name;Auto;Auto;;;weather_forecast"],
     ["calendar", "sensor.date;;Auto;Auto;;;calendar"],
     ["calendar datetime", "sensor.date;;Auto;Auto;;;calendar;datetime"],
     ["clock", ";;Auto;Auto;;;clock"],
@@ -5925,7 +5942,7 @@ async function assertInlineCardNames(page, nativeState, label) {
     const card = page.locator('.sp-main [data-slot="1"]');
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     assert.strictEqual(await card.locator(".sp-editable-title").count(), 0,
-      `${label}: ${type} does not offer a name that cannot be saved`);
+      `${label}: ${type} does not offer renaming for generated text`);
     const generatedLabel = card.locator(".sp-btn-label");
     if (await generatedLabel.count()) {
       assert.strictEqual(await generatedLabel.getAttribute("tabindex"), null);
@@ -5935,6 +5952,32 @@ async function assertInlineCardNames(page, nativeState, label) {
         `${label}: clicking ${type} text still selects its card`);
       assert.strictEqual(await input.count(), 0);
     }
+  }
+  // The same families must still rename and persist when they display the name.
+  for (const [type, config] of [
+    ["climate", "climate.hall;Custom name;Thermostat;Auto;;;climate;;label_display=label"],
+    ["climate icon", "climate.hall;Custom name;Thermostat;Auto;;;climate;;label_display=label,number_display=icon"],
+    ["sensor", ";Custom name;Cog;Auto;sensor.machine;;sensor;0"],
+    ["local sensor", "room_temp;Custom name;Cog;Auto;local;;sensor;0"],
+    ["subpage", ";Custom name;Home;Auto;;;subpage"],
+    ["media controls", "media_player.living;Custom name;Auto;Auto;control_modal;;media;;label_display=label"],
+    ["media playback", "media_player.living;Custom name;Auto;Auto;play_pause;;media"],
+    ["media position", "media_player.living;Custom name;Auto;Auto;position;;media"],
+    ["alarm", "alarm_control_panel.home;Custom name;Security;Auto;;;alarm;;label_display=name"],
+    ["garage", "cover.garage;Custom name;Garage;Auto;;;garage;;label_display=label"],
+    ["gate", "cover.gate;Custom name;Gate;Auto;;;gate;;label_display=label"],
+  ]) {
+    nativeState.document.buttons[1] = config;
+    await seedNativeDocument(page, nativeState);
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"] .sp-editable-title')?.textContent === "Custom name");
+    await title.click();
+    const renamed = "Renamed " + type;
+    await input.fill(renamed);
+    await input.press("Enter");
+    await waitForNativeState(nativeState, () => fields(nativeState.document.buttons[1])[1] === renamed,
+      `${label}: ${type} name mode persists the rename`);
+    await seedNativeDocument(page, nativeState);
+    await page.waitForFunction(value => document.querySelector('.sp-main [data-slot="1"] .sp-editable-title')?.textContent === value, renamed);
   }
   nativeState.document.buttons[1] = original;
   await seedNativeDocument(page, nativeState);

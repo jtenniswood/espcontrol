@@ -18,7 +18,7 @@ Use **Layout** to add and arrange cards, **Screen** for appearance, display, and
 The address is shown on the display screen when no cards are configured yet. You can also find it in your router's connected devices list, or in Home Assistant under **Settings > Devices & Services > ESPHome**.
 :::
 
-Click a card's title in **Layout** to rename it directly. Press **Enter** to save, or **Escape** (or click away) to cancel. You can also rename cards inside subpages and the Back button this way. Date & Time and Screen Lock cards keep their automatically generated text.
+Click a card's title in **Layout** to rename it directly. Press **Enter** to save, or **Escape** (or click away) to cancel. You can also rename cards inside subpages and the Back button this way. Automatically generated text, such as dates, temperatures, and live status, cannot be renamed. For cards with a label display setting, choose the name or label mode to rename the card.
 
 ### Adding a Card
 
