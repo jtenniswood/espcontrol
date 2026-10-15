@@ -237,9 +237,9 @@ int main(){
     assert(card->columns.empty() && card->root->children.empty());
     assert(card->root->flags & LV_OBJ_FLAG_HIDDEN);
     assert(!(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN));
-    assert(placeholder_icon->text=="\U000F18F6" && caption->text=="Loading forecast");
+    assert(placeholder_icon->text=="\U000F18F6" && caption->text=="Loading");
     weather_daily_open_modal(card);
-    assert(weather_daily_modal().message->text=="Loading forecast");
+    assert(weather_daily_modal().message->text=="Loading");
     assert(weather_daily_modal().placeholder_icon->text=="\U000F18F6");
     assert(weather_daily_modal().placeholder_icon->text_color==0xFFFFFF);
     weather_daily_hide_modal();
@@ -250,7 +250,7 @@ int main(){
     weather_daily_set_unavailable("weather.home");weather_daily_render_card(card);
     assert(caption->text=="Forecast unavailable" && placeholder_icon->text=="unavailable-icon");
     assert(card->columns.empty());
-    weather_daily_set_loading("weather.home");weather_daily_render_card(card);assert(caption->text=="Loading forecast");
+    weather_daily_set_loading("weather.home");weather_daily_render_card(card);assert(caption->text=="Loading");
     auto &f=card->source->forecast;
     assert(espcontrol::weather::parse("WF1|2026-10-11|2026-10-12|°C|mm|km/h\n2026-10-11|sunny|18.8|10|0|0|10|75\n",f));
     weather_daily_render_card(card);assert(card->columns.size()==1);
@@ -287,7 +287,7 @@ int main(){
     f=espcontrol::weather::Forecast{};card->source->loading=true;
     weather_daily_render_card(card);
     assert(card->columns.empty() && card->root->children.empty() && lv_obj_t::live==baseline+1);
-    assert(!(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN) && caption->text=="Loading forecast");
+    assert(!(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN) && caption->text=="Loading");
     f=saved_forecast;weather_daily_render_card(card);
     assert(card->columns.size()==4 && lv_obj_t::live==live);
     for(int i=0;i<10;++i){
@@ -399,7 +399,7 @@ int main(){
   const auto saved_week=paged.source->forecast;
   paged.source->forecast=espcontrol::weather::Forecast{};paged.source->loading=true;
   weather_daily_refresh_modal();
-  assert(paged.columns.empty() && paged.message->text=="Loading forecast");
+  assert(paged.columns.empty() && paged.message->text=="Loading");
   assert(paged.placeholder_icon->text=="\U000F18F6" && (paged.days->flags & LV_OBJ_FLAG_HIDDEN));
   paged.source->forecast=saved_week;weather_daily_refresh_modal();assert(paged.columns.size()==6);
   const size_t old_capacity=paged.columns_per_row;
@@ -457,7 +457,7 @@ int main(){
         emit(ui.columns[i].button,LV_EVENT_CLICKED);check_modal_fit();assert(lv_obj_t::live==widgets);
       }
       forecast.count=0;wide_card->source->loading=true;weather_daily_refresh_modal();
-      assert(ui.message->text=="Loading forecast" && ui.placeholder_icon->text=="\U000F18F6");
+      assert(ui.message->text=="Loading" && ui.placeholder_icon->text=="\U000F18F6");
       check_modal_fit();
       forecast.count=available;weather_daily_refresh_modal();check_modal_fit();
       weather_daily_hide_modal();assert(ha_bindings.empty());
@@ -573,7 +573,7 @@ int main(){
     assert(slot.icon_lbl->text=="unavailable-icon");
     weather_daily_open_modal(card);assert(!weather_daily_modal().overlay);
     weather_daily_set_loading("weather.home");weather_daily_refresh_visuals();
-    assert(card->columns.empty() && slot.text_lbl->text=="Loading forecast");
+    assert(card->columns.empty() && slot.text_lbl->text=="Loading");
     assert(slot.icon_lbl->text=="\U000F18F6");
     card->source->loading=false;
 

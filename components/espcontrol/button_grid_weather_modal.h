@@ -91,7 +91,7 @@ inline void weather_daily_refresh_modal() {
   lv_obj_set_style_text_color(ui.message, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
   const auto &forecast = ui.source->forecast;
   if (!forecast.count) {
-    const char *status_key = ui.source->loading ? "Loading forecast" : "Forecast unavailable";
+    const char *status_key = ui.source->loading ? "Loading" : "Forecast unavailable";
     lv_label_set_display_text(ui.message, espcontrol_i18n(std::string(status_key)).c_str());
     lv_label_set_display_text(ui.placeholder_icon, ui.source->loading
       ? find_icon("Weather Cloudy Clock") : weather_icon_for_state("unavailable"));

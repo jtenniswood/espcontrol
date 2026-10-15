@@ -106,7 +106,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     lv_label_set_display_text(card->placeholder_icon, card->source->loading
       ? find_icon("Weather Cloudy Clock") : weather_icon_for_state("unavailable"));
     lv_obj_clear_flag(card->placeholder_icon, LV_OBJ_FLAG_HIDDEN);
-    const char *status_key = card->source->loading ? "Loading forecast" : "Forecast unavailable";
+    const char *status_key = card->source->loading ? "Loading" : "Forecast unavailable";
     lv_label_set_display_text(card->caption, espcontrol_i18n(std::string(status_key)).c_str());
     return;
   }
