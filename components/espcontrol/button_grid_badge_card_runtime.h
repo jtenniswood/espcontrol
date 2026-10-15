@@ -252,7 +252,6 @@ inline void badge_card_runtime_setup(BadgeCtx *ctx, const ParsedCfg &config,
     lv_obj_set_style_width(slider, 0, LV_PART_KNOB);
     lv_obj_set_style_height(slider, 0, LV_PART_KNOB);
     lv_obj_move_to_index(slider, 0);
-    screen_lock_register_controlled_button(slider);
     lv_obj_add_event_cb(slider, [](lv_event_t *event) {
       auto *ctx = static_cast<BadgeCtx *>(lv_event_get_user_data(event));
       if (!ctx) return;

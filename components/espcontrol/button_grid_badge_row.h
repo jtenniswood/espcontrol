@@ -91,7 +91,6 @@ inline void badge_row_build(lv_obj_t *page, int page_index,
     }
     espcontrol::cards::badge_driver_fit_width(slot.btn);
     espcontrol::cards::badge_driver_bind_subpage(slot, config, context, add_parent_indicator);
-    if (cfg_option_value(config.options, "badge_card_type") != "screen_lock") screen_lock_register_controlled_button(button);
     page_badge_rows().back().buttons.push_back(button);
   }
   lv_obj_update_layout(page);
