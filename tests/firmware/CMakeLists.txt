@@ -669,3 +669,12 @@ add_test(NAME weather_daily_ui_test COMMAND weather_daily_ui_test)
 add_test(NAME weather_daily_requests_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/weather_daily_requests_test.py)
+add_executable(badge_policy_test badge_policy_test.cpp)
+target_include_directories(badge_policy_test PRIVATE ../../components/espcontrol)
+add_test(NAME badge_policy_test COMMAND badge_policy_test)
+add_test(NAME badge_card_display_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/badge_card_display_test.py ${CMAKE_CXX_COMPILER})
+foreach(badge_target badge_policy_test)
+  target_compile_features(${badge_target} PRIVATE cxx_std_17)
+  target_compile_options(${badge_target} PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+endforeach()

@@ -374,6 +374,7 @@ export default defineConfig({
           { text: 'Climate', link: '/card-types/climate' },
           { text: 'Cover', link: '/card-types/covers' },
           { text: 'Date & Time', link: '/card-types/calendar' },
+          { text: "Badge", link: "/card-types/badges" },
           { text: "Timer", link: "/card-types/timers" },
           { text: 'Doors & Windows', link: '/card-types/doors-windows' },
           { text: 'Fans', link: '/card-types/fans' },

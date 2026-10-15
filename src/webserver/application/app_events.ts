@@ -48,6 +48,7 @@ export function createAppEventsFeature(
     shell: Pick<ControlsShellFeature, "setConfigLocked" | "showBanner">,
     stateLoader: Pick<StateLoaderFeature, "refreshFirmwareVersion" | "refreshScreensaverTimeout">,
     gridMigration: Pick<GridMigrationFeature, "schedule">,
+    loadBadgeRows: () => void = () => {},
 ): AppEventsFeature {
     const { rememberEntityPostPath } = entityState;
     const { setConfigLocked, showBanner } = shell;
@@ -63,6 +64,7 @@ export function createAppEventsFeature(
     // ── SSE ────────────────────────────────────────────────────────────────
     function connectEvents(this: any) {
         function markConnected(this: any) {
+            loadBadgeRows();
             resetStateForConnection(state);
             runtime.orderReceived = false;
             setConfigLocked(false);

@@ -9,6 +9,7 @@
 
 struct DisplayFontRoles {
   const lv_font_t *small_text = nullptr;
+  const lv_font_t *badge_label = nullptr;
   const lv_font_t *icon = nullptr;
   const lv_font_t *sensor = nullptr;
   const lv_font_t *large_sensor = nullptr;
@@ -161,6 +162,10 @@ inline uint32_t display_correct_color(uint32_t rgb, const DisplayProfile &profil
 
 inline const lv_font_t *display_icon_font(const DisplayProfile &profile) {
   return profile.fonts.icon;
+}
+
+inline const lv_font_t *display_badge_label_font(const DisplayProfile &profile, const lv_font_t *fallback) {
+  return profile.fonts.badge_label ? profile.fonts.badge_label : fallback;
 }
 
 inline const lv_font_t *display_sensor_font(const DisplayProfile &profile) {

@@ -3,6 +3,7 @@ import { resetAwareFetch } from "../api/reset_session";
 import type { PanelIdentityBackup } from "../model/panel_identity";
 import type { PanelIdentityFeature } from "./panel_identity";
 import { state } from "../state/app_instance";
+import { badgeRowKey, badgeRowSettings, badgeRowsFromSettings, BADGE_ROW_PREFIX } from "../model/badge_row";
 import * as EspControlModel from "../model";
 import {
     normalizeBrightnessMode,
@@ -75,6 +76,7 @@ export interface AppBackupControllers {
     readonly normalizeImportedPanelSettings: (settings: any) => any;
     readonly gridColsForImportedSettings: (settings: any) => number;
     readonly nativePanelConfig?: NativePanelConfigController;
+    readonly loadBadgeRows?: () => Promise<void>;
     readonly codec: ConfigCodecFeature;
     readonly configPersistence: Pick<ConfigPersistenceFeature, "subpageEntityKeys">;
     readonly backupContract: Pick<BackupContractFeature, "createBackupConfig" | "normalizeButtonConfig">;
@@ -236,9 +238,15 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
             "subpages": state.subpages,
             "buttonOrder": data.button_order,
             "buttonOnColor": data.button_on_color,
+            "badgeRowSettings": badgeRowSettings(state.badgeRows),
         });
     }
     async function exportConfig(this: any) {
+        await controllers.loadBadgeRows?.();
+        if (state.badgeRowsSupported && !state.badgeRowsReady) {
+            controllers.shell.showBanner?.("Could not load badge rows for the backup. Reload and try exporting again.", "error");
+            return;
+        }
         let identity: PanelIdentityBackup | undefined;
         let identityUnavailable = false;
         try {
@@ -387,6 +395,12 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     if (nativeSubpageValue)
                         nativeDocument.subpages[Number(nativeSubpageKey)] = nativeSubpageValue;
                 }
+                for (const [key, value] of Object.entries(backupPlan.config.badge_rows || {})) {
+                    const source = Number(key.slice(BADGE_ROW_PREFIX.length));
+                    const target = source === 0 ? 0 : backupPlan.slotMap?.[String(source)];
+                    if (target !== undefined) nativeDocument.settings[badgeRowKey(Number(target))] = String(value);
+                    else rejectBackup("A badge row could not fit on this display. The layout was not restored.");
+                }
                 var backedUpNativeConfig: any = backupPlan.config.native_config;
                 if (backedUpNativeConfig &&
                     backedUpNativeConfig.device_profile === controllers.layout.deviceId) {
@@ -412,6 +426,9 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     throw Object.assign(new Error(message), { backupMessage: message });
                 }
                 function queueLegacyLayoutRestore() {
+                    if (Object.keys(nativeDocument.settings).some(key => key.startsWith(BADGE_ROW_PREFIX))) {
+                        rejectBackup("This backup includes badge rows. Update the panel firmware before restoring it.");
+                    }
                     if (panelConfigDocumentContainsWifiSharing(nativeDocument)) {
                         const message = "This backup contains Wifi Sharing cards, which require current device firmware. Update the panel before restoring this backup.";
                         rejectBackup(message);
@@ -447,6 +464,10 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     layoutRestoreResult = await queueLegacyLayoutRestore();
                 }
                 else {
+                    if (Object.keys(nativeDocument.settings).some(key => key.startsWith(BADGE_ROW_PREFIX)) &&
+                        !nativeController.client.badgeRowsSupported()) {
+                        rejectBackup("This backup includes badge rows. Update the panel firmware before restoring it.");
+                    }
                     var nativeRestore: any = nativeController.writeDocument(nativeDocument);
                     layoutRestoreResult = nativeRestore ? await nativeRestore : "failed";
                     if (layoutRestoreResult === "legacy-fallback") {
@@ -468,6 +489,8 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 var activeGridCols: any = controllers.layout.gridCols;
                 controllers.layout.gridCols = importedGridCols;
                 try {
+                    state.badgeRows = badgeRowsFromSettings(nativeDocument.settings);
+                    state.badgeRowsReady = true;
                     state.buttons = [];
                     for (var canonicalButtonIndex: any = 0; canonicalButtonIndex < controllers.layout.numSlots; canonicalButtonIndex++)
                         state.buttons[canonicalButtonIndex] = parseButtonConfig(nativeDocument.buttons[canonicalButtonIndex + 1] || "");

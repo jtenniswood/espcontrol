@@ -70,7 +70,8 @@
           "coverArtArtistSize": 3.90625,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 1.757812
+          "smallTextSize": 1.757812,
+          "badgeLabelScale": 1
         },
         "emptyCell": {
           "radius": 1.953125
@@ -105,7 +106,8 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small"
+          "smallText": "font_text_small",
+          "badgeLabel": "font_text_body"
         },
         "display": {
           "wrapTallLabels": true,
@@ -270,7 +272,8 @@
           "coverArtArtistSize": 3.90625,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 1.757812
+          "smallTextSize": 1.757812,
+          "badgeLabelScale": 1
         },
         "emptyCell": {
           "radius": 1.953125
@@ -305,7 +308,8 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small"
+          "smallText": "font_text_small",
+          "badgeLabel": "font_text_body"
         },
         "display": {
           "wrapTallLabels": true,
@@ -469,7 +473,8 @@
           "coverArtArtistSize": 5,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 5.208333
+          "smallTextSize": 5.208333,
+          "badgeLabelScale": 1
         },
         "emptyCell": {
           "radius": 4.166667
@@ -505,7 +510,8 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small"
+          "smallText": "font_text_small",
+          "badgeLabel": "font_text_body"
         },
         "display": {
           "modal": {
@@ -663,7 +669,8 @@
           "coverArtArtistSize": 5,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 5.208333
+          "smallTextSize": 5.208333,
+          "badgeLabelScale": 1
         },
         "emptyCell": {
           "radius": 4.166667
@@ -699,7 +706,8 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small"
+          "smallText": "font_text_small",
+          "badgeLabel": "font_text_body"
         },
         "display": {
           "modal": {
@@ -857,7 +865,8 @@
           "coverArtArtistSize": 3.125,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 1.5625
+          "smallTextSize": 1.5625,
+          "badgeLabelScale": 1
         },
         "emptyCell": {
           "radius": 1.71875
@@ -892,7 +901,8 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small"
+          "smallText": "font_text_small",
+          "badgeLabel": "font_text_body"
         },
         "display": {
           "wrapTallLabels": true,
@@ -1051,7 +1061,8 @@
           "coverArtArtistSize": 3.125,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 1.5625
+          "smallTextSize": 1.5625,
+          "badgeLabelScale": 1
         },
         "emptyCell": {
           "radius": 1.71875
@@ -1086,7 +1097,8 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small"
+          "smallText": "font_text_small",
+          "badgeLabel": "font_text_body"
         },
         "display": {
           "wrapTallLabels": true,
@@ -1244,7 +1256,8 @@
           "coverArtArtistSize": 3.125,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 1.5625
+          "smallTextSize": 1.5625,
+          "badgeLabelScale": 1
         },
         "emptyCell": {
           "radius": 1.71875
@@ -1279,7 +1292,8 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small"
+          "smallText": "font_text_small",
+          "badgeLabel": "font_text_body"
         },
         "display": {
           "wrapTallLabels": true,
@@ -1436,7 +1450,8 @@
           "coverArtArtistSize": 8.333333,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 3.75
+          "smallTextSize": 3.75,
+          "badgeLabelScale": 1
         },
         "emptyCell": {
           "radius": 4.861111
@@ -1471,7 +1486,8 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small"
+          "smallText": "font_text_small",
+          "badgeLabel": "font_text_body"
         },
         "display": {
           "modal": {
@@ -1644,7 +1660,8 @@
           "coverArtArtistSize": 8.333333,
           "labelLines": 2,
           "labelLinesDouble": 3,
-          "smallTextSize": 3.75
+          "smallTextSize": 3.75,
+          "badgeLabelScale": 1
         },
         "emptyCell": {
           "radius": 5.416667
@@ -1679,7 +1696,8 @@
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
           "climateOptionValue": "font_text_body",
-          "smallText": "font_text_small"
+          "smallText": "font_text_small",
+          "badgeLabel": "font_text_body"
         },
         "display": {
           "modal": {

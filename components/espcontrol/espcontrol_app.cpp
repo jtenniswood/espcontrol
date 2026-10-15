@@ -135,6 +135,12 @@ bool EspControlApp::create_native_configuration_runtime() {
   runtime->text_bindings.set_device_profile(panel_config_device_profile_);
   runtime->button_order.bind(panel_config_button_order_);
   runtime->text_bindings.set_button_order(&runtime->button_order);
+  runtime->text_bindings.set_badge_rows_callback([this](const badge::Rows &rows) {
+    if (!badge::configuration().replace(rows)) return true;
+    // Reuse the existing debounced grid rebuild even when card order is unchanged.
+    panel_config_button_order_->publish_state(panel_config_button_order_->state);
+    return true;
+  });
   runtime->button_on_color.bind(panel_config_button_on_color_);
   runtime->text_bindings.set_button_on_color(&runtime->button_on_color);
   for (size_t index = 0; index < panel_config_button_texts_.size(); ++index) {

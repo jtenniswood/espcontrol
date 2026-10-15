@@ -51,6 +51,7 @@ export interface BackupImportPlan {
   readonly buttons: CardConfig[];
   readonly button_order: string;
   readonly importedSizes: SlotSizeMap;
+  readonly slotMap: Record<string, number>;
   readonly subpages: Record<string, FeatureSubpage>;
   readonly settings: Record<string, unknown> | null;
   readonly screen: Record<string, unknown> | null;
@@ -199,6 +200,7 @@ export function createBackupFeature(dependencies: BackupFeatureDependencies): Ba
       buttons: layoutPlan.buttons.map(normalizeButton),
       button_order: layoutPlan.button_order,
       importedSizes: layoutPlan.importedSizes,
+      slotMap: layoutPlan.slotMap,
       subpages,
       settings: config.settings,
       screen: config.screen,

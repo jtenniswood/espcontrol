@@ -7,6 +7,7 @@ namespace espcontrol::cards {
 constexpr uint8_t REGISTRY_VERSION = 1;
 
 enum class Family : uint8_t {
+  BADGE,
   TOGGLE,
   ACTION,
   ALARM,

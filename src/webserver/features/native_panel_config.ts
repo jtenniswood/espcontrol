@@ -34,6 +34,7 @@ interface Capabilities {
     read?: unknown;
     write?: unknown;
     document_versions?: unknown;
+    badge_rows?: unknown;
   };
 }
 
@@ -71,6 +72,13 @@ function supportedCapabilities(value: unknown): boolean | null {
 }
 
 export class NativePanelConfigClient {
+  private badgeRowsSupported_ = false;
+  badgeRowsSupported(): boolean { return this.supported_ && this.badgeRowsSupported_; }
+  async read(): Promise<PanelConfigDocument> {
+    const response = await this.fetch_("/api/v1/config", { cache: "no-store" });
+    if (!response.ok) throw new Error("Could not load badge rows.");
+    return decodePanelConfig(new Uint8Array(await response.arrayBuffer()));
+  }
   private supported_ = false;
   private retryable_ = false;
   private confirmedUnsupported_ = false;
@@ -99,7 +107,9 @@ export class NativePanelConfigClient {
         this.retryable_ = response.status === 404 || response.status === 503;
         this.confirmedUnsupported_ = false;
         if (!response.ok) return false;
-        const supported = supportedCapabilities(await response.json());
+        const value = await response.json();
+        const supported = supportedCapabilities(value);
+        this.badgeRowsSupported_ = (value as Capabilities)?.configuration?.badge_rows === true;
         this.confirmedUnsupported_ = supported === false;
         return supported === true;
       })

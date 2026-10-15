@@ -180,6 +180,94 @@ export const CARD_CONTRACT_MIGRATION_ACTIONS: Readonly<Record<string, MigrationA
 export const CARD_CONTRACT_RETIRED_SUBPAGE_TYPE_CODES = [] as const;
 export const CARD_CONFIG_FIELDS = ["entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options"] as const satisfies readonly SavedConfigField[];
 export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
+  "badge": {
+    "label": "Badge",
+    "allowInSubpage": true,
+    "domains": [],
+    "options": [
+      {
+        "name": "badge_action",
+        "label": "Interaction",
+        "kind": "choice",
+        "values": [
+          "display",
+          "subpage",
+          "modal",
+          "toggle",
+          "button",
+          "slider",
+          "card"
+        ],
+        "defaultValue": "display",
+        "omitDefault": true,
+        "hidden": true,
+        "docsHidden": true
+      },
+      {
+        "name": "badge_card_type",
+        "label": "Card Type",
+        "kind": "text",
+        "hidden": true,
+        "docsHidden": true,
+        "omitDefault": true
+      },
+      {
+        "name": "badge_display",
+        "label": "Badge Display",
+        "kind": "choice",
+        "values": [
+          "card",
+          "label",
+          "value"
+        ],
+        "defaultValue": "card",
+        "omitDefault": true
+      },
+      {
+        "name": "badge_page",
+        "label": "Subpage",
+        "kind": "text",
+        "omitDefault": true,
+        "hidden": true,
+        "docsHidden": true
+      },
+      {
+        "name": "badge_attribute",
+        "label": "Value Attribute",
+        "kind": "text",
+        "omitDefault": true
+      },
+      {
+        "name": "badge_decimals",
+        "label": "Decimal Places",
+        "kind": "choice",
+        "values": [
+          "0",
+          "1",
+          "2"
+        ],
+        "defaultValue": "1",
+        "omitDefault": true
+      },
+      {
+        "name": "active_color",
+        "label": "Lit When Active",
+        "kind": "flag",
+        "omitDefault": true
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "Badge",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "badge",
+      "precision": "label",
+      "options": ""
+    }
+  },
   "timer": {
     "label": "Timer",
     "allowInSubpage": true,
@@ -4160,6 +4248,18 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
   }
 };
 export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
+  "badge": {
+    "driver": "badge",
+    "capabilities": {
+      "informationOnly": false,
+      "subscriptions": true,
+      "actions": true,
+      "numericControl": true,
+      "modal": true,
+      "runtimeAllocation": true,
+      "subpage": true
+    }
+  },
   "timer": {
     "driver": "timer",
     "capabilities": {
@@ -4749,6 +4849,7 @@ export const CARD_CONTRACT_OPTION_SELECT_ACTION = "input_select.select_option";
 export const CARD_CONTRACT_OPTION_SELECT_ACTIONS = ["input_select.select_option", "select.select_option"] as const;
 export const CARD_CONTRACT_SUBPAGE_TYPE_CODES: Readonly<Record<string, string>> = {
   "timer": "TM",
+  "badge": "BD",
   "action": "A",
   "calendar": "D",
   "clock": "CK",
@@ -4791,6 +4892,7 @@ export const CARD_CONTRACT_SUBPAGE_TYPE_CODES: Readonly<Record<string, string>> 
 };
 export const CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE: Readonly<Record<string, string>> = {
   "TM": "timer",
+  "BD": "badge",
   "A": "action",
   "D": "calendar",
   "CK": "clock",
@@ -4852,6 +4954,12 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "actions": "actions",
   "active_color": "active_color",
   "alarm_card_type": "alarm_card_type",
+  "badge_action": "badge_action",
+  "badge_attribute": "badge_attribute",
+  "badge_card_type": "badge_card_type",
+  "badge_decimals": "badge_decimals",
+  "badge_display": "badge_display",
+  "badge_page": "badge_page",
   "center_clock": "center_clock",
   "climate_tabs": "climate_tabs",
   "confirm_message": "confirm_message",

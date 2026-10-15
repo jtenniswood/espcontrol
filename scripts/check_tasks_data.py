@@ -98,7 +98,7 @@ TASKS = (
          ("ctest", "--test-dir", "build/tests/firmware", "--output-on-failure"), profiles=FAST + RELEASE,
          domains=("firmware",),
          inputs=(
-             "tests/firmware/**",
+             "tests/firmware/**", "tests/fixtures/badge_card_display.json",
              "components/gsl3680/**",
              "common/addon/backlight.yaml",
              "common/addon/backlight_schedule.yaml",
@@ -159,7 +159,7 @@ TASKS = (
          ), parallel_safe=True,
          cache="never"),
     task("web-unit", ("node", "--test", "tests/web/unit/**/*.test.js"), profiles=FAST + RELEASE,
-         domains=("web",), inputs=("tests/web/unit/**", "tests/web/*.test.ts", "src/webserver/**", "product/v2/product_compatibility.json", "compatibility/fixtures/panel_config_migration_v1.json", "devices/manifest.json", "scripts/load_typescript_module.js", "scripts/web_bundle_budget.js", "package-lock.json"), parallel_safe=True,
+         domains=("web",), inputs=("tests/web/unit/**", "tests/fixtures/badge_card_display.json", "tests/web/*.test.ts", "src/webserver/**", "product/v2/product_compatibility.json", "compatibility/fixtures/panel_config_migration_v1.json", "devices/manifest.json", "scripts/load_typescript_module.js", "scripts/web_bundle_budget.js", "package-lock.json"), parallel_safe=True,
          cache_tools=("node",)),
     task("mutations", ("python3", "scripts/run_mutations.py"),
          domains=("firmware", "web"),

@@ -201,6 +201,9 @@ def compile_layout_contract(fixtures: dict) -> None:
         f'#include "{HEADER}"',
         "using namespace espcontrol::modal;",
         "int main() {",
+        "  assert(panel_top_without_badge_row(72, 48) == 24);",
+        "  assert(panel_top_without_badge_row(24, 48) == 0);",
+        "  assert(panel_top_without_badge_row(24, 0) == 24);",
     ]
     for index, entry in enumerate(fixtures["layouts"]):
         source.extend(cpp_assertions(entry, index))

@@ -45,6 +45,7 @@ export interface NormalizedBackupEnvelope {
   subpage_objects: Record<string, StructuredSubpageConfig>;
   settings: Record<string, unknown> | null;
   screen: Record<string, unknown> | null;
+  badge_rows?: Record<string, string>;
   native_config?: PanelConfigBackupPayload;
   native_config_skipped_device_profile?: string;
 }
@@ -201,6 +202,7 @@ export function normalizeBackupEnvelope(
     buttons: outputs.buttons,
     subpages: outputs.subpages,
     subpage_objects: outputs.subpage_objects || {},
+    badge_rows: isRecord(data.badge_rows) ? Object.fromEntries(Object.entries(data.badge_rows).filter(([key, value]) => /^badge_row_\d+$/.test(key) && typeof value === "string")) as Record<string, string> : {},
     settings: isRecord(data.settings) ? data.settings : null,
     screen: isRecord(data.screen)
       ? data.screen

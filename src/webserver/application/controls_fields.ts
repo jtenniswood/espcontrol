@@ -207,7 +207,7 @@ export function createControlsFieldsFeature(
             field.setAttribute("data-sp-card-primary", kind);
         return field;
     }
-    function cardSettingsDisclosureIn(this: any, panel?: any) {
+    function cardSettingsDisclosureIn(this: any, panel?: any, labelText = "Card Settings") {
         var children: any = panel ? Array.prototype.slice.call(panel.children || []) : [];
         for (var i: any = 0; i < children.length; i++) {
             var child: any = children[i];
@@ -215,7 +215,7 @@ export function createControlsFieldsFeature(
                 continue;
             var button: any = child.querySelector(".sp-disclosure-button");
             var label: any = button && button.firstElementChild;
-            if (label && String(label.textContent || "").trim() === "Card Settings") {
+            if (label && String(label.textContent || "").trim() === labelText) {
                 return {
                     panel: child,
                     button: button,
@@ -225,7 +225,7 @@ export function createControlsFieldsFeature(
         }
         return null;
     }
-    function groupCardSettingsFields(this: any, panel?: any, idPrefix?: any) {
+    function groupCardSettingsFields(this: any, panel?: any, idPrefix?: any, labelText = "Card Settings") {
         if (!panel)
             return null;
         var primaryKinds: any = {
@@ -250,10 +250,10 @@ export function createControlsFieldsFeature(
             movable.push(child);
         });
         if (!movable.length)
-            return cardSettingsDisclosureIn(panel);
-        var disclosure: any = cardSettingsDisclosureIn(panel);
+            return cardSettingsDisclosureIn(panel, labelText);
+        var disclosure: any = cardSettingsDisclosureIn(panel, labelText);
         if (!disclosure) {
-            disclosure = disclosureSection("Card Settings", (idPrefix || "sp-inp-") + "card-settings", false);
+            disclosure = disclosureSection(labelText, (idPrefix || "sp-inp-") + "card-settings", false);
             panel.insertBefore(disclosure.panel, firstDisclosure);
         }
         movable.forEach(function (this: any, child?: any) {

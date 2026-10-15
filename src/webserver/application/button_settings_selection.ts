@@ -18,6 +18,7 @@ export interface ButtonSettingsSelectionFeature {
     handleDocumentSelectionMouseDown(event?: any): void;
     openSelectedCardSettings(): void;
     selectClockBarItem(item?: any): void;
+    prepareBadgeSelection(): void;
     openClockBarTemperatureSettings(): void;
 }
 
@@ -29,6 +30,10 @@ export interface ButtonSettingsSelectionDependencies {
     readonly showSelectionMenu: (event?: any) => void;
     readonly contextMenuContains: (target?: any) => boolean;
     readonly openVoiceServicesSettings: () => void;
+    readonly renderBadgeBarControl?: (container: HTMLElement) => void;
+    readonly renderSelectedBadgeBar?: (container: HTMLElement) => boolean;
+    readonly clearBadgeSelection?: () => void;
+    readonly hasBadgeSelection?: () => boolean;
 }
 
 export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, clockBar: ClockBarFeature, entityState: Pick<EntityStateFeature, "entityInput">, shell: Pick<ControlsShellFeature, "isConfigLocked" | "createActionButton">, statusPreview: Pick<AppStatusPreviewFeature, "clockBarItemActive" | "clockBarItemLabel" | "clockBarItems" | "isClockBarTemperatureItem" | "updateClockBarItemUi">, grid: Pick<GridFeature, "ctx">, renderQueue: ButtonSettingsRenderQueueFeature, dependencies: ButtonSettingsSelectionDependencies): ButtonSettingsSelectionFeature {
@@ -110,16 +115,25 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
             return;
         c = c || ctx();
         els.selectionBar.innerHTML = "";
+        if (c.selected.length)
+            dependencies.clearBadgeSelection?.();
         if (!isConfigLocked() && renderClockBarSelectionBar())
             return;
-        if (isConfigLocked() || !c.selected.length) {
+        els.selectionBar.className = "sp-selection-bar sp-visible";
+        if (isConfigLocked())
+            return;
+        var label: any = document.createElement("span");
+        label.className = "sp-selection-label";
+        if (!c.selected.length && !state.badgeRowsSupported && !dependencies.hasBadgeSelection?.()) {
             els.selectionBar.className = "sp-selection-bar";
             return;
         }
-        els.selectionBar.className = "sp-selection-bar sp-visible";
-        var label: any = document.createElement("span");
-        label.className = "sp-selection-label";
-        if (c.selected.length === 1 && c.selected[0] === -2) {
+        if (!c.selected.length) {
+            if (dependencies.renderSelectedBadgeBar?.(els.selectionBar))
+                return;
+            label.textContent = "No card selected";
+        }
+        else if (c.selected.length === 1 && c.selected[0] === -2) {
             label.textContent = "Back button selected";
         }
         else {
@@ -128,6 +142,11 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
         els.selectionBar.appendChild(label);
         var actions: any = document.createElement("div");
         actions.className = "sp-selection-actions";
+        if (!c.selected.length) {
+            dependencies.renderBadgeBarControl?.(actions);
+            els.selectionBar.appendChild(actions);
+            return;
+        }
         if (c.selected.length === 1) {
             var editBtn: any = createActionButton("sp-selection-btn sp-selection-btn-primary", "Edit", "pencil");
             editBtn.addEventListener("click", function (this: any, e?: any) {
@@ -157,10 +176,11 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
     }
     function clearCardSelection(this: any) {
         var c: any = ctx();
-        if (!c.selected.length && c.getLastClicked() < 0 && !state.clockBarSelectedItem)
+        if (!c.selected.length && c.getLastClicked() < 0 && !state.clockBarSelectedItem && !dependencies.hasBadgeSelection?.())
             return;
         c.setSelected([]);
         c.setLastClicked(-1);
+        dependencies.clearBadgeSelection?.();
         state.clockBarSelectedItem = "";
         hideSettingsOverlay();
         updateClockBarItemUi();
@@ -172,6 +192,7 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
             (els.topbar && els.topbar.contains(target)) ||
             (els.selectionBar && els.selectionBar.contains(target)) ||
             (els.settingsOverlay && els.settingsOverlay.contains(target)) ||
+            (target.closest && target.closest(".sp-badge-settings-overlay, .sp-badge-row, .sp-transfer-overlay")) ||
             dependencies.contextMenuContains(target) ||
             (target.closest && target.closest(".sp-ctx-menu")));
     }
@@ -201,6 +222,7 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
         if (isConfigLocked() || clockBarItems().indexOf(item) === -1)
             return;
         var c: any = ctx();
+        dependencies.clearBadgeSelection?.();
         c.setSelected([]);
         c.setLastClicked(-1);
         hideSettingsOverlay();
@@ -208,6 +230,14 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
         updateClockBarItemUi();
         renderPreview();
         renderButtonSettings();
+    }
+    function prepareBadgeSelection(this: any) {
+        var c: any = ctx();
+        c.setSelected([]);
+        c.setLastClicked(-1);
+        hideSettingsOverlay();
+        state.clockBarSelectedItem = "";
+        updateClockBarItemUi();
     }
     function openClockBarTemperatureSettings(this: any) {
         if (isConfigLocked())
@@ -262,6 +292,7 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
         handleDocumentSelectionMouseDown,
         openSelectedCardSettings,
         selectClockBarItem,
+        prepareBadgeSelection,
         openClockBarTemperatureSettings,
     };
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "theme_runtime_static.h"
+#include "badge_row_layout.h"
 
 inline void image_card_refresh_theme(uint32_t fit_background_color);
 
@@ -121,6 +122,13 @@ inline void theme_apply_grid(void *context, const ThemePalette &theme) {
     }
   }
   image_card_refresh_theme(theme_grid_correct_color(theme.surface_sensor, targets));
+  for (const auto &row : page_badge_rows()) {
+    for (lv_obj_t *button : row.buttons) {
+      const bool active = lv_obj_has_state(button, LV_STATE_CHECKED);
+      theme_restyle_tree(button, theme_refresh_previous(), theme, active, correction);
+      theme_apply_grid_button(button, neutral, theme);
+    }
+  }
 }
 
 inline void register_theme_grid(lv_obj_t *main_page, BtnSlot *slots,

@@ -113,6 +113,9 @@ export interface SettingsDraft {
 }
 
 export interface AppState {
+  badgeRows: Record<string, CardConfig[]>;
+  badgeRowsReady: boolean;
+  badgeRowsSupported: boolean;
   grid: number[];
   sizes: Record<string, number>;
   buttons: CardConfig[];

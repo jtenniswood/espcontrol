@@ -88,7 +88,8 @@
       "weather",
       "image",
       "wifi_qr",
-      "timer"
+      "timer",
+      "badge"
     ],
     "capabilities": [
       "informationOnly",
@@ -100,6 +101,7 @@
       "subpage"
     ],
     "specs": {
+      "badge": {"driver": "badge", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": true, "runtimeAllocation": true, "subpage": true}},
       "timer": {
         "driver": "timer",
         "capabilities": {
@@ -175,6 +177,86 @@
     "media_cover_art"
   ],
   "cards": {
+    "badge": {
+      "label": "Badge",
+      "allowInSubpage": true,
+      "domains": [],
+      "options": [
+        {
+          "name": "badge_action",
+          "label": "Interaction",
+          "kind": "choice",
+          "values": [
+            "display",
+            "subpage",
+            "modal",
+            "toggle",
+            "button",
+            "slider",
+            "card"
+          ],
+          "defaultValue": "display",
+          "omitDefault": true, "hidden": true, "docsHidden": true
+        },
+        {
+          "name": "badge_card_type",
+          "label": "Card Type",
+          "kind": "text",
+          "hidden": true,
+          "docsHidden": true,
+          "omitDefault": true
+        },
+        {
+          "name": "badge_display",
+          "label": "Badge Display",
+          "kind": "choice",
+          "values": ["card", "label", "value"],
+          "defaultValue": "card",
+          "omitDefault": true
+        },
+        {
+          "name": "badge_page",
+          "label": "Subpage",
+          "kind": "text",
+          "omitDefault": true, "hidden": true, "docsHidden": true
+        },
+        {
+          "name": "badge_attribute",
+          "label": "Value Attribute",
+          "kind": "text",
+          "omitDefault": true
+        },
+        {
+          "name": "badge_decimals",
+          "label": "Decimal Places",
+          "kind": "choice",
+          "values": [
+            "0",
+            "1",
+            "2"
+          ],
+          "defaultValue": "1",
+          "omitDefault": true
+        },
+        {
+          "name": "active_color",
+          "label": "Lit When Active",
+          "kind": "flag",
+          "omitDefault": true
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "Badge",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "badge",
+        "precision": "label",
+        "options": ""
+      }
+    },
     "timer": {
       "label": "Timer",
       "allowInSubpage": true,
@@ -2744,6 +2826,7 @@
   "retiredSubpageTypeCodes": [],
   "subpageTypeCodes": {
     "timer": "TM",
+    "badge": "BD",
     "action": "A",
     "calendar": "D",
     "clock": "CK",

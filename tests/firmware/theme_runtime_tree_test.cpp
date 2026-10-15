@@ -210,6 +210,36 @@ static void test_playback_mode_accent_collision() {
   set_active_theme_palette(DARK_THEME);
 }
 
+static void test_badge_row_theme_and_independent_insets() {
+  set_active_theme_palette(DARK_THEME);
+  apply_current_theme();
+  lv_obj_t page, subpage, card, badge, sub_badge, value;
+  badge.type = sub_badge.type = &lv_button_class;
+  value.type = &lv_label_class;
+  badge.background = sub_badge.background = lv_color_hex(DARK_THEME.surface_card);
+  value.text = lv_color_hex(DARK_THEME.text_primary);
+  badge.children = {&value};
+  BtnSlot slots[] = {{&card}};
+  const bool neutral[] = {true};
+  register_theme_grid(&page, slots, neutral, 1, 100, 100, 100);
+  page_badge_rows().push_back({&page, nullptr, 60, {&badge}});
+  page_badge_rows().push_back({&subpage, nullptr, 40, {&sub_badge}});
+  assert(page_badge_row_inset(&page) == 60);
+  assert(page_badge_row_inset(&subpage) == 40);
+  assert(page_badge_row_inset(&card) == 0);
+  set_active_theme_palette(LIGHT_THEME);
+  apply_current_theme();
+  assert(badge.background.full == LIGHT_THEME.surface_card);
+  assert(sub_badge.background.full == LIGHT_THEME.surface_card);
+  assert(value.text.full == LIGHT_THEME.text_primary);
+  set_active_theme_palette(DARK_THEME);
+  apply_current_theme();
+  assert(badge.background.full == DARK_THEME.surface_card);
+  assert(value.text.full == DARK_THEME.text_primary);
+  page_badge_rows().clear();
+  lv_event_t deleted{&page}; page.delete_callback(&deleted);
+}
+
 static void test_grid_secondary_surface() {
   set_active_theme_palette(DARK_THEME);
   apply_current_theme();
@@ -1198,6 +1228,7 @@ int main() {
   late_light_page.delete_callback(&late_light_deleted);
   test_supported_pressed_lists();
   test_grid_secondary_surface();
+  test_badge_row_theme_and_independent_insets();
   test_independent_dark_light_surfaces();
   test_restore_grid_theme(ThemeMode::LIGHT, EffectiveTheme::LIGHT);
   test_restore_grid_theme(ThemeMode::DARK, EffectiveTheme::DARK);

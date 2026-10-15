@@ -25,6 +25,7 @@ struct Context {
 inline Family family_for_runtime_type(espcontrol::card_runtime::CardTypeId type) {
   using Type = espcontrol::card_runtime::CardTypeId;
   switch (type) {
+    case Type::BADGE: return Family::BADGE;
     case Type::SWITCH:
     case Type::LIGHT_SWITCH: return Family::TOGGLE;
     case Type::ACTION: return Family::ACTION;

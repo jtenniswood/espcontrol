@@ -260,6 +260,15 @@ int main() {
   assert(get_subpage_back_label("B") == "Zurück");
   assert(get_subpage_back_label("B=Return:FFEC16") == "Return");
   translate_back = false;
+  const auto toggle_badge = parse_subpage_config(
+    "~B,1|BD,switch.office,Office,Lightbulb,Auto,,,label,badge_action=toggle").at(0);
+  assert(toggle_badge.type == "badge");
+  assert(toggle_badge.options == "badge_action=toggle");
+  const auto slider_badge = parse_subpage_config(
+    "~B,1|BD,light.desk,Brightness,Lightbulb,Auto,,,value,badge_action=slider").at(0);
+  assert(slider_badge.options == "badge_action=slider");
+  assert(parsed_cfg_from_subpage_btn(slider_badge).options == "badge_action=slider");
+
   for (const ThemePalette *theme : {&DARK_THEME, &LIGHT_THEME}) {
     set_active_theme_palette(*theme);
     // Forecast temperatures retain muted grey through card contrast updates.

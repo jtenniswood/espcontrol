@@ -2,6 +2,230 @@
   "baselineVersion": 1,
   "cases": [
     {
+      "name": "badge: label",
+      "sourceKind": "contract",
+      "sourceType": "badge",
+      "mode": "label",
+      "canonicalType": "badge",
+      "web": {
+        "registration": "badge",
+        "picker": {
+          "main": false,
+          "subpage": false,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "892c7a36f28e3e94"
+        }
+      },
+      "firmware": {
+        "family": "BADGE"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "none"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
+      "name": "badge: value",
+      "sourceKind": "contract",
+      "sourceType": "badge",
+      "mode": "value",
+      "canonicalType": "badge",
+      "web": {
+        "registration": "badge",
+        "picker": {
+          "main": false,
+          "subpage": false,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "cda7eb98f1b5bb4c"
+        }
+      },
+      "firmware": {
+        "family": "BADGE"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "none"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
+      "name": "badge: subpage",
+      "sourceKind": "contract",
+      "sourceType": "badge",
+      "mode": "subpage",
+      "canonicalType": "badge",
+      "web": {
+        "registration": "badge",
+        "picker": {
+          "main": false,
+          "subpage": false,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "f627579e70159cf6"
+        }
+      },
+      "firmware": {
+        "family": "BADGE"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "navigation"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
+      "name": "badge: modal",
+      "sourceKind": "contract",
+      "sourceType": "badge",
+      "mode": "modal",
+      "canonicalType": "badge",
+      "web": {
+        "registration": "badge",
+        "picker": {
+          "main": false,
+          "subpage": false,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "47f4511899967626"
+        }
+      },
+      "firmware": {
+        "family": "BADGE"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "modal"
+        ],
+        "modalOwner": "badge"
+      }
+    },
+    {
+      "name": "badge: toggle",
+      "sourceKind": "contract",
+      "sourceType": "badge",
+      "mode": "toggle",
+      "canonicalType": "badge",
+      "web": {
+        "registration": "badge",
+        "picker": {
+          "main": false,
+          "subpage": false,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "47f4511899967626"
+        }
+      },
+      "firmware": {
+        "family": "BADGE"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "home_assistant_service"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
+      "name": "badge: button",
+      "sourceKind": "contract",
+      "sourceType": "badge",
+      "mode": "button",
+      "canonicalType": "badge",
+      "web": {
+        "registration": "badge",
+        "picker": {
+          "main": false,
+          "subpage": false,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "47f4511899967626"
+        }
+      },
+      "firmware": {
+        "family": "BADGE"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "home_assistant_service"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
+      "name": "badge: slider",
+      "sourceKind": "contract",
+      "sourceType": "badge",
+      "mode": "slider",
+      "canonicalType": "badge",
+      "web": {
+        "registration": "badge",
+        "picker": {
+          "main": false,
+          "subpage": false,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "f0bbe98d9c1ecf70"
+        }
+      },
+      "firmware": {
+        "family": "BADGE"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "home_assistant_service"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
       "name": "timer: countdown",
       "sourceKind": "contract",
       "sourceType": "timer",

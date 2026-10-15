@@ -1,3 +1,4 @@
+import { badgeToCard } from "../model/badge_card";
 import { preserveCardColorOptions } from "../model/config_primitives";
 import { state } from "../state/app_instance";
 import {
@@ -99,6 +100,7 @@ export function createConfigImageOptionsFeature(dependencies: ConfigImageOptions
     }
     function imageCardCountInClipboardEntry(this: any, entry?: any) {
         var count: any = isImageCard(entry) ? 1 : 0;
+        if (entry?.badgeRow) count += entry.badgeRow.filter((badge: any) => isImageCard(badgeToCard(badge))).length;
         if (entry && entry.subpageConfig) {
             count += imageCardCountInSubpage(parseSubpageConfig(entry.subpageConfig));
         }
@@ -135,6 +137,14 @@ export function createConfigImageOptionsFeature(dependencies: ConfigImageOptions
                 }
                 if (isImageCard(button))
                     count++;
+            });
+        }
+        for (const [page, saved] of Object.entries(candidate?.badgeRow ? { ...state.badgeRows, [String(candidate.badgePage)]: candidate.badgeRow } : state.badgeRows)) {
+            const row = candidate && String(candidate.badgePage) === page && candidate.badgeRow ? candidate.badgeRow : saved;
+            row.forEach((badge: any, index: number) => {
+                const match = candidate && String(candidate.badgePage) === page && candidate.badgeIndex === index;
+                if (match) matchedCandidate = true;
+                if (isImageCard(match ? candidate.button : badgeToCard(badge))) count++;
             });
         }
         if (candidate && !matchedCandidate && isImageCard(candidate.button))

@@ -142,6 +142,11 @@ constexpr int normalized_width_percent(int percent) {
   return percent;
 }
 
+constexpr int panel_top_without_badge_row(int page_top, int badge_row_inset) {
+  const int top = page_top - badge_row_inset;
+  return top > 0 ? top : 0;
+}
+
 constexpr int scaled_px(int px, int short_side,
                         const DesignTokens &tokens = DEFAULT_DESIGN_TOKENS) {
   return px * short_side / tokens.reference_side;

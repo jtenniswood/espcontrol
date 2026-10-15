@@ -903,6 +903,7 @@ inline void light_control_open_modal(LightControlCtx *ctx);
 namespace espcontrol::cards {
 inline bool weather_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool badge_driver_handle_main_click(const Context &context, const ParsedCfg &config, lv_obj_t *button);
 inline bool timer_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
 inline bool basic_action_driver_handle_main_click(
@@ -947,6 +948,7 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
            slot_num, p.type.c_str(), p.entity.c_str(), p.sensor.c_str(), p.label.c_str());
   if (card_runtime_passive(context)) return;
   if (espcontrol::cards::weather_driver_handle_main_click(context, p, btn_obj)) return;
+  if (espcontrol::cards::badge_driver_handle_main_click(context, p, btn_obj)) return;
   if (espcontrol::cards::timer_driver_handle_main_click(context, p, btn_obj)) return;
   if (espcontrol::cards::basic_action_driver_handle_main_click(
         context, p, slot_num, btn_obj)) return;

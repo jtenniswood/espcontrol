@@ -1105,6 +1105,7 @@ def main() -> int:
         shutil.copy2(SAVED_CONFIG_SUBPAGE_HEADER, tmp_path / "button_grid_saved_config_subpage_generated.h")
         shutil.copy2(SAVED_CONFIG_SWITCH_HEADER, tmp_path / "button_grid_saved_config_switch_generated.h")
         shutil.copy2(CLOCK_BAR_HEADER, tmp_path / "clock_bar.h")
+        shutil.copy2(CLOCK_BAR_HEADER.with_name("badge_row_layout.h"), tmp_path / "badge_row_layout.h")
         shutil.copy2(BACKLIGHT_HEADER, tmp_path / "backlight.h")
         shutil.copy2(BACKLIGHT_HEADER.with_name("photo_metadata.h"), tmp_path / "photo_metadata.h")
         shutil.copy2(BACKLIGHT_FADE_HEADER, tmp_path / "backlight_fade.h")

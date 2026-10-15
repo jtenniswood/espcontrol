@@ -1,0 +1,618 @@
+[
+  {
+    "name": "timer default",
+    "type": "timer",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "value"
+  },
+  {
+    "name": "switch default",
+    "type": "",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "auto"
+  },
+  {
+    "name": "action default",
+    "type": "action",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "auto"
+  },
+  {
+    "name": "vacuum default",
+    "type": "vacuum",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "lawn_mower default",
+    "type": "lawn_mower",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "alarm default",
+    "type": "alarm",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "alarm_action default",
+    "type": "alarm_action",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "calendar default",
+    "type": "calendar",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "date"
+  },
+  {
+    "name": "clock default",
+    "type": "clock",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "value"
+  },
+  {
+    "name": "climate default",
+    "type": "climate",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "climate_control default",
+    "type": "climate_control",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "cover default",
+    "type": "cover",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "slider"
+  },
+  {
+    "name": "door_window default",
+    "type": "door_window",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "presence default",
+    "type": "presence",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "fan_direction default",
+    "type": "fan_direction",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "fan_oscillate default",
+    "type": "fan_oscillate",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "fan_preset default",
+    "type": "fan_preset",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "fan_speed default",
+    "type": "fan_speed",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "slider"
+  },
+  {
+    "name": "fan_control default",
+    "type": "fan_control",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "fan_switch default",
+    "type": "fan_switch",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "garage default",
+    "type": "garage",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "gate default",
+    "type": "gate",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "internal default",
+    "type": "internal",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "auto"
+  },
+  {
+    "name": "light_brightness default",
+    "type": "light_brightness",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "slider"
+  },
+  {
+    "name": "light_switch default",
+    "type": "light_switch",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "light_temperature default",
+    "type": "light_temperature",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "slider"
+  },
+  {
+    "name": "light_control default",
+    "type": "light_control",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "lock default",
+    "type": "lock",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "media default",
+    "type": "media",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "option_select default",
+    "type": "option_select",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "auto"
+  },
+  {
+    "name": "push default",
+    "type": "push",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "screen_lock default",
+    "type": "screen_lock",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "webhook default",
+    "type": "webhook",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "sensor default",
+    "type": "sensor",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "value"
+  },
+  {
+    "name": "local_sensor default",
+    "type": "local_sensor",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "value"
+  },
+  {
+    "name": "slider default",
+    "type": "slider",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "slider"
+  },
+  {
+    "name": "subpage default",
+    "type": "subpage",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "auto"
+  },
+  {
+    "name": "timezone default",
+    "type": "timezone",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "value"
+  },
+  {
+    "name": "weather default",
+    "type": "weather",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "image default",
+    "type": "image",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "wifi_qr default",
+    "type": "wifi_qr",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "wifi_qr_card default",
+    "type": "wifi_qr_card",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "weather_forecast default",
+    "type": "weather_forecast",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "value"
+  },
+  {
+    "name": "media control_modal",
+    "type": "media",
+    "mode": "control_modal",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "media speaker_group",
+    "type": "media",
+    "mode": "speaker_group",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "media play_pause",
+    "type": "media",
+    "mode": "play_pause",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "media previous",
+    "type": "media",
+    "mode": "previous",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "media next",
+    "type": "media",
+    "mode": "next",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "media volume",
+    "type": "media",
+    "mode": "volume",
+    "precision": "",
+    "display": "card",
+    "content": "value"
+  },
+  {
+    "name": "media position",
+    "type": "media",
+    "mode": "position",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "media now_playing",
+    "type": "media",
+    "mode": "now_playing",
+    "precision": "",
+    "display": "card",
+    "content": "track"
+  },
+  {
+    "name": "media cover_art",
+    "type": "media",
+    "mode": "cover_art",
+    "precision": "",
+    "display": "card",
+    "content": "track"
+  },
+  {
+    "name": "media playlist",
+    "type": "media",
+    "mode": "playlist",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "media position label despite elapsed number",
+    "type": "media",
+    "mode": "position",
+    "precision": "",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "media position status despite elapsed number",
+    "type": "media",
+    "mode": "position",
+    "precision": "state",
+    "display": "card",
+    "content": "text"
+  },
+  {
+    "name": "media position explicit elapsed",
+    "type": "media",
+    "mode": "position",
+    "precision": "state",
+    "display": "value",
+    "content": "slider"
+  },
+  {
+    "name": "now playing seek preserves track",
+    "type": "media",
+    "mode": "now_playing",
+    "precision": "progress",
+    "display": "card",
+    "content": "track"
+  },
+  {
+    "name": "date and time",
+    "type": "calendar",
+    "mode": "",
+    "precision": "datetime",
+    "display": "card",
+    "content": "datetime"
+  },
+  {
+    "name": "forecast today",
+    "type": "weather",
+    "mode": "",
+    "precision": "today",
+    "display": "card",
+    "content": "value"
+  },
+  {
+    "name": "forecast tomorrow",
+    "type": "weather",
+    "mode": "",
+    "precision": "tomorrow",
+    "display": "card",
+    "content": "value"
+  },
+  {
+    "name": "cover tilt",
+    "type": "cover",
+    "mode": "tilt",
+    "precision": "",
+    "display": "card",
+    "content": "slider"
+  },
+  {
+    "name": "cover modal",
+    "type": "cover",
+    "mode": "modal",
+    "precision": "",
+    "display": "card",
+    "content": "auto"
+  },
+  {
+    "name": "cover toggle",
+    "type": "cover",
+    "mode": "toggle",
+    "precision": "",
+    "display": "card",
+    "content": "auto"
+  },
+  {
+    "name": "cover open",
+    "type": "cover",
+    "mode": "open",
+    "precision": "",
+    "display": "card",
+    "content": "auto"
+  },
+  {
+    "name": "cover close",
+    "type": "cover",
+    "mode": "close",
+    "precision": "",
+    "display": "card",
+    "content": "auto"
+  },
+  {
+    "name": "cover stop",
+    "type": "cover",
+    "mode": "stop",
+    "precision": "",
+    "display": "card",
+    "content": "auto"
+  },
+  {
+    "name": "cover set_position",
+    "type": "cover",
+    "mode": "set_position",
+    "precision": "",
+    "display": "card",
+    "content": "auto"
+  },
+  {
+    "name": "slider explicit label",
+    "type": "slider",
+    "mode": "",
+    "precision": "",
+    "display": "label",
+    "content": "label"
+  },
+  {
+    "name": "light_temperature explicit label",
+    "type": "light_temperature",
+    "mode": "",
+    "precision": "",
+    "display": "label",
+    "content": "label"
+  },
+  {
+    "name": "fan_speed explicit label",
+    "type": "fan_speed",
+    "mode": "",
+    "precision": "",
+    "display": "label",
+    "content": "label"
+  },
+  {
+    "name": "climate_control explicit label",
+    "type": "climate_control",
+    "mode": "",
+    "precision": "",
+    "display": "label",
+    "content": "label"
+  },
+  {
+    "name": "media explicit label",
+    "type": "media",
+    "mode": "position",
+    "precision": "state",
+    "display": "label",
+    "content": "label"
+  },
+  {
+    "name": "sensor explicit label",
+    "type": "sensor",
+    "mode": "",
+    "precision": "",
+    "display": "label",
+    "content": "label"
+  },
+  {
+    "name": "subpage explicit label",
+    "type": "subpage",
+    "mode": "",
+    "precision": "",
+    "display": "label",
+    "content": "label"
+  },
+  {
+    "name": "timer explicit label",
+    "type": "timer",
+    "mode": "",
+    "precision": "",
+    "display": "label",
+    "content": "label"
+  },
+  {
+    "name": "unknown presentation is safe",
+    "type": "future",
+    "mode": "",
+    "precision": "",
+    "display": "unknown",
+    "content": "auto"
+  },
+  {
+    "name": "screensaver action",
+    "type": "screensaver",
+    "mode": "",
+    "precision": "",
+    "display": "card",
+    "content": "auto"
+  }
+]

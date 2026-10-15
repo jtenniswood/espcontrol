@@ -36,6 +36,7 @@ struct GridConfig {
   int color_correction_blue_percent = COLOR_CORRECTION_BLUE_PERCENT;
   const lv_font_t *small_text_font = nullptr;
   const lv_font_t *icon_font;
+  const lv_font_t *badge_label_font = nullptr;
   const lv_font_t *sp_sensor_font;
   const lv_font_t *sp_large_sensor_font = nullptr;
   int large_sensor_unit_offset_percent = -10;
@@ -97,6 +98,7 @@ inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   DisplayProfile profile;
   profile.fonts.small_text = cfg.small_text_font;
   profile.fonts.icon = cfg.icon_font;
+  profile.fonts.badge_label = cfg.badge_label_font;
   profile.fonts.sensor = cfg.sp_sensor_font;
   profile.fonts.large_sensor = cfg.sp_large_sensor_font;
   profile.fonts.media_title = cfg.media_title_font;
@@ -265,6 +267,8 @@ inline TransientStatusLabel *grid_track_transient_status_label_runtime(
 inline TransientStatusLabel *grid_delete_transient_status_label_with_owner(
     lv_obj_t *owner, TransientStatusLabel *ctx);
 
+#include "button_grid_badge_driver.h"
+#include "button_grid_badge_row.h"
 #include "button_grid_status_entity_driver.h"
 
 inline lv_coord_t large_sensor_unit_offset_px(const lv_font_t *large_font, int percent) {
@@ -599,6 +603,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   const CardPalette palette = card_palette_for_config(default_palette, p, display);
   const auto family = context.family;
+  espcontrol::cards::badge_driver_cleanup(s, p, context);
   grid_prepare_timer_visual_reset(s.btn);
   espcontrol::cards::status_entity_driver_cleanup(s, p, context);
   espcontrol::cards::date_time_driver_cleanup(s, p, context);
@@ -647,6 +652,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
 
 
   if (espcontrol::cards::timer_driver_setup_visual(s, p, context)) return;
+  if (espcontrol::cards::badge_driver_setup_visual(s, p, context, display, palette)) {
+    espcontrol::cards::badge_driver_refresh_layout(s, p, context);
+    return;
+  }
   if (espcontrol::cards::image_driver_setup_visual(s, p, context, palette)) {
     espcontrol::cards::image_driver_attach_interaction(s, p, context);
     espcontrol::cards::image_driver_refresh_layout(s, p, context);
@@ -990,6 +999,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
     espcontrol::cards::weather_driver_refresh_layout(s, p, context, display, row_span, col_span);
     return;
   }
+  if (espcontrol::cards::badge_driver_refresh_layout(s, p, context)) return;
   if (espcontrol::cards::navigation_driver_refresh_layout(
         s, p, context, cfg)) return;
 
@@ -1265,7 +1275,7 @@ inline bool grid_refresh_subpage_layouts(
       optional_text_state(sp_ext5_configs, si) +
       optional_text_state(sp_ext6_configs, si) +
       optional_text_state(sp_ext7_configs, si);
-    if (sp_cfg.empty()) continue;
+    if (sp_cfg.empty() && espcontrol::badge::configuration().page(si + 1).empty()) continue;
 
     NavigationSubpageEntry *entry = navigation_find_slot(si + 1);
     const auto sp_btns = parse_subpage_config(sp_cfg);
@@ -1989,6 +1999,7 @@ inline void grid_phase2(
   set_current_button_primary_color(palette.on_val);
 
   OrderResult parsed, order;
+  badge_row_build(main_page_obj, 0, cfg, palette, slots[0]);
   parse_order_string(order_str, NS, parsed);
   clear_spanned_cells(parsed, NS, COLS, order);
   lv_obj_t *first_card = nullptr;
@@ -2012,6 +2023,7 @@ inline void grid_phase2(
     int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
     if (cfg.info_only && info_only_hidden_card_type(context)) continue;
     navigation_register_home_target(idx, pos, p.label, scfg, s.btn);
+    if (espcontrol::cards::badge_driver_bind_main(s, p, context)) continue;
     if (espcontrol::cards::image_driver_bind_main(
           s, p, context, cfg, palette)) continue;
     if (espcontrol::cards::wifi_qr_driver_bind_main(s, p, context)) continue;
@@ -2104,7 +2116,7 @@ inline void grid_phase2(
   const lv_font_t *sp_btn_fnt = lv_obj_get_style_text_font(ref_btn, LV_PART_MAIN);
   lv_color_t sp_txt_color = lv_obj_get_style_text_color(ref_btn, LV_PART_MAIN);
 
-  lv_coord_t mp_pad_top = lv_obj_get_style_pad_top(main_page_obj, LV_PART_MAIN);
+  lv_coord_t mp_pad_top = lv_obj_get_style_pad_top(main_page_obj, LV_PART_MAIN) - page_badge_row_inset(main_page_obj);
   lv_coord_t mp_pad_bottom = lv_obj_get_style_pad_bottom(main_page_obj, LV_PART_MAIN);
   lv_coord_t mp_pad_left = lv_obj_get_style_pad_left(main_page_obj, LV_PART_MAIN);
   lv_coord_t mp_pad_right = lv_obj_get_style_pad_right(main_page_obj, LV_PART_MAIN);
@@ -2124,7 +2136,7 @@ inline void grid_phase2(
       optional_text_state(sp_ext5_configs, si) +
       optional_text_state(sp_ext6_configs, si) +
       optional_text_state(sp_ext7_configs, si);
-    if (sp_cfg.empty()) continue;
+    if (sp_cfg.empty() && espcontrol::badge::configuration().page(si + 1).empty()) continue;
 
     auto sp_btns = parse_subpage_config(sp_cfg);
     std::string sp_order_str = get_subpage_order(sp_cfg);
@@ -2189,6 +2201,9 @@ inline void grid_phase2(
         entity_id, is_active_state);
     };
 
+    badge_row_build(sub_scr, si + 1, cfg, palette, back_slot,
+      [&](const std::string &entity) { add_parent_indicator(entity); });
+
     auto add_subpage_toggle_click = [&](lv_obj_t *btn, const std::string &entity_id, bool set_checked) {
       if (entity_id.empty()) return;
       int eid_idx = sp_entity_alloc_idx++;
@@ -2246,6 +2261,9 @@ inline void grid_phase2(
       // the card-specific refresh after clamping to restore the captured inset.
       refresh_card_layout(sub_slot, sb_cfg, cfg, rs, cs);
 
+      if (espcontrol::cards::badge_driver_bind_subpage(
+            sub_slot, sb_cfg, context,
+            [&](const std::string &entity_id) { add_parent_indicator(entity_id); })) continue;
       if (espcontrol::cards::image_driver_bind_subpage(
             sub_slot, sb_cfg, context, cfg, palette)) continue;
       if (espcontrol::cards::wifi_qr_driver_bind_subpage(
@@ -2360,6 +2378,7 @@ inline void grid_phase2(
     }
 
   }
+  espcontrol::cards::badge_card_runtime_bind_pending();
   screen_lock_apply();
   // Phase 2 can finish after the API connection callbacks have already run
   // during boot. Refresh newly bound artwork contexts here so the current

@@ -19,7 +19,8 @@
     "web": {
       "continuousCorners": true,
       "btn": {
-        "smallTextSize": 1.757812
+        "smallTextSize": 1.757812,
+        "badgeLabelScale": 1
       }
     },
     "firmware": {

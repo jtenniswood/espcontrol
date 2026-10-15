@@ -1,3 +1,5 @@
+import { badgeRowKey, serializeBadgeRow } from "../model/badge_row";
+import { updateNativePanelConfigDocument } from "../features/native_panel_config";
 import { state } from "../state/app_instance";
 import * as EspControlModel from "../model";
 import { ENTITY_CATALOG } from "../generated/entity_catalog";
@@ -17,6 +19,7 @@ export interface ConfigPersistenceFeature {
     saveButtonConfig(slot: number): Promise<any>;
     saveButtonConfigAndOrder(slot: number, order: string): Promise<any>;
     saveSubpageEntity(slot: number): unknown;
+    saveBadgeRow(slot: number): Promise<any> | null;
     subpageChunkShouldPost(slot?: any, keys?: any, chunks?: any, index?: any, previousPendingChunks?: any): boolean;
     scheduleSliderSubpageMigration(slot?: any): void;
 }
@@ -187,6 +190,8 @@ export function createConfigPersistenceFeature(
         }, 5000);
     }
     return {
+        saveBadgeRow: slot => nativePanelConfig?.schedule(current => updateNativePanelConfigDocument(
+          current, layout.deviceId, "settings", badgeRowKey(slot), serializeBadgeRow(state.badgeRows[String(slot)] || []))) || null,
         connectCodec,
         connectRequestApi,
         subpageEntityKeys,

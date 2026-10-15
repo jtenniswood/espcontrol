@@ -1,5 +1,110 @@
 [
   {
+    "name": "badge: label",
+    "input": "~,Kitchen,Auto,Auto,,,badge,label,",
+    "expected": {
+      "entity": "",
+      "label": "Kitchen",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "badge",
+      "precision": "label",
+      "options": ""
+    }
+  },
+  {
+    "name": "badge: value",
+    "input": "~,Badge,Auto,Auto,sensor.temperature,,badge,value,",
+    "expected": {
+      "entity": "",
+      "label": "Badge",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.temperature",
+      "unit": "",
+      "type": "badge",
+      "precision": "value",
+      "options": ""
+    }
+  },
+  {
+    "name": "badge: subpage",
+    "input": "~,Badge,Auto,Auto,,,badge,label,badge_action%3Dsubpage%2Cbadge_page%3D2",
+    "expected": {
+      "entity": "",
+      "label": "Badge",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "badge",
+      "precision": "label",
+      "options": "badge_action=subpage,badge_page=2"
+    }
+  },
+  {
+    "name": "badge: modal",
+    "input": "~climate.example,Badge,Auto,Auto,,,badge,label,badge_action%3Dmodal",
+    "expected": {
+      "entity": "climate.example",
+      "label": "Badge",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "badge",
+      "precision": "label",
+      "options": "badge_action=modal"
+    }
+  },
+  {
+    "name": "badge: toggle",
+    "input": "~light.example,Badge,Auto,Auto,,,badge,label,badge_action%3Dtoggle",
+    "expected": {
+      "entity": "light.example",
+      "label": "Badge",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "badge",
+      "precision": "label",
+      "options": "badge_action=toggle"
+    }
+  },
+  {
+    "name": "badge: button",
+    "input": "~button.example,Badge,Auto,Auto,,,badge,label,badge_action%3Dbutton",
+    "expected": {
+      "entity": "button.example",
+      "label": "Badge",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "badge",
+      "precision": "label",
+      "options": "badge_action=button"
+    }
+  },
+  {
+    "name": "badge: slider",
+    "input": "~light.example,Badge,Auto,Auto,,,badge,value,badge_action%3Dslider",
+    "expected": {
+      "entity": "light.example",
+      "label": "Badge",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "badge",
+      "precision": "value",
+      "options": "badge_action=slider"
+    }
+  },
+  {
     "name": "timer: countdown",
     "input": "~timer.example,,Auto,Auto,,3,timer,,",
     "expected": {

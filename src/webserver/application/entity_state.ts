@@ -141,6 +141,9 @@ export function createEntityStateFeature(dependencies: EntityStateDependencies) 
     function rememberConfiguredEntities(this: any) {
         for (var i: any = 0; i < state.buttons.length; i++)
             rememberConfiguredButtonEntities(state.buttons[i]);
+        for (const badges of Object.values(state.badgeRows || {})) {
+            for (const badge of badges) rememberConfiguredButtonEntities(badge);
+        }
         for (var slot in state.subpages) {
             var sp: any = state.subpages[slot];
             if (!sp || !sp.buttons)

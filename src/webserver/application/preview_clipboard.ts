@@ -41,6 +41,7 @@ export interface PreviewClipboardFeature {
     cutSlot(slot?: any): void;
     cutButtons(slots?: any): void;
     showCopyCode(slots?: any): void;
+    showCopyCodeForConfig(button?: any): void;
     showPasteCode(position?: any, targetIsSubpage?: any): void;
     pasteButton(position?: any): void;
     pasteSubpageButton(position?: any): void;
@@ -87,7 +88,8 @@ export function createPreviewClipboardFeature(
         if (!c.isSub && src.type === "subpage" && state.subpages[slot]) {
             subpageConfig = serializeSubpageConfig(state.subpages[slot]);
         }
-        return createClipboardEntry(src, c.sizes[slot] || 1, subpageConfig);
+        return { ...createClipboardEntry(src, c.sizes[slot] || 1, subpageConfig),
+            badgeRow: !c.isSub && src.type === "subpage" ? (state.badgeRows[String(slot)] || []).map(EspControlModel.cloneCardConfig) : undefined };
     }
     function copySlot(this: any, slot?: any) {
         var entry: any = buildClipboardEntry(slot);
@@ -141,6 +143,15 @@ export function createPreviewClipboardFeature(
             firmware: String(state.firmwareVersion || ""),
         }, entries);
     }
+    function cardTransferCodeForConfigs(buttons: any[]) {
+        var entries = buttons.map(function (button: any) {
+            return cardTransferEntryFromClipboard(createClipboardEntry(button, 1));
+        });
+        return EspControlModel.createCardTransferCode({
+            device: dependencies.layout.deviceId,
+            firmware: String(state.firmwareVersion || ""),
+        }, entries);
+    }
     function cardTransferTypeLabel(type: any) {
         return type ? type.replace(/_/g, " ") : "switch";
     }
@@ -148,6 +159,7 @@ export function createPreviewClipboardFeature(
         var normalized: any = normalizeButtonConfig(EspControlModel.cloneCardConfig(button));
         var type: any = normalized.type || "";
         var typeDef: any = dependencies.cards.definitions[type];
+        if (type === "badge") throw cardTransferError("Badge transfer codes cannot be pasted into the card grid. Use a backup to transfer badge rows.");
         if (!typeDef) {
             throw cardTransferError("This controller does not support the " +
                 cardTransferTypeLabel(type) + " card type.");
@@ -339,7 +351,9 @@ export function createPreviewClipboardFeature(
                 used[slot] = true;
         });
         for (var slot: any = 1; slot <= maxSlots; slot++) {
-            if (!used[slot])
+            if (!used[slot] && !(state.buttons[slot - 1]?.type === "subpage" && state.subpages[String(slot)]) &&
+                !Object.values(state.badgeRows).some(row => row.some(badge =>
+                  /(?:^|,)badge_page=/.test(badge.options) && Number((badge.options.match(/(?:^|,)badge_page=(\d+)/) || [])[1]) === slot)))
                 return slot;
         }
         return -1;
@@ -458,6 +472,7 @@ export function createPreviewClipboardFeature(
     function performClipboardPaste(entries: any, pos: any, targetIsSubpage: any) {
         if (isConfigLocked())
             return { ok: false, error: "Configuration is locked." };
+        if (state.badgeRowsSupported && !state.badgeRowsReady) return { ok: false, error: "Badge rows are still loading. Try again." };
         if (!entries || !entries.length)
             return { ok: false, error: "No copied cards are available." };
         if (!canAddImageCards(imageCardCountInClipboardEntries(entries))) {
@@ -485,6 +500,10 @@ export function createPreviewClipboardFeature(
             for (var i: any = 0; i < plan.slots.length; i++) {
                 configPersistence.saveButtonConfig(plan.slots[i]);
                 configPersistence.saveSubpageEntity(plan.slots[i]);
+                if (entries[i].badgeRow) {
+                    state.badgeRows[String(plan.slots[i])] = entries[i].badgeRow.map(EspControlModel.cloneCardConfig);
+                    configPersistence.saveBadgeRow(plan.slots[i]);
+                }
             }
             dependencies.requestApi.postText(entityName("button_order"), serializeGrid(state.grid));
             state.selectedSlots = [];
@@ -577,6 +596,20 @@ export function createPreviewClipboardFeature(
             showBanner(error.cardTransferMessage || error.message || "Could not create card code.", "error");
             return;
         }
+        showCopyCodeValue(code);
+    }
+    function showCopyCodeForConfig(button: any) {
+        var code: any;
+        try {
+            code = cardTransferCodeForConfigs(Array.isArray(button) ? button : [button]);
+        }
+        catch (error: any) {
+            showBanner(error.cardTransferMessage || error.message || "Could not create badge code.", "error");
+            return;
+        }
+        showCopyCodeValue(code);
+    }
+    function showCopyCodeValue(code: string) {
         var dialog: any = createCardTransferDialog("Copy Code");
         var intro: any = document.createElement("p");
         intro.textContent = "Copy this code to another controller.";
@@ -715,6 +748,7 @@ export function createPreviewClipboardFeature(
         cutSlot,
         cutButtons,
         showCopyCode: showCopyCardCode,
+        showCopyCodeForConfig,
         showPasteCode: showPasteCardCode,
         pasteButton,
         pasteSubpageButton,

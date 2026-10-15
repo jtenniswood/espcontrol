@@ -15,6 +15,7 @@
 #include "display_text.h"
 #include "display_mode_controller.h"
 #include "temperature_unit.h"
+#include "badge_row_layout.h"
 
 inline void format_clock_time_without_suffix(char *buf, size_t size,
                                              int hour, int minute,
@@ -250,13 +251,13 @@ inline void clock_bar_unregister_button_grid_page(lv_obj_t *page) {
 inline void clock_bar_set_button_grid_pages_pad_top(lv_obj_t *main_page_obj,
                                                     lv_coord_t pad_top) {
   if (main_page_obj) {
-    lv_obj_set_style_pad_top(main_page_obj, pad_top, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(main_page_obj, pad_top + page_badge_row_inset(main_page_obj), LV_PART_MAIN);
     lv_obj_update_layout(main_page_obj);
   }
   std::vector<lv_obj_t *> &pages = clock_bar_button_grid_pages();
   for (lv_obj_t *page : pages) {
     if (!page || page == main_page_obj) continue;
-    lv_obj_set_style_pad_top(page, pad_top, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(page, pad_top + page_badge_row_inset(page), LV_PART_MAIN);
     lv_obj_update_layout(page);
   }
   clock_bar_refresh_responsive_grid_cards();

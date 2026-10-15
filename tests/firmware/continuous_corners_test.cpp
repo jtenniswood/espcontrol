@@ -1,4 +1,5 @@
 #include <array>
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <vector>
@@ -45,6 +46,11 @@ void *lv_event_dsc_get_user_data(lv_event_dsc_t *d) { return d->data; }
 lv_event_dsc_t *lv_obj_add_event_cb(lv_obj_t *o, lv_event_cb_t cb, lv_event_code_t, void *data) {
   o->events.push_back({cb, data});
   return &o->events.back();
+}
+void lv_obj_remove_event_cb_with_user_data(lv_obj_t *o, lv_event_cb_t cb, void *data) {
+  o->events.erase(std::remove_if(o->events.begin(), o->events.end(), [=](const auto &e) {
+    return e.cb == cb && e.data == data;
+  }), o->events.end());
 }
 void send(lv_obj_t &o, lv_event_code_t code, lv_obj_t *target = nullptr) {
   for (auto &d : o.events) {
@@ -166,4 +172,11 @@ int main() {
   assert(binding_for(&hidden)->mask->radius == 14);
   send(hidden, LV_EVENT_DELETE);
   assert(mask_cache() == nullptr);
+  // Switching a badge back to an ordinary card must release its mask and handler.
+  lv_obj_t reused;
+  attach(&reused);
+  remove_continuous_card_corners(&reused);
+  assert(reused.mask == nullptr && reused.events.empty() && mask_cache() == nullptr);
+  send(reused, LV_EVENT_DELETE);
+
 }

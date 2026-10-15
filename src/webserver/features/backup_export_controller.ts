@@ -12,6 +12,7 @@ export interface BackupNativeConfigSource {
   readonly subpages: Readonly<Record<string, unknown>>;
   readonly buttonOrder?: string;
   readonly buttonOnColor?: string;
+  readonly badgeRowSettings?: Readonly<Record<string, string>>;
 }
 
 export interface BackupExportControllerOptions {
@@ -23,6 +24,7 @@ export interface BackupWithNativeConfig {
   readonly button_order?: string;
   readonly button_on_color?: string;
   native_config?: PanelConfigBackupPayload;
+  badge_rows?: Readonly<Record<string, string>>;
 }
 
 export interface BackupExportController {
@@ -71,11 +73,13 @@ export function createBackupExportController(
       const subpageConfig = options.serializeSubpageConfig(subpage);
       if (subpageConfig) subpages[Number(slot)] = subpageConfig;
     }
+    backup.badge_rows = source.badgeRowSettings || {};
     backup.native_config = createPanelConfigBackupPayload(encodePanelConfig({
       deviceProfile: source.deviceProfile,
       buttons,
       subpages,
       settings: {
+        ...source.badgeRowSettings,
         button_order: source.buttonOrder || backup.button_order || "",
         button_on_color: source.buttonOnColor || backup.button_on_color || "",
       },

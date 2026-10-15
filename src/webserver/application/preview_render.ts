@@ -29,6 +29,7 @@ import type { GridFeature } from "./grid";
 import type { ButtonSettingsSelectionFeature } from "./button_settings_selection";
 
 export interface PreviewRenderDependencies {
+    readonly renderBadgeRow?: () => void;
     readonly updateClockBarItemUi: () => void;
     readonly document: Document;
     readonly layout: ApplicationLayoutState;
@@ -115,16 +116,18 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
         dependencies.updateClockBarItemUi();
         var main: any = els.previewMain;
         weatherLayout.disconnect();
+        dependencies.renderBadgeRow?.();
         main.innerHTML = "";
         main.className = "sp-main" + (state.subpageChevronsOn ? "" : " sp-hide-subpage-chevrons");
+        var c: any = ctx();
+        updatePreviewHint(c);
+        renderSelectionBar(c);
         if (gridPreviewBlockedByRotationStartup()) {
             main.className += " sp-grid-loading";
             main.setAttribute("aria-busy", "true");
             return;
         }
         main.removeAttribute("aria-busy");
-        var c: any = ctx();
-        updatePreviewHint(c);
         for (var pos: any = 0; pos < c.maxSlots; pos++) {
             var slot: any = c.grid[pos];
             if (slot === -1)
@@ -247,7 +250,6 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 main.appendChild(empty);
             }
         }
-        renderSelectionBar(c);
     }
     return {
         render: renderPreview,

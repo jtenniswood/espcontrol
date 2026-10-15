@@ -6,6 +6,8 @@ import {
   type NativePanelConfigSaveResult,
 } from "../features/native_panel_config";
 import type { PanelConfigDocument } from "../model";
+import { parseRawButtonConfig } from "../model/card";
+import { badgeRowKey } from "../model/badge_row";
 
 export type NativePanelConfigUpdate = (document: PanelConfigDocument) => PanelConfigDocument;
 export type NativePanelConfigSaveOutcome = NativePanelConfigSaveResult | "legacy-fallback";
@@ -19,6 +21,7 @@ export interface NativePanelConfigControllerDependencies {
   readonly normalizeHexColor: (value: string, fallback: string) => string;
   readonly showBanner: (message: string, level: "error") => void;
   readonly delay: (callback: () => void, milliseconds: number) => unknown;
+  readonly onBadgeRowRemoved?: (slot: number) => void;
 }
 
 /** Owns native configuration discovery and serialised document writes. */
@@ -134,9 +137,7 @@ export class NativePanelConfigController {
     }
     for (let slot = 1; slot <= this.dependencies.slotCount(); slot += 1) {
       if (name === this.dependencies.entityNameForSlot("button_config", slot)) {
-        return this.schedule((current) => updateNativePanelConfigDocument(
-          current, this.dependencies.deviceProfile(), "buttons", slot, value,
-        ));
+        return this.writeButton(slot, value);
       }
     }
     return false;
@@ -144,14 +145,22 @@ export class NativePanelConfigController {
 
   writeButtonAndOrder(slot: number, value: string, order: string): Promise<NativePanelConfigSaveOutcome> | null | false {
     if (!Number.isInteger(slot) || slot < 1 || slot > this.dependencies.slotCount()) return false;
-    return this.schedule((current) => {
-      const withButton = updateNativePanelConfigDocument(
+    return this.writeButton(slot, value, order);
+  }
+
+  private writeButton(slot: number, value: string, order?: string): Promise<NativePanelConfigSaveOutcome> | null {
+    const keepRow = parseRawButtonConfig(value).type === "subpage";
+    const saved = this.schedule((current) => {
+      let next = updateNativePanelConfigDocument(
         current, this.dependencies.deviceProfile(), "buttons", slot, value,
       );
-      return updateNativePanelConfigDocument(
-        withButton, this.dependencies.deviceProfile(), "settings", "button_order", order,
-      );
+      if (!keepRow) next = updateNativePanelConfigDocument(next, this.dependencies.deviceProfile(), "settings", badgeRowKey(slot), "");
+      return order === undefined ? next : updateNativePanelConfigDocument(next, this.dependencies.deviceProfile(), "settings", "button_order", order);
     });
+    return saved?.then(result => {
+      if ((result === "saved" || result === "mirror-failed") && !keepRow) this.dependencies.onBadgeRowRemoved?.(slot);
+      return result;
+    }) || null;
   }
 
   writeDocument(document: PanelConfigDocument): Promise<NativePanelConfigSaveOutcome> | null {

@@ -810,6 +810,8 @@ def validate_web(slug: str, device: dict[str, Any], errors: list[str]) -> None:
             errors.append(device_error(slug, "web.btn.borderWidth must be a number when set"))
         if "labelWeight" in btn and not is_positive_int(btn.get("labelWeight")):
             errors.append(device_error(slug, "web.btn.labelWeight must be a positive integer when set"))
+        if "badgeLabelScale" in btn and (not is_number(btn["badgeLabelScale"]) or not 0 < btn["badgeLabelScale"] <= 1):
+            errors.append(device_error(slug, "web.btn.badgeLabelScale must be greater than zero and at most one"))
         if "mediaTitleSize" in btn and not is_number(btn.get("mediaTitleSize")):
             errors.append(device_error(slug, "web.btn.mediaTitleSize must be a number when set"))
         for key in ("labelLines", "labelLinesDouble"):
@@ -976,6 +978,7 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "subpage_chevron_font": fonts.get("subpageChevron"),
         "climate_option_title_font": fonts.get("climateOptionTitle"),
         "climate_option_value_font": fonts.get("climateOptionValue"),
+        "badge_label_font": fonts.get("badgeLabel"),
         "wrap_tall_labels": display["wrapTallLabels"],
         "continuous_card_corners": bool(profile["web"].get("continuousCorners")),
         "label_lines": profile["web"]["btn"]["labelLines"],

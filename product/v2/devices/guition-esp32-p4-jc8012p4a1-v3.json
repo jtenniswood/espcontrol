@@ -21,7 +21,8 @@
       },
       "continuousCorners": true,
       "btn": {
-        "smallTextSize": 1.5625
+        "smallTextSize": 1.5625,
+        "badgeLabelScale": 1
       }
     },
     "firmware": {

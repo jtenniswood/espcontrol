@@ -690,7 +690,9 @@ inline ControlModalLayout control_modal_calc_layout(int width_compensation_perce
   if (metrics.page) {
     lv_obj_update_layout(metrics.page);
     request.panel_left = lv_obj_get_style_pad_left(metrics.page, LV_PART_MAIN);
-    request.panel_top = lv_obj_get_style_pad_top(metrics.page, LV_PART_MAIN);
+    request.panel_top = espcontrol::modal::panel_top_without_badge_row(
+      lv_obj_get_style_pad_top(metrics.page, LV_PART_MAIN),
+      page_badge_row_inset(metrics.page));
     request.panel_right = lv_obj_get_style_pad_right(metrics.page, LV_PART_MAIN);
     request.panel_bottom = lv_obj_get_style_pad_bottom(metrics.page, LV_PART_MAIN);
   }

@@ -12,6 +12,7 @@ const { freshWebOutputDir } = require("./web_source");
 const ROOT = path.resolve(__dirname, "..");
 const {
   createPanelConfigBackupPayload,
+  decodePanelConfigBackupPayload,
   decodePanelConfig,
   encodePanelConfig,
   activeCardColor,
@@ -19,6 +20,8 @@ const {
 const MANIFEST_PATH = path.join(ROOT, "devices", "manifest.json");
 const WEB_OUTPUT_DIR = freshWebOutputDir();
 const FAILURE_DIR = path.join(ROOT, ".cache", "web-browser-smoke");
+const { serializeBadgeRow, parseBadgeRow } = loadTypeScriptModule(path.join(ROOT, "src/webserver/model/badge_row.ts"));
+const { configOptionValue } = loadTypeScriptModule(path.join(ROOT, "src/webserver/model/config_primitives.ts"));
 
 function readManifest() {
   return JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf8"));
@@ -369,7 +372,7 @@ async function installRoutes(context, slug, options = {}) {
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
-          configuration: { read: true, write: true, document_versions: [1] },
+          configuration: { read: true, write: true, document_versions: [1], badge_rows: !!options.badgeRows },
           web_assets: { versions: [1] },
         }),
       });
@@ -1008,6 +1011,13 @@ async function assertRotationStartupOrdering(browser) {
       "true",
       "button_order before rotation: grid should be marked busy",
     );
+    // visibility switches after the existing CSS transition; the loading
+    // state assertions above must still take effect immediately.
+    await page.waitForFunction(() => {
+      const main = document.querySelector(".sp-main.sp-grid-loading");
+      return main && getComputedStyle(main).visibility === "hidden";
+    }, null, { timeout: 1000 });
+    layout = await measureRotationStartupLayout(page);
     assert(
       layout.gridHidden,
       "button_order before rotation: grid should be hidden until rotation arrives",
@@ -2595,7 +2605,7 @@ async function assertEmptyCellSettings(page, posts, label) {
     closeControl.borderWidth >= 1,
     `${label}: settings modal close control has a visible container border`,
   );
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.waitForFunction(() => {
     var overlay = document.querySelector(".sp-settings-overlay");
     return overlay && !overlay.classList.contains("sp-visible");
@@ -2668,7 +2678,7 @@ async function assertEmptyCellSettings(page, posts, label) {
     0,
     `${label}: unsaved new card keeps Delete hidden after type selection`,
   );
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await emptyCell.click();
   await page.getByRole("button", { name: "Sensor card type" }).click();
   await page
@@ -2748,7 +2758,7 @@ async function assertEmptyCellSettings(page, posts, label) {
       await page.getByRole("button", { name: "Text", exact: true }).isVisible(),
     `${label}: Local Sensor retains its Numeric and Text mode buttons`,
   );
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.waitForFunction(() => {
     var overlay = document.querySelector(".sp-settings-overlay");
     return overlay && !overlay.classList.contains("sp-visible");
@@ -2825,7 +2835,7 @@ async function assertNewMediaCardDefaults(page, posts, label, mediaCoverArtSuppo
     );
   }
 
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.waitForFunction(() => {
     const overlay = document.querySelector(".sp-settings-overlay");
     return overlay && !overlay.classList.contains("sp-visible");
@@ -2847,7 +2857,7 @@ async function assertNewMediaCardDefaults(page, posts, label, mediaCoverArtSuppo
     "Custom media label",
     `${label}: changing Media mode preserves its custom label`,
   );
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.waitForFunction(() => {
     const overlay = document.querySelector(".sp-settings-overlay");
     return overlay && !overlay.classList.contains("sp-visible");
@@ -3033,7 +3043,7 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
     );
   for (const [index, cardOption] of cardOptions.entries()) {
     if (index > 0) {
-      await page.locator(".sp-settings-close").click();
+      await page.getByRole("button", { name: "Close settings", exact: true }).click();
       await emptyCell.click();
     }
     await page.locator(`.sp-card-type-option[data-card-type="${cardOption.value}"]`).click();
@@ -3116,7 +3126,7 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
     }
   }
 
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.waitForFunction(() => {
     const overlay = document.querySelector(".sp-settings-overlay");
     return overlay && !overlay.classList.contains("sp-visible");
@@ -3241,7 +3251,7 @@ async function assertFanOptionalLightSettings(page, label) {
     false,
     `${label}: configured Light tab should be disableable without clearing its entity`,
   );
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.waitForFunction(() => {
     const overlay = document.querySelector(".sp-settings-overlay");
     return overlay && !overlay.classList.contains("sp-visible");
@@ -3315,7 +3325,7 @@ async function assertInternalControlsPanel(page, posts, label) {
     );
   }
 
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.waitForFunction(() => {
     const overlay = document.querySelector(".sp-settings-overlay");
     return overlay && !overlay.classList.contains("sp-visible");
@@ -3405,7 +3415,7 @@ async function assertWebhookSettingsPanel(page, posts, label) {
     `${label}: missing webhook URL should remain visibly invalid`,
   );
 
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.waitForFunction(() => {
     const overlay = document.querySelector(".sp-settings-overlay");
     return overlay && !overlay.classList.contains("sp-visible");
@@ -3461,7 +3471,7 @@ async function assertCoverSettingsPanels(page, label) {
     return panel && getComputedStyle(panel).display === "none";
   });
 
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.waitForFunction(() => {
     var overlay = document.querySelector(".sp-settings-overlay");
     return overlay && !overlay.classList.contains("sp-visible");
@@ -3505,7 +3515,7 @@ async function assertCameraRefreshSettings(page, posts, label) {
   assert.strictEqual(posts.length, before, `${label}: invalid refresh drafts must not save`);
   await page.locator("#sp-inp-entity").fill("image.front_door");
   assert(!(await mode.isVisible()), `${label}: image entities use revision events instead of polling controls`);
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay").classList.contains("sp-visible"));
 }
 
@@ -3616,7 +3626,7 @@ async function assertMediaCoverArtSettingsPanels(page, label) {
     `${label}: Cover Art secondary entity picker should be visible`,
   );
 
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.waitForFunction(() => {
     var overlay = document.querySelector(".sp-settings-overlay");
     return overlay && !overlay.classList.contains("sp-visible");
@@ -3706,7 +3716,7 @@ async function assertAlarmSettingsPanels(page, label) {
   assert(await pinSettings.getByText("PIN required for arming", { exact: true }).isVisible(), `${label}: alarm PIN settings panel should contain arming PIN controls`);
   assert(await pinSettings.getByText("PIN required for disarming", { exact: true }).isVisible(), `${label}: alarm PIN settings panel should contain disarming PIN controls`);
 
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.waitForFunction(() => {
     var overlay = document.querySelector(".sp-settings-overlay");
     return overlay && !overlay.classList.contains("sp-visible");
@@ -3757,7 +3767,7 @@ async function assertPlaylistValidationOpensSourcePanel(page, label) {
     `${label}: playlist content ID error should be visible after validation`,
   );
 
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.waitForFunction(() => {
     var overlay = document.querySelector(".sp-settings-overlay");
     return overlay && !overlay.classList.contains("sp-visible");
@@ -3804,7 +3814,7 @@ async function assertNumberActionRequiresValue(page, posts, label) {
     0,
     `${label}: entering a number action value should clear the validation error`,
   );
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.waitForFunction(() => {
     const overlay = document.querySelector(".sp-settings-overlay");
     return overlay && !overlay.classList.contains("sp-visible");
@@ -5863,7 +5873,7 @@ async function assertGuestWifiSettings(page, label) {
   await page.locator("#sp-inp-wifi-tab-guest + .sp-toggle-track").click();
   assert.strictEqual(await guestEntity.inputValue(), "switch.guest_wifi", `${label}: disabled tabs retain their switch`);
   await page.locator("#sp-inp-wifi-tab-guest + .sp-toggle-track").click();
-  await page.locator(".sp-settings-close").click();
+  await page.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
 }
 
@@ -7072,6 +7082,711 @@ async function assertPreviewOutlines(browser, testCase, exhaustive = false) {
     if (process.env.ESPCONTROL_OUTLINE_SCREENSHOT) await page.locator(".sp-screen").screenshot({ path: process.env.ESPCONTROL_OUTLINE_SCREENSHOT });
   } finally { await context.close(); }
 }
+async function assertBadgeJourney(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  const nativeState = nativeConfigState(testCase.slug);
+  const assertBadgeCopies = (copies, originals) => assert.deepStrictEqual(copies, originals);
+  const badge = (label, options = "", extra = {}) => ({ entity: "", label, icon: "Home", icon_on: "Auto", sensor: "", unit: "", type: "badge", precision: "label", options, ...extra });
+  nativeState.document.settings.badge_row_0 = serializeBadgeRow([
+    badge("Kitchen", "badge_action=modal", { entity: "climate.kitchen", sensor: "sensor.kitchen_temperature", precision: "value", icon: "Thermometer", unit: "°C" }),
+    badge("A longer badge label stays on one line", "badge_action=toggle", { entity: "switch.rooms" }),
+    badge("Volume", "badge_action=slider", { entity: "media_player.kitchen", precision: "value", icon: "Volume High" }),
+    badge("Lights", "badge_action=toggle,active_color", { entity: "light.kitchen", icon: "Lightbulb" }),
+    badge("2 open", "", { icon: "Window Open" }),
+  ]);
+  nativeState.document.buttons[6] = "climate.kitchen;Kitchen climate;Thermostat;Auto;;;climate;;";
+  const originalButtons = JSON.stringify(nativeState.document.buttons);
+  const originalOrder = nativeState.document.settings.button_order;
+  await installRoutes(context, testCase.slug, { nativeState, badgeRows: true });
+  const page = await context.newPage();
+  const errors = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await seedNativeDocument(page, nativeState);
+    await page.waitForFunction(() => document.querySelectorAll(".sp-badge-row .sp-badge-card").length === 5);
+    const hideBadgesControl = page.getByRole("button", { name: "Hide badges", exact: true });
+    const showBadgesControl = page.getByRole("button", { name: "Show badges", exact: true });
+    const addBadgeButton = page.getByRole("button", { name: "Add badge", exact: true });
+    assert(await page.locator(".sp-selection-bar").isVisible(), "The edit bar stays visible with no selected card");
+    assert(await hideBadgesControl.isVisible(), "The hide-badges control appears when no card is selected");
+    assert(await addBadgeButton.isVisible(), "An add badge affordance is always present in the badge row");
+    assert(await page.locator(".sp-badge-row-items > :last-child").evaluate(element => element.classList.contains("sp-badge-add")), "The add badge affordance stays at the end of the row");
+    const addBadgeDefaultBorder = await addBadgeButton.evaluate(button => getComputedStyle(button).borderTopColor);
+    await addBadgeButton.hover();
+    await page.waitForFunction(defaultBorder => {
+      const button = document.querySelector(".sp-badge-add");
+      return getComputedStyle(button).borderTopColor !== defaultBorder;
+    }, addBadgeDefaultBorder);
+    const addBadgeHover = await addBadgeButton.evaluate(button => {
+      const style = getComputedStyle(button);
+      return { borderStyle: style.borderTopStyle, borderColor: style.borderTopColor,
+        backgroundColor: style.backgroundColor };
+    });
+    assert(addBadgeHover.borderStyle === "dashed" && addBadgeHover.borderColor !== addBadgeDefaultBorder,
+      "The add-badge hover keeps a visible blue dotted outline");
+    assert(addBadgeHover.backgroundColor !== "rgba(0, 0, 0, 0)", "The add-badge hover uses a filled accent background");
+    assert.strictEqual(await page.locator(".sp-main .sp-badge-card").count(), 0, "Badges never occupy card slots");
+    await hideBadgesControl.click();
+    assert(await showBadgesControl.isVisible(), "The control changes to show badges when the row is hidden");
+    assert(await page.locator(".sp-badge-row").evaluate(row => row.hidden), "Hide badges hides the badge row");
+    await showBadgesControl.click();
+    assert(await hideBadgesControl.isVisible(), "The control changes back to hide badges when the row is shown");
+    assert(!(await page.locator(".sp-badge-row").evaluate(row => row.hidden)), "Show badges restores the badge row");
+    const gridCount = await page.locator(".sp-main [data-pos]").count();
+    assert.strictEqual(await page.locator(".sp-badge-slider .sp-badge-fill").count(), 1);
+    assert.strictEqual(await page.locator(".sp-badge-slider .sp-badge-fill").evaluate(fill => getComputedStyle(fill).opacity), "1",
+      "The badge slider fill uses the full primary color");
+    const compact = await page.locator('.sp-badge-row [data-badge-index="0"]').evaluate(badge => {
+      const circle = badge.querySelector(".sp-badge-icon");
+      const text = badge.querySelector(".sp-badge-text");
+      const bounds = circle.getBoundingClientRect();
+      const pill = badge.getBoundingClientRect();
+      return { text: text.textContent,
+        transparentIcon: getComputedStyle(circle).backgroundColor === "rgba(0, 0, 0, 0)",
+        centredIcon: pill.height > bounds.height && Math.abs((bounds.top + bounds.bottom) - (pill.top + pill.bottom)) < 1,
+        inset: bounds.left - pill.left > 2,
+        singleLine: badge.querySelectorAll(".sp-badge-text").length === 1 && text.getBoundingClientRect().height < bounds.height,
+        fits: text.scrollWidth <= text.clientWidth + 1 };
+    });
+    assert(compact.transparentIcon && compact.centredIcon && compact.inset && compact.singleLine && compact.fits && compact.text === "21.4°C",
+      "One reading fits beside an inset icon centred in the taller badge");
+    const matchingCorners = await page.locator('.sp-badge-row [data-badge-index="0"]').evaluate(badge => {
+      const card = document.querySelector('.sp-main > .sp-btn');
+      const add = document.querySelector('.sp-badge-add');
+      return [badge, add, card].map(element => getComputedStyle(element).borderTopLeftRadius);
+    });
+    assert.equal(matchingCorners[0], matchingCorners[2], "Badges share the card corner radius");
+    assert.equal(matchingCorners[1], matchingCorners[2], "The add button shares the card corner radius");
+    assert.strictEqual(await page.locator('.sp-badge-row [data-badge-index="1"] .sp-badge-text').count(), 1,
+      "Label-only badges retain one line");
+    assert(await page.locator(".sp-badge-slider > .sp-badge-fill").evaluate(fill => {
+      const badgeBounds = fill.parentElement.getBoundingClientRect();
+      const fillBounds = fill.getBoundingClientRect();
+      return Math.abs(fillBounds.height - badgeBounds.height) < 1 &&
+        Math.abs(fillBounds.left - badgeBounds.left) < 1 &&
+        Math.abs(fillBounds.width / badgeBounds.width - .35) < .01 && getComputedStyle(fill).opacity === "1";
+    }), "Slider progress fills the full badge height and uses its entire width");
+    const sliderWidth = await page.locator(".sp-badge-slider").evaluate(badge => {
+      const style = getComputedStyle(badge);
+      const content = badge.querySelector(".sp-badge-content");
+      const childrenWidth = Array.from(content.children).reduce((width, child) => width + child.getBoundingClientRect().width, 0);
+      const paddingAndBorder = [style.paddingLeft, style.paddingRight, style.borderLeftWidth, style.borderRightWidth]
+        .reduce((width, value) => width + parseFloat(value), 0);
+      return { actual: badge.getBoundingClientRect().width,
+        content: childrenWidth + parseFloat(getComputedStyle(content).columnGap) + paddingAndBorder };
+    });
+    assert(Math.abs(sliderWidth.actual - sliderWidth.content) < 2,
+      "Slider badges fit the icon, displayed value and padding without a fixed minimum width");
+    const geometry = await page.locator('.sp-badge-row [data-badge-index="0"]').evaluate(badge => {
+      const bounds = badge.getBoundingClientRect();
+      const text = badge.querySelector(".sp-badge-text");
+      const icon = badge.querySelector(".mdi");
+      const rowBottom = badge.closest(".sp-badge-row").getBoundingClientRect().bottom;
+      const gridTop = document.querySelector(".sp-main").getBoundingClientRect().top;
+      const labelSize = parseFloat(getComputedStyle(document.querySelector(".sp-main .sp-btn-label")).fontSize);
+      return { width: bounds.width, height: bounds.height, textHeight: text.getBoundingClientRect().height,
+        aligned: Math.abs(text.getBoundingClientRect().top - icon.getBoundingClientRect().top) < bounds.height / 2,
+        overflowing: text.scrollWidth > text.clientWidth,
+        aboveGrid: bounds.bottom <= gridTop, gridGap: gridTop - rowBottom, expectedGridGap: labelSize * 1.2 };
+    });
+    assert(geometry.height < geometry.width && geometry.height > geometry.textHeight, "Badge is a compact horizontal rectangle with visible text");
+    assert(geometry.aligned && !geometry.overflowing, "Badge icon and value fit side by side");
+    const longBadge = await page.locator('.sp-badge-row [data-badge-index="1"]').evaluate(badge => {
+      const bounds = badge.getBoundingClientRect();
+      const text = badge.querySelector(".sp-badge-text");
+      return { width: bounds.width, scrollWidth: text.scrollWidth, clientWidth: text.clientWidth,
+        whiteSpace: getComputedStyle(text).whiteSpace };
+    });
+    assert(longBadge.whiteSpace === "nowrap" && longBadge.scrollWidth <= longBadge.clientWidth + 1,
+      "Long badge labels expand their pill instead of wrapping or clipping");
+    assert(geometry.aboveGrid, "The short row sits above the full card grid");
+    assert(Math.abs(geometry.gridGap - geometry.expectedGridGap) < 2, "The web preview leaves extra space between badges and cards");
+    const typography = await page.locator(".sp-badge-text").first().evaluate(text => {
+      const badge = getComputedStyle(text);
+      const label = getComputedStyle(document.querySelector(".sp-main .sp-btn-label"));
+      const pill = text.closest(".sp-badge-card");
+      const icon = getComputedStyle(pill.querySelector(".mdi"));
+      return { matching: badge.fontFamily === label.fontFamily && badge.fontWeight === label.fontWeight &&
+          Math.abs(parseFloat(badge.fontSize) - parseFloat(label.fontSize)) < 0.1,
+        height: pill.getBoundingClientRect().height, labelSize: parseFloat(label.fontSize), iconSize: parseFloat(icon.fontSize), circleSize: pill.querySelector(".sp-badge-icon").getBoundingClientRect().width,
+        paddingLeft: parseFloat(getComputedStyle(pill).paddingLeft), paddingRight: parseFloat(getComputedStyle(pill).paddingRight) };
+    });
+    assert(typography.matching, "Badge text uses the same font, size and weight as card labels");
+    assert(Math.abs(typography.height - typography.labelSize * 2.76) < 1 &&
+      Math.abs(typography.circleSize - typography.labelSize * 1.92) < 1 && typography.iconSize <= typography.labelSize * 1.2 + 1,
+      "Taller badges preserve the icon size and card-label font proportions");
+    assert(typography.paddingRight > typography.paddingLeft, "Badges have extra padding on their right side");
+    const rowGeometry = await page.locator(".sp-badge-row").evaluate(row => {
+      const bounds = row.getBoundingClientRect();
+      const badges = Array.from(row.querySelectorAll(".sp-badge-row-items > .sp-btn"));
+      const first = badges[0].getBoundingClientRect();
+      const last = badges[badges.length - 1].getBoundingClientRect();
+      return { fits: row.scrollWidth <= row.clientWidth + 1,
+        left: first.left - bounds.left, right: bounds.right - last.right,
+        margins: badges.map(badge => parseFloat(getComputedStyle(badge).marginLeft)) };
+    });
+    assert(rowGeometry.margins.every(margin => margin > 0), "Every badge has a left margin");
+    if (rowGeometry.fits) assert(Math.abs(rowGeometry.left - rowGeometry.right) < 2, "The badges are centred horizontally");
+    else assert(rowGeometry.left >= 0, "Overflowing rows keep the first badge reachable");
+    if (process.env.ESPCONTROL_BADGE_SCREENSHOT) await page.locator(".sp-screen").screenshot({ path: process.env.ESPCONTROL_BADGE_SCREENSHOT });
+    const dialog = page.locator(".sp-badge-settings-overlay");
+    await page.locator(".sp-main .sp-empty-cell").first().click();
+    const cardTypes = await page.locator("[data-card-type]").evaluateAll(items => items.map(item => item.getAttribute("data-card-type") || "switch"));
+    await page.getByRole("button", { name: "Close settings", exact: true }).click();
+    await addBadgeButton.click();
+    const badgeTypes = await dialog.locator("[data-badge-type]").evaluateAll(items => items.map(item => item.getAttribute("data-badge-type")));
+    assert.deepStrictEqual(badgeTypes.filter(type => type !== "badge-modal").sort(), cardTypes.filter(type => type !== "subpage").sort(), "The badge picker mirrors supported cards except Subpage");
+    assert.equal(await dialog.locator('[data-badge-type="subpage"]').count(), 0, "Subpage is absent from the badge picker");
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    for (const type of badgeTypes) {
+      await addBadgeButton.click();
+      await dialog.locator('[data-badge-type="' + type + '"]').click();
+      assert.equal(await dialog.locator("#sp-badge-inp-badge-type").count(), 0, "Typed badge editors omit a redundant Badge Type field");
+      assert((await dialog.locator(".sp-section-title").innerText()).endsWith(" Badge"), "Every card type opens a badge editor: " + type);
+      for (const suffix of ["light-control-type", "fan-control-type"]) {
+        const mode = dialog.locator("#sp-badge-inp-" + suffix);
+        if (!(await mode.count())) continue;
+        const options = await mode.locator("option").evaluateAll(items => items.map(item => item.value));
+        for (const value of options) {
+          await mode.selectOption(value);
+          assert.equal(await mode.inputValue(), value, "Mode changes rerender the badge editor: " + value);
+          assert(await dialog.isVisible(), "Mode changes keep badge settings open");
+          assert.equal(await page.locator(".sp-settings-overlay.sp-visible:not(.sp-badge-settings-overlay)").count(), 0, "Mode changes do not open the grid-card editor");
+        }
+      }
+      await dialog.getByRole("button", { name: "Close badge settings", exact: true }).click();
+    }
+    const firstBadge = page.locator('.sp-badge-row [data-badge-index="0"]');
+    const rowBadge = index => page.locator(`.sp-badge-row [data-badge-index="${index}"]`);
+    const selectedBadges = page.locator(".sp-badge-row .sp-badge-card.sp-selected");
+    async function badgeDisplay(value) {
+      const field = dialog.locator("#sp-badge-inp-badge-display");
+      if (!(await field.isVisible())) await dialog.getByRole("button", { name: "Badge Settings", exact: true }).click();
+      await field.selectOption(value);
+    }
+    async function familyBadge(type, entity) {
+      await addBadgeButton.click();
+      await dialog.locator('[data-badge-type="' + type + '"]').click();
+      await dialog.locator('[data-sp-card-primary="entity"] input').first().fill(entity);
+      await badgeDisplay("label");
+      await dialog.locator('[data-sp-card-primary="name"] input').first().fill("Office control");
+    }
+    async function saveFamilyBadge(expectedType, expectedDisplay, expectedText) {
+      await dialog.getByRole("button", { name: "Save", exact: true }).click();
+      await dialog.waitFor({ state: "hidden" });
+      const saved = parseBadgeRow(nativeState.document.settings.badge_row_0)[5];
+      assert.equal(configOptionValue(saved.options, "badge_card_type"), expectedType);
+      assert.equal(configOptionValue(saved.options, "badge_display"), expectedDisplay);
+      assert.equal(await rowBadge(5).locator(".sp-badge-text").innerText(), expectedText);
+      await rowBadge(5).scrollIntoViewIfNeeded();
+      const scrollLeft = await page.locator(".sp-badge-row").evaluate(row => row.scrollLeft);
+      await rowBadge(5).click({ button: "right" });
+      assert.equal(await page.locator(".sp-badge-row").evaluate(row => row.scrollLeft), scrollLeft,
+        "Selecting an overflowing badge keeps the row scroll position and its context menu open");
+      await page.locator(".sp-ctx-menu").getByText("Delete", { exact: true }).click();
+      await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 5, "Remove typed display test badge");
+    }
+    await familyBadge("light_brightness", "light.kitchen");
+    await dialog.locator("#sp-badge-inp-light-control-type").selectOption("light_brightness");
+    assert.equal(await rowBadge(5).locator(".sp-badge-text").innerText(), "Office control", "Brightness can keep its name while retaining the slider");
+    await dialog.locator("#sp-badge-inp-light-control-type").selectOption("light_temperature");
+    assert.equal(await dialog.locator("#sp-badge-inp-badge-display").inputValue(), "label", "Light mode changes retain the badge display choice");
+    await badgeDisplay("value");
+    await saveFamilyBadge("light_temperature", "value", "3000K");
+    await familyBadge("fan_speed", "fan.office");
+    await dialog.locator("#sp-badge-inp-fan-control-type").selectOption("fan_speed");
+    await saveFamilyBadge("fan_speed", "label", "Office control");
+    await familyBadge("media", "media_player.kitchen");
+    await dialog.locator("#sp-badge-inp-media-mode").selectOption("position");
+    await badgeDisplay("value");
+    await saveFamilyBadge("media", "value", "0:00");
+    await familyBadge("climate", "climate.kitchen");
+    await badgeDisplay("card");
+    const climateLabel = dialog.getByText("Label Display", { exact: true }).locator("..");
+    if (!(await climateLabel.isVisible())) await dialog.getByRole("button", { name: "Badge Settings", exact: true }).click();
+    await climateLabel.getByRole("button", { name: "Actual", exact: true }).click();
+    assert.match(await rowBadge(5).locator(".sp-badge-text").innerText(), /^21/, "Climate displays the selected actual temperature instead of another visible number");
+    await climateLabel.getByRole("button", { name: "Target", exact: true }).click();
+    const targetTemperature = await rowBadge(5).locator(".sp-badge-text").innerText();
+    assert.match(targetTemperature, /^20/);
+    await saveFamilyBadge("climate_control", "", targetTemperature);
+    // Existing slider badges must honor the saved Label choice in both the
+    // editor and the compact preview, while retaining their slider fill.
+    await rowBadge(2).click();
+    await page.locator(".sp-selection-bar").getByRole("button", { name: "Edit", exact: true }).click();
+    await dialog.getByRole("button", { name: "Badge Settings", exact: true }).click();
+    await dialog.locator("#sp-badge-inp-badge-display").selectOption("label");
+    await dialog.locator("#sp-badge-inp-label").fill("Sonos");
+    for (const field of ["sensor", "unit", "badge-attribute", "badge-decimals"]) {
+      assert.equal(await dialog.locator("#sp-badge-inp-" + field).count(), 0, "Legacy slider settings omit value formatting: " + field);
+    }
+    assert.equal(await rowBadge(2).locator(".sp-badge-text").innerText(), "Sonos", "Label is previewed immediately");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    assert.equal(parseBadgeRow(nativeState.document.settings.badge_row_0)[2].precision, "label", "Saving retains Label instead of forcing a number");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await seedNativeDocument(page, nativeState);
+    await rowBadge(2).waitFor();
+    assert.equal(await rowBadge(2).locator(".sp-badge-text").innerText(), "Sonos", "Reload preserves the saved slider label");
+    assert.equal(await rowBadge(2).locator(".sp-badge-fill").count(), 1, "Label display keeps its slider fill");
+    await rowBadge(2).click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Duplicate", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 6, "Duplicate label slider");
+    await rowBadge(2).click({ modifiers: ["ControlOrMeta"] });
+    await page.locator(".sp-selection-bar").getByRole("button", { name: "Edit", exact: true }).click();
+    await dialog.getByRole("button", { name: "Badge Settings", exact: true }).click();
+    assert.equal(await dialog.locator("#sp-badge-bulk-display").inputValue(), "label", "Bulk settings retain existing labels");
+    assert.equal(await dialog.locator("#sp-badge-bulk-sensor").count(), 0, "Bulk slider display does not add a separate display entity");
+    await dialog.locator("#sp-badge-bulk-display").selectOption("value");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    for (const index of [2,3]) {
+      assert.equal(parseBadgeRow(nativeState.document.settings.badge_row_0)[index].precision, "value", "Bulk changes preserve Live value");
+      assert.equal(await rowBadge(index).locator(".sp-badge-text").innerText(), "35%", "Live slider values use whole numbers");
+    }
+    await rowBadge(3).click();
+    await rowBadge(3).click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Delete", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 5, "Remove label regression duplicate");
+    await firstBadge.click();
+    await rowBadge(2).click({ modifiers: ["Shift"] });
+    assert.equal(await selectedBadges.count(), 3, "Shift-click selects a badge range");
+    await rowBadge(2).click({ modifiers: ["ControlOrMeta"] });
+    assert.equal(await selectedBadges.count(), 2, "Ctrl-click removes a badge from the selection");
+    await rowBadge(1).click({ modifiers: ["Meta"] });
+    assert.equal(await selectedBadges.count(), 1, "Cmd-click toggles badge selection");
+    await rowBadge(1).click({ modifiers: ["ControlOrMeta"] });
+    assert.equal(await selectedBadges.count(), 2);
+    assert(await page.locator(".sp-selection-bar").getByText("2 badges selected", { exact: true }).isVisible());
+    const beforeBulkEdit = parseBadgeRow(nativeState.document.settings.badge_row_0);
+    const beforeCancelWrites = nativeState.puts.length;
+    await page.locator(".sp-selection-bar").getByRole("button", { name: "Edit", exact: true }).click();
+    assert(await dialog.getByText("Edit 2 Badges", { exact: true }).isVisible(), "Bulk Edit opens the shared badge settings dialog");
+    assert.equal(await dialog.locator("#sp-badge-bulk-label").getAttribute("placeholder"), "Multiple values");
+    assert.equal(await dialog.locator("#sp-badge-bulk-display").inputValue(), "__keep", "Mixed display modes keep existing values by default");
+    assert.equal(await dialog.locator("#sp-badge-bulk-entity").count(), 0, "Mixed badge types keep their individual primary entities");
+    await dialog.locator("#sp-badge-bulk-label").fill("Cancelled group edit");
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    assert.equal(nativeState.puts.length, beforeCancelWrites, "Cancelling bulk edits does not save the row");
+    assert.deepStrictEqual(parseBadgeRow(nativeState.document.settings.badge_row_0), beforeBulkEdit);
+    await firstBadge.click();
+    await rowBadge(1).click({ modifiers: ["ControlOrMeta"] });
+    await rowBadge(1).click({ button: "right" });
+    assert.equal(await selectedBadges.count(), 2, "Right-clicking a selected badge preserves the group");
+    await page.locator(".sp-ctx-menu").getByText("Edit 2 Badges", { exact: true }).click();
+    await dialog.getByRole("button", { name: "Badge Settings", exact: true }).click();
+    await dialog.locator("#sp-badge-bulk-icon").click();
+    await dialog.locator("#sp-badge-bulk-icon-picker .sp-icon-option").filter({ hasText: /^Lightbulb$/ }).click();
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    const afterBulkEdit = parseBadgeRow(nativeState.document.settings.badge_row_0);
+    assert.deepStrictEqual(afterBulkEdit, beforeBulkEdit.map((badge, index) => index < 2 ? { ...badge, icon: "Lightbulb" } : badge),
+      "Bulk saving changes only selected icons and preserves entities, mixed display modes, subpage links and unselected badges");
+    await firstBadge.click();
+    await rowBadge(1).click({ modifiers: ["ControlOrMeta"] });
+    await page.locator(".sp-selection-bar").getByRole("button", { name: "Badge actions", exact: true }).click();
+    await page.locator(".sp-ctx-menu").getByText("Duplicate 2 Badges", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 7, "Duplicate selected badges");
+    assert.equal(await selectedBadges.count(), 2, "The duplicated badges remain selected");
+    const duplicatedBadges = parseBadgeRow(nativeState.document.settings.badge_row_0).slice(2, 4);
+    assertBadgeCopies(duplicatedBadges, afterBulkEdit.slice(0, 2));
+    await rowBadge(2).click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Delete 2 Badges", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 5, "Delete selected badge duplicates");
+    assert.deepStrictEqual(parseBadgeRow(nativeState.document.settings.badge_row_0), afterBulkEdit);
+    await firstBadge.click();
+    await rowBadge(2).click({ modifiers: ["ControlOrMeta"] });
+    await page.locator(".sp-selection-bar").getByRole("button", { name: "Badge actions", exact: true }).click();
+    assert.equal(await page.locator(".sp-ctx-menu").getByText("Copy 2 Badges as Code", { exact: true }).count(), 0,
+      "Badges cannot export codes that the grid importer would misplace");
+    await page.locator(".sp-ctx-menu").getByText("Copy 2 Badges", { exact: true }).click();
+    await addBadgeButton.click();
+    await dialog.getByRole("button", { name: "Paste copied badges", exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 7, "Paste selected badges");
+    assertBadgeCopies(parseBadgeRow(nativeState.document.settings.badge_row_0).slice(5), [afterBulkEdit[0], afterBulkEdit[2]]);
+    await rowBadge(5).click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Cut 2 Badges", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 5, "Cut selected badges");
+    await addBadgeButton.click();
+    await dialog.getByRole("button", { name: "Paste copied badges", exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 7, "Paste cut badge group");
+    await rowBadge(5).click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Delete 2 Badges", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 5, "Delete pasted badge group");
+    assert.deepStrictEqual(parseBadgeRow(nativeState.document.settings.badge_row_0), afterBulkEdit);
+    await firstBadge.click({ button: "right" });
+    assert(await page.locator('.sp-badge-row [data-badge-index="0"]').evaluate(badge => badge.classList.contains("sp-selected")), "Right-clicking a badge selects it");
+    assert(!(await hideBadgesControl.isVisible()), "The hide-badges control is hidden while a badge is selected");
+    const selectedBadgeBar = page.locator(".sp-selection-bar");
+    assert(await selectedBadgeBar.getByText("1 badge selected", { exact: true }).isVisible(), "The selected-badge bar shows the badge selection count");
+    assert(await selectedBadgeBar.getByRole("button", { name: "Edit", exact: true }).isVisible(), "The selected-badge bar offers Edit");
+    const rightClickMenu = page.locator(".sp-ctx-menu");
+    // Badge menus intentionally open on the next animation frame after scrolling.
+    await rightClickMenu.waitFor({ state: "visible" });
+    assert(await rightClickMenu.isVisible(), "Right-clicking a badge opens its context menu");
+    const rightClickMenuLabels = await rightClickMenu.locator(".sp-ctx-item").allTextContents();
+    await selectedBadgeBar.getByRole("button", { name: "Badge actions", exact: true }).click();
+    const badgeMenu = page.locator(".sp-ctx-menu");
+    assert(await badgeMenu.isVisible(), "The selected-badge bar ellipsis opens the badge context menu");
+    const badgeMenuLabels = await badgeMenu.locator(".sp-ctx-item").allTextContents();
+    assert.deepStrictEqual(badgeMenuLabels, rightClickMenuLabels, "Right-click and the edit bar offer the same badge actions");
+    for (const label of ["Edit Badge", "Duplicate", "Copy", "Cut", "Delete"]) {
+      assert(badgeMenuLabels.includes(label), `Badge context menu includes ${label}`);
+    }
+    assert(!badgeMenuLabels.some(label => label.trim() === "Size"), "Badge context menu omits card sizing");
+    await page.locator('.sp-badge-row [data-badge-index="0"]').click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Copy", { exact: true }).click();
+    await addBadgeButton.click();
+    await dialog.getByRole("button", { name: "Paste copied badge", exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 6, "Paste copied badge");
+    await page.locator('.sp-badge-row [data-badge-index="5"]').click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Delete", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 5, "Delete copied badge");
+    await page.locator('.sp-badge-row [data-badge-index="0"]').click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Duplicate", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 6, "Duplicate badge");
+    assert.equal(parseBadgeRow(nativeState.document.settings.badge_row_0)[1].label, parseBadgeRow(nativeState.document.settings.badge_row_0)[0].label);
+    await page.locator('.sp-badge-row [data-badge-index="1"]').click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Delete", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 5, "Delete duplicate badge");
+    await page.locator('.sp-badge-row [data-badge-index="4"]').click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Cut", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 4, "Cut badge");
+    await addBadgeButton.click();
+    await dialog.getByRole("button", { name: "Paste copied badge", exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 5, "Paste cut badge");
+    await page.locator('.sp-badge-row [data-badge-index="0"]').click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Edit Badge", { exact: true }).click();
+    assert(await page.locator("#sp-badge-inp-entity").isVisible(), "Primary entity is visible without expanding settings");
+    assert.equal(await dialog.locator("#sp-badge-inp-badge-type").count(), 0, "Badge settings do not show the card type selector");
+    assert(!(await page.locator("#sp-badge-inp-badge-display").isVisible()), "Optional settings start collapsed like card settings");
+    await dialog.getByRole("button", { name: "Badge Settings", exact: true }).click();
+    await page.locator("#sp-badge-inp-badge-display").selectOption("label");
+    assert(await page.locator("#sp-badge-inp-entity").evaluate(entity =>
+      Boolean(entity.compareDocumentPosition(document.querySelector("#sp-badge-inp-label")) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      "The badge entity field appears above its label");
+    await page.locator("#sp-badge-inp-badge-display").selectOption("value");
+    assert.strictEqual(await page.locator("#sp-badge-inp-badge-display").inputValue(), "value");
+    assert.strictEqual(await page.locator("#sp-badge-inp-entity").inputValue(), "climate.kitchen");
+    assert.strictEqual(await page.locator("#sp-badge-inp-sensor").inputValue(), "sensor.kitchen_temperature");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    const written = parseBadgeRow(nativeState.document.settings.badge_row_0)[0];
+    assert.equal(written.sensor, "sensor.kitchen_temperature");
+    assert(nativeState.document.buttons[3], "Badge saves preserve the existing card subpage");
+    assert.equal(nativeState.document.settings.button_order, originalOrder);
+    assert.equal(await page.locator(".sp-main [data-pos]").count(), gridCount, "Adding a row preserves every grid cell");
+    // Row order is independent of card order.
+    async function insertBadge(from, insertion, cancel = false) {
+      const before = parseBadgeRow(nativeState.document.settings.badge_row_0);
+      const writes = nativeState.puts.length;
+      const source = page.locator('.sp-badge-row [data-badge-index="' + from + '"]');
+      const bounds = await source.boundingBox();
+      await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(bounds.x + bounds.width / 2 + 10, bounds.y + bounds.height / 2, { steps: 5 });
+      const target = await page.locator(".sp-badge-row").evaluate((row, insertion) => {
+        const items = row.querySelectorAll("[data-badge-index]");
+        const before = items[insertion - 1]?.getBoundingClientRect();
+        const after = (items[insertion] || row.querySelector(".sp-badge-add")).getBoundingClientRect();
+        const x = before ? (before.right + after.left) / 2
+          : after.left - parseFloat(getComputedStyle(items[0]).marginLeft) / 2;
+        const bounds = row.getBoundingClientRect();
+        return { x, y: bounds.top + bounds.height / 2 };
+      }, insertion);
+      await page.mouse.move(target.x, target.y, { steps: 10 });
+      await page.mouse.move(target.x, target.y);
+      const marker = page.locator(".sp-badge-insertion-marker");
+      await marker.waitFor({ state: "visible" });
+      assert.equal(await marker.getAttribute("data-insertion-index"), String(insertion), "The marker names the insertion boundary");
+      const markerBounds = await marker.boundingBox();
+      assert(Math.abs(markerBounds.x + markerBounds.width / 2 - target.x) < 2, "The insertion line sits in the gap");
+      assert.equal(await page.locator(".sp-badge-card.sp-drop-target").count(), 0, "Dragging does not highlight a badge as a swap target");
+      assert(await page.evaluate(({ x, y }) => !document.elementFromPoint(x, y).closest("[data-badge-index]"), target),
+        "The drop point is between badges, outside a badge");
+      if (cancel) await page.mouse.move(target.x, target.y + 150, { steps: 5 });
+      await page.mouse.up();
+      const destination = from < insertion ? insertion - 1 : insertion;
+      const expected = before.slice();
+      if (!cancel) expected.splice(destination, 0, expected.splice(from, 1)[0]);
+      await waitForNativeState(nativeState, () => JSON.stringify(parseBadgeRow(nativeState.document.settings.badge_row_0)) === JSON.stringify(expected), "Insert badge at boundary " + insertion);
+      assert(!(await marker.isVisible()), "The insertion marker clears after drop or cancellation");
+      assert.equal(await page.locator(".sp-badge-card.sp-dragging").count(), 0, "The dragged badge style clears");
+      if (cancel || from === destination) assert.equal(nativeState.puts.length, writes, "Cancelled and unchanged drags do not save");
+      assert.equal(nativeState.document.settings.button_order, originalOrder, "Badge insertion does not reorder cards");
+    }
+    await insertBadge(0, 3);
+    await insertBadge(2, 1);
+    await insertBadge(1, 5);
+    await insertBadge(4, 0);
+    await insertBadge(1, 2);
+    await insertBadge(0, 4, true);
+    await insertBadge(4, 0);
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0)[0]?.label === "2 open", "Badge drag reorder");
+    assert.equal(parseBadgeRow(nativeState.document.settings.badge_row_0)[0].label, "2 open");
+    // Old Subpage badges stay removable without modifying their stored pages.
+    const privateSlot = testCase.slots;
+    const homeRow = parseBadgeRow(nativeState.document.settings.badge_row_0);
+    nativeState.document.buttons[privateSlot] = nativeState.document.buttons[3];
+    nativeState.document.subpages[privateSlot] = nativeState.document.subpages[3];
+    const privateRow = serializeBadgeRow([badge("Stored control", "badge_action=toggle", { entity: "switch.stored" })]);
+    nativeState.document.settings["badge_row_" + privateSlot] = privateRow;
+    const pausedBadges = [
+      badge("Legacy page", "badge_action=subpage,badge_page=" + privateSlot),
+      badge("Typed page", "badge_action=card,badge_card_type=subpage,badge_page=" + privateSlot),
+    ];
+    nativeState.document.settings.badge_row_0 = serializeBadgeRow([...homeRow, ...pausedBadges]);
+    const storedButtons = JSON.stringify(nativeState.document.buttons);
+    const storedPages = JSON.stringify(nativeState.document.subpages);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await seedNativeDocument(page, nativeState);
+    await page.waitForFunction(() => document.querySelectorAll(".sp-badge-row .sp-badge-card").length === 7);
+    for (const index of [5, 6]) {
+      assert(await rowBadge(index).evaluate(badge => badge.classList.contains("sp-badge-unavailable")), "Both old subpage formats are shown unavailable");
+      await rowBadge(index).click();
+      await page.locator(".sp-selection-bar").getByRole("button", { name: "Edit", exact: true }).click();
+      assert(await dialog.getByText("Subpage badges are unavailable. Deleting this badge keeps its stored page.", { exact: true }).isVisible());
+      assert.equal(await dialog.getByRole("button", { name: "Edit Subpage", exact: true }).count(), 0);
+      assert.equal(await dialog.locator("#sp-badge-inp-badge-page").count(), 0);
+      await dialog.getByRole("button", { name: "Save", exact: true }).click();
+      await dialog.waitFor({ state: "hidden" });
+      assert.deepStrictEqual(parseBadgeRow(nativeState.document.settings.badge_row_0)[index], pausedBadges[index - 5], "Saving preserves dormant subpage settings");
+    }
+    await rowBadge(5).click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Duplicate", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 8, "Duplicate an unavailable badge");
+    assert.equal(JSON.stringify(nativeState.document.buttons), storedButtons, "Badge duplication cannot allocate a page");
+    assert.equal(JSON.stringify(nativeState.document.subpages), storedPages, "Badge duplication cannot copy page contents");
+    await rowBadge(5).click();
+    await rowBadge(7).click({ modifiers: ["Shift"] });
+    await page.locator(".sp-selection-bar").getByRole("button", { name: "Badge actions", exact: true }).click();
+    await page.locator(".sp-ctx-menu").getByText("Delete 3 Badges", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_0).length === 5, "Remove unavailable badges");
+    assert.equal(JSON.stringify(nativeState.document.buttons), storedButtons, "Deleting badges preserves all page parents");
+    assert.equal(JSON.stringify(nativeState.document.subpages), storedPages, "Deleting badges preserves all stored page cards");
+    assert.equal(nativeState.document.settings["badge_row_" + privateSlot], privateRow, "Deleting badges preserves the stored page's own row");
+    // Card subpages still open normally and can have their own badge row.
+    await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+    assert(await page.locator(".sp-back-btn").isVisible());
+    await addBadgeButton.click();
+    assert.equal(await dialog.locator('[data-badge-type="subpage"]').count(), 0);
+    if (process.env.ESPCONTROL_BADGE_TYPE_SCREENSHOT) await dialog.locator(".sp-settings-modal").screenshot({ path: process.env.ESPCONTROL_BADGE_TYPE_SCREENSHOT });
+    await dialog.locator('[data-badge-type="switch"]').click();
+    await page.locator("#sp-badge-inp-entity").fill("switch.upstairs");
+    await page.locator("#sp-badge-inp-label").fill("Upstairs");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    assert.equal(await page.locator(".sp-badge-row .sp-badge-card").count(), 1);
+    // Exercise actual entity entry from a new badge, with a grid card already
+    // selected. Typing or choosing suggestions must not reset the badge editor.
+    await page.locator('.sp-main [data-slot="1"]').click();
+    assert(await page.locator(".sp-selection-bar").isVisible(), "The edit bar stays visible with a selected card");
+    assert(!(await hideBadgesControl.isVisible()), "The hide-badges control is removed when a card is selected");
+    async function addTypedBadge(type) {
+      if (!(await hideBadgesControl.isVisible())) {
+        await page.locator("#sp-screen > .sp-hint").click();
+        await hideBadgesControl.waitFor({ state: "visible" });
+      }
+      await addBadgeButton.click();
+      await dialog.locator(`[data-badge-type="${type}"]`).click();
+      assert.equal(await page.locator("#sp-badge-inp-badge-type").count(), 0, "Subtype selection stays outside badge settings");
+    }
+    await addTypedBadge("sensor");
+    await page.locator("#sp-badge-inp-sensor").pressSequentially("sensor.office_temperature");
+    assert.equal(await page.locator("#sp-badge-inp-sensor").inputValue(), "sensor.office_temperature");
+    const modalLayout = await dialog.evaluate(overlay => {
+      const modal = overlay.querySelector(".sp-settings-modal").getBoundingClientRect();
+      const content = overlay.querySelector(".sp-config");
+      const style = getComputedStyle(content);
+      const entity = overlay.querySelector("#sp-badge-inp-sensor").getBoundingClientRect();
+      return { padding: parseFloat(style.paddingLeft), inset: entity.left - modal.left,
+        primary: !overlay.querySelector("#sp-badge-inp-sensor").closest(".sp-disclosure"),
+        closeIcon: !!overlay.querySelector(".sp-settings-close-icon") };
+    });
+    assert(modalLayout.padding > 0 && modalLayout.inset >= modalLayout.padding, "Badge fields use the shared card content margins");
+    assert(modalLayout.primary && modalLayout.closeIcon, "Badge setup uses primary fields and the shared close control");
+    if (process.env.ESPCONTROL_BADGE_SETTINGS_SCREENSHOT) await dialog.locator(".sp-settings-modal").screenshot({ path: process.env.ESPCONTROL_BADGE_SETTINGS_SCREENSHOT });
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    assert.equal(parseBadgeRow(nativeState.document.settings.badge_row_3)[1].sensor, "sensor.office_temperature");
+    await addTypedBadge("switch");
+    await page.locator("#sp-badge-inp-entity").fill("light.");
+    await dialog.locator(".sp-entity-option").filter({ hasText: /^light\.kitchen$/ }).click();
+    assert.equal(await page.locator("#sp-badge-inp-entity").inputValue(), "light.kitchen");
+    await page.locator("#sp-badge-inp-label").fill("Kitchen switch");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    assert.equal(parseBadgeRow(nativeState.document.settings.badge_row_3)[2].entity, "light.kitchen");
+    await addTypedBadge("action");
+    await page.locator("#sp-badge-inp-entity").fill("input_button.evening_scene");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    assert.equal(parseBadgeRow(nativeState.document.settings.badge_row_3)[3].entity, "input_button.evening_scene");
+    assert.equal(configOptionValue(parseBadgeRow(nativeState.document.settings.badge_row_3)[3].options, "badge_card_type"), "action");
+    await addTypedBadge("slider");
+    await page.locator("#sp-badge-inp-entity").pressSequentially("number.kitchen_target");
+    await dialog.getByRole("button", { name: "Badge Settings", exact: true }).click();
+    for (const field of ["sensor", "unit", "badge-attribute", "badge-decimals"]) {
+      assert.equal(await dialog.locator("#sp-badge-inp-" + field).count(), 0, "Slider settings omit " + field);
+    }
+    assert.equal(await dialog.locator("#sp-badge-inp-badge-active").count(), 0, "Slider settings follow the existing slider card");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    const savedSlider = parseBadgeRow(nativeState.document.settings.badge_row_3)[4];
+    assert.equal(savedSlider.entity, "number.kitchen_target");
+    assert.equal(configOptionValue(savedSlider.options, "badge_card_type"), "slider");
+    assert.equal(savedSlider.sensor, "");
+    assert.equal(savedSlider.unit, "");
+    assert.equal(await rowBadge(4).locator(".sp-badge-text").innerText(), "35", "Numeric slider previews show a whole number");
+    await rowBadge(4).click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Duplicate", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_3).length === 6, "Duplicate slider for bulk settings");
+    await rowBadge(4).click({ modifiers: ["ControlOrMeta"] });
+    await page.locator(".sp-selection-bar").getByRole("button", { name: "Edit", exact: true }).click();
+    await dialog.getByRole("button", { name: "Badge Settings", exact: true }).click();
+    for (const field of ["display", "sensor", "unit", "attribute", "decimals"]) {
+      assert.equal(await dialog.locator("#sp-badge-bulk-" + field).count(), 0, "Bulk slider settings omit " + field);
+    }
+    assert(await dialog.locator("#sp-badge-bulk-entity").isVisible(), "Bulk slider editing keeps the control entity");
+    assert.equal(await dialog.locator("#sp-badge-bulk-active").count(), 0, "Bulk slider editing omits unsupported card options");
+    await dialog.locator("#sp-badge-bulk-badge-display").selectOption("label");
+    await dialog.locator("#sp-badge-bulk-label").fill("Kitchen target");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    for (const index of [4, 5]) {
+      const item = parseBadgeRow(nativeState.document.settings.badge_row_3)[index];
+      assert.equal(configOptionValue(item.options, "badge_display"), "label", "Bulk typed display saves the badge choice");
+      assert.equal(item.entity, savedSlider.entity, "Changing the display leaves the control entity intact");
+      assert.equal(await rowBadge(index).locator(".sp-badge-text").innerText(), "Kitchen target");
+    }
+    await rowBadge(4).click();
+    await rowBadge(5).click({ modifiers: ["ControlOrMeta"] });
+    await page.locator(".sp-selection-bar").getByRole("button", { name: "Edit", exact: true }).click();
+    await dialog.getByRole("button", { name: "Badge Settings", exact: true }).click();
+    assert.equal(await dialog.locator("#sp-badge-bulk-badge-display").inputValue(), "label");
+    await dialog.locator("#sp-badge-bulk-badge-display").selectOption("card");
+    await dialog.locator("#sp-badge-bulk-label").fill(savedSlider.label);
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    assert.equal(await rowBadge(4).locator(".sp-badge-text").innerText(), "35", "Bulk Card display restores the native reading");
+    await rowBadge(5).click();
+    await rowBadge(5).click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Delete", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_3).length === 5, "Remove slider bulk settings duplicate");
+    await rowBadge(2).click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Duplicate", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_3).length === 6, "Duplicate switch for same-type bulk editing");
+    await rowBadge(2).click({ modifiers: ["ControlOrMeta"] });
+    await page.locator(".sp-selection-bar").getByRole("button", { name: "Edit", exact: true }).click();
+    const beforeSameTypeEdit = parseBadgeRow(nativeState.document.settings.badge_row_3);
+    const beforeInvalidWrites = nativeState.puts.length;
+    await dialog.locator("#sp-badge-bulk-entity").fill("sensor.unsupported");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    assert(await page.getByText("Choose a supported entity for these badges.", { exact: true }).isVisible());
+    assert.equal(nativeState.puts.length, beforeInvalidWrites, "Bulk editing rejects unsupported entity domains");
+    await dialog.locator("#sp-badge-bulk-entity").fill("switch.office");
+    await dialog.locator("#sp-badge-bulk-label").fill("Office switches");
+    await dialog.getByRole("button", { name: "Badge Settings", exact: true }).click();
+    const failBulkSave = route => route.request().method() === "PUT"
+      ? route.fulfill({ status: 500, body: "Save failed" }) : route.fallback();
+    await page.route("**/api/v1/config", failBulkSave);
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await page.getByText("Could not save badge rows. Check the connection and firmware, then try again.", { exact: true }).waitFor();
+    assert(await dialog.getByRole("button", { name: "Save", exact: true }).isEnabled(), "A failed bulk save keeps the editor usable");
+    assert.equal(await dialog.locator("#sp-badge-bulk-entity").inputValue(), "switch.office", "A failed bulk save retains draft changes");
+    assert.deepStrictEqual(parseBadgeRow(nativeState.document.settings.badge_row_3), beforeSameTypeEdit);
+    await page.unroute("**/api/v1/config", failBulkSave);
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    const sameTypeEdited = parseBadgeRow(nativeState.document.settings.badge_row_3);
+    for (const index of [2, 3]) {
+      assert.equal(sameTypeEdited[index].entity, "switch.office");
+      assert.equal(sameTypeEdited[index].label, "Office switches");
+      assert.equal(configOptionValue(sameTypeEdited[index].options, "badge_card_type"), "switch", "Shared edits preserve each badge's card type");
+    }
+    for (const index of [0, 1, 4, 5]) assert.deepStrictEqual(sameTypeEdited[index], beforeSameTypeEdit[index]);
+    await rowBadge(3).click({ button: "right" });
+    await page.locator(".sp-ctx-menu").getByText("Delete", { exact: true }).click();
+    await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_3).length === 5, "Remove bulk-edit test duplicate");
+    // On a phone, the delete and Save controls must fit in the editor footer.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator('.sp-badge-row [data-badge-index="2"]').click();
+    await page.locator(".sp-selection-bar").getByRole("button", { name: "Edit", exact: true }).click();
+    const footerFits = await dialog.locator(".sp-btn-row--save").evaluate(footer => {
+      const bounds = footer.getBoundingClientRect();
+      return Array.from(footer.querySelectorAll("button")).every(button => {
+        const rect = button.getBoundingClientRect();
+        return rect.left >= bounds.left - 1 && rect.right <= bounds.right + 1;
+      });
+    });
+    assert(footerFits, "Badge management and Save buttons fit on a phone");
+    await dialog.getByRole("button", { name: "Close badge settings", exact: true }).click();
+    await page.setViewportSize(testCase.viewport);
+    await page.locator(".sp-back-btn .sp-back-hit").click();
+    assert.equal(await page.locator(".sp-badge-row .sp-badge-card").count(), 5);
+    // Export retains both page rows. A browser reload reads them from the native document.
+    await openBackupControls(page);
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const download = await downloadPromise;
+    const exported = JSON.parse(fs.readFileSync(await download.path(), "utf8"));
+    const exportedNative = decodePanelConfig(decodePanelConfigBackupPayload(exported.native_config));
+    assert.equal(exportedNative.settings.badge_row_0, nativeState.document.settings.badge_row_0);
+    assert.equal(exportedNative.settings.badge_row_3, nativeState.document.settings.badge_row_3);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await seedNativeDocument(page, nativeState);
+    await page.waitForFunction(() => document.querySelectorAll(".sp-badge-row .sp-badge-card").length === 5);
+    await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+    for (let remaining = 5; remaining > 0; remaining--) {
+      await page.locator('.sp-badge-row [data-badge-index="0"]').click();
+      await page.locator(".sp-selection-bar").getByRole("button", { name: "Badge actions", exact: true }).click();
+      await page.locator(".sp-ctx-menu").getByText("Delete", { exact: true }).click();
+      await waitForNativeState(nativeState, () => parseBadgeRow(nativeState.document.settings.badge_row_3).length === remaining - 1, "Badge deletion");
+    }
+    assert(!nativeState.document.settings.badge_row_3, "Deleting the last badge removes the row record");
+    assert((await page.locator(".sp-screen").getAttribute("class")).includes("sp-has-badge-row"), "An empty badge row keeps its add affordance above the grid");
+    assert(await addBadgeButton.isVisible(), "The add badge affordance remains after deleting the last badge");
+    await page.locator(".sp-back-btn .sp-back-hit").click();
+    await importBackup(page, exported, "badge-row-restore");
+    await waitForNativeState(nativeState, () => !!nativeState.document.settings.badge_row_3, "Badge row backup restore");
+    assert.deepEqual(nativeState.document.buttons, exportedNative.buttons, "Restoring rows retains the exported cards");
+    await page.getByRole("tab", { name: "Layout", exact: true }).click();
+    // Row-only badges are absent from the card type picker.
+    await page.locator(".sp-main .sp-empty-cell").first().click();
+    assert.equal(await page.locator('[data-card-type="badge"]').count(), 0);
+    assert.deepStrictEqual(errors, [], "Badge settings and save have no browser errors");
+    // Older native firmware must reject a row backup instead of silently
+    // accepting settings that it cannot display.
+    await page.route("**/api/v1/capabilities", route => route.fulfill({ status: 200, contentType: "application/json",
+      body: JSON.stringify({ configuration: { read: true, write: true, document_versions: [1] } }) }));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await seedNativeDocument(page, nativeState);
+    const puts = nativeState.puts.length;
+    await importBackup(page, exported, "badge-unsupported-restore");
+    await page.getByText("This backup includes badge rows. Update the panel firmware before restoring it.", { exact: true }).waitFor();
+    assert.equal(nativeState.puts.length, puts);
+    await page.route("**/api/v1/capabilities", route => route.fulfill({ status: 200, contentType: "application/json",
+      body: JSON.stringify({ configuration: { read: true, write: true, document_versions: [1], badge_rows: true } }) }));
+    await page.route("**/api/v1/config", route => route.fulfill({ status: 503, body: "Unavailable" }));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await seedNativeDocument(page, nativeState);
+    await openBackupControls(page);
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    await page.getByText("Could not load badge rows for the backup. Reload and try exporting again.", { exact: true }).waitFor();
+    assert.deepStrictEqual(errors, [], "Failed row loading and incompatible firmware cause no browser errors");
+  } finally { await context.close(); }
+}
+
 
 async function assertContinuousPreview(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
@@ -7400,6 +8115,7 @@ async function assertS3ForecastEditorLayout(browser) {
       console.log(`Card curve preset checks passed for ${ACTIVE_CASES.length} generated layouts.`);
       return;
     }
+    if (process.env.ESPCONTROL_BADGE_ONLY === "1") { await assertBadgeJourney(browser, ACTIVE_CASES[0]); console.log("Badge checks passed."); return; }
     await assertCardCurveSettings(browser, ACTIVE_CASES[0]);
     for (const testCase of ACTIVE_CASES) {
       await assertContinuousPreview(browser, testCase);
@@ -7428,6 +8144,7 @@ async function assertS3ForecastEditorLayout(browser) {
     await assertResetControls(browser);
     for (const testCase of ACTIVE_CASES) {
       if (!acceptanceOnly) {
+        if (testCase.exerciseInteractions) await assertBadgeJourney(browser, testCase);
         await runCase(browser, testCase);
         await assertMediaModalSettingsJourney(browser, testCase);
       }

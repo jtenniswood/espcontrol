@@ -32,6 +32,7 @@ export function entityMatchesDomains(entityId?: any, domains?: any): boolean {
 }
 
 export interface ButtonSettingsFeature {
+    renderColourSettings(panel: HTMLElement, idPrefix: string, value: () => string, onChange: (hex: string) => void, onReset?: () => void): any;
     openCardSettings(...args: any[]): any;
     renderBackButtonSettings(...args: any[]): any;
     render(...args: any[]): any;
@@ -958,6 +959,7 @@ export function createButtonSettingsFeature(
         container.appendChild(panel);
     }
     return {
+        renderColourSettings,
         openCardSettings,
         renderBackButtonSettings,
         render: renderButtonSettings,

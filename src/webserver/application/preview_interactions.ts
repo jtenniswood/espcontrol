@@ -1,6 +1,8 @@
+import { badgeToCard } from "../model/badge_card";
 import { state } from "../state/app_instance";
 import * as EspControlModel from "../model";
 import { coveredCells } from "../model/grid";
+import { configOptionValue } from "../model/config_primitives";
 import type { CardEditorDraftController } from "../features/card_editor_draft_controller";
 import type { ConfigPersistenceFeature } from "./config_post_api";
 import type { ApplicationLayoutState } from "./application_context";
@@ -417,13 +419,25 @@ export function createPreviewInteractionsFeature(
     }
     // ── Button management (unified) ────────────────────────────────────────
     function firstFreeSlot(this: any) {
+        if (state.badgeRowsSupported && !state.badgeRowsReady) return -1;
         var used: any = {};
+        var badgePages: any = {};
         state.grid.forEach(function (this: any, s?: any) {
             if (s > 0)
                 used[s] = true;
         });
+        Object.values(state.badgeRows).forEach(function (this: any, row?: any) {
+            row.forEach(function (this: any, badge?: any) {
+                if (configOptionValue(badge.options || "", "badge_action") === "subpage") {
+                    var page: any = Number(configOptionValue(badge.options || "", "badge_page"));
+                    if (page > 0) badgePages[page] = true;
+                }
+            });
+        });
         for (var i: any = 1; i <= dependencies.layout.previewSlots; i++) {
-            if (!used[i])
+            var existing: any = state.buttons[i - 1];
+            var hasSubpage: any = existing && existing.type === "subpage" && state.subpages[String(i)];
+            if (!used[i] && !badgePages[i] && !hasSubpage)
                 return i;
         }
         return -1;
@@ -509,6 +523,7 @@ export function createPreviewInteractionsFeature(
         var extraImageCards: any = isImageCard(src) ? 1 : 0;
         if (state.subpages[srcSlot])
             extraImageCards += imageCardCountInSubpage(state.subpages[srcSlot]);
+        extraImageCards += (state.badgeRows[String(srcSlot)] || []).filter(badge => isImageCard(badgeToCard(badge))).length;
         if (!canAddImageCards(extraImageCards)) {
             showImageCardLimitBanner();
             return;
@@ -530,6 +545,8 @@ export function createPreviewInteractionsFeature(
             spCopy.sizes = {};
             buildSubpageGrid(spCopy);
             state.subpages[newSlot] = spCopy;
+            state.badgeRows[String(newSlot)] = (state.badgeRows[String(srcSlot)] || []).map(EspControlModel.cloneCardConfig);
+            configPersistence.saveBadgeRow(newSlot);
         }
         dependencies.requestApi.postText(entityName("button_order"), serializeGrid(state.grid));
         configPersistence.saveButtonConfig(newSlot);

@@ -12,6 +12,7 @@ constexpr int CARD_CONTRACT_VERSION = 1;
 namespace espcontrol::card_runtime {
 
 enum class CardTypeId : uint8_t {
+  BADGE,
   TIMER,
   SWITCH,
   ACTION,
@@ -103,6 +104,7 @@ enum class CardDriverId : uint8_t {
   IMAGE,
   WIFI_QR,
   TIMER,
+  BADGE,
   UNKNOWN,
 };
 
@@ -128,6 +130,7 @@ constexpr bool has_capability(const CardRuntimeSpec &spec, CardCapabilityFlag ca
 }
 
 inline CardTypeId card_type_id(const std::string &type) {
+  if (type == "badge") return CardTypeId::BADGE;
   if (type == "timer") return CardTypeId::TIMER;
   if (type.empty()) return CardTypeId::SWITCH;
   if (type == "action") return CardTypeId::ACTION;
@@ -177,6 +180,7 @@ inline CardTypeId card_type_id(const std::string &type) {
 
 inline CardRuntimeSpec card_runtime_spec(CardTypeId type) {
   switch (type) {
+    case CardTypeId::BADGE: return {type, CardDriverId::BADGE, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_NUMERIC_CONTROL | CAPABILITY_MODAL | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::TIMER: return {type, CardDriverId::TIMER, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::SWITCH: return {type, CardDriverId::TOGGLE, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_SUBPAGE)};
     case CardTypeId::ACTION: return {type, CardDriverId::ACTION, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
@@ -301,6 +305,12 @@ inline const char *const CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS[] = {"today",
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ACTIONS = "actions";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ACTIVE_COLOR = "active_color";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ALARM_CARD_TYPE = "alarm_card_type";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_BADGE_ACTION = "badge_action";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_BADGE_ATTRIBUTE = "badge_attribute";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_BADGE_CARD_TYPE = "badge_card_type";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_BADGE_DECIMALS = "badge_decimals";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_BADGE_DISPLAY = "badge_display";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_BADGE_PAGE = "badge_page";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CENTER_CLOCK = "center_clock";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CLIMATE_TABS = "climate_tabs";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CONFIRM_MESSAGE = "confirm_message";
@@ -573,6 +583,7 @@ inline bool card_contract_alarm_action_legacy_icon_name(const std::string &mode,
 }
 
 inline const char *card_contract_card_label(const std::string &type) {
+  if (type == "badge") return "Badge";
   if (type == "timer") return "Timer";
   if (type == "") return "Switch";
   if (type == "action") return "Action";
@@ -621,6 +632,7 @@ inline const char *card_contract_card_label(const std::string &type) {
 }
 
 inline bool card_contract_allow_in_subpage(const std::string &type) {
+  if (type == "badge") return true;
   if (type == "timer") return true;
   if (type == "") return true;
   if (type == "action") return true;
@@ -669,6 +681,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
 }
 
 inline const char *card_contract_default_icon_name(const std::string &type) {
+  if (type == "badge") return "Auto";
   if (type == "timer") return "Auto";
   if (type == "") return "Auto";
   if (type == "action") return "Flash";
@@ -717,6 +730,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
 }
 
 inline const char *card_contract_default_icon_on_name(const std::string &type) {
+  if (type == "badge") return "Auto";
   if (type == "timer") return "Auto";
   if (type == "") return "Auto";
   if (type == "action") return "Auto";
@@ -797,6 +811,7 @@ inline bool card_contract_large_numbers_supported(const std::string &type, const
 
 inline const char *card_contract_subpage_type_code(const std::string &type) {
   if (type == "timer") return "TM";
+  if (type == "badge") return "BD";
   if (type == "action") return "A";
   if (type == "calendar") return "D";
   if (type == "clock") return "CK";
@@ -841,6 +856,7 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
 
 inline std::string card_contract_subpage_type_from_code(const std::string &code) {
   if (code == "TM") return "timer";
+  if (code == "BD") return "badge";
   if (code == "A") return "action";
   if (code == "D") return "calendar";
   if (code == "CK") return "clock";

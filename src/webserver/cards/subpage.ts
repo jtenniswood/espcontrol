@@ -161,7 +161,7 @@ export function registerSubpageCardTypes(
                 helpers.renderCardEntityField(panel, b, helpers, {
                     entity: SUBPAGE_CARD_METADATA.presetEntity,
                 });
-                appendEditSubpageButton(panel, slot);
+                appendEditSubpageButton(panel, slot, helpers.editSubpage);
                 return;
             }
             var mode: any = subpageStateDisplayMode(b);
@@ -318,7 +318,7 @@ export function registerSubpageCardTypes(
                 setMode(this.checked ? (mode === "off" ? "icon" : mode) : "off", true);
             });
             setMode(mode, false);
-            appendEditSubpageButton(panel, slot);
+            appendEditSubpageButton(panel, slot, helpers.editSubpage);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             var defaults: any = subpagePresetDefaults(subpageKind(b));
@@ -363,11 +363,14 @@ export function registerSubpageCardTypes(
             SUBPAGE_CARD_METADATA.preview.badge +
             '"></span></span>';
     }
-    function appendEditSubpageButton(this: any, panel?: any, slot?: any) {
+    function appendEditSubpageButton(this: any, panel?: any, slot?: any, editSubpage?: () => void) {
         var configBtn: any = document.createElement("button");
         configBtn.className = "sp-action-btn sp-edit-subpage-btn";
         configBtn.textContent = "Edit Subpage";
-        configBtn.addEventListener("click", function (this: any) { selection.closeSettings(); enterSubpage(slot); });
+        configBtn.addEventListener("click", function (this: any) {
+            if (editSubpage) editSubpage();
+            else { selection.closeSettings(); enterSubpage(slot); }
+        });
         panel.appendChild(configBtn);
     }
 }

@@ -130,6 +130,7 @@ bool PanelConfigTextBindings::apply_document(const uint8_t *document,
   uint32_t subpage_slots = 0;
   bool has_button_order = false;
   bool has_button_on_color = false;
+  espcontrol::badge::Rows badge_rows;
   PanelConfigRecord record;
   PanelConfigStatus status = PanelConfigStatus::OK;
   while ((status = reader.next(&record)) == PanelConfigStatus::OK) {
@@ -184,6 +185,9 @@ bool PanelConfigTextBindings::apply_document(const uint8_t *document,
         return false;
       }
       has_button_on_color = true;
+    } else if (record.type == PanelConfigRecordType::SETTING) {
+      const int page = espcontrol::badge::page_for_key(record.key, record.key_size);
+      if (page >= 0) badge_rows[page].assign(reinterpret_cast<const char *>(record.value), record.value_size);
     }
   }
   if (status != PanelConfigStatus::END) return false;
@@ -204,6 +208,7 @@ bool PanelConfigTextBindings::apply_document(const uint8_t *document,
       if (chunk != nullptr && !write_value(chunk, "", 0, persist)) return false;
     }
   }
+  if (!persist && badge_rows_callback_ && !badge_rows_callback_(badge_rows)) return false;
   return true;
 }
 

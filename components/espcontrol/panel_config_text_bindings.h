@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <functional>
+#include "badge_row_config.h"
 
 #include "panel_config_document.h"
 
@@ -43,6 +45,9 @@ class PanelConfigTextBindings {
                       size_t *document_size) const;
   bool persist_document(const uint8_t *document, size_t document_size);
   bool publish_document(const uint8_t *document, size_t document_size);
+  void set_badge_rows_callback(std::function<bool(const espcontrol::badge::Rows &)> callback) {
+    badge_rows_callback_ = std::move(callback);
+  }
 
  private:
   struct ButtonSources {
@@ -56,6 +61,7 @@ class PanelConfigTextBindings {
                           size_t value_size, bool persist);
 
   std::string device_profile_;
+  std::function<bool(const espcontrol::badge::Rows &)> badge_rows_callback_;
   PanelConfigTextValue *button_order_{nullptr};
   PanelConfigTextValue *button_on_color_{nullptr};
   std::array<ButtonSources, PANEL_CONFIG_MAX_SLOT_COUNT> buttons_{};

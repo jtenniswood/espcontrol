@@ -3,9 +3,121 @@
   "lifecycleVocabulary": {
     "subscriptions": ["none", "state", "attributes", "local", "time", "action_response", "http"],
     "actions": ["none", "home_assistant_service", "local", "http", "navigation", "modal"],
-    "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "wifi_qr", "weather"]
+    "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "wifi_qr", "weather", "badge"]
   },
   "types": {
+    "badge": {
+      "classification": "canonical",
+      "canonicalType": "badge",
+      "webRegistration": "badge",
+      "firmwareFamily": "BADGE",
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "none"
+        ],
+        "modalOwner": "none"
+      },
+      "modes": [
+        {
+          "name": "label",
+          "config": {
+            "label": "Kitchen",
+            "precision": "label"
+          }
+        },
+        {
+          "name": "value",
+          "config": {
+            "sensor": "sensor.temperature",
+            "precision": "value"
+          }
+        },
+        {
+          "name": "subpage",
+          "config": {
+            "options": "badge_action=subpage,badge_page=2"
+          },
+          "lifecycle": {
+            "subscriptions": [
+              "state",
+              "attributes"
+            ],
+            "actions": [
+              "navigation"
+            ],
+            "modalOwner": "none"
+          }
+        },
+        {
+          "name": "modal",
+          "config": {
+            "entity": "climate.example",
+            "options": "badge_action=modal"
+          },
+          "lifecycle": {
+            "subscriptions": [
+              "state",
+              "attributes"
+            ],
+            "actions": [
+              "modal"
+            ],
+            "modalOwner": "badge"
+          }
+        },
+        {
+          "name": "toggle",
+          "config": {
+            "entity": "light.example",
+            "options": "badge_action=toggle"
+          },
+          "lifecycle": {
+            "subscriptions": [
+              "state",
+              "attributes"
+            ],
+            "actions": [
+              "home_assistant_service"
+            ],
+            "modalOwner": "none"
+          }
+        },
+        {
+          "name": "button",
+          "config": {
+            "entity": "button.example",
+            "options": "badge_action=button"
+          },
+          "lifecycle": {
+            "subscriptions": ["state", "attributes"],
+            "actions": ["home_assistant_service"],
+            "modalOwner": "none"
+          }
+        },
+        {
+          "name": "slider",
+          "config": {
+            "entity": "light.example",
+            "precision": "value",
+            "options": "badge_action=slider"
+          },
+          "lifecycle": {
+            "subscriptions": [
+              "state",
+              "attributes"
+            ],
+            "actions": [
+              "home_assistant_service"
+            ],
+            "modalOwner": "none"
+          }
+        }
+      ]
+    },
     "timer": {
       "classification": "canonical",
       "canonicalType": "timer",

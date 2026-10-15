@@ -9,6 +9,7 @@ This generated reference lists stable setup facts from the shared card contract.
 
 | Card | Type | Entity domains | Subpages | Picker grouping | Main modes and options | Status |
 |---|---|---|---|---|---|---|
+| Badge | badge | None | Yes | Own picker item | Badge Display: card, label, value; Value Attribute; Decimal Places: 0, 1, 2; Lit When Active | Visible |
 | Timer | timer | timer | Yes | Own picker item | None | Visible |
 | Switch | switch | light, switch, input_boolean, fan | Yes | Own picker item | Large Active Display Numbers; Confirmation Required: default, off, on, both; On State Pattern: default, stripes; Message; Confirm Button; Cancel Button | Visible |
 | Action | action | scene, script, automation, button, input_button, input_boolean, number, input_number, input_select, select | Yes | Own picker item | Large State Numbers; Confirmation Required; Fields; Message; Confirm Button; Cancel Button | Visible |

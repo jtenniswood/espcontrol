@@ -142,6 +142,20 @@ inline void attach(lv_obj_t *obj) {
   update(obj, *binding);
 }
 
+inline void detach(lv_obj_t *obj) {
+  if (!obj) return;
+  for (uint32_t i = 0; i < lv_obj_get_event_count(obj); ++i) {
+    auto *event = lv_obj_get_event_dsc(obj, i);
+    if (lv_event_dsc_get_cb(event) != on_event) continue;
+    auto *binding = static_cast<Binding *>(lv_event_dsc_get_user_data(event));
+    lv_obj_remove_event_cb_with_user_data(obj, on_event, binding);
+    lv_obj_set_style_bitmap_mask_src(obj, nullptr, LV_PART_MAIN);
+    release(binding->mask);
+    delete binding;
+    return;
+  }
+}
+
 }  // namespace espcontrol::corners
 
 inline void apply_continuous_card_corners(lv_obj_t *obj) {
@@ -150,8 +164,10 @@ inline void apply_continuous_card_corners(lv_obj_t *obj) {
 inline bool card_uses_continuous_corners(lv_obj_t *obj) {
   return espcontrol::corners::binding_for(obj) != nullptr;
 }
+inline void remove_continuous_card_corners(lv_obj_t *obj) { espcontrol::corners::detach(obj); }
 #else
 inline void apply_continuous_card_corners(lv_obj_t *) {}
+inline void remove_continuous_card_corners(lv_obj_t *) {}
 inline bool card_uses_continuous_corners(lv_obj_t *) { return false; }
 #endif
 

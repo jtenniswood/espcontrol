@@ -73,6 +73,7 @@ WEB_ASSET_LEGACY_BUNDLE_PATH = f"bundles/{WEB_ASSET_LEGACY_BUNDLE_ID}/www.js"
 # read directly from product/v2/icons.json below.
 WEB_FIXED_MDI_ICON_CODEPOINTS = {
     "alarm": "F0020", "album": "F0025", "alert": "F0026", "api": "F109B", "arrow-expand-all": "F004C",
+    "arrow-left": "F004D", "arrow-right": "F0054",
     "arrow-top-right": "F005C", "blur": "F00B5", "calendar": "F00ED", "calendar-clock": "F00F0",
     "calendar-month": "F0E17", "cancel": "F073A", "card": "F0B6F", "card-outline": "F0B76",
     "chip": "F061A", "clipboard-outline": "F014C", "clock": "F0954", "code-json": "F0626",

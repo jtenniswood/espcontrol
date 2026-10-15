@@ -272,10 +272,49 @@ bool twenty_slot_document_reaches_order_and_subpage_settings() {
          order.persistent_writes == 1 && on_color.persistent_writes == 1;
 }
 
+bool badge_rows_publish_separately_and_clear_when_removed() {
+  FakeText order("1");
+  FakeText button("light.kitchen;Kitchen");
+  PanelConfigTextBindings bindings;
+  bindings.set_device_profile("panel");
+  bindings.set_button_order(&order);
+  bindings.set_button(1, &button, {});
+  espcontrol::badge::Rows applied;
+  int publishes = 0;
+  bindings.set_badge_rows_callback([&](const espcontrol::badge::Rows &rows) {
+    applied = rows; ++publishes; return true;
+  });
+  std::array<uint8_t, 512> document{};
+  PanelConfigWriter writer(document.data(), document.size());
+  size_t size = 0;
+  if (writer.begin() != PanelConfigStatus::OK ||
+      writer.append_device_profile(reinterpret_cast<const uint8_t *>("panel"), 5) != PanelConfigStatus::OK ||
+      writer.append_button(1, reinterpret_cast<const uint8_t *>(button.value().data()), button.value().size()) != PanelConfigStatus::OK ||
+      writer.append_setting(reinterpret_cast<const uint8_t *>("button_order"), 12, reinterpret_cast<const uint8_t *>("1"), 1) != PanelConfigStatus::OK ||
+      writer.append_setting(reinterpret_cast<const uint8_t *>("badge_row_0"), 11, reinterpret_cast<const uint8_t *>("~|BD,,Home"), 10) != PanelConfigStatus::OK ||
+      writer.append_setting(reinterpret_cast<const uint8_t *>("badge_row_3"), 11, reinterpret_cast<const uint8_t *>("~|BD,,Room"), 10) != PanelConfigStatus::OK ||
+      writer.finish(&size) != PanelConfigStatus::OK) return false;
+  if (!bindings.persist_document(document.data(), size) || publishes != 0) return false;
+  if (!bindings.publish_document(document.data(), size) || publishes != 1 ||
+      applied[0] != "~|BD,,Home" || applied[3] != "~|BD,,Room" ||
+      order.value() != "1" || button.value() != "light.kitchen;Kitchen" ||
+      order.persistent_writes != 0 || button.persistent_writes != 0) return false;
+  // Loading a document without row settings removes any previously active rows.
+  if (writer.begin() != PanelConfigStatus::OK ||
+      writer.append_device_profile(reinterpret_cast<const uint8_t *>("panel"), 5) != PanelConfigStatus::OK ||
+      writer.finish(&size) != PanelConfigStatus::OK ||
+      !bindings.publish_document(document.data(), size)) return false;
+  return publishes == 2 && applied == espcontrol::badge::Rows{} &&
+    espcontrol::badge::page_for_key(reinterpret_cast<const uint8_t *>("badge_row_32"), 12) == 32 &&
+    espcontrol::badge::page_for_key(reinterpret_cast<const uint8_t *>("badge_row_03"), 12) == -1 &&
+    espcontrol::badge::page_for_key(reinterpret_cast<const uint8_t *>("badge_row_33"), 12) == -1;
+}
+
 }  // namespace
 
 int main() {
   return imports_legacy_button_subpage_and_order() &&
+                 badge_rows_publish_separately_and_clear_when_removed() &&
                  native_document_mirrors_back_to_legacy_entities_for_downgrade() &&
                  native_document_updates_live_grid_without_writing_legacy_preferences() &&
                  twenty_slot_document_reaches_order_and_subpage_settings()

@@ -67,6 +67,11 @@ Examples of the current ratios:
 The firmware role names in `devices/manifest.json` remain usage-based because
 they describe generated UI wiring. They should map to the generic style IDs:
 
+Badge rows use `badgeLabel: font_text_body`, the same Roboto font as card labels.
+Each device's `web.btn.badgeLabelScale` is `1` so the web preview and firmware
+use the same text size for the badge's single line of label or live state.
+No extra font asset is needed.
+
 | Role | Typical style ID |
 | --- | --- |
 | `icon` | `font_icon_main` |
