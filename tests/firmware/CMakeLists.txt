@@ -678,3 +678,6 @@ add_test(NAME clock_bar_layout_test COMMAND clock_bar_layout_test)
 add_test(NAME clock_bar_configuration_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/clock_bar_configuration_test.py)
+add_test(NAME clock_bar_settings_order_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/clock_bar_settings_order_test.py)

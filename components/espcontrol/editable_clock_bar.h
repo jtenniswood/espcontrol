@@ -15,6 +15,8 @@ struct Runtime {
   lv_obj_t *temperature = nullptr, *clock = nullptr, *network = nullptr, *night = nullptr, *settings = nullptr, *battery = nullptr;
   int height = 40;
   bool active = false, night_active = false;
+  bool rebuilding = false, raising_settings = false;
+  lv_obj_t *settings_layer = nullptr;
   uint32_t generation = 0;
 };
 inline Runtime &runtime() { static Runtime value; return value; }
@@ -22,6 +24,25 @@ inline void hide() {
   auto &state = runtime();
   for (auto &widget : state.widgets) clock_bar_set_widget_hidden(widget.box, true);
   clock_bar_set_widget_hidden(state.title, true);
+}
+// One coordinator owns all editable settings shortcuts. Moving a child emits another
+// CHILD_CHANGED event, so suppress re-entry while restoring their shared foreground order.
+inline void raise_settings() {
+  auto &state = runtime();
+  if (!state.active || state.rebuilding || state.raising_settings) return;
+  state.raising_settings = true;
+  for (auto &widget : state.widgets) {
+    if (widget.config.type == "network") clock_bar_raise_settings_button(widget.box);
+  }
+  state.raising_settings = false;
+}
+inline void register_settings_access(lv_obj_t *layer) {
+  auto &state = runtime();
+  if (!layer || state.settings_layer == layer) return;
+  state.settings_layer = layer;
+  lv_obj_add_event_cb(layer, [](lv_event_t *event) {
+    if (lv_event_get_target(event) == runtime().settings_layer) raise_settings();
+  }, LV_EVENT_CHILD_CHANGED, nullptr);
 }
 inline void bind() {
   auto &state = runtime();
@@ -41,12 +62,13 @@ inline void bind() {
 }
 inline void rebuild(const std::string &serialized, const std::vector<Element> &items) {
   auto &state = runtime();
+  state.rebuilding = true;
   ha_reset_subscription_callbacks(SUBSCRIPTION_SCOPE);
   for (auto &widget : state.widgets) if (widget.box) lv_obj_del(widget.box);
   state.widgets.clear();
   state.serialized = serialized;
   state.active = !serialized.empty();
-  if (!state.active) { hide(); return; }
+  if (!state.active) { hide(); state.rebuilding = false; return; }
   lv_obj_t *layer = lv_obj_get_parent(state.settings);
   if (!state.title) {
     state.title = lv_label_create(layer);
@@ -72,11 +94,11 @@ inline void rebuild(const std::string &serialized, const std::vector<Element> &i
         // Preserve the established Settings navigation, including modal dismissal.
         lv_obj_send_event(runtime().settings, LV_EVENT_PRESSED, nullptr);
       }, LV_EVENT_PRESSED, nullptr);
-      clock_bar_enable_settings_access(widget.box);
     }
     clock_bar_set_widget_hidden(widget.box, true);
     state.widgets.push_back(std::move(widget));
   }
+  state.rebuilding = false;
   bind();
 }
 inline int text_width(lv_obj_t *label, const std::string &text) {
@@ -160,14 +182,15 @@ inline void refresh(bool visible) {
     lv_obj_set_size(widget.box, placement.width, state.height);
     lv_obj_align(widget.box, LV_ALIGN_TOP_LEFT, margin + placement.x, 0);
     clock_bar_set_widget_hidden(widget.box, false);
-    if (widget.config.type == "network") clock_bar_raise_settings_button(widget.box);
   }
+  raise_settings();
 }
 inline bool apply(const std::string &serialized, bool visible, int height, lv_obj_t *temperature, lv_obj_t *clock,
                   lv_obj_t *network, lv_obj_t *night, lv_obj_t *settings, bool night_active, lv_obj_t *battery = nullptr) {
   auto &state = runtime();
   state.temperature = temperature; state.clock = clock; state.network = network; state.night = night;
   state.settings = settings; state.height = height; state.night_active = night_active; state.battery = battery;
+  if (!serialized.empty()) register_settings_access(lv_obj_get_parent(settings));
   if (state.serialized != serialized) {
     std::vector<Element> items;
     if (!parse(serialized, items)) return state.active;
