@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Verify every icon codepoint used in components/espcontrol/*_status.h is
-present in the compiled font_icon_status glyph subset.
+"""Verify built-in status glyphs and the editable clock bar icon catalogue.
 
-ESPHome subsets the compiled LVGL font to only the codepoints listed in
-common/assets/network_status_glyphs.yaml. A codepoint used in C++ but missing
-from that list silently renders as a blank "tofu box" on-device instead of
-failing to compile - this check catches that before it ships.
+ESPHome subsets LVGL fonts to their configured glyph lists. Missing symbols
+silently render blank on-device. Check the built-in indicator subset, and
+ensure each panel's clock bar font includes the full sensor icon catalogue.
 
 Usage:
     python scripts/check_status_icon_glyphs.py       # exit 1 if any codepoint is missing
@@ -27,6 +25,19 @@ def codepoints_in(text: str) -> set[str]:
 
 def main():
     glyph_codepoints = codepoints_in(GLYPHS_YAML.read_text())
+    full_glyphs = codepoints_in((ROOT / "common/assets/icon_glyphs.yaml").read_text())
+    # Clock bar sensor icons share the searchable card catalogue. Their font must
+    # include that whole catalogue as well as the existing built-in indicators.
+    if glyph_codepoints - full_glyphs:
+        print("ERROR: shared icon font is missing clock bar status glyphs:", sorted(glyph_codepoints - full_glyphs))
+        return 1
+    for path in sorted((ROOT / "devices").glob("*/device/fonts.yaml")):
+        text = path.read_text()
+        font_id = "font_icon_clock_bar" if "id: font_icon_clock_bar\n" in text else "font_icon_status"
+        block = re.search(rf"id: {font_id}\n\s*size: \d+\n\s*bpp: \d+\n\s*glyphs: !include (.+)", text)
+        if not block or not block.group(1).strip().endswith("common/assets/icon_glyphs.yaml"):
+            print(f"ERROR: {path.relative_to(ROOT)}: {font_id} must include the full sensor icon catalogue")
+            return 1
 
     missing: dict[str, set[str]] = {}
     for header in sorted(COMPONENTS_DIR.glob("*_status.h")):

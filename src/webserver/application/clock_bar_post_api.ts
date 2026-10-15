@@ -123,3 +123,24 @@ export function createClockBarPostApiFeature(
         postSubpageChevron,
     };
 }
+
+/** Undefined confirms unsupported firmware; failed discovery throws so backups cannot mistake it for a legacy layout. */
+export async function loadEditableClockBarLayout(
+    request: typeof fetch,
+    wait: (milliseconds: number) => Promise<void> = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)),
+): Promise<unknown> {
+    for (let attempt = 0; attempt < 4; attempt++) {
+        const capabilities = await request("/api/v1/capabilities", { credentials: "include", cache: "no-store" });
+        if (capabilities.status === 503 && attempt < 3) { await wait(2000); continue; }
+        if (capabilities.status === 404) return undefined;
+        if (!capabilities.ok) throw new Error("Could not discover clock bar support.");
+        const support = await capabilities.json();
+        if (!support || typeof support !== "object" || Array.isArray(support)) throw new Error("Invalid clock bar capabilities.");
+        if (support.clock_bar?.version !== 1) return undefined;
+        const response = await request("/api/v1/clock-bar", { credentials: "include", cache: "no-store" });
+        if (response.status === 503 && attempt < 3) { await wait(2000); continue; }
+        if (!response.ok) throw new Error("Could not read the clock bar layout.");
+        return response.json();
+    }
+    throw new Error("Could not discover clock bar support.");
+}

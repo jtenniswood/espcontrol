@@ -1,3 +1,4 @@
+import { createClockBarEditor } from "./clock_bar_editor";
 import { state } from "../state/app_instance";
 import type { UiRuntimeState } from "./state";
 import type { ClockBarFeature } from "./clock_bar_state";
@@ -19,6 +20,9 @@ export interface ButtonSettingsSelectionFeature {
     openSelectedCardSettings(): void;
     selectClockBarItem(item?: any): void;
     openClockBarTemperatureSettings(): void;
+    openClockBarEditor(id?: string): void;
+    deleteClockBarItem(id: string): Promise<boolean>;
+    duplicateClockBarItem(id: string): Promise<void>;
 }
 
 export interface ButtonSettingsSelectionDependencies {
@@ -43,6 +47,9 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
         saveTemperatureSettings: saveClockBarTemperatureSettings,
         setItemVisible: setClockBarItemVisible,
     } = clockBar;
+    const editor = createClockBarEditor(runtime, clockBar, {
+        entityInput, locked: isConfigLocked, close: closeSettings,
+    });
     // ── Button Settings Selection ─────────────────────────────────────
     function hideSettingsOverlay(this: any) {
         if (els.settingsOverlay)
@@ -70,6 +77,19 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
         if (!els.selectionBar || !state.clockBarSelectedItem)
             return false;
         els.selectionBar.className = "sp-selection-bar sp-visible";
+        if (state.clockBarLayoutSupported) {
+            els.selectionBar.classList.add("sp-clockbar-selection");
+            const id = state.clockBarSelectedItem;
+            const label = document.createElement("span"); label.className = "sp-selection-label"; label.textContent = clockBarItemLabel(id) + " selected";
+            els.selectionBar.appendChild(label);
+            const actions = document.createElement("div"); actions.className = "sp-selection-actions";
+            for (const [text, action] of [["Edit", () => editor.open(id)], ["Duplicate", () => editor.duplicate(id)], ["Delete", () => editor.remove(id)], ["Add element", () => editor.open()]] as const) {
+                const button = createActionButton("sp-selection-btn", text);
+                button.disabled = state.clockBarLayoutSaving;
+                button.addEventListener("click", () => { if (!isConfigLocked() && !state.clockBarLayoutSaving) void action(); }); actions.appendChild(button);
+            }
+            els.selectionBar.appendChild(actions); return true;
+        }
         var canEditClockBarItem: any = isClockBarTemperatureItem(state.clockBarSelectedItem) ||
             state.clockBarSelectedItem === "voice";
         var label: any = document.createElement("span");
@@ -112,6 +132,11 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
         els.selectionBar.innerHTML = "";
         if (!isConfigLocked() && renderClockBarSelectionBar())
             return;
+        if (!isConfigLocked() && !c.selected.length && state.clockBarLayoutSupported && state.clockBarOn) {
+            els.selectionBar.className = "sp-selection-bar sp-visible sp-clockbar-selection";
+            const manage = createActionButton("sp-selection-btn", "Manage clock bar"); manage.addEventListener("click", () => editor.open()); els.selectionBar.appendChild(manage);
+            return;
+        }
         if (isConfigLocked() || !c.selected.length) {
             els.selectionBar.className = "sp-selection-bar";
             return;
@@ -186,6 +211,7 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
         if (isConfigLocked())
             return;
         if (state.clockBarSelectedItem) {
+            if (state.clockBarLayoutSupported) { editor.open(state.clockBarSelectedItem); return; }
             if (isClockBarTemperatureItem(state.clockBarSelectedItem))
                 openClockBarTemperatureSettings();
             if (state.clockBarSelectedItem === "voice")
@@ -263,5 +289,8 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
         openSelectedCardSettings,
         selectClockBarItem,
         openClockBarTemperatureSettings,
+        openClockBarEditor: editor.open,
+        deleteClockBarItem: editor.remove,
+        duplicateClockBarItem: editor.duplicate,
     };
 }

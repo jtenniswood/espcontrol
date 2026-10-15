@@ -42,6 +42,7 @@
     },
     "panelNormalized": {
       "indoorTempEnable": false, "outdoorTempEnable": false, "indoorTempEntity": "", "outdoorTempEntity": "",
+      "clockBarLayout": null,
       "clockBarTemperatureEntities": [], "clockBar": false, "clockBarTime": true, "clockBarNightMode": false, "networkStatusIcon": true,
       "voiceServices": false, "alarmDelayAudio": false, "alarmDelayTts": true,
       "alarmDelayEntryAnnouncement": "Please disarm the alarm",

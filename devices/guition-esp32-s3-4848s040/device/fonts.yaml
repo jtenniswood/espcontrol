@@ -25,7 +25,7 @@ font:
     id: font_icon_status
     size: 24
     bpp: 4
-    glyphs: !include ../../../common/assets/network_status_glyphs.yaml
+    glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
   # Main labels and setup body text
   - file: "gfonts://Roboto"

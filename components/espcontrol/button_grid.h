@@ -68,3 +68,5 @@
 #include "button_grid_grid.h"
 
 #include "button_grid_remote_modal.h"
+
+#include "editable_clock_bar.h"

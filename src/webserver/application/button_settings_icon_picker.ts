@@ -1,7 +1,7 @@
 import { iconOptions as ICON_OPTIONS, iconSlug, mdiIcon, textSpan } from "./ui_primitives";
 
 export interface ButtonSettingsIconPickerFeature {
-    init(picker: any, currentIcon: any, onSelect: (icon: any) => void): void;
+    init(picker: any, currentIcon: any, onSelect: (icon: any) => void, options?: readonly string[]): void;
 }
 
 export function createButtonSettingsIconPickerFeature(
@@ -10,7 +10,7 @@ export function createButtonSettingsIconPickerFeature(
 ): ButtonSettingsIconPickerFeature {
     // ── Button Settings Icon Picker ───────────────────────────────────
     // ── Icon picker (optimized) ────────────────────────────────────────────
-    function initIconPicker(this: any, picker?: any, currentIcon?: any, onSelect?: any) {
+    function initIconPicker(this: any, picker?: any, currentIcon?: any, onSelect?: any, options: readonly string[] = ICON_OPTIONS) {
         var input: any = picker.querySelector(".sp-icon-picker-input");
         var dropdown: any = picker.querySelector(".sp-icon-dropdown");
         var preview: any = picker.querySelector(".sp-icon-picker-preview");
@@ -22,7 +22,7 @@ export function createButtonSettingsIconPickerFeature(
                 return;
             optionEls = [];
             var frag: any = document.createDocumentFragment();
-            ICON_OPTIONS.forEach(function (this: any, opt?: any) {
+            options.forEach(function (this: any, opt?: any) {
                 var row: any = document.createElement("div");
                 row.className = "sp-icon-option" + (opt === currentIcon ? " sp-active" : "");
                 row.appendChild(mdiIcon(opt, "sp-icon-option-icon mdi"));

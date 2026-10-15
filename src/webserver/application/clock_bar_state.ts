@@ -1,3 +1,4 @@
+import { CLOCK_BAR_CATALOG, createClockBarElement, parseClockBarLayout, type ClockBarType, type ClockBarLayout } from "../model/clock_bar";
 import { state } from "../state/app_instance";
 import { normalizeTemperatureUnit } from "../model/settings";
 import type { ClockBarController } from "../features/clock_bar_controller";
@@ -6,6 +7,11 @@ import type { CoreFeature } from "./core";
 import type { EnvironmentStateFeature } from "./environment_state";
 
 export interface ClockBarFeature {
+    loadLayout(): Promise<void>;
+    ensureLayoutLoaded(): Promise<void>;
+    availableTypes(): ClockBarType[];
+    layout(): ClockBarLayout;
+    saveLayout(layout: ClockBarLayout): Promise<boolean>;
     controllerState(): any;
     applyControllerState(next?: any): void;
     uiState(): any;
@@ -33,6 +39,9 @@ export function createClockBarFeature(
     core: Pick<CoreFeature, "syncPreviewGridTop">,
     environment: EnvironmentStateFeature,
     dependencies: {
+        getLayout(): Promise<unknown>;
+        postLayout(value: string): Promise<boolean>;
+        batterySupported(): boolean;
         hideSettingsOverlay(): void;
         timezoneId(value?: any): string;
         postTemperatureEntities(value: string): void;
@@ -54,6 +63,67 @@ export function createClockBarFeature(
     const { syncPreviewGridTop } = core;
     const els = runtime.els;
     const { effectiveTimezoneOptionForWeb, voiceServicesUiState, setVoiceServicesEnabled } = environment;
+    function currentLayout(): ClockBarLayout {
+        if (state.clockBarLayout) return state.clockBarLayout;
+        const items: import("../model/clock_bar").ClockBarElement[] = [];
+        if (clockBarTemperatureVisible()) {
+            const item = createClockBarElement("temperature", "left", items);
+            item.entity = primaryClockBarTemperatureEntity();
+            item.unit = clockBarTemperatureUnitSymbol();
+            item.precision = 0;
+            items.push(item);
+        }
+        if (state.clockBarTimeOn) items.push(createClockBarElement("time", "middle", items));
+        if (state.networkStatusOn) items.push(createClockBarElement("network", "right", items));
+        if (state.clockBarNightModeOn) items.push(createClockBarElement("night", "right", items));
+        if (state.batteryStatusOn && dependencies.batterySupported()) items.push(createClockBarElement("device_battery", "right", items));
+        return { version: 1, items };
+    }
+    let layoutRevision = 0;
+    let discoveryKnown = false;
+    let loading: Promise<void> | null = null;
+    function loadLayout(): Promise<void> {
+        if (loading) return loading;
+        const revision = layoutRevision;
+        loading = (async () => {
+            try {
+                const value = await dependencies.getLayout();
+                if (revision !== layoutRevision || state.clockBarLayoutSaving) return;
+                if (value !== undefined && (!value || typeof value !== "object")) throw new Error("Invalid clock bar layout response.");
+                const next = value === undefined || (value && typeof value === "object" && "legacy" in value && value.legacy === true) ? null : parseClockBarLayout(value);
+                state.clockBarLayoutSupported = value !== undefined;
+                state.clockBarLayout = next;
+                if (state.clockBarLayoutSupported && !currentLayout().items.some(item => item.id === state.clockBarSelectedItem))
+                    state.clockBarSelectedItem = "";
+                discoveryKnown = true;
+                syncClockBarUi();
+            } catch {
+                if (revision === layoutRevision) discoveryKnown = false;
+            }
+        })().finally(() => { loading = null; });
+        return loading;
+    }
+    async function ensureLayoutLoaded(): Promise<void> {
+        if (loading) await loading;
+        if (!discoveryKnown) await loadLayout();
+        if (!discoveryKnown) throw new Error("Could not read the clock bar configuration. Please try the backup again.");
+    }
+    async function saveLayout(layout: ClockBarLayout): Promise<boolean> {
+        if (!state.clockBarLayoutSupported || state.clockBarLayoutSaving) return false;
+        const normalized = parseClockBarLayout(layout)!;
+        layoutRevision++;
+        state.clockBarLayoutSaving = true;
+        try {
+            if (!await dependencies.postLayout(JSON.stringify(normalized))) return false;
+            state.clockBarLayout = normalized;
+            discoveryKnown = true;
+            if (!normalized.items.some(item => item.id === state.clockBarSelectedItem)) state.clockBarSelectedItem = "";
+            return true;
+        } finally {
+            state.clockBarLayoutSaving = false;
+            syncClockBarUi();
+        }
+    }
     // ── Clock Bar State ───────────────────────────────────────────────────
     var clockBarControllerInstance: ClockBarController = clockBarController;
     function clockBarControllerState(this: any) {
@@ -268,8 +338,11 @@ export function createClockBarFeature(
             els.setClockBarToggle.checked = uiState.previewVisible;
         if (els.setClockBarTimeToggle)
             els.setClockBarTimeToggle.checked = !!state.clockBarTimeOn;
-        if (els.setClockBarNightModeToggle)
+        if (els.setClockBarNightModeToggle) {
             els.setClockBarNightModeToggle.checked = !!state.clockBarNightModeOn;
+            const row = els.setClockBarNightModeToggle.closest(".sp-toggle-row");
+            if (row) row.hidden = state.clockBarLayout !== null;
+        }
         if (els.setNetworkStatusToggle) {
             els.setNetworkStatusToggle.checked = !!state.networkStatusOn;
         }
@@ -301,6 +374,11 @@ export function createClockBarFeature(
         dependencies.updateTemperaturePreview();
     }
     return {
+        loadLayout,
+        ensureLayoutLoaded,
+        availableTypes: () => (Object.keys(CLOCK_BAR_CATALOG) as ClockBarType[]).filter(type => type !== "device_battery" || dependencies.batterySupported()),
+        layout: currentLayout,
+        saveLayout,
         controllerState: clockBarControllerState,
         applyControllerState: applyClockBarControllerState,
         uiState: clockBarUiState,

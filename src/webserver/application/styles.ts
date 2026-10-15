@@ -53,6 +53,18 @@ export function createWebStyles(dragAnimation: boolean): string {
         "box-sizing:border-box;display:flex;align-items:center;gap:.5cqw;padding:var(--topbar-pad);z-index:1}" +
         ".sp-topbar.sp-hidden{display:none}" +
         ".sp-clockbar-section{height:100%;min-width:0;flex:1;display:flex;align-items:center;gap:.4cqw;position:relative}" +
+        ".sp-clockbar-editable .sp-clockbar-section{position:static;flex:1;min-width:12px}" +
+        ".sp-clockbar-editable .sp-clockbar-custom,.sp-clockbar-editable .sp-clockbar-subpage-title{position:absolute;top:50%;transform:translateY(-50%);max-width:35%;padding:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:var(--btn-label);color:var(--preview-clockbar-text)}" +
+        ".sp-clockbar-editable .sp-clockbar-subpage-title{max-width:none}" +
+        ".sp-clockbar-custom>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
+        ".sp-clockbar-custom{gap:4px}.sp-clockbar-custom>.sp-clockbar-sensor-icon{flex:none;overflow:visible}.sp-clockbar-custom>.sp-clockbar-value{min-width:0}" +
+        ".sp-clockbar-add-target{position:absolute;top:50%;transform:translateY(-50%);height:min(32px,calc(100% - 4px));" +
+        "display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:0;border:1px dashed color-mix(in srgb,var(--preview-text-muted) 70%,var(--preview-background));" +
+        "border-radius:8px;background:transparent;color:var(--preview-clockbar-text);font:inherit;font-size:min(22px,calc(var(--topbar-h) - 6px));line-height:1;cursor:pointer;pointer-events:auto}" +
+        ".sp-clockbar-add-target:hover:not(:disabled),.sp-clockbar-add-target:focus-visible{border-color:var(--accent);background:var(--accent-soft)}" +
+        ".sp-clockbar-add-target:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.sp-clockbar-add-target:disabled{opacity:.45;cursor:not-allowed}" +
+        ".sp-clockbar-section.sp-clockbar-drop{background:var(--accent-soft);outline:1px dashed var(--accent)}" +
+        ".sp-clockbar-custom.sp-clockbar-insert{border-left:3px solid var(--accent)}" +
         ".sp-clockbar-left{justify-content:flex-start}.sp-clockbar-middle{justify-content:center}.sp-clockbar-right{justify-content:flex-end}" +
         ".sp-clockbar-subpage-title,.sp-temp,.sp-clock{font-size:var(--btn-label);line-height:1.2;color:var(--preview-clockbar-text);font-weight:var(--btn-label-weight,400)}" +
         ".sp-btn-label{font-size:var(--btn-label);line-height:1.2;color:var(--card-text-color,var(--preview-text-primary));font-weight:var(--btn-label-weight,400)}" +
@@ -219,6 +231,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         "padding:14px var(--gap);background:var(--surface);" +
         "color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;user-select:none}" +
         ".sp-selection-bar.sp-visible{display:flex}" +
+        ".sp-clockbar-selection{flex-wrap:wrap}.sp-clockbar-selection .sp-selection-actions{flex-wrap:wrap;flex-shrink:1}" +
         ".sp-selection-label{font-size:.85rem;color:var(--text2);margin-right:auto;min-width:0;" +
         "overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
         ".sp-selection-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}" +

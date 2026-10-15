@@ -39,7 +39,7 @@ export interface PreviewContextMenuDependencies {
     readonly shell: Pick<ControlsShellFeature, "isConfigLocked">;
     readonly statusPreview: Pick<AppStatusPreviewFeature, "clockBarItemActive" | "clockBarItemLabel" | "clockBarItems" | "isClockBarTemperatureItem" | "updateClockBarItemUi">;
     readonly grid: Pick<GridFeature, "ctx" | "scheduleMainGridSave">;
-    readonly selection: Pick<ButtonSettingsSelectionFeature, "hideSettingsOverlay" | "openClockBarTemperatureSettings">;
+    readonly selection: Pick<ButtonSettingsSelectionFeature, "hideSettingsOverlay" | "openClockBarTemperatureSettings" | "openClockBarEditor" | "deleteClockBarItem" | "duplicateClockBarItem">;
     readonly preview: Pick<PreviewRenderFeature, "registryValue">;
     readonly clipboard: Pick<PreviewClipboardFeature, "copyButtons" | "copySlot" | "cutButtons" | "cutSlot" | "pasteButton" | "pasteSubpageButton" | "showCopyCode" | "showPasteCode">;
     readonly renderPreview: () => void;
@@ -215,6 +215,12 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         addCtxItem("delete", "Delete", function (this: any) { deleteSlot(slot); }, true);
     }
     function addClockBarMenuItems(this: any, item?: any) {
+        if (state.clockBarLayoutSupported) {
+            addCtxItem("pencil", "Edit", () => dependencies.selection.openClockBarEditor(item));
+            addCtxItem("content-copy", "Duplicate", () => { void dependencies.selection.duplicateClockBarItem(item); });
+            addCtxItem("delete", "Delete", () => { void dependencies.selection.deleteClockBarItem(item); }, true);
+            addCtxItem("plus", "Add element", () => dependencies.selection.openClockBarEditor()); return;
+        }
         if (isClockBarTemperatureItem(item)) {
             addCtxItem("pencil", "Edit Temperature", function (this: any) { openClockBarTemperatureSettings(); });
             addCtxDivider();

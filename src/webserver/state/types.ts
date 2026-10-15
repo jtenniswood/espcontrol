@@ -119,6 +119,9 @@ export interface AppState {
   onColor: string;
   selectedSlots: number[];
   lastClickedSlot: number;
+  clockBarLayout: import("../model/clock_bar").ClockBarLayout | null;
+  clockBarLayoutSupported: boolean;
+  clockBarLayoutSaving: boolean;
   clockBarSelectedItem: string;
   activeTab: string;
   _indoorOn: boolean;

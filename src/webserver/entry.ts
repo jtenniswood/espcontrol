@@ -52,7 +52,7 @@ import { createStateLoaderFeature, type StateLoaderFeature } from "./application
 import { createGridMigrationFeature } from "./application/grid_migration";
 import { createArtworkPostApiFeature } from "./application/artwork_post_api";
 import { createScreenSchedulePostApiFeature } from "./application/screen_schedule_post_api";
-import { createClockBarPostApiFeature } from "./application/clock_bar_post_api";
+import { createClockBarPostApiFeature, loadEditableClockBarLayout } from "./application/clock_bar_post_api";
 import { createControlsShellFeature, renderPanelBrand } from "./application/controls_shell";
 import { createSettingsPageHelpersFeature, type SettingsPageHelpersFeature } from "./application/settings_page_helpers";
 import { createSettingsScheduleSectionFeature } from "./application/settings_schedule_section";
@@ -532,6 +532,19 @@ function composeApplicationContext(): ApplicationContext {
   clockBarState = createClockBarFeature(clockBar, runtime, core, environment, {
     hideSettingsOverlay: () => selection.hideSettingsOverlay(),
     timezoneId: (value) => statusPreview.getTzId(value),
+    batterySupported: () => !!layout.config.features?.battery,
+    getLayout: () => loadEditableClockBarLayout(resetAwareFetch),
+    postLayout: async (value) => {
+      try {
+        const response = await resetAwareFetch("/api/v1/clock-bar", {
+          method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+          body: value || '{"legacy":true}',
+        });
+        if (!response.ok) shell.showBanner("Could not save the clock bar. Please reconnect and try again.", "error");
+        else if (runtime.els.banner) runtime.els.banner.className = "sp-banner";
+        return response.ok;
+      } catch { shell.showBanner("Could not reach the device to save the clock bar.", "error"); return false; }
+    },
     postTemperatureEntities: (value) => clockBarPostApi.postClockBarTemperatureEntities(value),
     postSwitch: (name, value) => requestApi.postSwitch(name, value),
     entityName: (key) => entityState.entityName(key),
@@ -664,6 +677,7 @@ function composeApplicationContext(): ApplicationContext {
     deleteButtons: (slots) => interactions.deleteButtons(slots),
   });
   interactions = createPreviewInteractionsFeature({
+    clockBar: clockBarState,
     cardEditorDraft,
     configPersistence: configurationPersistence,
     layout,
@@ -864,6 +878,7 @@ function composeApplicationContext(): ApplicationContext {
     shell,
     stateLoader,
     gridMigration,
+    () => { void clockBarState.loadLayout(); },
   );
   publicFirmwareInstall = createPublicFirmwareInstallFeature(
     deviceApi,
