@@ -186,6 +186,7 @@ void check_modal_fit(){
   };
   within(ui.body->parent,ui.body);
   assert(ui.day_gap==weather_daily_day_gap(ui.font) && ui.columns_per_row==3 && ui.day_limit==6);
+  assert(ui.text_gap>=2 && ui.text_gap<=std::max(6,lv_font_get_line_height(ui.font)/4));
   for(const auto *child:ui.body->children)within(ui.body,child);
   for(size_t i=0;i<ui.columns.size();++i){
     const auto &column=ui.columns[i];
@@ -450,6 +451,7 @@ int main(){
       weather_daily_open_modal(wide_card);
       auto &ui=weather_daily_modal();
       assert(ui.columns.size()==std::min(ui.day_limit,available));
+      assert(ui.text_gap>=4); // More breathing room, including the shortest supported rotation.
       assert(ui.message->flags & LV_OBJ_FLAG_HIDDEN);
       check_modal_fit();
       const int widgets=lv_obj_t::live;

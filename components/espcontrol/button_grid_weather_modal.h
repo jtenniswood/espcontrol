@@ -184,9 +184,17 @@ inline void weather_daily_open_modal(WeatherDailyCard *card) {
   ui.row_width = shell.content_w; ui.day_gap = weather_daily_day_gap(ui.font);
   ui.forecast_height = height - small_height - ui.gap;
   ui.row_height = (ui.forecast_height - ui.gap) / 2;
-  // A side-by-side icon/header preserves readable existing fonts on short landscape panels.
-  const int vertical_content = icon_height + text_height + small_height * 3 + ui.text_gap * 4;
-  ui.side_header = vertical_content + 8 > ui.row_height;
+  // Keep the existing header arrangement, then use the spare height for more
+  // generous, equal gaps without clipping text or changing the six-day grid.
+  const int vertical_text_height = icon_height + text_height + small_height * 3;
+  ui.side_header = vertical_text_height + ui.text_gap * 4 + 8 > ui.row_height;
+  const int available_height = ui.row_height - 8;
+  const int maximum_gap = ui.side_header
+    ? std::min((available_height - icon_height - small_height * 2) / 2,
+               (available_height - text_height - small_height * 3) / 3)
+    : (available_height - vertical_text_height) / 4;
+  ui.text_gap = std::max(ui.text_gap, std::min(std::max(6, text_height / 4), maximum_gap));
+  const int vertical_content = vertical_text_height + ui.text_gap * 4;
   const int content_height = ui.side_header ? std::max(icon_height, text_height + ui.text_gap + small_height)
       + ui.text_gap * 2 + small_height * 2
     : vertical_content;
