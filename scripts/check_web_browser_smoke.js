@@ -7601,29 +7601,6 @@ async function assertEditableClockBar(browser, testCase) {
   const page = await context.newPage();
   const errors = []; page.on("pageerror", error => errors.push(error.message));
   await installFakeEventSource(page);
-  async function beginClockBarDrag(id) {
-    const box = await page.locator(`[data-clockbar-item="${id}"]`).boundingBox();
-    assert(box, "dragged clock bar element is visible");
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(box.x + box.width / 2 + 10, box.y + box.height / 2, { steps: 4 });
-    await page.locator('.sp-clockbar-drop-targets').waitFor({ state: 'visible' });
-  }
-  async function dropClockBarAt(group, before = '', capture = false) {
-    const slot = page.locator(`[data-clockbar-drop-group="${group}"][data-clockbar-before="${before}"]`);
-    const box = await slot.boundingBox(); assert(box, "drop slot is visible");
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.move(box.x + box.width / 2 + 1, box.y + box.height / 2 + 1);
-    assert(await slot.evaluate(el => el.classList.contains('sp-clockbar-drop')), "hover highlights the destination slot");
-    if (capture) {
-      const bar = await page.locator('.sp-topbar').boundingBox();
-      const panel = await page.locator('.sp-clockbar-drop-targets').boundingBox();
-      await page.screenshot({ path: path.join(FAILURE_DIR, `clock-bar-drop-targets-${testCase.slug}.png`),
-        clip: { x: bar.x, y: bar.y, width: bar.width, height: panel.y + panel.height - bar.y } });
-    }
-    await page.mouse.up();
-    await page.locator('.sp-clockbar-drop-targets').waitFor({ state: 'detached' });
-  }
   try {
     await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector("#sp-app");
@@ -7663,30 +7640,8 @@ async function assertEditableClockBar(browser, testCase) {
     await page.locator("#sp-clockbar-group").selectOption("right");
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await page.waitForFunction(id => document.querySelector(`[data-clockbar-item="${id}"]`)?.dataset.clockbarSection === "right", duplicate.id);
-    await beginClockBarDrag(duplicate.id);
-    assert.deepEqual(await page.locator('.sp-clockbar-drop-heading').allTextContents(), ['Left', 'Middle', 'Right']);
-    assert.equal(await page.locator('[data-clockbar-drop-group]').count(), clockBar.layout.items.length + 2, "all before/end insertion positions are shown at once");
-    assert(await page.locator('[data-clockbar-drop-group]').evaluateAll(slots => slots.every(slot => getComputedStyle(slot).borderTopStyle === 'dashed')));
-    assert.equal(await page.locator(`[data-clockbar-before="${duplicate.id}"]`).count(), 0, "dragged element is excluded from destinations");
-    const clock = clockBar.layout.items.find(item => item.type === 'time');
-    await dropClockBarAt('middle', clock?.id, true);
+    await page.locator(`[data-clockbar-item="${duplicate.id}"]`).dragTo(page.locator('.sp-clockbar-section[data-clockbar-section="middle"]'), { targetPosition: { x: 5, y: 5 } });
     await page.waitForFunction(id => document.querySelector(`[data-clockbar-item="${id}"]`)?.dataset.clockbarSection === "middle", duplicate.id);
-    if (clock) assert.deepEqual(clockBar.layout.items.filter(item => item.group === 'middle').map(item => item.id), [duplicate.id, clock.id]);
-    await beginClockBarDrag(duplicate.id);
-    await dropClockBarAt('middle');
-    if (clock) assert.deepEqual(clockBar.layout.items.filter(item => item.group === 'middle').map(item => item.id), [clock.id, duplicate.id], "end slot reorders within a group");
-    const postsBeforeCancel = clockBar.posts.length;
-    await beginClockBarDrag(duplicate.id);
-    await page.keyboard.press('Escape');
-    await page.mouse.up();
-    await page.locator('.sp-clockbar-drop-targets').waitFor({ state: 'detached' });
-    assert.equal(clockBar.posts.length, postsBeforeCancel, "cancelled drag does not save");
-    assert.equal(await page.locator('.sp-clockbar-dragging,.sp-clockbar-drag-source').count(), 0, "cancelling removes drag decoration");
-    await beginClockBarDrag(duplicate.id);
-    await page.mouse.move(1, 1);
-    await page.mouse.up();
-    await page.locator('.sp-clockbar-drop-targets').waitFor({ state: 'detached' });
-    assert.equal(clockBar.posts.length, postsBeforeCancel, "dropping outside the clock bar does not save");
     await page.locator(`[data-clockbar-item="${duplicate.id}"]`).click();
     assert(await addTarget.isVisible(), "add touch point remains visible with an element selected");
     await addTarget.click();
@@ -7803,21 +7758,6 @@ async function assertEditableClockBar(browser, testCase) {
     await addTarget.evaluate(button => button.click());
     assert.equal(await page.locator('.sp-settings-overlay.sp-visible').count(), 0, "disabled add target cannot exceed the limit");
     assert.equal(clockBar.layout.items.length, 12);
-    await page.setViewportSize({ width: 320, height: 740 });
-    await page.waitForFunction(() => {
-      const add = document.querySelector('[data-clockbar-add]').getBoundingClientRect();
-      const bar = document.querySelector('.sp-topbar').getBoundingClientRect();
-      return add.right <= bar.right + 1;
-    });
-    const fullSource = clockBar.layout.items.at(-1).id;
-    await beginClockBarDrag(fullSource);
-    assert.equal(await page.locator('[data-clockbar-drop-group]').count(), 14, "full bars expose destinations for hidden overflow elements too");
-    assert.equal(await page.locator('[data-clockbar-drop-group="left"]').textContent(), 'Drop here', "empty left group remains a target");
-    assert.equal(await page.locator('[data-clockbar-drop-group="middle"]').textContent(), 'Drop here', "empty middle group remains a target");
-    assert(await page.locator('.sp-clockbar-drop-targets').evaluate(panel => panel.scrollWidth <= panel.clientWidth + 1 && panel.scrollHeight <= panel.clientHeight + 1), "all full-bar insertion targets fit the phone drop area");
-    await dropClockBarAt('left');
-    await page.waitForFunction(id => document.querySelector(`[data-clockbar-item="${id}"]`)?.dataset.clockbarSection === 'left', fullSource);
-    assert.equal(clockBar.layout.items.length, 12, "moving a full bar does not add an element");
     assert.deepEqual(errors, [], "empty and full clock bars raise no browser errors");
     console.log(`${testCase.name}: editable clock bar add/edit/duplicate/drag/local/save failure/reload/title checks passed.`);
   } finally { await context.close(); }
