@@ -2860,6 +2860,268 @@ async function assertNewMediaCardDefaults(page, posts, label, mediaCoverArtSuppo
   );
 }
 
+async function assertContextColourPicker(browser, testCase) {
+  for (const native of [false, true]) {
+    const fixture = nativeConfigState(testCase.slug);
+    fixture.document.buttons[1] += ";;;;;card_active_color=custom,card_on_color=FFFFFF";
+    const legacyTextState = {};
+    const context = await browser.newContext({ viewport: testCase.viewport });
+    await installRoutes(context, testCase.slug, { nativeState: native ? fixture : null, legacyTextState });
+    const page = await context.newPage();
+    await page.addInitScript(() => { window.__ESPCONTROL_TEST_HOOKS__ = {}; });
+    const errors = [];
+    const configurationWrites = [];
+    page.on("pageerror", error => errors.push(error.message));
+    page.on("request", request => {
+      const url = new URL(request.url());
+      if ((request.method() === "POST" && url.pathname.startsWith("/text/")) ||
+          (request.method() === "PUT" && url.pathname === "/api/v1/config")) configurationWrites.push(request.url());
+    });
+    await installFakeEventSource(page);
+    const label = `${testCase.name}/${native ? "native" : "legacy"}`;
+    const storedButton = slot => native ? fixture.document.buttons[slot] : legacyTextState[`button_${slot}_config`];
+    const subpageChunkNames = ["subpage_3_config", "subpage_3_config_ext", ...Array.from({ length: 6 }, (_, i) => `subpage_3_config_ext_${i + 2}`)];
+    const storedSubpage = () => native ? fixture.document.subpages[3] : subpageChunkNames.map(name => legacyTextState[name] || "").join("");
+    const waitForSaved = async predicate => {
+      const deadline = Date.now() + 10000;
+      while (!predicate() && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 25));
+      assert(predicate(), `${label}: colour change persisted`);
+    };
+    const card = slot => page.locator(`.sp-main [data-slot="${slot}"]`);
+    const menu = page.locator(".sp-ctx-menu");
+    const openPicker = async target => {
+      await target.click({ button: "right" });
+      const trigger = menu.getByRole("button", { name: "Change Colour", exact: true });
+      await trigger.hover();
+      await menu.getByRole("group", { name: "Card colour presets", exact: true }).waitFor();
+      assert.strictEqual(await trigger.getAttribute("aria-expanded"), "true");
+      assert.strictEqual(await trigger.locator(".mdi-palette").count(), 1, `${label}: Change Colour uses the palette icon`);
+      assert.strictEqual(await menu.getByText(/^Card Colours?$/, { exact: true }).count(), 0,
+        `${label}: the colour panel has no redundant title`);
+      assert(await trigger.evaluate(el => !["none", "normal", '""'].includes(getComputedStyle(el, "::after").content)),
+        `${label}: Change Colour shows a submenu chevron`);
+      assert(await menu.locator(":scope > .sp-ctx-item").count() > 0,
+        `${label}: the original menu remains alongside the palette`);
+      assert.strictEqual(await page.locator(".sp-settings-overlay.sp-visible").count(), 0,
+        `${label}: quick colour picker does not open card settings`);
+    };
+    try {
+      await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+      await page.waitForFunction(() => window.__eventSources?.length > 0);
+      await seedNativeDocument(page, fixture);
+      await openPicker(card(1));
+      const submenu = menu.locator(".sp-ctx-submenu");
+      const trigger = menu.getByRole("button", { name: "Change Colour", exact: true });
+      let menuBounds = await menu.boundingBox();
+      let paletteBounds = await submenu.boundingBox();
+      assert(paletteBounds.x >= menuBounds.x + menuBounds.width - 1,
+        `${label}: the palette pops out to the right when space allows`);
+      await menu.getByText("Duplicate", { exact: true }).hover();
+      await submenu.waitFor({ state: "hidden" });
+      assert.strictEqual(await submenu.isVisible(), false, `${label}: leaving the row closes its submenu`);
+      await trigger.click();
+      assert(await submenu.isVisible(), `${label}: clicking also opens the submenu`);
+      await trigger.focus();
+      await page.keyboard.press("ArrowRight");
+      assert(await submenu.locator("button").first().evaluate(el => el === document.activeElement),
+        `${label}: keyboard navigation enters the palette`);
+      await page.keyboard.press("ArrowLeft");
+      assert.strictEqual(await submenu.isVisible(), false);
+      assert(await trigger.evaluate(el => el === document.activeElement));
+      await trigger.click();
+      await menu.locator('[data-color="6036B2"]').click();
+      await waitForSaved(() => storedButton(1)?.includes("card_off_color=6036B2"));
+      assert(storedButton(1).includes("card_on_color=FFFFFF"), `${label}: separate active colour survives`);
+      await openPicker(card(1));
+      assert.strictEqual(await menu.locator('[data-color="6036B2"]').getAttribute("aria-pressed"), "true");
+      const picker = menu.getByLabel("Choose custom colour");
+      await picker.dispatchEvent("click");
+      assert.strictEqual(await menu.count(), 1, `${label}: native picker stays attached after click`);
+      await picker.fill("#123abc");
+      await waitForSaved(() => storedButton(1)?.includes("card_off_color=123ABC"));
+      await openPicker(card(1));
+      assert.strictEqual(await menu.locator(".sp-card-color-custom").getAttribute("data-selected"), "true");
+      if (process.env.ESPCONTROL_CONTEXT_COLOUR_SCREENSHOT && native) {
+        await page.screenshot({ path: process.env.ESPCONTROL_CONTEXT_COLOUR_SCREENSHOT });
+      }
+      await menu.getByText("Reset Colour", { exact: true }).click();
+      await waitForSaved(() => !storedButton(1)?.includes("card_off_color="));
+      assert(storedButton(1).includes("card_on_color=FFFFFF"));
+
+      await card(2).click({ modifiers: ["ControlOrMeta"] });
+      await openPicker(card(1));
+      assert.strictEqual(await menu.locator('.sp-card-color-preset[aria-pressed="true"]').count(), 0,
+        `${label}: mixed card backgrounds leave all presets unselected`);
+      await menu.locator('[data-color="64AD54"]').click();
+      await waitForSaved(() => [1, 2].every(slot => storedButton(slot)?.includes("card_off_color=64AD54")));
+      assert(storedButton(2).includes("sensor.energy"), `${label}: bulk recolour keeps card configuration`);
+      await page.locator(".sp-brand").click();
+      await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+      await page.locator(".sp-back-btn").waitFor();
+      await openPicker(card(1));
+      await menu.locator('[data-color="DA5125"]').click();
+      await waitForSaved(() => storedSubpage()?.includes("card_off_color=DA5125"));
+      await page.locator(".sp-brand").click();
+      await openPicker(page.locator(".sp-back-btn"));
+      await menu.locator('[data-color="3C64DE"]').click();
+      await waitForSaved(() => storedSubpage()?.includes(":3C64DE"));
+      await openPicker(page.locator(".sp-back-btn"));
+      await menu.getByText("Reset Colour", { exact: true }).click();
+      await waitForSaved(() => !storedSubpage()?.includes(":3C64DE"));
+      await page.locator(".sp-back-btn .sp-back-hit").click();
+      await card(1).click({ button: "right" });
+      await menu.getByText("Change Colour", { exact: true }).click();
+      await page.keyboard.press("Escape");
+      assert.strictEqual(await menu.count(), 0, `${label}: Escape dismisses the picker`);
+      await openPicker(card(1));
+      await page.locator(".sp-brand").click();
+      assert.strictEqual(await menu.count(), 0, `${label}: clicking outside dismisses the picker`);
+      await card(1).evaluate((el, viewport) => el.dispatchEvent(new MouseEvent("contextmenu", {
+        bubbles: true, cancelable: true, clientX: viewport.width - 5, clientY: viewport.height - 5,
+      })), testCase.viewport);
+      await trigger.hover();
+      menuBounds = await menu.boundingBox();
+      paletteBounds = await submenu.boundingBox();
+      assert(paletteBounds.x + paletteBounds.width <= menuBounds.x + 1,
+        `${label}: the submenu flips left near the right edge`);
+      assert(paletteBounds.x >= 4 && paletteBounds.y >= 4 &&
+        paletteBounds.x + paletteBounds.width <= testCase.viewport.width - 4 &&
+        paletteBounds.y + paletteBounds.height <= testCase.viewport.height - 4,
+        `${label}: the complete palette remains within the viewport`);
+      await submenu.locator('[data-color="6036B2"]').hover();
+      assert(await submenu.isVisible(), `${label}: moving across to the palette keeps it open`);
+      await page.keyboard.press("Escape");
+      const chunkCount = readManifest().devices[testCase.slug].firmware.package.subpageConfigChunks || 8;
+      const subpageLimits = await page.evaluate(chunkCount => {
+        const codec = window.__ESPCONTROL_TEST_HOOKS__.config;
+        return ["card", "back", "both"].flatMap(target => [0, 1].map(overflow => {
+          const original = codec.parseSubpageConfig("~B,1|,light.kitchen,Capacity,Lightbulb,Lightbulb");
+          codec.buildSubpageGrid(original);
+          const proposed = { ...original, buttons: original.buttons.map(button => ({ ...button, label: "" })) };
+          if (target !== "back") proposed.buttons[0].options = "card_off_color=6036B2";
+          if (target !== "card") proposed.backColor = "6036B2";
+          proposed.order = codec.serializeSubpageGrid(proposed);
+          proposed.buttons[0].label = "L".repeat(chunkCount * 255 + overflow - codec.serializeSubpageConfig(proposed).length);
+          original.buttons[0].label = proposed.buttons[0].label;
+          return { target, overflow, before: codec.serializeSubpageConfig(original), after: codec.serializeSubpageConfig(proposed) };
+        }));
+      }, chunkCount);
+      async function seedSubpage(full) {
+        await page.evaluate(({ full, chunkCount, names }) => {
+          const chunks = window.__ESPCONTROL_TEST_HOOKS__.config.splitSubpageConfigChunks(full, chunkCount, 255);
+          window.__seedEspState(names.map((name, index) => ({ id: "text-" + name, state: chunks[index] || "" })));
+        }, { full, chunkCount, names: subpageChunkNames });
+      }
+      await seedSubpage(storedSubpage());
+      for (const limit of subpageLimits) {
+        assert(limit.before.length <= chunkCount * 255);
+        assert.strictEqual(limit.after.length, chunkCount * 255 + limit.overflow);
+        fixture.document.subpages[3] = limit.before;
+        await seedSubpage(limit.before);
+        await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+        const back = page.locator(".sp-back-btn");
+        await back.waitFor();
+        if (limit.target === "both") {
+          const bounds = await back.boundingBox();
+          await back.click({ position: { x: bounds.width - 12, y: 12 } });
+          await card(1).click({ modifiers: ["ControlOrMeta"] });
+        }
+        const originals = await Promise.all([back, card(1)].map(el => el.evaluate(el => el.style.backgroundColor)));
+        const writesBefore = configurationWrites.length;
+        await openPicker(limit.target === "back" ? back : card(1));
+        await menu.locator('[data-color="6036B2"]').click();
+        if (!limit.overflow) {
+          await waitForSaved(() => storedSubpage() === limit.after);
+          // Acknowledge the saved chunks before seeding the next device state.
+          await seedSubpage(limit.after);
+        } else {
+          await page.getByText("Subpage is too large to save. Shorten labels or entity IDs.", { exact: true })
+            .waitFor({ state: "visible", timeout: 2000 });
+          await page.waitForTimeout(500);
+          assert.strictEqual(configurationWrites.length, writesBefore, `${label}: oversized ${limit.target} subpage recolouring sends no write`);
+          assert.deepStrictEqual(await Promise.all([back, card(1)].map(el => el.evaluate(el => el.style.backgroundColor))), originals,
+            `${label}: oversized ${limit.target} subpage recolouring leaves card and Back colours unchanged`);
+          await openPicker(limit.target === "back" ? back : card(1));
+          assert.strictEqual(await menu.locator('[data-color="6036B2"]').getAttribute("aria-pressed"), "false",
+            `${label}: rejected subpage colours do not change local settings`);
+          await page.keyboard.press("Escape");
+        }
+        await page.locator(".sp-brand").click();
+        await page.locator(".sp-back-btn .sp-back-hit").click();
+      }
+      const limitConfigs = await page.evaluate(() => {
+        const codec = window.__ESPCONTROL_TEST_HOOKS__.config;
+        return [255, 256].map(length => {
+          const button = codec.parseButtonConfig("light.kitchen;Large;Lightbulb;Lightbulb");
+          button.options = "card_off_color=6036B2";
+          button.label = "L".repeat(length - codec.serializeButtonConfig({ ...button, label: "" }).length);
+          return {
+            before: codec.serializeButtonConfig({ ...button, options: "" }),
+            after: codec.serializeButtonConfig(button),
+          };
+        });
+      });
+      assert.strictEqual(limitConfigs[0].after.length, 255);
+      assert.strictEqual(limitConfigs[1].after.length, 256);
+      for (const [index, limitConfig] of limitConfigs.entries()) {
+        fixture.document.buttons[1] = limitConfig.before;
+        await seedNativeDocument(page, fixture);
+        await page.locator(".sp-brand").click();
+        const originalBackground = await card(1).evaluate(el => el.style.backgroundColor);
+        const writesBefore = configurationWrites.length;
+        await openPicker(card(1));
+        await menu.locator('[data-color="6036B2"]').click();
+        if (index === 0) {
+          await waitForSaved(() => storedButton(1) === limitConfig.after);
+        } else {
+          await page.getByText("Card settings are too large to save. Shorten confirmation text, labels, or entity IDs.", { exact: true })
+            .waitFor({ state: "visible", timeout: 2000 });
+          // Allow the normal save debounce to pass before asserting no request was queued.
+          await page.waitForTimeout(500);
+          assert.strictEqual(configurationWrites.length, writesBefore, `${label}: an oversized colour change sends no write`);
+          assert.strictEqual(await card(1).evaluate(el => el.style.backgroundColor), originalBackground,
+            `${label}: a rejected colour does not change the preview`);
+          await openPicker(card(1));
+          assert.strictEqual(await menu.locator('[data-color="6036B2"]').getAttribute("aria-pressed"), "false",
+            `${label}: a rejected colour does not change local card settings`);
+          await page.keyboard.press("Escape");
+        }
+      }
+      // The first selected card fits; the later card would exceed the limit.
+      fixture.document.buttons[1] = BUTTON_FIXTURES[0];
+      fixture.document.buttons[2] = limitConfigs[1].before;
+      await seedNativeDocument(page, fixture);
+      await page.locator(".sp-brand").click();
+      await card(1).click({ position: { x: 12, y: 12 } });
+      await card(2).click({ modifiers: ["ControlOrMeta"] });
+      const originalBackgrounds = await Promise.all([1, 2].map(slot => card(slot).evaluate(el => el.style.backgroundColor)));
+      const writesBeforeBulk = configurationWrites.length;
+      await openPicker(card(1));
+      await menu.locator('[data-color="6036B2"]').click();
+      await page.getByText("Card settings are too large to save. Shorten confirmation text, labels, or entity IDs.", { exact: true })
+        .waitFor({ state: "visible", timeout: 2000 });
+      await page.waitForTimeout(500);
+      assert.strictEqual(configurationWrites.length, writesBeforeBulk, `${label}: oversized bulk recolouring sends no partial write`);
+      assert.deepStrictEqual(await Promise.all([1, 2].map(slot => card(slot).evaluate(el => el.style.backgroundColor))), originalBackgrounds,
+        `${label}: oversized bulk recolouring leaves every selected card unchanged`);
+      await page.locator(".sp-brand").click();
+      for (const type of ["image", "wifi_qr_card"]) {
+        await page.evaluate(type => window.__seedEspState([
+          { id: "text-button_1_config", state: `camera.garden;Fixed Background;Auto;Auto;;;${type}` },
+        ]), type);
+        await card(1).click({ button: "right" });
+        assert.strictEqual(await menu.getByText("Change Colour", { exact: true }).count(), 0,
+          `${label}: ${type} keeps its fixed background`);
+        await page.keyboard.press("Escape");
+      }
+      assert.deepStrictEqual(errors, [], `${label}: colour menu has no browser errors`);
+    } catch (error) {
+      console.error(`${label}: browser errors`, errors);
+      throw error;
+    } finally { await context.close(); }
+  }
+}
+
 async function assertCardActiveColourControls(page, posts, label) {
   await page.getByRole("tab", { name: "Layout" }).click();
   const card = page.locator('.sp-main [data-slot="1"]');
@@ -6479,6 +6741,7 @@ async function runCase(browser, testCase) {
     await assertPlaylistValidationOpensSourcePanel(page, testCase.name);
     await assertSpeakerGroupEditorAndPreview(page, posts, testCase.name);
     if (testCase.exerciseInteractions) {
+      await assertContextColourPicker(browser, testCase);
       await assertCardActiveColourControls(page, posts, testCase.name);
       await assertMobileTabLayout(page, testCase.name, testCase.viewport);
       await assertAllCardSettingsGrouped(page, posts, testCase.name);
@@ -7518,6 +7781,11 @@ async function assertS3ForecastEditorLayout(browser) {
         } finally { await context.close(); }
       }
       console.log(`Card title browser checks passed for ${ACTIVE_CASES.length} layouts.`);
+      return;
+    }
+    if (process.env.ESPCONTROL_CONTEXT_COLOUR_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) await assertContextColourPicker(browser, testCase);
+      console.log(`Context colour picker browser checks passed for ${ACTIVE_CASES.length} layouts, native and legacy saves.`);
       return;
     }
     if (process.env.ESPCONTROL_ACTIVE_COLOUR_ONLY === "1") {

@@ -597,6 +597,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-ctx-menu{position:fixed;z-index:200;background:var(--surface);border:1px solid var(--border);" +
         "border-radius:var(--radius);padding:4px 0;min-width:160px;box-shadow:var(--shadow-3);" +
         "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}" +
+        ".sp-ctx-colours>.sp-card-color-presets{margin:4px 14px 10px}" +
         ".sp-ctx-item{display:flex;align-items:center;gap:10px;padding:8px 14px;" +
         "cursor:pointer;font-size:.8rem;color:var(--text);transition:background .15s;white-space:nowrap}" +
         ".sp-ctx-item:hover{background:var(--accent-soft)}" +
@@ -605,11 +606,13 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-ctx-item.sp-ctx-danger .mdi{color:var(--danger)}" +
         ".sp-ctx-divider{height:1px;background:var(--border);margin:4px 0}" +
         ".sp-ctx-sub{position:relative}" +
-        ".sp-ctx-sub::after{content:'\\F0142';font-family:'Material Design Icons';position:absolute;right:10px;font-size:14px;opacity:.5}" +
-        ".sp-ctx-submenu{display:none;position:absolute;top:-4px;left:100%;background:var(--surface);" +
+        ".sp-ctx-sub-trigger{position:relative;padding-right:34px}" +
+        ".sp-ctx-sub-trigger[aria-expanded=true],.sp-ctx-sub-trigger:focus-visible{background:var(--accent-soft)}" +
+        ".sp-ctx-sub-trigger:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}" +
+        ".sp-ctx-sub-trigger::after{content:'\\F0142';font-family:'Material Design Icons';position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;opacity:.5;pointer-events:none}" +
+        ".sp-ctx-submenu{display:none;position:fixed;background:var(--surface);" +
         "border:1px solid var(--border);border-radius:var(--radius);padding:4px 0;min-width:120px;" +
         "box-shadow:var(--shadow-3);z-index:201}" +
-        ".sp-ctx-sub:hover>.sp-ctx-submenu{display:block}" +
         ".sp-ctx-check{font-size:14px;width:18px;text-align:center;color:var(--accent)}" +
         ".sp-banner{padding:12px var(--gap);font-size:.8rem;font-weight:500;text-align:center;display:none}" +
         ".sp-banner.sp-error{display:block;background:rgba(244,63,94,.16);color:#f66f81;border-bottom:1px solid rgba(244,63,94,.25)}" +

@@ -72,6 +72,8 @@ Striped active cards use lighter or darker stripes to keep text readable across 
 
 Custom card colours stay in place when changing a card’s controls, reopening its editor or switching themes. Media Cover Art uses the chosen card colour while artwork is loading or unavailable; visible artwork keeps white text. Media progress bars use a lighter or darker shade of the chosen card colour so progress remains visible.
 
+For a quick background change, right-click a card in the web preview, then hover over **Change Colour** (marked with a chevron) to open its pop-out palette. You can also click it to open the submenu. Pick a preset or use the eyedropper for a custom colour; the choice saves immediately. You can also change several selected cards together or recolour a subpage’s **Back** card. Image and full QR cards keep their fixed backgrounds. **Reset Colour** restores the default background while keeping any separate active-state colour.
+
 Cards using their default background highlight the matching preset or custom picker for the current theme. Resetting a card’s colours restores this default selection.
 
 In a card’s **Custom Colours** controls, **Active state colour** offers three choices:
