@@ -6906,8 +6906,8 @@ async function assertCardCurveSettings(browser, testCase) {
     const substitutions = profile.firmware.package.substitutions;
     const width = Number(substitutions.screen_width.replaceAll('"', ""));
     const base = Number(substitutions.radius.replace("px", ""));
-    const small = Number((substitutions.card_curve_small_radius || '').replace('px', '')) || Math.round(base / 2);
-    const medium = Number((substitutions.card_curve_medium_radius || '').replace('px', '')) || Math.round(base * .75);
+    const small = Number((substitutions.card_curve_small_radius || '').replace('px', '')) || Math.round(base * .6);
+    const medium = Number((substitutions.card_curve_medium_radius || '').replace('px', '')) || Math.round(base * .8);
     for (const [preset, expected] of [["Small", small], ["Medium", medium], ["Large", base]]) {
       const posted = page.waitForResponse(response => response.url().includes(`/select/screen__card_curve/set?option=${preset}`));
       await page.locator("#sp-set-card-curve").getByRole("button", { name: preset, exact: true }).click();
