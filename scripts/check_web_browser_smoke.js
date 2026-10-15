@@ -1282,7 +1282,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     await page
       .locator("#sp-settings .sp-settings-status-title")
       .evaluateAll((nodes) => nodes.map((node) => node.textContent)),
-    ["Appearance", "Sleep & Schedule"],
+    ["Appearance", "Display", "Sleep & Schedule"],
     `${label}: settings groups should be ordered by purpose`,
   );
   const settingsPlacement = await page.locator("#sp-settings .sp-config").evaluate((config) => {
@@ -1322,7 +1322,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   assert(!(await page.locator("#sp-settings").isVisible()), `${label}: Device hides Settings`);
   assert.strictEqual(await page.getByRole("tab", { name: "Device", exact: true }).getAttribute("aria-selected"), "true");
   assert.deepStrictEqual(await page.locator("#sp-device .sp-settings-status-title").allTextContents(),
-    ["Display", "Preferences", "System"], `${label}: device groups should be ordered by purpose`);
+    ["Preferences", "System"], `${label}: device groups should be ordered by purpose`);
   const devicePlacement = await page.locator("#sp-device .sp-config").evaluate(config => {
     let section = "";
     const placement = {};
@@ -1336,7 +1336,11 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     }
     return placement;
   });
-  assert.strictEqual(devicePlacement.Backlight, "Display", `${label}: Backlight is under Device > Display`);
+  assert.strictEqual(settingsPlacement.Backlight?.section, "Display", `${label}: Backlight is under Settings > Display`);
+  if (settingsPlacement.Rotation) {
+    assert.strictEqual(settingsPlacement.Rotation.section, "Display", `${label}: Rotation is under Settings > Display`);
+  }
+  assert(!devicePlacement.Backlight && !devicePlacement.Rotation, `${label}: Device does not duplicate display controls`);
   assert.strictEqual(devicePlacement.Language, "Preferences", `${label}: Language is under Device > Preferences`);
   assert.strictEqual(devicePlacement.Firmware, "System", `${label}: Firmware is under Device > System`);
   assert(await page.locator("#sp-device .sp-apply-btn").isVisible(), `${label}: Device has Apply Configuration`);
@@ -1549,7 +1553,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     })
     .first();
   const brightnessCard = page
-    .locator("#sp-device .card")
+    .locator("#sp-settings .card")
     .filter({
       has: page.locator(".card-header h3", { hasText: /^Backlight$/ }),
     })
@@ -1560,10 +1564,8 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
       has: page.locator(".card-header h3", { hasText: /^Screensaver$/ }),
     })
     .first();
-  await page.getByRole("tab", { name: "Device", exact: true }).click();
   assert(await brightnessCard.isVisible(), `${label}: backlight settings should render`);
   await brightnessCard.locator(".card-header").click();
-  await page.getByRole("tab", { name: "Settings", exact: true }).click();
   assert(await screensaverCard.isVisible(), `${label}: screensaver settings should render`);
   await screensaverCard.locator(".card-header").click();
   await screensaverCard.getByRole("button", { name: "Timer", exact: true }).click();
@@ -1678,15 +1680,11 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   const manualDimmedBrightness = screensaverCard.locator("#sp-set-dimmed-brightness");
   const daytimeDimmedBrightness = screensaverCard.locator("#sp-set-daytime-dimmed-brightness");
   const nighttimeDimmedBrightness = screensaverCard.locator("#sp-set-nighttime-dimmed-brightness");
-  await page.getByRole("tab", { name: "Device", exact: true }).click();
   await brightnessCard.getByRole("button", { name: "Manual", exact: true }).click();
-  await page.getByRole("tab", { name: "Settings", exact: true }).click();
   assert(await manualDimmedBrightness.isVisible(), `${label}: Manual mode shows one dimmed-screen brightness`);
   assert.strictEqual(await daytimeDimmedBrightness.isVisible(), false, `${label}: Manual mode hides daytime dimmed brightness`);
   assert.strictEqual(await nighttimeDimmedBrightness.isVisible(), false, `${label}: Manual mode hides nighttime dimmed brightness`);
-  await page.getByRole("tab", { name: "Device", exact: true }).click();
   await brightnessCard.getByRole("button", { name: "Automatic", exact: true }).click();
-  await page.getByRole("tab", { name: "Settings", exact: true }).click();
   assert.strictEqual(await manualDimmedBrightness.isVisible(), false, `${label}: Automatic mode hides the manual dimmed brightness`);
   assert(await daytimeDimmedBrightness.isVisible(), `${label}: Automatic mode shows daytime dimmed brightness`);
   assert(await nighttimeDimmedBrightness.isVisible(), `${label}: Automatic mode shows nighttime dimmed brightness`);
@@ -1702,9 +1700,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: Automatic mode posts daytime dimmed brightness`,
     dimmedBrightnessPostStart,
   );
-  await page.getByRole("tab", { name: "Device", exact: true }).click();
   await brightnessCard.getByRole("button", { name: "Timed", exact: true }).click();
-  await page.getByRole("tab", { name: "Settings", exact: true }).click();
   assert(await daytimeDimmedBrightness.isVisible(), `${label}: Timed mode keeps daytime dimmed brightness visible`);
   assert(await nighttimeDimmedBrightness.isVisible(), `${label}: Timed mode keeps nighttime dimmed brightness visible`);
   assert(

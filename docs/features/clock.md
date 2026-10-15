@@ -35,4 +35,4 @@ The clock format setting affects three things:
 
 The setting is saved on the device and persists across restarts.
 
-Sunrise and sunset times are shown under **Device > Display > Backlight** when **Automatic** is selected.
+Sunrise and sunset times are shown under **Settings > Display > Backlight** when **Automatic** is selected.

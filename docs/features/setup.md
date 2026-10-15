@@ -110,8 +110,8 @@ The **Settings** and **Device** tabs group the current controls as follows. Open
 | Tab | Section | Controls |
 |---|---|---|
 | **Settings** | **Appearance** | [Active Colour, Card Style, Theme](/features/appearance), [Idle](/features/idle), [Clock Bar](/features/clock-bar) |
+| **Settings** | **Display** | [Backlight](/features/backlight), [Rotation](/features/rotation) |
 | **Settings** | **Sleep & Schedule** | [Cover Art Screen Saver](/features/media-cover-art), [Screensaver](/features/screensaver), [Night Schedule](/features/screen-schedule), [Pin Protection](/features/screensaver#pin-protection-after-wake) |
-| **Device** | **Display** | [Backlight](/features/backlight), [Rotation](/features/rotation) |
 | **Device** | **Preferences** | [Language](/features/language), [Time](/features/clock), [Temperature](/features/temperature) |
 | **Device** | **System** | [Device Name](#naming-your-panel), [Backup](/features/backup), [Firmware](/features/firmware-updates), [Home Assistant Settings](#home-assistant-settings), [Battery](/features/battery), [Factory Reset](/features/backup#reset-the-display) |
 
