@@ -359,8 +359,8 @@ int main(){
   // S3's native 3x3 grid, using conservative line heights and measured glyphs.
   font.line_height=26;small_font.line_height=22;icons.line_height=44;measured_font_pixels=22;
   const int spans[][5]={{1,1,1,1,0},{2,1,2,1,0},{3,1,4,1,0},
-    {1,2,1,4,1},{2,2,2,2,0},{3,2,4,2,0},
-    {1,3,1,6,1},{2,3,2,3,0},{3,3,3,3,0}};
+    {1,2,1,2,0},{2,2,2,2,0},{3,2,4,2,0},
+    {1,3,1,3,0},{2,3,2,3,0},{3,3,3,3,0}};
   for(const auto &span:spans){
     const int width=150*span[0]+10*(span[0]-1)-28;
     const int height=138*span[1]+10*(span[1]-1)-28;
@@ -370,6 +370,10 @@ int main(){
     assert(wide_card->columns.size()==static_cast<size_t>(expected));check_card_fit(wide_card);
     if(!wide_card->layout.list && wide_card->layout.rows>1)
       assert(wide_card->columns.front().day->y-wide_card->columns.front().icon->y-icons.line_height==8);
+    for(size_t i=0;i<wide_card->columns.size();++i){
+      assert(wide_card->columns[i].icon->text==weather_icon_for_state(wide_card->source->forecast.days[i].condition));
+      assert(wide_card->columns[i].high->text==weather_daily_temperature_range(wide_card->source->forecast.days[i],wide_card->source->forecast.temperature_unit));
+    }
     const int widgets=lv_obj_t::live;
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     assert(lv_obj_t::live==widgets);

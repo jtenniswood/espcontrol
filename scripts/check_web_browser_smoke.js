@@ -7197,7 +7197,7 @@ async function assertWeatherWidthScaling(browser) {
     await page.setContent('<style>@font-face{font-family:Roboto;src:url(data:font/woff2;base64,' + roboto + ')}' + createWebStyles(false) + '</style>' +
       '<div class="sp-screen" style="' + Object.entries(vars).map(([key, value]) => key + ':' + value).join(';') + '"><div class="sp-main">' +
       '<div id="weather" class="sp-btn sp-weather-daily-card" style="grid-column:span 3"><span class="sp-weather-days">' +
-      Array.from({ length: 8 }, (_, i) => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + (i ? 'Tues' : 'Today') + '</span><span class="sp-weather-temperature-high">18°/2°</span></span>').join('') + '</span></div></div></div>');
+      ['Today','Tues','Weds','Thurs','Fri','Sat','Sun','Mon'].map(day => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + day + '</span><span class="sp-weather-temperature-high">18°/2°</span></span>').join('') + '</span></div></div></div>');
     await page.evaluate(() => document.fonts.ready);
     await page.addScriptTag({content:layoutScript});
     await page.evaluate(() => {
@@ -7247,7 +7247,7 @@ async function assertWeatherWidthScaling(browser) {
     for(const previewWidth of [360,480,960]) {
       await page.locator('.sp-screen').evaluate((screen,value)=>screen.style.setProperty('--screen-w',value+'px'),previewWidth);
       for(const [wide,tall,columns,rows,list] of [[1,1,1,1,false],[2,1,2,1,false],[3,1,4,1,false],
-        [1,2,1,4,true],[2,2,2,2,false],[3,2,4,2,false],[1,3,1,6,true],[2,3,2,3,false],[3,3,3,3,false]]) {
+        [1,2,1,2,false],[2,2,2,2,false],[3,2,4,2,false],[1,3,1,3,false],[2,3,2,3,false],[3,3,3,3,false]]) {
         await page.locator('#weather').evaluate((card,span)=>{card.style.gridColumn='span '+span[0];card.style.gridRow='span '+span[1];},[wide,tall]);
         await page.waitForFunction(expected=>{
           const card=document.querySelector('#weather');
@@ -7262,6 +7262,10 @@ async function assertWeatherWidthScaling(browser) {
           }));
         });
         assert(bounds,`${wide}w ${tall}h forecast content fits at preview width ${previewWidth}`);
+        if(wide===1 && tall>1){
+          assert.deepEqual(await page.locator('#weather .sp-weather-day:not([hidden])>span:nth-child(2)').allTextContents(),
+            ['Today','Tues','Weds'].slice(0,rows),'Narrow stacked cards show consecutive days without skipping entries');
+        }
         if(rows>1 && !list){
           const spacing=await page.locator('#weather').evaluate((card,columns)=>{
             const scale=card.closest('.sp-screen').clientWidth/480;
@@ -7280,7 +7284,7 @@ async function assertWeatherWidthScaling(browser) {
         }
       }
     }
-    console.log('All nine S3 forecast spans reflow into rows, grids or vertical lists at three preview scales; 3w2h shows eight days.');
+    console.log('All nine S3 forecast spans reflow into stacked rows and grids at three preview scales; 3w2h shows eight days.');
     await page.locator('.sp-screen').screenshot({ path: '/tmp/weather-preview-s3-after.png' });
     console.log('S3 forecast preview matches device spans 1×1, 2×1, 3×1: 1,2,4 days at three preview scales.');
   } finally { await page.close(); }

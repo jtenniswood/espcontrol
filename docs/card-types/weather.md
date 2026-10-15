@@ -16,7 +16,7 @@ A weather card shows current Home Assistant conditions or a daily forecast. Fore
    - **Current Conditions** shows the live weather condition icon and label.
    - **Today's Forecast** shows today's condition and high/low temperatures.
    - **Tomorrow's Forecast** shows tomorrow's condition and high/low temperatures.
-   - **Daily Forecast** shows up to eight upcoming days, reflowing into a row, grid or vertical list as the card changes size.
+   - **Daily Forecast** shows up to eight upcoming days, reflowing into a row or grid as the card changes size.
 
 All forecast modes are available on supported panels, including the 4-inch Guition 4848S040 (ESP32-S3). The editor shows sample data; the panel loads the actual forecast from Home Assistant.
 
@@ -30,7 +30,7 @@ Forecasts need **Allow the device to perform Home Assistant actions** enabled so
 
 **Current Conditions** watches the weather entity's current state. The icon uses the normalized weather condition, while the label keeps provider-specific text, such as **Light Rain**. Unknown or unavailable states show a fallback icon and readable label.
 
-Forecast modes request the daily forecast from Home Assistant. **Today's Forecast** and **Tomorrow's Forecast** each show exactly one day, even on a wide card. They select the requested local date; if the provider omits that date, the card shows **Forecast unavailable**. **Daily Forecast** shows **Today** or short weekday names with whole-degree high/low temperatures. Its layout uses both card width and height: single-height cards use a horizontal row, larger cards use a grid, and tall narrow cards use a vertical list with icons beside the day and temperatures when there is enough width. Fonts stay readable rather than shrinking to fit more days. The grid balances its rows and columns when a provider returns fewer days. Short cards use compact rows when needed to leave room for **Last forecast**.
+Forecast modes request the daily forecast from Home Assistant. **Today's Forecast** and **Tomorrow's Forecast** each show exactly one day, even on a wide card. They select the requested local date; if the provider omits that date, the card shows **Forecast unavailable**. **Daily Forecast** shows **Today** or short weekday names with whole-degree high/low temperatures. Its layout uses both card width and height: single-height cards use a horizontal row, larger cards use a grid, and tall narrow cards use one column of forecasts, with each icon above its day and temperatures just like the square grid. Consecutive upcoming days are shown, with the number limited by the space available. Fonts stay readable rather than shrinking to fit more days. The grid balances its rows and columns when a provider returns fewer days. Short cards use compact rows when needed to leave room for **Last forecast**.
 
 Grid layouts leave a visible gap between each icon and its day, with extra space between complete forecast rows. On the S3 this icon-to-day gap is eight display pixels when space allows.
 
@@ -41,10 +41,10 @@ On the 480×480 S3 with the default font sizes and eight available days:
 | 1w × 1h | One day | 1 |
 | 2w × 1h | Horizontal row | 2 |
 | 3w × 1h | Horizontal row | 4 |
-| 1w × 2h | Vertical list | 4 |
+| 1w × 2h | One column of stacked forecasts | 2 |
 | 2w × 2h | 2×2 grid | 4 |
 | 3w × 2h | 4×2 grid | 8 |
-| 1w × 3h | Vertical list | 6 |
+| 1w × 3h | One column of stacked forecasts | 3 |
 | 2w × 3h | 2×3 grid | 6 |
 | 3w × 3h | 3×3 grid, one space unused | 8 |
 

@@ -107,7 +107,7 @@ struct CardLayout {
   bool list = false;
 };
 // Maximise visible days first, then balance the grid's cell proportions.
-// Tall single-column cards use icon-and-text rows when those rows fit in width.
+// Tall single-column cards use the same icon-above-text tiles as wider grids.
 inline CardLayout card_layout(int width, int height, int minimum_width, int minimum_height,
     int list_width, int list_height, int column_gap, int row_gap, size_t available) {
   available = std::min(available, MAX_DAYS);
@@ -117,10 +117,6 @@ inline CardLayout card_layout(int width, int height, int minimum_width, int mini
   };
   const bool compact = height < minimum_height && width >= list_width;
   const int max_columns = std::min(static_cast<int>(available), fit(width, compact ? list_width : minimum_width, column_gap));
-  if (max_columns == 1 && width >= list_width && height >= minimum_height * 2 + row_gap) {
-    const size_t count = std::min(available, static_cast<size_t>(fit(height, list_height, row_gap)));
-    if (count > 1) return {count, 1, count, true};
-  }
   const int max_rows = std::min(static_cast<int>(available), fit(height, compact ? list_height : minimum_height, row_gap));
   const size_t count = std::min(available, static_cast<size_t>(max_columns * max_rows));
   CardLayout best{count, count, 1, compact};

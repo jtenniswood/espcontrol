@@ -12,11 +12,11 @@ const root = path.resolve(__dirname, "../../..");
 const { planWeatherCardLayout } = loadTypeScriptModule(path.join(root, "src/webserver/application/weather_daily_layout.ts"));
 const metrics = [84, 96, 112, 50, 26, 13];
 
-test("S3 card spans choose readable rows, grids and vertical lists", () => {
+test("S3 card spans choose readable rows and grids with stacked narrow tiles", () => {
   const spans = [
     [1, 1, 1, 1, false], [2, 1, 2, 1, false], [3, 1, 4, 1, false],
-    [1, 2, 1, 4, true], [2, 2, 2, 2, false], [3, 2, 4, 2, false],
-    [1, 3, 1, 6, true], [2, 3, 2, 3, false], [3, 3, 3, 3, false],
+    [1, 2, 1, 2, false], [2, 2, 2, 2, false], [3, 2, 4, 2, false],
+    [1, 3, 1, 3, false], [2, 3, 2, 3, false], [3, 3, 3, 3, false],
   ];
   for (const [wide, tall, columns, rows, list] of spans) {
     const width = 150 * wide + 10 * (wide - 1) - 28;

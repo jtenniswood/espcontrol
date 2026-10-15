@@ -16,10 +16,6 @@ export function planWeatherCardLayout(
         Math.max(1, Math.floor((space + gap) / (Math.max(1, minimum) + gap)));
     const compact = height < minimumHeight && width >= listWidth;
     const maxColumns = Math.min(available, fit(width, compact ? listWidth : minimumWidth, columnGap));
-    if (maxColumns === 1 && width >= listWidth && height >= minimumHeight * 2 + rowGap) {
-        const count = Math.min(available, fit(height, listHeight, rowGap));
-        if (count > 1) return { count, columns: 1, rows: count, list: true };
-    }
     const maxRows = Math.min(available, fit(height, compact ? listHeight : minimumHeight, rowGap));
     const count = Math.min(available, maxColumns * maxRows);
     let best: WeatherCardLayout = { count, columns: count, rows: 1, list: compact };
