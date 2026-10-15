@@ -96,9 +96,21 @@ test("clock bar discovery retries startup responses and reads the saved layout",
 test("clock bar discovery stops after bounded startup retries and does not retry auth failures", async () => {
   const { loadEditableClockBarLayout } = loadTypeScriptModule("src/webserver/application/clock_bar_post_api.ts");
   let calls = 0;
-  assert.equal(await loadEditableClockBarLayout(async () => { calls++; return new Response("Starting", { status: 503 }); }, async () => {}), undefined);
+  await assert.rejects(() => loadEditableClockBarLayout(async () => { calls++; return new Response("Starting", { status: 503 }); }, async () => {}));
   assert.equal(calls, 4);
   calls = 0;
-  assert.equal(await loadEditableClockBarLayout(async () => { calls++; return new Response("Authenticate", { status: 401 }); }), undefined);
+  await assert.rejects(() => loadEditableClockBarLayout(async () => { calls++; return new Response("Authenticate", { status: 401 }); }));
   assert.equal(calls, 1);
+});
+test("clock bar discovery distinguishes unsupported firmware from failed layout reads", async () => {
+  const { loadEditableClockBarLayout } = loadTypeScriptModule("src/webserver/application/clock_bar_post_api.ts");
+  assert.equal(await loadEditableClockBarLayout(async () => new Response("Not found", { status: 404 })), undefined);
+  for (const status of [401, 404, 500]) {
+    let calls = 0;
+    await assert.rejects(() => loadEditableClockBarLayout(async () => ++calls === 1
+      ? new Response('{"clock_bar":{"version":1}}') : new Response("Failed", { status })));
+    assert.equal(calls, 2);
+  }
+  for (const body of ["null", "[]", "not JSON"])
+    await assert.rejects(() => loadEditableClockBarLayout(async () => new Response(body)));
 });

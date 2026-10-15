@@ -239,6 +239,11 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
         });
     }
     async function exportConfig(this: any) {
+        try { await controllers.clockBar.ensureLayoutLoaded(); }
+        catch (error) {
+            controllers.shell.showBanner?.((error as Error).message, "error");
+            return;
+        }
         let identity: PanelIdentityBackup | undefined;
         let identityUnavailable = false;
         try {
@@ -363,6 +368,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     if (Object.prototype.hasOwnProperty.call(themeScreen, key) && parseThemeSunOffset(themeScreen[key]) === null)
                         throw new Error("Invalid " + key.replace(/_/g, " ") + " in backup; use a whole number from -180 to 180 minutes.");
                 }
+                await controllers.clockBar.ensureLayoutLoaded();
                 if (validatedPlan.importedSettings?.clockBarLayout && !state.clockBarLayoutSupported) throw new Error("Update the device firmware before restoring an editable clock bar.");
                 const restoredName = await controllers.identity?.chooseRestoreName(data);
                 if (restoredName === null) return;

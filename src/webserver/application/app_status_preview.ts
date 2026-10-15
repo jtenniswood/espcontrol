@@ -285,6 +285,7 @@ export function createAppStatusPreviewFeature(runtime: UiRuntimeState, core: Cor
             } else {
                 const icon = item.type === "network" ? networkPreviewIconSlug(state.networkTransport, state.wifiStrengthPercent) : item.type === "night" ? "weather-night" : "battery";
                 content.className = "mdi mdi-" + icon;
+                if (item.type === "network") content.setAttribute("data-clockbar-network", "");
             }
             element.appendChild(content);
             els.clockBarSections[item.group].appendChild(element);
@@ -475,6 +476,11 @@ export function createAppStatusPreviewFeature(runtime: UiRuntimeState, core: Cor
         return "wifi-strength-4";
     }
     function updateNetworkPreview(this: any) {
+        const customIcons = els.topbar?.querySelectorAll("[data-clockbar-network]") as NodeListOf<HTMLElement> | undefined;
+        customIcons?.forEach((icon: HTMLElement) => {
+            icon.className = "mdi mdi-" + networkPreviewIconSlug(state.networkTransport, state.wifiStrengthPercent);
+        });
+        if (customIcons?.length) refitClockBar?.();
         if (!els.networkPreview)
             return;
         var show: any = clockBarVisibleInPreview();

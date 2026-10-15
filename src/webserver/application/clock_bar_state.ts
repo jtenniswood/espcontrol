@@ -8,6 +8,7 @@ import type { EnvironmentStateFeature } from "./environment_state";
 
 export interface ClockBarFeature {
     loadLayout(): Promise<void>;
+    ensureLayoutLoaded(): Promise<void>;
     availableTypes(): ClockBarType[];
     layout(): ClockBarLayout;
     saveLayout(layout: ClockBarLayout): Promise<boolean>;
@@ -79,16 +80,31 @@ export function createClockBarFeature(
         return { version: 1, items };
     }
     let layoutRevision = 0;
-    async function loadLayout(): Promise<void> {
+    let discoveryKnown = false;
+    let loading: Promise<void> | null = null;
+    function loadLayout(): Promise<void> {
+        if (loading) return loading;
         const revision = layoutRevision;
-        try {
-            const value = await dependencies.getLayout();
-            if (value === undefined || revision !== layoutRevision || state.clockBarLayoutSaving) return;
-            const next = value && typeof value === "object" && "legacy" in value && value.legacy === true ? null : parseClockBarLayout(value);
-            state.clockBarLayoutSupported = true;
-            state.clockBarLayout = next;
-            syncClockBarUi();
-        } catch { /* Older firmware keeps its fixed layout and existing controls. */ }
+        loading = (async () => {
+            try {
+                const value = await dependencies.getLayout();
+                if (revision !== layoutRevision || state.clockBarLayoutSaving) return;
+                if (value !== undefined && (!value || typeof value !== "object")) throw new Error("Invalid clock bar layout response.");
+                const next = value === undefined || (value && typeof value === "object" && "legacy" in value && value.legacy === true) ? null : parseClockBarLayout(value);
+                state.clockBarLayoutSupported = value !== undefined;
+                state.clockBarLayout = next;
+                discoveryKnown = true;
+                syncClockBarUi();
+            } catch {
+                if (revision === layoutRevision) discoveryKnown = false;
+            }
+        })().finally(() => { loading = null; });
+        return loading;
+    }
+    async function ensureLayoutLoaded(): Promise<void> {
+        if (loading) await loading;
+        if (!discoveryKnown) await loadLayout();
+        if (!discoveryKnown) throw new Error("Could not read the clock bar configuration. Please try the backup again.");
     }
     async function saveLayout(layout: ClockBarLayout): Promise<boolean> {
         if (!state.clockBarLayoutSupported || state.clockBarLayoutSaving) return false;
@@ -98,6 +114,7 @@ export function createClockBarFeature(
         try {
             if (!await dependencies.postLayout(JSON.stringify(normalized))) return false;
             state.clockBarLayout = normalized;
+            discoveryKnown = true;
             if (!normalized.items.some(item => item.id === state.clockBarSelectedItem)) state.clockBarSelectedItem = "";
             return true;
         } finally {
@@ -356,6 +373,7 @@ export function createClockBarFeature(
     }
     return {
         loadLayout,
+        ensureLayoutLoaded,
         availableTypes: () => (Object.keys(CLOCK_BAR_CATALOG) as ClockBarType[]).filter(type => type !== "device_battery" || dependencies.batterySupported()),
         layout: currentLayout,
         saveLayout,

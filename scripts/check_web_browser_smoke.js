@@ -7514,6 +7514,85 @@ async function assertS3ForecastEditorLayout(browser) {
   } finally { await context.close(); }
 }
 
+async function assertClockBarBackupDiscovery(browser) {
+  const testCase = ACTIVE_CASES.find(item => item.slug === 'esp32-p4-86') || ACTIVE_CASES[0];
+  for (const scenario of ['pending-export', 'pending-import', 'failed-discovery', 'unsupported']) {
+    const layout = { version: 1, items: [{ id: 'saved', type: 'humidity', group: 'left', source: 'ha', entity: 'sensor.room_humidity', label: 'Saved', unit: '%', precision: 0, icon: 'Water Percent' }] };
+    const clockBar = { layout, posts: [] };
+    const nativeState = nativeConfigState(testCase.slug);
+    const context = await browser.newContext({ viewport: testCase.viewport, acceptDownloads: true });
+    await installRoutes(context, testCase.slug, { nativeState, ...(scenario === 'unsupported' ? {} : { clockBarState: clockBar }) });
+    let mode = scenario.startsWith('pending') ? 'hold' : 'fail';
+    let release; const gate = new Promise(resolve => { release = resolve; });
+    let requested; const firstRequest = new Promise(resolve => { requested = resolve; });
+    await context.route('**/api/v1/clock-bar', async route => {
+      if (route.request().method() !== 'GET') { await route.fallback(); return; }
+      requested();
+      if (mode === 'hold') await gate;
+      if (mode === 'fail') { await route.fulfill({ status: 500, body: 'Unavailable' }); return; }
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(clockBar.layout) });
+    });
+    const page = await context.newPage();
+    const downloads = []; page.on('download', download => downloads.push(download));
+    const errors = []; page.on('pageerror', error => errors.push(error.message));
+    await installFakeEventSource(page);
+    try {
+      await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => window.__eventSources?.length > 0);
+      await seedNativeDocument(page, nativeState);
+      if (scenario !== 'unsupported') await firstRequest;
+      const beforeWrites = nativeState.puts.length;
+      const backup = backupFixture(testCase.slug, testCase.slots);
+      backup.settings.clock_bar_layout = { ...layout, items: [{ ...layout.items[0], label: 'Restored' }] };
+      await openBackupControls(page);
+      if (scenario === 'pending-export') {
+        await page.getByRole('button', { name: 'Export', exact: true }).click();
+        await page.waitForTimeout(150);
+        assert.equal(downloads.length, 0, 'export waits while clock bar discovery is pending');
+        const downloadReady = page.waitForEvent('download');
+        mode = 'ok'; release();
+        const exported = JSON.parse(fs.readFileSync(await (await downloadReady).path(), 'utf8'));
+        assert.deepEqual(exported.settings.clock_bar_layout, layout, 'export includes the discovered saved layout');
+      } else {
+        await importBackup(page, backup, 'clock-bar-' + scenario);
+        if (scenario === 'pending-import') {
+          await page.waitForTimeout(150);
+          assert.equal(await page.locator('.sp-banner.sp-error').count(), 0, 'pending discovery does not report unsupported firmware');
+          assert.equal(nativeState.puts.length, beforeWrites, 'restore waits before changing native configuration');
+          assert.equal(clockBar.posts.length, 0);
+          mode = 'ok'; release();
+          await page.waitForSelector('.sp-banner.sp-success', { timeout: 15000 });
+          assert.deepEqual(clockBar.posts.at(-1), backup.settings.clock_bar_layout);
+        } else if (scenario === 'failed-discovery') {
+          await page.getByText('Could not read the clock bar configuration. Please try the backup again.', { exact: true }).waitFor();
+          assert.equal(nativeState.puts.length, beforeWrites);
+          assert.equal(clockBar.posts.length, 0, 'unknown support blocks restore before writes');
+          await page.getByRole('button', { name: 'Export', exact: true }).click();
+          await page.waitForTimeout(150);
+          assert.equal(downloads.length, 0, 'failed discovery cannot export a null placeholder layout');
+          mode = 'ok';
+          const downloadReady = page.waitForEvent('download');
+          await page.getByRole('button', { name: 'Export', exact: true }).click();
+          const exported = JSON.parse(fs.readFileSync(await (await downloadReady).path(), 'utf8'));
+          assert.deepEqual(exported.settings.clock_bar_layout, layout, 'export retries a failed discovery');
+          await importBackup(page, backup, 'clock-bar-discovery-recovered');
+          await page.waitForSelector('.sp-banner.sp-success', { timeout: 15000 });
+          assert.deepEqual(clockBar.posts.at(-1), backup.settings.clock_bar_layout, 'restore succeeds after discovery recovers');
+        } else {
+          await page.getByText('Update the device firmware before restoring an editable clock bar.', { exact: true }).waitFor();
+          assert.equal(nativeState.puts.length, beforeWrites);
+          assert.equal(clockBar.posts.length, 0, 'confirmed older firmware still rejects an editable layout');
+          const downloadReady = page.waitForEvent('download');
+          await page.getByRole('button', { name: 'Export', exact: true }).click();
+          await downloadReady;
+        }
+      }
+      assert.deepEqual(errors, [], scenario + ': no browser errors');
+      console.log('Clock bar backup ' + scenario + ' passed.');
+    } finally { release(); await context.close(); }
+  }
+}
+
 async function assertEditableClockBar(browser, testCase) {
   const clockBar = { layout: { legacy: true }, posts: [], failSave: false };
   const nativeState = nativeConfigState(testCase.slug);
@@ -7662,6 +7741,24 @@ async function assertEditableClockBar(browser, testCase) {
       await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
       assert(clockBar.layout.items.some(item => item.type === "network"), "deleted connectivity can be added again");
     }
+    const connectivity = clockBar.layout.items.find(item => item.type === 'network');
+    await page.locator(`[data-clockbar-item="${connectivity.id}"]`).click();
+    await page.getByRole('button', { name: 'Duplicate', exact: true }).click();
+    await page.waitForSelector('#sp-clockbar-group');
+    await page.locator('#sp-clockbar-group').selectOption('left');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.waitForSelector('.sp-settings-overlay.sp-visible', { state: 'hidden' });
+    assert.equal(await page.locator('[data-clockbar-network]').count(), 2);
+    await page.evaluate(() => { window.__clockBarNetworkNodes = Array.from(document.querySelectorAll('[data-clockbar-network]')); });
+    for (const [event, icon] of [
+      [{ id: 'text_sensor-network_transport', state: 'Ethernet' }, 'ethernet'],
+      [{ id: 'sensor-wifi_strength', state: '10' }, 'wifi-strength-1'],
+      [{ id: 'sensor-wifi_strength', state: '90' }, 'wifi-strength-4'],
+    ]) {
+      await page.evaluate(event => window.__seedEspState([event]), event);
+      await page.waitForFunction(icon => Array.from(document.querySelectorAll('[data-clockbar-network]')).every(el => el.classList.contains('mdi-' + icon)), icon);
+      assert(await page.evaluate(() => window.__clockBarNetworkNodes.every(el => el.isConnected)), 'network updates preserve the existing elements');
+    }
     await page.setViewportSize({ width: 320, height: 740 });
     assert(await addTarget.isVisible(), "add touch point remains visible on a phone");
     await page.waitForFunction(() => {
@@ -7730,7 +7827,12 @@ async function assertEditableClockBar(browser, testCase) {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_CLOCK_BAR_BACKUP_ONLY === "1") {
+      await assertClockBarBackupDiscovery(browser);
+      return;
+    }
     if (process.env.ESPCONTROL_CLOCK_BAR_ONLY === "1") {
+      await assertClockBarBackupDiscovery(browser);
       fs.mkdirSync(FAILURE_DIR, { recursive: true });
       for (const testCase of ACTIVE_CASES) await assertEditableClockBar(browser, testCase);
       return;
@@ -7786,6 +7888,7 @@ async function assertEditableClockBar(browser, testCase) {
       console.log(`Card curve preset checks passed for ${ACTIVE_CASES.length} generated layouts.`);
       return;
     }
+    await assertClockBarBackupDiscovery(browser);
     await assertEditableClockBar(browser, ACTIVE_CASES[0]);
     await assertCardCurveSettings(browser, ACTIVE_CASES[0]);
     for (const testCase of ACTIVE_CASES) {
