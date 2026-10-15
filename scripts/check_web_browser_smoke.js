@@ -2447,9 +2447,9 @@ async function assertMobileDeviceViewport(browser, testCase) {
     );
     for (const width of [360, 320]) {
       await page.setViewportSize({ width, height: 740 });
-      for (const tab of ["Device", "Settings", "Screen"]) {
+      for (const [tab, id] of [["System", "device"], ["Screen", "settings"], ["Layout", "screen"]]) {
         await page.getByRole("tab", { name: tab, exact: true }).click();
-        assert(await page.locator(`#sp-${tab.toLowerCase()}.active`).isVisible(),
+        assert(await page.locator(`#sp-${id}.active`).isVisible(),
           `${testCase.name}: ${tab} opens at ${width}px`);
         assert.strictEqual(await page.locator(".sp-page.active").count(), 1,
           `${testCase.name}: only the selected page is shown`);
@@ -7571,6 +7571,10 @@ async function assertEditableClockBar(browser, testCase) {
     await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
     await page.waitForSelector(".sp-clockbar-subpage-title");
     assert.equal(await page.locator('.sp-clockbar-left [data-clockbar-item]:visible').count(), 0, "subpage title replaces left elements");
+    assert(await page.locator(".sp-clockbar-subpage-title").evaluate(title => {
+      const range = document.createRange(); range.selectNodeContents(title);
+      return range.getBoundingClientRect().width <= title.clientWidth + 1;
+    }), "short titles remain complete when there is room");
     const boxes = await page.locator('.sp-topbar [data-clockbar-item]:visible,.sp-clockbar-subpage-title:visible').evaluateAll(elements => elements.map(el => { const b = el.getBoundingClientRect(); return { x: b.x, right: b.right }; }).sort((a,b) => a.x-b.x));
     for (let i=1; i<boxes.length; i++) assert(boxes[i].x >= boxes[i-1].right - 1, "visible clock bar elements do not overlap");
     const network = clockBar.layout.items.find(item => item.type === "network");

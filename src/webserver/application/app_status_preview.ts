@@ -301,7 +301,13 @@ export function createAppStatusPreviewFeature(runtime: UiRuntimeState, core: Cor
                 return { id: item.id, group: item.group, width: desired };
             });
             if (title) { title.style.width = ""; title.style.display = ""; }
-            const result = placeClockBarItems(measured, width, gap, title ? Math.min(width, title.scrollWidth) : 0);
+            let titleWidth = 0;
+            if (title) {
+                const range = document.createRange();
+                range.selectNodeContents(title);
+                titleWidth = Math.min(width, Math.ceil(range.getBoundingClientRect().width) + 2);
+            }
+            const result = placeClockBarItems(measured, width, gap, titleWidth);
             const visible = new Set(result.items.map(item => item.id));
             for (const item of items) {
                 const el = els.clockBarItems[item.id];
