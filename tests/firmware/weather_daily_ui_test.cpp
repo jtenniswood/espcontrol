@@ -80,6 +80,7 @@ void lv_obj_set_style_text_font(lv_obj_t *obj,const lv_font_t *f,int){obj->font=
 const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *obj,int){return obj->font;}
 #define NOOP(name) template<class... T> void name(T...) {}
 void lv_obj_set_style_text_color(lv_obj_t *obj,int color,int){obj->text_color=color;}
+int lv_obj_get_style_text_color(lv_obj_t *obj,int){return obj->text_color;}
 void lv_obj_set_style_text_line_space(lv_obj_t *obj,int space,int){obj->line_space=space;}
 void theme_set_content_foreground(lv_obj_t *obj){obj->flags|=LV_OBJ_FLAG_USER_2;}
 NOOP(lv_label_set_long_mode) NOOP(lv_obj_set_style_text_opa)
@@ -269,6 +270,12 @@ int main(){
       assert(col.icon->y==0 && col.day->y==130 && col.high->y==148);
     }
     theme.text_muted=0x606060;emit(owner,LV_EVENT_STYLE_CHANGED);
+    card->owner->text_color=0x123456;
+    weather_daily_render_card(card);
+    for(const auto &column:card->columns) {
+      assert(column.day->text_color==0x123456);
+      assert(column.icon->text_color==0x123456);
+    }
     assert(card->columns.front().high->text_color==theme.text_muted);
     theme.text_muted=0xB0B0B0;emit(owner,LV_EVENT_STYLE_CHANGED);
     assert(card->columns.front().high->text_color==theme.text_muted);
