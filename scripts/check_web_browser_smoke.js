@@ -15,6 +15,7 @@ const {
   decodePanelConfig,
   encodePanelConfig,
   activeCardColor,
+  decodeConfigField,
 } = loadTypeScriptModule(path.join(ROOT, "src", "webserver", "model", "index.ts"));
 const MANIFEST_PATH = path.join(ROOT, "devices", "manifest.json");
 const WEB_OUTPUT_DIR = freshWebOutputDir();
@@ -140,7 +141,7 @@ async function assertSubpageTitleTypography(page, label, nativeState) {
     `${label}: subpage title uses the device card-label typography`,
   );
   const initialColor = await page.locator(".sp-back-btn").evaluate(el => getComputedStyle(el).backgroundColor);
-  await page.locator(".sp-back-btn .sp-btn-label").click();
+  await page.locator(".sp-back-btn").click({ position: { x: (await page.locator(".sp-back-btn").boundingBox()).width - 12, y: 12 } });
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("button", { name: "Custom Colours", exact: true }).click();
   await page.getByRole("button", { name: "Set colour to yellow", exact: true }).click();
@@ -157,7 +158,7 @@ async function assertSubpageTitleTypography(page, label, nativeState) {
   await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
   assert.strictEqual(await page.locator(".sp-back-btn").evaluate(el => getComputedStyle(el).backgroundColor),
     "rgb(238, 209, 70)", `${label}: reopening subpage preserves its back colour`);
-  await page.locator(".sp-back-btn .sp-btn-label").click();
+  await page.locator(".sp-back-btn").click({ position: { x: (await page.locator(".sp-back-btn").boundingBox()).width - 12, y: 12 } });
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("button", { name: "Custom Colours", exact: true }).click();
   const custom = page.locator(".sp-settings-modal").getByLabel("Choose custom colour", { exact: true });
@@ -5833,6 +5834,89 @@ async function seedNativeDocument(page, nativeState) {
   await page.waitForSelector('.sp-main [data-slot="2"]');
 }
 
+async function assertInlineCardNames(page, nativeState, label) {
+  const title = page.locator('.sp-main [data-slot="1"] .sp-editable-title');
+  const input = page.getByRole("textbox", { name: "Card name", exact: true });
+  const fields = value => value.startsWith("~") ? value.slice(1).split(",").map(decodeConfigField) : value.split(";");
+  const original = nativeState.document.buttons[1];
+  const originalLabel = panelConfigLabel(nativeState.document, 1);
+  await title.click();
+  assert.strictEqual(await input.inputValue(), originalLabel, `${label}: starts with the saved name`);
+  assert.strictEqual(await page.locator(".sp-settings-overlay.sp-visible").count(), 0);
+  await input.fill('Kitchen <&> "; café');
+  assert.strictEqual(nativeState.document.buttons[1], original, `${label}: typing does not save`);
+  // A device update must not discard the editor, value, focus, or text selection.
+  await input.evaluate(el => el.setSelectionRange(2, 5));
+  await seedNativeDocument(page, nativeState);
+  await page.waitForFunction(() => {
+    const el = document.querySelector(".sp-card-name-input");
+    return el === document.activeElement && el.selectionStart === 2 && el.selectionEnd === 5;
+  });
+  assert.strictEqual(await input.inputValue(), 'Kitchen <&> "; café');
+  await input.press("Enter");
+  await waitForNativeState(nativeState,
+    () => fields(nativeState.document.buttons[1])[1] === 'Kitchen <&> "; café', `${label}: Enter saves`);
+  assert.strictEqual(await title.textContent(), 'Kitchen <&> "; café', `${label}: names render as text`);
+  assert.strictEqual(await input.count(), 0);
+  const renamed = nativeState.document.buttons[1];
+  assert.deepStrictEqual(fields(renamed).filter((_, i) => i !== 1),
+    fields(original).filter((_, i) => i !== 1), `${label}: only the label changes`);
+  await title.press("Enter");
+  await input.fill("Cancelled");
+  await input.press("Escape");
+  assert.strictEqual(nativeState.document.buttons[1], renamed, `${label}: Escape cancels`);
+  await title.click();
+  await input.fill("Also cancelled");
+  await page.locator(".sp-preview-hint, .sp-hint").first().click();
+  await page.waitForFunction(() => !document.querySelector(".sp-card-name-input"));
+  assert.strictEqual(nativeState.document.buttons[1], renamed, `${label}: clicking away cancels`);
+  await title.click();
+  await input.fill("   ");
+  await input.press("Enter");
+  await waitForNativeState(nativeState, () => fields(nativeState.document.buttons[1])[1] === "", `${label}: empty name restores fallback`);
+  await title.click();
+  await input.fill(originalLabel);
+  await input.dispatchEvent("keydown", { key: "Enter", isComposing: true, bubbles: true });
+  assert.strictEqual(await input.count(), 1, `${label}: composition Enter does not save`);
+  assert.strictEqual(await page.locator('.sp-main [data-slot="1"]').getAttribute("draggable"), "false");
+  await input.press("Enter");
+  await waitForNativeState(nativeState, () => nativeState.document.buttons[1] === original, `${label}: restore main name`);
+  await title.click({ modifiers: ["Control"] });
+  assert.strictEqual(await input.count(), 0, `${label}: modified clicks still select`);
+  await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+  await title.click();
+  await input.fill("Subpage lamp");
+  await input.press("Enter");
+  await waitForNativeState(nativeState, () => nativeState.document.subpages[3].includes("Subpage lamp"), `${label}: save subpage card name`);
+  assert.strictEqual(nativeState.document.buttons[1], original, `${label}: subpage rename leaves main alone`);
+  await title.click();
+  await input.fill("Kitchen");
+  await input.press("Enter");
+  await waitForNativeState(nativeState, () => nativeState.document.subpages[3].includes("Kitchen") && !nativeState.document.subpages[3].includes("Subpage lamp"), `${label}: restore subpage name`);
+  const back = page.locator('.sp-back-btn .sp-editable-title');
+  await back.click();
+  await input.fill("Return home");
+  await input.press("Enter");
+  await waitForNativeState(nativeState, () => nativeState.document.subpages[3].includes("Return home"), `${label}: save Back name`);
+  assert.strictEqual(await back.textContent(), "Return home");
+  await back.click();
+  await input.fill("Back");
+  await input.press("Enter");
+  await waitForNativeState(nativeState, () => !nativeState.document.subpages[3].includes("Return home"), `${label}: restore Back name`);
+  await page.locator(".sp-back-btn .sp-back-hit").click();
+  nativeState.document.buttons[1] = "camera.garden;Garden;Auto;Auto;;;image;;image_label";
+  await seedNativeDocument(page, nativeState);
+  await title.click();
+  await input.fill("Garden camera");
+  const box = await input.boundingBox();
+  assert(box.width > 20 && box.height > 10, `${label}: image name editor is visible`);
+  await input.press("Enter");
+  await waitForNativeState(nativeState, () => fields(nativeState.document.buttons[1])[1] === "Garden camera", `${label}: image title saves`);
+  assert.strictEqual(await title.locator(".sp-image-label-main").textContent(), "Garden camera");
+  nativeState.document.buttons[1] = original;
+  await seedNativeDocument(page, nativeState);
+}
+
 async function assertGuestWifiSettings(page, label) {
   await page.getByRole("tab", { name: "Layout" }).click();
   const emptyCell = page.locator(".sp-empty-cell:not(.sp-info-only-hidden)").first();
@@ -5886,6 +5970,7 @@ async function assertNativeProfileJourney(browser, testCase) {
     await seedNativeDocument(page, nativeState);
     if (testCase.exerciseInteractions) await assertGuestWifiSettings(page, testCase.name);
 
+    await assertInlineCardNames(page, nativeState, testCase.name);
     await assertSubpageTitleTypography(page, testCase.name, nativeState);
 
     const sensor = page.locator('.sp-main [data-slot="2"]');
@@ -7351,7 +7436,7 @@ async function assertS3ForecastEditorLayout(browser) {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
-    if (process.env.ESPCONTROL_SUBPAGE_BACK_ONLY === "1") {
+    if (process.env.ESPCONTROL_SUBPAGE_BACK_ONLY === "1" || process.env.ESPCONTROL_CARD_NAMES_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) {
         const nativeState = nativeConfigState(testCase.slug);
         const context = await browser.newContext({ viewport: testCase.viewport });
@@ -7362,10 +7447,11 @@ async function assertS3ForecastEditorLayout(browser) {
           await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
           await page.waitForSelector("#sp-app");
           await seedNativeDocument(page, nativeState);
-          await assertSubpageTitleTypography(page, testCase.name, nativeState);
+          if (process.env.ESPCONTROL_CARD_NAMES_ONLY === "1") await assertInlineCardNames(page, nativeState, testCase.name);
+          else await assertSubpageTitleTypography(page, testCase.name, nativeState);
         } finally { await context.close(); }
       }
-      console.log(`Subpage Back colour browser checks passed for ${ACTIVE_CASES.length} layouts.`);
+      console.log(`Card title browser checks passed for ${ACTIVE_CASES.length} layouts.`);
       return;
     }
     if (process.env.ESPCONTROL_ACTIVE_COLOUR_ONLY === "1") {

@@ -110,11 +110,27 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
         handle.innerHTML = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M 27 8 Q 24 24 8 27"/></svg>';
         card.appendChild(handle);
     }
+    function makeTitleEditable(card: HTMLElement, image = false) {
+        if (isConfigLocked()) return;
+        const title = card.querySelector<HTMLElement>(image ? ".sp-image-label-stack" : ".sp-btn-label:not(.sp-media-now-artist)");
+        if (!title) return;
+        title.classList.add("sp-editable-title");
+        title.tabIndex = 0;
+        title.setAttribute("role", "button");
+        title.setAttribute("aria-label", "Rename card");
+        title.title = "Click to rename; Enter to save";
+    }
     function renderPreview(this: any) {
         const previewColors = PREVIEW_THEME_COLORS[previewEffectiveTheme(state)];
         dependencies.updateClockBarItemUi();
         var main: any = els.previewMain;
         weatherLayout.disconnect();
+        // Keep the active editor and its selection through device state refreshes.
+        const editor = main.querySelector(".sp-card-name-input") as HTMLInputElement | null;
+        const focused = editor && document.activeElement === editor;
+        const selectionStart = editor?.selectionStart ?? null;
+        const selectionEnd = editor?.selectionEnd ?? null;
+        const editorSlot = editor?.closest("[data-slot]")?.getAttribute("data-slot");
         main.innerHTML = "";
         main.className = "sp-main" + (state.subpageChevronsOn ? "" : " sp-hide-subpage-chevrons");
         if (gridPreviewBlockedByRotationStartup()) {
@@ -147,6 +163,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 backBtn.setAttribute("data-pos", pos);
                 backBtn.draggable = !isConfigLocked();
                 backBtn.setAttribute("data-slot", "-2");
+                makeTitleEditable(backBtn);
                 appendResizeHandle(backBtn);
                 main.appendChild(backBtn);
             }
@@ -232,6 +249,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     sensorBadge +
                         iconHtml +
                         labelHtml;
+                makeTitleEditable(btn, b.type === "image");
                 appendResizeHandle(btn);
                 main.appendChild(btn);
                 if (["light_brightness", "fan_speed", "cover", "slider", "light_temperature"].indexOf(b.type) !== -1) {
@@ -245,6 +263,15 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 empty.setAttribute("data-pos", pos);
                 empty.innerHTML = '<span class="sp-add-pill"><span class="sp-add-icon mdi mdi-plus"></span></span>';
                 main.appendChild(empty);
+            }
+        }
+        if (focused && editor && editor.dataset.homeSlot === String(state.editingSubpage || "")) {
+            const title = (main as HTMLElement).querySelector('[data-slot="' + editorSlot + '"] .sp-editable-title');
+            if (title) {
+                title.closest<HTMLElement>("[data-slot]")!.draggable = false;
+                title.replaceChildren(editor);
+                editor.focus();
+                editor.setSelectionRange(selectionStart, selectionEnd);
             }
         }
         renderSelectionBar(c);
