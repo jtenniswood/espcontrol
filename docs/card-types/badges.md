@@ -34,7 +34,7 @@ The row stays one badge high; swipe horizontally if the badges do not all fit.
 
 Click a badge to select it, then choose **Edit** in the edit bar. Right-click
 a badge or use the bar's **…** menu to edit, duplicate, copy, cut or delete it.
-Use **Move left** or **Move right** in badge settings, or drag a badge into a gap, or to the start or end of the row, to reorder it.
+Drag a badge into a gap, or to the start or end of the row, to reorder it.
 A blue insertion line shows where it will go; the **+** stays at the end. **Save** writes badge
 settings independently of card settings. The empty row keeps its **+** in the
 editor so you can add badges again.

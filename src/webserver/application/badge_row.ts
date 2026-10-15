@@ -668,11 +668,6 @@ export function createBadgeRowFeature(deps: {
     if (current.index < badges(current.page).length) {
       actions.classList.add("sp-has-delete");
       const management = document.createElement("div"); management.className = "sp-badge-management";
-      for (const [label, offset] of [["Move left", -1], ["Move right", 1]] as const) {
-        const move = button(label, () => { close(); reorderBadge(current.index, current.index + offset); });
-        move.disabled = current.index + offset < 0 || current.index + offset >= badges(current.page).length;
-        management.appendChild(move);
-      }
       management.appendChild(button("", () => {
         const next = badges(current.page).map(cloneCardConfig);
         next.splice(current.index, 1);
