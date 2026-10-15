@@ -443,13 +443,7 @@ inline void set_card_checked_state(lv_obj_t *btn, bool checked) {
 inline void configure_button_label_wrap(lv_obj_t *label) {
   if (!label) return;
   lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-  // Wrap before scaling so enlarged text still fits within the card. Keep
-  // this here because live state/friendly-name updates also reapply wrapping.
-  const int zoom = width_compensation_vertical_axis()
-    ? lv_obj_get_style_transform_scale_x(label, LV_PART_MAIN)
-    : lv_obj_get_style_transform_scale_y(label, LV_PART_MAIN);
-  if (zoom > 256) lv_obj_set_width(label, lv_pct(25600 / zoom));
-  else lv_obj_set_width(label, lv_pct(100));
+  lv_obj_set_width(label, lv_pct(100));
 }
 
 inline int card_content_zoom(bool simple_content, int row_span, int col_span) {
@@ -457,10 +451,13 @@ inline int card_content_zoom(bool simple_content, int row_span, int col_span) {
 }
 
 inline void apply_card_content_zoom(const BtnSlot &s, int zoom, int icon_percent,
-                                    bool large_numbers = false) {
+                                    bool large_numbers = false,
+                                    const lv_font_t *label_font = nullptr) {
   apply_width_compensation(s.icon_lbl, icon_percent, zoom);
   apply_width_compensation(s.sensor_container, text_width_compensation_percent(), large_numbers ? 256 : zoom);
-  apply_width_compensation(s.text_lbl, text_width_compensation_percent(), zoom);
+  // Labels use an existing larger font, rendered at its native size. Scaling
+  // the small label bitmap makes the enlarged text visibly soft on the panel.
+  apply_text_width_compensation(s.text_lbl);
   if (s.icon_lbl) {
     lv_obj_set_style_transform_pivot_x(s.icon_lbl, 0, LV_PART_MAIN);
     lv_obj_set_style_transform_pivot_y(s.icon_lbl, 0, LV_PART_MAIN);
@@ -470,8 +467,9 @@ inline void apply_card_content_zoom(const BtnSlot &s, int zoom, int icon_percent
     lv_obj_set_style_transform_pivot_y(s.sensor_container, 0, LV_PART_MAIN);
   }
   if (s.text_lbl) {
+    if (label_font) lv_obj_set_style_text_font(s.text_lbl, label_font, LV_PART_MAIN);
     lv_obj_set_style_transform_pivot_x(s.text_lbl, 0, LV_PART_MAIN);
-    lv_obj_set_style_transform_pivot_y(s.text_lbl, zoom == 256 ? 0 : lv_pct(100), LV_PART_MAIN);
+    lv_obj_set_style_transform_pivot_y(s.text_lbl, 0, LV_PART_MAIN);
     configure_button_label_wrap(s.text_lbl);
   }
 }

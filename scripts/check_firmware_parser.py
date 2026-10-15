@@ -84,9 +84,11 @@ class StringRef {
 }
 
 struct lv_event_t;
+struct lv_font_t;
 using lv_event_cb_t = void (*)(lv_event_t *);
 struct TestEventHandler { lv_event_cb_t callback; int code; void *data; };
 struct lv_obj_t {
+  const lv_font_t *font = nullptr;
   lv_obj_t *parent = nullptr;
   std::vector<lv_obj_t *> children;
   std::vector<TestEventHandler> handlers;
@@ -174,9 +176,12 @@ inline void lv_obj_set_style_text_align(lv_obj_t *, int, lv_style_selector_t) {}
 inline lv_color_t lv_obj_get_style_text_color(lv_obj_t *, lv_style_selector_t) { return 0; }
 inline int lv_font_get_line_height(const lv_font_t *) { return 20; }
 inline int lv_obj_get_style_text_line_space(lv_obj_t *, lv_style_selector_t) { return 0; }
-inline const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *, lv_style_selector_t) {
+inline const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *obj, lv_style_selector_t) {
   static const lv_font_t font;
-  return &font;
+  return obj && obj->font ? obj->font : &font;
+}
+inline void lv_obj_set_style_text_font(lv_obj_t *obj, const lv_font_t *font, lv_style_selector_t) {
+  if (obj) obj->font = font;
 }
 inline void lv_obj_set_style_opa(lv_obj_t *, int, int) {}
 inline void lv_obj_set_style_text_opa(lv_obj_t *, int, int) {}
@@ -843,6 +848,7 @@ int main() {
     set_width_compensation_vertical_axis(vertical);
     set_text_width_compensation_percent(95);
     lv_obj_t icon, label, value;
+    const lv_font_t normal_font{22}, title_font{34};
     BtnSlot enlarged;
     enlarged.icon_lbl = &icon;
     enlarged.text_lbl = &label;
@@ -851,19 +857,23 @@ int main() {
     assert(card_content_zoom(true, 2, 1) == 256);
     assert(card_content_zoom(true, 1, 2) == 256);
     assert(card_content_zoom(false, 2, 2) == 256);
-    apply_card_content_zoom(enlarged, 384, 95);
+    apply_card_content_zoom(enlarged, 384, 95, false, &title_font);
     assert(icon.transform_scale_x == (vertical ? 384 : 364));
     assert(icon.transform_scale_y == (vertical ? 364 : 384));
-    assert(label.width == 66);
-    assert(label.transform_pivot_x == 0 && label.transform_pivot_y == lv_pct(100));
+    assert(label.font == &title_font);
+    assert(label.width == 100);
+    assert(label.transform_scale_x == (vertical ? 256 : 243));
+    assert(label.transform_scale_y == (vertical ? 243 : 256));
+    assert(label.transform_pivot_x == 0 && label.transform_pivot_y == 0);
     assert(value.transform_scale_x == icon.transform_scale_x);
     set_wrapped_button_label_text(&label, "Updated friendly name");
-    assert(label.width == 66);  // Live updates must preserve the scaled wrap width.
-    apply_card_content_zoom(enlarged, 384, 95, true);
+    assert(label.width == 100 && label.font == &title_font);  // Live updates retain the native font.
+    apply_card_content_zoom(enlarged, 384, 95, true, &title_font);
     assert(value.transform_scale_x == (vertical ? 256 : 243));
     assert(value.transform_scale_y == (vertical ? 243 : 256));
-    assert(label.width == 66);  // Existing large-number fonts must not be enlarged twice.
-    apply_card_content_zoom(enlarged, 256, 95);
+    assert(label.width == 100);  // Existing large-number fonts must not be enlarged twice.
+    apply_card_content_zoom(enlarged, 256, 95, false, &normal_font);
+    assert(label.font == &normal_font);
     assert(label.width == 100);
     assert(label.transform_pivot_y == 0);
     assert(icon.transform_scale_x == (vertical ? 256 : 243));

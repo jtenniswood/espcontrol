@@ -106,7 +106,8 @@ Right-click a card and open **Size** to choose:
 If a card already occupies the space needed for a larger size, the setup page tries to move it to the next available slot. If there is not enough room, the size change is not applied.
 
 For simple switch, button, action and subpage cards, **Large (2 x 2)** also makes
-the icon, label and standard state value 50% larger, on both the panel and the
+the icon and standard state value 50% larger. Labels use the display's existing
+larger title font at its native size for sharp text, on both the panel and the
 setup preview. Values already using **Large Numbers** keep their existing size.
 Returning to Single, Tall or Wide restores the usual content size.
 Cards with dedicated controls, such as media players and sliders, keep their

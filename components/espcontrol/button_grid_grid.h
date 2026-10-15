@@ -366,6 +366,9 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   if (s.icon_lbl) lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   if (s.sensor_container) lv_obj_set_user_data(s.sensor_container, nullptr);
   if (s.text_lbl) {
+    // A replacement card must not inherit an enlarged simple card's title font.
+    lv_obj_set_style_text_font(
+      s.text_lbl, lv_obj_get_style_text_font(s.btn, LV_PART_MAIN), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(s.text_lbl, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_pad_all(s.text_lbl, 0, LV_PART_MAIN);
     lv_obj_set_style_radius(s.text_lbl, 0, LV_PART_MAIN);
@@ -976,10 +979,14 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
                                 int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   const auto context = card_runtime_context(p);
+  const bool simple = card_simple_content(p);
+  const int zoom = card_content_zoom(simple, row_span, col_span);
+  const lv_font_t *label_font = simple
+    ? display_card_label_font(display, lv_obj_get_style_text_font(s.btn, LV_PART_MAIN), zoom > 256)
+    : nullptr;
   display_apply_slot_text_width(s, display);
-  apply_card_content_zoom(s, card_content_zoom(card_simple_content(p), row_span, col_span),
-                          display_main_width_percent(display),
-                          card_large_numbers_active_for_layout(p, row_span, col_span));
+  apply_card_content_zoom(s, zoom, display_main_width_percent(display),
+    card_large_numbers_active_for_layout(p, row_span, col_span), label_font);
   if (cfg.label_lines > 0) {
     apply_card_label_line_clamp(s.text_lbl, cfg, row_span);
   } else if (cfg.wrap_tall_labels && row_span > 1) {
@@ -1316,9 +1323,10 @@ inline bool grid_refresh_subpage_layouts(
       entry->back_button, entry->screen,
       sp_order.back_pos % COLS, sp_order.back_pos / COLS,
       sp_order.back_col_span, sp_order.back_row_span, COLS, ROWS);
-    apply_card_content_zoom(entry->back_slot,
-      card_content_zoom(true, sp_order.back_row_span, sp_order.back_col_span),
-      display_main_width_percent(display));
+    const int back_zoom = card_content_zoom(true, sp_order.back_row_span, sp_order.back_col_span);
+    apply_card_content_zoom(entry->back_slot, back_zoom, display_main_width_percent(display), false,
+      display_card_label_font(display,
+        lv_obj_get_style_text_font(entry->back_button, LV_PART_MAIN), back_zoom > 256));
     apply_card_label_line_clamp(entry->back_slot.text_lbl, cfg,
                                 sp_order.back_row_span);
     configure_button_label_wrap(entry->back_slot.text_lbl);
@@ -2177,9 +2185,9 @@ inline void grid_phase2(
     display_apply_slot_text_width(back_slot, display);
     lv_label_set_display_text(back_slot.icon_lbl, "\U000F0141");
     lv_label_set_display_text(back_slot.text_lbl, sp_back_label.c_str());
-    apply_card_content_zoom(back_slot,
-      card_content_zoom(true, sp_ord.back_row_span, sp_ord.back_col_span),
-      display_main_width_percent(display));
+    const int back_zoom = card_content_zoom(true, sp_ord.back_row_span, sp_ord.back_col_span);
+    apply_card_content_zoom(back_slot, back_zoom, display_main_width_percent(display), false,
+      display_card_label_font(display, sp_btn_fnt, back_zoom > 256));
     apply_card_label_line_clamp(back_slot.text_lbl, cfg, sp_ord.back_row_span);
     configure_button_label_wrap(back_slot.text_lbl);
     const bool back_neutral_background = apply_subpage_back_colors(back_btn, sp_order_str, display);
