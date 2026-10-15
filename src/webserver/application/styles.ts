@@ -181,9 +181,6 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-btn-extra-wide .sp-media-now-title{-webkit-line-clamp:var(--btn-lines-dbl)}" +
         ".sp-btn-big{grid-row:span 2;grid-column:span 2}" +
         ".sp-scalable-content:is(.sp-btn-big,.sp-btn-extra-large,.sp-btn-max-wide,.sp-btn-max-tall,.sp-btn-portrait-large,.sp-btn-landscape-large) .sp-btn-icon{font-size:calc(var(--btn-icon)*1.5)}" +
-        ".sp-scalable-content:is(.sp-btn-big,.sp-btn-extra-large,.sp-btn-max-wide,.sp-btn-max-tall,.sp-btn-portrait-large,.sp-btn-landscape-large) .sp-btn-label{font-size:var(--media-title);font-weight:300;max-height:calc(var(--media-title)*1.2*var(--btn-lines-dbl))}" +
-        ".sp-scalable-content:is(.sp-btn-big,.sp-btn-extra-large,.sp-btn-max-wide,.sp-btn-max-tall,.sp-btn-portrait-large,.sp-btn-landscape-large) .sp-sensor-preview:not(.sp-sensor-preview-large) .sp-sensor-value{font-size:calc(var(--btn-icon)*1.5)}" +
-        ".sp-scalable-content:is(.sp-btn-big,.sp-btn-extra-large,.sp-btn-max-wide,.sp-btn-max-tall,.sp-btn-portrait-large,.sp-btn-landscape-large) .sp-sensor-preview:not(.sp-sensor-preview-large) .sp-sensor-unit{font-size:calc(var(--btn-label)*1.5)}" +
         ".sp-btn-big .sp-btn-label,.sp-btn-big .sp-btn-label-row .sp-btn-label{max-height:var(--btn-label-max-height-dbl)}" +
         ".sp-btn-big .sp-media-now-title{-webkit-line-clamp:var(--btn-lines-dbl)}" +
         ".sp-btn-extra-large{grid-row:span 3;grid-column:span 3}" +

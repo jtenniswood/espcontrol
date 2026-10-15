@@ -7227,7 +7227,6 @@ async function assertPreviewOutlines(browser, testCase, exhaustive = false) {
 async function assertSimpleCardScaling(browser, testCase) {
   const profile = readManifest().devices[testCase.slug].web;
   if (profile.infoOnly) return;
-  const titleRatio = (profile.btn.mediaTitleSize || profile.btn.labelSize * 1.75) / profile.btn.labelSize;
   const context = await browser.newContext({ viewport: testCase.viewport });
   try {
     await installRoutes(context, testCase.slug);
@@ -7250,7 +7249,7 @@ async function assertSimpleCardScaling(browser, testCase) {
         const iconSize = parseFloat(getComputedStyle(icon).fontSize);
         const labelSize = parseFloat(getComputedStyle(label).fontSize);
         if (!Number.isFinite(iconSize) || !Number.isFinite(labelSize)) return false;
-        return { icon: iconSize, label: labelSize,
+        return { icon: iconSize, label: labelSize, weight: getComputedStyle(label).fontWeight,
           fits: text.left >= bounds.left && text.right <= bounds.right + .5 &&
             text.bottom <= bounds.bottom && text.top >= icon.getBoundingClientRect().bottom };
       });
@@ -7276,8 +7275,8 @@ async function assertSimpleCardScaling(browser, testCase) {
         }, { className });
         const scaled = await typography();
         assert(Math.abs(scaled.icon - normal.icon * factor) < .02, `${testCase.slug}: ${order} icon scale ${scaled.icon} vs ${normal.icon * factor}`);
-        const expectedLabel = normal.label * (factor > 1 ? titleRatio : 1);
-        assert(Math.abs(scaled.label - expectedLabel) < .02, `${testCase.slug}: ${order} native title-font size ${scaled.label} vs ${expectedLabel}`);
+        assert(Math.abs(scaled.label - normal.label) < .02, `${testCase.slug}: ${order} label must retain its normal size`);
+        assert.strictEqual(scaled.weight, normal.weight, `${testCase.slug}: ${order} label must retain its normal weight`);
         if (factor > 1) assert(scaled.fits, `${testCase.slug}: enlarged label must fit below the icon`);
         if (process.env.ESPCONTROL_CARD_SCALE_SCREENSHOT && config.startsWith(';Features') && factor > 1) {
           await page.locator('.sp-screen').screenshot({ path: process.env.ESPCONTROL_CARD_SCALE_SCREENSHOT });

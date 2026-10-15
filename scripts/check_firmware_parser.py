@@ -848,31 +848,32 @@ int main() {
     set_width_compensation_vertical_axis(vertical);
     set_text_width_compensation_percent(95);
     lv_obj_t icon, label, value;
-    const lv_font_t normal_font{22}, title_font{34};
+    const lv_font_t normal_font{22};
+    label.font = &normal_font;
+    apply_text_width_compensation(&label);
+    apply_text_width_compensation(&value);
+    configure_button_label_wrap(&label);
     BtnSlot enlarged;
     enlarged.icon_lbl = &icon;
     enlarged.text_lbl = &label;
     enlarged.sensor_container = &value;
-    assert(card_content_zoom(true, 2, 2) == 384);
-    assert(card_content_zoom(true, 2, 1) == 256);
-    assert(card_content_zoom(true, 1, 2) == 256);
-    assert(card_content_zoom(false, 2, 2) == 256);
-    apply_card_content_zoom(enlarged, 384, 95, false, &title_font);
+    assert(card_icon_zoom(true, 2, 2) == 384);
+    assert(card_icon_zoom(true, 2, 1) == 256);
+    assert(card_icon_zoom(true, 1, 2) == 256);
+    assert(card_icon_zoom(false, 2, 2) == 256);
+    apply_card_icon_zoom(enlarged, 384, 95);
     assert(icon.transform_scale_x == (vertical ? 384 : 364));
     assert(icon.transform_scale_y == (vertical ? 364 : 384));
-    assert(label.font == &title_font);
+    assert(label.font == &normal_font);
     assert(label.width == 100);
     assert(label.transform_scale_x == (vertical ? 256 : 243));
     assert(label.transform_scale_y == (vertical ? 243 : 256));
     assert(label.transform_pivot_x == 0 && label.transform_pivot_y == 0);
-    assert(value.transform_scale_x == icon.transform_scale_x);
-    set_wrapped_button_label_text(&label, "Updated friendly name");
-    assert(label.width == 100 && label.font == &title_font);  // Live updates retain the native font.
-    apply_card_content_zoom(enlarged, 384, 95, true, &title_font);
     assert(value.transform_scale_x == (vertical ? 256 : 243));
     assert(value.transform_scale_y == (vertical ? 243 : 256));
-    assert(label.width == 100);  // Existing large-number fonts must not be enlarged twice.
-    apply_card_content_zoom(enlarged, 256, 95, false, &normal_font);
+    set_wrapped_button_label_text(&label, "Updated friendly name");
+    assert(label.width == 100 && label.font == &normal_font);  // Only the icon grows.
+    apply_card_icon_zoom(enlarged, 256, 95);
     assert(label.font == &normal_font);
     assert(label.width == 100);
     assert(label.transform_pivot_y == 0);

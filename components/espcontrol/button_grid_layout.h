@@ -446,31 +446,15 @@ inline void configure_button_label_wrap(lv_obj_t *label) {
   lv_obj_set_width(label, lv_pct(100));
 }
 
-inline int card_content_zoom(bool simple_content, int row_span, int col_span) {
+inline int card_icon_zoom(bool simple_content, int row_span, int col_span) {
   return simple_content && row_span >= 2 && col_span >= 2 ? 384 : 256;
 }
 
-inline void apply_card_content_zoom(const BtnSlot &s, int zoom, int icon_percent,
-                                    bool large_numbers = false,
-                                    const lv_font_t *label_font = nullptr) {
+inline void apply_card_icon_zoom(const BtnSlot &s, int zoom, int icon_percent) {
   apply_width_compensation(s.icon_lbl, icon_percent, zoom);
-  apply_width_compensation(s.sensor_container, text_width_compensation_percent(), large_numbers ? 256 : zoom);
-  // Labels use an existing larger font, rendered at its native size. Scaling
-  // the small label bitmap makes the enlarged text visibly soft on the panel.
-  apply_text_width_compensation(s.text_lbl);
   if (s.icon_lbl) {
     lv_obj_set_style_transform_pivot_x(s.icon_lbl, 0, LV_PART_MAIN);
     lv_obj_set_style_transform_pivot_y(s.icon_lbl, 0, LV_PART_MAIN);
-  }
-  if (s.sensor_container) {
-    lv_obj_set_style_transform_pivot_x(s.sensor_container, 0, LV_PART_MAIN);
-    lv_obj_set_style_transform_pivot_y(s.sensor_container, 0, LV_PART_MAIN);
-  }
-  if (s.text_lbl) {
-    if (label_font) lv_obj_set_style_text_font(s.text_lbl, label_font, LV_PART_MAIN);
-    lv_obj_set_style_transform_pivot_x(s.text_lbl, 0, LV_PART_MAIN);
-    lv_obj_set_style_transform_pivot_y(s.text_lbl, 0, LV_PART_MAIN);
-    configure_button_label_wrap(s.text_lbl);
   }
 }
 

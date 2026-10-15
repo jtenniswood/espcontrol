@@ -214,13 +214,6 @@ inline const lv_font_t *display_media_title_font_or(
   return profile.fonts.media_title ? profile.fonts.media_title : fallback;
 }
 
-inline const lv_font_t *display_card_label_font(
-    const DisplayProfile &profile, const lv_font_t *normal, bool enlarged) {
-  const lv_font_t *title = profile.fonts.media_title;
-  return enlarged && title && (!normal || title->line_height > normal->line_height)
-    ? title : normal;
-}
-
 inline const lv_font_t *display_option_select_value_font_or(
     const DisplayProfile &profile, const lv_font_t *fallback) {
   if (profile.fonts.option_select_value) return profile.fonts.option_select_value;
