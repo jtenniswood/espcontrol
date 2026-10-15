@@ -6,7 +6,7 @@ description:
 
 # Weather
 
-A weather card shows current Home Assistant conditions or a daily forecast. Forecast cards use a left-aligned layout with the condition icon at the top, and the day and high/low temperatures at the bottom. Temperatures share one line and are rounded to whole degrees, such as **18°/2°**, and use the panel's **Temperature Unit** setting. Forecast cards have no separate label or low-temperature row.
+A weather card shows current Home Assistant conditions or a daily forecast. Forecast cards use a left-aligned layout with the condition icon at the top, and the day and high/low temperatures at the bottom. Day names and temperatures use the same font size as other card labels. Temperatures share one line and are rounded to whole degrees, such as **18°/2°**, and use the panel's **Temperature Unit** setting. Forecast cards have no separate label or low-temperature row.
 
 ## Setting Up a Weather Card
 
@@ -40,15 +40,15 @@ On the 480×480 S3 with the default font sizes and eight available days:
 |---|---|---|
 | 1w × 1h | One day | 1 |
 | 2w × 1h | Horizontal row | 2 |
-| 3w × 1h | Horizontal row | 4 |
+| 3w × 1h | Horizontal row | 3–4 |
 | 1w × 2h | One column of stacked forecasts | 2 |
 | 2w × 2h | 2×2 grid | 4 |
-| 3w × 2h | 4×2 grid | 8 |
+| 3w × 2h | 3×2 or 4×2 grid | 6–8 |
 | 1w × 3h | One column of stacked forecasts | 3 |
 | 2w × 3h | 2×3 grid | 6 |
 | 3w × 3h | 3×3 grid, one space unused | 8 |
 
-The exact count depends on the panel's fonts, available forecast days, translated labels and stale-data status. The editor preview uses the same layout rules and updates when the card is resized.
+The exact count depends on the panel's fonts, temperature ranges, available forecast days, translated labels and stale-data status. The editor preview uses the same layout rules and updates when the card is resized.
 
 Forecasts refresh hourly and after reconnecting. Providers must supply a daily forecast and may return fewer than eight days.
 

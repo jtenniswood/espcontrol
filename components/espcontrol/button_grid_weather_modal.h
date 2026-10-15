@@ -173,7 +173,7 @@ inline void weather_daily_open_modal(WeatherDailyCard *card) {
   if (!shell.overlay || !shell.panel) return;
   auto &ui = weather_daily_modal();
   ui.overlay = shell.overlay; ui.owner = card->owner; ui.source = card->source;
-  ui.font = card->detail_font; ui.icon_font = card->icon_font; ui.temperature_font = card->temperature_font;
+  ui.font = card->detail_font; ui.icon_font = card->icon_font; ui.temperature_font = card->modal_temperature_font;
   ++ui.source->users;
   set_clock_bar_modal_label(espcontrol_i18n(std::string("Weather")));
   const int top = shell.layout.back_size + shell.layout.inset;

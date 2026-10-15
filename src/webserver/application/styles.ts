@@ -117,12 +117,12 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-clock-left-mid{justify-content:center;align-items:flex-start}" +
         ".sp-clock-centered{justify-content:center;align-items:center}" +
         ".sp-forecast-preview{white-space:nowrap;gap:0}" +
-        ".sp-weather-daily-card{font-size:var(--btn-label)}" +
+        ".sp-weather-daily-card{font-size:var(--btn-label);font-weight:var(--btn-label-weight,400)}" +
         ".sp-weather-days{display:grid;width:100%;height:100%;min-height:0;align-items:stretch;overflow:hidden;gap:1.25em}" +
         ".sp-weather-day{min-width:0;min-height:0;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:.2em;font-size:var(--btn-label);white-space:nowrap}" +
         ".sp-weather-day[hidden]{display:none}.sp-weather-day .mdi{font-size:var(--btn-icon);line-height:1;margin-bottom:auto}" +
         ".sp-weather-grid .sp-weather-day{justify-content:center}.sp-weather-grid .sp-weather-day .mdi{margin-bottom:var(--weather-icon-gap)}" +
-        ".sp-weather-temperature-high{white-space:nowrap;font-size:var(--btn-small-text);color:var(--card-text-color,var(--preview-text-primary));opacity:.7}" +
+        ".sp-weather-temperature-high{white-space:nowrap;font-size:var(--btn-label);color:var(--card-text-color,var(--preview-text-primary));opacity:.7}" +
         ".sp-weather-list .sp-weather-day{display:grid;grid-template-columns:var(--btn-icon) minmax(0,1fr);grid-template-rows:auto auto;align-content:center;align-items:start;column-gap:var(--weather-list-gap)!important}" +
         ".sp-weather-list .sp-weather-day>.mdi{grid-column:1;grid-row:1 / span 2;align-self:center;margin-bottom:0}" +
         ".sp-weather-list .sp-weather-day>span:nth-child(2){grid-column:2;grid-row:1;overflow:hidden;text-overflow:ellipsis}" +

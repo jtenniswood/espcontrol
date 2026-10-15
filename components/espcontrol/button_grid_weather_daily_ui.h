@@ -10,7 +10,7 @@ struct WeatherDailyCard {
   lv_obj_t *owner = nullptr, *root = nullptr, *caption = nullptr, *placeholder_icon = nullptr;
   WeatherDailySource *source = nullptr;
   WeatherForecastView view = WeatherForecastView::DAILY;
-  const lv_font_t *font = nullptr, *icon_font = nullptr, *summary_font = nullptr, *detail_font = nullptr, *temperature_font = nullptr;
+  const lv_font_t *font = nullptr, *icon_font = nullptr, *summary_font = nullptr, *detail_font = nullptr, *modal_temperature_font = nullptr;
   std::vector<WeatherDailyColumn> columns;
   int width = 0, height = 0;
   espcontrol::weather::CardLayout layout;
@@ -113,12 +113,12 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   lv_obj_add_flag(card->placeholder_icon, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_flag(card->root, LV_OBJ_FLAG_HIDDEN);
   const int font_height = lv_font_get_line_height(card->font);
-  const int temperature_height = lv_font_get_line_height(card->temperature_font);
+  const int temperature_height = font_height;
   const int day_gap = weather_daily_day_gap(card->font);
   const int icon_height = lv_font_get_line_height(card->icon_font);
   const size_t available_days = card->view == WeatherForecastView::DAILY ? forecast.count : 1;
   const int minimum_day_width = weather_daily_forecast_minimum_width(card->font, card->icon_font,
-    card->temperature_font, forecast, first, available_days);
+    card->font, forecast, first, available_days);
   const int caption_height = card->source->stale ? font_height + 2 : 0;
   const int content_height = std::max(1, height - caption_height);
   const int row_gap = std::max(8, font_height / 2), list_gap = std::max(8, font_height / 3);
@@ -127,7 +127,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   for (size_t i = first; i < first + available_days; ++i) {
     lv_point_t measured;
     const auto text = weather_daily_temperature_range(forecast.days[i], forecast.temperature_unit);
-    lv_text_get_size(&measured, text.c_str(), card->temperature_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    lv_text_get_size(&measured, text.c_str(), card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
     list_text_width = std::max(list_text_width, static_cast<int>(measured.x));
   }
   const auto layout = espcontrol::weather::card_layout(width, content_height, minimum_day_width,
@@ -155,7 +155,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
         lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
         return label;
       };
-      WeatherDailyColumn col{make(card->icon_font), make(card->font), make(card->temperature_font)};
+      WeatherDailyColumn col{make(card->icon_font), make(card->font), make(card->font)};
       theme_set_content_foreground(col.high);
       card->columns.push_back(col);
     }
@@ -260,7 +260,7 @@ inline void weather_daily_setup(BtnSlot &slot, const ParsedCfg &config,
   card->placeholder_icon = slot.icon_lbl;
   card->font = lv_obj_get_style_text_font(slot.text_lbl, LV_PART_MAIN);
   if (!card->font) card->font = LV_FONT_DEFAULT;
-  card->temperature_font = display_small_text_font(display, card->font);
+  card->modal_temperature_font = display_small_text_font(display, card->font);
   card->icon_font = display_icon_font(display);
   if (!card->icon_font) card->icon_font = card->font;
   card->summary_font = display_media_title_font(display);

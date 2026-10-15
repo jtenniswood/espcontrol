@@ -7443,8 +7443,9 @@ async function assertWeatherWidthScaling(browser) {
           const day = document.querySelector('.sp-weather-day');
           return getComputedStyle(day).fontSize === getComputedStyle(day.parentElement.parentElement).fontSize;
         });
-        const typography = await page.locator('.sp-weather-day').first().evaluate(day => ({ day: getComputedStyle(day).fontSize, card: getComputedStyle(day.parentElement.parentElement).fontSize }));
+        const typography = await page.locator('.sp-weather-day').first().evaluate(day => ({ day: getComputedStyle(day).fontSize, temperature: getComputedStyle(day.querySelector('.sp-weather-temperature-high')).fontSize, card: getComputedStyle(day.parentElement.parentElement).fontSize }));
         assert.strictEqual(typography.day, typography.card, 'Daily text keeps the device font size instead of scaling against its own card.');
+        assert.strictEqual(typography.temperature, typography.card, 'Forecast temperatures use the normal card-label font size.');
         if (span === 3) {
           const spacing = await page.locator('#weather').evaluate(card => {
             const days = Array.from(card.querySelectorAll('.sp-weather-day')).filter(day => !day.hidden);
@@ -7525,12 +7526,22 @@ async function assertS3ForecastEditorLayout(browser) {
     await page.evaluate(() => document.fonts.ready);
     for (const width of [1000, 1400]) {
       await page.setViewportSize({ width, height: 1000 });
-      await page.waitForFunction(() => document.querySelectorAll('.sp-weather-daily-card .sp-weather-day:not([hidden])').length === 4);
+      await page.waitForFunction(() => document.querySelectorAll('.sp-weather-daily-card .sp-weather-day:not([hidden])').length === 3);
       const day = page.locator('.sp-weather-day:not([hidden])').first();
       assert.strictEqual(await day.evaluate(element => getComputedStyle(element).alignItems), 'flex-start');
+      const typography = await page.evaluate(() => {
+        const font = selector => {
+          const style = getComputedStyle(document.querySelector(selector));
+          return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
+        };
+        return { label: font('.sp-btn-label'), day: font('.sp-weather-day'),
+          temperature: font('.sp-weather-temperature-high') };
+      });
+      assert.deepStrictEqual(typography.day, typography.label, 'Forecast days match other card labels.');
+      assert.deepStrictEqual(typography.temperature, typography.label, 'Forecast temperatures match other card labels.');
     }
     await page.locator('.sp-screen').screenshot({ path: '/tmp/weather-preview-s3-editor-after.png' });
-    console.log('S3 editor integration: 3×1 forecast shows four left-aligned days before and after resizing.');
+    console.log('S3 editor integration: label-sized temperatures fit three left-aligned days before and after resizing.');
     await page.locator('.sp-main [data-slot="1"]').click();
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await page.waitForSelector(".sp-settings-overlay.sp-visible");
@@ -7573,6 +7584,12 @@ async function assertS3ForecastEditorLayout(browser) {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_WEATHER_TEXT_ONLY === "1") {
+      await assertWeatherWidthScaling(browser);
+      await assertS3ForecastEditorLayout(browser);
+      console.log("Weather card label typography and layout checks passed.");
+      return;
+    }
     if (process.env.ESPCONTROL_CARD_SCALE_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) await assertSimpleCardScaling(browser, testCase);
       console.log(`Large card content checks passed for ${ACTIVE_CASES.length} layouts.`);

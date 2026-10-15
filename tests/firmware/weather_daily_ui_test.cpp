@@ -242,6 +242,7 @@ int main(){
     assert(!(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN));
     assert(placeholder_icon->text=="\U000F18F6" && caption->text=="Loading");
     weather_daily_open_modal(card);
+    assert(weather_daily_modal().temperature_font==&small_font);
     assert(weather_daily_modal().message->text=="Loading");
     assert(weather_daily_modal().placeholder_icon->text=="\U000F18F6");
     assert(weather_daily_modal().placeholder_icon->text_color==0xFFFFFF);
@@ -265,10 +266,12 @@ int main(){
     assert(card->columns.front().day->width==103);
     assert(card->columns[1].day->x==119); // Visible columns share the available width after gaps.
     for(const auto &col:card->columns){
+      assert(col.day->font==caption->font && col.high->font==caption->font);
       assert(col.icon->text_align==LV_TEXT_ALIGN_LEFT && col.day->text_align==LV_TEXT_ALIGN_LEFT && col.high->text_align==LV_TEXT_ALIGN_LEFT);
       assert(col.icon->x==col.day->x && col.day->x==col.high->x);
       assert(col.high->text_color==owner->text_color && col.high->text_opa==LV_OPA_70 && (col.high->flags & LV_OBJ_FLAG_USER_2));
-      assert(col.icon->y==0 && col.day->y==130 && col.high->y==148);
+      assert(col.icon->y==0 && col.day->y+col.day->height+2==col.high->y);
+      assert(col.high->y+col.high->height==card->height);
     }
     theme.text_primary=0x333333;theme.text_muted=0x606060;emit(owner,LV_EVENT_STYLE_CHANGED);
     card->owner->text_color=0x212121;
@@ -285,7 +288,8 @@ int main(){
     assert(lv_obj_t::live==live); // Refreshes do not grow the widget tree.
     weather_daily_set_unavailable("weather.home");weather_daily_render_card(card);
     assert(card->columns.size()==4 && caption->text=="Last forecast" && lv_obj_t::live==live);
-    assert(card->columns.front().high->y==130); // Keep stale status below the temperatures.
+    const auto &stale_high=card->columns.front().high;
+    assert(stale_high->y+stale_high->height==card->height-font.line_height-2); // Leave room for stale status.
     card->source->stale=false;
     lv_obj_set_size(owner,460,240);
     assert(card->layout.columns==2 && card->layout.rows==2);check_card_fit(card);
@@ -367,8 +371,8 @@ int main(){
   }
   // S3's native 3x3 grid, using conservative line heights and measured glyphs.
   font.line_height=26;small_font.line_height=22;icons.line_height=44;measured_font_pixels=22;
-  const int spans[][5]={{1,1,1,1,0},{2,1,2,1,0},{3,1,4,1,0},
-    {1,2,1,2,0},{2,2,2,2,0},{3,2,4,2,0},
+  const int spans[][5]={{1,1,1,1,0},{2,1,2,1,0},{3,1,3,1,0},
+    {1,2,1,2,0},{2,2,2,2,0},{3,2,3,2,0},
     {1,3,1,3,0},{2,3,2,3,0},{3,3,3,3,0}};
   for(const auto &span:spans){
     const int width=150*span[0]+10*(span[0]-1)-28;
@@ -566,8 +570,8 @@ int main(){
     assert(card->columns.size()==1 && card->columns[0].day->text==(tomorrow?"Tomorrow":"Today"));
     assert(card->columns[0].high->text==(tomorrow?"17°/9°":"19°/10°"));
     assert(card->columns[0].icon->x==0 && card->columns[0].icon->y==0);
-    assert(card->columns[0].day->text_align==LV_TEXT_ALIGN_LEFT && card->columns[0].high->y==148);
-    lv_obj_set_size(owner,900,240);assert(card->columns.size()==1 && card->columns[0].high->y==228);
+    assert(card->columns[0].day->text_align==LV_TEXT_ALIGN_LEFT && card->columns[0].high->y+card->columns[0].high->height==160);
+    lv_obj_set_size(owner,900,240);assert(card->columns.size()==1 && card->columns[0].high->y+card->columns[0].high->height==240);
     const int live=lv_obj_t::live;
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     assert(lv_obj_t::live==live); // Single-day refreshes also reuse widgets.
