@@ -7600,7 +7600,7 @@ async function assertClockWallpaperSettings(browser) {
         ...(supported ? [{id: "switch-clock_screensaver_show_wallpaper", state: savedWallpaper ? "ON" : "OFF", value: savedWallpaper}] : []),
         ...(supported ? [{id: "number/Screen Saver: Wallpaper Dimming", name: "Screen Saver: Wallpaper Dimming", state: savedDimming + " %", value: String(savedDimming)}] : []),
       ]);
-      await page.getByRole("tab", {name: "Settings", exact: true}).click();
+      await page.getByRole("tab", {name: "Screen", exact: true}).click();
       await page.getByRole("heading", {name: "Screensaver", exact: true}).click();
       await page.getByRole("button", {name: "Timer", exact: true}).click();
       await page.locator("#sp-set-clock-mode").selectOption("clock");
@@ -7681,7 +7681,7 @@ async function assertWallpaperPreviewLayout(browser, testCase) {
     await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, {waitUntil: "domcontentloaded"});
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await page.evaluate(events => window.__seedEspState(events), seededEvents());
-    await page.getByRole("tab", {name: "Settings", exact: true}).click();
+    await page.getByRole("tab", {name: "Screen", exact: true}).click();
     await page.getByRole("heading", {name: "Background", exact: true}).click();
     await page.waitForFunction(() => !document.querySelector("#sp-background-tab-colour").disabled);
     const profile = readManifest().devices[testCase.slug];
@@ -7691,14 +7691,14 @@ async function assertWallpaperPreviewLayout(browser, testCase) {
       const aspect = parseAspect(rotated && profile.web.portrait ? layout.screen.aspect : profile.web.screen.aspect).ratio;
       const slots = layout.slots || profile.slots;
       await page.setViewportSize(viewport);
-      await page.getByRole("tab", {name: "Screen", exact: true}).click();
+      await page.getByRole("tab", {name: "Layout", exact: true}).click();
       const mainSpacing = await page.locator(".sp-screen").evaluate(screen => {
         const grid = screen.querySelector(".sp-main");
         const outer = screen.getBoundingClientRect(), inner = grid.getBoundingClientRect();
         return [(inner.left - outer.left) / screen.clientWidth, (inner.top - outer.top) / screen.clientWidth,
           parseFloat(getComputedStyle(grid).gap) / screen.clientWidth];
       });
-      await page.getByRole("tab", {name: "Settings", exact: true}).click();
+      await page.getByRole("tab", {name: "Screen", exact: true}).click();
       const geometry = await page.locator(".sp-wallpaper-preview").evaluate(el => {
         const bounds = el.getBoundingClientRect();
         const grid = el.querySelector(".sp-wallpaper-preview-grid");
@@ -7757,7 +7757,7 @@ async function assertWallpaperSettings(browser) {
       events.push({ id: "text-subpage_3_config", state: "~B,1|,light.kitchen,Kitchen,Lightbulb,Lightbulb" });
     }
     await page.evaluate(events => window.__seedEspState(events), events);
-    await page.getByRole("tab", { name: "Settings" }).click();
+    await page.getByRole("tab", { name: "Screen" }).click();
     const card = page.locator("#sp-settings .card").filter({ has: page.locator("#sp-set-wallpaper") });
     if (!(await card.getByRole("button", { name: "Upload Image" }).isVisible())) await card.locator(".card-header").click();
     await page.waitForFunction(() => !document.querySelector("#sp-set-wallpaper").disabled);
@@ -7826,7 +7826,7 @@ async function assertWallpaperSettings(browser) {
       }, fill.expected);
       assert.strictEqual(fill.colour, expected, `${label}: editor uses the original theme background`);
     }
-    await page.getByRole("tab", {name: "Screen", exact: true}).click();
+    await page.getByRole("tab", {name: "Layout", exact: true}).click();
     await page.locator(".sp-empty-cell:not(.sp-info-only-hidden)").first().click();
     await page.waitForSelector(".sp-settings-overlay.sp-visible");
     await assertSolidEditor("Card type chooser");
@@ -7837,7 +7837,7 @@ async function assertWallpaperSettings(browser) {
     await editor.screenshot({path: "/tmp/solid-camera-card-editor.png"});
     await page.locator(".sp-settings-close").click();
     await editor.evaluate(el => { el.style.removeProperty("background-image"); el.style.removeProperty("background-color"); });
-    await page.getByRole("tab", {name: "Settings", exact: true}).click();
+    await page.getByRole("tab", {name: "Screen", exact: true}).click();
     const modalFill = await page.locator(".sp-settings-modal").evaluate(el => ({
       image: getComputedStyle(el).backgroundImage,
       color: getComputedStyle(el).backgroundColor,
@@ -7885,9 +7885,9 @@ async function assertWallpaperSettings(browser) {
     assert(uploadLayout, "Wallpaper preview and actions should fit a narrow settings panel");
     await page.setViewportSize(testCase.viewport);
     if (process.env.ESPCONTROL_WALLPAPER_SCREENSHOT) {
-      await page.getByRole("tab", { name: "Screen", exact: true }).click();
+      await page.getByRole("tab", { name: "Layout", exact: true }).click();
       await page.locator(".sp-screen").screenshot({ path: process.env.ESPCONTROL_WALLPAPER_SCREENSHOT });
-      await page.getByRole("tab", { name: "Settings", exact: true }).click();
+      await page.getByRole("tab", { name: "Screen", exact: true }).click();
     }
     const transparency = page.locator("#sp-set-card-transparency");
     const activeTransparency = page.locator("#sp-set-active-card-transparency");
@@ -7955,7 +7955,7 @@ async function assertWallpaperSettings(browser) {
     assert.strictEqual(wallpaper.opacity, 50);
     assert.strictEqual(wallpaper.activeOpacity, 90);
     await assertCardAlpha(128 / 255); await assertActiveAlpha(230);
-    await page.getByRole("tab", { name: "Screen", exact: true }).click();
+    await page.getByRole("tab", { name: "Layout", exact: true }).click();
     const pressedCard = page.locator(".sp-btn").first();
     await pressedCard.evaluate(btn => btn.addEventListener("click", event => {
       event.preventDefault(); event.stopImmediatePropagation();
@@ -7968,7 +7968,7 @@ async function assertWallpaperSettings(browser) {
       });
       await assertCardAlpha(230 / 255);
     } finally { await page.mouse.up(); }
-    await page.getByRole("tab", { name: "Settings", exact: true }).click();
+    await page.getByRole("tab", { name: "Screen", exact: true }).click();
     await assertCardAlpha(128 / 255);
     // Striped fills use active transparency in every gradient stop.
     reviewFixture = true; await open();
@@ -7977,7 +7977,7 @@ async function assertWallpaperSettings(browser) {
     const stripeStops = [...stripedFill.matchAll(/rgba\([^)]+,\s*([\d.]+)\)/g)];
     assert.strictEqual(stripeStops.length, 4, "All striped gradient stops carry alpha");
     for (const stop of stripeStops) assert(Math.abs(Number(stop[1]) - 230 / 255) < .004);
-    await page.getByRole("tab", { name: "Screen", exact: true }).click();
+    await page.getByRole("tab", { name: "Layout", exact: true }).click();
     await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
     const backCard = page.locator(".sp-back-btn");
     await backCard.waitFor();
@@ -8119,7 +8119,7 @@ async function assertWallpaperSettings(browser) {
     assert.strictEqual(await transparency.inputValue(), "50");
     assert.strictEqual(await activeTransparency.inputValue(), "10");
     assert.strictEqual(await page.locator(".sp-settings-modal").evaluate(el => getComputedStyle(el).backgroundImage), "none");
-    await page.getByRole("tab", {name: "Screen", exact: true}).click();
+    await page.getByRole("tab", {name: "Layout", exact: true}).click();
     await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
     await page.locator(".sp-back-btn").waitFor();
     await assertCardAlpha(128 / 255); await assertActiveAlpha(230);
