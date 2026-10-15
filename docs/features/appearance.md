@@ -19,13 +19,15 @@ card edges. **Medium** is the default. Corner sizes in pixels are:
 
 | Display | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| 7-inch and 4.3-inch panels | 12 | 16 | 20 |
+| 7-inch panels | 12 | 16 | 20 |
+| 4.3-inch P4 panels (both versions) | 8 | 20 | 32 |
 | 10-inch panels (all versions) | 13 | 18 | 22 |
 | P4-86 | 21 | 28 | 35 |
 | S3 | 16 | 21 | 26 |
 
-The 7-inch reference uses 12 / 16 / 20 pixels; other displays scale proportionally.
-Small uses 60% of Large and Medium uses 80%, rounded to whole pixels.
+The 4.3-inch P4 panels use a wider spread so each step is clearly visible.
+Other displays scale from the 7-inch reference: Small uses 60% of Large and
+Medium uses 80%, rounded to whole pixels.
 The same curve applies to the network-status Settings cards, including Back and Screen Lock. Ordinary modal controls and colour swatches keep their existing button radius.
 Images, artwork and slider fills follow the same outline. The web preview
 uses the same curve, including in browsers without native continuous-corner
