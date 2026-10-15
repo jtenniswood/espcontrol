@@ -90,7 +90,7 @@ WEB_FIXED_MDI_ICON_CODEPOINTS = {
     "tab": "F04E9", "target": "F04FE", "text": "F09A8", "timer": "F13AB",
     "toggle-switch": "F0521", "toggle-switch-variant": "F1A25", "toggle-switch-variant-off": "F1A26",
     "tune-vertical": "F066A", "tune-vertical-variant": "F1543", "upload": "F0552", "video": "F0567",
-    "view-grid-plus": "F0F8D", "webhook": "F062F",
+    "view-grid-plus": "F0F8D", "wallpaper": "F0E09", "webhook": "F062F",
 }
 
 # ---------------------------------------------------------------------------

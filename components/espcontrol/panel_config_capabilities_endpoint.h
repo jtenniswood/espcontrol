@@ -10,6 +10,7 @@
 
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "panel_config_http_context.h"
+#include "wallpaper.h"
 
 namespace espcontrol::configuration {
 
@@ -38,7 +39,8 @@ class PanelConfigCapabilitiesHandler final
     std::array<char, PANEL_CONFIG_CAPABILITIES_MAX_JSON_BYTES> response{};
     size_t response_size = 0;
     if (!write_panel_config_capabilities_json(response.data(), response.size(),
-                                              &response_size)) {
+                                              &response_size,
+                                              wallpaper_store().available())) {
       httpd_resp_send_err(raw_request, HTTPD_500_INTERNAL_SERVER_ERROR,
                           "Could not build capabilities response");
       return;

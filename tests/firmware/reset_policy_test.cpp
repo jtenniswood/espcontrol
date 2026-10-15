@@ -12,6 +12,10 @@ struct MemoryStorage : Storage {
       {{"espcontrol_id", "identity"}, "old panel name"},
       {{"espcontrol_cfg", "slot_a"}, "old"}, {{"espcontrol_cfg", "slot_b"}, "older"},
       {{"espcontrol_pin", "settings"}, "saved PIN and enabled state"},
+      {{"espcontrol_wall", "opacity"}, "legacy transparency"},
+      {{"espcontrol_wall", "opacities"}, "standard and active transparency"},
+      {{"espcontrol_wall", "background"}, "background mode and colour"},
+      {{"espcontrol_wall", "layout"}, "wallpaper storage version"},
       {{"espcontrol_rst", "journal"}, "intent"}, {{"wifi", "platform"}, "network"}};
   bool slot_a = true, slot_b = true;
   int calls = 0, fail_at = -1;
@@ -71,6 +75,10 @@ void interrupted_resets_resume(Mode mode) {
       if (mode == Mode::CUSTOMIZATION) assert(s.records.at({"esphome", "88491487"}) == "wifi secret");
       assert(!s.records.count({"espcontrol_id", "identity"}));
       assert(!s.records.count({"espcontrol_pin", "settings"}));
+      assert(!s.records.count({"espcontrol_wall", "opacity"}));
+      assert(!s.records.count({"espcontrol_wall", "opacities"}));
+      assert(!s.records.count({"espcontrol_wall", "layout"}));
+      assert(!s.records.count({"espcontrol_wall", "background"}));
       assert(!s.records.count({"esphome", "layout"}) && !s.records.count({"espcontrol_cfg", "slot_b"}));
     }
   }

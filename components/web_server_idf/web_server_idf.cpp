@@ -376,6 +376,11 @@ esp_err_t AsyncWebServer::handle_raw_body_(httpd_req_t *r, const char *content_t
     if (candidate->canHandle(&req)) { handler = candidate; break; }
   }
   if (handler == nullptr) return this->request_handler_(&req);
+  struct BodyCleanup {
+    AsyncWebHandler *handler;
+    AsyncWebServerRequest *request;
+    ~BodyCleanup() { handler->handleBodyEnd(request); }
+  } cleanup{handler, &req};
   if (!handler->canReceiveBody(&req)) return ESP_OK;
   const size_t total = r->content_len;
   if (total > handler->maximumBodySize()) {

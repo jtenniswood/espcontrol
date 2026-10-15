@@ -1,3 +1,4 @@
+import { buildWallpaperSettings } from "./wallpaper";
 import { buildScreensaverPinSettings } from "./screensaver_pin";
 import { resetAwareFetch } from "../api/reset_session";
 import { state } from "../state/app_instance";
@@ -167,9 +168,18 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             event.stopPropagation();
             resetAppearanceColors(true);
         });
+        const wallpaperSettings = buildWallpaperSettings(document, resetAwareFetch, (url, opacity, activeOpacity, colour, dimming) => {
+            runtime.els.wallpaperUrl = url;
+            runtime.els.wallpaperDimming = dimming;
+            runtime.els.backgroundColour = colour;
+            runtime.els.wallpaperOpacityPercent = opacity;
+            runtime.els.wallpaperActiveOpacityPercent = activeOpacity;
+            renderPreview();
+        }, fields);
         var activeColourCard: any = makeCollapsibleCard("Active Colour", activeColourBody, true, null, appearanceResetButton);
         var cardStyleCard: any = makeCollapsibleCard("Card Style", cardStyleBody, true);
         var themeCard: any = makeCollapsibleCard("Theme", themeBody, true);
+        var wallpaperCard: any = makeCollapsibleCard("Background", wallpaperSettings, true);
         var languageBody: any = document.createElement("div");
         var languageField: any = document.createElement("div");
         languageField.className = "sp-field";
@@ -478,6 +488,8 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setClockBrightnessNight = timerClockControls.clockBrightnessNight;
         els.setClockBrightnessNightVal = timerClockControls.clockBrightnessNightVal;
         els.setClockBrightnessField = timerClockControls.brightnessField;
+        els.setClockWallpaperToggle = timerClockControls.wallpaperToggle;
+        els.setClockWallpaperDimming = timerClockControls.wallpaperDimming;
         els.setClockDateToggle = timerClockControls.dateToggle;
         var coverArtCard: any = buildCoverArtSettingsCard();
         ssBody.appendChild(timerPanel);
@@ -561,6 +573,8 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setSensorClockBrightnessNight = sensorClockControls.clockBrightnessNight;
         els.setSensorClockBrightnessNightVal = sensorClockControls.clockBrightnessNightVal;
         els.setSensorClockBrightnessField = sensorClockControls.brightnessField;
+        els.setSensorClockWallpaperToggle = sensorClockControls.wallpaperToggle;
+        els.setSensorClockWallpaperDimming = sensorClockControls.wallpaperDimming;
         els.setSensorClockDateToggle = sensorClockControls.dateToggle;
         syncClockScreensaverControls();
         syncMediaPlayerSleepPreventionUi();
@@ -632,6 +646,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             activeColourCard,
             cardStyleCard,
             themeCard,
+            wallpaperCard,
             idleCard,
             clockBarCard,
         ]);

@@ -55,6 +55,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-clockbar-section{height:100%;min-width:0;flex:1;display:flex;align-items:center;gap:.4cqw;position:relative}" +
         ".sp-clockbar-left{justify-content:flex-start}.sp-clockbar-middle{justify-content:center}.sp-clockbar-right{justify-content:flex-end}" +
         ".sp-clockbar-subpage-title,.sp-temp,.sp-clock{font-size:var(--btn-label);line-height:1.2;color:var(--preview-clockbar-text);font-weight:var(--btn-label-weight,400)}" +
+        ".sp-clockbar-subpage-title,.sp-temp,.sp-clock,.sp-topbar .sp-network-preview,.sp-topbar .sp-voice-preview{text-shadow:1px 1px 0 rgba(0,0,0,.5)}" +
         ".sp-btn-label{font-size:var(--btn-label);line-height:1.2;color:var(--card-text-color,var(--preview-text-primary));font-weight:var(--btn-label-weight,400)}" +
         ".sp-clockbar-subpage-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}" +
         ".sp-clockbar-item{height:min(36px,calc(100% - .45cqw));min-height:0;min-width:28px;border:1px solid transparent;border-radius:calc(var(--topbar-fs)*.3);" +
@@ -74,7 +75,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-topbar .sp-network-preview::before,.sp-topbar .sp-voice-preview::before{font-size:inherit;line-height:inherit}" +
         ".sp-network-preview.sp-visible,.sp-voice-preview.sp-visible{opacity:1}" +
         ".sp-voice-preview:not(.sp-visible){display:none}" +
-        ".sp-main{position:absolute;top:var(--grid-top);left:var(--grid-left);right:var(--grid-right);bottom:var(--grid-bottom);" +
+        ".sp-main,.sp-wallpaper-preview-grid{position:absolute;top:var(--grid-top);left:var(--grid-left);right:var(--grid-right);bottom:var(--grid-bottom);" +
         "display:grid;grid-template-columns:var(--grid-cols);grid-template-rows:var(--grid-rows);gap:var(--grid-gap);overflow:hidden}" +
         ".sp-main.sp-grid-loading{visibility:hidden;opacity:0;pointer-events:none;transition:opacity .2s,visibility .2s}" +
         ".sp-btn{border-radius:var(--btn-r);padding:var(--btn-pad);" +
@@ -88,6 +89,11 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-btn.sp-resizing>.sp-resize-handle{color:var(--accent)}" +
         ".sp-btn.sp-resizing{transition:none;z-index:6;filter:none}" +
         "@media(hover:none){.sp-resize-handle{opacity:1}}" +
+        "@supports(corner-shape:superellipse(2)){.sp-continuous-corners .sp-btn{border-radius:calc(var(--btn-r)*2);corner-shape:superellipse(2)}" +
+        ".sp-continuous-corners .sp-empty-cell{border-radius:calc(var(--empty-r)*2);corner-shape:superellipse(2)}}" +
+        ".sp-btn:not(.sp-image-card):not(.sp-wifi-qr-card):not(.sp-on-pattern):active{" +
+        "background-color:var(--card-active-color,var(--screen-primary))!important;" +
+        "--card-text-color:var(--card-active-text-color,var(--preview-text-primary))}" +
         ".sp-btn.sp-selected:hover{filter:none}" +
         ".sp-drag-active .sp-btn:hover{filter:none}" +
         ".sp-card-outline{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;display:none;" +
@@ -244,7 +250,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         "z-index:180;align-items:center;justify-content:center;" +
         "backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}" +
         ".sp-settings-overlay.sp-visible{display:flex}" +
-        ".sp-settings-modal{position:relative;background:var(--bg);border:1px solid var(--border);" +
+        // Card editors keep their solid theme fill over legacy inline wallpaper styles.
+        ".sp-settings-modal{position:relative;background:var(--bg)!important;border:1px solid var(--border);" +
         "border-radius:var(--radius);width:90%;max-width:420px;max-height:80vh;" +
         "overflow-y:auto;box-shadow:var(--shadow-3);margin:40px;scrollbar-color:#fff transparent}" +
         ".sp-settings-modal.sp-card-type-picker-open{max-width:720px}" +
@@ -411,6 +418,27 @@ export function createWebStyles(dragAnimation: boolean): string {
         "cursor:pointer;box-sizing:border-box}" +
         ".sp-entity-option:hover,.sp-entity-option:focus{background:var(--accent-soft);outline:none}" +
         ".sp-field-error{font-size:.75rem;color:#f66f81;margin-top:6px;line-height:1.35}" +
+        ".sp-card-bg-field{display:grid;gap:10px}" +
+        ".sp-card-bg-preview{width:min(220px,100%);aspect-ratio:1/1;border:1px solid var(--border);border-radius:8px;" +
+        "background:#111 center/cover no-repeat;box-sizing:border-box;position:relative;overflow:hidden;" +
+        "display:flex;flex-direction:column;justify-content:space-between;padding:14px}" +
+        ".sp-card-bg-preview-empty{background:linear-gradient(135deg,var(--surface2),var(--surface))}" +
+        ".sp-card-bg-preview-icon,.sp-card-bg-preview-title{position:relative;z-index:1;color:#fff;" +
+        "filter:drop-shadow(0 2px 3px rgba(0,0,0,.72)) drop-shadow(0 0 8px rgba(0,0,0,.35))}" +
+        ".sp-card-bg-preview-icon{font-size:34px;line-height:1}" +
+        ".sp-card-bg-preview-title{font-size:1rem;line-height:1.2;font-weight:500;word-break:break-word}" +
+        ".sp-card-bg-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}" +
+        ".sp-card-bg-file{display:none}" +
+        ".sp-card-bg-actions .sp-action-btn{padding:8px 12px;display:inline-flex;align-items:center;gap:6px}" +
+        ".sp-card-bg-actions .sp-action-btn:disabled{opacity:.45;cursor:not-allowed}" +
+        ".sp-wallpaper-preview{margin-bottom:16px;width:min(280px,100%);aspect-ratio:var(--screen-aspect);box-sizing:border-box;" +
+        "position:relative;container-type:inline-size;overflow:hidden;" +
+        "border:1px solid var(--border);border-radius:6px;background:var(--surface) center/cover no-repeat}" +
+        ".sp-wallpaper-preview-box{border-radius:5px;background:var(--wallpaper-standard-color,var(--screen-secondary))}" +
+        ".sp-wallpaper-preview-box-active{background:var(--wallpaper-active-color,var(--screen-primary))}" +
+        ".sp-card-bg-actions .sp-wallpaper-upload{background:var(--accent);color:#fff}" +
+        ".sp-card-bg-actions .sp-wallpaper-upload:hover:enabled{filter:brightness(1.08)}" +
+        ".sp-card-bg-actions .sp-wallpaper-delete{padding:8px;min-width:36px;justify-content:center;font-size:18px;background:var(--surface2);border:1px solid var(--border);color:var(--text2)}" +
         ".sp-icon-picker{position:relative}" +
         ".sp-icon-picker-input{width:100%;padding:10px 12px;padding-left:36px;background:var(--surface2);" +
         "border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.875rem;" +
@@ -494,8 +522,9 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-segment button.active{background:var(--accent);color:#fff}" +
         ".sp-brightness-mode-segment{margin-bottom:28px}" +
         ".sp-screensaver-mode{margin-bottom:24px}" +
+        ".sp-screensaver-brightness-title{margin:20px 0 12px;font-size:.95rem;font-weight:600;color:var(--text)}" +
         ".sp-clock-brightness-field{margin:18px 0 22px}" +
-        ".sp-clock-brightness-field>.sp-toggle-row{padding:12px 0}" +
+        ".sp-clock-brightness-field>.sp-toggle-row{padding:0;margin-bottom:8px}" +
         ".sp-cond-field{padding:0 0 4px;display:none}" +
         ".sp-cond-field.sp-visible{display:block}" +
         ".sp-action-confirm-section.sp-visible{margin-bottom:28px}" +

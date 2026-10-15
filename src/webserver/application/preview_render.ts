@@ -1,3 +1,4 @@
+import { wallpaperCardColor, wallpaperBackgroundImage } from "./wallpaper";
 import { state } from "../state/app_instance";
 import { cardContractCard } from "../generated/card_contract";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
@@ -123,6 +124,28 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
     }
     function renderPreview(this: any) {
         const previewColors = PREVIEW_THEME_COLORS[previewEffectiveTheme(state)];
+        const hasWallpaper = !!els.wallpaperUrl;
+        const hasBackground = hasWallpaper || !!els.backgroundColour;
+        const wallpaperPreview = document.getElementById("sp-wallpaper-preview");
+        if (wallpaperPreview) {
+            const grid = wallpaperPreview.querySelector(".sp-wallpaper-preview-grid");
+            if (grid && grid.childElementCount !== dependencies.layout.previewSlots) {
+                grid.replaceChildren();
+                for (let index = 0; index < dependencies.layout.previewSlots; index++) {
+                    const box = document.createElement("span");
+                    box.className = "sp-wallpaper-preview-box" + (index === 2 || index === 4 ? " sp-wallpaper-preview-box-active" : "");
+                    grid.appendChild(box);
+                }
+            }
+            wallpaperPreview.style.setProperty("--wallpaper-standard-color", wallpaperCardColor(previewColors.surfaceCard, hasBackground, els.wallpaperOpacityPercent));
+            wallpaperPreview.style.setProperty("--wallpaper-active-color", wallpaperCardColor(state.onColor || WEB_UI_COLORS.primary, hasBackground, els.wallpaperActiveOpacityPercent));
+        }
+        if (els.previewScreen) {
+            els.previewScreen.style.backgroundImage = wallpaperBackgroundImage(els.wallpaperUrl || "", els.wallpaperDimming || 0);
+            els.previewScreen.style.backgroundColor = els.backgroundColour ? "#" + els.backgroundColour : "";
+            els.previewScreen.style.backgroundSize = "cover";
+            els.previewScreen.style.backgroundPosition = "center";
+        }
         dependencies.updateClockBarItemUi();
         var main: any = els.previewMain;
         weatherLayout.disconnect();
@@ -157,9 +180,11 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 backBtn.innerHTML =
                     '<span class="sp-btn-icon sp-back-hit mdi mdi-chevron-left"></span>' +
                         '<span class="sp-btn-label">' + escHtml(backLabel) + '</span>';
-                backBtn.style.backgroundColor = "#" + backColor;
+                backBtn.style.backgroundColor = wallpaperCardColor(backColor, hasBackground, els.wallpaperOpacityPercent);
                 backBtn.style.setProperty("--card-text-color", subpage?.backColor
                     ? cardPreviewTextColor(backColor) : "#" + previewColors.textPrimary);
+                backBtn.style.setProperty("--card-active-color", wallpaperCardColor(state.onColor || WEB_UI_COLORS.primary, hasBackground, els.wallpaperActiveOpacityPercent));
+                backBtn.style.setProperty("--card-active-text-color", cardPreviewTextColor(state.onColor || WEB_UI_COLORS.primary));
                 backBtn.style.cursor = "pointer";
                 backBtn.setAttribute("data-pos", pos);
                 backBtn.draggable = !isConfigLocked();
@@ -217,8 +242,9 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     (typePreview && typePreview.buttonClass ? " " + typePreview.buttonClass : "") +
                     sizeClass(slotSz) +
                     (c.selected.indexOf(slot) !== -1 ? " sp-selected" : "");
-                btn.style.backgroundColor = "#" + (cardOffColor || color);
-                btn.style.setProperty("--card-active-color", "#" + (cardOnColor || state.onColor || WEB_UI_COLORS.primary));
+                btn.style.backgroundColor = wallpaperCardColor(cardOffColor || color, hasBackground, els.wallpaperOpacityPercent);
+                btn.style.setProperty("--card-active-color", wallpaperCardColor(cardOnColor || state.onColor || WEB_UI_COLORS.primary, hasBackground, els.wallpaperActiveOpacityPercent));
+                btn.style.setProperty("--card-active-text-color", cardPreviewTextColor(cardOnColor || state.onColor || WEB_UI_COLORS.primary));
                 var activeMode: any = configOptionValue(b.options, "card_active_color");
                 var customActive: any = configOptionValue(b.options, "card_on_color").replace(/^#/, "");
                 var explicitActive: any = activeMode === "theme" || (activeMode === "custom" && /^[0-9A-F]{6}$/i.test(customActive));
@@ -229,12 +255,16 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 btn.setAttribute("data-pos", pos);
                 btn.setAttribute("data-slot", slot);
                 var hasWhenOn: any = !typePreview && (b.sensor || (b.icon_on && b.icon_on !== "Auto"));
-                if (!typePreview && hasWhenOn && typeof cardOnPattern === "function" && cardOnPattern(b) === "stripes") {
+                if ((hasWhenOn || (b.type || "") === "") && typeof cardOnPattern === "function" && cardOnPattern(b) === "stripes") {
                     var onColor: any = cardOnColor || (state.onColor && state.onColor.length === 6 ? state.onColor : WEB_UI_COLORS.primary);
                     contrastBackground = onColor;
-                    btn.style.backgroundImage =
-                        "repeating-linear-gradient(135deg,#" + onColor + " 0,#" + onColor +
-                            " 12px,#" + cardPatternHighlightColor(onColor) + " 12px,#" + cardPatternHighlightColor(onColor) + " 20px)";
+                    var highlight = cardPatternHighlightColor(onColor);
+                    var patternFill = wallpaperCardColor(onColor, hasBackground, els.wallpaperActiveOpacityPercent);
+                    var patternHighlight = wallpaperCardColor(highlight, hasBackground, els.wallpaperActiveOpacityPercent);
+                    btn.classList.add("sp-on-pattern");
+                    btn.style.backgroundColor = "transparent";
+                    btn.style.backgroundImage = "repeating-linear-gradient(135deg," + patternFill + " 0," + patternFill +
+                        " 12px," + patternHighlight + " 12px," + patternHighlight + " 20px)";
                 }
                 if (!btn.classList.contains("sp-image-card")) {
                     btn.style.setProperty("--card-text-color", cardOffColor || contrastBackground !== color

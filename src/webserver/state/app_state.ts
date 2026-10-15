@@ -43,6 +43,8 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     networkTransport: "wifi", wifiStrengthPercent: 100,
     temperatureDegreeSymbolOn: true, subpageChevronsOn: true, presenceEntity: "",
     screensaverCameraEntity: "", screensaverCameraImageMode: "Fit", screensaverCameraSupported: false,
+    clockWallpaperSupported: false, clockWallpaperOn: true,
+    clockWallpaperDimmingSupported: false, clockWallpaperDimming: 25,
     clockDateSupported: false, clockDateOn: false,
     clockOverlaySupported: false,
     screensaverMetadataEntity: "",

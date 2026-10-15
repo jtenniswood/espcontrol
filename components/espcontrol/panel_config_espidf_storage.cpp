@@ -38,7 +38,8 @@ bool EspIdfPanelConfigBlobStorage::begin_card_images_partition(
   if (partition == nullptr) return false;
 
   partition_slot_capacity_ = slot_capacity;
-  if (partition_slot_stride() > panel_config_partition_bytes(partition->size) / 2) {
+  if (panel_config_partition_bytes(partition->size) == 0 ||
+      partition_slot_stride() > WALLPAPER_STORAGE_OFFSET / 2) {
     partition_slot_capacity_ = 0;
     return false;
   }

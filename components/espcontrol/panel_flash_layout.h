@@ -3,6 +3,9 @@
 namespace espcontrol {
 // The deployed 2 MiB card_images partition stores configuration at the front.
 // Reserve the final four sectors for an independent NVS store for panel identity.
+constexpr size_t WALLPAPER_STORAGE_OFFSET = 128 * 1024;
+constexpr size_t WALLPAPER_STORAGE_SLOT_BYTES = 512 * 1024;
+constexpr size_t WALLPAPER_STORAGE_BYTES = WALLPAPER_STORAGE_SLOT_BYTES;
 constexpr size_t PANEL_IDENTITY_STORAGE_BYTES = 16 * 1024;
 constexpr size_t PANEL_DATA_PARTITION_BYTES = 2 * 1024 * 1024;
 inline size_t panel_config_partition_bytes(size_t size) {

@@ -175,6 +175,8 @@ async function assertSubpageTitleTypography(page, label, nativeState) {
   assert.strictEqual(await page.locator(".sp-back-btn").evaluate(el => getComputedStyle(el).backgroundColor),
     initialColor, `${label}: reset restores the theme colour`);
   await page.getByRole("button", { name: "Done", exact: true }).click();
+  assert.strictEqual(await page.locator(".sp-clockbar-subpage-title").evaluate(el => getComputedStyle(el).textShadow),
+    "rgba(0, 0, 0, 0.5) 1px 1px 0px", `${label}: subpage title keeps the crisp image-label shadow`);
   await page.locator(".sp-back-btn .sp-back-hit").click();
   await page.waitForSelector(".sp-clockbar-subpage-title", { state: "detached" });
 }
@@ -259,6 +261,70 @@ async function installRoutes(context, slug, options = {}) {
 
   await context.route("**/*", async (route) => {
     const requestUrl = new URL(route.request().url());
+    // WebKit also routes local images; preserve their browser decoding.
+    if (requestUrl.protocol === "blob:" || requestUrl.protocol === "data:") {
+      await route.continue();
+      return;
+    }
+    if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/wallpaper-dimming") {
+      const wallpaper = options.wallpaperState;
+      assert(wallpaper && wallpaper.dimmingSupported !== false);
+      if (route.request().method() === "PUT") {
+        assert.strictEqual(route.request().headers()["x-espcontrol-epoch"], String(options.resetState.epoch));
+        if (wallpaper.failDimming) { await route.fulfill({status: 500, body: "Save failed"}); return; }
+        wallpaper.dimming = JSON.parse(route.request().postData()).dimming;
+        (wallpaper.dimmingPosts ??= []).push(wallpaper.dimming);
+      }
+      await route.fulfill({status: 200, contentType: "application/json", body: JSON.stringify({dimming: wallpaper.dimming ?? 0})});
+      return;
+    }
+    if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/background") {
+      const wallpaper = options.wallpaperState;
+      assert(wallpaper && wallpaper.backgroundSupported !== false, "unsupported firmware must not receive background requests");
+      if (route.request().method() === "PUT") {
+        assert.strictEqual(route.request().headers()["x-espcontrol-epoch"], String(options.resetState.epoch));
+        if (wallpaper.failBackground) { await route.fulfill({ status: 500, body: "Save failed" }); return; }
+        const settings = JSON.parse(route.request().postData());
+        assert(["wallpaper", "colour"].includes(settings.mode) && /^[0-9A-F]{6}$/.test(settings.colour));
+        (wallpaper.backgroundPosts ??= []).push(settings);
+        wallpaper.background = settings;
+      }
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(wallpaper.background ?? {mode: "wallpaper", colour: "212121"}) });
+      return;
+    }
+    if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/wallpaper-opacity") {
+      const wallpaper = options.wallpaperState;
+      assert(wallpaper && wallpaper.opacitySupported !== false, "unsupported firmware must not receive opacity requests");
+      if (route.request().method() === "PUT") {
+        assert.strictEqual(route.request().headers()["x-espcontrol-epoch"], String(options.resetState.epoch));
+        if (wallpaper.failOpacity) { await route.fulfill({ status: 500, body: "Save failed" }); return; }
+        const settings = JSON.parse(route.request().postData());
+        assert(Number.isInteger(settings.opacity) && settings.opacity >= 0 && settings.opacity <= 100);
+        wallpaper.opacityPosts.push(settings);
+        if (wallpaper.separateOpacity !== false) assert(Number.isInteger(settings.active_opacity) && settings.active_opacity >= 0 && settings.active_opacity <= 100);
+        else assert(!("active_opacity" in settings), "Original firmware must receive its original request format");
+        wallpaper.opacity = settings.opacity;
+        wallpaper.activeOpacity = settings.active_opacity ?? settings.opacity;
+      }
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ opacity: wallpaper.opacity ?? 80, ...(wallpaper.separateOpacity === false ? {} : { active_opacity: wallpaper.activeOpacity ?? wallpaper.opacity ?? 80 }) }) });
+      return;
+    }
+    if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/wallpaper") {
+      const wallpaper = options.wallpaperState;
+      if (!wallpaper) { await route.fulfill({ status: 501, body: "Unsupported" }); return; }
+      if (route.request().method() === "PUT") {
+        assert.strictEqual(route.request().headers()["x-espcontrol-epoch"], String(options.resetState.epoch));
+        if (wallpaper.failSave) { if (wallpaper.eraseOnFailure) wallpaper.image = null; await route.fulfill({ status: 500, body: "Save failed" }); return; }
+        const payload = route.request().postDataBuffer();
+        assert.strictEqual(payload.readUInt32LE(0), payload.readUInt32LE(4) === 0 || wallpaper.jpeg === false ? 0x31505745 : 0x32505745);
+        wallpaper.posts.push(payload);
+        wallpaper.image = payload.readUInt32LE(4) === 0 ? null : payload;
+        await route.fulfill({ status: 204 }); return;
+      }
+      await route.fulfill({ status: wallpaper.image ? 200 : 204,
+        contentType: "application/vnd.espcontrol.wallpaper", body: wallpaper.image || "" });
+      return;
+    }
     if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/reset") {
       const reset = options.resetState;
       if (!reset) {
@@ -370,6 +436,8 @@ async function installRoutes(context, slug, options = {}) {
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
+          background: options.wallpaperState && options.wallpaperState.backgroundSupported !== false ? {version: 1, wallpaper_dimming: options.wallpaperState.dimmingSupported !== false} : undefined,
+          wallpaper: options.wallpaperState ? { version: 1, available: true, opacity: options.wallpaperState.opacitySupported !== false, state_opacity: options.wallpaperState.separateOpacity !== false, ...(options.wallpaperState.jpeg === false ? {} : { jpeg: true, max_side: 1280, max_pixels: 1024000, max_bytes: 524272, ...options.wallpaperState.limits }) } : undefined,
           configuration: { read: true, write: true, document_versions: [1] },
           web_assets: { versions: [1] },
         }),
@@ -389,6 +457,8 @@ async function installRoutes(context, slug, options = {}) {
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
+          background: options.wallpaperState && options.wallpaperState.backgroundSupported !== false ? {version: 1, wallpaper_dimming: options.wallpaperState.dimmingSupported !== false} : undefined,
+          wallpaper: options.wallpaperState ? { version: 1, available: true, opacity: options.wallpaperState.opacitySupported !== false, state_opacity: options.wallpaperState.separateOpacity !== false, ...(options.wallpaperState.jpeg === false ? {} : { jpeg: true, max_side: 1280, max_pixels: 1024000, max_bytes: 524272, ...options.wallpaperState.limits }) } : undefined,
           configuration: { read: false, write: false, document_versions: [] },
         }),
       });
@@ -1218,6 +1288,9 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     assert.strictEqual(colourPosts().at(-1).value, "123ABC", `${label}: clicking the custom swatch restores its retained colour`);
     assert.strictEqual(await customSwatch.getAttribute("data-selected"), "true");
     await picker.fill(originalColour);
+  }
+  if (!(await page.locator("#sp-set-theme-mode").isVisible())) {
+    await page.getByRole("heading", { name: "Theme", exact: true }).click();
   }
   const themeModes = page.locator("#sp-set-theme-mode");
   if (!(await themeModes.isVisible())) await page.getByRole("heading", { name: "Theme", exact: true }).click();
@@ -2133,6 +2206,9 @@ async function assertClockBarTypographyAndIconLayout(page, label) {
       cardFontWeight: cardStyle.fontWeight,
       clockFontSize: clockStyle.fontSize,
       clockFontWeight: clockStyle.fontWeight,
+      clockShadow: clockStyle.textShadow,
+      temperatureShadow: temperatureStyle.textShadow,
+      iconShadow: networkGlyphStyle.textShadow,
       temperatureFontSize: temperatureStyle.fontSize,
       temperatureFontWeight: temperatureStyle.fontWeight,
       iconFontSize: networkStyle.fontSize,
@@ -2144,6 +2220,8 @@ async function assertClockBarTypographyAndIconLayout(page, label) {
     };
   });
   assert(metrics, `${label}: clock bar typography is measurable`);
+  for (const key of ["clockShadow", "temperatureShadow", "iconShadow"])
+    assert.strictEqual(metrics[key], "rgba(0, 0, 0, 0.5) 1px 1px 0px", `${label}: ${key} matches the crisp image-label shadow`);
   assert.strictEqual(
     metrics.clockFontSize,
     metrics.cardFontSize,
@@ -7045,8 +7123,8 @@ async function assertCardCurveSettings(browser, testCase) {
       await page.locator("#sp-set-card-curve").waitFor({ state: "visible" });
       assert.deepStrictEqual(await page.locator("#sp-settings .card-header h3").allTextContents().then(titles => titles.slice(0, 3)),
         ["Active Colour", "Card Style", "Theme"], "corner settings must own only the three non-wallpaper Appearance panels");
-      assert.strictEqual(await page.locator("#sp-set-wallpaper, #sp-set-card-transparency, #sp-set-active-card-transparency").count(), 0,
-        "wallpaper controls belong exclusively to the wallpaper PR");
+      assert.strictEqual(await page.locator("#sp-settings .card").filter({ has: page.locator("#sp-set-card-curve") }).locator("#sp-set-wallpaper, #sp-set-card-transparency, #sp-set-active-card-transparency").count(), 0,
+        "Card Style must not contain wallpaper controls");
     };
     await open();
     const profile = readManifest().devices[testCase.slug];
@@ -7498,6 +7576,694 @@ async function assertS3ForecastEditorLayout(browser) {
   } finally { await context.close(); }
 }
 
+async function assertClockWallpaperSettings(browser) {
+  const testCase = ACTIVE_CASES[0];
+  const context = await browser.newContext({viewport: testCase.viewport});
+  let savedWallpaper = true;
+  let savedDimming = 25;
+  const dimmingPosts = [];
+  const posts = [];
+  try {
+    await installRoutes(context, testCase.slug);
+    await context.route("**/switch/**", async route => {
+      const url = decodeURIComponent(route.request().url());
+      if (!url.includes("Show Wallpaper") && !url.includes("show_wallpaper")) { await route.fallback(); return; }
+      assert.strictEqual(route.request().method(), "POST");
+      savedWallpaper = new URL(url).pathname.endsWith("turn_on");
+      posts.push(savedWallpaper);
+      await route.fulfill({status: 200, body: ""});
+    });
+    await context.route("**/number/**", async route => {
+      const url = new URL(route.request().url());
+      if (!/Wallpaper Dimming|wallpaper_dimming/.test(decodeURIComponent(url.pathname))) { await route.fallback(); return; }
+      assert.strictEqual(route.request().method(), "POST");
+      savedDimming = Number(url.searchParams.get("value"));
+      dimmingPosts.push(savedDimming);
+      await route.fulfill({status: 200, body: ""});
+    });
+    const page = await context.newPage();
+    await installFakeEventSource(page);
+    const open = async (supported = true) => {
+      await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, {waitUntil: "domcontentloaded"});
+      await page.waitForFunction(() => window.__eventSources?.length > 0);
+      await page.evaluate(events => window.__seedEspState(events), [
+        ...seededEvents(),
+        {id: "switch-screen_saver__show_date", state: "OFF", value: false},
+        ...(supported ? [{id: "switch-clock_screensaver_show_wallpaper", state: savedWallpaper ? "ON" : "OFF", value: savedWallpaper}] : []),
+        ...(supported ? [{id: "number/Screen Saver: Wallpaper Dimming", name: "Screen Saver: Wallpaper Dimming", state: savedDimming + " %", value: String(savedDimming)}] : []),
+      ]);
+      await page.getByRole("tab", {name: "Screen", exact: true}).click();
+      await page.getByRole("heading", {name: "Screensaver", exact: true}).click();
+      await page.getByRole("button", {name: "Timer", exact: true}).click();
+      await page.locator("#sp-set-clock-mode").selectOption("clock");
+    };
+    const toggleAndSave = async selector => {
+      const response = page.waitForResponse(response => response.request().method() === "POST" &&
+        /Show Wallpaper|show_wallpaper/.test(decodeURIComponent(response.url())));
+      await page.locator(selector).click();
+      await response;
+    };
+    const dimming = page.locator("#sp-set-clock-wallpaper-dimming");
+    const sensorDimming = page.locator("#sp-set-sensor-clock-wallpaper-dimming");
+    const wallpaper = page.locator("#sp-set-clock-wallpaper");
+    const sensorWallpaper = page.locator("#sp-set-sensor-clock-wallpaper");
+    const wallpaperRow = wallpaper.locator("..").locator("..");
+    const sensorWallpaperRow = sensorWallpaper.locator("..").locator("..");
+    await open(false);
+    assert.strictEqual(await wallpaperRow.isVisible(), false, "older firmware hides unsupported Show Wallpaper");
+    assert.strictEqual(posts.length, 0);
+    assert.strictEqual(await dimming.isVisible(), false, "older firmware hides the unsupported dimming slider");
+    await open();
+    assert.strictEqual(await wallpaperRow.isVisible(), true);
+    assert.strictEqual(await wallpaper.isChecked(), true, "Show Wallpaper defaults on");
+    assert.strictEqual(await dimming.isVisible(), true);
+    assert.strictEqual(await dimming.inputValue(), "25", "wallpaper dimming defaults to 25 percent");
+    const setDimming = async (slider, value) => {
+      const response = page.waitForResponse(response => response.request().method() === "POST" &&
+        /Wallpaper Dimming|wallpaper_dimming/.test(decodeURIComponent(response.url())));
+      await slider.fill(String(value));
+      await response;
+    };
+    await setDimming(dimming, 40);
+    assert.strictEqual(await sensorDimming.inputValue(), "40", "Timer changes synchronize dimming with Sensor");
+    assert(await wallpaper.evaluate(input => {
+      const row = input.closest(".sp-toggle-row"), date = document.querySelector("#sp-set-clock-date").closest(".sp-toggle-row");
+      return !!(date.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }), "Show date appears above Show Wallpaper");
+    const brightnessTitle = page.getByRole("heading", {name: "Screensaver Brightness", exact: true});
+    assert.strictEqual(await brightnessTitle.filter({visible: true}).count(), 1);
+    const brightnessOrder = await page.locator("#sp-set-clock-wallpaper").evaluate(input => {
+      const group = input.closest(".sp-clock-brightness-field");
+      const title = group.querySelector(".sp-screensaver-brightness-title");
+      const labels = Array.from(group.querySelectorAll("label")).filter(label => /(?:Daytime|Nighttime) Clock Brightness/.test(label.textContent));
+      return labels.length === 2 && labels.every(label => !!(title.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING));
+    });
+    assert(brightnessOrder, "Screensaver Brightness appears above both clock brightness controls");
+    await toggleAndSave('label[for="sp-set-clock-wallpaper"]');
+    await page.waitForFunction(() => !document.querySelector("#sp-set-sensor-clock-wallpaper").checked);
+    await page.getByRole("button", {name: "Sensor", exact: true}).click();
+    assert.strictEqual(await sensorWallpaperRow.isVisible(), true);
+    assert.strictEqual(await sensorWallpaper.isChecked(), false, "Timer changes synchronize with Sensor");
+    assert.strictEqual(await sensorDimming.isVisible(), false, "dimming hides with Show Wallpaper off");
+    await toggleAndSave('label[for="sp-set-sensor-clock-wallpaper"]');
+    assert.strictEqual(await sensorDimming.isVisible(), true);
+    await setDimming(sensorDimming, 100);
+    await setDimming(sensorDimming, 0);
+    await setDimming(sensorDimming, 65);
+    assert.deepStrictEqual(dimmingPosts, [40, 100, 0, 65], "each slider change saves once, including both endpoints");
+    await page.getByRole("button", {name: "Timer", exact: true}).click();
+    assert.strictEqual(await dimming.inputValue(), "65");
+    assert.strictEqual(await wallpaper.isChecked(), true, "Sensor changes synchronize with Timer");
+    assert.deepStrictEqual(posts, [false, true], "each toggle saves once to the correct device switch");
+    await toggleAndSave('label[for="sp-set-clock-wallpaper"]');
+    await open();
+    assert.strictEqual(await wallpaper.isChecked(), false, "the saved device state is restored after reload");
+    assert.strictEqual(await dimming.inputValue(), "65", "saved dimming restores on reload even when hidden");
+    await page.locator("#sp-set-clock-mode").selectOption("dim");
+    assert.strictEqual(await wallpaperRow.isVisible(), false, "wallpaper toggle appears only for Clock");
+    await page.locator("#sp-set-clock-mode").selectOption("off");
+    assert.strictEqual(await wallpaperRow.isVisible(), false);
+    await openBackupControls(page);
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", {name: "Export", exact: true}).click();
+    const backup = JSON.parse(fs.readFileSync(await (await downloadPromise).path(), "utf8"));
+    assert.strictEqual(backup.settings.clock_wallpaper, false, "export includes the saved Show Wallpaper choice");
+    assert.strictEqual(backup.settings.clock_wallpaper_dimming, 65, "backup includes wallpaper dimming");
+  } finally { await context.close(); }
+}
+
+async function assertWallpaperPreviewLayout(browser, testCase) {
+  const context = await browser.newContext({viewport: testCase.viewport});
+  try {
+    const wallpaper = {image: null, posts: [], opacity: 80, activeOpacity: 98, opacityPosts: []};
+    await installRoutes(context, testCase.slug, {wallpaperState: wallpaper, resetState: {epoch: 3, pending: false, requests: []}});
+    const page = await context.newPage();
+    await installFakeEventSource(page);
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, {waitUntil: "domcontentloaded"});
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.getByRole("tab", {name: "Screen", exact: true}).click();
+    await page.getByRole("heading", {name: "Background", exact: true}).click();
+    await page.waitForFunction(() => !document.querySelector("#sp-background-tab-colour").disabled);
+    const profile = readManifest().devices[testCase.slug];
+    const checkLayout = async (rotation, viewport) => {
+      const rotated = ["90", "270"].includes(rotation);
+      const layout = rotated && profile.web.portrait ? profile.web.portrait : profile.layout;
+      const aspect = parseAspect(rotated && profile.web.portrait ? layout.screen.aspect : profile.web.screen.aspect).ratio;
+      const slots = layout.slots || profile.slots;
+      await page.setViewportSize(viewport);
+      await page.getByRole("tab", {name: "Layout", exact: true}).click();
+      const mainSpacing = await page.locator(".sp-screen").evaluate(screen => {
+        const grid = screen.querySelector(".sp-main");
+        const outer = screen.getBoundingClientRect(), inner = grid.getBoundingClientRect();
+        return [(inner.left - outer.left) / screen.clientWidth, (inner.top - outer.top) / screen.clientWidth,
+          parseFloat(getComputedStyle(grid).gap) / screen.clientWidth];
+      });
+      if (!rotated && testCase.slug.includes("jc8012p4a1")) {
+        const packages = fs.readFileSync(path.join(ROOT, "devices", testCase.slug, "packages.yaml"), "utf8");
+        const nativeTop = Number(packages.match(/main_page_pad_top: "(\d+)"/)[1]);
+        const actualTop = await page.locator(".sp-screen").evaluate(screen =>
+          parseFloat(getComputedStyle(screen.querySelector(".sp-main")).top) / screen.clientWidth);
+        assert(Math.abs(actualTop - nativeTop / 1280) < .0001,
+          `${testCase.slug}: preview card top matches the device's ${nativeTop}px clock-bar reservation`);
+      }
+      await page.getByRole("tab", {name: "Screen", exact: true}).click();
+      const geometry = await page.locator(".sp-wallpaper-preview").evaluate(el => {
+        const bounds = el.getBoundingClientRect();
+        const grid = el.querySelector(".sp-wallpaper-preview-grid");
+        const styles = getComputedStyle(grid);
+        const fraction = (grid, parent) => {
+          const outer = parent.getBoundingClientRect(), inner = grid.getBoundingClientRect();
+          return [(inner.left - outer.left) / parent.clientWidth, (inner.top - outer.top) / parent.clientWidth,
+            parseFloat(getComputedStyle(grid).gap) / parent.clientWidth];
+        };
+        return {ratio: bounds.width / bounds.height, columns: styles.gridTemplateColumns.split(" ").length,
+          rows: styles.gridTemplateRows.split(" ").length, count: grid.childElementCount,
+          miniature: fraction(grid, el),
+          boxesFit: [...grid.children].every(box => {const rect = box.getBoundingClientRect();
+            return rect.left >= bounds.left && rect.right <= bounds.right && rect.top >= bounds.top && rect.bottom <= bounds.bottom;})};
+      });
+      assert(Math.abs(geometry.ratio - aspect) < .01, `${testCase.slug}/${rotation}: screen ratio matches device`);
+      assert.strictEqual(geometry.columns, layout.cols);
+      assert.strictEqual(geometry.rows, layout.rows);
+      assert.strictEqual(geometry.count, slots);
+      assert(geometry.boxesFit, `${testCase.slug}/${rotation}: all preview cards fit the screen`);
+      geometry.miniature.forEach((value, index) => assert(Math.abs(value - mainSpacing[index]) < .015,
+        `${testCase.slug}/${rotation}: card spacing scales with the screen`));
+    };
+    for (const rotation of ["0", "90", "180", "270"]) {
+      await page.evaluate(value => window.__seedEspState([{id: "select-screen__rotation", state: value, value, option: ["0", "90", "180", "270"]}]), rotation);
+      await checkLayout(rotation, testCase.viewport);
+      await checkLayout(rotation, {width: 360, height: 800});
+      await page.getByRole("tab", {name: "Colour", exact: true}).click();
+      await page.waitForFunction(() => !document.querySelector("#sp-background-tab-colour").disabled);
+      await checkLayout(rotation, testCase.viewport);
+      await page.getByRole("tab", {name: "Wallpaper", exact: true}).click();
+      await page.waitForFunction(() => !document.querySelector("#sp-background-tab-wallpaper").disabled);
+    }
+    if (testCase.slug === "guition-esp32-p4-jc8012p4a1-v3")
+      await page.locator("#sp-wallpaper-preview").screenshot({path: "/tmp/wallpaper-device-preview.png"});
+  } finally { await context.close(); }
+}
+
+async function assertWallpaperSettings(browser) {
+  const testCase = ACTIVE_CASES[0];
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  const wallpaper = { image: null, posts: [], failSave: false, opacity: 80, activeOpacity: 98, opacityPosts: [], failOpacity: false };
+  const resetState = { epoch: 3, pending: false, requests: [] };
+  await installRoutes(context, testCase.slug, { wallpaperState: wallpaper, resetState });
+  const page = await context.newPage();
+  await installFakeEventSource(page);
+  let reviewFixture = false;
+  async function open() {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    const events = seededEvents();
+    if (reviewFixture) {
+      events.find(event => event.id === "text-button_1_config").state = "light.kitchen;Striped;Lightbulb;Lightbulb;;;;;on_pattern=stripes";
+      events.find(event => event.id === "text-button_3_config").state = ";Rooms;Home;Auto;;;subpage";
+      events.push({ id: "text-subpage_3_config", state: "~B,1|,light.kitchen,Kitchen,Lightbulb,Lightbulb" });
+    }
+    await page.evaluate(events => window.__seedEspState(events), events);
+    await page.getByRole("tab", { name: "Screen" }).click();
+    const card = page.locator("#sp-settings .card").filter({ has: page.locator("#sp-set-wallpaper") });
+    if (!(await card.getByRole("button", { name: "Upload Image" }).isVisible())) await card.locator(".card-header").click();
+    await page.waitForFunction(() => !document.querySelector("#sp-set-wallpaper").disabled);
+    if (!(await page.locator("#sp-set-theme-mode").isVisible())) await page.getByRole("heading", { name: "Theme", exact: true }).click();
+  }
+  try {
+    await open();
+    assert.strictEqual(await page.getByRole("tab", {name: "Wallpaper", exact: true}).getAttribute("aria-selected"), "true");
+    assert.strictEqual(await page.locator("#sp-background-colour").isVisible(), false);
+    assert.strictEqual(await page.locator("#sp-set-card-transparency").isDisabled(), true);
+    assert.strictEqual(await page.locator("#sp-set-card-transparency").isVisible(), false);
+    assert.strictEqual(await page.locator("#sp-set-active-card-transparency").isVisible(), false);
+    assert.strictEqual(await page.locator("#sp-set-wallpaper").isVisible(), false);
+    await page.getByRole("img", { name: "No wallpaper uploaded", exact: true }).waitFor();
+    assert.strictEqual(await page.locator(".sp-wallpaper-preview-box").count(), testCase.slots);
+    assert.strictEqual(await page.locator("#sp-set-wallpaper-dimming").isVisible(), false, "dimming hides without an image");
+    assert.strictEqual(await page.locator(".sp-wallpaper-info").count(), 0, "background controls omit the information panel");
+    assert.strictEqual(await page.locator(".sp-wallpaper-preview .mdi,.sp-card-bg-field > label").count(), 0);
+    assert.strictEqual(await page.locator("#sp-set-card-transparency").inputValue(), "0");
+    assert.strictEqual(await page.locator("#sp-set-active-card-transparency").inputValue(), "0");
+    assert.strictEqual(await page.locator(".sp-wallpaper-delete").textContent(), "");
+    assert.strictEqual(await page.locator(".sp-wallpaper-delete").isVisible(), false, "trash is hidden without an uploaded image");
+    await page.getByRole("tab", {name: "Colour", exact: true}).click();
+    await page.waitForFunction(() => !document.querySelector("#sp-background-tab-colour").disabled);
+    assert.strictEqual(await page.locator("#sp-set-card-transparency").inputValue(), "20");
+    assert.strictEqual(await page.locator("#sp-set-active-card-transparency").inputValue(), "2");
+    await page.getByRole("tab", {name: "Wallpaper", exact: true}).click();
+    await page.waitForFunction(() => !document.querySelector("#sp-background-tab-wallpaper").disabled);
+    assert.strictEqual(wallpaper.posts.length, 0);
+    const chooseFile = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "Upload Image", exact: true }).click();
+    const initialFileChooser = await chooseFile;
+    const png = await page.evaluate(() => {
+      const canvas = document.createElement("canvas"); canvas.width = 2560; canvas.height = 1600;
+      const ctx = canvas.getContext("2d");
+      const gradient = ctx.createLinearGradient(0, 0, 1200, 800);
+      gradient.addColorStop(0, "#157779"); gradient.addColorStop(.5, "#13274a"); gradient.addColorStop(1, "#ba506b");
+      ctx.fillStyle = gradient; ctx.fillRect(0, 0, 2560, 1600);
+      return canvas.toDataURL("image/png").split(",")[1];
+    });
+    const upload = { name: "wallpaper.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") };
+    await initialFileChooser.setFiles(upload);
+    await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
+    await page.getByRole("button", { name: "Upload Image", exact: true }).waitFor();
+    await page.getByRole("img", { name: "Saved wallpaper, 1280 by 800 pixels" }).waitFor();
+    await assertClockBarTypographyAndIconLayout(page, "Wallpaper loaded");
+    // Reproduce the older renderer's inline wallpaper styling on an actual
+    // open editor, including its translucent theme overlay.
+    const editor = page.locator(".sp-settings-modal");
+    await editor.evaluate(el => {
+      const image = document.querySelector(".sp-screen").style.backgroundImage;
+      el.style.backgroundImage = `linear-gradient(color-mix(in srgb,var(--bg) 70%,transparent),color-mix(in srgb,var(--bg) 70%,transparent)),${image}`;
+      el.style.backgroundColor = "transparent";
+    });
+    async function assertSolidEditor(label) {
+      assert.strictEqual(await editor.isVisible(), true, `${label}: editor is actually open`);
+      const fill = await editor.evaluate(el => ({
+        image: getComputedStyle(el).backgroundImage,
+        colour: getComputedStyle(el).backgroundColor,
+        expected: getComputedStyle(document.querySelector("#sp-app")).getPropertyValue("--bg").trim(),
+      }));
+      assert.strictEqual(fill.image, "none", `${label}: editor must never show wallpaper`);
+      assert(fill.colour.startsWith("rgb("), `${label}: editor has a fully opaque theme fill`);
+      const expected = await page.evaluate(hex => {
+        const sample = document.createElement("div"); sample.style.backgroundColor = hex;
+        document.body.appendChild(sample); const colour = getComputedStyle(sample).backgroundColor; sample.remove(); return colour;
+      }, fill.expected);
+      assert.strictEqual(fill.colour, expected, `${label}: editor uses the original theme background`);
+    }
+    await page.getByRole("tab", {name: "Layout", exact: true}).click();
+    await page.locator(".sp-empty-cell:not(.sp-info-only-hidden)").first().click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible");
+    await assertSolidEditor("Card type chooser");
+    await page.getByRole("button", {name: "Camera Card card type", exact: true}).click();
+    await page.locator("#sp-inp-entity").fill("image.rain_incoming_home_radar_128km");
+    await editor.getByLabel("Name", {exact: true}).fill("Weather");
+    await assertSolidEditor("Camera Card");
+    await editor.screenshot({path: "/tmp/solid-camera-card-editor.png"});
+    await page.locator(".sp-settings-close").click();
+    await editor.evaluate(el => { el.style.removeProperty("background-image"); el.style.removeProperty("background-color"); });
+    await page.getByRole("tab", {name: "Screen", exact: true}).click();
+    const modalFill = await page.locator(".sp-settings-modal").evaluate(el => ({
+      image: getComputedStyle(el).backgroundImage,
+      color: getComputedStyle(el).backgroundColor,
+    }));
+    assert.strictEqual(modalFill.image, "none", "The browser modal has no wallpaper");
+    assert(modalFill.color.startsWith("rgb("), "The browser modal keeps a completely solid fill");
+    assert.strictEqual(await page.locator(".sp-wallpaper-preview").evaluate(el => el.style.backgroundImage),
+      await page.locator(".sp-screen").evaluate(el => el.style.backgroundImage));
+    assert.strictEqual(wallpaper.image.readUInt32LE(0), 0x32505745);
+    assert.strictEqual(wallpaper.image.readUInt32LE(4), 1280);
+    assert.strictEqual(wallpaper.image.readUInt32LE(8), 800);
+    assert.strictEqual(wallpaper.image.length, 16 + wallpaper.image.readUInt32LE(12));
+    assert(wallpaper.image.length <= 524272);
+    assert.strictEqual(wallpaper.image.readUInt16BE(16), 0xffd8);
+    const previewPixels = await page.evaluate(async () => {
+      const source = document.querySelector(".sp-screen").style.backgroundImage;
+      const image = new Image(); image.src = source.slice(5, -2);
+      await image.decode();
+      const canvas = document.createElement("canvas"); canvas.width = image.width; canvas.height = image.height;
+      const ctx = canvas.getContext("2d"); ctx.drawImage(image, 0, 0);
+      return { width: image.width, height: image.height, colors: new Set(Array.from(ctx.getImageData(0, 0, 1280, 1).data).filter((_, i) => i % 4 === 0)).size };
+    });
+    assert.strictEqual(previewPixels.width, 1280);
+    assert.strictEqual(previewPixels.height, 800);
+    const higherQualityBytes = await page.evaluate(async png => {
+      const source = new Image(); source.src = "data:image/png;base64," + png; await source.decode();
+      const canvas = document.createElement("canvas"); canvas.width = 1280; canvas.height = 800;
+      const context = canvas.getContext("2d"); context.imageSmoothingQuality = "high";
+      context.drawImage(source, 0, 0, 1280, 800);
+      return (await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", .95))).size;
+    }, png);
+    assert(wallpaper.image.length - 16 < higherQualityBytes * .8, "75% JPEG should be substantially smaller at the same resolution");
+    assert(previewPixels.colors > 32, "JPEG preview should preserve more than 5-bit red colour detail");
+    await page.waitForFunction(() => Array.from(document.querySelectorAll(".sp-btn")).some(btn => getComputedStyle(btn).backgroundColor.endsWith(", 0.8)")));
+    if (process.env.ESPCONTROL_WALLPAPER_SETTINGS_SCREENSHOT)
+      await page.locator(".sp-card-bg-field").locator("..").screenshot({ path: process.env.ESPCONTROL_WALLPAPER_SETTINGS_SCREENSHOT });
+    await page.setViewportSize({ width: 360, height: 800 });
+    const uploadLayout = await page.locator(".sp-card-bg-field").evaluate(field => {
+      const bounds = field.getBoundingClientRect();
+      return Array.from(field.querySelectorAll(".sp-wallpaper-preview,.sp-card-bg-actions button")).every(element => {
+        const rect = element.getBoundingClientRect();
+        return rect.left >= bounds.left - 1 && rect.right <= bounds.right + 1;
+      });
+    });
+    assert(uploadLayout, "Wallpaper preview and actions should fit a narrow settings panel");
+    await page.setViewportSize(testCase.viewport);
+    if (process.env.ESPCONTROL_WALLPAPER_SCREENSHOT) {
+      await page.getByRole("tab", { name: "Layout", exact: true }).click();
+      await page.locator(".sp-screen").screenshot({ path: process.env.ESPCONTROL_WALLPAPER_SCREENSHOT });
+      await page.getByRole("tab", { name: "Screen", exact: true }).click();
+    }
+    const transparency = page.locator("#sp-set-card-transparency");
+    const activeTransparency = page.locator("#sp-set-active-card-transparency");
+    assert.strictEqual(await page.getByRole("button", { name: "Delete wallpaper" }).isVisible(), true, "trash appears for an uploaded image");
+    assert.strictEqual(await page.getByLabel("Standard Card Transparency", { exact: true }).count(), 1);
+    assert.strictEqual(await page.getByLabel("Active Card Transparency", { exact: true }).count(), 1);
+    assert.strictEqual(await activeTransparency.inputValue(), "2");
+    const assertActiveAlpha = async expected => {
+      const value = await page.locator(".sp-btn").first().evaluate(btn => btn.style.getPropertyValue("--card-active-color"));
+      assert.strictEqual(parseInt(value.slice(-2), 16), expected);
+    };
+    const setActiveTransparency = async (percent, commit = true) => {
+      await activeTransparency.evaluate((range, value) => {
+        range.value = String(value.percent); range.dispatchEvent(new Event("input", { bubbles: true }));
+        if (value.commit) range.dispatchEvent(new Event("change", { bubbles: true }));
+      }, { percent, commit });
+      if (commit) await page.waitForFunction(() => !document.querySelector("#sp-set-active-card-transparency").disabled);
+    };
+    const assertCardAlpha = async expected => {
+      const { color, alpha } = await page.locator(".sp-btn").first().evaluate(btn => {
+        const color = getComputedStyle(btn).backgroundColor;
+        const canvas = document.createElement("canvas"); canvas.width = canvas.height = 1;
+        const context = canvas.getContext("2d"); context.fillStyle = color; context.fillRect(0, 0, 1, 1);
+        return { color, alpha: context.getImageData(0, 0, 1, 1).data[3] / 255 };
+      });
+      assert(Math.abs(alpha - expected) < .004, `Expected alpha ${expected}, got ${color}`);
+    };
+    await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
+    assert.strictEqual(await transparency.isVisible(), true);
+    assert.strictEqual(await activeTransparency.isVisible(), true);
+    assert.strictEqual(await transparency.inputValue(), "20");
+    const setTransparency = async (percent, commit = true) => {
+      await transparency.evaluate((range, value) => {
+        range.value = String(value.percent); range.dispatchEvent(new Event("input", { bubbles: true }));
+        if (value.commit) range.dispatchEvent(new Event("change", { bubbles: true }));
+      }, { percent, commit });
+      if (commit) await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
+    };
+    // Preview changes while dragging; persistence happens only on release.
+    await setTransparency(50, false);
+    const assertMiniatureAlpha = async (active, expected) => {
+      const color = await page.locator(active ? ".sp-wallpaper-preview-box-active" : ".sp-wallpaper-preview-box:not(.sp-wallpaper-preview-box-active)").first()
+        .evaluate(box => getComputedStyle(box).backgroundColor);
+      const alpha = color.startsWith("rgba(") ? parseFloat(color.split(",").at(-1)) : 1;
+      assert(Math.abs(alpha - expected) < .004, `Expected miniature alpha ${expected}, got ${color}`);
+    };
+    await assertMiniatureAlpha(false, 128 / 255);
+    await assertMiniatureAlpha(true, 250 / 255);
+    assert.strictEqual(wallpaper.opacityPosts.length, 0);
+    await assertCardAlpha(128 / 255);
+    await transparency.dispatchEvent("change");
+    await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
+    assert.strictEqual(wallpaper.opacity, 50);
+    assert.strictEqual(wallpaper.activeOpacity, 98);
+    await assertActiveAlpha(250);
+    const postsBeforeActiveDrag = wallpaper.opacityPosts.length;
+    await setActiveTransparency(10, false);
+    await assertMiniatureAlpha(true, 230 / 255);
+    assert.strictEqual(wallpaper.opacityPosts.length, postsBeforeActiveDrag);
+    await assertActiveAlpha(230);
+    await activeTransparency.dispatchEvent("change");
+    await page.waitForFunction(() => !document.querySelector("#sp-set-active-card-transparency").disabled);
+    assert.strictEqual(wallpaper.opacity, 50);
+    assert.strictEqual(wallpaper.activeOpacity, 90);
+    await assertCardAlpha(128 / 255); await assertActiveAlpha(230);
+    await page.getByRole("tab", { name: "Layout", exact: true }).click();
+    const pressedCard = page.locator(".sp-btn").first();
+    await pressedCard.evaluate(btn => btn.addEventListener("click", event => {
+      event.preventDefault(); event.stopImmediatePropagation();
+    }, { capture: true, once: true }));
+    await pressedCard.hover(); await page.mouse.down();
+    try {
+      await page.waitForFunction(() => {
+        const color = getComputedStyle(document.querySelector(".sp-btn")).backgroundColor;
+        return color.startsWith("rgba(") && Math.abs(parseFloat(color.split(",").at(-1)) - 230 / 255) < .004;
+      });
+      await assertCardAlpha(230 / 255);
+    } finally { await page.mouse.up(); }
+    await page.getByRole("tab", { name: "Screen", exact: true }).click();
+    await assertCardAlpha(128 / 255);
+    // Striped fills use active transparency in every gradient stop.
+    reviewFixture = true; await open();
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"]')?.classList.contains("sp-on-pattern"));
+    const stripedFill = await page.locator('.sp-main [data-slot="1"]').evaluate(card => getComputedStyle(card).backgroundImage);
+    const stripeStops = [...stripedFill.matchAll(/rgba\([^)]+,\s*([\d.]+)\)/g)];
+    assert.strictEqual(stripeStops.length, 4, "All striped gradient stops carry alpha");
+    for (const stop of stripeStops) assert(Math.abs(Number(stop[1]) - 230 / 255) < .004);
+    await page.getByRole("tab", { name: "Layout", exact: true }).click();
+    await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+    const backCard = page.locator(".sp-back-btn");
+    await backCard.waitFor();
+    await assertCardAlpha(128 / 255);
+    const subpageCard = page.locator('.sp-main [data-slot="1"]');
+    assert(Math.abs(await subpageCard.evaluate(card => {
+      const color = getComputedStyle(card).backgroundColor;
+      return color.startsWith("rgba(") ? parseFloat(color.split(",").at(-1)) : 1;
+    }) - 128 / 255) < .004, "Subpage cards use the same standard transparency as home cards");
+    assert.strictEqual(parseInt((await subpageCard.evaluate(card => card.style.getPropertyValue("--card-active-color"))).slice(-2), 16), 230,
+      "Subpage cards use the same active transparency as home cards");
+    assert.strictEqual(parseInt((await backCard.evaluate(card => card.style.getPropertyValue("--card-active-color"))).slice(-2), 16), 230);
+    await backCard.evaluate(card => card.addEventListener("click", event => {
+      event.preventDefault(); event.stopImmediatePropagation();
+    }, { capture: true, once: true }));
+    await backCard.hover(); await page.mouse.down();
+    try {
+      await page.waitForFunction(() => {
+        const color = getComputedStyle(document.querySelector(".sp-back-btn")).backgroundColor;
+        return color.startsWith("rgba(") && Math.abs(parseFloat(color.split(",").at(-1)) - 230 / 255) < .004;
+      });
+    } finally { await page.mouse.up(); }
+    await page.locator(".sp-back-btn .sp-back-hit").click();
+    reviewFixture = false; await open();
+    const dimming = page.locator("#sp-set-wallpaper-dimming");
+    assert.strictEqual(await dimming.inputValue(), "0");
+    const setDimming = async value => {
+      const response = page.waitForResponse(response => response.url().endsWith("/api/v1/wallpaper-dimming") && response.request().method() === "PUT");
+      await dimming.fill(String(value)); await response;
+    };
+    const originalCardFill = await page.locator(".sp-btn").first().evaluate(card => getComputedStyle(card).backgroundColor);
+    await setDimming(50);
+    await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.includes("0.5"));
+    assert.strictEqual(await page.locator(".sp-wallpaper-preview").evaluate(el => el.style.backgroundImage),
+      await page.locator(".sp-screen").evaluate(el => el.style.backgroundImage));
+    assert.strictEqual(await page.locator(".sp-btn").first().evaluate(card => getComputedStyle(card).backgroundColor), originalCardFill);
+    await open(); assert.strictEqual(await dimming.inputValue(), "50", "wallpaper dimming survives reload");
+    wallpaper.failDimming = true; await setDimming(75);
+    await page.getByText("Could not save wallpaper dimming. Check the connection and try again.").waitFor();
+    assert.strictEqual(await dimming.inputValue(), "50", "failed dimming saves roll back");
+    wallpaper.failDimming = false; await setDimming(100);
+    await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.includes("rgb(0, 0, 0)"));
+    await page.getByRole("tab", {name: "Colour", exact: true}).click();
+    assert.strictEqual(await dimming.isVisible(), false);
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(el => el.style.backgroundImage), "");
+    await page.getByRole("tab", {name: "Wallpaper", exact: true}).click();
+    assert.strictEqual(await dimming.inputValue(), "100");
+    await setDimming(0);
+    const savedBackground = await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage);
+    await open();
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), savedBackground);
+    assert.strictEqual(await page.locator(".sp-wallpaper-preview").evaluate(el => el.style.backgroundImage), savedBackground);
+    assert.strictEqual(await transparency.inputValue(), "50");
+    assert.strictEqual(await activeTransparency.inputValue(), "10");
+    await assertActiveAlpha(230);
+    // Theme changes and grid rebuilds keep the wallpaper and alpha fill.
+    await page.locator("#sp-set-theme-mode").getByRole("button", { name: "Light", exact: true }).click();
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), savedBackground);
+    assert.strictEqual(await page.locator(".sp-wallpaper-preview").evaluate(el => el.style.backgroundImage), savedBackground);
+    await assertCardAlpha(128 / 255);
+    await setTransparency(0);
+    assert.strictEqual(wallpaper.opacity, 100);
+    await assertCardAlpha(1);
+    await assertActiveAlpha(230);
+    await setActiveTransparency(100);
+    await assertActiveAlpha(0); await assertCardAlpha(1);
+    await setActiveTransparency(0);
+    await assertActiveAlpha(255); await assertCardAlpha(1);
+    await setActiveTransparency(10);
+    await setTransparency(100);
+    assert.strictEqual(wallpaper.opacity, 0);
+    await assertCardAlpha(0);
+    await setTransparency(50);
+    wallpaper.failOpacity = true;
+    await setTransparency(75);
+    await page.getByText("Could not save card transparency. Check the connection and try again.").waitFor();
+    assert.strictEqual(await transparency.inputValue(), "50");
+    assert.strictEqual(wallpaper.opacity, 50);
+    await assertCardAlpha(128 / 255);
+    await assertActiveAlpha(230);
+    await setActiveTransparency(75);
+    assert.strictEqual(await activeTransparency.inputValue(), "10");
+    await assertActiveAlpha(230); await assertCardAlpha(128 / 255);
+    wallpaper.failOpacity = false;
+    wallpaper.failSave = true;
+    await page.locator("#sp-set-wallpaper").setInputFiles(upload);
+    await page.getByText("Could not save wallpaper. Check the connection and try again.").waitFor();
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), savedBackground);
+    assert.strictEqual(await page.locator(".sp-wallpaper-preview").evaluate(el => el.style.backgroundImage), savedBackground);
+    // In-place storage can lose the previous image after erase succeeds.
+    wallpaper.eraseOnFailure = true;
+    await page.locator("#sp-set-wallpaper").setInputFiles(upload);
+    await page.getByText("Could not save wallpaper. Check the connection and try again.").waitFor();
+    await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage === "");
+    assert.strictEqual(await transparency.isDisabled(), true);
+    assert.strictEqual(await page.locator(".sp-wallpaper-delete").isVisible(), false, "trash is hidden without an uploaded image");
+    await page.getByRole("button", { name: "Upload Image", exact: true }).waitFor();
+    wallpaper.eraseOnFailure = false;
+    wallpaper.failSave = false;
+    await page.locator("#sp-set-wallpaper").setInputFiles(upload);
+    await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
+    await page.getByRole("button", { name: "Delete wallpaper" }).click();
+    await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage === "");
+    assert.strictEqual(wallpaper.image, null);
+    assert.strictEqual(await page.locator(".sp-settings-modal").evaluate(el => el.style.backgroundImage), "");
+    await assertMiniatureAlpha(false, 1);
+    await assertMiniatureAlpha(true, 1);
+    await page.getByRole("button", { name: "Upload Image", exact: true }).waitFor();
+    await page.getByRole("img", { name: "No wallpaper uploaded", exact: true }).waitFor();
+    assert.strictEqual(await page.locator(".sp-wallpaper-preview").evaluate(el => el.style.backgroundImage), "");
+    assert.strictEqual(wallpaper.posts.at(-1).length, 16);
+    await open();
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(screen => screen.style.backgroundImage), "");
+    assert.strictEqual(await page.locator(".sp-wallpaper-delete").isVisible(), false, "trash is hidden without an uploaded image");
+    assert.strictEqual(await transparency.isDisabled(), true);
+    assert.strictEqual(await activeTransparency.isDisabled(), true);
+    assert.strictEqual(await transparency.isVisible(), false);
+    assert.strictEqual(await activeTransparency.isVisible(), false);
+    assert.strictEqual(await activeTransparency.inputValue(), "0");
+    assert.strictEqual(await transparency.inputValue(), "0");
+    await page.locator("#sp-set-wallpaper").setInputFiles(upload);
+    await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
+    assert.strictEqual(await transparency.inputValue(), "50");
+    await assertCardAlpha(128 / 255);
+    await assertActiveAlpha(230);
+    const retainedImage = Buffer.from(wallpaper.image);
+    const imageWrites = wallpaper.posts.length;
+    const wallpaperTab = page.getByRole("tab", {name: "Wallpaper", exact: true});
+    const colourTab = page.getByRole("tab", {name: "Colour", exact: true});
+    async function waitForBackground() {
+      await page.waitForFunction(() => !document.querySelector("#sp-background-tab-colour").disabled);
+    }
+    await colourTab.click(); await waitForBackground();
+    assert.strictEqual(await colourTab.getAttribute("aria-selected"), "true");
+    assert.strictEqual(await page.getByRole("button", {name: "Upload Image", exact: true}).isVisible(), false);
+    const swatches = page.getByRole("group", {name: "Background colour presets", exact: true});
+    assert.strictEqual(await swatches.locator(".sp-card-color-preset").count(), 20);
+    await swatches.getByRole("button", {name: "Set colour to blue", exact: true}).click();
+    await waitForBackground();
+    assert.deepStrictEqual(wallpaper.background, {mode: "colour", colour: "3C64DE"});
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(el => el.style.backgroundColor), "rgb(60, 100, 222)");
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(el => el.style.backgroundImage), "");
+    assert.strictEqual(await page.locator(".sp-wallpaper-preview").evaluate(el => getComputedStyle(el).backgroundImage), "none");
+    await assertCardAlpha(128 / 255); await assertActiveAlpha(230);
+    const custom = swatches.getByLabel("Choose custom colour", {exact: true});
+    await custom.evaluate(input => { input.value = "#123456"; input.dispatchEvent(new Event("change", {bubbles: true})); });
+    await waitForBackground();
+    assert.deepStrictEqual(wallpaper.background, {mode: "colour", colour: "123456"});
+    wallpaper.failBackground = true;
+    await wallpaperTab.click(); await waitForBackground();
+    await page.getByText("Could not save background. Check the connection and try again.").waitFor();
+    assert.strictEqual(await colourTab.getAttribute("aria-selected"), "true");
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(el => el.style.backgroundColor), "rgb(18, 52, 86)");
+    wallpaper.failBackground = false;
+    // Reload restores mode, colour and opacity without uploading the image again.
+    reviewFixture = true;
+    await open();
+    await page.waitForFunction(() => document.querySelector(".sp-screen")?.style.backgroundColor === "rgb(18, 52, 86)");
+    const backgroundCard = page.locator("#sp-settings .card").filter({has: page.locator("#sp-set-wallpaper")});
+    if (!(await colourTab.isVisible())) await backgroundCard.locator(".card-header").click();
+    await waitForBackground();
+    assert.strictEqual(await transparency.inputValue(), "50");
+    assert.strictEqual(await activeTransparency.inputValue(), "10");
+    assert.strictEqual(await page.locator(".sp-settings-modal").evaluate(el => getComputedStyle(el).backgroundImage), "none");
+    await page.getByRole("tab", {name: "Layout", exact: true}).click();
+    await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+    await page.locator(".sp-back-btn").waitFor();
+    await assertCardAlpha(128 / 255); await assertActiveAlpha(230);
+    assert.strictEqual(await page.locator(".sp-screen").evaluate(el => el.style.backgroundColor), "rgb(18, 52, 86)");
+    await page.locator(".sp-back-btn .sp-back-hit").click();
+    reviewFixture = false; await open();
+    await page.screenshot({path: "/tmp/background-colour-preview.png"});
+    await wallpaperTab.click(); await waitForBackground();
+    await page.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
+    assert.deepStrictEqual(wallpaper.image, retainedImage);
+    assert.strictEqual(wallpaper.posts.length, imageWrites);
+    await page.getByRole("img", {name: "Saved wallpaper, 1280 by 800 pixels", exact: true}).waitFor();
+    // Colour still shows and applies the saved transparency with no image.
+    await page.getByRole("button", {name: "Delete wallpaper"}).click();
+    await page.waitForFunction(() => document.querySelector("#sp-set-card-transparency").disabled);
+    await colourTab.click(); await waitForBackground();
+    assert.strictEqual(wallpaper.image, null);
+    assert.strictEqual(await transparency.isVisible(), true);
+    assert.strictEqual(await transparency.inputValue(), "50");
+    await assertCardAlpha(128 / 255); await assertActiveAlpha(230);
+    await wallpaperTab.click(); await waitForBackground();
+    await page.locator("#sp-set-wallpaper").setInputFiles(upload);
+    await page.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
+  } finally { await context.close(); }
+  // Firmware with the original fixed opacity keeps uploads working and disables the slider.
+  const legacy = await browser.newContext({ viewport: testCase.viewport });
+  try {
+    const legacyWallpaper = { image: null, posts: [], backgroundSupported: false, opacitySupported: false, separateOpacity: false, jpeg: false };
+    await installRoutes(legacy, testCase.slug, { wallpaperState: legacyWallpaper, resetState });
+    const oldPage = await legacy.newPage();
+    await installFakeEventSource(oldPage);
+    await oldPage.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await oldPage.waitForFunction(() => document.querySelector("#sp-set-wallpaper") && !document.querySelector("#sp-set-wallpaper").disabled);
+    assert.strictEqual(await oldPage.locator("#sp-set-card-transparency").isDisabled(), true);
+    assert.strictEqual(await oldPage.locator("#sp-background-tab-colour").isDisabled(), true);
+    assert.strictEqual(await oldPage.locator("#sp-set-card-transparency").inputValue(), "0");
+    const oldImage = await oldPage.evaluate(() => {
+      const canvas = document.createElement("canvas"); canvas.width = 1200; canvas.height = 800;
+      return canvas.toDataURL("image/png").split(",")[1];
+    });
+    await oldPage.locator("#sp-set-wallpaper").setInputFiles({ name: "old.png", mimeType: "image/png", buffer: Buffer.from(oldImage, "base64") });
+    await oldPage.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
+    assert.strictEqual(legacyWallpaper.image.readUInt32LE(0), 0x31505745);
+    assert.strictEqual(await oldPage.locator("#sp-set-wallpaper-dimming").isVisible(), false, "older firmware hides unsupported wallpaper dimming");
+    assert.strictEqual(legacyWallpaper.image.readUInt32LE(4), 480);
+    assert.strictEqual(legacyWallpaper.image.readUInt32LE(8), 320);
+    await oldPage.reload();
+    await oldPage.waitForSelector(".sp-screen");
+    await oldPage.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
+  } finally { await legacy.close(); }
+  const single = await browser.newContext({ viewport: testCase.viewport });
+  try {
+    const oldSettings = { image: wallpaper.image, posts: [], opacityPosts: [], opacity: 65, separateOpacity: false };
+    await installRoutes(single, testCase.slug, { wallpaperState: oldSettings, resetState });
+    const singlePage = await single.newPage(); await installFakeEventSource(singlePage);
+    await singlePage.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await singlePage.waitForFunction(() => document.querySelector("#sp-set-card-transparency") && !document.querySelector("#sp-set-card-transparency").disabled);
+    assert.strictEqual(await singlePage.getByLabel("Card transparency", { exact: true }).inputValue(), "35");
+    assert.strictEqual(await singlePage.locator("#sp-set-active-card-transparency").isVisible(), false);
+    await singlePage.locator("#sp-set-card-transparency").evaluate(range => {
+      range.value = "50"; range.dispatchEvent(new Event("input", { bubbles: true })); range.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await singlePage.waitForFunction(() => !document.querySelector("#sp-set-card-transparency").disabled);
+    assert.deepStrictEqual(oldSettings.opacityPosts, [{ opacity: 50 }]);
+  } finally { await single.close(); }
+  // A smaller display/storage budget still produces a valid JPEG, reducing
+  // detailed images automatically when quality adjustments alone cannot fit.
+  const limited = await browser.newContext({ viewport: testCase.viewport });
+  try {
+    const compactWallpaper = { image: null, posts: [], limits: { max_side: 480, max_pixels: 230400, max_bytes: 8192 } };
+    await installRoutes(limited, testCase.slug, { wallpaperState: compactWallpaper, resetState });
+    const compactPage = await limited.newPage(); await installFakeEventSource(compactPage);
+    await compactPage.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await compactPage.waitForFunction(() => document.querySelector("#sp-set-wallpaper") && !document.querySelector("#sp-set-wallpaper").disabled);
+    const noise = await compactPage.evaluate(() => {
+      const canvas = document.createElement("canvas"); canvas.width = 1200; canvas.height = 800;
+      const ctx = canvas.getContext("2d"), pixels = ctx.createImageData(1200, 800);
+      let seed = 7;
+      for (let i = 0; i < pixels.data.length; i++) {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        pixels.data[i] = i % 4 === 3 ? 255 : seed >>> 24;
+      }
+      ctx.putImageData(pixels, 0, 0); return canvas.toDataURL("image/png").split(",")[1];
+    });
+    await compactPage.locator("#sp-set-wallpaper").setInputFiles({ name: "detail.png", mimeType: "image/png", buffer: Buffer.from(noise, "base64") });
+    await compactPage.waitForFunction(() => document.querySelector(".sp-screen").style.backgroundImage.startsWith("url("));
+    assert.strictEqual(compactWallpaper.image.readUInt32LE(0), 0x32505745);
+    assert(compactWallpaper.image.length <= 8192);
+    assert(compactWallpaper.image.readUInt32LE(4) < 480, "Detailed image should shrink to fit storage");
+    assert(compactWallpaper.image.readUInt32LE(4) * compactWallpaper.image.readUInt32LE(8) <= 230400);
+  } finally { await limited.close(); }
+}
+
 (async function main() {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
@@ -7552,6 +8318,12 @@ async function assertS3ForecastEditorLayout(browser) {
       console.log(`Card curve preset checks passed for ${ACTIVE_CASES.length} generated layouts.`);
       return;
     }
+    await assertClockWallpaperSettings(browser);
+    if (process.env.ESPCONTROL_CLOCK_WALLPAPER_ONLY === "1") { console.log("Clock screensaver Show Wallpaper checks passed."); return; }
+    for (const testCase of ACTIVE_CASES) await assertWallpaperPreviewLayout(browser, testCase);
+    if (process.env.ESPCONTROL_WALLPAPER_LAYOUT_ONLY === "1") { console.log(`Wallpaper preview layout checks passed for ${ACTIVE_CASES.length} devices.`); return; }
+    await assertWallpaperSettings(browser);
+    if (process.env.ESPCONTROL_WALLPAPER_ONLY === "1") { console.log("Wallpaper browser checks passed."); return; }
     await assertCardCurveSettings(browser, ACTIVE_CASES[0]);
     for (const testCase of ACTIVE_CASES) {
       await assertContinuousPreview(browser, testCase);

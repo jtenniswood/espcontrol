@@ -121,7 +121,10 @@ test("striped custom cards render the readable stripe tones on both pages and th
   ui.initializeAppState();
   function element() {
     const node = { children: [], className: "", style: { setProperty(name, value) { this[name] = value; } }, querySelector() { return null; }, setAttribute() {}, removeAttribute() {}, appendChild(child) { this.children.push(child); } };
-    node.classList = { contains(name) { return node.className.split(" ").includes(name); } };
+    node.classList = {
+      contains(name) { return node.className.split(" ").includes(name); },
+      add(name) { node.className += " " + name; },
+    };
     return node;
   }
   for (const theme of ["Dark", "Light"]) for (const subpage of [false, true]) {
@@ -129,7 +132,7 @@ test("striped custom cards render the readable stripe tones on both pages and th
     const main = element();
     const button = { type: "", entity: "switch.test", label: "Grey", icon_on: "Lightbulb", options: "on_pattern=stripes,card_off_color=A0A0A0" };
     ui.createPreviewRenderFeature({
-      document: { createElement: element }, updateClockBarItemUi() {},
+      document: { createElement: element, getElementById() { return null; } }, updateClockBarItemUi() {},
       layout: { config: { disabledCardTypes: [], infoOnly: false } }, cards: { definitions: {} },
       confirmationOptions: { cardOnPattern() { return "stripes"; } }, codec: { getSubpage() { return {}; } },
       runtime: { els: { previewMain: main } }, screenRotation: { gridPreviewBlocked() { return false; } },

@@ -6,6 +6,7 @@
 
 #include "grid_navigation_service.h"
 #include "espcontrol_app_core.h"
+#include "wallpaper_background.h"
 
 // Implemented by button_grid_image.h; navigation calls this when a subpage
 // becomes active after the S3 camera screensaver released image buffers.
@@ -164,6 +165,7 @@ inline void navigation_register_subpage(int slot, int display_order,
   entry.kind = navigation_lower(navigation_trim(kind));
   entry.screen = screen;
   navigation_subpages().push_back(entry);
+  espcontrol::wallpaper_register_background(screen);
   clock_bar_register_button_grid_page(screen);
   // Both events run after LVGL has changed the active screen. Unloading also
   // restores temperatures immediately when returning home or opening another UI.

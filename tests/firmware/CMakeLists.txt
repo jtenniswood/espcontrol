@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(espcontrol_firmware_tests LANGUAGES CXX)
+project(espcontrol_firmware_tests LANGUAGES C CXX)
 
 enable_testing()
 include(CheckCXXSourceCompiles)
@@ -25,6 +25,56 @@ add_test(NAME card_curve_button_theme_test COMMAND ${Python3_EXECUTABLE}
 add_test(NAME network_status_corners_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/network_status_corners_test.py)
+add_test(NAME wallpaper_upload_lifecycle_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/wallpaper_upload_lifecycle_test.py)
+
+add_test(NAME wallpaper_card_opacity_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wallpaper_card_opacity_test.py)
+
+add_test(NAME wallpaper_lifecycle_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wallpaper_lifecycle_test.py)
+
+add_test(NAME wallpaper_background_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wallpaper_background_test.py)
+
+add_executable(wallpaper_store_test wallpaper_store_test.cpp ../../components/espcontrol/wallpaper.cpp)
+target_compile_features(wallpaper_store_test PRIVATE cxx_std_17)
+target_compile_options(wallpaper_store_test PRIVATE -Wall -Wextra -Werror)
+target_compile_definitions(wallpaper_store_test PRIVATE USE_ESP32
+  WALLPAPER_TEST_JPEG="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/wallpaper.jpg")
+target_include_directories(wallpaper_store_test PRIVATE wallpaper_stubs ../../components/espcontrol)
+add_test(NAME wallpaper_store_test COMMAND wallpaper_store_test)
+
+# Exercise the production decoder against the same bundled JPEG library as
+# the firmware, without requiring a system JPEG development package.
+set(WALLPAPER_JPEG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../components/libjpeg-turbo-esp32)
+file(STRINGS ${WALLPAPER_JPEG_ROOT}/CMakeLists.txt WALLPAPER_JPEG_SOURCES REGEX "^[ ]*\"src/.*\\.c\"")
+list(TRANSFORM WALLPAPER_JPEG_SOURCES STRIP)
+list(TRANSFORM WALLPAPER_JPEG_SOURCES REPLACE "\"" "")
+list(TRANSFORM WALLPAPER_JPEG_SOURCES PREPEND "${WALLPAPER_JPEG_ROOT}/")
+add_library(wallpaper_jpeg STATIC ${WALLPAPER_JPEG_SOURCES})
+target_include_directories(wallpaper_jpeg PUBLIC ${WALLPAPER_JPEG_ROOT}/src)
+foreach(mode p4 s3)
+  add_executable(wallpaper_decode_${mode}_test wallpaper_decode_test.cpp ../../components/espcontrol/wallpaper_decode.cpp)
+  target_compile_features(wallpaper_decode_${mode}_test PRIVATE cxx_std_17)
+  target_compile_options(wallpaper_decode_${mode}_test PRIVATE -Wall -Wextra -Werror)
+  target_compile_definitions(wallpaper_decode_${mode}_test PRIVATE USE_ARTWORK_IMAGE_JPEG_SUPPORT USE_ESP32
+    WALLPAPER_TEST_LARGE_JPEG="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/wallpaper-p4.jpg"
+    WALLPAPER_TEST_JPEG="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/wallpaper.jpg")
+  if(mode STREQUAL "p4")
+    target_compile_definitions(wallpaper_decode_${mode}_test PRIVATE CONFIG_IDF_TARGET_ESP32P4)
+  endif()
+  target_include_directories(wallpaper_decode_${mode}_test PRIVATE wallpaper_stubs ../../components/espcontrol)
+  target_link_libraries(wallpaper_decode_${mode}_test PRIVATE wallpaper_jpeg)
+  add_test(NAME wallpaper_decode_${mode}_test COMMAND wallpaper_decode_${mode}_test)
+endforeach()
+
+add_executable(wallpaper_format_test wallpaper_format_test.cpp)
+target_compile_features(wallpaper_format_test PRIVATE cxx_std_17)
+target_compile_options(wallpaper_format_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(wallpaper_format_test PRIVATE ../../components/espcontrol)
+add_test(NAME wallpaper_format_test COMMAND wallpaper_format_test)
 
 add_executable(theme_palette_test theme_palette_test.cpp)
 target_compile_features(theme_palette_test PRIVATE cxx_std_17)
@@ -57,6 +107,8 @@ target_include_directories(theme_runtime_tree_test PRIVATE ../../components/espc
 add_test(NAME theme_runtime_tree_test COMMAND theme_runtime_tree_test)
 add_test(NAME theme_refresh_contract_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/theme_refresh_contract_test.py)
+add_test(NAME clock_bar_shadow_codegen_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/clock_bar_shadow_codegen_test.py)
 
 add_executable(digest_auth_policy_test digest_auth_policy_test.cpp)
 target_compile_features(digest_auth_policy_test PRIVATE cxx_std_17)

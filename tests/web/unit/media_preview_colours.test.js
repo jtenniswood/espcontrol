@@ -59,7 +59,7 @@ function mediaPreviewFixtures() {
         const main = element();
         const button = { type: "media", sensor: mode, precision, label: "Living room", options: [extra, colour ? "card_off_color=" + colour : ""].filter(Boolean).join(",") };
         ui.createPreviewRenderFeature({
-          document: { createElement: element }, updateClockBarItemUi() {},
+          document: { createElement: element, getElementById() { return null; } }, updateClockBarItemUi() {},
           layout: { config: { disabledCardTypes: [], infoOnly: false } }, cards: registry,
           confirmationOptions: { cardOnPattern() { return "solid"; } }, codec: { getSubpage() { return {}; } },
           runtime: { els: { previewMain: main } }, screenRotation: { gridPreviewBlocked() { return false; } },

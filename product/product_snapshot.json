@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 9,
     "cardTypes": 44,
-    "entityNames": 111,
+    "entityNames": 113,
     "icons": 367,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
@@ -876,7 +876,7 @@
           "fontSize": 1.72
         },
         "grid": {
-          "top": 4.7,
+          "top": 3.59375,
           "compactTop": 0.39,
           "left": 0.39,
           "right": 0.39,
@@ -1075,7 +1075,7 @@
           "fontSize": 1.72
         },
         "grid": {
-          "top": 4.7,
+          "top": 3.59375,
           "compactTop": 0.39,
           "left": 0.39,
           "right": 0.39,
@@ -1273,7 +1273,7 @@
           "fontSize": 1.72
         },
         "grid": {
-          "top": 4.7,
+          "top": 3.59375,
           "compactTop": 0.39,
           "left": 0.39,
           "right": 0.39,
@@ -7415,6 +7415,32 @@
           "screen_saver__clock",
           "screen_saver_clock",
           "clock_screensaver_enabled"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_show_wallpaper",
+        "domain": "switch",
+        "name": "Screen Saver: Show Wallpaper",
+        "objectIds": [
+          "screen_saver__show_wallpaper",
+          "screen_saver_show_wallpaper",
+          "clock_screensaver_show_wallpaper"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_wallpaper_dimming",
+        "domain": "number",
+        "name": "Screen Saver: Wallpaper Dimming",
+        "objectIds": [
+          "screen_saver__wallpaper_dimming",
+          "screen_saver_wallpaper_dimming",
+          "clock_wallpaper_dimming"
         ],
         "groups": [
           "settings"
