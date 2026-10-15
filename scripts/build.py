@@ -3139,7 +3139,7 @@ def gen_card_contract_h(data):
         cpp_string_array("CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_MODES", contract_card_option_values(cards, "climate", "number_display")),
         cpp_string_array("CARD_CONTRACT_CLIMATE_TEMPERATURE_STEPS", contract_card_option_values(cards, "climate", "temperature_step")),
         cpp_string_array("CARD_CONTRACT_CLIMATE_PRECISION_VALUES", climate_behavior["precisionValues"]),
-        cpp_string_array("CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS", large_numbers["weather"]["precisions"]),
+        cpp_string_array("CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS", [value for value in contract_card_option_values(cards, "weather", "weather_mode") if value]),
         "".join(
             f"constexpr const char *{option_constant_name(name)} = {json.dumps(value)};\n"
             for name, value in option_names.items()
@@ -3411,7 +3411,6 @@ def gen_card_contract_h(data):
         "\n",
         "inline bool card_contract_large_numbers_supported(const std::string &type, const std::string &precision) {\n",
         "  if (type == \"sensor\") return precision != \"icon\" && precision != \"text\";\n",
-        "  if (type == \"weather\") return precision == \"today\" || precision == \"tomorrow\";\n",
         "  return type == \"\" || type == \"action\" || type == \"calendar\" || type == \"clock\" ||\n",
         "         type == \"climate\" || type == \"media\" || type == \"subpage\" ||\n",
         "         type == \"timezone\";\n",

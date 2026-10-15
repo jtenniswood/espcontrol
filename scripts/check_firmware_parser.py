@@ -149,6 +149,7 @@ constexpr int LV_OPA_COVER = 255;
 constexpr int LV_OPA_50 = 128;
 constexpr int LV_OBJ_FLAG_CLICKABLE = 1;
 constexpr int LV_OBJ_FLAG_HIDDEN = 2;
+constexpr int LV_OBJ_FLAG_USER_2 = 4;
 constexpr int LV_GRAD_DIR_HOR = 1;
 inline int lv_color_hex(uint32_t value) { return static_cast<int>(value); }
 inline int lv_pct(int value) { return value; }
@@ -529,8 +530,8 @@ int main() {
   auto weather_today = parse_cfg("weather.home;;;;;;weather;today;large_numbers");
   assert(weather_today.type == "weather");
   assert(weather_today.precision == "today");
-  assert(weather_today.options == "large_numbers");
-  assert(card_large_numbers_enabled(weather_today));
+  assert(weather_today.options.empty()); // Forecast layouts discard the obsolete size option.
+  assert(!card_large_numbers_enabled(weather_today));
   auto weather_invalid_mode = parse_cfg("weather.home;;;;;;weather;bad;large_numbers");
   assert(weather_invalid_mode.type == "weather");
   assert(weather_invalid_mode.precision == "");

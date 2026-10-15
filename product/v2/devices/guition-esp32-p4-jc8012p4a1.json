@@ -23,7 +23,10 @@
       }
     },
     "web": {
-      "continuousCorners": true
+      "continuousCorners": true,
+      "btn": {
+        "smallTextSize": 1.5625
+      }
     }
   },
   "overrides": {

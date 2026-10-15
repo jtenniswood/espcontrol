@@ -19,7 +19,10 @@
       "portrait": {
         "slots": 18
       },
-      "continuousCorners": true
+      "continuousCorners": true,
+      "btn": {
+        "smallTextSize": 1.5625
+      }
     },
     "firmware": {
       "package": {

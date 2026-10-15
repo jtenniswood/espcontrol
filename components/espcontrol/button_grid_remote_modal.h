@@ -13,6 +13,7 @@ inline ModalTarget card_modal_target(const Context &context, const ParsedCfg &co
     climate_control_driver_modal_target, fan_control_driver_modal_target,
     numeric_selectable_driver_modal_target, media_driver_modal_target,
     image_driver_modal_target, alarm_driver_modal_target, wifi_qr_driver_modal_target,
+    weather_driver_modal_target,
   };
   for (auto probe : probes) {
     ModalTarget target = probe(context, config, button);

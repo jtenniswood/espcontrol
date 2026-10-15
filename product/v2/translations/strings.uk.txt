@@ -81,6 +81,7 @@ lightning=Блискавка
 lightning_and_rain=Блискавка і дощ
 light=Світло
 loading=Завантаження
+loading_forecast=Loading forecast
 locate=Знайти
 lock=Замок
 lawn_mower=Газонокосарка
@@ -265,3 +266,18 @@ then_visit_192_168_4_1_in_your_browser=Потім відкрийте 192.168.4.1
 
 screensaver=Заставка
 incorrect_pin=Неправильний PIN
+
+forecast_unavailable=Forecast unavailable
+rain=Дощ
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast
+weekday_sun=нд
+weekday_mon=пн
+weekday_tues=вт
+weekday_weds=ср
+weekday_thurs=чт
+weekday_fri=пт
+weekday_sat=сб

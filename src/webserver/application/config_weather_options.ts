@@ -1,7 +1,6 @@
 import type { DeviceConfig } from "../state/types";
 import {
     cardContractOptionSpec,
-    cardContractOptionSupportedFor,
 } from "./config_option_core";
 
 export function createConfigWeatherOptionsFeature(
@@ -15,8 +14,9 @@ export function createConfigWeatherOptionsFeature(
     function weatherModeOptions(this: any) {
         const options: any = [
             ["", "Current Conditions"],
-            ["today", "Temperatures Today"],
-            ["tomorrow", "Temperatures Tomorrow"],
+            ["today", "Today's Forecast"],
+            ["tomorrow", "Tomorrow's Forecast"],
+            ["daily", "Daily Forecast"],
         ];
         return weatherForecastCardsSupported() ? options : [options[0]];
     }
@@ -36,8 +36,7 @@ export function createConfigWeatherOptionsFeature(
 
     function weatherCardIsForecastMode(this: any, button?: any) {
         return weatherForecastCardsSupported() &&
-            !!button &&
-            cardContractOptionSupportedFor("weather", "large_numbers", { precision: button.precision });
+            !!button && ["today", "tomorrow", "daily"].indexOf(button.precision) >= 0;
     }
 
     function weatherCardDefaultForecastLabel(this: any, button?: any) {

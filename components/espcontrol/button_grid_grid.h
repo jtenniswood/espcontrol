@@ -34,6 +34,7 @@ struct GridConfig {
   int color_correction_red_percent = COLOR_CORRECTION_RED_PERCENT;
   int color_correction_green_percent = COLOR_CORRECTION_GREEN_PERCENT;
   int color_correction_blue_percent = COLOR_CORRECTION_BLUE_PERCENT;
+  const lv_font_t *small_text_font = nullptr;
   const lv_font_t *icon_font;
   const lv_font_t *sp_sensor_font;
   const lv_font_t *sp_large_sensor_font = nullptr;
@@ -94,6 +95,7 @@ inline bool grid_phase2_complete() {
 
 inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   DisplayProfile profile;
+  profile.fonts.small_text = cfg.small_text_font;
   profile.fonts.icon = cfg.icon_font;
   profile.fonts.sensor = cfg.sp_sensor_font;
   profile.fonts.large_sensor = cfg.sp_large_sensor_font;
@@ -983,6 +985,11 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   display_apply_main_width(s.icon_lbl, display);
   control_modal_register_card_label(s);
   display_apply_slot_text_width(s, display);
+  if (espcontrol::cards::weather_driver_matches(context) &&
+      espcontrol::cards::weather_driver_shows_forecast(p)) {
+    espcontrol::cards::weather_driver_refresh_layout(s, p, context, display, row_span, col_span);
+    return;
+  }
   if (espcontrol::cards::navigation_driver_refresh_layout(
         s, p, context, cfg)) return;
 
@@ -1168,7 +1175,8 @@ inline void grid_phase1(
   bump_ha_subscription_generation();
   reset_calendar_cards();
   reset_timezone_cards();
-  weather_forecast_cancel_pending_requests();
+  weather_forecast_cancel_pending_requests(false);
+  weather_daily_reset_cards();
   reset_weather_forecast_cards();
   reset_climate_control_refs();
   screen_lock_reset_registry();
@@ -1952,7 +1960,7 @@ inline void grid_phase2(
   memset(sensor_text_mode, 0, sizeof(sensor_text_mode));
   memset(has_icon_on, 0, sizeof(has_icon_on));
   bump_ha_subscription_generation();
-  weather_forecast_cancel_pending_requests();
+  weather_forecast_cancel_pending_requests(false);
   reset_climate_control_refs();
   clear_internal_relay_watchers();
   grid_release_main_runtime_allocations(slots, NS);
