@@ -47,7 +47,7 @@ export function createWeatherDailyPreviewLayout(
             measured = Math.max(measured, temperatureWidth);
         }
         const fontHeight = fontHeightFor(nativeFontSize);
-        const textGap = 6;
+        const textGap = 4;
         const gap = Math.max(8, fontHeight);
         const rowGap = Math.max(8, Math.floor(fontHeight / 2));
         const listGap = Math.max(8, Math.floor(fontHeight / 3));

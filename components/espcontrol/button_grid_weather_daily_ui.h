@@ -114,7 +114,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   lv_obj_clear_flag(card->root, LV_OBJ_FLAG_HIDDEN);
   const int font_height = lv_font_get_line_height(card->font);
   const int temperature_height = font_height;
-  const int text_gap = 6;
+  const int text_gap = 4;
   const int day_gap = weather_daily_day_gap(card->font);
   const int icon_height = lv_font_get_line_height(card->icon_font);
   const size_t available_days = card->view == WeatherForecastView::DAILY ? forecast.count : 1;

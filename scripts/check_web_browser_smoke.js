@@ -7407,7 +7407,7 @@ async function assertWeatherWidthScaling(browser) {
             'Single-row forecasts keep icons at the top and temperatures at the bottom.');
           assert(column.dayTop - column.iconBottom > 10, 'Forecast text has open space above it.');
         }
-        assert(column.temperatureTop - column.dayBottom >= 5.9, 'Forecast days have breathing room before temperatures.');
+        assert(column.temperatureTop - column.dayBottom >= 3.9, 'Forecast days have breathing room before temperatures.');
       }
     }
     console.log('Daily forecast browser scaling passed: ' + counts.join(',') + ' complete columns.');
@@ -7488,7 +7488,7 @@ async function assertWeatherWidthScaling(browser) {
           const scale=card.closest('.sp-screen').clientWidth/480;
           return [...card.querySelectorAll('.sp-weather-day:not([hidden])')].every(day=>{
             const label=day.children[1].getBoundingClientRect(),temperature=day.children[2].getBoundingClientRect();
-            return temperature.top-label.bottom>=5.9*scale && [...day.children].every(label=>{
+            return temperature.top-label.bottom>=3.9*scale && [...day.children].every(label=>{
               const r=label.getBoundingClientRect();return r.left>=area.left-1 && r.top>=area.top-1 && r.right<=area.right+1 && r.bottom<=area.bottom+1;
             });
           });
