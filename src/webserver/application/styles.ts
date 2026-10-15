@@ -438,7 +438,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-wallpaper-preview-box-active{background:var(--wallpaper-active-color,var(--screen-primary))}" +
         ".sp-card-bg-actions .sp-wallpaper-upload{background:var(--accent);color:#fff}" +
         ".sp-card-bg-actions .sp-wallpaper-upload:hover:enabled{filter:brightness(1.08)}" +
-        ".sp-card-bg-actions .sp-wallpaper-delete{padding:8px;min-width:36px;justify-content:center;font-size:18px}" +
+        ".sp-card-bg-actions .sp-wallpaper-delete{padding:8px;min-width:36px;justify-content:center;font-size:18px;background:var(--surface2);border:1px solid var(--border);color:var(--text2)}" +
         ".sp-icon-picker{position:relative}" +
         ".sp-icon-picker-input{width:100%;padding:10px 12px;padding-left:36px;background:var(--surface2);" +
         "border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.875rem;" +
