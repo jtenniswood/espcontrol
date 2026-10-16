@@ -8,7 +8,7 @@ description:
 
 ![Illustrative ESP32-P4-86 device showing current conditions, today, tomorrow and an eight-day weather forecast](/images/weather-device-mockup.webp)
 
-*Photo template with a sample weather screen composited for illustration. The top row shows Current Conditions, Today's Forecast and Tomorrow's Forecast; the larger card shows Daily Forecast.*
+*Photo template with a sample weather screen and custom card colours composited for illustration. The top row shows Current Conditions, Today's Forecast and Tomorrow's Forecast; the larger card shows Daily Forecast.*
 
 A weather card shows current Home Assistant conditions or a daily forecast. Forecast cards use a left-aligned layout with the condition icon at the top, and the day and high/low temperatures at the bottom. Temperatures share one line and are rounded to whole degrees, such as **18°/2°**, and use the panel's **Temperature Unit** setting. Forecast cards have no separate label or low-temperature row.
 
@@ -96,7 +96,7 @@ Forecasts refresh hourly and after reconnecting. Providers must supply a daily f
 
 While loading, forecast cards show a single cloud-and-clock icon and **Loading**. The day layout appears when data arrives. A failed refresh keeps the last available forecast and marks it **Last forecast**; if no forecast is available, the card shows **Forecast unavailable**.
 
-Weather cards use the fixed **tertiary** background colour, like Sensor, Date, Clock, and World Clock cards.
+Weather cards use the theme's **tertiary** background colour by default, like Sensor, Date, Clock, and World Clock cards. Use **Custom Colours** in the card editor to choose a different background, as shown in the example above.
 
 All forecast modes share one compact eight-day forecast per weather entity. The panel supports up to eight forecast entities and sixteen forecast cards across the home screen and subpages. It creates widgets only for visible days, and the modal shows up to six day panels. Configurations beyond these limits show an unavailable forecast.
 

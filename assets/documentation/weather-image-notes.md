@@ -30,3 +30,14 @@ The helper uses the template's transparent screen mask and detects its corners: 
 The admin screenshots were captured with Playwright using the existing browser smoke harness's local routes, simulated EventSource, and native configuration loader. They show the actual editor with a simulated device, not a live panel.
 
 The preview uses `esp32-p4-86`, four weather cards with modes `""`, `today`, `tomorrow`, `daily`, and grid order `1,2,3,4h`. Each card uses `weather.forecast_home`. Open the daily card's editor and select each Type to capture the four settings dialogs. No live panel or Home Assistant credentials are needed.
+
+The device mockup's screen reference uses the editor's supported **Custom Colours** background setting (`card_off_color`) for each card:
+
+| Card | Background |
+|---|---|
+| Current Conditions | `#00B8CF` |
+| Today's Forecast | `#0457D9` |
+| Tomorrow's Forecast | `#0083D6` |
+| Daily Forecast | `#075ACB` |
+
+These colours are saved card configuration, not an image recolour or a change to firmware defaults. The configuration-dialog screenshots retain the original example configuration.
