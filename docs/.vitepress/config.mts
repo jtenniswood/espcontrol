@@ -332,40 +332,6 @@ export default defineConfig({
         text: 'Device',
         items: [
           { text: 'Overview', link: '/' },
-          {
-            text: 'Choose a Screen', link: '/screens/', collapsed: true,
-            items: [
-              {
-                text: '10.1-inch JC8012P4A1',
-                link: '/screens/jc8012p4a1',
-                collapsed: true,
-                items: [
-                  { text: 'V3', link: '/screens/jc8012p4a1-v3' },
-                  { text: 'V2', link: '/screens/jc8012p4a1-v2' },
-                  { text: 'V1', link: '/screens/jc8012p4a1-v1' },
-                ],
-              },
-              {
-                text: '7-inch JC1060P470',
-                link: '/screens/jc1060p470',
-                collapsed: true,
-                items: [
-                  { text: 'V2', link: '/screens/jc1060p470-v2' },
-                  { text: 'V1', link: '/screens/jc1060p470-v1' },
-                ],
-              },
-              {
-                text: '4.3-inch JC4880P443',
-                collapsed: true,
-                items: [
-                  { text: 'Original', link: '/screens/jc4880p443' },
-                  { text: 'V3', link: '/screens/jc4880p443-v3' },
-                ],
-              },
-              { text: '4-inch ESP32-P4 86', link: '/screens/p4-86' },
-              { text: '4-inch 4848S040', link: '/screens/4848s040' },
-            ],
-          },
           { text: 'Install', link: '/getting-started/install' },
           { text: 'Enable Home Assistant Actions', link: '/getting-started/home-assistant-actions' },
           { text: 'Configure Your Device', link: '/features/setup' },
@@ -373,6 +339,40 @@ export default defineConfig({
           { text: 'Printable Stands', link: '/reference/3d-printable-stands' },
           { text: 'Practical Guides', link: '/guides/' },
           { text: 'Troubleshooting', link: '/getting-started/troubleshooting' },
+        ],
+      },
+      {
+        text: 'Choose a Screen', link: '/screens/',
+        items: [
+          {
+            text: '10.1-inch JC8012P4A1',
+            link: '/screens/jc8012p4a1',
+            collapsed: true,
+            items: [
+              { text: 'V3', link: '/screens/jc8012p4a1-v3' },
+              { text: 'V2', link: '/screens/jc8012p4a1-v2' },
+              { text: 'V1', link: '/screens/jc8012p4a1-v1' },
+            ],
+          },
+          {
+            text: '7-inch JC1060P470',
+            link: '/screens/jc1060p470',
+            collapsed: true,
+            items: [
+              { text: 'V2', link: '/screens/jc1060p470-v2' },
+              { text: 'V1', link: '/screens/jc1060p470-v1' },
+            ],
+          },
+          {
+            text: '4.3-inch JC4880P443',
+            collapsed: true,
+            items: [
+              { text: 'Original', link: '/screens/jc4880p443' },
+              { text: 'V3', link: '/screens/jc4880p443-v3' },
+            ],
+          },
+          { text: '4-inch ESP32-P4 86', link: '/screens/p4-86' },
+          { text: '4-inch 4848S040', link: '/screens/4848s040' },
         ],
       },
       {
