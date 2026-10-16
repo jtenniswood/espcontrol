@@ -6,7 +6,7 @@ description:
 
 # Subpage
 
-![Subpage screen showing Back button and cover position buttons](/images/screen-subpage.png)
+![Devices subpage on the 4848S040 showing Back, blind, temperature, and media cards](/images/4848s040-subpage.jpg)
 
 A Subpage card works like a folder. Tapping it on the panel opens a new page with its own set of cards. This is useful for grouping related controls together, such as all the lights in one room, without filling up the home screen.
 

@@ -3,28 +3,46 @@ import { faqSchema, hostname, jsonLd, writeRedirects } from './discovery'
 
 const defaultImage = {
   url: `${hostname}images/home_screen_hero.jpg`,
-  width: '1476',
-  height: '1196',
+  width: '1600',
+  height: '1288',
   type: 'image/jpeg',
 }
 
 const pageImages: Record<string, typeof defaultImage> = {
+  'screens/index.md': {
+    url: `${hostname}images/screens-hero.jpg`,
+    width: '1600',
+    height: '1131',
+    type: 'image/jpeg',
+  },
+  'screens/p4-86.md': {
+    url: `${hostname}images/p4-86-hero.jpg`,
+    width: '1600',
+    height: '1316',
+    type: 'image/jpeg',
+  },
+  'screens/jc8012p4a1.md': {
+    url: `${hostname}images/jc8012p4a1-hero.jpg`,
+    width: '1600',
+    height: '1177',
+    type: 'image/jpeg',
+  },
   'screens/4848s040.md': {
     url: `${hostname}images/4848s040-hero.jpg`,
-    width: '1024',
-    height: '999',
+    width: '1600',
+    height: '1167',
     type: 'image/jpeg',
   },
   'screens/jc1060p470.md': {
     url: `${hostname}images/jc1060p470-hero.jpg`,
-    width: '1024',
-    height: '798',
+    width: '1600',
+    height: '1137',
     type: 'image/jpeg',
   },
   'screens/jc4880p443.md': {
     url: `${hostname}images/jc4880p443-hero.jpg`,
-    width: '800',
-    height: '1024',
+    width: '1600',
+    height: '1228',
     type: 'image/jpeg',
   },
   'features/setup.md': {
@@ -34,10 +52,10 @@ const pageImages: Record<string, typeof defaultImage> = {
     type: 'image/png',
   },
   'features/subpages.md': {
-    url: `${hostname}images/screen-subpage.png`,
-    width: '1024',
-    height: '606',
-    type: 'image/png',
+    url: `${hostname}images/4848s040-subpage.jpg`,
+    width: '1600',
+    height: '1238',
+    type: 'image/jpeg',
   },
   'features/relays.md': {
     url: `${hostname}images/relay-controls.svg`,

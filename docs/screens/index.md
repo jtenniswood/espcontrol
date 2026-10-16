@@ -5,6 +5,8 @@ description: Compare supported EspControl touchscreens by size, card capacity, c
 
 # Choose a Home Assistant Touchscreen
 
+![EspControl touchscreen panels showing colourful control cards, temperatures, media, and radar images](/images/screens-hero.jpg)
+
 EspControl turns a supported ESP32 touchscreen into a dedicated Home Assistant controller. Choose the **4-inch S3 for a compact, lower-cost panel** or a **7- or 10.1-inch P4 for more controls at once**. All use the same browser-based card editor.
 
 You need a working Home Assistant installation, a supported screen, a suitable power supply, and a USB data cable for the first install. EspControl has its own interface; it cannot display or import your existing Lovelace dashboard cards.
