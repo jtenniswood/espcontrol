@@ -25,7 +25,7 @@ This changes text built into the touchscreen. Entity names, custom labels, media
 
 The choice is saved on the device and included in backups. Home Assistant can also change it through **Screen: Language**.
 
-For a missing language or incorrect translation, see [Language Support](/reference/language-support).
+For a missing language or incorrect translation, [open a GitHub issue](https://github.com/jtenniswood/espcontrol/issues/new).
 
 ## Time
 

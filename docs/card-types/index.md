@@ -83,7 +83,3 @@ Older configurations may also show **Weather Forecast**. It is kept for compatib
 Cards that control Home Assistant need the panel to be allowed to perform Home Assistant actions. If a control card displays correctly but tapping it does nothing, check [Enable Actions](/getting-started/home-assistant-actions).
 
 Read-only display cards such as Sensor, Presence, Date & Time, and current Weather state can still show information without sending control actions. Weather forecast modes also need Home Assistant actions permission because the panel asks Home Assistant for forecast data.
-
-## Current Capability Reference
-
-For a generated table of card type names, saved type values, supported entity domains, subpage support, picker grouping, options, and visibility status, see the [Card Capability Reference](/reference/card-capabilities).
