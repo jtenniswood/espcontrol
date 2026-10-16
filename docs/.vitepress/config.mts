@@ -329,16 +329,11 @@ export default defineConfig({
 
     sidebar: [
       {
-        text: 'Device',
+        text: 'Getting Started',
         items: [
           { text: 'Overview', link: '/' },
           { text: 'Install', link: '/getting-started/install' },
           { text: 'Enable Actions', link: '/getting-started/home-assistant-actions' },
-          { text: 'Configure Your Device', link: '/features/setup' },
-          { text: 'Built-in Relays', link: '/features/relays' },
-          { text: 'Printable Stands', link: '/reference/3d-printable-stands' },
-          { text: 'Practical Guides', link: '/guides/' },
-          { text: 'Troubleshooting', link: '/getting-started/troubleshooting' },
         ],
       },
       {
@@ -373,6 +368,20 @@ export default defineConfig({
           },
           { text: '4-inch ESP32-P4 86', link: '/screens/p4-86' },
           { text: '4-inch 4848S040', link: '/screens/4848s040' },
+          { text: 'Printable Stands', link: '/reference/3d-printable-stands' },
+        ],
+      },
+      {
+        text: 'Configure',
+        items: [
+          { text: 'Configure Your Device', link: '/features/setup' },
+          { text: 'Appearance', link: '/features/appearance' },
+          { text: 'Display', link: '/settings/display' },
+          { text: 'Sleep & Schedule', link: '/settings/sleep' },
+          { text: 'System settings', link: '/settings/system' },
+          { text: 'Built-in Relays', link: '/features/relays' },
+          { text: 'Immich Photos', link: '/immich/' },
+          { text: 'Practical Guides', link: '/guides/' },
         ],
       },
       {
@@ -412,22 +421,13 @@ export default defineConfig({
         ],
       },
       {
-        text: 'Screen settings',
-        items: [
-          { text: 'Appearance', link: '/features/appearance' },
-          { text: 'Display', link: '/settings/display' },
-          { text: 'Sleep & Schedule', link: '/settings/sleep' },
-        ],
-      },
-      { text: 'System settings', link: '/settings/system' },
-      { text: 'Immich Photos', link: '/immich/' },
-      {
         text: 'Reference',
         items: [
-          { text: 'Manual Setup', link: '/getting-started/manual-esphome-setup' },
           { text: 'FAQ', link: '/reference/faq' },
-          { text: 'Contributing', link: '/reference/contributing' },
+          { text: 'Troubleshooting', link: '/getting-started/troubleshooting' },
           { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
+          { text: 'Manual Setup', link: '/getting-started/manual-esphome-setup' },
+          { text: 'Contributing', link: '/reference/contributing' },
         ],
       },
       {
