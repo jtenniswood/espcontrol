@@ -2,7 +2,7 @@
 
 The admin screenshots were captured from the actual ESP32-P4-86 web editor on this branch, using a local simulated device and `weather.forecast_home`. They contain sample configuration, not a connection to a user's panel. The four screenshots show the four values in **Type**.
 
-The device image is an AI-generated illustration, made with the built-in image generation tool. The supplied ESP32-P4-86 photo guides the enclosure and tabletop setting; a capture of the actual editor preview guides the screen. It is not evidence of hardware testing. Weather values are illustrative.
+The device image is an AI-edited illustration, made with the built-in image generation tool. The supplied ESP32-P4-86 photograph is the edit target, retaining the casual desk setting, background devices, reflections and camera angle. A capture of the actual editor preview supplies the replacement screen content. It is not evidence of hardware testing. Weather values are illustrative.
 
 ## Saved assets
 
@@ -17,11 +17,10 @@ The screenshots were captured with Playwright using the existing browser smoke h
 
 ## Device mockup prompt
 
-Use case: product-mockup
-Asset type: Weather documentation hero image.
-Primary request: Create a polished realistic photograph of a small square EspControl ESP32-P4-86 tabletop touch panel, using image 1 as the hardware reference and image 2 as the EXACT screen artwork reference.
-Input images: Image 1 is the supplied real device photo, a reference for the white narrow enclosure, broad black glass bezel, thickness, stand angle and side USB cable. Image 2 is the real software preview and must be reproduced faithfully inside the display, including all text, weather icons, cards and typography.
-Scene/backdrop: Single device on a warm light oak tabletop with a softly blurred neutral home background. No other screens, plants, logos or props. Soft daylight and restrained glass reflections that do not obscure the screen.
-Composition/framing: Landscape 3:2 product photograph, centered device occupying most of the image, slight three-quarter perspective but nearly front-on for legibility, entire square device visible, subtle grounded shadow. Hardware has a square display and square enclosure like image 1, not a landscape tablet.
-Screen content: Match image 2 exactly: black screen background, dark charcoal generously rounded cards, white simple weather icons and labels, grey temperatures. Clock bar 17°, 15:31, wifi. Top row has three equal cards Cloudy, Today 18°/2°, Tomorrow 20°/9°. Bottom card spans the full width and two rows with eight days: Today 18°/2°, Tues 20°/9°, Weds 18°/14°, Thurs 20°/13°, Fri 14°/6°, Sat 18°/10°, Sun 19°/11°, Mon 17°/8°. Preserve the actual icon shapes and alignment from image 2.
-Constraints: No blue cards, no radar map, no invented controls, no extra screen labels, no captions or writing outside the screen, no watermark. This is an illustrative device mockup showing sample weather, not a real hardware capture.
+Use case: compositing
+Asset type: Corrected Weather documentation photo.
+Input images: IMAGE 1 is the edit target, the real device photo. IMAGE 2 is the exact flat screen artwork.
+Change ONLY the foreground device's illuminated display pixels. Replace that display with IMAGE 2 using a single physically correct four-corner perspective projection (one planar homography for the entire screenshot). Determine the four actual LCD corners inside the black glass bezel of IMAGE 1 and project the square screenshot to those exact four corners. Preserve the black glass bezel's original width around every edge.
+Critical geometry: The LCD is on the very same flat plane as the glass bezel. The screen's top and bottom edges must follow the respective top and bottom edges of the original LCD. Left and right edges must follow the original LCD side edges. Every card, icon, text baseline and gap must be projected together as part of the same screen texture, sharing the same two vanishing points as the device. Do not place a front-on UI, a floating rectangle, a differently tilted screen, or separately skewed cards inside the photo. Keep the exact relative positions, scale, square aspect before projection, and margins of image 2. The screen must not bend, bulge, fan out or have inconsistent row angles. Only perspective caused by the actual device angle is acceptable.
+Keep the original photograph's enclosure, camera angle, desk, background screens, USB cable, grain, casual lighting and focus completely unchanged. Preserve natural screen reflections above the projected screenshot. A casual photograph with ordinary reflections, not a polished product rendering.
+UI content must be precisely as IMAGE 2: top bar 17°, 15:31, wifi. Top row Cloudy; Today 18°/2°; Tomorrow 20°/9°. Lower full-width two-row card: Today 18°/2°, Tues 20°/9°, Weds 18°/14°, Thurs 20°/13°, Fri 14°/6°, Sat 18°/10°, Sun 19°/11°, Mon 17°/8°. Preserve all eight days, icons, labels and values. No extra text or watermarks.
