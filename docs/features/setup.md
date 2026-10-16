@@ -17,7 +17,7 @@ The documentation follows the tabs on your device:
 |---|---|---|
 | **Layout** | Add, arrange, resize, and edit cards and subpages. | [First controls](#set-up-your-first-controls) |
 | **Screen** | Change appearance, brightness, rotation, and sleep behaviour. | [Appearance](/features/appearance), [Display](/settings/display), [Sleep & Schedule](/settings/sleep) |
-| **System** | Set language and time, rename the panel, back up, and update firmware. | [Preferences](/settings/preferences), [System](/settings/maintenance) |
+| **System** | Set language and time, rename the panel, back up, and update firmware. | [System settings](/settings/system) |
 
 <span id="adding-a-card"></span>
 <span id="active-switch-display"></span>
@@ -40,16 +40,16 @@ After editing, choose **Apply Configuration** at the bottom of any tab. This res
 
 ## Device Settings
 
-For **Screen**, follow [Appearance](/features/appearance), [Display](/settings/display), or [Sleep & Schedule](/settings/sleep). For **System**, follow [Preferences](/settings/preferences) or [system controls](/settings/maintenance). Model-specific controls appear only on supported panels; missing controls may also need newer [firmware](/settings/maintenance#firmware).
+For **Screen**, follow [Appearance](/features/appearance), [Display](/settings/display), or [Sleep & Schedule](/settings/sleep). For **System**, follow [System settings](/settings/system). Model-specific controls appear only on supported panels; missing controls may also need newer [firmware](/settings/system#firmware).
 
 ## Naming Your Panel
 
-Use **System > Device Name > Save & Restart**. Follow [Rename your panel](/settings/maintenance#device-name), including the notes about its new address and Home Assistant automations.
+Use **System > Device Name > Save & Restart**. Follow [Rename your panel](/settings/system#device-name), including the notes about its new address and Home Assistant automations.
 
 ## Home Assistant Settings
 
-Use **System > Home Assistant Settings** if camera images or media artwork fail to load. Follow [Connect images and artwork](/settings/maintenance#home-assistant-settings).
+Use **System > Home Assistant Settings** if camera images or media artwork fail to load. Follow [Connect images and artwork](/settings/system#home-assistant-settings).
 
 ## Restart From Home Assistant
 
-Open your EspControl device in Home Assistant and press **Restart** under its configuration controls. This keeps your saved settings. See [Restart your panel](/settings/maintenance#restart) for automation use.
+Open your EspControl device in Home Assistant and press **Restart** under its configuration controls. This keeps your saved settings. See [Restart your panel](/settings/system#restart) for automation use.

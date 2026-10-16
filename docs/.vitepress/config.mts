@@ -420,13 +420,7 @@ export default defineConfig({
           { text: 'Sleep & Schedule', link: '/settings/sleep' },
         ],
       },
-      {
-        text: 'System settings',
-        items: [
-          { text: 'Preferences', link: '/settings/preferences' },
-          { text: 'System', link: '/settings/maintenance' },
-        ],
-      },
+      { text: 'System settings', link: '/settings/system' },
       { text: 'Immich Photos', link: '/immich/' },
       {
         text: 'Advanced',

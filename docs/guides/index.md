@@ -13,7 +13,7 @@ Open the [device setup page](/features/setup), then follow the matching area:
 
 - **Layout** — [set up your first controls](/features/setup#set-up-your-first-controls).
 - **Screen** — [Appearance](/features/appearance), [Display](/settings/display), and [Sleep & Schedule](/settings/sleep).
-- **System** — [Preferences](/settings/preferences) and [system controls](/settings/maintenance).
+- **System** — [System settings](/settings/system).
 
 ## Build a Room Control Panel
 
@@ -41,8 +41,8 @@ Install [EspControl Immich Companion](/immich/) to turn your photo library, albu
 
 ## Maintain or Troubleshoot a Panel
 
-- [Back up, restore, or reset](/settings/maintenance#backup) before major configuration changes.
-- [Update firmware](/settings/maintenance#firmware) and distinguish stable releases from custom ESPHome builds.
+- [Back up, restore, or reset](/settings/system#backup) before major configuration changes.
+- [Update firmware](/settings/system#firmware) and distinguish stable releases from custom ESPHome builds.
 - [Troubleshoot setup and controls](/getting-started/troubleshooting) if installation, networking, or commands fail.
 - [Browse common questions](/reference/faq) for compatibility and feature limits.
 

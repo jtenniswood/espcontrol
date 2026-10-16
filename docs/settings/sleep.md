@@ -54,7 +54,7 @@ Playback metadata and image downloads use separate connections.
 
 1. Confirm artwork appears for the selected player in Home Assistant.
 2. Open **System > Home Assistant Settings** and check the image endpoint.
-3. Follow [connection settings](/settings/maintenance#home-assistant-settings) to set a reachable host, protocol, and port if Automatic fails.
+3. Follow [connection settings](/settings/system#home-assistant-settings) to set a reachable host, protocol, and port if Automatic fails.
 4. Retry playback and confirm artwork loads.
 
 If only one music source fails, collect [USB logs](/reference/collect-usb-logs) and report the source and firmware version. Remove private URLs and credentials before sharing logs.
@@ -90,7 +90,7 @@ Choose **Apply Configuration**, wait for the panel to reconnect, and test both s
 
 Select **Then > Camera** and enter **Camera Entity**. Choose **Fit** to keep the whole image visible, or **Fill** to crop to the screen. Enable **Display Clock** if you want a time overlay. These options require supported firmware.
 
-The image refreshes when Home Assistant reports an update; the last successful image stays visible during downloads. Animated GIFs play automatically within the [image limits](/card-types/cameras#setting-up-a-camera-card). If images fail, check [Home Assistant connection settings](/settings/maintenance#home-assistant-settings).
+The image refreshes when Home Assistant reports an update; the last successful image stays visible during downloads. Animated GIFs play automatically within the [image limits](/card-types/cameras#setting-up-a-camera-card). If images fail, check [Home Assistant connection settings](/settings/system#home-assistant-settings).
 
 #### Photos from Immich
 

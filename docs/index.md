@@ -80,4 +80,4 @@ If you find this project useful, consider buying me a coffee to support ongoing 
 
 - **[Device](/features/setup)** — install, connect, and open the setup page.
 - **Screen** — [Appearance](/features/appearance), [Display](/settings/display), and [Sleep & Schedule](/settings/sleep).
-- **System** — [Preferences](/settings/preferences) and [system controls](/settings/maintenance), including backups, updates, and device management.
+- **System** — [System settings](/settings/system), including backups, updates, and device management.

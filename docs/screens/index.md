@@ -39,7 +39,7 @@ All standard browser installs use **2.4 GHz WiFi**. The JC1060P470 and P4 86 Pan
 
 Use the model's USB programming port and a data-capable cable for installation. For everyday power, check the exact board's labelled input, voltage, required current, and connector before buying a supply. USB connector shape does not establish support for another voltage or power input.
 
-The Waveshare **ESP32-P4-86-Panel-ETH-2RO** supports USB-C power or its separate DC 6–30 V input, as documented in the [manufacturer's power guidance](https://docs.waveshare.com/ESP32-P4-WIFI6-Touch-LCD-4B/FAQ). This specification applies to that exact board, not the Guition panels. An Ethernet socket does not by itself establish PoE support. Battery measurement is only documented for [compatible JC8012P4A1 battery hardware](/settings/maintenance#battery).
+The Waveshare **ESP32-P4-86-Panel-ETH-2RO** supports USB-C power or its separate DC 6–30 V input, as documented in the [manufacturer's power guidance](https://docs.waveshare.com/ESP32-P4-WIFI6-Touch-LCD-4B/FAQ). This specification applies to that exact board, not the Guition panels. An Ethernet socket does not by itself establish PoE support. Battery measurement is only documented for [compatible JC8012P4A1 battery hardware](/settings/system#battery).
 
 ## Identify the Hardware Revision Before Installing
 

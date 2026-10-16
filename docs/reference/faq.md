@@ -6,7 +6,7 @@ outline: [2, 3]
 
 # Home Assistant Touchscreen Questions and Answers
 
-Quick answers to common questions, with links to the detailed setup guides. Answers describe the current documentation; check [firmware release status](/settings/maintenance#stable-releases-development-builds-and-custom-firmware) when a control is missing on an older panel.
+Quick answers to common questions, with links to the detailed setup guides. Answers describe the current documentation; check [firmware release status](/settings/system#stable-releases-development-builds-and-custom-firmware) when a control is missing on an older panel.
 
 Compare [supported screens](/screens/) before buying. Start with [Install](/getting-started/install) for a new panel or [Troubleshooting](/getting-started/troubleshooting) for a setup problem.
 
@@ -74,7 +74,7 @@ Choose **Media > Track, Album or Playlist** and supply a content ID accepted by 
 
 ### Why Does a Camera Change from Loading to Unavailable?
 
-Check the image exists in Home Assistant, the panel can reach its HTTP/HTTPS endpoint, and the shared image limit is not exceeded. See [Camera troubleshooting](/card-types/cameras#troubleshooting) and [connection settings](/settings/maintenance#home-assistant-settings).
+Check the image exists in Home Assistant, the panel can reach its HTTP/HTTPS endpoint, and the shared image limit is not exceeded. See [Camera troubleshooting](/card-types/cameras#troubleshooting) and [connection settings](/settings/system#home-assistant-settings).
 
 ### Can I Show a Doorbell Snapshot When Someone Rings?
 
@@ -92,11 +92,11 @@ Yes, through a Home Assistant `image` entity. The separate Immich Companion mana
 
 ### How Do I Update the Firmware?
 
-Standard firmware offers **Auto Update** and **Check for Update** under **System > Firmware**. Custom, Ethernet-only, and V3 installation paths have exceptions. Follow [Firmware Updates](/settings/maintenance#firmware) for the correct method and release status.
+Standard firmware offers **Auto Update** and **Check for Update** under **System > Firmware**. Custom, Ethernet-only, and V3 installation paths have exceptions. Follow [Firmware Updates](/settings/system#firmware) for the correct method and release status.
 
 ### Will Automatic Updates Keep My Custom ESPHome YAML?
 
-No. Built-in updates install released binaries and do not rebuild custom YAML. Disable **Auto Update** and continue through ESPHome for custom builds. See [release and custom-firmware guidance](/settings/maintenance#stable-releases-development-builds-and-custom-firmware).
+No. Built-in updates install released binaries and do not rebuild custom YAML. Disable **Auto Update** and continue through ESPHome for custom builds. See [release and custom-firmware guidance](/settings/system#stable-releases-development-builds-and-custom-firmware).
 
 ### Why Did Home Assistant Say Transport Encryption Was Disabled After an Update?
 
@@ -104,27 +104,27 @@ Mixed custom and stock firmware can change encryption behaviour. Keep the device
 
 ### Can I Rename a Panel Without Compiling Firmware?
 
-Yes. Use **System > Device Name > Save & Restart**. Entity IDs stay unchanged, but hostname-based ESPHome action names change. Update affected automations. See [Naming Your Panel](/settings/maintenance#device-name).
+Yes. Use **System > Device Name > Save & Restart**. Entity IDs stay unchanged, but hostname-based ESPHome action names change. Update affected automations. See [Naming Your Panel](/settings/system#device-name).
 
 ### Can I Back Up My Setup?
 
-Yes. Use **Export** and **Import** under **System > Backup** to save cards and settings or copy a setup to another panel. Layouts adapt to different screen sizes. See [Backup and restore](/settings/maintenance#backup) for exclusions.
+Yes. Use **Export** and **Import** under **System > Backup** to save cards and settings or copy a setup to another panel. Layouts adapt to different screen sizes. See [Backup and restore](/settings/system#backup) for exclusions.
 
 ### Can I Copy Just a Few Cards to Another Panel?
 
-Use **Copy Code** and **Paste Code** in [Layout](/features/subpages#copying-cards-between-controllers) for cards and attached subpages. Use [Backup](/settings/maintenance#backup) for a whole configuration. Each panel keeps its own web page and identity.
+Use **Copy Code** and **Paste Code** in [Layout](/features/subpages#copying-cards-between-controllers) for cards and attached subpages. Use [Backup](/settings/system#backup) for a whole configuration. Each panel keeps its own web page and identity.
 
 ### Can I Restart from Home Assistant and Update Without Reconnecting USB?
 
-Yes. Home Assistant exposes a [Restart button](/settings/maintenance#restart); online panels can usually update wirelessly. USB remains necessary for initial flashing, recovery, or networking-type changes. See [manual installation](/getting-started/manual-esphome-setup).
+Yes. Home Assistant exposes a [Restart button](/settings/system#restart); online panels can usually update wirelessly. USB remains necessary for initial flashing, recovery, or networking-type changes. See [manual installation](/getting-started/manual-esphome-setup).
 
 ### How Do I Reset the Device?
 
-Back up first, then use **System > Factory Reset**. Partial reset keeps WiFi and the Home Assistant key; Complete reset clears them. Both retain firmware. Follow [Reset the display](/settings/maintenance#reset-the-display).
+Back up first, then use **System > Factory Reset**. Partial reset keeps WiFi and the Home Assistant key; Complete reset clears them. Both retain firmware. Follow [Reset the display](/settings/system#reset-the-display).
 
 ### Can I Stay on Releases While Managing the Panel in ESPHome?
 
-Yes, by building from matching tagged sources and dependencies. Rebuilding the current source is different from installing a published binary. See [release versus custom firmware](/settings/maintenance#stable-releases-development-builds-and-custom-firmware).
+Yes, by building from matching tagged sources and dependencies. Rebuilding the current source is different from installing a published binary. See [release versus custom firmware](/settings/system#stable-releases-development-builds-and-custom-firmware).
 
 ## Troubleshooting and privacy
 
@@ -212,7 +212,7 @@ The light popup uses touch-friendly colour choices. Its available tabs depend on
 
 ### Can the Clock Show Seconds?
 
-There is no seconds option for the normal clock bar or Date & Time card. The clock bar updates by the minute. See [Time Settings](/settings/preferences#time) for timezone and 12/24-hour options.
+There is no seconds option for the normal clock bar or Date & Time card. The clock bar updates by the minute. See [Time Settings](/settings/system#time) for timezone and 12/24-hour options.
 
 ### What If the Icon I Need Isn't Listed?
 
@@ -242,7 +242,7 @@ Bluetooth proxy is not included in standard panel setup or documented Ethernet-o
 
 ### Can It Run on a Battery and Show the Charge Level?
 
-Power and measurement are separate hardware features. [Battery Status](/settings/maintenance#battery) is optional on compatible JC8012P4A1 battery hardware, estimates charge, and does not detect charging. S3 experiments do not establish supported charge reporting.
+Power and measurement are separate hardware features. [Battery Status](/settings/system#battery) is optional on compatible JC8012P4A1 battery hardware, estimates charge, and does not detect charging. S3 experiments do not establish supported charge reporting.
 
 ### Can I Use a 10-inch Display in Portrait Mode?
 

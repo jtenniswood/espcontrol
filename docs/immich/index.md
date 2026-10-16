@@ -131,7 +131,7 @@ Use the **EspControl Immich Companion** HACS integration to turn your Immich lib
 
 - [Install the companion](/immich/#installation) and create a frame. Use the HACS integration for this setup; the optional add-on alone does not create Home Assistant entities.
 - Confirm the frame's **Image** entity shows a photo in Home Assistant. On the frame's device page, open the entity and copy its actual `image.*` entity ID.
-- Connect your EspControl panel to the same Home Assistant instance. The Camera screensaver supports ESP32-P4 panels and the **4-inch 4848S040 ESP32-S3** panel. Update the [panel firmware](/settings/maintenance#firmware) if its Camera controls are missing.
+- Connect your EspControl panel to the same Home Assistant instance. The Camera screensaver supports ESP32-P4 panels and the **4-inch 4848S040 ESP32-S3** panel. Update the [panel firmware](/settings/system#firmware) if its Camera controls are missing.
 
 ### Match the image to your display
 
