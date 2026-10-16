@@ -479,6 +479,7 @@ export default defineConfig({
       },
       {
         text: 'Immich Photos',
+        collapsed: true,
         items: [
           { text: 'Overview', link: '/immich/' },
           { text: 'Installation', link: '/immich/installation' },
