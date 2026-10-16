@@ -3,8 +3,8 @@ import { faqSchema, hostname, jsonLd, writeRedirects } from './discovery'
 
 const defaultImage = {
   url: `${hostname}images/home_screen_hero.jpg`,
-  width: '1024',
-  height: '798',
+  width: '1476',
+  height: '1196',
   type: 'image/jpeg',
 }
 

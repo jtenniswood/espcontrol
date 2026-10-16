@@ -1,4 +1,4 @@
-![EspControl on a 7-inch touchscreen: home screen with temperature, clock, and control tiles](docs/public/images/home_screen_hero.jpg)
+![EspControl touchscreens showing colourful Home Assistant controls, temperature, weather, and media cards](docs/public/images/home_screen_hero.jpg)
 
 # EspControl
 
