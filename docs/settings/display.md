@@ -22,7 +22,7 @@ Open **Screen > Display > Backlight** on your [device setup page](/features/setu
 
 1. Choose a mode from the table below.
 2. Set the visible brightness sliders (10%–100%).
-3. For **Timed**, enter **Dawn** and **Dusk**. For **Automatic**, check the displayed sunrise and sunset times and your [timezone](/settings/preferences#time).
+3. For **Timed**, enter **Dawn** and **Dusk**. For **Automatic**, check the displayed sunrise and sunset times and your [timezone](/settings/system#time).
 
 | Mode | What to set |
 |---|---|

@@ -49,7 +49,7 @@ Use your server's base address, such as `https://photos.example.com`, and an API
 
 On the frame's Home Assistant device page, confirm its **Image** entity shows a photo and copy the actual `image.*` entity ID. Connect the panel to the same Home Assistant instance.
 
-The Camera screensaver supports **ESP32-P4 panels** and the **4-inch 4848S040 ESP32-S3**. [Update the firmware](/settings/maintenance#firmware) if Camera controls are missing.
+The Camera screensaver supports **ESP32-P4 panels** and the **4-inch 4848S040 ESP32-S3**. [Update the firmware](/settings/system#firmware) if Camera controls are missing.
 
 ### Match the image to your display
 

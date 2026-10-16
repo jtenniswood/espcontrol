@@ -376,16 +376,7 @@ export default defineConfig({
         ],
       },
       {
-        text: 'Layout settings', link: '/settings/layout',
-        items: [
-          { text: 'Add, Arrange & Edit Cards', link: '/settings/layout' },
-          { text: 'Subpages', link: '/features/subpages' },
-          { text: 'Speaker Groups', link: '/features/speaker-groups' },
-        ],
-      },
-      {
         text: 'Card Types',
-        collapsed: true,
         items: [
           { text: 'Overview', link: '/card-types/' },
           { text: 'Action', link: '/card-types/actions' },
@@ -394,7 +385,6 @@ export default defineConfig({
           { text: 'Climate', link: '/card-types/climate' },
           { text: 'Cover', link: '/card-types/covers' },
           { text: 'Date & Time', link: '/card-types/calendar' },
-          { text: "Timer", link: "/card-types/timers" },
           { text: 'Doors & Windows', link: '/card-types/doors-windows' },
           { text: 'Fans', link: '/card-types/fans' },
           { text: 'Garage Door', link: '/card-types/garage-doors' },
@@ -403,16 +393,17 @@ export default defineConfig({
           { text: 'Lawn Mower', link: '/card-types/lawn-mower' },
           { text: 'Lights', link: '/card-types/lights' },
           { text: 'Local Action', link: '/card-types/local-actions' },
+          { text: 'Local Sensor', link: '/card-types/local-sensors' },
           { text: 'Lock', link: '/card-types/locks' },
           { text: 'Media', link: '/card-types/media' },
           { text: 'Option Select', link: '/card-types/option-select' },
           { text: 'Presence', link: '/card-types/presence' },
           { text: 'Screen Lock', link: '/card-types/screen-lock' },
           { text: 'Sensor', link: '/card-types/sensors' },
-          { text: 'Local Sensor', link: '/card-types/local-sensors' },
           { text: 'Slider', link: '/card-types/sliders' },
           { text: 'Subpage', link: '/features/subpages' },
           { text: 'Switch', link: '/card-types/switches' },
+          { text: 'Timer', link: '/card-types/timers' },
           { text: 'Trigger', link: '/card-types/buttons' },
           { text: 'Weather', link: '/card-types/weather' },
           { text: 'Webhook', link: '/card-types/webhooks' },
@@ -421,22 +412,14 @@ export default defineConfig({
         ],
       },
       {
-        text: 'Screen settings', link: '/settings/screen',
+        text: 'Screen settings',
         items: [
-          { text: 'Overview', link: '/settings/screen' },
           { text: 'Appearance', link: '/features/appearance' },
           { text: 'Display', link: '/settings/display' },
           { text: 'Sleep & Schedule', link: '/settings/sleep' },
         ],
       },
-      {
-        text: 'System settings', link: '/settings/system',
-        items: [
-          { text: 'Overview', link: '/settings/system' },
-          { text: 'Preferences', link: '/settings/preferences' },
-          { text: 'System', link: '/settings/maintenance' },
-        ],
-      },
+      { text: 'System settings', link: '/settings/system' },
       { text: 'Immich Photos', link: '/immich/' },
       {
         text: 'Advanced',

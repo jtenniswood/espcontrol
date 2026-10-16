@@ -62,6 +62,6 @@ Enterprise Wifi, WEP, links, plain text QR codes, colour choices, and sharing th
 
 ## Backup Safety
 
-Wifi Sharing passwords are stored in the panel configuration and included in [backup files](/settings/maintenance#backup). They are **not encrypted**, so keep backups private.
+Wifi Sharing passwords are stored in the panel configuration and included in [backup files](/settings/system#backup). They are **not encrypted**, so keep backups private.
 
 Wifi Sharing works without web authentication. Anyone who can access the panel's web interface can retrieve the saved guest-network credentials. Enable web authentication if you want to restrict access to the web interface.

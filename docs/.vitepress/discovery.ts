@@ -16,26 +16,30 @@ export const redirects: Record<string, string> = {
   'getting-started/c6-recovery': `${hostname}getting-started/troubleshooting#a-p4-panel-has-unreliable-wifi`,
   'features/backlight': `${hostname}settings/display#backlight`,
   'features/rotation': `${hostname}settings/display#rotation`,
-  'features/language': `${hostname}settings/preferences#language`,
-  'features/clock': `${hostname}settings/preferences#time`,
-  'features/temperature': `${hostname}settings/preferences#temperature`,
-  'features/device-name': `${hostname}settings/maintenance#device-name`,
-  'features/backup': `${hostname}settings/maintenance#backup`,
-  'features/firmware-updates': `${hostname}settings/maintenance#firmware`,
-  'features/home-assistant': `${hostname}settings/maintenance#home-assistant-settings`,
-  'features/battery': `${hostname}settings/maintenance#battery`,
-  'features/restart': `${hostname}settings/maintenance#restart`,
+  'features/language': `${hostname}settings/system#language`,
+  'features/clock': `${hostname}settings/system#time`,
+  'features/temperature': `${hostname}settings/system#temperature`,
+  'features/device-name': `${hostname}settings/system#device-name`,
+  'features/backup': `${hostname}settings/system#backup`,
+  'features/firmware-updates': `${hostname}settings/system#firmware`,
+  'features/home-assistant': `${hostname}settings/system#home-assistant-settings`,
+  'features/battery': `${hostname}settings/system#battery`,
+  'features/restart': `${hostname}settings/system#restart`,
   'features/media-cover-art': `${hostname}settings/sleep#cover-art-screen-saver`,
   'features/screensaver': `${hostname}settings/sleep#screensaver`,
   'features/screen-schedule': `${hostname}settings/sleep#night-schedule`,
+  'settings/screen': `${hostname}features/appearance`,
+  'settings/preferences': `${hostname}settings/system#preferences`,
+  'settings/maintenance': `${hostname}settings/system#system`,
+  'settings/layout': `${hostname}features/setup#set-up-your-first-controls`,
   'settings/active-colour': `${hostname}features/appearance#active-colour`,
   'settings/card-style': `${hostname}features/appearance#card-style`,
   'settings/theme': `${hostname}features/appearance#theme`,
   'features/idle': `${hostname}features/appearance#idle`,
   'features/clock-bar': `${hostname}features/appearance#clock-bar`,
   'reference/card-capabilities': `${hostname}card-types/`,
-  'reference/language-support': `${hostname}settings/preferences#language`,
-  'reference/icons': `${hostname}settings/layout#add-or-edit-a-card`,
+  'reference/language-support': `${hostname}settings/system#language`,
+  'reference/icons': `${hostname}features/setup#set-up-your-first-controls`,
   'reference/request-device-support': `${hostname}screens/`,
   'card-types/weather-forecast': `${hostname}card-types/weather#setting-up-a-weather-card`,
   'generated/cards/capabilities': `${hostname}card-types/`,
@@ -61,8 +65,31 @@ export const redirects: Record<string, string> = {
   'generated/screens/p4-86-install': `${hostname}screens/p4-86#install`,
 }
 
-// Keep existing section bookmarks when their guides move to one page.
+// Keep section bookmarks, including guides whose sections move to different pages.
 const redirectAnchors: Record<string, string[] | Record<string, string>> = {
+  'settings/screen': {
+    'screen-settings': `${hostname}features/appearance`,
+    'appearance': `${hostname}features/appearance`,
+    'display': `${hostname}settings/display`,
+    'sleep-schedule': `${hostname}settings/sleep`,
+    'set-up-everyday-behaviour': `${hostname}settings/sleep#screensaver`,
+  },
+  'settings/layout': [
+    'layout-settings', 'add-or-edit-a-card', 'arrange-and-resize',
+    'organise-controls-into-subpages', 'edit-the-clock-bar', 'choose-more-controls',
+  ],
+  'settings/preferences': [
+    'preferences', 'language', 'time', 'if-the-time-is-wrong',
+    'temperature', 'choose-the-clock-bar-sensor',
+  ],
+  'settings/maintenance': [
+    'system', 'device-name', 'backup', 'save-a-backup', 'restore-a-backup',
+    'compatibility-notes', 'firmware', 'update-your-panel',
+    'stable-releases-development-builds-and-custom-firmware',
+    'installing-an-older-version', 'esp32-c6-wifi-co-processor-updates',
+    'if-a-new-option-is-missing', 'home-assistant-settings', 'battery',
+    'reset-the-display', 'restart',
+  ],
   'immich/installation': [
     'installation-status', 'hacs-installation', 'manual-installation',
     'immich-connection-and-permissions', 'image-quality', 'troubleshooting',
@@ -136,7 +163,9 @@ export async function writeRedirects(outDir: string) {
 const anchors = ${JSON.stringify(anchors)}
 const anchor = anchors[location.hash.slice(1)]
 if (typeof anchor === 'string') {
-  location.replace(${JSON.stringify(destination.split('#')[0])} + '#' + anchor)
+  location.replace(anchor.startsWith(${JSON.stringify(hostname)})
+    ? anchor
+    : ${JSON.stringify(destination.split('#')[0])} + '#' + anchor)
 }
 </script>` : ''
     const file = join(outDir, `${path}.html`)
