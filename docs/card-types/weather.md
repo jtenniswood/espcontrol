@@ -6,6 +6,10 @@ description:
 
 # Weather
 
+![Illustrative ESP32-P4-86 device showing current conditions, today, tomorrow and an eight-day weather forecast](/images/weather-device-mockup.webp)
+
+*Illustrative device mockup with sample weather data. The top row shows Current Conditions, Today's Forecast and Tomorrow's Forecast; the larger card shows Daily Forecast.*
+
 A weather card shows current Home Assistant conditions or a daily forecast. Forecast cards use a left-aligned layout with the condition icon at the top, and the day and high/low temperatures at the bottom. Temperatures share one line and are rounded to whole degrees, such as **18°/2°**, and use the panel's **Temperature Unit** setting. Forecast cards have no separate label or low-temperature row.
 
 ## Setting Up a Weather Card
@@ -25,6 +29,44 @@ Existing **Temperatures Today** and **Temperatures Tomorrow** cards automaticall
 ::: tip Home Assistant actions permission
 Forecasts need **Allow the device to perform Home Assistant actions** enabled so the panel can request forecast data. See [Home Assistant actions](/getting-started/home-assistant-actions).
 :::
+
+### Configuration Examples
+
+These screenshots show the actual admin webserver editor with the example entity `weather.forecast_home`. Use your own Home Assistant weather entity, select a **Type**, then press **Save**. The editor preview uses sample weather; the panel shows your provider's data.
+
+<div class="weather-configuration-grid">
+  <figure>
+    <img src="/images/weather-admin-current.png" alt="Weather editor with Type set to Current Conditions and Weather Entity set to weather.forecast_home" loading="lazy" width="844" height="708">
+    <figcaption><strong>Current Conditions</strong> — the live condition icon and label, such as Cloudy.</figcaption>
+  </figure>
+  <figure>
+    <img src="/images/weather-admin-today.png" alt="Weather editor with Type set to Today's Forecast and Weather Entity set to weather.forecast_home" loading="lazy" width="844" height="708">
+    <figcaption><strong>Today's Forecast</strong> — today's icon and high/low temperatures.</figcaption>
+  </figure>
+  <figure>
+    <img src="/images/weather-admin-tomorrow.png" alt="Weather editor with Type set to Tomorrow's Forecast and Weather Entity set to weather.forecast_home" loading="lazy" width="844" height="708">
+    <figcaption><strong>Tomorrow's Forecast</strong> — tomorrow's icon and high/low temperatures.</figcaption>
+  </figure>
+  <figure>
+    <img src="/images/weather-admin-daily.png" alt="Weather editor with Type set to Daily Forecast and Weather Entity set to weather.forecast_home" loading="lazy" width="844" height="708">
+    <figcaption><strong>Daily Forecast</strong> — up to eight days in a row or grid. Resize the card in the preview to give the forecast more space.</figcaption>
+  </figure>
+</div>
+
+<style>
+.weather-configuration-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin: 24px 0;
+}
+.weather-configuration-grid figure { margin: 0; min-width: 0; }
+.weather-configuration-grid img { width: 100%; height: auto; border-radius: 12px; }
+.weather-configuration-grid figcaption { margin-top: 10px; font-size: 14px; line-height: 1.6; }
+@media (max-width: 640px) {
+  .weather-configuration-grid { grid-template-columns: 1fr; }
+}
+</style>
 
 ## How It Works on the Panel
 
