@@ -8,7 +8,7 @@ description:
 
 ![Illustrative ESP32-P4-86 device showing current conditions, today, tomorrow and an eight-day weather forecast](/images/weather-device-mockup.webp)
 
-*Illustrative device mockup with sample weather data. The top row shows Current Conditions, Today's Forecast and Tomorrow's Forecast; the larger card shows Daily Forecast.*
+*Photo template with a sample weather screen composited for illustration. The top row shows Current Conditions, Today's Forecast and Tomorrow's Forecast; the larger card shows Daily Forecast.*
 
 A weather card shows current Home Assistant conditions or a daily forecast. Forecast cards use a left-aligned layout with the condition icon at the top, and the day and high/low temperatures at the bottom. Temperatures share one line and are rounded to whole degrees, such as **18°/2°**, and use the panel's **Temperature Unit** setting. Forecast cards have no separate label or low-temperature row.
 
