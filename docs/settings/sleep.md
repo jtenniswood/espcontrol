@@ -94,7 +94,7 @@ The image refreshes when Home Assistant reports an update; the last successful i
 
 #### Photos from Immich
 
-Use [EspControl Immich Companion](/immich/) for photo selection and slideshow timing. Follow [Connect to EspControl](/immich/display-setup), then use its Home Assistant `image.*` entity as the Camera Entity.
+Use [EspControl Immich Companion](/immich/) for photo selection and slideshow timing. Follow [Connect to EspControl](/immich/#connect-to-espcontrol), then use its Home Assistant `image.*` entity as the Camera Entity.
 
 #### Photo Metadata
 
