@@ -202,6 +202,12 @@ def check_build(dist):
             errors.append('FAQ structured answers differ from the rendered questions or answers')
 
     redirects = {
+        'immich/installation': BASE + 'immich/#installation',
+        'immich/display-setup': BASE + 'immich/#connect-to-espcontrol',
+        'immich/using-your-frame': BASE + 'immich/#using-your-frame',
+        'immich/settings-reference': BASE + 'immich/#settings-reference',
+        'immich/entities': BASE + 'immich/#home-assistant-entities',
+        'immich/add-on': BASE + 'immich/#browser-api-add-on',
         'features/backlight': BASE + 'settings/display#backlight',
         'features/rotation': BASE + 'settings/display#rotation',
         'features/language': BASE + 'settings/preferences#language',
