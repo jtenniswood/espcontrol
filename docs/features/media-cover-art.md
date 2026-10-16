@@ -25,12 +25,6 @@ Open **Screen > Sleep & Schedule > Cover Art Screen Saver** on your [device setu
 
 With Keep Screen Awake off, Timer or Sensor screensaver mode can still show eligible artwork when sleep activates. With Screensaver Disabled, artwork uses Show After. A time-based [Night Schedule](/features/screen-schedule) takes priority during night hours.
 
-## Play and Pause
-
-Tap the round button in the bottom-right to pause or resume. Pausing here keeps artwork visible; pausing elsewhere ends cover-art mode. Tap outside the button to return to your cards without changing playback.
-
-On square panels, pausing reveals track details until playback resumes. The detail timeout then starts again. Progress appears only when the player supplies a usable duration. [PIN protection](/features/screensaver#pin-protection-after-wake) blocks playback controls until unlocked.
-
 ## External Sources
 
 Enable **Show external sources** for TV, Line-in, or HDMI inputs. Optionally set **External Source Media Entity** to the player feeding that input, so its artwork and playback details can be used.
