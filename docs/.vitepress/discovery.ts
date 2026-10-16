@@ -65,8 +65,19 @@ export const redirects: Record<string, string> = {
   'generated/screens/p4-86-install': `${hostname}screens/p4-86#install`,
 }
 
-// Keep existing section bookmarks when their guides move to one page.
+// Keep section bookmarks, including guides whose sections move to different pages.
 const redirectAnchors: Record<string, string[] | Record<string, string>> = {
+  'settings/screen': {
+    'screen-settings': `${hostname}features/appearance`,
+    'appearance': `${hostname}features/appearance`,
+    'display': `${hostname}settings/display`,
+    'sleep-schedule': `${hostname}settings/sleep`,
+    'set-up-everyday-behaviour': `${hostname}settings/sleep#screensaver`,
+  },
+  'settings/layout': [
+    'layout-settings', 'add-or-edit-a-card', 'arrange-and-resize',
+    'organise-controls-into-subpages', 'edit-the-clock-bar', 'choose-more-controls',
+  ],
   'settings/preferences': [
     'preferences', 'language', 'time', 'if-the-time-is-wrong',
     'temperature', 'choose-the-clock-bar-sensor',
@@ -152,7 +163,9 @@ export async function writeRedirects(outDir: string) {
 const anchors = ${JSON.stringify(anchors)}
 const anchor = anchors[location.hash.slice(1)]
 if (typeof anchor === 'string') {
-  location.replace(${JSON.stringify(destination.split('#')[0])} + '#' + anchor)
+  location.replace(anchor.startsWith(${JSON.stringify(hostname)})
+    ? anchor
+    : ${JSON.stringify(destination.split('#')[0])} + '#' + anchor)
 }
 </script>` : ''
     const file = join(outDir, `${path}.html`)
