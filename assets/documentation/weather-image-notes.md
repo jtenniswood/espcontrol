@@ -20,10 +20,12 @@ The original photo template is kept outside the repository. Supply your local co
 node assets/documentation/compose-screen.cjs \
   /path/to/Template.png \
   assets/documentation/weather-screen-reference.png \
-  docs/public/images/weather-device-mockup.webp
+  docs/public/images/weather-device-mockup.webp --glass
 ```
 
 The helper uses the template's transparent screen mask and detects its corners: top left `(1008, 357)`, top right `(2235, 567)`, bottom right `(1943, 1874)`, bottom left `(862, 1505)`. It removes the preview's four-pixel simulated enclosure outline, fits all screen content with one perspective transform, and blends the cutout's antialiased edge. It checks corner alignment and verifies all 5,366,835 pixels outside the cutout remain unchanged after encoding. Keep the source template unchanged when using it for other feature examples.
+
+The optional `--glass` finish softens the inserted screen with a 0.8-pixel blur before projection, slightly reduces its brightness, and adds a diffuse cool reflection with a broad, soft window highlight. The reflection follows the same screen plane and stays inside the cutout. The original editor screenshot stays unmodified. Omit the flag to produce a crisp composite without the glass finish.
 
 ## Capture the editor screenshots
 

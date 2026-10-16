@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Fit a UI screenshot to the transparent screen in the supplied device template.
-// Requires sharp. Usage: node compose-screen.cjs template.webp screen.png out.webp
+// Requires sharp. Usage: node compose-screen.cjs template.webp screen.png out.webp [--glass]
 const assert = require('node:assert/strict');
 const sharp = require('sharp');
 
@@ -26,8 +26,9 @@ function solve(rows) {
 
 async function main() {
   const [templatePath, screenPath, outputPath] = process.argv.slice(2);
+  const glass = process.argv.slice(5).includes('--glass');
   assert(templatePath && screenPath && outputPath,
-    'Usage: node compose-screen.cjs template.webp screen.png output.webp');
+    'Usage: node compose-screen.cjs template.webp screen.png output.webp [--glass]');
   const { data: photo, info } = await sharp(templatePath).ensureAlpha().raw()
     .toBuffer({ resolveWithObject: true });
   const { width, height } = info;
@@ -84,8 +85,10 @@ async function main() {
   });
   const metadata = await sharp(screenPath).metadata();
   // Remove the editor preview's four-pixel simulated enclosure outline.
-  const { data: screen, info: screenInfo } = await sharp(screenPath)
-    .extract({ left: 4, top: 4, width: metadata.width - 8, height: metadata.height - 8 })
+  const screenImage = sharp(screenPath)
+    .extract({ left: 4, top: 4, width: metadata.width - 8, height: metadata.height - 8 });
+  if (glass) screenImage.blur(0.8);
+  const { data: screen, info: screenInfo } = await screenImage
     .removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const sw = screenInfo.width, sh = screenInfo.height;
   const output = Buffer.alloc(width * height * 3);
@@ -100,13 +103,22 @@ async function main() {
     const x0 = Math.floor(sx), y0 = Math.floor(sy);
     const x1 = Math.min(sw - 1, x0 + 1), y1 = Math.min(sh - 1, y0 + 1);
     const dx = sx - x0, dy = sy - y0;
+    // Diffuse room light and a soft window reflection share the screen plane.
+    // This changes only the inserted screen, never the surrounding photograph.
+    const reflection = glass ? 0.045 +
+      0.14 * Math.exp(-Math.pow((u - 0.12 - 0.10 * v) / 0.12, 2)) +
+      0.09 * Math.exp(-Math.pow((u - 0.37) / 0.42, 2) - Math.pow((v - 0.05) / 0.6, 2)) : 0;
+    const reflectedLight = [150, 175, 195];
     for (let c = 0; c < 3; c++) {
       const at = (x, y) => screen[(y * sw + x) * 3 + c];
       const sample =
         at(x0, y0) * (1 - dx) * (1 - dy) + at(x1, y0) * dx * (1 - dy) +
         at(x0, y1) * (1 - dx) * dy + at(x1, y1) * dx * dy;
       const opacity = photo[p * 4 + 3] / 255;
-      output[p * 3 + c] = Math.round(sample * (1 - opacity) + photo[p * 4 + c] * opacity);
+      const throughGlass = glass
+        ? sample * 0.96 * (1 - reflection) + reflectedLight[c] * reflection
+        : sample;
+      output[p * 3 + c] = Math.round(throughGlass * (1 - opacity) + photo[p * 4 + c] * opacity);
     }
   }
   await sharp(output, { raw: { width, height, channels: 3 } })
