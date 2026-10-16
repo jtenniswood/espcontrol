@@ -385,7 +385,6 @@ export default defineConfig({
       },
       {
         text: 'Card Types',
-        collapsed: true,
         items: [
           { text: 'Overview', link: '/card-types/' },
           { text: 'Action', link: '/card-types/actions' },
