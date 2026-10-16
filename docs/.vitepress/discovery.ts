@@ -7,6 +7,17 @@ export const hostname = 'https://jtenniswood.github.io/espcontrol/'
 // GitHub Pages cannot configure HTTP redirects. These HTML fallbacks preserve
 // published links while keeping retired pages out of search and the sitemap.
 export const redirects: Record<string, string> = {
+  'features/backlight': `${hostname}settings/display#backlight`,
+  'features/rotation': `${hostname}settings/display#rotation`,
+  'features/language': `${hostname}settings/preferences#language`,
+  'features/clock': `${hostname}settings/preferences#time`,
+  'features/temperature': `${hostname}settings/preferences#temperature`,
+  'features/device-name': `${hostname}settings/maintenance#device-name`,
+  'features/backup': `${hostname}settings/maintenance#backup`,
+  'features/firmware-updates': `${hostname}settings/maintenance#firmware`,
+  'features/home-assistant': `${hostname}settings/maintenance#home-assistant-settings`,
+  'features/battery': `${hostname}settings/maintenance#battery`,
+  'features/restart': `${hostname}settings/maintenance#restart`,
   'features/media-cover-art': `${hostname}settings/sleep#cover-art-screen-saver`,
   'features/screensaver': `${hostname}settings/sleep#screensaver`,
   'features/screen-schedule': `${hostname}settings/sleep#night-schedule`,
@@ -42,6 +53,29 @@ export const redirects: Record<string, string> = {
 
 // Keep existing section bookmarks when their guides move to one settings page.
 const redirectAnchors: Record<string, string[]> = {
+  'features/backlight': [
+    'sleep-brightness',
+    'home-assistant-control',
+  ],
+  'features/clock': [
+    'if-the-time-is-wrong',
+  ],
+  'features/temperature': [
+    'choose-the-clock-bar-sensor',
+  ],
+  'features/backup': [
+    'save-a-backup',
+    'restore-a-backup',
+    'compatibility-notes',
+    'reset-the-display',
+  ],
+  'features/firmware-updates': [
+    'update-your-panel',
+    'stable-releases-development-builds-and-custom-firmware',
+    'installing-an-older-version',
+    'esp32-c6-wifi-co-processor-updates',
+    'if-a-new-option-is-missing',
+  ],
   'features/media-cover-art': [
     'set-it-up', 'screensaver-settings', 'external-sources', 'advanced-options',
     'track-details-work-but-artwork-is-missing',

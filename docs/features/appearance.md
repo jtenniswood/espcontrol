@@ -7,7 +7,7 @@ description: Configure EspControl active colour, card style, theme, idle timeout
 
 Open **Screen > Appearance** on your [device setup page](/features/setup). Use the sections below to change your cards, choose a theme, return home after inactivity, or configure the top bar.
 
-Changes are saved on the panel and included in [backups](/features/backup). Check the physical screen after making changes.
+Changes are saved on the panel and included in [backups](/settings/maintenance#backup). Check the physical screen after making changes.
 
 For one card's label or icon, use [Layout settings](/settings/layout). For brightness or orientation, open [Display](/settings/display).
 
@@ -42,7 +42,7 @@ Open **Screen > Appearance > Theme** on your [device setup page](/features/setup
 Choose a mode:
 
 - **Dark** or **Light** for a fixed appearance.
-- **Automatic > Sunrise & Sunset** to switch using the panel's calculated solar times. Set the correct [timezone](/features/clock) first; no Home Assistant sun entity is needed.
+- **Automatic > Sunrise & Sunset** to switch using the panel's calculated solar times. Set the correct [timezone](/settings/preferences#time) first; no Home Assistant sun entity is needed.
 - **Automatic > Manual** to set **Light from** and **Dark from** in 24-hour `HH:MM` format. The light period can cross midnight; equal times keep Dark active.
 
 Automatic keeps the last appearance while time or solar data is unavailable, and starts in Dark after a fresh boot until that data is known. The clock screensaver keeps its black background and saved text colour.
@@ -83,7 +83,7 @@ To change individual items, open **Layout** and select them in the preview:
 - **Temperature > Edit** selects the Home Assistant sensor and degree-symbol display.
 - **Clock** or **Connectivity > Hide / Show** changes visibility.
 
-Hidden items stay greyed in the preview so you can show them again. Only one temperature reading is displayed. Set [time and timezone](/features/clock) and [temperature units](/features/temperature) under **System > Preferences**.
+Hidden items stay greyed in the preview so you can show them again. Only one temperature reading is displayed. Set [time and timezone](/settings/preferences#time) and [temperature units](/settings/preferences#temperature) under **System > Preferences**.
 
 ### Open Device Information
 

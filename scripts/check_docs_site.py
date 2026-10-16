@@ -202,6 +202,17 @@ def check_build(dist):
             errors.append('FAQ structured answers differ from the rendered questions or answers')
 
     redirects = {
+        'features/backlight': BASE + 'settings/display#backlight',
+        'features/rotation': BASE + 'settings/display#rotation',
+        'features/language': BASE + 'settings/preferences#language',
+        'features/clock': BASE + 'settings/preferences#time',
+        'features/temperature': BASE + 'settings/preferences#temperature',
+        'features/device-name': BASE + 'settings/maintenance#device-name',
+        'features/backup': BASE + 'settings/maintenance#backup',
+        'features/firmware-updates': BASE + 'settings/maintenance#firmware',
+        'features/home-assistant': BASE + 'settings/maintenance#home-assistant-settings',
+        'features/battery': BASE + 'settings/maintenance#battery',
+        'features/restart': BASE + 'settings/maintenance#restart',
         'features/media-cover-art': BASE + 'settings/sleep#cover-art-screen-saver',
         'features/screensaver': BASE + 'settings/sleep#screensaver',
         'features/screen-schedule': BASE + 'settings/sleep#night-schedule',

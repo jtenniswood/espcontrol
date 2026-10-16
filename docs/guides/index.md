@@ -41,8 +41,8 @@ Install [EspControl Immich Companion](/immich/) to turn your photo library, albu
 
 ## Maintain or Troubleshoot a Panel
 
-- [Back up, restore, or reset](/features/backup) before major configuration changes.
-- [Update firmware](/features/firmware-updates) and distinguish stable releases from custom ESPHome builds.
+- [Back up, restore, or reset](/settings/maintenance#backup) before major configuration changes.
+- [Update firmware](/settings/maintenance#firmware) and distinguish stable releases from custom ESPHome builds.
 - [Troubleshoot setup and controls](/getting-started/troubleshooting) if installation, networking, or commands fail.
 - [Browse common questions](/reference/faq) for compatibility and feature limits.
 

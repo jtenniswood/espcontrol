@@ -54,7 +54,7 @@ Playback metadata and image downloads use separate connections.
 
 1. Confirm artwork appears for the selected player in Home Assistant.
 2. Open **System > Home Assistant Settings** and check the image endpoint.
-3. Follow [connection settings](/features/home-assistant) to set a reachable host, protocol, and port if Automatic fails.
+3. Follow [connection settings](/settings/maintenance#home-assistant-settings) to set a reachable host, protocol, and port if Automatic fails.
 4. Retry playback and confirm artwork loads.
 
 If only one music source fails, collect [USB logs](/reference/collect-usb-logs) and report the source and firmware version. Remove private URLs and credentials before sharing logs.
@@ -82,7 +82,7 @@ In Timer or Sensor mode, set **Then**:
 | **Clock** | Shows a drifting clock. Set daytime/nighttime clock brightness; optionally enable **Show date**. |
 | **Camera** | Shows a `camera.*` or `image.*` entity full-screen on supported P4 and 4-inch 4848S040 S3 panels. |
 
-For Screen Dimmed, set its brightness. Automatic and Timed [Backlight](/features/backlight) modes offer separate daytime and nighttime dimmed levels.
+For Screen Dimmed, set its brightness. Automatic and Timed [Backlight](/settings/display#backlight) modes offer separate daytime and nighttime dimmed levels.
 
 Choose **Apply Configuration**, wait for the panel to reconnect, and test both sleep and wake. With Sensor mode, clear and trigger the sensor to check each state.
 
@@ -90,7 +90,7 @@ Choose **Apply Configuration**, wait for the panel to reconnect, and test both s
 
 Select **Then > Camera** and enter **Camera Entity**. Choose **Fit** to keep the whole image visible, or **Fill** to crop to the screen. Enable **Display Clock** if you want a time overlay. These options require supported firmware.
 
-The image refreshes when Home Assistant reports an update; the last successful image stays visible during downloads. Animated GIFs play automatically within the [image limits](/card-types/cameras#setting-up-a-camera-card). If images fail, check [Home Assistant connection settings](/features/home-assistant).
+The image refreshes when Home Assistant reports an update; the last successful image stays visible during downloads. Animated GIFs play automatically within the [image limits](/card-types/cameras#setting-up-a-camera-card). If images fail, check [Home Assistant connection settings](/settings/maintenance#home-assistant-settings).
 
 #### Photos from Immich
 
@@ -147,7 +147,7 @@ Open **Screen > Sleep & Schedule > Night Schedule** on your [device setup page](
 
 The schedule's sensor is separate from the Screensaver **Presence Entity**. Time-based night hours take priority over screensaver presence wake and media cover art. If presence should control night behaviour, use **Sensor** mode here.
 
-Normal-use hours follow your [Backlight](/features/backlight) and [Screensaver](/settings/sleep#screensaver) settings. When a scheduled Clock period ends, an idle panel goes directly to its normal screensaver action.
+Normal-use hours follow your [Backlight](/settings/display#backlight) and [Screensaver](/settings/sleep#screensaver) settings. When a scheduled Clock period ends, an idle panel goes directly to its normal screensaver action.
 
 Enable **Screen > Appearance > Clock Bar > Show Night Mode Icon** to see a moon while night mode is active.
 

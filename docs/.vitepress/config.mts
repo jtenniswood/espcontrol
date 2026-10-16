@@ -424,13 +424,7 @@ export default defineConfig({
         items: [
           { text: 'Overview', link: '/settings/screen' },
           { text: 'Appearance', link: '/features/appearance' },
-          {
-            text: 'Display', link: '/settings/display', collapsed: true,
-            items: [
-              { text: 'Backlight', link: '/features/backlight' },
-              { text: 'Rotation', link: '/features/rotation' },
-            ],
-          },
+          { text: 'Display', link: '/settings/display' },
           { text: 'Sleep & Schedule', link: '/settings/sleep' },
         ],
       },
@@ -438,26 +432,8 @@ export default defineConfig({
         text: 'System settings', link: '/settings/system',
         items: [
           { text: 'Overview', link: '/settings/system' },
-          {
-            text: 'Preferences', link: '/settings/preferences', collapsed: true,
-            items: [
-              { text: 'Language', link: '/features/language' },
-              { text: 'Time', link: '/features/clock' },
-              { text: 'Temperature', link: '/features/temperature' },
-            ],
-          },
-          {
-            text: 'System', link: '/settings/maintenance', collapsed: true,
-            items: [
-              { text: 'Device Name', link: '/features/device-name' },
-              { text: 'Backup', link: '/features/backup' },
-              { text: 'Firmware', link: '/features/firmware-updates' },
-              { text: 'Home Assistant Settings', link: '/features/home-assistant' },
-              { text: 'Battery', link: '/features/battery' },
-              { text: 'Factory Reset', link: '/features/backup#reset-the-display' },
-              { text: 'Restart', link: '/features/restart' },
-            ],
-          },
+          { text: 'Preferences', link: '/settings/preferences' },
+          { text: 'System', link: '/settings/maintenance' },
         ],
       },
       {
