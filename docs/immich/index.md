@@ -51,7 +51,7 @@ Change albums or keywords through the frame's **Configure** option under **Setti
 
 Update through HACS and restart Home Assistant; frame settings are kept. Upgrading from the older cache format requires Immich to be reachable for the first new image. See [updates and outages](/immich/using-your-frame#updates-and-outages) or [report a problem](https://github.com/jtenniswood/espcontrol-immich/issues).
 
-For contributors: [architecture and development](https://github.com/jtenniswood/espcontrol-immich/blob/18ed9ecd30e6ce16fd07bbe6c34e1f72a67acb15/docs/architecture.md), [entity reference](/immich/entities) and [compatibility](/immich/compatibility).
+For contributors: [architecture and development](https://github.com/jtenniswood/espcontrol-immich/blob/18ed9ecd30e6ce16fd07bbe6c34e1f72a67acb15/docs/architecture.md) and [entity reference](/immich/entities).
 
 ---
 

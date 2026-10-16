@@ -43,7 +43,7 @@ Select **Temperature**, **Clock**, or **Connectivity** in the preview to edit or
 - **Clock / Connectivity**: choose **Hide** or **Show**.
 - To hide the entire bar, use **Screen > Appearance > Clock Bar**.
 
-The bar has fixed positions. Set [time and timezone](/features/clock) and [temperature units](/features/temperature) under **System > Preferences**.
+The bar has fixed positions. Set [time and timezone](/settings/preferences#time) and [temperature units](/settings/preferences#temperature) under **System > Preferences**.
 
 ## Choose More Controls
 

@@ -28,4 +28,4 @@ Open your [device setup page](/features/setup) and choose **Screen**. Choose a s
 
 **Idle** returns to the home page; **Screensaver** controls inactivity; **Night Schedule** controls overnight behaviour. Time-based Night Schedule takes priority over screensaver presence wake and media cover art. Touch and Home Assistant’s **Screen: Wake** button still work.
 
-Set the correct timezone in **System > Preferences > Time** before using automatic brightness, theme, or schedules. Check [firmware](/features/firmware-updates) and model support if an option is missing.
+Set the correct timezone in **System > Preferences > Time** before using automatic brightness, theme, or schedules. Check [firmware](/settings/maintenance#firmware) and model support if an option is missing.
