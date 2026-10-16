@@ -46,4 +46,4 @@ Install [EspControl Immich Companion](/immich/) to turn your photo library, albu
 - [Troubleshoot setup and controls](/getting-started/troubleshooting) if installation, networking, or commands fail.
 - [Browse common questions](/reference/faq) for compatibility and feature limits.
 
-Custom firmware, Ethernet-only networking, and web authentication are covered in [advanced ESPHome setup](/getting-started/manual-esphome-setup). Recovery and USB logs are linked from Troubleshooting when needed.
+Custom firmware, Ethernet-only networking, and web authentication are covered in [advanced ESPHome setup](/getting-started/manual-esphome-setup). USB logs are linked from Troubleshooting when needed.
