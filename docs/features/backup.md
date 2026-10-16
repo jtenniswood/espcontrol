@@ -1,55 +1,42 @@
 ---
 title: "Backup and Restore"
-description:
-  How to export and import your EspControl panel configuration as a backup file.
+description: Export and restore EspControl settings, transfer a setup to another panel, or reset the device.
 ---
 
-# Backup
+# Backup and Restore
 
-You can save your entire panel configuration as a file and restore it later. You'll find these options in the **System** tab on the [Setup](/features/setup) page, under **System > Backup**.
+Open **System > Backup** on your [device setup page](/features/setup).
 
-- **Export** - saves your entire setup (cards, subpages, colours, brightness, screen schedule, display settings, Home Assistant artwork settings, and firmware update preferences) as a file you can keep as a backup.
-- **Import** - loads a previously saved file to restore your setup. If you're loading a backup from a different-sized panel, the cards are rearranged to fit automatically.
+## Save a Backup
 
-Restored presence and screen-schedule sensors reconnect automatically without restarting the display.
+Choose **Export** and keep the downloaded file somewhere safe. It includes cards, subpages, colours, brightness, schedules, display settings, artwork connections, and update preferences. Export before resetting or changing firmware versions.
 
-Backup files are versioned so newer EspControl releases can keep importing older backups safely. Older version 1 backups still import, and new exports use version 2 while keeping the same readable layout fields for compatibility.
+Backups do not include Wi-Fi login details, the Home Assistant encryption key, or the touchscreen PIN. They can contain passwords from Wifi Sharing cards and private card settings, so keep the file private.
+
+## Restore a Backup
+
+1. Choose **Import** and select your saved file.
+2. Leave **Also restore panel name** off to keep the destination panel's name and address. Enable it only if you want to copy the saved name too.
+3. Let the restore finish, then check the cards, sensors, screen behaviour, and artwork.
+4. Set your touchscreen PIN again: importing clears the destination's PIN.
+
+A backup from a different-sized panel rearranges cards that no longer fit. Check the layout afterward. Older backups remain supported. Restoring a name uses the destination panel's own hardware suffix and restarts it after the restore.
 
 ## Compatibility Notes
 
-EspControl keeps old saved card strings readable during upgrades. That means cards created before newer card options or compact subpage storage were added should still load, display, and export correctly after an update.
-
-New backup exports continue to use `version: 2` with `format: "espcontrol.backup"`. The readable JSON file also includes a `native_config` section. It records the panel profile, document version, and an encoded copy of the configuration so a firmware version with the native configuration service can restore it exactly. Older panels continue to import the same file through the compatible JSON fields.
-
-When importing a backup from a different-sized panel, EspControl keeps the saved card order where it can and rearranges cards that no longer fit the target screen. Subpages are moved with their parent card when the parent card is kept.
-
-Current firmware supports up to 4 KB of settings per card or subpage on both S3 and P4 displays, within the panel's total configuration storage. This gives colour options and other card settings more room. The editor checks the connected panel's capacity; older firmware retains its smaller limits. If a larger configuration cannot be copied into the older-firmware format, the editor warns that the configuration is saved but should not be downgraded. Export a backup before changing firmware versions.
+New firmware keeps older card configurations and backups readable. If the editor warns that a saved configuration cannot be downgraded, export a backup and stay on compatible firmware; older versions may have smaller storage limits.
 
 ## Reset the Display
 
-Open **System > Factory Reset** on the [Setup](/features/setup) page. Choose **Save backup** to keep a copy of your settings, then choose a reset option and confirm:
+Open **System > Factory Reset**, choose **Save backup**, then select and confirm a reset:
 
-- **Partial reset** removes cards, layouts, subpages, actions, the custom device name and device preferences, while keeping the saved Wi-Fi connection and Home Assistant encryption key. The display restarts into card setup.
-- **Complete reset** also removes saved Wi-Fi credentials and the Home Assistant encryption key. Confirm the reset in the web dialog, then follow the display's first-time setup instructions. Ethernet displays remain accessible through their wired network. Home Assistant may need to be configured again; its integration records and automations are not deleted.
+| Option | What is removed | What is kept |
+|---|---|---|
+| **Partial reset** | Cards, layouts, subpages, actions, custom device name, and device preferences. | Saved Wi-Fi connection and Home Assistant encryption key. |
+| **Complete reset** | The above, plus saved Wi-Fi credentials and the Home Assistant encryption key. | Installed firmware. |
 
-Backups do not restore the display's Wi-Fi login or Home Assistant encryption key. They can still contain passwords saved in [Wifi Sharing cards](/card-types/wifi-share). Both options keep the installed firmware and its built-in defaults. Names, credentials and other settings compiled into a custom ESPHome YAML remain; install stock firmware to restore stock defaults.
+After Partial reset, set up cards again. After Complete reset, follow first-time setup and reconnect Home Assistant if needed; Ethernet panels remain reachable over their wired connection. Home Assistant integration records and automations are not deleted.
 
-The **Factory Reset** section appears only on firmware that supports it. After reset, reload any other open setup pages before editing. A reset interrupted by power loss resumes at startup. If storage cleanup fails, startup remains paused and the serial log reports `Reset recovery`; cleanup retries every ten seconds. Do not restore a backup until reset has completed.
+Both resets keep defaults compiled into custom ESPHome YAML, including any compiled names or credentials. Install stock firmware to restore stock defaults. Reset clears operational settings; it is not secure erasure.
 
-Reset clears operational configuration; it is not a forensic secure-erasure feature.
-
-## Panel Names in Backups
-
-Custom-named panels include their name and device suffix in backup filenames,
-for example `espcontrol-4-inch-kitchen-b2c3-2026-09-11.json`.
-
-When importing a backup with panel naming metadata, **Also restore panel name**
-is off by default. Leave it off to keep the destination's name and address.
-Selecting it copies the name, generates an address using the destination panel's
-own suffix, and restarts after the configuration restores successfully. The
-source panel's hardware identity is never copied. Older backups keep the
-current panel name.
-
-If panel naming is unavailable, export still saves your configuration and warns
-that the name was omitted. Import still restores the configuration and keeps
-the destination panel name.
+Factory Reset requires supported firmware. Reload other open setup pages after reset. If power fails during reset, cleanup resumes on startup. If startup stays paused with **Reset recovery** in serial logs, wait for cleanup to finish before importing a backup.

@@ -1,79 +1,53 @@
 ---
-title: "Show Home Assistant Media Cover Art on Your Touchscreen"
-description:
-  How to show media cover art while music or video is playing on your EspControl panel.
+title: "Media Cover Art Screensaver"
+description: Show now-playing artwork, control playback, and choose when EspControl switches to a media cover-art display.
 ---
 
 # Media Cover Art
 
-Media Cover Art can turn the panel into a now-playing display while a selected Home Assistant media player is playing.
+Open **Screen > Sleep & Schedule > Cover Art Screen Saver** on your [device setup page](/features/setup).
 
-You need a `media_player` entity that supplies artwork in Home Assistant and a reachable Home Assistant image-download address. First check that artwork appears in Home Assistant, then configure the panel below. The [migration guide](/getting-started/migrate-esphome-media-player) covers dedicated album-art layouts.
+## Set It Up
 
-You will find these controls in **Screen > Sleep & Schedule > Cover Art Screen Saver** on the panel web page.
+1. Check that your `media_player` entity shows artwork in Home Assistant.
+2. Turn on **Show Cover Art** and enter **Media Player Entity**, such as `media_player.living_room`.
+3. Set **Show After** to the delay before artwork appears; the default is 10 seconds.
+4. Start playback, leave the panel untouched, and check that the artwork loads.
 
-## Play and pause
+## Screensaver Settings
 
-Tap the round button in the bottom-right corner to pause the displayed player. The artwork stays visible and the button changes to Play, so you can resume without leaving the screensaver. The button stays visible when track details fade away.
+| Setting | Use it to |
+|---|---|
+| **Keep Screen Awake During Playback** | Prevent normal screensaver sleep while playing. On by default; applies only with Show Cover Art enabled. |
+| **Show After** | Choose how long to wait after the last touch before showing artwork. |
+| **Show Track Details For** | Set the detail timeout on 4-inch square panels, including Never and Always. |
+| **Persistent Play/Pause Control** | Show or hide the playback button on 4-inch square panels. Larger panels always show it. |
 
-The button uses a brighter version of the colour extracted from the artwork and lightens while pressed, with a neutral grey fallback when artwork is unavailable. Its icon switches between black and white to remain readable, including on pale artwork. On 7-inch displays, its shape is adjusted for the panel's pixels so it appears round in either orientation.
+With Keep Screen Awake off, Timer or Sensor screensaver mode can still show eligible artwork when sleep activates. With Screensaver Disabled, artwork uses Show After. A time-based [Night Schedule](/features/screen-schedule) takes priority during night hours.
 
-Only a pause requested with this button keeps the screensaver open. Pausing from Home Assistant, a phone, or another control still ends cover-art mode. Touch anywhere outside the button to dismiss the screensaver without changing playback: paused music stays paused, and playing music keeps playing. Night schedules and display takeovers still apply. If the Home Assistant connection is lost while paused, the retained screensaver closes.
+## Play and Pause
 
-## Track details and layout
+Tap the round button in the bottom-right to pause or resume. Pausing here keeps artwork visible; pausing elsewhere ends cover-art mode. Tap outside the button to return to your cards without changing playback.
 
-Titles expand to fit longer track names, up to these limits on the cover-art screensaver:
+On square panels, pausing reveals track details until playback resumes. The detail timeout then starts again. Progress appears only when the player supplies a usable duration. [PIN protection](/features/screensaver#pin-protection-after-wake) blocks playback controls until unlocked.
 
-| Display | Maximum title lines |
-| --- | --- |
-| 4-inch square S3 and P4-86, in any orientation | 3 |
-| 4.3-inch, in landscape | 3 |
-| 7-inch, in landscape | 4 |
-| 10-inch, in landscape | 5 |
+## External Sources
 
-Shorter titles use only the space they need. Artist text uses the remaining space, with an ellipsis when it does not fit. The 4.3-inch, 7-inch and 10-inch portrait layouts keep their shorter title limits.
+Enable **Show external sources** for TV, Line-in, or HDMI inputs. Optionally set **External Source Media Entity** to the player feeding that input, so its artwork and playback details can be used.
 
-On square displays, **Show Track Details For** controls how long details stay visible when a track changes. Pausing with the screensaver button brings the details back and keeps them visible until playback resumes, then the fade-out timer starts again. With **Never**, pausing still reveals the details, but resuming hides them immediately. With **Always**, they remain visible. Rectangular displays and screens without artwork keep track details visible.
+The saved external player remains configured when the toggle is off and can still supply usable artwork. If that player becomes unavailable, the external-input hide rule applies again.
 
-## Settings
+## Advanced Options
 
-Turn on **Show Cover Art** to reveal the settings, then choose the **Media Player Entity** to watch, such as `media_player.living_room`.
-
-### Screensaver Settings
-
-- **Keep Screen Awake During Playback** — on by default. While Show Cover Art is enabled, this prevents normal screensaver sleep during playback and lets artwork appear after **Show After** when no screensaver is already active. If the clock screensaver is showing when playback starts, cover art appears immediately. It has no effect while Show Cover Art is off.
-- **Persistent Play/Pause Control** — on by default, directly below **Keep Screen Awake During Playback** on the 4-inch square S3 and P4-86. Turn it off to hide the button and restore the full width for track details, still allowing up to three title lines. Turning it off while paused from the screensaver dismisses it without resuming playback. Larger screens always show the playback button and do not show this setting.
-- **Show After** — choose 3, 5, 10, or 30 seconds, 1 minute, or 5 minutes. The default is 10 seconds. This also controls when cover art returns after you dismiss it; every touch restarts the countdown.
-- **Show Track Details For** — available on the 4-inch square displays. Choose **Never**, 3, 5, 10, 15, 20, 30, or 60 seconds, or **Always**. The default is 5 seconds.
-
-With **Keep Screen Awake During Playback** off, Timer or Sensor screensaver mode can still show eligible artwork when the normal screensaver activates. With Screensaver mode **Disabled**, cover art uses **Show After**. A time-based [Night Schedule](/features/screen-schedule) takes priority over cover art while its night period is active.
-
-### External sources
-
-- **Show external sources** — allows cover art for the player's `TV`, `Line-in`, or `HDMI` input. Off by default.
-- **External Source Media Entity** — shown when Show external sources is on. Optionally choose the player connected to that input. When it has current media, its playback state, artwork, track details, progress, and filtering attributes drive the cover-art screen.
-
-If you turn off Show external sources, the saved external player remains configured. A usable external player can still supply artwork; if it becomes unavailable, the external-input hide rule applies again.
-
-### Advanced Options
-
-Turn on **Advanced Filtering** to reveal **Only Show When**. Enter matching media player attributes, such as `app_id=com.apple.TVMusic` or `app_id=com.apple.TVMusic; media_content_type=music`. Turning Advanced Filtering off clears the saved conditions.
-
-Playback time and the progress bar appear only when Home Assistant provides a usable media duration. Live radio streams without a duration continue to show artwork and track details without an empty progress line.
-
-If cover art is shown for `TV` or `Line-in` instead of hidden, the artist line shows **Source** because these inputs normally do not provide artist data.
-
-Cover art is separate from the normal [Screensaver](/features/screensaver) mode. Use Screensaver when you want the panel to dim, show a clock, or turn off after inactivity.
-
-For artwork downloads, open **System > Home Assistant Settings**. **Connection > Automatic** discovers a local Home Assistant endpoint. **Manual** lets you choose **Home Assistant Host** (optional), **Home Assistant Protocol** (`http` or `https`), and **Home Assistant Port**. Leave Host blank to use the address from the ESPHome connection. Enter a DNS name such as `homeassistant.example.com` when HTTPS uses a certificate issued to that name. A self-signed certificate still needs to be trusted by the panel; this setting does not disable certificate verification. The card shows the current artwork endpoint. See [Home Assistant Settings](/features/setup#home-assistant-settings) for discovery and fallback behavior.
+Enable **Advanced Filtering** to reveal **Only Show When**. Enter matching attributes, for example `app_id=com.apple.TVMusic; media_content_type=music`. Turning Advanced Filtering off clears these conditions.
 
 ## Track Details Work but Artwork Is Missing
 
-Playback metadata uses the native ESPHome connection; image downloads use HTTP or HTTPS. One can work while the other fails.
+Playback metadata and image downloads use separate connections.
 
-1. Confirm the selected player has artwork in Home Assistant.
-2. Open **System > Home Assistant Settings** and check the displayed artwork endpoint.
-3. If automatic discovery chooses an unreachable endpoint, use **Manual** and enter the host, protocol, and port that work from the panel's network. Leave the host blank to use the panel's Home Assistant API address. Automatic discovery only trusts an advertised URL on that same IP; use Manual for a hostname-based proxy or a proxy on a different host.
-4. Retry playback. Confirm both the small Cover Art card and its expanded view load an image.
+1. Confirm artwork appears for the selected player in Home Assistant.
+2. Open **System > Home Assistant Settings** and check the image endpoint.
+3. Follow [connection settings](/features/home-assistant) to set a reachable host, protocol, and port if Automatic fails.
+4. Retry playback and confirm artwork loads.
 
-Artwork availability depends on the source. If only Spotify, radio, Plex, or another source fails, capture [USB logs](/reference/collect-usb-logs) and include the source and firmware version in a report, with private URLs and credentials removed.
+If only one music source fails, collect [USB logs](/reference/collect-usb-logs) and report the source and firmware version. Remove private URLs and credentials before sharing logs.

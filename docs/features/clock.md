@@ -1,38 +1,23 @@
 ---
 title: "Time Settings"
-description:
-  How to configure clock sync, timezone, and 12/24-hour format on your EspControl panel.
+description: Set EspControl timezone, 12/24-hour format, and optional network time servers under System preferences.
 ---
 
 # Time Settings
 
-The panel can display a clock in the top bar, updated every minute from network time. You can choose your timezone, switch between 12-hour and 24-hour format, and set custom NTP servers.
+Open **System > Preferences > Time** on your [device setup page](/features/setup).
 
-## Settings
+1. Set **Timezone** to **Auto (Home Assistant)** to follow Home Assistant, or choose a fixed timezone.
+2. Choose **Clock Format > 12-hour** or **24-hour**. The 12-hour display has no AM/PM suffix; 24-hour is the default.
+3. Leave **Custom NTP Servers** off unless you need your own time servers. If enabled, enter up to three server names or IP addresses.
 
-Configured in **System > Preferences > Time** in [Setup](/features/setup).
+The format applies to the top-bar clock, setup preview, and displayed sunrise/sunset times. The timezone also affects automatic brightness, automatic theme, schedules, and automatic temperature units.
 
-- **Timezone** — use **Auto (Home Assistant)** to follow the timezone Home Assistant sends to the panel, or select a fixed timezone from the dropdown. This also determines sunrise and sunset times used by the [backlight schedule](/features/backlight).
-- **Clock Format** — choose **12-hour** for time without an AM/PM suffix, or **24-hour** for 24-hour time. Defaults to 24h.
-- **Custom NTP Servers** — turn this on to show and edit the NTP server fields. When it is off, the panel uses the defaults: `0.pool.ntp.org`, `1.pool.ntp.org`, and `2.pool.ntp.org`.
-- **NTP Server 1 / 2 / 3** — choose the network time servers used to keep the panel clock accurate when custom NTP servers are enabled.
+## If the Time Is Wrong
 
-**Screen > Appearance > Clock Bar** controls whether the top bar is shown. The clock bar uses a fixed layout with one temperature reading, the time, and status icons. Select an item in the screen preview to edit or hide it. The temperature unit itself is set in **System > Preferences > Temperature**. When the connectivity icon is shown, tap it on the panel to see the device name, IP address, WiFi strength, and firmware version.
+- Check the selected timezone first.
+- The clock normally syncs from NTP, with Home Assistant time as a fallback. Ensure at least one source is reachable.
+- With custom networking and no DNS, use IP addresses for NTP servers.
+- Turning **Custom NTP Servers** off restores `0.pool.ntp.org`, `1.pool.ntp.org`, and `2.pool.ntp.org`.
 
-The network status icon is on by default. Hide the **Connectivity** item in the screen preview if you only want the clock and temperature items in the top bar.
-
-## How It Works
-
-The on-screen clock normally syncs directly from NTP over Wifi. Home Assistant time is still used as a fallback, so the clock can continue to work if NTP is blocked but the panel is connected to Home Assistant. When the timezone is set to **Auto (Home Assistant)**, Home Assistant also provides the active timezone.
-
-You can use public NTP server names, such as the defaults, or a local server/IP address on your own network. If your panel uses manual network settings without DNS, use IP addresses for the NTP servers. Turning **Custom NTP Servers** off resets the saved NTP server values back to the defaults.
-
-The clock format setting affects three things:
-
-1. The **top bar clock** on the panel display, when the clock bar is shown.
-2. The **sunrise and sunset** times shown in settings.
-3. The **clock preview** on the web setup page.
-
-The setting is saved on the device and persists across restarts.
-
-Sunrise and sunset times are shown under **Screen > Display > Backlight** when **Automatic** is selected.
+To show or hide the time on the panel, edit the Clock item in **Layout**, or control the whole [Clock Bar](/features/clock-bar) under **Screen > Appearance**.

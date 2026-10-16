@@ -1,17 +1,16 @@
 ---
-title: "Temperature Display"
-description:
-  How to show temperature sensors on your EspControl panel's top bar.
+title: "Temperature Settings"
+description: Choose temperature units in EspControl System preferences and select the sensor shown in the clock bar.
 ---
 
-# Temperature Display
+# Temperature Settings
 
-The top bar of your panel can show one temperature sensor from Home Assistant.
+Open **System > Preferences > Temperature** on your [device setup page](/features/setup). Set **Temperature Unit** to **Auto**, **°C**, or **°F**. Auto selects °F for US and US-territory timezones, otherwise °C.
 
-- **Temperature** — select the temperature item in the **Layout** tab preview and choose **Edit** to pick the sensor.
-- **Show Degree Symbol** — edit the temperature item and turn this off if you want the clock bar to show only the temperature numbers, with no `°C` or `°F` suffix.
-- **Temperature Unit** — choose **Auto**, **°C**, or **°F** in **System > Preferences > Temperature** for the temperature labels. Auto uses the timezone setting and selects °F for US and US-territory timezones, otherwise °C.
+## Choose the Clock-Bar Sensor
 
-Older configurations that saved more than one clock-bar temperature are still accepted, but current firmware only displays the first one.
+1. Open **Layout** and select **Temperature** in the top-bar preview.
+2. Choose **Edit** and enter the Home Assistant temperature sensor.
+3. Turn **Show Degree Symbol** off if you want numbers without the `°C` or `°F` suffix.
 
-If you hide the temperature item in the preview, the device screen hides it but keeps the chosen sensor so you can show it again later. If you turn off **Show Clock Bar** under **Screen > Appearance > Clock Bar**, the temperature display is hidden along with the top bar.
+The bar shows one temperature sensor. Hiding its preview item keeps the sensor saved. **Screen > Appearance > Clock Bar > Show Clock Bar** controls visibility of the entire bar.

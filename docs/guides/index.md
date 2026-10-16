@@ -7,6 +7,14 @@ description: Set up an EspControl room panel, media remote, or camera display wi
 
 EspControl uses devices and entities already connected to Home Assistant. Install the relevant Home Assistant integration first, then choose the matching card on your panel. For your first screen, follow **[Choose a screen](/screens/)**, **[Install](/getting-started/install)**, and **[Configure](/features/setup)**.
 
+## Configure Your Device
+
+Open the [device setup page](/features/setup), then follow the matching area:
+
+- [Layout settings](/settings/layout) — cards, sizes, and subpages.
+- [Screen settings](/settings/screen) — Appearance, Display, and Sleep & Schedule.
+- [System settings](/settings/system) — Preferences and system controls.
+
 ## Build a Room Control Panel
 
 Start with one [Light](/card-types/lights) or [Switch](/card-types/switches) card. Enable [Home Assistant actions](/getting-started/home-assistant-actions), save the card, and check that tapping it changes the real device and that changes made in Home Assistant appear on the panel.

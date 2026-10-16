@@ -78,8 +78,7 @@ If you find this project useful, consider buying me a coffee to support ongoing 
 
 ## Next Steps
 
-- [Install](/getting-started/install) — what you need, how to flash, and first-time setup
-- [Setup](/features/setup) — how to configure cards, display, and screensaver from your browser
-- [Card Types](/card-types/) — choose the right card for each Home Assistant control, sensor, or panel action
-- [Firmware Updates](/features/firmware-updates) — how update checks and WiFi firmware updates work
-- [Backup](/features/backup) — how to save, restore, and move a panel setup
+- **[Device](/features/setup)** — install, connect, and open the setup page.
+- **[Layout settings](/settings/layout)** — add, arrange, and resize cards and subpages.
+- **[Screen settings](/settings/screen)** — appearance, display, and sleep behaviour.
+- **[System settings](/settings/system)** — preferences, backups, updates, and device management.

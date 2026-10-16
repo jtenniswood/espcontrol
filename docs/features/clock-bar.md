@@ -1,31 +1,30 @@
 ---
 title: "Clock Bar"
-description:
-  How to configure the clock bar shown at the top of your EspControl panel.
+description: Show or hide the EspControl clock bar, edit its items, and open device information from the touchscreen.
 ---
 
 # Clock Bar
 
-The clock bar is the narrow status area at the top of the panel. It uses a fixed layout: one temperature reading on the left, the current time in the middle, and the connectivity icon on the right.
-
-You will find these controls in **Screen > Appearance > Clock Bar** on the panel web page.
+The top bar has fixed positions: temperature on the left, time in the middle, and connectivity on the right.
 
 ## Settings
 
-- **Show Clock Bar** - turns the whole top bar on or off.
-- **Show Night Mode Icon** - shows a moon beside the connectivity icon while the night schedule is active. Off by default.
-- **Temperature** - select the temperature item in the screen preview, choose **Edit**, then choose the Home Assistant sensor and whether to show the degree symbol.
-- **Clock** - select the clock item in the screen preview and choose **Hide** or **Show**.
-- **Connectivity** - select the connectivity item in the screen preview and choose **Hide** or **Show**.
+Open **Screen > Appearance > Clock Bar**:
 
-Opening a card control, such as climate or media, shows the card’s label on the left of the clock bar in the same style as subpage titles. Closing the control restores the subpage title or temperature reading.
+- **Show Clock Bar** turns the whole bar on or off.
+- **Show Night Mode Icon** adds a moon while [Night Schedule](/features/screen-schedule) is active. Off by default.
 
-The clock bar layout is not customizable. Hidden items stay greyed in the web preview so you can select and show them again, but they are hidden on the device screen. Extra saved temperature entries, weather settings, and older saved layout strings are ignored by current firmware.
+To change individual items, open **Layout** and select them in the preview:
 
-Tap the network status icon on the panel to open Settings, even while another modal or a nested menu is open. Settings closes those controls first; tapping **Back** returns to the underlying page. The page keeps the clock bar visible, shows **Settings** to the left of the clock, and uses the device's normal grid—for example, 5×3 on a 7-inch display. The cards are ordered **Back**, **IP address**, **Wi-Fi quality** (Wi-Fi builds only), **Build**, then the device name, flowing left to right and then top to bottom. **IP address** shows the current address, **Wi-Fi quality** shows the signal percentage or **Disconnected** while unavailable, and **Build** shows the installed firmware version. The device name reflects the name set in [Device Name](/features/setup#naming-your-panel). Ethernet builds omit the Wi-Fi card. Tap **Back** to return to the page you were using and restore its temperature display.
+- **Temperature > Edit** selects the Home Assistant sensor and degree-symbol display.
+- **Clock** or **Connectivity > Hide / Show** changes visibility.
 
-Once a PIN has been saved in **Pin Protection** or a [Screen Lock card](/card-types/screen-lock), Settings also shows a **Screen Lock** button after the device name. It locks the current view using the same PIN; touch the locked screen to open the keypad and enter the PIN to unlock. The button remains available with **Require PIN after wake** off and disappears if the saved PIN is cleared.
+Hidden items stay greyed in the preview so you can show them again. Only one temperature reading is displayed. Set [time and timezone](/features/clock) and [temperature units](/features/temperature) under **System > Preferences**.
 
-The night mode moon appears whenever the [Night Schedule](/features/screen-schedule) is in its night period, in both **Time** and **Sensor** mode - in Sensor mode it follows the sensor entity and the activation state you chose. It is visible in practice when the schedule keeps the screen awake or dimmed rather than turning it off, and it disappears again when normal mode resumes.
+## Open Device Information
 
-The time format and timezone are configured separately in [Time Settings](/features/clock). The temperature unit is configured in [Temperature Settings](/features/temperature).
+Tap the connectivity icon on the physical panel to open **Settings**. It shows the IP address, Wi-Fi quality on Wi-Fi builds, firmware build, and device name. Tap **Back** to return to your previous page.
+
+If a PIN is saved, Settings also offers **Screen Lock**, even with automatic wake protection off. Tap it to lock the current view, then touch the screen and enter the PIN to unlock. See [PIN protection](/features/screensaver#pin-protection-after-wake).
+
+When a subpage or card popup is open, its title temporarily replaces the temperature reading.

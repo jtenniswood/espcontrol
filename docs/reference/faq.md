@@ -74,7 +74,7 @@ Choose **Media > Track, Album or Playlist** and supply a content ID accepted by 
 
 ### Why Does a Camera Change from Loading to Unavailable?
 
-Check the image exists in Home Assistant, the panel can reach its HTTP/HTTPS endpoint, and the shared image limit is not exceeded. See [Camera troubleshooting](/card-types/cameras#troubleshooting) and [connection settings](/features/setup#home-assistant-settings).
+Check the image exists in Home Assistant, the panel can reach its HTTP/HTTPS endpoint, and the shared image limit is not exceeded. See [Camera troubleshooting](/card-types/cameras#troubleshooting) and [connection settings](/features/home-assistant).
 
 ### Can I Show a Doorbell Snapshot When Someone Rings?
 
@@ -104,7 +104,7 @@ Mixed custom and stock firmware can change encryption behaviour. Keep the device
 
 ### Can I Rename a Panel Without Compiling Firmware?
 
-Yes. Use **System > Device Name > Save & Restart**. Entity IDs stay unchanged, but hostname-based ESPHome action names change. Update affected automations. See [Naming Your Panel](/features/setup#naming-your-panel).
+Yes. Use **System > Device Name > Save & Restart**. Entity IDs stay unchanged, but hostname-based ESPHome action names change. Update affected automations. See [Naming Your Panel](/features/device-name).
 
 ### Can I Back Up My Setup?
 
@@ -112,11 +112,11 @@ Yes. Use **Export** and **Import** under **System > Backup** to save cards and s
 
 ### Can I Copy Just a Few Cards to Another Panel?
 
-Use **Copy Code** and **Paste Code** in [Setup](/features/setup) for cards and attached subpages. Use [Backup](/features/backup) for a whole configuration. Each panel keeps its own web page and identity.
+Use **Copy Code** and **Paste Code** in [Layout](/features/subpages#copying-cards-between-controllers) for cards and attached subpages. Use [Backup](/features/backup) for a whole configuration. Each panel keeps its own web page and identity.
 
 ### Can I Restart from Home Assistant and Update Without Reconnecting USB?
 
-Yes. Home Assistant exposes a [Restart button](/features/setup#restart-from-home-assistant); online panels can usually update wirelessly. USB remains necessary for initial flashing, recovery, or networking-type changes. See [manual installation](/getting-started/manual-esphome-setup).
+Yes. Home Assistant exposes a [Restart button](/features/restart); online panels can usually update wirelessly. USB remains necessary for initial flashing, recovery, or networking-type changes. See [manual installation](/getting-started/manual-esphome-setup).
 
 ### How Do I Reset the Device?
 
