@@ -1,0 +1,9 @@
+{
+  "buttons": {
+    "1": "weather.forecast_home;;Auto;Auto;;;weather;;card_off_color=00B8CF",
+    "2": "weather.forecast_home;;Auto;Auto;;;weather;today;card_off_color=0457D9",
+    "3": "weather.forecast_home;;Auto;Auto;;;weather;tomorrow;card_off_color=0083D6",
+    "4": "weather.forecast_home;;Auto;Auto;;;weather;daily;card_off_color=075ACB"
+  },
+  "settings": { "button_order": "1,2,3,4h" }
+}
