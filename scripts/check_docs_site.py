@@ -202,6 +202,12 @@ def check_build(dist):
             errors.append('FAQ structured answers differ from the rendered questions or answers')
 
     redirects = {
+        'immich/installation': BASE + 'immich/#installation',
+        'immich/display-setup': BASE + 'immich/#connect-to-espcontrol',
+        'immich/using-your-frame': BASE + 'immich/#using-your-frame',
+        'immich/settings-reference': BASE + 'immich/#settings-reference',
+        'immich/entities': BASE + 'immich/#home-assistant-entities',
+        'immich/add-on': BASE + 'immich/#browser-api-add-on',
         'features/backlight': BASE + 'settings/display#backlight',
         'features/rotation': BASE + 'settings/display#rotation',
         'features/language': BASE + 'settings/preferences#language',
@@ -221,11 +227,12 @@ def check_build(dist):
         'settings/theme': BASE + 'features/appearance#theme',
         'features/idle': BASE + 'features/appearance#idle',
         'features/clock-bar': BASE + 'features/appearance#clock-bar',
+        'reference/card-capabilities': BASE + 'card-types/',
         'reference/language-support': BASE + 'settings/preferences#language',
         'reference/request-device-support': BASE + 'screens/',
         'card-types/weather-forecast': BASE + 'card-types/weather#setting-up-a-weather-card',
-        'generated/cards/capabilities': BASE + 'reference/card-capabilities',
-        'generated/cards/runtime-coverage': BASE + 'reference/card-capabilities',
+        'generated/cards/capabilities': BASE + 'card-types/',
+        'generated/cards/runtime-coverage': BASE + 'card-types/',
     }
     screen_guides = {
         '4848s040': ('4848s040#card-grid', '4848s040'),
