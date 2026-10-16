@@ -15,7 +15,7 @@ The documentation follows the tabs on your device:
 
 | Tab | Use it to | Start here |
 |---|---|---|
-| **Layout** | Add, arrange, resize, and edit cards and subpages. | [Layout settings](/settings/layout) |
+| **Layout** | Add, arrange, resize, and edit cards and subpages. | [First controls](#set-up-your-first-controls) |
 | **Screen** | Change appearance, brightness, rotation, and sleep behaviour. | [Screen settings](/settings/screen) |
 | **System** | Set language and time, rename the panel, back up, and update firmware. | [System settings](/settings/system) |
 
@@ -32,7 +32,7 @@ The documentation follows the tabs on your device:
 4. Enter your Home Assistant entity ID, such as `light.kitchen`, and choose a label and icon.
 5. Choose **Apply Configuration**, wait for the panel to reconnect, then tap the card on the physical screen to check it works.
 
-For editing, moving, resizing, and copying cards, follow [Layout settings](/settings/layout). Use the [card guide](/card-types/) to choose other controls.
+Use the [card guide](/card-types/) to choose other controls, or [Subpages](/features/subpages) to group them into rooms and pages.
 
 ## Apply Configuration
 

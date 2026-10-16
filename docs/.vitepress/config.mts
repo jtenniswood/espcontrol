@@ -376,9 +376,8 @@ export default defineConfig({
         ],
       },
       {
-        text: 'Layout settings', link: '/settings/layout',
+        text: 'Layout settings',
         items: [
-          { text: 'Add, Arrange & Edit Cards', link: '/settings/layout' },
           { text: 'Subpages', link: '/features/subpages' },
           { text: 'Speaker Groups', link: '/features/speaker-groups' },
         ],

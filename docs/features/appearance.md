@@ -9,7 +9,7 @@ Open **Screen > Appearance** on your [device setup page](/features/setup). Use t
 
 Changes are saved on the panel and included in [backups](/settings/maintenance#backup). Check the physical screen after making changes.
 
-For one card's label or icon, use [Layout settings](/settings/layout). For brightness or orientation, open [Display](/settings/display).
+For one card's label or icon, open **Layout**, select the card, and choose **Edit** on your [device setup page](/features/setup). For brightness or orientation, open [Display](/settings/display).
 
 ## Active Colour
 

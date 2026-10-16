@@ -11,7 +11,7 @@ EspControl uses devices and entities already connected to Home Assistant. Instal
 
 Open the [device setup page](/features/setup), then follow the matching area:
 
-- [Layout settings](/settings/layout) — cards, sizes, and subpages.
+- **Layout** — [set up your first controls](/features/setup#set-up-your-first-controls).
 - [Screen settings](/settings/screen) — Appearance, Display, and Sleep & Schedule.
 - [System settings](/settings/system) — Preferences and system controls.
 

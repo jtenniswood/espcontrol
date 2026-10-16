@@ -79,6 +79,5 @@ If you find this project useful, consider buying me a coffee to support ongoing 
 ## Next Steps
 
 - **[Device](/features/setup)** — install, connect, and open the setup page.
-- **[Layout settings](/settings/layout)** — add, arrange, and resize cards and subpages.
 - **[Screen settings](/settings/screen)** — appearance, display, and sleep behaviour.
 - **[System settings](/settings/system)** — preferences, backups, updates, and device management.
