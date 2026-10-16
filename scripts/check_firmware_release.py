@@ -448,7 +448,7 @@ def test_c6_dependency_preparation_is_verified_and_atomic() -> None:
             prepare_c6_firmware.C6_SHA256 = original_hash
 
 
-def test_recovery_sources_and_documentation_stay_complete() -> None:
+def test_recovery_sources_stay_complete() -> None:
     recovery_yaml = (ROOT / "common/device/esp32_c6_recovery.yaml").read_text(
         encoding="utf-8"
     )
@@ -472,15 +472,6 @@ def test_recovery_sources_and_documentation_stay_complete() -> None:
     ).read_text(encoding="utf-8")
     assert "platform: esp32_hosted" in online_updater
     assert "type: http" in online_updater
-    selector = (
-        ROOT / "docs/.vitepress/theme/components/C6RecoverySelector.vue"
-    ).read_text(encoding="utf-8")
-    assert "devices.find((device) => device.slug === requested)" in selector
-    assert "/recovery/manifest.json" in selector
-    assert "Chrome or Edge" in selector
-    assert "exact panel model and revision" in selector
-    assert "Repair C6 and reinstall EspControl" in selector
-
     p4_slugs = [
         entry["slug"]
         for entry in json.loads(
@@ -500,28 +491,6 @@ def test_recovery_sources_and_documentation_stay_complete() -> None:
         assert "esp32_c6_recovery.yaml" in wrapper.read_text(encoding="utf-8")
         normal_factory = ROOT / "builds" / f"{slug}.factory.yaml"
         assert "esp32_c6_recovery" not in normal_factory.read_text(encoding="utf-8")
-
-    install = (ROOT / "docs/getting-started/install.md").read_text(encoding="utf-8")
-    assert "/getting-started/c6-recovery" in install
-    screen_docs = {
-        "guition-esp32-p4-jc1060p470": ROOT / "docs/screens/jc1060p470-v1.md",
-        "guition-esp32-p4-jc1060p470-v2": ROOT / "docs/screens/jc1060p470-v2.md",
-        "guition-esp32-p4-jc4880p443": ROOT / "docs/screens/jc4880p443.md",
-        "guition-esp32-p4-jc4880p443-v3": ROOT / "docs/screens/jc4880p443-v3.md",
-        "guition-esp32-p4-jc8012p4a1": ROOT / "docs/screens/jc8012p4a1-v1.md",
-        "guition-esp32-p4-jc8012p4a1-v2": ROOT / "docs/screens/jc8012p4a1-v2.md",
-        "guition-esp32-p4-jc8012p4a1-v3": ROOT / "docs/screens/jc8012p4a1-v3.md",
-        "esp32-p4-86": ROOT / "docs/screens/p4-86.md",
-    }
-    for slug, path in screen_docs.items():
-        text = path.read_text(encoding="utf-8")
-        assert "C6RecoveryCallout" in text and slug in text, (
-            f"{path}: C6 recovery link is missing"
-        )
-        assert slug in selector, f"{slug}: recovery selector option is missing"
-    s3_doc = (ROOT / "docs/screens/4848s040.md").read_text(encoding="utf-8")
-    assert "C6RecoveryCallout" not in s3_doc
-    assert "guition-esp32-s3-4848s040" not in selector
 
 
 def test_installers_preflight_public_manifest() -> None:
@@ -839,7 +808,7 @@ def main() -> int:
     test_release_inventory_rejects_extra_files()
     test_recovery_manifest_and_payload_verification()
     test_c6_dependency_preparation_is_verified_and_atomic()
-    test_recovery_sources_and_documentation_stay_complete()
+    test_recovery_sources_stay_complete()
     test_installers_preflight_public_manifest()
     test_draft_release_publishes_only_after_remote_asset_verification()
     test_published_or_mismatched_asset_release_stays_unpublished()

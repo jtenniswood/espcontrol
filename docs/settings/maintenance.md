@@ -83,7 +83,7 @@ Supported P4 Wi-Fi panels have a separate **WiFi firmware** panel under Firmware
 
 Automatic Wi-Fi firmware updates are on by default and checked daily. Open **WiFi firmware > Auto Update** to change this, or use **Check for Update** and **Update WiFi Firmware** manually. In Home Assistant, use the separate **WiFi Firmware: Auto Update** and diagnostic entities.
 
-Ethernet-only builds with the Wi-Fi co-processor disabled do not expose these controls. If Wi-Fi is too unreliable for an online update, use the [USB C6 recovery installer](/getting-started/c6-recovery).
+Ethernet-only builds with the Wi-Fi co-processor disabled do not expose these controls. If Wi-Fi is too unreliable for an online update, follow the [P4 WiFi troubleshooting checks](/getting-started/troubleshooting#a-p4-panel-has-unreliable-wifi).
 
 ### If a New Option Is Missing
 

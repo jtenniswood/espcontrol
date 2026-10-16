@@ -202,6 +202,7 @@ def check_build(dist):
             errors.append('FAQ structured answers differ from the rendered questions or answers')
 
     redirects = {
+        'getting-started/c6-recovery': BASE + 'getting-started/troubleshooting#a-p4-panel-has-unreliable-wifi',
         'features/backlight': BASE + 'settings/display#backlight',
         'features/rotation': BASE + 'settings/display#rotation',
         'features/language': BASE + 'settings/preferences#language',
