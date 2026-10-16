@@ -333,7 +333,7 @@ export default defineConfig({
         items: [
           { text: 'Overview', link: '/' },
           { text: 'Install', link: '/getting-started/install' },
-          { text: 'Enable Home Assistant Actions', link: '/getting-started/home-assistant-actions' },
+          { text: 'Enable Actions', link: '/getting-started/home-assistant-actions' },
           { text: 'Configure Your Device', link: '/features/setup' },
           { text: 'Built-in Relays', link: '/features/relays' },
           { text: 'Printable Stands', link: '/reference/3d-printable-stands' },
