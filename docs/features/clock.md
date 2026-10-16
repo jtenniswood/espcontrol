@@ -20,4 +20,4 @@ The format applies to the top-bar clock, setup preview, and displayed sunrise/su
 - With custom networking and no DNS, use IP addresses for NTP servers.
 - Turning **Custom NTP Servers** off restores `0.pool.ntp.org`, `1.pool.ntp.org`, and `2.pool.ntp.org`.
 
-To show or hide the time on the panel, edit the Clock item in **Layout**, or control the whole [Clock Bar](/features/clock-bar) under **Screen > Appearance**.
+To show or hide the time on the panel, edit the Clock item in **Layout**, or control the whole [Clock Bar](/features/appearance#clock-bar) under **Screen > Appearance**.

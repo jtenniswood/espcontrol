@@ -423,16 +423,7 @@ export default defineConfig({
         text: 'Screen settings', link: '/settings/screen',
         items: [
           { text: 'Overview', link: '/settings/screen' },
-          {
-            text: 'Appearance', link: '/features/appearance', collapsed: true,
-            items: [
-              { text: 'Active Colour', link: '/settings/active-colour' },
-              { text: 'Card Style', link: '/settings/card-style' },
-              { text: 'Theme', link: '/settings/theme' },
-              { text: 'Idle', link: '/features/idle' },
-              { text: 'Clock Bar', link: '/features/clock-bar' },
-            ],
-          },
+          { text: 'Appearance', link: '/features/appearance' },
           {
             text: 'Display', link: '/settings/display', collapsed: true,
             items: [

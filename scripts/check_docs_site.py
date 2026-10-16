@@ -202,6 +202,11 @@ def check_build(dist):
             errors.append('FAQ structured answers differ from the rendered questions or answers')
 
     redirects = {
+        'settings/active-colour': BASE + 'features/appearance#active-colour',
+        'settings/card-style': BASE + 'features/appearance#card-style',
+        'settings/theme': BASE + 'features/appearance#theme',
+        'features/idle': BASE + 'features/appearance#idle',
+        'features/clock-bar': BASE + 'features/appearance#clock-bar',
         'reference/request-device-support': BASE + 'screens/',
         'card-types/weather-forecast': BASE + 'card-types/weather#setting-up-a-weather-card',
         'generated/cards/capabilities': BASE + 'reference/card-capabilities',
