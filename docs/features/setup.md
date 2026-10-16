@@ -16,8 +16,8 @@ The documentation follows the tabs on your device:
 | Tab | Use it to | Start here |
 |---|---|---|
 | **Layout** | Add, arrange, resize, and edit cards and subpages. | [First controls](#set-up-your-first-controls) |
-| **Screen** | Change appearance, brightness, rotation, and sleep behaviour. | [Screen settings](/settings/screen) |
-| **System** | Set language and time, rename the panel, back up, and update firmware. | [System settings](/settings/system) |
+| **Screen** | Change appearance, brightness, rotation, and sleep behaviour. | [Appearance](/features/appearance), [Display](/settings/display), [Sleep & Schedule](/settings/sleep) |
+| **System** | Set language and time, rename the panel, back up, and update firmware. | [Preferences](/settings/preferences), [System](/settings/maintenance) |
 
 <span id="adding-a-card"></span>
 <span id="active-switch-display"></span>
@@ -40,7 +40,7 @@ After editing, choose **Apply Configuration** at the bottom of any tab. This res
 
 ## Device Settings
 
-Follow [Screen settings](/settings/screen) for appearance and sleep, or [System settings](/settings/system) for device preferences and maintenance. Model-specific controls appear only on supported panels; missing controls may also need newer [firmware](/settings/maintenance#firmware).
+For **Screen**, follow [Appearance](/features/appearance), [Display](/settings/display), or [Sleep & Schedule](/settings/sleep). For **System**, follow [Preferences](/settings/preferences) or [system controls](/settings/maintenance). Model-specific controls appear only on supported panels; missing controls may also need newer [firmware](/settings/maintenance#firmware).
 
 ## Naming Your Panel
 

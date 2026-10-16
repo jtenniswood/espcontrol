@@ -12,8 +12,8 @@ EspControl uses devices and entities already connected to Home Assistant. Instal
 Open the [device setup page](/features/setup), then follow the matching area:
 
 - **Layout** — [set up your first controls](/features/setup#set-up-your-first-controls).
-- [Screen settings](/settings/screen) — Appearance, Display, and Sleep & Schedule.
-- [System settings](/settings/system) — Preferences and system controls.
+- **Screen** — [Appearance](/features/appearance), [Display](/settings/display), and [Sleep & Schedule](/settings/sleep).
+- **System** — [Preferences](/settings/preferences) and [system controls](/settings/maintenance).
 
 ## Build a Room Control Panel
 

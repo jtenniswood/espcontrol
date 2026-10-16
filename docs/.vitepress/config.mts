@@ -413,18 +413,16 @@ export default defineConfig({
         ],
       },
       {
-        text: 'Screen settings', link: '/settings/screen',
+        text: 'Screen settings',
         items: [
-          { text: 'Overview', link: '/settings/screen' },
           { text: 'Appearance', link: '/features/appearance' },
           { text: 'Display', link: '/settings/display' },
           { text: 'Sleep & Schedule', link: '/settings/sleep' },
         ],
       },
       {
-        text: 'System settings', link: '/settings/system',
+        text: 'System settings',
         items: [
-          { text: 'Overview', link: '/settings/system' },
           { text: 'Preferences', link: '/settings/preferences' },
           { text: 'System', link: '/settings/maintenance' },
         ],

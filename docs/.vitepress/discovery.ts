@@ -28,6 +28,8 @@ export const redirects: Record<string, string> = {
   'features/media-cover-art': `${hostname}settings/sleep#cover-art-screen-saver`,
   'features/screensaver': `${hostname}settings/sleep#screensaver`,
   'features/screen-schedule': `${hostname}settings/sleep#night-schedule`,
+  'settings/screen': `${hostname}features/appearance`,
+  'settings/system': `${hostname}settings/preferences`,
   'settings/layout': `${hostname}features/setup#set-up-your-first-controls`,
   'settings/active-colour': `${hostname}features/appearance#active-colour`,
   'settings/card-style': `${hostname}features/appearance#card-style`,

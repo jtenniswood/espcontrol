@@ -223,6 +223,8 @@ def check_build(dist):
         'features/media-cover-art': BASE + 'settings/sleep#cover-art-screen-saver',
         'features/screensaver': BASE + 'settings/sleep#screensaver',
         'features/screen-schedule': BASE + 'settings/sleep#night-schedule',
+        'settings/screen': BASE + 'features/appearance',
+        'settings/system': BASE + 'settings/preferences',
         'settings/layout': BASE + 'features/setup#set-up-your-first-controls',
         'settings/active-colour': BASE + 'features/appearance#active-colour',
         'settings/card-style': BASE + 'features/appearance#card-style',
