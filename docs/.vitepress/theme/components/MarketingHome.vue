@@ -62,7 +62,7 @@ function onTabKeydown(event: KeyboardEvent) {
 </template>
 
 <style scoped>
-.ec-home { --product-height: clamp(360px, calc(100svh - 310px), 600px); color: #f6f5ef; background: #111719; font-family: var(--vp-font-family-base); overflow: clip; }
+.ec-home { --product-height: clamp(400px, 42vw, 600px); color: #f6f5ef; background: #111719; font-family: var(--vp-font-family-base); overflow: clip; }
 :global(body:has(.marketing-home) .sp-support-btn) { display: none; }
 .ec-home *, .ec-home *::before, .ec-home *::after { box-sizing: border-box; }
 .ec-home h1, .ec-home p { margin: 0; }
