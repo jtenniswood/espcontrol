@@ -54,10 +54,11 @@ The setup page uses these card names and grouped modes on the device. For a quic
 | **[Alarm](/card-types/alarms)** | Arms, disarms, or shows a Home Assistant alarm control panel. | Yes, as an alarm control panel entity |
 | **[Timer](/card-types/timers)** | Starts, cancels, or resumes a Home Assistant timer and shows its countdown. | Yes, as a timer entity |
 | **[Date & Time](/card-types/calendar)** | Shows the local clock, date, date and time, or a world clock. | No |
-| **[Weather](/card-types/weather)** | Shows the current condition or today's/tomorrow's forecast from a weather entity. | Yes, as **Weather Entity** |
+| **[Weather](/card-types/weather)** | Shows current conditions, today's or tomorrow's forecast, or a multi-day **Daily Forecast** from a weather entity. | Yes, as **Weather Entity** |
 | **[Media](/card-types/media)** | Controls playback, volume, track position, or now-playing details for a media player. | Yes, as a media player entity |
 | **[Climate](/card-types/climate)** | Controls a Home Assistant thermostat or HVAC entity. | Yes, as a climate entity |
 | **[Internal Switches](/card-types/internal-relays)** | Controls a built-in relay locally on panels that have relay hardware. | Choose a relay |
+| **[Screensaver](/features/screensaver#start-the-screensaver-with-a-card)** | Starts the configured screensaver immediately. | No |
 | **[Screen Lock](/card-types/screen-lock)** | Locks and unlocks local touchscreen controls on the panel. | No |
 | **[Subpage](/features/subpages)** | Opens a folder-like page of extra cards. | No |
 
@@ -88,7 +89,9 @@ To copy cards to another controller without replacing its other settings, use **
 
 ### Card Sizes
 
-Right-click a card and open **Size** to choose:
+Hover over a card in **Layout** and drag its bottom-right corner handle to resize it. The card snaps to supported sizes that fit the layout. Release to save, or press **Escape** to cancel. This also works for cards inside subpages and the Back card.
+
+Available sizes depend on the card type and screen layout:
 
 - **Single** - normal one-slot card.
 - **Tall** - spans two rows.

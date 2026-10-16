@@ -128,7 +128,7 @@ Camera images use more memory than normal control cards, so EspControl limits ho
 
 ESP32-P4 screens provide **6 shared image slots**. Each Camera card or Media card set to **Cover Art** uses one slot, across the main page and all subpages combined. For example, 4 Camera cards and 2 Media Cover Art cards use all 6 slots.
 
-The 4-inch ESP32-S3 provides **2 shared image slots** across the main page and all subpages. Camera and Media Cover Art cards both use this pool, so one of each can be shown together. Its expanded camera view requests an optimised image up to 320 pixels wide or tall; it remains a still snapshot and does not stream live video.
+The 4-inch ESP32-S3 provides **2 shared image slots** across the main page and all subpages. Camera and Media Cover Art cards both use this pool, so one of each can be shown together. Its expanded camera view requests an optimised image up to 320 pixels wide or tall. Animated GIFs play in the card and expanded view within the [GIF limits above](#setting-up-a-camera-card); live video streaming is not supported.
 
 If you see a **Too many** message or a warning while saving, reduce the number of Camera cards across the main page and subpages.
 
