@@ -13,8 +13,8 @@ Open your [device setup page](/features/setup) and choose **System**. Choose a s
 
 ## System
 
-[System controls](/settings/maintenance) contains **Device Name**, **Backup**, **Firmware**, **Home Assistant Settings**, **Battery**, and **Factory Reset**. Export a backup before major changes.
+[System controls](/settings/maintenance) contains **Device Name**, **Backup**, **Firmware**, **Home Assistant Settings**, **Battery**, **Factory Reset**, and **Restart**. Export a backup before major changes.
 
 Choose **Apply Configuration** after editing preferences. Naming, firmware installation, and reset controls have their own restart steps. Some controls need supported hardware or firmware.
 
-To restart without editing settings, use the [Home Assistant Restart button](/features/restart).
+To restart without editing settings, use the [Home Assistant Restart button](/settings/maintenance#restart).

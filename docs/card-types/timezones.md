@@ -20,7 +20,7 @@ World clock cards are read-only — tapping them does nothing. They do not need 
 
 ## How It Works on the Panel
 
-- The dropdown uses the same city/timezone list as the main [Time Settings](/features/clock) setting.
+- The dropdown uses the same city/timezone list as the main [Time Settings](/settings/preferences#time) setting.
 - The card follows the panel's 12-hour or 24-hour clock format.
 - The time updates once per minute from the panel's own synced time source.
 - The card uses the fixed **tertiary** background colour, like Sensor, Date, and Weather cards.
@@ -28,5 +28,5 @@ World clock cards are read-only — tapping them does nothing. They do not need 
 - Older backups or logs may still refer to this as `timezone`. That is the internal saved name for the same **World Clock** card, kept so existing cards continue to load.
 
 ::: tip Firmware support
-The setup page and the panel firmware both need to know about this card type. If the setup page lets you create a **World Clock** card but the panel itself does not show the clock after applying the configuration, install the latest [firmware update](/features/firmware-updates).
+The setup page and the panel firmware both need to know about this card type. If the setup page lets you create a **World Clock** card but the panel itself does not show the clock after applying the configuration, install the latest [firmware update](/settings/maintenance#firmware).
 :::

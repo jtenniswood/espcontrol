@@ -423,62 +423,22 @@ export default defineConfig({
         text: 'Screen settings', link: '/settings/screen',
         items: [
           { text: 'Overview', link: '/settings/screen' },
-          {
-            text: 'Appearance', link: '/features/appearance', collapsed: true,
-            items: [
-              { text: 'Active Colour', link: '/settings/active-colour' },
-              { text: 'Card Style', link: '/settings/card-style' },
-              { text: 'Theme', link: '/settings/theme' },
-              { text: 'Idle', link: '/features/idle' },
-              { text: 'Clock Bar', link: '/features/clock-bar' },
-            ],
-          },
-          {
-            text: 'Display', link: '/settings/display', collapsed: true,
-            items: [
-              { text: 'Backlight', link: '/features/backlight' },
-              { text: 'Rotation', link: '/features/rotation' },
-            ],
-          },
-          {
-            text: 'Sleep & Schedule', link: '/settings/sleep', collapsed: true,
-            items: [
-              { text: 'Cover Art Screen Saver', link: '/features/media-cover-art' },
-              { text: 'Screensaver', link: '/features/screensaver' },
-              { text: 'Night Schedule', link: '/features/screen-schedule' },
-              { text: 'Pin Protection', link: '/features/screensaver#pin-protection-after-wake' },
-            ],
-          },
+          { text: 'Appearance', link: '/features/appearance' },
+          { text: 'Display', link: '/settings/display' },
+          { text: 'Sleep & Schedule', link: '/settings/sleep' },
         ],
       },
       {
         text: 'System settings', link: '/settings/system',
         items: [
           { text: 'Overview', link: '/settings/system' },
-          {
-            text: 'Preferences', link: '/settings/preferences', collapsed: true,
-            items: [
-              { text: 'Language', link: '/features/language' },
-              { text: 'Time', link: '/features/clock' },
-              { text: 'Temperature', link: '/features/temperature' },
-            ],
-          },
-          {
-            text: 'System', link: '/settings/maintenance', collapsed: true,
-            items: [
-              { text: 'Device Name', link: '/features/device-name' },
-              { text: 'Backup', link: '/features/backup' },
-              { text: 'Firmware', link: '/features/firmware-updates' },
-              { text: 'Home Assistant Settings', link: '/features/home-assistant' },
-              { text: 'Battery', link: '/features/battery' },
-              { text: 'Factory Reset', link: '/features/backup#reset-the-display' },
-              { text: 'Restart', link: '/features/restart' },
-            ],
-          },
+          { text: 'Preferences', link: '/settings/preferences' },
+          { text: 'System', link: '/settings/maintenance' },
         ],
       },
       {
         text: 'Immich Photos',
+        collapsed: true,
         items: [
           { text: 'Overview', link: '/immich/' },
           { text: 'Installation', link: '/immich/installation' },
