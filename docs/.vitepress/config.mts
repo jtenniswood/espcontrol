@@ -378,7 +378,6 @@ export default defineConfig({
       {
         text: 'Layout settings',
         items: [
-          { text: 'Subpages', link: '/features/subpages' },
           { text: 'Speaker Groups', link: '/features/speaker-groups' },
         ],
       },
