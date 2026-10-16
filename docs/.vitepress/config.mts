@@ -422,20 +422,10 @@ export default defineConfig({
       { text: 'System settings', link: '/settings/system' },
       { text: 'Immich Photos', link: '/immich/' },
       {
-        text: 'Advanced',
-        items: [
-          { text: 'Manual Setup', link: '/getting-started/manual-esphome-setup' },
-        ],
-      },
-      {
         text: 'Reference',
         items: [
+          { text: 'Manual Setup', link: '/getting-started/manual-esphome-setup' },
           { text: 'FAQ', link: '/reference/faq' },
-        ],
-      },
-      {
-        text: 'Community',
-        items: [
           { text: 'Contributing', link: '/reference/contributing' },
           { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
         ],
