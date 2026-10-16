@@ -221,10 +221,11 @@ def check_build(dist):
         'settings/theme': BASE + 'features/appearance#theme',
         'features/idle': BASE + 'features/appearance#idle',
         'features/clock-bar': BASE + 'features/appearance#clock-bar',
+        'reference/card-capabilities': BASE + 'card-types/',
         'reference/request-device-support': BASE + 'screens/',
         'card-types/weather-forecast': BASE + 'card-types/weather#setting-up-a-weather-card',
-        'generated/cards/capabilities': BASE + 'reference/card-capabilities',
-        'generated/cards/runtime-coverage': BASE + 'reference/card-capabilities',
+        'generated/cards/capabilities': BASE + 'card-types/',
+        'generated/cards/runtime-coverage': BASE + 'card-types/',
     }
     screen_guides = {
         '4848s040': ('4848s040#card-grid', '4848s040'),

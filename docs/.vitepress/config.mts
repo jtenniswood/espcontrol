@@ -461,7 +461,6 @@ export default defineConfig({
         text: 'Reference',
         items: [
           { text: 'FAQ', link: '/reference/faq' },
-          { text: 'Card Capabilities', link: '/reference/card-capabilities' },
           { text: 'Icon Reference', link: '/reference/icons' },
           { text: 'Language Support', link: '/reference/language-support' },
         ],
