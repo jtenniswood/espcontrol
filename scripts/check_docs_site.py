@@ -202,6 +202,9 @@ def check_build(dist):
             errors.append('FAQ structured answers differ from the rendered questions or answers')
 
     redirects = {
+        'features/media-cover-art': BASE + 'settings/sleep#cover-art-screen-saver',
+        'features/screensaver': BASE + 'settings/sleep#screensaver',
+        'features/screen-schedule': BASE + 'settings/sleep#night-schedule',
         'settings/active-colour': BASE + 'features/appearance#active-colour',
         'settings/card-style': BASE + 'features/appearance#card-style',
         'settings/theme': BASE + 'features/appearance#theme',

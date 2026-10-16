@@ -21,7 +21,7 @@ For example, Dawn `07:00` and Dusk `22:00` use the daytime level between those t
 
 ## Sleep Brightness
 
-The [screensaver](/features/screensaver) and [Night Schedule](/features/screen-schedule) have their own dimmed-screen and clock brightness settings. **Display Off / Screen Off** turns the backlight off completely. Waking normally restores the appropriate brightness; a temporary wake during Night Schedule uses its saved wake settings.
+The [screensaver](/settings/sleep#screensaver) and [Night Schedule](/settings/sleep#night-schedule) have their own dimmed-screen and clock brightness settings. **Display Off / Screen Off** turns the backlight off completely. Waking normally restores the appropriate brightness; a temporary wake during Night Schedule uses its saved wake settings.
 
 ## Home Assistant Control
 

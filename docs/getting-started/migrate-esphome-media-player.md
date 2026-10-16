@@ -38,7 +38,7 @@ Touching the artwork returns you to the normal card screen. EspControl waits for
 Open **External sources** and leave **Show external sources** off if your speaker reports `TV`, `Line-in`, or `HDMI` and you do not want artwork for those inputs. A usable saved **External Source Media Entity** can still supply artwork; clear that entity as well if you want to hide it.
 :::
 
-See [Media Cover Art](/features/media-cover-art) for filtering, custom Home Assistant ports, and more detailed behaviour.
+See [Media Cover Art](/settings/sleep#cover-art-screen-saver) for filtering, custom Home Assistant ports, and more detailed behaviour.
 
 ## Option 2: Dedicated Cover-Art Home Screen
 
@@ -70,7 +70,7 @@ Automatic cover art and the normal EspControl screensaver are separate. This let
 4. Choose **Clock** for the drifting clock, **Display Off** for a dark panel, or **Screen Dimmed** to leave the cards faintly visible.
 5. Set the clock or dimmed brightness to a comfortable level.
 
-Use [Night Schedule](/features/screen-schedule) as well if the panel should always dim, show a clock, or turn off during set overnight hours. See [Screensaver](/features/screensaver) for presence-sensor wake and the other available modes.
+Use [Night Schedule](/settings/sleep#night-schedule) as well if the panel should always dim, show a clock, or turn off during set overnight hours. See [Screensaver](/settings/sleep#screensaver) for presence-sensor wake and the other available modes.
 
 ## Old and New Controls
 

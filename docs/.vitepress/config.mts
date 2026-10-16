@@ -431,15 +431,7 @@ export default defineConfig({
               { text: 'Rotation', link: '/features/rotation' },
             ],
           },
-          {
-            text: 'Sleep & Schedule', link: '/settings/sleep', collapsed: true,
-            items: [
-              { text: 'Cover Art Screen Saver', link: '/features/media-cover-art' },
-              { text: 'Screensaver', link: '/features/screensaver' },
-              { text: 'Night Schedule', link: '/features/screen-schedule' },
-              { text: 'Pin Protection', link: '/features/screensaver#pin-protection-after-wake' },
-            ],
-          },
+          { text: 'Sleep & Schedule', link: '/settings/sleep' },
         ],
       },
       {

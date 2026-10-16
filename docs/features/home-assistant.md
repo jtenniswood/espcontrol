@@ -16,4 +16,4 @@ If controls work but images do not:
 
 Automatic discovery accepts an advertised local URL only on the connected Home Assistant server's IP. If it is unreachable, the panel checks advertised/configured protocol and port fallbacks; it does not scan ports. The separate Internet URL is not used. Image access errors do not trigger a server switch.
 
-For HTTPS, use a host matching its certificate. A self-signed certificate must be trusted separately. **Access denied** needs an authentication or IP-ban check in Home Assistant; switching protocols will not fix it. See [Camera troubleshooting](/card-types/cameras#troubleshooting) or [missing artwork](/features/media-cover-art#track-details-work-but-artwork-is-missing).
+For HTTPS, use a host matching its certificate. A self-signed certificate must be trusted separately. **Access denied** needs an authentication or IP-ban check in Home Assistant; switching protocols will not fix it. See [Camera troubleshooting](/card-types/cameras#troubleshooting) or [missing artwork](/settings/sleep#track-details-work-but-artwork-is-missing).

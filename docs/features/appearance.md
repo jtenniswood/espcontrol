@@ -65,7 +65,7 @@ Configured in **Screen > Appearance > Idle** in [Setup](/features/setup).
 
 The idle timer restarts every time you touch the screen. If you're already on the home screen with no popup open, nothing changes. If a subpage or popup is active, the timer closes it and returns to the home screen.
 
-The idle timer runs independently from the [screensaver](/features/screensaver). Each uses its own timeout; the panel only returns home first if the idle timeout is shorter.
+The idle timer runs independently from the [screensaver](/settings/sleep#screensaver). Each uses its own timeout; the panel only returns home first if the idle timeout is shorter.
 
 ## Clock Bar
 
@@ -76,7 +76,7 @@ The top bar has fixed positions: temperature on the left, time in the middle, an
 Open **Screen > Appearance > Clock Bar**:
 
 - **Show Clock Bar** turns the whole bar on or off.
-- **Show Night Mode Icon** adds a moon while [Night Schedule](/features/screen-schedule) is active. Off by default.
+- **Show Night Mode Icon** adds a moon while [Night Schedule](/settings/sleep#night-schedule) is active. Off by default.
 
 To change individual items, open **Layout** and select them in the preview:
 
@@ -89,6 +89,6 @@ Hidden items stay greyed in the preview so you can show them again. Only one tem
 
 Tap the connectivity icon on the physical panel to open **Settings**. It shows the IP address, Wi-Fi quality on Wi-Fi builds, firmware build, and device name. Tap **Back** to return to your previous page.
 
-If a PIN is saved, Settings also offers **Screen Lock**, even with automatic wake protection off. Tap it to lock the current view, then touch the screen and enter the PIN to unlock. See [PIN protection](/features/screensaver#pin-protection-after-wake).
+If a PIN is saved, Settings also offers **Screen Lock**, even with automatic wake protection off. Tap it to lock the current view, then touch the screen and enter the PIN to unlock. See [PIN protection](/settings/sleep#pin-protection-after-wake).
 
 When a subpage or card popup is open, its title temporarily replaces the temperature reading.

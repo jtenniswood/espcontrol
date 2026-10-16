@@ -42,7 +42,7 @@ S3 and P4 panels support Camera cards showing still snapshots from Home Assistan
 
 ### Why Do Track Details Work but the Album Image Is Missing?
 
-Metadata and image downloads use different connections. Check that Home Assistant supplies artwork and the panel can reach its HTTP/HTTPS endpoint. Follow the [missing-artwork checks](/features/media-cover-art#track-details-work-but-artwork-is-missing).
+Metadata and image downloads use different connections. Check that Home Assistant supplies artwork and the panel can reach its HTTP/HTTPS endpoint. Follow the [missing-artwork checks](/settings/sleep#track-details-work-but-artwork-is-missing).
 
 ### Are There Stands or Wall Mounts, Including a 7-inch Mount?
 
@@ -60,7 +60,7 @@ Grouping works on S3 and P4 with compatible Home Assistant players. EspControl c
 
 ### Can I Make a Dedicated Album-art Screen or Migrate from the Older Media Controller?
 
-Yes. Use a large Cover Art card or the automatic [Media Cover Art](/features/media-cover-art) screen. The [migration guide](/getting-started/migrate-esphome-media-player) covers layouts, playback controls, and idle behaviour.
+Yes. Use a large Cover Art card or the automatic [Media Cover Art](/settings/sleep#cover-art-screen-saver) screen. The [migration guide](/getting-started/migrate-esphome-media-player) covers layouts, playback controls, and idle behaviour.
 
 ### How Do I Get the Speaker and Playback Tabs Shown in the Posts?
 
@@ -78,7 +78,7 @@ Check the image exists in Home Assistant, the panel can reach its HTTP/HTTPS end
 
 ### Can I Show a Doorbell Snapshot When Someone Rings?
 
-Use a Camera card and a Home Assistant automation with [Screen: Wake](/features/screensaver#wake-from-home-assistant). P4 panels also have a [visible-camera refresh action](/card-types/cameras#refreshing-cards-from-home-assistant). The card does not automatically open when the doorbell rings.
+Use a Camera card and a Home Assistant automation with [Screen: Wake](/settings/sleep#wake-from-home-assistant). P4 panels also have a [visible-camera refresh action](/card-types/cameras#refreshing-cards-from-home-assistant). The card does not automatically open when the doorbell rings.
 
 ### How Many Camera and Cover Art Cards Can I Use?
 
@@ -176,7 +176,7 @@ A Subpage card opens another page of controls, like a folder for a room or devic
 
 ### Can the Screen Sleep, Wake on Touch, or Wake When Someone Arrives?
 
-Yes. [Screensaver settings](/features/screensaver) support timer- or Home Assistant presence-based behaviour, touch wake, and **Screen: Wake**. Built-in camera face detection is not a supported presence source.
+Yes. [Screensaver settings](/settings/sleep#screensaver) support timer- or Home Assistant presence-based behaviour, touch wake, and **Screen: Wake**. Built-in camera face detection is not a supported presence source.
 
 ### Can It Control Mini-split Fan Speed, Swing, and Heating/Cooling Targets?
 

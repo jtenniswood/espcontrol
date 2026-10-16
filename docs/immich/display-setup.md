@@ -39,13 +39,13 @@ Start with **Photo fit → Show full image** in the companion to keep the whole 
 
 The companion's **Slideshow Timer** controls how often the photo changes, while the EspControl screensaver timer controls when the panel starts showing photos. The companion starts with a 30-second slideshow interval. EspControl refreshes the image when Home Assistant reports an update and retains the previous successful image while downloading the next one.
 
-Touch the screen to return to the panel. See [Screensaver](/features/screensaver) for presence wake, brightness, the optional clock overlay and Night Schedule priority.
+Touch the screen to return to the panel. See [Screensaver](/settings/sleep#screensaver) for presence wake, brightness, the optional clock overlay and Night Schedule priority.
 
 ## Add photo details
 
 With **Then → Camera** selected, enable **Display Metadata** and enter one of the companion's `sensor.*` entities in **Photo Metadata Entity**. For example, use the frame's **Date** or **Location** sensor. Copy the actual entity ID from Home Assistant; names depend on your frame.
 
-The panel accepts one metadata sensor. The companion also provides People, Tags, Rating, Camera and Favourite sensors, which you can use in Home Assistant. For paired portraits, these sensors describe the **left photo**. Missing details are hidden on the panel. See [Photo metadata](/features/screensaver#photo-metadata) for positioning and clock-overlay behaviour.
+The panel accepts one metadata sensor. The companion also provides People, Tags, Rating, Camera and Favourite sensors, which you can use in Home Assistant. For paired portraits, these sensors describe the **left photo**. Missing details are hidden on the panel. See [Photo metadata](/settings/sleep#photo-metadata) for positioning and clock-overlay behaviour.
 
 ## Use a Camera card
 
