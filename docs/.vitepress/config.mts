@@ -376,12 +376,6 @@ export default defineConfig({
         ],
       },
       {
-        text: 'Layout settings',
-        items: [
-          { text: 'Speaker Groups', link: '/features/speaker-groups' },
-        ],
-      },
-      {
         text: 'Card Types',
         collapsed: true,
         items: [
