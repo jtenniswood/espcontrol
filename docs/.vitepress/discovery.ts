@@ -26,6 +26,7 @@ export const redirects: Record<string, string> = {
   'settings/theme': `${hostname}features/appearance#theme`,
   'features/idle': `${hostname}features/appearance#idle`,
   'features/clock-bar': `${hostname}features/appearance#clock-bar`,
+  'reference/icons': `${hostname}settings/layout#add-or-edit-a-card`,
   'reference/request-device-support': `${hostname}screens/`,
   'card-types/weather-forecast': `${hostname}card-types/weather#setting-up-a-weather-card`,
   'generated/cards/capabilities': `${hostname}reference/card-capabilities`,

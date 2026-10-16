@@ -6,7 +6,6 @@ import EspInstallSelector from './components/EspInstallSelector.vue'
 import C6RecoveryCallout from './components/C6RecoveryCallout.vue'
 import C6RecoverySelector from './components/C6RecoverySelector.vue'
 import GitHubStars from './components/GitHubStars.vue'
-import IconGallery from './components/IconGallery.vue'
 
 export default {
   extends: DefaultTheme,
@@ -21,6 +20,5 @@ export default {
     app.component('C6RecoveryCallout', C6RecoveryCallout)
     app.component('C6RecoverySelector', C6RecoverySelector)
     app.component('GitHubStars', GitHubStars)
-    app.component('IconGallery', IconGallery)
   },
 }
