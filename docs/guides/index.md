@@ -37,7 +37,7 @@ Check that the snapshot loads, then tap it to confirm the larger view works. For
 
 ## Show Your Immich Photos
 
-Install [EspControl Immich Companion](/immich/) to turn your photo library, albums, Memories or keyword searches into a slideshow. Follow [Connect to EspControl](/immich/display-setup) to use its Home Assistant image entity in the photo screensaver or a Camera card, with optional photo metadata.
+Install [EspControl Immich Companion](/immich/) to turn your photo library, albums, Memories or keyword searches into a slideshow. Follow [Connect to EspControl](/immich/#connect-to-espcontrol) to use its Home Assistant image entity in the photo screensaver or a Camera card, with optional photo metadata.
 
 ## Maintain or Troubleshoot a Panel
 

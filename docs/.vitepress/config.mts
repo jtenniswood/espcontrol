@@ -437,19 +437,7 @@ export default defineConfig({
           { text: 'System', link: '/settings/maintenance' },
         ],
       },
-      {
-        text: 'Immich Photos',
-        collapsed: true,
-        items: [
-          { text: 'Overview', link: '/immich/' },
-          { text: 'Installation', link: '/immich/installation' },
-          { text: 'Connect to EspControl', link: '/immich/display-setup' },
-          { text: 'Using Your Frame', link: '/immich/using-your-frame' },
-          { text: 'Settings Reference', link: '/immich/settings-reference' },
-          { text: 'Home Assistant Entities', link: '/immich/entities' },
-          { text: 'Browser & API Add-on', link: '/immich/add-on' },
-        ],
-      },
+      { text: 'Immich Photos', link: '/immich/' },
       {
         text: 'Advanced',
         items: [
