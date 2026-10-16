@@ -7,6 +7,12 @@ export const hostname = 'https://jtenniswood.github.io/espcontrol/'
 // GitHub Pages cannot configure HTTP redirects. These HTML fallbacks preserve
 // published links while keeping retired pages out of search and the sitemap.
 export const redirects: Record<string, string> = {
+  'immich/installation': `${hostname}immich/#installation`,
+  'immich/display-setup': `${hostname}immich/#connect-to-espcontrol`,
+  'immich/using-your-frame': `${hostname}immich/#using-your-frame`,
+  'immich/settings-reference': `${hostname}immich/#settings-reference`,
+  'immich/entities': `${hostname}immich/#home-assistant-entities`,
+  'immich/add-on': `${hostname}immich/#browser-api-add-on`,
   'features/backlight': `${hostname}settings/display#backlight`,
   'features/rotation': `${hostname}settings/display#rotation`,
   'features/language': `${hostname}settings/preferences#language`,
@@ -52,8 +58,32 @@ export const redirects: Record<string, string> = {
   'generated/screens/p4-86-install': `${hostname}screens/p4-86#install`,
 }
 
-// Keep existing section bookmarks when their guides move to one settings page.
-const redirectAnchors: Record<string, string[]> = {
+// Keep existing section bookmarks when their guides move to one page.
+const redirectAnchors: Record<string, string[] | Record<string, string>> = {
+  'immich/installation': [
+    'installation-status', 'hacs-installation', 'manual-installation',
+    'immich-connection-and-permissions', 'image-quality', 'troubleshooting',
+  ],
+  'immich/display-setup': [
+    'before-you-start', 'match-the-image-to-your-display', 'use-the-photo-screensaver',
+    'add-photo-details', 'use-a-camera-card', 'playback-and-a-first-check',
+  ],
+  'immich/using-your-frame': [
+    'choose-what-to-show', 'fit-the-screen-and-select-photos',
+    'playback-details-and-automations', 'updates-and-outages',
+  ],
+  'immich/settings-reference': {
+    'frame-settings-reference': 'settings-reference',
+    'photo-sources': 'photo-sources',
+  },
+  'immich/entities': ['home-assistant-entities'],
+  'immich/add-on': {
+    'optional-browser-api-add-on': 'browser-api-add-on',
+    'get-started': 'add-on-setup',
+    'photo-and-display-options': 'photo-and-display-options',
+    'advanced-selection-through-the-api': 'advanced-selection-through-the-api',
+    'http-api': 'http-api',
+  },
   'features/backlight': [
     'sleep-brightness',
     'home-assistant-control',
@@ -95,10 +125,15 @@ const redirectAnchors: Record<string, string[]> = {
 
 export async function writeRedirects(outDir: string) {
   for (const [path, destination] of Object.entries(redirects)) {
-    const anchors = redirectAnchors[path]
+    const savedAnchors = redirectAnchors[path]
+    const anchors = Array.isArray(savedAnchors)
+      ? Object.fromEntries(savedAnchors.map((anchor) => [anchor, anchor]))
+      : savedAnchors
     const fragmentRedirect = anchors ? `<script>
-if (${JSON.stringify(anchors)}.includes(location.hash.slice(1))) {
-  location.replace(${JSON.stringify(destination.split('#')[0])} + location.hash)
+const anchors = ${JSON.stringify(anchors)}
+const anchor = anchors[location.hash.slice(1)]
+if (typeof anchor === 'string') {
+  location.replace(${JSON.stringify(destination.split('#')[0])} + '#' + anchor)
 }
 </script>` : ''
     const file = join(outDir, `${path}.html`)
