@@ -40,16 +40,16 @@ After editing, choose **Apply Configuration** at the bottom of any tab. This res
 
 ## Device Settings
 
-Follow [Screen settings](/settings/screen) for appearance and sleep, or [System settings](/settings/system) for device preferences and maintenance. Model-specific controls appear only on supported panels; missing controls may also need newer [firmware](/features/firmware-updates).
+Follow [Screen settings](/settings/screen) for appearance and sleep, or [System settings](/settings/system) for device preferences and maintenance. Model-specific controls appear only on supported panels; missing controls may also need newer [firmware](/settings/maintenance#firmware).
 
 ## Naming Your Panel
 
-Use **System > Device Name > Save & Restart**. Follow [Rename your panel](/features/device-name), including the notes about its new address and Home Assistant automations.
+Use **System > Device Name > Save & Restart**. Follow [Rename your panel](/settings/maintenance#device-name), including the notes about its new address and Home Assistant automations.
 
 ## Home Assistant Settings
 
-Use **System > Home Assistant Settings** if camera images or media artwork fail to load. Follow [Connect images and artwork](/features/home-assistant).
+Use **System > Home Assistant Settings** if camera images or media artwork fail to load. Follow [Connect images and artwork](/settings/maintenance#home-assistant-settings).
 
 ## Restart From Home Assistant
 
-Open your EspControl device in Home Assistant and press **Restart** under its configuration controls. This keeps your saved settings. See [Restart your panel](/features/restart) for automation use.
+Open your EspControl device in Home Assistant and press **Restart** under its configuration controls. This keeps your saved settings. See [Restart your panel](/settings/maintenance#restart) for automation use.

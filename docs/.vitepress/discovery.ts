@@ -7,6 +7,25 @@ export const hostname = 'https://jtenniswood.github.io/espcontrol/'
 // GitHub Pages cannot configure HTTP redirects. These HTML fallbacks preserve
 // published links while keeping retired pages out of search and the sitemap.
 export const redirects: Record<string, string> = {
+  'features/backlight': `${hostname}settings/display#backlight`,
+  'features/rotation': `${hostname}settings/display#rotation`,
+  'features/language': `${hostname}settings/preferences#language`,
+  'features/clock': `${hostname}settings/preferences#time`,
+  'features/temperature': `${hostname}settings/preferences#temperature`,
+  'features/device-name': `${hostname}settings/maintenance#device-name`,
+  'features/backup': `${hostname}settings/maintenance#backup`,
+  'features/firmware-updates': `${hostname}settings/maintenance#firmware`,
+  'features/home-assistant': `${hostname}settings/maintenance#home-assistant-settings`,
+  'features/battery': `${hostname}settings/maintenance#battery`,
+  'features/restart': `${hostname}settings/maintenance#restart`,
+  'features/media-cover-art': `${hostname}settings/sleep#cover-art-screen-saver`,
+  'features/screensaver': `${hostname}settings/sleep#screensaver`,
+  'features/screen-schedule': `${hostname}settings/sleep#night-schedule`,
+  'settings/active-colour': `${hostname}features/appearance#active-colour`,
+  'settings/card-style': `${hostname}features/appearance#card-style`,
+  'settings/theme': `${hostname}features/appearance#theme`,
+  'features/idle': `${hostname}features/appearance#idle`,
+  'features/clock-bar': `${hostname}features/appearance#clock-bar`,
   'reference/request-device-support': `${hostname}screens/`,
   'card-types/weather-forecast': `${hostname}card-types/weather#setting-up-a-weather-card`,
   'generated/cards/capabilities': `${hostname}reference/card-capabilities`,
@@ -32,8 +51,55 @@ export const redirects: Record<string, string> = {
   'generated/screens/p4-86-install': `${hostname}screens/p4-86#install`,
 }
 
+// Keep existing section bookmarks when their guides move to one settings page.
+const redirectAnchors: Record<string, string[]> = {
+  'features/backlight': [
+    'sleep-brightness',
+    'home-assistant-control',
+  ],
+  'features/clock': [
+    'if-the-time-is-wrong',
+  ],
+  'features/temperature': [
+    'choose-the-clock-bar-sensor',
+  ],
+  'features/backup': [
+    'save-a-backup',
+    'restore-a-backup',
+    'compatibility-notes',
+    'reset-the-display',
+  ],
+  'features/firmware-updates': [
+    'update-your-panel',
+    'stable-releases-development-builds-and-custom-firmware',
+    'installing-an-older-version',
+    'esp32-c6-wifi-co-processor-updates',
+    'if-a-new-option-is-missing',
+  ],
+  'features/media-cover-art': [
+    'set-it-up', 'screensaver-settings', 'external-sources', 'advanced-options',
+    'track-details-work-but-artwork-is-missing',
+  ],
+  'features/screensaver': [
+    'screensaver', 'choose-when-it-starts', 'choose-what-it-shows',
+    'show-photos-or-a-camera', 'photos-from-immich', 'photo-metadata',
+    'wake-from-home-assistant', 'screen-schedule', 'pin-protection-after-wake',
+    'start-the-screensaver-with-a-card',
+  ],
+  'features/screen-schedule': [
+    'night-schedule', 'set-the-schedule', 'how-it-works-with-other-settings',
+    'manual-wake-and-sleep',
+  ],
+}
+
 export async function writeRedirects(outDir: string) {
   for (const [path, destination] of Object.entries(redirects)) {
+    const anchors = redirectAnchors[path]
+    const fragmentRedirect = anchors ? `<script>
+if (${JSON.stringify(anchors)}.includes(location.hash.slice(1))) {
+  location.replace(${JSON.stringify(destination.split('#')[0])} + location.hash)
+}
+</script>` : ''
     const file = join(outDir, `${path}.html`)
     await mkdir(join(file, '..'), { recursive: true })
     await writeFile(file, `<!doctype html>
@@ -41,6 +107,7 @@ export async function writeRedirects(outDir: string) {
 <title>Page moved | EspControl</title>
 <meta name="robots" content="noindex,follow">
 <link rel="canonical" href="${destination.split('#')[0]}">
+${fragmentRedirect}
 <meta http-equiv="refresh" content="0; url=${destination}">
 </head><body><h1>Page moved</h1><p><a href="${destination}">Continue to the current guide</a>.</p></body></html>\n`)
   }
