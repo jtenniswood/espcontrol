@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "page_basic_lvgl_port.h"
+#include "page_modal_gestures.h"
 #include "page_card_dependencies.h"
 #include "page_runtime_resources_group.h"
 #include "panel_config_document.h"
@@ -220,5 +221,36 @@ template<size_t Slots>void profile(const DeviceUiLimits &limits) {
   }
   assert(arena.live==0);lv_obj_delete(page);
 }
+void modal_gesture_cycles() {
+  Arena arena;PageModalToken current{17,1,0,ControlModalKind::CLIMATE};size_t clicks=0,changes=0;
+  const auto valid=[](void *owner,PageModalToken token){const auto &now=*static_cast<PageModalToken *>(owner);return token.configuration==now.configuration&&token.opening==now.opening&&token.card==now.card&&token.kind==now.kind;};
+  auto *root=lv_obj_create(lv_screen_active());
+  {
+    PageModalGestures guards(arena,3,current,&current,valid);assert(guards.available());const auto allocations=arena.allocations;
+    for(size_t cycle=0;cycle<1000;++cycle) {
+      auto *button=lv_button_create(root);
+      // Install the real action first; the preprocessing guard must still win.
+      lv_obj_add_event_cb(button,[](lv_event_t *e){++*static_cast<size_t *>(lv_event_get_user_data(e));},LV_EVENT_CLICKED,&clicks);
+      lv_obj_add_event_cb(button,[](lv_event_t *e){++*static_cast<size_t *>(lv_event_get_user_data(e));},LV_EVENT_VALUE_CHANGED,&changes);
+      assert(guards.attach(root));assert(guards.attach(root));const auto before=clicks;
+      lv_obj_send_event(button,LV_EVENT_CLICKED,nullptr);assert(clicks==before);
+      click(button);assert(clicks==before+1);
+      lv_obj_send_event(button,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(button,LV_EVENT_PRESS_LOST,nullptr);lv_obj_send_event(button,LV_EVENT_CLICKED,nullptr);assert(clicks==before+1);
+      lv_obj_send_event(button,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(button,LV_EVENT_VALUE_CHANGED,nullptr);assert(changes==cycle+1);
+      ++current.opening;lv_obj_send_event(button,LV_EVENT_CLICKED,nullptr);assert(clicks==before+1);--current.opening;
+      lv_obj_delete(button);assert(guards.live()<=1&&arena.allocations==allocations);
+    }
+    guards.invalidate();auto *button=lv_button_create(root);assert(!guards.attach(root));lv_obj_delete(button);
+    lv_obj_delete(root);assert(guards.live()==0);
+  }
+  assert(arena.live==0);
+  root=lv_obj_create(lv_screen_active());lv_button_create(root);
+  {
+    PageModalGestures small(arena,1,current,&current,valid);assert(!small.attach(root));
+    lv_obj_delete(root);assert(small.live()==0);
+  }
+  assert(arena.live==0);
+  arena.fail=true;PageModalGestures failed(arena,10,current,&current,valid);assert(!failed.available());arena.fail=false;
 }
-int main(){lv_init();auto *display=lv_display_create(480,480);assert(display);for(const auto &limits:DEVICE_UI_PROFILES){switch(limits.slot_count){case 6:profile<6>(limits);break;case 9:profile<9>(limits);break;case 15:profile<15>(limits);break;case 20:profile<20>(limits);break;default:std::abort();}}lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}
+}
+int main(){lv_init();auto *display=lv_display_create(480,480);assert(display);for(const auto &limits:DEVICE_UI_PROFILES){switch(limits.slot_count){case 6:profile<6>(limits);break;case 9:profile<9>(limits);break;case 15:profile<15>(limits);break;case 20:profile<20>(limits);break;default:std::abort();}}modal_gesture_cycles();lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}

@@ -36,7 +36,7 @@ def generate() -> str:
     for name in (
         "climate_control_refs", "climate_control_ref_count", "reset_climate_control_refs",
         "climate_lower", "climate_trim", "climate_unavailable_value",
-        "climate_parse_tenths", "climate_parse_supported_features",
+        "climate_tenths_from_float", "climate_parse_tenths", "climate_parse_supported_features",
         "climate_target_kind", "climate_target_values_complete",
         "climate_temperature_target_available", "climate_clean_option_token",
         "climate_hvac_service_value", "climate_parse_options",
@@ -47,6 +47,7 @@ def generate() -> str:
     # definitions still need extracting from the larger rendering header.
     runtime = '#include "button_grid_climate_subscriptions.h"\n'
     runtime += function("subscribe_climate_control_state")
+    runtime += function("unregister_climate_control_context")
     runtime += function("delete_climate_control_context")
 
     fixture = json.loads((ROOT / "tests/firmware/fixtures/issue_1837_climate_subpage.json").read_text())

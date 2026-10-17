@@ -1,5 +1,7 @@
 #pragma once
 
+#include "climate_modal_lifetime.h"
+
 // Internal climate subscription maintenance. Included after the context and
 // rendering helpers by button_grid_climate.h; host tests include this directly.
 
@@ -93,7 +95,7 @@ inline void climate_mark_optional_subscription_needs(ClimateControlCtx *ctx) {
   uint8_t required = espcontrol::climate::required_optional_subscription_mask(
     ctx->configured_tab_mask, climate_subscription_capabilities(ctx));
   if (!ctx->optional_subscriptions.mark_required(required)) return;
-  climate_schedule_optional_subscription_maintenance();
+  if (!climate_modal_managed(ctx)) climate_schedule_optional_subscription_maintenance();
 }
 
 inline void climate_process_pending_optional_subscriptions(lv_timer_t *timer) {
@@ -102,7 +104,7 @@ inline void climate_process_pending_optional_subscriptions(lv_timer_t *timer) {
   const int count = climate_control_ref_count();
   for (int index = 0; index < count; index++) {
     ClimateControlCtx *ctx = refs[index];
-    if (!ctx || ctx->optional_subscriptions.pending == 0) continue;
+    if (!ctx || climate_modal_managed(ctx) || ctx->optional_subscriptions.pending == 0) continue;
     if (ctx->subscription_generation != ha_subscription_generation()) {
       ctx->optional_subscriptions.clear_pending();
       continue;
@@ -123,7 +125,7 @@ inline void climate_process_pending_optional_subscriptions(lv_timer_t *timer) {
   bool retry = false;
   for (int index = 0; index < climate_control_ref_count(); index++) {
     ClimateControlCtx *ctx = climate_control_refs()[index];
-    retry = (ctx && ctx->optional_subscriptions.pending != 0) || retry;
+    retry = (ctx && !climate_modal_managed(ctx) && ctx->optional_subscriptions.pending != 0) || retry;
   }
   if (!retry) {
     climate_optional_subscription_timer() = nullptr;

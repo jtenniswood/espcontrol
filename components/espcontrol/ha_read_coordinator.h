@@ -87,6 +87,7 @@ class HaReadCoordinator {
   const Transport &transport() const { return transport_; }
   HeapProbe &heap_probe() { return heap_probe_; }
 
+  bool dispatching() const { return callback_depth_ != 0 || channel_dispatch_depth_ != 0; }
   bool available() const { return transport_.available(); }
   bool state_connected() const { return transport_.state_connected(); }
   uint32_t generation() const { return generation_; }

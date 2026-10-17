@@ -15,3 +15,6 @@ behavior is intentionally changing.
 
 The [page runtime baseline](page-runtime-baseline.md) records the device capacity
 contract and measurement procedure for the staged architecture migration.
+
+- [Modal lifetime and climate adapter](page-modal-lifecycle.md): deferred
+  context retirement, input guards and the remaining physical cutover gates.
