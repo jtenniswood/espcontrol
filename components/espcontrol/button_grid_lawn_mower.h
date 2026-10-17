@@ -96,7 +96,8 @@ inline LawnMowerCardCtx *create_lawn_mower_card_context(const BtnSlot &s,
     ? espcontrol_i18n(std::string(lawn_mower_card_mode_label(ctx->mode)))
     : p.label;
   ctx->status_card = ctx->mode == "status";
-  if (!p.icon.empty() && p.icon != "Auto" && p.icon != lawn_mower_card_default_icon_name(p.sensor)) {
+  if (!p.icon.empty() && p.icon != "Auto" && p.icon != "Lawnmower" &&
+      p.icon != lawn_mower_card_default_icon_name(p.sensor)) {
     ctx->configured_icon = find_icon(p.icon.c_str());
   }
   return ctx;
