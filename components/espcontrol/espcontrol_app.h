@@ -27,6 +27,7 @@ class EspControlApp : public esphome::Component {
 
   void setup() override;
   void loop() override;
+  void on_safe_shutdown() override;
   void on_shutdown() override;
   float get_setup_priority() const override {
     // The native configuration wiring binds restored ESPHome text entities.
