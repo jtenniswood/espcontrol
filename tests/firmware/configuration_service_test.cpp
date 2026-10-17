@@ -81,6 +81,21 @@ class FakeLegacy final : public LegacyConfigurationAdapter {
 
 class FakeRuntime final : public ConfigurationRuntimeAdapter {
  public:
+  bool prepare(uint16_t, const uint8_t *, size_t) override {
+    ++prepare_calls;
+    has_prepared = true;
+    return !prepare_failed;
+  }
+  void discard_prepared() override {
+    ++discard_calls;
+    has_prepared = false;
+  }
+  bool activate_prepared(uint32_t generation, uint16_t version,
+                         const uint8_t *document, size_t size) override {
+    if (!has_prepared) return false;
+    applied_generation = generation;
+    return apply(version, document, size);
+  }
   bool apply(uint16_t document_version, const uint8_t *document,
              size_t document_size) override {
     ++apply_calls;
@@ -93,6 +108,11 @@ class FakeRuntime final : public ConfigurationRuntimeAdapter {
   uint16_t applied_version{0};
   size_t apply_calls{0};
   bool apply_failed{false};
+  bool prepare_failed{false};
+  bool has_prepared{false};
+  size_t prepare_calls{0};
+  size_t discard_calls{0};
+  uint32_t applied_generation{0};
 };
 
 std::vector<uint8_t> bytes(const char *value) {
@@ -417,6 +437,75 @@ bool panel_config_validator_rejects_invalid_legacy_imports() {
          ServiceStatus::IMPORTED_LEGACY;
 }
 
+bool failed_preparation_does_not_publish_or_mirror() {
+  MemoryBackend backend(256);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  FakeRuntime runtime;
+  ConfigurationService service(store, legacy);
+  service.set_runtime_adapter(&runtime);
+  const auto original = bytes("original");
+  if (!service.save_current(original.data(), original.size()).ok()) return false;
+  runtime.prepare_failed = true;
+  const auto replacement = bytes("replacement");
+  const auto rejected = service.save_if_generation(1, 1,
+      replacement.data(), replacement.size());
+  if (rejected.status != ServiceStatus::RUNTIME_PREPARE_FAILED ||
+      rejected.durable() || runtime.applied != original ||
+      runtime.applied_generation != 1 || legacy.mirror_calls != 1 ||
+      runtime.has_prepared || runtime.discard_calls != 2) return false;
+  std::array<uint8_t, 64> output{};
+  const auto loaded = service.load(output.data(), output.size());
+  if (!loaded.ok() || loaded.generation != 1 || loaded.document_size != original.size() ||
+      !std::equal(original.begin(), original.end(), output.begin())) return false;
+  const auto unconditional = service.save_current(replacement.data(), replacement.size());
+  if (unconditional.status != ServiceStatus::RUNTIME_PREPARE_FAILED ||
+      unconditional.durable() || runtime.apply_calls != 1 || legacy.mirror_calls != 1 ||
+      runtime.has_prepared || runtime.discard_calls != 3) return false;
+  const auto boot = service.load_and_apply_runtime(output.data(), output.size());
+  return boot.status == ServiceStatus::RUNTIME_PREPARE_FAILED &&
+      runtime.apply_calls == 1 && !runtime.has_prepared;
+}
+
+bool failed_commit_and_conflict_discard_staged_resources() {
+  MemoryBackend backend(256);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  FakeRuntime runtime;
+  ConfigurationService service(store, legacy);
+  service.set_runtime_adapter(&runtime);
+  const auto original = bytes("original");
+  if (!service.save_current(original.data(), original.size()).ok()) return false;
+  const auto replacement = bytes("replacement");
+  auto rejected = service.save_if_generation(0, 1, replacement.data(), replacement.size());
+  if (rejected.status != ServiceStatus::GENERATION_CONFLICT ||
+      runtime.applied != original || runtime.apply_calls != 1 ||
+      runtime.has_prepared || runtime.discard_calls != 2) return false;
+  backend.fail_writes(true);
+  rejected = service.save_current(replacement.data(), replacement.size());
+  return rejected.status == ServiceStatus::STORE_FAILED && !rejected.durable() &&
+      runtime.applied == original && runtime.apply_calls == 1 &&
+      !runtime.has_prepared && runtime.discard_calls == 3 && legacy.mirror_calls == 1;
+}
+
+bool activation_failure_remains_durable() {
+  MemoryBackend backend(256);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  FakeRuntime runtime;
+  runtime.apply_failed = true;
+  ConfigurationService service(store, legacy);
+  service.set_runtime_adapter(&runtime);
+  const auto replacement = bytes("replacement");
+  const auto saved = service.save_current(replacement.data(), replacement.size());
+  if (saved.status != ServiceStatus::RUNTIME_APPLY_FAILED || !saved.durable() ||
+      runtime.has_prepared || legacy.mirror_calls != 1) return false;
+  runtime.apply_failed = false;
+  std::array<uint8_t, 64> output{};
+  return service.load_and_apply_runtime(output.data(), output.size()).ok() &&
+      runtime.applied_generation == saved.generation && runtime.applied == replacement;
+}
+
 }  // namespace
 
 int main() {
@@ -435,6 +524,9 @@ int main() {
       malformed_store_document_is_not_treated_as_legacy() &&
       panel_config_validator_protects_the_atomic_store() &&
       panel_config_validator_rejects_invalid_stored_documents() &&
-      panel_config_validator_rejects_invalid_legacy_imports();
+      panel_config_validator_rejects_invalid_legacy_imports() &&
+      failed_preparation_does_not_publish_or_mirror() &&
+      failed_commit_and_conflict_discard_staged_resources() &&
+      activation_failure_remains_durable();
   return passed ? EXIT_SUCCESS : EXIT_FAILURE;
 }

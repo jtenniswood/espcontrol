@@ -17,6 +17,8 @@ int main() {
                  PanelConfigWriteResponse::BAD_REQUEST &&
          panel_config_write_response(ServiceStatus::GENERATION_CONFLICT) ==
                  PanelConfigWriteResponse::GENERATION_CONFLICT &&
+         panel_config_write_response(ServiceStatus::RUNTIME_PREPARE_FAILED) ==
+                 PanelConfigWriteResponse::RUNTIME_UNAVAILABLE &&
          panel_config_write_response(ServiceStatus::STORE_FAILED) ==
                  PanelConfigWriteResponse::INTERNAL_ERROR &&
          panel_config_write_response(ServiceStatus::RUNTIME_APPLY_FAILED) ==
