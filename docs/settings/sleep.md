@@ -90,6 +90,8 @@ Choose **Apply Configuration**, wait for the panel to reconnect, and test both s
 
 Select **Then > Camera** and enter **Camera Entity**. Choose **Fit** to keep the whole image visible, or **Fill** to crop to the screen. Enable **Display Clock** if you want a time overlay. These options require supported firmware.
 
+**Background Dimming** darkens only the camera or image background: 0% keeps its original brightness and 100% makes it black. Clock and metadata overlays keep their brightness. The setting defaults to 0%, is shared by Timer and Sensor modes, survives restarts, and is included in configuration backups. Older backups leave the current dimming value unchanged; firmware without this setting hides the control.
+
 The image refreshes when Home Assistant reports an update; the last successful image stays visible during downloads. Animated GIFs play automatically within the [image limits](/card-types/cameras#setting-up-a-camera-card). If images fail, check [Home Assistant connection settings](/settings/system#home-assistant-settings).
 
 #### Photos from Immich

@@ -981,6 +981,26 @@ text:
 
 number:
   - platform: template
+    name: "${entity_screen_saver_camera_dimming}"
+    internal: true
+    id: screensaver_camera_dimming
+    min_value: 0
+    max_value: 100
+    step: 1
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "%"
+    entity_category: config
+    icon: "mdi:brightness-6"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - script.execute: camera_screensaver_apply_dimming
+        - lambda: 'global_preferences->sync();'
+
+  - platform: template
     name: "${entity_screen_saver_daytime_dimmed_brightness}"
     internal: true
     id: screensaver_dimmed_brightness_day

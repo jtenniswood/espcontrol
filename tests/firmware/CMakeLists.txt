@@ -5,6 +5,17 @@ enable_testing()
 include(CheckCXXSourceCompiles)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+add_executable(dpi_timing_test dpi_timing_test.cpp)
+target_compile_features(dpi_timing_test PRIVATE cxx_std_17)
+target_compile_options(dpi_timing_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(dpi_timing_test PRIVATE ../../components/mipi_dsi)
+add_test(NAME dpi_timing_test COMMAND dpi_timing_test)
+add_test(NAME p4_pipeline_runtime_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/p4_pipeline_runtime_test.py)
+add_test(NAME mipi_dsi_draw_failure_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/mipi_dsi_draw_failure_test.py)
 add_test(NAME device_ui_limits_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/device_ui_limits_test.py)
@@ -676,3 +687,6 @@ add_test(NAME weather_daily_ui_test COMMAND weather_daily_ui_test)
 add_test(NAME weather_daily_requests_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/weather_daily_requests_test.py)
+
+add_test(NAME camera_screensaver_dimming_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/camera_screensaver_dimming_test.py)
