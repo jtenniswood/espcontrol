@@ -989,9 +989,21 @@ void app_owned_callback_owner_is_used_when_bound() {
 }
 
 void core_owns_binding_service_lifetime() {
+  // The production transport policy is stateless. FakeTransport's request
+  // history can exceed the firmware slot with libstdc++'s larger std::string;
+  // this lifecycle-only fixture needs no recorded transport operations.
+  struct CoreTransport {
+    using State = std::string;
+    using Callback = std::function<void(State)>;
+    bool available() const { return true; }
+    bool state_connected() const { return true; }
+    void subscribe(const std::string &, const std::string &, Callback) {}
+    bool request(const std::string &, const std::string &) { return true; }
+  };
+  using CoreBindingService = HomeAssistantBindingService<CoreTransport, FakeHeapProbe>;
   espcontrol::EspControlAppCore app;
   require(app.start(), "application core did not start");
-  BindingService &service = app.home_assistant_binding_service<BindingService>();
+  CoreBindingService &service = app.home_assistant_binding_service<CoreBindingService>();
   int owner = 0;
   {
     auto scope = service.callback_owner_scope(&owner);
