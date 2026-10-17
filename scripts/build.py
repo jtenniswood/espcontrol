@@ -608,6 +608,10 @@ def gen_i18n_header():
         ])
         seen_sources = set()
         for key, source in english.items():
+            # Static card labels can also be arbitrary HA names/options. Keep
+            # label_ entries available only through explicit key-based lookup.
+            if key.startswith("label_"):
+                continue
             if source in seen_sources:
                 continue
             seen_sources.add(source)
