@@ -254,7 +254,11 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         or 'heap_probe_.available("Home Assistant state request"' not in coordinator_text
     ):
         errors.append(f"{rel}: guard retained Home Assistant reads under low internal heap")
-    if "transport_.request(" not in coordinator_text or "request_fresh(" not in coordinator_text:
+    if (
+        "request_transport(transport_, entity_id, attribute, 0)" not in coordinator_text
+        or "return transport.request(entity, attribute);" not in coordinator_text
+        or "request_fresh(" not in coordinator_text
+    ):
         errors.append(f"{rel}: route fresh Home Assistant reads through the bounded coordinator helper")
     if accumulating_ha_read_call(read_boundary_text):
         errors.append(f"{rel}: fresh metadata reads must reuse subscriptions, not append native callbacks or borrow temporary strings")

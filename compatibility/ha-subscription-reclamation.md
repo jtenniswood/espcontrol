@@ -16,8 +16,18 @@ Registration changes run from `EspControlApp::loop`, outside native API dispatch
 Retirement disables delivery immediately. Native entries are removed before
 their borrowed names are freed. Name and registry storage uses the existing
 external-first allocator, and empty/history-sized containers are reclaimed.
+The coordinator also uses that allocator for channel names, retained values
+and replay snapshots. Short strings can remain inline in their containing
+record; longer strings prefer external RAM and retain the existing internal-RAM
+fallback. This changes placement, not which consumers retain values or the
+aggregate state budgets. Allocation exhaustion still follows the existing fatal
+STL allocator contract; it is not a new fallible preparation guarantee.
+
 Retained-state replay takes a local snapshot so an owner can retire its cache
-without invalidating the state view it is consuming.
+without invalidating the state view it is consuming. Fresh metadata requests
+encode length-delimited borrowed views synchronously, avoiding a conversion
+back to default-allocator strings. Older host transport policies can continue
+to accept `std::string` arguments.
 
 ESPHome 2026.9.1 has no public unsubscribe operation. A small version-pinned
 bridge mutates its public subscription-record view from the main loop. It
@@ -33,7 +43,10 @@ This stage reclaims device-owned registrations, not Home Assistant's own memory.
 Host coverage exercises 1,000 disjoint configurations, deferred add/remove
 during dispatch, late callbacks, owner destruction, shared channels, retained
 reads after compaction, reconnect invalidation and foreign subscriptions. The
-production bridge is also tested with native-style records and cursors. Address
+production bridge is also tested with native-style records and cursors. The
+actual external allocator is exercised with long names, retained values, replay
+snapshots, invalidation during a borrowed-state callback, length-delimited
+requests, reclamation and internal fallback. Address
 and undefined-behaviour sanitizers cover callback/name lifetimes.
 
 Physical qualification must compare settled counts after the loop maintenance
