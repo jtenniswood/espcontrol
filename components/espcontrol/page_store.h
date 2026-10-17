@@ -44,6 +44,7 @@ struct ConfigurationHandle {
 
 enum class PageStoreStatus : uint8_t {
   OK, INVALID_ARGUMENT, INVALID_DOCUMENT, PROFILE_MISMATCH, BUFFER_TOO_SMALL,
+  RESOURCE_UNAVAILABLE,
 };
 
 struct PageStoreMemory {

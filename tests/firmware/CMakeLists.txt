@@ -36,6 +36,15 @@ target_compile_options(page_store_runtime_test PRIVATE -Wall -Wextra -Werror -UN
 target_include_directories(page_store_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_store_runtime_test COMMAND page_store_runtime_test)
 
+add_executable(page_entity_state_runtime_test page_entity_state_runtime_test.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_entity_state_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_entity_state_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_entity_state_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_entity_state_runtime_test COMMAND page_entity_state_runtime_test)
+
 add_executable(dpi_timing_test dpi_timing_test.cpp)
 target_compile_features(dpi_timing_test PRIVATE cxx_std_17)
 target_compile_options(dpi_timing_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
