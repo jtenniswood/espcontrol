@@ -22,6 +22,7 @@ source = r'''
 #include <vector>
 
 using lv_coord_t = int;
+struct lv_timer_t {};
 constexpr int LV_OBJ_FLAG_CLICKABLE = 1, LV_OBJ_FLAG_EVENT_BUBBLE = 2;
 constexpr int LV_PART_MAIN = 0, LV_OPA_COVER = 255, LV_EVENT_CLICKED = 1;
 constexpr int LV_OBJ_FLAG_HIDDEN = 4;
@@ -115,7 +116,9 @@ struct MediaControlCtx {
   std::vector<MediaGroupDiscoveryItem> speaker_discovery;
   int current_pct = 0, pending_pct = -1;
   uint32_t pending_until_ms = 0;
-  bool volume_known = true;
+  bool volume_known = true, available = true;
+  int reported_volume_pct = 20;
+  bool reported_volume_known = true;
   int accent_color = 0, max_pct = 50;
   void *icon_font = nullptr;
   std::vector<MediaGroupVolumeState> group_volume_states;
@@ -140,6 +143,7 @@ void media_control_refresh_speaker_row(MediaControlCtx *, MediaSpeakerRowState *
 }
 void media_control_refresh_group_volume(MediaControlCtx *) { ++group_refreshes; }
 void media_control_refresh_volume(MediaControlCtx *) {}
+bool ha_cancel_action_response_callback(uint32_t, const char *) { return true; }
 void media_control_sync_speaker_candidates(MediaControlCtx *, const std::vector<std::string> &) {}
 int media_control_clamp_volume(MediaControlCtx *ctx, int pct) {
   return std::max(0, std::min(ctx->max_pct, pct));
@@ -158,11 +162,13 @@ for text, name in (
     (media, "media_control_copy_group_volume_to_row"),
     (media, "media_control_find_speaker_row"),
     (media, "media_control_group_size"),
+    (media, "media_control_group_contains"),
     (media, "media_control_set_speaker_status"),
     (media, "media_control_current_group_volumes"),
     (media, "media_control_refresh_group_member_volumes"),
     (media, "media_control_refresh_speakers"),
     (media, "media_control_apply_group_volume_percent"),
+    (media, "media_control_speaker_action_timer_cb"),
     (media, "media_control_group_action_result"),
     (media, "media_control_create_speaker_volume_button"),
 ):
@@ -241,11 +247,13 @@ int main() {
   assert(commands.size() == 4 && commands[0].volume == 21 && commands[1].volume == 41);
   assert(commands[2].volume == 22 && commands[3].volume == 42);
   // Acknowledged levels resume following external changes immediately.
+  ctx.reported_volume_pct = 22;
   media_control_store_group_volume(&ctx, office.entity_id, 22, true, true);
   ctx.speaker_discovery[1].volume_pct = 42;
   media_control_refresh_speakers(&ctx);
   assert(ctx.group_volume_states[0].pending_until_ms == 0);
   assert(ctx.group_volume_states[1].pending_until_ms == 0);
+  ctx.reported_volume_pct = 24;
   media_control_store_group_volume(&ctx, office.entity_id, 24, true, true);
   ctx.speaker_discovery[1].volume_pct = 44;
   media_control_refresh_speakers(&ctx);
@@ -253,12 +261,30 @@ int main() {
   // Missing acknowledgements stop masking actual volumes after 1.5 seconds.
   media_control_apply_group_volume_percent(&ctx, 35, true);
   esphome::now += 1501;
+  ctx.reported_volume_pct = 24;
   media_control_store_group_volume(&ctx, office.entity_id, 24, true, true);
   media_control_refresh_speakers(&ctx);
   assert(office.volume_pct == 24 && kitchen.volume_pct == 44);
+  // Periodic UI refresh must expire a command even if no direct volume
+  // subscription ever acknowledges it or emits another event.
+  media_control_apply_group_volume_percent(&ctx, 35, true);
+  esphome::now += 1501;
+  media_control_speaker_action_timer_cb(nullptr);
+  assert(office.volume_pct == 24 && kitchen.volume_pct == 44);
+  assert(ctx.group_volume_states[0].pending_until_ms == 0);
+  // If the primary only has a discovery reading, optimistic volume_known
+  // cannot prevent that reading from restoring the actual level on expiry.
+  ctx.reported_volume_known = false;
+  ctx.speaker_discovery[0].volume_pct = 24;
+  media_control_apply_group_volume_percent(&ctx, 35, true);
+  esphome::now += 1501;
+  media_control_speaker_action_timer_cb(nullptr);
+  assert(office.volume_pct == 24 && kitchen.volume_pct == 44);
+  ctx.reported_volume_known = true;
   // The Volume tab uses the same cache even when speaker rows do not exist.
   ui.speaker_rows.clear(); ui.speakers_box = nullptr;
   media_control_apply_group_volume_percent(&ctx, 35, true);
+  ctx.reported_volume_pct = 24;
   media_control_store_group_volume(&ctx, office.entity_id, 24, true, true);
   media_control_refresh_group_member_volumes(&ctx);
   assert(media_group_mean_volume(media_control_current_group_volumes(&ctx), &mean) && mean == 35);
@@ -275,6 +301,7 @@ int main() {
   // Unavailable or unknown members must disable volume rather than retain targets.
   media_control_store_group_volume(&ctx, office.entity_id, 26, true, false);
   assert(!ctx.group_volume_states[0].available);
+  ctx.available = false;
   ctx.speaker_discovery[1].volume_known = false;
   media_control_refresh_speakers(&ctx);
   assert(!kitchen.volume_known);
@@ -283,6 +310,7 @@ int main() {
   // Opening Speakers preserves a directly known primary volume even when the
   // discovery list omits that speaker (or its volume is not known there).
   ctx.speaker_discovery = {{kitchen.entity_id, "Kitchen", 40, true, true}};
+  ctx.available = true; ctx.reported_volume_pct = 20;
   media_control_store_group_volume(&ctx, office.entity_id, 20, true, true);
   office.volume_known = false;
   media_control_refresh_speakers(&ctx);

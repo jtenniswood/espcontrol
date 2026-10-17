@@ -41,6 +41,8 @@ struct MediaControlCtx {
   uint32_t seek_pending_ms = 0;
   uint32_t track_position_reset_until_ms = 0;
   int current_pct = 0;
+  int reported_volume_pct = 0;
+  bool reported_volume_known = false;
   int max_pct = 100;
   int pending_pct = -1;
   uint32_t pending_until_ms = 0;
@@ -1544,6 +1546,8 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
       media_control_set_volume_value(ctx, pct);
     }
   }
+  ctx->reported_volume_pct = state->volume_pct;
+  ctx->reported_volume_known = state->volume_known;
   media_control_store_group_volume(
     ctx, ctx->entity_id, state->volume_pct,
     state->volume_known, state->available);
@@ -3702,6 +3706,25 @@ inline void media_control_speaker_action_timer_cb(lv_timer_t *) {
     media_control_set_speaker_status(espcontrol_i18n("Grouping failed"), true);
     media_control_refresh_group_volume(ctx);
   }
+  const bool volume_expired = std::any_of(
+    ctx->group_volume_states.begin(), ctx->group_volume_states.end(),
+    [now](const MediaGroupVolumeState &member) {
+      return member.pending_until_ms != 0 &&
+        (int32_t)(now - member.pending_until_ms) >= 0;
+    });
+  if (volume_expired) {
+    media_control_refresh_group_member_volumes(ctx);
+    // A member that disappeared from discovery has no actual reading to
+    // restore. Disable its volume instead of keeping an unconfirmed target.
+    for (MediaGroupVolumeState &member : ctx->group_volume_states) {
+      if (member.pending_until_ms == 0 ||
+          (int32_t)(now - member.pending_until_ms) < 0) continue;
+      member.pending_until_ms = 0;
+      member.volume_known = false;
+    }
+    media_control_refresh_speakers(ctx);
+    media_control_refresh_group_volume(ctx);
+  }
 }
 
 inline std::vector<MediaGroupVolumeState> media_control_current_group_volumes(
@@ -3726,6 +3749,12 @@ inline std::vector<MediaGroupVolumeState> media_control_current_group_volumes(
 
 inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx) {
   if (!ctx) return;
+  // Reconsider the last actual primary reading even when no new HA event
+  // arrives. Displayed/optimistic volume_known must not masquerade as an ack.
+  if (ctx->reported_volume_known) {
+    media_control_store_group_volume(
+      ctx, ctx->entity_id, ctx->reported_volume_pct, true, ctx->available);
+  }
   std::vector<std::string> members;
   media_group_append_unique(members, ctx->entity_id);
   for (const std::string &entity_id : ctx->group_members) {
@@ -3740,7 +3769,7 @@ inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx) {
   for (const MediaGroupDiscoveryItem &item : ctx->speaker_discovery) {
     // The primary player has its own live volume subscription. Discovery can
     // lag behind it or omit it entirely.
-    if (item.entity_id == ctx->entity_id && ctx->volume_known) continue;
+    if (item.entity_id == ctx->entity_id && ctx->reported_volume_known) continue;
     if (std::find(members.begin(), members.end(), item.entity_id) == members.end()) continue;
     media_control_store_group_volume(
       ctx, item.entity_id, item.volume_pct, item.volume_known, item.available);
