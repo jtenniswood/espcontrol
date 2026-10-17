@@ -426,6 +426,7 @@ export default defineConfig({
           { text: 'FAQ', link: '/reference/faq' },
           { text: 'Troubleshooting', link: '/getting-started/troubleshooting' },
           { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
+          { text: 'Device Runtime Tests', link: '/reference/device-runtime-tests' },
           { text: 'Manual Setup', link: '/getting-started/manual-esphome-setup' },
           { text: 'Contributing', link: '/reference/contributing' },
         ],
