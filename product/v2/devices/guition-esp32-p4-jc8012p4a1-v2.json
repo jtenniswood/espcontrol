@@ -11,6 +11,19 @@
     "public": {
       "name": "Guition JC8012P4A1 new panel (2628+)",
       "docsPath": "/screens/jc8012p4a1-v2"
+    },
+    "web": {
+      "continuousCorners": true,
+      "btn": {
+        "smallTextSize": 1.5625
+      }
+    },
+    "firmware": {
+      "package": {
+        "substitutions": {
+          "button_radius": "11px"
+        }
+      }
     }
   },
   "overrides": {
@@ -19,6 +32,11 @@
         "substitutions": {
           "clock_font_size": "\"200\""
         }
+      }
+    },
+    "web": {
+      "grid": {
+        "gap": 0.78125
       }
     }
   }

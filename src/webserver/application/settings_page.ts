@@ -1,3 +1,5 @@
+import { buildScreensaverPinSettings } from "./screensaver_pin";
+import { resetAwareFetch } from "../api/reset_session";
 import { state } from "../state/app_instance";
 import { NTP_SERVER_DEFAULTS } from "../state/app_state";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
@@ -11,6 +13,8 @@ import {
     normalizeThemeAutoMethod,
 } from "../model/settings";
 import { syncThemeSettingsUi } from "./theme_settings_ui";
+import { syncCardCurveUi } from "./card_curve_ui";
+import { normalizeCardCurve } from "../model/settings";
 import type { ConfigCodecFeature } from "./config_codec";
 import type { UiRuntimeState } from "./state";
 import type { CoreFeature } from "./core";
@@ -80,15 +84,36 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         page.className = "sp-page";
         var config: any = document.createElement("div");
         config.className = "sp-config fade-in";
-        var appearBody: any = document.createElement("div");
+        var devicePage: any = document.createElement("div");
+        devicePage.id = "sp-device";
+        devicePage.className = "sp-page";
+        var deviceConfig: any = document.createElement("div");
+        deviceConfig.className = "sp-config fade-in";
+        var activeColourBody: any = document.createElement("div");
+        var cardStyleBody: any = document.createElement("div");
+        var themeBody: any = document.createElement("div");
         var onColor = createColorSwatches(state.onColor || WEB_UI_COLORS.primary, function (hex) {
             state.onColor = hex;
             renderPreview();
             postText(entityName("button_on_color"), hex);
         }, "Active colour presets");
         onColor.id = "sp-set-on-color";
-        appearBody.appendChild(onColor);
+        activeColourBody.appendChild(onColor);
         els.setOnColor = onColor;
+        const cardCurve = segmentControl(["Small", "Medium", "Large"], normalizeCardCurve(state.cardCurve), (value: string) => {
+            state.cardCurve = normalizeCardCurve(value);
+            syncCardCurveUi(state, runtime);
+            syncPreviewOrientation(true);
+            renderPreview();
+            postSelect(entityName("screen_card_curve"), state.cardCurve);
+        });
+        cardCurve.segment.id = "sp-set-card-curve";
+        cardCurve.segment.setAttribute("role", "group");
+        cardCurve.segment.setAttribute("aria-label", "Card curve");
+        cardStyleBody.appendChild(fieldLabel("Card curve"));
+        cardStyleBody.appendChild(cardCurve.segment);
+        els.setCardCurveButtons = cardCurve.buttons;
+        syncCardCurveUi(state, runtime);
         var themeModes: any = segmentControl([
             ["Dark", "Dark"], ["Light", "Light"], ["Auto", "Automatic"],
         ], normalizeThemeMode(state.themeMode), function (this: any, mode?: any) {
@@ -98,12 +123,12 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             renderPreview();
         }, "sp-segment sp-segment-scroll sp-theme-mode-segment");
         themeModes.segment.id = "sp-set-theme-mode";
-        appearBody.appendChild(fieldLabel("Theme"));
-        appearBody.appendChild(themeModes.segment);
+        themeBody.appendChild(fieldLabel("Mode"));
+        themeBody.appendChild(themeModes.segment);
         els.setThemeModeButtons = themeModes.buttons;
         var themeAutoFields: any = condField();
         var themeAutoMethods: any = segmentControl([
-            ["Time", "Time"], ["Sunrise / Sunset", "Automatic"],
+            ["Sunrise / Sunset", "Sunrise & Sunset"], ["Time", "Manual"],
         ], normalizeThemeAutoMethod(state.themeAutoMethod), function (this: any, method?: any) {
             state.themeAutoMethod = normalizeThemeAutoMethod(method);
             postSelect(entityName("screen_theme_auto_method"), state.themeAutoMethod);
@@ -133,7 +158,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setThemeDarkStart = themeDarkStart.input;
         themeAutoFields.appendChild(themeScheduleFields);
         els.setThemeScheduleFields = themeScheduleFields;
-        appearBody.appendChild(themeAutoFields);
+        themeBody.appendChild(themeAutoFields);
         els.setThemeAutoFields = themeAutoFields;
         syncThemeSettingsUi(state, runtime);
         var appearanceResetButton: any = createActionButton("sp-icon-button sp-card-header-action", "", "restore", "Reset colours to defaults");
@@ -142,7 +167,9 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             event.stopPropagation();
             resetAppearanceColors(true);
         });
-        var appearanceCard: any = makeCollapsibleCard("Appearance", appearBody, true, null, appearanceResetButton);
+        var activeColourCard: any = makeCollapsibleCard("Active Colour", activeColourBody, true, null, appearanceResetButton);
+        var cardStyleCard: any = makeCollapsibleCard("Card Style", cardStyleBody, true);
+        var themeCard: any = makeCollapsibleCard("Theme", themeBody, true);
         var languageBody: any = document.createElement("div");
         var languageField: any = document.createElement("div");
         languageField.className = "sp-field";
@@ -437,6 +464,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setScreensaverCamera = timerClockControls.cameraInput;
         els.setScreensaverCameraImageModeField = timerClockControls.cameraImageModeField;
         els.setScreensaverCameraImageMode = timerClockControls.cameraImageModeSelect;
+        els.setScreensaverCameraDimming = timerClockControls.cameraDimming;
         els.setDimBrightnessField = timerClockControls.dimBrightnessField;
         els.setManualDimBrightnessField = timerClockControls.manualDimBrightnessField;
         els.setAutomaticDimBrightnessField = timerClockControls.automaticDimBrightnessField;
@@ -476,9 +504,9 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         cameraPanel.className = "sp-panel sp-camera-settings";
         cameraPanel.setAttribute("aria-label", "Camera screensaver settings");
         var timerCameraFields: any = document.createElement("div");
-        timerCameraFields.append(timerClockControls.cameraField, timerClockControls.cameraImageModeField);
+        timerCameraFields.append(timerClockControls.cameraField, timerClockControls.cameraImageModeField, timerClockControls.cameraDimmingField);
         var sensorCameraFields: any = document.createElement("div");
-        sensorCameraFields.append(sensorClockControls.cameraField, sensorClockControls.cameraImageModeField);
+        sensorCameraFields.append(sensorClockControls.cameraField, sensorClockControls.cameraImageModeField, sensorClockControls.cameraDimmingField);
         cameraPanel.append(timerCameraFields, sensorCameraFields);
         els.setScreensaverCameraPanel = cameraPanel;
         var metadataField: any = document.createElement("div");
@@ -520,6 +548,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setSensorScreensaverCamera = sensorClockControls.cameraInput;
         els.setSensorScreensaverCameraImageModeField = sensorClockControls.cameraImageModeField;
         els.setSensorScreensaverCameraImageMode = sensorClockControls.cameraImageModeSelect;
+        els.setSensorScreensaverCameraDimming = sensorClockControls.cameraDimming;
         els.setSensorDimBrightnessField = sensorClockControls.dimBrightnessField;
         els.setSensorManualDimBrightnessField = sensorClockControls.manualDimBrightnessField;
         els.setSensorAutomaticDimBrightnessField = sensorClockControls.automaticDimBrightnessField;
@@ -557,7 +586,16 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         }
         els.setSsMode = setSsMode;
         setSsMode(ssMode);
+        const pinBadge = statusBadge("PIN protection on");
+        pinBadge.className = "sp-card-badge sp-hidden";
+        var screensaverPinCard: any = null;
+        const pinSettings = buildScreensaverPinSettings(document, resetAwareFetch, fields, pinBadge, {
+            onVisibilityChange: visible => { if (screensaverPinCard) screensaverPinCard.hidden = !visible; },
+        });
+        els.syncScreensaverPinUi = pinSettings.refresh;
         var screensaverCard: any = makeCollapsibleCard("Screensaver", ssBody, true, ssBadge);
+        screensaverPinCard = makeCollapsibleCard("Pin Protection", pinSettings.body, true, pinBadge);
+        screensaverPinCard.hidden = pinSettings.body.hidden;
         var idleBody: any = document.createElement("div");
         idleBody.appendChild(fieldLabel("Return Home After"));
         var hsSelect: any = document.createElement("select");
@@ -592,24 +630,29 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         syncIdleUi(runtime);
         var idleCard: any = makeCollapsibleCard("Idle", idleBody, true, idleBadge);
         var systemSettingsCards: any = buildSystemSettingsCards();
-        appendSettingsSection(config, "Display", [
-            appearanceCard,
-            backlightCard,
+        appendSettingsSection(config, "Appearance", [
+            activeColourCard,
+            cardStyleCard,
+            themeCard,
             idleCard,
             clockBarCard,
+        ]);
+        appendSettingsSection(config, "Display", [
+            backlightCard,
             rotationCard,
         ]);
         appendSettingsSection(config, "Sleep & Schedule", [
             coverArtCard,
             screensaverCard,
             scheduleCard,
+            screensaverPinCard,
         ]);
-        appendSettingsSection(config, "Preferences", [
+        appendSettingsSection(deviceConfig, "Preferences", [
             languageCard,
             timeSettingsCard,
             temperatureCard,
         ]);
-        appendSettingsSection(config, "System", [
+        appendSettingsSection(deviceConfig, "System", [
             systemSettingsCards.identityCard,
             systemSettingsCards.backupCard,
             systemSettingsCards.firmwareCard,
@@ -621,6 +664,10 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         page.appendChild(buildApplyBar());
         parent.appendChild(page);
         els.settingsPage = page;
+        devicePage.appendChild(deviceConfig);
+        devicePage.appendChild(buildApplyBar());
+        parent.appendChild(devicePage);
+        els.devicePage = devicePage;
     }
     return {
         buildSettingsPage,

@@ -133,8 +133,9 @@ export function createControlsShellFeature(
         nav.className = "sp-nav";
         nav.setAttribute("aria-label", "Primary");
         var tabs: any = [
-            { id: "screen", label: "Screen" },
-            { id: "settings", label: "Settings" },
+            { id: "screen", label: "Layout" },
+            { id: "settings", label: "Screen" },
+            { id: "device", label: "System" },
         ];
         tabs.forEach(function (this: any, t?: any) {
             var tab: any = document.createElement("div");
@@ -200,7 +201,7 @@ export function createControlsShellFeature(
         var closeBtn: any = document.createElement("button");
         closeBtn.className = "sp-settings-close";
         closeBtn.innerHTML = '<svg class="sp-settings-close-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
-            '<path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.3l6.3 6.29 6.3-6.29z"></path>' +
+            '<path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path>' +
             '</svg>';
         closeBtn.setAttribute("aria-label", "Close settings");
         closeBtn.addEventListener("click", dependencies.closeSettings);
@@ -249,16 +250,19 @@ export function createControlsShellFeature(
         return bar;
     }
     function switchTab(this: any, tab?: any) {
+        const returningToScreen = tab === "screen" && state.activeTab !== "screen";
         state.activeTab = tab;
         if (els.root)
             els.root.setAttribute("data-active-tab", tab);
-        ["screen", "settings"].forEach(function (this: any, t?: any) {
+        ["screen", "settings", "device"].forEach(function (this: any, t?: any) {
             els["tab_" + t].className = "sp-tab" + (tab === t ? " active" : "");
             els["tab_" + t].setAttribute("aria-selected", tab === t ? "true" : "false");
         });
         els.screenPage.className = "sp-page" + (tab === "screen" ? " active" : "");
         els.settingsPage.className = "sp-page" + (tab === "settings" ? " active" : "");
+        els.devicePage.className = "sp-page" + (tab === "device" ? " active" : "");
         syncTabChrome();
+        if (returningToScreen) dependencies.renderPreview();
     }
     function syncTabChrome(this: any) {
         var support: any = document.querySelector(".sp-support-btn");

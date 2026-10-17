@@ -15,6 +15,19 @@
     "public": {
       "name": "Guition JC1060P470",
       "docsPath": "/screens/jc1060p470"
+    },
+    "web": {
+      "continuousCorners": true,
+      "btn": {
+        "smallTextSize": 1.757812
+      }
+    },
+    "firmware": {
+      "package": {
+        "substitutions": {
+          "button_radius": "10px"
+        }
+      }
     }
   },
   "overrides": {
@@ -27,6 +40,11 @@
           "wifi": "1000Hz",
           "ethernet": "20000Hz"
         }
+      }
+    },
+    "web": {
+      "grid": {
+        "gap": 0.976562
       }
     }
   }

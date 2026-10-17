@@ -41,6 +41,7 @@ Use this page when you know what you want the panel to do but are not sure which
 | Control media playback, volume, progress, or now-playing display | [Media](/card-types/media) | `media_player` |
 | Control a thermostat or HVAC entity | [Climate](/card-types/climate) | `climate` |
 | Control a built-in relay on the panel itself | [Internal Switches](/card-types/internal-relays) | Built-in relay |
+| Start the configured screensaver immediately | [Screensaver](/settings/sleep#start-the-screensaver-with-a-card) | No entity required |
 | Lock or unlock the touchscreen controls locally | [Screen Lock](/card-types/screen-lock) | No entity required |
 | Open another page of cards | [Subpage](/features/subpages) | No entity required, optional state entity |
 
@@ -75,14 +76,10 @@ Some names in the setup page group several related modes:
 | **Cover** | All Controls, Position, Tilt, Toggle, Open, Close, Stop, Set Position |
 | **Subpage** | Generic, Switch, Lights, Climate, Presence, Media, Alarm, Cover, Garage Door, Gate, Lock, Vacuum, Lawn Mower, Weather, Sensor, Camera / Image |
 
-Older configurations may also show **Weather Forecast**. It is kept for compatibility and is now set up as a **Weather** card with **Temperatures Tomorrow** selected.
+Older configurations may also show **Weather Forecast**. It is kept for compatibility and is now set up as a **Weather** card with **Tomorrow's Forecast** selected.
 
 ## Permissions
 
 Cards that control Home Assistant need the panel to be allowed to perform Home Assistant actions. If a control card displays correctly but tapping it does nothing, check [Enable Actions](/getting-started/home-assistant-actions).
 
 Read-only display cards such as Sensor, Presence, Date & Time, and current Weather state can still show information without sending control actions. Weather forecast modes also need Home Assistant actions permission because the panel asks Home Assistant for forecast data.
-
-## Current Capability Reference
-
-For a generated table of card type names, saved type values, supported entity domains, subpage support, picker grouping, options, and visibility status, see the [Card Capability Reference](/reference/card-capabilities).

@@ -15,7 +15,7 @@
     }
   },
   {
-    "name": "today forecast preserves large numbers",
+    "name": "today forecast clears obsolete large numbers",
     "input": "weather.home;Today;Auto;Auto;ignored;unit;weather;today;large_numbers,ignored=1",
     "expected": {
       "entity": "weather.home",
@@ -26,11 +26,11 @@
       "unit": "unit",
       "type": "weather",
       "precision": "today",
-      "options": "large_numbers"
+      "options": ""
     }
   },
   {
-    "name": "tomorrow forecast preserves explicit large number off",
+    "name": "tomorrow forecast clears obsolete large number off",
     "input": "weather.home;Tomorrow;Auto;Auto;ignored;unit;weather;tomorrow;large_numbers=off",
     "expected": {
       "entity": "weather.home",
@@ -41,7 +41,7 @@
       "unit": "unit",
       "type": "weather",
       "precision": "tomorrow",
-      "options": "large_numbers=off"
+      "options": ""
     }
   },
   {
@@ -56,7 +56,7 @@
       "unit": "unit",
       "type": "weather",
       "precision": "tomorrow",
-      "options": "large_numbers"
+      "options": ""
     }
   }
 ]

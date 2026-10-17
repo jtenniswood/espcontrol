@@ -262,6 +262,7 @@ export function createPreviewClipboardFeature(
             grid: grid,
             sizes: sizes,
             backLabel: parsed.backLabel || "Back",
+            backColor: parsed.backColor || "",
         };
         subpage.order = serializeSubpageGrid(subpage);
         return { subpage: subpage, resized: resized };
@@ -345,7 +346,7 @@ export function createPreviewClipboardFeature(
     }
     function clipboardSubpageFits(sp: any) {
         var serialized: any = serializeSubpageConfig(sp);
-        return !!EspControlModel.splitSubpageConfigChunks(serialized, configPersistence.subpageEntityKeys().length, 255);
+        return configPersistence.subpageConfigFits(serialized);
     }
     function planMainClipboardPaste(entries: any, pos: any) {
         var nextGrid: any = state.grid.slice();
@@ -370,7 +371,7 @@ export function createPreviewClipboardFeature(
             if (placement.size !== requestedSize)
                 resized++;
             var buttonConfig: any = clipboardButtonConfig(entry);
-            if (serializeButtonConfig(buttonConfig).length > 255) {
+            if (new TextEncoder().encode(serializeButtonConfig(buttonConfig)).length > configPersistence.buttonConfigByteLimit()) {
                 return { error: "A copied card's settings are too large for this controller." };
             }
             nextButtons[newSlot - 1] = buttonConfig;
@@ -411,6 +412,7 @@ export function createPreviewClipboardFeature(
             grid: (sp.grid || []).slice(),
             sizes: cloneSizeMap(sp.sizes),
             backLabel: sp.backLabel || "Back",
+            backColor: sp.backColor || "",
         };
     }
     function planSubpageClipboardPaste(entries: any, pos: any) {
@@ -547,7 +549,7 @@ export function createPreviewClipboardFeature(
         close.type = "button";
         close.className = "sp-transfer-close";
         close.innerHTML = '<svg class="sp-transfer-close-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
-            '<path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.3l6.3 6.29 6.3-6.29z"></path>' +
+            '<path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path>' +
             '</svg>';
         close.setAttribute("aria-label", "Close");
         close.addEventListener("click", closeCardTransferDialog);

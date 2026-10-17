@@ -161,6 +161,7 @@ struct TestSubpage {
   lv_obj_t *back_button = nullptr;
   struct Card { bool neutral_background; lv_obj_t *button; bool sensor_surface = false; bool secondary_surface = false; };
   std::vector<Card> cards;
+  bool back_neutral_background = true;
 };
 std::vector<TestSubpage> &navigation_subpages() {
   static std::vector<TestSubpage> pages;
@@ -345,7 +346,12 @@ static void test_restore_grid_theme(ThemeMode mode, EffectiveTheme effective,
   accent_card.background = lv_color_hex(DARK_THEME.surface_secondary);
   theme_set_content_background(&accent_card);
   navigation_subpages().push_back({&subpage, &back, {{true, &sub_button}, {true, &accent_card}}});
+  // Restored cards receive their checked foreground during normal colour
+  // setup, before theme reconciliation or an entity state update.
+  lv_obj_set_style_text_color(&sub_button,
+      lv_color_hex(readable_text_color_for_bg(current_button_primary_color())), LV_STATE_CHECKED);
   sub_button.state = LV_STATE_CHECKED;
+  sync_card_checked_text_color(&sub_button);
   const int preserved_subpage_state = sub_button.state;
 
   refresh_theme_grid_after_rebuild();  // Final boundary: no mode transition.
@@ -366,7 +372,7 @@ static void test_restore_grid_theme(ThemeMode mode, EffectiveTheme effective,
   assert(sub_button.background.full == current_theme().surface_card);
   assert(sub_button.state == preserved_subpage_state);
   assert(sub_button.text.full == current_theme().text_primary);
-  assert(sub_label.text.full == CARD_ACCENT_TEXT_COLOR);
+  assert(sub_label.text.full == readable_text_color_for_bg(current_button_primary_color()));
   assert(accent_card.background.full == DARK_THEME.surface_secondary);
   int grid_bindings = 0;
   for (const auto &binding : theme_refresh_bindings())
@@ -851,10 +857,12 @@ static void test_alarm_state_contrast_during_theme_refresh() {
 }
 
 static void test_custom_default_contrast_after_active_theme_refresh() {
-  for (uint32_t base : {0xFF8C00u, 0x9D9D9Du}) {
-    const uint32_t active = lighter_card_color(base);
-    assert(readable_text_color_for_bg(base) == 0xFFFFFF);
-    assert(readable_text_color_for_bg(active) == 0x212121);
+  for (uint32_t base : {0x6633B9u, 0xFF8C00u, 0x9D9D9Du}) {
+    const uint32_t active = active_card_color(base);
+    const uint32_t base_text = 0xFFFFFF;
+    const uint32_t active_text = base == 0x6633B9 ? 0xFFFFFF : 0x212121;
+    assert(readable_text_color_for_bg(base) == base_text);
+    assert(readable_text_color_for_bg(active) == active_text);
     set_active_theme_palette(DARK_THEME);
     lv_obj_t page, card, label, subpage, sub_card, sub_label;
     card.children = {&label};
@@ -881,12 +889,12 @@ static void test_custom_default_contrast_after_active_theme_refresh() {
         for (auto *button : {&card, &sub_card}) {
           assert(button->state == state);
           assert(button->background.full == base);
-          assert(button->text.full == 0xFFFFFF);
-          assert(button->children.front()->text.full == 0x212121);
+          assert(button->text.full == base_text);
+          assert(button->children.front()->text.full == active_text);
           lv_obj_clear_state(button, LV_STATE_CHECKED | LV_STATE_PRESSED);
           // An entity update/release only resynchronizes existing state styles.
           sync_card_checked_text_color(button);
-          assert(button->children.front()->text.full == 0xFFFFFF);
+          assert(button->children.front()->text.full == base_text);
         }
       }
     }
@@ -896,7 +904,38 @@ static void test_custom_default_contrast_after_active_theme_refresh() {
   }
 }
 
+static void test_custom_back_button_theme_preservation() {
+  set_active_theme_palette(DARK_THEME);
+  apply_current_theme();
+  lv_obj_t page, subpage, back, label;
+  // Even a custom colour matching a theme surface must remain explicitly owned.
+  back.background = lv_color_hex(0x313131);
+  back.text = label.text = lv_color_hex(0xFFFFFF);
+  back.children = {&label};
+  label.parent = &back;
+  label.type = &lv_label_class;
+  BtnSlot slots[] = {{nullptr}};
+  const bool neutral[] = {false};
+  register_theme_grid(&page, slots, neutral, 0, 100, 100, 100);
+  navigation_subpages().push_back({&subpage, &back, {}, false});
+  for (const auto *theme : {&LIGHT_THEME, &DARK_THEME}) {
+    set_active_theme_palette(*theme);
+    apply_current_theme();
+    assert(back.background.full == 0x313131 && label.text.full == 0xFFFFFF);
+  }
+  navigation_subpages()[0].back_neutral_background = true;
+  set_active_theme_palette(LIGHT_THEME);
+  apply_current_theme();
+  assert(back.background.full == LIGHT_THEME.surface_card);
+  assert(label.text.full == LIGHT_THEME.text_primary);
+  navigation_subpages().clear();
+  lv_event_t deleted{&page};
+  page.delete_callback(&deleted);
+  set_active_theme_palette(DARK_THEME);
+}
+
 int main() {
+  test_custom_back_button_theme_preservation();
   test_custom_default_contrast_after_active_theme_refresh();
   test_alarm_state_contrast_during_theme_refresh();
   test_custom_card_theme_preservation();

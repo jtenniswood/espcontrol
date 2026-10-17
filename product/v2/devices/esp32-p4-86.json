@@ -67,21 +67,22 @@
         "left": 1.04,
         "right": 1.04,
         "bottom": 0.83,
-        "gap": 1.39,
+        "gap": 2.083333,
         "fr": "1fr"
       },
       "btn": {
-        "radius": 1.67,
+        "radius": 4.861111,
         "padding": 2.92,
         "iconSize": 9.58,
         "labelSize": 3.96,
         "coverArtTitleSize": 14.583333,
         "coverArtArtistSize": 8.333333,
         "labelLines": 2,
-        "labelLinesDouble": 3
+        "labelLinesDouble": 3,
+        "smallTextSize": 3.75
       },
       "emptyCell": {
-        "radius": 1.67
+        "radius": 4.861111
       },
       "sensorBadge": {
         "top": 2.08,
@@ -92,7 +93,8 @@
         "bottom": 2.08,
         "right": 2.08,
         "fontSize": 4
-      }
+      },
+      "continuousCorners": true
     },
     "firmware": {
       "display": {
@@ -154,7 +156,7 @@
           "unit_font": "font_text_body",
           "sensor_value_font": "font_number_value",
           "padding": "21px",
-          "radius": "12px",
+          "radius": "35px",
           "main_page_card_gap": "\"15\"",
           "main_page_pad_top": "\"60\"",
           "main_page_compact_pad_top": "\"6\"",
@@ -167,7 +169,8 @@
           "screen_saver_clock_default_brightness": "\"35\"",
           "screen_schedule_clock_min_brightness": "\"1\"",
           "screen_schedule_clock_default_brightness": "\"10\"",
-          "speaker_amplifier_pin": "\"GPIO53\""
+          "speaker_amplifier_pin": "\"GPIO53\"",
+          "button_radius": "12px"
         },
         "extraPackages": {
           "speaker_output": "!include ../../common/device/speaker_output_p4.yaml"

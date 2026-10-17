@@ -49,9 +49,8 @@ If saving or importing a backup fails, try opening `http://YOUR-DISPLAY-IP/?espc
 - P4 panels use a separate ESP32-C6 WiFi processor. Mismatched or outdated C6
   firmware can cause repeated disconnects, failed initial setup, or a panel that
   disappears from Home Assistant after restarting.
-- Use the [C6 WiFi recovery installer](/getting-started/c6-recovery) to reinstall
-  EspControl and repair the C6 over USB without depending on WiFi.
-- This recovery is for P4 panels only, not the ESP32-S3 4848S040.
+- If the panel stays reachable, check [WiFi firmware updates](/settings/system#esp32-c6-wifi-co-processor-updates) in **System > Firmware**.
+- If it cannot stay connected, collect a [USB startup log](/reference/collect-usb-logs) and [open a GitHub issue](https://github.com/jtenniswood/espcontrol/issues/new) with the panel model, hardware revision, and firmware version.
 
 ## The Web Page Looks Broken or Unstyled
 
@@ -72,9 +71,9 @@ Confirm the firmware matches the exact panel revision and use a known-good power
 
 ## I Want to Start Over
 
-- Save a backup, then use **Settings > System > Factory Reset**. Partial reset keeps WiFi and the Home Assistant encryption key; Complete reset clears those saved credentials too and keeps any WiFi networks compiled into the firmware disabled, so newly provisioned credentials remain selected after reboot.
+- Save a backup, then use **System > Factory Reset**. Partial reset keeps WiFi and the Home Assistant encryption key; Complete reset clears those saved credentials too and keeps any WiFi networks compiled into the firmware disabled, so newly provisioned credentials remain selected after reboot.
 - To complete a full reset, type **RESET** in the confirmation dialog. It explains that saved WiFi and the Home Assistant API key will be erased. Reconnect through the setup hotspot to save your network again.
-- Both keep installed firmware and compiled defaults. A normal reflash is not a guaranteed reset. Follow [Reset the display](/features/backup#reset-the-display) for the full procedure and older-firmware limitations.
+- Both keep installed firmware and compiled defaults. A normal reflash is not a guaranteed reset. Follow [Reset the display](/settings/system#reset-the-display) for the full procedure and older-firmware limitations.
 
 ## I Need Help With a Bug
 

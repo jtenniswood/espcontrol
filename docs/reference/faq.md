@@ -6,7 +6,7 @@ outline: [2, 3]
 
 # Home Assistant Touchscreen Questions and Answers
 
-Quick answers to common questions, with links to the detailed setup guides. Answers describe the current documentation; check [firmware release status](/features/firmware-updates#stable-releases-development-builds-and-custom-firmware) when a control is missing on an older panel.
+Quick answers to common questions, with links to the detailed setup guides. Answers describe the current documentation; check [firmware release status](/settings/system#stable-releases-development-builds-and-custom-firmware) when a control is missing on an older panel.
 
 Compare [supported screens](/screens/) before buying. Start with [Install](/getting-started/install) for a new panel or [Troubleshooting](/getting-started/troubleshooting) for a setup problem.
 
@@ -42,7 +42,7 @@ S3 and P4 panels support Camera cards showing still snapshots from Home Assistan
 
 ### Why Do Track Details Work but the Album Image Is Missing?
 
-Metadata and image downloads use different connections. Check that Home Assistant supplies artwork and the panel can reach its HTTP/HTTPS endpoint. Follow the [missing-artwork checks](/features/media-cover-art#track-details-work-but-artwork-is-missing).
+Metadata and image downloads use different connections. Check that Home Assistant supplies artwork and the panel can reach its HTTP/HTTPS endpoint. Follow the [missing-artwork checks](/settings/sleep#track-details-work-but-artwork-is-missing).
 
 ### Are There Stands or Wall Mounts, Including a 7-inch Mount?
 
@@ -60,7 +60,7 @@ Grouping works on S3 and P4 with compatible Home Assistant players. EspControl c
 
 ### Can I Make a Dedicated Album-art Screen or Migrate from the Older Media Controller?
 
-Yes. Use a large Cover Art card or the automatic [Media Cover Art](/features/media-cover-art) screen. The [migration guide](/getting-started/migrate-esphome-media-player) covers layouts, playback controls, and idle behaviour.
+Yes. Use a large Cover Art card or the automatic [Media Cover Art](/settings/sleep#cover-art-screen-saver) screen. The [migration guide](/getting-started/migrate-esphome-media-player) covers layouts, playback controls, and idle behaviour.
 
 ### How Do I Get the Speaker and Playback Tabs Shown in the Posts?
 
@@ -74,11 +74,11 @@ Choose **Media > Track, Album or Playlist** and supply a content ID accepted by 
 
 ### Why Does a Camera Change from Loading to Unavailable?
 
-Check the image exists in Home Assistant, the panel can reach its HTTP/HTTPS endpoint, and the shared image limit is not exceeded. See [Camera troubleshooting](/card-types/cameras#troubleshooting) and [connection settings](/features/setup#home-assistant-settings).
+Check the image exists in Home Assistant, the panel can reach its HTTP/HTTPS endpoint, and the shared image limit is not exceeded. See [Camera troubleshooting](/card-types/cameras#troubleshooting) and [connection settings](/settings/system#home-assistant-settings).
 
 ### Can I Show a Doorbell Snapshot When Someone Rings?
 
-Use a Camera card and a Home Assistant automation with [Screen: Wake](/features/screensaver#wake-from-home-assistant). P4 panels also have a [visible-camera refresh action](/card-types/cameras#refreshing-cards-from-home-assistant). The card does not automatically open when the doorbell rings.
+Use a Camera card and a Home Assistant automation with [Screen: Wake](/settings/sleep#wake-from-home-assistant). P4 panels also have a [visible-camera refresh action](/card-types/cameras#refreshing-cards-from-home-assistant). The card does not automatically open when the doorbell rings.
 
 ### How Many Camera and Cover Art Cards Can I Use?
 
@@ -92,11 +92,11 @@ Yes, through a Home Assistant `image` entity. The separate Immich Companion mana
 
 ### How Do I Update the Firmware?
 
-Standard firmware offers **Auto Update** and **Check for Update** under Firmware settings. Custom, Ethernet-only, and V3 installation paths have exceptions. Follow [Firmware Updates](/features/firmware-updates) for the correct method and release status.
+Standard firmware offers **Auto Update** and **Check for Update** under **System > Firmware**. Custom, Ethernet-only, and V3 installation paths have exceptions. Follow [Firmware Updates](/settings/system#firmware) for the correct method and release status.
 
 ### Will Automatic Updates Keep My Custom ESPHome YAML?
 
-No. Built-in updates install released binaries and do not rebuild custom YAML. Disable **Auto Update** and continue through ESPHome for custom builds. See [release and custom-firmware guidance](/features/firmware-updates#stable-releases-development-builds-and-custom-firmware).
+No. Built-in updates install released binaries and do not rebuild custom YAML. Disable **Auto Update** and continue through ESPHome for custom builds. See [release and custom-firmware guidance](/settings/system#stable-releases-development-builds-and-custom-firmware).
 
 ### Why Did Home Assistant Say Transport Encryption Was Disabled After an Update?
 
@@ -104,27 +104,27 @@ Mixed custom and stock firmware can change encryption behaviour. Keep the device
 
 ### Can I Rename a Panel Without Compiling Firmware?
 
-Yes. Use **Settings > System > Device Name > Save & Restart**. Entity IDs stay unchanged, but hostname-based ESPHome action names change. Update affected automations. See [Naming Your Panel](/features/setup#naming-your-panel).
+Yes. Use **System > Device Name > Save & Restart**. Entity IDs stay unchanged, but hostname-based ESPHome action names change. Update affected automations. See [Naming Your Panel](/settings/system#device-name).
 
 ### Can I Back Up My Setup?
 
-Yes. Use **Export** and **Import** under Backup to save cards and settings or copy a setup to another panel. Layouts adapt to different screen sizes. See [Backup and restore](/features/backup) for exclusions.
+Yes. Use **Export** and **Import** under **System > Backup** to save cards and settings or copy a setup to another panel. Layouts adapt to different screen sizes. See [Backup and restore](/settings/system#backup) for exclusions.
 
 ### Can I Copy Just a Few Cards to Another Panel?
 
-Use **Copy Code** and **Paste Code** in [Setup](/features/setup) for cards and attached subpages. Use [Backup](/features/backup) for a whole configuration. Each panel keeps its own web page and identity.
+Use **Copy Code** and **Paste Code** in [Layout](/features/subpages#copying-cards-between-controllers) for cards and attached subpages. Use [Backup](/settings/system#backup) for a whole configuration. Each panel keeps its own web page and identity.
 
 ### Can I Restart from Home Assistant and Update Without Reconnecting USB?
 
-Yes. Home Assistant exposes a [Restart button](/features/setup#restart-from-home-assistant); online panels can usually update wirelessly. USB remains necessary for initial flashing, recovery, or networking-type changes. See [manual installation](/getting-started/manual-esphome-setup).
+Yes. Home Assistant exposes a [Restart button](/settings/system#restart); online panels can usually update wirelessly. USB remains necessary for initial flashing, recovery, or networking-type changes. See [manual installation](/getting-started/manual-esphome-setup).
 
 ### How Do I Reset the Device?
 
-Back up first, then use **Settings > System > Factory Reset**. Partial reset keeps WiFi and the Home Assistant key; Complete reset clears them. Both retain firmware. Follow [Reset the display](/features/backup#reset-the-display).
+Back up first, then use **System > Factory Reset**. Partial reset keeps WiFi and the Home Assistant key; Complete reset clears them. Both retain firmware. Follow [Reset the display](/settings/system#reset-the-display).
 
 ### Can I Stay on Releases While Managing the Panel in ESPHome?
 
-Yes, by building from matching tagged sources and dependencies. Rebuilding the current source is different from installing a published binary. See [release versus custom firmware](/features/firmware-updates#stable-releases-development-builds-and-custom-firmware).
+Yes, by building from matching tagged sources and dependencies. Rebuilding the current source is different from installing a published binary. See [release versus custom firmware](/settings/system#stable-releases-development-builds-and-custom-firmware).
 
 ## Troubleshooting and privacy
 
@@ -176,7 +176,7 @@ A Subpage card opens another page of controls, like a folder for a room or devic
 
 ### Can the Screen Sleep, Wake on Touch, or Wake When Someone Arrives?
 
-Yes. [Screensaver settings](/features/screensaver) support timer- or Home Assistant presence-based behaviour, touch wake, and **Screen: Wake**. Built-in camera face detection is not a supported presence source.
+Yes. [Screensaver settings](/settings/sleep#screensaver) support timer- or Home Assistant presence-based behaviour, touch wake, and **Screen: Wake**. Built-in camera face detection is not a supported presence source.
 
 ### Can It Control Mini-split Fan Speed, Swing, and Heating/Cooling Targets?
 
@@ -184,11 +184,11 @@ Yes, when the Home Assistant climate entity exposes those capabilities. Range th
 
 ### Why Does My Weather Card Only Show Cloudy Instead of a Temperature?
 
-**Current Conditions** shows the state. Select **Temperatures Today** or **Temperatures Tomorrow** for forecast highs/lows and enable actions permission. Use a Sensor card for measured temperature. See [Weather](/card-types/weather).
+**Current Conditions** shows the state. Select **Today's Forecast** or **Tomorrow's Forecast** for forecast conditions and high temperatures and enable actions permission. Use a Sensor card for measured temperature. See [Weather](/card-types/weather).
 
 ### Can I Choose a Different Background Colour for Every Card?
 
-Open an individual card's settings and expand **Custom Colours** to choose one of the 20 standard colours in the compact grid. A checkmark shows the selected colour. The active state automatically uses a lighter version of that colour, and text adjusts for readability. While the section is open, the reset icon beside its arrow removes the custom colour so the card uses the panel's defaults again. Image and full QR cards use fixed backgrounds and do not offer this control. The shared active colour remains available in [Appearance](/features/appearance).
+Open an individual card's settings and expand **Custom Colours** to choose a preset from the compact grid, or select the final dashed eyedropper swatch to open your browser's native colour picker. A checkmark shows the selected preset; a custom colour fills the eyedropper swatch and is highlighted by an accent outline. The active state uses a brighter tint for darker colours, or a darker shade for pale colours and white. Text adjusts for readability. While the section is open, the reset icon beside its arrow removes the custom colour so the card uses the panel's defaults again. Image and full QR cards use fixed backgrounds and do not offer this control. The shared active colour remains available in [Appearance](/features/appearance).
 
 ### Can I Send Blinds to 25, 50, or 75 Percent?
 
@@ -212,7 +212,7 @@ The light popup uses touch-friendly colour choices. Its available tabs depend on
 
 ### Can the Clock Show Seconds?
 
-There is no seconds option for the normal clock bar or Date & Time card. The clock bar updates by the minute. See [Time Settings](/features/clock) for timezone and 12/24-hour options.
+There is no seconds option for the normal clock bar or Date & Time card. The clock bar updates by the minute. See [Time Settings](/settings/system#time) for timezone and 12/24-hour options.
 
 ### What If the Icon I Need Isn't Listed?
 
@@ -242,11 +242,11 @@ Bluetooth proxy is not included in standard panel setup or documented Ethernet-o
 
 ### Can It Run on a Battery and Show the Charge Level?
 
-Power and measurement are separate hardware features. [Battery Status](/features/battery) is optional on compatible JC8012P4A1 battery hardware, estimates charge, and does not detect charging. S3 experiments do not establish supported charge reporting.
+Power and measurement are separate hardware features. [Battery Status](/settings/system#battery) is optional on compatible JC8012P4A1 battery hardware, estimates charge, and does not detect charging. S3 experiments do not establish supported charge reporting.
 
 ### Can I Use a 10-inch Display in Portrait Mode?
 
-Use **Settings > Display > Rotation**. Available orientations depend on panel and firmware. Check the preview and usable card space after rotating. See [Rotation](/features/rotation).
+Use **Screen > Display > Rotation**. Available orientations depend on panel and firmware. Check the preview and usable card space after rotating. See [Rotation](/settings/display#rotation).
 
 ### Does It Have a Room Temperature Sensor?
 

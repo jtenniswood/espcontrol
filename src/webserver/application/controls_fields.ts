@@ -560,6 +560,7 @@ export function createControlsFieldsFeature(
         return {
             iconHtml: cardIconHtml(cardIconSlug(b, helpers, options.iconFallback, options.iconField), options.iconExtraHtml || ""),
             labelHtml: cardBadgeLabelHtml(helpers, options.label || "Configure", options.badge),
+            labelEditable: options.labelEditable !== false,
         };
     }
     function condField(this: any) {

@@ -12,9 +12,12 @@
 
 struct ParsedCfg {
   std::string entity, type, sensor, options;
+  std::string precision = "";
 };
 using SubpageBtn = ParsedCfg;
 struct lv_obj_t;
+enum class WeatherForecastView { DAILY, TODAY, TOMORROW };
+struct ForecastSource { struct { size_t count = 2; } forecast; } forecast_source;
 struct Runtime {
   lv_obj_t *btn = nullptr;
   bool media_artwork = false;
@@ -26,6 +29,9 @@ struct Runtime {
   bool active = true;
   void *image = this;
   bool image_ready = true;
+  ForecastSource *source = &forecast_source;
+  WeatherForecastView view = WeatherForecastView::DAILY;
+  size_t selected_day = 0;
   std::string source_url;
   std::string type;
   bool oscillation_known = true, direction_known = true;
@@ -40,6 +46,7 @@ using AlarmCardCtx = Runtime;
 using FanCardCtx = Runtime;
 using ImageCardCtx = Runtime;
 using OptionSelectCtx = Runtime;
+using WeatherDailyCard = Runtime;
 struct lv_obj_t { Runtime *runtime = nullptr; bool hidden = false; lv_obj_t *parent = nullptr; };
 constexpr int LV_OBJ_FLAG_HIDDEN = 1;
 void *lv_obj_get_user_data(lv_obj_t *obj) { return obj->runtime; }
@@ -115,6 +122,9 @@ OPEN(fan_control_open_modal, FAN_CONTROL)
 OPEN(fan_preset_open, FAN_PRESET)
 OPEN(image_card_open_modal, IMAGE_CARD)
 OPEN(option_select_open_modal, OPTION_SELECT)
+OPEN(weather_daily_open_modal, WEATHER_FORECAST)
+size_t weather_daily_selected_day(const Runtime &card) { return card.selected_day; }
+Runtime *weather_daily_card_for(lv_obj_t *button) { return button ? button->runtime : nullptr; }
 void wifi_qr_open_modal(const ParsedCfg &, lv_obj_t *) { show(nullptr, ControlModalKind::WIFI_QR); }
 // Any accidental re-use of a command/click path must fail these tests.
 void handle_button_click(const std::string &, int, lv_obj_t *) { ++commands; }
@@ -184,6 +194,31 @@ int main() {
     {"option_select", "", "select.office", ControlModalKind::OPTION_SELECT},
     {"wifi_qr", "", "switch.guest", ControlModalKind::WIFI_QR},
   };
+  {
+    Runtime runtime; runtime.entity_id = "weather.home";
+    lv_obj_t button{&runtime};
+    configs["daily"] = {"weather.home", "weather", "", "", "daily"};
+    homes = {{1, 0, "", "daily", &button}};
+    assert(espcontrol_open_modal("weather.home", true));
+    assert(modal.kind == ControlModalKind::WEATHER_FORECAST && commands == 0);
+    runtime.source = nullptr;
+    assert(!espcontrol_can_open_modal("weather.home", true));
+    configs["daily"].precision = "today";
+    assert(!espcontrol_can_open_modal("weather.home", true));
+    runtime.source = &forecast_source;
+    for (const auto *mode : {"today", "tomorrow"}) {
+      configs["daily"].precision = mode;
+      runtime.view = std::string(mode)=="today" ? WeatherForecastView::TODAY : WeatherForecastView::TOMORROW;
+      runtime.selected_day = forecast_source.forecast.count;
+      const int before_closes = closes, before_opens = opens;
+      assert(!espcontrol_can_open_modal("weather.home", true));
+      assert(!espcontrol_open_modal("weather.home", true));
+      assert(before_closes==closes && before_opens==opens && modal.overlay);
+      runtime.selected_day = 0;
+      assert(espcontrol_can_open_modal("weather.home", true));
+      assert(espcontrol_open_modal("weather.home", true));
+    }
+  }
   for (const auto &test : cases) {
     Runtime runtime; runtime.entity_id = test.entity; runtime.type = test.type;
     lv_obj_t button{&runtime};

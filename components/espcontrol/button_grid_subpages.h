@@ -300,9 +300,10 @@ inline std::vector<SubpageBtn> parse_subpage_config(const std::string &sp_cfg) {
 inline lv_obj_t *create_grid_card_button(lv_obj_t *parent, lv_coord_t radius,
                                          lv_coord_t pad,
                                          const lv_font_t *label_font,
-                                         lv_color_t text_color) {
+                                         lv_color_t text_color,
+                                         bool continuous_corners = false) {
   lv_obj_t *btn = lv_btn_create(parent);
-  lv_obj_set_style_radius(btn, radius, LV_PART_MAIN);
+  apply_grid_card_corners(btn, radius, continuous_corners);
   lv_obj_set_style_pad_all(btn, pad, LV_PART_MAIN);
   if (label_font) lv_obj_set_style_text_font(btn, label_font, LV_PART_MAIN);
   lv_obj_set_style_text_color(btn, text_color, LV_PART_MAIN);
@@ -417,7 +418,9 @@ inline std::string get_subpage_back_label(const std::string &order_str) {
       size_t label_start = std::string::npos;
       if (subpage_back_token_span(order_str, st, cm, suffix, &label_start)) {
         if (label_start != std::string::npos) {
-          std::string label = decode_compact_subpage_field(order_str, label_start, cm - label_start);
+          size_t label_end = order_str.find(':', label_start);
+          if (label_end == std::string::npos || label_end > cm) label_end = cm;
+          std::string label = decode_compact_subpage_field(order_str, label_start, label_end - label_start);
           return label.empty() ? espcontrol_i18n(std::string("Back")) : label;
         }
         return espcontrol_i18n(std::string("Back"));
@@ -426,6 +429,25 @@ inline std::string get_subpage_back_label(const std::string &order_str) {
     st = cm + 1;
   }
   return espcontrol_i18n(std::string("Back"));
+}
+
+// A colour suffix follows the encoded label: B=Return%3AHome:FF8C00.
+inline std::string get_subpage_back_color(const std::string &order_str) {
+  size_t start = 0;
+  while (start < order_str.size()) {
+    size_t end = order_str.find(',', start);
+    if (end == std::string::npos) end = order_str.size();
+    char suffix = '\0';
+    size_t label_start = std::string::npos;
+    if (subpage_back_token_span(order_str, start, end, suffix, &label_start)) {
+      if (label_start == std::string::npos) return "";
+      const size_t separator = order_str.find(':', label_start);
+      if (separator == std::string::npos || separator >= end) return "";
+      return normalize_card_color_value(order_str.substr(separator + 1, end - separator - 1));
+    }
+    start = end + 1;
+  }
+  return "";
 }
 
 // Subpage grid layout with support for a back button token ("B")

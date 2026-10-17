@@ -611,7 +611,7 @@ def check_root(root: Path) -> list[str]:
             "weather_driver_attach_interaction",
             "weather_driver_refresh_layout",
             "weather_driver_cleanup",
-            "register_weather_forecast_card",
+            "weather_daily_setup",
             "subscribe_weather_state",
         )
         for needle in required:
@@ -640,7 +640,7 @@ def check_root(root: Path) -> list[str]:
             "basic_action_driver_bind_fan_switch",
             "send_webhook_action",
             "send_internal_relay_action",
-            "screen_lock_toggle",
+            "screen_lock_activate",
             "esphome.push_button_pressed",
         )
         for needle in required:

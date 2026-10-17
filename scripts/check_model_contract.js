@@ -42,6 +42,32 @@ for (const token of ["Bw", "Bt", "Bx"]) {
   );
 }
 
+for (const token of ["B", "Bd", "Bw", "Bb", "Bt", "Bx"]) {
+  const encoded = model.backOrderToken(token, "Return:Home, 50%|;", "#ffec16");
+  assert.strictEqual(encoded, `${token}=Return%3AHome%2C 50%25%7C%3B:FFEC16`);
+  assert.deepStrictEqual(model.parseBackOrderToken(encoded), {
+    token, label: "Return:Home, 50%|;", color: "FFEC16",
+  });
+  for (const value of [encoded + ",1|switch.test:Test", "~" + encoded + ",1|,switch.test,Test"]) {
+    const parsed = model.parseRawSubpageConfig(value, code => code);
+    assert.strictEqual(parsed.backColor, "FFEC16");
+    assert.strictEqual(parsed.backLabel, "Return:Home, 50%|;");
+    const grid = model.buildSubpageGrid(parsed, 15, 5);
+    assert.strictEqual(model.serializeSubpageGrid(grid.grid, grid.sizes, parsed.backLabel, parsed.backColor)[0], encoded);
+    const structured = model.structuredSubpageFromParsed(parsed);
+    assert.strictEqual(structured.back_color, "FFEC16");
+    assert.strictEqual(model.parseStructuredSubpageConfig(structured).backColor, "FFEC16");
+    assert.strictEqual(model.subpageOrderForSerialize(parsed.order, parsed.backLabel, parsed.backColor)[0], encoded);
+    assert.strictEqual(model.subpageOrderForSerialize([encoded], "Back", "")[0], token, "reset removes colour suffix");
+  }
+}
+assert.strictEqual(model.parseBackOrderToken("B=Back:invalid").color, undefined);
+assert.strictEqual(model.parseStructuredSubpageConfig({ back_color: "invalid" }).backColor, undefined);
+assert.strictEqual(model.parseStructuredSubpageConfig({ back_color: "#abcdef" }).backColor, "ABCDEF");
+assert.strictEqual(model.backOrderToken("B", "Back", "invalid"), "B");
+assert.strictEqual(model.backOrderToken("B", "Back", "FFEC16"), "B=:FFEC16", "coloured default Back keeps its translated label");
+assert.deepStrictEqual(model.parseBackOrderToken("B=:FFEC16"), { token: "B", label: "Back", color: "FFEC16" });
+
 function plain(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -243,6 +269,7 @@ const transferSubpageCard = {
   subpage: {
     order: ["B", "1w"],
     back_label: "Return Home",
+    back_color: "F5F5F5",
     buttons: [{
       entity: "light.kitchen",
       label: "Kitchen",
@@ -608,6 +635,7 @@ const panelSettings = model.normalizeBackupPanelSettings({
   screensaver_mode: "timer",
   screensaver_action: "Screen Dimmed",
   screensaver_camera_image_mode: "fill",
+  screensaver_camera_dimming: 50,
   screensaver_metadata_entity: "sensor.current_photo_caption",
   cover_art_hide_external_input: true,
   home_assistant_artwork_endpoint_mode: "Manual",
@@ -865,3 +893,8 @@ assert.strictEqual(
   true,
   "missing playback control setting defaults on",
 );
+
+assert.strictEqual(panelSettings.screensaverCameraDimming, 50, "camera dimming imports into saved settings");
+for (const [value, expected] of [[0, 0], [100, 100], ["25 %", 25], [-5, 0], [120, 100], ["invalid", 0], [undefined, 0]]) {
+  assert.strictEqual(model.normalizeScreensaverCameraDimming(value), expected, "camera dimming normalizes " + value);
+}

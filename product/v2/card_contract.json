@@ -81,6 +81,7 @@
       "option_select",
       "push",
       "screen_lock",
+      "screensaver",
       "webhook",
       "sensor",
       "subpage",
@@ -154,17 +155,18 @@
       "option_select": {"driver": "option_select", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
       "push": {"driver": "push", "capabilities": {"informationOnly": false, "subscriptions": false, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
       "screen_lock": {"driver": "screen_lock", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "screensaver": {"driver": "screensaver", "capabilities": {"informationOnly": false, "subscriptions": false, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
       "webhook": {"driver": "webhook", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
       "sensor": {"driver": "sensor", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
       "local_sensor": {"driver": "sensor", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
       "slider": {"driver": "numeric", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": false, "runtimeAllocation": true, "subpage": true}},
       "subpage": {"driver": "subpage", "capabilities": {"informationOnly": false, "subscriptions": false, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": false}},
       "timezone": {"driver": "date_time", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
-      "weather": {"driver": "weather", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "weather": {"driver": "weather", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": true, "subpage": true}},
       "image": {"driver": "image", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": true, "subpage": true}},
       "wifi_qr": {"driver": "wifi_qr", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": false, "subpage": true}},
       "wifi_qr_card": {"driver": "wifi_qr", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": false, "subpage": true}},
-      "weather_forecast": {"driver": "weather", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}}
+      "weather_forecast": {"driver": "weather", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": true, "subpage": true}}
     }
   },
   "optionNames": [
@@ -1937,10 +1939,65 @@
         "options": ""
       }
     },
+    "screensaver": {
+      "label": "Screensaver",
+      "allowInSubpage": true,
+      "domains": [],
+      "normalization": {
+        "fields": {
+          "entity": {
+            "policy": "clear"
+          },
+          "label": {
+            "policy": "clear"
+          },
+          "icon": {
+            "policy": "default",
+            "value": "Monitor"
+          },
+          "icon_on": {
+            "policy": "default",
+            "value": "Auto"
+          },
+          "sensor": {
+            "policy": "clear"
+          },
+          "unit": {
+            "policy": "clear"
+          },
+          "type": {
+            "policy": "default",
+            "value": "screensaver"
+          },
+          "precision": {
+            "policy": "clear"
+          },
+          "options": {
+            "policy": "clear"
+          }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Monitor",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "screensaver",
+        "precision": "",
+        "options": ""
+      }
+    },
     "screen_lock": {
       "label": "Screen Lock",
       "allowInSubpage": true,
       "domains": [],
+      "options": [
+        { "name": "screensaver_on_lock", "label": "Screensaver on lock", "kind": "flag", "omitDefault": true }
+      ],
       "normalization": {
         "fields": {
           "entity": { "policy": "clear" },
@@ -1951,10 +2008,10 @@
           "unit": { "policy": "clear" },
           "type": { "policy": "default", "value": "screen_lock" },
           "precision": { "policy": "clear" },
-          "options": { "policy": "clear" }
+          "options": { "policy": "keep" }
         },
         "unknownOptions": "drop",
-        "canonicalOptionOrder": []
+        "canonicalOptionOrder": ["screensaver_on_lock"]
       },
       "default": {
         "entity": "",
@@ -2298,19 +2355,10 @@
           "name": "weather_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["", "today", "tomorrow"],
+          "values": ["", "today", "tomorrow", "daily"],
           "defaultValue": "",
           "storageField": "precision",
           "omitDefault": true
-        },
-        {
-          "name": "large_numbers",
-          "label": "Large Temperature Numbers",
-          "kind": "flag",
-          "omitDefault": true,
-          "supportedWhen": {
-            "precision": ["today", "tomorrow"]
-          }
         }
       ],
       "normalization": {
@@ -2326,7 +2374,7 @@
           "options": { "policy": "hook", "hook": "normalize_weather_options" }
         },
         "unknownOptions": "drop",
-        "canonicalOptionOrder": ["large_numbers"],
+        "canonicalOptionOrder": [],
         "migrationActions": ["legacy_weather_forecast"],
         "optionHook": "normalize_weather_options"
       },
@@ -2685,12 +2733,6 @@
         "text"
       ]
     },
-    "weather": {
-      "precisions": [
-        "today",
-        "tomorrow"
-      ]
-    },
     "calendar": true,
     "clock": true,
     "climate": true,
@@ -2737,6 +2779,7 @@
     "climate_control": "HC",
     "push": "P",
     "screen_lock": "SL",
+    "screensaver": "SS",
     "webhook": "WH",
     "internal": "I",
     "subpage": "G"

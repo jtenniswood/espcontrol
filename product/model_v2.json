@@ -66,6 +66,7 @@
       "internal": "product/v2/cards/internal.json",
       "local_sensor": "product/v2/cards/local_sensor.json",
       "screen_lock": "product/v2/cards/screen_lock.json",
+      "screensaver": "product/v2/cards/screensaver.json",
       "cover": "product/v2/cards/cover.json",
       "door_window": "product/v2/cards/door_window.json",
       "garage": "product/v2/cards/garage.json",

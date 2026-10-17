@@ -16,6 +16,8 @@ int main() {
                           capabilities.data(), capabilities.size(),
                           &capabilities_size) &&
                       capabilities_size > 0 &&
+                      std::strstr(capabilities.data(), "\"max_record_body_bytes\":4096") != nullptr &&
+                      std::strstr(capabilities.data(), "\"screensaver_pin\":{\"version\":1}") != nullptr &&
                       std::strstr(capabilities.data(), "\"identity\":{\"version\":1}") != nullptr &&
                       std::strstr(capabilities.data(), "\"reset\":{\"modes\":[\"customization\",\"factory\"]") != nullptr &&
                       std::strstr(capabilities.data(), "\"document_versions\":[1]") !=

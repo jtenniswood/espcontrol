@@ -157,11 +157,13 @@ inline std::string weather_label_for_state(const std::string &state) {
   return sentence_cap_text(state);
 }
 
+#include "button_grid_weather_daily_data.h"
+
 #if defined(ESPCONTROL_DISABLE_WEATHER_FORECAST) && ESPCONTROL_DISABLE_WEATHER_FORECAST
 
 inline void reset_weather_forecast_cards() {}
 
-inline void refresh_weather_forecast_card_visuals() {}
+inline void refresh_weather_forecast_card_visuals() { weather_daily_refresh_visuals(); }
 
 inline void register_weather_forecast_card(lv_obj_t *btn,
                                            lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
@@ -178,7 +180,7 @@ inline void register_weather_forecast_card(lv_obj_t *btn,
   (void) label;
 }
 
-inline void weather_forecast_cancel_pending_requests() {}
+inline void weather_forecast_cancel_pending_requests(bool = true) {}
 
 inline bool weather_forecast_cancel_stale_requests() { return false; }
 
@@ -223,6 +225,8 @@ inline void reset_weather_forecast_cards() {
 
 constexpr float WEATHER_FORECAST_TEMP_MISSING = 32767.0f;
 constexpr int WEATHER_FORECAST_PENDING_MAX = 8;
+// Waiting requests must cover both the main grid and every registered subpage.
+constexpr int WEATHER_FORECAST_WAITING_MAX = MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS;
 constexpr uint32_t WEATHER_FORECAST_REQUEST_TIMEOUT_MS = 60000;
 constexpr uint32_t WEATHER_FORECAST_RETRY_DELAY_MS = 300000;
 
@@ -307,6 +311,7 @@ inline void refresh_weather_forecast_card_visuals() {
                                      refs[i].low, refs[i].source_unit);
     updated = true;
   }
+  weather_daily_refresh_visuals();
   if (updated) notify_dashboard_content_changed();
 }
 
@@ -351,6 +356,8 @@ inline void apply_weather_forecast_to_entity(const std::string &entity_id,
 
 inline void apply_weather_forecast_unavailable_for_entity(const std::string &entity_id) {
   ESP_LOGW("weather_forecast", "Marking forecast unavailable for %s", entity_id.c_str());
+  weather_daily_set_unavailable(entity_id);
+  if (weather_daily_find_source(entity_id)) weather_forecast_schedule_visual_refresh();
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
   int count = weather_forecast_card_count();
   for (int i = 0; i < count; i++) {
@@ -367,6 +374,10 @@ inline void apply_weather_forecast_unavailable_for_entity(const std::string &ent
 
 inline void apply_weather_forecast_unavailable_all() {
   ESP_LOGW("weather_forecast", "Marking all forecast cards unavailable");
+  for (const auto &source : weather_daily_sources()) {
+    source->loading = false;
+    source->stale = source->forecast.count > 0;
+  }
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
   int count = weather_forecast_card_count();
   for (int i = 0; i < count; i++) {
@@ -383,6 +394,8 @@ inline void apply_weather_forecast_actions_required_for_entity(const std::string
   ESP_LOGW("weather_forecast",
     "Forecast request timed out for %s; check that this ESPHome device is allowed to perform Home Assistant actions",
     entity_id.c_str());
+  weather_daily_set_unavailable(entity_id);
+  if (weather_daily_find_source(entity_id)) weather_forecast_schedule_visual_refresh();
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
   int count = weather_forecast_card_count();
   for (int i = 0; i < count; i++) {
@@ -432,11 +445,7 @@ inline void register_weather_forecast_card(lv_obj_t *btn,
 }
 
 inline bool weather_forecast_entity_id_safe(const std::string &entity_id) {
-  if (entity_id.compare(0, 8, "weather.") != 0) return false;
-  for (char ch : entity_id) {
-    if (!(std::isalnum(static_cast<unsigned char>(ch)) || ch == '_' || ch == '.')) return false;
-  }
-  return true;
+  return espcontrol::weather::entity_id_safe(entity_id);
 }
 
 inline bool parse_weather_forecast_temp(const std::string &value, float &out) {
@@ -518,13 +527,13 @@ inline WeatherForecastPendingRequest *weather_forecast_pending_requests() {
   return requests;
 }
 
-inline WeatherForecastQueuedRequest *weather_forecast_queued_requests() {
-  static WeatherForecastQueuedRequest requests[WEATHER_FORECAST_PENDING_MAX];
+inline std::vector<WeatherForecastQueuedRequest> &weather_forecast_queued_requests() {
+  static std::vector<WeatherForecastQueuedRequest> requests;
   return requests;
 }
 
-inline WeatherForecastRetryRequest *weather_forecast_retry_requests() {
-  static WeatherForecastRetryRequest requests[WEATHER_FORECAST_PENDING_MAX];
+inline std::vector<WeatherForecastRetryRequest> &weather_forecast_retry_requests() {
+  static std::vector<WeatherForecastRetryRequest> requests;
   return requests;
 }
 
@@ -563,10 +572,9 @@ inline bool weather_forecast_pending_key(const std::string &entity_id,
 
 inline bool weather_forecast_queue_key(const std::string &entity_id,
                                        const std::string &day) {
-  WeatherForecastQueuedRequest *requests = weather_forecast_queued_requests();
-  for (int i = 0; i < WEATHER_FORECAST_PENDING_MAX; i++) {
-    if (!requests[i].entity_id.empty() &&
-        weather_forecast_request_matches(entity_id, day, requests[i].entity_id, requests[i].day)) {
+  for (const auto &request : weather_forecast_queued_requests()) {
+    if (!request.entity_id.empty() &&
+        weather_forecast_request_matches(entity_id, day, request.entity_id, request.day)) {
       return true;
     }
   }
@@ -575,10 +583,9 @@ inline bool weather_forecast_queue_key(const std::string &entity_id,
 
 inline bool weather_forecast_retry_key(const std::string &entity_id,
                                        const std::string &day) {
-  WeatherForecastRetryRequest *requests = weather_forecast_retry_requests();
-  for (int i = 0; i < WEATHER_FORECAST_PENDING_MAX; i++) {
-    if (!requests[i].entity_id.empty() &&
-        weather_forecast_request_matches(entity_id, day, requests[i].entity_id, requests[i].day)) {
+  for (const auto &request : weather_forecast_retry_requests()) {
+    if (!request.entity_id.empty() &&
+        weather_forecast_request_matches(entity_id, day, request.entity_id, request.day)) {
       return true;
     }
   }
@@ -622,28 +629,21 @@ inline void weather_forecast_clear_pending(uint32_t call_id) {
 }
 
 inline void weather_forecast_clear_queue() {
-  WeatherForecastQueuedRequest *requests = weather_forecast_queued_requests();
-  for (int i = 0; i < WEATHER_FORECAST_PENDING_MAX; i++) {
-    requests[i] = WeatherForecastQueuedRequest();
-  }
+  weather_forecast_queued_requests().clear();
 }
 
 inline void weather_forecast_clear_retry(const std::string &entity_id,
                                          const std::string &day) {
-  WeatherForecastRetryRequest *requests = weather_forecast_retry_requests();
-  for (int i = 0; i < WEATHER_FORECAST_PENDING_MAX; i++) {
-    if (!requests[i].entity_id.empty() &&
-        weather_forecast_request_matches(entity_id, day, requests[i].entity_id, requests[i].day)) {
-      requests[i] = WeatherForecastRetryRequest();
+  for (auto &request : weather_forecast_retry_requests()) {
+    if (!request.entity_id.empty() &&
+        weather_forecast_request_matches(entity_id, day, request.entity_id, request.day)) {
+      request = WeatherForecastRetryRequest();
     }
   }
 }
 
 inline void weather_forecast_clear_retries() {
-  WeatherForecastRetryRequest *requests = weather_forecast_retry_requests();
-  for (int i = 0; i < WEATHER_FORECAST_PENDING_MAX; i++) {
-    requests[i] = WeatherForecastRetryRequest();
-  }
+  weather_forecast_retry_requests().clear();
 }
 
 inline bool weather_forecast_schedule_retry(const std::string &entity_id,
@@ -655,52 +655,64 @@ inline bool weather_forecast_schedule_retry(const std::string &entity_id,
       weather_forecast_retry_key(entity_id, day)) {
     return true;
   }
-  WeatherForecastRetryRequest *requests = weather_forecast_retry_requests();
-  for (int i = 0; i < WEATHER_FORECAST_PENDING_MAX; i++) {
-    if (requests[i].entity_id.empty()) {
-      requests[i].entity_id = entity_id;
-      requests[i].day = day;
-      requests[i].due_ms = esphome::millis() + WEATHER_FORECAST_RETRY_DELAY_MS;
-      ESP_LOGW("weather_forecast", "Retrying forecast request for %s in %u seconds: %s",
-        entity_id.c_str(), (unsigned) (WEATHER_FORECAST_RETRY_DELAY_MS / 1000),
-        reason ? reason : "failed");
-      return true;
+  auto &requests = weather_forecast_retry_requests();
+  auto slot = std::find_if(requests.begin(), requests.end(),
+    [](const WeatherForecastRetryRequest &request) { return request.entity_id.empty(); });
+  if (slot == requests.end()) {
+    if (requests.size() >= WEATHER_FORECAST_WAITING_MAX) {
+      ESP_LOGW("weather_forecast", "Too many delayed forecast retries; skipping %s",
+        entity_id.c_str());
+      return false;
     }
+    requests.emplace_back();
+    slot = requests.end() - 1;
   }
-  ESP_LOGW("weather_forecast", "Too many delayed forecast retries; skipping %s",
-    entity_id.c_str());
-  return false;
+  slot->entity_id = entity_id;
+  slot->day = day;
+  slot->due_ms = esphome::millis() + WEATHER_FORECAST_RETRY_DELAY_MS;
+  ESP_LOGW("weather_forecast", "Retrying forecast request for %s in %u seconds: %s",
+    entity_id.c_str(), (unsigned) (WEATHER_FORECAST_RETRY_DELAY_MS / 1000),
+    reason ? reason : "failed");
+  return true;
 }
 
 inline bool weather_forecast_enqueue(const std::string &entity_id,
                                      const std::string &day) {
   if (!weather_forecast_entity_id_safe(entity_id)) return false;
-  weather_forecast_clear_retry(entity_id, day);
   if (weather_forecast_pending_key(entity_id, day) ||
       weather_forecast_queue_key(entity_id, day)) {
+    weather_forecast_clear_retry(entity_id, day);
+    weather_daily_set_loading(entity_id);
+    if (weather_daily_find_source(entity_id)) weather_forecast_schedule_visual_refresh();
     return true;
   }
-  WeatherForecastQueuedRequest *requests = weather_forecast_queued_requests();
-  for (int i = 0; i < WEATHER_FORECAST_PENDING_MAX; i++) {
-    if (requests[i].entity_id.empty()) {
-      requests[i].entity_id = entity_id;
-      requests[i].day = day;
-      return true;
+  auto &requests = weather_forecast_queued_requests();
+  auto slot = std::find_if(requests.begin(), requests.end(),
+    [](const WeatherForecastQueuedRequest &request) { return request.entity_id.empty(); });
+  if (slot == requests.end()) {
+    if (requests.size() >= WEATHER_FORECAST_WAITING_MAX) {
+      ESP_LOGW("weather_forecast", "Too many queued forecast requests; skipping %s",
+        entity_id.c_str());
+      return false;
     }
+    requests.emplace_back();
+    slot = requests.end() - 1;
   }
-  ESP_LOGW("weather_forecast", "Too many queued forecast requests; skipping %s",
-    entity_id.c_str());
-  return false;
+  slot->entity_id = entity_id;
+  slot->day = day;
+  weather_forecast_clear_retry(entity_id, day);
+  weather_daily_set_loading(entity_id);
+  if (weather_daily_find_source(entity_id)) weather_forecast_schedule_visual_refresh();
+  return true;
 }
 
 inline bool weather_forecast_dequeue(std::string &entity_id,
                                      std::string &day) {
-  WeatherForecastQueuedRequest *requests = weather_forecast_queued_requests();
-  for (int i = 0; i < WEATHER_FORECAST_PENDING_MAX; i++) {
-    if (requests[i].entity_id.empty()) continue;
-    entity_id = requests[i].entity_id;
-    day = requests[i].day;
-    requests[i] = WeatherForecastQueuedRequest();
+  for (auto &request : weather_forecast_queued_requests()) {
+    if (request.entity_id.empty()) continue;
+    entity_id = request.entity_id;
+    day = request.day;
+    request = WeatherForecastQueuedRequest();
     return true;
   }
   return false;
@@ -708,23 +720,30 @@ inline bool weather_forecast_dequeue(std::string &entity_id,
 
 inline bool weather_forecast_enqueue_due_retries() {
   if (!ha_api_state_connected()) return false;
-  WeatherForecastRetryRequest *requests = weather_forecast_retry_requests();
   uint32_t now = esphome::millis();
   bool queued = false;
-  for (int i = 0; i < WEATHER_FORECAST_PENDING_MAX; i++) {
-    if (requests[i].entity_id.empty()) continue;
-    if ((int32_t) (now - requests[i].due_ms) < 0) continue;
-    std::string entity_id = requests[i].entity_id;
-    std::string day = requests[i].day;
-    requests[i] = WeatherForecastRetryRequest();
-    queued = weather_forecast_enqueue(entity_id, day) || queued;
+  for (auto &request : weather_forecast_retry_requests()) {
+    if (request.entity_id.empty()) continue;
+    if ((int32_t) (now - request.due_ms) < 0) continue;
+    std::string entity_id = request.entity_id;
+    std::string day = request.day;
+    if (weather_forecast_enqueue(entity_id, day)) queued = true;
   }
   return queued;
 }
 
 inline void weather_forecast_send_next_queued();
 
-inline void weather_forecast_cancel_pending_requests() {
+inline void weather_forecast_cancel_pending_requests(bool disconnected = true) {
+  // Grid rebuilds invalidate callbacks but have not failed the new sources.
+  // Only a real disconnect changes loading/stale presentation here.
+  if (disconnected) {
+    for (const auto &source : weather_daily_sources()) {
+      source->loading = false;
+      source->stale = source->forecast.count > 0;
+    }
+    if (!weather_daily_sources().empty()) weather_forecast_schedule_visual_refresh();
+  }
   weather_forecast_action_ready_ms() = 0;
   weather_forecast_clear_queue();
   weather_forecast_clear_retries();
@@ -745,10 +764,13 @@ inline bool weather_forecast_cancel_stale_requests() {
     if (call_id == 0) continue;
     if (now - requests[i].started_ms < WEATHER_FORECAST_REQUEST_TIMEOUT_MS) continue;
     std::string entity_id = requests[i].entity_id;
+    std::string day = requests[i].day;
     requests[i] = WeatherForecastPendingRequest();
     ESP_LOGW("weather_forecast", "Cancelling forecast request %u for %s: timeout",
       (unsigned) call_id, entity_id.c_str());
     ha_cancel_action_response_callback(call_id, "timeout");
+    apply_weather_forecast_unavailable_for_entity(entity_id);
+    weather_forecast_schedule_retry(entity_id, day, "timeout");
     return true;
   }
   return false;
@@ -783,7 +805,8 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
     return;
   }
   req.wants_response = true;
-  std::string response_template = weather_forecast_response_template(entity_id);
+  std::string response_template = weather_daily_find_source(entity_id)
+    ? weather_daily_response_template(entity_id) : weather_forecast_response_template(entity_id);
   req.response_template = decltype(req.response_template)(response_template);
   ha_action_add_entity(req, entity_id);
   ha_action_add_data(req, "type", "daily");
@@ -821,7 +844,35 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
         return;
       }
       WeatherForecastPayload forecast;
-      bool valid = parse_weather_forecast_payload(payload, forecast);
+      bool valid = false;
+      if (auto *source = weather_daily_find_source(entity_id)) {
+        // Parse once per entity; card and modal read the same fixed-size snapshot.
+        espcontrol::weather::Forecast parsed;
+        valid = espcontrol::weather::parse(payload, parsed);
+        if (valid) {
+          source->forecast = parsed;
+          source->loading = false;
+          source->stale = false;
+          forecast.unit = parsed.temperature_unit;
+          for (size_t i = 0; i < parsed.count; ++i) {
+            const auto &entry = parsed.days[i];
+            auto high = std::isfinite(entry.high) ? entry.high : WEATHER_FORECAST_TEMP_MISSING;
+            auto low = std::isfinite(entry.low) ? entry.low : WEATHER_FORECAST_TEMP_MISSING;
+            if (std::strcmp(entry.date, parsed.today) == 0) {
+              forecast.today_valid = std::isfinite(entry.high) || std::isfinite(entry.low);
+              forecast.today_high = high; forecast.today_low = low;
+            }
+            if (std::strcmp(entry.date, parsed.tomorrow) == 0) {
+              forecast.tomorrow_valid = std::isfinite(entry.high) || std::isfinite(entry.low);
+              forecast.tomorrow_high = high; forecast.tomorrow_low = low;
+            }
+          }
+        } else {
+          source->loading = false;
+          source->stale = source->forecast.count > 0;
+        }
+        weather_forecast_schedule_visual_refresh();
+      } else valid = parse_weather_forecast_payload(payload, forecast);
       if (!valid) {
         ESP_LOGW("weather_forecast", "No usable forecast temperatures for %s: %s",
           entity_id.c_str(), payload);
@@ -841,6 +892,10 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
     ha_cancel_action_response_callback(req.call_id, "too many pending forecasts");
     apply_weather_forecast_unavailable_for_entity(entity_id);
     return;
+  }
+  if (weather_daily_find_source(entity_id)) {
+    weather_daily_set_loading(entity_id);
+    weather_forecast_schedule_visual_refresh();
   }
   ESP_LOGI("weather_forecast", "Requesting daily forecast for %s", entity_id.c_str());
   if (!ha_action_send(req)) {
@@ -864,7 +919,7 @@ inline void weather_forecast_send_next_queued() {
 inline void refresh_weather_forecast_cards() {
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
   int count = weather_forecast_card_count();
-  if (count <= 0) return;
+  if (count <= 0 && weather_daily_sources().empty()) return;
   std::vector<std::string> requested;
   requested.reserve(count);
   for (int i = 0; i < count; i++) {
@@ -881,6 +936,10 @@ inline void refresh_weather_forecast_cards() {
     if (already_requested) continue;
     requested.push_back(request_key);
     weather_forecast_enqueue(entity_id, "");
+  }
+  for (const auto &source : weather_daily_sources()) {
+    if (std::find(requested.begin(), requested.end(), source->entity_id) == requested.end())
+      weather_forecast_enqueue(source->entity_id, "");
   }
   weather_forecast_send_next_queued();
 }

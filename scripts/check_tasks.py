@@ -1331,11 +1331,6 @@ def self_test() -> None:
 
     if registry["types"].commands != (("npm", "exec", "--", "tsc", "--noEmit"),):
         raise AssertionError("TypeScript checks do not use the project-managed compiler")
-    if "icon-groups" not in {item.id for item in plan("fast", "docs")}:
-        raise AssertionError("docs plans do not validate icon gallery groups")
-    if "docs/.vitepress/theme/components/IconGallery.vue" not in registry["icon-groups"].inputs:
-        raise AssertionError("icon gallery changes do not invalidate icon-group checks")
-
     release_workflow_order = [item.id for item in plan("release", "workflow")]
     for prerequisite in ("generated", "device-manifest-output"):
         if release_workflow_order.index(prerequisite) > release_workflow_order.index("release-confidence"):

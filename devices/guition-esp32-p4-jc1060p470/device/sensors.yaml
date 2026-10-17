@@ -59,6 +59,8 @@ script:
           cfg.cols = portrait ? 3 : 5;
           cfg.width_compensation_vertical = portrait;
           cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
+          cfg.card_corner_radius = card_curve_radius(32, id(card_curve_select).current_option(), 8, 20);
+          cfg.continuous_card_corners = true;
           cfg.wrap_tall_labels = true;
           cfg.label_lines = 2;
           cfg.label_lines_tall = 3;
@@ -79,6 +81,7 @@ script:
           cfg.media_cover_art_artist_font = id(font_cover_art_artist)->get_lv_font();
           cfg.volume_number_font = id(font_number_value_large)->get_lv_font();
           cfg.volume_label_font = id(font_text_large)->get_lv_font();
+          cfg.small_text_font = id(font_text_small)->get_lv_font();
           cfg.climate_card_icon_font = id(font_icon_card)->get_lv_font();
           cfg.subpage_chevron_font = id(font_icon_status)->get_lv_font();
           cfg.climate_option_title_font = id(font_text_body)->get_lv_font();
@@ -236,6 +239,8 @@ script:
           cfg.cols = portrait ? 3 : 5;
           cfg.width_compensation_vertical = portrait;
           cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
+          cfg.card_corner_radius = card_curve_radius(32, id(card_curve_select).current_option(), 8, 20);
+          cfg.continuous_card_corners = true;
           cfg.wrap_tall_labels = true;
           cfg.label_lines = 2;
           cfg.label_lines_tall = 3;
@@ -256,6 +261,7 @@ script:
           cfg.media_cover_art_artist_font = id(font_cover_art_artist)->get_lv_font();
           cfg.volume_number_font = id(font_number_value_large)->get_lv_font();
           cfg.volume_label_font = id(font_text_large)->get_lv_font();
+          cfg.small_text_font = id(font_text_small)->get_lv_font();
           cfg.climate_card_icon_font = id(font_icon_card)->get_lv_font();
           cfg.subpage_chevron_font = id(font_icon_status)->get_lv_font();
           cfg.climate_option_title_font = id(font_text_body)->get_lv_font();
@@ -452,6 +458,8 @@ esphome:
             cfg.cols = portrait ? 3 : 5;
             cfg.width_compensation_vertical = portrait;
             cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
+            cfg.card_corner_radius = card_curve_radius(32, id(card_curve_select).current_option(), 8, 20);
+            cfg.continuous_card_corners = true;
             cfg.wrap_tall_labels = true;
             cfg.label_lines = 2;
             cfg.label_lines_tall = 3;
@@ -472,6 +480,7 @@ esphome:
             cfg.media_cover_art_artist_font = id(font_cover_art_artist)->get_lv_font();
             cfg.volume_number_font = id(font_number_value_large)->get_lv_font();
             cfg.volume_label_font = id(font_text_large)->get_lv_font();
+            cfg.small_text_font = id(font_text_small)->get_lv_font();
             cfg.climate_card_icon_font = id(font_icon_card)->get_lv_font();
             cfg.subpage_chevron_font = id(font_icon_status)->get_lv_font();
             cfg.climate_option_title_font = id(font_text_body)->get_lv_font();
@@ -620,6 +629,8 @@ esphome:
             cfg.cols = portrait ? 3 : 5;
             cfg.width_compensation_vertical = portrait;
             cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
+            cfg.card_corner_radius = card_curve_radius(32, id(card_curve_select).current_option(), 8, 20);
+            cfg.continuous_card_corners = true;
             cfg.wrap_tall_labels = true;
             cfg.label_lines = 2;
             cfg.label_lines_tall = 3;
@@ -640,6 +651,7 @@ esphome:
             cfg.media_cover_art_artist_font = id(font_cover_art_artist)->get_lv_font();
             cfg.volume_number_font = id(font_number_value_large)->get_lv_font();
             cfg.volume_label_font = id(font_text_large)->get_lv_font();
+            cfg.small_text_font = id(font_text_small)->get_lv_font();
             cfg.climate_card_icon_font = id(font_icon_card)->get_lv_font();
             cfg.subpage_chevron_font = id(font_icon_status)->get_lv_font();
             cfg.climate_option_title_font = id(font_text_body)->get_lv_font();

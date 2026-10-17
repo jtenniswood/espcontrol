@@ -40,14 +40,15 @@ This generated reference lists stable setup facts from the shared card contract.
 | Media | media | media_player | Yes | Own picker item | Type: control_modal, speaker_group, play_pause, previous, next, volume, position, now_playing, cover_art, playlist; Type: default, state; Controls: default, progress, play_pause; Show Track Details; External Source Media Entity; Maximum Volume: 1-100; Speaker Discovery Entity; Power Entity; Modal Tabs: controls, progress, volume, speakers, power; Label Display: label, status; Top Left Display: icon, volume; Media Content ID / URI; Player Source / Input; Large Media Numbers | Visible |
 | Option Select | option_select | select, input_select | Yes | Own picker item | None | Hidden |
 | Trigger | push | None | Yes | Own picker item | None | Visible |
-| Screen Lock | screen_lock | None | Yes | Own picker item | None | Visible |
+| Screensaver | screensaver | None | Yes | Own picker item | None | Visible |
+| Screen Lock | screen_lock | None | Yes | Own picker item | Screensaver on lock | Visible |
 | Webhook | webhook | None | Yes | Own picker item | Headers | Visible |
 | Sensor | sensor | sensor, binary_sensor, text_sensor | Yes | Own picker item | Large Sensor Numbers; Incoming Value Unit: default, seconds, minutes, hours, days; Lit When Active; Status Translation; Input Status; Display Text; Input Status 2; Display Text 2 | Visible |
 | Local Sensor | local_sensor | sensor, text_sensor | Yes | Sensor (sensor) | None | Hidden |
 | Slider | slider | light, fan, number, input_number | Yes | Own picker item | None | Visible |
 | Subpage | subpage | None | No | Own picker item | Subpage Type: default, switch, lights, climate, presence, media, alarm, cover, garage, gate, lock, vacuum, lawn_mower, weather, sensor, image; Large State Numbers | Visible |
 | Date & Time | timezone | None | Yes | Date & Time (calendar) | Type: clock, datetime, default, timezone; Large Clock | Visible |
-| Weather | weather | weather | Yes | Own picker item | Type: default, today, tomorrow; Large Temperature Numbers | Visible |
+| Weather | weather | weather | Yes | Own picker item | Type: default, today, tomorrow, daily | Visible |
 | Camera Card | image | camera, image | Yes | Own picker item | Show Label; Show Icon; Image fit: fill, fit; Camera refresh: off, periodic, activity; Refresh interval: 5, 10, 30; Trigger entity | Visible |
 | Wifi Sharing | wifi_qr | switch | Yes | Own picker item | Network name; Security: wpa, open; Password; Hidden network; Visible Tabs: qr, credentials, guest | Visible |
 | QR Card | wifi_qr_card | switch | Yes | Wifi Sharing (wifi_qr) | Network name; Security: wpa, open; Password; Hidden network; Visible Tabs: qr, credentials, guest | Visible |

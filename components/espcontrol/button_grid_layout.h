@@ -382,18 +382,6 @@ inline void apply_button_colors(lv_obj_t *btn, bool has_on, uint32_t on_val,
   if (has_on || has_off) bind_card_text_contrast_events(btn);
 }
 
-inline uint32_t card_pattern_highlight_color(uint32_t color) {
-  uint8_t r = (color >> 16) & 0xFF;
-  uint8_t g = (color >> 8) & 0xFF;
-  uint8_t b = color & 0xFF;
-  r = static_cast<uint8_t>(r + ((255 - r) * 35 / 100));
-  g = static_cast<uint8_t>(g + ((255 - g) * 35 / 100));
-  b = static_cast<uint8_t>(b + ((255 - b) * 35 / 100));
-  return (static_cast<uint32_t>(r) << 16) |
-         (static_cast<uint32_t>(g) << 8) |
-         static_cast<uint32_t>(b);
-}
-
 inline void apply_button_on_pattern(lv_obj_t *btn, const std::string &options,
                                     bool has_on, uint32_t on_val) {
   if (!btn || !has_on) return;
@@ -417,7 +405,10 @@ inline void apply_card_descendant_text_color(lv_obj_t *obj, lv_color_t color) {
   for (int32_t i = 0; i < count; i++) {
     lv_obj_t *child = lv_obj_get_child(obj, i);
     if (!child) continue;
-    lv_obj_set_style_text_color(child, color, LV_PART_MAIN);
+    // A component-owned foreground (such as forecast temperatures) keeps its
+    // colour while ordinary labels follow the card's pressed/checked contrast.
+    if (!lv_obj_has_flag(child, LV_OBJ_FLAG_USER_2))
+      lv_obj_set_style_text_color(child, color, LV_PART_MAIN);
     apply_card_descendant_text_color(child, color);
   }
 }

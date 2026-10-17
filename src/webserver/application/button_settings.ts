@@ -1,7 +1,8 @@
 import { state } from "../state/app_instance";
 import * as EspControlModel from "../model";
-import { configOptionValue, setCardColor } from "../model/config_primitives";
+import { configOptionValue, setCardColor, cardActiveColorMode, cardActiveColor, setCardActiveColor, withoutCardColorOptions } from "../model/config_primitives";
 import { createColorSwatches } from "../components/color_swatches";
+import { defaultCardBackgroundColor } from "../state/preview_theme";
 import { applySpans, CARD_SIZE_SINGLE, clearSpans } from "../model/grid";
 import { iconSlug, mdiIcon, textSpan } from "./ui_primitives";
 import type { CardEditorDraftController } from "../features/card_editor_draft_controller";
@@ -98,6 +99,35 @@ export function createButtonSettingsFeature(
         }
         renderButtonSettings(true);
     }
+    function renderColourSettings(panel: HTMLElement, idPrefix: string, value: () => string, onChange: (hex: string) => void, onReset?: () => void) {
+        var cardAppearance: any = disclosureSection("Custom Colours", idPrefix + "card-colours", false);
+        var cardColorEditor: any = document.createElement("div");
+        cardColorEditor.className = "sp-card-color-editor";
+        function saveCardColor(this: any, hex?: any) {
+            onChange(hex);
+            presetGrid._syncColor();
+        }
+        var presetGrid = createColorSwatches(value,
+            saveCardColor, "Card colour presets");
+        els.cardColorPresets = presetGrid;
+        cardColorEditor.appendChild(presetGrid);
+        var resetCardColors: any = createActionButton("sp-icon-button sp-card-header-action", "", "restore", "Reset colours to defaults");
+        resetCardColors.title = "Reset colours";
+        resetCardColors.addEventListener("click", function () {
+            if (onReset) {
+                onReset();
+                presetGrid._syncColor();
+            } else saveCardColor("");
+        });
+        var cardColorHeader: any = document.createElement("div");
+        cardColorHeader.className = "sp-card-color-header";
+        cardAppearance.panel.replaceChild(cardColorHeader, cardAppearance.button);
+        cardColorHeader.appendChild(cardAppearance.button);
+        cardColorHeader.appendChild(resetCardColors);
+        cardAppearance.section.appendChild(cardColorEditor);
+        panel.appendChild(cardAppearance.panel);
+        return { editor: cardColorEditor, presets: presetGrid };
+    }
     function renderBackButtonSettings(this: any, container?: any, c?: any) {
         if (!c.isSub || c.selected[0] !== -2)
             return false;
@@ -130,6 +160,12 @@ export function createButtonSettingsFeature(
                 this.blur();
             }
         });
+        renderColourSettings(panel, "sp-sp-back-", () =>
+            sp.backColor || defaultCardBackgroundColor("", state), (hex: string) => {
+                sp.backColor = hex;
+                saveSubpageConfig(state.editingSubpage);
+                renderPreview();
+            });
         var doneRow: any = document.createElement("div");
         doneRow.className = "sp-btn-row sp-btn-row--save";
         var doneBtn: any = createActionButton("sp-action-btn sp-save-btn", "Done");
@@ -140,6 +176,7 @@ export function createButtonSettingsFeature(
         return true;
     }
     function renderButtonSettings(this: any, forceOpen?: any) {
+        els.cardColorPresets = null;
         var container: any = els.buttonSettings;
         container.innerHTML = "";
         var settingsModal: any = els.settingsOverlay ? els.settingsOverlay.querySelector(".sp-settings-modal") : null;
@@ -364,7 +401,8 @@ export function createButtonSettingsFeature(
         }
         function validateSaveLimits(this: any) {
             var validation: any = cardEditorValidationController.validateSave({
-                fields: [], isSubpage: c.isSub, serializedConfigLength: serializeButtonConfig(b).length,
+                fields: [], isSubpage: c.isSub, serializedConfigLength: new TextEncoder().encode(serializeButtonConfig(b)).length,
+                configByteLimit: configPersistence.buttonConfigByteLimit(),
                 imageCardCount: 0, imageCardCapacity: imageSlotCapacity(),
             });
             if (validation.reason === "config-size") {
@@ -387,7 +425,7 @@ export function createButtonSettingsFeature(
         }
         function saveResultSucceeded(this: any, result?: any) {
             return result !== "authentication-required" && result !== "conflict" &&
-                result !== "failed" && result !== "unsupported";
+                result !== "too-large" && result !== "failed" && result !== "unsupported";
         }
         function applySettingsDraft(this: any) {
             if (!state.settingsDraft || state.settingsDraft.key !== draftKey)
@@ -828,29 +866,54 @@ export function createButtonSettingsFeature(
             panel.appendChild(patternField.field);
         }
         if (b.type !== "image" && b.type !== "wifi_qr_card") {
-            var cardAppearance: any = disclosureSection("Custom Colours", idPrefix + "card-colours", false);
-            var cardColorEditor: any = document.createElement("div");
-            cardColorEditor.className = "sp-card-color-editor";
-            function saveCardColor(this: any, hex?: any) {
-                b.options = setCardColor(b.options, hex);
-                presetGrid._syncColor(configOptionValue(b.options, "card_off_color"));
+            var colourControls = renderColourSettings(panel, idPrefix, () =>
+                configOptionValue(b.options, "card_off_color") || defaultCardBackgroundColor(b.type || "", state),
+                (hex: string) => {
+                    b.options = setCardColor(b.options, hex);
+                    activeColorPicker._syncColor();
+                    saveField("options", b.options);
+                    renderPreview();
+                }, () => {
+                    b.options = withoutCardColorOptions(b.options);
+                    customActiveColor = "";
+                    syncActiveColorControls();
+                    saveField("options", b.options);
+                    renderPreview();
+                });
+            var activeColorField = document.createElement("div");
+            activeColorField.className = "sp-field";
+            activeColorField.appendChild(fieldLabel("Active state colour", idPrefix + "active-colour"));
+            var customActiveColor = configOptionValue(b.options, "card_on_color");
+            var activeColorTabs = segmentControl([
+                ["matching", "Matching"], ["theme", "Global"], ["custom", "Custom"],
+            ], cardActiveColorMode(b.options), function (mode: "matching" | "theme" | "custom") {
+                b.options = setCardActiveColor(b.options, mode, customActiveColor);
+                syncActiveColorControls();
                 saveField("options", b.options);
                 renderPreview();
-            }
-            var presetGrid = createColorSwatches(configOptionValue(b.options, "card_off_color"), saveCardColor, "Card colour presets");
-            cardColorEditor.appendChild(presetGrid);
-            var resetCardColors: any = createActionButton("sp-icon-button sp-card-header-action", "", "restore", "Reset colours to defaults");
-            resetCardColors.title = "Reset colours";
-            resetCardColors.addEventListener("click", function () {
-                saveCardColor("");
             });
-            var cardColorHeader: any = document.createElement("div");
-            cardColorHeader.className = "sp-card-color-header";
-            cardAppearance.panel.replaceChild(cardColorHeader, cardAppearance.button);
-            cardColorHeader.appendChild(cardAppearance.button);
-            cardColorHeader.appendChild(resetCardColors);
-            cardAppearance.section.appendChild(cardColorEditor);
-            panel.appendChild(cardAppearance.panel);
+            activeColorTabs.segment.id = idPrefix + "active-colour";
+            activeColorTabs.segment.setAttribute("role", "group");
+            activeColorTabs.segment.setAttribute("aria-label", "Active state colour");
+            activeColorField.appendChild(activeColorTabs.segment);
+            var activeColorPicker = createColorSwatches(() => customActiveColor || cardActiveColor(b.options, state.onColor), function (hex) {
+                customActiveColor = hex;
+                b.options = setCardActiveColor(b.options, "custom", hex);
+                saveField("options", b.options);
+                renderPreview();
+            }, "Active state colour presets", "active");
+            activeColorField.appendChild(activeColorPicker);
+            function syncActiveColorControls() {
+                var mode = cardActiveColorMode(b.options);
+                for (var key in activeColorTabs.buttons) {
+                    activeColorTabs.buttons[key].classList.toggle("active", key === mode);
+                    activeColorTabs.buttons[key].setAttribute("aria-pressed", String(key === mode));
+                }
+                activeColorPicker.style.display = mode === "custom" ? "" : "none";
+                activeColorPicker._syncColor();
+            }
+            syncActiveColorControls();
+            colourControls.editor.appendChild(activeColorField);
         }
         groupCardSettingsFields(panel, idPrefix);
         var saveRow: any = document.createElement("div");

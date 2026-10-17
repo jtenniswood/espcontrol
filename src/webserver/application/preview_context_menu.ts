@@ -1,3 +1,7 @@
+import { createColorSwatches } from "../components/color_swatches";
+import { configOptionValue, setCardColor } from "../model/config_primitives";
+import { defaultCardBackgroundColor } from "../state/preview_theme";
+import type { ConfigPersistenceFeature } from "./config_post_api";
 import { state } from "../state/app_instance";
 import {
     CARD_SIZE_EXTRA_LARGE,
@@ -18,6 +22,7 @@ import {
 import { mdiIcon } from "./ui_primitives";
 import { clampMenuPosition } from "../features/preview";
 import { resizeGridSlot } from "../features/preview_grid";
+import { installPreviewResize, resizeTargetDimensions } from "./preview_resize";
 import type { ApplicationLayoutState } from "./application_context";
 import type { CardRegistry } from "./card_registry";
 import type { ConfigCodecFeature } from "./config_codec";
@@ -34,8 +39,9 @@ export interface PreviewContextMenuDependencies {
     readonly layout: ApplicationLayoutState;
     readonly cards: CardRegistry;
     readonly codec: ConfigCodecFeature;
+    readonly configPersistence: Pick<ConfigPersistenceFeature, "saveButtonConfig" | "buttonConfigByteLimit" | "subpageConfigFits">;
     readonly clockBar: Pick<ClockBarFeature, "setItemVisible">;
-    readonly shell: Pick<ControlsShellFeature, "isConfigLocked">;
+    readonly shell: Pick<ControlsShellFeature, "isConfigLocked" | "showBanner">;
     readonly statusPreview: Pick<AppStatusPreviewFeature, "clockBarItemActive" | "clockBarItemLabel" | "clockBarItems" | "isClockBarTemperatureItem" | "updateClockBarItemUi">;
     readonly grid: Pick<GridFeature, "ctx" | "scheduleMainGridSave">;
     readonly selection: Pick<ButtonSettingsSelectionFeature, "hideSettingsOverlay" | "openClockBarTemperatureSettings">;
@@ -66,7 +72,7 @@ export interface PreviewContextMenuFeature {
 export function createPreviewContextMenuFeature(dependencies: PreviewContextMenuDependencies): PreviewContextMenuFeature {
     const document = dependencies.document;
     const window = dependencies.window;
-    const { isConfigLocked } = dependencies.shell;
+    const { isConfigLocked, showBanner } = dependencies.shell;
     const { setItemVisible: setClockBarItemVisible } = dependencies.clockBar;
     const { clockBarItemActive, clockBarItemLabel, clockBarItems, isClockBarTemperatureItem, updateClockBarItemUi } = dependencies.statusPreview;
     const { ctx, scheduleMainGridSave } = dependencies.grid;
@@ -84,6 +90,8 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         cardSupportsLandscapeLargeSize,
         cardSupportsUltraWideSize,
         normalizeCardSizeForConfig,
+        serializeButtonConfig,
+        serializeSubpageConfig,
         getSubpage,
         serializeSubpageGrid,
         exitSubpage,
@@ -97,7 +105,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         menu.style.left = position.x + "px";
         menu.style.top = position.y + "px";
     }
-    function addCtxItem(this: any, icon?: any, text?: any, handler?: any, danger?: any) {
+    function addCtxItem(this: any, icon?: any, text?: any, handler?: any, danger?: any, container: HTMLElement = ctxMenu) {
         var item: any = document.createElement("div");
         item.className = "sp-ctx-item" + (danger ? " sp-ctx-danger" : "");
         item.appendChild(mdiIcon(icon));
@@ -108,53 +116,12 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
             hideContextMenu();
             handler();
         });
-        ctxMenu.appendChild(item);
+        container.appendChild(item);
     }
-    function addCtxDivider(this: any) {
+    function addCtxDivider(container: HTMLElement = ctxMenu) {
         var div: any = document.createElement("div");
         div.className = "sp-ctx-divider";
-        ctxMenu.appendChild(div);
-    }
-    function addCtxSubmenu(this: any, icon?: any, text?: any, buildFn?: any) {
-        var wrapper: any = document.createElement("div");
-        wrapper.className = "sp-ctx-item sp-ctx-sub";
-        wrapper.appendChild(mdiIcon(icon));
-        wrapper.appendChild(document.createTextNode(text));
-        var sub: any = document.createElement("div");
-        sub.className = "sp-ctx-submenu";
-        buildFn(sub);
-        wrapper.appendChild(sub);
-        wrapper.addEventListener("mouseenter", function (this: any) {
-            sub.style.left = "100%";
-            sub.style.right = "auto";
-            var r: any = sub.getBoundingClientRect();
-            if (r.right > window.innerWidth - 4) {
-                sub.style.left = "auto";
-                sub.style.right = "100%";
-            }
-        });
-        wrapper.addEventListener("mousedown", function (this: any, ev?: any) { ev.preventDefault(); ev.stopPropagation(); });
-        ctxMenu.appendChild(wrapper);
-    }
-    function addSubItem(this: any, container?: any, icon?: any, text?: any, handler?: any, active?: any) {
-        var item: any = document.createElement("div");
-        item.className = "sp-ctx-item";
-        if (active) {
-            item.appendChild(mdiIcon("check", "sp-ctx-check mdi"));
-        }
-        else {
-            var spacer: any = document.createElement("span");
-            spacer.style.width = "18px";
-            item.appendChild(spacer);
-        }
-        item.appendChild(document.createTextNode(text));
-        item.addEventListener("mousedown", function (this: any, ev?: any) {
-            ev.preventDefault();
-            ev.stopPropagation();
-            hideContextMenu();
-            handler();
-        });
-        container.appendChild(item);
+        container.appendChild(div);
     }
     function resizeSlot(this: any, slot?: any, targetSz?: any) {
         if (isConfigLocked())
@@ -188,7 +155,126 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         renderPreview();
         renderButtonSettings();
     }
+    function supportsCardColour(slot: number) {
+        const c = ctx();
+        if (slot === -2) return c.isSub;
+        const button = c.buttons[slot - 1];
+        return !!button && button.type !== "image" && button.type !== "wifi_qr_card";
+    }
+    function addColourMenuItem(slots: number[]) {
+        const colourSlots = slots.filter(supportsCardColour);
+        if (!colourSlots.length) return;
+        const item = document.createElement("div");
+        item.className = "sp-ctx-sub";
+        const trigger = document.createElement("div");
+        trigger.className = "sp-ctx-item sp-ctx-sub-trigger";
+        trigger.tabIndex = 0;
+        trigger.setAttribute("role", "button");
+        trigger.setAttribute("aria-label", "Change Colour");
+        trigger.setAttribute("aria-haspopup", "true");
+        trigger.setAttribute("aria-expanded", "false");
+        trigger.appendChild(mdiIcon("palette"));
+        trigger.appendChild(document.createTextNode("Change Colour"));
+        const submenu = createColourPicker(colourSlots);
+        item.append(trigger, submenu);
+        ctxMenu.appendChild(item);
+        let closeTimer: number | undefined;
+        function open() {
+            window.clearTimeout(closeTimer);
+            if (isConfigLocked()) return;
+            submenu.style.display = "block";
+            const bounds = trigger.getBoundingClientRect();
+            const width = submenu.offsetWidth;
+            const x = bounds.right + width <= window.innerWidth - 4 ? bounds.right : bounds.left - width;
+            positionMenu(submenu, { clientX: x, clientY: bounds.top });
+            trigger.setAttribute("aria-expanded", "true");
+        }
+        function close() {
+            window.clearTimeout(closeTimer);
+            submenu.style.display = "none";
+            trigger.setAttribute("aria-expanded", "false");
+        }
+        item.addEventListener("mouseenter", open);
+        item.addEventListener("mouseleave", () => {
+            closeTimer = window.setTimeout(close, 150);
+        });
+        trigger.addEventListener("mousedown", e => e.preventDefault());
+        trigger.addEventListener("click", e => {
+            e.stopPropagation();
+            open();
+        });
+        item.addEventListener("keydown", e => {
+            if (e.target === trigger && ["ArrowRight", "Enter", " "].includes(e.key)) {
+                e.preventDefault();
+                open();
+                submenu.querySelector("button")?.focus();
+            } else if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                close();
+                trigger.focus();
+            }
+        });
+    }
+    function createColourPicker(slots: number[]) {
+        const c = ctx();
+        const homeSlot = state.editingSubpage;
+        function colour(slot: number): string {
+            if (slot === -2) return getSubpage(homeSlot).backColor || defaultCardBackgroundColor("", state);
+            const button = c.buttons[slot - 1];
+            return configOptionValue(button.options, "card_off_color") || defaultCardBackgroundColor(button.type || "", state);
+        }
+        function saveColour(hex: string) {
+            if (isConfigLocked() || state.editingSubpage !== homeSlot) return;
+            const current = ctx();
+            if (slots.some(slot => !current.grid.includes(slot) || !supportsCardColour(slot))) return;
+            if (!current.isSub && slots.some(slot => {
+                const button = current.buttons[slot - 1];
+                return new TextEncoder().encode(serializeButtonConfig({ ...button, options: setCardColor(button.options, hex) })).length > dependencies.configPersistence.buttonConfigByteLimit();
+            })) {
+                hideContextMenu();
+                showBanner("Card settings are too large to save. Shorten confirmation text, labels, or entity IDs.", "error");
+                return;
+            }
+            if (current.isSub) {
+                const subpage = getSubpage(homeSlot);
+                const candidate = { ...subpage, buttons: subpage.buttons.map((button: any) => ({ ...button })) };
+                for (const slot of slots) {
+                    if (slot === -2) candidate.backColor = hex;
+                    else candidate.buttons[slot - 1].options = setCardColor(candidate.buttons[slot - 1].options, hex);
+                }
+                candidate.order = serializeSubpageGrid(candidate);
+                if (!dependencies.configPersistence.subpageConfigFits(serializeSubpageConfig(candidate))) {
+                    hideContextMenu();
+                    showBanner("Subpage is too large to save. Shorten labels or entity IDs.", "error");
+                    return;
+                }
+            }
+            for (const slot of slots) {
+                if (slot === -2) getSubpage(homeSlot).backColor = hex;
+                else {
+                    const button = current.buttons[slot - 1];
+                    button.options = setCardColor(button.options, hex);
+                    if (!c.isSub) dependencies.configPersistence.saveButtonConfig(slot);
+                }
+            }
+            if (c.isSub) saveSubpageConfig(homeSlot);
+            renderPreview();
+            renderButtonSettings();
+            hideContextMenu();
+        }
+        const submenu = document.createElement("div");
+        submenu.className = "sp-ctx-submenu sp-ctx-colours";
+        const firstColour = colour(slots[0]!);
+        const selectedColour = slots.every(slot => colour(slot) === firstColour) ? firstColour : "";
+        submenu.appendChild(createColorSwatches(selectedColour, saveColour, "Card colour presets"));
+        // Keep the native picker attached until its change event commits the colour.
+        submenu.addEventListener("click", e => e.stopPropagation());
+        addCtxDivider(submenu);
+        addCtxItem("restore", "Reset Colour", () => saveColour(""), false, submenu);
+        return submenu;
+    }
     function addBulkCardMenuItems(this: any, slots?: any) {
+        addColourMenuItem(slots);
         addCtxItem("clipboard-outline", "Copy " + slots.length + " Cards", function (this: any) { copyButtons(slots); });
         addCtxItem("code-json", "Copy " + slots.length + " Cards as Code", function (this: any) { showCopyCardCode(slots); });
         addCtxItem("content-cut", "Cut " + slots.length + " Cards", function (this: any) { cutButtons(slots); });
@@ -235,17 +321,12 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         var c: any = ctx();
         var b: any = c.buttons[slot - 1];
         addCtxItem("pencil", "Edit Card", function (this: any) { openCardSettings(slot); });
+        addColourMenuItem([slot]);
         var ctxTypeDef: any = dependencies.cards.definitions[(b && b.type) || ""];
         if (ctxTypeDef && ctxTypeDef.contextMenuItems &&
             (!c.isSub || buttonTypeRegistryValue(ctxTypeDef, "allowInSubpage", false))) {
             ctxTypeDef.contextMenuItems(slot, b, { addCtxItem: addCtxItem });
         }
-        var sz: any = c.sizes[slot] || 1;
-        addCtxSubmenu("arrow-expand-all", "Size", function (this: any, sub?: any) {
-            cardSizeMenuOptions(b).forEach(function (this: any, option?: any) {
-                addSubItem(sub, "", option.label, function (this: any) { resizeSlot(slot, option.size); }, sz === option.size);
-            });
-        });
         addCtxDivider();
         addCtxItem("content-copy", "Duplicate", function (this: any) {
             if (c.isSub) {
@@ -352,21 +433,9 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         positionMenu(ctxMenu, e);
     }
     function addBackButtonMenuItems(this: any) {
-        var sp: any = getSubpage(state.editingSubpage);
-        var bkSz: any = sp.sizes[-2] || 1;
         addCtxItem("pencil", "Edit Label", function (this: any) { openCardSettings(-2); });
+        addColourMenuItem([-2]);
         addCtxItem("keyboard-return", "Exit Subpage", function (this: any) { exitSubpage(); });
-        addCtxDivider();
-        addCtxSubmenu("arrow-expand-all", "Size", function (this: any, sub?: any) {
-            addSubItem(sub, "", "Single (1x1)", function (this: any) { resizeSlot(-2, 1); }, bkSz === 1);
-            addSubItem(sub, "", "Tall (2x1)", function (this: any) { resizeSlot(-2, 2); }, bkSz === 2);
-            addSubItem(sub, "", "Extra Tall (3x1)", function (this: any) { resizeSlot(-2, 5); }, bkSz === 5);
-            addSubItem(sub, "", "Wide (1x2)", function (this: any) { resizeSlot(-2, 3); }, bkSz === 3);
-            addSubItem(sub, "", "Extra Wide (1x3)", function (this: any) { resizeSlot(-2, 6); }, bkSz === 6);
-            if (cardSupportsUltraWideSize(null))
-                addSubItem(sub, "", "Ultra Wide (1x5)", function (this: any) { resizeSlot(-2, CARD_SIZE_ULTRA_WIDE); }, bkSz === CARD_SIZE_ULTRA_WIDE);
-            addSubItem(sub, "", "Large (2x2)", function (this: any) { resizeSlot(-2, 4); }, bkSz === 4);
-        });
     }
     function showEmptySlotMenu(this: any, e?: any, pos?: any) {
         if (isConfigLocked())
@@ -403,6 +472,24 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         }
         ctxMenu = null;
     }
+    installPreviewResize({
+        document,
+        isConfigLocked,
+        commit: resizeSlot,
+        targets(slot, card) {
+            const c = ctx();
+            const pos = c.grid.indexOf(slot);
+            const currentSize = c.sizes[slot] || 1;
+            const rect = card.getBoundingClientRect();
+            const gap = parseFloat(window.getComputedStyle(card.parentElement!).gap) || 0;
+            const cellWidth = (rect.width - (sizeColSpan(currentSize) - 1) * gap) / sizeColSpan(currentSize);
+            const cellHeight = (rect.height - (sizeRowSpan(currentSize) - 1) * gap) / sizeRowSpan(currentSize);
+            return cardSizeMenuOptions(slot === -2 ? null : c.buttons[slot - 1])
+                .filter((option: { size: number }) => slot !== -2 || [CARD_SIZE_SINGLE, CARD_SIZE_TALL, CARD_SIZE_EXTRA_TALL, CARD_SIZE_WIDE, CARD_SIZE_EXTRA_WIDE, CARD_SIZE_ULTRA_WIDE, CARD_SIZE_LARGE].includes(option.size))
+                .filter((option: { size: number }) => resizeGridSlot(c.grid, c.sizes, slot, pos, option.size, c.maxSlots, dependencies.layout.gridCols, !c.isSub).accepted)
+                .map((option: { size: number }) => resizeTargetDimensions(option.size, cellWidth, cellHeight, gap));
+        },
+    });
     return {
         hide: hideContextMenu,
         contains: (target) => !!(ctxMenu && ctxMenu.contains(target)),

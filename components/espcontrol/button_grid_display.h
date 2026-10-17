@@ -8,6 +8,7 @@
 // fills GridConfig; runtime code reads normalized display tokens from here.
 
 struct DisplayFontRoles {
+  const lv_font_t *small_text = nullptr;
   const lv_font_t *icon = nullptr;
   const lv_font_t *sensor = nullptr;
   const lv_font_t *large_sensor = nullptr;
@@ -248,4 +249,8 @@ inline const lv_font_t *display_climate_option_value_font(
 
 inline lv_coord_t display_modal_scaled_px(lv_coord_t px, lv_coord_t short_side) {
   return px * short_side / DISPLAY_MODAL_REFERENCE_SIDE_PX;
+}
+
+inline const lv_font_t *display_small_text_font(const DisplayProfile &profile, const lv_font_t *fallback = nullptr) {
+  return profile.fonts.small_text ? profile.fonts.small_text : fallback;
 }

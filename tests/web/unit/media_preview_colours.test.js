@@ -40,7 +40,7 @@ function mediaPreviewFixtures() {
   }, { infoPanel() {} }, { renderButtonSettings() {}, renderPreview() {} });
   function element() {
     const node = { className: "", children: [], style: { setProperty(name, value) { this[name] = value; } },
-      setAttribute() {}, removeAttribute() {}, appendChild(child) { this.children.push(child); } };
+      querySelector() { return null; }, setAttribute() {}, removeAttribute() {}, appendChild(child) { this.children.push(child); } };
     node.classList = { contains(name) { return node.className.split(" ").includes(name); } };
     return node;
   }
