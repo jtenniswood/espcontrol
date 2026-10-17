@@ -31,25 +31,43 @@ class EvidenceTests(unittest.TestCase):
         self.evidence = runtime.Evidence(Path(self.tmp.name))
 
     def test_reboot_evidence_is_distinct_from_network_failure(self):
-        self.evidence.sample({"hostname": "test", "clock_ms": 100000}, 100)
-        self.evidence.sample({"hostname": "test", "clock_ms": 200}, 110)
+        self.evidence.sample({"hostname": "test", "mac_suffix": "ddeeff", "clock_ms": 100000}, 100)
+        self.evidence.sample({"hostname": "test", "mac_suffix": "ddeeff", "clock_ms": 200}, 110)
         self.assertEqual(self.evidence.failures["reboot"], 1)
         self.evidence.event("http_error", failure=True, error="TimeoutError")
         self.assertEqual(self.evidence.failures["reboot"], 1)
         self.assertNotIn("crash_signature", self.evidence.failures)
 
     def test_clock_wrap_is_not_a_reboot(self):
-        self.evidence.sample({"hostname": "test", "clock_ms": 0xFFFFFF00}, 100)
-        self.evidence.sample({"hostname": "test", "clock_ms": 9744}, 110)
+        self.evidence.sample({"hostname": "test", "mac_suffix": "ddeeff", "clock_ms": 0xFFFFFF00}, 100)
+        self.evidence.sample({"hostname": "test", "mac_suffix": "ddeeff", "clock_ms": 9744}, 110)
         self.assertFalse(self.evidence.failures)
 
     def test_identity_and_firmware_changes_fail(self):
-        self.evidence.sample({"hostname": "test", "clock_ms": 10}, 100)
-        self.evidence.sample({"hostname": "other", "clock_ms": 20}, 101)
+        self.evidence.sample({"hostname": "test", "mac_suffix": "ddeeff", "clock_ms": 10}, 100)
+        self.evidence.sample({"hostname": "other", "mac_suffix": "ddeeff", "clock_ms": 20}, 101)
         self.evidence.firmware_info(info())
         self.evidence.firmware_info(info(compiled="different"))
         self.assertEqual(self.evidence.failures["identity_changed"], 1)
         self.assertEqual(self.evidence.failures["firmware_or_device_changed"], 1)
+
+    def test_protocol_identities_match_by_mac_not_hostname(self):
+        self.evidence.firmware_info(info())
+        for suffix in ("eeff", "ddeeff"):
+            self.evidence.sample({"hostname": "http-alias", "mac_suffix": suffix, "clock_ms": 10})
+            self.assertTrue(self.evidence.verify_identity())
+        self.evidence.sample({"hostname": "test", "mac_suffix": "aabbcc", "clock_ms": 20})
+        self.assertFalse(self.evidence.verify_identity())
+        self.assertIn("protocol_identity_mismatch", self.evidence.failures)
+
+    def test_missing_or_invalid_mac_identity_cannot_verify(self):
+        self.evidence.firmware_info(info())
+        for suffix in (None, "", "ff", "not-a-mac"):
+            self.evidence.mac_suffix = suffix
+            self.assertFalse(self.evidence.verify_identity())
+        self.evidence.mac_suffix = "ddeeff"
+        self.evidence.firmware["mac_address"] = "invalid"
+        self.assertFalse(self.evidence.verify_identity())
 
     def test_requested_firmware_version_and_build_must_match(self):
         self.evidence.firmware_info(info(), expected_version='wrong', expected_build='wrong')
@@ -96,10 +114,11 @@ class ProtocolTests(unittest.TestCase):
     def test_real_http_probe_validates_identity_capabilities_and_sse(self):
         class Handler(BaseHTTPRequestHandler):
             version = 1
+            suffix = 'ddeeff'
             def log_message(self, *args): pass
             def do_GET(self):
                 bodies = {
-                    '/api/v1/identity': json.dumps({'hostname':'test','restart_required':False}).encode(),
+                    '/api/v1/identity': json.dumps({'hostname':'test','mac_suffix':self.suffix,'restart_required':False}).encode(),
                     '/api/v1/capabilities': json.dumps({'api':{'version':self.version}}).encode(),
                     '/events': b'id: 12345\nevent: ping\n\n',
                 }
@@ -112,9 +131,13 @@ class ProtocolTests(unittest.TestCase):
         thread.start()
         try:
             probe = runtime.HttpProbe('127.0.0.1',server.server_port,1)
-            self.assertEqual(probe.sample(),{'hostname':'test','clock_ms':12345})
+            self.assertEqual(probe.sample(),{'hostname':'test','mac_suffix':'ddeeff','clock_ms':12345})
             Handler.version = 999
             with self.assertRaisesRegex(ValueError, 'unsupported device API'): probe.sample()
+            Handler.version = 1
+            for suffix in (None, '', 'invalid'):
+                Handler.suffix = suffix
+                with self.assertRaisesRegex(ValueError, 'MAC suffix'): probe.sample()
         finally:
             server.shutdown()
             server.server_close()
@@ -131,17 +154,18 @@ class ProtocolTests(unittest.TestCase):
 
 class FakeProbe:
     failures = 0
+    mac_suffix = "ddeeff"
     def __init__(self, *args): pass
     def sample(self):
         if FakeProbe.failures:
             FakeProbe.failures -= 1
             raise TimeoutError()
-        return {"hostname":"test", "clock_ms":int(time.monotonic()*1000) & 0xFFFFFFFF}
+        return {"hostname":"test", "mac_suffix":self.mac_suffix, "clock_ms":int(time.monotonic()*1000) & 0xFFFFFFFF}
 
 
 class RunnerTests(unittest.IsolatedAsyncioTestCase):
     async def run_fake(self, *, crash=False, disconnected=False, acknowledge=True,
-                       modal=True, duration=.15, cycles=2, dwell=.005, memory=True):
+                       modal=True, duration=.15, cycles=2, dwell=.005, memory=True, http_mac="ddeeff"):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         calls=[]
@@ -178,7 +202,7 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
             modal_entity='media_player.office' if modal else None,
             modal_cycles=cycles,modal_dwell=dwell)
         with patch.dict('sys.modules',{'aioesphomeapi':SimpleNamespace(LogLevel=levels)}), \
-             patch.object(runtime,'HttpProbe',FakeProbe), redirect_stdout(io.StringIO()):
+             patch.object(runtime,'HttpProbe',FakeProbe), patch.object(FakeProbe,'mac_suffix',http_mac), redirect_stdout(io.StringIO()):
             code=await runtime.run_suite(args,Client)
         report=json.loads((args.output/'report.json').read_text())
         events=(args.output/'events.jsonl').read_text()
@@ -192,6 +216,20 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(calls.count('open_modal'),2)
         self.assertEqual(calls.count('close_modal'),2)
         self.assertFalse(report['failures'])
+
+    async def test_mismatched_protocols_fail_before_any_modal_action(self):
+        code,report,calls=await self.run_fake(http_mac="aabbcc")
+        self.assertEqual(code,1)
+        self.assertIn('protocol_identity_mismatch',report['failures'])
+        self.assertNotIn('open_modal',calls)
+        self.assertNotIn('close_modal',calls)
+        self.assertNotIn('identity_verified',report['counts'])
+
+    async def test_matching_protocol_identity_is_in_report(self):
+        code,report,_=await self.run_fake(modal=False)
+        self.assertEqual(code,0,report)
+        self.assertEqual(report['http_identity']['mac_suffix'],'ddeeff')
+        self.assertGreater(report['counts']['identity_verified'],0)
 
     async def test_default_passive_mode_sends_no_modal_actions(self):
         code,report,calls=await self.run_fake(modal=False)

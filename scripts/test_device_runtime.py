@@ -102,6 +102,9 @@ class HttpProbe:
         capabilities = self.json("/api/v1/capabilities")
         if not isinstance(identity.get("hostname"), str) or not identity["hostname"]:
             raise ValueError("missing device hostname")
+        suffix = identity.get("mac_suffix")
+        if not isinstance(suffix, str) or not re.fullmatch(r"(?:[a-f0-9]{4}|[a-f0-9]{6})", suffix):
+            raise ValueError("missing or invalid HTTP MAC suffix")
         if identity.get("restart_required") is not False:
             raise ValueError("device requires a restart")
         if capabilities.get("api", {}).get("version") != 1:
@@ -110,7 +113,7 @@ class HttpProbe:
             if "text/event-stream" not in response.headers.get("Content-Type", ""):
                 raise ValueError("expected an event stream")
             clock = read_boot_clock(response)
-        return {"hostname": identity["hostname"], "clock_ms": clock}
+        return {"hostname": identity["hostname"], "mac_suffix": suffix, "clock_ms": clock}
 
 
 @dataclass
@@ -124,6 +127,7 @@ class Evidence:
     firmware: dict = field(default_factory=dict)
     previous_clock: tuple | None = None
     hostname: str | None = None
+    mac_suffix: str | None = None
     memory_minimum: float = 5.0
 
     def event(self, kind, failure=False, **details):
@@ -150,8 +154,21 @@ class Evidence:
         self.previous_clock = clock, now
         if self.hostname and self.hostname != data["hostname"]:
             self.event("identity_changed", failure=True)
+        if self.mac_suffix and self.mac_suffix != data["mac_suffix"]:
+            self.event("http_device_changed", failure=True)
+        self.mac_suffix = data["mac_suffix"]
         self.hostname = data["hostname"]
         self.event("http_sample", **data)
+
+    def verify_identity(self):
+        suffix = self.mac_suffix
+        native_mac = self.firmware.get("mac_address")
+        normalized = re.sub(r"[:-]", "", native_mac).lower() if isinstance(native_mac, str) else ""
+        if (not isinstance(suffix, str) or not re.fullmatch(r"(?:[a-f0-9]{4}|[a-f0-9]{6})", suffix)
+                or not re.fullmatch(r"[a-f0-9]{12}", normalized) or not normalized.endswith(suffix)):
+            self.event("protocol_identity_mismatch", failure=True)
+            return False
+        return True
 
     def memory(self, metric, value):
         if not math.isfinite(value):
@@ -183,6 +200,8 @@ def final_report(evidence, args, interrupted=False):
         evidence.event("incomplete_http_coverage", failure=True)
     if not evidence.counts["native_connected"]:
         evidence.event("incomplete_native_coverage", failure=True)
+    if not evidence.counts["identity_verified"]:
+        evidence.event("incomplete_identity_coverage", failure=True)
     if not evidence.metric_updates["heap_free_percent"]:
         evidence.event("missing_memory_diagnostics", failure=True)
     if args.modal_entity and evidence.counts["modal_cycle"] < args.modal_cycles:
@@ -192,7 +211,8 @@ def final_report(evidence, args, interrupted=False):
     report = {"status": "failed" if evidence.failures else "passed",
               "host": args.host, "duration_seconds": round(time.monotonic() - evidence.started, 2),
               "requested_duration_seconds": args.duration,
-              "firmware": evidence.firmware, "failures": dict(evidence.failures),
+              "firmware": evidence.firmware, "http_identity": {"hostname": evidence.hostname, "mac_suffix": evidence.mac_suffix},
+              "failures": dict(evidence.failures),
               "counts": dict(evidence.counts), "memory": evidence.metrics,
               "metric_updates": dict(evidence.metric_updates),
               "modal_entity": args.modal_entity, "modal_cycles_requested": args.modal_cycles if args.modal_entity else 0,
@@ -227,6 +247,7 @@ async def run_suite(args, client_factory=None):
     args.output.mkdir(parents=True, exist_ok=False)
     evidence = Evidence(args.output, memory_minimum=args.min_heap_percent)
     probe = HttpProbe(args.host, args.http_port, args.timeout)
+    http_lock = asyncio.Lock()
     stop = asyncio.Event()
     ready = asyncio.Event()
     opened = asyncio.Event()
@@ -237,6 +258,13 @@ async def run_suite(args, client_factory=None):
     connection_lost = asyncio.Event()
     interrupted = False
     active_tasks = []
+
+    async def http_sample():
+        # Keep boot-clock samples in request order even when reconnect identity
+        # checks overlap the periodic health probe.
+        async with http_lock:
+            data = await asyncio.to_thread(probe.sample)
+            evidence.sample(data)
 
     async def pause(seconds):
         with suppress(asyncio.TimeoutError):
@@ -271,10 +299,21 @@ async def run_suite(args, client_factory=None):
                                     noise_psk=os.environ.get("ESPCONTROL_API_NOISE_PSK"),
                                     client_info="EspControl Device Test", provide_time=False,
                                     keepalive=5.0)
+            checking_http = False
             try:
                 await asyncio.wait_for(client.connect(on_stop=on_stop, login=True), args.timeout)
                 info = await asyncio.wait_for(client.device_info(), args.timeout)
                 evidence.firmware_info(info, args.expect_version, args.expect_build)
+                # Verify a fresh HTTP identity before publishing readiness or
+                # sending any modal action. Matching hostnames are insufficient
+                # when the two ports are forwarded to different panels.
+                checking_http = True
+                await http_sample()
+                checking_http = False
+                if not evidence.verify_identity():
+                    stop.set()
+                    return
+                evidence.event("identity_verified")
                 entities, offered_services = await asyncio.wait_for(client.list_entities_services(), args.timeout)
                 keys = {entity.key: METRICS[entity.object_id] for entity in entities
                         if entity.object_id in METRICS}
@@ -291,7 +330,8 @@ async def run_suite(args, client_factory=None):
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                evidence.event("native_error", failure=True, error=type(exc).__name__)
+                evidence.event("http_error" if checking_http else "native_error",
+                               failure=True, error=type(exc).__name__, status=getattr(exc, "code", None))
             finally:
                 ready.clear()
                 intentional_close = True
@@ -304,8 +344,10 @@ async def run_suite(args, client_factory=None):
     async def http_loop():
         while not stop.is_set():
             try:
-                data = await asyncio.to_thread(probe.sample)
-                evidence.sample(data)
+                await http_sample()
+                if evidence.firmware and not evidence.verify_identity():
+                    ready.clear()
+                    stop.set()
             except Exception as exc:
                 evidence.event("http_error", failure=True, error=type(exc).__name__,
                                status=getattr(exc, "code", None))
@@ -314,6 +356,8 @@ async def run_suite(args, client_factory=None):
     async def action(name, data):
         if name not in ("open_modal", "close_modal"):
             raise ValueError("unsupported test action")
+        if not ready.is_set() or not evidence.verify_identity():
+            raise RuntimeError("device identity is not verified")
         service = services[name]
         response = await asyncio.wait_for(
             client.execute_service(
@@ -358,7 +402,7 @@ async def run_suite(args, client_factory=None):
         active_tasks = [asyncio.create_task(native_loop()), asyncio.create_task(http_loop()),
                         asyncio.create_task(stress_modals())]
         print(f"Testing {args.host} for {args.duration:g}s; reports: {args.output}", flush=True)
-        await asyncio.sleep(args.duration)
+        await pause(args.duration)
     except asyncio.CancelledError:
         interrupted = True
     finally:
