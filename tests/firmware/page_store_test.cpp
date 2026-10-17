@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstring>
@@ -83,7 +84,7 @@ void profile_corpus(const DeviceUiLimits &limits) {
   maximum.finish();
   assert(PageStore::stage_v1(maximum.buffer.data(), maximum.size, limits, 2,
       staged_arena.data(), sizeof(staged_arena), &store) == PageStoreStatus::OK);
-  assert(store.page_count() == 1 + limits.max_first_level_subpages);
+  assert(store.page_count() == size_t{1} + limits.max_first_level_subpages);
   assert(store.card_count() == limits.max_cards());
   assert(store.string(store.page(0)->order) == "2w,1,,3");
   assert(store.string(store.page(1)->order) == "B=Parent%3A%20Home:FF8C00");

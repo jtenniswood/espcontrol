@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 #include <unordered_set>
 #include <vector>
 
