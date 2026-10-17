@@ -198,7 +198,8 @@ class HaReadCoordinator {
                  Callback callback,
                  uint32_t scope,
                  void *owner = nullptr,
-                 bool retain_latest = false) {
+                 bool retain_latest = false,
+                 bool retain_replay = true) {
     if (!available() || entity_id.empty() || !callback) return false;
     auto callback_ref =
         std::allocate_shared<Callback>(ReboundAllocator<Callback>{}, std::move(callback));
@@ -227,7 +228,7 @@ class HaReadCoordinator {
         transport_.subscribe(entity_id, attribute, std::move(deliver));
       }
     }
-    subscriptions_.push_back({callback_ref, scope, owner, channel, retain_latest});
+    subscriptions_.push_back({callback_ref, scope, owner, channel, retain_latest, false, retain_replay});
     // A grid rebuild re-subscribes on an existing channel; replay the last value
     // so rebuilt cards reflect the live state immediately.
     if (!new_channel && subscription_channels_[channel].has_last_state) {
@@ -376,6 +377,9 @@ class HaReadCoordinator {
     size_t channel = 0;
     bool retain_latest = false;
     bool pending_release = false;
+    // Configuration-owned consumers keep state in their own bounded cache.
+    // Existing widget consumers retain the legacy rebuild replay behaviour.
+    bool retain_replay = true;
   };
 
   struct SubscriptionChannel {
@@ -483,14 +487,16 @@ class HaReadCoordinator {
     }
     callbacks.reserve(matching_callbacks);
     bool retain_latest = false;
+    bool retain_replay = false;
     for (const auto &ref : subscriptions_) {
       if (!ref.pending_release && ref.channel == channel &&
           ref.callback && *ref.callback) {
         callbacks.push_back(ref.callback);
         retain_latest = retain_latest || ref.retain_latest;
+        retain_replay = retain_replay || ref.retain_replay;
       }
     }
-    if (callbacks.empty()) {
+    if (!retain_replay) {
       release_string_storage(subscription.last_state);
       subscription.has_last_state = false;
     } else {
@@ -608,6 +614,16 @@ class HaReadCoordinator {
 
   void release_inactive_channel_state() {
     for (size_t channel = 0; channel < subscription_channels_.size(); channel++) {
+      bool active = false, replay = false;
+      for (const auto &ref : subscriptions_) {
+        if (ref.channel != channel || ref.pending_release || !ref.callback || !*ref.callback) continue;
+        active = true;
+        replay = replay || ref.retain_replay;
+      }
+      if (active && !replay) {
+        release_string_storage(subscription_channels_[channel].last_state);
+        subscription_channels_[channel].has_last_state = false;
+      }
       if (channel_reuses_reads(channel)) continue;
       SubscriptionChannel &subscription = subscription_channels_[channel];
       release_string_storage(subscription.cached_state);

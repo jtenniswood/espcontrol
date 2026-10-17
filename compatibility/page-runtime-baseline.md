@@ -18,6 +18,9 @@ stored-but-inactive data exactly during this migration.
 It reserves a replacement arena before commit, publishes the committed
 generation without allocation, and releases staged resources on failure.
 Memory counters distinguish active, staged and peak reserved arena bytes.
+An optional prepared-resource participant now reserves the
+[configuration-owned entity graph/cache](page-entity-state-runtime.md) before
+commit and retires its callbacks before releasing the old model arena.
 Caller-selected arena capacities are test budgets, not qualified device limits.
 These counters exclude temporary allocations made by the existing parsers;
 those peaks still need to be measured and bounded before production cutover.

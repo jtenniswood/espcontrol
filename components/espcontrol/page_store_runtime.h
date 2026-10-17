@@ -2,6 +2,7 @@
 
 #include "configuration_service.h"
 #include "page_store.h"
+#include "page_runtime_resources.h"
 
 namespace espcontrol::pages {
 
@@ -27,8 +28,8 @@ struct PageRuntimeMemory {
 class PageStoreRuntime final : public configuration::ConfigurationRuntimeAdapter {
  public:
   PageStoreRuntime(const DeviceUiLimits &limits, PageArenaAllocator &allocator,
-                   size_t arena_capacity)
-      : limits_(limits), allocator_(allocator), arena_capacity_(arena_capacity) {}
+                   size_t arena_capacity, PageRuntimeResources *resources = nullptr)
+      : limits_(limits), allocator_(allocator), arena_capacity_(arena_capacity), resources_(resources) {}
   ~PageStoreRuntime() override;
   PageStoreRuntime(const PageStoreRuntime &) = delete;
   PageStoreRuntime &operator=(const PageStoreRuntime &) = delete;
@@ -49,6 +50,7 @@ class PageStoreRuntime final : public configuration::ConfigurationRuntimeAdapter
   const DeviceUiLimits &limits_;
   PageArenaAllocator &allocator_;
   size_t arena_capacity_;
+  PageRuntimeResources *resources_;
   void *active_arena_{nullptr};
   void *staged_arena_{nullptr};
   PageStore active_;

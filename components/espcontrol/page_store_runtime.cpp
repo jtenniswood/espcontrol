@@ -9,6 +9,7 @@ namespace espcontrol::pages {
 
 PageStoreRuntime::~PageStoreRuntime() {
   discard_prepared();
+  if (resources_ != nullptr) resources_->retire_active();
   if (active_arena_ != nullptr) allocator_.release(active_arena_, arena_capacity_);
 }
 
@@ -32,13 +33,17 @@ bool PageStoreRuntime::prepare(uint16_t version, const uint8_t *document, size_t
   // Staged state is private until the service assigns the committed generation.
   last_stage_status_ = PageStore::stage_v1(document, size, limits_, UINT32_MAX,
       staged_arena_, arena_capacity_, &staged_);
-  if (last_stage_status_ == PageStoreStatus::OK) return true;
+  if (last_stage_status_ == PageStoreStatus::OK) {
+    if (resources_ == nullptr || resources_->prepare(staged_)) return true;
+    last_stage_status_ = PageStoreStatus::RESOURCE_UNAVAILABLE;
+  }
   ++memory_.preparation_failures;
   discard_prepared();
   return false;
 }
 
 void PageStoreRuntime::discard_prepared() {
+  if (resources_ != nullptr) resources_->discard_prepared();
   staged_ = {};
   if (staged_arena_ != nullptr) allocator_.release(staged_arena_, arena_capacity_);
   staged_arena_ = nullptr;
@@ -59,6 +64,7 @@ bool PageStoreRuntime::activate_prepared(uint32_t generation, uint16_t version,
   staged_ = {};
   memory_.active_reserved_bytes = arena_capacity_;
   memory_.staged_reserved_bytes = 0;
+  if (resources_ != nullptr) resources_->activate_prepared(generation);
   // The renderer cutover adds an explicit unbind barrier before retiring the
   // old generation. No widgets or asynchronous consumers use this owner yet.
   if (retired != nullptr) allocator_.release(retired, arena_capacity_);
