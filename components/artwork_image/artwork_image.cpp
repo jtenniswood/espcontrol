@@ -305,6 +305,10 @@ class P4ImagePipeline {
         P4PipelineResult *result = this->perform_(job);
         this->lock_();
         this->active_ = nullptr;
+        if (job->cancelled.load()) {
+          delete result;
+          result = nullptr;
+        }
         if (result) {
           this->discard_completed_for_owner_locked_(result->owner);
           if (this->completed_count_ < P4_PIPELINE_COMPLETED_SLOTS) {
@@ -380,6 +384,9 @@ class P4ImagePipeline {
     auto *transfer = static_cast<P4PipelineTransfer *>(evt->user_data);
     if (!transfer || !transfer->job) return ESP_OK;
     if (transfer->job->cancelled.load()) return ESP_FAIL;
+    // IDF ignores the callback's return value. Latch failures until the worker
+    // stops the read; later events must not allocate or copy any more data.
+    if (transfer->allocation_failed || transfer->size_limit_exceeded) return ESP_FAIL;
     uint32_t now = millis();
     if (evt->event_id == HTTP_EVENT_ON_HEADER && transfer->response_ready_ms == 0) {
       transfer->response_ready_ms = now;
@@ -391,6 +398,8 @@ class P4ImagePipeline {
       transfer->gif_response = true;
     }
     if (evt->event_id != HTTP_EVENT_ON_DATA || evt->data_len <= 0) return ESP_OK;
+    const int status = esp_http_client_get_status_code(evt->client);
+    if (status >= 300) return ESP_OK;
     if (transfer->first_byte_ms == 0) transfer->first_byte_ms = now;
     size_t incoming = static_cast<size_t>(evt->data_len);
     const size_t signature_bytes = std::min(incoming, sizeof(transfer->signature) - transfer->signature_size);
@@ -453,6 +462,49 @@ class P4ImagePipeline {
     return ESP_OK;
   }
 
+  esp_err_t perform_transfer_(P4PipelineTransfer &transfer) {
+    // The worker owns every client operation, including cancellation/cleanup.
+    // Explicit reads let us stop after a rejected chunk: esp_http_client_perform
+    // does not propagate HTTP_EVENT_ON_DATA callback failures.
+    for (unsigned redirects = 0; redirects <= 3; ++redirects) {
+      if (transfer.job->cancelled.load()) return ESP_FAIL;
+      esp_err_t error = esp_http_client_open(this->client_, 0);
+      if (error != ESP_OK) return error;
+      if (esp_http_client_fetch_headers(this->client_) < 0) return ESP_ERR_HTTP_FETCH_HEADER;
+      if (transfer.job->cancelled.load()) return ESP_FAIL;
+      const int status = esp_http_client_get_status_code(this->client_);
+      if (status == 301 || status == 302 || status == 303 || status == 307 || status == 308) {
+        if (redirects == 3) return ESP_ERR_HTTP_MAX_REDIRECT;
+        error = esp_http_client_set_redirection(this->client_);
+        esp_http_client_clear_response_buffer(this->client_);
+        esp_http_client_close(this->client_);
+        if (error != ESP_OK) return error;
+        // A redirect's MIME type and body do not describe the final image.
+        transfer.gif_response = false;
+        transfer.response_ready_ms = 0;
+        continue;
+      }
+      if (status >= 300) {
+        // No image is needed for 304 or HTTP errors.
+        return ESP_OK;
+      }
+      char scratch[1024];
+      while (true) {
+        if (transfer.job->cancelled.load()) return ESP_FAIL;
+        if (transfer.size_limit_exceeded) return ESP_ERR_INVALID_SIZE;
+        if (transfer.allocation_failed) return ESP_ERR_NO_MEM;
+        const int received = esp_http_client_read(this->client_, scratch, sizeof(scratch));
+        // HTTP_EVENT_ON_DATA has already staged the new bytes in PSRAM.
+        if (received < 0) return received == -ESP_ERR_HTTP_EAGAIN ? ESP_ERR_HTTP_READ_TIMEOUT : ESP_FAIL;
+        // Drain bytes cached during fetch_headers even when IDF already marks
+        // the network response complete, before reusing this client.
+        if (received == 0)
+          return esp_http_client_is_complete_data_received(this->client_) ? ESP_OK : ESP_ERR_HTTP_CONNECTION_CLOSED;
+      }
+    }
+    return ESP_ERR_HTTP_MAX_REDIRECT;
+  }
+
   P4PipelineResult *perform_(P4PipelineJob *job) {
     if (!job || job->cancelled.load()) return nullptr;
     auto *result = new (std::nothrow) P4PipelineResult();
@@ -465,23 +517,24 @@ class P4ImagePipeline {
     transfer.request_started_ms = millis();
     result->request_started_ms = transfer.request_started_ms;
 
+    esp_err_t setup_error = ESP_OK;
     if (!this->client_) {
       esp_http_client_config_t config{};
       config.url = job->url;
       config.method = HTTP_METHOD_GET;
       config.timeout_ms = LOCAL_ARTWORK_HTTP_TIMEOUT_MS;
-      config.disable_auto_redirect = false;
+      config.disable_auto_redirect = true;
       config.max_redirection_count = 3;
       config.auth_type = HTTP_AUTH_TYPE_NONE;
       config.event_handler = http_event_;
       config.user_data = &transfer;
-      config.keep_alive_enable = true;
       config.buffer_size = 8192;
       this->client_ = esp_http_client_init(&config);
     } else {
-      esp_http_client_set_url(this->client_, job->url);
+      // set_url may emit a disconnect event; replace the old stack context first.
       esp_http_client_set_user_data(this->client_, &transfer);
-      esp_http_client_set_method(this->client_, HTTP_METHOD_GET);
+      setup_error = esp_http_client_set_url(this->client_, job->url);
+      if (setup_error == ESP_OK) setup_error = esp_http_client_set_method(this->client_, HTTP_METHOD_GET);
     }
     if (!this->client_) {
       uint32_t completed_at = millis();
@@ -489,6 +542,11 @@ class P4ImagePipeline {
       result->response_ready_ms = completed_at;
       result->first_byte_ms = completed_at;
       result->transfer_complete_ms = completed_at;
+      return result;
+    }
+    if (setup_error != ESP_OK) {
+      result->error = setup_error;
+      this->reset_client_();
       return result;
     }
 
@@ -502,7 +560,7 @@ class P4ImagePipeline {
       return nullptr;
     }
 
-    esp_err_t error = esp_http_client_perform(this->client_);
+    esp_err_t error = this->perform_transfer_(transfer);
     uint32_t completed_at = millis();
     if (job->cancelled.load()) {
       heap_caps_free(transfer.data);
@@ -514,6 +572,12 @@ class P4ImagePipeline {
       esp_http_client_delete_header(this->client_, header.name.c_str());
     }
 
+    // Streaming requests must retire the connection explicitly, including
+    // servers that close it after a successful response. Reuse client storage.
+    if (error == ESP_OK) {
+      esp_http_client_clear_response_buffer(this->client_);
+      esp_http_client_close(this->client_);
+    }
     result->status = esp_http_client_get_status_code(this->client_);
     result->error = transfer.size_limit_exceeded ? ESP_ERR_INVALID_SIZE
         : transfer.allocation_failed ? ESP_ERR_NO_MEM : error;
@@ -523,6 +587,8 @@ class P4ImagePipeline {
     result->response_ready_ms = transfer.response_ready_ms ? transfer.response_ready_ms : completed_at;
     result->first_byte_ms = transfer.first_byte_ms ? transfer.first_byte_ms : result->response_ready_ms;
     result->transfer_complete_ms = completed_at;
+    // A persistent client must never retain a pointer into this stack frame.
+    esp_http_client_set_user_data(this->client_, nullptr);
     if (result->error != ESP_OK) this->reset_client_();
     return result;
   }
@@ -541,7 +607,6 @@ class P4ImagePipeline {
     }
     if (this->active_ && this->active_->owner == owner) {
       this->active_->cancelled.store(true);
-      if (this->client_) esp_http_client_cancel_request(this->client_);
     }
     this->discard_completed_for_owner_locked_(owner);
     for (auto &failure : this->allocation_failures_) {

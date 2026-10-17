@@ -153,6 +153,8 @@ TASKS = (
              "components/espcontrol/climate_target_logic.h",
              "components/espcontrol/ha_read_coordinator.h",
              "components/artwork_image/image_pipeline_policy.h",
+             "components/artwork_image/artwork_image.cpp",
+             "components/mipi_dsi/**",
              "common/config/card_normalization_fixtures.json",
              "common/config/*_card_normalization_fixtures.json",
              "scripts/generate_saved_config_parser_test.py",

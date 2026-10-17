@@ -29,6 +29,7 @@ constexpr int MALLOC_CAP_SPIRAM = 1, MALLOC_CAP_8BIT = 2;
 #define ESP_LOGE(...) ((void)0)
 uint32_t millis() { return 1; }
 struct Client { int64_t length; };
+int esp_http_client_get_status_code(Client *) { return 200; }
 int64_t esp_http_client_get_content_length(Client *client) { return client->length; }
 struct esp_http_client_event_t {
   int event_id = HTTP_EVENT_ON_DATA;
