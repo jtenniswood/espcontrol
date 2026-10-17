@@ -42,6 +42,10 @@ using CoverControlCtx = Runtime;
 using MediaVolumeCtx = Runtime;
 using MediaControlCtx = Runtime;
 using ClimateControlCtx = Runtime;
+// This fixture intentionally models typed contexts with one common Runtime.
+#define ClimateControlCtx Runtime
+#include "climate_modal_lifetime.h"
+#undef ClimateControlCtx
 using AlarmCardCtx = Runtime;
 using FanCardCtx = Runtime;
 using ImageCardCtx = Runtime;
