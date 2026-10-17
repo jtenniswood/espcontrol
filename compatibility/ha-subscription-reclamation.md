@@ -23,12 +23,18 @@ ESPHome 2026.9.1 has no public unsubscribe operation. A small version-pinned
 bridge mutates its public subscription-record view from the main loop. It
 identifies EspControl entries by their exact owned name-buffer addresses,
 preserving foreign registrations even when their entity/attribute text matches.
-It restarts authenticated clients' positional subscription enumeration after
-changes. Audit this bridge when changing the pinned ESPHome version.
+After a batch changes the native list, it marks authenticated clients for
+disconnection through the public API hook. The server closes them on its next
+loop before advancing obsolete positional cursors. Their fresh connections
+enumerate the current list. Unchanged lists do not trigger a reconnect. Audit
+this bridge when changing the pinned ESPHome version.
 
-The native protocol has no remote-unsubscribe message. Home Assistant may keep
-announcing retired entities until its next reconnect; those replies are ignored.
-This stage reclaims device-owned registrations, not Home Assistant's own memory.
+The native protocol has no remote-unsubscribe message. Replaying the list on a
+live connection would install duplicate Home Assistant listeners. Reconnecting
+lets Home Assistant release all connection-owned listeners before subscribing
+again, including those for retired entities. Expect a brief API interruption
+when card replacement changes the registration set; normal state updates and
+same-entity rebuilds do not reconnect.
 
 Host coverage exercises 1,000 disjoint configurations, deferred add/remove
 during dispatch, late callbacks, owner destruction, shared channels, retained

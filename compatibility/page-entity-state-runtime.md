@@ -11,6 +11,14 @@ packed state cache live in one fallible arena per configuration generation.
 Dependencies, channels and state bytes have caller-supplied bounds. These are
 preparation budgets, not qualified device limits.
 
+Sizing first collects unique entity/attribute pairs and unique card/channel
+links in fallible temporary storage. Duplicate declarations cost no additional
+budget or storage, and shared names are charged once. The final arena is sized
+to that graph. Temporary names are copied because a driver can emit short-lived
+parsed strings; all sizing storage is freed before subscriptions are attached.
+Preparation peak accounting includes the temporary graph alongside active and
+staged arenas. Failure at any sizing allocation leaves the active owner intact.
+
 The existing binding coordinator can carry both active and prepared owners on
 one native transport channel. Configuration consumers disable its additional
 replay/cache copies; shared widget and modal consumers retain their existing

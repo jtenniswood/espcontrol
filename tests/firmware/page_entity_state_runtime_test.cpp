@@ -27,12 +27,14 @@ using namespace espcontrol::configuration;
 namespace {
 struct Arena final : PageArenaAllocator {
   void *allocate(size_t bytes) override {
-    if (fail) return nullptr;
+    if (fail || remaining == 0 || bytes > max_bytes) return nullptr;
+    if (remaining > 0) --remaining;
     ++calls;
     auto *p = std::malloc(bytes); assert(p); live[p] = bytes; return p;
   }
   void release(void *p, size_t bytes) override { assert(live.at(p) == bytes); live.erase(p); std::free(p); }
   bool fail{false}; size_t calls{0}; std::unordered_map<void *, size_t> live;
+  int remaining{-1}; size_t max_bytes{SIZE_MAX};
 };
 struct Source final : PageDependencySource {
   struct Item { CardId card; std::string entity, attribute; };
@@ -111,6 +113,40 @@ void lifetime_and_state_budget() {
     assert(state.dependency({16,0},0).status == PageEntityStatus::STALE);
   }
   assert(transport.entries.empty()); assert(arena.live.empty());
+}
+void sizing_uses_unique_graph_and_releases_failed_scratch() {
+  Fixture f; Arena arena; Subscriptions transport; Source source;
+  source.items = {{0,"sensor.shared",""},{1,"sensor.shared",""},
+                  {2,"sensor.shared",""},{0,"sensor.other","unit"}};
+  PageEntityStateRuntime state(source, arena, transport, {4, 2, 32});
+  assert(state.prepare(f.store)); state.activate_prepared(1);
+  const auto bytes = state.memory().active_arena_bytes;
+  const auto sizing_calls = arena.calls;
+  assert(state.memory().active_dependencies == 4 && state.memory().active_channels == 2);
+  // Repeating declarations and sharing names cannot enlarge storage, exceed
+  // an exact dependency budget, or require larger allocator requests.
+  const auto unique = source.items;
+  for (int repeat = 0; repeat < 100; ++repeat)
+    source.items.insert(source.items.end(), unique.begin(), unique.end());
+  arena.max_bytes = bytes;
+  assert(state.prepare(f.store));
+  assert(state.memory().staged_arena_bytes == bytes);
+  assert(arena.calls == 2 * sizing_calls);
+  state.activate_prepared(2);
+  assert(state.dependency_count({2,0}) == 2 && transport.entries.size() == 2 && arena.live.size() == 1);
+  // Every scratch allocation and the final arena can fail independently.
+  for (size_t failure = 0; failure < sizing_calls; ++failure) {
+    arena.remaining = static_cast<int>(failure);
+    assert(!state.prepare(f.store));
+    assert(arena.live.size() == 1 && transport.entries.size() == 2);
+    assert(state.memory().staged_arena_bytes == 0 && state.dependency_count({2,0}) == 2);
+  }
+  arena.remaining = -1;
+  source.items.push_back({1,"sensor.other","unit"}); // Fifth unique edge.
+  assert(!state.prepare(f.store)); assert(arena.live.size() == 1);
+  source.items = {{0,"sensor.one",""},{0,"sensor.two",""},{0,"sensor.three",""}};
+  assert(!state.prepare(f.store)); assert(arena.live.size() == 1);
+  state.retire_active(); assert(arena.live.empty() && transport.entries.empty());
 }
 void preparation_and_replacements() {
   Fixture f; Arena arena; Subscriptions transport; Source source;
@@ -240,6 +276,7 @@ void packed_state_matches_reference_without_allocations() {
 }
 }  // namespace
 int main() {
+  sizing_uses_unique_graph_and_releases_failed_scratch();
   lifetime_and_state_budget(); preparation_and_replacements();
   page_store_prepares_resources_before_activation(); coordinator_deduplicates_generations_without_an_extra_cache();
   packed_state_matches_reference_without_allocations();
