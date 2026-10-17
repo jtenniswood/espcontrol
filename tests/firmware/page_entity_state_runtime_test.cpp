@@ -27,12 +27,13 @@ using namespace espcontrol::configuration;
 namespace {
 struct Arena final : PageArenaAllocator {
   void *allocate(size_t bytes) override {
-    if (fail) return nullptr;
+    if (fail || remaining == 0) return nullptr;
+    if (remaining > 0) --remaining;
     ++calls;
     auto *p = std::malloc(bytes); assert(p); live[p] = bytes; return p;
   }
   void release(void *p, size_t bytes) override { assert(live.at(p) == bytes); live.erase(p); std::free(p); }
-  bool fail{false}; size_t calls{0}; std::unordered_map<void *, size_t> live;
+  bool fail{false}; int remaining{-1}; size_t calls{0}; std::unordered_map<void *, size_t> live;
 };
 struct Source final : PageDependencySource {
   struct Item { CardId card; std::string entity, attribute; };
@@ -205,6 +206,38 @@ void coordinator_deduplicates_generations_without_an_extra_cache() {
   }
   coordinator.reclaim_unused_channels(); assert(coordinator.transport().entries.empty()); assert(arena.live.empty());
 }
+void interleaved_dependencies_keep_ordinals_and_fail_atomically() {
+  Fixture f;Arena arena;Subscriptions transport;Source source;
+  source.items={{0,"sensor.old",""}};
+  PageEntityStateRuntime state(source,arena,transport,{12,8,128});
+  assert(state.prepare(f.store));state.activate_prepared(17);transport.send("sensor.old","","old");
+  source.items={{2,"sensor.two",""},{0,"sensor.zero","first"},{2,"sensor.two","second"},
+                {1,"sensor.one",""},{0,"sensor.zero","second"},{0,"sensor.zero","first"}};
+  arena.remaining=1; // Staged arena succeeds; temporary stable-grouping scratch fails.
+  assert(!state.prepare(f.store));arena.remaining=-1;
+  assert(arena.live.size()==1&&transport.entries.size()==1);
+  assert(state.dependency({17,0},0).value=="old"&&state.dependency_count({17,1})==0);
+  const auto before=arena.calls;
+  assert(state.prepare(f.store));assert(arena.calls==before+2&&arena.live.size()==2);
+  state.activate_prepared(18);assert(arena.live.size()==1&&transport.entries.size()==5);
+  assert(state.dependency_count({18,0})==2&&state.dependency_count({18,1})==1&&state.dependency_count({18,2})==2);
+  assert(state.dependency({18,0},0).attribute=="first"&&state.dependency({18,0},1).attribute=="second");
+  assert(state.dependency({18,1},0).entity=="sensor.one");
+  assert(state.dependency({18,2},0).attribute.empty()&&state.dependency({18,2},1).attribute=="second");
+  assert(state.dependency_count({17,0})==0&&state.dependency_count({18,UINT16_MAX})==0);
+  assert(state.dependency({18,0},SIZE_MAX).status==PageEntityStatus::STALE);
+  assert(state.dependency({18,UINT16_MAX},0).status==PageEntityStatus::STALE);
+  transport.send("sensor.zero","first","aa");transport.send("sensor.zero","second","bb");transport.send("sensor.two","","cc");
+  const auto allocations=allocation_calls;
+  for(size_t i=0;i<1000;++i) {
+    const auto &entry=transport.entries[1]; // sensor.zero / first, original channel order.
+    entry.deliver(entry.owner,entry.revision,entry.channel,i%2?"11":"22");
+    assert(state.dependency({18,0},0).value==(i%2?"11":"22"));
+    assert(state.dependency({18,0},1).value=="bb"&&state.dependency({18,2},0).value=="cc");
+  }
+  assert(allocation_calls==allocations);
+}
+
 void packed_state_matches_reference_without_allocations() {
   Fixture f; Arena arena; Subscriptions transport; Source source;
   source.items = {{0,"sensor.a",""},{1,"sensor.b",""},{2,"sensor.c",""}};
@@ -242,5 +275,6 @@ void packed_state_matches_reference_without_allocations() {
 int main() {
   lifetime_and_state_budget(); preparation_and_replacements();
   page_store_prepares_resources_before_activation(); coordinator_deduplicates_generations_without_an_extra_cache();
+  interleaved_dependencies_keep_ordinals_and_fail_atomically();
   packed_state_matches_reference_without_allocations();
 }

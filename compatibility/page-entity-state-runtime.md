@@ -32,7 +32,16 @@ missing state. Values that exceed the supplied aggregate cache budget are
 marked `EXHAUSTED`; they are never silently truncated or presented as fresh old
 state. A later fitting value recovers normally.
 
-State delivery compacts the reserved cache without allocating. Returned views
+Card queries use per-card row offsets rather than scanning the complete graph.
+The retained index costs four bytes per stored card plus one sentinel when the
+graph is nonempty. Driver declarations arrive in card order and require no
+extra grouping allocation. Other sources retain their per-card declaration
+order through temporary stable grouping before subscriptions are attached; its
+scratch is included in the preparation peak and is released immediately. A
+scratch failure leaves the active generation intact.
+
+State delivery compacts the reserved cache without allocating. Changed values
+of the same byte length update in place; identical values remain a no-op. Returned views
 are valid only until the next delivery, disconnect or replacement; renderers
 must pull/copy the required values from the main event loop. This is not yet a
 claim that the coordinator's complete dispatch path or the existing renderer is
@@ -45,6 +54,12 @@ recovery, partial subscription failure, arena failure, reconnect invalidation,
 1,000 generation replacements and 10,000 reference-checked cache updates.
 They also exercise the real binding coordinator adapter. These are model tests,
 not physical-device memory or visual-parity results.
+
+An optional `page_entity_state_benchmark` target reports lookup and equal-width
+update timings, fixed owner size and retained arena size for maximum S3 and
+20-slot P4 layouts with 24 synthetic attributes per card. It has no timing pass
+threshold and does not qualify device budgets or represent measured device
+heap use.
 
 The [card dependency declarations](page-card-dependencies.md) now cover the
 registered drivers and have host corpus/max-layout coverage. Before production

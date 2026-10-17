@@ -45,6 +45,13 @@ target_compile_options(page_entity_state_runtime_test PRIVATE -Wall -Wextra -Wer
 target_include_directories(page_entity_state_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_entity_state_runtime_test COMMAND page_entity_state_runtime_test)
 
+add_executable(page_entity_state_benchmark EXCLUDE_FROM_ALL page_entity_state_benchmark.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_entity_state_benchmark PRIVATE cxx_std_17)
+target_compile_options(page_entity_state_benchmark PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_entity_state_benchmark PRIVATE stubs ../../components/espcontrol)
+
 add_executable(page_entity_modal_replay_test page_entity_modal_replay_test.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp
   ../../components/espcontrol/page_store.cpp)

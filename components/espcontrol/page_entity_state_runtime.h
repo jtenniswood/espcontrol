@@ -100,6 +100,8 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
     size_t arena_size{0};
     Channel *channels{nullptr};
     Edge *edges{nullptr};
+    uint32_t *card_offsets{nullptr};
+    size_t card_count{0};
     char *names{nullptr}, *values{nullptr};
     size_t channel_count{0}, edge_count{0}, names_used{0}, values_used{0};
     uint32_t revision{0}, generation{0};
@@ -110,6 +112,7 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
   void receive(Slot &slot, uint32_t revision, uint32_t channel, std::string_view value);
   void release_slot(int index);
   void remove_value(Slot &slot, Channel &channel);
+  bool index_dependencies(Slot &slot);
   void synchronize_connection();
 
   const PageDependencySource &source_;
