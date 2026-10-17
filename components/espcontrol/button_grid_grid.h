@@ -1963,6 +1963,7 @@ inline void grid_phase2(
   weather_forecast_cancel_pending_requests(false);
   reset_climate_control_refs();
   clear_internal_relay_watchers();
+  local_sensor_registry().clear();
   grid_release_main_runtime_allocations(slots, NS);
   grid_clear_navigation_targets(slots, NS);
   navigation_clear_home_targets();

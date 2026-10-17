@@ -105,6 +105,22 @@ inline std::vector<LocalSensorControl> &local_sensor_registry() {
   return sensors;
 }
 
+// Sensor dispatchers live for the device lifetime; widget bindings do not.
+inline void local_sensor_unregister_owner(lv_obj_t *owner) {
+  auto &registry = local_sensor_registry();
+  size_t write_index = 0;
+  for (size_t read_index = 0; read_index < registry.size(); ++read_index) {
+    if (registry[read_index].owner == owner) continue;
+    if (write_index != read_index) registry[write_index] = registry[read_index];
+    ++write_index;
+  }
+  registry.resize(write_index);
+}
+
+inline void local_sensor_owner_deleted(lv_event_t *event) {
+  local_sensor_unregister_owner(static_cast<lv_obj_t *>(lv_event_get_target(event)));
+}
+
 struct LocalSensorCallbackBinding {
   std::string key;
   bool is_text = false;
