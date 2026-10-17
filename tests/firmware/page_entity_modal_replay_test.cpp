@@ -107,5 +107,14 @@ void failures_and_generation_guards() {
   assert(coordinator.replay_owner_missing(&owner,replaced)==0&&calls==before);
   coordinator.release_owner(&owner);coordinator.reclaim_unused_channels();assert(arena.live.empty());
 }
+void cover_position_history() {
+  struct Positions:PageDependencySource {bool enumerate(const PageStore &,PageDependencySink &sink)const override{return sink.add(0,"cover.room","current_position")&&sink.add(0,"cover.room","current_tilt_position");}} source;
+  Fixture fixture;Arena arena;Coordinator coordinator;CoordinatorPageEntitySubscriptions subscriptions(coordinator,4);PageEntityStateRuntime state(source,arena,subscriptions,{4,4,64});assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);PageEntityModalReplay replay(state,arena,{17,0});
+  coordinator.transport().send("cover.room","current_position","42.5");coordinator.transport().send("cover.room","current_position","bad");coordinator.transport().send("cover.room","current_tilt_position","20");coordinator.transport().send("cover.room","current_tilt_position","nan");
+  {auto position=replay("cover.room","current_position"),tilt=replay("cover.room","current_tilt_position");assert(position&&position->current()&&std::string_view(position->data(),position->size())=="43");assert(tilt&&std::string_view(tilt->data(),tilt->size())=="20");}
+  coordinator.transport().send("cover.room","current_position",std::string(200,'x'));{auto position=replay("cover.room","current_position");assert(position&&std::string_view(position->data(),position->size())=="43");}
+  coordinator.transport().connected=false;coordinator.invalidate_retained_state();assert(!replay("cover.room","current_position"));coordinator.transport().connected=true;assert(!replay("cover.room","current_tilt_position"));state.retire_active();assert(arena.live.empty());
 }
-int main(){real_cache_and_modal_lifetime();failures_and_generation_guards();}
+
+}
+int main(){cover_position_history();real_cache_and_modal_lifetime();failures_and_generation_guards();}

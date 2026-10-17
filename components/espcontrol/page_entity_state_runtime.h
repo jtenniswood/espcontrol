@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
+#include <optional>
 
 #include "page_store_runtime.h"
 
@@ -78,6 +79,7 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
   void activate_prepared(uint32_t generation);
   void retire_active() override;
   PageEntityValue dependency(ConfigurationHandle card, size_t ordinal);
+  std::optional<uint8_t> last_percent(ConfigurationHandle card,size_t ordinal);
   size_t dependency_count(ConfigurationHandle card) const;
   PageEntityMemory memory() const;
   // Lets the visible renderer skip unchanged frames. Polling also observes a
@@ -92,7 +94,10 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
     uint32_t value_offset{0}, value_size{0};
     uint32_t revision{0};
     PageEntityStatus status{PageEntityStatus::UNKNOWN};
+    uint8_t percent{0};
+    bool percent_known{false};
   };
+  static_assert(sizeof(Channel)==32,"Percent history must fit existing channel padding");
   struct Edge { CardId card; uint32_t channel; };
   struct Slot {
     PageEntityStateRuntime *runtime{nullptr};
