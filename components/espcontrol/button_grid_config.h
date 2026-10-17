@@ -41,10 +41,7 @@ inline void notify_dashboard_content_changed() {
 #include "button_grid_card_runtime.h"
 #include <cstdlib>
 
-inline int bounded_grid_slots(int num_slots) {
-  if (num_slots < 0) return 0;
-  return num_slots > MAX_GRID_SLOTS ? MAX_GRID_SLOTS : num_slots;
-}
+
 
 // LVGL widget handles for one button slot on the main grid
 struct BtnSlot {

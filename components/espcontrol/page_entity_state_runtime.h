@@ -74,11 +74,15 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
 
   bool prepare(const PageStore &store) override;
   void discard_prepared() override;
-  void activate_prepared(uint32_t generation) override;
+  void activate_prepared(const PageStore &active) override { activate_prepared(active.generation()); }
+  void activate_prepared(uint32_t generation);
   void retire_active() override;
   PageEntityValue dependency(ConfigurationHandle card, size_t ordinal);
   size_t dependency_count(ConfigurationHandle card) const;
   PageEntityMemory memory() const;
+  // Lets the visible renderer skip unchanged frames. Polling also observes a
+  // disconnect before a new HA value arrives, so stale values do not linger.
+  uint64_t revision() { synchronize_connection(); return revision_; }
   void invalidate_disconnected_state();
 
  private:
@@ -116,5 +120,6 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
   int active_{-1}, staged_{-1};
   uint32_t next_revision_{1}, connection_generation_{0};
   PageEntityMemory memory_;
+  uint64_t revision_{0};
 };
 }  // namespace espcontrol::pages
