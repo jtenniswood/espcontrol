@@ -14,6 +14,7 @@ import sys
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -41,6 +42,15 @@ METRICS = {
 }
 
 REQUIRED_METRICS = {"heap_free", "psram_free"}
+
+METRIC_ENTITY_NAMES = {
+    "heap_free": "Memory: Heap Free Bytes",
+    "heap_largest": "Memory: Heap Largest Block",
+    "heap_min_free": "Memory: Heap Minimum Free Bytes",
+    "psram_free": "Memory: PSRAM Free Bytes",
+    "psram_largest": "Memory: PSRAM Largest Block",
+    "psram_min_free": "Memory: PSRAM Minimum Free Bytes",
+}
 
 
 @dataclass(frozen=True)
@@ -125,14 +135,24 @@ def parse_metric_payload(payload: str) -> float:
 
 
 def fetch_metric(host: str, metric: str, timeout: float) -> float:
-    url = metric_url(host, METRICS[metric])
-    request = urllib.request.Request(url, headers={"User-Agent": "espcontrol-memory-monitor"})
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            payload = response.read().decode("utf-8", errors="replace")
-    except (OSError, urllib.error.URLError) as exc:
-        raise MonitorError(str(exc)) from exc
-    return parse_metric_payload(payload)
+    # Current ESPHome exposes the entity name in its event IDs and REST paths.
+    # Older firmware may still expose the slug, so retry that on a 404 only.
+    paths = ["/sensor/" + urllib.parse.quote(METRIC_ENTITY_NAMES[metric], safe=""),
+             METRICS[metric]]
+    for index, path in enumerate(paths):
+        request = urllib.request.Request(metric_url(host, path),
+                                         headers={"User-Agent": "espcontrol-memory-monitor"})
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                payload = response.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404 and index == 0:
+                continue
+            raise MonitorError(str(exc)) from exc
+        except (OSError, urllib.error.URLError) as exc:
+            raise MonitorError(str(exc)) from exc
+        return parse_metric_payload(payload)
+    raise MonitorError("memory metric is unavailable")
 
 
 def collect_sample(targets: list[Target], timeout: float) -> list[Reading]:
@@ -271,6 +291,24 @@ def run_monitor(args: argparse.Namespace) -> int:
 
 
 def run_self_test() -> int:
+    from unittest.mock import patch
+
+    with patch.object(urllib.request, "urlopen", return_value=io.BytesIO(b'{"value":123}')) as opened:
+        assert fetch_metric("example.invalid", "heap_free", 1) == 123
+        assert opened.call_args.args[0].full_url.endswith("/sensor/Memory%3A%20Heap%20Free%20Bytes")
+    missing = urllib.error.HTTPError("url", 404, "missing", None, None)
+    with patch.object(urllib.request, "urlopen", side_effect=[missing, io.BytesIO(b'{"value":456}')]) as opened:
+        assert fetch_metric("example.invalid", "heap_free", 1) == 456
+        assert opened.call_args.args[0].full_url.endswith(METRICS["heap_free"])
+    denied = urllib.error.HTTPError("url", 401, "unauthorized", None, None)
+    with patch.object(urllib.request, "urlopen", side_effect=denied) as opened:
+        try:
+            fetch_metric("example.invalid", "heap_free", 1)
+        except MonitorError:
+            assert opened.call_count == 1
+        else:
+            raise AssertionError("authentication failures must not trigger fallback")
+
     now = 1_800_000_000.0
     readings = [
         Reading(now, "test", {
