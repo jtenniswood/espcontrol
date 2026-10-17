@@ -357,8 +357,13 @@ inline void subscribe_option_select_state(OptionSelectCtx *ctx) {
   ha_subscribe_attribute(
     ctx->entity_id, std::string("options"),
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef options) {
-      ctx->options = option_select_parse_options(
+      auto next_options = option_select_parse_options(
         string_ref_limited(options, OPTION_SELECT_OPTIONS_TEXT_MAX_LEN));
+      if (next_options == ctx->options) return;
+      ctx->options = std::move(next_options);
+      // Rows capture their wire values at creation. Retire that snapshot before
+      // another tap can send a value from an obsolete list revision.
+      if (option_select_modal_ui().active == ctx) option_select_hide_modal();
     })
   );
 }
