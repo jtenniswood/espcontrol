@@ -150,10 +150,12 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.precision.clear();
     b.icon_on.clear();
     b.options = alarm_card_options_normalized(b.options);
-    if (b.label.empty()) {
-      if (b.sensor == "home") b.label = espcontrol_i18n("Arm Home");
-      else if (b.sensor == "disarm") b.label = espcontrol_i18n("Disarm");
-      else b.label = espcontrol_i18n("Arm Away");
+    const char *label_key = b.sensor == "home" ? "arm_home"
+      : b.sensor == "night" ? "arm_night"
+      : b.sensor == "vacation" ? "arm_vacation"
+      : b.sensor == "disarm" ? "disarm" : "arm_away";
+    if (b.label.empty() || b.label == espcontrol_i18n_key_en(label_key)) {
+      b.label = espcontrol_i18n_key(label_key);
     }
     if (b.icon.empty() || b.icon == "Auto" || alarm_action_legacy_icon_name(b.sensor, b.icon)) {
       b.icon = alarm_action_icon_name(b.sensor);

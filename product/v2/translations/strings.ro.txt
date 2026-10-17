@@ -282,11 +282,11 @@ weekday_thurs=joi
 weekday_fri=vin.
 weekday_sat=sâm.
 
-# Default card labels
-connect=Conectare
-local_action=Acțiune locală
-switch=Întrerupător
-lighting=Iluminat
-garage=Garaj
-sensor=Senzor
-camera=Cameră
+# Default card labels (label_ keys use key-based lookup only)
+label_connect=Conectare
+label_local_action=Acțiune locală
+label_switch=Întrerupător
+label_lighting=Iluminat
+label_garage=Garaj
+label_sensor=Senzor
+label_camera=Cameră

@@ -283,11 +283,11 @@ weekday_thurs=ה׳
 weekday_fri=ו׳
 weekday_sat=ש׳
 
-# Default card labels
-connect=התחבר
-local_action=פעולה מקומית
-switch=מתג
-lighting=תאורה
-garage=מוסך
-sensor=חיישן
-camera=מצלמה
+# Default card labels (label_ keys use key-based lookup only)
+label_connect=התחבר
+label_local_action=פעולה מקומית
+label_switch=מתג
+label_lighting=תאורה
+label_garage=מוסך
+label_sensor=חיישן
+label_camera=מצלמה

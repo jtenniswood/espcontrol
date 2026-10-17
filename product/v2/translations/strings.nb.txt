@@ -282,11 +282,11 @@ weekday_thurs=tor.
 weekday_fri=fre.
 weekday_sat=lør.
 
-# Default card labels
-connect=Koble til
-local_action=Lokal handling
-switch=Bryter
-lighting=Belysning
-garage=Garasje
-sensor=Sensor
-camera=Kamera
+# Default card labels (label_ keys use key-based lookup only)
+label_connect=Koble til
+label_local_action=Lokal handling
+label_switch=Bryter
+label_lighting=Belysning
+label_garage=Garasje
+label_sensor=Sensor
+label_camera=Kamera

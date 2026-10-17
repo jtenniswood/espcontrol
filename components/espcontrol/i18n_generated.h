@@ -267,13 +267,6 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "čt";
   if (std::strcmp(text, "Fri") == 0) return "pá";
   if (std::strcmp(text, "Sat") == 0) return "so";
-  if (std::strcmp(text, "Connect") == 0) return "Připojit";
-  if (std::strcmp(text, "Local Action") == 0) return "Místní akce";
-  if (std::strcmp(text, "Switch") == 0) return "Spínač";
-  if (std::strcmp(text, "Lighting") == 0) return "Osvětlení";
-  if (std::strcmp(text, "Garage") == 0) return "Garáž";
-  if (std::strcmp(text, "Sensor") == 0) return "Senzor";
-  if (std::strcmp(text, "Camera") == 0) return "Kamera";
   return text;
 }
 
@@ -522,11 +515,6 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "tor.";
   if (std::strcmp(text, "Fri") == 0) return "fre.";
   if (std::strcmp(text, "Sat") == 0) return "lør.";
-  if (std::strcmp(text, "Connect") == 0) return "Forbind";
-  if (std::strcmp(text, "Local Action") == 0) return "Lokal handling";
-  if (std::strcmp(text, "Switch") == 0) return "Kontakt";
-  if (std::strcmp(text, "Lighting") == 0) return "Belysning";
-  if (std::strcmp(text, "Camera") == 0) return "Kamera";
   return text;
 }
 
@@ -779,11 +767,6 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "Do.";
   if (std::strcmp(text, "Fri") == 0) return "Fr.";
   if (std::strcmp(text, "Sat") == 0) return "Sa.";
-  if (std::strcmp(text, "Connect") == 0) return "Verbinden";
-  if (std::strcmp(text, "Local Action") == 0) return "Lokale Aktion";
-  if (std::strcmp(text, "Switch") == 0) return "Schalter";
-  if (std::strcmp(text, "Lighting") == 0) return "Beleuchtung";
-  if (std::strcmp(text, "Camera") == 0) return "Kamera";
   return text;
 }
 
@@ -1045,12 +1028,6 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "jue.";
   if (std::strcmp(text, "Fri") == 0) return "vie.";
   if (std::strcmp(text, "Sat") == 0) return "sáb.";
-  if (std::strcmp(text, "Connect") == 0) return "Conectar";
-  if (std::strcmp(text, "Local Action") == 0) return "Acción local";
-  if (std::strcmp(text, "Switch") == 0) return "Interruptor";
-  if (std::strcmp(text, "Lighting") == 0) return "Iluminación";
-  if (std::strcmp(text, "Garage") == 0) return "Garaje";
-  if (std::strcmp(text, "Camera") == 0) return "Cámara";
   return text;
 }
 
@@ -1315,13 +1292,6 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "to";
   if (std::strcmp(text, "Fri") == 0) return "pe";
   if (std::strcmp(text, "Sat") == 0) return "la";
-  if (std::strcmp(text, "Connect") == 0) return "Yhdistä";
-  if (std::strcmp(text, "Local Action") == 0) return "Paikallinen toiminto";
-  if (std::strcmp(text, "Switch") == 0) return "Kytkin";
-  if (std::strcmp(text, "Lighting") == 0) return "Valaistus";
-  if (std::strcmp(text, "Garage") == 0) return "Autotalli";
-  if (std::strcmp(text, "Sensor") == 0) return "Anturi";
-  if (std::strcmp(text, "Camera") == 0) return "Kamera";
   return text;
 }
 
@@ -1576,12 +1546,6 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "jeu.";
   if (std::strcmp(text, "Fri") == 0) return "ven.";
   if (std::strcmp(text, "Sat") == 0) return "sam.";
-  if (std::strcmp(text, "Connect") == 0) return "Connecter";
-  if (std::strcmp(text, "Local Action") == 0) return "Action locale";
-  if (std::strcmp(text, "Switch") == 0) return "Interrupteur";
-  if (std::strcmp(text, "Lighting") == 0) return "Éclairage";
-  if (std::strcmp(text, "Sensor") == 0) return "Capteur";
-  if (std::strcmp(text, "Camera") == 0) return "Caméra";
   return text;
 }
 
@@ -1855,13 +1819,6 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "ה׳";
   if (std::strcmp(text, "Fri") == 0) return "ו׳";
   if (std::strcmp(text, "Sat") == 0) return "ש׳";
-  if (std::strcmp(text, "Connect") == 0) return "התחבר";
-  if (std::strcmp(text, "Local Action") == 0) return "פעולה מקומית";
-  if (std::strcmp(text, "Switch") == 0) return "מתג";
-  if (std::strcmp(text, "Lighting") == 0) return "תאורה";
-  if (std::strcmp(text, "Garage") == 0) return "מוסך";
-  if (std::strcmp(text, "Sensor") == 0) return "חיישן";
-  if (std::strcmp(text, "Camera") == 0) return "מצלמה";
   return text;
 }
 
@@ -2126,13 +2083,6 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "csüt.";
   if (std::strcmp(text, "Fri") == 0) return "pén.";
   if (std::strcmp(text, "Sat") == 0) return "szomb.";
-  if (std::strcmp(text, "Connect") == 0) return "Csatlakozás";
-  if (std::strcmp(text, "Local Action") == 0) return "Helyi művelet";
-  if (std::strcmp(text, "Switch") == 0) return "Kapcsoló";
-  if (std::strcmp(text, "Lighting") == 0) return "Világítás";
-  if (std::strcmp(text, "Garage") == 0) return "Garázs";
-  if (std::strcmp(text, "Sensor") == 0) return "Érzékelő";
-  if (std::strcmp(text, "Camera") == 0) return "Kamera";
   return text;
 }
 
@@ -2394,12 +2344,6 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "gio.";
   if (std::strcmp(text, "Fri") == 0) return "ven.";
   if (std::strcmp(text, "Sat") == 0) return "sab.";
-  if (std::strcmp(text, "Connect") == 0) return "Connetti";
-  if (std::strcmp(text, "Local Action") == 0) return "Azione locale";
-  if (std::strcmp(text, "Switch") == 0) return "Interruttore";
-  if (std::strcmp(text, "Lighting") == 0) return "Illuminazione";
-  if (std::strcmp(text, "Sensor") == 0) return "Sensore";
-  if (std::strcmp(text, "Camera") == 0) return "Telecamera";
   return text;
 }
 
@@ -2652,12 +2596,6 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "tor.";
   if (std::strcmp(text, "Fri") == 0) return "fre.";
   if (std::strcmp(text, "Sat") == 0) return "lør.";
-  if (std::strcmp(text, "Connect") == 0) return "Koble til";
-  if (std::strcmp(text, "Local Action") == 0) return "Lokal handling";
-  if (std::strcmp(text, "Switch") == 0) return "Bryter";
-  if (std::strcmp(text, "Lighting") == 0) return "Belysning";
-  if (std::strcmp(text, "Garage") == 0) return "Garasje";
-  if (std::strcmp(text, "Camera") == 0) return "Kamera";
   return text;
 }
 
@@ -2916,10 +2854,6 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "do.";
   if (std::strcmp(text, "Fri") == 0) return "vr.";
   if (std::strcmp(text, "Sat") == 0) return "za.";
-  if (std::strcmp(text, "Connect") == 0) return "Verbinden";
-  if (std::strcmp(text, "Local Action") == 0) return "Lokale actie";
-  if (std::strcmp(text, "Switch") == 0) return "Schakelaar";
-  if (std::strcmp(text, "Lighting") == 0) return "Verlichting";
   return text;
 }
 
@@ -3172,13 +3106,6 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "czw.";
   if (std::strcmp(text, "Fri") == 0) return "pt.";
   if (std::strcmp(text, "Sat") == 0) return "sob.";
-  if (std::strcmp(text, "Connect") == 0) return "Połącz";
-  if (std::strcmp(text, "Local Action") == 0) return "Akcja lokalna";
-  if (std::strcmp(text, "Switch") == 0) return "Przełącznik";
-  if (std::strcmp(text, "Lighting") == 0) return "Oświetlenie";
-  if (std::strcmp(text, "Garage") == 0) return "Garaż";
-  if (std::strcmp(text, "Sensor") == 0) return "Czujnik";
-  if (std::strcmp(text, "Camera") == 0) return "Kamera";
   return text;
 }
 
@@ -3434,12 +3361,6 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "qui.";
   if (std::strcmp(text, "Fri") == 0) return "sex.";
   if (std::strcmp(text, "Sat") == 0) return "sáb.";
-  if (std::strcmp(text, "Connect") == 0) return "Conectar";
-  if (std::strcmp(text, "Local Action") == 0) return "Ação local";
-  if (std::strcmp(text, "Switch") == 0) return "Interruptor";
-  if (std::strcmp(text, "Lighting") == 0) return "Iluminação";
-  if (std::strcmp(text, "Garage") == 0) return "Garagem";
-  if (std::strcmp(text, "Camera") == 0) return "Câmera";
   return text;
 }
 
@@ -3702,12 +3623,6 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "qui.";
   if (std::strcmp(text, "Fri") == 0) return "sex.";
   if (std::strcmp(text, "Sat") == 0) return "sáb.";
-  if (std::strcmp(text, "Connect") == 0) return "Ligar";
-  if (std::strcmp(text, "Local Action") == 0) return "Ação local";
-  if (std::strcmp(text, "Switch") == 0) return "Interruptor";
-  if (std::strcmp(text, "Lighting") == 0) return "Iluminação";
-  if (std::strcmp(text, "Garage") == 0) return "Garagem";
-  if (std::strcmp(text, "Camera") == 0) return "Câmara";
   return text;
 }
 
@@ -3972,13 +3887,6 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "joi";
   if (std::strcmp(text, "Fri") == 0) return "vin.";
   if (std::strcmp(text, "Sat") == 0) return "sâm.";
-  if (std::strcmp(text, "Connect") == 0) return "Conectare";
-  if (std::strcmp(text, "Local Action") == 0) return "Acțiune locală";
-  if (std::strcmp(text, "Switch") == 0) return "Întrerupător";
-  if (std::strcmp(text, "Lighting") == 0) return "Iluminat";
-  if (std::strcmp(text, "Garage") == 0) return "Garaj";
-  if (std::strcmp(text, "Sensor") == 0) return "Senzor";
-  if (std::strcmp(text, "Camera") == 0) return "Cameră";
   return text;
 }
 
@@ -4250,13 +4158,6 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "чт";
   if (std::strcmp(text, "Fri") == 0) return "пт";
   if (std::strcmp(text, "Sat") == 0) return "сб";
-  if (std::strcmp(text, "Connect") == 0) return "Подключиться";
-  if (std::strcmp(text, "Local Action") == 0) return "Локальное действие";
-  if (std::strcmp(text, "Switch") == 0) return "Выключатель";
-  if (std::strcmp(text, "Lighting") == 0) return "Освещение";
-  if (std::strcmp(text, "Garage") == 0) return "Гараж";
-  if (std::strcmp(text, "Sensor") == 0) return "Датчик";
-  if (std::strcmp(text, "Camera") == 0) return "Камера";
   return text;
 }
 
@@ -4513,13 +4414,6 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "št";
   if (std::strcmp(text, "Fri") == 0) return "pi";
   if (std::strcmp(text, "Sat") == 0) return "so";
-  if (std::strcmp(text, "Connect") == 0) return "Pripojiť";
-  if (std::strcmp(text, "Local Action") == 0) return "Miestna akcia";
-  if (std::strcmp(text, "Switch") == 0) return "Spínač";
-  if (std::strcmp(text, "Lighting") == 0) return "Osvetlenie";
-  if (std::strcmp(text, "Garage") == 0) return "Garáž";
-  if (std::strcmp(text, "Sensor") == 0) return "Senzor";
-  if (std::strcmp(text, "Camera") == 0) return "Kamera";
   return text;
 }
 
@@ -4780,13 +4674,6 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "čet.";
   if (std::strcmp(text, "Fri") == 0) return "pet.";
   if (std::strcmp(text, "Sat") == 0) return "sob.";
-  if (std::strcmp(text, "Connect") == 0) return "Poveži";
-  if (std::strcmp(text, "Local Action") == 0) return "Lokalno dejanje";
-  if (std::strcmp(text, "Switch") == 0) return "Stikalo";
-  if (std::strcmp(text, "Lighting") == 0) return "Razsvetljava";
-  if (std::strcmp(text, "Garage") == 0) return "Garaža";
-  if (std::strcmp(text, "Sensor") == 0) return "Senzor";
-  if (std::strcmp(text, "Camera") == 0) return "Kamera";
   return text;
 }
 
@@ -5038,11 +4925,6 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "tor";
   if (std::strcmp(text, "Fri") == 0) return "fre";
   if (std::strcmp(text, "Sat") == 0) return "lör";
-  if (std::strcmp(text, "Connect") == 0) return "Anslut";
-  if (std::strcmp(text, "Local Action") == 0) return "Lokal åtgärd";
-  if (std::strcmp(text, "Switch") == 0) return "Strömbrytare";
-  if (std::strcmp(text, "Lighting") == 0) return "Belysning";
-  if (std::strcmp(text, "Camera") == 0) return "Kamera";
   return text;
 }
 
@@ -5307,13 +5189,6 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "Per";
   if (std::strcmp(text, "Fri") == 0) return "Cum";
   if (std::strcmp(text, "Sat") == 0) return "Cmt";
-  if (std::strcmp(text, "Connect") == 0) return "Bağlan";
-  if (std::strcmp(text, "Local Action") == 0) return "Yerel eylem";
-  if (std::strcmp(text, "Switch") == 0) return "Anahtar";
-  if (std::strcmp(text, "Lighting") == 0) return "Aydınlatma";
-  if (std::strcmp(text, "Garage") == 0) return "Garaj";
-  if (std::strcmp(text, "Sensor") == 0) return "Sensör";
-  if (std::strcmp(text, "Camera") == 0) return "Kamera";
   return text;
 }
 
@@ -5580,13 +5455,6 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Thurs") == 0) return "чт";
   if (std::strcmp(text, "Fri") == 0) return "пт";
   if (std::strcmp(text, "Sat") == 0) return "сб";
-  if (std::strcmp(text, "Connect") == 0) return "Підключитися";
-  if (std::strcmp(text, "Local Action") == 0) return "Локальна дія";
-  if (std::strcmp(text, "Switch") == 0) return "Вимикач";
-  if (std::strcmp(text, "Lighting") == 0) return "Освітлення";
-  if (std::strcmp(text, "Garage") == 0) return "Гараж";
-  if (std::strcmp(text, "Sensor") == 0) return "Датчик";
-  if (std::strcmp(text, "Camera") == 0) return "Камера";
   return text;
 }
 
@@ -5869,13 +5737,13 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "Thurs";
   if (std::strcmp(key, "weekday_fri") == 0) return "Fri";
   if (std::strcmp(key, "weekday_sat") == 0) return "Sat";
-  if (std::strcmp(key, "connect") == 0) return "Connect";
-  if (std::strcmp(key, "local_action") == 0) return "Local Action";
-  if (std::strcmp(key, "switch") == 0) return "Switch";
-  if (std::strcmp(key, "lighting") == 0) return "Lighting";
-  if (std::strcmp(key, "garage") == 0) return "Garage";
-  if (std::strcmp(key, "sensor") == 0) return "Sensor";
-  if (std::strcmp(key, "camera") == 0) return "Camera";
+  if (std::strcmp(key, "label_connect") == 0) return "Connect";
+  if (std::strcmp(key, "label_local_action") == 0) return "Local Action";
+  if (std::strcmp(key, "label_switch") == 0) return "Switch";
+  if (std::strcmp(key, "label_lighting") == 0) return "Lighting";
+  if (std::strcmp(key, "label_garage") == 0) return "Garage";
+  if (std::strcmp(key, "label_sensor") == 0) return "Sensor";
+  if (std::strcmp(key, "label_camera") == 0) return "Camera";
   return key;
 }
 
@@ -6132,13 +6000,13 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "čt";
   if (std::strcmp(key, "weekday_fri") == 0) return "pá";
   if (std::strcmp(key, "weekday_sat") == 0) return "so";
-  if (std::strcmp(key, "connect") == 0) return "Připojit";
-  if (std::strcmp(key, "local_action") == 0) return "Místní akce";
-  if (std::strcmp(key, "switch") == 0) return "Spínač";
-  if (std::strcmp(key, "lighting") == 0) return "Osvětlení";
-  if (std::strcmp(key, "garage") == 0) return "Garáž";
-  if (std::strcmp(key, "sensor") == 0) return "Senzor";
-  if (std::strcmp(key, "camera") == 0) return "Kamera";
+  if (std::strcmp(key, "label_connect") == 0) return "Připojit";
+  if (std::strcmp(key, "label_local_action") == 0) return "Místní akce";
+  if (std::strcmp(key, "label_switch") == 0) return "Spínač";
+  if (std::strcmp(key, "label_lighting") == 0) return "Osvětlení";
+  if (std::strcmp(key, "label_garage") == 0) return "Garáž";
+  if (std::strcmp(key, "label_sensor") == 0) return "Senzor";
+  if (std::strcmp(key, "label_camera") == 0) return "Kamera";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6388,11 +6256,11 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "tor.";
   if (std::strcmp(key, "weekday_fri") == 0) return "fre.";
   if (std::strcmp(key, "weekday_sat") == 0) return "lør.";
-  if (std::strcmp(key, "connect") == 0) return "Forbind";
-  if (std::strcmp(key, "local_action") == 0) return "Lokal handling";
-  if (std::strcmp(key, "switch") == 0) return "Kontakt";
-  if (std::strcmp(key, "lighting") == 0) return "Belysning";
-  if (std::strcmp(key, "camera") == 0) return "Kamera";
+  if (std::strcmp(key, "label_connect") == 0) return "Forbind";
+  if (std::strcmp(key, "label_local_action") == 0) return "Lokal handling";
+  if (std::strcmp(key, "label_switch") == 0) return "Kontakt";
+  if (std::strcmp(key, "label_lighting") == 0) return "Belysning";
+  if (std::strcmp(key, "label_camera") == 0) return "Kamera";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6646,11 +6514,11 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "Do.";
   if (std::strcmp(key, "weekday_fri") == 0) return "Fr.";
   if (std::strcmp(key, "weekday_sat") == 0) return "Sa.";
-  if (std::strcmp(key, "connect") == 0) return "Verbinden";
-  if (std::strcmp(key, "local_action") == 0) return "Lokale Aktion";
-  if (std::strcmp(key, "switch") == 0) return "Schalter";
-  if (std::strcmp(key, "lighting") == 0) return "Beleuchtung";
-  if (std::strcmp(key, "camera") == 0) return "Kamera";
+  if (std::strcmp(key, "label_connect") == 0) return "Verbinden";
+  if (std::strcmp(key, "label_local_action") == 0) return "Lokale Aktion";
+  if (std::strcmp(key, "label_switch") == 0) return "Schalter";
+  if (std::strcmp(key, "label_lighting") == 0) return "Beleuchtung";
+  if (std::strcmp(key, "label_camera") == 0) return "Kamera";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6913,12 +6781,12 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "jue.";
   if (std::strcmp(key, "weekday_fri") == 0) return "vie.";
   if (std::strcmp(key, "weekday_sat") == 0) return "sáb.";
-  if (std::strcmp(key, "connect") == 0) return "Conectar";
-  if (std::strcmp(key, "local_action") == 0) return "Acción local";
-  if (std::strcmp(key, "switch") == 0) return "Interruptor";
-  if (std::strcmp(key, "lighting") == 0) return "Iluminación";
-  if (std::strcmp(key, "garage") == 0) return "Garaje";
-  if (std::strcmp(key, "camera") == 0) return "Cámara";
+  if (std::strcmp(key, "label_connect") == 0) return "Conectar";
+  if (std::strcmp(key, "label_local_action") == 0) return "Acción local";
+  if (std::strcmp(key, "label_switch") == 0) return "Interruptor";
+  if (std::strcmp(key, "label_lighting") == 0) return "Iluminación";
+  if (std::strcmp(key, "label_garage") == 0) return "Garaje";
+  if (std::strcmp(key, "label_camera") == 0) return "Cámara";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7184,13 +7052,13 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "to";
   if (std::strcmp(key, "weekday_fri") == 0) return "pe";
   if (std::strcmp(key, "weekday_sat") == 0) return "la";
-  if (std::strcmp(key, "connect") == 0) return "Yhdistä";
-  if (std::strcmp(key, "local_action") == 0) return "Paikallinen toiminto";
-  if (std::strcmp(key, "switch") == 0) return "Kytkin";
-  if (std::strcmp(key, "lighting") == 0) return "Valaistus";
-  if (std::strcmp(key, "garage") == 0) return "Autotalli";
-  if (std::strcmp(key, "sensor") == 0) return "Anturi";
-  if (std::strcmp(key, "camera") == 0) return "Kamera";
+  if (std::strcmp(key, "label_connect") == 0) return "Yhdistä";
+  if (std::strcmp(key, "label_local_action") == 0) return "Paikallinen toiminto";
+  if (std::strcmp(key, "label_switch") == 0) return "Kytkin";
+  if (std::strcmp(key, "label_lighting") == 0) return "Valaistus";
+  if (std::strcmp(key, "label_garage") == 0) return "Autotalli";
+  if (std::strcmp(key, "label_sensor") == 0) return "Anturi";
+  if (std::strcmp(key, "label_camera") == 0) return "Kamera";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7446,12 +7314,12 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "jeu.";
   if (std::strcmp(key, "weekday_fri") == 0) return "ven.";
   if (std::strcmp(key, "weekday_sat") == 0) return "sam.";
-  if (std::strcmp(key, "connect") == 0) return "Connecter";
-  if (std::strcmp(key, "local_action") == 0) return "Action locale";
-  if (std::strcmp(key, "switch") == 0) return "Interrupteur";
-  if (std::strcmp(key, "lighting") == 0) return "Éclairage";
-  if (std::strcmp(key, "sensor") == 0) return "Capteur";
-  if (std::strcmp(key, "camera") == 0) return "Caméra";
+  if (std::strcmp(key, "label_connect") == 0) return "Connecter";
+  if (std::strcmp(key, "label_local_action") == 0) return "Action locale";
+  if (std::strcmp(key, "label_switch") == 0) return "Interrupteur";
+  if (std::strcmp(key, "label_lighting") == 0) return "Éclairage";
+  if (std::strcmp(key, "label_sensor") == 0) return "Capteur";
+  if (std::strcmp(key, "label_camera") == 0) return "Caméra";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7726,13 +7594,13 @@ inline const char *espcontrol_i18n_key_he(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "ה׳";
   if (std::strcmp(key, "weekday_fri") == 0) return "ו׳";
   if (std::strcmp(key, "weekday_sat") == 0) return "ש׳";
-  if (std::strcmp(key, "connect") == 0) return "התחבר";
-  if (std::strcmp(key, "local_action") == 0) return "פעולה מקומית";
-  if (std::strcmp(key, "switch") == 0) return "מתג";
-  if (std::strcmp(key, "lighting") == 0) return "תאורה";
-  if (std::strcmp(key, "garage") == 0) return "מוסך";
-  if (std::strcmp(key, "sensor") == 0) return "חיישן";
-  if (std::strcmp(key, "camera") == 0) return "מצלמה";
+  if (std::strcmp(key, "label_connect") == 0) return "התחבר";
+  if (std::strcmp(key, "label_local_action") == 0) return "פעולה מקומית";
+  if (std::strcmp(key, "label_switch") == 0) return "מתג";
+  if (std::strcmp(key, "label_lighting") == 0) return "תאורה";
+  if (std::strcmp(key, "label_garage") == 0) return "מוסך";
+  if (std::strcmp(key, "label_sensor") == 0) return "חיישן";
+  if (std::strcmp(key, "label_camera") == 0) return "מצלמה";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7998,13 +7866,13 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "csüt.";
   if (std::strcmp(key, "weekday_fri") == 0) return "pén.";
   if (std::strcmp(key, "weekday_sat") == 0) return "szomb.";
-  if (std::strcmp(key, "connect") == 0) return "Csatlakozás";
-  if (std::strcmp(key, "local_action") == 0) return "Helyi művelet";
-  if (std::strcmp(key, "switch") == 0) return "Kapcsoló";
-  if (std::strcmp(key, "lighting") == 0) return "Világítás";
-  if (std::strcmp(key, "garage") == 0) return "Garázs";
-  if (std::strcmp(key, "sensor") == 0) return "Érzékelő";
-  if (std::strcmp(key, "camera") == 0) return "Kamera";
+  if (std::strcmp(key, "label_connect") == 0) return "Csatlakozás";
+  if (std::strcmp(key, "label_local_action") == 0) return "Helyi művelet";
+  if (std::strcmp(key, "label_switch") == 0) return "Kapcsoló";
+  if (std::strcmp(key, "label_lighting") == 0) return "Világítás";
+  if (std::strcmp(key, "label_garage") == 0) return "Garázs";
+  if (std::strcmp(key, "label_sensor") == 0) return "Érzékelő";
+  if (std::strcmp(key, "label_camera") == 0) return "Kamera";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8267,12 +8135,12 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "gio.";
   if (std::strcmp(key, "weekday_fri") == 0) return "ven.";
   if (std::strcmp(key, "weekday_sat") == 0) return "sab.";
-  if (std::strcmp(key, "connect") == 0) return "Connetti";
-  if (std::strcmp(key, "local_action") == 0) return "Azione locale";
-  if (std::strcmp(key, "switch") == 0) return "Interruttore";
-  if (std::strcmp(key, "lighting") == 0) return "Illuminazione";
-  if (std::strcmp(key, "sensor") == 0) return "Sensore";
-  if (std::strcmp(key, "camera") == 0) return "Telecamera";
+  if (std::strcmp(key, "label_connect") == 0) return "Connetti";
+  if (std::strcmp(key, "label_local_action") == 0) return "Azione locale";
+  if (std::strcmp(key, "label_switch") == 0) return "Interruttore";
+  if (std::strcmp(key, "label_lighting") == 0) return "Illuminazione";
+  if (std::strcmp(key, "label_sensor") == 0) return "Sensore";
+  if (std::strcmp(key, "label_camera") == 0) return "Telecamera";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8526,12 +8394,12 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "tor.";
   if (std::strcmp(key, "weekday_fri") == 0) return "fre.";
   if (std::strcmp(key, "weekday_sat") == 0) return "lør.";
-  if (std::strcmp(key, "connect") == 0) return "Koble til";
-  if (std::strcmp(key, "local_action") == 0) return "Lokal handling";
-  if (std::strcmp(key, "switch") == 0) return "Bryter";
-  if (std::strcmp(key, "lighting") == 0) return "Belysning";
-  if (std::strcmp(key, "garage") == 0) return "Garasje";
-  if (std::strcmp(key, "camera") == 0) return "Kamera";
+  if (std::strcmp(key, "label_connect") == 0) return "Koble til";
+  if (std::strcmp(key, "label_local_action") == 0) return "Lokal handling";
+  if (std::strcmp(key, "label_switch") == 0) return "Bryter";
+  if (std::strcmp(key, "label_lighting") == 0) return "Belysning";
+  if (std::strcmp(key, "label_garage") == 0) return "Garasje";
+  if (std::strcmp(key, "label_camera") == 0) return "Kamera";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8790,10 +8658,10 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "do.";
   if (std::strcmp(key, "weekday_fri") == 0) return "vr.";
   if (std::strcmp(key, "weekday_sat") == 0) return "za.";
-  if (std::strcmp(key, "connect") == 0) return "Verbinden";
-  if (std::strcmp(key, "local_action") == 0) return "Lokale actie";
-  if (std::strcmp(key, "switch") == 0) return "Schakelaar";
-  if (std::strcmp(key, "lighting") == 0) return "Verlichting";
+  if (std::strcmp(key, "label_connect") == 0) return "Verbinden";
+  if (std::strcmp(key, "label_local_action") == 0) return "Lokale actie";
+  if (std::strcmp(key, "label_switch") == 0) return "Schakelaar";
+  if (std::strcmp(key, "label_lighting") == 0) return "Verlichting";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9047,13 +8915,13 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "czw.";
   if (std::strcmp(key, "weekday_fri") == 0) return "pt.";
   if (std::strcmp(key, "weekday_sat") == 0) return "sob.";
-  if (std::strcmp(key, "connect") == 0) return "Połącz";
-  if (std::strcmp(key, "local_action") == 0) return "Akcja lokalna";
-  if (std::strcmp(key, "switch") == 0) return "Przełącznik";
-  if (std::strcmp(key, "lighting") == 0) return "Oświetlenie";
-  if (std::strcmp(key, "garage") == 0) return "Garaż";
-  if (std::strcmp(key, "sensor") == 0) return "Czujnik";
-  if (std::strcmp(key, "camera") == 0) return "Kamera";
+  if (std::strcmp(key, "label_connect") == 0) return "Połącz";
+  if (std::strcmp(key, "label_local_action") == 0) return "Akcja lokalna";
+  if (std::strcmp(key, "label_switch") == 0) return "Przełącznik";
+  if (std::strcmp(key, "label_lighting") == 0) return "Oświetlenie";
+  if (std::strcmp(key, "label_garage") == 0) return "Garaż";
+  if (std::strcmp(key, "label_sensor") == 0) return "Czujnik";
+  if (std::strcmp(key, "label_camera") == 0) return "Kamera";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9310,12 +9178,12 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "qui.";
   if (std::strcmp(key, "weekday_fri") == 0) return "sex.";
   if (std::strcmp(key, "weekday_sat") == 0) return "sáb.";
-  if (std::strcmp(key, "connect") == 0) return "Conectar";
-  if (std::strcmp(key, "local_action") == 0) return "Ação local";
-  if (std::strcmp(key, "switch") == 0) return "Interruptor";
-  if (std::strcmp(key, "lighting") == 0) return "Iluminação";
-  if (std::strcmp(key, "garage") == 0) return "Garagem";
-  if (std::strcmp(key, "camera") == 0) return "Câmera";
+  if (std::strcmp(key, "label_connect") == 0) return "Conectar";
+  if (std::strcmp(key, "label_local_action") == 0) return "Ação local";
+  if (std::strcmp(key, "label_switch") == 0) return "Interruptor";
+  if (std::strcmp(key, "label_lighting") == 0) return "Iluminação";
+  if (std::strcmp(key, "label_garage") == 0) return "Garagem";
+  if (std::strcmp(key, "label_camera") == 0) return "Câmera";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9579,12 +9447,12 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "qui.";
   if (std::strcmp(key, "weekday_fri") == 0) return "sex.";
   if (std::strcmp(key, "weekday_sat") == 0) return "sáb.";
-  if (std::strcmp(key, "connect") == 0) return "Ligar";
-  if (std::strcmp(key, "local_action") == 0) return "Ação local";
-  if (std::strcmp(key, "switch") == 0) return "Interruptor";
-  if (std::strcmp(key, "lighting") == 0) return "Iluminação";
-  if (std::strcmp(key, "garage") == 0) return "Garagem";
-  if (std::strcmp(key, "camera") == 0) return "Câmara";
+  if (std::strcmp(key, "label_connect") == 0) return "Ligar";
+  if (std::strcmp(key, "label_local_action") == 0) return "Ação local";
+  if (std::strcmp(key, "label_switch") == 0) return "Interruptor";
+  if (std::strcmp(key, "label_lighting") == 0) return "Iluminação";
+  if (std::strcmp(key, "label_garage") == 0) return "Garagem";
+  if (std::strcmp(key, "label_camera") == 0) return "Câmara";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9850,13 +9718,13 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "joi";
   if (std::strcmp(key, "weekday_fri") == 0) return "vin.";
   if (std::strcmp(key, "weekday_sat") == 0) return "sâm.";
-  if (std::strcmp(key, "connect") == 0) return "Conectare";
-  if (std::strcmp(key, "local_action") == 0) return "Acțiune locală";
-  if (std::strcmp(key, "switch") == 0) return "Întrerupător";
-  if (std::strcmp(key, "lighting") == 0) return "Iluminat";
-  if (std::strcmp(key, "garage") == 0) return "Garaj";
-  if (std::strcmp(key, "sensor") == 0) return "Senzor";
-  if (std::strcmp(key, "camera") == 0) return "Cameră";
+  if (std::strcmp(key, "label_connect") == 0) return "Conectare";
+  if (std::strcmp(key, "label_local_action") == 0) return "Acțiune locală";
+  if (std::strcmp(key, "label_switch") == 0) return "Întrerupător";
+  if (std::strcmp(key, "label_lighting") == 0) return "Iluminat";
+  if (std::strcmp(key, "label_garage") == 0) return "Garaj";
+  if (std::strcmp(key, "label_sensor") == 0) return "Senzor";
+  if (std::strcmp(key, "label_camera") == 0) return "Cameră";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10129,13 +9997,13 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "чт";
   if (std::strcmp(key, "weekday_fri") == 0) return "пт";
   if (std::strcmp(key, "weekday_sat") == 0) return "сб";
-  if (std::strcmp(key, "connect") == 0) return "Подключиться";
-  if (std::strcmp(key, "local_action") == 0) return "Локальное действие";
-  if (std::strcmp(key, "switch") == 0) return "Выключатель";
-  if (std::strcmp(key, "lighting") == 0) return "Освещение";
-  if (std::strcmp(key, "garage") == 0) return "Гараж";
-  if (std::strcmp(key, "sensor") == 0) return "Датчик";
-  if (std::strcmp(key, "camera") == 0) return "Камера";
+  if (std::strcmp(key, "label_connect") == 0) return "Подключиться";
+  if (std::strcmp(key, "label_local_action") == 0) return "Локальное действие";
+  if (std::strcmp(key, "label_switch") == 0) return "Выключатель";
+  if (std::strcmp(key, "label_lighting") == 0) return "Освещение";
+  if (std::strcmp(key, "label_garage") == 0) return "Гараж";
+  if (std::strcmp(key, "label_sensor") == 0) return "Датчик";
+  if (std::strcmp(key, "label_camera") == 0) return "Камера";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10393,13 +10261,13 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "št";
   if (std::strcmp(key, "weekday_fri") == 0) return "pi";
   if (std::strcmp(key, "weekday_sat") == 0) return "so";
-  if (std::strcmp(key, "connect") == 0) return "Pripojiť";
-  if (std::strcmp(key, "local_action") == 0) return "Miestna akcia";
-  if (std::strcmp(key, "switch") == 0) return "Spínač";
-  if (std::strcmp(key, "lighting") == 0) return "Osvetlenie";
-  if (std::strcmp(key, "garage") == 0) return "Garáž";
-  if (std::strcmp(key, "sensor") == 0) return "Senzor";
-  if (std::strcmp(key, "camera") == 0) return "Kamera";
+  if (std::strcmp(key, "label_connect") == 0) return "Pripojiť";
+  if (std::strcmp(key, "label_local_action") == 0) return "Miestna akcia";
+  if (std::strcmp(key, "label_switch") == 0) return "Spínač";
+  if (std::strcmp(key, "label_lighting") == 0) return "Osvetlenie";
+  if (std::strcmp(key, "label_garage") == 0) return "Garáž";
+  if (std::strcmp(key, "label_sensor") == 0) return "Senzor";
+  if (std::strcmp(key, "label_camera") == 0) return "Kamera";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10661,13 +10529,13 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "čet.";
   if (std::strcmp(key, "weekday_fri") == 0) return "pet.";
   if (std::strcmp(key, "weekday_sat") == 0) return "sob.";
-  if (std::strcmp(key, "connect") == 0) return "Poveži";
-  if (std::strcmp(key, "local_action") == 0) return "Lokalno dejanje";
-  if (std::strcmp(key, "switch") == 0) return "Stikalo";
-  if (std::strcmp(key, "lighting") == 0) return "Razsvetljava";
-  if (std::strcmp(key, "garage") == 0) return "Garaža";
-  if (std::strcmp(key, "sensor") == 0) return "Senzor";
-  if (std::strcmp(key, "camera") == 0) return "Kamera";
+  if (std::strcmp(key, "label_connect") == 0) return "Poveži";
+  if (std::strcmp(key, "label_local_action") == 0) return "Lokalno dejanje";
+  if (std::strcmp(key, "label_switch") == 0) return "Stikalo";
+  if (std::strcmp(key, "label_lighting") == 0) return "Razsvetljava";
+  if (std::strcmp(key, "label_garage") == 0) return "Garaža";
+  if (std::strcmp(key, "label_sensor") == 0) return "Senzor";
+  if (std::strcmp(key, "label_camera") == 0) return "Kamera";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10920,11 +10788,11 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "tor";
   if (std::strcmp(key, "weekday_fri") == 0) return "fre";
   if (std::strcmp(key, "weekday_sat") == 0) return "lör";
-  if (std::strcmp(key, "connect") == 0) return "Anslut";
-  if (std::strcmp(key, "local_action") == 0) return "Lokal åtgärd";
-  if (std::strcmp(key, "switch") == 0) return "Strömbrytare";
-  if (std::strcmp(key, "lighting") == 0) return "Belysning";
-  if (std::strcmp(key, "camera") == 0) return "Kamera";
+  if (std::strcmp(key, "label_connect") == 0) return "Anslut";
+  if (std::strcmp(key, "label_local_action") == 0) return "Lokal åtgärd";
+  if (std::strcmp(key, "label_switch") == 0) return "Strömbrytare";
+  if (std::strcmp(key, "label_lighting") == 0) return "Belysning";
+  if (std::strcmp(key, "label_camera") == 0) return "Kamera";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -11190,13 +11058,13 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "Per";
   if (std::strcmp(key, "weekday_fri") == 0) return "Cum";
   if (std::strcmp(key, "weekday_sat") == 0) return "Cmt";
-  if (std::strcmp(key, "connect") == 0) return "Bağlan";
-  if (std::strcmp(key, "local_action") == 0) return "Yerel eylem";
-  if (std::strcmp(key, "switch") == 0) return "Anahtar";
-  if (std::strcmp(key, "lighting") == 0) return "Aydınlatma";
-  if (std::strcmp(key, "garage") == 0) return "Garaj";
-  if (std::strcmp(key, "sensor") == 0) return "Sensör";
-  if (std::strcmp(key, "camera") == 0) return "Kamera";
+  if (std::strcmp(key, "label_connect") == 0) return "Bağlan";
+  if (std::strcmp(key, "label_local_action") == 0) return "Yerel eylem";
+  if (std::strcmp(key, "label_switch") == 0) return "Anahtar";
+  if (std::strcmp(key, "label_lighting") == 0) return "Aydınlatma";
+  if (std::strcmp(key, "label_garage") == 0) return "Garaj";
+  if (std::strcmp(key, "label_sensor") == 0) return "Sensör";
+  if (std::strcmp(key, "label_camera") == 0) return "Kamera";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -11464,13 +11332,13 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "weekday_thurs") == 0) return "чт";
   if (std::strcmp(key, "weekday_fri") == 0) return "пт";
   if (std::strcmp(key, "weekday_sat") == 0) return "сб";
-  if (std::strcmp(key, "connect") == 0) return "Підключитися";
-  if (std::strcmp(key, "local_action") == 0) return "Локальна дія";
-  if (std::strcmp(key, "switch") == 0) return "Вимикач";
-  if (std::strcmp(key, "lighting") == 0) return "Освітлення";
-  if (std::strcmp(key, "garage") == 0) return "Гараж";
-  if (std::strcmp(key, "sensor") == 0) return "Датчик";
-  if (std::strcmp(key, "camera") == 0) return "Камера";
+  if (std::strcmp(key, "label_connect") == 0) return "Підключитися";
+  if (std::strcmp(key, "label_local_action") == 0) return "Локальна дія";
+  if (std::strcmp(key, "label_switch") == 0) return "Вимикач";
+  if (std::strcmp(key, "label_lighting") == 0) return "Освітлення";
+  if (std::strcmp(key, "label_garage") == 0) return "Гараж";
+  if (std::strcmp(key, "label_sensor") == 0) return "Датчик";
+  if (std::strcmp(key, "label_camera") == 0) return "Камера";
   return espcontrol_i18n_key_en(key);
 }
 

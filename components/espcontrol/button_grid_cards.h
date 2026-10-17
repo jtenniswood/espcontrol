@@ -175,7 +175,7 @@ inline void setup_action_card(BtnSlot &s, const ParsedCfg &p) {
 
 inline void setup_local_action_card(BtnSlot &s, const ParsedCfg &p) {
   std::string label = p.label.empty()
-    ? (p.entity.empty() ? espcontrol_i18n(std::string("Local Action")) : sentence_cap_text(p.entity))
+    ? (p.entity.empty() ? espcontrol_i18n_key(std::string("label_local_action")) : sentence_cap_text(p.entity))
     : p.label;
   lv_label_set_display_text(s.text_lbl, label.c_str());
   const char *icon_cp = (p.icon.empty() || p.icon == "Auto") ? find_icon("Gesture Tap") : find_icon(p.icon.c_str());

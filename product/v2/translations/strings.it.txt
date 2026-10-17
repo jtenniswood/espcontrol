@@ -282,11 +282,11 @@ weekday_thurs=gio.
 weekday_fri=ven.
 weekday_sat=sab.
 
-# Default card labels
-connect=Connetti
-local_action=Azione locale
-switch=Interruttore
-lighting=Illuminazione
-garage=Garage
-sensor=Sensore
-camera=Telecamera
+# Default card labels (label_ keys use key-based lookup only)
+label_connect=Connetti
+label_local_action=Azione locale
+label_switch=Interruttore
+label_lighting=Illuminazione
+label_garage=Garage
+label_sensor=Sensore
+label_camera=Telecamera
