@@ -209,14 +209,14 @@ inline std::vector<std::string> option_select_parse_options(const std::string &r
   return out;
 }
 
-inline void send_option_select_action(OptionSelectCtx *ctx, const std::string &option) {
-  if (!ctx || ctx->entity_id.empty() || option.empty()) return;
+inline bool send_option_select_action(OptionSelectCtx *ctx, const std::string &option) {
+  if (!ctx || !ctx->available || !ha_api_state_connected() ||
+      ctx->entity_id.empty() || option.empty()) return false;
   const char *service = option_select_service_for_entity(ctx->entity_id);
-  if (service == nullptr) return;
-  ha_send_entity_action(ctx->entity_id, service, "option", option.c_str());
-
-  ctx->current_option = option;
-  option_select_apply_card_text(ctx);
+  if (service == nullptr) return false;
+  // Dispatch acceptance is not a state acknowledgement. Only the HA state
+  // subscription may change the displayed current option.
+  return ha_send_entity_action(ctx->entity_id, service, "option", option.c_str());
 }
 
 inline void option_select_hide_modal() {
@@ -245,7 +245,7 @@ inline void option_select_refresh_modal_rows(OptionSelectCtx *ctx) {
 }
 
 inline bool option_select_can_open_modal(OptionSelectCtx *ctx) {
-  return ctx && !ctx->entity_id.empty() && ctx->available &&
+  return ctx && !ctx->entity_id.empty() && ctx->available && ha_api_state_connected() &&
          option_select_entity_supported(ctx->entity_id);
 }
 
@@ -296,8 +296,7 @@ inline void option_select_open_modal(OptionSelectCtx *ctx) {
     lv_obj_add_event_cb(btn, [](lv_event_t *e) {
       OptionSelectOptionClick *click = (OptionSelectOptionClick *)lv_event_get_user_data(e);
       if (!click || !click->ctx) return;
-      send_option_select_action(click->ctx, click->value);
-      option_select_hide_modal();
+      if (send_option_select_action(click->ctx, click->value)) option_select_hide_modal();
     }, LV_EVENT_CLICKED, &ui.option_clicks[i]);
   }
 

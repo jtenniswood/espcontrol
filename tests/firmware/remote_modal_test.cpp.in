@@ -79,6 +79,8 @@ std::string navigation_trim(const std::string &s) {
   return first == std::string::npos ? "" : s.substr(first, s.find_last_not_of(" \r\n\t") - first + 1);
 }
 bool locked = false, alarm = false, fail_open = false;
+bool ha_connected = true;
+bool ha_api_state_connected() { return ha_connected; }
 bool screen_lock_enabled() { return locked; }
 bool alarm_display_takeover_active() { return alarm; }
 ControlModalActiveState<lv_obj_t> modal;
@@ -227,6 +229,12 @@ int main() {
     assert(espcontrol_can_open_modal(test.entity, true));
     assert(espcontrol_open_modal(test.entity, true));
     assert(modal.kind == test.kind && commands == 0 && current_page == &home);
+    if (test.kind == ControlModalKind::OPTION_SELECT) {
+      ha_connected = false;
+      assert(!espcontrol_can_open_modal(test.entity, true));
+      assert(!espcontrol_open_modal(test.entity, true));
+      ha_connected = true;
+    }
     if (test.kind != ControlModalKind::WIFI_QR) {
       const int old_opens = opens, old_closes = closes;
       runtime.available = false; runtime.image_ready = false;
