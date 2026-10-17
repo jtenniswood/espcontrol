@@ -1107,7 +1107,7 @@ def main() -> int:
         shutil.copy2(DISPLAY_MODE_CONTROLLER_HEADER, tmp_path / "display_mode_controller.h")
         shutil.copy2(LAYOUT_HEADER, tmp_path / "button_grid_layout.h")
         shutil.copy2(LIMITS_HEADER, tmp_path / "button_grid_limits.h")
-        for name in ("button_grid_order_parser.h", "device_ui_limits.h", "device_ui_limits_generated.h"):
+        for name in ("button_grid_order_parser.h", "device_ui_limits.h", "device_ui_limits_generated.h", "display_utf8_case.h"):
             shutil.copy2(LIMITS_HEADER.parent / name, tmp_path / name)
         shutil.copy2(STRING_HEADER, tmp_path / "button_grid_string.h")
         shutil.copy2(STRING_HEADER.parent / "camera_refresh_policy.h", tmp_path / "camera_refresh_policy.h")

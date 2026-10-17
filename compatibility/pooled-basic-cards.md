@@ -11,14 +11,18 @@ sensor widgets. The widget bank, fonts and event owner must outlive the port.
 Initialize it on the LVGL/main loop before the first configuration transaction;
 place the renderer before the state owner in `PageRuntimeResourcesGroup`.
 Preparation compiles card metadata, resolves firmware-lifetime glyphs and reserves
-one active/staged arena for metadata and reusable NUL-terminated text buffers.
+one active/staged arena for metadata, decoded mapping/unit options and reusable
+NUL-terminated text buffers.
 Configuration strings remain borrowed from PageStore; retained HA values remain
 owned by the shared state cache. Navigation creates no widgets, driver contexts,
 state owners or transport registrations.
 
-This first port covers ordinary toggles (including numeric overlays), numeric
-and icon HA sensors, plain folders and Back. Text/time/local sensors, folder
-summaries, confirmations, action/complex cards and modals still require ports.
+The port covers ordinary toggles (including numeric/text overlays), numeric,
+icon, text and duration HA sensors, plain folders and Back. Text sensors retain
+the existing Unicode title/whitespace rules and configured state labels. Duration
+cards use the shared formatter with automatic or configured source units and
+one/two displayed components according to span. Local sensors, folder summaries,
+confirmations, action/complex cards and modals still require ports.
 Unsupported active variants reject preparation rather than silently dropping
 behaviour. Stored pages that are not navigable are preserved without requiring
 their cards to be supported by this port. Styling/layout parity, temperature
@@ -34,17 +38,22 @@ retain a borrowed state/configuration view across replacement.
 
 `copy_display_text` reads explicit lengths, writes to reserved buffers, preserves
 complete UTF-8 characters and applies the existing S-with-dot-below fallback.
-Malformed UTF-8/NUL bytes are excluded from display buffers and counted, without
-altering stored configuration. The copy API can report changes when given a
+Malformed UTF-8/NUL bytes are excluded from display buffers without altering
+stored configuration. The direct copy helper reports malformed input. The copy API can report changes when given a
 fully initialized destination, allowing unchanged labels to skip LVGL updates.
 Numeric parsing terminates a bounded copy of the packed cache value before
 calling libc; it never reads the following packed state as part of a number.
-Ordinary decimal rounding matches the existing formatter, with defined handling
-for large finite values which would overflow its integer intermediate.
+The ordinary decimal path retains the existing integer formatter's rounding
+and avoids floating-point printf for normal values. A defined fallback handles
+large finite values which would overflow its integer intermediate.
 
 ## Verification and allocation limits
 
-The normal firmware host suite tests metadata, all nine profiles, unsupported
+The normal firmware host suite compares bounded text output with the existing
+formatter across 1,000 generated Unicode/whitespace strings and their byte
+limits. It tests state-label mappings, time-unit changes, manual-unit dependency
+counts, strict bounded duration parsing and allocation-free value reads. It also
+tests metadata, all nine profiles, unsupported
 variants, packed state boundaries, reconnect invalidation, decimal formatting
 and bounded UTF-8 copying. The optional native LVGL integration uses the actual
 LVGL 9.5.0 sources from the pinned ESPHome build:
@@ -61,7 +70,9 @@ labels and grid layouts. It counts C++ allocations, arena reservations and
 LVGL's allocator separately, checks stable widget/channel/retained-byte counts,
 and exercises delayed clicks, 100 successful replacements per profile, failed
 replacement, Back, reconnect and takeover. Repeated refreshes of unchanged
-labels do not schedule new LVGL events.
+labels do not schedule new LVGL events. The fixture includes text/duration
+sensors and a configured 600-byte state label, which is reserved before
+activation and displayed without truncating configuration.
 It is a host layout test, not a rendered-screen, network or physical-touch test.
 The real device toolchains instantiate the port without retaining an instance.
 

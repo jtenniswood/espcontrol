@@ -98,6 +98,7 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
   bool prepare(const PageStore &store,size_t count)override {
     discard_prepared();if(!initialized_||count!=Slots)return false;
+    TextCounter strings;
     size_t label_capacity=std::max<size_t>(65,std::max(theme_.back_label.size(),theme_.empty_label.size())+1),unit_capacity=1;
     // Back labels are decoded by the layout compiler; their source order size
     // is a conservative, profile-bounded upper bound on decoded text bytes.
@@ -105,23 +106,27 @@ class PageBasicLvglPort final:public PageRendererPort {
       const auto *p=store.page(page);if(!p->navigable)continue;
       label_capacity=std::max(label_capacity,store.string(p->order).size()+1);
       for(CardId card=p->first_card;card<p->first_card+p->card_count;++card) {
-        BasicCardDefinition view;if(!prepare_basic_card(store,card,view))return false;
+        BasicCardDefinition view;if(!prepare_basic_card(store,card,view,&strings))return false;
+        if(view.kind==BasicCardKind::TEXT||view.text_overlay)label_capacity=std::max<size_t>(label_capacity,257);
         label_capacity=std::max(label_capacity,view.label.size()+1);unit_capacity=std::max(unit_capacity,view.unit.size()+1);
       }
     }
+    label_capacity=std::max(label_capacity,strings.largest+1);
     const size_t records=store.card_count()*sizeof(Prepared);
     if(label_capacity>SIZE_MAX-unit_capacity-48)return false;
     const size_t stride=label_capacity+unit_capacity+48;
     if(stride>(SIZE_MAX-records)/Slots)return false;
-    const size_t bytes=records+Slots*stride;void *memory=allocator_.allocate(bytes);if(memory==nullptr)return false;
+    const size_t text_end=records+Slots*stride;if(strings.bytes>SIZE_MAX-text_end)return false;
+    const size_t bytes=text_end+strings.bytes;void *memory=allocator_.allocate(bytes);if(memory==nullptr)return false;
     staged_={memory,bytes,label_capacity,unit_capacity,stride,store.card_count()};
     std::memset(static_cast<char *>(memory)+records,0,Slots*stride);
     memory_.peak_bytes=std::max(memory_.peak_bytes,active_.bytes+bytes);
+    TextWriter writer(static_cast<char *>(memory)+text_end,strings.bytes);
     for(CardId card=0;card<store.card_count();++card)new(prepared(staged_)+card) Prepared{};
     for(PageId page=0;page<store.page_count();++page) {
       const auto *p=store.page(page);if(!p->navigable)continue;
       for(CardId card=p->first_card;card<p->first_card+p->card_count;++card) {
-        auto &view=prepared(staged_)[card];if(!prepare_basic_card(store,card,view.definition)){discard_prepared();return false;}
+        auto &view=prepared(staged_)[card];if(!prepare_basic_card(store,card,view.definition,&writer)){discard_prepared();return false;}
         const auto &d=view.definition;auto domain=d.entity.substr(0,d.entity.find('.'));
         if(d.kind==BasicCardKind::ICON)domain={};
         const auto fallback=d.kind==BasicCardKind::FOLDER?std::string_view("Home"):std::string_view("Auto");
@@ -130,6 +135,7 @@ class PageBasicLvglPort final:public PageRendererPort {
         if(!view.off||!view.on){discard_prepared();return false;}
       }
     }
+    if(writer.used!=strings.bytes){discard_prepared();return false;}
     return true;
   }
   void discard_prepared()override{release(staged_);}
@@ -172,13 +178,13 @@ class PageBasicLvglPort final:public PageRendererPort {
     bool number=false,checked=false;
     if(s.cell.back){value.label=s.back.custom_label.empty()?theme_.back_label:s.back.custom_label;definition.custom_off=s.back.custom_color;definition.off_color=s.back.background_color;}
     else {
-      definition=s.definition->definition;value=read_basic_card(definition,{token.configuration,token.card},state_);
+      definition=s.definition->definition;value=read_basic_card(definition,{token.configuration,token.card},state_,s.cell.column_span>1?2:1);
       if(definition.kind==BasicCardKind::EMPTY&&value.label.empty())value.label=theme_.empty_label;
       checked=value.on&&(definition.kind==BasicCardKind::TOGGLE||definition.active_color);
-      number=definition.kind==BasicCardKind::NUMBER||(definition.kind==BasicCardKind::TOGGLE&&!definition.sensor.empty()&&value.on);
+      number=definition.kind==BasicCardKind::NUMBER||definition.kind==BasicCardKind::DURATION||(definition.kind==BasicCardKind::TOGGLE&&!definition.text_overlay&&!definition.sensor.empty()&&value.on);
       glyph=value.on?s.definition->on:s.definition->off;
     }
-    write(w.label,s.label,active_.label_capacity,value.label);
+    write(w.label,s.label,active_.label_capacity,value.formatted_label?std::string_view(value.text):value.label);
     write(w.unit,s.unit,active_.unit_capacity,value.unit);
     write(w.value,s.number,48,value.numeric?std::string_view(value.number):std::string_view{});
     if(std::strcmp(lv_label_get_text(w.icon),glyph)!=0)lv_label_set_text_static(w.icon,glyph);
@@ -188,7 +194,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(font&&s.painted_font!=font){lv_obj_set_style_text_font(w.value,font,LV_PART_MAIN);s.painted_font=font;}
     if(checked!=lv_obj_has_state(w.button,LV_STATE_CHECKED)){if(checked)lv_obj_add_state(w.button,LV_STATE_CHECKED);else lv_obj_clear_state(w.button,LV_STATE_CHECKED);}
     const auto correct=[this](uint32_t raw){return correct_display_color(raw,theme_.red_percent,theme_.green_percent,theme_.blue_percent);};
-    uint32_t background=definition.custom_off?correct(definition.off_color):definition.kind==BasicCardKind::NUMBER?theme_.sensor_surface:theme_.surface;
+    uint32_t background=definition.custom_off?correct(definition.off_color):(definition.kind==BasicCardKind::NUMBER||definition.kind==BasicCardKind::TEXT||definition.kind==BasicCardKind::DURATION)?theme_.sensor_surface:theme_.surface;
     if(checked)background=definition.custom_on?correct(definition.on_color):definition.custom_off&&!definition.theme_active?correct(active_card_color(definition.off_color)):theme_.active;
     const auto foreground=checked||definition.custom_off?display_text_color_for_bg(background):theme_.text;
     if(!s.painted||s.background!=background||s.foreground!=foreground) {
@@ -205,6 +211,21 @@ class PageBasicLvglPort final:public PageRendererPort {
   bool state_changed()const override{return state_.revision()!=seen_state_||theme_.revision!=seen_theme_;}
   PageBasicMemory memory()const{auto m=memory_;m.fixed_bytes=sizeof(*this);m.borrowed_widgets=Slots*6;m.active_bytes=active_.bytes;m.staged_bytes=staged_.bytes;return m;}
  private:
+  struct TextCounter final:BasicCardTextSink {
+    bool copy(std::string_view value,std::string_view &out)override {
+      if(value.size()>SIZE_MAX-bytes)return false;
+      bytes+=value.size();largest=std::max(largest,value.size());out={};return true;
+    }
+    size_t bytes{0},largest{0};
+  };
+  struct TextWriter final:BasicCardTextSink {
+    TextWriter(char *memory,size_t capacity):memory(memory),capacity(capacity){}
+    bool copy(std::string_view value,std::string_view &out)override {
+      if(value.size()>capacity-used)return false;
+      if(!value.empty())std::memcpy(memory+used,value.data(),value.size());out={memory+used,value.size()};used+=value.size();return true;
+    }
+    char *memory;size_t capacity,used{0};
+  };
   struct Prepared {BasicCardDefinition definition;const char *off{nullptr},*on{nullptr};};
   struct Arena {void *arena{nullptr};size_t bytes{0},label_capacity{0},unit_capacity{0},stride{0},cards{0};};
   struct Shell {PageBasicLvglPort *port{nullptr};size_t index{0};PageBindingToken token,pressed;PageCellLayout cell;PageBackStyleView back;Prepared *definition{nullptr};char *label{nullptr},*unit{nullptr},*number{nullptr};bool painted{false};uint32_t background{0},foreground{0};const lv_font_t *painted_font{nullptr};};
