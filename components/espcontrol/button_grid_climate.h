@@ -116,8 +116,15 @@ struct ClimateControlCtx {
   int precision = 0;
   std::string label_display = "label";
   std::string number_display = "target";
-  int pending_target_tenths = CLIMATE_DEFAULT_TARGET_TENTHS;
+  // Keep reports separate while plus/minus edits wait for their debounce.
+  int reported_target_tenths = CLIMATE_DEFAULT_TARGET_TENTHS;
+  int reported_low_tenths = CLIMATE_DEFAULT_LOW_TENTHS;
+  int reported_high_tenths = CLIMATE_DEFAULT_HIGH_TENTHS;
+  uint32_t pending_connection_generation = 0;
   bool pending_temp_send = false;
+  bool pending_target_edit = false;
+  bool pending_low_edit = false;
+  bool pending_high_edit = false;
   lv_timer_t *debounce_timer = nullptr;
   uint32_t accent_color = DEFAULT_ACCENT_COLOR;
   uint32_t secondary_color = theme_display_color(current_theme().surface_primary);
@@ -494,6 +501,16 @@ inline std::string climate_option_label(const std::string &raw) {
   return espcontrol_i18n(sentence_cap_text(value));
 }
 
+// Keep the familiar translated label unless it hides distinct wire values.
+inline std::string climate_option_choice_label(
+    const std::string &raw, const std::vector<std::string> &options) {
+  const std::string label = climate_option_label(raw);
+  for (const auto &other : options) {
+    if (other != raw && climate_option_label(other) == label) return raw;
+  }
+  return label;
+}
+
 inline size_t climate_utf8_char_count(const std::string &value) {
   size_t count = 0;
   for (unsigned char ch : value) {
@@ -508,7 +525,7 @@ inline lv_coord_t climate_option_menu_width(const std::vector<std::string> &opti
   lv_coord_t line_h = font && font->line_height > 0 ? font->line_height : 32;
   lv_coord_t widest_text = 0;
   for (const auto &option : options) {
-    size_t len = climate_utf8_char_count(climate_option_label(option));
+    size_t len = climate_utf8_char_count(climate_option_choice_label(option, options));
     lv_coord_t estimated_w = static_cast<lv_coord_t>(len) * line_h * 3 / 5;
     if (estimated_w > widest_text) widest_text = estimated_w;
   }
@@ -1119,17 +1136,17 @@ inline void climate_update_card(ClimateControlCtx *ctx) {
   }
 }
 
-inline void climate_send_action(const std::string &entity_id,
+inline bool climate_send_action(const std::string &entity_id,
                                 const char *service,
                                 const std::vector<std::pair<const char *, std::string>> &data) {
-  if (entity_id.empty() || service == nullptr || service[0] == '\0') return;
+  if (entity_id.empty() || service == nullptr || service[0] == '\0') return false;
   esphome::api::HomeassistantActionRequest req;
-  if (!ha_action_begin(req, service, false, data.size() + 1)) return;
+  if (!ha_action_begin(req, service, false, data.size() + 1)) return false;
   ha_action_add_entity(req, entity_id);
   for (const auto &item : data) {
     ha_action_add_data(req, item.first, item.second.c_str());
   }
-  ha_action_send(req);
+  return ha_action_send(req);
 }
 
 inline std::string climate_service_temp_value(int tenths) {
@@ -1139,24 +1156,47 @@ inline std::string climate_service_temp_value(int tenths) {
   return buf;
 }
 
+inline void climate_cancel_temperature_send(ClimateControlCtx *ctx) {
+  if (!ctx) return;
+  if (ctx->pending_temp_send) {
+    ctx->target_tenths = ctx->reported_target_tenths;
+    ctx->low_tenths = ctx->reported_low_tenths;
+    ctx->high_tenths = ctx->reported_high_tenths;
+  }
+  ctx->pending_temp_send = false;
+  ctx->pending_target_edit = ctx->pending_low_edit = ctx->pending_high_edit = false;
+  if (ctx->debounce_timer) lv_timer_pause(ctx->debounce_timer);
+}
+
 inline void climate_send_temperature(ClimateControlCtx *ctx) {
-  if (!ctx || ctx->entity_id.empty() || !climate_modal_temperature_controls_enabled(ctx)) return;
+  if (!ctx) return;
+  if (ctx->entity_id.empty() || !climate_modal_temperature_controls_enabled(ctx) ||
+      !ha_api_state_connected() ||
+      (ctx->pending_temp_send && ctx->pending_connection_generation !=
+        ha_read_coordinator().connection_generation())) {
+    climate_cancel_temperature_send(ctx);
+    climate_update_card(ctx);
+    climate_control_set_modal_value(ctx);
+    return;
+  }
   ClimateTargetKind kind = climate_target_kind(ctx);
   espcontrol::climate::CommandKind command = espcontrol::climate::command_kind(
     kind, climate_target_values_complete(ctx));
+  bool sent = false;
   if (command == espcontrol::climate::CommandKind::RANGE) {
-    climate_send_action(ctx->entity_id, "climate.set_temperature", {
+    sent = climate_send_action(ctx->entity_id, "climate.set_temperature", {
       {"target_temp_low", climate_service_temp_value(ctx->low_tenths)},
       {"target_temp_high", climate_service_temp_value(ctx->high_tenths)},
     });
   } else if (command == espcontrol::climate::CommandKind::SINGLE) {
-    climate_send_action(ctx->entity_id, "climate.set_temperature", {
+    sent = climate_send_action(ctx->entity_id, "climate.set_temperature", {
       {"temperature", climate_service_temp_value(ctx->target_tenths)},
     });
-  } else {
-    return;
   }
-  ctx->pending_temp_send = false;
+  if (sent) ctx->pending_temp_send = false;
+  climate_cancel_temperature_send(ctx);
+  climate_update_card(ctx);
+  climate_control_set_modal_value(ctx);
 }
 
 inline void climate_debounce_timer_cb(lv_timer_t *timer) {
@@ -1168,7 +1208,15 @@ inline void climate_debounce_timer_cb(lv_timer_t *timer) {
 
 inline void climate_schedule_temperature_send(ClimateControlCtx *ctx) {
   if (!ctx) return;
+  // Multiple edits before the timer fires can touch either or both endpoints.
+  if (climate_range_target(ctx)) {
+    if (ctx->edit_high) ctx->pending_high_edit = true;
+    else ctx->pending_low_edit = true;
+  } else {
+    ctx->pending_target_edit = true;
+  }
   ctx->pending_temp_send = true;
+  ctx->pending_connection_generation = ha_read_coordinator().connection_generation();
   if (!ctx->debounce_timer) {
     ctx->debounce_timer = lv_timer_create(climate_debounce_timer_cb, CLIMATE_TEMP_DEBOUNCE_MS, ctx);
   }
@@ -1176,13 +1224,9 @@ inline void climate_schedule_temperature_send(ClimateControlCtx *ctx) {
     lv_timer_set_period(ctx->debounce_timer, CLIMATE_TEMP_DEBOUNCE_MS);
     lv_timer_reset(ctx->debounce_timer);
     lv_timer_resume(ctx->debounce_timer);
+  } else {
+    climate_cancel_temperature_send(ctx);
   }
-}
-
-inline void climate_cancel_temperature_send(ClimateControlCtx *ctx) {
-  if (!ctx) return;
-  ctx->pending_temp_send = false;
-  if (ctx->debounce_timer) lv_timer_pause(ctx->debounce_timer);
 }
 
 inline void climate_apply_selected_target(ClimateControlCtx *ctx, int value, bool send_now, bool debounce);
@@ -1249,33 +1293,54 @@ inline void climate_preview_selected_target(ClimateControlCtx *ctx, int value) {
 }
 
 inline std::vector<std::string> climate_parse_options(esphome::StringRef value) {
-  std::string raw = string_ref_limited(value, HA_TEXT_SENSOR_STATE_MAX_LEN);
+  std::string raw = climate_trim(string_ref_limited(value, HA_TEXT_SENSOR_STATE_MAX_LEN));
+  if (raw.size() >= 2 && raw.front() == '[' && raw.back() == ']')
+    raw = raw.substr(1, raw.size() - 2);
   std::vector<std::string> out;
   std::string token;
+  char quote = 0;
+  bool escaped = false;
+  bool quoted_token = false;
+  bool closed_quote = false;
   auto flush = [&]() {
-    std::string v = climate_clean_option_token(token);
+    std::string item = quoted_token ? token : climate_trim(token);
+    if (!item.empty() && std::find(out.begin(), out.end(), item) == out.end())
+      out.push_back(item);
     token.clear();
-    if (v.empty()) return;
-    std::string lower = climate_lower(v);
-    if (lower == "hvacmode" || lower == "fanmode" || lower == "swingmode" || lower == "presetmode") return;
-    bool all_caps = true;
-    bool has_alpha = false;
-    for (char ch : v) {
-      if (std::isalpha((unsigned char)ch)) {
-        has_alpha = true;
-        if (!std::isupper((unsigned char)ch)) all_caps = false;
-      }
-    }
-    if (has_alpha && all_caps) v = lower;
-    for (const auto &existing : out) {
-      if (climate_lower(existing) == climate_lower(v)) return;
-    }
-    out.push_back(v);
+    quoted_token = closed_quote = false;
   };
   for (char ch : raw) {
-    if (ch == ',' || ch == '[' || ch == ']') flush();
-    else token.push_back(ch);
+    if (quote) {
+      if (escaped) {
+        switch (ch) {
+          case 'n': token.push_back('\n'); break;
+          case 'r': token.push_back('\r'); break;
+          case 't': token.push_back('\t'); break;
+          default: token.push_back(ch); break;
+        }
+        escaped = false;
+      } else if (ch == '\\') {
+        escaped = true;
+      } else if (ch == quote) {
+        quote = 0;
+        closed_quote = true;
+      } else {
+        token.push_back(ch);
+      }
+    } else if (ch == ',') {
+      flush();
+    } else if ((ch == '\'' || ch == '"') && climate_trim(token).empty() && !closed_quote) {
+      token.clear();
+      quote = ch;
+      quoted_token = true;
+    } else if (closed_quote) {
+      if (!std::isspace(static_cast<unsigned char>(ch))) return {};
+    } else {
+      token.push_back(ch);
+    }
   }
+  // Incomplete quoted input must never become a different action value.
+  if (quote || escaped) return {};
   flush();
   return out;
 }
@@ -1381,7 +1446,7 @@ inline bool climate_option_selected(ClimateControlCtx *ctx,
   if (!ctx) return false;
   if (kind == "hvac") return climate_hvac_service_value(value) == ctx->hvac_mode;
   std::string current = climate_option_current_value(ctx, kind);
-  return climate_lower(climate_trim(value)) == climate_lower(climate_trim(current));
+  return value == current;
 }
 
 inline const char *climate_option_icon(const std::string &kind, const std::string &value) {
@@ -1784,7 +1849,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
           ? CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_ICON_ZOOM : 256);
 
       lv_obj_t *label = lv_label_create(content_parent);
-      lv_label_set_display_text(label, climate_option_label(option).c_str());
+      lv_label_set_display_text(label, climate_option_choice_label(option, section_options).c_str());
       lv_label_set_long_mode(label, compact_portrait_layout ? LV_LABEL_LONG_CLIP : LV_LABEL_LONG_WRAP);
       lv_obj_set_width(label, compact_portrait_layout ? LV_SIZE_CONTENT : lv_pct(100));
       lv_obj_set_style_text_color(label, lv_color_hex(text_color), LV_PART_MAIN);
@@ -1911,7 +1976,7 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
     lv_obj_set_style_pad_left(btn, 12, LV_PART_MAIN);
     lv_obj_set_style_pad_right(btn, 12, LV_PART_MAIN);
     lv_obj_t *label = lv_label_create(btn);
-    lv_label_set_display_text(label, climate_option_label(option).c_str());
+    lv_label_set_display_text(label, climate_option_choice_label(option, *options).c_str());
     lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_color(label, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
@@ -2715,7 +2780,10 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         if (!active()) return;
         std::string mode = climate_hvac_service_value(
           string_ref_limited(state, HA_SHORT_STATE_MAX_LEN));
-        if (mode != ctx->hvac_mode) climate_select_target_for_mode(ctx, mode);
+        if (mode != ctx->hvac_mode) {
+          climate_cancel_temperature_send(ctx);
+          climate_select_target_for_mode(ctx, mode);
+        }
         ctx->hvac_mode = mode;
         ctx->available = !climate_unavailable_value(ctx->hvac_mode);
         if (!ctx->available) ctx->hvac_mode = "off";
@@ -2759,17 +2827,24 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         refresh();
       })
   );
-  auto subscribe_temp = [ctx, refresh, active](const char *attr, int ClimateControlCtx::*field, bool ClimateControlCtx::*has_field) {
+  auto subscribe_temp = [ctx, refresh, active](const char *attr, int ClimateControlCtx::*field, bool ClimateControlCtx::*has_field, int ClimateControlCtx::*reported = nullptr) {
     ha_subscribe_attribute(
       ctx->entity_id, std::string(attr),
       std::function<void(esphome::StringRef)>(
-        [ctx, refresh, active, field, has_field](esphome::StringRef value) {
+        [ctx, refresh, active, field, has_field, reported](esphome::StringRef value) {
           if (!active()) return;
           int tenths = 0;
           if (climate_parse_tenths(value, tenths)) {
             // Home Assistant can send temperatures before min/max attributes on boot.
             // Store the real value and clamp only where the dial needs a bounded range.
-            ctx->*field = tenths;
+            if (reported) ctx->*reported = tenths;
+            // Protect only endpoints actually edited in this debounce window.
+            // A fresh report for the other endpoint belongs in the paired command.
+            const bool editing = ctx->pending_temp_send && (
+              (field == &ClimateControlCtx::target_tenths && ctx->pending_target_edit) ||
+              (field == &ClimateControlCtx::low_tenths && ctx->pending_low_edit) ||
+              (field == &ClimateControlCtx::high_tenths && ctx->pending_high_edit));
+            if (!editing) ctx->*field = tenths;
             ctx->*has_field = true;
           } else {
             ctx->*has_field = false;
@@ -2781,9 +2856,9 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
     );
   };
   subscribe_temp("current_temperature", &ClimateControlCtx::current_tenths, &ClimateControlCtx::has_current);
-  subscribe_temp("temperature", &ClimateControlCtx::target_tenths, &ClimateControlCtx::has_target);
-  subscribe_temp("target_temp_low", &ClimateControlCtx::low_tenths, &ClimateControlCtx::has_low);
-  subscribe_temp("target_temp_high", &ClimateControlCtx::high_tenths, &ClimateControlCtx::has_high);
+  subscribe_temp("temperature", &ClimateControlCtx::target_tenths, &ClimateControlCtx::has_target, &ClimateControlCtx::reported_target_tenths);
+  subscribe_temp("target_temp_low", &ClimateControlCtx::low_tenths, &ClimateControlCtx::has_low, &ClimateControlCtx::reported_low_tenths);
+  subscribe_temp("target_temp_high", &ClimateControlCtx::high_tenths, &ClimateControlCtx::has_high, &ClimateControlCtx::reported_high_tenths);
   ha_subscribe_attribute(
     ctx->entity_id, std::string("min_temp"),
     std::function<void(esphome::StringRef)>(
@@ -2832,6 +2907,10 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         [ctx, refresh, active, field](esphome::StringRef value) {
           if (!active()) return;
           ctx->*field = climate_parse_options(value);
+          // HVAC values are enums; custom fan/swing/preset values are exact IDs.
+          if (field == &ClimateControlCtx::hvac_modes) {
+            for (auto &mode : ctx->*field) mode = climate_hvac_service_value(mode);
+          }
           climate_mark_optional_subscription_needs(ctx);
           refresh();
         })
