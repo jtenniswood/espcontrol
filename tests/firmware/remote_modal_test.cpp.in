@@ -46,6 +46,11 @@ using ClimateControlCtx = Runtime;
 #define ClimateControlCtx Runtime
 #include "climate_modal_lifetime.h"
 #undef ClimateControlCtx
+#define LightControlCtx Runtime
+#define CoverControlCtx Runtime
+#include "light_cover_modal_lifetime.h"
+#undef LightControlCtx
+#undef CoverControlCtx
 using AlarmCardCtx = Runtime;
 using FanCardCtx = Runtime;
 using ImageCardCtx = Runtime;
