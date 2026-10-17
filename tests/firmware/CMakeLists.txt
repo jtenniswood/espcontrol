@@ -432,6 +432,16 @@ target_compile_options(configuration_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(configuration_service_test PRIVATE ../../components/espcontrol)
 add_test(NAME configuration_service_test COMMAND configuration_service_test)
 
+add_executable(configuration_main_loop_test configuration_main_loop_test.cpp
+  ../../components/espcontrol/configuration_main_loop.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp)
+target_compile_features(configuration_main_loop_test PRIVATE cxx_std_17)
+target_compile_options(configuration_main_loop_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(configuration_main_loop_test PRIVATE ../../components/espcontrol)
+target_link_libraries(configuration_main_loop_test PRIVATE Threads::Threads)
+add_test(NAME configuration_main_loop_test COMMAND configuration_main_loop_test)
+
 add_executable(panel_config_document_test panel_config_document_test.cpp)
 target_compile_features(panel_config_document_test PRIVATE cxx_std_17)
 target_compile_options(panel_config_document_test PRIVATE -Wall -Wextra -Werror)
