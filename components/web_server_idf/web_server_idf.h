@@ -327,6 +327,7 @@ class AsyncEventSourceResponse {
   json::SerializationBuffer<> generate_state_json_(void *source, message_generator_t *message_generator);
   void process_deferred_queue_();
   void process_buffer_();
+  void close_();
 
   static void destroy(void *p);
   AsyncEventSource *server_;
@@ -336,8 +337,10 @@ class AsyncEventSourceResponse {
   esphome::web_server::WebServer *web_server_;
   esphome::web_server::ListEntitiesIterator entities_iterator_;
   std::string event_buffer_{""};
-  size_t event_bytes_sent_;
+  size_t event_bytes_sent_{0};
   uint16_t consecutive_send_failures_{0};
+  bool close_requested_{false};
+  bool close_queued_{false};
   static constexpr uint16_t MAX_CONSECUTIVE_SEND_FAILURES = 2500;  // ~20 seconds at 125Hz loop rate
 };
 
