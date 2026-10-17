@@ -9,9 +9,12 @@
 int main() {
   esphome::api::APIServer server;
   esphome::api::global_api_server = &server;
-  for (int i = 0; i < 3; ++i) server.clients.push_back(std::make_unique<esphome::api::APIConnection>());
+  for (int i = 0; i < 5; ++i) server.clients.push_back(std::make_unique<esphome::api::APIConnection>());
   server.clients[1]->authenticated = false;
   server.clients[2]->removed = true;
+  server.clients[3]->name = "ESPHome Logs";
+  server.clients[3]->cursor = 7;
+  server.clients[4]->name = nullptr;
   // Model HA's connection-owned listeners: each list entry installs another
   // listener, and only disconnection removes the old ones.
   std::multiset<std::string> listeners;
@@ -80,5 +83,7 @@ int main() {
   }
   assert(server.clients[0]->disconnects == 202);
   assert(server.clients[1]->disconnects == 0 && server.clients[2]->disconnects == 0);
+  assert(!server.clients[3]->removed && server.clients[3]->disconnects == 0 && server.clients[3]->cursor == 7);
+  assert(!server.clients[4]->removed && server.clients[4]->disconnects == 0);
   esphome::api::global_api_server = nullptr;
 }
