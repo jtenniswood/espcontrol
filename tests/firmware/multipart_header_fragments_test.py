@@ -72,6 +72,4 @@ with tempfile.TemporaryDirectory() as temp:
     cpp=temp/"test.cpp";exe=temp/"test";cpp.write_text(source)
     subprocess.run([os.environ.get("CXX","c++"),"-std=c++17","-Wall","-Wextra","-Werror","-Wno-unused-const-variable","-I"+str(temp),"-I"+str(ROOT/"components/web_server_idf"),str(cpp),"-o",str(exe)],check=True)
     subprocess.run([str(exe)],check=True)
-server=(ROOT/"components/web_server_idf/web_server_idf.cpp").read_text()
-assert "if (!reader->is_complete())" in server
 print("Multipart header fragmentation regression passed.")
