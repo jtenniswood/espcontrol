@@ -442,6 +442,10 @@ target_compile_options(image_pipeline_policy_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(image_pipeline_policy_test PRIVATE ../../components/artwork_image)
 add_test(NAME image_pipeline_policy_test COMMAND image_pipeline_policy_test)
 
+add_test(NAME climate_pending_temperature_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/climate_pending_temperature_test.py)
+
 set(CLIMATE_SUBSCRIPTION_TEST_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/climate_subscription_runtime_test.cpp)
 add_custom_command(
   OUTPUT ${CLIMATE_SUBSCRIPTION_TEST_SOURCE}
