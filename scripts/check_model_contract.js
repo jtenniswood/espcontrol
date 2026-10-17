@@ -635,6 +635,7 @@ const panelSettings = model.normalizeBackupPanelSettings({
   screensaver_mode: "timer",
   screensaver_action: "Screen Dimmed",
   screensaver_camera_image_mode: "fill",
+  screensaver_camera_dimming: 50,
   screensaver_metadata_entity: "sensor.current_photo_caption",
   cover_art_hide_external_input: true,
   home_assistant_artwork_endpoint_mode: "Manual",
@@ -892,3 +893,8 @@ assert.strictEqual(
   true,
   "missing playback control setting defaults on",
 );
+
+assert.strictEqual(panelSettings.screensaverCameraDimming, 50, "camera dimming imports into saved settings");
+for (const [value, expected] of [[0, 0], [100, 100], ["25 %", 25], [-5, 0], [120, 100], ["invalid", 0], [undefined, 0]]) {
+  assert.strictEqual(model.normalizeScreensaverCameraDimming(value), expected, "camera dimming normalizes " + value);
+}

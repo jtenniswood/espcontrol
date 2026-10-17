@@ -139,6 +139,8 @@ TASKS = (
              "components/espcontrol/media_display_text.h",
              "components/espcontrol/media_emoji_ranges.h",
              "common/device/screen_cover_art.yaml",
+             "common/device/screen_camera_screensaver.yaml",
+             "common/config/display.yaml",
              "devices/guition-esp32-p4-jc1060p470/device/device.yaml",
              "devices/guition-esp32-p4-jc1060p470-v2/device/device.yaml",
              "components/espcontrol/button_grid_layout.h",

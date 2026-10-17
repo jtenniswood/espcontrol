@@ -286,6 +286,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 screensaver_camera_entity: state.screensaverCameraEntity,
                 screensaver_metadata_entity: state.screensaverMetadataEntity,
                 metadata_overlay: state.metadataOverlayOn,
+                screensaver_camera_dimming: state.screensaverCameraDimming,
                 screensaver_camera_image_mode: normalizeScreensaverCameraImageMode(state.screensaverCameraImageMode),
                 media_player_sleep_prevention: state.mediaPlayerSleepPreventionOn,
                 media_player_sleep_prevention_entity: state.mediaPlayerSleepPreventionEntity || state.coverArtMediaPlayerEntity,
@@ -549,6 +550,9 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                         postText(entityName("screen_saver_metadata_entity"), importedSettings.screensaverMetadataEntity);
                     if (controllers.layout.config.features?.cameraScreensaver && state.screensaverCameraSupported)
                         postScreensaverCameraImageMode(importedSettings.screensaverCameraImageMode);
+                    const hasCameraDimming = s.screensaver_camera_dimming !== undefined;
+                    if (hasCameraDimming && controllers.layout.config.features?.cameraScreensaver && state.screensaverCameraDimmingSupported)
+                        controllers.artworkPostApi.postScreensaverCameraDimming(importedSettings.screensaverCameraDimming);
                     postMediaPlayerSleepPrevention(importedSettings.mediaPlayerSleepPrevention);
                     postMediaPlayerSleepPreventionEntity(importedSettings.mediaPlayerSleepPreventionEntity);
                     postCoverArtPlaybackControl(importedSettings.coverArtPlaybackControl);
@@ -625,6 +629,8 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     state.screensaverCameraEntity = importedSettings.screensaverCameraEntity;
                     state.screensaverMetadataEntity = importedSettings.screensaverMetadataEntity;
                     state.metadataOverlayOn = importedSettings.metadataOverlay;
+                    if (hasCameraDimming && state.screensaverCameraDimmingSupported)
+                        state.screensaverCameraDimming = importedSettings.screensaverCameraDimming;
                     state.screensaverCameraImageMode = normalizeScreensaverCameraImageMode(importedSettings.screensaverCameraImageMode);
                     state.mediaPlayerSleepPreventionOn = importedSettings.mediaPlayerSleepPrevention;
                     state.mediaPlayerSleepPreventionEntity = importedSettings.mediaPlayerSleepPreventionEntity;

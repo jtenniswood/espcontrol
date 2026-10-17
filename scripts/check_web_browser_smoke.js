@@ -7773,10 +7773,101 @@ async function assertS3ForecastEditorLayout(browser) {
   } finally { await context.close(); }
 }
 
+
+async function assertCameraScreensaverDimming(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  const nativeState = nativeConfigState(testCase.slug);
+  await installRoutes(context, testCase.slug, { nativeState });
+  const page = await context.newPage();
+  const posts = [], errors = [];
+  page.on("pageerror", error => errors.push(error.message));
+  page.on("request", request => {
+    if (request.method() === "POST" && new URL(request.url()).hostname === "espcontrol.test") posts.push(postRecord(request.url()));
+  });
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await seedNativeDocument(page, nativeState);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.getByRole("tab", { name: "Screen", exact: true }).click();
+    const card = page.locator("#sp-settings .card").filter({ has: page.locator(".card-header h3", { hasText: /^Screensaver$/ }) }).first();
+    await card.locator(".card-header").click();
+    await card.getByRole("button", { name: "Timer", exact: true }).click();
+    await page.evaluate(() => window.__seedEspState([
+      { id: "text-screen_saver__camera_entity", state: "image.garden" },
+      { id: "switch-screen_saver__clock_overlay", state: "ON", value: true },
+    ]));
+    const action = card.locator("#sp-set-clock-mode");
+    const timer = card.locator("#sp-set-screensaver-camera-dimming");
+    const sensor = card.locator("#sp-set-sensor-screensaver-camera-dimming");
+    if (!await action.locator('option[value="camera"]').count()) {
+      assert.strictEqual(await timer.isVisible(), false, "unsupported displays hide camera dimming");
+      return;
+    }
+    await action.selectOption("camera");
+    assert.strictEqual(await timer.isVisible(), false, "older camera firmware hides dimming");
+    await page.evaluate(() => window.__seedEspState([{ id: "number-screen_saver__camera_dimming", state: "unknown" }]));
+    assert.strictEqual(await timer.isVisible(), false, "unknown state cannot enable unsupported dimming");
+    await page.evaluate(() => window.__seedEspState([{ id: "number-screen_saver__camera_dimming", state: "0 %", value: "0" }]));
+    await timer.waitFor({ state: "visible" });
+    assert.strictEqual(await timer.inputValue(), "0", "raw zero is accepted");
+    assert.strictEqual(await timer.getAttribute("min"), "0");
+    assert.strictEqual(await timer.getAttribute("max"), "100");
+    assert.strictEqual(await timer.getAttribute("step"), "1");
+    assert.strictEqual(await card.getByLabel("Background Dimming", { exact: true }).first().getAttribute("id"), await timer.getAttribute("id"));
+    const set = async (slider, value) => {
+      const start = posts.length;
+      await slider.fill(String(value));
+      await slider.dispatchEvent("change");
+      await waitForPost(posts, { domain: "number", name: "screen_saver__camera_dimming", action: "set", value: String(value) }, "camera dimming saves", start);
+    };
+    await set(timer, 50);
+    await card.getByRole("button", { name: "Sensor", exact: true }).click();
+    assert.strictEqual(await sensor.inputValue(), "50", "Sensor shares Timer dimming without a server echo");
+    await set(sensor, 100);
+    await card.getByRole("button", { name: "Timer", exact: true }).click();
+    assert.strictEqual(await timer.inputValue(), "100", "Timer shares Sensor dimming");
+    await set(timer, 0);
+    await page.evaluate(() => window.__seedEspState([{ id: "number-screensaver_camera_dimming", state: "25 %" }]));
+    assert.strictEqual(await timer.inputValue(), "25", "formatted percentages and entity aliases are supported");
+    await page.evaluate(() => window.__seedEspState([{ id: "number-screen_saver__camera_dimming", state: "unavailable" }]));
+    assert.strictEqual(await timer.inputValue(), "25", "invalid events retain the last valid dimming");
+    assert.strictEqual(await card.locator("#sp-set-ss-clock-overlay").isChecked(), true, "dimming preserves the clock overlay");
+    await action.selectOption("clock");
+    assert.strictEqual(await timer.isVisible(), false, "other screensaver modes hide camera dimming");
+    await action.selectOption("camera");
+    await openBackupControls(page);
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const backup = JSON.parse(fs.readFileSync(await (await downloadPromise).path(), "utf8"));
+    assert.strictEqual(backup.settings.screensaver_camera_dimming, 25, "backup exports camera dimming");
+    backup.settings.screensaver_camera_dimming = 65;
+    const beforeRestore = posts.length;
+    await importBackup(page, backup, `camera-dimming-${testCase.slug}`);
+    await page.waitForSelector(".sp-banner.sp-success", { timeout: 15000 });
+    await waitForPost(posts, { domain: "number", name: "screen_saver__camera_dimming", action: "set", value: "65" }, "backup restores camera dimming", beforeRestore);
+    assert.strictEqual(await timer.inputValue(), "65");
+    delete backup.settings.screensaver_camera_dimming;
+    const beforeLegacy = posts.length;
+    await page.locator(".sp-banner").evaluate(node => { node.className = "sp-banner"; });
+    await importBackup(page, backup, `camera-dimming-legacy-${testCase.slug}`);
+    await page.waitForSelector(".sp-banner.sp-success", { timeout: 15000 });
+    assert.strictEqual(await timer.inputValue(), "65", "older backups preserve the current dimming");
+    assert.strictEqual(posts.slice(beforeLegacy).some(post => post.name === "screen_saver__camera_dimming"), false, "older backups do not post a default dimming");
+    assert.deepStrictEqual(errors, []);
+  } finally { await context.close(); }
+}
+
 (async function main() {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_CAMERA_DIMMING_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) await assertCameraScreensaverDimming(browser, testCase);
+      console.log(`Camera dimming browser checks passed for ${ACTIVE_CASES.length} layouts.`);
+      return;
+    }
     if (process.env.ESPCONTROL_SUBPAGE_BACK_ONLY === "1" || process.env.ESPCONTROL_CARD_NAMES_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) {
         const nativeState = nativeConfigState(testCase.slug);
@@ -7859,6 +7950,7 @@ async function assertS3ForecastEditorLayout(browser) {
     await assertFirmwareRetryFeedback(browser);
     await assertResetControls(browser);
     for (const testCase of ACTIVE_CASES) {
+      await assertCameraScreensaverDimming(browser, testCase);
       if (!acceptanceOnly) {
         await runCase(browser, testCase);
         await assertMediaModalSettingsJourney(browser, testCase);

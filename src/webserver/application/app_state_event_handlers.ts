@@ -26,6 +26,7 @@ import {
     normalizeScheduleWakeTimeout,
     normalizeScreensaverAction,
     normalizeScreensaverCameraImageMode,
+    normalizeScreensaverCameraDimming,
     normalizeScreensaverDimmedBrightness,
     normalizeTemperatureUnit,
     normalizeTimeOfDay,
@@ -402,6 +403,13 @@ export function createAppStateEventHandlersFeature(
             "text-screen_saver__photo_metadata_entity": function (this: any, val?: any) {
                 state.screensaverMetadataEntity = val;
                 syncInput(els.setScreensaverMetadata, val);
+            },
+            "number-screen_saver__camera_dimming": function (this: any, val?: any, d?: any) {
+                const value = d?.value ?? val;
+                if (!Number.isFinite(parseFloat(String(value)))) return;
+                state.screensaverCameraDimmingSupported = true;
+                state.screensaverCameraDimming = normalizeScreensaverCameraDimming(value);
+                syncClockScreensaverControls();
             },
             "select-screen_saver__camera_image_mode": function (this: any, val?: any, d?: any) {
                 state.screensaverCameraImageMode = normalizeScreensaverCameraImageMode(d.value || val);

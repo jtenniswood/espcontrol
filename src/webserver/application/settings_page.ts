@@ -464,6 +464,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setScreensaverCamera = timerClockControls.cameraInput;
         els.setScreensaverCameraImageModeField = timerClockControls.cameraImageModeField;
         els.setScreensaverCameraImageMode = timerClockControls.cameraImageModeSelect;
+        els.setScreensaverCameraDimming = timerClockControls.cameraDimming;
         els.setDimBrightnessField = timerClockControls.dimBrightnessField;
         els.setManualDimBrightnessField = timerClockControls.manualDimBrightnessField;
         els.setAutomaticDimBrightnessField = timerClockControls.automaticDimBrightnessField;
@@ -503,9 +504,9 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         cameraPanel.className = "sp-panel sp-camera-settings";
         cameraPanel.setAttribute("aria-label", "Camera screensaver settings");
         var timerCameraFields: any = document.createElement("div");
-        timerCameraFields.append(timerClockControls.cameraField, timerClockControls.cameraImageModeField);
+        timerCameraFields.append(timerClockControls.cameraField, timerClockControls.cameraImageModeField, timerClockControls.cameraDimmingField);
         var sensorCameraFields: any = document.createElement("div");
-        sensorCameraFields.append(sensorClockControls.cameraField, sensorClockControls.cameraImageModeField);
+        sensorCameraFields.append(sensorClockControls.cameraField, sensorClockControls.cameraImageModeField, sensorClockControls.cameraDimmingField);
         cameraPanel.append(timerCameraFields, sensorCameraFields);
         els.setScreensaverCameraPanel = cameraPanel;
         var metadataField: any = document.createElement("div");
@@ -547,6 +548,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setSensorScreensaverCamera = sensorClockControls.cameraInput;
         els.setSensorScreensaverCameraImageModeField = sensorClockControls.cameraImageModeField;
         els.setSensorScreensaverCameraImageMode = sensorClockControls.cameraImageModeSelect;
+        els.setSensorScreensaverCameraDimming = sensorClockControls.cameraDimming;
         els.setSensorDimBrightnessField = sensorClockControls.dimBrightnessField;
         els.setSensorManualDimBrightnessField = sensorClockControls.manualDimBrightnessField;
         els.setSensorAutomaticDimBrightnessField = sensorClockControls.automaticDimBrightnessField;

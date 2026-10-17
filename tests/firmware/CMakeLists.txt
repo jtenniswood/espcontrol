@@ -669,3 +669,6 @@ add_test(NAME weather_daily_ui_test COMMAND weather_daily_ui_test)
 add_test(NAME weather_daily_requests_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/weather_daily_requests_test.py)
+
+add_test(NAME camera_screensaver_dimming_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/camera_screensaver_dimming_test.py)

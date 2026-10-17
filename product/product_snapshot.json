@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 9,
     "cardTypes": 44,
-    "entityNames": 111,
+    "entityNames": 112,
     "icons": 367,
     "structuralIcons": 22,
     "compatibilityFixtureGroups": 2
@@ -7101,6 +7101,19 @@
           "screen_saver__camera_image_mode",
           "screen_saver_camera_image_mode",
           "screensaver_camera_image_mode"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_camera_dimming",
+        "domain": "number",
+        "name": "Screen Saver: Camera Dimming",
+        "objectIds": [
+          "screen_saver__camera_dimming",
+          "screen_saver_camera_dimming",
+          "screensaver_camera_dimming"
         ],
         "groups": [
           "settings"
