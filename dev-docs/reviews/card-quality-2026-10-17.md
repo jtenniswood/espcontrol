@@ -278,7 +278,7 @@ Every declared type has its own row below, including variants sharing one implem
 ## Suggested delivery order and device testing
 
 1. **Stability and command intent:** Existing PR #2268 for F1, then separate fixes for F2 and F3, with small reproductions and no saved-format changes. On the display used for validation, repeatedly replace/delete local cards while sensors publish; test Cover failure using a simulated entity before trying moving hardware; verify an imported unavailable relay remains unassigned until deliberately selected.
-2. **Trustworthy live state:** Existing PR #2271 for F7, plus new work for F4, F5 and F9. Add negative-state and multi-entity tests. Validate reconnection, unavailable data, rejected actions, and recovery on both main grid and subpages.
+2. **Trustworthy live state:** Review and test existing PRs [#2271](https://github.com/jtenniswood/espcontrol/pull/2271) for F7, [#2281](https://github.com/jtenniswood/espcontrol/pull/2281) for F4, [#2282](https://github.com/jtenniswood/espcontrol/pull/2282) for F5 and [#2285](https://github.com/jtenniswood/espcontrol/pull/2285) for F9. Their negative-state and multi-entity regressions still need physical validation: check reconnection, unavailable data, rejected actions, and recovery on both main grid and subpages before merge.
 3. **User choices and diagnostics:** F6 and F8, then R1/R2 after focused integration/timing tests. Compare preview and real icons; capture only synthetic diagnostic secrets.
 4. **Incremental quality work:** R3–R5. Characterise current valid behaviour first, migrate one family at a time, retain aliases/config parity, and keep rollback points at each PR.
 
