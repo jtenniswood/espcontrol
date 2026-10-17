@@ -16,6 +16,8 @@ source = r'''#include <cassert>
 #include <algorithm>
 #include <cctype>
 #include <utility>
+std::string espcontrol_i18n(const std::string&v){return v;}
+std::string sentence_cap_text(std::string v){if(!v.empty())v[0]=std::toupper(static_cast<unsigned char>(v[0]));return v;}
 namespace esphome {struct StringRef{std::string s;StringRef(const char*v):s(v){}};}
 constexpr size_t HA_TEXT_SENSOR_STATE_MAX_LEN=4096;
 std::string string_ref_limited(esphome::StringRef v,size_t n){return v.s.substr(0,n);}
@@ -25,11 +27,18 @@ void climate_send_action(const std::string&,const char*,const std::vector<std::p
 void climate_select_target_for_mode(ClimateControlCtx*,const std::string&){}
 void climate_update_card(ClimateControlCtx*){}void climate_control_set_modal_value(ClimateControlCtx*){}
 '''
-for name in ['climate_lower', 'climate_trim', 'climate_clean_option_token', 'climate_hvac_service_value', 'climate_parse_options', 'climate_send_option', 'climate_option_current_value', 'climate_option_selected']:source+=definition(name)
+for name in ['climate_lower', 'climate_trim', 'climate_option_label', 'climate_option_choice_label', 'climate_clean_option_token', 'climate_hvac_service_value', 'climate_parse_options', 'climate_send_option', 'climate_option_current_value', 'climate_option_selected']:source+=definition(name)
 source += r'''int main(){
   auto values=climate_parse_options("['AUTO', 'ECO', 'eco', 'Sleep, Quiet', 'Profile: Night', '[Auto]', '  Guest  ', 'Été', 'Kid\\'s', 'C:\\\\Room']");
   const std::vector<std::string> expected={"AUTO","ECO","eco","Sleep, Quiet","Profile: Night","[Auto]","  Guest  ","Été","Kid's","C:\\Room"};
   assert(values==expected);
+  assert(climate_option_choice_label("ECO",values)=="ECO");
+  assert(climate_option_choice_label("eco",values)=="eco");
+  const std::vector<std::string> autos={"Auto","auto","AUTO"};
+  for(const auto&v:autos)assert(climate_option_choice_label(v,autos)==v);
+  assert(climate_option_choice_label("auto",{"auto","low"})=="Auto");
+  // Translations can collide too: preserve original choices in that case.
+  assert(climate_option_choice_label("holduntil",{"holduntil","hold_until"})=="holduntil");
   ClimateControlCtx ctx;
   for(const char*kind:{"fan","swing","horizontal_swing","preset"})for(const auto&value:values){
     climate_send_option(&ctx,kind,value);assert(sent.size()==1&&sent[0].second==value);

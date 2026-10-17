@@ -494,6 +494,16 @@ inline std::string climate_option_label(const std::string &raw) {
   return espcontrol_i18n(sentence_cap_text(value));
 }
 
+// Keep the familiar translated label unless it hides distinct wire values.
+inline std::string climate_option_choice_label(
+    const std::string &raw, const std::vector<std::string> &options) {
+  const std::string label = climate_option_label(raw);
+  for (const auto &other : options) {
+    if (other != raw && climate_option_label(other) == label) return raw;
+  }
+  return label;
+}
+
 inline size_t climate_utf8_char_count(const std::string &value) {
   size_t count = 0;
   for (unsigned char ch : value) {
@@ -508,7 +518,7 @@ inline lv_coord_t climate_option_menu_width(const std::vector<std::string> &opti
   lv_coord_t line_h = font && font->line_height > 0 ? font->line_height : 32;
   lv_coord_t widest_text = 0;
   for (const auto &option : options) {
-    size_t len = climate_utf8_char_count(climate_option_label(option));
+    size_t len = climate_utf8_char_count(climate_option_choice_label(option, options));
     lv_coord_t estimated_w = static_cast<lv_coord_t>(len) * line_h * 3 / 5;
     if (estimated_w > widest_text) widest_text = estimated_w;
   }
@@ -1805,7 +1815,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
           ? CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_ICON_ZOOM : 256);
 
       lv_obj_t *label = lv_label_create(content_parent);
-      lv_label_set_display_text(label, climate_option_label(option).c_str());
+      lv_label_set_display_text(label, climate_option_choice_label(option, values).c_str());
       lv_label_set_long_mode(label, compact_portrait_layout ? LV_LABEL_LONG_CLIP : LV_LABEL_LONG_WRAP);
       lv_obj_set_width(label, compact_portrait_layout ? LV_SIZE_CONTENT : lv_pct(100));
       lv_obj_set_style_text_color(label, lv_color_hex(text_color), LV_PART_MAIN);
@@ -1932,7 +1942,7 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
     lv_obj_set_style_pad_left(btn, 12, LV_PART_MAIN);
     lv_obj_set_style_pad_right(btn, 12, LV_PART_MAIN);
     lv_obj_t *label = lv_label_create(btn);
-    lv_label_set_display_text(label, climate_option_label(option).c_str());
+    lv_label_set_display_text(label, climate_option_choice_label(option, *options).c_str());
     lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_color(label, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
