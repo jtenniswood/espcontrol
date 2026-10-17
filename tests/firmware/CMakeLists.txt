@@ -424,6 +424,20 @@ target_compile_options(ha_read_coordinator_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(ha_read_coordinator_test PRIVATE ../../components/espcontrol)
 add_test(NAME ha_read_coordinator_test COMMAND ha_read_coordinator_test)
 
+add_executable(owned_ha_subscriptions_test owned_ha_subscriptions_test.cpp)
+target_compile_features(owned_ha_subscriptions_test PRIVATE cxx_std_17)
+target_compile_options(owned_ha_subscriptions_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(owned_ha_subscriptions_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME owned_ha_subscriptions_test COMMAND owned_ha_subscriptions_test)
+
+add_executable(home_assistant_transport_runtime_test home_assistant_transport_runtime_test.cpp
+  ../../components/espcontrol/home_assistant_transport_runtime.cpp)
+target_compile_features(home_assistant_transport_runtime_test PRIVATE cxx_std_17)
+target_compile_definitions(home_assistant_transport_runtime_test PRIVATE USE_API_HOMEASSISTANT_STATES)
+target_compile_options(home_assistant_transport_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(home_assistant_transport_runtime_test PRIVATE owned_ha_stubs stubs ../../components/espcontrol)
+add_test(NAME home_assistant_transport_runtime_test COMMAND home_assistant_transport_runtime_test)
+
 add_executable(artwork_controller_test artwork_controller_test.cpp)
 target_compile_features(artwork_controller_test PRIVATE cxx_std_17)
 target_compile_options(artwork_controller_test PRIVATE -Wall -Wextra -Werror)

@@ -1,5 +1,6 @@
 #include "espcontrol_app.h"
 #include "device_reset.h"
+#include "home_assistant_transport_runtime.h"
 #include "esphome/components/artwork_image/transfer_observer.h"
 
 #include <array>
@@ -372,6 +373,7 @@ void EspControlApp::initialize_native_configuration() {
 void EspControlApp::loop() {
   home_assistant_endpoint_.loop();
   core_.run_once();
+  ha::maintain_subscriptions();
   // The app core starts before WiFi so Home Assistant boot automations are
   // safe. The IDF web server starts later, so retry idempotent registrations.
   register_panel_config_endpoints();

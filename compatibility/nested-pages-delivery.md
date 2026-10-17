@@ -32,7 +32,9 @@ depth of two. Production remains at depth one until the prerequisites pass.
 3. **Entity-state ownership:** move HA dependencies/state out of widgets,
    deduplicate registrations, and reclaim EspControl transport registrations
    without removing those owned by other components. Verify disjoint entity
-   replacements and reconnect invalidation.
+   replacements and reconnect invalidation. The
+   [transport reclamation prerequisite](ha-subscription-reclamation.md) now has
+   host coverage; PageStore dependency ownership and renderer cutover remain.
 4. **Reusable renderer:** give every card driver bind/update/unbind operations;
    bound widgets, contexts and modals by the visible profile, and guard delayed
    work with configuration/binding generations. Physically qualify the S3 and
