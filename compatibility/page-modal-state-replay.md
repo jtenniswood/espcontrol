@@ -49,3 +49,8 @@ failure, reconnect/cache replacement, empty strings, reused owners, reentrancy
 and cache retirement during a callback. These tests do not create modal widgets
 or prove physical control behaviour. The existing coordinator suite remains a
 regression gate for the shared callback path.
+
+The [modal lifetime and climate adapter](page-modal-lifecycle.md) now use this
+source. They remain unselected; the native adapter test doubles the visual
+panel and action transport. Full scene and physical panel qualification are
+still required.

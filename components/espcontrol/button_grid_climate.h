@@ -1,5 +1,8 @@
 #pragma once
 
+#include <limits>
+
+#include "climate_modal_lifetime.h"
 #include "climate_subscription_policy.h"
 #include "climate_state_logic.h"
 #include "climate_target_logic.h"
@@ -7,6 +10,8 @@
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 // ── Climate control card helpers ─────────────────────────────────────
+
+inline void climate_control_hide_modal();
 
 constexpr uint32_t CLIMATE_COOLING_COLOR = 0x2979FF;
 constexpr int CLIMATE_SUPPORT_TARGET_TEMPERATURE =
@@ -282,19 +287,24 @@ inline bool climate_unavailable_value(const std::string &value) {
   return value.empty() || value == "unknown" || value == "unavailable";
 }
 
+inline bool climate_tenths_from_float(float parsed, int &out) {
+  if (!std::isfinite(parsed)) return false;
+  const float rounded = parsed * 10.0f + (parsed >= 0.0f ? 0.5f : -0.5f);
+  if (!std::isfinite(rounded) || static_cast<double>(rounded) < std::numeric_limits<int>::min() ||
+      static_cast<double>(rounded) > std::numeric_limits<int>::max()) return false;
+  out = static_cast<int>(rounded);
+  return true;
+}
+
 inline bool climate_parse_tenths(esphome::StringRef value, int &out) {
   float parsed = 0.0f;
-  if (!parse_float_ref(value, parsed) || !std::isfinite(parsed)) return false;
-  out = (int)(parsed * 10.0f + (parsed >= 0.0f ? 0.5f : -0.5f));
-  return true;
+  return parse_float_ref(value, parsed) && climate_tenths_from_float(parsed, out);
 }
 
 inline bool climate_parse_tenths_string(const std::string &value, int &out) {
   char *end = nullptr;
   float parsed = strtof(value.c_str(), &end);
-  if (end == value.c_str() || !std::isfinite(parsed)) return false;
-  out = (int)(parsed * 10.0f + (parsed >= 0.0f ? 0.5f : -0.5f));
-  return true;
+  return end != value.c_str() && climate_tenths_from_float(parsed, out);
 }
 
 inline bool climate_parse_supported_features(esphome::StringRef value, int &features) {
@@ -456,16 +466,13 @@ inline int climate_constrain_selected_target(ClimateControlCtx *ctx, int value) 
 inline std::string climate_format_tenths(int value, int precision) {
   char buf[20];
   if (precision <= 0) {
-    int rounded = (value >= 0 ? value + 5 : value - 5) / 10;
-    snprintf(buf, sizeof(buf), "%d", rounded);
+    int64_t rounded = (static_cast<int64_t>(value) + (value >= 0 ? 5 : -5)) / 10;
+    snprintf(buf, sizeof(buf), "%lld", static_cast<long long>(rounded));
   } else {
-    int sign = value < 0 ? -1 : 1;
-    int abs_v = value < 0 ? -value : value;
-    int whole = abs_v / 10;
-    int tenth = abs_v % 10;
-    if (precision == 1) snprintf(buf, sizeof(buf), "%s%d.%d", sign < 0 ? "-" : "", whole, tenth);
-    else if (precision == 2) snprintf(buf, sizeof(buf), "%s%d.%d0", sign < 0 ? "-" : "", whole, tenth);
-    else snprintf(buf, sizeof(buf), "%s%d.%d00", sign < 0 ? "-" : "", whole, tenth);
+    const int64_t magnitude = value < 0 ? -static_cast<int64_t>(value) : value;
+    snprintf(buf, sizeof(buf), "%s%lld.%lld%s", value < 0 ? "-" : "",
+             static_cast<long long>(magnitude / 10), static_cast<long long>(magnitude % 10),
+             precision == 1 ? "" : precision == 2 ? "0" : "00");
   }
   return buf;
 }
@@ -1134,29 +1141,31 @@ inline void climate_send_action(const std::string &entity_id,
 
 inline std::string climate_service_temp_value(int tenths) {
   char buf[16];
-  int abs_tenths = std::abs(tenths);
-  snprintf(buf, sizeof(buf), "%s%d.%d", tenths < 0 ? "-" : "", abs_tenths / 10, abs_tenths % 10);
+  const int64_t magnitude = tenths < 0 ? -static_cast<int64_t>(tenths) : tenths;
+  snprintf(buf, sizeof(buf), "%s%lld.%lld", tenths < 0 ? "-" : "",
+           static_cast<long long>(magnitude / 10), static_cast<long long>(magnitude % 10));
   return buf;
 }
 
 inline void climate_send_temperature(ClimateControlCtx *ctx) {
-  if (!ctx || ctx->entity_id.empty() || !climate_modal_temperature_controls_enabled(ctx)) return;
+  if (!ctx || !climate_modal_action_allowed(ctx) || ctx->entity_id.empty() || !climate_modal_temperature_controls_enabled(ctx)) return;
   ClimateTargetKind kind = climate_target_kind(ctx);
   espcontrol::climate::CommandKind command = espcontrol::climate::command_kind(
     kind, climate_target_values_complete(ctx));
   if (command == espcontrol::climate::CommandKind::RANGE) {
+    ctx->pending_temp_send = false;
     climate_send_action(ctx->entity_id, "climate.set_temperature", {
       {"target_temp_low", climate_service_temp_value(ctx->low_tenths)},
       {"target_temp_high", climate_service_temp_value(ctx->high_tenths)},
     });
   } else if (command == espcontrol::climate::CommandKind::SINGLE) {
+    ctx->pending_temp_send = false;
     climate_send_action(ctx->entity_id, "climate.set_temperature", {
       {"temperature", climate_service_temp_value(ctx->target_tenths)},
     });
   } else {
     return;
   }
-  ctx->pending_temp_send = false;
 }
 
 inline void climate_debounce_timer_cb(lv_timer_t *timer) {
@@ -1167,7 +1176,7 @@ inline void climate_debounce_timer_cb(lv_timer_t *timer) {
 }
 
 inline void climate_schedule_temperature_send(ClimateControlCtx *ctx) {
-  if (!ctx) return;
+  if (!climate_modal_action_allowed(ctx)) return;
   ctx->pending_temp_send = true;
   if (!ctx->debounce_timer) {
     ctx->debounce_timer = lv_timer_create(climate_debounce_timer_cb, CLIMATE_TEMP_DEBOUNCE_MS, ctx);
@@ -1211,7 +1220,7 @@ inline void climate_update_drag_preview(ClimateControlCtx *ctx) {
 }
 
 inline void climate_apply_selected_target(ClimateControlCtx *ctx, int value, bool send_now, bool debounce) {
-  if (!ctx) return;
+  if (!climate_modal_action_allowed(ctx)) return;
   if (!climate_modal_temperature_controls_enabled(ctx)) {
     climate_control_set_modal_value(ctx);
     return;
@@ -1338,7 +1347,7 @@ inline void climate_update_target_chip(lv_obj_t *chip, ClimateControlCtx *ctx,
 }
 
 inline void climate_send_option(ClimateControlCtx *ctx, const std::string &kind, const std::string &value) {
-  if (!ctx || value.empty()) return;
+  if (!ctx || !climate_modal_action_allowed(ctx) || value.empty()) return;
   if (kind == "hvac") {
     std::string service_value = climate_hvac_service_value(value);
     climate_select_target_for_mode(ctx, service_value);
@@ -1794,8 +1803,13 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
 
       lv_obj_add_event_cb(btn, [](lv_event_t *e) {
         ClimateOptionClick *click = (ClimateOptionClick *)lv_event_get_user_data(e);
-        if (click) climate_send_option(click->ctx, click->kind, click->value);
-        if (click) climate_open_inline_option_list(click->ctx, click->kind);
+        if (!click) return;
+        // Sending can rebuild the option list and reuse its click records.
+        ClimateControlCtx *context = click->ctx;
+        const std::string kind = click->kind, value = click->value;
+        climate_send_option(context, kind, value);
+        if (climate_control_modal_ui().active == context)
+          climate_open_inline_option_list(context, kind);
       }, LV_EVENT_CLICKED, click);
     }
   };
@@ -1803,6 +1817,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
   add_section(ui.option_list_view, title, kind, *options);
   lv_obj_move_foreground(ui.option_list_view);
   climate_control_layout_modal(ctx);
+  if (!climate_modal_widgets_ready(ui.overlay)) climate_control_hide_modal();
 }
 
 inline const char *climate_control_tab_kind(ClimateControlTab tab) {
@@ -1923,6 +1938,7 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
       climate_hide_option_menu();
     }, LV_EVENT_CLICKED, click);
   }
+  if (!climate_modal_widgets_ready(ui.menu_overlay)) { climate_control_hide_modal(); return; }
   lv_obj_move_foreground(ui.menu_overlay);
 }
 
@@ -2255,10 +2271,23 @@ inline void climate_hide_action_menu() {
 }
 
 inline void climate_control_hide_modal() {
+  ClimateControlCtx *closed = climate_control_modal_ui().active;
   climate_hide_option_menu();
   ClimateControlModalUi &ui = climate_control_modal_ui();
   control_modal_delete_overlay(ControlModalKind::CLIMATE, ui.overlay);
   ui = ClimateControlModalUi();
+  climate_modal_notify_closed(closed);
+}
+
+inline void unregister_climate_control_context(ClimateControlCtx *ctx) {
+  ClimateControlCtx **refs = climate_control_refs();
+  int &count = climate_control_ref_count();
+  int write_index = 0;
+  for (int read_index = 0; read_index < count; read_index++) {
+    if (refs[read_index] == ctx) continue;
+    refs[write_index++] = refs[read_index];
+  }
+  count = write_index;
 }
 
 inline void delete_climate_control_context(ClimateControlCtx *ctx) {
@@ -2272,19 +2301,12 @@ inline void delete_climate_control_context(ClimateControlCtx *ctx) {
     lv_timer_del(ctx->debounce_timer);
     ctx->debounce_timer = nullptr;
   }
-  ClimateControlCtx **refs = climate_control_refs();
-  int &count = climate_control_ref_count();
-  int write_index = 0;
-  for (int read_index = 0; read_index < count; read_index++) {
-    if (refs[read_index] == ctx) continue;
-    refs[write_index++] = refs[read_index];
-  }
-  count = write_index;
+  unregister_climate_control_context(ctx);
   delete ctx;
 }
 
 inline bool climate_control_can_open_modal(ClimateControlCtx *ctx) {
-  return !(!ctx || !ctx->available);
+  return ctx && ctx->available && climate_modal_context_current(ctx);
 }
 
 inline void climate_control_open_modal(ClimateControlCtx *ctx) {
@@ -2602,8 +2624,11 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   }, LV_EVENT_CLICKED, nullptr);
 
   climate_control_set_modal_value(ctx);
+  if (ui.active != ctx) return;
   climate_control_layout_modal(ctx);
   climate_control_set_modal_value(ctx);
+  if (ui.active != ctx) return;
+  if (!climate_modal_widgets_ready(ui.overlay)) { climate_control_hide_modal(); return; }
   lv_obj_move_foreground(ui.overlay);
 }
 
