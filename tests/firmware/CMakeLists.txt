@@ -184,6 +184,9 @@ add_test(NAME media_control_tabs_test COMMAND media_control_tabs_test)
 add_test(NAME media_control_tabs_runtime_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/media_control_tabs_runtime_test.py)
+add_test(NAME media_speaker_volume_event_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/media_speaker_volume_event_test.py)
 
 add_executable(media_power_capability_test media_power_capability_test.cpp)
 target_compile_features(media_power_capability_test PRIVATE cxx_std_17)
