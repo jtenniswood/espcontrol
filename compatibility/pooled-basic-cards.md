@@ -99,3 +99,7 @@ stay constant. Port-owned buffers and C++ state do not allocate during those
 cycles. These counters do not include image/draw-buffer/network work, and the
 host byte counts are not device heap/PSRAM measurements. Complete allocation-free
 label updates remain an explicit qualification issue before production cutover.
+
+Initial cached values for future modal ports are described in
+[page-modal-state-replay.md](page-modal-state-replay.md). Real modal contexts and
+application wiring remain separate, unfinished cutover work.
