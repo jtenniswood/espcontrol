@@ -12,6 +12,12 @@ method = re.search(
     server, re.M | re.S,
 )
 assert method, "Production multipart upload method not found"
+ota_source = (ROOT / "components/web_server_idf/ota_web_server.cpp").read_text()
+abort = re.search(
+    r"void OTARequestHandler::handleUploadAbort\([^\n]+\) \{.*?^}",
+    ota_source, re.M | re.S,
+)
+assert abort, "Production upload-abort implementation not found"
 
 # The existing header-fragment test covers MultipartReader. This harness drives
 # its data/part/body lifecycle independently to exercise the real HTTP handler's
@@ -27,6 +33,7 @@ source = r'''
 #define ESP_LOGE(...) do {} while (false)
 #define ESP_LOGW(...) do {} while (false)
 #define ESP_LOGV(...) do {} while (false)
+#define USE_OTA_STATE_LISTENER
 using esp_err_t = int;
 constexpr int ESP_OK=0, ESP_FAIL=-1, ESP_ERR_TIMEOUT=-2;
 constexpr int HTTPD_400_BAD_REQUEST=400, HTTPD_404_NOT_FOUND=404;
@@ -47,15 +54,36 @@ class AsyncWebServerRequest {
  public:
   explicit AsyncWebServerRequest(httpd_req_t *) {}
 };
+namespace ota {constexpr int OTA_ABORT=1;}
+struct Backend {
+  bool &busy;
+  size_t &aborts;
+  void abort() {busy=false;++aborts;}
+};
+struct Parent {
+  bool busy=false;
+  size_t abort_notifications=0;
+  void notify_state_deferred_(int,float,int) {busy=false;++abort_notifications;}
+};
 class AsyncWebHandler {
  public:
-  size_t bytes=0, finalisations=0, requests=0;
+  size_t bytes=0, finalisations=0, requests=0, aborts=0;
+  bool native_busy=false, ota_success_=false;
+  size_t ota_read_length_=0;
+  Parent parent;
+  Parent *parent_=&parent;
+  std::unique_ptr<Backend> ota_backend_;
   bool canHandle(AsyncWebServerRequest *) {return true;}
   void handleUpload(AsyncWebServerRequest *,const std::string &,size_t,
                     uint8_t *,size_t count,bool final) {
     bytes+=count;
-    if (final) ++finalisations;
+    if (count>0 && !ota_backend_) {
+      ota_backend_=std::make_unique<Backend>(Backend{native_busy,aborts});
+      native_busy=parent.busy=true;
+    }
+    if (final) {++finalisations;native_busy=parent.busy=false;ota_backend_.reset();}
   }
+  void handleUploadAbort(AsyncWebServerRequest *);
   void handleRequest(AsyncWebServerRequest *) {++requests;}
 };
 bool parse_multipart_boundary(const char *,const char **start,size_t *length) {
@@ -92,6 +120,7 @@ class AsyncWebServer {
   esp_err_t handle_multipart_upload_(httpd_req_t *,const char *);
 };
 '''
+source += abort.group(0).replace("OTARequestHandler::", "AsyncWebHandler::") + "\n"
 source += method.group(0) + "\n"
 source += r'''
 bool check(const char *name,const std::string &body,bool success,int status=400) {
@@ -101,10 +130,14 @@ bool check(const char *name,const std::string &body,bool success,int status=400)
   httpd_req_t request{body,body.size()};
   int result=server.handle_multipart_upload_(&request,"multipart/form-data; boundary=test");
   const bool passed=success
-    ? result==ESP_OK && request.status==200 && handler.finalisations==1 && handler.requests==1
-    : result!=ESP_OK && request.status==status && handler.finalisations==0 && handler.requests==0;
+    ? result==ESP_OK && request.status==200 && handler.finalisations==1 && handler.requests==1 && handler.aborts==0
+    : result!=ESP_OK && request.status==status && handler.finalisations==0 && handler.requests==0
+      && !handler.native_busy && !handler.parent.busy && !handler.ota_backend_
+      && handler.aborts==(body.find('D')!=std::string::npos ? 1U : 0U);
   if (!passed) std::cerr << name << ": status=" << request.status
-      << " finalisations=" << handler.finalisations << " requests=" << handler.requests << '\n';
+      << " finalisations=" << handler.finalisations << " requests=" << handler.requests
+      << " aborts=" << handler.aborts << " native_busy=" << handler.native_busy
+      << " source_busy=" << handler.parent.busy << '\n';
   return passed;
 }
 int main() {
@@ -127,4 +160,14 @@ with tempfile.TemporaryDirectory(prefix="multipart-completion-") as directory:
         str(cpp), "-o", str(exe),
     ], check=True)
     subprocess.run([str(exe)], check=True)
+    # OTA-disabled profiles must compile without the upstream OTA platform's
+    # header being copied into the generated source tree.
+    defines = directory / "esphome/core/defines.h"
+    defines.parent.mkdir(parents=True)
+    defines.write_text("")
+    subprocess.run([
+        os.environ.get("CXX", "c++"), "-std=c++20", "-Wall", "-Wextra", "-Werror",
+        "-I" + str(directory), "-c", str(ROOT / "components/web_server_idf/ota_web_server.cpp"),
+        "-o", str(directory / "ota-disabled.o"),
+    ], check=True)
 print("Multipart upload completion regression passed.")

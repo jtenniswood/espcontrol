@@ -1419,6 +1419,15 @@ esp_err_t AsyncWebServer::handle_multipart_upload_(httpd_req_t *r, const char *c
     return ESP_OK;
   }
 
+  struct UploadGuard {
+    AsyncWebHandler *handler;
+    AsyncWebServerRequest *request;
+    bool accepted = false;
+    ~UploadGuard() {
+      if (!accepted) handler->handleUploadAbort(request);
+    }
+  } upload{handler, &req};
+
   // Upload state
   std::string filename;
   size_t index = 0;
@@ -1493,6 +1502,7 @@ esp_err_t AsyncWebServer::handle_multipart_upload_(httpd_req_t *r, const char *c
   // after the entire multipart body has been accepted, including its ending.
   handler->handleUpload(&req, filename, index, nullptr, 0, true);
   handler->handleRequest(&req);
+  upload.accepted = true;
   return ESP_OK;
 }
 #endif  // USE_WEBSERVER_OTA
