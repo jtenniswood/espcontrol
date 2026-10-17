@@ -32,6 +32,7 @@ class HaReadCoordinator {
       typename std::allocator_traits<Allocator>::template rebind_alloc<T>;
   template<typename T>
   using AllocatedVector = std::vector<T, ReboundAllocator<T>>;
+  using AllocatedString = std::basic_string<char, std::char_traits<char>, ReboundAllocator<char>>;
 
   explicit HaReadCoordinator(Transport transport = Transport(), HeapProbe heap_probe = HeapProbe())
       : transport_(std::move(transport)), heap_probe_(std::move(heap_probe)) {}
@@ -211,8 +212,8 @@ class HaReadCoordinator {
       SubscriptionChannel subscription_channel;
       const uint32_t id = next_channel_id_++;
       subscription_channel.id = id;
-      subscription_channel.entity_id = entity_id;
-      subscription_channel.attribute = attribute;
+      subscription_channel.entity_id.assign(entity_id.data(), entity_id.size());
+      subscription_channel.attribute.assign(attribute.data(), attribute.size());
       subscription_channels_.push_back(std::move(subscription_channel));
       auto deliver = [this, id](State state) {
         for (size_t index = 0; index < subscription_channels_.size(); ++index) {
@@ -233,7 +234,7 @@ class HaReadCoordinator {
     // A grid rebuild re-subscribes on an existing channel; replay the last value
     // so rebuilt cards reflect the live state immediately.
     if (!new_channel && subscription_channels_[channel].has_last_state) {
-      const std::string snapshot = subscription_channels_[channel].last_state;
+      const AllocatedString snapshot = subscription_channels_[channel].last_state;
       subscriptions_.back().initial_delivery=true;
       invoke(callback_ref, State(snapshot.c_str(), snapshot.size()));
     }
@@ -271,8 +272,8 @@ class HaReadCoordinator {
     return delivered;
   }
 
-  bool request_fresh(const std::string &entity_id,
-                    const std::string &attribute) {
+  bool request_fresh(std::string_view entity_id,
+                    std::string_view attribute) {
     if (!state_connected() || entity_id.empty() || attribute.empty()) return false;
     const size_t channel = find_subscription_channel(entity_id, attribute, true);
     if (channel == subscription_channels_.size()) return false;
@@ -288,7 +289,7 @@ class HaReadCoordinator {
     // Replies use the existing subscription dispatcher, with no additional
     // native callback or borrowed request strings retained after this call.
     subscription_channels_[channel].fresh_request_pending = true;
-    if (transport_.request(entity_id, attribute)) return true;
+    if (request_transport(transport_, entity_id, attribute, 0)) return true;
     subscription_channels_[channel].fresh_request_pending = false;
     return false;
   }
@@ -419,11 +420,11 @@ class HaReadCoordinator {
   struct SubscriptionChannel {
     uint32_t id = 0;
     uint32_t transport_registration = 0;
-    std::string entity_id;
-    std::string attribute;
-    std::string last_state;
+    AllocatedString entity_id;
+    AllocatedString attribute;
+    AllocatedString last_state;
     bool has_last_state = false;
-    std::string cached_state;
+    AllocatedString cached_state;
     AllocatedVector<CallbackRef> pending_reads;
     bool has_cached_state = false;
     bool fresh_request_pending = false;
@@ -478,7 +479,7 @@ class HaReadCoordinator {
     if (channel < subscription_channels_.size() && channel_reuses_reads(channel)) {
       auto &subscription = subscription_channels_[channel];
       if (subscription.has_cached_state) {
-        const std::string snapshot = subscription.cached_state;
+        const AllocatedString snapshot = subscription.cached_state;
         State state(snapshot.c_str(), snapshot.size());
         for (const auto &callback_ref : callbacks) {
           if (owner_generation_current(callback_ref)) invoke(callback_ref.callback, state);
@@ -563,13 +564,13 @@ class HaReadCoordinator {
     }
   }
 
-  size_t find_subscription_channel(const std::string &entity_id,
-                                   const std::string &attribute,
+  size_t find_subscription_channel(std::string_view entity_id,
+                                   std::string_view attribute,
                                    bool has_attribute) const {
-    const std::string expected_attribute = has_attribute ? attribute : std::string();
+    const std::string_view expected_attribute = has_attribute ? attribute : std::string_view{};
     for (size_t i = 0; i < subscription_channels_.size(); i++) {
-      if (subscription_channels_[i].entity_id == entity_id &&
-          subscription_channels_[i].attribute == expected_attribute) {
+      if (std::string_view(subscription_channels_[i].entity_id) == entity_id &&
+          std::string_view(subscription_channels_[i].attribute) == expected_attribute) {
         return i;
       }
     }
@@ -582,7 +583,7 @@ class HaReadCoordinator {
     if (subscription.has_cached_state) {
       // A callback can retire its owner or invalidate retained values before
       // it finishes reading this view. Keep the delivered bytes alive locally.
-      const std::string snapshot = subscription.cached_state;
+      const AllocatedString snapshot = subscription.cached_state;
       State state(snapshot.c_str(), snapshot.size());
       if (owner_generation_current(callback_ref)) invoke(callback_ref.callback, state);
     } else {
@@ -679,8 +680,22 @@ class HaReadCoordinator {
     AllocatedVector<CallbackRef>().swap(callbacks);
   }
 
-  static void release_string_storage(std::string &value) {
-    std::string().swap(value);
+  // Production accepts borrowed views and encodes the request synchronously.
+  // Preserve older transport policies which require std::string arguments.
+  template<typename Policy>
+  static auto request_transport(Policy &transport, std::string_view entity,
+                                std::string_view attribute, int)
+      -> decltype(transport.request(entity, attribute)) {
+    return transport.request(entity, attribute);
+  }
+  template<typename Policy>
+  static bool request_transport(Policy &transport, std::string_view entity,
+                                std::string_view attribute, long) {
+    return transport.request(std::string(entity), std::string(attribute));
+  }
+
+  static void release_string_storage(AllocatedString &value) {
+    AllocatedString().swap(value);
   }
 
   template<typename T>

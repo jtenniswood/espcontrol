@@ -3,6 +3,7 @@
 #include <initializer_list>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -85,15 +86,15 @@ struct EspHomeHaReadTransport {
   }
   void unsubscribe(uint32_t token) { espcontrol::ha::unsubscribe_owned(token); }
 
-  bool request(const std::string &entity_id, const std::string &attribute) {
+  bool request(std::string_view entity_id, std::string_view attribute) {
     if (!state_connected()) return false;
     // The coordinator already owns a persistent subscription for this pair.
     // Ask for its current value directly: get_home_assistant_state appends a
     // permanent callback and its const-char overload borrows these strings.
     // Appending also cannot wake an already-finished subscription handshake.
     esphome::api::SubscribeHomeAssistantStateResponse request;
-    request.entity_id = esphome::StringRef(entity_id);
-    request.attribute = esphome::StringRef(attribute);
+    request.entity_id = esphome::StringRef(entity_id.data(), entity_id.size());
+    request.attribute = esphome::StringRef(attribute.data(), attribute.size());
     request.once = true;
     bool sent = false;
     for (const auto &client : esphome::api::global_api_server->active_clients()) {
