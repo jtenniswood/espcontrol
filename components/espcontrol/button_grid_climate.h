@@ -494,6 +494,16 @@ inline std::string climate_option_label(const std::string &raw) {
   return espcontrol_i18n(sentence_cap_text(value));
 }
 
+// Keep the familiar translated label unless it hides distinct wire values.
+inline std::string climate_option_choice_label(
+    const std::string &raw, const std::vector<std::string> &options) {
+  const std::string label = climate_option_label(raw);
+  for (const auto &other : options) {
+    if (other != raw && climate_option_label(other) == label) return raw;
+  }
+  return label;
+}
+
 inline size_t climate_utf8_char_count(const std::string &value) {
   size_t count = 0;
   for (unsigned char ch : value) {
@@ -508,7 +518,7 @@ inline lv_coord_t climate_option_menu_width(const std::vector<std::string> &opti
   lv_coord_t line_h = font && font->line_height > 0 ? font->line_height : 32;
   lv_coord_t widest_text = 0;
   for (const auto &option : options) {
-    size_t len = climate_utf8_char_count(climate_option_label(option));
+    size_t len = climate_utf8_char_count(climate_option_choice_label(option, options));
     lv_coord_t estimated_w = static_cast<lv_coord_t>(len) * line_h * 3 / 5;
     if (estimated_w > widest_text) widest_text = estimated_w;
   }
@@ -1249,33 +1259,54 @@ inline void climate_preview_selected_target(ClimateControlCtx *ctx, int value) {
 }
 
 inline std::vector<std::string> climate_parse_options(esphome::StringRef value) {
-  std::string raw = string_ref_limited(value, HA_TEXT_SENSOR_STATE_MAX_LEN);
+  std::string raw = climate_trim(string_ref_limited(value, HA_TEXT_SENSOR_STATE_MAX_LEN));
+  if (raw.size() >= 2 && raw.front() == '[' && raw.back() == ']')
+    raw = raw.substr(1, raw.size() - 2);
   std::vector<std::string> out;
   std::string token;
+  char quote = 0;
+  bool escaped = false;
+  bool quoted_token = false;
+  bool closed_quote = false;
   auto flush = [&]() {
-    std::string v = climate_clean_option_token(token);
+    std::string item = quoted_token ? token : climate_trim(token);
+    if (!item.empty() && std::find(out.begin(), out.end(), item) == out.end())
+      out.push_back(item);
     token.clear();
-    if (v.empty()) return;
-    std::string lower = climate_lower(v);
-    if (lower == "hvacmode" || lower == "fanmode" || lower == "swingmode" || lower == "presetmode") return;
-    bool all_caps = true;
-    bool has_alpha = false;
-    for (char ch : v) {
-      if (std::isalpha((unsigned char)ch)) {
-        has_alpha = true;
-        if (!std::isupper((unsigned char)ch)) all_caps = false;
-      }
-    }
-    if (has_alpha && all_caps) v = lower;
-    for (const auto &existing : out) {
-      if (climate_lower(existing) == climate_lower(v)) return;
-    }
-    out.push_back(v);
+    quoted_token = closed_quote = false;
   };
   for (char ch : raw) {
-    if (ch == ',' || ch == '[' || ch == ']') flush();
-    else token.push_back(ch);
+    if (quote) {
+      if (escaped) {
+        switch (ch) {
+          case 'n': token.push_back('\n'); break;
+          case 'r': token.push_back('\r'); break;
+          case 't': token.push_back('\t'); break;
+          default: token.push_back(ch); break;
+        }
+        escaped = false;
+      } else if (ch == '\\') {
+        escaped = true;
+      } else if (ch == quote) {
+        quote = 0;
+        closed_quote = true;
+      } else {
+        token.push_back(ch);
+      }
+    } else if (ch == ',') {
+      flush();
+    } else if ((ch == '\'' || ch == '"') && climate_trim(token).empty() && !closed_quote) {
+      token.clear();
+      quote = ch;
+      quoted_token = true;
+    } else if (closed_quote) {
+      if (!std::isspace(static_cast<unsigned char>(ch))) return {};
+    } else {
+      token.push_back(ch);
+    }
   }
+  // Incomplete quoted input must never become a different action value.
+  if (quote || escaped) return {};
   flush();
   return out;
 }
@@ -1381,7 +1412,7 @@ inline bool climate_option_selected(ClimateControlCtx *ctx,
   if (!ctx) return false;
   if (kind == "hvac") return climate_hvac_service_value(value) == ctx->hvac_mode;
   std::string current = climate_option_current_value(ctx, kind);
-  return climate_lower(climate_trim(value)) == climate_lower(climate_trim(current));
+  return value == current;
 }
 
 inline const char *climate_option_icon(const std::string &kind, const std::string &value) {
@@ -1784,7 +1815,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
           ? CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_ICON_ZOOM : 256);
 
       lv_obj_t *label = lv_label_create(content_parent);
-      lv_label_set_display_text(label, climate_option_label(option).c_str());
+      lv_label_set_display_text(label, climate_option_choice_label(option, section_options).c_str());
       lv_label_set_long_mode(label, compact_portrait_layout ? LV_LABEL_LONG_CLIP : LV_LABEL_LONG_WRAP);
       lv_obj_set_width(label, compact_portrait_layout ? LV_SIZE_CONTENT : lv_pct(100));
       lv_obj_set_style_text_color(label, lv_color_hex(text_color), LV_PART_MAIN);
@@ -1911,7 +1942,7 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
     lv_obj_set_style_pad_left(btn, 12, LV_PART_MAIN);
     lv_obj_set_style_pad_right(btn, 12, LV_PART_MAIN);
     lv_obj_t *label = lv_label_create(btn);
-    lv_label_set_display_text(label, climate_option_label(option).c_str());
+    lv_label_set_display_text(label, climate_option_choice_label(option, *options).c_str());
     lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_color(label, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
@@ -2832,6 +2863,10 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         [ctx, refresh, active, field](esphome::StringRef value) {
           if (!active()) return;
           ctx->*field = climate_parse_options(value);
+          // HVAC values are enums; custom fan/swing/preset values are exact IDs.
+          if (field == &ClimateControlCtx::hvac_modes) {
+            for (auto &mode : ctx->*field) mode = climate_hvac_service_value(mode);
+          }
           climate_mark_optional_subscription_needs(ctx);
           refresh();
         })
