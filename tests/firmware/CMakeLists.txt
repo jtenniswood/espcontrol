@@ -45,6 +45,17 @@ target_compile_options(page_entity_state_runtime_test PRIVATE -Wall -Wextra -Wer
 target_include_directories(page_entity_state_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_entity_state_runtime_test COMMAND page_entity_state_runtime_test)
 
+add_executable(page_card_dependencies_test page_card_dependencies_test.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
+  ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_card_dependencies_test PRIVATE cxx_std_17)
+target_compile_options(page_card_dependencies_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_card_dependencies_test PRIVATE stubs ../../components/espcontrol
+  ${CMAKE_CURRENT_BINARY_DIR})
+add_test(NAME page_card_dependencies_test COMMAND page_card_dependencies_test)
+
 add_executable(dpi_timing_test dpi_timing_test.cpp)
 target_compile_features(dpi_timing_test PRIVATE cxx_std_17)
 target_compile_options(dpi_timing_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)

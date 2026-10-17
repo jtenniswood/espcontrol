@@ -61,9 +61,10 @@ recovery, partial subscription failure, arena failure, reconnect invalidation,
 They also exercise the real binding coordinator adapter. These are model tests,
 not physical-device memory or visual-parity results.
 
-Before production wiring, implement and verify dependency declarations for
-every driver/mode, hidden-page behaviour, parent summaries and panel-level
-consumers. Qualify complete preparation peaks (including coordinator/native
+The [card dependency declarations](page-card-dependencies.md) now cover the
+registered drivers and have host corpus/max-layout coverage. Before production
+wiring, finish physical parity for every mode, hidden-page behaviour, parent
+summaries and panel-level consumers. Qualify complete preparation peaks (including coordinator/native
 allocation behaviour), choose and advertise measured device budgets, and finish
 the reusable renderer. Keep the existing PageStore/renderer gate in place;
 retaining this graph alongside all eager page widgets is not the intended
