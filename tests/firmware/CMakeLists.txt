@@ -846,6 +846,29 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   set(CONFIG_LV_BUILD_DEMOS OFF CACHE BOOL "" FORCE)
   set(CONFIG_LV_USE_THORVG_INTERNAL OFF CACHE BOOL "" FORCE)
   add_subdirectory("${ESPCONTROL_LVGL_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/lvgl")
+  if(APPLE)
+    # Darwin ld has no GNU --wrap. Route only the pinned label implementation;
+    # the original display implementation remains available to the test shim.
+    set_source_files_properties("${ESPCONTROL_LVGL_SOURCE_DIR}/src/widgets/label/lv_label.c"
+      DIRECTORY "${ESPCONTROL_LVGL_SOURCE_DIR}"
+      PROPERTIES COMPILE_DEFINITIONS
+      "lv_display_add_event_cb=__wrap_lv_display_add_event_cb;lv_display_remove_event_cb_with_user_data=__wrap_lv_display_remove_event_cb_with_user_data")
+  endif()
+  add_library(page_label_refresh_test_support OBJECT ../../components/espcontrol/page_label_refresh.cpp)
+  target_compile_features(page_label_refresh_test_support PRIVATE cxx_std_17)
+  target_compile_options(page_label_refresh_test_support PRIVATE -Wall -Wextra -Werror)
+  target_compile_definitions(page_label_refresh_test_support PRIVATE USE_LVGL)
+  target_include_directories(page_label_refresh_test_support PRIVATE owned_ha_stubs ../../components/espcontrol)
+  target_link_libraries(page_label_refresh_test_support PUBLIC lvgl::lvgl)
+  if(APPLE)
+    target_compile_definitions(page_label_refresh_test_support PRIVATE ESPCONTROL_NATIVE_LABEL_REFRESH)
+  else()
+    target_link_options(page_label_refresh_test_support INTERFACE
+      -Wl,--wrap=lv_display_add_event_cb -Wl,--wrap=lv_display_remove_event_cb_with_user_data)
+  endif()
+  # All optional LVGL executables share this library, including the modal test,
+  # because the pinned label translation unit is routed through its wrappers.
+  link_libraries(page_label_refresh_test_support)
   add_executable(page_basic_lvgl_port_test page_basic_lvgl_port_test.cpp
     ../../components/espcontrol/page_basic_card.cpp
     ../../components/espcontrol/page_climate_card.cpp
@@ -858,6 +881,12 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   target_include_directories(page_basic_lvgl_port_test PRIVATE stubs ../../components/espcontrol)
   target_link_libraries(page_basic_lvgl_port_test PRIVATE lvgl::lvgl)
   add_test(NAME page_basic_lvgl_port_test COMMAND page_basic_lvgl_port_test)
+  add_executable(page_label_refresh_test page_label_refresh_test.cpp)
+  target_compile_features(page_label_refresh_test PRIVATE cxx_std_17)
+  target_compile_options(page_label_refresh_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+  target_include_directories(page_label_refresh_test PRIVATE ../../components/espcontrol)
+  target_link_libraries(page_label_refresh_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_label_refresh_test COMMAND page_label_refresh_test)
   set(PAGE_CLIMATE_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_climate_modal_test.cpp)
   add_custom_command(
     OUTPUT ${PAGE_CLIMATE_MODAL_SOURCE}

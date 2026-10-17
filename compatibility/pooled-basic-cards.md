@@ -99,14 +99,15 @@ indicator. It is a host layout test, not a rendered-screen, network or
 physical-touch test.
 The real device toolchains instantiate the port without retaining an instance.
 
-The complete LVGL test is **not allocation-free**: LVGL 9.5 allocates temporary
-label-refresh event descriptors and grid-layout scratch storage. In the current
-fixture, 1,000 cycles schedule 10,000 label-event allocations and 5,000 layout
-allocations per profile. They are released after layout; retained LVGL bytes
-stay constant. Port-owned buffers and C++ state do not allocate during those
-cycles. These counters do not include image/draw-buffer/network work, and the
-host byte counts are not device heap/PSRAM measurements. Complete allocation-free
-label updates remain an explicit qualification issue before production cutover.
+The native fixture now installs the fixed label bank described in
+[pooled-label-refresh.md](pooled-label-refresh.md). Its 1,000 navigation cycles
+per profile allocate no label-refresh descriptors, C++ state or arena storage.
+The complete test is **not allocation-free**: 4,000 grid-layout scratch allocations
+remain per profile and are released after layout. Retained LVGL bytes stay
+constant. Keeping refresh descriptors adds bounded persistent memory; both that
+cost and the complete firmware linker path still need device qualification.
+These counters exclude image/draw-buffer/network work, and the host byte counts
+are not device heap/PSRAM measurements. Production has not selected this bank.
 
 Initial cached values for future modal ports are described in
 [page-modal-state-replay.md](page-modal-state-replay.md). Real modal contexts and

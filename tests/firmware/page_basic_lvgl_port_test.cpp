@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "page_basic_lvgl_port.h"
+#include "page_label_refresh.h"
 #include "page_modal_gestures.h"
 #include "page_card_dependencies.h"
 #include "page_runtime_resources_group.h"
@@ -106,8 +107,12 @@ template<size_t Slots>void profile(const DeviceUiLimits &limits) {
     assert(missing.initialize());assert(!missing.prepare(fixture.store,Slots));
   }
   {
+    PageLabelRefresh refresh(arena);
     PageBasicLvglPort<Slots>port(arena,state,widgets,{limits.slot_count,limits.grid_columns},theme,actions.callbacks());
     assert(port.initialize());assert(port.initialize());
+    std::array<lv_obj_t *,Slots*4> labels{};size_t label_index=0;
+    for(const auto &w:widgets)for(auto *label:{w.icon,w.label,w.value,w.unit})labels[label_index++]=label;
+    assert(refresh.initialize(labels.data(),labels.size()));
     assert(port.memory().fixed_bytes==sizeof(port)&&port.memory().borrowed_widgets==6*Slots);
     PageRendererRuntime<Slots>renderer(limits,arena,port);actions.renderer=&renderer;
     assert(renderer.prepare(fixture.store));assert(state.prepare(fixture.store));
@@ -164,7 +169,8 @@ template<size_t Slots>void profile(const DeviceUiLimits &limits) {
       lv_obj_update_layout(page);layout_allocations+=lv_allocations-before_layout;
       assert(lv_live_bytes==live_before);assert(subscriptions.bindings.size()==channels);assert(lv_obj_get_child_count(page)==objects);
     }
-    assert(lv_allocations==lv_before+library_label_allocations+layout_allocations);
+    assert(library_label_allocations==0);
+    assert(lv_allocations==lv_before+layout_allocations);
     std::printf("%s: 1000 cycles, 0 C++/arena allocations, %zu LVGL label-event and %zu grid scratch allocations, stable %zu LVGL bytes\n",limits.device_profile,library_label_allocations,layout_allocations,lv_live_bytes);
     assert(port.memory().text_truncations==0&&port.memory().invalid_text==0);
     ++subscriptions.generation;renderer.update_visible();assert(std::strcmp(lv_label_get_text(widgets[1].value),"")==0);
