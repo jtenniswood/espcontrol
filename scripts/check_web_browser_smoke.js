@@ -7801,17 +7801,30 @@ async function assertCameraScreensaverDimming(browser, testCase) {
     const action = card.locator("#sp-set-clock-mode");
     const timer = card.locator("#sp-set-screensaver-camera-dimming");
     const sensor = card.locator("#sp-set-sensor-screensaver-camera-dimming");
+    const exportBackup = async () => {
+      await openBackupControls(page);
+      const downloadPromise = page.waitForEvent("download");
+      await page.getByRole("button", { name: "Export", exact: true }).click();
+      return JSON.parse(fs.readFileSync(await (await downloadPromise).path(), "utf8"));
+    };
     if (!await action.locator('option[value="camera"]').count()) {
       assert.strictEqual(await timer.isVisible(), false, "unsupported displays hide camera dimming");
       return;
     }
     await action.selectOption("camera");
     assert.strictEqual(await timer.isVisible(), false, "older camera firmware hides dimming");
+    const oldFirmwareBackup = await exportBackup();
+    assert.strictEqual(Object.hasOwn(oldFirmwareBackup.settings, "screensaver_camera_dimming"), false,
+      "backups from unsupported firmware omit the uninitialized dimming setting");
+    await page.getByRole("tab", { name: "Screen", exact: true }).click();
     await page.evaluate(() => window.__seedEspState([{ id: "number-screen_saver__camera_dimming", state: "unknown" }]));
     assert.strictEqual(await timer.isVisible(), false, "unknown state cannot enable unsupported dimming");
     await page.evaluate(() => window.__seedEspState([{ id: "number-screen_saver__camera_dimming", state: "0 %", value: "0" }]));
     await timer.waitFor({ state: "visible" });
     assert.strictEqual(await timer.inputValue(), "0", "raw zero is accepted");
+    assert.strictEqual((await exportBackup()).settings.screensaver_camera_dimming, 0,
+      "backups retain a supported zero-percent dimming value");
+    await page.getByRole("tab", { name: "Screen", exact: true }).click();
     assert.strictEqual(await timer.getAttribute("min"), "0");
     assert.strictEqual(await timer.getAttribute("max"), "100");
     assert.strictEqual(await timer.getAttribute("step"), "1");
@@ -7837,10 +7850,7 @@ async function assertCameraScreensaverDimming(browser, testCase) {
     await action.selectOption("clock");
     assert.strictEqual(await timer.isVisible(), false, "other screensaver modes hide camera dimming");
     await action.selectOption("camera");
-    await openBackupControls(page);
-    const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Export", exact: true }).click();
-    const backup = JSON.parse(fs.readFileSync(await (await downloadPromise).path(), "utf8"));
+    const backup = await exportBackup();
     assert.strictEqual(backup.settings.screensaver_camera_dimming, 25, "backup exports camera dimming");
     backup.settings.screensaver_camera_dimming = 65;
     const beforeRestore = posts.length;
@@ -7848,10 +7858,9 @@ async function assertCameraScreensaverDimming(browser, testCase) {
     await page.waitForSelector(".sp-banner.sp-success", { timeout: 15000 });
     await waitForPost(posts, { domain: "number", name: "screen_saver__camera_dimming", action: "set", value: "65" }, "backup restores camera dimming", beforeRestore);
     assert.strictEqual(await timer.inputValue(), "65");
-    delete backup.settings.screensaver_camera_dimming;
     const beforeLegacy = posts.length;
     await page.locator(".sp-banner").evaluate(node => { node.className = "sp-banner"; });
-    await importBackup(page, backup, `camera-dimming-legacy-${testCase.slug}`);
+    await importBackup(page, oldFirmwareBackup, `camera-dimming-legacy-${testCase.slug}`);
     await page.waitForSelector(".sp-banner.sp-success", { timeout: 15000 });
     assert.strictEqual(await timer.inputValue(), "65", "older backups preserve the current dimming");
     assert.strictEqual(posts.slice(beforeLegacy).some(post => post.name === "screen_saver__camera_dimming"), false, "older backups do not post a default dimming");

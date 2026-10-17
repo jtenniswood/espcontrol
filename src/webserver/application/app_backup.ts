@@ -286,7 +286,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 screensaver_camera_entity: state.screensaverCameraEntity,
                 screensaver_metadata_entity: state.screensaverMetadataEntity,
                 metadata_overlay: state.metadataOverlayOn,
-                screensaver_camera_dimming: state.screensaverCameraDimming,
+                screensaver_camera_dimming: state.screensaverCameraDimmingSupported ? state.screensaverCameraDimming : undefined,
                 screensaver_camera_image_mode: normalizeScreensaverCameraImageMode(state.screensaverCameraImageMode),
                 media_player_sleep_prevention: state.mediaPlayerSleepPreventionOn,
                 media_player_sleep_prevention_entity: state.mediaPlayerSleepPreventionEntity || state.coverArtMediaPlayerEntity,
