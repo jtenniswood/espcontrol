@@ -6,6 +6,7 @@ struct LawnMowerCardCtx {
   lv_obj_t *btn = nullptr;
   lv_obj_t *icon_lbl = nullptr;
   lv_obj_t *text_lbl = nullptr;
+  const char *configured_icon = nullptr;
   std::string entity_id;
   std::string mode;
   std::string state;
@@ -95,6 +96,9 @@ inline LawnMowerCardCtx *create_lawn_mower_card_context(const BtnSlot &s,
     ? espcontrol_i18n(std::string(lawn_mower_card_mode_label(ctx->mode)))
     : p.label;
   ctx->status_card = ctx->mode == "status";
+  if (!p.icon.empty() && p.icon != "Auto" && p.icon != lawn_mower_card_default_icon_name(p.sensor)) {
+    ctx->configured_icon = find_icon(p.icon.c_str());
+  }
   return ctx;
 }
 
@@ -104,7 +108,8 @@ inline void apply_lawn_mower_card_state(LawnMowerCardCtx *ctx,
   if (!ctx) return;
   ctx->state = unavailable ? "unavailable" : std::string(state.c_str(), state.size());
   if (ctx->icon_lbl) {
-    lv_label_set_display_text(ctx->icon_lbl, find_icon(lawn_mower_state_icon_name(ctx->state)));
+    lv_label_set_display_text(ctx->icon_lbl, ctx->configured_icon
+      ? ctx->configured_icon : find_icon(lawn_mower_state_icon_name(ctx->state)));
   }
   if (ctx->text_lbl) {
     std::string label = ctx->status_card

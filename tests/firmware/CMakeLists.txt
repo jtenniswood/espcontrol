@@ -630,6 +630,8 @@ add_test(NAME remote_modal_test COMMAND
 
 add_test(NAME fan_control_label_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/fan_control_label_test.py ${CMAKE_CXX_COMPILER})
+add_test(NAME robot_card_icons_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/robot_card_icons_test.py ${CMAKE_CXX_COMPILER})
 
 add_test(NAME clock_image_overlay_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/clock_image_overlay_test.py)
