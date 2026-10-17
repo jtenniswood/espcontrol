@@ -73,7 +73,7 @@ void profile(const DeviceUiLimits &limits) {
   subs.send("sensor.temp","",std::string(257,'1'));assert(!read_basic_card(definition,{17,0},state).numeric);
   for(const auto text:{"-21.45","0.05","1.25","2.75"}){subs.send("sensor.temp","",text);value=read_basic_card(definition,{17,0},state);assert(value.numeric);}
   ++subs.generation;assert(!read_basic_card(definition,{17,0},state).numeric);
-  for(const auto &text:{std::string("light.test;;;;;;;;confirm_off"),std::string("media_player.test;;;;control;;media;;"),std::string(";;;;indicator;;subpage;;")}) {
+  for(const auto &text:{std::string("light.test;;;;;;;;confirm_off"),std::string("media_player.test;;;;control;;media;;")}) {
     Fixture unsupported(limits,text);assert(!prepare_basic_card(unsupported.store,0,definition));
   }
   Fixture toggle(limits,"light.test;;Lightbulb;Lightbulb;sensor.temp;%;;2;");assert(prepare_basic_card(toggle.store,0,definition));assert(definition.kind==BasicCardKind::TOGGLE);
@@ -105,6 +105,24 @@ void profile(const DeviceUiLimits &limits) {
   assert(state.prepare(manual.store));state.activate_prepared(manual.store);assert(state.memory().active_channels==2);
   subs.send("sensor.temp","","28");value=read_basic_card(definition,{17,0},state,2);assert(value.numeric&&std::strcmp(value.number,"1d 4h")==0);
   const auto duration_allocations=allocations;for(size_t i=0;i<1000;++i)assert(read_basic_card(definition,{17,0},state).numeric);assert(allocations==duration_allocations);
+
+  Fixture folder_number(limits,";Room;;;sensor.temp;°C;subpage;1;");assert(prepare_basic_card(folder_number.store,0,definition));assert(definition.folder_mode==BasicFolderMode::NUMBER);
+  assert(state.prepare(folder_number.store));state.activate_prepared(folder_number.store);subs.send("sensor.temp","","21.4");value=read_basic_card(definition,{17,0},state);assert(value.numeric&&!value.on&&std::strcmp(value.number,"21.4")==0);
+  Fixture folder_text(limits,";Room;;;sensor.temp;;subpage;text;");assert(prepare_basic_card(folder_text.store,0,definition));assert(definition.folder_mode==BasicFolderMode::TEXT);
+  assert(state.prepare(folder_text.store));state.activate_prepared(folder_text.store);subs.send("sensor.temp","","pre_wash");value=read_basic_card(definition,{17,0},state);assert(value.formatted_label&&!value.on&&std::strcmp(value.text,"Pre Wash")==0);
+  Fixture folder_entity(limits,"light.room;Room;;;indicator;;subpage;;");assert(prepare_basic_card(folder_entity.store,0,definition));assert(definition.folder_mode==BasicFolderMode::ENTITY);
+  assert(state.prepare(folder_entity.store));state.activate_prepared(folder_entity.store);subs.send("light.room","","on");assert(read_basic_card(definition,{17,0},state).on);
+  subs.send("light.room","","unavailable");assert(!read_basic_card(definition,{17,0},state).on);
+  Fixture folder_climate(limits,"climate.room;Room;;;indicator;;subpage;;subpage_kind=climate");assert(prepare_basic_card(folder_climate.store,0,definition));assert(definition.folder_mode==BasicFolderMode::CLIMATE);
+  assert(state.prepare(folder_climate.store));state.activate_prepared(folder_climate.store);subs.send("climate.room","","heat");assert(!read_basic_card(definition,{17,0},state).on);
+  for(const auto working:{"heating","cooling","drying","fan"}){subs.send("climate.room","hvac_action",working);assert(read_basic_card(definition,{17,0},state).on);}
+  for(const auto inactive:{"idle","off","unknown","unavailable",""}){subs.send("climate.room","hvac_action",inactive);assert(!read_basic_card(definition,{17,0},state).on);}
+  subs.send("climate.room","hvac_action","heating");subs.send("climate.room","","off");assert(!read_basic_card(definition,{17,0},state).on);
+  Fixture folder_mower(limits,"lawn_mower.garden;Garden;;;indicator;;subpage;;subpage_kind=lawn_mower");assert(prepare_basic_card(folder_mower.store,0,definition));assert(definition.folder_mode==BasicFolderMode::MOWER);
+  assert(state.prepare(folder_mower.store));state.activate_prepared(folder_mower.store);subs.send("lawn_mower.garden","","returning");assert(read_basic_card(definition,{17,0},state).on);
+  subs.send("lawn_mower.garden","","docked");assert(!read_basic_card(definition,{17,0},state).on);
+  Fixture children(limits,";Room;;;indicator;;subpage;;");assert(prepare_basic_card(children.store,0,definition));assert(definition.folder_mode==BasicFolderMode::CHILDREN);
+  assert(basic_folder_child_indicator(toggle.store,0)=="light.test");assert(basic_folder_child_indicator(sensor.store,0).empty());
 
 }
 }

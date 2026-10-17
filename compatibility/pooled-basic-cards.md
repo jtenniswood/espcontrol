@@ -13,6 +13,15 @@ place the renderer before the state owner in `PageRuntimeResourcesGroup`.
 Preparation compiles card metadata, resolves firmware-lifetime glyphs and reserves
 one active/staged arena for metadata, decoded mapping/unit options and reusable
 NUL-terminated text buffers.
+Folder aggregate membership is prepared from the bound child layout and stored
+as a deduplicated list of card IDs in the same arena. Omitted/out-of-viewport
+records remain stored but do not affect the indicator. Explicit overlapping
+legacy child records retain their existing bound membership. Sensors do not
+contribute to the old toggle indicator. As other child drivers are ported, their
+original indicator eligibility and predicates must be added to this policy
+(timer, mower and local-control semantics differ). Aggregate reads create no
+subscriptions, counters or widget-owned callbacks.
+
 Configuration strings remain borrowed from PageStore; retained HA values remain
 owned by the shared state cache. Navigation creates no widgets, driver contexts,
 state owners or transport registrations.
@@ -21,7 +30,9 @@ The port covers ordinary toggles (including numeric/text overlays), numeric,
 icon, text and duration HA sensors, plain folders and Back. Text sensors retain
 the existing Unicode title/whitespace rules and configured state labels. Duration
 cards use the shared formatter with automatic or configured source units and
-one/two displayed components according to span. Local sensors, folder summaries,
+one/two displayed components according to span. Folders support numeric/text
+values, entity indicators, climate working-state indicators, mower indicators
+and aggregate state from the currently ported toggle children. Local sensors,
 confirmations, action/complex cards and modals still require ports.
 Unsupported active variants reject preparation rather than silently dropping
 behaviour. Stored pages that are not navigable are preserved without requiring
@@ -71,14 +82,18 @@ LVGL's allocator separately, checks stable widget/channel/retained-byte counts,
 and exercises delayed clicks, 100 successful replacements per profile, failed
 replacement, Back, reconnect and takeover. Repeated refreshes of unchanged
 labels do not schedule new LVGL events. The fixture includes text/duration
-sensors and a configured 600-byte state label, which is reserved before
+sensors, hidden-child folder indicators and a configured 600-byte state label,
+which is reserved before
 activation and displayed without truncating configuration.
-It is a host layout test, not a rendered-screen, network or physical-touch test.
+A further 1,000-cycle V3 portrait test retains 20 configuration slots while
+binding 18 cells and excluding out-of-viewport children from the parent
+indicator. It is a host layout test, not a rendered-screen, network or
+physical-touch test.
 The real device toolchains instantiate the port without retaining an instance.
 
 The complete LVGL test is **not allocation-free**: LVGL 9.5 allocates temporary
 label-refresh event descriptors and grid-layout scratch storage. In the current
-fixture, 1,000 cycles schedule 9,000 label-event allocations and 5,000 layout
+fixture, 1,000 cycles schedule 10,000 label-event allocations and 5,000 layout
 allocations per profile. They are released after layout; retained LVGL bytes
 stay constant. Port-owned buffers and C++ state do not allocate during those
 cycles. These counters do not include image/draw-buffer/network work, and the

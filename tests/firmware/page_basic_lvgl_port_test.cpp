@@ -42,17 +42,23 @@ struct Subscriptions:PageEntitySubscriptions {
   void send(const char *entity,const char *attribute,std::string_view value){for(auto &b:bindings)if(std::strcmp(b.entity,entity)==0&&std::strcmp(b.attribute,attribute)==0)b.deliver(b.owner,b.revision,b.channel,value);}
 };
 struct Fixture {
-  explicit Fixture(const DeviceUiLimits &limits,bool unsupported=false) {
+  explicit Fixture(const DeviceUiLimits &limits,bool unsupported=false,bool portrait=false) {
     PanelConfigWriter writer(document.data(),document.size());assert(writer.begin()==PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t *>(limits.device_profile),std::strlen(limits.device_profile))==PanelConfigStatus::OK);
     auto button=[&](uint8_t slot,std::string text){assert(writer.append_button(slot,reinterpret_cast<const uint8_t *>(text.data()),text.size())==PanelConfigStatus::OK);};
-    button(1,";Rooms;Home;Auto;;;subpage;;");
+    button(1,";Rooms;Home;Lightbulb;indicator;;subpage;;");
     button(2,"light.main;;Lightbulb;Lightbulb;sensor.temp; C ;;1;card_off_color=336699");
     button(3,unsupported?"media_player.test;;;;control;;media;;":";;Gauge;Gauge;sensor.temp;°C;sensor;1;active_color");
     button(4,";;;;sensor.message;;sensor;text;state_labels,state_input=active,state_output="+std::string(600,'x'));
     button(5,";Timer;;;sensor.timer;;sensor;time;");
     button(6,"switch.cycle;Standby;Auto;Auto;sensor.message;;;text;");
-    const std::string child="~B=Go%20Home:FFFFFF,1,2,3,4|S,,Child,Auto,Auto,sensor.temp,°C,1,|,light.child,Child switch,Auto,Auto,,,,|S,,Message,Auto,Auto,sensor.message,,text,|S,,Timer,Auto,Auto,sensor.timer,,time,";
+    std::string child="~B=Go%20Home:FFFFFF,1,2,3,4|S,,Child,Auto,Auto,sensor.temp,°C,1,|,light.child,Child switch,Auto,Auto,,,,|S,,Message,Auto,Auto,sensor.message,,text,|S,,Timer,Auto,Auto,sensor.timer,,time,|,light.omitted,Omitted,Auto,Auto,,,,";
+    if(portrait) {
+      const auto separator=child.find('|');std::string order="~B";
+      for(size_t i=1;i<limits.slot_count;++i)order+=","+std::to_string(i);
+      child=order+child.substr(separator);
+      for(size_t i=6;i<limits.slot_count;++i)child+="|,light.extra"+std::to_string(i)+",Extra,Auto,Auto,,,,";
+    }
     assert(writer.append_subpage(1,reinterpret_cast<const uint8_t *>(child.data()),child.size())==PanelConfigStatus::OK);
     const std::string key="button_order",order="1,2,3,4,5,6";
     assert(writer.append_setting(reinterpret_cast<const uint8_t *>(key.data()),key.size(),reinterpret_cast<const uint8_t *>(order.data()),order.size())==PanelConfigStatus::OK);
@@ -63,7 +69,7 @@ struct Fixture {
 };
 template<size_t Slots>struct Actions {
   PageRendererRuntime<Slots> *renderer{nullptr};size_t toggles{0};PageBindingToken last;char entity[64]{};
-  static const char *icon(void *,std::string_view,std::string_view){return "I";}
+  static const char *icon(void *,std::string_view name,std::string_view){return name=="Lightbulb"?"ON":"I";}
   static bool valid(void *owner,PageBindingToken t){return static_cast<Actions *>(owner)->renderer->valid(t);}
   static void toggle(void *owner,PageBindingToken t,std::string_view entity){auto &a=*static_cast<Actions *>(owner);++a.toggles;a.last=t;assert(entity.size()<sizeof(a.entity));std::memcpy(a.entity,entity.data(),entity.size());a.entity[entity.size()]='\0';}
   static void open(void *owner,PageBindingToken,PageId page){assert(static_cast<Actions *>(owner)->renderer->open_page(page));}
@@ -102,6 +108,11 @@ template<size_t Slots>void profile(const DeviceUiLimits &limits) {
     subscriptions.send("sensor.temp","","21.4");subscriptions.send("light.main","","on");subscriptions.send("light.main","friendly_name",u8"Ṣade lamp");
     subscriptions.send("sensor.message","","pre_wash");subscriptions.send("sensor.timer","","90");subscriptions.send("sensor.timer","unit_of_measurement","seconds");subscriptions.send("switch.cycle","","on");
     renderer.update_visible();
+    subscriptions.send("light.omitted","","on");renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[0].button,LV_STATE_CHECKED));
+    subscriptions.send("light.child","","on");renderer.update_visible();
+    assert(lv_obj_has_state(widgets[0].button,LV_STATE_CHECKED));
+    assert(std::strcmp(lv_label_get_text(widgets[0].icon),"ON")==0);
     assert(std::strcmp(lv_label_get_text(widgets[3].label),"Pre Wash")==0);
     assert(std::strcmp(lv_label_get_text(widgets[4].value),"1m")==0);
     assert(std::strcmp(lv_label_get_text(widgets[5].label),"Pre Wash")==0);
@@ -141,6 +152,7 @@ template<size_t Slots>void profile(const DeviceUiLimits &limits) {
     assert(port.memory().text_truncations==0&&port.memory().invalid_text==0);
     ++subscriptions.generation;renderer.update_visible();assert(std::strcmp(lv_label_get_text(widgets[1].value),"")==0);
     assert(!lv_obj_has_state(widgets[1].button,LV_STATE_CHECKED));
+    assert(!lv_obj_has_state(widgets[0].button,LV_STATE_CHECKED));
     subscriptions.send("sensor.temp","","19.5");renderer.update_visible();assert(std::strcmp(lv_label_get_text(widgets[2].value),"19.5")==0);
     Fixture unsupported(limits,true);const auto token=renderer.binding(1);assert(!renderer.prepare(unsupported.store));assert(renderer.valid(token));
     arena.fail=true;assert(!renderer.prepare(fixture.store));arena.fail=false;assert(renderer.valid(token));
@@ -167,6 +179,28 @@ template<size_t Slots>void profile(const DeviceUiLimits &limits) {
     const auto retired=renderer.binding(1);assert(renderer.suspend());lv_obj_send_event(widgets[1].button,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(widgets[1].button,LV_EVENT_CLICKED,nullptr);assert(actions.toggles==2);
     assert(renderer.resume());assert(!renderer.valid(retired));renderer.update_visible();
     renderer.retire_active();assert(std::strcmp(lv_label_get_text(widgets[1].label),"")==0);state.retire_active();
+  }
+  assert(arena.live==0);
+  if(std::strcmp(limits.device_profile,"guition-esp32-p4-jc8012p4a1-v3")==0) {
+    // Retain all twenty configuration slots while only eighteen can be bound.
+    for(size_t i=0;i<3;++i)columns[i]=LV_GRID_FR(1);columns[3]=LV_GRID_TEMPLATE_LAST;
+    for(size_t i=0;i<6;++i)rows[i]=LV_GRID_FR(1);rows[6]=LV_GRID_TEMPLATE_LAST;
+    lv_obj_set_grid_dsc_array(page,columns.data(),rows.data());
+    Fixture portrait(limits,false,true);
+    PageBasicLvglPort<Slots>port(arena,state,widgets,{18,3},theme,actions.callbacks());assert(port.initialize());
+    PageRendererRuntime<Slots>renderer(limits,arena,port);actions.renderer=&renderer;
+    assert(renderer.prepare(portrait.store));assert(state.prepare(portrait.store));renderer.activate_prepared(portrait.store);state.activate_prepared(portrait.store);
+    subscriptions.send("light.extra19","","on");renderer.update_visible();assert(!lv_obj_has_state(widgets[0].button,LV_STATE_CHECKED));
+    subscriptions.send("light.extra17","","on");renderer.update_visible();assert(lv_obj_has_state(widgets[0].button,LV_STATE_CHECKED));
+    assert(portrait.store.page(portrait.store.card(0)->target)->card_count==19);
+    assert(renderer.open_page(portrait.store.card(0)->target));renderer.update_visible();assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);
+    const auto before_live=lv_live_bytes,before_cpp=cpp_allocations,before_arena=arena.allocations,before_channels=subscriptions.bindings.size();
+    for(size_t cycle=0;cycle<1000;++cycle) {
+      assert(renderer.open_page(portrait.store.card(0)->target));renderer.update_visible();assert(renderer.binding(18).binding==0&&renderer.binding(19).binding==0);
+      assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);assert(lv_live_bytes==before_live);
+    }
+    assert(cpp_allocations==before_cpp&&arena.allocations==before_arena&&subscriptions.bindings.size()==before_channels);
+    renderer.retire_active();state.retire_active();
   }
   assert(arena.live==0);lv_obj_delete(page);
 }
