@@ -1,5 +1,6 @@
 #include "espcontrol_app.h"
 #include "device_reset.h"
+#include "home_assistant_transport_runtime.h"
 #include "esphome/components/artwork_image/transfer_observer.h"
 
 #include <array>
@@ -15,6 +16,7 @@
 #include "panel_config_capabilities_endpoint.h"
 #include "configuration_release_policy.h"
 #include "configuration_service.h"
+#include "configuration_main_loop.h"
 #include "configuration_store.h"
 #include "panel_config_read_endpoint.h"
 #include "panel_config_espidf_storage.h"
@@ -77,6 +79,7 @@ class EspControlApp::NativeConfigurationRuntime {
   configuration::BufferedBlobStorageBackend<PANEL_CONFIG_STORAGE_SLOT_CAPACITY>
       backend;
   configuration::ConfigurationStore store;
+  configuration::ConfigurationMainLoop transactions;
   uint8_t *memory{nullptr};
   uint8_t *document_buffer{nullptr};
   uint8_t *boot_buffer{nullptr};
@@ -186,7 +189,7 @@ void EspControlApp::register_panel_config_endpoints() {
     return;
   }
   configuration::bind_panel_config_http_context(
-      *panel_config_service, runtime->document_buffer,
+      *panel_config_service, runtime->transactions, runtime->document_buffer,
       runtime->slot_capacity,
       web_auth_username_ == nullptr ? "" : web_auth_username_,
       web_auth_password_ == nullptr ? "" : web_auth_password_);
@@ -370,14 +373,19 @@ void EspControlApp::initialize_native_configuration() {
 }
 
 void EspControlApp::loop() {
+  if (native_configuration_runtime_ != nullptr && core_.configuration_service() != nullptr)
+    native_configuration_runtime_->transactions.process(*core_.configuration_service());
   home_assistant_endpoint_.loop();
   core_.run_once();
+  ha::maintain_subscriptions();
   // The app core starts before WiFi so Home Assistant boot automations are
   // safe. The IDF web server starts later, so retry idempotent registrations.
   register_panel_config_endpoints();
 }
 
 void EspControlApp::on_shutdown() {
+  if (native_configuration_runtime_ != nullptr)
+    native_configuration_runtime_->transactions.stop();
   esphome::artwork_image::TransferObserver::instance().set({}, {});
   home_assistant_endpoint_.shutdown();
   cards::set_card_runtime_registry_service(nullptr);

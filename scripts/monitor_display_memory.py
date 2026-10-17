@@ -5,12 +5,16 @@ from __future__ import annotations
 
 import argparse
 import csv
+from contextlib import redirect_stdout
+import io
 import json
 import math
 import re
 import sys
+import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -31,11 +35,22 @@ P4_TARGET_NAMES = ("7inch", "10inch", "p4_86", "4_3inch")
 METRICS = {
     "heap_free": "/sensor/memory__heap_free_bytes",
     "heap_largest": "/sensor/memory__heap_largest_block",
+    "heap_min_free": "/sensor/memory__heap_minimum_free_bytes",
     "psram_free": "/sensor/memory__psram_free_bytes",
     "psram_largest": "/sensor/memory__psram_largest_block",
+    "psram_min_free": "/sensor/memory__psram_minimum_free_bytes",
 }
 
 REQUIRED_METRICS = {"heap_free", "psram_free"}
+
+METRIC_ENTITY_NAMES = {
+    "heap_free": "Memory: Heap Free Bytes",
+    "heap_largest": "Memory: Heap Largest Block",
+    "heap_min_free": "Memory: Heap Minimum Free Bytes",
+    "psram_free": "Memory: PSRAM Free Bytes",
+    "psram_largest": "Memory: PSRAM Largest Block",
+    "psram_min_free": "Memory: PSRAM Minimum Free Bytes",
+}
 
 
 @dataclass(frozen=True)
@@ -57,6 +72,8 @@ class Trend:
     metric: str
     first: float
     last: float
+    minimum: float
+    maximum: float
     delta: float
     per_hour: float
     samples: int
@@ -118,14 +135,24 @@ def parse_metric_payload(payload: str) -> float:
 
 
 def fetch_metric(host: str, metric: str, timeout: float) -> float:
-    url = metric_url(host, METRICS[metric])
-    request = urllib.request.Request(url, headers={"User-Agent": "espcontrol-memory-monitor"})
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            payload = response.read().decode("utf-8", errors="replace")
-    except (OSError, urllib.error.URLError) as exc:
-        raise MonitorError(str(exc)) from exc
-    return parse_metric_payload(payload)
+    # Current ESPHome exposes the entity name in its event IDs and REST paths.
+    # Older firmware may still expose the slug, so retry that on a 404 only.
+    paths = ["/sensor/" + urllib.parse.quote(METRIC_ENTITY_NAMES[metric], safe=""),
+             METRICS[metric]]
+    for index, path in enumerate(paths):
+        request = urllib.request.Request(metric_url(host, path),
+                                         headers={"User-Agent": "espcontrol-memory-monitor"})
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                payload = response.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404 and index == 0:
+                continue
+            raise MonitorError(str(exc)) from exc
+        except (OSError, urllib.error.URLError) as exc:
+            raise MonitorError(str(exc)) from exc
+        return parse_metric_payload(payload)
+    raise MonitorError("memory metric is unavailable")
 
 
 def collect_sample(targets: list[Target], timeout: float) -> list[Reading]:
@@ -171,6 +198,8 @@ def summarize(readings: list[Reading]) -> list[Trend]:
                 metric=metric,
                 first=first,
                 last=last,
+                minimum=min(item.values[metric] for item in metric_readings),
+                maximum=max(item.values[metric] for item in metric_readings),
                 delta=delta,
                 per_hour=per_hour,
                 samples=len(metric_readings),
@@ -187,7 +216,7 @@ def write_csv(path: Path, readings: list[Reading]) -> None:
             writer.writerow([
                 datetime.fromtimestamp(reading.timestamp, timezone.utc).isoformat(),
                 reading.target,
-                *(reading.values[metric] if math.isfinite(reading.values[metric]) else "" for metric in METRICS),
+                *(reading.values.get(metric, "") if math.isfinite(reading.values.get(metric, math.nan)) else "" for metric in METRICS),
             ])
 
 
@@ -225,12 +254,17 @@ def print_summary(trends: list[Trend], heap_tolerance: float, psram_tolerance: f
     for trend in trends:
         tolerance = psram_tolerance if trend.metric.startswith("psram_") else heap_tolerance
         status = "ok"
-        if trend.per_hour < -tolerance:
+        # Historical minima fall after any temporary allocation peak. They
+        # help measure headroom, but cannot establish retained-memory growth.
+        if trend.metric.endswith("_min_free"):
+            status = "low-water"
+        elif trend.per_hour < -tolerance:
             status = "falling"
             leaking = True
         print(
             f"  {trend.target:8s} {trend.metric:13s} "
             f"{format_bytes(trend.first)} -> {format_bytes(trend.last)} "
+            f"min={format_bytes(trend.minimum)} max={format_bytes(trend.maximum)} "
             f"delta={trend.delta:+,.0f} per_hour={trend.per_hour:+,.0f} "
             f"samples={trend.samples} {status}"
         )
@@ -257,6 +291,24 @@ def run_monitor(args: argparse.Namespace) -> int:
 
 
 def run_self_test() -> int:
+    from unittest.mock import patch
+
+    with patch.object(urllib.request, "urlopen", return_value=io.BytesIO(b'{"value":123}')) as opened:
+        assert fetch_metric("example.invalid", "heap_free", 1) == 123
+        assert opened.call_args.args[0].full_url.endswith("/sensor/Memory%3A%20Heap%20Free%20Bytes")
+    missing = urllib.error.HTTPError("url", 404, "missing", None, None)
+    with patch.object(urllib.request, "urlopen", side_effect=[missing, io.BytesIO(b'{"value":456}')]) as opened:
+        assert fetch_metric("example.invalid", "heap_free", 1) == 456
+        assert opened.call_args.args[0].full_url.endswith(METRICS["heap_free"])
+    denied = urllib.error.HTTPError("url", 401, "unauthorized", None, None)
+    with patch.object(urllib.request, "urlopen", side_effect=denied) as opened:
+        try:
+            fetch_metric("example.invalid", "heap_free", 1)
+        except MonitorError:
+            assert opened.call_count == 1
+        else:
+            raise AssertionError("authentication failures must not trigger fallback")
+
     now = 1_800_000_000.0
     readings = [
         Reading(now, "test", {
@@ -288,6 +340,7 @@ def run_self_test() -> int:
     heap = trends[("test", "heap_free")]
     psram = trends[("test", "psram_free")]
     assert heap.delta == -2000
+    assert heap.minimum == 98_000 and heap.maximum == 100_000
     assert heap.per_hour == -4000
     assert psram.delta == -1000
     assert ("missing", "heap_free") in trends
@@ -296,6 +349,27 @@ def run_self_test() -> int:
     assert ("missing", "psram_largest") not in trends
     assert parse_metric_payload('{"value": "12345 B"}') == 12345
     assert parse_metric_payload("state: 67890") == 67890
+
+    # A temporary replacement peak can recover completely before the final
+    # sample. Endpoint slope alone must not hide the low-water mark.
+    peak_readings = [Reading(now + index, "peak", {"heap_free": value})
+                     for index, value in enumerate((100_000, 50_000, 100_000))]
+    peak = summarize(peak_readings)[0]
+    assert peak.delta == 0 and peak.minimum == 50_000 and peak.maximum == 100_000
+    assert ("missing", "heap_min_free") not in trends
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "memory.csv"
+        write_csv(path, peak_readings)
+        with path.open(newline="", encoding="utf-8") as handle:
+            rows = list(csv.DictReader(handle))
+        assert rows[1]["heap_free"] == "50000"
+        assert rows[1]["heap_min_free"] == ""
+    low_water = summarize([
+        Reading(now, "low-water", {"heap_min_free": 100_000}),
+        Reading(now + 3600, "low-water", {"heap_min_free": 50_000}),
+    ])
+    with redirect_stdout(io.StringIO()):
+        assert not print_summary(low_water, 4096, 1_048_576)
 
     original_fetch_metric = fetch_metric
     try:

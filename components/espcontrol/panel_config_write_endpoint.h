@@ -10,6 +10,7 @@
 #include <esp_http_server.h>
 
 #include "configuration_service.h"
+#include "configuration_main_loop.h"
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "panel_config_document.h"
 #include "panel_config_http_etag.h"
@@ -115,10 +116,16 @@ class PanelConfigWriteHandler final
       return;
     }
 
-    const ServiceSaveResult saved = context.service->save_if_generation(
+    const auto transaction = context.transactions->save_if_generation(
         expected_generation, PANEL_CONFIG_DOCUMENT_VERSION, context.document,
         received_size_);
     reset_upload();
+    if (transaction.dispatch != ConfigurationDispatchStatus::COMPLETED) {
+      send_status(raw_request, "503 Service Unavailable",
+                  "Panel configuration is busy; retry the request");
+      return;
+    }
+    const ServiceSaveResult saved = transaction.result;
     // ESP-IDF retains header value pointers until httpd_resp_send(). Keep these
     // buffers in handleRequest() so they remain valid through every send below.
     char generation_text[16]{};
@@ -135,6 +142,11 @@ class PanelConfigWriteHandler final
     if (response == PanelConfigWriteResponse::BAD_REQUEST) {
       httpd_resp_send_err(raw_request, HTTPD_400_BAD_REQUEST,
                           "Invalid panel configuration document");
+      return;
+    }
+    if (response == PanelConfigWriteResponse::RUNTIME_UNAVAILABLE) {
+      send_status(raw_request, "503 Service Unavailable",
+                  "Not enough resources to prepare the panel configuration; previous configuration remains active");
       return;
     }
     if (response == PanelConfigWriteResponse::INTERNAL_ERROR) {
