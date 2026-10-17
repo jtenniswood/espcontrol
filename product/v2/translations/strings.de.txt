@@ -81,6 +81,7 @@ lightning=Gewitter
 lightning_and_rain=Gewitter und Regen
 light=Licht
 loading=Laden
+loading_forecast=Wettervorhersage wird geladen
 locate=Orten
 lock=Sperren
 lawn_mower=Rasenmäher
@@ -265,3 +266,18 @@ then_visit_192_168_4_1_in_your_browser=Öffne dann 192.168.4.1 in deinem Browser
 
 screensaver=Bildschirmschoner
 incorrect_pin=Falsche PIN
+
+forecast_unavailable=Vorhersage nicht verfügbar
+rain=Regen
+rain_chance=Regenwahrscheinlichkeit
+rainfall=Niederschlag
+wind=Wind
+humidity=Luftfeuchtigkeit
+last_forecast=Letzte Vorhersage
+weekday_sun=So.
+weekday_mon=Mo.
+weekday_tues=Di.
+weekday_weds=Mi.
+weekday_thurs=Do.
+weekday_fri=Fr.
+weekday_sat=Sa.

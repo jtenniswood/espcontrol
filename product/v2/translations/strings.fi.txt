@@ -81,6 +81,7 @@ lightning=Ukkonen
 lightning_and_rain=Ukkosta ja sadetta
 light=Valo
 loading=Ladataan
+loading_forecast=Loading forecast
 locate=Paikanna
 lock=Lukko
 lawn_mower=Ruohonleikkuri
@@ -265,3 +266,18 @@ then_visit_192_168_4_1_in_your_browser=Avaa sitten selaimessa 192.168.4.1
 
 screensaver=Näytönsäästäjä
 incorrect_pin=Väärä PIN
+
+forecast_unavailable=Forecast unavailable
+rain=Sade
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast
+weekday_sun=su
+weekday_mon=ma
+weekday_tues=ti
+weekday_weds=ke
+weekday_thurs=to
+weekday_fri=pe
+weekday_sat=la

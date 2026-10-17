@@ -84,6 +84,11 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         page.className = "sp-page";
         var config: any = document.createElement("div");
         config.className = "sp-config fade-in";
+        var devicePage: any = document.createElement("div");
+        devicePage.id = "sp-device";
+        devicePage.className = "sp-page";
+        var deviceConfig: any = document.createElement("div");
+        deviceConfig.className = "sp-config fade-in";
         var activeColourBody: any = document.createElement("div");
         var cardStyleBody: any = document.createElement("div");
         var themeBody: any = document.createElement("div");
@@ -459,6 +464,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setScreensaverCamera = timerClockControls.cameraInput;
         els.setScreensaverCameraImageModeField = timerClockControls.cameraImageModeField;
         els.setScreensaverCameraImageMode = timerClockControls.cameraImageModeSelect;
+        els.setScreensaverCameraDimming = timerClockControls.cameraDimming;
         els.setDimBrightnessField = timerClockControls.dimBrightnessField;
         els.setManualDimBrightnessField = timerClockControls.manualDimBrightnessField;
         els.setAutomaticDimBrightnessField = timerClockControls.automaticDimBrightnessField;
@@ -498,9 +504,9 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         cameraPanel.className = "sp-panel sp-camera-settings";
         cameraPanel.setAttribute("aria-label", "Camera screensaver settings");
         var timerCameraFields: any = document.createElement("div");
-        timerCameraFields.append(timerClockControls.cameraField, timerClockControls.cameraImageModeField);
+        timerCameraFields.append(timerClockControls.cameraField, timerClockControls.cameraImageModeField, timerClockControls.cameraDimmingField);
         var sensorCameraFields: any = document.createElement("div");
-        sensorCameraFields.append(sensorClockControls.cameraField, sensorClockControls.cameraImageModeField);
+        sensorCameraFields.append(sensorClockControls.cameraField, sensorClockControls.cameraImageModeField, sensorClockControls.cameraDimmingField);
         cameraPanel.append(timerCameraFields, sensorCameraFields);
         els.setScreensaverCameraPanel = cameraPanel;
         var metadataField: any = document.createElement("div");
@@ -542,6 +548,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setSensorScreensaverCamera = sensorClockControls.cameraInput;
         els.setSensorScreensaverCameraImageModeField = sensorClockControls.cameraImageModeField;
         els.setSensorScreensaverCameraImageMode = sensorClockControls.cameraImageModeSelect;
+        els.setSensorScreensaverCameraDimming = sensorClockControls.cameraDimming;
         els.setSensorDimBrightnessField = sensorClockControls.dimBrightnessField;
         els.setSensorManualDimBrightnessField = sensorClockControls.manualDimBrightnessField;
         els.setSensorAutomaticDimBrightnessField = sensorClockControls.automaticDimBrightnessField;
@@ -627,11 +634,11 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             activeColourCard,
             cardStyleCard,
             themeCard,
+            idleCard,
+            clockBarCard,
         ]);
         appendSettingsSection(config, "Display", [
             backlightCard,
-            idleCard,
-            clockBarCard,
             rotationCard,
         ]);
         appendSettingsSection(config, "Sleep & Schedule", [
@@ -640,12 +647,12 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             scheduleCard,
             screensaverPinCard,
         ]);
-        appendSettingsSection(config, "Preferences", [
+        appendSettingsSection(deviceConfig, "Preferences", [
             languageCard,
             timeSettingsCard,
             temperatureCard,
         ]);
-        appendSettingsSection(config, "System", [
+        appendSettingsSection(deviceConfig, "System", [
             systemSettingsCards.identityCard,
             systemSettingsCards.backupCard,
             systemSettingsCards.firmwareCard,
@@ -657,6 +664,10 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         page.appendChild(buildApplyBar());
         parent.appendChild(page);
         els.settingsPage = page;
+        devicePage.appendChild(deviceConfig);
+        devicePage.appendChild(buildApplyBar());
+        parent.appendChild(devicePage);
+        els.devicePage = devicePage;
     }
     return {
         buildSettingsPage,

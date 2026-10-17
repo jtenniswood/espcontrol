@@ -16,7 +16,7 @@ Use this when a panel is in a shared area and you want to require a PIN before i
 2. In **Pin Protection**, enter a numeric PIN (1–16 digits) and choose **Save**. If a PIN is already set, the field shows masked dots; you can keep it or enter a replacement.
 3. Save the card and apply the configuration. A saved PIN is required before the card can be saved.
 
-The card uses the same PIN and keypad layout preference as **Settings > Sleep & Schedule > Pin Protection**. Changes made in either place apply to both. The card always requires a PIN and shows **PIN**, **Save**, then **Randomize keypad layout** (off by default). Automatic wake protection and clearing the shared PIN are managed in the screensaver settings; clearing the PIN there releases the lock. The card works with automatic wake protection off.
+The card uses the same PIN and keypad layout preference as **Screen > Sleep & Schedule > Pin Protection**. Changes made in either place apply to both. The card always requires a PIN and shows **PIN**, **Save**, then **Randomize keypad layout** (off by default). Automatic wake protection and clearing the shared PIN are managed in the screensaver settings; clearing the PIN there releases the lock. The card works with automatic wake protection off.
 
 Screen Lock does not need an entity. Its label and icon change automatically to show whether the touchscreen is locked or unlocked. The PIN is stored on the panel, never in the card configuration or backups.
 

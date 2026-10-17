@@ -151,6 +151,7 @@ bool EspControlApp::create_native_configuration_runtime() {
                configuration::PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS>
         legacy_subpages{};
     for (size_t subpage = 0; subpage < sources.subpages.size(); ++subpage) {
+      if (sources.subpages[subpage] == nullptr) continue;
       legacy_sources.subpages[subpage].bind(sources.subpages[subpage]);
       legacy_subpages[subpage] = &legacy_sources.subpages[subpage];
     }

@@ -35,6 +35,10 @@ function deepEqual(actual: unknown, expected: unknown, message: string): void {
 }
 
 export function runEncodingTests(): void {
+  equal(splitSubpageConfigChunks("😀".repeat(127), 2, 255), null,
+    "chunk boundary waste must not silently truncate the final emoji");
+  const unicodeChunks = splitSubpageConfigChunks("é".repeat(254), 2, 255);
+  equal(unicodeChunks?.join(""), "é".repeat(254), "UTF-8 chunks preserve the complete configuration");
   const fieldCases = [
     "plain text",
     "50%, warm;cool|night:mode",

@@ -368,6 +368,7 @@ static const IconEntry ICON_ENTRIES[] = {
     {"Water Alert",                        "\U000F1502"},
     {"Weather Cloudy",                     "\U000F0590"},
     {"Weather Cloudy Alert",               "\U000F0F2F"},
+    {"Weather Cloudy Clock",               "\U000F18F6"},
     {"Weather Dust",                       "\U000F1B5A"},
     {"Weather Fog",                        "\U000F0591"},
     {"Weather Hail",                       "\U000F0592"},

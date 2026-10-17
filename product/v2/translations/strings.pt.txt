@@ -81,6 +81,7 @@ lightning=Relâmpagos
 lightning_and_rain=Relâmpagos e chuva
 light=Luz
 loading=A carregar
+loading_forecast=A carregar previsão
 locate=Localizar
 lock=Bloquear
 lawn_mower=Corta-relva
@@ -265,3 +266,18 @@ then_visit_192_168_4_1_in_your_browser=Depois abra 192.168.4.1 no navegador
 
 screensaver=Proteção de ecrã
 incorrect_pin=PIN incorreto
+
+forecast_unavailable=Previsão indisponível
+rain=Chuva
+rain_chance=Probabilidade de chuva
+rainfall=Precipitação
+wind=Vento
+humidity=Humidade
+last_forecast=Última previsão
+weekday_sun=dom.
+weekday_mon=seg.
+weekday_tues=ter.
+weekday_weds=qua.
+weekday_thurs=qui.
+weekday_fri=sex.
+weekday_sat=sáb.

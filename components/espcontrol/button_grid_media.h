@@ -3841,6 +3841,8 @@ inline lv_obj_t *media_control_create_speaker_volume_button(
     lv_coord_t size, const char *icon, bool increase) {
   if (!ctx || !row || !parent) return nullptr;
   lv_obj_t *btn = lv_btn_create(parent);
+  // Volume taps belong to this control, not the surrounding membership row.
+  lv_obj_clear_flag(btn, LV_OBJ_FLAG_EVENT_BUBBLE);
   lv_obj_set_size(btn, size, size);
   lv_obj_set_style_radius(btn, size / 2, LV_PART_MAIN);
   theme_set_primary_foreground_fill(btn);
@@ -3851,6 +3853,7 @@ inline lv_obj_t *media_control_create_speaker_volume_button(
   lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
   control_modal_apply_pressed_fill(btn);
   lv_obj_t *label = lv_label_create(btn);
+  lv_obj_clear_flag(label, LV_OBJ_FLAG_CLICKABLE);
   lv_label_set_display_text(label, icon);
   if (ctx->icon_font) lv_obj_set_style_text_font(label, ctx->icon_font, LV_PART_MAIN);
   theme_set_content_foreground(label);
@@ -3858,12 +3861,18 @@ inline lv_obj_t *media_control_create_speaker_volume_button(
   lv_obj_center(label);
   lv_obj_set_user_data(btn, row);
   lv_obj_add_event_cb(btn, [](lv_event_t *event) {
+    // A child icon can be the original target of a bubbled event. Only the
+    // button handling the callback owns a MediaSpeakerRowState pointer.
+    lv_obj_t *button = static_cast<lv_obj_t *>(lv_event_get_current_target(event));
     MediaSpeakerRowState *row = static_cast<MediaSpeakerRowState *>(
-      lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_target(event))));
-    if (!row || !row->available || !row->volume_known) return;
+      lv_obj_get_user_data(button));
+    MediaControlModalUi &ui = media_control_modal_ui();
+    MediaControlCtx *ctx = ui.active;
+    if (!ctx || !row ||
+        std::find(ui.speaker_rows.begin(), ui.speaker_rows.end(), row) ==
+          ui.speaker_rows.end()) return;
+    if (!row->available || !row->volume_known) return;
     const bool increase = reinterpret_cast<uintptr_t>(lv_event_get_user_data(event)) != 0;
-    MediaControlCtx *ctx = media_control_modal_ui().active;
-    if (!ctx) return;
     row->volume_pct = media_group_step_volume(
       row->volume_pct, increase, media_control_volume_max_pct(ctx));
     bool stored = false;

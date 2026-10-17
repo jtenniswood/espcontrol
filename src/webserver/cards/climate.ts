@@ -258,12 +258,14 @@ export function registerClimateCardTypes(
                 return {
                     iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconSlug(iconName) + '"></span>',
                     labelHtml: climateLabelHtml(),
+                    labelEditable: labelMode === "label",
                 };
             }
             return {
                 buttonClass: "sp-climate-temp-card",
                 iconHtml: cardSensorPreviewHtml(b, helpers, numberVal, unit),
                 labelHtml: climateLabelHtml(),
+                labelEditable: labelMode === "label",
             };
         },
     });

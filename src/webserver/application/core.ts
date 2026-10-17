@@ -123,6 +123,7 @@ export function createCoreFeature(
             r.removeProperty("--btn-border");
         r.setProperty("--btn-icon", scaledCqw(btn.iconSize, scale));
         r.setProperty("--btn-label", scaledCqw(btn.labelSize, scale));
+        r.setProperty("--btn-small-text", scaledCqw(btn.smallTextSize || btn.labelSize, scale));
         r.setProperty("--media-title", scaledCqw(btn.mediaTitleSize || btn.labelSize * 1.75, scale));
         r.setProperty("--media-cover-title", scaledCqw(btn.coverArtTitleSize, scale));
         r.setProperty("--media-cover-artist", scaledCqw(btn.coverArtArtistSize, scale));

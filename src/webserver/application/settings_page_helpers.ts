@@ -45,7 +45,7 @@ export interface SettingsPageHelpersControllers {
     readonly statusPreview: Pick<AppStatusPreviewFeature, "syncInput">;
     readonly clockBarPostApi: Pick<ClockBarPostApiFeature, "postClockBrightnessDay" | "postClockBrightnessNight" | "postClockScreensaver" | "postClockDate" | "postAlarmDelayAudio" | "postAlarmDelayTts" | "postAlarmDelayEntryAnnouncement" | "postAlarmDelayExitAnnouncement" | "postAlarmDelayBeepVolume" | "postAlarmDelayFinalCountdown">;
     readonly fields: Pick<ControlsFieldsFeature, "condField" | "createRangeSlider" | "fieldLabel" | "makeCollapsibleCard" | "toggleRow">;
-    readonly artworkPostApi: Pick<ArtworkPostApiFeature, "postScreensaverCameraEntity" | "postScreensaverCameraImageMode">;
+    readonly artworkPostApi: Pick<ArtworkPostApiFeature, "postScreensaverCameraEntity" | "postScreensaverCameraImageMode" | "postScreensaverCameraDimming">;
 }
 
 export interface SettingsPageHelpersFeature {
@@ -367,6 +367,13 @@ export function createSettingsPageHelpersFeature(
         }
         if (els.setScreensaverCameraPanel)
             els.setScreensaverCameraPanel.style.display = cameraDisplay;
+        for (const slider of [els.setScreensaverCameraDimming, els.setSensorScreensaverCameraDimming]) {
+            if (!slider) continue;
+            slider.value = String(state.screensaverCameraDimming);
+            const wrap = slider.closest(".sp-field");
+            wrap.style.display = cameraSupported && controlState.cameraVisible && state.screensaverCameraDimmingSupported ? "" : "none";
+            wrap.querySelector(".sp-range-val").textContent = state.screensaverCameraDimming + "%";
+        }
         var automaticBrightness: any = normalizeBrightnessMode(state.brightnessMode) !== "manual";
         state.clockScreensaverOn = mode === "clock";
         syncClockBarUi();
@@ -620,6 +627,18 @@ export function createSettingsPageHelpersFeature(
             syncClockScreensaverControls();
         });
         cameraImageModeField.appendChild(cameraImageModeSelect);
+        var cameraDimming = createRangeSlider("Background Dimming", state.screensaverCameraDimming, controllers.artworkPostApi.postScreensaverCameraDimming);
+        cameraDimming.range.id = selectId === "sp-set-sensor-clock-mode"
+            ? "sp-set-sensor-screensaver-camera-dimming" : "sp-set-screensaver-camera-dimming";
+        cameraDimming.range.min = "0";
+        cameraDimming.range.step = "1";
+        cameraDimming.range.value = String(state.screensaverCameraDimming);
+        cameraDimming.wrap.querySelector("label").htmlFor = cameraDimming.range.id;
+        cameraDimming.wrap.style.display = state.screensaverCameraDimmingSupported && _screensaverController.uiState(screensaverState()).cameraVisible ? "" : "none";
+        cameraDimming.range.addEventListener("input", function (this: any) {
+            state.screensaverCameraDimming = Math.max(0, Math.min(100, Math.round(Number(this.value))));
+            syncClockScreensaverControls();
+        });
         var dimBrightnessField: any = document.createElement("div");
         dimBrightnessField.style.display = _screensaverController.uiState(screensaverState()).dimVisible ? "" : "none";
         var manualDimBrightnessField: any = document.createElement("div");
@@ -693,6 +712,8 @@ export function createSettingsPageHelpersFeature(
             clockSelect: clockSelect,
             cameraField: cameraField,
             cameraInput: cameraInput,
+            cameraDimmingField: cameraDimming.wrap,
+            cameraDimming: cameraDimming.range,
             cameraImageModeField: cameraImageModeField,
             cameraImageModeSelect: cameraImageModeSelect,
             dimBrightnessField: dimBrightnessField,

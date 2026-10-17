@@ -206,6 +206,15 @@ export const ENTITY_CATALOG = {
         "screensaver_camera_image_mode"
       ]
     },
+    "screen_saver_camera_dimming": {
+      "domain": "number",
+      "name": "Screen Saver: Camera Dimming",
+      "objectIds": [
+        "screen_saver__camera_dimming",
+        "screen_saver_camera_dimming",
+        "screensaver_camera_dimming"
+      ]
+    },
     "presence_sensor_entity": {
       "domain": "text",
       "name": "Presence Sensor Entity",
@@ -801,6 +810,7 @@ export const ENTITY_CATALOG = {
       "screen_saver_metadata_entity",
       "screen_saver_metadata_overlay",
       "screen_saver_camera_image_mode",
+      "screen_saver_camera_dimming",
       "presence_sensor_entity",
       "screen_schedule_sensor_entity",
       "screen_saver_cover_art_playback_control",

@@ -45,6 +45,7 @@ test("slider preview text changes contrast exactly where the fill crosses each l
     { top: 70, height: 20 }, // Inside the fill.
   ].map(bounds => ({ style: {}, getBoundingClientRect() { return bounds; } }));
   const card = {
+    classList: { contains() { return false; } },
     querySelector() { return { getBoundingClientRect() { return { top: 50 }; } }; },
     querySelectorAll() { return labels; },
   };
@@ -119,7 +120,7 @@ test("striped custom cards render the readable stripe tones on both pages and th
   ui.initializeDeviceConfig();
   ui.initializeAppState();
   function element() {
-    const node = { children: [], className: "", style: { setProperty(name, value) { this[name] = value; } }, setAttribute() {}, removeAttribute() {}, appendChild(child) { this.children.push(child); } };
+    const node = { children: [], className: "", style: { setProperty(name, value) { this[name] = value; } }, querySelector() { return null; }, setAttribute() {}, removeAttribute() {}, appendChild(child) { this.children.push(child); } };
     node.classList = { contains(name) { return node.className.split(" ").includes(name); } };
     return node;
   }

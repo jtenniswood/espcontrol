@@ -24,6 +24,8 @@ export interface DeviceConfig {
   readonly cols: number;
   readonly rows: number;
   readonly screenSize: string;
+  readonly displayWidth?: number;
+  readonly displayHeight?: number;
   readonly dragMode: "swap" | "displace";
   readonly dragAnimation: boolean;
   readonly imageSlotCapacity: number;
@@ -155,6 +157,8 @@ export interface AppState {
   screensaverMetadataEntity: string;
   metadataOverlayOn: boolean;
   screensaverCameraImageMode: string;
+  screensaverCameraDimming: number;
+  screensaverCameraDimmingSupported: boolean;
   mediaPlayerSleepPreventionOn: boolean;
   mediaPlayerSleepPreventionEntity: string;
   coverArtScreensaverOn: boolean;

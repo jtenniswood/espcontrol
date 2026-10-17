@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mock Feature Screens"
+  short_description: "Create realistic EspControl feature screen mockups"
+  default_prompt: "Use $mock-feature-screens to create a realistic EspControl feature mockup using the saved device photo template."

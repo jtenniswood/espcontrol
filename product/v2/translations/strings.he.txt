@@ -81,6 +81,7 @@ lightning=ברקים
 lightning_and_rain=ברקים וגשם
 light=תאורה
 loading=טוען
+loading_forecast=Loading forecast
 locate=איתור
 lock=נעילה
 lawn_mower=מכסחת דשא
@@ -266,3 +267,18 @@ then_visit_192_168_4_1_in_your_browser=לאחר מכן פתחו את 192.168.4.1
 
 screensaver=שומר מסך
 incorrect_pin=קוד PIN שגוי
+
+forecast_unavailable=Forecast unavailable
+rain=גשם
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast
+weekday_sun=א׳
+weekday_mon=ב׳
+weekday_tues=ג׳
+weekday_weds=ד׳
+weekday_thurs=ה׳
+weekday_fri=ו׳
+weekday_sat=ש׳

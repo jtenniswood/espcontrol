@@ -346,6 +346,7 @@ export function registerSubpageCardTypes(
                 return {
                     iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
                     labelHtml: subpageBadgeLabelHtml(helpers, "State"),
+                    labelEditable: false,
                 };
             }
             return {

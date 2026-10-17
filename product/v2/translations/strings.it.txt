@@ -81,6 +81,7 @@ lightning=Fulmini
 lightning_and_rain=Fulmini e pioggia
 light=Luce
 loading=Caricamento
+loading_forecast=Caricamento previsioni
 locate=Localizza
 lock=Blocca
 lawn_mower=Tagliaerba
@@ -265,3 +266,18 @@ then_visit_192_168_4_1_in_your_browser=Poi apri 192.168.4.1 nel browser
 
 screensaver=Salvaschermo
 incorrect_pin=PIN errato
+
+forecast_unavailable=Previsioni non disponibili
+rain=Pioggia
+rain_chance=Probabilità di pioggia
+rainfall=Precipitazioni
+wind=Vento
+humidity=Umidità
+last_forecast=Ultime previsioni
+weekday_sun=dom.
+weekday_mon=lun.
+weekday_tues=mar.
+weekday_weds=mer.
+weekday_thurs=gio.
+weekday_fri=ven.
+weekday_sat=sab.

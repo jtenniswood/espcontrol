@@ -42,7 +42,7 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     alarmDelayBeepVolume: 0.45, alarmDelayFinalCountdown: 10,
     networkTransport: "wifi", wifiStrengthPercent: 100,
     temperatureDegreeSymbolOn: true, subpageChevronsOn: true, presenceEntity: "",
-    screensaverCameraEntity: "", screensaverCameraImageMode: "Fit", screensaverCameraSupported: false,
+    screensaverCameraEntity: "", screensaverCameraImageMode: "Fit", screensaverCameraDimming: 0, screensaverCameraDimmingSupported: false, screensaverCameraSupported: false,
     clockDateSupported: false, clockDateOn: false,
     clockOverlaySupported: false,
     screensaverMetadataEntity: "",

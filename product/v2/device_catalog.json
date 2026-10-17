@@ -83,7 +83,7 @@
             "fr": "1fr"
           },
           "btn": {
-            "radius": 1.953125,
+            "radius": 3.125,
             "padding": 1.37,
             "iconSize": 4.69,
             "labelSize": 1.8,
@@ -93,7 +93,7 @@
             "labelLinesDouble": 3
           },
           "emptyCell": {
-            "radius": 1.953125
+            "radius": 3.125
           },
           "sensorBadge": {
             "top": 1,
@@ -136,7 +136,7 @@
               "unit_font": "font_text_body",
               "sensor_value_font": "font_number_value",
               "padding": "16px",
-              "radius": "20px",
+              "radius": "32px",
               "main_page_card_gap": "\"10\"",
               "main_page_pad_top": "\"42\"",
               "main_page_compact_pad_top": "\"5\"",
@@ -148,7 +148,9 @@
               "screen_saver_clock_min_brightness": "\"1\"",
               "screen_saver_clock_default_brightness": "\"35\"",
               "screen_schedule_clock_min_brightness": "\"1\"",
-              "screen_schedule_clock_default_brightness": "\"10\""
+              "screen_schedule_clock_default_brightness": "\"10\"",
+              "card_curve_small_radius": "8px",
+              "card_curve_medium_radius": "20px"
             }
           }
         }
@@ -356,7 +358,8 @@
             "climateCardIcon": "font_icon_card",
             "subpageChevron": "font_icon_status",
             "climateOptionTitle": "font_text_body",
-            "climateOptionValue": "font_text_body"
+            "climateOptionValue": "font_text_body",
+            "smallText": "font_text_small"
           },
           "package": {
             "deviceFontPackageKey": "fonts_device"
@@ -379,7 +382,8 @@
             "climateCardIcon": "font_icon_card",
             "subpageChevron": "font_icon_status",
             "climateOptionTitle": "font_text_body",
-            "climateOptionValue": "font_text_body"
+            "climateOptionValue": "font_text_body",
+            "smallText": "font_text_small"
           },
           "package": {
             "deviceFontPackageKey": "fonts_lg"
@@ -401,7 +405,8 @@
             "climateCardIcon": "font_icon_card",
             "subpageChevron": "font_icon_status",
             "climateOptionTitle": "font_text_body",
-            "climateOptionValue": "font_text_body"
+            "climateOptionValue": "font_text_body",
+            "smallText": "font_text_small"
           },
           "package": {
             "deviceFontPackageKey": "fonts_device"
@@ -548,7 +553,10 @@
           "docsPath": "/screens/jc1060p470"
         },
         "web": {
-          "continuousCorners": true
+          "continuousCorners": true,
+          "btn": {
+            "smallTextSize": 1.757812
+          }
         },
         "firmware": {
           "package": {
@@ -596,7 +604,10 @@
           "docsPath": "/screens/jc1060p470-v2"
         },
         "web": {
-          "continuousCorners": true
+          "continuousCorners": true,
+          "btn": {
+            "smallTextSize": 1.757812
+          }
         },
         "firmware": {
           "package": {
@@ -687,17 +698,18 @@
             "fr": "1fr"
           },
           "btn": {
-            "radius": 4.166667,
-            "padding": 2.73,
+            "radius": 6.666667,
+            "padding": 4.375,
             "iconSize": 14,
             "labelSize": 5.5,
             "coverArtTitleSize": 7.375,
             "coverArtArtistSize": 5,
             "labelLines": 2,
-            "labelLinesDouble": 3
+            "labelLinesDouble": 3,
+            "smallTextSize": 5.208333
           },
           "emptyCell": {
-            "radius": 4.166667
+            "radius": 6.666667
           },
           "sensorBadge": {
             "top": 1.52,
@@ -774,7 +786,7 @@
               "unit_font": "font_text_body",
               "sensor_value_font": "font_number_value",
               "padding": "21px",
-              "radius": "20px",
+              "radius": "32px",
               "main_page_card_gap": "\"14\"",
               "main_page_pad_top": "\"50\"",
               "main_page_compact_pad_top": "\"5\"",
@@ -788,7 +800,9 @@
               "screen_saver_clock_default_brightness": "\"35\"",
               "screen_schedule_clock_min_brightness": "\"1\"",
               "screen_schedule_clock_default_brightness": "\"10\"",
-              "button_radius": "10px"
+              "button_radius": "10px",
+              "card_curve_small_radius": "8px",
+              "card_curve_medium_radius": "20px"
             }
           }
         }
@@ -859,17 +873,18 @@
             "fr": "1fr"
           },
           "btn": {
-            "radius": 4.166667,
-            "padding": 2.73,
+            "radius": 6.666667,
+            "padding": 4.375,
             "iconSize": 14,
             "labelSize": 5.5,
             "coverArtTitleSize": 7.375,
             "coverArtArtistSize": 5,
             "labelLines": 2,
-            "labelLinesDouble": 3
+            "labelLinesDouble": 3,
+            "smallTextSize": 5.208333
           },
           "emptyCell": {
-            "radius": 4.166667
+            "radius": 6.666667
           },
           "sensorBadge": {
             "top": 1.52,
@@ -946,7 +961,7 @@
               "unit_font": "font_text_body",
               "sensor_value_font": "font_number_value",
               "padding": "21px",
-              "radius": "20px",
+              "radius": "32px",
               "main_page_card_gap": "\"14\"",
               "main_page_pad_top": "\"50\"",
               "main_page_compact_pad_top": "\"5\"",
@@ -960,7 +975,9 @@
               "screen_saver_clock_default_brightness": "\"35\"",
               "screen_schedule_clock_min_brightness": "\"1\"",
               "screen_schedule_clock_default_brightness": "\"10\"",
-              "button_radius": "10px"
+              "button_radius": "10px",
+              "card_curve_small_radius": "8px",
+              "card_curve_medium_radius": "20px"
             }
           }
         }
@@ -991,7 +1008,10 @@
           }
         },
         "web": {
-          "continuousCorners": true
+          "continuousCorners": true,
+          "btn": {
+            "smallTextSize": 1.5625
+          }
         }
       },
       "overrides": {
@@ -1024,7 +1044,10 @@
           "docsPath": "/screens/jc8012p4a1-v2"
         },
         "web": {
-          "continuousCorners": true
+          "continuousCorners": true,
+          "btn": {
+            "smallTextSize": 1.5625
+          }
         },
         "firmware": {
           "package": {
@@ -1070,7 +1093,10 @@
           "portrait": {
             "slots": 18
           },
-          "continuousCorners": true
+          "continuousCorners": true,
+          "btn": {
+            "smallTextSize": 1.5625
+          }
         },
         "firmware": {
           "package": {
@@ -1182,7 +1208,8 @@
             "coverArtTitleSize": 14.583333,
             "coverArtArtistSize": 8.333333,
             "labelLines": 2,
-            "labelLinesDouble": 3
+            "labelLinesDouble": 3,
+            "smallTextSize": 3.75
           },
           "emptyCell": {
             "radius": 4.861111
@@ -1371,7 +1398,8 @@
             "coverArtTitleSize": 14.583333,
             "coverArtArtistSize": 8.333333,
             "labelLines": 2,
-            "labelLinesDouble": 3
+            "labelLinesDouble": 3,
+            "smallTextSize": 3.75
           },
           "emptyCell": {
             "radius": 5.416667
@@ -1465,8 +1493,8 @@
               "screen_saver_clock_default_brightness": "\"35\"",
               "screen_schedule_clock_min_brightness": "\"1\"",
               "screen_schedule_clock_default_brightness": "\"10\"",
-              "card_curve_small_radius": "14px",
-              "card_curve_medium_radius": "20px",
+              "card_curve_small_radius": "16px",
+              "card_curve_medium_radius": "21px",
               "button_radius": "8px"
             },
             "apiNavigateAction": true

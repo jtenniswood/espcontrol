@@ -161,6 +161,21 @@ lvgl:
                 hidden: true
 
 script:
+  - id: camera_screensaver_apply_dimming
+    mode: restart
+    then:
+      - lambda: |-
+          if (!id(camera_screensaver_image)) return;
+          const float value = id(screensaver_camera_dimming).state;
+          const int dimming = std::isfinite(value) ? std::max(0, std::min(100, static_cast<int>(value))) : 0;
+          const lv_opa_t opacity = static_cast<lv_opa_t>((255 * (100 - dimming) + 50) / 100);
+          // Fade only the image against its black parent, keeping overlays bright.
+          #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+          lv_obj_set_style_image_opa(id(camera_screensaver_image), opacity, LV_PART_MAIN);
+          #else
+          lv_obj_set_style_img_opa(id(camera_screensaver_image), opacity, LV_PART_MAIN);
+          #endif
+
   - id: camera_screensaver_text_refresh
     mode: restart
     then:
@@ -383,6 +398,7 @@ script:
       - globals.set:
           id: camera_screensaver_transition_generation
           value: !lambda 'return static_cast<uint32_t>(generation);'
+      - script.execute: camera_screensaver_apply_dimming
       - lvgl.widget.show: camera_screensaver
       - lambda: 'lv_obj_move_foreground(id(camera_screensaver));'
       - script.execute: backlight_apply_brightness

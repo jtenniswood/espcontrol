@@ -405,7 +405,10 @@ inline void apply_card_descendant_text_color(lv_obj_t *obj, lv_color_t color) {
   for (int32_t i = 0; i < count; i++) {
     lv_obj_t *child = lv_obj_get_child(obj, i);
     if (!child) continue;
-    lv_obj_set_style_text_color(child, color, LV_PART_MAIN);
+    // A component-owned foreground (such as forecast temperatures) keeps its
+    // colour while ordinary labels follow the card's pressed/checked contrast.
+    if (!lv_obj_has_flag(child, LV_OBJ_FLAG_USER_2))
+      lv_obj_set_style_text_color(child, color, LV_PART_MAIN);
     apply_card_descendant_text_color(child, color);
   }
 }

@@ -1,8 +1,10 @@
 import { state } from "../state/app_instance";
+import { cardContractCard } from "../generated/card_contract";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
 import { PREVIEW_THEME_COLORS, defaultCardBackgroundColor, previewEffectiveTheme } from "../state/preview_theme";
 import { configOptionValue, cardActiveColor } from "../model/config_primitives";
 import { escHtml } from "./ui_primitives";
+import { createWeatherDailyPreviewLayout } from "./weather_daily_preview";
 import {
     buttonConfigDisabledForDevice as isButtonConfigDisabledForDevice,
     cardPreviewTextColor,
@@ -59,6 +61,8 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
     const { isConfigLocked } = dependencies.shell;
     const { ctx, resolveIcon, sizeClass } = dependencies.grid;
     const { renderSelectionBar, updatePreviewHint } = dependencies.selection;
+    const weatherLayout = createWeatherDailyPreviewLayout(document, dependencies.layout.config,
+        () => state.screenRotation === "90" || state.screenRotation === "270");
     // ── Preview rendering (unified) ────────────────────────────────────────
     function previewHtmlValue(this: any, typePreview?: any, key?: any, fallback?: any) {
         return previewValue(typePreview, key, fallback);
@@ -97,10 +101,37 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
     function buttonTypeVisibleInPicker(this: any, key?: any, isSub?: any) {
         return buttonTypePickerKeys(!!isSub, null).indexOf(key) >= 0;
     }
+    function appendResizeHandle(card: HTMLElement) {
+        if (isConfigLocked()) return;
+        const handle = document.createElement("button");
+        handle.type = "button";
+        handle.className = "sp-resize-handle";
+        handle.setAttribute("aria-label", "Resize card");
+        handle.title = "Drag to resize";
+        handle.innerHTML = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M 27 8 Q 24 24 8 27"/></svg>';
+        card.appendChild(handle);
+    }
+    function makeTitleEditable(card: HTMLElement, image = false) {
+        if (isConfigLocked()) return;
+        const title = card.querySelector<HTMLElement>(image ? ".sp-image-label-stack" : ".sp-btn-label:not(.sp-media-now-artist)");
+        if (!title) return;
+        title.classList.add("sp-editable-title");
+        title.tabIndex = 0;
+        title.setAttribute("role", "button");
+        title.setAttribute("aria-label", "Rename card");
+        title.title = "Click to rename; Enter to save";
+    }
     function renderPreview(this: any) {
         const previewColors = PREVIEW_THEME_COLORS[previewEffectiveTheme(state)];
         dependencies.updateClockBarItemUi();
         var main: any = els.previewMain;
+        weatherLayout.disconnect();
+        // Keep the active editor and its selection through device state refreshes.
+        const editor = main.querySelector(".sp-card-name-input") as HTMLInputElement | null;
+        const focused = editor && document.activeElement === editor;
+        const selectionStart = editor?.selectionStart ?? null;
+        const selectionEnd = editor?.selectionEnd ?? null;
+        const editorSlot = editor?.closest("[data-slot]")?.getAttribute("data-slot");
         main.innerHTML = "";
         main.className = "sp-main" + (state.subpageChevronsOn ? "" : " sp-hide-subpage-chevrons");
         if (gridPreviewBlockedByRotationStartup()) {
@@ -132,6 +163,9 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 backBtn.style.cursor = "pointer";
                 backBtn.setAttribute("data-pos", pos);
                 backBtn.draggable = !isConfigLocked();
+                backBtn.setAttribute("data-slot", "-2");
+                makeTitleEditable(backBtn);
+                appendResizeHandle(backBtn);
                 main.appendChild(backBtn);
             }
             else if (slot > 0) {
@@ -216,10 +250,17 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     sensorBadge +
                         iconHtml +
                         labelHtml;
+                // Offer renaming only when the preview displays a name that can be saved.
+                if (cardContractCard(b.type)?.normalization?.fields.label.policy !== "clear" &&
+                    previewHtmlValue(typePreview, "labelEditable", true)) {
+                    makeTitleEditable(btn, b.type === "image");
+                }
+                appendResizeHandle(btn);
                 main.appendChild(btn);
                 if (["light_brightness", "fan_speed", "cover", "slider", "light_temperature"].indexOf(b.type) !== -1) {
                     applySliderPreviewTextContrast(btn, cardOffColor ? cardPreviewTextColor(cardOffColor) : "#" + previewColors.textPrimary, sliderFillColor);
                 }
+                if (btn.classList.contains("sp-weather-daily-card")) weatherLayout.observe(btn);
             }
             else {
                 var empty: any = document.createElement("div");
@@ -227,6 +268,15 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 empty.setAttribute("data-pos", pos);
                 empty.innerHTML = '<span class="sp-add-pill"><span class="sp-add-icon mdi mdi-plus"></span></span>';
                 main.appendChild(empty);
+            }
+        }
+        if (focused && editor && editor.dataset.homeSlot === String(state.editingSubpage || "")) {
+            const title = (main as HTMLElement).querySelector('[data-slot="' + editorSlot + '"] .sp-editable-title');
+            if (title) {
+                title.closest<HTMLElement>("[data-slot]")!.draggable = false;
+                title.replaceChildren(editor);
+                editor.focus();
+                editor.setSelectionRange(selectionStart, selectionEnd);
             }
         }
         renderSelectionBar(c);

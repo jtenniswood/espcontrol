@@ -81,6 +81,7 @@ lightning=Raios
 lightning_and_rain=Raios e chuva
 light=Luz
 loading=Carregando
+loading_forecast=Carregando previsão
 locate=Localizar
 lock=Bloquear
 lawn_mower=Cortador de grama
@@ -265,3 +266,18 @@ then_visit_192_168_4_1_in_your_browser=Depois abra 192.168.4.1 no navegador
 
 screensaver=Protetor de tela
 incorrect_pin=PIN incorreto
+
+forecast_unavailable=Forecast unavailable
+rain=Chuva
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast
+weekday_sun=dom.
+weekday_mon=seg.
+weekday_tues=ter.
+weekday_weds=qua.
+weekday_thurs=qui.
+weekday_fri=sex.
+weekday_sat=sáb.

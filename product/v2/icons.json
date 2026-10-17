@@ -1785,6 +1785,11 @@
       "mdi": "weather-cloudy-alert"
     },
     {
+      "name": "Weather Cloudy Clock",
+      "codepoint": "F18F6",
+      "mdi": "weather-cloudy-clock"
+    },
+    {
       "name": "Weather Dust",
       "codepoint": "F1B5A",
       "mdi": "weather-dust"

@@ -401,7 +401,8 @@ export function createButtonSettingsFeature(
         }
         function validateSaveLimits(this: any) {
             var validation: any = cardEditorValidationController.validateSave({
-                fields: [], isSubpage: c.isSub, serializedConfigLength: serializeButtonConfig(b).length,
+                fields: [], isSubpage: c.isSub, serializedConfigLength: new TextEncoder().encode(serializeButtonConfig(b)).length,
+                configByteLimit: configPersistence.buttonConfigByteLimit(),
                 imageCardCount: 0, imageCardCapacity: imageSlotCapacity(),
             });
             if (validation.reason === "config-size") {
@@ -424,7 +425,7 @@ export function createButtonSettingsFeature(
         }
         function saveResultSucceeded(this: any, result?: any) {
             return result !== "authentication-required" && result !== "conflict" &&
-                result !== "failed" && result !== "unsupported";
+                result !== "too-large" && result !== "failed" && result !== "unsupported";
         }
         function applySettingsDraft(this: any) {
             if (!state.settingsDraft || state.settingsDraft.key !== draftKey)
@@ -884,7 +885,7 @@ export function createButtonSettingsFeature(
             activeColorField.appendChild(fieldLabel("Active state colour", idPrefix + "active-colour"));
             var customActiveColor = configOptionValue(b.options, "card_on_color");
             var activeColorTabs = segmentControl([
-                ["matching", "Matching"], ["theme", "Theme"], ["custom", "Custom"],
+                ["matching", "Matching"], ["theme", "Global"], ["custom", "Custom"],
             ], cardActiveColorMode(b.options), function (mode: "matching" | "theme" | "custom") {
                 b.options = setCardActiveColor(b.options, mode, customActiveColor);
                 syncActiveColorControls();

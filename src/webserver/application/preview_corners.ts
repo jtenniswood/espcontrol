@@ -34,7 +34,8 @@ export function syncPreviewCorners(screen: HTMLElement, radius: number, emptyRad
     let corners = previews.get(screen);
     if (!corners) {
         let cards = new Set<HTMLElement>();
-        const cache = new Map<string, string>();
+        const cache = new Map<string, { clip: string; edge: string }>();
+        const edges = new WeakMap<SVGSVGElement, string>();
         const refresh = () => {
             const next = new Set(screen.querySelectorAll<HTMLElement>(".sp-btn,.sp-empty-cell"));
             for (const card of cards) if (!next.has(card)) resize?.unobserve(card);
@@ -43,20 +44,40 @@ export function syncPreviewCorners(screen: HTMLElement, radius: number, emptyRad
             const screenWidth = screen.clientWidth;
             for (const card of cards) {
                 const style = getComputedStyle(card);
-                const nominal = (card.classList.contains("sp-empty-cell") ? settings.emptyRadius : settings.radius) * screenWidth / 100;
+                const empty = card.classList.contains("sp-empty-cell");
+                const nominal = (empty ? settings.emptyRadius : settings.radius) * screenWidth / 100;
                 const borderBox = (size: string, extras: string[]) => parseFloat(size) +
                     (style.boxSizing === "border-box" ? 0 : extras.reduce((sum, value) => sum + parseFloat(value || "0"), 0));
                 const width = borderBox(style.width, [style.paddingLeft, style.paddingRight, style.borderLeftWidth, style.borderRightWidth]);
                 const height = borderBox(style.height, [style.paddingTop, style.paddingBottom, style.borderTopWidth, style.borderBottomWidth]);
-                const key = `${width}:${height}:${nominal}`;
-                let path = cache.get(key);
-                if (path === undefined) {
-                    path = continuousCornerPath(width, height, nominal);
+                if (!(width > 0 && height > 0)) continue;
+                const key = `${width}:${height}:${nominal}:${settings.enabled}:${empty}`;
+                let shape = cache.get(key);
+                if (shape === undefined) {
+                    const path = settings.enabled ? continuousCornerPath(width, height, nominal) : "";
+                    const edge = path ? `<path d="${path}"/>` : `<rect width="${width}" height="${height}" rx="${nominal}"/>`;
+                    shape = { clip: path ? `path("${path}")` : "", edge };
                     if (cache.size >= 64) cache.clear();
-                    cache.set(key, path);
+                    cache.set(key, shape);
                 }
-                const clip = settings.enabled && path ? `path("${path}")` : "";
-                if (card.style.clipPath !== clip) card.style.clipPath = clip;
+                if (card.style.clipPath !== shape.clip) card.style.clipPath = shape.clip;
+                let outline = card.querySelector<SVGSVGElement>(":scope > .sp-card-outline");
+                if (!outline) {
+                    outline = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                    outline.classList.add("sp-card-outline");
+                    outline.setAttribute("aria-hidden", "true");
+                    outline.setAttribute("focusable", "false");
+                    outline.setAttribute("preserveAspectRatio", "none");
+                    card.appendChild(outline);
+                }
+                const viewBox = `0 0 ${width} ${height}`;
+                if (outline.getAttribute("viewBox") !== viewBox) outline.setAttribute("viewBox", viewBox);
+                // Half the centered 4px stroke is clipped by the same card edge,
+                // leaving an even 2px inner outline above all card content.
+                if (edges.get(outline) !== shape.edge) {
+                    outline.innerHTML = shape.edge;
+                    edges.set(outline, shape.edge);
+                }
             }
         };
         const settings: PreviewCorners = { radius, emptyRadius, enabled, refresh };
