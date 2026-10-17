@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the production P4 worker against IDF-style ignored callback errors."""
+"""Verify explicit P4 reads preserve bytes without relying on data callbacks."""
 from pathlib import Path
 import os
 import shlex
@@ -72,10 +72,16 @@ struct esp_http_client_config_t {
   int (*event_handler)(esp_http_client_event_t *) = nullptr;
   void *user_data = nullptr; bool keep_alive_enable = false; int buffer_size = 0;
 };
+std::string image_body() {
+  std::string body(5000, '\0');
+  for (size_t i = 0; i < body.size(); ++i) body[i] = static_cast<char>(i % 256);
+  body.replace(0, 3, "\xff\xd8\xff", 3);
+  return body;
+}
 struct Response {
-  int status = 200; std::string mime = "image/jpeg", body = std::string(5000, 'x');
+  int status = 200; std::string mime = "image/jpeg", body = image_body();
   int64_t reported_size = 5000;
-  bool truncated = false, data_with_headers = false;
+  bool truncated = false, data_with_headers = false, emit_data_events = false;
 };
 struct Client {
   void *context = nullptr;
@@ -120,9 +126,10 @@ int64_t esp_http_client_fetch_headers(Client *client) {
   emit(client, HTTP_EVENT_ON_HEADER);
   const auto &response = responses.at(client->response);
   if (response.data_with_headers && !response.body.empty()) {
-    // Like IDF, discard the callback's error, including when headers and body
-    // arrive in one packet. The worker must inspect the latched failure.
-    emit(client, HTTP_EVENT_ON_DATA, response.body.data(), response.body.size());
+    // Cached body bytes are still returned by read(). Optional notifications
+    // must never be the source of bytes staged by the streaming worker.
+    if (response.emit_data_events)
+      emit(client, HTTP_EVENT_ON_DATA, response.body.data(), response.body.size());
     client->offset = response.body.size();
     client->cached = response.body.size();
   }
@@ -132,18 +139,21 @@ bool esp_http_client_is_complete_data_received(Client *client) {
   const auto &response = responses.at(client->response);
   return !response.truncated && client->offset == response.body.size();
 }
-int esp_http_client_read(Client *client, char *, int length) {
+int esp_http_client_read(Client *client, char *output, int length) {
   ++network_operations; ++reads;
   if (on_read) { auto callback = std::move(on_read); on_read = {}; callback(); }
   if (client->cached) {
     const size_t size = std::min<size_t>(length, client->cached);
+    std::memcpy(output, responses.at(client->response).body.data() + client->offset - client->cached, size);
     client->cached -= size;
     return size;  // IDF does not emit ON_DATA twice for cached body bytes.
   }
   const auto &response = responses.at(client->response);
   const size_t size = std::min<size_t>(length, response.body.size() - client->offset);
   if (size == 0) return 0;
-  emit(client, HTTP_EVENT_ON_DATA, response.body.data() + client->offset, size);
+  std::memcpy(output, response.body.data() + client->offset, size);
+  if (response.emit_data_events)
+    emit(client, HTTP_EVENT_ON_DATA, response.body.data() + client->offset, size);
   client->offset += size;
   return size;
 }
@@ -192,14 +202,24 @@ int main() {
     assert(pipeline.client_ && pipeline.client_->context == nullptr);
     delete result;
   }
-  // Chunked transfers and body bytes delivered with headers both stay intact.
-  reset(); responses[0].reported_size = -1;
-  auto *result = run();
-  assert(result->error == ESP_OK && result->size == 5000); delete result;
-  reset(); responses[0].data_with_headers = true;
-  result = run();
-  assert(result->error == ESP_OK && result->size == 5000 && reads > 0); delete result;
-  // Stop after the first rejected chunk even though IDF ignores ESP_FAIL.
+  // Known-length and chunked bodies must match byte for byte whether or not
+  // IDF emits data notifications, including bytes cached with the headers.
+  P4PipelineResult *result = nullptr;
+  for (bool events : {false, true}) {
+    for (bool cached : {false, true}) {
+      for (bool chunked : {false, true}) {
+        reset();
+        responses[0].emit_data_events = events;
+        responses[0].data_with_headers = cached;
+        if (chunked) responses[0].reported_size = -1;
+        result = run();
+        assert(result->error == ESP_OK && result->size == responses[0].body.size() && reads > 0);
+        assert(std::string(reinterpret_cast<char *>(result->data), result->size) == responses[0].body);
+        delete result;
+      }
+    }
+  }
+  // Stop after the first rejected read without relying on callback errors.
   reset(); responses[0].reported_size = 3 * 1024 * 1024;
   result = run();
   assert(result->error == ESP_ERR_INVALID_SIZE && reads == 1 && allocations == 0);
@@ -210,7 +230,7 @@ int main() {
   assert(!pipeline.client_); delete result;
   reset(); fail_alloc = true; responses[0].data_with_headers = true;
   result = run();
-  assert(result->error == ESP_ERR_NO_MEM && reads == 0 && allocations == 1); delete result;
+  assert(result->error == ESP_ERR_NO_MEM && reads == 1 && allocations == 1); delete result;
   // Cancellation during a read and during cleanup never touches the client.
   reset();
   auto cancel_without_network = [&] {
@@ -248,7 +268,7 @@ int main() {
   result = run();
   assert(result->status == 500 && result->size == 0 && reads == 0 && pipeline.client_->cached == 0); delete result;
   pipeline.reset_client_();
-  std::puts("P4 worker: success/reuse, chunked, rejection, cancellation/cleanup, redirects, truncation and HTTP errors passed");
+  std::puts("P4 worker: explicit read bytes, optional callbacks, cached/chunked bodies, rejection, cancellation and redirects passed");
 }
 '''
 with tempfile.TemporaryDirectory(prefix="p4-pipeline-runtime-") as directory:

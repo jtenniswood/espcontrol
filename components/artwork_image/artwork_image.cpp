@@ -384,9 +384,6 @@ class P4ImagePipeline {
     auto *transfer = static_cast<P4PipelineTransfer *>(evt->user_data);
     if (!transfer || !transfer->job) return ESP_OK;
     if (transfer->job->cancelled.load()) return ESP_FAIL;
-    // IDF ignores the callback's return value. Latch failures until the worker
-    // stops the read; later events must not allocate or copy any more data.
-    if (transfer->allocation_failed || transfer->size_limit_exceeded) return ESP_FAIL;
     uint32_t now = millis();
     if (evt->event_id == HTTP_EVENT_ON_HEADER && transfer->response_ready_ms == 0) {
       transfer->response_ready_ms = now;
@@ -397,13 +394,20 @@ class P4ImagePipeline {
         (evt->header_value[9] == '\0' || evt->header_value[9] == ';')) {
       transfer->gif_response = true;
     }
-    if (evt->event_id != HTTP_EVENT_ON_DATA || evt->data_len <= 0) return ESP_OK;
-    const int status = esp_http_client_get_status_code(evt->client);
-    if (status >= 300) return ESP_OK;
-    if (transfer->first_byte_ms == 0) transfer->first_byte_ms = now;
-    size_t incoming = static_cast<size_t>(evt->data_len);
+    // Stage body bytes only from explicit read results, even if this IDF
+    // version also emits ON_DATA events while reading or fetching headers.
+    return ESP_OK;
+  }
+
+  static esp_err_t append_response_data_(P4PipelineTransfer *transfer, esp_http_client_handle_t client,
+                                         const void *data, size_t incoming) {
+    if (!transfer || !transfer->job || transfer->job->cancelled.load()) return ESP_FAIL;
+    // Latch rejection: later chunks must not allocate or copy any more data.
+    if (transfer->allocation_failed || transfer->size_limit_exceeded) return ESP_FAIL;
+    if (incoming == 0) return ESP_OK;
+    if (transfer->first_byte_ms == 0) transfer->first_byte_ms = millis();
     const size_t signature_bytes = std::min(incoming, sizeof(transfer->signature) - transfer->signature_size);
-    memcpy(transfer->signature + transfer->signature_size, evt->data, signature_bytes);
+    memcpy(transfer->signature + transfer->signature_size, data, signature_bytes);
     transfer->signature_size += signature_bytes;
     transfer->gif_response = transfer->gif_response ||
         image_pipeline_gif_signature(transfer->signature, transfer->signature_size);
@@ -416,8 +420,8 @@ class P4ImagePipeline {
     }
     size_t required = transfer->size + incoming;
     size_t reported_content_length = 0;
-    if (evt->client != nullptr) {
-      const int64_t length = esp_http_client_get_content_length(evt->client);
+    if (client != nullptr) {
+      const int64_t length = esp_http_client_get_content_length(client);
       if (length > 0) reported_content_length = static_cast<uint64_t>(length) > maximum
           ? maximum + 1 : static_cast<size_t>(length);
     }
@@ -428,7 +432,7 @@ class P4ImagePipeline {
     if (reported_content_length > maximum) {
       transfer->size_limit_exceeded = true;
       ESP_LOGE(TAG, "Image response exceeds download limit: content_length=%lld limit=%zu format=%s",
-               static_cast<long long>(esp_http_client_get_content_length(evt->client)), maximum,
+               static_cast<long long>(esp_http_client_get_content_length(client)), maximum,
                transfer->gif_response ? "GIF" : "image");
       return ESP_FAIL;
     }
@@ -457,7 +461,7 @@ class P4ImagePipeline {
       transfer->data = resized;
       transfer->capacity = next_capacity;
     }
-    memcpy(transfer->data + transfer->size, evt->data, incoming);
+    memcpy(transfer->data + transfer->size, data, incoming);
     transfer->size += incoming;
     return ESP_OK;
   }
@@ -494,12 +498,13 @@ class P4ImagePipeline {
         if (transfer.size_limit_exceeded) return ESP_ERR_INVALID_SIZE;
         if (transfer.allocation_failed) return ESP_ERR_NO_MEM;
         const int received = esp_http_client_read(this->client_, scratch, sizeof(scratch));
-        // HTTP_EVENT_ON_DATA has already staged the new bytes in PSRAM.
         if (received < 0) return received == -ESP_ERR_HTTP_EAGAIN ? ESP_ERR_HTTP_READ_TIMEOUT : ESP_FAIL;
         // Drain bytes cached during fetch_headers even when IDF already marks
         // the network response complete, before reusing this client.
         if (received == 0)
           return esp_http_client_is_complete_data_received(this->client_) ? ESP_OK : ESP_ERR_HTTP_CONNECTION_CLOSED;
+        error = append_response_data_(&transfer, this->client_, scratch, static_cast<size_t>(received));
+        if (error != ESP_OK) return error;
       }
     }
     return ESP_ERR_HTTP_MAX_REDIRECT;
