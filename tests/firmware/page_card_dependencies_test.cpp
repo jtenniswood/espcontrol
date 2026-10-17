@@ -62,7 +62,8 @@ struct Sink final : PageDependencySink {
 };
 std::set<std::string> declarations(const std::string &config,bool low_heap=false) {
   Document doc(DEVICE_UI_PROFILES[8]);doc.button(1,config);auto store=doc.finish();Sink sink;
-  assert(PageCardDependencies({low_heap}).enumerate(store,sink));return sink.pairs();
+  assert(PageCardDependencies({low_heap}).enumerate(store,sink));
+  const auto pairs=sink.pairs();assert(sink.entries.size()==pairs.size());return pairs;
 }
 void sensor_fields_and_modes() {
   assert(declarations("sensor.unused;Name;Auto;Auto;;;sensor;1;").empty());
@@ -96,6 +97,10 @@ void actions_and_numeric_controls() {
   assert((declarations("light.kitchen;Light;Auto;Auto;;;light_control;;")==
       std::set<std::string>{"light.kitchen/","light.kitchen/brightness","light.kitchen/color_temp_kelvin",
           "light.kitchen/supported_color_modes","light.kitchen/friendly_name"}));
+  assert((declarations("fan.room;Speed;Auto;Auto;;;fan_speed;;fan_light_entity=light.room")==
+      std::set<std::string>{"fan.room/","fan.room/percentage"}));
+  assert((declarations("fan.room;;Auto;Auto;;;fan_speed;;")==
+      std::set<std::string>{"fan.room/","fan.room/percentage","fan.room/friendly_name"}));
 }
 void complex_and_external_sources() {
   auto climate=declarations("climate.room;Room;Auto;Auto;;;climate_control;;");
@@ -106,6 +111,18 @@ void complex_and_external_sources() {
   assert(media.count("media_player.room/group_members")==1);assert(media.count("media_player.room/shuffle")==1);
   auto full=declarations("media_player.room;Room;Auto;Auto;control_modal;;media;;",false);
   assert(full.count("media_player.room/media_position")==1);assert(full.count("media_player.room/friendly_name")==1);
+  for (bool low_heap : {false,true}) {
+    for (const char *mode : {"control_modal","speaker_group","now_playing"}) {
+      const auto pairs=declarations(std::string("media_player.room;Room;Auto;Auto;")+mode+";;media;;",low_heap);
+      assert(pairs.count("media_player.room/source")==1);
+    }
+    const auto cover=declarations("media_player.room;Room;Auto;Auto;cover_art;;media;;cover_art_secondary_entity=media_player.other",low_heap);
+    for (const char *entity : {"media_player.room","media_player.other"}) {
+      for (const char *attribute : {"media_duration","media_position","media_position_updated_at",
+          "media_title","media_artist","source","media_content_type","media_content_id","entity_picture"})
+        assert(cover.count(std::string(entity)+"/"+attribute)==1);
+    }
+  }
   assert(declarations(";Empty;Auto;Auto;control_modal;;media;;").empty());
   assert((declarations("camera.door;Door;Auto;Auto;;;image;;image_modal_refresh_mode=activity,image_modal_refresh_trigger=binary_sensor.motion")==
       std::set<std::string>{"camera.door/","camera.door/entity_picture","camera.door/access_token","binary_sensor.motion/"}));

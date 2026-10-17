@@ -47,20 +47,24 @@ class CardEmitter {
     return attributes(entity, {"media_content_type", "media_content_id"});
   }
   bool metadata(const std::string &entity) {
-    return attributes(entity, {"media_title", "media_artist"});
+    return attributes(entity, {"media_title", "media_artist", "source"});
   }
   bool artwork(const std::string &entity) {
     return attributes(entity, {"entity_picture", "entity_picture_local"});
   }
-  bool media_control(const ParsedCfg &config, const std::string &entity) {
+  bool media_control(const ParsedCfg &config, const std::string &entity, bool cover_art = false,
+                     bool shared_inputs = true) {
     if (entity.empty()) return true;
     if (!pair(entity) || !content(entity) || !metadata(entity) ||
         !attributes(entity, {"volume_level", "supported_features", "shuffle", "repeat", "group_members"})) return false;
-    const auto decoded = media::decode_config_v1(config);
-    if (!pair(decoded.power_entity)) return false;
-    const std::string discovery = media_group_discovery_entity(media_speaker_group_entity(config));
-    if (!pair(discovery, media_group_discovery_attribute(discovery))) return false;
-    return low_heap_media_ || (progress(entity) && pair(entity, "friendly_name"));
+    if (shared_inputs) {
+      const auto decoded = media::decode_config_v1(config);
+      if (!pair(decoded.power_entity)) return false;
+      const std::string discovery = media_group_discovery_entity(media_speaker_group_entity(config));
+      if (!pair(discovery, media_group_discovery_attribute(discovery))) return false;
+    }
+    return ((low_heap_media_ && !cover_art) || progress(entity)) &&
+        (low_heap_media_ || pair(entity, "friendly_name"));
   }
   bool slider(const ParsedCfg &config, bool tilt) {
     if (!pair(config.entity) || !friendly(config, config.entity)) return false;
@@ -115,6 +119,7 @@ class CardEmitter {
       case Driver::STATUS_ENTITY:
         return pair(config.sensor) && friendly(config,config.sensor);
       case Driver::FAN:
+        return context.runtime.type == Type::FAN_SPEED ? slider(config, false) : fan(config);
       case Driver::FAN_CONTROL:
         return fan(config);
       case Driver::ACCESS: {
@@ -190,11 +195,10 @@ class CardEmitter {
             (config.precision != "progress" || (pair(config.entity) && progress(config.entity))) &&
             ((config.precision != "play_pause" && !(in_subpage && aggregate_parent)) || pair(config.entity));
       case Driver::MEDIA_COVER_ART: {
-        if (!media_control(config,config.entity) || !content(config.entity) || !metadata(config.entity) ||
-            !pair(config.entity,"source") || !artwork(config.entity)) return false;
+        if (!media_control(config,config.entity,true) || !artwork(config.entity)) return false;
         const std::string secondary=media_cover_art_secondary_entity(config);
-        return secondary.empty() || (media_control(config,secondary) && content(secondary) && metadata(secondary) &&
-            pair(secondary,"source") && artwork(secondary));
+        return secondary.empty() || secondary == config.entity ||
+            (media_control(config,secondary,true,false) && artwork(secondary));
       }
       case Driver::MEDIA_CONTROL:
       case Driver::MEDIA_GROUP:

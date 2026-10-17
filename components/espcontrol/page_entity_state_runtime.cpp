@@ -21,19 +21,83 @@ bool valid_name(std::string_view text) { return text.find('\0') == std::string_v
 
 class PageEntityStateRuntime::Counter final : public PageDependencySink {
  public:
-  Counter(const PageStore &store, const PageEntityBudget &budget) : store(store), budget(budget) {}
+  Counter(const PageStore &store, const PageEntityBudget &budget, PageArenaAllocator &allocator)
+      : store(store), budget(budget), allocator(allocator) {}
+  ~Counter() override { clear(); }
   bool add(CardId card, std::string_view entity, std::string_view attribute) override {
     if (!valid || card >= store.card_count() || entity.empty() ||
-        !valid_name(entity) || !valid_name(attribute) || count >= budget.dependencies ||
-        !add_size(names, entity.size()) || !add_size(names, attribute.size()) ||
-        !add_size(names, 2) || names > UINT32_MAX) return valid = false;
-    ++count;
+        !valid_name(entity) || !valid_name(attribute)) return valid = false;
+    Pair *pair = pairs;
+    for (; pair != nullptr; pair = pair->next)
+      if (pair->entity() == entity && pair->attribute() == attribute) break;
+    for (const Link *link = links; link != nullptr; link = link->next)
+      if (link->card == card && link->pair == pair) return true;
+    if (count >= budget.dependencies) return valid = false;
+    if (pair == nullptr) {
+      size_t bytes = entity.size();
+      size_t total_names = names;
+      if (channels >= budget.channels || !add_size(bytes, attribute.size()) || !add_size(bytes, 2) ||
+          !add_size(total_names, bytes) || total_names > UINT32_MAX ||
+          !add_size(bytes, sizeof(Pair))) return valid = false;
+      size_t total_scratch = scratch_bytes;
+      if (!add_size(total_scratch, bytes)) return valid = false;
+      void *memory = allocator.allocate(bytes);
+      if (memory == nullptr) return valid = false;
+      pair = new (memory) Pair{nullptr, entity.size(), attribute.size(), bytes};
+      char *text = reinterpret_cast<char *>(pair + 1);
+      std::memcpy(text, entity.data(), entity.size()); text[entity.size()] = '\0';
+      if (!attribute.empty()) std::memcpy(text + entity.size() + 1, attribute.data(), attribute.size());
+      text[entity.size() + 1 + attribute.size()] = '\0';
+      pair->next = pairs; pairs = pair;
+      ++channels; names = total_names; scratch_bytes = total_scratch;
+    }
+    size_t total_scratch = scratch_bytes;
+    if (!add_size(total_scratch, sizeof(Link))) return valid = false;
+    void *memory = allocator.allocate(sizeof(Link));
+    if (memory == nullptr) return valid = false;
+    auto *link = new (memory) Link{nullptr, pair, card};
+    if (last != nullptr) last->next = link; else links = link;
+    last = link;
+    ++count; scratch_bytes = total_scratch;
     return true;
+  }
+  bool replay(PageDependencySink &sink) const {
+    for (const Link *link = links; link != nullptr; link = link->next)
+      if (!sink.add(link->card, link->pair->entity(), link->pair->attribute())) return false;
+    return true;
+  }
+  void clear() {
+    while (links != nullptr) {
+      auto *next = links->next;
+      allocator.release(links, sizeof(Link)); links = next;
+    }
+    last = nullptr;
+    while (pairs != nullptr) {
+      auto *next = pairs->next;
+      const auto bytes = pairs->allocation_bytes;
+      allocator.release(pairs, bytes); pairs = next;
+    }
+    scratch_bytes = 0;
   }
   const PageStore &store;
   const PageEntityBudget &budget;
-  size_t count{0}, names{0};
+  PageArenaAllocator &allocator;
+  size_t count{0}, channels{0}, names{0}, scratch_bytes{0};
   bool valid{true};
+ private:
+  // Fallible scratch storage grows only for unique channels and card/channel
+  // links. Copy names because sources may emit temporary parsed strings.
+  struct Pair {
+    Pair *next;
+    size_t entity_size, attribute_size, allocation_bytes;
+    std::string_view entity() const { return {reinterpret_cast<const char *>(this + 1), entity_size}; }
+    std::string_view attribute() const {
+      return {reinterpret_cast<const char *>(this + 1) + entity_size + 1, attribute_size};
+    }
+  };
+  struct Link { Link *next; Pair *pair; CardId card; };
+  Pair *pairs{nullptr};
+  Link *links{nullptr}, *last{nullptr};
 };
 
 class PageEntityStateRuntime::Builder final : public PageDependencySink {
@@ -87,11 +151,16 @@ PageEntityStateRuntime::~PageEntityStateRuntime() { discard_prepared(); retire_a
 
 bool PageEntityStateRuntime::prepare(const PageStore &store) {
   discard_prepared();
-  Counter counter(store, budget_);
-  auto fail = [this]() { ++memory_.preparation_failures; discard_prepared(); return false; };
+  Counter counter(store, budget_, allocator_);
+  auto fail = [this, &counter]() {
+    const auto current = memory();
+    memory_.peak_arena_bytes = std::max(memory_.peak_arena_bytes,
+        current.active_arena_bytes + current.staged_arena_bytes + counter.scratch_bytes);
+    ++memory_.preparation_failures; discard_prepared(); return false;
+  };
   if (next_revision_ == 0 || budget_.state_bytes > UINT32_MAX || budget_.dependencies > UINT32_MAX ||
       budget_.channels > UINT32_MAX || !source_.enumerate(store, counter) || !counter.valid) return fail();
-  const size_t channels = std::min(counter.count, budget_.channels);
+  const size_t channels = counter.channels;
   size_t bytes = 0;
   if (!add_size(bytes, channels, sizeof(Channel)) || !align_size(bytes, alignof(Edge))) return fail();
   const size_t edge_offset = bytes;
@@ -115,9 +184,10 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
   slot.values = raw + values_offset;
   const auto current = memory();
   memory_.peak_arena_bytes = std::max(memory_.peak_arena_bytes,
-      current.active_arena_bytes + current.staged_arena_bytes);
+      current.active_arena_bytes + current.staged_arena_bytes + counter.scratch_bytes);
   Builder builder(slot, store, counter.count, counter.names, channels);
-  if (!source_.enumerate(store, builder) || !builder.valid || builder.count != counter.count) return fail();
+  if (!counter.replay(builder) || !builder.valid || builder.count != counter.count) return fail();
+  counter.clear();
   synchronize_connection();
   for (size_t i = 0; i < slot.channel_count; ++i) {
     const auto &entry = slot.channels[i];
