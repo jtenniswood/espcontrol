@@ -23,11 +23,12 @@ ESPHome 2026.9.1 has no public unsubscribe operation. A small version-pinned
 bridge mutates its public subscription-record view from the main loop. It
 identifies EspControl entries by their exact owned name-buffer addresses,
 preserving foreign registrations even when their entity/attribute text matches.
-After a batch changes the native list, it marks authenticated clients for
-disconnection through the public API hook. The server closes them on its next
+After a batch changes the native list, it marks authenticated Home Assistant
+clients for disconnection through the public API hook. The server closes them on its next
 loop before advancing obsolete positional cursors. Their fresh connections
 enumerate the current list. Unchanged lists do not trigger a reconnect. Audit
-this bridge when changing the pinned ESPHome version.
+this bridge when changing the pinned ESPHome version. Diagnostic and unnamed
+clients stay connected, matching the application's HA-specific connection policy.
 
 The native protocol has no remote-unsubscribe message. Replaying the list on a
 live connection would install duplicate Home Assistant listeners. Reconnecting
