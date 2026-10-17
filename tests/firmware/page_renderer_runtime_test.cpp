@@ -19,6 +19,8 @@ void *operator new(size_t size){++allocations;if(void *p=std::malloc(size?size:1
 void *operator new[](size_t size){return ::operator new(size);}
 void operator delete(void *p)noexcept{std::free(p);}
 void operator delete[](void *p)noexcept{std::free(p);}
+void operator delete(void *p,size_t)noexcept{std::free(p);}
+void operator delete[](void *p,size_t)noexcept{std::free(p);}
 namespace {
 struct Arena final:PageArenaAllocator {
   void *allocate(size_t bytes)override{if(fail)return nullptr;auto *p=std::malloc(bytes);assert(p);live[p]=bytes;return p;}
