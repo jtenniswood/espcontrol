@@ -45,6 +45,25 @@ target_compile_options(page_entity_state_runtime_test PRIVATE -Wall -Wextra -Wer
 target_include_directories(page_entity_state_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_entity_state_runtime_test COMMAND page_entity_state_runtime_test)
 
+set(PAGE_CLIMATE_PARITY_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_climate_parity_test.cpp)
+add_custom_command(
+  OUTPUT ${PAGE_CLIMATE_PARITY_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_climate_parity_test.py
+    --header ${CMAKE_CURRENT_SOURCE_DIR}/../../components/espcontrol/button_grid_climate.h
+    --output ${PAGE_CLIMATE_PARITY_SOURCE}
+  DEPENDS generate_page_climate_parity_test.py generate_climate_update_test.py
+    page_climate_parity_test.cpp.in ../../components/espcontrol/button_grid_climate.h
+  VERBATIM)
+add_executable(page_climate_parity_test ${PAGE_CLIMATE_PARITY_SOURCE}
+  ../../components/espcontrol/page_climate_card.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_climate_parity_test PRIVATE cxx_std_17)
+target_compile_options(page_climate_parity_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_climate_parity_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_climate_parity_test COMMAND page_climate_parity_test)
+
 add_executable(page_entity_state_benchmark EXCLUDE_FROM_ALL page_entity_state_benchmark.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp
   ../../components/espcontrol/page_store.cpp)
@@ -90,6 +109,7 @@ add_test(NAME bounded_sensor_text_test COMMAND bounded_sensor_text_test)
 
 add_executable(page_basic_card_test page_basic_card_test.cpp
   ../../components/espcontrol/page_basic_card.cpp
+    ../../components/espcontrol/page_climate_card.cpp
   ../../components/espcontrol/page_card_dependencies.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp
   ../../components/espcontrol/page_store.cpp)
@@ -810,6 +830,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   add_subdirectory("${ESPCONTROL_LVGL_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/lvgl")
   add_executable(page_basic_lvgl_port_test page_basic_lvgl_port_test.cpp
     ../../components/espcontrol/page_basic_card.cpp
+    ../../components/espcontrol/page_climate_card.cpp
     ../../components/espcontrol/page_card_dependencies.cpp
     ../../components/espcontrol/page_entity_state_runtime.cpp
     ../../components/espcontrol/page_renderer_layout.cpp

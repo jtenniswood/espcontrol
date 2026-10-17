@@ -32,8 +32,14 @@ the existing Unicode title/whitespace rules and configured state labels. Duratio
 cards use the shared formatter with automatic or configured source units and
 one/two displayed components according to span. Folders support numeric/text
 values, entity indicators, climate working-state indicators, mower indicators
-and aggregate state from the currently ported toggle children. Local sensors,
-confirmations, action/complex cards and modals still require ports.
+and aggregate state from the currently ported toggle children. Climate and
+climate-control card presentation now reads the shared cache with no per-card
+context. It preserves current/target/range displays, half-step target precision,
+status/actual/target/custom labels, active colour and distinct enabled-mode icons.
+Its click hands a validated origin token to a required climate action hook;
+preparation fails if that hook is absent. This hook does not itself construct
+a modal. Local sensors, confirmations, remaining action/complex cards and real
+modal ownership still require ports.
 Unsupported active variants reject preparation rather than silently dropping
 behaviour. Stored pages that are not navigable are preserved without requiring
 their cards to be supported by this port. Styling/layout parity, temperature
@@ -44,7 +50,9 @@ Widget event handlers are registered once. A press captures its origin token;
 a click must match that token and pass the renderer's current-generation check
 before dispatch. Unbind and takeover clear pending gestures. Action callbacks
 receive the validated origin and borrowed entity, and must consume it
-synchronously or copy/tag any deferred work before returning. No callback may
+synchronously or copy/tag any deferred work before returning. Climate modal
+lifetimes must use a separate configuration/modal token after opening; a grid
+binding token must not stand in for the modal lifetime. No callback may
 retain a borrowed state/configuration view across replacement.
 
 `copy_display_text` reads explicit lengths, writes to reserved buffers, preserves
@@ -103,3 +111,14 @@ label updates remain an explicit qualification issue before production cutover.
 Initial cached values for future modal ports are described in
 [page-modal-state-replay.md](page-modal-state-replay.md). Real modal contexts and
 application wiring remain separate, unfinished cutover work.
+
+Climate presentation is compared with unchanged production helper definitions
+across 10,000 generated cases, four languages, single/range/unknown capabilities,
+all label/number modes and precision/step settings. New packed-cache numeric
+parsing rejects non-finite and out-of-range values before integer conversion.
+Configured labels stay borrowed at their full stored length; only display buffers
+apply the existing rendering limits. The theme must supply the current display
+temperature unit and `espcontrol_i18n(const char *)` translator, and bump its
+revision when language or unit changes. Native LVGL coverage includes climate
+to timer slot reuse, inactive icons, stale clicks and repeated navigation.
+These are not physical display or real climate-modal results.

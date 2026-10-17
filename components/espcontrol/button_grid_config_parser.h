@@ -14,6 +14,7 @@
 #include "media_control_tabs.h"
 #include "button_grid_string.h"
 #include "display_utf8_case.h"
+#include "ha_state_limits.h"
 #include "camera_refresh_policy.h"
 #include "button_grid_saved_config_action_generated.h"
 #include "button_grid_saved_config_access_generated.h"
@@ -1770,10 +1771,7 @@ constexpr uint32_t HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS = 1u << 3;
 #define ESPCONTROL_HA_SUBSCRIPTION_SCOPE_CONSTANTS_DEFINED 1
 #endif
 
-constexpr size_t HA_STATE_TEXT_MAX_LEN = 96;
-constexpr size_t HA_TEXT_SENSOR_STATE_MAX_LEN = 256;
-constexpr size_t HA_SHORT_STATE_MAX_LEN = 32;
-constexpr size_t HA_FRIENDLY_NAME_MAX_LEN = 64;
+
 
 inline std::string normalized_state_text(esphome::StringRef value,
                                          size_t max_len = HA_SHORT_STATE_MAX_LEN) {

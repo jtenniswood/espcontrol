@@ -55,6 +55,13 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
     if(out.sensor=="local")return false;
     out.kind=out.sensor.empty()?BasicCardKind::EMPTY:precision=="icon"?BasicCardKind::ICON:precision=="text"?BasicCardKind::TEXT:precision=="time"?BasicCardKind::DURATION:BasicCardKind::NUMBER;
     out.active_color=out.kind!=BasicCardKind::DURATION&&cfg_option_enabled(options,"active_color");
+  } else if(type=="climate"||type=="climate_control") {
+    out.kind=BasicCardKind::CLIMATE;out.active_color=true;
+    const auto label=normalize_climate_label_display(cfg_option_value(options,"label_display"));
+    out.climate.label=label=="status"?ClimateCardLabel::STATUS:label=="actual"?ClimateCardLabel::ACTUAL:label=="target"?ClimateCardLabel::TARGET:ClimateCardLabel::LABEL;
+    const auto number=normalize_climate_number_display(cfg_option_value(options,"number_display"));
+    out.climate.number=number=="actual"?ClimateCardNumber::ACTUAL:number=="icon"?ClimateCardNumber::ICON:ClimateCardNumber::TARGET;
+    out.climate.half_step=normalize_climate_temperature_step(cfg_option_value(options,"temperature_step"))=="0.5";
   } else if(type=="subpage") {
     out.kind=BasicCardKind::FOLDER;
     if(out.sensor=="indicator") {
@@ -80,8 +87,8 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
        !copy(cfg_option_value(options,SENSOR_STATE_OUTPUT_2_OPTION),out.text_output_2))return false;
   }
   if(out.kind==BasicCardKind::DURATION&&!copy(cfg_option_value(options,SENSOR_TIME_UNIT_OPTION),out.time_unit))return false;
-  out.precision=static_cast<uint8_t>(parse_precision(std::string(precision)));
-  out.large_numbers=(out.kind==BasicCardKind::NUMBER||out.kind==BasicCardKind::DURATION||out.folder_mode==BasicFolderMode::NUMBER)&&!large_numbers_explicitly_disabled(options);
+  out.precision=static_cast<uint8_t>(parse_precision(std::string(precision)));out.climate.precision=out.precision;
+  out.large_numbers=(out.kind==BasicCardKind::NUMBER||out.kind==BasicCardKind::DURATION||(out.kind==BasicCardKind::CLIMATE&&out.climate.number!=ClimateCardNumber::ICON)||out.folder_mode==BasicFolderMode::NUMBER)&&!large_numbers_explicitly_disabled(options);
   const auto mode=cfg_option_value(options,"card_active_color");out.theme_active=mode=="theme";
   auto color=cfg_option_value(options,"card_off_color");
   if(!color.empty()){color=normalize_card_color_value(color);if(color.empty())return false;out.off_color=static_cast<uint32_t>(std::strtoul(color.c_str(),nullptr,16));out.custom_off=true;}
@@ -113,8 +120,15 @@ bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,Pag
   }
   return on(primary.value);
 }
-BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHandle handle,PageEntityStateRuntime &state,int duration_components) {
-  BasicCardState result;result.label=card.label;result.unit=card.unit;
+BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHandle handle,PageEntityStateRuntime &state,int duration_components,std::string_view temperature_unit,PageCardTranslate translate) {
+  BasicCardState result;
+  if(card.kind==BasicCardKind::CLIMATE) {
+    const auto climate=read_climate_card(card.entity,card.label,card.climate,handle,state,temperature_unit,translate);
+    result.on=climate.active;result.climate_icon_on=climate.icon_on;result.numeric=climate.number;result.unit=climate.unit;
+    result.label=climate.configured_label;result.formatted_label=climate.configured_label.empty();
+    std::memcpy(result.number,climate.value,sizeof(result.number));std::memcpy(result.text,climate.label,sizeof(result.text));return result;
+  }
+  result.label=card.label;result.unit=card.unit;
   const bool folder_number=card.folder_mode==BasicFolderMode::NUMBER,folder_text=card.folder_mode==BasicFolderMode::TEXT;
   const bool sensor=folder_number||folder_text||card.kind==BasicCardKind::NUMBER||card.kind==BasicCardKind::ICON||card.kind==BasicCardKind::TEXT||card.kind==BasicCardKind::DURATION;
   const auto source=sensor?card.sensor:card.kind==BasicCardKind::FOLDER&&card.folder_mode==BasicFolderMode::NONE?std::string_view{}:card.entity;

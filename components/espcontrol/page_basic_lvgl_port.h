@@ -23,6 +23,8 @@ struct PageBasicTheme {
   int red_percent{100},green_percent{100},blue_percent{100};
   const lv_font_t *sensor_font{nullptr},*large_sensor_font{nullptr};
   std::string_view back_label{"Back"},empty_label{"Configure"},folder_label{"Subpage"};
+  std::string_view temperature_unit{"°C"};
+  PageCardTranslate translate{nullptr};
 };
 struct PageBasicActions {
   void *owner{nullptr};
@@ -34,6 +36,7 @@ struct PageBasicActions {
   void (*toggle)(void *,PageBindingToken,std::string_view entity){nullptr};
   void (*open)(void *,PageBindingToken,PageId){nullptr};
   void (*back)(void *,PageBindingToken){nullptr};
+  void (*climate)(void *,PageBindingToken){nullptr};
 };
 struct PageBasicMemory {size_t fixed_bytes{0},borrowed_widgets{0},active_bytes{0},staged_bytes{0},peak_bytes{0},text_truncations{0},invalid_text{0};};
 
@@ -107,7 +110,8 @@ class PageBasicLvglPort final:public PageRendererPort {
       label_capacity=std::max(label_capacity,store.string(p->order).size()+1);
       for(CardId card=p->first_card;card<p->first_card+p->card_count;++card) {
         BasicCardDefinition view;if(!prepare_basic_card(store,card,view,&strings))return false;
-        if(view.kind==BasicCardKind::TEXT||view.text_overlay||view.folder_mode==BasicFolderMode::TEXT)label_capacity=std::max<size_t>(label_capacity,257);
+        if(view.kind==BasicCardKind::CLIMATE&&actions_.climate==nullptr)return false;
+        if(view.kind==BasicCardKind::TEXT||view.kind==BasicCardKind::CLIMATE||view.text_overlay||view.folder_mode==BasicFolderMode::TEXT)label_capacity=std::max<size_t>(label_capacity,257);
         label_capacity=std::max(label_capacity,view.label.size()+1);unit_capacity=std::max(unit_capacity,view.unit.size()+1);
       }
     }
@@ -117,6 +121,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       summary_count+=used;
     }
     label_capacity=std::max(label_capacity,strings.largest+1);
+    unit_capacity=std::max(unit_capacity,theme_.temperature_unit.size()+1);
     const size_t records=store.card_count()*sizeof(Prepared);
     if(label_capacity>SIZE_MAX-unit_capacity-48)return false;
     const size_t stride=label_capacity+unit_capacity+48;
@@ -139,7 +144,7 @@ class PageBasicLvglPort final:public PageRendererPort {
         auto &view=prepared(staged_)[card];if(!prepare_basic_card(store,card,view.definition,&writer)){discard_prepared();return false;}
         const auto &d=view.definition;auto domain=d.entity.substr(0,d.entity.find('.'));
         if(d.kind==BasicCardKind::ICON)domain={};
-        const auto fallback=d.kind==BasicCardKind::FOLDER&&d.entity.empty()?std::string_view("Folder"):std::string_view("Auto");
+        const auto fallback=d.kind==BasicCardKind::CLIMATE?std::string_view("Thermostat"):d.kind==BasicCardKind::FOLDER&&d.entity.empty()?std::string_view("Folder"):std::string_view("Auto");
         view.off=actions_.icon(actions_.owner,d.icon.empty()||d.icon=="Auto"?fallback:d.icon,domain);
         view.on=d.icon_on.empty()||d.icon_on=="Auto"?view.off:actions_.icon(actions_.owner,d.icon_on,domain);
         if(!view.off||!view.on){discard_prepared();return false;}
@@ -187,7 +192,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     s.label=text;s.unit=text+active_.label_capacity;s.number=s.unit+active_.unit_capacity;
     lv_obj_set_grid_cell(w.button,LV_GRID_ALIGN_STRETCH,cell.column,cell.column_span,LV_GRID_ALIGN_STRETCH,cell.row,cell.row_span);
     lv_obj_clear_flag(w.button,LV_OBJ_FLAG_HIDDEN);
-    const bool clickable=cell.back||(s.definition&&(s.definition->definition.kind==BasicCardKind::TOGGLE||s.definition->definition.kind==BasicCardKind::FOLDER));
+    const bool clickable=cell.back||(s.definition&&(s.definition->definition.kind==BasicCardKind::TOGGLE||s.definition->definition.kind==BasicCardKind::FOLDER||s.definition->definition.kind==BasicCardKind::CLIMATE));
     if(clickable)lv_obj_add_flag(w.button,LV_OBJ_FLAG_CLICKABLE);else lv_obj_clear_flag(w.button,LV_OBJ_FLAG_CLICKABLE);
     // Do not read the new state graph here: its activation may follow ours.
   }
@@ -199,7 +204,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     bool number=false,checked=false;
     if(s.cell.back){value.label=s.back.custom_label.empty()?theme_.back_label:s.back.custom_label;definition.custom_off=s.back.custom_color;definition.off_color=s.back.background_color;}
     else {
-      definition=s.definition->definition;value=read_basic_card(definition,{token.configuration,token.card},state_,s.cell.column_span>1?2:1);
+      definition=s.definition->definition;value=read_basic_card(definition,{token.configuration,token.card},state_,s.cell.column_span>1?2:1,theme_.temperature_unit,theme_.translate);
       if(definition.folder_mode==BasicFolderMode::CHILDREN) {
         for(size_t child=0;child<s.definition->summary_count&&!value.on;++child) {
           const auto id=s.definition->summary[child];
@@ -209,10 +214,10 @@ class PageBasicLvglPort final:public PageRendererPort {
       if(definition.kind==BasicCardKind::FOLDER&&definition.folder_mode==BasicFolderMode::NUMBER&&value.label.empty())value.label=theme_.folder_label;
       if(definition.kind==BasicCardKind::EMPTY&&value.label.empty())value.label=theme_.empty_label;
       checked=value.on&&(definition.kind==BasicCardKind::TOGGLE||definition.active_color);
-      number=definition.kind==BasicCardKind::NUMBER||definition.kind==BasicCardKind::DURATION||definition.folder_mode==BasicFolderMode::NUMBER||(definition.kind==BasicCardKind::TOGGLE&&!definition.text_overlay&&!definition.sensor.empty()&&value.on);
+      number=(definition.kind==BasicCardKind::CLIMATE&&definition.climate.number!=ClimateCardNumber::ICON)||definition.kind==BasicCardKind::NUMBER||definition.kind==BasicCardKind::DURATION||definition.folder_mode==BasicFolderMode::NUMBER||(definition.kind==BasicCardKind::TOGGLE&&!definition.text_overlay&&!definition.sensor.empty()&&value.on);
       const bool state_icon=definition.kind==BasicCardKind::TOGGLE||definition.kind==BasicCardKind::ICON||
         definition.folder_mode==BasicFolderMode::ENTITY||definition.folder_mode==BasicFolderMode::CLIMATE||definition.folder_mode==BasicFolderMode::MOWER||definition.folder_mode==BasicFolderMode::CHILDREN;
-      glyph=state_icon&&value.on?s.definition->on:s.definition->off;
+      glyph=definition.kind==BasicCardKind::CLIMATE?(value.climate_icon_on?s.definition->on:s.definition->off):state_icon&&value.on?s.definition->on:s.definition->off;
     }
     write(w.label,s.label,active_.label_capacity,value.formatted_label?std::string_view(value.text):value.label);
     write(w.unit,s.unit,active_.unit_capacity,value.unit);
@@ -294,7 +299,9 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(definition.kind==BasicCardKind::FOLDER) {
       const auto target=port->store_.card(origin.card)->target;
       if(port->actions_.open&&target!=NO_PAGE)port->actions_.open(port->actions_.owner,origin,target);
-    } else if(definition.kind==BasicCardKind::TOGGLE&&port->actions_.toggle)
+    } else if(definition.kind==BasicCardKind::CLIMATE&&port->actions_.climate)
+      port->actions_.climate(port->actions_.owner,origin);
+    else if(definition.kind==BasicCardKind::TOGGLE&&port->actions_.toggle)
       port->actions_.toggle(port->actions_.owner,origin,definition.entity);
   }
   PageArenaAllocator &allocator_;PageEntityStateRuntime &state_;std::array<PageBasicWidgets,Slots>widgets_;
