@@ -153,13 +153,7 @@ inline void sensor_driver_register_local_value(
           local_sensor_apply_value(key, value);
         });
       }
-      if (!std::isnan(esp_sensor->state) && control.sensor_lbl) {
-        char buffer[32];
-        if (control.precision == 1) snprintf(buffer, sizeof(buffer), "%.1f", esp_sensor->state);
-        else if (control.precision == 2) snprintf(buffer, sizeof(buffer), "%.2f", esp_sensor->state);
-        else snprintf(buffer, sizeof(buffer), "%.0f", esp_sensor->state);
-        lv_label_set_display_text(control.sensor_lbl, buffer);
-      }
+      local_sensor_render_numeric(control.sensor_lbl, control.precision, esp_sensor->state);
       break;
     }
   }
