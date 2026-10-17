@@ -283,13 +283,15 @@ def test_native_panel_config_bindings(slug: str, profile: dict, device: str) -> 
     )
 
     slots = int(profile["slots"])
-    buttons = panel_config.get("buttons") or []
+    buttons = panel_config.get("buttons")
+    assert isinstance(buttons, list) and len(buttons) == slots, (
+        f"{slug}: native panel config must provide exactly {slots} button bindings"
+    )
     bindings = [
-        int(match.group(1))
+        button.get("config") if isinstance(button, dict) else None
         for button in buttons
-        if (match := re.fullmatch(r"button_(\d+)_config", str(button.get("config"))))
     ]
-    assert bindings == list(range(1, slots + 1)), (
+    assert bindings == [f"button_{slot}_config" for slot in range(1, slots + 1)], (
         f"{slug}: native panel config bindings must cover slots 1-{slots} exactly; "
         f"found {bindings}"
     )
