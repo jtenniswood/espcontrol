@@ -128,6 +128,8 @@ TASKS = (
              "components/espcontrol/page_store_runtime.*",
              "components/espcontrol/page_entity*.h",
              "components/espcontrol/page_entity*.cpp",
+             "components/espcontrol/page_card_dependencies.*",
+             "components/espcontrol/media_group_discovery.h",
              "components/espcontrol/page_runtime_resources.h",
              "scripts/generate_page_store_goldens.py",
              "components/espcontrol/button_grid_subpage_parser.h",

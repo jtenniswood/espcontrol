@@ -74,7 +74,7 @@ void profile_corpus(const DeviceUiLimits &limits) {
   const std::string root = ";Room;Home;Auto;indicator;;subpage;;";
   std::string child = "~B=Parent%3A%20Home:FF8C00";
   for (size_t i = 1; i <= limits.cards_per_subpage; ++i)
-    child += "|s,sensor.temperature,Temp%20%C2%B0C,Auto,Auto,,%C2%B0C,1,";
+    child += "|S,sensor.temperature,Temp%20%C2%B0C,Auto,Auto,,%C2%B0C,1,";
   for (size_t i = 1; i <= limits.slot_count; ++i) {
     maximum.button(i, root);
     maximum.subpage(i, child);
@@ -248,7 +248,7 @@ void maximum_distinct_entities() {
       std::string subpage = "~B";
       for (size_t child = 1; child <= limits.cards_per_subpage; ++child) {
         const std::string suffix = std::to_string(parent) + "_" + std::to_string(child);
-        subpage += "|s,sensor.room_" + suffix + ",Zone%20" + suffix + ",Auto,Auto,,%C2%B0C,1,";
+        subpage += "|S,sensor.room_" + suffix + ",Zone%20" + suffix + ",Auto,Auto,sensor.room_" + suffix + ",%C2%B0C,1,";
       }
       doc.subpage(parent, subpage);
     }
@@ -264,6 +264,7 @@ void maximum_distinct_entities() {
         const std::string suffix = std::to_string(parent) + "_" + std::to_string(child + 1);
         const auto *card = store.card(page->first_card + child);
         assert(store.field(*card, CardField::ENTITY) == "sensor.room_" + suffix);
+        assert(store.field(*card, CardField::TYPE) == "sensor");
         assert(store.field(*card, CardField::LABEL) == "Zone " + suffix);
       }
     }
