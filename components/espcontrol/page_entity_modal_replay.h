@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstring>
+#include <cstdio>
 #include <optional>
 #include <utility>
 
@@ -44,6 +45,14 @@ class PageEntityModalReplay {
     for(size_t ordinal=0;ordinal<state_.dependency_count(card_);++ordinal) {
       const auto value=state_.dependency(card_,ordinal);
       if(value.entity!=entity||value.attribute!=attribute)continue;
+      // Cover callbacks ignore malformed position updates. Seed a new panel
+      // with the channel's last valid value even when its latest raw text is bad.
+      if(const auto percent=state_.last_percent(card_,ordinal)) {
+        char text[4];const auto size=static_cast<size_t>(std::snprintf(text,sizeof(text),"%u",static_cast<unsigned>(*percent)));
+        PageEntityReplaySnapshot snapshot(allocator_,state_,revision,size);
+        if(!snapshot.data()||state_.revision()!=revision)return std::nullopt;
+        std::memcpy(snapshot.data(),text,size+1);return snapshot;
+      }
       if(value.status!=PageEntityStatus::AVAILABLE)return std::nullopt;
       PageEntityReplaySnapshot snapshot(allocator_,state_,revision,value.value.size());
       if(!snapshot.data()||state_.revision()!=revision)return std::nullopt;

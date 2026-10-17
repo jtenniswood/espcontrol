@@ -8,6 +8,7 @@
 #include "button_grid_subpage_parser.h"
 #include "bounded_sensor_text.h"
 #include "climate_state_logic.h"
+#include "button_grid_contract_generated.h"
 
 namespace espcontrol::pages {
 namespace {
@@ -101,6 +102,15 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
       if(unit.empty())out.unit={};
       else if(!strings||!strings->copy_unit(unit,out.unit))return false;
     }
+  } else if(type=="light_control") {
+    out.unit={};out.kind=BasicCardKind::LIGHT;out.active_color=true;out.push_feedback=true;out.default_label="Light";
+    if(out.icon.empty()||out.icon=="Auto")out.icon="Lightbulb Outline";
+    if(out.icon_on.empty()||out.icon_on=="Auto")out.icon_on="Lightbulb";
+  } else if(type=="cover") {
+    if(espcontrol::card_runtime::resolve_card_driver(espcontrol::card_runtime::CardTypeId::COVER,std::string(out.sensor))!=espcontrol::card_runtime::CardDriverId::COVER_MODAL)return false;
+    out.unit={};out.kind=BasicCardKind::COVER;out.push_feedback=true;out.default_label="Cover";
+    if(out.icon.empty()||out.icon=="Auto")out.icon="Blinds";
+    if(out.icon_on.empty()||out.icon_on=="Auto")out.icon_on="Blinds Open";
   } else if(type=="climate"||type=="climate_control") {
     out.kind=BasicCardKind::CLIMATE;out.active_color=true;
     const auto label=normalize_climate_label_display(cfg_option_value(options,"label_display"));
@@ -179,6 +189,18 @@ BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHand
   const auto source=sensor?card.sensor:card.kind==BasicCardKind::FOLDER&&card.folder_mode==BasicFolderMode::NONE?std::string_view{}:card.entity;
   const auto primary=action?(card.active_color?state.dependency(handle,0):PageEntityValue{}):find(state,handle,source);
   result.on=available(primary)&&on(primary.value);
+  if(card.kind==BasicCardKind::COVER) {
+    std::optional<uint8_t> percent;
+    for(size_t ordinal=0;ordinal<state.dependency_count(handle);++ordinal) {
+      const auto value=state.dependency(handle,ordinal);
+      if(value.entity==card.entity&&value.attribute=="current_position"){percent=state.last_percent(handle,ordinal);break;}
+    }
+    if(percent) {result.on=*percent>0;result.closed_percent=100-*percent;}
+    else {
+      result.on=available(primary)&&(equal_state(primary.value,"open")||equal_state(primary.value,"opening"));
+      result.closed_percent=available(primary)&&(equal_state(primary.value,"closed")||equal_state(primary.value,"closing"))?100:0;
+    }
+  }
   if(card.kind==BasicCardKind::STATUS&&card.presence&&available(primary))result.on|=equal_state(primary.value,"detected");
   if(action_number)result.on=false;
   if(card.kind==BasicCardKind::FOLDER) {
