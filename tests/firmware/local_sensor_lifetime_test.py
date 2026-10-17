@@ -21,7 +21,7 @@ source = r'''#include <cassert>
 struct lv_event_t;
 struct lv_obj_t { std::string text; std::vector<void(*)(lv_event_t*)> callbacks; };
 struct lv_event_t { lv_obj_t *target; };
-lv_obj_t *lv_event_get_target(lv_event_t *e) { return e->target; }
+void *lv_event_get_target(lv_event_t *e) { return e->target; }
 constexpr int LV_EVENT_DELETE=1;
 void lv_obj_remove_event_cb(lv_obj_t *o,void(*cb)(lv_event_t*)) {
   o->callbacks.erase(std::remove(o->callbacks.begin(),o->callbacks.end(),cb),o->callbacks.end());

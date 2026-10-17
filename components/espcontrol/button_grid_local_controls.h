@@ -118,7 +118,7 @@ inline void local_sensor_unregister_owner(lv_obj_t *owner) {
 }
 
 inline void local_sensor_owner_deleted(lv_event_t *event) {
-  local_sensor_unregister_owner(lv_event_get_target(event));
+  local_sensor_unregister_owner(static_cast<lv_obj_t *>(lv_event_get_target(event)));
 }
 
 struct LocalSensorCallbackBinding {
