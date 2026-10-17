@@ -52,7 +52,7 @@ struct Fixture {
     button(4,";;;;sensor.message;;sensor;text;state_labels,state_input=active,state_output="+std::string(600,'x'));
     button(5,";Timer;;;sensor.timer;;sensor;time;");
     button(6,"switch.cycle;Standby;Auto;Auto;sensor.message;;;text;");
-    std::string child="~B=Go%20Home:FFFFFF,1,2,3,4|S,,Child,Auto,Auto,sensor.temp,°C,1,|,light.child,Child switch,Auto,Auto,,,,|S,,Message,Auto,Auto,sensor.message,,text,|S,,Timer,Auto,Auto,sensor.timer,,time,|,light.omitted,Omitted,Auto,Auto,,,,";
+    std::string child="~B=Go%20Home:FFFFFF,1,2,3,4|S,,Child,Auto,Auto,sensor.temp,°C,1,|,light.child,Child switch,Auto,Auto,,,,|S,,Message,Auto,Auto,sensor.message,,text,|HC,climate.room,Climate,Auto,Lightbulb,,,0,label_display=status%2Cnumber_display=target%2Ctemperature_step=0.5|,light.omitted,Omitted,Auto,Auto,,,,";
     if(portrait) {
       const auto separator=child.find('|');std::string order="~B";
       for(size_t i=1;i<limits.slot_count;++i)order+=","+std::to_string(i);
@@ -68,13 +68,14 @@ struct Fixture {
   std::array<uint8_t,8192>document{};size_t size{0};alignas(std::max_align_t)std::array<uint8_t,65536>arena{};PageStore store;
 };
 template<size_t Slots>struct Actions {
-  PageRendererRuntime<Slots> *renderer{nullptr};size_t toggles{0};PageBindingToken last;char entity[64]{};
+  PageRendererRuntime<Slots> *renderer{nullptr};size_t toggles{0},climates{0};PageBindingToken last;char entity[64]{};
   static const char *icon(void *,std::string_view name,std::string_view){return name=="Lightbulb"?"ON":"I";}
   static bool valid(void *owner,PageBindingToken t){return static_cast<Actions *>(owner)->renderer->valid(t);}
   static void toggle(void *owner,PageBindingToken t,std::string_view entity){auto &a=*static_cast<Actions *>(owner);++a.toggles;a.last=t;assert(entity.size()<sizeof(a.entity));std::memcpy(a.entity,entity.data(),entity.size());a.entity[entity.size()]='\0';}
   static void open(void *owner,PageBindingToken,PageId page){assert(static_cast<Actions *>(owner)->renderer->open_page(page));}
   static void back(void *owner,PageBindingToken){assert(static_cast<Actions *>(owner)->renderer->back());}
-  PageBasicActions callbacks(){return {this,icon,valid,toggle,open,back};}
+  static void climate(void *owner,PageBindingToken token){auto &a=*static_cast<Actions *>(owner);++a.climates;a.last=token;}
+  PageBasicActions callbacks(){return {this,icon,valid,toggle,open,back,climate};}
 };
 void click(lv_obj_t *object){lv_obj_send_event(object,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(object,LV_EVENT_CLICKED,nullptr);}
 template<size_t Slots>void profile(const DeviceUiLimits &limits) {
@@ -97,6 +98,11 @@ template<size_t Slots>void profile(const DeviceUiLimits &limits) {
     auto invalid=widgets;invalid[1]=invalid[0];
     PageBasicLvglPort<Slots>bad(arena,state,invalid,{limits.slot_count,limits.grid_columns},theme,actions.callbacks());
     assert(!bad.initialize());
+  }
+  {
+    auto callbacks=actions.callbacks();callbacks.climate=nullptr;
+    PageBasicLvglPort<Slots>missing(arena,state,widgets,{limits.slot_count,limits.grid_columns},theme,callbacks);
+    assert(missing.initialize());assert(!missing.prepare(fixture.store,Slots));
   }
   {
     PageBasicLvglPort<Slots>port(arena,state,widgets,{limits.slot_count,limits.grid_columns},theme,actions.callbacks());
@@ -131,6 +137,16 @@ template<size_t Slots>void profile(const DeviceUiLimits &limits) {
     lv_obj_send_event(widgets[2].button,LV_EVENT_PRESSED,nullptr);assert(renderer.open_page(child));renderer.update_visible();
     lv_obj_send_event(widgets[2].button,LV_EVENT_CLICKED,nullptr);assert(actions.toggles==1);
     click(widgets[2].button);assert(actions.toggles==2&&std::strcmp(actions.entity,"light.child")==0);
+    subscriptions.send("climate.room","","cool");subscriptions.send("climate.room","hvac_action","cooling");
+    subscriptions.send("climate.room","supported_features","426");subscriptions.send("climate.room","target_temp_low","65");subscriptions.send("climate.room","target_temp_high","75");renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[4].value),"65.0-75.0")==0);
+    assert(std::strcmp(lv_label_get_text(widgets[4].label),"Cooling")==0&&lv_obj_has_state(widgets[4].button,LV_STATE_CHECKED));
+    click(widgets[4].button);assert(actions.climates==1&&actions.renderer->valid(actions.last));
+    subscriptions.send("climate.room","hvac_action","idle");renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[4].button,LV_STATE_CHECKED)&&std::strcmp(lv_label_get_text(widgets[4].label),"Idle")==0);
+    lv_obj_send_event(widgets[4].button,LV_EVENT_PRESSED,nullptr);
+    assert(renderer.back());renderer.update_visible();lv_obj_send_event(widgets[4].button,LV_EVENT_CLICKED,nullptr);assert(actions.climates==1);
+    assert(renderer.open_page(child));renderer.update_visible();lv_obj_send_event(widgets[4].button,LV_EVENT_CLICKED,nullptr);assert(actions.climates==1);
     assert(std::strcmp(lv_label_get_text(widgets[0].label),"Go Home")==0);
     click(widgets[0].button);assert(renderer.active_page()==0);renderer.update_visible();
     // Warm every configured type/state before checking LVGL's own allocations.

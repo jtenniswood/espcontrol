@@ -1,0 +1,99 @@
+#include <array>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <vector>
+
+#include "button_grid_subpage_parser.h"
+#include "climate_state_logic.h"
+#include "climate_target_logic.h"
+#include "page_card_dependencies.h"
+#include "page_climate_card.h"
+#include "panel_config_document.h"
+
+using namespace espcontrol;using namespace espcontrol::pages;using namespace espcontrol::configuration;
+using ClimateTargetKind=espcontrol::climate::TargetKind;
+constexpr int CLIMATE_DEFAULT_STEP_TENTHS=5;
+struct ClimateControlCtx {
+  bool available{false},supported_features_known{false},has_target{false},has_low{false},has_high{false},has_current{false};
+  int supported_features{0},precision{0},configured_step_tenths{10};
+  int target_tenths{0},low_tenths{0},high_tenths{0},current_tenths{0};
+  std::string hvac_mode,hvac_action,configured_label,label_display,number_display;
+};
+const char *active_unit=u8"°C";
+const char *display_temperature_unit_symbol(){return active_unit;}
+// @production-function climate_lower
+// @production-function climate_trim
+// @production-function climate_unavailable_value
+// @production-function climate_clean_option_token
+// @production-function climate_hvac_service_value
+// @production-function climate_parse_tenths
+// @production-function climate_format_tenths
+// @production-function climate_target_display_precision
+// @production-function climate_target_kind
+// @production-function climate_option_label
+// @production-function climate_action_label
+// @production-function climate_is_active
+// @production-function climate_card_icon_enabled
+// @production-function climate_card_target_value
+// @production-function climate_card_actual_value
+// @production-function climate_card_value_with_unit
+// @production-function climate_card_value
+// @production-function climate_card_label
+
+struct Arena:PageArenaAllocator{void *allocate(size_t n)override{return std::malloc(n);}void release(void *p,size_t)override{std::free(p);}};
+struct Subscriptions:PageEntitySubscriptions {
+  struct Entry{std::string entity,attribute;void *owner;uint32_t revision,channel;Deliver deliver;};std::vector<Entry>entries;
+  bool subscribe(const char *entity,const char *attribute,void *owner,uint32_t revision,uint32_t channel,Deliver deliver)override{entries.push_back({entity,attribute,owner,revision,channel,deliver});return true;}
+  void release(void *owner)override{entries.erase(std::remove_if(entries.begin(),entries.end(),[owner](const auto &e){return e.owner==owner;}),entries.end());}
+  uint32_t connection_generation()const override{return 1;}
+  void send(const char *attribute,std::string_view value){for(auto &e:entries)if(e.attribute==attribute)e.deliver(e.owner,e.revision,e.channel,value);}
+};
+int main() {
+  const auto &limits=DEVICE_UI_PROFILES[8];
+  std::array<uint8_t,8192>document{};alignas(std::max_align_t)std::array<uint8_t,32768>storage{};
+  PanelConfigWriter writer(document.data(),document.size());assert(writer.begin()==PanelConfigStatus::OK);
+  assert(writer.append_device_profile(reinterpret_cast<const uint8_t *>(limits.device_profile),std::strlen(limits.device_profile))==PanelConfigStatus::OK);
+  const std::string config="climate.room;Den;Auto;Auto;;;climate;0;";
+  assert(writer.append_button(1,reinterpret_cast<const uint8_t *>(config.data()),config.size())==PanelConfigStatus::OK);
+  size_t size=0;assert(writer.finish(&size)==PanelConfigStatus::OK);PageStore store;
+  assert(PageStore::stage_v1(document.data(),size,limits,17,storage.data(),storage.size(),&store)==PageStoreStatus::OK);
+  Arena arena;PageCardDependencies source;Subscriptions subscriptions;
+  PageEntityStateRuntime state(source,arena,subscriptions,{64,64,8192});assert(state.prepare(store));state.activate_prepared(17);
+  const char *modes[]={"off","heat","cool","heat_cool","auto","dry","fan_only","<HVACMode.HEAT: 'heat'>","'FAN'","heat/cool","unknown","unavailable","hold_until","custom_mode",u8"éco_mode","wild\nmode"};
+  const char *actions[]={"heating","cooling","drying","fan","idle","off","unknown","unavailable","other"," COOLING "};
+  const char *temperatures[]={"0","21.25","-21.25","68.5","1.25","-0.05","0.05","70.25","nan","unavailable"};
+  const char *labels[]={"label","status","actual","target"},*numbers[]={"target","actual","icon"};
+  const char *languages[]={"en","fr","de","es"};
+  uint32_t random=9981;
+  auto choose=[&](size_t count){random=random*1664525u+1013904223u;return (random>>16)%count;};
+  for(size_t iteration=0;iteration<10000;++iteration) {
+    ClimateControlCtx old;ClimateCardOptions options;
+    set_espcontrol_language(languages[choose(4)]);active_unit=choose(2)?u8"°C":u8"°F";
+    old.configured_label=choose(2)?"Den":"";old.precision=options.precision=choose(4);old.configured_step_tenths=(options.half_step=choose(2))?5:10;
+    options.label=static_cast<ClimateCardLabel>(choose(4));options.number=static_cast<ClimateCardNumber>(choose(3));
+    old.label_display=labels[static_cast<unsigned>(options.label)];old.number_display=numbers[static_cast<unsigned>(options.number)];
+    const std::string raw=modes[choose(sizeof(modes)/sizeof(*modes))],action=actions[choose(sizeof(actions)/sizeof(*actions))];
+    old.hvac_mode=climate_hvac_service_value(raw.substr(0,HA_SHORT_STATE_MAX_LEN));old.available=!climate_unavailable_value(old.hvac_mode);if(!old.available)old.hvac_mode="off";
+    old.hvac_action=climate_lower(climate_trim(action.substr(0,HA_SHORT_STATE_MAX_LEN)));
+    subscriptions.send("",raw);subscriptions.send("hvac_action",action);
+    old.supported_features_known=choose(2);const int features[]={0,1,2,3,426,427};old.supported_features=features[choose(6)];
+    subscriptions.send("supported_features",old.supported_features_known?std::to_string(old.supported_features):"unknown");
+    auto temperature=[&](const char *attribute,bool &has,int &value) {
+      const std::string text=temperatures[choose(sizeof(temperatures)/sizeof(*temperatures))];
+      has=climate_parse_tenths(esphome::StringRef(text.c_str(),text.size()),value);subscriptions.send(attribute,text);
+    };
+    temperature("current_temperature",old.has_current,old.current_tenths);temperature("temperature",old.has_target,old.target_tenths);
+    temperature("target_temp_low",old.has_low,old.low_tenths);temperature("target_temp_high",old.has_high,old.high_tenths);
+    const auto result=read_climate_card("climate.room",old.configured_label,options,{17,0},state,active_unit,
+        static_cast<const char *(*)(const char *)>(&espcontrol_i18n));
+    const auto label=result.configured_label.empty()?std::string_view(result.label):result.configured_label;
+    const auto expected_label=climate_card_label(&old),expected_value=climate_card_value(&old);
+    if(label!=expected_label) {std::fprintf(stderr,"case %zu mode=%s label got=%s expected=%s\n",iteration,raw.c_str(),std::string(label).c_str(),expected_label.c_str());std::abort();}
+    assert(result.active==climate_is_active(&old)&&result.icon_on==climate_card_icon_enabled(&old));
+    assert(result.number==(options.number!=ClimateCardNumber::ICON));
+    if(result.number){assert(result.value==expected_value);assert(result.unit==(expected_value=="--"?std::string_view{}:std::string_view(active_unit)));}
+  }
+}

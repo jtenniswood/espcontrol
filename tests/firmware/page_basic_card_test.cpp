@@ -125,5 +125,50 @@ void profile(const DeviceUiLimits &limits) {
   assert(basic_folder_child_indicator(toggle.store,0)=="light.test");assert(basic_folder_child_indicator(sensor.store,0).empty());
 
 }
+void climate_profile(const DeviceUiLimits &limits) {
+  Arena arena;Subscriptions subs;PageCardDependencies dependencies;
+  PageEntityStateRuntime state(dependencies,arena,subs,{64,64,8192});
+  const auto translated=[](const char *key)->const char * { return std::strcmp(key,"Cooling")==0?u8"Kühlen":key; };
+  Fixture fixture(limits,"climate.room;Den;Thermostat;Thermostat;;;climate;0;label_display=status,number_display=target,temperature_step=0.5");
+  BasicCardDefinition definition;assert(prepare_basic_card(fixture.store,0,definition));assert(definition.kind==BasicCardKind::CLIMATE);
+  assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);
+  auto value=read_basic_card(definition,{17,0},state,2,u8"°F",translated);
+  assert(!value.on&&!value.climate_icon_on&&value.numeric&&std::strcmp(value.number,"--")==0&&std::strcmp(value.text,"Unavailable")==0);
+  subs.send("climate.room","","<HVACMode.COOL: 'cool'>");subs.send("climate.room","hvac_action"," COOLING ");
+  subs.send("climate.room","supported_features","426");subs.send("climate.room","target_temp_low","65");subs.send("climate.room","target_temp_high","75");subs.send("climate.room","current_temperature","70.2");
+  value=read_basic_card(definition,{17,0},state,2,u8"°F",translated);
+  assert(value.on&&value.climate_icon_on&&value.numeric&&std::strcmp(value.number,"65.0-75.0")==0&&value.unit==u8"°F"&&std::strcmp(value.text,u8"Kühlen")==0);
+  subs.send("climate.room","hvac_action","idle");value=read_basic_card(definition,{17,0},state);assert(!value.on&&value.climate_icon_on&&std::strcmp(value.text,"Idle")==0);
+  subs.send("climate.room","hvac_action","unknown");value=read_basic_card(definition,{17,0},state);assert(value.on&&value.climate_icon_on&&std::strcmp(value.text,"Cool")==0);
+  subs.send("climate.room","","off");value=read_basic_card(definition,{17,0},state);assert(!value.on&&!value.climate_icon_on&&std::strcmp(value.text,"Off")==0);
+  subs.send("climate.room","","heat/cool");subs.send("climate.room","supported_features","0");value=read_basic_card(definition,{17,0},state);assert(std::strcmp(value.number,"--")==0&&value.unit.empty()&&std::strcmp(value.text,"Heat/Cool")==0);
+  subs.send("climate.room","supported_features","427");subs.send("climate.room","temperature","68.5");value=read_basic_card(definition,{17,0},state);assert(std::strcmp(value.number,"68.5")==0);
+  subs.send("climate.room","temperature","nan");value=read_basic_card(definition,{17,0},state);assert(std::strcmp(value.number,"65.0-75.0")==0);
+  subs.send("climate.room","target_temp_high","unavailable");value=read_basic_card(definition,{17,0},state);assert(std::strcmp(value.number,"--")==0);
+  subs.send("climate.room","target_temp_high","75");
+  const auto allocations_before=allocations;
+  for(size_t i=0;i<10000;++i) {
+    subs.send("climate.room","current_temperature",i%2?"70.2":"71.3");
+    value=read_basic_card(definition,{17,0},state);assert(std::strcmp(value.number,"65.0-75.0")==0);
+  }
+  assert(allocations==allocations_before);
+  for(const auto bad:{"inf","-inf","1e30","-1e30","garbage",""}) {
+    subs.send("climate.room","target_temp_low",bad);value=read_basic_card(definition,{17,0},state);assert(std::strcmp(value.number,"--")==0);
+  }
+  ++subs.generation;value=read_basic_card(definition,{17,0},state);assert(std::strcmp(value.text,"Unavailable")==0&&!value.on);
+  for(const auto type:{"climate","climate_control"})for(const auto label:{"label","actual","target","status"})for(const auto number:{"actual","target","icon"}) {
+    Fixture next(limits,std::string("climate.room;")+std::string(600,'L')+";Auto;Auto;;;"+type+";2;label_display="+label+",number_display="+number);
+    assert(prepare_basic_card(next.store,0,definition));assert(state.prepare(next.store));state.activate_prepared(next.store);
+    subs.send("climate.room","","heat");subs.send("climate.room","hvac_action","heating");subs.send("climate.room","current_temperature","-2.35");subs.send("climate.room","temperature","20.15");
+    value=read_basic_card(definition,{17,0},state,2,u8"°C");
+    assert(value.on&&value.climate_icon_on&&value.numeric==(std::strcmp(number,"icon")!=0));
+    if(std::strcmp(number,"actual")==0)assert(std::strcmp(value.number,"-2.40")==0);
+    if(std::strcmp(number,"target")==0)assert(std::strcmp(value.number,"20.20")==0);
+    if(std::strcmp(label,"label")==0)assert(value.label.size()==600&&!value.formatted_label);
+    if(std::strcmp(label,"actual")==0)assert(std::strcmp(value.text,u8"-2.40°C")==0);
+    if(std::strcmp(label,"target")==0)assert(std::strcmp(value.text,u8"20.20°C")==0);
+    if(std::strcmp(label,"status")==0)assert(std::strcmp(value.text,"Heating")==0);
+  }
 }
-int main(){display_text();for(const auto &limits:DEVICE_UI_PROFILES)profile(limits);}
+}
+int main(){display_text();for(const auto &limits:DEVICE_UI_PROFILES){profile(limits);climate_profile(limits);}}
