@@ -496,7 +496,10 @@ class HaReadCoordinator {
         retain_replay = retain_replay || ref.retain_replay;
       }
     }
-    if (!retain_replay) {
+    // Existing widget replay survives a partial teardown while a non-replaying
+    // configuration consumer keeps the channel alive. Pure configuration
+    // channels still never create a second cache; inactive channels drop it.
+    if (matching_callbacks == 0 || (!retain_replay && !subscription.has_last_state)) {
       release_string_storage(subscription.last_state);
       subscription.has_last_state = false;
     } else {
@@ -614,16 +617,8 @@ class HaReadCoordinator {
 
   void release_inactive_channel_state() {
     for (size_t channel = 0; channel < subscription_channels_.size(); channel++) {
-      bool active = false, replay = false;
-      for (const auto &ref : subscriptions_) {
-        if (ref.channel != channel || ref.pending_release || !ref.callback || !*ref.callback) continue;
-        active = true;
-        replay = replay || ref.retain_replay;
-      }
-      if (active && !replay) {
-        release_string_storage(subscription_channels_[channel].last_state);
-        subscription_channels_[channel].has_last_state = false;
-      }
+      // Keep bounded rebuild replay until reconnect, eviction or channel
+      // retirement, including when only non-replaying consumers remain.
       if (channel_reuses_reads(channel)) continue;
       SubscriptionChannel &subscription = subscription_channels_[channel];
       release_string_storage(subscription.cached_state);

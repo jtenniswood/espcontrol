@@ -240,6 +240,17 @@ void coordinator_deduplicates_generations_without_an_extra_cache() {
     coordinator.reset_subscriptions(1); coordinator.invalidate_retained_state();
     assert(state.dependency({2,0},0).status==PageEntityStatus::UNKNOWN);
     coordinator.transport().entries[0].callback("fresh"); assert(state.dependency({2,0},0).value=="fresh");
+    coordinator.transport().entries[0].callback(std::string(129, 'x'));
+    assert(state.dependency({2,0},0).status==PageEntityStatus::EXHAUSTED);
+    const auto overflows=state.memory().state_overflows;
+    assert(state.prepare(f.store)); state.activate_prepared(3);
+    assert(coordinator.transport().entries.size()==1);
+    const auto exhausted=state.dependency({3,0},0);
+    assert(exhausted.status==PageEntityStatus::EXHAUSTED && exhausted.value.empty() && exhausted.revision!=0);
+    assert(state.memory().state_overflows==overflows);
+    coordinator.transport().entries[0].callback("recovered");
+    assert(state.dependency({3,0},0).status==PageEntityStatus::AVAILABLE);
+    assert(state.dependency({3,0},0).value=="recovered");
   }
   coordinator.reclaim_unused_channels(); assert(coordinator.transport().entries.empty()); assert(arena.live.empty());
 }
