@@ -4,7 +4,7 @@
 
 The card system has useful foundations: a shared product contract, browser/firmware configuration-parity checks, family-level firmware drivers, and targeted runtime tests. The main weaknesses are lifecycle ownership, failure handling, and differences between the configuration preview and live device behaviour.
 
-This review identifies **nine actionable defects on the reviewed main baseline: three high priority (P1) and six medium priority (P2)**. **Two already have fixes in open PRs: F1 in #2268 and F7 in #2271.** Seven findings have no matching fix in the current open PRs. Prioritise the existing local-sensor lifetime fix, unsafe Cover Stop fallback, and silent relay reassignment. Five further recommendations address integration risks and maintainability. No production fixes are included in this report.
+This review identifies **nine actionable defects on the reviewed main baseline: three high priority (P1) and six medium priority (P2)**. **All nine findings now have fixes in separate open PRs.** F1 and F7 were already covered; seven follow-up PRs implement F2–F6, F8 and F9. They still require CI and user-confirmed device testing before merge. Prioritise the existing local-sensor lifetime fix, unsafe Cover Stop fallback, and silent relay reassignment. Five further recommendations address integration risks and maintainability. No production fixes are included in this report.
 
 ### Scope and confidence
 
@@ -18,23 +18,23 @@ All firmware recommendations concern shared code and therefore potentially affec
 
 ## Existing open-PR coverage
 
-Follow-up checked on 17 October 2026 against all **18 other open PRs**, including complete changed-file lists and the relevant production patches. The original audit inspected main and did not account for pending fixes. “Covered” below means the open PR implements the core correction; it does not mean the change has merged or passed user-confirmed device testing. This follow-up inspected code and existing test additions but did not rerun the PR branches' tests.
+Initial follow-up checked on 17 October 2026 against all **18 other open PRs**, including complete changed-file lists and the relevant production patches. The original audit inspected main and did not account for pending fixes. “Covered” below means the open PR implements the core correction; it does not mean the change has merged or passed user-confirmed device testing. The initial comparison inspected code and existing test additions without rerunning those older PR branches. Subsequent implementation produced the seven independent PRs below; targeted regressions pass, and all 117 firmware host tests pass with those seven changes combined. The relay editor also passes 180 web unit tests, TypeScript checking and 281 saved-configuration parity cases. These checks do not constitute physical-device testing or a full ESPHome firmware build.
 
 | Finding | Open-PR coverage | Evidence / remaining work |
 |---|---|---|
 | F1 — Local Sensor lifetime | **Covered by [#2268](https://github.com/jtenniswood/espcontrol/pull/2268)** — Release local sensor bindings when cards are removed | Adds unregister-on-delete, unregister-before-rebind and registry retirement before grid rebuild, plus lifetime regression tests. This is the same issue as earlier functional-review B01; use the existing PR. |
-| F2 — Cover/Gate Stop fallback | **No matching fix found** | Other PR changes to `button_grid_actions.h` leave the failed-Stop-to-toggle path unchanged. |
-| F3 — Internal Relay reassignment | **No matching fix found** | No other open PR changes the affected Internal Relay editor. |
-| F4 — Unrelated Climate modal closes | **No matching fix found** | [#2269](https://github.com/jtenniswood/espcontrol/pull/2269) fixes exact climate option values; [#2272](https://github.com/jtenniswood/espcontrol/pull/2272) protects pending thermostat edits. Neither adds modal ownership to the unavailable-state close. |
-| F5 — Invalid local readings remain stale | **No matching fix found** | #2268 fixes binding lifetime, but leaves the NaN early return and numeric formatting policy unchanged. |
-| F6 — Robot custom icons overwritten | **No matching fix found** | No other open PR changes the affected Vacuum/Mower firmware state renderers. |
+| F2 — Cover/Gate Stop fallback | **Covered by [#2279](https://github.com/jtenniswood/espcontrol/pull/2279)** | Stop failures log the failure without sending a toggle; retired-generation replies are ignored. Regression covers failure, cancellation, late replies and tilt. |
+| F3 — Internal Relay reassignment | **Covered by [#2280](https://github.com/jtenniswood/espcontrol/pull/2280)** | Preserves unavailable saved relay keys, makes the missing choice visible and requires explicit valid replacement; new-card defaults remain. Includes editor regression tests and rebuilt assets. |
+| F4 — Unrelated Climate modal closes | **Covered by [#2281](https://github.com/jtenniswood/espcontrol/pull/2281)** | Checks active modal ownership before closing and cancels pending temperature work only for the unavailable context. Includes a two-thermostat regression. |
+| F5 — Invalid local readings remain stale | **Covered by [#2282](https://github.com/jtenniswood/espcontrol/pull/2282)** | Uses the same finite-value policy for initial binding and later local updates: invalid readings show `--`, then recover. Complements #2268’s binding-lifetime fix. |
+| F6 — Robot custom icons overwritten | **Covered by [#2283](https://github.com/jtenniswood/espcontrol/pull/2283)** | Retains custom Vacuum/Mower icons across state updates while preserving dynamic automatic/default icons. Includes production-renderer regression coverage. |
 | F7 — False Option Select state after failed dispatch | **Covered by [#2271](https://github.com/jtenniswood/espcontrol/pull/2271)** — Keep Option Select state unchanged until Home Assistant confirms it | Returns dispatch success, retains the picker on failure, checks connection/availability and removes optimistic `current_option` updates. This is earlier functional-review B04; pending-spinner/timeout polish remains optional follow-up. |
-| F8 — Webhook URL secrets in logs | **No matching fix found** | Open generator changes do not remove/redact the three URL logging branches. |
-| F9 — Unavailable status looks inactive | **No matching fix found** | [#2165](https://github.com/jtenniswood/espcontrol/pull/2165) adds conditional Sensor colours but retains the normal inactive icon for unavailable input and does not change Door/Window or Presence state rendering. |
+| F8 — Webhook URL secrets in logs | **Covered by [#2284](https://github.com/jtenniswood/espcontrol/pull/2284)** | Removes raw URLs from all generated EspControl webhook sender logs across nine profiles; tests synthetic credentials and HTTP/start failures without changing request data. |
+| F9 — Unavailable status looks inactive | **Covered by [#2285](https://github.com/jtenniswood/espcontrol/pull/2285)** | Shows a dimmed dash while waiting or unavailable for Door/Window, Presence and icon Sensor cards; valid states restore normal icons and colours. Includes rendering tests and public docs. |
 
 Related Option Select PRs [#2270](https://github.com/jtenniswood/espcontrol/pull/2270) (exact names) and [#2274](https://github.com/jtenniswood/espcontrol/pull/2274) (changing choices while open) fix different bugs. They complement #2271; they are not additional fixes for F7. Page-runtime foundations [#2266](https://github.com/jtenniswood/espcontrol/pull/2266) and the PageStore shadow model [#2275](https://github.com/jtenniswood/espcontrol/pull/2275) relate to R4's longer-term direction, but keep the current renderer and do not resolve the remaining findings.
 
-Verified fix heads: #2268 `e789a62f1a4da55dd0ad66a0a294d219855c4c99`; #2271 `6492f4ed5890ea3830fb7120b1f4025b4ab4877a`. Avoid opening duplicate fixes for F1 or F7.
+Verified fix heads: #2268 `e789a62f1a4da55dd0ad66a0a294d219855c4c99`; #2271 `6492f4ed5890ea3830fb7120b1f4025b4ab4877a`. The seven follow-up fixes each start from the reviewed main baseline and contain one finding. F1 and F7 remain in their original PRs; avoid opening duplicate fixes.
 
 ## Required fixes
 
@@ -56,6 +56,8 @@ Registration stores raw pointers to labels and their owner. It only removes an e
 
 ### F2 — P1: Do not turn a failed Cover Stop into a toggle command
 
+**Open-PR status:** Implemented in [#2279](https://github.com/jtenniswood/espcontrol/pull/2279); baseline evidence below is retained for traceability.
+
 **Affected:** Cover command mode `stop`, Gate Stop, and other callers of the shared normal-cover Stop sender, including the cover modal.
 
 **Evidence:** [Cover action sender][fw-actions], lines 458–500, especially the response callback at lines 486–490.
@@ -69,6 +71,8 @@ A failed `cover.stop_cover` response triggers `send_toggle_action(entity_id)` re
 **Effort:** Small for removing the fallback; medium for any explicit compatibility mode. Existing saved cards can stay unchanged. Test success, unsupported Stop, permission failure, timeout, disconnection, and a response arriving after the card is edited. Acceptance: none of these failures sends an unsolicited movement command.
 
 ### F3 — P1: Do not silently change an existing Internal Relay card to the first relay
+
+**Open-PR status:** Implemented in [#2280](https://github.com/jtenniswood/espcontrol/pull/2280); baseline evidence below is retained for traceability.
 
 **Affected:** Internal Relay cards with an unavailable or unrecognised saved relay key, especially imported configurations or changed device profiles.
 
@@ -84,6 +88,8 @@ If the saved key is absent from the current relay catalogue, simply rendering th
 
 ### F4 — P2: Only close the Climate modal belonging to the unavailable entity
 
+**Open-PR status:** Implemented in [#2281](https://github.com/jtenniswood/espcontrol/pull/2281); baseline evidence below is retained for traceability.
+
 **Affected:** `climate` and `climate_control` on layouts with multiple thermostat entities.
 
 **Evidence:** [Climate state subscription][fw-climate], lines 2713–2723. Context-specific cleanup already uses an ownership check at line 2270.
@@ -98,6 +104,8 @@ Every climate state callback calls the global `climate_control_hide_modal()` whe
 
 ### F5 — P2: Clear invalid local Sensor readings instead of retaining the last valid value
 
+**Open-PR status:** Implemented in [#2282](https://github.com/jtenniswood/espcontrol/pull/2282); baseline evidence below is retained for traceability.
+
 **Affected:** Numeric Sensor in local-device mode and `local_sensor` compatibility input.
 
 **Evidence:** [Local numeric updates][fw-local], lines 126–138, and initial rendering in [the sensor driver][fw-sensor], lines 156–162.
@@ -111,6 +119,8 @@ Every climate state callback calls the global `climate_control_hide_modal()` whe
 **Effort:** Small. No migration. Test valid → NaN → valid, infinity, startup without a reading, and multiple cards bound to the same local sensor.
 
 ### F6 — P2: Preserve custom robot icons after state updates
+
+**Open-PR status:** Implemented in [#2283](https://github.com/jtenniswood/espcontrol/pull/2283); baseline evidence below is retained for traceability.
 
 **Affected:** State-bound Vacuum and Lawn Mower modes.
 
@@ -142,6 +152,8 @@ The sender ignores the boolean result of `ha_send_entity_action` and immediately
 
 ### F8 — P2: Remove secrets from Webhook URL logs
 
+**Open-PR status:** Implemented in [#2284](https://github.com/jtenniswood/espcontrol/pull/2284); baseline evidence below is retained for traceability.
+
 **Affected:** Webhook on all generated device configurations.
 
 **Evidence:** [The device YAML generator][generator], lines 501–514. The editor itself suggests a query-string API URL in [Webhook settings][e-webhook].
@@ -155,6 +167,8 @@ The generated sender logs the full URL on start failure, HTTP failure, and succe
 **Effort:** Small. No user migration. Test synthetic secret-bearing URLs through success and both failure paths and assert that no secret reaches captured logs.
 
 ### F9 — P2: Give unavailable status sensors a visibly unknown state
+
+**Open-PR status:** Implemented in [#2285](https://github.com/jtenniswood/espcontrol/pull/2285); baseline evidence below is retained for traceability.
 
 **Affected:** Door/Window, Presence, and the icon-only HA Sensor presentation.
 
