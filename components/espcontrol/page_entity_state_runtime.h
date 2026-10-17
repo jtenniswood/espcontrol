@@ -14,8 +14,8 @@ class PageDependencySink {
   virtual bool add(CardId card, std::string_view entity, std::string_view attribute) = 0;
 };
 
-// A driver enumerates its dependencies without constructing widgets. Both
-// passes must enumerate the same definition; failure rejects the replacement.
+// A driver enumerates its dependencies without constructing widgets. The sink
+// copies borrowed names during add(); failure rejects the replacement.
 class PageDependencySource {
  public:
   virtual ~PageDependencySource() = default;
