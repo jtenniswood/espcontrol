@@ -96,6 +96,8 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
   if (!add_size(bytes, channels, sizeof(Channel)) || !align_size(bytes, alignof(Edge))) return fail();
   const size_t edge_offset = bytes;
   if (!add_size(bytes, counter.count, sizeof(Edge))) return fail();
+  const size_t index_offset = bytes;
+  if (counter.count != 0 && !add_size(bytes, store.card_count() + 1, sizeof(uint32_t))) return fail();
   const size_t names_offset = bytes;
   if (!add_size(bytes, counter.names)) return fail();
   const size_t values_offset = bytes;
@@ -111,13 +113,19 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
   auto *raw = static_cast<char *>(arena);
   slot.channels = reinterpret_cast<Channel *>(raw);
   slot.edges = reinterpret_cast<Edge *>(raw + edge_offset);
+  slot.card_count = store.card_count();
+  if (counter.count != 0) {
+    slot.card_offsets = reinterpret_cast<uint32_t *>(raw + index_offset);
+    for (size_t i = 0; i <= slot.card_count; ++i) new (slot.card_offsets + i) uint32_t{0};
+  }
   slot.names = raw + names_offset;
   slot.values = raw + values_offset;
   const auto current = memory();
   memory_.peak_arena_bytes = std::max(memory_.peak_arena_bytes,
       current.active_arena_bytes + current.staged_arena_bytes);
   Builder builder(slot, store, counter.count, counter.names, channels);
-  if (!source_.enumerate(store, builder) || !builder.valid || builder.count != counter.count) return fail();
+  if (!source_.enumerate(store, builder) || !builder.valid || builder.count != counter.count ||
+      !index_dependencies(slot)) return fail();
   synchronize_connection();
   for (size_t i = 0; i < slot.channel_count; ++i) {
     const auto &entry = slot.channels[i];
@@ -140,6 +148,39 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
     if (!subscriptions_.subscribe(slot.names + entry.entity_offset, slot.names + entry.attribute_offset,
           &slot, slot.revision, static_cast<uint32_t>(i), deliver)) return fail();
   }
+  return true;
+}
+
+bool PageEntityStateRuntime::index_dependencies(Slot &slot) {
+  if (slot.edge_count == 0) return true;
+  bool ordered = true;
+  for (size_t i = 0; i < slot.edge_count; ++i) {
+    ++slot.card_offsets[slot.edges[i].card + 1];
+    if (i != 0 && slot.edges[i - 1].card > slot.edges[i].card) ordered = false;
+  }
+  for (size_t card = 1; card <= slot.card_count; ++card)
+    slot.card_offsets[card] += slot.card_offsets[card - 1];
+  // Production declarations already arrive in card order. Other sources can
+  // interleave cards: group them stably without changing per-card ordinals.
+  if (ordered) return true;
+  const size_t bytes = slot.edge_count * sizeof(Edge);
+  auto *scratch = static_cast<Edge *>(allocator_.allocate(bytes));
+  if (scratch == nullptr) return false;
+  const auto current = memory();
+  memory_.peak_arena_bytes = std::max(memory_.peak_arena_bytes,
+      current.active_arena_bytes + current.staged_arena_bytes + bytes);
+  for (size_t i = 0; i < slot.edge_count; ++i) {
+    const auto edge = slot.edges[i];
+    new (scratch + slot.card_offsets[edge.card]++) Edge(edge);
+  }
+  // The write cursors now contain row ends; shift them back to row starts.
+  for (size_t card = slot.card_count; card != 0; --card)
+    slot.card_offsets[card] = slot.card_offsets[card - 1];
+  slot.card_offsets[0] = 0;
+  for (size_t i = 0; i < slot.edge_count; ++i) {
+    slot.edges[i] = scratch[i];scratch[i].~Edge();
+  }
+  allocator_.release(scratch, bytes);
   return true;
 }
 
@@ -195,6 +236,11 @@ void PageEntityStateRuntime::receive(Slot &slot, uint32_t revision, uint32_t cha
   auto &entry = slot.channels[channel];
   if (entry.status == PageEntityStatus::AVAILABLE && entry.value_size == value.size() &&
       std::string_view(slot.values + entry.value_offset, entry.value_size) == value) return;
+  if (entry.status == PageEntityStatus::AVAILABLE && entry.value_size == value.size()) {
+    ++revision_;++entry.revision;
+    if (!value.empty()) std::memmove(slot.values + entry.value_offset, value.data(), value.size());
+    return; // Equal-width updates need not move any neighbouring packed state.
+  }
   const size_t available = budget_.state_bytes - (slot.values_used - entry.value_size);
   ++revision_;
   remove_value(slot, entry);
@@ -229,22 +275,20 @@ void PageEntityStateRuntime::synchronize_connection() {
 size_t PageEntityStateRuntime::dependency_count(ConfigurationHandle card) const {
   if (active_ < 0 || slots_[active_].generation != card.generation) return 0;
   const auto &slot = slots_[active_];
-  size_t count = 0;
-  for (size_t i = 0; i < slot.edge_count; ++i) if (slot.edges[i].card == card.index) ++count;
-  return count;
+  if (card.index >= slot.card_count || slot.edge_count == 0) return 0;
+  return slot.card_offsets[card.index + 1] - slot.card_offsets[card.index];
 }
 PageEntityValue PageEntityStateRuntime::dependency(ConfigurationHandle card, size_t ordinal) {
   synchronize_connection();
   if (active_ < 0 || slots_[active_].generation != card.generation) return {};
   const auto &slot = slots_[active_];
-  for (size_t i = 0; i < slot.edge_count; ++i) {
-    if (slot.edges[i].card != card.index || ordinal-- != 0) continue;
-    const auto &entry = slot.channels[slot.edges[i].channel];
-    return {entry.status, {slot.names + entry.entity_offset, entry.entity_size},
-        {slot.names + entry.attribute_offset, entry.attribute_size},
-        {slot.values + entry.value_offset, entry.value_size}, entry.revision};
-  }
-  return {};
+  if (card.index >= slot.card_count || slot.edge_count == 0) return {};
+  const size_t begin = slot.card_offsets[card.index], end = slot.card_offsets[card.index + 1];
+  if (ordinal >= end - begin) return {};
+  const auto &entry = slot.channels[slot.edges[begin + ordinal].channel];
+  return {entry.status, {slot.names + entry.entity_offset, entry.entity_size},
+      {slot.names + entry.attribute_offset, entry.attribute_size},
+      {slot.values + entry.value_offset, entry.value_size}, entry.revision};
 }
 PageEntityMemory PageEntityStateRuntime::memory() const {
   auto result = memory_;
