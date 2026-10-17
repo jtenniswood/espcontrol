@@ -898,10 +898,11 @@ def firmware_climate_option_selection_errors(root: Path) -> list[str]:
     body = match.group("body")
     if (
         "climate_option_current_value(ctx, kind)" not in body
-        or "climate_lower(climate_trim(value))" not in body
-        or "climate_lower(climate_trim(current))" not in body
+        or "climate_hvac_service_value(value) == ctx->hvac_mode" not in body
+        or "return value == current;" not in body
+        or "climate_lower" in body
     ):
-        return [f"{rel}: match climate option state without case sensitivity"]
+        return [f"{rel}: match exact climate option values while normalizing HVAC enums"]
     return []
 
 
@@ -2187,19 +2188,7 @@ def run_self_test() -> int:
         (),
     )
     expect_climate_option_selection_errors(
-        "climate option selection is case-sensitive",
-        (
-            "inline bool climate_option_selected(ClimateControlCtx *ctx,\n"
-            "                                    const std::string &kind,\n"
-            "                                    const std::string &value) {\n"
-            "  if (!ctx) return false;\n"
-            "  return value == climate_option_current_value(ctx, kind);\n"
-            "}\n"
-        ),
-        ("match climate option state without case sensitivity",),
-    )
-    expect_climate_option_selection_errors(
-        "climate option selection ignores attribute case",
+        "climate custom options lose case distinctions",
         (
             "inline bool climate_option_selected(ClimateControlCtx *ctx,\n"
             "                                    const std::string &kind,\n"
@@ -2207,6 +2196,20 @@ def run_self_test() -> int:
             "  if (!ctx) return false;\n"
             "  std::string current = climate_option_current_value(ctx, kind);\n"
             "  return climate_lower(climate_trim(value)) == climate_lower(climate_trim(current));\n"
+            "}\n"
+        ),
+        ("match exact climate option values while normalizing HVAC enums",),
+    )
+    expect_climate_option_selection_errors(
+        "climate option selection keeps custom IDs and HVAC normalization",
+        (
+            "inline bool climate_option_selected(ClimateControlCtx *ctx,\n"
+            "                                    const std::string &kind,\n"
+            "                                    const std::string &value) {\n"
+            "  if (!ctx) return false;\n"
+            '  if (kind == "hvac") return climate_hvac_service_value(value) == ctx->hvac_mode;\n'
+            "  std::string current = climate_option_current_value(ctx, kind);\n"
+            "  return value == current;\n"
             "}\n"
         ),
         (),

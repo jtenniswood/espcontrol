@@ -89,7 +89,7 @@ ClimateTargetKind climate_target_kind(ClimateControlCtx *) { assert(false); retu
 bool climate_parse_supported_features(esphome::StringRef, int &) { assert(false); return false; }
 bool climate_target_values_complete(ClimateControlCtx *) { assert(false); return false; }
 bool climate_parse_tenths(esphome::StringRef, int &) { assert(false); return false; }
-void climate_cancel_temperature_send(ClimateControlCtx *) { assert(false); }
+void climate_cancel_temperature_send(ClimateControlCtx *) {}
 void climate_normalize_range(ClimateControlCtx *) { assert(false); }
 std::vector<std::string> climate_parse_options(esphome::StringRef) { assert(false); return {}; }
 void climate_select_target_for_mode(ClimateControlCtx *, const std::string &) {}
