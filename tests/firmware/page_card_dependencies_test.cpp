@@ -21,6 +21,14 @@ struct Document {
     assert(writer.begin() == PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t *>(limits.device_profile),
         std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    std::string order;
+    for (size_t slot=1;slot<=limits.slot_count;++slot) {
+      if (!order.empty()) order+=",";
+      order+=std::to_string(slot);
+    }
+    const std::string key="button_order";
+    assert(writer.append_setting(reinterpret_cast<const uint8_t *>(key.data()),key.size(),
+        reinterpret_cast<const uint8_t *>(order.data()),order.size())==PanelConfigStatus::OK);
   }
   void button(uint8_t slot, const std::string &text) {
     assert(writer.append_button(slot,reinterpret_cast<const uint8_t *>(text.data()),text.size())==PanelConfigStatus::OK);
@@ -118,16 +126,16 @@ void folder_and_hidden_state() {
   assert((declarations("climate.room;Room;Home;Auto;indicator;;subpage;;subpage_kind=climate")==
       std::set<std::string>{"climate.room/","climate.room/hvac_action"}));
   Document doc(DEVICE_UI_PROFILES[8]);doc.button(1,";Media;Home;Auto;indicator;;subpage;;");
-  doc.child(1,"~B|M,media_player.room,Next,Auto,Auto,next,,,,");
+  doc.child(1,"~B,1|M,media_player.room,Next,Auto,Auto,next,,,,");
   auto store=doc.finish();Sink sink;assert(PageCardDependencies().enumerate(store,sink));
   const auto child=store.page(store.card(0)->target)->first_card;
   assert(sink.pairs(child)==std::set<std::string>{"media_player.room/"});
   Document inactive(DEVICE_UI_PROFILES[8]);inactive.button(1,"light.room;Room;Auto;Auto;;;;;");
-  inactive.child(1,"~B|S,,Hidden,Auto,Auto,sensor.hidden,,1,");
+  inactive.child(1,"~B,1|S,,Hidden,Auto,Auto,sensor.hidden,,1,");
   auto hidden=inactive.finish();Sink ignored;assert(PageCardDependencies().enumerate(hidden,ignored));
   for (const auto &entry:ignored.entries)assert(entry.entity!="sensor.hidden");
   Document alarm(DEVICE_UI_PROFILES[8]);alarm.button(1,"alarm_control_panel.home;Alarm;Home;Auto;indicator;;subpage;;subpage_kind=alarm");
-  alarm.child(1,"~B|AA,,Arm,Auto,Auto,away,,,,");
+  alarm.child(1,"~B,1|AA,,Arm,Auto,Auto,away,,,,");
   auto inherited=alarm.finish();Sink a;assert(PageCardDependencies().enumerate(inherited,a));
   const auto alarm_child=inherited.page(inherited.card(0)->target)->first_card;
   assert(a.pairs(alarm_child).count("alarm_control_panel.home/")==1);
@@ -166,6 +174,7 @@ void maximum_live_sensor_dependencies() {
     for(size_t parent=1;parent<=limits.slot_count;++parent) {
       doc.button(parent,";Room;Home;Auto;indicator;;subpage;;");
       std::string subpage="~B";
+      for(size_t child=1;child<=limits.cards_per_subpage;++child) subpage+=","+std::to_string(child);
       for(size_t child=1;child<=limits.cards_per_subpage;++child) {
         const std::string entity="sensor.room_"+std::to_string(parent)+"_"+std::to_string(child);
         subpage+="|S,"+entity+",Zone,Auto,Auto,"+entity+",C,1,";

@@ -243,9 +243,16 @@ void authored_golden_corpus() {
 void maximum_distinct_entities() {
   for (const auto &limits : DEVICE_UI_PROFILES) {
     Document doc(limits);
+    std::string root_order;
+    for (size_t slot=1;slot<=limits.slot_count;++slot) {
+      if (!root_order.empty()) root_order+=",";
+      root_order+=std::to_string(slot);
+    }
+    doc.setting("button_order",root_order);
     for (size_t parent = 1; parent <= limits.slot_count; ++parent) {
       doc.button(parent, ";Room " + std::to_string(parent) + ";Home;Auto;indicator;;subpage;;");
       std::string subpage = "~B";
+      for (size_t child=1;child<=limits.cards_per_subpage;++child) subpage+=","+std::to_string(child);
       for (size_t child = 1; child <= limits.cards_per_subpage; ++child) {
         const std::string suffix = std::to_string(parent) + "_" + std::to_string(child);
         subpage += "|S,sensor.room_" + suffix + ",Zone%20" + suffix + ",Auto,Auto,sensor.room_" + suffix + ",%C2%B0C,1,";
