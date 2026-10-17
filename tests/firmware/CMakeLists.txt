@@ -5,6 +5,10 @@ enable_testing()
 include(CheckCXXSourceCompiles)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+add_test(NAME device_ui_limits_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/device_ui_limits_test.py)
+
 add_test(NAME gsl3680_startup_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/gsl3680_startup_test.py)

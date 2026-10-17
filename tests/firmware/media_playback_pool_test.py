@@ -65,7 +65,7 @@ int main() {
 with tempfile.TemporaryDirectory(prefix='media-playback-pool-') as directory:
     path = Path(directory)
     (path / 'test.cpp').write_text(source)
-    for grid_slots in (25, 16):
+    for grid_slots in (6, 9, 15, 20, 25, 16):
         subprocess.run([os.environ.get('CXX', 'c++'), '-std=c++17', '-Wall', '-Wextra', '-Werror',
                         f'-DESPCONTROL_MAX_GRID_SLOTS={grid_slots}',
                         '-I', str(root / 'components/espcontrol'), str(path / 'test.cpp'),

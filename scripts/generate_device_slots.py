@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from product_schema import slot_devices
+from device_ui_limits import profile_flag, render_header
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -148,6 +149,7 @@ def package_file_text(device: dict) -> str:
             "",
             "esphome:",
             "  build_flags:",
+            f'    - "-D{profile_flag(device["slug"])}"',
             '    - "-DESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=${image_card_slot_capacity}"',
             "",
             "packages:",
@@ -855,7 +857,7 @@ def replace_sensor_blocks(text: str, device: dict) -> str:
 
 
 def update(path: Path, new_text: str, check: bool, changed: list[Path]) -> None:
-    old_text = path.read_text(encoding="utf-8")
+    old_text = path.read_text(encoding="utf-8") if path.exists() else None
     if old_text == new_text:
         return
     changed.append(path)
@@ -893,6 +895,8 @@ def main() -> int:
     args = parser.parse_args()
 
     changed: list[Path] = []
+    update(ROOT / "components/espcontrol/device_ui_limits_generated.h",
+           render_header(), args.check, changed)
     for device in slot_devices():
         slug = device["slug"]
         package_path = ROOT / "devices" / slug / "packages.yaml"
