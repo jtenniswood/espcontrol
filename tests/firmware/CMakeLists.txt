@@ -863,6 +863,23 @@ add_test(NAME weather_daily_requests_test COMMAND
 add_test(NAME camera_screensaver_dimming_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/camera_screensaver_dimming_test.py)
 
+add_executable(page_forecast_runtime_test page_forecast_runtime_test.cpp
+  ../../components/espcontrol/page_forecast_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_forecast_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_forecast_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_forecast_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_forecast_runtime_test COMMAND page_forecast_runtime_test)
+
+
+foreach(FORECAST_TRANSPORT_TEST page_ha_forecast_requests_test page_ha_forecast_requests_disabled_test)
+  add_executable(${FORECAST_TRANSPORT_TEST} page_ha_forecast_requests_test.cpp)
+  target_compile_features(${FORECAST_TRANSPORT_TEST} PRIVATE cxx_std_17)
+  target_compile_options(${FORECAST_TRANSPORT_TEST} PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(${FORECAST_TRANSPORT_TEST} PRIVATE ../../components/espcontrol)
+  add_test(NAME ${FORECAST_TRANSPORT_TEST} COMMAND ${FORECAST_TRANSPORT_TEST})
+endforeach()
+target_compile_definitions(page_ha_forecast_requests_disabled_test PRIVATE ESPCONTROL_DISABLE_WEATHER_FORECAST=1)
+
 # Optional real-LVGL integration, using the exact library from an ESPHome build.
 # No network/download or machine-specific path is required by the normal suite.
 set(ESPCONTROL_LVGL_SOURCE_DIR "" CACHE PATH "LVGL 9.5 source from pinned firmware build")
@@ -896,8 +913,15 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   # All optional LVGL executables share this library, including the modal test,
   # because the pinned label translation unit is routed through its wrappers.
   link_libraries(page_label_refresh_test_support)
-  add_executable(page_basic_lvgl_port_test page_basic_lvgl_port_test.cpp
+  set(FORECAST_REFERENCE ${CMAKE_CURRENT_BINARY_DIR}/forecast_reference.h)
+  add_custom_command(OUTPUT ${FORECAST_REFERENCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_forecast_reference.py --output ${FORECAST_REFERENCE}
+    DEPENDS generate_forecast_reference.py generate_climate_update_test.py
+      ../../components/espcontrol/button_grid_weather_daily_ui.h ../../components/espcontrol/button_grid_weather_daily_data.h
+    VERBATIM)
+  add_executable(page_basic_lvgl_port_test page_basic_lvgl_port_test.cpp ${FORECAST_REFERENCE}
     ../../components/espcontrol/page_basic_card.cpp
+    ../../components/espcontrol/page_forecast_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
     ../../components/espcontrol/page_card_dependencies.cpp
     ../../components/espcontrol/page_entity_state_runtime.cpp
@@ -905,7 +929,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     ../../components/espcontrol/page_store.cpp)
   target_compile_features(page_basic_lvgl_port_test PRIVATE cxx_std_17)
   target_compile_options(page_basic_lvgl_port_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
-  target_include_directories(page_basic_lvgl_port_test PRIVATE stubs ../../components/espcontrol)
+  target_include_directories(page_basic_lvgl_port_test PRIVATE stubs ../../components/espcontrol ${CMAKE_CURRENT_BINARY_DIR})
   target_link_libraries(page_basic_lvgl_port_test PRIVATE lvgl::lvgl)
   add_test(NAME page_basic_lvgl_port_test COMMAND page_basic_lvgl_port_test)
   add_executable(page_label_refresh_test page_label_refresh_test.cpp)
@@ -952,6 +976,20 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   target_include_directories(page_light_cover_modal_test PRIVATE stubs ../../components/espcontrol)
   target_link_libraries(page_light_cover_modal_test PRIVATE lvgl::lvgl)
   add_test(NAME page_light_cover_modal_test COMMAND page_light_cover_modal_test)
+
+  set(PAGE_WEATHER_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_weather_modal_test.cpp)
+  add_custom_command(OUTPUT ${PAGE_WEATHER_MODAL_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_weather_modal_test.py --output ${PAGE_WEATHER_MODAL_SOURCE}
+    DEPENDS generate_page_weather_modal_test.py generate_climate_update_test.py page_weather_modal_test.cpp.in
+      ../../components/espcontrol/button_grid_weather_daily_ui.h ../../components/espcontrol/button_grid_weather_modal.h
+    VERBATIM)
+  add_executable(page_weather_modal_test ${PAGE_WEATHER_MODAL_SOURCE}
+    ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_forecast_runtime.cpp ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_weather_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_weather_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_weather_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_weather_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_weather_modal_test COMMAND page_weather_modal_test)
 
 endif()
 

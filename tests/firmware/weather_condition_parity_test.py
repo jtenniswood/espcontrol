@@ -11,7 +11,7 @@ legacy=(ROOT/'components/espcontrol/button_grid_weather_forecast.h').read_text()
 # The ordinary 65-byte bank also covers a language switch without rebuilding.
 import re
 maps=(ROOT/'components/espcontrol/weather_condition_maps_generated.h').read_text()
-keys=set(re.findall(r'\{\"[^\"]+\",\"[^\"]+\",\"([^\"]+)\"\}',maps))|{'Unknown','Unavailable'}
+keys=set(re.findall(r'\{\"[^\"]+\",\"[^\"]+\",\"([^\"]+)\"\}',maps))|{'Unknown','Unavailable','Loading','Forecast unavailable','Last forecast','Today','Tomorrow','Sun','Mon','Tues','Weds','Thurs','Fri','Sat'}
 translations=(ROOT/'components/espcontrol/i18n_generated.h').read_text()
 values=[value for key,value in re.findall(r'if \(std::strcmp\(text, \"([^\"]+)\"\) == 0\) return \"([^\"]*)\";',translations) if key in keys]
 assert values and max(len(value.encode()) for value in values)<=64, 'Increase the fixed weather caption capacity for new translations.'

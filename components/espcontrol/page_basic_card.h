@@ -2,16 +2,18 @@
 
 #include "page_entity_state_runtime.h"
 #include "page_climate_card.h"
+#include "weather_card_view.h"
 #include "page_renderer_runtime.h"
 
 namespace espcontrol::pages {
-enum class BasicCardKind:uint8_t { EMPTY, TOGGLE, NUMBER, ICON, FOLDER, TEXT, DURATION, CLIMATE, STATUS, ACTION, LIGHT, COVER, WEATHER };
+enum class BasicCardKind:uint8_t { EMPTY, TOGGLE, NUMBER, ICON, FOLDER, TEXT, DURATION, CLIMATE, STATUS, ACTION, LIGHT, COVER, WEATHER, FORECAST };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode:uint8_t { NONE, ENTITY, CLIMATE, MOWER, CHILDREN, NUMBER, TEXT };
 struct BasicCardDefinition {
   BasicCardKind kind{BasicCardKind::EMPTY};
   BasicFolderMode folder_mode{BasicFolderMode::NONE};
   ClimateCardOptions climate;
+  weather::View forecast_view{weather::View::DAILY};
   BasicActionDisplay action_display{BasicActionDisplay::NONE};
   std::string_view entity,sensor,label,unit,icon,icon_on;
   const char *default_label{nullptr};
@@ -32,6 +34,7 @@ class BasicCardTextSink {
 // Preparation only: reject not-yet-ported variants instead of showing a partial
 // interpretation. Fields borrow PageStore; decoded mapping/unit strings borrow
 // the supplied sink and must remain alive until this generation retires.
+bool basic_card_is_forecast(const PageStore &,CardId);
 bool prepare_basic_card(const PageStore &,CardId,BasicCardDefinition &,BasicCardTextSink *text=nullptr);
 struct BasicCardState {
   bool on{false},numeric{false},formatted_label{false},climate_icon_on{false};

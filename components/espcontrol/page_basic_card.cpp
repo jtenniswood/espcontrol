@@ -42,6 +42,12 @@ PageEntityValue find(PageEntityStateRuntime &state,ConfigurationHandle handle,
   return {};
 }
 }
+bool basic_card_is_forecast(const PageStore &store,CardId id) {
+  const auto *card=store.card(id);if(!card)return false;
+  const auto type=store.field(*card,CardField::TYPE);
+  return card_runtime_weather_forecast_supported()&&(type=="weather_forecast"||
+    (type=="weather"&&card_runtime_weather_forecast_precision(std::string(store.field(*card,CardField::PRECISION)))));
+}
 bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &out,BasicCardTextSink *strings) {
   out={};const auto *card=store.card(id);if(card==nullptr)return false;
   out.entity=store.field(*card,CardField::ENTITY);out.sensor=store.field(*card,CardField::SENSOR);
@@ -103,9 +109,9 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
       if(unit.empty())out.unit={};
       else if(!strings||!strings->copy_unit(unit,out.unit))return false;
     }
-  } else if(type=="weather") {
-    if(card_runtime_weather_forecast_precision(std::string(precision)))return false;
-    out.kind=BasicCardKind::WEATHER;out.label={};out.sensor={};out.unit={};
+  } else if(type=="weather"||type=="weather_forecast") {
+    out.kind=basic_card_is_forecast(store,id)?BasicCardKind::FORECAST:BasicCardKind::WEATHER;
+    out.forecast_view=precision=="today"?weather::View::TODAY:precision=="tomorrow"||type=="weather_forecast"?weather::View::TOMORROW:weather::View::DAILY;out.label={};out.sensor={};out.unit={};
     out.icon=out.icon_on="Weather Cloudy";
   } else if(type=="light_control") {
     out.unit={};out.kind=BasicCardKind::LIGHT;out.active_color=true;out.push_feedback=true;out.default_label="Light";
@@ -180,6 +186,7 @@ bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,Pag
 }
 BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHandle handle,PageEntityStateRuntime &state,int duration_components,std::string_view temperature_unit,PageCardTranslate translate) {
   BasicCardState result;
+  if(card.kind==BasicCardKind::FORECAST)return result;
   if(card.kind==BasicCardKind::WEATHER) {
     const auto value=find(state,handle,card.entity);
     const auto text=card.entity.empty()?std::string_view("cloudy"):value.status==PageEntityStatus::AVAILABLE?value.value:std::string_view("unavailable");
