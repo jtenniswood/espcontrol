@@ -1249,33 +1249,54 @@ inline void climate_preview_selected_target(ClimateControlCtx *ctx, int value) {
 }
 
 inline std::vector<std::string> climate_parse_options(esphome::StringRef value) {
-  std::string raw = string_ref_limited(value, HA_TEXT_SENSOR_STATE_MAX_LEN);
+  std::string raw = climate_trim(string_ref_limited(value, HA_TEXT_SENSOR_STATE_MAX_LEN));
+  if (raw.size() >= 2 && raw.front() == '[' && raw.back() == ']')
+    raw = raw.substr(1, raw.size() - 2);
   std::vector<std::string> out;
   std::string token;
+  char quote = 0;
+  bool escaped = false;
+  bool quoted_token = false;
+  bool closed_quote = false;
   auto flush = [&]() {
-    std::string v = climate_clean_option_token(token);
+    std::string item = quoted_token ? token : climate_trim(token);
+    if (!item.empty() && std::find(out.begin(), out.end(), item) == out.end())
+      out.push_back(item);
     token.clear();
-    if (v.empty()) return;
-    std::string lower = climate_lower(v);
-    if (lower == "hvacmode" || lower == "fanmode" || lower == "swingmode" || lower == "presetmode") return;
-    bool all_caps = true;
-    bool has_alpha = false;
-    for (char ch : v) {
-      if (std::isalpha((unsigned char)ch)) {
-        has_alpha = true;
-        if (!std::isupper((unsigned char)ch)) all_caps = false;
-      }
-    }
-    if (has_alpha && all_caps) v = lower;
-    for (const auto &existing : out) {
-      if (climate_lower(existing) == climate_lower(v)) return;
-    }
-    out.push_back(v);
+    quoted_token = closed_quote = false;
   };
   for (char ch : raw) {
-    if (ch == ',' || ch == '[' || ch == ']') flush();
-    else token.push_back(ch);
+    if (quote) {
+      if (escaped) {
+        switch (ch) {
+          case 'n': token.push_back('\n'); break;
+          case 'r': token.push_back('\r'); break;
+          case 't': token.push_back('\t'); break;
+          default: token.push_back(ch); break;
+        }
+        escaped = false;
+      } else if (ch == '\\') {
+        escaped = true;
+      } else if (ch == quote) {
+        quote = 0;
+        closed_quote = true;
+      } else {
+        token.push_back(ch);
+      }
+    } else if (ch == ',') {
+      flush();
+    } else if ((ch == '\'' || ch == '"') && climate_trim(token).empty() && !closed_quote) {
+      token.clear();
+      quote = ch;
+      quoted_token = true;
+    } else if (closed_quote) {
+      if (!std::isspace(static_cast<unsigned char>(ch))) return {};
+    } else {
+      token.push_back(ch);
+    }
   }
+  // Incomplete quoted input must never become a different action value.
+  if (quote || escaped) return {};
   flush();
   return out;
 }
@@ -1381,7 +1402,7 @@ inline bool climate_option_selected(ClimateControlCtx *ctx,
   if (!ctx) return false;
   if (kind == "hvac") return climate_hvac_service_value(value) == ctx->hvac_mode;
   std::string current = climate_option_current_value(ctx, kind);
-  return climate_lower(climate_trim(value)) == climate_lower(climate_trim(current));
+  return value == current;
 }
 
 inline const char *climate_option_icon(const std::string &kind, const std::string &value) {
@@ -2832,6 +2853,10 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         [ctx, refresh, active, field](esphome::StringRef value) {
           if (!active()) return;
           ctx->*field = climate_parse_options(value);
+          // HVAC values are enums; custom fan/swing/preset values are exact IDs.
+          if (field == &ClimateControlCtx::hvac_modes) {
+            for (auto &mode : ctx->*field) mode = climate_hvac_service_value(mode);
+          }
           climate_mark_optional_subscription_needs(ctx);
           refresh();
         })
