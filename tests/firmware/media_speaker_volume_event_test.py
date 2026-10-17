@@ -320,6 +320,38 @@ int main() {
   media_control_refresh_speakers(&ctx);
   assert(office.volume_known && office.volume_pct == 20);
 
+  // Discovery may provide a fallback primary volume, but its availability
+  // can lag behind the direct player state. Never revive an offline primary
+  // or send it a volume command because the helper still calls it available.
+  ctx.reported_volume_known = false;
+  ctx.available = false;
+  ctx.speaker_discovery[0].volume_pct = 20;
+  ctx.speaker_discovery[0].volume_known = true;
+  ctx.speaker_discovery[0].available = true;
+  ctx.group_members = {office.entity_id, kitchen.entity_id};
+  media_control_store_group_volume(&ctx, office.entity_id, 0, false, false);
+  media_control_refresh_speakers(&ctx);
+  assert(office.volume_known && office.volume_pct == 20 && !office.available);
+  const auto offline_members = media_control_current_group_volumes(&ctx);
+  assert(!offline_members[0].available && offline_members[1].available);
+  commands.clear();
+  click(plus);
+  assert(commands.empty());
+  media_control_apply_group_volume_percent(&ctx, 41, true);
+  assert(commands.size() == 1 && commands[0].entity == kitchen.entity_id);
+  // Recovery follows the direct state even if the helper still says offline.
+  ctx.available = true;
+  ctx.speaker_discovery[0].available = false;
+  media_control_refresh_speakers(&ctx);
+  assert(office.available && office.volume_known && office.volume_pct == 20);
+  // Other speakers still use the discovery helper's own availability.
+  ctx.speaker_discovery[1].available = false;
+  media_control_refresh_speakers(&ctx);
+  assert(!kitchen.available);
+  ctx.speaker_discovery[1].available = true;
+  ctx.reported_volume_known = true;
+  media_control_refresh_speakers(&ctx);
+
   // A rejected join remains visible across normal list refreshes and clears
   // explicitly when a new action starts (the toggle handler does this).
   kitchen.call_id = 123; kitchen.pending = true;

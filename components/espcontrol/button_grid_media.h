@@ -3771,8 +3771,12 @@ inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx) {
     // lag behind it or omit it entirely.
     if (item.entity_id == ctx->entity_id && ctx->reported_volume_known) continue;
     if (std::find(members.begin(), members.end(), item.entity_id) == members.end()) continue;
+    // Discovery may fill in the primary volume, but only the direct player
+    // state can decide whether that player is available.
+    const bool available = item.entity_id == ctx->entity_id
+      ? ctx->available : item.available;
     media_control_store_group_volume(
-      ctx, item.entity_id, item.volume_pct, item.volume_known, item.available);
+      ctx, item.entity_id, item.volume_pct, item.volume_known, available);
   }
 }
 
