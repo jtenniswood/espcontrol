@@ -687,3 +687,6 @@ add_test(NAME weather_daily_requests_test COMMAND
 
 add_test(NAME camera_screensaver_dimming_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/camera_screensaver_dimming_test.py)
+
+add_test(NAME discovery_shutdown_order_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/discovery_shutdown_order_test.py)
