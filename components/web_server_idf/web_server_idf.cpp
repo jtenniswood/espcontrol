@@ -1476,6 +1476,12 @@ esp_err_t AsyncWebServer::handle_multipart_upload_(httpd_req_t *r, const char *c
     }
   }
 
+  if (!reader->is_complete()) {
+    ESP_LOGW(TAG, "Multipart upload has no complete, nonempty firmware file");
+    httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, nullptr);
+    return ESP_FAIL;
+  }
+
   handler->handleRequest(&req);
   return ESP_OK;
 }
