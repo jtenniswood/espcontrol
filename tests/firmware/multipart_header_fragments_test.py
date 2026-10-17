@@ -11,10 +11,15 @@ stubs={
 "esp_http_server.h":"#pragma once\nstruct httpd_req_t {};\n",
 "multipart_parser.h":r'''#pragma once
 #include <cstddef>
+#include <cstdint>
 struct multipart_parser;
 using data_cb=int(*)(multipart_parser*,const char*,size_t);
 using notify_cb=int(*)(multipart_parser*);
-struct multipart_parser_settings{data_cb on_header_field{},on_header_value{},on_part_data{};notify_cb on_part_data_begin{},on_headers_complete{},on_part_data_end{},on_body_end{};};
+// The dependency is a C POD: production zeroes this struct with memset.
+struct multipart_parser_settings {
+  data_cb on_header_field, on_header_value, on_part_data;
+  notify_cb on_part_data_begin, on_headers_complete, on_part_data_end, on_body_end;
+};
 struct multipart_parser{multipart_parser_settings settings;void*data{};};
 extern multipart_parser*active_parser;
 inline multipart_parser*multipart_parser_init(const char*,multipart_parser_settings*s){return active_parser=new multipart_parser{*s,nullptr};}
