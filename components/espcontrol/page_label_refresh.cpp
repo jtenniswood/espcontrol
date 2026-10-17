@@ -110,6 +110,7 @@ bool PageLabelRefresh::retain_add(lv_display_t *display, lv_event_cb_t callback,
   if (entry->registered) { ++memory_.reused_adds; return true; }
   __real_lv_display_add_event_cb(display, callback, filter, user);
   entry->registered = registered(entry->label);
+  if (entry->registered) ++memory_.descriptor_adds;
   return true;
 }
 bool PageLabelRefresh::retain_remove(lv_display_t *display, lv_event_cb_t callback, void *user) {

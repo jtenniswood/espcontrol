@@ -2,8 +2,8 @@
 
 `PageBasicLvglPort<slotCount>` is the first real LVGL port for the prepared
 renderer. It is **not selected by production firmware**. Existing displays keep
-the current grid and all its card types until the remaining ports, main-loop
-configuration wiring and physical parity tests are complete. It does not enable
+the current grid and all its card types until the remaining ports, application
+integration and physical parity tests are complete. It does not enable
 nested pages.
 
 The port borrows one profile-sized bank of existing button, icon, label and
@@ -25,6 +25,9 @@ subscriptions, counters or widget-owned callbacks.
 Configuration strings remain borrowed from PageStore; retained HA values remain
 owned by the shared state cache. Navigation creates no widgets, driver contexts,
 state owners or transport registrations.
+
+The status/action expansion and rendered state-transition checks are described
+in [pooled-status-actions.md](pooled-status-actions.md).
 
 The port covers ordinary toggles (including numeric/text overlays), numeric,
 icon, text and duration HA sensors, plain folders and Back. Text sensors retain

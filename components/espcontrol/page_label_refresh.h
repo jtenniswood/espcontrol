@@ -6,7 +6,7 @@
 namespace espcontrol::pages {
 struct PageLabelRefreshMemory {
   size_t arena_bytes{0}, live_labels{0}, retained_callbacks{0};
-  size_t reused_adds{0}, retained_removals{0};
+  size_t descriptor_adds{0}, reused_adds{0}, retained_removals{0};
 };
 
 // A selected renderer's fixed, initially blank bank of labels. Initialize and
