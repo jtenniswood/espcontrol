@@ -70,12 +70,15 @@ struct NativeBackend {
     return true;
   }
   static void reannounce() {
-    // Compaction changes positional cursors. Restart enumeration for every
-    // authenticated connection so another component's subscriptions cannot be
-    // skipped, including non-HA clients that requested the state list.
+    // Compaction invalidates positional cursors. Replaying the list on a live
+    // HA connection installs duplicate remote listeners, and there is no
+    // remote unsubscribe message. End each authenticated session so its peer
+    // cleans up those listeners before a fresh connection enumerates the list.
+    // This public hook marks removal; APIServer closes it on its next loop,
+    // before it can advance an obsolete cursor. Do not mutate active_clients.
     for (const auto &client : esphome::api::global_api_server->active_clients()) {
       if (client && !client->is_marked_for_removal() && client->is_authenticated())
-        client->on_subscribe_home_assistant_states_request();
+        client->on_disconnect_response();
     }
   }
 };
