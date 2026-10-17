@@ -55,6 +55,17 @@ int nonblocking_send(httpd_handle_t, int, const char *, size_t, int) { return 0;
 uint32_t millis() { return 100; }
 int send_result = 100000, sends = 0, close_attempts = 0, queued_closes = 0;
 bool queue_available = true;
+int shutdowns = 0;
+void *session_context = nullptr;
+std::vector<std::pair<void (*)(void *), void *>> close_work;
+constexpr int SHUT_RDWR = 2;
+int shutdown(int fd, int how) { assert(fd == 17 && how == SHUT_RDWR); ++shutdowns; return 0; }
+void *httpd_sess_get_ctx(httpd_handle_t, int fd) { assert(fd == 17); return session_context; }
+void run_close_work() {
+  auto pending = std::move(close_work);
+  close_work.clear();
+  for (auto &work : pending) work.first(work.second);
+}
 std::string received;
 int httpd_socket_send(httpd_handle_t, int fd, const char *data, size_t size, int) {
   assert(fd == 17);
@@ -64,11 +75,11 @@ int httpd_socket_send(httpd_handle_t, int fd, const char *data, size_t size, int
   received.append(data, count);
   return count;
 }
-int httpd_sess_trigger_close(httpd_handle_t, int fd) {
-  assert(fd == 17);
+int httpd_queue_work(httpd_handle_t, void (*callback)(void *), void *arg) {
   ++close_attempts;
   if (!queue_available) return ESP_FAIL;
   ++queued_closes;
+  close_work.emplace_back(callback, arg);
   // As in IDF, acceptance does not free sess_ctx synchronously.
   return ESP_OK;
 }
@@ -142,9 +153,11 @@ struct Connection {
   AsyncEventSource events{"/events", &ws};
   explicit Connection(bool handoff = true) {
     send_result = 100000;
-    sends = close_attempts = queued_closes = generated = 0;
+    sends = close_attempts = queued_closes = generated = shutdowns = 0;
+    assert(close_work.empty());
     queue_available = true;
     events.handleRequest(&request);
+    session_context = raw.sess_ctx;
     assert(events.count() == 0);  // httpd must not mutate the main-loop vector.
     if (handoff) ws.run_deferred();
     received.clear();
@@ -154,6 +167,8 @@ struct Connection {
     assert(raw.sess_ctx != nullptr && raw.free_ctx != nullptr);
     raw.free_ctx(raw.sess_ctx);
     raw.sess_ctx = nullptr;
+    session_context = nullptr;
+    run_close_work();
     assert(!events.loop());
   }
   ~Connection() { if (raw.sess_ctx != nullptr) server_closed(); }
@@ -170,9 +185,39 @@ void retained_until_server_close(Connection &c) {
   assert(c.events.count() == 1 && queued_closes == 1);
   assert(sends == previous_sends && generated == 0);
   assert(c.session()->entities_iterator_.advances == 0);
+  assert(shutdowns == 0);
+  run_close_work();
+  assert(shutdowns == 1);
   c.server_closed();
 }
 int main() {
+  {
+    Connection c;
+    send_result = HTTPD_SOCK_ERR_FAIL;
+    c.session()->try_send_nodefer("broken", 6, "state");
+    c.raw.free_ctx(c.raw.sess_ctx);
+    c.raw.sess_ctx = nullptr;
+    assert(c.events.loop() && c.events.count() == 1);  // Queued callback still owns the response.
+    httpd_req_t replacement;
+    AsyncWebServerRequest request{&replacement};
+    send_result = 100000;
+    c.events.handleRequest(&request);
+    session_context = replacement.sess_ctx;
+    c.ws.run_deferred();
+    run_close_work();
+    assert(shutdowns == 0 && c.events.loop() && c.events.count() == 1);
+    replacement.free_ctx(replacement.sess_ctx);
+    session_context = nullptr;
+    assert(!c.events.loop());
+  }
+  {
+    Connection c;
+    send_result = HTTPD_SOCK_ERR_FAIL;
+    c.session()->try_send_nodefer("broken", 6, "state");
+    session_context = &c;  // Reused fd with a different session identity.
+    run_close_work();
+    assert(shutdowns == 0);
+  }
   {
     Connection c(false);
     httpd_req_t second;

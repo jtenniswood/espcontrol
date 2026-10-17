@@ -328,6 +328,7 @@ class AsyncEventSourceResponse {
   void process_deferred_queue_();
   void process_buffer_();
   void close_();
+  static void close_callback_(void *arg);
 
   static void destroy(void *p);
   AsyncEventSource *server_;
@@ -341,6 +342,7 @@ class AsyncEventSourceResponse {
   uint16_t consecutive_send_failures_{0};
   bool close_requested_{false};
   bool close_queued_{false};
+  std::atomic<bool> close_work_pending_{false};
   static constexpr uint16_t MAX_CONSECUTIVE_SEND_FAILURES = 2500;  // ~20 seconds at 125Hz loop rate
 };
 

@@ -1022,7 +1022,7 @@ bool AsyncEventSource::loop() {
   for (size_t i = 0; i < this->sessions_.size();) {
     auto *ses = this->sessions_[i];
     // If the session has a dead socket (marked by destroy callback)
-    if (ses->fd_.load() == 0) {
+    if (ses->fd_.load() == 0 && !ses->close_work_pending_.load()) {
       ESP_LOGD(TAG, "Removing dead event source session");
       delete ses;  // NOLINT(cppcoreguidelines-owning-memory)
       // Remove by swapping with last element (O(1) removal, order doesn't matter for sessions)
@@ -1167,12 +1167,28 @@ void AsyncEventSourceResponse::close_() {
   if (fd == 0 || this->close_queued_) {
     return;
   }
-  // httpd still owns sess_ctx. Keep this object alive until its free_ctx
-  // callback runs; setting fd_ to zero here would let loop() delete it early.
-  // Retry from loop() if the server could not queue the close this time.
-  if (httpd_sess_trigger_close(this->hd_, fd) == ESP_OK) {
+  // Keep this object alive through the queued work even if free_ctx runs
+  // first. IDF's trigger_close queues a reusable sock_db slot pointer, which
+  // could close a new client if that slot is recycled before the work runs.
+  this->close_work_pending_.store(true);
+  if (httpd_queue_work(this->hd_, AsyncEventSourceResponse::close_callback_, this) == ESP_OK) {
     this->close_queued_ = true;
+  } else {
+    this->close_work_pending_.store(false);
   }
+}
+
+void AsyncEventSourceResponse::close_callback_(void *arg) {
+  auto *rsp = static_cast<AsyncEventSourceResponse *>(arg);
+  const int fd = rsp->fd_.load();
+  // Both the context check and shutdown run on httpd's task, so a natural
+  // disconnect/reconnect cannot recycle the socket between these operations.
+  if (fd != 0 && httpd_sess_get_ctx(rsp->hd_, fd) == rsp) {
+    shutdown(fd, SHUT_RDWR);
+  }
+  // The next server read observes EOF and invokes free_ctx. Only the main
+  // loop deletes the response, after both free_ctx and this callback finish.
+  rsp->close_work_pending_.store(false);
 }
 
 void AsyncEventSourceResponse::process_buffer_() {
