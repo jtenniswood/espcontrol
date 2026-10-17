@@ -137,6 +137,7 @@ struct MediaControlModalUi {
   lv_obj_t *volume_plus_btn = nullptr;
   lv_obj_t *speakers_box = nullptr;
   lv_obj_t *speakers_status_lbl = nullptr;
+  bool speaker_status_error = false;
   lv_obj_t *speaker_list = nullptr;
   lv_timer_t *speaker_action_timer = nullptr;
   std::vector<MediaSpeakerRowState *> speaker_rows;
@@ -172,6 +173,12 @@ inline void media_control_store_group_volume(MediaControlCtx *ctx,
   if (!ctx || entity_id.empty()) return;
   for (MediaGroupVolumeState &member : ctx->group_volume_states) {
     if (member.entity_id != entity_id) continue;
+    // Ignore old snapshots while Home Assistant catches up with a local tap.
+    // Unknown/unavailable reports still take effect immediately.
+    if (member.pending_until_ms != 0 && available && volume_known &&
+        volume_pct != member.volume_pct &&
+        (int32_t)(member.pending_until_ms - esphome::millis()) > 0) return;
+    member.pending_until_ms = 0;
     member.volume_pct = volume_pct;
     member.volume_known = volume_known;
     member.available = available;
@@ -179,6 +186,35 @@ inline void media_control_store_group_volume(MediaControlCtx *ctx,
   }
   ctx->group_volume_states.push_back(
     {entity_id, volume_pct, volume_known, available});
+}
+
+inline void media_control_set_group_volume_target(MediaControlCtx *ctx,
+                                                   const std::string &entity_id,
+                                                   int volume_pct,
+                                                   bool available) {
+  if (!ctx) return;
+  for (MediaGroupVolumeState &member : ctx->group_volume_states) {
+    if (member.entity_id != entity_id) continue;
+    member.volume_pct = volume_pct;
+    member.volume_known = true;
+    member.available = available;
+    member.pending_until_ms = esphome::millis() + 1500;
+    return;
+  }
+  ctx->group_volume_states.push_back(
+    {entity_id, volume_pct, true, available, esphome::millis() + 1500});
+}
+
+inline void media_control_copy_group_volume_to_row(MediaControlCtx *ctx,
+                                                   MediaSpeakerRowState *row) {
+  if (!ctx || !row) return;
+  for (const MediaGroupVolumeState &member : ctx->group_volume_states) {
+    if (member.entity_id != row->entity_id) continue;
+    row->volume_pct = member.volume_pct;
+    row->volume_known = member.volume_known;
+    row->available = member.available;
+    return;
+  }
 }
 
 inline bool media_control_modal_mode(const std::string &mode) {
@@ -3512,6 +3548,7 @@ inline size_t media_control_group_size(MediaControlCtx *ctx) {
 inline void media_control_set_speaker_status(const char *text, bool error = false,
                                              bool show = false) {
   MediaControlModalUi &ui = media_control_modal_ui();
+  ui.speaker_status_error = error;
   if (!ui.speakers_status_lbl) return;
   if (!error && !show) {
     lv_obj_add_flag(ui.speakers_status_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -3675,20 +3712,12 @@ inline std::vector<MediaGroupVolumeState> media_control_current_group_volumes(
   media_group_append_unique(current, ctx->entity_id);
   for (const std::string &entity_id : ctx->group_members) media_group_append_unique(current, entity_id);
   for (const std::string &entity_id : current) {
-    MediaSpeakerRowState *row = media_control_find_speaker_row(entity_id);
     MediaGroupVolumeState state;
     state.entity_id = entity_id;
-    if (row) {
-      state.volume_pct = row->volume_pct;
-      state.volume_known = row->volume_known;
-      state.available = row->available;
-    } else {
-      for (const MediaGroupVolumeState &known : ctx->group_volume_states) {
-        if (known.entity_id == entity_id) {
-          state = known;
-          break;
-        }
-      }
+    for (const MediaGroupVolumeState &known : ctx->group_volume_states) {
+      if (known.entity_id != entity_id) continue;
+      state = known;
+      break;
     }
     volumes.push_back(state);
   }
@@ -3709,6 +3738,9 @@ inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx) {
       }),
     ctx->group_volume_states.end());
   for (const MediaGroupDiscoveryItem &item : ctx->speaker_discovery) {
+    // The primary player has its own live volume subscription. Discovery can
+    // lag behind it or omit it entirely.
+    if (item.entity_id == ctx->entity_id && ctx->volume_known) continue;
     if (std::find(members.begin(), members.end(), item.entity_id) == members.end()) continue;
     media_control_store_group_volume(
       ctx, item.entity_id, item.volume_pct, item.volume_known, item.available);
@@ -3748,18 +3780,8 @@ inline void media_control_apply_group_volume_percent(MediaControlCtx *ctx, int p
       row->volume_pct = volumes[i];
       row->volume_known = true;
     }
-    bool stored = false;
-    for (MediaGroupVolumeState &known : ctx->group_volume_states) {
-      if (known.entity_id != members[i].entity_id) continue;
-      known.volume_pct = volumes[i];
-      known.volume_known = true;
-      stored = true;
-      break;
-    }
-    if (!stored) {
-      ctx->group_volume_states.push_back(
-        {members[i].entity_id, volumes[i], true, members[i].available});
-    }
+    media_control_set_group_volume_target(
+      ctx, members[i].entity_id, volumes[i], members[i].available);
   }
   media_control_refresh_speakers(ctx);
   media_control_refresh_volume(ctx);
@@ -3875,18 +3897,12 @@ inline lv_obj_t *media_control_create_speaker_volume_button(
     const bool increase = reinterpret_cast<uintptr_t>(lv_event_get_user_data(event)) != 0;
     row->volume_pct = media_group_step_volume(
       row->volume_pct, increase, media_control_volume_max_pct(ctx));
-    bool stored = false;
-    for (MediaGroupVolumeState &known : ctx->group_volume_states) {
-      if (known.entity_id != row->entity_id) continue;
-      known.volume_pct = row->volume_pct;
-      known.volume_known = true;
-      known.available = row->available;
-      stored = true;
-      break;
-    }
-    if (!stored) {
-      ctx->group_volume_states.push_back(
-        {row->entity_id, row->volume_pct, true, row->available});
+    media_control_set_group_volume_target(
+      ctx, row->entity_id, row->volume_pct, row->available);
+    if (row->entity_id == ctx->entity_id) {
+      ctx->current_pct = row->volume_pct;
+      ctx->pending_pct = row->volume_pct;
+      ctx->pending_until_ms = esphome::millis() + 1500;
     }
     send_media_volume_action(row->entity_id, row->volume_pct);
     media_control_refresh_speaker_row(ctx, row);
@@ -3935,6 +3951,7 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
       (listed_by_helper || row->selected)) {
     row->available = true;
   }
+  media_control_copy_group_volume_to_row(ctx, row);
   row->row = lv_btn_create(ui.speaker_list);
   lv_obj_set_size(row->row, lv_obj_get_width(ui.speaker_list), 118);
   lv_obj_set_style_radius(row->row, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
@@ -4139,6 +4156,7 @@ inline void media_control_sync_speaker_candidates(
 inline void media_control_refresh_speakers(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ctx || ui.active != ctx || !ui.speakers_box) return;
+  media_control_refresh_group_member_volumes(ctx);
   std::vector<std::string> candidates = media_group_merge_candidates(
     ctx->entity_id, ctx->speaker_helper_members, ctx->group_members);
   media_control_sync_speaker_candidates(ctx, candidates);
@@ -4154,13 +4172,12 @@ inline void media_control_refresh_speakers(MediaControlCtx *ctx) {
       if (row->entity_id != ctx->entity_id) row->available = item.available;
       break;
     }
-    media_control_store_group_volume(
-      ctx, row->entity_id, row->volume_pct, row->volume_known, row->available);
+    media_control_copy_group_volume_to_row(ctx, row);
     media_control_refresh_speaker_row(ctx, row);
   }
   if (ui.speaker_rows.empty()) {
     media_control_set_speaker_status(espcontrol_i18n("No Speakers"), false, true);
-  } else {
+  } else if (!ui.speaker_status_error) {
     media_control_set_speaker_status(nullptr);
   }
   media_control_refresh_group_volume(ctx);
@@ -4284,6 +4301,7 @@ inline void media_control_clear_tab_content() {
   ui.volume_plus_btn = nullptr;
   ui.speakers_box = nullptr;
   ui.speakers_status_lbl = nullptr;
+  ui.speaker_status_error = false;
   ui.speaker_list = nullptr;
   ui.power_btn = nullptr;
   ui.power_icon_lbl = nullptr;
