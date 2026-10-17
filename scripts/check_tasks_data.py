@@ -99,6 +99,7 @@ TASKS = (
          domains=("firmware",),
          inputs=(
              "tests/firmware/**",
+             "components/web_server_idf/**",
              "components/gsl3680/**",
              "common/addon/backlight.yaml",
              "common/addon/backlight_schedule.yaml",
