@@ -116,7 +116,11 @@ struct ClimateControlCtx {
   int precision = 0;
   std::string label_display = "label";
   std::string number_display = "target";
-  int pending_target_tenths = CLIMATE_DEFAULT_TARGET_TENTHS;
+  // Keep reports separate while plus/minus edits wait for their debounce.
+  int reported_target_tenths = CLIMATE_DEFAULT_TARGET_TENTHS;
+  int reported_low_tenths = CLIMATE_DEFAULT_LOW_TENTHS;
+  int reported_high_tenths = CLIMATE_DEFAULT_HIGH_TENTHS;
+  uint32_t pending_connection_generation = 0;
   bool pending_temp_send = false;
   lv_timer_t *debounce_timer = nullptr;
   uint32_t accent_color = DEFAULT_ACCENT_COLOR;
@@ -1119,17 +1123,17 @@ inline void climate_update_card(ClimateControlCtx *ctx) {
   }
 }
 
-inline void climate_send_action(const std::string &entity_id,
+inline bool climate_send_action(const std::string &entity_id,
                                 const char *service,
                                 const std::vector<std::pair<const char *, std::string>> &data) {
-  if (entity_id.empty() || service == nullptr || service[0] == '\0') return;
+  if (entity_id.empty() || service == nullptr || service[0] == '\0') return false;
   esphome::api::HomeassistantActionRequest req;
-  if (!ha_action_begin(req, service, false, data.size() + 1)) return;
+  if (!ha_action_begin(req, service, false, data.size() + 1)) return false;
   ha_action_add_entity(req, entity_id);
   for (const auto &item : data) {
     ha_action_add_data(req, item.first, item.second.c_str());
   }
-  ha_action_send(req);
+  return ha_action_send(req);
 }
 
 inline std::string climate_service_temp_value(int tenths) {
@@ -1139,24 +1143,46 @@ inline std::string climate_service_temp_value(int tenths) {
   return buf;
 }
 
+inline void climate_cancel_temperature_send(ClimateControlCtx *ctx) {
+  if (!ctx) return;
+  if (ctx->pending_temp_send) {
+    ctx->target_tenths = ctx->reported_target_tenths;
+    ctx->low_tenths = ctx->reported_low_tenths;
+    ctx->high_tenths = ctx->reported_high_tenths;
+  }
+  ctx->pending_temp_send = false;
+  if (ctx->debounce_timer) lv_timer_pause(ctx->debounce_timer);
+}
+
 inline void climate_send_temperature(ClimateControlCtx *ctx) {
-  if (!ctx || ctx->entity_id.empty() || !climate_modal_temperature_controls_enabled(ctx)) return;
+  if (!ctx) return;
+  if (ctx->entity_id.empty() || !climate_modal_temperature_controls_enabled(ctx) ||
+      !ha_api_state_connected() ||
+      (ctx->pending_temp_send && ctx->pending_connection_generation !=
+        ha_read_coordinator().connection_generation())) {
+    climate_cancel_temperature_send(ctx);
+    climate_update_card(ctx);
+    climate_control_set_modal_value(ctx);
+    return;
+  }
   ClimateTargetKind kind = climate_target_kind(ctx);
   espcontrol::climate::CommandKind command = espcontrol::climate::command_kind(
     kind, climate_target_values_complete(ctx));
+  bool sent = false;
   if (command == espcontrol::climate::CommandKind::RANGE) {
-    climate_send_action(ctx->entity_id, "climate.set_temperature", {
+    sent = climate_send_action(ctx->entity_id, "climate.set_temperature", {
       {"target_temp_low", climate_service_temp_value(ctx->low_tenths)},
       {"target_temp_high", climate_service_temp_value(ctx->high_tenths)},
     });
   } else if (command == espcontrol::climate::CommandKind::SINGLE) {
-    climate_send_action(ctx->entity_id, "climate.set_temperature", {
+    sent = climate_send_action(ctx->entity_id, "climate.set_temperature", {
       {"temperature", climate_service_temp_value(ctx->target_tenths)},
     });
-  } else {
-    return;
   }
-  ctx->pending_temp_send = false;
+  if (sent) ctx->pending_temp_send = false;
+  climate_cancel_temperature_send(ctx);
+  climate_update_card(ctx);
+  climate_control_set_modal_value(ctx);
 }
 
 inline void climate_debounce_timer_cb(lv_timer_t *timer) {
@@ -1169,6 +1195,7 @@ inline void climate_debounce_timer_cb(lv_timer_t *timer) {
 inline void climate_schedule_temperature_send(ClimateControlCtx *ctx) {
   if (!ctx) return;
   ctx->pending_temp_send = true;
+  ctx->pending_connection_generation = ha_read_coordinator().connection_generation();
   if (!ctx->debounce_timer) {
     ctx->debounce_timer = lv_timer_create(climate_debounce_timer_cb, CLIMATE_TEMP_DEBOUNCE_MS, ctx);
   }
@@ -1176,13 +1203,9 @@ inline void climate_schedule_temperature_send(ClimateControlCtx *ctx) {
     lv_timer_set_period(ctx->debounce_timer, CLIMATE_TEMP_DEBOUNCE_MS);
     lv_timer_reset(ctx->debounce_timer);
     lv_timer_resume(ctx->debounce_timer);
+  } else {
+    climate_cancel_temperature_send(ctx);
   }
-}
-
-inline void climate_cancel_temperature_send(ClimateControlCtx *ctx) {
-  if (!ctx) return;
-  ctx->pending_temp_send = false;
-  if (ctx->debounce_timer) lv_timer_pause(ctx->debounce_timer);
 }
 
 inline void climate_apply_selected_target(ClimateControlCtx *ctx, int value, bool send_now, bool debounce);
@@ -2715,7 +2738,10 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         if (!active()) return;
         std::string mode = climate_hvac_service_value(
           string_ref_limited(state, HA_SHORT_STATE_MAX_LEN));
-        if (mode != ctx->hvac_mode) climate_select_target_for_mode(ctx, mode);
+        if (mode != ctx->hvac_mode) {
+          climate_cancel_temperature_send(ctx);
+          climate_select_target_for_mode(ctx, mode);
+        }
         ctx->hvac_mode = mode;
         ctx->available = !climate_unavailable_value(ctx->hvac_mode);
         if (!ctx->available) ctx->hvac_mode = "off";
@@ -2759,17 +2785,19 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         refresh();
       })
   );
-  auto subscribe_temp = [ctx, refresh, active](const char *attr, int ClimateControlCtx::*field, bool ClimateControlCtx::*has_field) {
+  auto subscribe_temp = [ctx, refresh, active](const char *attr, int ClimateControlCtx::*field, bool ClimateControlCtx::*has_field, int ClimateControlCtx::*reported = nullptr) {
     ha_subscribe_attribute(
       ctx->entity_id, std::string(attr),
       std::function<void(esphome::StringRef)>(
-        [ctx, refresh, active, field, has_field](esphome::StringRef value) {
+        [ctx, refresh, active, field, has_field, reported](esphome::StringRef value) {
           if (!active()) return;
           int tenths = 0;
           if (climate_parse_tenths(value, tenths)) {
             // Home Assistant can send temperatures before min/max attributes on boot.
             // Store the real value and clamp only where the dial needs a bounded range.
-            ctx->*field = tenths;
+            if (reported) ctx->*reported = tenths;
+            // An echo for an earlier request must not replace a newer edit.
+            if (!reported || !ctx->pending_temp_send) ctx->*field = tenths;
             ctx->*has_field = true;
           } else {
             ctx->*has_field = false;
@@ -2781,9 +2809,9 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
     );
   };
   subscribe_temp("current_temperature", &ClimateControlCtx::current_tenths, &ClimateControlCtx::has_current);
-  subscribe_temp("temperature", &ClimateControlCtx::target_tenths, &ClimateControlCtx::has_target);
-  subscribe_temp("target_temp_low", &ClimateControlCtx::low_tenths, &ClimateControlCtx::has_low);
-  subscribe_temp("target_temp_high", &ClimateControlCtx::high_tenths, &ClimateControlCtx::has_high);
+  subscribe_temp("temperature", &ClimateControlCtx::target_tenths, &ClimateControlCtx::has_target, &ClimateControlCtx::reported_target_tenths);
+  subscribe_temp("target_temp_low", &ClimateControlCtx::low_tenths, &ClimateControlCtx::has_low, &ClimateControlCtx::reported_low_tenths);
+  subscribe_temp("target_temp_high", &ClimateControlCtx::high_tenths, &ClimateControlCtx::has_high, &ClimateControlCtx::reported_high_tenths);
   ha_subscribe_attribute(
     ctx->entity_id, std::string("min_temp"),
     std::function<void(esphome::StringRef)>(
