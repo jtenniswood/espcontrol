@@ -6,6 +6,7 @@
 
 namespace esphome::api {
 struct APIConnection {
+  const char *name{"Home Assistant 2026.10"};
   bool authenticated{true};
   bool removed{false};
   int cursor{-1};
@@ -13,6 +14,7 @@ struct APIConnection {
   size_t disconnects{0};
   bool is_marked_for_removal() const { return removed; }
   bool is_authenticated() const { return authenticated; }
+  const char *get_name() const { return name; }
   void on_subscribe_home_assistant_states_request() { cursor = 0; ++enumerations; }
   void on_disconnect_response() { removed = true; ++disconnects; }
 };
