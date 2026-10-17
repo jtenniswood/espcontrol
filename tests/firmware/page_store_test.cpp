@@ -217,6 +217,10 @@ void byte_limits_and_exhaustion() {
       second.data(), needed, &store) == PageStoreStatus::OK);
   assert(store.memory().arena_bytes == needed);
   assert(store.field(*store.card(0), CardField::LABEL) == label);
+  // The durable store's uint32 generation is allowed to wrap through zero.
+  assert(PageStore::stage_v1(doc.buffer.data(), doc.size, limits, 0,
+      arena.data(), sizeof(arena), &store) == PageStoreStatus::OK);
+  assert(store.card(ConfigurationHandle{0, 0}) != nullptr);
 }
 
 void authored_golden_corpus() {

@@ -195,7 +195,7 @@ PageStoreStatus PageStore::stage_v1(const uint8_t *document, size_t size,
     size_t capacity, PageStore *output) {
   if (document == nullptr || arena == nullptr || output == nullptr ||
       limits.device_profile == nullptr || limits.slot_count == 0 ||
-      limits.slot_count > PANEL_CONFIG_MAX_SLOT_COUNT || generation == 0 ||
+      limits.slot_count > PANEL_CONFIG_MAX_SLOT_COUNT ||
       capacity > UINT32_MAX ||
       reinterpret_cast<uintptr_t>(arena) % alignof(PageDefinition) != 0 ||
       reinterpret_cast<uintptr_t>(arena) % alignof(CardDefinition) != 0 ||

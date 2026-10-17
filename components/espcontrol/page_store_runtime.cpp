@@ -47,7 +47,7 @@ void PageStoreRuntime::discard_prepared() {
 
 bool PageStoreRuntime::activate_prepared(uint32_t generation, uint16_t version,
     const uint8_t *document, size_t size) {
-  if (generation == 0 || version != configuration::PANEL_CONFIG_DOCUMENT_VERSION ||
+  if (version != configuration::PANEL_CONFIG_DOCUMENT_VERSION ||
       staged_arena_ == nullptr || document == nullptr ||
       size != staged_.source_size() ||
       std::memcmp(document, staged_.source_document(), size) != 0) return false;

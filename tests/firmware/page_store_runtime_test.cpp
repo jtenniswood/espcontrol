@@ -147,6 +147,10 @@ void bounded_replacements_and_validation() {
     assert(!runtime.activate_prepared(1001, 1, b.data(), b.size()));
     runtime.discard_prepared();
     assert(runtime.active().generation() == 1000 && allocator.allocations.size() == 1);
+    assert(runtime.prepare(1, a.data(), a.size()));
+    assert(runtime.activate_prepared(0, 1, a.data(), a.size()));
+    assert(runtime.active().card(ConfigurationHandle{0, 0}) != nullptr);
+    assert(runtime.active().card(ConfigurationHandle{1000, 0}) == nullptr);
   }
   assert(allocator.allocations.empty());
   {
