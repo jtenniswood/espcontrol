@@ -64,7 +64,7 @@ bool PageStoreRuntime::activate_prepared(uint32_t generation, uint16_t version,
   staged_ = {};
   memory_.active_reserved_bytes = arena_capacity_;
   memory_.staged_reserved_bytes = 0;
-  if (resources_ != nullptr) resources_->activate_prepared(generation);
+  if (resources_ != nullptr) resources_->activate_prepared(active_);
   // The renderer cutover adds an explicit unbind barrier before retiring the
   // old generation. No widgets or asynchronous consumers use this owner yet.
   if (retired != nullptr) allocator_.release(retired, arena_capacity_);

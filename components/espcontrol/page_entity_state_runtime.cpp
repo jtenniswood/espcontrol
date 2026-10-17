@@ -223,7 +223,10 @@ void PageEntityStateRuntime::release_slot(int index) {
   slot.runtime = this;
 }
 void PageEntityStateRuntime::discard_prepared() { release_slot(staged_); staged_ = -1; }
-void PageEntityStateRuntime::retire_active() { release_slot(active_); active_ = -1; }
+void PageEntityStateRuntime::retire_active() {
+  if (active_ >= 0) ++revision_;
+  release_slot(active_); active_ = -1;
+}
 void PageEntityStateRuntime::activate_prepared(uint32_t generation) {
   if (staged_ < 0) return;
   const int retired = active_;
@@ -231,6 +234,7 @@ void PageEntityStateRuntime::activate_prepared(uint32_t generation) {
   staged_ = -1;
   slots_[active_].generation = generation;
   release_slot(retired);
+  ++revision_;
 }
 
 void PageEntityStateRuntime::remove_value(Slot &slot, Channel &channel) {
@@ -262,6 +266,7 @@ void PageEntityStateRuntime::receive(Slot &slot, uint32_t revision, uint32_t cha
   if (entry.status == PageEntityStatus::AVAILABLE && entry.value_size == value.size() &&
       std::string_view(slot.values + entry.value_offset, entry.value_size) == value) return;
   const size_t available = budget_.state_bytes - (slot.values_used - entry.value_size);
+  ++revision_;
   remove_value(slot, entry);
   ++entry.revision;
   if (value.size() > available) {
@@ -276,6 +281,7 @@ void PageEntityStateRuntime::receive(Slot &slot, uint32_t revision, uint32_t cha
   entry.status = PageEntityStatus::AVAILABLE;
 }
 void PageEntityStateRuntime::invalidate_disconnected_state() {
+  ++revision_;
   connection_generation_ = subscriptions_.connection_generation();
   for (auto &slot : slots_) {
     slot.values_used = 0;
