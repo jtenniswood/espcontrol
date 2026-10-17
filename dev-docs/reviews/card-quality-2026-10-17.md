@@ -4,7 +4,7 @@
 
 The card system has useful foundations: a shared product contract, browser/firmware configuration-parity checks, family-level firmware drivers, and targeted runtime tests. The main weaknesses are lifecycle ownership, failure handling, and differences between the configuration preview and live device behaviour.
 
-This review identifies **nine actionable defects: three high priority (P1) and six medium priority (P2)**. Fix the local-sensor lifetime bug, unsafe Cover Stop fallback, and silent relay reassignment first. Five further recommendations address integration risks and maintainability. No production fixes are included in this report.
+This review identifies **nine actionable defects on the reviewed main baseline: three high priority (P1) and six medium priority (P2)**. **Two already have fixes in open PRs: F1 in #2268 and F7 in #2271.** Seven findings have no matching fix in the current open PRs. Prioritise the existing local-sensor lifetime fix, unsafe Cover Stop fallback, and silent relay reassignment. Five further recommendations address integration risks and maintainability. No production fixes are included in this report.
 
 ### Scope and confidence
 
@@ -16,9 +16,31 @@ This review identifies **nine actionable defects: three high priority (P1) and s
 
 All firmware recommendations concern shared code and therefore potentially affect every display using the relevant card, including main-grid and subpage configurations unless stated otherwise.
 
+## Existing open-PR coverage
+
+Follow-up checked on 17 October 2026 against all **18 other open PRs**, including complete changed-file lists and the relevant production patches. The original audit inspected main and did not account for pending fixes. “Covered” below means the open PR implements the core correction; it does not mean the change has merged or passed user-confirmed device testing. This follow-up inspected code and existing test additions but did not rerun the PR branches' tests.
+
+| Finding | Open-PR coverage | Evidence / remaining work |
+|---|---|---|
+| F1 — Local Sensor lifetime | **Covered by [#2268](https://github.com/jtenniswood/espcontrol/pull/2268)** — Release local sensor bindings when cards are removed | Adds unregister-on-delete, unregister-before-rebind and registry retirement before grid rebuild, plus lifetime regression tests. This is the same issue as earlier functional-review B01; use the existing PR. |
+| F2 — Cover/Gate Stop fallback | **No matching fix found** | Other PR changes to `button_grid_actions.h` leave the failed-Stop-to-toggle path unchanged. |
+| F3 — Internal Relay reassignment | **No matching fix found** | No other open PR changes the affected Internal Relay editor. |
+| F4 — Unrelated Climate modal closes | **No matching fix found** | [#2269](https://github.com/jtenniswood/espcontrol/pull/2269) fixes exact climate option values; [#2272](https://github.com/jtenniswood/espcontrol/pull/2272) protects pending thermostat edits. Neither adds modal ownership to the unavailable-state close. |
+| F5 — Invalid local readings remain stale | **No matching fix found** | #2268 fixes binding lifetime, but leaves the NaN early return and numeric formatting policy unchanged. |
+| F6 — Robot custom icons overwritten | **No matching fix found** | No other open PR changes the affected Vacuum/Mower firmware state renderers. |
+| F7 — False Option Select state after failed dispatch | **Covered by [#2271](https://github.com/jtenniswood/espcontrol/pull/2271)** — Keep Option Select state unchanged until Home Assistant confirms it | Returns dispatch success, retains the picker on failure, checks connection/availability and removes optimistic `current_option` updates. This is earlier functional-review B04; pending-spinner/timeout polish remains optional follow-up. |
+| F8 — Webhook URL secrets in logs | **No matching fix found** | Open generator changes do not remove/redact the three URL logging branches. |
+| F9 — Unavailable status looks inactive | **No matching fix found** | [#2165](https://github.com/jtenniswood/espcontrol/pull/2165) adds conditional Sensor colours but retains the normal inactive icon for unavailable input and does not change Door/Window or Presence state rendering. |
+
+Related Option Select PRs [#2270](https://github.com/jtenniswood/espcontrol/pull/2270) (exact names) and [#2274](https://github.com/jtenniswood/espcontrol/pull/2274) (changing choices while open) fix different bugs. They complement #2271; they are not additional fixes for F7. Page-runtime foundations [#2266](https://github.com/jtenniswood/espcontrol/pull/2266) and the PageStore shadow model [#2275](https://github.com/jtenniswood/espcontrol/pull/2275) relate to R4's longer-term direction, but keep the current renderer and do not resolve the remaining findings.
+
+Verified fix heads: #2268 `e789a62f1a4da55dd0ad66a0a294d219855c4c99`; #2271 `6492f4ed5890ea3830fb7120b1f4025b4ab4877a`. Avoid opening duplicate fixes for F1 or F7.
+
 ## Required fixes
 
 ### F1 — P1: Remove local Sensor registrations when their widgets are retired
+
+**Open-PR status:** Already addressed in [#2268](https://github.com/jtenniswood/espcontrol/pull/2268); retain this finding as baseline evidence and use that PR for delivery.
 
 **Affected:** Sensor in local-device mode; old `local_sensor` configurations; main grid and subpages.
 
@@ -103,6 +125,8 @@ Setup honours the configured icon, but the first state update always replaces it
 **Effort:** Small to medium. Preserve saved values; do not require users to reselect icons. Test default/custom icons in each state-bound mode and on both surfaces, plus language changes on an already visible mower card.
 
 ### F7 — P2: Do not display an Option Select change when dispatch fails
+
+**Open-PR status:** Core correction already addressed in [#2271](https://github.com/jtenniswood/espcontrol/pull/2271); use that PR rather than creating a duplicate.
 
 **Affected:** Action card's select/input-select mode and legacy `option_select` cards.
 
@@ -239,8 +263,8 @@ Every declared type has its own row below, including variants sharing one implem
 
 ## Suggested delivery order and device testing
 
-1. **Stability and command intent:** F1, F2, F3. Keep these as separate fixes/PRs with small reproductions and no saved-format changes. On the display used for validation, repeatedly replace/delete local cards while sensors publish; test Cover failure using a simulated entity before trying moving hardware; verify an imported unavailable relay remains unassigned until deliberately selected.
-2. **Trustworthy live state:** F4, F5, F7, F9. Add negative-state and multi-entity tests. Validate reconnection, unavailable data, rejected actions, and recovery on both main grid and subpages.
+1. **Stability and command intent:** Existing PR #2268 for F1, then separate fixes for F2 and F3, with small reproductions and no saved-format changes. On the display used for validation, repeatedly replace/delete local cards while sensors publish; test Cover failure using a simulated entity before trying moving hardware; verify an imported unavailable relay remains unassigned until deliberately selected.
+2. **Trustworthy live state:** Existing PR #2271 for F7, plus new work for F4, F5 and F9. Add negative-state and multi-entity tests. Validate reconnection, unavailable data, rejected actions, and recovery on both main grid and subpages.
 3. **User choices and diagnostics:** F6 and F8, then R1/R2 after focused integration/timing tests. Compare preview and real icons; capture only synthetic diagnostic secrets.
 4. **Incremental quality work:** R3–R5. Characterise current valid behaviour first, migrate one family at a time, retain aliases/config parity, and keep rollback points at each PR.
 
