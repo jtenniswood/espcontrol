@@ -5,6 +5,68 @@ enable_testing()
 include(CheckCXXSourceCompiles)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+file(GLOB PAGE_STORE_FIXTURES CONFIGURE_DEPENDS
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../common/config/*_card_normalization_fixtures.json)
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/generate_page_store_goldens.py
+    --output ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
+  DEPENDS ${PAGE_STORE_FIXTURES}
+    ../../common/config/card_normalization_fixtures.json
+    ../../scripts/generate_page_store_goldens.py
+    ../../scripts/generate_saved_config_parser_test.py
+  VERBATIM)
+add_executable(page_store_test page_store_test.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_store_test PRIVATE cxx_std_17)
+target_compile_options(page_store_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_store_test PRIVATE stubs ../../components/espcontrol
+  ${CMAKE_CURRENT_BINARY_DIR})
+add_test(NAME page_store_test COMMAND page_store_test)
+
+add_executable(page_store_runtime_test page_store_runtime_test.cpp
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp)
+target_compile_features(page_store_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_store_runtime_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_store_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_store_runtime_test COMMAND page_store_runtime_test)
+
+add_executable(page_entity_state_runtime_test page_entity_state_runtime_test.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_entity_state_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_entity_state_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_entity_state_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_entity_state_runtime_test COMMAND page_entity_state_runtime_test)
+
+add_executable(page_card_dependencies_test page_card_dependencies_test.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
+  ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_card_dependencies_test PRIVATE cxx_std_17)
+target_compile_options(page_card_dependencies_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_card_dependencies_test PRIVATE stubs ../../components/espcontrol
+  ${CMAKE_CURRENT_BINARY_DIR})
+add_test(NAME page_card_dependencies_test COMMAND page_card_dependencies_test)
+
+add_executable(page_renderer_runtime_test page_renderer_runtime_test.cpp
+  ../../components/espcontrol/page_renderer_layout.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_renderer_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_renderer_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_renderer_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_renderer_runtime_test COMMAND page_renderer_runtime_test)
+
 add_executable(dpi_timing_test dpi_timing_test.cpp)
 target_compile_features(dpi_timing_test PRIVATE cxx_std_17)
 target_compile_options(dpi_timing_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
@@ -16,6 +78,9 @@ add_test(NAME p4_pipeline_runtime_test COMMAND
 add_test(NAME mipi_dsi_draw_failure_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/mipi_dsi_draw_failure_test.py)
+add_test(NAME device_ui_limits_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/device_ui_limits_test.py)
 
 add_test(NAME gsl3680_startup_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
@@ -389,6 +454,20 @@ target_compile_features(ha_read_coordinator_test PRIVATE cxx_std_17)
 target_compile_options(ha_read_coordinator_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(ha_read_coordinator_test PRIVATE ../../components/espcontrol)
 add_test(NAME ha_read_coordinator_test COMMAND ha_read_coordinator_test)
+
+add_executable(owned_ha_subscriptions_test owned_ha_subscriptions_test.cpp)
+target_compile_features(owned_ha_subscriptions_test PRIVATE cxx_std_17)
+target_compile_options(owned_ha_subscriptions_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(owned_ha_subscriptions_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME owned_ha_subscriptions_test COMMAND owned_ha_subscriptions_test)
+
+add_executable(home_assistant_transport_runtime_test home_assistant_transport_runtime_test.cpp
+  ../../components/espcontrol/home_assistant_transport_runtime.cpp)
+target_compile_features(home_assistant_transport_runtime_test PRIVATE cxx_std_17)
+target_compile_definitions(home_assistant_transport_runtime_test PRIVATE USE_API_HOMEASSISTANT_STATES)
+target_compile_options(home_assistant_transport_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(home_assistant_transport_runtime_test PRIVATE owned_ha_stubs stubs ../../components/espcontrol)
+add_test(NAME home_assistant_transport_runtime_test COMMAND home_assistant_transport_runtime_test)
 
 add_executable(artwork_controller_test artwork_controller_test.cpp)
 target_compile_features(artwork_controller_test PRIVATE cxx_std_17)
