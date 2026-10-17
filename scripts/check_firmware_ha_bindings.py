@@ -2468,14 +2468,49 @@ def firmware_camera_refresh_action_errors(root: Path) -> list[str]:
             "common/device/image_cards_2.yaml: keep the unsupported S3 camera refresh action disabled"
         )
 
+    manifest_path = root / "devices" / "manifest.json"
+    if not manifest_path.exists():
+        errors.append("devices/manifest.json: declare the MCU family for each device profile")
+        return errors
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        errors.append("devices/manifest.json: parse device MCU families")
+        return errors
+    profiles = manifest.get("devices")
+    if not isinstance(profiles, dict):
+        errors.append("devices/manifest.json: declare device profiles with MCU families")
+        return errors
+
+    package_by_mcu = {
+        "ESP32-S3": "image_cards_2.yaml",
+        "ESP32-P4": "image_cards_6.yaml",
+    }
     for package_path in sorted((root / "devices").glob("*/packages.yaml")):
         slug = package_path.parent.name
         package_text = package_path.read_text(encoding="utf-8")
-        expected = "image_cards_2.yaml" if slug == "guition-esp32-s3-4848s040" else "image_cards_6.yaml"
-        if expected not in package_text:
+        profile = profiles.get(slug)
+        firmware = profile.get("firmware") if isinstance(profile, dict) else None
+        build = firmware.get("build") if isinstance(firmware, dict) else None
+        mcu = build.get("chip") if isinstance(build, dict) else None
+        expected = package_by_mcu.get(mcu) if isinstance(mcu, str) else None
+        if expected is None:
             errors.append(
-                f"{package_path.relative_to(root)}: include {expected} so camera refresh action support "
-                "matches the display profile"
+                f"{package_path.relative_to(root)}: declare a supported MCU family "
+                "in devices/manifest.json"
+            )
+            continue
+
+        include_match = re.search(
+            r"(?m)^[ \t]*image_cards:[ \t]*!include[ \t]+"
+            r"../../common/device/(image_cards(?:_\d+)?\.yaml)[ \t]*$",
+            package_text,
+        )
+        included = include_match.group(1) if include_match else None
+        if included != expected:
+            errors.append(
+                f"{package_path.relative_to(root)}: include {expected} for the "
+                f"manifest's {mcu} MCU"
             )
     return errors
 
@@ -4965,7 +5000,65 @@ def expect_camera_screensaver_retained_token_errors(
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
+def test_camera_refresh_package_mcu_errors() -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_image.h").write_text("", encoding="utf-8")
+        common_device = root / "common" / "device"
+        common_device.mkdir(parents=True)
+        for package in ("image_cards_6.yaml", "image_cards_2.yaml"):
+            (common_device / package).write_text("", encoding="utf-8")
+
+        devices = root / "devices"
+        devices.mkdir()
+        profile_mcus = {
+            "p4": "ESP32-P4",
+            "guition-esp32-s3-4848s040": "ESP32-S3",
+            "waveshare-esp32-s3-touch-lcd-4": "ESP32-S3",
+        }
+        (devices / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "devices": {
+                        slug: {"firmware": {"build": {"chip": mcu}}}
+                        for slug, mcu in profile_mcus.items()
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        package_includes = {
+            "p4": "image_cards_6.yaml",
+            "guition-esp32-s3-4848s040": "image_cards_2.yaml",
+            "waveshare-esp32-s3-touch-lcd-4": "image_cards_2.yaml",
+        }
+        for slug, include in package_includes.items():
+            package_dir = devices / slug
+            package_dir.mkdir()
+            package_text = f"  image_cards: !include ../../common/device/{include}\n"
+            (package_dir / "packages.yaml").write_text(package_text, encoding="utf-8")
+
+        errors = firmware_camera_refresh_action_errors(root)
+        package_errors = [error for error in errors if error.endswith("MCU")]
+        assert not package_errors, f"expected MCU-matched packages, got {package_errors!r}"
+
+        waveshare_packages = devices / "waveshare-esp32-s3-touch-lcd-4" / "packages.yaml"
+        waveshare_packages.write_text(
+            "  image_cards: !include ../../common/device/image_cards_6.yaml\n",
+            encoding="utf-8",
+        )
+        errors = firmware_camera_refresh_action_errors(root)
+        package_errors = [error for error in errors if "packages.yaml:" in error]
+        assert package_errors == [
+            "devices/waveshare-esp32-s3-touch-lcd-4/packages.yaml: "
+            "include image_cards_2.yaml for the manifest's ESP32-S3 MCU"
+        ], f"expected an S3 image-card package error for Waveshare, got {package_errors!r}"
+
+
 def run_self_test() -> int:
+    test_camera_refresh_package_mcu_errors()
     for call in (
         "api->get_home_assistant_state(entity, callback);",
         "api.get_home_assistant_state(entity, callback);",
