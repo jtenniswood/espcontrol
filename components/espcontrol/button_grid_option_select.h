@@ -119,22 +119,10 @@ inline std::string option_select_trim(const std::string &value) {
 }
 
 inline void option_select_add_option(std::vector<std::string> &out,
-                                     const std::string &raw) {
-  std::string value = option_select_trim(raw);
-  while (!value.empty() && (value.front() == '\'' || value.front() == '"' ||
-                            value.front() == '[' || value.front() == '(' ||
-                            value.front() == '<')) {
-    value.erase(value.begin());
-    value = option_select_trim(value);
-  }
-  while (!value.empty() && (value.back() == '\'' || value.back() == '"' ||
-                            value.back() == ']' || value.back() == ')' ||
-                            value.back() == '>')) {
-    value.pop_back();
-    value = option_select_trim(value);
-  }
-  if (value.empty()) return;
-  if (value.size() > OPTION_SELECT_OPTION_MAX_LEN) value.resize(OPTION_SELECT_OPTION_MAX_LEN);
+                                     const std::string &value) {
+  // Values are service identifiers. Never strip punctuation or truncate one
+  // into a different valid option; omit values beyond the display budget.
+  if (value.empty() || value.size() > OPTION_SELECT_OPTION_MAX_LEN) return;
   for (const auto &existing : out) {
     if (existing == value) return;
   }
@@ -148,48 +136,60 @@ inline std::vector<std::string> option_select_parse_delimited_options(
   while (start <= body.length()) {
     size_t end = body.find(delim, start);
     if (end == std::string::npos) end = body.length();
-    option_select_add_option(out, body.substr(start, end - start));
+    option_select_add_option(out, option_select_trim(body.substr(start, end - start)));
     start = end + 1;
   }
   return out;
 }
 
 inline std::vector<std::string> option_select_parse_list_options(const std::string &text) {
+  if (text.size() < 2) return {};
+  const std::string body = text.substr(1, text.size() - 2);
   std::vector<std::string> out;
-  if (text.size() < 2) return out;
-  std::string body = text.substr(1, text.size() - 2);
   std::string token;
-  bool in_quote = false;
-  char quote = '\0';
-  bool escaping = false;
-
+  char quote = 0;
+  bool escaped = false;
+  bool quoted_token = false;
+  bool closed_quote = false;
+  auto flush = [&]() {
+    std::string item = quoted_token ? token : option_select_trim(token);
+    option_select_add_option(out, item);
+    token.clear();
+    quoted_token = closed_quote = false;
+  };
   for (char ch : body) {
-    if (in_quote) {
-      if (escaping) {
-        token.push_back(ch);
-        escaping = false;
+    if (quote) {
+      if (escaped) {
+        switch (ch) {
+          case 'n': token.push_back('\n'); break;
+          case 'r': token.push_back('\r'); break;
+          case 't': token.push_back('\t'); break;
+          default: token.push_back(ch); break;
+        }
+        escaped = false;
       } else if (ch == '\\') {
-        escaping = true;
+        escaped = true;
       } else if (ch == quote) {
-        in_quote = false;
+        quote = 0;
+        closed_quote = true;
       } else {
         token.push_back(ch);
       }
-      continue;
-    }
-    if (ch == '\'' || ch == '"') {
-      in_quote = true;
-      quote = ch;
-      continue;
-    }
-    if (ch == ',') {
-      option_select_add_option(out, token);
+    } else if (ch == ',') {
+      flush();
+    } else if ((ch == '\'' || ch == '"') && option_select_trim(token).empty() && !closed_quote) {
       token.clear();
-      continue;
+      quote = ch;
+      quoted_token = true;
+    } else if (closed_quote) {
+      if (!std::isspace(static_cast<unsigned char>(ch))) return {};
+    } else {
+      token.push_back(ch);
     }
-    token.push_back(ch);
   }
-  option_select_add_option(out, token);
+  // Incomplete quoted input must never become a different action value.
+  if (quote || escaped) return {};
+  flush();
   return out;
 }
 
@@ -198,8 +198,7 @@ inline std::vector<std::string> option_select_parse_options(const std::string &r
   if (text.empty() || text == "unknown" || text == "unavailable") return {};
   if ((text.front() == '[' && text.back() == ']') ||
       (text.front() == '(' && text.back() == ')')) {
-    std::vector<std::string> parsed = option_select_parse_list_options(text);
-    if (!parsed.empty()) return parsed;
+    return option_select_parse_list_options(text);
   }
   if (text.find('\n') != std::string::npos) return option_select_parse_delimited_options(text, '\n');
   if (text.find('|') != std::string::npos) return option_select_parse_delimited_options(text, '|');
