@@ -122,6 +122,9 @@ struct ClimateControlCtx {
   int reported_high_tenths = CLIMATE_DEFAULT_HIGH_TENTHS;
   uint32_t pending_connection_generation = 0;
   bool pending_temp_send = false;
+  bool pending_target_edit = false;
+  bool pending_low_edit = false;
+  bool pending_high_edit = false;
   lv_timer_t *debounce_timer = nullptr;
   uint32_t accent_color = DEFAULT_ACCENT_COLOR;
   uint32_t secondary_color = theme_display_color(current_theme().surface_primary);
@@ -1151,6 +1154,7 @@ inline void climate_cancel_temperature_send(ClimateControlCtx *ctx) {
     ctx->high_tenths = ctx->reported_high_tenths;
   }
   ctx->pending_temp_send = false;
+  ctx->pending_target_edit = ctx->pending_low_edit = ctx->pending_high_edit = false;
   if (ctx->debounce_timer) lv_timer_pause(ctx->debounce_timer);
 }
 
@@ -1194,6 +1198,13 @@ inline void climate_debounce_timer_cb(lv_timer_t *timer) {
 
 inline void climate_schedule_temperature_send(ClimateControlCtx *ctx) {
   if (!ctx) return;
+  // Multiple edits before the timer fires can touch either or both endpoints.
+  if (climate_range_target(ctx)) {
+    if (ctx->edit_high) ctx->pending_high_edit = true;
+    else ctx->pending_low_edit = true;
+  } else {
+    ctx->pending_target_edit = true;
+  }
   ctx->pending_temp_send = true;
   ctx->pending_connection_generation = ha_read_coordinator().connection_generation();
   if (!ctx->debounce_timer) {
@@ -2796,8 +2807,13 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
             // Home Assistant can send temperatures before min/max attributes on boot.
             // Store the real value and clamp only where the dial needs a bounded range.
             if (reported) ctx->*reported = tenths;
-            // An echo for an earlier request must not replace a newer edit.
-            if (!reported || !ctx->pending_temp_send) ctx->*field = tenths;
+            // Protect only endpoints actually edited in this debounce window.
+            // A fresh report for the other endpoint belongs in the paired command.
+            const bool editing = ctx->pending_temp_send && (
+              (field == &ClimateControlCtx::target_tenths && ctx->pending_target_edit) ||
+              (field == &ClimateControlCtx::low_tenths && ctx->pending_low_edit) ||
+              (field == &ClimateControlCtx::high_tenths && ctx->pending_high_edit));
+            if (!editing) ctx->*field = tenths;
             ctx->*has_field = true;
           } else {
             ctx->*has_field = false;

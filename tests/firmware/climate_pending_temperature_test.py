@@ -45,6 +45,12 @@ int main(){
  publish("target_temp_low","18");publish("target_temp_high","24");publish("supported_features","2");
  ctx->edit_high=false;climate_apply_selected_target(ctx,190,false,true);publish("target_temp_low","18");publish("target_temp_high","24");fire();assert(commands.back()[0].second=="19.0"&&commands.back()[1].second=="24.0");
  ctx->edit_high=true;climate_apply_selected_target(ctx,260,false,true);publish("target_temp_high","24");fire();assert(commands.back()[1].second=="26.0");
+ // Changes to an untouched endpoint must accompany the user's edit.
+ ctx->edit_high=false;climate_apply_selected_target(ctx,200,false,true);publish("target_temp_low","19");publish("target_temp_high","27");fire();assert(commands.back()[0].second=="20.0"&&commands.back()[1].second=="27.0");
+ ctx->edit_high=true;climate_apply_selected_target(ctx,290,false,true);publish("target_temp_high","27");publish("target_temp_low","21");fire();assert(commands.back()[0].second=="21.0"&&commands.back()[1].second=="29.0");
+ // If both endpoints were edited before sending, both edits are protected.
+ ctx->edit_high=false;climate_apply_selected_target(ctx,220,false,true);ctx->edit_high=true;climate_apply_selected_target(ctx,300,false,true);publish("target_temp_low","21");publish("target_temp_high","29");fire();assert(commands.back()[0].second=="22.0"&&commands.back()[1].second=="30.0");
+ assert(!ctx->pending_low_edit&&!ctx->pending_high_edit);
  climate_apply_selected_target(ctx,270,false,true);publish("","off");assert(!ctx->pending_temp_send);
  climate_apply_selected_target(ctx,270,false,true);publish("target_temp_high","unavailable");assert(!ctx->pending_temp_send);
  remove_card(ctx);assert(coordinator.subscription_count()==0);
