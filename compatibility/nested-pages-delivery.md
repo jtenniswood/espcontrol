@@ -36,8 +36,9 @@ depth of two. Production remains at depth one until the prerequisites pass.
    [transport reclamation prerequisite](ha-subscription-reclamation.md) now has
    host and S3 replacement coverage. The
    [configuration-owned state owner](page-entity-state-runtime.md) now has staged
-   host coverage; complete driver dependency declarations and renderer cutover
-   remain.
+   host coverage. The [card dependency declarations](page-card-dependencies.md)
+   cover registered drivers in host tests; production ownership wiring, full
+   parity and renderer cutover remain.
 4. **Reusable renderer:** give every card driver bind/update/unbind operations;
    bound widgets, contexts and modals by the visible profile, and guard delayed
    work with configuration/binding generations. Physically qualify the S3 and
