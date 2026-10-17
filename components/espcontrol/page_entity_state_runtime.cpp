@@ -190,20 +190,24 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
   counter.clear();
   synchronize_connection();
   for (size_t i = 0; i < slot.channel_count; ++i) {
-    const auto &entry = slot.channels[i];
+    auto &entry = slot.channels[i];
     // Preserve shared live values without asking the coordinator to keep a
     // second cache. Both arenas remain alive throughout this preparation.
     if (active_ >= 0) {
       const auto &old = slots_[active_];
       for (size_t j = 0; j < old.channel_count; ++j) {
         const auto &previous = old.channels[j];
-        if (previous.status != PageEntityStatus::AVAILABLE ||
-            std::string_view(slot.names + entry.entity_offset, entry.entity_size) !=
+        if (std::string_view(slot.names + entry.entity_offset, entry.entity_size) !=
                 std::string_view(old.names + previous.entity_offset, previous.entity_size) ||
             std::string_view(slot.names + entry.attribute_offset, entry.attribute_size) !=
                 std::string_view(old.names + previous.attribute_offset, previous.attribute_size)) continue;
-        receive(slot, slot.revision, static_cast<uint32_t>(i),
-            {old.values + previous.value_offset, previous.value_size});
+        if (previous.status == PageEntityStatus::AVAILABLE) {
+          receive(slot, slot.revision, static_cast<uint32_t>(i),
+              {old.values + previous.value_offset, previous.value_size});
+        } else if (previous.status == PageEntityStatus::EXHAUSTED) {
+          entry.status = PageEntityStatus::EXHAUSTED;
+          ++entry.revision;
+        }
         break;
       }
     }

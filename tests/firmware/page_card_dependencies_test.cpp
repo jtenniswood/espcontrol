@@ -103,6 +103,11 @@ void actions_and_numeric_controls() {
       std::set<std::string>{"fan.room/","fan.room/percentage","fan.room/friendly_name"}));
 }
 void complex_and_external_sources() {
+  assert(declarations("alarm_control_panel.home;;Auto;Auto;;;alarm;;label_display=name").count("alarm_control_panel.home/friendly_name")==1);
+  assert(declarations("alarm_control_panel.home;;Auto;Auto;;;alarm;;").count("alarm_control_panel.home/friendly_name")==0);
+  assert(declarations("alarm_control_panel.home;;Auto;Auto;;;alarm;;label_display=status").count("alarm_control_panel.home/friendly_name")==0);
+  assert(declarations("alarm_control_panel.home;Home;Auto;Auto;;;alarm;;label_display=name").count("alarm_control_panel.home/friendly_name")==0);
+  assert(declarations("alarm_control_panel.home;;Auto;Auto;away;;alarm_action;;").count("alarm_control_panel.home/friendly_name")==0);
   auto climate=declarations("climate.room;Room;Auto;Auto;;;climate_control;;");
   assert(climate.size()==20);for (const auto *attribute:{"","hvac_action","current_temperature","hvac_modes","fan_mode","swing_horizontal_mode"})
     assert(climate.count(std::string("climate.room/")+attribute)==1);

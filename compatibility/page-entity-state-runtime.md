@@ -26,6 +26,13 @@ behaviour. Shared values are copied from the active graph into its replacement,
 and subsequent announcements update both until activation. There is no widget
 address in the configuration graph.
 
+Channels previously serving legacy widgets preserve their bounded rebuild
+replay through partial teardown, even while only configuration consumers
+remain. Fresh configuration-only channels do not create a replay copy. Existing
+replay expires on reconnect, cache eviction or channel retirement. Matching
+exhausted channels keep that status across staging until a fitting update or
+reconnect changes it; they do not silently become unknown on activation.
+
 `PageStoreRuntime` optionally reserves these resources before storage commit.
 A preparation failure cancels partially attached subscriptions and frees the
 staged arenas while leaving the active generation intact. Activation changes
