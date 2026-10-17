@@ -89,17 +89,17 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
                b.sensor != "playlist") {
       b.sensor = "play_pause";
     }
-    if (b.sensor == "previous" && b.label == "Skip Previous") b.label = "Previous";
-    if (b.sensor == "next" && b.label == "Skip Next") b.label = "Next";
+    if (b.sensor == "previous" && b.label == "Skip Previous") b.label = espcontrol_i18n("Previous");
+    if (b.sensor == "next" && b.label == "Skip Next") b.label = espcontrol_i18n("Next");
     if (b.sensor == "volume") {
-      if (b.label.empty() || b.label == "Media") b.label = "Volume";
+      if (b.label.empty() || b.label == "Media") b.label = espcontrol_i18n("Volume");
       b.icon = "Auto";
     }
     if (b.sensor == "playlist") {
-      if (b.label.empty() || b.label == "Media") b.label = "Playlist";
+      if (b.label.empty() || b.label == "Media") b.label = espcontrol_i18n("Playlist");
       if (b.icon.empty() || b.icon == "Auto") b.icon = "Music";
     }
-    if (b.sensor == "position" && (b.label.empty() || b.label == "Track")) b.label = "Position";
+    if (b.sensor == "position" && (b.label.empty() || b.label == "Track")) b.label = espcontrol_i18n("Position");
     if (b.sensor == "now_playing") {
       b.precision = (b.precision == "progress" || b.precision == "play_pause") ? b.precision : "";
     } else if (b.sensor == "cover_art") {
@@ -151,9 +151,9 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.icon_on.clear();
     b.options = alarm_card_options_normalized(b.options);
     if (b.label.empty()) {
-      if (b.sensor == "home") b.label = "Arm Home";
-      else if (b.sensor == "disarm") b.label = "Disarm";
-      else b.label = "Arm Away";
+      if (b.sensor == "home") b.label = espcontrol_i18n("Arm Home");
+      else if (b.sensor == "disarm") b.label = espcontrol_i18n("Disarm");
+      else b.label = espcontrol_i18n("Arm Away");
     }
     if (b.icon.empty() || b.icon == "Auto" || alarm_action_legacy_icon_name(b.sensor, b.icon)) {
       b.icon = alarm_action_icon_name(b.sensor);

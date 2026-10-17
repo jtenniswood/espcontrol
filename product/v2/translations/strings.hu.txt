@@ -281,3 +281,12 @@ weekday_weds=szer.
 weekday_thurs=csüt.
 weekday_fri=pén.
 weekday_sat=szomb.
+
+# Default card labels
+connect=Csatlakozás
+local_action=Helyi művelet
+switch=Kapcsoló
+lighting=Világítás
+garage=Garázs
+sensor=Érzékelő
+camera=Kamera

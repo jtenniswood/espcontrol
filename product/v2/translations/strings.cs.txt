@@ -281,3 +281,12 @@ weekday_weds=st
 weekday_thurs=čt
 weekday_fri=pá
 weekday_sat=so
+
+# Default card labels
+connect=Připojit
+local_action=Místní akce
+switch=Spínač
+lighting=Osvětlení
+garage=Garáž
+sensor=Senzor
+camera=Kamera

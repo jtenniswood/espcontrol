@@ -506,17 +506,17 @@ inline void normalize_saved_config_media_fields(ParsedCfg &p) {
   if (p.sensor == "now_playing" && cfg_option_token_present(p.options, MEDIA_COVER_ART_OPTION)) {
     p.sensor = "cover_art";
   }
-  if (p.sensor == "previous" && p.label == "Skip Previous") p.label = "Previous";
-  if (p.sensor == "next" && p.label == "Skip Next") p.label = "Next";
+  if (p.sensor == "previous" && p.label == "Skip Previous") p.label = espcontrol_i18n("Previous");
+  if (p.sensor == "next" && p.label == "Skip Next") p.label = espcontrol_i18n("Next");
   if (p.sensor == "volume") {
-    if (p.label.empty() || p.label == "Media") p.label = "Volume";
+    if (p.label.empty() || p.label == "Media") p.label = espcontrol_i18n("Volume");
     p.icon = "Auto";
   }
   if (p.sensor == "playlist") {
-    if (p.label.empty() || p.label == "Media") p.label = "Playlist";
+    if (p.label.empty() || p.label == "Media") p.label = espcontrol_i18n("Playlist");
     if (p.icon.empty() || p.icon == "Auto") p.icon = "Music";
   }
-  if (p.sensor == "position" && (p.label.empty() || p.label == "Track")) p.label = "Position";
+  if (p.sensor == "position" && (p.label.empty() || p.label == "Track")) p.label = espcontrol_i18n("Position");
   if (p.sensor == "now_playing") {
     p.precision = card_runtime_media_now_playing_control(p.precision) ? p.precision : "";
   } else if (p.sensor == "cover_art") {
@@ -1315,21 +1315,21 @@ inline std::string normalize_saved_config_webhook_options(
 }
 
 inline const char *saved_config_subpage_default_label(const std::string &kind) {
-  if (kind == "switch") return "Switch";
-  if (kind == "lights") return "Lighting";
-  if (kind == "climate") return "Climate";
-  if (kind == "presence") return "Presence";
-  if (kind == "media") return "Media";
-  if (kind == "alarm") return "Alarm";
-  if (kind == "cover") return "Cover";
-  if (kind == "garage") return "Garage";
-  if (kind == "gate") return "Gate";
-  if (kind == "lock") return "Lock";
-  if (kind == "vacuum") return "Vacuum";
-  if (kind == "lawn_mower") return "Lawn Mower";
-  if (kind == "weather") return "Weather";
-  if (kind == "sensor") return "Sensor";
-  if (kind == "image") return "Camera";
+  if (kind == "switch") return espcontrol_i18n("Switch");
+  if (kind == "lights") return espcontrol_i18n("Lighting");
+  if (kind == "climate") return espcontrol_i18n("Climate");
+  if (kind == "presence") return espcontrol_i18n("Presence");
+  if (kind == "media") return espcontrol_i18n("Media");
+  if (kind == "alarm") return espcontrol_i18n("Alarm");
+  if (kind == "cover") return espcontrol_i18n("Cover");
+  if (kind == "garage") return espcontrol_i18n("Garage");
+  if (kind == "gate") return espcontrol_i18n("Gate");
+  if (kind == "lock") return espcontrol_i18n("Lock");
+  if (kind == "vacuum") return espcontrol_i18n("Vacuum");
+  if (kind == "lawn_mower") return espcontrol_i18n("Lawn Mower");
+  if (kind == "weather") return espcontrol_i18n("Weather");
+  if (kind == "sensor") return espcontrol_i18n("Sensor");
+  if (kind == "image") return espcontrol_i18n("Camera");
   return "";
 }
 
@@ -1421,7 +1421,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.options.clear();
   }
   if ((p.type == "wifi_qr" || p.type == "wifi_qr_card") && p.label.empty()) {
-    p.label = "Connect";
+    p.label = espcontrol_i18n("Connect");
   }
   normalize_saved_config_sensor(p, was_legacy_text_sensor,
                                 normalize_saved_config_sensor_fields,

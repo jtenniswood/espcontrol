@@ -282,3 +282,12 @@ weekday_weds=Weds
 weekday_thurs=Thurs
 weekday_fri=Fri
 weekday_sat=Sat
+
+# Default card labels
+connect=Connect
+local_action=Local Action
+switch=Switch
+lighting=Lighting
+garage=Garage
+sensor=Sensor
+camera=Camera

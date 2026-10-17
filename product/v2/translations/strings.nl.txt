@@ -281,3 +281,12 @@ weekday_weds=wo.
 weekday_thurs=do.
 weekday_fri=vr.
 weekday_sat=za.
+
+# Default card labels
+connect=Verbinden
+local_action=Lokale actie
+switch=Schakelaar
+lighting=Verlichting
+garage=Garage
+sensor=Sensor
+camera=Camera

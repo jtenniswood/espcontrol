@@ -282,3 +282,12 @@ weekday_weds=ד׳
 weekday_thurs=ה׳
 weekday_fri=ו׳
 weekday_sat=ש׳
+
+# Default card labels
+connect=התחבר
+local_action=פעולה מקומית
+switch=מתג
+lighting=תאורה
+garage=מוסך
+sensor=חיישן
+camera=מצלמה

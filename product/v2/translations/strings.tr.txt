@@ -281,3 +281,12 @@ weekday_weds=Çar
 weekday_thurs=Per
 weekday_fri=Cum
 weekday_sat=Cmt
+
+# Default card labels
+connect=Bağlan
+local_action=Yerel eylem
+switch=Anahtar
+lighting=Aydınlatma
+garage=Garaj
+sensor=Sensör
+camera=Kamera

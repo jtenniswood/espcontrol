@@ -281,3 +281,12 @@ weekday_weds=qua.
 weekday_thurs=qui.
 weekday_fri=sex.
 weekday_sat=sáb.
+
+# Default card labels
+connect=Ligar
+local_action=Ação local
+switch=Interruptor
+lighting=Iluminação
+garage=Garagem
+sensor=Sensor
+camera=Câmara

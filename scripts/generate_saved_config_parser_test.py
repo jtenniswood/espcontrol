@@ -43,8 +43,7 @@ def generate() -> str:
         "",
         "struct lv_obj_t {};",
         "inline void lv_label_set_text(lv_obj_t *, const char *) {}",
-        "inline const char *espcontrol_i18n(const char *text) { return text ? text : \"\"; }",
-        "inline std::string espcontrol_i18n(const std::string &text) { return text; }",
+        '#include "i18n_generated.h"',
         '#include "button_grid_config_parser.h"',
         "#define ESPCONTROL_SUBPAGE_PARSER_ONLY",
         '#include "button_grid_subpages.h"',
@@ -266,6 +265,28 @@ def generate() -> str:
             '  assert(issue_248_buttons.back().sensor == "binary_sensor.kitchen_window_sensor_opening");',
         )
     )
+    # Exercise the real catalogue and parser under a non-English language.
+    # Explicit labels, even when they match an English default, stay user-owned.
+    lines.extend((
+        '  set_espcontrol_language("de");',
+        '  assert(parse_cfg(";;;;;;wifi_qr").label == "Verbinden");',
+        '  assert(parse_cfg(";;;;;;wifi_qr_card").label == "Verbinden");',
+        '  assert(parse_cfg(";Connect;;;;;wifi_qr").label == "Connect");',
+        '  assert(parse_cfg(";Guest Wi-Fi;;;;;wifi_qr").label == "Guest Wi-Fi");',
+        '  assert(parse_cfg(";;;;;;subpage;;subpage_kind=lights").label == "Beleuchtung");',
+        '  assert(parse_cfg(";Lighting;;;;;subpage;;subpage_kind=lights").label == "Lighting");',
+        '  assert(parse_cfg(";;;;volume;;media").label == "Lautstärke");',
+        '  assert(parse_cfg(";Media;;;volume;;media").label == "Lautstärke");',
+        '  assert(parse_cfg(";Kitchen;;;volume;;media").label == "Kitchen");',
+        '  assert(parse_cfg(";Skip Next;;;next;;media").label == "Weiter");',
+        '  assert(parse_cfg(";Track;;;position;;media").label == "Position");',
+        '  auto translated_media = parse_subpage_config("1|media_player.room::::volume::media");',
+        '  assert(translated_media.size() == 1 && translated_media[0].label == "Lautstärke");',
+        '  auto translated_alarm = parse_subpage_config("1|alarm_control_panel.home::::disarm::alarm_action");',
+        '  assert(translated_alarm.size() == 1 && translated_alarm[0].label == "Entschärfen");',
+        '  assert(std::string(espcontrol_i18n("Local Action")) == "Lokale Aktion");',
+        '  set_espcontrol_language("en");',
+    ))
     lines.extend(("  return 0;", "}", ""))
     return "\n".join(lines)
 

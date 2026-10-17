@@ -281,3 +281,12 @@ weekday_weds=ons.
 weekday_thurs=tor.
 weekday_fri=fre.
 weekday_sat=lør.
+
+# Default card labels
+connect=Forbind
+local_action=Lokal handling
+switch=Kontakt
+lighting=Belysning
+garage=Garage
+sensor=Sensor
+camera=Kamera

@@ -321,7 +321,8 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::WIFI_QR, owner, 100, wifi_qr_icon_font_ref(), wifi_qr_hide_modal);
   if (!shell.overlay || !shell.panel || !shell.close_btn) return;
-  set_clock_bar_modal_label(config.label.empty() ? "Connect" : config.label);
+  set_clock_bar_modal_label(
+    config.label.empty() ? espcontrol_i18n(std::string("Connect")) : config.label);
   WifiQrModalUi &ui = wifi_qr_modal_ui();
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;

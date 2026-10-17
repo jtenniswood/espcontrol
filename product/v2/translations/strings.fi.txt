@@ -281,3 +281,12 @@ weekday_weds=ke
 weekday_thurs=to
 weekday_fri=pe
 weekday_sat=la
+
+# Default card labels
+connect=Yhdistä
+local_action=Paikallinen toiminto
+switch=Kytkin
+lighting=Valaistus
+garage=Autotalli
+sensor=Anturi
+camera=Kamera

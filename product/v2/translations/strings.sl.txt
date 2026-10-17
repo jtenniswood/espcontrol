@@ -281,3 +281,12 @@ weekday_weds=sre.
 weekday_thurs=čet.
 weekday_fri=pet.
 weekday_sat=sob.
+
+# Default card labels
+connect=Poveži
+local_action=Lokalno dejanje
+switch=Stikalo
+lighting=Razsvetljava
+garage=Garaža
+sensor=Senzor
+camera=Kamera
