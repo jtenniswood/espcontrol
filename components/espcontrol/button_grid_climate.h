@@ -1815,7 +1815,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
           ? CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_ICON_ZOOM : 256);
 
       lv_obj_t *label = lv_label_create(content_parent);
-      lv_label_set_display_text(label, climate_option_choice_label(option, values).c_str());
+      lv_label_set_display_text(label, climate_option_choice_label(option, section_options).c_str());
       lv_label_set_long_mode(label, compact_portrait_layout ? LV_LABEL_LONG_CLIP : LV_LABEL_LONG_WRAP);
       lv_obj_set_width(label, compact_portrait_layout ? LV_SIZE_CONTENT : lv_pct(100));
       lv_obj_set_style_text_color(label, lv_color_hex(text_color), LV_PART_MAIN);
