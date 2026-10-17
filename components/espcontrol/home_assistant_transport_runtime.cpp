@@ -8,6 +8,9 @@
 #include "esphome/core/log.h"
 #include "external_memory_allocator.h"
 #include "owned_ha_subscriptions.h"
+#ifdef USE_ESP32
+#include "esp_heap_caps.h"
+#endif
 
 // This bridge deliberately uses only public SDK record definitions. ESPHome
 // exposes a const view but no unsubscribe API. Audit enumeration and dispatch
@@ -21,6 +24,27 @@ struct NativeBackend {
   using State = esphome::StringRef;
   using Callback = StateCallback;
   static bool available() { return esphome::api::global_api_server != nullptr; }
+  static size_t internal_free() {
+#ifdef USE_ESP32
+    return heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+#else
+    return 0;
+#endif
+  }
+  static size_t internal_largest() {
+#ifdef USE_ESP32
+    return heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+#else
+    return 0;
+#endif
+  }
+  static size_t psram_free() {
+#ifdef USE_ESP32
+    return heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+#else
+    return 0;
+#endif
+  }
   static void subscribe(const char *entity, const char *attribute, Callback callback) {
     esphome::api::global_api_server->subscribe_home_assistant_state(
         entity, attribute, std::move(callback));
@@ -69,11 +93,14 @@ void maintain_subscriptions() {
   if (maintenance_callback != nullptr) maintenance_callback();
   auto &registry = Registry::instance();
   if (registry.flush()) {
-    ESP_LOGD("ha_transport", "Native subscriptions: owned=%u pending=%u registry_bytes=%u upstream=%u capacity=%u",
+    ESP_LOGD("ha_transport", "Native subscriptions: owned=%u pending=%u registry_bytes=%u upstream=%u capacity=%u heap_internal=%u heap_largest=%u psram_free=%u",
              static_cast<unsigned>(registry.size()), static_cast<unsigned>(registry.pending_count()),
              static_cast<unsigned>(registry.storage_bytes()),
              static_cast<unsigned>(esphome::api::global_api_server->get_state_subs().size()),
-             static_cast<unsigned>(esphome::api::global_api_server->get_state_subs().capacity()));
+             static_cast<unsigned>(esphome::api::global_api_server->get_state_subs().capacity()),
+             static_cast<unsigned>(NativeBackend::internal_free()),
+             static_cast<unsigned>(NativeBackend::internal_largest()),
+             static_cast<unsigned>(NativeBackend::psram_free()));
   }
 }
 }  // namespace espcontrol::ha

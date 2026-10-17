@@ -106,6 +106,11 @@ class OwnedHaSubscriptions {
 
  private:
   struct Record {
+    Record() = default;
+    Record(const Record &) = delete;
+    Record &operator=(const Record &) = delete;
+    Record(Record &&) noexcept = default;
+    Record &operator=(Record &&) noexcept = default;
     uint32_t token{0};
     Vector<char> names;
     size_t attribute_offset{0};
