@@ -10,9 +10,11 @@ struct APIConnection {
   bool removed{false};
   int cursor{-1};
   size_t enumerations{0};
+  size_t disconnects{0};
   bool is_marked_for_removal() const { return removed; }
   bool is_authenticated() const { return authenticated; }
   void on_subscribe_home_assistant_states_request() { cursor = 0; ++enumerations; }
+  void on_disconnect_response() { removed = true; ++disconnects; }
 };
 struct APIServer {
   struct HomeAssistantStateSubscription {
