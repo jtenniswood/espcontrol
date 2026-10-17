@@ -239,6 +239,38 @@ void authored_golden_corpus() {
   }
 }
 
+void maximum_distinct_entities() {
+  for (const auto &limits : DEVICE_UI_PROFILES) {
+    Document doc(limits);
+    for (size_t parent = 1; parent <= limits.slot_count; ++parent) {
+      doc.button(parent, ";Room " + std::to_string(parent) + ";Home;Auto;indicator;;subpage;;");
+      std::string subpage = "~B";
+      for (size_t child = 1; child <= limits.cards_per_subpage; ++child) {
+        const std::string suffix = std::to_string(parent) + "_" + std::to_string(child);
+        subpage += "|s,sensor.room_" + suffix + ",Zone%20" + suffix + ",Auto,Auto,,%C2%B0C,1,";
+      }
+      doc.subpage(parent, subpage);
+    }
+    doc.finish();
+    Arena arena{};
+    PageStore store;
+    assert(PageStore::stage_v1(doc.buffer.data(), doc.size, limits, 1,
+        arena.data(), sizeof(arena), &store) == PageStoreStatus::OK);
+    assert(store.card_count() == limits.max_cards());
+    for (PageId parent = 1; parent <= limits.slot_count; ++parent) {
+      const auto *page = store.page(parent);
+      for (CardId child = 0; child < page->card_count; ++child) {
+        const std::string suffix = std::to_string(parent) + "_" + std::to_string(child + 1);
+        const auto *card = store.card(page->first_card + child);
+        assert(store.field(*card, CardField::ENTITY) == "sensor.room_" + suffix);
+        assert(store.field(*card, CardField::LABEL) == "Zone " + suffix);
+      }
+    }
+    std::cout << limits.device_profile << ": distinct-entity arena="
+              << store.memory().arena_bytes << " source=" << store.source_size() << '\n';
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -247,4 +279,5 @@ int main() {
   card_type_corpus();
   byte_limits_and_exhaustion();
   authored_golden_corpus();
+  maximum_distinct_entities();
 }
