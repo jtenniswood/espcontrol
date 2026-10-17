@@ -396,6 +396,28 @@ void rebuilt_subscription_replays_last_value() {
   require(received == "42", "rebuilt subscription did not replay the latest value");
 }
 
+void shared_non_replaying_consumer_preserves_widget_rebuild_replay() {
+  for (bool release_owner : {false, true}) {
+    Coordinator coordinator;
+    int owner = 0;
+    require(coordinator.subscribe("sensor.shared", "", [](auto) {}, 2u, nullptr, false, false),
+            "configuration consumer should register");
+    require(coordinator.subscribe("sensor.shared", "", [](auto) {}, 1u, &owner),
+            "widget consumer should register");
+    coordinator.transport().publish(0, "42");
+    if (release_owner) coordinator.release_owner(&owner); else coordinator.reset_subscriptions(1u);
+    std::string received;
+    require(coordinator.subscribe("sensor.shared", "", [&](auto value) { received = value; }, 1u, &owner),
+            "rebuilt widget should register");
+    require(received == "42", "shared configuration consumer discarded widget replay during teardown");
+    coordinator.reset_subscriptions(1u);
+    coordinator.transport().publish(0, "43");
+    require(coordinator.subscribe("sensor.shared", "", [&](auto value) { received = value; }, 1u, &owner),
+            "widget should rebuild after an intervening update");
+    require(received == "43", "shared rebuild replay did not retain the latest update");
+  }
+}
+
 void reconnect_does_not_replay_previous_connection_state() {
   Coordinator coordinator;
   constexpr uint32_t scope = 1u;
@@ -1093,6 +1115,7 @@ int main() {
   owner_release_during_callback_preserves_rebuilt_subscriptions();
   rebuilt_subscriptions_share_one_transport_channel();
   rebuilt_subscription_replays_last_value();
+  shared_non_replaying_consumer_preserves_widget_rebuild_replay();
   reconnect_does_not_replay_previous_connection_state();
   inactive_channels_do_not_retain_new_replay_values();
   replay_state_cache_is_bounded();
