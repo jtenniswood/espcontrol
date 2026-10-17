@@ -157,14 +157,70 @@ inline std::vector<std::string> option_select_parse_list_options(const std::stri
     token.clear();
     quoted_token = closed_quote = false;
   };
-  for (char ch : body) {
+  auto append_codepoint = [&](unsigned long codepoint) {
+    // NUL cannot be represented by the C-string service payload API.
+    if (codepoint == 0 || codepoint > 0x10FFFF ||
+        (codepoint >= 0xD800 && codepoint <= 0xDFFF)) return false;
+    if (codepoint <= 0x7F) {
+      token.push_back(static_cast<char>(codepoint));
+    } else if (codepoint <= 0x7FF) {
+      token.push_back(static_cast<char>(0xC0 | (codepoint >> 6)));
+      token.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+    } else if (codepoint <= 0xFFFF) {
+      token.push_back(static_cast<char>(0xE0 | (codepoint >> 12)));
+      token.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+      token.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+    } else {
+      token.push_back(static_cast<char>(0xF0 | (codepoint >> 18)));
+      token.push_back(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F)));
+      token.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+      token.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+    }
+    return true;
+  };
+  for (size_t index = 0; index < body.size(); ++index) {
+    const char ch = body[index];
     if (quote) {
       if (escaped) {
         switch (ch) {
+          case 'a': token.push_back('\a'); break;
+          case 'b': token.push_back('\b'); break;
+          case 'f': token.push_back('\f'); break;
           case 'n': token.push_back('\n'); break;
           case 'r': token.push_back('\r'); break;
           case 't': token.push_back('\t'); break;
-          default: token.push_back(ch); break;
+          case 'v': token.push_back('\v'); break;
+          case '\\': case '\'': case '"': token.push_back(ch); break;
+          case 'x': case 'u': case 'U': {
+            auto read_hex = [&](size_t digits, unsigned long &value) {
+              value = 0;
+              if (body.size() - index - 1 < digits) return false;
+              for (size_t n = 0; n < digits; ++n) {
+                const char digit = body[++index];
+                unsigned long part = 0;
+                if (digit >= '0' && digit <= '9') part = digit - '0';
+                else if (digit >= 'a' && digit <= 'f') part = digit - 'a' + 10;
+                else if (digit >= 'A' && digit <= 'F') part = digit - 'A' + 10;
+                else return false;
+                value = (value << 4) | part;
+              }
+              return true;
+            };
+            unsigned long codepoint = 0;
+            if (!read_hex(ch == 'x' ? 2 : ch == 'u' ? 4 : 8, codepoint)) return {};
+            // Accept JSON's paired UTF-16 form as well as Python's \U form.
+            if (ch == 'u' && codepoint >= 0xD800 && codepoint <= 0xDBFF) {
+              if (body.size() - index - 1 < 6 ||
+                  body[index + 1] != '\\' || body[index + 2] != 'u') return {};
+              index += 2;
+              unsigned long low = 0;
+              if (!read_hex(4, low) || low < 0xDC00 || low > 0xDFFF) return {};
+              codepoint = 0x10000 + ((codepoint - 0xD800) << 10) + low - 0xDC00;
+            }
+            if (!append_codepoint(codepoint)) return {};
+            break;
+          }
+          default: return {};
         }
         escaped = false;
       } else if (ch == '\\') {
@@ -196,8 +252,11 @@ inline std::vector<std::string> option_select_parse_list_options(const std::stri
 inline std::vector<std::string> option_select_parse_options(const std::string &raw) {
   std::string text = option_select_trim(raw);
   if (text.empty() || text == "unknown" || text == "unavailable") return {};
-  if ((text.front() == '[' && text.back() == ']') ||
-      (text.front() == '(' && text.back() == ')')) {
+  if (text.front() == '[' || text.front() == '(') {
+    const char closing = text.front() == '[' ? ']' : ')';
+    // A capped serialized list must never fall back to legacy delimiters:
+    // those would treat quotes/brackets as part of the command value.
+    if (text.size() < 2 || text.back() != closing) return {};
     return option_select_parse_list_options(text);
   }
   if (text.find('\n') != std::string::npos) return option_select_parse_delimited_options(text, '\n');
