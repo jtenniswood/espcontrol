@@ -80,6 +80,10 @@ add_test(NAME web_ota_guard_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/web_ota_guard_test.py)
 
+add_test(NAME option_select_values_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/option_select_values_test.py)
+
 add_executable(button_grid_foundations_test button_grid_foundations_test.cpp)
 target_compile_features(button_grid_foundations_test PRIVATE cxx_std_17)
 target_compile_options(button_grid_foundations_test PRIVATE -Wall -Wextra -Werror)
