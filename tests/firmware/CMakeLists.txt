@@ -125,6 +125,18 @@ target_compile_features(page_basic_card_test PRIVATE cxx_std_17)
 target_compile_options(page_basic_card_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
 target_include_directories(page_basic_card_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_basic_card_test COMMAND page_basic_card_test)
+add_executable(page_basic_card_no_forecast_test page_basic_card_test.cpp
+  ../../components/espcontrol/page_basic_card.cpp
+    ../../components/espcontrol/page_climate_card.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_basic_card_no_forecast_test PRIVATE cxx_std_17)
+target_compile_options(page_basic_card_no_forecast_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_basic_card_no_forecast_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_basic_card_no_forecast_test COMMAND page_basic_card_no_forecast_test)
+target_compile_definitions(page_basic_card_no_forecast_test PRIVATE ESPCONTROL_DISABLE_WEATHER_FORECAST=1)
+
 
 add_executable(dpi_timing_test dpi_timing_test.cpp)
 target_compile_features(dpi_timing_test PRIVATE cxx_std_17)
@@ -942,3 +954,5 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   add_test(NAME page_light_cover_modal_test COMMAND page_light_cover_modal_test)
 
 endif()
+
+add_test(NAME weather_condition_parity_test COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/weather_condition_parity_test.py)

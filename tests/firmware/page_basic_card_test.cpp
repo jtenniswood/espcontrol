@@ -9,6 +9,7 @@
 #include "button_grid_subpage_parser.h"
 #include "page_basic_card.h"
 #include "page_card_dependencies.h"
+#include "weather_condition.h"
 #include "panel_config_document.h"
 
 using namespace espcontrol;using namespace espcontrol::pages;using namespace espcontrol::configuration;
@@ -251,5 +252,20 @@ void control_profile(const DeviceUiLimits &limits) {
   ++transport.generation;value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==0&&!value.on);transport.send("cover.room","","closed");value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==100);
 }
 
+void weather_profile(const DeviceUiLimits &limits) {
+  Fixture fixture(limits,"weather.home;Ignored;Custom;Custom;;;weather;0;");BasicCardDefinition definition;assert(prepare_basic_card(fixture.store,0,definition));assert(definition.kind==BasicCardKind::WEATHER&&definition.label.empty()&&definition.unit.empty());PageCardDependencies source;Arena arena;Subscriptions transport;PageEntityStateRuntime state(source,arena,transport,{16,16,1024});assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);
+  auto value=read_basic_card(definition,{17,0},state);assert(value.label=="Unavailable");
+  transport.send("weather.home","","sunny");value=read_basic_card(definition,{17,0},state);assert(value.label=="Sunny"&&espcontrol::weather::CONDITION_ROWS[value.weather_condition].icon==std::string_view("Weather Sunny"));
+  transport.send("weather.home","","partly-cloudy-night");value=read_basic_card(definition,{17,0},state);assert(value.formatted_label&&std::strcmp(value.text,"Partly Cloudy Night")==0&&espcontrol::weather::CONDITION_ROWS[value.weather_condition].icon==std::string_view("Weather Night Cloudy"));
+  transport.send("weather.home","","cloudy");auto translate=[](const char *key)->const char *{return std::strcmp(key,"Cloudy")==0?"Translated Cloudy":key;};value=read_basic_card(definition,{17,0},state,2,"°C",translate);assert(value.label=="Translated Cloudy");
+  for(const auto raw:{"unknown","unavailable","custom__weather","mdi:weather-sunny"}){transport.send("weather.home","",raw);value=read_basic_card(definition,{17,0},state);assert(!value.numeric&&!value.on);}
+  const auto before=allocations;for(size_t i=0;i<1000;++i)value=read_basic_card(definition,{17,0},state);assert(allocations==before);
+  ++transport.generation;assert(read_basic_card(definition,{17,0},state).label=="Unavailable");
+  Fixture empty(limits,";;;;;;weather;0;");assert(prepare_basic_card(empty.store,0,definition));assert(state.prepare(empty.store));state.activate_prepared(empty.store);value=read_basic_card(definition,{17,0},state);assert(value.label=="Cloudy");
+  Fixture forecast(limits,"weather.home;;;;;;weather;daily;");
+  if(card_runtime_weather_forecast_supported())assert(!prepare_basic_card(forecast.store,0,definition));
+  else {assert(prepare_basic_card(forecast.store,0,definition));assert(state.prepare(forecast.store));state.activate_prepared(forecast.store);transport.send("weather.home","","sunny");assert(read_basic_card(definition,{17,0},state).label=="Sunny");}
 }
-int main(){display_text();for(const auto &limits:DEVICE_UI_PROFILES){profile(limits);climate_profile(limits);status_actions_profile(limits);control_profile(limits);}}
+
+}
+int main(){display_text();for(const auto &limits:DEVICE_UI_PROFILES){profile(limits);climate_profile(limits);status_actions_profile(limits);control_profile(limits);weather_profile(limits);}}
