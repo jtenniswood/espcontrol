@@ -281,3 +281,12 @@ weekday_weds=ke
 weekday_thurs=to
 weekday_fri=pe
 weekday_sat=la
+
+# Default card labels (label_ keys use key-based lookup only)
+label_connect=Yhdistä
+label_local_action=Paikallinen toiminto
+label_switch=Kytkin
+label_lighting=Valaistus
+label_garage=Autotalli
+label_sensor=Anturi
+label_camera=Kamera
