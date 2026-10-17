@@ -50,8 +50,7 @@ inline bool climate_subscribe_optional_field(ClimateControlCtx *ctx,
     std::function<void(esphome::StringRef)>(
       [ctx, generation, target](esphome::StringRef value) {
         if (generation != ha_subscription_generation()) return;
-        ctx->*target = climate_lower(climate_trim(
-          string_ref_limited(value, HA_SHORT_STATE_MAX_LEN)));
+        ctx->*target = string_ref_limited(value, HA_SHORT_STATE_MAX_LEN);
         climate_update_card(ctx);
         climate_control_set_modal_value(ctx);
       })

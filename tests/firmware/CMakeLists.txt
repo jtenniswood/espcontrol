@@ -530,6 +530,10 @@ target_include_directories(saved_config_parser_test PRIVATE
 )
 add_test(NAME saved_config_parser_test COMMAND saved_config_parser_test)
 
+add_test(NAME climate_option_values_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/climate_option_values_test.py)
+
 set(CLIMATE_UPDATE_TEST_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/climate_update_test.cpp)
 add_custom_command(
   OUTPUT ${CLIMATE_UPDATE_TEST_SOURCE}

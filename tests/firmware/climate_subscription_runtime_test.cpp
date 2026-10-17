@@ -362,7 +362,23 @@ void configured_optional_failures_are_retried() {
   assert(reannouncements == 1);
 }
 
+void optional_values_preserve_wire_case_and_whitespace() {
+  reset();
+  auto *ctx = add_card("climate.exact", "fan|preset|swing|horizontal_swing");
+  auto &transport = coordinator.transport();
+  transport.publish(ctx->entity_id, "fan_mode", "AUTO");
+  transport.publish(ctx->entity_id, "preset_mode", "  ECO: Night  ");
+  transport.publish(ctx->entity_id, "swing_mode", "Left, Right");
+  transport.publish(ctx->entity_id, "swing_horizontal_mode", "[Middle]");
+  assert(ctx->fan_mode == "AUTO");
+  assert(ctx->preset_mode == "  ECO: Night  ");
+  assert(ctx->swing_mode == "Left, Right");
+  assert(ctx->swing_horizontal_mode == "[Middle]");
+  remove_card(ctx);
+}
+
 int main() {
+  optional_values_preserve_wire_case_and_whitespace();
   fixture_registers_only_needed_attributes();
   configured_values_are_registered_immediately();
   fallback_delivery_reannounces_historical_channels();
