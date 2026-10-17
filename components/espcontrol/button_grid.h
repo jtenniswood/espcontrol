@@ -68,3 +68,11 @@
 #include "button_grid_grid.h"
 
 #include "button_grid_remote_modal.h"
+
+// Compiled adapter; production selection waits for complete renderer parity.
+#include "page_climate_modal.h"
+#include "page_light_cover_modal.h"
+
+#include "page_ha_forecast_requests.h"
+
+#include "page_weather_modal.h"

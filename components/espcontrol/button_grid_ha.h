@@ -3,6 +3,7 @@
 #include <initializer_list>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -10,6 +11,7 @@
 #include "home_assistant_binding_service.h"
 #include "external_memory_allocator.h"
 #include "espcontrol_app_core.h"
+#include "home_assistant_transport_runtime.h"
 
 #ifdef ESP_PLATFORM
 #include "esp_heap_caps.h"
@@ -72,26 +74,27 @@ inline bool ha_internal_heap_available(const char *stage,
 struct EspHomeHaReadTransport {
   using State = esphome::StringRef;
   using Callback = HomeAssistantStateCallback;
+  static constexpr bool RECLAIMABLE_SUBSCRIPTIONS = true;
 
   bool available() const { return ha_api_available(); }
   bool state_connected() const { return ha_api_state_connected(); }
 
-  void subscribe(const std::string &entity_id,
+  uint32_t subscribe(const std::string &entity_id,
                  const std::string &attribute,
                  Callback callback) {
-    esphome::api::global_api_server->subscribe_home_assistant_state(
-        entity_id, attribute, std::move(callback));
+    return espcontrol::ha::subscribe_owned(entity_id, attribute, std::move(callback));
   }
+  void unsubscribe(uint32_t token) { espcontrol::ha::unsubscribe_owned(token); }
 
-  bool request(const std::string &entity_id, const std::string &attribute) {
+  bool request(std::string_view entity_id, std::string_view attribute) {
     if (!state_connected()) return false;
     // The coordinator already owns a persistent subscription for this pair.
     // Ask for its current value directly: get_home_assistant_state appends a
     // permanent callback and its const-char overload borrows these strings.
     // Appending also cannot wake an already-finished subscription handshake.
     esphome::api::SubscribeHomeAssistantStateResponse request;
-    request.entity_id = esphome::StringRef(entity_id);
-    request.attribute = esphome::StringRef(attribute);
+    request.entity_id = esphome::StringRef(entity_id.data(), entity_id.size());
+    request.attribute = esphome::StringRef(attribute.data(), attribute.size());
     request.once = true;
     bool sent = false;
     for (const auto &client : esphome::api::global_api_server->active_clients()) {
@@ -141,6 +144,9 @@ inline EspHomeHaBindingService &ha_binding_service() {
 }
 
 inline EspHomeHaReadCoordinator &ha_read_coordinator() {
+  espcontrol::ha::set_subscription_maintenance([]() {
+    ha_binding_service().read_coordinator().reclaim_unused_channels();
+  });
   return ha_binding_service().read_coordinator();
 }
 
