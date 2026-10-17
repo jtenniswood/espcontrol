@@ -2719,7 +2719,10 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         ctx->hvac_mode = mode;
         ctx->available = !climate_unavailable_value(ctx->hvac_mode);
         if (!ctx->available) ctx->hvac_mode = "off";
-        if (!ctx->available) climate_control_hide_modal();
+        if (!ctx->available) {
+          climate_cancel_temperature_send(ctx);
+          if (climate_control_modal_ui().active == ctx) climate_control_hide_modal();
+        }
         refresh();
       })
   );
