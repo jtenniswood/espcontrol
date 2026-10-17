@@ -21,8 +21,7 @@ source = r'''
 #include <vector>
 struct lv_obj_t;
 void lv_label_set_text(lv_obj_t *, const char *) {}
-bool translate_back = false;
-std::string espcontrol_i18n(const std::string &text) { return translate_back && text == "Back" ? "Zurück" : text; }
+#include "i18n_generated.h"
 #include "button_grid_config_parser.h"
 #define ESPCONTROL_SUBPAGE_PARSER_ONLY
 #include "button_grid_subpages.h"
@@ -252,11 +251,11 @@ int main() {
   for (const std::string order : {"", "B", "B=Return%3AHome", "B=Back:invalid", "B=Back:12345", "1=Back:FFEC16"})
     assert(get_subpage_back_color(order).empty());
   assert(get_subpage_back_label("B=Back:invalid") == "Back");
-  translate_back = true;
+  set_espcontrol_language("de");
   assert(get_subpage_back_label("B=:FFEC16") == "Zurück");
   assert(get_subpage_back_label("B") == "Zurück");
   assert(get_subpage_back_label("B=Return:FFEC16") == "Return");
-  translate_back = false;
+  set_espcontrol_language("en");
   for (const ThemePalette *theme : {&DARK_THEME, &LIGHT_THEME}) {
     set_active_theme_palette(*theme);
     // Forecast temperatures retain muted grey through card contrast updates.
