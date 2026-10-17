@@ -44,10 +44,24 @@ struct Subscriptions:PageEntitySubscriptions {
   void send(const char *entity,const char *attribute,std::string_view value){for(auto &b:bindings)if(std::strcmp(b.entity,entity)==0&&std::strcmp(b.attribute,attribute)==0)b.deliver(b.owner,b.revision,b.channel,value);}
 };
 struct Fixture {
-  explicit Fixture(const DeviceUiLimits &limits,bool unsupported=false,bool portrait=false) {
+  explicit Fixture(const DeviceUiLimits &limits,bool unsupported=false,bool portrait=false,bool stateless=false) {
     PanelConfigWriter writer(document.data(),document.size());assert(writer.begin()==PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t *>(limits.device_profile),std::strlen(limits.device_profile))==PanelConfigStatus::OK);
     auto button=[&](uint8_t slot,std::string text){assert(writer.append_button(slot,reinterpret_cast<const uint8_t *>(text.data()),text.size())==PanelConfigStatus::OK);};
+    if(stateless) {
+      button(1,";Actions;Home;Lightbulb;;;subpage;;");
+      button(2,"script.root;Run;Flash;Lightbulb;script.turn_on;;action;;state_entity=binary_sensor.action,state_precision=icon");
+      button(3,";;Auto;Auto;binary_sensor.presence;;presence;;active_color");
+      button(4,";;Auto;Auto;binary_sensor.window;;door_window;window;active_color");
+      button(5,"test_local;;;;local;;action;;");button(6,";Ignored;Auto;Auto;;;screensaver;;");
+      const std::string child="~B,1,2,3,4|A,script.child,Power,Flash,Lightbulb,script.turn_on,,0,state_entity=sensor.power%2Cstate_precision=2%2Cstate_unit="+std::string(600,'W')+
+        "|A,script.text,Message,Flash,Lightbulb,script.turn_on,,0,state_entity=sensor.message%2Cstate_precision=text|P,,Push,Gesture Tap,Auto,,,,|WH,https://example.test/hook,Send,Auto,Auto,,,,";
+      assert(writer.append_subpage(1,reinterpret_cast<const uint8_t *>(child.data()),child.size())==PanelConfigStatus::OK);
+      const std::string key="button_order",order="1,2,3,4,5,6";
+      assert(writer.append_setting(reinterpret_cast<const uint8_t *>(key.data()),key.size(),reinterpret_cast<const uint8_t *>(order.data()),order.size())==PanelConfigStatus::OK);
+      assert(writer.finish(&size)==PanelConfigStatus::OK);
+      assert(PageStore::stage_v1(document.data(),size,limits,11,arena.data(),arena.size(),&store)==PageStoreStatus::OK);return;
+    }
     button(1,";Rooms;Home;Lightbulb;indicator;;subpage;;");
     button(2,"light.main;;Lightbulb;Lightbulb;sensor.temp; C ;;1;card_off_color=336699");
     button(3,unsupported?"media_player.test;;;;control;;media;;":";;Gauge;Gauge;sensor.temp;°C;sensor;1;active_color");
@@ -70,16 +84,17 @@ struct Fixture {
   std::array<uint8_t,8192>document{};size_t size{0};alignas(std::max_align_t)std::array<uint8_t,65536>arena{};PageStore store;
 };
 template<size_t Slots>struct Actions {
-  PageRendererRuntime<Slots> *renderer{nullptr};size_t toggles{0},climates{0};PageBindingToken last;char entity[64]{};
+  PageRendererRuntime<Slots> *renderer{nullptr};size_t toggles{0},climates{0},commands{0};PageBindingToken last;char entity[64]{};
   static const char *icon(void *,std::string_view name,std::string_view){return name=="Lightbulb"?"ON":"I";}
   static bool valid(void *owner,PageBindingToken t){return static_cast<Actions *>(owner)->renderer->valid(t);}
   static void toggle(void *owner,PageBindingToken t,std::string_view entity){auto &a=*static_cast<Actions *>(owner);++a.toggles;a.last=t;assert(entity.size()<sizeof(a.entity));std::memcpy(a.entity,entity.data(),entity.size());a.entity[entity.size()]='\0';}
   static void open(void *owner,PageBindingToken,PageId page){assert(static_cast<Actions *>(owner)->renderer->open_page(page));}
   static void back(void *owner,PageBindingToken){assert(static_cast<Actions *>(owner)->renderer->back());}
   static void climate(void *owner,PageBindingToken token){auto &a=*static_cast<Actions *>(owner);++a.climates;a.last=token;}
-  PageBasicActions callbacks(){return {this,icon,valid,toggle,open,back,climate};}
+  static void action(void *owner,PageBindingToken token){auto &a=*static_cast<Actions *>(owner);++a.commands;a.last=token;}
+  PageBasicActions callbacks(){return {this,icon,valid,toggle,open,back,climate,action};}
 };
-void click(lv_obj_t *object){lv_obj_send_event(object,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(object,LV_EVENT_CLICKED,nullptr);}
+void click(lv_obj_t *object){lv_obj_send_event(object,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(object,LV_EVENT_RELEASED,nullptr);lv_obj_send_event(object,LV_EVENT_CLICKED,nullptr);}
 template<size_t Slots>void profile(const DeviceUiLimits &limits) {
   Fixture fixture(limits);Arena arena;Subscriptions subscriptions;PageCardDependencies dependencies;
   PageEntityStateRuntime state(dependencies,arena,subscriptions,{2048,2048,8192});
@@ -227,6 +242,83 @@ template<size_t Slots>void profile(const DeviceUiLimits &limits) {
   }
   assert(arena.live==0);lv_obj_delete(page);
 }
+template<size_t Slots>void status_action_profile(const DeviceUiLimits &limits) {
+  Fixture fixture(limits,false,false,true);Arena arena;Subscriptions subscriptions;PageCardDependencies dependencies;
+  PageEntityStateRuntime state(dependencies,arena,subscriptions,{2048,2048,8192});
+  auto *page=lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t,Slots+1>columns{},rows{};
+  const auto row_count=(Slots+limits.grid_columns-1)/limits.grid_columns;
+  for(size_t i=0;i<limits.grid_columns;++i)columns[i]=LV_GRID_FR(1);columns[limits.grid_columns]=LV_GRID_TEMPLATE_LAST;
+  for(size_t i=0;i<row_count;++i)rows[i]=LV_GRID_FR(1);rows[row_count]=LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page,480,480);lv_obj_set_grid_dsc_array(page,columns.data(),rows.data());
+  std::array<PageBasicWidgets,Slots>widgets{};
+  for(auto &w:widgets) {
+    w.button=lv_button_create(page);w.icon=lv_label_create(w.button);w.label=lv_label_create(w.button);
+    w.sensor_container=lv_obj_create(w.button);w.value=lv_label_create(w.sensor_container);w.unit=lv_label_create(w.sensor_container);
+    lv_obj_set_style_bg_opa(w.button,LV_OPA_COVER,LV_PART_MAIN);
+    lv_obj_set_style_bg_color(w.button,lv_color_hex(0xFF0000),LV_PART_MAIN|LV_STATE_PRESSED);
+  }
+  PageBasicTheme theme;theme.sensor_font=&lv_font_montserrat_14;Actions<Slots> actions;
+  {
+    auto callbacks=actions.callbacks();callbacks.action=nullptr;
+    PageBasicLvglPort<Slots>missing(arena,state,widgets,{limits.slot_count,limits.grid_columns},theme,callbacks);
+    assert(missing.initialize());assert(!missing.prepare(fixture.store,Slots));
+  }
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots>port(arena,state,widgets,{limits.slot_count,limits.grid_columns},theme,actions.callbacks());
+    assert(port.initialize());
+    std::array<lv_obj_t *,Slots*4> labels{};size_t index=0;
+    for(const auto &w:widgets)for(auto *label:{w.icon,w.label,w.value,w.unit})labels[index++]=label;
+    assert(cache.initialize(labels.data(),labels.size()));
+    PageRendererRuntime<Slots>renderer(limits,arena,port);actions.renderer=&renderer;
+    assert(renderer.prepare(fixture.store));assert(state.prepare(fixture.store));
+    renderer.activate_prepared(fixture.store);state.activate_prepared(fixture.store);
+    subscriptions.send("binary_sensor.action","","on");subscriptions.send("binary_sensor.presence","","detected");
+    subscriptions.send("binary_sensor.window","","open");subscriptions.send("sensor.power","","20.25");subscriptions.send("sensor.message","","pre_wash");
+    renderer.update_visible();lv_obj_update_layout(page);
+    assert(!lv_obj_has_flag(widgets[2].button,LV_OBJ_FLAG_CLICKABLE));
+    assert(!lv_obj_has_flag(widgets[3].button,LV_OBJ_FLAG_CLICKABLE));
+    assert(std::strcmp(lv_label_get_text(widgets[2].label),"Presence")==0&&lv_obj_has_state(widgets[2].button,LV_STATE_CHECKED));
+    assert(std::strcmp(lv_label_get_text(widgets[3].label),"Window")==0&&lv_obj_has_state(widgets[3].button,LV_STATE_CHECKED));
+    assert(std::strcmp(lv_label_get_text(widgets[4].label),"Test Local")==0);
+    assert(std::strcmp(lv_label_get_text(widgets[5].label),"Screensaver")==0);
+    click(widgets[1].button);assert(actions.commands==1&&renderer.valid(actions.last));
+    size_t draws=0;lv_obj_add_event_cb(widgets[1].button,[](lv_event_t *e){++*static_cast<size_t *>(lv_event_get_user_data(e));},LV_EVENT_DRAW_MAIN,&draws);
+    lv_refr_now(lv_display_get_default());assert(draws>0);
+    const auto animations=lv_anim_count_running();lv_obj_add_state(widgets[1].button,LV_STATE_PRESSED);
+    assert(lv_anim_count_running()>animations);
+    const auto child=fixture.store.card(0)->target;
+    assert(renderer.open_page(child));renderer.update_visible();
+    assert(lv_anim_count_running()==animations);
+    lv_tick_inc(500);lv_timer_handler();
+    assert(lv_color_eq(lv_obj_get_style_bg_color(widgets[1].button,LV_PART_MAIN),lv_color_hex(theme.active)));
+    assert(std::strcmp(lv_label_get_text(widgets[1].value),"20.25")==0);
+    assert(std::strlen(lv_label_get_text(widgets[1].unit))==600);
+    assert(std::strcmp(lv_label_get_text(widgets[2].label),"Pre Wash")==0);
+    lv_obj_send_event(widgets[1].button,LV_EVENT_CLICKED,nullptr);assert(actions.commands==1);
+    click(widgets[1].button);assert(actions.commands==2);
+    lv_obj_send_event(widgets[1].button,LV_EVENT_PRESSED,nullptr);assert(renderer.back());renderer.update_visible();
+    lv_obj_send_event(widgets[1].button,LV_EVENT_CLICKED,nullptr);assert(actions.commands==2);
+    assert(renderer.open_page(child));renderer.update_visible();assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);
+    const auto before=lv_allocations,cpp_before=cpp_allocations,reserved=arena.allocations,retained=lv_live_bytes;
+    size_t scratch=0,style_scratch=0;const auto descriptors=cache.memory().descriptor_adds;
+    for(size_t n=0;n<1000;++n) {
+      const auto update_allocations=lv_allocations;
+      assert(renderer.open_page(child));renderer.update_visible();assert(renderer.back());renderer.update_visible();
+      assert(lv_allocations-update_allocations<=2*Slots);
+      style_scratch+=lv_allocations-update_allocations;
+      assert(cpp_allocations==cpp_before&&arena.allocations==reserved);
+      assert(cache.memory().descriptor_adds==descriptors&&cache.memory().retained_callbacks==labels.size());
+      const auto layout=lv_allocations;lv_obj_update_layout(page);scratch+=lv_allocations-layout;
+      assert(lv_live_bytes==retained);
+    }
+    assert(lv_allocations==before+scratch+style_scratch);assert(port.memory().text_truncations==0);
+    std::printf("%s: status/actions, 1000 cycles, 0 C++/arena/label-descriptor allocations, %zu style-state and %zu grid scratch allocations\n",limits.device_profile,style_scratch,scratch);
+  }
+  state.retire_active();assert(arena.live==0);lv_obj_delete(page);
+}
+
 void modal_gesture_cycles() {
   Arena arena;PageModalToken current{17,1,0,ControlModalKind::CLIMATE};size_t clicks=0,changes=0;
   const auto valid=[](void *owner,PageModalToken token){const auto &now=*static_cast<PageModalToken *>(owner);return token.configuration==now.configuration&&token.opening==now.opening&&token.card==now.card&&token.kind==now.kind;};
@@ -259,4 +351,4 @@ void modal_gesture_cycles() {
   arena.fail=true;PageModalGestures failed(arena,10,current,&current,valid);assert(!failed.available());arena.fail=false;
 }
 }
-int main(){lv_init();auto *display=lv_display_create(480,480);assert(display);for(const auto &limits:DEVICE_UI_PROFILES){switch(limits.slot_count){case 6:profile<6>(limits);break;case 9:profile<9>(limits);break;case 15:profile<15>(limits);break;case 20:profile<20>(limits);break;default:std::abort();}}modal_gesture_cycles();lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}
+int main(){lv_init();auto *display=lv_display_create(480,480);assert(display);static std::array<uint16_t,480*32>draw_buffer{};lv_display_set_buffers(display,draw_buffer.data(),nullptr,sizeof(draw_buffer),LV_DISPLAY_RENDER_MODE_PARTIAL);lv_display_set_flush_cb(display,[](lv_display_t *d,const lv_area_t *,uint8_t *){lv_display_flush_ready(d);});for(const auto &limits:DEVICE_UI_PROFILES){switch(limits.slot_count){case 6:profile<6>(limits);status_action_profile<6>(limits);break;case 9:profile<9>(limits);status_action_profile<9>(limits);break;case 15:profile<15>(limits);status_action_profile<15>(limits);break;case 20:profile<20>(limits);status_action_profile<20>(limits);break;default:std::abort();}}modal_gesture_cycles();lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}
