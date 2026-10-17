@@ -5,6 +5,37 @@ enable_testing()
 include(CheckCXXSourceCompiles)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+file(GLOB PAGE_STORE_FIXTURES CONFIGURE_DEPENDS
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../common/config/*_card_normalization_fixtures.json)
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/generate_page_store_goldens.py
+    --output ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
+  DEPENDS ${PAGE_STORE_FIXTURES}
+    ../../common/config/card_normalization_fixtures.json
+    ../../scripts/generate_page_store_goldens.py
+    ../../scripts/generate_saved_config_parser_test.py
+  VERBATIM)
+add_executable(page_store_test page_store_test.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_store_test PRIVATE cxx_std_17)
+target_compile_options(page_store_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_store_test PRIVATE stubs ../../components/espcontrol
+  ${CMAKE_CURRENT_BINARY_DIR})
+add_test(NAME page_store_test COMMAND page_store_test)
+
+add_executable(page_store_runtime_test page_store_runtime_test.cpp
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp)
+target_compile_features(page_store_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_store_runtime_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_store_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_store_runtime_test COMMAND page_store_runtime_test)
+
 add_executable(dpi_timing_test dpi_timing_test.cpp)
 target_compile_features(dpi_timing_test PRIVATE cxx_std_17)
 target_compile_options(dpi_timing_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)

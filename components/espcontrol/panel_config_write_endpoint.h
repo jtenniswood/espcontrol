@@ -137,6 +137,11 @@ class PanelConfigWriteHandler final
                           "Invalid panel configuration document");
       return;
     }
+    if (response == PanelConfigWriteResponse::RUNTIME_UNAVAILABLE) {
+      send_status(raw_request, "503 Service Unavailable",
+                  "Not enough resources to prepare the panel configuration; previous configuration remains active");
+      return;
+    }
     if (response == PanelConfigWriteResponse::INTERNAL_ERROR) {
       const char *const message =
           saved.status == ServiceStatus::RUNTIME_APPLY_FAILED

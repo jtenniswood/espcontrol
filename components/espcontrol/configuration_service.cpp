@@ -40,6 +40,32 @@ bool supported_version(uint16_t version) {
   return version == CURRENT_CONFIGURATION_DOCUMENT_VERSION;
 }
 
+// Every unsuccessful path, including prepare itself and a generation conflict,
+// releases staged resources. Destruction after successful activation is safe:
+// adapters transfer staged ownership during activate_prepared().
+class RuntimePreparation {
+ public:
+  RuntimePreparation(ConfigurationRuntimeAdapter *runtime, uint16_t version,
+                     const uint8_t *document, size_t size)
+      : runtime_(runtime), version_(version), document_(document), size_(size),
+        ready_(runtime == nullptr || runtime->prepare(version, document, size)) {}
+  ~RuntimePreparation() {
+    if (runtime_ != nullptr) runtime_->discard_prepared();
+  }
+  bool ready() const { return ready_; }
+  bool activate(uint32_t generation) {
+    return ready_ && (runtime_ == nullptr ||
+      runtime_->activate_prepared(generation, version_, document_, size_));
+  }
+
+ private:
+  ConfigurationRuntimeAdapter *runtime_;
+  uint16_t version_;
+  const uint8_t *document_;
+  size_t size_;
+  bool ready_;
+};
+
 }  // namespace
 
 bool ConfigurationService::supports_version(uint16_t document_version) const {
@@ -124,7 +150,14 @@ ServiceLoadResult ConfigurationService::load_and_apply_runtime(
   std::lock_guard<std::mutex> lock(operation_mutex_);
   const ServiceLoadResult loaded = load_unlocked(output, output_capacity);
   if (!loaded.ok() || runtime_ == nullptr) return loaded;
-  if (runtime_->apply(loaded.document_version, output, loaded.document_size)) {
+  RuntimePreparation prepared(runtime_, loaded.document_version, output,
+                               loaded.document_size);
+  if (!prepared.ready()) {
+    ServiceLoadResult failed = loaded;
+    failed.status = ServiceStatus::RUNTIME_PREPARE_FAILED;
+    return failed;
+  }
+  if (prepared.activate(loaded.generation)) {
     return loaded;
   }
   ServiceLoadResult failed = loaded;
@@ -320,16 +353,25 @@ ServiceSaveResult ConfigurationService::save_unlocked(
             document_version, 0, document_size};
   }
 
+  if (document_size > maximum_document_size()) {
+    return {ServiceStatus::STORE_FAILED, StoreStatus::PAYLOAD_TOO_LARGE,
+            document_version, 0, document_size};
+  }
+  RuntimePreparation prepared(runtime_, document_version, document, document_size);
+  if (!prepared.ready()) {
+    return {ServiceStatus::RUNTIME_PREPARE_FAILED, StoreStatus::EMPTY,
+            document_version, 0, document_size};
+  }
+
   const CommitResult committed =
       commit_document(document_version, document, document_size);
   if (!committed.ok()) {
     return {ServiceStatus::STORE_FAILED, committed.status, document_version,
             committed.generation, document_size};
   }
+  const bool applied = prepared.activate(committed.generation);
   const bool mirrored = !legacy_writes_enabled() ||
                         legacy_.mirror(document_version, document, document_size);
-  const bool applied = runtime_ == nullptr ||
-                       runtime_->apply(document_version, document, document_size);
   if (!applied) {
     return {ServiceStatus::RUNTIME_APPLY_FAILED, committed.status,
             document_version, committed.generation, document_size};
@@ -366,6 +408,16 @@ ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
             document_version, 0, document_size};
   }
 
+  if (document_size > maximum_document_size()) {
+    return {ServiceStatus::STORE_FAILED, StoreStatus::PAYLOAD_TOO_LARGE,
+            document_version, 0, document_size};
+  }
+  RuntimePreparation prepared(runtime_, document_version, document, document_size);
+  if (!prepared.ready()) {
+    return {ServiceStatus::RUNTIME_PREPARE_FAILED, StoreStatus::EMPTY,
+            document_version, 0, document_size};
+  }
+
   const CommitResult committed = commit_document_if_generation(
       expected_generation, document_version, document, document_size);
   if (committed.status == StoreStatus::GENERATION_CONFLICT) {
@@ -376,10 +428,9 @@ ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
     return {ServiceStatus::STORE_FAILED, committed.status, document_version,
             committed.generation, document_size};
   }
+  const bool applied = prepared.activate(committed.generation);
   const bool mirrored = !legacy_writes_enabled() ||
                         legacy_.mirror(document_version, document, document_size);
-  const bool applied = runtime_ == nullptr ||
-                       runtime_->apply(document_version, document, document_size);
   if (!applied) {
     return {ServiceStatus::RUNTIME_APPLY_FAILED, committed.status,
             document_version, committed.generation, document_size};

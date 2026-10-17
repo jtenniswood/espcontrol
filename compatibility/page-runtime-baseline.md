@@ -4,7 +4,35 @@ This is the first implementation slice of
 [issue #1825](https://github.com/jtenniswood/espcontrol/issues/1825#issuecomment-5497549740).
 It establishes shared limits and memory capture tools. The existing renderer,
 live configuration pipeline, document v1 and persistence remain in use.
-Nested subpages and capacity increases are separate work.
+Nested subpages and capacity increases remain disabled.
+
+## PageStore shadow migration
+
+`PageStore` now stages native v1 documents into caller-owned arena storage,
+using explicit page/card identifiers, interned normalized strings and
+generation-scoped handles. Its adapter reuses the production card parsers.
+The retained source document preserves settings, original encodings and
+stored-but-inactive data exactly during this migration.
+
+`PageStoreRuntime` is an opt-in, host-tested owner, not the production renderer.
+It reserves a replacement arena before commit, publishes the committed
+generation without allocation, and releases staged resources on failure.
+Memory counters distinguish active, staged and peak reserved arena bytes.
+Caller-selected arena capacities are test budgets, not qualified device limits.
+These counters exclude temporary allocations made by the existing parsers;
+those peaks still need to be measured and bounded before production cutover.
+
+The configuration service now supports prepare/commit/activate/mirror ordering.
+Existing text-backed adapters retain their apply-only compatibility path;
+they do not yet promise allocation-free activation. Production wiring must not
+select the PageStore owner until the entity-state, transport-reclamation and
+pooled-renderer gates pass. No second full model is retained on live devices.
+
+Host coverage includes empty/full existing configurations for all nine
+profiles, supported card types, compact and legacy fields, UTF-8, exact v1
+round trips, inactive slots, arena exhaustion, stale handles, 1,000 generation
+replacements, allocation failures, write failures and generation conflicts.
+These are host-model checks, not physical navigation or memory results.
 
 ## Capacity contract
 

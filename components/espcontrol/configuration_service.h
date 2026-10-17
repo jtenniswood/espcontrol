@@ -53,6 +53,17 @@ class ConfigurationRuntimeAdapter {
  public:
   virtual ~ConfigurationRuntimeAdapter() = default;
 
+  // Reserve the complete replacement before durable publication. Existing
+  // text-backed runtime adapters keep their compatibility behaviour until the
+  // PageStore renderer takes over; prepared adapters must do all fallible
+  // resource work here, leaving activation as a generation swap.
+  virtual bool prepare(uint16_t, const uint8_t *, size_t) { return true; }
+  virtual void discard_prepared() {}
+  virtual bool activate_prepared(uint32_t, uint16_t document_version,
+                                 const uint8_t *document, size_t document_size) {
+    return apply(document_version, document, document_size);
+  }
+
   virtual bool apply(uint16_t document_version, const uint8_t *document,
                      size_t document_size) = 0;
 };
@@ -71,6 +82,7 @@ enum class ServiceStatus : uint8_t {
   LEGACY_READ_FAILED,
   LEGACY_MIRROR_FAILED,
   RUNTIME_APPLY_FAILED,
+  RUNTIME_PREPARE_FAILED,
 };
 
 struct ServiceLoadResult {
