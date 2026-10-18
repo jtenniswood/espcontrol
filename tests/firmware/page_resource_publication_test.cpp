@@ -11,6 +11,7 @@
 #include "page_local_relay_runtime.h"
 #include "page_local_sensor_runtime.h"
 #include "page_media_state_runtime.h"
+#include "page_modal_runtime.h"
 #include "page_runtime_resources_group.h"
 #include "panel_config_document.h"
 using namespace espcontrol;
@@ -191,6 +192,81 @@ void forecast() {
   }
   assert(arena.live.empty());
 }
+void modal() {
+  Arena arena;
+  struct Port : PageModalPort {
+    bool shown{false}, alive{false};
+    int context{0};
+    std::string entity;
+    bool valid_origin(PageBindingToken) const override {
+      return true;
+    }
+    ControlModalKind kind(const PageStore& store, ConfigurationHandle card) const override {
+      const auto* definition = store.card(card);
+      return definition && store.field(*definition, CardField::TYPE) == "light_control"
+                 ? ControlModalKind::LIGHT_CONTROL
+                 : ControlModalKind::NONE;
+    }
+    bool ready() const override {
+      return true;
+    }
+    bool connected() const override {
+      return true;
+    }
+    uint32_t connection_generation() const override {
+      return 1;
+    }
+    void* create(const PageStore& store, ConfigurationHandle card, PageModalToken) override {
+      assert(!alive);
+      alive = true;
+      entity = store.field(*store.card(card), CardField::ENTITY);
+      return &context;
+    }
+    bool initialize(void*, PageModalToken) override {
+      shown = true;
+      return true;
+    }
+    bool visible(void*) const override {
+      return shown;
+    }
+    void update(void*, PageModalToken) override {}
+    ControlModalDismissPolicy dismiss_policy(void*) const override {
+      return ControlModalDismissPolicy::DISMISS;
+    }
+    void retire(void*, PageModalClose) override {
+      shown = false;
+      assert(entity == "light.room");
+    }
+    void destroy(void*) override {
+      assert(alive && !shown);
+      alive = false;
+      entity.clear();
+    }
+  } port;
+  {
+    PageModalRuntime modal(port);
+    PageStoreRuntime runtime(DEVICE_UI_PROFILES[8], arena, 32768, &modal);
+    Document document("light.room;Room;Auto;Auto;;;light_control;;");
+    assert(document.prepare(runtime));
+    assert(!modal.request_card({UINT32_MAX, 0}));
+    assert(document.activate(runtime, 0));
+    assert(modal.request_card({0, 0}));
+    modal.loop();
+    const auto token = modal.token();
+    assert(modal.valid(token) && token.configuration == 0);
+    assert(document.prepare(runtime));
+    runtime.discard_prepared();
+    assert(modal.valid(token));
+    assert(document.prepare(runtime));
+    assert(document.activate(runtime, 2));
+    assert(!modal.valid(token));
+    modal.loop();
+    assert(!modal.request_card({0, 0}) && modal.request_card({2, 0}));
+    modal.loop();
+    assert(modal.valid(modal.token()) && modal.token().configuration == 2);
+  }
+  assert(arena.live.empty() && !port.alive);
+}
 void local() {
   Arena arena;
   struct Provider : PageLocalSensorProvider {
@@ -231,4 +307,5 @@ int main() {
   media_publication();
   forecast();
   local();
+  modal();
 }

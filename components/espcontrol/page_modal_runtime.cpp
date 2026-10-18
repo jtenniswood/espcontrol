@@ -11,14 +11,14 @@ PageModalRuntime::~PageModalRuntime() {
 }
 bool PageModalRuntime::prepare(const PageStore &store) {
   if(changing_)return false;
-  discard_prepared();if(store.generation()==0||store.page_count()==0)return false;
-  prepared_generation_=store.generation();return true;
+  discard_prepared();if(!store.source_document()||store.page_count()==0)return false;
+  prepared_generation_=store.generation();prepared_=true;return true;
 }
-void PageModalRuntime::discard_prepared(){prepared_generation_=0;}
+void PageModalRuntime::discard_prepared(){prepared_generation_=0;prepared_=false;}
 void PageModalRuntime::activate_prepared(const PageStore &store) {
-  if(prepared_generation_==0||prepared_generation_!=store.generation())return;
+  if(!prepared_||!page_prepared_generation_matches(prepared_generation_,store.generation()))return;
   assert(!changing_);Guard guard(changing_);
-  dismiss(PageModalClose::REPLACED);active_store_=store;prepared_generation_=0;
+  dismiss(PageModalClose::REPLACED);active_store_=store;discard_prepared();
 }
 void PageModalRuntime::retire_active(){dismiss(PageModalClose::SHUTDOWN);active_store_={};}
 bool PageModalRuntime::valid_card(ConfigurationHandle card)const {

@@ -70,6 +70,6 @@ class PageModalRuntime final:public PageRuntimeResources {
   Request pending_;PageModalToken token_;
   void *context_{nullptr},*retired_{nullptr};
   uint64_t next_opening_{1};uint32_t connection_{0},prepared_generation_{0};
-  bool changing_{false};PageModalMemory memory_;
+  bool changing_{false},prepared_{false};PageModalMemory memory_;
 };
 }  // namespace espcontrol::pages
