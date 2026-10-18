@@ -14,7 +14,9 @@ Cover-toggle children use the ordinary primary-state predicate (open/opening/clo
 independent of their inverted checked background (closed/closing). Unknown cover
 modes retain the existing modal fallback. Access toggles and garage/gate commands
 with status contribute; direct commands without status and lock commands keep
-their existing exclusion.
+their existing exclusion. Vacuum children use the ordinary primary-state
+predicate; mower children use their mowing/returning predicate independently
+of the card background or icon.
 
 The audit checks the original driver registration hooks rather than inferring
 eligibility from a card's visual checked state. Folder summaries borrow the

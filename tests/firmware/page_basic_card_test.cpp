@@ -399,6 +399,79 @@ void access_profile(const DeviceUiLimits& limits) {
   BasicCardDefinition definition;
   assert(!prepare_basic_card(confirmation.store, 0, definition));
 }
+void cleaning_profile(const DeviceUiLimits& limits) {
+  for (bool mower : {false, true})
+    for (const auto* mode : {"", "status", "start_stop", "start_dock", "dock", "pause_resume", "clean_spot",
+                             "locate", "clean_area", "vacuum.start", "vacuum.return_to_base", "invalid"}) {
+      const auto options = cleaning::Options{cleaning::mode(mode, mower), mower, true};
+      const auto key = mower ? "lawn_mower.room" : "vacuum.room";
+      Fixture fixture(limits, std::string(key) + ";;Robot Vacuum Off;Power;" + mode + ";zone_1;" +
+                                  (mower ? "lawn_mower" : "vacuum") + ";;");
+      BasicCardDefinition definition;
+      assert(prepare_basic_card(fixture.store, 0, definition));
+      assert(definition.kind == BasicCardKind::CLEANING && definition.cleaning.mode == options.mode);
+      assert(definition.unit.empty() && definition.icon == definition.icon_on);
+      assert(definition.sensor == (options.mode == cleaning::Mode::CLEAN_AREA ? "zone_1" : ""));
+      assert(basic_folder_child_indicator(fixture.store, 0) == key);
+      Arena arena;
+      Subscriptions subscriptions;
+      PageCardDependencies dependencies;
+      PageEntityStateRuntime state(dependencies, arena, subscriptions, {64, 64, 2048});
+      assert(state.prepare(fixture.store));
+      state.activate_prepared(fixture.store);
+      auto read = [&]() { return read_basic_card(definition, {17, 0}, state); };
+      assert(!read().cleaning.state_seen);
+      for (const auto* raw :
+           {"cleaning", "mowing", "docked", "paused", "returning", "unknown", "UNAVAILABLE", "custom"}) {
+        subscriptions.send(key, "", raw);
+        const auto value = read();
+        const auto canonical =
+            cleaning::needs_state(options)
+                ? (cleaning::unavailable(key, raw) ? std::string_view("unavailable") : std::string_view(raw))
+                : std::string_view{};
+        assert(std::string_view(value.cleaning.service ? value.cleaning.service : "") ==
+               std::string_view(cleaning::service(options, canonical) ? cleaning::service(options, canonical)
+                                                                      : ""));
+        assert(value.on == (!mower && options.mode == cleaning::Mode::START_STOP && canonical == "cleaning"));
+        assert(!value.numeric && value.unit.empty() && value.fill_percent == 0);
+      }
+      const auto before = allocations;
+      for (int n = 0; n < 1000; ++n) (void)read();
+      assert(allocations == before);
+      if (cleaning::needs_state(options)) {
+        assert(!read_basic_cleaning(definition, {18, 0}, state).service);
+        subscriptions.send(key, "", std::string(3000, 'x'));
+        assert(!read().cleaning.service);
+        ++subscriptions.generation;
+        assert(!read().on && read().cleaning.state_seen);
+      }
+    }
+  {
+    Fixture custom(limits, "vacuum.room;Fallback;Power;Auto;status;;vacuum;;");
+    BasicCardDefinition definition;
+    assert(prepare_basic_card(custom.store, 0, definition) && !definition.cleaning.automatic_icon);
+    Arena arena;
+    Subscriptions subscriptions;
+    PageCardDependencies deps;
+    PageEntityStateRuntime state(deps, arena, subscriptions, {16, 16, 2048});
+    assert(state.prepare(custom.store));
+    state.activate_prepared(custom.store);
+    subscriptions.send("vacuum.room", "", "custom");
+    assert(read_basic_card(definition, {17, 0}, state).label == "Fallback");
+    subscriptions.send("vacuum.room", "", "cleaning");
+    assert(read_basic_card(definition, {17, 0}, state).label == "Cleaning");
+  }
+  Fixture empty_area(limits, "vacuum.room;Area;Auto;Auto;clean_area;;vacuum;;");
+  BasicCardDefinition definition;
+  assert(prepare_basic_card(empty_area.store, 0, definition));
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies deps;
+  PageEntityStateRuntime state(deps, arena, subscriptions, {16, 16, 2048});
+  assert(state.prepare(empty_area.store));
+  state.activate_prepared(empty_area.store);
+  assert(!read_basic_cleaning(definition, {17, 0}, state).service);
+}
 void cover_command_profile(const DeviceUiLimits& limits) {
   struct Mode {
     const char* name;
@@ -1520,6 +1593,7 @@ int main() {
     cover_command_profile(limits);
     cover_toggle_profile(limits);
     access_profile(limits);
+    cleaning_profile(limits);
     local_relay_profile(limits);
     local_sensor_profile(limits);
     option_select_profile(limits);

@@ -1,0 +1,120 @@
+#include <cassert>
+#include <cstring>
+#include <string>
+#include <vector>
+
+#include "cleaning_card_policy.h"
+struct lv_obj_t {
+  std::string text;
+  bool checked{false};
+};
+void lv_label_set_text(lv_obj_t*, const char*) {}
+#include "button_grid_subpage_parser.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+struct BtnSlot {
+  lv_obj_t *btn, *icon_lbl, *text_lbl;
+};
+const char* find_icon(const char* name) {
+  return name;
+}
+void lv_label_set_display_text(lv_obj_t* object, const char* text) {
+  object->text = text;
+}
+void set_wrapped_button_label_text(lv_obj_t* object, const std::string& text) {
+  object->text = text;
+}
+void set_card_checked_state(lv_obj_t* object, bool value) {
+  object->checked = value;
+}
+// @legacy-cleaning-reference
+std::string text(const char* value) {
+  return value ? value : "";
+}
+int main() {
+  const char* modes[] = {"",           "status",       "start_stop",   "start_dock",
+                         "dock",       "pause_resume", "clean_spot",   "locate",
+                         "clean_area", "start_mowing", "vacuum.start", "vacuum.return_to_base",
+                         "invalid"};
+  std::vector<std::string> states = {"",
+                                     "cleaning",
+                                     "mowing",
+                                     "docked",
+                                     "returning",
+                                     "paused",
+                                     "idle",
+                                     "error",
+                                     "unknown",
+                                     "unavailable",
+                                     "UNKNOWN",
+                                     " unavailable ",
+                                     "CLEANING",
+                                     " cleaning ",
+                                     "on",
+                                     "custom",
+                                     "locked",
+                                     std::string("unavailable") + std::string(30, ' ') + "tail",
+                                     std::string(300, 'x')};
+  for (const auto* language : {"en", "de", "fr", "ru", "pt-br", "he", "tr", "uk", "cs"}) {
+    set_espcontrol_language(language);
+    for (bool mower : {false, true})
+      for (const auto* raw_mode : modes)
+        for (const auto* icon : {"Auto", "Robot Vacuum Off", "Robot Vacuum Variant Alert", "Vacuum Outline",
+                                 "Lawnmower", "Robot Mower Outline", "Power"})
+          for (const auto* entity :
+               {"vacuum.room", "lawn_mower.room", "select.room", "input_button.room", "button.", "select."})
+            for (const auto* configured_label : {"", "Custom label"})
+              for (const auto& raw : states) {
+                ParsedCfg config;
+                config.type = mower ? "lawn_mower" : "vacuum";
+                config.entity = entity;
+                config.sensor = raw_mode;
+                config.icon = icon;
+                config.label = configured_label;
+                const cleaning::Options options{cleaning::mode(raw_mode, mower), mower,
+                                                cleaning::automatic_icon(icon, mower)};
+                lv_obj_t button, label, glyph;
+                BtnSlot slot{&button, &glyph, &label};
+                const bool unavailable =
+                    ha_entity_state_unavailable_ref(config.entity, esphome::StringRef(raw));
+                assert(cleaning::unavailable(entity, raw) == unavailable);
+                const auto canonical = unavailable ? std::string("unavailable") : raw;
+                const auto* key = cleaning::state_label(canonical, mower);
+                std::string expected_service;
+                const auto* fallback = cleaning::default_label(options);
+                if (mower) {
+                  auto* context = create_lawn_mower_card_context(slot, config);
+                  assert(cleaning::needs_state(options) == lawn_mower_card_mode_needs_state(raw_mode));
+                  assert(options.automatic_icon == (context->configured_icon == nullptr));
+                  assert(text(fallback) == lawn_mower_card_mode_label(raw_mode));
+                  assert(text(cleaning::default_icon(options)) ==
+                         lawn_mower_card_default_icon_name(raw_mode));
+                  apply_lawn_mower_card_state(context, esphome::StringRef(raw), unavailable);
+                  if (canonical != "unavailable" && canonical != "unknown")
+                    expected_service = text(lawn_mower_service_for_card(context));
+                  delete context;
+                } else {
+                  auto* context = create_vacuum_card_context(slot, config);
+                  assert(cleaning::needs_state(options) == vacuum_card_mode_needs_state(raw_mode));
+                  assert(options.automatic_icon == (context->configured_icon == nullptr));
+                  assert(text(fallback) == vacuum_card_mode_label(raw_mode));
+                  assert(text(cleaning::default_icon(options)) == vacuum_card_default_icon_name(raw_mode));
+                  apply_vacuum_card_state(context, esphome::StringRef(raw), unavailable);
+                  expected_service = text(vacuum_service_for_card(context));
+                  delete context;
+                }
+                assert(text(cleaning::service(options, canonical)) == expected_service);
+                const auto expected_glyph =
+                    options.automatic_icon ? cleaning::glyph_name(cleaning::state_glyph(canonical, mower))
+                                           : icon;
+                assert(glyph.text == expected_glyph);
+                const auto expected_label = options.mode == cleaning::Mode::STATUS && key
+                                                ? espcontrol_i18n(key)
+                                            : config.label.empty() ? std::string(espcontrol_i18n(fallback))
+                                                                   : config.label;
+                assert(label.text == expected_label);
+                assert(button.checked ==
+                       (!mower && options.mode == cleaning::Mode::START_STOP && canonical == "cleaning"));
+              }
+  }
+}

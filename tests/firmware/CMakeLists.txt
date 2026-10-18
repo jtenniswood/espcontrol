@@ -198,6 +198,19 @@ target_compile_options(page_percent_slider_runtime_test PRIVATE -Wall -Wextra -W
 target_include_directories(page_percent_slider_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_percent_slider_runtime_test COMMAND page_percent_slider_runtime_test)
 
+set(CLEANING_POLICY_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/cleaning_card_policy_test.cpp)
+add_custom_command(OUTPUT ${CLEANING_POLICY_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_cleaning_policy_test.py
+    --output ${CLEANING_POLICY_SOURCE}
+  DEPENDS generate_cleaning_policy_test.py cleaning_card_policy_test.cpp.in
+    ../../components/espcontrol/button_grid_vacuum.h ../../components/espcontrol/button_grid_lawn_mower.h
+  VERBATIM)
+add_executable(cleaning_card_policy_test ${CLEANING_POLICY_SOURCE})
+target_compile_features(cleaning_card_policy_test PRIVATE cxx_std_17)
+target_compile_options(cleaning_card_policy_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(cleaning_card_policy_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME cleaning_card_policy_test COMMAND cleaning_card_policy_test)
+
 set(PAGE_COVER_TOGGLE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_cover_toggle_runtime_test.cpp)
 add_custom_command(OUTPUT ${PAGE_COVER_TOGGLE_SOURCE}
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_cover_toggle_test.py

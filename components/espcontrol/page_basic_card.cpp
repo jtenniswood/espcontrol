@@ -249,6 +249,18 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     out.kind=basic_card_is_forecast(store,id)?BasicCardKind::FORECAST:BasicCardKind::WEATHER;
     out.forecast_view=precision=="today"?weather::View::TODAY:precision=="tomorrow"||type=="weather_forecast"?weather::View::TOMORROW:weather::View::DAILY;out.label={};out.sensor={};out.unit={};
     out.icon=out.icon_on="Weather Cloudy";
+  } else if (type == "vacuum" || type == "lawn_mower") {
+    const bool mower = type == "lawn_mower";
+    out.kind = BasicCardKind::CLEANING;
+    out.cleaning = {cleaning::mode(out.sensor, mower), mower, cleaning::automatic_icon(out.icon, mower)};
+    out.default_label = cleaning::default_label(out.cleaning);
+    if (out.icon.empty() || out.icon == "Auto") out.icon = cleaning::default_icon(out.cleaning);
+    out.icon_on = out.icon;
+    out.sensor = out.cleaning.mode == cleaning::Mode::CLEAN_AREA ? store.field(*card, CardField::UNIT)
+                                                                 : std::string_view{};
+    out.unit = {};
+    out.push_feedback = out.cleaning.mode != cleaning::Mode::STATUS;
+    out.active_color = !mower && out.cleaning.mode == cleaning::Mode::START_STOP;
   } else if (type == "garage" || type == "gate" || type == "lock") {
     if (type == "garage" &&
         (cfg_option_enabled(options, "confirm_on") || cfg_option_enabled(options, "confirm_off")))
@@ -417,8 +429,9 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
     return PageLocalRelayRuntime::toggle(store, *card) ? store.field(*card, CardField::ENTITY)
                                                        : std::string_view{};
   return type.empty() || type == "light_switch" || type == "light_temperature" || type == "light_control" ||
-                 type == "media" || type == "fan_control" || type == "fan_direction" ||
-                 type == "fan_preset" || type == "fan_switch" || type == "fan_oscillate"
+                 type == "vacuum" || type == "lawn_mower" || type == "media" || type == "fan_control" ||
+                 type == "fan_direction" || type == "fan_preset" || type == "fan_switch" ||
+                 type == "fan_oscillate"
              ? store.field(*card, CardField::ENTITY)
              : std::string_view{};
 }
@@ -502,6 +515,31 @@ PageCoverCommandSnapshot read_basic_cover_command(const BasicCardDefinition& car
   result.tilt = cover_command::use_tilt(card.sensor, result.known, result.features);
   return result;
 }
+PageCleaningSnapshot read_basic_cleaning(const BasicCardDefinition& card, ConfigurationHandle handle,
+                                         PageEntityStateRuntime& state) {
+  PageCleaningSnapshot result;
+  if (card.kind != BasicCardKind::CLEANING || card.entity.empty()) return result;
+  std::string_view raw;
+  bool exhausted = false;
+  if (cleaning::needs_state(card.cleaning)) {
+    const auto primary = find(state, handle, card.entity);
+    if (primary.entity != card.entity) return result;
+    exhausted = primary.status == PageEntityStatus::EXHAUSTED;
+    result.state_seen = primary.status != PageEntityStatus::UNKNOWN || primary.revision != 0;
+    if (primary.status == PageEntityStatus::AVAILABLE)
+      raw =
+          cleaning::unavailable(card.entity, primary.value) ? std::string_view("unavailable") : primary.value;
+    else if (result.state_seen)
+      raw = "unavailable";
+    result.glyph = cleaning::state_glyph(raw, card.cleaning.mower);
+    result.on = !card.cleaning.mower && card.cleaning.mode == cleaning::Mode::START_STOP && raw == "cleaning";
+    if (card.cleaning.mode == cleaning::Mode::STATUS && result.state_seen)
+      result.label_key = cleaning::state_label(raw, card.cleaning.mower);
+  }
+  if (!exhausted && (card.cleaning.mode != cleaning::Mode::CLEAN_AREA || !card.sensor.empty()))
+    result.service = cleaning::service(card.cleaning, raw);
+  return result;
+}
 PageAccessCardSnapshot read_basic_access(const BasicCardDefinition& card, ConfigurationHandle handle,
                                          PageEntityStateRuntime& state, PageAccessStateRuntime* access) {
   PageAccessCardSnapshot result;
@@ -540,6 +578,20 @@ BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHan
       const auto name = find(state, handle, card.entity, "friendly_name");
       if (name.status == PageEntityStatus::AVAILABLE)
         result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+    }
+    return result;
+  }
+  if (card.kind == BasicCardKind::CLEANING) {
+    result.cleaning = read_basic_cleaning(card, handle, state);
+    result.on = result.cleaning.on;
+    if (result.cleaning.label_key) {
+      const auto* caption = translate ? translate(result.cleaning.label_key) : nullptr;
+      result.label = caption ? caption : result.cleaning.label_key;
+    } else if (!card.label.empty())
+      result.label = card.label;
+    else {
+      const auto* caption = translate ? translate(card.default_label) : nullptr;
+      result.label = caption ? caption : card.default_label;
     }
     return result;
   }
