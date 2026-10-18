@@ -139,6 +139,32 @@ void modal_and_tile_components() {
     modal_image.ready = true;
     modal_image.reply();
     assert(modal.snapshot(0, origin.token).ready && tiles.snapshot(0, tile_token).asset == tile_asset);
+    const auto cached_asset = modal.snapshot(0, origin.token).asset;
+    const auto cached_generation = modal_image.generation;
+    uint64_t parked = 0;
+    origin.alive = false;
+    assert(modal.park(0, origin.token, parked));
+    const auto parked_fences = artwork_test_draw_fences;
+    const auto parked_releases = modal_image.releases;
+    modal.loop();
+    assert(modal_image.ready && !modal_image.visible() && !modal_image.screen_active() &&
+           artwork_test_draw_fences == parked_fences && modal_image.releases == parked_releases);
+    ++origin.token.opening;
+    origin.alive = true;
+    assert(modal.acquire(origin.token) == 0 && !modal.snapshot(0, origin.token).ready);
+    assert(modal.adopt(0, origin.token, parked));
+    modal_image.channel.deliver(cached_generation, true, true);
+    assert(modal.snapshot(0, origin.token).asset == cached_asset && modal_image.visible());
+    assert(modal.park(0, origin.token, parked));
+    assert(modal.discard(0, parked));
+    assert(modal_image.releases == parked_releases);
+    modal.loop();
+    assert(modal_image.releases == parked_releases + 1 && artwork_test_draw_fences == parked_fences + 1);
+    assert(modal.acquire(origin.token) == 0);
+    assert(modal.request(0, origin.token, "https://test/no-pixels", options));
+    modal_image.ready = false;
+    modal_image.reply(true, true);
+    assert(modal.snapshot(0, origin.token).failed && !modal.snapshot(0, origin.token).ready);
   }
   assert(!modal_image.ready && tile.visible());
 }
