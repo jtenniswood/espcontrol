@@ -29,8 +29,49 @@ ESPCONTROL_TEST_FAMILY=controls ctest --test-dir .cache/lvgl-native \
 
 The full native test remains the default when no family filter is supplied.
 
-Demanded fan-panel ownership and the separate switch, preset, direction,
-oscillation and speed cards remain unfinished. Scene integration, production
+The separate switch, preset, direction, oscillation and speed cards remain
+unfinished. Scene integration, production
 selection, physical S3/20-slot P4 qualification and the remaining device profiles
 are still cutover gates. These host checks do not measure device heap/PSRAM or
 establish physical layout parity. Nesting and persistence formats are unchanged.
+
+## Demanded Fan Control panel
+
+`PageFanControlModalPort` creates one existing `FanCardCtx` in its opening record.
+It reads the configuration-owned graph directly and adds no Home Assistant
+callbacks or subscriptions. The null grid-slot constructor creates no transient
+label timer. Context strings and preset data belong to the opening and are
+released on close; no fields are added to legacy configured-card contexts.
+The family observer adds fixed storage which must be included in device memory
+qualification.
+
+The opening caches ten channel revisions and its configured tab order. Quiet
+admission checks do not reparse configuration. Each attribute updates its own
+context field, so unrelated reports cannot overwrite local power/speed feedback.
+A usable primary preserves the existing Power fallback. An offline primary can
+keep a usable, configured Light tab.
+
+Input consumes fresh capabilities and preset choices before dispatch. Command
+handlers validate the current opening and relevant capability, retain an owned
+preset value, and check again after painting that can invoke callbacks. Capability
+and preset-list rebuilding waits until input dispatch returns; input to an old
+control is rejected until the replacement view has been painted. Newly built
+rows receive the opening's gesture guards. Closing notifies the common runtime,
+which defers context release until callbacks and input dispatch finish.
+
+The ten-channel reservation rejects a future expanded schema until its adapter
+is updated. Exhausted values and preset data longer than the existing text-state
+limit fail panel admission without parsing a prefix. The existing 32-row preset
+UI limit remains. Percentage parsing uses a terminated bounded copy, rejects
+non-finite data and clamps before conversion; capability extraction consumes
+only defined positive bits from a wide parse.
+
+Native tests use the production context constructor, channel projection,
+capability/tab policies, command handlers, preset-row construction and common
+modal runtime. They cover 1,000 openings with stable retained C++/LVGL/arena and
+subscription resources; 1,000 quiet frames without allocations; fresh capabilities
+and presets before input; offline Light; extreme readings; oversized/exhausted
+options; reconnects; allocation/gesture admission; and reentrant replacement with
+poisoned old configuration storage. Platform shell opening, geometry and paint
+helpers are doubled. These tests do not establish physical layout or real fan
+command parity. Scene selection and device qualification remain required.
