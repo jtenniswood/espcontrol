@@ -129,11 +129,12 @@ struct MediaControlCtx {
 struct MediaControlModalUi {
   MediaControlCtx *active = nullptr;
   std::vector<MediaSpeakerRowState *> speaker_rows;
-  lv_obj_t *speakers_box = nullptr, *speakers_status_lbl = nullptr, *volume_pct_lbl = nullptr;
+  lv_obj_t *overlay = nullptr, *speakers_box = nullptr, *speakers_status_lbl = nullptr, *volume_pct_lbl = nullptr;
   bool speaker_status_error = false;
 };
 MediaControlModalUi ui;
 MediaControlModalUi &media_control_modal_ui() { return ui; }
+void media_control_hide_modal() { ui.active = nullptr; }
 espcontrol::media::ControlTabs media_control_visible_tabs(MediaControlCtx*) {return espcontrol::media::parse_control_tabs("speakers");}
 int media_control_volume_max_pct(MediaControlCtx *ctx) { return ctx->max_pct; }
 struct Command { std::string entity; int volume; };

@@ -36,7 +36,7 @@ using namespace espcontrol::configuration;
 
 constexpr uint32_t DEFAULT_ACCENT_COLOR = 0xFF8C00;
 static size_t lv_live_bytes = 0, lv_allocation_calls = 0, cpp_allocation_calls = 0, cpp_live_bytes = 0;
-struct alignas(std::max_align_t) CppAllocation {
+struct alignas(16) CppAllocation {
   size_t bytes;
 };
 void* operator new(size_t size) {
@@ -65,7 +65,7 @@ void operator delete(void* p, std::size_t) noexcept {
 void operator delete[](void* p, std::size_t) noexcept {
   ::operator delete(p);
 }
-struct alignas(std::max_align_t) Allocation {
+struct alignas(16) Allocation {
   size_t bytes;
 };
 extern "C" {
@@ -783,6 +783,45 @@ void test_panels() {
     during_send = {};
     assert(sends == sent + 1 && last_entity == "media_player.room");
     runtime.loop();
+    values();
+    runtime.loop();
+    // Confirmed joins/unjoins survive clock and other attribute updates while
+    // HA still reports the previous membership. A new membership wins later.
+    press(ui.speakers_tab);
+    auto* confirmed = media_control_find_speaker_row("media_player.other");
+    assert(confirmed);
+    t.send("media_player.room", "", "playing");
+    {
+      espcontrol::ModalCallbackDispatchScope callback;
+      media_control_toggle_speaker(ui.active, confirmed, true);
+    }
+    group_calls.back().callback({true});
+    assert(media_control_group_contains(ui.active, "media_player.other"));
+    for (int n = 0; n < 5; ++n) {
+      test_now += 1000;
+      media.loop();
+      runtime.loop();
+      assert(media_control_group_contains(ui.active, "media_player.other"));
+      t.send("media_player.room", "shuffle", n % 2 ? "off" : "on");
+      runtime.loop();
+      assert(media_control_group_contains(ui.active, "media_player.other") && confirmed->selected);
+    }
+    t.send("media_player.room", "group_members", "['media_player.room','media_player.other']");
+    runtime.loop();
+    {
+      espcontrol::ModalCallbackDispatchScope callback;
+      media_control_toggle_speaker(ui.active, confirmed, false);
+    }
+    group_calls.back().callback({true});
+    for (int n = 0; n < 3; ++n) {
+      test_now += 1000;
+      media.loop();
+      runtime.loop();
+      assert(!media_control_group_contains(ui.active, "media_player.other"));
+    }
+    t.send("media_player.room", "group_members", "['media_player.room']");
+    runtime.loop();
+    assert(!media_control_group_contains(ui.active, "media_player.other"));
     values();
     runtime.loop();
     // Group responses carry their opening identity, including after context reuse.

@@ -3933,9 +3933,23 @@ inline void media_control_group_action_result(
     }
     media_control_set_speaker_status(espcontrol_i18n("Speakers updated"));
   }
-  media_control_refresh_speaker_row(ctx, row);
-  media_control_refresh_speakers(ctx);
+  if (media_control_modal_managed(ctx)) {
+    // Only repaint existing rows inside an action response. The next runtime
+    // pass validates the full candidate budget before constructing any rows.
+    media_control_refresh_group_member_volumes(ctx);
+    for (auto *existing : ui.speaker_rows) {
+      if (!media_control_context_current(ctx)) return;
+      if (!existing) continue;
+      media_control_copy_current_speaker_state(ctx, existing);
+      media_control_refresh_speaker_row(ctx, existing);
+    }
+  } else {
+    media_control_refresh_speaker_row(ctx, row);
+    media_control_refresh_speakers(ctx);
+  }
+  if (!media_control_context_current(ctx)) return;
   media_control_refresh_volume(ctx);
+  if (media_control_modal_managed(ctx) && !media_control_widgets_ready(ui.overlay)) media_control_hide_modal();
 }
 
 // Copy only row state before input; do not rebuild widgets during dispatch.

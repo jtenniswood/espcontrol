@@ -24,18 +24,18 @@ struct PageMediaControlModalFamily {
     uint32_t volume_until{0}, seek_ms{0}, reset_until{0};
     bool volume_active{false}, seek_active{false}, reset_active{false};
     bool seeking{false}, dragging_progress{false}, dragging_volume{false};
+    size_t group_count{0};
     bool operator==(const Pending& other) const {
       return volume == other.volume && volume_until == other.volume_until && seek_ms == other.seek_ms &&
              reset_until == other.reset_until && volume_active == other.volume_active &&
              seek_active == other.seek_active && reset_active == other.reset_active &&
              seeking == other.seeking && dragging_progress == other.dragging_progress &&
-             dragging_volume == other.dragging_volume;
+             dragging_volume == other.dragging_volume && group_count == other.group_count;
     }
   };
   struct State {
     PageMediaStateRuntime* media{nullptr};
     size_t rows{0};
-    std::vector<std::string> group_members;  // Actual cache projection; response previews live in ctx.
     std::array<uint32_t, 64> channels{};
     uint64_t graph_revision{0}, media_revision{0};
     uint32_t groups_revision{0}, discovery_revision{0}, display_second{0};
@@ -89,7 +89,8 @@ struct PageMediaControlModalFamily {
             media_control_track_position_reset_active(&ctx),
             ctx.seek_pending,
             ctx.dragging_progress,
-            ctx.dragging_volume};
+            ctx.dragging_volume,
+            ctx.group_members.size()};
   }
   static void pull(Context& ctx, PageEntityStateRuntime& graph, ConfigurationHandle card, State& state) {
     if (!state.media || state.pulling) return;
@@ -168,7 +169,6 @@ struct PageMediaControlModalFamily {
       if (groups.status == PageEntityStatus::AVAILABLE)
         group_values = media_group_parse_entity_list(groups.value.data(), groups.value.size());
       if (group_values.empty()) media_group_append_unique(group_values, ctx.entity_id);
-      state.group_members.swap(group_values);
     }
     if (helper_changed && discovery.status == PageEntityStatus::AVAILABLE) {
       if (std::string_view(media_group_discovery_attribute(ctx.speaker_group_entity)) == "data") {
@@ -178,11 +178,15 @@ struct PageMediaControlModalFamily {
         helper_members = media_group_parse_entity_list(discovery.value.data(), discovery.value.size());
       }
     }
+    // A service response can confirm membership before its HA attribute
+    // arrives. Clock, volume and metadata updates must not overwrite it with
+    // the same old raw snapshot. A new channel revision remains authoritative.
+    const auto& group_members = groups_changed ? group_values : ctx.group_members;
     const auto& candidates = helper_changed ? helper_members : ctx.speaker_helper_members;
     size_t rows = 1;
     for (const auto& candidate : candidates)
       if (candidate != ctx.entity_id) ++rows;
-    for (const auto& member : state.group_members)
+    for (const auto& member : group_members)
       if (member != ctx.entity_id &&
           std::find(candidates.begin(), candidates.end(), member) == candidates.end())
         ++rows;
@@ -211,7 +215,7 @@ struct PageMediaControlModalFamily {
                                                friendly.value != "unknown" && friendly.value != "unavailable"
                                            ? friendly.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN)
                                            : std::string_view{},
-                                       state.group_members,
+                                       group_members,
                                        helper_changed ? helper_members : ctx.speaker_helper_members,
                                        helper_changed ? helper_items : ctx.speaker_discovery};
     snapshot.speaker_discovery_available = !snapshot.speaker_helper_members.empty();

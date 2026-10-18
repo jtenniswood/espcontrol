@@ -26,8 +26,11 @@ responses cannot update replacement panels.
 The active record caches channel revisions and local acknowledgement state.
 A projection guard rejects nested input while a snapshot is being painted.
 Unchanged frames and unrelated media-clock ticks skip parsing and painting.
-A demanded group-members projection retains actual readings separately from
-optimistic group-response feedback. All projection and context storage is
+Confirmed group feedback remains in the demanded context until the membership
+channel's revision changes; clock and unrelated state updates cannot replay an
+older membership value over it. Response callbacks repaint existing rows and
+attach their newly enabled controls; candidate construction waits for the next
+runtime budget check. All projection and context storage is
 released with the opening. No fields are added to configured legacy contexts.
 
 The gesture reservation also bounds speaker discovery before parsing and row
