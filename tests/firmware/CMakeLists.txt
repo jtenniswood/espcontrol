@@ -141,6 +141,16 @@ target_compile_options(page_fan_mode_test PRIVATE -Wall -Wextra -Werror -UNDEBUG
 target_include_directories(page_fan_mode_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_fan_mode_test COMMAND page_fan_mode_test)
 
+add_executable(page_resource_publication_test page_resource_publication_test.cpp
+  ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp
+  ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_forecast_runtime.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp)
+target_compile_features(page_resource_publication_test PRIVATE cxx_std_17)
+target_compile_options(page_resource_publication_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_resource_publication_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_resource_publication_test COMMAND page_resource_publication_test)
+
 add_executable(page_local_relay_runtime_test page_local_relay_runtime_test.cpp
   ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_store.cpp)
 target_compile_features(page_local_relay_runtime_test PRIVATE cxx_std_17)

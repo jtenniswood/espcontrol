@@ -59,7 +59,7 @@ void PageMediaStateRuntime::release(int index) {
 bool PageMediaStateRuntime::prepare(const PageStore& store) {
   discard_prepared();
   synchronize();
-  if (!store.generation()) return false;
+  if (!store.source_document()) return false;
   // Decode secondary options once into bounded preparation scratch. The final
   // arena deduplicates sources and stores only compact per-media-card links.
   struct PreparedCard {
@@ -223,9 +223,11 @@ void PageMediaStateRuntime::discard_prepared() {
   staged_ = -1;
 }
 void PageMediaStateRuntime::activate_prepared(const PageStore& store) {
-  if (staged_ < 0 || slots_[staged_].generation != store.generation()) return;
+  if (staged_ < 0 || !page_prepared_generation_matches(slots_[staged_].generation, store.generation()))
+    return;
   const int old = active_;
   active_ = staged_;
+  slots_[active_].generation = store.generation();
   staged_ = -1;
   release(old);
   tick_ms_ = transport_.now_ms();

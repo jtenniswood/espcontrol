@@ -70,7 +70,7 @@ void PageForecastRuntime::collect() {
       }
 }
 bool PageForecastRuntime::prepare(const PageStore& store) {
-  if (preparing_ || store.generation() == 0) return false;
+  if (preparing_ || !store.source_document()) return false;
   Preparing guard(preparing_);
   collect();
   discard_prepared();
@@ -176,10 +176,12 @@ void PageForecastRuntime::invalidate_pending() {
   }
 }
 void PageForecastRuntime::activate_prepared(const PageStore& store) {
-  if (staged_ < 0 || slots_[staged_].generation != store.generation()) return;
+  if (staged_ < 0 || !page_prepared_generation_matches(slots_[staged_].generation, store.generation()))
+    return;
   invalidate_pending();
   if (active_ >= 0) retired_[active_] = true;
   active_ = staged_;
+  slots_[active_].generation = store.generation();
   staged_ = -1;
   connected_ = requests_.connected();
   connection_ = requests_.connection_generation();
