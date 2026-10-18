@@ -1270,6 +1270,12 @@ void expanded_preemption_keeps_schedule() {
     assert(f.images.snapshot(f.slot(2), f.token(2)).pending);
     const auto request = f.requests.jobs[f.slot(2)].request;
     f.ready(2);
+    if (mode == camera::RefreshMode::ACTIVITY) {
+      // Covered tiles deliberately close their activity window. Fresh motion
+      // after return starts a new window without bypassing completion cadence.
+      f.send("", "off", "binary_sensor.motion");
+      f.send("", "on", "binary_sensor.motion");
+    }
     pipeline.tick();
     assert(f.requests.jobs[f.slot(2)].request == request);
     pipeline.tick(4999);
