@@ -11,6 +11,7 @@
 #include <esp_http_server.h>
 
 #include "configuration_service.h"
+#include "configuration_main_loop.h"
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "panel_config_http_context.h"
 
@@ -46,8 +47,16 @@ class PanelConfigReadHandler final
     }
 #endif
     httpd_req_t *raw_request = *request;
-    const ServiceLoadResult loaded =
-        context.service->load(context.document, context.document_capacity);
+    const auto transaction =
+        context.transactions->load(context.document, context.document_capacity);
+    if (transaction.dispatch != ConfigurationDispatchStatus::COMPLETED) {
+      httpd_resp_set_status(raw_request, "503 Service Unavailable");
+      httpd_resp_set_type(raw_request, "text/plain");
+      httpd_resp_send(raw_request, "Panel configuration is busy; retry the request",
+                      HTTPD_RESP_USE_STRLEN);
+      return;
+    }
+    const ServiceLoadResult loaded = transaction.result;
     if (loaded.status == ServiceStatus::EMPTY) {
       httpd_resp_send_err(raw_request, HTTPD_404_NOT_FOUND,
                           "No native configuration is stored");

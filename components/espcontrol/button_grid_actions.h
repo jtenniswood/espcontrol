@@ -2,6 +2,7 @@
 #include "screensaver_pin.h"
 
 #include "media_playback_modes.h"
+#include "media_playback_clock.h"
 #include "media_volume_capability.h"
 #include "number_slider_policy.h"
 
@@ -738,7 +739,8 @@ inline void send_media_seek_action(const std::string &entity_id, int value, floa
   if (duration <= 0.0f) return;
   if (value < 0) value = 0;
   if (value > 100) value = 100;
-  int seconds = (int)((duration * value / 100.0f) + 0.5f);
+  int seconds;
+  if (!espcontrol::media::seek_seconds(duration, static_cast<uint8_t>(value), seconds)) return;
   char buf[16];
   snprintf(buf, sizeof(buf), "%d", seconds);
   send_media_player_action(entity_id, "media_player.media_seek", "seek_position", buf);

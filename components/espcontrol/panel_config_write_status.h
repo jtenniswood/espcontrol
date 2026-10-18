@@ -9,6 +9,7 @@ enum class PanelConfigWriteResponse : uint8_t {
   ACCEPTED_WITH_LEGACY_WARNING,
   BAD_REQUEST,
   GENERATION_CONFLICT,
+  RUNTIME_UNAVAILABLE,
   INTERNAL_ERROR,
 };
 
@@ -25,6 +26,8 @@ inline PanelConfigWriteResponse panel_config_write_response(
       return PanelConfigWriteResponse::BAD_REQUEST;
     case ServiceStatus::GENERATION_CONFLICT:
       return PanelConfigWriteResponse::GENERATION_CONFLICT;
+    case ServiceStatus::RUNTIME_PREPARE_FAILED:
+      return PanelConfigWriteResponse::RUNTIME_UNAVAILABLE;
     default:
       return PanelConfigWriteResponse::INTERNAL_ERROR;
   }
