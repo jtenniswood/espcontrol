@@ -152,8 +152,9 @@ class PageImageTileRuntime final : public PageEntityObserver {
       r.deadline = r.policy.camera_errors ? r.policy.camera_retry_after
                    : r.policy.expanded_completed && r.policy.expanded_success
                        ? r.policy.schedule.last_completed + 1000
-                   : r.policy.source_dirty ? r.policy.source_changed_at + 1000
-                                           : transfer.retry_after;
+                       : transfer.retry_after;
+      if (r.policy.source_dirty && static_cast<int32_t>(r.policy.source_changed_at + 1000 - r.deadline) > 0)
+        r.deadline = r.policy.source_changed_at + 1000;
     } else if (r.policy.source_dirty) {
       r.deadline = r.policy.source_changed_at + 1000;
       r.waiting = true;

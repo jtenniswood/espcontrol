@@ -553,6 +553,20 @@ void handoff_retry_and_source_timing() {
     assert(f.requests.starts == 2);
   }
 }
+void handoff_late_source_delay() {
+  for (const uint32_t start : {uint32_t{100}, UINT32_MAX-2000}) {
+    F f(DEVICE_UI_PROFILES[8]);
+    now=start; f.preload(); f.tick();
+    ExpandedObserver expanded(f); assert(expanded.begin().transfer);
+    now+=5000;
+    expanded.policy.expanded_finished(now,true);
+    now+=500;
+    f.send("access_token","late-attribute");
+    assert(expanded.end());
+    f.tick(999); assert(f.requests.starts==1);
+    f.tick(1); assert(f.requests.starts==2);
+  }
+}
 void handoff_recovers_only_current_pixels() {
   F f(DEVICE_UI_PROFILES[8]);
   f.preload();
@@ -1238,6 +1252,7 @@ int main() {
   refresh_handoff();
   handoff_retry_and_source_timing();
   handoff_recovers_only_current_pixels();
+  handoff_late_source_delay();
   handoff_staging_and_admission();
   handoff_clock_wrap();
   handoff_cancel_and_replacement();
