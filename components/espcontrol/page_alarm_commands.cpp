@@ -89,6 +89,13 @@ void PageAlarmCommands::cancel() {
   if (pending_.present) ++cancelled_;
   wipe(pending_);
 }
+void PageAlarmCommands::cancel(PageModalToken token) {
+  const auto pending = pending_.origin.modal;
+  if (pending_.present && token.opening && pending.opening == token.opening &&
+      pending.configuration == token.configuration && pending.card == token.card &&
+      pending.kind == token.kind)
+    cancel();
+}
 bool PageAlarmCommands::current(const Pending& pending) {
   if (!pending.present || !port_.connected() || !port_.service_available() ||
       pending.origin.connection != graph_.connection_generation())
@@ -130,9 +137,13 @@ bool PageAlarmCommands::queue(PageAlarmCommandOrigin origin, alarm::Action actio
   const auto kind = PageAlarmStateRuntime::classify(active_, handle.index);
   const auto* card = active_.card(handle);
   const std::string options(PageAlarmStateRuntime::effective_options(active_, handle.index));
-  if (kind == PageAlarmSourceKind::ACTION) {
+  const auto takeover = state_.takeover();
+  const bool critical_panel = origin.modal.opening && origin.modal.kind == ControlModalKind::ALARM_CONTROL &&
+                              takeover.valid && takeover.origin.generation == handle.generation &&
+                              takeover.origin.index == handle.index;
+  if (kind == PageAlarmSourceKind::ACTION && !critical_panel) {
     if (action != alarm::action(active_.field(*card, CardField::SENSOR))) return reject();
-  } else if (kind == PageAlarmSourceKind::CONTROL) {
+  } else if (kind == PageAlarmSourceKind::CONTROL || critical_panel) {
     if (!origin.modal.opening) return reject();
     const auto snapshot = state_.read(handle);
     if (!visible(options, action) && !(action == alarm::Action::DISARM && alarm::delay(snapshot.state)))

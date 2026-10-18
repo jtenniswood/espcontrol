@@ -90,6 +90,7 @@ PageBindingToken origin(uint32_t generation=17,CardId card=0,uint32_t binding=99
 void activate(PageModalRuntime &runtime,const PageStore &store){assert(runtime.prepare(store));runtime.activate_prepared(store);}
 void queue_and_callback_lifetimes() {
   Fixture fixture;Port port;PageModalRuntime runtime(port);port.runtime=&runtime;activate(runtime,fixture.store);
+  assert(!runtime.request_card({17, 0}, ControlModalKind::ALARM_CONTROL));
   assert(runtime.request(origin()));assert(port.creates==0&&runtime.memory().pending_requests==1);
   ++port.binding;runtime.loop();assert(port.creates==0&&runtime.memory().pending_requests==0); // Rebound before loop.
   assert(!runtime.request(origin()));assert(runtime.request(origin(17,0,port.binding)));runtime.loop();

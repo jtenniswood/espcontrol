@@ -23,6 +23,13 @@ class PageModalPort {
   virtual ~PageModalPort()=default;
   virtual bool valid_origin(PageBindingToken)const=0;
   virtual ControlModalKind kind(const PageStore &,ConfigurationHandle)const=0;
+  // Explicit-purpose requests are admitted by the family, never by an arbitrary
+  // caller-supplied modal kind. The default only accepts the normal card kind.
+  virtual ControlModalKind kind(const PageStore& store, ConfigurationHandle card,
+                                ControlModalKind requested) const {
+    const auto normal = kind(store, card);
+    return requested == ControlModalKind::NONE || requested == normal ? normal : ControlModalKind::NONE;
+  }
   virtual bool ready()const=0; // Outside native/coordinator/LVGL callback dispatch.
   virtual bool connected()const=0;
   virtual uint32_t connection_generation()const=0;
@@ -52,6 +59,7 @@ class PageModalRuntime final:public PageRuntimeResources {
   // Authenticated modal APIs can address a current navigable card directly,
   // including a hidden page. They must resolve against this generation.
   bool request_card(ConfigurationHandle);
+  bool request_card(ConfigurationHandle, ControlModalKind);
   void dismiss(PageModalClose=PageModalClose::USER);
   bool notify_closed(PageModalToken,PageModalClose=PageModalClose::USER);
   bool display_takeover(bool preserve_policy_active);
@@ -65,10 +73,11 @@ class PageModalRuntime final:public PageRuntimeResources {
     ConfigurationHandle card;
     PageBindingToken origin;
     uint32_t connection{0};
+    ControlModalKind kind{ControlModalKind::NONE};
     bool pending{false}, from_binding{false};
   };
   bool valid_request(const Request &)const;
-  bool valid_card(ConfigurationHandle)const;
+  bool valid_card(ConfigurationHandle, ControlModalKind) const;
   void retire_context(PageModalClose);
   void collect_retired();
   PageModalPort &port_;PageStore active_store_;

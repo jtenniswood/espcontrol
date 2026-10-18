@@ -1,0 +1,698 @@
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <functional>
+#include <string>
+#include <vector>
+
+#include "alarm_modal_lifetime.h"
+#include "button_grid_subpage_parser.h"
+#include "display_mode_controller.h"
+#include "lvgl.h"
+#include "page_alarm_commands.h"
+#include "page_card_dependencies.h"
+#include "page_entity_observer_set.h"
+#include "page_runtime_resources_group.h"
+#include "panel_config_document.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+constexpr uint32_t DEFAULT_ACCENT_COLOR = 0xFF8C00;
+constexpr uint32_t ALARM_CARD_CTX_MAGIC = 0x414C4D43, ALARM_ACTION_CTX_MAGIC = 0x414C4D41;
+constexpr int ALARM_MAX_ACTIONS = 5;
+static size_t lv_live_bytes = 0, lv_allocation_calls = 0, cpp_allocation_calls = 0, cpp_live_bytes = 0;
+struct alignas(16) CppAllocation {
+  size_t bytes;
+};
+void* operator new(size_t bytes) {
+  ++cpp_allocation_calls;
+  auto* header = static_cast<CppAllocation*>(std::malloc(sizeof(CppAllocation) + (bytes ? bytes : 1)));
+  assert(header);
+  header->bytes = bytes;
+  cpp_live_bytes += bytes;
+  return header + 1;
+}
+void* operator new[](size_t bytes) {
+  return ::operator new(bytes);
+}
+void operator delete(void* pointer) noexcept {
+  if (pointer) {
+    auto* header = static_cast<CppAllocation*>(pointer) - 1;
+    cpp_live_bytes -= header->bytes;
+    std::free(header);
+  }
+}
+void operator delete[](void* pointer) noexcept {
+  ::operator delete(pointer);
+}
+void operator delete(void* pointer, std::size_t) noexcept {
+  ::operator delete(pointer);
+}
+void operator delete[](void* pointer, std::size_t) noexcept {
+  ::operator delete(pointer);
+}
+struct alignas(16) Allocation {
+  size_t bytes;
+};
+extern "C" {
+#ifdef ESPCONTROL_NATIVE_LABEL_REFRESH
+void __wrap_lv_display_add_event_cb(lv_display_t* display, lv_event_cb_t callback, lv_event_code_t filter,
+                                    void* user) {
+  lv_display_add_event_cb(display, callback, filter, user);
+}
+uint32_t __wrap_lv_display_remove_event_cb_with_user_data(lv_display_t* display, lv_event_cb_t callback,
+                                                          void* user) {
+  return lv_display_remove_event_cb_with_user_data(display, callback, user);
+}
+#endif
+void lv_mem_init() {}
+void lv_mem_deinit() {}
+lv_mem_pool_t lv_mem_add_pool(void*, size_t) {
+  return nullptr;
+}
+void lv_mem_remove_pool(lv_mem_pool_t) {}
+void* lv_malloc_core(size_t size) {
+  ++lv_allocation_calls;
+  auto* p = static_cast<Allocation*>(std::malloc(size + sizeof(Allocation)));
+  assert(p);
+  p->bytes = size;
+  lv_live_bytes += size;
+  return p + 1;
+}
+void lv_free_core(void* ptr) {
+  if (!ptr) return;
+  auto* p = static_cast<Allocation*>(ptr) - 1;
+  lv_live_bytes -= p->bytes;
+  std::free(p);
+}
+void* lv_realloc_core(void* ptr, size_t size) {
+  void* p = lv_malloc_core(size);
+  if (ptr) {
+    std::memcpy(p, ptr, std::min(size, (static_cast<Allocation*>(ptr) - 1)->bytes));
+    lv_free_core(ptr);
+  }
+  return p;
+}
+void lv_mem_monitor_core(lv_mem_monitor_t* out) {
+  *out = {};
+}
+lv_result_t lv_mem_test_core() {
+  return LV_RESULT_OK;
+}
+}
+
+void lv_label_set_display_text(lv_obj_t* label, const char* text) {
+  lv_label_set_text(label, text);
+}
+
+struct TransientStatusLabel {};
+struct TestTheme {
+  uint32_t surface_primary{0x212121}, surface_secondary{0x424242};
+};
+const TestTheme& current_theme() {
+  static TestTheme value;
+  return value;
+}
+uint32_t theme_display_color(uint32_t color) {
+  return color;
+}
+// @contexts
+bool connected_value = true, enough_heap = true, style_ok = true;
+struct Coordinator {
+  bool busy{false};
+  bool dispatching() const {
+    return busy;
+  }
+} coordinator;
+Coordinator& ha_read_coordinator() {
+  return coordinator;
+}
+bool ha_api_state_connected() {
+  return connected_value;
+}
+bool ha_internal_heap_available(const char*) {
+  return enough_heap;
+}
+ControlModalStateService<lv_obj_t> service;
+auto& control_modal_active() {
+  return service.active();
+}
+auto& control_modal_service() {
+  return service;
+}
+std::string clock_label;
+void set_clock_bar_modal_label(const std::string& text) {
+  clock_label = text;
+}
+// @production-function alarm_control_modal_ui
+// @production-function alarm_pin_modal_ui
+// @production-function alarm_deferred_action
+// @production-function alarm_arming_takeover_ctx
+// @production-function alarm_card_context_valid
+// @production-function alarm_action_context_valid
+// @production-function alarm_pin_arm_required
+// @production-function alarm_pin_disarm_required
+// @production-function alarm_action_valid
+// @production-function alarm_action_mode_count
+// @production-function alarm_action_mode_at
+// @production-function alarm_action_default_visible
+// @production-function alarm_action_visible
+// @production-function alarm_visible_action_modes
+// @production-function alarm_action_requires_pin
+void control_modal_delete_overlay(ControlModalKind kind, lv_obj_t* overlay) {
+  if (overlay) lv_obj_delete(overlay);
+  service.clear_active(kind);
+}
+void alarm_release_arming_takeover(AlarmCardCtx* ctx) {
+  if (alarm_arming_takeover_ctx() == ctx) alarm_arming_takeover_ctx() = nullptr;
+}
+// @production-function alarm_control_hide_modal
+// @production-function alarm_clear_pin
+// @production-function alarm_pin_hide_modal
+void alarm_run_deferred_action_cb(lv_timer_t*) {
+  assert(false);
+}
+void send_alarm_action(AlarmActionCtx*, const std::string&) {
+  assert(false);
+}
+void alarm_action_activate(AlarmActionCtx*);
+void alarm_pin_open_modal(AlarmActionCtx*);
+// @production-function alarm_defer_action
+// @production-function alarm_control_mode_cb
+// @production-function alarm_pin_update_display
+// @production-function alarm_pin_submit
+// @production-function alarm_pin_key_cb
+// @production-function alarm_action_activate
+struct ControlModalLayout {
+  int short_side{480};
+};
+struct ControlModalShell {
+  lv_obj_t *overlay, *panel, *close_btn;
+  ControlModalLayout layout;
+};
+ControlModalShell control_modal_open_shell(ControlModalKind kind, lv_obj_t*, int, const lv_font_t*,
+                                           void (*close)()) {
+  if (auto previous = service.active().close_callback) previous();
+  auto* overlay = lv_obj_create(lv_layer_top());
+  auto* panel = lv_obj_create(overlay);
+  auto* back = lv_button_create(panel);
+  lv_obj_add_event_cb(
+      back,
+      [](lv_event_t*) {
+        if (auto cb = service.active().close_callback) cb();
+      },
+      LV_EVENT_CLICKED, nullptr);
+  service.set_active(kind, overlay, close,
+                     kind == ControlModalKind::ALARM_CONTROL
+                         ? ControlModalDismissPolicy::PRESERVE_DURING_DISPLAY_TAKEOVER
+                         : ControlModalDismissPolicy::DISMISS);
+  return {overlay, panel, back, {}};
+}
+std::array<lv_obj_t*, 12> keys{};
+lv_obj_t* pin_keypad_create(lv_obj_t* panel, ControlModalLayout, const lv_font_t*, const lv_font_t*,
+                            const lv_font_t*, int, lv_event_cb_t callback) {
+  const char* values[] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "back", "submit"};
+  auto* label = lv_label_create(panel);
+  for (size_t i = 0; i < keys.size(); ++i) {
+    keys[i] = lv_button_create(panel);
+    lv_obj_add_event_cb(keys[i], callback, LV_EVENT_CLICKED, const_cast<char*>(values[i]));
+  }
+  return label;
+}
+// @production-function alarm_pin_open_modal
+// @production-function alarm_remaining_delay_seconds
+// @production-function alarm_delay_progress_percent
+size_t paints = 0;
+void alarm_control_update_modal(AlarmCardCtx* ctx) {
+  if (alarm_control_modal_ui().active == ctx) ++paints;
+}
+// @production-function alarm_control_can_open_modal
+// Only shell/layout construction is doubled. Input/defer/PIN handlers, lifetime
+// observer, demanded adapter, shared graph/source/acknowledgements and commands
+// are production definitions. SDK checks also compile the complete real panel.
+void alarm_control_open_modal(AlarmCardCtx* ctx) {
+  if (!alarm_control_can_open_modal(ctx)) return;
+  auto shell = control_modal_open_shell(ControlModalKind::ALARM_CONTROL, nullptr, 100, nullptr,
+                                        alarm_control_hide_modal);
+  auto& ui = alarm_control_modal_ui();
+  ui.active = ctx;
+  ui.overlay = shell.overlay;
+  ui.panel = shell.panel;
+  ui.back_btn = shell.close_btn;
+  std::string modes[5];
+  ui.action_count = alarm_visible_action_modes(ctx->options, modes, 3);
+  for (int i = 0; i < ui.action_count; ++i) {
+    ui.actions[i].card = ctx;
+    ui.actions[i].mode = modes[i];
+    ui.actions[i].requires_pin = alarm_action_requires_pin(ctx->options, modes[i]);
+    ui.mode_btn[i] = lv_button_create(ui.panel);
+    lv_obj_add_event_cb(ui.mode_btn[i], alarm_control_mode_cb, LV_EVENT_CLICKED, &ui.actions[i]);
+  }
+  ui.arming_disarm_action.card = ctx;
+  ui.arming_disarm_action.mode = "disarm";
+  ui.arming_disarm_action.requires_pin = alarm_pin_disarm_required(ctx->options);
+  ui.arming_disarm_btn = lv_button_create(ui.panel);
+  lv_obj_add_event_cb(ui.arming_disarm_btn, alarm_control_mode_cb, LV_EVENT_CLICKED,
+                      &ui.arming_disarm_action);
+  alarm_control_update_modal(ctx);
+}
+#include "page_alarm_modal.h"
+uint32_t now() {
+  return lv_tick_get();
+}
+struct Arena : PageArenaAllocator {
+  size_t live{0}, calls{0};
+  bool fail{false};
+  void* allocate(size_t n) override {
+    ++calls;
+    if (fail) return nullptr;
+    ++live;
+    return std::malloc(n);
+  }
+  void release(void* p, size_t) override {
+    assert(live);
+    --live;
+    std::free(p);
+  }
+};
+struct Transport : PageEntitySubscriptions {
+  struct Binding {
+    const char* entity;
+    const char* attribute;
+    void* owner;
+    uint32_t revision, channel;
+    Deliver deliver;
+  };
+  std::vector<Binding> bindings;
+  uint32_t connection{1};
+  uint32_t connection_generation() const override {
+    return connection;
+  }
+  bool subscribe(const char* entity, const char* attribute, void* owner, uint32_t revision, uint32_t channel,
+                 Deliver deliver) override {
+    bindings.push_back({entity, attribute, owner, revision, channel, deliver});
+    return true;
+  }
+  void release(void* owner) override {
+    bindings.erase(
+        std::remove_if(bindings.begin(), bindings.end(), [&](const auto& b) { return b.owner == owner; }),
+        bindings.end());
+  }
+  void send(const char* entity, const char* attribute, std::string_view value) {
+    for (const auto& b : bindings)
+      if (std::strcmp(entity, b.entity) == 0 && std::strcmp(attribute, b.attribute) == 0)
+        b.deliver(b.owner, b.revision, b.channel, value);
+  }
+};
+struct Fixture {
+  std::array<uint8_t, 16384> document{};
+  alignas(std::max_align_t) std::array<uint8_t, 32768> storage{};
+  size_t size{0};
+  PageStore store;
+  Fixture(uint32_t generation, const char* entity = "alarm_control_panel.home",
+          const DeviceUiLimits& limits = DEVICE_UI_PROFILES[8], bool empty = false,
+          const std::string& options = "", const std::string& action_mode = "away") {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {
+        std::string(entity) + ";;Auto;Auto;;;alarm;;" + options,
+        std::string(entity) + ";;Auto;Auto;" + action_mode + ";;alarm_action;;" + options,
+        std::string(entity) + ";Alarms;Auto;Auto;indicator;;subpage;;subpage_kind=alarm"};
+    for (size_t i = 0; i < 3; ++i) {
+      const auto card = empty ? std::string(";;;;sensor.empty;;sensor;1;") : cards[i];
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(card.data()), card.size()) ==
+             PanelConfigStatus::OK);
+    }
+    const std::string child = empty ? "~B,1|S,,Value,Auto,Auto,sensor.empty,,1,"
+                                    : "~B,1,2|Y,,,Auto,Auto,,,,|AA,,,Auto,Auto,home,,,";
+    assert(writer.append_subpage(3, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, generation, storage.data(), storage.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+};
+
+struct CommandsPort : PageAlarmCommandPort {
+  PageModalRuntime* modal{nullptr};
+  PageBindingToken binding{0, 123, 0, 1, 1, false};
+  size_t sends{0};
+  std::string code, entity, action;
+  bool success{true};
+  bool ready() const override {
+    return !modal_callback_dispatching() && !coordinator.busy && !page_lvgl_dispatching();
+  }
+  bool connected() const override {
+    return connected_value;
+  }
+  bool service_available() const override {
+    return true;
+  }
+  bool valid(PageBindingToken t) const override {
+    return t.configuration == binding.configuration && t.binding == binding.binding &&
+           t.card == binding.card && t.page == binding.page && t.shell == binding.shell && !t.back;
+  }
+  bool valid(PageModalToken token) const override {
+    return modal && modal->interactive(token);
+  }
+  bool send(std::string_view key, const char* service, std::string_view pin) override {
+    ++sends;
+    code = pin;
+    entity = key;
+    action = service;
+    return success;
+  }
+};
+struct Harness {
+  Arena arena;
+  Transport transport;
+  PageCardDependencies deps;
+  PageAlarmStateRuntime state{arena, transport, now};
+  PageAlarmAckRuntime ack{arena, transport, state, now};
+  PageEntityObserverSet<2> observers;
+  PageEntityStateRuntime graph{deps, arena, transport, {128, 128, 8192}, &observers};
+  CommandsPort sender;
+  PageAlarmCommands commands{graph, state, ack, sender};
+  PageAlarmModalStyle style;
+  PageAlarmModalPort port;
+  PageModalRuntime modal{port};
+  PageRuntimeResourcesGroup<5> resources{{&modal, &commands, &ack, &state, &graph}};
+  PageStoreRuntime publication;
+  static PageAlarmModalStyle make_style(size_t capacity) {
+    PageAlarmModalStyle value;
+    value.gesture_capacity = capacity;
+    value.resolve = [](void*, const ParsedCfg&, PageAlarmModalEnvironment& environment) {
+      environment.label_font = environment.pin_font = environment.key_font = environment.icon_font =
+          environment.title_font = &lv_font_montserrat_14;
+      return style_ok;
+    };
+    return value;
+  }
+  Harness(const DeviceUiLimits& limits, size_t capacity = 128)
+      : style(make_style(capacity)),
+        port(arena, graph, state, commands, style, &sender,
+             [](void* owner, PageBindingToken token) {
+               return static_cast<CommandsPort*>(owner)->valid(token);
+             }),
+        publication(limits, arena, 32768, &resources) {
+    assert(observers.add(state) && observers.add(ack));
+    sender.modal = &modal;
+    assert(!port.install(modal, false) && port.install(modal, true));
+  }
+  void publish(Fixture& f, uint32_t gen = 0) {
+    assert(publication.prepare(PANEL_CONFIG_DOCUMENT_VERSION, f.document.data(), f.size));
+    assert(publication.activate_prepared(gen, PANEL_CONFIG_DOCUMENT_VERSION, f.document.data(), f.size));
+    sender.binding.configuration = gen;
+  }
+  void report(std::string_view value = "disarmed") {
+    transport.send("alarm_control_panel.home", "", value);
+  }
+  void open(CardId card = 0, uint32_t gen = 0) {
+    assert(modal.request_card({gen, card}));
+    modal.loop();
+  }
+};
+void click(lv_obj_t* object) {
+  lv_obj_send_event(object, LV_EVENT_PRESSED, nullptr);
+  lv_obj_send_event(object, LV_EVENT_RELEASED, nullptr);
+  lv_obj_send_event(object, LV_EVENT_CLICKED, nullptr);
+}
+void enter_pin() {
+  for (int key : {1, 2, 3, 4}) click(keys[key]);
+}
+size_t timer_count() {
+  size_t n = 0;
+  for (auto* timer = lv_timer_get_next(nullptr); timer; timer = lv_timer_get_next(timer)) ++n;
+  return n;
+}
+void control_pin_and_cycles(const DeviceUiLimits& limits) {
+  Fixture f(17, "alarm_control_panel.home", limits);
+  Harness h(limits);
+  h.publish(f);
+  h.report();
+  const auto subscriptions = h.transport.bindings.size(), live = h.arena.live, base_lv = lv_live_bytes,
+             timers = timer_count();
+  size_t retained_cpp = 0;
+  for (size_t i = 0; i < 1000; ++i) {
+    h.open();
+    auto token = h.modal.token();
+    auto& control = alarm_control_modal_ui();
+    assert(control.active && control.active->btn == nullptr && control.active->status_label == nullptr &&
+           !control.active->arm_delay_timer && !control.active->pending_action_timer);
+    assert(h.modal.display_takeover(true) && h.modal.valid(token));
+    if (i == 0) {
+      lv_obj_send_event(control.mode_btn[0], LV_EVENT_CLICKED, nullptr);
+      h.modal.loop();
+      assert(!alarm_pin_modal_ui().active);
+    }
+    click(control.mode_btn[0]);
+    assert(!alarm_pin_modal_ui().active);
+    h.modal.loop();
+    auto& pin = alarm_pin_modal_ui();
+    assert(pin.active && h.modal.valid(token) && !alarm_control_modal_ui().active &&
+           control_modal_active().dismiss_policy == ControlModalDismissPolicy::DISMISS);
+    assert(pin.active->mode == "away");
+    assert(!alarm_modal_defer(pin.active->card, "home", "1234", true));
+    enter_pin();
+    assert(pin.pin == "1234");
+    click(keys[11]);
+    assert(pin.pin.empty() && h.commands.memory().pending_code_bytes == 4 && h.sender.sends == i);
+    h.modal.loop();
+    assert(h.modal.valid(token));
+    assert(h.commands.loop() == PageAlarmCommandResult::SENT);
+    h.modal.loop();
+    assert(!h.modal.valid(token) && !alarm_pin_modal_ui().active && h.sender.sends == i + 1 &&
+           h.sender.code == "1234");
+    assert(h.commands.memory().pending_code_bytes == 0 && h.ack.pending({0, 0}));
+    assert(h.transport.bindings.size() == subscriptions && h.arena.live == live && lv_live_bytes == base_lv &&
+           timer_count() == timers);
+    if (i == 0)
+      retained_cpp = cpp_live_bytes;
+    else
+      assert(cpp_live_bytes == retained_cpp);
+  }
+  h.open();
+  const auto cpp = cpp_allocation_calls, lv = lv_allocation_calls;
+  for (int n = 0; n < 1000; ++n) h.modal.loop();
+  assert(cpp_allocation_calls == cpp && lv_allocation_calls == lv);
+  h.modal.dismiss(PageModalClose::SHUTDOWN);
+  h.modal.loop();
+}
+void readonly_stale_and_retirement(const DeviceUiLimits& limits) {
+  Fixture f(17, "alarm_control_panel.home", limits), next(18, "alarm_control_panel.home", limits);
+  Harness h(limits);
+  h.publish(f);
+  h.open();
+  assert(h.modal.memory().active_contexts == 0);  // Never reported control is unavailable.
+  h.report();
+  h.open();
+  auto token = h.modal.token();
+  auto& control = alarm_control_modal_ui();
+  h.report("unknown");
+  h.modal.loop();
+  assert(h.modal.valid(token));
+  click(control.mode_btn[0]);
+  h.modal.loop();
+  assert(!alarm_pin_modal_ui().active);  // Existing panel becomes readonly.
+  h.report();
+  h.modal.loop();
+  click(control.mode_btn[0]);
+  h.modal.loop();
+  enter_pin();
+  click(keys[11]);
+  assert(h.commands.memory().pending == 1);
+  auto* old_pin = keys[1];
+  auto* context = alarm_pin_modal_ui().active->card;
+  {
+    ModalCallbackDispatchScope scope;
+    h.publish(next, 1);
+    assert(h.modal.memory().retired_contexts == 1 && context->entity_id == "alarm_control_panel.home");
+    assert(h.commands.memory().pending_code_bytes == 0 && alarm_pin_modal_ui().pin.empty());
+    lv_obj_send_event(old_pin, LV_EVENT_CLICKED, nullptr);
+    h.modal.loop();
+    assert(h.modal.memory().retired_contexts == 1);
+  }
+  h.modal.loop();
+  assert(h.modal.memory().retired_contexts == 0 && h.sender.sends == 0);
+  h.report();
+  h.open(0, 1);
+  click(alarm_control_modal_ui().mode_btn[0]);
+  h.modal.loop();
+  enter_pin();
+  click(keys[11]);
+  ++h.transport.connection;
+  h.report();
+  assert(h.commands.loop() == PageAlarmCommandResult::CANCELLED);
+  h.modal.loop();
+  assert(!alarm_pin_modal_ui().active && h.sender.sends == 0);
+  h.open(0, 1);
+  click(alarm_control_modal_ui().mode_btn[0]);
+  h.modal.loop();
+  assert(!h.modal.display_takeover(true));
+  h.modal.loop();
+  assert(!alarm_pin_modal_ui().active);
+}
+void initial_actions_and_pin_limits(const DeviceUiLimits& limits) {
+  Fixture f(17, "alarm_control_panel.home", limits);
+  Harness h(limits);
+  h.publish(f);
+  h.open(1);
+  assert(alarm_pin_modal_ui().active && alarm_pin_modal_ui().active->mode == "away");
+  lv_obj_send_event(keys[1], LV_EVENT_CLICKED, nullptr);
+  assert(alarm_pin_modal_ui().pin.empty());
+  for (int i = 0; i < 17; ++i) click(keys[1]);
+  assert(alarm_pin_modal_ui().pin.size() == 16);
+  click(keys[10]);
+  assert(alarm_pin_modal_ui().pin.empty());
+  enter_pin();
+  click(keys[11]);
+  assert(h.commands.loop() == PageAlarmCommandResult::SENT);
+  h.modal.loop();
+  assert(h.ack.pending({0, 1}));
+  h.report();
+  ++h.transport.connection;
+  h.open();
+  assert(alarm_control_modal_ui().active);
+  click(alarm_control_modal_ui().mode_btn[0]);
+  h.modal.loop();
+  assert(!alarm_pin_modal_ui().active);
+  h.transport.send("alarm_control_panel.home", "arm_mode", "home");
+  click(alarm_control_modal_ui().mode_btn[0]);
+  h.modal.loop();
+  assert(!alarm_pin_modal_ui().active);
+  h.report();
+  h.modal.loop();
+  click(alarm_control_modal_ui().mode_btn[0]);
+  h.modal.loop();
+  assert(alarm_pin_modal_ui().active);
+  h.modal.dismiss(PageModalClose::SHUTDOWN);
+  h.modal.loop();
+  const auto child = h.publication.active().page(h.publication.active().card(2)->target)->first_card;
+  h.open(child + 1);
+  assert(alarm_pin_modal_ui().active && alarm_pin_modal_ui().active->mode == "home");
+  enter_pin();
+  click(keys[11]);
+  assert(h.commands.loop() == PageAlarmCommandResult::SENT &&
+         h.sender.action == "alarm_control_panel.alarm_arm_home");
+  h.modal.loop();
+  assert(h.ack.pending({0, static_cast<CardId>(child + 1)}));
+}
+void hidden_action_critical_panel(const DeviceUiLimits& limits) {
+  Fixture f(17, "alarm_control_panel.home", limits, false, "pin_arm=0,pin_disarm=0");
+  Harness h(limits);
+  h.publish(f);
+  h.report("triggered");
+  const auto choice = h.state.takeover();
+  assert(choice.valid);
+  const auto kind = PageAlarmStateRuntime::classify(h.publication.active(), choice.origin.index);
+  assert(kind == PageAlarmSourceKind::ACTION);
+  assert(h.modal.request_card(choice.origin, ControlModalKind::ALARM_CONTROL));
+  h.modal.loop();
+  assert(h.modal.token().kind == ControlModalKind::ALARM_CONTROL && alarm_control_modal_ui().active);
+  // Child action is Home, but a current critical control exposes all panel actions.
+  assert(alarm_control_modal_ui().actions[0].mode == "away");
+  click(alarm_control_modal_ui().mode_btn[0]);
+  h.modal.loop();
+  // Child options inherit default PIN policy, so the selected mode owns a PIN session.
+  assert(alarm_pin_modal_ui().active);
+  enter_pin();
+  click(keys[11]);
+  assert(h.commands.loop() == PageAlarmCommandResult::SENT &&
+         h.sender.action == "alarm_control_panel.alarm_arm_away");
+  h.modal.loop();
+  h.report();
+  assert(!h.modal.request_card(choice.origin, ControlModalKind::ALARM_CONTROL));
+  h.open(choice.origin.index);
+  assert(h.modal.token().kind == ControlModalKind::ALARM_PIN);
+  h.report("triggered");
+  assert(h.modal.request_card(choice.origin, ControlModalKind::ALARM_CONTROL));
+  h.modal.loop();
+  assert(h.modal.token().kind == ControlModalKind::ALARM_CONTROL && alarm_control_modal_ui().active &&
+         !alarm_pin_modal_ui().active);
+  h.modal.dismiss(PageModalClose::SHUTDOWN);
+  h.modal.loop();
+}
+void capacity_failure(const DeviceUiLimits& limits) {
+  Fixture f(17, "alarm_control_panel.home", limits);
+  Harness h(limits, 1);
+  h.publish(f);
+  h.report();
+  const auto bytes = lv_live_bytes, live = h.arena.live;
+  h.open();
+  assert(h.modal.memory().active_contexts == 0 && !alarm_control_modal_ui().active && h.arena.live == live &&
+         lv_live_bytes == bytes);
+}
+void optional_hidden_and_failures(const DeviceUiLimits& limits) {
+  Fixture f(17, "alarm_control_panel.home", limits, false, "pin_arm=0,pin_disarm=0");
+  Harness h(limits);
+  h.publish(f);
+  h.report();
+  h.open();
+  click(alarm_control_modal_ui().mode_btn[0]);
+  h.modal.loop();
+  assert(!alarm_pin_modal_ui().active && h.commands.memory().pending == 1);
+  assert(h.commands.loop() == PageAlarmCommandResult::SENT && h.sender.code.empty());
+  h.modal.dismiss();
+  h.modal.loop();
+  assert(h.port.kind(h.publication.active(), {0, 1}) ==
+         ControlModalKind::NONE);  // Direct action needs no PIN UI.
+  const auto child = h.publication.active().page(h.publication.active().card(2)->target)->first_card;
+  h.report("arming");
+  h.transport.send("alarm_control_panel.home", "delay", "60");
+  h.open(child);
+  assert(alarm_control_modal_ui().active);
+  auto* ctx = alarm_control_modal_ui().active;
+  assert(alarm_remaining_delay_seconds(ctx) == 60 && alarm_delay_progress_percent(ctx, 60) == 100);
+  lv_tick_inc(1000);
+  h.modal.loop();
+  assert(alarm_remaining_delay_seconds(ctx) == 59);
+  h.modal.dismiss(PageModalClose::SHUTDOWN);
+  h.modal.loop();
+  // A closing modal may cancel only its own queued intent, not a newer grid command.
+  h.report();
+  h.open();
+  assert(h.commands.queue({h.sender.binding, {}, h.transport.connection}, alarm::Action::AWAY));
+  h.modal.dismiss();
+  h.modal.loop();
+  assert(h.commands.memory().pending == 1);
+  assert(h.commands.loop() == PageAlarmCommandResult::SENT);
+  h.report("unknown");
+  h.open();
+  assert(h.modal.memory().active_contexts == 0);
+  h.report();
+  enough_heap = false;
+  h.open();
+  assert(h.modal.memory().active_contexts == 0);
+  enough_heap = true;
+  style_ok = false;
+  h.open();
+  assert(h.modal.memory().active_contexts == 0);
+  style_ok = true;
+  h.arena.fail = true;
+  h.open();
+  assert(h.modal.memory().active_contexts == 0);
+  h.arena.fail = false;
+}
+int main() {
+  lv_init();
+  auto* display = lv_display_create(480, 480);
+  assert(display);
+  lv_timer_pause(lv_display_get_refr_timer(display));
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    control_pin_and_cycles(limits);
+    readonly_stale_and_retirement(limits);
+    optional_hidden_and_failures(limits);
+    initial_actions_and_pin_limits(limits);
+    capacity_failure(limits);
+    hidden_action_critical_panel(limits);
+    std::printf("%s: demanded alarm/PIN lifetime and 1000 cycles passed\n", limits.device_profile);
+  }
+  lv_display_delete(display);
+  lv_deinit();
+  assert(lv_live_bytes == 0);
+}

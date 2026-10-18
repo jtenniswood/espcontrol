@@ -90,6 +90,15 @@ void alarm_clear_pending_action_if_progressed(AlarmCardCtx*) {}
 void alarm_control_update_modal(AlarmCardCtx*) {}
 void alarm_arm_delay_refresh_timer(AlarmCardCtx*) {}
 void alarm_refresh_arming_takeover(AlarmCardCtx*) {}
+bool alarm_modal_managed(const AlarmCardCtx*) {
+  return false;
+}
+int alarm_modal_remaining(const AlarmCardCtx*) {
+  return -1;
+}
+int alarm_modal_progress(const AlarmCardCtx*) {
+  return -1;
+}
 // @legacy-alarm-state
 void expire(lv_timer_t& timer) {
   if (!timer.paused && static_cast<uint32_t>(tick - timer.reset_ms) >= 3000)

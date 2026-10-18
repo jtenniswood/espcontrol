@@ -21,9 +21,10 @@ void PageModalRuntime::activate_prepared(const PageStore &store) {
   dismiss(PageModalClose::REPLACED);active_store_=store;discard_prepared();
 }
 void PageModalRuntime::retire_active(){dismiss(PageModalClose::SHUTDOWN);active_store_={};}
-bool PageModalRuntime::valid_card(ConfigurationHandle card)const {
-  if(next_opening_==0||!port_.connected()||active_store_.card(card)==nullptr||
-      port_.kind(active_store_,card)==ControlModalKind::NONE)return false;
+bool PageModalRuntime::valid_card(ConfigurationHandle card, ControlModalKind requested) const {
+  if (next_opening_ == 0 || !port_.connected() || active_store_.card(card) == nullptr ||
+      port_.kind(active_store_, card, requested) == ControlModalKind::NONE)
+    return false;
   for(PageId page=0;page<active_store_.page_count();++page) {
     const auto *definition=active_store_.page(page);
     if(definition->navigable&&card.index>=definition->first_card&&
@@ -32,18 +33,26 @@ bool PageModalRuntime::valid_card(ConfigurationHandle card)const {
   return false;
 }
 bool PageModalRuntime::valid_request(const Request &request)const {
-  return request.pending && request.connection == port_.connection_generation() && valid_card(request.card) &&
+  return request.pending && request.connection == port_.connection_generation() &&
+         valid_card(request.card, request.kind) &&
          (!request.from_binding ||
           (request.origin.binding != 0 && !request.origin.back && port_.valid_origin(request.origin)));
 }
 bool PageModalRuntime::request(PageBindingToken origin) {
-  const Request request{
-      {origin.configuration, origin.card}, origin, port_.connection_generation(), true, true};
+  const Request request{{origin.configuration, origin.card},
+                        origin,
+                        port_.connection_generation(),
+                        ControlModalKind::NONE,
+                        true,
+                        true};
   if(!valid_request(request))return false;
   pending_=request;return true;
 }
 bool PageModalRuntime::request_card(ConfigurationHandle card) {
-  const Request request{card, {}, port_.connection_generation(), true, false};
+  return request_card(card, ControlModalKind::NONE);
+}
+bool PageModalRuntime::request_card(ConfigurationHandle card, ControlModalKind requested) {
+  const Request request{card, {}, port_.connection_generation(), requested, true, false};
   if(!valid_request(request))return false;
   pending_=request;return true;
 }
@@ -92,11 +101,15 @@ void PageModalRuntime::loop() {
   if(!pending_.pending)return;
   const auto request=pending_;pending_={};if(!valid_request(request))return;
   const auto card=request.card;
-  if(context_&&token_.configuration==card.generation&&token_.card==card.index)return;
+  const auto requested_kind = port_.kind(active_store_, card, request.kind);
+  if (requested_kind == ControlModalKind::NONE) return;
+  if (context_ && token_.configuration == card.generation && token_.card == card.index &&
+      token_.kind == requested_kind)
+    return;
   retire_context(PageModalClose::SWITCH);collect_retired();
   if(pending_.pending)return; // A reentrant replacement request supersedes this one.
   if(retired_) {pending_=request;return;} // Never exceed one allocated context.
-  const PageModalToken next{card.generation,next_opening_++,card.index,port_.kind(active_store_,card)};
+  const PageModalToken next{card.generation, next_opening_++, card.index, requested_kind};
   void *created=port_.create(active_store_,card,next);
   if(!created){++memory_.failures;return;}
   context_ = created;
