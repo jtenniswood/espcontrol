@@ -1463,9 +1463,20 @@ esp_err_t AsyncWebServer::handle_multipart_upload_(httpd_req_t *r, const char *c
     return ESP_OK;
   }
 
+  struct UploadGuard {
+    AsyncWebHandler *handler;
+    AsyncWebServerRequest *request;
+    bool accepted = false;
+    ~UploadGuard() {
+      if (!accepted) handler->handleUploadAbort(request);
+    }
+  } upload{handler, &req};
+
   // Upload state
   std::string filename;
   size_t index = 0;
+  bool file_finished = false;
+  bool additional_file_data = false;
   // Create reader on heap to reduce stack usage
   auto reader = std::make_unique<MultipartReader>("--" + std::string(boundary_start, boundary_len));
 
@@ -1473,6 +1484,13 @@ esp_err_t AsyncWebServer::handle_multipart_upload_(httpd_req_t *r, const char *c
   reader->set_data_callback([&](const uint8_t *data, size_t len) {
     if (!reader->has_file() || !len)
       return;
+
+    // Browser OTA accepts one firmware file. Never concatenate a later file
+    // onto the first image or finalise an upload whose body is still invalid.
+    if (file_finished) {
+      additional_file_data = true;
+      return;
+    }
 
     if (filename.empty()) {
       filename = reader->get_current_part().filename;
@@ -1486,9 +1504,7 @@ esp_err_t AsyncWebServer::handle_multipart_upload_(httpd_req_t *r, const char *c
 
   reader->set_part_complete_callback([&]() {
     if (index > 0) {
-      handler->handleUpload(&req, filename, index, nullptr, 0, true);  // End
-      filename.clear();
-      index = 0;
+      file_finished = true;
     }
   });
 
@@ -1520,7 +1536,17 @@ esp_err_t AsyncWebServer::handle_multipart_upload_(httpd_req_t *r, const char *c
     }
   }
 
+  if (!reader->is_complete() || !file_finished || additional_file_data) {
+    ESP_LOGW(TAG, "Multipart upload must contain one complete, nonempty firmware file");
+    httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, nullptr);
+    return ESP_FAIL;
+  }
+
+  // Finalisation can commit the image and schedule a reboot. Do this only
+  // after the entire multipart body has been accepted, including its ending.
+  handler->handleUpload(&req, filename, index, nullptr, 0, true);
   handler->handleRequest(&req);
+  upload.accepted = true;
   return ESP_OK;
 }
 #endif  // USE_WEBSERVER_OTA
