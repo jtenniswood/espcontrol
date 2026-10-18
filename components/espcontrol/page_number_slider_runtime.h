@@ -63,6 +63,7 @@ class PageNumberSliderRuntime final : public PageRuntimeResources, public PageEn
     Source* source{nullptr};
     Card* card{nullptr};
     uint32_t generation{0};
+    bool valid{false};
   };
   static bool ready(const Source&);
   static void set_position(Card&, int position);

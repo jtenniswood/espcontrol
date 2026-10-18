@@ -149,6 +149,7 @@ add_custom_command(OUTPUT ${PAGE_NUMBER_SLIDER_SOURCE}
     ../../components/espcontrol/button_grid_sliders.h
   VERBATIM)
 add_executable(page_number_slider_runtime_test ${PAGE_NUMBER_SLIDER_SOURCE}
+  ../../components/espcontrol/page_store_runtime.cpp
   ../../components/espcontrol/page_number_slider_runtime.cpp ../../components/espcontrol/page_store.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp)
 target_compile_features(page_number_slider_runtime_test PRIVATE cxx_std_17)

@@ -12,7 +12,10 @@ There are no widgets, callbacks, timers, formatted strings or HA registrations
 in this owner. Exact active/staged arenas default to 32 sources, 512 cards and
 2,048 name bytes including terminators. Preparation validates budgets before
 allocating; discard/failure preserves active records, and an empty configuration
-frees the arena. Memory counters separate fixed, active/staged/peak storage,
+frees the arena. Private preparation generations adopt the committed generation
+at activation, including generation-zero initial loads. Presence is tracked
+separately from generation; cancelled replacements preserve live interaction.
+Memory counters separate fixed, active/staged/peak storage,
 source/card counts and preparation failures.
 
 Prepare before the HA graph and include the owner in `PageEntityObserverSet`.
@@ -48,7 +51,8 @@ Host reference tests compare 30,000 state/metadata/drag sequences against the
 actual production slider subscription and numeric helpers. They also cover
 independent duplicates, repeated confirmations, repeated versus changed ranges,
 invalid fields, shared-graph staging, reconnect, budget/allocation failures,
-all nine profiles, allocation-free reads/updates and 1,000 replacements.
+all nine profiles, allocation-free reads/updates, real `PageStoreRuntime`
+publication and 1,000 replacements.
 
 These are state-owner checks, not physical layout or heap/PSRAM qualification.
 Visible ports, production selection, remaining drivers, the complete factory

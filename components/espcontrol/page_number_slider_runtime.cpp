@@ -71,7 +71,7 @@ bool PageNumberSliderRuntime::prepare(const PageStore& store) {
     discard_prepared();
     return false;
   };
-  if (!store.generation() ||
+  if (!store.source_document() ||
       !cards(store,
              [&](CardId id, std::string_view key) {
                if (count >= max_cards_) return false;
@@ -99,6 +99,7 @@ bool PageNumberSliderRuntime::prepare(const PageStore& store) {
   staged_.arena = arena;
   staged_.bytes = bytes;
   staged_.generation = store.generation();
+  staged_.valid = true;
   staged_.source = static_cast<Source*>(arena);
   staged_.card =
       arena ? reinterpret_cast<Card*>(static_cast<char*>(arena) + sources * sizeof(Source)) : nullptr;
@@ -124,14 +125,15 @@ void PageNumberSliderRuntime::discard_prepared() {
   clear(staged_);
 }
 void PageNumberSliderRuntime::activate_prepared(const PageStore& store) {
-  if (!store.generation() || store.generation() != staged_.generation) return;
+  if (!staged_.valid || !page_prepared_generation_matches(staged_.generation, store.generation())) return;
   clear(active_);
   active_ = staged_;
+  active_.generation = store.generation();
   staged_ = {};
   ++revision_;
 }
 void PageNumberSliderRuntime::retire_active() {
-  if (active_.generation) ++revision_;
+  if (active_.valid) ++revision_;
   clear(active_);
 }
 bool PageNumberSliderRuntime::ready(const Source& source) {
@@ -158,7 +160,7 @@ void PageNumberSliderRuntime::observed(uint32_t generation, std::string_view ent
                                         : 0;
   if (!field) return;
   for (auto* slot : {&active_, &staged_}) {
-    if (!generation || generation != slot->generation) continue;
+    if (!slot->valid || generation != slot->generation) continue;
     for (size_t i = 0; i < slot->sources; ++i) {
       auto& source = slot->source[i];
       if (source.entity != entity) continue;
@@ -230,13 +232,13 @@ void PageNumberSliderRuntime::loop() {
   ++revision_;
 }
 PageNumberSliderRuntime::Card* PageNumberSliderRuntime::find(ConfigurationHandle handle) {
-  if (!handle.generation || handle.generation != active_.generation) return nullptr;
+  if (!active_.valid || handle.generation != active_.generation) return nullptr;
   for (size_t i = 0; i < active_.cards; ++i)
     if (active_.card[i].card == handle.index) return active_.card + i;
   return nullptr;
 }
 PageNumberSliderSnapshot PageNumberSliderRuntime::read(ConfigurationHandle handle) const {
-  if (!handle.generation || handle.generation != active_.generation) return {};
+  if (!active_.valid || handle.generation != active_.generation) return {};
   for (size_t i = 0; i < active_.cards; ++i) {
     const auto& card = active_.card[i];
     if (card.card != handle.index) continue;

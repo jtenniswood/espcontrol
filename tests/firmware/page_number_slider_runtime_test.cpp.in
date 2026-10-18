@@ -47,6 +47,7 @@ void lv_label_set_display_text(lv_obj_t* object, const char* text) {
 }
 #include "button_grid_config_parser.h"
 #include "page_card_dependencies.h"
+#include "page_store_runtime.h"
 #include "panel_config_document.h"
 using namespace espcontrol;
 using namespace espcontrol::pages;
@@ -264,6 +265,36 @@ void graph_snapshots() {
   subscriptions.send("step", "0.2");
   assert(!runtime.finish({18, 0}, 20, target) && !runtime.read({18, 0}).dragging);
 }
+void publication() {
+  Fixture fixture(17), empty(18, "sensor.room", "sensor");
+  Arena arena;
+  Subscriptions subscriptions;
+  PageNumberSliderRuntime runtime(arena, subscriptions);
+  {
+    PageStoreRuntime store(DEVICE_UI_PROFILES[8], arena, 32768, &runtime);
+    assert(store.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    for (const auto& report : {std::pair{"min", "-10"}, {"max", "10"}, {"step", "0.1"}, {"", "5"}})
+      runtime.observed(UINT32_MAX, "number.room", report.first, report.second, false);
+    assert(!runtime.read({UINT32_MAX, 0}).available);
+    assert(store.activate_prepared(0, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    assert(runtime.read({0, 0}).available && runtime.read({0, 0}).position == 150);
+    double target = 0;
+    assert(runtime.begin({0, 0}) && runtime.finish({0, 0}, 100, target) && std::fabs(target) < 1e-12);
+    assert(store.prepare(PANEL_CONFIG_DOCUMENT_VERSION, empty.document.data(), empty.size));
+    store.discard_prepared();
+    assert(runtime.read({0, 0}).position == 100 && runtime.read({0, 0}).available);
+    runtime.observed(0, "number.room", "", "6", false);
+    assert(runtime.read({0, 0}).position == 160);
+    assert(store.prepare(PANEL_CONFIG_DOCUMENT_VERSION, empty.document.data(), empty.size));
+    assert(store.activate_prepared(42, PANEL_CONFIG_DOCUMENT_VERSION, empty.document.data(), empty.size));
+    assert(runtime.memory().sources == 0 && runtime.memory().active_bytes == 0 &&
+           runtime.memory().staged_bytes == 0 && !runtime.read({0, 0}).available);
+    assert(!runtime.begin({0, 0}));
+    runtime.observed(UINT32_MAX, "number.room", "", "8", false);
+    assert(!runtime.read({42, 0}).available);
+  }
+  assert(arena.live.empty());
+}
 void lifecycle() {
   Arena arena;
   Subscriptions subscriptions;
@@ -357,4 +388,5 @@ int main() {
   parity();
   graph_snapshots();
   lifecycle();
+  publication();
 }
