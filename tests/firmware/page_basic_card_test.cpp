@@ -594,6 +594,7 @@ void number_slider_profile(const DeviceUiLimits& limits) {
            definition.kind == BasicCardKind::NUMBER_SLIDER);
     assert(!definition.active_color && !definition.large_numbers && definition.unit.empty() &&
            definition.icon_on == definition.icon);
+    assert(basic_folder_child_indicator(fixture.store,0)=="number.room");
     Arena arena;
     Subscriptions subscriptions;
     PageCardDependencies dependencies;
