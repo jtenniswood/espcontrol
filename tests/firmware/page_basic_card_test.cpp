@@ -472,6 +472,50 @@ void cleaning_profile(const DeviceUiLimits& limits) {
   state.activate_prepared(empty_area.store);
   assert(!read_basic_cleaning(definition, {17, 0}, state).service);
 }
+PageTimezoneSelection test_timezone_resolve(void*, std::string_view option, time_t) {
+  const auto id = option.substr(0, option.find(" ("));
+  return {id, id == "Asia/Kathmandu" ? "GMT-5:45" : id == "Pacific/Chatham" ? "GMT-12:45" : "UTC0"};
+}
+void clock_profile(const DeviceUiLimits& limits) {
+  for (const auto* type : {"clock", "timezone"}) {
+    const std::string city = "Unknown/" + std::string(600, 'x') + "_City";
+    Fixture fixture(limits, city + ";Ignored;Power;Lightbulb;;;" + type + ";;large_numbers");
+    BasicCardDefinition definition;
+    assert(prepare_basic_card(fixture.store, 0, definition));
+    assert(definition.kind == BasicCardKind::CLOCK && definition.large_numbers && definition.icon.empty() &&
+           !definition.push_feedback && definition.unit.empty());
+    assert(definition.clock.show_label == (std::string(type) == "timezone"));
+    assert(basic_folder_child_indicator(fixture.store, 0).empty());
+    Arena arena;
+    Subscriptions subscriptions;
+    PageCardDependencies deps;
+    PageTimezoneRuntime timezone({nullptr, test_timezone_resolve});
+    PageEntityStateRuntime graph(deps, arena, subscriptions, {32, 32, 2048});
+    assert(timezone.prepare(fixture.store) && graph.prepare(fixture.store));
+    timezone.activate_prepared(fixture.store);
+    graph.activate_prepared(fixture.store);
+    auto read = [&]() {
+      return read_basic_card(definition, {17, 0}, graph, 2, "°C", nullptr, nullptr, nullptr, nullptr, nullptr,
+                             nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &timezone);
+    };
+    assert(std::strcmp(read().number, "--:--") == 0);
+    assert(timezone.update(true, 1792281900, "Asia/Kathmandu", true));
+    auto value = read();
+    assert(value.numeric && !value.on && !value.formatted_label);
+    if (definition.clock.show_label)
+      assert(value.clock_city_label && value.label.size() == 605 && value.label.substr(600) == "_City");
+    else
+      assert(value.label.empty() && !value.clock_city_label);
+    const size_t before = allocations;
+    for (int i = 0; i < 1000; ++i) (void)read();
+    assert(allocations == before);
+    ++subscriptions.generation;
+    (void)graph.revision();
+    assert(std::strcmp(read().number, value.number) == 0);
+    assert(timezone.update(false, 0, "Pacific/Chatham", false));
+    assert(std::strcmp(read().number, "--:--") == 0);
+  }
+}
 void calendar_profile(const DeviceUiLimits& limits) {
   for (bool datetime : {false, true}) {
     Fixture fixture(limits,
@@ -1646,6 +1690,7 @@ int main() {
     access_profile(limits);
     cleaning_profile(limits);
     calendar_profile(limits);
+    clock_profile(limits);
     local_relay_profile(limits);
     local_sensor_profile(limits);
     option_select_profile(limits);

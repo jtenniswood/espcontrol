@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "clock_card_view.h"
 #include "page_timezone_runtime.h"
 #include "panel_config_document.h"
 #include "timezone_offset.h"
@@ -124,6 +125,20 @@ void compare(PageTimezoneRuntime& runtime, uint32_t generation, time_t timestamp
   if (snapshot.valid)
     format_clock_time_without_suffix(text, sizeof(text), snapshot.hour, snapshot.minute, snapshot.use_12h);
   assert(value.text == text && unit.text.empty());
+  for (bool show : {false, true})
+    for (const auto* caption : {"", "A configured city"}) {
+      const auto before_format = allocations;
+      const auto formatted =
+          format_clock_card(snapshot, show, caption, static_cast<const char* (*)(const char*)>(nullptr));
+      assert(allocations == before_format);
+      Widget old_value, old_unit, old_label;
+      apply_timezone_card_text({&old_value, &old_unit, &old_label, "", caption, show}, valid, timestamp,
+                               option, use_12h);
+      std::string actual(formatted.label);
+      if (formatted.city) std::replace(actual.begin(), actual.end(), '_', ' ');
+      assert(old_value.text == formatted.value && old_label.text == actual);
+    }
+
   std::string city(snapshot.zone_id);
   const auto slash = city.rfind('/');
   if (slash != std::string::npos) city.erase(0, slash + 1);
