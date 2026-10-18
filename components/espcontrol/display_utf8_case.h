@@ -150,8 +150,33 @@ inline bool utf8_letter_like(uint32_t codepoint) {
          (codepoint >= 0x05EF && codepoint <= 0x05F2);
 }
 
-inline bool append_title_case_character(const std::string &text, size_t &offset,
-                                        std::string &out, bool &cap_next) {
+// Allocation-free counterpart for configuration-owned status histories.
+inline bool append_utf8_codepoint(char* output, size_t capacity, size_t& used, uint32_t point) {
+  char bytes[4];
+  size_t count = 0;
+  if (point <= 0x7F)
+    bytes[count++] = static_cast<char>(point);
+  else if (point <= 0x7FF) {
+    bytes[count++] = static_cast<char>(0xC0 | (point >> 6));
+    bytes[count++] = static_cast<char>(0x80 | (point & 0x3F));
+  } else if (point <= 0xFFFF) {
+    bytes[count++] = static_cast<char>(0xE0 | (point >> 12));
+    bytes[count++] = static_cast<char>(0x80 | ((point >> 6) & 0x3F));
+    bytes[count++] = static_cast<char>(0x80 | (point & 0x3F));
+  } else {
+    bytes[count++] = static_cast<char>(0xF0 | (point >> 18));
+    bytes[count++] = static_cast<char>(0x80 | ((point >> 12) & 0x3F));
+    bytes[count++] = static_cast<char>(0x80 | ((point >> 6) & 0x3F));
+    bytes[count++] = static_cast<char>(0x80 | (point & 0x3F));
+  }
+  if (!output || used >= capacity || count >= capacity - used) return false;
+  for (size_t i = 0; i < count; ++i) output[used++] = bytes[i];
+  output[used] = '\0';
+  return true;
+}
+
+inline bool append_title_case_character(const std::string& text, size_t& offset, std::string& out,
+                                        bool& cap_next) {
   uint32_t codepoint = 0;
   size_t length = 0;
   const Utf8DecodeStatus status = decode_utf8_codepoint(text, offset, codepoint, length);
@@ -175,4 +200,3 @@ inline bool append_title_case_character(const std::string &text, size_t &offset,
   offset += length;
   return true;
 }
-
