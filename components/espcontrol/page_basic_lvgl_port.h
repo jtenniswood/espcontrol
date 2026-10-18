@@ -283,7 +283,10 @@ class PageBasicLvglPort final:public PageRendererPort {
           for(const auto &w:widgets_)if(!w.fill||!w.slider)return false;
         }
         if(view.kind==BasicCardKind::MEDIA_ACTION&&(actions_.media==nullptr||(view.media.kind==MediaActionKind::PLAYLIST&&!media_)))return false;
-        if((view.kind==BasicCardKind::LIGHT||view.kind==BasicCardKind::COVER)&&actions_.control==nullptr)return false;
+        if ((view.kind == BasicCardKind::LIGHT || view.kind == BasicCardKind::COVER ||
+             view.kind == BasicCardKind::FAN_CONTROL) &&
+            actions_.control == nullptr)
+          return false;
         if(view.kind==BasicCardKind::COVER)for(const auto &w:widgets_)if(!w.fill)return false;
         if (((view.kind == BasicCardKind::MEDIA_ACTION || view.kind == BasicCardKind::MEDIA_POSITION ||
               view.kind == BasicCardKind::MEDIA_CONTROL) &&
@@ -488,6 +491,7 @@ class PageBasicLvglPort final:public PageRendererPort {
                                        s.definition->definition.kind == BasicCardKind::CLIMATE ||
                                        s.definition->definition.kind == BasicCardKind::ACTION ||
                                        s.definition->definition.kind == BasicCardKind::LIGHT ||
+                                       s.definition->definition.kind == BasicCardKind::FAN_CONTROL ||
                                        s.definition->definition.kind == BasicCardKind::COVER ||
                                        s.definition->definition.kind == BasicCardKind::FORECAST ||
                                        s.definition->definition.kind == BasicCardKind::MEDIA_ACTION ||
@@ -523,10 +527,22 @@ class PageBasicLvglPort final:public PageRendererPort {
                definition.action_display == BasicActionDisplay::NUMBER ||
                (definition.kind == BasicCardKind::TOGGLE && !definition.text_overlay &&
                 !definition.sensor.empty() && value.on);
-      const bool state_icon=definition.kind==BasicCardKind::TOGGLE||definition.kind==BasicCardKind::ICON||
-        definition.kind==BasicCardKind::STATUS||definition.kind==BasicCardKind::LIGHT||definition.kind==BasicCardKind::COVER||definition.action_display==BasicActionDisplay::ICON||definition.folder_mode==BasicFolderMode::ENTITY||definition.folder_mode==BasicFolderMode::CLIMATE||definition.folder_mode==BasicFolderMode::MOWER||definition.folder_mode==BasicFolderMode::CHILDREN;
-      if(definition.kind==BasicCardKind::WEATHER)glyph=active_.weather->glyphs[value.weather_condition];
-      else glyph=definition.kind==BasicCardKind::CLIMATE?(value.climate_icon_on?s.definition->on:s.definition->off):state_icon&&value.on?s.definition->on:s.definition->off;
+      const bool state_icon =
+          definition.kind == BasicCardKind::TOGGLE || definition.kind == BasicCardKind::ICON ||
+          definition.kind == BasicCardKind::STATUS || definition.kind == BasicCardKind::FAN_CONTROL ||
+          definition.kind == BasicCardKind::LIGHT || definition.kind == BasicCardKind::COVER ||
+          definition.action_display == BasicActionDisplay::ICON ||
+          definition.folder_mode == BasicFolderMode::ENTITY ||
+          definition.folder_mode == BasicFolderMode::CLIMATE ||
+          definition.folder_mode == BasicFolderMode::MOWER ||
+          definition.folder_mode == BasicFolderMode::CHILDREN;
+      if (definition.kind == BasicCardKind::WEATHER)
+        glyph = active_.weather->glyphs[value.weather_condition];
+      else
+        glyph = definition.kind == BasicCardKind::CLIMATE
+                    ? (value.climate_icon_on ? s.definition->on : s.definition->off)
+                : state_icon && value.on ? s.definition->on
+                                         : s.definition->off;
     }
     const bool now_playing = media_text(definition.kind);
     if (definition.kind == BasicCardKind::MEDIA_CONTROL && definition.media.volume_number) {
@@ -1214,8 +1230,10 @@ class PageBasicLvglPort final:public PageRendererPort {
       port->actions_.climate(port->actions_.owner,origin);
     else if(definition.kind==BasicCardKind::TOGGLE&&port->actions_.toggle)
       port->actions_.toggle(port->actions_.owner,origin,definition.entity);
-    else if((definition.kind==BasicCardKind::LIGHT||definition.kind==BasicCardKind::COVER)&&port->actions_.control)
-      port->actions_.control(port->actions_.owner,origin);
+    else if ((definition.kind == BasicCardKind::LIGHT || definition.kind == BasicCardKind::COVER ||
+              definition.kind == BasicCardKind::FAN_CONTROL) &&
+             port->actions_.control)
+      port->actions_.control(port->actions_.owner, origin);
     else if(definition.kind==BasicCardKind::FORECAST&&port->actions_.forecast)
       port->actions_.forecast(port->actions_.owner,origin);
     else if((definition.kind==BasicCardKind::MEDIA_ACTION||(definition.kind==BasicCardKind::MEDIA_NOW_PLAYING&&definition.media.play_pause_background))&&port->actions_.media)

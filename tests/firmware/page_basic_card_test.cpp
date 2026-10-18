@@ -81,7 +81,7 @@ void profile(const DeviceUiLimits &limits) {
   assert(std::strcmp(read_basic_card(invalid_precision,{17,0},state).number,"1.235")==0);
   ++subs.generation;assert(!read_basic_card(definition,{17,0},state).numeric);
   for (const auto& text :
-       {std::string("light.test;;;;;;;;confirm_off"), std::string("fan.test;;;;;;fan_control;;")}) {
+       {std::string("light.test;;;;;;;;confirm_off"), std::string("alarm.test;;;;;;alarm_control;;")}) {
     Fixture unsupported(limits,text);assert(!prepare_basic_card(unsupported.store,0,definition));
   }
   Fixture toggle(limits,"light.test;;Lightbulb;Lightbulb;sensor.temp;%;;2;");assert(prepare_basic_card(toggle.store,0,definition));assert(definition.kind==BasicCardKind::TOGGLE);
@@ -256,6 +256,52 @@ void control_profile(const DeviceUiLimits &limits) {
   for(const auto &pair:{std::pair<const char *,int>{"0",100},{"100",0},{"-1e30",100},{"1e30",0},{"25prefix",75}}){transport.send("cover.room","current_position",pair.first);value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==pair.second);}
   const auto before=allocations;for(int i=0;i<1000;++i){value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==75);}assert(allocations==before);
   ++transport.generation;value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==0&&!value.on);transport.send("cover.room","","closed");value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==100);
+}
+
+void fan_control_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, "fan.room;;Auto;Auto;;;fan_control;;fan_light_entity=light.fan");
+  BasicCardDefinition definition;
+  assert(prepare_basic_card(fixture.store, 0, definition));
+  assert(definition.kind == BasicCardKind::FAN_CONTROL && definition.active_color &&
+         definition.push_feedback && definition.icon == "Fan" && definition.icon_on == "Fan" &&
+         definition.default_label == std::string_view("Fan") && definition.unit.empty());
+  assert(basic_folder_child_indicator(fixture.store, 0) == "fan.room");
+  PageCardDependencies source;
+  Arena arena;
+  Subscriptions transport;
+  PageEntityStateRuntime state(source, arena, transport, {32, 32, 2048});
+  assert(state.prepare(fixture.store));
+  state.activate_prepared(fixture.store);
+  const ConfigurationHandle handle{17, 0};
+  assert(read_basic_card(definition, handle, state).label == "Fan");
+  auto translated = [](const char* key) { return std::strcmp(key, "Fan") == 0 ? "Translated Fan" : key; };
+  assert(read_basic_card(definition, handle, state, 2, "°C", translated).label == "Translated Fan");
+  transport.send("fan.room", "friendly_name", "Room Fan");
+  for (const auto& item : {std::pair<const char*, bool>{"on", true},
+                           {"ON", true},
+                           {" off ", false},
+                           {"unknown", false},
+                           {"unavailable", false},
+                           {"", false}}) {
+    transport.send("fan.room", "", item.first);
+    const auto value = read_basic_card(definition, handle, state);
+    assert(value.on == item.second && value.label == "Room Fan" && !value.numeric);
+    assert(read_basic_indicator(handle, "fan.room", state) == item.second);
+  }
+  transport.send("fan.room", "", "on");
+  const auto before = allocations;
+  for (int n = 0; n < 1000; ++n) assert(read_basic_card(definition, handle, state).on);
+  assert(allocations == before);
+  ++transport.generation;
+  assert(!read_basic_card(definition, handle, state).on);
+  Fixture custom(limits, "fan.room;Custom;Fan Off;Fan;ignored;ignored;fan_control;2;number_display=actual");
+  assert(prepare_basic_card(custom.store, 0, definition));
+  assert(definition.label == "Custom" && definition.icon == "Fan Off" && definition.icon_on == "Fan Off");
+  assert(state.prepare(custom.store));
+  state.activate_prepared(custom.store);
+  transport.send("fan.room", "friendly_name", "Ignored name");
+  auto value = read_basic_card(definition, handle, state);
+  assert(value.label == "Custom" && !value.numeric && value.unit.empty());
 }
 
 void weather_profile(const DeviceUiLimits &limits) {
@@ -622,6 +668,7 @@ int main() {
     climate_profile(limits);
     status_actions_profile(limits);
     control_profile(limits);
+    fan_control_profile(limits);
     weather_profile(limits);
     media_action_profile(limits);
     media_position_profile(limits);

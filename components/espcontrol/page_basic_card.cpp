@@ -187,6 +187,13 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
     out.unit={};out.kind=BasicCardKind::COVER;out.push_feedback=true;out.default_label="Cover";
     if(out.icon.empty()||out.icon=="Auto")out.icon="Blinds";
     if(out.icon_on.empty()||out.icon_on=="Auto")out.icon_on="Blinds Open";
+  } else if (type == "fan_control") {
+    out.kind = BasicCardKind::FAN_CONTROL;
+    out.active_color = out.push_feedback = true;
+    out.unit = {};
+    out.default_label = "Fan";
+    if (out.icon.empty() || out.icon == "Auto") out.icon = "Fan";
+    if (out.icon_on.empty() || out.icon_on == "Auto") out.icon_on = out.icon;
   } else if(type=="climate"||type=="climate_control") {
     out.kind=BasicCardKind::CLIMATE;out.active_color=true;
     const auto label=normalize_climate_label_display(cfg_option_value(options,"label_display"));
@@ -231,7 +238,9 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
   // The currently ported children which contributed to the old indicator.
   // Sensors never contributed. Extend this policy when other drivers port their
   // indicator semantics (timer/mower/local controls use different predicates).
-  return type.empty()||type=="light_switch"||type=="media"?store.field(*card,CardField::ENTITY):std::string_view{};
+  return type.empty() || type == "light_switch" || type == "media" || type == "fan_control"
+             ? store.field(*card, CardField::ENTITY)
+             : std::string_view{};
 }
 bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,PageEntityStateRuntime &state,BasicFolderMode mode) {
   const auto primary=find(state,handle,entity);if(!available(primary))return false;

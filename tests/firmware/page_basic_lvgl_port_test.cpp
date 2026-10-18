@@ -49,6 +49,17 @@ struct Subscriptions:PageEntitySubscriptions {
   void send(const char *entity,const char *attribute,std::string_view value){for(auto &b:bindings)if(std::strcmp(b.entity,entity)==0&&std::strcmp(b.attribute,attribute)==0)b.deliver(b.owner,b.revision,b.channel,value);}
 };
 struct Fixture {
+  Fixture(const DeviceUiLimits& limits, std::string_view card) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    assert(writer.append_button(1, reinterpret_cast<const uint8_t*>(card.data()), card.size()) ==
+           PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   struct MediaControls {};
   Fixture(const DeviceUiLimits& limits, MediaControls) {
     PanelConfigWriter writer(document.data(), document.size());
@@ -155,10 +166,11 @@ struct Fixture {
       assert(writer.append_subpage(1,reinterpret_cast<const uint8_t *>(child.data()),child.size())==PanelConfigStatus::OK);const std::string key="button_order",order="1,2";assert(writer.append_setting(reinterpret_cast<const uint8_t *>(key.data()),key.size(),reinterpret_cast<const uint8_t *>(order.data()),order.size())==PanelConfigStatus::OK);assert(writer.finish(&size)==PanelConfigStatus::OK);assert(PageStore::stage_v1(document.data(),size,limits,11,arena.data(),arena.size(),&store)==PageStoreStatus::OK);return;
     }
     if(controls) {
-      button(1,";Controls;Home;Auto;;;subpage;;");button(2,"cover.room;Blind;Auto;Auto;modal;;cover;0;");button(3,"light.room;Lamp;Auto;Auto;;;light_control;0;");
-      const std::string child="~B,1,2|LC,light.room,Lamp,Auto,Auto,,,,|C,cover.room,Blind,Auto,Auto,modal,,,";
+      button(1,";Controls;Home;Auto;indicator;;subpage;;");button(2,"cover.room;Blind;Auto;Auto;modal;;cover;0;");button(3,"light.room;Lamp;Auto;Auto;;;light_control;0;");
+      button(4,"fan.room;;Auto;Auto;;;fan_control;;");
+      const std::string child="~B,1,2,3|LC,light.room,Lamp,Auto,Auto,,,,|C,cover.room,Blind,Auto,Auto,modal,,,|FC,fan.room,,Auto,Auto,,,,";
       assert(writer.append_subpage(1,reinterpret_cast<const uint8_t *>(child.data()),child.size())==PanelConfigStatus::OK);
-      const std::string key="button_order",order="1,2,3";assert(writer.append_setting(reinterpret_cast<const uint8_t *>(key.data()),key.size(),reinterpret_cast<const uint8_t *>(order.data()),order.size())==PanelConfigStatus::OK);
+      const std::string key="button_order",order="1,2,3,4";assert(writer.append_setting(reinterpret_cast<const uint8_t *>(key.data()),key.size(),reinterpret_cast<const uint8_t *>(order.data()),order.size())==PanelConfigStatus::OK);
       assert(writer.finish(&size)==PanelConfigStatus::OK);assert(PageStore::stage_v1(document.data(),size,limits,11,arena.data(),arena.size(),&store)==PageStoreStatus::OK);return;
     }
     if(stateless) {
@@ -198,7 +210,7 @@ struct Fixture {
 };
 template<size_t Slots>struct Actions {
   PageRendererRuntime<Slots> *renderer{nullptr};size_t toggles{0},climates{0},commands{0},icon_resolves{0},seeks{0};uint8_t seek_percent{0};float seek_duration{0};PageId seek_page{NO_PAGE};PageBindingToken last;char entity[64]{};
-  static const char *icon(void *owner,std::string_view name,std::string_view){++static_cast<Actions *>(owner)->icon_resolves;return name=="Weather Sunny"?"SUN": name=="Lightbulb"?"ON":name=="Blinds Open"?"OPEN":name=="Blinds"?"CLOSED":"I";}
+  static const char *icon(void *owner,std::string_view name,std::string_view){++static_cast<Actions *>(owner)->icon_resolves;return name=="Fan"?"FAN":name=="Weather Sunny"?"SUN": name=="Lightbulb"?"ON":name=="Blinds Open"?"OPEN":name=="Blinds"?"CLOSED":"I";}
   static bool valid(void *owner,PageBindingToken t){return static_cast<Actions *>(owner)->renderer->valid(t);}
   static void toggle(void *owner,PageBindingToken t,std::string_view entity){auto &a=*static_cast<Actions *>(owner);++a.toggles;a.last=t;assert(entity.size()<sizeof(a.entity));std::memcpy(a.entity,entity.data(),entity.size());a.entity[entity.size()]='\0';}
   static void open(void *owner,PageBindingToken,PageId page){assert(static_cast<Actions *>(owner)->renderer->open_page(page));}
@@ -441,17 +453,40 @@ template<size_t Slots>void control_profile(const DeviceUiLimits &limits) {
   for(auto &w:widgets){w.button=lv_button_create(page);w.fill=lv_obj_create(w.button);w.icon=lv_label_create(w.button);w.label=lv_label_create(w.button);w.sensor_container=lv_obj_create(w.button);w.value=lv_label_create(w.sensor_container);w.unit=lv_label_create(w.sensor_container);}
   PageBasicTheme theme;Actions<Slots> actions;
   {auto callbacks=actions.callbacks();callbacks.control=nullptr;PageBasicLvglPort<Slots> missing(arena,state,widgets,{limits.slot_count,limits.grid_columns},theme,callbacks);assert(missing.initialize());assert(!missing.prepare(fixture.store,Slots));}
+  {
+    Fixture fan_only(limits, std::string_view("fan.room;;Auto;Auto;;;fan_control;;"));
+    auto callbacks = actions.callbacks();
+    callbacks.control = nullptr;
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                    callbacks);
+    assert(missing.initialize());
+    assert(!missing.prepare(fan_only.store, Slots));
+  }
   {auto incomplete=widgets;incomplete[0].fill=nullptr;PageBasicLvglPort<Slots>missing(arena,state,incomplete,{limits.slot_count,limits.grid_columns},theme,actions.callbacks());assert(missing.initialize());assert(!missing.prepare(fixture.store,Slots));}
   {PageLabelRefresh cache(arena);PageBasicLvglPort<Slots>port(arena,state,widgets,{limits.slot_count,limits.grid_columns},theme,actions.callbacks());assert(port.initialize());std::array<lv_obj_t *,Slots*4>labels{};size_t index=0;for(const auto &w:widgets)for(auto *label:{w.icon,w.label,w.value,w.unit})labels[index++]=label;assert(cache.initialize(labels.data(),labels.size()));PageRendererRuntime<Slots>renderer(limits,arena,port);actions.renderer=&renderer;assert(renderer.prepare(fixture.store)&&state.prepare(fixture.store));renderer.activate_prepared(fixture.store);state.activate_prepared(fixture.store);
-    subscriptions.send("light.room","","on");subscriptions.send("cover.room","","open");subscriptions.send("cover.room","current_position","25");renderer.update_visible();lv_obj_update_layout(page);lv_refr_now(lv_display_get_default());
+    subscriptions.send("fan.room","","on");subscriptions.send("fan.room","friendly_name","Room Fan");subscriptions.send("light.room","","on");subscriptions.send("cover.room","","open");subscriptions.send("cover.room","current_position","25");renderer.update_visible();lv_obj_update_layout(page);lv_refr_now(lv_display_get_default());
     assert(!lv_obj_has_state(widgets[1].button,LV_STATE_CHECKED));assert(lv_obj_has_state(widgets[2].button,LV_STATE_CHECKED));assert(!lv_obj_has_flag(widgets[1].fill,LV_OBJ_FLAG_HIDDEN));assert(lv_obj_get_height(widgets[1].fill)==lv_obj_get_height(widgets[1].button)*75/100);assert(!lv_obj_has_flag(widgets[1].fill,LV_OBJ_FLAG_CLICKABLE));
     lv_obj_set_size(page,600,320);lv_obj_update_layout(page);assert(lv_obj_get_width(widgets[1].fill)==lv_obj_get_width(widgets[1].button)&&lv_obj_get_height(widgets[1].fill)==lv_obj_get_height(widgets[1].button)*75/100);assert(lv_obj_get_y(widgets[1].fill)+lv_obj_get_style_pad_top(widgets[1].button,LV_PART_MAIN)==0);lv_obj_set_size(page,480,480);lv_obj_update_layout(page);
-    click(widgets[1].button);assert(actions.commands==1&&renderer.valid(actions.last));
-    const auto child=fixture.store.card(0)->target;lv_obj_send_event(widgets[1].button,LV_EVENT_PRESSED,nullptr);assert(renderer.open_page(child));renderer.update_visible();lv_obj_update_layout(page);lv_obj_send_event(widgets[1].button,LV_EVENT_CLICKED,nullptr);assert(actions.commands==1);assert(lv_obj_has_flag(widgets[1].fill,LV_OBJ_FLAG_HIDDEN));assert(!lv_obj_has_flag(widgets[2].fill,LV_OBJ_FLAG_HIDDEN));assert(lv_obj_get_height(widgets[2].fill)==lv_obj_get_height(widgets[2].button)*75/100);
-    subscriptions.send("cover.room","current_position","70");subscriptions.send("cover.room","current_position","bad");renderer.update_visible();lv_obj_update_layout(page);assert(lv_obj_get_height(widgets[2].fill)==lv_obj_get_height(widgets[2].button)*30/100);click(widgets[2].button);assert(actions.commands==2);assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);assert(renderer.open_page(child));renderer.update_visible();assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);
+    assert(lv_obj_has_state(widgets[3].button,LV_STATE_CHECKED));
+    assert(lv_obj_has_state(widgets[0].button,LV_STATE_CHECKED));
+    assert(std::strcmp(lv_label_get_text(widgets[3].icon),"FAN")==0 &&
+           std::strcmp(lv_label_get_text(widgets[3].label),"Room Fan")==0 &&
+           lv_obj_has_flag(widgets[3].sensor_container,LV_OBJ_FLAG_HIDDEN));
+    click(widgets[3].button);assert(actions.commands==1&&renderer.valid(actions.last));
+    const auto fan_token=renderer.binding(3);
+    lv_obj_send_event(widgets[3].button,LV_EVENT_PRESSED,nullptr);
+    const auto fan_child=fixture.store.card(0)->target;assert(renderer.open_page(fan_child));
+    renderer.update_visible();lv_obj_send_event(widgets[3].button,LV_EVENT_CLICKED,nullptr);
+    assert(actions.commands==1&&!renderer.valid(fan_token));assert(renderer.back());renderer.update_visible();
+    subscriptions.send("fan.room","","off");renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[3].button,LV_STATE_CHECKED));
+    subscriptions.send("fan.room","","on");renderer.update_visible();
+    click(widgets[1].button);assert(actions.commands==2&&renderer.valid(actions.last));
+    const auto child=fixture.store.card(0)->target;lv_obj_send_event(widgets[1].button,LV_EVENT_PRESSED,nullptr);assert(renderer.open_page(child));renderer.update_visible();lv_obj_update_layout(page);lv_obj_send_event(widgets[1].button,LV_EVENT_CLICKED,nullptr);assert(actions.commands==2);assert(lv_obj_has_flag(widgets[1].fill,LV_OBJ_FLAG_HIDDEN));assert(!lv_obj_has_flag(widgets[2].fill,LV_OBJ_FLAG_HIDDEN));assert(lv_obj_get_height(widgets[2].fill)==lv_obj_get_height(widgets[2].button)*75/100);
+    subscriptions.send("cover.room","current_position","70");subscriptions.send("cover.room","current_position","bad");renderer.update_visible();lv_obj_update_layout(page);assert(lv_obj_get_height(widgets[2].fill)==lv_obj_get_height(widgets[2].button)*30/100);click(widgets[2].button);assert(actions.commands==3);assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);assert(renderer.open_page(child));renderer.update_visible();assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);
     const auto cpp=cpp_allocations,reservations=arena.allocations,descriptors=cache.memory().descriptor_adds,retained=lv_live_bytes,channels=subscriptions.bindings.size();
     for(size_t n=0;n<1000;++n){assert(renderer.open_page(child));renderer.update_visible();lv_obj_update_layout(page);assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);assert(cpp_allocations==cpp&&arena.allocations==reservations&&cache.memory().descriptor_adds==descriptors&&subscriptions.bindings.size()==channels&&lv_live_bytes==retained);}
-    ++subscriptions.generation;renderer.update_visible();lv_obj_update_layout(page);assert(lv_obj_has_flag(widgets[1].fill,LV_OBJ_FLAG_HIDDEN)&&!lv_obj_has_state(widgets[2].button,LV_STATE_CHECKED));std::printf("%s: light/cover 1000 cycles, fixed retained resources, %zu native LVGL bytes including fill bank\n",limits.device_profile,retained);renderer.retire_active();state.retire_active();
+    ++subscriptions.generation;renderer.update_visible();lv_obj_update_layout(page);assert(lv_obj_has_flag(widgets[1].fill,LV_OBJ_FLAG_HIDDEN)&&!lv_obj_has_state(widgets[2].button,LV_STATE_CHECKED));assert(!lv_obj_has_state(widgets[3].button,LV_STATE_CHECKED));std::printf("%s: light/cover/fan controls 1000 cycles, fixed retained resources, %zu native LVGL bytes including fill bank\n",limits.device_profile,retained);renderer.retire_active();state.retire_active();
   }assert(arena.live==0);lv_obj_delete(page);
 }
 
@@ -1719,6 +1754,17 @@ int main() {
   for (const auto& limits : DEVICE_UI_PROFILES) {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
+    const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "controls") == 0) {
+      switch (limits.slot_count) {
+        case 6: control_profile<6>(limits); break;
+        case 9: control_profile<9>(limits); break;
+        case 15: control_profile<15>(limits); break;
+        case 20: control_profile<20>(limits); break;
+        default: assert(false);
+      }
+      continue;
+    }
     switch (limits.slot_count) {
       case 6:
         profile<6>(limits);
