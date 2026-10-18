@@ -90,7 +90,7 @@ class PageBasicLvglPort final:public PageRendererPort {
                     const PageBasicTheme& theme, PageBasicActions actions,
                     PageForecastRuntime* forecasts = nullptr, PageMediaStateRuntime* media = nullptr,
                     PageCoverArtView* artwork = nullptr, PageLocalSensorRuntime* local = nullptr,
-                    PageLocalRelayRuntime* relay = nullptr)
+                    PageLocalRelayRuntime* relay = nullptr, PageFanStatusRuntime* fan_status = nullptr)
       : allocator_(allocator),
         state_(state),
         widgets_(widgets),
@@ -101,7 +101,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         media_(media),
         artwork_(artwork),
         local_(local),
-        relay_(relay) {
+        relay_(relay),
+        fan_status_(fan_status) {
     for(size_t i=0;i<Slots;++i){shells_[i].port=this;shells_[i].index=i;}
   }
   ~PageBasicLvglPort()override {
@@ -303,6 +304,17 @@ class PageBasicLvglPort final:public PageRendererPort {
         }
         if(view.kind==BasicCardKind::CLIMATE&&actions_.climate==nullptr)return false;
         if(view.kind==BasicCardKind::ACTION&&actions_.action==nullptr)return false;
+        if ((view.kind == BasicCardKind::FAN_SWITCH || view.kind == BasicCardKind::FAN_OSCILLATE)) {
+          if (!fan_status_ || !actions_.action) return false;
+          label_capacity = std::max<size_t>(label_capacity, HA_FRIENDLY_NAME_MAX_LEN + 1);
+          for (const auto status :
+               {PageFanStatus::UNAVAILABLE, PageFanStatus::ON, PageFanStatus::OFF, PageFanStatus::UNSUPPORTED,
+                PageFanStatus::OSCILLATING, PageFanStatus::STILL}) {
+            const auto* key = PageFanStatusRuntime::text(status);
+            const auto* translated = theme_.translate ? theme_.translate(key) : nullptr;
+            label_capacity = std::max(label_capacity, std::strlen(translated ? translated : key) + 1);
+          }
+        }
         if (view.kind == BasicCardKind::FAN_DIRECTION && !actions_.action) return false;
         if (view.kind == BasicCardKind::FAN_PRESET && !actions_.control) return false;
         if (view.kind == BasicCardKind::OPTION_SELECT) {
@@ -554,6 +566,8 @@ class PageBasicLvglPort final:public PageRendererPort {
                                        s.definition->definition.kind == BasicCardKind::ACTION ||
                                        s.definition->definition.kind == BasicCardKind::LIGHT ||
                                        s.definition->definition.kind == BasicCardKind::FAN_CONTROL ||
+                                       s.definition->definition.kind == BasicCardKind::FAN_SWITCH ||
+                                       s.definition->definition.kind == BasicCardKind::FAN_OSCILLATE ||
                                        s.definition->definition.kind == BasicCardKind::FAN_DIRECTION ||
                                        s.definition->definition.kind == BasicCardKind::FAN_PRESET ||
                                        s.definition->definition.kind == BasicCardKind::OPTION_SELECT ||
@@ -576,7 +590,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       definition = s.definition->definition;
       value = read_basic_card(definition, {token.configuration, token.card}, state_,
                               s.cell.column_span > 1 ? 2 : 1, theme_.temperature_unit, theme_.translate,
-                              media_, local_, relay_);
+                              media_, local_, relay_, fan_status_);
       if(group_card(s))group_feedback(s,value);
       if(definition.folder_mode==BasicFolderMode::CHILDREN) {
         for(size_t child=0;child<s.definition->summary_count&&!value.on;++child) {
@@ -604,9 +618,10 @@ class PageBasicLvglPort final:public PageRendererPort {
                 !definition.sensor.empty() && value.on);
       const bool state_icon =
           definition.kind == BasicCardKind::TOGGLE || definition.kind == BasicCardKind::LOCAL_RELAY ||
-          definition.kind == BasicCardKind::ICON || definition.kind == BasicCardKind::STATUS ||
-          definition.kind == BasicCardKind::FAN_CONTROL || definition.kind == BasicCardKind::LIGHT ||
-          definition.kind == BasicCardKind::COVER || definition.action_display == BasicActionDisplay::ICON ||
+          definition.kind == BasicCardKind::FAN_SWITCH || definition.kind == BasicCardKind::ICON ||
+          definition.kind == BasicCardKind::STATUS || definition.kind == BasicCardKind::FAN_CONTROL ||
+          definition.kind == BasicCardKind::LIGHT || definition.kind == BasicCardKind::COVER ||
+          definition.action_display == BasicActionDisplay::ICON ||
           definition.folder_mode == BasicFolderMode::ENTITY ||
           definition.folder_mode == BasicFolderMode::CLIMATE ||
           definition.folder_mode == BasicFolderMode::MOWER ||
@@ -695,6 +710,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     seen_state_ = state_.revision();
     if (local_) seen_local_ = local_->revision();
     if (relay_) seen_relay_ = relay_->revision();
+    if (fan_status_) seen_fan_status_ = fan_status_->revision();
     seen_theme_ = theme_.revision;
     seen_forecast_ = forecasts_ ? forecasts_->revision() : 0;
     seen_media_ = media_ ? media_->revision() : 0;
@@ -748,13 +764,15 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
   bool state_changed() const override {
     if (local_) local_->loop();
+    if (fan_status_) fan_status_->loop();
     if (media_layout_dirty_) return true;
     if (media_)
       for (const auto& shell : shells_)
         if (shell.pending_target >= 0 && !group_card(shell) &&
             static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= pending_timeout(shell))
           return true;
-    return (relay_ && relay_->revision() != seen_relay_) || (local_ && local_->revision() != seen_local_) ||
+    return (fan_status_ && fan_status_->revision() != seen_fan_status_) ||
+           (relay_ && relay_->revision() != seen_relay_) || (local_ && local_->revision() != seen_local_) ||
            state_.revision() != seen_state_ || theme_.revision != seen_theme_ ||
            (forecasts_ && forecasts_->revision() != seen_forecast_) ||
            (media_ && media_->revision() != seen_media_) ||
@@ -1359,10 +1377,25 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(origin.back){if(port->actions_.back)port->actions_.back(port->actions_.owner,origin);return;}
     if(!shell->definition)return;
     const auto &definition=shell->definition->definition;
+    if (definition.kind == BasicCardKind::FAN_SWITCH || definition.kind == BasicCardKind::FAN_OSCILLATE) {
+      if (!port->fan_status_) return;
+      port->fan_status_->loop();
+      const ConfigurationHandle card{origin.configuration, origin.card};
+      const auto status = port->fan_status_->read(card).status;
+      if (status == PageFanStatus::UNAVAILABLE || status == PageFanStatus::UNSUPPORTED ||
+          port->state_.read_attribute(card, definition.entity, {}).status != PageEntityStatus::AVAILABLE ||
+          (definition.kind == BasicCardKind::FAN_OSCILLATE &&
+           port->state_.read_attribute(card, definition.entity, "oscillating").status !=
+               PageEntityStatus::AVAILABLE))
+        return;
+    }
     if(definition.kind==BasicCardKind::FOLDER) {
       const auto target=port->store_.card(origin.card)->target;
       if(port->actions_.open&&target!=NO_PAGE)port->actions_.open(port->actions_.owner,origin,target);
-    } else if (definition.kind == BasicCardKind::FAN_DIRECTION && port->actions_.action)
+    } else if ((definition.kind == BasicCardKind::FAN_DIRECTION ||
+                definition.kind == BasicCardKind::FAN_SWITCH ||
+                definition.kind == BasicCardKind::FAN_OSCILLATE) &&
+               port->actions_.action)
       port->actions_.action(port->actions_.owner, origin);
     else if ((definition.kind == BasicCardKind::FAN_PRESET ||
               definition.kind == BasicCardKind::OPTION_SELECT) &&
@@ -1400,13 +1433,14 @@ class PageBasicLvglPort final:public PageRendererPort {
   PageCoverArtView* artwork_{nullptr};
   PageLocalSensorRuntime* local_{nullptr};
   PageLocalRelayRuntime* relay_{nullptr};
+  PageFanStatusRuntime* fan_status_{nullptr};
   std::array<Shell, Slots> shells_{};
   Arena active_, staged_;
   PageStore store_;
   bool initialized_{false}, media_layout_dirty_{false}, media_finishing_{false};
   size_t callbacks_{0};
-  uint64_t seen_relay_{0}, seen_local_{0}, seen_state_{0}, seen_theme_{0}, seen_forecast_{0}, seen_media_{0},
-      seen_artwork_{0};
+  uint64_t seen_fan_status_{0}, seen_relay_{0}, seen_local_{0}, seen_state_{0}, seen_theme_{0},
+      seen_forecast_{0}, seen_media_{0}, seen_artwork_{0};
   PageBasicMemory memory_;
 };
 }  // namespace espcontrol::pages

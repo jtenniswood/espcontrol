@@ -1,0 +1,230 @@
+#include <array>
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+#include <unordered_map>
+
+#include "i18n_generated.h"
+#include "page_fan_status_runtime.h"
+#include "panel_config_document.h"
+struct lv_obj_t;
+void lv_label_set_text(lv_obj_t*, const char*) {}
+#include "button_grid_config_parser.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+namespace {
+uint32_t tick = 100;
+uint32_t now() {
+  return tick;
+}
+struct Arena : PageArenaAllocator {
+  std::unordered_map<void*, size_t> live;
+  bool fail{false};
+  size_t calls{0};
+  void* allocate(size_t bytes) override {
+    ++calls;
+    if (fail) return nullptr;
+    auto* pointer = std::malloc(bytes);
+    assert(pointer);
+    live[pointer] = bytes;
+    return pointer;
+  }
+  void release(void* pointer, size_t bytes) override {
+    assert(live.at(pointer) == bytes);
+    live.erase(pointer);
+    std::free(pointer);
+  }
+};
+struct Subscriptions : PageEntitySubscriptions {
+  bool subscribe(const char*, const char*, void*, uint32_t, uint32_t, Deliver) override {
+    std::abort();
+  }
+  void release(void*) override {
+    std::abort();
+  }
+  uint32_t connection_generation() const override {
+    return connection;
+  }
+  uint32_t connection{1};
+};
+struct Fixture {
+  Fixture(uint32_t generation, const char* key = "fan.room", bool empty = false) {
+    const auto& limits = DEVICE_UI_PROFILES[8];
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    for (size_t i = 0; i < 3; ++i) {
+      const std::string card =
+          empty ? ";;;;sensor.test;;sensor;1;"
+                : std::string(key) + ";;Auto;Auto;;;" + (i == 1 ? "fan_oscillate" : "fan_switch") + ";;";
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(card.data()), card.size()) ==
+             PanelConfigStatus::OK);
+    }
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, generation, storage.data(), storage.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+  std::array<uint8_t, 8192> document{};
+  size_t size{0};
+  alignas(std::max_align_t) std::array<uint8_t, 32768> storage{};
+  PageStore store;
+};
+void lifetime() {
+  tick = 100;
+  Arena arena;
+  Subscriptions subs;
+  Fixture first(17), second(18, "fan.other"), empty(19, "", true);
+  {
+    PageFanStatusRuntime runtime(arena, subs, now);
+    assert(runtime.prepare(first.store));
+    runtime.activate_prepared(first.store);
+    assert(runtime.memory().sources == 1 && !runtime.read({17, 0}).showing);
+    runtime.observed(17, "fan.room", "", "ON", false);
+    assert(runtime.read({17, 0}).on && runtime.read({17, 2}).on);
+    assert(runtime.read({17, 0}).status == PageFanStatus::ON && runtime.read({17, 0}).showing);
+    assert(runtime.read({17, 1}).status == PageFanStatus::UNSUPPORTED);
+    runtime.observed(17, "fan.room", "oscillating", "yes", false);
+    assert(runtime.read({17, 1}).on && runtime.read({17, 1}).status == PageFanStatus::OSCILLATING);
+    tick += 2999;
+    runtime.loop();
+    assert(runtime.read({17, 0}).showing && runtime.read({17, 1}).showing);
+    runtime.observed(17, "fan.room", "", "on", false);  // Same meaning cannot reset timeout.
+    tick += 1;
+    runtime.loop();
+    assert(!runtime.read({17, 0}).showing && !runtime.read({17, 1}).showing);
+    const auto allocations = arena.calls;
+    const auto revision = runtime.revision();
+    for (int n = 0; n < 1000; ++n) {
+      runtime.observed(17, "fan.room", "", "on", false);
+      runtime.loop();
+      assert(runtime.read({17, 0}).on);
+    }
+    assert(runtime.revision() == revision && arena.calls == allocations);
+    runtime.observed(17, "fan.room", "oscillating", "garbage", false);
+    assert(runtime.read({17, 1}).on && runtime.read({17, 1}).status == PageFanStatus::UNSUPPORTED);
+    runtime.observed(17, "fan.room", "", "unavailable", false);
+    assert(!runtime.read({17, 0}).on && runtime.read({17, 1}).on);
+    assert(runtime.read({17, 0}).status == PageFanStatus::UNAVAILABLE);
+    assert(!runtime.read({16, 0}).showing && !runtime.read({17, 99}).showing);
+    assert(runtime.prepare(second.store));
+    runtime.observed(18, "fan.other", "", "off", true);  // A new eager card seeds Unavailable first.
+    runtime.discard_prepared();
+    assert(runtime.read({17, 0}).status == PageFanStatus::UNAVAILABLE && arena.live.size() == 1);
+    assert(runtime.prepare(second.store));
+    runtime.observed(18, "fan.other", "", "off", true);
+    runtime.activate_prepared(second.store);
+    assert(runtime.read({18, 0}).showing && runtime.read({18, 0}).status == PageFanStatus::OFF);
+    runtime.observed(17, "fan.room", "", "on", false);
+    assert(!runtime.read({18, 0}).on);
+    runtime.observed(18, "fan.other", "oscillating", "true", false);
+    ++subs.connection;
+    runtime.loop();
+    assert(!runtime.read({18, 1}).on && runtime.read({18, 1}).status == PageFanStatus::UNAVAILABLE);
+    for (int n = 0; n < 1000; ++n) {
+      const auto& store = n % 2 ? first.store : second.store;
+      assert(runtime.prepare(store));
+      runtime.activate_prepared(store);
+      assert(runtime.memory().sources == 1 && arena.live.size() == 1);
+    }
+    tick = UINT32_MAX - 100;
+    runtime.observed(17, "fan.room", "", "on", false);
+    tick += 3000;
+    runtime.loop();
+    assert(!runtime.read({17, 0}).showing);  // Unsigned clock wrap.
+    assert(runtime.prepare(empty.store));
+    runtime.activate_prepared(empty.store);
+    assert(runtime.memory().sources == 0 && arena.live.empty());
+  }
+  assert(arena.live.empty());
+}
+// @legacy-status-reference
+void reference_parity() {
+  tick = 100;
+  Arena arena;
+  Subscriptions subs;
+  Fixture fixture(17);
+  PageFanStatusRuntime runtime(arena, subs, now);
+  assert(runtime.prepare(fixture.store));
+  runtime.activate_prepared(fixture.store);
+  lv_obj_t power_label, oscillation_label;
+  lv_timer_t power_timer, oscillation_timer;
+  TransientStatusLabel power_status, oscillation_status;
+  power_status.label = &power_label;
+  power_status.steady_text = "Fan";
+  power_status.revert_timer = &power_timer;
+  oscillation_status.label = &oscillation_label;
+  oscillation_status.steady_text = "Oscillation";
+  oscillation_status.revert_timer = &oscillation_timer;
+  power_timer.user = &power_status;
+  oscillation_timer.user = &oscillation_status;
+  FanCardCtx power, oscillation;
+  power.type = "fan_switch";
+  oscillation.type = "fan_oscillate";
+  transient_status_label_show_if_changed(&power_status, fan_status_text(&power));
+  transient_status_label_show_if_changed(&oscillation_status, fan_status_text(&oscillation));
+  constexpr const char* primary[] = {"on", "OFF", "unknown", "", "unavailable", "true", "  open  ", "bad"};
+  constexpr const char* values[] = {"yes", "NO", "true", "false", "1", "0", "bad", "unknown"};
+  uint32_t random = 1825;
+  for (int n = 0; n < 10000; ++n) {
+    random = random * 1664525u + 1013904223u;
+    tick += (random >> 24) % 4000;
+    for (auto* timer : {&power_timer, &oscillation_timer})
+      if (!timer->paused && static_cast<uint32_t>(tick - timer->reset_ms) >= 3000)
+        transient_status_label_revert_cb(timer);
+    const bool attr = (random & 1) != 0;
+    const std::string value = attr ? values[(random >> 8) % 8] : primary[(random >> 8) % 8];
+    if (!attr) {
+      for (auto* ctx : {&power, &oscillation}) {
+        const esphome::StringRef ref(value);
+        ctx->available = !ha_state_unavailable_ref(ref);
+        ctx->on = ctx->available && is_entity_on_ref(ref);
+      }
+    } else {
+      for (auto* ctx : {&power, &oscillation}) {
+        bool parsed = false;
+        ctx->oscillation_known = fan_parse_bool_value(value, parsed);
+        if (ctx->oscillation_known) ctx->oscillating = parsed;
+      }
+    }
+    transient_status_label_show_if_changed(&power_status, fan_status_text(&power));
+    transient_status_label_show_if_changed(&oscillation_status, fan_status_text(&oscillation));
+    runtime.observed(17, "fan.room", attr ? "oscillating" : "", value, false);
+    for (bool osc : {false, true}) {
+      const auto view = runtime.read({17, static_cast<uint16_t>(osc ? 1 : 0)});
+      const auto& expected = osc ? oscillation_status : power_status;
+      const auto& ctx = osc ? oscillation : power;
+      assert(view.on == (osc ? ctx.oscillating : ctx.on));
+      assert(view.showing == expected.showing_status);
+      assert(std::string(PageFanStatusRuntime::text(view.status)) ==
+             fan_status_text(const_cast<FanCardCtx*>(&ctx)));
+    }
+  }
+}
+void failures() {
+  Arena arena;
+  Subscriptions subs;
+  Fixture first(17), second(18, "fan.other");
+  {
+    PageFanStatusRuntime runtime(arena, subs, now);
+    assert(runtime.prepare(first.store));
+    runtime.activate_prepared(first.store);
+    arena.fail = true;
+    assert(!runtime.prepare(second.store));
+    assert(arena.live.size() == 1 && runtime.memory().failures == 1);
+    arena.fail = false;
+  }
+  for (const auto& limits : {std::pair<size_t, size_t>{0, 64}, {1, 3}}) {
+    PageFanStatusRuntime runtime(arena, subs, now, limits.first, limits.second);
+    assert(!runtime.prepare(first.store) && arena.live.empty());
+  }
+  PageFanStatusRuntime missing_clock(arena, subs, nullptr);
+  assert(!missing_clock.prepare(first.store));
+}
+}  // namespace
+int main() {
+  lifetime();
+  failures();
+  reference_parity();
+}

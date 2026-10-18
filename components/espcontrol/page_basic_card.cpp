@@ -229,6 +229,18 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     out.unit={};out.kind=BasicCardKind::COVER;out.push_feedback=true;out.default_label="Cover";
     if(out.icon.empty()||out.icon=="Auto")out.icon="Blinds";
     if(out.icon_on.empty()||out.icon_on=="Auto")out.icon_on="Blinds Open";
+  } else if (type == "fan_switch" || type == "fan_oscillate") {
+    const bool power = type == "fan_switch";
+    out.kind = power ? BasicCardKind::FAN_SWITCH : BasicCardKind::FAN_OSCILLATE;
+    out.active_color = true;
+    out.push_feedback = !power;
+    out.unit = {};
+    out.default_label = power ? "Fan" : "Oscillation";
+    if (out.icon.empty() || out.icon == "Auto") out.icon = fan_card_default_icon_name(std::string(type));
+    if (!power)
+      out.icon_on = out.icon;
+    else if (out.icon_on.empty() || out.icon_on == "Auto")
+      out.icon_on = "Fan";
   } else if (type == "fan_direction" || type == "fan_preset") {
     out.kind = type == "fan_direction" ? BasicCardKind::FAN_DIRECTION : BasicCardKind::FAN_PRESET;
     out.active_color = out.push_feedback = true;
@@ -293,7 +305,8 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
     return PageLocalRelayRuntime::toggle(store, *card) ? store.field(*card, CardField::ENTITY)
                                                        : std::string_view{};
   return type.empty() || type == "light_switch" || type == "media" || type == "fan_control" ||
-                 type == "fan_direction" || type == "fan_preset"
+                 type == "fan_direction" || type == "fan_preset" || type == "fan_switch" ||
+                 type == "fan_oscillate"
              ? store.field(*card, CardField::ENTITY)
              : std::string_view{};
 }
@@ -317,7 +330,7 @@ BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHan
                                PageEntityStateRuntime& state, int duration_components,
                                std::string_view temperature_unit, PageCardTranslate translate,
                                PageMediaStateRuntime* media_owner, PageLocalSensorRuntime* local,
-                               PageLocalRelayRuntime* relay) {
+                               PageLocalRelayRuntime* relay, PageFanStatusRuntime* fan_status) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
   if (card.kind == BasicCardKind::LOCAL_RELAY) {
@@ -374,6 +387,32 @@ BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHan
     if (length) std::memcpy(result.text, value.data(), length);
     result.text[length] = '\0';
     result.numeric = true;
+    return result;
+  }
+  if (card.kind == BasicCardKind::FAN_SWITCH || card.kind == BasicCardKind::FAN_OSCILLATE) {
+    const auto snapshot = fan_status ? fan_status->read(handle) : PageFanStatusSnapshot{};
+    result.on = snapshot.on;
+    const auto primary = find(state, handle, card.entity);
+    const auto oscillation = find(state, handle, card.entity, "oscillating");
+    if (primary.status == PageEntityStatus::EXHAUSTED ||
+        (card.kind == BasicCardKind::FAN_OSCILLATE && oscillation.status == PageEntityStatus::EXHAUSTED)) {
+      result.on = false;
+      const char* key = primary.status == PageEntityStatus::EXHAUSTED ? "Unavailable" : "Unsupported";
+      const auto* translated = translate ? translate(key) : nullptr;
+      result.label = translated ? translated : key;
+      return result;
+    }
+    const char* key = snapshot.showing ? PageFanStatusRuntime::text(snapshot.status) : card.default_label;
+    result.label = card.label;
+    if (snapshot.showing || result.label.empty()) {
+      const auto name = find(state, handle, card.entity, "friendly_name");
+      if (!snapshot.showing && card.label.empty() && name.status == PageEntityStatus::AVAILABLE)
+        result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+      else {
+        const auto* translated = translate && key ? translate(key) : nullptr;
+        result.label = translated ? translated : key ? key : "";
+      }
+    }
     return result;
   }
   if (card.kind == BasicCardKind::FAN_DIRECTION || card.kind == BasicCardKind::FAN_PRESET) {

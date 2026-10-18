@@ -2,6 +2,7 @@
 
 #include "page_climate_card.h"
 #include "page_entity_state_runtime.h"
+#include "page_fan_status_runtime.h"
 #include "page_local_relay_runtime.h"
 #include "page_local_sensor_runtime.h"
 #include "page_media_action.h"
@@ -37,7 +38,9 @@ enum class BasicCardKind : uint8_t {
   OPTION_SELECT,
   LOCAL_NUMBER,
   LOCAL_TEXT,
-  LOCAL_RELAY
+  LOCAL_RELAY,
+  FAN_SWITCH,
+  FAN_OSCILLATE
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode:uint8_t { NONE, ENTITY, CLIMATE, MOWER, CHILDREN, NUMBER, TEXT };
@@ -86,5 +89,6 @@ BasicCardState read_basic_card(const BasicCardDefinition&, ConfigurationHandle, 
                                int duration_components = 2, std::string_view temperature_unit = "°C",
                                PageCardTranslate translate = nullptr, PageMediaStateRuntime* media = nullptr,
                                PageLocalSensorRuntime* local = nullptr,
-                               PageLocalRelayRuntime* relay = nullptr);
+                               PageLocalRelayRuntime* relay = nullptr,
+                               PageFanStatusRuntime* fan_status = nullptr);
 }  // namespace espcontrol::pages
