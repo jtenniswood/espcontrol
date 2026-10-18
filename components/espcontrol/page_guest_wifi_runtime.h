@@ -113,9 +113,14 @@ class PageGuestWifiRuntime {
     dispatching_ = true;
     const bool sent = port_.send(entity, target);
     dispatching_ = false;
-    if (!sent && record_.serial == serial && record_.command == command && same(record_.token, token)) {
-      record_.state.send_failed();
-      ++revision_;
+    if (record_.serial == serial && record_.command == command && same(record_.token, token)) {
+      // A send callback can deliver the matching HA report before returning.
+      // That report is authoritative even if transport acceptance was false.
+      poll();
+      if (!sent && record_.state.pending) {
+        record_.state.send_failed();
+        ++revision_;
+      }
     }
     return sent ? PageGuestWifiDispatch::SENT : PageGuestWifiDispatch::FAILED;
   }

@@ -349,6 +349,18 @@ void deferred_and_exhausted() {
   f.guest.loop();
   assert(f.guest.snapshot(f.modal.token()).on && !f.guest.snapshot(f.modal.token()).failed);
 }
+void acknowledgement_during_failed_send() {
+  Fixture f(DEVICE_UI_PROFILES[8]);
+  f.transport.send("off");
+  const auto token = f.open();
+  assert(f.guest.queue(token, 1));
+  f.guest_port.on_send = [&] { f.report("on"); };
+  f.guest_port.accept = false;
+  assert(f.guest.loop() == PageGuestWifiDispatch::FAILED);
+  const auto state = f.guest.snapshot(token);
+  assert(state.known && state.on && !state.pending && !state.failed && std::strcmp(state.status, "on") == 0);
+  f.guest_port.on_send = nullptr;
+}
 void reentrant_same_opening_intent() {
   Fixture f(DEVICE_UI_PROFILES[8]);
   f.transport.send("off");
@@ -426,6 +438,7 @@ int main() {
   for (const auto& limits : DEVICE_UI_PROFILES) lifecycle(limits);
   timeout_connection_and_guards();
   deferred_and_exhausted();
+  acknowledgement_during_failed_send();
   reentrant_same_opening_intent();
   final_intent_and_wait_timeout();
   replacement();
