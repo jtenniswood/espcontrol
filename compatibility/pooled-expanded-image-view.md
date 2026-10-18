@@ -34,7 +34,11 @@ Separate tile/modal counters can both equal one without confusing those roles.
 Every draw and extent query pulls fresh descriptors and rechecks coherent frame
 identity plus full modal admission after the second read. A reentrant close can
 return an apparently unchanged descriptor; admission still rejects it. No source
-pointer is retained in the widget or context. Concrete image release continues
+pointer is retained in the widget or context. A fixed paint projection compares
+source/preview-animation revisions, dimensions/radius, palette, fonts/background
+and availability before changing styles, z-order or invalidating the surface.
+Captions can update independently; an unchanged modal does no redraw or allocation.
+Polling status also catches the source startup-grace timeout without a new report. Concrete image release continues
 to wait for pending hardware draw work through the existing adapter fence.
 
 Retirement invalidates value/gesture ownership immediately. It does not hide or
@@ -52,6 +56,7 @@ bind, admission/setup failures, reconnect, discarded staging, generation-zero
 replacement and overwritten old document bytes. Actual drawing exercises a role
 change between coherent reads, a close during the second read and retirement
 inside an image draw-task callback; destruction waits until dispatch ends.
+An additional 1,000 unchanged maintenance passes cause no image redraw or C++/LVGL allocation; a subsequent source/preview change still redraws.
 Seven representative portrait/landscape/square dimensions cover loading geometry
 and live theme colors. These tests do not substitute actual device font/layout
 comparison or physical memory measurements. Actual S3/P4 SDK checks compile the

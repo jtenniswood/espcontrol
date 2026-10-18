@@ -41,7 +41,7 @@ class PageArtworkExpandedImageView final : public PageExpandedImageView {
     return result;
   }
   uint64_t revision() const override {
-    return source_.revision();
+    return source_.revision() + tiles_.revision();
   }
 
  private:

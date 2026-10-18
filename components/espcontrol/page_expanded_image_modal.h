@@ -170,25 +170,49 @@ class PageExpandedImageModalPort final : public PageModalPort {
       runtime_->notify_closed(r.token, PageModalClose::FAILED);
       return;
     }
+    const bool style_changed =
+        !r.paint.seeded || environment.label_font != r.environment.label_font ||
+        environment.icon_font != r.environment.icon_font ||
+        environment.background != r.environment.background ||
+        environment.width_compensation_percent != r.environment.width_compensation_percent;
     r.environment = environment;
+    lv_obj_update_layout(r.panel);
+    const auto width = lv_obj_get_width(r.panel), height = lv_obj_get_height(r.panel);
+    if (width <= 0 || height <= 0 || width > UINT16_MAX || height > UINT16_MAX) return;
+    const auto radius = lv_obj_get_style_radius(r.panel, LV_PART_MAIN);
+    const bool geometry_changed =
+        !r.paint.seeded || width != r.paint.width || height != r.paint.height || radius != r.paint.radius;
+    if (geometry_changed || style_changed) view_.size(r.token, width, height, r.environment.background);
+    const auto frame = view_.surface(r.token);
+    if (r.retired || !runtime_->valid(r.token)) return;
+    const auto view_revision = view_.revision();
+    const auto overlay = theme_display_color(current_theme().overlay);
+    const auto surface = theme_display_color(current_theme().surface_primary);
+    const auto border = theme_display_color(current_theme().border);
+    const auto text = current_theme().text_primary;
+    const bool has_frame = frame.policy.status == PageImageTileStatus::READY && frame.source;
+    caption(r);
+    if (!style_changed && !geometry_changed && r.paint.revision == view_revision &&
+        r.paint.overlay == overlay && r.paint.surface == surface && r.paint.border == border &&
+        r.paint.text == text && r.paint.status == frame.policy.status && r.paint.has_frame == has_frame)
+      return;
+    r.paint = {view_revision,       overlay,   surface, border, text, width, height, radius,
+               frame.policy.status, has_frame, true};
     lv_obj_set_style_bg_color(r.panel, lv_color_hex(theme_display_color(current_theme().overlay)),
                               LV_PART_MAIN);
     lv_obj_set_style_bg_opa(r.panel, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_clip_corner(r.panel, true, LV_PART_MAIN);
-    lv_obj_update_layout(r.panel);
-    const auto width = lv_obj_get_width(r.panel), height = lv_obj_get_height(r.panel);
-    if (width <= 0 || height <= 0 || width > UINT16_MAX || height > UINT16_MAX) return;
     for (auto* object : {r.surface, r.loading}) {
       lv_obj_set_pos(object, 0, 0);
       lv_obj_set_size(object, width, height);
       lv_obj_set_style_radius(object, lv_obj_get_style_radius(r.panel, LV_PART_MAIN), LV_PART_MAIN);
     }
-    view_.size(r.token, width, height, r.environment.background);
     lv_obj_set_style_bg_color(r.loading, lv_color_hex(theme_display_color(current_theme().surface_primary)),
                               LV_PART_MAIN);
     lv_obj_set_style_border_color(r.loading, lv_color_hex(theme_display_color(current_theme().border)),
                                   LV_PART_MAIN);
     lv_obj_set_style_text_font(r.icon, r.environment.icon_font, LV_PART_MAIN);
+    apply_icon_width_compensation(r.icon);
     lv_obj_set_style_text_font(r.label, r.environment.label_font, LV_PART_MAIN);
     for (auto* label : {r.icon, r.label}) {
       lv_obj_set_style_text_color(label, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
@@ -199,9 +223,7 @@ class PageExpandedImageModalPort final : public PageModalPort {
     lv_obj_set_style_text_align(r.label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_align(r.icon, LV_ALIGN_CENTER, 0, -18);
     lv_obj_align_to(r.label, r.icon, LV_ALIGN_OUT_BOTTOM_MID, 0, 8);
-    const auto frame = view_.surface(r.token);
-    if (r.retired || !runtime_->valid(r.token)) return;
-    if (frame.policy.status == PageImageTileStatus::READY && frame.source)
+    if (has_frame)
       lv_obj_add_flag(r.loading, LV_OBJ_FLAG_HIDDEN);
     else {
       lv_label_set_display_text(
@@ -211,7 +233,6 @@ class PageExpandedImageModalPort final : public PageModalPort {
     }
     lv_obj_move_foreground(r.loading);
     lv_obj_move_foreground(r.back);
-    caption(r);
     lv_obj_invalidate(r.surface);
   }
   ControlModalDismissPolicy dismiss_policy(void*) const override {
@@ -246,6 +267,13 @@ class PageExpandedImageModalPort final : public PageModalPort {
   }
 
  private:
+  struct Paint {
+    uint64_t revision{0};
+    uint32_t overlay{0}, surface{0}, border{0}, text{0};
+    int width{0}, height{0}, radius{0};
+    PageImageTileStatus status{PageImageTileStatus::UNAVAILABLE};
+    bool has_frame{false}, seeded{false};
+  };
   struct Record {
     Record(PageExpandedImageModalPort& p, PageModalToken t, ConfigurationHandle c)
         : port(p), token(t), card(c), gestures(p.allocator_, 8, t, &p, gesture_valid) {}
@@ -255,6 +283,7 @@ class PageExpandedImageModalPort final : public PageModalPort {
     ParsedCfg config;
     std::string trigger, caption;
     PageExpandedImageModalEnvironment environment;
+    Paint paint;
     PageModalGestures gestures;
     lv_obj_t *overlay{nullptr}, *panel{nullptr}, *back{nullptr}, *surface{nullptr}, *loading{nullptr},
         *icon{nullptr}, *label{nullptr};

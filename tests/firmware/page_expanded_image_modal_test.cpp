@@ -247,6 +247,7 @@ struct View final : PageExpandedImageView {
   std::array<uint8_t, 8 * 8 * 2> pixels{};
   lv_image_dsc_t image{};
   size_t binds{0}, unbinds{0};
+  uint64_t frame_revision{0};
   uint16_t width{0}, height{0};
   uint32_t background{0};
   bool available{true}, accept{true};
@@ -293,9 +294,10 @@ struct View final : PageExpandedImageView {
     return result;
   }
   uint64_t revision() const override {
-    return binds + unbinds;
+    return binds + unbinds + frame_revision;
   }
   void ready_frame(bool preview = false) {
+    ++frame_revision;
     frame.policy.status = PageImageTileStatus::READY;
     frame.policy.asset = preview ? 0 : 1;
     frame.policy.preview =
@@ -548,14 +550,37 @@ void drawing_and_revocation(lv_display_t* display) {
   assert(draw.images > 0 && !h.modal.valid(token));
   h.modal.loop();
 }
+void static_view_does_not_redraw(lv_display_t* display) {
+  Harness h(DEVICE_UI_PROFILES[8]);
+  h.open();
+  h.view.ready_frame();
+  h.modal.loop();
+  size_t draws = 0;
+  lv_obj_add_event_cb(
+      h.surface(), [](lv_event_t* event) { ++*static_cast<size_t*>(lv_event_get_user_data(event)); },
+      LV_EVENT_DRAW_MAIN, &draws);
+  lv_refr_now(display);
+  assert(draws);
+  draws = 0;
+  const auto cpp = cpp_allocation_calls, lv = lv_allocation_calls;
+  for (size_t n = 0; n < 1000; ++n) h.modal.loop();
+  lv_refr_now(display);
+  assert(draws == 0 && cpp_allocation_calls == cpp && lv_allocation_calls == lv);
+  // Source changes (including preview animation) still request a new frame.
+  h.view.ready_frame(true);
+  h.modal.loop();
+  lv_refr_now(display);
+  assert(draws > 0);
+  h.close();
+}
 void geometry_and_theme(lv_display_t* display) {
   for (const auto& size : {std::pair<int, int>{480, 480},
-                          {480, 800},
-                          {800, 480},
-                          {1024, 600},
-                          {1280, 800},
-                          {800, 1280},
-                          {720, 720}}) {
+                           {480, 800},
+                           {800, 480},
+                           {1024, 600},
+                           {1280, 800},
+                           {800, 1280},
+                           {720, 720}}) {
     lv_display_set_resolution(display, size.first, size.second);
     Harness h(DEVICE_UI_PROFILES[8]);
     h.open();
@@ -595,6 +620,7 @@ int main() {
   retirement_and_failures();
   drawing_and_revocation(display);
   geometry_and_theme(display);
+  static_view_does_not_redraw(display);
   lv_display_delete(display);
   lv_deinit();
   assert(lv_live_bytes == 0);
