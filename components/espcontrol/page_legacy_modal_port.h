@@ -7,13 +7,23 @@
 
 #include <cassert>
 #include <new>
+#include <type_traits>
 
 namespace espcontrol::pages {
+// Snapshot families keep their comparison state in the single demanded modal
+// record, rather than adding fields to every legacy configured-card context.
+template<typename Family,typename=void>struct PageModalPullState {struct Type {};};
+template<typename Family>struct PageModalPullState<Family,std::void_t<typename Family::State>> {
+  using Type=typename Family::State;
+};
 template<typename Family> struct PageLegacyModalStyle {
   typename Family::Environment environment{};
   size_t gesture_capacity{128};
   void *owner{nullptr};
   bool (*resolve)(void *,const ParsedCfg &,typename Family::Environment &){nullptr};
+  // A scene retains the original full grid binding at request time and matches
+  // this opening token before forwarding a numeric preview to the card bank.
+  void (*numeric_action_sent)(void *,PageModalToken,float){nullptr};
 };
 
 // A family supplies its existing UI/context operations; ownership, cache replay,
@@ -36,7 +46,7 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
     auto &observer=Family::lifetime();
     if(!legacy_renderer_retired||!lv_is_initialized()||record_||Family::active()||
         (observer.owner&&observer.owner!=this))return false;
-    runtime_=&runtime;observer={this,managed,current,action,closed,widgets};return true;
+    runtime_=&runtime;observer={this,managed,current,action,closed,widgets,numeric_action};return true;
   }
   bool valid_origin(PageBindingToken token)const override{return valid_&&valid_(owner_,token);}
   ControlModalKind kind(const PageStore &store,ConfigurationHandle handle)const override {
@@ -115,6 +125,7 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
         :token(token),card(card),connection(port.connection_generation()),
          gestures(port.allocator_,port.style_.gesture_capacity,token,&port,gesture_valid){}
     Context context{};
+    typename PageModalPullState<Family>::Type pull_state{};
     PageModalToken token;
     ConfigurationHandle card;
     uint32_t connection;
@@ -126,6 +137,20 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
     if(record.retired||!runtime_->valid(record.token))return;
     PageEntityModalReplay replay(state_,allocator_,record.card);
     ha_read_coordinator().replay_owner_missing(&record.context,replay);
+    pull(record,state_,0);
+  }
+  template<typename F=Family>
+  static auto pull(Record& record,PageEntityStateRuntime& state,int)
+      ->decltype(F::pull(record.context,state,record.card,record.pull_state),void()) {
+    F::pull(record.context,state,record.card,record.pull_state);
+  }
+  static void pull(Record&,PageEntityStateRuntime&,long) {}
+  static void numeric_action(void *owner,const Context *context,float value) {
+    auto& port=*static_cast<PageLegacyModalPort*>(owner);
+    if(!action(owner,context)||!context->available||!port.style_.numeric_action_sent)return;
+    const auto token=port.record_->token;
+    port.style_.numeric_action_sent(port.style_.owner,token,value);
+    // A notification may replace configuration/retire this exact opening.
   }
   static bool managed(void *owner,const Context *context) {
     const auto &port=*static_cast<PageLegacyModalPort *>(owner);
@@ -137,7 +162,11 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
       port.connected()&&port.record_->connection==port.connection_generation();
   }
   static bool action(void *owner,const Context *context) {
-    const auto &port=*static_cast<PageLegacyModalPort *>(owner);
+    auto &port=*static_cast<PageLegacyModalPort *>(owner);
+    if(!current(owner,context))return false;
+    // Snapshot-backed families consume current cache state before an input
+    // computes its command, just as the legacy live callback did.
+    pull(*port.record_,port.state_,0);
     return current(owner,context)&&port.runtime_->interactive(port.record_->token)&&port.connected()&&
       port.record_->connection==port.connection_generation();
   }

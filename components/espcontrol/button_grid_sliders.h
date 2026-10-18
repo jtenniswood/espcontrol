@@ -1,6 +1,7 @@
 #pragma once
 
 #include "light_cover_modal_lifetime.h"
+#include "media_volume_modal_lifetime.h"
 
 #include "button_grid_slider_geometry.h"
 #include "button_grid_slider_contrast.h"
@@ -3569,14 +3570,15 @@ inline void media_volume_set_card_value(MediaVolumeCtx *ctx, int pct) {
 
 inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
                                        bool from_user, bool send_action) {
-  if (!ctx || !ctx->available) return;
+  if (!media_volume_action_allowed(ctx) || !ctx->available) return;
   const int current_pct = media_clamp_percent(ctx->current_pct);
   const auto mode = media_volume_effective_control_mode(ctx);
   const auto command = espcontrol::media::volume_command(
     mode, current_pct, pct, media_volume_max_pct(ctx), ctx->volume_known);
   if (!ctx->apply_percent &&
       mode != espcontrol::media::VolumeControlMode::ABSOLUTE) {
-    if (send_action) send_media_volume_command(ctx->entity_id, command);
+    if (send_action && media_volume_action_allowed(ctx) && ctx->available &&
+        media_volume_effective_control_mode(ctx) == mode) send_media_volume_command(ctx->entity_id, command);
     media_volume_refresh_controls(ctx);
     return;
   }
@@ -3588,7 +3590,10 @@ inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
   }
   media_volume_set_card_value(ctx, pct);
   media_volume_set_modal_value(ctx, pct);
-  if (send_action) {
+  bool sent = false;
+  if (send_action && media_volume_action_allowed(ctx) && ctx->available &&
+      media_volume_effective_control_mode(ctx) == mode) {
+    sent = command.kind == espcontrol::media::VolumeCommandKind::SET_ABSOLUTE;
     if (ctx->apply_percent) {
       ctx->apply_percent(pct);
     } else {
@@ -3596,12 +3601,17 @@ inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
     }
   }
   media_volume_refresh_controls(ctx);
+  if (sent)
+    media_volume_notify_value_sent(ctx, static_cast<float>(pct));
 }
 
 inline void media_volume_hide_modal() {
   MediaVolumeModalUi &ui = media_volume_modal_ui();
-  control_modal_delete_overlay(ControlModalKind::MEDIA_VOLUME, ui.overlay);
+  auto *closing=ui.active;
+  auto *overlay=ui.overlay;
   ui = MediaVolumeModalUi();
+  control_modal_delete_overlay(ControlModalKind::MEDIA_VOLUME, overlay);
+  media_volume_notify_closed(closing);
 }
 
 inline lv_coord_t media_volume_scaled_px(lv_coord_t px, lv_coord_t short_side) {
@@ -3702,7 +3712,7 @@ inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct) {
 }
 
 inline bool media_volume_can_open_modal(MediaVolumeCtx *ctx) {
-  return !(!ctx || !ctx->available);
+  return media_volume_context_current(ctx) && ctx->available;
 }
 
 inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
@@ -3741,7 +3751,11 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
     if (!espcontrol::media::volume_arc_interactive(
           media_volume_effective_control_mode(ui.active))) return;
     lv_obj_t *arc = static_cast<lv_obj_t *>(lv_event_get_target(e));
-    media_volume_apply_percent(ui.active, lv_arc_get_value(arc), true, true);
+    const int requested=lv_arc_get_value(arc);
+    auto *context=ui.active;
+    if (!media_volume_action_allowed(context) || !espcontrol::media::volume_arc_interactive(
+          media_volume_effective_control_mode(context))) return;
+    media_volume_apply_percent(context, requested, true, true);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
 
   ui.title_lbl = lv_label_create(ui.panel);
@@ -3784,16 +3798,18 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
     ctx->icon_font, theme_display_color(current_theme().control_neutral), theme_display_color(current_theme().surface_primary), ctx->width_compensation_percent);
   lv_obj_add_event_cb(ui.minus_btn, [](lv_event_t *) {
     MediaVolumeModalUi &ui = media_volume_modal_ui();
-    if (ui.active) {
+    auto *context=ui.active;
+    if (media_volume_action_allowed(context)) {
       media_volume_apply_percent(
-        ui.active, ui.active->current_pct - 1, true, true);
+        context, context->current_pct - 1, true, true);
     }
   }, LV_EVENT_CLICKED, nullptr);
   lv_obj_add_event_cb(ui.plus_btn, [](lv_event_t *) {
     MediaVolumeModalUi &ui = media_volume_modal_ui();
-    if (ui.active) {
+    auto *context=ui.active;
+    if (media_volume_action_allowed(context)) {
       media_volume_apply_percent(
-        ui.active, ui.active->current_pct + 1, true, true);
+        context, context->current_pct + 1, true, true);
     }
   }, LV_EVENT_CLICKED, nullptr);
 
@@ -3801,4 +3817,5 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   media_volume_set_modal_value(ctx, ctx->current_pct);
   media_volume_refresh_controls(ctx);
   lv_obj_move_foreground(ui.overlay);
+  if (!media_volume_widgets_ready(ui.overlay)) media_volume_hide_modal();
 }
