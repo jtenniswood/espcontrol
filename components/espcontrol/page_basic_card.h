@@ -2,6 +2,7 @@
 
 #include "cover_command_policy.h"
 #include "page_climate_card.h"
+#include "page_cover_toggle_runtime.h"
 #include "page_entity_state_runtime.h"
 #include "page_fan_status_runtime.h"
 #include "page_light_temperature_runtime.h"
@@ -50,7 +51,8 @@ enum class BasicCardKind : uint8_t {
   NUMBER_SLIDER,
   LIGHT_TEMPERATURE,
   TIMER,
-  COVER_COMMAND
+  COVER_COMMAND,
+  COVER_TOGGLE
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode : uint8_t { NONE, ENTITY, CLIMATE, MOWER, TIMER, CHILDREN, NUMBER, TEXT };
@@ -91,7 +93,7 @@ struct PageCoverCommandSnapshot {
   bool known{false}, supported{false}, tilt{false};
 };
 struct BasicCardState {
-  bool on{false},numeric{false},formatted_label{false},climate_icon_on{false};
+  bool on{false}, numeric{false}, formatted_label{false}, climate_icon_on{false}, cover_icon_open{false};
   std::string_view label,unit,media_title,media_artist;
   bool media_external_input{false}, media_idle{false}, media_source_title{false};
   PageMediaVolumeSnapshot media_volume;
@@ -124,5 +126,6 @@ BasicCardState read_basic_card(
     PageMediaStateRuntime* media = nullptr, PageLocalSensorRuntime* local = nullptr,
     PageLocalRelayRuntime* relay = nullptr, PageFanStatusRuntime* fan_status = nullptr,
     PagePercentSliderRuntime* percent_slider = nullptr, PageNumberSliderRuntime* number_slider = nullptr,
-    PageLightTemperatureRuntime* temperature = nullptr, PageTimerRuntime* timer = nullptr);
+    PageLightTemperatureRuntime* temperature = nullptr, PageTimerRuntime* timer = nullptr,
+    PageCoverToggleRuntime* cover_toggle = nullptr);
 }  // namespace espcontrol::pages

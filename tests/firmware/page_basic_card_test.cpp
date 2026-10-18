@@ -249,6 +249,60 @@ void status_actions_profile(const DeviceUiLimits &limits) {
   assert(!prepare_basic_card(confirmation.store,0,definition,&strings));
 }
 
+uint32_t cover_toggle_tick = 100;
+uint32_t cover_toggle_now() {
+  return cover_toggle_tick;
+}
+void cover_toggle_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, "cover.room;;Auto;Auto;toggle;unused;cover;2;");
+  BasicCardDefinition definition;
+  assert(prepare_basic_card(fixture.store, 0, definition));
+  assert(definition.kind == BasicCardKind::COVER_TOGGLE && definition.active_color &&
+         !definition.push_feedback);
+  assert(definition.icon == "Blinds" && definition.icon_on == "Blinds Open" && definition.unit.empty());
+  assert(basic_folder_child_indicator(fixture.store, 0) == "cover.room");
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageCoverToggleRuntime cover(arena, subscriptions, cover_toggle_now);
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {64, 64, 2048}, &cover);
+  assert(cover.prepare(fixture.store) && state.prepare(fixture.store));
+  cover.activate_prepared(fixture.store);
+  state.activate_prepared(fixture.store);
+  const auto read = [&]() {
+    return read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, nullptr, nullptr, nullptr, nullptr,
+                           nullptr, nullptr, nullptr, nullptr, &cover);
+  };
+  assert(read().label == "Cover" && !read().on && !read().cover_icon_open);
+  subscriptions.send("cover.room", "", "closed");
+  assert(read().on && !read().cover_icon_open && read().label == "Cover");
+  subscriptions.send("cover.room", "friendly_name", "Room shutter");
+  assert(read().label == "Room shutter");
+  subscriptions.send("cover.room", "", "opening");
+  auto value = read();
+  assert(!value.on && value.cover_icon_open && value.label == "Opening" && !value.numeric &&
+         value.unit.empty());
+  cover_toggle_tick += 10000;
+  cover.loop();
+  assert(read().label == "Opening");
+  subscriptions.send("cover.room", "", "open");
+  cover_toggle_tick += 3000;
+  cover.loop();
+  assert(read().label == "Room shutter");
+  subscriptions.send("cover.room", "friendly_name", "");
+  assert(read().label.empty());
+  const auto before = allocations;
+  for (int i = 0; i < 1000; ++i) {
+    subscriptions.send("cover.room", "", "closing");
+    assert(read().on && !read().cover_icon_open && read().label == "Closing");
+  }
+  assert(allocations == before);
+  subscriptions.send("cover.room", "", std::string(3000, 'x'));
+  assert(read().label == "Unavailable" && !read().on && !read().cover_icon_open);
+  ++subscriptions.generation;
+  cover.loop();
+  assert(read().label == "--" && !read().on);
+}
 void cover_command_profile(const DeviceUiLimits& limits) {
   struct Mode {
     const char* name;
@@ -313,7 +367,7 @@ void indicator_eligibility(const DeviceUiLimits& limits) {
                            {"cover.room", "cover", "", true},
                            {"cover.room", "cover", "tilt", true},
                            {"cover.room", "cover", "open", false},
-                           {"cover.room", "cover", "toggle", false},
+                           {"cover.room", "cover", "toggle", true},
                            {"timer.room", "timer", "confirm", true},
                            {"sensor.invalid", "timer", "confirm", false},
                            {"", "timer", "confirm", false},
@@ -1368,6 +1422,7 @@ int main() {
     control_profile(limits);
     indicator_eligibility(limits);
     cover_command_profile(limits);
+    cover_toggle_profile(limits);
     local_relay_profile(limits);
     local_sensor_profile(limits);
     option_select_profile(limits);

@@ -157,6 +157,30 @@ struct Fixture {
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
   }
+  struct CoverToggles {};
+  Fixture(const DeviceUiLimits& limits, CoverToggles) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {";Modes;Auto;Auto;indicator;;subpage;;",
+                                 "cover.room;;Auto;Auto;toggle;;cover;;",
+                                 "cover.room;Configured;Lightbulb;Blinds Open;toggle;;cover;;"};
+    for (size_t i = 0; i < 3; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i].data()),
+                                  cards[i].size()) == PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1,2|C,cover.room,,Auto,Auto,toggle,,,|C,cover.room,Configured,Lightbulb,Blinds Open,toggle,,,";
+    assert(writer.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = "1,2,3";
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                 reinterpret_cast<const uint8_t*>(order.data()),
+                                 order.size()) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   struct PercentSliders {};
   Fixture(const DeviceUiLimits& limits, PercentSliders) {
     PanelConfigWriter writer(document.data(), document.size());
@@ -1295,6 +1319,158 @@ void fan_status_profile(const DeviceUiLimits& limits) {
     std::printf(
         "%s: fan switch/oscillation 1000 cycles, hidden status history and stable retained resources\n",
         limits.device_profile);
+  }
+  assert(arena.live == 0);
+  lv_obj_delete(page);
+}
+
+template <size_t Slots>
+void cover_toggle_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, Fixture::CoverToggles{});
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageCoverToggleRuntime cover(arena, subscriptions, fan_status_now);
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192}, &cover);
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+  }
+  PageBasicTheme theme;
+  Actions<Slots> actions;
+  auto callbacks = actions.callbacks();
+  callbacks.toggle = [](void* owner, PageBindingToken token, std::string_view entity) {
+    auto& action = *static_cast<Actions<Slots>*>(owner);
+    Actions<Slots>::toggle(owner, token, entity);
+    if (action.seek_page != NO_PAGE) assert(action.renderer->open_page(action.seek_page));
+  };
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  callbacks, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                  nullptr, nullptr, nullptr, &cover);
+    assert(port.initialize());
+    {
+      auto absent = callbacks;
+      absent.toggle = nullptr;
+      PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                       absent, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                       nullptr, nullptr, nullptr, &cover);
+      assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+    }
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t index = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[index++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    PageRuntimeResourcesGroup<3> resources({&cover, &renderer, &state});
+    PageStoreRuntime publication(limits, arena, 32768, &resources);
+    assert(publication.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    assert(publication.activate_prepared(0, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(),
+                                         fixture.size));
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Cover") == 0);
+    assert(std::strcmp(lv_label_get_text(widgets[1].icon), "CLOSED") == 0);
+    subscriptions.send("cover.room", "", "closed");
+    subscriptions.send("cover.room", "friendly_name", "Bedroom");
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED));
+    assert(!lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Bedroom") == 0);
+    assert(std::strcmp(lv_label_get_text(widgets[2].label), "Configured") == 0);
+    subscriptions.send("cover.room", "", "opening");
+    renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED));
+    assert(lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Opening") == 0);
+    assert(std::strcmp(lv_label_get_text(widgets[1].icon), "OPEN") == 0);
+    fan_status_tick += 10000;
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Opening") == 0);
+    subscriptions.send("cover.room", "", "open");
+    renderer.update_visible();
+    click(widgets[1].button);
+    assert(actions.toggles == 1 && renderer.valid(actions.last));
+    assert(lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED));  // Existing optimistic feedback.
+    const auto child = fixture.store.card(0)->target;
+    const auto old = renderer.binding(1);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.toggles == 1 && !renderer.valid(old));
+    fan_status_tick += 3000;
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Bedroom") == 0);
+    assert(std::strcmp(lv_label_get_text(widgets[2].label), "Configured") == 0);
+    subscriptions.send("cover.room", "friendly_name", "Latest");
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Latest") == 0);
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    ++subscriptions.generation;
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "--") == 0);
+    subscriptions.send("cover.room", "", "closed");
+    renderer.update_visible();
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.toggles == 1);
+    click(widgets[1].button);
+    assert(actions.toggles == 2);
+    subscriptions.send("cover.room", "", std::string(10000, 'x'));
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Unavailable") == 0);
+    click(widgets[1].button);
+    assert(actions.toggles == 2);
+    subscriptions.send("cover.room", "", "closed");
+    renderer.update_visible();
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    assert(renderer.suspend() && renderer.resume());
+    renderer.update_visible();
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.toggles == 2);
+    actions.seek_page = child;
+    click(widgets[1].button);
+    actions.seek_page = NO_PAGE;
+    assert(actions.toggles == 3 && !renderer.valid(actions.last));
+    renderer.update_visible();
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto cpp = cpp_allocations, reserved = arena.allocations, retained = lv_live_bytes,
+               channels = subscriptions.bindings.size(), descriptors = cache.memory().descriptor_adds;
+    for (int n = 0; n < 1000; ++n) {
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(cpp_allocations == cpp && arena.allocations == reserved && lv_live_bytes == retained &&
+             subscriptions.bindings.size() == channels && cache.memory().descriptor_adds == descriptors);
+    }
+    renderer.retire_active();
+    state.retire_active();
+    cover.retire_active();
+    std::printf("%s: cover toggles 1000 cycles, hidden history, stale input and stable resources\n",
+                limits.device_profile);
   }
   assert(arena.live == 0);
   lv_obj_delete(page);
@@ -3830,6 +4006,25 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "cover_toggles") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          cover_toggle_profile<6>(limits);
+          break;
+        case 9:
+          cover_toggle_profile<9>(limits);
+          break;
+        case 15:
+          cover_toggle_profile<15>(limits);
+          break;
+        case 20:
+          cover_toggle_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "cover_commands") == 0) {
       switch (limits.slot_count) {
         case 6:
@@ -4105,6 +4300,7 @@ int main() {
         status_action_profile<6>(limits);
         control_profile<6>(limits);
         cover_command_profile<6>(limits);
+        cover_toggle_profile<6>(limits);
         fan_mode_profile<6>(limits);
         fan_status_profile<6>(limits);
         percent_slider_profile<6>(limits);
@@ -4121,13 +4317,13 @@ int main() {
         now_playing_profile<6>(limits);
         cover_art_profile<6>(limits);
         media_control_profile<6>(limits);
-        cover_command_profile<6>(limits);
         break;
       case 9:
         profile<9>(limits);
         status_action_profile<9>(limits);
         control_profile<9>(limits);
         cover_command_profile<9>(limits);
+        cover_toggle_profile<9>(limits);
         fan_mode_profile<9>(limits);
         fan_status_profile<9>(limits);
         percent_slider_profile<9>(limits);
@@ -4144,13 +4340,13 @@ int main() {
         now_playing_profile<9>(limits);
         cover_art_profile<9>(limits);
         media_control_profile<9>(limits);
-        cover_command_profile<9>(limits);
         break;
       case 15:
         profile<15>(limits);
         status_action_profile<15>(limits);
         control_profile<15>(limits);
         cover_command_profile<15>(limits);
+        cover_toggle_profile<15>(limits);
         fan_mode_profile<15>(limits);
         fan_status_profile<15>(limits);
         percent_slider_profile<15>(limits);
@@ -4167,13 +4363,13 @@ int main() {
         now_playing_profile<15>(limits);
         cover_art_profile<15>(limits);
         media_control_profile<15>(limits);
-        cover_command_profile<15>(limits);
         break;
       case 20:
         profile<20>(limits);
         status_action_profile<20>(limits);
         control_profile<20>(limits);
         cover_command_profile<20>(limits);
+        cover_toggle_profile<20>(limits);
         fan_mode_profile<20>(limits);
         fan_status_profile<20>(limits);
         percent_slider_profile<20>(limits);
@@ -4190,7 +4386,6 @@ int main() {
         now_playing_profile<20>(limits);
         cover_art_profile<20>(limits);
         media_control_profile<20>(limits);
-        cover_command_profile<20>(limits);
         break;
       default:
         std::abort();
