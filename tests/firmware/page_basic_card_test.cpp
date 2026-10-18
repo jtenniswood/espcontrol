@@ -69,6 +69,21 @@ void display_text() {
 }
 void profile(const DeviceUiLimits &limits) {
   static_assert(sizeof(BasicCardDefinition) == 264);
+  for (const auto& spec : std::array<std::pair<const char*, uint8_t>, 6>{
+           {{"light.test;;;;;;;;confirm_off", PAGE_CONFIRM_OFF},
+            {"switch.test;;;;;;;;confirm_on,confirm_off", PAGE_CONFIRM_ON | PAGE_CONFIRM_OFF},
+            {"button.test;;;;;;;;confirm_on,confirm_off", 0},
+            {"switch.test;;;;;;;;confirm_on=1,xconfirm_off", 0},
+            {"cover.garage;;;;open;;garage;;confirm_on", PAGE_CONFIRM_ON},
+            {"script.scene;;;;script.turn_on;;action;;confirm_off", 0}}}) {
+    Fixture f(limits, spec.first);
+    BasicCardDefinition d;
+    TextPool text;
+    assert(prepare_basic_card(f.store, 0, d, &text) && d.confirmation == spec.second);
+    assert(d.needs_confirmation(false) == bool(spec.second & PAGE_CONFIRM_ON));
+    assert(d.needs_confirmation(true) == bool(spec.second & PAGE_CONFIRM_OFF));
+  }
+
   for (const auto* type : {"wifi_qr", "wifi_qr_card"}) {
     Fixture wifi(limits, std::string("switch.guest;Connect;Auto;Auto;;;") + type +
                              ";;ssid64=R3Vlc3Q,security=open,card_off_color=336699");
@@ -106,8 +121,7 @@ void profile(const DeviceUiLimits &limits) {
   subs.send("sensor.temp","","1.2345");
   assert(std::strcmp(read_basic_card(invalid_precision,{17,0},state).number,"1.235")==0);
   ++subs.generation;assert(!read_basic_card(definition,{17,0},state).numeric);
-  for (const auto& text :
-       {std::string("light.test;;;;;;;;confirm_off"), std::string("alarm.test;;;;;;alarm_control;;")}) {
+  for (const auto& text : {std::string("alarm.test;;;;;;alarm_control;;")}) {
     Fixture unsupported(limits,text);assert(!prepare_basic_card(unsupported.store,0,definition));
   }
   Fixture toggle(limits,"light.test;;Lightbulb;Lightbulb;sensor.temp;%;;2;");assert(prepare_basic_card(toggle.store,0,definition));assert(definition.kind==BasicCardKind::TOGGLE);
@@ -267,7 +281,9 @@ void status_actions_profile(const DeviceUiLimits &limits) {
     assert(state.memory().active_channels==0);
   }
   Fixture confirmation(limits,"script.scene;;;;script.turn_on;;action;;confirm_on");
-  assert(!prepare_basic_card(confirmation.store,0,definition,&strings));
+  assert(prepare_basic_card(confirmation.store, 0, definition, &strings));
+  assert(definition.kind == BasicCardKind::ACTION && definition.needs_confirmation(false) &&
+         !definition.needs_confirmation(true));
 }
 
 uint32_t cover_toggle_tick = 100;
@@ -418,7 +434,9 @@ void access_profile(const DeviceUiLimits& limits) {
       }
   Fixture confirmation(limits, "cover.garage;;Auto;Auto;;;garage;;confirm_on");
   BasicCardDefinition definition;
-  assert(!prepare_basic_card(confirmation.store, 0, definition));
+  assert(prepare_basic_card(confirmation.store, 0, definition));
+  assert(definition.kind == BasicCardKind::ACCESS && definition.needs_confirmation(false) &&
+         !definition.needs_confirmation(true));
 }
 void cleaning_profile(const DeviceUiLimits& limits) {
   for (bool mower : {false, true})

@@ -63,6 +63,35 @@ struct Fixture {
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
   }
+  struct Confirmations {};
+  Fixture(const DeviceUiLimits& limits, Confirmations) {
+    PanelConfigWriter w(document.data(), document.size());
+    assert(w.begin() == PanelConfigStatus::OK);
+    assert(w.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                   std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {";Confirm;Auto;Auto;indicator;;subpage;;",
+                                 "switch.confirm;On;Auto;Auto;;;;;confirm_on",
+                                 "switch.confirm;Off;Auto;Auto;;;;;confirm_off",
+                                 "script.confirm;Script;Auto;Auto;script.turn_on;;action;;confirm_on",
+                                 "cover.confirm;Open;Auto;Auto;open;;garage;;confirm_on",
+                                 "cover.confirm;Garage;Auto;Auto;;;garage;;confirm_on,confirm_off"};
+    for (size_t i = 0; i < 6; ++i)
+      assert(w.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i].data()), cards[i].size()) ==
+             PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1,2,3|,switch.confirm,Child,Auto,Auto,,,,confirm_on%2Cconfirm_off|R,cover.confirm,Child "
+        "Garage,Auto,Auto,,,,confirm_on%2Cconfirm_off|action,script.confirm,Child "
+        "Script,Auto,Auto,script.turn_on,,,confirm_on";
+    assert(w.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = "1,2,3,4,5,6";
+    assert(w.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                            reinterpret_cast<const uint8_t*>(order.data()),
+                            order.size()) == PanelConfigStatus::OK);
+    assert(w.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   struct LocalRelays {};
   Fixture(const DeviceUiLimits& limits, LocalRelays) {
     PanelConfigWriter writer(document.data(), document.size());
@@ -729,6 +758,9 @@ template<size_t Slots>struct Actions {
   static void climate(void *owner,PageBindingToken token){auto &a=*static_cast<Actions *>(owner);++a.climates;a.last=token;}
   static void action(void *owner,PageBindingToken token){auto &a=*static_cast<Actions *>(owner);++a.commands;a.last=token;}
   static void seek(void *owner,PageBindingToken token,uint8_t percent,float duration){auto &a=*static_cast<Actions *>(owner);++a.seeks;a.last=token;a.seek_percent=percent;a.seek_duration=duration;if(a.seek_page!=NO_PAGE)assert(a.renderer->open_page(a.seek_page));}
+  size_t confirmations{0};
+  uint32_t confirmation_connection{0};
+  bool confirmation_current{false};
   PageCoverCommandSnapshot cover_snapshot;
   PageAccessActionSnapshot access_snapshot;
   const char* cleaning_service{nullptr};
@@ -6011,6 +6043,203 @@ void qr_tile_profile(const DeviceUiLimits& limits) {
       limits.device_profile);
 }
 
+template <size_t Slots>
+void confirmation_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, Fixture::Confirmations{});
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies deps;
+  PageAccessStateRuntime access(arena, subscriptions, fan_status_now);
+  PageEntityStateRuntime state(deps, arena, subscriptions, {128, 128, 8192}, &access);
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  const size_t row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+  }
+  PageBasicTheme theme;
+  Actions<Slots> actions;
+  auto callbacks = actions.callbacks();
+  callbacks.access = [](void* owner, PageBindingToken token, PageAccessActionSnapshot) {
+    auto& a = *static_cast<Actions<Slots>*>(owner);
+    ++a.commands;
+    a.last = token;
+  };
+  callbacks.confirmation = [](void* owner, PageBindingToken token, uint32_t connection, bool current) {
+    auto& a = *static_cast<Actions<Slots>*>(owner);
+    ++a.confirmations;
+    a.last = token;
+    a.confirmation_connection = connection;
+    a.confirmation_current = current;
+    if (a.seek_page != NO_PAGE) assert(a.renderer->open_page(a.seek_page));
+  };
+  {
+    auto absent = callbacks;
+    absent.confirmation = nullptr;
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     absent, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                     nullptr, nullptr, nullptr, nullptr, &access);
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  {
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  callbacks, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                  nullptr, nullptr, nullptr, nullptr, &access);
+    assert(port.initialize());
+    PageLabelRefresh refresh(arena);
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t index = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[index++] = label;
+    assert(refresh.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    PageRuntimeResourcesGroup<3> resources({&access, &renderer, &state});
+    PageStoreRuntime publication(limits, arena, 32768, &resources);
+    const auto prepare = [&] {
+      return publication.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size);
+    };
+    const auto activate = [&](uint32_t generation) {
+      return publication.activate_prepared(generation, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(),
+                                           fixture.size);
+    };
+    assert(prepare());
+    const auto activation_cpp = cpp_allocations, activation_lv = lv_allocations;
+    assert(activate(0));
+    assert(activation_cpp == cpp_allocations && activation_lv == lv_allocations);
+    subscriptions.send("switch.confirm", "", "off");
+    subscriptions.send("cover.confirm", "", "closed");
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    lv_refr_now(lv_display_get_default());
+    const auto tap = [&](size_t slot) {
+      const auto cpp = cpp_allocations, reservations = arena.allocations;
+      click(widgets[slot].button);
+      // LVGL allocates transient style-state/animation work for native input.
+      // Admission allocates no C++/arena storage; settled view retention is
+      // checked across the complete navigation cycle below.
+      assert(cpp == cpp_allocations && reservations == arena.allocations);
+    };
+    tap(1);
+    assert(actions.confirmations == 1 && !actions.confirmation_current && actions.last.configuration == 0 &&
+           actions.confirmation_connection == subscriptions.generation && actions.toggles == 0);
+    tap(2);
+    assert(actions.toggles == 1 && actions.confirmations == 1);  // Off-only flag does not block turning on.
+    subscriptions.send("switch.confirm", "", "on");
+    renderer.update_visible();
+    tap(1);
+    assert(actions.toggles == 2);
+    tap(2);
+    assert(actions.confirmations == 2 && actions.confirmation_current && actions.toggles == 2);
+    tap(3);
+    assert(actions.confirmations == 3 && !actions.confirmation_current && actions.commands == 0);
+    tap(4);
+    assert(actions.confirmations == 4 && !actions.confirmation_current && actions.commands == 0);
+    tap(5);
+    assert(actions.confirmations == 5 && !actions.confirmation_current && actions.commands == 0);
+    subscriptions.send("cover.confirm", "", "open");
+    renderer.update_visible();
+    tap(5);
+    assert(actions.confirmation_current && actions.confirmations == 6);
+    // Reconnection cannot adopt a press into the new epoch, even with fresh state before click.
+    const auto old_count = actions.confirmations;
+    lv_obj_send_event(widgets[2].button, LV_EVENT_PRESSED, nullptr);
+    ++subscriptions.generation;
+    state.invalidate_disconnected_state();
+    subscriptions.send("switch.confirm", "", "on");
+    subscriptions.send("cover.confirm", "", "closed");
+    renderer.update_visible();
+    lv_obj_send_event(widgets[2].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.confirmations == old_count);
+    tap(2);
+    assert(actions.confirmations == old_count + 1 &&
+           actions.confirmation_connection == subscriptions.generation);
+    const auto confirmed_before_unknown = actions.confirmations, toggled_before_unknown = actions.toggles;
+    subscriptions.send("switch.confirm", "", "unknown");
+    renderer.update_visible();
+    tap(1);
+    tap(2);
+    assert(actions.confirmations == confirmed_before_unknown && actions.toggles == toggled_before_unknown);
+    subscriptions.send("switch.confirm", "", "on");
+    renderer.update_visible();
+    const auto child = fixture.store.card(0)->target;
+    assert(child != NO_PAGE);
+    actions.seek_page = child;
+    tap(2);
+    actions.seek_page = NO_PAGE;
+    assert(!renderer.valid(actions.last));
+    renderer.update_visible();
+    const auto after_navigation = actions.confirmations;
+    lv_obj_send_event(widgets[2].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.confirmations == after_navigation);
+    tap(1);
+    tap(2);
+    tap(3);
+    assert(actions.confirmations == after_navigation + 3);
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    subscriptions.send("switch.confirm", "", "off");
+    subscriptions.send("cover.confirm", "", "closed");
+    renderer.update_visible();
+    const auto cpp = cpp_allocations, lv_bytes = lv_live_bytes, meta = arena.live,
+               reservations = arena.allocations, registrations = subscriptions.bindings.size();
+    const auto objects = lv_obj_get_child_count(page);
+    for (int i = 0; i < 1000; ++i) {
+      tap(1);
+      tap(3);
+      tap(4);
+      tap(5);
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      tap(1);
+      tap(2);
+      tap(3);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(cpp == cpp_allocations && lv_bytes == lv_live_bytes && meta == arena.live &&
+             reservations == arena.allocations && registrations == subscriptions.bindings.size() &&
+             objects == lv_obj_get_child_count(page));
+    }
+    // A discarded prepare leaves both current bindings and their flags live.
+    const auto original = renderer.binding(1);
+    assert(prepare());
+    publication.discard_prepared();
+    assert(renderer.valid(original));
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    assert(prepare());
+    assert(activate(1));
+    const auto before_late = actions.confirmations;
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.confirmations == before_late && !renderer.valid(original));
+    renderer.update_visible();
+    tap(1);
+    assert(actions.confirmations == before_late + 1 && actions.last.configuration == 1);
+    renderer.retire_active();
+    state.retire_active();
+    access.retire_active();
+  }
+  assert(arena.live == 0);
+  lv_obj_delete(page);
+  std::printf(
+      "%s: confirmation routing, 1000 navigation cycles, captured press epochs and stable resources\n",
+      limits.device_profile);
+}
+
 int main() {
   std::setvbuf(stdout, nullptr, _IOLBF, 0);
   lv_init();
@@ -6033,6 +6262,25 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "confirmation") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          confirmation_profile<6>(limits);
+          break;
+        case 9:
+          confirmation_profile<9>(limits);
+          break;
+        case 15:
+          confirmation_profile<15>(limits);
+          break;
+        case 20:
+          confirmation_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "qr") == 0) {
       switch (limits.slot_count) {
         case 6:
@@ -6488,6 +6736,7 @@ int main() {
     switch (limits.slot_count) {
       case 6:
         profile<6>(limits);
+        confirmation_profile<6>(limits);
         qr_tile_profile<6>(limits);
         status_action_profile<6>(limits);
         control_profile<6>(limits);
@@ -6521,6 +6770,7 @@ int main() {
         break;
       case 9:
         profile<9>(limits);
+        confirmation_profile<9>(limits);
         qr_tile_profile<9>(limits);
         status_action_profile<9>(limits);
         control_profile<9>(limits);
@@ -6557,6 +6807,7 @@ int main() {
         break;
       case 15:
         profile<15>(limits);
+        confirmation_profile<15>(limits);
         qr_tile_profile<15>(limits);
         status_action_profile<15>(limits);
         control_profile<15>(limits);
@@ -6590,6 +6841,7 @@ int main() {
         break;
       case 20:
         profile<20>(limits);
+        confirmation_profile<20>(limits);
         qr_tile_profile<20>(limits);
         status_action_profile<20>(limits);
         control_profile<20>(limits);
