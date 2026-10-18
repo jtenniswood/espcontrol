@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cassert>
+
 #include <algorithm>
 #include <array>
 #include <cstring>
