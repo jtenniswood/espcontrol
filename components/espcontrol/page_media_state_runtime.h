@@ -72,6 +72,9 @@ class PageMediaStateRuntime final : public PageRuntimeResources, public PageEnti
   uint32_t connection_generation() const {
     return transport_.connection_generation();
   }
+  // Counts live membership reports, including unchanged values. Copied cache
+  // snapshots do not acknowledge a pending confirmation.
+  uint32_t group_revision(ConfigurationHandle, std::string_view entity) const;
   void loop();
   uint64_t revision() const {
     return revision_;
@@ -89,7 +92,7 @@ class PageMediaStateRuntime final : public PageRuntimeResources, public PageEnti
     media::PlaybackClock clock;
     media::MediaInputState input;
     uint64_t content_fingerprint{0};
-    uint32_t title_refresh_started_ms{0};
+    uint32_t title_refresh_started_ms{0}, group_revision{0};
     media::MediaItemKind content_kind{media::MediaItemKind::UNKNOWN},
         type_kind{media::MediaItemKind::UNKNOWN};
     bool title_awaiting_refresh{false}, metadata_refresh{false};

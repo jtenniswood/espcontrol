@@ -569,6 +569,51 @@ void media_control_profile(const DeviceUiLimits& limits) {
   assert(card.label == parse_cfg("media_player.room;;;;volume;;media;;").label);
 }
 
+void speaker_group_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(
+      limits,
+      "media_player.room;;Auto;Auto;speaker_group;;media;;number_display=volume,label_display=status");
+  BasicCardDefinition card;
+  assert(prepare_basic_card(fixture.store, 0, card));
+  assert(card.kind == BasicCardKind::MEDIA_CONTROL && card.media.kind == MediaActionKind::SPEAKER_GROUP &&
+         !card.media.volume_number && !card.media.show_state && card.push_feedback && card.active_color);
+  assert(card.icon == "Speaker Multiple" && std::strcmp(card.default_label, "Speaker Group") == 0);
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {64, 64, 4096});
+  assert(state.prepare(fixture.store));
+  state.activate_prepared(fixture.store);
+  auto value = read_basic_card(card, {17, 0}, state);
+  assert(!value.on && !value.numeric && value.label == "Speaker Group");
+  subscriptions.send("media_player.room", "", "paused");
+  for (const auto raw :
+       {"[]", "['media_player.room']", "['media_player.room','media_player.room']", "['switch.other']"}) {
+    subscriptions.send("media_player.room", "group_members", raw);
+    assert(!read_basic_card(card, {17, 0}, state).on);
+  }
+  subscriptions.send("media_player.room", "group_members", "['media_player.other']");
+  assert(read_basic_card(card, {17, 0}, state).on);
+  subscriptions.send("media_player.room", "", "off");
+  assert(read_basic_card(card, {17, 0}, state).on);
+  for (const auto raw : {"unavailable", "unknown", "", "  UNKNOWN  "}) {
+    subscriptions.send("media_player.room", "", raw);
+    assert(!read_basic_card(card, {17, 0}, state).on);
+  }
+  subscriptions.send("media_player.room", "", "paused");
+  const auto before = allocations;
+  for (int n = 0; n < 1000; ++n) assert(read_basic_card(card, {17, 0}, state).on);
+  assert(allocations == before);
+  subscriptions.send("media_player.room", "group_members", std::string(5000, 'x'));
+  assert(!read_basic_card(card, {17, 0}, state).on);
+  subscriptions.send("media_player.room", "group_members", "['media_player.other']");
+  ++subscriptions.generation;
+  assert(!read_basic_card(card, {17, 0}, state).on);
+  Fixture custom(limits, "media_player.room;Family room;Speaker;Other;speaker_group;;media;;");
+  assert(prepare_basic_card(custom.store, 0, card) && card.label == "Family room" && card.icon == "Speaker" &&
+         card.icon_on == "Speaker");
+}
+
 int main() {
   display_text();
   bounded_html_metadata();
@@ -582,5 +627,6 @@ int main() {
     media_position_profile(limits);
     now_playing_profile(limits);
     media_control_profile(limits);
+    speaker_group_profile(limits);
   }
 }

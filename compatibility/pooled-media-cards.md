@@ -1,10 +1,11 @@
 # Pooled media cards
 
 This part of #1825 supplies the common icon/label views for Play/Pause, Previous,
-Next, Playlist, Position, Now Playing, Volume and All Controls. It remains
+Next, Playlist, Position, Now Playing, Volume, All Controls and Speaker Group. It remains
 unselected in production. Cover artwork has its own
-[adapter](pooled-cover-artwork-cards.md). Speaker groups and real control-panel
-ownership still require their ports. Unsupported active modes reject preparation.
+[adapter](pooled-cover-artwork-cards.md). Demand-created
+[volume](pooled-volume-panels.md) and [media-control](pooled-media-control-panels.md)
+panels are available for scene integration. Unsupported active modes reject preparation.
 There is no change to saved configuration or navigation depth.
 
 The shared entity graph owns raw state. These views create no card contexts or
@@ -119,8 +120,8 @@ ordering and omitted-source cleanup, and lets Now Playing display the translated
 Source label without retaining another string. Primary cover consumers can
 invalidate old detail/progress state on an external-input transition; full
 secondary-source selection is available to the
-[cover-art view](pooled-cover-artwork-cards.md). Its control-panel adapter remains
-unfinished.
+[cover-art view](pooled-cover-artwork-cards.md). Its demanded control-panel adapter
+is described in [pooled-media-control-panels.md](pooled-media-control-panels.md).
 
 Capturing/reusing label styles adds fixed per-shell storage and preinstalled LVGL
 style properties, even in configurations without Now Playing. Include that cost
@@ -132,9 +133,9 @@ The cover-art view is now described in
 [pooled-cover-artwork-cards.md](pooled-cover-artwork-cards.md). Scene wiring and
 production selection remain unfinished.
 
-Remaining media work includes expanded artwork and the media/volume/speaker
-panels. Those paths must preserve the existing behaviour before production
-selection and the S3 hardware canary.
+Media/volume/speaker panel adapters now have separate demanded owners. Scene
+wiring, production selection and the S3 hardware canary remain required, including
+artwork and panel peak measurements.
 
 The model's cover route selects the secondary only while the primary uses an
 external input and the distinct secondary has a known, available, usable state
@@ -201,8 +202,8 @@ original full binding token. The card shows that bounded target for the existing
 1.5-second acknowledgement window. A matching report, timeout, capability change,
 unavailable source, disconnect, navigation, takeover or configuration replacement
 retires it. Preview changes no HA state and sends no service call. Media panels
-must validate and dispatch their actions independently; those adapters and scene
-wiring remain unfinished. The scene must request a consolidated fresh snapshot
+validate and dispatch their actions independently; scene wiring remains
+unfinished. The scene must request a consolidated fresh snapshot
 when configuration introduces dependencies already registered by another owner;
 these card readers neither replay HA state nor create subscriptions on navigation.
 
@@ -211,3 +212,30 @@ clicks, delayed acknowledgements, reconnect/replacement, reused sensor-container
 alignment and 1,000 navigation cycles. Capturing that original alignment adds
 fixed per-shell storage and preinstalled style properties. Include it in device
 measurements; retained host counters do not establish a lower device heap peak.
+
+Speaker Group cards retain their icon/configured label and open the group-only
+panel through the validated media-control hook. Their checked state means two
+distinct valid players, including the primary, while that primary is available;
+playback state alone does not check them. Numeric/status options remain limited
+to All Controls, matching the current firmware. A borrowed entity-list cursor
+preserves the existing trimming, quoting, escaping and deduplication rules
+without allocating a member vector during paint. Tests compare it with the
+production legacy parser, including invalid primaries and unusually quoted IDs.
+
+
+An accepted grouping response can pass its boolean checked state through
+`PageLegacyModalStyle::state_confirmed`. The scene must match the modal opening
+to the original full card binding before calling `preview_group`; other media
+card modes reject this feedback. It changes no Home Assistant cache value and
+sends no command. The existing shell feedback storage holds the confirmation
+until a newer membership report, unavailable/exhausted data, reconnect,
+navigation, takeover or configuration replacement retires that binding's hint.
+It has no clock timeout, so unrelated playback/volume updates cannot erase it.
+
+The shared media owner counts live membership reports for each unique source,
+including reports with unchanged values. Copied preparation state is not an
+acknowledgement. This counter lets a later report override both the panel and
+card confirmation without changing the raw graph's value-deduplication policy.
+Include the per-source field/padding and fixed modal callback observer storage
+in device memory qualification. The card shell and configured-card metadata
+gain no fields for this feedback. Scene wiring remains a cutover gate.

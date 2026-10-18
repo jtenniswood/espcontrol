@@ -35,3 +35,11 @@ inline bool media_control_identity_current(const MediaControlCtx* context, uint6
          (opening == 0 ? !media_control_modal_lifetime().owner
                        : media_control_context_identity(context) == opening);
 }
+
+inline void media_control_notify_state_confirmed(const MediaControlCtx* context,bool grouped) {
+  media_control_modal_lifetime().notify_state_confirmed(context,grouped);
+}
+
+inline bool media_control_refresh_current(const MediaControlCtx* context) {
+  return media_control_modal_lifetime().refresh_current(context);
+}
