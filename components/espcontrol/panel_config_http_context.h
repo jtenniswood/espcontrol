@@ -7,9 +7,11 @@
 namespace espcontrol::configuration {
 
 class ConfigurationService;
+class ConfigurationMainLoop;
 
 struct PanelConfigHttpContext {
   ConfigurationService *service{nullptr};
+  ConfigurationMainLoop *transactions{nullptr};
   uint8_t *document{nullptr};
   size_t document_capacity{0};
   const char *username{nullptr};
@@ -24,6 +26,7 @@ inline PanelConfigHttpContext &panel_config_http_context() {
 }
 
 inline void bind_panel_config_http_context(ConfigurationService &service,
+                                           ConfigurationMainLoop &transactions,
                                            uint8_t *document,
                                            size_t document_capacity,
                                            const char *username,
@@ -31,6 +34,7 @@ inline void bind_panel_config_http_context(ConfigurationService &service,
   PanelConfigHttpContext &context = panel_config_http_context();
   context.ready.store(false, std::memory_order_release);
   context.service = &service;
+  context.transactions = &transactions;
   context.document = document;
   context.document_capacity = document_capacity;
   context.username = username;
