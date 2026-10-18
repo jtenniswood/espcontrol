@@ -1,11 +1,8 @@
 #pragma once
 #include "page_entity_state_runtime.h"
+#include "page_status_captions.h"
 namespace espcontrol::pages {
-struct PageCoverStatusCaptions {
-  // Return the original input or a firmware-lifetime string. Supply both callbacks for a locale.
-  const char* (*text)(const char*){nullptr};
-  const char* (*key)(const char*){nullptr};
-};
+using PageCoverStatusCaptions = PageStatusCaptions;
 struct PageCoverToggleSnapshot {
   bool on{false}, icon_open{false}, showing{false};
   std::string_view status;

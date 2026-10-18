@@ -215,6 +215,23 @@ target_compile_options(page_cover_toggle_runtime_test PRIVATE -Wall -Wextra -Wer
 target_include_directories(page_cover_toggle_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_cover_toggle_runtime_test COMMAND page_cover_toggle_runtime_test)
 
+set(PAGE_ACCESS_STATE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_access_state_runtime_test.cpp)
+add_custom_command(OUTPUT ${PAGE_ACCESS_STATE_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_access_state_test.py
+    --output ${PAGE_ACCESS_STATE_SOURCE}
+  DEPENDS generate_page_access_state_test.py page_access_state_runtime_test.cpp.in
+    ../../components/espcontrol/button_grid_access_cards.h
+    ../../components/espcontrol/button_grid_config_parser.h ../../components/espcontrol/display_utf8_case.h
+  VERBATIM)
+add_executable(page_access_state_runtime_test ${PAGE_ACCESS_STATE_SOURCE}
+  ../../components/espcontrol/page_access_state_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_access_state_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_access_state_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_access_state_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_access_state_runtime_test COMMAND page_access_state_runtime_test)
+
 set(PAGE_FAN_STATUS_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_fan_status_runtime_test.cpp)
 add_custom_command(OUTPUT ${PAGE_FAN_STATUS_SOURCE}
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_fan_status_test.py
