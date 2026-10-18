@@ -44,8 +44,9 @@ these models. Focused native S3 and twenty-slot P4 image tests preserve the grid
 path. Transport I/O and modal UI are doubles, not physical expanded-image or
 memory qualification.
 
-The next source/UI stage must preserve camera refresh/activity state across the
-tile/expanded handoff, coalesce image revisions, own its configuration strings,
+The [refresh handoff](pooled-image-refresh-handoff.md) now preserves fixed
+activity/revision/schedule/cooldown state across visible tile and modal ownership.
+The next source/UI stage must own its configuration strings,
 apply modal sizing/headroom and guard all draw/UI work with the exact opening.
 It must also handle a direct request for an image on a hidden page without a tile
 lease. No new capacity, nesting, saved-document or backup behavior is enabled by

@@ -235,7 +235,7 @@ struct Fixture {
   Arena arena;
   Subscriptions subscriptions;
   PageCardDependencies dependencies;
-  PageEntityObserverSet<1> observers;
+  PageEntityObserverSet<2> observers;
   PageEntityStateRuntime state{dependencies, arena, subscriptions, {256, 128, 32768}, &observers};
   Requests requests;
   Origin origin{subscriptions};
@@ -247,8 +247,12 @@ struct Fixture {
   alignas(std::max_align_t) std::array<uint8_t, 32768> storage{};
   PageStore store;
   Fixture(const DeviceUiLimits& limits, bool peer = false,
-          camera::RefreshMode mode = camera::RefreshMode::OFF, uint64_t nonce = 1)
-      : images(requests, origin, nonce), port(limits, images, tiles), renderer(limits, arena, port) {
+          camera::RefreshMode mode = camera::RefreshMode::OFF, uint64_t nonce = 1,
+          uint64_t first_transfer = 1)
+      : images(requests, origin, nonce),
+        tiles(state, images, environment, clock_now, first_transfer),
+        port(limits, images, tiles),
+        renderer(limits, arena, port) {
     now = 100;
     PanelConfigWriter w(document.data(), document.size());
     assert(w.begin() == PanelConfigStatus::OK);
@@ -318,6 +322,591 @@ struct Fixture {
   }
 };
 using F = Fixture<9, 6>;
+template <size_t Shells, size_t Images>
+struct ExpandedObserver final : PageEntityObserver, PageModalImageOrigin {
+  Fixture<Shells, Images>& f;
+  PageImageRefreshState policy;
+  PageImageRefreshTransfer id;
+  PageModalToken token;
+  const char* entity;
+  PageImageEntityKind kind;
+  bool active{false};
+  PageModalRuntime* modal_runtime{nullptr};
+  ExpandedObserver(Fixture<Shells, Images>& value, size_t shell = 0, const char* source = "camera.front")
+      : f(value),
+        token{f.token(shell).configuration, 1, f.token(shell).card, ControlModalKind::IMAGE_CARD},
+        entity(source),
+        kind(page_image_entity_kind(source)) {
+    assert(f.observers.add(*this));
+  }
+  ~ExpandedObserver() {
+    active = false;
+    f.tiles.end_expanded(id, policy);
+    f.observers.remove(*this);
+  }
+  bool valid(PageModalToken value) const override {
+    return active && PageModalImageIdentity::same(value, token) &&
+           (!modal_runtime || modal_runtime->valid(value));
+  }
+  bool connected() const override {
+    return f.origin.online;
+  }
+  uint32_t connection_generation() const override {
+    return f.subscriptions.generation;
+  }
+  PageImageRefreshTransfer begin() {
+    active = true;
+    id = f.tiles.begin_expanded(token, *this, policy);
+    return id;
+  }
+  bool end() {
+    active = false;
+    return f.tiles.end_expanded(id, policy);
+  }
+  void observed(uint32_t generation, std::string_view source, std::string_view attribute,
+                std::string_view value, bool copied) override {
+    observed_update(generation, source, attribute, value, copied, {});
+  }
+  void observed_update(uint32_t generation, std::string_view source, std::string_view attribute,
+                       std::string_view value, bool copied, std::string_view previous) override {
+    if (copied || !valid(token) || generation != token.configuration) return;
+    policy.synchronize(connection_generation());
+    if (source == entity) {
+      if (attribute.empty())
+        policy.primary(kind, value, now);
+      else if (attribute == "entity_picture")
+        policy.picture_update(now);
+      else if (attribute == "access_token")
+        policy.token_update(value, previous, now);
+    } else if (source == "binary_sensor.motion" && attribute.empty())
+      policy.trigger(value, true, now, true);
+  }
+};
+void refresh_handoff() {
+  {
+    F f(DEVICE_UI_PROFILES[8], false, camera::RefreshMode::PERIODIC);
+    f.preload();
+    f.tick();
+    f.ready();
+    f.ready();
+    assert(f.requests.starts == 2);
+    f.tick(2000);
+    ExpandedObserver expanded(f);
+    assert(expanded.begin().transfer && expanded.policy.schedule.next_due == 5100);
+    const auto count = f.requests.starts;
+    f.tick(4000);
+    assert(f.requests.starts == count && expanded.policy.schedule.due(now, true));
+    expanded.policy.schedule.started();
+    f.tick(10000);
+    assert(f.requests.starts == count && !expanded.policy.schedule.due(now, true));
+    expanded.policy.expanded_finished(now, true);
+    assert(expanded.end());
+    f.tick();
+    f.tick(4999);
+    assert(f.requests.starts == count);
+    f.tick(1);
+    assert(f.requests.starts == count + 1);
+  }
+  {
+    F f(DEVICE_UI_PROFILES[8], false, camera::RefreshMode::ACTIVITY);
+    f.preload();
+    f.send("", "on", "binary_sensor.motion");
+    f.tick();
+    f.ready();
+    ExpandedObserver expanded(f);
+    assert(expanded.begin().transfer && expanded.policy.activity.on(expanded.policy.connection) &&
+           expanded.policy.schedule.due(now, true));
+    expanded.policy.schedule.started();
+    expanded.policy.expanded_finished(now, true);
+    f.tick(1000);
+    f.send("", "off", "binary_sensor.motion");
+    f.send("", "on", "binary_sensor.motion");
+    assert(expanded.policy.schedule.window_end == now + 30000);
+    assert(expanded.end());
+    f.tick(3999);
+    assert(f.requests.starts == 1);
+    f.tick(1);
+    assert(f.requests.starts == 2);
+    f.ready();
+    f.environment.shown = false;
+    f.tick();
+    f.send("", "off", "binary_sensor.motion");
+    f.send("", "on", "binary_sensor.motion");
+    f.environment.shown = true;
+    const auto count = f.requests.starts;
+    f.tick(60000);
+    assert(f.requests.starts == count);
+  }
+  {
+    F f(DEVICE_UI_PROFILES[8]);
+    f.preload("image.still");
+    f.tick();
+    f.ready(1);
+    const auto slot = f.slot(1);
+    const auto count = f.requests.starts;
+    ExpandedObserver expanded(f, 1, "image.still");
+    assert(expanded.begin().transfer);
+    expanded.policy.picture.modal_requested = expanded.policy.picture.latest;
+    f.send("", "revision2", "image.still");
+    f.tick();
+    assert(f.requests.starts == count && expanded.policy.picture.tile_dirty());
+    expanded.policy.picture.modal_applied = expanded.policy.picture.modal_requested;
+    assert(expanded.policy.picture.modal_dirty());
+    expanded.policy.picture.modal_requested = expanded.policy.picture.latest;
+    expanded.policy.picture.modal_applied = expanded.policy.picture.modal_requested;
+    assert(!expanded.policy.picture.modal_dirty() && expanded.policy.picture.tile_dirty());
+    f.send("", "unavailable", "image.still");
+    assert(expanded.policy.unavailable);
+    f.send("", "None", "image.still");
+    assert(expanded.policy.unavailable);
+    f.send("", "revision3", "image.still");
+    assert(!expanded.policy.unavailable && expanded.policy.picture.modal_dirty());
+    assert(expanded.policy.tile_invalidated);
+    assert(expanded.end());
+    assert(f.tiles.snapshot(f.token(1)).status == PageImageTileStatus::UNAVAILABLE);
+    f.tick(999);
+    assert(f.requests.starts == count);
+    f.tick(1);
+    assert(f.requests.starts == count + 1 && f.images.snapshot(slot, f.token(1)).pending);
+    assert(f.tiles.snapshot(f.token(1)).status == PageImageTileStatus::UNAVAILABLE);
+    f.ready(1);
+    assert(f.tiles.snapshot(f.token(1)).status == PageImageTileStatus::READY);
+  }
+}
+void handoff_retry_and_source_timing() {
+  {
+    F f(DEVICE_UI_PROFILES[8]);
+    f.preload();
+    f.tick();
+    f.ready();
+    f.tick(60000);
+    ExpandedObserver expanded(f);
+    assert(expanded.begin().transfer && expanded.policy.last_tile_completed == 100);
+    expanded.policy.expanded_finished(now, true);
+    assert(expanded.end());
+    f.tick();
+    assert(f.requests.starts == 1);  // No unsolicited off-mode refresh on close.
+    f.send("", "idle");
+    f.tick();
+    assert(f.requests.starts == 2);  // The actual tile completion still owns its 30s guard.
+  }
+  {
+    F f(DEVICE_UI_PROFILES[8]);
+    f.preload();
+    f.tick();
+    ExpandedObserver expanded(f);
+    assert(expanded.begin().transfer);
+    expanded.policy.expanded_finished(now, true);
+    assert(expanded.end());
+    f.tick(999);
+    assert(f.requests.starts == 1);
+    f.tick(1);
+    assert(f.requests.starts == 2);
+  }
+  {
+    F f(DEVICE_UI_PROFILES[8]);
+    f.preload();
+    f.tick();
+    f.ready();
+    ExpandedObserver expanded(f);
+    assert(expanded.begin().transfer);
+    f.send("entity_picture", "https://remote/new");
+    assert(expanded.end());
+    f.tick(999);
+    assert(f.requests.starts == 1);
+    f.tick(1);
+    assert(f.requests.starts == 2 && f.requests.urls[0] == "https://remote/new");
+  }
+  {
+    F f(DEVICE_UI_PROFILES[8]);
+    f.preload();
+    f.tick();
+    f.ready();
+    ExpandedObserver expanded(f);
+    assert(expanded.begin().transfer);
+    expanded.policy.expanded_finished(now, false);
+    assert(expanded.policy.camera_errors == 1 && expanded.policy.camera_retry_after == now + 2000);
+    assert(expanded.end());
+    assert(f.tiles.snapshot(f.token()).status == PageImageTileStatus::UNAVAILABLE);
+    f.tick(1999);
+    assert(f.requests.starts == 1);
+    f.tick(1);
+    assert(f.requests.starts == 2);
+    f.ready();
+    assert(f.tiles.snapshot(f.token()).status == PageImageTileStatus::READY);
+  }
+  {
+    F f(DEVICE_UI_PROFILES[8]);
+    f.preload();
+    f.tick();
+    f.requests.jobs[0].reply(false);
+    f.tick();
+    ExpandedObserver expanded(f);
+    assert(expanded.begin().transfer);
+    assert(expanded.policy.camera_errors == 1 && expanded.policy.camera_retry_after == now + 2000);
+    expanded.policy.expanded_finished(now, false);
+    assert(expanded.policy.camera_errors == 2 && expanded.policy.camera_retry_after == now + 4000);
+    assert(expanded.end());
+    f.tick(3999);
+    assert(f.requests.starts == 1);
+    f.tick(1);
+    assert(f.requests.starts == 2);
+  }
+}
+void handoff_late_source_delay() {
+  for (const uint32_t start : {uint32_t{100}, UINT32_MAX-2000}) {
+    F f(DEVICE_UI_PROFILES[8]);
+    now=start; f.preload(); f.tick();
+    ExpandedObserver expanded(f); assert(expanded.begin().transfer);
+    now+=5000;
+    expanded.policy.expanded_finished(now,true);
+    now+=500;
+    f.send("access_token","late-attribute");
+    assert(expanded.end());
+    f.tick(999); assert(f.requests.starts==1);
+    f.tick(1); assert(f.requests.starts==2);
+  }
+}
+void handoff_recovers_only_current_pixels() {
+  F f(DEVICE_UI_PROFILES[8]);
+  f.preload();
+  f.tick();
+  f.ready();
+  ExpandedObserver expanded(f);
+  assert(expanded.begin().transfer);
+  expanded.policy.expanded_finished(now, true);
+  f.send("", "unavailable");
+  f.send("", "idle");
+  assert(expanded.policy.tile_invalidated && !expanded.policy.expanded_success);
+  expanded.policy.expanded_finished(now, true);
+  assert(expanded.policy.tile_invalidated && expanded.policy.expanded_success);
+  assert(expanded.end());
+  assert(f.tiles.snapshot(f.token()).status == PageImageTileStatus::UNAVAILABLE);
+  f.tick(999);
+  assert(f.requests.starts == 1);
+  f.tick(1);
+  assert(f.requests.starts == 2);
+  f.ready();
+  assert(f.tiles.snapshot(f.token()).status == PageImageTileStatus::READY);
+}
+void handoff_staging_and_admission() {
+  {
+    F f(DEVICE_UI_PROFILES[8]);
+    f.preload();
+    f.tick();
+    f.ready();
+    ExpandedObserver expanded(f);
+    assert(expanded.begin().transfer);
+    const auto starts = f.requests.starts;
+    assert(f.renderer.prepare(f.store) && f.state.prepare(f.store));
+    f.renderer.discard_prepared();
+    f.state.discard_prepared();
+    assert(f.renderer.valid(f.token()) && !expanded.policy.source_dirty && expanded.policy.primary_seeded);
+    assert(expanded.end());
+    f.tick();
+    assert(f.requests.starts == starts);
+  }
+  {
+    F f(DEVICE_UI_PROFILES[8]);
+    f.environment.allowed = false;
+    f.preload();
+    f.tick();
+    assert(f.requests.starts == 0 && f.environment.probes == 1);
+    ExpandedObserver expanded(f);
+    assert(expanded.begin().transfer);
+    expanded.policy.expanded_finished(now, true);
+    assert(expanded.end());
+    f.environment.allowed = true;
+    f.tick(1999);
+    assert(f.requests.starts == 0 && f.environment.probes == 1);
+    f.tick(1);
+    assert(f.requests.starts == 1 && f.environment.probes == 2);
+  }
+}
+void handoff_clock_wrap() {
+  {
+    F f(DEVICE_UI_PROFILES[8]);
+    now = UINT32_MAX - 100;
+    f.preload();
+    f.tick();
+    f.ready();
+    ExpandedObserver expanded(f);
+    assert(expanded.begin().transfer);
+    f.send("entity_picture", "https://remote/wrapped");
+    assert(expanded.end());
+    f.tick(999);
+    assert(f.requests.starts == 1);
+    f.tick(1);
+    assert(f.requests.starts == 2);
+  }
+  {
+    F f(DEVICE_UI_PROFILES[8]);
+    now = UINT32_MAX - 100;
+    f.preload();
+    f.tick();
+    f.ready();
+    ExpandedObserver expanded(f);
+    assert(expanded.begin().transfer);
+    expanded.policy.expanded_finished(now, false);
+    assert(expanded.end());
+    f.tick(1999);
+    assert(f.requests.starts == 1);
+    f.tick(1);
+    assert(f.requests.starts == 2);
+  }
+}
+void handoff_cancel_and_replacement() {
+  {
+    F f(DEVICE_UI_PROFILES[8]);
+    f.preload();
+    f.tick();
+    const auto old = f.requests.jobs[0];
+    ExpandedObserver expanded(f);
+    bool entered = false;
+    f.requests.on_cancel = [&] {
+      if (!entered) {
+        entered = true;
+        f.send("", "unavailable");
+      }
+    };
+    assert(expanded.begin().transfer && entered && expanded.policy.unavailable);
+    f.requests.on_cancel = nullptr;
+    assert(expanded.end());
+    f.tick();
+    assert(f.tiles.snapshot(f.token()).status == PageImageTileStatus::UNAVAILABLE);
+    old.reply();
+    assert(f.tiles.snapshot(f.token()).status == PageImageTileStatus::UNAVAILABLE);
+    f.send("", "idle");
+    f.tick();
+    assert(f.requests.starts == 2);
+  }
+  {
+    F f(DEVICE_UI_PROFILES[8]);
+    f.preload();
+    f.tick();
+    ExpandedObserver expanded(f);
+    bool entered = false;
+    f.requests.on_cancel = [&] {
+      if (!entered) {
+        entered = true;
+        assert(f.renderer.suspend());
+        assert(f.renderer.resume());
+      }
+    };
+    assert(!expanded.begin().transfer && entered);
+    f.requests.on_cancel = nullptr;
+    f.tick();
+    assert(f.tiles.find(f.token()) < 6);
+  }
+  {
+    F f(DEVICE_UI_PROFILES[8]);
+    f.preload();
+    f.tick();
+    ExpandedObserver expanded(f);
+    alignas(std::max_align_t) std::array<uint8_t, 32768> bytes{};
+    PageStore staged, published;
+    assert(PageStore::stage_v1(f.document.data(), f.bytes, DEVICE_UI_PROFILES[8], UINT32_MAX, bytes.data(),
+                               bytes.size(), &staged) == PageStoreStatus::OK);
+    assert(f.renderer.prepare(staged) && f.state.prepare(staged));
+    assert(PageStore::stage_v1(f.document.data(), f.bytes, DEVICE_UI_PROFILES[8], 0, bytes.data(),
+                               bytes.size(), &published) == PageStoreStatus::OK);
+    bool entered = false;
+    f.requests.on_cancel = [&] {
+      if (!entered) {
+        entered = true;
+        expanded.active = false;
+        f.renderer.activate_prepared(published);
+        f.state.activate_prepared(published);
+        std::memset(f.storage.data(), 0xA5, f.storage.size());
+      }
+    };
+    assert(!expanded.begin().transfer && entered && f.token().configuration == 0);
+    f.requests.on_cancel = nullptr;
+    f.tick();
+    f.renderer.retire_active();
+    f.state.retire_active();
+  }
+}
+void actual_modal_handoff_lifetime() {
+  F f(DEVICE_UI_PROFILES[8], false, camera::RefreshMode::PERIODIC);
+  f.preload();
+  f.tick();
+  f.ready();
+  f.ready();
+  ExpandedObserver expanded(f);
+  struct Port final : PageModalPort {
+    F& f;
+    ExpandedObserver<9, 6>& expanded;
+    PageModalRuntime* runtime{nullptr};
+    bool used{false}, shown{false}, returned{false};
+    Port(F& fixture, ExpandedObserver<9, 6>& observer) : f(fixture), expanded(observer) {}
+    bool valid_origin(PageBindingToken t) const override {
+      return f.renderer.valid(t);
+    }
+    ControlModalKind kind(const PageStore& store, ConfigurationHandle card) const override {
+      return store.card(card) && store.field(*store.card(card), CardField::TYPE) == "image"
+                 ? ControlModalKind::IMAGE_CARD
+                 : ControlModalKind::NONE;
+    }
+    bool ready() const override {
+      return true;
+    }
+    bool connected() const override {
+      return f.origin.online;
+    }
+    uint32_t connection_generation() const override {
+      return f.subscriptions.generation;
+    }
+    void* create(const PageStore&, ConfigurationHandle, PageModalToken token) override {
+      assert(!used);
+      used = true;
+      expanded.token = token;
+      return this;
+    }
+    bool initialize(void*, PageModalToken token) override {
+      assert(runtime->valid(token) && !runtime->interactive(token));
+      shown = expanded.begin().transfer != 0;
+      return shown;
+    }
+    bool visible(void* p) const override {
+      return p == this && used && shown;
+    }
+    void update(void*, PageModalToken) override {}
+    ControlModalDismissPolicy dismiss_policy(void*) const override {
+      return ControlModalDismissPolicy::DISMISS;
+    }
+    void retire(void*, PageModalClose) override {
+      assert(!runtime->valid(expanded.token));
+      returned = expanded.end();
+      shown = false;
+    }
+    void destroy(void* p) override {
+      assert(p == this && !shown);
+      used = false;
+    }
+  } port(f, expanded);
+  PageModalRuntime modal(port);
+  port.runtime = &modal;
+  expanded.modal_runtime = &modal;
+  assert(modal.prepare(f.store));
+  modal.activate_prepared(f.store);
+  assert(modal.request_card({17, 0}));
+  modal.loop();
+  assert(modal.interactive(modal.token()) && expanded.id.transfer);
+  const auto count = f.requests.starts;
+  f.tick(6000);
+  assert(f.requests.starts == count);
+  expanded.policy.expanded_finished(now, true);
+  modal.dismiss();
+  assert(port.returned);
+  modal.loop();
+  f.tick(4999);
+  assert(f.requests.starts == count);
+  f.tick(1);
+  assert(f.requests.starts == count + 1);
+  assert(modal.request_card({17, 0}));
+  modal.loop();
+  assert(expanded.id.transfer);
+  ++f.subscriptions.generation;
+  assert(!modal.valid(modal.token()));
+  modal.loop();
+  assert(port.returned && !port.used);
+  f.tick();
+  // A close during transfer cancellation invalidates initialization; fresh
+  // tile policy must resume without a live modal or a dangling transfer.
+  f.preload();
+  f.tick();
+  bool closed = false;
+  f.requests.on_cancel = [&] {
+    if (!closed) {
+      closed = true;
+      assert(modal.notify_closed(modal.token()));
+    }
+  };
+  assert(modal.request_card({17, 0}));
+  modal.loop();
+  f.requests.on_cancel = nullptr;
+  assert(closed && !port.used && !modal.token().opening);
+  f.tick();
+  modal.retire_active();
+  modal.loop();
+  expanded.modal_runtime = nullptr;
+}
+void handoff_expiry_and_identity() {
+  F f(DEVICE_UI_PROFILES[8], false, camera::RefreshMode::ACTIVITY);
+  f.preload();
+  f.send("", "on", "binary_sensor.motion");
+  f.tick();
+  f.ready();
+  ExpandedObserver expanded(f);
+  const auto old = expanded.begin();
+  assert(old.transfer);
+  for (unsigned field = 0; field < 5; ++field) {
+    auto wrong = old;
+    switch (field) {
+      case 0:
+        ++wrong.transfer;
+        break;
+      case 1:
+        ++wrong.modal.configuration;
+        break;
+      case 2:
+        ++wrong.modal.opening;
+        break;
+      case 3:
+        ++wrong.modal.card;
+        break;
+      case 4:
+        wrong.modal.kind = ControlModalKind::CLIMATE;
+        break;
+    }
+    assert(!f.tiles.end_expanded(wrong, expanded.policy));
+  }
+  assert(!f.tiles.begin_expanded(expanded.token, expanded, expanded.policy).transfer);
+  expanded.active = false;
+  f.tick();
+  assert(!f.tiles.end_expanded(old, expanded.policy));
+  f.ready();
+  const auto count = f.requests.starts;
+  f.tick(60000);
+  assert(f.requests.starts == count);  // No replay of delegated activity.
+  ++expanded.token.opening;
+  const auto next = expanded.begin();
+  assert(next.transfer != old.transfer && next.transfer);
+  assert(!f.tiles.end_expanded(old, expanded.policy));
+  assert(expanded.end());
+  // A hidden source has no tile lease; the demanded owner must seed its own state.
+  ++expanded.token.opening;
+  expanded.token.card = f.store.page(1)->first_card;
+  expanded.active = true;
+  assert(!f.tiles.has_tile({expanded.token.configuration, expanded.token.card}));
+  assert(!f.tiles.begin_expanded(expanded.token, expanded, expanded.policy).transfer);
+}
+template <size_t Shells, size_t Images>
+void handoff_cycles(const DeviceUiLimits& limits) {
+  Fixture<Shells, Images> f(limits);
+  f.preload();
+  f.tick();
+  f.ready();
+  ExpandedObserver expanded(f);
+  const auto count = allocations, starts = f.requests.starts, channels = f.subscriptions.used;
+  for (size_t n = 0; n < 1000; ++n) {
+    ++expanded.token.opening;
+    const auto id = expanded.begin();
+    assert(id.transfer);
+    assert(expanded.end());
+  }
+  assert(allocations == count && f.requests.starts == starts && f.subscriptions.used == channels);
+}
+void final_transfer_nonce() {
+  F f(DEVICE_UI_PROFILES[8], false, camera::RefreshMode::OFF, 1, UINT64_MAX);
+  ExpandedObserver expanded(f);
+  assert(f.tiles.has_tile({expanded.token.configuration, expanded.token.card}));
+  assert(expanded.begin().transfer == UINT64_MAX);
+  assert(expanded.end());
+  ++expanded.token.opening;
+  assert(!expanded.begin().transfer);
+}
 void sources_and_revisions() {
   F f(DEVICE_UI_PROFILES[8]);
   const auto token = f.token();
@@ -660,6 +1249,16 @@ void startup_and_exhaustion() {
 }
 }  // namespace
 int main() {
+  refresh_handoff();
+  handoff_retry_and_source_timing();
+  handoff_recovers_only_current_pixels();
+  handoff_late_source_delay();
+  handoff_staging_and_admission();
+  handoff_clock_wrap();
+  handoff_cancel_and_replacement();
+  actual_modal_handoff_lifetime();
+  handoff_expiry_and_identity();
+  final_transfer_nonce();
   sources_and_revisions();
   retry_and_admission();
   periodic_and_activity();
@@ -672,18 +1271,24 @@ int main() {
     switch (l.slot_count) {
       case 6:
         navigation<6, 6>(l);
+        handoff_cycles<6, 6>(l);
         break;
       case 9:
-        if (i == 8)
+        if (i == 8) {
           navigation<9, 2>(l);
-        else
+          handoff_cycles<9, 2>(l);
+        } else {
           navigation<9, 6>(l);
+          handoff_cycles<9, 6>(l);
+        }
         break;
       case 15:
         navigation<15, 6>(l);
+        handoff_cycles<15, 6>(l);
         break;
       case 20:
         navigation<20, 6>(l);
+        handoff_cycles<20, 6>(l);
         break;
       default:
         assert(false);
@@ -691,5 +1296,5 @@ int main() {
   }
   std::puts(
       "image tiles: sources, revision coalescing, retry/refresh, shared leases, reconnect and 1000 "
-      "allocation-free navigation cycles per profile passed");
+      "allocation-free navigation and expanded handoff cycles per profile passed");
 }

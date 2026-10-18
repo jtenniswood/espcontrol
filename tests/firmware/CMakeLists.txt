@@ -966,6 +966,7 @@ target_include_directories(page_modal_image_runtime_test PRIVATE stubs ../../com
 add_test(NAME page_modal_image_runtime_test COMMAND page_modal_image_runtime_test)
 
 add_executable(page_image_tile_runtime_test page_image_tile_runtime_test.cpp
+  ../../components/espcontrol/page_modal_runtime.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
   ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_store_runtime.cpp
   ../../components/espcontrol/page_renderer_layout.cpp)
