@@ -186,7 +186,7 @@ class CardEmitter {
       case Driver::MEDIA_PLAYLIST:
         return pair(config.entity) && content(config.entity);
       case Driver::MEDIA_NOW_PLAYING:
-        return content(config.entity) && metadata(config.entity) &&
+        return content(config.entity) && pair(config.entity,"source") && metadata(config.entity) &&
             (config.precision != "progress" || (pair(config.entity) && progress(config.entity))) &&
             ((config.precision != "play_pause" && !(in_subpage && aggregate_parent)) || pair(config.entity));
       case Driver::MEDIA_COVER_ART: {

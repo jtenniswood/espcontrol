@@ -9,9 +9,9 @@
 
 namespace espcontrol::pages {
 namespace {
-constexpr uint8_t REQUIRE_METADATA = 1, REQUIRE_PROGRESS = 2, REQUIRE_DETAILS = 4;
+constexpr uint8_t REQUIRE_METADATA = 1, REQUIRE_PROGRESS = 2, REQUIRE_DETAILS = 4, REQUIRE_PRIMARY_COVER = 8;
 constexpr uint16_t TITLE_BIT = 1u << 2, ARTIST_BIT = 1u << 3;
-constexpr uint16_t CONTENT_BITS = (1u << 0) | (1u << 2) | (1u << 3) | (1u << 5);
+constexpr uint16_t CONTENT_BITS = (1u << 0) | (1u << 2) | (1u << 3) | (1u << 5) | (1u << 6);
 std::string_view configured_entity(const PageStore& store, CardId card) {
   const auto* definition = store.card(card);
   if (!definition || store.field(*definition, CardField::TYPE) != "media") return {};
@@ -30,6 +30,7 @@ uint8_t requirements(const PageStore& store, CardId card) {
                       cfg_option_token_present(std::string(store.field(*definition, CardField::OPTIONS)),
                                                MEDIA_COVER_ART_OPTION));
   uint8_t result = (mode == "playlist" || mode == "now_playing" || cover) ? REQUIRE_METADATA : 0;
+  if (cover) result |= REQUIRE_PRIMARY_COVER;
   if (mode == "now_playing" || cover || mode == "control_modal" || mode == "speaker_group")
     result |= REQUIRE_METADATA | REQUIRE_DETAILS;
   if (mode == "position" ||
@@ -110,6 +111,7 @@ bool PageMediaStateRuntime::prepare(const PageStore& store) {
     if (!(source->requirements & REQUIRE_DETAILS)) {
       source->fresh &= ~(TITLE_BIT | ARTIST_BIT);
       source->present &= ~(TITLE_BIT | ARTIST_BIT);
+      source->input = {};
       source->content_fingerprint = 0;
       source->content_kind = source->type_kind = media::MediaItemKind::UNKNOWN;
       source->title_awaiting_refresh = source->metadata_refresh = false;
@@ -148,6 +150,7 @@ uint16_t PageMediaStateRuntime::attribute_bit(std::string_view attribute) {
   if (attribute == "media_artist") return 1u << 3;
   if (attribute == "source") return 1u << 4;
   if (attribute == "entity_picture") return 1u << 5;
+  if (attribute == "entity_picture_local") return 1u << 6;
   return 0;
 }
 void PageMediaStateRuntime::synchronize() {
@@ -161,6 +164,7 @@ void PageMediaStateRuntime::synchronize() {
       source.state_known = false;
       source.state[0] = '\0';
       source.clock = {};
+      source.input = {};
       source.content_fingerprint = 0;
       source.content_kind = source.type_kind = media::MediaItemKind::UNKNOWN;
       source.title_awaiting_refresh = source.metadata_refresh = false;
@@ -201,9 +205,11 @@ void PageMediaStateRuntime::observed_update(uint32_t generation, std::string_vie
       state[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(normalized[i])));
     state[i] = '\0';
     source->clock.playback(value.substr(0, HA_SHORT_STATE_MAX_LEN) == "playing", transport_.now_ms());
+    if (!copied) source->input.state_observed();
     const bool next_usable = usable(state);
     if (!next_usable && (!source->state_known || std::strcmp(source->state, state) != 0)) {
       source->fresh = source->present = 0;
+      source->input.invalidate_content();
       source->content_fingerprint = 0;
       source->content_kind = source->type_kind = media::MediaItemKind::UNKNOWN;
       source->title_awaiting_refresh = source->metadata_refresh = false;
@@ -242,6 +248,26 @@ void PageMediaStateRuntime::observed_update(uint32_t generation, std::string_vie
   if (metadata == "unknown" || metadata == "unavailable") metadata = {};
   const bool present = !metadata.empty();
   if (source->requirements & REQUIRE_DETAILS) {
+    bool invalidate_external = false;
+    if (attribute == "source") {
+      char old_decoded[HA_STATE_TEXT_MAX_LEN + 1];
+      auto old_source = decode_html_entities_bounded(old_decoded, sizeof(old_decoded), previous);
+      if (old_source == "unknown" || old_source == "unavailable") old_source = {};
+      invalidate_external = source->input.source(metadata, old_source);
+    } else if (attribute == "media_content_id") {
+      invalidate_external = source->input.content(metadata);
+    } else if (attribute == "media_title") {
+      source->input.current_content(present);
+    }
+    if (invalidate_external && (source->requirements & REQUIRE_PRIMARY_COVER)) {
+      constexpr auto cleared = TITLE_BIT | ARTIST_BIT | (1u << 5) | (1u << 6);
+      source->fresh &= ~cleared;
+      source->present &= ~cleared;
+      const bool playing = source->clock.playing, known = source->clock.state_known;
+      source->clock = {};
+      source->clock.playing = playing;
+      source->clock.state_known = known;
+    }
     if (attribute == "media_title") {
       char old_decoded[HA_STATE_TEXT_MAX_LEN + 1];
       auto old_title = (source->fresh & TITLE_BIT)
@@ -289,40 +315,37 @@ void PageMediaStateRuntime::observed_update(uint32_t generation, std::string_vie
     source->present &= ~bit;
   ++revision_;
 }
-bool PageMediaStateRuntime::current(ConfigurationHandle handle, std::string_view entity,
-                                    std::string_view attribute) const {
+const PageMediaStateRuntime::Source* PageMediaStateRuntime::source(ConfigurationHandle handle,
+                                                                   std::string_view entity) const {
   if (active_ < 0 || slots_[active_].generation != handle.generation ||
       handle.index >= slots_[active_].card_count || !transport_.connected() ||
       connection_ != transport_.connection_generation())
-    return false;
-  const auto bit = attribute_bit(attribute);
-  if (!bit) return false;
+    return nullptr;
   const auto& slot = slots_[active_];
   for (size_t i = 0; i < slot.count; ++i)
-    if (slot.sources[i].entity == entity) return slot.sources[i].fresh & bit;
-  return false;
+    if (slot.sources[i].entity == entity) return slot.sources + i;
+  return nullptr;
+}
+bool PageMediaStateRuntime::current(ConfigurationHandle handle, std::string_view entity,
+                                    std::string_view attribute) const {
+  const auto* item = source(handle, entity);
+  return item && (item->fresh & attribute_bit(attribute));
+}
+bool PageMediaStateRuntime::external_input(ConfigurationHandle handle, std::string_view entity) const {
+  const auto* item = source(handle, entity);
+  return item && item->input.external;
 }
 bool PageMediaStateRuntime::playback(ConfigurationHandle handle, std::string_view entity,
                                      PageMediaPlaybackSnapshot& output) const {
-  if (active_ < 0 || slots_[active_].generation != handle.generation ||
-      handle.index >= slots_[active_].card_count || !transport_.connected() ||
-      connection_ != transport_.connection_generation())
-    return false;
-  const auto& slot = slots_[active_];
-  for (size_t i = 0; i < slot.count; ++i) {
-    const auto& source = slot.sources[i];
-    if (source.entity != entity) continue;
-    if (!(source.requirements & REQUIRE_PROGRESS)) return false;
-    const auto now = transport_.now_ms();
-    const auto& clock = source.clock;
-    const bool available = source.state_known && source.state[0] &&
-                           std::strcmp(source.state, "unknown") != 0 &&
-                           std::strcmp(source.state, "unavailable") != 0;
-    output = {clock.seconds(now), clock.duration,     clock.percent(now), available,
-              clock.playing,      clock.has_duration, clock.has_position};
-    return true;
-  }
-  return false;
+  const auto* item = source(handle, entity);
+  if (!item || !(item->requirements & REQUIRE_PROGRESS)) return false;
+  const auto now = transport_.now_ms();
+  const auto& clock = item->clock;
+  const bool available = item->state_known && item->state[0] && std::strcmp(item->state, "unknown") != 0 &&
+                         std::strcmp(item->state, "unavailable") != 0;
+  output = {clock.seconds(now), clock.duration,     clock.percent(now), available,
+            clock.playing,      clock.has_duration, clock.has_position};
+  return true;
 }
 void PageMediaStateRuntime::loop() {
   synchronize();

@@ -112,12 +112,15 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
     }
   } else if(type=="media") {
     const auto mode=card_runtime_media_mode(std::string(out.sensor));
-    if(mode!="play_pause"&&mode!="previous"&&mode!="next"&&mode!="playlist"&&mode!="position")return false;
-    out.kind=mode=="position"?BasicCardKind::MEDIA_POSITION:BasicCardKind::MEDIA_ACTION;out.push_feedback=mode!="position";out.unit={};
+    if(mode!="play_pause"&&mode!="previous"&&mode!="next"&&mode!="playlist"&&mode!="position"&&mode!="now_playing")return false;
+    if(mode=="now_playing"&&cfg_option_token_present(options,MEDIA_COVER_ART_OPTION))return false;
+    out.kind=mode=="now_playing"?BasicCardKind::MEDIA_NOW_PLAYING:mode=="position"?BasicCardKind::MEDIA_POSITION:BasicCardKind::MEDIA_ACTION;out.push_feedback=mode=="now_playing"?precision=="play_pause":mode!="position";out.unit={};
     out.media.kind=mode=="previous"?MediaActionKind::PREVIOUS:mode=="next"?MediaActionKind::NEXT:
-      mode=="playlist"?MediaActionKind::PLAYLIST:mode=="position"?MediaActionKind::POSITION:MediaActionKind::PLAY_PAUSE;
+      mode=="playlist"?MediaActionKind::PLAYLIST:mode=="position"?MediaActionKind::POSITION:mode=="now_playing"?MediaActionKind::NOW_PLAYING:MediaActionKind::PLAY_PAUSE;
     out.media.show_state=(mode=="play_pause"||mode=="position")&&precision=="state";
-    out.active_color=mode=="play_pause"||mode=="playlist";
+    out.media.progress=mode=="now_playing"&&precision=="progress";
+    out.media.play_pause_background=mode=="now_playing"&&precision=="play_pause";
+    out.active_color=mode=="play_pause"||mode=="playlist"||out.media.play_pause_background;
     out.default_label=mode=="previous"?"Previous":mode=="next"?"Next":mode=="playlist"?"Playlist":mode=="position"?"Position":"Play/Pause";
     if(out.icon.empty()||out.icon=="Auto")out.icon=mode=="previous"?"Skip Previous":mode=="next"?"Skip Next":mode=="playlist"?"Music":"Play Pause";
     // Existing media action buttons keep one configured icon in both states.
@@ -206,6 +209,21 @@ bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,Pag
 BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHandle handle,PageEntityStateRuntime &state,int duration_components,std::string_view temperature_unit,PageCardTranslate translate,PageMediaStateRuntime *media_owner) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
+  if(card.kind==BasicCardKind::MEDIA_NOW_PLAYING) {
+    const auto primary=find(state,handle,card.entity);
+    result.on=available(primary)&&primary.value=="playing";
+    if(media_owner) {
+      for(const auto attribute:{std::string_view("media_title"),std::string_view("media_artist")}) {
+        const auto value=find(state,handle,card.entity,attribute);
+        if(value.status==PageEntityStatus::AVAILABLE&&media_owner->current(handle,card.entity,attribute)) {
+          if(attribute=="media_title")result.media_title=value.value;else result.media_artist=value.value;
+        }
+      }
+      result.media_external_input=media_owner->external_input(handle,card.entity);
+      if(card.media.progress){PageMediaPlaybackSnapshot progress;if(media_owner->playback(handle,card.entity,progress))result.fill_percent=progress.percent;}
+    }
+    return result;
+  }
   if(card.kind==BasicCardKind::MEDIA_ACTION||card.kind==BasicCardKind::MEDIA_POSITION) {
     result.label=card.label;
     if(result.label.empty()&&card.default_label) {

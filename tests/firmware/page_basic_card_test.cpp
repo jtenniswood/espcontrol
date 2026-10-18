@@ -395,4 +395,69 @@ void bounded_html_metadata() {
   assert(decode_html_entities_bounded(nullptr, 0, "abc").empty());
   assert(allocations == before);
 }
-int main(){display_text();bounded_html_metadata();for(const auto &limits:DEVICE_UI_PROFILES){profile(limits);climate_profile(limits);status_actions_profile(limits);control_profile(limits);weather_profile(limits);media_action_profile(limits);media_position_profile(limits);}}
+void now_playing_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, "media_player.room;Ignored;Auto;Auto;now_playing;;media;progress;");
+  BasicCardDefinition definition;
+  assert(prepare_basic_card(fixture.store, 0, definition));
+  assert(definition.kind == BasicCardKind::MEDIA_NOW_PLAYING && definition.media.progress &&
+         !definition.push_feedback && !definition.large_numbers);
+  Fixture alias(limits, std::string("media_player.room;;;;now_playing;;media;;") + MEDIA_COVER_ART_OPTION);
+  BasicCardDefinition rejected;
+  assert(!prepare_basic_card(alias.store, 0, rejected));
+  Fixture play_pause(limits, "media_player.room;;;;now_playing;;media;play_pause;");
+  assert(prepare_basic_card(play_pause.store, 0, rejected) && rejected.media.play_pause_background &&
+         rejected.push_feedback && rejected.active_color);
+  PageCardDependencies dependencies;
+  Arena arena;
+  Subscriptions subscriptions;
+  struct Transport : PageMediaTransport {
+    Subscriptions& subscriptions;
+    explicit Transport(Subscriptions& source) : subscriptions(source) {}
+    bool connected() const override {
+      return true;
+    }
+    uint32_t connection_generation() const override {
+      return subscriptions.generation;
+    }
+    uint32_t now_ms() const override {
+      return 100;
+    }
+    int64_t epoch_seconds() const override {
+      return 1000;
+    }
+    void reannounce() override {}
+  } transport(subscriptions);
+  PageMediaStateRuntime media(arena, transport);
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {32, 32, 4096}, &media);
+  assert(media.prepare(fixture.store) && state.prepare(fixture.store));
+  media.activate_prepared(fixture.store);
+  state.activate_prepared(fixture.store);
+  subscriptions.send("media_player.room", "", "playing");
+  subscriptions.send("media_player.room", "media_content_id", "track:1");
+  subscriptions.send("media_player.room", "media_title", "Beyonc&eacute;");
+  subscriptions.send("media_player.room", "media_artist", "Artist");
+  subscriptions.send("media_player.room", "media_duration", "300");
+  subscriptions.send("media_player.room", "media_position", "60");
+  auto value = read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, &media);
+  assert(value.media_title == "Beyonc&eacute;" && value.media_artist == "Artist" &&
+         value.fill_percent == 20 && value.on);
+  const auto count = allocations;
+  for (size_t i = 0; i < 1000; ++i)
+    assert(read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, &media).media_artist == "Artist");
+  assert(allocations == count);
+  subscriptions.send("media_player.room", "media_content_id", "track:2");
+  value = read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, &media);
+  assert(value.media_title.empty() && value.media_artist.empty());
+  subscriptions.send("media_player.room", "media_title", "New title");
+  subscriptions.send("media_player.room", "source", "TV");
+  assert(read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, &media).media_external_input);
+  subscriptions.send("media_player.room", "", "playing");
+  subscriptions.send("media_player.room", "media_title", "New title");
+  assert(!read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, &media).media_external_input);
+  ++subscriptions.generation;
+  value = read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, &media);
+  assert(value.media_title.empty() && value.media_artist.empty() && !value.media_external_input &&
+         value.fill_percent == 0);
+}
+
+int main(){display_text();bounded_html_metadata();for(const auto &limits:DEVICE_UI_PROFILES){profile(limits);climate_profile(limits);status_actions_profile(limits);control_profile(limits);weather_profile(limits);media_action_profile(limits);media_position_profile(limits);now_playing_profile(limits);}}
