@@ -131,14 +131,14 @@ void cover_control_apply_supported_features(CoverControlCtx *ctx,bool known,int 
 // @production-function subscribe_cover_control_state
 size_t sends=0;std::function<void()> during_send;
 void light_control_open_modal(LightControlCtx *ctx){
- if(!light_control_can_open_modal(ctx))return;light_ui.active=ctx;light_ui.overlay=lv_obj_create(lv_layer_top());light_ui.button=lv_button_create(light_ui.overlay);
+ if(!light_control_can_open_modal(ctx)){return;}light_ui.active=ctx;light_ui.overlay=lv_obj_create(lv_layer_top());light_ui.button=lv_button_create(light_ui.overlay);
  lv_obj_add_event_cb(light_ui.button,[](lv_event_t *){if(light_modal_action_allowed(light_ui.active)){++sends;if(during_send)during_send();}},LV_EVENT_CLICKED,nullptr);
  modal_service.set_active(ControlModalKind::LIGHT_CONTROL,light_ui.overlay,light_control_hide_modal,ControlModalDismissPolicy::DISMISS);
  light_ui.color_grid=lv_obj_create(light_ui.overlay);light_control_rebuild_color_grid(ctx);
  if(light_ui.active&&!light_modal_widgets_ready(light_ui.overlay))light_control_hide_modal();
 }
 void cover_control_open_modal(CoverControlCtx *ctx){
- if(!cover_control_can_open_modal(ctx))return;cover_ui.active=ctx;cover_ui.overlay=lv_obj_create(lv_layer_top());cover_ui.button=lv_button_create(cover_ui.overlay);
+ if(!cover_control_can_open_modal(ctx)){return;}cover_ui.active=ctx;cover_ui.overlay=lv_obj_create(lv_layer_top());cover_ui.button=lv_button_create(cover_ui.overlay);
  lv_obj_add_event_cb(cover_ui.button,[](lv_event_t *){if(cover_modal_action_allowed(cover_ui.active)){++sends;if(during_send)during_send();}},LV_EVENT_CLICKED,nullptr);
  modal_service.set_active(ControlModalKind::COVER_CONTROL,cover_ui.overlay,cover_control_hide_modal,ControlModalDismissPolicy::DISMISS);
  if(!cover_modal_widgets_ready(cover_ui.overlay))cover_control_hide_modal();

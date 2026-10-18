@@ -1374,13 +1374,18 @@ inline void media_playback_apply_state_to_playlists(MediaPlaybackState *state) {
   }
 }
 
-inline void media_playback_apply_state_to_volume(MediaPlaybackState *state,
-                                                 MediaVolumeCtx *ctx) {
-  if (!state || !ctx) return;
-  ctx->available = state->available;
-  ctx->volume_known = state->volume_known;
+// Shared presentation policy for legacy consumers and graph-backed panels.
+struct MediaVolumeStateSnapshot {
+  bool available{false}, volume_known{false};
+  int volume_pct{0};
+  espcontrol::media::VolumeControlMode volume_control_mode{espcontrol::media::VolumeControlMode::ABSOLUTE};
+};
+inline void media_volume_apply_snapshot(MediaVolumeCtx *ctx,const MediaVolumeStateSnapshot& state) {
+  if (!media_volume_context_current(ctx)) return;
+  ctx->available = state.available;
+  ctx->volume_known = state.volume_known;
   const auto previous_volume_control_mode = ctx->volume_control_mode;
-  ctx->volume_control_mode = state->volume_control_mode;
+  ctx->volume_control_mode = state.volume_control_mode;
   if (previous_volume_control_mode != ctx->volume_control_mode &&
       ctx->volume_control_mode !=
         espcontrol::media::VolumeControlMode::ABSOLUTE) {
@@ -1389,7 +1394,7 @@ inline void media_playback_apply_state_to_volume(MediaPlaybackState *state,
   }
   media_volume_refresh_controls(ctx);
   if (!ctx->available) media_volume_hide_modal();
-  if (!state->volume_known) {
+  if (!state.volume_known) {
     if (ctx->pct_lbl) lv_label_set_display_text(ctx->pct_lbl, "--");
     if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, "");
     return;
@@ -1397,8 +1402,8 @@ inline void media_playback_apply_state_to_volume(MediaPlaybackState *state,
 
   const auto mode = media_volume_effective_control_mode(ctx);
   int pct = mode == espcontrol::media::VolumeControlMode::ABSOLUTE
-    ? media_volume_clamp_user_percent(ctx, state->volume_pct)
-    : media_clamp_percent(state->volume_pct);
+    ? media_volume_clamp_user_percent(ctx, state.volume_pct)
+    : media_clamp_percent(state.volume_pct);
   if (media_volume_pending_active(ctx)) {
     if (pct != ctx->pending_pct) {
       media_volume_set_modal_value(ctx, ctx->pending_pct);
@@ -1414,6 +1419,10 @@ inline void media_playback_apply_state_to_volume(MediaPlaybackState *state,
   media_volume_set_card_value(ctx, pct);
   media_volume_set_modal_value(ctx, pct);
   media_volume_refresh_controls(ctx);
+}
+inline void media_playback_apply_state_to_volume(MediaPlaybackState *state,MediaVolumeCtx *ctx) {
+  if(!state||!ctx)return;
+  media_volume_apply_snapshot(ctx,{state->available,state->volume_known,state->volume_pct,state->volume_control_mode});
 }
 
 inline void media_playback_apply_state_to_volumes(MediaPlaybackState *state) {
@@ -5082,8 +5091,9 @@ inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
                                                    const lv_font_t *icon_font,
                                                    int width_compensation_percent = 100,
                                                    lv_obj_t *pct_lbl = nullptr,
-                                                   lv_obj_t *unit_lbl = nullptr) {
-  MediaVolumeCtx *ctx = new MediaVolumeCtx();
+                                                   lv_obj_t *unit_lbl = nullptr,
+                                                   MediaVolumeCtx *storage = nullptr) {
+  MediaVolumeCtx *ctx = storage ? storage : new MediaVolumeCtx();
   ctx->entity_id = p.entity;
   ctx->label = media_label(p);
   ctx->max_pct = media_volume_max_percent(p);

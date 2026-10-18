@@ -11,12 +11,20 @@ template<typename Context> struct ModalContextLifetime {
   bool (*action)(void *,const Context *){nullptr};
   void (*closed)(void *,Context *){nullptr};
   bool (*widgets)(void *,void *){nullptr};
+  void (*numeric_action)(void *,const Context *,float){nullptr};
   bool managed_context(const Context *ctx) const {return owner&&managed&&managed(owner,ctx);}
   bool current_context(const Context *ctx) const {return ctx&&(!owner||(current&&current(owner,ctx)));}
   bool action_allowed(const Context *ctx) const {return ctx&&(!owner||(action&&action(owner,ctx)));}
   void notify_closed(Context *ctx) const {
     const auto observer=*this;
     if(ctx&&observer.owner&&observer.closed)observer.closed(observer.owner,ctx);
+  }
+  // The owner maps this exact live context to its opening token before
+  // forwarding an optimistic numeric value. Never resolve a replacement card.
+  void notify_numeric_action(const Context *ctx,float value) const {
+    const auto observer=*this;
+    if(ctx&&observer.owner&&observer.numeric_action&&observer.action_allowed(ctx))
+      observer.numeric_action(observer.owner,ctx,value);
   }
   bool widgets_ready(void *root) const {
     const auto observer=*this;

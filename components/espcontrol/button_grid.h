@@ -77,3 +77,5 @@
 #include "page_ha_media_transport.h"
 
 #include "page_weather_modal.h"
+
+#include "page_media_volume_modal.h"

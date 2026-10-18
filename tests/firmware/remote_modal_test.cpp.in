@@ -51,6 +51,9 @@ using ClimateControlCtx = Runtime;
 #include "light_cover_modal_lifetime.h"
 #undef LightControlCtx
 #undef CoverControlCtx
+#define MediaVolumeCtx Runtime
+#include "media_volume_modal_lifetime.h"
+#undef MediaVolumeCtx
 using AlarmCardCtx = Runtime;
 using FanCardCtx = Runtime;
 using ImageCardCtx = Runtime;
