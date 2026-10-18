@@ -653,6 +653,12 @@ add_test(NAME guest_wifi_lifecycle_test COMMAND ${Python3_EXECUTABLE}
 add_test(NAME webhook_log_secrets_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/webhook_log_secrets_test.py ${CMAKE_CXX_COMPILER})
 
+add_executable(page_qr_matrix_test page_qr_matrix_test.cpp)
+target_compile_features(page_qr_matrix_test PRIVATE cxx_std_17)
+target_compile_options(page_qr_matrix_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_qr_matrix_test PRIVATE ../../components/espcontrol)
+add_test(NAME page_qr_matrix_test COMMAND page_qr_matrix_test)
+
 add_executable(wifi_qr_codec_test wifi_qr_codec_test.cpp)
 target_compile_features(wifi_qr_codec_test PRIVATE cxx_std_17)
 target_compile_options(wifi_qr_codec_test PRIVATE -Wall -Wextra -Werror)
@@ -1436,6 +1442,24 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   target_include_directories(page_label_refresh_test PRIVATE ../../components/espcontrol)
   target_link_libraries(page_label_refresh_test PRIVATE lvgl::lvgl)
   add_test(NAME page_label_refresh_test COMMAND page_label_refresh_test)
+  set(PAGE_QR_MATRIX_NATIVE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_qr_matrix_native_test.cpp)
+  add_custom_command(OUTPUT ${PAGE_QR_MATRIX_NATIVE_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_qr_matrix_test.py --output ${PAGE_QR_MATRIX_NATIVE_SOURCE}
+    DEPENDS generate_page_qr_matrix_test.py generate_climate_update_test.py page_qr_matrix_native_test.cpp.in
+      ../../components/espcontrol/button_grid_wifi_qr_driver.h
+    VERBATIM)
+  add_executable(page_qr_matrix_native_test ${PAGE_QR_MATRIX_NATIVE_SOURCE}
+    ${ESPCONTROL_LVGL_SOURCE_DIR}/src/libs/qrcode/qrcodegen.c
+    ${ESPCONTROL_LVGL_SOURCE_DIR}/src/libs/qrcode/lv_qrcode.c)
+  target_compile_features(page_qr_matrix_native_test PRIVATE cxx_std_17)
+  target_compile_options(page_qr_matrix_native_test PRIVATE -Wall -Wextra -Werror -UNDEBUG
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>)
+  target_compile_definitions(page_qr_matrix_native_test PRIVATE LV_USE_QRCODE=1)
+  target_include_directories(page_qr_matrix_native_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_qr_matrix_native_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_qr_matrix_native_test COMMAND page_qr_matrix_native_test)
+  set_tests_properties(page_qr_matrix_native_test PROPERTIES TIMEOUT 180)
+
   add_executable(page_expanded_image_modal_test page_expanded_image_modal_test.cpp
     ../../components/espcontrol/page_modal_runtime.cpp
     ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp
