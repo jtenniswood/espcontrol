@@ -5,6 +5,14 @@ enable_testing()
 include(CheckCXXSourceCompiles)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+add_executable(page_confirmation_runtime_test page_confirmation_runtime_test.cpp
+  ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp)
+target_compile_features(page_confirmation_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_confirmation_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_confirmation_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_confirmation_runtime_test COMMAND page_confirmation_runtime_test)
+
 file(GLOB PAGE_STORE_FIXTURES CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_SOURCE_DIR}/../../common/config/*_card_normalization_fixtures.json)
 add_custom_command(
