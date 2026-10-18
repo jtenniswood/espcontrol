@@ -5,6 +5,12 @@ enable_testing()
 include(CheckCXXSourceCompiles)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+add_executable(page_modal_admission_test page_modal_admission_test.cpp)
+target_compile_features(page_modal_admission_test PRIVATE cxx_std_17)
+target_compile_options(page_modal_admission_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_modal_admission_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_modal_admission_test COMMAND page_modal_admission_test)
+
 add_executable(page_confirmation_runtime_test page_confirmation_runtime_test.cpp
   ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_store.cpp
   ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "page_modal_admission.h"
+
 // Include after the existing media UI/context helpers in button_grid.h.
 #include <cctype>
 
@@ -30,7 +32,7 @@ struct PageMediaVolumeModalFamily {
   }
   static bool matches(const PageStore& store, const CardDefinition& card) {
     return store.field(card, CardField::TYPE) == "media" &&
-           card_runtime_media_mode(std::string(store.field(card, CardField::SENSOR))) == "volume";
+           admission::media_mode(store.field(card, CardField::SENSOR)) == "volume";
   }
   static bool initialize_context(Context& ctx, const ParsedCfg& config, const Environment& environment) {
     return create_media_volume_context(

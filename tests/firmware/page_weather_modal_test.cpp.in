@@ -168,6 +168,15 @@ Shell control_modal_open_shell(ControlModalKind kind, lv_obj_t* owner, int, cons
 // @production-function weather_daily_refresh_modal
 // @production-function weather_daily_open_modal
 #include "page_weather_modal.h"
+
+// Request admission runs inside the input callback; panel allocation belongs to loop().
+static bool request_without_allocation(PageModalRuntime& runtime, ConfigurationHandle token) {
+  const auto cpp = cpp_allocation_calls, lv = lv_allocation_calls;
+  const bool accepted = runtime.request_card(token);
+  assert(cpp_allocation_calls == cpp && lv_allocation_calls == lv);
+  return accepted;
+}
+
 struct Arena : PageArenaAllocator {
   std::unordered_map<void*, size_t> live;
   int remaining = -1;
@@ -221,14 +230,15 @@ struct Requests : PageForecastRequests {
   }
 };
 struct Fixture {
-  explicit Fixture(uint32_t generation = 17) {
+  explicit Fixture(uint32_t generation = 17, const char* precision = "daily") {
     const auto& limits = DEVICE_UI_PROFILES[8];
     PanelConfigWriter writer(document.data(), document.size());
     assert(writer.begin() == PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
                                         std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
     for (uint8_t slot = 1; slot <= 2; ++slot) {
-      const std::string text = std::string("weather.home;;;;;;weather;") + (slot == 1 ? "daily;" : "today;");
+      const std::string text =
+          std::string("weather.home;;;;;;weather;") + (slot == 1 ? std::string(precision) + ";" : "today;");
       assert(writer.append_button(slot, reinterpret_cast<const uint8_t*>(text.data()), text.size()) ==
              PanelConfigStatus::OK);
     }
@@ -247,7 +257,7 @@ void click(lv_obj_t* button) {
   lv_obj_send_event(button, LV_EVENT_CLICKED, nullptr);
 }
 void test_weather_modal() {
-  Fixture first, next(18);
+  Fixture first, next(18), invalid(19, "invalid_forecast_precision_beyond_small_string_capacity");
   Arena arena;
   Requests requests;
   PageForecastRuntime forecasts(arena, requests);
@@ -272,11 +282,14 @@ void test_weather_modal() {
     assert(!port.install(modal));
     weather_daily_release_source(legacy);
     assert(port.install(modal));
+    assert(modal.prepare(invalid.store));
+    modal.activate_prepared(invalid.store);
+    assert(!request_without_allocation(modal, {19, 0}));
     assert(modal.prepare(first.store));
     modal.activate_prepared(first.store);
     const auto baseline = arena.live.size(), lv_baseline = lv_live_bytes;
-    assert(!modal.request_card({17, 1}));
-    assert(modal.request_card({17, 0}));
+    assert(!request_without_allocation(modal, {17, 1}));
+    assert(request_without_allocation(modal, {17, 0}));
     modal.loop();
     assert(weather_daily_modal().overlay && weather_daily_modal().columns.size() == 6 &&
            clock_label == "Weather");
@@ -290,7 +303,7 @@ void test_weather_modal() {
     forecasts.loop();
     requests.reply(8);
     for (int i = 0; i < 1000; ++i) {
-      assert(modal.request_card({17, 0}));
+      assert(request_without_allocation(modal, {17, 0}));
       modal.loop();
       auto* source = weather_daily_modal().source;
       assert(source && source->forecast.count == 8 && source->users == 1 &&
@@ -303,7 +316,7 @@ void test_weather_modal() {
       modal.loop();
       assert(arena.live.size() == baseline && lv_live_bytes == lv_baseline && requests.starts == 1);
     }
-    assert(modal.request_card({17, 1}));
+    assert(request_without_allocation(modal, {17, 1}));
     modal.loop();
     const auto* first_panel = weather_daily_modal().columns[0].button;
     forecasts.refresh();
@@ -321,7 +334,7 @@ void test_weather_modal() {
            !lv_obj_has_flag(weather_daily_modal().status, LV_OBJ_FLAG_HIDDEN));
     click(close_button);
     modal.loop();
-    assert(modal.request_card({17, 0}));
+    assert(request_without_allocation(modal, {17, 0}));
     modal.loop();
     after_close = [&](WeatherDailySource* source) {
       modal.loop();
@@ -331,31 +344,31 @@ void test_weather_modal() {
     after_close = {};
     modal.loop();
     arena.remaining = 0;
-    assert(modal.request_card({17, 0}));
+    assert(request_without_allocation(modal, {17, 0}));
     modal.loop();
     arena.remaining = -1;
     assert(!weather_daily_modal().overlay && arena.live.size() == baseline);
     arena.remaining = 1;
-    assert(modal.request_card({17, 0}));
+    assert(request_without_allocation(modal, {17, 0}));
     modal.loop();
     arena.remaining = -1;
     assert(!weather_daily_modal().overlay && arena.live.size() == baseline);
     settings.allowed = false;
-    assert(modal.request_card({17, 0}));
+    assert(request_without_allocation(modal, {17, 0}));
     modal.loop();
     settings.allowed = true;
     assert(!weather_daily_modal().overlay);
     settings.gestures = 1;
-    assert(modal.request_card({17, 0}));
+    assert(request_without_allocation(modal, {17, 0}));
     modal.loop();
     settings.gestures = 128;
     assert(!weather_daily_modal().overlay && arena.live.size() == baseline);
     enough_heap = false;
-    assert(modal.request_card({17, 0}));
+    assert(request_without_allocation(modal, {17, 0}));
     modal.loop();
     enough_heap = true;
     assert(!weather_daily_modal().overlay);
-    assert(modal.request_card({17, 0}));
+    assert(request_without_allocation(modal, {17, 0}));
     modal.loop();
     auto* source = weather_daily_modal().source;
     assert(modal.prepare(next.store) && forecasts.prepare(next.store));
