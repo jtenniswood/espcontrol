@@ -59,6 +59,7 @@ class PagePercentSliderRuntime final : public PageRuntimeResources, public PageE
     Source* source{nullptr};
     Card* card{nullptr};
     uint32_t generation{0};
+    bool valid{false};
   };
   void clear(Slot&);
   void clear_previews(Slot&, size_t source);

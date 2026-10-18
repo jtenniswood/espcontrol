@@ -150,7 +150,8 @@ add_custom_command(OUTPUT ${PAGE_PERCENT_SLIDER_SOURCE}
   VERBATIM)
 add_executable(page_percent_slider_runtime_test ${PAGE_PERCENT_SLIDER_SOURCE}
   ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_store.cpp
-  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp)
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
 target_compile_features(page_percent_slider_runtime_test PRIVATE cxx_std_17)
 target_compile_options(page_percent_slider_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
 target_include_directories(page_percent_slider_runtime_test PRIVATE stubs ../../components/espcontrol)

@@ -109,7 +109,7 @@ bool PagePercentSliderRuntime::prepare(const PageStore& store) {
     discard_prepared();
     return false;
   };
-  if (!store.generation() ||
+  if (!store.source_document() ||
       !cards(store,
              [&](CardId id, PagePercentSliderKind kind, std::string_view key) {
                if (count >= max_cards_) return false;
@@ -140,6 +140,7 @@ bool PagePercentSliderRuntime::prepare(const PageStore& store) {
   staged_.card =
       arena ? reinterpret_cast<Card*>(static_cast<char*>(arena) + sources * sizeof(Source)) : nullptr;
   staged_.generation = store.generation();
+  staged_.valid = true;
   char* output = arena ? static_cast<char*>(arena) + sources * sizeof(Source) + card_bytes : nullptr;
   cards(store, [&](CardId id, PagePercentSliderKind kind, std::string_view key) {
     size_t index = 0;
@@ -163,14 +164,15 @@ void PagePercentSliderRuntime::discard_prepared() {
   clear(staged_);
 }
 void PagePercentSliderRuntime::activate_prepared(const PageStore& store) {
-  if (!store.generation() || store.generation() != staged_.generation) return;
+  if (!staged_.valid || !page_prepared_generation_matches(staged_.generation, store.generation())) return;
   clear(active_);
   active_ = staged_;
+  active_.generation = store.generation();
   staged_ = {};
   ++revision_;
 }
 void PagePercentSliderRuntime::retire_active() {
-  if (active_.generation) ++revision_;
+  if (active_.valid) ++revision_;
   clear(active_);
 }
 void PagePercentSliderRuntime::clear_previews(Slot& slot, size_t source) {
@@ -184,7 +186,7 @@ void PagePercentSliderRuntime::observed(uint32_t generation, std::string_view en
                                         std::string_view value, bool copied) {
   loop();
   for (auto* slot : {&active_, &staged_}) {
-    if (!generation || generation != slot->generation) continue;
+    if (!slot->valid || generation != slot->generation) continue;
     for (size_t i = 0; i < slot->sources; ++i) {
       auto& source = slot->source[i];
       if (source.entity != entity || (!attr.empty() && attr != attribute(source.kind))) continue;
@@ -253,7 +255,7 @@ void PagePercentSliderRuntime::loop() {
   ++revision_;
 }
 PagePercentSliderSnapshot PagePercentSliderRuntime::read(ConfigurationHandle handle) const {
-  if (!handle.generation || handle.generation != active_.generation) return {};
+  if (!active_.valid || handle.generation != active_.generation) return {};
   for (size_t i = 0; i < active_.cards; ++i) {
     const auto& card = active_.card[i];
     if (card.card != handle.index) continue;
@@ -265,7 +267,7 @@ PagePercentSliderSnapshot PagePercentSliderRuntime::read(ConfigurationHandle han
 }
 bool PagePercentSliderRuntime::preview(ConfigurationHandle handle, uint8_t percent) {
   loop();
-  if (!handle.generation || handle.generation != active_.generation || percent > 100) return false;
+  if (!active_.valid || handle.generation != active_.generation || percent > 100) return false;
   for (size_t i = 0; i < active_.cards; ++i) {
     auto& card = active_.card[i];
     if (card.card != handle.index || !active_.source[card.source].available) continue;

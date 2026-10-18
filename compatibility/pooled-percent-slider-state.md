@@ -50,6 +50,10 @@ independent previews, repeated confirmations, copied/live snapshot ordering,
 shared-graph staging, stale generations, reconnect, limits/allocation failures,
 all nine profiles, allocation-free reads/updates and 1,000 replacements.
 
+Private prepared generations are promoted at publication, including generation-zero
+initial loads. Real PageStoreRuntime tests cover that path, discard and empty
+retirement.
+
 There are no new HA registrations, widgets, callbacks or timers in this owner.
 Host retained-resource checks and SDK compilation do not establish device RAM
 savings, physical layout or the full factory build matrix. Visible slider ports,
