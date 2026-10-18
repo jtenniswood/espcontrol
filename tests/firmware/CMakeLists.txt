@@ -597,6 +597,20 @@ target_include_directories(page_artwork_requests_test PRIVATE stubs/owned_artwor
   ../../components/espcontrol ../../components/artwork_image)
 add_test(NAME page_artwork_requests_test COMMAND page_artwork_requests_test)
 
+add_executable(page_cover_art_runtime_test page_cover_art_runtime_test.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_cover_art_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_cover_art_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_cover_art_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_cover_art_runtime_test COMMAND page_cover_art_runtime_test)
+
+add_executable(page_cover_art_policy_test page_cover_art_policy_test.cpp)
+target_compile_features(page_cover_art_policy_test PRIVATE cxx_std_17)
+target_compile_options(page_cover_art_policy_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_cover_art_policy_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_cover_art_policy_test COMMAND page_cover_art_policy_test)
+
 add_executable(page_image_runtime_test page_image_runtime_test.cpp)
 target_compile_features(page_image_runtime_test PRIVATE cxx_std_17)
 target_compile_options(page_image_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)

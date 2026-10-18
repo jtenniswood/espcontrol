@@ -246,8 +246,51 @@ void reentrancy_and_failure() {
   requests.deliveries[0].reply();
   assert(exhausted.snapshot(0, token).ready);
 }
+void acquisition_and_retained_refresh() {
+  Requests requests;
+  Origin origin;
+  PageImageRuntime<2> runtime(requests, origin);
+  const auto first = origin.token(4), second = origin.token(7), third = origin.token(9);
+  const auto before = allocations;
+  assert(runtime.acquire(first) == 0 && runtime.acquire(first) == 0);
+  assert(runtime.acquire(second) == 1 && runtime.acquire(third) == 2);
+  assert(allocations == before);
+  assert(runtime.request(0, first, "original", options));
+  const auto initial = requests.deliveries[0];
+  initial.reply(true, true);
+  const auto asset = runtime.snapshot(0, first).asset;
+  assert(asset == initial.request);
+  auto refresh = options;
+  refresh.retain_completed = true;
+  assert(runtime.request(0, first, "replacement", refresh));
+  auto state = runtime.snapshot(0, first);
+  assert(state.ready && state.pending && state.cached && state.asset == asset);
+  requests.deliveries[0].reply(false);
+  state = runtime.snapshot(0, first);
+  assert(state.ready && state.failed && !state.pending && state.asset == asset);
+  requests.accepted = false;
+  assert(!runtime.request(0, first, "rejected refresh", refresh));
+  state = runtime.snapshot(0, first);
+  assert(state.ready && state.failed && !state.pending && state.asset == asset);
+  requests.accepted = true;
+  assert(runtime.request(0, first, "successful refresh", refresh));
+  requests.deliveries[0].reply();
+  state = runtime.snapshot(0, first);
+  assert(state.ready && !state.failed && state.asset != asset);
+  assert(runtime.request(0, first, "different source", options));
+  state = runtime.snapshot(0, first);
+  assert(!state.ready && state.pending && state.asset == 0);
+  runtime.unbind(0);  // A retired binding cannot retain the former card's pixels.
+  assert(runtime.acquire(third) == 0);
+  assert(runtime.request(0, third, "new card", refresh));
+  state = runtime.snapshot(0, third);
+  assert(!state.ready && state.pending && state.asset == 0);
+  initial.reply();
+  assert(!runtime.snapshot(0, third).ready);
+}
 }  // namespace
 int main() {
+  acquisition_and_retained_refresh();
   lifecycle<4>();   // S3.
   lifecycle<20>();  // Largest P4 profile.
   reentrancy_and_failure();

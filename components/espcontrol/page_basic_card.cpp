@@ -112,16 +112,33 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
     }
   } else if(type=="media") {
     const auto mode=card_runtime_media_mode(std::string(out.sensor));
-    if(mode!="play_pause"&&mode!="previous"&&mode!="next"&&mode!="playlist"&&mode!="position"&&mode!="now_playing")return false;
-    if(mode=="now_playing"&&cfg_option_token_present(options,MEDIA_COVER_ART_OPTION))return false;
-    out.kind=mode=="now_playing"?BasicCardKind::MEDIA_NOW_PLAYING:mode=="position"?BasicCardKind::MEDIA_POSITION:BasicCardKind::MEDIA_ACTION;out.push_feedback=mode=="now_playing"?precision=="play_pause":mode!="position";out.unit={};
-    out.media.kind=mode=="previous"?MediaActionKind::PREVIOUS:mode=="next"?MediaActionKind::NEXT:
-      mode=="playlist"?MediaActionKind::PLAYLIST:mode=="position"?MediaActionKind::POSITION:mode=="now_playing"?MediaActionKind::NOW_PLAYING:MediaActionKind::PLAY_PAUSE;
+    if (mode != "play_pause" && mode != "previous" && mode != "next" && mode != "playlist" &&
+        mode != "position" && mode != "now_playing" && mode != "cover_art")
+      return false;
+    const bool cover = mode == "cover_art" ||
+                       (mode == "now_playing" && cfg_option_token_present(options, MEDIA_COVER_ART_OPTION));
+    out.kind = cover                   ? BasicCardKind::MEDIA_COVER_ART
+               : mode == "now_playing" ? BasicCardKind::MEDIA_NOW_PLAYING
+               : mode == "position"    ? BasicCardKind::MEDIA_POSITION
+                                       : BasicCardKind::MEDIA_ACTION;
+    out.push_feedback = cover                   ? false
+                        : mode == "now_playing" ? precision == "play_pause"
+                                                : mode != "position";
+    out.unit = {};
+    out.media.kind = cover                   ? MediaActionKind::COVER_ART
+                     : mode == "previous"    ? MediaActionKind::PREVIOUS
+                     : mode == "next"        ? MediaActionKind::NEXT
+                     : mode == "playlist"    ? MediaActionKind::PLAYLIST
+                     : mode == "position"    ? MediaActionKind::POSITION
+                     : mode == "now_playing" ? MediaActionKind::NOW_PLAYING
+                                             : MediaActionKind::PLAY_PAUSE;
     out.media.show_state=(mode=="play_pause"||mode=="position")&&precision=="state";
-    out.media.progress=mode=="now_playing"&&precision=="progress";
-    out.media.play_pause_background=mode=="now_playing"&&precision=="play_pause";
+    out.media.track_details = cover && cfg_option_token_present(options, MEDIA_COVER_ART_DETAILS_OPTION);
+    out.media.progress = !cover && mode == "now_playing" && precision == "progress";
+    out.media.play_pause_background = !cover && mode == "now_playing" && precision == "play_pause";
     out.active_color=mode=="play_pause"||mode=="playlist"||out.media.play_pause_background;
     out.default_label=mode=="previous"?"Previous":mode=="next"?"Next":mode=="playlist"?"Playlist":mode=="position"?"Position":"Play/Pause";
+    if (cover) out.icon = "Music";
     if(out.icon.empty()||out.icon=="Auto")out.icon=mode=="previous"?"Skip Previous":mode=="next"?"Skip Next":mode=="playlist"?"Music":"Play Pause";
     // Existing media action buttons keep one configured icon in both states.
     out.icon_on=out.icon;
@@ -209,18 +226,42 @@ bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,Pag
 BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHandle handle,PageEntityStateRuntime &state,int duration_components,std::string_view temperature_unit,PageCardTranslate translate,PageMediaStateRuntime *media_owner) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
-  if(card.kind==BasicCardKind::MEDIA_NOW_PLAYING) {
-    const auto primary=find(state,handle,card.entity);
+  if (card.kind == BasicCardKind::MEDIA_NOW_PLAYING || card.kind == BasicCardKind::MEDIA_COVER_ART) {
+    const bool cover = card.kind == BasicCardKind::MEDIA_COVER_ART;
+    PageMediaRouteSnapshot route;
+    if (cover && (!media_owner || !media_owner->cover_route(handle, route))) return result;
+    const auto entity = cover ? route.entity : card.entity;
+    result.media_idle = cover && route.idle_placeholder;
+    result.media_source_title = cover && route.external_fallback;
+    const auto primary = find(state, handle, entity);
     result.on=available(primary)&&primary.value=="playing";
     if(media_owner) {
       for(const auto attribute:{std::string_view("media_title"),std::string_view("media_artist")}) {
-        const auto value=find(state,handle,card.entity,attribute);
-        if(value.status==PageEntityStatus::AVAILABLE&&media_owner->current(handle,card.entity,attribute)) {
-          if(attribute=="media_title")result.media_title=value.value;else result.media_artist=value.value;
+        const auto value = find(state, handle, entity, attribute);
+        if (value.status == PageEntityStatus::AVAILABLE && media_owner->current(handle, entity, attribute)) {
+          if (attribute == "media_title")
+            result.media_title = value.value.substr(0, HA_STATE_TEXT_MAX_LEN);
+          else
+            result.media_artist = value.value.substr(0, HA_STATE_TEXT_MAX_LEN);
         }
       }
-      result.media_external_input=media_owner->external_input(handle,card.entity);
-      if(card.media.progress){PageMediaPlaybackSnapshot progress;if(media_owner->playback(handle,card.entity,progress))result.fill_percent=progress.percent;}
+      result.media_external_input = media_owner->external_input(handle, entity);
+      if (result.media_source_title) {
+        const auto raw = find(state, handle, entity, "source");
+        char decoded[HA_STATE_TEXT_MAX_LEN + 1];
+        const auto source = raw.status == PageEntityStatus::AVAILABLE
+                                ? decode_html_entities_bounded(decoded, sizeof(decoded),
+                                                               raw.value.substr(0, HA_STATE_TEXT_MAX_LEN))
+                                : std::string_view{};
+        const auto effective = media_owner->effective_source(handle, entity, source);
+        const auto count = std::min(effective.size(), sizeof(result.text) - 1);
+        if (count) std::memcpy(result.text, effective.data(), count);
+        result.text[count] = '\0';
+      }
+      if (card.media.progress) {
+        PageMediaPlaybackSnapshot progress;
+        if (media_owner->playback(handle, entity, progress)) result.fill_percent = progress.percent;
+      }
     }
     return result;
   }
@@ -239,8 +280,10 @@ BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHand
       const auto content=find(state,handle,card.entity,"media_content_id");
       const auto type=find(state,handle,card.entity,"media_content_type");
       char id_text[HA_STATE_TEXT_MAX_LEN+1],type_text[HA_SHORT_STATE_MAX_LEN+1];
-      const auto metadata=[](char *output,size_t capacity,const PageEntityValue &value) {
-        auto text=value.status==PageEntityStatus::AVAILABLE?decode_html_entities_bounded(output,capacity,value.value):std::string_view{};
+      const auto metadata = [](char* output, size_t capacity, const PageEntityValue& value) {
+        auto text = value.status == PageEntityStatus::AVAILABLE
+                        ? decode_html_entities_bounded(output, capacity, value.value.substr(0, capacity - 1))
+                        : std::string_view{};
         return text=="unknown"||text=="unavailable"?std::string_view{}:text;
       };
       const auto id=metadata(id_text,sizeof(id_text),content),content_type=metadata(type_text,sizeof(type_text),type);

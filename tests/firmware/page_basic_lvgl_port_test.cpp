@@ -49,10 +49,33 @@ struct Subscriptions:PageEntitySubscriptions {
   void send(const char *entity,const char *attribute,std::string_view value){for(auto &b:bindings)if(std::strcmp(b.entity,entity)==0&&std::strcmp(b.attribute,attribute)==0)b.deliver(b.owner,b.revision,b.channel,value);}
 };
 struct Fixture {
-  explicit Fixture(const DeviceUiLimits &limits,bool unsupported=false,bool portrait=false,bool stateless=false,bool controls=false,bool weather=false,bool forecasts=false,bool media=false,bool positions=false,bool now_playing=false) {
+  explicit Fixture(const DeviceUiLimits& limits, bool unsupported = false, bool portrait = false,
+                   bool stateless = false, bool controls = false, bool weather = false,
+                   bool forecasts = false, bool media = false, bool positions = false,
+                   bool now_playing = false, bool cover_art = false) {
     PanelConfigWriter writer(document.data(),document.size());assert(writer.begin()==PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t *>(limits.device_profile),std::strlen(limits.device_profile))==PanelConfigStatus::OK);
     auto button=[&](uint8_t slot,std::string text){assert(writer.append_button(slot,reinterpret_cast<const uint8_t *>(text.data()),text.size())==PanelConfigStatus::OK);};
+    if (cover_art) {
+      button(1, ";Playback;Home;Auto;indicator;;subpage;;");
+      button(2, "media_player.room;Ignored;Unused Glyph;Auto;cover_art;;media;;cover_art_details");
+      button(3, "media_player.room;Ignored;Unused Glyph;Auto;now_playing;;media;;media_cover_art");
+      button(4, "light.room;Light;Auto;Auto;;;;;");
+      const std::string child =
+          "~B,1,2,3,4|,light.child,Child,Auto,Auto,,,,|M,media_player.room,Ignored,Auto,Auto,cover_art,,,"
+          "cover_art_details|S,,Temp,Auto,Auto,sensor.temp,°C,1,|M,media_player.room,Ignored,Auto,Auto,"
+          "now_playing,,,";
+      assert(writer.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+             PanelConfigStatus::OK);
+      const std::string key = "button_order", order = "1,2,3,4";
+      assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                   reinterpret_cast<const uint8_t*>(order.data()),
+                                   order.size()) == PanelConfigStatus::OK);
+      assert(writer.finish(&size) == PanelConfigStatus::OK);
+      assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+             PageStoreStatus::OK);
+      return;
+    }
     if(now_playing) {
       button(1,";Playback;Home;Auto;indicator;;subpage;;");
       button(2,"media_player.room;Ignored;Unused Glyph;Auto;now_playing;;media;;");
@@ -737,7 +760,7 @@ void media_position_profile(const DeviceUiLimits& limits) {
 
 void now_playing_geometry(const PageBasicWidgets& widgets, const PageBasicTheme& theme, bool progress,
                           bool play_pause, std::string_view title, std::string_view artist,
-                          uint8_t row_span = 1) {
+                          uint8_t row_span = 1, uint8_t column_span = 1, bool cover = false) {
   lv_obj_update_layout(widgets.button);
   lv_area_t button_area, title_area, artist_area;
   lv_obj_get_coords(widgets.button, &button_area);
@@ -766,11 +789,20 @@ void now_playing_geometry(const PageBasicWidgets& widgets, const PageBasicTheme&
   }
   legacy_now_playing_reference::setup_media_now_playing_layout(
       root, nullptr, first, second, theme.media_title_font,
-      progress ? padding : legacy_now_playing_reference::CardPadding{}, row_span == 1 ? 2 : 0, play_pause,
-      progress ? padding.left : 0, false);
+      progress ? padding : legacy_now_playing_reference::CardPadding{},
+      cover           ? (row_span == 3 && column_span == 3                      ? 5
+                         : row_span == 1 || (row_span == 2 && column_span == 2) ? 2
+                                                                                : 0)
+      : row_span == 1 ? 2
+                      : 0,
+      play_pause, progress ? padding.left : 0, false);
   lv_label_set_text(first, std::string(title).c_str());
   lv_label_set_text(second, std::string(artist).c_str());
   lv_obj_update_layout(root);
+  if (cover && row_span >= 2 && column_span >= 2) {
+    lv_obj_align_to(second, first, LV_ALIGN_OUT_BOTTOM_LEFT, 0, std::max<int32_t>(0, padding.top / 2));
+    lv_obj_update_layout(root);
+  }
   lv_area_t expected_title, expected_artist;
   lv_obj_get_coords(first, &expected_title);
   lv_obj_get_coords(second, &expected_artist);
@@ -789,6 +821,266 @@ void now_playing_geometry(const PageBasicWidgets& widgets, const PageBasicTheme&
          lv_obj_get_style_text_font(widgets.label, LV_PART_MAIN) == theme.label_font);
   assert(lv_obj_get_style_transform_scale_x(widgets.icon, LV_PART_MAIN) == theme.media_text_scale_x);
   lv_obj_delete(root);
+}
+template <size_t Slots>
+void cover_art_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, false, false, false, false, false, false, false, false, false, true);
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  struct Transport final : PageMediaTransport {
+    Subscriptions& subscriptions;
+    explicit Transport(Subscriptions& value) : subscriptions(value) {}
+    bool connected() const override {
+      return true;
+    }
+    uint32_t connection_generation() const override {
+      return subscriptions.generation;
+    }
+    uint32_t now_ms() const override {
+      return 100;
+    }
+    int64_t epoch_seconds() const override {
+      return 1000;
+    }
+    void reannounce() override {}
+  } transport(subscriptions);
+  PageMediaStateRuntime media(arena, transport);
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192}, &media);
+  struct View final : PageCoverArtView {
+    std::array<PageBindingToken, Slots> tokens{};
+    std::array<uint16_t, 16 * 16> pixels{};
+    lv_image_dsc_t descriptor{};
+    uint64_t asset{1}, changes{0};
+    size_t bindings{0}, retired{0};
+    bool available{false};
+    View() {
+      pixels.fill(0xf800);
+      descriptor.header.magic = LV_IMAGE_HEADER_MAGIC;
+      descriptor.header.cf = LV_COLOR_FORMAT_RGB565;
+      descriptor.header.w = 16;
+      descriptor.header.h = 16;
+      descriptor.header.stride = 32;
+      descriptor.data = reinterpret_cast<const uint8_t*>(pixels.data());
+      descriptor.data_size = pixels.size() * 2;
+    }
+    bool ready() const override {
+      return true;
+    }
+    void bind(PageBindingToken token) override {
+      tokens[token.shell] = token;
+      ++bindings;
+    }
+    void unbind(PageBindingToken token) override {
+      tokens[token.shell] = {};
+      ++retired;
+    }
+    void size(PageBindingToken, uint16_t width, uint16_t height) override {
+      assert(width && height);
+    }
+    PageCoverArtSurface surface(PageBindingToken token) override {
+      if (!available || token.shell >= Slots || !token.binding ||
+          tokens[token.shell].configuration != token.configuration ||
+          tokens[token.shell].binding != token.binding)
+        return {};
+      return {&descriptor, asset, 0x440000};
+    }
+    uint64_t revision() const override {
+      return changes;
+    }
+  } view;
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  lv_font_t icon_font = lv_font_montserrat_14;
+  icon_font.line_height = 26;
+  lv_font_t title_font = lv_font_montserrat_14;
+  title_font.line_height = 20;
+  lv_font_t artist_font = lv_font_montserrat_14;
+  artist_font.line_height = 18;
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    lv_obj_set_style_pad_all(w.button, 8, 0);
+    w.forecast = lv_obj_create(w.button);
+    w.icon = lv_label_create(w.button);
+    lv_obj_align(w.icon, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_text_font(w.icon, &icon_font, 0);
+    w.label = lv_label_create(w.button);
+    lv_obj_align(w.label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+  }
+  PageBasicTheme theme;
+  theme.media_title_font = &lv_font_montserrat_14;
+  theme.label_font = &lv_font_montserrat_14;
+  theme.cover_title_font = &title_font;
+  theme.cover_artist_font = &artist_font;
+  theme.media_control_title_font = &title_font;
+  theme.media_control_artist_font = &artist_font;
+  theme.icon_font = &icon_font;
+  theme.media_text_scale_x = 280;
+  theme.translate = [](const char* key) -> const char* {
+    return std::strcmp(key, "Source") == 0 ? "SRC" : std::strcmp(key, "Idle") == 0 ? "IDLE" : key;
+  };
+  Actions<Slots> actions;
+  auto callbacks = actions.callbacks();
+  callbacks.media_control = Actions<Slots>::action;
+  {
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     callbacks, nullptr, &media);
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  callbacks, nullptr, &media, &view);
+    assert(port.initialize());
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t index = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[index++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    assert(media.prepare(fixture.store) && renderer.prepare(fixture.store) && state.prepare(fixture.store));
+    media.activate_prepared(fixture.store);
+    renderer.activate_prepared(fixture.store);
+    state.activate_prepared(fixture.store);
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(lv_obj_has_flag(widgets[1].forecast, LV_OBJ_FLAG_HIDDEN));
+    subscriptions.send("media_player.room", "", "playing");
+    subscriptions.send("media_player.room", "media_content_id", "track:1");
+    subscriptions.send("media_player.room", "media_title", "A &amp; B");
+    subscriptions.send("media_player.room", "media_artist", "ART");
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(std::strcmp(lv_label_get_text(widgets[1].icon), "A & B") == 0);
+    assert(!lv_obj_has_flag(widgets[1].icon,LV_OBJ_FLAG_HIDDEN)&&!lv_obj_has_flag(widgets[1].label,LV_OBJ_FLAG_HIDDEN));
+    now_playing_geometry(widgets[1], theme, false, true, "A & B", "ART", 1, 1, true);
+    assert(lv_obj_has_flag(widgets[2].icon, LV_OBJ_FLAG_HIDDEN) &&
+           lv_obj_has_flag(widgets[2].label, LV_OBJ_FLAG_HIDDEN));
+    click(widgets[1].button);
+    assert(actions.commands == 1);
+    view.available = true;
+    ++view.changes;
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(!lv_obj_has_flag(widgets[1].forecast, LV_OBJ_FLAG_HIDDEN));
+    assert((lv_color_to_u32(lv_obj_get_style_text_color(widgets[1].icon, LV_PART_MAIN)) & 0xffffff) ==
+           0xffffff);
+    lv_refr_now(lv_display_get_default());
+    // A completion delivered by a draw-task callback supersedes this frame.
+    // Its old image may already be queued; its tint must not use the new asset.
+    struct DrawReplacement { View* view; bool changed{false}; size_t images{0},tints{0}; } draw{&view};
+    const auto replace=[](lv_event_t* event){
+      auto& draw=*static_cast<DrawReplacement*>(lv_event_get_user_data(event));
+      const auto type=lv_draw_task_get_type(lv_event_get_draw_task(event));
+      if(type==LV_DRAW_TASK_TYPE_IMAGE){
+        ++draw.images;
+        if(!draw.changed){draw.changed=true;++draw.view->asset;++draw.view->changes;}
+      } else if(type==LV_DRAW_TASK_TYPE_FILL)++draw.tints;
+    };
+    lv_obj_add_flag(widgets[1].forecast,LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+    assert(lv_obj_add_event_cb(widgets[1].forecast,replace,LV_EVENT_DRAW_TASK_ADDED,&draw));
+    lv_obj_invalidate(widgets[1].forecast);lv_refr_now(lv_display_get_default());
+    assert(draw.changed&&draw.images>0&&draw.tints==0);
+    renderer.update_visible();lv_obj_invalidate(widgets[1].forecast);lv_refr_now(lv_display_get_default());
+    assert(draw.tints>0);
+    lv_obj_remove_event_cb_with_user_data(widgets[1].forecast,replace,&draw);
+    lv_obj_clear_flag(widgets[1].forecast,LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+    for (bool compact_portrait : {false, true}) {
+      theme.compact_portrait = compact_portrait;
+      ++theme.revision;
+      PageCellLayout large{};
+      large.visible = true;
+      large.card = renderer.binding(1).card;
+      large.column_span = 2;
+      large.row_span = 2;
+      port.bind(1, fixture.store, large, {}, renderer.binding(1));
+      renderer.refresh();
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      auto expected = theme;
+      expected.media_title_font = compact_portrait ? &title_font : &artist_font;
+      expected.label_font = compact_portrait ? &artist_font : &lv_font_montserrat_14;
+      now_playing_geometry(widgets[1], expected, false, true, "A & B", "ART", 2, 2, true);
+    }
+    const auto child = fixture.store.card(0)->target;
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    subscriptions.send("media_player.room", "source", "TV &amp; Radio");  // Not an external input.
+    renderer.update_visible();
+    subscriptions.send("media_player.room", "source", "TV");
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[2].icon), "TV") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[2].label), "SRC") == 0);
+    view.available = false;
+    ++view.changes;
+    renderer.update_visible();
+    assert(lv_obj_has_flag(widgets[1].forecast, LV_OBJ_FLAG_HIDDEN));
+    assert((lv_color_to_u32(lv_obj_get_style_text_color(widgets[1].icon, LV_PART_MAIN)) & 0xffffff) ==
+           theme.text);
+    subscriptions.send("media_player.room", "", "playing");
+    subscriptions.send("media_player.room", "media_content_id", "");
+    subscriptions.send("media_player.room", "media_title", "");
+    subscriptions.send("media_player.room", "media_artist", "");
+    subscriptions.send("media_player.room", "entity_picture", "");
+    subscriptions.send("media_player.room", "entity_picture_local", "");
+    subscriptions.send("media_player.room", "source", "");
+    subscriptions.send("media_player.room", "", "idle");
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "IDLE") == 0 &&
+           !lv_obj_has_flag(widgets[1].icon, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_get_style_text_font(widgets[1].icon, LV_PART_MAIN) == &icon_font);
+    subscriptions.send("media_player.room", "", "playing");
+    subscriptions.send("media_player.room", "media_title", "Back");
+    subscriptions.send("media_player.room", "media_artist", "ART");
+    view.available = true;
+    ++view.changes;
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Child") == 0 &&
+           lv_obj_get_style_text_font(widgets[1].icon, LV_PART_MAIN) == &icon_font);
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto cpp = cpp_allocations, reservations = arena.allocations, retained = lv_live_bytes,
+               descriptors = cache.memory().descriptor_adds, channels = subscriptions.bindings.size();
+    for (size_t n = 0; n < 1000; ++n) {
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(cpp_allocations == cpp && arena.allocations == reservations && lv_live_bytes == retained &&
+             cache.memory().descriptor_adds == descriptors && subscriptions.bindings.size() == channels);
+    }
+    renderer.retire_active();
+    for (const auto& token : view.tokens) assert(!token.binding);
+    state.retire_active();
+    media.retire_active();
+    lv_refr_now(lv_display_get_default());
+    std::printf("%s: cover artwork, reusable image surface/labels, 1000 cycles, stable retained resources\n",
+                limits.device_profile);
+  }
+  assert(arena.live == 0);
+  lv_obj_delete(page);
 }
 template <size_t Slots>
 void now_playing_profile(const DeviceUiLimits& limits) {
@@ -1145,4 +1437,78 @@ void modal_gesture_cycles() {
   arena.fail=true;PageModalGestures failed(arena,10,current,&current,valid);assert(!failed.available());arena.fail=false;
 }
 }
-int main(){std::setvbuf(stdout,nullptr,_IOLBF,0);lv_init();auto *display=lv_display_create(480,480);assert(display);static std::array<uint16_t,480*32>draw_buffer{};lv_display_set_buffers(display,draw_buffer.data(),nullptr,sizeof(draw_buffer),LV_DISPLAY_RENDER_MODE_PARTIAL);lv_display_set_flush_cb(display,[](lv_display_t *d,const lv_area_t *area,uint8_t *data){const auto *pixels=reinterpret_cast<uint16_t *>(data);size_t index=0;for(int y=area->y1;y<=area->y2;++y)for(int x=area->x1;x<=area->x2;++x){if(x>=0&&x<480&&y>=0&&y<480)framebuffer[y*480+x]=pixels[index];++index;}lv_display_flush_ready(d);});for(const auto &limits:DEVICE_UI_PROFILES){const char* filter=std::getenv("ESPCONTROL_TEST_DEVICE");if(filter&&std::strcmp(filter,limits.device_profile)!=0)continue;switch(limits.slot_count){case 6:profile<6>(limits);status_action_profile<6>(limits);control_profile<6>(limits);weather_profile<6>(limits);forecast_profile<6>(limits);media_action_profile<6>(limits);media_position_profile<6>(limits);now_playing_profile<6>(limits);break;case 9:profile<9>(limits);status_action_profile<9>(limits);control_profile<9>(limits);weather_profile<9>(limits);forecast_profile<9>(limits);media_action_profile<9>(limits);media_position_profile<9>(limits);now_playing_profile<9>(limits);break;case 15:profile<15>(limits);status_action_profile<15>(limits);control_profile<15>(limits);weather_profile<15>(limits);forecast_profile<15>(limits);media_action_profile<15>(limits);media_position_profile<15>(limits);now_playing_profile<15>(limits);break;case 20:profile<20>(limits);status_action_profile<20>(limits);control_profile<20>(limits);weather_profile<20>(limits);forecast_profile<20>(limits);media_action_profile<20>(limits);media_position_profile<20>(limits);now_playing_profile<20>(limits);break;default:std::abort();}}modal_gesture_cycles();lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}
+int main() {
+  std::setvbuf(stdout, nullptr, _IOLBF, 0);
+  lv_init();
+  auto* display = lv_display_create(480, 480);
+  assert(display);
+  static std::array<uint16_t, 480 * 32> draw_buffer{};
+  lv_display_set_buffers(display, draw_buffer.data(), nullptr, sizeof(draw_buffer),
+                         LV_DISPLAY_RENDER_MODE_PARTIAL);
+  lv_display_set_flush_cb(display, [](lv_display_t* d, const lv_area_t* area, uint8_t* data) {
+    const auto* pixels = reinterpret_cast<uint16_t*>(data);
+    size_t index = 0;
+    for (int y = area->y1; y <= area->y2; ++y)
+      for (int x = area->x1; x <= area->x2; ++x) {
+        if (x >= 0 && x < 480 && y >= 0 && y < 480) framebuffer[y * 480 + x] = pixels[index];
+        ++index;
+      }
+    lv_display_flush_ready(d);
+  });
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
+    if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
+    switch (limits.slot_count) {
+      case 6:
+        profile<6>(limits);
+        status_action_profile<6>(limits);
+        control_profile<6>(limits);
+        weather_profile<6>(limits);
+        forecast_profile<6>(limits);
+        media_action_profile<6>(limits);
+        media_position_profile<6>(limits);
+        now_playing_profile<6>(limits);
+        cover_art_profile<6>(limits);
+        break;
+      case 9:
+        profile<9>(limits);
+        status_action_profile<9>(limits);
+        control_profile<9>(limits);
+        weather_profile<9>(limits);
+        forecast_profile<9>(limits);
+        media_action_profile<9>(limits);
+        media_position_profile<9>(limits);
+        now_playing_profile<9>(limits);
+        cover_art_profile<9>(limits);
+        break;
+      case 15:
+        profile<15>(limits);
+        status_action_profile<15>(limits);
+        control_profile<15>(limits);
+        weather_profile<15>(limits);
+        forecast_profile<15>(limits);
+        media_action_profile<15>(limits);
+        media_position_profile<15>(limits);
+        now_playing_profile<15>(limits);
+        cover_art_profile<15>(limits);
+        break;
+      case 20:
+        profile<20>(limits);
+        status_action_profile<20>(limits);
+        control_profile<20>(limits);
+        weather_profile<20>(limits);
+        forecast_profile<20>(limits);
+        media_action_profile<20>(limits);
+        media_position_profile<20>(limits);
+        now_playing_profile<20>(limits);
+        cover_art_profile<20>(limits);
+        break;
+      default:
+        std::abort();
+    }
+  }
+  modal_gesture_cycles();
+  lv_display_delete(display);
+  lv_deinit();
+  assert(lv_live_bytes == 0);
+}

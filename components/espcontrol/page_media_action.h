@@ -11,7 +11,7 @@ namespace espcontrol::pages {
 using MediaActionKind = media::Mode;
 struct MediaActionOptions {
   MediaActionKind kind{MediaActionKind::PLAY_PAUSE};
-  bool show_state{false}, progress{false}, play_pause_background{false};
+  bool show_state{false}, progress{false}, play_pause_background{false}, track_details{false};
   std::string_view playlist_id, playlist_type;
 };
 }  // namespace espcontrol::pages

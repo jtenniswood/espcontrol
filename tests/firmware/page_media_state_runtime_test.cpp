@@ -808,7 +808,28 @@ void reused_sources_refresh_new_roles() {
   media.loop();
   assert(transport.requests == previous_requests + 1);
 }
+void metadata_limits_apply_before_html_decoding() {
+  Arena arena;
+  Transport transport;
+  Fixture fixture(160, "media_player.room", {"now_playing", "play_pause", "next"});
+  PageMediaStateRuntime media(arena, transport);
+  assert(media.prepare(fixture.store));
+  media.activate_prepared(fixture.store);
+  std::string raw;
+  while (raw.size() + 5 <= HA_STATE_TEXT_MAX_LEN) raw += "&amp;";
+  raw.append(HA_STATE_TEXT_MAX_LEN - raw.size(), 'a');
+  assert(raw.size() == HA_STATE_TEXT_MAX_LEN);
+  media.observed(160, "media_player.room", "", "playing", false);
+  media.observed(160, "media_player.room", "media_content_id", raw + ":spdif", false);
+  assert(!media.external_input({160, 0}, "media_player.room"));
+  const auto first = raw + "first ignored suffix", next = raw + "different ignored suffix";
+  media.observed(160, "media_player.room", "media_title", first, false);
+  media.observed(160, "media_player.room", "media_artist", "Artist", false);
+  media.observed_update(160, "media_player.room", "media_title", next, false, first);
+  assert(media.current({160, 0}, "media_player.room", "media_artist"));
+}
 int main() {
+  metadata_limits_apply_before_html_decoding();
   reused_sources_refresh_new_roles();
   removed_secondary_cannot_be_read_through_another_card();
   secondary_routes_use_the_shared_graph();

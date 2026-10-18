@@ -109,8 +109,10 @@ void complex_and_external_sources() {
       const auto cover=declarations(std::string("media_player.room;Room;Auto;Auto;")+mode+
           ";;media;;media_cover_art,cover_art_secondary_entity=media_player.tv",low_heap);
       for (const auto* entity : {"media_player.room", "media_player.tv"})
-        for (const auto* attribute : {"", "source", "media_title", "media_artist", "media_content_id", "media_content_type",
-                                      "media_position", "media_duration", "media_position_updated_at", "entity_picture", "entity_picture_local"})
+        for (const auto* attribute :
+             {"", "source", "media_title", "media_artist", "media_content_id", "media_content_type",
+              "media_position", "media_duration", "media_position_updated_at", "entity_picture",
+              "entity_picture_local", "access_token"})
           assert(cover.count(std::string(entity)+"/"+attribute)==1);
       assert(cover.count("sensor.speaker_group/data")==1);
     }

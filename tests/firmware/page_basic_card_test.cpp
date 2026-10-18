@@ -403,7 +403,7 @@ void now_playing_profile(const DeviceUiLimits& limits) {
          !definition.push_feedback && !definition.large_numbers);
   Fixture alias(limits, std::string("media_player.room;;;;now_playing;;media;;") + MEDIA_COVER_ART_OPTION);
   BasicCardDefinition rejected;
-  assert(!prepare_basic_card(alias.store, 0, rejected));
+  assert(prepare_basic_card(alias.store, 0, rejected) && rejected.kind == BasicCardKind::MEDIA_COVER_ART);
   Fixture play_pause(limits, "media_player.room;;;;now_playing;;media;play_pause;");
   assert(prepare_basic_card(play_pause.store, 0, rejected) && rejected.media.play_pause_background &&
          rejected.push_feedback && rejected.active_color);
@@ -441,6 +441,32 @@ void now_playing_profile(const DeviceUiLimits& limits) {
   auto value = read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, &media);
   assert(value.media_title == "Beyonc&eacute;" && value.media_artist == "Artist" &&
          value.fill_percent == 20 && value.on);
+  const std::string long_metadata(HA_STATE_TEXT_MAX_LEN + 50, 'x');
+  subscriptions.send("media_player.room", "media_title", long_metadata);
+  subscriptions.send("media_player.room", "media_artist", long_metadata);
+  value = read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, &media);
+  assert(value.media_title == std::string_view(long_metadata).substr(0, HA_STATE_TEXT_MAX_LEN) &&
+         value.media_artist == std::string_view(long_metadata).substr(0, HA_STATE_TEXT_MAX_LEN));
+  subscriptions.send("media_player.room", "media_title", "Beyonc&eacute;");
+  subscriptions.send("media_player.room", "media_artist", "Artist");
+  // Match legacy metadata: truncate the raw HA value before HTML decoding.
+  // A suffix beyond that bound must not change playlist selection.
+  std::string encoded;
+  for (size_t i = 0; i < 19; ++i) encoded += "&amp;";
+  encoded += "a";
+  assert(encoded.size() == HA_STATE_TEXT_MAX_LEN);
+  const std::string playlist_id = std::string(19, '&') + "a";
+  auto playlist = definition;
+  playlist.kind = BasicCardKind::MEDIA_ACTION;
+  playlist.media.kind = MediaActionKind::PLAYLIST;
+  playlist.media.playlist_id = playlist_id;
+  playlist.media.playlist_type = "playlist";
+  subscriptions.send("media_player.room", "media_content_id", encoded + "ignored suffix");
+  subscriptions.send("media_player.room", "media_content_type", "playlist");
+  assert(read_basic_card(playlist, {17, 0}, state, 2, "°C", nullptr, &media).on);
+  subscriptions.send("media_player.room", "media_content_id", "track:1");
+  subscriptions.send("media_player.room", "media_title", "Beyonc&eacute;");
+  subscriptions.send("media_player.room", "media_artist", "Artist");
   const auto count = allocations;
   for (size_t i = 0; i < 1000; ++i)
     assert(read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, &media).media_artist == "Artist");
