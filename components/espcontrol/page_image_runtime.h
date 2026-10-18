@@ -65,14 +65,29 @@ class PageImageOrigin {
   virtual uint32_t connection_generation() const = 0;
 };
 
-// One fixed lease per prepared image slot, not per configured card. Binding
-// keeps only value tokens; no URL, configuration, entity or widget is borrowed.
+struct PageBindingImageIdentity {
+  static bool active(PageBindingToken token) {
+    return token.binding != 0;
+  }
+  static bool eligible(PageBindingToken token) {
+    return active(token) && !token.back;
+  }
+  static bool same(PageBindingToken a, PageBindingToken b) {
+    return active(a) && a.configuration == b.configuration && a.binding == b.binding && a.page == b.page &&
+           a.card == b.card && a.shell == b.shell && a.back == b.back;
+  }
+};
+
+// One fixed lease per prepared image slot, not per configured card. Grid binding
+// is the default identity; the modal specialization uses an admitted opening.
+// Only value tokens are kept; no URL, configuration, entity or widget is borrowed.
 // The view detaches its image source BEFORE unbind/suspend/config retirement.
-template <size_t Slots>
+template <size_t Slots, typename Token = PageBindingToken, typename Origin = PageImageOrigin,
+          typename Identity = PageBindingImageIdentity>
 class PageImageRuntime final : public PageImageFrames {
  public:
   static_assert(Slots > 0 && Slots <= UINT16_MAX);
-  PageImageRuntime(PageImageRequests& requests, PageImageOrigin& origin, uint64_t first_request = 1)
+  PageImageRuntime(PageImageRequests& requests, Origin& origin, uint64_t first_request = 1)
       : requests_(requests), origin_(origin), next_request_(first_request) {
     observing_ = requests_.claim_frames(*this);
   }
@@ -95,21 +110,23 @@ class PageImageRuntime final : public PageImageFrames {
   // Shared card-image pool: media artwork and future camera/static drivers use
   // the same leases. A physical display shell need not equal its image slot.
   // Slots is the exhaustion sentinel; callers keep their normal fallback UI.
-  size_t acquire(PageBindingToken binding) {
-    if (!observing_ || stopping_ || retiring_ || !origin_.valid(binding) || binding.back) return Slots;
+  size_t acquire(Token binding) {
+    if (!observing_ || stopping_ || retiring_ || !origin_.valid(binding) || !Identity::eligible(binding))
+      return Slots;
     for (size_t i = 0; i < Slots; ++i)
       if (same(slots_[i].binding, binding)) return i;
     for (size_t i = 0; i < Slots; ++i)
-      if (slots_[i].binding.binding == 0 && bind(i, binding)) return i;
+      if (!Identity::active(slots_[i].binding) && bind(i, binding)) return i;
     return Slots;
   }
 
-  bool bind(size_t slot, PageBindingToken binding) {
-    if (!observing_ || stopping_ || retiring_ || slot >= Slots || !origin_.valid(binding) || binding.back)
+  bool bind(size_t slot, Token binding) {
+    if (!observing_ || stopping_ || retiring_ || slot >= Slots || !origin_.valid(binding) ||
+        !Identity::eligible(binding))
       return false;
     unbind(slot);
     // Cancellation may have bound a newer card. Preserve that replacement.
-    if (slots_[slot].binding.binding != 0) return false;
+    if (Identity::active(slots_[slot].binding)) return false;
     slots_[slot].binding = binding;
     slots_[slot].connection = origin_.connection_generation();
     return true;
@@ -117,7 +134,7 @@ class PageImageRuntime final : public PageImageFrames {
   void unbind(size_t slot) {
     if (slot >= Slots) return;
     auto& s = slots_[slot];
-    const bool owned = s.binding.binding != 0 || s.request != 0;
+    const bool owned = Identity::active(s.binding) || s.request != 0;
     ++s.change;
     s.binding = {};
     s.request = 0;
@@ -129,7 +146,7 @@ class PageImageRuntime final : public PageImageFrames {
   }
   // Stop current transfer ownership without releasing an attached completed
   // surface. Policy may hide it; unbind still authorizes deferred pixel release.
-  bool cancel_request(size_t slot, PageBindingToken binding, bool retain_completed = true) {
+  bool cancel_request(size_t slot, Token binding, bool retain_completed = true) {
     if (slot >= Slots || !bound_to(slot, binding)) return false;
     auto& s = slots_[slot];
     ++s.change;
@@ -150,7 +167,7 @@ class PageImageRuntime final : public PageImageFrames {
   }
   // Called only from loop maintenance after all page owners have activated.
   // A fresh URL comes from the current graph; the transport owns any copy.
-  bool request(size_t slot, PageBindingToken binding, std::string_view url, PageImageOptions options) {
+  bool request(size_t slot, Token binding, std::string_view url, PageImageOptions options) {
     if (stopping_ || retiring_ || !current(slot, binding) || url.empty() || options.width == 0 ||
         options.height == 0 || next_request_ == 0)
       return false;
@@ -181,24 +198,24 @@ class PageImageRuntime final : public PageImageFrames {
     return accepted || !s.state.failed;
   }
   bool vacant(size_t slot) const {
-    return slot < Slots && slots_[slot].binding.binding == 0;
+    return slot < Slots && !Identity::active(slots_[slot].binding);
   }
-  bool bound_to(size_t slot, PageBindingToken binding) const {
+  bool bound_to(size_t slot, Token binding) const {
     return slot < Slots && same(slots_[slot].binding, binding);
   }
-  bool owns(size_t slot, PageBindingToken binding) const {
+  bool owns(size_t slot, Token binding) const {
     return bound_to(slot, binding) && origin_.valid(binding);
   }
-  bool current_binding(size_t slot, PageBindingToken binding) const {
+  bool current_binding(size_t slot, Token binding) const {
     return current(slot, binding);
   }
-  PageImageSnapshot snapshot(size_t slot, PageBindingToken binding) const {
+  PageImageSnapshot snapshot(size_t slot, Token binding) const {
     return current(slot, binding) ? slots_[slot].state : PageImageSnapshot{};
   }
   void loop() {
     for (size_t i = 0; i < Slots; ++i) {
       auto& s = slots_[i];
-      if (s.binding.binding != 0 && !current(i, s.binding)) {
+      if (Identity::active(s.binding) && !current(i, s.binding)) {
         const bool had_request = s.request != 0;
         s.request = 0;
         s.state = {};
@@ -230,17 +247,16 @@ class PageImageRuntime final : public PageImageFrames {
 
  private:
   struct Slot {
-    PageBindingToken binding;
+    Token binding;
     uint64_t request{0}, change{0};
     uint32_t connection{0};
     PageImageSnapshot state;
     bool release{false};
   };
-  static bool same(PageBindingToken a, PageBindingToken b) {
-    return a.binding != 0 && a.configuration == b.configuration && a.binding == b.binding &&
-           a.page == b.page && a.card == b.card && a.shell == b.shell && a.back == b.back;
+  static bool same(Token a, Token b) {
+    return Identity::same(a, b);
   }
-  bool current(size_t slot, PageBindingToken binding) const {
+  bool current(size_t slot, Token binding) const {
     return slot < Slots && same(slots_[slot].binding, binding) && origin_.connected() &&
            slots_[slot].connection == origin_.connection_generation() && origin_.valid(binding);
   }
@@ -262,7 +278,7 @@ class PageImageRuntime final : public PageImageFrames {
     ++self.revision_;
   }
   PageImageRequests& requests_;
-  PageImageOrigin& origin_;
+  Origin& origin_;
   std::array<Slot, Slots> slots_{};
   uint64_t next_request_{1}, revision_{0};
   bool stopping_{false}, retiring_{false}, observing_{false};

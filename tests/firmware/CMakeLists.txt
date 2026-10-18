@@ -958,6 +958,13 @@ target_compile_options(page_cover_art_runtime_test PRIVATE -Wall -Wextra -Werror
 target_include_directories(page_cover_art_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_cover_art_runtime_test COMMAND page_cover_art_runtime_test)
 
+add_executable(page_modal_image_runtime_test page_modal_image_runtime_test.cpp
+  ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_modal_image_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_modal_image_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_modal_image_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_modal_image_runtime_test COMMAND page_modal_image_runtime_test)
+
 add_executable(page_image_tile_runtime_test page_image_tile_runtime_test.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
   ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_store_runtime.cpp

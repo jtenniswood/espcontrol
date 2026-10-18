@@ -2,7 +2,8 @@
 
 This stage of #1825 presents camera/static-image cards through the fixed grid
 bank over the [shared image policy](pooled-image-tiles.md). Production still
-uses the existing renderer. The expanded modal, actual application scene,
+uses the existing renderer. [Expanded-image request ownership](pooled-modal-image-ownership.md) now has a
+typed lifetime; its source/UI, actual application scene,
 compiled legacy retirement and physical qualification remain prerequisites for
 cutover; configuration/backup formats and navigation depth are unchanged.
 
