@@ -69,6 +69,13 @@ class PageEntityObserver {
   // Copied values seed a staged cache; they are not new network observations.
   virtual void observed(uint32_t configuration,std::string_view entity,
       std::string_view attribute,std::string_view value,bool copied)=0;
+  // Previous bytes are borrowed from the packed cache before replacement; empty
+  // when no available value exists. Observers may compare, never retain them.
+  virtual void observed_update(uint32_t configuration, std::string_view entity,
+      std::string_view attribute, std::string_view value, bool copied, std::string_view previous) {
+    (void)previous;
+    observed(configuration, entity, attribute, value, copied);
+  }
 };
 
 // Configuration-owned state, independent of view bindings. Names, dependency

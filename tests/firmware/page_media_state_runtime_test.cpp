@@ -8,6 +8,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "page_card_dependencies.h"
 #include "panel_config_document.h"
 using namespace espcontrol;
 using namespace espcontrol::pages;
@@ -267,7 +268,141 @@ void playback_survives_navigation_and_replacement() {
   assert(!runtime.playback({42, 0}, "media_player.room", snapshot));
   runtime.loop();
 }
+void shared_cache_metadata_lifecycle() {
+  struct Subscriptions : PageEntitySubscriptions {
+    struct Binding {
+      const char *entity, *attribute;
+      void* owner;
+      uint32_t revision, channel;
+      Deliver deliver;
+    };
+    std::array<Binding, 64> entries{};
+    size_t count = 0;
+    Transport& transport;
+    explicit Subscriptions(Transport& source) : transport(source) {}
+    bool subscribe(const char* entity, const char* attribute, void* owner, uint32_t revision,
+                   uint32_t channel, Deliver deliver) override {
+      if (count == entries.size()) return false;
+      entries[count++] = {entity, attribute, owner, revision, channel, deliver};
+      return true;
+    }
+    void release(void* owner) override {
+      size_t used = 0;
+      for (size_t i = 0; i < count; ++i)
+        if (entries[i].owner != owner) entries[used++] = entries[i];
+      count = used;
+    }
+    uint32_t connection_generation() const override {
+      return transport.connection;
+    }
+    void send(const char* attribute, std::string_view value) {
+      for (size_t i = 0; i < count; ++i) {
+        const auto binding = entries[i];
+        if (std::strcmp(binding.attribute, attribute) == 0)
+          binding.deliver(binding.owner, binding.revision, binding.channel, value);
+      }
+    }
+  };
+  Arena arena;
+  Transport transport;
+  Subscriptions subscriptions(transport);
+  PageCardDependencies dependencies;
+  Fixture first(70, "media_player.room", {"now_playing", "play_pause", "playlist"});
+  Fixture replacement(71, "media_player.room", {"now_playing", "play_pause", "playlist"});
+  PageMediaStateRuntime media(arena, transport);
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {64, 32, 8192}, &media);
+  assert(media.prepare(first.store) && state.prepare(first.store));
+  media.activate_prepared(first.store);
+  state.activate_prepared(first.store);
+  uint32_t generation = 70;
+  const auto current = [&](const char* attribute) {
+    return media.current({generation, 0}, "media_player.room", attribute);
+  };
+  subscriptions.send("", "playing");
+  subscriptions.send("media_content_type", "music");
+  subscriptions.send("media_content_id", "provider:track:1");
+  subscriptions.send("media_title", "Old title");
+  subscriptions.send("media_artist", "Artist");
+  media.loop();
+  assert(current("media_title") && current("media_artist"));
+  const auto allocation_count = cpp_allocations, requests = transport.requests;
+  // The observer compares the old packed cache before memmove overwrites it.
+  for (size_t i = 0; i < 1000; ++i) {
+    subscriptions.send("media_title", "Old title");
+    media.loop();
+  }
+  assert(cpp_allocations == allocation_count && transport.requests == requests && current("media_artist"));
+  subscriptions.send("media_title", "New title");
+  assert(current("media_title") && !current("media_artist"));
+  media.loop();
+  assert(transport.requests == requests + 1);
+  // Identical raw artist bytes still restore validity after invalidation.
+  subscriptions.send("media_title", "New title");
+  subscriptions.send("media_artist", "Artist");
+  media.loop();
+  assert(current("media_artist") && transport.requests == requests + 1);
+  subscriptions.send("media_content_id", "provider:track:2");
+  assert(!current("media_title") && !current("media_artist"));
+  // Artist may arrive first in the refresh snapshot. The expected title must
+  // not clear it again, even when the new item's title has the same bytes.
+  subscriptions.send("media_artist", "Artist");
+  subscriptions.send("media_title", "New title");
+  assert(current("media_title") && current("media_artist"));
+  media.loop();
+  assert(transport.requests == requests + 2);
+  subscriptions.send("media_content_id", "");
+  subscriptions.send("media_content_id", "provider:track:3");
+  assert(!current("media_title") && !current("media_artist"));
+  // Replacement preserves invalidity independently of still-retained bytes.
+  assert(media.prepare(replacement.store) && state.prepare(replacement.store));
+  media.activate_prepared(replacement.store);
+  state.activate_prepared(replacement.store);
+  generation = 71;
+  assert(!current("media_title") && !current("media_artist"));
+  transport.now += media::MEDIA_TITLE_REFRESH_TIMEOUT_MS;
+  subscriptions.send("media_artist", "Artist");
+  subscriptions.send("media_title", "New title");
+  assert(!current("media_artist"));  // Expired title refresh clears the old artist.
+  subscriptions.send("media_artist", "Artist");
+  subscriptions.send("media_content_type", "movie");
+  assert(!current("media_artist"));
+  subscriptions.send("media_artist", "Programme");
+  subscriptions.send("", "idle");
+  assert(!current("media_title") && !current("media_artist"));
+  subscriptions.send("media_title", "Fresh after idle");
+  subscriptions.send("", "idle");
+  assert(current("media_title"));  // Repeated idle does not erase newer metadata.
+  ++transport.connection;
+  media.loop();
+  assert(!current("media_title"));
+  subscriptions.send("", "playing");
+  subscriptions.send("media_title", "Fresh after reconnect");
+  assert(current("media_title"));
+  subscriptions.send("media_content_id", "provider:track:1");
+  subscriptions.send("media_title", "New title");
+  subscriptions.send("media_artist", "Artist");
+  media.loop();
+  const auto stable_allocations = cpp_allocations, channels = subscriptions.count;
+  for (size_t item = 0; item < 1000; ++item) {
+    subscriptions.send("media_content_id", item % 2 ? "provider:track:1" : "provider:track:2");
+    subscriptions.send("media_artist", "Artist");
+    subscriptions.send("media_title", "New title");
+    media.loop();
+    assert(current("media_title") && current("media_artist"));
+    assert(cpp_allocations == stable_allocations && subscriptions.count == channels);
+  }
+  subscriptions.send("media_title", "Retire during metadata refresh");
+  transport.during = [&] {
+    state.retire_active();
+    media.retire_active();
+  };
+  media.loop();
+  transport.during = {};
+  assert(arena.live.empty() && subscriptions.count == 0);
+}
+
 int main() {
+  shared_cache_metadata_lifecycle();
   model_lifecycle();
   playback_survives_navigation_and_replacement();
   only_declared_metadata_is_refreshed();

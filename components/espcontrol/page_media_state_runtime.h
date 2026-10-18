@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ha_state_limits.h"
+#include "media_metadata_policy.h"
 #include "media_playback_clock.h"
 #include "page_entity_state_runtime.h"
 
@@ -40,6 +41,8 @@ class PageMediaStateRuntime final : public PageRuntimeResources, public PageEnti
   void activate_prepared(const PageStore&) override;
   void retire_active() override;
   void observed(uint32_t, std::string_view, std::string_view, std::string_view, bool) override;
+  void observed_update(uint32_t, std::string_view, std::string_view, std::string_view, bool,
+                       std::string_view) override;
   bool current(ConfigurationHandle, std::string_view entity, std::string_view attribute) const;
   bool playback(ConfigurationHandle, std::string_view entity, PageMediaPlaybackSnapshot&) const;
   uint32_t now_ms() const {
@@ -62,6 +65,11 @@ class PageMediaStateRuntime final : public PageRuntimeResources, public PageEnti
     uint8_t requirements{0};
     char state[HA_SHORT_STATE_MAX_LEN + 1]{};
     media::PlaybackClock clock;
+    uint64_t content_fingerprint{0};
+    uint32_t title_refresh_started_ms{0};
+    media::MediaItemKind content_kind{media::MediaItemKind::UNKNOWN},
+        type_kind{media::MediaItemKind::UNKNOWN};
+    bool title_awaiting_refresh{false}, metadata_refresh{false};
   };
   struct Slot {
     void* arena{nullptr};

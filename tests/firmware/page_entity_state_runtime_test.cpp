@@ -281,19 +281,28 @@ void observer_distinguishes_copied_state_from_transport_delivery() {
   bool legacy_delivered=false;assert(coordinator.subscribe("sensor.shared","",[&](const std::string &){legacy_delivered=true;},1,nullptr,true));
   coordinator.transport().entries[0].callback("legacy retained");assert(legacy_delivered&&coordinator.retained_channel_count()==1);
   struct Observer:PageEntityObserver {
-    size_t copied=0,live=0;uint32_t generation=0;char text[64]{};
+    size_t copied=0,live=0;uint32_t generation=0;char text[64]{},previous[64]{};
     void observed(uint32_t config,std::string_view entity,std::string_view attribute,std::string_view value,bool seed)override {
       assert(entity=="sensor.shared"&&attribute.empty()&&value.size()<sizeof(text));generation=config;
       std::memcpy(text,value.data(),value.size());text[value.size()]='\0';if(seed)++copied;else ++live;
+    }
+    void observed_update(uint32_t config,std::string_view entity,std::string_view attribute,
+                         std::string_view value,bool seed,std::string_view old)override {
+      assert(old.size()<sizeof(previous));
+      if(!old.empty())std::memcpy(previous,old.data(),old.size());
+      previous[old.size()]='\0';
+      observed(config,entity,attribute,value,seed);
     }
   } observer;
   {
     PageEntityStateRuntime state(source,arena,adapter,{8,4,128},&observer);
     assert(state.prepare(fixture.store));state.activate_prepared(17);
     assert(observer.live==0&&observer.copied==0&&state.dependency({17,0},0).status==PageEntityStatus::UNKNOWN);
-    coordinator.transport().entries[0].callback("fresh");assert(observer.live==1&&observer.generation==17&&std::strcmp(observer.text,"fresh")==0);
+    coordinator.transport().entries[0].callback("fresh");assert(observer.live==1&&observer.generation==17&&std::strcmp(observer.text,"fresh")==0&&observer.previous[0]==0);
     assert(state.prepare(fixture.store));assert(observer.copied==1&&observer.live==1);
-    state.activate_prepared(18);coordinator.transport().entries[0].callback("fresh again");assert(observer.live==2&&observer.generation==18);
+    state.activate_prepared(18);coordinator.transport().entries[0].callback("fresh again");assert(observer.live==2&&observer.generation==18&&std::strcmp(observer.previous,"fresh")==0);
+    coordinator.transport().entries[0].callback("fresh again");
+    assert(observer.live==3&&std::strcmp(observer.previous,"fresh again")==0);
   }
   coordinator.reset_subscriptions(1);coordinator.reclaim_unused_channels();assert(arena.live.empty()&&coordinator.transport().entries.empty());
 }

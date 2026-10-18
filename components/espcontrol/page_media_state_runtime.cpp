@@ -9,7 +9,8 @@
 
 namespace espcontrol::pages {
 namespace {
-constexpr uint8_t REQUIRE_METADATA = 1, REQUIRE_PROGRESS = 2;
+constexpr uint8_t REQUIRE_METADATA = 1, REQUIRE_PROGRESS = 2, REQUIRE_DETAILS = 4;
+constexpr uint16_t TITLE_BIT = 1u << 2, ARTIST_BIT = 1u << 3;
 constexpr uint16_t CONTENT_BITS = (1u << 0) | (1u << 2) | (1u << 3) | (1u << 5);
 std::string_view configured_entity(const PageStore& store, CardId card) {
   const auto* definition = store.card(card);
@@ -29,6 +30,8 @@ uint8_t requirements(const PageStore& store, CardId card) {
                       cfg_option_token_present(std::string(store.field(*definition, CardField::OPTIONS)),
                                                MEDIA_COVER_ART_OPTION));
   uint8_t result = (mode == "playlist" || mode == "now_playing" || cover) ? REQUIRE_METADATA : 0;
+  if (mode == "now_playing" || cover || mode == "control_modal" || mode == "speaker_group")
+    result |= REQUIRE_METADATA | REQUIRE_DETAILS;
   if (mode == "position" ||
       (mode == "now_playing" && store.field(*definition, CardField::PRECISION) == "progress") || cover ||
       mode == "control_modal" || mode == "speaker_group")
@@ -104,6 +107,13 @@ bool PageMediaStateRuntime::prepare(const PageStore& store) {
       source->resync = false;
     } else if (source->state_known && usable(source->state) && !(source->present & CONTENT_BITS))
       source->resync = true;
+    if (!(source->requirements & REQUIRE_DETAILS)) {
+      source->fresh &= ~(TITLE_BIT | ARTIST_BIT);
+      source->present &= ~(TITLE_BIT | ARTIST_BIT);
+      source->content_fingerprint = 0;
+      source->content_kind = source->type_kind = media::MediaItemKind::UNKNOWN;
+      source->title_awaiting_refresh = source->metadata_refresh = false;
+    }
     std::memcpy(text, entity.data(), entity.size());
     text[entity.size()] = '\0';
     source->entity = {text, entity.size()};
@@ -151,12 +161,20 @@ void PageMediaStateRuntime::synchronize() {
       source.state_known = false;
       source.state[0] = '\0';
       source.clock = {};
+      source.content_fingerprint = 0;
+      source.content_kind = source.type_kind = media::MediaItemKind::UNKNOWN;
+      source.title_awaiting_refresh = source.metadata_refresh = false;
       source.resync = false;
     }
   ++revision_;
 }
 void PageMediaStateRuntime::observed(uint32_t generation, std::string_view entity, std::string_view attribute,
                                      std::string_view value, bool copied) {
+  observed_update(generation, entity, attribute, value, copied, {});
+}
+void PageMediaStateRuntime::observed_update(uint32_t generation, std::string_view entity,
+                                            std::string_view attribute, std::string_view value, bool copied,
+                                            std::string_view previous) {
   synchronize();
   Slot* slot = nullptr;
   for (int index : {active_, staged_})
@@ -184,8 +202,12 @@ void PageMediaStateRuntime::observed(uint32_t generation, std::string_view entit
     state[i] = '\0';
     source->clock.playback(value.substr(0, HA_SHORT_STATE_MAX_LEN) == "playing", transport_.now_ms());
     const bool next_usable = usable(state);
-    if (!next_usable && (!source->state_known || std::strcmp(source->state, state) != 0))
+    if (!next_usable && (!source->state_known || std::strcmp(source->state, state) != 0)) {
       source->fresh = source->present = 0;
+      source->content_fingerprint = 0;
+      source->content_kind = source->type_kind = media::MediaItemKind::UNKNOWN;
+      source->title_awaiting_refresh = source->metadata_refresh = false;
+    }
     if ((source->requirements & REQUIRE_METADATA) && next_usable &&
         (!source->state_known || !usable(source->state)) && !(source->present & CONTENT_BITS))
       source->resync = true;
@@ -216,8 +238,50 @@ void PageMediaStateRuntime::observed(uint32_t generation, std::string_view entit
   if (!bit) return;
   char decoded[HA_STATE_TEXT_MAX_LEN + 1];
   const size_t capacity = attribute == "media_content_type" ? HA_SHORT_STATE_MAX_LEN + 1 : sizeof(decoded);
-  const auto metadata = decode_html_entities_bounded(decoded, capacity, value);
-  const bool present = !metadata.empty() && metadata != "unknown" && metadata != "unavailable";
+  auto metadata = decode_html_entities_bounded(decoded, capacity, value);
+  if (metadata == "unknown" || metadata == "unavailable") metadata = {};
+  const bool present = !metadata.empty();
+  if (source->requirements & REQUIRE_DETAILS) {
+    if (attribute == "media_title") {
+      char old_decoded[HA_STATE_TEXT_MAX_LEN + 1];
+      auto old_title = (source->fresh & TITLE_BIT)
+                           ? decode_html_entities_bounded(old_decoded, sizeof(old_decoded), previous)
+                           : std::string_view{};
+      if (old_title == "unknown" || old_title == "unavailable") old_title = {};
+      const bool pending = media::media_title_refresh_pending(
+          source->title_awaiting_refresh, source->title_refresh_started_ms, transport_.now_ms());
+      if (metadata != old_title && !pending) {
+        source->fresh &= ~ARTIST_BIT;
+        source->present &= ~ARTIST_BIT;
+        source->metadata_refresh = true;
+      }
+      source->title_awaiting_refresh = false;
+    } else if (attribute == "media_content_type") {
+      source->type_kind = media::media_item_kind_from_token_view(metadata);
+      if (source->type_kind == media::MediaItemKind::VIDEO) {
+        source->fresh &= ~ARTIST_BIT;
+        source->present &= ~ARTIST_BIT;
+      }
+    } else if (attribute == "media_content_id") {
+      const auto fingerprint =
+          present ? media::media_content_identity_fingerprint(value.data(), value.size()) : 0;
+      auto kind = media::media_item_kind_view(metadata);
+      if (kind == media::MediaItemKind::UNKNOWN) kind = source->type_kind;
+      const auto decision = media::media_metadata_clear_decision(source->content_fingerprint,
+                                                                 source->content_kind, fingerprint, kind);
+      if (present) {
+        source->content_fingerprint = fingerprint;
+        source->content_kind = kind;
+      }
+      if (decision.item_changed) {
+        source->fresh &= ~(TITLE_BIT | ARTIST_BIT);
+        source->present &= ~(TITLE_BIT | ARTIST_BIT);
+        source->title_awaiting_refresh = true;
+        source->title_refresh_started_ms = transport_.now_ms();
+        source->metadata_refresh = true;
+      }
+    }
+  }
   source->fresh |= bit;
   if (present)
     source->present |= bit;
@@ -270,7 +334,9 @@ void PageMediaStateRuntime::loop() {
     ticking |= (source.requirements & REQUIRE_PROGRESS) && source.clock.playing && source.clock.has_position;
     reannounce |= (source.requirements & REQUIRE_METADATA) && source.resync && usable(source.state) &&
                   !(source.present & CONTENT_BITS);
-    source.resync = false;
+    reannounce |= (source.requirements & REQUIRE_DETAILS) && source.metadata_refresh &&
+                  (!source.state_known || usable(source.state));
+    source.resync = source.metadata_refresh = false;
   }
   const auto now = transport_.now_ms();
   if (!ticking)
