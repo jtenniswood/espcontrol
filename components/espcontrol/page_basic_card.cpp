@@ -249,6 +249,47 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     out.kind=basic_card_is_forecast(store,id)?BasicCardKind::FORECAST:BasicCardKind::WEATHER;
     out.forecast_view=precision=="today"?weather::View::TODAY:precision=="tomorrow"||type=="weather_forecast"?weather::View::TOMORROW:weather::View::DAILY;out.label={};out.sensor={};out.unit={};
     out.icon=out.icon_on="Weather Cloudy";
+  } else if (type == "garage" || type == "gate" || type == "lock") {
+    if (type == "garage" &&
+        (cfg_option_enabled(options, "confirm_on") || cfg_option_enabled(options, "confirm_off")))
+      return false;
+    const std::string mode(out.sensor);
+    const bool lock = type == "lock", gate = type == "gate";
+    const bool command = lock   ? card_runtime_lock_command_mode(mode)
+                         : gate ? card_runtime_gate_command_mode(mode)
+                                : card_runtime_garage_command_mode(mode);
+    const auto label_display = cfg_option_value(options, "label_display");
+    const bool status = !lock && (gate ? normalize_gate_label_display(label_display)
+                                       : normalize_garage_label_display(label_display)) == "status";
+    out.kind = BasicCardKind::ACCESS;
+    out.access = {lock   ? BasicAccessKind::LOCK
+                  : gate ? BasicAccessKind::GATE
+                         : BasicAccessKind::GARAGE,
+                  command, status};
+    out.unit = {};
+    out.push_feedback = command;
+    out.active_color = !command || status;
+    out.default_label = command ? (out.sensor == "open"     ? "Open"
+                                   : out.sensor == "close"  ? "Close"
+                                   : out.sensor == "stop"   ? "Stop"
+                                   : out.sensor == "unlock" ? "Unlock"
+                                                            : "Lock")
+                        : lock  ? "Lock"
+                        : gate  ? "Gate"
+                                : "Garage Door";
+    if (out.icon.empty() || out.icon == "Auto") out.icon = lock ? "Lock" : gate ? "Gate" : "Garage";
+    if (out.icon_on.empty() || out.icon_on == "Auto")
+      out.icon_on = lock ? "Lock Open" : gate ? "Gate Open" : "Garage Open";
+    if (command && !status) {
+      const auto configured = store.field(*card, CardField::ICON);
+      if (configured.empty() || configured == "Auto")
+        out.icon = out.sensor == "open" || out.sensor == "unlock" ? (lock   ? "Lock Open"
+                                                                     : gate ? "Gate Open"
+                                                                            : "Garage Open")
+                   : out.sensor == "stop"                         ? "Stop"
+                                                                  : out.icon;
+      out.icon_on = out.icon;
+    }
   } else if (type == "light_control") {
     out.unit={};out.kind=BasicCardKind::LIGHT;out.active_color=true;out.push_feedback=true;out.default_label="Light";
     if(out.icon.empty()||out.icon=="Auto")out.icon="Lightbulb Outline";
@@ -359,6 +400,10 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
   if (type == "timer")
     return PageTimerRuntime::supported(store, id) ? store.field(*card, CardField::ENTITY)
                                                   : std::string_view{};
+  if (type == "garage" || type == "gate" || type == "lock")
+    return PageAccessStateRuntime::classify(store, id) != PageAccessHistory::NONE
+               ? store.field(*card, CardField::ENTITY)
+               : std::string_view{};
   if (type == "cover") {
     const auto mode = store.field(*card, CardField::SENSOR);
     // The empty/tilt variants were classified above. Commands never
@@ -457,6 +502,20 @@ PageCoverCommandSnapshot read_basic_cover_command(const BasicCardDefinition& car
   result.tilt = cover_command::use_tilt(card.sensor, result.known, result.features);
   return result;
 }
+PageAccessCardSnapshot read_basic_access(const BasicCardDefinition& card, ConfigurationHandle handle,
+                                         PageEntityStateRuntime& state, PageAccessStateRuntime* access) {
+  PageAccessCardSnapshot result;
+  if (card.kind != BasicCardKind::ACCESS || !access || !access->owns(handle) || card.entity.empty())
+    return result;
+  result.history = access->read(handle);
+  const auto primary = find(state, handle, card.entity);
+  if (primary.status == PageEntityStatus::EXHAUSTED) return result;
+  result.enabled = card.access.kind != BasicAccessKind::GATE || primary.status == PageEntityStatus::UNKNOWN ||
+                   (primary.status == PageEntityStatus::AVAILABLE && !equal_state(primary.value, "unknown") &&
+                    !equal_state(primary.value, "unavailable") &&
+                    !trim(primary.value.substr(0, HA_SHORT_STATE_MAX_LEN)).empty());
+  return result;
+}
 BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHandle handle,
                                PageEntityStateRuntime& state, int duration_components,
                                std::string_view temperature_unit, PageCardTranslate translate,
@@ -465,7 +524,7 @@ BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHan
                                PagePercentSliderRuntime* percent_slider,
                                PageNumberSliderRuntime* number_slider,
                                PageLightTemperatureRuntime* temperature, PageTimerRuntime* timer,
-                               PageCoverToggleRuntime* cover_toggle) {
+                               PageCoverToggleRuntime* cover_toggle, PageAccessStateRuntime* access) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
   if (card.kind == BasicCardKind::PERCENT_SLIDER) {
@@ -480,6 +539,31 @@ BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHan
       const auto name = find(state, handle, card.entity, "friendly_name");
       if (name.status == PageEntityStatus::AVAILABLE)
         result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+    }
+    return result;
+  }
+  if (card.kind == BasicCardKind::ACCESS) {
+    result.access = read_basic_access(card, handle, state, access);
+    const auto& history = result.access.history;
+    result.on = history.on;
+    result.cover_icon_open = history.icon_on;
+    if (find(state, handle, card.entity).status == PageEntityStatus::EXHAUSTED) {
+      result.on = result.cover_icon_open = false;
+      const auto* caption = translate ? translate("Unavailable") : nullptr;
+      result.label = caption ? caption : "Unavailable";
+    } else if (history.showing)
+      result.label = history.status;
+    else if (card.access.status)
+      result.label = "--";
+    else if (!card.label.empty())
+      result.label = card.label;
+    else if (!card.access.command &&
+             find(state, handle, card.entity, "friendly_name").status == PageEntityStatus::AVAILABLE)
+      result.label =
+          find(state, handle, card.entity, "friendly_name").value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+    else {
+      const auto* caption = translate ? translate(card.default_label) : nullptr;
+      result.label = caption ? caption : card.default_label;
     }
     return result;
   }

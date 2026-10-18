@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cover_command_policy.h"
+#include "page_access_state_runtime.h"
 #include "page_climate_card.h"
 #include "page_cover_toggle_runtime.h"
 #include "page_entity_state_runtime.h"
@@ -52,10 +53,16 @@ enum class BasicCardKind : uint8_t {
   LIGHT_TEMPERATURE,
   TIMER,
   COVER_COMMAND,
-  COVER_TOGGLE
+  COVER_TOGGLE,
+  ACCESS
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode : uint8_t { NONE, ENTITY, CLIMATE, MOWER, TIMER, CHILDREN, NUMBER, TEXT };
+enum class BasicAccessKind : uint8_t { GARAGE, GATE, LOCK };
+struct BasicAccessOptions {
+  BasicAccessKind kind;
+  bool command, status;
+};
 struct BasicCardDefinition {
   BasicCardKind kind{BasicCardKind::EMPTY};
   BasicFolderMode folder_mode{BasicFolderMode::NONE};
@@ -64,6 +71,7 @@ struct BasicCardDefinition {
   union {
     weather::View forecast_view{weather::View::DAILY};
     PagePercentSliderKind percent_slider;
+    BasicAccessOptions access;
   };
   BasicActionDisplay action_display{BasicActionDisplay::NONE};
   std::string_view entity,sensor,label,unit,icon,icon_on;
@@ -92,6 +100,13 @@ struct PageCoverCommandSnapshot {
   int features{0};
   bool known{false}, supported{false}, tilt{false};
 };
+struct PageAccessActionSnapshot {
+  bool on{false}, locked{false};
+};
+struct PageAccessCardSnapshot {
+  PageAccessSnapshot history;
+  bool enabled{false};
+};
 struct BasicCardState {
   bool on{false}, numeric{false}, formatted_label{false}, climate_icon_on{false}, cover_icon_open{false};
   std::string_view label,unit,media_title,media_artist;
@@ -102,6 +117,7 @@ struct BasicCardState {
   PageLightTemperatureSnapshot light_temperature;
   PageTimerSnapshot timer;
   PageCoverCommandSnapshot cover_command;
+  PageAccessCardSnapshot access;
   uint8_t fill_percent{0},weather_condition{0};
   char number[48]{},text[257]{};
 };
@@ -120,6 +136,8 @@ PageTimerSnapshot read_basic_timer(const BasicCardDefinition&, ConfigurationHand
                                    PageTimerRuntime*);
 PageCoverCommandSnapshot read_basic_cover_command(const BasicCardDefinition&, ConfigurationHandle,
                                                   PageEntityStateRuntime&);
+PageAccessCardSnapshot read_basic_access(const BasicCardDefinition&, ConfigurationHandle,
+                                         PageEntityStateRuntime&, PageAccessStateRuntime*);
 BasicCardState read_basic_card(
     const BasicCardDefinition&, ConfigurationHandle, PageEntityStateRuntime&, int duration_components = 2,
     std::string_view temperature_unit = "°C", PageCardTranslate translate = nullptr,
@@ -127,5 +145,5 @@ BasicCardState read_basic_card(
     PageLocalRelayRuntime* relay = nullptr, PageFanStatusRuntime* fan_status = nullptr,
     PagePercentSliderRuntime* percent_slider = nullptr, PageNumberSliderRuntime* number_slider = nullptr,
     PageLightTemperatureRuntime* temperature = nullptr, PageTimerRuntime* timer = nullptr,
-    PageCoverToggleRuntime* cover_toggle = nullptr);
+    PageCoverToggleRuntime* cover_toggle = nullptr, PageAccessStateRuntime* access = nullptr);
 }  // namespace espcontrol::pages

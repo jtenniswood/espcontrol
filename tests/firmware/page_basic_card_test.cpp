@@ -303,6 +303,71 @@ void cover_toggle_profile(const DeviceUiLimits& limits) {
   cover.loop();
   assert(read().label == "--" && !read().on);
 }
+void access_profile(const DeviceUiLimits& limits) {
+  for (const auto* type : {"garage", "gate", "lock"})
+    for (bool persistent : {false, true})
+      for (bool command : {false, true}) {
+        const bool lock = std::strcmp(type, "lock") == 0, gate = std::strcmp(type, "gate") == 0;
+        const auto mode = command ? (lock ? "unlock" : "open") : "";
+        Fixture fixture(limits, std::string("cover.room;;Auto;Lightbulb;") + mode + ";unused;" + type + ";;" +
+                                    (persistent ? "label_display=status" : ""));
+        BasicCardDefinition definition;
+        assert(prepare_basic_card(fixture.store, 0, definition));
+        assert(definition.kind == BasicCardKind::ACCESS && definition.access.command == command &&
+               definition.access.status == (persistent && !lock));
+        assert(definition.unit.empty() && definition.push_feedback == command);
+        if (command && !definition.access.status)
+          assert(definition.icon == (lock ? "Lock Open" : gate ? "Gate Open" : "Garage Open"));
+        assert(!basic_folder_child_indicator(fixture.store, 0).empty() ==
+               (!command || (persistent && !lock)));
+        Arena arena;
+        Subscriptions subscriptions;
+        PageCardDependencies dependencies;
+        PageAccessStateRuntime access(arena, subscriptions, cover_toggle_now);
+        PageEntityStateRuntime state(dependencies, arena, subscriptions, {64, 64, 2048}, &access);
+        assert(access.prepare(fixture.store) && state.prepare(fixture.store));
+        access.activate_prepared(fixture.store);
+        state.activate_prepared(fixture.store);
+        auto read = [&]() {
+          return read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, nullptr, nullptr, nullptr,
+                                 nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &access);
+        };
+        assert(read().access.enabled && !read().access.history.reported);
+        assert(!read_basic_access(definition, {18, 0}, state, &access).enabled);
+        assert(!read_basic_access(definition, {17, UINT16_MAX}, state, &access).enabled);
+        subscriptions.send("cover.room", "", lock ? "locked" : "closed");
+        if (!command || (!lock && persistent)) assert(read().access.history.reported);
+        subscriptions.send("cover.room", "friendly_name", "Access name");
+        assert(read().label == (!lock && persistent ? "Closed"
+                                : command           ? (lock ? "Unlock" : "Open")
+                                                    : "Access name"));
+        subscriptions.send("cover.room", "", lock ? "unlocking" : "opening");
+        if (!command || (!lock && persistent))
+          assert(read().on && read().cover_icon_open && read().label == (lock ? "Unlocking" : "Opening"));
+        subscriptions.send("cover.room", "", lock ? "unlocked" : "open");
+        cover_toggle_tick += 3000;
+        access.loop();
+        assert(read().label == (!lock && persistent ? "Open"
+                                : command           ? (lock ? "Unlock" : "Open")
+                                                    : "Access name"));
+        const auto before = allocations;
+        for (int n = 0; n < 1000; ++n) (void)read();
+        assert(before == allocations);
+        if (gate) {
+          subscriptions.send("cover.room", "", " UNKNOWN ");
+          assert(!read().access.enabled);
+          subscriptions.send("cover.room", "", "closed");
+          assert(read().access.enabled);
+        }
+        if (!command || gate || (!lock && persistent)) {
+          subscriptions.send("cover.room", "", std::string(3000, 'x'));
+          assert(!read().access.enabled);
+        }
+      }
+  Fixture confirmation(limits, "cover.garage;;Auto;Auto;;;garage;;confirm_on");
+  BasicCardDefinition definition;
+  assert(!prepare_basic_card(confirmation.store, 0, definition));
+}
 void cover_command_profile(const DeviceUiLimits& limits) {
   struct Mode {
     const char* name;
@@ -1423,6 +1488,7 @@ int main() {
     indicator_eligibility(limits);
     cover_command_profile(limits);
     cover_toggle_profile(limits);
+    access_profile(limits);
     local_relay_profile(limits);
     local_sensor_profile(limits);
     option_select_profile(limits);

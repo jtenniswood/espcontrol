@@ -292,6 +292,7 @@ add_executable(page_basic_card_test page_basic_card_test.cpp
     ../../components/espcontrol/page_light_temperature_runtime.cpp
     ../../components/espcontrol/page_timer_runtime.cpp
   ../../components/espcontrol/page_cover_toggle_runtime.cpp
+  ../../components/espcontrol/page_access_state_runtime.cpp
   ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
   ../../components/espcontrol/page_card_dependencies.cpp
@@ -306,6 +307,7 @@ add_executable(page_basic_card_no_forecast_test page_basic_card_test.cpp
     ../../components/espcontrol/page_light_temperature_runtime.cpp
     ../../components/espcontrol/page_timer_runtime.cpp
   ../../components/espcontrol/page_cover_toggle_runtime.cpp
+  ../../components/espcontrol/page_access_state_runtime.cpp
   ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
   ../../components/espcontrol/page_card_dependencies.cpp
@@ -1201,6 +1203,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     ../../components/espcontrol/page_light_temperature_runtime.cpp
     ../../components/espcontrol/page_timer_runtime.cpp
   ../../components/espcontrol/page_cover_toggle_runtime.cpp
+  ../../components/espcontrol/page_access_state_runtime.cpp
     ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_forecast_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
