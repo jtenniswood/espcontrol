@@ -43,6 +43,15 @@ uint32_t lv_tick_get() {
 const char* find_icon(const char* name) {
   return name;
 }
+bool alarm_modal_managed(const AlarmCardCtx*) {
+  return false;
+}
+int alarm_modal_remaining(const AlarmCardCtx*) {
+  return -1;
+}
+int alarm_modal_progress(const AlarmCardCtx*) {
+  return -1;
+}
 // @legacy-alarm-policy
 }  // namespace legacy
 int main() {

@@ -21,8 +21,9 @@ colours so that reuse does not change other families' press styles or animations
 The scene must supply corrected primary surface through `alarm_surface`.
 
 Press captures the complete binding and connection. Click rechecks both and reads
-the current owner snapshot. A valid control can open readonly while unavailable;
-action cards reject unavailable, invalidated or exhausted critical state. A mode
+the current owner snapshot. Control tiles can request their panel while unavailable, just as the legacy click
+handler does; the modal adapter retains its separate availability admission check.
+Action cards reject unavailable, invalidated or exhausted critical state. A mode
 report alone cannot restore command availability after reconnect. The callback may
 navigate reentrantly. The eventual scene must also enforce its global connection
 policy, revalidate the stored intent before service dispatch and route PIN/control

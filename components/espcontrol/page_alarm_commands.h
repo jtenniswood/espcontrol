@@ -48,6 +48,7 @@ class PageAlarmCommands final : public PageRuntimeResources {
   // later command replaces the previous one; invalid input leaves it intact.
   bool queue(PageAlarmCommandOrigin, alarm::Action, std::string_view code = {});
   void cancel();
+  void cancel(PageModalToken);
   PageAlarmCommandResult loop();
   PageAlarmCommandMemory memory() const;
 

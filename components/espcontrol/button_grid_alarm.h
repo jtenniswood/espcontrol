@@ -1,5 +1,6 @@
 #pragma once
 
+#include "alarm_modal_lifetime.h"
 #include "pin_keypad.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
@@ -136,7 +137,7 @@ inline int alarm_remaining_delay_seconds(AlarmCardCtx *ctx);
 inline bool alarm_card_context_valid(AlarmCardCtx *ctx);
 
 inline bool alarm_card_context_valid(AlarmCardCtx *ctx) {
-  return ctx != nullptr && ctx->magic == ALARM_CARD_CTX_MAGIC;
+  return ctx != nullptr && ctx->magic == ALARM_CARD_CTX_MAGIC && alarm_modal_context_current(ctx);
 }
 
 inline bool alarm_action_context_valid(AlarmActionCtx *action) {
@@ -412,6 +413,7 @@ inline int alarm_parse_delay_seconds(const std::string &value) {
 }
 
 inline int alarm_remaining_delay_seconds(AlarmCardCtx *ctx) {
+  if (alarm_modal_managed(ctx)) return alarm_modal_remaining(ctx);
   if (!ctx || ctx->arm_delay_seconds < 0) return -1;
   if (ctx->arm_delay_seconds == 0) return 0;
   uint32_t elapsed_ms = lv_tick_get() - ctx->arm_delay_started_ms;
@@ -432,6 +434,7 @@ inline std::string alarm_delay_label(int seconds) {
 }
 
 inline int alarm_delay_progress_percent(AlarmCardCtx *ctx, int remaining) {
+  if (alarm_modal_managed(ctx)) return alarm_modal_progress(ctx);
   if (!ctx || remaining < 0) return -1;
   int total = ctx->arm_delay_total_seconds > 0 ? ctx->arm_delay_total_seconds : ctx->arm_delay_seconds;
   if (total <= 0) return -1;
@@ -453,6 +456,7 @@ inline void alarm_arm_delay_timer_cb(lv_timer_t *timer) {
 }
 
 inline void alarm_arm_delay_refresh_timer(AlarmCardCtx *ctx) {
+  if (alarm_modal_managed(ctx)) return;
   if (!ctx) return;
   bool should_run = alarm_state_is_delay(ctx->state) && alarm_remaining_delay_seconds(ctx) > 0;
   if (!should_run) {
@@ -506,6 +510,7 @@ inline void alarm_release_arming_takeover(AlarmCardCtx *ctx) {
 }
 
 inline void alarm_refresh_arming_takeover(AlarmCardCtx *ctx) {
+  if (alarm_modal_managed(ctx)) return;  // The application scene owns critical routing.
   bool should_take_over = ctx && alarm_card_context_valid(ctx) && ctx->available &&
                           alarm_display_takeover_active(ctx);
   if (!should_take_over) {
@@ -797,6 +802,10 @@ inline void alarm_start_pending_action(AlarmCardCtx *ctx,
 }
 
 inline void send_alarm_action(AlarmActionCtx *action, const std::string &code) {
+  if (action && alarm_modal_managed(action->card)) {
+    alarm_modal_defer(action->card, action->mode, code, true);
+    return;
+  }
   if (!alarm_action_context_valid(action) || action->card->entity_id.empty() ||
       !ha_api_available()) return;
   const char *service = alarm_action_service(action->mode);
@@ -929,13 +938,22 @@ inline void alarm_control_hide_modal() {
   control_modal_delete_overlay(ControlModalKind::ALARM_CONTROL, ui.overlay);
   ui = AlarmControlModalUi();
   if (release_takeover) alarm_release_arming_takeover(active);
+  alarm_modal_notify_closed(active);
+}
+
+inline void alarm_clear_pin(std::string& pin) {
+  volatile char* bytes = pin.empty() ? nullptr : &pin[0];
+  for (size_t i = 0; i < pin.size(); ++i) bytes[i] = 0;
+  pin.clear();
 }
 
 inline void alarm_pin_hide_modal() {
   AlarmPinModalUi &ui = alarm_pin_modal_ui();
-  ui.pin.clear();
+  AlarmCardCtx* active = ui.active ? ui.active->card : nullptr;
+  alarm_clear_pin(ui.pin);
   control_modal_delete_overlay(ControlModalKind::ALARM_PIN, ui.overlay);
   ui = AlarmPinModalUi();
+  alarm_modal_notify_closed(active);
 }
 
 inline void alarm_action_activate(AlarmActionCtx *action);
@@ -963,6 +981,10 @@ inline void alarm_defer_action(AlarmActionCtx *action,
                                const std::string &code = "",
                                bool submit_pin = false) {
   if (!alarm_action_context_valid(action)) return;
+  if (alarm_modal_managed(action->card)) {
+    alarm_modal_defer(action->card, action->mode, code, submit_pin);
+    return;
+  }
   AlarmDeferredAction &deferred = alarm_deferred_action();
   if (deferred.timer) {
     lv_timer_del(deferred.timer);
@@ -994,6 +1016,12 @@ inline void alarm_pin_submit() {
   AlarmPinModalUi &ui = alarm_pin_modal_ui();
   if (!ui.active || ui.pin.empty()) return;
   AlarmActionCtx *action = ui.active;
+  if (alarm_modal_managed(action->card)) {
+    alarm_defer_action(action, ui.pin, true);
+    alarm_clear_pin(ui.pin);
+    alarm_pin_update_display();
+    return;
+  }
   std::string code = ui.pin;
   alarm_defer_action(action, code, true);
 }
@@ -1003,7 +1031,7 @@ inline void alarm_pin_key_cb(lv_event_t *e) {
   if (!key) return;
   AlarmPinModalUi &ui = alarm_pin_modal_ui();
   if (strcmp(key, "back") == 0) {
-    ui.pin.clear();
+    alarm_clear_pin(ui.pin);
     alarm_pin_update_display();
     return;
   }
@@ -1042,7 +1070,8 @@ inline void alarm_pin_open_modal(AlarmActionCtx *action) {
   AlarmPinModalUi &ui = alarm_pin_modal_ui();
   ui.active_action = *action;
   ui.active = &ui.active_action;
-  ui.pin.clear();
+  alarm_clear_pin(ui.pin);
+  ui.pin.reserve(16);
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;
   ui.back_btn = shell.close_btn;
@@ -1060,6 +1089,10 @@ inline void alarm_pin_open_modal(AlarmActionCtx *action) {
 
 inline void alarm_action_activate(AlarmActionCtx *action) {
   if (!alarm_action_context_valid(action) || !action->card->available) return;
+  if (alarm_modal_managed(action->card)) {
+    alarm_modal_defer(action->card, action->mode, {}, false);
+    return;
+  }
   if (action->requires_pin) {
     alarm_pin_open_modal(action);
     return;
