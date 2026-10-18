@@ -130,6 +130,7 @@ struct PageMediaControlModalFamily {
       entity = route.entity;
     }
     const bool switched = entity != ctx.entity_id;
+    const auto group_revision = state.media->group_revision(card, entity);
     PageMediaPlaybackSnapshot clock;
     state.media->playback(card, entity, clock);
     const bool title_current = state.media->current(card, entity, "media_title");
@@ -137,9 +138,9 @@ struct PageMediaControlModalFamily {
     const auto second = static_cast<uint32_t>(
         std::clamp(std::isfinite(clock.seconds) ? std::floor(static_cast<double>(clock.seconds) + 0.5) : 0.0,
                    0.0, static_cast<double>(std::numeric_limits<uint32_t>::max())));
-    changed |= switched || state.display_second != second || state.duration != clock.duration ||
-               state.has_position != clock.has_position || state.title_current != title_current ||
-               state.artist_current != artist_current;
+    changed |= switched || state.groups_revision != group_revision || state.display_second != second ||
+               state.duration != clock.duration || state.has_position != clock.has_position ||
+               state.title_current != title_current || state.artist_current != artist_current;
     if (!changed && !state.repaint && local == state.pending) return;
     if (switched) {
       state.rebuild_content = true;
@@ -157,7 +158,7 @@ struct PageMediaControlModalFamily {
                                                 media_group_discovery_attribute(ctx.speaker_group_entity));
     std::vector<std::string> group_values, helper_members;
     std::vector<MediaGroupDiscoveryItem> helper_items;
-    const bool groups_changed = !state.initialized || switched || groups.revision != state.groups_revision;
+    const bool groups_changed = !state.initialized || switched || group_revision != state.groups_revision;
     const bool helper_changed = !state.initialized || discovery.revision != state.discovery_revision;
     if (groups.status == PageEntityStatus::EXHAUSTED || discovery.status == PageEntityStatus::EXHAUSTED ||
         !state.rows || !within_row_budget(groups.value, false, state.rows) ||
@@ -180,7 +181,7 @@ struct PageMediaControlModalFamily {
     }
     // A service response can confirm membership before its HA attribute
     // arrives. Clock, volume and metadata updates must not overwrite it with
-    // the same old raw snapshot. A new channel revision remains authoritative.
+    // the same old raw snapshot. Every live membership report remains authoritative.
     const auto& group_members = groups_changed ? group_values : ctx.group_members;
     const auto& candidates = helper_changed ? helper_members : ctx.speaker_helper_members;
     size_t rows = 1;
@@ -269,7 +270,7 @@ struct PageMediaControlModalFamily {
     if (update_ui) state.rebuild_controls = state.rebuild_content = false;
     state.repaint = !update_ui;
     state.initialized = true;
-    state.groups_revision = groups.revision;
+    state.groups_revision = group_revision;
     state.discovery_revision = discovery.revision;
     state.display_second = second;
     state.duration = clock.duration;

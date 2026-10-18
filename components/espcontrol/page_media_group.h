@@ -4,6 +4,21 @@
 #include <string_view>
 
 namespace espcontrol::pages {
+// The input is already bounded to the existing short-state limit by callers.
+inline bool media_group_source_available(std::string_view text) {
+  while (!text.empty() && std::isspace(static_cast<unsigned char>(text.front()))) text.remove_prefix(1);
+  while (!text.empty() && std::isspace(static_cast<unsigned char>(text.back()))) text.remove_suffix(1);
+  if (text.empty()) return false;
+  constexpr std::string_view missing[] = {"unknown", "unavailable"};
+  for (const auto unavailable : missing) {
+    if (text.size() != unavailable.size()) continue;
+    bool same = true;
+    for (size_t i = 0; i < text.size(); ++i)
+      same &= std::tolower(static_cast<unsigned char>(text[i])) == unavailable[i];
+    if (same) return false;
+  }
+  return true;
+}
 namespace group_card_detail {
 inline bool space(char value) {
   return value == ' ' || value == '\t' || value == '\r' || value == '\n';

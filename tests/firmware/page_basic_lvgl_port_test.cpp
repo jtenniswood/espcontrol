@@ -972,6 +972,33 @@ void media_control_profile(const DeviceUiLimits& limits) {
            !lv_obj_has_flag(widgets[5].icon, LV_OBJ_FLAG_HIDDEN) &&
            lv_obj_has_flag(widgets[5].sensor_container, LV_OBJ_FLAG_HIDDEN));
     assert(!port.preview_volume(group_binding, 30));
+    assert(!port.preview_group(renderer.binding(1), true));
+    subscriptions.send("media_player.room", "group_members", "['media_player.room']");
+    renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[5].button, LV_STATE_CHECKED));
+    assert(port.preview_group(group_binding, true));
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[5].button, LV_STATE_CHECKED));
+    transport.now += 20000;
+    assert(!port.state_changed());
+    subscriptions.send("media_player.room", "shuffle", "on");
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[5].button, LV_STATE_CHECKED));
+    subscriptions.send("media_player.room", "group_members", "['media_player.room']");
+    renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[5].button, LV_STATE_CHECKED));
+    subscriptions.send("media_player.room", "group_members", "['media_player.other']");
+    renderer.update_visible();
+    assert(port.preview_group(group_binding, false));
+    renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[5].button, LV_STATE_CHECKED));
+    subscriptions.send("media_player.room", "shuffle", "off");
+    renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[5].button, LV_STATE_CHECKED));
+    subscriptions.send("media_player.room", "group_members", "['media_player.other','media_player.third']");
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[5].button, LV_STATE_CHECKED));
+
     subscriptions.send("media_player.room", "group_members", "['media_player.room','media_player.room']");
     renderer.update_visible();assert(!lv_obj_has_state(widgets[5].button,LV_STATE_CHECKED));
     subscriptions.send("media_player.room", "group_members", "['media_player.other']");
@@ -1036,7 +1063,7 @@ void media_control_profile(const DeviceUiLimits& limits) {
     renderer.update_visible();
     lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
     lv_obj_send_event(widgets[5].button, LV_EVENT_CLICKED, nullptr);
-    assert(renderer.active_page()==child);
+    assert(renderer.active_page()==child);assert(!port.preview_group(group_binding,true));
     assert(actions.commands == 3 && !port.preview_volume(origin, 30));
     assert(lv_obj_get_style_align(widgets[1].sensor_container, LV_PART_MAIN) == LV_ALIGN_CENTER &&
            lv_obj_get_style_x(widgets[1].sensor_container, LV_PART_MAIN) == 3);
@@ -1719,6 +1746,17 @@ int main() {
   for (const auto& limits : DEVICE_UI_PROFILES) {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
+    const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "media_controls") == 0) {
+      switch (limits.slot_count) {
+        case 6: media_control_profile<6>(limits); break;
+        case 9: media_control_profile<9>(limits); break;
+        case 15: media_control_profile<15>(limits); break;
+        case 20: media_control_profile<20>(limits); break;
+        default: assert(false);
+      }
+      continue;
+    }
     switch (limits.slot_count) {
       case 6:
         profile<6>(limits);

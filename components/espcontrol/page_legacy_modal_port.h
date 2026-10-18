@@ -24,6 +24,8 @@ template<typename Family> struct PageLegacyModalStyle {
   // A scene retains the original full grid binding at request time and matches
   // this opening token before forwarding a numeric preview to the card bank.
   void (*numeric_action_sent)(void *,PageModalToken,float){nullptr};
+  // The scene matches this opening to its original full grid binding.
+  void (*state_confirmed)(void *,PageModalToken,bool){nullptr};
 };
 
 // A family supplies its existing UI/context operations; ownership, cache replay,
@@ -46,7 +48,7 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
     auto &observer=Family::lifetime();
     if(!legacy_renderer_retired||!lv_is_initialized()||record_||Family::active()||
         (observer.owner&&observer.owner!=this))return false;
-    runtime_=&runtime;observer={this,managed,current,action,closed,widgets,numeric_action,identity};return true;
+    runtime_=&runtime;observer={this,managed,current,action,closed,widgets,numeric_action,identity,state_confirmed,refresh};return true;
   }
   bool valid_origin(PageBindingToken token)const override{return valid_&&valid_(owner_,token);}
   ControlModalKind kind(const PageStore &store,ConfigurationHandle handle)const override {
@@ -169,7 +171,19 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
     port.style_.numeric_action_sent(port.style_.owner,token,value);
     // A notification may replace configuration/retire this exact opening.
   }
-  static bool managed(void *owner,const Context *context) {
+  static bool refresh(void* owner, const Context* context) {
+    auto& port = *static_cast<PageLegacyModalPort*>(owner);
+    if (!current(owner, context)) return false;
+    pull(*port.record_, port.state_, 0);
+    return current(owner, context);
+  }
+  static void state_confirmed(void* owner, const Context* context, bool value) {
+    auto& port = *static_cast<PageLegacyModalPort*>(owner);
+    if (!current(owner, context) || !context->available || !port.style_.state_confirmed) return;
+    const auto token = port.record_->token;
+    port.style_.state_confirmed(port.style_.owner, token, value);
+  }
+  static bool managed(void* owner, const Context* context) {
     const auto &port=*static_cast<PageLegacyModalPort *>(owner);
     return port.record_ && &port.record_->context==context;
   }

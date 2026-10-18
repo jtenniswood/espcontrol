@@ -313,17 +313,22 @@ BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHand
                         : std::string_view{};
         return text=="unknown"||text=="unavailable"?std::string_view{}:text;
       };
-      const auto id=metadata(id_text,sizeof(id_text),content),content_type=metadata(type_text,sizeof(type_text),type);
-      const bool id_current=media_owner&&media_owner->current(handle,card.entity,"media_content_id");
-      const bool type_current=media_owner&&media_owner->current(handle,card.entity,"media_content_type");
-      result.on=playing&&id_current&&!id.empty()&&media::playlist_content_id_matches(card.media.playlist_id,id)&&
-        type.status!=PageEntityStatus::EXHAUSTED&&
-        (!type_current||content_type.empty()||media::playlist_content_type_matches(card.media.playlist_type,content_type));
+      const auto id = metadata(id_text, sizeof(id_text), content),
+                 content_type = metadata(type_text, sizeof(type_text), type);
+      const bool id_current = media_owner && media_owner->current(handle, card.entity, "media_content_id");
+      const bool type_current =
+          media_owner && media_owner->current(handle, card.entity, "media_content_type");
+      result.on = playing && id_current && !id.empty() &&
+                  media::playlist_content_id_matches(card.media.playlist_id, id) &&
+                  type.status != PageEntityStatus::EXHAUSTED &&
+                  (!type_current || content_type.empty() ||
+                   media::playlist_content_type_matches(card.media.playlist_type, content_type));
     }
     if (card.kind == BasicCardKind::MEDIA_CONTROL) {
       if (card.media.kind == MediaActionKind::SPEAKER_GROUP) {
         const auto members = find(state, handle, card.entity, "group_members");
-        result.on = available(playback) && !equal_state(playback.value, {}) &&
+        result.on = playback.status == PageEntityStatus::AVAILABLE &&
+                    media_group_source_available(playback.value.substr(0, HA_SHORT_STATE_MAX_LEN)) &&
                     members.status == PageEntityStatus::AVAILABLE &&
                     media_group_has_multiple(card.entity, members.value);
         return result;
