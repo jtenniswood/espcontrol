@@ -1,4 +1,5 @@
 #pragma once
+#include "option_select_modal_lifetime.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
@@ -77,7 +78,7 @@ inline std::string option_select_display_value(const std::string &value) {
 }
 
 inline void option_select_apply_card_text(OptionSelectCtx *ctx) {
-  if (!ctx) return;
+  if (!option_select_context_current(ctx)) return;
   if (ctx->value_lbl) {
     std::string text = option_select_display_value(ctx->current_option);
     lv_label_set_display_text(ctx->value_lbl, text.c_str());
@@ -268,23 +269,31 @@ inline std::vector<std::string> option_select_parse_options(const std::string &r
 }
 
 inline bool send_option_select_action(OptionSelectCtx *ctx, const std::string &option) {
-  if (!ctx || !ctx->available || !ha_api_state_connected() ||
-      ctx->entity_id.empty() || option.empty()) return false;
+  const std::string selected = option;
+  if (!option_select_action_allowed(ctx) || !ctx->available || !ha_api_state_connected() ||
+      ctx->entity_id.empty() || selected.empty())
+    return false;
+  if (option_select_modal_lifetime().managed_context(ctx) &&
+      std::find(ctx->options.begin(), ctx->options.end(), selected) == ctx->options.end())
+    return false;
   const char *service = option_select_service_for_entity(ctx->entity_id);
   if (service == nullptr) return false;
   // Dispatch acceptance is not a state acknowledgement. Only the HA state
   // subscription may change the displayed current option.
-  return ha_send_entity_action(ctx->entity_id, service, "option", option.c_str());
+  return ha_send_entity_action(ctx->entity_id, service, "option", selected.c_str());
 }
 
 inline void option_select_hide_modal() {
   OptionSelectModalUi &ui = option_select_modal_ui();
-  control_modal_delete_overlay(ControlModalKind::OPTION_SELECT, ui.overlay);
+  OptionSelectCtx* closing = ui.active;
+  lv_obj_t* overlay = ui.overlay;
   ui = OptionSelectModalUi();
+  control_modal_delete_overlay(ControlModalKind::OPTION_SELECT, overlay);
+  option_select_modal_lifetime().notify_closed(closing);
 }
 
 inline void option_select_refresh_modal_rows(OptionSelectCtx *ctx) {
-  if (!ctx) return;
+  if (!option_select_context_current(ctx)) return;
   OptionSelectModalUi &ui = option_select_modal_ui();
   if (ui.active != ctx) return;
   int count = ctx->options.size() > OPTION_SELECT_MAX_OPTIONS
@@ -303,8 +312,55 @@ inline void option_select_refresh_modal_rows(OptionSelectCtx *ctx) {
 }
 
 inline bool option_select_can_open_modal(OptionSelectCtx *ctx) {
-  return ctx && !ctx->entity_id.empty() && ctx->available && ha_api_state_connected() &&
-         option_select_entity_supported(ctx->entity_id);
+  return option_select_context_current(ctx) && !ctx->entity_id.empty() && ctx->available &&
+         ha_api_state_connected() && option_select_entity_supported(ctx->entity_id);
+}
+
+inline void option_select_attach_row(lv_obj_t* row, OptionSelectOptionClick* click) {
+  lv_obj_add_event_cb(
+      row,
+      [](lv_event_t* event) {
+        auto* selected = static_cast<OptionSelectOptionClick*>(lv_event_get_user_data(event));
+        if (!selected || !option_select_action_allowed(selected->ctx)) return;
+        auto* ctx = selected->ctx;
+        const auto identity = option_select_modal_lifetime().context_identity(ctx);
+        if (send_option_select_action(ctx, selected->value) && option_select_modal_ui().active == ctx &&
+            option_select_context_current(ctx) &&
+            option_select_modal_lifetime().context_identity(ctx) == identity)
+          option_select_hide_modal();
+      },
+      LV_EVENT_CLICKED, click);
+}
+
+inline void option_select_build_modal_rows(OptionSelectCtx* ctx, lv_coord_t row_h, lv_coord_t row_radius) {
+  OptionSelectModalUi& ui = option_select_modal_ui();
+  if (!option_select_context_current(ctx) || ui.active != ctx || !ui.list) return;
+  int count = ctx->options.size() > OPTION_SELECT_MAX_OPTIONS ? OPTION_SELECT_MAX_OPTIONS
+                                                              : static_cast<int>(ctx->options.size());
+  for (int i = 0; i < count; i++) {
+    bool active = ctx->options[i] == ctx->current_option;
+    lv_obj_t* btn =
+        control_modal_create_list_row(ui.list, ctx->options[i], active, row_h, row_radius, ctx->accent_color,
+                                      theme_display_color(current_theme().surface_primary), ctx->label_font,
+                                      ctx->width_compensation_percent);
+    if (!option_select_context_current(ctx) || ui.active != ctx) return;
+    ui.option_rows[i] = btn;
+    ui.option_clicks[i].ctx = ctx;
+    ui.option_clicks[i].value = ctx->options[i];
+    option_select_attach_row(btn, &ui.option_clicks[i]);
+  }
+
+  if (count == 0) {
+    ui.empty_lbl = lv_label_create(ui.list);
+    lv_label_set_display_text(ui.empty_lbl, espcontrol_i18n("No options"));
+    lv_label_set_long_mode(ui.empty_lbl, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(ui.empty_lbl, lv_pct(100));
+    lv_obj_set_style_text_color(ui.empty_lbl, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
+    lv_obj_set_style_text_align(ui.empty_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    if (ctx->label_font) lv_obj_set_style_text_font(ui.empty_lbl, ctx->label_font, LV_PART_MAIN);
+  }
+
+  if (!option_select_modal_lifetime().widgets_ready(ui.overlay)) option_select_hide_modal();
 }
 
 inline void option_select_open_modal(OptionSelectCtx *ctx) {
@@ -339,43 +395,17 @@ inline void option_select_open_modal(OptionSelectCtx *ctx) {
   ui.list = control_modal_create_scroll_list(ui.panel, content_w, list_h, gap);
   lv_obj_align(ui.list, LV_ALIGN_TOP_LEFT, layout.inset, list_y);
 
-  int count = ctx->options.size() > OPTION_SELECT_MAX_OPTIONS
-    ? OPTION_SELECT_MAX_OPTIONS
-    : static_cast<int>(ctx->options.size());
-  for (int i = 0; i < count; i++) {
-    bool active = ctx->options[i] == ctx->current_option;
-    lv_obj_t *btn = control_modal_create_list_row(
-      ui.list, ctx->options[i], active, row_h, row_radius,
-      ctx->accent_color, theme_display_color(current_theme().surface_primary),
-      ctx->label_font, ctx->width_compensation_percent);
-    ui.option_rows[i] = btn;
-    ui.option_clicks[i].ctx = ctx;
-    ui.option_clicks[i].value = ctx->options[i];
-    lv_obj_add_event_cb(btn, [](lv_event_t *e) {
-      OptionSelectOptionClick *click = (OptionSelectOptionClick *)lv_event_get_user_data(e);
-      if (!click || !click->ctx) return;
-      if (send_option_select_action(click->ctx, click->value)) option_select_hide_modal();
-    }, LV_EVENT_CLICKED, &ui.option_clicks[i]);
-  }
-
-  if (count == 0) {
-    ui.empty_lbl = lv_label_create(ui.list);
-    lv_label_set_display_text(ui.empty_lbl, espcontrol_i18n("No options"));
-    lv_label_set_long_mode(ui.empty_lbl, LV_LABEL_LONG_WRAP);
-    lv_obj_set_width(ui.empty_lbl, lv_pct(100));
-    lv_obj_set_style_text_color(ui.empty_lbl, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
-    lv_obj_set_style_text_align(ui.empty_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    if (ctx->label_font) lv_obj_set_style_text_font(ui.empty_lbl, ctx->label_font, LV_PART_MAIN);
-  }
-
+  option_select_build_modal_rows(ctx, row_h, row_radius);
+  if (!option_select_context_current(ctx) || ui.active != ctx) return;
   lv_obj_move_foreground(ui.overlay);
+  if (!option_select_modal_lifetime().widgets_ready(ui.overlay)) option_select_hide_modal();
 }
 
-inline OptionSelectCtx *create_option_select_context(
-    BtnSlot &s, const ParsedCfg &p,
-    uint32_t accent_color, uint32_t secondary_color, uint32_t tertiary_color,
-    int width_compensation_percent) {
-  OptionSelectCtx *ctx = new OptionSelectCtx();
+inline OptionSelectCtx* create_option_select_context(BtnSlot& s, const ParsedCfg& p, uint32_t accent_color,
+                                                     uint32_t secondary_color, uint32_t tertiary_color,
+                                                     int width_compensation_percent,
+                                                     OptionSelectCtx* storage = nullptr) {
+  OptionSelectCtx* ctx = storage ? storage : new OptionSelectCtx();
   ctx->entity_id = p.entity;
   ctx->configured_label = p.label;
   ctx->btn = s.btn;
@@ -390,48 +420,44 @@ inline OptionSelectCtx *create_option_select_context(
   ctx->value_font = s.sensor_lbl ? lv_obj_get_style_text_font(s.sensor_lbl, LV_PART_MAIN) : nullptr;
   ctx->label_font = s.text_lbl ? lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN) : nullptr;
   ctx->icon_font = s.icon_lbl ? lv_obj_get_style_text_font(s.icon_lbl, LV_PART_MAIN) : nullptr;
-  lv_obj_set_user_data(s.btn, ctx);
+  if (s.btn) lv_obj_set_user_data(s.btn, ctx);
   option_select_apply_card_text(ctx);
   return ctx;
 }
 
 inline void subscribe_option_select_state(OptionSelectCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  ha_subscribe_state(
-    ctx->entity_id,
-    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
-      std::string state_text = string_ref_limited(state, HA_STATE_TEXT_MAX_LEN);
-      bool unavailable = ha_entity_state_unavailable_ref(ctx->entity_id, state);
-      bool no_current_option = normalized_state_text(state) == "unknown";
-      ctx->available = !unavailable;
-      ctx->current_option = unavailable || no_current_option ? "" : state_text;
-      option_select_apply_card_text(ctx);
-      option_select_refresh_modal_rows(ctx);
-      OptionSelectModalUi &ui = option_select_modal_ui();
-      if (ui.active == ctx && !ctx->available) option_select_hide_modal();
-    })
-  );
-  ha_subscribe_attribute(
-    ctx->entity_id, std::string("options"),
-    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef options) {
-      auto next_options = option_select_parse_options(
-        string_ref_limited(options, OPTION_SELECT_OPTIONS_TEXT_MAX_LEN));
-      if (next_options == ctx->options) return;
-      ctx->options = std::move(next_options);
-      // Rows capture their wire values at creation. Retire that snapshot before
-      // another tap can send a value from an obsolete list revision.
-      if (option_select_modal_ui().active == ctx) option_select_hide_modal();
-    })
-  );
+  ha_subscribe_state(ctx->entity_id, std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
+                       if (!option_select_context_current(ctx)) return;
+                       std::string state_text = string_ref_limited(state, HA_STATE_TEXT_MAX_LEN);
+                       bool unavailable = ha_entity_state_unavailable_ref(ctx->entity_id, state);
+                       bool no_current_option = normalized_state_text(state) == "unknown";
+                       ctx->available = !unavailable;
+                       ctx->current_option = unavailable || no_current_option ? "" : state_text;
+                       option_select_apply_card_text(ctx);
+                       option_select_refresh_modal_rows(ctx);
+                       OptionSelectModalUi& ui = option_select_modal_ui();
+                       if (ui.active == ctx && !ctx->available) option_select_hide_modal();
+                     }));
+  ha_subscribe_attribute(ctx->entity_id, std::string("options"),
+                         std::function<void(esphome::StringRef)>([ctx](esphome::StringRef options) {
+                           if (!option_select_context_current(ctx)) return;
+                           auto next_options = option_select_parse_options(
+                               string_ref_limited(options, OPTION_SELECT_OPTIONS_TEXT_MAX_LEN));
+                           if (next_options == ctx->options) return;
+                           ctx->options = std::move(next_options);
+                           // Rows capture their wire values at creation. Retire that snapshot before
+                           // another tap can send a value from an obsolete list revision.
+                           if (option_select_modal_ui().active == ctx) option_select_hide_modal();
+                         }));
 }
 
 inline void subscribe_option_select_friendly_name(OptionSelectCtx *ctx) {
   if (!ctx || ctx->entity_id.empty() || !ctx->configured_label.empty()) return;
-  ha_subscribe_attribute(
-    ctx->entity_id, std::string("friendly_name"),
-    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef name) {
-      ctx->friendly_name = string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN);
-      option_select_apply_card_text(ctx);
-    })
-  );
+  ha_subscribe_attribute(ctx->entity_id, std::string("friendly_name"),
+                         std::function<void(esphome::StringRef)>([ctx](esphome::StringRef name) {
+                           if (!option_select_context_current(ctx)) return;
+                           ctx->friendly_name = string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN);
+                           option_select_apply_card_text(ctx);
+                         }));
 }

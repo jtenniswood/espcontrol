@@ -60,6 +60,29 @@ struct Fixture {
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
   }
+  struct OptionSelections {};
+  Fixture(const DeviceUiLimits& limits, OptionSelections) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {";Modes;Auto;Auto;indicator;;subpage;;",
+                                 "select.room;;Auto;Auto;;;option_select;;", ";;;;sensor.temp;°C;sensor;1;"};
+    for (size_t i = 0; i < 3; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i].data()),
+                                  cards[i].size()) == PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1,2|S,,Temperature,Auto,Auto,sensor.temp,°C,1,|U,input_select.room,,Auto,Auto,,,,";
+    assert(writer.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = "1,2,3";
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                 reinterpret_cast<const uint8_t*>(order.data()),
+                                 order.size()) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   struct FanModes {};
   Fixture(const DeviceUiLimits& limits, FanModes) {
     PanelConfigWriter writer(document.data(), document.size());
@@ -511,6 +534,123 @@ template<size_t Slots>void control_profile(const DeviceUiLimits &limits) {
     for(size_t n=0;n<1000;++n){assert(renderer.open_page(child));renderer.update_visible();lv_obj_update_layout(page);assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);assert(cpp_allocations==cpp&&arena.allocations==reservations&&cache.memory().descriptor_adds==descriptors&&subscriptions.bindings.size()==channels&&lv_live_bytes==retained);}
     ++subscriptions.generation;renderer.update_visible();lv_obj_update_layout(page);assert(lv_obj_has_flag(widgets[1].fill,LV_OBJ_FLAG_HIDDEN)&&!lv_obj_has_state(widgets[2].button,LV_STATE_CHECKED));assert(!lv_obj_has_state(widgets[3].button,LV_STATE_CHECKED));std::printf("%s: light/cover/fan controls 1000 cycles, fixed retained resources, %zu native LVGL bytes including fill bank\n",limits.device_profile,retained);renderer.retire_active();state.retire_active();
   }assert(arena.live==0);lv_obj_delete(page);
+}
+
+template <size_t Slots>
+void option_select_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, Fixture::OptionSelections{});
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192});
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+    lv_obj_set_width(w.sensor_container, 120);
+    lv_obj_set_width(w.value, 75);
+    lv_label_set_long_mode(w.value, LV_LABEL_LONG_CLIP);
+  }
+  lv_font_t option_font = *LV_FONT_DEFAULT;
+  option_font.line_height += 2;
+  PageBasicTheme theme;
+  theme.option_select_font = &option_font;
+  theme.sensor_font = LV_FONT_DEFAULT;
+  theme.sensor_surface = 0x123456;
+  Actions<Slots> actions;
+  {
+    auto callbacks = actions.callbacks();
+    callbacks.control = nullptr;
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     callbacks);
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  actions.callbacks());
+    assert(port.initialize());
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t index = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[index++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    assert(renderer.prepare(fixture.store) && state.prepare(fixture.store));
+    renderer.activate_prepared(fixture.store);
+    state.activate_prepared(fixture.store);
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "--") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[1].label), "select.room") == 0);
+    subscriptions.send("select.room", "", "Night MODE");
+    subscriptions.send("select.room", "friendly_name", "Room Mode");
+    subscriptions.send("sensor.temp", "", "21.5");
+    subscriptions.send("input_select.room", "", "  Guest [Room]  ");
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "Night MODE") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[1].label), "Room Mode") == 0);
+    assert(lv_obj_get_style_text_font(widgets[1].value, LV_PART_MAIN) == &option_font &&
+           lv_obj_get_style_width(widgets[1].value, LV_PART_MAIN) == lv_pct(100) &&
+           lv_label_get_long_mode(widgets[1].value) == LV_LABEL_LONG_DOT);
+    assert(lv_obj_has_flag(widgets[1].icon, LV_OBJ_FLAG_HIDDEN) &&
+           !lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED));
+    click(widgets[1].button);
+    assert(actions.commands == 1 && renderer.valid(actions.last));
+    const auto child = fixture.store.card(0)->target;
+    const auto old = renderer.binding(1);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == 1 && !renderer.valid(old));
+    assert(lv_obj_get_style_text_font(widgets[1].value, LV_PART_MAIN) == LV_FONT_DEFAULT &&
+           lv_obj_get_style_width(widgets[1].value, LV_PART_MAIN) == 75 &&
+           lv_obj_get_style_width(widgets[1].sensor_container, LV_PART_MAIN) == 120 &&
+           lv_label_get_long_mode(widgets[1].value) == LV_LABEL_LONG_CLIP);
+    assert(std::strcmp(lv_label_get_text(widgets[2].value), "  Guest [Room]  ") == 0);
+    click(widgets[2].button);
+    assert(actions.commands == 2 && renderer.valid(actions.last));
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto cpp = cpp_allocations, reservations = arena.allocations, retained = lv_live_bytes,
+               channels = subscriptions.bindings.size(), descriptors = cache.memory().descriptor_adds;
+    for (int n = 0; n < 1000; ++n) {
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(cpp_allocations == cpp && arena.allocations == reservations && lv_live_bytes == retained &&
+             subscriptions.bindings.size() == channels && cache.memory().descriptor_adds == descriptors);
+    }
+    ++subscriptions.generation;
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "--") == 0);
+    renderer.retire_active();
+    state.retire_active();
+    std::printf("%s: option-select 1000 cycles, stable retained resources and restored value layout\n",
+                limits.device_profile);
+  }
+  assert(arena.live == 0);
+  lv_obj_delete(page);
 }
 
 template <size_t Slots>
@@ -1922,19 +2062,42 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "option_select") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          option_select_profile<6>(limits);
+          break;
+        case 9:
+          option_select_profile<9>(limits);
+          break;
+        case 15:
+          option_select_profile<15>(limits);
+          break;
+        case 20:
+          option_select_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "fan_modes") == 0) {
       switch (limits.slot_count) {
         case 6:
           fan_mode_profile<6>(limits);
+          option_select_profile<6>(limits);
           break;
         case 9:
           fan_mode_profile<9>(limits);
+          option_select_profile<9>(limits);
           break;
         case 15:
           fan_mode_profile<15>(limits);
+          option_select_profile<15>(limits);
           break;
         case 20:
           fan_mode_profile<20>(limits);
+          option_select_profile<20>(limits);
           break;
         default:
           assert(false);
@@ -1967,6 +2130,7 @@ int main() {
         status_action_profile<6>(limits);
         control_profile<6>(limits);
         fan_mode_profile<6>(limits);
+        option_select_profile<6>(limits);
         weather_profile<6>(limits);
         forecast_profile<6>(limits);
         media_action_profile<6>(limits);
@@ -1980,6 +2144,7 @@ int main() {
         status_action_profile<9>(limits);
         control_profile<9>(limits);
         fan_mode_profile<9>(limits);
+        option_select_profile<9>(limits);
         weather_profile<9>(limits);
         forecast_profile<9>(limits);
         media_action_profile<9>(limits);
@@ -1993,6 +2158,7 @@ int main() {
         status_action_profile<15>(limits);
         control_profile<15>(limits);
         fan_mode_profile<15>(limits);
+        option_select_profile<15>(limits);
         weather_profile<15>(limits);
         forecast_profile<15>(limits);
         media_action_profile<15>(limits);
@@ -2006,6 +2172,7 @@ int main() {
         status_action_profile<20>(limits);
         control_profile<20>(limits);
         fan_mode_profile<20>(limits);
+        option_select_profile<20>(limits);
         weather_profile<20>(limits);
         forecast_profile<20>(limits);
         media_action_profile<20>(limits);

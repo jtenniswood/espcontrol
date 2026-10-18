@@ -84,3 +84,4 @@
 
 #include "page_fan_control_modal.h"
 #include "page_fan_preset_modal.h"
+#include "page_option_select_modal.h"
