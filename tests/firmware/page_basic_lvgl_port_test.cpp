@@ -63,6 +63,35 @@ struct Fixture {
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
   }
+  struct InputEpochs {};
+  Fixture(const DeviceUiLimits& limits, InputEpochs) {
+    PanelConfigWriter w(document.data(), document.size());
+    assert(w.begin() == PanelConfigStatus::OK);
+    assert(w.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                   std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {";Controls;Auto;Auto;indicator;;subpage;;",
+                                 "switch.input;Switch;Auto;Auto;;;;;",
+                                 "script.input;Run;Auto;Auto;script.turn_on;;action;;",
+                                 "ble_keyboard;Local;Auto;Auto;local;;action;;",
+                                 "https://example.test/hook;Hook;Auto;Auto;;;webhook;;",
+                                 ";Saver;Auto;Auto;;;screensaver;;"};
+    for (size_t i = 0; i < 6; ++i)
+      assert(w.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i].data()), cards[i].size()) ==
+             PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1,2,3,4,5|light_control,light.input,Light,Auto,Auto,,,,|cover,cover.input,Cover,Auto,Auto,modal,,"
+        ",|fan_control,fan.input,Fan,Auto,Auto,,,,|fan_direction,fan.input,Direction,Auto,Auto,,,,|option_"
+        "select,select.input,Option,Auto,Auto,,,,";
+    assert(w.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = "1,2,3,4,5,6";
+    assert(w.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                            reinterpret_cast<const uint8_t*>(order.data()),
+                            order.size()) == PanelConfigStatus::OK);
+    assert(w.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   struct Confirmations {};
   Fixture(const DeviceUiLimits& limits, Confirmations) {
     PanelConfigWriter w(document.data(), document.size());
@@ -4779,6 +4808,23 @@ void media_control_profile(const DeviceUiLimits& limits) {
       assert(cpp_allocations == cpp && arena.allocations == reservations && lv_live_bytes == retained &&
              cache.memory().descriptor_adds == descriptors && subscriptions.bindings.size() == channels);
     }
+    // Accepted preview updates after reconnect must not refresh an older press.
+    for (size_t slot : {1u, 5u}) {
+      const auto commands = actions.commands;
+      lv_obj_send_event(widgets[slot].button, LV_EVENT_PRESSED, nullptr);
+      ++subscriptions.generation;
+      media.loop();
+      state.invalidate_disconnected_state();
+      subscriptions.send("media_player.room", "", "playing");
+      subscriptions.send("media_player.room", "volume_level", ".2");
+      subscriptions.send("media_player.room", "supported_features", "4");
+      subscriptions.send("media_player.room", "group_members", "['media_player.room']");
+      renderer.update_visible();
+      assert(slot == 1 ? port.preview_volume(renderer.binding(slot), 30)
+                       : port.preview_group(renderer.binding(slot), true));
+      lv_obj_send_event(widgets[slot].button, LV_EVENT_CLICKED, nullptr);
+      assert(actions.commands == commands);
+    }
     // A durable replacement revokes the old card and any pending panel preview.
     const auto retired = renderer.binding(1);
     assert(port.preview_volume(retired, 30));
@@ -5722,7 +5768,27 @@ template<size_t Slots>void forecast_profile(const DeviceUiLimits &limits) {
     const auto child=fixture.store.card(0)->target;assert(renderer.open_page(child));renderer.update_visible();lv_obj_update_layout(page);assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);
     const auto cpp=cpp_allocations,reservations=arena.allocations,descriptors=cache.memory().descriptor_adds,retained=lv_live_bytes,resolves=actions.icon_resolves,starts=requests.starts;
     for(size_t n=0;n<1000;++n){assert(renderer.open_page(child));renderer.update_visible();lv_obj_update_layout(page);assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);assert(cpp_allocations==cpp&&arena.allocations==reservations&&cache.memory().descriptor_adds==descriptors&&lv_live_bytes==retained&&actions.icon_resolves==resolves&&requests.starts==starts);}
-    requests.online=false;++requests.connection;forecasts.loop();renderer.update_visible();assert(std::strcmp(lv_label_get_text(widgets[1].label),"Last forecast")==0);lv_obj_set_size(page,600,320);lv_obj_update_layout(page);lv_refr_now(lv_display_get_default());renderer.retire_active();state.retire_active();forecasts.retire_active();forecasts.loop();std::printf("%s: forecast 1000 cycles, fixed frames/canvases, 0 C++/arena/label/glyph/request additions\n",limits.device_profile);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    requests.online = false;
+    ++requests.connection;
+    ++subscriptions.generation;
+    state.invalidate_disconnected_state();
+    forecasts.loop();
+    renderer.update_visible();
+    const auto before_cached_open = actions.commands;
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == before_cached_open + 1);
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Last forecast") == 0);
+    lv_obj_set_size(page, 600, 320);
+    lv_obj_update_layout(page);
+    lv_refr_now(lv_display_get_default());
+    renderer.retire_active();
+    state.retire_active();
+    forecasts.retire_active();
+    forecasts.loop();
+    std::printf(
+        "%s: forecast 1000 cycles, fixed frames/canvases, 0 C++/arena/label/glyph/request additions\n",
+        limits.device_profile);
   }assert(arena.live==0);lv_obj_delete(page);
 }
 
@@ -6240,6 +6306,135 @@ void confirmation_profile(const DeviceUiLimits& limits) {
       limits.device_profile);
 }
 
+template <size_t Slots>
+void input_epoch_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, Fixture::InputEpochs{});
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies deps;
+  PageEntityStateRuntime state(deps, arena, subscriptions, {128, 128, 8192});
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  const size_t row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.fill = lv_obj_create(w.button);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+  }
+  PageBasicTheme theme;
+  Actions<Slots> actions;
+  {
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  actions.callbacks());
+    assert(port.initialize());
+    PageLabelRefresh refresh(arena);
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t index = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[index++] = label;
+    assert(refresh.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    assert(renderer.prepare(fixture.store) && state.prepare(fixture.store));
+    renderer.activate_prepared(fixture.store);
+    state.activate_prepared(fixture.store);
+    const auto report = [&] {
+      subscriptions.send("switch.input", "", "off");
+      subscriptions.send("light.input", "", "off");
+      subscriptions.send("cover.input", "", "closed");
+      subscriptions.send("fan.input", "", "on");
+      subscriptions.send("fan.input", "supported_features", "63");
+      subscriptions.send("fan.input", "direction", "forward");
+      subscriptions.send("select.input", "", "Home");
+      subscriptions.send("select.input", "options", "Home,Away");
+    };
+    const auto reconnect = [&] {
+      ++subscriptions.generation;
+      state.invalidate_disconnected_state();
+      report();
+      renderer.update_visible();
+    };
+    report();
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    lv_refr_now(lv_display_get_default());
+    for (size_t slot : {1u, 2u}) {
+      const auto toggles = actions.toggles, commands = actions.commands;
+      lv_obj_send_event(widgets[slot].button, LV_EVENT_PRESSED, nullptr);
+      reconnect();
+      lv_obj_send_event(widgets[slot].button, LV_EVENT_CLICKED, nullptr);
+      assert(actions.toggles == toggles && actions.commands == commands);
+      click(widgets[slot].button);
+      assert(actions.toggles + actions.commands == toggles + commands + 1);
+    }
+    for (size_t slot : {3u, 4u, 5u}) {
+      const auto commands = actions.commands;
+      lv_obj_send_event(widgets[slot].button, LV_EVENT_PRESSED, nullptr);
+      reconnect();
+      lv_obj_send_event(widgets[slot].button, LV_EVENT_CLICKED, nullptr);
+      assert(actions.commands == commands + 1);
+    }
+    // Local navigation also remains independent of HA connection churn.
+    const auto child = fixture.store.card(0)->target;
+    assert(child != NO_PAGE);
+    lv_obj_send_event(widgets[0].button, LV_EVENT_PRESSED, nullptr);
+    reconnect();
+    lv_obj_send_event(widgets[0].button, LV_EVENT_CLICKED, nullptr);
+    renderer.update_visible();
+    assert(renderer.binding(0).page == child);
+    for (size_t slot = 1; slot <= 5; ++slot) {
+      const auto commands = actions.commands, climates = actions.climates;
+      lv_obj_send_event(widgets[slot].button, LV_EVENT_PRESSED, nullptr);
+      reconnect();
+      lv_obj_send_event(widgets[slot].button, LV_EVENT_CLICKED, nullptr);
+      assert(actions.commands == commands && actions.climates == climates);
+      click(widgets[slot].button);
+      assert(actions.commands + actions.climates == commands + climates + 1);
+    }
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto cpp = cpp_allocations, meta = arena.allocations, retained = arena.live,
+               lv_retained = lv_live_bytes, registrations = subscriptions.bindings.size();
+    for (int i = 0; i < 1000; ++i) {
+      const auto commands = actions.commands, toggles = actions.toggles;
+      lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+      reconnect();
+      lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+      lv_obj_send_event(widgets[2].button, LV_EVENT_PRESSED, nullptr);
+      reconnect();
+      lv_obj_send_event(widgets[2].button, LV_EVENT_CLICKED, nullptr);
+      assert(actions.commands == commands && actions.toggles == toggles);
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(cpp == cpp_allocations && meta == arena.allocations && retained == arena.live &&
+             lv_retained == lv_live_bytes && registrations == subscriptions.bindings.size());
+    }
+    renderer.retire_active();
+    state.retire_active();
+  }
+  assert(arena.live == 0);
+  lv_obj_delete(page);
+  std::printf(
+      "%s: input epochs, 1000 reconnect/navigation cycles, HA stale clicks rejected, local input retained\n",
+      limits.device_profile);
+}
+
 int main() {
   std::setvbuf(stdout, nullptr, _IOLBF, 0);
   lv_init();
@@ -6262,6 +6457,44 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "input_epochs") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          input_epoch_profile<6>(limits);
+          break;
+        case 9:
+          input_epoch_profile<9>(limits);
+          break;
+        case 15:
+          input_epoch_profile<15>(limits);
+          break;
+        case 20:
+          input_epoch_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
+    if (family && std::strcmp(family, "forecast") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          forecast_profile<6>(limits);
+          break;
+        case 9:
+          forecast_profile<9>(limits);
+          break;
+        case 15:
+          forecast_profile<15>(limits);
+          break;
+        case 20:
+          forecast_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "confirmation") == 0) {
       switch (limits.slot_count) {
         case 6:
@@ -6736,6 +6969,7 @@ int main() {
     switch (limits.slot_count) {
       case 6:
         profile<6>(limits);
+        input_epoch_profile<6>(limits);
         confirmation_profile<6>(limits);
         qr_tile_profile<6>(limits);
         status_action_profile<6>(limits);
@@ -6770,6 +7004,7 @@ int main() {
         break;
       case 9:
         profile<9>(limits);
+        input_epoch_profile<9>(limits);
         confirmation_profile<9>(limits);
         qr_tile_profile<9>(limits);
         status_action_profile<9>(limits);
@@ -6807,6 +7042,7 @@ int main() {
         break;
       case 15:
         profile<15>(limits);
+        input_epoch_profile<15>(limits);
         confirmation_profile<15>(limits);
         qr_tile_profile<15>(limits);
         status_action_profile<15>(limits);
@@ -6841,6 +7077,7 @@ int main() {
         break;
       case 20:
         profile<20>(limits);
+        input_epoch_profile<20>(limits);
         confirmation_profile<20>(limits);
         qr_tile_profile<20>(limits);
         status_action_profile<20>(limits);

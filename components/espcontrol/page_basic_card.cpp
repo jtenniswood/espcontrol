@@ -192,6 +192,7 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     if (action_card_option_select(config)) return false;
     out.kind=BasicCardKind::ACTION;
     const bool local=type=="local"||action_card_local_action(config);
+    out.ha_input = !local && type != "webhook" && type != "screensaver";
     out.push_feedback=type=="action"||local||type=="screensaver"||
       (type=="push"&&out.entity.empty()&&(out.icon.empty()||out.icon=="Auto"));
     if(type=="action"||local) {
@@ -453,6 +454,37 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     } else if(!out.sensor.empty())out.folder_mode=precision=="text"?BasicFolderMode::TEXT:BasicFolderMode::NUMBER;
   } else
     return false;
+  switch (out.kind) {
+    case BasicCardKind::TOGGLE:
+    case BasicCardKind::CLIMATE:
+    case BasicCardKind::LIGHT:
+    case BasicCardKind::COVER:
+    case BasicCardKind::MEDIA_ACTION:
+    case BasicCardKind::MEDIA_POSITION:
+    case BasicCardKind::MEDIA_NOW_PLAYING:
+    case BasicCardKind::MEDIA_COVER_ART:
+    case BasicCardKind::MEDIA_CONTROL:
+    case BasicCardKind::FAN_CONTROL:
+    case BasicCardKind::FAN_DIRECTION:
+    case BasicCardKind::FAN_PRESET:
+    case BasicCardKind::OPTION_SELECT:
+    case BasicCardKind::FAN_SWITCH:
+    case BasicCardKind::FAN_OSCILLATE:
+    case BasicCardKind::PERCENT_SLIDER:
+    case BasicCardKind::NUMBER_SLIDER:
+    case BasicCardKind::LIGHT_TEMPERATURE:
+    case BasicCardKind::TIMER:
+    case BasicCardKind::COVER_COMMAND:
+    case BasicCardKind::COVER_TOGGLE:
+    case BasicCardKind::ACCESS:
+    case BasicCardKind::CLEANING:
+    case BasicCardKind::ALARM:
+    case BasicCardKind::IMAGE:
+      out.ha_input = true;
+      break;
+    default:
+      break;
+  }
   out.confirmation = page_confirmation_policy(store, {store.generation(), id}).flags();
   if(out.kind==BasicCardKind::TEXT&&cfg_option_enabled(options,SENSOR_STATE_LABELS_OPTION)) {
     auto input=cfg_option_value(options,SENSOR_STATE_INPUT_OPTION),output=cfg_option_value(options,SENSOR_STATE_OUTPUT_OPTION);
