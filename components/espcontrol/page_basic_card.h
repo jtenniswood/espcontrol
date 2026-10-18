@@ -1,5 +1,6 @@
 #pragma once
 
+#include "alarm_card_view.h"
 #include "cleaning_card_policy.h"
 #include "clock_card_view.h"
 #include "cover_command_policy.h"
@@ -60,7 +61,8 @@ enum class BasicCardKind : uint8_t {
   ACCESS,
   CLEANING,
   CALENDAR,
-  CLOCK
+  CLOCK,
+  ALARM
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode : uint8_t { NONE, ENTITY, CLIMATE, MOWER, TIMER, CHILDREN, NUMBER, TEXT };
@@ -81,6 +83,7 @@ struct BasicCardDefinition {
     cleaning::Options cleaning;
     bool calendar_time;
     ClockCardOptions clock;
+    AlarmCardOptions alarm;
   };
   BasicActionDisplay action_display{BasicActionDisplay::NONE};
   std::string_view entity,sensor,label,unit,icon,icon_on;
@@ -122,6 +125,11 @@ struct PageCleaningSnapshot {
   cleaning::Glyph glyph{cleaning::Glyph::VACUUM};
   bool state_seen{false}, on{false};
 };
+struct PageAlarmCardSnapshot {
+  PageAlarmSnapshot history;
+  AlarmCardGlyph glyph{AlarmCardGlyph::ALARM};
+  bool enabled{false}, dynamic_icon{false};
+};
 struct BasicCardState {
   bool on{false}, numeric{false}, formatted_label{false}, climate_icon_on{false}, cover_icon_open{false};
   std::string_view label,unit,media_title,media_artist;
@@ -134,6 +142,7 @@ struct BasicCardState {
   PageCoverCommandSnapshot cover_command;
   PageAccessCardSnapshot access;
   PageCleaningSnapshot cleaning;
+  PageAlarmCardSnapshot alarm;
   bool clock_city_label{false};
   uint8_t fill_percent{0},weather_condition{0};
   char number[48]{},text[257]{};
@@ -157,6 +166,8 @@ PageAccessCardSnapshot read_basic_access(const BasicCardDefinition&, Configurati
                                          PageEntityStateRuntime&, PageAccessStateRuntime*);
 PageCleaningSnapshot read_basic_cleaning(const BasicCardDefinition&, ConfigurationHandle,
                                          PageEntityStateRuntime&);
+PageAlarmCardSnapshot read_basic_alarm(const BasicCardDefinition&, ConfigurationHandle,
+                                       PageEntityStateRuntime&, PageAlarmStateRuntime*);
 BasicCardState read_basic_card(
     const BasicCardDefinition&, ConfigurationHandle, PageEntityStateRuntime&, int duration_components = 2,
     std::string_view temperature_unit = "°C", PageCardTranslate translate = nullptr,
@@ -165,5 +176,6 @@ BasicCardState read_basic_card(
     PagePercentSliderRuntime* percent_slider = nullptr, PageNumberSliderRuntime* number_slider = nullptr,
     PageLightTemperatureRuntime* temperature = nullptr, PageTimerRuntime* timer = nullptr,
     PageCoverToggleRuntime* cover_toggle = nullptr, PageAccessStateRuntime* access = nullptr,
-    PageCalendarRuntime* calendar = nullptr, PageTimezoneRuntime* timezone = nullptr);
+    PageCalendarRuntime* calendar = nullptr, PageTimezoneRuntime* timezone = nullptr,
+    PageAlarmStateRuntime* alarm = nullptr);
 }  // namespace espcontrol::pages

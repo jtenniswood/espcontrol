@@ -157,6 +157,37 @@ struct Fixture {
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
   }
+  struct AlarmCards {};
+  Fixture(const DeviceUiLimits& limits, AlarmCards) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {
+        ";Alarms;Home;Lightbulb;indicator;;subpage;;subpage_kind=alarm,pin_arm=0,pin_disarm=0,label_display="
+        "name,icon_display=static",
+        "alarm_control_panel.home;;Auto;Lightbulb;;;alarm;;",
+        "alarm_control_panel.home;Configured;Power;Lightbulb;;;alarm;;label_display=name,icon_display=static",
+        "alarm_control_panel.home;;Power;Lightbulb;away;;alarm_action;;pin_arm=0",
+        "alarm_control_panel.home;;Auto;Auto;disarm;;alarm_action;;",
+        ";Temperature;Auto;Auto;sensor.temperature;C;sensor;1;"};
+    for (size_t i = 0; i < 6; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i].data()),
+                                  cards[i].size()) == PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1,2,3|S,,Temperature,Auto,Auto,sensor.temperature,C,1,|Y,alarm_control_panel.home,,Home,"
+        "Lightbulb,,,,label_display=name%2Cicon_display=static%2Cpin_arm=0%2Cpin_disarm=0|AA,alarm_control_"
+        "panel.only,,Auto,Auto,home,,,";
+    assert(writer.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = "1,2,3,4,5,6";
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                 reinterpret_cast<const uint8_t*>(order.data()),
+                                 order.size()) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   struct ClockCards {};
   Fixture(const DeviceUiLimits& limits, ClockCards) {
     PanelConfigWriter writer(document.data(), document.size());
@@ -2640,6 +2671,256 @@ void clock_profile(const DeviceUiLimits& limits) {
   lv_obj_delete(page);
 }
 
+uint32_t alarm_card_tick = 100;
+uint32_t alarm_card_now() {
+  return alarm_card_tick;
+}
+template <size_t Slots>
+void alarm_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, Fixture::AlarmCards{});
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageAlarmStateRuntime alarm(arena, subscriptions, alarm_card_now);
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192}, &alarm);
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+    w.fill = lv_obj_create(w.button);
+    w.slider = lv_slider_create(w.button);
+  }
+  for (size_t slot : {size_t(1), size_t(3)}) {
+    lv_obj_set_style_pad_left(widgets[slot].button, 7, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(widgets[slot].button, 18, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(widgets[slot].button, 12, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(widgets[slot].button, 9, LV_PART_MAIN);
+  }
+  PageBasicTheme theme;
+  theme.surface = 0x111111;
+  theme.sensor_surface = 0x222222;
+  theme.alarm_surface = 0x333333;
+  theme.active = 0xFFE066;
+  Actions<Slots> actions;
+  auto callbacks = actions.callbacks();
+  callbacks.alarm = [](void* owner, PageBindingToken token) {
+    auto& a = *static_cast<Actions<Slots>*>(owner);
+    ++a.commands;
+    a.last = token;
+    if (a.seek_page != NO_PAGE) assert(a.renderer->open_page(a.seek_page));
+  };
+  callbacks.icon = [](void* owner, std::string_view name, std::string_view domain) -> const char* {
+    auto& a = *static_cast<Actions<Slots>*>(owner);
+    const char* glyph = name == "Security"        ? "ALARM_INITIAL"
+                        : name == "Alarm"         ? "ALARM_NORMAL"
+                        : name == "Shield Home"   ? "ALARM_HOME"
+                        : name == "Shield Lock"   ? "ALARM_AWAY"
+                        : name == "Weather Night" ? "ALARM_NIGHT"
+                        : name == "Airplane"      ? "ALARM_VACATION"
+                        : name == "Shield Off"    ? "ALARM_DISARM"
+                        : name == "Alarm Light"   ? "ALARM_TRIGGER"
+                        : name == "Home"          ? "STATIC_HOME"
+                                                  : nullptr;
+    if (glyph) {
+      ++a.icon_resolves;
+      return glyph;
+    }
+    return Actions<Slots>::icon(owner, name, domain);
+  };
+  {
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     callbacks);
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  {
+    auto absent = callbacks;
+    absent.alarm = nullptr;
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     absent, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                     nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &alarm);
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  callbacks, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &alarm);
+    assert(port.initialize());
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t used = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[used++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    PageRuntimeResourcesGroup<3> resources({&renderer, &alarm, &state});
+    PageStoreRuntime publication(limits, arena, 32768, &resources);
+    assert(publication.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    assert(publication.activate_prepared(0, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(),
+                                         fixture.size));
+    renderer.update_visible();
+
+    if (alarm.memory().active_sources != 3 || subscriptions.bindings.size() != 8)
+      std::fprintf(stderr, "alarm fixture %s: sources=%zu channels=%zu\n", limits.device_profile,
+                   alarm.memory().active_sources, subscriptions.bindings.size());
+    assert(alarm.memory().active_sources == 3 && subscriptions.bindings.size() == 8);
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "--") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[1].icon), "ALARM_INITIAL") == 0);
+    assert(std::strcmp(lv_label_get_text(widgets[2].label), "Configured") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[2].icon), "POWER") == 0);
+    assert(lv_obj_has_flag(widgets[1].sensor_container, LV_OBJ_FLAG_HIDDEN));
+    subscriptions.send("alarm_control_panel.home", "arm_mode", "");
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].icon), "ALARM_NORMAL") == 0);
+    subscriptions.send("alarm_control_panel.home", "friendly_name", "House Alarm");
+    subscriptions.send("sensor.temperature", "", "22.5");
+    subscriptions.send("alarm_control_panel.home", "", "disarmed");
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Disarmed") == 0 &&
+           lv_obj_has_state(widgets[4].button, LV_STATE_CHECKED));
+    const auto color = [](uint32_t rgb) { return lv_color_to_u32(lv_color_hex(rgb)); };
+    assert(lv_color_to_u32(lv_obj_get_style_bg_color(widgets[1].button, LV_PART_MAIN)) ==
+           color(theme.alarm_surface));
+    assert(lv_color_to_u32(lv_obj_get_style_bg_color(widgets[3].button, LV_PART_MAIN)) ==
+           color(theme.surface));
+    lv_obj_add_state(widgets[1].button, LV_STATE_PRESSED);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    assert(lv_color_to_u32(lv_obj_get_style_bg_color(widgets[1].button, LV_PART_MAIN)) ==
+           color(theme.active));
+    assert(lv_color_to_u32(lv_obj_get_style_text_color(widgets[1].label, LV_PART_MAIN)) ==
+           color(display_text_color_for_bg(theme.active)));
+    lv_obj_clear_state(widgets[1].button, LV_STATE_PRESSED);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_RELEASED, nullptr);
+    assert(lv_color_to_u32(lv_obj_get_style_text_color(widgets[1].label, LV_PART_MAIN)) ==
+           color(display_text_color_for_bg(theme.alarm_surface)));
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == 1);
+    click(widgets[3].button);
+    assert(actions.commands == 2 && !lv_obj_has_state(widgets[3].button, LV_STATE_CHECKED));
+    subscriptions.send("alarm_control_panel.home", "", "arming");
+    subscriptions.send("alarm_control_panel.home", "arm_mode", "home");
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].icon), "ALARM_HOME") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[2].label), "Arming") == 0);
+    subscriptions.send("alarm_control_panel.home", "", "armed_away");
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[3].button, LV_STATE_CHECKED) &&
+           std::strcmp(lv_label_get_text(widgets[3].icon), "POWER") == 0);
+    alarm_card_tick += 3000;
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[2].label), "Configured") == 0);
+    const auto child = fixture.store.card(0)->target;
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "22.5") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[2].icon), "STATIC_HOME") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[2].label), "House Alarm") == 0);
+    lv_obj_add_state(widgets[1].button, LV_STATE_PRESSED);
+    assert(lv_color_to_u32(lv_obj_get_style_bg_color(widgets[1].button, LV_PART_MAIN)) ==
+           color(theme.sensor_surface));
+    lv_obj_clear_state(widgets[1].button, LV_STATE_PRESSED);
+    subscriptions.send("alarm_control_panel.only", "", "on");
+    renderer.update_visible();
+    assert(renderer.back());
+    renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));  // Action children do not contribute.
+    subscriptions.send("alarm_control_panel.home", "", "on");
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));
+    subscriptions.send("alarm_control_panel.home", "", "triggered");
+    renderer.update_visible();
+    assert(alarm.takeover().valid && std::strcmp(lv_label_get_text(widgets[1].icon), "ALARM_TRIGGER") == 0);
+    assert(lv_color_to_u32(lv_obj_get_style_bg_color(widgets[1].button, LV_PART_MAIN)) == color(0xC62828));
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    assert(alarm.takeover().valid);
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_send_event(widgets[3].button, LV_EVENT_PRESSED, nullptr);
+    ++subscriptions.generation;
+    subscriptions.send("alarm_control_panel.home", "", "disarmed");
+    lv_obj_send_event(widgets[3].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == 2);
+    renderer.update_visible();
+    subscriptions.send("alarm_control_panel.home", "", "unknown");
+    renderer.update_visible();
+    click(widgets[3].button);
+    assert(actions.commands == 2);
+    click(widgets[1].button);
+    assert(actions.commands == 3);  // Readonly panel remains available.
+    lv_obj_send_event(widgets[2].button, LV_EVENT_PRESSED, nullptr);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_send_event(widgets[2].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == 3);
+    subscriptions.send("alarm_control_panel.home", "", "disarmed");
+    renderer.update_visible();
+    actions.seek_page = 0;
+    click(widgets[2].button);
+    assert(actions.commands == 4 && renderer.active_page() == 0);
+    actions.seek_page = NO_PAGE;
+    theme.surface = 0xFFFFFF;
+    theme.alarm_surface = 0xB0B0B0;
+    theme.text = 0x333333;
+    ++theme.revision;
+    renderer.update_visible();
+    assert(lv_color_to_u32(lv_obj_get_style_text_color(widgets[1].label, LV_PART_MAIN)) ==
+           color(display_text_color_for_bg(theme.alarm_surface)));
+    const char* states[] = {
+        "disarmed", "armed_away", "armed_home", "armed_night", "armed_vacation", "armed_custom_bypass",
+        "arming",   "pending",    "triggered",  "unknown"};
+    for (const auto* value : states) {
+      subscriptions.send("alarm_control_panel.home", "", value);
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+    }
+    const auto cpp = cpp_allocations, reserved = arena.allocations, retained = lv_live_bytes,
+               channels = subscriptions.bindings.size(), descriptors = cache.memory().descriptor_adds,
+               glyphs = actions.icon_resolves;
+    for (int n = 0; n < 1000; ++n) {
+      assert(renderer.open_page(child));
+      alarm_card_tick += 100;
+      subscriptions.send("alarm_control_panel.home", "", states[n % std::size(states)]);
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(cpp_allocations == cpp && arena.allocations == reserved && lv_live_bytes == retained &&
+             subscriptions.bindings.size() == channels && cache.memory().descriptor_adds == descriptors &&
+             actions.icon_resolves == glyphs);
+    }
+    assert(port.memory().text_truncations == 0);
+    renderer.retire_active();
+    alarm.retire_active();
+    state.retire_active();
+    std::printf(
+        "%s: alarm status/actions 1000 cycles, captured intents, palette/reuse and stable resources\n",
+        limits.device_profile);
+  }
+  assert(arena.live == 0);
+  lv_obj_delete(page);
+}
+
 template <size_t Slots>
 void calendar_profile(const DeviceUiLimits& limits) {
   Fixture fixture(limits, Fixture::CalendarCards{});
@@ -5117,6 +5398,25 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "alarm") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          alarm_profile<6>(limits);
+          break;
+        case 9:
+          alarm_profile<9>(limits);
+          break;
+        case 15:
+          alarm_profile<15>(limits);
+          break;
+        case 20:
+          alarm_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "number-layout") == 0) {
       switch (limits.slot_count) {
         case 6:
@@ -5523,6 +5823,7 @@ int main() {
         clock_profile<6>(limits);
         clock_size_profile<6>(limits);
         number_size_profile<6>(limits);
+        alarm_profile<6>(limits);
         fan_mode_profile<6>(limits);
         fan_status_profile<6>(limits);
         percent_slider_profile<6>(limits);
@@ -5553,6 +5854,7 @@ int main() {
         clock_profile<9>(limits);
         clock_size_profile<9>(limits);
         number_size_profile<9>(limits);
+        alarm_profile<9>(limits);
         fan_mode_profile<9>(limits);
         fan_status_profile<9>(limits);
         percent_slider_profile<9>(limits);
@@ -5583,6 +5885,7 @@ int main() {
         clock_profile<15>(limits);
         clock_size_profile<15>(limits);
         number_size_profile<15>(limits);
+        alarm_profile<15>(limits);
         fan_mode_profile<15>(limits);
         fan_status_profile<15>(limits);
         percent_slider_profile<15>(limits);
@@ -5613,6 +5916,7 @@ int main() {
         clock_profile<20>(limits);
         clock_size_profile<20>(limits);
         number_size_profile<20>(limits);
+        alarm_profile<20>(limits);
         fan_mode_profile<20>(limits);
         fan_status_profile<20>(limits);
         percent_slider_profile<20>(limits);

@@ -250,6 +250,28 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     out.kind=basic_card_is_forecast(store,id)?BasicCardKind::FORECAST:BasicCardKind::WEATHER;
     out.forecast_view=precision=="today"?weather::View::TODAY:precision=="tomorrow"||type=="weather_forecast"?weather::View::TOMORROW:weather::View::DAILY;out.label={};out.sensor={};out.unit={};
     out.icon=out.icon_on="Weather Cloudy";
+  } else if (type == "alarm" || type == "alarm_action") {
+    out.kind = BasicCardKind::ALARM;
+    const bool panel = type == "alarm";
+    const std::string inherited(PageAlarmStateRuntime::effective_options(store, id));
+    auto mode = alarm::action(out.sensor);
+    if (!panel && mode == alarm::Action::NONE) mode = alarm::Action::AWAY;
+    out.alarm = {
+        panel ? alarm::Action::NONE : mode,
+        panel,
+        panel && normalize_alarm_icon_display(cfg_option_value(inherited, "icon_display")) == "status",
+        panel && normalize_alarm_label_display(cfg_option_value(inherited, "label_display")) == "status",
+        cfg_option_value(inherited, "pin_arm") != "0",
+        cfg_option_value(inherited, "pin_disarm") != "0",
+        panel && cfg_option_value(inherited, "card_off_color").empty()};
+    out.entity = PageAlarmStateRuntime::effective_entity(store, id);
+    out.default_label = panel ? "Alarm" : alarm_card_action_label(mode);
+    if (out.icon.empty() || out.icon == "Auto")
+      out.icon = panel ? "Security" : alarm_card_glyph_name(alarm_card_glyph(alarm::achieved(mode), {}));
+    out.icon_on = out.icon;
+    out.unit = {};
+    out.sensor = {};
+    out.active_color = true;
   } else if (type == "clock" || type == "timezone") {
     out.kind = BasicCardKind::CLOCK;
     out.clock = {type == "timezone", cfg_option_token_present(options, "large_numbers"),
@@ -432,6 +454,7 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
   if (PagePercentSliderRuntime::classify(store, id) != PagePercentSliderKind::NONE ||
       PageNumberSliderRuntime::supported(store,id))
     return store.field(*card, CardField::ENTITY);
+  if (type == "alarm") return PageAlarmStateRuntime::effective_entity(store, id);
   if (type == "timer")
     return PageTimerRuntime::supported(store, id) ? store.field(*card, CardField::ENTITY)
                                                   : std::string_view{};
@@ -578,16 +601,27 @@ PageAccessCardSnapshot read_basic_access(const BasicCardDefinition& card, Config
                     !trim(primary.value.substr(0, HA_SHORT_STATE_MAX_LEN)).empty());
   return result;
 }
-BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHandle handle,
-                               PageEntityStateRuntime& state, int duration_components,
-                               std::string_view temperature_unit, PageCardTranslate translate,
-                               PageMediaStateRuntime* media_owner, PageLocalSensorRuntime* local,
-                               PageLocalRelayRuntime* relay, PageFanStatusRuntime* fan_status,
-                               PagePercentSliderRuntime* percent_slider,
-                               PageNumberSliderRuntime* number_slider,
-                               PageLightTemperatureRuntime* temperature, PageTimerRuntime* timer,
-                               PageCoverToggleRuntime* cover_toggle, PageAccessStateRuntime* access,
-                               PageCalendarRuntime* calendar, PageTimezoneRuntime* timezone) {
+PageAlarmCardSnapshot read_basic_alarm(const BasicCardDefinition& card, ConfigurationHandle handle,
+                                       PageEntityStateRuntime& cache, PageAlarmStateRuntime* owner) {
+  PageAlarmCardSnapshot result;
+  if (!owner || card.kind != BasicCardKind::ALARM) return result;
+  owner->loop();
+  result.history = owner->read(handle);
+  if (find(cache, handle, card.entity).status == PageEntityStatus::EXHAUSTED)
+    result.history.command_available = false;
+  result.enabled = result.history.valid && (card.alarm.panel || result.history.command_available);
+  result.dynamic_icon = card.alarm.panel && card.alarm.status_icon && result.history.icon_reported;
+  result.glyph = alarm_card_glyph(result.history.state, result.history.arm_mode);
+  return result;
+}
+BasicCardState read_basic_card(
+    const BasicCardDefinition& card, ConfigurationHandle handle, PageEntityStateRuntime& state,
+    int duration_components, std::string_view temperature_unit, PageCardTranslate translate,
+    PageMediaStateRuntime* media_owner, PageLocalSensorRuntime* local, PageLocalRelayRuntime* relay,
+    PageFanStatusRuntime* fan_status, PagePercentSliderRuntime* percent_slider,
+    PageNumberSliderRuntime* number_slider, PageLightTemperatureRuntime* temperature, PageTimerRuntime* timer,
+    PageCoverToggleRuntime* cover_toggle, PageAccessStateRuntime* access, PageCalendarRuntime* calendar,
+    PageTimezoneRuntime* timezone, PageAlarmStateRuntime* alarm_owner) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
   if (card.kind == BasicCardKind::PERCENT_SLIDER) {
@@ -602,6 +636,31 @@ BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHan
       const auto name = find(state, handle, card.entity, "friendly_name");
       if (name.status == PageEntityStatus::AVAILABLE)
         result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+    }
+    return result;
+  }
+  if (card.kind == BasicCardKind::ALARM) {
+    result.alarm = read_basic_alarm(card, handle, state, alarm_owner);
+    const auto& history = result.alarm.history;
+    result.on = card.alarm.panel
+                    ? history.active
+                    : history.available && alarm::matches(card.alarm.mode, history.state, history.arm_mode);
+    const auto* translated = translate && card.default_label ? translate(card.default_label) : nullptr;
+    result.label = card.label.empty() ? std::string_view(translated           ? translated
+                                                         : card.default_label ? card.default_label
+                                                                              : "Alarm")
+                                      : card.label;
+    if (history.valid && card.alarm.panel) {
+      if (card.alarm.status_label)
+        result.label =
+            history.status_known ? alarm_card_visible_caption(history.status) : std::string_view("--");
+      else if (history.status_showing)
+        result.label = alarm_card_visible_caption(history.status);
+      else if (card.label.empty()) {
+        const auto name = find(state, handle, card.entity, "friendly_name");
+        if (name.status == PageEntityStatus::AVAILABLE)
+          result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+      }
     }
     return result;
   }

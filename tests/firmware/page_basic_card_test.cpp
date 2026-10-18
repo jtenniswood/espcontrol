@@ -477,6 +477,97 @@ PageTimezoneSelection test_timezone_resolve(void*, std::string_view option, time
   const auto id = option.substr(0, option.find(" ("));
   return {id, id == "Asia/Kathmandu" ? "GMT-5:45" : id == "Pacific/Chatham" ? "GMT-12:45" : "UTC0"};
 }
+uint32_t alarm_view_tick = 100;
+uint32_t alarm_view_now() {
+  return alarm_view_tick;
+}
+void alarm_profile(const DeviceUiLimits& limits) {
+  for (const auto* language : {"en", "de", "fr", "ru", "pt-br", "he", "tr", "uk", "cs"})
+    for (const auto* type : {"alarm", "alarm_action"}) {
+      set_espcontrol_language(language);
+      alarm_view_tick = 100;
+      Fixture fixture(limits, std::string("alarm_control_panel.home;Configured;Power;Lightbulb;away;C;") +
+                                  type + ";;label_display=name,icon_display=static,pin_arm=0");
+      BasicCardDefinition definition;
+      assert(prepare_basic_card(fixture.store, 0, definition));
+      const bool panel = std::strcmp(type, "alarm") == 0;
+      assert(definition.kind == BasicCardKind::ALARM && definition.alarm.panel == panel &&
+             !definition.alarm.status_icon && !definition.alarm.status_label && !definition.alarm.pin_arm &&
+             definition.alarm.pin_disarm);
+      assert(definition.icon_on == definition.icon && !definition.push_feedback && !definition.large_numbers);
+      assert(basic_folder_child_indicator(fixture.store, 0).empty() == !panel);
+      Arena arena;
+      Subscriptions transport;
+      PageCardDependencies deps;
+      PageAlarmStateRuntime alarm(arena, transport, alarm_view_now, 64, 4096, espcontrol_i18n);
+      PageEntityStateRuntime graph(deps, arena, transport, {128, 128, 8192}, &alarm);
+      assert(alarm.prepare(fixture.store) && graph.prepare(fixture.store));
+      alarm.activate_prepared(fixture.store);
+      graph.activate_prepared(fixture.store);
+      auto read = [&]() {
+        return read_basic_card(definition, {17, 0}, graph, 2, "°C", espcontrol_i18n, nullptr, nullptr,
+                               nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                               nullptr, nullptr, &alarm);
+      };
+      auto result = read();
+      assert(result.label == "Configured" && !result.numeric && result.unit.empty() &&
+             !result.alarm.dynamic_icon && result.alarm.enabled);
+      transport.send("alarm_control_panel.home", "", "disarmed");
+      result = read();
+      assert(result.label == "Configured" && !result.on);
+      transport.send("alarm_control_panel.home", "", "arming");
+      transport.send("alarm_control_panel.home", "arm_mode", "away");
+      result = read();
+      assert(result.on && result.label == (panel ? std::string_view(espcontrol_i18n("Arming"))
+                                                 : std::string_view("Configured")));
+      transport.send("alarm_control_panel.home", "", "armed_away");
+      result = read();
+      assert(result.on);
+      alarm_view_tick += 3000;
+      result = read();
+      assert(result.label == "Configured");
+      const auto before = allocations;
+      for (int n = 0; n < 1000; ++n) (void)read();
+      assert(allocations == before);
+      ++transport.generation;
+      result = read();
+      assert(result.on && (panel ? result.alarm.enabled : !result.alarm.enabled));
+      transport.send("alarm_control_panel.home", "arm_mode", "home");
+      result = read();
+      if (!panel) assert(!result.alarm.enabled);
+      transport.send("alarm_control_panel.home", "", "unknown");
+      result = read();
+      assert(!result.on && (panel ? result.alarm.enabled : !result.alarm.enabled));
+    }
+  set_espcontrol_language("en");
+  Fixture fixture(limits, "alarm_control_panel.home;;Auto;Lightbulb;;;alarm;;");
+  BasicCardDefinition definition;
+  assert(prepare_basic_card(fixture.store, 0, definition));
+  Arena arena;
+  Subscriptions transport;
+  PageCardDependencies deps;
+  PageAlarmStateRuntime alarm(arena, transport, alarm_view_now);
+  PageEntityStateRuntime graph(deps, arena, transport, {128, 128, 8192}, &alarm);
+  assert(alarm.prepare(fixture.store) && graph.prepare(fixture.store));
+  alarm.activate_prepared(fixture.store);
+  graph.activate_prepared(fixture.store);
+  auto read = [&]() {
+    return read_basic_card(definition, {17, 0}, graph, 2, "°C", nullptr, nullptr, nullptr, nullptr, nullptr,
+                           nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &alarm);
+  };
+  auto result = read();
+  assert(result.label == "--" && !result.alarm.dynamic_icon);
+  transport.send("alarm_control_panel.home", "arm_mode", "");
+  result = read();
+  assert(result.alarm.dynamic_icon && result.alarm.glyph == AlarmCardGlyph::ALARM);
+  transport.send("alarm_control_panel.home", "", "triggered");
+  result = read();
+  assert(result.label == "Triggered" && result.on && result.alarm.glyph == AlarmCardGlyph::TRIGGERED &&
+         result.alarm.history.triggered);
+  transport.send("alarm_control_panel.home", "", std::string("arming\0suffix", 13));
+  result = read();
+  assert(result.label == "Arming" && !result.on);
+}
 void number_layout_profile(const DeviceUiLimits& limits) {
   for (const auto* type : {"sensor", "duration", "climate", "action", "subpage"})
     for (const auto* options : {"", "large_numbers", "large_numbers=off"}) {
@@ -1712,6 +1803,7 @@ int main() {
     calendar_profile(limits);
     clock_profile(limits);
     number_layout_profile(limits);
+    alarm_profile(limits);
     local_relay_profile(limits);
     local_sensor_profile(limits);
     option_select_profile(limits);
