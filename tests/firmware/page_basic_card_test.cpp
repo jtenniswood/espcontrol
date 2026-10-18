@@ -80,7 +80,8 @@ void profile(const DeviceUiLimits &limits) {
   subs.send("sensor.temp","","1.2345");
   assert(std::strcmp(read_basic_card(invalid_precision,{17,0},state).number,"1.235")==0);
   ++subs.generation;assert(!read_basic_card(definition,{17,0},state).numeric);
-  for(const auto &text:{std::string("light.test;;;;;;;;confirm_off"),std::string("media_player.test;;;;control_modal;;media;;")}) {
+  for (const auto& text :
+       {std::string("light.test;;;;;;;;confirm_off"), std::string("fan.test;;;;;;fan_control;;")}) {
     Fixture unsupported(limits,text);assert(!prepare_basic_card(unsupported.store,0,definition));
   }
   Fixture toggle(limits,"light.test;;Lightbulb;Lightbulb;sensor.temp;%;;2;");assert(prepare_basic_card(toggle.store,0,definition));assert(definition.kind==BasicCardKind::TOGGLE);
@@ -283,7 +284,13 @@ void media_action_profile(const DeviceUiLimits &limits) {
   PageMediaStateRuntime media(arena,transport);PageEntityStateRuntime state(dependencies,arena,subs,{32,32,1024},&media);
   assert(state.prepare(play.store));state.activate_prepared(play.store);
   assert(read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).label=="Unknown");
-  for(const auto &entry:std::array<std::pair<const char *,const char *>,7>{{{"playing","Playing"},{"paused","Paused"},{"idle","Idle"},{"off","Off"},{"unknown","Unavailable"},{"unavailable","Unavailable"},{" PLAYING ",""}}}) {
+  for (const auto& entry : std::array<std::pair<const char*, const char*>, 7>{{{"playing", "Playing"},
+                                                                               {"paused", "Paused"},
+                                                                               {"idle", "Idle"},
+                                                                               {"off", "Off"},
+                                                                               {"unknown", "Unknown"},
+                                                                               {"unavailable", "Unavailable"},
+                                                                               {" PLAYING ", ""}}}) {
     subs.send("media_player.test","",entry.first);const auto value=read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media);
     assert(value.on==(std::strcmp(entry.first,"playing")==0));
     if(entry.second[0])assert(value.label==entry.second);else assert(value.formatted_label&&std::strcmp(value.text,"Playing")==0);
@@ -486,4 +493,94 @@ void now_playing_profile(const DeviceUiLimits& limits) {
          value.fill_percent == 0);
 }
 
-int main(){display_text();bounded_html_metadata();for(const auto &limits:DEVICE_UI_PROFILES){profile(limits);climate_profile(limits);status_actions_profile(limits);control_profile(limits);weather_profile(limits);media_action_profile(limits);media_position_profile(limits);now_playing_profile(limits);}}
+void media_control_profile(const DeviceUiLimits& limits) {
+  const auto exercise = [&](const char* config, bool status, bool active) {
+    Fixture fixture(limits, config);
+    BasicCardDefinition card;
+    assert(prepare_basic_card(fixture.store, 0, card) && card.kind == BasicCardKind::MEDIA_CONTROL);
+    assert(card.media.volume_number && card.media.volume_max == 60 && card.media.show_state == status);
+    Arena arena;
+    Subscriptions subscriptions;
+    PageCardDependencies dependencies;
+    PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 4096});
+    assert(state.prepare(fixture.store));
+    state.activate_prepared(fixture.store);
+    auto value = read_basic_card(card, {17, 0}, state);
+    assert(value.numeric && std::strcmp(value.number, "--") == 0 &&
+           value.label == (status ? "Unknown" : "Custom"));
+    subscriptions.send("media_player.room", "", "playing");
+    subscriptions.send("media_player.room", "volume_level", "0.85");
+    subscriptions.send("media_player.room", "supported_features", "4");
+    value = read_basic_card(card, {17, 0}, state);
+    assert(value.on == active && std::strcmp(value.number, "60") == 0 && value.media_volume.reported == 85);
+    assert(value.label == (status ? "Playing" : "Custom"));
+    for (const auto features : {"1024", "0"}) {
+      subscriptions.send("media_player.room", "supported_features", features);
+      value = read_basic_card(card, {17, 0}, state);
+      assert(value.media_volume.known && std::strcmp(value.number, "85") == 0);
+    }
+    subscriptions.send("media_player.room", "supported_features", std::string(5000, '9'));
+    value = read_basic_card(card, {17, 0}, state);
+    assert(value.media_volume.mode == media::VolumeControlMode::READ_ONLY &&
+           std::strcmp(value.number, "85") == 0);
+    subscriptions.send("media_player.room", "supported_features", "unknown");
+    value = read_basic_card(card, {17, 0}, state);
+    assert(value.media_volume.mode == media::VolumeControlMode::ABSOLUTE &&
+           std::strcmp(value.number, "60") == 0);
+    for (const auto invalid : {"nan", "inf", "-inf", "unknown", "None", ""}) {
+      subscriptions.send("media_player.room", "volume_level", invalid);
+      assert(!read_basic_card(card, {17, 0}, state).media_volume.known);
+    }
+    for (const auto& entry :
+         {std::pair<const char*, const char*>{"1e30", "60"}, {"-1e30", "0"}, {".345tail", "35"}}) {
+      subscriptions.send("media_player.room", "volume_level", entry.first);
+      assert(std::strcmp(read_basic_card(card, {17, 0}, state).number, entry.second) == 0);
+    }
+    subscriptions.send("media_player.room", "volume_level", ".5");
+    for (const auto raw : {"unknown", "", "unavailable"}) {
+      subscriptions.send("media_player.room", "", raw);
+      value = read_basic_card(card, {17, 0}, state);
+      assert(!value.on && value.media_volume.known && std::strcmp(value.number, "50") == 0);
+      if (status) assert(value.label == (std::string_view(raw) == "unavailable" ? "Unavailable" : "Unknown"));
+    }
+    const auto before = allocations;
+    for (size_t i = 0; i < 1000; ++i) assert(read_basic_card(card, {17, 0}, state).media_volume.known);
+    assert(allocations == before);
+    ++subscriptions.generation;
+    assert(!read_basic_card(card, {17, 0}, state).media_volume.known);
+  };
+  exercise("media_player.room;Custom;Unused Glyph;Auto;volume;;media;;volume_max=60", false, false);
+  exercise(
+      "media_player.room;Custom;Unused Glyph;Auto;control_modal;;media;;number_display=volume,volume_max=60",
+      true, true);
+  exercise(
+      "media_player.room;Custom;Unused "
+      "Glyph;Auto;control_modal;;media;;label_display=label,number_display=volume,volume_max=60",
+      false, true);
+  Fixture icon(limits, "media_player.room;;;;control_modal;;media;;");
+  BasicCardDefinition card;
+  assert(prepare_basic_card(icon.store, 0, card) && !card.media.volume_number && card.media.show_state &&
+         card.push_feedback);
+  assert(std::strcmp(card.default_label, "Media Control") == 0 && card.icon == "Play Pause");
+  // Both the existing reader and PageStore canonicalize an empty volume label
+  // to Volume before dependency enumeration; it is not a live friendly name.
+  Fixture unnamed(limits, "media_player.room;;;;volume;;media;;");
+  assert(prepare_basic_card(unnamed.store, 0, card) && card.label == "Volume");
+  assert(card.label == parse_cfg("media_player.room;;;;volume;;media;;").label);
+}
+
+int main() {
+  display_text();
+  bounded_html_metadata();
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    profile(limits);
+    climate_profile(limits);
+    status_actions_profile(limits);
+    control_profile(limits);
+    weather_profile(limits);
+    media_action_profile(limits);
+    media_position_profile(limits);
+    now_playing_profile(limits);
+    media_control_profile(limits);
+  }
+}
