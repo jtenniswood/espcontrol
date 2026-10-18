@@ -189,6 +189,18 @@ struct Native final:PageEntitySubscriptions {
   uint32_t connection_generation()const override{return 1;}
   size_t live{0};
 };
+void alarm_name_dependencies() {
+  Document doc(DEVICE_UI_PROFILES[8]);
+  doc.button(1, "alarm_control_panel.home;;Auto;Auto;;;alarm;;label_display=name");
+  doc.button(2, "alarm_control_panel.home;;Auto;Auto;;;alarm;;");
+  doc.button(3, "alarm_control_panel.home;Fixed;Auto;Auto;;;alarm;;label_display=name");
+  auto store = doc.finish();
+  Sink sink;
+  assert(PageCardDependencies().enumerate(store, sink));
+  assert(sink.pairs(0).count("alarm_control_panel.home/friendly_name") == 1);
+  assert(sink.pairs(1).count("alarm_control_panel.home/friendly_name") == 0);
+  assert(sink.pairs(2).count("alarm_control_panel.home/friendly_name") == 0);
+}
 void maximum_live_sensor_dependencies() {
   for(const auto &limits:DEVICE_UI_PROFILES) {
     Document doc(limits);
@@ -225,6 +237,9 @@ void maximum_live_sensor_dependencies() {
 }
 }  // namespace
 int main() {
-  sensor_fields_and_modes();actions_and_numeric_controls();complex_and_external_sources();
+  alarm_name_dependencies();
+  sensor_fields_and_modes();
+  actions_and_numeric_controls();
+  complex_and_external_sources();
   folder_and_hidden_state();fixtures_and_failure_propagation();maximum_live_sensor_dependencies();
 }
