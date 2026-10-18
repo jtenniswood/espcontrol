@@ -238,6 +238,17 @@ target_compile_options(page_alarm_state_runtime_test PRIVATE -Wall -Wextra -Werr
 target_include_directories(page_alarm_state_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_alarm_state_runtime_test COMMAND page_alarm_state_runtime_test)
 
+set(ALARM_CARD_VIEW_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/alarm_card_view_test.cpp)
+add_custom_command(OUTPUT ${ALARM_CARD_VIEW_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_alarm_card_view_test.py --output ${ALARM_CARD_VIEW_SOURCE}
+  DEPENDS generate_alarm_card_view_test.py alarm_card_view_test.cpp.in ../../components/espcontrol/button_grid_alarm.h
+  VERBATIM)
+add_executable(alarm_card_view_test ${ALARM_CARD_VIEW_SOURCE})
+target_compile_features(alarm_card_view_test PRIVATE cxx_std_17)
+target_compile_options(alarm_card_view_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(alarm_card_view_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME alarm_card_view_test COMMAND alarm_card_view_test)
+
 set(NUMBER_LAYOUT_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/basic_number_layout_test.cpp)
 add_custom_command(OUTPUT ${NUMBER_LAYOUT_SOURCE}
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_number_layout_test.py --output ${NUMBER_LAYOUT_SOURCE}
@@ -416,6 +427,7 @@ add_executable(page_basic_card_test page_basic_card_test.cpp
   ../../components/espcontrol/page_access_state_runtime.cpp
   ../../components/espcontrol/page_calendar_runtime.cpp
   ../../components/espcontrol/page_timezone_runtime.cpp
+  ../../components/espcontrol/page_alarm_state_runtime.cpp
   ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
   ../../components/espcontrol/page_card_dependencies.cpp
@@ -433,6 +445,7 @@ add_executable(page_basic_card_no_forecast_test page_basic_card_test.cpp
   ../../components/espcontrol/page_access_state_runtime.cpp
   ../../components/espcontrol/page_calendar_runtime.cpp
   ../../components/espcontrol/page_timezone_runtime.cpp
+  ../../components/espcontrol/page_alarm_state_runtime.cpp
   ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
   ../../components/espcontrol/page_card_dependencies.cpp
@@ -1331,6 +1344,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   ../../components/espcontrol/page_access_state_runtime.cpp
   ../../components/espcontrol/page_calendar_runtime.cpp
   ../../components/espcontrol/page_timezone_runtime.cpp
+  ../../components/espcontrol/page_alarm_state_runtime.cpp
     ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_forecast_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp

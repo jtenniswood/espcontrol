@@ -54,6 +54,7 @@ struct PageBasicTheme {
   int media_artwork_width_percent{100};
   uint32_t disabled_text{0x707070};
   int large_sensor_unit_offset_percent{0};
+  uint32_t alarm_surface{0x212121};
 };
 struct PageBasicActions {
   void *owner{nullptr};
@@ -80,6 +81,7 @@ struct PageBasicActions {
   void (*cover_command)(void*, PageBindingToken, PageCoverCommandSnapshot){nullptr};
   void (*access)(void*, PageBindingToken, PageAccessActionSnapshot){nullptr};
   void (*cleaning)(void*, PageBindingToken, const char* service){nullptr};
+  void (*alarm)(void*, PageBindingToken){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -110,7 +112,8 @@ class PageBasicLvglPort final:public PageRendererPort {
                     PageNumberSliderRuntime* number_slider = nullptr,
                     PageLightTemperatureRuntime* temperature = nullptr, PageTimerRuntime* timer = nullptr,
                     PageCoverToggleRuntime* cover_toggle = nullptr, PageAccessStateRuntime* access = nullptr,
-                    PageCalendarRuntime* calendar = nullptr, PageTimezoneRuntime* timezone = nullptr)
+                    PageCalendarRuntime* calendar = nullptr, PageTimezoneRuntime* timezone = nullptr,
+                    PageAlarmStateRuntime* alarm = nullptr)
       : allocator_(allocator),
         state_(state),
         widgets_(widgets),
@@ -130,7 +133,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         cover_toggle_(cover_toggle),
         access_(access),
         calendar_(calendar),
-        timezone_(timezone) {
+        timezone_(timezone),
+        alarm_(alarm) {
     for(size_t i=0;i<Slots;++i){shells_[i].port=this;shells_[i].index=i;}
   }
   ~PageBasicLvglPort()override {
@@ -202,6 +206,12 @@ class PageBasicLvglPort final:public PageRendererPort {
         lv_obj_set_style_text_color(w.button,lv_color_hex(theme_.text),selector);
         lv_obj_set_style_transition(w.button,page_basic_no_transition(),selector);
       }
+      lv_obj_set_style_bg_color(
+          w.button, lv_color_hex(theme_.surface),
+          static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED | LV_STATE_USER_1);
+      lv_obj_set_style_text_color(
+          w.button, lv_color_hex(theme_.text),
+          static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED | LV_STATE_USER_1);
       lv_obj_set_style_recolor_opa(w.button, LV_OPA_TRANSP,
                                    static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_DISABLED);
       lv_obj_set_style_opa(w.button, LV_OPA_COVER, LV_PART_MAIN);
@@ -315,7 +325,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (!initialized_ || count != Slots) return false;
     TextCounter strings;
     size_t summary_count = 0;
-    bool has_weather = false, has_forecast = false, has_cleaning = false;
+    bool has_weather = false, has_forecast = false, has_cleaning = false, has_alarm = false;
     size_t forecast_frames = 0;
     size_t number_capacity=48,label_capacity=std::max<size_t>(65,std::max({theme_.back_label.size(),theme_.empty_label.size(),theme_.folder_label.size()})+1),unit_capacity=1;
     // Back labels are decoded by the layout compiler; their source order size
@@ -327,6 +337,17 @@ class PageBasicLvglPort final:public PageRendererPort {
         BasicCardDefinition view;
         if (!prepare_basic_card(store, card, view, &strings, relay_)) return false;
         if (view.kind == BasicCardKind::COVER_COMMAND && !actions_.cover_command) return false;
+        if (view.kind == BasicCardKind::ALARM) {
+          if (!alarm_ || !actions_.alarm) return false;
+          has_alarm |= view.alarm.panel && view.alarm.status_icon && !view.entity.empty();
+          label_capacity = std::max<size_t>(label_capacity, 97);
+          for (const auto* key :
+               {"Alarm", "Unavailable", "Unknown", "Disarmed", "Armed Away", "Armed Home", "Armed Night",
+                "Armed Vacation", "Armed Custom", "Arming", "Pending", "Triggered"}) {
+            const auto* caption = theme_.translate ? theme_.translate(key) : nullptr;
+            label_capacity = std::max(label_capacity, std::strlen(caption ? caption : key) + 1);
+          }
+        }
         if (view.kind == BasicCardKind::CLOCK) {
           if (!timezone_) return false;
           const auto* key = theme_.translate ? theme_.translate("World Clock") : nullptr;
@@ -512,6 +533,13 @@ class PageBasicLvglPort final:public PageRendererPort {
       cleaning_offset = bytes + padding;
       bytes = cleaning_offset + sizeof(CleaningGlyphs);
     }
+    size_t alarm_offset = 0;
+    if (has_alarm) {
+      const auto padding = (alignof(AlarmGlyphs) - bytes % alignof(AlarmGlyphs)) % alignof(AlarmGlyphs);
+      if (padding > SIZE_MAX - bytes || sizeof(AlarmGlyphs) > SIZE_MAX - bytes - padding) return false;
+      alarm_offset = bytes + padding;
+      bytes = alarm_offset + sizeof(AlarmGlyphs);
+    }
     size_t frame_offset=0;
     if(forecast_frames) {
       const auto padding=(alignof(PageForecastFrame)-bytes%alignof(PageForecastFrame))%alignof(PageForecastFrame);
@@ -520,6 +548,18 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
     void *memory=allocator_.allocate(bytes);if(memory==nullptr)return false;
     staged_={memory,bytes,label_capacity,unit_capacity,stride,store.card_count()};staged_.number_capacity=number_capacity;
+    if (has_alarm) {
+      staged_.alarm = new (static_cast<char*>(memory) + alarm_offset) AlarmGlyphs{};
+      for (size_t index = 0; index < static_cast<size_t>(AlarmCardGlyph::COUNT); ++index) {
+        const auto* glyph =
+            actions_.icon(actions_.owner, alarm_card_glyph_name(static_cast<AlarmCardGlyph>(index)), {});
+        if (!glyph) {
+          discard_prepared();
+          return false;
+        }
+        staged_.alarm->glyphs[index] = glyph;
+      }
+    }
     if (has_cleaning) {
       staged_.cleaning = new (static_cast<char*>(memory) + cleaning_offset) CleaningGlyphs{};
       for (size_t index = 0; index < static_cast<size_t>(cleaning::Glyph::COUNT); ++index) {
@@ -651,7 +691,8 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(feedback&&s.painted)for(const auto selector:{static_cast<lv_style_selector_t>(LV_PART_MAIN),
          static_cast<lv_style_selector_t>(LV_PART_MAIN)|static_cast<lv_style_selector_t>(LV_STATE_CHECKED)})
       lv_obj_set_style_bg_color(w.button,lv_color_hex(s.background),selector);
-    lv_obj_clear_state(w.button,static_cast<lv_state_t>(LV_STATE_CHECKED|LV_STATE_PRESSED));
+    lv_obj_clear_state(w.button,
+                       static_cast<lv_state_t>(LV_STATE_CHECKED | LV_STATE_PRESSED | LV_STATE_USER_1));
     lv_obj_clear_flag(w.button,LV_OBJ_FLAG_CLICKABLE);
     s.dragging=false;s.pending_target=-1;if(w.slider){lv_obj_add_flag(w.slider,LV_OBJ_FLAG_HIDDEN);lv_obj_clear_flag(w.slider,LV_OBJ_FLAG_CLICKABLE);lv_slider_set_value(w.slider,0,LV_ANIM_OFF);}
     s.frame=nullptr;if(w.forecast)lv_obj_add_flag(w.forecast,LV_OBJ_FLAG_HIDDEN);
@@ -671,6 +712,11 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (w.slider) lv_slider_set_range(w.slider, 0, 100);
     s.token=token;s.pressed={};s.cell=cell;s.back=back;
     s.definition=cell.back?nullptr:prepared(active_)+cell.card;
+    // USER_1 selects alarm-only pressed colors without masking another family's existing press style.
+    if (s.definition && s.definition->definition.kind == BasicCardKind::ALARM)
+      lv_obj_add_state(w.button, LV_STATE_USER_1);
+    else
+      lv_obj_clear_state(w.button, LV_STATE_USER_1);
     if (timer_card(s)) s.pending_target = -1;
     if (percent_card(s) || number_card(s) || temperature_card(s)) {
       lv_obj_align(w.icon, LV_ALIGN_TOP_LEFT, 0, 0);
@@ -712,6 +758,7 @@ class PageBasicLvglPort final:public PageRendererPort {
                                        s.definition->definition.kind == BasicCardKind::COVER_COMMAND ||
                                        s.definition->definition.kind == BasicCardKind::COVER_TOGGLE ||
                                        s.definition->definition.kind == BasicCardKind::ACCESS ||
+                                       s.definition->definition.kind == BasicCardKind::ALARM ||
                                        (s.definition->definition.kind == BasicCardKind::CLEANING &&
                                         s.definition->definition.cleaning.mode != cleaning::Mode::STATUS) ||
                                        s.definition->definition.kind == BasicCardKind::FOLDER ||
@@ -749,7 +796,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       value = read_basic_card(definition, {token.configuration, token.card}, state_,
                               s.cell.column_span > 1 ? 2 : 1, theme_.temperature_unit, theme_.translate,
                               media_, local_, relay_, fan_status_, percent_slider_, number_slider_,
-                              temperature_, timer_, cover_toggle_, access_, calendar_, timezone_);
+                              temperature_, timer_, cover_toggle_, access_, calendar_, timezone_, alarm_);
       if(group_card(s))group_feedback(s,value);
       if (timer_card(s)) timer_feedback(s, value);
       if(definition.folder_mode==BasicFolderMode::CHILDREN) {
@@ -761,7 +808,8 @@ class PageBasicLvglPort final:public PageRendererPort {
                   ? relay_->on(token.configuration, child_definition.entity)
                   : read_basic_indicator(
                         {token.configuration, id},
-                        child_definition.kind == BasicCardKind::ACCESS
+                        (child_definition.kind == BasicCardKind::ACCESS ||
+                         child_definition.kind == BasicCardKind::ALARM)
                             ? child_definition.entity
                             : basic_folder_child_indicator(store_, id),
                         state_,
@@ -798,8 +846,10 @@ class PageBasicLvglPort final:public PageRendererPort {
           definition.folder_mode == BasicFolderMode::CLIMATE ||
           definition.folder_mode == BasicFolderMode::MOWER ||
           definition.folder_mode == BasicFolderMode::CHILDREN;
-      if (definition.kind == BasicCardKind::CLEANING && definition.cleaning.automatic_icon &&
-          value.cleaning.state_seen && cleaning::needs_state(definition.cleaning))
+      if (definition.kind == BasicCardKind::ALARM && value.alarm.dynamic_icon)
+        glyph = active_.alarm->glyphs[static_cast<size_t>(value.alarm.glyph)];
+      else if (definition.kind == BasicCardKind::CLEANING && definition.cleaning.automatic_icon &&
+               value.cleaning.state_seen && cleaning::needs_state(definition.cleaning))
         glyph = active_.cleaning->glyphs[static_cast<size_t>(value.cleaning.glyph)];
       else if (definition.kind == BasicCardKind::WEATHER)
         glyph = active_.weather->glyphs[value.weather_condition];
@@ -917,14 +967,51 @@ class PageBasicLvglPort final:public PageRendererPort {
             ? theme_.sensor_surface
             : theme_.surface;
     if(checked)background=definition.custom_on?correct(definition.on_color):definition.custom_off&&!definition.theme_active?correct(active_card_color(definition.off_color)):theme_.active;
-    const auto foreground=checked||definition.custom_off?display_text_color_for_bg(background):theme_.text;
-    if(!s.painted||s.background!=background||s.foreground!=foreground) {
+    const bool alarm_card = definition.kind == BasicCardKind::ALARM;
+    uint32_t pressed_background = background;
+    if (alarm_card) {
+      const auto configured_on = definition.custom_on ? correct(definition.on_color)
+                                 : definition.custom_off && !definition.theme_active
+                                     ? correct(active_card_color(definition.off_color))
+                                     : theme_.active;
+      pressed_background =
+          alarm_card_on_color(definition.alarm.panel, value.alarm.history.triggered, configured_on);
+      if (checked)
+        background = pressed_background;
+      else if (!definition.custom_off && definition.alarm.theme_off)
+        background = theme_.alarm_surface;
+    } else
+      pressed_background = background;
+    const auto foreground =
+        alarm_card || checked || definition.custom_off ? display_text_color_for_bg(background) : theme_.text;
+    const auto pressed_foreground = alarm_card ? display_text_color_for_bg(pressed_background) : foreground;
+    const auto paint_foreground =
+        alarm_card && lv_obj_has_state(w.button, LV_STATE_PRESSED) ? pressed_foreground : foreground;
+    const auto pressed_selector =
+        static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED | LV_STATE_USER_1;
+    const auto pressed_color = [&](lv_style_prop_t property, uint32_t raw) {
+      lv_style_value_t current{};
+      const auto color = lv_color_hex(raw);
+      if (lv_obj_get_local_style_prop(w.button, property, &current, pressed_selector) != LV_STYLE_RES_FOUND ||
+          lv_color_to_u32(current.color) != lv_color_to_u32(color)) {
+        current.color = color;
+        lv_obj_set_local_style_prop(w.button, property, current, pressed_selector);
+      }
+    };
+    if (alarm_card) {
+      pressed_color(LV_STYLE_BG_COLOR, pressed_background);
+      pressed_color(LV_STYLE_TEXT_COLOR, pressed_foreground);
+    }
+    if (!s.painted || s.background != background || s.foreground != paint_foreground) {
       for(const auto selector:{static_cast<lv_style_selector_t>(LV_PART_MAIN),(static_cast<lv_style_selector_t>(LV_PART_MAIN)|static_cast<lv_style_selector_t>(LV_STATE_CHECKED))}) {
         lv_obj_set_style_bg_color(w.button,lv_color_hex(background),selector);
         lv_obj_set_style_text_color(w.button,lv_color_hex(foreground),selector);
       }
-      for(auto *label:{w.icon,w.label,w.value,w.unit})lv_obj_set_style_text_color(label,lv_color_hex(foreground),LV_PART_MAIN);
-      s.painted=true;s.background=background;s.foreground=foreground;
+      for (auto* label : {w.icon, w.label, w.value, w.unit})
+        lv_obj_set_style_text_color(label, lv_color_hex(paint_foreground), LV_PART_MAIN);
+      s.painted = true;
+      s.background = background;
+      s.foreground = paint_foreground;
     }
     if(w.fill) {
       if (definition.kind == BasicCardKind::PERCENT_SLIDER ||
@@ -966,6 +1053,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (access_) seen_access_ = access_->revision();
     if (calendar_) seen_calendar_ = calendar_->revision();
     if (timezone_) seen_timezone_ = timezone_->revision();
+    if (alarm_) seen_alarm_ = alarm_->revision();
     seen_state_ = state_.revision();
     if (local_) seen_local_ = local_->revision();
     if (relay_) seen_relay_ = relay_->revision();
@@ -1033,13 +1121,15 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (timer_) timer_->loop();
     if (cover_toggle_) cover_toggle_->loop();
     if (access_) access_->loop();
+    if (alarm_) alarm_->loop();
     if (media_layout_dirty_) return true;
     if (media_)
       for (const auto& shell : shells_)
         if (shell.pending_target >= 0 && !timer_card(shell) && !group_card(shell) &&
             static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= pending_timeout(shell))
           return true;
-    return (timezone_ && timezone_->revision() != seen_timezone_) ||
+    return (alarm_ && alarm_->revision() != seen_alarm_) ||
+           (timezone_ && timezone_->revision() != seen_timezone_) ||
            (calendar_ && calendar_->revision() != seen_calendar_) ||
            (access_ && access_->revision() != seen_access_) ||
            (cover_toggle_ && cover_toggle_->revision() != seen_cover_toggle_) ||
@@ -1098,6 +1188,9 @@ class PageBasicLvglPort final:public PageRendererPort {
   struct CleaningGlyphs {
     std::array<const char*, static_cast<size_t>(cleaning::Glyph::COUNT)> glyphs{};
   };
+  struct AlarmGlyphs {
+    std::array<const char*, static_cast<size_t>(AlarmCardGlyph::COUNT)> glyphs{};
+  };
   struct WeatherGlyphs {std::array<const char *,espcontrol::weather::CONDITION_COUNT>glyphs{};const char *loading{nullptr};};
   struct Arena {
     void* arena{nullptr};
@@ -1106,6 +1199,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     PageForecastFrame* frames{nullptr};
     size_t frame_count{0}, number_capacity{48};
     CleaningGlyphs* cleaning{nullptr};
+    AlarmGlyphs* alarm{nullptr};
   };
   struct LabelLayout {
     const lv_font_t* font{nullptr};
@@ -2104,8 +2198,11 @@ class PageBasicLvglPort final:public PageRendererPort {
       if (shell->definition && (shell->definition->definition.kind == BasicCardKind::COVER_COMMAND ||
                                 shell->definition->definition.kind == BasicCardKind::COVER_TOGGLE ||
                                 shell->definition->definition.kind == BasicCardKind::ACCESS ||
-                                shell->definition->definition.kind == BasicCardKind::CLEANING))
+                                shell->definition->definition.kind == BasicCardKind::CLEANING ||
+                                shell->definition->definition.kind == BasicCardKind::ALARM))
         shell->gesture_connection = port->state_.connection_generation();
+      if (shell->definition && shell->definition->definition.kind == BasicCardKind::ALARM)
+        port->paint(shell->index, shell->token, false);
       if (timer_card(*shell)) {
         port->timer_->loop();
         if (shell->gesture_connection != port->timer_->connection_generation()) shell->pending_target = -1;
@@ -2121,13 +2218,30 @@ class PageBasicLvglPort final:public PageRendererPort {
       }
       return;
     }
-    if(code==LV_EVENT_PRESS_LOST){shell->pressed={};return;}
+    if (code == LV_EVENT_PRESS_LOST) {
+      shell->pressed = {};
+      if (shell->definition && shell->definition->definition.kind == BasicCardKind::ALARM)
+        port->paint(shell->index, shell->token, false);
+      return;
+    }
+    if (code == LV_EVENT_RELEASED && shell->definition &&
+        shell->definition->definition.kind == BasicCardKind::ALARM) {
+      port->paint(shell->index, shell->token, false);
+      return;
+    }
     if(code!=LV_EVENT_CLICKED)return;
     const auto origin=shell->pressed;shell->pressed={};
     if(!same(origin,shell->token)||!port->actions_.valid||!port->actions_.valid(port->actions_.owner,origin))return;
     if(origin.back){if(port->actions_.back)port->actions_.back(port->actions_.owner,origin);return;}
     if(!shell->definition)return;
     const auto &definition=shell->definition->definition;
+    if (definition.kind == BasicCardKind::ALARM) {
+      const auto snapshot =
+          read_basic_alarm(definition, {origin.configuration, origin.card}, port->state_, port->alarm_);
+      if (!snapshot.enabled || shell->gesture_connection != port->state_.connection_generation()) return;
+      if (port->actions_.alarm) port->actions_.alarm(port->actions_.owner, origin);
+      return;
+    }
     if (definition.kind == BasicCardKind::CLEANING) {
       const auto snapshot =
           read_basic_cleaning(definition, {origin.configuration, origin.card}, port->state_);
@@ -2234,15 +2348,16 @@ class PageBasicLvglPort final:public PageRendererPort {
   PageAccessStateRuntime* access_{nullptr};
   PageCalendarRuntime* calendar_{nullptr};
   PageTimezoneRuntime* timezone_{nullptr};
+  PageAlarmStateRuntime* alarm_{nullptr};
   std::array<Shell, Slots> shells_{};
   Arena active_, staged_;
   PageStore store_;
   bool initialized_{false}, media_layout_dirty_{false}, media_finishing_{false};
   size_t callbacks_{0};
-  uint64_t seen_timezone_{0}, seen_calendar_{0}, seen_access_{0}, seen_cover_toggle_{0}, seen_timer_{0},
-      seen_temperature_{0}, seen_number_slider_{0}, seen_percent_slider_{0}, seen_fan_status_{0},
-      seen_relay_{0}, seen_local_{0}, seen_state_{0}, seen_theme_{0}, seen_forecast_{0}, seen_media_{0},
-      seen_artwork_{0};
+  uint64_t seen_alarm_{0}, seen_timezone_{0}, seen_calendar_{0}, seen_access_{0}, seen_cover_toggle_{0},
+      seen_timer_{0}, seen_temperature_{0}, seen_number_slider_{0}, seen_percent_slider_{0},
+      seen_fan_status_{0}, seen_relay_{0}, seen_local_{0}, seen_state_{0}, seen_theme_{0}, seen_forecast_{0},
+      seen_media_{0}, seen_artwork_{0};
   PageBasicMemory memory_;
 };
 }  // namespace espcontrol::pages
