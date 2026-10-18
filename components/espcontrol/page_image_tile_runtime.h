@@ -144,22 +144,23 @@ class PageImageTileRuntime final : public PageEntityObserver {
     r.policy = state;
     r.policy.schedule.leave_expanded();
     const auto image = images_.snapshot(slot, r.token);
-    r.forced |= transfer.retry_tile || !image.ready || r.stale_unavailable;
+    r.forced |= transfer.retry_tile || !image.ready || r.stale_unavailable || r.policy.tile_invalidated;
     r.dirty |= r.policy.source_dirty || r.forced || r.policy.picture.tile_dirty();
-    r.retry = r.policy.camera_errors > 0 || transfer.retry_tile;
+    r.retry = r.policy.camera_errors > 0 || transfer.retry_tile || r.policy.tile_invalidated;
     r.failure_seen = r.cancelled_unavailable = false;
     if (r.retry) {
       r.deadline = r.policy.camera_errors ? r.policy.camera_retry_after
                    : r.policy.expanded_completed && r.policy.expanded_success
                        ? r.policy.schedule.last_completed + 1000
-                       : transfer.retry_after;
+                   : r.policy.source_dirty ? r.policy.source_changed_at + 1000
+                                           : transfer.retry_after;
     } else if (r.policy.source_dirty) {
       r.deadline = r.policy.source_changed_at + 1000;
       r.waiting = true;
     } else if (!r.admission_failed)
       r.waiting = false;
     if (admitted_wait && static_cast<int32_t>(old_deadline - r.deadline) > 0) r.deadline = old_deadline;
-    r.stale_unavailable |= r.policy.unavailable || r.policy.camera_errors > 0;
+    r.stale_unavailable |= r.policy.unavailable || r.policy.camera_errors > 0 || r.policy.tile_invalidated;
     ++revision_;
     return true;
   }
@@ -313,6 +314,7 @@ class PageImageTileRuntime final : public PageEntityObserver {
     auto& r = records_[slot];
     r.policy = {};
     configure_policy(r);
+    r.policy.tile_invalidated = r.stale_unavailable = true;
     r.dirty = r.forced = true;
     r.policy.camera_errors = 0;
     r.retry = r.failure_seen = r.cancelled_unavailable = r.request_scheduled = false;

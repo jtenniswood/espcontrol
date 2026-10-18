@@ -15,7 +15,7 @@ struct PageImageRefreshState {
   PageImageRevision picture;
   uint32_t connection{0}, last_tile_completed{0}, camera_retry_after{0}, source_changed_at{0};
   uint8_t camera_errors{0};
-  bool source_dirty{false}, expanded_completed{false}, expanded_success{false};
+  bool source_dirty{false}, expanded_completed{false}, expanded_success{false}, tile_invalidated{false};
   bool primary_seeded{false}, activity_seeded{false}, unavailable{false}, picture_event{false};
   bool synchronize(uint32_t epoch) {
     if (connection == epoch) return false;
@@ -27,6 +27,7 @@ struct PageImageRefreshState {
     camera_errors = 0;
     camera_retry_after = last_tile_completed = 0;
     source_dirty = expanded_completed = expanded_success = false;
+    tile_invalidated = true;
     return true;
   }
   PageImagePrimaryUpdate primary(PageImageEntityKind kind, std::string_view value, uint32_t now) {
@@ -43,6 +44,10 @@ struct PageImageRefreshState {
     picture_event = false;
     source_dirty = true;
     source_changed_at = now;
+    if (next) {
+      tile_invalidated = true;
+      expanded_success = false;
+    }
     if (recovered) {
       camera_errors = 0;
       camera_retry_after = last_tile_completed = 0;
@@ -66,9 +71,12 @@ struct PageImageRefreshState {
   void camera_failed(uint32_t now) {
     camera_errors = std::min<unsigned>(5, camera_errors + 1);
     camera_retry_after = now + std::min<uint32_t>(30000, 2000u << (camera_errors - 1));
+    tile_invalidated = true;
+    expanded_success = false;
   }
   void tile_succeeded(uint32_t now) {
     last_tile_completed = now;
+    tile_invalidated = false;
     camera_errors = 0;
     camera_retry_after = 0;
   }

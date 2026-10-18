@@ -43,7 +43,10 @@ preempted tile work resumes with the existing one-second deferral, while source
 updates keep their event-relative delay and memory admission cooldown. Closing
 an unchanged healthy camera with refresh off does not create another download.
 Image revisions received during modal work still leave the tile's older revision
-pending after the modal has acknowledged its own result.
+pending after the modal has acknowledged its own result. A shared invalidation
+marker hides tile pixels after unavailable/recovery or a modal failure until that
+tile receives its own fresh successful image; modal success alone cannot revive
+the old tile buffer.
 
 Tests combine the actual entity graph, renderer and modal lifecycle with transfer
 I/O replaced. They cover cancellation-time fresh reports, a close during modal

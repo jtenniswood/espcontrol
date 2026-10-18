@@ -461,11 +461,16 @@ void refresh_handoff() {
     assert(expanded.policy.unavailable);
     f.send("", "revision3", "image.still");
     assert(!expanded.policy.unavailable && expanded.policy.picture.modal_dirty());
+    assert(expanded.policy.tile_invalidated);
     assert(expanded.end());
+    assert(f.tiles.snapshot(f.token(1)).status == PageImageTileStatus::UNAVAILABLE);
     f.tick(999);
     assert(f.requests.starts == count);
     f.tick(1);
     assert(f.requests.starts == count + 1 && f.images.snapshot(slot, f.token(1)).pending);
+    assert(f.tiles.snapshot(f.token(1)).status == PageImageTileStatus::UNAVAILABLE);
+    f.ready(1);
+    assert(f.tiles.snapshot(f.token(1)).status == PageImageTileStatus::READY);
   }
 }
 void handoff_retry_and_source_timing() {
@@ -547,6 +552,28 @@ void handoff_retry_and_source_timing() {
     f.tick(1);
     assert(f.requests.starts == 2);
   }
+}
+void handoff_recovers_only_current_pixels() {
+  F f(DEVICE_UI_PROFILES[8]);
+  f.preload();
+  f.tick();
+  f.ready();
+  ExpandedObserver expanded(f);
+  assert(expanded.begin().transfer);
+  expanded.policy.expanded_finished(now, true);
+  f.send("", "unavailable");
+  f.send("", "idle");
+  assert(expanded.policy.tile_invalidated && !expanded.policy.expanded_success);
+  expanded.policy.expanded_finished(now, true);
+  assert(expanded.policy.tile_invalidated && expanded.policy.expanded_success);
+  assert(expanded.end());
+  assert(f.tiles.snapshot(f.token()).status == PageImageTileStatus::UNAVAILABLE);
+  f.tick(999);
+  assert(f.requests.starts == 1);
+  f.tick(1);
+  assert(f.requests.starts == 2);
+  f.ready();
+  assert(f.tiles.snapshot(f.token()).status == PageImageTileStatus::READY);
 }
 void handoff_staging_and_admission() {
   {
@@ -1210,6 +1237,7 @@ void startup_and_exhaustion() {
 int main() {
   refresh_handoff();
   handoff_retry_and_source_timing();
+  handoff_recovers_only_current_pixels();
   handoff_staging_and_admission();
   handoff_clock_wrap();
   handoff_cancel_and_replacement();
