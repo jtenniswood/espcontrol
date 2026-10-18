@@ -14,8 +14,9 @@ leaf-ID and content-type matching rules without allocating temporary strings.
 Identity metadata keeps its existing HTML decoding and byte limits; display-only
 transliteration is not applied to playlist identifiers.
 
-`PageMediaStateRuntime` owns bounded freshness flags per distinct primary media
-entity. It invalidates old metadata on transitions to idle/off/unavailable and
+`PageMediaStateRuntime` owns bounded freshness flags per distinct configured media
+entity, including eligible cover-art secondary entities. Prepared per-card source
+links restrict queries to that card's primary and secondary targets. It invalidates old metadata on transitions to idle/off/unavailable and
 preserves new attributes received after that transition. Returning to a usable
 state requests a fresh snapshot on loop maintenance when content is missing.
 Only sources used by content-reading cards request metadata; plain playback
@@ -114,7 +115,8 @@ source strings remain in the shared cache. It preserves source/content snapshot
 ordering and omitted-source cleanup, and lets Now Playing display the translated
 Source label without retaining another string. Primary cover consumers can
 invalidate old detail/progress state on an external-input transition; full
-secondary-source and artwork ownership is still unfinished.
+secondary-source selection is now available in the model; its visible cover-art
+and control adapters remain unfinished.
 
 Capturing/reusing label styles adds fixed per-shell storage and preinstalled LVGL
 style properties, even in configurations without Now Playing. Include that cost
@@ -124,7 +126,51 @@ savings. Temporary grid/style work is measured separately from retained storage.
 The fixed request/slot boundary is described in [reusable image ownership](pooled-image-ownership.md).
 It remains unselected and still needs its cover-art view and scene wiring.
 
-Remaining media work includes secondary entities, full cover-art routing and
+Remaining media work includes full cover-art presentation/routing and
 loading/cancellation and the media/volume/speaker
 panels. Those paths must preserve the existing behaviour before production
 selection and the S3 hardware canary.
+
+The model's cover route selects the secondary only while the primary uses an
+external input and the distinct secondary has a known, available, usable state
+and current content. The returned entity must be used consistently for text,
+progress and controls. If the secondary is ineligible, the primary keeps its
+external-source fallback. Source names in a route are borrowed from the active
+media arena: validate the originating binding and dispatch synchronously.
+
+Artwork content has separate remote/local validity flags. A URL received before
+state or during idle cannot become current solely because playback later starts.
+`None`, `unknown` and `unavailable` are absent pictures; picture URL bytes are not
+HTML-decoded. A fresh remote picture can clear a stale omitted TV/HDMI source,
+while a local-picture observation does not. Use `effective_source` with decoded
+cache text to honour synthesized/cleared input semantics. Raw retained cache
+values alone cannot determine the fallback label.
+
+Cover dependency declarations reserve progress for both sources even on the
+small-device policy, matching the current route's unconditional progress
+subscriptions. Ordinary low-heap control cards keep their existing policy.
+Power/group/discovery dependencies are still prepared ahead of navigation; the
+visible media panel adapter must preserve the installed S3 discovery fix.
+
+Preparation decodes secondary names once using bounded temporary arena scratch,
+then deduplicates them into the final source arena and adds compact per-media-card
+links. The temporary allocation can fail without replacing the active owner, and
+is freed before preparation returns. `peak_preparation_bytes` reports that scratch
+arena; the media arena peak includes simultaneous active, staged and scratch
+storage. Parser string temporaries and whole-device peaks remain separate costs.
+
+Host tests compare routing with the unchanged cover-art policy helpers across
+state/content combinations, exercise remote/local freshness and primary/secondary
+input roles, and use the actual shared entity graph for 1,000 source switches with
+stable allocations/channels. Replacement tests reject late results and revoke a
+removed secondary even when another card still owns that same source. These
+checks do not establish physical control, image or RAM parity.
+
+A reused source that gains detail or progress responsibilities queues a fresh
+snapshot even when it already has a current content ID. Newly required progress
+clears old duration/position while preserving playback state. Retained coordinator
+replay cannot supply those newly required fields safely. The request waits until
+the source is usable (or its state is not yet known), consolidates with other
+refreshes and is cleared before external dispatch. Preparation/activation never
+start network work, and idle sources retain the pending request until playback
+returns.
