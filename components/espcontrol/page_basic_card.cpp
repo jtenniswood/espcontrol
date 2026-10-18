@@ -16,6 +16,7 @@
 #include "page_media_group.h"
 #include "timer_state_policy.h"
 #include "weather_condition.h"
+#include "wifi_qr_codec.h"
 
 namespace espcontrol::pages {
 namespace {
@@ -87,6 +88,23 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     out.sensor = {};
     if (out.icon.empty() || out.icon == "Auto") out.icon = "Lightbulb";
     out.icon_on = out.icon;
+  } else if (type == "wifi_qr" || type == "wifi_qr_card") {
+    out.kind = BasicCardKind::WIFI_QR;
+    out.qr_tile = type == "wifi_qr_card";
+    out.unit = out.sensor = {};
+    out.push_feedback = true;
+    if (out.label.empty() || out.label == "Connect") {
+      out.label = {};
+      out.default_label = "Connect";
+    }
+    if (out.icon.empty() || out.icon == "Auto") out.icon = "Wifi";
+    out.icon_on = out.icon;
+    std::string payload, ssid;
+    if (wifi_qr_build_payload(cfg_option_value(options, "ssid64"), cfg_option_value(options, "security"),
+                              cfg_option_value(options, "pass64"),
+                              cfg_option_token_present(options, "hidden"), &payload, &ssid) &&
+        !copy(payload, out.time_unit))
+      return false;
   } else if (type == "image") {
     out.kind = BasicCardKind::IMAGE;
     out.unit = {};
@@ -644,6 +662,14 @@ BasicCardState read_basic_card(
     PageTimezoneRuntime* timezone, PageAlarmStateRuntime* alarm_owner) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
+  if (card.kind == BasicCardKind::WIFI_QR) {
+    result.label = card.label;
+    if (result.label.empty()) {
+      const auto* caption = translate ? translate("Connect") : nullptr;
+      result.label = caption ? caption : "Connect";
+    }
+    return result;
+  }
   if (card.kind == BasicCardKind::IMAGE) {
     result.label = card.label;
     if (result.label.empty()) {

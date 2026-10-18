@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -12,6 +13,7 @@
 #include "page_entity_observer_set.h"
 #include "page_label_refresh.h"
 #include "page_modal_gestures.h"
+#include "page_pooled_qr_tile_view.h"
 #include "page_runtime_resources_group.h"
 #include "panel_config_document.h"
 #include "position_reference.h"
@@ -5724,6 +5726,291 @@ void modal_gesture_cycles() {
   arena.fail=true;PageModalGestures failed(arena,10,current,&current,valid);assert(!failed.available());arena.fail=false;
 }
 }
+template <size_t Slots>
+void qr_tile_profile(const DeviceUiLimits& limits) {
+  struct Document {
+    std::array<uint8_t, 8192> bytes{};
+    alignas(std::max_align_t) std::array<uint8_t, 32768> arena{};
+    PageStore store;
+    size_t size{0};
+    explicit Document(const DeviceUiLimits& limits) {
+      PanelConfigWriter writer(bytes.data(), bytes.size());
+      assert(writer.begin() == PanelConfigStatus::OK);
+      assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                          std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+      const std::string cards[] = {
+          ";Rooms;Auto;Auto;indicator;;subpage;;",
+          "switch.guest;Tile;Auto;Auto;;;wifi_qr_card;;ssid64=R3Vlc3Q,security=open,card_off_color=336699",
+          "switch.guest;Connect;Auto;Auto;;;wifi_qr;;ssid64=R3Vlc3Q,security=open,wifi_tabs=qr|guest",
+          "switch.guest;Invalid;Auto;Auto;;;wifi_qr_card;;ssid64=bad,security=WPA",
+          "light.room;Lamp;Auto;Auto;;;;",
+          ";Custom;Auto;Auto;;;wifi_qr;;ssid64=R3Vlc3Q,security=open"};
+      for (size_t i = 0; i < 6; ++i)
+        assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i].data()),
+                                    cards[i].size()) == PanelConfigStatus::OK);
+      const std::string child =
+          "~B,1,2|wifi_qr_card,switch.guest,Child,Auto,Auto,,,,ssid64%3DR3Vlc3Q%2Csecurity%3Dopen|wifi_qr,"
+          "switch.guest,Connect,Auto,Auto,,,,ssid64%3DR3Vlc3Q%2Csecurity%3Dopen";
+      assert(writer.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+             PanelConfigStatus::OK);
+      std::string order;
+      for (size_t i = 1; i <= limits.slot_count; ++i) {
+        if (i > 1) order += ",";
+        order += std::to_string(i);
+      }
+      const std::string key = "button_order";
+      assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                   reinterpret_cast<const uint8_t*>(order.data()),
+                                   order.size()) == PanelConfigStatus::OK);
+      assert(writer.finish(&size) == PanelConfigStatus::OK);
+      assert(PageStore::stage_v1(bytes.data(), size, limits, 17, arena.data(), arena.size(), &store) ==
+             PageStoreStatus::OK);
+    }
+  } document(limits);
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {64, 64, 4096});
+  Actions<Slots> actions;
+  struct Origin final : PageQrOrigin {
+    Actions<Slots>& actions;
+    explicit Origin(Actions<Slots>& a) : actions(a) {}
+    bool valid(PageBindingToken token) const override {
+      return actions.renderer && actions.renderer->bound(token);
+    }
+  } origin(actions);
+  // The real encoder/pixel parity is tested separately. This deterministic
+  // module pattern makes card placement and draw admission directly observable.
+  struct Encoder final : PageQrEncoder {
+    size_t calls{0};
+    int side{0};
+    bool compact{false};
+    bool encode(std::string_view payload, int size, bool small, PageQrMatrix& matrix) override {
+      ++calls;
+      side = size;
+      compact = small;
+      assert(payload == "WIFI:T:nopass;S:Guest;H:false;;");
+      matrix.clear();
+      matrix.layout = page_qr_layout(1, size, small);
+      for (unsigned y = 0; y < matrix.layout.modules; ++y)
+        for (unsigned x = 0; x < matrix.layout.modules; ++x) matrix.dark(x, y, (x + y) % 2 == 0);
+      return matrix.layout.valid();
+    }
+  } encoder;
+  PageLvglQrFrames frames(arena);
+  PageQrRuntime<> qrs(arena, encoder, frames, origin, Slots);
+  assert(qrs.initialize());
+  PagePooledQrTileView view(qrs, frames);
+  auto* page = lv_obj_create(lv_screen_active());
+  lv_obj_set_size(page, 480, 480);
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  const size_t row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    lv_obj_set_style_pad_all(w.button, 8, 0);
+    w.forecast = lv_obj_create(w.button);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+  }
+  PageBasicTheme theme;
+  theme.sensor_font = theme.icon_font = theme.label_font = &lv_font_montserrat_14;
+  theme.translate = [](const char* key) -> const char* {
+    return !std::strcmp(key, "Connect") ? "CONNECT" : key;
+  };
+  auto callbacks = actions.callbacks();
+  callbacks.wifi_qr = Actions<Slots>::action;
+  const auto make_port = [&](PageBasicActions cb, PageQrTileView* tiles) {
+    return new PageBasicLvglPort<Slots>(arena, state, widgets, {limits.slot_count, limits.grid_columns},
+                                        theme, cb, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                        nullptr, nullptr, nullptr, tiles);
+  };
+  {
+    auto* missing = make_port(callbacks, nullptr);
+    assert(missing->initialize() && !missing->prepare(document.store, Slots));
+    delete missing;
+    auto bad = callbacks;
+    bad.wifi_qr = nullptr;
+    missing = make_port(bad, &view);
+    assert(missing->initialize() && !missing->prepare(document.store, Slots));
+    delete missing;
+    auto no_bound = callbacks;
+    no_bound.bound = nullptr;
+    missing = make_port(no_bound, &view);
+    assert(missing->initialize() && !missing->prepare(document.store, Slots));
+    delete missing;
+    PageLvglQrFrames short_frames(arena);
+    PageQrRuntime<> short_owner(arena, encoder, short_frames, origin, Slots - 1);
+    PagePooledQrTileView short_view(short_owner, short_frames);
+    missing = make_port(callbacks, &short_view);
+    assert(missing->initialize() && !missing->prepare(document.store, Slots));
+    delete missing;
+    assert(short_owner.initialize());
+    missing = make_port(callbacks, &short_view);
+    assert(missing->initialize() && !missing->prepare(document.store, Slots));
+    delete missing;
+    assert(short_owner.shutdown());
+    auto* canvas = widgets[0].forecast;
+    widgets[0].forecast = nullptr;
+    missing = make_port(callbacks, &view);
+    assert(missing->initialize() && !missing->prepare(document.store, Slots));
+    delete missing;
+    widgets[0].forecast = canvas;
+  }
+  {
+    std::unique_ptr<PageBasicLvglPort<Slots>> port(make_port(callbacks, &view));
+    assert(port->initialize());
+    PageLabelRefresh cache(arena);
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t label = 0;
+    for (const auto& w : widgets)
+      for (auto* item : {w.icon, w.label, w.value, w.unit}) labels[label++] = item;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, *port);
+    actions.renderer = &renderer;
+    assert(renderer.prepare(document.store) && state.prepare(document.store));
+    const auto first_cpp = cpp_allocations, first_lv = lv_allocations;
+    renderer.activate_prepared(document.store);
+    assert(cpp_allocations == first_cpp && lv_allocations == first_lv);
+    state.activate_prepared(document.store);
+    const auto pump = [&] {
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      qrs.loop();
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+    };
+    pump();
+    auto front = renderer.binding(1);
+    assert(qrs.snapshot(1, front).ready && encoder.compact);
+    assert(encoder.side ==
+           std::min<int>(lv_obj_get_width(widgets[1].button), lv_obj_get_height(widgets[1].button) - 6));
+    assert(lv_obj_has_flag(widgets[1].icon, LV_OBJ_FLAG_HIDDEN) &&
+           lv_obj_has_flag(widgets[1].label, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_has_flag(widgets[1].sensor_container, LV_OBJ_FLAG_HIDDEN) &&
+           !lv_obj_has_flag(widgets[1].forecast, LV_OBJ_FLAG_HIDDEN));
+    assert(!qrs.snapshot(3, renderer.binding(3)).ready);
+    assert(!std::strcmp(lv_label_get_text(widgets[2].label), "CONNECT") &&
+           !std::strcmp(lv_label_get_text(widgets[5].label), "Custom"));
+    assert(!lv_obj_has_flag(widgets[2].icon, LV_OBJ_FLAG_HIDDEN) &&
+           lv_obj_has_flag(widgets[2].forecast, LV_OBJ_FLAG_HIDDEN));
+    for (auto selection : {LV_STATE_DEFAULT, LV_STATE_PRESSED, LV_STATE_CHECKED,
+                           static_cast<lv_state_t>(LV_STATE_CHECKED | LV_STATE_PRESSED)}) {
+      lv_obj_add_state(widgets[1].button, selection);
+      assert((lv_color_to_u32(lv_obj_get_style_bg_color(widgets[1].button, LV_PART_MAIN)) & 0xFFFFFF) ==
+             0xFFFFFF);
+      lv_obj_clear_state(widgets[1].button, selection);
+    }
+    const auto commands = actions.commands;
+    click(widgets[1].button);
+    click(widgets[2].button);
+    click(widgets[3].button);
+    click(widgets[5].button);
+    assert(actions.commands == commands + 3 && actions.toggles == 0);
+    subscriptions.send("switch.guest", "", "on");
+    pump();
+    assert(!lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED) &&
+           !lv_obj_has_state(widgets[2].button, LV_STATE_CHECKED));
+    ++subscriptions.generation;
+    pump();
+    click(widgets[2].button);
+    assert(actions.commands == commands + 4 && actions.toggles == 0);
+    const auto child = document.store.card(0)->target;
+    assert(child != NO_PAGE && renderer.open_page(child));
+    pump();
+    assert(qrs.snapshot(1, renderer.binding(1)).ready && !qrs.snapshot(1, front).ready);
+    click(widgets[1].button);
+    click(widgets[2].button);
+    assert(actions.commands == commands + 6 && actions.toggles == 0);
+    assert(renderer.back());
+    pump();
+    for (unsigned n = 0; n < 10; ++n) {
+      assert(renderer.open_page(child));
+      pump();
+      assert(renderer.back());
+      pump();
+    }
+    const auto bytes = arena.live, allocs = arena.allocations, cpp = cpp_allocations, lv = lv_live_bytes;
+    const auto registrations = subscriptions.bindings.size();
+    for (unsigned n = 0; n < 1000; ++n) {
+      const auto before = cpp_allocations, before_lv = lv_allocations;
+      assert(renderer.open_page(child));
+      assert(cpp_allocations == before && lv_allocations == before_lv);
+      pump();
+      assert(renderer.back());
+      pump();
+      assert(arena.live == bytes && arena.allocations == allocs && cpp_allocations == cpp &&
+             lv_live_bytes == lv);
+      assert(subscriptions.bindings.size() == registrations);
+    }
+    // Sizing a spanning card retains the standard encoder policy.
+    PageCellLayout large{};
+    large.visible = true;
+    large.card = renderer.binding(1).card;
+    large.row_span = large.column_span = 2;
+    port->bind(1, document.store, large, {}, renderer.binding(1));
+    renderer.refresh();
+    pump();
+    assert(!encoder.compact && encoder.side == std::min<int>(lv_obj_get_width(widgets[1].button),
+                                                             lv_obj_get_height(widgets[1].button) - 12));
+    lv_obj_invalidate(page);
+    lv_refr_now(lv_display_get_default());
+    const auto geometry = page_qr_layout(1, encoder.side, false);
+    lv_area_t box;
+    lv_obj_get_coords(widgets[1].button, &box);
+    const int x = box.x1 + (lv_obj_get_width(widgets[1].button) - geometry.side) / 2;
+    const int y = box.y1 + (lv_obj_get_height(widgets[1].button) - geometry.side) / 2;
+    assert(x >= 0 && y >= 0 && x + geometry.side <= 480 && y + geometry.side <= 480);
+    assert(framebuffer[(y + geometry.margin) * 480 + x + geometry.margin] == 0);
+    assert(framebuffer[y * 480 + x] == 0xFFFF);
+    assert(!view.draw(renderer.binding(1), qrs.snapshot(1, renderer.binding(1)).asset + 1,
+                      widgets[1].forecast, nullptr));
+    // A press from a retired view cannot open a replacement card.
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    assert(renderer.open_page(child));
+    pump();
+    const auto old_commands = actions.commands;
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == old_commands);
+    const auto previous = renderer.binding(1);
+    alignas(std::max_align_t) std::array<uint8_t, 32768> new_arena{};
+    PageStore replacement;
+    assert(PageStore::stage_v1(document.bytes.data(), document.size, limits, 0, new_arena.data(),
+                               new_arena.size(), &replacement) == PageStoreStatus::OK);
+    assert(renderer.prepare(replacement) && state.prepare(replacement));
+    renderer.discard_prepared();
+    state.discard_prepared();
+    assert(qrs.snapshot(1, previous).ready);
+    assert(renderer.prepare(replacement) && state.prepare(replacement));
+    renderer.activate_prepared(replacement);
+    state.activate_prepared(replacement);
+    document.arena.fill(0xDA);
+    pump();
+    assert(renderer.binding(1).configuration == 0 && qrs.snapshot(1, renderer.binding(1)).ready);
+    assert(!qrs.snapshot(1, previous).ready);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == old_commands);
+    renderer.retire_active();
+    state.retire_active();
+    qrs.loop();
+  }
+  assert(qrs.shutdown() && arena.live == 0);
+  lv_obj_delete(page);
+  std::printf(
+      "%s: QR cards/buttons: 1000 navigation cycles, guarded modal taps, white/compact/spanning layout and "
+      "stable resources\n",
+      limits.device_profile);
+}
+
 int main() {
   std::setvbuf(stdout, nullptr, _IOLBF, 0);
   lv_init();
@@ -5746,6 +6033,25 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "qr") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          qr_tile_profile<6>(limits);
+          break;
+        case 9:
+          qr_tile_profile<9>(limits);
+          break;
+        case 15:
+          qr_tile_profile<15>(limits);
+          break;
+        case 20:
+          qr_tile_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "images") == 0) {
       switch (limits.slot_count) {
         case 6:
@@ -6182,6 +6488,7 @@ int main() {
     switch (limits.slot_count) {
       case 6:
         profile<6>(limits);
+        qr_tile_profile<6>(limits);
         status_action_profile<6>(limits);
         control_profile<6>(limits);
         cover_command_profile<6>(limits);
@@ -6214,6 +6521,7 @@ int main() {
         break;
       case 9:
         profile<9>(limits);
+        qr_tile_profile<9>(limits);
         status_action_profile<9>(limits);
         control_profile<9>(limits);
         cover_command_profile<9>(limits);
@@ -6249,6 +6557,7 @@ int main() {
         break;
       case 15:
         profile<15>(limits);
+        qr_tile_profile<15>(limits);
         status_action_profile<15>(limits);
         control_profile<15>(limits);
         cover_command_profile<15>(limits);
@@ -6281,6 +6590,7 @@ int main() {
         break;
       case 20:
         profile<20>(limits);
+        qr_tile_profile<20>(limits);
         status_action_profile<20>(limits);
         control_profile<20>(limits);
         cover_command_profile<20>(limits);
