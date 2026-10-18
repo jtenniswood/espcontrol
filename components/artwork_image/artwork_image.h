@@ -8,6 +8,7 @@
 
 #include "artwork_url.h"
 #include "image_decoder.h"
+#include "image_result.h"
 #include "image_service.h"
 #include "transfer_observer.h"
 
@@ -89,6 +90,14 @@ class ArtworkImage : public PollingComponent,
   }
   /** Set the URL and start an update, returning the effective URL after any downloader rewrite. */
   std::string request_update_url(const std::string &url, int max_source_dim = 0);
+  // Exclusive pooled-slot API. Claim only an idle component with no legacy
+  // download/animation callbacks, and retain the observer until release_owner.
+  // Start on loop maintenance: URL/queue/transfer work may allocate. Navigation
+  // cancels the token; no configuration or URL view is borrowed by a request.
+  bool claim_owner(ImageResultObserver &observer);
+  bool request_owned_update(ImageResultObserver &observer, uint64_t request,
+                            const std::string &url, int max_source_dim = 0);
+  void release_owner(ImageResultObserver &observer);
   /** Stop any in-flight download/decode while keeping the last completed image buffer available. */
   void cancel_update();
   const std::string &get_url() const { return this->url_; }
@@ -204,6 +213,7 @@ class ArtworkImage : public PollingComponent,
   void start_update_();
   void complete_service_request_();
   void cancel_service_request_();
+  void notify_result_(bool success, bool cached);
   void log_state_(const char *stage);
 
   RAMAllocator<uint8_t> allocator_{};
@@ -277,6 +287,7 @@ class ArtworkImage : public PollingComponent,
 
   CallbackManager<void(bool)> download_finished_callback_{};
   CallbackManager<void()> download_error_callback_{};
+  ImageResultChannel result_channel_{};
 
   std::shared_ptr<http_request::HttpContainer> downloader_{nullptr};
   std::unique_ptr<ImageDecoder> decoder_{nullptr};

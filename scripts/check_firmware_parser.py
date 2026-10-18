@@ -97,11 +97,7 @@ struct lv_obj_t {
   int width = 480;
   void *user_data = nullptr;
 };
-constexpr int MAX_GRID_SLOTS = 25;
-inline int bounded_grid_slots(int num_slots) {
-  if (num_slots < 0) return 0;
-  return num_slots > MAX_GRID_SLOTS ? MAX_GRID_SLOTS : num_slots;
-}
+#include "button_grid_limits.h"
 struct BtnSlot {
   esphome::text::Text *config = nullptr;
   lv_obj_t *btn = nullptr;
@@ -1078,6 +1074,7 @@ def main() -> int:
         shutil.copy2(PARSER_HEADER.with_name("i18n_generated.h"), tmp_path / "i18n_generated.h")
         shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
         shutil.copy2(MEDIA_CONFIG_HEADER, tmp_path / "button_grid_media_config.h")
+        shutil.copy2(MEDIA_CONFIG_HEADER.with_name("media_card_mode.h"), tmp_path / "media_card_mode.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "temperature_unit.h", tmp_path / "temperature_unit.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "sun_calc.h", tmp_path / "sun_calc.h")
         shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
@@ -1111,6 +1108,8 @@ def main() -> int:
         shutil.copy2(DISPLAY_MODE_CONTROLLER_HEADER, tmp_path / "display_mode_controller.h")
         shutil.copy2(LAYOUT_HEADER, tmp_path / "button_grid_layout.h")
         shutil.copy2(LIMITS_HEADER, tmp_path / "button_grid_limits.h")
+        for name in ("button_grid_order_parser.h", "device_ui_limits.h", "device_ui_limits_generated.h", "display_utf8_case.h", "ha_state_limits.h"):
+            shutil.copy2(LIMITS_HEADER.parent / name, tmp_path / name)
         shutil.copy2(STRING_HEADER, tmp_path / "button_grid_string.h")
         shutil.copy2(STRING_HEADER.parent / "camera_refresh_policy.h", tmp_path / "camera_refresh_policy.h")
         shutil.copy2(STRING_HEADER.parent / "media_control_tabs.h", tmp_path / "media_control_tabs.h")

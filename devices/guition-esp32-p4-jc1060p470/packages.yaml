@@ -90,6 +90,7 @@ substitutions:
 
 esphome:
   build_flags:
+    - "-DESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC1060P470"
     - "-DESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=${image_card_slot_capacity}"
 
 packages:
