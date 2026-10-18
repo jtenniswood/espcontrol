@@ -72,6 +72,7 @@ struct PageBasicActions {
   void (*number_slider)(void*, PageBindingToken, double, const number_slider::Metadata&){nullptr};
   void (*light_temperature)(void*, PageBindingToken, int kelvin){nullptr};
   bool (*timer)(void*, PageBindingToken, PageTimerAction){nullptr};
+  void (*cover_command)(void*, PageBindingToken, PageCoverCommandSnapshot){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -303,6 +304,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       for(CardId card=p->first_card;card<p->first_card+p->card_count;++card) {
         BasicCardDefinition view;
         if (!prepare_basic_card(store, card, view, &strings, relay_)) return false;
+        if (view.kind == BasicCardKind::COVER_COMMAND && !actions_.cover_command) return false;
         if (view.kind == BasicCardKind::TIMER) {
           if (!timer_ || !actions_.timer) return false;
           const auto* confirm = theme_.translate ? theme_.translate("Confirm") : nullptr;
@@ -610,6 +612,7 @@ class PageBasicLvglPort final:public PageRendererPort {
         cell.back || (s.definition && (s.definition->definition.kind == BasicCardKind::TOGGLE ||
                                        s.definition->definition.kind == BasicCardKind::LOCAL_RELAY ||
                                        s.definition->definition.kind == BasicCardKind::TIMER ||
+                                       s.definition->definition.kind == BasicCardKind::COVER_COMMAND ||
                                        s.definition->definition.kind == BasicCardKind::FOLDER ||
                                        s.definition->definition.kind == BasicCardKind::CLIMATE ||
                                        s.definition->definition.kind == BasicCardKind::ACTION ||
@@ -1903,6 +1906,8 @@ class PageBasicLvglPort final:public PageRendererPort {
       return;}
     if(code==LV_EVENT_PRESSED) {
       shell->pressed=shell->token;
+      if (shell->definition && shell->definition->definition.kind == BasicCardKind::COVER_COMMAND)
+        shell->gesture_connection = port->state_.connection_generation();
       if (timer_card(*shell)) {
         port->timer_->loop();
         if (shell->gesture_connection != port->timer_->connection_generation()) shell->pending_target = -1;
@@ -1925,6 +1930,14 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(origin.back){if(port->actions_.back)port->actions_.back(port->actions_.owner,origin);return;}
     if(!shell->definition)return;
     const auto &definition=shell->definition->definition;
+    if (definition.kind == BasicCardKind::COVER_COMMAND) {
+      const auto command =
+          read_basic_cover_command(definition, {origin.configuration, origin.card}, port->state_);
+      if (shell->gesture_connection == port->state_.connection_generation() && command.supported &&
+          port->actions_.cover_command)
+        port->actions_.cover_command(port->actions_.owner, origin, command);
+      return;
+    }
     if (definition.kind == BasicCardKind::FAN_SWITCH || definition.kind == BasicCardKind::FAN_OSCILLATE) {
       if (!port->fan_status_) return;
       port->fan_status_->loop();

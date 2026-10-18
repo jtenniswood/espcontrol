@@ -1,4 +1,5 @@
 #pragma once
+#include "cover_command_policy.h"
 #include "light_temperature_color.h"
 #include "media_playback_clock.h"
 #include "media_playback_modes.h"
@@ -327,6 +328,15 @@ constexpr int COVER_SUPPORT_CLOSE_TILT = 32;
 constexpr int COVER_SUPPORT_STOP_TILT = 64;
 constexpr int COVER_SUPPORT_SET_TILT_POSITION = 128;
 
+static_assert(espcontrol::cover_command::normal_feature("open") == COVER_SUPPORT_OPEN &&
+              espcontrol::cover_command::normal_feature("close") == COVER_SUPPORT_CLOSE &&
+              espcontrol::cover_command::normal_feature("stop") == COVER_SUPPORT_STOP &&
+              espcontrol::cover_command::normal_feature("set_position") == COVER_SUPPORT_SET_POSITION &&
+              espcontrol::cover_command::tilt_feature("open") == COVER_SUPPORT_OPEN_TILT &&
+              espcontrol::cover_command::tilt_feature("close") == COVER_SUPPORT_CLOSE_TILT &&
+              espcontrol::cover_command::tilt_feature("stop") == COVER_SUPPORT_STOP_TILT &&
+              espcontrol::cover_command::tilt_feature("set_position") == COVER_SUPPORT_SET_TILT_POSITION);
+
 inline bool cover_parse_supported_features(esphome::StringRef val, int &features) {
   std::string value = normalized_state_text(val);
   if (value.empty() || value == "none" || value == "null" ||
@@ -349,19 +359,11 @@ inline const char *cover_tilt_command_service(const std::string &sensor) {
 }
 
 inline int cover_command_normal_feature(const std::string &sensor) {
-  if (sensor == "open") return COVER_SUPPORT_OPEN;
-  if (sensor == "close") return COVER_SUPPORT_CLOSE;
-  if (sensor == "stop") return COVER_SUPPORT_STOP;
-  if (sensor == "set_position") return COVER_SUPPORT_SET_POSITION;
-  return 0;
+  return espcontrol::cover_command::normal_feature(sensor);
 }
 
 inline int cover_command_tilt_feature(const std::string &sensor) {
-  if (sensor == "open") return COVER_SUPPORT_OPEN_TILT;
-  if (sensor == "close") return COVER_SUPPORT_CLOSE_TILT;
-  if (sensor == "stop") return COVER_SUPPORT_STOP_TILT;
-  if (sensor == "set_position") return COVER_SUPPORT_SET_TILT_POSITION;
-  return 0;
+  return espcontrol::cover_command::tilt_feature(sensor);
 }
 
 struct CoverCommandCtx {
@@ -373,22 +375,13 @@ struct CoverCommandCtx {
 inline bool cover_command_use_tilt(const std::string &sensor,
                                    bool supported_features_known,
                                    int supported_features) {
-  if (!supported_features_known) return false;
-  int normal_feature = cover_command_normal_feature(sensor);
-  int tilt_feature = cover_command_tilt_feature(sensor);
-  return normal_feature != 0 && tilt_feature != 0 &&
-         (supported_features & normal_feature) == 0 &&
-         (supported_features & tilt_feature) != 0;
+  return espcontrol::cover_command::use_tilt(sensor, supported_features_known, supported_features);
 }
 
 inline bool cover_command_supported(const std::string &sensor,
                                     bool supported_features_known,
                                     int supported_features) {
-  if (!supported_features_known) return true;
-  int normal_feature = cover_command_normal_feature(sensor);
-  int tilt_feature = cover_command_tilt_feature(sensor);
-  return (normal_feature != 0 && (supported_features & normal_feature) != 0) ||
-         (tilt_feature != 0 && (supported_features & tilt_feature) != 0);
+  return espcontrol::cover_command::supported(sensor, supported_features_known, supported_features);
 }
 
 inline void cover_command_apply_supported_features(CoverCommandCtx *ctx, int features) {

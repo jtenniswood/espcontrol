@@ -118,6 +118,9 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
   // Lets the visible renderer skip unchanged frames. Polling also observes a
   // disconnect before a new HA value arrives, so stale values do not linger.
   uint64_t revision() { synchronize_connection(); return revision_; }
+  uint32_t connection_generation() const {
+    return subscriptions_.connection_generation();
+  }
   void invalidate_disconnected_state();
 
  private:
