@@ -8,11 +8,13 @@
 namespace espcontrol::weather {
 inline std::string_view condition_trim(std::string_view text) {
   while(!text.empty()&&std::isspace(static_cast<unsigned char>(text.front())))text.remove_prefix(1);
-  while(!text.empty()&&std::isspace(static_cast<unsigned char>(text.back())))text.remove_suffix(1);return text;
+  while(!text.empty()&&std::isspace(static_cast<unsigned char>(text.back())))text.remove_suffix(1);
+  return text;
 }
 inline bool condition_lower_equal(std::string_view text,std::string_view expected) {
   if(text.size()!=expected.size())return false;
-  for(size_t i=0;i<text.size();++i)if(std::tolower(static_cast<unsigned char>(text[i]))!=expected[i])return false;return true;
+  for(size_t i=0;i<text.size();++i)if(std::tolower(static_cast<unsigned char>(text[i]))!=expected[i])return false;
+  return true;
 }
 inline uint8_t condition_index(std::string_view input) {
   char normalized[33];size_t used=0;bool dash=false;

@@ -991,7 +991,21 @@ void app_owned_callback_owner_is_used_when_bound() {
 void core_owns_binding_service_lifetime() {
   espcontrol::EspControlAppCore app;
   require(app.start(), "application core did not start");
-  BindingService &service = app.home_assistant_binding_service<BindingService>();
+  // This test exercises core ownership, not the recording transport's payload.
+  // Keep its double small like the production transport: libstdc++ stores a
+  // larger std::string than libc++, so the full recorder is not a slot budget.
+  struct CoreTransport {
+    using State = std::string;
+    using Callback = std::function<void(State)>;
+    bool available() const { return true; }
+    bool state_connected() const { return true; }
+    void subscribe(const std::string &,const std::string &,std::function<void(State)>) {
+      require(false,"core lifetime test unexpectedly subscribed");
+    }
+    bool request(const std::string &,const std::string &) { return false; }
+  };
+  using CoreBindingService = HomeAssistantBindingService<CoreTransport,FakeHeapProbe>;
+  CoreBindingService &service = app.home_assistant_binding_service<CoreBindingService>();
   int owner = 0;
   {
     auto scope = service.callback_owner_scope(&owner);

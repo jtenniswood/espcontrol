@@ -27,6 +27,8 @@ void operator delete(void* p) noexcept {
 void operator delete[](void* p) noexcept {
   std::free(p);
 }
+void operator delete(void *p, std::size_t) noexcept { std::free(p); }
+void operator delete[](void *p, std::size_t) noexcept { std::free(p); }
 namespace {
 struct Arena : PageArenaAllocator {
   std::unordered_map<void*, size_t> live;

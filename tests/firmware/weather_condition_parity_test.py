@@ -29,6 +29,8 @@ size_t allocations=0;
 void *operator new(size_t size){++allocations;if(void *p=std::malloc(size?size:1))return p;std::abort();}
 void *operator new[](size_t size){return ::operator new(size);}
 void operator delete(void *p)noexcept{std::free(p);}void operator delete[](void *p)noexcept{std::free(p);}
+void operator delete(void *p, std::size_t) noexcept { std::free(p); }
+void operator delete[](void *p, std::size_t) noexcept { std::free(p); }
 const char *find_icon(const char *name){return name;}
 '''
 for name in ['normalize_weather_state','weather_icon_for_state','weather_state_has_localized_label','weather_label_for_state']:

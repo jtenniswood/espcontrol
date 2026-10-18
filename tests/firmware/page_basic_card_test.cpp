@@ -18,6 +18,8 @@ void *operator new(size_t bytes){++allocations;if(void *p=std::malloc(bytes?byte
 void *operator new[](size_t bytes){return ::operator new(bytes);}
 void operator delete(void *p)noexcept{std::free(p);}
 void operator delete[](void *p)noexcept{std::free(p);}
+void operator delete(void *p, std::size_t) noexcept { std::free(p); }
+void operator delete[](void *p, std::size_t) noexcept { std::free(p); }
 namespace {
 struct Arena:PageArenaAllocator {
   void *allocate(size_t bytes)override{return std::malloc(bytes);}
@@ -74,6 +76,9 @@ void profile(const DeviceUiLimits &limits) {
   subs.send("sensor.temp","","3.4028235e38");value=read_basic_card(definition,{17,0},state);assert(value.numeric&&std::strlen(value.number)<sizeof(value.number));
   subs.send("sensor.temp","",std::string(257,'1'));assert(!read_basic_card(definition,{17,0},state).numeric);
   for(const auto text:{"-21.45","0.05","1.25","2.75"}){subs.send("sensor.temp","",text);value=read_basic_card(definition,{17,0},state);assert(value.numeric);}
+  auto invalid_precision=definition;invalid_precision.precision=UINT8_MAX;
+  subs.send("sensor.temp","","1.2345");
+  assert(std::strcmp(read_basic_card(invalid_precision,{17,0},state).number,"1.235")==0);
   ++subs.generation;assert(!read_basic_card(definition,{17,0},state).numeric);
   for(const auto &text:{std::string("light.test;;;;;;;;confirm_off"),std::string("media_player.test;;;;control;;media;;")}) {
     Fixture unsupported(limits,text);assert(!prepare_basic_card(unsupported.store,0,definition));
@@ -242,12 +247,12 @@ void control_profile(const DeviceUiLimits &limits) {
   PageCardDependencies source;Arena arena;Subscriptions transport;PageEntityStateRuntime state(source,arena,transport,{32,32,2048});BasicCardDefinition definition;
   Fixture light(limits,"light.room;;Auto;Auto;;;light_control;0;");assert(prepare_basic_card(light.store,0,definition));assert(definition.kind==BasicCardKind::LIGHT&&definition.icon=="Lightbulb Outline"&&definition.icon_on=="Lightbulb");assert(state.prepare(light.store));state.activate_prepared(light.store);transport.send("light.room","","on");transport.send("light.room","friendly_name","Room lamp");auto value=read_basic_card(definition,{17,0},state);assert(value.on&&value.label=="Room lamp");transport.send("light.room","","unavailable");assert(!read_basic_card(definition,{17,0},state).on);
   Fixture cover(limits,"cover.room;;Auto;Auto;modal;;cover;0;");assert(prepare_basic_card(cover.store,0,definition));assert(definition.kind==BasicCardKind::COVER&&!definition.active_color&&definition.icon=="Blinds"&&definition.icon_on=="Blinds Open");assert(state.prepare(cover.store));state.activate_prepared(cover.store);
-  for(const auto pair:{std::pair<const char *,int>{"closed",100},{"closing",100},{"open",0},{"opening",0},{"unknown",0}}){transport.send("cover.room","",pair.first);value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==pair.second);assert(value.on==(std::strcmp(pair.first,"open")==0||std::strcmp(pair.first,"opening")==0));}
+  for(const auto &pair:{std::pair<const char *,int>{"closed",100},{"closing",100},{"open",0},{"opening",0},{"unknown",0}}){transport.send("cover.room","",pair.first);value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==pair.second);assert(value.on==(std::strcmp(pair.first,"open")==0||std::strcmp(pair.first,"opening")==0));}
   const char packed[]={'4','2','.','5','9'};transport.send("cover.room","current_position",{packed,4});value=read_basic_card(definition,{17,0},state);assert(value.on&&value.closed_percent==57);
   for(const auto invalid:{"unavailable","unknown","nan","inf","bad",""}){transport.send("cover.room","current_position",invalid);value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==57&&value.on);}
   // Valid history is kept even while the page is hidden and no presenter runs.
   transport.send("cover.room","current_position","71");transport.send("cover.room","current_position","nan");value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==29);
-  for(const auto pair:{std::pair<const char *,int>{"0",100},{"100",0},{"-1e30",100},{"1e30",0},{"25prefix",75}}){transport.send("cover.room","current_position",pair.first);value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==pair.second);}
+  for(const auto &pair:{std::pair<const char *,int>{"0",100},{"100",0},{"-1e30",100},{"1e30",0},{"25prefix",75}}){transport.send("cover.room","current_position",pair.first);value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==pair.second);}
   const auto before=allocations;for(int i=0;i<1000;++i){value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==75);}assert(allocations==before);
   ++transport.generation;value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==0&&!value.on);transport.send("cover.room","","closed");value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==100);
 }
