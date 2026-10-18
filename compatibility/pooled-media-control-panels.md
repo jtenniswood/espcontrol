@@ -27,9 +27,14 @@ The active record caches channel revisions and local acknowledgement state.
 A projection guard rejects nested input while a snapshot is being painted.
 Unchanged frames and unrelated media-clock ticks skip parsing and painting.
 Confirmed group feedback remains in the demanded context until the membership
-channel's revision changes; clock and unrelated state updates cannot replay an
-older membership value over it. Response callbacks repaint existing rows and
-attach their newly enabled controls; candidate construction waits for the next
+source receives another live membership report; clock and unrelated state updates cannot replay an
+older membership value over it. Even an unchanged live report is authoritative;
+copied staging values are not. Response callbacks repaint existing rows and
+attach their newly enabled controls. Successful responses also expose their
+checked state through an opening-validated confirmation hook for the original
+group card. Responses consume fresh cached state without requiring admission
+of a new input command, so an unrelated pending panel request cannot discard
+the confirmation. Candidate construction waits for the next
 runtime budget check. All projection and context storage is
 released with the opening. No fields are added to configured legacy contexts.
 

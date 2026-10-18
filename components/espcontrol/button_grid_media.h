@@ -3913,6 +3913,11 @@ inline void media_control_group_action_result(
     const esphome::api::ActionResponse &response) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!media_control_context_current(ctx) || ui.active != ctx) return;
+  const std::string player = ctx->entity_id;
+  // Rebase against any newer report before merging the accepted membership.
+  // A response remains valid while another panel request is pending; this is
+  // state synchronization, not admission of a new input command.
+  if (!media_control_refresh_current(ctx) || ui.active != ctx || ctx->entity_id != player) return;
   MediaSpeakerRowState *row = media_control_find_speaker_row(entity_id);
   if (!row || row->call_id != call_id) return;
   row->pending = false;
@@ -3931,6 +3936,8 @@ inline void media_control_group_action_result(
         std::remove(ctx->group_members.begin(), ctx->group_members.end(), row->entity_id),
         ctx->group_members.end());
     }
+    media_control_notify_state_confirmed(ctx, media_control_group_size(ctx) > 1);
+    if (!media_control_context_current(ctx) || ui.active != ctx) return;
     media_control_set_speaker_status(espcontrol_i18n("Speakers updated"));
   }
   if (media_control_modal_managed(ctx)) {

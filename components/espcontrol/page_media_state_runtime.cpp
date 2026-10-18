@@ -320,6 +320,11 @@ void PageMediaStateRuntime::observed_update(uint32_t generation, std::string_vie
   // A shared copy carries the old model's validity, not a fresh observation.
   // In particular, replacing configuration must not resurrect idle metadata.
   if (copied) return;
+  if (attribute == "group_members") {
+    ++source->group_revision;
+    ++revision_;
+    return;
+  }
   if (attribute == "media_duration") {
     source->clock.duration_value(value);
     ++revision_;
@@ -461,6 +466,10 @@ bool PageMediaStateRuntime::source_snapshot(ConfigurationHandle handle, std::str
   const auto* item = source(handle, entity);
   output = item ? snapshot(*item) : PageMediaSourceSnapshot{};
   return item != nullptr;
+}
+uint32_t PageMediaStateRuntime::group_revision(ConfigurationHandle handle, std::string_view entity) const {
+  const auto* item = source(handle, entity);
+  return item ? item->group_revision : 0;
 }
 std::string_view PageMediaStateRuntime::effective_source(ConfigurationHandle handle, std::string_view entity,
                                                          std::string_view decoded_cache) const {

@@ -15,6 +15,8 @@ template<typename Context> struct ModalContextLifetime {
   bool (*widgets)(void *,void *){nullptr};
   void (*numeric_action)(void *,const Context *,float){nullptr};
   uint64_t (*identity)(void *,const Context *){nullptr};
+  void (*state_confirmed)(void *,const Context *,bool){nullptr};
+  bool (*refresh)(void *,const Context *){nullptr};
   uint64_t context_identity(const Context *ctx) const {
     return ctx&&owner&&identity?identity(owner,ctx):0;
   }
@@ -31,6 +33,15 @@ template<typename Context> struct ModalContextLifetime {
     const auto observer=*this;
     if(ctx&&observer.owner&&observer.numeric_action&&observer.action_allowed(ctx))
       observer.numeric_action(observer.owner,ctx,value);
+  }
+  bool refresh_current(const Context* ctx) const {
+    const auto observer = *this;
+    return ctx && (!observer.owner || (observer.refresh && observer.refresh(observer.owner, ctx)));
+  }
+  void notify_state_confirmed(const Context* ctx, bool value) const {
+    const auto observer = *this;
+    if (ctx && observer.owner && observer.state_confirmed && observer.current_context(ctx))
+      observer.state_confirmed(observer.owner, ctx, value);
   }
   bool widgets_ready(void *root) const {
     const auto observer=*this;

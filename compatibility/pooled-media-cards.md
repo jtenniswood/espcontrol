@@ -221,3 +221,21 @@ to All Controls, matching the current firmware. A borrowed entity-list cursor
 preserves the existing trimming, quoting, escaping and deduplication rules
 without allocating a member vector during paint. Tests compare it with the
 production legacy parser, including invalid primaries and unusually quoted IDs.
+
+
+An accepted grouping response can pass its boolean checked state through
+`PageLegacyModalStyle::state_confirmed`. The scene must match the modal opening
+to the original full card binding before calling `preview_group`; other media
+card modes reject this feedback. It changes no Home Assistant cache value and
+sends no command. The existing shell feedback storage holds the confirmation
+until a newer membership report, unavailable/exhausted data, reconnect,
+navigation, takeover or configuration replacement retires that binding's hint.
+It has no clock timeout, so unrelated playback/volume updates cannot erase it.
+
+The shared media owner counts live membership reports for each unique source,
+including reports with unchanged values. Copied preparation state is not an
+acknowledgement. This counter lets a later report override both the panel and
+card confirmation without changing the raw graph's value-deduplication policy.
+Include the per-source field/padding and fixed modal callback observer storage
+in device memory qualification. The card shell and configured-card metadata
+gain no fields for this feedback. Scene wiring remains a cutover gate.
