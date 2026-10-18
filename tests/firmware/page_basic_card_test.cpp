@@ -516,6 +516,68 @@ void fan_control_profile(const DeviceUiLimits& limits) {
   assert(value.label == "Custom" && !value.numeric && value.unit.empty());
 }
 
+void number_slider_profile(const DeviceUiLimits& limits) {
+  for (const char* type : {"slider", "light_brightness", "fan_speed", "cover"}) {
+    Fixture fixture(limits, std::string("number.room;;Auto;Other;tilt;ignored;") + type + ";2;");
+    BasicCardDefinition definition;
+    assert(prepare_basic_card(fixture.store, 0, definition) &&
+           definition.kind == BasicCardKind::NUMBER_SLIDER);
+    assert(!definition.active_color && !definition.large_numbers && definition.unit.empty() &&
+           definition.icon_on == definition.icon);
+    Arena arena;
+    Subscriptions subscriptions;
+    PageCardDependencies dependencies;
+    PageNumberSliderRuntime levels(arena, subscriptions);
+    PageEntityStateRuntime state(dependencies, arena, subscriptions, {64, 64, 2048}, &levels);
+    assert(levels.prepare(fixture.store) && state.prepare(fixture.store));
+    levels.activate_prepared(fixture.store);
+    state.activate_prepared(fixture.store);
+    const auto read = [&]() {
+      return read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, nullptr, nullptr, nullptr, nullptr,
+                             nullptr, &levels);
+    };
+    assert(!read().numeric && !read().number_slider.ready);
+    subscriptions.send("number.room", "friendly_name", "Raw room");
+    subscriptions.send("number.room", "min", "-10");
+    subscriptions.send("number.room", "max", "10");
+    subscriptions.send("number.room", "step", "0.1");
+    subscriptions.send("number.room", "", "5");
+    subscriptions.send("number.room", "unit_of_measurement", "kWh");
+    auto value = read();
+    assert(value.label == "Raw room" && !value.numeric && value.fill_percent == 75);
+    assert(levels.begin({17, 0}) && levels.drag({17, 0}, 25));
+    value = read();
+    assert(value.numeric && value.unit == "kWh" && std::strcmp(value.number, "-7.5") == 0);
+    const auto before = allocations;
+    for (int i = 0; i < 1000; ++i) (void)read();
+    assert(allocations == before);
+    for (const auto* missing : {"NoNe", " null ", " UNKNOWN ", "unavailable", ""}) {
+      subscriptions.send("number.room", "unit_of_measurement", missing);
+      assert(read().unit.empty());
+    }
+    subscriptions.send("number.room", "step", "0.1");
+    assert(!read().numeric && read().number_slider.gesture);
+    subscriptions.send("number.room", "step", "0.2");
+    assert(!read().number_slider.gesture);
+    ++subscriptions.generation;
+    levels.loop();
+    assert(!read().number_slider.available);
+    {
+      Arena small_arena;
+      Subscriptions small_subscriptions;
+      PageNumberSliderRuntime small_levels(small_arena, small_subscriptions);
+      PageEntityStateRuntime small_state(dependencies, small_arena, small_subscriptions, {64, 64, 1},
+                                         &small_levels);
+      assert(small_levels.prepare(fixture.store) && small_state.prepare(fixture.store));
+      small_levels.activate_prepared(fixture.store);
+      small_state.activate_prepared(fixture.store);
+      for (const auto& report : {std::pair{"min", "-10"}, {"max", "10"}, {"step", "0.1"}, {"", "5"}})
+        small_subscriptions.send("number.room", report.first, report.second);
+      const auto exhausted = read_basic_number_slider(definition, {17, 0}, small_state, &small_levels);
+      assert(!exhausted.available && !exhausted.ready && !exhausted.gesture);
+    }
+  }
+}
 void percent_slider_profile(const DeviceUiLimits& limits) {
   struct Case {
     const char* entity;
@@ -1092,6 +1154,7 @@ int main() {
     fan_mode_profile(limits);
     fan_status_profile(limits);
     percent_slider_profile(limits);
+    number_slider_profile(limits);
     weather_profile(limits);
     media_action_profile(limits);
     media_position_profile(limits);

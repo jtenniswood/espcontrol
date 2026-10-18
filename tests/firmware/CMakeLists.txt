@@ -229,6 +229,7 @@ foreach(variant IN ITEMS "" "_empty" "_numeric" "_text")
 endforeach()
 
 add_executable(page_basic_card_test page_basic_card_test.cpp
+    ../../components/espcontrol/page_number_slider_runtime.cpp
   ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
   ../../components/espcontrol/page_card_dependencies.cpp
@@ -239,6 +240,7 @@ target_compile_options(page_basic_card_test PRIVATE -Wall -Wextra -Werror -fno-r
 target_include_directories(page_basic_card_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_basic_card_test COMMAND page_basic_card_test)
 add_executable(page_basic_card_no_forecast_test page_basic_card_test.cpp
+    ../../components/espcontrol/page_number_slider_runtime.cpp
   ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
   ../../components/espcontrol/page_card_dependencies.cpp
@@ -1130,6 +1132,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     DEPENDS generate_now_playing_reference.py generate_climate_update_test.py ../../components/espcontrol/button_grid_media.h
     VERBATIM)
   add_executable(page_basic_lvgl_port_test page_basic_lvgl_port_test.cpp ${FORECAST_REFERENCE} ${POSITION_REFERENCE} ${NOW_PLAYING_REFERENCE}
+    ../../components/espcontrol/page_number_slider_runtime.cpp
     ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_forecast_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp

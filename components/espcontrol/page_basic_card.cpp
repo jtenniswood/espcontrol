@@ -73,6 +73,12 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     if (type == "cover" && (out.icon.empty() || out.icon == "Auto")) out.icon = "Blinds";
     if (out.icon_on.empty() || out.icon_on == "Auto")
       out.icon_on = type == "cover" ? "Blinds Open" : out.icon;
+  } else if (PageNumberSliderRuntime::supported(store, id)) {
+    out.kind = BasicCardKind::NUMBER_SLIDER;
+    out.unit = {};
+    out.sensor = {};
+    if (type == "cover" && (out.icon.empty() || out.icon == "Auto")) out.icon = "Blinds";
+    out.icon_on = out.icon;
   } else if (type == "internal") {
     out.kind = BasicCardKind::LOCAL_RELAY;
     out.unit = {};
@@ -355,12 +361,26 @@ PagePercentSliderSnapshot read_basic_percent_slider(const BasicCardDefinition& c
   }
   return snapshot;
 }
+PageNumberSliderSnapshot read_basic_number_slider(const BasicCardDefinition& card, ConfigurationHandle handle,
+                                                  PageEntityStateRuntime& state,
+                                                  PageNumberSliderRuntime* runtime) {
+  if (!runtime || card.kind != BasicCardKind::NUMBER_SLIDER) return {};
+  auto snapshot = runtime->read(handle);
+  for (const auto attribute : {"", "min", "max", "step"}) {
+    if (find(state, handle, card.entity, attribute).status == PageEntityStatus::EXHAUSTED) {
+      snapshot.available = snapshot.ready = snapshot.dragging = snapshot.gesture = false;
+      break;
+    }
+  }
+  return snapshot;
+}
 BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHandle handle,
                                PageEntityStateRuntime& state, int duration_components,
                                std::string_view temperature_unit, PageCardTranslate translate,
                                PageMediaStateRuntime* media_owner, PageLocalSensorRuntime* local,
                                PageLocalRelayRuntime* relay, PageFanStatusRuntime* fan_status,
-                               PagePercentSliderRuntime* percent_slider) {
+                               PagePercentSliderRuntime* percent_slider,
+                               PageNumberSliderRuntime* number_slider) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
   if (card.kind == BasicCardKind::PERCENT_SLIDER) {
@@ -375,6 +395,29 @@ BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHan
       const auto name = find(state, handle, card.entity, "friendly_name");
       if (name.status == PageEntityStatus::AVAILABLE)
         result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+    }
+    return result;
+  }
+  if (card.kind == BasicCardKind::NUMBER_SLIDER) {
+    result.number_slider = read_basic_number_slider(card, handle, state, number_slider);
+    result.fill_percent = result.number_slider.fill_percent;
+    result.label = card.label;
+    if (result.label.empty()) {
+      const auto name = find(state, handle, card.entity, "friendly_name");
+      if (name.status == PageEntityStatus::AVAILABLE)
+        result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+    }
+    if (result.number_slider.dragging && result.number_slider.available && result.number_slider.ready) {
+      result.numeric = true;
+      number_slider::format_value_into(
+          result.number,
+          number_slider::value_for_position(result.number_slider.metadata, result.number_slider.position),
+          result.number_slider.metadata);
+      const auto unit = find(state, handle, card.entity, "unit_of_measurement");
+      if (unit.status == PageEntityStatus::AVAILABLE && !equal_state(unit.value, "none") &&
+          !equal_state(unit.value, "null") && !equal_state(unit.value, "unknown") &&
+          !equal_state(unit.value, "unavailable"))
+        result.unit = unit.value.substr(0, HA_SHORT_STATE_MAX_LEN);
     }
     return result;
   }
