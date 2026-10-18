@@ -14,7 +14,7 @@ does not invent a drag label. Remote Kelvin updates can move the thumb without
 replacing an existing drag label, matching the production callbacks.
 
 Default/custom ranges and independent duplicate previews live in the state
-owner. Off reports empty the fill while retaining Kelvin history for the next
+owner. An on child contributes to the existing parent-folder indicator. Off reports empty the fill while retaining Kelvin history for the next
 on report. Colour mode uses the absolute 2000–6500 K gradient, even for narrow
 configured ranges; it does not stretch the palette or apply display correction
 to those raw Kelvin colours. The existing renderer and new view share the same

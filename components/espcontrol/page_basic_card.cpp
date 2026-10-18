@@ -327,7 +327,7 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
   if (type == "internal")
     return PageLocalRelayRuntime::toggle(store, *card) ? store.field(*card, CardField::ENTITY)
                                                        : std::string_view{};
-  return type.empty() || type == "light_switch" || type == "media" || type == "fan_control" ||
+  return type.empty() || type == "light_switch" || type == "light_temperature" || type == "media" || type == "fan_control" ||
                  type == "fan_direction" || type == "fan_preset" || type == "fan_switch" ||
                  type == "fan_oscillate"
              ? store.field(*card, CardField::ENTITY)

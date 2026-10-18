@@ -524,6 +524,7 @@ void light_temperature_profile(const DeviceUiLimits& limits) {
   assert(definition.kind == BasicCardKind::LIGHT_TEMPERATURE && definition.icon == "Lightbulb" &&
          definition.icon_on == definition.icon && !definition.large_numbers && !definition.active_color &&
          definition.unit.empty());
+  assert(basic_folder_child_indicator(fixture.store,0)=="light.room");
   Arena arena;
   Subscriptions subscriptions;
   PageCardDependencies dependencies;

@@ -1588,10 +1588,11 @@ void light_temperature_profile(const DeviceUiLimits& limits) {
     renderer.update_visible();
     assert(lv_slider_get_value(widgets[1].slider) == 0);
     subscriptions.send("light.room", "", "on");
-    subscriptions.send("fan.room", "", "on");
+    subscriptions.send("fan.room", "", "off");
     subscriptions.send("fan.room", "percentage", "25");
     renderer.update_visible();
     lv_obj_update_layout(page);
+    assert(lv_obj_has_state(widgets[0].button,LV_STATE_CHECKED));
     assert(lv_slider_get_value(widgets[1].slider) == 50 && lv_slider_get_value(widgets[2].slider) == 77);
     assert(std::strcmp(lv_label_get_text(widgets[1].label), "Temperature room") == 0);
     assert(std::strcmp(lv_label_get_text(widgets[2].label), "Fixed") == 0);
@@ -1651,6 +1652,7 @@ void light_temperature_profile(const DeviceUiLimits& limits) {
     subscriptions.send("light.room", "color_temp_kelvin", "5500");
     renderer.update_visible();
     assert(lv_slider_get_value(widgets[1].slider) == 0);
+    assert(!lv_obj_has_state(widgets[0].button,LV_STATE_CHECKED));
     vertical_pointer(device, input, widgets[1].slider, 0, true);
     assert(std::strcmp(lv_label_get_text(widgets[1].label), "Temperature room") ==
            0);  // No invented overlay.
