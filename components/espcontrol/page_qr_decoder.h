@@ -9,6 +9,7 @@
 
 #include "lvgl.h"
 #include "page_qr_matrix.h"
+#include "src/core/lv_global.h"
 #include "src/draw/lv_image_decoder_private.h"
 
 #if LVGL_VERSION_MAJOR != 9 || LVGL_VERSION_MINOR != 5 || LVGL_VERSION_PATCH != 0
@@ -43,8 +44,12 @@ class PageQrDecoder {
   bool initialize() {
     if (decoder_) return true;
     if (!lv_is_initialized()) return false;
-    decoder_ = lv_image_decoder_create();
+    // The public 9.5.0 constructor asserts on allocation failure. Scene
+    // preflight must fail normally; use its checked list insertion instead.
+    // Keep this paired with the pinned-version guard and public delete helper.
+    decoder_ = static_cast<lv_image_decoder_t*>(lv_ll_ins_head(&LV_GLOBAL_DEFAULT()->img_decoder_ll));
     if (!decoder_) return false;
+    std::memset(decoder_, 0, sizeof(*decoder_));
     decoder_->user_data = this;
     decoder_->name = "EspControl QR";
     lv_image_decoder_set_info_cb(decoder_, info);
