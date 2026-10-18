@@ -2,14 +2,13 @@
 
 #include <algorithm>
 #include <array>
-#include <cstdio>
 #include <string>
 
-#include "page_cover_art_policy.h"
 #include "page_entity_state_runtime.h"
 #include "page_image_environment.h"
 #include "page_image_refresh_state.h"
 #include "page_image_runtime.h"
+#include "page_image_source_url.h"
 #include "page_image_tile_policy.h"
 #include "page_modal_image_runtime.h"
 
@@ -132,6 +131,33 @@ class PageImageTileRuntime final : public PageEntityObserver {
     }
     return id;
   }
+  // Pause other in-flight tiles before admitting the larger modal transfer.
+  // The scene also marks the covered grid invisible/expanded so no new work or
+  // hidden activity window starts until the overlay closes.
+  bool defer_for_expanded(PageModalToken modal, PageModalImageOrigin& origin) {
+    if (!now_ || !PageModalImageIdentity::eligible(modal) || !origin.valid(modal)) return false;
+    for (size_t slot = 0; slot < Slots; ++slot) {
+      if (!origin.valid(modal)) return false;
+      auto& r = records_[slot];
+      const auto token = r.token;
+      if (!token.binding || delegated(r) || !images_.owns(slot, token) ||
+          !images_.snapshot(slot, token).pending)
+        continue;
+      r.policy.schedule.in_flight = false;
+      r.deferred_scheduled |= r.request_scheduled;
+      r.request_scheduled = false;
+      r.retry = true;
+      r.deadline = now_() + 1000;
+      r.dirty = r.forced = true;
+      images_.cancel_request(slot, token, true);
+      // No old record/configuration is accessed after external cancellation.
+    }
+    return origin.valid(modal);
+  }
+  PageBindingToken expanded_tile(PageImageRefreshTransfer id) const {
+    return transfer_matches(id) && expanded_.origin && expanded_.origin->valid(id.modal) ? expanded_.tile
+                                                                                         : PageBindingToken{};
+  }
   bool end_expanded(PageImageRefreshTransfer id, const PageImageRefreshState& state) {
     if (!transfer_matches(id)) return false;
     const auto slot = expanded_slot();
@@ -143,6 +169,7 @@ class PageImageTileRuntime final : public PageEntityObserver {
     const bool admitted_wait = r.admission_failed && r.waiting;
     r.policy = state;
     r.policy.schedule.leave_expanded();
+    if (r.policy.expanded_completed) r.deferred_scheduled = false;
     const auto image = images_.snapshot(slot, r.token);
     r.forced |= transfer.retry_tile || !image.ready || r.stale_unavailable || r.policy.tile_invalidated;
     r.dirty |= r.policy.source_dirty || r.forced || r.policy.picture.tile_dirty();
@@ -274,8 +301,8 @@ class PageImageTileRuntime final : public PageEntityObserver {
     uint32_t started{0}, deadline{0}, endpoint{0};
     PageImageTileStatus status{PageImageTileStatus::LOADING};
     bool dirty{false}, forced{false}, stale_unavailable{false}, cancelled_unavailable{false};
-    bool request_scheduled{false}, failure_seen{false}, waiting{false}, retry{false}, geometry_stale{false},
-        admission_failed{false}, exhausted{false};
+    bool request_scheduled{false}, deferred_scheduled{false}, failure_seen{false}, waiting{false},
+        retry{false}, geometry_stale{false}, admission_failed{false}, exhausted{false};
   };
   struct Expanded {
     PageImageRefreshTransfer id;
@@ -389,39 +416,8 @@ class PageImageTileRuntime final : public PageEntityObserver {
     return images_.bind(slot, token);
   }
   std::string source_url(const Record& r) {
-    const ConfigurationHandle card{r.token.configuration, r.token.card};
-    const auto picture = state_.read_attribute(card, r.source.entity, "entity_picture");
-    const auto access = state_.read_attribute(card, r.source.entity, "access_token");
-    const auto raw =
-        picture.status == PageEntityStatus::AVAILABLE ? picture.value.substr(0, 4096) : std::string_view{};
-    const auto token =
-        access.status == PageEntityStatus::AVAILABLE ? access.value.substr(0, 512) : std::string_view{};
-    const bool usable_token = !token.empty() && token != "unknown" && token != "unavailable";
-    std::string url;
-    if (r.policy.picture_event) url = PageArtworkUrl::join(environment_.base_url(), raw).copy();
-    if (url.empty() && !environment_.base_url().empty() && usable_token) {
-      url = environment_.base_url();
-      url += r.kind == PageImageEntityKind::CAMERA ? "/api/camera_proxy/" : "/api/image_proxy/";
-      url.append(r.source.entity.data(), r.source.entity.size());
-    } else if (url.empty())
-      url = PageArtworkUrl::join(environment_.base_url(), raw).copy();
-    if (page_artwork_requires_token(url)) {
-      if (!usable_token) return {};
-      page_artwork_append_token(url, token);
-    }
-    return url;
-  }
-  static void dimension(std::string& url, std::string_view name, unsigned value) {
-    if (page_artwork_query_has_param(url, name)) return;
-    const auto fragment = url.find('#');
-    const auto position = fragment == std::string::npos ? url.size() : fragment;
-    char number[12];
-    std::snprintf(number, sizeof(number), "%u", value);
-    std::string suffix = url.find('?') < position ? "&" : "?";
-    suffix.append(name.data(), name.size());
-    suffix += '=';
-    suffix += number;
-    url.insert(position, suffix);
+    return page_image_select_source(state_, {r.token.configuration, r.token.card}, r.source.entity, r.kind,
+                                    r.policy.picture_event, environment_.base_url());
   }
   void maintain(size_t slot) {
     auto& r = records_[slot];
@@ -455,7 +451,7 @@ class PageImageTileRuntime final : public PageEntityObserver {
       if (!r.cancelled_unavailable) {
         r.cancelled_unavailable = true;
         r.policy.schedule.in_flight = false;
-        r.request_scheduled = false;
+        r.request_scheduled = r.deferred_scheduled = false;
         images_.cancel_request(slot, token, true);
       }
       return;
@@ -504,7 +500,8 @@ class PageImageTileRuntime final : public PageEntityObserver {
     }
     if (r.waiting && !due(now, r.deadline)) return;
     r.waiting = false;
-    const bool scheduled = !r.dirty && !r.forced && r.policy.schedule.due(now, true);
+    const bool scheduled = (r.deferred_scheduled && r.policy.schedule.open) ||
+                           (!r.dirty && !r.forced && r.policy.schedule.due(now, true));
     const bool revision_dirty = r.kind == PageImageEntityKind::IMAGE && r.policy.picture.tile_dirty();
     if (!r.dirty && !r.forced && !scheduled && !revision_dirty) return;
     if (!r.options.width || !r.options.height) return;
@@ -538,24 +535,12 @@ class PageImageTileRuntime final : public PageEntityObserver {
       return;
     }
     r.selected = url;
-    if (page_artwork_requires_token(url) || url.find("/api/camera_proxy/") != std::string::npos ||
-        url.find("/api/image_proxy/") != std::string::npos) {
-      const auto side = std::max<uint16_t>(1, environment_.maximum_source_side());
-      const auto longest = std::max(r.options.width, r.options.height);
-      const auto width = longest > side
-                             ? std::max<unsigned>(1, static_cast<uint32_t>(r.options.width) * side / longest)
-                             : r.options.width;
-      const auto height =
-          longest > side ? std::max<unsigned>(1, static_cast<uint32_t>(r.options.height) * side / longest)
-                         : r.options.height;
-      dimension(url, "width", width);
-      dimension(url, "height", height);
-      r.options.max_source_dimension = std::max(width, height);
-    } else
-      r.options.max_source_dimension = std::max(r.options.width, r.options.height);
+    r.options.max_source_dimension =
+        page_image_size_source(url, r.options.width, r.options.height, environment_.maximum_source_side());
     r.policy.picture.tile_requested = r.policy.picture.latest;
     r.failure_seen = r.dirty = r.forced = r.admission_failed = false;
     r.request_scheduled = scheduled;
+    r.deferred_scheduled = false;
     if (scheduled) r.policy.schedule.started();
     images_.request(slot, token, url, r.options);
     // External start/cancel can replace the scene. Never use borrowed config,

@@ -3,7 +3,8 @@
 This #1825 prerequisite moves fixed refresh state between an image tile and one
 expanded view. [Typed modal request ownership](pooled-modal-image-ownership.md)
 remains separate from tile downloader ownership. Production still uses the
-existing renderer; the demanded expanded source/UI, cache, application scene,
+existing renderer; the [demanded expanded source](pooled-expanded-image-source.md)
+has model coverage. Expanded UI, cache, application scene,
 compiled legacy retirement and physical qualification remain unfinished.
 
 `PageImageRefreshState` owns bounded activity/revision bytes, periodic/activity
