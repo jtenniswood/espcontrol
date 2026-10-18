@@ -1,5 +1,7 @@
 #pragma once
 
+#include "calendar_state_events.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 struct CalendarCardRef {
@@ -143,6 +145,8 @@ inline void update_calendar_cards(bool valid, int day, int month) {
     state.use_12h = false;
   }
 
+  const auto events = espcontrol::calendar_state_events();
+  if (events.date) events.date(events.owner, valid, day, month);
   refresh_calendar_cards();
 }
 
@@ -163,6 +167,8 @@ inline void update_calendar_cards_time(bool valid, int day, int month,
     state.month = month;
   }
 
+  const auto events = espcontrol::calendar_state_events();
+  if (events.time) events.time(events.owner, valid, day, month, hour, minute, use_12h);
   refresh_calendar_cards();
 }
 

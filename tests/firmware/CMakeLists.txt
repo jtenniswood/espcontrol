@@ -198,6 +198,22 @@ target_compile_options(page_percent_slider_runtime_test PRIVATE -Wall -Wextra -W
 target_include_directories(page_percent_slider_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_percent_slider_runtime_test COMMAND page_percent_slider_runtime_test)
 
+set(PAGE_CALENDAR_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_calendar_runtime_test.cpp)
+add_custom_command(OUTPUT ${PAGE_CALENDAR_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_calendar_test.py
+    --output ${PAGE_CALENDAR_SOURCE}
+  DEPENDS generate_page_calendar_test.py page_calendar_runtime_test.cpp.in
+    ../../components/espcontrol/button_grid_datetime_cards.h
+  VERBATIM)
+add_executable(page_calendar_runtime_test ${PAGE_CALENDAR_SOURCE}
+  ../../components/espcontrol/page_calendar_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp)
+target_compile_features(page_calendar_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_calendar_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_calendar_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_calendar_runtime_test COMMAND page_calendar_runtime_test)
+
 set(CLEANING_POLICY_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/cleaning_card_policy_test.cpp)
 add_custom_command(OUTPUT ${CLEANING_POLICY_SOURCE}
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_cleaning_policy_test.py

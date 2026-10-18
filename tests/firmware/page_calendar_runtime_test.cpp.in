@@ -1,0 +1,284 @@
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cctype>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <vector>
+
+#include "calendar_state_events.h"
+#include "page_calendar_runtime.h"
+#include "page_card_dependencies.h"
+#include "page_runtime_resources_group.h"
+#include "panel_config_document.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+static size_t cpp_allocations = 0;
+void* operator new(size_t size) {
+  ++cpp_allocations;
+  if (auto* p = std::malloc(size ? size : 1)) return p;
+  std::abort();
+}
+void* operator new[](size_t size) {
+  return ::operator new(size);
+}
+void operator delete(void* p) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p) noexcept {
+  std::free(p);
+}
+void operator delete(void* p, size_t) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p, size_t) noexcept {
+  std::free(p);
+}
+namespace legacy_calendar {
+void refresh_calendar_cards() {}
+// @legacy-calendar-reference
+}  // namespace legacy_calendar
+int& calendar_card_count() {
+  static int count = 0;
+  return count;
+}
+using legacy_calendar::calendar_date_state;
+#include "page_calendar_events.h"
+namespace {
+struct Arena : PageArenaAllocator {
+  void* allocate(size_t bytes) override {
+    if (fail) return nullptr;
+    ++live;
+    return std::malloc(bytes);
+  }
+  void release(void* p, size_t) override {
+    assert(live);
+    --live;
+    std::free(p);
+  }
+  bool fail{false};
+  size_t live{0};
+};
+struct Transport : PageEntitySubscriptions {
+  struct Binding {
+    const char* entity;
+    const char* attribute;
+    void* owner;
+    uint32_t revision, channel;
+    Deliver deliver;
+  };
+  std::vector<Binding> bindings;
+  uint32_t connection{1};
+  bool subscribe(const char* entity, const char* attribute, void* owner, uint32_t revision, uint32_t channel,
+                 Deliver deliver) override {
+    bindings.push_back({entity, attribute, owner, revision, channel, deliver});
+    return true;
+  }
+  void release(void* owner) override {
+    bindings.erase(
+        std::remove_if(bindings.begin(), bindings.end(), [&](const auto& b) { return b.owner == owner; }),
+        bindings.end());
+  }
+  uint32_t connection_generation() const override {
+    return connection;
+  }
+  void send(const char* entity, const char* attribute, const char* text) {
+    for (const auto& b : bindings)
+      if (std::strcmp(b.entity, entity) == 0 && std::strcmp(b.attribute, attribute) == 0)
+        b.deliver(b.owner, b.revision, b.channel, text);
+  }
+};
+struct Fixture {
+  Fixture(uint32_t generation, const char* key = "", bool empty = false,
+          const DeviceUiLimits& limits = DEVICE_UI_PROFILES[8]) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    for (size_t i = 0; i < 3; ++i) {
+      const auto card = empty
+                            ? std::string(";;;;sensor.empty;;sensor;1;")
+                            : std::string(i == 1 ? "sensor.other" : key) + ";;Auto;Auto;;;calendar;datetime;";
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(card.data()), card.size()) ==
+             PanelConfigStatus::OK);
+    }
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, generation, arena.data(), arena.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+  std::array<uint8_t, 8192> document{};
+  size_t size{0};
+  alignas(std::max_align_t) std::array<uint8_t, 32768> arena{};
+  PageStore store;
+};
+void compare(PageCalendarState state) {
+  const auto& ref = calendar_date_state();
+  assert(state.date_valid == ref.date_valid && state.day == ref.day && state.month == ref.month &&
+         state.time_valid == ref.time_valid && state.hour == ref.hour && state.minute == ref.minute &&
+         state.use_12h == ref.use_12h);
+}
+void parity() {
+  Fixture fixture(17);
+  PageCalendarRuntime runtime;
+  assert(runtime.prepare(fixture.store));
+  runtime.activate_prepared(fixture.store);
+  calendar_date_state() = {false, 0, 0, false, 0, 0, false};
+  const char* values[] = {"2026-10-18", "18/10/2026", "18-10/2026", "2026-02-31T12:00", "unavailable",
+                          "",           "2026-13-01", "32/01/2026", "0000-01-01",       "2026-01-01suffix"};
+  uint32_t random = 12345678;
+  for (int i = 0; i < 100000; ++i) {
+    random = random * 1664525u + 1013904223u;
+    const auto choice = (random >> 8) % 3;
+    const int day = (random >> 24) % 35, month = (random >> 16) % 15, hour = (random >> 5) % 27,
+              minute = (random >> 12) % 65;
+    const bool valid = (random & 4) != 0, use12 = (random & 2) != 0;
+    if (choice == 0) {
+      legacy_calendar::update_calendar_cards(valid, day, month);
+      runtime.date(valid, day, month);
+    } else if (choice == 1) {
+      legacy_calendar::update_calendar_cards_time(valid, day, month, hour, minute, use12);
+      runtime.time(valid, day, month, hour, minute, use12);
+    } else {
+      const auto* value = values[(random >> 20) % 10];
+      legacy_calendar::update_calendar_cards_from_date_text(value);
+      runtime.observed(17, "sensor.date", "", value, false);
+    }
+    compare(runtime.read({17, 0}));
+    compare(runtime.read({17, 1}));
+    compare(runtime.read({17, 2}));
+  }
+}
+void lifecycle() {
+  Fixture first(17), second(18, "sensor.new"), empty(19, "", true);
+  PageCalendarRuntime runtime;
+  assert(!runtime.prepare({}));
+  assert(runtime.prepare(first.store));
+  runtime.activate_prepared(first.store);
+  assert(runtime.memory().active_sources == 2);
+  runtime.observed(17, "sensor.date", "", "2026-10-01", false);
+  runtime.time(true, 1, 10, 13, 45, true);
+  assert(runtime.read({17, 0}).day == 1 && runtime.read({17, 0}).time_valid);
+  runtime.observed(17, "sensor.other", "", "02/10/2026", false);
+  assert(runtime.read({17, 2}).day == 2);
+  assert(!runtime.prepare({}) && runtime.memory().preparation_failures == 2 &&
+         runtime.read({17, 0}).day == 2);
+  runtime.observed(17, "sensor.other", "", "invalid", false);
+  assert(runtime.read({17, 0}).day == 2);
+  runtime.observed(17, "sensor.other", "friendly_name", "03/10/2026", false);
+  assert(runtime.read({17, 0}).day == 2);
+  runtime.observed(17, "sensor.unrelated", "", "03/10/2026", false);
+  assert(runtime.read({17, 0}).day == 2);
+  assert(runtime.prepare(second.store));
+  runtime.observed(18, "sensor.new", "", "2026-11-03", true);
+  assert(runtime.read({17, 0}).day == 2);
+  runtime.discard_prepared();
+  assert(runtime.read({17, 0}).day == 2);
+  const auto before = cpp_allocations;
+  for (int i = 0; i < 1000; ++i) {
+    assert(runtime.prepare(second.store));
+    runtime.observed(18, "sensor.new", "", "2026-11-03", true);
+    runtime.activate_prepared(second.store);
+    assert(runtime.read({18, 0}).day == 3);
+    assert(runtime.prepare(first.store));
+    runtime.activate_prepared(first.store);
+    runtime.date(true, 2, 10);
+    assert(runtime.read({17, 0}).day == 2);
+  }
+  assert(cpp_allocations == before);
+  assert(!runtime.seed({}));
+  assert(runtime.prepare(empty.store));
+  runtime.activate_prepared(empty.store);
+  assert(runtime.memory().active_sources == 0 && !runtime.read({19, 0}).date_valid &&
+         runtime.state().day == 2);
+  runtime.retire_active();
+  assert(runtime.state().day == 2);
+  assert(runtime.seed({true, 12, 12, false, 0, 0, false}));
+  assert(runtime.state().day == 12);
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    Fixture fixture(17, "", false, limits);
+    assert(runtime.prepare(fixture.store));
+    runtime.activate_prepared(fixture.store);
+    assert(runtime.memory().active_sources == 2);
+    runtime.retire_active();
+  }
+}
+void graph_and_producers() {
+  calendar_date_state() = {false, 0, 0, false, 0, 0, false};
+  calendar_state_events() = {};
+  calendar_card_count() = 0;
+  Arena arena;
+  Transport subscriptions;
+  PageCalendarRuntime runtime;
+  PageCalendarEvents bridge(runtime);
+  assert(!bridge.install(false));
+  calendar_card_count() = 1;
+  assert(!bridge.install(true));
+  calendar_card_count() = 0;
+  assert(bridge.install(true) && !bridge.install(true));
+  PageCalendarRuntime other;
+  PageCalendarEvents competing(other);
+  assert(!competing.install(true));
+  PageCardDependencies dependencies;
+  Fixture fixture(17), changed(18, "sensor.new");
+  {
+    PageEntityStateRuntime graph(dependencies, arena, subscriptions, {64, 64, 2048}, &runtime);
+    PageRuntimeResourcesGroup<2> resources({&runtime, &graph});
+    PageStoreRuntime store(DEVICE_UI_PROFILES[8], arena, 32768, &resources);
+    auto prepare = [&](const Fixture& cfg) {
+      return store.prepare(PANEL_CONFIG_DOCUMENT_VERSION, cfg.document.data(), cfg.size);
+    };
+    auto activate = [&](const Fixture& cfg, uint32_t generation) {
+      return store.activate_prepared(generation, PANEL_CONFIG_DOCUMENT_VERSION, cfg.document.data(),
+                                     cfg.size);
+    };
+    assert(prepare(fixture) && activate(fixture, 0));
+    assert(subscriptions.bindings.size() == 2);
+    subscriptions.send("sensor.date", "", "2026-10-18");
+    assert(runtime.read({0, 0}).day == 18 && calendar_date_state().date_valid &&
+           calendar_date_state().day == 18);
+    legacy_calendar::update_calendar_cards_time(false, 0, 0, 0, 0, false);
+    assert(runtime.read({0, 0}).day == 18 &&
+           runtime.read({0, 0}).date_valid);  // Preserve HA date when local time is invalid.
+    assert(prepare(changed));
+    subscriptions.send("sensor.new", "", "2026-11-20");
+    assert(runtime.read({0, 0}).day == 18 && calendar_date_state().day == 18);
+    subscriptions.send("sensor.date", "", "2026-10-19");
+    assert(calendar_date_state().day == 19);
+    legacy_calendar::update_calendar_cards_time(false, 0, 0, 0, 0, false);
+    assert(activate(changed, 2));
+    assert(runtime.read({2, 0}).day == 20 && calendar_date_state().day == 20);
+    assert(prepare(fixture));
+    subscriptions.send("sensor.date", "", "2026-12-21");
+    store.discard_prepared();
+    assert(calendar_date_state().day == 20 && runtime.read({2, 0}).day == 20);
+    ++subscriptions.connection;
+    (void)graph.revision();
+    assert(runtime.read({2, 0}).day == 20);  // Unavailable/invalid HA reports never clear calendar history.
+    subscriptions.send("sensor.new", "", "unavailable");
+    assert(runtime.read({2, 0}).day == 20);
+    legacy_calendar::update_calendar_cards_time(true, 22, 11, 8, 30, true);
+    assert(runtime.read({2, 0}).day == 22 && runtime.read({2, 0}).hour == 8 &&
+           calendar_date_state().time_valid);
+    assert(!runtime.read({0, 0}).date_valid && !runtime.read({2, UINT16_MAX}).date_valid);
+    assert(prepare(fixture));
+    subscriptions.send("sensor.date", "", "2026-12-23");
+    assert(calendar_date_state().day == 22);
+    legacy_calendar::update_calendar_cards_time(true, 24, 12, 9, 30, false);
+    assert(activate(fixture, 4));
+    assert(runtime.read({4, 0}).day == 24 && calendar_date_state().day == 24);
+    subscriptions.send("sensor.date", "", "2026-12-25");
+    assert(calendar_date_state().day == 25);
+
+    bridge.uninstall();
+    assert(!calendar_state_events().owner && !runtime.has_publisher());
+  }
+  assert(arena.live == 0 && subscriptions.bindings.empty());
+}
+}  // namespace
+int main() {
+  parity();
+  lifecycle();
+  graph_and_producers();
+}
