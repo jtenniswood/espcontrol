@@ -781,15 +781,18 @@ def firmware_media_modal_playback_mode_errors(root: Path) -> list[str]:
 
 
 def firmware_network_status_version_errors(root: Path) -> list[str]:
-    path = root / "components" / "espcontrol" / "network_status.h"
+    path = root / "components" / "espcontrol" / "network_status_text.h"
     errors: list[str] = []
     if not path.exists():
-        errors.append("components/espcontrol/network_status.h: keep network status version labeling")
+        errors.append("components/espcontrol/network_status_text.h: keep network status version labeling")
         return errors
 
+    live = root / "components" / "espcontrol" / "network_status.h"
+    if not live.exists() or '#include "network_status_text.h"' not in live.read_text(encoding="utf-8"):
+        errors.append("components/espcontrol/network_status.h: include shared version label helpers")
     text = path.read_text(encoding="utf-8")
     if "network_status_is_specific_firmware_version" not in text:
-        errors.append("components/espcontrol/network_status.h: classify release versions before labeling firmware")
+        errors.append("components/espcontrol/network_status_text.h: classify release versions before labeling firmware")
 
     label_match = re.search(
         r"inline\s+std::string\s+network_status_firmware_label\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
@@ -797,16 +800,16 @@ def firmware_network_status_version_errors(root: Path) -> list[str]:
         re.S,
     )
     if label_match is None:
-        errors.append("components/espcontrol/network_status.h: keep network_status_firmware_label helper")
+        errors.append("components/espcontrol/network_status_text.h: keep network_status_firmware_label helper")
         return errors
 
     body = label_match.group("body")
     if "network_status_is_specific_firmware_version(trimmed)" not in body:
-        errors.append("components/espcontrol/network_status.h: show only release versions as installed versions")
+        errors.append("components/espcontrol/network_status_text.h: show only release versions as installed versions")
     if 'espcontrol_i18n(std::string("Dev build"))' not in body:
-        errors.append("components/espcontrol/network_status.h: label local ESPHome builds as Dev build")
+        errors.append("components/espcontrol/network_status_text.h: label local ESPHome builds as Dev build")
     if 'espcontrol_i18n(std::string("Version unknown"))' not in body:
-        errors.append("components/espcontrol/network_status.h: keep empty firmware versions readable")
+        errors.append("components/espcontrol/network_status_text.h: keep empty firmware versions readable")
 
     return errors
 
@@ -1334,12 +1337,13 @@ def expect_climate_option_selection_errors(name: str, text: str, expected: tuple
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
-def expect_network_status_version_errors(name: str, header_text: str, expected: tuple[str, ...]) -> None:
+def expect_network_status_version_errors(name: str, header_text: str, expected: tuple[str, ...], *, wired: bool = True) -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
-        path = root / "components" / "espcontrol" / "network_status.h"
+        path = root / "components" / "espcontrol" / "network_status_text.h"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(header_text, encoding="utf-8")
+        (path.parent / "network_status.h").write_text('#include "network_status_text.h"' if wired else "", encoding="utf-8")
 
         errors = firmware_network_status_version_errors(root)
         for item in expected:
@@ -2241,6 +2245,20 @@ def run_self_test() -> int:
             "}\n"
         ),
         (),
+    )
+    expect_network_status_version_errors(
+        "shared helper must be wired into the live panel",
+        (
+            "inline bool network_status_is_specific_firmware_version(const std::string &version) { return true; }\n"
+            "inline std::string network_status_firmware_label(const std::string &version) {\n"
+            "  std::string trimmed = version;\n"
+            "  if (trimmed.empty()) return espcontrol_i18n(std::string(\"Version unknown\"));\n"
+            "  if (network_status_is_specific_firmware_version(trimmed)) return trimmed;\n"
+            "  return espcontrol_i18n(std::string(\"Dev build\"));\n"
+            "}\n"
+        ),
+        ("include shared version label helpers",),
+        wired=False,
     )
     expect_modal_tab_layout_errors(
         "shared modal tab layout",
