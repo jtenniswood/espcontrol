@@ -165,6 +165,150 @@ void queued_requests_keep_their_connection() {
   runtime.loop();
   assert(port.creates == port.destroys && port.sends == 0);
 }
+void local_settings_origin() {
+  struct SettingsPort final : Port {
+    uint64_t chrome{1};
+    uint32_t configuration{17};
+    PageId page{0};
+    bool hold_retire{false}, cancel_create{false}, shutdown_create{false};
+    PageLocalModalOrigin captured{};
+    ControlModalKind local_kind(ControlModalKind requested) const override {
+      return requested == ControlModalKind::NETWORK_STATUS ? requested : ControlModalKind::NONE;
+    }
+    bool valid_local_origin(PageLocalModalOrigin origin, ControlModalKind kind) const override {
+      return kind == ControlModalKind::NETWORK_STATUS && origin.binding == chrome &&
+             origin.configuration == configuration && origin.page == page;
+    }
+    bool connected_for(ControlModalKind kind) const override {
+      return kind == ControlModalKind::NETWORK_STATUS || Port::connected();
+    }
+    uint32_t connection_generation_for(ControlModalKind kind) const override {
+      return kind == ControlModalKind::NETWORK_STATUS ? 0 : Port::connection_generation();
+    }
+    void* create_local(const PageStore&, PageLocalModalOrigin origin, PageModalToken token) override {
+      assert(!context && !busy && token.kind == ControlModalKind::NETWORK_STATUS && token.card == NO_CARD);
+      captured = origin;
+      context = new (storage.data()) Context{std::string(96, 'n'), token};
+      ++creates;
+      maximum_live = 1;
+      if (cancel_create) runtime->display_takeover(false);
+      if (shutdown_create) runtime->retire_active();
+      return context;
+    }
+    void retire(void* pointer, PageModalClose why) override {
+      auto* ctx = static_cast<Context*>(pointer);
+      if (ctx->token.kind == ControlModalKind::NETWORK_STATUS) ctx->pending = false;
+      Port::retire(pointer, why);
+      if (hold_retire) {
+        busy = true;
+        ++chrome;
+      }
+    }
+    PageLocalModalOrigin origin() const {
+      return {configuration, chrome, page};
+    }
+  } port;
+  Fixture fixture;
+  PageModalRuntime runtime(port);
+  port.runtime = &runtime;
+  assert(!runtime.request_local(port.origin(), ControlModalKind::NETWORK_STATUS));
+  activate(runtime, fixture.store);
+  port.connected_value = false;
+  assert(!runtime.request_local(port.origin(), ControlModalKind::WIFI_QR));
+  auto bad = port.origin();
+  bad.binding = 0;
+  assert(!runtime.request_local(bad, ControlModalKind::NETWORK_STATUS));
+  bad = port.origin();
+  ++bad.configuration;
+  assert(!runtime.request_local(bad, ControlModalKind::NETWORK_STATUS));
+  bad = port.origin();
+  bad.page = NO_PAGE;
+  assert(!runtime.request_local(bad, ControlModalKind::NETWORK_STATUS));
+  assert(!runtime.request_card({17, NO_CARD}, ControlModalKind::NETWORK_STATUS));
+  assert(!runtime.request(origin(17, NO_CARD)));
+  assert(runtime.request_local(port.origin(), ControlModalKind::NETWORK_STATUS));
+  ++port.chrome;
+  runtime.loop();
+  assert(!port.context && runtime.memory().pending_requests == 0);
+  const auto source = port.origin();
+  assert(runtime.request_local(source, ControlModalKind::NETWORK_STATUS));
+  assert(!port.creates);
+  runtime.loop();
+  const auto first = runtime.token();
+  assert(first.card == NO_CARD && first.kind == ControlModalKind::NETWORK_STATUS &&
+         runtime.interactive(first));
+  assert(port.captured.binding == source.binding && port.captured.page == source.page);
+  ++port.chrome;
+  ++port.epoch;
+  runtime.loop();
+  assert(runtime.valid(first));
+  assert(!runtime.request_card({17, 0}) && runtime.valid(first));
+  runtime.dismiss(PageModalClose::SHUTDOWN);
+  runtime.loop();
+  assert(!port.context && port.sends == 0);
+  // An accepted Settings open keeps its original source while its own previous
+  // overlay retires; it never substitutes a freshly issued chrome identity.
+  port.connected_value = true;
+  assert(runtime.request_card({17, 0}));
+  runtime.loop();
+  port.context->pending = false;
+  const auto accepted = port.origin();
+  port.hold_retire = true;
+  assert(runtime.request_local(accepted, ControlModalKind::NETWORK_STATUS));
+  runtime.loop();
+  assert(runtime.memory().retired_contexts == 1 && runtime.memory().pending_requests == 1);
+  assert(port.chrome != accepted.binding);
+  port.hold_retire = false;
+  port.busy = false;
+  runtime.loop();
+  assert(runtime.valid(runtime.token()) && port.captured.binding == accepted.binding);
+  runtime.dismiss(PageModalClose::SHUTDOWN);
+  runtime.loop();
+  port.cancel_create = true;
+  const auto initialized = port.initializes;
+  assert(runtime.request_local(port.origin(), ControlModalKind::NETWORK_STATUS));
+  runtime.loop();
+  assert(!port.context && port.initializes == initialized &&
+         runtime.last_retirement().reason == PageModalClose::TAKEOVER);
+  port.cancel_create = false;
+  // Generation zero does not allow a reentrant shutdown to revive a new panel.
+  Fixture zero(0);
+  activate(runtime, zero.store);
+  port.configuration = 0;
+  port.shutdown_create = true;
+  assert(runtime.request_local(port.origin(), ControlModalKind::NETWORK_STATUS));
+  runtime.loop();
+  assert(!port.context && port.initializes == initialized &&
+         runtime.last_retirement().reason == PageModalClose::SHUTDOWN);
+  port.shutdown_create = false;
+  activate(runtime, zero.store);
+  for (unsigned n = 0; n < 1000; ++n) {
+    ++port.chrome;
+    assert(runtime.request_local(port.origin(), ControlModalKind::NETWORK_STATUS));
+    runtime.loop();
+    assert(runtime.token().configuration == 0 && runtime.token().card == NO_CARD &&
+           runtime.interactive(runtime.token()));
+    ++port.epoch;
+    port.connected_value = !port.connected_value;
+    runtime.loop();
+    assert(runtime.valid(runtime.token()));
+    runtime.dismiss(PageModalClose::SHUTDOWN);
+    runtime.loop();
+    assert(port.creates == port.destroys);
+  }
+  assert(port.maximum_live == 1 && port.sends == 0);
+  SettingsPort last;
+  PageModalRuntime exhausted(last, UINT64_MAX);
+  last.runtime = &exhausted;
+  activate(exhausted, fixture.store);
+  assert(exhausted.request_local(last.origin(), ControlModalKind::NETWORK_STATUS));
+  exhausted.loop();
+  assert(exhausted.token().opening == UINT64_MAX);
+  exhausted.dismiss(PageModalClose::SHUTDOWN);
+  exhausted.loop();
+  assert(!exhausted.request_local(last.origin(), ControlModalKind::NETWORK_STATUS));
+}
+
 void family_connection_policy() {
   struct LocalPort final : Port {
     uint32_t local_epoch{0};
@@ -319,6 +463,7 @@ void bounded_cycles_failures_and_exhaustion() {
 }
 }
 int main() {
+  local_settings_origin();
   family_connection_policy();
   pending_request_identity();
   queued_requests_keep_their_connection();

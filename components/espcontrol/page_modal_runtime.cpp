@@ -35,6 +35,19 @@ bool PageModalRuntime::valid_card(ConfigurationHandle card, ControlModalKind req
   return false;
 }
 bool PageModalRuntime::valid_request(const Request& request, bool verify_kind) const {
+  if (request.from_local) {
+    const auto& origin = request.local_origin;
+    const auto* page = active_store_.page(origin.page);
+    return request.pending && request.opening && origin.binding && request.card.index == NO_CARD &&
+           request.card.generation == origin.configuration &&
+           origin.configuration == active_store_.generation() && active_store_.source_document() && page &&
+           page->navigable && request.kind != ControlModalKind::NONE &&
+           (!verify_kind || port_.local_kind(request.kind) == request.kind) &&
+           port_.connected_for(request.kind) &&
+           request.connection == port_.connection_generation_for(request.kind) &&
+           (request.local_admitted || port_.valid_local_origin(origin, request.kind));
+  }
+
   return request.pending && request.opening != 0 &&
          request.connection == port_.connection_generation_for(request.kind) &&
          valid_card(request.card, request.kind, verify_kind) &&
@@ -55,6 +68,23 @@ bool PageModalRuntime::request(PageBindingToken origin) {
                         true,
                         true};
   // Family was resolved before capturing its epoch; loop validates it again.
+  if (!valid_request(request, false)) return false;
+  ++next_opening_;
+  pending_ = request;
+  return true;
+}
+bool PageModalRuntime::request_local(PageLocalModalOrigin origin, ControlModalKind requested) {
+  if (!next_opening_ || !origin.binding || !active_store_.source_document()) return false;
+  const auto selected = port_.local_kind(requested);
+  if (selected == ControlModalKind::NONE || selected != requested) return false;
+  Request request;
+  request.card = {origin.configuration, NO_CARD};
+  request.opening = next_opening_;
+  request.connection = port_.connection_generation_for(selected);
+  request.kind = selected;
+  request.pending = true;
+  request.local_origin = origin;
+  request.from_local = true;
   if (!valid_request(request, false)) return false;
   ++next_opening_;
   pending_ = request;
@@ -94,7 +124,14 @@ void PageModalRuntime::retire_context(PageModalClose reason) {
   retired_=context_;context_=nullptr;token_={};
   port_.retire(retired_,reason);
 }
-void PageModalRuntime::dismiss(PageModalClose reason){pending_={};retire_context(reason);}
+void PageModalRuntime::dismiss(PageModalClose reason) {
+  if (creating_) {
+    create_cancelled_ = true;
+    create_cancel_reason_ = reason;
+  }
+  pending_ = {};
+  retire_context(reason);
+}
 bool PageModalRuntime::notify_closed(PageModalToken token,PageModalClose reason) {
   // A disconnection invalidates public tokens before loop can perform cleanup;
   // close notification still identifies this exact opening without using a
@@ -104,6 +141,10 @@ bool PageModalRuntime::notify_closed(PageModalToken token,PageModalClose reason)
   retire_context(reason);return true;
 }
 bool PageModalRuntime::display_takeover(bool preserve_policy_active) {
+  if (creating_) {
+    create_cancelled_ = true;
+    create_cancel_reason_ = PageModalClose::TAKEOVER;
+  }
   pending_={};if(!context_)return false;
   if(preserve_policy_active&&port_.dismiss_policy(context_)==ControlModalDismissPolicy::PRESERVE_DURING_DISPLAY_TAKEOVER)return true;
   retire_context(PageModalClose::TAKEOVER);return false;
@@ -128,29 +169,40 @@ void PageModalRuntime::loop() {
     collect_retired();
   }
   if(!pending_.pending)return;
-  const auto request=pending_;pending_={};if(!valid_request(request))return;
+  auto request = pending_;
+  pending_ = {};
+  if (!valid_request(request)) return;
+  // An accepted local navigation keeps its captured origin while its own
+  // previous overlay retires. Takeover/configuration dismissal still cancels it.
+  if (request.from_local) request.local_admitted = true;
   const auto card=request.card;
-  const auto requested_kind = port_.kind(active_store_, card, request.kind);
+  const auto requested_kind =
+      request.from_local ? port_.local_kind(request.kind) : port_.kind(active_store_, card, request.kind);
   if (requested_kind == ControlModalKind::NONE || requested_kind != request.kind) return;
-  if (context_ && token_.configuration == card.generation && token_.card == card.index &&
-      token_.kind == requested_kind)
+  if (context_ && !request.from_local && token_.configuration == card.generation &&
+      token_.card == card.index && token_.kind == requested_kind)
     return;
   retire_context(PageModalClose::SWITCH);collect_retired();
   if(pending_.pending)return; // A reentrant replacement request supersedes this one.
   if(retired_) {pending_=request;return;} // Never exceed one allocated context.
   const PageModalToken next{card.generation, request.opening, card.index, requested_kind};
-  void *created=port_.create(active_store_,card,next);
+  creating_ = true;
+  create_cancelled_ = false;
+  void* created = request.from_local ? port_.create_local(active_store_, request.local_origin, next)
+                                     : port_.create(active_store_, card, next);
+  creating_ = false;
   if(!created){++memory_.failures;return;}
   context_ = created;
   token_ = next;
   connection_ = request.connection;
   // A fallible create may pump a producer/reconnect. Never initialize an old
   // request as though it belonged to the new connection.
-  const bool initialized = valid(next) && port_.initialize(created, next);
+  const bool initialized = !create_cancelled_ && valid(next) && port_.initialize(created, next);
   if(!initialized)++memory_.failures;
   if(context_==created&&(!initialized||!valid(next)||!port_.visible(created))) {
     if(initialized)++memory_.failures;
-    retire_context(!port_.connected_for(next.kind) ||
+    retire_context(create_cancelled_ ? create_cancel_reason_
+                   : !port_.connected_for(next.kind) ||
                            connection_ != port_.connection_generation_for(next.kind)
                        ? PageModalClose::DISCONNECTED
                        : PageModalClose::FAILED);

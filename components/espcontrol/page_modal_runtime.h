@@ -5,6 +5,13 @@
 #include "page_renderer_runtime.h"
 
 namespace espcontrol::pages {
+// A scene-issued chrome/view identity, captured at its input event. It is not
+// a card binding. Scene transitions revoke its nonzero binding epoch.
+struct PageLocalModalOrigin {
+  uint32_t configuration{0};
+  uint64_t binding{0};
+  PageId page{NO_PAGE};
+};
 struct PageModalToken {
   uint32_t configuration{0};
   uint64_t opening{0};
@@ -35,6 +42,15 @@ class PageModalPort {
                                 ControlModalKind requested) const {
     const auto normal = kind(store, card);
     return requested == ControlModalKind::NONE || requested == normal ? normal : ControlModalKind::NONE;
+  }
+  virtual ControlModalKind local_kind(ControlModalKind) const {
+    return ControlModalKind::NONE;
+  }
+  virtual bool valid_local_origin(PageLocalModalOrigin, ControlModalKind) const {
+    return false;
+  }
+  virtual void* create_local(const PageStore&, PageLocalModalOrigin, PageModalToken) {
+    return nullptr;
   }
   virtual bool ready()const=0; // Outside native/coordinator/LVGL callback dispatch.
   virtual bool connected()const=0;
@@ -76,6 +92,7 @@ class PageModalRuntime final:public PageRuntimeResources {
   void activate_prepared(const PageStore &)override;
   void retire_active()override;
   bool request(PageBindingToken);
+  bool request_local(PageLocalModalOrigin, ControlModalKind);
   // Authenticated modal APIs can address a current navigable card directly,
   // including a hidden page. They must resolve against this generation.
   bool request_card(ConfigurationHandle);
@@ -106,6 +123,8 @@ class PageModalRuntime final:public PageRuntimeResources {
     uint32_t connection{0};
     ControlModalKind kind{ControlModalKind::NONE};
     bool pending{false}, from_binding{false};
+    PageLocalModalOrigin local_origin{};
+    bool from_local{false}, local_admitted{false};
   };
   bool valid_request(const Request&, bool verify_kind = true) const;
   bool valid_card(ConfigurationHandle, ControlModalKind, bool verify_kind) const;
@@ -117,6 +136,8 @@ class PageModalRuntime final:public PageRuntimeResources {
   PageModalRetirement last_retirement_;
   void *context_{nullptr},*retired_{nullptr};
   uint64_t next_opening_{1};uint32_t connection_{0},prepared_generation_{0};
+  bool creating_{false}, create_cancelled_{false};
+  PageModalClose create_cancel_reason_{PageModalClose::SHUTDOWN};
   bool changing_{false},prepared_{false};PageModalMemory memory_;
 };
 }  // namespace espcontrol::pages
