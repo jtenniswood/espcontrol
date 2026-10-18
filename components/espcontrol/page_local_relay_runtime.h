@@ -63,6 +63,7 @@ class PageLocalRelayRuntime final : public PageRuntimeResources {
     void* arena{nullptr};
     size_t bytes{0}, count{0};
     uint32_t generation{0};
+    bool valid{false};
     Target* targets{nullptr};
     char* names{nullptr};
   };

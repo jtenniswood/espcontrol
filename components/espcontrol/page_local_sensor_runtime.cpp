@@ -158,8 +158,10 @@ bool PageLocalSensorRuntime::install_manual_feed(bool legacy_renderer_retired) {
 }
 bool PageLocalSensorRuntime::prepare(const PageStore& store) {
   discard_prepared();
+  if(!store.source_document())return false;
   if (!PageLocalSensorDependencies::has_values(store)) {
     prepared_empty_ = store.generation();
+    prepared_empty_valid_ = true;
     return true;
   }
   const bool prepared = graph_.prepare(store);
@@ -168,12 +170,14 @@ bool PageLocalSensorRuntime::prepare(const PageStore& store) {
 }
 void PageLocalSensorRuntime::discard_prepared() {
   prepared_empty_ = 0;
+  prepared_empty_valid_ = false;
   graph_.discard_prepared();
   subscriptions_.cleanup();
 }
 void PageLocalSensorRuntime::activate_prepared(const PageStore& store) {
-  if (prepared_empty_ && prepared_empty_ == store.generation()) {
+  if (prepared_empty_valid_ && page_prepared_generation_matches(prepared_empty_, store.generation())) {
     prepared_empty_ = 0;
+    prepared_empty_valid_ = false;
     graph_.retire_active();
     subscriptions_.cleanup();
   } else {
