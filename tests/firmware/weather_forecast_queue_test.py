@@ -133,10 +133,10 @@ int main() {
 with tempfile.TemporaryDirectory(prefix="weather-forecast-queue-") as directory:
     path = Path(directory)
     (path / "test.cpp").write_text(harness)
-    for grid_slots in (6, 9, 16, 25):
+    for grid_slots in (6, 9, 15, 20, 16, 25):
         subprocess.run([os.environ.get("CXX", "c++"), "-std=c++17", "-Wall", "-Wextra", "-Werror",
                         f"-DESPCONTROL_MAX_GRID_SLOTS={grid_slots}",
                         "-I", str(root / "components/espcontrol"), str(path / "test.cpp"),
                         "-o", str(path / "test")], check=True)
         subprocess.run([str(path / "test")], check=True)
-print("Production forecast queues serve every main-grid and subpage entity on 6-, 9-, 16-, and 25-slot devices")
+print("Production forecast queues serve every main-grid and subpage entity at all production grid capacities and host fallback sizes")
