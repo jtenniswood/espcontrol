@@ -163,7 +163,11 @@ class PageRendererRuntime final : public PageRuntimeResources {
   }
   void refresh(){refresh_=true;}
   void update_visible() {
-    if(changing_ || suspended_ || active_arena_==nullptr || (!refresh_ && !port_.state_changed()))return;
+    if (changing_ || suspended_ || active_arena_ == nullptr) return;
+    // Poll state owners before every frame, including a forced navigation or
+    // reconnect refresh; the query can expire semantic deadlines and samples.
+    const bool changed = port_.state_changed();
+    if (!refresh_ && !changed) return;
     Guard guard(changing_);refresh_=false;
     for(size_t shell=0;shell<Slots;++shell)if(bindings_[shell].binding!=0)port_.update(shell,bindings_[shell]);
     port_.finish_update();

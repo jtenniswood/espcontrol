@@ -141,6 +141,21 @@ target_compile_options(page_fan_mode_test PRIVATE -Wall -Wextra -Werror -UNDEBUG
 target_include_directories(page_fan_mode_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_fan_mode_test COMMAND page_fan_mode_test)
 
+set(PAGE_FAN_STATUS_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_fan_status_runtime_test.cpp)
+add_custom_command(OUTPUT ${PAGE_FAN_STATUS_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_fan_status_test.py
+    --output ${PAGE_FAN_STATUS_SOURCE}
+  DEPENDS generate_page_fan_status_test.py page_fan_status_runtime_test.cpp.in
+    ../../components/espcontrol/button_grid_fan.h ../../components/espcontrol/button_grid_access_cards.h
+  VERBATIM)
+add_executable(page_fan_status_runtime_test ${PAGE_FAN_STATUS_SOURCE}
+  ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_fan_status_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_fan_status_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_fan_status_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_fan_status_runtime_test COMMAND page_fan_status_runtime_test)
+
 add_executable(page_resource_publication_test page_resource_publication_test.cpp
   ../../components/espcontrol/page_modal_runtime.cpp
   ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_store.cpp
@@ -182,7 +197,7 @@ foreach(variant IN ITEMS "" "_empty" "_numeric" "_text")
 endforeach()
 
 add_executable(page_basic_card_test page_basic_card_test.cpp
-  ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
+  ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
   ../../components/espcontrol/page_card_dependencies.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp
@@ -192,7 +207,7 @@ target_compile_options(page_basic_card_test PRIVATE -Wall -Wextra -Werror -fno-r
 target_include_directories(page_basic_card_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_basic_card_test COMMAND page_basic_card_test)
 add_executable(page_basic_card_no_forecast_test page_basic_card_test.cpp
-  ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
+  ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
   ../../components/espcontrol/page_card_dependencies.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp
@@ -1083,7 +1098,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     DEPENDS generate_now_playing_reference.py generate_climate_update_test.py ../../components/espcontrol/button_grid_media.h
     VERBATIM)
   add_executable(page_basic_lvgl_port_test page_basic_lvgl_port_test.cpp ${FORECAST_REFERENCE} ${POSITION_REFERENCE} ${NOW_PLAYING_REFERENCE}
-    ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
+    ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_forecast_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
     ../../components/espcontrol/page_card_dependencies.cpp

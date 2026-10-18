@@ -516,6 +516,74 @@ void fan_control_profile(const DeviceUiLimits& limits) {
   assert(value.label == "Custom" && !value.numeric && value.unit.empty());
 }
 
+uint32_t fan_status_tick = 100;
+uint32_t fan_status_now() {
+  return fan_status_tick;
+}
+void fan_status_profile(const DeviceUiLimits& limits) {
+  for (bool power : {true, false}) {
+    fan_status_tick = 100;
+    Fixture fixture(limits,
+                    std::string("fan.room;;Auto;Auto;;;") + (power ? "fan_switch" : "fan_oscillate") + ";;");
+    BasicCardDefinition definition;
+    assert(prepare_basic_card(fixture.store, 0, definition));
+    assert(definition.kind == (power ? BasicCardKind::FAN_SWITCH : BasicCardKind::FAN_OSCILLATE));
+    assert(definition.icon == (power ? "Fan Off" : "Fan") && definition.icon_on == "Fan");
+    assert(definition.active_color && definition.push_feedback == !power);
+    assert(basic_folder_child_indicator(fixture.store, 0) == "fan.room");
+    Arena arena;
+    Subscriptions transport;
+    PageCardDependencies dependencies;
+    PageFanStatusRuntime fan(arena, transport, fan_status_now);
+    PageEntityStateRuntime state(dependencies, arena, transport, {32, 32, 2048}, &fan);
+    assert(fan.prepare(fixture.store) && state.prepare(fixture.store));
+    fan.activate_prepared(fixture.store);
+    state.activate_prepared(fixture.store);
+    auto read = [&]() {
+      return read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, nullptr, nullptr, nullptr, &fan);
+    };
+    assert(read().label == (power ? "Fan" : "Oscillation"));
+    transport.send("fan.room", "friendly_name", "Bedroom");
+    assert(read().label == "Bedroom");
+    transport.send("fan.room", "", "on");
+    transport.send("fan.room", "oscillating", "true");
+    assert(read().on && read().label == (power ? "On" : "Oscillating"));
+    fan_status_tick += 3000;
+    fan.loop();
+    assert(read().label == "Bedroom");
+    transport.send("fan.room", "friendly_name", "");
+    assert(read().label.empty());
+    transport.send("fan.room", "oscillating", "unavailable");
+    if (!power) assert(read().on && read().label == "Unsupported");
+    transport.send("fan.room", "", "unavailable");
+    assert(read().label == "Unavailable" && read().on == !power);
+    ++transport.generation;
+    fan.loop();
+    assert(!read().on);
+    const auto before = allocations;
+    for (int n = 0; n < 1000; ++n) {
+      fan.loop();
+      (void)read();
+    }
+    assert(allocations == before);
+    {
+      Arena small_arena;
+      Subscriptions small_transport;
+      PageFanStatusRuntime small_fan(small_arena, small_transport, fan_status_now);
+      PageEntityStateRuntime small_state(dependencies, small_arena, small_transport,
+                                         {32, 32, power ? size_t(1) : size_t(2)}, &small_fan);
+      assert(small_fan.prepare(fixture.store) && small_state.prepare(fixture.store));
+      small_fan.activate_prepared(fixture.store);
+      small_state.activate_prepared(fixture.store);
+      small_transport.send("fan.room", "", "on");
+      if (!power) small_transport.send("fan.room", "oscillating", "true");
+      auto exhausted = read_basic_card(definition, {17, 0}, small_state, 2, "°C", nullptr, nullptr, nullptr,
+                                       nullptr, &small_fan);
+      assert(!exhausted.on && exhausted.label == (power ? "Unavailable" : "Unsupported"));
+    }
+  }
+}
+
 void fan_mode_profile(const DeviceUiLimits& limits) {
   for (bool direction : {true, false}) {
     Fixture fixture(limits, std::string("fan.room;Ignored;Auto;Auto;sensor.ignored;ignored;") +
@@ -952,6 +1020,7 @@ int main() {
     option_select_profile(limits);
     fan_control_profile(limits);
     fan_mode_profile(limits);
+    fan_status_profile(limits);
     weather_profile(limits);
     media_action_profile(limits);
     media_position_profile(limits);
