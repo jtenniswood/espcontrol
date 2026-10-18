@@ -1662,6 +1662,19 @@ void access_profile(const DeviceUiLimits& limits) {
     lv_obj_send_event(widgets[3].button, LV_EVENT_PRESSED, nullptr);
     ++subscriptions.generation;
     renderer.update_visible();
+    for (const auto slot : {size_t(2), size_t(5)}) {
+      assert(lv_obj_has_state(widgets[slot].button, LV_STATE_DISABLED));
+      assert(!lv_obj_has_flag(widgets[slot].button, LV_OBJ_FLAG_CLICKABLE));
+      click(widgets[slot].button);
+    }
+    assert(actions.commands == 4);
+    subscriptions.send("cover.gate", "friendly_name", "Waiting");
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[2].button, LV_STATE_DISABLED));
+    subscriptions.send("cover.gate", "", "closed");
+    renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[2].button, LV_STATE_DISABLED) &&
+           lv_obj_has_flag(widgets[5].button, LV_OBJ_FLAG_CLICKABLE));
     subscriptions.send("lock.room", "", "locked");
     lv_obj_send_event(widgets[3].button, LV_EVENT_CLICKED, nullptr);
     assert(actions.commands == 4);

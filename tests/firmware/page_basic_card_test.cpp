@@ -304,6 +304,37 @@ void cover_toggle_profile(const DeviceUiLimits& limits) {
   assert(read().label == "--" && !read().on);
 }
 void access_profile(const DeviceUiLimits& limits) {
+  for (const auto* mode : {"", "stop"}) {
+    Fixture fixture(limits, std::string("cover.gate;;Auto;Auto;") + mode + ";;gate;;");
+    BasicCardDefinition definition;
+    assert(prepare_basic_card(fixture.store, 0, definition));
+    Arena arena;
+    Subscriptions subscriptions;
+    PageCardDependencies deps;
+    PageAccessStateRuntime access(arena, subscriptions, cover_toggle_now);
+    PageEntityStateRuntime graph(deps, arena, subscriptions, {16, 16, 2048}, &access);
+    assert(access.prepare(fixture.store) && graph.prepare(fixture.store));
+    access.activate_prepared(fixture.store);
+    graph.activate_prepared(fixture.store);
+    const auto enabled = [&]() {
+      access.loop();
+      return read_basic_access(definition, {17, 0}, graph, &access).enabled;
+    };
+    assert(enabled());
+    ++subscriptions.generation;
+    assert(!enabled());
+    subscriptions.send("cover.gate", "friendly_name", "Still waiting");
+    assert(!enabled());
+    subscriptions.send("cover.gate", "", "closed");
+    assert(enabled());
+    ++subscriptions.generation;
+    assert(!enabled());
+    subscriptions.send("cover.gate", "", "unknown");
+    assert(!enabled());
+    subscriptions.send("cover.gate", "", "closing");
+    assert(enabled());
+  }
+
   for (const auto* type : {"garage", "gate", "lock"})
     for (bool persistent : {false, true})
       for (bool command : {false, true}) {

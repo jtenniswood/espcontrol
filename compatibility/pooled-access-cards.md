@@ -17,7 +17,8 @@ on-icon does not change the initial command icon.
 
 Gate controls retain unavailable styling: labels use the theme's disabled text,
 the background stays intact and input is disabled. A first unknown cache entry
-keeps the existing initially enabled behavior; empty, unknown/unavailable reports
+with revision zero keeps the existing initially enabled behavior; invalidated
+unknown entries stay disabled until a fresh primary report arrives; empty, unknown/unavailable reports
 and reconnect invalidation disable the control. Garage/lock availability behavior
 is unchanged. Exhausted critical state rejects actions. Widget reuse clears
 old disabled states before displaying another card.

@@ -510,7 +510,8 @@ PageAccessCardSnapshot read_basic_access(const BasicCardDefinition& card, Config
   result.history = access->read(handle);
   const auto primary = find(state, handle, card.entity);
   if (primary.status == PageEntityStatus::EXHAUSTED) return result;
-  result.enabled = card.access.kind != BasicAccessKind::GATE || primary.status == PageEntityStatus::UNKNOWN ||
+  result.enabled = card.access.kind != BasicAccessKind::GATE ||
+                   (primary.status == PageEntityStatus::UNKNOWN && primary.revision == 0) ||
                    (primary.status == PageEntityStatus::AVAILABLE && !equal_state(primary.value, "unknown") &&
                     !equal_state(primary.value, "unavailable") &&
                     !trim(primary.value.substr(0, HA_SHORT_STATE_MAX_LEN)).empty());
