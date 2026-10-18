@@ -5768,7 +5768,27 @@ template<size_t Slots>void forecast_profile(const DeviceUiLimits &limits) {
     const auto child=fixture.store.card(0)->target;assert(renderer.open_page(child));renderer.update_visible();lv_obj_update_layout(page);assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);
     const auto cpp=cpp_allocations,reservations=arena.allocations,descriptors=cache.memory().descriptor_adds,retained=lv_live_bytes,resolves=actions.icon_resolves,starts=requests.starts;
     for(size_t n=0;n<1000;++n){assert(renderer.open_page(child));renderer.update_visible();lv_obj_update_layout(page);assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);assert(cpp_allocations==cpp&&arena.allocations==reservations&&cache.memory().descriptor_adds==descriptors&&lv_live_bytes==retained&&actions.icon_resolves==resolves&&requests.starts==starts);}
-    requests.online=false;++requests.connection;forecasts.loop();renderer.update_visible();assert(std::strcmp(lv_label_get_text(widgets[1].label),"Last forecast")==0);lv_obj_set_size(page,600,320);lv_obj_update_layout(page);lv_refr_now(lv_display_get_default());renderer.retire_active();state.retire_active();forecasts.retire_active();forecasts.loop();std::printf("%s: forecast 1000 cycles, fixed frames/canvases, 0 C++/arena/label/glyph/request additions\n",limits.device_profile);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    requests.online = false;
+    ++requests.connection;
+    ++subscriptions.generation;
+    state.invalidate_disconnected_state();
+    forecasts.loop();
+    renderer.update_visible();
+    const auto before_cached_open = actions.commands;
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == before_cached_open + 1);
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Last forecast") == 0);
+    lv_obj_set_size(page, 600, 320);
+    lv_obj_update_layout(page);
+    lv_refr_now(lv_display_get_default());
+    renderer.retire_active();
+    state.retire_active();
+    forecasts.retire_active();
+    forecasts.loop();
+    std::printf(
+        "%s: forecast 1000 cycles, fixed frames/canvases, 0 C++/arena/label/glyph/request additions\n",
+        limits.device_profile);
   }assert(arena.live==0);lv_obj_delete(page);
 }
 
@@ -6450,6 +6470,25 @@ int main() {
           break;
         case 20:
           input_epoch_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
+    if (family && std::strcmp(family, "forecast") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          forecast_profile<6>(limits);
+          break;
+        case 9:
+          forecast_profile<9>(limits);
+          break;
+        case 15:
+          forecast_profile<15>(limits);
+          break;
+        case 20:
+          forecast_profile<20>(limits);
           break;
         default:
           assert(false);

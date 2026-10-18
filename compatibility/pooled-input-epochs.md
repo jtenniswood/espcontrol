@@ -12,7 +12,7 @@ the connection on press and reject a later click after reconnect, even when
 fresh reports arrive before release. The flag fits existing definition padding:
 264 bytes on the host and 156 bytes on both actual S3 and P4 compilers remain
 unchanged. Local actions, webhooks, screensaver actions, folder navigation and
-static QR panels retain their independence from HA connection changes.
+static QR/cached forecast panels retain their independence from HA connection changes.
 
 The button press marker is separate from slider/media-preview state. Accepting
 a volume/group preview on a fresh connection cannot make an older button press

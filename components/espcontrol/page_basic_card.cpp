@@ -459,7 +459,6 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     case BasicCardKind::CLIMATE:
     case BasicCardKind::LIGHT:
     case BasicCardKind::COVER:
-    case BasicCardKind::FORECAST:
     case BasicCardKind::MEDIA_ACTION:
     case BasicCardKind::MEDIA_POSITION:
     case BasicCardKind::MEDIA_NOW_PLAYING:

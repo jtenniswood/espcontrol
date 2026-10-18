@@ -1502,8 +1502,16 @@ void weather_profile(const DeviceUiLimits &limits) {
   ++transport.generation;assert(read_basic_card(definition,{17,0},state).label=="Unavailable");
   Fixture empty(limits,";;;;;;weather;0;");assert(prepare_basic_card(empty.store,0,definition));assert(state.prepare(empty.store));state.activate_prepared(empty.store);value=read_basic_card(definition,{17,0},state);assert(value.label=="Cloudy");
   Fixture forecast(limits,"weather.home;;;;;;weather;daily;");
-  if(card_runtime_weather_forecast_supported()){assert(prepare_basic_card(forecast.store,0,definition)&&definition.kind==BasicCardKind::FORECAST&&definition.forecast_view==weather::View::DAILY);}
-  else {assert(prepare_basic_card(forecast.store,0,definition));assert(state.prepare(forecast.store));state.activate_prepared(forecast.store);transport.send("weather.home","","sunny");assert(read_basic_card(definition,{17,0},state).label=="Sunny");}
+  if (card_runtime_weather_forecast_supported()) {
+    assert(prepare_basic_card(forecast.store, 0, definition) && definition.kind == BasicCardKind::FORECAST &&
+           definition.forecast_view == weather::View::DAILY && !definition.ha_input);
+  } else {
+    assert(prepare_basic_card(forecast.store, 0, definition));
+    assert(state.prepare(forecast.store));
+    state.activate_prepared(forecast.store);
+    transport.send("weather.home", "", "sunny");
+    assert(read_basic_card(definition, {17, 0}, state).label == "Sunny");
+  }
 }
 
 }
