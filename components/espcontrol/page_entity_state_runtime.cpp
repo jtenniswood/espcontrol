@@ -134,7 +134,7 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
     const auto &entry = slot.channels[i];
     // Preserve shared live values without asking the coordinator to keep a
     // second cache. Both arenas remain alive throughout this preparation.
-    if (active_ >= 0) {
+    if (active_ >= 0 && subscriptions_.copy_shared_values()) {
       const auto &old = slots_[active_];
       for (size_t j = 0; j < old.channel_count; ++j) {
         const auto &previous = old.channels[j];
@@ -256,7 +256,7 @@ void PageEntityStateRuntime::receive(Slot &slot, uint32_t revision, uint32_t cha
   ++revision_;
   remove_value(slot, entry);
   ++entry.revision;
-  if (value.size() > available) {
+  if (value.size() > available || value.size() > budget_.channel_bytes) {
     entry.status = PageEntityStatus::EXHAUSTED;
     ++memory_.state_overflows;
     return;

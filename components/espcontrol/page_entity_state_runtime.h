@@ -32,12 +32,15 @@ class PageEntitySubscriptions {
   // Immediately cancel callbacks for this owner, including retained replay.
   virtual void release(void *owner) = 0;
   virtual uint32_t connection_generation() const = 0;
+  // Local producers seed each replacement directly, including initial empty-text semantics.
+  virtual bool copy_shared_values() const { return true; }
 };
 
 struct PageEntityBudget {
   size_t dependencies;
   size_t channels;
   size_t state_bytes;
+  size_t channel_bytes{SIZE_MAX};
 };
 
 enum class PageEntityStatus : uint8_t { STALE, UNKNOWN, AVAILABLE, EXHAUSTED };
