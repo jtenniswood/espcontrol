@@ -1,5 +1,8 @@
 #pragma once
 
+#include "display_color.h"
+#include "lvgl.h"
+
 // LVGL's draw-task clip is needed to split a glyph at the fill boundary.
 // Reuse the native label descriptor so wrapping, scrolling and fonts stay intact.
 #include "src/draw/lv_draw_private.h"

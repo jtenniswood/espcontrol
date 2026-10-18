@@ -50,7 +50,7 @@ class CardEmitter {
     return attributes(entity, {"media_title", "media_artist"});
   }
   bool artwork(const std::string &entity) {
-    return attributes(entity, {"entity_picture", "entity_picture_local"});
+    return attributes(entity, {"entity_picture", "entity_picture_local", "access_token"});
   }
   bool media_control(const ParsedCfg &config, const std::string &entity) {
     if (entity.empty()) return true;

@@ -11,16 +11,31 @@ namespace espcontrol::pages {
 struct PageImageOptions {
   uint16_t width{0}, height{0};
   uint32_t background{0};
-  bool cover{true};
+  bool cover{true}, retain_completed{false};
 };
 struct PageImageSnapshot {
   bool ready{false}, pending{false}, failed{false}, cached{false};
+  uint64_t asset{0};
+};
+
+class PageImageFrames {
+ public:
+  virtual ~PageImageFrames() = default;
+  virtual bool image_visible(size_t slot) const = 0;
+  virtual bool image_screen_active(size_t slot) const = 0;
+  virtual void image_redraw(size_t slot) = 0;
 };
 
 class PageImageRequests {
  public:
   using Receive = void (*)(void*, size_t, uint64_t, bool, bool);
   virtual ~PageImageRequests() = default;
+  // A component pool has one live runtime owner. Still-only test transports
+  // need no frame callbacks; concrete animated transports enforce exclusivity.
+  virtual bool claim_frames(PageImageFrames&) {
+    return true;
+  }
+  virtual void release_frames(PageImageFrames&) {}
   // Main-loop maintenance only. start copies URL bytes before returning; it
   // may allocate transfer storage and may deliver/reenter synchronously.
   virtual bool start(size_t slot, uint64_t request, std::string_view url, PageImageOptions, void* owner,
@@ -35,6 +50,12 @@ class PageImageOrigin {
  public:
   virtual ~PageImageOrigin() = default;
   virtual bool valid(PageBindingToken) const = 0;
+  virtual bool visible(PageBindingToken token) const {
+    return valid(token);
+  }
+  virtual bool screen_active(PageBindingToken token) const {
+    return valid(token);
+  }
   virtual bool connected() const = 0;
   virtual uint32_t connection_generation() const = 0;
 };
@@ -43,21 +64,41 @@ class PageImageOrigin {
 // keeps only value tokens; no URL, configuration, entity or widget is borrowed.
 // The view detaches its image source BEFORE unbind/suspend/config retirement.
 template <size_t Slots>
-class PageImageRuntime {
+class PageImageRuntime final : public PageImageFrames {
  public:
   static_assert(Slots > 0 && Slots <= UINT16_MAX);
   PageImageRuntime(PageImageRequests& requests, PageImageOrigin& origin, uint64_t first_request = 1)
-      : requests_(requests), origin_(origin), next_request_(first_request) {}
+      : requests_(requests), origin_(origin), next_request_(first_request) {
+    observing_ = requests_.claim_frames(*this);
+  }
   ~PageImageRuntime() {
     stopping_ = true;
+    requests_.release_frames(*this);
     retire();
     cleanup();
   }
   PageImageRuntime(const PageImageRuntime&) = delete;
   PageImageRuntime& operator=(const PageImageRuntime&) = delete;
 
+  bool available() const {
+    return observing_ && !stopping_;
+  }
+
+  // Shared card-image pool: media artwork and future camera/static drivers use
+  // the same leases. A physical display shell need not equal its image slot.
+  // Slots is the exhaustion sentinel; callers keep their normal fallback UI.
+  size_t acquire(PageBindingToken binding) {
+    if (!observing_ || stopping_ || retiring_ || !origin_.valid(binding) || binding.back) return Slots;
+    for (size_t i = 0; i < Slots; ++i)
+      if (same(slots_[i].binding, binding)) return i;
+    for (size_t i = 0; i < Slots; ++i)
+      if (slots_[i].binding.binding == 0 && bind(i, binding)) return i;
+    return Slots;
+  }
+
   bool bind(size_t slot, PageBindingToken binding) {
-    if (stopping_ || retiring_ || slot >= Slots || !origin_.valid(binding) || binding.back) return false;
+    if (!observing_ || stopping_ || retiring_ || slot >= Slots || !origin_.valid(binding) || binding.back)
+      return false;
     unbind(slot);
     // Cancellation may have bound a newer card. Preserve that replacement.
     if (slots_[slot].binding.binding != 0) return false;
@@ -92,6 +133,7 @@ class PageImageRuntime {
       return false;
     auto& s = slots_[slot];
     const uint64_t change = ++s.change;
+    const auto completed = s.state;
     const uint64_t previous = s.request;
     s.request = 0;
     if (previous != 0) requests_.cancel(slot);
@@ -101,17 +143,31 @@ class PageImageRuntime {
     if (s.change != change || !current(slot, binding)) return false;
     const uint64_t request = next_request_++;
     s.request = request;
-    s.state = {false, true, false, false};
+    const bool retain = options.retain_completed && completed.ready;
+    s.state = {retain, true, false, retain && completed.cached, retain ? completed.asset : 0};
     ++revision_;
     const bool accepted = requests_.start(slot, request, url, options, this, receive);
     if (s.request != request || !current(slot, binding)) return false;
     // Synchronous success/error is authoritative even if a transport returned
     // false after delivering. Never overwrite a completed or replacement lease.
     if (!accepted && s.state.pending) {
-      s.state = {false, false, true, false};
+      s.state.pending = false;
+      s.state.failed = true;
       ++revision_;
     }
     return accepted || !s.state.failed;
+  }
+  bool vacant(size_t slot) const {
+    return slot < Slots && slots_[slot].binding.binding == 0;
+  }
+  bool bound_to(size_t slot, PageBindingToken binding) const {
+    return slot < Slots && same(slots_[slot].binding, binding);
+  }
+  bool owns(size_t slot, PageBindingToken binding) const {
+    return bound_to(slot, binding) && origin_.valid(binding);
+  }
+  bool current_binding(size_t slot, PageBindingToken binding) const {
+    return current(slot, binding);
   }
   PageImageSnapshot snapshot(size_t slot, PageBindingToken binding) const {
     return current(slot, binding) ? slots_[slot].state : PageImageSnapshot{};
@@ -134,6 +190,16 @@ class PageImageRuntime {
       }
       release(i);
     }
+  }
+  bool image_visible(size_t slot) const override {
+    return slot < Slots && current(slot, slots_[slot].binding) && slots_[slot].state.ready &&
+           origin_.visible(slots_[slot].binding);
+  }
+  bool image_screen_active(size_t slot) const override {
+    return slot < Slots && current(slot, slots_[slot].binding) && origin_.screen_active(slots_[slot].binding);
+  }
+  void image_redraw(size_t slot) override {
+    if (slot < Slots && current(slot, slots_[slot].binding) && slots_[slot].state.ready) ++revision_;
   }
   uint64_t revision() const {
     return revision_;
@@ -168,13 +234,14 @@ class PageImageRuntime {
     if (slot >= Slots) return;
     auto& s = self.slots_[slot];
     if (request == 0 || request != s.request || !s.state.pending || !self.current(slot, s.binding)) return;
-    s.state = {success, false, !success, success && cached};
+    s.state = {success || s.state.ready, false, !success, success ? cached : s.state.cached,
+               success ? request : s.state.asset};
     ++self.revision_;
   }
   PageImageRequests& requests_;
   PageImageOrigin& origin_;
   std::array<Slot, Slots> slots_{};
   uint64_t next_request_{1}, revision_{0};
-  bool stopping_{false}, retiring_{false};
+  bool stopping_{false}, retiring_{false}, observing_{false};
 };
 }  // namespace espcontrol::pages

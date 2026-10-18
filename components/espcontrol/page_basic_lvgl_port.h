@@ -1,19 +1,23 @@
 #pragma once
 
-#include <array>
 #include <algorithm>
+#include <array>
 #include <cstring>
 #include <limits>
 #include <new>
 
-#include "lvgl.h"
+#include "../artwork_image/image_pipeline_policy.h"
 #include "bounded_display_text.h"
-#include "display_color.h"
 #include "button_grid_slider_contrast.h"
-#include "page_basic_card.h"
 #include "button_grid_string.h"
-#include "page_media_label.h"
+#include "cover_art.h"
+#include "display_color.h"
+#include "lvgl.h"
+#include "page_basic_card.h"
+#include "page_cover_art_frame.h"
+#include "page_cover_art_view.h"
 #include "page_forecast_frame.h"
+#include "page_media_label.h"
 #include "weather_condition_maps_generated.h"
 
 namespace espcontrol::pages {
@@ -36,6 +40,10 @@ struct PageBasicTheme {
   uint32_t media_surface{0x212121};
   const lv_font_t *media_title_font{nullptr},*icon_font{nullptr},*label_font{nullptr};
   int32_t media_text_scale_x{256},media_text_scale_y{256};
+  const lv_font_t *cover_title_font{nullptr}, *cover_artist_font{nullptr};
+  const lv_font_t *media_control_title_font{nullptr}, *media_control_artist_font{nullptr};
+  bool compact_portrait{false};
+  int media_artwork_width_percent{100};
 };
 struct PageBasicActions {
   void *owner{nullptr};
@@ -53,6 +61,7 @@ struct PageBasicActions {
   void (*forecast)(void *,PageBindingToken){nullptr};
   void (*media)(void *,PageBindingToken){nullptr};
   void (*seek)(void *,PageBindingToken,uint8_t percent,float duration){nullptr};
+  void (*media_control)(void*, PageBindingToken){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -73,10 +82,20 @@ struct PageBasicMemory {size_t fixed_bytes{0},borrowed_widgets{0},active_bytes{0
 template<size_t Slots>
 class PageBasicLvglPort final:public PageRendererPort {
  public:
-  PageBasicLvglPort(PageArenaAllocator &allocator,PageEntityStateRuntime &state,
-                    std::array<PageBasicWidgets,Slots> widgets,PageViewGeometry geometry,
-                    const PageBasicTheme &theme,PageBasicActions actions,PageForecastRuntime *forecasts=nullptr,PageMediaStateRuntime *media=nullptr)
-      :allocator_(allocator),state_(state),widgets_(widgets),geometry_(geometry),theme_(theme),actions_(actions),forecasts_(forecasts),media_(media) {
+  PageBasicLvglPort(PageArenaAllocator& allocator, PageEntityStateRuntime& state,
+                    std::array<PageBasicWidgets, Slots> widgets, PageViewGeometry geometry,
+                    const PageBasicTheme& theme, PageBasicActions actions,
+                    PageForecastRuntime* forecasts = nullptr, PageMediaStateRuntime* media = nullptr,
+                    PageCoverArtView* artwork = nullptr)
+      : allocator_(allocator),
+        state_(state),
+        widgets_(widgets),
+        geometry_(geometry),
+        theme_(theme),
+        actions_(actions),
+        forecasts_(forecasts),
+        media_(media),
+        artwork_(artwork) {
     for(size_t i=0;i<Slots;++i){shells_[i].port=this;shells_[i].index=i;}
   }
   ~PageBasicLvglPort()override {
@@ -181,7 +200,9 @@ class PageBasicLvglPort final:public PageRendererPort {
         lv_obj_set_style_pad_all(w.forecast,0,LV_PART_MAIN);lv_obj_set_style_shadow_width(w.forecast,0,LV_PART_MAIN);
         lv_obj_set_size(w.forecast,lv_pct(100),lv_pct(100));lv_obj_align(w.forecast,LV_ALIGN_TOP_LEFT,0,0);
         lv_obj_set_style_clip_corner(w.button,true,LV_PART_MAIN);
-        if(!lv_obj_add_event_cb(w.forecast,forecast_event,LV_EVENT_DRAW_MAIN,&shells_[i]))return false;
+        lv_obj_set_style_radius(w.forecast, 0, LV_PART_MAIN);
+        lv_obj_set_style_clip_corner(w.forecast, false, LV_PART_MAIN);
+        if (!lv_obj_add_event_cb(w.forecast, forecast_event, LV_EVENT_ALL, &shells_[i])) return false;
         shells_[i].forecast_callback=true;
       }
       if(theme_.sensor_font)lv_obj_set_style_text_font(w.value,theme_.sensor_font,LV_PART_MAIN);
@@ -208,6 +229,17 @@ class PageBasicLvglPort final:public PageRendererPort {
         }
         if(view.kind==BasicCardKind::CLIMATE&&actions_.climate==nullptr)return false;
         if(view.kind==BasicCardKind::ACTION&&actions_.action==nullptr)return false;
+        if (view.kind == BasicCardKind::MEDIA_COVER_ART) {
+          if (!media_ || !artwork_ || !artwork_->ready() || !actions_.media_control ||
+              !theme_.media_title_font || !theme_.media_title_font->line_height)
+            return false;
+          for (const auto& w : widgets_)
+            if (!w.forecast) return false;
+          const auto* idle = theme_.translate ? theme_.translate("Idle") : nullptr;
+          label_capacity =
+              std::max<size_t>(257, std::max(label_capacity, std::strlen(idle ? idle : "Idle") + 1));
+          number_capacity = std::max<size_t>(number_capacity, 257);
+        }
         if(view.kind==BasicCardKind::MEDIA_NOW_PLAYING) {
           if(!media_||!theme_.media_title_font||!theme_.media_title_font->line_height)return false;
           if(view.media.play_pause_background&&!actions_.media)return false;
@@ -301,6 +333,14 @@ class PageBasicLvglPort final:public PageRendererPort {
         const auto &d=view.definition;
         // Metadata titles reuse the icon label but never display a glyph.
         if(d.kind==BasicCardKind::MEDIA_NOW_PLAYING){view.off=view.on="";continue;}
+        if (d.kind == BasicCardKind::MEDIA_COVER_ART) {
+          view.off = view.on = actions_.icon(actions_.owner, "Music", {});
+          if (!view.off) {
+            discard_prepared();
+            return false;
+          }
+          continue;
+        }
         auto domain=d.entity.substr(0,d.entity.find('.'));
         if(d.kind==BasicCardKind::ICON)domain={};
         const auto fallback=d.kind==BasicCardKind::CLIMATE?std::string_view("Thermostat"):d.kind==BasicCardKind::FOLDER&&d.entity.empty()?std::string_view("Folder"):std::string_view("Auto");
@@ -331,12 +371,28 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
   void retire_active()override {
     if(!active_.arena)return;
-    for(auto &shell:shells_){cancel_position_gesture(shell);shell.token={};shell.pressed={};shell.definition=nullptr;restore_label(widgets_[shell.index].icon,shell.icon_layout);restore_label(widgets_[shell.index].label,shell.label_layout);shell.back={};shell.cell={};shell.label=shell.unit=shell.number=nullptr;shell.fill_percent=0;shell.frame=nullptr;shell.dragging=false;shell.pending_target=-1;}
+    for (auto& shell : shells_) {
+      clear_cover(shell);
+      cancel_position_gesture(shell);
+      shell.token = {};
+      shell.pressed = {};
+      shell.definition = nullptr;
+      restore_label(widgets_[shell.index].icon, shell.icon_layout);
+      restore_label(widgets_[shell.index].label, shell.label_layout);
+      shell.back = {};
+      shell.cell = {};
+      shell.label = shell.unit = shell.number = nullptr;
+      shell.fill_percent = 0;
+      shell.frame = nullptr;
+      shell.dragging = false;
+      shell.pending_target = -1;
+    }
     detach_text();for(const auto &w:widgets_){lv_obj_add_flag(w.button,LV_OBJ_FLAG_HIDDEN);if(w.forecast)lv_obj_add_flag(w.forecast,LV_OBJ_FLAG_HIDDEN);}
     release(active_);store_={};media_layout_dirty_=false;
   }
   void unbind(size_t index,PageBindingToken)override {
     if(index>=Slots)return;auto &s=shells_[index];
+    clear_cover(s);
     const bool feedback=s.definition&&s.definition->definition.push_feedback;
     cancel_position_gesture(s);
     s.token={};s.pressed={};s.definition=nullptr;s.back={};s.cell={};s.label=s.unit=s.number=nullptr;
@@ -362,6 +418,14 @@ class PageBasicLvglPort final:public PageRendererPort {
     restore_label(w.icon,s.icon_layout);restore_label(w.label,s.label_layout);
     s.token=token;s.pressed={};s.cell=cell;s.back=back;
     s.definition=cell.back?nullptr:prepared(active_)+cell.card;
+    if (w.forecast) {
+      lv_obj_set_style_radius(w.forecast, 0, LV_PART_MAIN);
+      lv_obj_set_style_clip_corner(w.forecast, false, LV_PART_MAIN);
+      lv_obj_set_size(w.forecast, lv_pct(100), lv_pct(100));
+      lv_obj_align(w.forecast, LV_ALIGN_TOP_LEFT, 0, 0);
+    }
+    if (s.definition && s.definition->definition.kind == BasicCardKind::MEDIA_COVER_ART)
+      artwork_->bind(token);
     s.frame=nullptr;
     if(s.definition&&s.definition->definition.kind==BasicCardKind::FORECAST) {
       for(size_t frame=0;frame<active_.frame_count&&!s.frame;++frame) {
@@ -374,7 +438,16 @@ class PageBasicLvglPort final:public PageRendererPort {
     s.label=text;s.unit=text+active_.label_capacity;s.number=s.unit+active_.unit_capacity;
     lv_obj_set_grid_cell(w.button,LV_GRID_ALIGN_STRETCH,cell.column,cell.column_span,LV_GRID_ALIGN_STRETCH,cell.row,cell.row_span);
     lv_obj_clear_flag(w.button,LV_OBJ_FLAG_HIDDEN);
-    const bool clickable=cell.back||(s.definition&&(s.definition->definition.kind==BasicCardKind::TOGGLE||s.definition->definition.kind==BasicCardKind::FOLDER||s.definition->definition.kind==BasicCardKind::CLIMATE||s.definition->definition.kind==BasicCardKind::ACTION||s.definition->definition.kind==BasicCardKind::LIGHT||s.definition->definition.kind==BasicCardKind::COVER||s.definition->definition.kind==BasicCardKind::FORECAST||s.definition->definition.kind==BasicCardKind::MEDIA_ACTION));
+    const bool clickable =
+        cell.back || (s.definition && (s.definition->definition.kind == BasicCardKind::TOGGLE ||
+                                       s.definition->definition.kind == BasicCardKind::FOLDER ||
+                                       s.definition->definition.kind == BasicCardKind::CLIMATE ||
+                                       s.definition->definition.kind == BasicCardKind::ACTION ||
+                                       s.definition->definition.kind == BasicCardKind::LIGHT ||
+                                       s.definition->definition.kind == BasicCardKind::COVER ||
+                                       s.definition->definition.kind == BasicCardKind::FORECAST ||
+                                       s.definition->definition.kind == BasicCardKind::MEDIA_ACTION ||
+                                       s.definition->definition.kind == BasicCardKind::MEDIA_COVER_ART));
     if(clickable)lv_obj_add_flag(w.button,LV_OBJ_FLAG_CLICKABLE);else lv_obj_clear_flag(w.button,LV_OBJ_FLAG_CLICKABLE);
     // Do not read the new state graph here: its activation may follow ours.
   }
@@ -402,7 +475,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       if(definition.kind==BasicCardKind::WEATHER)glyph=active_.weather->glyphs[value.weather_condition];
       else glyph=definition.kind==BasicCardKind::CLIMATE?(value.climate_icon_on?s.definition->on:s.definition->off):state_icon&&value.on?s.definition->on:s.definition->off;
     }
-    const bool now_playing=definition.kind==BasicCardKind::MEDIA_NOW_PLAYING;
+    const bool now_playing = media_text(definition.kind);
     if(definition.kind==BasicCardKind::MEDIA_POSITION||(now_playing&&definition.media.progress))position_feedback(s,value);
     if(!now_playing){lv_obj_clear_flag(w.label,LV_OBJ_FLAG_HIDDEN);write(w.label,s.label,active_.label_capacity,value.formatted_label?std::string_view(value.text):value.label);}
     for(const auto selector:{static_cast<lv_style_selector_t>(LV_PART_MAIN),
@@ -442,13 +515,18 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
     if(now_playing)media_layout_dirty_=true;
     if(definition.kind==BasicCardKind::FORECAST)update_forecast(s);
-    else if(w.forecast)lv_obj_add_flag(w.forecast,LV_OBJ_FLAG_HIDDEN);
-    seen_state_=state_.revision();seen_theme_=theme_.revision;seen_forecast_=forecasts_?forecasts_->revision():0;seen_media_=media_?media_->revision():0;
+    else if (w.forecast && definition.kind != BasicCardKind::MEDIA_COVER_ART)
+      lv_obj_add_flag(w.forecast, LV_OBJ_FLAG_HIDDEN);
+    seen_state_ = state_.revision();
+    seen_theme_ = theme_.revision;
+    seen_forecast_ = forecasts_ ? forecasts_->revision() : 0;
+    seen_media_ = media_ ? media_->revision() : 0;
+    seen_artwork_ = artwork_ ? artwork_->revision() : 0;
   }
   void finish_update() override {
     bool any = false;
     for (const auto& shell : shells_)
-      any |= shell.definition && shell.definition->definition.kind == BasicCardKind::MEDIA_NOW_PLAYING;
+      any |= shell.definition && media_text(shell.definition->definition.kind);
     if (!any) {
       media_layout_dirty_ = false;
       return;
@@ -460,7 +538,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     // measured text boxes together. No shell forces a full-tree layout pass.
     lv_obj_update_layout(widgets_[0].button);
     for (auto& shell : shells_)
-      if (shell.definition && shell.definition->definition.kind == BasicCardKind::MEDIA_NOW_PLAYING) {
+      if (shell.definition && media_text(shell.definition->definition.kind)) {
         const auto value =
             read_basic_card(shell.definition->definition, {shell.token.configuration, shell.token.card},
                             state_, 2, theme_.temperature_unit, theme_.translate, media_);
@@ -468,19 +546,40 @@ class PageBasicLvglPort final:public PageRendererPort {
       }
     lv_obj_update_layout(widgets_[0].button);
     for (auto& shell : shells_)
-      if (shell.definition && shell.definition->definition.kind == BasicCardKind::MEDIA_NOW_PLAYING) {
+      if (shell.definition && media_text(shell.definition->definition.kind)) {
         const auto& w = widgets_[shell.index];
+        if (shell.media_idle) continue;
         // Native DOTS retains the full text's measured height after truncation.
         lv_obj_set_height(w.icon, lv_obj_get_height(w.icon));
         write_media_label(w.icon, shell.number, active_.number_capacity, shell.number,
-                          shell.cell.row_span == 1 ? 2 : 0, true);
+                          media_title_lines(shell), true);
+        if (shell.definition->definition.kind == BasicCardKind::MEDIA_COVER_ART && shell.cell.row_span >= 2 &&
+            shell.cell.column_span >= 2)
+          lv_obj_align_to(w.label, w.icon, LV_ALIGN_OUT_BOTTOM_LEFT, 0,
+                          std::max<int32_t>(0, lv_obj_get_style_pad_top(w.button, LV_PART_MAIN) / 2));
         if (!lv_obj_has_flag(w.label, LV_OBJ_FLAG_HIDDEN))
           write_media_label(w.label, shell.label, active_.label_capacity, shell.label, 1, true);
       }
     media_finishing_ = false;
   }
-  void suspend()override{for(auto &shell:shells_){cancel_position_gesture(shell);shell.pending_target=-1;}}
-  bool state_changed()const override{if(media_layout_dirty_)return true;if(media_)for(const auto &shell:shells_)if(shell.pending_target>=0&&static_cast<uint32_t>(media_->now_ms()-shell.pending_ms)>=3000)return true;return state_.revision()!=seen_state_||theme_.revision!=seen_theme_||(forecasts_&&forecasts_->revision()!=seen_forecast_)||(media_&&media_->revision()!=seen_media_);}
+  void suspend() override {
+    for (auto& shell : shells_) {
+      clear_cover(shell);
+      cancel_position_gesture(shell);
+      shell.pending_target = -1;
+    }
+  }
+  bool state_changed() const override {
+    if (media_layout_dirty_) return true;
+    if (media_)
+      for (const auto& shell : shells_)
+        if (shell.pending_target >= 0 && static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= 3000)
+          return true;
+    return state_.revision() != seen_state_ || theme_.revision != seen_theme_ ||
+           (forecasts_ && forecasts_->revision() != seen_forecast_) ||
+           (media_ && media_->revision() != seen_media_) ||
+           (artwork_ && artwork_->revision() != seen_artwork_);
+  }
   PageBasicMemory memory()const{auto m=memory_;m.fixed_bytes=sizeof(*this);m.borrowed_widgets=Slots*6;for(const auto &w:widgets_)m.borrowed_widgets+=(w.fill?1:0)+(w.forecast?1:0)+(w.slider?1:0);m.forecast_frames=active_.frame_count;m.active_bytes=active_.bytes;m.staged_bytes=staged_.bytes;return m;}
  private:
   bool collect_summary(const PageStore &store,PageId page_id,std::array<CardId,Slots> &cards,size_t &used)const {
@@ -560,7 +659,28 @@ class PageBasicLvglPort final:public PageRendererPort {
     lv_obj_set_style_pad_bottom(label, layout.bottom, LV_PART_MAIN);
     if (lv_label_get_long_mode(label) != layout.mode) lv_label_set_long_mode(label, layout.mode);
   }
-  struct Shell {PageBasicLvglPort *port{nullptr};LabelLayout icon_layout,label_layout;size_t index{0};PageBindingToken token,pressed;PageCellLayout cell;PageBackStyleView back;Prepared *definition{nullptr};char *label{nullptr},*unit{nullptr},*number{nullptr};bool painted{false};uint8_t fill_percent{0},contrast_callbacks{0};bool forecast_callback{false},slider_callback{false},slider_guard_callback{false},dragging{false};uint32_t pending_ms{0},gesture_connection{0};float pending_target{-1};lv_indev_t *input{nullptr};PageForecastFrame *frame{nullptr};uint32_t background{0},foreground{0};const lv_font_t *painted_font{nullptr};};
+  struct Shell {
+    PageBasicLvglPort* port{nullptr};
+    LabelLayout icon_layout, label_layout;
+    size_t index{0};
+    PageBindingToken token, pressed;
+    PageCellLayout cell;
+    PageBackStyleView back;
+    Prepared* definition{nullptr};
+    char *label{nullptr}, *unit{nullptr}, *number{nullptr};
+    bool painted{false};
+    uint8_t fill_percent{0}, contrast_callbacks{0};
+    bool forecast_callback{false}, slider_callback{false}, slider_guard_callback{false}, dragging{false};
+    uint32_t pending_ms{0}, gesture_connection{0};
+    float pending_target{-1};
+    lv_indev_t* input{nullptr};
+    PageForecastFrame* frame{nullptr};
+    PageCoverArtFrame cover;
+    uint64_t cover_asset{0};
+    bool media_idle{false};
+    uint32_t background{0}, foreground{0};
+    const lv_font_t* painted_font{nullptr};
+  };
   static bool same(PageBindingToken a,PageBindingToken b){return a.binding!=0&&a.configuration==b.configuration&&a.binding==b.binding&&a.page==b.page&&a.card==b.card&&a.shell==b.shell&&a.back==b.back;}
   static Prepared *prepared(const Arena &arena){return static_cast<Prepared *>(arena.arena);}
   void release(Arena &arena){if(arena.arena)allocator_.release(arena.arena,arena.bytes);arena={};}
@@ -741,12 +861,118 @@ class PageBasicLvglPort final:public PageRendererPort {
     port->paint_position_feedback(*shell);
     if (port->actions_.seek) port->actions_.seek(port->actions_.owner, origin, percent, snapshot.duration);
   }
+  static bool media_text(BasicCardKind kind) {
+    return kind == BasicCardKind::MEDIA_NOW_PLAYING || kind == BasicCardKind::MEDIA_COVER_ART;
+  }
+  static uint8_t media_title_lines(const Shell& shell) {
+    if (shell.definition->definition.kind == BasicCardKind::MEDIA_COVER_ART) {
+      if (shell.cell.row_span == 3 && shell.cell.column_span == 3) return 5;
+      if (shell.cell.row_span == 1 || (shell.cell.row_span == 2 && shell.cell.column_span == 2)) return 2;
+      return 0;
+    }
+    return shell.cell.row_span == 1 ? 2 : 0;
+  }
+  void clear_cover(Shell& shell) {
+    const auto token = shell.token;
+    const bool owned =
+        shell.definition && shell.definition->definition.kind == BasicCardKind::MEDIA_COVER_ART;
+    shell.cover = {};
+    shell.cover_asset = 0;
+    shell.media_idle = false;
+    if (owned && artwork_) artwork_->unbind(token);
+  }
+  void update_cover(Shell& shell) {
+    const auto& w = widgets_[shell.index];
+    const auto width = lv_obj_get_width(w.button), height = lv_obj_get_height(w.button);
+    if (width <= 0 || height <= 0 || width > UINT16_MAX || height > UINT16_MAX) return;
+    int percent = theme_.media_artwork_width_percent;
+    percent = percent <= 0 ? 100 : std::clamp(percent, 50, 150);
+    const auto decode_width = std::max<int32_t>(1, (static_cast<int64_t>(width) * percent + 50) / 100);
+    if (decode_width > UINT16_MAX) return;
+    artwork_->size(shell.token, decode_width, height);
+    const auto surface = artwork_->surface(shell.token);
+    shell.cover = {};
+    shell.cover_asset = 0;
+    if (!surface.source || !surface.asset) {
+      lv_obj_add_flag(w.forecast, LV_OBJ_FLAG_HIDDEN);
+      return;
+    }
+    const auto overscan = esphome::artwork_image::cover_alignment_edge_overscan(decode_width, height, width,
+                                                                                height, LV_SCALE_NONE);
+    lv_obj_set_pos(w.forecast, -lv_obj_get_style_pad_left(w.button, LV_PART_MAIN),
+                   -lv_obj_get_style_pad_top(w.button, LV_PART_MAIN));
+    lv_obj_set_size(w.forecast, width + overscan, height);
+    lv_obj_set_style_radius(w.forecast, lv_obj_get_style_radius(w.button, LV_PART_MAIN), LV_PART_MAIN);
+    lv_obj_set_style_clip_corner(w.forecast, lv_obj_get_style_clip_corner(w.button, LV_PART_MAIN),
+                                 LV_PART_MAIN);
+    shell.cover = {surface.source, surface.tint, width, height,
+                   shell.definition->definition.media.track_details};
+    shell.cover_asset = surface.asset;
+    lv_obj_move_background(w.forecast);
+    lv_obj_clear_flag(w.forecast, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_refresh_ext_draw_size(w.forecast);
+    lv_obj_invalidate(w.forecast);
+    for (auto* label : {w.icon, w.label, w.value, w.unit})
+      lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
+    lv_obj_set_style_text_color(w.button, lv_color_white(), LV_PART_MAIN);
+    shell.foreground = 0xFFFFFF;
+  }
+  void cover_event(Shell& shell, lv_event_t* event) {
+    const auto code = lv_event_get_code(event);
+    if (code != LV_EVENT_DRAW_MAIN && code != LV_EVENT_REFR_EXT_DRAW_SIZE) return;
+    const auto token = shell.token;
+    const auto asset = shell.cover_asset;
+    const auto valid = [&]() {
+      return same(token, shell.token) && asset && artwork_ && actions_.valid &&
+             actions_.valid(actions_.owner, token) && artwork_->surface(token).asset == asset;
+    };
+    if (!valid()) return;
+    auto frame = shell.cover;
+    frame.source = artwork_->surface(token).source;
+    auto* surface = widgets_[shell.index].forecast;
+    if (code == LV_EVENT_REFR_EXT_DRAW_SIZE) {
+      auto* size = static_cast<int32_t*>(lv_event_get_param(event));
+      if (size) frame.extend_draw_size(surface, *size);
+      return;
+    }
+    if (frame.draw_image(surface, lv_event_get_layer(event)) && valid())
+      frame.draw_tint(surface, lv_event_get_layer(event));
+  }
   void prepare_now_playing_text(Shell& shell, const BasicCardState& value) {
-    if (!shell.definition || shell.definition->definition.kind != BasicCardKind::MEDIA_NOW_PLAYING) return;
+    if (!shell.definition || !media_text(shell.definition->definition.kind)) return;
     const auto& w = widgets_[shell.index];
     const auto& definition = shell.definition->definition;
-    const auto* title_font = theme_.media_title_font;
-    const auto* artist_font = theme_.label_font ? theme_.label_font : shell.label_layout.font;
+    const bool cover = definition.kind == BasicCardKind::MEDIA_COVER_ART;
+    shell.media_idle = cover && value.media_idle;
+    if (cover) update_cover(shell);
+    if (shell.media_idle) {
+      restore_label(w.icon, shell.icon_layout);
+      restore_label(w.label, shell.label_layout);
+      if (theme_.icon_font) lv_obj_set_style_text_font(w.icon, theme_.icon_font, LV_PART_MAIN);
+      if (theme_.label_font) lv_obj_set_style_text_font(w.label, theme_.label_font, LV_PART_MAIN);
+      lv_label_set_text_static(w.icon, shell.definition->off);
+      const auto* idle = theme_.translate ? theme_.translate("Idle") : nullptr;
+      write(w.label, shell.label, active_.label_capacity, idle ? idle : "Idle");
+      lv_obj_align(w.icon, LV_ALIGN_TOP_LEFT, 0, 0);
+      lv_obj_align(w.label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+      lv_obj_set_width(w.label, lv_pct(100));
+      lv_label_set_long_mode(w.label, LV_LABEL_LONG_WRAP);
+      lv_obj_clear_flag(w.icon, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_clear_flag(w.label, LV_OBJ_FLAG_HIDDEN);
+      return;
+    }
+    const bool large = cover && shell.cell.row_span >= 2 && shell.cell.column_span >= 2;
+    const bool compact = large && shell.cell.row_span == 2 && shell.cell.column_span == 2;
+    const auto* title_font = compact && theme_.compact_portrait && theme_.media_control_title_font
+                                 ? theme_.media_control_title_font
+                             : compact && theme_.cover_artist_font          ? theme_.cover_artist_font
+                             : large && !compact && theme_.cover_title_font ? theme_.cover_title_font
+                                                                            : theme_.media_title_font;
+    const auto* baseline_artist = theme_.label_font ? theme_.label_font : shell.label_layout.font;
+    const auto* artist_font = compact && theme_.compact_portrait && theme_.media_control_artist_font
+                                  ? theme_.media_control_artist_font
+                              : large && !compact && theme_.cover_artist_font ? theme_.cover_artist_font
+                                                                              : baseline_artist;
     lv_obj_set_style_text_font(w.icon, title_font, LV_PART_MAIN);
     lv_obj_set_style_text_font(w.label, artist_font, LV_PART_MAIN);
     lv_obj_set_style_pad_all(w.icon, 0, LV_PART_MAIN);
@@ -758,8 +984,9 @@ class PageBasicLvglPort final:public PageRendererPort {
       lv_obj_set_style_transform_scale_x(label, theme_.media_text_scale_x, LV_PART_MAIN);
       lv_obj_set_style_transform_scale_y(label, theme_.media_text_scale_y, LV_PART_MAIN);
     }
-    const uint8_t lines = shell.cell.row_span == 1 ? 2 : 0;
-    lv_obj_set_style_max_height(w.icon, lines ? title_font->line_height * 2 - 1 : LV_COORD_MAX, LV_PART_MAIN);
+    const uint8_t lines = media_title_lines(shell);
+    lv_obj_set_style_max_height(w.icon, lines ? title_font->line_height * lines - (lines - 1) : LV_COORD_MAX,
+                                LV_PART_MAIN);
     lv_obj_set_style_max_height(w.label, shell.label_layout.maximum, LV_PART_MAIN);
     lv_obj_set_height(w.label, artist_font->line_height);
     lv_obj_align(w.icon, LV_ALIGN_TOP_LEFT, 0, 0);
@@ -775,7 +1002,9 @@ class PageBasicLvglPort final:public PageRendererPort {
     lv_obj_set_width(w.icon, width);
     lv_obj_set_width(w.label, width);
     char decoded[257];
-    auto title = decode_html_entities_bounded(decoded, sizeof(decoded), value.media_title);
+    auto title = value.media_source_title
+                     ? std::string_view(value.text)
+                     : decode_html_entities_bounded(decoded, sizeof(decoded), value.media_title);
     if (title == "unknown" || title == "unavailable") title = {};
     title = media::normalize_media_display_text_bounded(decoded, sizeof(decoded), title);
     write(w.icon, shell.number, active_.number_capacity, title.empty() ? std::string_view("--") : title);
@@ -793,13 +1022,16 @@ class PageBasicLvglPort final:public PageRendererPort {
     write(w.label, shell.label, active_.label_capacity, artist);
     if (lv_label_get_long_mode(w.label) != LV_LABEL_LONG_WRAP)
       lv_label_set_long_mode(w.label, LV_LABEL_LONG_WRAP);
-    lv_obj_clear_flag(w.icon, LV_OBJ_FLAG_HIDDEN);
-    if (artist.empty())
+    if (cover && !definition.media.track_details && !value.media_source_title)
+      lv_obj_add_flag(w.icon, LV_OBJ_FLAG_HIDDEN);
+    else
+      lv_obj_clear_flag(w.icon, LV_OBJ_FLAG_HIDDEN);
+    if (artist.empty() || (cover && !definition.media.track_details && !value.media_source_title))
       lv_obj_add_flag(w.label, LV_OBJ_FLAG_HIDDEN);
     else
       lv_obj_clear_flag(w.label, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(w.sensor_container, LV_OBJ_FLAG_HIDDEN);
-    if (definition.media.play_pause_background)
+    if (cover || definition.media.play_pause_background)
       lv_obj_add_flag(w.button, LV_OBJ_FLAG_CLICKABLE);
     else
       lv_obj_clear_flag(w.button, LV_OBJ_FLAG_CLICKABLE);
@@ -848,7 +1080,12 @@ class PageBasicLvglPort final:public PageRendererPort {
   static void forecast_event(lv_event_t* event) {
     auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
     auto* port = shell->port;
-    if (!port->active_.arena || !shell->frame || !shell->token.binding) return;
+    if (!port->active_.arena || !shell->token.binding) return;
+    if (shell->definition && shell->definition->definition.kind == BasicCardKind::MEDIA_COVER_ART) {
+      port->cover_event(*shell, event);
+      return;
+    }
+    if (lv_event_get_code(event) != LV_EVENT_DRAW_MAIN || !shell->frame) return;
     const auto token = shell->token;
     const auto count = shell->frame->count;
     const auto style = shell->frame->style;
@@ -868,7 +1105,8 @@ class PageBasicLvglPort final:public PageRendererPort {
     auto *shell=static_cast<Shell *>(lv_event_get_user_data(event));auto *port=shell->port;
     const auto code=lv_event_get_code(event);
     if(code==LV_EVENT_SIZE_CHANGED){port->update_fill_geometry(*shell);port->update_forecast(*shell);
-      if(!port->media_finishing_&&shell->definition&&shell->definition->definition.kind==BasicCardKind::MEDIA_NOW_PLAYING)port->media_layout_dirty_=true;
+      if (!port->media_finishing_ && shell->definition && media_text(shell->definition->definition.kind))
+        port->media_layout_dirty_ = true;
       return;}
     if(code==LV_EVENT_PRESSED) {
       shell->pressed=shell->token;
@@ -902,11 +1140,24 @@ class PageBasicLvglPort final:public PageRendererPort {
       port->actions_.forecast(port->actions_.owner,origin);
     else if((definition.kind==BasicCardKind::MEDIA_ACTION||(definition.kind==BasicCardKind::MEDIA_NOW_PLAYING&&definition.media.play_pause_background))&&port->actions_.media)
       port->actions_.media(port->actions_.owner,origin);
+    else if (definition.kind == BasicCardKind::MEDIA_COVER_ART && port->actions_.media_control)
+      port->actions_.media_control(port->actions_.owner, origin);
     else if(definition.kind==BasicCardKind::ACTION&&port->actions_.action)
       port->actions_.action(port->actions_.owner,origin);
   }
   PageArenaAllocator &allocator_;PageEntityStateRuntime &state_;std::array<PageBasicWidgets,Slots>widgets_;
-  PageViewGeometry geometry_;const PageBasicTheme &theme_;PageBasicActions actions_;PageForecastRuntime *forecasts_{nullptr};PageMediaStateRuntime *media_{nullptr};std::array<Shell,Slots>shells_{};
-  Arena active_,staged_;PageStore store_;bool initialized_{false},media_layout_dirty_{false},media_finishing_{false};size_t callbacks_{0};uint64_t seen_state_{0},seen_theme_{0},seen_forecast_{0},seen_media_{0};PageBasicMemory memory_;
+  PageViewGeometry geometry_;
+  const PageBasicTheme& theme_;
+  PageBasicActions actions_;
+  PageForecastRuntime* forecasts_{nullptr};
+  PageMediaStateRuntime* media_{nullptr};
+  PageCoverArtView* artwork_{nullptr};
+  std::array<Shell, Slots> shells_{};
+  Arena active_, staged_;
+  PageStore store_;
+  bool initialized_{false}, media_layout_dirty_{false}, media_finishing_{false};
+  size_t callbacks_{0};
+  uint64_t seen_state_{0}, seen_theme_{0}, seen_forecast_{0}, seen_media_{0}, seen_artwork_{0};
+  PageBasicMemory memory_;
 };
 }  // namespace espcontrol::pages

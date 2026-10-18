@@ -9,6 +9,7 @@
 
 #include "ha_read_coordinator.h"
 #include "page_entity_coordinator_adapter.h"
+#include "page_entity_observer_set.h"
 #include "panel_config_document.h"
 
 static size_t allocation_calls = 0;
@@ -307,7 +308,83 @@ void observer_distinguishes_copied_state_from_transport_delivery() {
   coordinator.reset_subscriptions(1);coordinator.reclaim_unused_channels();assert(arena.live.empty()&&coordinator.transport().entries.empty());
 }
 
+void shared_observers_see_borrowed_previous_values() {
+  struct Observer final : PageEntityObserver {
+    size_t calls = 0;
+    int order = 0;
+    int* phase = nullptr;
+    PageEntityObserverSet<2>* set = nullptr;
+    PageEntityObserver* remove_next = nullptr;
+    PageEntityObserver* add_during_dispatch = nullptr;
+    char previous[64]{};
+    void observed(uint32_t, std::string_view, std::string_view, std::string_view, bool) override {
+      ++calls;
+    }
+    void observed_update(uint32_t generation, std::string_view entity, std::string_view attribute,
+                         std::string_view, bool copied, std::string_view old) override {
+      assert(generation == 17 && entity == "media_player.room" && attribute == "entity_picture" && !copied);
+      if (order == 1)
+        *phase = 1;
+      else {
+        assert(*phase == 1);
+        *phase = 2;
+      }
+      assert(old.size() < sizeof(previous));
+      if (!old.empty()) std::memcpy(previous, old.data(), old.size());
+      previous[old.size()] = '\0';
+      ++calls;
+      if (remove_next) set->remove(*remove_next);
+      if (add_during_dispatch) assert(!set->add(*add_during_dispatch));
+    }
+  };
+  Fixture fixture;
+  Arena arena;
+  Subscriptions transport;
+  Source source;
+  source.items = {{0, "media_player.room", "entity_picture"},
+                  {1, "media_player.room", "entity_picture_local"}};
+  PageEntityObserverSet<2> observers;
+  Observer first, second, extra;
+  int phase = 0;
+  first.order = 1;
+  second.order = 2;
+  first.phase = second.phase = &phase;
+  first.set = second.set = &observers;
+  assert(observers.add(first) && observers.add(second) && !observers.add(first) && !observers.add(extra));
+  PageEntityStateRuntime state(source, arena, transport, {8, 4, 256}, &observers);
+  assert(state.prepare(fixture.store));
+  state.activate_prepared(17);
+  const auto delivery = transport.entries[0];
+  delivery.deliver(delivery.owner, delivery.revision, delivery.channel, "first");
+  assert(first.calls == 1 && second.calls == 1 && first.previous[0] == 0 && second.previous[0] == 0);
+  const auto allocations = allocation_calls;
+  for (size_t i = 0; i < 1000; ++i) {
+    delivery.deliver(delivery.owner, delivery.revision, delivery.channel, "same URL");
+    const auto current = state.read_attribute({17, 0}, "media_player.room", "entity_picture");
+    assert(current.status == PageEntityStatus::AVAILABLE && current.value == "same URL");
+    assert(state.read_attribute({17, 1}, "media_player.room", "entity_picture").status ==
+           PageEntityStatus::STALE);
+    assert(state.read_attribute({18, 0}, "media_player.room", "entity_picture").status ==
+           PageEntityStatus::STALE);
+  }
+  assert(allocation_calls == allocations && first.calls == 1001 && second.calls == 1001);
+  assert(std::strcmp(first.previous, "same URL") == 0 && std::strcmp(second.previous, "same URL") == 0);
+  first.remove_next = &second;
+  first.add_during_dispatch = &extra;
+  delivery.deliver(delivery.owner, delivery.revision, delivery.channel, "last");
+  assert(first.calls == 1002 && second.calls == 1001 && extra.calls == 0);
+  first.remove_next = nullptr;
+  first.add_during_dispatch = nullptr;
+  assert(observers.add(second));
+  ++transport.connection;
+  assert(state.read_attribute({17, 0}, "media_player.room", "entity_picture").status ==
+         PageEntityStatus::UNKNOWN);
+  observers.remove(first);
+  observers.remove(second);
+}
+
 int main() {
+  shared_observers_see_borrowed_previous_values();
   observer_distinguishes_copied_state_from_transport_delivery();
   lifetime_and_state_budget(); preparation_and_replacements();
   page_store_prepares_resources_before_activation(); coordinator_deduplicates_generations_without_an_extra_cache();

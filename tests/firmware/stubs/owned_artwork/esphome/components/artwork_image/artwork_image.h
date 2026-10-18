@@ -1,6 +1,7 @@
 #pragma once
 #include <cassert>
 #include <cstdint>
+#include <functional>
 #include <string>
 
 #include "image_result.h"
@@ -27,7 +28,7 @@ class ArtworkImage {
   size_t cancels{0}, releases{0};
   bool ready{false}, legacy_owned{false}, accept{true};
   bool claim_owner(ImageResultObserver& owner) {
-    return !legacy_owned && channel.claim(owner);
+    return !legacy_owned && !visible && !redraw && !screen_active && channel.claim(owner);
   }
   void release_owner(ImageResultObserver& owner) {
     if (!channel.owned_by(owner)) return;
@@ -54,6 +55,14 @@ class ArtworkImage {
   }
   void set_request_priority(ImageRequestPriority value) {
     priority = value;
+  }
+  std::function<bool()> visible, screen_active;
+  std::function<void()> redraw;
+  void set_animation_callbacks(std::function<bool()> shown, std::function<void()> frame,
+                               std::function<bool()> active = {}, bool = false) {
+    visible = std::move(shown);
+    redraw = std::move(frame);
+    screen_active = std::move(active);
   }
   bool has_image() const {
     return ready;

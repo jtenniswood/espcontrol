@@ -341,7 +341,8 @@ void PageMediaStateRuntime::observed_update(uint32_t generation, std::string_vie
   const bool picture = remote_picture || attribute == "entity_picture_local";
   char decoded[HA_STATE_TEXT_MAX_LEN + 1];
   const size_t capacity = attribute == "media_content_type" ? HA_SHORT_STATE_MAX_LEN + 1 : sizeof(decoded);
-  auto metadata = picture ? value.substr(0, 4096) : decode_html_entities_bounded(decoded, capacity, value);
+  auto metadata = picture ? value.substr(0, 4096)
+                          : decode_html_entities_bounded(decoded, capacity, value.substr(0, capacity - 1));
   if (metadata == "unknown" || metadata == "unavailable" || (picture && metadata == "None")) metadata = {};
   const bool present = !metadata.empty();
   if (picture) {
@@ -357,7 +358,8 @@ void PageMediaStateRuntime::observed_update(uint32_t generation, std::string_vie
     if (remote_picture) source->input.current_content(present);
     if (attribute == "source") {
       char old_decoded[HA_STATE_TEXT_MAX_LEN + 1];
-      auto old_source = decode_html_entities_bounded(old_decoded, sizeof(old_decoded), previous);
+      auto old_source = decode_html_entities_bounded(old_decoded, sizeof(old_decoded),
+                                                     previous.substr(0, HA_STATE_TEXT_MAX_LEN));
       if (old_source == "unknown" || old_source == "unavailable") old_source = {};
       invalidate_external = source->input.source(metadata, old_source);
     } else if (attribute == "media_content_id") {
@@ -378,7 +380,8 @@ void PageMediaStateRuntime::observed_update(uint32_t generation, std::string_vie
     if (attribute == "media_title") {
       char old_decoded[HA_STATE_TEXT_MAX_LEN + 1];
       auto old_title = (source->fresh & TITLE_BIT)
-                           ? decode_html_entities_bounded(old_decoded, sizeof(old_decoded), previous)
+                           ? decode_html_entities_bounded(old_decoded, sizeof(old_decoded),
+                                                          previous.substr(0, HA_STATE_TEXT_MAX_LEN))
                            : std::string_view{};
       if (old_title == "unknown" || old_title == "unavailable") old_title = {};
       const bool pending = media::media_title_refresh_pending(

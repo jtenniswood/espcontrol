@@ -98,6 +98,17 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
   void activate_prepared(uint32_t generation);
   void retire_active() override;
   PageEntityValue dependency(ConfigurationHandle card, size_t ordinal);
+  // A named query still follows this card's declared edges; another card
+  // sharing the same channel cannot grant access to an undeclared attribute.
+  PageEntityValue read_attribute(ConfigurationHandle card, std::string_view entity,
+                                 std::string_view attribute) {
+    const auto count = dependency_count(card);
+    for (size_t ordinal = 0; ordinal < count; ++ordinal) {
+      const auto value = dependency(card, ordinal);
+      if (value.entity == entity && value.attribute == attribute) return value;
+    }
+    return {};
+  }
   std::optional<uint8_t> last_percent(ConfigurationHandle card,size_t ordinal);
   size_t dependency_count(ConfigurationHandle card) const;
   PageEntityMemory memory() const;

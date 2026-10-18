@@ -11,6 +11,10 @@ void lv_draw_wait_for_finish() { ++artwork_test_draw_fences; }
 #endif
 namespace {
 struct Origin final : PageImageOrigin {
+  bool shown{true};
+  bool visible(PageBindingToken) const override {
+    return shown;
+  }
   bool valid(PageBindingToken token) const override {
     return token.binding != 0;
   }
@@ -64,12 +68,29 @@ void integration() {
       assert(a.url == "https://ha/artwork/very-long-picture-path?token=test");
       assert(a.width == 123 && a.height == 234 && a.background == 0x123456);
       assert(a.mode == esphome::artwork_image::ImageResizeMode::FIT);
+      assert(a.visible && a.redraw && a.screen_active);
+      assert(!a.visible() && a.screen_active());
+      {
+        PageImageRuntime<2> second_runtime(requests, origin);
+        assert(!second_runtime.bind(1, second));
+      }
+      assert(a.screen_active());  // Failed competing owner cannot revoke the first.
+
       a.reply(true, true);  // A 304 without a usable image cannot mark the slot ready.
       assert(runtime.snapshot(0, first).failed);
       assert(runtime.request(0, first, "https://ha/new", options));
       a.ready = true;
       a.reply();
       assert(runtime.snapshot(0, first).ready);
+      assert(a.visible());
+      const auto asset = runtime.snapshot(0, first).asset;
+      const auto revision = runtime.revision();
+      a.redraw();
+      assert(runtime.revision() == revision + 1 && runtime.snapshot(0, first).asset == asset);
+      origin.shown = false;
+      assert(!a.visible() && a.screen_active());  // A modal pauses animation, retaining its screen.
+      origin.shown = true;
+
       const auto generation = a.generation;
       const auto releases = a.releases;
       runtime.unbind(0);  // The view already detached its LVGL descriptor.
@@ -94,6 +115,7 @@ void integration() {
     assert(!a.ready && !b.ready);  // Runtime drains retired surfaces before adapter destruction.
   }
   assert(!a.channel.claimed() && !b.channel.claimed());
+  assert(!a.visible && !a.redraw && !a.screen_active);
 }
 }  // namespace
 int main() {

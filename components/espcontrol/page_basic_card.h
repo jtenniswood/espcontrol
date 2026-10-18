@@ -8,7 +8,26 @@
 #include "page_renderer_runtime.h"
 
 namespace espcontrol::pages {
-enum class BasicCardKind:uint8_t { EMPTY, TOGGLE, NUMBER, ICON, FOLDER, TEXT, DURATION, CLIMATE, STATUS, ACTION, LIGHT, COVER, WEATHER, FORECAST, MEDIA_ACTION, MEDIA_POSITION, MEDIA_NOW_PLAYING };
+enum class BasicCardKind : uint8_t {
+  EMPTY,
+  TOGGLE,
+  NUMBER,
+  ICON,
+  FOLDER,
+  TEXT,
+  DURATION,
+  CLIMATE,
+  STATUS,
+  ACTION,
+  LIGHT,
+  COVER,
+  WEATHER,
+  FORECAST,
+  MEDIA_ACTION,
+  MEDIA_POSITION,
+  MEDIA_NOW_PLAYING,
+  MEDIA_COVER_ART
+};
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode:uint8_t { NONE, ENTITY, CLIMATE, MOWER, CHILDREN, NUMBER, TEXT };
 struct BasicCardDefinition {
@@ -42,7 +61,7 @@ bool prepare_basic_card(const PageStore &,CardId,BasicCardDefinition &,BasicCard
 struct BasicCardState {
   bool on{false},numeric{false},formatted_label{false},climate_icon_on{false};
   std::string_view label,unit,media_title,media_artist;
-  bool media_external_input{false};
+  bool media_external_input{false}, media_idle{false}, media_source_title{false};
   uint8_t fill_percent{0},weather_condition{0};
   char number[48]{},text[257]{};
 };

@@ -25,14 +25,32 @@ class PageArtworkRequests final : public PageImageRequests {
     for (size_t i = 0; i < Slots; ++i) {
       auto& s = slots_[i];
       s.slot = i;
+      s.adapter = this;
       if (images[i] == nullptr || !images[i]->claim_owner(s)) {
         shutdown();
         return false;
       }
       s.image = images[i];
+      auto* slot = &s;
+      s.image->set_animation_callbacks(
+          [slot]() { return slot->adapter->frames_ && slot->adapter->frames_->image_visible(slot->slot); },
+          [slot]() {
+            if (slot->adapter->frames_) slot->adapter->frames_->image_redraw(slot->slot);
+          },
+          [slot]() {
+            return slot->adapter->frames_ && slot->adapter->frames_->image_screen_active(slot->slot);
+          });
     }
     initialized_ = true;
     return true;
+  }
+  bool claim_frames(PageImageFrames& owner) override {
+    if (frames_ && frames_ != &owner) return false;
+    frames_ = &owner;
+    return true;
+  }
+  void release_frames(PageImageFrames& owner) override {
+    if (frames_ == &owner) frames_ = nullptr;
   }
   bool start(size_t slot, uint64_t request, std::string_view url, PageImageOptions options, void* owner,
              Receive receive) override {
@@ -65,12 +83,16 @@ class PageArtworkRequests final : public PageImageRequests {
 #endif
     slots_[slot].image->release();
   }
+  bool initialized() const {
+    return initialized_;
+  }
   esphome::artwork_image::ArtworkImage* image(size_t slot) const {
     return slot < Slots ? slots_[slot].image : nullptr;
   }
 
  private:
   struct Slot final : esphome::artwork_image::ImageResultObserver {
+    PageArtworkRequests* adapter{nullptr};
     esphome::artwork_image::ArtworkImage* image{nullptr};
     void* owner{nullptr};
     Receive receive{nullptr};
@@ -88,12 +110,14 @@ class PageArtworkRequests final : public PageImageRequests {
       auto& s = slots_[i];
       if (s.image == nullptr) continue;
       cancel(i);
+      s.image->set_animation_callbacks({}, {}, {});
       s.image->release_owner(s);
       s.image = nullptr;
     }
     initialized_ = false;
   }
   std::array<Slot, Slots> slots_{};
+  PageImageFrames* frames_{nullptr};
   bool initialized_{false};
 };
 }  // namespace espcontrol::pages
