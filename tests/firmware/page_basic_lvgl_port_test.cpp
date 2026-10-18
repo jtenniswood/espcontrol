@@ -183,6 +183,33 @@ struct Fixture {
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
   }
+  struct LightTemperatures {};
+  Fixture(const DeviceUiLimits& limits, LightTemperatures) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {";Temperatures;Auto;Auto;indicator;;subpage;;",
+                                 "light.room;;Auto;Other;;5000-6000;light_temperature;color;",
+                                 "light.room;Fixed;Auto;Other;;2000-6500;light_temperature;;",
+                                 ";;;;sensor.temp;°C;sensor;1;", "fan.room;Fan;Auto;Auto;;;fan_speed;;"};
+    for (size_t i = 0; i < 5; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i].data()),
+                                  cards[i].size()) == PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1,2,3,4|,light.child,Child,Auto,Auto,,,,|N,light.room,Child "
+        "temperature,Auto,Auto,,3000-7000,color,|S,,Temp,Auto,Auto,sensor.temp,°C,1,|J,fan.room,Fan,Auto,"
+        "Auto,,,,";
+    assert(writer.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = "1,2,3,4,5";
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                 reinterpret_cast<const uint8_t*>(order.data()),
+                                 order.size()) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   struct NumberSliders {};
   Fixture(const DeviceUiLimits& limits, NumberSliders) {
     PanelConfigWriter writer(document.data(), document.size());
@@ -1459,6 +1486,244 @@ void percent_geometry_reference(const PageBasicWidgets& widgets, uint8_t percent
   assert(std::memcmp(&actual_slider, &expected_slider, sizeof(actual_slider)) == 0 &&
          std::memcmp(&actual_fill, &expected_fill, sizeof(actual_fill)) == 0);
   lv_obj_delete(root);
+}
+template <size_t Slots>
+void light_temperature_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, Fixture::LightTemperatures{});
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageLightTemperatureRuntime temperature(arena, subscriptions);
+  PagePercentSliderRuntime percentages(arena, subscriptions);
+  PageEntityObserverSet<2> observers;
+  assert(observers.add(temperature) && observers.add(percentages));
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192}, &observers);
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+    w.fill = lv_obj_create(w.button);
+    w.slider = lv_slider_create(w.button);
+  }
+  for (size_t slot : {size_t(1), size_t(3)}) {
+    lv_obj_set_style_pad_left(widgets[slot].button, 7, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(widgets[slot].button, 18, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(widgets[slot].button, 12, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(widgets[slot].button, 9, LV_PART_MAIN);
+  }
+  PageBasicTheme theme;
+  theme.red_percent = 50;
+  Actions<Slots> actions;
+  auto callbacks = actions.callbacks();
+  callbacks.percent_slider = [](void*, PageBindingToken, int) {};
+  callbacks.light_temperature = [](void* owner, PageBindingToken token, int kelvin) {
+    auto& action = *static_cast<Actions<Slots>*>(owner);
+    ++action.seeks;
+    action.last = token;
+    action.numeric_target = kelvin;
+    if (action.seek_page != NO_PAGE) assert(action.renderer->open_page(action.seek_page));
+  };
+  {
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     callbacks);
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  {
+    auto absent = callbacks;
+    absent.light_temperature = nullptr;
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     absent, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                     &percentages, nullptr, &temperature);
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  {
+    auto incomplete = widgets;
+    incomplete[1].fill = nullptr;
+    PageBasicLvglPort<Slots> missing(arena, state, incomplete, {limits.slot_count, limits.grid_columns},
+                                     theme, callbacks, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                     &percentages, nullptr, &temperature);
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  PointerInput input;
+  auto* device = lv_indev_create();
+  lv_indev_set_type(device, LV_INDEV_TYPE_POINTER);
+  lv_indev_set_display(device, lv_display_get_default());
+  lv_indev_set_user_data(device, &input);
+  lv_indev_set_read_cb(device, PointerInput::read);
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  callbacks, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                  &percentages, nullptr, &temperature);
+    assert(port.initialize());
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t used = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[used++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    PageRuntimeResourcesGroup<4> resources({&renderer, &temperature, &percentages, &state});
+    PageStoreRuntime publication(limits, arena, 32768, &resources);
+    assert(publication.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    assert(publication.activate_prepared(0, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(),
+                                         fixture.size));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    subscriptions.send("light.room", "friendly_name", "Temperature room");
+    subscriptions.send("light.room", "color_temp_kelvin", "5500");
+    renderer.update_visible();
+    assert(lv_slider_get_value(widgets[1].slider) == 0);
+    subscriptions.send("light.room", "", "on");
+    subscriptions.send("fan.room", "", "on");
+    subscriptions.send("fan.room", "percentage", "25");
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(lv_slider_get_value(widgets[1].slider) == 50 && lv_slider_get_value(widgets[2].slider) == 77);
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Temperature room") == 0);
+    assert(std::strcmp(lv_label_get_text(widgets[2].label), "Fixed") == 0);
+    assert(lv_color_eq(lv_obj_get_style_bg_color(widgets[1].fill, LV_PART_MAIN), lv_color_hex(0xC8BBCA)));
+    assert(lv_color_eq(lv_obj_get_style_bg_color(widgets[2].fill, LV_PART_MAIN), lv_color_hex(theme.active)));
+    percent_geometry_reference(widgets[1], 50, false);
+    percent_geometry_reference(widgets[2], 77, false);
+    for (size_t slot : {size_t(1), size_t(2)}) {
+      lv_area_t content, icon, label;
+      lv_obj_get_content_coords(widgets[slot].button, &content);
+      lv_obj_get_coords(widgets[slot].icon, &icon);
+      lv_obj_get_coords(widgets[slot].label, &label);
+      assert(icon.x1 == content.x1 && icon.y1 == content.y1 && label.x1 == content.x1 &&
+             label.y2 == content.y2);
+      assert(!lv_obj_has_state(widgets[slot].button, LV_STATE_CHECKED));
+      assert(lv_obj_has_flag(widgets[slot].sensor_container, LV_OBJ_FLAG_HIDDEN));
+    }
+    {
+      const auto old = lv_obj_get_style_bg_color(widgets[1].fill, LV_PART_MAIN);
+      lv_obj_set_style_bg_color(widgets[1].fill, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+      lv_layer_t layer{};
+      lv_draw_label_dsc_t descriptor;
+      lv_draw_label_dsc_init(&descriptor);
+      descriptor.base.layer = &layer;
+      descriptor.color = lv_color_hex(0xFFFFFF);
+      lv_draw_task_t task{};
+      task.type = LV_DRAW_TASK_TYPE_LABEL;
+      task.draw_dsc = &descriptor;
+      lv_obj_get_coords(widgets[1].fill, &task.clip_area);
+      task.area = task.clip_area;
+      layer._clip_area = task.clip_area;
+      lv_obj_send_event(widgets[1].label, LV_EVENT_DRAW_TASK_ADDED, &task);
+      assert(lv_color_eq(descriptor.color, lv_color_hex(0x212121)));
+      lv_obj_set_style_bg_color(widgets[1].fill, old, LV_PART_MAIN);
+    }
+    vertical_pointer(device, input, widgets[1].slider, 0, true);
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "5000K") == 0);
+    vertical_pointer(device, input, widgets[1].slider, 0, false);
+    assert(actions.seeks == 1 && actions.numeric_target == 5000);
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Temperature room") == 0);
+    vertical_pointer(device, input, widgets[1].slider, 100, true);
+    vertical_pointer(device, input, widgets[1].slider, 100, false);
+    assert(actions.seeks == 2 && actions.numeric_target == 6000);
+    const auto root_binding = renderer.binding(1);
+    const auto child = fixture.store.card(0)->target;
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(lv_label_get_long_mode(widgets[1].icon) ==
+           LV_LABEL_LONG_WRAP);  // Temperature clipping was restored.
+    assert(lv_slider_get_value(widgets[2].slider) == 62);
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(lv_slider_get_value(widgets[1].slider) == 100);
+    subscriptions.send("light.room", "", "off");
+    subscriptions.send("light.room", "color_temp_kelvin", "5500");
+    renderer.update_visible();
+    assert(lv_slider_get_value(widgets[1].slider) == 0);
+    vertical_pointer(device, input, widgets[1].slider, 0, true);
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Temperature room") ==
+           0);  // No invented overlay.
+    vertical_pointer(device, input, widgets[1].slider, 0, false);
+    assert(actions.seeks == 3);
+    subscriptions.send("light.room", "", "on");
+    renderer.update_visible();
+    vertical_pointer(device, input, widgets[1].slider, 75, true);
+    char preview[64];
+    std::snprintf(preview, sizeof(preview), "%s", lv_label_get_text(widgets[1].label));
+    subscriptions.send("light.room", "color_temp_kelvin", "5494");
+    renderer.update_visible();
+    assert(lv_slider_get_value(widgets[1].slider) == 49 &&
+           std::strcmp(lv_label_get_text(widgets[1].label), preview) == 0);
+    subscriptions.send("light.room", "friendly_name", "Renamed light");
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), preview) == 0);
+    vertical_pointer(device, input, widgets[1].slider, 75, false);
+    assert(actions.seeks == 4);
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Renamed light") == 0);
+    vertical_pointer(device, input, widgets[1].slider, 75, true);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    vertical_pointer(device, input, widgets[1].slider, 75, false);
+    assert(actions.seeks == 4 && !renderer.valid(root_binding));
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    vertical_pointer(device, input, widgets[1].slider, 75, true);
+    ++subscriptions.generation;
+    renderer.update_visible();
+    vertical_pointer(device, input, widgets[1].slider, 75, false);
+    assert(actions.seeks == 4);
+    subscriptions.send("light.room", "", "on");
+    subscriptions.send("light.room", "color_temp_kelvin", "5500");
+    renderer.update_visible();
+    vertical_pointer(device, input, widgets[1].slider, 75, true);
+    assert(renderer.suspend() && renderer.resume());
+    renderer.update_visible();
+    vertical_pointer(device, input, widgets[1].slider, 75, false);
+    assert(actions.seeks == 4);
+    actions.seek_page = child;
+    vertical_pointer(device, input, widgets[1].slider, 100, true);
+    vertical_pointer(device, input, widgets[1].slider, 100, false);
+    actions.seek_page = NO_PAGE;
+    assert(actions.seeks == 5 && !renderer.valid(actions.last));
+    renderer.update_visible();
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto cpp = cpp_allocations, retained = lv_live_bytes, reservations = arena.allocations,
+               channels = subscriptions.bindings.size(), descriptors = cache.memory().descriptor_adds;
+    for (int n = 0; n < 1000; ++n) {
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(cpp_allocations == cpp && lv_live_bytes == retained && arena.allocations == reservations &&
+             subscriptions.bindings.size() == channels && cache.memory().descriptor_adds == descriptors);
+    }
+    renderer.retire_active();
+    state.retire_active();
+    temperature.retire_active();
+    percentages.retire_active();
+    std::printf("%s: light temperature 1000 cycles, Kelvin colors, drag labels and stable resources\n",
+                limits.device_profile);
+  }
+  assert(arena.live == 0);
+  lv_indev_delete(device);
+  lv_obj_delete(page);
 }
 template <size_t Slots>
 void number_slider_profile(const DeviceUiLimits& limits) {
@@ -3081,6 +3346,25 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "light_temperature") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          light_temperature_profile<6>(limits);
+          break;
+        case 9:
+          light_temperature_profile<9>(limits);
+          break;
+        case 15:
+          light_temperature_profile<15>(limits);
+          break;
+        case 20:
+          light_temperature_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "number_sliders") == 0) {
       switch (limits.slot_count) {
         case 6:
@@ -3283,6 +3567,7 @@ int main() {
         fan_status_profile<6>(limits);
         percent_slider_profile<6>(limits);
         number_slider_profile<6>(limits);
+        light_temperature_profile<6>(limits);
         option_select_profile<6>(limits);
         local_sensor_profile<6>(limits);
         local_relay_profile<6>(limits);
@@ -3302,6 +3587,7 @@ int main() {
         fan_status_profile<9>(limits);
         percent_slider_profile<9>(limits);
         number_slider_profile<9>(limits);
+        light_temperature_profile<9>(limits);
         option_select_profile<9>(limits);
         local_sensor_profile<9>(limits);
         local_relay_profile<9>(limits);
@@ -3321,6 +3607,7 @@ int main() {
         fan_status_profile<15>(limits);
         percent_slider_profile<15>(limits);
         number_slider_profile<15>(limits);
+        light_temperature_profile<15>(limits);
         option_select_profile<15>(limits);
         local_sensor_profile<15>(limits);
         local_relay_profile<15>(limits);
@@ -3340,6 +3627,7 @@ int main() {
         fan_status_profile<20>(limits);
         percent_slider_profile<20>(limits);
         number_slider_profile<20>(limits);
+        light_temperature_profile<20>(limits);
         option_select_profile<20>(limits);
         local_sensor_profile<20>(limits);
         local_relay_profile<20>(limits);

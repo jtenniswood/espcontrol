@@ -1,10 +1,10 @@
 #pragma once
-#include "screensaver_pin.h"
-
-#include "media_playback_modes.h"
+#include "light_temperature_color.h"
 #include "media_playback_clock.h"
+#include "media_playback_modes.h"
 #include "media_volume_capability.h"
 #include "number_slider_policy.h"
+#include "screensaver_pin.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
@@ -611,17 +611,7 @@ inline void parse_kelvin_range(const std::string &unit, int &min_k, int &max_k) 
 // shift between two cool-white shades — instead of stretching the full
 // amber-to-blue gradient across two values that should both look cool.
 inline lv_color_t kelvin_to_fill_color(int k, int /*min_k*/, int /*max_k*/) {
-  constexpr int KELVIN_REF_MIN = 2000;
-  constexpr int KELVIN_REF_MAX = 6500;
-  float t = (float)(k - KELVIN_REF_MIN) /
-            (float)(KELVIN_REF_MAX - KELVIN_REF_MIN);
-  if (t < 0.0f) t = 0.0f;
-  if (t > 1.0f) t = 1.0f;
-  // warm = 0xFF8012, cool = 0xB8CCFF
-  uint8_t r = (uint8_t)(0xFF + t * (float)(0xB8 - 0xFF) + 0.5f);
-  uint8_t g = (uint8_t)(0x80 + t * (float)(0xCC - 0x80) + 0.5f);
-  uint8_t b = (uint8_t)(0x12 + t * (float)(0xFF - 0x12) + 0.5f);
-  return lv_color_make(r, g, b);
+  return lv_color_hex(espcontrol::light_temperature::fill_color(k));
 }
 
 // Send light.turn_on with color_temp_kelvin mapped from 0-100 pct over [min_k, max_k].

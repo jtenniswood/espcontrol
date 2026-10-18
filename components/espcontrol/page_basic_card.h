@@ -3,6 +3,7 @@
 #include "page_climate_card.h"
 #include "page_entity_state_runtime.h"
 #include "page_fan_status_runtime.h"
+#include "page_light_temperature_runtime.h"
 #include "page_local_relay_runtime.h"
 #include "page_local_sensor_runtime.h"
 #include "page_media_action.h"
@@ -44,7 +45,8 @@ enum class BasicCardKind : uint8_t {
   FAN_SWITCH,
   FAN_OSCILLATE,
   PERCENT_SLIDER,
-  NUMBER_SLIDER
+  NUMBER_SLIDER,
+  LIGHT_TEMPERATURE
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode:uint8_t { NONE, ENTITY, CLIMATE, MOWER, CHILDREN, NUMBER, TEXT };
@@ -87,6 +89,7 @@ struct BasicCardState {
   PageMediaVolumeSnapshot media_volume;
   PagePercentSliderSnapshot percent_slider;
   PageNumberSliderSnapshot number_slider;
+  PageLightTemperatureSnapshot light_temperature;
   uint8_t fill_percent{0},weather_condition{0};
   char number[48]{},text[257]{};
 };
@@ -98,6 +101,9 @@ PagePercentSliderSnapshot read_basic_percent_slider(const BasicCardDefinition&, 
                                                     PageEntityStateRuntime&, PagePercentSliderRuntime*);
 PageNumberSliderSnapshot read_basic_number_slider(const BasicCardDefinition&, ConfigurationHandle,
                                                   PageEntityStateRuntime&, PageNumberSliderRuntime*);
+PageLightTemperatureSnapshot read_basic_light_temperature(const BasicCardDefinition&, ConfigurationHandle,
+                                                          PageEntityStateRuntime&,
+                                                          PageLightTemperatureRuntime*);
 BasicCardState read_basic_card(const BasicCardDefinition&, ConfigurationHandle, PageEntityStateRuntime&,
                                int duration_components = 2, std::string_view temperature_unit = "°C",
                                PageCardTranslate translate = nullptr, PageMediaStateRuntime* media = nullptr,
@@ -105,5 +111,6 @@ BasicCardState read_basic_card(const BasicCardDefinition&, ConfigurationHandle, 
                                PageLocalRelayRuntime* relay = nullptr,
                                PageFanStatusRuntime* fan_status = nullptr,
                                PagePercentSliderRuntime* percent_slider = nullptr,
-                               PageNumberSliderRuntime* number_slider = nullptr);
+                               PageNumberSliderRuntime* number_slider = nullptr,
+                               PageLightTemperatureRuntime* temperature = nullptr);
 }  // namespace espcontrol::pages
