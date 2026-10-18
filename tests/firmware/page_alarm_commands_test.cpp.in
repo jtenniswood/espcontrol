@@ -77,14 +77,16 @@ struct Fixture {
   PageStore store;
   Fixture(uint32_t generation, const char* entity = "alarm_control_panel.home",
           const DeviceUiLimits& limits = DEVICE_UI_PROFILES[8], bool empty = false,
-          const std::string& options = "", const std::string& action_mode = "away") {
+          const std::string& options = "", const std::string& action_mode = "away",
+          const char* action_entity = nullptr) {
     PanelConfigWriter writer(document.data(), document.size());
     assert(writer.begin() == PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
                                         std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
     const std::string cards[] = {
         std::string(entity) + ";;Auto;Auto;;;alarm;;" + options,
-        std::string(entity) + ";;Auto;Auto;" + action_mode + ";;alarm_action;;" + options,
+        std::string(action_entity ? action_entity : entity) + ";;Auto;Auto;" + action_mode +
+            ";;alarm_action;;" + options,
         std::string(entity) + ";Alarms;Auto;Auto;indicator;;subpage;;subpage_kind=alarm"};
     for (size_t i = 0; i < 3; ++i) {
       const auto card = empty ? std::string(";;;;sensor.empty;;sensor;1;") : cards[i];
@@ -129,6 +131,10 @@ struct Port : PageAlarmCommandPort {
   }
   bool valid(PageModalToken t) const override {
     return same(t, modal);
+  }
+  alarm::Action pin_mode{alarm::Action::NONE};
+  bool selected_pin(PageModalToken t, alarm::Action mode) const override {
+    return valid(t) && mode == pin_mode;
   }
   bool send(std::string_view key, const char* action, std::string_view pin) override {
     ++sends;
@@ -335,6 +341,26 @@ void hidden_and_replacement(const DeviceUiLimits& limits) {
   assert(h.commands.loop() == PageAlarmCommandResult::FAILED && !h.ack.pending({1, 1}) &&
          h.commands.memory().pending_code_bytes == 0);
 }
+void stale_action_panel(const DeviceUiLimits& limits) {
+  Fixture f(17, "alarm_control_panel.home", limits, false, "", "away", "alarm_control_panel.other");
+  Harness h(limits);
+  h.publish(f, 0);
+  h.report("triggered");
+  auto origin = h.modal(h.state.takeover().origin.index);
+  assert(h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  h.report("disarmed");
+  assert(h.commands.loop() == PageAlarmCommandResult::CANCELLED && h.port.sends == 0);
+  assert(!h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  h.port.pin_mode = alarm::Action::AWAY;
+  assert(h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  assert(!h.commands.queue(origin, alarm::Action::NIGHT, "1234"));
+  h.port.pin_mode = alarm::Action::NONE;
+  assert(h.commands.loop() == PageAlarmCommandResult::CANCELLED);
+  h.report("triggered");
+  assert(h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  h.transport.send("alarm_control_panel.other", "", "triggered");
+  assert(h.commands.loop() == PageAlarmCommandResult::CANCELLED && h.port.sends == 0);
+}
 void reentrant_send(const DeviceUiLimits& limits) {
   Fixture f(17, "alarm_control_panel.home", limits), next(18, "alarm_control_panel.next", limits);
   Harness h(limits);
@@ -388,6 +414,7 @@ int main() {
     input_lifetimes(limits);
     hidden_and_replacement(limits);
     reentrant_send(limits);
+    stale_action_panel(limits);
     exhaustion_and_cycles(limits);
   }
   std::puts(

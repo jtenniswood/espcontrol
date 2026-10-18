@@ -57,6 +57,12 @@ class PageAlarmModalPort final : public PageModalPort {
     observer.progress = progress;
     return true;
   }
+  bool selected_pin(PageModalToken token, alarm::Action mode) const {
+    return record_ && !record_->retired && record_->pin_phase && record_->pin_mode == mode &&
+           record_->token.opening == token.opening && record_->token.configuration == token.configuration &&
+           record_->token.card == token.card && record_->token.kind == token.kind && pin_overlay(*record_) &&
+           runtime_->interactive(token);
+  }
   bool valid_origin(PageBindingToken token) const override {
     return valid_ && valid_(owner_, token);
   }
@@ -143,7 +149,10 @@ class PageAlarmModalPort final : public PageModalPort {
     ctx.off_theme_owned =
         PageAlarmStateRuntime::classify(store, handle.index) == PageAlarmSourceKind::CONTROL &&
         cfg_option_value(ctx.options, "card_off_color").empty();
-    if (token.kind == ControlModalKind::ALARM_PIN) record->pin_mode = alarm::action(config.sensor);
+    record->action_mode = PageAlarmStateRuntime::classify(store, handle.index) == PageAlarmSourceKind::ACTION
+                              ? alarm::action(config.sensor)
+                              : alarm::Action::NONE;
+    if (token.kind == ControlModalKind::ALARM_PIN) record->pin_mode = record->action_mode;
     record_ = record;
     return record;
   }
@@ -189,9 +198,13 @@ class PageAlarmModalPort final : public PageModalPort {
       alarm_pin_hide_modal();
   }
   ControlModalDismissPolicy dismiss_policy(void* pointer) const override {
-    return static_cast<Record*>(pointer)->pin_phase
-               ? ControlModalDismissPolicy::DISMISS
-               : ControlModalDismissPolicy::PRESERVE_DURING_DISPLAY_TAKEOVER;
+    const auto& record = *static_cast<Record*>(pointer);
+    const auto snapshot = state_.read(record.card);
+    const bool pending_pin =
+        record.open_pin && snapshot.command_available &&
+        graph_.read_attribute(record.card, snapshot.entity, {}).status != PageEntityStatus::EXHAUSTED;
+    return (record.pin_phase || pending_pin) ? ControlModalDismissPolicy::DISMISS
+                                             : ControlModalDismissPolicy::PRESERVE_DURING_DISPLAY_TAKEOVER;
   }
   uint64_t source_revision(void*) const override {
     return state_.takeover_events();
@@ -235,7 +248,7 @@ class PageAlarmModalPort final : public PageModalPort {
     ConfigurationHandle card;
     uint32_t connection;
     PageModalGestures gestures;
-    alarm::Action pin_mode{alarm::Action::NONE};
+    alarm::Action pin_mode{alarm::Action::NONE}, action_mode{alarm::Action::NONE};
     bool retired{false}, transitioning{false}, open_pin{false}, awaiting_submission{false}, pin_phase{false},
         command_available{false};
     uint64_t seen{UINT64_MAX};
@@ -345,6 +358,13 @@ class PageAlarmModalPort final : public PageModalPort {
       const bool queued = port.commands_.queue({{}, record.token, record.connection}, selected, code);
       if (queued) record.awaiting_submission = true;
       return queued;
+    }
+    if (record.action_mode != alarm::Action::NONE && record.token.kind == ControlModalKind::ALARM_CONTROL &&
+        selected != record.action_mode) {
+      const auto takeover = port.state_.takeover();
+      if (!takeover.valid || takeover.origin.generation != record.card.generation ||
+          takeover.origin.index != record.card.index)
+        return false;
     }
     if (alarm_action_requires_pin(record.context.options, std::string(mode))) {
       record.pin_mode = selected;

@@ -58,3 +58,9 @@ confirmations, scene integration, compiled legacy registry retirement and physic
 S3/working twenty-slot P4 qualification remain required. No device is flashed or
 measured by these checks. Stored/backup formats and nesting depth are unchanged;
 P4-86 stays reserved for USB diagnosis.
+
+An action-card control opening must still match the current takeover to widen its
+configured action. The sole post-takeover exception is the exact already-selected
+PIN action proven by `PageAlarmModalPort::selected_pin`; implement the command
+port's `selected_pin` callback by delegating there. Both queue and dispatch validate
+this proof. A modal kind by itself cannot authorize a new alternative mode.

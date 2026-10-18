@@ -23,8 +23,12 @@ PIN screen keeps the critical display lease until state changes, without reopeni
 the panel until another eligible report, matching the existing keypad behavior. It adopts an already visible
 manual panel without making it automatic. When critical state ends, it closes its
 own automatic control panel but leaves a manual panel or an active PIN session
-open. The keypad's chosen action can still complete through its admitted live
-control token after a countdown ends; command configuration, availability, opening,
+open. Only the exact action already selected for the live PIN session can complete
+after its takeover ends. The command port delegates this proof to the demanded
+alarm port, and both queue and dispatch recheck it. A stale action-card panel cannot
+select a new alternative mode, including before presentation cleanup. A selected
+PIN transition is preserved through countdown expiry while the source remains
+command-available; command configuration, availability, opening,
 PIN and connection checks remain mandatory.
 
 A failed modal setup is attempted once per relevant source/connection event, not
