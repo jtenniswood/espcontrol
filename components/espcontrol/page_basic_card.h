@@ -29,7 +29,9 @@ enum class BasicCardKind : uint8_t {
   MEDIA_NOW_PLAYING,
   MEDIA_COVER_ART,
   MEDIA_CONTROL,
-  FAN_CONTROL
+  FAN_CONTROL,
+  FAN_DIRECTION,
+  FAN_PRESET
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode:uint8_t { NONE, ENTITY, CLIMATE, MOWER, CHILDREN, NUMBER, TEXT };

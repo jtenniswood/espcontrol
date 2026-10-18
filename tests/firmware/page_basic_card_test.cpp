@@ -304,6 +304,73 @@ void fan_control_profile(const DeviceUiLimits& limits) {
   assert(value.label == "Custom" && !value.numeric && value.unit.empty());
 }
 
+void fan_mode_profile(const DeviceUiLimits& limits) {
+  for (bool direction : {true, false}) {
+    Fixture fixture(limits, std::string("fan.room;Ignored;Auto;Auto;sensor.ignored;ignored;") +
+                                (direction ? "fan_direction" : "fan_preset") + ";;");
+    BasicCardDefinition definition;
+    assert(prepare_basic_card(fixture.store, 0, definition));
+    assert(definition.kind == (direction ? BasicCardKind::FAN_DIRECTION : BasicCardKind::FAN_PRESET));
+    assert(definition.label.empty() && definition.unit.empty() && definition.active_color &&
+           definition.push_feedback);
+    assert(definition.icon == (direction ? "Swap Horizontal" : "Fan Auto") &&
+           definition.icon_on == definition.icon);
+    assert(basic_folder_child_indicator(fixture.store, 0) == "fan.room");
+    PageCardDependencies source;
+    Arena arena;
+    Subscriptions transport;
+    PageEntityStateRuntime state(source, arena, transport, {32, 32, 4096});
+    assert(state.prepare(fixture.store));
+    state.activate_prepared(fixture.store);
+    const ConfigurationHandle handle{17, 0};
+    auto read = [&]() { return read_basic_card(definition, handle, state); };
+    assert(read().label == "Unavailable");
+    transport.send("fan.room", "", "off");
+    assert(read().label == "Unsupported");
+    const char* attribute = direction ? "direction" : "preset_mode";
+    transport.send("fan.room", "preset_modes", "['presetModes', 'direction']");
+    transport.send("fan.room", attribute, direction ? " ReVeRsE " : " sleep_mode ");
+    if (!direction) assert(read().label == "Unsupported");
+    transport.send("fan.room", "preset_modes", "['sleep_mode', 'auto']");
+    auto value = read();
+    assert(value.on && value.formatted_label && !value.numeric);
+    assert(std::strcmp(value.text, direction ? "Reverse" : "Sleep Mode") == 0);
+    assert(!read_basic_indicator(handle, "fan.room", state));  // Folder follows primary power.
+    transport.send("fan.room", "", "on");
+    assert(read_basic_indicator(handle, "fan.room", state));
+    transport.send("fan.room", "", "unavailable");
+    assert(read().on && read().label == "Unavailable");
+    transport.send("fan.room", "", "on");
+    transport.send("fan.room", attribute, direction ? "FORWARD" : " OFF ");
+    value = read();
+    assert(!value.on);
+    if (direction)
+      assert(value.formatted_label && std::strcmp(value.text, "Forward") == 0);
+    else
+      assert(value.label == "Preset");
+    transport.send("fan.room", attribute, direction ? "invalid" : "unknown");
+    value = read();
+    if (direction)
+      assert(!value.on && value.label == "Unsupported");
+    else
+      assert(value.on && std::strcmp(value.text, "Unknown") == 0);
+    transport.send("fan.room", attribute, direction ? "reverse" : "auto");
+    auto translate = [](const char* key) { return std::strcmp(key, "Auto") == 0 ? "Automatique" : key; };
+    value = read_basic_card(definition, handle, state, 2, "°C", translate);
+    assert(std::strcmp(value.text, direction ? "Reverse" : "Automatique") == 0);
+    const auto before = allocations;
+    for (int i = 0; i < 1000; ++i) assert(read().on);
+    assert(allocations == before);
+    ++transport.generation;
+    assert(!read().on && read().label == "Unavailable");
+    Fixture custom_mode(limits, std::string("fan.room;Ignored;Custom Glyph;Fan;;;") +
+                                    (direction ? "fan_direction" : "fan_preset") + ";;");
+    assert(prepare_basic_card(custom_mode.store, 0, definition));
+    assert(definition.icon == "Custom Glyph" && definition.icon_on == definition.icon &&
+           definition.label.empty());
+  }
+}
+
 void weather_profile(const DeviceUiLimits &limits) {
   Fixture fixture(limits,"weather.home;Ignored;Custom;Custom;;;weather;0;");BasicCardDefinition definition;assert(prepare_basic_card(fixture.store,0,definition));assert(definition.kind==BasicCardKind::WEATHER&&definition.label.empty()&&definition.unit.empty());PageCardDependencies source;Arena arena;Subscriptions transport;PageEntityStateRuntime state(source,arena,transport,{16,16,1024});assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);
   auto value=read_basic_card(definition,{17,0},state);assert(value.label=="Unavailable");
@@ -669,6 +736,7 @@ int main() {
     status_actions_profile(limits);
     control_profile(limits);
     fan_control_profile(limits);
+    fan_mode_profile(limits);
     weather_profile(limits);
     media_action_profile(limits);
     media_position_profile(limits);

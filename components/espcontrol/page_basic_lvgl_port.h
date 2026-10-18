@@ -282,6 +282,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         }
         if(view.kind==BasicCardKind::CLIMATE&&actions_.climate==nullptr)return false;
         if(view.kind==BasicCardKind::ACTION&&actions_.action==nullptr)return false;
+        if (view.kind == BasicCardKind::FAN_DIRECTION && !actions_.action) return false;
+        if (view.kind == BasicCardKind::FAN_PRESET && !actions_.control) return false;
         if (view.kind == BasicCardKind::MEDIA_CONTROL &&
             (!media_ ||
              (view.media.kind == MediaActionKind::VOLUME ? !actions_.media_volume : !actions_.media_control)))
@@ -315,8 +317,10 @@ class PageBasicLvglPort final:public PageRendererPort {
         if (((view.kind == BasicCardKind::MEDIA_ACTION || view.kind == BasicCardKind::MEDIA_POSITION ||
               view.kind == BasicCardKind::MEDIA_CONTROL) &&
              view.media.show_state) ||
-            view.kind == BasicCardKind::TEXT || view.kind == BasicCardKind::CLIMATE || view.text_overlay ||
-            view.folder_mode == BasicFolderMode::TEXT || view.action_display == BasicActionDisplay::TEXT)
+            view.kind == BasicCardKind::TEXT || view.kind == BasicCardKind::CLIMATE ||
+            view.kind == BasicCardKind::FAN_DIRECTION || view.kind == BasicCardKind::FAN_PRESET ||
+            view.text_overlay || view.folder_mode == BasicFolderMode::TEXT ||
+            view.action_display == BasicActionDisplay::TEXT)
           label_capacity = std::max<size_t>(label_capacity, 257);
         if(view.default_label) {
           const auto *translated=theme_.translate?theme_.translate(view.default_label):nullptr;
@@ -516,6 +520,8 @@ class PageBasicLvglPort final:public PageRendererPort {
                                        s.definition->definition.kind == BasicCardKind::ACTION ||
                                        s.definition->definition.kind == BasicCardKind::LIGHT ||
                                        s.definition->definition.kind == BasicCardKind::FAN_CONTROL ||
+                                       s.definition->definition.kind == BasicCardKind::FAN_DIRECTION ||
+                                       s.definition->definition.kind == BasicCardKind::FAN_PRESET ||
                                        s.definition->definition.kind == BasicCardKind::COVER ||
                                        s.definition->definition.kind == BasicCardKind::FORECAST ||
                                        s.definition->definition.kind == BasicCardKind::MEDIA_ACTION ||
@@ -1279,7 +1285,11 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(definition.kind==BasicCardKind::FOLDER) {
       const auto target=port->store_.card(origin.card)->target;
       if(port->actions_.open&&target!=NO_PAGE)port->actions_.open(port->actions_.owner,origin,target);
-    } else if(definition.kind==BasicCardKind::CLIMATE&&port->actions_.climate)
+    } else if (definition.kind == BasicCardKind::FAN_DIRECTION && port->actions_.action)
+      port->actions_.action(port->actions_.owner, origin);
+    else if (definition.kind == BasicCardKind::FAN_PRESET && port->actions_.control)
+      port->actions_.control(port->actions_.owner, origin);
+    else if (definition.kind == BasicCardKind::CLIMATE && port->actions_.climate)
       port->actions_.climate(port->actions_.owner,origin);
     else if(definition.kind==BasicCardKind::TOGGLE&&port->actions_.toggle)
       port->actions_.toggle(port->actions_.owner,origin,definition.entity);

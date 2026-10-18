@@ -128,6 +128,19 @@ target_compile_options(page_media_group_test PRIVATE -Wall -Wextra -Werror -UNDE
 target_include_directories(page_media_group_test PRIVATE ../../components/espcontrol)
 add_test(NAME page_media_group_test COMMAND page_media_group_test)
 
+set(PAGE_FAN_MODE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_fan_mode_test.cpp)
+add_custom_command(OUTPUT ${PAGE_FAN_MODE_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_fan_mode_test.py
+    --output ${PAGE_FAN_MODE_SOURCE}
+  DEPENDS generate_page_fan_mode_test.py page_fan_mode_test.cpp.in
+    ../../components/espcontrol/button_grid_fan.h
+  VERBATIM)
+add_executable(page_fan_mode_test ${PAGE_FAN_MODE_SOURCE})
+target_compile_features(page_fan_mode_test PRIVATE cxx_std_17)
+target_compile_options(page_fan_mode_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_fan_mode_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_fan_mode_test COMMAND page_fan_mode_test)
+
 add_executable(page_basic_card_test page_basic_card_test.cpp
   ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp

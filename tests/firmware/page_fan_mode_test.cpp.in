@@ -1,0 +1,95 @@
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <vector>
+
+#include "esphome/core/string_ref.h"
+#include "i18n_generated.h"
+struct lv_obj_t {};
+void lv_label_set_text(lv_obj_t*, const char*) {}
+#include "button_grid_config_parser.h"
+#include "page_fan_mode.h"
+static size_t allocations = 0;
+void* operator new(size_t bytes) {
+  ++allocations;
+  if (auto* p = std::malloc(bytes ? bytes : 1)) return p;
+  std::abort();
+}
+void* operator new[](size_t bytes) {
+  return ::operator new(bytes);
+}
+void operator delete(void* p) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p) noexcept {
+  std::free(p);
+}
+void operator delete(void* p, std::size_t) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p, std::size_t) noexcept {
+  std::free(p);
+}
+// @legacy-fan-parser
+using namespace espcontrol::pages;
+void compare(const std::string& raw) {
+  const bool expected = !fan_parse_options(esphome::StringRef(raw.data(), raw.size())).empty();
+  const auto before = allocations;
+  const bool actual = fan_mode_has_options(std::string_view(raw).substr(0, HA_TEXT_SENSOR_STATE_MAX_LEN));
+  assert(allocations == before);
+  if (actual != expected) {
+    std::fprintf(stderr, "Options mismatch: %s\n", raw.c_str());
+    std::abort();
+  }
+  const auto value = fan_lower(fan_trim(raw.substr(0, HA_SHORT_STATE_MAX_LEN)));
+  const auto formatted = fan_option_label(value);
+  char buffer[257];
+  const auto before_format = allocations;
+  format_fan_mode_text(buffer, sizeof(buffer), value);
+  const char* translated = espcontrol_i18n(buffer);
+  assert(allocations == before_format);
+  if (formatted != translated) {
+    std::fprintf(stderr, "Caption mismatch: %s expected %s got %s\n", raw.c_str(), formatted.c_str(),
+                 translated);
+    std::abort();
+  }
+  assert(fan_mode_preset_active(value) == fan_preset_active(value));
+}
+int main() {
+  for (const char* language : {"en", "fi", "fr"}) {
+    set_espcontrol_language(language);
+    for (const std::string value :
+         {"", " ", "[]", "['direction','presetModes']", "['sleep','auto']", "presetModes   , oscillating",
+          "'direction,auto'", "'preset'\"modes\"", "OFF", "none", "unknown", " sleep-mode ", "auto", "garage",
+          u8"ÜBER_ÉTÉ", u8"ṢADE", "[',\\\"']"})
+      compare(value);
+    uint32_t random = 1234567;
+    const auto next = [&]() {
+      random = random * 1664525U + 1013904223U;
+      return random;
+    };
+    const std::vector<std::string> fragments = {
+        "presetModes", "direction", "oscillating", "presetMode", "sleep", "'",    "\"", "[", "]",
+        ",",           "\\",        " ",           "\t",         "\n",    "auto", "-",  "_", u8"É"};
+    for (int n = 0; n < 10000; ++n) {
+      std::string raw;
+      for (size_t i = 0, count = next() % 12; i < count; ++i) raw += fragments[next() % fragments.size()];
+      compare(raw);
+    }
+  }
+  compare(std::string("a ") + char(0xff) + " b");
+  compare(std::string("A") + char(0xc3));
+  compare(std::string("A\0B", 3));
+  compare(std::string(10000, ' ') + "auto");
+  compare(std::string(10000, 'x'));
+  for (size_t capacity = 1; capacity < 8; ++capacity) {
+    char buffer[8];
+    std::memset(buffer, 0x55, sizeof(buffer));
+    format_fan_mode_text(buffer, capacity, u8"ÉTÉ");
+    assert(std::strlen(buffer) < capacity);
+    assert(buffer[capacity] == 0x55);
+  }
+  assert(format_fan_mode_text(nullptr, 0, "auto") == 0);
+}

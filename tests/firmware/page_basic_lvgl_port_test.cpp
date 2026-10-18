@@ -60,6 +60,29 @@ struct Fixture {
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
   }
+  struct FanModes {};
+  Fixture(const DeviceUiLimits& limits, FanModes) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {";Modes;Auto;Auto;indicator;;subpage;;",
+                                 "fan.room;Ignored;Auto;Auto;;;fan_direction;;",
+                                 "fan.room;Ignored;Auto;Auto;;;fan_preset;;"};
+    for (size_t i = 0; i < 3; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i].data()),
+                                  cards[i].size()) == PanelConfigStatus::OK);
+    const std::string child = "~B,1,2|E,fan.room,Ignored,Auto,Auto,,,,|Z,fan.room,Ignored,Auto,Auto,,,,";
+    assert(writer.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = "1,2,3";
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                 reinterpret_cast<const uint8_t*>(order.data()),
+                                 order.size()) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   struct MediaControls {};
   Fixture(const DeviceUiLimits& limits, MediaControls) {
     PanelConfigWriter writer(document.data(), document.size());
@@ -488,6 +511,123 @@ template<size_t Slots>void control_profile(const DeviceUiLimits &limits) {
     for(size_t n=0;n<1000;++n){assert(renderer.open_page(child));renderer.update_visible();lv_obj_update_layout(page);assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);assert(cpp_allocations==cpp&&arena.allocations==reservations&&cache.memory().descriptor_adds==descriptors&&subscriptions.bindings.size()==channels&&lv_live_bytes==retained);}
     ++subscriptions.generation;renderer.update_visible();lv_obj_update_layout(page);assert(lv_obj_has_flag(widgets[1].fill,LV_OBJ_FLAG_HIDDEN)&&!lv_obj_has_state(widgets[2].button,LV_STATE_CHECKED));assert(!lv_obj_has_state(widgets[3].button,LV_STATE_CHECKED));std::printf("%s: light/cover/fan controls 1000 cycles, fixed retained resources, %zu native LVGL bytes including fill bank\n",limits.device_profile,retained);renderer.retire_active();state.retire_active();
   }assert(arena.live==0);lv_obj_delete(page);
+}
+
+template <size_t Slots>
+void fan_mode_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, Fixture::FanModes{});
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192});
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+  }
+  PageBasicTheme theme;
+  Actions<Slots> actions;
+  for (bool direction : {true, false}) {
+    Fixture one(limits,
+                std::string("fan.room;;Auto;Auto;;;") + (direction ? "fan_direction" : "fan_preset") + ";;");
+    auto callbacks = actions.callbacks();
+    if (direction)
+      callbacks.action = nullptr;
+    else
+      callbacks.control = nullptr;
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     callbacks);
+    assert(missing.initialize() && !missing.prepare(one.store, Slots));
+  }
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  actions.callbacks());
+    assert(port.initialize());
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t index = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[index++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    assert(renderer.prepare(fixture.store) && state.prepare(fixture.store));
+    renderer.activate_prepared(fixture.store);
+    state.activate_prepared(fixture.store);
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Unavailable") == 0);
+    subscriptions.send("fan.room", "", "off");
+    subscriptions.send("fan.room", "direction", "reverse");
+    subscriptions.send("fan.room", "preset_mode", "sleep_mode");
+    subscriptions.send("fan.room", "preset_modes", "['auto','sleep_mode']");
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED) &&
+           lv_obj_has_state(widgets[2].button, LV_STATE_CHECKED));
+    assert(!lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Reverse") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[2].label), "Sleep Mode") == 0);
+    click(widgets[1].button);
+    assert(actions.commands == 1 && renderer.valid(actions.last));
+    click(widgets[2].button);
+    assert(actions.commands == 2 && renderer.valid(actions.last));
+    const auto child = fixture.store.card(0)->target;
+    for (size_t slot : {size_t(1), size_t(2)}) {
+      const auto token = renderer.binding(slot);
+      lv_obj_send_event(widgets[slot].button, LV_EVENT_PRESSED, nullptr);
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_send_event(widgets[slot].button, LV_EVENT_CLICKED, nullptr);
+      assert(actions.commands == 2 && !renderer.valid(token));
+      assert(renderer.back());
+      renderer.update_visible();
+    }
+    subscriptions.send("fan.room", "", "on");
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto cpp = cpp_allocations, reserved = arena.allocations, retained = lv_live_bytes,
+               channels = subscriptions.bindings.size(), descriptors = cache.memory().descriptor_adds,
+               resolves = actions.icon_resolves;
+    for (size_t n = 0; n < 1000; ++n) {
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(cpp_allocations == cpp && arena.allocations == reserved && lv_live_bytes == retained &&
+             subscriptions.bindings.size() == channels && cache.memory().descriptor_adds == descriptors &&
+             actions.icon_resolves == resolves);
+    }
+    ++subscriptions.generation;
+    renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED) &&
+           std::strcmp(lv_label_get_text(widgets[1].label), "Unavailable") == 0);
+    renderer.retire_active();
+    state.retire_active();
+    std::printf("%s: fan direction/preset 1000 cycles, stable retained resources\n", limits.device_profile);
+  }
+  assert(arena.live == 0);
+  lv_obj_delete(page);
 }
 
 template<size_t Slots>void weather_profile(const DeviceUiLimits &limits) {
@@ -1782,6 +1922,25 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "fan_modes") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          fan_mode_profile<6>(limits);
+          break;
+        case 9:
+          fan_mode_profile<9>(limits);
+          break;
+        case 15:
+          fan_mode_profile<15>(limits);
+          break;
+        case 20:
+          fan_mode_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "controls") == 0) {
       switch (limits.slot_count) {
         case 6: control_profile<6>(limits); break;
@@ -1807,6 +1966,7 @@ int main() {
         profile<6>(limits);
         status_action_profile<6>(limits);
         control_profile<6>(limits);
+        fan_mode_profile<6>(limits);
         weather_profile<6>(limits);
         forecast_profile<6>(limits);
         media_action_profile<6>(limits);
@@ -1819,6 +1979,7 @@ int main() {
         profile<9>(limits);
         status_action_profile<9>(limits);
         control_profile<9>(limits);
+        fan_mode_profile<9>(limits);
         weather_profile<9>(limits);
         forecast_profile<9>(limits);
         media_action_profile<9>(limits);
@@ -1831,6 +1992,7 @@ int main() {
         profile<15>(limits);
         status_action_profile<15>(limits);
         control_profile<15>(limits);
+        fan_mode_profile<15>(limits);
         weather_profile<15>(limits);
         forecast_profile<15>(limits);
         media_action_profile<15>(limits);
@@ -1843,6 +2005,7 @@ int main() {
         profile<20>(limits);
         status_action_profile<20>(limits);
         control_profile<20>(limits);
+        fan_mode_profile<20>(limits);
         weather_profile<20>(limits);
         forecast_profile<20>(limits);
         media_action_profile<20>(limits);

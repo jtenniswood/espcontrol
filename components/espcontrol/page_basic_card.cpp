@@ -1,17 +1,18 @@
 #include "page_basic_card.h"
-#include "page_media_group.h"
 
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
-#include "button_grid_subpage_parser.h"
 #include "bounded_sensor_text.h"
-#include "climate_state_logic.h"
-#include "weather_condition.h"
-#include "media_playlist_match.h"
 #include "button_grid_contract_generated.h"
+#include "button_grid_subpage_parser.h"
+#include "climate_state_logic.h"
+#include "media_playlist_match.h"
+#include "page_fan_mode.h"
+#include "page_media_group.h"
+#include "weather_condition.h"
 
 namespace espcontrol::pages {
 namespace {
@@ -187,6 +188,14 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
     out.unit={};out.kind=BasicCardKind::COVER;out.push_feedback=true;out.default_label="Cover";
     if(out.icon.empty()||out.icon=="Auto")out.icon="Blinds";
     if(out.icon_on.empty()||out.icon_on=="Auto")out.icon_on="Blinds Open";
+  } else if (type == "fan_direction" || type == "fan_preset") {
+    out.kind = type == "fan_direction" ? BasicCardKind::FAN_DIRECTION : BasicCardKind::FAN_PRESET;
+    out.active_color = out.push_feedback = true;
+    out.label = {};
+    out.unit = {};
+    out.default_label = type == "fan_direction" ? "Direction" : "Preset";
+    if (out.icon.empty() || out.icon == "Auto") out.icon = fan_card_default_icon_name(std::string(type));
+    out.icon_on = out.icon;
   } else if (type == "fan_control") {
     out.kind = BasicCardKind::FAN_CONTROL;
     out.active_color = out.push_feedback = true;
@@ -194,14 +203,14 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
     out.default_label = "Fan";
     if (out.icon.empty() || out.icon == "Auto") out.icon = "Fan";
     if (out.icon_on.empty() || out.icon_on == "Auto") out.icon_on = out.icon;
-  } else if(type=="climate"||type=="climate_control") {
+  } else if (type == "climate" || type == "climate_control") {
     out.kind=BasicCardKind::CLIMATE;out.active_color=true;
     const auto label=normalize_climate_label_display(cfg_option_value(options,"label_display"));
     out.climate.label=label=="status"?ClimateCardLabel::STATUS:label=="actual"?ClimateCardLabel::ACTUAL:label=="target"?ClimateCardLabel::TARGET:ClimateCardLabel::LABEL;
     const auto number=normalize_climate_number_display(cfg_option_value(options,"number_display"));
     out.climate.number=number=="actual"?ClimateCardNumber::ACTUAL:number=="icon"?ClimateCardNumber::ICON:ClimateCardNumber::TARGET;
     out.climate.half_step=normalize_climate_temperature_step(cfg_option_value(options,"temperature_step"))=="0.5";
-  } else if(type=="subpage") {
+  } else if (type == "subpage") {
     out.kind=BasicCardKind::FOLDER;
     if(out.sensor=="indicator") {
       if(out.entity.empty())out.folder_mode=BasicFolderMode::CHILDREN;
@@ -211,7 +220,8 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
       }
       out.active_color=true;
     } else if(!out.sensor.empty())out.folder_mode=precision=="text"?BasicFolderMode::TEXT:BasicFolderMode::NUMBER;
-  } else return false;
+  } else
+    return false;
   if(out.kind==BasicCardKind::TEXT&&cfg_option_enabled(options,SENSOR_STATE_LABELS_OPTION)) {
     auto input=cfg_option_value(options,SENSOR_STATE_INPUT_OPTION),output=cfg_option_value(options,SENSOR_STATE_OUTPUT_OPTION);
     const auto high=cfg_option_value(options,SENSOR_STATE_HIGH_LABEL_OPTION),low=cfg_option_value(options,SENSOR_STATE_LOW_LABEL_OPTION);
@@ -238,7 +248,8 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
   // The currently ported children which contributed to the old indicator.
   // Sensors never contributed. Extend this policy when other drivers port their
   // indicator semantics (timer/mower/local controls use different predicates).
-  return type.empty() || type == "light_switch" || type == "media" || type == "fan_control"
+  return type.empty() || type == "light_switch" || type == "media" || type == "fan_control" ||
+                 type == "fan_direction" || type == "fan_preset"
              ? store.field(*card, CardField::ENTITY)
              : std::string_view{};
 }
@@ -261,6 +272,49 @@ bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,Pag
 BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHandle handle,PageEntityStateRuntime &state,int duration_components,std::string_view temperature_unit,PageCardTranslate translate,PageMediaStateRuntime *media_owner) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
+  if (card.kind == BasicCardKind::FAN_DIRECTION || card.kind == BasicCardKind::FAN_PRESET) {
+    const bool direction = card.kind == BasicCardKind::FAN_DIRECTION;
+    const auto primary = find(state, handle, card.entity);
+    const auto field = find(state, handle, card.entity, direction ? "direction" : "preset_mode");
+    const auto value = field.status == PageEntityStatus::AVAILABLE
+                           ? field.value.substr(0, HA_SHORT_STATE_MAX_LEN)
+                           : std::string_view{};
+    result.on = direction ? fan_mode_equal(value, "reverse") : fan_mode_preset_active(value);
+    const auto label = [&](const char* key) {
+      const auto* translated = translate ? translate(key) : nullptr;
+      result.label = translated ? translated : key;
+    };
+    if (!available(primary) || equal_state(primary.value, {})) {
+      label("Unavailable");
+      return result;
+    }
+    if (direction) {
+      if (!fan_mode_equal(value, "forward") && !fan_mode_equal(value, "reverse")) {
+        label("Unsupported");
+        return result;
+      }
+    } else {
+      const auto options = find(state, handle, card.entity, "preset_modes");
+      if (options.status != PageEntityStatus::AVAILABLE ||
+          !fan_mode_has_options(options.value.substr(0, HA_TEXT_SENSOR_STATE_MAX_LEN))) {
+        label("Unsupported");
+        return result;
+      }
+      if (!result.on) {
+        label("Preset");
+        return result;
+      }
+    }
+    format_fan_mode_text(result.text, sizeof(result.text), value);
+    const auto* translated = translate ? translate(result.text) : nullptr;
+    if (translated && translated != result.text) {
+      const size_t length = std::min(std::strlen(translated), sizeof(result.text) - 1);
+      std::memmove(result.text, translated, length);
+      result.text[length] = '\0';
+    }
+    result.formatted_label = true;
+    return result;
+  }
   if (card.kind == BasicCardKind::MEDIA_NOW_PLAYING || card.kind == BasicCardKind::MEDIA_COVER_ART) {
     const bool cover = card.kind == BasicCardKind::MEDIA_COVER_ART;
     PageMediaRouteSnapshot route;

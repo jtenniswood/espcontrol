@@ -457,9 +457,9 @@ void media_control_clear_tab_content();
 // @production-function media_control_copy_current_speaker_state
 // @production-function media_control_find_speaker_row
 // @production-function media_control_cancel_speaker_action
+// @production-function media_control_set_volume_value
 // @production-function media_control_speaker_action_timer_cb
 // @production-function media_control_apply_group_volume_percent
-// @production-function media_control_set_volume_value
 // @production-function media_control_apply_volume_percent
 // @production-function media_control_group_action_result
 // @production-function media_control_toggle_speaker

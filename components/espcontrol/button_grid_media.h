@@ -3778,13 +3778,17 @@ inline void media_control_speaker_action_timer_cb(lv_timer_t *) {
     media_control_set_speaker_status(espcontrol_i18n("Grouping failed"), true);
     media_control_refresh_group_volume(ctx);
   }
-  const bool volume_expired = std::any_of(
-    ctx->group_volume_states.begin(), ctx->group_volume_states.end(),
-    [now](const MediaGroupVolumeState &member) {
-      return member.pending_until_ms != 0 &&
-        (int32_t)(now - member.pending_until_ms) >= 0;
-    });
-  if (volume_expired) {
+  bool volume_expired = false;
+  bool primary_target_expired = false;
+  for (const MediaGroupVolumeState &member : ctx->group_volume_states) {
+    if (member.pending_until_ms == 0 ||
+        (int32_t)(now - member.pending_until_ms) < 0) continue;
+    volume_expired = true;
+    if (member.entity_id == ctx->entity_id) primary_target_expired = true;
+  }
+  const bool primary_edit_expired = ctx->pending_until_ms != 0 &&
+    (int32_t)(now - ctx->pending_until_ms) >= 0;
+  if (volume_expired || primary_edit_expired) {
     media_control_refresh_group_member_volumes(ctx);
     // A member that disappeared from discovery has no actual reading to
     // restore. Disable its volume instead of keeping an unconfirmed target.
@@ -3793,6 +3797,24 @@ inline void media_control_speaker_action_timer_cb(lv_timer_t *) {
           (int32_t)(now - member.pending_until_ms) < 0) continue;
       member.pending_until_ms = 0;
       member.volume_known = false;
+    }
+    // The primary display has its own deadline. It can expire on the tick
+    // after refreshing the group cache cleared the raw target, and must not
+    // keep an unacknowledged level until another HA event happens to arrive.
+    if ((primary_target_expired || primary_edit_expired) &&
+        !media_control_volume_pending_active(ctx)) {
+      ctx->pending_pct = -1;
+      ctx->pending_until_ms = 0;
+      ctx->volume_known = false;
+      int actual_pct = 0;
+      for (const MediaGroupVolumeState &member : ctx->group_volume_states) {
+        if (member.entity_id != ctx->entity_id) continue;
+        ctx->volume_known = member.volume_known;
+        actual_pct = member.volume_pct;
+        break;
+      }
+      if (ctx->volume_known) media_control_set_volume_value(ctx, actual_pct);
+      media_control_refresh_parent_card(ctx);
     }
     media_control_refresh_speakers(ctx);
     media_control_refresh_group_volume(ctx);
@@ -4083,8 +4105,13 @@ inline lv_obj_t *media_control_create_speaker_volume_button(
     media_control_set_group_volume_target(
       ctx, row->entity_id, row->volume_pct, row->available);
     if (row->entity_id == ctx->entity_id) {
-      ctx->current_pct = row->volume_pct;
-      ctx->pending_pct = row->volume_pct;
+      // Match the direct subscription's display scale for acknowledgements.
+      // The shared group cache above still retains the raw target.
+      ctx->current_pct = ctx->volume_control_mode ==
+          espcontrol::media::VolumeControlMode::ABSOLUTE
+        ? media_control_clamp_volume(ctx, row->volume_pct)
+        : row->volume_pct;
+      ctx->pending_pct = ctx->current_pct;
       ctx->pending_until_ms = esphome::millis() + 1500;
     }
     send_media_volume_action(row->entity_id, row->volume_pct);

@@ -24,6 +24,7 @@ source = r'''
 #include <vector>
 #include "media_group_discovery.h"
 
+namespace espcontrol::media { enum class VolumeControlMode { ABSOLUTE, RELATIVE }; }
 using lv_coord_t = int;
 struct lv_timer_t {};
 constexpr int LV_OBJ_FLAG_CLICKABLE = 1, LV_OBJ_FLAG_EVENT_BUBBLE = 2;
@@ -118,6 +119,7 @@ struct MediaControlCtx {
   std::vector<std::string> group_members, speaker_helper_members;
   std::vector<MediaGroupDiscoveryItem> speaker_discovery;
   int current_pct = 0, pending_pct = -1;
+  espcontrol::media::VolumeControlMode volume_control_mode = espcontrol::media::VolumeControlMode::ABSOLUTE;
   uint32_t pending_until_ms = 0;
   bool volume_known = true, available = true;
   int reported_volume_pct = 20;
@@ -148,6 +150,9 @@ void media_control_refresh_speaker_row(MediaControlCtx *, MediaSpeakerRowState *
 }
 void media_control_refresh_group_volume(MediaControlCtx *) { ++group_refreshes; }
 void media_control_refresh_volume(MediaControlCtx *) {}
+void media_control_refresh_parent_card(MediaControlCtx *) {}
+int media_clamp_percent(int pct) { return std::max(0, std::min(100, pct)); }
+
 bool ha_cancel_action_response_callback(uint32_t, const char *) { return true; }
 void media_control_sync_speaker_candidates(MediaControlCtx *, const std::vector<std::string> &) {}
 int media_control_clamp_volume(MediaControlCtx *ctx, int pct) {
@@ -161,6 +166,8 @@ for text, name in (
     (group, "media_group_step_volume"),
     (group, "media_group_mean_volume"),
     (group, "media_group_delta_volumes"),
+    (media, "media_control_set_volume_value"),
+    (media, "media_control_volume_pending_active"),
     (media, "media_control_store_group_volume"),
     (media, "media_control_set_group_volume_target"),
     (media, "media_control_copy_group_volume_to_row"),
@@ -215,6 +222,20 @@ int main() {
   assert(office.volume_pct == 50 && commands.back().volume == 50);
   kitchen.volume_pct = 80; click(minus);
   assert(kitchen.volume_pct == 79 && commands.back().volume == 79);
+  // The primary sends its raw decrement above the cap, but its pending
+  // display target must use the same clamped scale as direct HA readings.
+  auto *primary_minus = media_control_create_speaker_volume_button(
+    &ctx, &office, &parent, 46, "-", false);
+  office.volume_pct = 80; click(primary_minus);
+  assert(office.volume_pct == 79 && commands.back().entity == office.entity_id);
+  assert(commands.back().volume == 79 && ctx.group_volume_states[0].volume_pct == 79);
+  assert(ctx.current_pct == 50 && ctx.pending_pct == 50);
+  // Relative-only players retain the raw scale used by their direct readings.
+  ctx.volume_control_mode = espcontrol::media::VolumeControlMode::RELATIVE;
+  office.volume_pct = 80; click(primary_minus);
+  assert(ctx.current_pct == 79 && ctx.pending_pct == 79);
+  ctx.volume_control_mode = espcontrol::media::VolumeControlMode::ABSOLUTE;
+
   kitchen.volume_pct = 0; click(minus);
   assert(kitchen.volume_pct == 0 && commands.back().volume == 0);
   const auto sent = commands.size();
@@ -380,6 +401,19 @@ int main() {
   commands.clear();
   media_control_apply_group_volume_percent(&ctx, 79, true);
   assert(commands.size() == 2 && commands[0].volume == 79 && commands[1].volume == 79);
+  // A primary target may expire a millisecond before its display deadline.
+  // The next timer tick must still restore the single-player Volume display,
+  // even though refreshing the group cache has already cleared its target.
+  ctx.group_members = {office.entity_id};
+  ctx.reported_volume_pct = 30; ctx.reported_volume_known = true;
+  ctx.current_pct = 31; ctx.pending_pct = 31; ctx.volume_known = true;
+  ctx.pending_until_ms = esphome::now + 1501;
+  ctx.group_volume_states = {{office.entity_id, 31, true, true, esphome::now + 1500}};
+  esphome::now += 1500; media_control_speaker_action_timer_cb(nullptr);
+  assert(ctx.group_volume_states[0].volume_pct == 30 && ctx.group_volume_states[0].pending_until_ms == 0);
+  assert(ctx.current_pct == 31 && ctx.pending_pct == 31); // Newer display deadline still protected.
+  ++esphome::now; media_control_speaker_action_timer_cb(nullptr);
+  assert(ctx.current_pct == 30 && ctx.pending_pct == -1 && ctx.pending_until_ms == 0);
 }
 '''
 with tempfile.TemporaryDirectory(prefix="media-speaker-volume-") as directory:
