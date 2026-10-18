@@ -1427,6 +1427,17 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   target_include_directories(page_label_refresh_test PRIVATE ../../components/espcontrol)
   target_link_libraries(page_label_refresh_test PRIVATE lvgl::lvgl)
   add_test(NAME page_label_refresh_test COMMAND page_label_refresh_test)
+  add_executable(page_expanded_image_modal_test page_expanded_image_modal_test.cpp
+    ../../components/espcontrol/page_modal_runtime.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_expanded_image_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_expanded_image_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_expanded_image_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_expanded_image_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_expanded_image_modal_test COMMAND page_expanded_image_modal_test)
+  set_tests_properties(page_expanded_image_modal_test PROPERTIES TIMEOUT 180)
+
   set(PAGE_ALARM_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_alarm_modal_test.cpp)
   add_custom_command(OUTPUT ${PAGE_ALARM_MODAL_SOURCE}
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_alarm_modal_test.py --output ${PAGE_ALARM_MODAL_SOURCE}

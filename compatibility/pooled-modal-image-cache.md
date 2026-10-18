@@ -2,7 +2,7 @@
 
 This #1825 prerequisite adds decoded-image reuse to the
 [demanded expanded source](pooled-expanded-image-source.md). Production still
-selects the existing renderer. Expanded widgets, application scene integration,
+selects the existing renderer. The [expanded viewer](pooled-expanded-image-view.md) has native coverage. Application scene integration,
 compiled legacy retirement and physical memory/latency qualification remain.
 Nothing was flashed and no memory-saving claim follows from these model tests.
 
