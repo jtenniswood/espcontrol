@@ -62,6 +62,14 @@ class CardEmitter {
     if (!pair(discovery, media_group_discovery_attribute(discovery))) return false;
     return low_heap_media_ || (progress(entity) && pair(entity, "friendly_name"));
   }
+  bool cover_art(const ParsedCfg &config) {
+    if (!media_control(config,config.entity) || !content(config.entity) || !metadata(config.entity) ||
+        !progress(config.entity) || !pair(config.entity,"source") || !artwork(config.entity)) return false;
+    const std::string secondary=media_cover_art_secondary_entity(config);
+    return secondary.empty() || secondary==config.entity ||
+        (media_control(config,secondary) && content(secondary) && metadata(secondary) && progress(secondary) &&
+         pair(secondary,"source") && artwork(secondary));
+  }
   bool slider(const ParsedCfg &config, bool tilt) {
     if (!pair(config.entity) || !friendly(config, config.entity)) return false;
     if (starts(config.entity,"number.") || starts(config.entity,"input_number."))
@@ -186,16 +194,12 @@ class CardEmitter {
       case Driver::MEDIA_PLAYLIST:
         return pair(config.entity) && content(config.entity);
       case Driver::MEDIA_NOW_PLAYING:
+        if (cfg_option_token_present(config.options, MEDIA_COVER_ART_OPTION)) return cover_art(config);
         return content(config.entity) && pair(config.entity,"source") && metadata(config.entity) &&
             (config.precision != "progress" || (pair(config.entity) && progress(config.entity))) &&
             ((config.precision != "play_pause" && !(in_subpage && aggregate_parent)) || pair(config.entity));
-      case Driver::MEDIA_COVER_ART: {
-        if (!media_control(config,config.entity) || !content(config.entity) || !metadata(config.entity) ||
-            !pair(config.entity,"source") || !artwork(config.entity)) return false;
-        const std::string secondary=media_cover_art_secondary_entity(config);
-        return secondary.empty() || (media_control(config,secondary) && content(secondary) && metadata(secondary) &&
-            pair(secondary,"source") && artwork(secondary));
-      }
+      case Driver::MEDIA_COVER_ART:
+        return cover_art(config);
       case Driver::MEDIA_CONTROL:
       case Driver::MEDIA_GROUP:
       case Driver::MEDIA:

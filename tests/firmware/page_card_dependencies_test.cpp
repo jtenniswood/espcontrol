@@ -104,6 +104,17 @@ void complex_and_external_sources() {
   auto media=declarations("media_player.room;Room;Auto;Auto;control_modal;;media;;",true);
   assert(media.count("sensor.speaker_group/data")==1);assert(media.count("media_player.room/media_position")==0);
   assert(media.count("media_player.room/group_members")==1);assert(media.count("media_player.room/shuffle")==1);
+  for (bool low_heap : {false, true}) {
+    for (const auto* mode : {"cover_art", "now_playing"}) {
+      const auto cover=declarations(std::string("media_player.room;Room;Auto;Auto;")+mode+
+          ";;media;;media_cover_art,cover_art_secondary_entity=media_player.tv",low_heap);
+      for (const auto* entity : {"media_player.room", "media_player.tv"})
+        for (const auto* attribute : {"", "source", "media_title", "media_artist", "media_content_id", "media_content_type",
+                                      "media_position", "media_duration", "media_position_updated_at", "entity_picture", "entity_picture_local"})
+          assert(cover.count(std::string(entity)+"/"+attribute)==1);
+      assert(cover.count("sensor.speaker_group/data")==1);
+    }
+  }
   auto full=declarations("media_player.room;Room;Auto;Auto;control_modal;;media;;",false);
   assert(full.count("media_player.room/media_position")==1);assert(full.count("media_player.room/friendly_name")==1);
   assert(declarations(";Empty;Auto;Auto;control_modal;;media;;").empty());

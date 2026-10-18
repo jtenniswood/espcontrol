@@ -8,6 +8,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "cover_art.h"
 #include "page_card_dependencies.h"
 #include "panel_config_document.h"
 using namespace espcontrol;
@@ -37,8 +38,9 @@ void operator delete[](void* p, std::size_t) noexcept {
 struct Arena : PageArenaAllocator {
   std::unordered_map<void*, size_t> live;
   bool fail = false;
+  size_t calls = 0, fail_at = SIZE_MAX;
   void* allocate(size_t bytes) override {
-    if (fail) return nullptr;
+    if (fail || ++calls == fail_at) return nullptr;
     auto* p = std::malloc(bytes);
     assert(p);
     live[p] = bytes;
@@ -74,16 +76,60 @@ struct Transport : PageMediaTransport {
     if (during) during();
   }
 };
+struct Subscriptions : PageEntitySubscriptions {
+  struct Binding {
+    const char *entity, *attribute;
+    void* owner;
+    uint32_t revision, channel;
+    Deliver deliver;
+  };
+  std::array<Binding, 128> entries{};
+  size_t count = 0;
+  Transport& transport;
+  explicit Subscriptions(Transport& source) : transport(source) {}
+  bool subscribe(const char* entity, const char* attribute, void* owner, uint32_t revision, uint32_t channel,
+                 Deliver deliver) override {
+    if (count == entries.size()) return false;
+    entries[count++] = {entity, attribute, owner, revision, channel, deliver};
+    return true;
+  }
+  void release(void* owner) override {
+    size_t used = 0;
+    for (size_t i = 0; i < count; ++i)
+      if (entries[i].owner != owner) entries[used++] = entries[i];
+    count = used;
+  }
+  uint32_t connection_generation() const override {
+    return transport.connection;
+  }
+  void send(const char* attribute, std::string_view value) {
+    send("", attribute, value);
+  }
+  void send(const char* entity, const char* attribute, std::string_view value) {
+    for (size_t i = 0; i < count; ++i) {
+      const auto binding = entries[i];
+      if ((!*entity || std::strcmp(binding.entity, entity) == 0) &&
+          std::strcmp(binding.attribute, attribute) == 0)
+        binding.deliver(binding.owner, binding.revision, binding.channel, value);
+    }
+  }
+};
+
 struct Fixture {
   explicit Fixture(uint32_t generation = 17, const std::string& entity = "media_player.room",
-                   std::array<const char*, 3> modes = {"playlist", "playlist", "playlist"}) {
+                   std::array<const char*, 3> modes = {"playlist", "playlist", "playlist"},
+                   std::array<const char*, 3> options = {"playlist_content_id=abcd",
+                                                         "playlist_content_id=abcd",
+                                                         "playlist_content_id=abcd"},
+                   std::array<const char*, 3> entities = {nullptr, nullptr, nullptr}) {
     const auto& limits = DEVICE_UI_PROFILES[8];
     PanelConfigWriter writer(document.data(), document.size());
     assert(writer.begin() == PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
                                         std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
     for (uint8_t slot = 1; slot <= 3; ++slot) {
-      const auto text = entity + ";;;;" + modes[slot - 1] + ";;media;;playlist_content_id=abcd";
+      const auto text = std::string(entities[slot - 1] ? entities[slot - 1] : entity.c_str()) + ";;;;" +
+                        modes[slot - 1] + ";;media;;" + options[slot - 1];
       assert(writer.append_button(slot, reinterpret_cast<const uint8_t*>(text.data()), text.size()) ==
              PanelConfigStatus::OK);
     }
@@ -269,40 +315,6 @@ void playback_survives_navigation_and_replacement() {
   runtime.loop();
 }
 void shared_cache_metadata_lifecycle() {
-  struct Subscriptions : PageEntitySubscriptions {
-    struct Binding {
-      const char *entity, *attribute;
-      void* owner;
-      uint32_t revision, channel;
-      Deliver deliver;
-    };
-    std::array<Binding, 64> entries{};
-    size_t count = 0;
-    Transport& transport;
-    explicit Subscriptions(Transport& source) : transport(source) {}
-    bool subscribe(const char* entity, const char* attribute, void* owner, uint32_t revision,
-                   uint32_t channel, Deliver deliver) override {
-      if (count == entries.size()) return false;
-      entries[count++] = {entity, attribute, owner, revision, channel, deliver};
-      return true;
-    }
-    void release(void* owner) override {
-      size_t used = 0;
-      for (size_t i = 0; i < count; ++i)
-        if (entries[i].owner != owner) entries[used++] = entries[i];
-      count = used;
-    }
-    uint32_t connection_generation() const override {
-      return transport.connection;
-    }
-    void send(const char* attribute, std::string_view value) {
-      for (size_t i = 0; i < count; ++i) {
-        const auto binding = entries[i];
-        if (std::strcmp(binding.attribute, attribute) == 0)
-          binding.deliver(binding.owner, binding.revision, binding.channel, value);
-      }
-    }
-  };
   Arena arena;
   Transport transport;
   Subscriptions subscriptions(transport);
@@ -449,7 +461,360 @@ void external_inputs_are_configuration_owned() {
   media.loop();
   assert(!media.external_input({92, 0}, "media_player.room"));
 }
+void secondary_routes_and_picture_freshness() {
+  Arena arena;
+  Transport transport;
+  Fixture first(100, "media_player.primary", {"cover_art", "play_pause", "now_playing"},
+                {"cover_art_secondary_entity=media_player.secondary", "", ""},
+                {nullptr, "media_player.other", "media_player.secondary"});
+  Fixture next(101, "media_player.primary", {"cover_art", "play_pause", "now_playing"},
+               {"cover_art_secondary_entity=media_player.secondary", "", ""},
+               {nullptr, "media_player.other", "media_player.secondary"});
+  PageMediaStateRuntime media(arena, transport);
+  assert(media.prepare(first.store));
+  media.activate_prepared(first.store);
+  assert(media.memory().sources == 3 && arena.live.size() == 1);
+  assert(media.memory().peak_preparation_bytes > 0);
+  const ConfigurationHandle cover{100, 0}, other{100, 1}, plain{100, 2};
+  PageMediaRouteSnapshot route;
+  PageMediaSourceSnapshot state;
+  PageMediaPlaybackSnapshot playback;
+  auto observe = [&](const char* entity, const char* attribute, const char* value) {
+    media.observed(100, entity, attribute, value, false);
+  };
+  assert(media.cover_route(cover, route) && route.entity == "media_player.primary" &&
+         !route.state.state_known);
+  assert(!media.cover_route(plain, route) && route.entity.empty());
+  observe("media_player.primary", "", "playing");
+  observe("media_player.primary", "source", "TV");
+  assert(media.cover_route(cover, route) && route.external_fallback && !route.secondary_selected);
+  assert(!media.source_snapshot(other, "media_player.primary", state));
+  assert(!media.current(plain, "media_player.primary", "source"));
+  observe("media_player.secondary", "entity_picture", "/before-state");
+  observe("media_player.secondary", "", "playing");
+  assert(media.source_snapshot(cover, "media_player.secondary", state) && !state.has_content &&
+         !state.has_artwork);
+  assert(media.cover_route(cover, route) && route.external_fallback);
+  observe("media_player.secondary", "media_content_type", "movie");
+  assert(media.cover_route(cover, route) && !route.secondary_selected);  // Type alone is not content.
+  observe("media_player.secondary", "media_title", "Programme");
+  observe("media_player.secondary", "media_artist", "Station");
+  observe("media_player.secondary", "media_duration", "200");
+  observe("media_player.secondary", "media_position", "10");
+  assert(media.cover_route(cover, route) && route.secondary_selected && !route.external_fallback &&
+         route.entity == "media_player.secondary" && route.secondary == "media_player.secondary");
+  assert(media.playback(cover, route.entity, playback) && playback.duration == 200);
+  assert(!media.playback(other, route.entity, playback));
+  observe("media_player.secondary", "source", "HDMI 1");
+  // Secondary inputs retain programme metadata/progress, matching the current
+  // route. Only a primary cover source invalidates them on its input change.
+  assert(media.current(cover, "media_player.secondary", "media_title"));
+  assert(media.playback(cover, "media_player.secondary", playback) && playback.duration == 200);
+  assert(media.cover_route(cover, route) && route.secondary_selected && route.suppress_artwork);
+  observe("media_player.secondary", "", "idle");
+  observe("media_player.secondary", "entity_picture_local", "/new-but-idle");
+  assert(media.cover_route(cover, route) && route.external_fallback);
+  observe("media_player.secondary", "", "playing");
+  assert(media.cover_route(cover, route) && !route.secondary_selected);  // No resurrection of idle artwork.
+  observe("media_player.secondary", "entity_picture_local", "None");
+  assert(media.cover_route(cover, route) && !route.secondary_selected);
+  observe("media_player.secondary", "entity_picture_local", "/fresh-local");
+  assert(media.cover_route(cover, route) && route.secondary_selected && route.suppress_artwork);
+  // Local pictures do not clear an omitted source; remote pictures do.
+  observe("media_player.secondary", "entity_picture", "/fresh-remote");
+  assert(media.cover_route(cover, route) && route.secondary_selected && !route.suppress_artwork);
+  assert(media.effective_source(cover, "media_player.secondary", "HDMI 1").empty());
+  assert(media.effective_source(other, "media_player.secondary", "HDMI 1").empty());
+  observe("media_player.secondary", "entity_picture_local", "None");
+  observe("media_player.secondary", "entity_picture", "unknown");
+  assert(media.cover_route(cover, route) && !route.secondary_selected);
+  observe("media_player.secondary", "entity_picture", "&#78;one");
+  assert(media.cover_route(cover, route) && route.secondary_selected);  // URL bytes are not HTML-decoded.
+  observe("media_player.primary", "media_content_id", "x-sonos-htastream:device:spdif");
+  observe("media_player.primary", "source", "Spotify");
+  assert(media.effective_source(cover, "media_player.primary", "Spotify") == "TV");
+  media.loop();
+  const auto stable = cpp_allocations;
+  for (int i = 0; i < 1000; ++i) {
+    observe("media_player.secondary", "", i % 2 ? "playing" : "paused");
+    observe("media_player.secondary", "entity_picture", "/fresh");
+    assert(media.cover_route(cover, route) && route.secondary_selected);
+    assert(media.playback(cover, route.entity, playback));
+    assert(media.source_snapshot(plain, route.entity, state));
+    media.loop();
+  }
+  assert(cpp_allocations == stable);
+
+  // Final arena allocation failure drains scratch and leaves active links intact.
+  arena.fail_at = arena.calls + 2;
+  assert(!media.prepare(next.store));
+  arena.fail_at = SIZE_MAX;
+  assert(arena.live.size() == 1 && media.cover_route(cover, route) && route.secondary_selected);
+  assert(media.prepare(next.store));
+  const auto activation_allocations = cpp_allocations;
+  media.activate_prepared(next.store);
+  assert(cpp_allocations == activation_allocations);
+  std::memset(first.storage.data(), 0xA5, first.storage.size());
+  assert(!media.cover_route(cover, route) && route.entity.empty());
+  assert(media.cover_route({101, 0}, route) && route.secondary_selected &&
+         route.entity == "media_player.secondary");  // Names live in the new media arena.
+  ++transport.connection;
+  assert(!media.cover_route({101, 0}, route));
+  media.loop();
+  assert(media.cover_route({101, 0}, route) && !route.secondary_selected && !route.state.state_known);
+  assert(!media.current({101, 1}, "media_player.secondary", "entity_picture"));
+}
+void duplicate_and_legacy_cover_routes() {
+  Arena arena;
+  Transport transport;
+  Fixture fixture(110, "media_player.primary", {"now_playing", "cover_art", "now_playing"},
+                  {"media_cover_art,cover_art_secondary_entity=media_player.secondary",
+                   "cover_art_secondary_entity=media_player.primary", ""});
+  PageMediaStateRuntime media(arena, transport);
+  assert(media.prepare(fixture.store));
+  media.activate_prepared(fixture.store);
+  assert(media.memory().sources == 2);
+  PageMediaRouteSnapshot route;
+  media.observed(110, "media_player.primary", "", "playing", false);
+  media.observed(110, "media_player.primary", "source", "TV", false);
+  media.observed(110, "media_player.secondary", "", "playing", false);
+  media.observed(110, "media_player.secondary", "media_content_id", "programme", false);
+  assert(media.cover_route({110, 0}, route) && route.secondary_selected);
+  assert(media.cover_route({110, 1}, route) && !route.secondary_selected && route.secondary.empty() &&
+         route.external_fallback);
+  assert(!media.cover_route({110, 2}, route));
+}
+void routing_policy_parity() {
+  Arena arena;
+  Transport transport;
+  Fixture fixture(120, "media_player.primary", {"cover_art", "play_pause", "next"},
+                  {"cover_art_secondary_entity=media_player.secondary", "", ""});
+  PageMediaStateRuntime media(arena, transport);
+  const char* states[]{nullptr, "",        "unknown", "unavailable", "off",
+                       "idle",  "playing", "paused",  " BUFFERING "};
+  const char* attributes[]{nullptr,          "media_title",          "media_artist",      "media_content_id",
+                           "entity_picture", "entity_picture_local", "media_content_type"};
+  for (const bool external : {false, true}) {
+    for (const char* secondary_state : states) {
+      for (const char* attribute : attributes) {
+        media.retire_active();
+        assert(media.prepare(fixture.store));
+        media.activate_prepared(fixture.store);
+        media.observed(120, "media_player.primary", "", "playing", false);
+        media.observed(120, "media_player.primary", "source", external ? "TV" : "Spotify", false);
+        if (secondary_state) media.observed(120, "media_player.secondary", "", secondary_state, false);
+        if (attribute) media.observed(120, "media_player.secondary", attribute, "content", false);
+        const bool known = secondary_state != nullptr;
+        const std::string state = known ? cover_art::normalized_media_source(secondary_state) : "";
+        const bool available = known && !state.empty() && state != "unknown" && state != "unavailable";
+        const bool usable = cover_art::media_entity_state_usable(state);
+        const bool picture = attribute && (std::strcmp(attribute, "entity_picture") == 0 ||
+                                           std::strcmp(attribute, "entity_picture_local") == 0);
+        const bool content =
+            attribute && std::strcmp(attribute, "media_content_type") != 0 &&
+            (!picture || cover_art::media_artwork_content_current(known, available, state, true));
+        const bool has_content = cover_art::media_entity_content_available(known, available, content);
+        const bool selected =
+            cover_art::use_secondary_media_entity(external, true, available && usable, has_content);
+        PageMediaRouteSnapshot route;
+        assert(media.cover_route({120, 0}, route));
+        assert(route.secondary_selected == selected && route.external_fallback == (external && !selected));
+        assert(route.entity == (selected ? "media_player.secondary" : "media_player.primary"));
+        PageMediaSourceSnapshot snapshot;
+        assert(media.source_snapshot({120, 0}, "media_player.secondary", snapshot));
+        assert(snapshot.state_known == known && snapshot.available == available &&
+               snapshot.usable == usable && snapshot.has_content == has_content);
+      }
+    }
+  }
+  for (const char* primary_state : states) {
+    media.retire_active();
+    assert(media.prepare(fixture.store));
+    media.activate_prepared(fixture.store);
+    if (primary_state) media.observed(120, "media_player.primary", "", primary_state, false);
+    const bool known = primary_state != nullptr;
+    const std::string state = known ? cover_art::normalized_media_source(primary_state) : "";
+    const bool available = known && !state.empty() && state != "unknown" && state != "unavailable";
+    PageMediaRouteSnapshot route;
+    assert(media.cover_route({120, 0}, route));
+    assert(route.clear_artwork == cover_art::media_card_artwork_should_clear(known, available, state, false));
+    assert(route.idle_placeholder ==
+           cover_art::media_cover_art_idle_placeholder_visible(known, available, state, false, false));
+  }
+}
+void secondary_routes_use_the_shared_graph() {
+  Arena arena;
+  Transport transport;
+  Subscriptions subscriptions(transport);
+  PageCardDependencies dependencies({true});
+  Fixture first(130, "media_player.primary", {"cover_art", "play_pause", "now_playing"},
+                {"cover_art_secondary_entity=media_player.secondary", "", ""},
+                {nullptr, "media_player.other", "media_player.secondary"});
+  Fixture next(131, "media_player.primary", {"cover_art", "play_pause", "now_playing"},
+               {"cover_art_secondary_entity=media_player.secondary", "", ""},
+               {nullptr, "media_player.other", "media_player.secondary"});
+  PageMediaStateRuntime media(arena, transport);
+  PageEntityStateRuntime graph(dependencies, arena, subscriptions, {256, 128, 32768}, &media);
+  assert(media.prepare(first.store) && graph.prepare(first.store));
+  media.activate_prepared(first.store);
+  graph.activate_prepared(first.store);
+  subscriptions.send("media_player.primary", "", "playing");
+  subscriptions.send("media_player.primary", "source", "TV");
+  subscriptions.send("media_player.secondary", "", "playing");
+  subscriptions.send("media_player.secondary", "media_title", "Programme");
+  subscriptions.send("media_player.secondary", "media_artist", "Station");
+  subscriptions.send("media_player.secondary", "media_duration", "200");
+  subscriptions.send("media_player.secondary", "media_position", "20");
+  PageMediaRouteSnapshot route;
+  PageMediaPlaybackSnapshot playback;
+  assert(media.cover_route({130, 0}, route) && route.secondary_selected);
+  assert(media.playback({130, 0}, route.entity, playback) && playback.duration == 200 &&
+         playback.seconds == 20);
+  const auto channels = subscriptions.count;
+  media.loop();
+  const auto stable = cpp_allocations;
+  for (int i = 0; i < 1000; ++i) {
+    subscriptions.send("media_player.primary", "source", i % 2 ? "TV" : "Spotify");
+    subscriptions.send("media_player.secondary", "media_title", "Programme");
+    media.loop();
+    assert(media.cover_route({130, 0}, route) && route.secondary_selected == (i % 2 != 0));
+    assert(subscriptions.count == channels);
+  }
+  assert(cpp_allocations == stable);
+  // A current remote picture clears stale input semantics without changing the
+  // raw source cache. The renderer must use the model's effective source.
+  subscriptions.send("media_player.primary", "", "playing");
+  subscriptions.send("media_player.primary", "entity_picture", "/fresh-primary");
+  assert(media.effective_source({130, 0}, "media_player.primary", "TV").empty());
+  assert(media.cover_route({130, 0}, route) && !route.secondary_selected);
+  subscriptions.send("media_player.primary", "source", "TV");
+  Subscriptions::Binding late{};
+  for (size_t i = 0; i < channels; ++i)
+    if (std::strcmp(subscriptions.entries[i].entity, "media_player.secondary") == 0 &&
+        std::strcmp(subscriptions.entries[i].attribute, "media_title") == 0)
+      late = subscriptions.entries[i];
+  assert(late.deliver != nullptr);
+  assert(media.prepare(next.store) && graph.prepare(next.store));
+  media.activate_prepared(next.store);
+  graph.activate_prepared(next.store);
+  std::memset(first.storage.data(), 0xA5, first.storage.size());
+  late.deliver(late.owner, late.revision, late.channel, "Obsolete title");
+  assert(media.cover_route({131, 0}, route) && route.secondary_selected);
+  assert(media.current({131, 0}, route.entity, "media_title"));
+  bool title_checked = false;
+  for (size_t i = 0; i < graph.dependency_count({131, 0}); ++i) {
+    const auto value = graph.dependency({131, 0}, i);
+    if (value.entity == route.entity && value.attribute == "media_title") {
+      assert(value.value == "Programme");
+      title_checked = true;
+    }
+  }
+  assert(title_checked);
+  assert(!media.current({131, 1}, route.entity, "media_title"));
+  assert(subscriptions.count == channels);
+  ++transport.connection;
+  media.loop();
+  graph.revision();
+  assert(media.cover_route({131, 0}, route) && !route.secondary_selected);
+  subscriptions.send("media_player.primary", "", "playing");
+  subscriptions.send("media_player.primary", "source", "TV");
+  subscriptions.send("media_player.secondary", "", "playing");
+  assert(media.cover_route({131, 0}, route) && !route.secondary_selected);
+  subscriptions.send("media_player.secondary", "entity_picture_local", "/fresh-after-reconnect");
+  assert(media.cover_route({131, 0}, route) && route.secondary_selected);
+  graph.retire_active();
+  media.retire_active();
+  assert(subscriptions.count == 0 && arena.live.empty());
+}
+void removed_secondary_cannot_be_read_through_another_card() {
+  Arena arena;
+  Transport transport;
+  Fixture first(140, "media_player.primary", {"cover_art", "play_pause", "now_playing"},
+                {"cover_art_secondary_entity=media_player.secondary", "", ""},
+                {nullptr, nullptr, "media_player.secondary"});
+  Fixture next(141, "media_player.primary", {"cover_art", "play_pause", "now_playing"}, {"", "", ""},
+               {nullptr, nullptr, "media_player.secondary"});
+  PageMediaStateRuntime media(arena, transport);
+  assert(media.prepare(first.store));
+  media.activate_prepared(first.store);
+  media.observed(140, "media_player.primary", "", "playing", false);
+  media.observed(140, "media_player.primary", "source", "TV", false);
+  media.observed(140, "media_player.secondary", "", "playing", false);
+  media.observed(140, "media_player.secondary", "media_title", "Programme", false);
+  PageMediaRouteSnapshot route;
+  assert(media.cover_route({140, 0}, route) && route.secondary_selected);
+  assert(media.prepare(next.store));
+  media.activate_prepared(next.store);
+  std::memset(first.storage.data(), 0xA5, first.storage.size());
+  assert(media.memory().sources == 2);
+  assert(media.cover_route({141, 0}, route) && route.secondary.empty() && route.external_fallback);
+  assert(!media.current({141, 0}, "media_player.secondary", "media_title"));
+  assert(media.current({141, 2}, "media_player.secondary", "media_title"));
+}
+void reused_sources_refresh_new_roles() {
+  Arena arena;
+  Transport transport;
+  Fixture playlist(150), details(151, "media_player.room", {"now_playing", "playlist", "playlist"}),
+      progress(152, "media_player.room", {"position", "play_pause", "next"});
+  PageMediaStateRuntime media(arena, transport);
+  assert(media.prepare(playlist.store));
+  media.activate_prepared(playlist.store);
+  media.observed(150, "media_player.room", "", "playing", false);
+  media.observed(150, "media_player.room", "media_content_id", "cached-id", false);
+  // Old data from a previous progress role cannot survive an interval during
+  // which this source had no progress responsibility/subscriptions.
+  media.observed(150, "media_player.room", "media_duration", "42", false);
+  media.observed(150, "media_player.room", "media_position", "10", false);
+  media.loop();
+  assert(transport.requests == 0);
+  assert(media.prepare(details.store));
+  assert(transport.requests == 0);  // Preparation cannot request network work.
+  media.activate_prepared(details.store);
+  assert(transport.requests == 0);
+  media.loop();
+  assert(transport.requests == 1);  // Content ID cannot satisfy newly required title/artist.
+  media.loop();
+  assert(transport.requests == 1);
+  media.observed(151, "media_player.room", "", "idle", false);
+  assert(media.prepare(progress.store));
+  media.activate_prepared(progress.store);
+  PageMediaPlaybackSnapshot playback;
+  assert(media.playback({152, 0}, "media_player.room", playback) && !playback.has_duration &&
+         !playback.has_position);
+  media.loop();
+  assert(transport.requests == 1);  // Keep the new-role request pending while idle.
+  media.observed(152, "media_player.room", "", "playing", false);
+  media.loop();
+  assert(transport.requests == 2);
+  media.loop();
+  assert(transport.requests == 2);
+  Fixture before(153, "media_player.primary", {"play_pause", "play_pause", "now_playing"}, {"", "", ""},
+                 {nullptr, nullptr, "media_player.secondary"});
+  Fixture after(154, "media_player.primary", {"cover_art", "play_pause", "now_playing"},
+                {"cover_art_secondary_entity=media_player.secondary", "", ""},
+                {nullptr, nullptr, "media_player.secondary"});
+  media.retire_active();
+  assert(media.prepare(before.store));
+  media.activate_prepared(before.store);
+  media.observed(153, "media_player.primary", "", "playing", false);
+  media.observed(153, "media_player.secondary", "", "playing", false);
+  media.observed(153, "media_player.secondary", "media_content_id", "cached-id", false);
+  media.loop();
+  const auto previous_requests = transport.requests;
+  assert(media.prepare(after.store));
+  media.activate_prepared(after.store);
+  media.loop();
+  assert(transport.requests == previous_requests + 1);  // Both role upgrades consolidate into one snapshot.
+  media.loop();
+  assert(transport.requests == previous_requests + 1);
+}
 int main() {
+  reused_sources_refresh_new_roles();
+  removed_secondary_cannot_be_read_through_another_card();
+  secondary_routes_use_the_shared_graph();
+  routing_policy_parity();
+  secondary_routes_and_picture_freshness();
+  duplicate_and_legacy_cover_routes();
   external_inputs_are_configuration_owned();
   shared_cache_metadata_lifecycle();
   model_lifecycle();
