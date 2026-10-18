@@ -1,0 +1,329 @@
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <functional>
+#include <string>
+#include <vector>
+
+#include "button_grid_subpage_parser.h"
+#include "lvgl.h"
+#include "page_card_dependencies.h"
+#include "page_entity_observer_set.h"
+#include "panel_config_document.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+static size_t lv_live_bytes = 0, lv_allocation_calls = 0, cpp_allocation_calls = 0, cpp_live_bytes = 0;
+struct alignas(16) CppAllocation {
+  size_t bytes;
+};
+void* operator new(size_t bytes) {
+  ++cpp_allocation_calls;
+  auto* header = static_cast<CppAllocation*>(std::malloc(sizeof(CppAllocation) + (bytes ? bytes : 1)));
+  assert(header);
+  header->bytes = bytes;
+  cpp_live_bytes += bytes;
+  return header + 1;
+}
+void* operator new[](size_t bytes) {
+  return ::operator new(bytes);
+}
+void operator delete(void* pointer) noexcept {
+  if (pointer) {
+    auto* header = static_cast<CppAllocation*>(pointer) - 1;
+    cpp_live_bytes -= header->bytes;
+    std::free(header);
+  }
+}
+void operator delete[](void* pointer) noexcept {
+  ::operator delete(pointer);
+}
+void operator delete(void* pointer, std::size_t) noexcept {
+  ::operator delete(pointer);
+}
+void operator delete[](void* pointer, std::size_t) noexcept {
+  ::operator delete(pointer);
+}
+struct alignas(16) Allocation {
+  size_t bytes;
+};
+static int lv_fail_countdown = -1;
+extern "C" {
+void lv_mem_init() {}
+void lv_mem_deinit() {}
+lv_mem_pool_t lv_mem_add_pool(void*, size_t) {
+  return nullptr;
+}
+void lv_mem_remove_pool(lv_mem_pool_t) {}
+void* lv_malloc_core(size_t size) {
+  ++lv_allocation_calls;
+  if (lv_fail_countdown == 0) {
+    lv_fail_countdown = -1;
+    return nullptr;
+  }
+  if (lv_fail_countdown > 0) --lv_fail_countdown;
+  auto* p = static_cast<Allocation*>(std::malloc(size + sizeof(Allocation)));
+  assert(p);
+  p->bytes = size;
+  lv_live_bytes += size;
+  return p + 1;
+}
+void lv_free_core(void* ptr) {
+  if (!ptr) return;
+  auto* p = static_cast<Allocation*>(ptr) - 1;
+  lv_live_bytes -= p->bytes;
+  std::free(p);
+}
+void* lv_realloc_core(void* ptr, size_t size) {
+  void* p = lv_malloc_core(size);
+  if (ptr) {
+    std::memcpy(p, ptr, std::min(size, (static_cast<Allocation*>(ptr) - 1)->bytes));
+    lv_free_core(ptr);
+  }
+  return p;
+}
+void lv_mem_monitor_core(lv_mem_monitor_t* out) {
+  *out = {};
+}
+lv_result_t lv_mem_test_core() {
+  return LV_RESULT_OK;
+}
+}
+
+void lv_label_set_display_text(lv_obj_t* label, const char* text) {
+  lv_label_set_text(label, text);
+}
+
+#include "page_lvgl_qr_encoder.h"
+#include "page_qr_frame.h"
+#include "wifi_qr_codec.h"
+// @legacy-compact
+namespace {
+std::array<uint16_t, 800 * 800> display_pixels{};
+int display_width = 800;
+PageLvglQrEncoder encoder;
+PageQrDecoder decoder;
+void plain(lv_obj_t* o, int w, int h) {
+  lv_obj_set_size(o, w, h);
+  lv_obj_set_pos(o, 0, 0);
+  lv_obj_set_style_pad_all(o, 0, LV_PART_MAIN);
+  lv_obj_set_style_border_width(o, 0, LV_PART_MAIN);
+  lv_obj_set_style_radius(o, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(o, 0, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(o, lv_color_white(), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(o, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_clear_flag(o, LV_OBJ_FLAG_SCROLLABLE);
+}
+size_t compare(lv_display_t* display, const std::string& payload, int side, bool compact) {
+  auto* root = lv_obj_create(lv_screen_active());
+  plain(root, side, side);
+  auto* qr = lv_qrcode_create(root);
+  lv_qrcode_set_size(qr, side);
+  lv_qrcode_set_light_color(qr, lv_color_white());
+  lv_qrcode_set_dark_color(qr, lv_color_black());
+  lv_qrcode_set_quiet_zone(qr, true);
+  lv_obj_set_style_border_width(qr, 0, LV_PART_MAIN);
+  lv_obj_set_pos(qr, 0, 0);
+  const auto legacy = compact ? legacy_compact(qr, wifi_qr_compact_payload(payload))
+                              : lv_qrcode_update(qr, payload.data(), payload.size());
+  PageQrMatrix matrix;
+  const auto cpp = cpp_allocation_calls, lv = lv_allocation_calls;
+  const bool encoded = encoder.encode(payload, side, compact, matrix);
+  assert(cpp == cpp_allocation_calls && lv == lv_allocation_calls);
+  assert(encoded == (legacy == LV_RESULT_OK));
+  if (!encoded) {
+    lv_obj_delete(root);
+    return 0;
+  }
+  const auto* buffer = lv_canvas_get_draw_buf(qr);
+  for (int y = 0; y < side; ++y)
+    for (int x = 0; x < side; ++x) {
+      const int mx = (x - matrix.layout.margin) / matrix.layout.scale,
+                my = (y - matrix.layout.margin) / matrix.layout.scale;
+      const bool ours = x >= matrix.layout.margin && y >= matrix.layout.margin && matrix.dark(mx, my);
+      const bool expected = buffer->data[8 + buffer->header.stride * y + x / 8] & (0x80u >> (x % 8));
+      assert(ours == expected);
+    }
+  lv_obj_invalidate(root);
+  lv_refr_now(display);
+  std::vector<uint16_t> expected(side * side);
+  for (int y = 0; y < side; ++y)
+    std::memcpy(expected.data() + side * y, display_pixels.data() + display_width * y, side * 2);
+  lv_obj_delete(qr);
+  PageQrFrame frame(decoder);
+  frame.assign_after_draw(matrix);
+  auto* surface = lv_obj_create(root);
+  plain(surface, side, side);
+  lv_obj_set_style_bg_opa(surface, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_add_event_cb(
+      surface,
+      [](lv_event_t* e) {
+        static_cast<PageQrFrame*>(lv_event_get_user_data(e))
+            ->draw(lv_event_get_target_obj(e), lv_event_get_layer(e));
+      },
+      LV_EVENT_DRAW_MAIN, &frame);
+  lv_obj_invalidate(root);
+  lv_refr_now(display);
+  for (int y = 0; y < side; ++y)
+    for (int x = 0; x < side; ++x) {
+      if (expected[y * side + x] != display_pixels[y * display_width + x]) {
+        std::fprintf(
+            stderr, "QR pixel mismatch side=%d compact=%d bytes=%zu x=%d y=%d expected=%x actual=%x\n", side,
+            compact, payload.size(), x, y, expected[y * side + x], display_pixels[y * display_width + x]);
+        std::abort();
+      }
+    }
+  frame.hide();
+  lv_draw_wait_for_finish();
+  frame.reset_after_draw();
+  lv_obj_delete(root);
+  return side * side;
+}
+void decoder_lifetime(lv_display_t* display) {
+  PageQrMatrix matrix;
+  assert(encoder.encode("WIFI:T:nopass;S:Guest;H:false;;", 132, true, matrix));
+  PageQrFrame frame(decoder);
+  frame.assign_after_draw(matrix);
+  auto* root = lv_obj_create(lv_screen_active());
+  plain(root, 132, 132);
+  const void* source = nullptr;
+  lv_obj_add_flag(root, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+  lv_obj_add_event_cb(
+      root,
+      [](lv_event_t* e) {
+        static_cast<PageQrFrame*>(lv_event_get_user_data(e))
+            ->draw(lv_event_get_target_obj(e), lv_event_get_layer(e));
+      },
+      LV_EVENT_DRAW_MAIN, &frame);
+  lv_obj_add_event_cb(
+      root,
+      [](lv_event_t* e) {
+        auto* task = lv_event_get_draw_task(e);
+        if (lv_draw_task_get_type(task) == LV_DRAW_TASK_TYPE_IMAGE)
+          *static_cast<const void**>(lv_event_get_user_data(e)) = lv_draw_task_get_image_dsc(task)->src;
+      },
+      LV_EVENT_DRAW_TASK_ADDED, &source);
+  lv_obj_invalidate(root);
+  lv_refr_now(display);
+  assert(source && !decoder.sessions());
+  // A second scene decoder does not steal this frame's source.
+  PageQrDecoder other;
+  assert(other.initialize());
+  lv_image_decoder_dsc_t held{};
+  const auto bytes = lv_live_bytes;
+  for (int fail : {0, 1}) {
+    lv_fail_countdown = fail;
+    assert(lv_image_decoder_open(&held, source, nullptr) == LV_RESULT_INVALID);
+    lv_fail_countdown = -1;
+    assert(!decoder.sessions() && lv_live_bytes == bytes);
+  }
+  assert(lv_image_decoder_open(&held, source, nullptr) == LV_RESULT_OK && decoder.sessions() == 1);
+  const lv_area_t whole{3, 5, 127, 129};
+  lv_area_t decoded{LV_COORD_MIN, LV_COORD_MIN, LV_COORD_MIN, LV_COORD_MIN};
+  for (int y = whole.y1; y <= whole.y2; ++y) {
+    assert(lv_image_decoder_get_area(&held, &whole, &decoded) == LV_RESULT_OK && decoded.y1 == y &&
+           decoded.y2 == y);
+    for (int x = whole.x1; x <= whole.x2; ++x) {
+      const int mx = (x - matrix.layout.margin) / matrix.layout.scale,
+                my = (y - matrix.layout.margin) / matrix.layout.scale;
+      const bool dark = x >= matrix.layout.margin && y >= matrix.layout.margin && matrix.dark(mx, my);
+      assert(held.decoded->data[x - whole.x1] == (dark ? 255 : 0));
+    }
+  }
+  assert(lv_image_decoder_get_area(&held, &whole, &decoded) == LV_RESULT_INVALID);
+  assert(!decoder.shutdown());
+  frame.hide();
+  lv_draw_wait_for_finish();
+  frame.reset_after_draw();
+  assert(!decoder.shutdown());
+  lv_image_decoder_close(&held);
+  assert(!decoder.sessions());
+  lv_obj_delete(root);
+  assert(other.shutdown());
+}
+void repeated_frames(lv_display_t* display) {
+  const std::string first = "WIFI:T:nopass;S:Guest;H:false;;", second = "WIFI:T:nopass;S:Other;H:false;;";
+  PageQrMatrix matrix;
+  PageQrFrame frame(decoder);
+  auto* root = lv_obj_create(lv_screen_active());
+  plain(root, 132, 132);
+  auto* surface = lv_obj_create(root);
+  plain(surface, 132, 132);
+  lv_obj_add_event_cb(
+      surface,
+      [](lv_event_t* e) {
+        static_cast<PageQrFrame*>(lv_event_get_user_data(e))
+            ->draw(lv_event_get_target_obj(e), lv_event_get_layer(e));
+      },
+      LV_EVENT_DRAW_MAIN, &frame);
+  const auto update = [&](unsigned n) {
+    frame.hide();
+    lv_draw_wait_for_finish();
+    frame.reset_after_draw();
+    assert(encoder.encode(n % 2 ? first : second, 132, n % 3 == 0, matrix));
+    frame.assign_after_draw(matrix);
+    assert(!decoder.shutdown());
+    lv_obj_invalidate(root);
+    lv_refr_now(display);
+    assert(decoder.sessions() == 0);
+  };
+  for (unsigned n = 0; n < 10; ++n) update(n);
+  const auto lv = lv_live_bytes, cpp = cpp_live_bytes, calls = cpp_allocation_calls;
+  for (unsigned n = 0; n < 1000; ++n) {
+    update(n);
+    assert(lv_live_bytes == lv && cpp_live_bytes == cpp && cpp_allocation_calls == calls);
+  }
+  frame.hide();
+  lv_draw_wait_for_finish();
+  frame.reset_after_draw();
+  lv_obj_delete(root);
+}
+}  // namespace
+int main() {
+  std::setvbuf(stdout, nullptr, _IOLBF, 0);
+  lv_init();
+  auto* display = lv_display_create(800, 800);
+  lv_timer_pause(lv_display_get_refr_timer(display));
+  static std::array<uint16_t, 800 * 32> buffer{};
+  lv_display_set_buffers(display, buffer.data(), nullptr, sizeof(buffer), LV_DISPLAY_RENDER_MODE_PARTIAL);
+  lv_display_set_flush_cb(display, [](lv_display_t* d, const lv_area_t* area, uint8_t* bytes) {
+    auto* source = reinterpret_cast<uint16_t*>(bytes);
+    size_t i = 0;
+    for (int y = area->y1; y <= area->y2; ++y)
+      for (int x = area->x1; x <= area->x2; ++x) display_pixels[y * display_width + x] = source[i++];
+    lv_display_flush_ready(d);
+  });
+  assert(decoder.initialize());
+  size_t pixels = 0, cases = 0;
+  for (size_t length : {1u, 16u, 31u, 42u, 63u, 85u, 127u, 191u, 255u}) {
+    const std::string payload(length, 'Q');
+    for (int side : {48, 116, 132, 240, 480})
+      for (bool compact : {false, true}) {
+        pixels += compare(display, payload, side, compact);
+        ++cases;
+      }
+  }
+  std::string payload, ssid;
+  assert(wifi_qr_build_payload("R3Vlc3Q", "open", "", false, &payload, &ssid));
+  for (int side : {123, 272, 430, 800})
+    for (bool compact : {false, true}) {
+      pixels += compare(display, payload, side, compact);
+      ++cases;
+    }
+  decoder_lifetime(display);
+  repeated_frames(display);
+  PageQrMatrix matrix;
+  assert(!encoder.encode({}, 480, false, matrix) &&
+         !encoder.encode(std::string(256, 'Q'), 480, false, matrix));
+  assert(decoder.sessions() == 0 && decoder.shutdown());
+  lv_display_delete(display);
+  lv_deinit();
+  assert(lv_live_bytes == 0);
+  std::printf(
+      "QR matrices: %zu cases and %zu pixels match legacy canvas and actual row-mask drawing; 1000 stable "
+      "frame replacements, allocation-free encode, max bitmap %zu bytes passed\n",
+      cases, pixels, PAGE_QR_BITMAP_BYTES);
+}
