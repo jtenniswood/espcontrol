@@ -1521,6 +1521,22 @@ void percent_slider_profile(const DeviceUiLimits& limits) {
     for (size_t slot = 1; slot <= 4; ++slot)
       assert(!lv_obj_has_state(widgets[slot].button, LV_STATE_CHECKED));
     assert(lv_slider_get_value(widgets[1].slider) == 25 && lv_slider_get_value(widgets[2].slider) == 50);
+    {
+      const auto original=lv_obj_get_style_bg_color(widgets[1].fill,LV_PART_MAIN);
+      lv_obj_set_style_bg_color(widgets[1].fill,lv_color_hex(0xFFFFFF),LV_PART_MAIN);
+      lv_obj_set_style_text_color(widgets[1].button,lv_color_hex(0xFFFFFF),LV_PART_MAIN);
+      lv_layer_t layer{};lv_draw_label_dsc_t descriptor;lv_draw_label_dsc_init(&descriptor);
+      descriptor.base.layer=&layer;descriptor.color=lv_color_hex(0xFFFFFF);
+      lv_draw_task_t task{};task.type=LV_DRAW_TASK_TYPE_LABEL;task.draw_dsc=&descriptor;
+      lv_obj_get_coords(widgets[1].fill,&task.clip_area);task.area=task.clip_area;layer._clip_area=task.clip_area;
+      lv_obj_send_event(widgets[1].label,LV_EVENT_DRAW_TASK_ADDED,&task);
+      assert(lv_color_eq(descriptor.color,lv_color_hex(0x212121))); // Dark text over the bright fill.
+      task.clip_area.x1=task.clip_area.x2+1;task.clip_area.x2=task.clip_area.x1+2;
+      descriptor.color=lv_color_hex(0x212121);
+      lv_obj_send_event(widgets[1].label,LV_EVENT_DRAW_TASK_ADDED,&task);
+      assert(lv_color_eq(descriptor.color,lv_color_hex(0xFFFFFF))); // Base text outside the fill.
+      lv_obj_set_style_bg_color(widgets[1].fill,original,LV_PART_MAIN);
+    }
     percent_geometry_reference(widgets[1], 25, false);
     percent_geometry_reference(widgets[2], 50, false);
     percent_geometry_reference(widgets[3], 80, true);
