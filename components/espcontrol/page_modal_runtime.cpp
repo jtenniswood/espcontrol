@@ -32,16 +32,18 @@ bool PageModalRuntime::valid_card(ConfigurationHandle card)const {
   return false;
 }
 bool PageModalRuntime::valid_request(const Request &request)const {
-  return request.pending&&valid_card(request.card)&&(!request.from_binding||
-      (request.origin.binding!=0&&!request.origin.back&&port_.valid_origin(request.origin)));
+  return request.pending && request.connection == port_.connection_generation() && valid_card(request.card) &&
+         (!request.from_binding ||
+          (request.origin.binding != 0 && !request.origin.back && port_.valid_origin(request.origin)));
 }
 bool PageModalRuntime::request(PageBindingToken origin) {
-  const Request request{{origin.configuration,origin.card},origin,true,true};
+  const Request request{
+      {origin.configuration, origin.card}, origin, port_.connection_generation(), true, true};
   if(!valid_request(request))return false;
   pending_=request;return true;
 }
 bool PageModalRuntime::request_card(ConfigurationHandle card) {
-  const Request request{card,{},true,false};
+  const Request request{card, {}, port_.connection_generation(), true, false};
   if(!valid_request(request))return false;
   pending_=request;return true;
 }
@@ -97,8 +99,12 @@ void PageModalRuntime::loop() {
   const PageModalToken next{card.generation,next_opening_++,card.index,port_.kind(active_store_,card)};
   void *created=port_.create(active_store_,card,next);
   if(!created){++memory_.failures;return;}
-  context_=created;token_=next;connection_=port_.connection_generation();
-  const bool initialized=port_.initialize(created,next);
+  context_ = created;
+  token_ = next;
+  connection_ = request.connection;
+  // A fallible create may pump a producer/reconnect. Never initialize an old
+  // request as though it belonged to the new connection.
+  const bool initialized = valid(next) && port_.initialize(created, next);
   if(!initialized)++memory_.failures;
   if(context_==created&&(!initialized||!valid(next)||!port_.visible(created))) {
     if(initialized)++memory_.failures;
