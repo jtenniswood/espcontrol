@@ -46,7 +46,7 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
     auto &observer=Family::lifetime();
     if(!legacy_renderer_retired||!lv_is_initialized()||record_||Family::active()||
         (observer.owner&&observer.owner!=this))return false;
-    runtime_=&runtime;observer={this,managed,current,action,closed,widgets,numeric_action};return true;
+    runtime_=&runtime;observer={this,managed,current,action,closed,widgets,numeric_action,identity};return true;
   }
   bool valid_origin(PageBindingToken token)const override{return valid_&&valid_(owner_,token);}
   ControlModalKind kind(const PageStore &store,ConfigurationHandle handle)const override {
@@ -55,7 +55,7 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
     if(!card||store.field(*card,CardField::ENTITY).empty())return ControlModalKind::NONE;
     return Family::matches(store,*card)?Family::kind:ControlModalKind::NONE;
   }
-  bool ready()const override{return lv_is_initialized()&&!ha_read_coordinator().dispatching()&&!page_lvgl_dispatching();}
+  bool ready()const override{return lv_is_initialized()&&!modal_callback_dispatching()&&!ha_read_coordinator().dispatching()&&!page_lvgl_dispatching();}
   bool connected()const override{return ha_api_state_connected();}
   uint32_t connection_generation()const override{return ha_read_coordinator().connection_generation();}
   void *create(const PageStore &store,ConfigurationHandle card,PageModalToken token)override {
@@ -75,7 +75,8 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
     config.options=std::string(store.field(*definition,CardField::OPTIONS));
     auto environment=style_.environment;
     if(!style_.resolve(style_.owner,config,environment)||
-        !Family::initialize_context(record->context,config,environment)){
+        !Family::initialize_context(record->context,config,environment)||
+        !initialize_state(*record,config,environment,style_.gesture_capacity,0)){
       release_record(record);return nullptr;
     }
     record->context.available=false;record_=record;return record;
@@ -88,7 +89,7 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
       Family::subscribe(&record.context);
     }
     prime(record);
-    if(record.retired||!record.context.available||!connected()||record.connection!=connection_generation())return false;
+    if(record.retired||!can_open(record.context,0)||!connected()||record.connection!=connection_generation())return false;
     Family::open(&record.context);
     if(!visible(&record))return false;
     set_clock_bar_modal_label(Family::title(&record.context));return true;
@@ -99,14 +100,14 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
   }
   void update(void *pointer,PageModalToken)override {
     auto &record=*static_cast<Record *>(pointer);prime(record);
-    if(!record.retired&&!record.context.available&&Family::active()==&record.context)Family::hide();
+    if(!record.retired&&!can_open(record.context,0)&&Family::active()==&record.context)Family::hide();
   }
   ControlModalDismissPolicy dismiss_policy(void *)const override{return ControlModalDismissPolicy::DISMISS;}
   void retire(void *pointer,PageModalClose reason)override {
     auto &record=*static_cast<Record *>(pointer);record.retired=true;record.gestures.invalidate();
     ha_release_callbacks_for_owner(&record.context);Family::cancel(&record.context);
     if(Family::active()!=&record.context)return;
-    if(reason==PageModalClose::REPLACED||reason==PageModalClose::SHUTDOWN) {
+    if(reason==PageModalClose::REPLACED||reason==PageModalClose::SHUTDOWN||!ready()) {
       // Widget/clock teardown is maintenance after dispatch, never part of the
       // durable activation. Context strings own their bytes until then.
       auto *overlay=Family::overlay();
@@ -140,6 +141,22 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
     pull(record,state_,0);
   }
   template<typename F=Family>
+  static auto initialize_state(Record& record,const ParsedCfg& config,
+                               const typename Family::Environment& environment,size_t gesture_capacity,int)
+      ->decltype(F::initialize_state(record.context,record.pull_state,config,environment,gesture_capacity),bool()) {
+    return F::initialize_state(record.context,record.pull_state,config,environment,gesture_capacity);
+  }
+  static bool initialize_state(Record&,const ParsedCfg&,const typename Family::Environment&,size_t,long) {return true;}
+  template<typename F=Family>
+  static auto can_open(Context& context,int)->decltype(F::can_open(&context),bool()) {
+    return F::can_open(&context);
+  }
+  static bool can_open(Context& context,long) {return context.available;}
+  static uint64_t identity(void* owner,const Context* context) {
+    auto& port=*static_cast<PageLegacyModalPort*>(owner);
+    return current(owner,context)?port.record_->token.opening:0;
+  }
+  template<typename F=Family>
   static auto pull(Record& record,PageEntityStateRuntime& state,int)
       ->decltype(F::pull(record.context,state,record.card,record.pull_state),void()) {
     F::pull(record.context,state,record.card,record.pull_state);
@@ -161,13 +178,18 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
     return managed(owner,context)&&!port.record_->retired&&port.runtime_->valid(port.record_->token)&&
       port.connected()&&port.record_->connection==port.connection_generation();
   }
+  template<typename F=Family>
+  static auto action_ready(Record& record,int)->decltype(F::action_ready(record.context,record.pull_state),bool()) {
+    return F::action_ready(record.context,record.pull_state);
+  }
+  static bool action_ready(Record&,long) {return true;}
   static bool action(void *owner,const Context *context) {
     auto &port=*static_cast<PageLegacyModalPort *>(owner);
     if(!current(owner,context))return false;
     // Snapshot-backed families consume current cache state before an input
     // computes its command, just as the legacy live callback did.
     pull(*port.record_,port.state_,0);
-    return current(owner,context)&&port.runtime_->interactive(port.record_->token)&&port.connected()&&
+    return current(owner,context)&&action_ready(*port.record_,0)&&can_open(port.record_->context,0)&&port.runtime_->interactive(port.record_->token)&&port.connected()&&
       port.record_->connection==port.connection_generation();
   }
   static bool gesture_valid(void *owner,PageModalToken token) {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "media_playback_clock.h"
+
 #include "light_cover_modal_lifetime.h"
 #include "media_volume_modal_lifetime.h"
 
@@ -3476,14 +3478,7 @@ inline bool media_now_playing_play_pause_enabled(const ParsedCfg &p) {
 }
 
 inline void media_format_time(float seconds, char *buf, size_t size) {
-  if (!buf || size == 0) return;
-  if (seconds < 0.0f || !std::isfinite(seconds)) seconds = 0.0f;
-  int total = (int)(seconds + 0.5f);
-  int h = total / 3600;
-  int m = (total / 60) % 60;
-  int s = total % 60;
-  if (h > 0) snprintf(buf, size, "%d:%02d:%02d", h, m, s);
-  else snprintf(buf, size, "%d:%02d", m, s);
+  espcontrol::media::format_playback_time(seconds, buf, size);
 }
 
 inline void media_format_percent(int percent, char *buf, size_t size) {

@@ -13,6 +13,7 @@ source = r'''
 #include <string>
 #include "media_control_tabs.h"
 #include "media_power_capability.h"
+#include "media_control_modal_lifetime.h"
 struct MediaControlCtx {
   espcontrol::media::ControlTabs control_tabs;
   bool group_only = false, progress = true, power = true;
@@ -154,7 +155,7 @@ int main() {
 _, opener = definition(media, 'media_control_open_modal')
 assert 'ui.tab = media_control_visible_tabs(ctx).tabs[0];' in opener
 assert 'if (!media_control_can_open_modal(ctx)) return;' in opener
-_, playback_update = definition(media, 'media_playback_apply_state_to_control')
+_, playback_update = definition(media, 'media_control_apply_snapshot')
 assert 'media_control_refresh_open_modal(ctx, layout_needed);' in playback_update
 _, constructor = definition(media, 'create_media_control_context')
 assert 'ctx->control_tabs = media_config.control_tabs;' in constructor

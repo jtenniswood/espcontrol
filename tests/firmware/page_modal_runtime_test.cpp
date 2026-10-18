@@ -115,6 +115,19 @@ void replacement_connection_and_takeover() {
   assert(!runtime.display_takeover(false)&&!runtime.valid(token)&&port.reason==PageModalClose::TAKEOVER);
   runtime.loop();assert(!port.context&&port.sends==0);
 }
+void action_response_dispatch_lifetime() {
+  Fixture fixture;Port port;PageModalRuntime runtime(port);port.runtime=&runtime;activate(runtime,fixture.store);
+  assert(runtime.request_card({17,0}));runtime.loop();auto *context=port.context;
+  {
+    espcontrol::ModalCallbackDispatchScope dispatch;
+    assert(espcontrol::modal_callback_dispatching());
+    runtime.dismiss(PageModalClose::REPLACED);runtime.loop();
+    assert(port.context==context&&context->retired&&runtime.memory().retired_contexts==1);
+    {espcontrol::ModalCallbackDispatchScope nested;runtime.loop();assert(port.context==context);}
+    assert(espcontrol::modal_callback_dispatching());
+  }
+  assert(!espcontrol::modal_callback_dispatching());runtime.loop();assert(!port.context);
+}
 void bounded_cycles_failures_and_exhaustion() {
   Fixture fixture;Port port;PageModalRuntime runtime(port);port.runtime=&runtime;activate(runtime,fixture.store);
   port.fail_create=true;assert(runtime.request_card({17,0}));runtime.loop();assert(!port.context&&runtime.memory().failures==1);
@@ -134,4 +147,4 @@ void bounded_cycles_failures_and_exhaustion() {
   exhausted.dismiss();exhausted.loop();assert(!exhausted.request_card({17,0}));
 }
 }
-int main(){queue_and_callback_lifetimes();replacement_connection_and_takeover();bounded_cycles_failures_and_exhaustion();}
+int main(){action_response_dispatch_lifetime();queue_and_callback_lifetimes();replacement_connection_and_takeover();bounded_cycles_failures_and_exhaustion();}
