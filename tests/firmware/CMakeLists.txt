@@ -198,6 +198,32 @@ target_compile_options(page_percent_slider_runtime_test PRIVATE -Wall -Wextra -W
 target_include_directories(page_percent_slider_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_percent_slider_runtime_test COMMAND page_percent_slider_runtime_test)
 
+set(ALARM_POLICY_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_alarm_policy_test.cpp)
+add_custom_command(OUTPUT ${ALARM_POLICY_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_alarm_policy_test.py --output ${ALARM_POLICY_SOURCE}
+  DEPENDS generate_alarm_policy_test.py page_alarm_policy_test.cpp.in ../../components/espcontrol/button_grid_alarm.h
+  VERBATIM)
+add_executable(page_alarm_policy_test ${ALARM_POLICY_SOURCE})
+target_compile_features(page_alarm_policy_test PRIVATE cxx_std_17)
+target_compile_options(page_alarm_policy_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_alarm_policy_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_alarm_policy_test COMMAND page_alarm_policy_test)
+
+set(ALARM_STATE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_alarm_state_runtime_test.cpp)
+add_custom_command(OUTPUT ${ALARM_STATE_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_alarm_state_test.py --output ${ALARM_STATE_SOURCE}
+  DEPENDS generate_page_alarm_state_test.py page_alarm_state_runtime_test.cpp.in
+    ../../components/espcontrol/button_grid_alarm.h ../../components/espcontrol/button_grid_access_cards.h
+  VERBATIM)
+add_executable(page_alarm_state_runtime_test ${ALARM_STATE_SOURCE}
+  ../../components/espcontrol/page_alarm_state_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp)
+target_compile_features(page_alarm_state_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_alarm_state_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_alarm_state_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_alarm_state_runtime_test COMMAND page_alarm_state_runtime_test)
+
 set(NUMBER_LAYOUT_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/basic_number_layout_test.cpp)
 add_custom_command(OUTPUT ${NUMBER_LAYOUT_SOURCE}
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_number_layout_test.py --output ${NUMBER_LAYOUT_SOURCE}

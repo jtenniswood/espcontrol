@@ -98,6 +98,10 @@ class CardEmitter {
       case Driver::ACTION:
         return pair(action_card_state_entity(config));
       case Driver::ALARM:
+        return pair(config.entity) && attributes(config.entity, {"arm_mode", "delay"}) &&
+               (normalize_alarm_label_display(cfg_option_value(config.options, "label_display")) ==
+                    "status" ||
+                friendly(config, config.entity));
       case Driver::ALARM_ACTION:
         return pair(config.entity) && attributes(config.entity,{"arm_mode","delay"});
       case Driver::DATE_TIME:

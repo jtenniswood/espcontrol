@@ -2,7 +2,9 @@
 #include "display_utf8_case.h"
 namespace espcontrol::pages {
 // Match sentence_cap_text's word, whitespace and UTF-8 case rules without a string allocation.
-inline size_t format_status_text(char* output, size_t capacity, std::string_view input) {
+// Most consumers cross a C-string translation boundary; alarm history can retain embedded NUL bytes.
+inline size_t format_status_text(char* output, size_t capacity, std::string_view input,
+                                 bool stop_at_nul = true) {
   if (!output || !capacity) return 0;
   size_t used = 0;
   bool cap_next = true, last_space = false;
@@ -32,7 +34,7 @@ inline size_t format_status_text(char* output, size_t capacity, std::string_view
       last_space = false;
       continue;
     }
-    if (point == 0) break;  // The legacy translation API consumes a C string.
+    if (point == 0 && stop_at_nul) break;
     if (utf8_letter_like(point)) {
       point = point < 0x80 ? static_cast<uint32_t>(cap_next ? std::toupper(static_cast<unsigned char>(point))
                                                             : std::tolower(static_cast<unsigned char>(point)))
