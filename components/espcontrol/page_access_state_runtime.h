@@ -29,6 +29,13 @@ class PageAccessStateRuntime final : public PageRuntimeResources, public PageEnt
   void observed(uint32_t, std::string_view, std::string_view, std::string_view, bool) override;
   void loop();
   PageAccessSnapshot read(ConfigurationHandle) const;
+  bool owns(ConfigurationHandle handle) const {
+    const auto* card = active_.store.card(handle.index);
+    if (!active_.store.source_document() || handle.generation != active_.store.generation() || !card)
+      return false;
+    const auto type = active_.store.field(*card, CardField::TYPE);
+    return type == "garage" || type == "gate" || type == "lock";
+  }
   uint64_t revision() const {
     return revision_;
   }
