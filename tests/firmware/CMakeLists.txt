@@ -198,6 +198,20 @@ target_compile_options(page_percent_slider_runtime_test PRIVATE -Wall -Wextra -W
 target_include_directories(page_percent_slider_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_percent_slider_runtime_test COMMAND page_percent_slider_runtime_test)
 
+set(ALARM_ACK_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_alarm_ack_runtime_test.cpp)
+add_custom_command(OUTPUT ${ALARM_ACK_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_alarm_ack_test.py --output ${ALARM_ACK_SOURCE}
+  DEPENDS generate_alarm_ack_test.py page_alarm_ack_runtime_test.cpp.in ../../components/espcontrol/button_grid_alarm.h
+  VERBATIM)
+add_executable(page_alarm_ack_runtime_test ${ALARM_ACK_SOURCE}
+  ../../components/espcontrol/page_alarm_ack_runtime.cpp ../../components/espcontrol/page_alarm_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_store_runtime.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp)
+target_compile_features(page_alarm_ack_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_alarm_ack_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_alarm_ack_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_alarm_ack_runtime_test COMMAND page_alarm_ack_runtime_test)
+
 set(ALARM_POLICY_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_alarm_policy_test.cpp)
 add_custom_command(OUTPUT ${ALARM_POLICY_SOURCE}
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_alarm_policy_test.py --output ${ALARM_POLICY_SOURCE}
