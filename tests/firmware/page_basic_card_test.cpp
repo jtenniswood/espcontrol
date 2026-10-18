@@ -12,6 +12,7 @@
 
 #include "bounded_display_text.h"
 #include "button_grid_subpage_parser.h"
+#include "light_temperature_color.h"
 #include "page_card_dependencies.h"
 #include "panel_config_document.h"
 #include "weather_condition.h"
@@ -516,6 +517,75 @@ void fan_control_profile(const DeviceUiLimits& limits) {
   assert(value.label == "Custom" && !value.numeric && value.unit.empty());
 }
 
+void light_temperature_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, "light.room;;Auto;Other;;5000-6000;light_temperature;color;");
+  BasicCardDefinition definition;
+  assert(prepare_basic_card(fixture.store, 0, definition));
+  assert(definition.kind == BasicCardKind::LIGHT_TEMPERATURE && definition.icon == "Lightbulb" &&
+         definition.icon_on == definition.icon && !definition.large_numbers && !definition.active_color &&
+         definition.unit.empty());
+  assert(basic_folder_child_indicator(fixture.store,0)=="light.room");
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageLightTemperatureRuntime temperature(arena, subscriptions);
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {64, 64, 2048}, &temperature);
+  assert(temperature.prepare(fixture.store) && state.prepare(fixture.store));
+  temperature.activate_prepared(fixture.store);
+  state.activate_prepared(fixture.store);
+  const auto read = [&]() {
+    return read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, nullptr, nullptr, nullptr, nullptr,
+                           nullptr, nullptr, &temperature);
+  };
+  subscriptions.send("light.room", "friendly_name", "Raw light");
+  subscriptions.send("light.room", "color_temp_kelvin", "5500");
+  assert(read().fill_percent == 0 && read().label == "Raw light");
+  subscriptions.send("light.room", "", "on");
+  assert(read().fill_percent == 50);
+  assert(temperature.begin({17, 0}) && temperature.drag({17, 0}, 80));
+  auto value = read();
+  assert(value.formatted_label && !value.numeric && std::strcmp(value.text, "5800K") == 0);
+  subscriptions.send("light.room", "color_temp_kelvin", "5494");
+  value = read();
+  assert(value.fill_percent == 49 && std::strcmp(value.text, "5800K") == 0);
+  int target;
+  assert(temperature.finish({17, 0}, 49, target) && target == 5490);
+  assert(!read().formatted_label && read().label == "Raw light");
+  subscriptions.send("light.room", "", "off");
+  subscriptions.send("light.room", "color_temp_kelvin", "5600");
+  assert(read().fill_percent == 0);
+  subscriptions.send("light.room", "", "on");
+  assert(read().fill_percent == 60);
+  const auto before = allocations;
+  for (int n = 0; n < 1000; ++n) (void)read();
+  assert(allocations == before);
+  ++subscriptions.generation;
+  temperature.loop();
+  assert(!read().light_temperature.available);
+  {
+    Arena small_arena;
+    Subscriptions small_subscriptions;
+    PageLightTemperatureRuntime small_temperature(small_arena, small_subscriptions);
+    PageEntityStateRuntime small_state(dependencies, small_arena, small_subscriptions, {64, 64, 1},
+                                       &small_temperature);
+    assert(small_temperature.prepare(fixture.store) && small_state.prepare(fixture.store));
+    small_temperature.activate_prepared(fixture.store);
+    small_state.activate_prepared(fixture.store);
+    small_subscriptions.send("light.room", "", "on");
+    small_subscriptions.send("light.room", "color_temp_kelvin", "5500");
+    const auto exhausted = read_basic_light_temperature(definition, {17, 0}, small_state, &small_temperature);
+    assert(!exhausted.available && !exhausted.gesture && !exhausted.dragging);
+  }
+}
+void temperature_colors() {
+  assert(light_temperature::fill_color(1000) == 0xFF8012);
+  assert(light_temperature::fill_color(2000) == 0xFF8012);
+  assert(light_temperature::fill_color(4250) == 0xDCA689);
+  assert(light_temperature::fill_color(5500) == 0xC8BBCA);
+  assert(light_temperature::fill_color(6500) == 0xB8CCFF);
+  assert(light_temperature::fill_color(std::numeric_limits<int>::max()) == 0xB8CCFF);
+  assert(light_temperature::fill_color(std::numeric_limits<int>::min()) == 0xFF8012);
+}
 void number_slider_profile(const DeviceUiLimits& limits) {
   for (const char* type : {"slider", "light_brightness", "fan_speed", "cover"}) {
     Fixture fixture(limits, std::string("number.room;;Auto;Other;tilt;ignored;") + type + ";2;");
@@ -1142,6 +1212,7 @@ void speaker_group_profile(const DeviceUiLimits& limits) {
 
 int main() {
   display_text();
+  temperature_colors();
   bounded_html_metadata();
   for (const auto& limits : DEVICE_UI_PROFILES) {
     profile(limits);
@@ -1156,6 +1227,7 @@ int main() {
     fan_status_profile(limits);
     percent_slider_profile(limits);
     number_slider_profile(limits);
+    light_temperature_profile(limits);
     weather_profile(limits);
     media_action_profile(limits);
     media_position_profile(limits);

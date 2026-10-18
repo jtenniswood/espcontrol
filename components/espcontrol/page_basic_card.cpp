@@ -79,6 +79,12 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     out.sensor = {};
     if (type == "cover" && (out.icon.empty() || out.icon == "Auto")) out.icon = "Blinds";
     out.icon_on = out.icon;
+  } else if (type == "light_temperature") {
+    out.kind = BasicCardKind::LIGHT_TEMPERATURE;
+    out.unit = {};
+    out.sensor = {};
+    if (out.icon.empty() || out.icon == "Auto") out.icon = "Lightbulb";
+    out.icon_on = out.icon;
   } else if (type == "internal") {
     out.kind = BasicCardKind::LOCAL_RELAY;
     out.unit = {};
@@ -322,7 +328,7 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
   if (type == "internal")
     return PageLocalRelayRuntime::toggle(store, *card) ? store.field(*card, CardField::ENTITY)
                                                        : std::string_view{};
-  return type.empty() || type == "light_switch" || type == "media" || type == "fan_control" ||
+  return type.empty() || type == "light_switch" || type == "light_temperature" || type == "media" || type == "fan_control" ||
                  type == "fan_direction" || type == "fan_preset" || type == "fan_switch" ||
                  type == "fan_oscillate"
              ? store.field(*card, CardField::ENTITY)
@@ -375,13 +381,25 @@ PageNumberSliderSnapshot read_basic_number_slider(const BasicCardDefinition& car
   }
   return snapshot;
 }
+PageLightTemperatureSnapshot read_basic_light_temperature(const BasicCardDefinition& card,
+                                                          ConfigurationHandle handle,
+                                                          PageEntityStateRuntime& state,
+                                                          PageLightTemperatureRuntime* runtime) {
+  if (!runtime || card.kind != BasicCardKind::LIGHT_TEMPERATURE) return {};
+  auto snapshot = runtime->read(handle);
+  for (const auto attribute : {"", "color_temp_kelvin"})
+    if (find(state, handle, card.entity, attribute).status == PageEntityStatus::EXHAUSTED)
+      snapshot.available = snapshot.dragging = snapshot.gesture = false;
+  return snapshot;
+}
 BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHandle handle,
                                PageEntityStateRuntime& state, int duration_components,
                                std::string_view temperature_unit, PageCardTranslate translate,
                                PageMediaStateRuntime* media_owner, PageLocalSensorRuntime* local,
                                PageLocalRelayRuntime* relay, PageFanStatusRuntime* fan_status,
                                PagePercentSliderRuntime* percent_slider,
-                               PageNumberSliderRuntime* number_slider) {
+                               PageNumberSliderRuntime* number_slider,
+                               PageLightTemperatureRuntime* temperature) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
   if (card.kind == BasicCardKind::PERCENT_SLIDER) {
@@ -396,6 +414,21 @@ BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHan
       const auto name = find(state, handle, card.entity, "friendly_name");
       if (name.status == PageEntityStatus::AVAILABLE)
         result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+    }
+    return result;
+  }
+  if (card.kind == BasicCardKind::LIGHT_TEMPERATURE) {
+    result.light_temperature = read_basic_light_temperature(card, handle, state, temperature);
+    result.fill_percent = result.light_temperature.percent;
+    result.label = card.label;
+    if (result.label.empty()) {
+      const auto name = find(state, handle, card.entity, "friendly_name");
+      if (name.status == PageEntityStatus::AVAILABLE)
+        result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+    }
+    if (result.light_temperature.dragging) {
+      result.formatted_label = true;
+      std::snprintf(result.text, sizeof(result.text), "%dK", result.light_temperature.display_kelvin);
     }
     return result;
   }

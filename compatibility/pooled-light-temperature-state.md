@@ -1,8 +1,9 @@
 # Configuration-owned light-temperature state
 
 `PageLightTemperatureRuntime` keeps light-temperature report and thumb history
-outside widgets. Visible temperature views and production scene selection are
-still unfinished; production uses the existing renderer.
+outside widgets. [Reusable temperature views](pooled-light-temperature-cards.md)
+consume this state; production scene selection remains unfinished and production
+uses the existing renderer.
 
 An exact configuration arena deduplicates entity keys, with default limits of
 32 sources, 512 eligible cards and 2,048 key bytes including terminators. Each

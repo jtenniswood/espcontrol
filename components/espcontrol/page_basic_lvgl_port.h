@@ -1,9 +1,8 @@
 #pragma once
 
-#include <cassert>
-
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cstring>
 #include <limits>
 #include <new>
@@ -15,6 +14,7 @@
 #include "button_grid_string.h"
 #include "cover_art.h"
 #include "display_color.h"
+#include "light_temperature_color.h"
 #include "lvgl.h"
 #include "page_basic_card.h"
 #include "page_cover_art_frame.h"
@@ -70,6 +70,7 @@ struct PageBasicActions {
   void (*media_volume)(void*, PageBindingToken){nullptr};
   void (*percent_slider)(void*, PageBindingToken, int percent){nullptr};
   void (*number_slider)(void*, PageBindingToken, double, const number_slider::Metadata&){nullptr};
+  void (*light_temperature)(void*, PageBindingToken, int kelvin){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -97,7 +98,8 @@ class PageBasicLvglPort final:public PageRendererPort {
                     PageCoverArtView* artwork = nullptr, PageLocalSensorRuntime* local = nullptr,
                     PageLocalRelayRuntime* relay = nullptr, PageFanStatusRuntime* fan_status = nullptr,
                     PagePercentSliderRuntime* percent_slider = nullptr,
-                    PageNumberSliderRuntime* number_slider = nullptr)
+                    PageNumberSliderRuntime* number_slider = nullptr,
+                    PageLightTemperatureRuntime* temperature = nullptr)
       : allocator_(allocator),
         state_(state),
         widgets_(widgets),
@@ -111,7 +113,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         relay_(relay),
         fan_status_(fan_status),
         percent_slider_(percent_slider),
-        number_slider_(number_slider) {
+        number_slider_(number_slider),
+        temperature_(temperature) {
     for(size_t i=0;i<Slots;++i){shells_[i].port=this;shells_[i].index=i;}
   }
   ~PageBasicLvglPort()override {
@@ -298,6 +301,12 @@ class PageBasicLvglPort final:public PageRendererPort {
       for(CardId card=p->first_card;card<p->first_card+p->card_count;++card) {
         BasicCardDefinition view;
         if (!prepare_basic_card(store, card, view, &strings, relay_)) return false;
+        if (view.kind == BasicCardKind::LIGHT_TEMPERATURE) {
+          if (!temperature_ || !actions_.light_temperature) return false;
+          for (const auto& w : widgets_)
+            if (!w.fill || !w.slider) return false;
+          label_capacity = std::max<size_t>(label_capacity, HA_FRIENDLY_NAME_MAX_LEN + 1);
+        }
         if (view.kind == BasicCardKind::NUMBER_SLIDER) {
           if (!number_slider_ || !actions_.number_slider) return false;
           for (const auto& w : widgets_)
@@ -561,6 +570,14 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (w.slider) lv_slider_set_range(w.slider, 0, 100);
     s.token=token;s.pressed={};s.cell=cell;s.back=back;
     s.definition=cell.back?nullptr:prepared(active_)+cell.card;
+    if (percent_card(s) || number_card(s) || temperature_card(s)) {
+      lv_obj_align(w.icon, LV_ALIGN_TOP_LEFT, 0, 0);
+      lv_obj_align(w.label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+      if (temperature_card(s)) {
+        lv_label_set_long_mode(w.icon, LV_LABEL_LONG_CLIP);
+        lv_obj_set_width(w.icon, lv_pct(100));
+      }
+    }
     if (w.forecast) {
       lv_obj_set_style_radius(w.forecast, 0, LV_PART_MAIN);
       lv_obj_set_style_clip_corner(w.forecast, false, LV_PART_MAIN);
@@ -616,9 +633,10 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(s.cell.back){value.label=s.back.custom_label.empty()?theme_.back_label:s.back.custom_label;definition.custom_off=s.back.custom_color;definition.off_color=s.back.background_color;}
     else {
       definition = s.definition->definition;
-      value = read_basic_card(definition, {token.configuration, token.card}, state_,
-                              s.cell.column_span > 1 ? 2 : 1, theme_.temperature_unit, theme_.translate,
-                              media_, local_, relay_, fan_status_, percent_slider_, number_slider_);
+      value =
+          read_basic_card(definition, {token.configuration, token.card}, state_,
+                          s.cell.column_span > 1 ? 2 : 1, theme_.temperature_unit, theme_.translate, media_,
+                          local_, relay_, fan_status_, percent_slider_, number_slider_, temperature_);
       if(group_card(s))group_feedback(s,value);
       if(definition.folder_mode==BasicFolderMode::CHILDREN) {
         for(size_t child=0;child<s.definition->summary_count&&!value.on;++child) {
@@ -673,6 +691,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(definition.kind==BasicCardKind::MEDIA_POSITION||(now_playing&&definition.media.progress))position_feedback(s,value);
     if (definition.kind == BasicCardKind::PERCENT_SLIDER) percent_feedback(s, value);
     if (definition.kind == BasicCardKind::NUMBER_SLIDER) number_feedback(s, value);
+    if (definition.kind == BasicCardKind::LIGHT_TEMPERATURE) temperature_feedback(s, value);
     if(!now_playing){lv_obj_clear_flag(w.label,LV_OBJ_FLAG_HIDDEN);write(w.label,s.label,active_.label_capacity,value.formatted_label?std::string_view(value.text):value.label);}
     for(const auto selector:{static_cast<lv_style_selector_t>(LV_PART_MAIN),
          static_cast<lv_style_selector_t>(LV_PART_MAIN)|static_cast<lv_style_selector_t>(LV_STATE_CHECKED)})
@@ -732,17 +751,21 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(w.fill) {
       if (definition.kind == BasicCardKind::PERCENT_SLIDER ||
           definition.kind == BasicCardKind::NUMBER_SLIDER ||
+          definition.kind == BasicCardKind::LIGHT_TEMPERATURE ||
           definition.kind == BasicCardKind::MEDIA_POSITION || (now_playing && definition.media.progress) ||
           (definition.kind == BasicCardKind::COVER && value.fill_percent)) {
         s.fill_percent=value.fill_percent;update_fill_geometry(s);
         const auto fill_color =
-            (definition.kind == BasicCardKind::MEDIA_POSITION || (now_playing && definition.media.progress))
+            definition.kind == BasicCardKind::LIGHT_TEMPERATURE && value.light_temperature.color
+                ? light_temperature::fill_color(value.light_temperature.fill_kelvin)
+            : (definition.kind == BasicCardKind::MEDIA_POSITION || (now_playing && definition.media.progress))
                 ? (definition.custom_off ? correct(card_progress_color(definition.off_color))
                                          : theme_.surface)
             : definition.custom_on ? correct(definition.on_color)
             : definition.custom_off && !definition.theme_active
                 ? ((definition.kind == BasicCardKind::PERCENT_SLIDER ||
-                    definition.kind == BasicCardKind::NUMBER_SLIDER)
+                    definition.kind == BasicCardKind::NUMBER_SLIDER ||
+                    definition.kind == BasicCardKind::LIGHT_TEMPERATURE)
                        ? card_slider_fill_color(correct(definition.off_color))
                        : correct(active_card_color(definition.off_color)))
                 : theme_.active;
@@ -759,6 +782,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       lv_obj_add_flag(w.forecast, LV_OBJ_FLAG_HIDDEN);
     if (!commit_seen) return;
     if (number_slider_) seen_number_slider_ = number_slider_->revision();
+    if (temperature_) seen_temperature_ = temperature_->revision();
     seen_state_ = state_.revision();
     if (local_) seen_local_ = local_->revision();
     if (relay_) seen_relay_ = relay_->revision();
@@ -822,13 +846,15 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (fan_status_) fan_status_->loop();
     if (percent_slider_) percent_slider_->loop();
     if (number_slider_) number_slider_->loop();
+    if (temperature_) temperature_->loop();
     if (media_layout_dirty_) return true;
     if (media_)
       for (const auto& shell : shells_)
         if (shell.pending_target >= 0 && !group_card(shell) &&
             static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= pending_timeout(shell))
           return true;
-    return (number_slider_ && number_slider_->revision() != seen_number_slider_) ||
+    return (temperature_ && temperature_->revision() != seen_temperature_) ||
+           (number_slider_ && number_slider_->revision() != seen_number_slider_) ||
            (percent_slider_ && percent_slider_->revision() != seen_percent_slider_) ||
            (fan_status_ && fan_status_->revision() != seen_fan_status_) ||
            (relay_ && relay_->revision() != seen_relay_) || (local_ && local_->revision() != seen_local_) ||
@@ -961,7 +987,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (!shell || !shell->definition) return;
     const auto kind=shell->definition->definition.kind;
     if (kind != BasicCardKind::COVER && kind != BasicCardKind::PERCENT_SLIDER &&
-        kind != BasicCardKind::NUMBER_SLIDER)
+        kind != BasicCardKind::NUMBER_SLIDER && kind != BasicCardKind::LIGHT_TEMPERATURE)
       return;
     slider_text_contrast_event(event, shell->port->widgets_[shell->index].fill);
   }
@@ -970,6 +996,8 @@ class PageBasicLvglPort final:public PageRendererPort {
     const bool dragging = shell.dragging;
     if (dragging && number_card(shell) && number_slider_)
       number_slider_->cancel({shell.token.configuration, shell.token.card});
+    if (dragging && temperature_card(shell) && temperature_)
+      temperature_->cancel({shell.token.configuration, shell.token.card});
     shell.input = nullptr;
     shell.dragging = false;
     shell.pressed = {};
@@ -988,6 +1016,99 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
   static bool number_card(const Shell& shell) {
     return shell.definition && shell.definition->definition.kind == BasicCardKind::NUMBER_SLIDER;
+  }
+  static bool temperature_card(const Shell& shell) {
+    return shell.definition && shell.definition->definition.kind == BasicCardKind::LIGHT_TEMPERATURE;
+  }
+  PageLightTemperatureSnapshot temperature_snapshot(const Shell& shell) const {
+    temperature_->loop();
+    return read_basic_light_temperature(shell.definition->definition,
+                                        {shell.token.configuration, shell.token.card}, state_, temperature_);
+  }
+  void temperature_feedback(Shell& shell, BasicCardState& value) {
+    const auto& w = widgets_[shell.index];
+    const auto& snapshot = value.light_temperature;
+    if (shell.dragging && (!snapshot.gesture || !snapshot.available ||
+                           shell.gesture_connection != temperature_->connection_generation()))
+      cancel_position_gesture(shell);
+    lv_obj_clear_flag(w.slider, LV_OBJ_FLAG_HIDDEN);
+    if (snapshot.available)
+      lv_obj_add_flag(w.slider, LV_OBJ_FLAG_CLICKABLE);
+    else
+      lv_obj_clear_flag(w.slider, LV_OBJ_FLAG_CLICKABLE);
+    lv_slider_set_value(w.slider, snapshot.percent, LV_ANIM_OFF);
+  }
+  void temperature_pointer(Shell& shell) {
+    if (!shell.dragging) return;
+    const auto snapshot = temperature_snapshot(shell);
+    if (!snapshot.gesture || !snapshot.available ||
+        shell.gesture_connection != temperature_->connection_generation()) {
+      cancel_position_gesture(shell);
+      return;
+    }
+    percent_pointer(shell);
+    temperature_->drag({shell.token.configuration, shell.token.card},
+                       lv_slider_get_value(widgets_[shell.index].slider));
+  }
+  static void temperature_slider_guard(lv_event_t* event) {
+    auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
+    auto* port = shell->port;
+    const auto code = lv_event_get_code(event);
+    if (code == LV_EVENT_PRESSED) {
+      if (!port->temperature_snapshot(*shell).available || !port->actions_.valid ||
+          !port->actions_.valid(port->actions_.owner, shell->token) ||
+          !port->temperature_->begin({shell->token.configuration, shell->token.card})) {
+        lv_event_stop_processing(event);
+        return;
+      }
+      shell->pressed = shell->token;
+      shell->dragging = true;
+      shell->input = lv_indev_active();
+      shell->gesture_connection = port->temperature_->connection_generation();
+    } else if (code == LV_EVENT_PRESS_LOST || code == LV_EVENT_INDEV_RESET) {
+      const bool was = shell->dragging;
+      port->cancel_position_gesture(*shell);
+      if (was) port->paint(shell->index, shell->token, false);
+    }
+  }
+  static void temperature_slider_event(lv_event_t* event) {
+    auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
+    auto* port = shell->port;
+    const auto code = lv_event_get_code(event);
+    if (code == LV_EVENT_PRESS_LOST || code == LV_EVENT_INDEV_RESET) {
+      temperature_slider_guard(event);
+      return;
+    }
+    if (!shell->dragging) return;
+    if (code == LV_EVENT_PRESSED || code == LV_EVENT_PRESSING || code == LV_EVENT_VALUE_CHANGED) {
+      port->temperature_pointer(*shell);
+      port->paint(shell->index, shell->token, false);
+      return;
+    }
+    if (code != LV_EVENT_RELEASED) return;
+    port->temperature_pointer(*shell);
+    if (!shell->dragging) {
+      port->paint(shell->index, shell->token, false);
+      return;
+    }
+    const auto origin = shell->pressed;
+    int target;
+    if (!same(origin, shell->token) || !port->actions_.valid ||
+        !port->actions_.valid(port->actions_.owner, origin) ||
+        !port->temperature_snapshot(*shell).available ||
+        shell->gesture_connection != port->temperature_->connection_generation() ||
+        !port->temperature_->finish({origin.configuration, origin.card},
+                                    lv_slider_get_value(port->widgets_[shell->index].slider), target)) {
+      port->cancel_position_gesture(*shell);
+      port->paint(shell->index, shell->token, false);
+      return;
+    }
+    shell->pressed = {};
+    shell->dragging = false;
+    shell->input = nullptr;
+    port->paint(shell->index, shell->token, false);
+    if (port->actions_.light_temperature)
+      port->actions_.light_temperature(port->actions_.owner, origin, target);
   }
   PageNumberSliderSnapshot number_snapshot(const Shell& shell) const {
     number_slider_->loop();
@@ -1237,7 +1358,7 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
   void update_fill_geometry(Shell& shell) {
     const auto& w = widgets_[shell.index];
-    if (percent_card(shell) || number_card(shell)) {
+    if (percent_card(shell) || number_card(shell) || temperature_card(shell)) {
       const auto width = lv_obj_get_width(w.button), height = lv_obj_get_height(w.button);
       if (width <= 0 || height <= 0 || !w.slider || !w.fill) return;
       const auto left = lv_obj_get_style_pad_left(w.button, LV_PART_MAIN);
@@ -1389,6 +1510,10 @@ class PageBasicLvglPort final:public PageRendererPort {
   static void slider_guard(lv_event_t* event) {
     auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
     auto* port = shell->port;
+    if (temperature_card(*shell)) {
+      temperature_slider_guard(event);
+      return;
+    }
     if (number_card(*shell)) {
       number_slider_guard(event);
       return;
@@ -1423,6 +1548,10 @@ class PageBasicLvglPort final:public PageRendererPort {
   static void slider_event(lv_event_t* event) {
     auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
     auto* port = shell->port;
+    if (temperature_card(*shell)) {
+      temperature_slider_event(event);
+      return;
+    }
     if (number_card(*shell)) {
       number_slider_event(event);
       return;
@@ -1783,13 +1912,15 @@ class PageBasicLvglPort final:public PageRendererPort {
   PageFanStatusRuntime* fan_status_{nullptr};
   PagePercentSliderRuntime* percent_slider_{nullptr};
   PageNumberSliderRuntime* number_slider_{nullptr};
+  PageLightTemperatureRuntime* temperature_{nullptr};
   std::array<Shell, Slots> shells_{};
   Arena active_, staged_;
   PageStore store_;
   bool initialized_{false}, media_layout_dirty_{false}, media_finishing_{false};
   size_t callbacks_{0};
-  uint64_t seen_number_slider_{0}, seen_percent_slider_{0}, seen_fan_status_{0}, seen_relay_{0},
-      seen_local_{0}, seen_state_{0}, seen_theme_{0}, seen_forecast_{0}, seen_media_{0}, seen_artwork_{0};
+  uint64_t seen_temperature_{0}, seen_number_slider_{0}, seen_percent_slider_{0}, seen_fan_status_{0},
+      seen_relay_{0}, seen_local_{0}, seen_state_{0}, seen_theme_{0}, seen_forecast_{0}, seen_media_{0},
+      seen_artwork_{0};
   PageBasicMemory memory_;
 };
 }  // namespace espcontrol::pages
