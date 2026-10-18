@@ -3,10 +3,12 @@
 #include <cstdint>
 #include <string_view>
 
+#include "media_card_mode.h"
+
 namespace espcontrol::pages {
 // Prepared configuration for the media modes which use the common icon/label
 // shell. Other media modes still fail preparation until their view is ported.
-enum class MediaActionKind : uint8_t { PLAY_PAUSE, PREVIOUS, NEXT, PLAYLIST };
+using MediaActionKind = media::Mode;
 struct MediaActionOptions {
   MediaActionKind kind{MediaActionKind::PLAY_PAUSE};
   bool show_state{false};

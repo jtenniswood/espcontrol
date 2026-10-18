@@ -1522,6 +1522,7 @@ inline bool slider_apply_vertical_pointer_value(lv_obj_t *slider) {
 
 // Create an invisible LVGL slider with a colored fill overlay inside a button
 inline lv_obj_t *setup_slider_widget(lv_obj_t *btn, uint32_t on_color, bool horizontal) {
+  (void) horizontal;  // Orientation is applied by slider_fit_to_button.
   if (!btn) return nullptr;
   lv_obj_set_style_pad_all(btn, 0,
     static_cast<lv_style_selector_t>(LV_PART_MAIN));

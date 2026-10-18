@@ -247,14 +247,14 @@ void control_profile(const DeviceUiLimits &limits) {
   PageCardDependencies source;Arena arena;Subscriptions transport;PageEntityStateRuntime state(source,arena,transport,{32,32,2048});BasicCardDefinition definition;
   Fixture light(limits,"light.room;;Auto;Auto;;;light_control;0;");assert(prepare_basic_card(light.store,0,definition));assert(definition.kind==BasicCardKind::LIGHT&&definition.icon=="Lightbulb Outline"&&definition.icon_on=="Lightbulb");assert(state.prepare(light.store));state.activate_prepared(light.store);transport.send("light.room","","on");transport.send("light.room","friendly_name","Room lamp");auto value=read_basic_card(definition,{17,0},state);assert(value.on&&value.label=="Room lamp");transport.send("light.room","","unavailable");assert(!read_basic_card(definition,{17,0},state).on);
   Fixture cover(limits,"cover.room;;Auto;Auto;modal;;cover;0;");assert(prepare_basic_card(cover.store,0,definition));assert(definition.kind==BasicCardKind::COVER&&!definition.active_color&&definition.icon=="Blinds"&&definition.icon_on=="Blinds Open");assert(state.prepare(cover.store));state.activate_prepared(cover.store);
-  for(const auto &pair:{std::pair<const char *,int>{"closed",100},{"closing",100},{"open",0},{"opening",0},{"unknown",0}}){transport.send("cover.room","",pair.first);value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==pair.second);assert(value.on==(std::strcmp(pair.first,"open")==0||std::strcmp(pair.first,"opening")==0));}
-  const char packed[]={'4','2','.','5','9'};transport.send("cover.room","current_position",{packed,4});value=read_basic_card(definition,{17,0},state);assert(value.on&&value.closed_percent==57);
-  for(const auto invalid:{"unavailable","unknown","nan","inf","bad",""}){transport.send("cover.room","current_position",invalid);value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==57&&value.on);}
+  for(const auto &pair:{std::pair<const char *,int>{"closed",100},{"closing",100},{"open",0},{"opening",0},{"unknown",0}}){transport.send("cover.room","",pair.first);value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==pair.second);assert(value.on==(std::strcmp(pair.first,"open")==0||std::strcmp(pair.first,"opening")==0));}
+  const char packed[]={'4','2','.','5','9'};transport.send("cover.room","current_position",{packed,4});value=read_basic_card(definition,{17,0},state);assert(value.on&&value.fill_percent==57);
+  for(const auto invalid:{"unavailable","unknown","nan","inf","bad",""}){transport.send("cover.room","current_position",invalid);value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==57&&value.on);}
   // Valid history is kept even while the page is hidden and no presenter runs.
-  transport.send("cover.room","current_position","71");transport.send("cover.room","current_position","nan");value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==29);
-  for(const auto &pair:{std::pair<const char *,int>{"0",100},{"100",0},{"-1e30",100},{"1e30",0},{"25prefix",75}}){transport.send("cover.room","current_position",pair.first);value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==pair.second);}
-  const auto before=allocations;for(int i=0;i<1000;++i){value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==75);}assert(allocations==before);
-  ++transport.generation;value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==0&&!value.on);transport.send("cover.room","","closed");value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==100);
+  transport.send("cover.room","current_position","71");transport.send("cover.room","current_position","nan");value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==29);
+  for(const auto &pair:{std::pair<const char *,int>{"0",100},{"100",0},{"-1e30",100},{"1e30",0},{"25prefix",75}}){transport.send("cover.room","current_position",pair.first);value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==pair.second);}
+  const auto before=allocations;for(int i=0;i<1000;++i){value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==75);}assert(allocations==before);
+  ++transport.generation;value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==0&&!value.on);transport.send("cover.room","","closed");value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==100);
 }
 
 void weather_profile(const DeviceUiLimits &limits) {
@@ -279,7 +279,7 @@ void media_action_profile(const DeviceUiLimits &limits) {
   BasicCardDefinition definition;assert(prepare_basic_card(play.store,0,definition));
   assert(definition.kind==BasicCardKind::MEDIA_ACTION&&definition.media.show_state&&definition.icon=="Play Pause"&&definition.icon_on==definition.icon);
   PageCardDependencies dependencies;Arena arena;Subscriptions subs;
-  struct Transport:PageMediaTransport {Subscriptions &subs;explicit Transport(Subscriptions &s):subs(s){}bool connected()const override{return true;}uint32_t connection_generation()const override{return subs.generation;}void reannounce()override{}} transport(subs);
+  struct Transport:PageMediaTransport {Subscriptions &subs;explicit Transport(Subscriptions &s):subs(s){}bool connected()const override{return true;}uint32_t connection_generation()const override{return subs.generation;}uint32_t now_ms()const override{return 100;}int64_t epoch_seconds()const override{return 0;}void reannounce()override{}} transport(subs);
   PageMediaStateRuntime media(arena,transport);PageEntityStateRuntime state(dependencies,arena,subs,{32,32,1024},&media);
   assert(state.prepare(play.store));state.activate_prepared(play.store);
   assert(read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).label=="Unknown");
@@ -317,14 +317,82 @@ void media_action_profile(const DeviceUiLimits &limits) {
   subs.send("media_player.test","media_content_id",std::string(2048,'x'));assert(!read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on);
   ++subs.generation;assert(!read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on);
 }
+void media_position_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, "media_player.room;Custom;Auto;Auto;position;;media;state;");
+  BasicCardDefinition definition;
+  assert(prepare_basic_card(fixture.store, 0, definition));
+  assert(definition.kind == BasicCardKind::MEDIA_POSITION &&
+         definition.media.kind == MediaActionKind::POSITION && !definition.push_feedback &&
+         !definition.large_numbers);
+  PageCardDependencies dependencies;
+  Arena arena;
+  Subscriptions subs;
+  struct Transport : PageMediaTransport {
+    Subscriptions& subs;
+    uint32_t now = 1000;
+    explicit Transport(Subscriptions& s) : subs(s) {}
+    bool connected() const override {
+      return true;
+    }
+    uint32_t connection_generation() const override {
+      return subs.generation;
+    }
+    uint32_t now_ms() const override {
+      return now;
+    }
+    int64_t epoch_seconds() const override {
+      return 1003;
+    }
+    void reannounce() override {
+      assert(false);
+    }
+  } transport(subs);
+  PageMediaStateRuntime media(arena, transport);
+  PageEntityStateRuntime state(dependencies, arena, subs, {32, 32, 1024}, &media);
+  assert(media.prepare(fixture.store) && state.prepare(fixture.store));
+  media.activate_prepared(fixture.store);
+  state.activate_prepared(fixture.store);
+  subs.send("media_player.room", "", "playing");
+  subs.send("media_player.room", "media_duration", "300");
+  subs.send("media_player.room", "media_position", "10");
+  subs.send("media_player.room", "media_position_updated_at", "1970-01-01T00:16:40Z");
+  auto value = read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, &media);
+  assert(value.numeric && value.fill_percent == 4 && std::strcmp(value.number, "0:13") == 0 &&
+         value.label == "Playing");
+  transport.now += 1000;
+  media.loop();
+  assert(std::strcmp(read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, &media).number, "0:14") ==
+         0);
+  subs.send("media_player.room", "", "paused");
+  transport.now += 10000;
+  media.loop();
+  assert(std::strcmp(read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, &media).number, "0:14") ==
+         0);
+  const auto before = allocations;
+  for (int i = 0; i < 1000; ++i)
+    assert(read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, &media).numeric);
+  assert(allocations == before);
+  ++subs.generation;
+  value = read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, &media);
+  assert(std::strcmp(value.number, "0:00") == 0 && value.fill_percent == 0 && value.label == "Unknown");
+}
 void bounded_html_metadata() {
   char text[129];
-  const std::array<std::pair<const char *,const char *>,7> cases={{{"A &amp; B","A & B"},{"&#128; &#x97;",u8"€ —"},{"&quot;x&apos;","\"x'"},{"&lt;&gt;&nbsp;",u8"<>\u00A0"},{"&#0; &#xD800; &bogus;","&#0; &#xD800; &bogus;"},{u8"Ṣade ṣ",u8"Ṣade ṣ"},{"&amp;amp;","&amp;"}}};
-  const auto before=allocations;
-  for(int i=0;i<1000;++i)for(const auto &entry:cases)assert(decode_html_entities_bounded(text,sizeof(text),entry.first)==entry.second);
-  assert(decode_html_entities_bounded(text,5,"abc&amp;")=="abc&");
-  assert(decode_html_entities_bounded(text,1,"abc").empty()&&text[0]=='\0');
-  assert(decode_html_entities_bounded(nullptr,0,"abc").empty());
-  assert(allocations==before);
+  const std::array<std::pair<const char*, const char*>, 7> cases = {
+      {{"A &amp; B", "A & B"},
+       {"&#128; &#x97;", u8"€ —"},
+       {"&quot;x&apos;", "\"x'"},
+       {"&lt;&gt;&nbsp;", u8"<>\u00A0"},
+       {"&#0; &#xD800; &bogus;", "&#0; &#xD800; &bogus;"},
+       {u8"Ṣade ṣ", u8"Ṣade ṣ"},
+       {"&amp;amp;", "&amp;"}}};
+  const auto before = allocations;
+  for (int i = 0; i < 1000; ++i)
+    for (const auto& entry : cases)
+      assert(decode_html_entities_bounded(text, sizeof(text), entry.first) == entry.second);
+  assert(decode_html_entities_bounded(text, 5, "abc&amp;") == "abc&");
+  assert(decode_html_entities_bounded(text, 1, "abc").empty() && text[0] == '\0');
+  assert(decode_html_entities_bounded(nullptr, 0, "abc").empty());
+  assert(allocations == before);
 }
-int main(){display_text();bounded_html_metadata();for(const auto &limits:DEVICE_UI_PROFILES){profile(limits);climate_profile(limits);status_actions_profile(limits);control_profile(limits);weather_profile(limits);media_action_profile(limits);}}
+int main(){display_text();bounded_html_metadata();for(const auto &limits:DEVICE_UI_PROFILES){profile(limits);climate_profile(limits);status_actions_profile(limits);control_profile(limits);weather_profile(limits);media_action_profile(limits);media_position_profile(limits);}}

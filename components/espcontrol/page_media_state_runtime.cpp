@@ -9,6 +9,7 @@
 
 namespace espcontrol::pages {
 namespace {
+constexpr uint8_t REQUIRE_METADATA = 1, REQUIRE_PROGRESS = 2;
 constexpr uint16_t CONTENT_BITS = (1u << 0) | (1u << 2) | (1u << 3) | (1u << 5);
 std::string_view configured_entity(const PageStore& store, CardId card) {
   const auto* definition = store.card(card);
@@ -20,10 +21,19 @@ std::string_view configured_entity(const PageStore& store, CardId card) {
   }
   return {};
 }
-bool needs_metadata(const PageStore& store, CardId card) {
+uint8_t requirements(const PageStore& store, CardId card) {
   const auto* definition = store.card(card);
   const auto mode = card_runtime_media_mode(std::string(store.field(*definition, CardField::SENSOR)));
-  return mode == "playlist" || mode == "now_playing" || mode == "cover_art";
+  const bool cover = mode == "cover_art" ||
+                     (mode == "now_playing" &&
+                      cfg_option_token_present(std::string(store.field(*definition, CardField::OPTIONS)),
+                                               MEDIA_COVER_ART_OPTION));
+  uint8_t result = (mode == "playlist" || mode == "now_playing" || cover) ? REQUIRE_METADATA : 0;
+  if (mode == "position" ||
+      (mode == "now_playing" && store.field(*definition, CardField::PRECISION) == "progress") || cover ||
+      mode == "control_modal" || mode == "speaker_group")
+    result |= REQUIRE_PROGRESS;
+  return result;
 }
 bool usable(std::string_view state) {
   return state == "playing" || state == "paused" || state == "buffering";
@@ -86,11 +96,10 @@ bool PageMediaStateRuntime::prepare(const PageStore& store) {
           *source = slots_[active_].sources[i];
           break;
         }
-    source->metadata_expected = false;
+    source->requirements = 0;
     for (CardId sibling = 0; sibling < store.card_count(); ++sibling)
-      if (configured_entity(store, sibling) == entity && needs_metadata(store, sibling))
-        source->metadata_expected = true;
-    if (!source->metadata_expected) {
+      if (configured_entity(store, sibling) == entity) source->requirements |= requirements(store, sibling);
+    if (!(source->requirements & REQUIRE_METADATA)) {
       source->fresh = source->present = 0;
       source->resync = false;
     } else if (source->state_known && usable(source->state) && !(source->present & CONTENT_BITS))
@@ -114,6 +123,7 @@ void PageMediaStateRuntime::activate_prepared(const PageStore& store) {
   active_ = staged_;
   staged_ = -1;
   release(old);
+  tick_ms_ = transport_.now_ms();
   ++revision_;
 }
 void PageMediaStateRuntime::retire_active() {
@@ -140,6 +150,7 @@ void PageMediaStateRuntime::synchronize() {
       source.fresh = source.present = 0;
       source.state_known = false;
       source.state[0] = '\0';
+      source.clock = {};
       source.resync = false;
     }
   ++revision_;
@@ -171,11 +182,12 @@ void PageMediaStateRuntime::observed(uint32_t generation, std::string_view entit
     for (; i < normalized.size(); ++i)
       state[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(normalized[i])));
     state[i] = '\0';
+    source->clock.playback(value.substr(0, HA_SHORT_STATE_MAX_LEN) == "playing", transport_.now_ms());
     const bool next_usable = usable(state);
     if (!next_usable && (!source->state_known || std::strcmp(source->state, state) != 0))
       source->fresh = source->present = 0;
-    if (source->metadata_expected && next_usable && (!source->state_known || !usable(source->state)) &&
-        !(source->present & CONTENT_BITS))
+    if ((source->requirements & REQUIRE_METADATA) && next_usable &&
+        (!source->state_known || !usable(source->state)) && !(source->present & CONTENT_BITS))
       source->resync = true;
     std::memcpy(source->state, state, i + 1);
     source->state_known = true;
@@ -185,6 +197,21 @@ void PageMediaStateRuntime::observed(uint32_t generation, std::string_view entit
   // A shared copy carries the old model's validity, not a fresh observation.
   // In particular, replacing configuration must not resurrect idle metadata.
   if (copied) return;
+  if (attribute == "media_duration") {
+    source->clock.duration_value(value);
+    ++revision_;
+    return;
+  }
+  if (attribute == "media_position") {
+    source->clock.position_value(value, transport_.now_ms());
+    ++revision_;
+    return;
+  }
+  if (attribute == "media_position_updated_at") {
+    source->clock.timestamp_value(value, transport_.epoch_seconds(), transport_.now_ms());
+    ++revision_;
+    return;
+  }
   const auto bit = attribute_bit(attribute);
   if (!bit) return;
   char decoded[HA_STATE_TEXT_MAX_LEN + 1];
@@ -211,16 +238,46 @@ bool PageMediaStateRuntime::current(ConfigurationHandle handle, std::string_view
     if (slot.sources[i].entity == entity) return slot.sources[i].fresh & bit;
   return false;
 }
+bool PageMediaStateRuntime::playback(ConfigurationHandle handle, std::string_view entity,
+                                     PageMediaPlaybackSnapshot& output) const {
+  if (active_ < 0 || slots_[active_].generation != handle.generation ||
+      handle.index >= slots_[active_].card_count || !transport_.connected() ||
+      connection_ != transport_.connection_generation())
+    return false;
+  const auto& slot = slots_[active_];
+  for (size_t i = 0; i < slot.count; ++i) {
+    const auto& source = slot.sources[i];
+    if (source.entity != entity) continue;
+    if (!(source.requirements & REQUIRE_PROGRESS)) return false;
+    const auto now = transport_.now_ms();
+    const auto& clock = source.clock;
+    const bool available = source.state_known && source.state[0] &&
+                           std::strcmp(source.state, "unknown") != 0 &&
+                           std::strcmp(source.state, "unavailable") != 0;
+    output = {clock.seconds(now), clock.duration,     clock.percent(now), available,
+              clock.playing,      clock.has_duration, clock.has_position};
+    return true;
+  }
+  return false;
+}
 void PageMediaStateRuntime::loop() {
   synchronize();
   if (active_ < 0 || !transport_.connected()) return;
-  bool reannounce = false;
+  bool reannounce = false, ticking = false;
   auto& slot = slots_[active_];
   for (size_t i = 0; i < slot.count; ++i) {
     auto& source = slot.sources[i];
-    reannounce |=
-        source.metadata_expected && source.resync && usable(source.state) && !(source.present & CONTENT_BITS);
+    ticking |= (source.requirements & REQUIRE_PROGRESS) && source.clock.playing && source.clock.has_position;
+    reannounce |= (source.requirements & REQUIRE_METADATA) && source.resync && usable(source.state) &&
+                  !(source.present & CONTENT_BITS);
     source.resync = false;
+  }
+  const auto now = transport_.now_ms();
+  if (!ticking)
+    tick_ms_ = now;
+  else if (static_cast<uint32_t>(now - tick_ms_) >= 1000) {
+    tick_ms_ = now;
+    ++revision_;
   }
   // Clear all pending flags before the external call; it may replace the model.
   if (reannounce) {

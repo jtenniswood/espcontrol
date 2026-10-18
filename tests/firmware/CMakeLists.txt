@@ -207,6 +207,10 @@ target_compile_options(theme_runtime_tree_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(theme_runtime_tree_test PRIVATE ../../components/espcontrol
   ${CMAKE_CURRENT_BINARY_DIR})
 add_test(NAME theme_runtime_tree_test COMMAND theme_runtime_tree_test)
+add_test(NAME option_select_live_options_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/option_select_live_options_test.py)
+
 add_test(NAME theme_refresh_contract_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/theme_refresh_contract_test.py)
 
@@ -874,6 +878,9 @@ add_test(NAME weather_daily_requests_test COMMAND
 add_test(NAME camera_screensaver_dimming_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/camera_screensaver_dimming_test.py)
 
+add_test(NAME discovery_shutdown_order_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/discovery_shutdown_order_test.py)
+
 add_executable(page_forecast_runtime_test page_forecast_runtime_test.cpp
   ../../components/espcontrol/page_forecast_runtime.cpp ../../components/espcontrol/page_store.cpp)
 target_compile_features(page_forecast_runtime_test PRIVATE cxx_std_17)
@@ -890,6 +897,16 @@ foreach(FORECAST_TRANSPORT_TEST page_ha_forecast_requests_test page_ha_forecast_
   add_test(NAME ${FORECAST_TRANSPORT_TEST} COMMAND ${FORECAST_TRANSPORT_TEST})
 endforeach()
 target_compile_definitions(page_ha_forecast_requests_disabled_test PRIVATE ESPCONTROL_DISABLE_WEATHER_FORECAST=1)
+
+add_test(NAME media_playback_clock_parity_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/media_playback_clock_parity_test.py)
+
+add_executable(media_playback_clock_test media_playback_clock_test.cpp)
+target_compile_features(media_playback_clock_test PRIVATE cxx_std_17)
+target_compile_options(media_playback_clock_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(media_playback_clock_test PRIVATE ../../components/espcontrol)
+add_test(NAME media_playback_clock_test COMMAND media_playback_clock_test)
 
 add_executable(page_media_state_runtime_test page_media_state_runtime_test.cpp
   ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_store.cpp)
@@ -941,7 +958,12 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     DEPENDS generate_forecast_reference.py generate_climate_update_test.py
       ../../components/espcontrol/button_grid_weather_daily_ui.h ../../components/espcontrol/button_grid_weather_daily_data.h
     VERBATIM)
-  add_executable(page_basic_lvgl_port_test page_basic_lvgl_port_test.cpp ${FORECAST_REFERENCE}
+  set(POSITION_REFERENCE ${CMAKE_CURRENT_BINARY_DIR}/position_reference.h)
+  add_custom_command(OUTPUT ${POSITION_REFERENCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_position_reference.py --output ${POSITION_REFERENCE}
+    DEPENDS generate_position_reference.py generate_climate_update_test.py ../../components/espcontrol/button_grid_sliders.h
+    VERBATIM)
+  add_executable(page_basic_lvgl_port_test page_basic_lvgl_port_test.cpp ${FORECAST_REFERENCE} ${POSITION_REFERENCE}
     ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_forecast_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp

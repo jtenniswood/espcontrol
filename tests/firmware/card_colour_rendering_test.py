@@ -167,7 +167,7 @@ void lv_draw_label(lv_layer_t *layer, lv_draw_label_dsc_t *descriptor, lv_area_t
 grid = (headers / "button_grid_grid.h").read_text()
 
 groups = (
-    ("button_grid_slider_contrast.h", "", ("slider_text_contrast_event_cb",)),
+    ("button_grid_slider_contrast.h", "", ("slider_text_contrast_event", "slider_text_contrast_event_cb")),
     ("button_grid_display.h", "", ("display_correct_color",)),
     ("button_grid_layout.h", "", ("parse_hex_color", "apply_button_colors", "apply_button_on_pattern", "apply_card_descendant_text_color", "sync_card_checked_text_color", "card_text_contrast_event_cb", "bind_card_text_contrast_events", "set_card_checked_state")),
     ("button_grid_grid.h", "", ("card_palette_for_config",)),

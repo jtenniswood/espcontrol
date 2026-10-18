@@ -12,6 +12,7 @@
 #include "panel_config_document.h"
 
 #include "forecast_reference.h"
+#include "position_reference.h"
 using namespace espcontrol;using namespace espcontrol::pages;using namespace espcontrol::configuration;
 static size_t lv_allocations=0,lv_live_bytes=0,cpp_allocations=0;
 void *operator new(size_t size){++cpp_allocations;if(void *p=std::malloc(size?size:1))return p;std::abort();}
@@ -47,10 +48,21 @@ struct Subscriptions:PageEntitySubscriptions {
   void send(const char *entity,const char *attribute,std::string_view value){for(auto &b:bindings)if(std::strcmp(b.entity,entity)==0&&std::strcmp(b.attribute,attribute)==0)b.deliver(b.owner,b.revision,b.channel,value);}
 };
 struct Fixture {
-  explicit Fixture(const DeviceUiLimits &limits,bool unsupported=false,bool portrait=false,bool stateless=false,bool controls=false,bool weather=false,bool forecasts=false,bool media=false) {
+  explicit Fixture(const DeviceUiLimits &limits,bool unsupported=false,bool portrait=false,bool stateless=false,bool controls=false,bool weather=false,bool forecasts=false,bool media=false,bool positions=false) {
     PanelConfigWriter writer(document.data(),document.size());assert(writer.begin()==PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t *>(limits.device_profile),std::strlen(limits.device_profile))==PanelConfigStatus::OK);
     auto button=[&](uint8_t slot,std::string text){assert(writer.append_button(slot,reinterpret_cast<const uint8_t *>(text.data()),text.size())==PanelConfigStatus::OK);};
+    if(positions) {
+      button(1,";Playback;Home;Auto;indicator;;subpage;;");
+      button(2,"media_player.room;Custom;Auto;Auto;position;;media;state;");
+      button(3,"media_player.room;;;;play_pause;;media;;");
+      button(4,";;;;sensor.temp;°C;sensor;1;");button(5,"cover.room;Blind;Auto;Auto;modal;;cover;0;");
+      const std::string child="~B,1,2,3,4|,light.child,Child,Auto,Auto,,,,|M,media_player.room,Seek,Auto,Auto,position,,,|C,cover.room,Blind,Auto,Auto,modal,,,|S,,Temp,Auto,Auto,sensor.temp,°C,1,";
+      assert(writer.append_subpage(1,reinterpret_cast<const uint8_t *>(child.data()),child.size())==PanelConfigStatus::OK);
+      const std::string key="button_order",order="1,2,3,4,5";
+      assert(writer.append_setting(reinterpret_cast<const uint8_t *>(key.data()),key.size(),reinterpret_cast<const uint8_t *>(order.data()),order.size())==PanelConfigStatus::OK);
+      assert(writer.finish(&size)==PanelConfigStatus::OK);assert(PageStore::stage_v1(document.data(),size,limits,11,arena.data(),arena.size(),&store)==PageStoreStatus::OK);return;
+    }
     if(media) {
       button(1,";Media;Home;Auto;indicator;;subpage;;");
       button(2,"media_player.room;Custom;Auto;Auto;play_pause;;media;state;");
@@ -118,7 +130,7 @@ struct Fixture {
   std::array<uint8_t,8192>document{};size_t size{0};alignas(std::max_align_t)std::array<uint8_t,65536>arena{};PageStore store;
 };
 template<size_t Slots>struct Actions {
-  PageRendererRuntime<Slots> *renderer{nullptr};size_t toggles{0},climates{0},commands{0},icon_resolves{0};PageBindingToken last;char entity[64]{};
+  PageRendererRuntime<Slots> *renderer{nullptr};size_t toggles{0},climates{0},commands{0},icon_resolves{0},seeks{0};uint8_t seek_percent{0};float seek_duration{0};PageId seek_page{NO_PAGE};PageBindingToken last;char entity[64]{};
   static const char *icon(void *owner,std::string_view name,std::string_view){++static_cast<Actions *>(owner)->icon_resolves;return name=="Weather Sunny"?"SUN": name=="Lightbulb"?"ON":name=="Blinds Open"?"OPEN":name=="Blinds"?"CLOSED":"I";}
   static bool valid(void *owner,PageBindingToken t){return static_cast<Actions *>(owner)->renderer->valid(t);}
   static void toggle(void *owner,PageBindingToken t,std::string_view entity){auto &a=*static_cast<Actions *>(owner);++a.toggles;a.last=t;assert(entity.size()<sizeof(a.entity));std::memcpy(a.entity,entity.data(),entity.size());a.entity[entity.size()]='\0';}
@@ -126,7 +138,8 @@ template<size_t Slots>struct Actions {
   static void back(void *owner,PageBindingToken){assert(static_cast<Actions *>(owner)->renderer->back());}
   static void climate(void *owner,PageBindingToken token){auto &a=*static_cast<Actions *>(owner);++a.climates;a.last=token;}
   static void action(void *owner,PageBindingToken token){auto &a=*static_cast<Actions *>(owner);++a.commands;a.last=token;}
-  PageBasicActions callbacks(){return {this,icon,valid,toggle,open,back,climate,action,action,action,action};}
+  static void seek(void *owner,PageBindingToken token,uint8_t percent,float duration){auto &a=*static_cast<Actions *>(owner);++a.seeks;a.last=token;a.seek_percent=percent;a.seek_duration=duration;if(a.seek_page!=NO_PAGE)assert(a.renderer->open_page(a.seek_page));}
+  PageBasicActions callbacks(){return {this,icon,valid,toggle,open,back,climate,action,action,action,action,seek};}
 };
 void click(lv_obj_t *object){lv_obj_send_event(object,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(object,LV_EVENT_RELEASED,nullptr);lv_obj_send_event(object,LV_EVENT_CLICKED,nullptr);}
 template<size_t Slots>void profile(const DeviceUiLimits &limits) {
@@ -391,7 +404,7 @@ template<size_t Slots>void weather_profile(const DeviceUiLimits &limits) {
 template<size_t Slots>void media_action_profile(const DeviceUiLimits &limits) {
   Fixture fixture(limits,false,false,false,false,false,false,true);
   Arena arena;Subscriptions subscriptions;PageCardDependencies dependencies;
-  struct Transport:PageMediaTransport {Subscriptions &subs;explicit Transport(Subscriptions &s):subs(s){}bool connected()const override{return true;}uint32_t connection_generation()const override{return subs.generation;}void reannounce()override{}} transport(subscriptions);
+  struct Transport:PageMediaTransport {Subscriptions &subs;explicit Transport(Subscriptions &s):subs(s){}bool connected()const override{return true;}uint32_t connection_generation()const override{return subs.generation;}uint32_t now_ms()const override{return 100;}int64_t epoch_seconds()const override{return 0;}void reannounce()override{}} transport(subscriptions);
   PageMediaStateRuntime media(arena,transport);PageEntityStateRuntime state(dependencies,arena,subscriptions,{128,128,8192},&media);
   auto *page=lv_obj_create(lv_screen_active());std::array<lv_coord_t,Slots+1>columns{},rows{};
   const auto row_count=(Slots+limits.grid_columns-1)/limits.grid_columns;
@@ -433,6 +446,280 @@ template<size_t Slots>void media_action_profile(const DeviceUiLimits &limits) {
     renderer.retire_active();state.retire_active();media.retire_active();
   }
   assert(arena.live==0);lv_obj_delete(page);
+}
+
+struct PointerInput {
+  lv_point_t point{0, 0};
+  lv_indev_state_t state{LV_INDEV_STATE_RELEASED};
+  static void read(lv_indev_t* device, lv_indev_data_t* data) {
+    auto& input = *static_cast<PointerInput*>(lv_indev_get_user_data(device));
+    data->point = input.point;
+    data->state = input.state;
+  }
+};
+void pointer(lv_indev_t* device, PointerInput& input, lv_obj_t* slider, int percent, bool pressed) {
+  lv_area_t area;
+  lv_obj_get_coords(slider, &area);
+  input.point = {area.x1 + (lv_area_get_width(&area) - 1) * percent / 100, (area.y1 + area.y2) / 2};
+  input.state = pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+  lv_indev_read(device);
+}
+void position_geometry_reference(const PageBasicWidgets& widgets, uint8_t percent, lv_indev_t* device,
+                                 PointerInput& input, uint8_t expected_touch) {
+  lv_obj_update_layout(widgets.button);
+  lv_area_t root_area, actual_slider, actual_fill;
+  lv_obj_get_coords(widgets.button, &root_area);
+  lv_obj_get_coords(widgets.slider, &actual_slider);
+  lv_obj_get_coords(widgets.fill, &actual_fill);
+  auto* root = lv_button_create(lv_layer_top());
+  lv_obj_set_pos(root, root_area.x1, root_area.y1);
+  lv_obj_set_size(root, lv_area_get_width(&root_area), lv_area_get_height(&root_area));
+  const auto radius = lv_obj_get_style_radius(widgets.button, LV_PART_MAIN);
+  lv_obj_set_style_radius(root, radius, LV_PART_MAIN);
+  auto* slider = legacy_position_reference::setup_slider_widget(root, 0x212121, true);
+  auto* fill = lv_obj_get_child(root, 0);
+  lv_obj_update_layout(root);
+  legacy_position_reference::slider_fit_to_button(slider, root, true);
+  legacy_position_reference::slider_update_fill(fill, root, percent, true, false, radius, true);
+  lv_obj_update_layout(root);
+  lv_area_t reference_slider, reference_fill;
+  lv_obj_get_coords(slider, &reference_slider);
+  lv_obj_get_coords(fill, &reference_fill);
+  if (std::memcmp(&actual_slider, &reference_slider, sizeof(actual_slider)) ||
+      std::memcmp(&actual_fill, &reference_fill, sizeof(actual_fill)))
+    std::fprintf(stderr, "geometry: slider %d,%d,%d,%d vs %d,%d,%d,%d fill %d,%d,%d,%d vs %d,%d,%d,%d\n",
+                 actual_slider.x1, actual_slider.y1, actual_slider.x2, actual_slider.y2, reference_slider.x1,
+                 reference_slider.y1, reference_slider.x2, reference_slider.y2, actual_fill.x1,
+                 actual_fill.y1, actual_fill.x2, actual_fill.y2, reference_fill.x1, reference_fill.y1,
+                 reference_fill.x2, reference_fill.y2);
+  assert(std::memcmp(&actual_slider, &reference_slider, sizeof(actual_slider)) == 0 &&
+         std::memcmp(&actual_fill, &reference_fill, sizeof(actual_fill)) == 0);
+  if (expected_touch != 255) {
+    pointer(device, input, slider, 90, true);
+    pointer(device, input, slider, 90, false);
+    assert(lv_slider_get_value(slider) == expected_touch);
+  }
+  lv_obj_delete(root);
+}
+template <size_t Slots>
+void media_position_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, false, false, false, false, false, false, false, true);
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  struct Transport : PageMediaTransport {
+    Subscriptions& subs;
+    uint32_t now = 100;
+    bool online = true;
+    explicit Transport(Subscriptions& s) : subs(s) {}
+    bool connected() const override {
+      return online;
+    }
+    uint32_t connection_generation() const override {
+      return subs.generation;
+    }
+    uint32_t now_ms() const override {
+      return now;
+    }
+    int64_t epoch_seconds() const override {
+      return 1000;
+    }
+    void reannounce() override {
+      ++requests;
+    }
+    size_t requests = 0;
+  } transport(subscriptions);
+  PageMediaStateRuntime media(arena, transport);
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192}, &media);
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.fill = lv_obj_create(w.button);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    lv_obj_align(w.label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+    w.sensor_container = lv_obj_create(w.button);
+    lv_obj_set_style_bg_opa(w.sensor_container, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(w.sensor_container, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(w.sensor_container, 0, LV_PART_MAIN);
+    lv_obj_set_size(w.sensor_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+    w.slider = lv_slider_create(w.button);
+  }
+  PointerInput input;
+  auto* device = lv_indev_create();
+  lv_indev_set_type(device, LV_INDEV_TYPE_POINTER);
+  lv_indev_set_display(device, lv_display_get_default());
+  lv_indev_set_user_data(device, &input);
+  lv_indev_set_read_cb(device, PointerInput::read);
+  lv_timer_pause(lv_indev_get_read_timer(device));
+  PageBasicTheme theme;
+  theme.sensor_font = &lv_font_montserrat_14;
+  theme.media_surface = 0x101010;
+  Actions<Slots> actions;
+  {
+    auto callbacks = actions.callbacks();
+    callbacks.seek = nullptr;
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     callbacks, nullptr, &media);
+    assert(missing.initialize());
+    assert(!missing.prepare(fixture.store, Slots));
+  }
+  {
+    auto incomplete = widgets;
+    incomplete[0].slider = nullptr;
+    PageBasicLvglPort<Slots> missing(arena, state, incomplete, {limits.slot_count, limits.grid_columns},
+                                     theme, actions.callbacks(), nullptr, &media);
+    assert(missing.initialize());
+    assert(!missing.prepare(fixture.store, Slots));
+  }
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  actions.callbacks(), nullptr, &media);
+    assert(port.initialize());
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t index = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[index++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    assert(media.prepare(fixture.store) && renderer.prepare(fixture.store) && state.prepare(fixture.store));
+    media.activate_prepared(fixture.store);
+    renderer.activate_prepared(fixture.store);
+    state.activate_prepared(fixture.store);
+    subscriptions.send("media_player.room", "", "playing");
+    subscriptions.send("media_player.room", "media_duration", "300");
+    subscriptions.send("media_player.room", "media_position", "60");
+    subscriptions.send("cover.room", "current_position", "25");
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    lv_refr_now(lv_display_get_default());
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "1:00") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[1].label), "Playing") == 0 &&
+           lv_obj_has_flag(widgets[1].icon, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_get_width(widgets[1].slider) > lv_obj_get_height(widgets[1].slider));
+    pointer(device, input, widgets[1].slider, 90, true);
+    assert(actions.seeks == 0);
+    pointer(device, input, widgets[1].slider, 90, false);
+    assert(actions.seeks == 1 && actions.seek_percent >= 88 && actions.seek_percent <= 92 &&
+           actions.seek_duration == 300);
+    const auto percent = actions.seek_percent;
+    position_geometry_reference(widgets[1], percent, device, input, percent);
+    subscriptions.send("media_player.room", "media_position", "61");
+    renderer.update_visible();
+    assert(lv_slider_get_value(widgets[1].slider) >= 88);
+    subscriptions.send("media_player.room", "media_position", std::to_string(300 * percent / 100));
+    renderer.update_visible();
+    subscriptions.send("media_player.room", "", "paused");
+    renderer.update_visible();
+    pointer(device, input, widgets[1].slider, 50, true);
+    pointer(device, input, widgets[1].slider, 50, false);
+    assert(actions.seeks == 2);
+    transport.now += 3001;
+    assert(port.state_changed());
+    renderer.update_visible();
+    assert(lv_slider_get_value(widgets[1].slider) >= 88);
+    pointer(device, input, widgets[1].slider, 50, true);
+    transport.online = false;
+    ++subscriptions.generation;
+    media.loop();
+    renderer.update_visible();
+    transport.online = true;
+    subscriptions.send("media_player.room", "", "playing");
+    subscriptions.send("media_player.room", "media_duration", "300");
+    subscriptions.send("media_player.room", "media_position", "60");
+    renderer.update_visible();
+    lv_indev_read(device);
+    assert(actions.seeks == 2);
+    pointer(device, input, widgets[1].slider, 50, false);
+    assert(actions.seeks == 2);
+    pointer(device, input, widgets[1].slider, 90, true);
+    pointer(device, input, widgets[1].slider, 90, false);
+    assert(actions.seeks == 3);
+    const auto child = fixture.store.card(0)->target;
+    actions.seek_page = child;
+    pointer(device, input, widgets[1].slider, 20, true);
+    pointer(device, input, widgets[1].slider, 20, false);
+    actions.seek_page = NO_PAGE;
+    assert(actions.seeks == 4 && !renderer.valid(actions.last));
+    lv_obj_send_event(widgets[1].slider, LV_EVENT_RELEASED, nullptr);
+    assert(actions.seeks == 4);
+    renderer.update_visible();
+    assert(lv_obj_has_flag(widgets[1].slider, LV_OBJ_FLAG_HIDDEN) &&
+           !lv_obj_has_flag(widgets[2].slider, LV_OBJ_FLAG_HIDDEN));
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    // A takeover must cancel the physical pointer until it releases, even if
+    // the same media card becomes visible again immediately.
+    pointer(device, input, widgets[1].slider, 70, true);
+    assert(renderer.suspend() && renderer.resume());
+    renderer.update_visible();
+    pointer(device, input, widgets[1].slider, 70, false);
+    assert(actions.seeks == 4);
+    subscriptions.send("media_player.room", "media_duration", "3.4e38");
+    renderer.update_visible();
+    assert(!lv_obj_has_flag(widgets[1].slider, LV_OBJ_FLAG_CLICKABLE));
+    pointer(device, input, widgets[1].slider, 70, true);
+    pointer(device, input, widgets[1].slider, 70, false);
+    assert(actions.seeks == 4);
+    subscriptions.send("media_player.room", "media_duration", "300");
+    subscriptions.send("media_player.room", "", "paused");
+    subscriptions.send("media_player.room", "media_position", "0");
+    renderer.update_visible();
+    position_geometry_reference(widgets[1], 0, device, input, 255);
+    assert(lv_color_to_u32(lv_obj_get_style_bg_color(widgets[1].button, LV_PART_MAIN)) ==
+           lv_color_to_u32(lv_color_hex(theme.media_surface)));
+    assert(lv_color_to_u32(lv_obj_get_style_bg_color(widgets[1].fill, LV_PART_MAIN)) ==
+           lv_color_to_u32(lv_color_hex(theme.surface)));
+    lv_obj_set_size(page, 600, 320);
+    lv_obj_update_layout(page);
+    position_geometry_reference(widgets[1], 0, device, input, 255);
+    lv_obj_set_size(page, 480, 480);
+    lv_obj_update_layout(page);
+    lv_indev_reset(device, nullptr);
+    const auto cpp = cpp_allocations, reservations = arena.allocations,
+               descriptors = cache.memory().descriptor_adds, retained = lv_live_bytes,
+               channels = subscriptions.bindings.size();
+    for (size_t n = 0; n < 1000; ++n) {
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(cpp_allocations == cpp && arena.allocations == reservations &&
+             cache.memory().descriptor_adds == descriptors && subscriptions.bindings.size() == channels &&
+             lv_live_bytes == retained);
+    }
+    assert(transport.requests == 0);
+    std::printf(
+        "%s: media position, real pointer/legacy geometry parity, 1000 cycles, stable retained resources\n",
+        limits.device_profile);
+    renderer.retire_active();
+    state.retire_active();
+    media.retire_active();
+  }
+  assert(arena.live == 0);
+  lv_indev_delete(device);
+  lv_obj_delete(page);
 }
 
 struct ForecastRequests:PageForecastRequests {
@@ -505,4 +792,4 @@ void modal_gesture_cycles() {
   arena.fail=true;PageModalGestures failed(arena,10,current,&current,valid);assert(!failed.available());arena.fail=false;
 }
 }
-int main(){lv_init();auto *display=lv_display_create(480,480);assert(display);static std::array<uint16_t,480*32>draw_buffer{};lv_display_set_buffers(display,draw_buffer.data(),nullptr,sizeof(draw_buffer),LV_DISPLAY_RENDER_MODE_PARTIAL);lv_display_set_flush_cb(display,[](lv_display_t *d,const lv_area_t *area,uint8_t *data){const auto *pixels=reinterpret_cast<uint16_t *>(data);size_t index=0;for(int y=area->y1;y<=area->y2;++y)for(int x=area->x1;x<=area->x2;++x){if(x>=0&&x<480&&y>=0&&y<480)framebuffer[y*480+x]=pixels[index];++index;}lv_display_flush_ready(d);});for(const auto &limits:DEVICE_UI_PROFILES){switch(limits.slot_count){case 6:profile<6>(limits);status_action_profile<6>(limits);control_profile<6>(limits);weather_profile<6>(limits);forecast_profile<6>(limits);media_action_profile<6>(limits);break;case 9:profile<9>(limits);status_action_profile<9>(limits);control_profile<9>(limits);weather_profile<9>(limits);forecast_profile<9>(limits);media_action_profile<9>(limits);break;case 15:profile<15>(limits);status_action_profile<15>(limits);control_profile<15>(limits);weather_profile<15>(limits);forecast_profile<15>(limits);media_action_profile<15>(limits);break;case 20:profile<20>(limits);status_action_profile<20>(limits);control_profile<20>(limits);weather_profile<20>(limits);forecast_profile<20>(limits);media_action_profile<20>(limits);break;default:std::abort();}}modal_gesture_cycles();lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}
+int main(){lv_init();auto *display=lv_display_create(480,480);assert(display);static std::array<uint16_t,480*32>draw_buffer{};lv_display_set_buffers(display,draw_buffer.data(),nullptr,sizeof(draw_buffer),LV_DISPLAY_RENDER_MODE_PARTIAL);lv_display_set_flush_cb(display,[](lv_display_t *d,const lv_area_t *area,uint8_t *data){const auto *pixels=reinterpret_cast<uint16_t *>(data);size_t index=0;for(int y=area->y1;y<=area->y2;++y)for(int x=area->x1;x<=area->x2;++x){if(x>=0&&x<480&&y>=0&&y<480)framebuffer[y*480+x]=pixels[index];++index;}lv_display_flush_ready(d);});for(const auto &limits:DEVICE_UI_PROFILES){switch(limits.slot_count){case 6:profile<6>(limits);status_action_profile<6>(limits);control_profile<6>(limits);weather_profile<6>(limits);forecast_profile<6>(limits);media_action_profile<6>(limits);media_position_profile<6>(limits);break;case 9:profile<9>(limits);status_action_profile<9>(limits);control_profile<9>(limits);weather_profile<9>(limits);forecast_profile<9>(limits);media_action_profile<9>(limits);media_position_profile<9>(limits);break;case 15:profile<15>(limits);status_action_profile<15>(limits);control_profile<15>(limits);weather_profile<15>(limits);forecast_profile<15>(limits);media_action_profile<15>(limits);media_position_profile<15>(limits);break;case 20:profile<20>(limits);status_action_profile<20>(limits);control_profile<20>(limits);weather_profile<20>(limits);forecast_profile<20>(limits);media_action_profile<20>(limits);media_position_profile<20>(limits);break;default:std::abort();}}modal_gesture_cycles();lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}
