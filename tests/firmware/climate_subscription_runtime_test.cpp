@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <functional>
 #include <memory>
+#include <limits>
+#include <new>
 #include <string>
 #include <vector>
 
@@ -142,7 +144,10 @@ void remove_card(ClimateControlCtx *ctx) {
 void reset() {
   while (climate_control_ref_count()) remove_card(climate_control_refs()[0]);
   if (!timers.empty()) run_maintenance();
-  coordinator = Coordinator{};
+  // A coordinator's registered callbacks refer to its address. Reconstruct
+  // the fixture rather than moving/copying a live subscription owner.
+  coordinator.~Coordinator();
+  new (&coordinator) Coordinator();
   callback_owner = nullptr;
   reannouncements = 0;
   on_reannounce = {};
