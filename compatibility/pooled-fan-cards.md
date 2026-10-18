@@ -29,8 +29,8 @@ ESPCONTROL_TEST_FAMILY=controls ctest --test-dir .cache/lvgl-native \
 
 The full native test remains the default when no family filter is supplied.
 
-The separate switch, preset, direction, oscillation and speed cards remain
-unfinished. Scene integration, production
+The separate switch, oscillation and speed cards remain unfinished; the Preset
+panel still needs demanded ownership. Scene integration, production
 selection, physical S3/20-slot P4 qualification and the remaining device profiles
 are still cutover gates. These host checks do not measure device heap/PSRAM or
 establish physical layout parity. Nesting and persistence formats are unchanged.
@@ -75,3 +75,27 @@ options; reconnects; allocation/gesture admission; and reentrant replacement wit
 poisoned old configuration storage. Platform shell opening, geometry and paint
 helpers are doubled. These tests do not establish physical layout or real fan
 command parity. Scene selection and device qualification remain required.
+
+## Direction and Preset card views
+
+Direction and Preset cards now use the shared widget bank. Their persistent
+status caption overrides a configured/friendly name, matching the existing
+cards. Direction is checked for Reverse; Preset is checked for a nonempty mode
+other than None/Off. Their folder indicator still follows the primary fan's
+power state. Offline captions, unsupported directions/options, custom/automatic
+icons and dynamic translated captions preserve the legacy policies.
+
+Reads and formatting use bounded caller-owned storage, with no per-update
+strings or option vectors. The option predicate and UTF-8 caption formatter are
+compared with the actual legacy helpers, including 30,000 generated cases and
+three locales. Both six-slot and twenty-slot adapters compile in the real S3/P4
+SDKs. All nine native profiles cover missing hooks, normal dispatch, stale
+presses, reconnect invalidation and 1,000 navigation cycles with stable retained
+C++/LVGL/arena/subscription resources. Run this focused suite with
+`ESPCONTROL_TEST_FAMILY=fan_modes`; the default native suite includes it too.
+
+Direction dispatches the original validated binding to the action hook; Preset
+dispatches to the control hook. The future scene must resolve the original card
+and consume fresh capabilities before sending a direction command or opening a
+Preset panel. The card-view port does not itself create a modal or send commands.
+Production selection and physical qualification remain outstanding.
