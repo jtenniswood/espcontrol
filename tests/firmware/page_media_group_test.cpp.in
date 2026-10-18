@@ -47,6 +47,10 @@ void compare(std::string_view primary, std::string_view raw) {
   }
 }
 int main() {
+  for (const auto value : {"", "  ", "unknown", " UNKNOWN ", "unavailable", "UnAvAiLaBlE"})
+    assert(!espcontrol::pages::media_group_source_available(value));
+  for (const auto value : {"playing", "paused", "off", "stopped"})
+    assert(espcontrol::pages::media_group_source_available(value));
   const std::vector<std::string> primaries = {
       "media_player.room", "media_player.other",    "",
       "switch.room",       " 'media_player.room' ", "media_player.bad-id"};

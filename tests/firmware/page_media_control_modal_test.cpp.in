@@ -294,7 +294,9 @@ struct GroupCall {
 };
 std::vector<GroupCall> group_calls;
 uint32_t next_call = 100;
-size_t sends = 0, previews = 0;
+size_t sends = 0, previews = 0, confirmations = 0;
+bool group_confirmed = false;
+PageModalToken confirmation_token;
 std::string last_action, last_entity;
 int last_value = 0;
 PageModalToken preview_token{};
@@ -638,6 +640,11 @@ void test_panels() {
       preview_token = token;
       if (during_preview) during_preview();
     };
+    style.state_confirmed = [](void*, PageModalToken token, bool grouped) {
+      ++confirmations;
+      group_confirmed = grouped;
+      confirmation_token = token;
+    };
     PageMediaControlModalPort port(arena, state, style, nullptr,
                                    [](void*, PageBindingToken) { return true; });
     PageModalRuntime runtime(port);
@@ -795,8 +802,11 @@ void test_panels() {
       espcontrol::ModalCallbackDispatchScope callback;
       media_control_toggle_speaker(ui.active, confirmed, true);
     }
+    const auto before_confirmation = confirmations;
     group_calls.back().callback({true});
     assert(media_control_group_contains(ui.active, "media_player.other"));
+    assert(confirmations == before_confirmation + 1 && group_confirmed &&
+           runtime.valid(confirmation_token));
     for (int n = 0; n < 5; ++n) {
       test_now += 1000;
       media.loop();
@@ -806,6 +816,11 @@ void test_panels() {
       runtime.loop();
       assert(media_control_group_contains(ui.active, "media_player.other") && confirmed->selected);
     }
+    // A repeated old value is still a newer live report and overrides the
+    // confirmation, even though the packed graph value did not change.
+    t.send("media_player.room", "group_members", "[]");
+    runtime.loop();
+    assert(!media_control_group_contains(ui.active, "media_player.other"));
     t.send("media_player.room", "group_members", "['media_player.room','media_player.other']");
     runtime.loop();
     {
@@ -813,6 +828,7 @@ void test_panels() {
       media_control_toggle_speaker(ui.active, confirmed, false);
     }
     group_calls.back().callback({true});
+    assert(confirmations == before_confirmation + 2 && !group_confirmed && runtime.valid(confirmation_token));
     for (int n = 0; n < 3; ++n) {
       test_now += 1000;
       media.loop();
@@ -845,8 +861,10 @@ void test_panels() {
     assert(new_context == old_context);
     after_destroy = old_response;
     sent = sends;
+    const auto late_confirmations = confirmations;
     old_response({true});
     assert(ui.active == new_context && sends == sent);
+    assert(confirmations == late_confirmations);
     press(ui.speakers_tab);
     row = media_control_find_speaker_row("media_player.other");
     {

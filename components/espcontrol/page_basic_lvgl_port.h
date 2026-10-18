@@ -14,6 +14,7 @@
 #include "display_color.h"
 #include "lvgl.h"
 #include "page_basic_card.h"
+#include "page_media_group.h"
 #include "page_cover_art_frame.h"
 #include "page_cover_art_view.h"
 #include "page_forecast_frame.h"
@@ -240,8 +241,31 @@ class PageBasicLvglPort final:public PageRendererPort {
     media_layout_dirty_ = true;
     return true;
   }
-  bool prepare(const PageStore &store,size_t count)override {
-    discard_prepared();if(!initialized_||count!=Slots)return false;
+  bool preview_group(PageBindingToken token, bool grouped) {
+    if (token.shell >= Slots || !same(shells_[token.shell].token, token) || !actions_.valid ||
+        !actions_.valid(actions_.owner, token) || !media_)
+      return false;
+    auto& shell = shells_[token.shell];
+    if (!group_card(shell)) return false;
+    const auto& definition = shell.definition->definition;
+    const ConfigurationHandle card{token.configuration, token.card};
+    PageMediaSourceSnapshot source;
+    const auto primary = state_.read_attribute(card, definition.entity, "");
+    const auto members = state_.read_attribute(card, definition.entity, "group_members");
+    if (!media_->source_snapshot(card, definition.entity, source) || !source.available ||
+        primary.status != PageEntityStatus::AVAILABLE ||
+        !media_group_source_available(primary.value.substr(0, HA_SHORT_STATE_MAX_LEN)) ||
+        members.entity != definition.entity || members.status == PageEntityStatus::EXHAUSTED)
+      return false;
+    shell.pending_target = grouped ? 1 : 0;
+    shell.membership_revision = media_->group_revision(card, definition.entity);
+    shell.gesture_connection = media_->connection_generation();
+    media_layout_dirty_ = true;
+    return true;
+  }
+  bool prepare(const PageStore& store, size_t count) override {
+    discard_prepared();
+    if (!initialized_ || count != Slots) return false;
     TextCounter strings;size_t summary_count=0;bool has_weather=false,has_forecast=false;size_t forecast_frames=0;
     size_t number_capacity=48,label_capacity=std::max<size_t>(65,std::max({theme_.back_label.size(),theme_.empty_label.size(),theme_.folder_label.size()})+1),unit_capacity=1;
     // Back labels are decoded by the layout compiler; their source order size
@@ -509,6 +533,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(s.cell.back){value.label=s.back.custom_label.empty()?theme_.back_label:s.back.custom_label;definition.custom_off=s.back.custom_color;definition.off_color=s.back.background_color;}
     else {
       definition=s.definition->definition;value=read_basic_card(definition,{token.configuration,token.card},state_,s.cell.column_span>1?2:1,theme_.temperature_unit,theme_.translate,media_);
+      if(group_card(s))group_feedback(s,value);
       if(definition.folder_mode==BasicFolderMode::CHILDREN) {
         for(size_t child=0;child<s.definition->summary_count&&!value.on;++child) {
           const auto id=s.definition->summary[child];
@@ -646,7 +671,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (media_layout_dirty_) return true;
     if (media_)
       for (const auto& shell : shells_)
-        if (shell.pending_target >= 0 &&
+        if (shell.pending_target >= 0 && !group_card(shell) &&
             static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= pending_timeout(shell))
           return true;
     return state_.revision() != seen_state_ || theme_.revision != seen_theme_ ||
@@ -747,7 +772,13 @@ class PageBasicLvglPort final:public PageRendererPort {
     bool painted{false};
     uint8_t fill_percent{0}, contrast_callbacks{0};
     bool forecast_callback{false}, slider_callback{false}, slider_guard_callback{false}, dragging{false};
-    uint32_t pending_ms{0}, gesture_connection{0};
+    // Only the active card mode uses this storage: timed numeric feedback or
+    // a confirmed group state waiting for its next membership report.
+    union {
+      uint32_t pending_ms{0};
+      uint32_t membership_revision;
+    };
+    uint32_t gesture_connection{0};
     float pending_target{-1};
     lv_indev_t* input{nullptr};
     PageForecastFrame* frame{nullptr};
@@ -827,6 +858,28 @@ class PageBasicLvglPort final:public PageRendererPort {
   static uint32_t pending_timeout(const Shell& shell) {
     return shell.definition && shell.definition->definition.kind == BasicCardKind::MEDIA_CONTROL ? 1500
                                                                                                  : 3000;
+  }
+  static bool group_card(const Shell& shell) {
+    return shell.definition && shell.definition->definition.kind == BasicCardKind::MEDIA_CONTROL &&
+           shell.definition->definition.media.kind == MediaActionKind::SPEAKER_GROUP;
+  }
+  void group_feedback(Shell& shell, BasicCardState& value) {
+    if (shell.pending_target < 0) return;
+    const auto& definition = shell.definition->definition;
+    const ConfigurationHandle card{shell.token.configuration, shell.token.card};
+    const auto primary = state_.read_attribute(card, definition.entity, "");
+    const auto members = state_.read_attribute(card, definition.entity, "group_members");
+    PageMediaSourceSnapshot source;
+    if (!media_->source_snapshot(card, definition.entity, source) || !source.available ||
+        primary.status != PageEntityStatus::AVAILABLE ||
+        !media_group_source_available(primary.value.substr(0, HA_SHORT_STATE_MAX_LEN)) ||
+        members.status == PageEntityStatus::EXHAUSTED ||
+        media_->group_revision(card, definition.entity) != shell.membership_revision ||
+        shell.gesture_connection != media_->connection_generation()) {
+      shell.pending_target = -1;
+      return;
+    }
+    value.on = shell.pending_target > 0;
   }
   void volume_feedback(Shell& shell, BasicCardState& value) {
     if (shell.pending_target < 0) return;
