@@ -1245,6 +1245,39 @@ void expanded_source_preemption_and_hidden() {
     assert(pipeline.source.snapshot(token).asset);
   }
 }
+void expanded_preemption_keeps_schedule() {
+  for (const auto mode : {camera::RefreshMode::PERIODIC, camera::RefreshMode::ACTIVITY}) {
+    F f(DEVICE_UI_PROFILES[8], false, mode);
+    f.preload();
+    f.preload("camera.other");
+    f.tick();
+    f.ready();
+    f.ready(2);
+    if (mode == camera::RefreshMode::ACTIVITY) {
+      // All fake image tiles use the same declared trigger in this fixture.
+      f.send("", "off", "binary_sensor.motion");
+      f.send("", "on", "binary_sensor.motion");
+    }
+    f.tick(10000);
+    assert(f.images.snapshot(f.slot(2), f.token(2)).pending);
+    ExpandedPipeline pipeline(f);
+    pipeline.open();
+    pipeline.tick();
+    pipeline.tick(100);
+    pipeline.ready();
+    pipeline.close();
+    pipeline.tick(1000);
+    assert(f.images.snapshot(f.slot(2), f.token(2)).pending);
+    const auto request = f.requests.jobs[f.slot(2)].request;
+    f.ready(2);
+    pipeline.tick();
+    assert(f.requests.jobs[f.slot(2)].request == request);
+    pipeline.tick(4999);
+    assert(f.requests.jobs[f.slot(2)].request == request);
+    pipeline.tick(1);
+    assert(f.requests.jobs[f.slot(2)].request != request);
+  }
+}
 void expanded_source_reentrant_delivery() {
   F f(DEVICE_UI_PROFILES[8]);
   f.preload();
@@ -1742,6 +1775,7 @@ int main() {
   expanded_source_retry_and_geometry();
   expanded_source_preemption_and_hidden();
   expanded_source_reentrant_delivery();
+  expanded_preemption_keeps_schedule();
   expanded_source_cancel_replacement();
   expanded_source_configuration_replacement();
   expanded_source_exhaustion();

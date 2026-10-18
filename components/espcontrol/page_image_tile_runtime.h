@@ -144,6 +144,7 @@ class PageImageTileRuntime final : public PageEntityObserver {
           !images_.snapshot(slot, token).pending)
         continue;
       r.policy.schedule.in_flight = false;
+      r.deferred_scheduled |= r.request_scheduled;
       r.request_scheduled = false;
       r.retry = true;
       r.deadline = now_() + 1000;
@@ -168,6 +169,7 @@ class PageImageTileRuntime final : public PageEntityObserver {
     const bool admitted_wait = r.admission_failed && r.waiting;
     r.policy = state;
     r.policy.schedule.leave_expanded();
+    if (r.policy.expanded_completed) r.deferred_scheduled = false;
     const auto image = images_.snapshot(slot, r.token);
     r.forced |= transfer.retry_tile || !image.ready || r.stale_unavailable || r.policy.tile_invalidated;
     r.dirty |= r.policy.source_dirty || r.forced || r.policy.picture.tile_dirty();
@@ -299,8 +301,8 @@ class PageImageTileRuntime final : public PageEntityObserver {
     uint32_t started{0}, deadline{0}, endpoint{0};
     PageImageTileStatus status{PageImageTileStatus::LOADING};
     bool dirty{false}, forced{false}, stale_unavailable{false}, cancelled_unavailable{false};
-    bool request_scheduled{false}, failure_seen{false}, waiting{false}, retry{false}, geometry_stale{false},
-        admission_failed{false}, exhausted{false};
+    bool request_scheduled{false}, deferred_scheduled{false}, failure_seen{false}, waiting{false},
+        retry{false}, geometry_stale{false}, admission_failed{false}, exhausted{false};
   };
   struct Expanded {
     PageImageRefreshTransfer id;
@@ -449,7 +451,7 @@ class PageImageTileRuntime final : public PageEntityObserver {
       if (!r.cancelled_unavailable) {
         r.cancelled_unavailable = true;
         r.policy.schedule.in_flight = false;
-        r.request_scheduled = false;
+        r.request_scheduled = r.deferred_scheduled = false;
         images_.cancel_request(slot, token, true);
       }
       return;
@@ -498,7 +500,8 @@ class PageImageTileRuntime final : public PageEntityObserver {
     }
     if (r.waiting && !due(now, r.deadline)) return;
     r.waiting = false;
-    const bool scheduled = !r.dirty && !r.forced && r.policy.schedule.due(now, true);
+    const bool scheduled = (r.deferred_scheduled && r.policy.schedule.open) ||
+                           (!r.dirty && !r.forced && r.policy.schedule.due(now, true));
     const bool revision_dirty = r.kind == PageImageEntityKind::IMAGE && r.policy.picture.tile_dirty();
     if (!r.dirty && !r.forced && !scheduled && !revision_dirty) return;
     if (!r.options.width || !r.options.height) return;
@@ -537,6 +540,7 @@ class PageImageTileRuntime final : public PageEntityObserver {
     r.policy.picture.tile_requested = r.policy.picture.latest;
     r.failure_seen = r.dirty = r.forced = r.admission_failed = false;
     r.request_scheduled = scheduled;
+    r.deferred_scheduled = false;
     if (scheduled) r.policy.schedule.started();
     images_.request(slot, token, url, r.options);
     // External start/cancel can replace the scene. Never use borrowed config,
