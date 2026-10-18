@@ -29,8 +29,8 @@ ESPCONTROL_TEST_FAMILY=controls ctest --test-dir .cache/lvgl-native \
 
 The full native test remains the default when no family filter is supplied.
 
-The separate switch, oscillation and speed cards remain unfinished; the Preset
-panel still needs demanded ownership. Scene integration, production
+The separate switch, oscillation and speed cards remain unfinished.
+Scene integration, production
 selection, physical S3/20-slot P4 qualification and the remaining device profiles
 are still cutover gates. These host checks do not measure device heap/PSRAM or
 establish physical layout parity. Nesting and persistence formats are unchanged.
@@ -99,3 +99,30 @@ dispatches to the control hook. The future scene must resolve the original card
 and consume fresh capabilities before sending a direction command or opening a
 Preset panel. The card-view port does not itself create a modal or send commands.
 Production selection and physical qualification remain outstanding.
+
+## Demanded Preset panel
+
+`PageFanPresetModalPort` now owns the separate Preset list for one opening.
+It shares the bounded graph projection with Fan Control, without adding callback
+subscriptions or fields to legacy configured-card contexts. Both family observers
+can coexist and route by the exact context record. The additional fixed observer
+storage must be included in physical memory qualification.
+
+Fresh options are consumed before a selection; a changed list blocks the old
+press until rows have been rebuilt outside input dispatch. The selected string
+is owned across callbacks. A selection closes only its original current opening,
+so a service callback cannot close a replacement. Closing invalidates the common
+runtime and releases the context, option strings, rows and gesture reservation.
+The separate Preset card retains its existing options-list admission policy,
+including lists reported without the Fan Control preset capability bit.
+
+Both families use `PageFanModalState` for channel revisions and pending paint.
+Exhausted/oversized data rejects the panel; recovery forces a complete projection
+rather than retaining a temporary unavailable flag. The existing 32 visible-option
+limit remains. Native coverage includes selection updates, all 40 parsed options
+with only 32 rows, malformed/empty options, stale presses, disconnects, replacement
+inside a service callback with poisoned old configuration storage, allocation and
+gesture-reservation failures, and 1,000 open/close cycles plus 1,000 quiet updates.
+The production context, list construction, selection callback and common runtime
+are exercised; platform shell geometry/opening are doubled and require hardware
+qualification. Scene integration and production selection remain outstanding.

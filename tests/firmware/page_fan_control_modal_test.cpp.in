@@ -116,6 +116,7 @@ struct ControlModalBinaryToggle {
 constexpr int FAN_PRESET_MAX_OPTIONS = 32;
 // @contexts
 // @production-function fan_control_modal_ui
+// @production-function fan_preset_ui
 // @feature-policy
 static_assert((FAN_FEATURE_TURN_OFF | FAN_FEATURE_TURN_ON) == 48);
 // @production-function fan_trim
@@ -124,6 +125,7 @@ static_assert((FAN_FEATURE_TURN_OFF | FAN_FEATURE_TURN_ON) == 48);
 // @production-function fan_token_is_header
 // @production-function fan_parse_options
 // @production-function fan_option_label
+// @production-function fan_control_supported
 // @production-function fan_card_icon_name
 // @production-function fan_card_icon_on_name
 // @production-function fan_card_label
@@ -276,10 +278,11 @@ void control_modal_delete_overlay(ControlModalKind kind, lv_obj_t* overlay) {
   if (overlay) lv_obj_delete(overlay);
   modal_service.clear_active(kind);
 }
-lv_obj_t* control_modal_create_list_row(lv_obj_t* parent, const std::string& label, bool, int, int, uint32_t,
-                                        uint32_t, const lv_font_t*, int) {
+lv_obj_t* control_modal_create_list_row(lv_obj_t* parent, const std::string& label, bool selected, int, int,
+                                        uint32_t, uint32_t, const lv_font_t*, int) {
   auto* button = lv_button_create(parent);
   auto* text = lv_label_create(button);
+  if (selected) lv_obj_add_state(button, LV_STATE_CHECKED);
   lv_label_set_text(text, label.c_str());
   return button;
 }
@@ -310,9 +313,32 @@ void fan_control_open_modal(FanCardCtx* ctx) {
   modal_service.set_active(ControlModalKind::FAN_CONTROL, ui.overlay, fan_control_hide_modal,
                            ControlModalDismissPolicy::DISMISS);
   fan_control_rebuild_preset_list(ctx);
-  if (ui.active && !fan_modal_widgets_ready(ui.overlay)) fan_control_hide_modal();
+  if (ui.active && !fan_modal_widgets_ready(ctx, ui.overlay)) fan_control_hide_modal();
+}
+struct ControlModalLayout {
+  int short_side = 480;
+};
+ControlModalLayout control_modal_calc_layout(int) {
+  return {};
+}
+int control_modal_scaled_px(int value, int) {
+  return value;
+}
+// @production-function fan_preset_close
+// @production-function fan_preset_rebuild_list
+void fan_preset_open(FanCardCtx* ctx) {
+  if (!fan_modal_context_current(ctx) || !fan_control_supported(ctx)) return;
+  auto& ui = fan_preset_ui();
+  ui.active = ctx;
+  ui.overlay = lv_obj_create(lv_layer_top());
+  ui.panel = ui.overlay;
+  ui.list = lv_obj_create(ui.panel);
+  modal_service.set_active(ControlModalKind::FAN_PRESET, ui.overlay, fan_preset_close,
+                           ControlModalDismissPolicy::DISMISS);
+  fan_preset_rebuild_list(ctx);
 }
 #include "page_fan_control_modal.h"
+#include "page_fan_preset_modal.h"
 struct Arena : PageArenaAllocator {
   std::unordered_map<void*, size_t> live;
   int remaining{-1};
@@ -334,13 +360,14 @@ struct Arena : PageArenaAllocator {
   }
 };
 struct Fixture {
-  explicit Fixture(uint32_t generation = 17) {
+  explicit Fixture(uint32_t generation = 17, bool preset = false) {
     const auto& limits = DEVICE_UI_PROFILES[8];
     PanelConfigWriter writer(document.data(), document.size());
     assert(writer.begin() == PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
                                         std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
-    const char* card = "fan.room;;Auto;Auto;;;fan_control;;fan_light_entity=light.fan";
+    const char* card = preset ? "fan.room;;Auto;Auto;;;fan_preset;;"
+                              : "fan.room;;Auto;Auto;;;fan_control;;fan_light_entity=light.fan";
     assert(writer.append_button(1, reinterpret_cast<const uint8_t*>(card), std::strlen(card)) ==
            PanelConfigStatus::OK);
     assert(writer.finish(&size) == PanelConfigStatus::OK);
@@ -403,6 +430,11 @@ void test_controls() {
     PageModalRuntime runtime(port);
     assert(!port.install(runtime, false));
     assert(port.install(runtime, true));
+    PageFanPresetModalStyle preset_style;
+    preset_style.resolve = style.resolve;
+    PageFanPresetModalPort preset(arena, state, preset_style, nullptr,
+                                  [](void*, PageBindingToken) { return true; });
+    assert(preset.install(runtime, true));
     assert(runtime.prepare(fixture.store));
     runtime.activate_prepared(fixture.store);
     const auto refs = coordinator.subscription_count(), native = coordinator.transport().bindings.size(),
@@ -574,8 +606,9 @@ void test_controls() {
   assert(arena.live.empty() && coordinator.transport().bindings.empty());
 }
 
+template <typename Family>
 void test_failures() {
-  Fixture fixture;
+  Fixture fixture(17, std::is_same_v<Family, PageFanPresetModalFamily>);
   Arena arena;
   PageCardDependencies source;
   CoordinatorPageEntitySubscriptions subscriptions(coordinator, 32);
@@ -585,15 +618,15 @@ void test_failures() {
     state.activate_prepared(fixture.store);
     values();
     for (const auto capacity : {size_t(1), size_t(128)}) {
-      PageFanControlModalStyle style;
+      PageLegacyModalStyle<Family> style;
       style.gesture_capacity = capacity;
       bool styles = true;
       style.owner = &styles;
       style.resolve = [](void* owner, const ParsedCfg&, PageFanControlModalEnvironment&) {
         return *static_cast<bool*>(owner);
       };
-      PageFanControlModalPort port(arena, state, style, nullptr,
-                                   [](void*, PageBindingToken) { return true; });
+      PageLegacyModalPort<Family> port(arena, state, style, nullptr,
+                                       [](void*, PageBindingToken) { return true; });
       PageModalRuntime runtime(port);
       assert(port.install(runtime, true));
       assert(runtime.prepare(fixture.store));
@@ -604,24 +637,24 @@ void test_failures() {
         assert(runtime.request_card({17, 0}));
         runtime.loop();
         arena.remaining = -1;
-        assert(!fan_control_modal_ui().active && arena.live.size() == baseline && lv_live_bytes == bytes &&
+        assert(!Family::active() && arena.live.size() == baseline && lv_live_bytes == bytes &&
                coordinator.subscription_count() == refs);
       }
       if (capacity == 1) {
         assert(runtime.request_card({17, 0}));
         runtime.loop();
-        assert(!fan_control_modal_ui().active && arena.live.size() == baseline && lv_live_bytes == bytes);
+        assert(!Family::active() && arena.live.size() == baseline && lv_live_bytes == bytes);
       }
       styles = false;
       assert(runtime.request_card({17, 0}));
       runtime.loop();
       styles = true;
-      assert(!fan_control_modal_ui().active);
+      assert(!Family::active());
       enough_heap = false;
       assert(runtime.request_card({17, 0}));
       runtime.loop();
       enough_heap = true;
-      assert(!fan_control_modal_ui().active);
+      assert(!Family::active());
       runtime.retire_active();
       runtime.loop();
     }
@@ -630,6 +663,198 @@ void test_failures() {
   coordinator.reclaim_unused_channels();
   assert(arena.live.empty() && coordinator.transport().bindings.empty());
 }
+
+void test_presets() {
+  Fixture fixture(17, true), next(18, true);
+  Arena arena;
+  PageCardDependencies source;
+  CoordinatorPageEntitySubscriptions subscriptions(coordinator, 32);
+  {
+    PageEntityStateRuntime state(source, arena, subscriptions, {64, 64, 8192});
+    assert(state.prepare(fixture.store));
+    state.activate_prepared(fixture.store);
+    values();
+    bool styles = true;
+    PageFanPresetModalStyle style;
+    style.owner = &styles;
+    style.resolve = [](void* owner, const ParsedCfg&, PageFanControlModalEnvironment&) {
+      return *static_cast<bool*>(owner);
+    };
+    PageFanPresetModalPort port(arena, state, style, nullptr, [](void*, PageBindingToken) { return true; });
+    PageModalRuntime runtime(port);
+    assert(!port.install(runtime, false));
+    assert(port.install(runtime, true));
+    // Both observers coexist despite using the same FanCardCtx type.
+    PageFanControlModalStyle control_style;
+    control_style.resolve = style.resolve;
+    control_style.owner = &styles;
+    PageFanControlModalPort control(arena, state, control_style, nullptr,
+                                    [](void*, PageBindingToken) { return true; });
+    assert(control.install(runtime, true));
+    FanCardCtx unrelated;
+    assert(!fan_modal_managed(&unrelated) && !fan_modal_context_current(&unrelated) &&
+           !fan_modal_action_allowed(&unrelated));
+    assert(runtime.prepare(fixture.store));
+    runtime.activate_prepared(fixture.store);
+    const auto refs = coordinator.subscription_count(), native = coordinator.transport().bindings.size(),
+               live = arena.live.size(), lv_bytes = lv_live_bytes, cpp_bytes = cpp_live_bytes;
+    auto& ui = fan_preset_ui();
+    for (size_t n = 0; n < 1000; ++n) {
+      assert(runtime.request_card({17, 0}));
+      runtime.loop();
+      assert(ui.active && ui.active->preset_modes.size() == 2);
+      assert(fan_modal_managed(ui.active) && fan_modal_observer(ui.active) == &fan_preset_modal_lifetime());
+      assert(fan_modal_context_current(ui.active) && !fan_control_modal_ui().active);
+      const auto sent = sends;
+      auto* row = lv_obj_get_child(ui.list, 0);
+      lv_obj_send_event(row, LV_EVENT_CLICKED, nullptr);
+      assert(sends == sent);
+      press(row);
+      assert(sends == sent + 1 && last_service == "fan.set_preset_mode" && last_value == "sleep");
+      assert(!ui.active);
+      runtime.loop();
+      coordinator.reclaim_unused_channels();
+      assert(arena.live.size() == live && lv_live_bytes == lv_bytes && cpp_live_bytes == cpp_bytes &&
+             coordinator.subscription_count() == refs && coordinator.transport().bindings.size() == native &&
+             status_label_creates == 0);
+    }
+    assert(runtime.request_card({17, 0}));
+    runtime.loop();
+    assert(ui.active);
+    const auto allocations = cpp_allocation_calls, lv_calls = lv_allocation_calls;
+    for (int n = 0; n < 1000; ++n) runtime.loop();
+    assert(cpp_allocation_calls == allocations && lv_allocation_calls == lv_calls);
+    auto& t = coordinator.transport();
+    const auto sent = sends;
+    assert(lv_obj_has_state(lv_obj_get_child(ui.list, 0), LV_STATE_CHECKED));
+    t.send("fan.room", "preset_mode", "auto");
+    runtime.loop();
+    assert(!lv_obj_has_state(lv_obj_get_child(ui.list, 0), LV_STATE_CHECKED) &&
+           lv_obj_has_state(lv_obj_get_child(ui.list, 1), LV_STATE_CHECKED));
+    std::string many;
+    for (int i = 0; i < 40; ++i) {
+      if (i) many += ",";
+      many += "m" + std::to_string(i);
+    }
+    t.send("fan.room", "preset_modes", many);
+    runtime.loop();
+    assert(ui.active->preset_modes.size() == 40 && lv_obj_get_child_count(ui.list) == FAN_PRESET_MAX_OPTIONS);
+    t.send("fan.room", "preset_modes", "['sleep','auto']");
+    runtime.loop();
+    auto* old_row = lv_obj_get_child(ui.list, 0);
+    lv_obj_send_event(old_row, LV_EVENT_PRESSED, nullptr);
+    t.send("fan.room", "preset_modes", "['new']");
+    lv_obj_send_event(old_row, LV_EVENT_RELEASED, nullptr);
+    lv_obj_send_event(old_row, LV_EVENT_CLICKED, nullptr);
+    assert(sends == sent && ui.active);
+    runtime.loop();
+    assert(ui.active->preset_modes.size() == 1);
+    assert(lv_obj_get_child_count(ui.list) == 1);
+    // The separate Preset card accepts a real options list even without the
+    // control-panel feature bit, matching its existing admission policy.
+    t.send("fan.room", "supported_features", "0");
+    runtime.loop();
+    press(lv_obj_get_child(ui.list, 0));
+    assert(sends == sent + 1 && last_value == "new" && !ui.active);
+    runtime.loop();
+    values();
+    assert(runtime.request_card({17, 0}));
+    runtime.loop();
+    assert(ui.active);
+    t.send("fan.room", "preset_modes", "['direction','presetModes']");
+    {
+      ModalCallbackDispatchScope dispatch;
+      send_fan_preset_action(ui.active, "sleep");
+    }
+    assert(sends == sent + 1);
+    runtime.loop();
+    assert(!ui.active);
+    values();
+    assert(runtime.request_card({17, 0}));
+    runtime.loop();
+    assert(ui.active);
+    // A rejected transient oversized value can recover before the next loop.
+    const auto recovering_sends = sends;
+    t.send("fan.room", "preset_modes", std::string(HA_TEXT_SENSOR_STATE_MAX_LEN + 1, 'x'));
+    {
+      ModalCallbackDispatchScope dispatch;
+      send_fan_preset_action(ui.active, "sleep");
+    }
+    assert(sends == recovering_sends && ui.active && !ui.active->available);
+    t.send("fan.room", "preset_modes", "['sleep','auto']");
+    runtime.loop();
+    assert(ui.active && ui.active->available);
+    t.send("fan.room", "preset_modes", std::string(HA_TEXT_SENSOR_STATE_MAX_LEN + 1, 'x'));
+    runtime.loop();
+    assert(!ui.active);
+    values();
+    assert(runtime.request_card({17, 0}));
+    runtime.loop();
+    assert(ui.active);
+    t.send("fan.room", "", "unavailable");
+    runtime.loop();
+    assert(!ui.active);
+    values();
+    assert(runtime.request_card({17, 0}));
+    runtime.loop();
+    assert(ui.active);
+    const auto disconnected_sends = sends;
+    t.connected = false;
+    coordinator.invalidate_retained_state();
+    press(lv_obj_get_child(ui.list, 0));
+    assert(sends == disconnected_sends);
+    runtime.loop();
+    assert(!ui.active);
+    t.connected = true;
+    values();
+    assert(runtime.request_card({17, 0}));
+    runtime.loop();
+    assert(ui.active);
+    bool replaced = false;
+    during_send = [&]() {
+      if (replaced) return;
+      replaced = true;
+      assert(runtime.prepare(next.store));
+      runtime.activate_prepared(next.store);
+      std::memset(fixture.storage.data(), 0xa5, fixture.storage.size());
+      runtime.loop();
+      assert(runtime.memory().retired_contexts == 1 && ui.active && ui.active->entity_id == "fan.room");
+      assert(runtime.request_card({18, 0}));
+    };
+    press(lv_obj_get_child(ui.list, 0));
+    during_send = {};
+    assert(replaced);
+    runtime.loop();
+    assert(!ui.active);
+    assert(state.prepare(next.store));
+    state.activate_prepared(next.store);
+    values();
+    assert(runtime.request_card({18, 0}));
+    runtime.loop();
+    assert(ui.active);
+    fan_preset_close();
+    runtime.loop();
+    for (int fail = 0; fail < 2; ++fail) {
+      arena.remaining = fail;
+      const auto before = arena.live.size();
+      assert(runtime.request_card({18, 0}));
+      runtime.loop();
+      assert(!ui.active && arena.live.size() == before);
+      arena.remaining = -1;
+    }
+    styles = false;
+    assert(runtime.request_card({18, 0}));
+    runtime.loop();
+    styles = true;
+    assert(!ui.active);
+    runtime.retire_active();
+    runtime.loop();
+    state.retire_active();
+  }
+  coordinator.reclaim_unused_channels();
+  assert(arena.live.empty() && coordinator.transport().bindings.empty());
+}
+
 int main() {
   lv_init();
   auto* display = lv_display_create(480, 480);
@@ -637,7 +862,9 @@ int main() {
   lv_timer_pause(lv_display_get_refr_timer(display));
   test_tab_policy();
   test_controls();
-  test_failures();
+  test_failures<PageFanControlModalFamily>();
+  test_failures<PageFanPresetModalFamily>();
+  test_presets();
   lv_display_delete(display);
   lv_deinit();
   assert(lv_live_bytes == 0);
