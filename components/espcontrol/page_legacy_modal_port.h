@@ -91,7 +91,7 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
       Family::subscribe(&record.context);
     }
     prime(record);
-    if(record.retired||!can_open(record.context,0)||!connected()||record.connection!=connection_generation())return false;
+    if(record.retired||!record_can_open(record,0)||!connected()||record.connection!=connection_generation())return false;
     Family::open(&record.context);
     if(!visible(&record))return false;
     set_clock_bar_modal_label(Family::title(&record.context));return true;
@@ -102,7 +102,7 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
   }
   void update(void *pointer,PageModalToken)override {
     auto &record=*static_cast<Record *>(pointer);prime(record);
-    if(!record.retired&&!can_open(record.context,0)&&Family::active()==&record.context)Family::hide();
+    if(!record.retired&&!record_can_open(record,0)&&Family::active()==&record.context)Family::hide();
   }
   ControlModalDismissPolicy dismiss_policy(void *)const override{return ControlModalDismissPolicy::DISMISS;}
   void retire(void *pointer,PageModalClose reason)override {
@@ -149,6 +149,12 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
     return F::initialize_state(record.context,record.pull_state,config,environment,gesture_capacity);
   }
   static bool initialize_state(Record&,const ParsedCfg&,const typename Family::Environment&,size_t,long) {return true;}
+  template<typename F=Family>
+  static auto record_can_open(Record& record,int)
+      ->decltype(F::can_open(&record.context,record.pull_state),bool()) {
+    return F::can_open(&record.context,record.pull_state);
+  }
+  static bool record_can_open(Record& record,long) { return can_open(record.context,0); }
   template<typename F=Family>
   static auto can_open(Context& context,int)->decltype(F::can_open(&context),bool()) {
     return F::can_open(&context);
@@ -203,7 +209,7 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
     // Snapshot-backed families consume current cache state before an input
     // computes its command, just as the legacy live callback did.
     pull(*port.record_,port.state_,0);
-    return current(owner,context)&&action_ready(*port.record_,0)&&can_open(port.record_->context,0)&&port.runtime_->interactive(port.record_->token)&&port.connected()&&
+    return current(owner,context)&&action_ready(*port.record_,0)&&record_can_open(*port.record_,0)&&port.runtime_->interactive(port.record_->token)&&port.connected()&&
       port.record_->connection==port.connection_generation();
   }
   static bool gesture_valid(void *owner,PageModalToken token) {

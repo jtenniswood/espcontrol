@@ -59,6 +59,9 @@ using ClimateControlCtx = Runtime;
 #undef MediaControlCtx
 using AlarmCardCtx = Runtime;
 using FanCardCtx = Runtime;
+#define FanCardCtx Runtime
+#include "fan_control_modal_lifetime.h"
+#undef FanCardCtx
 using ImageCardCtx = Runtime;
 using OptionSelectCtx = Runtime;
 using WeatherDailyCard = Runtime;

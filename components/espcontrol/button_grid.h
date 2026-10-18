@@ -81,3 +81,5 @@
 #include "page_media_volume_modal.h"
 
 #include "page_media_control_modal.h"
+
+#include "page_fan_control_modal.h"

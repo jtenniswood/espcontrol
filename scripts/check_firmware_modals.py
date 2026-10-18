@@ -956,7 +956,7 @@ def firmware_fan_light_fallback_errors(root: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     required = (
         'if (ctx->type == "fan_control" && fan_light_supported(ctx)) return true;',
-        'return ctx && (ctx->available || fan_light_supported(ctx)) &&',
+        '(ctx->available || fan_light_supported(ctx)) &&',
         'if (!fan_control_can_open_modal(ctx)) return;',
         "ctx->light_available = !ha_state_unavailable_ref(state);",
         "if (ui.active == ctx && fan_control_visible_tabs(ctx).count == 0) fan_control_hide_modal();",
