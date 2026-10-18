@@ -113,11 +113,14 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
   } else if(type=="media") {
     const auto mode=card_runtime_media_mode(std::string(out.sensor));
     if (mode != "play_pause" && mode != "previous" && mode != "next" && mode != "playlist" &&
-        mode != "position" && mode != "now_playing" && mode != "cover_art")
+        mode != "position" && mode != "now_playing" && mode != "cover_art" && mode != "volume" &&
+        mode != "control_modal")
       return false;
+    const bool control = mode == "volume" || mode == "control_modal";
     const bool cover = mode == "cover_art" ||
                        (mode == "now_playing" && cfg_option_token_present(options, MEDIA_COVER_ART_OPTION));
-    out.kind = cover                   ? BasicCardKind::MEDIA_COVER_ART
+    out.kind = control                 ? BasicCardKind::MEDIA_CONTROL
+               : cover                 ? BasicCardKind::MEDIA_COVER_ART
                : mode == "now_playing" ? BasicCardKind::MEDIA_NOW_PLAYING
                : mode == "position"    ? BasicCardKind::MEDIA_POSITION
                                        : BasicCardKind::MEDIA_ACTION;
@@ -125,21 +128,34 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
                         : mode == "now_playing" ? precision == "play_pause"
                                                 : mode != "position";
     out.unit = {};
-    out.media.kind = cover                   ? MediaActionKind::COVER_ART
-                     : mode == "previous"    ? MediaActionKind::PREVIOUS
-                     : mode == "next"        ? MediaActionKind::NEXT
-                     : mode == "playlist"    ? MediaActionKind::PLAYLIST
-                     : mode == "position"    ? MediaActionKind::POSITION
-                     : mode == "now_playing" ? MediaActionKind::NOW_PLAYING
-                                             : MediaActionKind::PLAY_PAUSE;
+    out.media.kind = mode == "volume"          ? MediaActionKind::VOLUME
+                     : mode == "control_modal" ? MediaActionKind::CONTROL_MODAL
+                     : cover                   ? MediaActionKind::COVER_ART
+                     : mode == "previous"      ? MediaActionKind::PREVIOUS
+                     : mode == "next"          ? MediaActionKind::NEXT
+                     : mode == "playlist"      ? MediaActionKind::PLAYLIST
+                     : mode == "position"      ? MediaActionKind::POSITION
+                     : mode == "now_playing"   ? MediaActionKind::NOW_PLAYING
+                                               : MediaActionKind::PLAY_PAUSE;
     out.media.show_state=(mode=="play_pause"||mode=="position")&&precision=="state";
     out.media.track_details = cover && cfg_option_token_present(options, MEDIA_COVER_ART_DETAILS_OPTION);
     out.media.progress = !cover && mode == "now_playing" && precision == "progress";
     out.media.play_pause_background = !cover && mode == "now_playing" && precision == "play_pause";
-    out.active_color=mode=="play_pause"||mode=="playlist"||out.media.play_pause_background;
+    out.active_color = mode == "control_modal" || mode == "play_pause" || mode == "playlist" ||
+                       out.media.play_pause_background;
     out.default_label=mode=="previous"?"Previous":mode=="next"?"Next":mode=="playlist"?"Playlist":mode=="position"?"Position":"Play/Pause";
     if (cover) out.icon = "Music";
     if(out.icon.empty()||out.icon=="Auto")out.icon=mode=="previous"?"Skip Previous":mode=="next"?"Skip Next":mode=="playlist"?"Music":"Play Pause";
+    if (control) {
+      out.push_feedback = true;
+      out.media.show_state =
+          mode == "control_modal" && cfg_option_value(options, LABEL_DISPLAY_OPTION) != "label";
+      out.media.volume_number =
+          mode == "volume" || cfg_option_value(options, NUMBER_DISPLAY_OPTION) == "volume";
+      out.media.volume_max = static_cast<uint8_t>(
+          normalize_media_volume_max_percent(cfg_option_value(options, VOLUME_MAX_OPTION)));
+      out.default_label = mode == "volume" ? "Volume" : "Media Control";
+    }
     // Existing media action buttons keep one configured icon in both states.
     out.icon_on=out.icon;
     if(mode=="playlist") {
@@ -265,7 +281,8 @@ BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHand
     }
     return result;
   }
-  if(card.kind==BasicCardKind::MEDIA_ACTION||card.kind==BasicCardKind::MEDIA_POSITION) {
+  if (card.kind == BasicCardKind::MEDIA_ACTION || card.kind == BasicCardKind::MEDIA_POSITION ||
+      card.kind == BasicCardKind::MEDIA_CONTROL) {
     result.label=card.label;
     if(result.label.empty()&&card.default_label) {
       const auto *translated=translate?translate(card.default_label):nullptr;
@@ -293,6 +310,18 @@ BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHand
         type.status!=PageEntityStatus::EXHAUSTED&&
         (!type_current||content_type.empty()||media::playlist_content_type_matches(card.media.playlist_type,content_type));
     }
+    if (card.kind == BasicCardKind::MEDIA_CONTROL) {
+      result.on = card.media.kind == MediaActionKind::CONTROL_MODAL && playing;
+      result.media_volume = read_media_volume(state, handle, card.entity, card.media.volume_max);
+      if (card.media.volume_number) {
+        result.numeric = true;
+        if (result.media_volume.known)
+          std::snprintf(result.number, sizeof(result.number), "%u",
+                        static_cast<unsigned>(result.media_volume.display));
+        else
+          std::strcpy(result.number, "--");
+      }
+    }
     if(card.kind==BasicCardKind::MEDIA_POSITION) {
       PageMediaPlaybackSnapshot progress;
       if(media_owner)media_owner->playback(handle,card.entity,progress);
@@ -301,8 +330,11 @@ BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHand
     }
     if(card.media.show_state) {
       const char *key=nullptr;
-      if(playback.status!=PageEntityStatus::AVAILABLE)key="Unknown";
-      else if(!available(playback))key="Unavailable";
+      if (playback.status != PageEntityStatus::AVAILABLE || playback.value.empty() ||
+          playback.value == "unknown")
+        key = "Unknown";
+      else if (playback.value == "unavailable")
+        key = "Unavailable";
       else if(playback.value=="playing")key="Playing";
       else if(playback.value=="paused")key="Paused";
       else if(playback.value=="idle")key="Idle";

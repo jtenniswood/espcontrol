@@ -49,6 +49,37 @@ struct Subscriptions:PageEntitySubscriptions {
   void send(const char *entity,const char *attribute,std::string_view value){for(auto &b:bindings)if(std::strcmp(b.entity,entity)==0&&std::strcmp(b.attribute,attribute)==0)b.deliver(b.owner,b.revision,b.channel,value);}
 };
 struct Fixture {
+  struct MediaControls {};
+  Fixture(const DeviceUiLimits& limits, MediaControls) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::array<const char*, 6> cards = {
+        ";Controls;Home;Auto;indicator;;subpage;;",
+        "media_player.room;;Unused Glyph;Auto;volume;;media;;volume_max=60",
+        "media_player.room;Ignored;Unused "
+        "Glyph;Auto;control_modal;;media;;number_display=volume,volume_max=60",
+        "media_player.room;Ignored;Auto;Auto;control_modal;;media;;",
+        "media_player.room;Fixed;Auto;Auto;control_modal;;media;;label_display=label",
+        ";Temp;Auto;Auto;sensor.temp;°C;sensor;1;"};
+    for (uint8_t slot = 1; slot <= cards.size(); ++slot)
+      assert(writer.append_button(slot, reinterpret_cast<const uint8_t*>(cards[slot - 1]),
+                                  std::strlen(cards[slot - 1])) == PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1,2,3,4|,light.child,Child,Auto,Auto,sensor.temp,W,1,|M,media_player.room,Volume,Auto,Auto,"
+        "volume,,,volume_max=60|S,,Temp,Auto,Auto,sensor.temp,°C,1,|M,media_player.room,Controls,Auto,Auto,"
+        "control_modal,,,number_display=volume";
+    assert(writer.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = "1,2,3,4,5,6";
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                 reinterpret_cast<const uint8_t*>(order.data()),
+                                 order.size()) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   explicit Fixture(const DeviceUiLimits& limits, bool unsupported = false, bool portrait = false,
                    bool stateless = false, bool controls = false, bool weather = false,
                    bool forecasts = false, bool media = false, bool positions = false,
@@ -823,6 +854,220 @@ void now_playing_geometry(const PageBasicWidgets& widgets, const PageBasicTheme&
   lv_obj_delete(root);
 }
 template <size_t Slots>
+void media_control_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, Fixture::MediaControls{});
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  struct Transport final : PageMediaTransport {
+    Subscriptions& subscriptions;
+    uint32_t now{100};
+    bool online{true};
+    explicit Transport(Subscriptions& value) : subscriptions(value) {}
+    bool connected() const override {
+      return online;
+    }
+    uint32_t connection_generation() const override {
+      return subscriptions.generation;
+    }
+    uint32_t now_ms() const override {
+      return now;
+    }
+    int64_t epoch_seconds() const override {
+      return 1000;
+    }
+    void reannounce() override {}
+  } transport(subscriptions);
+  PageMediaStateRuntime media(arena, transport);
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192}, &media);
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  lv_font_t icon_font = lv_font_montserrat_14;
+  icon_font.line_height = 26;
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    lv_obj_set_style_pad_all(w.button, 8, 0);
+    w.icon = lv_label_create(w.button);
+    lv_obj_set_style_text_font(w.icon, &icon_font, 0);
+    lv_obj_align(w.icon, LV_ALIGN_TOP_LEFT, 0, 0);
+    w.label = lv_label_create(w.button);
+    lv_obj_align(w.label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+    w.sensor_container = lv_obj_create(w.button);
+    lv_obj_align(w.sensor_container, LV_ALIGN_CENTER, 3, 4);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+  }
+  PageBasicTheme theme;
+  theme.sensor_font = &lv_font_montserrat_14;
+  theme.label_font = &lv_font_montserrat_14;
+  theme.icon_font = &icon_font;
+  Actions<Slots> actions;
+  auto callbacks = actions.callbacks();
+  callbacks.media_control = Actions<Slots>::action;
+  callbacks.media_volume = Actions<Slots>::action;
+  callbacks.icon = [](void* owner, std::string_view name, std::string_view domain) -> const char* {
+    return name == "Unused Glyph" ? nullptr : Actions<Slots>::icon(owner, name, domain);
+  };
+  for (int missing = 0; missing < 3; ++missing) {
+    auto hooks = callbacks;
+    if (missing == 0) hooks.media_volume = nullptr;
+    if (missing == 1) hooks.media_control = nullptr;
+    PageBasicLvglPort<Slots> invalid(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     hooks, nullptr, missing == 2 ? nullptr : &media);
+    assert(invalid.initialize() && !invalid.prepare(fixture.store, Slots));
+  }
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  callbacks, nullptr, &media);
+    assert(port.initialize());
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t index = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[index++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    assert(media.prepare(fixture.store) && renderer.prepare(fixture.store) && state.prepare(fixture.store));
+    media.activate_prepared(fixture.store);
+    renderer.activate_prepared(fixture.store);
+    state.activate_prepared(fixture.store);
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "--") == 0);
+    subscriptions.send("media_player.room", "", "playing");
+    subscriptions.send("media_player.room", "volume_level", ".85");
+    subscriptions.send("media_player.room", "supported_features", "4");
+    subscriptions.send("light.child", "", "on");
+    subscriptions.send("sensor.temp", "", "21.4");
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    for (size_t slot : {1, 2}) {
+      const auto& w = widgets[slot];
+      assert(lv_obj_has_flag(w.icon, LV_OBJ_FLAG_HIDDEN) &&
+             !lv_obj_has_flag(w.sensor_container, LV_OBJ_FLAG_HIDDEN));
+      assert(std::strcmp(lv_label_get_text(w.value), "60") == 0 &&
+             lv_obj_get_style_align(w.sensor_container, LV_PART_MAIN) == LV_ALIGN_TOP_LEFT);
+    }
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Volume") == 0);
+    assert(!lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED) &&
+           lv_obj_has_state(widgets[2].button, LV_STATE_CHECKED));
+    assert(std::strcmp(lv_label_get_text(widgets[2].label), "Playing") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[4].label), "Fixed") == 0);
+    assert(!lv_obj_has_flag(widgets[3].icon, LV_OBJ_FLAG_HIDDEN) &&
+           lv_obj_has_flag(widgets[3].sensor_container, LV_OBJ_FLAG_HIDDEN));
+    click(widgets[1].button);
+    assert(actions.commands == 1 && actions.last.card == renderer.binding(1).card);
+    click(widgets[3].button);
+    assert(actions.commands == 2 && actions.last.card == renderer.binding(3).card);
+    subscriptions.send("media_player.room", "volume_level", ".2");
+    renderer.update_visible();
+    const auto origin = renderer.binding(1);
+    assert(port.preview_volume(origin, 50));
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "50") == 0);
+    subscriptions.send("media_player.room", "volume_level", ".25");
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "50") == 0);
+    transport.now += 1499;
+    assert(!port.state_changed());
+    ++transport.now;
+    assert(port.state_changed());
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "25") == 0);
+    assert(port.preview_volume(origin, 50));
+    renderer.update_visible();
+    subscriptions.send("media_player.room", "volume_level", ".5");
+    renderer.update_visible();
+    transport.now += 1500;
+    assert(!port.state_changed());
+    assert(port.preview_volume(origin, 60));
+    subscriptions.send("media_player.room", "supported_features", "1024");
+    subscriptions.send("media_player.room", "volume_level", ".85");
+    renderer.update_visible();
+    assert(!port.preview_volume(origin, 30) && std::strcmp(lv_label_get_text(widgets[1].value), "85") == 0);
+    subscriptions.send("media_player.room", "supported_features", "0");
+    renderer.update_visible();
+    assert(!port.preview_volume(origin, 30));
+    subscriptions.send("media_player.room", "supported_features", "4");
+    renderer.update_visible();
+    assert(port.preview_volume(origin, 50));
+    ++subscriptions.generation;
+    media.loop();
+    renderer.update_visible();
+    assert(!port.preview_volume(origin, 40));
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "--") == 0);
+    subscriptions.send("media_player.room", "", "playing");
+    subscriptions.send("media_player.room", "volume_level", ".2");
+    subscriptions.send("media_player.room", "supported_features", "4");
+    renderer.update_visible();
+    assert(port.preview_volume(origin, 50));
+    transport.online = false;
+    media.loop();
+    renderer.update_visible();
+    assert(!port.preview_volume(origin, 40));
+    transport.online = true;
+    subscriptions.send("media_player.room", "", "playing");
+    renderer.update_visible();
+    const auto child = fixture.store.card(0)->target;
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == 2 && !port.preview_volume(origin, 30));
+    assert(lv_obj_get_style_align(widgets[1].sensor_container, LV_PART_MAIN) == LV_ALIGN_CENTER &&
+           lv_obj_get_style_x(widgets[1].sensor_container, LV_PART_MAIN) == 3);
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto cpp = cpp_allocations, reservations = arena.allocations, retained = lv_live_bytes,
+               descriptors = cache.memory().descriptor_adds, channels = subscriptions.bindings.size();
+    for (size_t n = 0; n < 1000; ++n) {
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(cpp_allocations == cpp && arena.allocations == reservations && lv_live_bytes == retained &&
+             cache.memory().descriptor_adds == descriptors && subscriptions.bindings.size() == channels);
+    }
+    // A durable replacement revokes the old card and any pending panel preview.
+    const auto retired = renderer.binding(1);
+    assert(port.preview_volume(retired, 30));
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    Fixture ordinary(limits);
+    PageStore replacement;
+    assert(PageStore::stage_v1(ordinary.document.data(), ordinary.size, limits, 12, ordinary.arena.data(),
+                               ordinary.arena.size(), &replacement) == PageStoreStatus::OK);
+    assert(media.prepare(replacement) && renderer.prepare(replacement) && state.prepare(replacement));
+    renderer.activate_prepared(replacement);
+    media.activate_prepared(replacement);
+    state.activate_prepared(replacement);
+    assert(!port.preview_volume(retired, 40));
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == 2);
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    renderer.retire_active();
+    state.retire_active();
+    media.retire_active();
+    std::printf(
+        "%s: media volume/control cards, pending acknowledgements/modal hooks, 1000 cycles, stable retained "
+        "resources\n",
+        limits.device_profile);
+  }
+  assert(arena.live == 0);
+  lv_obj_delete(page);
+}
+template <size_t Slots>
 void cover_art_profile(const DeviceUiLimits& limits) {
   Fixture fixture(limits, false, false, false, false, false, false, false, false, false, true);
   Arena arena;
@@ -1469,6 +1714,7 @@ int main() {
         media_position_profile<6>(limits);
         now_playing_profile<6>(limits);
         cover_art_profile<6>(limits);
+        media_control_profile<6>(limits);
         break;
       case 9:
         profile<9>(limits);
@@ -1480,6 +1726,7 @@ int main() {
         media_position_profile<9>(limits);
         now_playing_profile<9>(limits);
         cover_art_profile<9>(limits);
+        media_control_profile<9>(limits);
         break;
       case 15:
         profile<15>(limits);
@@ -1491,6 +1738,7 @@ int main() {
         media_position_profile<15>(limits);
         now_playing_profile<15>(limits);
         cover_art_profile<15>(limits);
+        media_control_profile<15>(limits);
         break;
       case 20:
         profile<20>(limits);
@@ -1502,6 +1750,7 @@ int main() {
         media_position_profile<20>(limits);
         now_playing_profile<20>(limits);
         cover_art_profile<20>(limits);
+        media_control_profile<20>(limits);
         break;
       default:
         std::abort();

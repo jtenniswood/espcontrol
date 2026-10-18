@@ -1,11 +1,12 @@
 #pragma once
 
-#include "page_entity_state_runtime.h"
 #include "page_climate_card.h"
+#include "page_entity_state_runtime.h"
 #include "page_media_action.h"
 #include "page_media_state_runtime.h"
-#include "weather_card_view.h"
+#include "page_media_volume.h"
 #include "page_renderer_runtime.h"
+#include "weather_card_view.h"
 
 namespace espcontrol::pages {
 enum class BasicCardKind : uint8_t {
@@ -26,7 +27,8 @@ enum class BasicCardKind : uint8_t {
   MEDIA_ACTION,
   MEDIA_POSITION,
   MEDIA_NOW_PLAYING,
-  MEDIA_COVER_ART
+  MEDIA_COVER_ART,
+  MEDIA_CONTROL
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode:uint8_t { NONE, ENTITY, CLIMATE, MOWER, CHILDREN, NUMBER, TEXT };
@@ -62,6 +64,7 @@ struct BasicCardState {
   bool on{false},numeric{false},formatted_label{false},climate_icon_on{false};
   std::string_view label,unit,media_title,media_artist;
   bool media_external_input{false}, media_idle{false}, media_source_title{false};
+  PageMediaVolumeSnapshot media_volume;
   uint8_t fill_percent{0},weather_condition{0};
   char number[48]{},text[257]{};
 };

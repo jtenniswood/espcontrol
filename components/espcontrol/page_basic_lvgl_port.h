@@ -62,6 +62,7 @@ struct PageBasicActions {
   void (*media)(void *,PageBindingToken){nullptr};
   void (*seek)(void *,PageBindingToken,uint8_t percent,float duration){nullptr};
   void (*media_control)(void*, PageBindingToken){nullptr};
+  void (*media_volume)(void*, PageBindingToken){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -142,6 +143,11 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
     for(size_t i=0;i<Slots;++i) {
       const auto &w=widgets_[i];
+      shells_[i].sensor_align = lv_obj_get_style_align(w.sensor_container, LV_PART_MAIN);
+      shells_[i].sensor_x = lv_obj_get_style_x(w.sensor_container, LV_PART_MAIN);
+      shells_[i].sensor_y = lv_obj_get_style_y(w.sensor_container, LV_PART_MAIN);
+      lv_obj_set_align(w.sensor_container, shells_[i].sensor_align);
+      lv_obj_set_pos(w.sensor_container, shells_[i].sensor_x, shells_[i].sensor_y);
       shells_[i].icon_layout=label_layout(w.icon);shells_[i].label_layout=label_layout(w.label);
       restore_label(w.icon,shells_[i].icon_layout);restore_label(w.label,shells_[i].label_layout);
       lv_obj_add_flag(w.button,LV_OBJ_FLAG_HIDDEN);
@@ -211,6 +217,29 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
     initialized_=true;return true;
   }
+  // Preview an accepted panel action in its originating card. This neither
+  // mutates HA state nor dispatches a service call; pending display lasts 1.5s.
+  bool preview_volume(PageBindingToken token, uint8_t percent) {
+    if (token.shell >= Slots || !same(shells_[token.shell].token, token) || !actions_.valid ||
+        !actions_.valid(actions_.owner, token) || !media_)
+      return false;
+    auto& shell = shells_[token.shell];
+    if (!shell.definition || shell.definition->definition.kind != BasicCardKind::MEDIA_CONTROL ||
+        !shell.definition->definition.media.volume_number)
+      return false;
+    const auto& definition = shell.definition->definition;
+    const ConfigurationHandle card{token.configuration, token.card};
+    PageMediaSourceSnapshot source;
+    const auto volume = read_media_volume(state_, card, definition.entity, definition.media.volume_max);
+    if (!media_->source_snapshot(card, definition.entity, source) || !source.available ||
+        volume.mode != media::VolumeControlMode::ABSOLUTE)
+      return false;
+    shell.pending_target = std::min(percent, definition.media.volume_max);
+    shell.pending_ms = media_->now_ms();
+    shell.gesture_connection = media_->connection_generation();
+    media_layout_dirty_ = true;
+    return true;
+  }
   bool prepare(const PageStore &store,size_t count)override {
     discard_prepared();if(!initialized_||count!=Slots)return false;
     TextCounter strings;size_t summary_count=0;bool has_weather=false,has_forecast=false;size_t forecast_frames=0;
@@ -229,6 +258,10 @@ class PageBasicLvglPort final:public PageRendererPort {
         }
         if(view.kind==BasicCardKind::CLIMATE&&actions_.climate==nullptr)return false;
         if(view.kind==BasicCardKind::ACTION&&actions_.action==nullptr)return false;
+        if (view.kind == BasicCardKind::MEDIA_CONTROL &&
+            (!media_ ||
+             (view.media.kind == MediaActionKind::VOLUME ? !actions_.media_volume : !actions_.media_control)))
+          return false;
         if (view.kind == BasicCardKind::MEDIA_COVER_ART) {
           if (!media_ || !artwork_ || !artwork_->ready() || !actions_.media_control ||
               !theme_.media_title_font || !theme_.media_title_font->line_height)
@@ -252,7 +285,12 @@ class PageBasicLvglPort final:public PageRendererPort {
         if(view.kind==BasicCardKind::MEDIA_ACTION&&(actions_.media==nullptr||(view.media.kind==MediaActionKind::PLAYLIST&&!media_)))return false;
         if((view.kind==BasicCardKind::LIGHT||view.kind==BasicCardKind::COVER)&&actions_.control==nullptr)return false;
         if(view.kind==BasicCardKind::COVER)for(const auto &w:widgets_)if(!w.fill)return false;
-        if(((view.kind==BasicCardKind::MEDIA_ACTION||view.kind==BasicCardKind::MEDIA_POSITION)&&view.media.show_state)||view.kind==BasicCardKind::TEXT||view.kind==BasicCardKind::CLIMATE||view.text_overlay||view.folder_mode==BasicFolderMode::TEXT||view.action_display==BasicActionDisplay::TEXT)label_capacity=std::max<size_t>(label_capacity,257);
+        if (((view.kind == BasicCardKind::MEDIA_ACTION || view.kind == BasicCardKind::MEDIA_POSITION ||
+              view.kind == BasicCardKind::MEDIA_CONTROL) &&
+             view.media.show_state) ||
+            view.kind == BasicCardKind::TEXT || view.kind == BasicCardKind::CLIMATE || view.text_overlay ||
+            view.folder_mode == BasicFolderMode::TEXT || view.action_display == BasicActionDisplay::TEXT)
+          label_capacity = std::max<size_t>(label_capacity, 257);
         if(view.default_label) {
           const auto *translated=theme_.translate?theme_.translate(view.default_label):nullptr;
           label_capacity=std::max(label_capacity,std::strlen(translated?translated:view.default_label)+1);
@@ -332,7 +370,11 @@ class PageBasicLvglPort final:public PageRendererPort {
         auto &view=prepared(staged_)[card];if(!prepare_basic_card(store,card,view.definition,&writer)){discard_prepared();return false;}
         const auto &d=view.definition;
         // Metadata titles reuse the icon label but never display a glyph.
-        if(d.kind==BasicCardKind::MEDIA_NOW_PLAYING){view.off=view.on="";continue;}
+        if (d.kind == BasicCardKind::MEDIA_NOW_PLAYING ||
+            (d.kind == BasicCardKind::MEDIA_CONTROL && d.media.volume_number)) {
+          view.off = view.on = "";
+          continue;
+        }
         if (d.kind == BasicCardKind::MEDIA_COVER_ART) {
           view.off = view.on = actions_.icon(actions_.owner, "Music", {});
           if (!view.off) {
@@ -416,6 +458,8 @@ class PageBasicLvglPort final:public PageRendererPort {
   void bind(size_t index,const PageStore &,const PageCellLayout &cell,PageBackStyleView back,PageBindingToken token)override {
     if(index>=Slots||!active_.arena||(!cell.back&&cell.card>=active_.cards))return;auto &s=shells_[index];const auto &w=widgets_[index];
     restore_label(w.icon,s.icon_layout);restore_label(w.label,s.label_layout);
+    lv_obj_set_align(w.sensor_container, s.sensor_align);
+    lv_obj_set_pos(w.sensor_container, s.sensor_x, s.sensor_y);
     s.token=token;s.pressed={};s.cell=cell;s.back=back;
     s.definition=cell.back?nullptr:prepared(active_)+cell.card;
     if (w.forecast) {
@@ -447,7 +491,8 @@ class PageBasicLvglPort final:public PageRendererPort {
                                        s.definition->definition.kind == BasicCardKind::COVER ||
                                        s.definition->definition.kind == BasicCardKind::FORECAST ||
                                        s.definition->definition.kind == BasicCardKind::MEDIA_ACTION ||
-                                       s.definition->definition.kind == BasicCardKind::MEDIA_COVER_ART));
+                                       s.definition->definition.kind == BasicCardKind::MEDIA_COVER_ART ||
+                                       s.definition->definition.kind == BasicCardKind::MEDIA_CONTROL));
     if(clickable)lv_obj_add_flag(w.button,LV_OBJ_FLAG_CLICKABLE);else lv_obj_clear_flag(w.button,LV_OBJ_FLAG_CLICKABLE);
     // Do not read the new state graph here: its activation may follow ours.
   }
@@ -469,13 +514,25 @@ class PageBasicLvglPort final:public PageRendererPort {
       if(definition.kind==BasicCardKind::FOLDER&&definition.folder_mode==BasicFolderMode::NUMBER&&value.label.empty())value.label=theme_.folder_label;
       if(definition.kind==BasicCardKind::EMPTY&&value.label.empty())value.label=theme_.empty_label;
       checked=value.on&&(definition.kind==BasicCardKind::TOGGLE||definition.active_color);
-      number=(definition.kind==BasicCardKind::CLIMATE&&definition.climate.number!=ClimateCardNumber::ICON)||definition.kind==BasicCardKind::NUMBER||definition.kind==BasicCardKind::DURATION||definition.kind==BasicCardKind::MEDIA_POSITION||definition.folder_mode==BasicFolderMode::NUMBER||definition.action_display==BasicActionDisplay::NUMBER||(definition.kind==BasicCardKind::TOGGLE&&!definition.text_overlay&&!definition.sensor.empty()&&value.on);
+      number = (definition.kind == BasicCardKind::CLIMATE &&
+                definition.climate.number != ClimateCardNumber::ICON) ||
+               definition.kind == BasicCardKind::NUMBER || definition.kind == BasicCardKind::DURATION ||
+               definition.kind == BasicCardKind::MEDIA_POSITION ||
+               (definition.kind == BasicCardKind::MEDIA_CONTROL && definition.media.volume_number) ||
+               definition.folder_mode == BasicFolderMode::NUMBER ||
+               definition.action_display == BasicActionDisplay::NUMBER ||
+               (definition.kind == BasicCardKind::TOGGLE && !definition.text_overlay &&
+                !definition.sensor.empty() && value.on);
       const bool state_icon=definition.kind==BasicCardKind::TOGGLE||definition.kind==BasicCardKind::ICON||
         definition.kind==BasicCardKind::STATUS||definition.kind==BasicCardKind::LIGHT||definition.kind==BasicCardKind::COVER||definition.action_display==BasicActionDisplay::ICON||definition.folder_mode==BasicFolderMode::ENTITY||definition.folder_mode==BasicFolderMode::CLIMATE||definition.folder_mode==BasicFolderMode::MOWER||definition.folder_mode==BasicFolderMode::CHILDREN;
       if(definition.kind==BasicCardKind::WEATHER)glyph=active_.weather->glyphs[value.weather_condition];
       else glyph=definition.kind==BasicCardKind::CLIMATE?(value.climate_icon_on?s.definition->on:s.definition->off):state_icon&&value.on?s.definition->on:s.definition->off;
     }
     const bool now_playing = media_text(definition.kind);
+    if (definition.kind == BasicCardKind::MEDIA_CONTROL && definition.media.volume_number) {
+      volume_feedback(s, value);
+      lv_obj_align(w.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
+    }
     if(definition.kind==BasicCardKind::MEDIA_POSITION||(now_playing&&definition.media.progress))position_feedback(s,value);
     if(!now_playing){lv_obj_clear_flag(w.label,LV_OBJ_FLAG_HIDDEN);write(w.label,s.label,active_.label_capacity,value.formatted_label?std::string_view(value.text):value.label);}
     for(const auto selector:{static_cast<lv_style_selector_t>(LV_PART_MAIN),
@@ -573,7 +630,8 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (media_layout_dirty_) return true;
     if (media_)
       for (const auto& shell : shells_)
-        if (shell.pending_target >= 0 && static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= 3000)
+        if (shell.pending_target >= 0 &&
+            static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= pending_timeout(shell))
           return true;
     return state_.revision() != seen_state_ || theme_.revision != seen_theme_ ||
            (forecasts_ && forecasts_->revision() != seen_forecast_) ||
@@ -662,6 +720,8 @@ class PageBasicLvglPort final:public PageRendererPort {
   struct Shell {
     PageBasicLvglPort* port{nullptr};
     LabelLayout icon_layout, label_layout;
+    lv_align_t sensor_align{LV_ALIGN_DEFAULT};
+    lv_coord_t sensor_x{0}, sensor_y{0};
     size_t index{0};
     PageBindingToken token, pressed;
     PageCellLayout cell;
@@ -747,6 +807,26 @@ class PageBasicLvglPort final:public PageRendererPort {
     else
       lv_obj_set_pos(w.fill, x, y);
     lv_obj_set_style_radius(w.fill, lv_obj_get_style_radius(w.button, LV_PART_MAIN), LV_PART_MAIN);
+  }
+  static uint32_t pending_timeout(const Shell& shell) {
+    return shell.definition && shell.definition->definition.kind == BasicCardKind::MEDIA_CONTROL ? 1500
+                                                                                                 : 3000;
+  }
+  void volume_feedback(Shell& shell, BasicCardState& value) {
+    if (shell.pending_target < 0) return;
+    PageMediaSourceSnapshot source;
+    const auto& definition = shell.definition->definition;
+    const bool current =
+        media_->source_snapshot({shell.token.configuration, shell.token.card}, definition.entity, source);
+    if (!current || !source.available || shell.gesture_connection != media_->connection_generation() ||
+        value.media_volume.mode != media::VolumeControlMode::ABSOLUTE ||
+        static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= 1500 ||
+        (value.media_volume.known && value.media_volume.display == shell.pending_target)) {
+      shell.pending_target = -1;
+      return;
+    }
+    std::snprintf(value.number, sizeof(value.number), "%d", static_cast<int>(shell.pending_target));
+    value.numeric = true;
   }
   void position_feedback(Shell& shell, BasicCardState& value) {
     const auto& w = widgets_[shell.index];
@@ -1142,7 +1222,12 @@ class PageBasicLvglPort final:public PageRendererPort {
       port->actions_.media(port->actions_.owner,origin);
     else if (definition.kind == BasicCardKind::MEDIA_COVER_ART && port->actions_.media_control)
       port->actions_.media_control(port->actions_.owner, origin);
-    else if(definition.kind==BasicCardKind::ACTION&&port->actions_.action)
+    else if (definition.kind == BasicCardKind::MEDIA_CONTROL) {
+      if (definition.media.kind == MediaActionKind::VOLUME) {
+        if (port->actions_.media_volume) port->actions_.media_volume(port->actions_.owner, origin);
+      } else if (port->actions_.media_control)
+        port->actions_.media_control(port->actions_.owner, origin);
+    } else if (definition.kind == BasicCardKind::ACTION && port->actions_.action)
       port->actions_.action(port->actions_.owner,origin);
   }
   PageArenaAllocator &allocator_;PageEntityStateRuntime &state_;std::array<PageBasicWidgets,Slots>widgets_;

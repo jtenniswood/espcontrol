@@ -290,6 +290,8 @@ add_test(NAME local_sensor_invalid_values_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/local_sensor_invalid_values_test.py ${CMAKE_CXX_COMPILER})
 add_test(NAME guest_wifi_lifecycle_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/guest_wifi_lifecycle_test.py ${CMAKE_CXX_COMPILER})
+add_test(NAME webhook_log_secrets_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/webhook_log_secrets_test.py ${CMAKE_CXX_COMPILER})
 
 add_executable(wifi_qr_codec_test wifi_qr_codec_test.cpp)
 target_compile_features(wifi_qr_codec_test PRIVATE cxx_std_17)

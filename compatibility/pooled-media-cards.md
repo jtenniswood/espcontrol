@@ -1,8 +1,10 @@
 # Pooled media cards
 
 This part of #1825 supplies the common icon/label views for Play/Pause, Previous,
-Next, Playlist, Position and Now Playing. It remains unselected in production. Other media modes reject
-preparation until their views, modal resources and image ownership are ported.
+Next, Playlist, Position, Now Playing, Volume and All Controls. It remains
+unselected in production. Cover artwork has its own
+[adapter](pooled-cover-artwork-cards.md). Speaker groups and real control-panel
+ownership still require their ports. Unsupported active modes reject preparation.
 There is no change to saved configuration or navigation depth.
 
 The shared entity graph owns raw state. These views create no card contexts or
@@ -177,3 +179,35 @@ the source is usable (or its state is not yet known), consolidates with other
 refreshes and is cleared before external dispatch. Preparation/activation never
 start network work, and idle sources retain the pending request until playback
 returns.
+
+
+Volume and All Controls reuse the common number/icon/label bank. Volume remains a
+numeric button requiring its dedicated volume-panel hook. All Controls keeps its
+icon/volume-number choice, default status label, explicit configured label and
+playing highlight, and requires the media-control hook. Missing hooks or the
+shared media owner reject preparation. Neither card creates an inline slider or
+a per-card modal context. The normal V1 reader canonicalizes an empty volume label
+to translated Volume before dependency enumeration, matching existing parsing.
+
+The graph supplies volume and capability values without retaining another copy.
+Absolute controls clamp their displayed value to the configured maximum; step
+and read-only controls display the reported percentage. Non-finite values stay
+unknown, finite extremes clamp before integer conversion, and only the relevant
+bits are extracted from a wide capability mask. Cache exhaustion is distinguished
+from an unknown capability and prevents an absolute-volume preview.
+
+A panel may pass an accepted absolute-volume attempt to `preview_volume` with its
+original full binding token. The card shows that bounded target for the existing
+1.5-second acknowledgement window. A matching report, timeout, capability change,
+unavailable source, disconnect, navigation, takeover or configuration replacement
+retires it. Preview changes no HA state and sends no service call. Media panels
+must validate and dispatch their actions independently; those adapters and scene
+wiring remain unfinished. The scene must request a consolidated fresh snapshot
+when configuration introduces dependencies already registered by another owner;
+these card readers neither replay HA state nor create subscriptions on navigation.
+
+The native card test exercises modal hooks, numeric/icon/status options, late
+clicks, delayed acknowledgements, reconnect/replacement, reused sensor-container
+alignment and 1,000 navigation cycles. Capturing that original alignment adds
+fixed per-shell storage and preinstalled style properties. Include it in device
+measurements; retained host counters do not establish a lower device heap peak.
