@@ -90,7 +90,7 @@ struct BasicCardDefinition {
   uint32_t off_color{0},on_color{0};
   uint8_t precision{0};
   bool custom_off{false},custom_on{false},theme_active{false},active_color{false},large_numbers{false};
-  bool presence{false},push_feedback{false};
+  bool presence{false}, push_feedback{false}, explicit_large{false};
 };
 // Decoded mapping labels/time units are copied once into preparation storage.
 class BasicCardTextSink {

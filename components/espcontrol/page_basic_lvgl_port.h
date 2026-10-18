@@ -8,6 +8,7 @@
 #include <new>
 
 #include "../artwork_image/image_pipeline_policy.h"
+#include "basic_number_layout.h"
 #include "bounded_display_text.h"
 #include "button_grid_order_parser.h"
 #include "button_grid_slider_contrast.h"
@@ -52,6 +53,7 @@ struct PageBasicTheme {
   bool compact_portrait{false};
   int media_artwork_width_percent{100};
   uint32_t disabled_text{0x707070};
+  int large_sensor_unit_offset_percent{0};
 };
 struct PageBasicActions {
   void *owner{nullptr};
@@ -181,6 +183,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       shells_[i].sensor_width = lv_obj_get_style_width(w.sensor_container, LV_PART_MAIN);
       shells_[i].value_width = lv_obj_get_style_width(w.value, LV_PART_MAIN);
       shells_[i].value_mode = lv_label_get_long_mode(w.value);
+      lv_obj_set_style_translate_y(w.unit, 0, LV_PART_MAIN);
       shells_[i].value_font =
           theme_.sensor_font ? theme_.sensor_font : lv_obj_get_style_text_font(w.value, LV_PART_MAIN);
       // Reserve these style properties before any visible-page binding.
@@ -663,6 +666,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     lv_obj_set_pos(w.sensor_container, s.sensor_x, s.sensor_y);
     lv_obj_set_width(w.sensor_container, s.sensor_width);
     lv_obj_set_width(w.value, s.value_width);
+    lv_obj_set_style_translate_y(w.unit, 0, LV_PART_MAIN);
     if (lv_label_get_long_mode(w.value) != s.value_mode) lv_label_set_long_mode(w.value, s.value_mode);
     if (w.slider) lv_slider_set_range(w.slider, 0, 100);
     s.token=token;s.pressed={};s.cell=cell;s.back=back;
@@ -873,12 +877,15 @@ class PageBasicLvglPort final:public PageRendererPort {
             ? clock_card_layout(definition.clock, definition.large_numbers && theme_.large_sensor_font,
                                 s.cell.row_span, s.cell.column_span)
             : ClockCardLayout{};
-    const bool large =
-        definition.kind == BasicCardKind::CLOCK
-            ? clock_layout.large
-            : definition.large_numbers && (definition.kind == BasicCardKind::CALENDAR
-                                               ? card_span_is_large(s.cell.row_span, s.cell.column_span)
-                                               : s.cell.column_span > 1 && s.cell.row_span > 1);
+    const bool large = definition.kind == BasicCardKind::CLOCK
+                           ? clock_layout.large
+                           : basic_number_large_font(definition, s.cell.row_span, s.cell.column_span);
+    const int unit_offset =
+        basic_number_unit_offset(large && theme_.large_sensor_font,
+                                 theme_.large_sensor_font ? theme_.large_sensor_font->line_height : 0,
+                                 theme_.large_sensor_unit_offset_percent);
+    if (lv_obj_get_style_translate_y(w.unit, LV_PART_MAIN) != unit_offset)
+      lv_obj_set_style_translate_y(w.unit, unit_offset, LV_PART_MAIN);
     if (definition.kind == BasicCardKind::CLOCK) {
       if (clock_layout.wide) {
         lv_obj_add_flag(w.label, LV_OBJ_FLAG_HIDDEN);

@@ -412,10 +412,10 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
   out.large_numbers =
       (out.kind == BasicCardKind::CLOCK || out.kind == BasicCardKind::CALENDAR ||
        out.kind == BasicCardKind::NUMBER || out.kind == BasicCardKind::DURATION ||
-       (out.kind == BasicCardKind::CLIMATE && out.climate.number != ClimateCardNumber::ICON) ||
-       out.folder_mode == BasicFolderMode::NUMBER ||
-       (out.kind == BasicCardKind::ACTION && out.action_display == BasicActionDisplay::NUMBER)) &&
+       (out.kind == BasicCardKind::CLIMATE && out.climate.number != ClimateCardNumber::ICON)) &&
       !large_numbers_explicitly_disabled(options);
+  out.explicit_large =
+      out.kind == BasicCardKind::CLIMATE && cfg_option_token_present(options, "large_numbers");
   const auto mode=cfg_option_value(options,"card_active_color");out.theme_active=mode=="theme";
   auto color=cfg_option_value(options,"card_off_color");
   if(!color.empty()){color=normalize_card_color_value(color);if(color.empty())return false;out.off_color=static_cast<uint32_t>(std::strtoul(color.c_str(),nullptr,16));out.custom_off=true;}

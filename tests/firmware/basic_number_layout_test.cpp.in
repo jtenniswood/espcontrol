@@ -1,0 +1,94 @@
+#include <cassert>
+#include <cstdio>
+
+#include "basic_number_layout.h"
+#include "button_grid_subpage_parser.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+struct Context {};
+static const int standard_font = 1, large_font = 2;
+struct FakeLabel {
+  const int* font{&standard_font};
+  int offset{0};
+};
+struct BtnSlot {
+  FakeLabel sensor, unit;
+  FakeLabel *sensor_lbl{&sensor}, *unit_lbl{&unit};
+};
+struct DisplayProfile {
+  bool font;
+  int percent;
+};
+constexpr int LV_PART_MAIN = 0;
+bool sensor_driver_matches(const Context&) {
+  return true;
+}
+bool sensor_driver_is_local(const ParsedCfg& cfg, const Context&) {
+  return cfg.sensor == "local";
+}
+bool sensor_driver_is_text(const ParsedCfg& cfg, const Context&) {
+  return cfg.precision == "text";
+}
+bool climate_control_driver_matches(const Context&) {
+  return true;
+}
+const int* display_sensor_font(const DisplayProfile&) {
+  return &standard_font;
+}
+const int* display_large_sensor_font(const DisplayProfile& display) {
+  return display.font ? &large_font : nullptr;
+}
+int display_large_sensor_unit_offset_percent(const DisplayProfile& display) {
+  return display.percent;
+}
+void lv_obj_set_style_text_font(FakeLabel* label, const int* font, int) {
+  label->font = font;
+}
+void lv_obj_set_style_translate_y(FakeLabel* label, int offset, int) {
+  label->offset = offset;
+}
+bool large_number_square_card_layout(int rows, int cols) {
+  return card_span_is_large(rows, cols);
+}
+bool card_large_numbers_active_for_layout(const ParsedCfg& cfg, int rows, int cols) {
+  return card_large_numbers_supported(cfg) && !card_large_numbers_disabled(cfg) &&
+         (large_number_square_card_layout(rows, cols) || card_large_numbers_enabled(cfg));
+}
+void apply_large_sensor_number_style(BtnSlot& slot, const int* font, int percent) {
+  slot.sensor.font = font;
+  slot.unit.offset = 28 * percent / 100;
+}
+void apply_standard_sensor_number_style(BtnSlot& slot, const DisplayProfile&) {
+  slot.sensor.font = &standard_font;
+  slot.unit.offset = 0;
+}
+// @legacy-number-layout
+int main() {
+  size_t checked = 0;
+  for (const auto* type : {"sensor", "climate"})
+    for (const auto* precision : {"1", "time"})
+      for (const auto* options : {"", "large_numbers", "large_numbers=off"})
+        for (int rows = 1; rows <= 5; ++rows)
+          for (int cols = 1; cols <= 5; ++cols)
+            for (bool font : {false, true})
+              for (int percent : {-25, 0, 30}) {
+                const auto cfg = parse_cfg(std::string("climate.room;Room;Auto;Auto;sensor.temp;C;") + type +
+                                           ";" + precision + ";" + options);
+                const bool climate = std::string(type) == "climate";
+                BtnSlot legacy;
+                const DisplayProfile display{font, percent};
+                assert(climate ? climate_control_driver_refresh_layout(legacy, cfg, {}, display, rows, cols)
+                               : sensor_driver_refresh_layout(legacy, cfg, {}, display, rows, cols));
+                BasicCardDefinition card;
+                card.kind = climate                            ? BasicCardKind::CLIMATE
+                            : std::string(precision) == "time" ? BasicCardKind::DURATION
+                                                               : BasicCardKind::NUMBER;
+                card.large_numbers = !card_large_numbers_disabled(cfg);
+                card.explicit_large = climate && card_large_numbers_enabled(cfg);
+                const bool large = font && basic_number_large_font(card, rows, cols);
+                assert(large == (legacy.sensor.font == &large_font));
+                assert(basic_number_unit_offset(large, 28, percent) == legacy.unit.offset);
+                ++checked;
+              }
+  std::printf("numeric legacy font/unit parity: %zu cases\n", checked);
+}
