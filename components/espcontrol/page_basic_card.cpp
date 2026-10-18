@@ -250,6 +250,14 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     out.kind=basic_card_is_forecast(store,id)?BasicCardKind::FORECAST:BasicCardKind::WEATHER;
     out.forecast_view=precision=="today"?weather::View::TODAY:precision=="tomorrow"||type=="weather_forecast"?weather::View::TOMORROW:weather::View::DAILY;out.label={};out.sensor={};out.unit={};
     out.icon=out.icon_on="Weather Cloudy";
+  } else if (type == "clock" || type == "timezone") {
+    out.kind = BasicCardKind::CLOCK;
+    out.clock = {type == "timezone", cfg_option_token_present(options, "large_numbers"),
+                 cfg_option_token_present(options, "center_clock")};
+    out.sensor = {};
+    out.unit = {};
+    out.icon = out.icon_on = "";
+    if (!out.clock.show_label) out.label = {};
   } else if (type == "calendar") {
     out.kind = BasicCardKind::CALENDAR;
     out.calendar_time = precision == "datetime";
@@ -402,8 +410,8 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
   if(out.kind!=BasicCardKind::ACTION)out.precision=static_cast<uint8_t>(parse_precision(std::string(precision)));
   out.climate.precision=out.precision;
   out.large_numbers =
-      (out.kind == BasicCardKind::CALENDAR || out.kind == BasicCardKind::NUMBER ||
-       out.kind == BasicCardKind::DURATION ||
+      (out.kind == BasicCardKind::CLOCK || out.kind == BasicCardKind::CALENDAR ||
+       out.kind == BasicCardKind::NUMBER || out.kind == BasicCardKind::DURATION ||
        (out.kind == BasicCardKind::CLIMATE && out.climate.number != ClimateCardNumber::ICON) ||
        out.folder_mode == BasicFolderMode::NUMBER ||
        (out.kind == BasicCardKind::ACTION && out.action_display == BasicActionDisplay::NUMBER)) &&
@@ -570,13 +578,16 @@ PageAccessCardSnapshot read_basic_access(const BasicCardDefinition& card, Config
                     !trim(primary.value.substr(0, HA_SHORT_STATE_MAX_LEN)).empty());
   return result;
 }
-BasicCardState read_basic_card(
-    const BasicCardDefinition& card, ConfigurationHandle handle, PageEntityStateRuntime& state,
-    int duration_components, std::string_view temperature_unit, PageCardTranslate translate,
-    PageMediaStateRuntime* media_owner, PageLocalSensorRuntime* local, PageLocalRelayRuntime* relay,
-    PageFanStatusRuntime* fan_status, PagePercentSliderRuntime* percent_slider,
-    PageNumberSliderRuntime* number_slider, PageLightTemperatureRuntime* temperature, PageTimerRuntime* timer,
-    PageCoverToggleRuntime* cover_toggle, PageAccessStateRuntime* access, PageCalendarRuntime* calendar) {
+BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHandle handle,
+                               PageEntityStateRuntime& state, int duration_components,
+                               std::string_view temperature_unit, PageCardTranslate translate,
+                               PageMediaStateRuntime* media_owner, PageLocalSensorRuntime* local,
+                               PageLocalRelayRuntime* relay, PageFanStatusRuntime* fan_status,
+                               PagePercentSliderRuntime* percent_slider,
+                               PageNumberSliderRuntime* number_slider,
+                               PageLightTemperatureRuntime* temperature, PageTimerRuntime* timer,
+                               PageCoverToggleRuntime* cover_toggle, PageAccessStateRuntime* access,
+                               PageCalendarRuntime* calendar, PageTimezoneRuntime* timezone) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
   if (card.kind == BasicCardKind::PERCENT_SLIDER) {
@@ -592,6 +603,15 @@ BasicCardState read_basic_card(
       if (name.status == PageEntityStatus::AVAILABLE)
         result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
     }
+    return result;
+  }
+  if (card.kind == BasicCardKind::CLOCK) {
+    const auto text = format_clock_card(timezone ? timezone->read(handle) : PageTimezoneSnapshot{},
+                                        card.clock.show_label, card.label, translate);
+    result.numeric = true;
+    std::memcpy(result.number, text.value, sizeof(text.value));
+    result.label = text.label;
+    result.clock_city_label = text.city;
     return result;
   }
   if (card.kind == BasicCardKind::CALENDAR) {

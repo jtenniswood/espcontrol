@@ -108,7 +108,7 @@ class PageBasicLvglPort final:public PageRendererPort {
                     PageNumberSliderRuntime* number_slider = nullptr,
                     PageLightTemperatureRuntime* temperature = nullptr, PageTimerRuntime* timer = nullptr,
                     PageCoverToggleRuntime* cover_toggle = nullptr, PageAccessStateRuntime* access = nullptr,
-                    PageCalendarRuntime* calendar = nullptr)
+                    PageCalendarRuntime* calendar = nullptr, PageTimezoneRuntime* timezone = nullptr)
       : allocator_(allocator),
         state_(state),
         widgets_(widgets),
@@ -127,7 +127,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         timer_(timer),
         cover_toggle_(cover_toggle),
         access_(access),
-        calendar_(calendar) {
+        calendar_(calendar),
+        timezone_(timezone) {
     for(size_t i=0;i<Slots;++i){shells_[i].port=this;shells_[i].index=i;}
   }
   ~PageBasicLvglPort()override {
@@ -323,6 +324,12 @@ class PageBasicLvglPort final:public PageRendererPort {
         BasicCardDefinition view;
         if (!prepare_basic_card(store, card, view, &strings, relay_)) return false;
         if (view.kind == BasicCardKind::COVER_COMMAND && !actions_.cover_command) return false;
+        if (view.kind == BasicCardKind::CLOCK) {
+          if (!timezone_) return false;
+          const auto* key = theme_.translate ? theme_.translate("World Clock") : nullptr;
+          label_capacity = std::max({label_capacity, PageTimezoneRuntime::ACTIVE_OPTION_CAPACITY,
+                                     view.entity.size() + 1, std::strlen(key ? key : "World Clock") + 1});
+        }
         if (view.kind == BasicCardKind::CALENDAR) {
           if (!calendar_) return false;
           label_capacity = std::max<size_t>(label_capacity, 32);
@@ -549,8 +556,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         }
         const auto &d=view.definition;
         // Metadata titles reuse the icon label but never display a glyph.
-        if (d.kind == BasicCardKind::CALENDAR || d.kind == BasicCardKind::TIMER ||
-            d.kind == BasicCardKind::MEDIA_NOW_PLAYING ||
+        if (d.kind == BasicCardKind::CLOCK || d.kind == BasicCardKind::CALENDAR ||
+            d.kind == BasicCardKind::TIMER || d.kind == BasicCardKind::MEDIA_NOW_PLAYING ||
             (d.kind == BasicCardKind::MEDIA_CONTROL && d.media.volume_number)) {
           view.off = view.on = "";
           continue;
@@ -738,7 +745,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       value = read_basic_card(definition, {token.configuration, token.card}, state_,
                               s.cell.column_span > 1 ? 2 : 1, theme_.temperature_unit, theme_.translate,
                               media_, local_, relay_, fan_status_, percent_slider_, number_slider_,
-                              temperature_, timer_, cover_toggle_, access_, calendar_);
+                              temperature_, timer_, cover_toggle_, access_, calendar_, timezone_);
       if(group_card(s))group_feedback(s,value);
       if (timer_card(s)) timer_feedback(s, value);
       if(definition.folder_mode==BasicFolderMode::CHILDREN) {
@@ -763,7 +770,8 @@ class PageBasicLvglPort final:public PageRendererPort {
       if(definition.kind==BasicCardKind::FOLDER&&definition.folder_mode==BasicFolderMode::NUMBER&&value.label.empty())value.label=theme_.folder_label;
       if(definition.kind==BasicCardKind::EMPTY&&value.label.empty())value.label=theme_.empty_label;
       checked=value.on&&(definition.kind==BasicCardKind::TOGGLE||definition.active_color);
-      number = definition.kind == BasicCardKind::CALENDAR || definition.kind == BasicCardKind::TIMER ||
+      number = definition.kind == BasicCardKind::CLOCK || definition.kind == BasicCardKind::CALENDAR ||
+               definition.kind == BasicCardKind::TIMER ||
                (definition.kind == BasicCardKind::NUMBER_SLIDER && value.numeric) ||
                (definition.kind == BasicCardKind::CLIMATE &&
                 definition.climate.number != ClimateCardNumber::ICON) ||
@@ -832,7 +840,11 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (definition.kind == BasicCardKind::PERCENT_SLIDER) percent_feedback(s, value);
     if (definition.kind == BasicCardKind::NUMBER_SLIDER) number_feedback(s, value);
     if (definition.kind == BasicCardKind::LIGHT_TEMPERATURE) temperature_feedback(s, value);
-    if(!now_playing){lv_obj_clear_flag(w.label,LV_OBJ_FLAG_HIDDEN);write(w.label,s.label,active_.label_capacity,value.formatted_label?std::string_view(value.text):value.label);}
+    if (!now_playing) {
+      lv_obj_clear_flag(w.label, LV_OBJ_FLAG_HIDDEN);
+      write(w.label, s.label, active_.label_capacity,
+            value.formatted_label ? std::string_view(value.text) : value.label, value.clock_city_label);
+    }
     for(const auto selector:{static_cast<lv_style_selector_t>(LV_PART_MAIN),
          static_cast<lv_style_selector_t>(LV_PART_MAIN)|static_cast<lv_style_selector_t>(LV_STATE_CHECKED)})
       lv_obj_set_style_transition(w.button,definition.push_feedback?page_basic_push_transition():page_basic_no_transition(),selector);
@@ -856,17 +868,32 @@ class PageBasicLvglPort final:public PageRendererPort {
       if (lv_label_get_long_mode(w.value) != LV_LABEL_LONG_DOT)
         lv_label_set_long_mode(w.value, LV_LABEL_LONG_DOT);
     }
+    const auto clock_layout =
+        definition.kind == BasicCardKind::CLOCK
+            ? clock_card_layout(definition.clock, definition.large_numbers && theme_.large_sensor_font,
+                                s.cell.row_span, s.cell.column_span)
+            : ClockCardLayout{};
+    const bool large =
+        definition.kind == BasicCardKind::CLOCK
+            ? clock_layout.large
+            : definition.large_numbers && (definition.kind == BasicCardKind::CALENDAR
+                                               ? card_span_is_large(s.cell.row_span, s.cell.column_span)
+                                               : s.cell.column_span > 1 && s.cell.row_span > 1);
+    if (definition.kind == BasicCardKind::CLOCK) {
+      if (clock_layout.wide) {
+        lv_obj_add_flag(w.label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_align(w.sensor_container, clock_layout.center ? LV_ALIGN_CENTER : LV_ALIGN_LEFT_MID, 0, 0);
+      } else {
+        lv_obj_set_align(w.sensor_container, s.sensor_align);
+        lv_obj_set_pos(w.sensor_container, s.sensor_x, s.sensor_y);
+      }
+    }
     const auto font = option ? (theme_.option_select_font ? theme_.option_select_font
                                 : theme_.media_title_font ? theme_.media_title_font
                                                           : s.label_layout.font)
-                      : definition.large_numbers &&
-                              (definition.kind == BasicCardKind::CALENDAR
-                                   ? card_span_is_large(s.cell.row_span, s.cell.column_span)
-                                   : s.cell.column_span > 1 && s.cell.row_span > 1) &&
-                              theme_.large_sensor_font
-                          ? theme_.large_sensor_font
-                      : theme_.sensor_font ? theme_.sensor_font
-                                           : s.value_font;
+                      : large && theme_.large_sensor_font ? theme_.large_sensor_font
+                      : theme_.sensor_font                ? theme_.sensor_font
+                                                          : s.value_font;
     if(font&&s.painted_font!=font){lv_obj_set_style_text_font(w.value,font,LV_PART_MAIN);s.painted_font=font;}
     if(checked!=lv_obj_has_state(w.button,LV_STATE_CHECKED)){if(checked)lv_obj_add_state(w.button,LV_STATE_CHECKED);else lv_obj_clear_state(w.button,LV_STATE_CHECKED);}
     const auto correct=[this](uint32_t raw){return correct_display_color(raw,theme_.red_percent,theme_.green_percent,theme_.blue_percent);};
@@ -877,8 +904,9 @@ class PageBasicLvglPort final:public PageRendererPort {
         : (definition.kind == BasicCardKind::LOCAL_NUMBER || definition.kind == BasicCardKind::LOCAL_TEXT ||
            definition.kind == BasicCardKind::OPTION_SELECT || definition.kind == BasicCardKind::NUMBER ||
            definition.kind == BasicCardKind::TEXT || definition.kind == BasicCardKind::DURATION ||
-           definition.kind == BasicCardKind::CALENDAR || definition.kind == BasicCardKind::STATUS ||
-           definition.kind == BasicCardKind::WEATHER || definition.kind == BasicCardKind::FORECAST)
+           definition.kind == BasicCardKind::CLOCK || definition.kind == BasicCardKind::CALENDAR ||
+           definition.kind == BasicCardKind::STATUS || definition.kind == BasicCardKind::WEATHER ||
+           definition.kind == BasicCardKind::FORECAST)
             ? theme_.sensor_surface
             : theme_.surface;
     if(checked)background=definition.custom_on?correct(definition.on_color):definition.custom_off&&!definition.theme_active?correct(active_card_color(definition.off_color)):theme_.active;
@@ -930,6 +958,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (cover_toggle_) seen_cover_toggle_ = cover_toggle_->revision();
     if (access_) seen_access_ = access_->revision();
     if (calendar_) seen_calendar_ = calendar_->revision();
+    if (timezone_) seen_timezone_ = timezone_->revision();
     seen_state_ = state_.revision();
     if (local_) seen_local_ = local_->revision();
     if (relay_) seen_relay_ = relay_->revision();
@@ -1003,7 +1032,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         if (shell.pending_target >= 0 && !timer_card(shell) && !group_card(shell) &&
             static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= pending_timeout(shell))
           return true;
-    return (calendar_ && calendar_->revision() != seen_calendar_) ||
+    return (timezone_ && timezone_->revision() != seen_timezone_) ||
+           (calendar_ && calendar_->revision() != seen_calendar_) ||
            (access_ && access_->revision() != seen_access_) ||
            (cover_toggle_ && cover_toggle_->revision() != seen_cover_toggle_) ||
            (timer_ && timer_->revision() != seen_timer_) ||
@@ -1151,8 +1181,12 @@ class PageBasicLvglPort final:public PageRendererPort {
   static Prepared *prepared(const Arena &arena){return static_cast<Prepared *>(arena.arena);}
   void release(Arena &arena){if(arena.arena)allocator_.release(arena.arena,arena.bytes);arena={};}
   void detach_text(){for(const auto &w:widgets_)if(w.button)for(auto *label:{w.icon,w.label,w.value,w.unit})if(label)lv_label_set_text_static(label,"");}
-  void write(lv_obj_t *label,char *buffer,size_t capacity,std::string_view text) {
-    bool changed=false;const auto result=copy_display_text(buffer,capacity,text,SIZE_MAX,&changed);memory_.text_truncations+=result.truncated;memory_.invalid_text+=result.invalid;
+  void write(lv_obj_t* label, char* buffer, size_t capacity, std::string_view text,
+             bool city_spaces = false) {
+    bool changed = false;
+    const auto result = copy_display_text(buffer, capacity, text, SIZE_MAX, &changed, city_spaces);
+    memory_.text_truncations += result.truncated;
+    memory_.invalid_text += result.invalid;
     if(changed||lv_label_get_text(label)!=buffer)lv_label_set_text_static(label,buffer);
   }
   static void contrast_event(lv_event_t* event) {
@@ -2192,14 +2226,16 @@ class PageBasicLvglPort final:public PageRendererPort {
   PageCoverToggleRuntime* cover_toggle_{nullptr};
   PageAccessStateRuntime* access_{nullptr};
   PageCalendarRuntime* calendar_{nullptr};
+  PageTimezoneRuntime* timezone_{nullptr};
   std::array<Shell, Slots> shells_{};
   Arena active_, staged_;
   PageStore store_;
   bool initialized_{false}, media_layout_dirty_{false}, media_finishing_{false};
   size_t callbacks_{0};
-  uint64_t seen_calendar_{0}, seen_access_{0}, seen_cover_toggle_{0}, seen_timer_{0}, seen_temperature_{0},
-      seen_number_slider_{0}, seen_percent_slider_{0}, seen_fan_status_{0}, seen_relay_{0}, seen_local_{0},
-      seen_state_{0}, seen_theme_{0}, seen_forecast_{0}, seen_media_{0}, seen_artwork_{0};
+  uint64_t seen_timezone_{0}, seen_calendar_{0}, seen_access_{0}, seen_cover_toggle_{0}, seen_timer_{0},
+      seen_temperature_{0}, seen_number_slider_{0}, seen_percent_slider_{0}, seen_fan_status_{0},
+      seen_relay_{0}, seen_local_{0}, seen_state_{0}, seen_theme_{0}, seen_forecast_{0}, seen_media_{0},
+      seen_artwork_{0};
   PageBasicMemory memory_;
 };
 }  // namespace espcontrol::pages

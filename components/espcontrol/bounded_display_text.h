@@ -11,14 +11,19 @@ struct DisplayTextResult { size_t bytes{0}; bool truncated{false}, invalid{false
 // UTF-8 at the byte limit; apply the same S-with-dot-below display fallback as
 // normalize_display_text without constructing a temporary std::string. When
 // changed is supplied, the caller must initialize every byte of the buffer.
-inline DisplayTextResult copy_display_text(char *output,size_t capacity,std::string_view input,
-                                          size_t byte_limit=SIZE_MAX,bool *changed=nullptr) {
+inline DisplayTextResult copy_display_text(char* output, size_t capacity, std::string_view input,
+                                           size_t byte_limit = SIZE_MAX, bool* changed = nullptr,
+                                           bool city_spaces = false) {
   DisplayTextResult result;
   if(changed)*changed=false;
   if(output==nullptr || capacity==0){result.truncated=!input.empty();return result;}
   const size_t limit=input.size()<byte_limit?input.size():byte_limit;
   result.truncated=limit<input.size();
-  auto append=[&](char ch){if(changed&&output[result.bytes]!=ch)*changed=true;output[result.bytes++]=ch;};
+  auto append = [&](char ch) {
+    if (city_spaces && ch == '_') ch = ' ';
+    if (changed && output[result.bytes] != ch) *changed = true;
+    output[result.bytes++] = ch;
+  };
   for(size_t offset=0;offset<limit;) {
     const auto lead=static_cast<unsigned char>(input[offset]);
     size_t length=lead<0x80?1:lead>=0xC2&&lead<=0xDF?2:lead>=0xE0&&lead<=0xEF?3:lead>=0xF0&&lead<=0xF4?4:0;
