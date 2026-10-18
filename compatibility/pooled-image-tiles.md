@@ -3,8 +3,9 @@
 This stage of #1825 adds a camera/static-image policy owner over the existing
 [shared image leases](pooled-image-ownership.md). It does not select the pooled
 renderer in production, change saved configuration or enable nested pages.
-The image view, expanded modal, AppScene integration and physical memory/image
-qualification are still required.
+The [image tile view](pooled-image-tile-views.md) now adds bounded presentation;
+the expanded modal, AppScene integration and physical memory/image qualification
+are still required.
 
 `PageImageTileRuntime<N>` keeps one fixed policy record per downloader: two on
 S3, six on P4, sharing the same `PageImageRuntime<N>` as media cover art. The

@@ -16,13 +16,16 @@ struct PageCoverArtFrame {
   uint32_t tint_color{0};
   int32_t overlay_width{0}, overlay_height{0};
   bool tint{false};
+  bool fit{false};
 
   int32_t scale(lv_obj_t* surface) const {
     if (!surface || !source || !source->data || source->header.w == 0 || source->header.h == 0) return 0;
     const int32_t width = lv_obj_get_width(surface), height = lv_obj_get_height(surface);
     if (width <= 0 || height <= 0) return 0;
-    const int64_t result = std::max(static_cast<int64_t>(width) * LV_SCALE_NONE / source->header.w,
-                                    static_cast<int64_t>(height) * LV_SCALE_NONE / source->header.h);
+    const int64_t scale_x = static_cast<int64_t>(width) * LV_SCALE_NONE / source->header.w;
+    const int64_t scale_y = static_cast<int64_t>(height) * LV_SCALE_NONE / source->header.h;
+    const int64_t result =
+        fit ? std::max<int64_t>(1, std::min(scale_x, scale_y)) : std::max(scale_x, scale_y);
     // LVGL's image transform bounds use a 16-bit scale. Real decoded artwork
     // is already sized for its card; reject an invalid extreme transform.
     return result > 0 && result <= UINT16_MAX ? static_cast<int32_t>(result) : 0;
@@ -84,7 +87,8 @@ struct PageCoverArtFrame {
     overlay.bg_color = lv_color_mix(lv_color_make(recolor.red, recolor.green, recolor.blue),
                                     lv_color_hex(tint_color), recolor.alpha);
     const auto opacity = lv_obj_get_style_opa_recursive(surface, LV_PART_MAIN);
-    overlay.bg_opa = opacity < LV_OPA_MAX ? LV_OPA_MIX2(LV_OPA_60, opacity) : LV_OPA_60;
+    overlay.bg_opa =
+        opacity < LV_OPA_MAX ? LV_OPA_MIX2(LV_OPA_60, opacity) : static_cast<lv_opa_t>(LV_OPA_60);
     lv_draw_rect(layer, &overlay, &area);
   }
 };

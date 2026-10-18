@@ -4,6 +4,7 @@
 #include "cleaning_card_policy.h"
 #include "clock_card_view.h"
 #include "cover_command_policy.h"
+#include "image_card_view.h"
 #include "page_access_state_runtime.h"
 #include "page_calendar_runtime.h"
 #include "page_climate_card.h"
@@ -62,7 +63,8 @@ enum class BasicCardKind : uint8_t {
   CLEANING,
   CALENDAR,
   CLOCK,
-  ALARM
+  ALARM,
+  IMAGE
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode : uint8_t { NONE, ENTITY, CLIMATE, MOWER, TIMER, CHILDREN, NUMBER, TEXT };
@@ -84,11 +86,17 @@ struct BasicCardDefinition {
     bool calendar_time;
     ClockCardOptions clock;
     AlarmCardOptions alarm;
+    BasicImageOptions image;
   };
   BasicActionDisplay action_display{BasicActionDisplay::NONE};
   std::string_view entity,sensor,label,unit,icon,icon_on;
   const char *default_label{nullptr};
-  std::string_view text_input,text_output,text_input_2,text_output_2,time_unit;
+  std::string_view text_input, text_output, text_input_2, text_output_2;
+  // Only one applies to a card: decoded duration unit or image activity entity.
+  std::string_view time_unit;
+  std::string_view image_trigger() const {
+    return time_unit;
+  }
   bool text_overlay{false};
   uint32_t off_color{0},on_color{0};
   uint8_t precision{0};

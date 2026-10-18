@@ -23,6 +23,7 @@
 #include "page_cover_art_frame.h"
 #include "page_cover_art_view.h"
 #include "page_forecast_frame.h"
+#include "page_image_tile_view.h"
 #include "page_media_group.h"
 #include "page_media_label.h"
 #include "weather_condition_maps_generated.h"
@@ -55,6 +56,7 @@ struct PageBasicTheme {
   uint32_t disabled_text{0x707070};
   int large_sensor_unit_offset_percent{0};
   uint32_t alarm_surface{0x212121};
+  uint32_t image_loading_surface{0x212121};
 };
 struct PageBasicActions {
   void *owner{nullptr};
@@ -82,6 +84,9 @@ struct PageBasicActions {
   void (*access)(void*, PageBindingToken, PageAccessActionSnapshot){nullptr};
   void (*cleaning)(void*, PageBindingToken, const char* service){nullptr};
   void (*alarm)(void*, PageBindingToken){nullptr};
+  // Read-only full identity remains valid during bind/paint. Never use this for input.
+  bool (*bound)(void*, PageBindingToken){nullptr};
+  void (*image)(void*, PageBindingToken){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -113,7 +118,7 @@ class PageBasicLvglPort final:public PageRendererPort {
                     PageLightTemperatureRuntime* temperature = nullptr, PageTimerRuntime* timer = nullptr,
                     PageCoverToggleRuntime* cover_toggle = nullptr, PageAccessStateRuntime* access = nullptr,
                     PageCalendarRuntime* calendar = nullptr, PageTimezoneRuntime* timezone = nullptr,
-                    PageAlarmStateRuntime* alarm = nullptr)
+                    PageAlarmStateRuntime* alarm = nullptr, PageImageTileView* image_tiles = nullptr)
       : allocator_(allocator),
         state_(state),
         widgets_(widgets),
@@ -134,7 +139,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         access_(access),
         calendar_(calendar),
         timezone_(timezone),
-        alarm_(alarm) {
+        alarm_(alarm),
+        image_tiles_(image_tiles) {
     for(size_t i=0;i<Slots;++i){shells_[i].port=this;shells_[i].index=i;}
   }
   ~PageBasicLvglPort()override {
@@ -264,6 +270,7 @@ class PageBasicLvglPort final:public PageRendererPort {
         lv_obj_set_style_pad_all(w.forecast,0,LV_PART_MAIN);lv_obj_set_style_shadow_width(w.forecast,0,LV_PART_MAIN);
         lv_obj_set_size(w.forecast,lv_pct(100),lv_pct(100));lv_obj_align(w.forecast,LV_ALIGN_TOP_LEFT,0,0);
         lv_obj_set_style_clip_corner(w.button,true,LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(w.forecast, LV_OPA_TRANSP, LV_PART_MAIN);
         lv_obj_set_style_radius(w.forecast, 0, LV_PART_MAIN);
         lv_obj_set_style_clip_corner(w.forecast, false, LV_PART_MAIN);
         if (!lv_obj_add_event_cb(w.forecast, forecast_event, LV_EVENT_ALL, &shells_[i])) return false;
@@ -336,6 +343,16 @@ class PageBasicLvglPort final:public PageRendererPort {
       for(CardId card=p->first_card;card<p->first_card+p->card_count;++card) {
         BasicCardDefinition view;
         if (!prepare_basic_card(store, card, view, &strings, relay_)) return false;
+        if (view.kind == BasicCardKind::IMAGE) {
+          if (!image_tiles_ || !image_tiles_->ready() || !actions_.image || !actions_.bound) return false;
+          for (const auto& w : widgets_)
+            if (!w.forecast) return false;
+          label_capacity = std::max({label_capacity, view.entity.size() + 1, size_t{65}});
+          for (const auto* key : {"Loading", "Unavailable", "Configure", "Too many"}) {
+            const auto* caption = theme_.translate ? theme_.translate(key) : nullptr;
+            label_capacity = std::max(label_capacity, std::strlen(caption ? caption : key) + 1);
+          }
+        }
         if (view.kind == BasicCardKind::COVER_COMMAND && !actions_.cover_command) return false;
         if (view.kind == BasicCardKind::ALARM) {
           if (!alarm_ || !actions_.alarm) return false;
@@ -444,7 +461,7 @@ class PageBasicLvglPort final:public PageRendererPort {
              (view.media.kind == MediaActionKind::VOLUME ? !actions_.media_volume : !actions_.media_control)))
           return false;
         if (view.kind == BasicCardKind::MEDIA_COVER_ART) {
-          if (!media_ || !artwork_ || !artwork_->ready() || !actions_.media_control ||
+          if (!media_ || !artwork_ || !artwork_->ready() || !actions_.media_control || !actions_.bound ||
               !theme_.media_title_font || !theme_.media_title_font->line_height)
             return false;
           for (const auto& w : widgets_)
@@ -618,6 +635,9 @@ class PageBasicLvglPort final:public PageRendererPort {
         const auto fallback=d.kind==BasicCardKind::CLIMATE?std::string_view("Thermostat"):d.kind==BasicCardKind::FOLDER&&d.entity.empty()?std::string_view("Folder"):std::string_view("Auto");
         view.off=actions_.icon(actions_.owner,d.icon.empty()||d.icon=="Auto"?fallback:d.icon,domain);
         view.on=d.icon_on.empty()||d.icon_on=="Auto"?view.off:actions_.icon(actions_.owner,d.icon_on,domain);
+        if (d.kind == BasicCardKind::IMAGE &&
+            (!d.image.icon || page_image_entity_kind(d.entity) == PageImageEntityKind::UNSUPPORTED))
+          view.on = actions_.icon(actions_.owner, "Image Card Loading", {});
         if (d.kind == BasicCardKind::ACCESS && d.access.command && d.access.status) {
           const auto configured = store.field(*store.card(card), CardField::ICON);
           const auto initial = !configured.empty() && configured != "Auto" ? configured
@@ -732,6 +752,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       lv_obj_align(w.label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
     }
     if (w.forecast) {
+      lv_obj_set_style_bg_opa(w.forecast, LV_OPA_TRANSP, LV_PART_MAIN);
       lv_obj_set_style_radius(w.forecast, 0, LV_PART_MAIN);
       lv_obj_set_style_clip_corner(w.forecast, false, LV_PART_MAIN);
       lv_obj_set_size(w.forecast, lv_pct(100), lv_pct(100));
@@ -739,6 +760,17 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
     if (s.definition && s.definition->definition.kind == BasicCardKind::MEDIA_COVER_ART)
       artwork_->bind(token);
+    if (s.definition && s.definition->definition.kind == BasicCardKind::IMAGE) {
+      const auto& d = s.definition->definition;
+      image_tiles_->bind(token,
+                         {d.entity, d.image_trigger(), static_cast<camera::RefreshMode>(d.image.refresh),
+                          static_cast<uint32_t>(d.image.interval_seconds) * 1000, d.image.fit});
+      lv_label_set_long_mode(w.label, LV_LABEL_LONG_WRAP);
+      lv_obj_set_width(w.label, lv_pct(100));
+      lv_obj_set_height(w.label, LV_SIZE_CONTENT);
+      lv_obj_align(w.label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+      lv_obj_align(w.icon, LV_ALIGN_TOP_LEFT, 0, 0);
+    }
     s.frame=nullptr;
     if(s.definition&&s.definition->definition.kind==BasicCardKind::FORECAST) {
       for(size_t frame=0;frame<active_.frame_count&&!s.frame;++frame) {
@@ -759,6 +791,7 @@ class PageBasicLvglPort final:public PageRendererPort {
                                        s.definition->definition.kind == BasicCardKind::COVER_TOGGLE ||
                                        s.definition->definition.kind == BasicCardKind::ACCESS ||
                                        s.definition->definition.kind == BasicCardKind::ALARM ||
+                                       s.definition->definition.kind == BasicCardKind::IMAGE ||
                                        (s.definition->definition.kind == BasicCardKind::CLEANING &&
                                         s.definition->definition.cleaning.mode != cleaning::Mode::STATUS) ||
                                        s.definition->definition.kind == BasicCardKind::FOLDER ||
@@ -963,7 +996,7 @@ class PageBasicLvglPort final:public PageRendererPort {
            definition.kind == BasicCardKind::TEXT || definition.kind == BasicCardKind::DURATION ||
            definition.kind == BasicCardKind::CLOCK || definition.kind == BasicCardKind::CALENDAR ||
            definition.kind == BasicCardKind::STATUS || definition.kind == BasicCardKind::WEATHER ||
-           definition.kind == BasicCardKind::FORECAST)
+           definition.kind == BasicCardKind::FORECAST || definition.kind == BasicCardKind::IMAGE)
             ? theme_.sensor_surface
             : theme_.surface;
     if(checked)background=definition.custom_on?correct(definition.on_color):definition.custom_off&&!definition.theme_active?correct(active_card_color(definition.off_color)):theme_.active;
@@ -1043,6 +1076,8 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
     if(now_playing)media_layout_dirty_=true;
     if(definition.kind==BasicCardKind::FORECAST)update_forecast(s);
+    else if (definition.kind == BasicCardKind::IMAGE)
+      update_image(s, value);
     else if (w.forecast && definition.kind != BasicCardKind::MEDIA_COVER_ART)
       lv_obj_add_flag(w.forecast, LV_OBJ_FLAG_HIDDEN);
     if (!commit_seen) return;
@@ -1054,6 +1089,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (calendar_) seen_calendar_ = calendar_->revision();
     if (timezone_) seen_timezone_ = timezone_->revision();
     if (alarm_) seen_alarm_ = alarm_->revision();
+    if (image_tiles_) seen_image_tiles_ = image_tiles_->revision();
     seen_state_ = state_.revision();
     if (local_) seen_local_ = local_->revision();
     if (relay_) seen_relay_ = relay_->revision();
@@ -1132,6 +1168,7 @@ class PageBasicLvglPort final:public PageRendererPort {
            (timezone_ && timezone_->revision() != seen_timezone_) ||
            (calendar_ && calendar_->revision() != seen_calendar_) ||
            (access_ && access_->revision() != seen_access_) ||
+           (image_tiles_ && image_tiles_->revision() != seen_image_tiles_) ||
            (cover_toggle_ && cover_toggle_->revision() != seen_cover_toggle_) ||
            (timer_ && timer_->revision() != seen_timer_) ||
            (temperature_ && temperature_->revision() != seen_temperature_) ||
@@ -1965,6 +2002,8 @@ class PageBasicLvglPort final:public PageRendererPort {
     shell.cover_asset = 0;
     shell.media_idle = false;
     if (owned && artwork_) artwork_->unbind(token);
+    if (shell.definition && shell.definition->definition.kind == BasicCardKind::IMAGE && image_tiles_)
+      image_tiles_->unbind(token);
   }
   void update_cover(Shell& shell) {
     const auto& w = widgets_[shell.index];
@@ -2008,8 +2047,8 @@ class PageBasicLvglPort final:public PageRendererPort {
     const auto token = shell.token;
     const auto asset = shell.cover_asset;
     const auto valid = [&]() {
-      return same(token, shell.token) && asset && artwork_ && actions_.valid &&
-             actions_.valid(actions_.owner, token) && artwork_->surface(token).asset == asset;
+      return same(token, shell.token) && asset && artwork_ && actions_.bound &&
+             actions_.bound(actions_.owner, token) && artwork_->surface(token).asset == asset;
     };
     if (!valid()) return;
     auto frame = shell.cover;
@@ -2022,6 +2061,113 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
     if (frame.draw_image(surface, lv_event_get_layer(event)) && valid())
       frame.draw_tint(surface, lv_event_get_layer(event));
+  }
+  void update_image(Shell& shell, const BasicCardState& value) {
+    const auto& w = widgets_[shell.index];
+    const auto& d = shell.definition->definition;
+    const auto width = lv_obj_get_width(w.button), height = lv_obj_get_height(w.button);
+    shell.cover = {};
+    shell.cover_asset = 0;
+    if (width <= 0 || height <= 0 || width > UINT16_MAX || height > UINT16_MAX) return;
+    image_tiles_->size(shell.token, width, height, shell.background);
+    const auto surface = image_tiles_->surface(shell.token);
+    const bool ready =
+        surface.source && surface.policy.asset && surface.policy.status == PageImageTileStatus::READY;
+    // Reuse the image draw surface for the full loading background below the
+    // labels. It holds no image descriptor until policy readiness is current.
+    lv_obj_set_pos(w.forecast, -lv_obj_get_style_pad_left(w.button, LV_PART_MAIN),
+                   -lv_obj_get_style_pad_top(w.button, LV_PART_MAIN));
+    lv_obj_set_size(w.forecast, width, height);
+    lv_obj_set_style_radius(w.forecast, lv_obj_get_style_radius(w.button, LV_PART_MAIN), LV_PART_MAIN);
+    lv_obj_set_style_clip_corner(w.forecast, true, LV_PART_MAIN);
+    lv_obj_move_background(w.forecast);
+    if (ready) {
+      lv_obj_set_style_bg_opa(w.forecast, LV_OPA_TRANSP, LV_PART_MAIN);
+      shell.cover.source = surface.source;
+      shell.cover.fit = d.image.fit;
+      shell.cover_asset = surface.policy.asset;
+      lv_obj_move_background(w.forecast);
+      lv_obj_clear_flag(w.forecast, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_refresh_ext_draw_size(w.forecast);
+      lv_obj_invalidate(w.forecast);
+      write(w.label, shell.label, active_.label_capacity, value.label);
+      if (d.image.label)
+        lv_obj_clear_flag(w.label, LV_OBJ_FLAG_HIDDEN);
+      else
+        lv_obj_add_flag(w.label, LV_OBJ_FLAG_HIDDEN);
+      if (d.image.icon)
+        lv_obj_clear_flag(w.icon, LV_OBJ_FLAG_HIDDEN);
+      else
+        lv_obj_add_flag(w.icon, LV_OBJ_FLAG_HIDDEN);
+      for (auto* label : {w.icon, w.label})
+        lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
+    } else {
+      lv_obj_set_style_bg_color(w.forecast,
+                                lv_color_hex(d.custom_off ? shell.background : theme_.image_loading_surface),
+                                LV_PART_MAIN);
+      lv_obj_set_style_bg_opa(w.forecast, LV_OPA_COVER, LV_PART_MAIN);
+      lv_obj_clear_flag(w.forecast, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_refresh_ext_draw_size(w.forecast);
+      const auto* key = d.entity.empty()                                                       ? "Configure"
+                        : page_image_entity_kind(d.entity) == PageImageEntityKind::UNSUPPORTED ? "Unavailable"
+                        : !surface.policy.bound                                                ? "Too many"
+                        : surface.policy.status == PageImageTileStatus::LOADING ? "Loading"
+                                                                                : "Unavailable";
+      const auto* caption = theme_.translate ? theme_.translate(key) : nullptr;
+      write(w.label, shell.label, active_.label_capacity, caption ? caption : key);
+      lv_obj_clear_flag(w.label, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_clear_flag(w.icon, LV_OBJ_FLAG_HIDDEN);
+      if (std::strcmp(lv_label_get_text(w.icon), shell.definition->on) != 0)
+        lv_label_set_text_static(w.icon, shell.definition->on);
+      const auto color = d.custom_off ? display_text_color_for_bg(shell.background) : theme_.text;
+      for (auto* label : {w.icon, w.label})
+        lv_obj_set_style_text_color(label, lv_color_hex(color), LV_PART_MAIN);
+    }
+    lv_obj_add_flag(w.sensor_container, LV_OBJ_FLAG_HIDDEN);
+  }
+  void image_event(Shell& shell, lv_event_t* event) {
+    const auto code = lv_event_get_code(event);
+    if (code != LV_EVENT_DRAW_MAIN && code != LV_EVENT_REFR_EXT_DRAW_SIZE) return;
+    const auto token = shell.token;
+    const auto asset = shell.cover_asset;
+    const auto valid = [&] {
+      if (!same(token, shell.token) || !asset || !image_tiles_ || !actions_.bound ||
+          !actions_.bound(actions_.owner, token))
+        return false;
+      const auto current = image_tiles_->surface(token);
+      return current.policy.status == PageImageTileStatus::READY && current.policy.asset == asset &&
+             current.source;
+    };
+    if (!valid()) return;
+    auto frame = shell.cover;
+    frame.source = image_tiles_->surface(token).source;
+    auto* canvas = widgets_[shell.index].forecast;
+    if (code == LV_EVENT_REFR_EXT_DRAW_SIZE) {
+      auto* size = static_cast<int32_t*>(lv_event_get_param(event));
+      if (size) frame.extend_draw_size(canvas, *size);
+      return;
+    }
+    if (!frame.draw_image(canvas, lv_event_get_layer(event)) || !valid()) return;
+    if (!shell.definition->definition.image.label) return;
+    auto* label = widgets_[shell.index].label;
+    lv_area_t area;
+    lv_obj_get_coords(label, &area);
+    ++area.x1;
+    ++area.x2;
+    ++area.y1;
+    ++area.y2;
+    lv_draw_label_dsc_t shadow;
+    lv_draw_label_dsc_init(&shadow);
+    shadow.base.layer = lv_event_get_layer(event);
+    shadow.base.obj = canvas;
+    shadow.text = lv_label_get_text(label);
+    shadow.font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+    shadow.color = lv_color_black();
+    shadow.opa = LV_OPA_MIX2(LV_OPA_50, lv_obj_get_style_opa_recursive(label, LV_PART_MAIN));
+    shadow.align = LV_TEXT_ALIGN_LEFT;
+    shadow.letter_space = lv_obj_get_style_text_letter_space(label, LV_PART_MAIN);
+    shadow.line_space = lv_obj_get_style_text_line_space(label, LV_PART_MAIN);
+    lv_draw_label(lv_event_get_layer(event), &shadow, &area);
   }
   void prepare_now_playing_text(Shell& shell, const BasicCardState& value) {
     if (!shell.definition || !media_text(shell.definition->definition.kind)) return;
@@ -2166,6 +2312,10 @@ class PageBasicLvglPort final:public PageRendererPort {
     auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
     auto* port = shell->port;
     if (!port->active_.arena || !shell->token.binding) return;
+    if (shell->definition && shell->definition->definition.kind == BasicCardKind::IMAGE) {
+      port->image_event(*shell, event);
+      return;
+    }
     if (shell->definition && shell->definition->definition.kind == BasicCardKind::MEDIA_COVER_ART) {
       port->cover_event(*shell, event);
       return;
@@ -2199,7 +2349,8 @@ class PageBasicLvglPort final:public PageRendererPort {
                                 shell->definition->definition.kind == BasicCardKind::COVER_TOGGLE ||
                                 shell->definition->definition.kind == BasicCardKind::ACCESS ||
                                 shell->definition->definition.kind == BasicCardKind::CLEANING ||
-                                shell->definition->definition.kind == BasicCardKind::ALARM))
+                                shell->definition->definition.kind == BasicCardKind::ALARM ||
+                                shell->definition->definition.kind == BasicCardKind::IMAGE))
         shell->gesture_connection = port->state_.connection_generation();
       if (shell->definition && shell->definition->definition.kind == BasicCardKind::ALARM)
         port->paint(shell->index, shell->token, false);
@@ -2320,7 +2471,11 @@ class PageBasicLvglPort final:public PageRendererPort {
       port->actions_.forecast(port->actions_.owner,origin);
     else if((definition.kind==BasicCardKind::MEDIA_ACTION||(definition.kind==BasicCardKind::MEDIA_NOW_PLAYING&&definition.media.play_pause_background))&&port->actions_.media)
       port->actions_.media(port->actions_.owner,origin);
-    else if (definition.kind == BasicCardKind::MEDIA_COVER_ART && port->actions_.media_control)
+    else if (definition.kind == BasicCardKind::IMAGE && port->actions_.image) {
+      if (shell->gesture_connection == port->state_.connection_generation() &&
+          port->image_tiles_->surface(origin).policy.can_open)
+        port->actions_.image(port->actions_.owner, origin);
+    } else if (definition.kind == BasicCardKind::MEDIA_COVER_ART && port->actions_.media_control)
       port->actions_.media_control(port->actions_.owner, origin);
     else if (definition.kind == BasicCardKind::MEDIA_CONTROL) {
       if (definition.media.kind == MediaActionKind::VOLUME) {
@@ -2349,6 +2504,8 @@ class PageBasicLvglPort final:public PageRendererPort {
   PageCalendarRuntime* calendar_{nullptr};
   PageTimezoneRuntime* timezone_{nullptr};
   PageAlarmStateRuntime* alarm_{nullptr};
+  PageImageTileView* image_tiles_{nullptr};
+  uint64_t seen_image_tiles_{0};
   std::array<Shell, Slots> shells_{};
   Arena active_, staged_;
   PageStore store_;

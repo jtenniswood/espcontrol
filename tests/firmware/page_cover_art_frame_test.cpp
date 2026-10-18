@@ -183,85 +183,88 @@ int main() {
               for (bool tint : {false, true})
                 for (int overscan : {0, 1})
                   for (int opacity_mode : {0, 1, 2, 3})
-                    for (bool antialias : {false, true}) {
-                      lv_display_set_antialiasing(display, antialias);
-                      lv_image_dsc_t image{};
-                      image.header.magic = LV_IMAGE_HEADER_MAGIC;
-                      image.header.cf = LV_COLOR_FORMAT_RGB565;
-                      image.header.w = sw;
-                      image.header.h = sh;
-                      image.header.stride = sw * 2;
-                      image.data_size = sw * sh * 2;
-                      image.data = reinterpret_cast<const uint8_t*>(source.data());
-                      auto* root = lv_obj_create(lv_screen_active());
-                      lv_obj_set_pos(root, 7, 8);
-                      lv_obj_set_size(root, width, height);
-                      lv_obj_set_style_bg_color(root, lv_color_hex(0x212121), 0);
-                      lv_obj_set_style_pad_all(root, 6, 0);
-                      lv_obj_set_style_border_width(root, border, 0);
-                      lv_obj_set_style_radius(root, radius, 0);
-                      lv_obj_set_style_clip_corner(root, true, 0);
-                      lv_obj_clear_flag(root, LV_OBJ_FLAG_SCROLLABLE);
-                      if (opacity_mode == 1 || opacity_mode == 3) lv_obj_set_style_opa(root, LV_OPA_70, 0);
-                      if (opacity_mode == 2 || opacity_mode == 3)
-                        lv_obj_set_style_opa_layered(root, LV_OPA_70, 0);
-                      auto* reference = lv_image_create(root);
-                      lv_obj_set_size(reference, width + overscan, height);
-                      lv_obj_set_pos(reference, -6, -6);
-                      lv_obj_set_style_pad_all(reference, 0, 0);
-                      lv_obj_set_style_border_width(reference, 0, 0);
-                      lv_obj_set_style_bg_opa(reference, LV_OPA_TRANSP, 0);
-                      lv_image_set_inner_align(reference, LV_IMAGE_ALIGN_COVER);
-                      lv_image_set_src(reference, &image);
-                      lv_obj_set_style_radius(reference, radius, 0);
-                      lv_obj_set_style_clip_corner(reference, true, 0);
-                      auto* overlay = lv_obj_create(root);
-                      lv_obj_remove_style_all(overlay);
-                      lv_obj_set_size(overlay, width, height);
-                      lv_obj_set_pos(overlay, -6, -6);
-                      lv_obj_set_style_bg_color(overlay, lv_color_hex(0x134521), 0);
-                      lv_obj_set_style_bg_opa(overlay, LV_OPA_60, 0);
-                      if (!tint) lv_obj_add_flag(overlay, LV_OBJ_FLAG_HIDDEN);
-                      auto* actual = lv_obj_create(root);
-                      lv_obj_remove_style_all(actual);
-                      lv_obj_set_pos(actual, -6, -6);
-                      lv_obj_set_size(actual, width + overscan, height);
-                      lv_obj_set_style_radius(actual, radius, 0);
-                      lv_obj_set_style_clip_corner(actual, true, 0);
-                      lv_obj_clear_flag(actual, LV_OBJ_FLAG_SCROLLABLE);
-                      PageCoverArtFrame frame{&image, 0x134521, width, height, tint};
-                      lv_obj_add_event_cb(actual, draw, LV_EVENT_ALL, &frame);
-                      lv_obj_refresh_ext_draw_size(actual);
-                      lv_obj_add_flag(actual, LV_OBJ_FLAG_HIDDEN);
-                      lv_obj_update_layout(root);
-                      lv_obj_invalidate(lv_screen_active());
-                      lv_refr_now(display);
-                      const auto expected = pixels;
-                      lv_obj_add_flag(reference, LV_OBJ_FLAG_HIDDEN);
-                      lv_obj_add_flag(overlay, LV_OBJ_FLAG_HIDDEN);
-                      lv_obj_clear_flag(actual, LV_OBJ_FLAG_HIDDEN);
-                      lv_obj_invalidate(lv_screen_active());
-                      lv_refr_now(display);
-                      size_t diff = 0;
-                      for (size_t i = 0; i < pixels.size(); ++i) diff += pixels[i] != expected[i];
-                      if (diff) {
-                        for (size_t i = 0, n = 0; i < pixels.size() && n < 12; ++i)
-                          if (pixels[i] != expected[i]) {
-                            std::fprintf(stderr, " (%zu,%zu):%04x/%04x", i % 96, i / 96, pixels[i],
-                                         expected[i]);
-                            ++n;
-                          }
-                        std::fprintf(stderr, "\n");
-                        std::fprintf(
-                            stderr,
-                            "diff=%zu w%d h%d src%dx%d r%d b%d tint%d overscan%d opacityMode%d aa%d\n", diff,
-                            width, height, sw, sh, radius, border, tint, overscan, opacity_mode, antialias);
-                        return 1;
+                    for (bool antialias : {false, true})
+                      for (bool fit : {false, true}) {
+                        lv_display_set_antialiasing(display, antialias);
+                        lv_image_dsc_t image{};
+                        image.header.magic = LV_IMAGE_HEADER_MAGIC;
+                        image.header.cf = LV_COLOR_FORMAT_RGB565;
+                        image.header.w = sw;
+                        image.header.h = sh;
+                        image.header.stride = sw * 2;
+                        image.data_size = sw * sh * 2;
+                        image.data = reinterpret_cast<const uint8_t*>(source.data());
+                        auto* root = lv_obj_create(lv_screen_active());
+                        lv_obj_set_pos(root, 7, 8);
+                        lv_obj_set_size(root, width, height);
+                        lv_obj_set_style_bg_color(root, lv_color_hex(0x212121), 0);
+                        lv_obj_set_style_pad_all(root, 6, 0);
+                        lv_obj_set_style_border_width(root, border, 0);
+                        lv_obj_set_style_radius(root, radius, 0);
+                        lv_obj_set_style_clip_corner(root, true, 0);
+                        lv_obj_clear_flag(root, LV_OBJ_FLAG_SCROLLABLE);
+                        if (opacity_mode == 1 || opacity_mode == 3) lv_obj_set_style_opa(root, LV_OPA_70, 0);
+                        if (opacity_mode == 2 || opacity_mode == 3)
+                          lv_obj_set_style_opa_layered(root, LV_OPA_70, 0);
+                        auto* reference = lv_image_create(root);
+                        lv_obj_set_size(reference, width + overscan, height);
+                        lv_obj_set_pos(reference, -6, -6);
+                        lv_obj_set_style_pad_all(reference, 0, 0);
+                        lv_obj_set_style_border_width(reference, 0, 0);
+                        lv_obj_set_style_bg_opa(reference, LV_OPA_TRANSP, 0);
+                        lv_image_set_inner_align(reference,
+                                                 fit ? LV_IMAGE_ALIGN_CONTAIN : LV_IMAGE_ALIGN_COVER);
+                        lv_image_set_src(reference, &image);
+                        lv_obj_set_style_radius(reference, radius, 0);
+                        lv_obj_set_style_clip_corner(reference, true, 0);
+                        auto* overlay = lv_obj_create(root);
+                        lv_obj_remove_style_all(overlay);
+                        lv_obj_set_size(overlay, width, height);
+                        lv_obj_set_pos(overlay, -6, -6);
+                        lv_obj_set_style_bg_color(overlay, lv_color_hex(0x134521), 0);
+                        lv_obj_set_style_bg_opa(overlay, LV_OPA_60, 0);
+                        if (!tint) lv_obj_add_flag(overlay, LV_OBJ_FLAG_HIDDEN);
+                        auto* actual = lv_obj_create(root);
+                        lv_obj_remove_style_all(actual);
+                        lv_obj_set_pos(actual, -6, -6);
+                        lv_obj_set_size(actual, width + overscan, height);
+                        lv_obj_set_style_radius(actual, radius, 0);
+                        lv_obj_set_style_clip_corner(actual, true, 0);
+                        lv_obj_clear_flag(actual, LV_OBJ_FLAG_SCROLLABLE);
+                        PageCoverArtFrame frame{&image, 0x134521, width, height, tint, fit};
+                        lv_obj_add_event_cb(actual, draw, LV_EVENT_ALL, &frame);
+                        lv_obj_refresh_ext_draw_size(actual);
+                        lv_obj_add_flag(actual, LV_OBJ_FLAG_HIDDEN);
+                        lv_obj_update_layout(root);
+                        lv_obj_invalidate(lv_screen_active());
+                        lv_refr_now(display);
+                        const auto expected = pixels;
+                        lv_obj_add_flag(reference, LV_OBJ_FLAG_HIDDEN);
+                        lv_obj_add_flag(overlay, LV_OBJ_FLAG_HIDDEN);
+                        lv_obj_clear_flag(actual, LV_OBJ_FLAG_HIDDEN);
+                        lv_obj_invalidate(lv_screen_active());
+                        lv_refr_now(display);
+                        size_t diff = 0;
+                        for (size_t i = 0; i < pixels.size(); ++i) diff += pixels[i] != expected[i];
+                        if (diff) {
+                          for (size_t i = 0, n = 0; i < pixels.size() && n < 12; ++i)
+                            if (pixels[i] != expected[i]) {
+                              std::fprintf(stderr, " (%zu,%zu):%04x/%04x", i % 96, i / 96, pixels[i],
+                                           expected[i]);
+                              ++n;
+                            }
+                          std::fprintf(stderr, "\n");
+                          std::fprintf(stderr,
+                                       "diff=%zu w%d h%d src%dx%d r%d b%d tint%d overscan%d opacityMode%d "
+                                       "aa%d fit%d\n",
+                                       diff, width, height, sw, sh, radius, border, tint, overscan,
+                                       opacity_mode, antialias, fit);
+                          return 1;
+                        }
+                        lv_obj_delete(root);
+                        lv_image_cache_drop(&image);
+                        ++cases;
                       }
-                      lv_obj_delete(root);
-                      lv_image_cache_drop(&image);
-                      ++cases;
-                    }
   std::printf("Cover image/tint frame: %zu pixel cases PASS\n", cases);
   reuse_and_retirement(display);
 }

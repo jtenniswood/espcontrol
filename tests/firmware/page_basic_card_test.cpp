@@ -1786,6 +1786,66 @@ void speaker_group_profile(const DeviceUiLimits& limits) {
          card.icon_on == "Speaker");
 }
 
+void image_profile(const DeviceUiLimits& limits) {
+  size_t cases = 0;
+  for (const auto* entity : {"camera.front", "image.still"})
+    for (const auto* refresh : {"off", "periodic", "activity"})
+      for (const auto* interval : {"5", "10", "30", "999"})
+        for (const auto* trigger : {"binary_sensor.motion", "event.doorbell", "camera.invalid"})
+          for (unsigned overlays = 0; overlays < 4; ++overlays)
+            for (const auto* mode : {"cover", "fit"}) {
+              std::string options = "image_modal_refresh_mode=" + std::string(refresh) +
+                                    ",image_modal_refresh_interval=" + interval +
+                                    ",image_modal_refresh_trigger=" + trigger + ",image_modal_mode=" + mode;
+              if (overlays & 1) options += ",image_label";
+              if (overlays & 2) options += ",image_icon";
+              const auto text = std::string(entity) + ";;Auto;Auto;;;image;;" + options;
+              Fixture f(limits, text);
+              TextPool pool;
+              BasicCardDefinition d;
+              assert(prepare_basic_card(f.store, 0, d, &pool) && d.kind == BasicCardKind::IMAGE);
+              const auto parsed = parse_cfg(
+                  std::string(f.store.field(*f.store.card(0), CardField::ENTITY)) + ";" +
+                  std::string(f.store.field(*f.store.card(0), CardField::LABEL)) + ";Auto;Auto;;;image;;" +
+                  std::string(f.store.field(*f.store.card(0), CardField::OPTIONS)));
+              assert(d.image.label == image_card_label_enabled(parsed) &&
+                     d.image.icon == image_card_icon_enabled(parsed) &&
+                     d.image.fit == image_card_modal_fit_enabled(parsed));
+              assert(static_cast<uint32_t>(d.image.interval_seconds) * 1000 ==
+                     camera::refresh_interval_ms(
+                         cfg_option_value(parsed.options, "image_modal_refresh_interval")));
+              const auto expected =
+                  camera::refresh_mode(cfg_option_value(parsed.options, "image_modal_refresh_mode"));
+              assert(d.image.refresh == static_cast<uint8_t>(expected));
+              const auto expected_trigger = cfg_option_value(parsed.options, "image_modal_refresh_trigger");
+              assert(d.image_trigger() ==
+                     (expected == camera::RefreshMode::ACTIVITY && camera::valid_trigger(expected_trigger)
+                          ? std::string_view(expected_trigger)
+                          : std::string_view{}));
+              assert(d.icon == "Camera" && d.icon_on == d.icon && !d.active_color && d.unit.empty() &&
+                     d.sensor.empty());
+              ++cases;
+            }
+  Fixture f(limits, "camera.front;;Auto;Auto;;;image;;image_label");
+  BasicCardDefinition d;
+  assert(prepare_basic_card(f.store, 0, d));
+  Arena arena;
+  Subscriptions subs;
+  PageCardDependencies dependencies;
+  PageEntityStateRuntime state(dependencies, arena, subs, {32, 32, 2048});
+  assert(state.prepare(f.store));
+  state.activate_prepared(f.store);
+  assert(read_basic_card(d, {17, 0}, state).label == "camera.front");
+  subs.send("camera.front", "friendly_name", "Front Camera");
+  const auto before = allocations;
+  for (size_t n = 0; n < 1000; ++n) assert(read_basic_card(d, {17, 0}, state).label == "Front Camera");
+  assert(allocations == before);
+  subs.send("camera.front", "friendly_name", std::string_view("Front\0hidden", 12));
+  assert(read_basic_card(d, {17, 0}, state).label == "Front");
+  std::printf("%s: %zu image option cases and cached label reads pass; definition %zu bytes\n",
+              limits.device_profile, cases, sizeof(d));
+}
+
 int main() {
   display_text();
   temperature_colors();
@@ -1804,6 +1864,7 @@ int main() {
     clock_profile(limits);
     number_layout_profile(limits);
     alarm_profile(limits);
+    image_profile(limits);
     local_relay_profile(limits);
     local_sensor_profile(limits);
     option_select_profile(limits);
