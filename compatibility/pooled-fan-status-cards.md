@@ -47,6 +47,10 @@ hidden-page expiry, full-binding actions, stale presses, unsupported controls,
 folder indicators and 1,000 navigation cycles with stable retained resources.
 Use `ESPCONTROL_TEST_FAMILY=fan_status` for the focused native suite.
 
+Private prepared generations are promoted at commit, including generation-zero
+initial loads. The renderer polls owners before forced as well as quiet frames,
+so the first frame after navigation/reconnect has current deadlines and state.
+
 Production selection, remaining drivers and physical qualification are still
 unfinished. No device was flashed by this stage. Saved/backup formats and the
 nested-page feature remain unchanged.

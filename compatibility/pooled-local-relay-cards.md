@@ -9,7 +9,10 @@ The runtime copies keys into exact configuration-owned arenas, with default
 limits of 32 distinct toggle sources and 2,048 key bytes including terminators.
 Preparation snapshots the firmware-lifetime relay registry. Activation refreshes
 those snapshots without allocating or dispatching actions. Preparation failure
-or discard preserves the active configuration. A push-only configuration frees
+or discard preserves the active configuration. Private preparation generations
+are promoted to the real committed generation at activation. An integration test
+uses `PageStoreRuntime` publication, including relay/media/forecast promotion,
+empty local-sensor retirement and rejection of a zero committed generation. A push-only configuration frees
 all relay arena storage.
 
 A fixed application-loop feed receives existing `notify_internal_relay_changed`

@@ -1134,8 +1134,18 @@ void fan_status_profile(const DeviceUiLimits& limits) {
       assert(cpp_allocations == cpp && arena.allocations == reserved && lv_live_bytes == retained &&
              subscriptions.bindings.size() == channels && cache.memory().descriptor_adds == descriptors);
     }
-    ++subscriptions.generation;
+    subscriptions.send("fan.room", "", "off");
     renderer.update_visible();
+    assert(renderer.open_page(child));
+    fan_status_tick += 3000;
+    renderer.update_visible();  // First paint after expiry is forced, not a quiet poll.
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Bedroom") == 0);
+    subscriptions.send("fan.room", "", "on");
+    renderer.update_visible();
+    assert(renderer.back());
+    ++subscriptions.generation;
+    renderer.update_visible();  // First forced paint must already be disconnected.
+
     assert(!lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED));
     assert(std::strcmp(lv_label_get_text(widgets[1].label), "Unavailable") == 0);
     click(widgets[1].button);

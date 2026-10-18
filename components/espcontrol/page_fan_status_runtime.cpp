@@ -67,7 +67,7 @@ bool PageFanStatusRuntime::prepare(const PageStore& store) {
   discard_prepared();
   loop();
   size_t count = 0, names = 0;
-  if (!now_ ||
+  if (!store.source_document() || !now_ ||
       !keys(store,
             [&](std::string_view key) {
               if (count >= max_sources_ || names > max_key_bytes_ || key.size() >= max_key_bytes_ - names)
@@ -106,14 +106,17 @@ void PageFanStatusRuntime::discard_prepared() {
   clear(staged_);
 }
 void PageFanStatusRuntime::activate_prepared(const PageStore& store) {
-  if (!store.generation() || staged_.store.generation() != store.generation()) return;
+  if (!staged_.store.source_document() ||
+      !page_prepared_generation_matches(staged_.store.generation(), store.generation()))
+    return;
   clear(active_);
   active_ = staged_;
+  active_.store = store;
   staged_ = {};
   ++revision_;
 }
 void PageFanStatusRuntime::retire_active() {
-  if (active_.store.generation()) ++revision_;
+  if (active_.store.source_document()) ++revision_;
   clear(active_);
 }
 void PageFanStatusRuntime::update(Source& source) {
