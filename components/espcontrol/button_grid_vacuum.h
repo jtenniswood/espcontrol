@@ -6,6 +6,7 @@ struct VacuumCardCtx {
   lv_obj_t *btn = nullptr;
   lv_obj_t *icon_lbl = nullptr;
   lv_obj_t *text_lbl = nullptr;
+  const char *configured_icon = nullptr;
   std::string entity_id;
   std::string mode;
   std::string state;
@@ -111,6 +112,16 @@ inline VacuumCardCtx *create_vacuum_card_context(const BtnSlot &s,
     : p.label;
   ctx->area_id = p.unit;
   ctx->status_card = ctx->mode == "status";
+  // Match the editor's generated-icon set, including defaults saved by a
+  // different mode. Those values must continue following the live state.
+  const bool automatic_icon = p.icon.empty() || p.icon == "Auto" ||
+    p.icon == "Robot Vacuum" || p.icon == "Robot Vacuum Alert" ||
+    p.icon == "Robot Vacuum Off" || p.icon == "Robot Vacuum Variant" ||
+    p.icon == "Robot Vacuum Variant Alert" || p.icon == "Robot Vacuum Variant Off" ||
+    p.icon == "Vacuum" || p.icon == "Vacuum Outline";
+  if (!automatic_icon) {
+    ctx->configured_icon = find_icon(p.icon.c_str());
+  }
   return ctx;
 }
 
@@ -120,7 +131,8 @@ inline void apply_vacuum_card_state(VacuumCardCtx *ctx,
   if (!ctx) return;
   ctx->state = unavailable ? "unavailable" : std::string(state.c_str(), state.size());
   if (ctx->icon_lbl) {
-    lv_label_set_display_text(ctx->icon_lbl, find_icon(vacuum_state_icon_name(ctx->state)));
+    lv_label_set_display_text(ctx->icon_lbl, ctx->configured_icon
+      ? ctx->configured_icon : find_icon(vacuum_state_icon_name(ctx->state)));
   }
   if (ctx->text_lbl) {
     std::string label = ctx->status_card
