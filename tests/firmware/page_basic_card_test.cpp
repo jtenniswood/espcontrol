@@ -262,6 +262,63 @@ void control_profile(const DeviceUiLimits &limits) {
   ++transport.generation;value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==0&&!value.on);transport.send("cover.room","","closed");value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==100);
 }
 
+void local_relay_profile(const DeviceUiLimits& limits) {
+  struct Provider : PageLocalRelayProvider {
+    PageLocalRelaySnapshot read(std::string_view key) const override {
+      return {on, key == "relay_one" ? std::string_view("Hall Relay") : std::string_view{}};
+    }
+    bool on{false};
+  } provider;
+  Arena arena;
+  PageLocalRelayRuntime relays(arena, provider);
+  assert(!relays.install(false) && relays.install(true));
+  PageCardDependencies dependencies;
+  Subscriptions transport;
+  PageEntityStateRuntime ha(dependencies, arena, transport, {32, 32, 1024});
+  for (bool push : {false, true}) {
+    Fixture fixture(limits,
+                    std::string("relay_one;;Auto;Auto;") + (push ? "push" : "switch") + ";;internal;;");
+    BasicCardDefinition definition;
+    TextPool strings;
+    assert(prepare_basic_card(fixture.store, 0, definition, &strings, &relays));
+    assert(definition.kind == BasicCardKind::LOCAL_RELAY && definition.push_feedback == push &&
+           definition.active_color != push && definition.label == "Hall Relay" && definition.unit.empty());
+    assert(definition.icon == (push ? "Gesture Tap" : "Power Plug") && definition.icon_on == definition.icon);
+    assert(basic_folder_child_indicator(fixture.store, 0) ==
+           (push ? std::string_view{} : std::string_view("relay_one")));
+    assert(ha.prepare(fixture.store) && relays.prepare(fixture.store));
+    ha.activate_prepared(fixture.store);
+    relays.activate_prepared(fixture.store);
+    assert(ha.memory().active_channels == 0 && transport.bindings.empty());
+    for (bool on : {false, true}) {
+      provider.on = on;
+      page_local_relay_feed().notify("relay_one", on);
+      const auto value =
+          read_basic_card(definition, {17, 0}, ha, 2, "°C", nullptr, nullptr, nullptr, &relays);
+      assert(value.label == "Hall Relay" && value.on == (on && !push) && !value.numeric);
+    }
+    const auto before = allocations;
+    for (int i = 0; i < 1000; ++i)
+      read_basic_card(definition, {17, 0}, ha, 2, "°C", nullptr, nullptr, nullptr, &relays);
+    assert(allocations == before);
+    Fixture custom(limits, std::string("relay_one;Custom;Home;Lightbulb;") + (push ? "push" : "switch") +
+                               ";;internal;;");
+    assert(prepare_basic_card(custom.store, 0, definition, nullptr, &relays) &&
+           definition.label == "Custom" && definition.icon == "Home" &&
+           definition.icon_on == (push ? "Home" : "Lightbulb"));
+  }
+  Fixture unknown(limits, "kitchen_relay_3;;Auto;Auto;switch;;internal;;");
+  BasicCardDefinition definition;
+  TextPool strings;
+  assert(prepare_basic_card(unknown.store, 0, definition, &strings, &relays) &&
+         definition.label == "Kitchen Relay 3");
+  Fixture empty(limits, ";;Auto;Auto;push;;internal;;");
+  assert(prepare_basic_card(empty.store, 0, definition, nullptr, &relays));
+  auto translate = [](const char* key) { return std::strcmp(key, "Relay") == 0 ? "Translated Relay" : key; };
+  assert(read_basic_card(definition, {17, 0}, ha, 2, "°C", translate, nullptr, nullptr, &relays).label ==
+         "Translated Relay");
+}
+
 void local_sensor_profile(const DeviceUiLimits& limits) {
   struct Provider : PageLocalSensorProvider {
     size_t capacity() const override {
@@ -890,6 +947,7 @@ int main() {
     climate_profile(limits);
     status_actions_profile(limits);
     control_profile(limits);
+    local_relay_profile(limits);
     local_sensor_profile(limits);
     option_select_profile(limits);
     fan_control_profile(limits);

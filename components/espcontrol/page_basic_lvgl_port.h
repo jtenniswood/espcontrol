@@ -89,7 +89,8 @@ class PageBasicLvglPort final:public PageRendererPort {
                     std::array<PageBasicWidgets, Slots> widgets, PageViewGeometry geometry,
                     const PageBasicTheme& theme, PageBasicActions actions,
                     PageForecastRuntime* forecasts = nullptr, PageMediaStateRuntime* media = nullptr,
-                    PageCoverArtView* artwork = nullptr, PageLocalSensorRuntime* local = nullptr)
+                    PageCoverArtView* artwork = nullptr, PageLocalSensorRuntime* local = nullptr,
+                    PageLocalRelayRuntime* relay = nullptr)
       : allocator_(allocator),
         state_(state),
         widgets_(widgets),
@@ -99,7 +100,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         forecasts_(forecasts),
         media_(media),
         artwork_(artwork),
-        local_(local) {
+        local_(local),
+        relay_(relay) {
     for(size_t i=0;i<Slots;++i){shells_[i].port=this;shells_[i].index=i;}
   }
   ~PageBasicLvglPort()override {
@@ -284,7 +286,9 @@ class PageBasicLvglPort final:public PageRendererPort {
       const auto *p=store.page(page);if(!p->navigable)continue;
       label_capacity=std::max(label_capacity,store.string(p->order).size()+1);
       for(CardId card=p->first_card;card<p->first_card+p->card_count;++card) {
-        BasicCardDefinition view;if(!prepare_basic_card(store,card,view,&strings))return false;
+        BasicCardDefinition view;
+        if (!prepare_basic_card(store, card, view, &strings, relay_)) return false;
+        if (view.kind == BasicCardKind::LOCAL_RELAY && (!relay_ || !actions_.toggle)) return false;
         if (view.kind == BasicCardKind::LOCAL_NUMBER || view.kind == BasicCardKind::LOCAL_TEXT) {
           if (!local_) return false;
           if (view.kind == BasicCardKind::LOCAL_TEXT) {
@@ -420,7 +424,11 @@ class PageBasicLvglPort final:public PageRendererPort {
     for(PageId page=0;page<store.page_count();++page) {
       const auto *p=store.page(page);if(!p->navigable)continue;
       for(CardId card=p->first_card;card<p->first_card+p->card_count;++card) {
-        auto &view=prepared(staged_)[card];if(!prepare_basic_card(store,card,view.definition,&writer)){discard_prepared();return false;}
+        auto& view = prepared(staged_)[card];
+        if (!prepare_basic_card(store, card, view.definition, &writer, relay_)) {
+          discard_prepared();
+          return false;
+        }
         const auto &d=view.definition;
         // Metadata titles reuse the icon label but never display a glyph.
         if (d.kind == BasicCardKind::MEDIA_NOW_PLAYING ||
@@ -540,6 +548,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     lv_obj_clear_flag(w.button,LV_OBJ_FLAG_HIDDEN);
     const bool clickable =
         cell.back || (s.definition && (s.definition->definition.kind == BasicCardKind::TOGGLE ||
+                                       s.definition->definition.kind == BasicCardKind::LOCAL_RELAY ||
                                        s.definition->definition.kind == BasicCardKind::FOLDER ||
                                        s.definition->definition.kind == BasicCardKind::CLIMATE ||
                                        s.definition->definition.kind == BasicCardKind::ACTION ||
@@ -567,12 +576,16 @@ class PageBasicLvglPort final:public PageRendererPort {
       definition = s.definition->definition;
       value = read_basic_card(definition, {token.configuration, token.card}, state_,
                               s.cell.column_span > 1 ? 2 : 1, theme_.temperature_unit, theme_.translate,
-                              media_, local_);
+                              media_, local_, relay_);
       if(group_card(s))group_feedback(s,value);
       if(definition.folder_mode==BasicFolderMode::CHILDREN) {
         for(size_t child=0;child<s.definition->summary_count&&!value.on;++child) {
           const auto id=s.definition->summary[child];
-          value.on=read_basic_indicator({token.configuration,id},basic_folder_child_indicator(store_,id),state_);
+          const auto& child_definition = prepared(active_)[id].definition;
+          value.on = child_definition.kind == BasicCardKind::LOCAL_RELAY && relay_
+                         ? relay_->on(token.configuration, child_definition.entity)
+                         : read_basic_indicator({token.configuration, id},
+                                                basic_folder_child_indicator(store_, id), state_);
         }
       }
       if(definition.kind==BasicCardKind::FOLDER&&definition.folder_mode==BasicFolderMode::NUMBER&&value.label.empty())value.label=theme_.folder_label;
@@ -590,10 +603,10 @@ class PageBasicLvglPort final:public PageRendererPort {
                (definition.kind == BasicCardKind::TOGGLE && !definition.text_overlay &&
                 !definition.sensor.empty() && value.on);
       const bool state_icon =
-          definition.kind == BasicCardKind::TOGGLE || definition.kind == BasicCardKind::ICON ||
-          definition.kind == BasicCardKind::STATUS || definition.kind == BasicCardKind::FAN_CONTROL ||
-          definition.kind == BasicCardKind::LIGHT || definition.kind == BasicCardKind::COVER ||
-          definition.action_display == BasicActionDisplay::ICON ||
+          definition.kind == BasicCardKind::TOGGLE || definition.kind == BasicCardKind::LOCAL_RELAY ||
+          definition.kind == BasicCardKind::ICON || definition.kind == BasicCardKind::STATUS ||
+          definition.kind == BasicCardKind::FAN_CONTROL || definition.kind == BasicCardKind::LIGHT ||
+          definition.kind == BasicCardKind::COVER || definition.action_display == BasicActionDisplay::ICON ||
           definition.folder_mode == BasicFolderMode::ENTITY ||
           definition.folder_mode == BasicFolderMode::CLIMATE ||
           definition.folder_mode == BasicFolderMode::MOWER ||
@@ -681,6 +694,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       lv_obj_add_flag(w.forecast, LV_OBJ_FLAG_HIDDEN);
     seen_state_ = state_.revision();
     if (local_) seen_local_ = local_->revision();
+    if (relay_) seen_relay_ = relay_->revision();
     seen_theme_ = theme_.revision;
     seen_forecast_ = forecasts_ ? forecasts_->revision() : 0;
     seen_media_ = media_ ? media_->revision() : 0;
@@ -740,8 +754,9 @@ class PageBasicLvglPort final:public PageRendererPort {
         if (shell.pending_target >= 0 && !group_card(shell) &&
             static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= pending_timeout(shell))
           return true;
-    return (local_ && local_->revision() != seen_local_) || state_.revision() != seen_state_ ||
-           theme_.revision != seen_theme_ || (forecasts_ && forecasts_->revision() != seen_forecast_) ||
+    return (relay_ && relay_->revision() != seen_relay_) || (local_ && local_->revision() != seen_local_) ||
+           state_.revision() != seen_state_ || theme_.revision != seen_theme_ ||
+           (forecasts_ && forecasts_->revision() != seen_forecast_) ||
            (media_ && media_->revision() != seen_media_) ||
            (artwork_ && artwork_->revision() != seen_artwork_);
   }
@@ -1355,7 +1370,8 @@ class PageBasicLvglPort final:public PageRendererPort {
       port->actions_.control(port->actions_.owner, origin);
     else if (definition.kind == BasicCardKind::CLIMATE && port->actions_.climate)
       port->actions_.climate(port->actions_.owner,origin);
-    else if(definition.kind==BasicCardKind::TOGGLE&&port->actions_.toggle)
+    else if ((definition.kind == BasicCardKind::TOGGLE || definition.kind == BasicCardKind::LOCAL_RELAY) &&
+             port->actions_.toggle)
       port->actions_.toggle(port->actions_.owner,origin,definition.entity);
     else if ((definition.kind == BasicCardKind::LIGHT || definition.kind == BasicCardKind::COVER ||
               definition.kind == BasicCardKind::FAN_CONTROL) &&
@@ -1383,12 +1399,13 @@ class PageBasicLvglPort final:public PageRendererPort {
   PageMediaStateRuntime* media_{nullptr};
   PageCoverArtView* artwork_{nullptr};
   PageLocalSensorRuntime* local_{nullptr};
+  PageLocalRelayRuntime* relay_{nullptr};
   std::array<Shell, Slots> shells_{};
   Arena active_, staged_;
   PageStore store_;
   bool initialized_{false}, media_layout_dirty_{false}, media_finishing_{false};
   size_t callbacks_{0};
-  uint64_t seen_local_{0}, seen_state_{0}, seen_theme_{0}, seen_forecast_{0}, seen_media_{0},
+  uint64_t seen_relay_{0}, seen_local_{0}, seen_state_{0}, seen_theme_{0}, seen_forecast_{0}, seen_media_{0},
       seen_artwork_{0};
   PageBasicMemory memory_;
 };

@@ -52,7 +52,8 @@ bool basic_card_is_forecast(const PageStore &store,CardId id) {
   return card_runtime_weather_forecast_supported()&&(type=="weather_forecast"||
     (type=="weather"&&card_runtime_weather_forecast_precision(std::string(store.field(*card,CardField::PRECISION)))));
 }
-bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &out,BasicCardTextSink *strings) {
+bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& out,
+                        BasicCardTextSink* strings, PageLocalRelayRuntime* relay) {
   out={};const auto *card=store.card(id);if(card==nullptr)return false;
   out.entity=store.field(*card,CardField::ENTITY);out.sensor=store.field(*card,CardField::SENSOR);
   out.label=store.field(*card,CardField::LABEL);out.unit=trim(store.field(*card,CardField::UNIT));
@@ -63,8 +64,24 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
     if(value.empty()){stored={};return true;}
     return strings&&strings->copy(value,stored);
   };
-  if (type == "option_select" ||
-      (type == "action" && action_card_option_select_action(std::string(out.sensor)))) {
+  if (type == "internal") {
+    out.kind = BasicCardKind::LOCAL_RELAY;
+    out.unit = {};
+    out.sensor = {};
+    out.push_feedback = card_runtime_internal_push_mode(std::string(store.field(*card, CardField::SENSOR)));
+    out.active_color = !out.push_feedback;
+    out.default_label = "Relay";
+    if (out.icon.empty() || out.icon == "Auto") out.icon = out.push_feedback ? "Gesture Tap" : "Power Plug";
+    if (out.icon_on.empty() || out.icon_on == "Auto" || out.push_feedback) out.icon_on = out.icon;
+    if (out.label.empty() && !out.entity.empty()) {
+      const auto registered = relay ? relay->registered_label(out.entity) : std::string_view{};
+      if (!registered.empty()) {
+        if (!strings || !strings->copy(registered, out.label)) return false;
+      } else if (!copy(sentence_cap_text(std::string(out.entity)), out.label))
+        return false;
+    }
+  } else if (type == "option_select" ||
+             (type == "action" && action_card_option_select_action(std::string(out.sensor)))) {
     out.kind = BasicCardKind::OPTION_SELECT;
     out.push_feedback = true;
     out.sensor = {};
@@ -272,6 +289,9 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
   // The currently ported children which contributed to the old indicator.
   // Sensors never contributed. Extend this policy when other drivers port their
   // indicator semantics (timer/mower/local controls use different predicates).
+  if (type == "internal")
+    return PageLocalRelayRuntime::toggle(store, *card) ? store.field(*card, CardField::ENTITY)
+                                                       : std::string_view{};
   return type.empty() || type == "light_switch" || type == "media" || type == "fan_control" ||
                  type == "fan_direction" || type == "fan_preset"
              ? store.field(*card, CardField::ENTITY)
@@ -296,9 +316,19 @@ bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,Pag
 BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHandle handle,
                                PageEntityStateRuntime& state, int duration_components,
                                std::string_view temperature_unit, PageCardTranslate translate,
-                               PageMediaStateRuntime* media_owner, PageLocalSensorRuntime* local) {
+                               PageMediaStateRuntime* media_owner, PageLocalSensorRuntime* local,
+                               PageLocalRelayRuntime* relay) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
+  if (card.kind == BasicCardKind::LOCAL_RELAY) {
+    result.label = card.label;
+    if (result.label.empty()) {
+      const auto* text = translate ? translate("Relay") : nullptr;
+      result.label = text ? text : "Relay";
+    }
+    result.on = !card.push_feedback && relay && relay->on(handle.generation, card.entity);
+    return result;
+  }
   if (card.kind == BasicCardKind::LOCAL_NUMBER || card.kind == BasicCardKind::LOCAL_TEXT) {
     const bool text = card.kind == BasicCardKind::LOCAL_TEXT;
     const auto value = local ? local->read(handle, card.entity, text) : PageEntityValue{};

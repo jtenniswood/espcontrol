@@ -1,5 +1,6 @@
 #pragma once
 #include "page_local_sensor_feed.h"
+#include "page_local_relay_runtime.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
@@ -401,6 +402,7 @@ inline void apply_internal_relay_parent_indicator(InternalRelayWatcher &w, bool 
 }
 
 inline void notify_internal_relay_changed(const std::string &key, bool on) {
+  espcontrol::pages::page_local_relay_feed().notify(key,on);
   auto &watchers = internal_relay_watchers();
   for (auto &w : watchers) {
     if (w.key != key) continue;
