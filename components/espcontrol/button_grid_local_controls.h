@@ -105,6 +105,22 @@ inline std::vector<LocalSensorControl> &local_sensor_registry() {
   return sensors;
 }
 
+// Sensor dispatchers live for the device lifetime; widget bindings do not.
+inline void local_sensor_unregister_owner(lv_obj_t *owner) {
+  auto &registry = local_sensor_registry();
+  size_t write_index = 0;
+  for (size_t read_index = 0; read_index < registry.size(); ++read_index) {
+    if (registry[read_index].owner == owner) continue;
+    if (write_index != read_index) registry[write_index] = registry[read_index];
+    ++write_index;
+  }
+  registry.resize(write_index);
+}
+
+inline void local_sensor_owner_deleted(lv_event_t *event) {
+  local_sensor_unregister_owner(static_cast<lv_obj_t *>(lv_event_get_target(event)));
+}
+
 struct LocalSensorCallbackBinding {
   std::string key;
   bool is_text = false;
@@ -123,16 +139,24 @@ inline bool local_sensor_callback_registered(const std::string &key, bool is_tex
   return false;
 }
 
+inline void local_sensor_render_numeric(lv_obj_t *label, int precision, float value) {
+  if (!label) return;
+  if (!std::isfinite(value)) {
+    lv_label_set_display_text(label, "--");
+    return;
+  }
+  char buffer[32];
+  if (precision == 1) snprintf(buffer, sizeof(buffer), "%.1f", value);
+  else if (precision == 2) snprintf(buffer, sizeof(buffer), "%.2f", value);
+  else snprintf(buffer, sizeof(buffer), "%.0f", value);
+  lv_label_set_display_text(label, buffer);
+}
+
 inline bool local_sensor_apply_value(const std::string &key, float value) {
-  if (std::isnan(value)) return false;
   bool applied = false;
   for (const auto &control : local_sensor_registry()) {
     if (control.key != key || control.is_text || !control.sensor_lbl) continue;
-    char buffer[32];
-    if (control.precision == 1) snprintf(buffer, sizeof(buffer), "%.1f", value);
-    else if (control.precision == 2) snprintf(buffer, sizeof(buffer), "%.2f", value);
-    else snprintf(buffer, sizeof(buffer), "%.0f", value);
-    lv_label_set_display_text(control.sensor_lbl, buffer);
+    local_sensor_render_numeric(control.sensor_lbl, control.precision, value);
     applied = true;
   }
   return applied;

@@ -17,6 +17,8 @@ MultipartReader::MultipartReader(const std::string &boundary) {
   memset(&settings_, 0, sizeof(settings_));
   settings_.on_header_field = on_header_field;
   settings_.on_header_value = on_header_value;
+  settings_.on_headers_complete = on_headers_complete;
+  settings_.on_body_end = on_body_end;
   settings_.on_part_data = on_part_data;
   settings_.on_part_data_end = on_part_data_end;
 
@@ -52,7 +54,9 @@ size_t MultipartReader::parse(const char *data, size_t len) {
   return parsed;
 }
 
-void MultipartReader::process_header_(const char *value, size_t length) {
+void MultipartReader::finish_header_() {
+  const char *value = current_header_value_.data();
+  const size_t length = current_header_value_.size();
   // Process the completed header (field + value pair)
   const char *field = current_header_field_.c_str();
   size_t field_len = current_header_field_.length();
@@ -67,23 +71,42 @@ void MultipartReader::process_header_(const char *value, size_t length) {
 
   // Clear field for next header
   current_header_field_.clear();
+  current_header_value_.clear();
+  reading_header_value_ = false;
 }
 
 int MultipartReader::on_header_field(multipart_parser *parser, const char *at, size_t length) {
-  MultipartReader *reader = static_cast<MultipartReader *>(multipart_parser_get_data(parser));
-  reader->current_header_field_.assign(at, length);
+  auto *reader = static_cast<MultipartReader *>(multipart_parser_get_data(parser));
+  if (reader->reading_header_value_) reader->finish_header_();
+  if (reader->current_header_field_.size() + length > 128) return 1;
+  reader->current_header_field_.append(at, length);
   return 0;
 }
 
 int MultipartReader::on_header_value(multipart_parser *parser, const char *at, size_t length) {
-  MultipartReader *reader = static_cast<MultipartReader *>(multipart_parser_get_data(parser));
-  reader->process_header_(at, length);
+  auto *reader = static_cast<MultipartReader *>(multipart_parser_get_data(parser));
+  reader->reading_header_value_ = true;
+  if (reader->current_header_value_.size() + length > 4096) return 1;
+  reader->current_header_value_.append(at, length);
+  return 0;
+}
+
+int MultipartReader::on_headers_complete(multipart_parser *parser) {
+  auto *reader = static_cast<MultipartReader *>(multipart_parser_get_data(parser));
+  reader->finish_header_();
+  return 0;
+}
+
+int MultipartReader::on_body_end(multipart_parser *parser) {
+  auto *reader = static_cast<MultipartReader *>(multipart_parser_get_data(parser));
+  reader->body_complete_ = true;
   return 0;
 }
 
 int MultipartReader::on_part_data(multipart_parser *parser, const char *at, size_t length) {
   MultipartReader *reader = static_cast<MultipartReader *>(multipart_parser_get_data(parser));
   // Only process file uploads
+  if (reader->has_file() && length > 0) reader->file_has_data_ = true;
   if (reader->has_file() && reader->data_callback_) {
     // IMPORTANT: The 'at' pointer points to data within the parser's input buffer.
     // This data is only valid during this callback. The callback handler MUST
@@ -100,8 +123,13 @@ int MultipartReader::on_part_data_end(multipart_parser *parser) {
   if (reader->part_complete_callback_) {
     reader->part_complete_callback_();
   }
-  // Clear part info for next part
+  if (reader->has_file() && reader->file_has_data_) reader->file_complete_ = true;
+  // Clear all per-part state before parsing the next part's headers.
   reader->current_part_ = Part{};
+  reader->file_has_data_ = false;
+  reader->current_header_field_.clear();
+  reader->current_header_value_.clear();
+  reader->reading_header_value_ = false;
   return 0;
 }
 

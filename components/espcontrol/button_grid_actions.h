@@ -478,16 +478,17 @@ inline void send_cover_command_action(const ParsedCfg &p, bool tilt_command = fa
   bool cover_stop_tracked = false;
   if (wants_stop_response) {
     std::string entity_id = p.entity;
+    const uint32_t generation = ha_subscription_generation();
     cover_stop_tracked = cover_stop_track_pending(req.call_id);
     if (cover_stop_tracked) {
       if (!ha_register_action_response_callback(
         req.call_id,
-        [entity_id, call_id = req.call_id](const esphome::api::ActionResponse &response) {
+        [entity_id, generation, call_id = req.call_id](const esphome::api::ActionResponse &response) {
           cover_stop_clear_pending(call_id);
+          if (generation != ha_subscription_generation()) return;
           if (response.is_success()) return;
-          ESP_LOGW("cover", "cover.stop_cover failed for %s: %s; falling back to cover toggle",
+          ESP_LOGW("cover", "cover.stop_cover failed for %s: %s",
                    entity_id.c_str(), response.get_error_message().c_str());
-          send_toggle_action(entity_id);
         })) {
         cover_stop_clear_pending(req.call_id);
         cover_stop_tracked = false;
