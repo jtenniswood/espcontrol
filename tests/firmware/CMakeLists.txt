@@ -141,6 +141,15 @@ target_compile_options(page_fan_mode_test PRIVATE -Wall -Wextra -Werror -UNDEBUG
 target_include_directories(page_fan_mode_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_fan_mode_test COMMAND page_fan_mode_test)
 
+add_executable(page_timer_runtime_test page_timer_runtime_test.cpp
+  ../../components/espcontrol/page_timer_runtime.cpp ../../components/espcontrol/page_store_runtime.cpp
+  ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp)
+target_compile_features(page_timer_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_timer_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_timer_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_timer_runtime_test COMMAND page_timer_runtime_test)
+
 set(PAGE_LIGHT_TEMPERATURE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_light_temperature_runtime_test.cpp)
 add_custom_command(OUTPUT ${PAGE_LIGHT_TEMPERATURE_SOURCE}
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_light_temperature_test.py
