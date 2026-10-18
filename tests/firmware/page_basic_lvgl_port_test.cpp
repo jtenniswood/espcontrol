@@ -734,7 +734,19 @@ template<size_t Slots>struct Actions {
   bool timer_accept{true};
   double numeric_target{0};
   number_slider::Metadata numeric_metadata;
-  PageBasicActions callbacks(){return {this,icon,valid,toggle,open,back,climate,action,action,action,action,seek};}
+  size_t paint_reads{0};
+  static bool bound(void* owner, PageBindingToken t) {
+    auto& actions = *static_cast<Actions*>(owner);
+    const bool result = actions.renderer->bound(t);
+    if (result && !actions.renderer->valid(t)) ++actions.paint_reads;
+    return result;
+  }
+  PageBasicActions callbacks() {
+    auto result = PageBasicActions{this,    icon,   valid,  toggle, open,   back,
+                                   climate, action, action, action, action, seek};
+    result.bound = bound;
+    return result;
+  }
 };
 void click(lv_obj_t *object){lv_obj_send_event(object,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(object,LV_EVENT_RELEASED,nullptr);lv_obj_send_event(object,LV_EVENT_CLICKED,nullptr);}
 template<size_t Slots>void profile(const DeviceUiLimits &limits) {
@@ -4761,6 +4773,342 @@ void media_control_profile(const DeviceUiLimits& limits) {
   assert(arena.live == 0);
   lv_obj_delete(page);
 }
+template <size_t Slots, size_t Images>
+void image_tile_profile(const DeviceUiLimits& limits) {
+  struct Document {
+    std::array<uint8_t, 8192> bytes{};
+    alignas(std::max_align_t) std::array<uint8_t, 32768> arena{};
+    size_t size{0};
+    PageStore store;
+    explicit Document(const DeviceUiLimits& limits) {
+      PanelConfigWriter w(bytes.data(), bytes.size());
+      assert(w.begin() == PanelConfigStatus::OK);
+      assert(w.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                     std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+      const auto add = [&](uint8_t slot, const std::string& config) {
+        assert(w.append_button(slot, reinterpret_cast<const uint8_t*>(config.data()), config.size()) ==
+               PanelConfigStatus::OK);
+      };
+      add(1, ";Rooms;Home;Auto;indicator;;subpage;;");
+      add(2,
+          "camera.front;;Auto;Auto;;;image;;image_modal_refresh_mode=activity,image_modal_refresh_trigger="
+          "binary_sensor.motion");
+      add(3, "camera.other;Configured;Lightbulb;Auto;;;image;;image_label,image_icon,image_modal_mode=fit");
+      add(4, "image.still;Still;Auto;Auto;;;image;;image_label");
+      add(5, ";;;;;;image;;");
+      add(6, "sensor.unsupported;;;;;;image;;");
+      const std::string child =
+          "~B,1,2|image,camera.front,Child,Auto,Auto,,,,image_label%2Cimage_icon|,light.child,Light,Auto,"
+          "Auto,,,,";
+      assert(w.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+             PanelConfigStatus::OK);
+      std::string order;
+      for (size_t i = 1; i <= limits.slot_count; ++i) {
+        if (i > 1) order += ",";
+        order += std::to_string(i);
+      }
+      const std::string key = "button_order";
+      assert(w.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                              reinterpret_cast<const uint8_t*>(order.data()),
+                              order.size()) == PanelConfigStatus::OK);
+      assert(w.finish(&size) == PanelConfigStatus::OK);
+      assert(PageStore::stage_v1(bytes.data(), size, limits, 17, arena.data(), arena.size(), &store) ==
+             PageStoreStatus::OK);
+    }
+  } document(limits);
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageEntityObserverSet<1> observers;
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192}, &observers);
+  Actions<Slots> actions;
+  struct Origin final : PageImageOrigin {
+    Actions<Slots>& actions;
+    Subscriptions& subscriptions;
+    Origin(Actions<Slots>& a, Subscriptions& s) : actions(a), subscriptions(s) {}
+    bool valid(PageBindingToken t) const override {
+      return actions.renderer && actions.renderer->bound(t);
+    }
+    bool connected() const override {
+      return true;
+    }
+    uint32_t connection_generation() const override {
+      return subscriptions.generation;
+    }
+  } origin(actions, subscriptions);
+  struct Requests final : PageImageRequests {
+    struct Job {
+      void* owner{nullptr};
+      Receive receive{nullptr};
+      uint64_t request{0};
+      size_t slot{0};
+      void reply() const {
+        if (receive) receive(owner, slot, request, true, false);
+      }
+    };
+    std::array<Job, Images> jobs{};
+    size_t starts{0}, releases{0};
+    bool start(size_t slot, uint64_t request, std::string_view, PageImageOptions, void* owner,
+               Receive receive) override {
+      ++starts;
+      jobs[slot] = {owner, receive, request, slot};
+      return true;
+    }
+    void cancel(size_t slot) override {
+      jobs[slot].reply();
+    }
+    void release_surface(size_t) override {
+      ++releases;
+    }
+  } requests;
+  PageImageRuntime<Images> images(requests, origin);
+  struct Environment final : PageImageTileEnvironment {
+    std::string_view base_url() const override {
+      return "https://ha";
+    }
+    uint32_t endpoint_generation() const override {
+      return 1;
+    }
+    bool request_allowed(uint16_t, uint16_t) const override {
+      return true;
+    }
+    bool visible(PageBindingToken) const override {
+      return true;
+    }
+    uint16_t maximum_source_side() const override {
+      return 400;
+    }
+  } environment;
+  PageImageTileRuntime<Images> tiles(state, images, environment, fan_status_now);
+  assert(observers.add(tiles));
+  struct View final : PageImageTileView {
+    PageImageTileRuntime<Images>& tiles;
+    std::array<uint16_t, 16 * 16> pixels{};
+    lv_image_dsc_t descriptor{};
+    explicit View(PageImageTileRuntime<Images>& t) : tiles(t) {
+      pixels.fill(0xf800);
+      descriptor.header.magic = LV_IMAGE_HEADER_MAGIC;
+      descriptor.header.cf = LV_COLOR_FORMAT_RGB565;
+      descriptor.header.w = descriptor.header.h = 16;
+      descriptor.header.stride = 32;
+      descriptor.data = reinterpret_cast<const uint8_t*>(pixels.data());
+      descriptor.data_size = pixels.size() * 2;
+    }
+    bool ready() const override {
+      return true;
+    }
+    void bind(PageBindingToken token, PageImageTileSource source) override {
+      tiles.bind(token, source);
+    }
+    void unbind(PageBindingToken token) override {
+      tiles.unbind(token);
+    }
+    void size(PageBindingToken token, uint16_t w, uint16_t h, uint32_t bg) override {
+      tiles.size(token, w, h, bg);
+    }
+    PageImageTileSurface surface(PageBindingToken token) override {
+      const auto p = tiles.snapshot(token);
+      return {p, p.asset ? &descriptor : nullptr};
+    }
+    uint64_t revision() const override {
+      return tiles.revision();
+    }
+  } view(tiles);
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  const size_t row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    lv_obj_set_style_pad_all(w.button, 8, 0);
+    w.forecast = lv_obj_create(w.button);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    lv_obj_align(w.label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+  }
+  PageBasicTheme theme;
+  theme.sensor_font = theme.icon_font = theme.label_font = &lv_font_montserrat_14;
+  theme.sensor_surface = 0xF5F5F5;
+  theme.image_loading_surface = 0xFFFFFF;
+  theme.text = 0x333333;
+  theme.translate = [](const char* key) -> const char* {
+    return !std::strcmp(key, "Loading") ? "LOADING" : !std::strcmp(key, "Unavailable") ? "UNAVAILABLE" : key;
+  };
+  auto callbacks = actions.callbacks();
+  callbacks.image = Actions<Slots>::action;
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  callbacks, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                  &view);
+    assert(port.initialize());
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t label_index = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[label_index++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    assert(renderer.prepare(document.store) && state.prepare(document.store));
+    renderer.activate_prepared(document.store);
+    state.activate_prepared(document.store);
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    renderer.refresh();
+    renderer.update_visible();
+    const auto front = renderer.binding(1), other = renderer.binding(2);
+    const auto slot = tiles.find(front);
+    assert(slot < Images);
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "LOADING") == 0 &&
+           !lv_obj_has_flag(widgets[1].forecast, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_get_style_bg_opa(widgets[1].forecast, LV_PART_MAIN) == LV_OPA_COVER);
+    if (Images == 2) assert(!std::strcmp(lv_label_get_text(widgets[3].label), "Too many"));
+    assert(!std::strcmp(lv_label_get_text(widgets[4].label), "Configure"));
+    assert(!std::strcmp(lv_label_get_text(widgets[5].label), "UNAVAILABLE"));
+    assert((lv_color_to_u32(lv_obj_get_style_bg_color(widgets[1].forecast, LV_PART_MAIN)) & 0xFFFFFF) ==
+           0xFFFFFF);
+    assert((lv_color_to_u32(lv_obj_get_style_text_color(widgets[1].label, LV_PART_MAIN)) & 0xFFFFFF) ==
+           0x333333);
+    click(widgets[1].button);
+    assert(actions.commands == 0);
+    subscriptions.send("camera.front", "access_token", "test-token");
+    subscriptions.send("camera.other", "access_token", "test-token");
+    subscriptions.send("camera.front", "friendly_name", "Front Camera");
+    images.loop();
+    tiles.loop();
+    renderer.update_visible();
+    assert(requests.starts == 2);
+    for (const auto& job : requests.jobs) job.reply();
+    tiles.loop();
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(!lv_obj_has_flag(widgets[1].forecast, LV_OBJ_FLAG_HIDDEN) &&
+           lv_obj_has_flag(widgets[1].icon, LV_OBJ_FLAG_HIDDEN) &&
+           lv_obj_has_flag(widgets[1].label, LV_OBJ_FLAG_HIDDEN));
+    assert(!lv_obj_has_flag(widgets[2].forecast, LV_OBJ_FLAG_HIDDEN) &&
+           !lv_obj_has_flag(widgets[2].icon, LV_OBJ_FLAG_HIDDEN) &&
+           !lv_obj_has_flag(widgets[2].label, LV_OBJ_FLAG_HIDDEN));
+    assert(!std::strcmp(lv_label_get_text(widgets[2].label), "Configured"));
+    assert(lv_obj_get_width(widgets[1].forecast) == lv_obj_get_width(widgets[1].button));
+    assert(lv_obj_get_style_text_color(widgets[2].label, LV_PART_MAIN).red == 255);
+    assert(actions.paint_reads > 0);
+    // A graph report can replace ready policy from a draw-task callback. Never
+    // queue this frame's label shadow after its image has become unavailable.
+    struct DrawChange {
+      Subscriptions* subscriptions;
+      bool changed{false};
+      size_t images{0}, shadows{0};
+    } draw{&subscriptions};
+    const auto change = [](lv_event_t* event) {
+      auto& draw = *static_cast<DrawChange*>(lv_event_get_user_data(event));
+      const auto type = lv_draw_task_get_type(lv_event_get_draw_task(event));
+      if (type == LV_DRAW_TASK_TYPE_IMAGE) {
+        ++draw.images;
+        if (!draw.changed) {
+          draw.changed = true;
+          draw.subscriptions->send("camera.other", "", "unavailable");
+        }
+      } else if (type == LV_DRAW_TASK_TYPE_LABEL)
+        ++draw.shadows;
+    };
+    lv_obj_add_flag(widgets[2].forecast, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+    assert(lv_obj_add_event_cb(widgets[2].forecast, change, LV_EVENT_DRAW_TASK_ADDED, &draw));
+    lv_obj_invalidate(widgets[2].forecast);
+    lv_refr_now(lv_display_get_default());
+    assert(draw.changed && draw.images > 0 && draw.shadows == 0);
+    lv_obj_remove_event_cb_with_user_data(widgets[2].forecast, change, &draw);
+    lv_obj_clear_flag(widgets[2].forecast, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+    subscriptions.send("camera.other", "", "idle");
+    tiles.loop();
+    for (const auto& job : requests.jobs) job.reply();
+    tiles.loop();
+    renderer.update_visible();
+    click(widgets[1].button);
+    assert(actions.commands == 1);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    ++subscriptions.generation;
+    renderer.update_visible();
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == 1);
+    subscriptions.send("camera.front", "access_token", "new-token");
+    subscriptions.send("camera.other", "access_token", "new-token");
+    images.loop();
+    tiles.loop();
+    for (const auto& job : requests.jobs) job.reply();
+    tiles.loop();
+    renderer.update_visible();
+    // Draw ownership is valid while the input gate is closed during paint.
+    lv_refr_now(lv_display_get_default());
+    const auto child = document.store.card(0)->target;
+    assert(child != NO_PAGE);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == 1);
+    assert(tiles.find(renderer.binding(1)) < Images);
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    // Warm both banks and draw caches before comparing retained resources.
+    for (size_t n = 0; n < 2; ++n) {
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+    }
+    const auto cpp = cpp_allocations, lv = lv_live_bytes, owner_bytes = arena.live,
+               registrations = subscriptions.bindings.size(), starts = requests.starts;
+    for (size_t n = 0; n < 1000; ++n) {
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+    }
+    assert(cpp_allocations == cpp && lv_live_bytes == lv && arena.live == owner_bytes &&
+           subscriptions.bindings.size() == registrations && requests.starts == starts);
+    images.loop();
+    tiles.loop();
+    for (const auto& job : requests.jobs) job.reply();
+    tiles.loop();
+    renderer.update_visible();
+    subscriptions.send("camera.front", "", "unavailable");
+    tiles.loop();
+    renderer.update_visible();
+    assert(!lv_obj_has_flag(widgets[1].forecast, LV_OBJ_FLAG_HIDDEN) &&
+           !std::strcmp(lv_label_get_text(widgets[1].label), "UNAVAILABLE") &&
+           tiles.snapshot(renderer.binding(1)).asset == 0);
+    // Old descriptors can be invalid before the next renderer paint. The draw
+    // callback must reject policy/asset changes before touching their bytes.
+    lv_obj_invalidate(widgets[2].forecast);
+    renderer.suspend();
+    view.descriptor.data = nullptr;
+    lv_refr_now(lv_display_get_default());
+    assert(!tiles.snapshot(other).bound);
+    renderer.retire_active();
+    state.retire_active();
+    std::printf(
+        "%s: image tiles, shared %zu-image pool, reconnect, deferred cleanup and 1000 stable navigation "
+        "cycles passed\n",
+        limits.device_profile, Images);
+  }
+  observers.remove(tiles);
+  assert(arena.live == 0);
+  lv_obj_delete(page);
+}
+
 template <size_t Slots>
 void cover_art_profile(const DeviceUiLimits& limits) {
   Fixture fixture(limits, false, false, false, false, false, false, false, false, false, true);
@@ -5398,6 +5746,28 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "images") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          image_tile_profile<6, 6>(limits);
+          break;
+        case 9:
+          if (limits.image_slot_count == 2)
+            image_tile_profile<9, 2>(limits);
+          else
+            image_tile_profile<9, 6>(limits);
+          break;
+        case 15:
+          image_tile_profile<15, 6>(limits);
+          break;
+        case 20:
+          image_tile_profile<20, 6>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "alarm") == 0) {
       switch (limits.slot_count) {
         case 6:
@@ -5839,6 +6209,7 @@ int main() {
         media_position_profile<6>(limits);
         now_playing_profile<6>(limits);
         cover_art_profile<6>(limits);
+        image_tile_profile<6, 6>(limits);
         media_control_profile<6>(limits);
         break;
       case 9:
@@ -5870,6 +6241,10 @@ int main() {
         media_position_profile<9>(limits);
         now_playing_profile<9>(limits);
         cover_art_profile<9>(limits);
+        if (limits.image_slot_count == 2)
+          image_tile_profile<9, 2>(limits);
+        else
+          image_tile_profile<9, 6>(limits);
         media_control_profile<9>(limits);
         break;
       case 15:
@@ -5901,6 +6276,7 @@ int main() {
         media_position_profile<15>(limits);
         now_playing_profile<15>(limits);
         cover_art_profile<15>(limits);
+        image_tile_profile<15, 6>(limits);
         media_control_profile<15>(limits);
         break;
       case 20:
@@ -5932,6 +6308,7 @@ int main() {
         media_position_profile<20>(limits);
         now_playing_profile<20>(limits);
         cover_art_profile<20>(limits);
+        image_tile_profile<20, 6>(limits);
         media_control_profile<20>(limits);
         break;
       default:

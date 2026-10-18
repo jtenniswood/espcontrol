@@ -87,6 +87,26 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     out.sensor = {};
     if (out.icon.empty() || out.icon == "Auto") out.icon = "Lightbulb";
     out.icon_on = out.icon;
+  } else if (type == "image") {
+    out.kind = BasicCardKind::IMAGE;
+    out.unit = {};
+    out.sensor = {};
+    out.image = {};
+    out.image.refresh =
+        static_cast<uint8_t>(camera::refresh_mode(cfg_option_value(options, "image_modal_refresh_mode")));
+    out.image.interval_seconds =
+        camera::refresh_interval_ms(cfg_option_value(options, "image_modal_refresh_interval")) / 1000;
+    out.image.fit = normalize_image_modal_mode(cfg_option_value(options, IMAGE_MODAL_MODE_OPTION)) == "fit";
+    out.image.label = cfg_option_token_present(options, IMAGE_LABEL_OPTION);
+    out.image.icon = cfg_option_token_present(options, IMAGE_ICON_OPTION);
+    const auto trigger = cfg_option_value(options, "image_modal_refresh_trigger");
+    if (out.image.refresh == static_cast<uint8_t>(camera::RefreshMode::ACTIVITY) &&
+        camera::valid_trigger(trigger)) {
+      if (!copy(trigger, out.time_unit)) return false;
+    } else
+      out.time_unit = {};
+    if (out.icon.empty() || out.icon == "Auto") out.icon = "Camera";
+    out.icon_on = out.icon;
   } else if (type == "timer") {
     out.kind = BasicCardKind::TIMER;
     out.unit = {};
@@ -624,6 +644,18 @@ BasicCardState read_basic_card(
     PageTimezoneRuntime* timezone, PageAlarmStateRuntime* alarm_owner) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
+  if (card.kind == BasicCardKind::IMAGE) {
+    result.label = card.label;
+    if (result.label.empty()) {
+      result.label = card.entity;
+      const auto name = find(state, handle, card.entity, "friendly_name");
+      if (name.status == PageEntityStatus::AVAILABLE) {
+        const auto raw = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+        result.label = raw.substr(0, raw.find('\0'));
+      }
+    }
+    return result;
+  }
   if (card.kind == BasicCardKind::PERCENT_SLIDER) {
     result.percent_slider = read_basic_percent_slider(card, handle, state, percent_slider);
     const bool inverted = card.percent_slider == PagePercentSliderKind::COVER_POSITION ||
