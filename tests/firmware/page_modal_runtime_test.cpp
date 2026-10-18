@@ -33,8 +33,10 @@ struct Port:PageModalPort {
   bool reconnect_create{false}, reconnect_initialize{false};
   size_t initializes{0}, creates{0}, destroys{0}, retires{0}, sends{0}, maximum_live{0};
   PageModalClose reason{PageModalClose::SHUTDOWN};
+  mutable size_t kind_queries{0};
   bool valid_origin(PageBindingToken token)const override{return token.binding==binding;}
   ControlModalKind kind(const PageStore &store,ConfigurationHandle handle)const override {
+    ++kind_queries;
     const auto *card=store.card(handle);if(!card)return ControlModalKind::NONE;
     const auto type=store.field(*card,CardField::TYPE);return type=="climate"||type=="climate_control"?ControlModalKind::CLIMATE:ControlModalKind::NONE;
   }
@@ -91,7 +93,9 @@ void activate(PageModalRuntime &runtime,const PageStore &store){assert(runtime.p
 void queue_and_callback_lifetimes() {
   Fixture fixture;Port port;PageModalRuntime runtime(port);port.runtime=&runtime;activate(runtime,fixture.store);
   assert(!runtime.request_card({17, 0}, ControlModalKind::ALARM_CONTROL));
+  const auto queries = port.kind_queries;
   assert(runtime.request(origin()));assert(port.creates==0&&runtime.memory().pending_requests==1);
+  assert(port.kind_queries == queries + 1);
   ++port.binding;runtime.loop();assert(port.creates==0&&runtime.memory().pending_requests==0); // Rebound before loop.
   assert(!runtime.request(origin()));assert(runtime.request(origin(17,0,port.binding)));runtime.loop();
   const auto first=runtime.token();void *address=port.context;assert(runtime.valid(first)&&runtime.interactive(first));
@@ -161,6 +165,102 @@ void queued_requests_keep_their_connection() {
   runtime.loop();
   assert(port.creates == port.destroys && port.sends == 0);
 }
+void family_connection_policy() {
+  struct LocalPort final : Port {
+    uint32_t local_epoch{0};
+    bool local_card{true};
+    ControlModalKind kind(const PageStore& store, ConfigurationHandle card) const override {
+      const auto normal = Port::kind(store, card);
+      return local_card && card.index == 0 && normal == ControlModalKind::CLIMATE ? ControlModalKind::WIFI_QR
+                                                                                  : normal;
+    }
+    bool connected_for(ControlModalKind kind) const override {
+      return kind == ControlModalKind::WIFI_QR || Port::connected();
+    }
+    uint32_t connection_generation_for(ControlModalKind kind) const override {
+      return kind == ControlModalKind::WIFI_QR ? local_epoch : Port::connection_generation();
+    }
+    void retire(void* pointer, PageModalClose reason) override {
+      if (static_cast<Context*>(pointer)->token.kind == ControlModalKind::WIFI_QR)
+        static_cast<Context*>(pointer)->pending = false;
+      Port::retire(pointer, reason);
+    }
+  } port;
+  Fixture fixture;
+  PageModalRuntime runtime(port);
+  port.runtime = &runtime;
+  activate(runtime, fixture.store);
+  port.connected_value = false;
+  for (bool binding : {false, true}) {
+    port.busy = true;
+    assert(binding ? runtime.request(origin()) : runtime.request_card({17, 0}));
+    ++port.epoch;
+    port.busy = false;
+    runtime.loop();
+    const auto qr = runtime.token();
+    assert(qr.kind == ControlModalKind::WIFI_QR && runtime.valid(qr) && runtime.interactive(qr));
+    ++port.epoch;
+    runtime.loop();
+    assert(runtime.valid(qr));
+    assert(!runtime.request_card({17, 1}) && runtime.valid(qr));
+    runtime.dismiss(PageModalClose::SHUTDOWN);
+    runtime.loop();
+  }
+  // A source-local invalidation still cancels a queued local opening.
+  assert(runtime.request_card({17, 0}));
+  ++port.local_epoch;
+  runtime.loop();
+  assert(!port.context);
+  // A changed family cannot adopt a queued request under its different epoch.
+  assert(runtime.request_card({17, 0}));
+  port.local_card = false;
+  runtime.loop();
+  assert(!port.context);
+  port.local_card = true;
+  port.reconnect_create = true;
+  assert(runtime.request_card({17, 0}));
+  runtime.loop();
+  assert(runtime.valid(runtime.token()));
+  port.reconnect_create = false;
+  runtime.dismiss(PageModalClose::SHUTDOWN);
+  runtime.loop();
+  port.reconnect_initialize = true;
+  assert(runtime.request_card({17, 0}));
+  runtime.loop();
+  assert(runtime.valid(runtime.token()));
+  port.reconnect_initialize = false;
+  for (unsigned n = 0; n < 1000; ++n) {
+    port.connected_value = true;
+    ++port.epoch;
+    assert(runtime.request_card({17, 1}));
+    runtime.loop();
+    const auto ha = runtime.token();
+    assert(ha.kind == ControlModalKind::CLIMATE && runtime.valid(ha));
+    port.connected_value = false;
+    ++port.epoch;
+    assert(!runtime.valid(ha));
+    assert(runtime.request_card({17, 0}));
+    runtime.loop();
+    const auto qr = runtime.token();
+    assert(qr.kind == ControlModalKind::WIFI_QR && runtime.valid(qr));
+    assert(runtime.last_retirement().reason == PageModalClose::DISCONNECTED);
+    // A reconnect invalidates an old pending HA request without closing QR.
+    port.connected_value = true;
+    assert(runtime.request_card({17, 1}));
+    ++port.epoch;
+    runtime.loop();
+    assert(runtime.valid(qr) && runtime.token().opening == qr.opening);
+    port.connected_value = false;
+    ++port.epoch;
+    runtime.loop();
+    assert(runtime.valid(qr));
+    assert(!runtime.notify_closed(ha));
+  }
+  runtime.dismiss(PageModalClose::SHUTDOWN);
+  runtime.loop();
+  assert(port.creates == port.destroys && port.maximum_live == 1 && port.sends == 0);
+}
+
 void pending_request_identity() {
   Fixture fixture;
   Port port;
@@ -219,6 +319,7 @@ void bounded_cycles_failures_and_exhaustion() {
 }
 }
 int main() {
+  family_connection_policy();
   pending_request_identity();
   queued_requests_keep_their_connection();
   action_response_dispatch_lifetime();

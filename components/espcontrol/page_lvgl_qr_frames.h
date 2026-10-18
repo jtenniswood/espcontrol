@@ -57,6 +57,9 @@ class PageLvglQrFrames final : public PageQrFrames {
   bool draw(size_t slot, lv_obj_t* surface, lv_layer_t* layer) const {
     return slot < count_ && frames_[slot].draw(surface, layer);
   }
+  bool idle() const {
+    return decoder_.sessions() == 0;
+  }
   size_t reserved_bytes() const {
     return count_ * sizeof(PageQrFrame);
   }

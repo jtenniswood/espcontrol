@@ -39,6 +39,15 @@ class PageModalPort {
   virtual bool ready()const=0; // Outside native/coordinator/LVGL callback dispatch.
   virtual bool connected()const=0;
   virtual uint32_t connection_generation()const=0;
+  // Composite scenes route by the admitted family. Static local panels can use
+  // a stable local epoch while HA-backed panels keep their captured HA epoch.
+  virtual bool connected_for(ControlModalKind) const {
+    return connected();
+  }
+  virtual uint32_t connection_generation_for(ControlModalKind) const {
+    return connection_generation();
+  }
+
   // create copies configuration only; initialize may subscribe/prime/open UI.
   // They run from loop, never from a configuration activation transaction.
   virtual void *create(const PageStore &,ConfigurationHandle,PageModalToken)=0;
@@ -98,8 +107,8 @@ class PageModalRuntime final:public PageRuntimeResources {
     ControlModalKind kind{ControlModalKind::NONE};
     bool pending{false}, from_binding{false};
   };
-  bool valid_request(const Request &)const;
-  bool valid_card(ConfigurationHandle, ControlModalKind) const;
+  bool valid_request(const Request&, bool verify_kind = true) const;
+  bool valid_card(ConfigurationHandle, ControlModalKind, bool verify_kind) const;
   void retire_context(PageModalClose);
   void collect_retired();
   PageModalPort &port_;PageStore active_store_;
