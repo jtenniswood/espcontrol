@@ -145,6 +145,9 @@ void media_control_refresh_speaker_row(MediaControlCtx *, MediaSpeakerRowState *
 }
 void media_control_refresh_group_volume(MediaControlCtx *) { ++group_refreshes; }
 void media_control_refresh_volume(MediaControlCtx *) {}
+void media_control_refresh_parent_card(MediaControlCtx *) {}
+int media_clamp_percent(int pct) { return std::max(0, std::min(100, pct)); }
+
 bool ha_cancel_action_response_callback(uint32_t, const char *) { return true; }
 void media_control_sync_speaker_candidates(MediaControlCtx *, const std::vector<std::string> &) {}
 int media_control_clamp_volume(MediaControlCtx *ctx, int pct) {
@@ -159,6 +162,8 @@ for text, name in (
     (group, "media_group_step_volume"),
     (group, "media_group_mean_volume"),
     (group, "media_group_delta_volumes"),
+    (media, "media_control_set_volume_value"),
+    (media, "media_control_volume_pending_active"),
     (media, "media_control_store_group_volume"),
     (media, "media_control_set_group_volume_target"),
     (media, "media_control_copy_group_volume_to_row"),
@@ -391,6 +396,19 @@ int main() {
   commands.clear();
   media_control_apply_group_volume_percent(&ctx, 79, true);
   assert(commands.size() == 2 && commands[0].volume == 79 && commands[1].volume == 79);
+  // A primary target may expire a millisecond before its display deadline.
+  // The next timer tick must still restore the single-player Volume display,
+  // even though refreshing the group cache has already cleared its target.
+  ctx.group_members = {office.entity_id};
+  ctx.reported_volume_pct = 30; ctx.reported_volume_known = true;
+  ctx.current_pct = 31; ctx.pending_pct = 31; ctx.volume_known = true;
+  ctx.pending_until_ms = esphome::now + 1501;
+  ctx.group_volume_states = {{office.entity_id, 31, true, true, esphome::now + 1500}};
+  esphome::now += 1500; media_control_speaker_action_timer_cb(nullptr);
+  assert(ctx.group_volume_states[0].volume_pct == 30 && ctx.group_volume_states[0].pending_until_ms == 0);
+  assert(ctx.current_pct == 31 && ctx.pending_pct == 31); // Newer display deadline still protected.
+  ++esphome::now; media_control_speaker_action_timer_cb(nullptr);
+  assert(ctx.current_pct == 30 && ctx.pending_pct == -1 && ctx.pending_until_ms == 0);
 }
 '''
 with tempfile.TemporaryDirectory(prefix="media-speaker-volume-") as directory:
