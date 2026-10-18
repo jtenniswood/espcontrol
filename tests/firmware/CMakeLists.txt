@@ -94,6 +94,9 @@ add_test(NAME multipart_upload_completion_test COMMAND
 add_test(NAME web_ota_guard_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/web_ota_guard_test.py)
+add_test(NAME web_event_source_lifecycle_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/web_event_source_lifecycle_test.py)
 
 add_test(NAME option_select_values_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"

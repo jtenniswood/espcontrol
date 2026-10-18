@@ -99,6 +99,7 @@ TASKS = (
          domains=("firmware",),
          inputs=(
              "tests/firmware/**",
+             "components/web_server_idf/**",
              "components/gsl3680/**",
              "common/addon/backlight.yaml",
              "common/addon/backlight_schedule.yaml",
@@ -194,6 +195,9 @@ TASKS = (
          domains=("workflow",), inputs=("scripts/check_local_artifacts.py",), cache="never"),
     task("local-esphome", ("python3", "scripts/local_esphome.py", "--self-test"), profiles=FAST,
          domains=("firmware", "workflow"), inputs=("scripts/local_esphome.py",), cache="never"),
+    task("device-web-transport-tests", ("python3", "tests/device_web_transport_test.py"), profiles=FAST,
+         domains=("firmware", "workflow"), inputs=("scripts/test_device_web_transport.py", "tests/device_web_transport_test.py"),
+         parallel_safe=True, cache="never"),
     task("ci-tooling", ("python3", "scripts/check_tasks.py", "--self-test"),
          ("python3", "scripts/prepare_ci.py", "--self-test"), profiles=FAST,
          domains=("workflow",), inputs=("scripts/check_tasks*.py", "scripts/prepare_ci.py", "scripts/fixtures/check_tasks_legacy_coverage.json", "package.json"),
