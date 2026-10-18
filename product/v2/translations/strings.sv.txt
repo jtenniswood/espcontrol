@@ -281,3 +281,12 @@ weekday_weds=ons
 weekday_thurs=tor
 weekday_fri=fre
 weekday_sat=lör
+
+# Default card labels (label_ keys use key-based lookup only)
+label_connect=Anslut
+label_local_action=Lokal åtgärd
+label_switch=Strömbrytare
+label_lighting=Belysning
+label_garage=Garage
+label_sensor=Sensor
+label_camera=Kamera
