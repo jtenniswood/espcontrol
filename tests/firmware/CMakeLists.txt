@@ -911,7 +911,8 @@ target_include_directories(media_playback_clock_test PRIVATE ../../components/es
 add_test(NAME media_playback_clock_test COMMAND media_playback_clock_test)
 
 add_executable(page_media_state_runtime_test page_media_state_runtime_test.cpp
-  ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_store.cpp)
+  ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp)
 target_compile_features(page_media_state_runtime_test PRIVATE cxx_std_17)
 target_compile_options(page_media_state_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
 target_include_directories(page_media_state_runtime_test PRIVATE stubs ../../components/espcontrol)

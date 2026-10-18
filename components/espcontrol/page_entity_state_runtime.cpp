@@ -238,8 +238,10 @@ void PageEntityStateRuntime::receive(Slot &slot, uint32_t revision, uint32_t cha
   synchronize_connection();
   auto &entry = slot.channels[channel];
   const std::string_view attribute(slot.names+entry.attribute_offset,entry.attribute_size);
-  if(observer_)observer_->observed(slot.generation,
-      {slot.names+entry.entity_offset,entry.entity_size},attribute,value,copied);
+  if(observer_)observer_->observed_update(slot.generation,
+      {slot.names+entry.entity_offset,entry.entity_size},attribute,value,copied,
+      entry.status==PageEntityStatus::AVAILABLE
+          ? std::string_view(slot.values+entry.value_offset,entry.value_size) : std::string_view{});
   if(attribute=="current_position"||attribute=="current_tilt_position") {
     uint8_t percent;if(parse_bounded_percent(value,percent)){entry.percent=percent;entry.percent_known=true;}
   }

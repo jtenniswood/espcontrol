@@ -25,6 +25,23 @@ have not changed. Configuration replacement copies validity independently of raw
 cache values, and reconnect generations invalidate both prepared and active data.
 Raw metadata remains in the shared cache rather than being copied into this owner.
 
+Detail consumers also invalidate title/artist validity when the established item
+identity changes. A temporary empty ID retains the previous identity for the
+next comparison. A title-only change clears the old artist and queues one
+consolidated reannouncement on safe loop maintenance. The graph exposes its
+previous packed value synchronously before mutation, so the owner compares
+bounded decoded title bytes without retaining another title string or hash.
+An expected title refresh keeps an artist that arrived first in the same
+snapshot; its two-second window follows the existing policy. Configuration
+replacement cannot repopulate invalidated text from a copied cache value.
+Playlist-only sources do not request unused title/artist data.
+
+The old string presentation and item-kind APIs remain available. Shared views
+can normalize display text and classify borrowed URI/type views without heap
+allocation. Presentation strips unsupported emoji and preserves complete UTF-8,
+including in-place conversion of a fixed decoded buffer. It must never be used
+for stored identifiers or HA actions.
+
 Prepare the media owner before the entity graph, pass it as the graph's observer,
 and activate the prepared owners together. The observer records bounded state
 synchronously; it must not dispatch actions or replace configuration from that
@@ -66,7 +83,7 @@ paused seek expiry and 1,000 page cycles per profile. Retained resource counts a
 checked separately from temporary LVGL layout/style work. These are host pointer
 tests, not physical touch, whole-firmware RAM or full-screen pixel parity results.
 
-Remaining media work includes secondary entities, metadata
-identity changes, cover-art loading/cancellation and the media/volume/speaker
+Remaining media work includes the Now Playing view, secondary entities,
+external-input reconciliation and cover-art loading/cancellation and the media/volume/speaker
 panels. Those paths must preserve the existing behaviour before production
 selection and the S3 hardware canary.
