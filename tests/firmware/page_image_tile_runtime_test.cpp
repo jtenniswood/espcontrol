@@ -264,7 +264,7 @@ struct Fixture {
     button(2, "image.still;Still;Auto;Auto;;;image;;");
     button(3, "camera.other;Other;Auto;Auto;;;image;;");
     button(4, ";Rooms;;;indicator;;subpage;;");
-    const std::string child = "~B,1|I,camera.hidden,Hidden,Auto,Auto,,,,";
+    const std::string child = "~B,1|image,camera.hidden,Hidden,Auto,Auto,,,,";
     assert(w.append_subpage(4, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
            PanelConfigStatus::OK);
     std::string order;
