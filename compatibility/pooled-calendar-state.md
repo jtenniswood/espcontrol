@@ -28,8 +28,10 @@ the first configuration prepare. It seeds current producer state, attaches the
 optional date/time events and publishes active scalar state back to the existing
 calendar global. That publication keeps `calendar_date_valid()` authoritative for
 the time addon's fallback path. Staged HA reports never change the global date;
-publication uses direct scalar assignment, without redispatching an active HA
-report as a clock event into a candidate configuration. Uninstall the bridge
+a redundant invalid-clock date event cannot erase a valid candidate HA date
+before the first commit. Publication uses direct scalar assignment, without
+redispatching an active HA report as a clock event into a candidate
+configuration. Uninstall the bridge
 before destroying the owner. Duplicate/unsafe installation is rejected.
 
 The owner uses fixed active/staged scalar records and borrowed PageStore views;

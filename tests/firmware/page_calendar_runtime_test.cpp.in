@@ -233,7 +233,13 @@ void graph_and_producers() {
       return store.activate_prepared(generation, PANEL_CONFIG_DOCUMENT_VERSION, cfg.document.data(),
                                      cfg.size);
     };
-    assert(prepare(fixture) && activate(fixture, 0));
+    assert(prepare(fixture));
+    subscriptions.send("sensor.date", "", "2026-10-18");
+    assert(!calendar_date_state().date_valid);
+    legacy_calendar::update_calendar_cards(false, 0, 0);
+    legacy_calendar::update_calendar_cards_time(false, 0, 0, 0, 0, false);
+    assert(activate(fixture, 0));
+    assert(runtime.read({0, 0}).day == 18 && calendar_date_state().day == 18);
     assert(subscriptions.bindings.size() == 2);
     subscriptions.send("sensor.date", "", "2026-10-18");
     assert(runtime.read({0, 0}).day == 18 && calendar_date_state().date_valid &&

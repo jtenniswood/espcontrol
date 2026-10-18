@@ -32,7 +32,11 @@ class PageCalendarEvents {
 
  private:
   static void date(void* owner, bool valid, int day, int month) {
-    static_cast<PageCalendarEvents*>(owner)->runtime_.date(valid, day, month);
+    auto& runtime = static_cast<PageCalendarEvents*>(owner)->runtime_;
+    // The clock's invalid-date fallback is conditional on the active global date.
+    // A redundant invalidation must not erase a valid candidate HA date.
+    if (!valid && !runtime.state().date_valid) return;
+    runtime.date(valid, day, month);
   }
   static void time(void* owner, bool valid, int day, int month, int hour, int minute, bool use_12h) {
     static_cast<PageCalendarEvents*>(owner)->runtime_.time(valid, day, month, hour, minute, use_12h);
