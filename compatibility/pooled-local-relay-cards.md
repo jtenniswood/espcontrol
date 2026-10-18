@@ -11,9 +11,9 @@ Preparation snapshots the firmware-lifetime relay registry. Activation refreshes
 those snapshots without allocating or dispatching actions. Preparation failure
 or discard preserves the active configuration. Private preparation generations
 are promoted to the real committed generation at activation. An integration test
-uses `PageStoreRuntime` publication, including relay/media/forecast promotion,
-empty local-sensor retirement and rejection of a zero committed generation. A push-only configuration frees
-all relay arena storage.
+uses `PageStoreRuntime` publication, including relay/media/forecast/modal promotion,
+generation-zero initial loads, empty local-sensor retirement and cancelled
+replacements. A push-only configuration frees all relay arena storage.
 
 A fixed application-loop feed receives existing `notify_internal_relay_changed`
 notifications for active and staged configurations. It can be installed only
