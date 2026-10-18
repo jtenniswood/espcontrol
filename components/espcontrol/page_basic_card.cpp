@@ -8,6 +8,7 @@
 #include "button_grid_subpage_parser.h"
 #include "bounded_sensor_text.h"
 #include "climate_state_logic.h"
+#include "weather_condition.h"
 #include "button_grid_contract_generated.h"
 
 namespace espcontrol::pages {
@@ -40,6 +41,12 @@ PageEntityValue find(PageEntityStateRuntime &state,ConfigurationHandle handle,
   }
   return {};
 }
+}
+bool basic_card_is_forecast(const PageStore &store,CardId id) {
+  const auto *card=store.card(id);if(!card)return false;
+  const auto type=store.field(*card,CardField::TYPE);
+  return card_runtime_weather_forecast_supported()&&(type=="weather_forecast"||
+    (type=="weather"&&card_runtime_weather_forecast_precision(std::string(store.field(*card,CardField::PRECISION)))));
 }
 bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &out,BasicCardTextSink *strings) {
   out={};const auto *card=store.card(id);if(card==nullptr)return false;
@@ -102,6 +109,10 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
       if(unit.empty())out.unit={};
       else if(!strings||!strings->copy_unit(unit,out.unit))return false;
     }
+  } else if(type=="weather"||type=="weather_forecast") {
+    out.kind=basic_card_is_forecast(store,id)?BasicCardKind::FORECAST:BasicCardKind::WEATHER;
+    out.forecast_view=precision=="today"?weather::View::TODAY:precision=="tomorrow"||type=="weather_forecast"?weather::View::TOMORROW:weather::View::DAILY;out.label={};out.sensor={};out.unit={};
+    out.icon=out.icon_on="Weather Cloudy";
   } else if(type=="light_control") {
     out.unit={};out.kind=BasicCardKind::LIGHT;out.active_color=true;out.push_feedback=true;out.default_label="Light";
     if(out.icon.empty()||out.icon=="Auto")out.icon="Lightbulb Outline";
@@ -175,6 +186,15 @@ bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,Pag
 }
 BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHandle handle,PageEntityStateRuntime &state,int duration_components,std::string_view temperature_unit,PageCardTranslate translate) {
   BasicCardState result;
+  if(card.kind==BasicCardKind::FORECAST)return result;
+  if(card.kind==BasicCardKind::WEATHER) {
+    const auto value=find(state,handle,card.entity);
+    const auto text=card.entity.empty()?std::string_view("cloudy"):value.status==PageEntityStatus::AVAILABLE?value.value:std::string_view("unavailable");
+    const auto condition=espcontrol::weather::condition_text(text,result.text,sizeof(result.text));
+    result.weather_condition=condition.index;result.formatted_label=condition.label==nullptr;
+    if(condition.label){const auto *translated=translate?translate(condition.label):nullptr;result.label=translated?translated:condition.label;}
+    return result;
+  }
   if(card.kind==BasicCardKind::CLIMATE) {
     const auto climate=read_climate_card(card.entity,card.label,card.climate,handle,state,temperature_unit,translate);
     result.on=climate.active;result.climate_icon_on=climate.icon_on;result.numeric=climate.number;result.unit=climate.unit;
@@ -263,14 +283,15 @@ BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHand
       if(end!=text&&std::isfinite(value)) {
         // Keep the existing formatter's fast integer path and rounding for
         // normal values. A bounded float fallback handles its former overflow.
-        int scale=1;for(uint8_t i=0;i<card.precision;++i)scale*=10;
+        const int precision=std::min<int>(card.precision,3);
+        int scale=1;for(uint8_t i=0;i<precision;++i)scale*=10;
         const float rounded=std::fabs(value)*scale+0.5f;
         if(static_cast<double>(rounded)<2147483648.0) {
           const int scaled=static_cast<int>(rounded),whole=scaled/scale,fraction=scaled%scale;
           const char *sign=value<0?"-":"";
-          if(card.precision==0)std::snprintf(result.number,sizeof(result.number),"%s%d",sign,whole);
-          else std::snprintf(result.number,sizeof(result.number),"%s%d.%0*d",sign,whole,card.precision,fraction);
-        } else std::snprintf(result.number,sizeof(result.number),"%.*f",card.precision,static_cast<double>(value));
+          if(precision==0)std::snprintf(result.number,sizeof(result.number),"%s%d",sign,whole);
+          else std::snprintf(result.number,sizeof(result.number),"%s%d.%0*d",sign,whole,precision,fraction);
+        } else std::snprintf(result.number,sizeof(result.number),"%.*f",precision,static_cast<double>(value));
         result.numeric=true;
         if(action_number)result.on=value>0;
         if(card.kind==BasicCardKind::NUMBER&&card.active_color&&value>0)result.on=true;

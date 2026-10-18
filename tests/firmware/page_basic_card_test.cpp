@@ -9,6 +9,7 @@
 #include "button_grid_subpage_parser.h"
 #include "page_basic_card.h"
 #include "page_card_dependencies.h"
+#include "weather_condition.h"
 #include "panel_config_document.h"
 
 using namespace espcontrol;using namespace espcontrol::pages;using namespace espcontrol::configuration;
@@ -17,6 +18,8 @@ void *operator new(size_t bytes){++allocations;if(void *p=std::malloc(bytes?byte
 void *operator new[](size_t bytes){return ::operator new(bytes);}
 void operator delete(void *p)noexcept{std::free(p);}
 void operator delete[](void *p)noexcept{std::free(p);}
+void operator delete(void *p, std::size_t) noexcept { std::free(p); }
+void operator delete[](void *p, std::size_t) noexcept { std::free(p); }
 namespace {
 struct Arena:PageArenaAllocator {
   void *allocate(size_t bytes)override{return std::malloc(bytes);}
@@ -73,6 +76,9 @@ void profile(const DeviceUiLimits &limits) {
   subs.send("sensor.temp","","3.4028235e38");value=read_basic_card(definition,{17,0},state);assert(value.numeric&&std::strlen(value.number)<sizeof(value.number));
   subs.send("sensor.temp","",std::string(257,'1'));assert(!read_basic_card(definition,{17,0},state).numeric);
   for(const auto text:{"-21.45","0.05","1.25","2.75"}){subs.send("sensor.temp","",text);value=read_basic_card(definition,{17,0},state);assert(value.numeric);}
+  auto invalid_precision=definition;invalid_precision.precision=UINT8_MAX;
+  subs.send("sensor.temp","","1.2345");
+  assert(std::strcmp(read_basic_card(invalid_precision,{17,0},state).number,"1.235")==0);
   ++subs.generation;assert(!read_basic_card(definition,{17,0},state).numeric);
   for(const auto &text:{std::string("light.test;;;;;;;;confirm_off"),std::string("media_player.test;;;;control;;media;;")}) {
     Fixture unsupported(limits,text);assert(!prepare_basic_card(unsupported.store,0,definition));
@@ -241,15 +247,30 @@ void control_profile(const DeviceUiLimits &limits) {
   PageCardDependencies source;Arena arena;Subscriptions transport;PageEntityStateRuntime state(source,arena,transport,{32,32,2048});BasicCardDefinition definition;
   Fixture light(limits,"light.room;;Auto;Auto;;;light_control;0;");assert(prepare_basic_card(light.store,0,definition));assert(definition.kind==BasicCardKind::LIGHT&&definition.icon=="Lightbulb Outline"&&definition.icon_on=="Lightbulb");assert(state.prepare(light.store));state.activate_prepared(light.store);transport.send("light.room","","on");transport.send("light.room","friendly_name","Room lamp");auto value=read_basic_card(definition,{17,0},state);assert(value.on&&value.label=="Room lamp");transport.send("light.room","","unavailable");assert(!read_basic_card(definition,{17,0},state).on);
   Fixture cover(limits,"cover.room;;Auto;Auto;modal;;cover;0;");assert(prepare_basic_card(cover.store,0,definition));assert(definition.kind==BasicCardKind::COVER&&!definition.active_color&&definition.icon=="Blinds"&&definition.icon_on=="Blinds Open");assert(state.prepare(cover.store));state.activate_prepared(cover.store);
-  for(const auto pair:{std::pair<const char *,int>{"closed",100},{"closing",100},{"open",0},{"opening",0},{"unknown",0}}){transport.send("cover.room","",pair.first);value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==pair.second);assert(value.on==(std::strcmp(pair.first,"open")==0||std::strcmp(pair.first,"opening")==0));}
+  for(const auto &pair:{std::pair<const char *,int>{"closed",100},{"closing",100},{"open",0},{"opening",0},{"unknown",0}}){transport.send("cover.room","",pair.first);value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==pair.second);assert(value.on==(std::strcmp(pair.first,"open")==0||std::strcmp(pair.first,"opening")==0));}
   const char packed[]={'4','2','.','5','9'};transport.send("cover.room","current_position",{packed,4});value=read_basic_card(definition,{17,0},state);assert(value.on&&value.closed_percent==57);
   for(const auto invalid:{"unavailable","unknown","nan","inf","bad",""}){transport.send("cover.room","current_position",invalid);value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==57&&value.on);}
   // Valid history is kept even while the page is hidden and no presenter runs.
   transport.send("cover.room","current_position","71");transport.send("cover.room","current_position","nan");value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==29);
-  for(const auto pair:{std::pair<const char *,int>{"0",100},{"100",0},{"-1e30",100},{"1e30",0},{"25prefix",75}}){transport.send("cover.room","current_position",pair.first);value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==pair.second);}
+  for(const auto &pair:{std::pair<const char *,int>{"0",100},{"100",0},{"-1e30",100},{"1e30",0},{"25prefix",75}}){transport.send("cover.room","current_position",pair.first);value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==pair.second);}
   const auto before=allocations;for(int i=0;i<1000;++i){value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==75);}assert(allocations==before);
   ++transport.generation;value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==0&&!value.on);transport.send("cover.room","","closed");value=read_basic_card(definition,{17,0},state);assert(value.closed_percent==100);
 }
 
+void weather_profile(const DeviceUiLimits &limits) {
+  Fixture fixture(limits,"weather.home;Ignored;Custom;Custom;;;weather;0;");BasicCardDefinition definition;assert(prepare_basic_card(fixture.store,0,definition));assert(definition.kind==BasicCardKind::WEATHER&&definition.label.empty()&&definition.unit.empty());PageCardDependencies source;Arena arena;Subscriptions transport;PageEntityStateRuntime state(source,arena,transport,{16,16,1024});assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);
+  auto value=read_basic_card(definition,{17,0},state);assert(value.label=="Unavailable");
+  transport.send("weather.home","","sunny");value=read_basic_card(definition,{17,0},state);assert(value.label=="Sunny"&&espcontrol::weather::CONDITION_ROWS[value.weather_condition].icon==std::string_view("Weather Sunny"));
+  transport.send("weather.home","","partly-cloudy-night");value=read_basic_card(definition,{17,0},state);assert(value.formatted_label&&std::strcmp(value.text,"Partly Cloudy Night")==0&&espcontrol::weather::CONDITION_ROWS[value.weather_condition].icon==std::string_view("Weather Night Cloudy"));
+  transport.send("weather.home","","cloudy");auto translate=[](const char *key)->const char *{return std::strcmp(key,"Cloudy")==0?"Translated Cloudy":key;};value=read_basic_card(definition,{17,0},state,2,"°C",translate);assert(value.label=="Translated Cloudy");
+  for(const auto raw:{"unknown","unavailable","custom__weather","mdi:weather-sunny"}){transport.send("weather.home","",raw);value=read_basic_card(definition,{17,0},state);assert(!value.numeric&&!value.on);}
+  const auto before=allocations;for(size_t i=0;i<1000;++i)value=read_basic_card(definition,{17,0},state);assert(allocations==before);
+  ++transport.generation;assert(read_basic_card(definition,{17,0},state).label=="Unavailable");
+  Fixture empty(limits,";;;;;;weather;0;");assert(prepare_basic_card(empty.store,0,definition));assert(state.prepare(empty.store));state.activate_prepared(empty.store);value=read_basic_card(definition,{17,0},state);assert(value.label=="Cloudy");
+  Fixture forecast(limits,"weather.home;;;;;;weather;daily;");
+  if(card_runtime_weather_forecast_supported()){assert(prepare_basic_card(forecast.store,0,definition)&&definition.kind==BasicCardKind::FORECAST&&definition.forecast_view==weather::View::DAILY);}
+  else {assert(prepare_basic_card(forecast.store,0,definition));assert(state.prepare(forecast.store));state.activate_prepared(forecast.store);transport.send("weather.home","","sunny");assert(read_basic_card(definition,{17,0},state).label=="Sunny");}
 }
-int main(){display_text();for(const auto &limits:DEVICE_UI_PROFILES){profile(limits);climate_profile(limits);status_actions_profile(limits);control_profile(limits);}}
+
+}
+int main(){display_text();for(const auto &limits:DEVICE_UI_PROFILES){profile(limits);climate_profile(limits);status_actions_profile(limits);control_profile(limits);weather_profile(limits);}}
