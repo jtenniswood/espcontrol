@@ -210,6 +210,14 @@ int main() {
   assert(office.volume_pct == 50 && commands.back().volume == 50);
   kitchen.volume_pct = 80; click(minus);
   assert(kitchen.volume_pct == 79 && commands.back().volume == 79);
+  // The primary sends its raw decrement above the cap, but its pending
+  // display target must use the same clamped scale as direct HA readings.
+  auto *primary_minus = media_control_create_speaker_volume_button(
+    &ctx, &office, &parent, 46, "-", false);
+  office.volume_pct = 80; click(primary_minus);
+  assert(office.volume_pct == 79 && commands.back().entity == office.entity_id);
+  assert(commands.back().volume == 79 && ctx.group_volume_states[0].volume_pct == 79);
+  assert(ctx.current_pct == 50 && ctx.pending_pct == 50);
   kitchen.volume_pct = 0; click(minus);
   assert(kitchen.volume_pct == 0 && commands.back().volume == 0);
   const auto sent = commands.size();

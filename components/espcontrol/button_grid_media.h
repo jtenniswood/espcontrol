@@ -3933,8 +3933,10 @@ inline lv_obj_t *media_control_create_speaker_volume_button(
     media_control_set_group_volume_target(
       ctx, row->entity_id, row->volume_pct, row->available);
     if (row->entity_id == ctx->entity_id) {
-      ctx->current_pct = row->volume_pct;
-      ctx->pending_pct = row->volume_pct;
+      // Direct subscription readings are clamped to the configured display
+      // scale; keep the pending acknowledgement on that scale as well.
+      ctx->current_pct = media_control_clamp_volume(ctx, row->volume_pct);
+      ctx->pending_pct = ctx->current_pct;
       ctx->pending_until_ms = esphome::millis() + 1500;
     }
     send_media_volume_action(row->entity_id, row->volume_pct);
