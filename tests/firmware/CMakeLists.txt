@@ -898,6 +898,16 @@ foreach(FORECAST_TRANSPORT_TEST page_ha_forecast_requests_test page_ha_forecast_
 endforeach()
 target_compile_definitions(page_ha_forecast_requests_disabled_test PRIVATE ESPCONTROL_DISABLE_WEATHER_FORECAST=1)
 
+add_test(NAME media_playback_clock_parity_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/media_playback_clock_parity_test.py)
+
+add_executable(media_playback_clock_test media_playback_clock_test.cpp)
+target_compile_features(media_playback_clock_test PRIVATE cxx_std_17)
+target_compile_options(media_playback_clock_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(media_playback_clock_test PRIVATE ../../components/espcontrol)
+add_test(NAME media_playback_clock_test COMMAND media_playback_clock_test)
+
 add_executable(page_media_state_runtime_test page_media_state_runtime_test.cpp
   ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_store.cpp)
 target_compile_features(page_media_state_runtime_test PRIVATE cxx_std_17)

@@ -54,6 +54,14 @@ struct Transport : PageMediaTransport {
   uint32_t connection = 1;
   size_t requests = 0;
   std::function<void()> during;
+  uint32_t now = 100;
+  int64_t epoch = 1000;
+  uint32_t now_ms() const override {
+    return now;
+  }
+  int64_t epoch_seconds() const override {
+    return epoch;
+  }
   bool connected() const override {
     return online;
   }
@@ -201,7 +209,66 @@ void only_declared_metadata_is_refreshed() {
   assert(transport.requests == 1);
   assert(!runtime.current({32, 0}, "media_player.room", "media_content_id"));
 }
+void playback_survives_navigation_and_replacement() {
+  Arena arena;
+  Transport transport;
+  transport.now = 1000;
+  transport.epoch = 1003;
+  Fixture first(40, "media_player.room", {"position", "play_pause", "next"});
+  Fixture next(41, "media_player.room", {"position", "play_pause", "previous"});
+  Fixture actions(42, "media_player.room", {"play_pause", "previous", "next"});
+  PageMediaStateRuntime runtime(arena, transport);
+  PageMediaPlaybackSnapshot snapshot;
+  assert(runtime.prepare(first.store));
+  runtime.observed(40, "media_player.room", "", "playing", false);
+  runtime.observed(40, "media_player.room", "media_duration", "300", false);
+  runtime.observed(40, "media_player.room", "media_position", "10", false);
+  runtime.observed(40, "media_player.room", "media_position_updated_at", "1970-01-01T00:16:40Z", false);
+  assert(!runtime.playback({40, 0}, "media_player.room", snapshot));
+  runtime.activate_prepared(first.store);
+  assert(runtime.playback({40, 0}, "media_player.room", snapshot) && snapshot.available && snapshot.playing &&
+         snapshot.seconds == 13 && snapshot.percent == 4);
+  const auto revision = runtime.revision();
+  transport.now = 2000;
+  runtime.loop();
+  assert(runtime.revision() == revision + 1);
+  runtime.loop();
+  assert(runtime.revision() == revision + 1 && transport.requests == 0);
+  assert(runtime.playback({40, 0}, "media_player.room", snapshot) && snapshot.seconds == 14);
+  runtime.observed(40, "media_player.room", "", "paused", false);
+  transport.now = 10000;
+  assert(runtime.playback({40, 0}, "media_player.room", snapshot) && snapshot.seconds == 14 &&
+         !snapshot.playing);
+  assert(runtime.prepare(next.store));
+  runtime.observed(41, "media_player.room", "media_position", "10", true);
+  const auto allocations = cpp_allocations;
+  runtime.activate_prepared(next.store);
+  assert(cpp_allocations == allocations);
+  std::memset(first.storage.data(), 0xA5, first.storage.size());
+  assert(runtime.playback({41, 0}, "media_player.room", snapshot) && snapshot.seconds == 14);
+  runtime.observed(41, "media_player.room", "", "playing", false);
+  transport.now = 11000;
+  assert(runtime.playback({41, 0}, "media_player.room", snapshot) && snapshot.seconds == 15);
+  const auto loop_allocations = cpp_allocations;
+  for (size_t i = 0; i < 1000; ++i) {
+    transport.now += 1000;
+    runtime.loop();
+    assert(runtime.playback({41, 0}, "media_player.room", snapshot) && snapshot.seconds <= 300);
+  }
+  assert(cpp_allocations == loop_allocations && transport.requests == 0);
+  assert(runtime.prepare(actions.store));
+  runtime.activate_prepared(actions.store);
+  const auto quiet = runtime.revision();
+  transport.now += 2000;
+  runtime.loop();
+  assert(runtime.revision() == quiet && !runtime.playback({42, 0}, "media_player.room", snapshot));
+  transport.online = false;
+  ++transport.connection;
+  assert(!runtime.playback({42, 0}, "media_player.room", snapshot));
+  runtime.loop();
+}
 int main() {
   model_lifecycle();
+  playback_survives_navigation_and_replacement();
   only_declared_metadata_is_refreshed();
 }

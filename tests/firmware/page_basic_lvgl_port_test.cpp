@@ -391,7 +391,7 @@ template<size_t Slots>void weather_profile(const DeviceUiLimits &limits) {
 template<size_t Slots>void media_action_profile(const DeviceUiLimits &limits) {
   Fixture fixture(limits,false,false,false,false,false,false,true);
   Arena arena;Subscriptions subscriptions;PageCardDependencies dependencies;
-  struct Transport:PageMediaTransport {Subscriptions &subs;explicit Transport(Subscriptions &s):subs(s){}bool connected()const override{return true;}uint32_t connection_generation()const override{return subs.generation;}void reannounce()override{}} transport(subscriptions);
+  struct Transport:PageMediaTransport {Subscriptions &subs;explicit Transport(Subscriptions &s):subs(s){}bool connected()const override{return true;}uint32_t connection_generation()const override{return subs.generation;}uint32_t now_ms()const override{return 100;}int64_t epoch_seconds()const override{return 0;}void reannounce()override{}} transport(subscriptions);
   PageMediaStateRuntime media(arena,transport);PageEntityStateRuntime state(dependencies,arena,subscriptions,{128,128,8192},&media);
   auto *page=lv_obj_create(lv_screen_active());std::array<lv_coord_t,Slots+1>columns{},rows{};
   const auto row_count=(Slots+limits.grid_columns-1)/limits.grid_columns;

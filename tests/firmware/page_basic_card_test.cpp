@@ -279,7 +279,7 @@ void media_action_profile(const DeviceUiLimits &limits) {
   BasicCardDefinition definition;assert(prepare_basic_card(play.store,0,definition));
   assert(definition.kind==BasicCardKind::MEDIA_ACTION&&definition.media.show_state&&definition.icon=="Play Pause"&&definition.icon_on==definition.icon);
   PageCardDependencies dependencies;Arena arena;Subscriptions subs;
-  struct Transport:PageMediaTransport {Subscriptions &subs;explicit Transport(Subscriptions &s):subs(s){}bool connected()const override{return true;}uint32_t connection_generation()const override{return subs.generation;}void reannounce()override{}} transport(subs);
+  struct Transport:PageMediaTransport {Subscriptions &subs;explicit Transport(Subscriptions &s):subs(s){}bool connected()const override{return true;}uint32_t connection_generation()const override{return subs.generation;}uint32_t now_ms()const override{return 100;}int64_t epoch_seconds()const override{return 0;}void reannounce()override{}} transport(subs);
   PageMediaStateRuntime media(arena,transport);PageEntityStateRuntime state(dependencies,arena,subs,{32,32,1024},&media);
   assert(state.prepare(play.store));state.activate_prepared(play.store);
   assert(read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).label=="Unknown");
