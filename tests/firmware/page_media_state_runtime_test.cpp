@@ -401,7 +401,56 @@ void shared_cache_metadata_lifecycle() {
   assert(arena.live.empty() && subscriptions.count == 0);
 }
 
+void external_inputs_are_configuration_owned() {
+  Arena arena;
+  Transport transport;
+  Fixture plain(90, "media_player.room", {"now_playing", "position", "play_pause"});
+  Fixture cover(91, "media_player.room", {"cover_art", "position", "play_pause"});
+  Fixture next(92, "media_player.room", {"cover_art", "position", "play_pause"});
+  PageMediaStateRuntime media(arena, transport);
+  assert(media.prepare(plain.store));
+  media.activate_prepared(plain.store);
+  const auto observe = [&](uint32_t generation, const char* attr, const char* value, bool copied = false) {
+    media.observed(generation, "media_player.room", attr, value, copied);
+  };
+  observe(90, "", "playing");
+  observe(90, "media_title", "Title");
+  observe(90, "media_artist", "Artist");
+  observe(90, "media_duration", "300");
+  observe(90, "media_position", "10");
+  observe(90, "source", "TV");
+  PageMediaPlaybackSnapshot playback;
+  assert(media.external_input({90, 0}, "media_player.room") &&
+         media.current({90, 0}, "media_player.room", "media_title"));
+  assert(media.playback({90, 0}, "media_player.room", playback) && playback.duration == 300);
+  assert(media.prepare(cover.store));
+  media.activate_prepared(cover.store);
+  observe(91, "entity_picture_local", "/image");
+  observe(91, "source", "HDMI 1");
+  assert(!media.current({91, 0}, "media_player.room", "media_title") &&
+         !media.current({91, 0}, "media_player.room", "entity_picture_local"));
+  assert(media.playback({91, 0}, "media_player.room", playback) && !playback.has_duration &&
+         !playback.has_position);
+  assert(media.prepare(next.store));
+  observe(92, "", "playing", true);
+  observe(92, "source", "Spotify", true);
+  media.activate_prepared(next.store);
+  observe(92, "media_title", "Programme");
+  assert(media.external_input({92, 0},
+                              "media_player.room"));  // Copied state did not reset the live snapshot flags.
+  observe(92, "", "playing");
+  observe(92, "media_title", "Music");
+  assert(!media.external_input({92, 0}, "media_player.room"));
+  observe(92, "media_content_id", "x-sonos-htastream:device:spdif");
+  observe(92, "source", "Spotify");
+  assert(media.external_input({92, 0}, "media_player.room"));
+  ++transport.connection;
+  assert(!media.external_input({92, 0}, "media_player.room"));
+  media.loop();
+  assert(!media.external_input({92, 0}, "media_player.room"));
+}
 int main() {
+  external_inputs_are_configuration_owned();
   shared_cache_metadata_lifecycle();
   model_lifecycle();
   playback_survives_navigation_and_replacement();

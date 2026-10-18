@@ -47,6 +47,8 @@ class PageRendererPort {
   virtual void bind(size_t shell,const PageStore &,const PageCellLayout &,
                     PageBackStyleView,PageBindingToken) = 0;
   virtual void update(size_t shell,PageBindingToken) = 0;
+  // Complete batched widget layout after every visible shell has updated.
+  virtual void finish_update() {}
   virtual void suspend() = 0;
   virtual bool state_changed() const = 0;
 };
@@ -164,6 +166,7 @@ class PageRendererRuntime final : public PageRuntimeResources {
     if(changing_ || suspended_ || active_arena_==nullptr || (!refresh_ && !port_.state_changed()))return;
     Guard guard(changing_);refresh_=false;
     for(size_t shell=0;shell<Slots;++shell)if(bindings_[shell].binding!=0)port_.update(shell,bindings_[shell]);
+    port_.finish_update();
   }
   PageBindingToken binding(size_t shell)const{return shell<Slots?bindings_[shell]:PageBindingToken{};}
   bool valid(PageBindingToken token)const {

@@ -910,6 +910,12 @@ target_compile_options(media_playback_clock_test PRIVATE -Wall -Wextra -Werror -
 target_include_directories(media_playback_clock_test PRIVATE ../../components/espcontrol)
 add_test(NAME media_playback_clock_test COMMAND media_playback_clock_test)
 
+add_executable(media_input_state_test media_input_state_test.cpp)
+target_compile_features(media_input_state_test PRIVATE cxx_std_17)
+target_compile_options(media_input_state_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(media_input_state_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME media_input_state_test COMMAND media_input_state_test)
+
 add_executable(page_media_state_runtime_test page_media_state_runtime_test.cpp
   ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_store.cpp
   ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp)
@@ -966,7 +972,12 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_position_reference.py --output ${POSITION_REFERENCE}
     DEPENDS generate_position_reference.py generate_climate_update_test.py ../../components/espcontrol/button_grid_sliders.h
     VERBATIM)
-  add_executable(page_basic_lvgl_port_test page_basic_lvgl_port_test.cpp ${FORECAST_REFERENCE} ${POSITION_REFERENCE}
+  set(NOW_PLAYING_REFERENCE ${CMAKE_CURRENT_BINARY_DIR}/now_playing_reference.h)
+  add_custom_command(OUTPUT ${NOW_PLAYING_REFERENCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_now_playing_reference.py --output ${NOW_PLAYING_REFERENCE}
+    DEPENDS generate_now_playing_reference.py generate_climate_update_test.py ../../components/espcontrol/button_grid_media.h
+    VERBATIM)
+  add_executable(page_basic_lvgl_port_test page_basic_lvgl_port_test.cpp ${FORECAST_REFERENCE} ${POSITION_REFERENCE} ${NOW_PLAYING_REFERENCE}
     ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_forecast_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
@@ -979,6 +990,12 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   target_include_directories(page_basic_lvgl_port_test PRIVATE stubs ../../components/espcontrol ${CMAKE_CURRENT_BINARY_DIR})
   target_link_libraries(page_basic_lvgl_port_test PRIVATE lvgl::lvgl)
   add_test(NAME page_basic_lvgl_port_test COMMAND page_basic_lvgl_port_test)
+  add_executable(page_media_label_test page_media_label_test.cpp)
+  target_compile_features(page_media_label_test PRIVATE cxx_std_17)
+  target_compile_options(page_media_label_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+  target_include_directories(page_media_label_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_media_label_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_media_label_test COMMAND page_media_label_test)
   add_executable(page_label_refresh_test page_label_refresh_test.cpp)
   target_compile_features(page_label_refresh_test PRIVATE cxx_std_17)
   target_compile_options(page_label_refresh_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
