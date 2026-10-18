@@ -97,8 +97,9 @@ void lv_label_set_display_text(lv_obj_t* label, const char* text) {
   lv_label_set_text(label, text);
 }
 
+#include "device_ui_limits.h"
 #include "page_lvgl_qr_encoder.h"
-#include "page_qr_frame.h"
+#include "page_lvgl_qr_frames.h"
 #include "wifi_qr_codec.h"
 // @legacy-compact
 namespace {
@@ -281,6 +282,133 @@ void repeated_frames(lv_display_t* display) {
   frame.reset_after_draw();
   lv_obj_delete(root);
 }
+struct QrArena final : PageArenaAllocator {
+  size_t bytes{0}, blocks{0}, calls{0}, fail_at{0};
+  void* allocate(size_t size) override {
+    if (++calls == fail_at) return nullptr;
+    void* result = std::malloc(size);
+    assert(result);
+    bytes += size;
+    ++blocks;
+    return result;
+  }
+  void release(void* memory, size_t size) override {
+    assert(memory && blocks && bytes >= size);
+    --blocks;
+    bytes -= size;
+    std::free(memory);
+  }
+};
+struct QrOrigin final : PageQrOrigin {
+  std::array<uint32_t, 20> bindings{};
+  QrOrigin() {
+    bindings.fill(1);
+  }
+  PageBindingToken token(size_t slot = 0) const {
+    return {0, bindings[slot], 0, static_cast<CardId>(slot), static_cast<uint16_t>(slot), false};
+  }
+  bool valid(PageBindingToken t) const override {
+    return t.shell < bindings.size() && PageQrBindingIdentity::same(t, token(t.shell));
+  }
+};
+void qr_owner_preflight() {
+  const auto lv = lv_live_bytes, cpp = cpp_live_bytes;
+  for (size_t failure : {1u, 2u}) {
+    QrArena arena;
+    QrOrigin origin;
+    PageLvglQrFrames frames(arena);
+    PageQrRuntime<> runtime(arena, encoder, frames, origin, 20);
+    arena.fail_at = failure;
+    assert(!runtime.initialize() && !arena.bytes && !arena.blocks);
+    arena.fail_at = 0;
+    assert(runtime.initialize() && runtime.shutdown());
+    assert(!arena.bytes && !arena.blocks && lv_live_bytes == lv && cpp_live_bytes == cpp);
+  }
+  QrArena arena;
+  QrOrigin origin;
+  PageLvglQrFrames frames(arena);
+  PageQrRuntime<> runtime(arena, encoder, frames, origin, 20);
+  lv_fail_countdown = 0;
+  assert(!runtime.initialize());
+  lv_fail_countdown = -1;
+  assert(!arena.bytes && !arena.blocks && lv_live_bytes == lv);
+  assert(runtime.initialize() && runtime.shutdown());
+}
+struct QrDraw {
+  PageQrRuntime<>& owner;
+  PageLvglQrFrames& frames;
+  QrOrigin& origin;
+  const void* source{nullptr};
+};
+void qr_visible_owners(lv_display_t* display) {
+  for (const auto& profile : espcontrol::DEVICE_UI_PROFILES) {
+    QrArena arena;
+    QrOrigin origin;
+    PageLvglQrFrames frames(arena);
+    PageQrRuntime<> runtime(arena, encoder, frames, origin, profile.slot_count);
+    assert(runtime.initialize());
+    auto* surface = lv_obj_create(lv_screen_active());
+    plain(surface, 48, 48);
+    QrDraw draw{runtime, frames, origin};
+    lv_obj_add_event_cb(
+        surface,
+        [](lv_event_t* e) {
+          auto& draw = *static_cast<QrDraw*>(lv_event_get_user_data(e));
+          if (draw.owner.snapshot(0, draw.origin.token()).ready)
+            draw.frames.draw(0, lv_event_get_target_obj(e), lv_event_get_layer(e));
+        },
+        LV_EVENT_DRAW_MAIN, &draw);
+    lv_obj_add_flag(surface, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+    lv_obj_add_event_cb(
+        surface,
+        [](lv_event_t* e) {
+          auto* task = lv_event_get_draw_task(e);
+          if (lv_draw_task_get_type(task) == LV_DRAW_TASK_TYPE_IMAGE)
+            static_cast<QrDraw*>(lv_event_get_user_data(e))->source = lv_draw_task_get_image_dsc(task)->src;
+        },
+        LV_EVENT_DRAW_TASK_ADDED, &draw);
+    std::array<char, 4> document{'A', 'A', 'A', 'A'};
+    for (size_t slot = 0; slot < profile.slot_count; ++slot) {
+      const auto token = origin.token(slot);
+      assert(runtime.bind(slot, token, {document.data(), document.size()}));
+      assert(runtime.size(slot, token, 48, true));
+    }
+    document.fill('X');
+    runtime.loop();
+    for (size_t slot = 0; slot < profile.slot_count; ++slot)
+      assert(runtime.snapshot(slot, origin.token(slot)).ready);
+    const auto update = [&](unsigned n) {
+      runtime.unbind(0, origin.token());
+      ++origin.bindings[0];
+      const auto token = origin.token();
+      const auto calls = cpp_allocation_calls, lv_calls = lv_allocation_calls;
+      assert(runtime.bind(0, token, n % 2 ? "AAAA" : "BBBB"));
+      assert(runtime.size(0, token, 48, true));
+      assert(calls == cpp_allocation_calls && lv_calls == lv_allocation_calls);
+      runtime.loop();
+      assert(runtime.snapshot(0, token).ready);
+      lv_obj_invalidate(surface);
+      lv_refr_now(display);
+      assert(draw.source);
+    };
+    for (unsigned n = 0; n < 10; ++n) update(n);
+    const auto bytes = arena.bytes, calls = arena.calls, lv = lv_live_bytes, cpp = cpp_live_bytes;
+    for (unsigned n = 0; n < 1000; ++n) {
+      update(n);
+      assert(arena.bytes == bytes && arena.calls == calls && lv_live_bytes == lv && cpp_live_bytes == cpp);
+    }
+    // A held decoder still borrows the bitmap, even after the frame is hidden.
+    lv_image_decoder_dsc_t held{};
+    assert(lv_image_decoder_open(&held, draw.source, nullptr) == LV_RESULT_OK);
+    runtime.unbind(0, origin.token());
+    runtime.loop();
+    assert(arena.bytes == bytes && !runtime.shutdown());
+    lv_image_decoder_close(&held);
+    assert(runtime.shutdown() && !arena.bytes && !arena.blocks);
+    lv_obj_delete(surface);
+  }
+}
+
 }  // namespace
 int main() {
   std::setvbuf(stdout, nullptr, _IOLBF, 0);
@@ -315,6 +443,8 @@ int main() {
     }
   decoder_lifetime(display);
   repeated_frames(display);
+  qr_owner_preflight();
+  qr_visible_owners(display);
   PageQrMatrix matrix;
   assert(!encoder.encode({}, 480, false, matrix) &&
          !encoder.encode(std::string(256, 'Q'), 480, false, matrix));
@@ -324,6 +454,7 @@ int main() {
   assert(lv_live_bytes == 0);
   std::printf(
       "QR matrices: %zu cases and %zu pixels match legacy canvas and actual row-mask drawing; 1000 stable "
-      "frame replacements, allocation-free encode, max bitmap %zu bytes passed\n",
+      "frame replacements; visible owners: 1000 replacements per profile, preflight/held-session failures; "
+      "allocation-free encode, max bitmap %zu bytes passed\n",
       cases, pixels, PAGE_QR_BITMAP_BYTES);
 }

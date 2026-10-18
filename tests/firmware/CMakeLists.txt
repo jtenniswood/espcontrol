@@ -653,6 +653,12 @@ add_test(NAME guest_wifi_lifecycle_test COMMAND ${Python3_EXECUTABLE}
 add_test(NAME webhook_log_secrets_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/webhook_log_secrets_test.py ${CMAKE_CXX_COMPILER})
 
+add_executable(page_qr_runtime_test page_qr_runtime_test.cpp)
+target_compile_features(page_qr_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_qr_runtime_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_qr_runtime_test PRIVATE ../../components/espcontrol)
+add_test(NAME page_qr_runtime_test COMMAND page_qr_runtime_test)
+
 add_executable(page_qr_matrix_test page_qr_matrix_test.cpp)
 target_compile_features(page_qr_matrix_test PRIVATE cxx_std_17)
 target_compile_options(page_qr_matrix_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
