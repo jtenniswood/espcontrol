@@ -47,7 +47,7 @@ for family, context in (("vacuum", "VacuumCardCtx"), ("lawn_mower", "LawnMowerCa
 code += r'''
 int main() {
   lv_obj_t button, icon, label; BtnSlot slot{&button, &icon, &label};
-  for (const char *mode : {"status", "start_stop", "start_dock", "pause_resume", "dock"}) {
+  for (const char *mode : {"status", "start_stop", "start_dock", "pause_resume", "dock", "clean_spot", "locate", "clean_area"}) {
     // Main pages and subpages share this context and renderer.
       ParsedCfg config{"vacuum.test", "vacuum", mode, "My vacuum", "", "Star"};
       auto *ctx = create_vacuum_card_context(slot, config);
@@ -68,22 +68,35 @@ int main() {
     }
     delete ctx;
   }
-  // Existing concrete mode defaults, empty icons and Auto retain dynamic state icons.
-  for (const char *saved : {"", "Auto", "Robot Vacuum"}) {
-    ParsedCfg config{"vacuum.test", "vacuum", "status", "", "", saved};
+  // The editor treats every generated icon as automatic, including saved
+  // defaults left over after a mode change and historical state icons.
+  for (const char *mode : {"status", "start_stop", "start_dock", "pause_resume", "dock", "clean_spot", "locate", "clean_area"}) {
+  for (const char *saved : {"", "Auto", "Robot Vacuum", "Robot Vacuum Alert", "Robot Vacuum Off",
+                            "Robot Vacuum Variant", "Robot Vacuum Variant Alert", "Robot Vacuum Variant Off",
+                            "Vacuum", "Vacuum Outline"}) {
+    ParsedCfg config{"vacuum.test", "vacuum", mode, "", "", saved};
     auto *ctx = create_vacuum_card_context(slot, config);
-    apply_vacuum_card_state(ctx, esphome::StringRef("error"), false);
-    assert(icon.text == "Robot Vacuum Alert" && label.text == "Error"); delete ctx;
+    for (const char *state : {"docked", "cleaning", "paused", "returning", "error", "unknown", "unavailable"}) {
+      apply_vacuum_card_state(ctx, esphome::StringRef(state), false);
+      assert(icon.text == vacuum_state_icon_name(state));
+      assert(label.text == (ctx->status_card ? vacuum_state_label(state, ctx->label) : ctx->label));
+      assert(button.checked == (ctx->mode == "start_stop" && ctx->state == "cleaning"));
+      button.checked = false;
+    }
+    delete ctx;
   }
-  for (const char *saved : {"", "Auto", "Robot Mower", "Lawnmower"}) {
-    ParsedCfg config{"lawn_mower.test", "lawn_mower", "status", "", "", saved};
+  }
+  for (const char *mode : {"status", "start_mowing", "dock", "pause_resume"}) {
+  for (const char *saved : {"", "Auto", "Robot Mower", "Robot Mower Outline", "Lawnmower"}) {
+    ParsedCfg config{"lawn_mower.test", "lawn_mower", mode, "", "", saved};
     auto *ctx = create_lawn_mower_card_context(slot, config);
     for (const char *state : {"docked", "mowing", "error"}) {
       apply_lawn_mower_card_state(ctx, esphome::StringRef(state), false);
       assert(icon.text == lawn_mower_state_icon_name(state));
-      assert(label.text == lawn_mower_state_label(state, ctx->label));
+      assert(label.text == (ctx->status_card ? lawn_mower_state_label(state, ctx->label) : ctx->label));
     }
     delete ctx;
+  }
   }
   puts("Vacuum/Mower custom icons persist across states; automatic icons and labels remain dynamic.");
 }

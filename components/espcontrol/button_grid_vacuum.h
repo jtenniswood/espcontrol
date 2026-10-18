@@ -112,7 +112,14 @@ inline VacuumCardCtx *create_vacuum_card_context(const BtnSlot &s,
     : p.label;
   ctx->area_id = p.unit;
   ctx->status_card = ctx->mode == "status";
-  if (!p.icon.empty() && p.icon != "Auto" && p.icon != vacuum_card_default_icon_name(p.sensor)) {
+  // Match the editor's generated-icon set, including defaults saved by a
+  // different mode. Those values must continue following the live state.
+  const bool automatic_icon = p.icon.empty() || p.icon == "Auto" ||
+    p.icon == "Robot Vacuum" || p.icon == "Robot Vacuum Alert" ||
+    p.icon == "Robot Vacuum Off" || p.icon == "Robot Vacuum Variant" ||
+    p.icon == "Robot Vacuum Variant Alert" || p.icon == "Robot Vacuum Variant Off" ||
+    p.icon == "Vacuum" || p.icon == "Vacuum Outline";
+  if (!automatic_icon) {
     ctx->configured_icon = find_icon(p.icon.c_str());
   }
   return ctx;
