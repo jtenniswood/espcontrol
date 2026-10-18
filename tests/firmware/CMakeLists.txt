@@ -198,6 +198,22 @@ target_compile_options(page_percent_slider_runtime_test PRIVATE -Wall -Wextra -W
 target_include_directories(page_percent_slider_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_percent_slider_runtime_test COMMAND page_percent_slider_runtime_test)
 
+set(PAGE_TIMEZONE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_timezone_runtime_test.cpp)
+add_custom_command(OUTPUT ${PAGE_TIMEZONE_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_timezone_test.py
+    --output ${PAGE_TIMEZONE_SOURCE}
+  DEPENDS generate_page_timezone_test.py page_timezone_runtime_test.cpp.in
+    ../../components/espcontrol/button_grid_datetime_cards.h ../../components/espcontrol/sun_calc.h
+    ../../components/espcontrol/clock_bar.h
+  VERBATIM)
+add_executable(page_timezone_runtime_test ${PAGE_TIMEZONE_SOURCE}
+  ../../components/espcontrol/page_timezone_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_timezone_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_timezone_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_timezone_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_timezone_runtime_test COMMAND page_timezone_runtime_test)
+
 set(CALENDAR_TEXT_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/calendar_card_text_test.cpp)
 add_custom_command(OUTPUT ${CALENDAR_TEXT_SOURCE}
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_calendar_text_test.py
