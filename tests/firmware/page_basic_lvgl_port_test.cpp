@@ -157,6 +157,37 @@ struct Fixture {
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
   }
+  struct CleaningCards {};
+  Fixture(const DeviceUiLimits& limits, CleaningCards) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {";Cleaning;Auto;Auto;indicator;;subpage;;",
+                                 "vacuum.room;;Robot Vacuum Off;Power;start_stop;;vacuum;;",
+                                 "vacuum.room;;Robot Vacuum Variant Off;Auto;status;;vacuum;;",
+                                 "lawn_mower.room;;Lawnmower;Auto;pause_resume;;lawn_mower;;",
+                                 "lawn_mower.room;;Power;Auto;status;;lawn_mower;;",
+                                 "vacuum.room;Dock;Vacuum Outline;Auto;dock;;vacuum;;"};
+    for (size_t n = 0; n < 6; ++n)
+      assert(writer.append_button(n + 1, reinterpret_cast<const uint8_t*>(cards[n].data()),
+                                  cards[n].size()) == PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1,2,3,4,5|VC,vacuum.room,Start "
+        "Dock,Auto,Auto,start_dock,,,|LM,lawn_mower.room,Dock,Auto,Auto,dock,,,|VC,vacuum.room,Area,"
+        "Auto,Auto,clean_area,zone_1,,|S,,Sensor,Auto,Auto,sensor.temperature,C,1,|VC,vacuum.room,Locate,"
+        "Auto,"
+        "Auto,locate,,,";
+    assert(writer.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = "1,2,3,4,5,6";
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                 reinterpret_cast<const uint8_t*>(order.data()),
+                                 order.size()) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   struct AccessCards {};
   Fixture(const DeviceUiLimits& limits, AccessCards) {
     PanelConfigWriter writer(document.data(), document.size());
@@ -515,18 +546,27 @@ template<size_t Slots>struct Actions {
   PageRendererRuntime<Slots> *renderer{nullptr};size_t toggles{0},climates{0},commands{0},icon_resolves{0},seeks{0};uint8_t seek_percent{0};float seek_duration{0};PageId seek_page{NO_PAGE};PageBindingToken last;char entity[64]{};
   static const char* icon(void* owner, std::string_view name, std::string_view) {
     ++static_cast<Actions*>(owner)->icon_resolves;
-    return name == "Garage"          ? "GARAGE_CLOSED"
-           : name == "Garage Open"   ? "GARAGE_OPEN"
-           : name == "Gate"          ? "GATE_CLOSED"
-           : name == "Gate Open"     ? "GATE_OPEN"
-           : name == "Lock"          ? "LOCKED"
-           : name == "Lock Open"     ? "UNLOCKED"
-           : name == "Fan"           ? "FAN"
-           : name == "Weather Sunny" ? "SUN"
-           : name == "Lightbulb"     ? "ON"
-           : name == "Blinds Open"   ? "OPEN"
-           : name == "Blinds"        ? "CLOSED"
-                                     : "I";
+    return name == "Robot Vacuum"               ? "VAC_NORMAL"
+           : name == "Robot Vacuum Alert"       ? "VAC_ALERT"
+           : name == "Robot Vacuum Off"         ? "VAC_OFF"
+           : name == "Robot Vacuum Variant"     ? "VAC_DOCK"
+           : name == "Robot Vacuum Variant Off" ? "VAC_OFF"
+           : name == "Robot Mower"              ? "MOWER"
+           : name == "Robot Mower Outline"      ? "MOWER_OFF"
+           : name == "Vacuum Outline"           ? "VAC_AREA"
+           : name == "Power"                    ? "POWER"
+           : name == "Garage"                   ? "GARAGE_CLOSED"
+           : name == "Garage Open"              ? "GARAGE_OPEN"
+           : name == "Gate"                     ? "GATE_CLOSED"
+           : name == "Gate Open"                ? "GATE_OPEN"
+           : name == "Lock"                     ? "LOCKED"
+           : name == "Lock Open"                ? "UNLOCKED"
+           : name == "Fan"                      ? "FAN"
+           : name == "Weather Sunny"            ? "SUN"
+           : name == "Lightbulb"                ? "ON"
+           : name == "Blinds Open"              ? "OPEN"
+           : name == "Blinds"                   ? "CLOSED"
+                                                : "I";
   }
   static bool valid(void *owner,PageBindingToken t){return static_cast<Actions *>(owner)->renderer->valid(t);}
   static void toggle(void *owner,PageBindingToken t,std::string_view entity){auto &a=*static_cast<Actions *>(owner);++a.toggles;a.last=t;assert(entity.size()<sizeof(a.entity));std::memcpy(a.entity,entity.data(),entity.size());a.entity[entity.size()]='\0';}
@@ -537,6 +577,7 @@ template<size_t Slots>struct Actions {
   static void seek(void *owner,PageBindingToken token,uint8_t percent,float duration){auto &a=*static_cast<Actions *>(owner);++a.seeks;a.last=token;a.seek_percent=percent;a.seek_duration=duration;if(a.seek_page!=NO_PAGE)assert(a.renderer->open_page(a.seek_page));}
   PageCoverCommandSnapshot cover_snapshot;
   PageAccessActionSnapshot access_snapshot;
+  const char* cleaning_service{nullptr};
   PageTimerAction timer_action{PageTimerAction::NONE};
   bool timer_accept{true};
   double numeric_target{0};
@@ -2145,6 +2186,191 @@ void cover_command_profile(const DeviceUiLimits& limits) {
   assert(arena.live == 0);
   lv_obj_delete(page);
 }
+template <size_t Slots>
+void cleaning_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, Fixture::CleaningCards{});
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192});
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+    w.fill = lv_obj_create(w.button);
+    w.slider = lv_slider_create(w.button);
+  }
+  for (size_t slot : {size_t(1), size_t(3)}) {
+    lv_obj_set_style_pad_left(widgets[slot].button, 7, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(widgets[slot].button, 18, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(widgets[slot].button, 12, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(widgets[slot].button, 9, LV_PART_MAIN);
+  }
+  const auto plain_label_align = lv_obj_get_style_align(widgets[4].label, LV_PART_MAIN);
+  const auto plain_label_width = lv_obj_get_style_width(widgets[4].label, LV_PART_MAIN);
+  PageBasicTheme theme;
+  Actions<Slots> actions;
+  auto callbacks = actions.callbacks();
+  callbacks.cleaning = [](void* owner, PageBindingToken token, const char* service) {
+    auto& action = *static_cast<Actions<Slots>*>(owner);
+    ++action.commands;
+    action.last = token;
+    action.cleaning_service = service;
+    if (action.seek_page != NO_PAGE) assert(action.renderer->open_page(action.seek_page));
+  };
+  {
+    auto absent = callbacks;
+    absent.cleaning = nullptr;
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     absent);
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  callbacks);
+    assert(port.initialize());
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t used = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[used++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    PageRuntimeResourcesGroup<2> resources({&renderer, &state});
+    PageStoreRuntime publication(limits, arena, 32768, &resources);
+    assert(publication.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    assert(publication.activate_prepared(0, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(),
+                                         fixture.size));
+    renderer.update_visible();
+    assert(!lv_obj_has_flag(widgets[2].button, LV_OBJ_FLAG_CLICKABLE) &&
+           !lv_obj_has_flag(widgets[4].button, LV_OBJ_FLAG_CLICKABLE));
+    assert(std::strcmp(lv_label_get_text(widgets[1].icon), "VAC_OFF") == 0);
+    click(widgets[2].button);
+    assert(actions.commands == 0);
+    click(widgets[1].button);
+    assert(actions.commands == 1 && std::strcmp(actions.cleaning_service, "vacuum.start") == 0);
+    subscriptions.send("vacuum.room", "", "cleaning");
+    subscriptions.send("lawn_mower.room", "", "docked");
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED) &&
+           !lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));
+    assert(std::strcmp(lv_label_get_text(widgets[1].icon), "VAC_NORMAL") == 0);
+    assert(std::strcmp(lv_label_get_text(widgets[2].label), "Cleaning") == 0);
+    lv_obj_update_layout(page);
+    lv_area_t content, label_bounds;
+    lv_obj_get_content_coords(widgets[1].button, &content);
+    lv_obj_get_coords(widgets[1].label, &label_bounds);
+    assert(label_bounds.x1 == content.x1 && label_bounds.x2 == content.x2 && label_bounds.y2 == content.y2);
+    assert(std::strcmp(lv_label_get_text(widgets[5].icon), "VAC_AREA") ==
+           0);  // Direct Dock never adopts shared live state.
+    click(widgets[1].button);
+    assert(actions.commands == 2 && std::strcmp(actions.cleaning_service, "vacuum.stop") == 0);
+    subscriptions.send("lawn_mower.room", "", "mowing");
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED) &&
+           !lv_obj_has_state(widgets[3].button, LV_STATE_CHECKED));
+    assert(std::strcmp(lv_label_get_text(widgets[4].label), "Mowing") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[4].icon), "POWER") == 0);
+    click(widgets[3].button);
+    assert(actions.commands == 3 && std::strcmp(actions.cleaning_service, "lawn_mower.pause") == 0);
+    subscriptions.send("lawn_mower.room", "", "unknown");
+    subscriptions.send("vacuum.room", "", "unknown");
+    renderer.update_visible();
+    click(widgets[3].button);
+    assert(actions.commands == 3);
+    click(widgets[1].button);
+    assert(actions.commands == 4 && std::strcmp(actions.cleaning_service, "vacuum.start") == 0);
+    assert(std::strcmp(lv_label_get_text(widgets[2].label), "Unavailable") == 0);
+    const auto child = fixture.store.card(0)->target;
+    const auto old = renderer.binding(1);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == 4 && !renderer.valid(old));
+    assert(lv_obj_get_style_align(widgets[4].label, LV_PART_MAIN) == plain_label_align);
+    assert(lv_obj_get_style_width(widgets[4].label, LV_PART_MAIN) == plain_label_width);
+    click(widgets[1].button);
+    assert(actions.commands == 4);  // Start/Dock has no safe service for unavailable state.
+    subscriptions.send("vacuum.room", "", "docked");
+    renderer.update_visible();
+    click(widgets[1].button);
+    assert(actions.commands == 5 && std::strcmp(actions.cleaning_service, "vacuum.start") == 0);
+    subscriptions.send("vacuum.room", "", "paused");
+    subscriptions.send("lawn_mower.room", "", "docked");
+    renderer.update_visible();
+    click(widgets[2].button);
+    assert(actions.commands == 6 && std::strcmp(actions.cleaning_service, "lawn_mower.dock") == 0);
+    click(widgets[3].button);
+    assert(actions.commands == 7 && std::strcmp(actions.cleaning_service, "vacuum.clean_area") == 0);
+    const auto* area = publication.active().card(actions.last.card);
+    assert(area && publication.active().field(*area, CardField::UNIT) == "zone_1");
+    subscriptions.send("vacuum.room", "", std::string(10000, 'x'));
+    renderer.update_visible();
+    click(widgets[1].button);
+    assert(actions.commands == 7);
+    click(widgets[5].button);
+    assert(actions.commands == 8 && std::strcmp(actions.cleaning_service, "vacuum.locate") ==
+                                        0);  // Aggregate-only state is not a direct command dependency.
+    subscriptions.send("vacuum.room", "", "cleaning");
+    renderer.update_visible();
+    lv_obj_send_event(widgets[2].button, LV_EVENT_PRESSED, nullptr);
+    ++subscriptions.generation;
+    subscriptions.send("vacuum.room", "", "paused");
+    subscriptions.send("lawn_mower.room", "", "mowing");
+    renderer.update_visible();
+    lv_obj_send_event(widgets[2].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == 8);
+    lv_obj_send_event(widgets[2].button, LV_EVENT_PRESSED, nullptr);
+    assert(renderer.suspend() && renderer.resume());
+    renderer.update_visible();
+    lv_obj_send_event(widgets[2].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == 8);
+    assert(renderer.back());
+    renderer.update_visible();
+    actions.seek_page = child;
+    click(widgets[1].button);
+    actions.seek_page = NO_PAGE;
+    assert(actions.commands == 9 && !renderer.valid(actions.last));
+    renderer.update_visible();
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto cpp = cpp_allocations, reserved = arena.allocations, retained = lv_live_bytes,
+               channels = subscriptions.bindings.size(), descriptors = cache.memory().descriptor_adds;
+    for (int n = 0; n < 1000; ++n) {
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(cpp_allocations == cpp && arena.allocations == reserved && lv_live_bytes == retained &&
+             subscriptions.bindings.size() == channels && cache.memory().descriptor_adds == descriptors);
+    }
+    renderer.retire_active();
+    state.retire_active();
+    std::printf("%s: vacuum/mower cards 1000 cycles, state policies, direct commands and stable resources\n",
+                limits.device_profile);
+  }
+  assert(arena.live == 0);
+  lv_obj_delete(page);
+}
+
 uint32_t timer_tick = 100;
 int64_t timer_epoch = 0;
 uint32_t timer_now() {
@@ -4249,6 +4475,25 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "cleaning") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          cleaning_profile<6>(limits);
+          break;
+        case 9:
+          cleaning_profile<9>(limits);
+          break;
+        case 15:
+          cleaning_profile<15>(limits);
+          break;
+        case 20:
+          cleaning_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "access") == 0) {
       switch (limits.slot_count) {
         case 6:
@@ -4564,6 +4809,7 @@ int main() {
         cover_command_profile<6>(limits);
         cover_toggle_profile<6>(limits);
         access_profile<6>(limits);
+        cleaning_profile<6>(limits);
         fan_mode_profile<6>(limits);
         fan_status_profile<6>(limits);
         percent_slider_profile<6>(limits);
@@ -4588,6 +4834,7 @@ int main() {
         cover_command_profile<9>(limits);
         cover_toggle_profile<9>(limits);
         access_profile<9>(limits);
+        cleaning_profile<9>(limits);
         fan_mode_profile<9>(limits);
         fan_status_profile<9>(limits);
         percent_slider_profile<9>(limits);
@@ -4612,6 +4859,7 @@ int main() {
         cover_command_profile<15>(limits);
         cover_toggle_profile<15>(limits);
         access_profile<15>(limits);
+        cleaning_profile<15>(limits);
         fan_mode_profile<15>(limits);
         fan_status_profile<15>(limits);
         percent_slider_profile<15>(limits);
@@ -4636,6 +4884,7 @@ int main() {
         cover_command_profile<20>(limits);
         cover_toggle_profile<20>(limits);
         access_profile<20>(limits);
+        cleaning_profile<20>(limits);
         fan_mode_profile<20>(limits);
         fan_status_profile<20>(limits);
         percent_slider_profile<20>(limits);

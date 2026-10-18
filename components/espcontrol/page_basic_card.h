@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cleaning_card_policy.h"
 #include "cover_command_policy.h"
 #include "page_access_state_runtime.h"
 #include "page_climate_card.h"
@@ -54,7 +55,8 @@ enum class BasicCardKind : uint8_t {
   TIMER,
   COVER_COMMAND,
   COVER_TOGGLE,
-  ACCESS
+  ACCESS,
+  CLEANING
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode : uint8_t { NONE, ENTITY, CLIMATE, MOWER, TIMER, CHILDREN, NUMBER, TEXT };
@@ -72,6 +74,7 @@ struct BasicCardDefinition {
     weather::View forecast_view{weather::View::DAILY};
     PagePercentSliderKind percent_slider;
     BasicAccessOptions access;
+    cleaning::Options cleaning;
   };
   BasicActionDisplay action_display{BasicActionDisplay::NONE};
   std::string_view entity,sensor,label,unit,icon,icon_on;
@@ -107,6 +110,12 @@ struct PageAccessCardSnapshot {
   PageAccessSnapshot history;
   bool enabled{false};
 };
+struct PageCleaningSnapshot {
+  const char* service{nullptr};
+  const char* label_key{nullptr};
+  cleaning::Glyph glyph{cleaning::Glyph::VACUUM};
+  bool state_seen{false}, on{false};
+};
 struct BasicCardState {
   bool on{false}, numeric{false}, formatted_label{false}, climate_icon_on{false}, cover_icon_open{false};
   std::string_view label,unit,media_title,media_artist;
@@ -118,6 +127,7 @@ struct BasicCardState {
   PageTimerSnapshot timer;
   PageCoverCommandSnapshot cover_command;
   PageAccessCardSnapshot access;
+  PageCleaningSnapshot cleaning;
   uint8_t fill_percent{0},weather_condition{0};
   char number[48]{},text[257]{};
 };
@@ -138,6 +148,8 @@ PageCoverCommandSnapshot read_basic_cover_command(const BasicCardDefinition&, Co
                                                   PageEntityStateRuntime&);
 PageAccessCardSnapshot read_basic_access(const BasicCardDefinition&, ConfigurationHandle,
                                          PageEntityStateRuntime&, PageAccessStateRuntime*);
+PageCleaningSnapshot read_basic_cleaning(const BasicCardDefinition&, ConfigurationHandle,
+                                         PageEntityStateRuntime&);
 BasicCardState read_basic_card(
     const BasicCardDefinition&, ConfigurationHandle, PageEntityStateRuntime&, int duration_components = 2,
     std::string_view temperature_unit = "°C", PageCardTranslate translate = nullptr,

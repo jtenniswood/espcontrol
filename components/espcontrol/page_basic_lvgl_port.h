@@ -75,6 +75,7 @@ struct PageBasicActions {
   bool (*timer)(void*, PageBindingToken, PageTimerAction){nullptr};
   void (*cover_command)(void*, PageBindingToken, PageCoverCommandSnapshot){nullptr};
   void (*access)(void*, PageBindingToken, PageAccessActionSnapshot){nullptr};
+  void (*cleaning)(void*, PageBindingToken, const char* service){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -304,7 +305,10 @@ class PageBasicLvglPort final:public PageRendererPort {
   bool prepare(const PageStore& store, size_t count) override {
     discard_prepared();
     if (!initialized_ || count != Slots) return false;
-    TextCounter strings;size_t summary_count=0;bool has_weather=false,has_forecast=false;size_t forecast_frames=0;
+    TextCounter strings;
+    size_t summary_count = 0;
+    bool has_weather = false, has_forecast = false, has_cleaning = false;
+    size_t forecast_frames = 0;
     size_t number_capacity=48,label_capacity=std::max<size_t>(65,std::max({theme_.back_label.size(),theme_.empty_label.size(),theme_.folder_label.size()})+1),unit_capacity=1;
     // Back labels are decoded by the layout compiler; their source order size
     // is a conservative, profile-bounded upper bound on decoded text bytes.
@@ -315,6 +319,17 @@ class PageBasicLvglPort final:public PageRendererPort {
         BasicCardDefinition view;
         if (!prepare_basic_card(store, card, view, &strings, relay_)) return false;
         if (view.kind == BasicCardKind::COVER_COMMAND && !actions_.cover_command) return false;
+        if (view.kind == BasicCardKind::CLEANING) {
+          if (view.cleaning.mode != cleaning::Mode::STATUS && !actions_.cleaning) return false;
+          has_cleaning |=
+              view.cleaning.automatic_icon && cleaning::needs_state(view.cleaning) && !view.entity.empty();
+          if (view.cleaning.mode == cleaning::Mode::STATUS)
+            for (const auto* key : {"Cleaning", "Mowing", "Docked", "Error", "Idle", "Paused", "Returning",
+                                    "Unavailable", "Unknown"}) {
+              const auto* caption = theme_.translate ? theme_.translate(key) : nullptr;
+              label_capacity = std::max(label_capacity, std::strlen(caption ? caption : key) + 1);
+            }
+        }
         if (view.kind == BasicCardKind::ACCESS) {
           if (!access_ || !actions_.access) return false;
           label_capacity = std::max<size_t>(label_capacity, 97);
@@ -466,6 +481,14 @@ class PageBasicLvglPort final:public PageRendererPort {
       if(padding>SIZE_MAX-bytes||sizeof(WeatherGlyphs)>SIZE_MAX-bytes-padding)return false;
       weather_offset=bytes+padding;bytes=weather_offset+sizeof(WeatherGlyphs);
     }
+    size_t cleaning_offset = 0;
+    if (has_cleaning) {
+      const auto padding =
+          (alignof(CleaningGlyphs) - bytes % alignof(CleaningGlyphs)) % alignof(CleaningGlyphs);
+      if (padding > SIZE_MAX - bytes || sizeof(CleaningGlyphs) > SIZE_MAX - bytes - padding) return false;
+      cleaning_offset = bytes + padding;
+      bytes = cleaning_offset + sizeof(CleaningGlyphs);
+    }
     size_t frame_offset=0;
     if(forecast_frames) {
       const auto padding=(alignof(PageForecastFrame)-bytes%alignof(PageForecastFrame))%alignof(PageForecastFrame);
@@ -474,6 +497,18 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
     void *memory=allocator_.allocate(bytes);if(memory==nullptr)return false;
     staged_={memory,bytes,label_capacity,unit_capacity,stride,store.card_count()};staged_.number_capacity=number_capacity;
+    if (has_cleaning) {
+      staged_.cleaning = new (static_cast<char*>(memory) + cleaning_offset) CleaningGlyphs{};
+      for (size_t index = 0; index < static_cast<size_t>(cleaning::Glyph::COUNT); ++index) {
+        const auto* glyph =
+            actions_.icon(actions_.owner, cleaning::glyph_name(static_cast<cleaning::Glyph>(index)), {});
+        if (!glyph) {
+          discard_prepared();
+          return false;
+        }
+        staged_.cleaning->glyphs[index] = glyph;
+      }
+    }
     if(forecast_frames) {
       staged_.frames=reinterpret_cast<PageForecastFrame *>(static_cast<char *>(memory)+frame_offset);staged_.frame_count=forecast_frames;
       for(size_t frame=0;frame<forecast_frames;++frame)new(staged_.frames+frame)PageForecastFrame{};
@@ -620,6 +655,11 @@ class PageBasicLvglPort final:public PageRendererPort {
         lv_obj_set_width(w.icon, lv_pct(100));
       }
     }
+    if (s.definition && s.definition->definition.kind == BasicCardKind::CLEANING) {
+      lv_label_set_long_mode(w.label, LV_LABEL_LONG_WRAP);
+      lv_obj_set_width(w.label, lv_pct(100));
+      lv_obj_align(w.label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+    }
     if (w.forecast) {
       lv_obj_set_style_radius(w.forecast, 0, LV_PART_MAIN);
       lv_obj_set_style_clip_corner(w.forecast, false, LV_PART_MAIN);
@@ -647,6 +687,8 @@ class PageBasicLvglPort final:public PageRendererPort {
                                        s.definition->definition.kind == BasicCardKind::COVER_COMMAND ||
                                        s.definition->definition.kind == BasicCardKind::COVER_TOGGLE ||
                                        s.definition->definition.kind == BasicCardKind::ACCESS ||
+                                       (s.definition->definition.kind == BasicCardKind::CLEANING &&
+                                        s.definition->definition.cleaning.mode != cleaning::Mode::STATUS) ||
                                        s.definition->definition.kind == BasicCardKind::FOLDER ||
                                        s.definition->definition.kind == BasicCardKind::CLIMATE ||
                                        s.definition->definition.kind == BasicCardKind::ACTION ||
@@ -689,16 +731,19 @@ class PageBasicLvglPort final:public PageRendererPort {
         for(size_t child=0;child<s.definition->summary_count&&!value.on;++child) {
           const auto id=s.definition->summary[child];
           const auto& child_definition = prepared(active_)[id].definition;
-          value.on = child_definition.kind == BasicCardKind::LOCAL_RELAY && relay_
-                         ? relay_->on(token.configuration, child_definition.entity)
-                         : read_basic_indicator({token.configuration, id},
-                                                child_definition.kind == BasicCardKind::ACCESS
-                                                    ? child_definition.entity
-                                                    : basic_folder_child_indicator(store_, id),
-                                                state_,
-                                                child_definition.kind == BasicCardKind::TIMER
-                                                    ? BasicFolderMode::TIMER
-                                                    : BasicFolderMode::ENTITY);
+          value.on =
+              child_definition.kind == BasicCardKind::LOCAL_RELAY && relay_
+                  ? relay_->on(token.configuration, child_definition.entity)
+                  : read_basic_indicator(
+                        {token.configuration, id},
+                        child_definition.kind == BasicCardKind::ACCESS
+                            ? child_definition.entity
+                            : basic_folder_child_indicator(store_, id),
+                        state_,
+                        child_definition.kind == BasicCardKind::TIMER ? BasicFolderMode::TIMER
+                        : child_definition.kind == BasicCardKind::CLEANING && child_definition.cleaning.mower
+                            ? BasicFolderMode::MOWER
+                            : BasicFolderMode::ENTITY);
         }
       }
       if(definition.kind==BasicCardKind::FOLDER&&definition.folder_mode==BasicFolderMode::NUMBER&&value.label.empty())value.label=theme_.folder_label;
@@ -727,7 +772,10 @@ class PageBasicLvglPort final:public PageRendererPort {
           definition.folder_mode == BasicFolderMode::CLIMATE ||
           definition.folder_mode == BasicFolderMode::MOWER ||
           definition.folder_mode == BasicFolderMode::CHILDREN;
-      if (definition.kind == BasicCardKind::WEATHER)
+      if (definition.kind == BasicCardKind::CLEANING && definition.cleaning.automatic_icon &&
+          value.cleaning.state_seen && cleaning::needs_state(definition.cleaning))
+        glyph = active_.cleaning->glyphs[static_cast<size_t>(value.cleaning.glyph)];
+      else if (definition.kind == BasicCardKind::WEATHER)
         glyph = active_.weather->glyphs[value.weather_condition];
       else
         glyph = definition.kind == BasicCardKind::ACCESS && definition.access.command &&
@@ -991,8 +1039,18 @@ class PageBasicLvglPort final:public PageRendererPort {
     };
     uint16_t summary_count{0};
   };
+  struct CleaningGlyphs {
+    std::array<const char*, static_cast<size_t>(cleaning::Glyph::COUNT)> glyphs{};
+  };
   struct WeatherGlyphs {std::array<const char *,espcontrol::weather::CONDITION_COUNT>glyphs{};const char *loading{nullptr};};
-  struct Arena {void *arena{nullptr};size_t bytes{0},label_capacity{0},unit_capacity{0},stride{0},cards{0};WeatherGlyphs *weather{nullptr};PageForecastFrame *frames{nullptr};size_t frame_count{0},number_capacity{48};};
+  struct Arena {
+    void* arena{nullptr};
+    size_t bytes{0}, label_capacity{0}, unit_capacity{0}, stride{0}, cards{0};
+    WeatherGlyphs* weather{nullptr};
+    PageForecastFrame* frames{nullptr};
+    size_t frame_count{0}, number_capacity{48};
+    CleaningGlyphs* cleaning{nullptr};
+  };
   struct LabelLayout {
     const lv_font_t* font{nullptr};
     lv_coord_t x{0}, y{0}, width{0}, height{0}, maximum{0}, line_space{0}, letter_space{0}, scale_x{256},
@@ -1985,7 +2043,8 @@ class PageBasicLvglPort final:public PageRendererPort {
       shell->pressed=shell->token;
       if (shell->definition && (shell->definition->definition.kind == BasicCardKind::COVER_COMMAND ||
                                 shell->definition->definition.kind == BasicCardKind::COVER_TOGGLE ||
-                                shell->definition->definition.kind == BasicCardKind::ACCESS))
+                                shell->definition->definition.kind == BasicCardKind::ACCESS ||
+                                shell->definition->definition.kind == BasicCardKind::CLEANING))
         shell->gesture_connection = port->state_.connection_generation();
       if (timer_card(*shell)) {
         port->timer_->loop();
@@ -2009,6 +2068,14 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(origin.back){if(port->actions_.back)port->actions_.back(port->actions_.owner,origin);return;}
     if(!shell->definition)return;
     const auto &definition=shell->definition->definition;
+    if (definition.kind == BasicCardKind::CLEANING) {
+      const auto snapshot =
+          read_basic_cleaning(definition, {origin.configuration, origin.card}, port->state_);
+      if (snapshot.service && shell->gesture_connection == port->state_.connection_generation() &&
+          port->actions_.cleaning)
+        port->actions_.cleaning(port->actions_.owner, origin, snapshot.service);
+      return;
+    }
     if (definition.kind == BasicCardKind::ACCESS) {
       port->access_->loop();
       const auto snapshot =
