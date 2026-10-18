@@ -20,6 +20,11 @@ std::string_view configured_entity(const PageStore& store, CardId card) {
   }
   return {};
 }
+bool needs_metadata(const PageStore& store, CardId card) {
+  const auto* definition = store.card(card);
+  const auto mode = card_runtime_media_mode(std::string(store.field(*definition, CardField::SENSOR)));
+  return mode == "playlist" || mode == "now_playing" || mode == "cover_art";
+}
 bool usable(std::string_view state) {
   return state == "playing" || state == "paused" || state == "buffering";
 }
@@ -81,6 +86,15 @@ bool PageMediaStateRuntime::prepare(const PageStore& store) {
           *source = slots_[active_].sources[i];
           break;
         }
+    source->metadata_expected = false;
+    for (CardId sibling = 0; sibling < store.card_count(); ++sibling)
+      if (configured_entity(store, sibling) == entity && needs_metadata(store, sibling))
+        source->metadata_expected = true;
+    if (!source->metadata_expected) {
+      source->fresh = source->present = 0;
+      source->resync = false;
+    } else if (source->state_known && usable(source->state) && !(source->present & CONTENT_BITS))
+      source->resync = true;
     std::memcpy(text, entity.data(), entity.size());
     text[entity.size()] = '\0';
     source->entity = {text, entity.size()};
@@ -160,7 +174,8 @@ void PageMediaStateRuntime::observed(uint32_t generation, std::string_view entit
     const bool next_usable = usable(state);
     if (!next_usable && (!source->state_known || std::strcmp(source->state, state) != 0))
       source->fresh = source->present = 0;
-    if (next_usable && (!source->state_known || !usable(source->state)) && !(source->present & CONTENT_BITS))
+    if (source->metadata_expected && next_usable && (!source->state_known || !usable(source->state)) &&
+        !(source->present & CONTENT_BITS))
       source->resync = true;
     std::memcpy(source->state, state, i + 1);
     source->state_known = true;
@@ -203,7 +218,8 @@ void PageMediaStateRuntime::loop() {
   auto& slot = slots_[active_];
   for (size_t i = 0; i < slot.count; ++i) {
     auto& source = slot.sources[i];
-    reannounce |= source.resync && usable(source.state) && !(source.present & CONTENT_BITS);
+    reannounce |=
+        source.metadata_expected && source.resync && usable(source.state) && !(source.present & CONTENT_BITS);
     source.resync = false;
   }
   // Clear all pending flags before the external call; it may replace the model.

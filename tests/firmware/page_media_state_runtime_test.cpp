@@ -27,8 +27,12 @@ void operator delete(void* pointer) noexcept {
 void operator delete[](void* pointer) noexcept {
   std::free(pointer);
 }
-void operator delete(void *p, std::size_t) noexcept { std::free(p); }
-void operator delete[](void *p, std::size_t) noexcept { std::free(p); }
+void operator delete(void* p, std::size_t) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p, std::size_t) noexcept {
+  std::free(p);
+}
 struct Arena : PageArenaAllocator {
   std::unordered_map<void*, size_t> live;
   bool fail = false;
@@ -62,14 +66,15 @@ struct Transport : PageMediaTransport {
   }
 };
 struct Fixture {
-  explicit Fixture(uint32_t generation = 17, const std::string& entity = "media_player.room") {
+  explicit Fixture(uint32_t generation = 17, const std::string& entity = "media_player.room",
+                   std::array<const char*, 3> modes = {"playlist", "playlist", "playlist"}) {
     const auto& limits = DEVICE_UI_PROFILES[8];
     PanelConfigWriter writer(document.data(), document.size());
     assert(writer.begin() == PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
                                         std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
     for (uint8_t slot = 1; slot <= 3; ++slot) {
-      const auto text = entity + ";;;;playlist;;media;;playlist_content_id=abcd";
+      const auto text = entity + ";;;;" + modes[slot - 1] + ";;media;;playlist_content_id=abcd";
       assert(writer.append_button(slot, reinterpret_cast<const uint8_t*>(text.data()), text.size()) ==
              PanelConfigStatus::OK);
     }
@@ -169,6 +174,34 @@ void model_lifecycle() {
   }
   assert(arena.live.empty());
 }
+void only_declared_metadata_is_refreshed() {
+  Arena arena;
+  Transport transport;
+  Fixture actions(30, "media_player.room", {"play_pause", "previous", "next"});
+  Fixture mixed(31, "media_player.room", {"play_pause", "playlist", "next"});
+  Fixture plain(32, "media_player.room", {"next", "previous", "play_pause"});
+  PageMediaStateRuntime runtime(arena, transport);
+  assert(runtime.prepare(actions.store));
+  runtime.activate_prepared(actions.store);
+  runtime.observed(30, "media_player.room", "", "playing", false);
+  runtime.loop();
+  assert(transport.requests == 0);
+  runtime.observed(30, "media_player.room", "", "idle", false);
+  runtime.observed(30, "media_player.room", "", "playing", false);
+  runtime.loop();
+  assert(transport.requests == 0);
+  assert(runtime.prepare(mixed.store));
+  runtime.activate_prepared(mixed.store);
+  runtime.loop();
+  assert(transport.requests == 1 && runtime.memory().sources == 1);
+  runtime.observed(31, "media_player.room", "media_content_id", "abcd", false);
+  assert(runtime.prepare(plain.store));
+  runtime.activate_prepared(plain.store);
+  runtime.loop();
+  assert(transport.requests == 1);
+  assert(!runtime.current({32, 0}, "media_player.room", "media_content_id"));
+}
 int main() {
   model_lifecycle();
+  only_declared_metadata_is_refreshed();
 }

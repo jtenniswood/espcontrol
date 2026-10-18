@@ -39,9 +39,9 @@ class PageMediaStateRuntime final : public PageRuntimeResources, public PageEnti
  private:
   struct Source {
     std::string_view entity;
-    char state[HA_SHORT_STATE_MAX_LEN + 1]{};
     uint16_t fresh{0}, present{0};
-    bool state_known{false}, resync{false};
+    bool state_known{false}, resync{false}, metadata_expected{false};
+    char state[HA_SHORT_STATE_MAX_LEN + 1]{};
   };
   struct Slot {
     void* arena{nullptr};
