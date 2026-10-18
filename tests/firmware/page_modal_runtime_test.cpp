@@ -30,7 +30,9 @@ struct Port:PageModalPort {
   PageModalRuntime *runtime{nullptr};ControlModalStateService<int> service;int overlay{0},nested{0};
   alignas(Context)std::array<unsigned char,sizeof(Context)> storage{};
   Context *context{nullptr};uint32_t epoch{1},binding{99};bool connected_value{true},busy{false},fail_create{false},fail_initialize{false},close_initialize{false},close_update{false},preserve{false},reenter_retire{true};
-  size_t creates{0},destroys{0},retires{0},sends{0},maximum_live{0};PageModalClose reason{PageModalClose::SHUTDOWN};
+  bool reconnect_create{false}, reconnect_initialize{false};
+  size_t initializes{0}, creates{0}, destroys{0}, retires{0}, sends{0}, maximum_live{0};
+  PageModalClose reason{PageModalClose::SHUTDOWN};
   bool valid_origin(PageBindingToken token)const override{return token.binding==binding;}
   ControlModalKind kind(const PageStore &store,ConfigurationHandle handle)const override {
     const auto *card=store.card(handle);if(!card)return ControlModalKind::NONE;
@@ -41,10 +43,18 @@ struct Port:PageModalPort {
   uint32_t connection_generation()const override{return epoch;}
   void *create(const PageStore &store,ConfigurationHandle handle,PageModalToken token)override {
     assert(!busy&&!context);if(fail_create)return nullptr;
-    context=new(storage.data())Context{std::string(store.field(*store.card(handle),CardField::ENTITY)),token};++creates;maximum_live=1;return context;
+    context =
+        new (storage.data()) Context{std::string(store.field(*store.card(handle), CardField::ENTITY)), token};
+    ++creates;
+    maximum_live = 1;
+    if (reconnect_create) ++epoch;
+    return context;
   }
   bool initialize(void *pointer,PageModalToken token)override {
-    auto *ctx=static_cast<Context *>(pointer);assert(ctx==context);
+    auto* ctx = static_cast<Context*>(pointer);
+    assert(ctx == context);
+    ++initializes;
+    if (reconnect_initialize) ++epoch;
     if(fail_initialize)return false;
     service.set_active(token.kind,&overlay,nullptr,dismiss_policy(ctx));
     if(close_initialize) {
@@ -115,6 +125,41 @@ void replacement_connection_and_takeover() {
   assert(!runtime.display_takeover(false)&&!runtime.valid(token)&&port.reason==PageModalClose::TAKEOVER);
   runtime.loop();assert(!port.context&&port.sends==0);
 }
+void queued_requests_keep_their_connection() {
+  Fixture fixture;
+  Port port;
+  PageModalRuntime runtime(port);
+  port.runtime = &runtime;
+  activate(runtime, fixture.store);
+  for (bool binding : {false, true}) {
+    port.busy = true;
+    assert(binding ? runtime.request(origin()) : runtime.request_card({17, 0}));
+    ++port.epoch;  // Includes disconnect/reconnect entirely between loop calls.
+    runtime.loop();
+    assert(runtime.memory().pending_requests == 1);
+    port.busy = false;
+    runtime.loop();
+    assert(port.creates == 0 && port.initializes == 0 && runtime.memory().pending_requests == 0);
+  }
+  port.reconnect_create = true;
+  assert(runtime.request_card({17, 0}));
+  runtime.loop();
+  assert(port.creates == 1 && port.initializes == 0 && port.destroys == 1 && !port.context &&
+         port.sends == 0);
+  port.reconnect_create = false;
+  port.reconnect_initialize = true;
+  assert(runtime.request_card({17, 0}));
+  runtime.loop();
+  assert(port.creates == 2 && port.initializes == 1 && port.destroys == 2 && !port.context &&
+         port.sends == 0);
+  port.reconnect_initialize = false;
+  assert(runtime.request_card({17, 0}));
+  runtime.loop();
+  assert(port.context && runtime.valid(runtime.token()));
+  runtime.dismiss(PageModalClose::SHUTDOWN);
+  runtime.loop();
+  assert(port.creates == port.destroys && port.sends == 0);
+}
 void action_response_dispatch_lifetime() {
   Fixture fixture;Port port;PageModalRuntime runtime(port);port.runtime=&runtime;activate(runtime,fixture.store);
   assert(runtime.request_card({17,0}));runtime.loop();auto *context=port.context;
@@ -147,4 +192,10 @@ void bounded_cycles_failures_and_exhaustion() {
   exhausted.dismiss();exhausted.loop();assert(!exhausted.request_card({17,0}));
 }
 }
-int main(){action_response_dispatch_lifetime();queue_and_callback_lifetimes();replacement_connection_and_takeover();bounded_cycles_failures_and_exhaustion();}
+int main() {
+  queued_requests_keep_their_connection();
+  action_response_dispatch_lifetime();
+  queue_and_callback_lifetimes();
+  replacement_connection_and_takeover();
+  bounded_cycles_failures_and_exhaustion();
+}

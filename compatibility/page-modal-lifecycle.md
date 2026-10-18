@@ -96,3 +96,10 @@ These checks do not establish actual climate-panel layout, touch/arc behaviour,
 physical memory peaks or scene integration. Those remain required before
 production cutover. The latest S3 integration must preserve the speaker-group
 firmware currently installed from PR #2286 and the preceding reliability fixes.
+
+Queued requests capture the connection epoch at admission, for both visible
+bindings and authenticated hidden-card requests. A reconnect before the main-loop
+opening discards that request, even when the connection is back by the next loop.
+Creation retains the captured epoch: a connection change inside a fallible create
+prevents initialization, and a change during initialization retires the opening
+without adopting it into the new connection. A fresh request can then open normally.

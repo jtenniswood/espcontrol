@@ -61,7 +61,12 @@ class PageModalRuntime final:public PageRuntimeResources {
   PageModalToken token()const{return token_;}
   PageModalMemory memory()const;
  private:
-  struct Request {ConfigurationHandle card;PageBindingToken origin;bool pending{false},from_binding{false};};
+  struct Request {
+    ConfigurationHandle card;
+    PageBindingToken origin;
+    uint32_t connection{0};
+    bool pending{false}, from_binding{false};
+  };
   bool valid_request(const Request &)const;
   bool valid_card(ConfigurationHandle)const;
   void retire_context(PageModalClose);
