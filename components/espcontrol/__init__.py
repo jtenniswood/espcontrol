@@ -87,6 +87,10 @@ async def to_code(config):
     if CORE.config.get("preferences", {}).get("rtc_storage", False):
         raise cv.Invalid("EspControl reset requires flash preferences; remove preferences.rtc_storage")
     cg.add_define("USE_OTA_STATE_LISTENER")
+    # Pooled labels can retain the pinned LVGL refresh descriptors. With no
+    # selected bank these wrappers forward every call unchanged.
+    for operation in ("lv_display_add_event_cb", "lv_display_remove_event_cb_with_user_data"):
+        cg.add_build_flag(f"-Wl,--wrap={operation}")
     for operation in ("begin", "end", "abort"):
         cg.add_build_flag(f"-Wl,--wrap=esp_ota_{operation}")
     if "esp32_hosted" in CORE.config:
