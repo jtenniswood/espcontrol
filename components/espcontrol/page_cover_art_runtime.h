@@ -5,22 +5,11 @@
 
 #include "artwork_controller.h"
 #include "page_cover_art_policy.h"
+#include "page_image_environment.h"
 #include "page_image_runtime.h"
 #include "page_media_state_runtime.h"
 
 namespace espcontrol::pages {
-class PageCoverArtEnvironment {
- public:
-  virtual ~PageCoverArtEnvironment() = default;
-  // Borrowed settings remain stable for this main-loop call. Change the
-  // generation whenever the base URL, HTTP credentials or endpoint changes.
-  virtual std::string_view base_url() const = 0;
-  virtual uint32_t endpoint_generation() const = 0;
-  // Includes modal visibility and the device's existing image memory policy.
-  // A refusal defers the request and keeps completed artwork visible.
-  virtual bool request_allowed(uint16_t width, uint16_t height) const = 0;
-};
-
 // Fixed visible-image leases. The graph owns all HA attribute bytes; this owner
 // keeps just a bounded signature and one selected URL per physical image slot.
 // Register after PageMediaStateRuntime in the graph's observer set, and remove

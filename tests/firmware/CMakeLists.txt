@@ -964,6 +964,12 @@ target_compile_options(page_cover_art_policy_test PRIVATE -Wall -Wextra -Werror 
 target_include_directories(page_cover_art_policy_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_cover_art_policy_test COMMAND page_cover_art_policy_test)
 
+add_executable(page_image_tile_policy_test page_image_tile_policy_test.cpp)
+target_compile_features(page_image_tile_policy_test PRIVATE cxx_std_17)
+target_compile_options(page_image_tile_policy_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_image_tile_policy_test PRIVATE ../../components/espcontrol)
+add_test(NAME page_image_tile_policy_test COMMAND page_image_tile_policy_test)
+
 add_executable(page_image_runtime_test page_image_runtime_test.cpp)
 target_compile_features(page_image_runtime_test PRIVATE cxx_std_17)
 target_compile_options(page_image_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
@@ -1563,3 +1569,12 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
 endif()
 
 add_test(NAME weather_condition_parity_test COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/weather_condition_parity_test.py)
+
+add_executable(page_image_tile_runtime_test page_image_tile_runtime_test.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_store_runtime.cpp
+  ../../components/espcontrol/page_renderer_layout.cpp)
+target_compile_features(page_image_tile_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_image_tile_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_image_tile_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_image_tile_runtime_test COMMAND page_image_tile_runtime_test)

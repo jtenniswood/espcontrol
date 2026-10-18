@@ -49,6 +49,30 @@ void pool_claims() {
   assert(!second.initialize(images, 2));
   assert(a.channel.claimed() && b.channel.claimed());
 }
+void request_priority_and_cap() {
+  ArtworkImage image;
+  ArtworkImage* images[]{&image};
+  PageArtworkRequests<1> requests;
+  assert(requests.initialize(images, 1));
+  Origin origin;
+  PageImageRuntime<1> runtime(requests, origin);
+  const PageBindingToken token{1, 1, 0, 0, 0, false};
+  assert(runtime.bind(0, token));
+  PageImageOptions options{123, 234};
+  options.max_source_dimension = 200;
+  for (const auto priority : {PageImagePriority::BACKGROUND, PageImagePriority::TILE,
+                              PageImagePriority::COVER_ART, PageImagePriority::MODAL}) {
+    options.priority = priority;
+    assert(runtime.request(0, token, "https://ha/picture", options));
+    assert(
+        image.priority ==
+        (priority == PageImagePriority::BACKGROUND ? esphome::artwork_image::ImageRequestPriority::BACKGROUND
+         : priority == PageImagePriority::TILE     ? esphome::artwork_image::ImageRequestPriority::TILE
+         : priority == PageImagePriority::MODAL ? esphome::artwork_image::ImageRequestPriority::MODAL
+                                                : esphome::artwork_image::ImageRequestPriority::COVER_ART));
+    assert(image.max_source_dimension == 200);
+  }
+}
 void integration() {
   ArtworkImage a, b;
   ArtworkImage* images[]{&a, &b};
@@ -68,6 +92,8 @@ void integration() {
       assert(a.url == "https://ha/artwork/very-long-picture-path?token=test");
       assert(a.width == 123 && a.height == 234 && a.background == 0x123456);
       assert(a.mode == esphome::artwork_image::ImageResizeMode::FIT);
+      assert(a.priority == esphome::artwork_image::ImageRequestPriority::COVER_ART &&
+             a.max_source_dimension == 0);
       assert(a.visible && a.redraw && a.screen_active);
       assert(!a.visible() && a.screen_active());
       {
@@ -121,4 +147,5 @@ void integration() {
 int main() {
   pool_claims();
   integration();
+  request_priority_and_cap();
 }

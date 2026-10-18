@@ -288,8 +288,44 @@ void acquisition_and_retained_refresh() {
   initial.reply();
   assert(!runtime.snapshot(0, third).ready);
 }
+void cancellation_preserves_completed_surface() {
+  Requests requests;
+  Origin origin;
+  PageImageRuntime<2> runtime(requests, origin);
+  const auto token = origin.token();
+  assert(runtime.bind(0, token) && runtime.request(0, token, "first", options));
+  requests.deliveries[0].reply();
+  const auto asset = runtime.snapshot(0, token).asset;
+  auto refresh = options;
+  refresh.retain_completed = true;
+  assert(runtime.request(0, token, "refresh", refresh));
+  const auto old = requests.deliveries[0];
+  const auto released = requests.releases;
+  const auto before = allocations;
+  assert(runtime.cancel_request(0, token) && allocations == before);
+  auto snapshot = runtime.snapshot(0, token);
+  assert(snapshot.ready && !snapshot.pending && !snapshot.failed && snapshot.asset == asset &&
+         requests.releases == released);
+  old.reply(false);
+  assert(runtime.snapshot(0, token).asset == asset);
+  assert(runtime.cancel_request(0, token, false) && !runtime.snapshot(0, token).ready &&
+         requests.releases == released);
+  bool rebound = false;
+  requests.on_cancel = [&]() {
+    if (rebound) return;
+    rebound = true;
+    ++origin.binding;
+    assert(runtime.bind(0, origin.token()));
+  };
+  assert(runtime.cancel_request(0, token));
+  requests.on_cancel = {};
+  assert(runtime.bound_to(0, origin.token()) && !runtime.cancel_request(0, token));
+  runtime.loop();
+  assert(requests.releases == released + 1);
+}
 }  // namespace
 int main() {
+  cancellation_preserves_completed_surface();
   acquisition_and_retained_refresh();
   lifecycle<4>();   // S3.
   lifecycle<20>();  // Largest P4 profile.

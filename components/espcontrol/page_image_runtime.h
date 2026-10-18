@@ -8,10 +8,13 @@
 #include "page_renderer_runtime.h"
 
 namespace espcontrol::pages {
+enum class PageImagePriority : uint8_t { BACKGROUND, TILE, COVER_ART, MODAL };
 struct PageImageOptions {
   uint16_t width{0}, height{0};
   uint32_t background{0};
   bool cover{true}, retain_completed{false};
+  PageImagePriority priority{PageImagePriority::COVER_ART};
+  uint16_t max_source_dimension{0};
 };
 struct PageImageSnapshot {
   bool ready{false}, pending{false}, failed{false}, cached{false};
@@ -49,6 +52,8 @@ class PageImageRequests {
 class PageImageOrigin {
  public:
   virtual ~PageImageOrigin() = default;
+  // Read-only full binding identity (renderer.bound), not the input/navigation
+  // reentrancy gate (renderer.valid), because bind/paint runs inside that gate.
   virtual bool valid(PageBindingToken) const = 0;
   virtual bool visible(PageBindingToken token) const {
     return valid(token);
@@ -82,6 +87,9 @@ class PageImageRuntime final : public PageImageFrames {
 
   bool available() const {
     return observing_ && !stopping_;
+  }
+  bool requestable() const {
+    return available() && !retiring_ && next_request_ != 0;
   }
 
   // Shared card-image pool: media artwork and future camera/static drivers use
@@ -118,6 +126,21 @@ class PageImageRuntime final : public PageImageFrames {
     s.release = true;
     ++revision_;
     requests_.cancel(slot);
+  }
+  // Stop current transfer ownership without releasing an attached completed
+  // surface. Policy may hide it; unbind still authorizes deferred pixel release.
+  bool cancel_request(size_t slot, PageBindingToken binding, bool retain_completed = true) {
+    if (slot >= Slots || !bound_to(slot, binding)) return false;
+    auto& s = slots_[slot];
+    ++s.change;
+    s.request = 0;
+    const auto previous = s.state;
+    s.state = retain_completed && previous.ready
+                  ? PageImageSnapshot{true, false, false, previous.cached, previous.asset}
+                  : PageImageSnapshot{};
+    ++revision_;
+    requests_.cancel(slot);
+    return true;
   }
   void retire() {
     if (retiring_) return;
