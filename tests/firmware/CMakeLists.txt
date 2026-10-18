@@ -632,6 +632,15 @@ target_compile_options(control_modal_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(control_modal_service_test PRIVATE ../../components/espcontrol)
 add_test(NAME control_modal_service_test COMMAND control_modal_service_test)
 
+add_executable(page_guest_wifi_runtime_test page_guest_wifi_runtime_test.cpp
+  ../../components/espcontrol/page_modal_runtime.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_guest_wifi_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_guest_wifi_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_guest_wifi_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_guest_wifi_runtime_test COMMAND page_guest_wifi_runtime_test)
+
 add_executable(guest_wifi_state_test guest_wifi_state_test.cpp)
 target_compile_features(guest_wifi_state_test PRIVATE cxx_std_17)
 target_compile_options(guest_wifi_state_test PRIVATE -Wall -Wextra -Werror)
