@@ -103,5 +103,6 @@ class PageLocalSensorRuntime final : public PageRuntimeResources {
   PageEntityStateRuntime graph_;
   size_t text_bytes_{0};
   uint32_t prepared_empty_{0};
+  bool prepared_empty_valid_{false};
 };
 }  // namespace espcontrol::pages

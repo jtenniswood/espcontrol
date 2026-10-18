@@ -50,6 +50,7 @@ bool PageLocalRelayRuntime::toggle(const PageStore& store, const CardDefinition&
 }
 bool PageLocalRelayRuntime::prepare(const PageStore& store) {
   discard_prepared();
+  if(!store.source_document()){++failures_;return false;}
   size_t count = 0, names = 0;
   const auto fail = [&]() {
     ++failures_;
@@ -69,6 +70,7 @@ bool PageLocalRelayRuntime::prepare(const PageStore& store) {
       count > (SIZE_MAX - names) / sizeof(Target))
     return fail();
   staged_.generation = store.generation();
+  staged_.valid = true;
   if (!count) return true;
   const size_t bytes = count * sizeof(Target) + names;
   void* arena = allocator_.allocate(bytes);
@@ -100,7 +102,7 @@ void PageLocalRelayRuntime::discard_prepared() {
   clear(staged_);
 }
 void PageLocalRelayRuntime::activate_prepared(const PageStore& store) {
-  if (staged_.generation != store.generation()) return;
+  if (!staged_.valid || !page_prepared_generation_matches(staged_.generation, store.generation())) return;
   // Fixed registry reads refresh the staged snapshot without allocations/actions.
   for (size_t i = 0; i < staged_.count; ++i) {
     auto& target = staged_.targets[i];
@@ -108,11 +110,12 @@ void PageLocalRelayRuntime::activate_prepared(const PageStore& store) {
   }
   clear(active_);
   active_ = staged_;
+  active_.generation = store.generation();
   staged_ = {};
   ++revision_;
 }
 void PageLocalRelayRuntime::retire_active() {
-  if (active_.generation) ++revision_;
+  if (active_.valid) ++revision_;
   clear(active_);
 }
 bool PageLocalRelayRuntime::install(bool retired) {
@@ -136,7 +139,7 @@ void PageLocalRelayRuntime::changed(std::string_view key, bool on) {
   if (changed) ++revision_;
 }
 bool PageLocalRelayRuntime::on(uint32_t generation, std::string_view key) const {
-  if (!generation || generation != active_.generation) return false;
+  if (!active_.valid || generation != active_.generation) return false;
   for (size_t i = 0; i < active_.count; ++i) {
     const auto& target = active_.targets[i];
     if (std::string_view(active_.names + target.offset, target.length) == key) return target.on;
