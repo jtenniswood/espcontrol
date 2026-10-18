@@ -183,6 +183,31 @@ struct Fixture {
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
   }
+  struct Timers {};
+  Fixture(const DeviceUiLimits& limits, Timers) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {";Timers;Auto;Auto;indicator;;subpage;;",
+                                 "timer.room;;Unused;Unused;confirm;1;timer;;",
+                                 "timer.room;Plain;Unused;Unused;;;timer;;", ";;;;sensor.temp;°C;sensor;1;"};
+    for (size_t i = 0; i < 4; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i].data()),
+                                  cards[i].size()) == PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1,2,3|S,,Temp,Auto,Auto,sensor.temp,°C,1,|TM,timer.room,Child,Unused,Unused,confirm,1,,|,light."
+        "child,Child,Auto,Auto,,,,";
+    assert(writer.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = "1,2,3,4";
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                 reinterpret_cast<const uint8_t*>(order.data()),
+                                 order.size()) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   struct LightTemperatures {};
   Fixture(const DeviceUiLimits& limits, LightTemperatures) {
     PanelConfigWriter writer(document.data(), document.size());
@@ -418,6 +443,8 @@ template<size_t Slots>struct Actions {
   static void climate(void *owner,PageBindingToken token){auto &a=*static_cast<Actions *>(owner);++a.climates;a.last=token;}
   static void action(void *owner,PageBindingToken token){auto &a=*static_cast<Actions *>(owner);++a.commands;a.last=token;}
   static void seek(void *owner,PageBindingToken token,uint8_t percent,float duration){auto &a=*static_cast<Actions *>(owner);++a.seeks;a.last=token;a.seek_percent=percent;a.seek_duration=duration;if(a.seek_page!=NO_PAGE)assert(a.renderer->open_page(a.seek_page));}
+  PageTimerAction timer_action{PageTimerAction::NONE};
+  bool timer_accept{true};
   double numeric_target{0};
   number_slider::Metadata numeric_metadata;
   PageBasicActions callbacks(){return {this,icon,valid,toggle,open,back,climate,action,action,action,action,seek};}
@@ -1486,6 +1513,245 @@ void percent_geometry_reference(const PageBasicWidgets& widgets, uint8_t percent
   assert(std::memcmp(&actual_slider, &expected_slider, sizeof(actual_slider)) == 0 &&
          std::memcmp(&actual_fill, &expected_fill, sizeof(actual_fill)) == 0);
   lv_obj_delete(root);
+}
+uint32_t timer_tick = 100;
+int64_t timer_epoch = 0;
+uint32_t timer_now() {
+  return timer_tick;
+}
+int64_t timer_epoch_now() {
+  return timer_epoch;
+}
+size_t timer_count() {
+  size_t count = 0;
+  lv_timer_t* timer = nullptr;
+  while ((timer = lv_timer_get_next(timer))) ++count;
+  return count;
+}
+template <size_t Slots>
+void timer_profile(const DeviceUiLimits& limits) {
+  timer_tick = 100;
+  timer_epoch = 0;
+  Fixture fixture(limits, Fixture::Timers{});
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageTimerRuntime timer(arena, subscriptions, timer_now, timer_epoch_now);
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192}, &timer);
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+    w.fill = lv_obj_create(w.button);
+    w.slider = lv_slider_create(w.button);
+  }
+  for (size_t slot : {size_t(1), size_t(3)}) {
+    lv_obj_set_style_pad_left(widgets[slot].button, 7, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(widgets[slot].button, 18, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(widgets[slot].button, 12, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(widgets[slot].button, 9, LV_PART_MAIN);
+  }
+  PageBasicTheme theme;
+  Actions<Slots> actions;
+  auto callbacks = actions.callbacks();
+  callbacks.timer = [](void* owner, PageBindingToken token, PageTimerAction command) {
+    auto& action = *static_cast<Actions<Slots>*>(owner);
+    ++action.commands;
+    action.last = token;
+    action.timer_action = command;
+    if (action.seek_page != NO_PAGE) assert(action.renderer->open_page(action.seek_page));
+    return action.timer_accept;
+  };
+  {
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     callbacks);
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  {
+    auto absent = callbacks;
+    absent.timer = nullptr;
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     absent, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                     nullptr, nullptr, &timer);
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  callbacks, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                  nullptr, nullptr, &timer);
+    assert(port.initialize());
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t used = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[used++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    PageRuntimeResourcesGroup<3> resources({&renderer, &timer, &state});
+    PageStoreRuntime publication(limits, arena, 32768, &resources);
+    assert(publication.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    assert(publication.activate_prepared(0, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(),
+                                         fixture.size));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "--:--") == 0);
+    click(widgets[1].button);
+    assert(actions.commands == 0);
+    auto report = [&]() {
+      subscriptions.send("timer.room", "friendly_name", "Kitchen timer");
+      subscriptions.send("timer.room", "duration", "0:05:00");
+      subscriptions.send("timer.room", "remaining", "0:00:01");
+    };
+    report();
+    subscriptions.send("timer.room", "", "idle");
+    renderer.update_visible();
+    assert(lv_obj_has_flag(widgets[1].icon, LV_OBJ_FLAG_HIDDEN) &&
+           !lv_obj_has_flag(widgets[1].sensor_container, LV_OBJ_FLAG_HIDDEN));
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "5:00") == 0);
+    click(widgets[1].button);
+    assert(actions.commands == 1 && actions.timer_action == PageTimerAction::START);
+    subscriptions.send("timer.room", "", "active");
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED) &&
+           lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED));
+    const auto timers = timer_count();
+    click(widgets[1].button);
+    assert(actions.commands == 1 && std::strcmp(lv_label_get_text(widgets[1].label), "Confirm") == 0 &&
+           timer_count() == timers);
+    subscriptions.send("timer.room", "friendly_name", "Changed while confirming");
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Confirm") == 0);
+    click(widgets[1].button);
+    assert(actions.commands == 2 && actions.timer_action == PageTimerAction::CANCEL);
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Changed while confirming") == 0);
+    subscriptions.send("timer.room", "friendly_name", "Kitchen timer");
+    renderer.update_visible();
+    subscriptions.send("timer.room", "", "idle");
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "5:00") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[2].value), "0:00") == 0);
+    timer_tick += 5000;
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[2].value), "5:00") == 0);
+    subscriptions.send("timer.room", "", "active");
+    renderer.update_visible();
+    click(widgets[1].button);
+    timer_tick += 1001;
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Kitchen timer") == 0);
+    click(widgets[1].button);
+    assert(actions.commands == 2);
+    click(widgets[1].button);
+    assert(actions.commands == 3);
+    click(widgets[1].button);
+    assert(actions.commands == 3);
+    subscriptions.send("timer.room", "", "idle");
+    subscriptions.send("timer.room", "", "active");  // No intervening paint.
+    click(widgets[1].button);
+    assert(actions.commands == 3);
+    click(widgets[1].button);
+    assert(actions.commands == 4);
+    const auto child = fixture.store.card(0)->target;
+    const auto root = renderer.binding(1);
+    click(widgets[1].button);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    click(widgets[2].button);
+    assert(actions.commands == 4 && std::strcmp(lv_label_get_text(widgets[2].label), "Confirm") == 0);
+    assert(renderer.back());
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Kitchen timer") == 0);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    ++subscriptions.generation;
+    report();
+    subscriptions.send("timer.room", "", "active");
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == 4);
+    renderer.update_visible();
+    click(widgets[1].button);
+    assert(renderer.suspend() && renderer.resume());
+    renderer.update_visible();
+    click(widgets[1].button);
+    assert(actions.commands == 4);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == 4 && !renderer.valid(root));
+    assert(renderer.back());
+    renderer.update_visible();
+    actions.seek_page = child;
+    click(widgets[2].button);
+    actions.seek_page = NO_PAGE;
+    assert(actions.commands == 5 && !renderer.valid(actions.last));
+    renderer.update_visible();
+    assert(renderer.back());
+    renderer.update_visible();
+    actions.timer_accept = false;
+    subscriptions.send("timer.room", "remaining", "0:00:01");
+    click(widgets[2].button);
+    actions.timer_accept = true;
+    subscriptions.send("timer.room", "", "idle");
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[2].value), "0:00") ==
+           0);  // Rejected cancel retains natural-finish grace.
+    subscriptions.send("timer.room", "", "active");
+    renderer.update_visible();
+    // Confirmation cycles retain neither a timer nor a callback, even repeatedly.
+    const auto cpp = cpp_allocations, reservations = arena.allocations,
+               channels = subscriptions.bindings.size();
+    for (int i = 0; i < 1000; ++i) {
+      click(widgets[1].button);
+      click(widgets[1].button);
+      assert(timer_count() == timers);
+    }
+    assert(cpp_allocations == cpp && arena.allocations == reservations &&
+           subscriptions.bindings.size() == channels);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto retained = lv_live_bytes, descriptors = cache.memory().descriptor_adds;
+    for (int i = 0; i < 1000; ++i) {
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(cpp_allocations == cpp && lv_live_bytes == retained && arena.allocations == reservations &&
+             subscriptions.bindings.size() == channels && cache.memory().descriptor_adds == descriptors &&
+             timer_count() == timers);
+    }
+    renderer.retire_active();
+    state.retire_active();
+    timer.retire_active();
+    std::printf("%s: timer cards 1000 cycles, countdowns, bounded confirmation and stable resources\n",
+                limits.device_profile);
+  }
+  assert(arena.live == 0);
+  lv_obj_delete(page);
 }
 template <size_t Slots>
 void light_temperature_profile(const DeviceUiLimits& limits) {
@@ -3352,6 +3618,25 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "timers") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          timer_profile<6>(limits);
+          break;
+        case 9:
+          timer_profile<9>(limits);
+          break;
+        case 15:
+          timer_profile<15>(limits);
+          break;
+        case 20:
+          timer_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "light_temperature") == 0) {
       switch (limits.slot_count) {
         case 6:
@@ -3574,6 +3859,7 @@ int main() {
         percent_slider_profile<6>(limits);
         number_slider_profile<6>(limits);
         light_temperature_profile<6>(limits);
+        timer_profile<6>(limits);
         option_select_profile<6>(limits);
         local_sensor_profile<6>(limits);
         local_relay_profile<6>(limits);
@@ -3594,6 +3880,7 @@ int main() {
         percent_slider_profile<9>(limits);
         number_slider_profile<9>(limits);
         light_temperature_profile<9>(limits);
+        timer_profile<9>(limits);
         option_select_profile<9>(limits);
         local_sensor_profile<9>(limits);
         local_relay_profile<9>(limits);
@@ -3614,6 +3901,7 @@ int main() {
         percent_slider_profile<15>(limits);
         number_slider_profile<15>(limits);
         light_temperature_profile<15>(limits);
+        timer_profile<15>(limits);
         option_select_profile<15>(limits);
         local_sensor_profile<15>(limits);
         local_relay_profile<15>(limits);
@@ -3634,6 +3922,7 @@ int main() {
         percent_slider_profile<20>(limits);
         number_slider_profile<20>(limits);
         light_temperature_profile<20>(limits);
+        timer_profile<20>(limits);
         option_select_profile<20>(limits);
         local_sensor_profile<20>(limits);
         local_relay_profile<20>(limits);

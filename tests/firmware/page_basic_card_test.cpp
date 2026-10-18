@@ -517,6 +517,73 @@ void fan_control_profile(const DeviceUiLimits& limits) {
   assert(value.label == "Custom" && !value.numeric && value.unit.empty());
 }
 
+uint32_t timer_tick = 100;
+int64_t timer_epoch = 0;
+uint32_t timer_now() {
+  return timer_tick;
+}
+int64_t timer_epoch_now() {
+  return timer_epoch;
+}
+void timer_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, "timer.room;;Unused;Unused;confirm;3;timer;;");
+  BasicCardDefinition definition;
+  assert(prepare_basic_card(fixture.store, 0, definition));
+  assert(definition.kind == BasicCardKind::TIMER && definition.active_color && !definition.large_numbers);
+  assert(definition.unit.empty() && definition.icon.empty() &&
+         basic_folder_child_indicator(fixture.store, 0) == "timer.room");
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageTimerRuntime timer(arena, subscriptions, timer_now, timer_epoch_now);
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {64, 64, 2048}, &timer);
+  assert(timer.prepare(fixture.store) && state.prepare(fixture.store));
+  timer.activate_prepared(fixture.store);
+  state.activate_prepared(fixture.store);
+  const auto read = [&]() {
+    return read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, nullptr, nullptr, nullptr, nullptr,
+                           nullptr, nullptr, nullptr, &timer);
+  };
+  auto value = read();
+  assert(value.label == "Timer" && value.numeric && std::strcmp(value.number, "--:--") == 0);
+  subscriptions.send("timer.room", "friendly_name", "Kitchen timer");
+  subscriptions.send("timer.room", "duration", "0:05:00");
+  subscriptions.send("timer.room", "remaining", "0:01:29");
+  subscriptions.send("timer.room", "", "paused");
+  value = read();
+  assert(value.label == "Kitchen timer" && !value.on && std::strcmp(value.number, "1:29") == 0);
+  subscriptions.send("timer.room", "", "active");
+  const auto first = read().timer.confirmation_revision;
+  assert(read().on && read_basic_indicator({17, 0}, "timer.room", state, BasicFolderMode::TIMER));
+  assert(!read_basic_indicator({17, 0}, "timer.room",
+                               state));  // Explicit folder entities keep their existing predicate.
+  timer_tick += 1000;
+  timer.loop();
+  assert(std::strcmp(read().number, "1:28") == 0);
+  subscriptions.send("timer.room", "", "idle");
+  subscriptions.send("timer.room", "", "active");
+  assert(read().timer.confirmation_revision !=
+         first);  // A state cycle invalidates an old confirmation without a paint.
+  const auto before = allocations;
+  for (int i = 0; i < 1000; ++i) (void)read();
+  assert(allocations == before);
+  ++subscriptions.generation;
+  timer.loop();
+  assert(read().timer.mode == PageTimerMode::UNAVAILABLE);
+  {
+    Arena small_arena;
+    Subscriptions small_subscriptions;
+    PageTimerRuntime small_timer(small_arena, small_subscriptions, timer_now, timer_epoch_now);
+    PageEntityStateRuntime small_state(dependencies, small_arena, small_subscriptions, {64, 64, 1},
+                                       &small_timer);
+    assert(small_timer.prepare(fixture.store) && small_state.prepare(fixture.store));
+    small_timer.activate_prepared(fixture.store);
+    small_state.activate_prepared(fixture.store);
+    small_subscriptions.send("timer.room", "", "active");
+    assert(read_basic_timer(definition, {17, 0}, small_state, &small_timer).mode ==
+           PageTimerMode::UNAVAILABLE);
+  }
+}
 void light_temperature_profile(const DeviceUiLimits& limits) {
   Fixture fixture(limits, "light.room;;Auto;Other;;5000-6000;light_temperature;color;");
   BasicCardDefinition definition;
@@ -1228,6 +1295,7 @@ int main() {
     percent_slider_profile(limits);
     number_slider_profile(limits);
     light_temperature_profile(limits);
+    timer_profile(limits);
     weather_profile(limits);
     media_action_profile(limits);
     media_position_profile(limits);
