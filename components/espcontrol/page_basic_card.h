@@ -8,6 +8,7 @@
 #include "page_access_state_runtime.h"
 #include "page_calendar_runtime.h"
 #include "page_climate_card.h"
+#include "page_confirmation_policy.h"
 #include "page_cover_toggle_runtime.h"
 #include "page_entity_state_runtime.h"
 #include "page_fan_status_runtime.h"
@@ -104,7 +105,10 @@ struct BasicCardDefinition {
   }
   bool text_overlay{false};
   uint32_t off_color{0},on_color{0};
-  uint8_t precision{0};
+  uint8_t precision{0}, confirmation{0};
+  bool needs_confirmation(bool currently_on) const {
+    return confirmation & (currently_on ? PAGE_CONFIRM_OFF : PAGE_CONFIRM_ON);
+  }
   bool custom_off{false},custom_on{false},theme_active{false},active_color{false},large_numbers{false};
   bool presence{false}, push_feedback{false}, explicit_large{false};
 };

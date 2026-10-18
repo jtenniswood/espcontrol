@@ -158,7 +158,6 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     // The text value replaces the icon for both the dedicated and Action form.
     out.icon = out.icon_on = "";
   } else if (type.empty() || type == "light_switch") {
-    if(cfg_option_enabled(options,"confirm_off") || cfg_option_enabled(options,"confirm_on"))return false;
     out.text_overlay=precision=="text";
     out.kind=out.entity.empty()?BasicCardKind::EMPTY:BasicCardKind::TOGGLE;
   } else if (type == "sensor") {
@@ -190,7 +189,7 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
   } else if (type == "action" || type == "local" || type == "push" || type == "webhook" ||
              type == "screensaver") {
     ParsedCfg config;config.type=type;config.entity=out.entity;config.sensor=out.sensor;config.options=options;
-    if(action_card_option_select(config)||action_script_confirmation_enabled(config))return false;
+    if (action_card_option_select(config)) return false;
     out.kind=BasicCardKind::ACTION;
     const bool local=type=="local"||action_card_local_action(config);
     out.push_feedback=type=="action"||local||type=="screensaver"||
@@ -339,9 +338,6 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     out.push_feedback = out.cleaning.mode != cleaning::Mode::STATUS;
     out.active_color = !mower && out.cleaning.mode == cleaning::Mode::START_STOP;
   } else if (type == "garage" || type == "gate" || type == "lock") {
-    if (type == "garage" &&
-        (cfg_option_enabled(options, "confirm_on") || cfg_option_enabled(options, "confirm_off")))
-      return false;
     const std::string mode(out.sensor);
     const bool lock = type == "lock", gate = type == "gate";
     const bool command = lock   ? card_runtime_lock_command_mode(mode)
@@ -457,6 +453,7 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     } else if(!out.sensor.empty())out.folder_mode=precision=="text"?BasicFolderMode::TEXT:BasicFolderMode::NUMBER;
   } else
     return false;
+  out.confirmation = page_confirmation_policy(store, {store.generation(), id}).flags();
   if(out.kind==BasicCardKind::TEXT&&cfg_option_enabled(options,SENSOR_STATE_LABELS_OPTION)) {
     auto input=cfg_option_value(options,SENSOR_STATE_INPUT_OPTION),output=cfg_option_value(options,SENSOR_STATE_OUTPUT_OPTION);
     const auto high=cfg_option_value(options,SENSOR_STATE_HIGH_LABEL_OPTION),low=cfg_option_value(options,SENSOR_STATE_LOW_LABEL_OPTION);

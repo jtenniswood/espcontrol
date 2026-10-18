@@ -89,6 +89,9 @@ struct PageBasicActions {
   bool (*bound)(void*, PageBindingToken){nullptr};
   void (*image)(void*, PageBindingToken){nullptr};
   void (*wifi_qr)(void*, PageBindingToken){nullptr};
+  // Allocation-free admission into the demanded confirmation owner. The epoch
+  // belongs to PRESSED and the selected direction is captured before opening.
+  void (*confirmation)(void*, PageBindingToken, uint32_t pressed_connection, bool currently_on){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -353,6 +356,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       for(CardId card=p->first_card;card<p->first_card+p->card_count;++card) {
         BasicCardDefinition view;
         if (!prepare_basic_card(store, card, view, &strings, relay_)) return false;
+        if (view.confirmation && !actions_.confirmation) return false;
         if (view.kind == BasicCardKind::WIFI_QR) {
           if (!actions_.wifi_qr || !actions_.bound) return false;
           if (view.qr_tile) {
@@ -2438,7 +2442,8 @@ class PageBasicLvglPort final:public PageRendererPort {
                                 shell->definition->definition.kind == BasicCardKind::ACCESS ||
                                 shell->definition->definition.kind == BasicCardKind::CLEANING ||
                                 shell->definition->definition.kind == BasicCardKind::ALARM ||
-                                shell->definition->definition.kind == BasicCardKind::IMAGE))
+                                shell->definition->definition.kind == BasicCardKind::IMAGE ||
+                                shell->definition->definition.confirmation))
         shell->gesture_connection = port->state_.connection_generation();
       if (shell->definition && shell->definition->definition.kind == BasicCardKind::ALARM)
         port->paint(shell->index, shell->token, false);
@@ -2474,6 +2479,27 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(origin.back){if(port->actions_.back)port->actions_.back(port->actions_.owner,origin);return;}
     if(!shell->definition)return;
     const auto &definition=shell->definition->definition;
+    if (definition.confirmation) {
+      if (shell->gesture_connection != port->state_.connection_generation()) return;
+      if (definition.kind == BasicCardKind::ACTION) {
+        if (port->actions_.confirmation)
+          port->actions_.confirmation(port->actions_.owner, origin, shell->gesture_connection, false);
+        return;
+      }
+      if (definition.kind == BasicCardKind::TOGGLE) {
+        const auto source =
+            port->state_.read_attribute({origin.configuration, origin.card}, definition.entity, {});
+        if (source.status != PageEntityStatus::AVAILABLE || !page_confirmation_known(source.value)) return;
+        const bool currently_on =
+            read_basic_card(definition, {origin.configuration, origin.card}, port->state_).on;
+        if (definition.needs_confirmation(currently_on)) {
+          if (port->actions_.confirmation)
+            port->actions_.confirmation(port->actions_.owner, origin, shell->gesture_connection,
+                                        currently_on);
+          return;
+        }
+      }
+    }
     if (definition.kind == BasicCardKind::WIFI_QR) {
       if (!definition.qr_payload().empty() && port->actions_.wifi_qr)
         port->actions_.wifi_qr(port->actions_.owner, origin);
@@ -2499,6 +2525,12 @@ class PageBasicLvglPort final:public PageRendererPort {
       const auto snapshot =
           read_basic_access(definition, {origin.configuration, origin.card}, port->state_, port->access_);
       if (!snapshot.enabled || shell->gesture_connection != port->state_.connection_generation()) return;
+      const bool currently_on = definition.access.command ? definition.sensor != "open" : snapshot.history.on;
+      if (definition.needs_confirmation(currently_on)) {
+        if (port->actions_.confirmation)
+          port->actions_.confirmation(port->actions_.owner, origin, shell->gesture_connection, currently_on);
+        return;
+      }
       if (!definition.access.command && definition.access.kind != BasicAccessKind::LOCK)
         lv_obj_add_state(port->widgets_[shell->index].button, LV_STATE_CHECKED);
       if (port->actions_.access)
