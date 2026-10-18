@@ -64,7 +64,16 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     if(value.empty()){stored={};return true;}
     return strings&&strings->copy(value,stored);
   };
-  if (type == "internal") {
+  if (const auto slider = PagePercentSliderRuntime::classify(store, id);
+      slider != PagePercentSliderKind::NONE) {
+    out.kind = BasicCardKind::PERCENT_SLIDER;
+    out.percent_slider = slider;
+    out.unit = {};
+    out.sensor = {};
+    if (type == "cover" && (out.icon.empty() || out.icon == "Auto")) out.icon = "Blinds";
+    if (out.icon_on.empty() || out.icon_on == "Auto")
+      out.icon_on = type == "cover" ? "Blinds Open" : out.icon;
+  } else if (type == "internal") {
     out.kind = BasicCardKind::LOCAL_RELAY;
     out.unit = {};
     out.sensor = {};
@@ -301,6 +310,8 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
   // The currently ported children which contributed to the old indicator.
   // Sensors never contributed. Extend this policy when other drivers port their
   // indicator semantics (timer/mower/local controls use different predicates).
+  if (PagePercentSliderRuntime::classify(store, id) != PagePercentSliderKind::NONE)
+    return store.field(*card, CardField::ENTITY);
   if (type == "internal")
     return PageLocalRelayRuntime::toggle(store, *card) ? store.field(*card, CardField::ENTITY)
                                                        : std::string_view{};
@@ -326,13 +337,47 @@ bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,Pag
   }
   return on(primary.value);
 }
+PagePercentSliderSnapshot read_basic_percent_slider(const BasicCardDefinition& card,
+                                                    ConfigurationHandle handle, PageEntityStateRuntime& state,
+                                                    PagePercentSliderRuntime* runtime) {
+  if (!runtime || card.kind != BasicCardKind::PERCENT_SLIDER) return {};
+  auto snapshot = runtime->read(handle);
+  if (snapshot.kind != card.percent_slider) return {};
+  const auto primary = find(state, handle, card.entity);
+  const auto level =
+      find(state, handle, card.entity, PagePercentSliderRuntime::attribute(card.percent_slider));
+  if (primary.status == PageEntityStatus::EXHAUSTED || level.status == PageEntityStatus::EXHAUSTED) {
+    snapshot.available = false;
+    snapshot.percent = 0;
+    snapshot.icon_on = false;
+    snapshot.preview = false;
+    snapshot.fill_known = false;
+  }
+  return snapshot;
+}
 BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHandle handle,
                                PageEntityStateRuntime& state, int duration_components,
                                std::string_view temperature_unit, PageCardTranslate translate,
                                PageMediaStateRuntime* media_owner, PageLocalSensorRuntime* local,
-                               PageLocalRelayRuntime* relay, PageFanStatusRuntime* fan_status) {
+                               PageLocalRelayRuntime* relay, PageFanStatusRuntime* fan_status,
+                               PagePercentSliderRuntime* percent_slider) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
+  if (card.kind == BasicCardKind::PERCENT_SLIDER) {
+    result.percent_slider = read_basic_percent_slider(card, handle, state, percent_slider);
+    const bool inverted = card.percent_slider == PagePercentSliderKind::COVER_POSITION ||
+                          card.percent_slider == PagePercentSliderKind::COVER_TILT;
+    result.fill_percent = !result.percent_slider.fill_known ? 0
+                          : inverted                        ? 100 - result.percent_slider.percent
+                                                            : result.percent_slider.percent;
+    result.label = card.label;
+    if (result.label.empty()) {
+      const auto name = find(state, handle, card.entity, "friendly_name");
+      if (name.status == PageEntityStatus::AVAILABLE)
+        result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+    }
+    return result;
+  }
   if (card.kind == BasicCardKind::LOCAL_RELAY) {
     result.label = card.label;
     if (result.label.empty()) {

@@ -206,6 +206,8 @@ void PagePercentSliderRuntime::observed(uint32_t generation, std::string_view en
           source.icon_on = active;
           if (!active) {
             source.live_fill = true;
+            ++source.write_revision;
+            ++revision_;
             source.percent = 0;
             clear_previews(*slot, i);
           }
@@ -217,10 +219,13 @@ void PagePercentSliderRuntime::observed(uint32_t generation, std::string_view en
                            source.kind == PagePercentSliderKind::COVER_TILT;
         if (copied) {
           source.seed_level = percent;
+          source.seed_level_known = true;
           if (!source.live_fill) source.percent = source.seed_off ? 0 : percent;
           if (cover && !source.live_icon && !source.seed_primary) source.icon_on = percent > 0;
         } else {
           source.live_fill = true;
+          ++source.write_revision;
+          ++revision_;
           source.percent = percent;
           if (cover) {
             source.live_icon = true;
@@ -258,8 +263,11 @@ PagePercentSliderSnapshot PagePercentSliderRuntime::read(ConfigurationHandle han
     const auto& card = active_.card[i];
     if (card.card != handle.index) continue;
     const auto& source = active_.source[card.source];
-    return {source.kind, card.preview ? card.percent : source.percent, source.available, source.icon_on,
-            card.preview};
+    return {
+        source.kind,          card.preview ? card.percent : source.percent,
+        source.available,     source.icon_on,
+        card.preview,         card.preview || source.live_fill || source.seed_level_known || source.seed_off,
+        source.write_revision};
   }
   return {};
 }
