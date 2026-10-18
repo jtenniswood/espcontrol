@@ -74,12 +74,16 @@ struct Port final:PageRendererPort {
     if(on_update)on_update();
   }
   void suspend()override{++suspends;}
-  bool state_changed()const override{return state==nullptr?changed:state->revision()!=seen_revision;}
+  bool state_changed() const override {
+    ++polls;
+    return state == nullptr ? changed : state->revision() != seen_revision;
+  }
   PageViewGeometry shape;bool prepared{false},fail{false},changed{true};uint32_t generation{0};
   size_t shells{0},preparations{0},binds{0},unbinds{0},updates{0},suspends{0},retirements{0};
   std::array<PageBindingToken,Slots>bound{};std::array<PageCellLayout,Slots>cells{};std::array<PageBackStyleView,Slots>styles{};
   std::array<std::array<char,64>,Slots>labels{};PageEntityStateRuntime *state{nullptr};
   uint64_t seen_revision{0};
+  mutable size_t polls{0};
   std::function<void()>on_unbind,on_update;
 };
 template<size_t Slots>
@@ -115,6 +119,28 @@ void profile_navigation(const DeviceUiLimits &limits) {
     renderer.retire_active();port.on_unbind=nullptr;assert(!renderer.valid(token));assert(arena.live.empty());
   }
   assert(arena.live.empty());
+}
+void forced_refresh_polls() {
+  const auto& limits = DEVICE_UI_PROFILES[8];
+  Fixture fixture(limits);
+  Arena arena;
+  Port<9> port(limits);
+  PageRendererRuntime<9> renderer(limits, arena, port);
+  assert(renderer.prepare(fixture.store));
+  renderer.activate_prepared(fixture.store);
+  port.changed = false;
+  renderer.update_visible();
+  assert(port.polls == 1 && port.updates > 0);
+  auto updates = port.updates;
+  renderer.update_visible();
+  assert(port.polls == 2 && port.updates == updates);
+  assert(renderer.open_page(fixture.store.card(0)->target));
+  renderer.update_visible();
+  assert(port.polls == 3 && port.updates > updates);
+  assert(renderer.back());
+  updates = port.updates;
+  renderer.update_visible();
+  assert(port.polls == 4 && port.updates > updates);
 }
 void replacements_and_failures() {
   const auto &limits=DEVICE_UI_PROFILES[8];Fixture original(limits),replacement(limits,false,true),without(limits,false,false);
@@ -244,6 +270,7 @@ int main() {
       default:assert(false);
     }
   }
+  forced_refresh_polls();
   replacements_and_failures();layouts_and_rotation();composed_atomic_activation();binding_exhaustion_preserves_current_view();
   renderer_and_real_state_owner_share_one_transaction();
 }

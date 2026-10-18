@@ -149,7 +149,8 @@ add_custom_command(OUTPUT ${PAGE_FAN_STATUS_SOURCE}
     ../../components/espcontrol/button_grid_fan.h ../../components/espcontrol/button_grid_access_cards.h
   VERBATIM)
 add_executable(page_fan_status_runtime_test ${PAGE_FAN_STATUS_SOURCE}
-  ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_store.cpp)
+  ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
 target_compile_features(page_fan_status_runtime_test PRIVATE cxx_std_17)
 target_compile_options(page_fan_status_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
 target_include_directories(page_fan_status_runtime_test PRIVATE stubs ../../components/espcontrol)
