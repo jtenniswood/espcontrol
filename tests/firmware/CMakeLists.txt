@@ -142,6 +142,7 @@ target_include_directories(page_fan_mode_test PRIVATE stubs ../../components/esp
 add_test(NAME page_fan_mode_test COMMAND page_fan_mode_test)
 
 add_executable(page_resource_publication_test page_resource_publication_test.cpp
+  ../../components/espcontrol/page_modal_runtime.cpp
   ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_store.cpp
   ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp
   ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_forecast_runtime.cpp
