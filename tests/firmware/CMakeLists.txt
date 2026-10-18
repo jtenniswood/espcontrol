@@ -116,7 +116,7 @@ target_include_directories(bounded_sensor_text_test PRIVATE stubs ../../componen
 add_test(NAME bounded_sensor_text_test COMMAND bounded_sensor_text_test)
 
 add_executable(page_basic_card_test page_basic_card_test.cpp
-  ../../components/espcontrol/page_basic_card.cpp
+  ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
   ../../components/espcontrol/page_card_dependencies.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp
@@ -126,7 +126,7 @@ target_compile_options(page_basic_card_test PRIVATE -Wall -Wextra -Werror -fno-r
 target_include_directories(page_basic_card_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_basic_card_test COMMAND page_basic_card_test)
 add_executable(page_basic_card_no_forecast_test page_basic_card_test.cpp
-  ../../components/espcontrol/page_basic_card.cpp
+  ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
   ../../components/espcontrol/page_card_dependencies.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp
@@ -891,6 +891,17 @@ foreach(FORECAST_TRANSPORT_TEST page_ha_forecast_requests_test page_ha_forecast_
 endforeach()
 target_compile_definitions(page_ha_forecast_requests_disabled_test PRIVATE ESPCONTROL_DISABLE_WEATHER_FORECAST=1)
 
+add_executable(page_media_state_runtime_test page_media_state_runtime_test.cpp
+  ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_media_state_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_media_state_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_media_state_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_media_state_runtime_test COMMAND page_media_state_runtime_test)
+
+add_test(NAME media_playlist_match_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/media_playlist_match_test.py)
+
 # Optional real-LVGL integration, using the exact library from an ESPHome build.
 # No network/download or machine-specific path is required by the normal suite.
 set(ESPCONTROL_LVGL_SOURCE_DIR "" CACHE PATH "LVGL 9.5 source from pinned firmware build")
@@ -931,7 +942,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
       ../../components/espcontrol/button_grid_weather_daily_ui.h ../../components/espcontrol/button_grid_weather_daily_data.h
     VERBATIM)
   add_executable(page_basic_lvgl_port_test page_basic_lvgl_port_test.cpp ${FORECAST_REFERENCE}
-    ../../components/espcontrol/page_basic_card.cpp
+    ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_forecast_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
     ../../components/espcontrol/page_card_dependencies.cpp

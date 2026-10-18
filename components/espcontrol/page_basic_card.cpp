@@ -9,6 +9,7 @@
 #include "bounded_sensor_text.h"
 #include "climate_state_logic.h"
 #include "weather_condition.h"
+#include "media_playlist_match.h"
 #include "button_grid_contract_generated.h"
 
 namespace espcontrol::pages {
@@ -109,6 +110,24 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
       if(unit.empty())out.unit={};
       else if(!strings||!strings->copy_unit(unit,out.unit))return false;
     }
+  } else if(type=="media") {
+    const auto mode=card_runtime_media_mode(std::string(out.sensor));
+    if(mode!="play_pause"&&mode!="previous"&&mode!="next"&&mode!="playlist")return false;
+    out.kind=BasicCardKind::MEDIA_ACTION;out.push_feedback=true;out.unit={};
+    out.media.kind=mode=="previous"?MediaActionKind::PREVIOUS:mode=="next"?MediaActionKind::NEXT:
+      mode=="playlist"?MediaActionKind::PLAYLIST:MediaActionKind::PLAY_PAUSE;
+    out.media.show_state=mode=="play_pause"&&precision=="state";
+    out.active_color=mode=="play_pause"||mode=="playlist";
+    out.default_label=mode=="previous"?"Previous":mode=="next"?"Next":mode=="playlist"?"Playlist":"Play/Pause";
+    if(out.icon.empty()||out.icon=="Auto")out.icon=mode=="previous"?"Skip Previous":mode=="next"?"Skip Next":mode=="playlist"?"Music":"Play Pause";
+    // Existing media action buttons keep one configured icon in both states.
+    out.icon_on=out.icon;
+    if(mode=="playlist") {
+      if(!copy(cfg_option_value(options,MEDIA_PLAYLIST_CONTENT_ID_OPTION),out.media.playlist_id))return false;
+      auto content_type=cfg_option_value(options,MEDIA_PLAYLIST_CONTENT_TYPE_OPTION);
+      if(content_type.empty())out.media.playlist_type="playlist";
+      else if(!copy(content_type,out.media.playlist_type))return false;
+    }
   } else if(type=="weather"||type=="weather_forecast") {
     out.kind=basic_card_is_forecast(store,id)?BasicCardKind::FORECAST:BasicCardKind::WEATHER;
     out.forecast_view=precision=="today"?weather::View::TODAY:precision=="tomorrow"||type=="weather_forecast"?weather::View::TOMORROW:weather::View::DAILY;out.label={};out.sensor={};out.unit={};
@@ -166,7 +185,7 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
   // The currently ported children which contributed to the old indicator.
   // Sensors never contributed. Extend this policy when other drivers port their
   // indicator semantics (timer/mower/local controls use different predicates).
-  return type.empty()||type=="light_switch"?store.field(*card,CardField::ENTITY):std::string_view{};
+  return type.empty()||type=="light_switch"||type=="media"?store.field(*card,CardField::ENTITY):std::string_view{};
 }
 bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,PageEntityStateRuntime &state,BasicFolderMode mode) {
   const auto primary=find(state,handle,entity);if(!available(primary))return false;
@@ -184,9 +203,48 @@ bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,Pag
   }
   return on(primary.value);
 }
-BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHandle handle,PageEntityStateRuntime &state,int duration_components,std::string_view temperature_unit,PageCardTranslate translate) {
+BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHandle handle,PageEntityStateRuntime &state,int duration_components,std::string_view temperature_unit,PageCardTranslate translate,PageMediaStateRuntime *media_owner) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
+  if(card.kind==BasicCardKind::MEDIA_ACTION) {
+    result.label=card.label;
+    if(result.label.empty()&&card.default_label) {
+      const auto *translated=translate?translate(card.default_label):nullptr;
+      result.label=translated?translated:card.default_label;
+    }
+    const auto playback=find(state,handle,card.entity);
+    // Playback state uses the same exact "playing" predicate as the existing
+    // media owner; previous/next never acquire a checked background.
+    const bool playing=playback.status==PageEntityStatus::AVAILABLE&&playback.value=="playing";
+    if(card.media.kind==MediaActionKind::PLAY_PAUSE)result.on=playing;
+    else if(card.media.kind==MediaActionKind::PLAYLIST) {
+      const auto content=find(state,handle,card.entity,"media_content_id");
+      const auto type=find(state,handle,card.entity,"media_content_type");
+      char id_text[HA_STATE_TEXT_MAX_LEN+1],type_text[HA_SHORT_STATE_MAX_LEN+1];
+      const auto metadata=[](char *output,size_t capacity,const PageEntityValue &value) {
+        auto text=value.status==PageEntityStatus::AVAILABLE?decode_html_entities_bounded(output,capacity,value.value):std::string_view{};
+        return text=="unknown"||text=="unavailable"?std::string_view{}:text;
+      };
+      const auto id=metadata(id_text,sizeof(id_text),content),content_type=metadata(type_text,sizeof(type_text),type);
+      const bool id_current=media_owner&&media_owner->current(handle,card.entity,"media_content_id");
+      const bool type_current=media_owner&&media_owner->current(handle,card.entity,"media_content_type");
+      result.on=playing&&id_current&&!id.empty()&&media::playlist_content_id_matches(card.media.playlist_id,id)&&
+        type.status!=PageEntityStatus::EXHAUSTED&&
+        (!type_current||content_type.empty()||media::playlist_content_type_matches(card.media.playlist_type,content_type));
+    }
+    if(card.media.show_state) {
+      const char *key=nullptr;
+      if(playback.status!=PageEntityStatus::AVAILABLE)key="Unknown";
+      else if(!available(playback))key="Unavailable";
+      else if(playback.value=="playing")key="Playing";
+      else if(playback.value=="paused")key="Paused";
+      else if(playback.value=="idle")key="Idle";
+      else if(playback.value=="off")key="Off";
+      if(key){const auto *translated=translate?translate(key):nullptr;result.label=translated?translated:key;}
+      else {format_sensor_text(result.text,sizeof(result.text),playback.value,HA_SHORT_STATE_MAX_LEN);result.formatted_label=true;}
+    }
+    return result;
+  }
   if(card.kind==BasicCardKind::WEATHER) {
     const auto value=find(state,handle,card.entity);
     const auto text=card.entity.empty()?std::string_view("cloudy"):value.status==PageEntityStatus::AVAILABLE?value.value:std::string_view("unavailable");

@@ -60,6 +60,17 @@ struct PageEntityMemory {
   size_t stale_deliveries{0};
 };
 
+class PageEntityObserver {
+ public:
+  virtual ~PageEntityObserver()=default;
+  // Synchronous notification on the application loop. Views last only for this
+  // call. Observers record bounded state only: they must not dispatch actions,
+  // replace configurations, or mutate this cache from inside the notification.
+  // Copied values seed a staged cache; they are not new network observations.
+  virtual void observed(uint32_t configuration,std::string_view entity,
+      std::string_view attribute,std::string_view value,bool copied)=0;
+};
+
 // Configuration-owned state, independent of view bindings. Names, dependency
 // edges and a packed state cache occupy one fallible arena per generation.
 // Queries return borrowed views until the next delivery/reconnect/replacement;
@@ -68,7 +79,8 @@ struct PageEntityMemory {
 class PageEntityStateRuntime final : public PageRuntimeResources {
  public:
   PageEntityStateRuntime(const PageDependencySource &source, PageArenaAllocator &allocator,
-                        PageEntitySubscriptions &subscriptions, PageEntityBudget budget);
+                        PageEntitySubscriptions &subscriptions, PageEntityBudget budget,
+                        PageEntityObserver *observer=nullptr);
   ~PageEntityStateRuntime() override;
   PageEntityStateRuntime(const PageEntityStateRuntime &) = delete;
   PageEntityStateRuntime &operator=(const PageEntityStateRuntime &) = delete;
@@ -114,7 +126,7 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
   class Counter;
   class Builder;
   static void deliver(void *owner, uint32_t revision, uint32_t channel, std::string_view value);
-  void receive(Slot &slot, uint32_t revision, uint32_t channel, std::string_view value);
+  void receive(Slot &slot, uint32_t revision, uint32_t channel, std::string_view value,bool copied=false);
   void release_slot(int index);
   void remove_value(Slot &slot, Channel &channel);
   bool index_dependencies(Slot &slot);
@@ -124,6 +136,7 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
   PageArenaAllocator &allocator_;
   PageEntitySubscriptions &subscriptions_;
   PageEntityBudget budget_;
+  PageEntityObserver *observer_;
   Slot slots_[2];
   int active_{-1}, staged_{-1};
   uint32_t next_revision_{1}, connection_generation_{0};
