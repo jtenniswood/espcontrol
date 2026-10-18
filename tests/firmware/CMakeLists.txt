@@ -165,7 +165,8 @@ add_custom_command(OUTPUT ${PAGE_PERCENT_SLIDER_SOURCE}
   VERBATIM)
 add_executable(page_percent_slider_runtime_test ${PAGE_PERCENT_SLIDER_SOURCE}
   ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_store.cpp
-  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp)
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
 target_compile_features(page_percent_slider_runtime_test PRIVATE cxx_std_17)
 target_compile_options(page_percent_slider_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
 target_include_directories(page_percent_slider_runtime_test PRIVATE stubs ../../components/espcontrol)
@@ -179,11 +180,23 @@ add_custom_command(OUTPUT ${PAGE_FAN_STATUS_SOURCE}
     ../../components/espcontrol/button_grid_fan.h ../../components/espcontrol/button_grid_access_cards.h
   VERBATIM)
 add_executable(page_fan_status_runtime_test ${PAGE_FAN_STATUS_SOURCE}
-  ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_store.cpp)
+  ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
 target_compile_features(page_fan_status_runtime_test PRIVATE cxx_std_17)
 target_compile_options(page_fan_status_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
 target_include_directories(page_fan_status_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_fan_status_runtime_test COMMAND page_fan_status_runtime_test)
+
+add_executable(page_resource_publication_test page_resource_publication_test.cpp
+  ../../components/espcontrol/page_modal_runtime.cpp
+  ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp
+  ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_forecast_runtime.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp)
+target_compile_features(page_resource_publication_test PRIVATE cxx_std_17)
+target_compile_options(page_resource_publication_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_resource_publication_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_resource_publication_test COMMAND page_resource_publication_test)
 
 add_executable(page_local_relay_runtime_test page_local_relay_runtime_test.cpp
   ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_store.cpp)
@@ -1122,7 +1135,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     ../../components/espcontrol/page_card_dependencies.cpp
     ../../components/espcontrol/page_entity_state_runtime.cpp
     ../../components/espcontrol/page_renderer_layout.cpp
-    ../../components/espcontrol/page_store.cpp)
+    ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_store.cpp)
   target_compile_features(page_basic_lvgl_port_test PRIVATE cxx_std_17)
   target_compile_options(page_basic_lvgl_port_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
   target_include_directories(page_basic_lvgl_port_test PRIVATE stubs ../../components/espcontrol ${CMAKE_CURRENT_BINARY_DIR})

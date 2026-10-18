@@ -202,6 +202,25 @@ void reference_parity() {
     }
   }
 }
+void publication() {
+  Arena arena;
+  Subscriptions subscriptions;
+  Fixture fixture(17);
+  PageFanStatusRuntime fan(arena, subscriptions, now);
+  {
+    PageStoreRuntime runtime(DEVICE_UI_PROFILES[8], arena, 32768, &fan);
+    assert(runtime.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    fan.observed(UINT32_MAX, "fan.room", "", "on", false);
+    assert(
+        runtime.activate_prepared(0, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    assert(fan.read({0, 0}).on && !fan.read({UINT32_MAX, 0}).on);
+    Fixture empty(18, "", true);
+    assert(runtime.prepare(PANEL_CONFIG_DOCUMENT_VERSION, empty.document.data(), empty.size));
+    assert(runtime.activate_prepared(72, PANEL_CONFIG_DOCUMENT_VERSION, empty.document.data(), empty.size));
+    assert(!fan.read({0, 0}).on && fan.memory().sources == 0 && fan.memory().staged_bytes == 0);
+  }
+  assert(arena.live.empty());
+}
 void failures() {
   Arena arena;
   Subscriptions subs;
@@ -227,4 +246,5 @@ int main() {
   lifetime();
   failures();
   reference_parity();
+  publication();
 }

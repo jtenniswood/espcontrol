@@ -930,7 +930,9 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
   static void contrast_event(lv_event_t* event) {
     auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
-    if (!shell || !shell->definition || shell->definition->definition.kind != BasicCardKind::COVER) return;
+    if (!shell || !shell->definition) return;
+    const auto kind=shell->definition->definition.kind;
+    if (kind != BasicCardKind::COVER && kind != BasicCardKind::PERCENT_SLIDER) return;
     slider_text_contrast_event(event, shell->port->widgets_[shell->index].fill);
   }
   void cancel_position_gesture(Shell& shell) {
