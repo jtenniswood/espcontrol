@@ -209,6 +209,7 @@ ControlModalShell control_modal_open_shell(ControlModalKind kind, lv_obj_t*, int
                      kind == ControlModalKind::ALARM_CONTROL
                          ? ControlModalDismissPolicy::PRESERVE_DURING_DISPLAY_TAKEOVER
                          : ControlModalDismissPolicy::DISMISS);
+  clock_label.clear();
   return {overlay, panel, back, {}};
 }
 std::array<lv_obj_t*, 12> keys{};
@@ -343,7 +344,7 @@ struct CommandsPort : PageAlarmCommandPort {
   PageBindingToken binding{0, 123, 0, 1, 1, false};
   size_t sends{0};
   std::string code, entity, action;
-  bool success{true};
+  bool success{true}, available{true};
   bool ready() const override {
     return !modal_callback_dispatching() && !coordinator.busy && !page_lvgl_dispatching();
   }
@@ -351,7 +352,7 @@ struct CommandsPort : PageAlarmCommandPort {
     return connected_value;
   }
   bool service_available() const override {
-    return true;
+    return available;
   }
   bool valid(PageBindingToken t) const override {
     return t.configuration == binding.configuration && t.binding == binding.binding &&
@@ -457,6 +458,7 @@ void control_pin_and_cycles(const DeviceUiLimits& limits) {
     assert(pin.active && h.modal.valid(token) && !alarm_control_modal_ui().active &&
            control_modal_active().dismiss_policy == ControlModalDismissPolicy::DISMISS);
     assert(pin.active->mode == "away");
+    assert(clock_label == "Alarm");
     assert(!alarm_modal_defer(pin.active->card, "home", "1234", true));
     enter_pin();
     assert(pin.pin == "1234");
@@ -503,6 +505,12 @@ void readonly_stale_and_retirement(const DeviceUiLimits& limits) {
   h.modal.loop();
   click(control.mode_btn[0]);
   h.modal.loop();
+  enter_pin();
+  h.sender.available = false;
+  click(keys[11]);
+  assert(h.commands.memory().pending == 0 && alarm_pin_modal_ui().pin.empty() &&
+         std::strcmp(lv_label_get_text(alarm_pin_modal_ui().pin_lbl), espcontrol_i18n("Enter Pin")) == 0);
+  h.sender.available = true;
   enter_pin();
   click(keys[11]);
   assert(h.commands.memory().pending == 1);

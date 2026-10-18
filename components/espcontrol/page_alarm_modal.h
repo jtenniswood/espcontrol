@@ -180,7 +180,10 @@ class PageAlarmModalPort final : public PageModalPort {
       record.transitioning = true;
       open_pin(record);
       record.transitioning = false;
-      if (!visible(&record) || !attach(record)) runtime_->notify_closed(record.token, PageModalClose::FAILED);
+      if (!visible(&record) || !attach(record))
+        runtime_->notify_closed(record.token, PageModalClose::FAILED);
+      else
+        set_clock_bar_modal_label(record.context.label);
     }
     if (record.awaiting_submission && commands_.memory().pending == 0 && current(this, &record.context))
       alarm_pin_hide_modal();

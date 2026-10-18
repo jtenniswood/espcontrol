@@ -1019,6 +1019,7 @@ inline void alarm_pin_submit() {
   if (alarm_modal_managed(action->card)) {
     alarm_defer_action(action, ui.pin, true);
     alarm_clear_pin(ui.pin);
+    alarm_pin_update_display();
     return;
   }
   std::string code = ui.pin;
