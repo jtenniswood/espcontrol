@@ -78,12 +78,21 @@ struct PageBindingImageIdentity {
   }
 };
 
+// Empty base keeps ordinary grid leases unchanged. Only the one-slot modal
+// specialization opts in to a parked pixel identity, independent of its opening.
+template <bool Enabled>
+struct PageImageParkingSlot {};
+template <>
+struct PageImageParkingSlot<true> {
+  uint64_t parked{0};
+};
+
 // One fixed lease per prepared image slot, not per configured card. Grid binding
 // is the default identity; the modal specialization uses an admitted opening.
 // Only value tokens are kept; no URL, configuration, entity or widget is borrowed.
 // The view detaches its image source BEFORE unbind/suspend/config retirement.
 template <size_t Slots, typename Token = PageBindingToken, typename Origin = PageImageOrigin,
-          typename Identity = PageBindingImageIdentity>
+          typename Identity = PageBindingImageIdentity, bool Parking = false>
 class PageImageRuntime final : public PageImageFrames {
  public:
   static_assert(Slots > 0 && Slots <= UINT16_MAX);
@@ -124,6 +133,14 @@ class PageImageRuntime final : public PageImageFrames {
     if (!observing_ || stopping_ || retiring_ || slot >= Slots || !origin_.valid(binding) ||
         !Identity::eligible(binding))
       return false;
+    if constexpr (Parking) {
+      auto& s = slots_[slot];
+      if (s.parked && !Identity::active(s.binding) && s.connection == origin_.connection_generation()) {
+        ++s.change;
+        s.binding = binding;  // Pixels stay hidden until explicit key-checked adoption.
+        return true;
+      }
+    }
     unbind(slot);
     // Cancellation may have bound a newer card. Preserve that replacement.
     if (Identity::active(slots_[slot].binding)) return false;
@@ -134,9 +151,10 @@ class PageImageRuntime final : public PageImageFrames {
   void unbind(size_t slot) {
     if (slot >= Slots) return;
     auto& s = slots_[slot];
-    const bool owned = Identity::active(s.binding) || s.request != 0;
+    const bool owned = Identity::active(s.binding) || s.request != 0 || parked(slot) != 0;
     ++s.change;
     s.binding = {};
+    clear_parking(s);
     s.request = 0;
     s.state = {};
     if (!owned) return;
@@ -151,13 +169,80 @@ class PageImageRuntime final : public PageImageFrames {
     auto& s = slots_[slot];
     ++s.change;
     s.request = 0;
-    const auto previous = s.state;
+    const auto previous = parked(slot) ? PageImageSnapshot{} : s.state;
+    if (parked(slot)) {
+      clear_parking(s);
+      s.release = true;
+    }
     s.state = retain_completed && previous.ready
                   ? PageImageSnapshot{true, false, false, previous.cached, previous.asset}
                   : PageImageSnapshot{};
     ++revision_;
     requests_.cancel(slot);
     return true;
+  }
+  // Detach the view before parking. Admission may already be revoked during
+  // real modal retirement, so exact binding + live connection is sufficient.
+  // Publish the id before cancel can reenter; caller must preserve a replacement.
+  bool park(size_t slot, Token binding, uint64_t& id) {
+    id = 0;
+    if constexpr (!Parking)
+      return false;
+    else {
+      if (!available() || retiring_ || slot >= Slots || !bound_to(slot, binding) || !origin_.connected() ||
+          slots_[slot].connection != origin_.connection_generation() || next_request_ == 0)
+        return false;
+      auto& s = slots_[slot];
+      if (s.parked || !s.state.ready || s.state.pending || s.state.failed || !s.state.asset) return false;
+      const auto change = ++s.change;
+      id = s.parked = next_request_++;
+      s.binding = {};
+      s.request = 0;
+      s.release = false;
+      ++revision_;
+      requests_.cancel(slot);
+      return s.change == change && s.parked == id;
+    }
+  }
+  uint64_t parked(size_t slot) const {
+    if constexpr (Parking)
+      return slot < Slots ? slots_[slot].parked : 0;
+    else {
+      (void)slot;
+      return 0;
+    }
+  }
+  bool adopt(size_t slot, Token binding, uint64_t id) {
+    if constexpr (!Parking) {
+      (void)slot;
+      (void)binding;
+      (void)id;
+      return false;
+    } else {
+      if (!id || parked(slot) != id || !current(slot, binding)) return false;
+      auto& s = slots_[slot];
+      ++s.change;
+      s.parked = 0;
+      s.state.cached = true;
+      ++revision_;
+      return true;
+    }
+  }
+  bool discard(size_t slot, uint64_t id) {
+    if constexpr (!Parking) {
+      (void)slot;
+      (void)id;
+      return false;
+    } else {
+      if (!id || parked(slot) != id) return false;
+      auto& s = slots_[slot];
+      ++s.change;
+      s.parked = 0;
+      s.state = {};
+      s.release = true;
+      ++revision_;
+      return true;
+    }
   }
   void retire() {
     if (retiring_) return;
@@ -173,7 +258,12 @@ class PageImageRuntime final : public PageImageFrames {
       return false;
     auto& s = slots_[slot];
     const uint64_t change = ++s.change;
-    const auto completed = s.state;
+    const auto completed = parked(slot) ? PageImageSnapshot{} : s.state;
+    if (parked(slot)) {
+      clear_parking(s);
+      s.state = {};
+      s.release = true;
+    }
     const uint64_t previous = s.request;
     s.request = 0;
     if (previous != 0) requests_.cancel(slot);
@@ -210,11 +300,13 @@ class PageImageRuntime final : public PageImageFrames {
     return current(slot, binding);
   }
   PageImageSnapshot snapshot(size_t slot, Token binding) const {
-    return current(slot, binding) ? slots_[slot].state : PageImageSnapshot{};
+    return current(slot, binding) && !parked(slot) ? slots_[slot].state : PageImageSnapshot{};
   }
   void loop() {
     for (size_t i = 0; i < Slots; ++i) {
       auto& s = slots_[i];
+      if (parked(i) && (!origin_.connected() || s.connection != origin_.connection_generation()))
+        discard(i, parked(i));
       if (Identity::active(s.binding) && !current(i, s.binding)) {
         const bool had_request = s.request != 0;
         s.request = 0;
@@ -232,27 +324,35 @@ class PageImageRuntime final : public PageImageFrames {
     }
   }
   bool image_visible(size_t slot) const override {
-    return slot < Slots && current(slot, slots_[slot].binding) && slots_[slot].state.ready &&
+    return slot < Slots && !parked(slot) && current(slot, slots_[slot].binding) && slots_[slot].state.ready &&
            origin_.visible(slots_[slot].binding);
   }
   bool image_screen_active(size_t slot) const override {
-    return slot < Slots && current(slot, slots_[slot].binding) && origin_.screen_active(slots_[slot].binding);
+    return slot < Slots && !parked(slot) && current(slot, slots_[slot].binding) &&
+           origin_.screen_active(slots_[slot].binding);
   }
   void image_redraw(size_t slot) override {
-    if (slot < Slots && current(slot, slots_[slot].binding) && slots_[slot].state.ready) ++revision_;
+    if (slot < Slots && !parked(slot) && current(slot, slots_[slot].binding) && slots_[slot].state.ready)
+      ++revision_;
   }
   uint64_t revision() const {
     return revision_;
   }
 
  private:
-  struct Slot {
+  struct Slot : PageImageParkingSlot<Parking> {
     Token binding;
     uint64_t request{0}, change{0};
     uint32_t connection{0};
     PageImageSnapshot state;
     bool release{false};
   };
+  static void clear_parking(Slot& s) {
+    if constexpr (Parking)
+      s.parked = 0;
+    else
+      (void)s;
+  }
   static bool same(Token a, Token b) {
     return Identity::same(a, b);
   }

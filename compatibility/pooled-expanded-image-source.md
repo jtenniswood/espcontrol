@@ -3,8 +3,8 @@
 This #1825 prerequisite supplies one expanded camera/image source for the pooled
 renderer. It uses the [shared tile refresh handoff](pooled-image-refresh-handoff.md)
 and the separate [typed modal image lease](pooled-modal-image-ownership.md).
-Production still selects the existing renderer. Expanded widgets, bounded decoded
-cache reuse, application-scene wiring, legacy retirement and device qualification
+Production still selects the existing renderer. [Bounded decoded-cache reuse](pooled-modal-image-cache.md) has model coverage.
+Expanded widgets, application-scene wiring, legacy retirement and device qualification
 remain required before cutover or any RAM-saving claim.
 
 `PageExpandedImageSource<2/6>` owns one fixed observer/record for the scene. It
@@ -41,8 +41,9 @@ asset roles: their separate counters can have the same numeric value. Validate
 the full opening and role-specific asset/binding at draw time, including after
 external draw callbacks. `content` exposes a borrowed cache-key candidate only
 for an applied, clean, completed expanded result. It does not retain pixels; a
-future cache must copy metadata during safe maintenance and explicitly park the
-raw pixel lease. Unbind currently authorizes deferred pixel release.
+cache copies metadata during safe maintenance and explicitly parks the raw pixel
+lease when its environment permits retention; otherwise unbind authorizes deferred
+pixel release.
 
 Model tests combine the real entity graph, renderer and modal lifecycle with
 mock image I/O. Each of nine profiles runs 1,000 navigation/handoff cycles and

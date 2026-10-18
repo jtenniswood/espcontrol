@@ -70,6 +70,9 @@ struct Port final : PageModalPort {
   uint32_t connection{1}, binding{1};
   bool online{true}, busy{false}, attached{false};
   size_t created{0}, destroyed{0};
+  bool retain{false};
+  uint64_t parked{0};
+  std::function<void(PageModalToken)> on_initialize;
   bool valid_origin(PageBindingToken t) const override {
     return t.binding == binding;
   }
@@ -99,6 +102,7 @@ struct Port final : PageModalPort {
     const auto before = allocations;
     assert(images->acquire(token) == 0 && allocations == before);
     record->shown = true;
+    if (on_initialize) on_initialize(token);
     return true;
   }
   bool visible(void* pointer) const override {
@@ -112,7 +116,9 @@ struct Port final : PageModalPort {
     assert(pointer == record);
     attached = false;
     record->shown = false;
-    images->unbind(0);
+    const auto token = record->token;
+    if (retain) images->park(0, token, parked);
+    if (images->bound_to(0, token)) images->unbind(0);
   }
   void destroy(void* pointer) override {
     assert(!busy && pointer == record && !record->shown && !attached);
@@ -393,6 +399,122 @@ void replacement_reconnect_and_reentrancy() {
   f.modal.retire_active();
   f.images.loop();  // Retire local configuration before its arena goes away.
 }
+void parked_pixels() {
+  Fixture f(DEVICE_UI_PROFILES[8]);
+  f.port.retain = true;
+  auto token = f.open();
+  assert(f.request(token));
+  f.success(token);
+  const auto asset = f.images.snapshot(0, token).asset;
+  const auto late = f.requests.job;
+  const auto releases = f.requests.releases;
+  f.close();
+  const auto id = f.port.parked;
+  assert(id && f.images.parked(0) == id && !f.images.snapshot(0, token).ready);
+  assert(f.requests.releases == releases && !f.requests.frames->image_visible(0));
+  late.reply();
+  token = f.open();
+  assert(f.images.parked(0) == id && !f.images.snapshot(0, token).ready);
+  assert(!f.images.adopt(0, token, id + 1));
+  assert(f.images.adopt(0, token, id));
+  assert(f.images.snapshot(0, token).asset == asset && f.images.snapshot(0, token).cached);
+  assert(!f.images.adopt(0, token, id));
+  f.port.attached = true;
+  f.close();
+  const auto next = f.port.parked;
+  assert(next != id && !f.images.discard(0, id));
+  assert(f.images.discard(0, next) && f.requests.releases == releases);
+  f.images.loop();
+  assert(f.requests.releases == releases + 1);
+  token = f.open();
+  assert(f.request(token));
+  f.success(token);
+  f.close();
+  const auto reconnect = f.port.parked;
+  ++f.port.connection;
+  f.images.loop();
+  assert(!f.images.parked(0) && !f.images.discard(0, reconnect));
+  token = f.open();
+  assert(f.request(token));
+  f.success(token);
+  f.close();
+  token = f.open();
+  // A new request cannot retain a parked frame under its unverified key.
+  assert(f.request(token) && !f.images.snapshot(0, token).ready && !f.images.parked(0));
+  f.success(token);
+  f.close();
+}
+void parking_reentrant_adoption() {
+  Fixture f(DEVICE_UI_PROFILES[8]);
+  f.port.retain = true;
+  const auto old = f.open();
+  assert(f.request(old));
+  f.success(old);
+  bool entered = false;
+  f.port.on_initialize = [&](PageModalToken next) { assert(f.images.adopt(0, next, f.port.parked)); };
+  f.requests.on_cancel = [&] {
+    if (entered) return;
+    entered = true;
+    f.modal.loop();
+    assert(f.modal.request_card({17, 0}));
+    f.modal.loop();
+  };
+  const auto before = allocations;
+  f.modal.dismiss();
+  f.modal.loop();
+  f.requests.on_cancel = nullptr;
+  f.port.on_initialize = nullptr;
+  assert(entered && f.modal.token().opening != old.opening && f.images.snapshot(0, f.modal.token()).ready);
+  // Only the demanded context's entity allocation may occur during reentry.
+  assert(allocations == before + 1);
+  assert(f.images.parked(0) == 0);
+  f.close();
+}
+void parking_synchronous_replacement() {
+  struct ParkingOrigin final : PageModalImageOrigin {
+    PageModalToken token{0, 1, 0, ControlModalKind::IMAGE_CARD};
+    bool valid(PageModalToken t) const override {
+      return PageModalImageIdentity::same(t, token);
+    }
+    bool connected() const override {
+      return true;
+    }
+    uint32_t connection_generation() const override {
+      return 1;
+    }
+  } origin;
+  Port port;
+  Requests requests(port);
+  PageModalImageRuntime images(requests, origin);
+  const auto old = origin.token;
+  assert(images.acquire(old) == 0 && images.request(0, old, "https://test/image", options));
+  requests.job.reply();
+  uint64_t id = 0;
+  requests.on_cancel = [&] {
+    ++origin.token.opening;
+    assert(id && images.acquire(origin.token) == 0 && images.adopt(0, origin.token, id));
+  };
+  assert(!images.park(0, old, id));
+  requests.on_cancel = nullptr;
+  assert(images.snapshot(0, origin.token).ready && !images.parked(0));
+  assert(!images.snapshot(0, old).ready);
+  images.unbind(0);
+  images.loop();
+}
+void parking_final_nonce() {
+  Fixture f(DEVICE_UI_PROFILES[8], 1, UINT64_MAX - 1);
+  f.port.retain = true;
+  auto token = f.open();
+  assert(f.request(token));
+  f.success(token);
+  f.close();
+  assert(f.port.parked == UINT64_MAX && !f.images.requestable());
+  token = f.open();
+  assert(f.images.adopt(0, token, UINT64_MAX));
+  f.port.attached = true;
+  f.close();
+  assert(!f.images.parked(0));
+}
 void final_nonce_and_failures() {
   const auto& limits = DEVICE_UI_PROFILES[8];
   {
@@ -431,4 +553,8 @@ int main() {
   for (const auto& limits : DEVICE_UI_PROFILES) identities_and_lifetime(limits);
   replacement_reconnect_and_reentrancy();
   final_nonce_and_failures();
+  parked_pixels();
+  parking_reentrant_adoption();
+  parking_final_nonce();
+  parking_synchronous_replacement();
 }

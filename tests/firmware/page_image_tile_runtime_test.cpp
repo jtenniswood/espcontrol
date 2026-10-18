@@ -920,6 +920,9 @@ struct ExpandedPipeline {
     uint32_t interval{10000}, endpoint{1};
     bool used{false}, shown{false}, busy{false}, allowed{true}, force_fit{false};
     size_t probes{0}, creates{0}, destroys{0};
+    bool caching{false}, skip_refresh{false};
+    uint32_t ttl{15000}, background{0x123456};
+    uint16_t width{800}, height{600};
     explicit Port(ExpandedPipeline& value) : h(value) {}
     bool valid_origin(PageBindingToken token) const override {
       return h.f.renderer.valid(token);
@@ -955,6 +958,15 @@ struct ExpandedPipeline {
     uint16_t maximum_source_side() const override {
       return 400;
     }
+    bool retain_cache(uint16_t, uint16_t) const override {
+      return caching;
+    }
+    uint32_t cache_ttl_ms() const override {
+      return ttl;
+    }
+    bool cache_skips_open_refresh() const override {
+      return skip_refresh;
+    }
     bool request_allowed(uint16_t w, uint16_t height) const override {
       assert(w && height && w <= 400 && height <= 400);
       ++const_cast<Port*>(this)->probes;
@@ -984,7 +996,7 @@ struct ExpandedPipeline {
         h.f.environment.shown = true;
         return false;
       }
-      h.source.size(token, 800, 600, 0x123456);
+      h.source.size(token, width, height, background);
       shown = true;
       return true;
     }
@@ -1395,6 +1407,158 @@ void expanded_source_configuration_replacement() {
   f.renderer.retire_active();
   f.state.retire_active();
 }
+void expanded_source_cache() {
+  F f(DEVICE_UI_PROFILES[8]);
+  f.preload();
+  f.tick();
+  f.ready();
+  ExpandedPipeline pipeline(f);
+  pipeline.port.caching = pipeline.port.skip_refresh = true;
+  auto token = pipeline.open();
+  pipeline.tick();
+  pipeline.tick(100);
+  pipeline.ready();
+  const auto asset = pipeline.source.snapshot(token).asset;
+  const auto starts = pipeline.requests.starts;
+  pipeline.close();
+  assert(pipeline.images.parked(0));
+  token = pipeline.open();
+  // Adoption only happens in maintenance, after full key construction/checking.
+  assert(!pipeline.source.snapshot(token).asset);
+  pipeline.tick();
+  assert(pipeline.source.snapshot(token).asset == asset && pipeline.requests.starts == starts);
+  pipeline.tick(100);
+  assert(pipeline.requests.starts == starts);
+  pipeline.close();
+  const auto releases = pipeline.requests.releases;
+  pipeline.tick(14999);
+  assert(pipeline.images.parked(0));
+  pipeline.tick(1);
+  assert(!pipeline.images.parked(0));
+  pipeline.tick();
+  assert(pipeline.requests.releases == releases + 1);
+  token = pipeline.open();
+  pipeline.tick();
+  pipeline.tick(100);
+  pipeline.ready();
+  pipeline.close();
+  // Changing credentials while closed must invalidate the parked result.
+  f.send("access_token", "changed");
+  token = pipeline.open();
+  pipeline.tick();
+  assert(!pipeline.source.snapshot(token).asset && !pipeline.images.parked(0));
+  pipeline.tick(100);
+  pipeline.ready();
+  pipeline.close();
+  f.send("", "unavailable");
+  f.send("", "idle");
+  assert(!pipeline.images.parked(0));
+  token = pipeline.open();
+  pipeline.tick();
+  assert(!pipeline.source.snapshot(token).asset);
+  pipeline.tick(100);
+  pipeline.ready();
+  pipeline.close();
+  // Memory pressure drops an idle cache, even before its TTL expires.
+  pipeline.port.caching = false;
+  pipeline.tick();
+  assert(!pipeline.images.parked(0));
+  pipeline.tick();
+}
+void expanded_source_cache_key_rejection() {
+  for (unsigned change = 0; change < 6; ++change) {
+    F f(DEVICE_UI_PROFILES[8]);
+    f.preload();
+    f.preload("image.still");
+    f.tick();
+    f.ready();
+    f.ready(1);
+    ExpandedPipeline pipeline(f);
+    pipeline.port.caching = pipeline.port.skip_refresh = true;
+    pipeline.port.force_fit = true;
+    auto token = pipeline.open();
+    pipeline.tick();
+    pipeline.tick(100);
+    pipeline.ready();
+    pipeline.close();
+    assert(pipeline.images.parked(0));
+    CardId card = 0;
+    switch (change) {
+      case 0:
+        pipeline.port.width = 600;
+        pipeline.port.height = 800;
+        break;
+      case 1:
+        pipeline.port.force_fit = false;
+        break;
+      case 2:
+        ++pipeline.port.background;
+        break;
+      case 3:
+        ++pipeline.port.endpoint;
+        break;
+      case 4:
+        ++f.subscriptions.generation;
+        f.preload();
+        break;
+      case 5:
+        card = f.token(1).card;
+        break;
+    }
+    token = pipeline.open(card);
+    pipeline.tick();
+    assert(!pipeline.source.snapshot(token).asset && !pipeline.images.parked(0));
+    pipeline.tick(100);
+    pipeline.ready();
+    pipeline.close();
+  }
+}
+void expanded_source_cache_revision_and_wrap() {
+  F f(DEVICE_UI_PROFILES[8]);
+  f.preload("image.still");
+  f.tick();
+  f.ready(1);
+  ExpandedPipeline pipeline(f);
+  pipeline.port.caching = pipeline.port.skip_refresh = true;
+  auto token = pipeline.open(f.token(1).card);
+  pipeline.tick();
+  pipeline.tick(100);
+  pipeline.ready();
+  now = UINT32_MAX - 1000;
+  pipeline.close();
+  pipeline.tick(14999);
+  assert(pipeline.images.parked(0));
+  pipeline.tick(1);
+  assert(!pipeline.images.parked(0));
+  pipeline.tick();
+  token = pipeline.open(f.token(1).card);
+  pipeline.tick();
+  pipeline.tick(100);
+  pipeline.ready();
+  pipeline.close();
+  f.send("", "revision-new", "image.still");
+  token = pipeline.open(f.token(1).card);
+  pipeline.tick();
+  assert(!pipeline.source.snapshot(token).asset && !pipeline.images.parked(0));
+  pipeline.tick(100);
+  pipeline.ready();
+  pipeline.close();
+  pipeline.port.ttl = 0;
+  pipeline.port.skip_refresh = false;
+  token = pipeline.open(f.token(1).card);
+  pipeline.tick();
+  assert(pipeline.source.snapshot(token).asset && pipeline.source.snapshot(token).pending);
+  const auto starts = pipeline.requests.starts;
+  pipeline.tick(100);
+  assert(pipeline.requests.starts == starts + 1);
+  pipeline.ready();
+  pipeline.close();
+  pipeline.tick(60000);
+  assert(pipeline.images.parked(0));
+  pipeline.source.purge_cache();
+  assert(!pipeline.images.parked(0));
+  pipeline.tick();
+}
 void expanded_source_exhaustion() {
   F f(DEVICE_UI_PROFILES[8]);
   f.preload();
@@ -1432,6 +1596,22 @@ void expanded_source_profile(const DeviceUiLimits& limits) {
     assert(allocations == before && !pipeline.source.snapshot(token).bound);
   }
   assert(f.subscriptions.used == channels);
+  pipeline.port.caching = pipeline.port.skip_refresh = true;
+  auto token = pipeline.open();
+  pipeline.tick();
+  pipeline.tick(100);
+  pipeline.ready();
+  pipeline.close();
+  const auto starts = pipeline.requests.starts;
+  for (size_t n = 0; n < 1000; ++n) {
+    token = pipeline.open();
+    pipeline.tick();
+    assert(pipeline.source.snapshot(token).asset);
+    const auto count = allocations;
+    pipeline.close();
+    assert(count == allocations);
+  }
+  assert(pipeline.requests.starts == starts && f.subscriptions.used == channels);
 }
 
 void sources_and_revisions() {
@@ -1785,6 +1965,9 @@ int main() {
   expanded_source_cancel_replacement();
   expanded_source_configuration_replacement();
   expanded_source_exhaustion();
+  expanded_source_cache();
+  expanded_source_cache_revision_and_wrap();
+  expanded_source_cache_key_rejection();
   refresh_handoff();
   handoff_retry_and_source_timing();
   handoff_recovers_only_current_pixels();

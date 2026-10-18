@@ -34,5 +34,5 @@ struct PageModalImageIdentity {
   }
 };
 using PageModalImageRuntime =
-    PageImageRuntime<1, PageModalToken, PageModalImageOrigin, PageModalImageIdentity>;
+    PageImageRuntime<1, PageModalToken, PageModalImageOrigin, PageModalImageIdentity, true>;
 }  // namespace espcontrol::pages

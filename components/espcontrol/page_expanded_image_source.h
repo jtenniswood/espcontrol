@@ -7,6 +7,17 @@ class PageExpandedImageEnvironment : public PageImageEnvironment {
  public:
   virtual bool visible(PageModalToken) const = 0;
   virtual uint16_t maximum_source_side() const = 0;
+  // Concrete scene delegates to the existing PSRAM retention policy. Disabled
+  // by default until that device environment is wired. Zero TTL is persistent.
+  virtual bool retain_cache(uint16_t, uint16_t) const {
+    return false;
+  }
+  virtual uint32_t cache_ttl_ms() const {
+    return 0;
+  }
+  virtual bool cache_skips_open_refresh() const {
+    return false;
+  }
 };
 struct PageExpandedImageSnapshot {
   bool bound{false}, pending{false};
@@ -48,11 +59,11 @@ class PageExpandedImageSource final : public PageEntityObserver {
     return now_ && images_.available();
   }
   bool bind(PageModalToken token, PageImageTileSource source) {
-    if (!available() || !PageModalImageIdentity::eligible(token) || !origin_.valid(token) ||
+    if (retiring_ || !available() || !PageModalImageIdentity::eligible(token) || !origin_.valid(token) ||
         page_image_entity_kind(source.entity) == PageImageEntityKind::UNSUPPORTED)
       return false;
     if (same(record_.token, token)) return true;
-    retire();
+    if (record_.token.opening) unbind(record_.token);
     if (record_.token.opening) return false;
     if (images_.acquire(token) != 0) return false;
     if (!origin_.valid(token)) {
@@ -101,12 +112,34 @@ class PageExpandedImageSource final : public PageEntityObserver {
     const auto transfer = record_.transfer;
     const auto policy = record_.policy;
     const bool owned = images_.bound_to(0, token);
+    const bool retain = owned && same(cache_.candidate, token) && cache_.asset == record_.handled_asset &&
+                        cache_.asset && !record_.dirty && !record_.forced && !record_.queued &&
+                        !record_.retry && !record_.geometry_stale && !record_.policy.unavailable &&
+                        !record_.stale_unavailable && !record_.policy.camera_errors &&
+                        cache_.endpoint == environment_.endpoint_generation() &&
+                        cache_.connection == graph_.connection_generation() &&
+                        environment_.retain_cache(cache_.width, cache_.height);
     reset();  // Forget borrowed metadata before cancellation can replace context.
     tiles_.end_expanded(transfer, policy);
-    if (owned) images_.unbind(0);
+    if (retain && images_.bound_to(0, token)) {
+      cache_.closed_at = now_();
+      images_.park(0, token, cache_.lease);
+    }
+    // Parking/cancellation may synchronously admit a different opening.
+    if (owned && images_.bound_to(0, token)) images_.unbind(0);
   }
   void retire() {
+    if (retiring_) return;
+    retiring_ = true;
     if (record_.token.opening) unbind(record_.token);
+    purge_cache();
+    retiring_ = false;
+  }
+  void purge_cache() {
+    const auto id = cache_.lease;
+    cache_.lease = cache_.asset = 0;
+    cache_.candidate = {};
+    if (id) images_.discard(0, id);
   }
   void size(PageModalToken token, uint16_t width, uint16_t height, uint32_t background) {
     if (!same(record_.token, token)) return;
@@ -115,6 +148,7 @@ class PageExpandedImageSource final : public PageEntityObserver {
     if (r.options.width == target.width && r.options.height == target.height &&
         (!r.source.fit || r.options.background == background))
       return;
+    cache_.candidate = {};
     r.geometry_stale = r.options.width && r.options.height;
     r.options.width = target.width;
     r.options.height = target.height;
@@ -178,9 +212,18 @@ class PageExpandedImageSource final : public PageEntityObserver {
   }
   void observed_update(uint32_t generation, std::string_view entity, std::string_view attribute,
                        std::string_view value, bool copied, std::string_view previous) override {
+    if (copied) return;
+    // A hidden cache still observes its already-registered entity. Invalidation
+    // only revokes value ownership here; pixel cleanup stays in maintenance.
+    if (cache_.lease && entity == cache_.entity &&
+        ((attribute.empty() &&
+          (page_image_unavailable(value) || (page_image_entity_kind(entity) == PageImageEntityKind::IMAGE &&
+                                             value.substr(0, 80) != cache_.picture.timestamp()))) ||
+         (attribute == "access_token" && value.substr(0, 512) != previous.substr(0, 512)) ||
+         (attribute == "entity_picture" && value != previous)))
+      purge_cache();
     auto& r = record_;
-    if (copied || !r.token.opening || r.token.configuration != generation || !images_.owns(0, r.token))
-      return;
+    if (!r.token.opening || r.token.configuration != generation || !images_.owns(0, r.token)) return;
     if (r.policy.synchronize(graph_.connection_generation())) {
       r.dirty = r.forced = true;
       r.retry = r.waiting = false;
@@ -203,6 +246,7 @@ class PageExpandedImageSource final : public PageEntityObserver {
         if (!r.policy.token_update(value, previous, now_())) return;
       } else
         return;
+      cache_.candidate = {};
       r.dirty = true;
       r.waiting = false;
       ++revision_;
@@ -213,6 +257,7 @@ class PageExpandedImageSource final : public PageEntityObserver {
     }
   }
   void loop() {
+    maintain_cache();
     auto& r = record_;
     if (!now_ || !r.token.opening) return;
     const auto token = r.token;
@@ -246,6 +291,7 @@ class PageExpandedImageSource final : public PageEntityObserver {
       }
       return;
     }
+    if (cache_.lease && r.options.width && r.options.height) try_cache();
     const auto image = images_.snapshot(0, token);
     if (image.ready && !image.pending && !image.failed && image.asset != r.handled_asset) {
       r.handled_asset = image.asset;
@@ -259,6 +305,7 @@ class PageExpandedImageSource final : public PageEntityObserver {
       r.failure_seen = true;
       failed(now);
     }
+    remember_cache();
     if (!environment_.visible(token) || image.pending || !r.options.width || !r.options.height || r.exhausted)
       return;
     if (r.retry && !due(now, r.policy.camera_retry_after)) return;
@@ -321,6 +368,7 @@ class PageExpandedImageSource final : public PageEntityObserver {
       ++revision_;
       return;
     }
+    cache_.candidate = {};
     r.options.max_source_dimension =
         page_image_size_source(url, r.options.width, r.options.height, environment_.maximum_source_side());
     r.queued = r.retry = r.dirty = r.forced = r.failure_seen = false;
@@ -332,6 +380,66 @@ class PageExpandedImageSource final : public PageEntityObserver {
   }
 
  private:
+  struct Cache {
+    std::string entity, url;
+    PageImageRevision picture;
+    PageModalToken candidate;
+    uint64_t lease{0}, asset{0};
+    uint16_t width{0}, height{0};
+    uint32_t background{0}, endpoint{0}, connection{0}, closed_at{0};
+    bool fit{false};
+  };
+  void maintain_cache() {
+    if (!cache_.lease) return;
+    const auto ttl = environment_.cache_ttl_ms();
+    if (images_.parked(0) != cache_.lease || cache_.connection != graph_.connection_generation() ||
+        cache_.endpoint != environment_.endpoint_generation() ||
+        (ttl && static_cast<uint32_t>(now_() - cache_.closed_at) >= ttl) ||
+        !environment_.retain_cache(cache_.width, cache_.height))
+      purge_cache();
+  }
+  void remember_cache() {
+    const auto frame = content(record_.token);
+    if (!frame.asset || !environment_.retain_cache(frame.width, frame.height)) return;
+    cache_.candidate = frame.token;
+    cache_.asset = frame.asset;
+    cache_.entity.assign(frame.entity.data(), frame.entity.size());
+    cache_.url.assign(frame.url.data(), frame.url.size());
+    cache_.width = frame.width;
+    cache_.height = frame.height;
+    cache_.background = frame.background;
+    cache_.fit = frame.fit;
+    cache_.endpoint = frame.endpoint;
+    cache_.connection = frame.connection;
+    cache_.picture = record_.policy.picture;
+  }
+  void try_cache() {
+    auto& r = record_;
+    const bool key =
+        cache_.entity == r.source.entity && cache_.width == r.options.width &&
+        cache_.height == r.options.height && cache_.fit == r.source.fit &&
+        (!r.source.fit || cache_.background == r.options.background) && !r.policy.unavailable &&
+        !r.stale_unavailable && !r.policy.camera_errors && r.policy.primary_seeded &&
+        (r.kind != PageImageEntityKind::IMAGE || cache_.picture.timestamp() == r.policy.picture.timestamp());
+    if (!key) {
+      purge_cache();
+      return;
+    }
+    auto url = page_image_select_source(graph_, {r.token.configuration, r.token.card}, r.source.entity,
+                                        r.kind, r.policy.picture_event, environment_.base_url());
+    if (url != cache_.url || !images_.adopt(0, r.token, cache_.lease)) {
+      purge_cache();
+      return;
+    }
+    cache_.lease = 0;
+    r.selected = std::move(url);
+    r.source_version = r.requested_source = r.applied_source = 1;
+    r.handled_asset = images_.snapshot(0, r.token).asset;
+    r.policy.picture.modal_requested = r.policy.picture.modal_applied = r.policy.picture.latest;
+    if (environment_.cache_skips_open_refresh()) r.dirty = r.forced = false;
+    // A cached result is not a new network completion and cannot reset cadence.
+    ++revision_;
+  }
   struct Record {
     PageModalToken token;
     PageImageTileSource source;
@@ -396,6 +504,8 @@ class PageExpandedImageSource final : public PageEntityObserver {
   PageExpandedImageEnvironment& environment_;
   Now now_;
   Record record_;
+  Cache cache_;
+  bool retiring_{false};
   uint64_t serial_{0}, revision_{0};
 };
 }  // namespace espcontrol::pages
