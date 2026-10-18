@@ -56,10 +56,8 @@ inline bool sensor_driver_setup_visual(
   if (!local && config.precision == "icon") {
     lv_obj_clear_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
-    const char *icon = (config.icon.empty() || config.icon == "Auto")
-      ? find_icon("Auto")
-      : find_icon(config.icon.c_str());
-    lv_label_set_display_text(slot.icon_lbl, icon);
+    lv_label_set_display_text(slot.icon_lbl, find_icon("Minus"));
+    set_card_disabled_state(slot.btn, true);
     if (!config.label.empty()) lv_label_set_display_text(slot.text_lbl, config.label.c_str());
     return true;
   }
@@ -149,13 +147,7 @@ inline void sensor_driver_register_local_value(
           local_sensor_apply_value(key, value);
         });
       }
-      if (!std::isnan(esp_sensor->state) && control.sensor_lbl) {
-        char buffer[32];
-        if (control.precision == 1) snprintf(buffer, sizeof(buffer), "%.1f", esp_sensor->state);
-        else if (control.precision == 2) snprintf(buffer, sizeof(buffer), "%.2f", esp_sensor->state);
-        else snprintf(buffer, sizeof(buffer), "%.0f", esp_sensor->state);
-        lv_label_set_display_text(control.sensor_lbl, buffer);
-      }
+      local_sensor_render_numeric(control.sensor_lbl, control.precision, esp_sensor->state);
       break;
     }
   }
