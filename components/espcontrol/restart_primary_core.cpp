@@ -1,10 +1,10 @@
 #include "esphome/core/defines.h"
 
 #ifdef ESPCONTROL_RESTART_ON_PRIMARY_CORE
-#include "esp_private/rtc_clk.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "hal/wdt_hal.h"
+#include "soc/rtc.h"
 
 extern "C" [[noreturn]] void __real_esp_restart();
 

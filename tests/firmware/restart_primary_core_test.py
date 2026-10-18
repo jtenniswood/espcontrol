@@ -18,7 +18,7 @@ int xPortGetCoreID();
 int xTaskCreatePinnedToCore(void (*)(void *), const char *, uint32_t, void *, unsigned, void *, int);
 void vTaskSuspend(void *);
 """,
-        "esp_private/rtc_clk.h": "#pragma once\n#include <cstdint>\nuint32_t rtc_clk_slow_freq_get_hz();\n",
+        "soc/rtc.h": "#pragma once\n#include <cstdint>\nuint32_t rtc_clk_slow_freq_get_hz();\n",
         "hal/wdt_hal.h": """#pragma once
 #include <cstdint>
 enum { WDT_RWDT = 3, WDT_STAGE0 = 0, WDT_STAGE1 = 1,
