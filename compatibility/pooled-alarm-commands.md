@@ -9,7 +9,7 @@ An intent contains exactly one full grid binding or modal-opening token plus the
 connection captured with that input. Grid intents apply only to action cards and
 must match their configured mode. Control cards require a live alarm control/PIN
 opening and a currently exposed mode, in the existing contract order and visible
-limit. Critical triggered/countdown panels can always offer Disarm. Options and
+limit. The dedicated arming/pending view can always offer Disarm, including when its countdown is unknown or finished. Options and
 PIN requirements use immediate-parent inheritance. Mode/options parsing happens
 when explicitly queuing a user command, rather than on frame or navigation updates.
 

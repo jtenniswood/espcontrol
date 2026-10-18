@@ -135,8 +135,7 @@ bool PageAlarmCommands::queue(PageAlarmCommandOrigin origin, alarm::Action actio
   } else if (kind == PageAlarmSourceKind::CONTROL) {
     if (!origin.modal.opening) return reject();
     const auto snapshot = state_.read(handle);
-    if (!visible(options, action) &&
-        !(action == alarm::Action::DISARM && (snapshot.triggered || snapshot.remaining > 0)))
+    if (!visible(options, action) && !(action == alarm::Action::DISARM && alarm::delay(snapshot.state)))
       return reject();
   } else
     return reject();

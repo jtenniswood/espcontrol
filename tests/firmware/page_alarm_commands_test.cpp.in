@@ -237,9 +237,12 @@ void configured_modes(const DeviceUiLimits& limits) {
         h.commands.cancel();
       }
       h.report("triggered");
-      assert(h.commands.queue(h.modal(), alarm::Action::DISARM, "1234"));
+      const bool disarm_visible = std::find(modes, modes + count, "disarm") != modes + count;
+      assert(h.commands.queue(h.modal(), alarm::Action::DISARM, "1234") == disarm_visible);
       h.commands.cancel();
       h.report("arming");
+      assert(h.commands.queue(h.modal(), alarm::Action::DISARM, "1234"));
+      h.commands.cancel();
       h.transport.send("alarm_control_panel.home", "delay", "60");
       assert(h.commands.queue(h.modal(), alarm::Action::DISARM, "1234"));
       h.commands.cancel();
