@@ -137,10 +137,10 @@ bool PageAlarmCommands::queue(PageAlarmCommandOrigin origin, alarm::Action actio
   const auto kind = PageAlarmStateRuntime::classify(active_, handle.index);
   const auto* card = active_.card(handle);
   const std::string options(PageAlarmStateRuntime::effective_options(active_, handle.index));
-  const auto takeover = state_.takeover();
-  const bool critical_panel = origin.modal.opening && origin.modal.kind == ControlModalKind::ALARM_CONTROL &&
-                              takeover.valid && takeover.origin.generation == handle.generation &&
-                              takeover.origin.index == handle.index;
+  // A live ALARM_CONTROL opening for an action card was admitted by the modal
+  // family as a critical panel. Its selected PIN action can finish after the
+  // countdown ends; configuration/connection/opening guards remain mandatory.
+  const bool critical_panel = origin.modal.opening && origin.modal.kind == ControlModalKind::ALARM_CONTROL;
   if (kind == PageAlarmSourceKind::ACTION && !critical_panel) {
     if (action != alarm::action(active_.field(*card, CardField::SENSOR))) return reject();
   } else if (kind == PageAlarmSourceKind::CONTROL || critical_panel) {

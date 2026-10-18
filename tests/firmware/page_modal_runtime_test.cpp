@@ -161,6 +161,31 @@ void queued_requests_keep_their_connection() {
   runtime.loop();
   assert(port.creates == port.destroys && port.sends == 0);
 }
+void pending_request_identity() {
+  Fixture fixture;
+  Port port;
+  PageModalRuntime runtime(port);
+  port.runtime = &runtime;
+  activate(runtime, fixture.store);
+  assert(runtime.request_card({17, 0}));
+  const auto first = runtime.pending_request();
+  assert(first);
+  assert(runtime.request_card({17, 1}));
+  const auto second = runtime.pending_request();
+  assert(second && second != first);
+  assert(!runtime.cancel_request(first) && runtime.pending_request() == second);
+  assert(runtime.cancel_request(second) && runtime.pending_request() == 0);
+  runtime.loop();
+  assert(!port.context);
+  assert(runtime.request_card({17, 0}));
+  const auto opening = runtime.pending_request();
+  runtime.loop();
+  assert(runtime.token().opening == opening && !runtime.cancel_request(opening));
+  assert(runtime.dismiss_policy(runtime.token()) == ControlModalDismissPolicy::DISMISS);
+  port.preserve = true;
+  assert(runtime.dismiss_policy(runtime.token()) ==
+         ControlModalDismissPolicy::PRESERVE_DURING_DISPLAY_TAKEOVER);
+}
 void action_response_dispatch_lifetime() {
   Fixture fixture;Port port;PageModalRuntime runtime(port);port.runtime=&runtime;activate(runtime,fixture.store);
   assert(runtime.request_card({17,0}));runtime.loop();auto *context=port.context;
@@ -194,6 +219,7 @@ void bounded_cycles_failures_and_exhaustion() {
 }
 }
 int main() {
+  pending_request_identity();
   queued_requests_keep_their_connection();
   action_response_dispatch_lifetime();
   queue_and_callback_lifetimes();

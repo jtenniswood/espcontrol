@@ -189,9 +189,12 @@ class PageAlarmModalPort final : public PageModalPort {
       alarm_pin_hide_modal();
   }
   ControlModalDismissPolicy dismiss_policy(void* pointer) const override {
-    return pin_overlay(*static_cast<Record*>(pointer))
+    return static_cast<Record*>(pointer)->pin_phase
                ? ControlModalDismissPolicy::DISMISS
                : ControlModalDismissPolicy::PRESERVE_DURING_DISPLAY_TAKEOVER;
+  }
+  uint64_t source_revision(void*) const override {
+    return state_.takeover_events();
   }
   void retire(void* pointer, PageModalClose reason) override {
     auto& record = *static_cast<Record*>(pointer);
@@ -233,7 +236,7 @@ class PageAlarmModalPort final : public PageModalPort {
     uint32_t connection;
     PageModalGestures gestures;
     alarm::Action pin_mode{alarm::Action::NONE};
-    bool retired{false}, transitioning{false}, open_pin{false}, awaiting_submission{false},
+    bool retired{false}, transitioning{false}, open_pin{false}, awaiting_submission{false}, pin_phase{false},
         command_available{false};
     uint64_t seen{UINT64_MAX};
   };
@@ -264,6 +267,7 @@ class PageAlarmModalPort final : public PageModalPort {
     action.mode = mode_name(record.pin_mode);
     action.requires_pin = true;
     alarm_pin_open_modal(&action);
+    if (pin_overlay(record)) record.pin_phase = true;
   }
   static const char* mode_name(alarm::Action action) {
     switch (action) {
