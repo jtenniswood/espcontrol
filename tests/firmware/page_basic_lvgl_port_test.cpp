@@ -62,7 +62,7 @@ struct Fixture {
         "Glyph;Auto;control_modal;;media;;number_display=volume,volume_max=60",
         "media_player.room;Ignored;Auto;Auto;control_modal;;media;;",
         "media_player.room;Fixed;Auto;Auto;control_modal;;media;;label_display=label",
-        ";Temp;Auto;Auto;sensor.temp;°C;sensor;1;"};
+        "media_player.room;;Auto;Auto;speaker_group;;media;;number_display=volume,label_display=status"};
     for (uint8_t slot = 1; slot <= cards.size(); ++slot)
       assert(writer.append_button(slot, reinterpret_cast<const uint8_t*>(cards[slot - 1]),
                                   std::strlen(cards[slot - 1])) == PanelConfigStatus::OK);
@@ -967,6 +967,19 @@ void media_control_profile(const DeviceUiLimits& limits) {
     assert(actions.commands == 1 && actions.last.card == renderer.binding(1).card);
     click(widgets[3].button);
     assert(actions.commands == 2 && actions.last.card == renderer.binding(3).card);
+    const auto group_binding = renderer.binding(5);
+    assert(std::strcmp(lv_label_get_text(widgets[5].label), "Speaker Group") == 0 &&
+           !lv_obj_has_flag(widgets[5].icon, LV_OBJ_FLAG_HIDDEN) &&
+           lv_obj_has_flag(widgets[5].sensor_container, LV_OBJ_FLAG_HIDDEN));
+    assert(!port.preview_volume(group_binding, 30));
+    subscriptions.send("media_player.room", "group_members", "['media_player.room','media_player.room']");
+    renderer.update_visible();assert(!lv_obj_has_state(widgets[5].button,LV_STATE_CHECKED));
+    subscriptions.send("media_player.room", "group_members", "['media_player.other']");
+    subscriptions.send("media_player.room", "", "paused");renderer.update_visible();
+    assert(lv_obj_has_state(widgets[5].button,LV_STATE_CHECKED)&&!lv_obj_has_state(widgets[2].button,LV_STATE_CHECKED));
+    click(widgets[5].button);assert(actions.commands==3&&actions.last.card==group_binding.card);
+    subscriptions.send("media_player.room", "", "unavailable");renderer.update_visible();assert(!lv_obj_has_state(widgets[5].button,LV_STATE_CHECKED));
+    subscriptions.send("media_player.room", "", "playing");
     subscriptions.send("media_player.room", "volume_level", ".2");
     renderer.update_visible();
     const auto origin = renderer.binding(1);
@@ -1018,10 +1031,13 @@ void media_control_profile(const DeviceUiLimits& limits) {
     renderer.update_visible();
     const auto child = fixture.store.card(0)->target;
     lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    lv_obj_send_event(widgets[5].button, LV_EVENT_PRESSED, nullptr);
     assert(renderer.open_page(child));
     renderer.update_visible();
     lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
-    assert(actions.commands == 2 && !port.preview_volume(origin, 30));
+    lv_obj_send_event(widgets[5].button, LV_EVENT_CLICKED, nullptr);
+    assert(renderer.active_page()==child);
+    assert(actions.commands == 3 && !port.preview_volume(origin, 30));
     assert(lv_obj_get_style_align(widgets[1].sensor_container, LV_PART_MAIN) == LV_ALIGN_CENTER &&
            lv_obj_get_style_x(widgets[1].sensor_container, LV_PART_MAIN) == 3);
     assert(renderer.back());
@@ -1053,14 +1069,14 @@ void media_control_profile(const DeviceUiLimits& limits) {
     state.activate_prepared(replacement);
     assert(!port.preview_volume(retired, 40));
     lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
-    assert(actions.commands == 2);
+    assert(actions.commands == 3);
     renderer.update_visible();
     lv_obj_update_layout(page);
     renderer.retire_active();
     state.retire_active();
     media.retire_active();
     std::printf(
-        "%s: media volume/control cards, pending acknowledgements/modal hooks, 1000 cycles, stable retained "
+        "%s: media volume/control cards and speaker groups, pending acknowledgements/modal hooks, 1000 cycles, stable retained "
         "resources\n",
         limits.device_profile);
   }

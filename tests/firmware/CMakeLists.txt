@@ -115,6 +115,19 @@ target_compile_options(bounded_sensor_text_test PRIVATE -Wall -Wextra -Werror -U
 target_include_directories(bounded_sensor_text_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME bounded_sensor_text_test COMMAND bounded_sensor_text_test)
 
+set(PAGE_MEDIA_GROUP_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_media_group_test.cpp)
+add_custom_command(OUTPUT ${PAGE_MEDIA_GROUP_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_media_group_test.py
+    --output ${PAGE_MEDIA_GROUP_SOURCE}
+  DEPENDS generate_page_media_group_test.py page_media_group_test.cpp.in
+    ../../components/espcontrol/button_grid_media_group.h
+  VERBATIM)
+add_executable(page_media_group_test ${PAGE_MEDIA_GROUP_SOURCE})
+target_compile_features(page_media_group_test PRIVATE cxx_std_17)
+target_compile_options(page_media_group_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_media_group_test PRIVATE ../../components/espcontrol)
+add_test(NAME page_media_group_test COMMAND page_media_group_test)
+
 add_executable(page_basic_card_test page_basic_card_test.cpp
   ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
