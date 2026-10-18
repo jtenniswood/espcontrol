@@ -21,8 +21,7 @@ source = r'''
 #include <vector>
 struct lv_obj_t;
 void lv_label_set_text(lv_obj_t *, const char *) {}
-bool translate_back = false;
-std::string espcontrol_i18n(const std::string &text) { return translate_back && text == "Back" ? "Zurück" : text; }
+#include "i18n_generated.h"
 #include "button_grid_config_parser.h"
 #define ESPCONTROL_SUBPAGE_PARSER_ONLY
 #include "button_grid_subpages.h"
@@ -105,6 +104,11 @@ struct MediaNowPlayingCtx {
 bool image_card_media_artwork_visible(const ImageCardCtx *ctx) { return ctx && ctx->artwork_visible; }
 void set_card_content_disabled(lv_obj_t *, bool) {}
 constexpr int LV_STATE_DISABLED = 4, LV_OBJ_FLAG_HIDDEN = 1, LV_OBJ_FLAG_CLICKABLE = 2, LV_OBJ_FLAG_USER_2 = 1<<28;
+void set_card_disabled_state(lv_obj_t *obj, bool disabled) {
+  if (!obj) return;
+  if (disabled) lv_obj_add_state(obj, LV_STATE_DISABLED);
+  else lv_obj_clear_state(obj, LV_STATE_DISABLED);
+}
 bool lv_obj_has_flag(lv_obj_t *obj,int flag){return (obj->flags & flag)!=0;}
 constexpr int LV_OPA_50 = 128, MEDIA_CONTROL_SPEAKER_VOLUME_TEXT_OPA = 204;
 using lv_coord_t = int;
@@ -178,7 +182,7 @@ groups = (
     ("button_grid_grid.h", "", ("apply_subpage_back_colors",)),
     ("button_grid_sensor_driver.h", "espcontrol::cards", ("sensor_driver_apply_background",)),
     ("button_grid_weather_driver.h", "espcontrol::cards", ("weather_driver_apply_background",)),
-    ("button_grid_subscriptions.h", "", ("apply_sensor_active_color", "subscribe_sensor_text_card_value")),
+    ("button_grid_subscriptions.h", "", ("apply_sensor_active_color", "subscribe_sensor_text_card_value", "subscribe_sensor_icon_state")),
     ("button_grid_status_entity_driver.h", "espcontrol::cards", ("status_entity_driver_matches", "status_entity_driver_state_active", "status_entity_driver_active_color_enabled", "status_entity_driver_bind_data")),
     ("button_grid_alarm.h", "", ("alarm_theme_off_color", "alarm_set_card_state_colors")),
     ("button_grid_media.h", "", ("media_cover_art_apply_theme", "media_control_refresh_speaker_row")),
@@ -255,11 +259,11 @@ int main() {
   for (const std::string order : {"", "B", "B=Return%3AHome", "B=Back:invalid", "B=Back:12345", "1=Back:FFEC16"})
     assert(get_subpage_back_color(order).empty());
   assert(get_subpage_back_label("B=Back:invalid") == "Back");
-  translate_back = true;
+  set_espcontrol_language("de");
   assert(get_subpage_back_label("B=:FFEC16") == "Zurück");
   assert(get_subpage_back_label("B") == "Zurück");
   assert(get_subpage_back_label("B=Return:FFEC16") == "Return");
-  translate_back = false;
+  set_espcontrol_language("en");
   for (const ThemePalette *theme : {&DARK_THEME, &LIGHT_THEME}) {
     set_active_theme_palette(*theme);
     // Forecast temperatures retain muted grey through card contrast updates.
@@ -508,14 +512,34 @@ int main() {
         subscriptions.clear();
         assert(espcontrol::cards::status_entity_driver_bind_data(slot, config, context, palette));
         assert(subscriptions.count(config.sensor) == 1);
-        for (const char *state : {"on", "off", "unavailable", "on"}) {
+        assert(icon.content == "Minus" && (button.state & LV_STATE_DISABLED));
+        for (const char *state : {"on", "off", "unknown", "unavailable", "", "on"}) {
           subscriptions.at(config.sensor)(esphome::StringRef(state));
           const auto expected = std::string(state) == "on" ? colour.active : colour.base;
+          const bool unavailable = ha_state_unavailable_ref(esphome::StringRef(state));
+          assert(bool(button.state & LV_STATE_DISABLED) == unavailable);
+          assert(icon.content == (unavailable ? "Minus" : (std::string(state) == "on" ? "on" : "off")));
           assert(button.background[0] == expected);
           assert(label.text[0] == display_text_color_for_bg(expected));
           assert(icon.text[0] == label.text[0]);
         }
       }
+    }
+  }
+  // Icon Sensors use the same unknown treatment while preserving configured icons.
+  for (bool active_colour : {false, true}) {
+    ParsedCfg config;
+    config.sensor = "binary_sensor.icon"; config.icon = "My Off"; config.icon_on = "My On";
+    lv_obj_t button, icon;
+    subscribe_sensor_icon_state(&button, &icon, config, active_colour);
+    assert(icon.content == "Minus" && (button.state & LV_STATE_DISABLED));
+    for (const char *state : {"on", "unavailable", "off", "unknown", "", "on"}) {
+      subscriptions.at(config.sensor)(esphome::StringRef(state));
+      const bool unavailable = ha_state_unavailable_ref(esphome::StringRef(state));
+      assert(bool(button.state & LV_STATE_DISABLED) == unavailable);
+      assert(icon.content == (unavailable ? "Minus" : (std::string(state) == "on" ? "My On" : "My Off")));
+      assert(bool(button.state & LV_STATE_CHECKED) == (active_colour && std::string(state) == "on"));
+      assert(!(button.flags & LV_OBJ_FLAG_CLICKABLE));
     }
   }
   for (const char *options : {"", "card_off_color=invalid"}) {
