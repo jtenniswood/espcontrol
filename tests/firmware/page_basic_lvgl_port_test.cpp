@@ -1512,10 +1512,11 @@ void percent_slider_profile(const DeviceUiLimits& limits) {
     assert(cache.initialize(labels.data(), labels.size()));
     PageRendererRuntime<Slots> renderer(limits, arena, port);
     actions.renderer = &renderer;
-    assert(levels.prepare(fixture.store) && renderer.prepare(fixture.store) && state.prepare(fixture.store));
-    levels.activate_prepared(fixture.store);
-    state.activate_prepared(fixture.store);
-    renderer.activate_prepared(fixture.store);
+    PageRuntimeResourcesGroup<3> resources({&renderer, &levels, &state});
+    PageStoreRuntime publication(limits, arena, 32768, &resources);
+    assert(publication.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    assert(publication.activate_prepared(0, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(),
+                                         fixture.size));
     renderer.update_visible();
     lv_obj_update_layout(page);
     assert(lv_obj_get_height(widgets[3].fill) == 0);  // No fictitious initial closed-cover fill.
@@ -1577,7 +1578,7 @@ void percent_slider_profile(const DeviceUiLimits& limits) {
     vertical_pointer(device, input, widgets[1].slider, 100, false);
     assert(actions.seeks == 3);
     const auto root_binding = renderer.binding(1);
-    assert(levels.read({11, root_binding.card}).preview);
+    assert(levels.read({0, root_binding.card}).preview);
     const auto child = fixture.store.card(0)->target;
     assert(renderer.open_page(child));
     renderer.update_visible();
@@ -1589,7 +1590,7 @@ void percent_slider_profile(const DeviceUiLimits& limits) {
     assert(lv_slider_get_value(widgets[1].slider) == 100);
     subscriptions.send("fan.room", "percentage", "25");
     renderer.update_visible();
-    assert(lv_slider_get_value(widgets[1].slider) == 25 && !levels.read({11, root_binding.card}).preview);
+    assert(lv_slider_get_value(widgets[1].slider) == 25 && !levels.read({0, root_binding.card}).preview);
     vertical_pointer(device, input, widgets[1].slider, 75, true);
     assert(renderer.open_page(child));
     renderer.update_visible();

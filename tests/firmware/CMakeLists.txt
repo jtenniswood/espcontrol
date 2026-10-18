@@ -1119,7 +1119,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     ../../components/espcontrol/page_card_dependencies.cpp
     ../../components/espcontrol/page_entity_state_runtime.cpp
     ../../components/espcontrol/page_renderer_layout.cpp
-    ../../components/espcontrol/page_store.cpp)
+    ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_store.cpp)
   target_compile_features(page_basic_lvgl_port_test PRIVATE cxx_std_17)
   target_compile_options(page_basic_lvgl_port_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
   target_include_directories(page_basic_lvgl_port_test PRIVATE stubs ../../components/espcontrol ${CMAKE_CURRENT_BINARY_DIR})
