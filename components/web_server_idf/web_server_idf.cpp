@@ -7,6 +7,7 @@
 #include <cctype>
 #include <cinttypes>
 
+#include "esphome/core/application.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 #include "esphome/core/defines.h"
@@ -1002,13 +1003,16 @@ AsyncEventSource::~AsyncEventSource() {
 void AsyncEventSource::handleRequest(AsyncWebServerRequest *request) {
   // NOLINTNEXTLINE(cppcoreguidelines-owning-memory,clang-analyzer-cplusplus.NewDeleteLeaks)
   auto *rsp = new AsyncEventSourceResponse(request, this, this->web_server_);
-  if (this->on_connect_) {
-    this->on_connect_(rsp);
-  }
-  this->sessions_.push_back(rsp);
-  // Wake up WebServer::loop() to drain deferred event queues for this client.
-  // Safe from httpd task context via the pending_enable_loop_ flag.
-  this->web_server_->enable_loop_soon_any_context();
+  // Request dispatch runs on httpd's task. Only the main loop may mutate or
+  // iterate sessions_; adding here can race a vector reallocation or cleanup.
+  App.scheduler.set_timeout(this->web_server_, static_cast<const char *>(nullptr), 0, [this, rsp]() {
+    this->sessions_.push_back(rsp);
+    if (rsp->fd_.load() != 0 && this->on_connect_) {
+      this->on_connect_(rsp);
+    }
+    // Also wake cleanup if the browser disconnected before this handoff ran.
+    this->web_server_->enable_loop_soon_any_context();
+  });
 }
 
 bool AsyncEventSource::loop() {
@@ -1018,7 +1022,7 @@ bool AsyncEventSource::loop() {
   for (size_t i = 0; i < this->sessions_.size();) {
     auto *ses = this->sessions_[i];
     // If the session has a dead socket (marked by destroy callback)
-    if (ses->fd_.load() == 0) {
+    if (ses->fd_.load() == 0 && !ses->close_work_pending_.load()) {
       ESP_LOGD(TAG, "Removing dead event source session");
       delete ses;  // NOLINT(cppcoreguidelines-owning-memory)
       // Remove by swapping with last element (O(1) removal, order doesn't matter for sessions)
@@ -1145,7 +1149,7 @@ json::SerializationBuffer<> AsyncEventSourceResponse::generate_state_json_(void 
 }
 
 void AsyncEventSourceResponse::process_deferred_queue_() {
-  while (!deferred_queue_.empty()) {
+  while (this->fd_.load() != 0 && !this->close_requested_ && !deferred_queue_.empty()) {
     DeferredEvent &de = deferred_queue_.front();
     auto message = this->generate_state_json_(de.source_, de.message_generator_);
     if (this->try_send_nodefer(message.c_str(), message.size(), "state")) {
@@ -1157,8 +1161,38 @@ void AsyncEventSourceResponse::process_deferred_queue_() {
   }
 }
 
+void AsyncEventSourceResponse::close_() {
+  this->close_requested_ = true;
+  const int fd = this->fd_.load();
+  if (fd == 0 || this->close_queued_) {
+    return;
+  }
+  // Keep this object alive through the queued work even if free_ctx runs
+  // first. IDF's trigger_close queues a reusable sock_db slot pointer, which
+  // could close a new client if that slot is recycled before the work runs.
+  this->close_work_pending_.store(true);
+  if (httpd_queue_work(this->hd_, AsyncEventSourceResponse::close_callback_, this) == ESP_OK) {
+    this->close_queued_ = true;
+  } else {
+    this->close_work_pending_.store(false);
+  }
+}
+
+void AsyncEventSourceResponse::close_callback_(void *arg) {
+  auto *rsp = static_cast<AsyncEventSourceResponse *>(arg);
+  const int fd = rsp->fd_.load();
+  // Both the context check and shutdown run on httpd's task, so a natural
+  // disconnect/reconnect cannot recycle the socket between these operations.
+  if (fd != 0 && httpd_sess_get_ctx(rsp->hd_, fd) == rsp) {
+    shutdown(fd, SHUT_RDWR);
+  }
+  // The next server read observes EOF and invokes free_ctx. Only the main
+  // loop deletes the response, after both free_ctx and this callback finish.
+  rsp->close_work_pending_.store(false);
+}
+
 void AsyncEventSourceResponse::process_buffer_() {
-  if (event_buffer_.empty()) {
+  if (this->fd_.load() == 0 || this->close_requested_ || event_buffer_.empty()) {
     return;
   }
   if (event_bytes_sent_ == event_buffer_.size()) {
@@ -1173,26 +1207,22 @@ void AsyncEventSourceResponse::process_buffer_() {
   if (bytes_sent == HTTPD_SOCK_ERR_TIMEOUT) {
     // EAGAIN/EWOULDBLOCK - socket buffer full, try again later
     // NOTE: Similar logic exists in web_server/web_server.cpp in DeferredUpdateEventSource::process_deferred_queue_()
-    // The implementations differ due to platform-specific APIs (HTTPD_SOCK_ERR_TIMEOUT vs DISCARDED, fd_.store(0) vs
-    // close()), but the failure counting and timeout logic should be kept in sync. If you change this logic, also
+    // The implementations differ due to platform-specific APIs (HTTPD_SOCK_ERR_TIMEOUT vs DISCARDED),
+    // but the failure counting and timeout logic should be kept in sync. If you change this logic, also
     // update the Arduino implementation.
     this->consecutive_send_failures_++;
     if (this->consecutive_send_failures_ >= MAX_CONSECUTIVE_SEND_FAILURES) {
       // Too many failures, connection is likely dead
       ESP_LOGW(TAG, "Closing stuck EventSource connection after %" PRIu16 " failed sends",
                this->consecutive_send_failures_);
-      this->fd_.store(0);  // Mark for cleanup
-      this->deferred_queue_.clear();
+      this->close_();
     }
     return;
   }
-  if (bytes_sent == HTTPD_SOCK_ERR_FAIL) {
-    // Real socket error - connection will be closed by httpd and destroy callback will be called
-    return;
-  }
   if (bytes_sent <= 0) {
-    // Unexpected error or zero bytes sent
-    ESP_LOGW(TAG, "Unexpected send result: %d", bytes_sent);
+    // These sends happen outside request dispatch, so httpd will not see the
+    // failure and close the session for us. Release its socket explicitly.
+    this->close_();
     return;
   }
 
@@ -1213,19 +1243,26 @@ void AsyncEventSourceResponse::process_buffer_() {
 }
 
 void AsyncEventSourceResponse::loop() {
+  if (this->close_requested_) {
+    this->close_();
+    return;
+  }
   process_buffer_();
+  if (this->fd_.load() == 0 || this->close_requested_) {
+    return;
+  }
   process_deferred_queue_();
-  if (!this->entities_iterator_.completed())
+  if (this->fd_.load() != 0 && !this->close_requested_ && !this->entities_iterator_.completed())
     this->entities_iterator_.try_advance(1);
 }
 
 bool AsyncEventSourceResponse::try_send_nodefer(const char *message, size_t message_len, const char *event, uint32_t id,
                                                 uint32_t reconnect) {
-  if (this->fd_.load() == 0) {
+  if (this->fd_.load() == 0 || this->close_requested_) {
     return false;
   }
   process_buffer_();
-  if (!event_buffer_.empty()) {
+  if (this->fd_.load() == 0 || this->close_requested_ || !event_buffer_.empty()) {
     // there is still pending event data to send first
     return false;
   }
@@ -1353,11 +1390,14 @@ bool AsyncEventSourceResponse::try_send_nodefer(const char *message, size_t mess
   event_bytes_sent_ = 0;
   process_buffer_();
 
-  return true;
+  return this->fd_.load() != 0 && !this->close_requested_;
 }
 
 void AsyncEventSourceResponse::deferrable_send_state(void *source, const char *event_type,
                                                      message_generator_t *message_generator) {
+  if (this->fd_.load() == 0 || this->close_requested_) {
+    return;
+  }
   // allow all json "details_all" to go through before publishing bare state events, this avoids unnamed entries showing
   // up in the web GUI and reduces event load during initial connect
   if (!this->entities_iterator_.completed() && 0 != strcmp(event_type, "state_detail_all"))
@@ -1377,13 +1417,17 @@ void AsyncEventSourceResponse::deferrable_send_state(void *source, const char *e
   process_buffer_();
   process_deferred_queue_();
 
+  if (this->fd_.load() == 0 || this->close_requested_) {
+    return;
+  }
   if (!event_buffer_.empty() || !deferred_queue_.empty()) {
     // outgoing event buffer or deferred queue still not empty which means downstream tcp send buffer full, no point
     // trying to send first
     deq_push_back_with_dedup_(source, message_generator);
   } else {
     auto message = this->generate_state_json_(source, message_generator);
-    if (!this->try_send_nodefer(message.c_str(), message.size(), "state")) {
+    if (!this->try_send_nodefer(message.c_str(), message.size(), "state") &&
+        this->fd_.load() != 0 && !this->close_requested_) {
       deq_push_back_with_dedup_(source, message_generator);
     }
   }
@@ -1419,9 +1463,20 @@ esp_err_t AsyncWebServer::handle_multipart_upload_(httpd_req_t *r, const char *c
     return ESP_OK;
   }
 
+  struct UploadGuard {
+    AsyncWebHandler *handler;
+    AsyncWebServerRequest *request;
+    bool accepted = false;
+    ~UploadGuard() {
+      if (!accepted) handler->handleUploadAbort(request);
+    }
+  } upload{handler, &req};
+
   // Upload state
   std::string filename;
   size_t index = 0;
+  bool file_finished = false;
+  bool additional_file_data = false;
   // Create reader on heap to reduce stack usage
   auto reader = std::make_unique<MultipartReader>("--" + std::string(boundary_start, boundary_len));
 
@@ -1429,6 +1484,13 @@ esp_err_t AsyncWebServer::handle_multipart_upload_(httpd_req_t *r, const char *c
   reader->set_data_callback([&](const uint8_t *data, size_t len) {
     if (!reader->has_file() || !len)
       return;
+
+    // Browser OTA accepts one firmware file. Never concatenate a later file
+    // onto the first image or finalise an upload whose body is still invalid.
+    if (file_finished) {
+      additional_file_data = true;
+      return;
+    }
 
     if (filename.empty()) {
       filename = reader->get_current_part().filename;
@@ -1442,9 +1504,7 @@ esp_err_t AsyncWebServer::handle_multipart_upload_(httpd_req_t *r, const char *c
 
   reader->set_part_complete_callback([&]() {
     if (index > 0) {
-      handler->handleUpload(&req, filename, index, nullptr, 0, true);  // End
-      filename.clear();
-      index = 0;
+      file_finished = true;
     }
   });
 
@@ -1476,7 +1536,17 @@ esp_err_t AsyncWebServer::handle_multipart_upload_(httpd_req_t *r, const char *c
     }
   }
 
+  if (!reader->is_complete() || !file_finished || additional_file_data) {
+    ESP_LOGW(TAG, "Multipart upload must contain one complete, nonempty firmware file");
+    httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, nullptr);
+    return ESP_FAIL;
+  }
+
+  // Finalisation can commit the image and schedule a reboot. Do this only
+  // after the entire multipart body has been accepted, including its ending.
+  handler->handleUpload(&req, filename, index, nullptr, 0, true);
   handler->handleRequest(&req);
+  upload.accepted = true;
   return ESP_OK;
 }
 #endif  // USE_WEBSERVER_OTA
