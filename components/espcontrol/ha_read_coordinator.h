@@ -202,7 +202,8 @@ class HaReadCoordinator {
                  uint32_t scope,
                  void *owner = nullptr,
                  bool retain_latest = false,
-                 bool retain_replay = true) {
+                 bool retain_replay = true,
+                 bool initial_replay = true) {
     if (!available() || entity_id.empty() || !callback) return false;
     auto callback_ref =
         std::allocate_shared<Callback>(ReboundAllocator<Callback>{}, std::move(callback));
@@ -234,7 +235,7 @@ class HaReadCoordinator {
     subscriptions_.push_back({callback_ref, scope, owner, channel, retain_latest, false, retain_replay});
     // A grid rebuild re-subscribes on an existing channel; replay the last value
     // so rebuilt cards reflect the live state immediately.
-    if (!new_channel && subscription_channels_[channel].has_last_state) {
+    if (initial_replay && !new_channel && subscription_channels_[channel].has_last_state) {
       const AllocatedString snapshot = subscription_channels_[channel].last_state;
       subscriptions_.back().initial_delivery=true;
       invoke(callback_ref, State(snapshot.c_str(), snapshot.size()));

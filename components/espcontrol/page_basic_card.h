@@ -2,17 +2,20 @@
 
 #include "page_entity_state_runtime.h"
 #include "page_climate_card.h"
+#include "page_media_action.h"
+#include "page_media_state_runtime.h"
 #include "weather_card_view.h"
 #include "page_renderer_runtime.h"
 
 namespace espcontrol::pages {
-enum class BasicCardKind:uint8_t { EMPTY, TOGGLE, NUMBER, ICON, FOLDER, TEXT, DURATION, CLIMATE, STATUS, ACTION, LIGHT, COVER, WEATHER, FORECAST };
+enum class BasicCardKind:uint8_t { EMPTY, TOGGLE, NUMBER, ICON, FOLDER, TEXT, DURATION, CLIMATE, STATUS, ACTION, LIGHT, COVER, WEATHER, FORECAST, MEDIA_ACTION };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode:uint8_t { NONE, ENTITY, CLIMATE, MOWER, CHILDREN, NUMBER, TEXT };
 struct BasicCardDefinition {
   BasicCardKind kind{BasicCardKind::EMPTY};
   BasicFolderMode folder_mode{BasicFolderMode::NONE};
   ClimateCardOptions climate;
+  MediaActionOptions media;
   weather::View forecast_view{weather::View::DAILY};
   BasicActionDisplay action_display{BasicActionDisplay::NONE};
   std::string_view entity,sensor,label,unit,icon,icon_on;
@@ -47,5 +50,5 @@ struct BasicCardState {
 std::string_view basic_folder_child_indicator(const PageStore &,CardId);
 bool read_basic_indicator(ConfigurationHandle,std::string_view,PageEntityStateRuntime &,BasicFolderMode=BasicFolderMode::ENTITY);
 BasicCardState read_basic_card(const BasicCardDefinition &,ConfigurationHandle,PageEntityStateRuntime &,int duration_components=2,
-    std::string_view temperature_unit="°C",PageCardTranslate translate=nullptr);
+    std::string_view temperature_unit="°C",PageCardTranslate translate=nullptr,PageMediaStateRuntime *media=nullptr);
 }  // namespace espcontrol::pages

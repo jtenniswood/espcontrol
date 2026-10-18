@@ -9,6 +9,9 @@ namespace espcontrol::pages {
 // Reuse the application's deduplicated transport channels across staged and
 // active configurations. Only the configuration cache retains these values;
 // legacy widget/modal consumers can continue to share the same channels.
+// PageEntityStateRuntime explicitly copies live values during staging. Skip
+// coordinator initial replay so an unrelated retained consumer cannot revive
+// metadata that the configuration-owned media lifecycle has invalidated.
 template<typename Coordinator>
 class CoordinatorPageEntitySubscriptions final : public PageEntitySubscriptions {
  public:
@@ -19,7 +22,7 @@ class CoordinatorPageEntitySubscriptions final : public PageEntitySubscriptions 
     return coordinator_.subscribe(std::string(entity), std::string(attribute),
         [owner, revision, channel, deliver](typename Coordinator::State value) {
           deliver(owner, revision, channel, {value.c_str(), value.size()});
-        }, scope_, owner, false, false);
+        }, scope_, owner, false, false, false);
   }
   void release(void *owner) override { coordinator_.release_owner(owner); }
   uint32_t connection_generation() const override { return coordinator_.connection_generation(); }

@@ -47,10 +47,24 @@ struct Subscriptions:PageEntitySubscriptions {
   void send(const char *entity,const char *attribute,std::string_view value){for(auto &b:bindings)if(std::strcmp(b.entity,entity)==0&&std::strcmp(b.attribute,attribute)==0)b.deliver(b.owner,b.revision,b.channel,value);}
 };
 struct Fixture {
-  explicit Fixture(const DeviceUiLimits &limits,bool unsupported=false,bool portrait=false,bool stateless=false,bool controls=false,bool weather=false,bool forecasts=false) {
+  explicit Fixture(const DeviceUiLimits &limits,bool unsupported=false,bool portrait=false,bool stateless=false,bool controls=false,bool weather=false,bool forecasts=false,bool media=false) {
     PanelConfigWriter writer(document.data(),document.size());assert(writer.begin()==PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t *>(limits.device_profile),std::strlen(limits.device_profile))==PanelConfigStatus::OK);
     auto button=[&](uint8_t slot,std::string text){assert(writer.append_button(slot,reinterpret_cast<const uint8_t *>(text.data()),text.size())==PanelConfigStatus::OK);};
+    if(media) {
+      button(1,";Media;Home;Auto;indicator;;subpage;;");
+      button(2,"media_player.room;Custom;Auto;Auto;play_pause;;media;state;");
+      button(3,"media_player.room;;;;previous;;media;;");
+      button(4,"media_player.room;;;;playlist;;media;;playlist_content_id=spotify%3Aplaylist%3Aabcd");
+      button(5,"media_player.room;;;;next;;media;;");
+      button(6,";;;;sensor.temp;°C;sensor;1;");
+      const std::string child="~B,1,2,3,4|M,media_player.room,Next,Auto,Auto,next,,,|M,media_player.room,Play,Auto,Auto,play_pause,,state,|M,media_player.room,Playlist,Auto,Auto,playlist,,,playlist_content_id=spotify%3Aplaylist%3Aabcd|S,,Temp,Auto,Auto,sensor.temp,°C,1,";
+      assert(writer.append_subpage(1,reinterpret_cast<const uint8_t *>(child.data()),child.size())==PanelConfigStatus::OK);
+      const std::string key="button_order",order="1,2,3,4,5,6";
+      assert(writer.append_setting(reinterpret_cast<const uint8_t *>(key.data()),key.size(),reinterpret_cast<const uint8_t *>(order.data()),order.size())==PanelConfigStatus::OK);
+      assert(writer.finish(&size)==PanelConfigStatus::OK);
+      assert(PageStore::stage_v1(document.data(),size,limits,11,arena.data(),arena.size(),&store)==PageStoreStatus::OK);return;
+    }
     if(forecasts) {
       button(1,";Forecasts;Home;Auto;;;subpage;;");button(2,"weather.home;Ignored;Auto;Auto;;;weather;daily;");button(3,"weather.home;Ignored;Auto;Auto;;;weather;tomorrow;");
       const std::string child="~B,1,2|W,weather.home,Ignored,Auto,Auto,,,daily,|W,weather.home,Ignored,Auto,Auto,,,today,";
@@ -84,7 +98,7 @@ struct Fixture {
     }
     button(1,";Rooms;Home;Lightbulb;indicator;;subpage;;");
     button(2,"light.main;;Lightbulb;Lightbulb;sensor.temp; C ;;1;card_off_color=336699");
-    button(3,unsupported?"media_player.test;;;;control;;media;;":";;Gauge;Gauge;sensor.temp;°C;sensor;1;active_color");
+    button(3,unsupported?"media_player.test;;;;control_modal;;media;;":";;Gauge;Gauge;sensor.temp;°C;sensor;1;active_color");
     button(4,";;;;sensor.message;;sensor;text;state_labels,state_input=active,state_output="+std::string(600,'x'));
     button(5,";Timer;;;sensor.timer;;sensor;time;");
     button(6,"switch.cycle;Standby;Auto;Auto;sensor.message;;;text;");
@@ -112,7 +126,7 @@ template<size_t Slots>struct Actions {
   static void back(void *owner,PageBindingToken){assert(static_cast<Actions *>(owner)->renderer->back());}
   static void climate(void *owner,PageBindingToken token){auto &a=*static_cast<Actions *>(owner);++a.climates;a.last=token;}
   static void action(void *owner,PageBindingToken token){auto &a=*static_cast<Actions *>(owner);++a.commands;a.last=token;}
-  PageBasicActions callbacks(){return {this,icon,valid,toggle,open,back,climate,action,action,action};}
+  PageBasicActions callbacks(){return {this,icon,valid,toggle,open,back,climate,action,action,action,action};}
 };
 void click(lv_obj_t *object){lv_obj_send_event(object,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(object,LV_EVENT_RELEASED,nullptr);lv_obj_send_event(object,LV_EVENT_CLICKED,nullptr);}
 template<size_t Slots>void profile(const DeviceUiLimits &limits) {
@@ -374,6 +388,53 @@ template<size_t Slots>void weather_profile(const DeviceUiLimits &limits) {
   }assert(arena.live==0);lv_obj_delete(page);
 }
 
+template<size_t Slots>void media_action_profile(const DeviceUiLimits &limits) {
+  Fixture fixture(limits,false,false,false,false,false,false,true);
+  Arena arena;Subscriptions subscriptions;PageCardDependencies dependencies;
+  struct Transport:PageMediaTransport {Subscriptions &subs;explicit Transport(Subscriptions &s):subs(s){}bool connected()const override{return true;}uint32_t connection_generation()const override{return subs.generation;}void reannounce()override{}} transport(subscriptions);
+  PageMediaStateRuntime media(arena,transport);PageEntityStateRuntime state(dependencies,arena,subscriptions,{128,128,8192},&media);
+  auto *page=lv_obj_create(lv_screen_active());std::array<lv_coord_t,Slots+1>columns{},rows{};
+  const auto row_count=(Slots+limits.grid_columns-1)/limits.grid_columns;
+  for(size_t i=0;i<limits.grid_columns;++i)columns[i]=LV_GRID_FR(1);columns[limits.grid_columns]=LV_GRID_TEMPLATE_LAST;
+  for(size_t i=0;i<row_count;++i)rows[i]=LV_GRID_FR(1);rows[row_count]=LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page,480,480);lv_obj_set_grid_dsc_array(page,columns.data(),rows.data());
+  std::array<PageBasicWidgets,Slots>widgets{};
+  for(auto &w:widgets){w.button=lv_button_create(page);w.icon=lv_label_create(w.button);w.label=lv_label_create(w.button);w.sensor_container=lv_obj_create(w.button);w.value=lv_label_create(w.sensor_container);w.unit=lv_label_create(w.sensor_container);}
+  PageBasicTheme theme;Actions<Slots> actions;
+  {auto callbacks=actions.callbacks();callbacks.media=nullptr;PageBasicLvglPort<Slots>missing(arena,state,widgets,{limits.slot_count,limits.grid_columns},theme,callbacks,nullptr,&media);assert(missing.initialize());assert(!missing.prepare(fixture.store,Slots));}
+  {
+    PageLabelRefresh cache(arena);PageBasicLvglPort<Slots>port(arena,state,widgets,{limits.slot_count,limits.grid_columns},theme,actions.callbacks(),nullptr,&media);assert(port.initialize());
+    std::array<lv_obj_t *,Slots*4>labels{};size_t index=0;for(const auto &w:widgets)for(auto *label:{w.icon,w.label,w.value,w.unit})labels[index++]=label;
+    assert(cache.initialize(labels.data(),labels.size()));
+    PageRendererRuntime<Slots>renderer(limits,arena,port);actions.renderer=&renderer;
+    assert(media.prepare(fixture.store)&&renderer.prepare(fixture.store)&&state.prepare(fixture.store));media.activate_prepared(fixture.store);renderer.activate_prepared(fixture.store);state.activate_prepared(fixture.store);
+    subscriptions.send("media_player.room","","playing");subscriptions.send("media_player.room","media_content_id","spotify:playlist:ABCD?version=2");subscriptions.send("media_player.room","media_content_type","music");subscriptions.send("sensor.temp","","21.4");
+    renderer.update_visible();lv_obj_update_layout(page);lv_refr_now(lv_display_get_default());
+    assert(lv_obj_has_state(widgets[0].button,LV_STATE_CHECKED)&&lv_obj_has_state(widgets[1].button,LV_STATE_CHECKED)&&lv_obj_has_state(widgets[3].button,LV_STATE_CHECKED));
+    assert(std::strcmp(lv_label_get_text(widgets[1].label),"Playing")==0);
+    assert(!lv_obj_has_state(widgets[2].button,LV_STATE_CHECKED)&&!lv_obj_has_state(widgets[4].button,LV_STATE_CHECKED));
+    lv_obj_send_event(widgets[2].button,LV_EVENT_PRESSED,nullptr);assert(actions.commands==1&&renderer.valid(actions.last));
+    lv_obj_send_event(widgets[2].button,LV_EVENT_RELEASED,nullptr);lv_obj_send_event(widgets[2].button,LV_EVENT_CLICKED,nullptr);assert(actions.commands==1);
+    click(widgets[4].button);assert(actions.commands==2);click(widgets[3].button);assert(actions.commands==3);
+    const auto child=fixture.store.card(0)->target;
+    lv_obj_send_event(widgets[1].button,LV_EVENT_PRESSED,nullptr);assert(renderer.open_page(child));renderer.update_visible();lv_obj_send_event(widgets[1].button,LV_EVENT_CLICKED,nullptr);assert(actions.commands==3);
+    click(widgets[1].button);assert(actions.commands==4);assert(renderer.back());renderer.update_visible();
+    subscriptions.send("media_player.room","media_content_id","other-playlist");assert(renderer.open_page(child));renderer.update_visible();assert(!lv_obj_has_state(widgets[3].button,LV_STATE_CHECKED));assert(renderer.back());renderer.update_visible();
+    subscriptions.send("media_player.room","media_content_id","spotify:playlist:abcd");renderer.update_visible();
+    assert(renderer.open_page(child));renderer.update_visible();assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);
+    subscriptions.send("media_player.room","","idle");renderer.update_visible();subscriptions.send("media_player.room","","playing");renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[3].button,LV_STATE_CHECKED));
+    subscriptions.send("media_player.room","media_content_id","spotify:playlist:abcd");assert(port.state_changed());renderer.update_visible();
+    assert(lv_obj_has_state(widgets[3].button,LV_STATE_CHECKED));
+    const auto cpp=cpp_allocations,reservations=arena.allocations,descriptors=cache.memory().descriptor_adds,retained=lv_live_bytes,channels=subscriptions.bindings.size();
+    for(size_t n=0;n<1000;++n){assert(renderer.open_page(child));renderer.update_visible();lv_obj_update_layout(page);assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);assert(cpp_allocations==cpp&&arena.allocations==reservations&&cache.memory().descriptor_adds==descriptors&&subscriptions.bindings.size()==channels&&lv_live_bytes==retained);}
+    ++subscriptions.generation;renderer.update_visible();assert(!lv_obj_has_state(widgets[1].button,LV_STATE_CHECKED)&&!lv_obj_has_state(widgets[3].button,LV_STATE_CHECKED));assert(std::strcmp(lv_label_get_text(widgets[1].label),"Unknown")==0);
+    std::printf("%s: media actions/playlist, 1000 cycles, stable retained resources\n",limits.device_profile);
+    renderer.retire_active();state.retire_active();media.retire_active();
+  }
+  assert(arena.live==0);lv_obj_delete(page);
+}
+
 struct ForecastRequests:PageForecastRequests {
   void *owner=nullptr;Receive receive=nullptr;PageForecastToken token;uint32_t now=100,connection=1;bool online=true;size_t starts=0;
   bool connected()const override{return online;}uint32_t connection_generation()const override{return connection;}uint32_t now_ms()const override{return now;}
@@ -444,4 +505,4 @@ void modal_gesture_cycles() {
   arena.fail=true;PageModalGestures failed(arena,10,current,&current,valid);assert(!failed.available());arena.fail=false;
 }
 }
-int main(){lv_init();auto *display=lv_display_create(480,480);assert(display);static std::array<uint16_t,480*32>draw_buffer{};lv_display_set_buffers(display,draw_buffer.data(),nullptr,sizeof(draw_buffer),LV_DISPLAY_RENDER_MODE_PARTIAL);lv_display_set_flush_cb(display,[](lv_display_t *d,const lv_area_t *area,uint8_t *data){const auto *pixels=reinterpret_cast<uint16_t *>(data);size_t index=0;for(int y=area->y1;y<=area->y2;++y)for(int x=area->x1;x<=area->x2;++x){if(x>=0&&x<480&&y>=0&&y<480)framebuffer[y*480+x]=pixels[index];++index;}lv_display_flush_ready(d);});for(const auto &limits:DEVICE_UI_PROFILES){switch(limits.slot_count){case 6:profile<6>(limits);status_action_profile<6>(limits);control_profile<6>(limits);weather_profile<6>(limits);forecast_profile<6>(limits);break;case 9:profile<9>(limits);status_action_profile<9>(limits);control_profile<9>(limits);weather_profile<9>(limits);forecast_profile<9>(limits);break;case 15:profile<15>(limits);status_action_profile<15>(limits);control_profile<15>(limits);weather_profile<15>(limits);forecast_profile<15>(limits);break;case 20:profile<20>(limits);status_action_profile<20>(limits);control_profile<20>(limits);weather_profile<20>(limits);forecast_profile<20>(limits);break;default:std::abort();}}modal_gesture_cycles();lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}
+int main(){lv_init();auto *display=lv_display_create(480,480);assert(display);static std::array<uint16_t,480*32>draw_buffer{};lv_display_set_buffers(display,draw_buffer.data(),nullptr,sizeof(draw_buffer),LV_DISPLAY_RENDER_MODE_PARTIAL);lv_display_set_flush_cb(display,[](lv_display_t *d,const lv_area_t *area,uint8_t *data){const auto *pixels=reinterpret_cast<uint16_t *>(data);size_t index=0;for(int y=area->y1;y<=area->y2;++y)for(int x=area->x1;x<=area->x2;++x){if(x>=0&&x<480&&y>=0&&y<480)framebuffer[y*480+x]=pixels[index];++index;}lv_display_flush_ready(d);});for(const auto &limits:DEVICE_UI_PROFILES){switch(limits.slot_count){case 6:profile<6>(limits);status_action_profile<6>(limits);control_profile<6>(limits);weather_profile<6>(limits);forecast_profile<6>(limits);media_action_profile<6>(limits);break;case 9:profile<9>(limits);status_action_profile<9>(limits);control_profile<9>(limits);weather_profile<9>(limits);forecast_profile<9>(limits);media_action_profile<9>(limits);break;case 15:profile<15>(limits);status_action_profile<15>(limits);control_profile<15>(limits);weather_profile<15>(limits);forecast_profile<15>(limits);media_action_profile<15>(limits);break;case 20:profile<20>(limits);status_action_profile<20>(limits);control_profile<20>(limits);weather_profile<20>(limits);forecast_profile<20>(limits);media_action_profile<20>(limits);break;default:std::abort();}}modal_gesture_cycles();lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}

@@ -74,5 +74,6 @@
 #include "page_light_cover_modal.h"
 
 #include "page_ha_forecast_requests.h"
+#include "page_ha_media_transport.h"
 
 #include "page_weather_modal.h"

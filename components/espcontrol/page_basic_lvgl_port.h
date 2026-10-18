@@ -46,6 +46,7 @@ struct PageBasicActions {
   void (*action)(void *,PageBindingToken){nullptr};
   void (*control)(void *,PageBindingToken){nullptr};
   void (*forecast)(void *,PageBindingToken){nullptr};
+  void (*media)(void *,PageBindingToken){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -68,8 +69,8 @@ class PageBasicLvglPort final:public PageRendererPort {
  public:
   PageBasicLvglPort(PageArenaAllocator &allocator,PageEntityStateRuntime &state,
                     std::array<PageBasicWidgets,Slots> widgets,PageViewGeometry geometry,
-                    const PageBasicTheme &theme,PageBasicActions actions,PageForecastRuntime *forecasts=nullptr)
-      :allocator_(allocator),state_(state),widgets_(widgets),geometry_(geometry),theme_(theme),actions_(actions),forecasts_(forecasts) {
+                    const PageBasicTheme &theme,PageBasicActions actions,PageForecastRuntime *forecasts=nullptr,PageMediaStateRuntime *media=nullptr)
+      :allocator_(allocator),state_(state),widgets_(widgets),geometry_(geometry),theme_(theme),actions_(actions),forecasts_(forecasts),media_(media) {
     for(size_t i=0;i<Slots;++i){shells_[i].port=this;shells_[i].index=i;}
   }
   ~PageBasicLvglPort()override {
@@ -179,9 +180,10 @@ class PageBasicLvglPort final:public PageRendererPort {
         }
         if(view.kind==BasicCardKind::CLIMATE&&actions_.climate==nullptr)return false;
         if(view.kind==BasicCardKind::ACTION&&actions_.action==nullptr)return false;
+        if(view.kind==BasicCardKind::MEDIA_ACTION&&(actions_.media==nullptr||(view.media.kind==MediaActionKind::PLAYLIST&&!media_)))return false;
         if((view.kind==BasicCardKind::LIGHT||view.kind==BasicCardKind::COVER)&&actions_.control==nullptr)return false;
         if(view.kind==BasicCardKind::COVER)for(const auto &w:widgets_)if(!w.fill)return false;
-        if(view.kind==BasicCardKind::TEXT||view.kind==BasicCardKind::CLIMATE||view.text_overlay||view.folder_mode==BasicFolderMode::TEXT||view.action_display==BasicActionDisplay::TEXT)label_capacity=std::max<size_t>(label_capacity,257);
+        if((view.kind==BasicCardKind::MEDIA_ACTION&&view.media.show_state)||view.kind==BasicCardKind::TEXT||view.kind==BasicCardKind::CLIMATE||view.text_overlay||view.folder_mode==BasicFolderMode::TEXT||view.action_display==BasicActionDisplay::TEXT)label_capacity=std::max<size_t>(label_capacity,257);
         if(view.default_label) {
           const auto *translated=theme_.translate?theme_.translate(view.default_label):nullptr;
           label_capacity=std::max(label_capacity,std::strlen(translated?translated:view.default_label)+1);
@@ -329,7 +331,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     s.label=text;s.unit=text+active_.label_capacity;s.number=s.unit+active_.unit_capacity;
     lv_obj_set_grid_cell(w.button,LV_GRID_ALIGN_STRETCH,cell.column,cell.column_span,LV_GRID_ALIGN_STRETCH,cell.row,cell.row_span);
     lv_obj_clear_flag(w.button,LV_OBJ_FLAG_HIDDEN);
-    const bool clickable=cell.back||(s.definition&&(s.definition->definition.kind==BasicCardKind::TOGGLE||s.definition->definition.kind==BasicCardKind::FOLDER||s.definition->definition.kind==BasicCardKind::CLIMATE||s.definition->definition.kind==BasicCardKind::ACTION||s.definition->definition.kind==BasicCardKind::LIGHT||s.definition->definition.kind==BasicCardKind::COVER||s.definition->definition.kind==BasicCardKind::FORECAST));
+    const bool clickable=cell.back||(s.definition&&(s.definition->definition.kind==BasicCardKind::TOGGLE||s.definition->definition.kind==BasicCardKind::FOLDER||s.definition->definition.kind==BasicCardKind::CLIMATE||s.definition->definition.kind==BasicCardKind::ACTION||s.definition->definition.kind==BasicCardKind::LIGHT||s.definition->definition.kind==BasicCardKind::COVER||s.definition->definition.kind==BasicCardKind::FORECAST||s.definition->definition.kind==BasicCardKind::MEDIA_ACTION));
     if(clickable)lv_obj_add_flag(w.button,LV_OBJ_FLAG_CLICKABLE);else lv_obj_clear_flag(w.button,LV_OBJ_FLAG_CLICKABLE);
     // Do not read the new state graph here: its activation may follow ours.
   }
@@ -341,7 +343,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     bool number=false,checked=false;
     if(s.cell.back){value.label=s.back.custom_label.empty()?theme_.back_label:s.back.custom_label;definition.custom_off=s.back.custom_color;definition.off_color=s.back.background_color;}
     else {
-      definition=s.definition->definition;value=read_basic_card(definition,{token.configuration,token.card},state_,s.cell.column_span>1?2:1,theme_.temperature_unit,theme_.translate);
+      definition=s.definition->definition;value=read_basic_card(definition,{token.configuration,token.card},state_,s.cell.column_span>1?2:1,theme_.temperature_unit,theme_.translate,media_);
       if(definition.folder_mode==BasicFolderMode::CHILDREN) {
         for(size_t child=0;child<s.definition->summary_count&&!value.on;++child) {
           const auto id=s.definition->summary[child];
@@ -390,10 +392,10 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
     if(definition.kind==BasicCardKind::FORECAST)update_forecast(s);
     else if(w.forecast)lv_obj_add_flag(w.forecast,LV_OBJ_FLAG_HIDDEN);
-    seen_state_=state_.revision();seen_theme_=theme_.revision;seen_forecast_=forecasts_?forecasts_->revision():0;
+    seen_state_=state_.revision();seen_theme_=theme_.revision;seen_forecast_=forecasts_?forecasts_->revision():0;seen_media_=media_?media_->revision():0;
   }
   void suspend()override{for(auto &shell:shells_)shell.pressed={};}
-  bool state_changed()const override{return state_.revision()!=seen_state_||theme_.revision!=seen_theme_||(forecasts_&&forecasts_->revision()!=seen_forecast_);}
+  bool state_changed()const override{return state_.revision()!=seen_state_||theme_.revision!=seen_theme_||(forecasts_&&forecasts_->revision()!=seen_forecast_)||(media_&&media_->revision()!=seen_media_);}
   PageBasicMemory memory()const{auto m=memory_;m.fixed_bytes=sizeof(*this);m.borrowed_widgets=Slots*6;for(const auto &w:widgets_)m.borrowed_widgets+=(w.fill?1:0)+(w.forecast?1:0);m.forecast_frames=active_.frame_count;m.active_bytes=active_.bytes;m.staged_bytes=staged_.bytes;return m;}
  private:
   bool collect_summary(const PageStore &store,PageId page_id,std::array<CardId,Slots> &cards,size_t &used)const {
@@ -509,7 +511,18 @@ class PageBasicLvglPort final:public PageRendererPort {
     auto *shell=static_cast<Shell *>(lv_event_get_user_data(event));auto *port=shell->port;
     const auto code=lv_event_get_code(event);
     if(code==LV_EVENT_SIZE_CHANGED){port->update_fill_geometry(*shell);port->update_forecast(*shell);return;}
-    if(code==LV_EVENT_PRESSED){shell->pressed=shell->token;return;}
+    if(code==LV_EVENT_PRESSED) {
+      shell->pressed=shell->token;
+      if(shell->definition&&shell->definition->definition.kind==BasicCardKind::MEDIA_ACTION) {
+        const auto kind=shell->definition->definition.media.kind;
+        if(kind==MediaActionKind::PREVIOUS||kind==MediaActionKind::NEXT) {
+          const auto origin=shell->pressed;shell->pressed={};
+          if(port->actions_.valid&&port->actions_.valid(port->actions_.owner,origin)&&port->actions_.media)
+            port->actions_.media(port->actions_.owner,origin);
+        }
+      }
+      return;
+    }
     if(code==LV_EVENT_PRESS_LOST){shell->pressed={};return;}
     if(code!=LV_EVENT_CLICKED)return;
     const auto origin=shell->pressed;shell->pressed={};
@@ -528,11 +541,13 @@ class PageBasicLvglPort final:public PageRendererPort {
       port->actions_.control(port->actions_.owner,origin);
     else if(definition.kind==BasicCardKind::FORECAST&&port->actions_.forecast)
       port->actions_.forecast(port->actions_.owner,origin);
+    else if(definition.kind==BasicCardKind::MEDIA_ACTION&&port->actions_.media)
+      port->actions_.media(port->actions_.owner,origin);
     else if(definition.kind==BasicCardKind::ACTION&&port->actions_.action)
       port->actions_.action(port->actions_.owner,origin);
   }
   PageArenaAllocator &allocator_;PageEntityStateRuntime &state_;std::array<PageBasicWidgets,Slots>widgets_;
-  PageViewGeometry geometry_;const PageBasicTheme &theme_;PageBasicActions actions_;PageForecastRuntime *forecasts_{nullptr};std::array<Shell,Slots>shells_{};
-  Arena active_,staged_;PageStore store_;bool initialized_{false};size_t callbacks_{0};uint64_t seen_state_{0},seen_theme_{0},seen_forecast_{0};PageBasicMemory memory_;
+  PageViewGeometry geometry_;const PageBasicTheme &theme_;PageBasicActions actions_;PageForecastRuntime *forecasts_{nullptr};PageMediaStateRuntime *media_{nullptr};std::array<Shell,Slots>shells_{};
+  Arena active_,staged_;PageStore store_;bool initialized_{false};size_t callbacks_{0};uint64_t seen_state_{0},seen_theme_{0},seen_forecast_{0},seen_media_{0};PageBasicMemory memory_;
 };
 }  // namespace espcontrol::pages

@@ -79,8 +79,9 @@ class PageEntityStateRuntime::Builder final : public PageDependencySink {
 };
 
 PageEntityStateRuntime::PageEntityStateRuntime(const PageDependencySource &source,
-    PageArenaAllocator &allocator, PageEntitySubscriptions &subscriptions, PageEntityBudget budget)
-    : source_(source), allocator_(allocator), subscriptions_(subscriptions), budget_(budget),
+    PageArenaAllocator &allocator, PageEntitySubscriptions &subscriptions, PageEntityBudget budget,
+    PageEntityObserver *observer)
+    : source_(source), allocator_(allocator), subscriptions_(subscriptions), budget_(budget), observer_(observer),
       connection_generation_(subscriptions.connection_generation()) {
   for (auto &slot : slots_) slot.runtime = this;
 }
@@ -111,6 +112,7 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
   slot.arena = arena;
   slot.arena_size = bytes;
   slot.revision = next_revision_++;
+  slot.generation=store.generation();
   auto *raw = static_cast<char *>(arena);
   slot.channels = reinterpret_cast<Channel *>(raw);
   slot.edges = reinterpret_cast<Edge *>(raw + edge_offset);
@@ -142,7 +144,7 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
             std::string_view(slot.names + entry.attribute_offset, entry.attribute_size) !=
                 std::string_view(old.names + previous.attribute_offset, previous.attribute_size)) continue;
         receive(slot, slot.revision, static_cast<uint32_t>(i),
-            {old.values + previous.value_offset, previous.value_size});
+            {old.values + previous.value_offset, previous.value_size},true);
         break;
       }
     }
@@ -228,7 +230,7 @@ void PageEntityStateRuntime::deliver(void *owner, uint32_t revision, uint32_t ch
   slot.runtime->receive(slot, revision, channel, value);
 }
 void PageEntityStateRuntime::receive(Slot &slot, uint32_t revision, uint32_t channel,
-                                    std::string_view value) {
+                                    std::string_view value,bool copied) {
   if (revision == 0 || slot.revision != revision || slot.arena == nullptr || channel >= slot.channel_count) {
     ++memory_.stale_deliveries;
     return;
@@ -236,6 +238,8 @@ void PageEntityStateRuntime::receive(Slot &slot, uint32_t revision, uint32_t cha
   synchronize_connection();
   auto &entry = slot.channels[channel];
   const std::string_view attribute(slot.names+entry.attribute_offset,entry.attribute_size);
+  if(observer_)observer_->observed(slot.generation,
+      {slot.names+entry.entity_offset,entry.entity_size},attribute,value,copied);
   if(attribute=="current_position"||attribute=="current_tilt_position") {
     uint8_t percent;if(parse_bounded_percent(value,percent)){entry.percent=percent;entry.percent_known=true;}
   }

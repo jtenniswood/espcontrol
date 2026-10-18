@@ -267,6 +267,7 @@ class AsyncWebHandler {
   // NOLINTNEXTLINE(readability-identifier-naming)
   virtual void handleUpload(AsyncWebServerRequest *request, const std::string &filename, size_t index, uint8_t *data,
                             size_t len, bool final) {}
+  virtual void handleUploadAbort(AsyncWebServerRequest *request) {}
   // NOLINTNEXTLINE(readability-identifier-naming)
   virtual void handleBody(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {}
   virtual size_t maximumBodySize() const { return SIZE_MAX; }

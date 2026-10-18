@@ -80,7 +80,7 @@ void profile(const DeviceUiLimits &limits) {
   subs.send("sensor.temp","","1.2345");
   assert(std::strcmp(read_basic_card(invalid_precision,{17,0},state).number,"1.235")==0);
   ++subs.generation;assert(!read_basic_card(definition,{17,0},state).numeric);
-  for(const auto &text:{std::string("light.test;;;;;;;;confirm_off"),std::string("media_player.test;;;;control;;media;;")}) {
+  for(const auto &text:{std::string("light.test;;;;;;;;confirm_off"),std::string("media_player.test;;;;control_modal;;media;;")}) {
     Fixture unsupported(limits,text);assert(!prepare_basic_card(unsupported.store,0,definition));
   }
   Fixture toggle(limits,"light.test;;Lightbulb;Lightbulb;sensor.temp;%;;2;");assert(prepare_basic_card(toggle.store,0,definition));assert(definition.kind==BasicCardKind::TOGGLE);
@@ -273,4 +273,58 @@ void weather_profile(const DeviceUiLimits &limits) {
 }
 
 }
-int main(){display_text();for(const auto &limits:DEVICE_UI_PROFILES){profile(limits);climate_profile(limits);status_actions_profile(limits);control_profile(limits);weather_profile(limits);}}
+
+void media_action_profile(const DeviceUiLimits &limits) {
+  Fixture play(limits,"media_player.test;Custom;Auto;Auto;play_pause;;media;state;");
+  BasicCardDefinition definition;assert(prepare_basic_card(play.store,0,definition));
+  assert(definition.kind==BasicCardKind::MEDIA_ACTION&&definition.media.show_state&&definition.icon=="Play Pause"&&definition.icon_on==definition.icon);
+  PageCardDependencies dependencies;Arena arena;Subscriptions subs;
+  struct Transport:PageMediaTransport {Subscriptions &subs;explicit Transport(Subscriptions &s):subs(s){}bool connected()const override{return true;}uint32_t connection_generation()const override{return subs.generation;}void reannounce()override{}} transport(subs);
+  PageMediaStateRuntime media(arena,transport);PageEntityStateRuntime state(dependencies,arena,subs,{32,32,1024},&media);
+  assert(state.prepare(play.store));state.activate_prepared(play.store);
+  assert(read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).label=="Unknown");
+  for(const auto &entry:std::array<std::pair<const char *,const char *>,7>{{{"playing","Playing"},{"paused","Paused"},{"idle","Idle"},{"off","Off"},{"unknown","Unavailable"},{"unavailable","Unavailable"},{" PLAYING ",""}}}) {
+    subs.send("media_player.test","",entry.first);const auto value=read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media);
+    assert(value.on==(std::strcmp(entry.first,"playing")==0));
+    if(entry.second[0])assert(value.label==entry.second);else assert(value.formatted_label&&std::strcmp(value.text,"Playing")==0);
+  }
+  subs.send("media_player.test","","playing");const auto before=allocations;
+  for(int i=0;i<1000;++i)assert(read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on);
+  assert(allocations==before);
+  ++subs.generation;assert(!read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on&&read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).label=="Unknown");
+  for(const auto mode:{"previous","next","play_pause"}) {
+    Fixture action(limits,std::string("media_player.test;;;;")+mode+";;media;;");assert(prepare_basic_card(action.store,0,definition));
+    assert(state.prepare(action.store));state.activate_prepared(action.store);subs.send("media_player.test","","playing");
+    const auto value=read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media);assert(value.on==(std::strcmp(mode,"play_pause")==0));
+    assert(value.label==(std::string(mode)=="previous"?"Previous":std::string(mode)=="next"?"Next":"Play/Pause"));
+  }
+  Fixture playlist(limits,"media_player.test;;;;playlist;;media;;playlist_content_id=spotify%3Aplaylist%3Aabcd,playlist_content_type=playlist");
+  assert(!prepare_basic_card(playlist.store,0,definition));TextPool strings;assert(prepare_basic_card(playlist.store,0,definition,&strings));
+  assert(definition.media.playlist_id=="spotify:playlist:abcd"&&definition.media.kind==MediaActionKind::PLAYLIST);
+  assert(media.prepare(playlist.store)&&state.prepare(playlist.store));media.activate_prepared(playlist.store);state.activate_prepared(playlist.store);
+  subs.send("media_player.test","","playing");subs.send("media_player.test","media_content_id","spotify:playlist:ABCD?version=2");
+  subs.send("media_player.test","media_content_type","music");assert(read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on);
+  subs.send("media_player.test","media_content_type","video");assert(!read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on);
+  subs.send("media_player.test","media_content_type","unknown");assert(read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on);
+  subs.send("media_player.test","media_content_type","audio");subs.send("media_player.test","media_content_id","spotify:playlist:&#97;bcd");assert(read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on);
+  subs.send("media_player.test","","idle");subs.send("media_player.test","","playing");
+  assert(!read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on);
+  // Identical metadata must become fresh even when the packed cache value did not change.
+  subs.send("media_player.test","media_content_id","spotify:playlist:&#97;bcd");
+  assert(read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on);
+  const auto playlist_before=allocations;for(int i=0;i<1000;++i)assert(read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on);assert(allocations==playlist_before);
+  subs.send("media_player.test","media_content_id","unknown");assert(!read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on);
+  subs.send("media_player.test","media_content_id",std::string(2048,'x'));assert(!read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on);
+  ++subs.generation;assert(!read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on);
+}
+void bounded_html_metadata() {
+  char text[129];
+  const std::array<std::pair<const char *,const char *>,7> cases={{{"A &amp; B","A & B"},{"&#128; &#x97;",u8"€ —"},{"&quot;x&apos;","\"x'"},{"&lt;&gt;&nbsp;",u8"<>\u00A0"},{"&#0; &#xD800; &bogus;","&#0; &#xD800; &bogus;"},{u8"Ṣade ṣ",u8"Ṣade ṣ"},{"&amp;amp;","&amp;"}}};
+  const auto before=allocations;
+  for(int i=0;i<1000;++i)for(const auto &entry:cases)assert(decode_html_entities_bounded(text,sizeof(text),entry.first)==entry.second);
+  assert(decode_html_entities_bounded(text,5,"abc&amp;")=="abc&");
+  assert(decode_html_entities_bounded(text,1,"abc").empty()&&text[0]=='\0');
+  assert(decode_html_entities_bounded(nullptr,0,"abc").empty());
+  assert(allocations==before);
+}
+int main(){display_text();bounded_html_metadata();for(const auto &limits:DEVICE_UI_PROFILES){profile(limits);climate_profile(limits);status_actions_profile(limits);control_profile(limits);weather_profile(limits);media_action_profile(limits);}}
