@@ -271,6 +271,15 @@ void option_select_open_modal(OptionSelectCtx* ctx) {
   option_select_build_modal_rows(ctx, 48, 16);
 }
 #include "page_option_select_modal.h"
+
+// Request admission runs inside the input callback; panel allocation belongs to loop().
+static bool request_without_allocation(PageModalRuntime& runtime, ConfigurationHandle token) {
+  const auto cpp = cpp_allocation_calls, lv = lv_allocation_calls;
+  const bool accepted = runtime.request_card(token);
+  assert(cpp_allocation_calls == cpp && lv_allocation_calls == lv);
+  return accepted;
+}
+
 struct Arena : PageArenaAllocator {
   std::unordered_map<void*, size_t> live;
   int remaining{-1};
@@ -343,7 +352,7 @@ void test_panel(const char* wire, const char* entity) {
     const auto live = arena.live.size(), refs = coordinator.subscription_count(),
                native = coordinator.transport().bindings.size(), cpp = cpp_live_bytes, lv = lv_live_bytes;
     for (int i = 0; i < 1000; ++i) {
-      assert(runtime.request_card({17, 0}));
+      assert(request_without_allocation(runtime, {17, 0}));
       runtime.loop();
       assert(ui.active && ui.active->options.size() == 4 && clock_label == "Room Mode");
       auto* row = lv_obj_get_child(ui.list, 2);
@@ -363,7 +372,7 @@ void test_panel(const char* wire, const char* entity) {
       assert(arena.live.size() == live && cpp_live_bytes == cpp && lv_live_bytes == lv &&
              coordinator.subscription_count() == refs && coordinator.transport().bindings.size() == native);
     }
-    assert(runtime.request_card({17, 0}));
+    assert(request_without_allocation(runtime, {17, 0}));
     runtime.loop();
     assert(ui.active);
     const auto cpp_calls = cpp_allocation_calls, lv_calls = lv_allocation_calls;
@@ -385,7 +394,7 @@ void test_panel(const char* wire, const char* entity) {
     runtime.loop();
     assert(!ui.active);
     t.send(entity, "options", "[]");
-    assert(runtime.request_card({17, 0}));
+    assert(request_without_allocation(runtime, {17, 0}));
     runtime.loop();
     assert(ui.active && ui.empty_lbl && ui.active->options.empty());
     values(entity);
@@ -398,7 +407,7 @@ void test_panel(const char* wire, const char* entity) {
     }
     many += "]";
     t.send(entity, "options", many);
-    assert(runtime.request_card({17, 0}));
+    assert(request_without_allocation(runtime, {17, 0}));
     runtime.loop();
     assert(ui.active && ui.active->options.size() == OPTION_SELECT_MAX_OPTIONS &&
            lv_obj_get_child_count(ui.list) == OPTION_SELECT_MAX_OPTIONS);
@@ -406,7 +415,7 @@ void test_panel(const char* wire, const char* entity) {
     runtime.loop();
     // Identical decoded choices keep the current opening, even with new syntax.
     values(entity);
-    assert(runtime.request_card({17, 0}));
+    assert(request_without_allocation(runtime, {17, 0}));
     runtime.loop();
     assert(ui.active);
     t.send(entity, "options", R"(('ECO','eco','  Guest  ',"Kid's"))");
@@ -419,14 +428,14 @@ void test_panel(const char* wire, const char* entity) {
     runtime.loop();
     assert(!ui.active);
     values(entity);
-    assert(runtime.request_card({17, 0}));
+    assert(request_without_allocation(runtime, {17, 0}));
     runtime.loop();
     assert(ui.active);
     t.send(entity, "options", std::string(OPTION_SELECT_OPTIONS_TEXT_MAX_LEN + 1, 'x'));
     runtime.loop();
     assert(!ui.active);
     values(entity);
-    assert(runtime.request_card({17, 0}));
+    assert(request_without_allocation(runtime, {17, 0}));
     runtime.loop();
     assert(ui.active);
     t.connected = false;
@@ -438,7 +447,7 @@ void test_panel(const char* wire, const char* entity) {
     assert(!ui.active);
     t.connected = true;
     values(entity);
-    assert(runtime.request_card({17, 0}));
+    assert(request_without_allocation(runtime, {17, 0}));
     runtime.loop();
     assert(ui.active);
     bool replaced = false;
@@ -459,7 +468,7 @@ void test_panel(const char* wire, const char* entity) {
     assert(graph.prepare(next.store));
     graph.activate_prepared(next.store);
     values(entity);
-    assert(runtime.request_card({18, 0}));
+    assert(request_without_allocation(runtime, {18, 0}));
     runtime.loop();
     assert(ui.active);
     option_select_hide_modal();
@@ -497,23 +506,23 @@ void test_failures() {
       const auto live = arena.live.size(), lv = lv_live_bytes;
       for (int fail : {0, 1}) {
         arena.remaining = fail;
-        assert(runtime.request_card({17, 0}));
+        assert(request_without_allocation(runtime, {17, 0}));
         runtime.loop();
         arena.remaining = -1;
         assert(!option_select_modal_ui().active && arena.live.size() == live && lv_live_bytes == lv);
       }
       if (capacity == 1) {
-        assert(runtime.request_card({17, 0}));
+        assert(request_without_allocation(runtime, {17, 0}));
         runtime.loop();
         assert(!option_select_modal_ui().active && arena.live.size() == live && lv_live_bytes == lv);
       }
       styles = false;
-      assert(runtime.request_card({17, 0}));
+      assert(request_without_allocation(runtime, {17, 0}));
       runtime.loop();
       assert(!option_select_modal_ui().active);
       styles = true;
       enough_heap = false;
-      assert(runtime.request_card({17, 0}));
+      assert(request_without_allocation(runtime, {17, 0}));
       runtime.loop();
       assert(!option_select_modal_ui().active);
       enough_heap = true;
@@ -526,7 +535,7 @@ void test_failures() {
           runtime.loop();
           assert(runtime.memory().retired_contexts == 1);
         };
-        assert(runtime.request_card({17, 0}));
+        assert(request_without_allocation(runtime, {17, 0}));
         runtime.loop();
         during_row = {};
         assert(replaced && !option_select_modal_ui().active && arena.live.size() == live &&

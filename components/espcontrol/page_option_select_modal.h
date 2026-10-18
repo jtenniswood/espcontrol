@@ -1,5 +1,7 @@
 #pragma once
 
+#include "page_modal_admission.h"
+
 // Include after the option-select helpers in button_grid.h.
 #include <array>
 
@@ -27,8 +29,7 @@ struct PageOptionSelectModalFamily {
   }
   static bool matches(const PageStore& store, const CardDefinition& card) {
     const auto type = store.field(card, CardField::TYPE), sensor = store.field(card, CardField::SENSOR);
-    return type == "option_select" ||
-           (type == "action" && action_card_option_select_action(std::string(sensor)));
+    return type == "option_select" || (type == "action" && admission::option_select_action(sensor));
   }
   static bool initialize_context(Context& ctx, const ParsedCfg& config, const Environment& env) {
     BtnSlot empty{};

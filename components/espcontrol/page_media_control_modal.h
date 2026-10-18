@@ -1,5 +1,7 @@
 #pragma once
 
+#include "page_modal_admission.h"
+
 // Include after the legacy media panel helpers in button_grid.h.
 #include <array>
 #include <cmath>
@@ -52,11 +54,10 @@ struct PageMediaControlModalFamily {
   }
   static bool matches(const PageStore& store, const CardDefinition& card) {
     if (store.field(card, CardField::TYPE) != "media") return false;
-    const auto mode = card_runtime_media_mode(std::string(store.field(card, CardField::SENSOR)));
+    const auto mode = admission::media_mode(store.field(card, CardField::SENSOR));
     return mode == "control_modal" || mode == "speaker_group" || mode == "cover_art" ||
            (mode == "now_playing" &&
-            cfg_option_token_present(std::string(store.field(card, CardField::OPTIONS)),
-                                     MEDIA_COVER_ART_OPTION));
+            admission::option_token(store.field(card, CardField::OPTIONS), MEDIA_COVER_ART_OPTION));
   }
   static bool initialize_context(Context& ctx, const ParsedCfg& config, const Environment& environment) {
     if (!environment.media) return false;

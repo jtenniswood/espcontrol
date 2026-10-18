@@ -1,4 +1,6 @@
 #pragma once
+
+#include "page_modal_admission.h"
 // Include after the existing weather modal/HA/shell helpers.
 #include <cassert>
 #include <new>
@@ -45,8 +47,7 @@ class PageWeatherModalPort final : public PageModalPort {
     const auto type = store.field(*card, CardField::TYPE),
                precision = store.field(*card, CardField::PRECISION);
     if (!card_runtime_weather_forecast_supported() ||
-        (type != "weather_forecast" &&
-         (type != "weather" || !card_runtime_weather_forecast_precision(std::string(precision)))))
+        (type != "weather_forecast" && (type != "weather" || !admission::forecast_precision(precision))))
       return ControlModalKind::NONE;
     PageForecastSnapshot snapshot;
     if (!forecasts_.snapshot(handle, store.field(*card, CardField::ENTITY), snapshot))

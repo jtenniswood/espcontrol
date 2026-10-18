@@ -1,5 +1,7 @@
 #pragma once
 
+#include "page_modal_admission.h"
+
 // Include after button_grid.h's existing alarm UI helpers.
 #include "page_alarm_commands.h"
 #include "page_lvgl_dispatch.h"
@@ -73,8 +75,8 @@ class PageAlarmModalPort final : public PageModalPort {
     if (type == PageAlarmSourceKind::CONTROL) return ControlModalKind::ALARM_CONTROL;
     if (type != PageAlarmSourceKind::ACTION) return ControlModalKind::NONE;
     const auto mode = store.field(*store.card(handle), CardField::SENSOR);
-    const std::string options(PageAlarmStateRuntime::effective_options(store, handle.index));
-    return cfg_option_value(options, mode == "disarm" ? "pin_disarm" : "pin_arm") == "0"
+    const auto options = PageAlarmStateRuntime::effective_options(store, handle.index);
+    return admission::option_equals_ascii(options, mode == "disarm" ? "pin_disarm" : "pin_arm", '0')
                ? ControlModalKind::NONE
                : ControlModalKind::ALARM_PIN;
   }

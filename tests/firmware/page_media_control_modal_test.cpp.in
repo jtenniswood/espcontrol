@@ -527,6 +527,15 @@ void media_control_layout_modal(MediaControlCtx* ctx) {
 }
 // @production-function media_control_open_modal
 #include "page_media_control_modal.h"
+
+// Request admission runs inside the input callback; panel allocation belongs to loop().
+static bool request_without_allocation(PageModalRuntime& runtime, ConfigurationHandle token) {
+  const auto cpp = cpp_allocation_calls, lv = lv_allocation_calls;
+  const bool accepted = runtime.request_card(token);
+  assert(cpp_allocation_calls == cpp && lv_allocation_calls == lv);
+  return accepted;
+}
+
 struct Arena : PageArenaAllocator {
   std::unordered_map<void*, size_t> live;
   int remaining{-1};
@@ -563,13 +572,17 @@ struct Arena : PageArenaAllocator {
   }
 };
 struct Fixture {
-  explicit Fixture(uint32_t generation = 17, bool cover = false, bool speaker = false) {
+  explicit Fixture(uint32_t generation = 17, bool cover = false, bool speaker = false,
+                   const char* mode = nullptr) {
     const auto& limits = DEVICE_UI_PROFILES[8];
     PanelConfigWriter writer(document.data(), document.size());
     assert(writer.begin() == PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
                                         std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
-    const char* cards[] = {speaker ? "media_player.room;Group;Auto;Auto;speaker_group;;media;;"
+    const std::string custom = std::string("media_player.room;Details;Auto;Auto;") + (mode ? mode : "") +
+                               ";;media;;volume_max=80,power_entity=switch.power,media_cover_art";
+    const char* cards[] = {mode      ? custom.c_str()
+                           : speaker ? "media_player.room;Group;Auto;Auto;speaker_group;;media;;"
                            : cover ? "media_player.room;Art;Auto;Auto;cover_art;;media;;power_entity=switch."
                                      "power,cover_art_secondary_entity=media_player.other"
                                    : "media_player.room;Controls;Auto;Auto;control_modal;;media;;volume_max="
@@ -615,7 +628,9 @@ void press(lv_obj_t* object) {
   lv_obj_send_event(object, LV_EVENT_CLICKED, nullptr);
 }
 void test_panels() {
-  Fixture fixture, next(18), cover(19, true), speaker(20, false, true);
+  Fixture fixture, next(18), cover(19, true), speaker(20, false, true),
+      invalid(21, false, false, "invalid_media_mode_beyond_small_string_capacity"),
+      details(22, false, false, "now_playing");
   Arena arena;
   PageCardDependencies dependencies;
   CoordinatorPageEntitySubscriptions subscriptions(coordinator, 64);
@@ -650,12 +665,18 @@ void test_panels() {
     PageModalRuntime runtime(port);
     assert(!port.install(runtime, false));
     assert(port.install(runtime, true));
+    assert(runtime.prepare(invalid.store));
+    runtime.activate_prepared(invalid.store);
+    assert(!request_without_allocation(runtime, {21, 0}));
+    assert(runtime.prepare(details.store));
+    runtime.activate_prepared(details.store);
+    assert(request_without_allocation(runtime, {22, 0}));
     assert(runtime.prepare(fixture.store));
     runtime.activate_prepared(fixture.store);
     auto& ui = media_control_modal_ui();
     auto& t = coordinator.transport();
     auto open = [&](uint32_t generation = 17) {
-      assert(runtime.request_card({generation, 0}));
+      assert(request_without_allocation(runtime, {generation, 0}));
       runtime.loop();
       assert(ui.active);
     };
@@ -904,18 +925,18 @@ void test_panels() {
     values();
     for (int budget : {0, 1}) {
       arena.remaining = budget;
-      assert(runtime.request_card({18, 0}));
+      assert(request_without_allocation(runtime, {18, 0}));
       runtime.loop();
       arena.remaining = -1;
       assert(!ui.active);
     }
     styles = false;
-    assert(runtime.request_card({18, 0}));
+    assert(request_without_allocation(runtime, {18, 0}));
     runtime.loop();
     styles = true;
     assert(!ui.active);
     enough_heap = false;
-    assert(runtime.request_card({18, 0}));
+    assert(request_without_allocation(runtime, {18, 0}));
     runtime.loop();
     enough_heap = true;
     assert(!ui.active);
@@ -940,13 +961,13 @@ void test_panels() {
     oversized += "]";
     t.send("sensor.speaker_group", "data", oversized);
     const auto admission_calls = lv_allocation_calls;
-    assert(runtime.request_card({18, 0}));
+    assert(request_without_allocation(runtime, {18, 0}));
     runtime.loop();
     assert(!ui.active && lv_allocation_calls == admission_calls);
     values();
     t.send("sensor.speaker_group", "data", std::string(20000, 'x'));
     const auto exhausted_calls = lv_allocation_calls;
-    assert(runtime.request_card({18, 0}));
+    assert(request_without_allocation(runtime, {18, 0}));
     runtime.loop();
     assert(!ui.active && lv_allocation_calls == exhausted_calls);
     values();

@@ -261,6 +261,16 @@ void alarm_control_open_modal(AlarmCardCtx* ctx) {
   alarm_control_update_modal(ctx);
 }
 #include "page_alarm_modal.h"
+
+// Request admission runs inside the input callback; panel allocation belongs to loop().
+static bool request_without_allocation(PageModalRuntime& runtime, ConfigurationHandle token,
+                                       ControlModalKind requested = ControlModalKind::NONE) {
+  const auto cpp = cpp_allocation_calls, lv = lv_allocation_calls;
+  const bool accepted = runtime.request_card(token, requested);
+  assert(cpp_allocation_calls == cpp && lv_allocation_calls == lv);
+  return accepted;
+}
+
 #include "page_alarm_presentation.h"
 uint32_t now() {
   return lv_tick_get();
@@ -420,7 +430,7 @@ struct Harness {
     transport.send("alarm_control_panel.home", "", value);
   }
   void open(CardId card = 0, uint32_t gen = 0) {
-    assert(modal.request_card({gen, card}));
+    assert(request_without_allocation(modal, {gen, card}));
     modal.loop();
   }
 };
@@ -605,7 +615,7 @@ void hidden_action_critical_panel(const DeviceUiLimits& limits) {
   assert(choice.valid);
   const auto kind = PageAlarmStateRuntime::classify(h.publication.active(), choice.origin.index);
   assert(kind == PageAlarmSourceKind::ACTION);
-  assert(h.modal.request_card(choice.origin, ControlModalKind::ALARM_CONTROL));
+  assert(request_without_allocation(h.modal, choice.origin, ControlModalKind::ALARM_CONTROL));
   h.modal.loop();
   assert(h.modal.token().kind == ControlModalKind::ALARM_CONTROL && alarm_control_modal_ui().active);
   // Child action is Home, but a current critical control exposes all panel actions.
@@ -620,11 +630,11 @@ void hidden_action_critical_panel(const DeviceUiLimits& limits) {
          h.sender.action == "alarm_control_panel.alarm_arm_away");
   h.modal.loop();
   h.report();
-  assert(!h.modal.request_card(choice.origin, ControlModalKind::ALARM_CONTROL));
+  assert(!request_without_allocation(h.modal, choice.origin, ControlModalKind::ALARM_CONTROL));
   h.open(choice.origin.index);
   assert(h.modal.token().kind == ControlModalKind::ALARM_PIN);
   h.report("triggered");
-  assert(h.modal.request_card(choice.origin, ControlModalKind::ALARM_CONTROL));
+  assert(request_without_allocation(h.modal, choice.origin, ControlModalKind::ALARM_CONTROL));
   h.modal.loop();
   assert(h.modal.token().kind == ControlModalKind::ALARM_CONTROL && alarm_control_modal_ui().active &&
          !alarm_pin_modal_ui().active);
@@ -735,7 +745,7 @@ void stale_panel_pin_admission(const DeviceUiLimits& limits) {
   h.publish(f);
   h.report("triggered");
   const auto choice = h.state.takeover();
-  assert(h.modal.request_card(choice.origin, ControlModalKind::ALARM_CONTROL));
+  assert(request_without_allocation(h.modal, choice.origin, ControlModalKind::ALARM_CONTROL));
   h.modal.loop();
   h.report("disarmed");
   click(alarm_control_modal_ui().mode_btn[0]);
