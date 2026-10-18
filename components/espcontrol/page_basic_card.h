@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cover_command_policy.h"
 #include "page_climate_card.h"
 #include "page_entity_state_runtime.h"
 #include "page_fan_status_runtime.h"
@@ -48,7 +49,8 @@ enum class BasicCardKind : uint8_t {
   PERCENT_SLIDER,
   NUMBER_SLIDER,
   LIGHT_TEMPERATURE,
-  TIMER
+  TIMER,
+  COVER_COMMAND
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode : uint8_t { NONE, ENTITY, CLIMATE, MOWER, TIMER, CHILDREN, NUMBER, TEXT };
@@ -84,6 +86,10 @@ class BasicCardTextSink {
 bool basic_card_is_forecast(const PageStore &,CardId);
 bool prepare_basic_card(const PageStore&, CardId, BasicCardDefinition&, BasicCardTextSink* text = nullptr,
                         PageLocalRelayRuntime* relay = nullptr);
+struct PageCoverCommandSnapshot {
+  int features{0};
+  bool known{false}, supported{false}, tilt{false};
+};
 struct BasicCardState {
   bool on{false},numeric{false},formatted_label{false},climate_icon_on{false};
   std::string_view label,unit,media_title,media_artist;
@@ -93,6 +99,7 @@ struct BasicCardState {
   PageNumberSliderSnapshot number_slider;
   PageLightTemperatureSnapshot light_temperature;
   PageTimerSnapshot timer;
+  PageCoverCommandSnapshot cover_command;
   uint8_t fill_percent{0},weather_condition{0};
   char number[48]{},text[257]{};
 };
@@ -109,6 +116,8 @@ PageLightTemperatureSnapshot read_basic_light_temperature(const BasicCardDefinit
                                                           PageLightTemperatureRuntime*);
 PageTimerSnapshot read_basic_timer(const BasicCardDefinition&, ConfigurationHandle, PageEntityStateRuntime&,
                                    PageTimerRuntime*);
+PageCoverCommandSnapshot read_basic_cover_command(const BasicCardDefinition&, ConfigurationHandle,
+                                                  PageEntityStateRuntime&);
 BasicCardState read_basic_card(
     const BasicCardDefinition&, ConfigurationHandle, PageEntityStateRuntime&, int duration_components = 2,
     std::string_view temperature_unit = "°C", PageCardTranslate translate = nullptr,

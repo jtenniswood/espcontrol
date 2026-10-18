@@ -254,10 +254,26 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     if(out.icon.empty()||out.icon=="Auto")out.icon="Lightbulb Outline";
     if(out.icon_on.empty()||out.icon_on=="Auto")out.icon_on="Lightbulb";
   } else if (type == "cover") {
-    if(espcontrol::card_runtime::resolve_card_driver(espcontrol::card_runtime::CardTypeId::COVER,std::string(out.sensor))!=espcontrol::card_runtime::CardDriverId::COVER_MODAL)return false;
-    out.unit={};out.kind=BasicCardKind::COVER;out.push_feedback=true;out.default_label="Cover";
-    if(out.icon.empty()||out.icon=="Auto")out.icon="Blinds";
-    if(out.icon_on.empty()||out.icon_on=="Auto")out.icon_on="Blinds Open";
+    if (out.sensor == "open" || out.sensor == "close" || out.sensor == "stop" ||
+        out.sensor == "set_position") {
+      out.kind = BasicCardKind::COVER_COMMAND;
+      out.unit = {};
+      out.push_feedback = true;
+      out.default_label = "Cover";
+      if (out.icon.empty() || out.icon == "Auto") out.icon = "Blinds";
+      out.icon_on = out.icon;
+    } else {
+      if (espcontrol::card_runtime::resolve_card_driver(espcontrol::card_runtime::CardTypeId::COVER,
+                                                        std::string(out.sensor)) !=
+          espcontrol::card_runtime::CardDriverId::COVER_MODAL)
+        return false;
+      out.unit = {};
+      out.kind = BasicCardKind::COVER;
+      out.push_feedback = true;
+      out.default_label = "Cover";
+      if (out.icon.empty() || out.icon == "Auto") out.icon = "Blinds";
+      if (out.icon_on.empty() || out.icon_on == "Auto") out.icon_on = "Blinds Open";
+    }
   } else if (type == "fan_switch" || type == "fan_oscillate") {
     const bool power = type == "fan_switch";
     out.kind = power ? BasicCardKind::FAN_SWITCH : BasicCardKind::FAN_OSCILLATE;
@@ -338,8 +354,8 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
                                                   : std::string_view{};
   if (type == "cover") {
     const auto mode = store.field(*card, CardField::SENSOR);
-    // The empty/tilt variants were classified above. Toggle and explicit
-    // command variants have not been ported; the remaining modes use the modal.
+    // The empty/tilt variants were classified above. Commands never
+    // contribute; toggle views remain unported. Other modes use the modal.
     if (mode.empty() || mode == "tilt" || mode == "toggle" || mode == "open" || mode == "close" ||
         mode == "stop" || mode == "set_position")
       return {};
@@ -422,6 +438,18 @@ PageTimerSnapshot read_basic_timer(const BasicCardDefinition& card, Configuratio
       snapshot.mode = PageTimerMode::UNAVAILABLE;
   return snapshot;
 }
+PageCoverCommandSnapshot read_basic_cover_command(const BasicCardDefinition& card, ConfigurationHandle handle,
+                                                  PageEntityStateRuntime& state) {
+  if (card.kind != BasicCardKind::COVER_COMMAND || card.entity.empty()) return {};
+  const auto value = find(state, handle, card.entity, "supported_features");
+  PageCoverCommandSnapshot result;
+  if (value.status == PageEntityStatus::EXHAUSTED) return result;
+  result.known = value.status == PageEntityStatus::AVAILABLE &&
+                 cover_command::parse_features(value.value, result.features);
+  result.supported = cover_command::supported(card.sensor, result.known, result.features);
+  result.tilt = cover_command::use_tilt(card.sensor, result.known, result.features);
+  return result;
+}
 BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHandle handle,
                                PageEntityStateRuntime& state, int duration_components,
                                std::string_view temperature_unit, PageCardTranslate translate,
@@ -444,6 +472,20 @@ BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHan
       const auto name = find(state, handle, card.entity, "friendly_name");
       if (name.status == PageEntityStatus::AVAILABLE)
         result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+    }
+    return result;
+  }
+  if (card.kind == BasicCardKind::COVER_COMMAND) {
+    result.cover_command = read_basic_cover_command(card, handle, state);
+    result.label = card.label;
+    if (result.label.empty()) {
+      const auto name = find(state, handle, card.entity, "friendly_name");
+      if (name.status == PageEntityStatus::AVAILABLE && !name.value.empty())
+        result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+      else {
+        const auto* text = translate ? translate("Cover") : nullptr;
+        result.label = text ? text : "Cover";
+      }
     }
     return result;
   }

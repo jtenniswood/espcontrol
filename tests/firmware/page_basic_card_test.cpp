@@ -249,6 +249,57 @@ void status_actions_profile(const DeviceUiLimits &limits) {
   assert(!prepare_basic_card(confirmation.store,0,definition,&strings));
 }
 
+void cover_command_profile(const DeviceUiLimits& limits) {
+  struct Mode {
+    const char* name;
+    int normal, tilt;
+  };
+  for (const auto& mode :
+       {Mode{"open", 1, 16}, {"close", 2, 32}, {"stop", 8, 64}, {"set_position", 4, 128}}) {
+    Fixture fixture(limits, std::string("cover.room;;Auto;Other;") + mode.name + ";67;cover;0;");
+    BasicCardDefinition definition;
+    assert(prepare_basic_card(fixture.store, 0, definition));
+    assert(definition.kind == BasicCardKind::COVER_COMMAND && definition.sensor == mode.name &&
+           definition.unit.empty());
+    assert(definition.icon == "Blinds" && definition.icon_on == definition.icon && definition.push_feedback &&
+           !definition.active_color);
+    assert(basic_folder_child_indicator(fixture.store, 0).empty());
+    Arena arena;
+    Subscriptions subscriptions;
+    PageCardDependencies dependencies;
+    PageEntityStateRuntime state(dependencies, arena, subscriptions, {64, 64, 2048});
+    assert(state.prepare(fixture.store));
+    state.activate_prepared(fixture.store);
+    auto read = [&]() { return read_basic_card(definition, {17, 0}, state); };
+    assert(read().label == "Cover" && read().cover_command.supported && !read().cover_command.known);
+    subscriptions.send("cover.room", "friendly_name", "Room shutter");
+    assert(read().label == "Room shutter");
+    for (int mask = 0; mask < 256; ++mask) {
+      subscriptions.send("cover.room", "supported_features", std::to_string(mask));
+      const auto value = read();
+      assert(value.cover_command.known && value.cover_command.features == mask);
+      assert(value.cover_command.supported == ((mask & (mode.normal | mode.tilt)) != 0));
+      assert(value.cover_command.tilt == (!(mask & mode.normal) && (mask & mode.tilt) != 0));
+      assert(!value.on && !value.numeric && value.unit.empty() && value.fill_percent == 0);
+    }
+    for (const auto* invalid : {"none", "null", "unknown", "unavailable", "garbage", ""}) {
+      subscriptions.send("cover.room", "supported_features", invalid);
+      assert(!read().cover_command.known && read().cover_command.supported && !read().cover_command.tilt);
+    }
+    subscriptions.send("cover.room", "supported_features", " 16 trailing ");
+    assert(read().cover_command.features == 16);
+    const auto before = allocations;
+    for (int i = 0; i < 1000; ++i) (void)read();
+    assert(allocations == before);
+    ++subscriptions.generation;
+    assert(state.connection_generation() == subscriptions.generation);
+    assert(!read().cover_command.known && !read().cover_command.tilt);
+    subscriptions.send("cover.room", "supported_features", std::string(3000, '9'));
+    assert(!read().cover_command.supported);
+    subscriptions.send("cover.room", "supported_features", "-1");
+    assert(read().cover_command.known && read().cover_command.supported);
+  }
+}
 void indicator_eligibility(const DeviceUiLimits& limits) {
   struct Case {
     const char* entity;
@@ -1316,6 +1367,7 @@ int main() {
     status_actions_profile(limits);
     control_profile(limits);
     indicator_eligibility(limits);
+    cover_command_profile(limits);
     local_relay_profile(limits);
     local_sensor_profile(limits);
     option_select_profile(limits);
