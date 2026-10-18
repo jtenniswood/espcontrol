@@ -173,6 +173,7 @@ void PageTimerRuntime::observed(uint32_t generation, std::string_view entity, st
         const auto next = mode(value);
         const auto left = remaining(source);
         source.mode = next;
+        if (next != PageTimerMode::ACTIVE) ++source.confirmation_revision;
         for (size_t id = 0; id < slot->cards; ++id) {
           auto& card = slot->card[id];
           if (card.source != i) continue;
@@ -239,7 +240,7 @@ PageTimerSnapshot PageTimerRuntime::read(ConfigurationHandle handle) const {
       seconds = finished ? 0 : source.duration;
     }
     return {source.mode, static_cast<int>(std::max<int64_t>(0, std::min<int64_t>(INT32_MAX, seconds))),
-            card.confirmation_seconds, card.confirmation};
+            card.confirmation_seconds, card.confirmation, source.confirmation_revision};
   }
   return {};
 }

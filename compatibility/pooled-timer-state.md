@@ -1,8 +1,9 @@
 # Configuration-owned timer state
 
 `PageTimerRuntime` keeps timer countdown anchors and per-card completion history
-outside widgets. Visible timer views, confirmation input and production scene
-selection are still unfinished; production uses the existing renderer.
+outside widgets. [Reusable timer views](pooled-timer-cards.md) supply bounded
+confirmation input; production scene selection remains unfinished and production
+uses the existing renderer.
 
 An exact configuration arena shares each `timer.*` entity's state, duration,
 remaining anchor and absolute finish epoch. Each card retains its confirmation

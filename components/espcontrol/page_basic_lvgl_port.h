@@ -71,6 +71,7 @@ struct PageBasicActions {
   void (*percent_slider)(void*, PageBindingToken, int percent){nullptr};
   void (*number_slider)(void*, PageBindingToken, double, const number_slider::Metadata&){nullptr};
   void (*light_temperature)(void*, PageBindingToken, int kelvin){nullptr};
+  bool (*timer)(void*, PageBindingToken, PageTimerAction){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -99,7 +100,7 @@ class PageBasicLvglPort final:public PageRendererPort {
                     PageLocalRelayRuntime* relay = nullptr, PageFanStatusRuntime* fan_status = nullptr,
                     PagePercentSliderRuntime* percent_slider = nullptr,
                     PageNumberSliderRuntime* number_slider = nullptr,
-                    PageLightTemperatureRuntime* temperature = nullptr)
+                    PageLightTemperatureRuntime* temperature = nullptr, PageTimerRuntime* timer = nullptr)
       : allocator_(allocator),
         state_(state),
         widgets_(widgets),
@@ -114,7 +115,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         fan_status_(fan_status),
         percent_slider_(percent_slider),
         number_slider_(number_slider),
-        temperature_(temperature) {
+        temperature_(temperature),
+        timer_(timer) {
     for(size_t i=0;i<Slots;++i){shells_[i].port=this;shells_[i].index=i;}
   }
   ~PageBasicLvglPort()override {
@@ -301,6 +303,11 @@ class PageBasicLvglPort final:public PageRendererPort {
       for(CardId card=p->first_card;card<p->first_card+p->card_count;++card) {
         BasicCardDefinition view;
         if (!prepare_basic_card(store, card, view, &strings, relay_)) return false;
+        if (view.kind == BasicCardKind::TIMER) {
+          if (!timer_ || !actions_.timer) return false;
+          const auto* confirm = theme_.translate ? theme_.translate("Confirm") : nullptr;
+          label_capacity = std::max(label_capacity, std::strlen(confirm ? confirm : "Confirm") + 1);
+        }
         if (view.kind == BasicCardKind::LIGHT_TEMPERATURE) {
           if (!temperature_ || !actions_.light_temperature) return false;
           for (const auto& w : widgets_)
@@ -474,7 +481,7 @@ class PageBasicLvglPort final:public PageRendererPort {
         }
         const auto &d=view.definition;
         // Metadata titles reuse the icon label but never display a glyph.
-        if (d.kind == BasicCardKind::MEDIA_NOW_PLAYING ||
+        if (d.kind == BasicCardKind::TIMER || d.kind == BasicCardKind::MEDIA_NOW_PLAYING ||
             (d.kind == BasicCardKind::MEDIA_CONTROL && d.media.volume_number)) {
           view.off = view.on = "";
           continue;
@@ -570,6 +577,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (w.slider) lv_slider_set_range(w.slider, 0, 100);
     s.token=token;s.pressed={};s.cell=cell;s.back=back;
     s.definition=cell.back?nullptr:prepared(active_)+cell.card;
+    if (timer_card(s)) s.pending_target = -1;
     if (percent_card(s) || number_card(s) || temperature_card(s)) {
       lv_obj_align(w.icon, LV_ALIGN_TOP_LEFT, 0, 0);
       lv_obj_align(w.label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
@@ -601,6 +609,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     const bool clickable =
         cell.back || (s.definition && (s.definition->definition.kind == BasicCardKind::TOGGLE ||
                                        s.definition->definition.kind == BasicCardKind::LOCAL_RELAY ||
+                                       s.definition->definition.kind == BasicCardKind::TIMER ||
                                        s.definition->definition.kind == BasicCardKind::FOLDER ||
                                        s.definition->definition.kind == BasicCardKind::CLIMATE ||
                                        s.definition->definition.kind == BasicCardKind::ACTION ||
@@ -636,22 +645,26 @@ class PageBasicLvglPort final:public PageRendererPort {
       value =
           read_basic_card(definition, {token.configuration, token.card}, state_,
                           s.cell.column_span > 1 ? 2 : 1, theme_.temperature_unit, theme_.translate, media_,
-                          local_, relay_, fan_status_, percent_slider_, number_slider_, temperature_);
+                          local_, relay_, fan_status_, percent_slider_, number_slider_, temperature_, timer_);
       if(group_card(s))group_feedback(s,value);
+      if (timer_card(s)) timer_feedback(s, value);
       if(definition.folder_mode==BasicFolderMode::CHILDREN) {
         for(size_t child=0;child<s.definition->summary_count&&!value.on;++child) {
           const auto id=s.definition->summary[child];
           const auto& child_definition = prepared(active_)[id].definition;
           value.on = child_definition.kind == BasicCardKind::LOCAL_RELAY && relay_
                          ? relay_->on(token.configuration, child_definition.entity)
-                         : read_basic_indicator({token.configuration, id},
-                                                basic_folder_child_indicator(store_, id), state_);
+                         : read_basic_indicator(
+                               {token.configuration, id}, basic_folder_child_indicator(store_, id), state_,
+                               child_definition.kind == BasicCardKind::TIMER ? BasicFolderMode::TIMER
+                                                                             : BasicFolderMode::ENTITY);
         }
       }
       if(definition.kind==BasicCardKind::FOLDER&&definition.folder_mode==BasicFolderMode::NUMBER&&value.label.empty())value.label=theme_.folder_label;
       if(definition.kind==BasicCardKind::EMPTY&&value.label.empty())value.label=theme_.empty_label;
       checked=value.on&&(definition.kind==BasicCardKind::TOGGLE||definition.active_color);
-      number = (definition.kind == BasicCardKind::NUMBER_SLIDER && value.numeric) ||
+      number = definition.kind == BasicCardKind::TIMER ||
+               (definition.kind == BasicCardKind::NUMBER_SLIDER && value.numeric) ||
                (definition.kind == BasicCardKind::CLIMATE &&
                 definition.climate.number != ClimateCardNumber::ICON) ||
                definition.kind == BasicCardKind::LOCAL_NUMBER ||
@@ -783,6 +796,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (!commit_seen) return;
     if (number_slider_) seen_number_slider_ = number_slider_->revision();
     if (temperature_) seen_temperature_ = temperature_->revision();
+    if (timer_) seen_timer_ = timer_->revision();
     seen_state_ = state_.revision();
     if (local_) seen_local_ = local_->revision();
     if (relay_) seen_relay_ = relay_->revision();
@@ -847,13 +861,15 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (percent_slider_) percent_slider_->loop();
     if (number_slider_) number_slider_->loop();
     if (temperature_) temperature_->loop();
+    if (timer_) timer_->loop();
     if (media_layout_dirty_) return true;
     if (media_)
       for (const auto& shell : shells_)
-        if (shell.pending_target >= 0 && !group_card(shell) &&
+        if (shell.pending_target >= 0 && !timer_card(shell) && !group_card(shell) &&
             static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= pending_timeout(shell))
           return true;
-    return (temperature_ && temperature_->revision() != seen_temperature_) ||
+    return (timer_ && timer_->revision() != seen_timer_) ||
+           (temperature_ && temperature_->revision() != seen_temperature_) ||
            (number_slider_ && number_slider_->revision() != seen_number_slider_) ||
            (percent_slider_ && percent_slider_->revision() != seen_percent_slider_) ||
            (fan_status_ && fan_status_->revision() != seen_fan_status_) ||
@@ -964,7 +980,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       uint32_t pending_ms{0};
       uint32_t membership_revision;
     };
-    uint32_t gesture_connection{0};
+    uint32_t gesture_connection{0}, timer_state_revision{0};
     float pending_target{-1};
     lv_indev_t* input{nullptr};
     PageForecastFrame* frame{nullptr};
@@ -1016,6 +1032,57 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
   static bool number_card(const Shell& shell) {
     return shell.definition && shell.definition->definition.kind == BasicCardKind::NUMBER_SLIDER;
+  }
+  static bool timer_card(const Shell& shell) {
+    return shell.definition && shell.definition->definition.kind == BasicCardKind::TIMER;
+  }
+  PageTimerSnapshot timer_snapshot(const Shell& shell) const {
+    timer_->loop();
+    return read_basic_timer(shell.definition->definition, {shell.token.configuration, shell.token.card},
+                            state_, timer_);
+  }
+  bool timer_confirmation_valid(const Shell& shell, const PageTimerSnapshot& snapshot) const {
+    return shell.pending_target >= 0 && snapshot.mode == PageTimerMode::ACTIVE &&
+           shell.gesture_connection == timer_->connection_generation() &&
+           shell.timer_state_revision == snapshot.confirmation_revision &&
+           static_cast<uint32_t>(timer_->now_ms() - shell.pending_ms) <
+               static_cast<uint32_t>(snapshot.confirmation_seconds) * 1000;
+  }
+  void timer_feedback(Shell& shell, BasicCardState& value) {
+    if (!timer_confirmation_valid(shell, value.timer)) shell.pending_target = -1;
+    if (shell.pending_target >= 0) {
+      const auto* confirm = theme_.translate ? theme_.translate("Confirm") : nullptr;
+      value.label = confirm ? confirm : "Confirm";
+    }
+    if (value.timer.mode == PageTimerMode::UNAVAILABLE)
+      lv_obj_clear_flag(widgets_[shell.index].button, LV_OBJ_FLAG_CLICKABLE);
+    else
+      lv_obj_add_flag(widgets_[shell.index].button, LV_OBJ_FLAG_CLICKABLE);
+  }
+  void timer_click(Shell& shell, PageBindingToken origin) {
+    const auto snapshot = timer_snapshot(shell);
+    if (shell.gesture_connection != timer_->connection_generation() ||
+        snapshot.mode == PageTimerMode::UNAVAILABLE) {
+      shell.pending_target = -1;
+      paint(shell.index, shell.token, false);
+      return;
+    }
+    const auto action =
+        snapshot.mode == PageTimerMode::ACTIVE ? PageTimerAction::CANCEL : PageTimerAction::START;
+    if (action == PageTimerAction::CANCEL && snapshot.confirmation &&
+        !timer_confirmation_valid(shell, snapshot)) {
+      shell.pending_target = 0;
+      shell.pending_ms = timer_->now_ms();
+      shell.timer_state_revision = snapshot.confirmation_revision;
+      paint(shell.index, shell.token, false);
+      return;
+    }
+    const auto connection = shell.gesture_connection;
+    shell.pending_target = -1;
+    paint(shell.index, shell.token, false);
+    const bool accepted = actions_.timer && actions_.timer(actions_.owner, origin, action);
+    if (action == PageTimerAction::CANCEL && connection == timer_->connection_generation())
+      timer_->cancel_sent({origin.configuration, origin.card}, accepted);
   }
   static bool temperature_card(const Shell& shell) {
     return shell.definition && shell.definition->definition.kind == BasicCardKind::LIGHT_TEMPERATURE;
@@ -1836,6 +1903,11 @@ class PageBasicLvglPort final:public PageRendererPort {
       return;}
     if(code==LV_EVENT_PRESSED) {
       shell->pressed=shell->token;
+      if (timer_card(*shell)) {
+        port->timer_->loop();
+        if (shell->gesture_connection != port->timer_->connection_generation()) shell->pending_target = -1;
+        shell->gesture_connection = port->timer_->connection_generation();
+      }
       if(shell->definition&&shell->definition->definition.kind==BasicCardKind::MEDIA_ACTION) {
         const auto kind=shell->definition->definition.media.kind;
         if(kind==MediaActionKind::PREVIOUS||kind==MediaActionKind::NEXT) {
@@ -1864,6 +1936,10 @@ class PageBasicLvglPort final:public PageRendererPort {
            port->state_.read_attribute(card, definition.entity, "oscillating").status !=
                PageEntityStatus::AVAILABLE))
         return;
+    }
+    if (timer_card(*shell)) {
+      port->timer_click(*shell, origin);
+      return;
     }
     if(definition.kind==BasicCardKind::FOLDER) {
       const auto target=port->store_.card(origin.card)->target;
@@ -1913,14 +1989,15 @@ class PageBasicLvglPort final:public PageRendererPort {
   PagePercentSliderRuntime* percent_slider_{nullptr};
   PageNumberSliderRuntime* number_slider_{nullptr};
   PageLightTemperatureRuntime* temperature_{nullptr};
+  PageTimerRuntime* timer_{nullptr};
   std::array<Shell, Slots> shells_{};
   Arena active_, staged_;
   PageStore store_;
   bool initialized_{false}, media_layout_dirty_{false}, media_finishing_{false};
   size_t callbacks_{0};
-  uint64_t seen_temperature_{0}, seen_number_slider_{0}, seen_percent_slider_{0}, seen_fan_status_{0},
-      seen_relay_{0}, seen_local_{0}, seen_state_{0}, seen_theme_{0}, seen_forecast_{0}, seen_media_{0},
-      seen_artwork_{0};
+  uint64_t seen_timer_{0}, seen_temperature_{0}, seen_number_slider_{0}, seen_percent_slider_{0},
+      seen_fan_status_{0}, seen_relay_{0}, seen_local_{0}, seen_state_{0}, seen_theme_{0}, seen_forecast_{0},
+      seen_media_{0}, seen_artwork_{0};
   PageBasicMemory memory_;
 };
 }  // namespace espcontrol::pages

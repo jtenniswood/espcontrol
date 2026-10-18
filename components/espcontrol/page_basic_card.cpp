@@ -13,6 +13,7 @@
 #include "media_playlist_match.h"
 #include "page_fan_mode.h"
 #include "page_media_group.h"
+#include "timer_state_policy.h"
 #include "weather_condition.h"
 
 namespace espcontrol::pages {
@@ -85,6 +86,13 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     out.sensor = {};
     if (out.icon.empty() || out.icon == "Auto") out.icon = "Lightbulb";
     out.icon_on = out.icon;
+  } else if (type == "timer") {
+    out.kind = BasicCardKind::TIMER;
+    out.unit = {};
+    out.sensor = {};
+    out.active_color = true;
+    out.icon = out.icon_on = "";
+    out.default_label = "Timer";
   } else if (type == "internal") {
     out.kind = BasicCardKind::LOCAL_RELAY;
     out.unit = {};
@@ -321,21 +329,22 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
   const auto type=store.field(*card,CardField::TYPE);
   // The currently ported children which contributed to the old indicator.
   // Sensors never contributed. Extend this policy when other drivers port their
-  // indicator semantics (timer/mower/local controls use different predicates).
+  // indicator semantics (mower/local controls use different predicates).
   if (PagePercentSliderRuntime::classify(store, id) != PagePercentSliderKind::NONE ||
       PageNumberSliderRuntime::supported(store,id))
     return store.field(*card, CardField::ENTITY);
   if (type == "internal")
     return PageLocalRelayRuntime::toggle(store, *card) ? store.field(*card, CardField::ENTITY)
                                                        : std::string_view{};
-  return type.empty() || type == "light_switch" || type == "light_temperature" || type == "media" || type == "fan_control" ||
-                 type == "fan_direction" || type == "fan_preset" || type == "fan_switch" ||
-                 type == "fan_oscillate"
+  return type.empty() || type == "light_switch" || type == "light_temperature" || type == "timer" ||
+                 type == "media" || type == "fan_control" || type == "fan_direction" ||
+                 type == "fan_preset" || type == "fan_switch" || type == "fan_oscillate"
              ? store.field(*card, CardField::ENTITY)
              : std::string_view{};
 }
 bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,PageEntityStateRuntime &state,BasicFolderMode mode) {
   const auto primary=find(state,handle,entity);if(!available(primary))return false;
+  if (mode == BasicFolderMode::TIMER) return primary.value == "active";
   if(mode==BasicFolderMode::MOWER)return equal_state(primary.value,"mowing")||equal_state(primary.value,"returning");
   if(mode==BasicFolderMode::CLIMATE) {
     const auto action=find(state,handle,entity,"hvac_action");if(action.status!=PageEntityStatus::AVAILABLE)return false;
@@ -392,6 +401,15 @@ PageLightTemperatureSnapshot read_basic_light_temperature(const BasicCardDefinit
       snapshot.available = snapshot.dragging = snapshot.gesture = false;
   return snapshot;
 }
+PageTimerSnapshot read_basic_timer(const BasicCardDefinition& card, ConfigurationHandle handle,
+                                   PageEntityStateRuntime& state, PageTimerRuntime* runtime) {
+  if (!runtime || card.kind != BasicCardKind::TIMER) return {};
+  auto snapshot = runtime->read(handle);
+  for (const auto attribute : {"", "duration", "remaining", "finishes_at"})
+    if (find(state, handle, card.entity, attribute).status == PageEntityStatus::EXHAUSTED)
+      snapshot.mode = PageTimerMode::UNAVAILABLE;
+  return snapshot;
+}
 BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHandle handle,
                                PageEntityStateRuntime& state, int duration_components,
                                std::string_view temperature_unit, PageCardTranslate translate,
@@ -399,7 +417,7 @@ BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHan
                                PageLocalRelayRuntime* relay, PageFanStatusRuntime* fan_status,
                                PagePercentSliderRuntime* percent_slider,
                                PageNumberSliderRuntime* number_slider,
-                               PageLightTemperatureRuntime* temperature) {
+                               PageLightTemperatureRuntime* temperature, PageTimerRuntime* timer) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
   if (card.kind == BasicCardKind::PERCENT_SLIDER) {
@@ -415,6 +433,26 @@ BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHan
       if (name.status == PageEntityStatus::AVAILABLE)
         result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
     }
+    return result;
+  }
+  if (card.kind == BasicCardKind::TIMER) {
+    result.timer = read_basic_timer(card, handle, state, timer);
+    result.numeric = true;
+    result.on = result.timer.mode == PageTimerMode::ACTIVE;
+    result.label = card.label;
+    if (result.label.empty()) {
+      const auto name = find(state, handle, card.entity, "friendly_name");
+      if (name.status == PageEntityStatus::AVAILABLE && !name.value.empty())
+        result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+      else {
+        const auto* text = translate ? translate("Timer") : nullptr;
+        result.label = text ? text : "Timer";
+      }
+    }
+    if (result.timer.mode == PageTimerMode::UNAVAILABLE)
+      std::snprintf(result.number, sizeof(result.number), "--:--");
+    else
+      timer_state::format_seconds(result.timer.seconds, result.number, sizeof(result.number));
     return result;
   }
   if (card.kind == BasicCardKind::LIGHT_TEMPERATURE) {

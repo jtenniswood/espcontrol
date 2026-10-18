@@ -8,6 +8,7 @@ struct PageTimerSnapshot {
   int seconds{0};
   uint16_t confirmation_seconds{3};
   bool confirmation{false};
+  uint32_t confirmation_revision{0};
 };
 struct PageTimerMemory {
   size_t fixed_bytes{0}, active_bytes{0}, staged_bytes{0}, peak_bytes{0}, sources{0}, cards{0},
@@ -51,7 +52,7 @@ class PageTimerRuntime final : public PageRuntimeResources, public PageEntityObs
     std::string_view entity;
     int duration{0}, remaining{0};
     int64_t finish_epoch{0};
-    uint32_t anchor{0};
+    uint32_t anchor{0}, confirmation_revision{0};
     PageTimerMode mode{PageTimerMode::UNAVAILABLE};
     uint8_t known{0};
   };

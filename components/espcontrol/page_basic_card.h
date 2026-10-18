@@ -12,6 +12,7 @@
 #include "page_number_slider_runtime.h"
 #include "page_percent_slider_runtime.h"
 #include "page_renderer_runtime.h"
+#include "page_timer_runtime.h"
 #include "weather_card_view.h"
 
 namespace espcontrol::pages {
@@ -46,10 +47,11 @@ enum class BasicCardKind : uint8_t {
   FAN_OSCILLATE,
   PERCENT_SLIDER,
   NUMBER_SLIDER,
-  LIGHT_TEMPERATURE
+  LIGHT_TEMPERATURE,
+  TIMER
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
-enum class BasicFolderMode:uint8_t { NONE, ENTITY, CLIMATE, MOWER, CHILDREN, NUMBER, TEXT };
+enum class BasicFolderMode : uint8_t { NONE, ENTITY, CLIMATE, MOWER, TIMER, CHILDREN, NUMBER, TEXT };
 struct BasicCardDefinition {
   BasicCardKind kind{BasicCardKind::EMPTY};
   BasicFolderMode folder_mode{BasicFolderMode::NONE};
@@ -90,6 +92,7 @@ struct BasicCardState {
   PagePercentSliderSnapshot percent_slider;
   PageNumberSliderSnapshot number_slider;
   PageLightTemperatureSnapshot light_temperature;
+  PageTimerSnapshot timer;
   uint8_t fill_percent{0},weather_condition{0};
   char number[48]{},text[257]{};
 };
@@ -104,13 +107,13 @@ PageNumberSliderSnapshot read_basic_number_slider(const BasicCardDefinition&, Co
 PageLightTemperatureSnapshot read_basic_light_temperature(const BasicCardDefinition&, ConfigurationHandle,
                                                           PageEntityStateRuntime&,
                                                           PageLightTemperatureRuntime*);
-BasicCardState read_basic_card(const BasicCardDefinition&, ConfigurationHandle, PageEntityStateRuntime&,
-                               int duration_components = 2, std::string_view temperature_unit = "°C",
-                               PageCardTranslate translate = nullptr, PageMediaStateRuntime* media = nullptr,
-                               PageLocalSensorRuntime* local = nullptr,
-                               PageLocalRelayRuntime* relay = nullptr,
-                               PageFanStatusRuntime* fan_status = nullptr,
-                               PagePercentSliderRuntime* percent_slider = nullptr,
-                               PageNumberSliderRuntime* number_slider = nullptr,
-                               PageLightTemperatureRuntime* temperature = nullptr);
+PageTimerSnapshot read_basic_timer(const BasicCardDefinition&, ConfigurationHandle, PageEntityStateRuntime&,
+                                   PageTimerRuntime*);
+BasicCardState read_basic_card(
+    const BasicCardDefinition&, ConfigurationHandle, PageEntityStateRuntime&, int duration_components = 2,
+    std::string_view temperature_unit = "°C", PageCardTranslate translate = nullptr,
+    PageMediaStateRuntime* media = nullptr, PageLocalSensorRuntime* local = nullptr,
+    PageLocalRelayRuntime* relay = nullptr, PageFanStatusRuntime* fan_status = nullptr,
+    PagePercentSliderRuntime* percent_slider = nullptr, PageNumberSliderRuntime* number_slider = nullptr,
+    PageLightTemperatureRuntime* temperature = nullptr, PageTimerRuntime* timer = nullptr);
 }  // namespace espcontrol::pages
