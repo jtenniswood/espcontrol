@@ -20,6 +20,7 @@ source = r'''
 #include <memory>
 #include <string>
 #include <vector>
+#include "media_group_discovery.h"
 
 using lv_coord_t = int;
 struct lv_timer_t {};
@@ -150,7 +151,6 @@ int media_control_clamp_volume(MediaControlCtx *ctx, int pct) {
 }
 '''
 for text, name in (
-    (group, "media_group_trim"),
     (group, "media_group_valid_entity_id"),
     (group, "media_group_append_unique"),
     (group, "media_group_merge_candidates"),
@@ -382,6 +382,7 @@ with tempfile.TemporaryDirectory(prefix="media-speaker-volume-") as directory:
     (path / "test.cpp").write_text(source)
     subprocess.run([
         os.environ.get("CXX", "c++"), "-std=c++17", "-Wall", "-Wextra", "-Werror",
+        "-I" + str(root / "components/espcontrol"),
         str(path / "test.cpp"), "-o", str(path / "test"),
     ], check=True)
     subprocess.run([str(path / "test")], check=True)
