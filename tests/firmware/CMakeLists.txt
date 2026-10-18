@@ -198,6 +198,19 @@ target_compile_options(page_percent_slider_runtime_test PRIVATE -Wall -Wextra -W
 target_include_directories(page_percent_slider_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_percent_slider_runtime_test COMMAND page_percent_slider_runtime_test)
 
+set(CALENDAR_TEXT_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/calendar_card_text_test.cpp)
+add_custom_command(OUTPUT ${CALENDAR_TEXT_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_calendar_text_test.py
+    --output ${CALENDAR_TEXT_SOURCE}
+  DEPENDS generate_calendar_text_test.py calendar_card_text_test.cpp.in
+    ../../components/espcontrol/button_grid_datetime_cards.h ../../components/espcontrol/clock_bar.h
+  VERBATIM)
+add_executable(calendar_card_text_test ${CALENDAR_TEXT_SOURCE})
+target_compile_features(calendar_card_text_test PRIVATE cxx_std_17)
+target_compile_options(calendar_card_text_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(calendar_card_text_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME calendar_card_text_test COMMAND calendar_card_text_test)
+
 set(PAGE_CALENDAR_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_calendar_runtime_test.cpp)
 add_custom_command(OUTPUT ${PAGE_CALENDAR_SOURCE}
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_calendar_test.py
@@ -322,6 +335,7 @@ add_executable(page_basic_card_test page_basic_card_test.cpp
     ../../components/espcontrol/page_timer_runtime.cpp
   ../../components/espcontrol/page_cover_toggle_runtime.cpp
   ../../components/espcontrol/page_access_state_runtime.cpp
+  ../../components/espcontrol/page_calendar_runtime.cpp
   ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
   ../../components/espcontrol/page_card_dependencies.cpp
@@ -337,6 +351,7 @@ add_executable(page_basic_card_no_forecast_test page_basic_card_test.cpp
     ../../components/espcontrol/page_timer_runtime.cpp
   ../../components/espcontrol/page_cover_toggle_runtime.cpp
   ../../components/espcontrol/page_access_state_runtime.cpp
+  ../../components/espcontrol/page_calendar_runtime.cpp
   ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
   ../../components/espcontrol/page_card_dependencies.cpp
@@ -1233,6 +1248,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     ../../components/espcontrol/page_timer_runtime.cpp
   ../../components/espcontrol/page_cover_toggle_runtime.cpp
   ../../components/espcontrol/page_access_state_runtime.cpp
+  ../../components/espcontrol/page_calendar_runtime.cpp
     ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_forecast_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp

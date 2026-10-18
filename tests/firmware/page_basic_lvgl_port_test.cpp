@@ -157,6 +157,52 @@ struct Fixture {
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
   }
+  struct CalendarCards {};
+  Fixture(const DeviceUiLimits& limits, CalendarCards) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {";Dates;Auto;Auto;indicator;;subpage;;", ";Ignored;Power;Auto;;;calendar;;",
+                                 ";Ignored;Power;Auto;;;calendar;datetime;",
+                                 ";;Auto;Auto;sensor.temperature;C;sensor;1;"};
+    for (size_t n = 0; n < 4; ++n)
+      assert(writer.append_button(n + 1, reinterpret_cast<const uint8_t*>(cards[n].data()),
+                                  cards[n].size()) == PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1,2,3|D,sensor.other,Ignored,Auto,Auto,,,,|D,,Ignored,Auto,Auto,,,datetime,|S,,Temperature,Auto,"
+        "Auto,sensor.temperature,C,1,";
+    assert(writer.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = "1,2,3,4";
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                 reinterpret_cast<const uint8_t*>(order.data()),
+                                 order.size()) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
+  struct CalendarSize {
+    const char* order;
+    bool disabled;
+  };
+  Fixture(const DeviceUiLimits& limits, CalendarSize size_spec) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string card = std::string(";Ignored;Power;Auto;;;calendar;datetime;") +
+                             (size_spec.disabled ? "large_numbers=off" : "large_numbers");
+    assert(writer.append_button(1, reinterpret_cast<const uint8_t*>(card.data()), card.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = size_spec.order;
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                 reinterpret_cast<const uint8_t*>(order.data()),
+                                 order.size()) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   struct CleaningCards {};
   Fixture(const DeviceUiLimits& limits, CleaningCards) {
     PanelConfigWriter writer(document.data(), document.size());
@@ -2371,6 +2417,205 @@ void cleaning_profile(const DeviceUiLimits& limits) {
   lv_obj_delete(page);
 }
 
+template <size_t Slots>
+void calendar_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, Fixture::CalendarCards{});
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageCalendarRuntime calendar;
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192}, &calendar);
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+    w.fill = lv_obj_create(w.button);
+    w.slider = lv_slider_create(w.button);
+  }
+  for (size_t slot : {size_t(1), size_t(3)}) {
+    lv_obj_set_style_pad_left(widgets[slot].button, 7, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(widgets[slot].button, 18, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(widgets[slot].button, 12, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(widgets[slot].button, 9, LV_PART_MAIN);
+  }
+  PageBasicTheme theme;
+  Actions<Slots> actions;
+  {
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     actions.callbacks());
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  actions.callbacks(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &calendar);
+    assert(port.initialize());
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t used = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[used++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    PageRuntimeResourcesGroup<3> resources({&renderer, &calendar, &state});
+    PageStoreRuntime publication(limits, arena, 32768, &resources);
+    assert(publication.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    assert(publication.activate_prepared(0, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(),
+                                         fixture.size));
+    renderer.update_visible();
+    // Two calendar sources, plus the numeric sensor state and its friendly name.
+    assert(calendar.memory().active_sources == 2 && subscriptions.bindings.size() == 4);
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "--") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[1].label), "Date") == 0);
+    assert(!lv_obj_has_flag(widgets[1].button, LV_OBJ_FLAG_CLICKABLE) &&
+           lv_obj_has_flag(widgets[1].icon, LV_OBJ_FLAG_HIDDEN));
+    click(widgets[1].button);
+    click(widgets[2].button);
+    assert(actions.commands == 0 && actions.toggles == 0);
+    subscriptions.send("sensor.date", "", "2026-10-29");
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "29") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[1].label), "October") == 0);
+    assert(std::strcmp(lv_label_get_text(widgets[2].value), "--") == 0);
+    calendar.time(true, 30, 11, 0, 5, true);
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "30") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[2].value), "12:05") == 0);
+    assert(std::strcmp(lv_label_get_text(widgets[2].label), "30 November") == 0);
+    const auto child = fixture.store.card(0)->target;
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    subscriptions.send("sensor.other", "", "2026-12-31");
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "31") == 0);
+    assert(renderer.back());
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[2].label), "31 December") == 0);
+    assert(!lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));
+    ++subscriptions.generation;
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].value), "31") == 0);
+    calendar.time(false, 0, 0, 0, 0, false);
+    renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[2].value), "--") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[1].value), "31") == 0);
+    calendar.time(true, 31, 12, 23, 59, false);
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto cpp = cpp_allocations, reserved = arena.allocations, retained = lv_live_bytes,
+               channels = subscriptions.bindings.size(), descriptors = cache.memory().descriptor_adds;
+    for (int n = 0; n < 1000; ++n) {
+      assert(renderer.open_page(child));
+      calendar.time(true, 31, 12, n % 24, n % 60, (n % 2) != 0);
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(cpp_allocations == cpp && arena.allocations == reserved && lv_live_bytes == retained &&
+             subscriptions.bindings.size() == channels && cache.memory().descriptor_adds == descriptors);
+    }
+    renderer.retire_active();
+    calendar.retire_active();
+    state.retire_active();
+    std::printf("%s: calendar/date-time 1000 cycles, shared hidden history and stable resources\n",
+                limits.device_profile);
+  }
+  assert(arena.live == 0);
+  lv_obj_delete(page);
+}
+
+const lv_font_t* calendar_large_font() {
+  static lv_font_t font = lv_font_montserrat_14;
+  font.line_height = 28;
+  return &font;
+}
+template <size_t Slots>
+void calendar_size_profile(const DeviceUiLimits& limits) {
+  for (const auto* order : {"1", "1w", "1b", "1q"})
+    for (bool disabled : {false, true}) {
+      if (std::strcmp(order, "1q") == 0 && (limits.grid_columns < 3 || (Slots / limits.grid_columns) < 3))
+        continue;
+      Fixture fixture(limits, Fixture::CalendarSize{order, disabled});
+      Arena arena;
+      Subscriptions subscriptions;
+      PageCardDependencies deps;
+      PageCalendarRuntime calendar;
+      PageEntityStateRuntime state(deps, arena, subscriptions, {64, 64, 2048}, &calendar);
+      auto* page = lv_obj_create(lv_screen_active());
+      std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+      for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+      columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+      const auto count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+      for (size_t i = 0; i < count; ++i) rows[i] = LV_GRID_FR(1);
+      rows[count] = LV_GRID_TEMPLATE_LAST;
+      lv_obj_set_size(page, 480, 480);
+      lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+      std::array<PageBasicWidgets, Slots> widgets{};
+      for (auto& w : widgets) {
+        w.button = lv_button_create(page);
+        w.icon = lv_label_create(w.button);
+        w.label = lv_label_create(w.button);
+        w.sensor_container = lv_obj_create(w.button);
+        w.value = lv_label_create(w.sensor_container);
+        w.unit = lv_label_create(w.sensor_container);
+      }
+      PageBasicTheme theme;
+      theme.sensor_font = &lv_font_montserrat_14;
+      theme.large_sensor_font = calendar_large_font();
+      theme.surface = 0x111111;
+      theme.sensor_surface = 0x222222;
+      Actions<Slots> actions;
+      {
+        PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                      actions.callbacks(), nullptr, nullptr, nullptr, nullptr, nullptr,
+                                      nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                      &calendar);
+        assert(port.initialize());
+        PageRendererRuntime<Slots> renderer(limits, arena, port);
+        actions.renderer = &renderer;
+        assert(renderer.prepare(fixture.store) && calendar.prepare(fixture.store) &&
+               state.prepare(fixture.store));
+        calendar.activate_prepared(fixture.store);
+        state.activate_prepared(fixture.store);
+        renderer.activate_prepared(fixture.store);
+        calendar.time(true, 31, 12, 23, 59, false);
+        renderer.update_visible();
+        const auto* expected =
+            !disabled && std::strcmp(order, "1b") == 0 ? calendar_large_font() : theme.sensor_font;
+        assert(lv_obj_get_style_text_font(widgets[0].value, LV_PART_MAIN) == expected);
+        assert(!lv_obj_has_flag(widgets[0].label, LV_OBJ_FLAG_HIDDEN));
+        assert(lv_color_to_u32(lv_obj_get_style_bg_color(widgets[0].button, LV_PART_MAIN)) ==
+               lv_color_to_u32(lv_color_hex(theme.sensor_surface)));
+        renderer.retire_active();
+        calendar.retire_active();
+        state.retire_active();
+      }
+      assert(arena.live == 0);
+      lv_obj_delete(page);
+    }
+}
+
 uint32_t timer_tick = 100;
 int64_t timer_epoch = 0;
 uint32_t timer_now() {
@@ -4475,6 +4720,29 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "calendar") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          calendar_profile<6>(limits);
+          calendar_size_profile<6>(limits);
+          break;
+        case 9:
+          calendar_profile<9>(limits);
+          calendar_size_profile<9>(limits);
+          break;
+        case 15:
+          calendar_profile<15>(limits);
+          calendar_size_profile<15>(limits);
+          break;
+        case 20:
+          calendar_profile<20>(limits);
+          calendar_size_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "cleaning") == 0) {
       switch (limits.slot_count) {
         case 6:
@@ -4810,6 +5078,8 @@ int main() {
         cover_toggle_profile<6>(limits);
         access_profile<6>(limits);
         cleaning_profile<6>(limits);
+        calendar_profile<6>(limits);
+        calendar_size_profile<6>(limits);
         fan_mode_profile<6>(limits);
         fan_status_profile<6>(limits);
         percent_slider_profile<6>(limits);
@@ -4835,6 +5105,8 @@ int main() {
         cover_toggle_profile<9>(limits);
         access_profile<9>(limits);
         cleaning_profile<9>(limits);
+        calendar_profile<9>(limits);
+        calendar_size_profile<9>(limits);
         fan_mode_profile<9>(limits);
         fan_status_profile<9>(limits);
         percent_slider_profile<9>(limits);
@@ -4860,6 +5132,8 @@ int main() {
         cover_toggle_profile<15>(limits);
         access_profile<15>(limits);
         cleaning_profile<15>(limits);
+        calendar_profile<15>(limits);
+        calendar_size_profile<15>(limits);
         fan_mode_profile<15>(limits);
         fan_status_profile<15>(limits);
         percent_slider_profile<15>(limits);
@@ -4885,6 +5159,8 @@ int main() {
         cover_toggle_profile<20>(limits);
         access_profile<20>(limits);
         cleaning_profile<20>(limits);
+        calendar_profile<20>(limits);
+        calendar_size_profile<20>(limits);
         fan_mode_profile<20>(limits);
         fan_status_profile<20>(limits);
         percent_slider_profile<20>(limits);

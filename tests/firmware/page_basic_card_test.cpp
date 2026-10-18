@@ -472,6 +472,57 @@ void cleaning_profile(const DeviceUiLimits& limits) {
   state.activate_prepared(empty_area.store);
   assert(!read_basic_cleaning(definition, {17, 0}, state).service);
 }
+void calendar_profile(const DeviceUiLimits& limits) {
+  for (bool datetime : {false, true}) {
+    Fixture fixture(limits,
+                    std::string(";Ignored;Power;Lightbulb;;;calendar;") + (datetime ? "datetime" : "") + ";");
+    BasicCardDefinition definition;
+    assert(prepare_basic_card(fixture.store, 0, definition));
+    assert(definition.kind == BasicCardKind::CALENDAR && definition.calendar_time == datetime &&
+           definition.label.empty() && definition.unit.empty() && definition.icon.empty() &&
+           definition.large_numbers);
+    assert(basic_folder_child_indicator(fixture.store, 0).empty());
+    Arena arena;
+    Subscriptions subscriptions;
+    PageCardDependencies deps;
+    PageCalendarRuntime calendar;
+    PageEntityStateRuntime graph(deps, arena, subscriptions, {32, 32, 2048}, &calendar);
+    assert(calendar.prepare(fixture.store) && graph.prepare(fixture.store));
+    calendar.activate_prepared(fixture.store);
+    graph.activate_prepared(fixture.store);
+    auto read = [&]() {
+      return read_basic_card(definition, {17, 0}, graph, 2, "°C", nullptr, nullptr, nullptr, nullptr, nullptr,
+                             nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &calendar);
+    };
+    auto value = read();
+    assert(value.numeric && !value.on && std::strcmp(value.number, "--") == 0 && value.label == "Date");
+    subscriptions.send("sensor.date", "", "2026-10-29");
+    value = read();
+    assert(std::strcmp(value.number, datetime ? "--" : "29") == 0 &&
+           value.label == (datetime ? "Date" : "October"));
+    calendar.time(true, 30, 11, 0, 5, true);
+    value = read();
+    assert(std::strcmp(value.number, datetime ? "12:05" : "30") == 0);
+    if (datetime)
+      assert(value.formatted_label && std::strcmp(value.text, "30 November") == 0);
+    else
+      assert(value.label == "November");
+    const auto before = allocations;
+    for (int n = 0; n < 1000; ++n) (void)read();
+    assert(allocations == before);
+    ++subscriptions.generation;
+    (void)graph.revision();
+    assert(std::strcmp(read().number, datetime ? "12:05" : "30") == 0);
+    calendar.time(false, 0, 0, 0, 0, false);
+    value = read();
+    assert(std::strcmp(value.number, datetime ? "--" : "30") == 0);
+    assert(
+        std::strcmp(read_basic_card(definition, {18, 0}, graph, 2, "°C", nullptr, nullptr, nullptr, nullptr,
+                                    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &calendar)
+                        .number,
+                    "--") == 0);
+  }
+}
 void cover_command_profile(const DeviceUiLimits& limits) {
   struct Mode {
     const char* name;
@@ -1594,6 +1645,7 @@ int main() {
     cover_toggle_profile(limits);
     access_profile(limits);
     cleaning_profile(limits);
+    calendar_profile(limits);
     local_relay_profile(limits);
     local_sensor_profile(limits);
     option_select_profile(limits);

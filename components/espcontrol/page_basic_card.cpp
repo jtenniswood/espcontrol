@@ -9,6 +9,7 @@
 #include "bounded_sensor_text.h"
 #include "button_grid_contract_generated.h"
 #include "button_grid_subpage_parser.h"
+#include "calendar_card_text.h"
 #include "climate_state_logic.h"
 #include "media_playlist_match.h"
 #include "page_fan_mode.h"
@@ -249,6 +250,14 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     out.kind=basic_card_is_forecast(store,id)?BasicCardKind::FORECAST:BasicCardKind::WEATHER;
     out.forecast_view=precision=="today"?weather::View::TODAY:precision=="tomorrow"||type=="weather_forecast"?weather::View::TOMORROW:weather::View::DAILY;out.label={};out.sensor={};out.unit={};
     out.icon=out.icon_on="Weather Cloudy";
+  } else if (type == "calendar") {
+    out.kind = BasicCardKind::CALENDAR;
+    out.calendar_time = precision == "datetime";
+    out.sensor = {};
+    out.label = {};
+    out.unit = {};
+    out.icon = out.icon_on = "";
+    out.default_label = "Date";
   } else if (type == "vacuum" || type == "lawn_mower") {
     const bool mower = type == "lawn_mower";
     out.kind = BasicCardKind::CLEANING;
@@ -392,7 +401,13 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
   if(out.kind==BasicCardKind::DURATION&&!copy(cfg_option_value(options,SENSOR_TIME_UNIT_OPTION),out.time_unit))return false;
   if(out.kind!=BasicCardKind::ACTION)out.precision=static_cast<uint8_t>(parse_precision(std::string(precision)));
   out.climate.precision=out.precision;
-  out.large_numbers=(out.kind==BasicCardKind::NUMBER||out.kind==BasicCardKind::DURATION||(out.kind==BasicCardKind::CLIMATE&&out.climate.number!=ClimateCardNumber::ICON)||out.folder_mode==BasicFolderMode::NUMBER||(out.kind==BasicCardKind::ACTION&&out.action_display==BasicActionDisplay::NUMBER))&&!large_numbers_explicitly_disabled(options);
+  out.large_numbers =
+      (out.kind == BasicCardKind::CALENDAR || out.kind == BasicCardKind::NUMBER ||
+       out.kind == BasicCardKind::DURATION ||
+       (out.kind == BasicCardKind::CLIMATE && out.climate.number != ClimateCardNumber::ICON) ||
+       out.folder_mode == BasicFolderMode::NUMBER ||
+       (out.kind == BasicCardKind::ACTION && out.action_display == BasicActionDisplay::NUMBER)) &&
+      !large_numbers_explicitly_disabled(options);
   const auto mode=cfg_option_value(options,"card_active_color");out.theme_active=mode=="theme";
   auto color=cfg_option_value(options,"card_off_color");
   if(!color.empty()){color=normalize_card_color_value(color);if(color.empty())return false;out.off_color=static_cast<uint32_t>(std::strtoul(color.c_str(),nullptr,16));out.custom_off=true;}
@@ -555,15 +570,13 @@ PageAccessCardSnapshot read_basic_access(const BasicCardDefinition& card, Config
                     !trim(primary.value.substr(0, HA_SHORT_STATE_MAX_LEN)).empty());
   return result;
 }
-BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHandle handle,
-                               PageEntityStateRuntime& state, int duration_components,
-                               std::string_view temperature_unit, PageCardTranslate translate,
-                               PageMediaStateRuntime* media_owner, PageLocalSensorRuntime* local,
-                               PageLocalRelayRuntime* relay, PageFanStatusRuntime* fan_status,
-                               PagePercentSliderRuntime* percent_slider,
-                               PageNumberSliderRuntime* number_slider,
-                               PageLightTemperatureRuntime* temperature, PageTimerRuntime* timer,
-                               PageCoverToggleRuntime* cover_toggle, PageAccessStateRuntime* access) {
+BasicCardState read_basic_card(
+    const BasicCardDefinition& card, ConfigurationHandle handle, PageEntityStateRuntime& state,
+    int duration_components, std::string_view temperature_unit, PageCardTranslate translate,
+    PageMediaStateRuntime* media_owner, PageLocalSensorRuntime* local, PageLocalRelayRuntime* relay,
+    PageFanStatusRuntime* fan_status, PagePercentSliderRuntime* percent_slider,
+    PageNumberSliderRuntime* number_slider, PageLightTemperatureRuntime* temperature, PageTimerRuntime* timer,
+    PageCoverToggleRuntime* cover_toggle, PageAccessStateRuntime* access, PageCalendarRuntime* calendar) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
   if (card.kind == BasicCardKind::PERCENT_SLIDER) {
@@ -578,6 +591,19 @@ BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHan
       const auto name = find(state, handle, card.entity, "friendly_name");
       if (name.status == PageEntityStatus::AVAILABLE)
         result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+    }
+    return result;
+  }
+  if (card.kind == BasicCardKind::CALENDAR) {
+    const auto text = format_calendar_card(calendar ? calendar->read(handle) : PageCalendarState{},
+                                           card.calendar_time, translate);
+    result.numeric = true;
+    std::memcpy(result.number, text.value, sizeof(text.value));
+    if (text.static_label)
+      result.label = text.static_label;
+    else {
+      std::memcpy(result.text, text.label, sizeof(text.label));
+      result.formatted_label = true;
     }
     return result;
   }
