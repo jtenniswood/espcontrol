@@ -4,7 +4,8 @@ This #1825 prerequisite supplies one expanded camera/image source for the pooled
 renderer. It uses the [shared tile refresh handoff](pooled-image-refresh-handoff.md)
 and the separate [typed modal image lease](pooled-modal-image-ownership.md).
 Production still selects the existing renderer. [Bounded decoded-cache reuse](pooled-modal-image-cache.md) has model coverage.
-Expanded widgets, application-scene wiring, legacy retirement and device qualification
+The [expanded viewer](pooled-expanded-image-view.md) has native lifecycle coverage.
+Application-scene wiring, legacy retirement and device qualification
 remain required before cutover or any RAM-saving claim.
 
 `PageExpandedImageSource<2/6>` owns one fixed observer/record for the scene. It
