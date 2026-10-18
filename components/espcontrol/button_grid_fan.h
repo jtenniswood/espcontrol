@@ -1,5 +1,7 @@
 #pragma once
 
+#include "fan_control_modal_lifetime.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 // ── Fan card controls ─────────────────────────────────────────────────
@@ -150,6 +152,8 @@ inline FanControlModalUi &fan_control_modal_ui() {
   static FanControlModalUi ui;
   return ui;
 }
+
+inline void fan_control_hide_modal();
 
 inline bool fan_non_speed_card_type(const std::string &type) {
   return type == "fan_switch" ||
@@ -497,24 +501,32 @@ inline void send_fan_action(const std::string &entity_id,
 }
 
 inline void send_fan_switch_action(FanCardCtx *ctx) {
-  if (!ctx) return;
+  if (!fan_modal_action_allowed(ctx)) return;
+  if (fan_modal_managed(ctx) && !fan_power_supported(ctx)) return;
   send_fan_action(ctx->entity_id, ctx->on ? "fan.turn_off" : "fan.turn_on");
 }
 
 inline void send_fan_oscillate_action(FanCardCtx *ctx) {
-  if (!ctx) return;
+  if (!fan_modal_action_allowed(ctx)) return;
+  if (fan_modal_managed(ctx) && !fan_oscillation_supported(ctx)) return;
   send_fan_action(ctx->entity_id, "fan.oscillate", "oscillating", ctx->oscillating ? "false" : "true");
 }
 
 inline void send_fan_direction_action(FanCardCtx *ctx) {
-  if (!ctx) return;
+  if (!fan_modal_action_allowed(ctx)) return;
+  if (fan_modal_managed(ctx) && !fan_direction_supported(ctx)) return;
   const char *next = ctx->direction == "reverse" ? "forward" : "reverse";
   send_fan_action(ctx->entity_id, "fan.set_direction", "direction", next);
 }
 
 inline void send_fan_preset_action(FanCardCtx *ctx, const std::string &mode) {
-  if (!ctx || mode.empty()) return;
-  send_fan_action(ctx->entity_id, "fan.set_preset_mode", "preset_mode", mode.c_str());
+  const std::string selected = mode;
+  if (!fan_modal_action_allowed(ctx) || selected.empty()) return;
+  if (fan_modal_managed(ctx) &&
+      (!(ctx->type == "fan_preset" ? fan_control_supported(ctx) : fan_preset_supported(ctx)) ||
+       std::find(ctx->preset_modes.begin(), ctx->preset_modes.end(), selected) == ctx->preset_modes.end()))
+    return;
+  send_fan_action(ctx->entity_id, "fan.set_preset_mode", "preset_mode", selected.c_str());
 }
 
 inline void fan_control_apply_tab_visibility();
@@ -522,7 +534,8 @@ inline void fan_control_layout_modal(FanCardCtx *ctx);
 inline void fan_control_rebuild_preset_list(FanCardCtx *ctx);
 
 inline void send_fan_percentage_action(FanCardCtx *ctx, int pct) {
-  if (!ctx) return;
+  if (!fan_modal_action_allowed(ctx)) return;
+  if (fan_modal_managed(ctx) && !fan_speed_supported(ctx)) return;
   pct = slider_clamp_pct(pct);
   char buf[8];
   snprintf(buf, sizeof(buf), "%d", pct);
@@ -530,7 +543,8 @@ inline void send_fan_percentage_action(FanCardCtx *ctx, int pct) {
 }
 
 inline void send_fan_step_action(FanCardCtx *ctx, bool increase) {
-  if (!ctx) return;
+  if (!fan_modal_action_allowed(ctx)) return;
+  if (fan_modal_managed(ctx) && !fan_speed_supported(ctx)) return;
   const char *service = increase ? "fan.increase_speed" : "fan.decrease_speed";
   if (ctx->percentage_step_known && ctx->percentage_step > 0) {
     char buf[12];
@@ -582,6 +596,7 @@ inline lv_obj_t *fan_control_create_tab_button(lv_obj_t *parent, const char *ico
     FanControlTab tab = static_cast<FanControlTab>(
       reinterpret_cast<uintptr_t>(lv_event_get_user_data(e)));
     FanControlModalUi &ui = fan_control_modal_ui();
+    if (!fan_modal_action_allowed(ui.active)) return;
     ui.tab = tab;
     fan_control_ensure_visible_tab(ui.active);
     fan_control_apply_tab_visibility();
@@ -632,14 +647,14 @@ inline void fan_control_style_binary_button(lv_obj_t *btn, bool active,
 
 inline void fan_control_apply_power(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
-  if (!ctx || ui.active != ctx) return;
+  if (!fan_modal_context_current(ctx) || ui.active != ctx) return;
   fan_control_style_binary_button(ui.power_on_btn, ctx->on, ctx->on_color, theme_display_color(current_theme().surface_primary));
   fan_control_style_binary_button(ui.power_off_btn, !ctx->on, theme_display_color(current_theme().surface_primary), theme_display_color(current_theme().surface_primary), true);
 }
 
 inline void fan_control_apply_oscillation(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
-  if (!ctx || ui.active != ctx) return;
+  if (!fan_modal_context_current(ctx) || ui.active != ctx) return;
   fan_control_style_binary_button(ui.oscillation_on_btn, ctx->oscillating, ctx->on_color, theme_display_color(current_theme().surface_primary));
   fan_control_style_binary_button(
     ui.oscillation_off_btn, !ctx->oscillating, theme_display_color(current_theme().surface_primary), theme_display_color(current_theme().surface_primary), true);
@@ -647,7 +662,7 @@ inline void fan_control_apply_oscillation(FanCardCtx *ctx) {
 
 inline void fan_control_apply_direction(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
-  if (!ctx || ui.active != ctx) return;
+  if (!fan_modal_context_current(ctx) || ui.active != ctx) return;
   bool reverse = ctx->direction == "reverse";
   fan_control_style_binary_button(ui.direction_forward_btn, !reverse, ctx->on_color, theme_display_color(current_theme().surface_primary));
   fan_control_style_binary_button(ui.direction_reverse_btn, reverse, ctx->on_color, theme_display_color(current_theme().surface_primary));
@@ -655,14 +670,14 @@ inline void fan_control_apply_direction(FanCardCtx *ctx) {
 
 inline void fan_control_apply_light(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
-  if (!ctx || ui.active != ctx) return;
+  if (!fan_modal_context_current(ctx) || ui.active != ctx) return;
   fan_control_style_binary_button(ui.light_on_btn, ctx->light_on, ctx->on_color, theme_display_color(current_theme().surface_primary));
   fan_control_style_binary_button(ui.light_off_btn, !ctx->light_on, theme_display_color(current_theme().surface_primary), theme_display_color(current_theme().surface_primary), true);
 }
 
 inline void fan_control_set_speed_value(FanCardCtx *ctx, int pct) {
   FanControlModalUi &ui = fan_control_modal_ui();
-  if (!ctx || ui.active != ctx) return;
+  if (!fan_modal_context_current(ctx) || ui.active != ctx) return;
   if (ctx->dragging_speed) return;
   pct = slider_clamp_pct(pct);
   if (ui.speed_slider) {
@@ -683,7 +698,7 @@ inline std::string fan_control_card_title(FanCardCtx *ctx) {
 }
 
 inline void fan_control_refresh_card(FanCardCtx *ctx) {
-  if (!ctx) return;
+  if (!fan_modal_context_current(ctx) || (!ctx->btn && !ctx->status_label)) return;
   fan_apply_card_visual(ctx);
   transient_status_label_set_steady(ctx->status_label, fan_control_card_title(ctx));
 }
@@ -693,46 +708,54 @@ inline void fan_control_refresh_card(FanCardCtx *ctx) {
 inline void fan_control_toggle_modal_power() {
   FanControlModalUi &ui = fan_control_modal_ui();
   FanCardCtx *ctx = ui.active;
-  if (!ctx || !ctx->available) return;
-  ctx->on = !ctx->on;
+  if (!fan_modal_action_allowed(ctx) || !fan_power_supported(ctx)) return;
+  const bool target = !ctx->on;
+  ctx->on = target;
   fan_control_refresh_card(ctx);
   fan_control_set_speed_value(ctx, ctx->on ? ctx->percentage : 0);
   fan_control_apply_power(ctx);
-  send_fan_action(ctx->entity_id, ctx->on ? "fan.turn_on" : "fan.turn_off");
+  if (!fan_modal_action_allowed(ctx) || !fan_power_supported(ctx)) return;
+  send_fan_action(ctx->entity_id, target ? "fan.turn_on" : "fan.turn_off");
 }
 
 inline void fan_control_toggle_modal_oscillation() {
   FanControlModalUi &ui = fan_control_modal_ui();
   FanCardCtx *ctx = ui.active;
-  if (!ctx || !ctx->available) return;
-  ctx->oscillating = !ctx->oscillating;
+  if (!fan_modal_action_allowed(ctx) || !fan_oscillation_supported(ctx)) return;
+  const bool target = !ctx->oscillating;
+  ctx->oscillating = target;
   fan_control_apply_oscillation(ctx);
+  if (!fan_modal_action_allowed(ctx) || !fan_oscillation_supported(ctx)) return;
   send_fan_action(
-    ctx->entity_id, "fan.oscillate", "oscillating", ctx->oscillating ? "true" : "false");
+    ctx->entity_id, "fan.oscillate", "oscillating", target ? "true" : "false");
 }
 
 inline void fan_control_toggle_modal_direction() {
   FanControlModalUi &ui = fan_control_modal_ui();
   FanCardCtx *ctx = ui.active;
-  if (!ctx || !ctx->available) return;
-  ctx->direction = ctx->direction == "reverse" ? "forward" : "reverse";
+  if (!fan_modal_action_allowed(ctx) || !fan_direction_supported(ctx)) return;
+  const char *target = ctx->direction == "reverse" ? "forward" : "reverse";
+  ctx->direction = target;
   fan_control_apply_direction(ctx);
-  send_fan_action(ctx->entity_id, "fan.set_direction", "direction", ctx->direction.c_str());
+  if (!fan_modal_action_allowed(ctx) || !fan_direction_supported(ctx)) return;
+  send_fan_action(ctx->entity_id, "fan.set_direction", "direction", target);
 }
 
 inline void fan_control_toggle_modal_light() {
   FanControlModalUi &ui = fan_control_modal_ui();
   FanCardCtx *ctx = ui.active;
-  if (!ctx || !fan_light_supported(ctx)) return;
-  ctx->light_on = !ctx->light_on;
+  if (!fan_modal_action_allowed(ctx) || !fan_light_supported(ctx)) return;
+  const bool target = !ctx->light_on;
+  ctx->light_on = target;
   fan_control_apply_light(ctx);
-  if (ctx->light_on) send_turn_on_action(ctx->light_entity_id);
+  if (!fan_modal_action_allowed(ctx) || !fan_light_supported(ctx)) return;
+  if (target) send_turn_on_action(ctx->light_entity_id);
   else send_turn_off_action(ctx->light_entity_id);
 }
 
 inline void fan_control_refresh_modal(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
-  if (!ctx || ui.active != ctx || !ui.panel) return;
+  if (!fan_modal_context_current(ctx) || ui.active != ctx || !ui.panel) return;
   fan_control_ensure_visible_tab(ctx);
   fan_control_set_speed_value(ctx, ctx->on ? ctx->percentage : 0);
   fan_control_apply_power(ctx);
@@ -747,7 +770,7 @@ inline void fan_control_refresh_modal(FanCardCtx *ctx) {
 inline void fan_control_apply_tab_visibility() {
   FanControlModalUi &ui = fan_control_modal_ui();
   FanCardCtx *ctx = ui.active;
-  if (!ctx) return;
+  if (!fan_modal_context_current(ctx)) return;
   FanControlVisibleTabs visible_tabs = fan_control_visible_tabs(ctx);
   if (visible_tabs.count > 0 && !visible_tabs.contains(ui.tab)) ui.tab = visible_tabs.tabs[0];
   bool show_tab_bar = visible_tabs.count > 1;
@@ -846,7 +869,7 @@ inline void fan_control_layout_binary_group(lv_obj_t *group, lv_obj_t *first_btn
 
 inline void fan_control_layout_modal(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
-  if (!ctx || !ui.panel) return;
+  if (!fan_modal_context_current(ctx) || !ui.panel) return;
   fan_control_ensure_visible_tab(ctx);
   FanControlVisibleTabs visible_tabs = fan_control_visible_tabs(ctx);
   ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
@@ -927,7 +950,7 @@ inline void fan_control_layout_modal(FanCardCtx *ctx) {
 
 inline void fan_control_rebuild_preset_list(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
-  if (!ctx || ui.active != ctx || !ui.preset_list) return;
+  if (!fan_modal_context_current(ctx) || ui.active != ctx || !ui.preset_list) return;
   lv_obj_clean(ui.preset_list);
   int count = ctx->preset_modes.size() > FAN_PRESET_MAX_OPTIONS
     ? FAN_PRESET_MAX_OPTIONS
@@ -959,17 +982,20 @@ inline void fan_control_rebuild_preset_list(FanCardCtx *ctx) {
     if (ctx->label_font) lv_obj_set_style_text_font(empty, ctx->label_font, LV_PART_MAIN);
     ui.preset_empty_lbl = empty;
   }
+  if (!fan_modal_widgets_ready(ctx, ui.overlay)) fan_control_hide_modal();
 }
 
 inline void fan_control_hide_modal() {
   FanControlModalUi &ui = fan_control_modal_ui();
+  FanCardCtx *closing = ui.active;
   lv_obj_t *overlay = ui.overlay;
   ui = FanControlModalUi();
   control_modal_delete_overlay(ControlModalKind::FAN_CONTROL, overlay);
+  fan_modal_notify_closed(closing);
 }
 
 inline bool fan_control_can_open_modal(FanCardCtx *ctx) {
-  return ctx && (ctx->available || fan_light_supported(ctx)) &&
+  return fan_modal_context_current(ctx) && (ctx->available || fan_light_supported(ctx)) &&
          fan_control_visible_tabs(ctx).count > 0;
 }
 
@@ -1045,11 +1071,11 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
   ui.speed_plus_btn = fan_control_create_icon_button(ui.speed_group, find_icon("Plus"), ctx->icon_font);
   lv_obj_add_event_cb(ui.speed_slider, [](lv_event_t *e) {
     FanControlModalUi &ui = fan_control_modal_ui();
-    if (ui.active) ui.active->dragging_speed = true;
+    if (fan_modal_action_allowed(ui.active)) ui.active->dragging_speed = true;
   }, LV_EVENT_PRESSED, nullptr);
   lv_obj_add_event_cb(ui.speed_slider, [](lv_event_t *e) {
     FanControlModalUi &ui = fan_control_modal_ui();
-    if (!ui.active || ui.active->updating_speed) return;
+    if (!fan_modal_action_allowed(ui.active) || ui.active->updating_speed) return;
     ui.active->dragging_speed = true;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
     int pct = lv_slider_get_value(slider);
@@ -1062,7 +1088,7 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.speed_slider, [](lv_event_t *e) {
     FanControlModalUi &ui = fan_control_modal_ui();
-    if (!ui.active) return;
+    if (!fan_modal_action_allowed(ui.active)) return;
     ui.active->dragging_speed = false;
     if (!ui.active->available) return;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
@@ -1075,33 +1101,38 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
   }, LV_EVENT_RELEASED, nullptr);
   lv_obj_add_event_cb(ui.speed_slider, [](lv_event_t *e) {
     FanControlModalUi &ui = fan_control_modal_ui();
-    if (ui.active) ui.active->dragging_speed = false;
+    if (fan_modal_context_current(ui.active)) ui.active->dragging_speed = false;
   }, LV_EVENT_PRESS_LOST, nullptr);
   if (ui.speed_minus_btn) lv_obj_add_event_cb(ui.speed_minus_btn, [](lv_event_t *e) {
     (void) e;
     FanControlModalUi &ui = fan_control_modal_ui();
-    if (ui.active && ui.active->available) send_fan_step_action(ui.active, false);
+    if (fan_modal_action_allowed(ui.active) && fan_speed_supported(ui.active)) send_fan_step_action(ui.active, false);
   }, LV_EVENT_CLICKED, nullptr);
   if (ui.speed_plus_btn) lv_obj_add_event_cb(ui.speed_plus_btn, [](lv_event_t *e) {
     (void) e;
     FanControlModalUi &ui = fan_control_modal_ui();
-    if (ui.active && ui.active->available) send_fan_step_action(ui.active, true);
+    if (fan_modal_action_allowed(ui.active) && fan_speed_supported(ui.active)) send_fan_step_action(ui.active, true);
   }, LV_EVENT_CLICKED, nullptr);
 
   ui.preset_list = control_modal_create_scroll_list(
     ui.panel, shell.content_w, shell.layout.panel_h - shell.layout.inset * 2,
     control_modal_scaled_px(12, shell.layout.short_side));
   fan_control_rebuild_preset_list(ctx);
+  if (!fan_modal_context_current(ctx) || ui.active != ctx) return;
   fan_control_apply_tab_visibility();
   fan_control_layout_modal(ctx);
   fan_control_set_speed_value(ctx, ctx->on ? ctx->percentage : 0);
   lv_obj_move_foreground(ui.overlay);
+  if (!fan_modal_widgets_ready(ctx, ui.overlay)) fan_control_hide_modal();
 }
 
 inline void fan_preset_close() {
   FanPresetUi &ui = fan_preset_ui();
-  control_modal_delete_overlay(ControlModalKind::FAN_PRESET, ui.overlay);
+  FanCardCtx* closing = ui.active;
+  lv_obj_t* overlay = ui.overlay;
   ui = FanPresetUi();
+  control_modal_delete_overlay(ControlModalKind::FAN_PRESET, overlay);
+  fan_modal_notify_closed(closing);
 }
 
 inline void fan_preset_close_if_unsupported(FanCardCtx *ctx) {
@@ -1109,37 +1140,15 @@ inline void fan_preset_close_if_unsupported(FanCardCtx *ctx) {
   if (ui.active == ctx && !fan_control_supported(ctx)) fan_preset_close();
 }
 
-inline void fan_preset_open(FanCardCtx *ctx) {
-  if (!fan_control_supported(ctx)) return;
-  ControlModalShell shell = control_modal_open_shell(
-    ControlModalKind::FAN_PRESET, ctx->btn, ctx->width_compensation_percent,
-    ctx->icon_font, fan_preset_close);
-  FanPresetUi &ui = fan_preset_ui();
-  ui.active = ctx;
-  ui.overlay = shell.overlay;
-  ui.panel = shell.panel;
-  ui.close_btn = shell.close_btn;
-
-  ControlModalLayout &layout = shell.layout;
-  lv_coord_t content_w = shell.content_w;
-  lv_coord_t gap = control_modal_scaled_px(12, layout.short_side);
-  if (gap < 8) gap = 8;
+inline void fan_preset_rebuild_list(FanCardCtx* ctx) {
+  FanPresetUi& ui = fan_preset_ui();
+  if (!fan_modal_context_current(ctx) || ui.active != ctx || !ui.list) return;
+  lv_obj_clean(ui.list);
+  ui.empty_lbl = nullptr;
+  ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
   lv_coord_t row_h = control_modal_scaled_px(48, layout.short_side);
   if (row_h < 34) row_h = 34;
   lv_coord_t row_radius = row_h / 3;
-  lv_coord_t title_y = layout.inset + layout.back_size / 2;
-  lv_coord_t list_y = layout.inset + layout.back_size + gap;
-  lv_coord_t list_h = layout.panel_h - list_y - layout.inset;
-  if (list_h < row_h) list_h = row_h;
-
-  ui.title_lbl = control_modal_create_title(
-    ui.panel, espcontrol_i18n("Preset"), content_w - layout.back_size - gap,
-    ctx->label_font, ctx->width_compensation_percent);
-  lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, title_y - layout.back_size / 2);
-
-  ui.list = control_modal_create_scroll_list(ui.panel, content_w, list_h, gap);
-  lv_obj_align(ui.list, LV_ALIGN_TOP_LEFT, layout.inset, list_y);
-
   int count = ctx->preset_modes.size() > FAN_PRESET_MAX_OPTIONS
     ? FAN_PRESET_MAX_OPTIONS
     : static_cast<int>(ctx->preset_modes.size());
@@ -1155,8 +1164,14 @@ inline void fan_preset_open(FanCardCtx *ctx) {
     ui.option_clicks[i].mode = mode;
     lv_obj_add_event_cb(btn, [](lv_event_t *e) {
       FanPresetClick *click = (FanPresetClick *)lv_event_get_user_data(e);
-      if (click && click->ctx) send_fan_preset_action(click->ctx, click->mode);
-      fan_preset_close();
+      if (!click || !fan_modal_action_allowed(click->ctx)) return;
+      FanCardCtx* context = click->ctx;
+      const auto identity = fan_modal_context_identity(context);
+      send_fan_preset_action(context, click->mode);
+      // A service callback may retire this opening or select a replacement.
+      if (fan_preset_ui().active == context && fan_modal_context_current(context) &&
+          fan_modal_context_identity(context) == identity)
+        fan_preset_close();
     }, LV_EVENT_CLICKED, &ui.option_clicks[i]);
   }
 
@@ -1170,7 +1185,43 @@ inline void fan_preset_open(FanCardCtx *ctx) {
     if (ctx->label_font) lv_obj_set_style_text_font(ui.empty_lbl, ctx->label_font, LV_PART_MAIN);
   }
 
+  if (!fan_modal_widgets_ready(ctx, ui.overlay)) fan_preset_close();
+}
+
+inline void fan_preset_open(FanCardCtx* ctx) {
+  if (!fan_modal_context_current(ctx) || !fan_control_supported(ctx)) return;
+  ControlModalShell shell =
+      control_modal_open_shell(ControlModalKind::FAN_PRESET, ctx->btn, ctx->width_compensation_percent,
+                               ctx->icon_font, fan_preset_close);
+  FanPresetUi& ui = fan_preset_ui();
+  ui.active = ctx;
+  ui.overlay = shell.overlay;
+  ui.panel = shell.panel;
+  ui.close_btn = shell.close_btn;
+
+  ControlModalLayout& layout = shell.layout;
+  lv_coord_t content_w = shell.content_w;
+  lv_coord_t gap = control_modal_scaled_px(12, layout.short_side);
+  if (gap < 8) gap = 8;
+  lv_coord_t row_h = control_modal_scaled_px(48, layout.short_side);
+  if (row_h < 34) row_h = 34;
+  lv_coord_t title_y = layout.inset + layout.back_size / 2;
+  lv_coord_t list_y = layout.inset + layout.back_size + gap;
+  lv_coord_t list_h = layout.panel_h - list_y - layout.inset;
+  if (list_h < row_h) list_h = row_h;
+
+  ui.title_lbl =
+      control_modal_create_title(ui.panel, espcontrol_i18n("Preset"), content_w - layout.back_size - gap,
+                                 ctx->label_font, ctx->width_compensation_percent);
+  lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, title_y - layout.back_size / 2);
+
+  ui.list = control_modal_create_scroll_list(ui.panel, content_w, list_h, gap);
+  lv_obj_align(ui.list, LV_ALIGN_TOP_LEFT, layout.inset, list_y);
+
+  fan_preset_rebuild_list(ctx);
+  if (!fan_modal_context_current(ctx) || ui.active != ctx) return;
   lv_obj_move_foreground(ui.overlay);
+  if (!fan_modal_widgets_ready(ctx, ui.overlay)) fan_preset_close();
 }
 
 inline void fan_close_modals_for_context(FanCardCtx *ctx) {
@@ -1192,8 +1243,8 @@ inline FanCardCtx *create_fan_card_context(
     uint32_t on_color, uint32_t off_color, uint32_t tertiary_color,
     const lv_font_t *label_font,
     const lv_font_t *icon_font,
-    int width_compensation_percent) {
-  FanCardCtx *ctx = new FanCardCtx();
+    int width_compensation_percent, FanCardCtx *storage = nullptr) {
+  FanCardCtx *ctx = storage ? storage : new FanCardCtx();
   ctx->type = p.type;
   ctx->entity_id = p.entity;
   ctx->light_entity_id = cfg_option_value(p.options, FAN_LIGHT_ENTITY_OPTION);
@@ -1211,8 +1262,8 @@ inline FanCardCtx *create_fan_card_context(
   ctx->label_font = label_font;
   ctx->icon_font = icon_font;
   ctx->width_compensation_percent = width_compensation_percent;
-  ctx->status_label = create_transient_status_label(slot.text_lbl, ctx->label);
-  lv_obj_set_user_data(slot.btn, ctx);
+  ctx->status_label = slot.text_lbl ? create_transient_status_label(slot.text_lbl, ctx->label) : nullptr;
+  if (slot.btn) lv_obj_set_user_data(slot.btn, ctx);
   if (ctx->type == "fan_control") fan_control_refresh_card(ctx);
   else fan_refresh_card(ctx);
   return ctx;
@@ -1232,6 +1283,7 @@ inline void subscribe_fan_card_state(FanCardCtx *ctx) {
     ctx->entity_id,
     std::function<void(esphome::StringRef)>(
       [ctx, refresh](esphome::StringRef state) {
+        if (!fan_modal_context_current(ctx)) return;
         ctx->state = fan_lower(fan_trim(string_ref_limited(state, HA_SHORT_STATE_MAX_LEN)));
         ctx->available = !ha_state_unavailable_ref(state);
         ctx->on = ctx->available && is_entity_on_ref(state);
@@ -1243,6 +1295,7 @@ inline void subscribe_fan_card_state(FanCardCtx *ctx) {
     ctx->entity_id, std::string("friendly_name"),
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef value) {
+        if (!fan_modal_context_current(ctx)) return;
         ctx->friendly_name = string_ref_limited(value, HA_FRIENDLY_NAME_MAX_LEN);
         if (!ctx->has_custom_label) {
           transient_status_label_set_steady(ctx->status_label, ctx->friendly_name);
@@ -1254,6 +1307,7 @@ inline void subscribe_fan_card_state(FanCardCtx *ctx) {
     ctx->entity_id, std::string("supported_features"),
     std::function<void(esphome::StringRef)>(
       [ctx, refresh](esphome::StringRef value) {
+        if (!fan_modal_context_current(ctx)) return;
         std::string text = string_ref_limited(value, HA_SHORT_STATE_MAX_LEN);
         if (text.empty() || text == "unknown" || text == "unavailable") {
           ctx->supported_features_known = false;
@@ -1272,6 +1326,7 @@ inline void subscribe_fan_card_state(FanCardCtx *ctx) {
     ctx->entity_id, std::string("percentage"),
     std::function<void(esphome::StringRef)>(
       [ctx, refresh](esphome::StringRef value) {
+        if (!fan_modal_context_current(ctx)) return;
         int pct = 0;
         if (slider_parse_pct(value, pct)) {
           ctx->percentage = pct;
@@ -1285,6 +1340,7 @@ inline void subscribe_fan_card_state(FanCardCtx *ctx) {
     ctx->entity_id, std::string("percentage_step"),
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef value) {
+        if (!fan_modal_context_current(ctx)) return;
         int pct = 0;
         if (slider_parse_pct(value, pct) && pct > 0) {
           ctx->percentage_step = pct;
@@ -1296,6 +1352,7 @@ inline void subscribe_fan_card_state(FanCardCtx *ctx) {
     ctx->entity_id, std::string("oscillating"),
     std::function<void(esphome::StringRef)>(
       [ctx, refresh](esphome::StringRef value) {
+        if (!fan_modal_context_current(ctx)) return;
         bool parsed = false;
         std::string text = string_ref_limited(value, HA_SHORT_STATE_MAX_LEN);
         ctx->oscillation_known = fan_parse_bool_value(text, parsed);
@@ -1307,6 +1364,7 @@ inline void subscribe_fan_card_state(FanCardCtx *ctx) {
     ctx->entity_id, std::string("direction"),
     std::function<void(esphome::StringRef)>(
       [ctx, refresh](esphome::StringRef value) {
+        if (!fan_modal_context_current(ctx)) return;
         ctx->direction = fan_lower(fan_trim(string_ref_limited(value, HA_SHORT_STATE_MAX_LEN)));
         ctx->direction_known = ctx->direction == "forward" || ctx->direction == "reverse";
         refresh();
@@ -1316,6 +1374,7 @@ inline void subscribe_fan_card_state(FanCardCtx *ctx) {
     ctx->entity_id, std::string("preset_mode"),
     std::function<void(esphome::StringRef)>(
       [ctx, refresh](esphome::StringRef value) {
+        if (!fan_modal_context_current(ctx)) return;
         ctx->preset_mode = fan_lower(fan_trim(string_ref_limited(value, HA_SHORT_STATE_MAX_LEN)));
         refresh();
       })
@@ -1324,6 +1383,7 @@ inline void subscribe_fan_card_state(FanCardCtx *ctx) {
     ctx->entity_id, std::string("preset_modes"),
     std::function<void(esphome::StringRef)>(
       [ctx, refresh](esphome::StringRef value) {
+        if (!fan_modal_context_current(ctx)) return;
         ctx->preset_modes = fan_parse_options(value);
         refresh();
         fan_preset_close_if_unsupported(ctx);
@@ -1334,6 +1394,7 @@ inline void subscribe_fan_card_state(FanCardCtx *ctx) {
       ctx->light_entity_id,
       std::function<void(esphome::StringRef)>(
         [ctx, refresh](esphome::StringRef state) {
+        if (!fan_modal_context_current(ctx)) return;
           ctx->light_available = !ha_state_unavailable_ref(state);
           ctx->light_on = ctx->light_available && is_entity_on_ref(state);
           refresh();
