@@ -60,6 +60,30 @@ struct Fixture {
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
   }
+  struct LocalRelays {};
+  Fixture(const DeviceUiLimits& limits, LocalRelays) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {
+        ";Relays;Auto;Auto;indicator;;subpage;;", "relay_one;;Auto;Lightbulb;switch;;internal;;",
+        "relay_one;Pulse;Auto;Home;push;;internal;;", ";;;;sensor.temp;°C;sensor;1;"};
+    for (size_t i = 0; i < 4; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i].data()),
+                                  cards[i].size()) == PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1,2|I,relay_one,,Auto,Lightbulb,switch,,,|I,relay_one,Pulse,Auto,Home,push,,,";
+    assert(writer.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = "1,2,3,4";
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                 reinterpret_cast<const uint8_t*>(order.data()),
+                                 order.size()) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   struct LocalSensors {};
   Fixture(const DeviceUiLimits& limits, LocalSensors) {
     PanelConfigWriter writer(document.data(), document.size());
@@ -560,6 +584,138 @@ template<size_t Slots>void control_profile(const DeviceUiLimits &limits) {
     for(size_t n=0;n<1000;++n){assert(renderer.open_page(child));renderer.update_visible();lv_obj_update_layout(page);assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);assert(cpp_allocations==cpp&&arena.allocations==reservations&&cache.memory().descriptor_adds==descriptors&&subscriptions.bindings.size()==channels&&lv_live_bytes==retained);}
     ++subscriptions.generation;renderer.update_visible();lv_obj_update_layout(page);assert(lv_obj_has_flag(widgets[1].fill,LV_OBJ_FLAG_HIDDEN)&&!lv_obj_has_state(widgets[2].button,LV_STATE_CHECKED));assert(!lv_obj_has_state(widgets[3].button,LV_STATE_CHECKED));std::printf("%s: light/cover/fan controls 1000 cycles, fixed retained resources, %zu native LVGL bytes including fill bank\n",limits.device_profile,retained);renderer.retire_active();state.retire_active();
   }assert(arena.live==0);lv_obj_delete(page);
+}
+
+template <size_t Slots>
+void local_relay_profile(const DeviceUiLimits& limits) {
+  struct Provider : PageLocalRelayProvider {
+    PageLocalRelaySnapshot read(std::string_view) const override {
+      return {on, "Hall Relay"};
+    }
+    bool on{false};
+  } provider;
+  Fixture fixture(limits, Fixture::LocalRelays{});
+  Arena arena;
+  Subscriptions transport;
+  PageCardDependencies dependencies;
+  PageEntityStateRuntime ha(dependencies, arena, transport, {128, 128, 8192});
+  PageLocalRelayRuntime relays(arena, provider);
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+  }
+  PageBasicTheme theme;
+  Actions<Slots> actions;
+  {
+    PageBasicLvglPort<Slots> missing(arena, ha, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     actions.callbacks());
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  {
+    auto callbacks = actions.callbacks();
+    callbacks.toggle = nullptr;
+    PageBasicLvglPort<Slots> missing(arena, ha, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     callbacks, nullptr, nullptr, nullptr, nullptr, &relays);
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, ha, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  actions.callbacks(), nullptr, nullptr, nullptr, nullptr, &relays);
+    assert(port.initialize());
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t index = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[index++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    assert(renderer.prepare(fixture.store) && ha.prepare(fixture.store) && relays.prepare(fixture.store));
+    ha.activate_prepared(fixture.store);
+    relays.activate_prepared(fixture.store);
+    renderer.activate_prepared(fixture.store);
+    assert(relays.install(true));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Hall Relay") == 0 &&
+           std::strcmp(lv_label_get_text(widgets[2].label), "Pulse") == 0);
+    provider.on = true;
+    page_local_relay_feed().notify("relay_one", true);
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED) &&
+           lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED) &&
+           !lv_obj_has_state(widgets[2].button, LV_STATE_CHECKED));
+    assert(std::strcmp(lv_label_get_text(widgets[1].icon), "ON") == 0);
+    click(widgets[1].button);
+    assert(actions.toggles == 1 && renderer.valid(actions.last) &&
+           std::strcmp(actions.entity, "relay_one") == 0);
+    click(widgets[2].button);
+    assert(actions.toggles == 2 && renderer.valid(actions.last) &&
+           fixture.store.field(*fixture.store.card(actions.last.card), CardField::SENSOR) == "push");
+    const auto child = fixture.store.card(0)->target;
+    const auto old = renderer.binding(1);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.toggles == 2 && !renderer.valid(old));
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Hall Relay") == 0 &&
+           lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED) &&
+           !lv_obj_has_state(widgets[2].button, LV_STATE_CHECKED));
+    provider.on = false;
+    page_local_relay_feed().notify("relay_one", false);
+    renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED));
+    assert(renderer.back());
+    renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));
+    ++transport.generation;
+    provider.on = true;
+    page_local_relay_feed().notify("relay_one", true);
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED));
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto cpp = cpp_allocations, reservations = arena.allocations, retained = lv_live_bytes,
+               channels = transport.bindings.size(), descriptors = cache.memory().descriptor_adds;
+    for (int n = 0; n < 1000; ++n) {
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(cpp_allocations == cpp && arena.allocations == reservations && lv_live_bytes == retained &&
+             transport.bindings.size() == channels && cache.memory().descriptor_adds == descriptors &&
+             relays.memory().active_sources == 1);
+    }
+    renderer.retire_active();
+    ha.retire_active();
+    relays.retire_active();
+    std::printf(
+        "%s: local relays 1000 cycles, pulse/toggle isolation, folder indicators and stable resources\n",
+        limits.device_profile);
+  }
+  assert(arena.live == 0);
+  lv_obj_delete(page);
 }
 
 template <size_t Slots>
@@ -2233,19 +2389,42 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "local_relays") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          local_relay_profile<6>(limits);
+          break;
+        case 9:
+          local_relay_profile<9>(limits);
+          break;
+        case 15:
+          local_relay_profile<15>(limits);
+          break;
+        case 20:
+          local_relay_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "local_sensors") == 0) {
       switch (limits.slot_count) {
         case 6:
           local_sensor_profile<6>(limits);
+          local_relay_profile<6>(limits);
           break;
         case 9:
           local_sensor_profile<9>(limits);
+          local_relay_profile<9>(limits);
           break;
         case 15:
           local_sensor_profile<15>(limits);
+          local_relay_profile<15>(limits);
           break;
         case 20:
           local_sensor_profile<20>(limits);
+          local_relay_profile<20>(limits);
           break;
         default:
           assert(false);
@@ -2257,18 +2436,22 @@ int main() {
         case 6:
           option_select_profile<6>(limits);
           local_sensor_profile<6>(limits);
+          local_relay_profile<6>(limits);
           break;
         case 9:
           option_select_profile<9>(limits);
           local_sensor_profile<9>(limits);
+          local_relay_profile<9>(limits);
           break;
         case 15:
           option_select_profile<15>(limits);
           local_sensor_profile<15>(limits);
+          local_relay_profile<15>(limits);
           break;
         case 20:
           option_select_profile<20>(limits);
           local_sensor_profile<20>(limits);
+          local_relay_profile<20>(limits);
           break;
         default:
           assert(false);
@@ -2281,21 +2464,25 @@ int main() {
           fan_mode_profile<6>(limits);
           option_select_profile<6>(limits);
           local_sensor_profile<6>(limits);
+          local_relay_profile<6>(limits);
           break;
         case 9:
           fan_mode_profile<9>(limits);
           option_select_profile<9>(limits);
           local_sensor_profile<9>(limits);
+          local_relay_profile<9>(limits);
           break;
         case 15:
           fan_mode_profile<15>(limits);
           option_select_profile<15>(limits);
           local_sensor_profile<15>(limits);
+          local_relay_profile<15>(limits);
           break;
         case 20:
           fan_mode_profile<20>(limits);
           option_select_profile<20>(limits);
           local_sensor_profile<20>(limits);
+          local_relay_profile<20>(limits);
           break;
         default:
           assert(false);
@@ -2330,6 +2517,7 @@ int main() {
         fan_mode_profile<6>(limits);
         option_select_profile<6>(limits);
         local_sensor_profile<6>(limits);
+        local_relay_profile<6>(limits);
         weather_profile<6>(limits);
         forecast_profile<6>(limits);
         media_action_profile<6>(limits);
@@ -2345,6 +2533,7 @@ int main() {
         fan_mode_profile<9>(limits);
         option_select_profile<9>(limits);
         local_sensor_profile<9>(limits);
+        local_relay_profile<9>(limits);
         weather_profile<9>(limits);
         forecast_profile<9>(limits);
         media_action_profile<9>(limits);
@@ -2360,6 +2549,7 @@ int main() {
         fan_mode_profile<15>(limits);
         option_select_profile<15>(limits);
         local_sensor_profile<15>(limits);
+        local_relay_profile<15>(limits);
         weather_profile<15>(limits);
         forecast_profile<15>(limits);
         media_action_profile<15>(limits);
@@ -2375,6 +2565,7 @@ int main() {
         fan_mode_profile<20>(limits);
         option_select_profile<20>(limits);
         local_sensor_profile<20>(limits);
+        local_relay_profile<20>(limits);
         weather_profile<20>(limits);
         forecast_profile<20>(limits);
         media_action_profile<20>(limits);
