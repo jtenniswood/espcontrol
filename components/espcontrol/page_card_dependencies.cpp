@@ -123,6 +123,7 @@ class CardEmitter {
       case Driver::STATUS_ENTITY:
         return pair(config.sensor) && friendly(config,config.sensor);
       case Driver::FAN:
+        return context.runtime.type == Type::FAN_SPEED ? slider(config, false) : fan(config);
       case Driver::FAN_CONTROL:
         return fan(config);
       case Driver::ACCESS: {

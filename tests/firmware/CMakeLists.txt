@@ -141,6 +141,22 @@ target_compile_options(page_fan_mode_test PRIVATE -Wall -Wextra -Werror -UNDEBUG
 target_include_directories(page_fan_mode_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_fan_mode_test COMMAND page_fan_mode_test)
 
+set(PAGE_PERCENT_SLIDER_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_percent_slider_runtime_test.cpp)
+add_custom_command(OUTPUT ${PAGE_PERCENT_SLIDER_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_percent_slider_test.py
+    --output ${PAGE_PERCENT_SLIDER_SOURCE}
+  DEPENDS generate_page_percent_slider_test.py page_percent_slider_runtime_test.cpp.in
+    ../../components/espcontrol/button_grid_sliders.h
+  VERBATIM)
+add_executable(page_percent_slider_runtime_test ${PAGE_PERCENT_SLIDER_SOURCE}
+  ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_percent_slider_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_percent_slider_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_percent_slider_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_percent_slider_runtime_test COMMAND page_percent_slider_runtime_test)
+
 set(PAGE_FAN_STATUS_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_fan_status_runtime_test.cpp)
 add_custom_command(OUTPUT ${PAGE_FAN_STATUS_SOURCE}
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_fan_status_test.py
