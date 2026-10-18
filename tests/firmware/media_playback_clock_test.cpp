@@ -67,6 +67,10 @@ void timestamps_and_formatting() {
   assert(timestamp_milliseconds("1970-01-01T00:00:01Z", std::numeric_limits<int64_t>::max(), 100, stamp) &&
          stamp == 101);
   assert(!parse_timestamp("bad", epoch) && !parse_timestamp("2026-13-01T00:00:00Z", epoch));
+  int seek;
+  assert(seek_seconds(300, 50, seek) && seek == 150);
+  assert(!seek_seconds(0, 50, seek) && !seek_seconds(NAN, 50, seek) &&
+         !seek_seconds(std::numeric_limits<float>::max(), 100, seek) && !seek_seconds(300, 255, seek));
   char text[16];
   format_playback_time(3661, text, sizeof(text));
   assert(std::strcmp(text, "1:01:01") == 0);

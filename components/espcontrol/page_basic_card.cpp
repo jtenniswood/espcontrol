@@ -112,13 +112,13 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
     }
   } else if(type=="media") {
     const auto mode=card_runtime_media_mode(std::string(out.sensor));
-    if(mode!="play_pause"&&mode!="previous"&&mode!="next"&&mode!="playlist")return false;
-    out.kind=BasicCardKind::MEDIA_ACTION;out.push_feedback=true;out.unit={};
+    if(mode!="play_pause"&&mode!="previous"&&mode!="next"&&mode!="playlist"&&mode!="position")return false;
+    out.kind=mode=="position"?BasicCardKind::MEDIA_POSITION:BasicCardKind::MEDIA_ACTION;out.push_feedback=mode!="position";out.unit={};
     out.media.kind=mode=="previous"?MediaActionKind::PREVIOUS:mode=="next"?MediaActionKind::NEXT:
-      mode=="playlist"?MediaActionKind::PLAYLIST:MediaActionKind::PLAY_PAUSE;
-    out.media.show_state=mode=="play_pause"&&precision=="state";
+      mode=="playlist"?MediaActionKind::PLAYLIST:mode=="position"?MediaActionKind::POSITION:MediaActionKind::PLAY_PAUSE;
+    out.media.show_state=(mode=="play_pause"||mode=="position")&&precision=="state";
     out.active_color=mode=="play_pause"||mode=="playlist";
-    out.default_label=mode=="previous"?"Previous":mode=="next"?"Next":mode=="playlist"?"Playlist":"Play/Pause";
+    out.default_label=mode=="previous"?"Previous":mode=="next"?"Next":mode=="playlist"?"Playlist":mode=="position"?"Position":"Play/Pause";
     if(out.icon.empty()||out.icon=="Auto")out.icon=mode=="previous"?"Skip Previous":mode=="next"?"Skip Next":mode=="playlist"?"Music":"Play Pause";
     // Existing media action buttons keep one configured icon in both states.
     out.icon_on=out.icon;
@@ -206,7 +206,7 @@ bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,Pag
 BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHandle handle,PageEntityStateRuntime &state,int duration_components,std::string_view temperature_unit,PageCardTranslate translate,PageMediaStateRuntime *media_owner) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
-  if(card.kind==BasicCardKind::MEDIA_ACTION) {
+  if(card.kind==BasicCardKind::MEDIA_ACTION||card.kind==BasicCardKind::MEDIA_POSITION) {
     result.label=card.label;
     if(result.label.empty()&&card.default_label) {
       const auto *translated=translate?translate(card.default_label):nullptr;
@@ -231,6 +231,12 @@ BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHand
       result.on=playing&&id_current&&!id.empty()&&media::playlist_content_id_matches(card.media.playlist_id,id)&&
         type.status!=PageEntityStatus::EXHAUSTED&&
         (!type_current||content_type.empty()||media::playlist_content_type_matches(card.media.playlist_type,content_type));
+    }
+    if(card.kind==BasicCardKind::MEDIA_POSITION) {
+      PageMediaPlaybackSnapshot progress;
+      if(media_owner)media_owner->playback(handle,card.entity,progress);
+      media::format_playback_time(progress.seconds,result.number,sizeof(result.number));
+      result.numeric=true;result.fill_percent=progress.percent;
     }
     if(card.media.show_state) {
       const char *key=nullptr;
@@ -273,10 +279,10 @@ BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHand
       const auto value=state.dependency(handle,ordinal);
       if(value.entity==card.entity&&value.attribute=="current_position"){percent=state.last_percent(handle,ordinal);break;}
     }
-    if(percent) {result.on=*percent>0;result.closed_percent=100-*percent;}
+    if(percent) {result.on=*percent>0;result.fill_percent=100-*percent;}
     else {
       result.on=available(primary)&&(equal_state(primary.value,"open")||equal_state(primary.value,"opening"));
-      result.closed_percent=available(primary)&&(equal_state(primary.value,"closed")||equal_state(primary.value,"closing"))?100:0;
+      result.fill_percent=available(primary)&&(equal_state(primary.value,"closed")||equal_state(primary.value,"closing"))?100:0;
     }
   }
   if(card.kind==BasicCardKind::STATUS&&card.presence&&available(primary))result.on|=equal_state(primary.value,"detected");

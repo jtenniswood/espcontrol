@@ -1,7 +1,7 @@
 # Pooled media cards
 
 This part of #1825 supplies the common icon/label views for Play/Pause, Previous,
-Next and Playlist. It remains unselected in production. Other media modes reject
+Next, Playlist and Position. It remains unselected in production. Other media modes reject
 preparation until their views, modal resources and image ownership are ported.
 There is no change to saved configuration or navigation depth.
 
@@ -40,7 +40,33 @@ configuration replacement and repeated navigation. The native grid fixtures
 exercise all nine profiles and track retained resources separately from drawing
 and style scratch allocations. These checks do not establish physical RAM savings.
 
-Remaining media work includes secondary entities, progress timing, metadata
+Position views use one configuration-owned playback clock per distinct source.
+The application calls the media owner’s `loop()`; a single one-second revision
+refreshes playing sources that have progress consumers. Pausing freezes elapsed
+time, copied cache values do not reset the clock, and reconnects invalidate the
+clock before fresh state arrives. Timestamp, rounding and ordinary time formatting
+match the existing helpers. The clock and snapshots allocate no UI objects,
+per-card timers or temporary strings.
+
+Position cards require a fixed slider and fill in every reusable shell, a media
+owner and a synchronous seek hook. Missing resources reject preparation. The
+transparent slider keeps the existing horizontal geometry and minimum fill handle.
+A preprocessing guard captures the binding before slider processing; a separate
+callback reads the final value after LVGL handles release. Page changes, takeovers,
+reconnects and lost input cancel the captured gesture. A held pointer must release
+before it can operate a newly bound card. The view keeps a seek preview for at most
+three seconds while waiting for an acknowledgement; it never changes shared HA
+state. The action hook must validate its origin, send synchronously and avoid
+retaining the duration or configuration views beyond dispatch. Non-finite or
+out-of-range seek conversions are rejected.
+
+Native tests compare actual pointer results and slider/fill geometry with the
+existing production helpers, then exercise reconnects, reentrant navigation,
+paused seek expiry and 1,000 page cycles per profile. Retained resource counts are
+checked separately from temporary LVGL layout/style work. These are host pointer
+tests, not physical touch, whole-firmware RAM or full-screen pixel parity results.
+
+Remaining media work includes secondary entities, metadata
 identity changes, cover-art loading/cancellation and the media/volume/speaker
 panels. Those paths must preserve the existing behaviour before production
 selection and the S3 hardware canary.

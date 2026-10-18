@@ -136,6 +136,14 @@ struct PlaybackClock {
     anchored = true;
   }
 };
+inline bool seek_seconds(float duration, uint8_t percent, int& output) {
+  if (!std::isfinite(duration) || duration <= 0 || percent > 100) return false;
+  const float rounded = duration * percent / 100.0f + 0.5f;
+  if (!std::isfinite(rounded) || static_cast<double>(rounded) >= std::numeric_limits<int>::max())
+    return false;
+  output = static_cast<int>(rounded);
+  return true;
+}
 inline void format_playback_time(float seconds, char* output, size_t capacity) {
   if (!output || !capacity) return;
   if (!std::isfinite(seconds) || seconds < 0) seconds = 0;

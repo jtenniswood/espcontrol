@@ -42,6 +42,12 @@ class PageMediaStateRuntime final : public PageRuntimeResources, public PageEnti
   void observed(uint32_t, std::string_view, std::string_view, std::string_view, bool) override;
   bool current(ConfigurationHandle, std::string_view entity, std::string_view attribute) const;
   bool playback(ConfigurationHandle, std::string_view entity, PageMediaPlaybackSnapshot&) const;
+  uint32_t now_ms() const {
+    return transport_.now_ms();
+  }
+  uint32_t connection_generation() const {
+    return transport_.connection_generation();
+  }
   void loop();
   uint64_t revision() const {
     return revision_;

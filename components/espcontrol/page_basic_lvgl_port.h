@@ -18,7 +18,7 @@ namespace espcontrol::pages {
 // The selected firmware supplies exactly one existing bank of grid widgets.
 // The bank and fonts outlive this port; no widgets are created by navigation.
 struct PageBasicWidgets {
-  lv_obj_t *button{nullptr},*icon{nullptr},*label{nullptr},*sensor_container{nullptr},*value{nullptr},*unit{nullptr},*fill{nullptr},*forecast{nullptr};
+  lv_obj_t *button{nullptr},*icon{nullptr},*label{nullptr},*sensor_container{nullptr},*value{nullptr},*unit{nullptr},*fill{nullptr},*forecast{nullptr},*slider{nullptr};
 };
 struct PageBasicTheme {
   uint64_t revision{0};
@@ -31,6 +31,7 @@ struct PageBasicTheme {
   const lv_font_t *forecast_small_font{nullptr},*forecast_icon_font{nullptr};
   int32_t forecast_scale_x{256},forecast_scale_y{256};
   float (*forecast_temperature)(float,const char *){nullptr};
+  uint32_t media_surface{0x212121};
 };
 struct PageBasicActions {
   void *owner{nullptr};
@@ -47,6 +48,7 @@ struct PageBasicActions {
   void (*control)(void *,PageBindingToken){nullptr};
   void (*forecast)(void *,PageBindingToken){nullptr};
   void (*media)(void *,PageBindingToken){nullptr};
+  void (*seek)(void *,PageBindingToken,uint8_t percent,float duration){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -80,9 +82,11 @@ class PageBasicLvglPort final:public PageRendererPort {
     for(size_t slot=0;slot<Slots;++slot) {
       const auto &w=widgets_[slot];
       if(shells_[slot].forecast_callback)lv_obj_remove_event_cb_with_user_data(w.forecast,forecast_event,&shells_[slot]);
+      if(shells_[slot].slider_guard_callback)lv_obj_remove_event_cb_with_user_data(w.slider,slider_guard,&shells_[slot]);
+      if(shells_[slot].slider_callback)lv_obj_remove_event_cb_with_user_data(w.slider,slider_event,&shells_[slot]);
       const std::array<lv_obj_t *,4>labels={w.icon,w.label,w.value,w.unit};
       for(size_t i=0;i<shells_[slot].contrast_callbacks;++i)
-        lv_obj_remove_event_cb_with_user_data(labels[i],slider_text_contrast_event_cb,w.fill);
+        lv_obj_remove_event_cb_with_user_data(labels[i],contrast_event,&shells_[slot]);
     }
   }
   PageBasicLvglPort(const PageBasicLvglPort &)=delete;
@@ -94,18 +98,18 @@ class PageBasicLvglPort final:public PageRendererPort {
   bool initialize() {
     if(initialized_)return true;
     if(callbacks_!=0)return false;
-    for(const auto &shell:shells_)if(shell.contrast_callbacks||shell.forecast_callback)return false;
+    for(const auto &shell:shells_)if(shell.contrast_callbacks||shell.forecast_callback||shell.slider_guard_callback||shell.slider_callback)return false;
     if(actions_.icon==nullptr)return false;
     page_basic_push_transition();
     page_basic_no_transition();
-    std::array<lv_obj_t *,Slots*8> unique{};size_t used=0;
+    std::array<lv_obj_t *,Slots*9> unique{};size_t used=0;
     for(const auto &w:widgets_) {
       for(auto *object:{w.button,w.icon,w.label,w.sensor_container,w.value,w.unit}) {
         if(!object)return false;
         for(size_t index=0;index<used;++index)if(unique[index]==object)return false;
         unique[used++]=object;
       }
-      for(auto *optional:{w.fill,w.forecast})if(optional) {
+      for(auto *optional:{w.fill,w.forecast,w.slider})if(optional) {
         for(size_t index=0;index<used;++index)if(unique[index]==optional)return false;
         unique[used++]=optional;if(lv_obj_get_parent(optional)!=w.button)return false;
       }
@@ -115,6 +119,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
     for(size_t i=0;i<Slots;++i) {
       const auto &w=widgets_[i];lv_obj_add_flag(w.button,LV_OBJ_FLAG_HIDDEN);
+      lv_obj_clear_flag(w.sensor_container,static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE));
       lv_obj_clear_flag(w.button,LV_OBJ_FLAG_CHECKABLE);lv_obj_clear_state(w.button,LV_STATE_CHECKED);
       for(const auto selector:{static_cast<lv_style_selector_t>(LV_PART_MAIN),
            (static_cast<lv_style_selector_t>(LV_PART_MAIN)|static_cast<lv_style_selector_t>(LV_STATE_CHECKED))}) {
@@ -142,9 +147,25 @@ class PageBasicLvglPort final:public PageRendererPort {
         lv_obj_set_style_clip_corner(w.button,true,LV_PART_MAIN);
         for(auto *label:{w.icon,w.label,w.value,w.unit}) {
           lv_obj_add_flag(label,LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
-          if(!lv_obj_add_event_cb(label,slider_text_contrast_event_cb,LV_EVENT_DRAW_TASK_ADDED,w.fill))return false;
+          if(!lv_obj_add_event_cb(label,contrast_event,LV_EVENT_DRAW_TASK_ADDED,&shells_[i]))return false;
           ++shells_[i].contrast_callbacks;
         }
+      }
+      if(w.slider) {
+        lv_slider_set_range(w.slider,0,100);lv_slider_set_value(w.slider,0,LV_ANIM_OFF);
+        lv_obj_add_flag(w.slider,static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_HIDDEN|LV_OBJ_FLAG_IGNORE_LAYOUT|LV_OBJ_FLAG_FLOATING));
+        lv_obj_clear_flag(w.slider,static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_EVENT_BUBBLE));
+        for(const auto part:{LV_PART_MAIN,LV_PART_INDICATOR,LV_PART_KNOB}) {
+          lv_obj_set_style_bg_opa(w.slider,LV_OPA_TRANSP,part);lv_obj_set_style_border_width(w.slider,0,part);
+          lv_obj_set_style_shadow_width(w.slider,0,part);lv_obj_set_style_pad_all(w.slider,0,part);
+          lv_obj_set_style_transition(w.slider,page_basic_no_transition(),part);
+        }
+        lv_obj_set_style_width(w.slider,0,LV_PART_KNOB);lv_obj_set_style_height(w.slider,0,LV_PART_KNOB);
+        lv_obj_set_size(w.slider,0,0);lv_obj_move_to_index(w.slider,w.fill?1:0);
+        if(!lv_obj_add_event_cb(w.slider,slider_guard,static_cast<lv_event_code_t>(LV_EVENT_ALL|LV_EVENT_PREPROCESS),&shells_[i]))return false;
+        shells_[i].slider_guard_callback=true;
+        if(!lv_obj_add_event_cb(w.slider,slider_event,LV_EVENT_ALL,&shells_[i]))return false;
+        shells_[i].slider_callback=true;
       }
       if(w.forecast) {
         lv_obj_add_flag(w.forecast,static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_HIDDEN|LV_OBJ_FLAG_IGNORE_LAYOUT));
@@ -180,10 +201,14 @@ class PageBasicLvglPort final:public PageRendererPort {
         }
         if(view.kind==BasicCardKind::CLIMATE&&actions_.climate==nullptr)return false;
         if(view.kind==BasicCardKind::ACTION&&actions_.action==nullptr)return false;
+        if(view.kind==BasicCardKind::MEDIA_POSITION) {
+          if(!media_||!actions_.seek)return false;
+          for(const auto &w:widgets_)if(!w.fill||!w.slider)return false;
+        }
         if(view.kind==BasicCardKind::MEDIA_ACTION&&(actions_.media==nullptr||(view.media.kind==MediaActionKind::PLAYLIST&&!media_)))return false;
         if((view.kind==BasicCardKind::LIGHT||view.kind==BasicCardKind::COVER)&&actions_.control==nullptr)return false;
         if(view.kind==BasicCardKind::COVER)for(const auto &w:widgets_)if(!w.fill)return false;
-        if((view.kind==BasicCardKind::MEDIA_ACTION&&view.media.show_state)||view.kind==BasicCardKind::TEXT||view.kind==BasicCardKind::CLIMATE||view.text_overlay||view.folder_mode==BasicFolderMode::TEXT||view.action_display==BasicActionDisplay::TEXT)label_capacity=std::max<size_t>(label_capacity,257);
+        if(((view.kind==BasicCardKind::MEDIA_ACTION||view.kind==BasicCardKind::MEDIA_POSITION)&&view.media.show_state)||view.kind==BasicCardKind::TEXT||view.kind==BasicCardKind::CLIMATE||view.text_overlay||view.folder_mode==BasicFolderMode::TEXT||view.action_display==BasicActionDisplay::TEXT)label_capacity=std::max<size_t>(label_capacity,257);
         if(view.default_label) {
           const auto *translated=theme_.translate?theme_.translate(view.default_label):nullptr;
           label_capacity=std::max(label_capacity,std::strlen(translated?translated:view.default_label)+1);
@@ -291,13 +316,14 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
   void retire_active()override {
     if(!active_.arena)return;
-    for(auto &shell:shells_){shell.token={};shell.pressed={};shell.definition=nullptr;shell.back={};shell.cell={};shell.label=shell.unit=shell.number=nullptr;shell.fill_percent=0;shell.frame=nullptr;}
+    for(auto &shell:shells_){cancel_position_gesture(shell);shell.token={};shell.pressed={};shell.definition=nullptr;shell.back={};shell.cell={};shell.label=shell.unit=shell.number=nullptr;shell.fill_percent=0;shell.frame=nullptr;shell.dragging=false;shell.pending_target=-1;}
     detach_text();for(const auto &w:widgets_){lv_obj_add_flag(w.button,LV_OBJ_FLAG_HIDDEN);if(w.forecast)lv_obj_add_flag(w.forecast,LV_OBJ_FLAG_HIDDEN);}
     release(active_);store_={};
   }
   void unbind(size_t index,PageBindingToken)override {
     if(index>=Slots)return;auto &s=shells_[index];
     const bool feedback=s.definition&&s.definition->definition.push_feedback;
+    cancel_position_gesture(s);
     s.token={};s.pressed={};s.definition=nullptr;s.back={};s.cell={};s.label=s.unit=s.number=nullptr;
     const auto &w=widgets_[index];lv_obj_add_flag(w.button,LV_OBJ_FLAG_HIDDEN);
     for(const auto selector:{static_cast<lv_style_selector_t>(LV_PART_MAIN),
@@ -310,6 +336,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       lv_obj_set_style_bg_color(w.button,lv_color_hex(s.background),selector);
     lv_obj_clear_state(w.button,static_cast<lv_state_t>(LV_STATE_CHECKED|LV_STATE_PRESSED));
     lv_obj_clear_flag(w.button,LV_OBJ_FLAG_CLICKABLE);
+    s.dragging=false;s.pending_target=-1;if(w.slider){lv_obj_add_flag(w.slider,LV_OBJ_FLAG_HIDDEN);lv_obj_clear_flag(w.slider,LV_OBJ_FLAG_CLICKABLE);lv_slider_set_value(w.slider,0,LV_ANIM_OFF);}
     s.frame=nullptr;if(w.forecast)lv_obj_add_flag(w.forecast,LV_OBJ_FLAG_HIDDEN);
     s.fill_percent=0;if(w.fill){lv_obj_add_flag(w.fill,LV_OBJ_FLAG_HIDDEN);lv_obj_set_size(w.fill,0,0);}
     // Hidden static text only refers to this port's reusable buffers or
@@ -353,12 +380,13 @@ class PageBasicLvglPort final:public PageRendererPort {
       if(definition.kind==BasicCardKind::FOLDER&&definition.folder_mode==BasicFolderMode::NUMBER&&value.label.empty())value.label=theme_.folder_label;
       if(definition.kind==BasicCardKind::EMPTY&&value.label.empty())value.label=theme_.empty_label;
       checked=value.on&&(definition.kind==BasicCardKind::TOGGLE||definition.active_color);
-      number=(definition.kind==BasicCardKind::CLIMATE&&definition.climate.number!=ClimateCardNumber::ICON)||definition.kind==BasicCardKind::NUMBER||definition.kind==BasicCardKind::DURATION||definition.folder_mode==BasicFolderMode::NUMBER||definition.action_display==BasicActionDisplay::NUMBER||(definition.kind==BasicCardKind::TOGGLE&&!definition.text_overlay&&!definition.sensor.empty()&&value.on);
+      number=(definition.kind==BasicCardKind::CLIMATE&&definition.climate.number!=ClimateCardNumber::ICON)||definition.kind==BasicCardKind::NUMBER||definition.kind==BasicCardKind::DURATION||definition.kind==BasicCardKind::MEDIA_POSITION||definition.folder_mode==BasicFolderMode::NUMBER||definition.action_display==BasicActionDisplay::NUMBER||(definition.kind==BasicCardKind::TOGGLE&&!definition.text_overlay&&!definition.sensor.empty()&&value.on);
       const bool state_icon=definition.kind==BasicCardKind::TOGGLE||definition.kind==BasicCardKind::ICON||
         definition.kind==BasicCardKind::STATUS||definition.kind==BasicCardKind::LIGHT||definition.kind==BasicCardKind::COVER||definition.action_display==BasicActionDisplay::ICON||definition.folder_mode==BasicFolderMode::ENTITY||definition.folder_mode==BasicFolderMode::CLIMATE||definition.folder_mode==BasicFolderMode::MOWER||definition.folder_mode==BasicFolderMode::CHILDREN;
       if(definition.kind==BasicCardKind::WEATHER)glyph=active_.weather->glyphs[value.weather_condition];
       else glyph=definition.kind==BasicCardKind::CLIMATE?(value.climate_icon_on?s.definition->on:s.definition->off):state_icon&&value.on?s.definition->on:s.definition->off;
     }
+    if(definition.kind==BasicCardKind::MEDIA_POSITION)position_feedback(s,value);
     write(w.label,s.label,active_.label_capacity,value.formatted_label?std::string_view(value.text):value.label);
     for(const auto selector:{static_cast<lv_style_selector_t>(LV_PART_MAIN),
          static_cast<lv_style_selector_t>(LV_PART_MAIN)|static_cast<lv_style_selector_t>(LV_STATE_CHECKED)})
@@ -372,7 +400,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(font&&s.painted_font!=font){lv_obj_set_style_text_font(w.value,font,LV_PART_MAIN);s.painted_font=font;}
     if(checked!=lv_obj_has_state(w.button,LV_STATE_CHECKED)){if(checked)lv_obj_add_state(w.button,LV_STATE_CHECKED);else lv_obj_clear_state(w.button,LV_STATE_CHECKED);}
     const auto correct=[this](uint32_t raw){return correct_display_color(raw,theme_.red_percent,theme_.green_percent,theme_.blue_percent);};
-    uint32_t background=definition.custom_off?correct(definition.off_color):(definition.kind==BasicCardKind::NUMBER||definition.kind==BasicCardKind::TEXT||definition.kind==BasicCardKind::DURATION||definition.kind==BasicCardKind::STATUS||definition.kind==BasicCardKind::WEATHER||definition.kind==BasicCardKind::FORECAST)?theme_.sensor_surface:theme_.surface;
+    uint32_t background=definition.custom_off?correct(definition.off_color):definition.kind==BasicCardKind::MEDIA_POSITION?theme_.media_surface:(definition.kind==BasicCardKind::NUMBER||definition.kind==BasicCardKind::TEXT||definition.kind==BasicCardKind::DURATION||definition.kind==BasicCardKind::STATUS||definition.kind==BasicCardKind::WEATHER||definition.kind==BasicCardKind::FORECAST)?theme_.sensor_surface:theme_.surface;
     if(checked)background=definition.custom_on?correct(definition.on_color):definition.custom_off&&!definition.theme_active?correct(active_card_color(definition.off_color)):theme_.active;
     const auto foreground=checked||definition.custom_off?display_text_color_for_bg(background):theme_.text;
     if(!s.painted||s.background!=background||s.foreground!=foreground) {
@@ -384,9 +412,9 @@ class PageBasicLvglPort final:public PageRendererPort {
       s.painted=true;s.background=background;s.foreground=foreground;
     }
     if(w.fill) {
-      if(definition.kind==BasicCardKind::COVER&&value.closed_percent) {
-        s.fill_percent=value.closed_percent;update_fill_geometry(s);
-        const auto fill_color=definition.custom_on?correct(definition.on_color):definition.custom_off&&!definition.theme_active?correct(active_card_color(definition.off_color)):theme_.active;
+      if(definition.kind==BasicCardKind::MEDIA_POSITION||(definition.kind==BasicCardKind::COVER&&value.fill_percent)) {
+        s.fill_percent=value.fill_percent;update_fill_geometry(s);
+        const auto fill_color=definition.kind==BasicCardKind::MEDIA_POSITION?(definition.custom_off?correct(card_progress_color(definition.off_color)):theme_.surface):definition.custom_on?correct(definition.on_color):definition.custom_off&&!definition.theme_active?correct(active_card_color(definition.off_color)):theme_.active;
         lv_obj_set_style_bg_color(w.fill,lv_color_hex(fill_color),LV_PART_MAIN);lv_obj_clear_flag(w.fill,LV_OBJ_FLAG_HIDDEN);
       } else {s.fill_percent=0;lv_obj_add_flag(w.fill,LV_OBJ_FLAG_HIDDEN);lv_obj_set_size(w.fill,0,0);}
     }
@@ -394,9 +422,9 @@ class PageBasicLvglPort final:public PageRendererPort {
     else if(w.forecast)lv_obj_add_flag(w.forecast,LV_OBJ_FLAG_HIDDEN);
     seen_state_=state_.revision();seen_theme_=theme_.revision;seen_forecast_=forecasts_?forecasts_->revision():0;seen_media_=media_?media_->revision():0;
   }
-  void suspend()override{for(auto &shell:shells_)shell.pressed={};}
-  bool state_changed()const override{return state_.revision()!=seen_state_||theme_.revision!=seen_theme_||(forecasts_&&forecasts_->revision()!=seen_forecast_)||(media_&&media_->revision()!=seen_media_);}
-  PageBasicMemory memory()const{auto m=memory_;m.fixed_bytes=sizeof(*this);m.borrowed_widgets=Slots*6;for(const auto &w:widgets_)m.borrowed_widgets+=(w.fill?1:0)+(w.forecast?1:0);m.forecast_frames=active_.frame_count;m.active_bytes=active_.bytes;m.staged_bytes=staged_.bytes;return m;}
+  void suspend()override{for(auto &shell:shells_){cancel_position_gesture(shell);shell.pending_target=-1;}}
+  bool state_changed()const override{if(media_)for(const auto &shell:shells_)if(shell.pending_target>=0&&static_cast<uint32_t>(media_->now_ms()-shell.pending_ms)>=3000)return true;return state_.revision()!=seen_state_||theme_.revision!=seen_theme_||(forecasts_&&forecasts_->revision()!=seen_forecast_)||(media_&&media_->revision()!=seen_media_);}
+  PageBasicMemory memory()const{auto m=memory_;m.fixed_bytes=sizeof(*this);m.borrowed_widgets=Slots*6;for(const auto &w:widgets_)m.borrowed_widgets+=(w.fill?1:0)+(w.forecast?1:0)+(w.slider?1:0);m.forecast_frames=active_.frame_count;m.active_bytes=active_.bytes;m.staged_bytes=staged_.bytes;return m;}
  private:
   bool collect_summary(const PageStore &store,PageId page_id,std::array<CardId,Slots> &cards,size_t &used)const {
     used=0;const auto *page=store.page(page_id);if(!page||!page->navigable)return true;
@@ -430,7 +458,7 @@ class PageBasicLvglPort final:public PageRendererPort {
   struct Prepared {BasicCardDefinition definition;const char *off{nullptr},*on{nullptr};const CardId *summary{nullptr};uint16_t summary_count{0};};
   struct WeatherGlyphs {std::array<const char *,espcontrol::weather::CONDITION_COUNT>glyphs{};const char *loading{nullptr};};
   struct Arena {void *arena{nullptr};size_t bytes{0},label_capacity{0},unit_capacity{0},stride{0},cards{0};WeatherGlyphs *weather{nullptr};PageForecastFrame *frames{nullptr};size_t frame_count{0};};
-  struct Shell {PageBasicLvglPort *port{nullptr};size_t index{0};PageBindingToken token,pressed;PageCellLayout cell;PageBackStyleView back;Prepared *definition{nullptr};char *label{nullptr},*unit{nullptr},*number{nullptr};bool painted{false};uint8_t fill_percent{0},contrast_callbacks{0};bool forecast_callback{false};PageForecastFrame *frame{nullptr};uint32_t background{0},foreground{0};const lv_font_t *painted_font{nullptr};};
+  struct Shell {PageBasicLvglPort *port{nullptr};size_t index{0};PageBindingToken token,pressed;PageCellLayout cell;PageBackStyleView back;Prepared *definition{nullptr};char *label{nullptr},*unit{nullptr},*number{nullptr};bool painted{false};uint8_t fill_percent{0},contrast_callbacks{0};bool forecast_callback{false},slider_callback{false},slider_guard_callback{false},dragging{false};uint32_t pending_ms{0},gesture_connection{0};float pending_target{-1};lv_indev_t *input{nullptr};PageForecastFrame *frame{nullptr};uint32_t background{0},foreground{0};const lv_font_t *painted_font{nullptr};};
   static bool same(PageBindingToken a,PageBindingToken b){return a.binding!=0&&a.configuration==b.configuration&&a.binding==b.binding&&a.page==b.page&&a.card==b.card&&a.shell==b.shell&&a.back==b.back;}
   static Prepared *prepared(const Arena &arena){return static_cast<Prepared *>(arena.arena);}
   void release(Arena &arena){if(arena.arena)allocator_.release(arena.arena,arena.bytes);arena={};}
@@ -439,13 +467,173 @@ class PageBasicLvglPort final:public PageRendererPort {
     bool changed=false;const auto result=copy_display_text(buffer,capacity,text,SIZE_MAX,&changed);memory_.text_truncations+=result.truncated;memory_.invalid_text+=result.invalid;
     if(changed||lv_label_get_text(label)!=buffer)lv_label_set_text_static(label,buffer);
   }
-  void update_fill_geometry(Shell &shell) {
-    const auto &w=widgets_[shell.index];if(!w.fill||!shell.fill_percent)return;
-    const auto width=lv_obj_get_width(w.button),height=lv_obj_get_height(w.button);
-    const auto fill_height=static_cast<lv_coord_t>(static_cast<int32_t>(height)*shell.fill_percent/100);
-    lv_obj_set_size(w.fill,width,fill_height);
-    lv_obj_set_pos(w.fill,-lv_obj_get_style_pad_left(w.button,LV_PART_MAIN),-lv_obj_get_style_pad_top(w.button,LV_PART_MAIN));
-    lv_obj_set_style_radius(w.fill,lv_obj_get_style_radius(w.button,LV_PART_MAIN),LV_PART_MAIN);
+  static void contrast_event(lv_event_t* event) {
+    auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
+    if (!shell || !shell->definition || shell->definition->definition.kind != BasicCardKind::COVER) return;
+    slider_text_contrast_event(event, shell->port->widgets_[shell->index].fill);
+  }
+  void cancel_position_gesture(Shell& shell) {
+    auto* input = shell.input;
+    const bool dragging = shell.dragging;
+    shell.input = nullptr;
+    shell.dragging = false;
+    shell.pressed = {};
+    if (dragging && input) {
+      lv_indev_wait_release(input);
+      lv_indev_reset(input, widgets_[shell.index].slider);
+    }
+    if (widgets_[shell.index].slider) lv_obj_clear_state(widgets_[shell.index].slider, LV_STATE_PRESSED);
+  }
+  bool position_snapshot(Shell& shell, PageMediaPlaybackSnapshot& snapshot) const {
+    if (!media_ || !shell.definition || shell.definition->definition.kind != BasicCardKind::MEDIA_POSITION)
+      return false;
+    const auto& definition = shell.definition->definition;
+    return media_->playback({shell.token.configuration, shell.token.card}, definition.entity, snapshot);
+  }
+  static bool seek_available(const PageMediaPlaybackSnapshot& snapshot) {
+    int seconds;
+    return snapshot.available && snapshot.has_duration &&
+           media::seek_seconds(snapshot.duration, 100, seconds);
+  }
+  void update_fill_geometry(Shell& shell) {
+    const auto& w = widgets_[shell.index];
+    const bool horizontal =
+        shell.definition && shell.definition->definition.kind == BasicCardKind::MEDIA_POSITION;
+    const auto width = lv_obj_get_width(w.button), height = lv_obj_get_height(w.button);
+    const auto x = -lv_obj_get_style_pad_left(w.button, LV_PART_MAIN),
+               y = -lv_obj_get_style_pad_top(w.button, LV_PART_MAIN);
+    if (horizontal && w.slider) {
+      const auto slider_height = std::max<lv_coord_t>(1, height >= width ? width - 1 : height);
+      lv_obj_set_size(w.slider, width, slider_height);
+      lv_obj_align(w.slider, LV_ALIGN_CENTER, 0, 0);
+    }
+    if (!w.fill || (!horizontal && !shell.fill_percent)) return;
+    const auto radius = lv_obj_get_style_radius(w.button, LV_PART_MAIN);
+    const auto horizontal_width =
+        std::max<lv_coord_t>(std::min<lv_coord_t>(width, std::max<lv_coord_t>(0, radius * 2)),
+                             static_cast<lv_coord_t>(static_cast<int32_t>(width) * shell.fill_percent / 100));
+    lv_obj_set_size(w.fill, horizontal ? horizontal_width : width,
+                    horizontal
+                        ? height
+                        : static_cast<lv_coord_t>(static_cast<int32_t>(height) * shell.fill_percent / 100));
+    if (horizontal)
+      lv_obj_align(w.fill, LV_ALIGN_LEFT_MID, x, 0);
+    else
+      lv_obj_set_pos(w.fill, x, y);
+    lv_obj_set_style_radius(w.fill, lv_obj_get_style_radius(w.button, LV_PART_MAIN), LV_PART_MAIN);
+  }
+  void position_feedback(Shell& shell, BasicCardState& value) {
+    const auto& w = widgets_[shell.index];
+    PageMediaPlaybackSnapshot snapshot;
+    if (shell.dragging && shell.gesture_connection != media_->connection_generation())
+      cancel_position_gesture(shell);
+    const bool interactive = position_snapshot(shell, snapshot) && seek_available(snapshot);
+    lv_obj_clear_flag(w.slider, LV_OBJ_FLAG_HIDDEN);
+    if (interactive)
+      lv_obj_add_flag(w.slider, LV_OBJ_FLAG_CLICKABLE);
+    else {
+      lv_obj_clear_flag(w.slider, LV_OBJ_FLAG_CLICKABLE);
+      cancel_position_gesture(shell);
+      shell.pending_target = -1;
+    }
+    const auto now = media_->now_ms();
+    if (shell.pending_target >= 0 &&
+        (static_cast<uint32_t>(now - shell.pending_ms) >= 3000 ||
+         (snapshot.has_position && std::fabs(snapshot.seconds - shell.pending_target) <= 2.0f)))
+      shell.pending_target = -1;
+    if (shell.dragging) {
+      value.fill_percent = static_cast<uint8_t>(lv_slider_get_value(w.slider));
+      media::format_playback_time(
+          static_cast<float>(static_cast<double>(snapshot.duration) * value.fill_percent / 100), value.number,
+          sizeof(value.number));
+    } else if (shell.pending_target >= 0) {
+      media::PlaybackClock pending;
+      pending.duration = snapshot.duration;
+      pending.has_duration = snapshot.has_duration;
+      pending.position = shell.pending_target;
+      pending.has_position = true;
+      pending.updated_ms = shell.pending_ms;
+      pending.anchored = true;
+      pending.playing = snapshot.playing;
+      value.fill_percent = pending.percent(now);
+      media::format_playback_time(pending.seconds(now), value.number, sizeof(value.number));
+    }
+    if (!shell.dragging) lv_slider_set_value(w.slider, value.fill_percent, LV_ANIM_OFF);
+    update_fill_geometry(shell);
+  }
+  void paint_position_feedback(Shell& shell) {
+    if (!shell.definition) return;
+    auto value = read_basic_card(shell.definition->definition, {shell.token.configuration, shell.token.card},
+                                 state_, 2, theme_.temperature_unit, theme_.translate, media_);
+    position_feedback(shell, value);
+    const auto& w = widgets_[shell.index];
+    write(w.value, shell.number, 48, value.number);
+    shell.fill_percent = value.fill_percent;
+    if (shell.definition && shell.definition->definition.kind == BasicCardKind::MEDIA_POSITION) {
+      lv_obj_clear_flag(w.fill, LV_OBJ_FLAG_HIDDEN);
+      update_fill_geometry(shell);
+    } else {
+      lv_obj_add_flag(w.fill, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_set_size(w.fill, 0, 0);
+    }
+  }
+  // Capture/cancel the binding before LVGL can update the slider. Commands read
+  // the final value in the ordinary callback, after the class has handled release.
+  static void slider_guard(lv_event_t* event) {
+    auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
+    auto* port = shell->port;
+    if (!shell->definition || shell->definition->definition.kind != BasicCardKind::MEDIA_POSITION) return;
+    const auto code = lv_event_get_code(event);
+    if (code == LV_EVENT_PRESSED) {
+      PageMediaPlaybackSnapshot snapshot;
+      if (port->position_snapshot(*shell, snapshot) && seek_available(snapshot) && port->actions_.valid &&
+          port->actions_.valid(port->actions_.owner, shell->token)) {
+        shell->pressed = shell->token;
+        shell->dragging = true;
+        shell->input = lv_indev_active();
+        shell->gesture_connection = port->media_->connection_generation();
+      } else
+        lv_event_stop_processing(event);
+      return;
+    }
+    if (code == LV_EVENT_PRESS_LOST || code == LV_EVENT_INDEV_RESET) {
+      const bool was_dragging = shell->dragging;
+      shell->pressed = {};
+      shell->dragging = false;
+      shell->input = nullptr;
+      if (was_dragging) port->paint_position_feedback(*shell);
+      return;
+    }
+  }
+  static void slider_event(lv_event_t* event) {
+    auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
+    auto* port = shell->port;
+    if (!shell->definition || shell->definition->definition.kind != BasicCardKind::MEDIA_POSITION) return;
+    const auto code = lv_event_get_code(event);
+    if (code == LV_EVENT_VALUE_CHANGED) {
+      if (shell->dragging && same(shell->pressed, shell->token)) port->paint_position_feedback(*shell);
+      return;
+    }
+    if (code != LV_EVENT_RELEASED) return;
+    const auto origin = shell->pressed;
+    shell->pressed = {};
+    const bool dragging = shell->dragging;
+    shell->dragging = false;
+    shell->input = nullptr;
+    if (!dragging || shell->gesture_connection != port->media_->connection_generation() ||
+        !same(origin, shell->token) || !port->actions_.valid ||
+        !port->actions_.valid(port->actions_.owner, origin))
+      return;
+    PageMediaPlaybackSnapshot snapshot;
+    if (!port->position_snapshot(*shell, snapshot) || !seek_available(snapshot)) {
+      port->paint_position_feedback(*shell);
+      return;
+    }
+    const auto percent = static_cast<uint8_t>(lv_slider_get_value(port->widgets_[shell->index].slider));
+    shell->pending_target = static_cast<float>(static_cast<double>(snapshot.duration) * percent / 100);
+    shell->pending_ms = port->media_->now_ms();
+    port->paint_position_feedback(*shell);
+    if (port->actions_.seek) port->actions_.seek(port->actions_.owner, origin, percent, snapshot.duration);
   }
   void update_forecast(Shell& shell) {
     if (!shell.frame || !shell.definition || shell.definition->definition.kind != BasicCardKind::FORECAST ||

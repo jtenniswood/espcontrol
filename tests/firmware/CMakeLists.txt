@@ -958,7 +958,12 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     DEPENDS generate_forecast_reference.py generate_climate_update_test.py
       ../../components/espcontrol/button_grid_weather_daily_ui.h ../../components/espcontrol/button_grid_weather_daily_data.h
     VERBATIM)
-  add_executable(page_basic_lvgl_port_test page_basic_lvgl_port_test.cpp ${FORECAST_REFERENCE}
+  set(POSITION_REFERENCE ${CMAKE_CURRENT_BINARY_DIR}/position_reference.h)
+  add_custom_command(OUTPUT ${POSITION_REFERENCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_position_reference.py --output ${POSITION_REFERENCE}
+    DEPENDS generate_position_reference.py generate_climate_update_test.py ../../components/espcontrol/button_grid_sliders.h
+    VERBATIM)
+  add_executable(page_basic_lvgl_port_test page_basic_lvgl_port_test.cpp ${FORECAST_REFERENCE} ${POSITION_REFERENCE}
     ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
     ../../components/espcontrol/page_forecast_runtime.cpp
     ../../components/espcontrol/page_climate_card.cpp
