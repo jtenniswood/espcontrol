@@ -7,7 +7,8 @@ enum class PagePercentSliderKind : uint8_t { NONE, LIGHT, FAN, COVER_POSITION, C
 struct PagePercentSliderSnapshot {
   PagePercentSliderKind kind{PagePercentSliderKind::NONE};
   uint8_t percent{0};
-  bool available{false}, icon_on{false}, preview{false};
+  bool available{false}, icon_on{false}, preview{false}, fill_known{false};
+  uint32_t write_revision{0};
 };
 struct PagePercentSliderMemory {
   size_t fixed_bytes{0}, active_bytes{0}, staged_bytes{0}, peak_bytes{0};
@@ -31,6 +32,9 @@ class PagePercentSliderRuntime final : public PageRuntimeResources, public PageE
   void loop();
   PagePercentSliderSnapshot read(ConfigurationHandle) const;
   bool preview(ConfigurationHandle, uint8_t percent);
+  uint32_t connection_generation() const {
+    return subscriptions_.connection_generation();
+  }
   uint64_t revision() const {
     return revision_;
   }
@@ -41,10 +45,11 @@ class PagePercentSliderRuntime final : public PageRuntimeResources, public PageE
  private:
   struct Source {
     std::string_view entity;
+    uint32_t write_revision{0};
     PagePercentSliderKind kind{PagePercentSliderKind::NONE};
     uint8_t percent{0}, seed_level{0};
     bool available{true}, icon_on{false};
-    bool seed_primary{false}, seed_off{false};
+    bool seed_primary{false}, seed_off{false}, seed_level_known{false};
     bool live_primary{false}, live_fill{false}, live_icon{false};
   };
   struct Card {

@@ -516,6 +516,76 @@ void fan_control_profile(const DeviceUiLimits& limits) {
   assert(value.label == "Custom" && !value.numeric && value.unit.empty());
 }
 
+void percent_slider_profile(const DeviceUiLimits& limits) {
+  struct Case {
+    const char* entity;
+    const char* type;
+    const char* mode;
+    const char* attribute;
+    const char* value;
+    int percent;
+  };
+  for (const auto& item : {Case{"light.room", "light_brightness", "", "brightness", "1", 1},
+                           {"fan.room", "fan_speed", "", "percentage", "75.5", 76},
+                           {"cover.room", "cover", "", "current_position", "25", 25},
+                           {"cover.room", "cover", "tilt", "current_tilt_position", "75", 75},
+                           {"light.room", "fan_speed", "", "brightness", "1", 1},
+                           {"cover.room", "slider", "", "current_position", "25", 25}}) {
+    Fixture fixture(limits, std::string(item.entity) + ";Configured;Auto;Auto;" + item.mode + ";ignored;" +
+                                item.type + ";2;");
+    BasicCardDefinition definition;
+    assert(prepare_basic_card(fixture.store, 0, definition) &&
+           definition.kind == BasicCardKind::PERCENT_SLIDER);
+    assert(definition.unit.empty() && !definition.active_color && !definition.push_feedback &&
+           !definition.large_numbers);
+    assert(basic_folder_child_indicator(fixture.store, 0) == item.entity);
+    Arena arena;
+    Subscriptions subscriptions;
+    PageCardDependencies dependencies;
+    PagePercentSliderRuntime levels(arena, subscriptions);
+    PageEntityStateRuntime state(dependencies, arena, subscriptions, {64, 64, 2048}, &levels);
+    assert(levels.prepare(fixture.store) && state.prepare(fixture.store));
+    levels.activate_prepared(fixture.store);
+    state.activate_prepared(fixture.store);
+    auto read = [&]() {
+      return read_basic_card(definition, {17, 0}, state, 2, "°C", nullptr, nullptr, nullptr, nullptr, nullptr,
+                             &levels);
+    };
+    assert(read().fill_percent == 0 && read().label == "Configured");
+    subscriptions.send(item.entity, "", "on");
+    assert(read().percent_slider.icon_on && !read().percent_slider.fill_known && read().fill_percent == 0);
+    subscriptions.send(item.entity, item.attribute, item.value);
+    auto value = read();
+    const bool cover = std::string_view(item.entity).substr(0, 6) == "cover.";
+    assert(value.percent_slider.percent == item.percent &&
+           value.fill_percent == (cover ? 100 - item.percent : item.percent));
+    assert(!value.on && !value.numeric && value.unit.empty() && value.label == "Configured");
+    assert(levels.preview({17, 0}, 50));
+    subscriptions.send(item.entity, item.attribute, "bad");
+    assert(read().fill_percent == 50 && read().percent_slider.preview);
+    subscriptions.send(item.entity, item.attribute, item.value);
+    assert(!read().percent_slider.preview && read().percent_slider.percent == item.percent);
+    ++subscriptions.generation;
+    levels.loop();
+    assert(!read().percent_slider.available && read().fill_percent == 0);
+    const auto before = allocations;
+    for (int n = 0; n < 1000; ++n) (void)read();
+    assert(allocations == before);
+    {
+      Arena small_arena;
+      Subscriptions small_subscriptions;
+      PagePercentSliderRuntime small_levels(small_arena, small_subscriptions);
+      PageEntityStateRuntime small_state(dependencies, small_arena, small_subscriptions, {64, 64, 1},
+                                         &small_levels);
+      assert(small_levels.prepare(fixture.store) && small_state.prepare(fixture.store));
+      small_levels.activate_prepared(fixture.store);
+      small_state.activate_prepared(fixture.store);
+      small_subscriptions.send(item.entity, item.attribute, "75");
+      const auto exhausted = read_basic_percent_slider(definition, {17, 0}, small_state, &small_levels);
+      assert(!exhausted.available && !exhausted.fill_known && !exhausted.icon_on);
+    }
+  }
+}
 uint32_t fan_status_tick = 100;
 uint32_t fan_status_now() {
   return fan_status_tick;
@@ -1021,6 +1091,7 @@ int main() {
     fan_control_profile(limits);
     fan_mode_profile(limits);
     fan_status_profile(limits);
+    percent_slider_profile(limits);
     weather_profile(limits);
     media_action_profile(limits);
     media_position_profile(limits);

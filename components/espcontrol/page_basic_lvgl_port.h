@@ -9,15 +9,16 @@
 #include "../artwork_image/image_pipeline_policy.h"
 #include "bounded_display_text.h"
 #include "button_grid_slider_contrast.h"
+#include "button_grid_slider_geometry.h"
 #include "button_grid_string.h"
 #include "cover_art.h"
 #include "display_color.h"
 #include "lvgl.h"
 #include "page_basic_card.h"
-#include "page_media_group.h"
 #include "page_cover_art_frame.h"
 #include "page_cover_art_view.h"
 #include "page_forecast_frame.h"
+#include "page_media_group.h"
 #include "page_media_label.h"
 #include "weather_condition_maps_generated.h"
 
@@ -65,6 +66,7 @@ struct PageBasicActions {
   void (*seek)(void *,PageBindingToken,uint8_t percent,float duration){nullptr};
   void (*media_control)(void*, PageBindingToken){nullptr};
   void (*media_volume)(void*, PageBindingToken){nullptr};
+  void (*percent_slider)(void*, PageBindingToken, int percent){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -90,7 +92,8 @@ class PageBasicLvglPort final:public PageRendererPort {
                     const PageBasicTheme& theme, PageBasicActions actions,
                     PageForecastRuntime* forecasts = nullptr, PageMediaStateRuntime* media = nullptr,
                     PageCoverArtView* artwork = nullptr, PageLocalSensorRuntime* local = nullptr,
-                    PageLocalRelayRuntime* relay = nullptr, PageFanStatusRuntime* fan_status = nullptr)
+                    PageLocalRelayRuntime* relay = nullptr, PageFanStatusRuntime* fan_status = nullptr,
+                    PagePercentSliderRuntime* percent_slider = nullptr)
       : allocator_(allocator),
         state_(state),
         widgets_(widgets),
@@ -102,7 +105,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         artwork_(artwork),
         local_(local),
         relay_(relay),
-        fan_status_(fan_status) {
+        fan_status_(fan_status),
+        percent_slider_(percent_slider) {
     for(size_t i=0;i<Slots;++i){shells_[i].port=this;shells_[i].index=i;}
   }
   ~PageBasicLvglPort()override {
@@ -289,6 +293,12 @@ class PageBasicLvglPort final:public PageRendererPort {
       for(CardId card=p->first_card;card<p->first_card+p->card_count;++card) {
         BasicCardDefinition view;
         if (!prepare_basic_card(store, card, view, &strings, relay_)) return false;
+        if (view.kind == BasicCardKind::PERCENT_SLIDER) {
+          if (!percent_slider_ || !actions_.percent_slider) return false;
+          for (const auto& w : widgets_)
+            if (!w.fill || !w.slider) return false;
+          label_capacity = std::max<size_t>(label_capacity, HA_FRIENDLY_NAME_MAX_LEN + 1);
+        }
         if (view.kind == BasicCardKind::LOCAL_RELAY && (!relay_ || !actions_.toggle)) return false;
         if (view.kind == BasicCardKind::LOCAL_NUMBER || view.kind == BasicCardKind::LOCAL_TEXT) {
           if (!local_) return false;
@@ -590,7 +600,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       definition = s.definition->definition;
       value = read_basic_card(definition, {token.configuration, token.card}, state_,
                               s.cell.column_span > 1 ? 2 : 1, theme_.temperature_unit, theme_.translate,
-                              media_, local_, relay_, fan_status_);
+                              media_, local_, relay_, fan_status_, percent_slider_);
       if(group_card(s))group_feedback(s,value);
       if(definition.folder_mode==BasicFolderMode::CHILDREN) {
         for(size_t child=0;child<s.definition->summary_count&&!value.on;++child) {
@@ -629,7 +639,9 @@ class PageBasicLvglPort final:public PageRendererPort {
       if (definition.kind == BasicCardKind::WEATHER)
         glyph = active_.weather->glyphs[value.weather_condition];
       else
-        glyph = definition.kind == BasicCardKind::CLIMATE
+        glyph = definition.kind == BasicCardKind::PERCENT_SLIDER
+                    ? (value.percent_slider.icon_on ? s.definition->on : s.definition->off)
+                : definition.kind == BasicCardKind::CLIMATE
                     ? (value.climate_icon_on ? s.definition->on : s.definition->off)
                 : state_icon && value.on ? s.definition->on
                                          : s.definition->off;
@@ -640,6 +652,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       lv_obj_align(w.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
     }
     if(definition.kind==BasicCardKind::MEDIA_POSITION||(now_playing&&definition.media.progress))position_feedback(s,value);
+    if (definition.kind == BasicCardKind::PERCENT_SLIDER) percent_feedback(s, value);
     if(!now_playing){lv_obj_clear_flag(w.label,LV_OBJ_FLAG_HIDDEN);write(w.label,s.label,active_.label_capacity,value.formatted_label?std::string_view(value.text):value.label);}
     for(const auto selector:{static_cast<lv_style_selector_t>(LV_PART_MAIN),
          static_cast<lv_style_selector_t>(LV_PART_MAIN)|static_cast<lv_style_selector_t>(LV_STATE_CHECKED)})
@@ -697,11 +710,26 @@ class PageBasicLvglPort final:public PageRendererPort {
       s.painted=true;s.background=background;s.foreground=foreground;
     }
     if(w.fill) {
-      if(definition.kind==BasicCardKind::MEDIA_POSITION||(now_playing&&definition.media.progress)||(definition.kind==BasicCardKind::COVER&&value.fill_percent)) {
+      if (definition.kind == BasicCardKind::PERCENT_SLIDER ||
+          definition.kind == BasicCardKind::MEDIA_POSITION || (now_playing && definition.media.progress) ||
+          (definition.kind == BasicCardKind::COVER && value.fill_percent)) {
         s.fill_percent=value.fill_percent;update_fill_geometry(s);
-        const auto fill_color=(definition.kind==BasicCardKind::MEDIA_POSITION||(now_playing&&definition.media.progress))?(definition.custom_off?correct(card_progress_color(definition.off_color)):theme_.surface):definition.custom_on?correct(definition.on_color):definition.custom_off&&!definition.theme_active?correct(active_card_color(definition.off_color)):theme_.active;
+        const auto fill_color =
+            (definition.kind == BasicCardKind::MEDIA_POSITION || (now_playing && definition.media.progress))
+                ? (definition.custom_off ? correct(card_progress_color(definition.off_color))
+                                         : theme_.surface)
+            : definition.custom_on ? correct(definition.on_color)
+            : definition.custom_off && !definition.theme_active
+                ? (definition.kind == BasicCardKind::PERCENT_SLIDER
+                       ? card_slider_fill_color(correct(definition.off_color))
+                       : correct(active_card_color(definition.off_color)))
+                : theme_.active;
         lv_obj_set_style_bg_color(w.fill,lv_color_hex(fill_color),LV_PART_MAIN);lv_obj_clear_flag(w.fill,LV_OBJ_FLAG_HIDDEN);
-      } else {s.fill_percent=0;lv_obj_add_flag(w.fill,LV_OBJ_FLAG_HIDDEN);lv_obj_set_size(w.fill,0,0);}
+      } else {
+        s.fill_percent = 0;
+        lv_obj_add_flag(w.fill, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_size(w.fill, 0, 0);
+      }
     }
     if(now_playing)media_layout_dirty_=true;
     if(definition.kind==BasicCardKind::FORECAST)update_forecast(s);
@@ -711,6 +739,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (local_) seen_local_ = local_->revision();
     if (relay_) seen_relay_ = relay_->revision();
     if (fan_status_) seen_fan_status_ = fan_status_->revision();
+    if (percent_slider_) seen_percent_slider_ = percent_slider_->revision();
     seen_theme_ = theme_.revision;
     seen_forecast_ = forecasts_ ? forecasts_->revision() : 0;
     seen_media_ = media_ ? media_->revision() : 0;
@@ -765,13 +794,15 @@ class PageBasicLvglPort final:public PageRendererPort {
   bool state_changed() const override {
     if (local_) local_->loop();
     if (fan_status_) fan_status_->loop();
+    if (percent_slider_) percent_slider_->loop();
     if (media_layout_dirty_) return true;
     if (media_)
       for (const auto& shell : shells_)
         if (shell.pending_target >= 0 && !group_card(shell) &&
             static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= pending_timeout(shell))
           return true;
-    return (fan_status_ && fan_status_->revision() != seen_fan_status_) ||
+    return (percent_slider_ && percent_slider_->revision() != seen_percent_slider_) ||
+           (fan_status_ && fan_status_->revision() != seen_fan_status_) ||
            (relay_ && relay_->revision() != seen_relay_) || (local_ && local_->revision() != seen_local_) ||
            state_.revision() != seen_state_ || theme_.revision != seen_theme_ ||
            (forecasts_ && forecasts_->revision() != seen_forecast_) ||
@@ -899,7 +930,9 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
   static void contrast_event(lv_event_t* event) {
     auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
-    if (!shell || !shell->definition || shell->definition->definition.kind != BasicCardKind::COVER) return;
+    if (!shell || !shell->definition) return;
+    const auto kind=shell->definition->definition.kind;
+    if (kind != BasicCardKind::COVER && kind != BasicCardKind::PERCENT_SLIDER) return;
     slider_text_contrast_event(event, shell->port->widgets_[shell->index].fill);
   }
   void cancel_position_gesture(Shell& shell) {
@@ -918,6 +951,141 @@ class PageBasicLvglPort final:public PageRendererPort {
     return shell.definition&&(shell.definition->definition.kind==BasicCardKind::MEDIA_POSITION||
       (shell.definition->definition.kind==BasicCardKind::MEDIA_NOW_PLAYING&&shell.definition->definition.media.progress));
   }
+  static bool percent_card(const Shell& shell) {
+    return shell.definition && shell.definition->definition.kind == BasicCardKind::PERCENT_SLIDER;
+  }
+  PagePercentSliderSnapshot percent_snapshot(const Shell& shell) const {
+    return read_basic_percent_slider(shell.definition->definition,
+                                     {shell.token.configuration, shell.token.card}, state_, percent_slider_);
+  }
+  void percent_feedback(Shell& shell, BasicCardState& value) {
+    const auto& w = widgets_[shell.index];
+    if (shell.dragging && shell.gesture_connection != percent_slider_->connection_generation())
+      cancel_position_gesture(shell);
+    lv_obj_clear_flag(w.slider, LV_OBJ_FLAG_HIDDEN);
+    if (value.percent_slider.available)
+      lv_obj_add_flag(w.slider, LV_OBJ_FLAG_CLICKABLE);
+    else {
+      lv_obj_clear_flag(w.slider, LV_OBJ_FLAG_CLICKABLE);
+      cancel_position_gesture(shell);
+    }
+    if (!shell.dragging || shell.membership_revision != value.percent_slider.write_revision)
+      lv_slider_set_value(w.slider, value.percent_slider.percent, LV_ANIM_OFF);
+    shell.membership_revision = value.percent_slider.write_revision;
+    const auto kind = value.percent_slider.kind;
+    const bool inverted =
+        kind == PagePercentSliderKind::COVER_POSITION || kind == PagePercentSliderKind::COVER_TILT;
+    if (shell.dragging) {
+      const auto percent = lv_slider_get_value(w.slider);
+      value.fill_percent = static_cast<uint8_t>(inverted ? 100 - percent : percent);
+    }
+  }
+  void paint_percent_feedback(Shell& shell) {
+    if (!percent_card(shell)) return;
+    BasicCardState value;
+    value.percent_slider = percent_snapshot(shell);
+    const auto kind = value.percent_slider.kind;
+    const bool inverted =
+        kind == PagePercentSliderKind::COVER_POSITION || kind == PagePercentSliderKind::COVER_TILT;
+    value.fill_percent = !value.percent_slider.fill_known ? 0
+                         : inverted                       ? 100 - value.percent_slider.percent
+                                                          : value.percent_slider.percent;
+    percent_feedback(shell, value);
+    shell.fill_percent = value.fill_percent;
+    update_fill_geometry(shell);
+  }
+  void percent_report(Shell& shell) {
+    const auto value = percent_snapshot(shell);
+    if (shell.membership_revision != value.write_revision)
+      lv_slider_set_value(widgets_[shell.index].slider, value.percent, LV_ANIM_OFF);
+    shell.membership_revision = value.write_revision;
+  }
+  static void percent_pointer(Shell& shell) {
+    auto* port = shell.port;
+    if (!shell.dragging || !shell.input || lv_indev_get_type(shell.input) != LV_INDEV_TYPE_POINTER) return;
+    lv_point_t point;
+    lv_indev_get_point(shell.input, &point);
+    auto* slider = port->widgets_[shell.index].slider;
+    lv_area_t area;
+    lv_obj_get_coords(slider, &area);
+    int percent;
+    if (slider_geometry::vertical_pointer_percent(point.y, area.y1, area.y2, percent))
+      lv_slider_set_value(slider, percent, LV_ANIM_OFF);
+  }
+  static void percent_slider_guard(lv_event_t* event) {
+    auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
+    auto* port = shell->port;
+    const auto code = lv_event_get_code(event);
+    if (code == LV_EVENT_PRESSED) {
+      const auto snapshot = port->percent_snapshot(*shell);
+      if (!snapshot.available || !port->actions_.valid ||
+          !port->actions_.valid(port->actions_.owner, shell->token)) {
+        lv_event_stop_processing(event);
+        return;
+      }
+      shell->pressed = shell->token;
+      shell->dragging = true;
+      shell->input = lv_indev_active();
+      shell->gesture_connection = port->percent_slider_->connection_generation();
+    } else if (code == LV_EVENT_PRESS_LOST || code == LV_EVENT_INDEV_RESET) {
+      const bool was = shell->dragging;
+      shell->dragging = false;
+      shell->pressed = {};
+      shell->input = nullptr;
+      if (was) port->paint_percent_feedback(*shell);
+    }
+  }
+  static void percent_slider_event(lv_event_t* event) {
+    auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
+    auto* port = shell->port;
+    const auto code = lv_event_get_code(event);
+    if (code == LV_EVENT_PRESSED) {
+      if (!shell->dragging) return;
+      port->percent_report(*shell);
+      percent_pointer(*shell);
+      port->paint_percent_feedback(*shell);
+      return;
+    }
+    if (code == LV_EVENT_PRESSING) {
+      port->percent_report(*shell);
+      percent_pointer(*shell);
+      port->paint_percent_feedback(*shell);
+      return;
+    }
+    if (code == LV_EVENT_PRESS_LOST || code == LV_EVENT_INDEV_RESET) {
+      const bool was = shell->dragging;
+      shell->dragging = false;
+      shell->pressed = {};
+      shell->input = nullptr;
+      if (was) port->paint_percent_feedback(*shell);
+      return;
+    }
+    if (code == LV_EVENT_VALUE_CHANGED) {
+      if (shell->dragging) port->paint_percent_feedback(*shell);
+      return;
+    }
+    if (code != LV_EVENT_RELEASED || !shell->dragging) return;
+    port->percent_report(*shell);
+    percent_pointer(*shell);
+    const auto origin = shell->pressed;
+    const auto connection = shell->gesture_connection;
+    shell->pressed = {};
+    shell->dragging = false;
+    shell->input = nullptr;
+    if (!same(origin, shell->token) || !port->actions_.valid ||
+        !port->actions_.valid(port->actions_.owner, origin) ||
+        connection != port->percent_slider_->connection_generation() ||
+        !port->percent_snapshot(*shell).available) {
+      port->paint_percent_feedback(*shell);
+      return;
+    }
+    const auto percent = lv_slider_get_value(port->widgets_[shell->index].slider);
+    if (percent < 0 || percent > 100 ||
+        !port->percent_slider_->preview({origin.configuration, origin.card}, static_cast<uint8_t>(percent)))
+      return;
+    port->paint_percent_feedback(*shell);
+    if (port->actions_.percent_slider) port->actions_.percent_slider(port->actions_.owner, origin, percent);
+  }
   bool position_snapshot(Shell& shell, PageMediaPlaybackSnapshot& snapshot) const {
     if (!media_ || !seek_card(shell))
       return false;
@@ -931,6 +1099,30 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
   void update_fill_geometry(Shell& shell) {
     const auto& w = widgets_[shell.index];
+    if (percent_card(shell)) {
+      const auto width = lv_obj_get_width(w.button), height = lv_obj_get_height(w.button);
+      if (width <= 0 || height <= 0 || !w.slider || !w.fill) return;
+      const auto left = lv_obj_get_style_pad_left(w.button, LV_PART_MAIN);
+      const auto right = lv_obj_get_style_pad_right(w.button, LV_PART_MAIN);
+      const auto top = lv_obj_get_style_pad_top(w.button, LV_PART_MAIN);
+      const auto bottom = lv_obj_get_style_pad_bottom(w.button, LV_PART_MAIN);
+      const auto content_width = lv_obj_get_content_width(w.button),
+                 content_height = lv_obj_get_content_height(w.button);
+      const auto shift_x = (content_width + left + right) / 2 - content_width / 2 - left;
+      const auto shift_y = (content_height + top + bottom) / 2 - content_height / 2 - top;
+      const auto slider_width = std::max<int32_t>(1, width >= height ? height - 1 : width);
+      lv_obj_set_size(w.slider, slider_width, height);
+      lv_obj_align(w.slider, LV_ALIGN_CENTER, shift_x, shift_y);
+      const auto fill_height = static_cast<int32_t>(height) * shell.fill_percent / 100;
+      const auto kind = shell.definition->definition.percent_slider;
+      const bool inverted =
+          kind == PagePercentSliderKind::COVER_POSITION || kind == PagePercentSliderKind::COVER_TILT;
+      lv_obj_set_size(w.fill, width, fill_height);
+      lv_obj_align(w.fill, inverted ? LV_ALIGN_TOP_MID : LV_ALIGN_BOTTOM_MID, shift_x,
+                   inverted ? -top : bottom);
+      lv_obj_set_style_radius(w.fill, lv_obj_get_style_radius(w.button, LV_PART_MAIN), LV_PART_MAIN);
+      return;
+    }
     const bool horizontal =
         seek_card(shell);
     const auto width = lv_obj_get_width(w.button), height = lv_obj_get_height(w.button);
@@ -1058,6 +1250,10 @@ class PageBasicLvglPort final:public PageRendererPort {
   static void slider_guard(lv_event_t* event) {
     auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
     auto* port = shell->port;
+    if (percent_card(*shell)) {
+      percent_slider_guard(event);
+      return;
+    }
     if (!seek_card(*shell)) return;
     const auto code = lv_event_get_code(event);
     if (code == LV_EVENT_PRESSED) {
@@ -1084,6 +1280,10 @@ class PageBasicLvglPort final:public PageRendererPort {
   static void slider_event(lv_event_t* event) {
     auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
     auto* port = shell->port;
+    if (percent_card(*shell)) {
+      percent_slider_event(event);
+      return;
+    }
     if (!seek_card(*shell)) return;
     const auto code = lv_event_get_code(event);
     if (code == LV_EVENT_VALUE_CHANGED) {
@@ -1434,13 +1634,14 @@ class PageBasicLvglPort final:public PageRendererPort {
   PageLocalSensorRuntime* local_{nullptr};
   PageLocalRelayRuntime* relay_{nullptr};
   PageFanStatusRuntime* fan_status_{nullptr};
+  PagePercentSliderRuntime* percent_slider_{nullptr};
   std::array<Shell, Slots> shells_{};
   Arena active_, staged_;
   PageStore store_;
   bool initialized_{false}, media_layout_dirty_{false}, media_finishing_{false};
   size_t callbacks_{0};
-  uint64_t seen_fan_status_{0}, seen_relay_{0}, seen_local_{0}, seen_state_{0}, seen_theme_{0},
-      seen_forecast_{0}, seen_media_{0}, seen_artwork_{0};
+  uint64_t seen_percent_slider_{0}, seen_fan_status_{0}, seen_relay_{0}, seen_local_{0}, seen_state_{0},
+      seen_theme_{0}, seen_forecast_{0}, seen_media_{0}, seen_artwork_{0};
   PageBasicMemory memory_;
 };
 }  // namespace espcontrol::pages

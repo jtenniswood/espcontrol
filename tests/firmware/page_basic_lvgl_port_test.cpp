@@ -156,6 +156,32 @@ struct Fixture {
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
   }
+  struct PercentSliders {};
+  Fixture(const DeviceUiLimits& limits, PercentSliders) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {
+        ";Levels;Auto;Auto;indicator;;subpage;;", "fan.room;Fan;Auto;Lightbulb;;;fan_speed;;",
+        "light.room;Light;Auto;Auto;;;light_brightness;;", "cover.room;Position;Auto;Auto;;;cover;;",
+        "cover.room;Tilt;Auto;Auto;tilt;;cover;;"};
+    for (size_t i = 0; i < 5; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i].data()),
+                                  cards[i].size()) == PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1,2,3,4|J,fan.room,Fan,Auto,Lightbulb,,,,|V,light.room,Light,Auto,Auto,,,,|C,cover.room,Position,"
+        "Auto,Auto,,,,|C,cover.room,Tilt,Auto,Auto,tilt,,,";
+    assert(writer.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = "1,2,3,4,5";
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                 reinterpret_cast<const uint8_t*>(order.data()),
+                                 order.size()) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   struct FanModes {};
   Fixture(const DeviceUiLimits& limits, FanModes) {
     PanelConfigWriter writer(document.data(), document.size());
@@ -1365,6 +1391,268 @@ void position_geometry_reference(const PageBasicWidgets& widgets, uint8_t percen
   }
   lv_obj_delete(root);
 }
+void vertical_pointer(lv_indev_t* device, PointerInput& input, lv_obj_t* slider, int percent, bool pressed) {
+  lv_area_t area;
+  lv_obj_get_coords(slider, &area);
+  input.point = {(area.x1 + area.x2) / 2, area.y2 - (lv_area_get_height(&area) - 1) * percent / 100};
+  input.state = pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+  lv_indev_read(device);
+}
+void percent_geometry_reference(const PageBasicWidgets& widgets, uint8_t percent, bool inverted) {
+  lv_obj_update_layout(widgets.button);
+  lv_area_t root_area, actual_slider, actual_fill;
+  lv_obj_get_coords(widgets.button, &root_area);
+  lv_obj_get_coords(widgets.slider, &actual_slider);
+  lv_obj_get_coords(widgets.fill, &actual_fill);
+  auto* root = lv_button_create(lv_layer_top());
+  lv_obj_set_pos(root, root_area.x1, root_area.y1);
+  lv_obj_set_size(root, lv_area_get_width(&root_area), lv_area_get_height(&root_area));
+  const auto radius = lv_obj_get_style_radius(widgets.button, LV_PART_MAIN);
+  lv_obj_set_style_radius(root, radius, LV_PART_MAIN);
+  auto* slider = legacy_position_reference::setup_slider_widget(root, 0x212121, false);
+  auto* fill = lv_obj_get_child(root, 0);
+  lv_obj_update_layout(root);
+  legacy_position_reference::slider_fit_to_button(slider, root, false);
+  legacy_position_reference::slider_update_fill(fill, root, percent, false, inverted, radius, false);
+  lv_obj_update_layout(root);
+  lv_area_t expected_slider, expected_fill;
+  lv_obj_get_coords(slider, &expected_slider);
+  lv_obj_get_coords(fill, &expected_fill);
+  if (std::memcmp(&actual_slider, &expected_slider, sizeof(actual_slider)) ||
+      std::memcmp(&actual_fill, &expected_fill, sizeof(actual_fill)))
+    std::fprintf(
+        stderr, "percent geometry mismatch slider %d,%d,%d,%d / %d,%d,%d,%d fill %d,%d,%d,%d / %d,%d,%d,%d\n",
+        actual_slider.x1, actual_slider.y1, actual_slider.x2, actual_slider.y2, expected_slider.x1,
+        expected_slider.y1, expected_slider.x2, expected_slider.y2, actual_fill.x1, actual_fill.y1,
+        actual_fill.x2, actual_fill.y2, expected_fill.x1, expected_fill.y1, expected_fill.x2,
+        expected_fill.y2);
+  assert(std::memcmp(&actual_slider, &expected_slider, sizeof(actual_slider)) == 0 &&
+         std::memcmp(&actual_fill, &expected_fill, sizeof(actual_fill)) == 0);
+  lv_obj_delete(root);
+}
+template <size_t Slots>
+void percent_slider_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, Fixture::PercentSliders{});
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PagePercentSliderRuntime levels(arena, subscriptions);
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192}, &levels);
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+    w.fill = lv_obj_create(w.button);
+    w.slider = lv_slider_create(w.button);
+  }
+  for (size_t slot : {size_t(1), size_t(3)}) {
+    lv_obj_set_style_pad_left(widgets[slot].button, 7, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(widgets[slot].button, 18, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(widgets[slot].button, 12, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(widgets[slot].button, 9, LV_PART_MAIN);
+  }
+  PageBasicTheme theme;
+  Actions<Slots> actions;
+  auto callbacks = actions.callbacks();
+  callbacks.percent_slider = [](void* owner, PageBindingToken token, int percent) {
+    auto& action = *static_cast<Actions<Slots>*>(owner);
+    ++action.seeks;
+    action.seek_percent = static_cast<uint8_t>(percent);
+    action.last = token;
+    if (action.seek_page != NO_PAGE) assert(action.renderer->open_page(action.seek_page));
+  };
+  {
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     callbacks);
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  {
+    auto absent = callbacks;
+    absent.percent_slider = nullptr;
+    PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                     absent, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &levels);
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  {
+    auto incomplete = widgets;
+    incomplete[1].slider = nullptr;
+    PageBasicLvglPort<Slots> missing(arena, state, incomplete, {limits.slot_count, limits.grid_columns},
+                                     theme, callbacks, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                     &levels);
+    assert(missing.initialize() && !missing.prepare(fixture.store, Slots));
+  }
+  PointerInput input;
+  auto* device = lv_indev_create();
+  lv_indev_set_type(device, LV_INDEV_TYPE_POINTER);
+  lv_indev_set_display(device, lv_display_get_default());
+  lv_indev_set_user_data(device, &input);
+  lv_indev_set_read_cb(device, PointerInput::read);
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  callbacks, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &levels);
+    assert(port.initialize());
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t used = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[used++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    PageRuntimeResourcesGroup<3> resources({&renderer, &levels, &state});
+    PageStoreRuntime publication(limits, arena, 32768, &resources);
+    assert(publication.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    assert(publication.activate_prepared(0, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(),
+                                         fixture.size));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(lv_obj_get_height(widgets[3].fill) == 0);  // No fictitious initial closed-cover fill.
+    subscriptions.send("fan.room", "", "off");
+    subscriptions.send("light.room", "", "off");
+    subscriptions.send("cover.room", "", "closed");
+    subscriptions.send("fan.room", "percentage", "25");
+    subscriptions.send("light.room", "brightness", "128");
+    subscriptions.send("cover.room", "current_position", "20");
+    subscriptions.send("cover.room", "current_tilt_position", "70");
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    for (size_t slot = 1; slot <= 4; ++slot)
+      assert(!lv_obj_has_state(widgets[slot].button, LV_STATE_CHECKED));
+    assert(lv_slider_get_value(widgets[1].slider) == 25 && lv_slider_get_value(widgets[2].slider) == 50);
+    {
+      const auto original=lv_obj_get_style_bg_color(widgets[1].fill,LV_PART_MAIN);
+      lv_obj_set_style_bg_color(widgets[1].fill,lv_color_hex(0xFFFFFF),LV_PART_MAIN);
+      lv_obj_set_style_text_color(widgets[1].button,lv_color_hex(0xFFFFFF),LV_PART_MAIN);
+      lv_layer_t layer{};lv_draw_label_dsc_t descriptor;lv_draw_label_dsc_init(&descriptor);
+      descriptor.base.layer=&layer;descriptor.color=lv_color_hex(0xFFFFFF);
+      lv_draw_task_t task{};task.type=LV_DRAW_TASK_TYPE_LABEL;task.draw_dsc=&descriptor;
+      lv_obj_get_coords(widgets[1].fill,&task.clip_area);task.area=task.clip_area;layer._clip_area=task.clip_area;
+      lv_obj_send_event(widgets[1].label,LV_EVENT_DRAW_TASK_ADDED,&task);
+      assert(lv_color_eq(descriptor.color,lv_color_hex(0x212121))); // Dark text over the bright fill.
+      task.clip_area.x1=task.clip_area.x2+1;task.clip_area.x2=task.clip_area.x1+2;
+      descriptor.color=lv_color_hex(0x212121);
+      lv_obj_send_event(widgets[1].label,LV_EVENT_DRAW_TASK_ADDED,&task);
+      assert(lv_color_eq(descriptor.color,lv_color_hex(0xFFFFFF))); // Base text outside the fill.
+      lv_obj_set_style_bg_color(widgets[1].fill,original,LV_PART_MAIN);
+    }
+    percent_geometry_reference(widgets[1], 25, false);
+    percent_geometry_reference(widgets[2], 50, false);
+    percent_geometry_reference(widgets[3], 80, true);
+    percent_geometry_reference(widgets[4], 30, true);
+    assert(std::strcmp(lv_label_get_text(widgets[3].icon), "OPEN") == 0);
+    subscriptions.send("fan.room", "", "on");
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));
+    vertical_pointer(device, input, widgets[1].slider, 0, true);
+    vertical_pointer(device, input, widgets[1].slider, 0, false);
+    assert(actions.seeks == 1 && actions.seek_percent == 0 && renderer.valid(actions.last));
+    vertical_pointer(device, input, widgets[1].slider, 100, true);
+    vertical_pointer(device, input, widgets[1].slider, 100, false);
+    assert(actions.seeks == 2 && actions.seek_percent == 100);
+    // A repeated report still updates the physical thumb during an active
+    // drag. A later pointer sample then wins, matching the legacy callbacks.
+    vertical_pointer(device, input, widgets[1].slider, 75, true);
+    subscriptions.send("fan.room", "percentage", "25");
+    renderer.update_visible();
+    assert(lv_slider_get_value(widgets[1].slider) == 25);
+    subscriptions.send("fan.room", "percentage", "25");
+    renderer.update_visible();
+    assert(lv_slider_get_value(widgets[1].slider) == 25);
+    lv_obj_send_event(widgets[1].slider, LV_EVENT_PRESS_LOST, nullptr);
+    vertical_pointer(device, input, widgets[1].slider, 75, false);
+    assert(actions.seeks == 2);
+    vertical_pointer(device, input, widgets[1].slider, 100, true);
+    vertical_pointer(device, input, widgets[1].slider, 100, false);
+    assert(actions.seeks == 3);
+    const auto root_binding = renderer.binding(1);
+    assert(levels.read({0, root_binding.card}).preview);
+    const auto child = fixture.store.card(0)->target;
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(lv_slider_get_value(widgets[1].slider) == 25);
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(lv_slider_get_value(widgets[1].slider) == 100);
+    subscriptions.send("fan.room", "percentage", "25");
+    renderer.update_visible();
+    assert(lv_slider_get_value(widgets[1].slider) == 25 && !levels.read({0, root_binding.card}).preview);
+    vertical_pointer(device, input, widgets[1].slider, 75, true);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    vertical_pointer(device, input, widgets[1].slider, 75, false);
+    assert(actions.seeks == 3 && !renderer.valid(root_binding));
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    vertical_pointer(device, input, widgets[1].slider, 75, true);
+    ++subscriptions.generation;
+    renderer.update_visible();
+    vertical_pointer(device, input, widgets[1].slider, 75, false);
+    assert(actions.seeks == 3 && !lv_obj_has_flag(widgets[1].slider, LV_OBJ_FLAG_CLICKABLE));
+    subscriptions.send("fan.room", "", "on");
+    subscriptions.send("fan.room", "percentage", "25");
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    actions.seek_page = child;
+    vertical_pointer(device, input, widgets[1].slider, 100, true);
+    vertical_pointer(device, input, widgets[1].slider, 100, false);
+    actions.seek_page = NO_PAGE;
+    assert(actions.seeks == 4 && !renderer.valid(actions.last));
+    renderer.update_visible();
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    vertical_pointer(device, input, widgets[1].slider, 75, true);
+    assert(renderer.suspend() && renderer.resume());
+    renderer.update_visible();
+    vertical_pointer(device, input, widgets[1].slider, 75, false);
+    assert(actions.seeks == 4);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto cpp = cpp_allocations, retained = lv_live_bytes, reservations = arena.allocations,
+               channels = subscriptions.bindings.size(), descriptors = cache.memory().descriptor_adds;
+    for (int n = 0; n < 1000; ++n) {
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(cpp_allocations == cpp && lv_live_bytes == retained && arena.allocations == reservations &&
+             subscriptions.bindings.size() == channels && cache.memory().descriptor_adds == descriptors);
+    }
+    renderer.retire_active();
+    state.retire_active();
+    levels.retire_active();
+    std::printf(
+        "%s: percent sliders 1000 cycles, legacy geometry, vertical endpoints and stable retained "
+        "resources\n",
+        limits.device_profile);
+  }
+  assert(arena.live == 0);
+  lv_indev_delete(device);
+  lv_obj_delete(page);
+}
 template <size_t Slots>
 void media_position_profile(const DeviceUiLimits& limits) {
   Fixture fixture(limits, false, false, false, false, false, false, false, true);
@@ -2544,19 +2832,42 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "percent_sliders") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          percent_slider_profile<6>(limits);
+          break;
+        case 9:
+          percent_slider_profile<9>(limits);
+          break;
+        case 15:
+          percent_slider_profile<15>(limits);
+          break;
+        case 20:
+          percent_slider_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "fan_status") == 0) {
       switch (limits.slot_count) {
         case 6:
           fan_status_profile<6>(limits);
+          percent_slider_profile<6>(limits);
           break;
         case 9:
           fan_status_profile<9>(limits);
+          percent_slider_profile<9>(limits);
           break;
         case 15:
           fan_status_profile<15>(limits);
+          percent_slider_profile<15>(limits);
           break;
         case 20:
           fan_status_profile<20>(limits);
+          percent_slider_profile<20>(limits);
           break;
         default:
           assert(false);
@@ -2637,6 +2948,7 @@ int main() {
         case 6:
           fan_mode_profile<6>(limits);
           fan_status_profile<6>(limits);
+          percent_slider_profile<6>(limits);
           option_select_profile<6>(limits);
           local_sensor_profile<6>(limits);
           local_relay_profile<6>(limits);
@@ -2644,6 +2956,7 @@ int main() {
         case 9:
           fan_mode_profile<9>(limits);
           fan_status_profile<9>(limits);
+          percent_slider_profile<9>(limits);
           option_select_profile<9>(limits);
           local_sensor_profile<9>(limits);
           local_relay_profile<9>(limits);
@@ -2651,6 +2964,7 @@ int main() {
         case 15:
           fan_mode_profile<15>(limits);
           fan_status_profile<15>(limits);
+          percent_slider_profile<15>(limits);
           option_select_profile<15>(limits);
           local_sensor_profile<15>(limits);
           local_relay_profile<15>(limits);
@@ -2658,6 +2972,7 @@ int main() {
         case 20:
           fan_mode_profile<20>(limits);
           fan_status_profile<20>(limits);
+          percent_slider_profile<20>(limits);
           option_select_profile<20>(limits);
           local_sensor_profile<20>(limits);
           local_relay_profile<20>(limits);
@@ -2694,6 +3009,7 @@ int main() {
         control_profile<6>(limits);
         fan_mode_profile<6>(limits);
         fan_status_profile<6>(limits);
+        percent_slider_profile<6>(limits);
         option_select_profile<6>(limits);
         local_sensor_profile<6>(limits);
         local_relay_profile<6>(limits);
@@ -2711,6 +3027,7 @@ int main() {
         control_profile<9>(limits);
         fan_mode_profile<9>(limits);
         fan_status_profile<9>(limits);
+        percent_slider_profile<9>(limits);
         option_select_profile<9>(limits);
         local_sensor_profile<9>(limits);
         local_relay_profile<9>(limits);
@@ -2728,6 +3045,7 @@ int main() {
         control_profile<15>(limits);
         fan_mode_profile<15>(limits);
         fan_status_profile<15>(limits);
+        percent_slider_profile<15>(limits);
         option_select_profile<15>(limits);
         local_sensor_profile<15>(limits);
         local_relay_profile<15>(limits);
@@ -2745,6 +3063,7 @@ int main() {
         control_profile<20>(limits);
         fan_mode_profile<20>(limits);
         fan_status_profile<20>(limits);
+        percent_slider_profile<20>(limits);
         option_select_profile<20>(limits);
         local_sensor_profile<20>(limits);
         local_relay_profile<20>(limits);

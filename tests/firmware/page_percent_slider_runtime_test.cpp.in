@@ -124,6 +124,8 @@ void parity() {
     assert(runtime.prepare(fixture.store));
     runtime.activate_prepared(fixture.store);
     assert(runtime.memory().sources == 1 && runtime.memory().cards == 2);
+    assert(!runtime.read({17, 0}).fill_known);
+
     legacy_bindings.clear();
     lv_obj_t button, icon, slider, fill;
     SliderCtx context;
