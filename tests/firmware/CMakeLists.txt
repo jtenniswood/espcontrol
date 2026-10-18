@@ -1487,6 +1487,21 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   add_test(NAME page_wifi_qr_modal_test COMMAND page_wifi_qr_modal_test)
   set_tests_properties(page_wifi_qr_modal_test PROPERTIES TIMEOUT 180)
 
+  set(PAGE_NETWORK_STATUS_MODAL_NATIVE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_network_status_modal_test.cpp)
+  add_custom_command(OUTPUT ${PAGE_NETWORK_STATUS_MODAL_NATIVE_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_network_status_modal_test.py --output ${PAGE_NETWORK_STATUS_MODAL_NATIVE_SOURCE}
+    DEPENDS generate_page_network_status_modal_test.py generate_climate_update_test.py page_network_status_modal_test.cpp.in
+      ../../components/espcontrol/button_grid_subpages.h ../../components/espcontrol/button_grid_layout.h
+    VERBATIM)
+  add_executable(page_network_status_modal_test ${PAGE_NETWORK_STATUS_MODAL_NATIVE_SOURCE}
+    ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_network_status_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_network_status_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_network_status_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_network_status_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_network_status_modal_test COMMAND page_network_status_modal_test)
+  set_tests_properties(page_network_status_modal_test PROPERTIES TIMEOUT 180)
+
   add_executable(page_expanded_image_modal_test page_expanded_image_modal_test.cpp
     ../../components/espcontrol/page_modal_runtime.cpp
     ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp
