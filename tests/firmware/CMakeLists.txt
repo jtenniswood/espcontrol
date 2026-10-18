@@ -589,6 +589,22 @@ add_test(NAME home_assistant_endpoint_policy_test COMMAND home_assistant_endpoin
 # Compile the unchanged service implementation beside the build output so its
 # quoted artwork_image.h include resolves to the hardware-free test double.
 configure_file(../../components/artwork_image/image_service.cpp image_service.cpp COPYONLY)
+add_executable(page_artwork_requests_test page_artwork_requests_test.cpp)
+target_compile_definitions(page_artwork_requests_test PRIVATE USE_LVGL)
+target_compile_features(page_artwork_requests_test PRIVATE cxx_std_17)
+target_compile_options(page_artwork_requests_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_artwork_requests_test PRIVATE stubs/owned_artwork stubs
+  ../../components/espcontrol ../../components/artwork_image)
+add_test(NAME page_artwork_requests_test COMMAND page_artwork_requests_test)
+
+add_executable(page_image_runtime_test page_image_runtime_test.cpp)
+target_compile_features(page_image_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_image_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_image_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_image_runtime_test COMMAND page_image_runtime_test)
+add_test(NAME artwork_owned_result_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/artwork_owned_result_test.py ${CMAKE_CXX_COMPILER})
+
 add_executable(image_service_test image_service_test.cpp ${CMAKE_CURRENT_BINARY_DIR}/image_service.cpp)
 target_compile_features(image_service_test PRIVATE cxx_std_17)
 target_compile_options(image_service_test PRIVATE -Wall -Wextra -Werror)

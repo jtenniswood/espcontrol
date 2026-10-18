@@ -838,7 +838,32 @@ bool ArtworkImage::fill_fit_background_(uint8_t *buffer, int width, int height,
   return true;
 }
 
-std::string ArtworkImage::request_update_url(const std::string &url, int max_source_dim) {
+bool ArtworkImage::claim_owner(ImageResultObserver& observer) {
+  if (this->get_update_interval() != SCHEDULER_DONT_RUN || this->is_busy_() ||
+      this->has_on_finished_callbacks() || this->has_on_error_callbacks() ||
+      this->animation_visible_ || this->animation_redraw_ || this->animation_screen_active_)
+    return false;
+  return this->result_channel_.claim(observer);
+}
+
+bool ArtworkImage::request_owned_update(ImageResultObserver& observer, uint64_t request,
+                                        const std::string& url, int max_source_dim) {
+  if (!this->result_channel_.owned_by(observer) || request == 0) return false;
+  this->cancel_update();
+  // ImageService dispatches only from normal loop maintenance, so completion
+  // cannot precede arming this token. The downloader owns its URL copy.
+  if (this->request_update_url(url, max_source_dim).empty()) return false;
+  return this->result_channel_.arm(observer, this->service_generation_, request);
+}
+
+void ArtworkImage::release_owner(ImageResultObserver& observer) {
+  if (!this->result_channel_.owned_by(observer)) return;
+  this->cancel_update();
+  this->result_channel_.release(observer);
+}
+
+std::string ArtworkImage::request_update_url(const std::string& url, int max_source_dim) {
+  this->result_channel_.clear();
   int max_dim = max_source_dim > 0 ? max_source_dim : (this->fixed_width_ > 0 ? this->fixed_width_ : 600);
   std::string effective_url = cap_artwork_url(url, max_dim);
   if (effective_url != url) {
@@ -873,6 +898,7 @@ std::string ArtworkImage::request_update_url(const std::string &url, int max_sou
 }
 
 void ArtworkImage::cancel_update() {
+  this->result_channel_.clear();
   this->update_pending_ = false;
   this->pending_url_.clear();
   if (this->is_busy_()) {
@@ -883,6 +909,7 @@ void ArtworkImage::cancel_update() {
 }
 
 void ArtworkImage::update() {
+  this->result_channel_.clear();
   if (this->service_pending_) {
     this->service_generation_++;
     ImageService::instance().request(this, this->service_generation_, this->request_priority_);
@@ -1012,10 +1039,7 @@ void ArtworkImage::start_update_() {
       this->complete_service_request_();
       return;
     }
-    TransferObserver::instance().complete(this->transfer_stamp_, this->service_generation_,
-                                         this->last_http_status_, TransferFailure::NONE);
-    this->download_finished_callback_.call(true);
-    this->complete_service_request_();
+    this->notify_result_(true, true);
     return;
   }
   if (http_code != HTTP_CODE_OK) {
@@ -1472,10 +1496,7 @@ bool ArtworkImage::consume_s3_transfer_result_() {
       this->complete_service_request_();
       return true;
     }
-    TransferObserver::instance().complete(this->transfer_stamp_, this->service_generation_,
-                                         this->last_http_status_, TransferFailure::NONE);
-    this->download_finished_callback_.call(true);
-    this->complete_service_request_();
+    this->notify_result_(true, true);
     return true;
   }
   if (result->size < 12 || result->size > this->max_download_buffer_size_) {
@@ -1607,10 +1628,7 @@ bool ArtworkImage::consume_p4_pipeline_result_() {
       this->complete_service_request_();
       return true;
     }
-    TransferObserver::instance().complete(this->transfer_stamp_, this->service_generation_,
-                                         this->last_http_status_, TransferFailure::NONE);
-    this->download_finished_callback_.call(true);
-    this->complete_service_request_();
+    this->notify_result_(true, true);
     return true;
   }
   this->max_download_buffer_size_ = image_pipeline_transfer_limit(
@@ -2154,12 +2172,9 @@ void ArtworkImage::finish_download_() {
 #endif
   this->log_state_("lvgl-descriptor-ready");
   App.feed_wdt();
-  TransferObserver::instance().complete(this->transfer_stamp_, this->service_generation_,
-                                       this->last_http_status_, TransferFailure::NONE);
-  this->download_finished_callback_.call(false);
+  this->notify_result_(true, false);
   App.feed_wdt();
   this->log_state_("download-callback-finished");
-  this->complete_service_request_();
 }
 
 void ArtworkImage::fail_download_() {
@@ -2174,10 +2189,24 @@ void ArtworkImage::fail_download_() {
   this->log_state_("request-failed");
   this->log_timing_("error", bytes_read);
   this->end_connection_();
-  TransferObserver::instance().complete(this->transfer_stamp_, this->service_generation_,
-                                       this->last_http_status_, this->transfer_failure_);
-  this->download_error_callback_.call();
-  this->complete_service_request_();
+  this->notify_result_(false, false);
+}
+
+void ArtworkImage::notify_result_(bool success, bool cached) {
+  const uint32_t generation = this->service_generation_;
+  TransferObserver::instance().complete(this->transfer_stamp_, generation, this->last_http_status_,
+                                        success ? TransferFailure::NONE : this->transfer_failure_);
+  // Both observers run on the main loop and may cancel/rebind the component.
+  // A completed request must never notify or complete a replacement request.
+  if (generation != this->service_generation_ || !this->service_active_) return;
+  if (this->result_channel_.claimed()) {
+    this->result_channel_.deliver(generation, success, cached);
+  } else if (success) {
+    this->download_finished_callback_.call(cached);
+  } else {
+    this->download_error_callback_.call();
+  }
+  if (generation == this->service_generation_) this->complete_service_request_();
 }
 
 void ArtworkImage::complete_service_request_() {
@@ -2198,13 +2227,15 @@ void ArtworkImage::complete_service_request_() {
 }
 
 void ArtworkImage::cancel_service_request_() {
+  this->result_channel_.clear();
   if (!this->service_pending_ && !this->service_active_) return;
+  ++this->service_generation_;
   this->service_pending_ = false;
   this->service_active_ = false;
   ImageService::instance().cancel(this);
 }
 
-void ArtworkImage::queue_pending_update_(const std::string &url) {
+void ArtworkImage::queue_pending_update_(const std::string& url) {
   if (!this->validate_url_(url)) {
     return;
   }
