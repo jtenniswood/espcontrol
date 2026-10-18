@@ -18,6 +18,8 @@ transliteration is not applied to playlist identifiers.
 entity. It invalidates old metadata on transitions to idle/off/unavailable and
 preserves new attributes received after that transition. Returning to a usable
 state requests a fresh snapshot on loop maintenance when content is missing.
+Only sources used by content-reading cards request metadata; plain playback
+buttons do not trigger a refresh for attributes they do not use.
 Identical fresh attributes still notify the view even if their raw cache bytes
 have not changed. Configuration replacement copies validity independently of raw
 cache values, and reconnect generations invalidate both prepared and active data.
