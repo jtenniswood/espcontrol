@@ -12,7 +12,8 @@ precedence over raw friendly names. During an active numeric drag, the icon is
 replaced by a value and HA units, with the existing rounding/negative-zero
 formatting. The fixed 48-byte formatter also backs the existing string API.
 Outside a drag, the normal off icon returns. These cards do not use checked
-backgrounds or large-number sizing. Geometry, fill colours and text contrast
+backgrounds or large-number sizing. Eligible children retain the existing folder
+indicator predicate (including the literal numeric state `1`). Geometry, fill colours and text contrast
 reuse the existing vertical slider policies, including asymmetric padding.
 
 A held gesture captures the complete binding and connection. Range changes,

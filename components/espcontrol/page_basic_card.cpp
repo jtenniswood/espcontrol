@@ -316,7 +316,8 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
   // The currently ported children which contributed to the old indicator.
   // Sensors never contributed. Extend this policy when other drivers port their
   // indicator semantics (timer/mower/local controls use different predicates).
-  if (PagePercentSliderRuntime::classify(store, id) != PagePercentSliderKind::NONE)
+  if (PagePercentSliderRuntime::classify(store, id) != PagePercentSliderKind::NONE ||
+      PageNumberSliderRuntime::supported(store,id))
     return store.field(*card, CardField::ENTITY);
   if (type == "internal")
     return PageLocalRelayRuntime::toggle(store, *card) ? store.field(*card, CardField::ENTITY)

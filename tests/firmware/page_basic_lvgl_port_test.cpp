@@ -1656,6 +1656,10 @@ void number_slider_profile(const DeviceUiLimits& limits) {
     assert(renderer.back());
     renderer.update_visible();
     lv_obj_update_layout(page);
+    subscriptions.send("fan.mixed","","off");subscriptions.send("number.room","","1");
+    renderer.update_visible();assert(lv_obj_has_state(widgets[0].button,LV_STATE_CHECKED));
+    subscriptions.send("number.room","","5");renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[0].button,LV_STATE_CHECKED));
     const auto cpp = cpp_allocations, retained = lv_live_bytes, reservations = arena.allocations,
                channels = subscriptions.bindings.size(), descriptors = cache.memory().descriptor_adds;
     for (int n = 0; n < 1000; ++n) {
