@@ -46,6 +46,9 @@ struct Display {
 };
 Display tile, popup;
 bool popup_open = true;
+struct ClimateControlModalUi { ClimateControlCtx *active = nullptr; };
+ClimateControlModalUi modal_ui;
+ClimateControlModalUi &climate_control_modal_ui() { return modal_ui; }
 void climate_update_card(ClimateControlCtx *ctx) {
   ++tile.refreshes;
   tile.status = climate_action_label(ctx);
@@ -54,9 +57,9 @@ void climate_update_card(ClimateControlCtx *ctx) {
 }
 void climate_control_set_modal_value(ClimateControlCtx *ctx) {
   ++popup.refreshes;
-  if (popup_open) popup.status = climate_action_label(ctx);
+  if (popup_open && modal_ui.active == ctx) popup.status = climate_action_label(ctx);
 }
-void climate_control_hide_modal() { popup_open = false; }
+void climate_control_hide_modal() { popup_open = false; modal_ui.active = nullptr; }
 
 using Callback = std::function<void(esphome::StringRef)>;
 std::map<std::string, Callback> states;
@@ -90,7 +93,8 @@ ClimateTargetKind climate_target_kind(ClimateControlCtx *) { assert(false); retu
 bool climate_parse_supported_features(esphome::StringRef, int &) { assert(false); return false; }
 bool climate_target_values_complete(ClimateControlCtx *) { assert(false); return false; }
 bool climate_parse_tenths(esphome::StringRef, int &) { assert(false); return false; }
-void climate_cancel_temperature_send(ClimateControlCtx *) {}
+void lv_timer_pause(lv_timer_t *) {}
+// @production-function climate_cancel_temperature_send
 void climate_normalize_range(ClimateControlCtx *) { assert(false); }
 std::vector<std::string> climate_parse_options(esphome::StringRef) { assert(false); return {}; }
 void climate_select_target_for_mode(ClimateControlCtx *, const std::string &) {}
@@ -129,6 +133,7 @@ void expect_refresh(Event event, const char *status, bool highlighted, bool on_i
 int main() {
   ClimateControlCtx ctx;
   ctx.entity_id = ENTITY;
+  modal_ui.active = &ctx;
   subscribe_climate_control_state(&ctx);
   receive_mode("heat");
   receive_action("heating");
@@ -192,6 +197,23 @@ int main() {
   assert(popup.status == "Idle");  // Closed views are not rendered.
   expect_refresh([] { receive_action("heating"); }, "Unavailable", false, false);
   expect_refresh([] { receive_mode("auto"); }, "Heating", true, true);
+
+  // A different thermostat may go unavailable while this one is being edited.
+  ClimateControlCtx other;
+  other.entity_id = "climate.hall";
+  subscribe_climate_control_state(&other);
+  popup_open = true;
+  modal_ui.active = &ctx;
+  climate_control_set_modal_value(&ctx);
+  ctx.pending_temp_send = true;
+  other.pending_temp_send = true;
+  states.at(other.entity_id)(esphome::StringRef("unavailable"));
+  assert(popup_open && modal_ui.active == &ctx);
+  assert(ctx.pending_temp_send && !other.pending_temp_send);
+  assert(popup.status == "Heating");
+  receive_mode("unknown");
+  assert(!popup_open && !modal_ui.active && !ctx.pending_temp_send);
+  receive_mode("auto");
 
   // Callbacks retained after a screen rebuild must not touch old views/context.
   ++generation;

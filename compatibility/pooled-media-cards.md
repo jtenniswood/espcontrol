@@ -121,6 +121,9 @@ style properties, even in configurations without Now Playing. Include that cost
 in the integrated device comparison; retained host counts are not device RAM
 savings. Temporary grid/style work is measured separately from retained storage.
 
+The fixed request/slot boundary is described in [reusable image ownership](pooled-image-ownership.md).
+It remains unselected and still needs its cover-art view and scene wiring.
+
 Remaining media work includes secondary entities, full cover-art routing and
 loading/cancellation and the media/volume/speaker
 panels. Those paths must preserve the existing behaviour before production
