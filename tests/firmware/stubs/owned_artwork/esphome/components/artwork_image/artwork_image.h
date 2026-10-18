@@ -13,7 +13,7 @@ extern size_t artwork_test_draw_fences;
 
 namespace esphome::artwork_image {
 enum class ImageResizeMode { FIT, COVER };
-enum class ImageRequestPriority { COVER_ART };
+enum class ImageRequestPriority { BACKGROUND, TILE, COVER_ART, MODAL };
 // Only transfer/component I/O is replaced. The production channel and adapter
 // run unchanged, with a retained result available for late-delivery tests.
 class ArtworkImage {
@@ -22,7 +22,7 @@ class ArtworkImage {
   std::string url;
   uint64_t request{0};
   uint32_t generation{0}, background{0};
-  int width{0}, height{0};
+  int width{0}, height{0}, max_source_dimension{0};
   ImageResizeMode mode{ImageResizeMode::FIT};
   ImageRequestPriority priority{ImageRequestPriority::COVER_ART};
   size_t cancels{0}, releases{0};
@@ -35,12 +35,14 @@ class ArtworkImage {
     cancel_update();
     channel.release(owner);
   }
-  bool request_owned_update(ImageResultObserver& owner, uint64_t token, const std::string& source) {
+  bool request_owned_update(ImageResultObserver& owner, uint64_t token, const std::string& source,
+                            int maximum = 0) {
     assert(channel.owned_by(owner));
     cancel_update();
     if (!accept) return false;
     request = token;
     url = source;
+    max_source_dimension = maximum;
     return channel.arm(owner, ++generation, token);
   }
   void set_target_size(int w, int h) {

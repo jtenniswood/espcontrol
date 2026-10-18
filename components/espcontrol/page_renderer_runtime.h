@@ -173,11 +173,17 @@ class PageRendererRuntime final : public PageRuntimeResources {
     port_.finish_update();
   }
   PageBindingToken binding(size_t shell)const{return shell<Slots?bindings_[shell]:PageBindingToken{};}
-  bool valid(PageBindingToken token)const {
-    if(changing_ || suspended_ || token.binding==0 || token.binding!=view_binding_ ||
-       token.shell>=Slots || token.configuration!=active_store_.generation() || token.page!=active_page_)return false;
+  // Read-only ownership remains usable while the bank binds/paints. Input and
+  // navigation callbacks must use valid(), which also rejects reentrant work.
+  bool bound(PageBindingToken token) const {
+    if (suspended_ || token.binding == 0 || token.binding != view_binding_ || token.shell >= Slots ||
+        token.configuration != active_store_.generation() || token.page != active_page_)
+      return false;
     const auto &current=bindings_[token.shell];
     return current.binding==token.binding && current.card==token.card && current.back==token.back;
+  }
+  bool valid(PageBindingToken token) const {
+    return !changing_ && bound(token);
   }
   PageId active_page()const{return active_page_;}
   constexpr size_t shell_count()const{return Slots;}

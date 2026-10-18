@@ -64,8 +64,13 @@ class PageArtworkRequests final : public PageImageRequests {
     s.image->set_resize_mode(options.cover ? esphome::artwork_image::ImageResizeMode::COVER
                                            : esphome::artwork_image::ImageResizeMode::FIT);
     s.image->set_fit_background_color(options.background);
-    s.image->set_request_priority(esphome::artwork_image::ImageRequestPriority::COVER_ART);
-    return s.image->request_owned_update(s, request, std::string(url));
+    using Priority = esphome::artwork_image::ImageRequestPriority;
+    const auto priority = options.priority == PageImagePriority::MODAL        ? Priority::MODAL
+                          : options.priority == PageImagePriority::TILE       ? Priority::TILE
+                          : options.priority == PageImagePriority::BACKGROUND ? Priority::BACKGROUND
+                                                                              : Priority::COVER_ART;
+    s.image->set_request_priority(priority);
+    return s.image->request_owned_update(s, request, std::string(url), options.max_source_dimension);
   }
   void cancel(size_t slot) override {
     if (slot >= Slots || slots_[slot].image == nullptr) return;

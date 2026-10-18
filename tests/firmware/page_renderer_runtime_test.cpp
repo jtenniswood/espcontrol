@@ -61,6 +61,7 @@ struct Port final:PageRendererPort {
   void bind(size_t shell,const PageStore &store,const PageCellLayout &cell,PageBackStyleView back,PageBindingToken token)override{
     assert(shell<Slots);assert(store.generation()==generation);assert(token.configuration==generation);
     bound[shell]=token;cells[shell]=cell;styles[shell]=back;++binds;
+    if (on_bind) on_bind(token);
   }
   void update(size_t shell,PageBindingToken token)override{
     ++updates;
@@ -85,12 +86,14 @@ struct Port final:PageRendererPort {
   uint64_t seen_revision{0};
   mutable size_t polls{0};
   std::function<void()>on_unbind,on_update;
+  std::function<void(PageBindingToken)> on_bind;
 };
 template<size_t Slots>
 void profile_navigation(const DeviceUiLimits &limits) {
   Fixture fixture(limits);Arena arena;Port<Slots>port(limits);
   {
     PageRendererRuntime<Slots>renderer(limits,arena,port);
+    port.on_bind = [&](PageBindingToken token) { assert(renderer.bound(token) && !renderer.valid(token)); };
     assert(renderer.prepare(fixture.store));assert(port.binds==0);assert(arena.live.size()==1);
     const auto before=allocations;renderer.activate_prepared(fixture.store);assert(allocations==before);
     assert(renderer.shell_count()==Slots);assert(port.shells==Slots);assert(renderer.active_page()==0);
@@ -113,9 +116,13 @@ void profile_navigation(const DeviceUiLimits &limits) {
     const auto updates=port.updates;renderer.update_visible();assert(port.updates==updates);
     assert(!renderer.open_page(child_page));assert(renderer.resume());assert(!renderer.valid(token));
     assert(renderer.valid(renderer.binding(1)));
-    token=renderer.binding(1);port.on_update=[&](){assert(!renderer.open_page(child_page));assert(!renderer.valid(token));};
+    token = renderer.binding(1);
+    port.on_update = [&]() {
+      assert(!renderer.open_page(child_page));
+      assert(!renderer.valid(token) && renderer.bound(token));
+    };
     renderer.refresh();renderer.update_visible();port.on_update=nullptr;assert(renderer.valid(token));
-    port.on_unbind=[&](){assert(!renderer.valid(token));};
+    port.on_unbind = [&]() { assert(!renderer.valid(token) && !renderer.bound(token)); };
     renderer.retire_active();port.on_unbind=nullptr;assert(!renderer.valid(token));assert(arena.live.empty());
   }
   assert(arena.live.empty());
