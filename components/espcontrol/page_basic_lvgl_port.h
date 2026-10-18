@@ -26,6 +26,7 @@
 #include "page_image_tile_view.h"
 #include "page_media_group.h"
 #include "page_media_label.h"
+#include "page_qr_tile_view.h"
 #include "weather_condition_maps_generated.h"
 
 namespace espcontrol::pages {
@@ -87,6 +88,7 @@ struct PageBasicActions {
   // Read-only full identity remains valid during bind/paint. Never use this for input.
   bool (*bound)(void*, PageBindingToken){nullptr};
   void (*image)(void*, PageBindingToken){nullptr};
+  void (*wifi_qr)(void*, PageBindingToken){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -118,7 +120,8 @@ class PageBasicLvglPort final:public PageRendererPort {
                     PageLightTemperatureRuntime* temperature = nullptr, PageTimerRuntime* timer = nullptr,
                     PageCoverToggleRuntime* cover_toggle = nullptr, PageAccessStateRuntime* access = nullptr,
                     PageCalendarRuntime* calendar = nullptr, PageTimezoneRuntime* timezone = nullptr,
-                    PageAlarmStateRuntime* alarm = nullptr, PageImageTileView* image_tiles = nullptr)
+                    PageAlarmStateRuntime* alarm = nullptr, PageImageTileView* image_tiles = nullptr,
+                    PageQrTileView* qr_tiles = nullptr)
       : allocator_(allocator),
         state_(state),
         widgets_(widgets),
@@ -140,7 +143,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         calendar_(calendar),
         timezone_(timezone),
         alarm_(alarm),
-        image_tiles_(image_tiles) {
+        image_tiles_(image_tiles),
+        qr_tiles_(qr_tiles) {
     for(size_t i=0;i<Slots;++i){shells_[i].port=this;shells_[i].index=i;}
   }
   ~PageBasicLvglPort()override {
@@ -218,6 +222,11 @@ class PageBasicLvglPort final:public PageRendererPort {
       lv_obj_set_style_text_color(
           w.button, lv_color_hex(theme_.text),
           static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED | LV_STATE_USER_1);
+      for (const auto selector :
+           {static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED | LV_STATE_USER_2,
+            static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED | LV_STATE_CHECKED |
+                LV_STATE_USER_2})
+        lv_obj_set_style_bg_color(w.button, lv_color_white(), selector);
       lv_obj_set_style_recolor_opa(w.button, LV_OPA_TRANSP,
                                    static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_DISABLED);
       lv_obj_set_style_opa(w.button, LV_OPA_COVER, LV_PART_MAIN);
@@ -266,6 +275,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       if(w.forecast) {
         lv_obj_add_flag(w.forecast,static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_HIDDEN|LV_OBJ_FLAG_IGNORE_LAYOUT));
         lv_obj_clear_flag(w.forecast,static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE));
+        lv_obj_set_style_bg_color(w.forecast, lv_color_white(), LV_PART_MAIN);
         lv_obj_set_style_bg_opa(w.forecast,LV_OPA_TRANSP,LV_PART_MAIN);lv_obj_set_style_border_width(w.forecast,0,LV_PART_MAIN);
         lv_obj_set_style_pad_all(w.forecast,0,LV_PART_MAIN);lv_obj_set_style_shadow_width(w.forecast,0,LV_PART_MAIN);
         lv_obj_set_size(w.forecast,lv_pct(100),lv_pct(100));lv_obj_align(w.forecast,LV_ALIGN_TOP_LEFT,0,0);
@@ -343,6 +353,14 @@ class PageBasicLvglPort final:public PageRendererPort {
       for(CardId card=p->first_card;card<p->first_card+p->card_count;++card) {
         BasicCardDefinition view;
         if (!prepare_basic_card(store, card, view, &strings, relay_)) return false;
+        if (view.kind == BasicCardKind::WIFI_QR) {
+          if (!actions_.wifi_qr || !actions_.bound) return false;
+          if (view.qr_tile) {
+            if (!qr_tiles_ || !qr_tiles_->ready() || qr_tiles_->capacity() < Slots) return false;
+            for (const auto& w : widgets_)
+              if (!w.forecast) return false;
+          }
+        }
         if (view.kind == BasicCardKind::IMAGE) {
           if (!image_tiles_ || !image_tiles_->ready() || !actions_.image || !actions_.bound) return false;
           for (const auto& w : widgets_)
@@ -711,8 +729,8 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(feedback&&s.painted)for(const auto selector:{static_cast<lv_style_selector_t>(LV_PART_MAIN),
          static_cast<lv_style_selector_t>(LV_PART_MAIN)|static_cast<lv_style_selector_t>(LV_STATE_CHECKED)})
       lv_obj_set_style_bg_color(w.button,lv_color_hex(s.background),selector);
-    lv_obj_clear_state(w.button,
-                       static_cast<lv_state_t>(LV_STATE_CHECKED | LV_STATE_PRESSED | LV_STATE_USER_1));
+    lv_obj_clear_state(w.button, static_cast<lv_state_t>(LV_STATE_CHECKED | LV_STATE_PRESSED |
+                                                         LV_STATE_USER_1 | LV_STATE_USER_2));
     lv_obj_clear_flag(w.button,LV_OBJ_FLAG_CLICKABLE);
     s.dragging=false;s.pending_target=-1;if(w.slider){lv_obj_add_flag(w.slider,LV_OBJ_FLAG_HIDDEN);lv_obj_clear_flag(w.slider,LV_OBJ_FLAG_CLICKABLE);lv_slider_set_value(w.slider,0,LV_ANIM_OFF);}
     s.frame=nullptr;if(w.forecast)lv_obj_add_flag(w.forecast,LV_OBJ_FLAG_HIDDEN);
@@ -737,6 +755,11 @@ class PageBasicLvglPort final:public PageRendererPort {
       lv_obj_add_state(w.button, LV_STATE_USER_1);
     else
       lv_obj_clear_state(w.button, LV_STATE_USER_1);
+    if (s.definition && s.definition->definition.kind == BasicCardKind::WIFI_QR &&
+        s.definition->definition.qr_tile)
+      lv_obj_add_state(w.button, LV_STATE_USER_2);
+    else
+      lv_obj_clear_state(w.button, LV_STATE_USER_2);
     if (timer_card(s)) s.pending_target = -1;
     if (percent_card(s) || number_card(s) || temperature_card(s)) {
       lv_obj_align(w.icon, LV_ALIGN_TOP_LEFT, 0, 0);
@@ -760,6 +783,9 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
     if (s.definition && s.definition->definition.kind == BasicCardKind::MEDIA_COVER_ART)
       artwork_->bind(token);
+    if (s.definition && s.definition->definition.kind == BasicCardKind::WIFI_QR &&
+        s.definition->definition.qr_tile)
+      qr_tiles_->bind(token, s.definition->definition.qr_payload());
     if (s.definition && s.definition->definition.kind == BasicCardKind::IMAGE) {
       const auto& d = s.definition->definition;
       image_tiles_->bind(token,
@@ -792,6 +818,7 @@ class PageBasicLvglPort final:public PageRendererPort {
                                        s.definition->definition.kind == BasicCardKind::ACCESS ||
                                        s.definition->definition.kind == BasicCardKind::ALARM ||
                                        s.definition->definition.kind == BasicCardKind::IMAGE ||
+                                       s.definition->definition.kind == BasicCardKind::WIFI_QR ||
                                        (s.definition->definition.kind == BasicCardKind::CLEANING &&
                                         s.definition->definition.cleaning.mode != cleaning::Mode::STATUS) ||
                                        s.definition->definition.kind == BasicCardKind::FOLDER ||
@@ -1000,6 +1027,8 @@ class PageBasicLvglPort final:public PageRendererPort {
             ? theme_.sensor_surface
             : theme_.surface;
     if(checked)background=definition.custom_on?correct(definition.on_color):definition.custom_off&&!definition.theme_active?correct(active_card_color(definition.off_color)):theme_.active;
+    const bool inline_qr = definition.kind == BasicCardKind::WIFI_QR && definition.qr_tile;
+    if (inline_qr) background = 0xFFFFFF;
     const bool alarm_card = definition.kind == BasicCardKind::ALARM;
     uint32_t pressed_background = background;
     if (alarm_card) {
@@ -1031,6 +1060,13 @@ class PageBasicLvglPort final:public PageRendererPort {
         lv_obj_set_local_style_prop(w.button, property, current, pressed_selector);
       }
     };
+    if (inline_qr) {
+      for (const auto selector :
+           {static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED | LV_STATE_USER_2,
+            static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED | LV_STATE_CHECKED |
+                LV_STATE_USER_2})
+        lv_obj_set_style_bg_color(w.button, lv_color_white(), selector);
+    }
     if (alarm_card) {
       pressed_color(LV_STYLE_BG_COLOR, pressed_background);
       pressed_color(LV_STYLE_TEXT_COLOR, pressed_foreground);
@@ -1078,6 +1114,8 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(definition.kind==BasicCardKind::FORECAST)update_forecast(s);
     else if (definition.kind == BasicCardKind::IMAGE)
       update_image(s, value);
+    else if (inline_qr)
+      update_qr(s);
     else if (w.forecast && definition.kind != BasicCardKind::MEDIA_COVER_ART)
       lv_obj_add_flag(w.forecast, LV_OBJ_FLAG_HIDDEN);
     if (!commit_seen) return;
@@ -1090,6 +1128,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (timezone_) seen_timezone_ = timezone_->revision();
     if (alarm_) seen_alarm_ = alarm_->revision();
     if (image_tiles_) seen_image_tiles_ = image_tiles_->revision();
+    if (qr_tiles_) seen_qr_tiles_ = qr_tiles_->revision();
     seen_state_ = state_.revision();
     if (local_) seen_local_ = local_->revision();
     if (relay_) seen_relay_ = relay_->revision();
@@ -1169,6 +1208,7 @@ class PageBasicLvglPort final:public PageRendererPort {
            (calendar_ && calendar_->revision() != seen_calendar_) ||
            (access_ && access_->revision() != seen_access_) ||
            (image_tiles_ && image_tiles_->revision() != seen_image_tiles_) ||
+           (qr_tiles_ && qr_tiles_->revision() != seen_qr_tiles_) ||
            (cover_toggle_ && cover_toggle_->revision() != seen_cover_toggle_) ||
            (timer_ && timer_->revision() != seen_timer_) ||
            (temperature_ && temperature_->revision() != seen_temperature_) ||
@@ -2004,6 +2044,45 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (owned && artwork_) artwork_->unbind(token);
     if (shell.definition && shell.definition->definition.kind == BasicCardKind::IMAGE && image_tiles_)
       image_tiles_->unbind(token);
+    if (shell.definition && shell.definition->definition.kind == BasicCardKind::WIFI_QR &&
+        shell.definition->definition.qr_tile && qr_tiles_)
+      qr_tiles_->unbind(token);
+  }
+  void update_qr(Shell& shell) {
+    if (!shell.definition || shell.definition->definition.kind != BasicCardKind::WIFI_QR ||
+        !shell.definition->definition.qr_tile || !qr_tiles_)
+      return;
+    const auto& w = widgets_[shell.index];
+    if (!w.forecast) return;
+    lv_obj_add_flag(w.icon, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(w.label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(w.sensor_container, LV_OBJ_FLAG_HIDDEN);
+    const auto width = lv_obj_get_width(w.button), height = lv_obj_get_height(w.button);
+    if (width <= 0 || height <= 0 || width > UINT16_MAX || height > UINT16_MAX) return;
+    qr_tiles_->size(shell.token, width, height, shell.cell.row_span, shell.cell.column_span);
+    const auto state = qr_tiles_->snapshot(shell.token);
+    const auto asset = state.ready ? state.asset : 0;
+    const bool changed = asset != shell.cover_asset || lv_obj_get_width(w.forecast) != width ||
+                         lv_obj_get_height(w.forecast) != height;
+    shell.cover_asset = asset;
+    const auto border = lv_obj_get_style_border_width(w.button, LV_PART_MAIN);
+    lv_obj_set_pos(w.forecast, -lv_obj_get_style_pad_left(w.button, LV_PART_MAIN) - border,
+                   -lv_obj_get_style_pad_top(w.button, LV_PART_MAIN) - border);
+    lv_obj_set_size(w.forecast, width, height);
+    lv_obj_set_style_bg_color(w.forecast, lv_color_white(), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(w.forecast, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_radius(w.forecast, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(w.forecast, LV_OBJ_FLAG_HIDDEN);
+    if (changed) lv_obj_invalidate(w.forecast);
+  }
+  void qr_event(Shell& shell, lv_event_t* event) {
+    if (lv_event_get_code(event) != LV_EVENT_DRAW_MAIN) return;
+    const auto token = shell.token;
+    const auto asset = shell.cover_asset;
+    if (!asset || !qr_tiles_ || !actions_.bound || !same(token, shell.token) ||
+        !actions_.bound(actions_.owner, token))
+      return;
+    qr_tiles_->draw(token, asset, widgets_[shell.index].forecast, lv_event_get_layer(event));
   }
   void update_cover(Shell& shell) {
     const auto& w = widgets_[shell.index];
@@ -2312,6 +2391,11 @@ class PageBasicLvglPort final:public PageRendererPort {
     auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
     auto* port = shell->port;
     if (!port->active_.arena || !shell->token.binding) return;
+    if (shell->definition && shell->definition->definition.kind == BasicCardKind::WIFI_QR &&
+        shell->definition->definition.qr_tile) {
+      port->qr_event(*shell, event);
+      return;
+    }
     if (shell->definition && shell->definition->definition.kind == BasicCardKind::IMAGE) {
       port->image_event(*shell, event);
       return;
@@ -2339,10 +2423,14 @@ class PageBasicLvglPort final:public PageRendererPort {
   static void event(lv_event_t *event) {
     auto *shell=static_cast<Shell *>(lv_event_get_user_data(event));auto *port=shell->port;
     const auto code=lv_event_get_code(event);
-    if(code==LV_EVENT_SIZE_CHANGED){port->update_fill_geometry(*shell);port->update_forecast(*shell);
+    if (code == LV_EVENT_SIZE_CHANGED) {
+      port->update_fill_geometry(*shell);
+      port->update_forecast(*shell);
+      port->update_qr(*shell);
       if (!port->media_finishing_ && shell->definition && media_text(shell->definition->definition.kind))
         port->media_layout_dirty_ = true;
-      return;}
+      return;
+    }
     if(code==LV_EVENT_PRESSED) {
       shell->pressed=shell->token;
       if (shell->definition && (shell->definition->definition.kind == BasicCardKind::COVER_COMMAND ||
@@ -2386,6 +2474,11 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(origin.back){if(port->actions_.back)port->actions_.back(port->actions_.owner,origin);return;}
     if(!shell->definition)return;
     const auto &definition=shell->definition->definition;
+    if (definition.kind == BasicCardKind::WIFI_QR) {
+      if (!definition.qr_payload().empty() && port->actions_.wifi_qr)
+        port->actions_.wifi_qr(port->actions_.owner, origin);
+      return;
+    }
     if (definition.kind == BasicCardKind::ALARM) {
       const auto snapshot =
           read_basic_alarm(definition, {origin.configuration, origin.card}, port->state_, port->alarm_);
@@ -2506,6 +2599,8 @@ class PageBasicLvglPort final:public PageRendererPort {
   PageAlarmStateRuntime* alarm_{nullptr};
   PageImageTileView* image_tiles_{nullptr};
   uint64_t seen_image_tiles_{0};
+  PageQrTileView* qr_tiles_{nullptr};
+  uint64_t seen_qr_tiles_{0};
   std::array<Shell, Slots> shells_{};
   Arena active_, staged_;
   PageStore store_;

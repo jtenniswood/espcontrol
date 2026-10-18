@@ -64,7 +64,8 @@ enum class BasicCardKind : uint8_t {
   CALENDAR,
   CLOCK,
   ALARM,
-  IMAGE
+  IMAGE,
+  WIFI_QR
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode : uint8_t { NONE, ENTITY, CLIMATE, MOWER, TIMER, CHILDREN, NUMBER, TEXT };
@@ -87,14 +88,18 @@ struct BasicCardDefinition {
     ClockCardOptions clock;
     AlarmCardOptions alarm;
     BasicImageOptions image;
+    bool qr_tile;
   };
   BasicActionDisplay action_display{BasicActionDisplay::NONE};
   std::string_view entity,sensor,label,unit,icon,icon_on;
   const char *default_label{nullptr};
   std::string_view text_input, text_output, text_input_2, text_output_2;
-  // Only one applies to a card: decoded duration unit or image activity entity.
+  // Only one applies: duration unit, image activity entity or prepared QR payload.
   std::string_view time_unit;
   std::string_view image_trigger() const {
+    return time_unit;
+  }
+  std::string_view qr_payload() const {
     return time_unit;
   }
   bool text_overlay{false};

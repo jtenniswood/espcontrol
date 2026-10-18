@@ -68,6 +68,26 @@ void display_text() {
   assert(allocations==before);
 }
 void profile(const DeviceUiLimits &limits) {
+  static_assert(sizeof(BasicCardDefinition) == 264);
+  for (const auto* type : {"wifi_qr", "wifi_qr_card"}) {
+    Fixture wifi(limits, std::string("switch.guest;Connect;Auto;Auto;;;") + type +
+                             ";;ssid64=R3Vlc3Q,security=open,card_off_color=336699");
+    TextPool text;
+    BasicCardDefinition qr;
+    assert(prepare_basic_card(wifi.store, 0, qr, &text));
+    assert(qr.kind == BasicCardKind::WIFI_QR && qr.qr_tile == (std::strcmp(type, "wifi_qr_card") == 0));
+    assert(qr.qr_payload() == "WIFI:T:nopass;S:Guest;H:false;;" && qr.icon == "Wifi");
+    assert(qr.label.empty() && std::strcmp(qr.default_label, "Connect") == 0 && qr.push_feedback);
+    assert(!qr.active_color && qr.sensor.empty() && qr.unit.empty());
+    assert(qr.qr_payload().data() >= text.text.data() &&
+           qr.qr_payload().data() < text.text.data() + text.used);
+    Fixture invalid(limits,
+                    std::string("switch.guest;Custom;Auto;Auto;;;") + type + ";;ssid64=bad,security=WPA");
+    assert(prepare_basic_card(invalid.store, 0, qr, &text) && qr.qr_payload().empty() &&
+           qr.label == "Custom");
+    assert(!prepare_basic_card(wifi.store, 0, qr));
+  }
+
   Fixture sensor(limits,";;Gauge;Gauge;sensor.temp; °C ;sensor;1;active_color,card_off_color=336699,card_active_color=custom,card_on_color=FF8C00");
   BasicCardDefinition definition;assert(prepare_basic_card(sensor.store,0,definition));assert(definition.kind==BasicCardKind::NUMBER);
   assert(definition.unit==u8"°C"&&definition.precision==1&&definition.active_color);assert(definition.custom_off&&definition.custom_on);
