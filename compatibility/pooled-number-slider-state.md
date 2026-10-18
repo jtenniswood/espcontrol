@@ -3,8 +3,8 @@
 `PageNumberSliderRuntime` prepares shared ranges and state for numeric Slider
 cards and existing numeric-domain aliases. It supports `number` and
 `input_number` entities without reducing them to 100 percentage steps. Visible
-number-slider views and production scene wiring remain unfinished; production
-continues to use the existing renderer.
+number-slider views are described in [reusable number slider views](pooled-number-slider-cards.md).
+Production scene wiring remains unfinished; production uses the existing renderer.
 
 Each entity has one copied key, min/max/step metadata, finite state value and
 known-field bits. Each eligible card has a small independent thumb/drag record.
@@ -55,6 +55,6 @@ all nine profiles, allocation-free reads/updates, real `PageStoreRuntime`
 publication and 1,000 replacements.
 
 These are state-owner checks, not physical layout or heap/PSRAM qualification.
-Visible ports, production selection, remaining drivers, the complete factory
+Production selection, remaining drivers, the complete factory
 build matrix and physical S3/working 20-slot P4 qualification are still required.
 No device was flashed; saved/backup formats and nested-page support are unchanged.
