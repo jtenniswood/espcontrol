@@ -354,6 +354,7 @@ struct MediaGroupVolumeState {
   int volume_pct = 0;
   bool volume_known = false;
   bool available = true;
+  uint32_t pending_until_ms = 0;
 };
 
 inline bool media_group_mean_volume(const std::vector<MediaGroupVolumeState> &members,
@@ -380,7 +381,10 @@ inline std::vector<int> media_group_delta_volumes(
   int current_mean = 0;
   if (!media_group_mean_volume(members, &current_mean)) return out;
   maximum_volume = std::max(1, std::min(100, maximum_volume));
-  requested_mean = std::max(0, std::min(maximum_volume, requested_mean));
+  // A cap limits increases; it must not turn a one-step decrease above the
+  // cap into a jump straight down to it.
+  requested_mean = std::max(0, std::min(
+    std::max(current_mean, maximum_volume), requested_mean));
   int delta = requested_mean - current_mean;
   out.reserve(members.size());
   for (const MediaGroupVolumeState &member : members) {
