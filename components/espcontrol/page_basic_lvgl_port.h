@@ -1349,7 +1349,14 @@ class PageBasicLvglPort final:public PageRendererPort {
       uint32_t pending_ms{0};
       uint32_t membership_revision;
     };
-    uint32_t gesture_connection{0}, timer_state_revision{0};
+    uint32_t gesture_connection{0};
+    // Timers use their own confirmation revision/gesture epoch. Other card
+    // modes keep an immutable button-press epoch separate from slider/preview
+    // state, which may legitimately adopt a fresh connection later.
+    union {
+      uint32_t timer_state_revision{0};
+      uint32_t button_press_connection;
+    };
     float pending_target{-1};
     lv_indev_t* input{nullptr};
     PageForecastFrame* frame{nullptr};
@@ -2437,6 +2444,8 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
     if(code==LV_EVENT_PRESSED) {
       shell->pressed=shell->token;
+      if (shell->definition && shell->definition->definition.ha_input && !timer_card(*shell))
+        shell->button_press_connection = port->state_.connection_generation();
       if (shell->definition && (shell->definition->definition.kind == BasicCardKind::COVER_COMMAND ||
                                 shell->definition->definition.kind == BasicCardKind::COVER_TOGGLE ||
                                 shell->definition->definition.kind == BasicCardKind::ACCESS ||
@@ -2479,11 +2488,13 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(origin.back){if(port->actions_.back)port->actions_.back(port->actions_.owner,origin);return;}
     if(!shell->definition)return;
     const auto &definition=shell->definition->definition;
+    if (definition.ha_input && !timer_card(*shell) &&
+        shell->button_press_connection != port->state_.connection_generation())
+      return;
     if (definition.confirmation) {
-      if (shell->gesture_connection != port->state_.connection_generation()) return;
       if (definition.kind == BasicCardKind::ACTION) {
         if (port->actions_.confirmation)
-          port->actions_.confirmation(port->actions_.owner, origin, shell->gesture_connection, false);
+          port->actions_.confirmation(port->actions_.owner, origin, shell->button_press_connection, false);
         return;
       }
       if (definition.kind == BasicCardKind::TOGGLE) {
@@ -2494,7 +2505,7 @@ class PageBasicLvglPort final:public PageRendererPort {
             read_basic_card(definition, {origin.configuration, origin.card}, port->state_).on;
         if (definition.needs_confirmation(currently_on)) {
           if (port->actions_.confirmation)
-            port->actions_.confirmation(port->actions_.owner, origin, shell->gesture_connection,
+            port->actions_.confirmation(port->actions_.owner, origin, shell->button_press_connection,
                                         currently_on);
           return;
         }
@@ -2528,7 +2539,8 @@ class PageBasicLvglPort final:public PageRendererPort {
       const bool currently_on = definition.access.command ? definition.sensor != "open" : snapshot.history.on;
       if (definition.needs_confirmation(currently_on)) {
         if (port->actions_.confirmation)
-          port->actions_.confirmation(port->actions_.owner, origin, shell->gesture_connection, currently_on);
+          port->actions_.confirmation(port->actions_.owner, origin, shell->button_press_connection,
+                                      currently_on);
         return;
       }
       if (!definition.access.command && definition.access.kind != BasicAccessKind::LOCK)

@@ -69,6 +69,29 @@ void display_text() {
 }
 void profile(const DeviceUiLimits &limits) {
   static_assert(sizeof(BasicCardDefinition) == 264);
+  for (const auto& spec : std::array<std::pair<const char*, bool>, 16>{
+           {{"switch.test;;;;;;;;", true},
+            {"script.test;;;;script.turn_on;;action;;", true},
+            {"fan.test;;;;;;fan_switch;;", true},
+            {"fan.test;;;;;;fan_direction;;", true},
+            {"fan.test;;;;;;fan_preset;;", true},
+            {"media_player.test;;;;play_pause;;media;;", true},
+            {"media_player.test;;;;volume;;media;;", true},
+            {"light.test;;;;;;light_control;;", true},
+            {"ble_keyboard;;;;local;;action;;", false},
+            {"ble_keyboard;;;;;;local;;", false},
+            {";;;;;;screensaver;;", false},
+            {"https://example.test/hook;;;;;;webhook;;", false},
+            {"relay;;;;switch;;internal;;", false},
+            {";Folder;;;indicator;;subpage;;", false},
+            {"switch.guest;;;;;;wifi_qr;;ssid64=R3Vlc3Q,security=open", false},
+            {";;;;;;calendar;;", false}}}) {
+    Fixture f(limits, spec.first);
+    BasicCardDefinition d;
+    TextPool text;
+    assert(prepare_basic_card(f.store, 0, d, &text) && d.ha_input == spec.second);
+  }
+
   for (const auto& spec : std::array<std::pair<const char*, uint8_t>, 6>{
            {{"light.test;;;;;;;;confirm_off", PAGE_CONFIRM_OFF},
             {"switch.test;;;;;;;;confirm_on,confirm_off", PAGE_CONFIRM_ON | PAGE_CONFIRM_OFF},
