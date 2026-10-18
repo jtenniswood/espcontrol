@@ -238,6 +238,24 @@ target_compile_options(page_alarm_state_runtime_test PRIVATE -Wall -Wextra -Werr
 target_include_directories(page_alarm_state_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_alarm_state_runtime_test COMMAND page_alarm_state_runtime_test)
 
+set(ALARM_COMMANDS_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_alarm_commands_test.cpp)
+add_custom_command(OUTPUT ${ALARM_COMMANDS_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_alarm_commands_test.py --output ${ALARM_COMMANDS_SOURCE}
+  DEPENDS generate_alarm_commands_test.py page_alarm_commands_test.cpp.in ../../components/espcontrol/button_grid_alarm.h
+  VERBATIM)
+add_executable(page_alarm_commands_test ${ALARM_COMMANDS_SOURCE}
+  ../../components/espcontrol/page_alarm_commands.cpp
+  ../../components/espcontrol/page_alarm_ack_runtime.cpp
+  ../../components/espcontrol/page_alarm_state_runtime.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_store_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_alarm_commands_test PRIVATE cxx_std_17)
+target_compile_options(page_alarm_commands_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_alarm_commands_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_alarm_commands_test COMMAND page_alarm_commands_test)
+
 set(ALARM_CARD_VIEW_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/alarm_card_view_test.cpp)
 add_custom_command(OUTPUT ${ALARM_CARD_VIEW_SOURCE}
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_alarm_card_view_test.py --output ${ALARM_CARD_VIEW_SOURCE}

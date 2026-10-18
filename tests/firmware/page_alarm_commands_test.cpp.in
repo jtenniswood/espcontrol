@@ -1,0 +1,396 @@
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <functional>
+#include <string>
+#include <vector>
+
+#include "button_grid_subpage_parser.h"
+#include "page_alarm_commands.h"
+#include "page_card_dependencies.h"
+#include "page_entity_observer_set.h"
+#include "page_runtime_resources_group.h"
+#include "panel_config_document.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+uint32_t tick = 100;
+uint32_t now() {
+  return tick;
+}
+namespace legacy {
+constexpr int ALARM_MAX_ACTIONS = 5;
+// @legacy-alarm-command-policy
+}  // namespace legacy
+namespace {
+struct Arena : PageArenaAllocator {
+  size_t live{0}, calls{0};
+  bool fail{false};
+  void* allocate(size_t n) override {
+    ++calls;
+    if (fail) return nullptr;
+    ++live;
+    return std::malloc(n);
+  }
+  void release(void* p, size_t) override {
+    assert(live);
+    --live;
+    std::free(p);
+  }
+};
+struct Transport : PageEntitySubscriptions {
+  struct Binding {
+    const char* entity;
+    const char* attribute;
+    void* owner;
+    uint32_t revision, channel;
+    Deliver deliver;
+  };
+  std::vector<Binding> bindings;
+  uint32_t connection{1};
+  uint32_t connection_generation() const override {
+    return connection;
+  }
+  bool subscribe(const char* entity, const char* attribute, void* owner, uint32_t revision, uint32_t channel,
+                 Deliver deliver) override {
+    bindings.push_back({entity, attribute, owner, revision, channel, deliver});
+    return true;
+  }
+  void release(void* owner) override {
+    bindings.erase(
+        std::remove_if(bindings.begin(), bindings.end(), [&](const auto& b) { return b.owner == owner; }),
+        bindings.end());
+  }
+  void send(const char* entity, const char* attribute, std::string_view value) {
+    for (const auto& b : bindings)
+      if (std::strcmp(entity, b.entity) == 0 && std::strcmp(attribute, b.attribute) == 0)
+        b.deliver(b.owner, b.revision, b.channel, value);
+  }
+};
+struct Fixture {
+  std::array<uint8_t, 16384> document{};
+  alignas(std::max_align_t) std::array<uint8_t, 32768> storage{};
+  size_t size{0};
+  PageStore store;
+  Fixture(uint32_t generation, const char* entity = "alarm_control_panel.home",
+          const DeviceUiLimits& limits = DEVICE_UI_PROFILES[8], bool empty = false,
+          const std::string& options = "", const std::string& action_mode = "away") {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {
+        std::string(entity) + ";;Auto;Auto;;;alarm;;" + options,
+        std::string(entity) + ";;Auto;Auto;" + action_mode + ";;alarm_action;;" + options,
+        std::string(entity) + ";Alarms;Auto;Auto;indicator;;subpage;;subpage_kind=alarm"};
+    for (size_t i = 0; i < 3; ++i) {
+      const auto card = empty ? std::string(";;;;sensor.empty;;sensor;1;") : cards[i];
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(card.data()), card.size()) ==
+             PanelConfigStatus::OK);
+    }
+    const std::string child = empty ? "~B,1|S,,Value,Auto,Auto,sensor.empty,,1,"
+                                    : "~B,1,2|Y,,,Auto,Auto,,,,|AA,,,Auto,Auto,home,,,";
+    assert(writer.append_subpage(3, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, generation, storage.data(), storage.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+};
+
+bool same(PageBindingToken a, PageBindingToken b) {
+  return a.configuration == b.configuration && a.binding == b.binding && a.page == b.page &&
+         a.card == b.card && a.shell == b.shell && a.back == b.back;
+}
+bool same(PageModalToken a, PageModalToken b) {
+  return a.configuration == b.configuration && a.opening == b.opening && a.card == b.card && a.kind == b.kind;
+}
+struct Port : PageAlarmCommandPort {
+  bool is_ready{true}, is_connected{true}, available{true}, send_success{true};
+  PageBindingToken binding;
+  PageModalToken modal;
+  std::string entity, service, code;
+  size_t sends{0};
+  std::function<void(std::string_view, std::string_view)> on_send;
+  bool ready() const override {
+    return is_ready;
+  }
+  bool connected() const override {
+    return is_connected;
+  }
+  bool service_available() const override {
+    return available;
+  }
+  bool valid(PageBindingToken t) const override {
+    return same(t, binding);
+  }
+  bool valid(PageModalToken t) const override {
+    return same(t, modal);
+  }
+  bool send(std::string_view key, const char* action, std::string_view pin) override {
+    ++sends;
+    entity = key;
+    service = action;
+    code = pin;
+    if (on_send) on_send(key, pin);
+    assert(key == entity && pin == code);  // Views must survive reentrant model/context retirement.
+    return send_success;
+  }
+};
+struct Harness {
+  Arena arena;
+  Transport transport;
+  PageCardDependencies deps;
+  PageAlarmStateRuntime state{arena, transport, now};
+  PageAlarmAckRuntime ack{arena, transport, state, now};
+  PageEntityObserverSet<2> observers;
+  PageEntityStateRuntime graph;
+  Port port;
+  PageAlarmCommands commands{graph, state, ack, port};
+  PageRuntimeResourcesGroup<4> resources{{&commands, &ack, &state, &graph}};
+  PageStoreRuntime publication;
+  uint32_t generation{0};
+  Harness(const DeviceUiLimits& limits, PageEntityBudget budget = {128, 128, 8192})
+      : graph(deps, arena, transport, budget, &observers), publication(limits, arena, 32768, &resources) {
+    assert(observers.add(state) && observers.add(ack));
+  }
+  void publish(Fixture& f, uint32_t gen) {
+    assert(publication.prepare(PANEL_CONFIG_DOCUMENT_VERSION, f.document.data(), f.size));
+    assert(publication.activate_prepared(gen, PANEL_CONFIG_DOCUMENT_VERSION, f.document.data(), f.size));
+    generation = gen;
+  }
+  PageAlarmCommandOrigin grid(CardId card = 1) {
+    port.binding = {generation, 123, 0, card, 1, false};
+    return {port.binding, {}, transport.connection};
+  }
+  PageAlarmCommandOrigin modal(CardId card = 0, ControlModalKind kind = ControlModalKind::ALARM_CONTROL) {
+    port.modal = {generation, 123, card, kind};
+    return {{}, port.modal, transport.connection};
+  }
+  void report(std::string_view value = "disarmed", const char* entity = "alarm_control_panel.home") {
+    transport.send(entity, "", value);
+  }
+};
+void modes_and_pin_policy(const DeviceUiLimits& limits) {
+  const char* modes[] = {"away", "home", "night", "vacation", "disarm"};
+  const char* services[] = {"alarm_control_panel.alarm_arm_away", "alarm_control_panel.alarm_arm_home",
+                            "alarm_control_panel.alarm_arm_night", "alarm_control_panel.alarm_arm_vacation",
+                            "alarm_control_panel.alarm_disarm"};
+  for (size_t i = 0; i < std::size(modes); ++i) {
+    Fixture f(17, "alarm_control_panel.home", limits, false, "pin_arm=0,pin_disarm=0", modes[i]);
+    Harness h(limits);
+    h.publish(f, 0);
+    auto origin = h.grid();
+    // Action cards retain initially enabled behaviour before the first report.
+    assert(h.commands.queue(origin, alarm::action(modes[i])));
+    assert(h.port.sends == 0 && h.commands.memory().pending == 1);
+    assert(h.commands.loop() == PageAlarmCommandResult::SENT && h.port.sends == 1);
+    assert(h.port.service == services[i] && h.port.entity == "alarm_control_panel.home" &&
+           h.port.code.empty());
+    assert(h.ack.pending({0, 1}) && h.commands.memory().pending_code_bytes == 0);
+    assert(!h.commands.queue(origin, alarm::Action::NONE));
+    assert(!h.commands.queue(origin, i == 0 ? alarm::Action::HOME : alarm::Action::AWAY));
+  }
+  Fixture f(17, "alarm_control_panel.home", limits);
+  Harness h(limits);
+  h.publish(f, 0);
+  h.report();
+  auto origin = h.grid();
+  assert(!h.commands.queue(origin, alarm::Action::AWAY));  // Default arm/disarm require PIN.
+  for (const auto& pin : {std::string("12a"), std::string("12345678901234567"), std::string("12\0x", 4)})
+    assert(!h.commands.queue(origin, alarm::Action::AWAY, pin));
+  assert(h.commands.queue(origin, alarm::Action::AWAY, "1234567890123456"));
+  assert(h.commands.memory().pending_code_bytes == 16);
+  assert(!h.commands.queue(origin, alarm::Action::NONE, "1234") &&
+         h.commands.memory().pending_code_bytes == 16);
+  h.port.is_ready = false;
+  assert(h.commands.loop() == PageAlarmCommandResult::NONE && h.port.sends == 0);
+  h.port.is_ready = true;
+  assert(h.commands.loop() == PageAlarmCommandResult::SENT && h.port.code == "1234567890123456");
+  assert(h.commands.memory().pending_code_bytes == 0 && h.ack.pending({0, 1}));
+  tick += 3500;
+  const auto failure = h.ack.take_failure();
+  assert(failure.valid && failure.reason == PageAlarmFailureReason::CODE);
+}
+void configured_modes(const DeviceUiLimits& limits) {
+  for (const auto* actions : {"", "away|home|night|vacation|disarm", "disarm", "night|vacation",
+                              "bad|home|disarm", "bad", "disarm|night|away|home", "vacation|vacation"})
+    for (const auto* pin : {"", "pin_arm=0,pin_disarm=0", "pin_arm=0", "pin_disarm=0"}) {
+      const std::string options = std::string(pin) + (std::strlen(pin) ? "," : "") + "actions=" + actions;
+      Fixture f(17, "alarm_control_panel.home", limits, false, options);
+      Harness h(limits);
+      h.publish(f, 0);
+      h.report();
+      const std::string normalized(PageAlarmStateRuntime::effective_options(h.publication.active(), 0));
+      std::string modes[5];
+      const auto count = legacy::alarm_visible_action_modes(normalized, modes, 3);
+      for (const auto* mode : {"away", "home", "night", "vacation", "disarm"}) {
+        const bool allowed = std::find(modes, modes + count, mode) != modes + count;
+        auto origin = h.modal();
+        assert(h.commands.queue(origin, alarm::action(mode), "1234") == allowed);
+        h.commands.cancel();
+        assert(h.commands.queue(origin, alarm::action(mode)) ==
+               (allowed && !legacy::alarm_action_requires_pin(normalized, mode)));
+        h.commands.cancel();
+      }
+      h.report("triggered");
+      const bool disarm_visible = std::find(modes, modes + count, "disarm") != modes + count;
+      assert(h.commands.queue(h.modal(), alarm::Action::DISARM, "1234") == disarm_visible);
+      h.commands.cancel();
+      h.report("arming");
+      assert(h.commands.queue(h.modal(), alarm::Action::DISARM, "1234"));
+      h.commands.cancel();
+      h.transport.send("alarm_control_panel.home", "delay", "60");
+      assert(h.commands.queue(h.modal(), alarm::Action::DISARM, "1234"));
+      h.commands.cancel();
+      assert(h.port.sends == 0);
+    }
+}
+void input_lifetimes(const DeviceUiLimits& limits) {
+  Fixture f(17, "alarm_control_panel.home", limits);
+  Harness h(limits);
+  h.publish(f, 0);
+  h.report();
+  auto origin = h.grid();
+  assert(h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  ++h.port.binding.binding;
+  assert(h.commands.loop() == PageAlarmCommandResult::CANCELLED && h.port.sends == 0 &&
+         h.commands.memory().pending_code_bytes == 0);
+  origin = h.grid();
+  assert(h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  ++h.transport.connection;
+  h.report();
+  assert(h.commands.loop() == PageAlarmCommandResult::CANCELLED && h.port.sends == 0);
+  assert(!h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  origin = h.grid();
+  assert(h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  h.port.available = false;
+  assert(h.commands.loop() == PageAlarmCommandResult::CANCELLED && h.port.sends == 0);
+  h.port.available = true;
+  assert(h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  h.report("unknown");
+  assert(h.commands.loop() == PageAlarmCommandResult::CANCELLED && h.port.sends == 0);
+  h.report();
+  assert(h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  h.port.is_connected = false;
+  assert(h.commands.loop() == PageAlarmCommandResult::CANCELLED && h.port.sends == 0);
+  h.port.is_connected = true;
+  h.report();
+  origin = h.modal();
+  assert(h.commands.queue(origin, alarm::Action::HOME, "1234"));
+  ++h.port.modal.opening;
+  assert(h.commands.loop() == PageAlarmCommandResult::CANCELLED && h.port.sends == 0);
+  origin = h.modal(0, ControlModalKind::ALARM_PIN);
+  assert(h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  assert(h.commands.loop() == PageAlarmCommandResult::SENT && h.port.sends == 1);
+  origin = h.modal(0, ControlModalKind::CLIMATE);
+  assert(!h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  origin = h.grid(0);
+  assert(!h.commands.queue(origin, alarm::Action::AWAY, "1234"));  // Panel needs an opening.
+  origin = h.modal();
+  origin.binding = h.port.binding;
+  assert(!h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  origin = h.grid();
+  origin.binding.back = true;
+  h.port.binding = origin.binding;
+  assert(!h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+}
+void hidden_and_replacement(const DeviceUiLimits& limits) {
+  Fixture f(17, "alarm_control_panel.home", limits), next(18, "alarm_control_panel.next", limits);
+  Harness h(limits);
+  h.publish(f, 0);
+  h.report();
+  const auto* child = h.publication.active().page(h.publication.active().card(2)->target);
+  assert(child && child->navigable);
+  const auto control = child->first_card, action = static_cast<CardId>(control + 1);
+  auto origin = h.modal(control);
+  assert(h.commands.queue(origin, alarm::Action::HOME, "1234"));
+  assert(h.commands.loop() == PageAlarmCommandResult::SENT && h.port.entity == "alarm_control_panel.home" &&
+         h.ack.pending({0, control}));
+  origin = h.grid(action);
+  assert(h.commands.queue(origin, alarm::Action::HOME, "1234"));
+  assert(!h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  assert(h.commands.loop() == PageAlarmCommandResult::SENT && h.ack.pending({0, action}));
+  origin = h.grid();
+  assert(h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  assert(!h.commands.prepare(PageStore{}));
+  h.commands.discard_prepared();
+  assert(h.commands.memory().pending_code_bytes == 4);
+  h.arena.fail = true;
+  assert(!h.publication.prepare(PANEL_CONFIG_DOCUMENT_VERSION, next.document.data(), next.size));
+  h.arena.fail = false;
+  assert(h.commands.memory().pending_code_bytes == 4 && h.commands.loop() == PageAlarmCommandResult::SENT);
+  assert(h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  h.publish(next, 1);
+  assert(h.commands.memory().pending == 0 && h.commands.memory().pending_code_bytes == 0 &&
+         h.commands.loop() == PageAlarmCommandResult::NONE);
+  assert(!h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  origin = h.grid();
+  h.report("disarmed", "alarm_control_panel.next");
+  assert(h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  h.port.send_success = false;
+  assert(h.commands.loop() == PageAlarmCommandResult::FAILED && !h.ack.pending({1, 1}) &&
+         h.commands.memory().pending_code_bytes == 0);
+}
+void reentrant_send(const DeviceUiLimits& limits) {
+  Fixture f(17, "alarm_control_panel.home", limits), next(18, "alarm_control_panel.next", limits);
+  Harness h(limits);
+  h.publish(f, 0);
+  h.report();
+  auto origin = h.grid();
+  assert(h.commands.queue(origin, alarm::Action::AWAY, "1234"));
+  h.port.on_send = [&](std::string_view entity, std::string_view code) {
+    assert(h.commands.memory().pending == 0 && h.commands.memory().pending_code_bytes == 0);
+    h.publish(next, 1);
+    h.report("disarmed", "alarm_control_panel.next");
+    assert(entity == "alarm_control_panel.home" && code == "1234");
+    assert(h.commands.queue(h.grid(), alarm::Action::AWAY, "5678"));
+    assert(h.commands.loop() == PageAlarmCommandResult::NONE);  // No nested send.
+  };
+  assert(h.commands.loop() == PageAlarmCommandResult::SENT && h.port.sends == 1);
+  assert(!h.ack.pending({0, 1}) && !h.ack.pending({1, 1}) && h.commands.memory().pending_code_bytes == 4);
+  h.port.on_send = {};
+  assert(h.commands.loop() == PageAlarmCommandResult::SENT && h.port.entity == "alarm_control_panel.next" &&
+         h.port.code == "5678");
+  assert(h.ack.pending({1, 1}));
+}
+void exhaustion_and_cycles(const DeviceUiLimits& limits) {
+  Fixture f(17, "alarm_control_panel.home", limits);
+  Harness h(limits, {128, 128, 1});
+  h.publish(f, 0);
+  h.report(std::string(100, 'x'));
+  assert(h.graph.read_attribute({0, 1}, "alarm_control_panel.home", {}).status ==
+         PageEntityStatus::EXHAUSTED);
+  assert(!h.commands.queue(h.grid(), alarm::Action::AWAY, "1234"));
+  Harness normal(limits);
+  normal.publish(f, 0);
+  const auto* active = &normal.publication.active();
+  const auto channels = normal.transport.bindings.size(), live = normal.arena.live;
+  for (uint32_t n = 1; n <= 1000; ++n) {
+    normal.report();
+    assert(normal.commands.queue(normal.grid(), alarm::Action::AWAY, "1234"));
+    normal.publish(f, n);
+    assert(normal.commands.memory().pending == 0 && normal.commands.memory().pending_code_bytes == 0);
+    assert(normal.transport.bindings.size() == channels && normal.arena.live == live &&
+           normal.commands.loop() == PageAlarmCommandResult::NONE);
+    assert(active->generation() == n);
+  }
+  assert(normal.port.sends == 0 && normal.commands.memory().cancelled == 1000);
+}
+}  // namespace
+int main() {
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    modes_and_pin_policy(limits);
+    configured_modes(limits);
+    input_lifetimes(limits);
+    hidden_and_replacement(limits);
+    reentrant_send(limits);
+    exhaustion_and_cycles(limits);
+  }
+  std::puts(
+      "alarm deferred commands: nine profiles, scoped inputs/PINs, reentrant dispatch and 1000 replacements "
+      "passed");
+}
