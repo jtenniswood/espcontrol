@@ -1,10 +1,11 @@
 #pragma once
 
+#include "media_group_discovery.h"
+
 // Shared, mostly pure helpers for Home Assistant media-player grouping.
 // Included by button_grid.h after the Home Assistant action boundary.
 
 constexpr uint64_t MEDIA_PLAYER_FEATURE_GROUPING = 524288ULL;
-constexpr const char *DEFAULT_MEDIA_SPEAKER_DISCOVERY_ENTITY = "sensor.speaker_group";
 
 struct MediaGroupDiscoveryItem {
   std::string entity_id;
@@ -14,18 +15,7 @@ struct MediaGroupDiscoveryItem {
   bool available = false;
 };
 
-inline std::string media_group_trim(std::string value) {
-  size_t first = value.find_first_not_of(" \t\r\n");
-  if (first == std::string::npos) return "";
-  size_t last = value.find_last_not_of(" \t\r\n");
-  value = value.substr(first, last - first + 1);
-  if (value.size() >= 2 &&
-      ((value.front() == '\'' && value.back() == '\'') ||
-       (value.front() == '"' && value.back() == '"'))) {
-    value = value.substr(1, value.size() - 2);
-  }
-  return value;
-}
+
 
 inline bool media_group_valid_entity_id(const std::string &entity_id) {
   constexpr const char *prefix = "media_player.";
@@ -224,7 +214,7 @@ inline std::vector<MediaGroupDiscoveryItem> media_group_parse_discovery_v2(
       char *end = nullptr;
       float volume = std::strtof(volume_text.c_str(), &end);
       if (!end || end == volume_text.c_str() || *end != '\0' || !std::isfinite(volume)) return {};
-      item.volume_pct = std::max(0, std::min(100, (int) std::lround(volume * 100.0f)));
+      item.volume_pct = static_cast<int>(std::lround(std::clamp(volume, 0.0f, 1.0f) * 100.0f));
       item.volume_known = true;
     }
     item.available = item.volume_known;
@@ -299,8 +289,8 @@ inline std::vector<MediaGroupDiscoveryItem> media_group_parse_discovery_items(
     if (i < volume_values.size()) {
       char *end = nullptr;
       float volume = std::strtof(volume_values[i].c_str(), &end);
-      if (end && end != volume_values[i].c_str()) {
-        item.volume_pct = std::max(0, std::min(100, (int) std::lround(volume * 100.0f)));
+      if (end && end != volume_values[i].c_str() && std::isfinite(volume)) {
+        item.volume_pct = static_cast<int>(std::lround(std::clamp(volume, 0.0f, 1.0f) * 100.0f));
         item.volume_known = true;
         item.available = true;
       }
@@ -310,14 +300,9 @@ inline std::vector<MediaGroupDiscoveryItem> media_group_parse_discovery_items(
   return out;
 }
 
-inline std::string media_group_discovery_entity(const std::string &configured) {
-  std::string entity_id = media_group_trim(configured);
-  return entity_id.empty() ? DEFAULT_MEDIA_SPEAKER_DISCOVERY_ENTITY : entity_id;
-}
 
-inline const char *media_group_discovery_attribute(const std::string &entity_id) {
-  return entity_id.rfind("sensor.", 0) == 0 ? "data" : "entity_id";
-}
+
+
 
 inline uint64_t media_group_parse_supported_features(const std::string &raw) {
   std::string value_text = media_group_trim(raw);
@@ -369,6 +354,7 @@ struct MediaGroupVolumeState {
   int volume_pct = 0;
   bool volume_known = false;
   bool available = true;
+  uint32_t pending_until_ms = 0;
 };
 
 inline bool media_group_mean_volume(const std::vector<MediaGroupVolumeState> &members,
@@ -395,7 +381,10 @@ inline std::vector<int> media_group_delta_volumes(
   int current_mean = 0;
   if (!media_group_mean_volume(members, &current_mean)) return out;
   maximum_volume = std::max(1, std::min(100, maximum_volume));
-  requested_mean = std::max(0, std::min(maximum_volume, requested_mean));
+  // A cap limits increases; it must not turn a one-step decrease above the
+  // cap into a jump straight down to it.
+  requested_mean = std::max(0, std::min(
+    std::max(current_mean, maximum_volume), requested_mean));
   int delta = requested_mean - current_mean;
   out.reserve(members.size());
   for (const MediaGroupVolumeState &member : members) {

@@ -1,0 +1,75 @@
+#pragma once
+
+#include "control_modal_service.h"
+#include "modal_callback_dispatch.h"
+#include "page_renderer_runtime.h"
+
+namespace espcontrol::pages {
+struct PageModalToken {
+  uint32_t configuration{0};
+  uint64_t opening{0};
+  CardId card{NO_CARD};
+  ControlModalKind kind{ControlModalKind::NONE};
+};
+enum class PageModalClose : uint8_t { USER, SWITCH, DISCONNECTED, REPLACED, TAKEOVER, FAILED, SHUTDOWN };
+struct PageModalMemory {
+  size_t fixed_bytes{0},active_contexts{0},retired_contexts{0},pending_requests{0};
+  size_t openings{0},failures{0};
+};
+// Main-loop-only modal adapter. Contexts must own their configuration strings:
+// retirement can outlive the old model until an in-flight callback returns.
+class PageModalPort {
+ public:
+  virtual ~PageModalPort()=default;
+  virtual bool valid_origin(PageBindingToken)const=0;
+  virtual ControlModalKind kind(const PageStore &,ConfigurationHandle)const=0;
+  virtual bool ready()const=0; // Outside native/coordinator/LVGL callback dispatch.
+  virtual bool connected()const=0;
+  virtual uint32_t connection_generation()const=0;
+  // create copies configuration only; initialize may subscribe/prime/open UI.
+  // They run from loop, never from a configuration activation transaction.
+  virtual void *create(const PageStore &,ConfigurationHandle,PageModalToken)=0;
+  virtual bool initialize(void *,PageModalToken)=0;
+  virtual bool visible(void *)const=0;
+  virtual void update(void *,PageModalToken)=0;
+  virtual ControlModalDismissPolicy dismiss_policy(void *)const=0;
+  // Invalidate timers/callbacks and close UI immediately, but do not free ctx.
+  // REPLACED/SHUTDOWN must cancel pending commands without allocating/sending.
+  virtual void retire(void *,PageModalClose)=0;
+  virtual void destroy(void *)=0;
+};
+class PageModalRuntime final:public PageRuntimeResources {
+ public:
+  explicit PageModalRuntime(PageModalPort &port,uint64_t first_opening=1):port_(port),next_opening_(first_opening){}
+  ~PageModalRuntime()override;
+  PageModalRuntime(const PageModalRuntime &)=delete;
+  PageModalRuntime &operator=(const PageModalRuntime &)=delete;
+  bool prepare(const PageStore &)override;
+  void discard_prepared()override;
+  void activate_prepared(const PageStore &)override;
+  void retire_active()override;
+  bool request(PageBindingToken);
+  // Authenticated modal APIs can address a current navigable card directly,
+  // including a hidden page. They must resolve against this generation.
+  bool request_card(ConfigurationHandle);
+  void dismiss(PageModalClose=PageModalClose::USER);
+  bool notify_closed(PageModalToken,PageModalClose=PageModalClose::USER);
+  bool display_takeover(bool preserve_policy_active);
+  void loop();
+  bool valid(PageModalToken)const;
+  bool interactive(PageModalToken token)const{return valid(token)&&port_.visible(context_);}
+  PageModalToken token()const{return token_;}
+  PageModalMemory memory()const;
+ private:
+  struct Request {ConfigurationHandle card;PageBindingToken origin;bool pending{false},from_binding{false};};
+  bool valid_request(const Request &)const;
+  bool valid_card(ConfigurationHandle)const;
+  void retire_context(PageModalClose);
+  void collect_retired();
+  PageModalPort &port_;PageStore active_store_;
+  Request pending_;PageModalToken token_;
+  void *context_{nullptr},*retired_{nullptr};
+  uint64_t next_opening_{1};uint32_t connection_{0},prepared_generation_{0};
+  bool changing_{false};PageModalMemory memory_;
+};
+}  // namespace espcontrol::pages

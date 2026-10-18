@@ -202,6 +202,9 @@ int main() {
   assert(media_group_mean_volume(above_max, &mean) && mean == 50);
   assert((media_group_delta_volumes(above_max, 49, 50) == std::vector<int>{79, 19}));
   assert((media_group_delta_volumes(above_max, 40, 50) == std::vector<int>{70, 10}));
+  above_max[1].volume_pct = 80;
+  assert((media_group_delta_volumes(above_max, 79, 50) == std::vector<int>{79, 79}));
+  assert((media_group_delta_volumes(above_max, 81, 50) == std::vector<int>{80, 80}));
   volumes[1].volume_known = false;
   assert(!media_group_mean_volume(volumes, &mean));
   assert(media_group_delta_volumes(volumes, 35, 100).empty());
@@ -264,9 +267,14 @@ def main() -> int:
     )[1].split("\n}\n\ninline void media_control_sync_speaker_candidates", 1)[0]
     if "(listed_by_helper || row->selected)" not in add_speaker:
         raise SystemExit("Live group members missing from discovery must remain removable")
-    apply_control = media_header.split(
+    legacy_control = media_header.split(
         "inline void media_playback_apply_state_to_control", 1
     )[1].split("\n}\n\ninline void media_playback_apply_state_to_controls", 1)[0]
+    if "media_control_apply_snapshot(" not in legacy_control:
+        raise SystemExit("Legacy media updates must use the shared snapshot policy")
+    apply_control = media_header.split(
+        "inline void media_control_apply_snapshot", 1
+    )[1].split("\n}\n\ninline void media_playback_apply_state_to_control", 1)[0]
     if "media_control_refresh_group_member_volumes(ctx);" not in apply_control:
         raise SystemExit("Discovery updates must refresh the grouped-volume cache")
     refresh_volumes = media_header.split(
@@ -277,17 +285,25 @@ def main() -> int:
     refresh_speakers = media_header.split(
         "inline void media_control_refresh_speakers(MediaControlCtx *ctx) {", 1
     )[1].split("\n}\n\ninline void media_control_create_speakers_tab_content", 1)[0]
-    if "row->volume_known = item.volume_known;" not in refresh_speakers:
+    copy_speaker = media_header.split(
+        "inline bool media_control_copy_current_speaker_state(MediaControlCtx *ctx, MediaSpeakerRowState *row) {", 1
+    )[1].split("\n}\n", 1)[0]
+    if ("media_control_copy_current_speaker_state(ctx, row);" not in refresh_speakers or
+            "row->volume_known = item.volume_known;" not in copy_speaker):
         raise SystemExit("Discovery updates must clear stale unknown speaker volumes")
-    if media_header.count("media_control_store_group_volume(") < 4:
-        raise SystemExit("Primary and discovered speaker volumes must persist in the group cache")
+    if "media_control_set_group_volume_target(" not in media_header:
+        raise SystemExit("Local speaker volume targets must persist in the group cache")
     for reset in (
-        "ctx->speaker_helper_members.clear();",
-        "ctx->speaker_discovery.clear();",
-        "ctx->speaker_discovery_available = false;",
+        "ctx->speaker_helper_members = state.speaker_helper_members;",
+        "ctx->speaker_discovery = state.speaker_discovery;",
+        "ctx->speaker_discovery_available = state.speaker_discovery_available;",
     ):
         if reset not in media_header:
             raise SystemExit("Media route changes must clear stale speaker discovery data")
+    for empty in ("discovery ? discovery->members : empty_members",
+                  "discovery ? discovery->items : empty_items", "discovery && discovery->available"):
+        if empty not in legacy_control:
+            raise SystemExit("A missing legacy discovery owner must supply empty snapshot data")
     if 'media_control_set_speaker_status(espcontrol_i18n("Updating speakers"), false, true);' in media_header:
         raise SystemExit("Pending speaker group changes must not show temporary status text")
     if "media_control_refresh_speaker_state(ctx, row);" in media_header:
