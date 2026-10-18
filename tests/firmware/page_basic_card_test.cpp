@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "basic_number_layout.h"
 #include "bounded_display_text.h"
 #include "button_grid_subpage_parser.h"
 #include "light_temperature_color.h"
@@ -475,6 +476,25 @@ void cleaning_profile(const DeviceUiLimits& limits) {
 PageTimezoneSelection test_timezone_resolve(void*, std::string_view option, time_t) {
   const auto id = option.substr(0, option.find(" ("));
   return {id, id == "Asia/Kathmandu" ? "GMT-5:45" : id == "Pacific/Chatham" ? "GMT-12:45" : "UTC0"};
+}
+void number_layout_profile(const DeviceUiLimits& limits) {
+  for (const auto* type : {"sensor", "duration", "climate", "action", "subpage"})
+    for (const auto* options : {"", "large_numbers", "large_numbers=off"}) {
+      const bool sensor = std::string(type) == "sensor" || std::string(type) == "duration",
+                 climate = std::string(type) == "climate";
+      Fixture fixture(limits,
+                      std::string("climate.room;Room;Auto;Auto;sensor.temp;C;") +
+                          (std::string(type) == "duration" ? "sensor;time;" : std::string(type) + ";1;") +
+                          options);
+      BasicCardDefinition card;
+      assert(prepare_basic_card(fixture.store, 0, card));
+      const bool disabled = std::string(options) == "large_numbers=off" && std::string(type) != "duration";
+      assert(card.large_numbers == ((sensor || climate) && !disabled));
+      assert(card.explicit_large == (climate && std::string(options) == "large_numbers"));
+      assert(basic_number_large_font(card, 2, 2) == ((sensor || climate) && !disabled));
+      assert(basic_number_large_font(card, 3, 3) == (climate && std::string(options) == "large_numbers"));
+      assert(basic_number_large_font(card, 1, 1) == (climate && std::string(options) == "large_numbers"));
+    }
 }
 void clock_profile(const DeviceUiLimits& limits) {
   for (const auto* type : {"clock", "timezone"}) {
@@ -1691,6 +1711,7 @@ int main() {
     cleaning_profile(limits);
     calendar_profile(limits);
     clock_profile(limits);
+    number_layout_profile(limits);
     local_relay_profile(limits);
     local_sensor_profile(limits);
     option_select_profile(limits);

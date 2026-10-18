@@ -198,6 +198,18 @@ target_compile_options(page_percent_slider_runtime_test PRIVATE -Wall -Wextra -W
 target_include_directories(page_percent_slider_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_percent_slider_runtime_test COMMAND page_percent_slider_runtime_test)
 
+set(NUMBER_LAYOUT_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/basic_number_layout_test.cpp)
+add_custom_command(OUTPUT ${NUMBER_LAYOUT_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_number_layout_test.py --output ${NUMBER_LAYOUT_SOURCE}
+  DEPENDS generate_number_layout_test.py basic_number_layout_test.cpp.in
+    ../../components/espcontrol/button_grid_sensor_driver.h ../../components/espcontrol/button_grid_climate_control_driver.h
+  VERBATIM)
+add_executable(basic_number_layout_test ${NUMBER_LAYOUT_SOURCE})
+target_compile_features(basic_number_layout_test PRIVATE cxx_std_17)
+target_compile_options(basic_number_layout_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(basic_number_layout_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME basic_number_layout_test COMMAND basic_number_layout_test)
+
 set(CLOCK_LAYOUT_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/clock_card_layout_test.cpp)
 add_custom_command(OUTPUT ${CLOCK_LAYOUT_SOURCE}
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_clock_layout_test.py --output ${CLOCK_LAYOUT_SOURCE}

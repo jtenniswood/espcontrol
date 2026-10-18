@@ -182,6 +182,34 @@ struct Fixture {
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
   }
+  struct NumberSize {
+    const char* order;
+    const char* type;
+    const char* options;
+  };
+  Fixture(const DeviceUiLimits& limits, NumberSize spec) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string type = spec.type;
+    const std::string card = type == "action"
+                                 ? std::string(
+                                       "script.scene;Room;Auto;Auto;script.turn_on;;action;;state_entity="
+                                       "sensor.temperature,state_precision=1,state_unit=C,") +
+                                       spec.options
+                                 : std::string("climate.room;Room;Auto;Auto;sensor.temperature;C;") +
+                                       (type == "duration" ? "sensor;time;" : type + ";1;") + spec.options;
+    assert(writer.append_button(1, reinterpret_cast<const uint8_t*>(card.data()), card.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = spec.order;
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                 reinterpret_cast<const uint8_t*>(order.data()),
+                                 order.size()) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   struct ClockSize {
     const char* order;
     const char* type;
@@ -2897,6 +2925,93 @@ void clock_size_profile(const DeviceUiLimits& limits) {
         lv_obj_delete(page);
       }
 }
+template <size_t Slots>
+void number_size_profile(const DeviceUiLimits& limits) {
+  for (const auto* order : {"1", "1w", "1b", "1q"})
+    for (const auto* type : {"sensor", "duration", "climate", "action", "subpage"})
+      for (const auto* options : {"", "large_numbers", "large_numbers=off"}) {
+        if (std::strcmp(order, "1q") == 0 && (limits.grid_columns < 3 || (Slots / limits.grid_columns) < 3))
+          continue;
+        Fixture fixture(limits, Fixture::NumberSize{order, type, options});
+        Arena arena;
+        Subscriptions subscriptions;
+        PageCardDependencies deps;
+        PageEntityStateRuntime state(deps, arena, subscriptions, {64, 64, 2048});
+        auto* page = lv_obj_create(lv_screen_active());
+        std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+        for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+        columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+        const auto count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+        for (size_t i = 0; i < count; ++i) rows[i] = LV_GRID_FR(1);
+        rows[count] = LV_GRID_TEMPLATE_LAST;
+        lv_obj_set_size(page, 480, 480);
+        lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+        std::array<PageBasicWidgets, Slots> widgets{};
+        for (auto& w : widgets) {
+          w.button = lv_button_create(page);
+          w.icon = lv_label_create(w.button);
+          w.label = lv_label_create(w.button);
+          w.sensor_container = lv_obj_create(w.button);
+          w.value = lv_label_create(w.sensor_container);
+          w.unit = lv_label_create(w.sensor_container);
+        }
+        PageBasicTheme theme;
+        theme.sensor_font = &lv_font_montserrat_14;
+        theme.large_sensor_font = calendar_large_font();
+        theme.surface = 0x111111;
+        theme.sensor_surface = 0x222222;
+        Actions<Slots> actions;
+        {
+          PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns},
+                                        theme, actions.callbacks(), nullptr, nullptr, nullptr, nullptr,
+                                        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                        nullptr, nullptr);
+          assert(port.initialize());
+          PageRendererRuntime<Slots> renderer(limits, arena, port);
+          actions.renderer = &renderer;
+          assert(renderer.prepare(fixture.store) && state.prepare(fixture.store));
+          state.activate_prepared(fixture.store);
+          renderer.activate_prepared(fixture.store);
+          renderer.update_visible();
+          const bool disabled =
+              std::strcmp(options, "large_numbers=off") == 0 && std::strcmp(type, "duration") != 0;
+          const bool square = std::strcmp(order, "1b") == 0;
+          const bool climate = std::strcmp(type, "climate") == 0;
+          const bool eligible =
+              climate || std::strcmp(type, "sensor") == 0 || std::strcmp(type, "duration") == 0;
+          const bool large =
+              eligible && !disabled && (square || (climate && std::strcmp(options, "large_numbers") == 0));
+          const auto* expected = large ? calendar_large_font() : theme.sensor_font;
+          if (lv_obj_get_style_text_font(widgets[0].value, LV_PART_MAIN) != expected)
+            std::fprintf(stderr, "font parity failed: %s type=%s order=%s options=%s expected-large=%d\n",
+                         limits.device_profile, type, order, options, large);
+          assert(lv_obj_get_style_text_font(widgets[0].value, LV_PART_MAIN) == expected);
+          assert(!lv_obj_has_flag(widgets[0].label, LV_OBJ_FLAG_HIDDEN));
+          for (int percent : {-25, 30}) {
+            theme.large_sensor_unit_offset_percent = percent;
+            ++theme.revision;
+            renderer.update_visible();
+            assert(lv_obj_get_style_translate_y(widgets[0].unit, LV_PART_MAIN) ==
+                   (large ? 28 * percent / 100 : 0));
+          }
+          if (large) {
+            theme.large_sensor_font = nullptr;
+            ++theme.revision;
+            renderer.update_visible();
+            assert(lv_obj_get_style_text_font(widgets[0].value, LV_PART_MAIN) == theme.sensor_font);
+            assert(!lv_obj_has_flag(widgets[0].label, LV_OBJ_FLAG_HIDDEN));
+            theme.large_sensor_font = calendar_large_font();
+            ++theme.revision;
+            renderer.update_visible();
+            assert(lv_obj_get_style_text_font(widgets[0].value, LV_PART_MAIN) == expected);
+          }
+          renderer.retire_active();
+          state.retire_active();
+        }
+        assert(arena.live == 0);
+        lv_obj_delete(page);
+      }
+}
 
 uint32_t timer_tick = 100;
 int64_t timer_epoch = 0;
@@ -5002,6 +5117,26 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "number-layout") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          number_size_profile<6>(limits);
+          break;
+        case 9:
+          number_size_profile<9>(limits);
+          break;
+        case 15:
+          number_size_profile<15>(limits);
+          break;
+        case 20:
+          number_size_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      std::printf("%s: numeric font/unit-offset parity passed\n", limits.device_profile);
+      continue;
+    }
     if (family && std::strcmp(family, "clock") == 0) {
       switch (limits.slot_count) {
         case 6:
@@ -5387,6 +5522,7 @@ int main() {
         calendar_size_profile<6>(limits);
         clock_profile<6>(limits);
         clock_size_profile<6>(limits);
+        number_size_profile<6>(limits);
         fan_mode_profile<6>(limits);
         fan_status_profile<6>(limits);
         percent_slider_profile<6>(limits);
@@ -5416,6 +5552,7 @@ int main() {
         calendar_size_profile<9>(limits);
         clock_profile<9>(limits);
         clock_size_profile<9>(limits);
+        number_size_profile<9>(limits);
         fan_mode_profile<9>(limits);
         fan_status_profile<9>(limits);
         percent_slider_profile<9>(limits);
@@ -5445,6 +5582,7 @@ int main() {
         calendar_size_profile<15>(limits);
         clock_profile<15>(limits);
         clock_size_profile<15>(limits);
+        number_size_profile<15>(limits);
         fan_mode_profile<15>(limits);
         fan_status_profile<15>(limits);
         percent_slider_profile<15>(limits);
@@ -5474,6 +5612,7 @@ int main() {
         calendar_size_profile<20>(limits);
         clock_profile<20>(limits);
         clock_size_profile<20>(limits);
+        number_size_profile<20>(limits);
         fan_mode_profile<20>(limits);
         fan_status_profile<20>(limits);
         percent_slider_profile<20>(limits);
