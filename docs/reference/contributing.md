@@ -75,6 +75,11 @@ files, or web files used by the device, an automated workflow posts suggested
 device testing notes. Treat those notes as the starting point for manual device
 testing after the automated checks pass.
 
+For a flashed panel, use the [device runtime tests](./device-runtime-tests) to
+observe API health, restart evidence, crash logs, and memory while optionally
+opening and closing a configured card. CI checks the runner itself with offline
+fixtures; live device tests run separately against an explicit address.
+
 A successful compile or CI run confirms that the project builds. It does not
 replace testing on the affected display when the change touches the on-device
 experience.
