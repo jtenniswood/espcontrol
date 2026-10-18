@@ -251,7 +251,10 @@ void PageAlarmStateRuntime::observed(uint32_t generation, std::string_view entit
       } else if (slot->selected == i)
         slot->selected = UINT16_MAX;
     }
-    if (winner != UINT16_MAX) slot->selected = winner;
+    if (winner != UINT16_MAX) {
+      slot->selected = winner;
+      if (slot == &active_ && !copied) ++takeover_events_;
+    }
     if (changed) ++revision_;
   }
 }

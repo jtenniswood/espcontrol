@@ -25,6 +25,9 @@ class PageAlarmCommandPort {
   virtual bool service_available() const = 0;
   virtual bool valid(PageBindingToken) const = 0;
   virtual bool valid(PageModalToken) const = 0;
+  // The demanded alarm port proves the exact mode already selected for this
+  // still-live PIN session. A modal kind alone is not sufficient proof.
+  virtual bool selected_pin(PageModalToken, alarm::Action) const = 0;
   virtual bool send(std::string_view entity, const char* service, std::string_view code) = 0;
 };
 enum class PageAlarmCommandResult : uint8_t { NONE, CANCELLED, FAILED, SENT };
@@ -61,6 +64,7 @@ class PageAlarmCommands final : public PageRuntimeResources {
     bool present{false};
   };
   bool current(const Pending&);
+  bool panel_allowed(PageAlarmCommandOrigin, alarm::Action) const;
   static void wipe(Pending&);
   PageEntityStateRuntime& graph_;
   PageAlarmStateRuntime& state_;

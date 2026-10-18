@@ -47,6 +47,11 @@ class PageAlarmStateRuntime final : public PageRuntimeResources, public PageEnti
   uint64_t revision() const {
     return revision_;
   }
+  // Fresh eligible reports that would refresh the legacy takeover. Countdown
+  // ticks/caption expiry and control-only arm-mode reports do not reopen UI.
+  uint64_t takeover_events() const {
+    return takeover_events_;
+  }
   PageAlarmMemory memory() const;
   static PageAlarmSourceKind classify(const PageStore&, CardId);
   static std::string_view effective_entity(const PageStore&, CardId);
@@ -93,7 +98,7 @@ class PageAlarmStateRuntime final : public PageRuntimeResources, public PageEnti
   size_t max_sources_, max_key_bytes_, peak_{0}, failures_{0};
   Translate translate_;
   uint32_t connection_;
-  uint64_t revision_{0};
+  uint64_t revision_{0}, takeover_events_{0};
   Slot active_, staged_;
 };
 }  // namespace espcontrol::pages

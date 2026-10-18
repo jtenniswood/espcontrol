@@ -96,6 +96,14 @@ void PageAlarmCommands::cancel(PageModalToken token) {
       pending.kind == token.kind)
     cancel();
 }
+bool PageAlarmCommands::panel_allowed(PageAlarmCommandOrigin origin, alarm::Action action) const {
+  if (!origin.modal.opening || origin.modal.kind != ControlModalKind::ALARM_CONTROL) return false;
+  const auto takeover = state_.takeover();
+  const auto handle = origin.card();
+  return (takeover.valid && takeover.origin.generation == handle.generation &&
+          takeover.origin.index == handle.index) ||
+         port_.selected_pin(origin.modal, action);
+}
 bool PageAlarmCommands::current(const Pending& pending) {
   if (!pending.present || !port_.connected() || !port_.service_available() ||
       pending.origin.connection != graph_.connection_generation())
@@ -116,6 +124,10 @@ bool PageAlarmCommands::current(const Pending& pending) {
   state_.loop();
   const auto snapshot = state_.read(handle);
   if (!snapshot.valid || !snapshot.command_available || snapshot.entity.empty()) return false;
+  if (PageAlarmStateRuntime::classify(active_, handle.index) == PageAlarmSourceKind::ACTION &&
+      pending.action != alarm::action(active_.field(*card, CardField::SENSOR)) &&
+      !panel_allowed(pending.origin, pending.action))
+    return false;
   const auto primary = graph_.read_attribute(handle, snapshot.entity, {});
   return primary.status != PageEntityStatus::EXHAUSTED && primary.status != PageEntityStatus::STALE;
 }
@@ -137,10 +149,7 @@ bool PageAlarmCommands::queue(PageAlarmCommandOrigin origin, alarm::Action actio
   const auto kind = PageAlarmStateRuntime::classify(active_, handle.index);
   const auto* card = active_.card(handle);
   const std::string options(PageAlarmStateRuntime::effective_options(active_, handle.index));
-  const auto takeover = state_.takeover();
-  const bool critical_panel = origin.modal.opening && origin.modal.kind == ControlModalKind::ALARM_CONTROL &&
-                              takeover.valid && takeover.origin.generation == handle.generation &&
-                              takeover.origin.index == handle.index;
+  const bool critical_panel = panel_allowed(origin, action);
   if (kind == PageAlarmSourceKind::ACTION && !critical_panel) {
     if (action != alarm::action(active_.field(*card, CardField::SENSOR))) return reject();
   } else if (kind == PageAlarmSourceKind::CONTROL || critical_panel) {

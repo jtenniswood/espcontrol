@@ -261,6 +261,7 @@ void alarm_control_open_modal(AlarmCardCtx* ctx) {
   alarm_control_update_modal(ctx);
 }
 #include "page_alarm_modal.h"
+#include "page_alarm_presentation.h"
 uint32_t now() {
   return lv_tick_get();
 }
@@ -341,6 +342,7 @@ struct Fixture {
 
 struct CommandsPort : PageAlarmCommandPort {
   PageModalRuntime* modal{nullptr};
+  PageAlarmModalPort* alarm_port{nullptr};
   PageBindingToken binding{0, 123, 0, 1, 1, false};
   size_t sends{0};
   std::string code, entity, action;
@@ -360,6 +362,9 @@ struct CommandsPort : PageAlarmCommandPort {
   }
   bool valid(PageModalToken token) const override {
     return modal && modal->interactive(token);
+  }
+  bool selected_pin(PageModalToken token, alarm::Action mode) const override {
+    return alarm_port && alarm_port->selected_pin(token, mode);
   }
   bool send(std::string_view key, const char* service, std::string_view pin) override {
     ++sends;
@@ -403,6 +408,7 @@ struct Harness {
         publication(limits, arena, 32768, &resources) {
     assert(observers.add(state) && observers.add(ack));
     sender.modal = &modal;
+    sender.alarm_port = &port;
     assert(!port.install(modal, false) && port.install(modal, true));
   }
   void publish(Fixture& f, uint32_t gen = 0) {
@@ -625,6 +631,128 @@ void hidden_action_critical_panel(const DeviceUiLimits& limits) {
   h.modal.dismiss(PageModalClose::SHUTDOWN);
   h.modal.loop();
 }
+void critical_scene_and_pin_completion(const DeviceUiLimits& limits) {
+  Fixture f(17, "alarm_control_panel.home", limits);
+  Harness h(limits);
+  h.publish(f);
+  struct DisplayPort : PageAlarmPresentationPort {
+    Harness& h;
+    bool active{false};
+    size_t failures{0};
+    PageAlarmFailureReason reason{PageAlarmFailureReason::NONE};
+    explicit DisplayPort(Harness& owner) : h(owner) {}
+    bool ready() const override {
+      return !modal_callback_dispatching() && !page_lvgl_dispatching();
+    }
+    bool connected() const override {
+      return connected_value;
+    }
+    uint32_t connection_generation() const override {
+      return h.transport.connection;
+    }
+    void critical(bool value) override {
+      active = value;
+    }
+    void failure(PageAlarmFailure event) override {
+      ++failures;
+      reason = event.reason;
+    }
+  } display(h);
+  PageAlarmPresentation presentation(h.state, h.ack, h.modal, display);
+  assert(presentation.prepare(h.publication.active()));
+  presentation.activate_prepared(h.publication.active());
+  h.report("arming");
+  h.transport.send("alarm_control_panel.home", "delay", "1");
+  presentation.loop();
+  h.modal.loop();
+  presentation.loop();
+  assert(display.active);
+  click(alarm_control_modal_ui().mode_btn[0]);
+  h.modal.loop();
+  assert(alarm_pin_modal_ui().active && alarm_pin_modal_ui().active->mode == "away");
+  enter_pin();
+  lv_tick_inc(1000);
+  presentation.loop();
+  h.modal.loop();
+  assert(!display.active && alarm_pin_modal_ui().active);
+  click(keys[11]);
+  assert(h.commands.loop() == PageAlarmCommandResult::SENT &&
+         h.sender.action == "alarm_control_panel.alarm_arm_away");
+  h.modal.loop();
+  h.report("triggered");
+  presentation.loop();
+  h.modal.loop();
+  click(alarm_control_modal_ui().back_btn);
+  h.modal.loop();
+  presentation.loop();
+  assert(!display.active);
+  lv_tick_inc(1000);
+  presentation.loop();
+  h.modal.loop();
+  assert(!alarm_control_modal_ui().active && !display.active);
+  h.report("triggered");
+  presentation.loop();
+  h.modal.loop();
+  presentation.loop();
+  assert(display.active && alarm_control_modal_ui().active);
+  click(alarm_control_modal_ui().mode_btn[0]);
+  h.report("unknown");
+  presentation.loop();
+  h.modal.loop();
+  assert(!alarm_control_modal_ui().active && !alarm_pin_modal_ui().active && !display.active);
+  h.report("triggered");
+  presentation.loop();
+  h.modal.loop();
+  presentation.loop();
+  assert(alarm_control_modal_ui().active);
+  click(alarm_control_modal_ui().mode_btn[0]);
+  h.modal.loop();
+  enter_pin();
+  click(keys[11]);
+  assert(h.commands.loop() == PageAlarmCommandResult::SENT);
+  h.modal.loop();
+  presentation.loop();
+  assert(display.active && !alarm_pin_modal_ui().active && !alarm_control_modal_ui().active);
+  h.report("triggered");
+  presentation.loop();
+  h.modal.loop();
+  presentation.loop();
+  assert(alarm_control_modal_ui().active);
+  h.report("disarmed");
+  presentation.loop();
+  h.modal.loop();
+  assert(!display.active && !alarm_control_modal_ui().active);
+  assert(h.commands.queue({h.sender.binding, {}, h.transport.connection}, alarm::Action::AWAY, "1234"));
+  assert(h.commands.loop() == PageAlarmCommandResult::SENT);
+  lv_tick_inc(3500);
+  presentation.loop();
+  assert(display.failures == 1 && display.reason == PageAlarmFailureReason::CODE &&
+         h.commands.memory().pending_code_bytes == 0);
+}
+void stale_panel_pin_admission(const DeviceUiLimits& limits) {
+  Fixture f(17, "alarm_control_panel.home", limits);
+  Harness h(limits);
+  h.publish(f);
+  h.report("triggered");
+  const auto choice = h.state.takeover();
+  assert(h.modal.request_card(choice.origin, ControlModalKind::ALARM_CONTROL));
+  h.modal.loop();
+  h.report("disarmed");
+  click(alarm_control_modal_ui().mode_btn[0]);
+  h.modal.loop();
+  assert(!alarm_pin_modal_ui().active && h.commands.memory().pending == 0);
+  h.report("triggered");
+  click(alarm_control_modal_ui().mode_btn[0]);
+  assert(h.modal.dismiss_policy(h.modal.token()) == ControlModalDismissPolicy::DISMISS);
+  h.report("disarmed");
+  h.modal.loop();
+  assert(alarm_pin_modal_ui().active && alarm_pin_modal_ui().active->mode == "away");
+  enter_pin();
+  click(keys[11]);
+  assert(h.commands.loop() == PageAlarmCommandResult::SENT &&
+         h.sender.action == "alarm_control_panel.alarm_arm_away");
+  h.modal.loop();
+}
 void capacity_failure(const DeviceUiLimits& limits) {
   Fixture f(17, "alarm_control_panel.home", limits);
   Harness h(limits, 1);
@@ -698,6 +826,8 @@ int main() {
     initial_actions_and_pin_limits(limits);
     capacity_failure(limits);
     hidden_action_critical_panel(limits);
+    critical_scene_and_pin_completion(limits);
+    stale_panel_pin_admission(limits);
     std::printf("%s: demanded alarm/PIN lifetime and 1000 cycles passed\n", limits.device_profile);
   }
   lv_display_delete(display);
