@@ -1077,6 +1077,7 @@ def main() -> int:
         shutil.copy2(MEDIA_CONFIG_HEADER.with_name("media_card_mode.h"), tmp_path / "media_card_mode.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "temperature_unit.h", tmp_path / "temperature_unit.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "sun_calc.h", tmp_path / "sun_calc.h")
+        shutil.copy2(ROOT / "components" / "espcontrol" / "timezone_offset.h", tmp_path / "timezone_offset.h")
         shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
         shutil.copy2(SCREEN_LOCK_STATE_HEADER, tmp_path / "screen_lock_state.h")
         shutil.copy2(SCREEN_LOCK_STATE_HEADER.with_name("screensaver_pin.h"), tmp_path / "screensaver_pin.h")
