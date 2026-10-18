@@ -254,8 +254,15 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     if(out.icon.empty()||out.icon=="Auto")out.icon="Lightbulb Outline";
     if(out.icon_on.empty()||out.icon_on=="Auto")out.icon_on="Lightbulb";
   } else if (type == "cover") {
-    if (out.sensor == "open" || out.sensor == "close" || out.sensor == "stop" ||
-        out.sensor == "set_position") {
+    if (out.sensor == "toggle") {
+      out.kind = BasicCardKind::COVER_TOGGLE;
+      out.unit = {};
+      out.active_color = true;
+      out.default_label = "Cover";
+      if (out.icon.empty() || out.icon == "Auto") out.icon = "Blinds";
+      if (out.icon_on.empty() || out.icon_on == "Auto") out.icon_on = "Blinds Open";
+    } else if (out.sensor == "open" || out.sensor == "close" || out.sensor == "stop" ||
+               out.sensor == "set_position") {
       out.kind = BasicCardKind::COVER_COMMAND;
       out.unit = {};
       out.push_feedback = true;
@@ -355,9 +362,9 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
   if (type == "cover") {
     const auto mode = store.field(*card, CardField::SENSOR);
     // The empty/tilt variants were classified above. Commands never
-    // contribute; toggle views remain unported. Other modes use the modal.
-    if (mode.empty() || mode == "tilt" || mode == "toggle" || mode == "open" || mode == "close" ||
-        mode == "stop" || mode == "set_position")
+    // contribute. Toggle and other modes use the ordinary entity predicate.
+    if (mode.empty() || mode == "tilt" || mode == "open" || mode == "close" || mode == "stop" ||
+        mode == "set_position")
       return {};
     return store.field(*card, CardField::ENTITY);
   }
@@ -457,7 +464,8 @@ BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHan
                                PageLocalRelayRuntime* relay, PageFanStatusRuntime* fan_status,
                                PagePercentSliderRuntime* percent_slider,
                                PageNumberSliderRuntime* number_slider,
-                               PageLightTemperatureRuntime* temperature, PageTimerRuntime* timer) {
+                               PageLightTemperatureRuntime* temperature, PageTimerRuntime* timer,
+                               PageCoverToggleRuntime* cover_toggle) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
   if (card.kind == BasicCardKind::PERCENT_SLIDER) {
@@ -472,6 +480,29 @@ BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHan
       const auto name = find(state, handle, card.entity, "friendly_name");
       if (name.status == PageEntityStatus::AVAILABLE)
         result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+    }
+    return result;
+  }
+  if (card.kind == BasicCardKind::COVER_TOGGLE) {
+    const auto snapshot = cover_toggle ? cover_toggle->read(handle) : PageCoverToggleSnapshot{};
+    result.on = snapshot.on;
+    result.cover_icon_open = snapshot.icon_open;
+    if (find(state, handle, card.entity).status == PageEntityStatus::EXHAUSTED) {
+      result.on = result.cover_icon_open = false;
+      const auto* caption = translate ? translate("Unavailable") : nullptr;
+      result.label = caption ? caption : "Unavailable";
+    } else if (snapshot.showing)
+      result.label = snapshot.status;
+    else if (!card.label.empty())
+      result.label = card.label;
+    else {
+      const auto name = find(state, handle, card.entity, "friendly_name");
+      if (name.status == PageEntityStatus::AVAILABLE)
+        result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+      else {
+        const auto* caption = translate ? translate("Cover") : nullptr;
+        result.label = caption ? caption : "Cover";
+      }
     }
     return result;
   }

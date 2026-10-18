@@ -9,9 +9,10 @@ history does not replace its existing primary-state indicator predicate.
 Timer children contribute only for valid `timer.*` entities and only while
 active. Explicit folder entity/numeric/text/climate/mower modes keep their
 existing predicates. Climate cards, option selects, sensors and action buttons
-keep their current exclusions. Cover command variants do not contribute;
-cover-toggle views remain unported and must add their indicator policy when
-ported. Unknown cover modes retain the existing modal fallback.
+keep their current exclusions. Cover command variants do not contribute.
+Cover-toggle children use the ordinary primary-state predicate (open/opening/closing),
+independent of their inverted checked background (closed/closing). Unknown cover
+modes retain the existing modal fallback.
 
 The audit checks the original driver registration hooks rather than inferring
 eligibility from a card's visual checked state. Folder summaries borrow the

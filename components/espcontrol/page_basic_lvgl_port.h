@@ -101,7 +101,8 @@ class PageBasicLvglPort final:public PageRendererPort {
                     PageLocalRelayRuntime* relay = nullptr, PageFanStatusRuntime* fan_status = nullptr,
                     PagePercentSliderRuntime* percent_slider = nullptr,
                     PageNumberSliderRuntime* number_slider = nullptr,
-                    PageLightTemperatureRuntime* temperature = nullptr, PageTimerRuntime* timer = nullptr)
+                    PageLightTemperatureRuntime* temperature = nullptr, PageTimerRuntime* timer = nullptr,
+                    PageCoverToggleRuntime* cover_toggle = nullptr)
       : allocator_(allocator),
         state_(state),
         widgets_(widgets),
@@ -117,7 +118,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         percent_slider_(percent_slider),
         number_slider_(number_slider),
         temperature_(temperature),
-        timer_(timer) {
+        timer_(timer),
+        cover_toggle_(cover_toggle) {
     for(size_t i=0;i<Slots;++i){shells_[i].port=this;shells_[i].index=i;}
   }
   ~PageBasicLvglPort()override {
@@ -305,6 +307,10 @@ class PageBasicLvglPort final:public PageRendererPort {
         BasicCardDefinition view;
         if (!prepare_basic_card(store, card, view, &strings, relay_)) return false;
         if (view.kind == BasicCardKind::COVER_COMMAND && !actions_.cover_command) return false;
+        if (view.kind == BasicCardKind::COVER_TOGGLE) {
+          if (!cover_toggle_ || !actions_.toggle) return false;
+          label_capacity = std::max<size_t>(label_capacity, 97);
+        }
         if (view.kind == BasicCardKind::TIMER) {
           if (!timer_ || !actions_.timer) return false;
           const auto* confirm = theme_.translate ? theme_.translate("Confirm") : nullptr;
@@ -613,6 +619,7 @@ class PageBasicLvglPort final:public PageRendererPort {
                                        s.definition->definition.kind == BasicCardKind::LOCAL_RELAY ||
                                        s.definition->definition.kind == BasicCardKind::TIMER ||
                                        s.definition->definition.kind == BasicCardKind::COVER_COMMAND ||
+                                       s.definition->definition.kind == BasicCardKind::COVER_TOGGLE ||
                                        s.definition->definition.kind == BasicCardKind::FOLDER ||
                                        s.definition->definition.kind == BasicCardKind::CLIMATE ||
                                        s.definition->definition.kind == BasicCardKind::ACTION ||
@@ -645,10 +652,10 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(s.cell.back){value.label=s.back.custom_label.empty()?theme_.back_label:s.back.custom_label;definition.custom_off=s.back.custom_color;definition.off_color=s.back.background_color;}
     else {
       definition = s.definition->definition;
-      value =
-          read_basic_card(definition, {token.configuration, token.card}, state_,
-                          s.cell.column_span > 1 ? 2 : 1, theme_.temperature_unit, theme_.translate, media_,
-                          local_, relay_, fan_status_, percent_slider_, number_slider_, temperature_, timer_);
+      value = read_basic_card(definition, {token.configuration, token.card}, state_,
+                              s.cell.column_span > 1 ? 2 : 1, theme_.temperature_unit, theme_.translate,
+                              media_, local_, relay_, fan_status_, percent_slider_, number_slider_,
+                              temperature_, timer_, cover_toggle_);
       if(group_card(s))group_feedback(s,value);
       if (timer_card(s)) timer_feedback(s, value);
       if(definition.folder_mode==BasicFolderMode::CHILDREN) {
@@ -692,7 +699,9 @@ class PageBasicLvglPort final:public PageRendererPort {
       if (definition.kind == BasicCardKind::WEATHER)
         glyph = active_.weather->glyphs[value.weather_condition];
       else
-        glyph = definition.kind == BasicCardKind::PERCENT_SLIDER
+        glyph = definition.kind == BasicCardKind::COVER_TOGGLE
+                    ? (value.cover_icon_open ? s.definition->on : s.definition->off)
+                : definition.kind == BasicCardKind::PERCENT_SLIDER
                     ? (value.percent_slider.icon_on ? s.definition->on : s.definition->off)
                 : definition.kind == BasicCardKind::CLIMATE
                     ? (value.climate_icon_on ? s.definition->on : s.definition->off)
@@ -800,6 +809,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (number_slider_) seen_number_slider_ = number_slider_->revision();
     if (temperature_) seen_temperature_ = temperature_->revision();
     if (timer_) seen_timer_ = timer_->revision();
+    if (cover_toggle_) seen_cover_toggle_ = cover_toggle_->revision();
     seen_state_ = state_.revision();
     if (local_) seen_local_ = local_->revision();
     if (relay_) seen_relay_ = relay_->revision();
@@ -865,13 +875,15 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (number_slider_) number_slider_->loop();
     if (temperature_) temperature_->loop();
     if (timer_) timer_->loop();
+    if (cover_toggle_) cover_toggle_->loop();
     if (media_layout_dirty_) return true;
     if (media_)
       for (const auto& shell : shells_)
         if (shell.pending_target >= 0 && !timer_card(shell) && !group_card(shell) &&
             static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= pending_timeout(shell))
           return true;
-    return (timer_ && timer_->revision() != seen_timer_) ||
+    return (cover_toggle_ && cover_toggle_->revision() != seen_cover_toggle_) ||
+           (timer_ && timer_->revision() != seen_timer_) ||
            (temperature_ && temperature_->revision() != seen_temperature_) ||
            (number_slider_ && number_slider_->revision() != seen_number_slider_) ||
            (percent_slider_ && percent_slider_->revision() != seen_percent_slider_) ||
@@ -1906,7 +1918,8 @@ class PageBasicLvglPort final:public PageRendererPort {
       return;}
     if(code==LV_EVENT_PRESSED) {
       shell->pressed=shell->token;
-      if (shell->definition && shell->definition->definition.kind == BasicCardKind::COVER_COMMAND)
+      if (shell->definition && (shell->definition->definition.kind == BasicCardKind::COVER_COMMAND ||
+                                shell->definition->definition.kind == BasicCardKind::COVER_TOGGLE))
         shell->gesture_connection = port->state_.connection_generation();
       if (timer_card(*shell)) {
         port->timer_->loop();
@@ -1930,6 +1943,16 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(origin.back){if(port->actions_.back)port->actions_.back(port->actions_.owner,origin);return;}
     if(!shell->definition)return;
     const auto &definition=shell->definition->definition;
+    if (definition.kind == BasicCardKind::COVER_TOGGLE) {
+      const ConfigurationHandle card{origin.configuration, origin.card};
+      if (definition.entity.empty() || shell->gesture_connection != port->state_.connection_generation() ||
+          port->state_.read_attribute(card, definition.entity, {}).status == PageEntityStatus::EXHAUSTED)
+        return;
+      // Existing cover toggles dispatch without an availability gate and optimistically check the card.
+      lv_obj_add_state(port->widgets_[shell->index].button, LV_STATE_CHECKED);
+      if (port->actions_.toggle) port->actions_.toggle(port->actions_.owner, origin, definition.entity);
+      return;
+    }
     if (definition.kind == BasicCardKind::COVER_COMMAND) {
       const auto command =
           read_basic_cover_command(definition, {origin.configuration, origin.card}, port->state_);
@@ -2003,14 +2026,15 @@ class PageBasicLvglPort final:public PageRendererPort {
   PageNumberSliderRuntime* number_slider_{nullptr};
   PageLightTemperatureRuntime* temperature_{nullptr};
   PageTimerRuntime* timer_{nullptr};
+  PageCoverToggleRuntime* cover_toggle_{nullptr};
   std::array<Shell, Slots> shells_{};
   Arena active_, staged_;
   PageStore store_;
   bool initialized_{false}, media_layout_dirty_{false}, media_finishing_{false};
   size_t callbacks_{0};
-  uint64_t seen_timer_{0}, seen_temperature_{0}, seen_number_slider_{0}, seen_percent_slider_{0},
-      seen_fan_status_{0}, seen_relay_{0}, seen_local_{0}, seen_state_{0}, seen_theme_{0}, seen_forecast_{0},
-      seen_media_{0}, seen_artwork_{0};
+  uint64_t seen_cover_toggle_{0}, seen_timer_{0}, seen_temperature_{0}, seen_number_slider_{0},
+      seen_percent_slider_{0}, seen_fan_status_{0}, seen_relay_{0}, seen_local_{0}, seen_state_{0},
+      seen_theme_{0}, seen_forecast_{0}, seen_media_{0}, seen_artwork_{0};
   PageBasicMemory memory_;
 };
 }  // namespace espcontrol::pages
