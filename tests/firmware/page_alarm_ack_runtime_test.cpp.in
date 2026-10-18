@@ -37,8 +37,11 @@ void operator delete[](void* p, size_t) noexcept {
   std::free(p);
 }
 uint32_t tick = 100;
+bool advancing_clock = false;
 uint32_t now() {
-  return tick;
+  const auto value = tick;
+  if (advancing_clock) ++tick;
+  return value;
 }
 namespace legacy {
 struct lv_timer_t {
@@ -202,6 +205,30 @@ void parity() {
       "alarm acknowledgement legacy parity: 200000 command/report/timeout sequences, including tick wrap");
 }
 
+void clock_order() {
+  tick = 100;
+  Fixture fixture(17);
+  Arena arena;
+  Transport transport;
+  PageAlarmStateRuntime state(arena, transport, now);
+  PageAlarmAckRuntime ack(arena, transport, state, now);
+  assert(state.prepare(fixture.store) && ack.prepare(fixture.store));
+  state.activate_prepared(fixture.store);
+  ack.activate_prepared(fixture.store);
+  const auto child = fixture.store.page(1)->first_card;
+  assert(ack.accepted({17, child}, 1, alarm::Action::HOME, true));
+  ++tick;
+  assert(ack.accepted({17, 0}, 1, alarm::Action::AWAY, false));
+  tick += 3500;
+  ack.loop();
+  assert(ack.memory().failures_ready == 2);
+  advancing_clock = true;
+  const auto first = ack.take_failure();
+  advancing_clock = false;
+  assert(first.valid && first.origin.index == child && first.reason == PageAlarmFailureReason::CODE);
+  const auto second = ack.take_failure();
+  assert(second.valid && second.origin.index == 0);
+}
 void lifecycle() {
   for (const auto& limits : DEVICE_UI_PROFILES) {
     tick = 100;
@@ -390,6 +417,7 @@ void publication() {
 }  // namespace
 int main() {
   parity();
+  clock_order();
   lifecycle();
   publication();
 }

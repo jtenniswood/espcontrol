@@ -131,9 +131,10 @@ void PageAlarmAckRuntime::loop() {
     connection_ = connection;
     for (size_t i = 0; i < active_.count; ++i) reset(active_.actions[i]);
   }
+  const uint32_t current_tick = now_();
   for (size_t i = 0; i < active_.count; ++i) {
     auto& action = active_.actions[i];
-    if (!(action.flags & WAITING) || static_cast<uint32_t>(now_() - action.started) < 3500) continue;
+    if (!(action.flags & WAITING) || static_cast<uint32_t>(current_tick - action.started) < 3500) continue;
     const auto status = state_.read({active_.store.generation(), action.card});
     if (action.connection != connection || !status.valid ||
         alarm::progressed(action.mode, status.state, status.arm_mode)) {
@@ -146,12 +147,14 @@ void PageAlarmAckRuntime::loop() {
 }
 PageAlarmFailure PageAlarmAckRuntime::take_failure() {
   loop();
+  const uint32_t current_tick = now_ ? now_() : 0;
   Pending* oldest = nullptr;
   for (size_t i = 0; i < active_.count; ++i) {
     auto& action = active_.actions[i];
     if (!(action.flags & (FAILED_CODE | FAILED_ACTION))) continue;
     if (!oldest ||
-        static_cast<uint32_t>(now_() - action.started) > static_cast<uint32_t>(now_() - oldest->started) ||
+        static_cast<uint32_t>(current_tick - action.started) >
+            static_cast<uint32_t>(current_tick - oldest->started) ||
         (action.started == oldest->started && static_cast<uint32_t>(sequence_ - action.sequence) >
                                                   static_cast<uint32_t>(sequence_ - oldest->sequence)))
       oldest = &action;
