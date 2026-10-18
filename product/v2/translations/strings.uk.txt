@@ -281,3 +281,12 @@ weekday_weds=ср
 weekday_thurs=чт
 weekday_fri=пт
 weekday_sat=сб
+
+# Default card labels (label_ keys use key-based lookup only)
+label_connect=Підключитися
+label_local_action=Локальна дія
+label_switch=Вимикач
+label_lighting=Освітлення
+label_garage=Гараж
+label_sensor=Датчик
+label_camera=Камера

@@ -111,10 +111,11 @@ inline bool sensor_driver_refresh_layout(
 }
 
 inline bool sensor_driver_cleanup(
-    BtnSlot &, const ParsedCfg &, const Context &context) {
-  // Duration-card allocations are owned by the existing grid allocation
-  // tracker. Local sensor callbacks and controls retain their established
-  // registry lifetime across dashboard rebuilds.
+    BtnSlot &slot, const ParsedCfg &, const Context &context) {
+  // This is called before every visual rebind, including a change to a
+  // different card family. Stop old local values reaching reused labels.
+  local_sensor_unregister_owner(slot.btn);
+  lv_obj_remove_event_cb(slot.btn, local_sensor_owner_deleted);
   return sensor_driver_matches(context);
 }
 
@@ -132,15 +133,10 @@ inline void sensor_driver_register_local_value(
     control.precision = atoi(config.precision.c_str());
   }
 
-  auto &registry = local_sensor_registry();
-  size_t write_index = 0;
-  for (size_t read_index = 0; read_index < registry.size(); read_index++) {
-    if (registry[read_index].owner == control.owner) continue;
-    if (write_index != read_index) registry[write_index] = registry[read_index];
-    write_index++;
-  }
-  registry.resize(write_index);
-  registry.push_back(control);
+  local_sensor_unregister_owner(control.owner);
+  local_sensor_registry().push_back(control);
+  lv_obj_remove_event_cb(control.owner, local_sensor_owner_deleted);
+  lv_obj_add_event_cb(control.owner, local_sensor_owner_deleted, LV_EVENT_DELETE, nullptr);
 
 #ifdef USE_SENSOR
   if (!is_text) {

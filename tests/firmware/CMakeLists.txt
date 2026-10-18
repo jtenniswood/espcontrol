@@ -38,6 +38,10 @@ add_test(NAME network_status_corners_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/network_status_corners_test.py)
 
+add_test(NAME option_select_dispatch_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/option_select_dispatch_test.py)
+
 add_executable(theme_palette_test theme_palette_test.cpp)
 target_compile_features(theme_palette_test PRIVATE cxx_std_17)
 target_compile_options(theme_palette_test PRIVATE -Wall -Wextra -Werror)
@@ -67,6 +71,10 @@ target_compile_options(theme_runtime_tree_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(theme_runtime_tree_test PRIVATE ../../components/espcontrol
   ${CMAKE_CURRENT_BINARY_DIR})
 add_test(NAME theme_runtime_tree_test COMMAND theme_runtime_tree_test)
+add_test(NAME option_select_live_options_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/option_select_live_options_test.py)
+
 add_test(NAME theme_refresh_contract_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/theme_refresh_contract_test.py)
 
@@ -76,9 +84,20 @@ target_compile_options(digest_auth_policy_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(digest_auth_policy_test PRIVATE ../../components/web_server_idf)
 add_test(NAME digest_auth_policy_test COMMAND digest_auth_policy_test)
 
+add_test(NAME multipart_header_fragments_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/multipart_header_fragments_test.py)
+add_test(NAME multipart_upload_completion_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/multipart_upload_completion_test.py)
+
 add_test(NAME web_ota_guard_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/web_ota_guard_test.py)
+
+add_test(NAME option_select_values_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/option_select_values_test.py)
 
 add_executable(button_grid_foundations_test button_grid_foundations_test.cpp)
 target_compile_features(button_grid_foundations_test PRIVATE cxx_std_17)
@@ -88,6 +107,9 @@ target_include_directories(button_grid_foundations_test PRIVATE
   ../../components/espcontrol
 )
 add_test(NAME button_grid_foundations_test COMMAND button_grid_foundations_test)
+add_test(NAME local_sensor_lifetime_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/local_sensor_lifetime_test.py)
 add_test(NAME card_colour_rendering_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/card_colour_rendering_test.py ${CMAKE_CXX_COMPILER})
 
@@ -444,6 +466,10 @@ target_compile_options(image_pipeline_policy_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(image_pipeline_policy_test PRIVATE ../../components/artwork_image)
 add_test(NAME image_pipeline_policy_test COMMAND image_pipeline_policy_test)
 
+add_test(NAME climate_pending_temperature_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/climate_pending_temperature_test.py)
+
 set(CLIMATE_SUBSCRIPTION_TEST_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/climate_subscription_runtime_test.cpp)
 add_custom_command(
   OUTPUT ${CLIMATE_SUBSCRIPTION_TEST_SOURCE}
@@ -531,6 +557,10 @@ target_include_directories(saved_config_parser_test PRIVATE
   ../../components/espcontrol
 )
 add_test(NAME saved_config_parser_test COMMAND saved_config_parser_test)
+
+add_test(NAME climate_option_values_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/climate_option_values_test.py)
 
 set(CLIMATE_UPDATE_TEST_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/climate_update_test.cpp)
 add_custom_command(
@@ -622,6 +652,8 @@ add_test(NAME timer_subpage_cleanup_test
 
 add_test(NAME cover_confirmation_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/cover_confirmation_test.py ${CMAKE_CXX_COMPILER})
+add_test(NAME cover_stop_failure_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/cover_stop_failure_test.py ${CMAKE_CXX_COMPILER})
 
 add_test(NAME camera_feedback_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/camera_feedback_test.py ${CMAKE_CXX_COMPILER})
@@ -689,3 +721,6 @@ add_test(NAME weather_daily_requests_test COMMAND
 
 add_test(NAME camera_screensaver_dimming_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/camera_screensaver_dimming_test.py)
+
+add_test(NAME discovery_shutdown_order_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/discovery_shutdown_order_test.py)
