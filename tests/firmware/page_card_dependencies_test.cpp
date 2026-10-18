@@ -79,9 +79,17 @@ void sensor_fields_and_modes() {
   assert(declarations(";;Auto;Auto;sensor.power;W;;1;").empty());
 }
 void actions_and_numeric_controls() {
+  for (const auto& entity : {std::pair<const char*, const char*>{"fan.room", "percentage"},
+                             {"light.room", "brightness"},
+                             {"cover.room", "current_position"}}) {
+    assert(
+        (declarations(std::string(entity.first) + ";;Auto;Auto;;;fan_speed;;") ==
+         std::set<std::string>{std::string(entity.first) + "/", std::string(entity.first) + "/friendly_name",
+                               std::string(entity.first) + "/" + entity.second}));
+  }
   assert(declarations("script.run;Run;Auto;Auto;script.turn_on;;action;;").empty());
-  assert(declarations("script.run;Run;Auto;Auto;script.turn_on;;action;;state_entity=sensor.status,state_precision=text")==
-      std::set<std::string>{"sensor.status/"});
+  assert(declarations("script.run;Run;Auto;Auto;script.turn_on;;action;;state_entity=sensor.status,state_"
+                      "precision=text") == std::set<std::string>{"sensor.status/"});
   assert((declarations("input_select.mode;;Auto;Auto;input_select.select_option;;action;;")==
       std::set<std::string>{"input_select.mode/","input_select.mode/options","input_select.mode/friendly_name"}));
   assert((declarations("number.volume;Level;Auto;Auto;;;slider;;")==
