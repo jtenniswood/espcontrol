@@ -341,14 +341,15 @@ BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHand
       if(end!=text&&std::isfinite(value)) {
         // Keep the existing formatter's fast integer path and rounding for
         // normal values. A bounded float fallback handles its former overflow.
-        int scale=1;for(uint8_t i=0;i<card.precision;++i)scale*=10;
+        const int precision=std::min<int>(card.precision,3);
+        int scale=1;for(uint8_t i=0;i<precision;++i)scale*=10;
         const float rounded=std::fabs(value)*scale+0.5f;
         if(static_cast<double>(rounded)<2147483648.0) {
           const int scaled=static_cast<int>(rounded),whole=scaled/scale,fraction=scaled%scale;
           const char *sign=value<0?"-":"";
-          if(card.precision==0)std::snprintf(result.number,sizeof(result.number),"%s%d",sign,whole);
-          else std::snprintf(result.number,sizeof(result.number),"%s%d.%0*d",sign,whole,card.precision,fraction);
-        } else std::snprintf(result.number,sizeof(result.number),"%.*f",card.precision,static_cast<double>(value));
+          if(precision==0)std::snprintf(result.number,sizeof(result.number),"%s%d",sign,whole);
+          else std::snprintf(result.number,sizeof(result.number),"%s%d.%0*d",sign,whole,precision,fraction);
+        } else std::snprintf(result.number,sizeof(result.number),"%.*f",precision,static_cast<double>(value));
         result.numeric=true;
         if(action_number)result.on=value>0;
         if(card.kind==BasicCardKind::NUMBER&&card.active_color&&value>0)result.on=true;
