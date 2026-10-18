@@ -252,6 +252,8 @@ async def run_suite(args, client_factory=None):
     ready = asyncio.Event()
     opened = asyncio.Event()
     rejected = asyncio.Event()
+    modal_finished = asyncio.Event()
+    modal_finished.set()
     client = None
     services = {}
     intentional_close = False
@@ -334,6 +336,12 @@ async def run_suite(args, client_factory=None):
                                failure=True, error=type(exc).__name__, status=getattr(exc, "code", None))
             finally:
                 ready.clear()
+                # Identity failures stop new actions, but the verified native
+                # session must remain available to close a modal it opened.
+                try:
+                    await asyncio.wait_for(modal_finished.wait(), args.timeout * 3 + 1)
+                except asyncio.TimeoutError:
+                    evidence.event("modal_cleanup_incomplete", failure=True)
                 intentional_close = True
                 with suppress(Exception):
                     await asyncio.wait_for(client.disconnect(), args.timeout)
@@ -353,19 +361,21 @@ async def run_suite(args, client_factory=None):
                                status=getattr(exc, "code", None))
             await pause(args.interval)
 
-    async def action(name, data):
-        if name not in ("open_modal", "close_modal"):
+    async def send_action(target, service, data):
+        if service.name not in ("open_modal", "close_modal"):
             raise ValueError("unsupported test action")
-        if not ready.is_set() or not evidence.verify_identity():
-            raise RuntimeError("device identity is not verified")
-        service = services[name]
         response = await asyncio.wait_for(
-            client.execute_service(
+            target.execute_service(
                 service, data,
                 return_response=True if getattr(service, "supports_response", None) else None,
                 timeout=args.timeout), args.timeout)
         if response is not None and not response.success:
             raise RuntimeError("device rejected API action")
+
+    async def action(name, data):
+        if not ready.is_set() or not evidence.verify_identity():
+            raise RuntimeError("device identity is not verified")
+        await send_action(client, services[name], data)
 
     async def stress_modals():
         if not args.modal_entity:
@@ -379,6 +389,11 @@ async def run_suite(args, client_factory=None):
                     break
                 opened.clear()
                 rejected.clear()
+                # Capture the verified owner; cleanup must never target a
+                # replacement client or depend on a later HTTP identity.
+                owner = client
+                close_service = services["close_modal"]
+                modal_finished.clear()
                 try:
                     await action("open_modal", {"entity_id": args.modal_entity})
                     # Do not count an accepted API script as an opened modal.
@@ -388,8 +403,10 @@ async def run_suite(args, client_factory=None):
                     evidence.event("modal_opened")
                     await pause(args.modal_dwell)
                 finally:
-                    if ready.is_set():
-                        await action("close_modal", {})
+                    try:
+                        await send_action(owner, close_service, {})
+                    finally:
+                        modal_finished.set()
                 evidence.event("modal_cycle")
                 await pause(args.modal_dwell)
         except asyncio.CancelledError:
@@ -409,10 +426,13 @@ async def run_suite(args, client_factory=None):
         # Keep the native connection alive until the modal's finally block has
         # closed it. Stopping both workers first races against UI cleanup.
         if active_tasks:
-            active_tasks[2].cancel()
+            # On a stop signal, let the worker finish its existing cleanup.
+            # Cancelling it again could interrupt an in-flight close command.
+            if not stop.is_set():
+                active_tasks[2].cancel()
             try:
                 cleanup = await asyncio.wait_for(
-                    asyncio.gather(active_tasks[2], return_exceptions=True), args.timeout * 2 + 1)
+                    asyncio.gather(active_tasks[2], return_exceptions=True), args.timeout * 3 + 1)
                 if any(isinstance(result, Exception) for result in cleanup):
                     evidence.event("modal_cleanup_incomplete", failure=True)
             except (Exception, asyncio.CancelledError):

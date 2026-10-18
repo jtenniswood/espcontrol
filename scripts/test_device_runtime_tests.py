@@ -165,7 +165,7 @@ class FakeProbe:
 
 class RunnerTests(unittest.IsolatedAsyncioTestCase):
     async def run_fake(self, *, crash=False, disconnected=False, acknowledge=True,
-                       modal=True, duration=.15, cycles=2, dwell=.005, memory=True, http_mac="ddeeff"):
+                       modal=True, duration=.15, cycles=2, dwell=.005, memory=True, http_mac="ddeeff", change_identity_after_open=False, close_delay=0):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         calls=[]
@@ -190,6 +190,11 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
                 if not self.connected: raise ConnectionError()
                 assert kwargs['return_response'] is None, 'These actions do not advertise responses'
                 calls.append(service.name)
+                if service.name=='close_modal' and close_delay:
+                    await asyncio.sleep(close_delay)
+                    if not self.connected: raise ConnectionError()
+                if service.name=='open_modal' and change_identity_after_open:
+                    FakeProbe.mac_suffix = 'aabbcc'
                 if service.name=='open_modal' and acknowledge:
                     self.log(SimpleNamespace(message=b'[I][open_modal:122]: Opened media_player.office (slot 1, subcard 0)',level=3))
                 return SimpleNamespace(success=True)
@@ -224,6 +229,17 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('open_modal',calls)
         self.assertNotIn('close_modal',calls)
         self.assertNotIn('identity_verified',report['counts'])
+
+    async def test_identity_change_closes_owned_modal_before_disconnect(self):
+        for close_delay in (0, .02):
+            with self.subTest(close_delay=close_delay):
+                code,report,calls=await self.run_fake(
+                    change_identity_after_open=True, dwell=10, close_delay=close_delay)
+                self.assertEqual(code,1)
+                self.assertIn('protocol_identity_mismatch',report['failures'])
+                self.assertEqual(calls,['open_modal','close_modal','disconnect'])
+                self.assertNotIn('modal_cleanup_incomplete',report['failures'])
+                self.assertNotIn('modal_error',report['failures'])
 
     async def test_matching_protocol_identity_is_in_report(self):
         code,report,_=await self.run_fake(modal=False)
