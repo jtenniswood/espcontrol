@@ -57,6 +57,7 @@ int normalize_width_compensation_percent(int value){return value;}
 // @production-function climate_normalize_range
 // @production-function climate_apply_saved_range
 // @production-function climate_target_kind
+// @production-function climate_range_target
 // @production-function climate_target_values_complete
 // @production-function climate_temperature_target_available
 // @production-function climate_modal_temperature_controls_enabled
@@ -118,12 +119,12 @@ void control_modal_delete_overlay(ControlModalKind kind,lv_obj_t *&overlay){auto
 struct Command{std::string entity,service;std::vector<std::pair<std::string,std::string>> data;};
 std::vector<Command> commands;
 std::function<void()> during_send;
-void climate_send_action(const std::string &entity,const char *service,const std::vector<std::pair<const char *,std::string>> &data){Command command{entity,service,{}};for(const auto &pair:data)command.data.emplace_back(pair.first,pair.second);commands.push_back(std::move(command));if(during_send)during_send();}
+bool climate_send_action(const std::string &entity,const char *service,const std::vector<std::pair<const char *,std::string>> &data){Command command{entity,service,{}};for(const auto &pair:data)command.data.emplace_back(pair.first,pair.second);commands.push_back(std::move(command));if(during_send)during_send();return true;}
+// @production-function climate_cancel_temperature_send
 // @production-function climate_service_temp_value
 // @production-function climate_send_temperature
 // @production-function climate_debounce_timer_cb
 // @production-function climate_schedule_temperature_send
-// @production-function climate_cancel_temperature_send
 #include "button_grid_climate_subscriptions.h"
 // @production-function subscribe_climate_control_state
 // @production-function create_climate_control_context
@@ -197,12 +198,12 @@ void test_adapter() {
     lv_obj_add_event_cb(ui.button,[](lv_event_t *event){auto *owner=static_cast<PageModalRuntime *>(lv_event_get_user_data(event));auto *ctx=ui.active;climate_control_hide_modal();owner->loop();assert(ctx->entity_id=="climate.room"&&owner->memory().retired_contexts==1);},LV_EVENT_CLICKED,&runtime);
     lv_obj_send_event(ui.button,LV_EVENT_PRESSED,nullptr);auto *close_button=ui.button;
     lv_obj_send_event(close_button,LV_EVENT_CLICKED,nullptr);assert(!ui.active&&clicked->entity_id=="climate.room");runtime.loop();
-    // A temperature send may synchronously close the panel. Its pending flag
-    // must clear before dispatch so close cannot send the same adjustment twice.
+    // A synchronous close must not send the same edit twice, while pending
+    // fields continue protecting newer edits from old Home Assistant echoes.
     assert(runtime.request_card({17,0}));runtime.loop();auto *timed=ui.active;
     timed->target_tenths=225;climate_schedule_temperature_send(timed);
     const auto before_timer=commands.size();size_t guarded_sends=0;
-    during_send=[&](){assert(!timed->pending_temp_send);climate_control_hide_modal();runtime.loop();assert(timed->entity_id=="climate.room"&&runtime.memory().retired_contexts==1);++guarded_sends;};
+    during_send=[&](){assert(timed->pending_temp_send&&timed->temperature_send_in_progress);climate_control_hide_modal();runtime.loop();assert(timed->entity_id=="climate.room"&&runtime.memory().retired_contexts==1);++guarded_sends;};
     lv_tick_inc(CLIMATE_TEMP_DEBOUNCE_MS+1);lv_timer_handler();during_send={};
     assert(guarded_sends==1&&commands.size()==before_timer+1&&!ui.active);runtime.loop();
     // A real HA callback hides the UI, then continues to refresh the same

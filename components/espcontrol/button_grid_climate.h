@@ -127,6 +127,7 @@ struct ClimateControlCtx {
   int reported_high_tenths = CLIMATE_DEFAULT_HIGH_TENTHS;
   uint32_t pending_connection_generation = 0;
   bool pending_temp_send = false;
+  bool temperature_send_in_progress = false;
   bool pending_target_edit = false;
   bool pending_low_edit = false;
   bool pending_high_edit = false;
@@ -1177,7 +1178,7 @@ inline void climate_cancel_temperature_send(ClimateControlCtx *ctx) {
 }
 
 inline void climate_send_temperature(ClimateControlCtx *ctx) {
-  if (!ctx || !climate_modal_action_allowed(ctx)) return;
+  if (!ctx || ctx->temperature_send_in_progress || !climate_modal_action_allowed(ctx)) return;
   if (ctx->entity_id.empty() || !climate_modal_temperature_controls_enabled(ctx) ||
       !ha_api_state_connected() ||
       (ctx->pending_temp_send && ctx->pending_connection_generation !=
@@ -1191,6 +1192,9 @@ inline void climate_send_temperature(ClimateControlCtx *ctx) {
   espcontrol::climate::CommandKind command = espcontrol::climate::command_kind(
     kind, climate_target_values_complete(ctx));
   bool sent = false;
+  // Keep pending edits protected from older state echoes while sending, but
+  // prevent a synchronous panel close from dispatching the same edit again.
+  ctx->temperature_send_in_progress = true;
   if (command == espcontrol::climate::CommandKind::RANGE) {
     sent = climate_send_action(ctx->entity_id, "climate.set_temperature", {
       {"target_temp_low", climate_service_temp_value(ctx->low_tenths)},
@@ -1201,6 +1205,7 @@ inline void climate_send_temperature(ClimateControlCtx *ctx) {
       {"temperature", climate_service_temp_value(ctx->target_tenths)},
     });
   }
+  ctx->temperature_send_in_progress = false;
   if (sent) ctx->pending_temp_send = false;
   climate_cancel_temperature_send(ctx);
   climate_update_card(ctx);
