@@ -89,7 +89,7 @@ class PageBasicLvglPort final:public PageRendererPort {
                     std::array<PageBasicWidgets, Slots> widgets, PageViewGeometry geometry,
                     const PageBasicTheme& theme, PageBasicActions actions,
                     PageForecastRuntime* forecasts = nullptr, PageMediaStateRuntime* media = nullptr,
-                    PageCoverArtView* artwork = nullptr)
+                    PageCoverArtView* artwork = nullptr, PageLocalSensorRuntime* local = nullptr)
       : allocator_(allocator),
         state_(state),
         widgets_(widgets),
@@ -98,7 +98,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         actions_(actions),
         forecasts_(forecasts),
         media_(media),
-        artwork_(artwork) {
+        artwork_(artwork),
+        local_(local) {
     for(size_t i=0;i<Slots;++i){shells_[i].port=this;shells_[i].index=i;}
   }
   ~PageBasicLvglPort()override {
@@ -284,6 +285,13 @@ class PageBasicLvglPort final:public PageRendererPort {
       label_capacity=std::max(label_capacity,store.string(p->order).size()+1);
       for(CardId card=p->first_card;card<p->first_card+p->card_count;++card) {
         BasicCardDefinition view;if(!prepare_basic_card(store,card,view,&strings))return false;
+        if (view.kind == BasicCardKind::LOCAL_NUMBER || view.kind == BasicCardKind::LOCAL_TEXT) {
+          if (!local_) return false;
+          if (view.kind == BasicCardKind::LOCAL_TEXT) {
+            if (local_->text_capacity() == SIZE_MAX) return false;
+            label_capacity = std::max(label_capacity, local_->text_capacity() + 1);
+          }
+        }
         if(view.kind==BasicCardKind::WEATHER||view.kind==BasicCardKind::FORECAST)has_weather=true;
         if(view.kind==BasicCardKind::FORECAST) {
           has_forecast=true;if(!forecasts_||!actions_.forecast)return false;
@@ -556,7 +564,10 @@ class PageBasicLvglPort final:public PageRendererPort {
     bool number=false,checked=false;
     if(s.cell.back){value.label=s.back.custom_label.empty()?theme_.back_label:s.back.custom_label;definition.custom_off=s.back.custom_color;definition.off_color=s.back.background_color;}
     else {
-      definition=s.definition->definition;value=read_basic_card(definition,{token.configuration,token.card},state_,s.cell.column_span>1?2:1,theme_.temperature_unit,theme_.translate,media_);
+      definition = s.definition->definition;
+      value = read_basic_card(definition, {token.configuration, token.card}, state_,
+                              s.cell.column_span > 1 ? 2 : 1, theme_.temperature_unit, theme_.translate,
+                              media_, local_);
       if(group_card(s))group_feedback(s,value);
       if(definition.folder_mode==BasicFolderMode::CHILDREN) {
         for(size_t child=0;child<s.definition->summary_count&&!value.on;++child) {
@@ -569,6 +580,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       checked=value.on&&(definition.kind==BasicCardKind::TOGGLE||definition.active_color);
       number = (definition.kind == BasicCardKind::CLIMATE &&
                 definition.climate.number != ClimateCardNumber::ICON) ||
+               definition.kind == BasicCardKind::LOCAL_NUMBER ||
                definition.kind == BasicCardKind::OPTION_SELECT || definition.kind == BasicCardKind::NUMBER ||
                definition.kind == BasicCardKind::DURATION ||
                definition.kind == BasicCardKind::MEDIA_POSITION ||
@@ -639,7 +651,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         definition.custom_off ? correct(definition.off_color)
         : (definition.kind == BasicCardKind::MEDIA_POSITION || (now_playing && definition.media.progress))
             ? theme_.media_surface
-        : (definition.kind == BasicCardKind::OPTION_SELECT || definition.kind == BasicCardKind::NUMBER ||
+        : (definition.kind == BasicCardKind::LOCAL_NUMBER || definition.kind == BasicCardKind::LOCAL_TEXT ||
+           definition.kind == BasicCardKind::OPTION_SELECT || definition.kind == BasicCardKind::NUMBER ||
            definition.kind == BasicCardKind::TEXT || definition.kind == BasicCardKind::DURATION ||
            definition.kind == BasicCardKind::STATUS || definition.kind == BasicCardKind::WEATHER ||
            definition.kind == BasicCardKind::FORECAST)
@@ -667,6 +680,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     else if (w.forecast && definition.kind != BasicCardKind::MEDIA_COVER_ART)
       lv_obj_add_flag(w.forecast, LV_OBJ_FLAG_HIDDEN);
     seen_state_ = state_.revision();
+    if (local_) seen_local_ = local_->revision();
     seen_theme_ = theme_.revision;
     seen_forecast_ = forecasts_ ? forecasts_->revision() : 0;
     seen_media_ = media_ ? media_->revision() : 0;
@@ -719,14 +733,15 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
   }
   bool state_changed() const override {
+    if (local_) local_->loop();
     if (media_layout_dirty_) return true;
     if (media_)
       for (const auto& shell : shells_)
         if (shell.pending_target >= 0 && !group_card(shell) &&
             static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= pending_timeout(shell))
           return true;
-    return state_.revision() != seen_state_ || theme_.revision != seen_theme_ ||
-           (forecasts_ && forecasts_->revision() != seen_forecast_) ||
+    return (local_ && local_->revision() != seen_local_) || state_.revision() != seen_state_ ||
+           theme_.revision != seen_theme_ || (forecasts_ && forecasts_->revision() != seen_forecast_) ||
            (media_ && media_->revision() != seen_media_) ||
            (artwork_ && artwork_->revision() != seen_artwork_);
   }
@@ -1367,12 +1382,14 @@ class PageBasicLvglPort final:public PageRendererPort {
   PageForecastRuntime* forecasts_{nullptr};
   PageMediaStateRuntime* media_{nullptr};
   PageCoverArtView* artwork_{nullptr};
+  PageLocalSensorRuntime* local_{nullptr};
   std::array<Shell, Slots> shells_{};
   Arena active_, staged_;
   PageStore store_;
   bool initialized_{false}, media_layout_dirty_{false}, media_finishing_{false};
   size_t callbacks_{0};
-  uint64_t seen_state_{0}, seen_theme_{0}, seen_forecast_{0}, seen_media_{0}, seen_artwork_{0};
+  uint64_t seen_local_{0}, seen_state_{0}, seen_theme_{0}, seen_forecast_{0}, seen_media_{0},
+      seen_artwork_{0};
   PageBasicMemory memory_;
 };
 }  // namespace espcontrol::pages

@@ -2,6 +2,7 @@
 
 #include "page_climate_card.h"
 #include "page_entity_state_runtime.h"
+#include "page_local_sensor_runtime.h"
 #include "page_media_action.h"
 #include "page_media_state_runtime.h"
 #include "page_media_volume.h"
@@ -32,7 +33,9 @@ enum class BasicCardKind : uint8_t {
   FAN_CONTROL,
   FAN_DIRECTION,
   FAN_PRESET,
-  OPTION_SELECT
+  OPTION_SELECT,
+  LOCAL_NUMBER,
+  LOCAL_TEXT
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode:uint8_t { NONE, ENTITY, CLIMATE, MOWER, CHILDREN, NUMBER, TEXT };
@@ -76,6 +79,8 @@ struct BasicCardState {
 // nor owns a copy of HA state. The result's views last until the next delivery.
 std::string_view basic_folder_child_indicator(const PageStore &,CardId);
 bool read_basic_indicator(ConfigurationHandle,std::string_view,PageEntityStateRuntime &,BasicFolderMode=BasicFolderMode::ENTITY);
-BasicCardState read_basic_card(const BasicCardDefinition &,ConfigurationHandle,PageEntityStateRuntime &,int duration_components=2,
-    std::string_view temperature_unit="°C",PageCardTranslate translate=nullptr,PageMediaStateRuntime *media=nullptr);
+BasicCardState read_basic_card(const BasicCardDefinition&, ConfigurationHandle, PageEntityStateRuntime&,
+                               int duration_components = 2, std::string_view temperature_unit = "°C",
+                               PageCardTranslate translate = nullptr, PageMediaStateRuntime* media = nullptr,
+                               PageLocalSensorRuntime* local = nullptr);
 }  // namespace espcontrol::pages

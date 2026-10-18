@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 
 #include "bounded_sensor_text.h"
 #include "button_grid_contract_generated.h"
@@ -76,9 +77,22 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
     out.text_overlay=precision=="text";
     out.kind=out.entity.empty()?BasicCardKind::EMPTY:BasicCardKind::TOGGLE;
   } else if (type == "sensor") {
-    if(out.sensor=="local")return false;
-    out.kind=out.sensor.empty()?BasicCardKind::EMPTY:precision=="icon"?BasicCardKind::ICON:precision=="text"?BasicCardKind::TEXT:precision=="time"?BasicCardKind::DURATION:BasicCardKind::NUMBER;
-    out.active_color=out.kind!=BasicCardKind::DURATION&&cfg_option_enabled(options,"active_color");
+    if (out.sensor == "local") {
+      out.kind = out.entity.empty()    ? BasicCardKind::EMPTY
+                 : precision == "text" ? BasicCardKind::LOCAL_TEXT
+                                       : BasicCardKind::LOCAL_NUMBER;
+      if (out.kind == BasicCardKind::LOCAL_TEXT) {
+        out.label = {};
+        out.unit = {};
+      }
+    } else {
+      out.kind = out.sensor.empty()    ? BasicCardKind::EMPTY
+                 : precision == "icon" ? BasicCardKind::ICON
+                 : precision == "text" ? BasicCardKind::TEXT
+                 : precision == "time" ? BasicCardKind::DURATION
+                                       : BasicCardKind::NUMBER;
+      out.active_color = out.kind != BasicCardKind::DURATION && cfg_option_enabled(options, "active_color");
+    }
   } else if (type == "door_window" || type == "presence") {
     out.kind=out.sensor.empty()?BasicCardKind::EMPTY:BasicCardKind::STATUS;
     out.presence=type=="presence";out.active_color=cfg_option_enabled(options,"active_color");
@@ -279,9 +293,37 @@ bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,Pag
   }
   return on(primary.value);
 }
-BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHandle handle,PageEntityStateRuntime &state,int duration_components,std::string_view temperature_unit,PageCardTranslate translate,PageMediaStateRuntime *media_owner) {
+BasicCardState read_basic_card(const BasicCardDefinition& card, ConfigurationHandle handle,
+                               PageEntityStateRuntime& state, int duration_components,
+                               std::string_view temperature_unit, PageCardTranslate translate,
+                               PageMediaStateRuntime* media_owner, PageLocalSensorRuntime* local) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
+  if (card.kind == BasicCardKind::LOCAL_NUMBER || card.kind == BasicCardKind::LOCAL_TEXT) {
+    const bool text = card.kind == BasicCardKind::LOCAL_TEXT;
+    const auto value = local ? local->read(handle, card.entity, text) : PageEntityValue{};
+    if (text) {
+      result.label = value.status == PageEntityStatus::AVAILABLE
+                         ? value.value.substr(0, value.value.find('\0'))
+                         : std::string_view("--");
+      return result;
+    }
+    result.label = card.label;
+    result.unit = card.unit;
+    result.numeric = true;
+    float number = std::numeric_limits<float>::quiet_NaN();
+    if (value.status == PageEntityStatus::AVAILABLE && value.value.size() == sizeof(number))
+      std::memcpy(&number, value.value.data(), sizeof(number));
+    if (!std::isfinite(number))
+      std::strcpy(result.number, "--");
+    else
+      std::snprintf(result.number, 32,
+                    card.precision == 1   ? "%.1f"
+                    : card.precision == 2 ? "%.2f"
+                                          : "%.0f",
+                    static_cast<double>(number));
+    return result;
+  }
   if (card.kind == BasicCardKind::OPTION_SELECT) {
     result.label = card.label;
     if (result.label.empty()) {

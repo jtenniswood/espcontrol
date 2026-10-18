@@ -1,16 +1,20 @@
+#include "page_basic_card.h"
+
 #include <array>
 #include <cassert>
-#include <cstring>
+#include <cmath>
+#include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <limits>
 #include <string>
 #include <vector>
 
 #include "bounded_display_text.h"
 #include "button_grid_subpage_parser.h"
-#include "page_basic_card.h"
 #include "page_card_dependencies.h"
-#include "weather_condition.h"
 #include "panel_config_document.h"
+#include "weather_condition.h"
 
 using namespace espcontrol;using namespace espcontrol::pages;using namespace espcontrol::configuration;
 static size_t allocations=0;
@@ -256,6 +260,99 @@ void control_profile(const DeviceUiLimits &limits) {
   for(const auto &pair:{std::pair<const char *,int>{"0",100},{"100",0},{"-1e30",100},{"1e30",0},{"25prefix",75}}){transport.send("cover.room","current_position",pair.first);value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==pair.second);}
   const auto before=allocations;for(int i=0;i<1000;++i){value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==75);}assert(allocations==before);
   ++transport.generation;value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==0&&!value.on);transport.send("cover.room","","closed");value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==100);
+}
+
+void local_sensor_profile(const DeviceUiLimits& limits) {
+  struct Provider : PageLocalSensorProvider {
+    size_t capacity() const override {
+      return 2;
+    }
+    uint32_t resolve(std::string_view key, bool text) const override {
+      return key == "physical" ? (text ? 1 : 0) : NO_LOCAL_SENSOR;
+    }
+    bool watch(uint32_t) override {
+      return true;
+    }
+    PageLocalSensorSample read(uint32_t source) const override {
+      return {revision, number, source ? text : std::string_view{}};
+    }
+    float number{21.25f};
+    std::string_view text;
+    uint64_t revision{1};
+  } provider;
+  Fixture numeric(limits, "physical;Temperature;;;local;°C;sensor;2;"),
+      text(limits, "physical;Ignored;Home;Auto;local;ignored;sensor;text;");
+  BasicCardDefinition definition;
+  assert(prepare_basic_card(numeric.store, 0, definition));
+  assert(definition.kind == BasicCardKind::LOCAL_NUMBER && !definition.large_numbers &&
+         !definition.active_color && basic_folder_child_indicator(numeric.store, 0).empty());
+  PageCardDependencies dependencies;
+  Arena arena;
+  Subscriptions transport;
+  PageEntityStateRuntime ha(dependencies, arena, transport, {32, 32, 1024});
+  PageLocalSensorRuntime local(arena, provider, {32, 8, 1024});
+  assert(ha.prepare(numeric.store) && local.prepare(numeric.store));
+  ha.activate_prepared(numeric.store);
+  local.activate_prepared(numeric.store);
+  assert(ha.memory().active_channels == 0 && transport.bindings.empty());
+  const ConfigurationHandle handle{17, 0};
+  for (int precision : {0, 1, 2}) {
+    definition.precision = precision;
+    for (float number : {-4.25f, 21.25f, 0.0f, -0.0f, 1.005f, 9999999.0f, std::numeric_limits<float>::max(),
+                         std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()}) {
+      provider.number = number;
+      ++provider.revision;
+      local.loop();
+      const auto value = read_basic_card(definition, handle, ha, 2, "°C", nullptr, nullptr, &local);
+      char expected[32];
+      if (!std::isfinite(number))
+        std::strcpy(expected, "--");
+      else
+        std::snprintf(expected, sizeof(expected),
+                      precision == 1   ? "%.1f"
+                      : precision == 2 ? "%.2f"
+                                       : "%.0f",
+                      static_cast<double>(number));
+      assert(value.numeric && !value.on && value.label == "Temperature" && value.unit == "°C" &&
+             std::strcmp(value.number, expected) == 0);
+    }
+  }
+  const auto before = allocations;
+  for (int i = 0; i < 1000; ++i) read_basic_card(definition, handle, ha, 2, "°C", nullptr, nullptr, &local);
+  assert(allocations == before);
+  assert(prepare_basic_card(text.store, 0, definition) && definition.kind == BasicCardKind::LOCAL_TEXT &&
+         definition.unit.empty());
+  assert(ha.prepare(text.store) && local.prepare(text.store));
+  ha.activate_prepared(text.store);
+  local.activate_prepared(text.store);
+  auto read = [&]() { return read_basic_card(definition, handle, ha, 2, "°C", nullptr, nullptr, &local); };
+  assert(read().label == "--");
+  for (std::string_view raw : {"Raw ÉTÉ", "unknown", "  Ready: [x]  ", ""}) {
+    provider.text = raw;
+    ++provider.revision;
+    local.loop();
+    const auto value = read();
+    assert(value.label == raw && !value.numeric && !value.on && !value.formatted_label);
+  }
+  const char embedded[] = {'A', '\0', 'B'};
+  provider.text = {embedded, 3};
+  ++provider.revision;
+  local.loop();
+  assert(read().label == "A");
+  const std::string oversized(local.text_capacity() + 1, 'x');
+  provider.text = oversized;
+  ++provider.revision;
+  local.loop();
+  assert(read().label == "--");
+  ++transport.generation;
+  assert(read().label == "--");
+  provider.text = "Recovered";
+  ++provider.revision;
+  local.loop();
+  assert(read().label == "Recovered");
+  const auto text_allocations = allocations;
+  for (int i = 0; i < 1000; ++i) assert(read().label == "Recovered");
+  assert(allocations == text_allocations);
 }
 
 void option_select_profile(const DeviceUiLimits& limits) {
@@ -793,6 +890,7 @@ int main() {
     climate_profile(limits);
     status_actions_profile(limits);
     control_profile(limits);
+    local_sensor_profile(limits);
     option_select_profile(limits);
     fan_control_profile(limits);
     fan_mode_profile(limits);
