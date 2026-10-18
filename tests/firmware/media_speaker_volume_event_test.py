@@ -21,6 +21,7 @@ source = r'''
 #include <string>
 #include <vector>
 
+namespace espcontrol::media { enum class VolumeControlMode { ABSOLUTE, RELATIVE }; }
 using lv_coord_t = int;
 struct lv_timer_t {};
 constexpr int LV_OBJ_FLAG_CLICKABLE = 1, LV_OBJ_FLAG_EVENT_BUBBLE = 2;
@@ -115,6 +116,7 @@ struct MediaControlCtx {
   std::vector<std::string> group_members, speaker_helper_members;
   std::vector<MediaGroupDiscoveryItem> speaker_discovery;
   int current_pct = 0, pending_pct = -1;
+  espcontrol::media::VolumeControlMode volume_control_mode = espcontrol::media::VolumeControlMode::ABSOLUTE;
   uint32_t pending_until_ms = 0;
   bool volume_known = true, available = true;
   int reported_volume_pct = 20;
@@ -218,6 +220,12 @@ int main() {
   assert(office.volume_pct == 79 && commands.back().entity == office.entity_id);
   assert(commands.back().volume == 79 && ctx.group_volume_states[0].volume_pct == 79);
   assert(ctx.current_pct == 50 && ctx.pending_pct == 50);
+  // Relative-only players retain the raw scale used by their direct readings.
+  ctx.volume_control_mode = espcontrol::media::VolumeControlMode::RELATIVE;
+  office.volume_pct = 80; click(primary_minus);
+  assert(ctx.current_pct == 79 && ctx.pending_pct == 79);
+  ctx.volume_control_mode = espcontrol::media::VolumeControlMode::ABSOLUTE;
+
   kitchen.volume_pct = 0; click(minus);
   assert(kitchen.volume_pct == 0 && commands.back().volume == 0);
   const auto sent = commands.size();

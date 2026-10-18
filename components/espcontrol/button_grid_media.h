@@ -3933,9 +3933,12 @@ inline lv_obj_t *media_control_create_speaker_volume_button(
     media_control_set_group_volume_target(
       ctx, row->entity_id, row->volume_pct, row->available);
     if (row->entity_id == ctx->entity_id) {
-      // Direct subscription readings are clamped to the configured display
-      // scale; keep the pending acknowledgement on that scale as well.
-      ctx->current_pct = media_control_clamp_volume(ctx, row->volume_pct);
+      // Match the direct subscription's display scale for acknowledgements.
+      // The shared group cache above still retains the raw target.
+      ctx->current_pct = ctx->volume_control_mode ==
+          espcontrol::media::VolumeControlMode::ABSOLUTE
+        ? media_control_clamp_volume(ctx, row->volume_pct)
+        : row->volume_pct;
       ctx->pending_pct = ctx->current_pct;
       ctx->pending_until_ms = esphome::millis() + 1500;
     }
