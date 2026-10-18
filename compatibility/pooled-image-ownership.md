@@ -1,9 +1,10 @@
 # Reusable image ownership
 
-This stage of #1825 supplies the ownership boundary for reusable image slots.
-It does not select the new renderer, render cover art, enable nested pages or
-change saved configurations. Cover/secondary-source presentation, animation,
-expanded views and scene integration still need their adapters and qualification.
+The image-ownership foundation of #1825 supplies fixed reusable image leases.
+The [cover-art adapter](pooled-cover-artwork-cards.md) now adds presentation,
+secondary-source routing and animation. Expanded views, scene integration and
+physical qualification remain unfinished. Production selection, nested pages
+and saved configuration are unchanged.
 
 `PageImageRuntime<N>` holds one fixed lease per prepared image resource, not per
 configured card. Binding keeps the configuration/card/shell binding token and
@@ -38,6 +39,10 @@ image service and S3/P4 worker pipelines continue to own transfer/decode work an
 reject stale worker generations. The new result channel carries the caller's
 request ID, consumes it before dispatch and is cleared on cancellation or direct
 legacy updates. HTTP 304 without a usable image cannot mark a slot ready.
+The adapter also installs stable animation callbacks after claiming components;
+a second runtime cannot claim their frame ownership. Successful asset IDs stay
+unchanged during animated redraws. A retained refresh keeps completed readiness
+and its asset ID through pending/error states, without retaining across bindings.
 
 Image completion now guards the service generation around external notifications.
 A callback that cancels/restarts a download cannot cause the completed request's

@@ -90,8 +90,9 @@ original label fonts, geometry, spacing and scaling at bank initialization.
 Binding/retirement restore that baseline, so a media label cannot become a
 misplaced or incorrectly styled toggle icon. Plain, Play/Pause-background and
 progress-background modes keep their distinct input behaviour. A legacy
-Now Playing configuration with the cover-art option still rejects preparation
-until the cover-art port is ready.
+Now Playing configuration with the cover-art option uses the
+[cover-art port](pooled-cover-artwork-cards.md) and requires its image provider
+and media-control hook.
 
 The theme supplies the media title font and current text scales; generic icon/
 caption fonts can be supplied when they change. `PageRendererPort::finish_update`
@@ -115,8 +116,9 @@ source strings remain in the shared cache. It preserves source/content snapshot
 ordering and omitted-source cleanup, and lets Now Playing display the translated
 Source label without retaining another string. Primary cover consumers can
 invalidate old detail/progress state on an external-input transition; full
-secondary-source selection is now available in the model; its visible cover-art
-and control adapters remain unfinished.
+secondary-source selection is available to the
+[cover-art view](pooled-cover-artwork-cards.md). Its control-panel adapter remains
+unfinished.
 
 Capturing/reusing label styles adds fixed per-shell storage and preinstalled LVGL
 style properties, even in configurations without Now Playing. Include that cost
@@ -124,10 +126,11 @@ in the integrated device comparison; retained host counts are not device RAM
 savings. Temporary grid/style work is measured separately from retained storage.
 
 The fixed request/slot boundary is described in [reusable image ownership](pooled-image-ownership.md).
-It remains unselected and still needs its cover-art view and scene wiring.
+The cover-art view is now described in
+[pooled-cover-artwork-cards.md](pooled-cover-artwork-cards.md). Scene wiring and
+production selection remain unfinished.
 
-Remaining media work includes full cover-art presentation/routing and
-loading/cancellation and the media/volume/speaker
+Remaining media work includes expanded artwork and the media/volume/speaker
 panels. Those paths must preserve the existing behaviour before production
 selection and the S3 hardware canary.
 
