@@ -1,0 +1,287 @@
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cctype>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+#include <string>
+#include <vector>
+
+#include "page_timezone_runtime.h"
+#include "panel_config_document.h"
+#include "timezone_offset.h"
+#include "timezone_state_events.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+static size_t allocations = 0;
+void* operator new(size_t n) {
+  ++allocations;
+  if (auto* p = std::malloc(n ? n : 1)) return p;
+  std::abort();
+}
+void* operator new[](size_t n) {
+  return ::operator new(n);
+}
+void operator delete(void* p) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p) noexcept {
+  std::free(p);
+}
+void operator delete(void* p, size_t) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p, size_t) noexcept {
+  std::free(p);
+}
+struct Widget {
+  std::string text;
+};
+using lv_obj_t = Widget;
+void lv_label_set_display_text(Widget* w, const char* text) {
+  w->text = text;
+}
+const char* espcontrol_i18n(const char* text) {
+  return text;
+}
+std::string espcontrol_i18n(const std::string& text) {
+  return text;
+}
+int& timezone_card_count() {
+  static int count = 0;
+  return count;
+}
+void compact_timezone_card_refs() {}
+struct TimezoneCardRef;
+TimezoneCardRef* timezone_card_refs();
+#define USE_TIME_TIMEZONE
+// @timezone-reference
+#undef USE_TIME_TIMEZONE
+TimezoneCardRef* reference_refs = nullptr;
+// Generator references the actual update function; no legacy widget is registered.
+TimezoneCardRef* timezone_card_refs() {
+  return reference_refs;
+}
+#include "page_timezone_events.h"
+namespace {
+struct Arena : PageArenaAllocator {
+  size_t live{0};
+  bool fail{false};
+  void* allocate(size_t n) override {
+    if (fail) return nullptr;
+    ++live;
+    return std::malloc(n);
+  }
+  void release(void* p, size_t) override {
+    assert(live);
+    --live;
+    std::free(p);
+  }
+};
+struct Fixture {
+  std::array<uint8_t, 16384> document{};
+  alignas(std::max_align_t) std::array<uint8_t, 32768> arena{};
+  PageStore store;
+  size_t size{0};
+  Fixture(uint32_t generation, const std::string& zone = "",
+          const DeviceUiLimits& limits = DEVICE_UI_PROFILES[8], bool empty = false) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string configs[] = {zone + ";;Auto;Auto;;;clock;;", zone + ";;Auto;Auto;;;timezone;;",
+                                   "Asia/Kathmandu;;Auto;Auto;;;timezone;;", ";;Auto;Auto;;;sensor;;",
+                                   ";Clocks;Auto;Auto;indicator;;subpage;;"};
+    for (size_t i = 0; i < 5; ++i) {
+      const std::string& cfg = empty ? configs[3] : configs[i];
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cfg.data()), cfg.size()) ==
+             PanelConfigStatus::OK);
+    }
+    const std::string child =
+        empty ? "~B,1|S,,Value,Auto,Auto,sensor.empty,,1," : "~B,1|T,Pacific/Chatham,,Auto,Auto,,,,";
+    assert(writer.append_subpage(5, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, generation, arena.data(), arena.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+};
+time_t epoch(int year, int month, int day, int hour = 0, int minute = 0) {
+  return static_cast<time_t>(tz_epoch_utc(year, month, day, hour * 3600 + minute * 60));
+}
+void compare(PageTimezoneRuntime& runtime, uint32_t generation, time_t timestamp, const std::string& option,
+             bool use_12h, bool valid = true) {
+  const size_t before = allocations;
+  assert(runtime.update(valid, timestamp, option, use_12h));
+  const auto snapshot = runtime.read({generation, 0});
+  assert(allocations == before);
+  Widget value, unit, label;
+  apply_timezone_card_text({&value, &unit, &label, "", "", true}, valid, timestamp, option, use_12h);
+  char text[8] = "--:--";
+  if (snapshot.valid)
+    format_clock_time_without_suffix(text, sizeof(text), snapshot.hour, snapshot.minute, snapshot.use_12h);
+  assert(value.text == text && unit.text.empty());
+  std::string city(snapshot.zone_id);
+  const auto slash = city.rfind('/');
+  if (slash != std::string::npos) city.erase(0, slash + 1);
+  std::replace(city.begin(), city.end(), '_', ' ');
+  assert(label.text == (city.empty() ? "World Clock" : city));
+}
+void parity() {
+  Fixture fixture(17);
+  PageTimezoneRuntime runtime(page_timezone_resolver());
+  assert(runtime.prepare(fixture.store));
+  runtime.activate_prepared(fixture.store);
+  size_t checked = 0;
+  for (const auto& zone : TZ_COORDS) {
+    const std::string option = std::string(zone.tz) + " (GMT+0)";
+    std::string last_posix;
+    auto check = [&](time_t timestamp) {
+      compare(runtime, 17, timestamp, option, checked % 2 == 0);
+      // Independent host-libc DST reference, restricted to the supported modern time window.
+      const char* posix = timezone_posix_view(zone.tz, timestamp);
+      if (last_posix != posix) {
+        setenv("TZ", posix, 1);
+        tzset();
+        last_posix = posix;
+      }
+      struct tm local;
+      assert(localtime_r(&timestamp, &local));
+      const auto snapshot = runtime.read({17, 0});
+      assert(snapshot.valid && snapshot.hour == local.tm_hour && snapshot.minute == local.tm_min);
+      ++checked;
+    };
+    for (int year = 2024; year <= 2050; ++year) {
+      for (int month = 1; month <= 12; ++month) check(epoch(year, month, 15, month, 37));
+      int standard, daylight;
+      bool dst;
+      TzPosixTransitionRule start{}, end{};
+      assert(parse_posix_tz_rule(zone.posix_tz, standard, dst, daylight, start, end));
+      if (dst)
+        for (const auto transition :
+             {tz_transition_utc_epoch(year, start, standard), tz_transition_utc_epoch(year, end, daylight)})
+          for (int seconds = -7200; seconds <= 7200; seconds += 60)
+            check(static_cast<time_t>(transition + seconds));
+    }
+  }
+  const std::string options[] = {"", "UTC", "unknown/Long_City_Name_Here (GMT+1)", "Auto (Home Assistant)",
+                                 "unknown/"};
+  for (const auto& posix : {"UTC0", "GMT0BST-1,M3.5.0/1,M10.5.0", "GMT-5:45", "UNMATCHED0"}) {
+    global_posix = posix;
+    for (const auto& option : options)
+      for (bool valid : {false, true}) compare(runtime, 17, epoch(2026, 10, 18, 23, 59), option, true, valid);
+  }
+  // Casablanca's explicit UTC windows, including both minute boundaries.
+  for (const auto& window : CASABLANCA_UTC_PAUSES)
+    for (const auto point : {window.start, window.end})
+      for (int seconds : {-60, 0, 60})
+        compare(runtime, 17, epoch(point.year, point.month, point.day, point.hour, point.minute) + seconds,
+                "Africa/Casablanca", false);
+  std::printf("timezone production and libc parity: %zu samples\n", checked);
+}
+void lifecycle() {
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    Fixture first(UINT32_MAX, "", limits), promoted(0, "", limits),
+        second(18, "America/St_Johns (GMT-3:30)", limits), empty(1, "", limits, true);
+    PageTimezoneRuntime runtime(page_timezone_resolver());
+    assert(runtime.seed(true, epoch(2026, 10, 18), "UTC", true));
+    assert(runtime.prepare(first.store));
+    assert(runtime.memory().staged_cards >= 3 && runtime.memory().active_cards == 0);
+    runtime.activate_prepared(promoted.store);  // private generation is promoted to actual generation zero.
+    assert(runtime.read({0, 0}).valid && runtime.read({0, 0}).zone_id == "UTC");
+    assert(!runtime.read({17, 0}).valid && !runtime.read({0, UINT16_MAX}).valid &&
+           !runtime.read({0, 3}).valid);
+    assert(!runtime.seed(false, 0, "", false));
+    const auto revision = runtime.revision();
+    assert(!runtime.update(true, 0, std::string(PageTimezoneRuntime::ACTIVE_OPTION_CAPACITY, 'x'), false));
+    assert(runtime.revision() == revision && runtime.memory().rejected_updates == 1);
+    assert(!runtime.prepare(PageStore{}));
+    assert(runtime.read({0, 0}).valid);
+    assert(runtime.prepare(second.store));
+    runtime.activate_prepared(second.store);
+    const size_t before = allocations;
+    for (size_t i = 0; i < 1000; ++i) {
+      assert(runtime.prepare(first.store));
+      runtime.discard_prepared();
+      assert(runtime.read({18, 1}).zone_id == "America/St_Johns");
+      assert(runtime.prepare(second.store));
+      runtime.activate_prepared(second.store);
+      assert(runtime.update(i % 2 == 0, epoch(2026, 10, 18, 12, i % 60), "Pacific/Chatham", i % 3 == 0));
+      (void)runtime.read({18, 0});
+    }
+    assert(allocations == before);
+    assert(runtime.prepare(empty.store));
+    runtime.activate_prepared(empty.store);
+    assert(runtime.memory().active_cards == 0 && !runtime.read({1, 0}).valid);
+    runtime.retire_active();
+    assert(runtime.seed(true, epoch(2026, 10, 18), "Asia/Kathmandu", false));
+  }
+  PageTimezoneRuntime missing({});
+  Fixture fixture(17);
+  assert(!missing.prepare(fixture.store) && missing.memory().preparation_failures == 1);
+  const std::string long_zone = "Unknown/" + std::string(2000, 'x');
+  Fixture long_config(17, long_zone);
+  PageTimezoneRuntime runtime(page_timezone_resolver());
+  assert(runtime.prepare(long_config.store));
+  runtime.activate_prepared(long_config.store);
+  assert(runtime.update(true, epoch(2026, 1, 1), "UTC", false));
+  assert(runtime.read({17, 1}).zone_id ==
+         long_zone);  // Configuration fields are not producer-buffer limited.
+}
+void bridge() {
+  timezone_card_count() = 0;
+  timezone_state_events() = {};
+  timezone_card_state() = {true, epoch(2026, 10, 18), "Asia/Kathmandu", true};
+  PageTimezoneRuntime runtime(page_timezone_resolver()), other(page_timezone_resolver());
+  PageTimezoneEvents events(runtime), competitor(other);
+  assert(!events.install(false));
+  timezone_card_count() = 1;
+  assert(!events.install(true));
+  timezone_card_count() = 0;
+  assert(events.install(true) && !events.install(true) && !competitor.install(true));
+  Fixture first(17), changed(18, "America/St_Johns");
+  Arena arena;
+  {
+    PageStoreRuntime store(DEVICE_UI_PROFILES[8], arena, 32768, &runtime);
+    auto prepare = [&](const Fixture& cfg) {
+      return store.prepare(PANEL_CONFIG_DOCUMENT_VERSION, cfg.document.data(), cfg.size);
+    };
+    auto activate = [&](const Fixture& cfg, uint32_t generation) {
+      return store.activate_prepared(generation, PANEL_CONFIG_DOCUMENT_VERSION, cfg.document.data(),
+                                     cfg.size);
+    };
+    assert(prepare(first));
+    update_timezone_cards(true, epoch(2026, 10, 18), "Pacific/Chatham", false);
+    assert(activate(first, 0) && runtime.read({0, 0}).zone_id == "Pacific/Chatham");
+    assert(prepare(changed));
+    update_timezone_cards(true, epoch(2026, 10, 18, 12), "Asia/Kathmandu", true);
+    assert(runtime.read({0, 0}).zone_id == "Asia/Kathmandu");
+    store.discard_prepared();
+    assert(runtime.read({0, 0}).zone_id == "Asia/Kathmandu");
+    arena.fail = true;
+    assert(!prepare(changed));
+    arena.fail = false;
+    assert(runtime.read({0, 0}).valid);
+    assert(prepare(changed));
+    assert(activate(changed, 2));
+    assert(runtime.read({2, 1}).zone_id == "America/St_Johns" && !runtime.read({0, 0}).valid);
+    update_timezone_cards(false, 0, "UTC", true);
+    assert(!runtime.read({2, 0}).valid && runtime.read({2, 1}).zone_id == "America/St_Johns");
+    assert(!competitor.install(true));
+    events.uninstall();
+    const auto revision = runtime.revision();
+    update_timezone_cards(true, epoch(2026, 10, 18), "UTC", false);
+    assert(runtime.revision() == revision);
+  }
+  assert(arena.live == 0);
+  assert(competitor.install(true));
+}
+}  // namespace
+int main() {
+  parity();
+  lifecycle();
+  bridge();
+}
