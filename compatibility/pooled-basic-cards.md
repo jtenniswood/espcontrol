@@ -128,3 +128,5 @@ to timer slot reuse, inactive icons, stale clicks and repeated navigation.
 These are not physical display or real climate-modal results.
 
 Light-control and cover All Controls presentation: [ownership and checks](pooled-light-cover-cards.md).
+
+Fan Control presentation: [ownership and checks](pooled-fan-cards.md).

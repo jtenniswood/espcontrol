@@ -230,16 +230,20 @@ inline void subscribe_sensor_icon_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
     ? find_icon("Auto") : find_icon(p.icon.c_str());
   bool has_icon_on = !p.icon_on.empty() && p.icon_on != "Auto";
   const char *icon_on = has_icon_on ? find_icon(p.icon_on.c_str()) : icon_off;
+  lv_label_set_display_text(icon_lbl, find_icon("Minus"));
+  set_card_disabled_state(btn_ptr, true);
   ha_subscribe_state(
     p.sensor,
     std::function<void(esphome::StringRef)>(
       [btn_ptr, icon_lbl, icon_off, icon_on, active_color](esphome::StringRef state) {
       bool unavailable = ha_state_unavailable_ref(state);
+      set_card_disabled_state(btn_ptr, unavailable);
       if (btn_ptr) {
         set_card_checked_state(
           btn_ptr, active_color && !unavailable && is_entity_on_ref(state));
       }
-      lv_label_set_display_text(icon_lbl, (!unavailable && is_entity_on_ref(state)) ? icon_on : icon_off);
+      lv_label_set_display_text(icon_lbl, unavailable
+        ? find_icon("Minus") : (is_entity_on_ref(state) ? icon_on : icon_off));
     })
   );
 }
