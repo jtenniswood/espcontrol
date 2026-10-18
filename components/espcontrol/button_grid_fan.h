@@ -522,8 +522,10 @@ inline void send_fan_direction_action(FanCardCtx *ctx) {
 inline void send_fan_preset_action(FanCardCtx *ctx, const std::string &mode) {
   const std::string selected = mode;
   if (!fan_modal_action_allowed(ctx) || selected.empty()) return;
-  if (fan_modal_managed(ctx) && (!fan_preset_supported(ctx) ||
-      std::find(ctx->preset_modes.begin(), ctx->preset_modes.end(), selected) == ctx->preset_modes.end())) return;
+  if (fan_modal_managed(ctx) &&
+      (!(ctx->type == "fan_preset" ? fan_control_supported(ctx) : fan_preset_supported(ctx)) ||
+       std::find(ctx->preset_modes.begin(), ctx->preset_modes.end(), selected) == ctx->preset_modes.end()))
+    return;
   send_fan_action(ctx->entity_id, "fan.set_preset_mode", "preset_mode", selected.c_str());
 }
 
@@ -980,7 +982,7 @@ inline void fan_control_rebuild_preset_list(FanCardCtx *ctx) {
     if (ctx->label_font) lv_obj_set_style_text_font(empty, ctx->label_font, LV_PART_MAIN);
     ui.preset_empty_lbl = empty;
   }
-  if (!fan_modal_widgets_ready(ui.overlay)) fan_control_hide_modal();
+  if (!fan_modal_widgets_ready(ctx, ui.overlay)) fan_control_hide_modal();
 }
 
 inline void fan_control_hide_modal() {
@@ -1121,13 +1123,16 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
   fan_control_layout_modal(ctx);
   fan_control_set_speed_value(ctx, ctx->on ? ctx->percentage : 0);
   lv_obj_move_foreground(ui.overlay);
-  if (!fan_modal_widgets_ready(ui.overlay)) fan_control_hide_modal();
+  if (!fan_modal_widgets_ready(ctx, ui.overlay)) fan_control_hide_modal();
 }
 
 inline void fan_preset_close() {
   FanPresetUi &ui = fan_preset_ui();
-  control_modal_delete_overlay(ControlModalKind::FAN_PRESET, ui.overlay);
+  FanCardCtx* closing = ui.active;
+  lv_obj_t* overlay = ui.overlay;
   ui = FanPresetUi();
+  control_modal_delete_overlay(ControlModalKind::FAN_PRESET, overlay);
+  fan_modal_notify_closed(closing);
 }
 
 inline void fan_preset_close_if_unsupported(FanCardCtx *ctx) {
@@ -1135,37 +1140,15 @@ inline void fan_preset_close_if_unsupported(FanCardCtx *ctx) {
   if (ui.active == ctx && !fan_control_supported(ctx)) fan_preset_close();
 }
 
-inline void fan_preset_open(FanCardCtx *ctx) {
-  if (!fan_control_supported(ctx)) return;
-  ControlModalShell shell = control_modal_open_shell(
-    ControlModalKind::FAN_PRESET, ctx->btn, ctx->width_compensation_percent,
-    ctx->icon_font, fan_preset_close);
-  FanPresetUi &ui = fan_preset_ui();
-  ui.active = ctx;
-  ui.overlay = shell.overlay;
-  ui.panel = shell.panel;
-  ui.close_btn = shell.close_btn;
-
-  ControlModalLayout &layout = shell.layout;
-  lv_coord_t content_w = shell.content_w;
-  lv_coord_t gap = control_modal_scaled_px(12, layout.short_side);
-  if (gap < 8) gap = 8;
+inline void fan_preset_rebuild_list(FanCardCtx* ctx) {
+  FanPresetUi& ui = fan_preset_ui();
+  if (!fan_modal_context_current(ctx) || ui.active != ctx || !ui.list) return;
+  lv_obj_clean(ui.list);
+  ui.empty_lbl = nullptr;
+  ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
   lv_coord_t row_h = control_modal_scaled_px(48, layout.short_side);
   if (row_h < 34) row_h = 34;
   lv_coord_t row_radius = row_h / 3;
-  lv_coord_t title_y = layout.inset + layout.back_size / 2;
-  lv_coord_t list_y = layout.inset + layout.back_size + gap;
-  lv_coord_t list_h = layout.panel_h - list_y - layout.inset;
-  if (list_h < row_h) list_h = row_h;
-
-  ui.title_lbl = control_modal_create_title(
-    ui.panel, espcontrol_i18n("Preset"), content_w - layout.back_size - gap,
-    ctx->label_font, ctx->width_compensation_percent);
-  lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, title_y - layout.back_size / 2);
-
-  ui.list = control_modal_create_scroll_list(ui.panel, content_w, list_h, gap);
-  lv_obj_align(ui.list, LV_ALIGN_TOP_LEFT, layout.inset, list_y);
-
   int count = ctx->preset_modes.size() > FAN_PRESET_MAX_OPTIONS
     ? FAN_PRESET_MAX_OPTIONS
     : static_cast<int>(ctx->preset_modes.size());
@@ -1181,8 +1164,14 @@ inline void fan_preset_open(FanCardCtx *ctx) {
     ui.option_clicks[i].mode = mode;
     lv_obj_add_event_cb(btn, [](lv_event_t *e) {
       FanPresetClick *click = (FanPresetClick *)lv_event_get_user_data(e);
-      if (click && click->ctx) send_fan_preset_action(click->ctx, click->mode);
-      fan_preset_close();
+      if (!click || !fan_modal_action_allowed(click->ctx)) return;
+      FanCardCtx* context = click->ctx;
+      const auto identity = fan_modal_context_identity(context);
+      send_fan_preset_action(context, click->mode);
+      // A service callback may retire this opening or select a replacement.
+      if (fan_preset_ui().active == context && fan_modal_context_current(context) &&
+          fan_modal_context_identity(context) == identity)
+        fan_preset_close();
     }, LV_EVENT_CLICKED, &ui.option_clicks[i]);
   }
 
@@ -1196,7 +1185,43 @@ inline void fan_preset_open(FanCardCtx *ctx) {
     if (ctx->label_font) lv_obj_set_style_text_font(ui.empty_lbl, ctx->label_font, LV_PART_MAIN);
   }
 
+  if (!fan_modal_widgets_ready(ctx, ui.overlay)) fan_preset_close();
+}
+
+inline void fan_preset_open(FanCardCtx* ctx) {
+  if (!fan_modal_context_current(ctx) || !fan_control_supported(ctx)) return;
+  ControlModalShell shell =
+      control_modal_open_shell(ControlModalKind::FAN_PRESET, ctx->btn, ctx->width_compensation_percent,
+                               ctx->icon_font, fan_preset_close);
+  FanPresetUi& ui = fan_preset_ui();
+  ui.active = ctx;
+  ui.overlay = shell.overlay;
+  ui.panel = shell.panel;
+  ui.close_btn = shell.close_btn;
+
+  ControlModalLayout& layout = shell.layout;
+  lv_coord_t content_w = shell.content_w;
+  lv_coord_t gap = control_modal_scaled_px(12, layout.short_side);
+  if (gap < 8) gap = 8;
+  lv_coord_t row_h = control_modal_scaled_px(48, layout.short_side);
+  if (row_h < 34) row_h = 34;
+  lv_coord_t title_y = layout.inset + layout.back_size / 2;
+  lv_coord_t list_y = layout.inset + layout.back_size + gap;
+  lv_coord_t list_h = layout.panel_h - list_y - layout.inset;
+  if (list_h < row_h) list_h = row_h;
+
+  ui.title_lbl =
+      control_modal_create_title(ui.panel, espcontrol_i18n("Preset"), content_w - layout.back_size - gap,
+                                 ctx->label_font, ctx->width_compensation_percent);
+  lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, title_y - layout.back_size / 2);
+
+  ui.list = control_modal_create_scroll_list(ui.panel, content_w, list_h, gap);
+  lv_obj_align(ui.list, LV_ALIGN_TOP_LEFT, layout.inset, list_y);
+
+  fan_preset_rebuild_list(ctx);
+  if (!fan_modal_context_current(ctx) || ui.active != ctx) return;
   lv_obj_move_foreground(ui.overlay);
+  if (!fan_modal_widgets_ready(ctx, ui.overlay)) fan_preset_close();
 }
 
 inline void fan_close_modals_for_context(FanCardCtx *ctx) {

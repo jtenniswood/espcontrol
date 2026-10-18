@@ -13,7 +13,7 @@ text = Path(__file__).with_name('page_fan_control_modal_test.cpp.in').read_text(
 records = []
 for kind, name in [('struct', 'FanCardCtx'), ('enum class', 'FanControlTab'),
                    ('struct', 'FanControlVisibleTabs'), ('struct', 'FanControlPresetClick'),
-                   ('struct', 'FanControlModalUi')]:
+                   ('struct', 'FanControlModalUi'), ('struct', 'FanPresetClick'), ('struct', 'FanPresetUi')]:
     records.append(re.search(r'^' + kind + ' ' + name + r'[^\n]*\{\n.*?^\};', fan,
                              re.MULTILINE | re.DOTALL)[0])
 text = text.replace('// @contexts', '\n'.join(records))

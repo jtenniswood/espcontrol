@@ -1161,6 +1161,8 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     DEPENDS generate_page_fan_control_modal_test.py generate_climate_update_test.py
       page_fan_control_modal_test.cpp.in ../../components/espcontrol/button_grid_fan.h
       ../../components/espcontrol/page_fan_control_modal.h
+      ../../components/espcontrol/page_fan_preset_modal.h
+      ../../components/espcontrol/page_fan_modal_state.h
     VERBATIM)
   add_executable(page_fan_control_modal_test ${PAGE_FAN_CONTROL_MODAL_SOURCE}
     ../../components/espcontrol/page_modal_runtime.cpp
