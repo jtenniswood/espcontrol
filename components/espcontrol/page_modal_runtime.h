@@ -1,6 +1,7 @@
 #pragma once
 
 #include "control_modal_service.h"
+#include "modal_callback_dispatch.h"
 #include "page_renderer_runtime.h"
 
 namespace espcontrol::pages {

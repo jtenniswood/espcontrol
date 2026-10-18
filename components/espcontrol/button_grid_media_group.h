@@ -214,7 +214,7 @@ inline std::vector<MediaGroupDiscoveryItem> media_group_parse_discovery_v2(
       char *end = nullptr;
       float volume = std::strtof(volume_text.c_str(), &end);
       if (!end || end == volume_text.c_str() || *end != '\0' || !std::isfinite(volume)) return {};
-      item.volume_pct = std::max(0, std::min(100, (int) std::lround(volume * 100.0f)));
+      item.volume_pct = static_cast<int>(std::lround(std::clamp(volume, 0.0f, 1.0f) * 100.0f));
       item.volume_known = true;
     }
     item.available = item.volume_known;
@@ -289,8 +289,8 @@ inline std::vector<MediaGroupDiscoveryItem> media_group_parse_discovery_items(
     if (i < volume_values.size()) {
       char *end = nullptr;
       float volume = std::strtof(volume_values[i].c_str(), &end);
-      if (end && end != volume_values[i].c_str()) {
-        item.volume_pct = std::max(0, std::min(100, (int) std::lround(volume * 100.0f)));
+      if (end && end != volume_values[i].c_str() && std::isfinite(volume)) {
+        item.volume_pct = static_cast<int>(std::lround(std::clamp(volume, 0.0f, 1.0f) * 100.0f));
         item.volume_known = true;
         item.available = true;
       }

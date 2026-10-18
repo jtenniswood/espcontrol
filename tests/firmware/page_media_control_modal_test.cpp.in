@@ -1,0 +1,976 @@
+#include <array>
+#include <cassert>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <functional>
+#include <limits>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "lvgl.h"
+#define ESPCONTROL_HA_GENERATION_HELPERS_DEFINED
+uint32_t& ha_subscription_generation();
+#include "button_grid_subpage_parser.h"
+#include "climate_state_logic.h"
+#include "climate_subscription_policy.h"
+#include "climate_target_logic.h"
+#include "ha_read_coordinator.h"
+#include "media_control_modal_lifetime.h"
+#include "media_display_text.h"
+#include "media_group_discovery.h"
+#include "media_playback_modes.h"
+#include "media_power_capability.h"
+#include "media_volume_capability.h"
+#include "page_card_dependencies.h"
+#include "page_entity_coordinator_adapter.h"
+#include "page_media_state_runtime.h"
+#include "page_modal_runtime.h"
+#include "panel_config_document.h"
+#include "theme_palette.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+
+constexpr uint32_t DEFAULT_ACCENT_COLOR = 0xFF8C00;
+static size_t lv_live_bytes = 0, lv_allocation_calls = 0, cpp_allocation_calls = 0, cpp_live_bytes = 0;
+struct alignas(std::max_align_t) CppAllocation {
+  size_t bytes;
+};
+void* operator new(size_t size) {
+  ++cpp_allocation_calls;
+  auto* allocation = static_cast<CppAllocation*>(std::malloc(sizeof(CppAllocation) + (size ? size : 1)));
+  if (!allocation) std::abort();
+  allocation->bytes = size;
+  cpp_live_bytes += size;
+  return allocation + 1;
+}
+void* operator new[](size_t size) {
+  return ::operator new(size);
+}
+void operator delete(void* pointer) noexcept {
+  if (!pointer) return;
+  auto* allocation = static_cast<CppAllocation*>(pointer) - 1;
+  cpp_live_bytes -= allocation->bytes;
+  std::free(allocation);
+}
+void operator delete[](void* p) noexcept {
+  ::operator delete(p);
+}
+void operator delete(void* p, std::size_t) noexcept {
+  ::operator delete(p);
+}
+void operator delete[](void* p, std::size_t) noexcept {
+  ::operator delete(p);
+}
+struct alignas(std::max_align_t) Allocation {
+  size_t bytes;
+};
+extern "C" {
+void lv_mem_init() {}
+void lv_mem_deinit() {}
+lv_mem_pool_t lv_mem_add_pool(void*, size_t) {
+  return nullptr;
+}
+void lv_mem_remove_pool(lv_mem_pool_t) {}
+void* lv_malloc_core(size_t size) {
+  ++lv_allocation_calls;
+  auto* p = static_cast<Allocation*>(std::malloc(size + sizeof(Allocation)));
+  assert(p);
+  p->bytes = size;
+  lv_live_bytes += size;
+  return p + 1;
+}
+void lv_free_core(void* ptr) {
+  if (!ptr) return;
+  auto* p = static_cast<Allocation*>(ptr) - 1;
+  lv_live_bytes -= p->bytes;
+  std::free(p);
+}
+void* lv_realloc_core(void* ptr, size_t size) {
+  void* p = lv_malloc_core(size);
+  if (ptr) {
+    std::memcpy(p, ptr, std::min(size, (static_cast<Allocation*>(ptr) - 1)->bytes));
+    lv_free_core(ptr);
+  }
+  return p;
+}
+void lv_mem_monitor_core(lv_mem_monitor_t* out) {
+  *out = {};
+}
+lv_result_t lv_mem_test_core() {
+  return LV_RESULT_OK;
+}
+}
+
+#include <cmath>
+const char* find_icon(const char*) {
+  return "i";
+}
+int normalize_width_compensation_percent(int p) {
+  return p;
+}
+void apply_text_width_compensation(lv_obj_t*) {}
+void lv_label_set_display_text(lv_obj_t* obj, const char* s) {
+  lv_label_set_text(obj, s);
+}
+uint32_t test_now = 100;
+namespace esphome {
+uint32_t millis() {
+  return test_now;
+}
+}  // namespace esphome
+// @group-policy
+// @contexts
+constexpr uint32_t MEDIA_GROUP_ACTION_TIMEOUT_MS = 12000;
+constexpr uint32_t MEDIA_SEEK_PENDING_TIMEOUT_MS = 3000;
+constexpr float MEDIA_SEEK_MATCH_TOLERANCE_SECONDS = 2.0f;
+// @production-function media_control_modal_ui
+struct BtnSlot {
+  lv_obj_t *btn = nullptr, *icon_lbl = nullptr, *text_lbl = nullptr, *sensor_lbl = nullptr,
+           *unit_lbl = nullptr, *sensor_container = nullptr;
+};
+struct Transport {
+  using State = esphome::StringRef;
+  using Callback = std::function<void(State)>;
+  static constexpr bool RECLAIMABLE_SUBSCRIPTIONS = true;
+  struct Binding {
+    uint32_t token;
+    std::string entity, attribute;
+    Callback callback;
+  };
+  std::vector<Binding> bindings;
+  bool connected{true};
+  uint32_t next{1};
+  size_t requests{0};
+  bool available() const {
+    return true;
+  }
+  bool state_connected() const {
+    return connected;
+  }
+  uint32_t subscribe(const std::string& entity, const std::string& attribute, Callback callback) {
+    const auto token = next++;
+    bindings.push_back({token, entity, attribute, std::move(callback)});
+    return token;
+  }
+  void unsubscribe(uint32_t token) {
+    bindings.erase(
+        std::remove_if(bindings.begin(), bindings.end(), [token](const auto& b) { return b.token == token; }),
+        bindings.end());
+  }
+  bool request(std::string_view, std::string_view) {
+    ++requests;
+    return connected;
+  }
+  void send(const char* entity, const char* attribute, const std::string& value) {
+    for (const auto& b : bindings)
+      if (b.entity == entity && b.attribute == attribute) {
+        const auto callback = b.callback;
+        callback(State(value.c_str(), value.size()));
+        return;
+      }
+  }
+};
+struct Heap {
+  bool available(const char*, size_t, size_t) const {
+    return true;
+  }
+};
+using Coordinator = HaReadCoordinator<Transport, Heap>;
+Coordinator coordinator;
+Coordinator& ha_read_coordinator() {
+  return coordinator;
+}
+uint32_t& ha_subscription_generation() {
+  return coordinator.generation_ref();
+}
+bool ha_api_state_connected() {
+  return coordinator.transport().connected;
+}
+bool enough_heap = true;
+bool ha_internal_heap_available(const char*) {
+  return enough_heap;
+}
+void* callback_owner = nullptr;
+struct HaCallbackOwnerScope {
+  void* previous;
+  explicit HaCallbackOwnerScope(void* owner) : previous(callback_owner) {
+    callback_owner = owner;
+  }
+  ~HaCallbackOwnerScope() {
+    callback_owner = previous;
+  }
+};
+bool ha_subscribe_state(const std::string& entity, Transport::Callback callback) {
+  return coordinator.subscribe(entity, "", std::move(callback), 32, callback_owner);
+}
+bool ha_subscribe_attribute(const std::string& entity, const std::string& attribute,
+                            Transport::Callback callback) {
+  return coordinator.subscribe(entity, attribute, std::move(callback), 32, callback_owner);
+}
+void ha_release_callbacks_for_owner(void* owner) {
+  coordinator.release_owner(owner);
+}
+size_t reannouncements = 0;
+void ha_reannounce_state_subscriptions() {
+  ++reannouncements;
+}
+
+ControlModalStateService<lv_obj_t> modal_service;
+auto& control_modal_active() {
+  return modal_service.active();
+}
+auto& control_modal_service() {
+  return modal_service;
+}
+std::string clock_label;
+void set_clock_bar_modal_label(const std::string& label) {
+  clock_label = label;
+}
+
+void control_modal_delete_overlay(ControlModalKind kind, lv_obj_t* overlay) {
+  if (overlay) lv_obj_delete(overlay);
+  modal_service.clear_active(kind);
+}
+struct ControlModalShell {
+  lv_obj_t *overlay, *panel, *close_btn;
+};
+ControlModalShell control_modal_open_shell(ControlModalKind kind, lv_obj_t*, int, const lv_font_t*,
+                                           void (*hide)()) {
+  auto* overlay = lv_obj_create(lv_layer_top());
+  auto* panel = lv_obj_create(overlay);
+  auto* close = lv_button_create(panel);
+  lv_label_create(close);
+  lv_obj_add_event_cb(
+      close,
+      [](lv_event_t* e) {
+        auto fn = reinterpret_cast<void (*)()>(lv_event_get_user_data(e));
+        fn();
+      },
+      LV_EVENT_CLICKED, reinterpret_cast<void*>(hide));
+  modal_service.set_active(kind, overlay, hide, ControlModalDismissPolicy::DISMISS);
+  return {overlay, panel, close};
+}
+lv_obj_t* control_modal_create_round_button(lv_obj_t* parent, int, const char*, const lv_font_t*, uint32_t,
+                                            uint32_t, int) {
+  return lv_button_create(parent);
+}
+
+struct MediaTransport : PageMediaTransport {
+  bool connected() const override {
+    return ha_api_state_connected();
+  }
+  uint32_t connection_generation() const override {
+    return coordinator.connection_generation();
+  }
+  uint32_t now_ms() const override {
+    return test_now;
+  }
+  int64_t epoch_seconds() const override {
+    return 0;
+  }
+  void reannounce() override {
+    ++reannouncements;
+  }
+};
+namespace esphome::api {
+struct ActionResponse {
+  bool success{true};
+  bool is_success() const {
+    return success;
+  }
+  std::string get_error_message() const {
+    return "failed";
+  }
+};
+}  // namespace esphome::api
+using ActionResponseCallback = std::function<void(const esphome::api::ActionResponse&)>;
+struct GroupCall {
+  uint32_t id;
+  ActionResponseCallback callback;
+};
+std::vector<GroupCall> group_calls;
+uint32_t next_call = 100;
+size_t sends = 0, previews = 0;
+std::string last_action, last_entity;
+int last_value = 0;
+PageModalToken preview_token{};
+std::function<void()> during_send, during_preview, during_response;
+void send(const std::string& entity, const std::string& action, int value = 0) {
+  ++sends;
+  last_entity = entity;
+  last_action = action;
+  last_value = value;
+  if (during_send) during_send();
+}
+void send_media_player_action(const std::string& entity, const std::string& action) {
+  send(entity, action);
+}
+void send_media_playback_action(const std::string& entity, const std::string& action) {
+  send(entity, action);
+}
+void send_media_shuffle_action(const std::string& entity, bool enabled) {
+  send(entity, "shuffle", enabled);
+}
+void send_media_repeat_action(const std::string& entity, media::RepeatMode mode) {
+  send(entity, "repeat", static_cast<int>(mode));
+}
+void send_media_seek_action(const std::string& entity, int percent, float) {
+  send(entity, "seek", percent);
+}
+void send_media_volume_action(const std::string& entity, int value) {
+  send(entity, "volume", value);
+}
+void send_media_volume_command(const std::string& entity, media::VolumeCommand command) {
+  if (command.kind != media::VolumeCommandKind::NONE) send(entity, "volume-command", command.value);
+}
+bool send_media_group_join_action(const std::string& entity, const std::vector<std::string>&,
+                                  ActionResponseCallback callback, uint32_t* id) {
+  *id = next_call++;
+  group_calls.push_back({*id, std::move(callback)});
+  send(entity, "join");
+  return true;
+}
+bool send_media_group_unjoin_action(const std::string& entity, ActionResponseCallback callback,
+                                    uint32_t* id) {
+  *id = next_call++;
+  group_calls.push_back({*id, std::move(callback)});
+  send(entity, "unjoin");
+  return true;
+}
+void ha_cancel_action_response_callback(uint32_t id, const char*) {
+  for (auto& call : group_calls)
+    if (call.id == id) {
+      call.id = 0;
+      return;
+    }
+}
+#define ESP_LOGW(...) ((void)0)
+void theme_set_content_background(lv_obj_t*, bool = false) {}
+void theme_set_content_foreground(lv_obj_t*) {}
+void theme_set_primary_foreground_fill(lv_obj_t*) {}
+void control_modal_apply_pressed_fill(lv_obj_t*) {}
+void control_modal_apply_pressed_fill_color(lv_obj_t*, uint32_t) {}
+void control_modal_track_theme_tab(lv_obj_t*) {}
+void light_control_center_icon_label(lv_obj_t*) {}
+void set_card_checked_state(lv_obj_t*, bool) {}
+lv_obj_t* control_modal_icon_label(lv_obj_t* button) {
+  return lv_obj_get_child(button, 0);
+}
+lv_obj_t* control_modal_create_flat_icon_button(lv_obj_t* parent, const char* icon, const lv_font_t*,
+                                                uint32_t, lv_opa_t, int, int = 256) {
+  auto* button = lv_button_create(parent);
+  lv_label_set_text(lv_label_create(button), icon);
+  return button;
+}
+lv_obj_t* control_modal_create_tab_row(lv_obj_t* parent) {
+  return lv_obj_create(parent);
+}
+bool media_playback_state_has_progress(const std::string&) {
+  assert(false && "managed panel must use the shared graph clock");
+  return false;
+}
+void media_control_layout_modal(MediaControlCtx*);
+void media_control_refresh_modal(MediaControlCtx*);
+void media_control_hide_modal();
+void media_control_destroy_modal();
+void media_control_refresh_progress(MediaControlCtx*);
+void media_control_refresh_volume(MediaControlCtx*);
+int media_control_volume_max_pct(MediaControlCtx*);
+int media_control_clamp_volume(MediaControlCtx*, int);
+float media_control_current_position_seconds(MediaControlCtx*);
+void media_control_refresh_power(MediaControlCtx*);
+void media_control_refresh_playback_modes(MediaControlCtx*);
+void media_control_refresh_speakers(MediaControlCtx*);
+void media_control_refresh_group_volume(MediaControlCtx* ctx) {
+  media_control_refresh_volume(ctx);
+}
+void media_control_refresh_parent_card(MediaControlCtx*) {}
+void media_control_refresh_speaker_row(MediaControlCtx*, MediaSpeakerRowState*) {
+  if (during_response) during_response();
+}
+void media_control_set_speaker_status(const char*, bool = false, bool = false) {}
+uint32_t readable_text_color_for_bg(uint32_t) {
+  return 0xFFFFFF;
+}
+void media_control_style_progress_slider(lv_obj_t* slider, uint32_t, uint32_t) {
+  lv_slider_set_range(slider, 0, 100);
+}
+lv_obj_t* media_control_create_progress_fill(lv_obj_t* slider, lv_color_t) {
+  return lv_obj_create(slider);
+}
+lv_obj_t* media_control_create_progress_handle(lv_obj_t* slider) {
+  return lv_obj_create(slider);
+}
+void media_control_update_progress_fill(lv_obj_t*, lv_obj_t*, lv_obj_t*, int, lv_color_t) {}
+void media_control_update_progress_handle(lv_obj_t*, lv_obj_t*, int) {}
+int media_clamp_percent(int);
+bool media_control_shuffle_supported(MediaControlCtx*);
+bool media_control_repeat_supported(MediaControlCtx*);
+media::PowerCommand media_control_power_command(MediaControlCtx*);
+void media_control_refresh_volume_controls(MediaControlCtx*);
+std::string media_card_mode(const std::string&);
+void media_control_ensure_tab_content(MediaControlCtx*);
+void media_control_apply_tab_visibility();
+// @production-function media_control_apply_availability
+// @production-function media_format_time
+// @production-function media_control_refresh_progress_time_label
+// @production-function media_control_refresh_play_icon
+// @production-function media_control_refresh_progress
+// @production-function media_control_refresh_power
+// @production-function media_control_style_playback_mode_button
+// @production-function media_control_refresh_playback_modes
+// @production-function media_clamp_percent
+// @production-function media_volume_set_button_enabled
+// @production-function media_control_volume_max_pct
+// @production-function media_control_clamp_volume
+// @production-function media_control_volume_pending_active
+// @production-function media_control_current_position_seconds
+// @production-function media_control_seek_pending_active
+// @production-function media_control_track_position_reset_active
+// @production-function media_control_reset_track_position
+// @production-function media_control_progress_supported
+// @production-function media_control_power_supported
+// @production-function media_control_shuffle_supported
+// @production-function media_control_repeat_supported
+// @production-function media_control_power_command
+// @production-function media_control_send_power_action
+// @production-function media_control_group_contains
+// @production-function media_control_group_size
+// @production-function media_control_visible_tabs
+// @production-function media_control_tab_layout_changed
+// @production-function media_control_can_open_modal
+// @production-function media_control_refresh_open_modal
+void media_control_clear_tab_content();
+// @production-function media_control_ensure_visible_tab
+// @production-function media_control_store_group_volume
+// @production-function media_control_set_group_volume_target
+// @production-function media_control_copy_group_volume_to_row
+// @production-function media_control_current_group_volumes
+// @production-function media_control_refresh_group_member_volumes
+// @production-function media_control_group_volume_percent
+// @production-function media_control_copy_current_speaker_state
+// @production-function media_control_find_speaker_row
+// @production-function media_control_cancel_speaker_action
+// @production-function media_control_speaker_action_timer_cb
+// @production-function media_control_apply_group_volume_percent
+// @production-function media_control_set_volume_value
+// @production-function media_control_apply_volume_percent
+// @production-function media_control_group_action_result
+// @production-function media_control_toggle_speaker
+// @production-function media_control_create_speaker_volume_button
+// @production-function media_control_apply_snapshot
+// @production-function media_status_text
+// @production-function media_control_card_label
+// @production-function create_media_control_context
+// @production-function media_control_style_tab
+// @production-function media_control_apply_tab_visibility
+// @production-function media_control_create_tab_button
+// @production-function media_control_create_box
+// @production-function media_control_create_icon_button
+// @production-function media_control_create_controls_tab_content
+// @production-function media_control_create_progress_tab_content
+// @production-function media_control_create_volume_tab_content
+// @production-function media_control_create_power_tab_content
+// @production-function media_control_clear_tab_content
+// @production-function media_control_destroy_modal
+// @production-function media_control_hide_modal
+
+// @production-function media_control_refresh_volume_controls
+// @production-function media_control_refresh_volume
+// @production-function media_control_title_text
+// @production-function media_control_artist_text
+// @production-function media_control_ensure_display_text_cache
+// @production-function media_control_refresh_modal
+// @production-function media_control_ensure_progress_tab_button
+// @production-function media_control_ensure_speakers_tab_button
+// @production-function media_control_ensure_power_tab_button
+void media_control_create_speakers_tab_content(MediaControlCtx* ctx) {
+  auto& ui = media_control_modal_ui();
+  if (ui.speakers_box) return;
+  ui.speakers_box = ui.content_box;
+  ui.speaker_list = lv_obj_create(ui.content_box);
+  for (const auto& entity :
+       media_group_merge_candidates(ctx->entity_id, ctx->speaker_helper_members, ctx->group_members)) {
+    auto* row = new MediaSpeakerRowState();
+    row->entity_id = entity;
+    row->row = lv_button_create(ui.speaker_list);
+    row->available = true;
+    row->volume_known = true;
+    row->volume_pct = 30;
+    row->volume_plus_btn = media_control_create_speaker_volume_button(ctx, row, row->row, 46, "+", true);
+    row->volume_minus_btn = media_control_create_speaker_volume_button(ctx, row, row->row, 46, "-", false);
+    ui.speaker_rows.push_back(row);
+  }
+  ui.speaker_action_timer = lv_timer_create(media_control_speaker_action_timer_cb, 500, nullptr);
+}
+void media_control_refresh_speakers(MediaControlCtx* ctx) {
+  for (auto* row : media_control_modal_ui().speaker_rows) media_control_copy_group_volume_to_row(ctx, row);
+}
+// @production-function media_control_ensure_tab_content
+void media_control_layout_modal(MediaControlCtx* ctx) {
+  auto& ui = media_control_modal_ui();
+  if (!ctx || ui.active != ctx) return;
+  if (!media_control_ensure_progress_tab_button(ctx) || !media_control_ensure_speakers_tab_button(ctx) ||
+      !media_control_ensure_power_tab_button(ctx))
+    return;
+  media_control_ensure_tab_content(ctx);
+  ui.visible_tabs = media_control_visible_tabs(ctx);
+  ui.progress_layout_ready = true;
+  media_control_refresh_modal(ctx);
+  if (!media_control_widgets_ready(ui.overlay)) media_control_hide_modal();
+}
+// @production-function media_control_open_modal
+#include "page_media_control_modal.h"
+struct Arena : PageArenaAllocator {
+  std::unordered_map<void*, size_t> live;
+  int remaining{-1};
+  bool capture_record{false};
+  size_t recycled_size{0};
+  void* recycled{nullptr};
+  ~Arena() {
+    std::free(recycled);
+  }
+  void* allocate(size_t size) override {
+    if (remaining == 0) return nullptr;
+    if (remaining > 0) --remaining;
+    if (capture_record) {
+      recycled_size = size;
+      capture_record = false;
+    }
+    void* p = nullptr;
+    if (recycled && size == recycled_size) {
+      p = recycled;
+      recycled = nullptr;
+    } else
+      p = std::malloc(size);
+    assert(p);
+    live[p] = size;
+    return p;
+  }
+  void release(void* p, size_t size) override {
+    assert(live.at(p) == size);
+    live.erase(p);
+    if (size == recycled_size && !recycled)
+      recycled = p;
+    else
+      std::free(p);
+  }
+};
+struct Fixture {
+  explicit Fixture(uint32_t generation = 17, bool cover = false, bool speaker = false) {
+    const auto& limits = DEVICE_UI_PROFILES[8];
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const char* cards[] = {speaker ? "media_player.room;Group;Auto;Auto;speaker_group;;media;;"
+                           : cover ? "media_player.room;Art;Auto;Auto;cover_art;;media;;power_entity=switch."
+                                     "power,cover_art_secondary_entity=media_player.other"
+                                   : "media_player.room;Controls;Auto;Auto;control_modal;;media;;volume_max="
+                                     "80,power_entity=switch.power",
+                           "media_player.other;Other;Auto;Auto;control_modal;;media;;"};
+    for (size_t i = 0; i < 2; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i]), std::strlen(cards[i])) ==
+             PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, generation, storage.data(), storage.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+  std::array<uint8_t, 8192> document{};
+  size_t size = 0;
+  alignas(std::max_align_t) std::array<uint8_t, 32768> storage{};
+  PageStore store;
+};
+
+void values() {
+  auto& t = coordinator.transport();
+  for (const char* entity : {"media_player.room", "media_player.other"}) {
+    t.send(entity, "", "paused");
+    t.send(entity, "supported_features", "819204");
+    t.send(entity, "volume_level", "0.42");
+    t.send(entity, "media_content_type", "music");
+    t.send(entity, "media_content_id", "content");
+    t.send(entity, "media_title", "Title");
+    t.send(entity, "media_artist", "Artist");
+    t.send(entity, "media_duration", "120");
+    t.send(entity, "media_position", "10");
+    t.send(entity, "group_members", "[]");
+    t.send(entity, "shuffle", "off");
+    t.send(entity, "repeat", "off");
+  }
+  t.send("switch.power", "", "on");
+  t.send("sensor.speaker_group", "data",
+         "v2|[[\"media_player.room\",\"Room\",0.42,true],[\"media_player.other\",\"Other\",0.3,true]]");
+}
+void press(lv_obj_t* object) {
+  assert(object);
+  lv_obj_send_event(object, LV_EVENT_PRESSED, nullptr);
+  lv_obj_send_event(object, LV_EVENT_RELEASED, nullptr);
+  lv_obj_send_event(object, LV_EVENT_CLICKED, nullptr);
+}
+void test_panels() {
+  Fixture fixture, next(18), cover(19, true), speaker(20, false, true);
+  Arena arena;
+  PageCardDependencies dependencies;
+  CoordinatorPageEntitySubscriptions subscriptions(coordinator, 64);
+  MediaTransport transport;
+  PageMediaStateRuntime media(arena, transport);
+  ActionResponseCallback after_destroy;
+  {
+    PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 16384}, &media);
+    assert(media.prepare(fixture.store) && state.prepare(fixture.store));
+    media.activate_prepared(fixture.store);
+    state.activate_prepared(fixture.store);
+    values();
+    bool styles = true;
+    PageMediaControlModalStyle style;
+    style.owner = &styles;
+    style.environment.media = &media;
+    style.resolve = [](void* p, const ParsedCfg&, PageMediaControlModalEnvironment&) {
+      return *static_cast<bool*>(p);
+    };
+    style.numeric_action_sent = [](void*, PageModalToken token, float) {
+      ++previews;
+      preview_token = token;
+      if (during_preview) during_preview();
+    };
+    PageMediaControlModalPort port(arena, state, style, nullptr,
+                                   [](void*, PageBindingToken) { return true; });
+    PageModalRuntime runtime(port);
+    assert(!port.install(runtime, false));
+    assert(port.install(runtime, true));
+    assert(runtime.prepare(fixture.store));
+    runtime.activate_prepared(fixture.store);
+    auto& ui = media_control_modal_ui();
+    auto& t = coordinator.transport();
+    auto open = [&](uint32_t generation = 17) {
+      assert(runtime.request_card({generation, 0}));
+      runtime.loop();
+      assert(ui.active);
+    };
+    auto close = [&]() {
+      media_control_hide_modal();
+      runtime.loop();
+      assert(!ui.active);
+    };
+    open();
+    assert(ui.active->current_pct == 42 && ui.active->title == "Title" &&
+           ui.active->power_entity == "switch.power");
+    press(ui.play_btn);
+    assert(last_action == "play_pause");
+    close();
+    const auto baseline = arena.live.size(), cpp_bytes = cpp_live_bytes, lv_bytes = lv_live_bytes,
+               refs = coordinator.subscription_count(), registrations = t.bindings.size();
+    for (int n = 0; n < 1000; ++n) {
+      open();
+      close();
+      assert(arena.live.size() == baseline && cpp_live_bytes == cpp_bytes && lv_live_bytes == lv_bytes &&
+             coordinator.subscription_count() == refs && t.bindings.size() == registrations);
+    }
+    open();
+    const auto cpp_calls = cpp_allocation_calls, lv_calls = lv_allocation_calls;
+    for (int n = 0; n < 1000; ++n) {
+      runtime.loop();
+    }
+    assert(cpp_allocation_calls == cpp_calls && lv_allocation_calls == lv_calls);
+    // A hidden player's shared clock ticks without allocating in this paused panel.
+    t.send("media_player.other", "", "playing");
+    runtime.loop();
+    const auto quiet_cpp = cpp_allocation_calls, quiet_lv = lv_allocation_calls;
+    for (int n = 0; n < 1000; ++n) {
+      test_now += 1000;
+      media.loop();
+      runtime.loop();
+    }
+    assert(cpp_allocation_calls == quiet_cpp && lv_allocation_calls == quiet_lv);
+    // Fresh capabilities do not delete the button while its input is dispatching.
+    assert(ui.shuffle_btn && ui.repeat_btn);
+    auto* shuffle = ui.shuffle_btn;
+    bool deleted = false;
+    lv_obj_add_event_cb(
+        shuffle, [](lv_event_t* e) { *static_cast<bool*>(lv_event_get_user_data(e)) = true; },
+        LV_EVENT_DELETE, &deleted);
+    t.send("media_player.room", "supported_features", "4");
+    auto sent = sends;
+    press(shuffle);
+    assert(sends == sent && !deleted);
+    runtime.loop();
+    assert(deleted && !ui.shuffle_btn && !ui.repeat_btn);
+    t.send("media_player.room", "supported_features", "819204");
+    press(ui.play_btn);
+    runtime.loop();
+    assert(ui.shuffle_btn && ui.repeat_btn);
+    press(ui.shuffle_btn);
+    assert(last_action == "shuffle" && last_value == 1);
+    press(ui.repeat_btn);
+    assert(last_action == "repeat");
+    // A separate Power tab remains usable after the main player goes offline.
+    t.send("media_player.room", "", "unavailable");
+    runtime.loop();
+    assert(ui.active && ui.tab == MediaControlTab::POWER && ui.visible_tabs.count == 1);
+    press(ui.power_btn);
+    assert(last_action == "homeassistant.turn_off" && last_entity == "switch.power");
+    t.send("switch.power", "", "unavailable");
+    runtime.loop();
+    assert(!ui.active);
+    values();
+    open();
+    // Volume target calculation consumes current state even before the next loop.
+    press(ui.volume_tab);
+    t.send("media_player.room", "volume_level", ".35");
+    press(ui.volume_plus_btn);
+    assert(last_value == 36 && ui.active->current_pct == 36 && previews == 1 &&
+           preview_token.opening == runtime.token().opening);
+    t.send("media_player.room", "volume_level", ".1");
+    runtime.loop();
+    assert(ui.active->current_pct == 36);
+    test_now += 1501;
+    runtime.loop();
+    assert(ui.active->current_pct == 10);
+    t.send("media_player.room", "supported_features", "1024");
+    t.send("media_player.room", "volume_level", ".85");
+    auto preview = previews;
+    press(ui.volume_minus_btn);
+    assert(ui.active->current_pct == 85 && previews == preview && last_value == 85);
+    t.send("media_player.room", "supported_features", "0");
+    sent = sends;
+    press(ui.volume_plus_btn);
+    assert(sends == sent);
+    values();
+    runtime.loop();
+    // Delayed seek reports retain the target until the actual player acknowledges.
+    if (ui.progress_tab) {
+      press(ui.progress_tab);
+      auto* slider = ui.progress_slider;
+      lv_obj_send_event(slider, LV_EVENT_PRESSED, nullptr);
+      lv_slider_set_value(slider, 70, LV_ANIM_OFF);
+      lv_obj_send_event(slider, LV_EVENT_VALUE_CHANGED, nullptr);
+      lv_obj_send_event(slider, LV_EVENT_RELEASED, nullptr);
+      assert(last_action == "seek" && last_value == 70 && ui.active->seek_pending);
+      runtime.loop();
+      assert(ui.active->position_seconds == 84);
+      t.send("media_player.room", "media_position", "84");
+      runtime.loop();
+      assert(!ui.active->seek_pending);
+    }
+    // Fresh discovery values are copied without repainting the pressed row.
+    t.send("media_player.room", "group_members", "['media_player.room','media_player.other']");
+    runtime.loop();
+    press(ui.speakers_tab);
+    auto* fresh_row = media_control_find_speaker_row("media_player.other");
+    t.send("sensor.speaker_group", "data",
+           "v2|[[\"media_player.room\",\"Room\",0.42,true],[\"media_player.other\",\"Other\",0.6,true]]");
+    press(fresh_row->volume_plus_btn);
+    assert(last_entity == "media_player.other" && last_value == 61);
+    t.send("media_player.room", "group_members", "['media_player.room']");
+    sent = sends;
+    press(fresh_row->volume_plus_btn);
+    assert(sends == sent);
+    runtime.loop();
+    // Membership changes between sends stop the rest of a captured group action.
+    t.send("media_player.room", "group_members", "['media_player.room','media_player.other']");
+    values();
+    t.send("media_player.room", "group_members", "['media_player.room','media_player.other']");
+    runtime.loop();
+    press(ui.volume_tab);
+    sent = sends;
+    during_send = [&]() { t.send("media_player.room", "group_members", "['media_player.room']"); };
+    press(ui.volume_plus_btn);
+    during_send = {};
+    assert(sends == sent + 1 && last_entity == "media_player.room");
+    runtime.loop();
+    values();
+    runtime.loop();
+    // Group responses carry their opening identity, including after context reuse.
+    close();
+    arena.capture_record = true;
+    open();
+    auto* old_context = ui.active;
+    press(ui.speakers_tab);
+    assert(ui.speaker_rows.size() == 2);
+    auto* row = media_control_find_speaker_row("media_player.other");
+    assert(row);
+    {
+      espcontrol::ModalCallbackDispatchScope callback;
+      media_control_toggle_speaker(ui.active, row, true);
+    }
+    assert(!group_calls.empty() && last_action == "join");
+    auto old_response = group_calls.back().callback;
+    close();
+    open();
+    auto* new_context = ui.active;
+    assert(new_context == old_context);
+    after_destroy = old_response;
+    sent = sends;
+    old_response({true});
+    assert(ui.active == new_context && sends == sent);
+    press(ui.speakers_tab);
+    row = media_control_find_speaker_row("media_player.other");
+    {
+      espcontrol::ModalCallbackDispatchScope callback;
+      media_control_toggle_speaker(ui.active, row, true);
+    }
+    auto current_response = group_calls.back().callback;
+    auto* responding = ui.active;
+    during_response = [&]() {
+      runtime.dismiss(PageModalClose::TAKEOVER);
+      runtime.loop();
+      assert(runtime.memory().retired_contexts == 1 && ui.active == responding &&
+             row->entity_id == "media_player.other");
+    };
+    current_response({true});
+    during_response = {};
+    runtime.loop();
+    assert(!ui.active);
+    open();
+    // Configuration publication retires the old panel inside a numeric preview.
+    press(ui.volume_tab);
+    auto* retired = ui.active;
+    during_preview = [&]() {
+      assert(media.prepare(next.store) && state.prepare(next.store) && runtime.prepare(next.store));
+      runtime.activate_prepared(next.store);
+      media.activate_prepared(next.store);
+      state.activate_prepared(next.store);
+      std::memset(fixture.storage.data(), 0xA5, fixture.storage.size());
+      runtime.loop();
+      assert(runtime.memory().retired_contexts == 1 && retired->entity_id == "media_player.room" &&
+             !media_control_context_current(retired));
+    };
+    press(ui.volume_plus_btn);
+    during_preview = {};
+    runtime.loop();
+    assert(!ui.active);
+    values();
+    for (int budget : {0, 1}) {
+      arena.remaining = budget;
+      assert(runtime.request_card({18, 0}));
+      runtime.loop();
+      arena.remaining = -1;
+      assert(!ui.active);
+    }
+    styles = false;
+    assert(runtime.request_card({18, 0}));
+    runtime.loop();
+    styles = true;
+    assert(!ui.active);
+    enough_heap = false;
+    assert(runtime.request_card({18, 0}));
+    runtime.loop();
+    enough_heap = true;
+    assert(!ui.active);
+    open(18);
+    auto* button = ui.play_btn;
+    lv_obj_send_event(button, LV_EVENT_PRESSED, nullptr);
+    sent = sends;
+    t.connected = false;
+    coordinator.invalidate_retained_state();
+    lv_obj_send_event(button, LV_EVENT_RELEASED, nullptr);
+    lv_obj_send_event(button, LV_EVENT_CLICKED, nullptr);
+    runtime.loop();
+    assert(!ui.active && sends == sent);
+    t.connected = true;
+    values();
+    // A row budget is checked before any LVGL construction, without truncation.
+    std::string oversized = "v2|[";
+    for (int n = 0; n < 25; ++n) {
+      if (n) oversized += ",";
+      oversized += "[\"media_player.member_" + std::to_string(n) + "\",\"Name, with [brackets]\",0.3,true]";
+    }
+    oversized += "]";
+    t.send("sensor.speaker_group", "data", oversized);
+    const auto admission_calls = lv_allocation_calls;
+    assert(runtime.request_card({18, 0}));
+    runtime.loop();
+    assert(!ui.active && lv_allocation_calls == admission_calls);
+    values();
+    t.send("sensor.speaker_group", "data", std::string(20000, 'x'));
+    const auto exhausted_calls = lv_allocation_calls;
+    assert(runtime.request_card({18, 0}));
+    runtime.loop();
+    assert(!ui.active && lv_allocation_calls == exhausted_calls);
+    values();
+    // A cover panel follows the same shared source route as its original card.
+    assert(media.prepare(cover.store) && state.prepare(cover.store) && runtime.prepare(cover.store));
+    runtime.activate_prepared(cover.store);
+    media.activate_prepared(cover.store);
+    state.activate_prepared(cover.store);
+    values();
+    t.send("media_player.room", "", "playing");
+    t.send("media_player.room", "source", "TV");
+    t.send("media_player.other", "", "playing");
+    t.send("media_player.other", "media_title", "Other title");
+    open(19);
+    assert(ui.active->entity_id == "media_player.other");
+    press(ui.play_btn);
+    assert(last_entity == "media_player.other");
+    t.send("sensor.speaker_group", "data",
+           "v2|[[\"media_player.room\",\"Room\",0.42,true],[\"media_player.other\",\"Other\",0.3,true],["
+           "\"media_player.third\",\"Third\",0.2,true]]");
+    runtime.loop();
+    press(ui.speakers_tab);
+    auto* third = media_control_find_speaker_row("media_player.third");
+    assert(third);
+    {
+      espcontrol::ModalCallbackDispatchScope callback;
+      media_control_toggle_speaker(ui.active, third, true);
+    }
+    auto prior_source_response = group_calls.back().callback;
+    auto* prior_source_tab = ui.controls_tab;
+    t.send("media_player.room", "", "playing");
+    t.send("media_player.room", "source", "Spotify");
+    t.send("media_player.room", "media_content_id", "new");
+    t.send("media_player.room", "media_title", "Main &amp; title");
+    sent = sends;
+    press(prior_source_tab);
+    assert(sends == sent && ui.tab == MediaControlTab::SPEAKERS && third->pending);
+    prior_source_response({true});
+    assert(!media_control_group_contains(ui.active, "media_player.third"));
+    runtime.loop();
+    prior_source_response({true});
+    assert(!media_control_group_contains(ui.active, "media_player.third"));
+    assert(ui.active->entity_id == "media_player.room" && ui.active->title == "Main & title");
+    close();
+    assert(media.prepare(speaker.store) && state.prepare(speaker.store) && runtime.prepare(speaker.store));
+    runtime.activate_prepared(speaker.store);
+    media.activate_prepared(speaker.store);
+    state.activate_prepared(speaker.store);
+    values();
+    open(20);
+    assert(ui.active->group_only && ui.tab == MediaControlTab::SPEAKERS && !ui.tab_row &&
+           ui.speaker_rows.size() == 2);
+    close();
+    group_calls.clear();
+    runtime.retire_active();
+    runtime.loop();
+    state.retire_active();
+    media.retire_active();
+  }
+  after_destroy({true});
+  coordinator.reclaim_unused_channels();
+  assert(arena.live.empty() && coordinator.transport().bindings.empty());
+}
+void test_numeric_inputs() {
+  auto legacy = media_group_parse_discovery_items("room|Room|1e38");
+  assert(legacy.size() == 1 && legacy[0].volume_pct == 100);
+  auto unknown = media_group_parse_discovery_items("room|Room|nan");
+  assert(unknown.size() == 1 && !unknown[0].volume_known);
+  auto v2 = media_group_parse_discovery_items("v2|[[\"media_player.room\",\"Room\",1e38,true]]");
+  assert(v2.size() == 1 && v2[0].volume_pct == 100);
+  char time[32];
+  media_format_time(1e38f, time, sizeof(time));
+  assert(std::strcmp(time, "--:--") == 0);
+}
+int main() {
+  test_numeric_inputs();
+  lv_init();
+  auto* display = lv_display_create(480, 480);
+  lv_timer_pause(lv_display_get_refr_timer(display));
+  test_panels();
+  lv_display_delete(display);
+  lv_deinit();
+  assert(lv_live_bytes == 0);
+}

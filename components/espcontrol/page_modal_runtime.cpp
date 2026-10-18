@@ -71,11 +71,11 @@ bool PageModalRuntime::display_takeover(bool preserve_policy_active) {
   retire_context(PageModalClose::TAKEOVER);return false;
 }
 void PageModalRuntime::collect_retired() {
-  if(!retired_||!port_.ready())return;
+  if(!retired_||modal_callback_dispatching()||!port_.ready())return;
   Guard guard(changing_);void *context=retired_;retired_=nullptr;port_.destroy(context);
 }
 void PageModalRuntime::loop() {
-  if(changing_||!port_.ready())return;
+  if(changing_||modal_callback_dispatching()||!port_.ready())return;
   Guard guard(changing_);collect_retired();
   if(context_&&(!port_.connected()||connection_!=port_.connection_generation()))retire_context(PageModalClose::DISCONNECTED);
   if(context_&&!port_.visible(context_))retire_context(PageModalClose::USER);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace espcontrol {
 // Optional observer shared by demand-created legacy modal adapters. Keep it
 // outside card contexts: the unselected renderer gains no per-card fields.
@@ -12,6 +14,10 @@ template<typename Context> struct ModalContextLifetime {
   void (*closed)(void *,Context *){nullptr};
   bool (*widgets)(void *,void *){nullptr};
   void (*numeric_action)(void *,const Context *,float){nullptr};
+  uint64_t (*identity)(void *,const Context *){nullptr};
+  uint64_t context_identity(const Context *ctx) const {
+    return ctx&&owner&&identity?identity(owner,ctx):0;
+  }
   bool managed_context(const Context *ctx) const {return owner&&managed&&managed(owner,ctx);}
   bool current_context(const Context *ctx) const {return ctx&&(!owner||(current&&current(owner,ctx)));}
   bool action_allowed(const Context *ctx) const {return ctx&&(!owner||(action&&action(owner,ctx)));}

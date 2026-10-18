@@ -13,6 +13,8 @@ group = (root / "components/espcontrol/button_grid_media_group.h").read_text()
 source = r'''
 #include <algorithm>
 #include <cassert>
+#include "media_control_modal_lifetime.h"
+#include "media_control_tabs.h"
 #include <cstdint>
 #include <cmath>
 #include <cstring>
@@ -132,6 +134,7 @@ struct MediaControlModalUi {
 };
 MediaControlModalUi ui;
 MediaControlModalUi &media_control_modal_ui() { return ui; }
+espcontrol::media::ControlTabs media_control_visible_tabs(MediaControlCtx*) {return espcontrol::media::parse_control_tabs("speakers");}
 int media_control_volume_max_pct(MediaControlCtx *ctx) { return ctx->max_pct; }
 struct Command { std::string entity; int volume; };
 std::vector<Command> commands;
@@ -166,6 +169,7 @@ for text, name in (
     (media, "media_control_set_speaker_status"),
     (media, "media_control_current_group_volumes"),
     (media, "media_control_refresh_group_member_volumes"),
+    (media, "media_control_copy_current_speaker_state"),
     (media, "media_control_refresh_speakers"),
     (media, "media_control_apply_group_volume_percent"),
     (media, "media_control_speaker_action_timer_cb"),
