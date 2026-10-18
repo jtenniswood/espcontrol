@@ -9,9 +9,11 @@
 
 #include "../artwork_image/image_pipeline_policy.h"
 #include "bounded_display_text.h"
+#include "button_grid_order_parser.h"
 #include "button_grid_slider_contrast.h"
 #include "button_grid_slider_geometry.h"
 #include "button_grid_string.h"
+#include "calendar_card_text.h"
 #include "cover_art.h"
 #include "display_color.h"
 #include "light_temperature_color.h"
@@ -105,7 +107,8 @@ class PageBasicLvglPort final:public PageRendererPort {
                     PagePercentSliderRuntime* percent_slider = nullptr,
                     PageNumberSliderRuntime* number_slider = nullptr,
                     PageLightTemperatureRuntime* temperature = nullptr, PageTimerRuntime* timer = nullptr,
-                    PageCoverToggleRuntime* cover_toggle = nullptr, PageAccessStateRuntime* access = nullptr)
+                    PageCoverToggleRuntime* cover_toggle = nullptr, PageAccessStateRuntime* access = nullptr,
+                    PageCalendarRuntime* calendar = nullptr)
       : allocator_(allocator),
         state_(state),
         widgets_(widgets),
@@ -123,7 +126,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         temperature_(temperature),
         timer_(timer),
         cover_toggle_(cover_toggle),
-        access_(access) {
+        access_(access),
+        calendar_(calendar) {
     for(size_t i=0;i<Slots;++i){shells_[i].port=this;shells_[i].index=i;}
   }
   ~PageBasicLvglPort()override {
@@ -319,6 +323,15 @@ class PageBasicLvglPort final:public PageRendererPort {
         BasicCardDefinition view;
         if (!prepare_basic_card(store, card, view, &strings, relay_)) return false;
         if (view.kind == BasicCardKind::COVER_COMMAND && !actions_.cover_command) return false;
+        if (view.kind == BasicCardKind::CALENDAR) {
+          if (!calendar_) return false;
+          label_capacity = std::max<size_t>(label_capacity, 32);
+          for (int month = 1; month <= 12; ++month) {
+            const auto* key = calendar_month_key(month);
+            const auto* caption = theme_.translate ? theme_.translate(key) : nullptr;
+            label_capacity = std::max(label_capacity, std::strlen(caption ? caption : key) + 1);
+          }
+        }
         if (view.kind == BasicCardKind::CLEANING) {
           if (view.cleaning.mode != cleaning::Mode::STATUS && !actions_.cleaning) return false;
           has_cleaning |=
@@ -536,7 +549,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         }
         const auto &d=view.definition;
         // Metadata titles reuse the icon label but never display a glyph.
-        if (d.kind == BasicCardKind::TIMER || d.kind == BasicCardKind::MEDIA_NOW_PLAYING ||
+        if (d.kind == BasicCardKind::CALENDAR || d.kind == BasicCardKind::TIMER ||
+            d.kind == BasicCardKind::MEDIA_NOW_PLAYING ||
             (d.kind == BasicCardKind::MEDIA_CONTROL && d.media.volume_number)) {
           view.off = view.on = "";
           continue;
@@ -724,7 +738,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       value = read_basic_card(definition, {token.configuration, token.card}, state_,
                               s.cell.column_span > 1 ? 2 : 1, theme_.temperature_unit, theme_.translate,
                               media_, local_, relay_, fan_status_, percent_slider_, number_slider_,
-                              temperature_, timer_, cover_toggle_, access_);
+                              temperature_, timer_, cover_toggle_, access_, calendar_);
       if(group_card(s))group_feedback(s,value);
       if (timer_card(s)) timer_feedback(s, value);
       if(definition.folder_mode==BasicFolderMode::CHILDREN) {
@@ -749,7 +763,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       if(definition.kind==BasicCardKind::FOLDER&&definition.folder_mode==BasicFolderMode::NUMBER&&value.label.empty())value.label=theme_.folder_label;
       if(definition.kind==BasicCardKind::EMPTY&&value.label.empty())value.label=theme_.empty_label;
       checked=value.on&&(definition.kind==BasicCardKind::TOGGLE||definition.active_color);
-      number = definition.kind == BasicCardKind::TIMER ||
+      number = definition.kind == BasicCardKind::CALENDAR || definition.kind == BasicCardKind::TIMER ||
                (definition.kind == BasicCardKind::NUMBER_SLIDER && value.numeric) ||
                (definition.kind == BasicCardKind::CLIMATE &&
                 definition.climate.number != ClimateCardNumber::ICON) ||
@@ -845,7 +859,10 @@ class PageBasicLvglPort final:public PageRendererPort {
     const auto font = option ? (theme_.option_select_font ? theme_.option_select_font
                                 : theme_.media_title_font ? theme_.media_title_font
                                                           : s.label_layout.font)
-                      : definition.large_numbers && s.cell.column_span > 1 && s.cell.row_span > 1 &&
+                      : definition.large_numbers &&
+                              (definition.kind == BasicCardKind::CALENDAR
+                                   ? card_span_is_large(s.cell.row_span, s.cell.column_span)
+                                   : s.cell.column_span > 1 && s.cell.row_span > 1) &&
                               theme_.large_sensor_font
                           ? theme_.large_sensor_font
                       : theme_.sensor_font ? theme_.sensor_font
@@ -860,8 +877,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         : (definition.kind == BasicCardKind::LOCAL_NUMBER || definition.kind == BasicCardKind::LOCAL_TEXT ||
            definition.kind == BasicCardKind::OPTION_SELECT || definition.kind == BasicCardKind::NUMBER ||
            definition.kind == BasicCardKind::TEXT || definition.kind == BasicCardKind::DURATION ||
-           definition.kind == BasicCardKind::STATUS || definition.kind == BasicCardKind::WEATHER ||
-           definition.kind == BasicCardKind::FORECAST)
+           definition.kind == BasicCardKind::CALENDAR || definition.kind == BasicCardKind::STATUS ||
+           definition.kind == BasicCardKind::WEATHER || definition.kind == BasicCardKind::FORECAST)
             ? theme_.sensor_surface
             : theme_.surface;
     if(checked)background=definition.custom_on?correct(definition.on_color):definition.custom_off&&!definition.theme_active?correct(active_card_color(definition.off_color)):theme_.active;
@@ -912,6 +929,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (timer_) seen_timer_ = timer_->revision();
     if (cover_toggle_) seen_cover_toggle_ = cover_toggle_->revision();
     if (access_) seen_access_ = access_->revision();
+    if (calendar_) seen_calendar_ = calendar_->revision();
     seen_state_ = state_.revision();
     if (local_) seen_local_ = local_->revision();
     if (relay_) seen_relay_ = relay_->revision();
@@ -985,7 +1003,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         if (shell.pending_target >= 0 && !timer_card(shell) && !group_card(shell) &&
             static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= pending_timeout(shell))
           return true;
-    return (access_ && access_->revision() != seen_access_) ||
+    return (calendar_ && calendar_->revision() != seen_calendar_) ||
+           (access_ && access_->revision() != seen_access_) ||
            (cover_toggle_ && cover_toggle_->revision() != seen_cover_toggle_) ||
            (timer_ && timer_->revision() != seen_timer_) ||
            (temperature_ && temperature_->revision() != seen_temperature_) ||
@@ -2172,12 +2191,13 @@ class PageBasicLvglPort final:public PageRendererPort {
   PageTimerRuntime* timer_{nullptr};
   PageCoverToggleRuntime* cover_toggle_{nullptr};
   PageAccessStateRuntime* access_{nullptr};
+  PageCalendarRuntime* calendar_{nullptr};
   std::array<Shell, Slots> shells_{};
   Arena active_, staged_;
   PageStore store_;
   bool initialized_{false}, media_layout_dirty_{false}, media_finishing_{false};
   size_t callbacks_{0};
-  uint64_t seen_access_{0}, seen_cover_toggle_{0}, seen_timer_{0}, seen_temperature_{0},
+  uint64_t seen_calendar_{0}, seen_access_{0}, seen_cover_toggle_{0}, seen_timer_{0}, seen_temperature_{0},
       seen_number_slider_{0}, seen_percent_slider_{0}, seen_fan_status_{0}, seen_relay_{0}, seen_local_{0},
       seen_state_{0}, seen_theme_{0}, seen_forecast_{0}, seen_media_{0}, seen_artwork_{0};
   PageBasicMemory memory_;

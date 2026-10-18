@@ -3,6 +3,7 @@
 #include "cleaning_card_policy.h"
 #include "cover_command_policy.h"
 #include "page_access_state_runtime.h"
+#include "page_calendar_runtime.h"
 #include "page_climate_card.h"
 #include "page_cover_toggle_runtime.h"
 #include "page_entity_state_runtime.h"
@@ -56,7 +57,8 @@ enum class BasicCardKind : uint8_t {
   COVER_COMMAND,
   COVER_TOGGLE,
   ACCESS,
-  CLEANING
+  CLEANING,
+  CALENDAR
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode : uint8_t { NONE, ENTITY, CLIMATE, MOWER, TIMER, CHILDREN, NUMBER, TEXT };
@@ -75,6 +77,7 @@ struct BasicCardDefinition {
     PagePercentSliderKind percent_slider;
     BasicAccessOptions access;
     cleaning::Options cleaning;
+    bool calendar_time;
   };
   BasicActionDisplay action_display{BasicActionDisplay::NONE};
   std::string_view entity,sensor,label,unit,icon,icon_on;
@@ -157,5 +160,6 @@ BasicCardState read_basic_card(
     PageLocalRelayRuntime* relay = nullptr, PageFanStatusRuntime* fan_status = nullptr,
     PagePercentSliderRuntime* percent_slider = nullptr, PageNumberSliderRuntime* number_slider = nullptr,
     PageLightTemperatureRuntime* temperature = nullptr, PageTimerRuntime* timer = nullptr,
-    PageCoverToggleRuntime* cover_toggle = nullptr, PageAccessStateRuntime* access = nullptr);
+    PageCoverToggleRuntime* cover_toggle = nullptr, PageAccessStateRuntime* access = nullptr,
+    PageCalendarRuntime* calendar = nullptr);
 }  // namespace espcontrol::pages
