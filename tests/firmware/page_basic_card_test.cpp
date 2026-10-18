@@ -249,6 +249,35 @@ void status_actions_profile(const DeviceUiLimits &limits) {
   assert(!prepare_basic_card(confirmation.store,0,definition,&strings));
 }
 
+void indicator_eligibility(const DeviceUiLimits& limits) {
+  struct Case {
+    const char* entity;
+    const char* type;
+    const char* mode;
+    bool eligible;
+  };
+  for (const auto& item : {Case{"light.room", "light_control", "", true},
+                           {"cover.room", "cover", "modal", true},
+                           {"cover.room", "cover", "legacy_fallback", true},
+                           {"cover.room", "cover", "", true},
+                           {"cover.room", "cover", "tilt", true},
+                           {"cover.room", "cover", "open", false},
+                           {"cover.room", "cover", "toggle", false},
+                           {"timer.room", "timer", "confirm", true},
+                           {"sensor.invalid", "timer", "confirm", false},
+                           {"", "timer", "confirm", false},
+                           {"climate.room", "climate", "", false},
+                           {"climate.room", "climate_control", "", false},
+                           {"select.room", "option_select", "", false},
+                           {"script.room", "action", "script.turn_on", false},
+                           {"light.room", "light_temperature", "", true},
+                           {"number.room", "slider", "", true},
+                           {"media_player.room", "media", "now_playing", true}}) {
+    Fixture fixture(limits, std::string(item.entity) + ";;Auto;Auto;" + item.mode + ";;" + item.type + ";;");
+    const auto expected = item.eligible ? std::string_view(item.entity) : std::string_view{};
+    assert(basic_folder_child_indicator(fixture.store, 0) == expected);
+  }
+}
 void control_profile(const DeviceUiLimits &limits) {
   PageCardDependencies source;Arena arena;Subscriptions transport;PageEntityStateRuntime state(source,arena,transport,{32,32,2048});BasicCardDefinition definition;
   Fixture light(limits,"light.room;;Auto;Auto;;;light_control;0;");assert(prepare_basic_card(light.store,0,definition));assert(definition.kind==BasicCardKind::LIGHT&&definition.icon=="Lightbulb Outline"&&definition.icon_on=="Lightbulb");assert(state.prepare(light.store));state.activate_prepared(light.store);transport.send("light.room","","on");transport.send("light.room","friendly_name","Room lamp");auto value=read_basic_card(definition,{17,0},state);assert(value.on&&value.label=="Room lamp");transport.send("light.room","","unavailable");assert(!read_basic_card(definition,{17,0},state).on);
@@ -1286,6 +1315,7 @@ int main() {
     climate_profile(limits);
     status_actions_profile(limits);
     control_profile(limits);
+    indicator_eligibility(limits);
     local_relay_profile(limits);
     local_sensor_profile(limits);
     option_select_profile(limits);

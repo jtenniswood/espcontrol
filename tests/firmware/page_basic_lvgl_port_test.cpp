@@ -693,7 +693,35 @@ template<size_t Slots>void control_profile(const DeviceUiLimits &limits) {
   }
   {auto incomplete=widgets;incomplete[0].fill=nullptr;PageBasicLvglPort<Slots>missing(arena,state,incomplete,{limits.slot_count,limits.grid_columns},theme,actions.callbacks());assert(missing.initialize());assert(!missing.prepare(fixture.store,Slots));}
   {PageLabelRefresh cache(arena);PageBasicLvglPort<Slots>port(arena,state,widgets,{limits.slot_count,limits.grid_columns},theme,actions.callbacks());assert(port.initialize());std::array<lv_obj_t *,Slots*4>labels{};size_t index=0;for(const auto &w:widgets)for(auto *label:{w.icon,w.label,w.value,w.unit})labels[index++]=label;assert(cache.initialize(labels.data(),labels.size()));PageRendererRuntime<Slots>renderer(limits,arena,port);actions.renderer=&renderer;assert(renderer.prepare(fixture.store)&&state.prepare(fixture.store));renderer.activate_prepared(fixture.store);state.activate_prepared(fixture.store);
-    subscriptions.send("fan.room","","on");subscriptions.send("fan.room","friendly_name","Room Fan");subscriptions.send("light.room","","on");subscriptions.send("cover.room","","open");subscriptions.send("cover.room","current_position","25");renderer.update_visible();lv_obj_update_layout(page);lv_refr_now(lv_display_get_default());
+    subscriptions.send("fan.room", "", "on");
+    subscriptions.send("fan.room", "friendly_name", "Room Fan");
+    subscriptions.send("fan.room", "", "off");
+    subscriptions.send("light.room", "", "off");
+    subscriptions.send("cover.room", "", "closed");
+    renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));
+    subscriptions.send("light.room", "", "on");
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));
+    subscriptions.send("light.room", "", "off");
+    renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));
+    subscriptions.send("cover.room", "", "open");
+    renderer.update_visible();
+    assert(lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));
+    subscriptions.send("cover.room", "", "closed");
+    renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));
+    subscriptions.send("cover.room", "", "unavailable");
+    renderer.update_visible();
+    assert(!lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED));
+    subscriptions.send("fan.room", "", "on");
+    subscriptions.send("light.room", "", "on");
+    subscriptions.send("cover.room", "", "open");
+    subscriptions.send("cover.room", "current_position", "25");
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    lv_refr_now(lv_display_get_default());
     assert(!lv_obj_has_state(widgets[1].button,LV_STATE_CHECKED));assert(lv_obj_has_state(widgets[2].button,LV_STATE_CHECKED));assert(!lv_obj_has_flag(widgets[1].fill,LV_OBJ_FLAG_HIDDEN));assert(lv_obj_get_height(widgets[1].fill)==lv_obj_get_height(widgets[1].button)*75/100);assert(!lv_obj_has_flag(widgets[1].fill,LV_OBJ_FLAG_CLICKABLE));
     lv_obj_set_size(page,600,320);lv_obj_update_layout(page);assert(lv_obj_get_width(widgets[1].fill)==lv_obj_get_width(widgets[1].button)&&lv_obj_get_height(widgets[1].fill)==lv_obj_get_height(widgets[1].button)*75/100);assert(lv_obj_get_y(widgets[1].fill)+lv_obj_get_style_pad_top(widgets[1].button,LV_PART_MAIN)==0);lv_obj_set_size(page,480,480);lv_obj_update_layout(page);
     assert(lv_obj_has_state(widgets[3].button,LV_STATE_CHECKED));
@@ -3618,6 +3646,25 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "folder_indicators") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          control_profile<6>(limits);
+          break;
+        case 9:
+          control_profile<9>(limits);
+          break;
+        case 15:
+          control_profile<15>(limits);
+          break;
+        case 20:
+          control_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "timers") == 0) {
       switch (limits.slot_count) {
         case 6:

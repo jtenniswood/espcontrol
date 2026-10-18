@@ -333,10 +333,22 @@ std::string_view basic_folder_child_indicator(const PageStore &store,CardId id) 
   if (PagePercentSliderRuntime::classify(store, id) != PagePercentSliderKind::NONE ||
       PageNumberSliderRuntime::supported(store,id))
     return store.field(*card, CardField::ENTITY);
+  if (type == "timer")
+    return PageTimerRuntime::supported(store, id) ? store.field(*card, CardField::ENTITY)
+                                                  : std::string_view{};
+  if (type == "cover") {
+    const auto mode = store.field(*card, CardField::SENSOR);
+    // The empty/tilt variants were classified above. Toggle and explicit
+    // command variants have not been ported; the remaining modes use the modal.
+    if (mode.empty() || mode == "tilt" || mode == "toggle" || mode == "open" || mode == "close" ||
+        mode == "stop" || mode == "set_position")
+      return {};
+    return store.field(*card, CardField::ENTITY);
+  }
   if (type == "internal")
     return PageLocalRelayRuntime::toggle(store, *card) ? store.field(*card, CardField::ENTITY)
                                                        : std::string_view{};
-  return type.empty() || type == "light_switch" || type == "light_temperature" || type == "timer" ||
+  return type.empty() || type == "light_switch" || type == "light_temperature" || type == "light_control" ||
                  type == "media" || type == "fan_control" || type == "fan_direction" ||
                  type == "fan_preset" || type == "fan_switch" || type == "fan_oscillate"
              ? store.field(*card, CardField::ENTITY)
