@@ -1,5 +1,7 @@
 #pragma once
 
+#include "light_cover_modal_lifetime.h"
+
 #include "button_grid_slider_geometry.h"
 #include "button_grid_slider_contrast.h"
 #include "clock_bar.h"
@@ -296,11 +298,6 @@ struct LightControlVisibleTabs {
   }
 };
 
-struct LightColorPresetClick {
-  uint32_t color = 0;
-  int kelvin_pct = -1;
-};
-
 struct LightColorPreset {
   uint32_t color;
   int kelvin_pct = -1;
@@ -431,7 +428,7 @@ inline const char *light_control_icon_on(const ParsedCfg &p) {
 }
 
 inline void light_control_apply_card_visual(LightControlCtx *ctx) {
-  if (!ctx || !ctx->btn) return;
+  if (!light_modal_context_current(ctx) || !ctx->btn) return;
   set_card_checked_state(ctx->btn, ctx->on);
   if (ctx->icon_lbl) {
     const char *glyph = ctx->on && ctx->icon_on_glyph ? ctx->icon_on_glyph : ctx->icon_off_glyph;
@@ -449,7 +446,7 @@ inline int light_control_display_pct(LightControlCtx *ctx) {
 
 inline void light_control_set_modal_value(LightControlCtx *ctx, int pct) {
   LightControlModalUi &ui = light_control_modal_ui();
-  if (!ctx || ui.active != ctx) return;
+  if (!light_modal_context_current(ctx) || ui.active != ctx) return;
   if (ctx->dragging_slider) return;
   pct = slider_clamp_pct(pct);
   if (ui.slider) {
@@ -464,7 +461,7 @@ inline void light_control_set_modal_value(LightControlCtx *ctx, int pct) {
 
 inline void light_control_apply_modal_power(LightControlCtx *ctx) {
   LightControlModalUi &ui = light_control_modal_ui();
-  if (!ctx || ui.active != ctx) return;
+  if (!light_modal_context_current(ctx) || ui.active != ctx) return;
   lv_obj_t *on_label = ui.power_on_btn ? lv_obj_get_child(ui.power_on_btn, 0) : nullptr;
   lv_obj_t *off_label = ui.power_off_btn ? lv_obj_get_child(ui.power_off_btn, 0) : nullptr;
   if (ui.power_on_btn) {
@@ -523,7 +520,7 @@ inline int light_control_pct_to_kelvin(LightControlCtx *ctx, int pct) {
 
 inline void light_control_set_temp_modal_value(LightControlCtx *ctx, int kelvin) {
   LightControlModalUi &ui = light_control_modal_ui();
-  if (!ctx || ui.active != ctx) return;
+  if (!light_modal_context_current(ctx) || ui.active != ctx) return;
   if (ctx->dragging_temp_slider) return;
   if (kelvin < ctx->kelvin_min) kelvin = ctx->kelvin_min;
   if (kelvin > ctx->kelvin_max) kelvin = ctx->kelvin_max;
@@ -640,6 +637,7 @@ inline lv_obj_t *light_control_create_tab_button(lv_obj_t *parent, const char *i
     LightControlTab tab = static_cast<LightControlTab>(
       reinterpret_cast<uintptr_t>(lv_event_get_user_data(e)));
     LightControlModalUi &ui = light_control_modal_ui();
+    if (!light_modal_action_allowed(ui.active)) return;
     ui.tab = tab;
     light_control_apply_tab_visibility();
     light_control_layout_modal(ui.active);
@@ -787,7 +785,7 @@ inline void light_control_style_slider(lv_obj_t *slider, uint32_t accent_color) 
 
 inline void light_control_toggle_modal_power() {
   LightControlModalUi &ui = light_control_modal_ui();
-  if (!ui.active || !ui.active->available) return;
+  if (!light_modal_action_allowed(ui.active) || !ui.active->available) return;
   bool turn_on = !ui.active->on;
   ui.active->on = turn_on;
   light_control_apply_card_visual(ui.active);
@@ -879,7 +877,7 @@ inline lv_coord_t light_control_modal_control_width(const ControlModalLayout &la
 
 inline void light_control_layout_modal(LightControlCtx *ctx) {
   LightControlModalUi &ui = light_control_modal_ui();
-  if (!ctx || !ui.panel) return;
+  if (!light_modal_context_current(ctx) || !ui.panel) return;
   light_control_ensure_visible_tab(ctx);
   LightControlVisibleTabs visible_tabs = light_control_visible_tabs(ctx);
   ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
@@ -969,13 +967,15 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
 
 inline void light_control_hide_modal() {
   LightControlModalUi &ui = light_control_modal_ui();
+  LightControlCtx *closing = ui.active;
   lv_obj_t *overlay = ui.overlay;
   ui = LightControlModalUi();
   control_modal_delete_overlay(ControlModalKind::LIGHT_CONTROL, overlay);
+  light_modal_notify_closed(closing);
 }
 
 inline bool light_control_can_open_modal(LightControlCtx *ctx) {
-  return !(!ctx || !ctx->available);
+  return light_modal_context_current(ctx) && ctx->available;
 }
 
 inline void light_control_open_modal(LightControlCtx *ctx) {
@@ -1026,10 +1026,12 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   ui.slider_handle = light_control_create_slider_handle(ui.slider);
   lv_obj_add_event_cb(ui.slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
+    if (!light_modal_action_allowed(ui.active)) return;
     if (ui.active) ui.active->dragging_slider = true;
   }, LV_EVENT_PRESSED, nullptr);
   lv_obj_add_event_cb(ui.slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
+    if (!light_modal_action_allowed(ui.active)) return;
     if (!ui.active || ui.active->updating_slider) return;
     ui.active->dragging_slider = true;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
@@ -1042,6 +1044,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
+    if (!light_modal_action_allowed(ui.active)) return;
     if (!ui.active) return;
     ui.active->dragging_slider = false;
     if (!ui.active->available) return;
@@ -1055,6 +1058,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   }, LV_EVENT_RELEASED, nullptr);
   lv_obj_add_event_cb(ui.slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
+    if (!light_modal_action_allowed(ui.active)) return;
     if (ui.active) ui.active->dragging_slider = false;
   }, LV_EVENT_PRESS_LOST, nullptr);
 
@@ -1066,10 +1070,12 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   ui.temp_slider_handle = light_control_create_slider_handle(ui.temp_slider);
   lv_obj_add_event_cb(ui.temp_slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
+    if (!light_modal_action_allowed(ui.active)) return;
     if (ui.active) ui.active->dragging_temp_slider = true;
   }, LV_EVENT_PRESSED, nullptr);
   lv_obj_add_event_cb(ui.temp_slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
+    if (!light_modal_action_allowed(ui.active)) return;
     if (!ui.active || ui.active->updating_temp_slider) return;
     ui.active->dragging_temp_slider = true;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
@@ -1086,6 +1092,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.temp_slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
+    if (!light_modal_action_allowed(ui.active)) return;
     if (!ui.active) return;
     ui.active->dragging_temp_slider = false;
     if (!ui.active->available) return;
@@ -1102,6 +1109,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   }, LV_EVENT_RELEASED, nullptr);
   lv_obj_add_event_cb(ui.temp_slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
+    if (!light_modal_action_allowed(ui.active)) return;
     if (ui.active) ui.active->dragging_temp_slider = false;
   }, LV_EVENT_PRESS_LOST, nullptr);
 
@@ -1112,6 +1120,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   lv_obj_set_style_pad_all(ui.color_grid, 0, LV_PART_MAIN);
   lv_obj_clear_flag(ui.color_grid, LV_OBJ_FLAG_SCROLLABLE);
   light_control_rebuild_color_grid(ctx);
+  if (ui.active != ctx || !ui.overlay) return;
 
   light_control_layout_modal(ctx);
   light_control_set_modal_value(ctx, light_control_display_pct(ctx));
@@ -1119,11 +1128,12 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   light_control_apply_modal_power(ctx);
   light_control_apply_tab_visibility();
   lv_obj_move_foreground(ui.overlay);
+  if (!light_modal_widgets_ready(ui.overlay)) light_control_hide_modal();
 }
 
 inline void light_control_rebuild_color_grid(LightControlCtx *ctx) {
   LightControlModalUi &ui = light_control_modal_ui();
-  if (!ctx || ui.active != ctx || !ui.color_grid) return;
+  if (!light_modal_context_current(ctx) || ui.active != ctx || !ui.color_grid) return;
   lv_obj_clean(ui.color_grid);
 
   static constexpr LightColorPreset RGB_PRESETS[16] = {
@@ -1152,13 +1162,11 @@ inline void light_control_rebuild_color_grid(LightControlCtx *ctx) {
     lv_obj_set_style_shadow_width(swatch, 0, LV_PART_MAIN);
     control_modal_apply_pressed_fill(swatch);
     lv_obj_clear_flag(swatch, LV_OBJ_FLAG_SCROLLABLE);
-    LightColorPresetClick *click = new LightColorPresetClick();
-    click->color = presets[i].color;
-    click->kelvin_pct = presets[i].kelvin_pct;
+    const LightColorPreset *click = presets + i;
     lv_obj_add_event_cb(swatch, [](lv_event_t *e) {
-      LightColorPresetClick *click = static_cast<LightColorPresetClick *>(lv_event_get_user_data(e));
+      const LightColorPreset *click = static_cast<const LightColorPreset *>(lv_event_get_user_data(e));
       LightControlModalUi &ui = light_control_modal_ui();
-      if (!click || !ui.active || !ui.active->available) return;
+      if (!click || !light_modal_action_allowed(ui.active) || !ui.active->available) return;
       if (click->kelvin_pct >= 0) {
         int pct = slider_clamp_pct(click->kelvin_pct);
         ui.active->current_kelvin = light_control_pct_to_kelvin(ui.active, pct);
@@ -1167,9 +1175,10 @@ inline void light_control_rebuild_color_grid(LightControlCtx *ctx) {
       } else {
         send_light_rgb_action(ui.active->entity_id, click->color);
       }
-    }, LV_EVENT_CLICKED, click);
+    }, LV_EVENT_CLICKED, const_cast<LightColorPreset *>(click));
   }
   light_control_layout_modal(ctx);
+  if (!light_modal_widgets_ready(ui.overlay)) light_control_hide_modal();
 }
 
 inline void setup_light_control_card(BtnSlot &s, const ParsedCfg &p) {
@@ -1185,8 +1194,9 @@ inline LightControlCtx *create_light_control_context(
     const lv_font_t *number_font,
     const lv_font_t *label_font,
     const lv_font_t *icon_font,
-    int width_compensation_percent) {
-  LightControlCtx *ctx = new LightControlCtx();
+    int width_compensation_percent,
+    LightControlCtx *storage = nullptr) {
+  LightControlCtx *ctx = storage ? storage : new LightControlCtx();
   ctx->entity_id = p.entity;
   ctx->label = p.label;
   ctx->options = p.options;
@@ -1200,7 +1210,7 @@ inline LightControlCtx *create_light_control_context(
   ctx->number_font = number_font;
   ctx->icon_font = icon_font;
   ctx->width_compensation_percent = width_compensation_percent;
-  lv_obj_set_user_data(s.btn, ctx);
+  if (s.btn) lv_obj_set_user_data(s.btn, ctx);
   return ctx;
 }
 
@@ -1210,6 +1220,7 @@ inline void subscribe_light_control_state(LightControlCtx *ctx) {
     ctx->entity_id,
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef state) {
+        if (!light_modal_context_current(ctx)) return;
         ctx->available = !ha_state_unavailable_ref(state);
         ctx->on = is_entity_on_ref(state);
         light_control_apply_card_visual(ctx);
@@ -1221,6 +1232,7 @@ inline void subscribe_light_control_state(LightControlCtx *ctx) {
     ctx->entity_id, std::string("brightness"),
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef value) {
+        if (!light_modal_context_current(ctx)) return;
         int pct = 0;
         if (!slider_parse_light_brightness_pct(value, pct)) return;
         ctx->current_pct = pct;
@@ -1231,6 +1243,7 @@ inline void subscribe_light_control_state(LightControlCtx *ctx) {
     ctx->entity_id, std::string("color_temp_kelvin"),
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef value) {
+        if (!light_modal_context_current(ctx)) return;
         std::string s = string_ref_limited(value, 16);
         if (s.empty()) return;
         int kelvin = atoi(s.c_str());
@@ -1251,6 +1264,7 @@ inline void subscribe_light_control_state(LightControlCtx *ctx) {
     ctx->entity_id, std::string("supported_color_modes"),
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef value) {
+        if (!light_modal_context_current(ctx)) return;
         std::string modes = string_ref_limited(value, HA_STATE_TEXT_MAX_LEN);
         for (char &c : modes) c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
         if (modes.empty() || modes == "unknown" || modes == "unavailable") return;
@@ -1274,6 +1288,7 @@ inline void subscribe_light_control_state(LightControlCtx *ctx) {
     ctx->entity_id, std::string("friendly_name"),
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef value) {
+        if (!light_modal_context_current(ctx)) return;
         ctx->friendly_name = string_ref_limited(value, HA_STATE_TEXT_MAX_LEN);
         light_control_apply_card_visual(ctx);
       })
@@ -1507,6 +1522,7 @@ inline bool slider_apply_vertical_pointer_value(lv_obj_t *slider) {
 
 // Create an invisible LVGL slider with a colored fill overlay inside a button
 inline lv_obj_t *setup_slider_widget(lv_obj_t *btn, uint32_t on_color, bool horizontal) {
+  (void) horizontal;  // Orientation is applied by slider_fit_to_button.
   if (!btn) return nullptr;
   lv_obj_set_style_pad_all(btn, 0,
     static_cast<lv_style_selector_t>(LV_PART_MAIN));
@@ -1789,7 +1805,7 @@ inline std::string cover_control_title(CoverControlCtx *ctx) {
 
 inline void cover_control_update_card_slider(CoverControlCtx *ctx,
                                              const std::string &state_text = "") {
-  if (!ctx || !ctx->card_slider) return;
+  if (!cover_modal_context_current(ctx) || !ctx->card_slider) return;
   SliderCtx *sctx = (SliderCtx *)lv_obj_get_user_data(ctx->card_slider);
   if (!sctx) return;
   int position = 100;
@@ -1804,7 +1820,7 @@ inline void cover_control_update_card_slider(CoverControlCtx *ctx,
 
 inline void cover_control_apply_card_visual(CoverControlCtx *ctx,
                                             const std::string &state_text = "") {
-  if (!ctx || !ctx->btn) return;
+  if (!cover_modal_context_current(ctx) || !ctx->btn) return;
   cover_control_update_card_slider(ctx, state_text);
   // All Controls covers show position through the proportional closed-amount
   // fill bar (docs/card-types/covers.md), not a full-tile highlight. Keep the
@@ -1938,6 +1954,7 @@ inline lv_obj_t *cover_control_create_tab_button(lv_obj_t *parent, const char *i
     CoverControlTab tab = static_cast<CoverControlTab>(
       reinterpret_cast<uintptr_t>(lv_event_get_user_data(e)));
     CoverControlModalUi &ui = cover_control_modal_ui();
+    if (!cover_modal_action_allowed(ui.active)) return;
     ui.tab = tab;
     cover_control_apply_tab_visibility();
     cover_control_layout_modal(ui.active);
@@ -2021,8 +2038,10 @@ inline lv_obj_t *cover_control_create_preset_button(lv_obj_t *parent, int pct,
   lv_obj_add_event_cb(btn, [](lv_event_t *e) {
     int pct = static_cast<int>(reinterpret_cast<uintptr_t>(lv_event_get_user_data(e)));
     CoverControlModalUi &ui = cover_control_modal_ui();
+    if (!cover_modal_action_allowed(ui.active)) return;
     if (!ui.active || !ui.active->available || !cover_control_supports_position(ui.active)) return;
-    const bool previous_position_known = ui.active->current_position_known;
+    CoverControlCtx *ctx = ui.active;
+    const bool previous_position_known = ctx->current_position_known;
     const int previous_position = ui.active->current_position;
     ui.active->current_position_known = true;
     ui.active->current_position = slider_clamp_pct(pct);
@@ -2032,7 +2051,8 @@ inline lv_obj_t *cover_control_create_preset_button(lv_obj_t *parent, int pct,
     ui.pending_preset = ui.active->current_position;
     cover_control_set_position_value(ui.active, ui.active->current_position);
     cover_control_apply_card_visual(ui.active);
-    if (!send_slider_action(ui.active->entity_id, ui.active->current_position, false)) {
+    if (!send_slider_action(ctx->entity_id, ctx->current_position, false) &&
+        ui.active == ctx && cover_modal_action_allowed(ctx)) {
       ui.pending_preset = -1;
       ui.active->current_position_known = previous_position_known;
       ui.active->current_position = previous_position;
@@ -2218,7 +2238,7 @@ inline void cover_control_update_position_fill(int position_pct) {
 
 inline void cover_control_layout_modal(CoverControlCtx *ctx) {
   CoverControlModalUi &ui = cover_control_modal_ui();
-  if (!ctx || !ui.panel) return;
+  if (!cover_modal_context_current(ctx) || !ui.panel) return;
   cover_control_ensure_visible_tab(ctx);
   CoverControlVisibleTabs visible_tabs = cover_control_visible_tabs(ctx);
   cover_control_apply_tab_visibility();
@@ -2345,9 +2365,11 @@ inline void cover_control_layout_modal(CoverControlCtx *ctx) {
 
 inline void cover_control_hide_modal() {
   CoverControlModalUi &ui = cover_control_modal_ui();
+  CoverControlCtx *closing = ui.active;
   lv_obj_t *overlay = ui.overlay;
   ui = CoverControlModalUi();
   control_modal_delete_overlay(ControlModalKind::COVER_CONTROL, overlay);
+  cover_modal_notify_closed(closing);
 }
 
 inline void delete_cover_control_context(CoverControlCtx *ctx) {
@@ -2374,7 +2396,7 @@ inline void cover_control_set_slider_value(lv_obj_t *slider, bool &updating,
 // presets. ui.selected_preset carries the choice across updates.
 inline void cover_control_refresh_preset_selection(CoverControlCtx *ctx) {
   CoverControlModalUi &ui = cover_control_modal_ui();
-  if (!ctx || ui.active != ctx || !ui.presets_box) return;
+  if (!cover_modal_context_current(ctx) || ui.active != ctx || !ui.presets_box) return;
   if (!ctx->moving && ui.pending_preset < 0) {
     int selected = -1;
     if (ctx->current_position_known) {
@@ -2409,7 +2431,7 @@ inline void cover_control_refresh_preset_selection(CoverControlCtx *ctx) {
 
 inline void cover_control_set_position_value(CoverControlCtx *ctx, int pct) {
   CoverControlModalUi &ui = cover_control_modal_ui();
-  if (!ctx || ui.active != ctx) return;
+  if (!cover_modal_context_current(ctx) || ui.active != ctx) return;
   if (ctx->dragging_position) return;
   cover_control_set_slider_value(
     ui.position_slider, ctx->updating_position, ctx->dragging_position, pct);
@@ -2419,7 +2441,7 @@ inline void cover_control_set_position_value(CoverControlCtx *ctx, int pct) {
 
 inline void cover_control_set_tilt_value(CoverControlCtx *ctx, int pct) {
   CoverControlModalUi &ui = cover_control_modal_ui();
-  if (!ctx || ui.active != ctx) return;
+  if (!cover_modal_context_current(ctx) || ui.active != ctx) return;
   cover_control_set_slider_value(ui.tilt_slider, ctx->updating_tilt, ctx->dragging_tilt, pct);
   cover_control_update_slider_fill_color(ui.tilt_slider, ctx, pct);
   if (!ctx->dragging_tilt) cover_control_update_slider_handle(ui.tilt_slider, ui.tilt_handle, pct);
@@ -2494,7 +2516,7 @@ inline lv_obj_t *cover_control_create_position_fill(lv_obj_t *slider, uint32_t a
 }
 
 inline bool cover_control_can_open_modal(CoverControlCtx *ctx) {
-  return !(!ctx || !ctx->available);
+  return cover_modal_context_current(ctx) && ctx->available;
 }
 
 inline void cover_control_open_modal(CoverControlCtx *ctx) {
@@ -2543,7 +2565,7 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
     lv_obj_add_event_cb(ui.up_btn, [](lv_event_t *e) {
       (void) e;
       CoverControlModalUi &ui = cover_control_modal_ui();
-      if (ui.active && ui.active->available &&
+      if (cover_modal_action_allowed(ui.active) && ui.active->available &&
           cover_control_command_available(ui.active, "open")) {
         send_cover_command_action(
           ui.active->entity_id, "open",
@@ -2555,7 +2577,7 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
     lv_obj_add_event_cb(ui.stop_btn, [](lv_event_t *e) {
       (void) e;
       CoverControlModalUi &ui = cover_control_modal_ui();
-      if (ui.active && ui.active->available &&
+      if (cover_modal_action_allowed(ui.active) && ui.active->available &&
           cover_control_command_available(ui.active, "stop")) {
         send_cover_command_action(
           ui.active->entity_id, "stop",
@@ -2567,7 +2589,7 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
     lv_obj_add_event_cb(ui.down_btn, [](lv_event_t *e) {
       (void) e;
       CoverControlModalUi &ui = cover_control_modal_ui();
-      if (ui.active && ui.active->available &&
+      if (cover_modal_action_allowed(ui.active) && ui.active->available &&
           cover_control_command_available(ui.active, "close")) {
         send_cover_command_action(
           ui.active->entity_id, "close",
@@ -2596,10 +2618,12 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
   lv_slider_set_value(ui.position_slider, slider_clamp_pct(ctx->current_position), LV_ANIM_OFF);
   lv_obj_add_event_cb(ui.position_slider, [](lv_event_t *e) {
     CoverControlModalUi &ui = cover_control_modal_ui();
+    if (!cover_modal_action_allowed(ui.active)) return;
     if (ui.active) ui.active->dragging_position = true;
   }, LV_EVENT_PRESSED, nullptr);
   lv_obj_add_event_cb(ui.position_slider, [](lv_event_t *e) {
     CoverControlModalUi &ui = cover_control_modal_ui();
+    if (!cover_modal_action_allowed(ui.active)) return;
     if (!ui.active || ui.active->updating_position) return;
     ui.active->dragging_position = true;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
@@ -2610,6 +2634,7 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.position_slider, [](lv_event_t *e) {
     CoverControlModalUi &ui = cover_control_modal_ui();
+    if (!cover_modal_action_allowed(ui.active)) return;
     if (!ui.active) return;
     ui.active->dragging_position = false;
     if (!ui.active->available || !cover_control_supports_position(ui.active)) return;
@@ -2621,6 +2646,7 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
   }, LV_EVENT_RELEASED, nullptr);
   lv_obj_add_event_cb(ui.position_slider, [](lv_event_t *e) {
     CoverControlModalUi &ui = cover_control_modal_ui();
+    if (!cover_modal_action_allowed(ui.active)) return;
     if (ui.active) ui.active->dragging_position = false;
   }, LV_EVENT_PRESS_LOST, nullptr);
 
@@ -2630,10 +2656,12 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
   lv_slider_set_value(ui.tilt_slider, slider_clamp_pct(ctx->current_tilt), LV_ANIM_OFF);
   lv_obj_add_event_cb(ui.tilt_slider, [](lv_event_t *e) {
     CoverControlModalUi &ui = cover_control_modal_ui();
+    if (!cover_modal_action_allowed(ui.active)) return;
     if (ui.active) ui.active->dragging_tilt = true;
   }, LV_EVENT_PRESSED, nullptr);
   lv_obj_add_event_cb(ui.tilt_slider, [](lv_event_t *e) {
     CoverControlModalUi &ui = cover_control_modal_ui();
+    if (!cover_modal_action_allowed(ui.active)) return;
     if (!ui.active || ui.active->updating_tilt) return;
     ui.active->dragging_tilt = true;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
@@ -2643,6 +2671,7 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.tilt_slider, [](lv_event_t *e) {
     CoverControlModalUi &ui = cover_control_modal_ui();
+    if (!cover_modal_action_allowed(ui.active)) return;
     if (!ui.active) return;
     ui.active->dragging_tilt = false;
     if (!ui.active->available) return;
@@ -2653,11 +2682,13 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
   }, LV_EVENT_RELEASED, nullptr);
   lv_obj_add_event_cb(ui.tilt_slider, [](lv_event_t *e) {
     CoverControlModalUi &ui = cover_control_modal_ui();
+    if (!cover_modal_action_allowed(ui.active)) return;
     if (ui.active) ui.active->dragging_tilt = false;
   }, LV_EVENT_PRESS_LOST, nullptr);
 
   cover_control_layout_modal(ctx);
   lv_obj_move_foreground(ui.overlay);
+  if (!cover_modal_widgets_ready(ui.overlay)) cover_control_hide_modal();
 }
 
 inline void setup_cover_modal_card(BtnSlot &s, const ParsedCfg &p) {
@@ -2678,15 +2709,16 @@ inline CoverControlCtx *create_cover_control_context(
     const lv_font_t *option_menu_font,
     const lv_font_t *card_icon_font,
     const lv_font_t *icon_font,
-    int width_compensation_percent) {
-  CoverControlCtx *ctx = new CoverControlCtx();
+    int width_compensation_percent,
+    CoverControlCtx *storage = nullptr) {
+  CoverControlCtx *ctx = storage ? storage : new CoverControlCtx();
   ctx->entity_id = p.entity;
   ctx->label = p.label;
   ctx->options = p.options;
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;
   ctx->btn = s.btn;
-  ctx->card_slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
+  ctx->card_slider = s.sensor_container ? (lv_obj_t *)lv_obj_get_user_data(s.sensor_container) : nullptr;
   if (ctx->card_slider) {
     SliderCtx *sctx = (SliderCtx *)lv_obj_get_user_data(ctx->card_slider);
     if (sctx) {
@@ -2706,7 +2738,7 @@ inline CoverControlCtx *create_cover_control_context(
   ctx->card_icon_font = card_icon_font;
   ctx->icon_font = icon_font;
   ctx->width_compensation_percent = width_compensation_percent;
-  lv_obj_set_user_data(s.btn, ctx);
+  if (s.btn) lv_obj_set_user_data(s.btn, ctx);
   return ctx;
 }
 
@@ -2716,6 +2748,7 @@ inline void subscribe_cover_control_state(CoverControlCtx *ctx) {
     ctx->entity_id,
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef state) {
+        if (!cover_modal_context_current(ctx)) return;
         std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
         ctx->available = !ha_state_unavailable_ref(state);
         // Home Assistant reports opening/closing while the cover travels and a
@@ -2730,6 +2763,7 @@ inline void subscribe_cover_control_state(CoverControlCtx *ctx) {
     ctx->entity_id, std::string("current_position"),
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef val) {
+        if (!cover_modal_context_current(ctx)) return;
         int pct = 0;
         if (!slider_parse_pct(val, pct)) return;
         CoverControlModalUi &ui = cover_control_modal_ui();
@@ -2744,6 +2778,7 @@ inline void subscribe_cover_control_state(CoverControlCtx *ctx) {
     ctx->entity_id, std::string("current_tilt_position"),
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef val) {
+        if (!cover_modal_context_current(ctx)) return;
         int pct = 0;
         if (!slider_parse_pct(val, pct)) return;
         ctx->current_tilt = pct;
@@ -2754,6 +2789,7 @@ inline void subscribe_cover_control_state(CoverControlCtx *ctx) {
     ctx->entity_id, std::string("supported_features"),
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef val) {
+        if (!cover_modal_context_current(ctx)) return;
         int features = 0;
         if (!cover_parse_supported_features(val, features)) {
           cover_control_apply_supported_features(ctx, false);
@@ -2767,6 +2803,7 @@ inline void subscribe_cover_control_state(CoverControlCtx *ctx) {
       ctx->entity_id, std::string("friendly_name"),
       std::function<void(esphome::StringRef)>(
         [ctx](esphome::StringRef value) {
+          if (!cover_modal_context_current(ctx)) return;
           ctx->friendly_name = string_ref_limited(value, HA_FRIENDLY_NAME_MAX_LEN);
           cover_control_apply_card_visual(ctx);
         })
