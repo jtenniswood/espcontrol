@@ -256,6 +256,9 @@ add_test(NAME multipart_upload_completion_test COMMAND
 add_test(NAME web_ota_guard_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/web_ota_guard_test.py)
+add_test(NAME web_event_source_lifecycle_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/web_event_source_lifecycle_test.py)
 
 add_test(NAME option_select_values_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
@@ -1152,6 +1155,25 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   target_include_directories(page_media_control_modal_test PRIVATE stubs ../../components/espcontrol)
   target_link_libraries(page_media_control_modal_test PRIVATE lvgl::lvgl)
   add_test(NAME page_media_control_modal_test COMMAND page_media_control_modal_test)
+
+  set(PAGE_OPTION_SELECT_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_option_select_modal_test.cpp)
+  add_custom_command(OUTPUT ${PAGE_OPTION_SELECT_MODAL_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_option_select_modal_test.py
+      --output ${PAGE_OPTION_SELECT_MODAL_SOURCE}
+    DEPENDS generate_page_option_select_modal_test.py generate_climate_update_test.py
+      page_option_select_modal_test.cpp.in ../../components/espcontrol/button_grid_option_select.h
+      ../../components/espcontrol/page_option_select_modal.h
+    VERBATIM)
+  add_executable(page_option_select_modal_test ${PAGE_OPTION_SELECT_MODAL_SOURCE}
+    ../../components/espcontrol/page_modal_runtime.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp
+    ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_option_select_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_option_select_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_option_select_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_option_select_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_option_select_modal_test COMMAND page_option_select_modal_test)
 
   set(PAGE_FAN_CONTROL_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_fan_control_modal_test.cpp)
   add_custom_command(

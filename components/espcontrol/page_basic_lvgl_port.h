@@ -43,6 +43,7 @@ struct PageBasicTheme {
   int32_t media_text_scale_x{256},media_text_scale_y{256};
   const lv_font_t *cover_title_font{nullptr}, *cover_artist_font{nullptr};
   const lv_font_t *media_control_title_font{nullptr}, *media_control_artist_font{nullptr};
+  const lv_font_t* option_select_font{nullptr};
   bool compact_portrait{false};
   int media_artwork_width_percent{100};
 };
@@ -147,6 +148,14 @@ class PageBasicLvglPort final:public PageRendererPort {
       shells_[i].sensor_align = lv_obj_get_style_align(w.sensor_container, LV_PART_MAIN);
       shells_[i].sensor_x = lv_obj_get_style_x(w.sensor_container, LV_PART_MAIN);
       shells_[i].sensor_y = lv_obj_get_style_y(w.sensor_container, LV_PART_MAIN);
+      shells_[i].sensor_width = lv_obj_get_style_width(w.sensor_container, LV_PART_MAIN);
+      shells_[i].value_width = lv_obj_get_style_width(w.value, LV_PART_MAIN);
+      shells_[i].value_mode = lv_label_get_long_mode(w.value);
+      shells_[i].value_font =
+          theme_.sensor_font ? theme_.sensor_font : lv_obj_get_style_text_font(w.value, LV_PART_MAIN);
+      // Reserve these style properties before any visible-page binding.
+      lv_obj_set_width(w.sensor_container, shells_[i].sensor_width);
+      lv_obj_set_width(w.value, shells_[i].value_width);
       lv_obj_set_align(w.sensor_container, shells_[i].sensor_align);
       lv_obj_set_pos(w.sensor_container, shells_[i].sensor_x, shells_[i].sensor_y);
       shells_[i].icon_layout=label_layout(w.icon);shells_[i].label_layout=label_layout(w.label);
@@ -284,6 +293,11 @@ class PageBasicLvglPort final:public PageRendererPort {
         if(view.kind==BasicCardKind::ACTION&&actions_.action==nullptr)return false;
         if (view.kind == BasicCardKind::FAN_DIRECTION && !actions_.action) return false;
         if (view.kind == BasicCardKind::FAN_PRESET && !actions_.control) return false;
+        if (view.kind == BasicCardKind::OPTION_SELECT) {
+          if (!actions_.control) return false;
+          number_capacity = std::max<size_t>(HA_STATE_TEXT_MAX_LEN + 1, number_capacity);
+          label_capacity = std::max(label_capacity, view.entity.size() + 1);
+        }
         if (view.kind == BasicCardKind::MEDIA_CONTROL &&
             (!media_ ||
              (view.media.kind == MediaActionKind::VOLUME ? !actions_.media_volume : !actions_.media_control)))
@@ -491,6 +505,9 @@ class PageBasicLvglPort final:public PageRendererPort {
     restore_label(w.icon,s.icon_layout);restore_label(w.label,s.label_layout);
     lv_obj_set_align(w.sensor_container, s.sensor_align);
     lv_obj_set_pos(w.sensor_container, s.sensor_x, s.sensor_y);
+    lv_obj_set_width(w.sensor_container, s.sensor_width);
+    lv_obj_set_width(w.value, s.value_width);
+    if (lv_label_get_long_mode(w.value) != s.value_mode) lv_label_set_long_mode(w.value, s.value_mode);
     s.token=token;s.pressed={};s.cell=cell;s.back=back;
     s.definition=cell.back?nullptr:prepared(active_)+cell.card;
     if (w.forecast) {
@@ -522,6 +539,7 @@ class PageBasicLvglPort final:public PageRendererPort {
                                        s.definition->definition.kind == BasicCardKind::FAN_CONTROL ||
                                        s.definition->definition.kind == BasicCardKind::FAN_DIRECTION ||
                                        s.definition->definition.kind == BasicCardKind::FAN_PRESET ||
+                                       s.definition->definition.kind == BasicCardKind::OPTION_SELECT ||
                                        s.definition->definition.kind == BasicCardKind::COVER ||
                                        s.definition->definition.kind == BasicCardKind::FORECAST ||
                                        s.definition->definition.kind == BasicCardKind::MEDIA_ACTION ||
@@ -551,7 +569,8 @@ class PageBasicLvglPort final:public PageRendererPort {
       checked=value.on&&(definition.kind==BasicCardKind::TOGGLE||definition.active_color);
       number = (definition.kind == BasicCardKind::CLIMATE &&
                 definition.climate.number != ClimateCardNumber::ICON) ||
-               definition.kind == BasicCardKind::NUMBER || definition.kind == BasicCardKind::DURATION ||
+               definition.kind == BasicCardKind::OPTION_SELECT || definition.kind == BasicCardKind::NUMBER ||
+               definition.kind == BasicCardKind::DURATION ||
                definition.kind == BasicCardKind::MEDIA_POSITION ||
                (definition.kind == BasicCardKind::MEDIA_CONTROL && definition.media.volume_number) ||
                definition.folder_mode == BasicFolderMode::NUMBER ||
@@ -588,18 +607,44 @@ class PageBasicLvglPort final:public PageRendererPort {
     write(w.unit,s.unit,active_.unit_capacity,value.unit);
     if(now_playing){const char* empty="";if(lv_label_get_text(w.value)!=empty)lv_label_set_text_static(w.value,empty);}
     else {
-      write(w.value,s.number,active_.number_capacity,value.numeric?std::string_view(value.number):std::string_view{});
+      write(w.value, s.number, active_.number_capacity,
+            value.numeric ? std::string_view(definition.kind == BasicCardKind::OPTION_SELECT ? value.text
+                                                                                             : value.number)
+                          : std::string_view{});
       if(std::strcmp(lv_label_get_text(w.icon),glyph)!=0)lv_label_set_text_static(w.icon,glyph);
       if(theme_.icon_font)lv_obj_set_style_text_font(w.icon,theme_.icon_font,LV_PART_MAIN);
       if(theme_.label_font)lv_obj_set_style_text_font(w.label,theme_.label_font,LV_PART_MAIN);
     }
     if(number){lv_obj_add_flag(w.icon,LV_OBJ_FLAG_HIDDEN);lv_obj_clear_flag(w.sensor_container,LV_OBJ_FLAG_HIDDEN);}
     else {lv_obj_clear_flag(w.icon,LV_OBJ_FLAG_HIDDEN);lv_obj_add_flag(w.sensor_container,LV_OBJ_FLAG_HIDDEN);}
-    const auto font=definition.large_numbers&&s.cell.column_span>1&&s.cell.row_span>1&&theme_.large_sensor_font?theme_.large_sensor_font:theme_.sensor_font;
+    const bool option = definition.kind == BasicCardKind::OPTION_SELECT;
+    if (option) {
+      lv_obj_set_width(w.sensor_container, lv_pct(100));
+      lv_obj_set_width(w.value, lv_pct(100));
+      if (lv_label_get_long_mode(w.value) != LV_LABEL_LONG_DOT)
+        lv_label_set_long_mode(w.value, LV_LABEL_LONG_DOT);
+    }
+    const auto font = option ? (theme_.option_select_font ? theme_.option_select_font
+                                : theme_.media_title_font ? theme_.media_title_font
+                                                          : s.label_layout.font)
+                      : definition.large_numbers && s.cell.column_span > 1 && s.cell.row_span > 1 &&
+                              theme_.large_sensor_font
+                          ? theme_.large_sensor_font
+                      : theme_.sensor_font ? theme_.sensor_font
+                                           : s.value_font;
     if(font&&s.painted_font!=font){lv_obj_set_style_text_font(w.value,font,LV_PART_MAIN);s.painted_font=font;}
     if(checked!=lv_obj_has_state(w.button,LV_STATE_CHECKED)){if(checked)lv_obj_add_state(w.button,LV_STATE_CHECKED);else lv_obj_clear_state(w.button,LV_STATE_CHECKED);}
     const auto correct=[this](uint32_t raw){return correct_display_color(raw,theme_.red_percent,theme_.green_percent,theme_.blue_percent);};
-    uint32_t background=definition.custom_off?correct(definition.off_color):(definition.kind==BasicCardKind::MEDIA_POSITION||(now_playing&&definition.media.progress))?theme_.media_surface:(definition.kind==BasicCardKind::NUMBER||definition.kind==BasicCardKind::TEXT||definition.kind==BasicCardKind::DURATION||definition.kind==BasicCardKind::STATUS||definition.kind==BasicCardKind::WEATHER||definition.kind==BasicCardKind::FORECAST)?theme_.sensor_surface:theme_.surface;
+    uint32_t background =
+        definition.custom_off ? correct(definition.off_color)
+        : (definition.kind == BasicCardKind::MEDIA_POSITION || (now_playing && definition.media.progress))
+            ? theme_.media_surface
+        : (definition.kind == BasicCardKind::OPTION_SELECT || definition.kind == BasicCardKind::NUMBER ||
+           definition.kind == BasicCardKind::TEXT || definition.kind == BasicCardKind::DURATION ||
+           definition.kind == BasicCardKind::STATUS || definition.kind == BasicCardKind::WEATHER ||
+           definition.kind == BasicCardKind::FORECAST)
+            ? theme_.sensor_surface
+            : theme_.surface;
     if(checked)background=definition.custom_on?correct(definition.on_color):definition.custom_off&&!definition.theme_active?correct(active_card_color(definition.off_color)):theme_.active;
     const auto foreground=checked||definition.custom_off?display_text_color_for_bg(background):theme_.text;
     if(!s.painted||s.background!=background||s.foreground!=foreground) {
@@ -768,7 +813,9 @@ class PageBasicLvglPort final:public PageRendererPort {
     PageBasicLvglPort* port{nullptr};
     LabelLayout icon_layout, label_layout;
     lv_align_t sensor_align{LV_ALIGN_DEFAULT};
-    lv_coord_t sensor_x{0}, sensor_y{0};
+    lv_coord_t sensor_x{0}, sensor_y{0}, sensor_width{0}, value_width{0};
+    lv_label_long_mode_t value_mode{LV_LABEL_LONG_WRAP};
+    const lv_font_t* value_font{nullptr};
     size_t index{0};
     PageBindingToken token, pressed;
     PageCellLayout cell;
@@ -1287,7 +1334,9 @@ class PageBasicLvglPort final:public PageRendererPort {
       if(port->actions_.open&&target!=NO_PAGE)port->actions_.open(port->actions_.owner,origin,target);
     } else if (definition.kind == BasicCardKind::FAN_DIRECTION && port->actions_.action)
       port->actions_.action(port->actions_.owner, origin);
-    else if (definition.kind == BasicCardKind::FAN_PRESET && port->actions_.control)
+    else if ((definition.kind == BasicCardKind::FAN_PRESET ||
+              definition.kind == BasicCardKind::OPTION_SELECT) &&
+             port->actions_.control)
       port->actions_.control(port->actions_.owner, origin);
     else if (definition.kind == BasicCardKind::CLIMATE && port->actions_.climate)
       port->actions_.climate(port->actions_.owner,origin);

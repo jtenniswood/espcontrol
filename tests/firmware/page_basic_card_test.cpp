@@ -258,6 +258,64 @@ void control_profile(const DeviceUiLimits &limits) {
   ++transport.generation;value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==0&&!value.on);transport.send("cover.room","","closed");value=read_basic_card(definition,{17,0},state);assert(value.fill_percent==100);
 }
 
+void option_select_profile(const DeviceUiLimits& limits) {
+  for (const char* wire : {"select.room;;Auto;Auto;;;option_select;;",
+                           "input_select.room;;Auto;Auto;select.select_option;;action;;"}) {
+    Fixture fixture(limits, wire);
+    BasicCardDefinition definition;
+    assert(prepare_basic_card(fixture.store, 0, definition));
+    assert(definition.kind == BasicCardKind::OPTION_SELECT && definition.push_feedback &&
+           !definition.active_color && !definition.large_numbers && definition.sensor.empty() &&
+           definition.unit.empty());
+    assert(basic_folder_child_indicator(fixture.store, 0).empty());
+    PageCardDependencies source;
+    Arena arena;
+    Subscriptions transport;
+    PageEntityStateRuntime state(source, arena, transport, {32, 32, 4096});
+    assert(state.prepare(fixture.store));
+    state.activate_prepared(fixture.store);
+    const ConfigurationHandle handle{17, 0};
+    const std::string entity(definition.entity);
+    auto value = read_basic_card(definition, handle, state);
+    assert(value.numeric && !value.on && value.label == entity && std::strcmp(value.text, "--") == 0);
+    transport.send(entity.c_str(), "friendly_name", "Room Mode");
+    for (const char* raw : {"Night MODE", "garage", u8"Été", "  Raw punctuation: [x]  "}) {
+      transport.send(entity.c_str(), "", raw);
+      value = read_basic_card(definition, handle, state);
+      assert(value.label == "Room Mode" && std::strcmp(value.text, raw) == 0 && !value.on &&
+             !value.formatted_label && value.numeric);
+    }
+    const std::string long_value(HA_STATE_TEXT_MAX_LEN + 30, 'x');
+    transport.send(entity.c_str(), "", long_value);
+    assert(std::strlen(read_basic_card(definition, handle, state).text) == HA_STATE_TEXT_MAX_LEN);
+    for (const char* raw : {"unknown", " UNKNOWN ", "unavailable", "", "  "}) {
+      transport.send(entity.c_str(), "", raw);
+      assert(std::strcmp(read_basic_card(definition, handle, state).text, "--") == 0);
+    }
+    const auto before = allocations;
+    for (int i = 0; i < 1000; ++i) assert(read_basic_card(definition, handle, state).numeric);
+    assert(allocations == before);
+    ++transport.generation;
+    value = read_basic_card(definition, handle, state);
+    assert(value.label == entity && std::strcmp(value.text, "--") == 0);
+  }
+  Fixture custom(limits, "select.room;Custom;Unused;Unused;;;option_select;;");
+  BasicCardDefinition definition;
+  assert(prepare_basic_card(custom.store, 0, definition) && definition.label == "Custom");
+  Fixture empty(limits, ";;;;;;option_select;;");
+  assert(prepare_basic_card(empty.store, 0, definition));
+  PageCardDependencies source;
+  Arena arena;
+  Subscriptions transport;
+  PageEntityStateRuntime state(source, arena, transport, {32, 32, 1024});
+  assert(state.prepare(empty.store));
+  state.activate_prepared(empty.store);
+  auto translated = [](const char* key) {
+    return std::strcmp(key, "Option") == 0 ? "Translated Option" : key;
+  };
+  assert(read_basic_card(definition, {17, 0}, state, 2, "°C", translated).label == "Translated Option");
+}
+
 void fan_control_profile(const DeviceUiLimits& limits) {
   Fixture fixture(limits, "fan.room;;Auto;Auto;;;fan_control;;fan_light_entity=light.fan");
   BasicCardDefinition definition;
@@ -735,6 +793,7 @@ int main() {
     climate_profile(limits);
     status_actions_profile(limits);
     control_profile(limits);
+    option_select_profile(limits);
     fan_control_profile(limits);
     fan_mode_profile(limits);
     weather_profile(limits);

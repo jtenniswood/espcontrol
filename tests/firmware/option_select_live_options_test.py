@@ -39,6 +39,7 @@ unsigned theme_display_color(unsigned c){return c;}unsigned lv_color_hex(unsigne
 void lv_obj_set_style_bg_color(lv_obj_t*,unsigned,int){}void theme_set_content_background(lv_obj_t*,bool){}void apply_card_descendant_text_color(lv_obj_t*,unsigned){}
 std::string sent;bool ha_send_entity_action(const std::string&,const char*,const char*,const char*v){sent=v;return true;}
 '''
+source+='\n#include "option_select_modal_lifetime.h"\n'
 for name in ['option_select_trim', 'option_select_add_option', 'option_select_parse_delimited_options', 'option_select_parse_list_options', 'option_select_parse_options', 'option_select_refresh_modal_rows', 'subscribe_option_select_state']:source+=definition(name)
 source += r'''int main(){
  OptionSelectCtx ctx;ctx.entity_id="input_select.mode";subscribe_option_select_state(&ctx);
@@ -52,6 +53,6 @@ source += r'''int main(){
 }'''
 with tempfile.TemporaryDirectory() as temp:
     cpp=Path(temp)/"test.cpp";exe=Path(temp)/"test";cpp.write_text(source)
-    subprocess.run([os.environ.get("CXX","c++"),"-std=c++17","-Wall","-Wextra","-Werror",str(cpp),"-o",str(exe)],check=True)
+    subprocess.run([os.environ.get("CXX","c++"),"-std=c++17","-I"+str(ROOT/"components/espcontrol"),"-Wall","-Wextra","-Werror",str(cpp),"-o",str(exe)],check=True)
     subprocess.run([str(exe)],check=True)
 print("option_select_live_options regression passed.")

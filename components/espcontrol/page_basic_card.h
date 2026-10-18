@@ -31,7 +31,8 @@ enum class BasicCardKind : uint8_t {
   MEDIA_CONTROL,
   FAN_CONTROL,
   FAN_DIRECTION,
-  FAN_PRESET
+  FAN_PRESET,
+  OPTION_SELECT
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode:uint8_t { NONE, ENTITY, CLIMATE, MOWER, CHILDREN, NUMBER, TEXT };

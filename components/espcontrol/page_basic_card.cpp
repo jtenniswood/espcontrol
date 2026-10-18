@@ -62,15 +62,24 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
     if(value.empty()){stored={};return true;}
     return strings&&strings->copy(value,stored);
   };
-  if(type.empty() || type=="light_switch") {
+  if (type == "option_select" ||
+      (type == "action" && action_card_option_select_action(std::string(out.sensor)))) {
+    out.kind = BasicCardKind::OPTION_SELECT;
+    out.push_feedback = true;
+    out.sensor = {};
+    out.unit = {};
+    out.default_label = "Option";
+    // The text value replaces the icon for both the dedicated and Action form.
+    out.icon = out.icon_on = "";
+  } else if (type.empty() || type == "light_switch") {
     if(cfg_option_enabled(options,"confirm_off") || cfg_option_enabled(options,"confirm_on"))return false;
     out.text_overlay=precision=="text";
     out.kind=out.entity.empty()?BasicCardKind::EMPTY:BasicCardKind::TOGGLE;
-  } else if(type=="sensor") {
+  } else if (type == "sensor") {
     if(out.sensor=="local")return false;
     out.kind=out.sensor.empty()?BasicCardKind::EMPTY:precision=="icon"?BasicCardKind::ICON:precision=="text"?BasicCardKind::TEXT:precision=="time"?BasicCardKind::DURATION:BasicCardKind::NUMBER;
     out.active_color=out.kind!=BasicCardKind::DURATION&&cfg_option_enabled(options,"active_color");
-  } else if(type=="door_window"||type=="presence") {
+  } else if (type == "door_window" || type == "presence") {
     out.kind=out.sensor.empty()?BasicCardKind::EMPTY:BasicCardKind::STATUS;
     out.presence=type=="presence";out.active_color=cfg_option_enabled(options,"active_color");
     const bool window=normalize_door_window_subtype(std::string(precision))=="window";
@@ -79,7 +88,8 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
       if(out.icon.empty()||out.icon=="Auto")out.icon=out.presence?"Motion Sensor Off":window?"Window Closed":"Door";
       if(out.icon_on.empty()||out.icon_on=="Auto")out.icon_on=out.presence?"Motion Sensor":window?"Window Open":"Door Open";
     }
-  } else if(type=="action"||type=="local"||type=="push"||type=="webhook"||type=="screensaver") {
+  } else if (type == "action" || type == "local" || type == "push" || type == "webhook" ||
+             type == "screensaver") {
     ParsedCfg config;config.type=type;config.entity=out.entity;config.sensor=out.sensor;config.options=options;
     if(action_card_option_select(config)||action_script_confirmation_enabled(config))return false;
     out.kind=BasicCardKind::ACTION;
@@ -112,7 +122,7 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
       if(unit.empty())out.unit={};
       else if(!strings||!strings->copy_unit(unit,out.unit))return false;
     }
-  } else if(type=="media") {
+  } else if (type == "media") {
     const auto mode=card_runtime_media_mode(std::string(out.sensor));
     if (mode != "play_pause" && mode != "previous" && mode != "next" && mode != "playlist" &&
         mode != "position" && mode != "now_playing" && mode != "cover_art" && mode != "volume" &&
@@ -175,15 +185,15 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
       if(content_type.empty())out.media.playlist_type="playlist";
       else if(!copy(content_type,out.media.playlist_type))return false;
     }
-  } else if(type=="weather"||type=="weather_forecast") {
+  } else if (type == "weather" || type == "weather_forecast") {
     out.kind=basic_card_is_forecast(store,id)?BasicCardKind::FORECAST:BasicCardKind::WEATHER;
     out.forecast_view=precision=="today"?weather::View::TODAY:precision=="tomorrow"||type=="weather_forecast"?weather::View::TOMORROW:weather::View::DAILY;out.label={};out.sensor={};out.unit={};
     out.icon=out.icon_on="Weather Cloudy";
-  } else if(type=="light_control") {
+  } else if (type == "light_control") {
     out.unit={};out.kind=BasicCardKind::LIGHT;out.active_color=true;out.push_feedback=true;out.default_label="Light";
     if(out.icon.empty()||out.icon=="Auto")out.icon="Lightbulb Outline";
     if(out.icon_on.empty()||out.icon_on=="Auto")out.icon_on="Lightbulb";
-  } else if(type=="cover") {
+  } else if (type == "cover") {
     if(espcontrol::card_runtime::resolve_card_driver(espcontrol::card_runtime::CardTypeId::COVER,std::string(out.sensor))!=espcontrol::card_runtime::CardDriverId::COVER_MODAL)return false;
     out.unit={};out.kind=BasicCardKind::COVER;out.push_feedback=true;out.default_label="Cover";
     if(out.icon.empty()||out.icon=="Auto")out.icon="Blinds";
@@ -272,6 +282,28 @@ bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,Pag
 BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHandle handle,PageEntityStateRuntime &state,int duration_components,std::string_view temperature_unit,PageCardTranslate translate,PageMediaStateRuntime *media_owner) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
+  if (card.kind == BasicCardKind::OPTION_SELECT) {
+    result.label = card.label;
+    if (result.label.empty()) {
+      const auto name = find(state, handle, card.entity, "friendly_name");
+      if (name.status == PageEntityStatus::AVAILABLE)
+        result.label = name.value.substr(0, HA_FRIENDLY_NAME_MAX_LEN);
+    }
+    if (result.label.empty()) result.label = card.entity;
+    if (result.label.empty()) {
+      const auto* text = translate ? translate("Option") : nullptr;
+      result.label = text ? text : "Option";
+    }
+    const auto primary = find(state, handle, card.entity);
+    const auto value = available(primary) && !equal_state(primary.value, {})
+                           ? primary.value.substr(0, HA_STATE_TEXT_MAX_LEN)
+                           : std::string_view("--");
+    const auto length = std::min(value.size(), sizeof(result.text) - 1);
+    if (length) std::memcpy(result.text, value.data(), length);
+    result.text[length] = '\0';
+    result.numeric = true;
+    return result;
+  }
   if (card.kind == BasicCardKind::FAN_DIRECTION || card.kind == BasicCardKind::FAN_PRESET) {
     const bool direction = card.kind == BasicCardKind::FAN_DIRECTION;
     const auto primary = find(state, handle, card.entity);

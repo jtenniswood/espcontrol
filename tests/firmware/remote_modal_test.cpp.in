@@ -64,6 +64,9 @@ using FanCardCtx = Runtime;
 #undef FanCardCtx
 using ImageCardCtx = Runtime;
 using OptionSelectCtx = Runtime;
+#define OptionSelectCtx Runtime
+#include "option_select_modal_lifetime.h"
+#undef OptionSelectCtx
 using WeatherDailyCard = Runtime;
 struct lv_obj_t { Runtime *runtime = nullptr; bool hidden = false; lv_obj_t *parent = nullptr; };
 constexpr int LV_OBJ_FLAG_HIDDEN = 1;

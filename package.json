@@ -55,6 +55,8 @@
     "test": "npm run check:fast",
     "test:ci": "npm run check:ci",
     "test:firmware": "python3 scripts/check_tasks.py run-task firmware-tests",
+    "test:device-web": "python3 scripts/test_device_web_transport.py",
+    "check:device-web-transport-tests": "python3 scripts/check_tasks.py run-task device-web-transport-tests",
     "test:web-unit": "python3 scripts/check_tasks.py run-task web-unit",
     "test:web-browser": "python3 scripts/check_tasks.py run-task web-browser-smoke",
     "test:preview-resize": "node scripts/check_preview_resize.js",
