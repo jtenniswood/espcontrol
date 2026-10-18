@@ -1074,6 +1074,7 @@ def main() -> int:
         shutil.copy2(PARSER_HEADER.with_name("i18n_generated.h"), tmp_path / "i18n_generated.h")
         shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
         shutil.copy2(MEDIA_CONFIG_HEADER, tmp_path / "button_grid_media_config.h")
+        shutil.copy2(MEDIA_CONFIG_HEADER.with_name("media_card_mode.h"), tmp_path / "media_card_mode.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "temperature_unit.h", tmp_path / "temperature_unit.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "sun_calc.h", tmp_path / "sun_calc.h")
         shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
