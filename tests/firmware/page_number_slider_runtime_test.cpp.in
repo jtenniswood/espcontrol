@@ -1,0 +1,360 @@
+#include <array>
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+#include <functional>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "i18n_generated.h"
+#include "page_number_slider_runtime.h"
+struct lv_obj_t {
+  void* data{nullptr};
+  lv_obj_t* parent{nullptr};
+  int value{0}, maximum{100};
+  unsigned flags{0};
+  std::string text;
+};
+using lv_coord_t = int;
+constexpr int LV_ANIM_OFF = 0;
+constexpr unsigned LV_OBJ_FLAG_HIDDEN = 1, LV_OBJ_FLAG_CLICKABLE = 2;
+void lv_label_set_text(lv_obj_t*, const char*) {}
+void* lv_obj_get_user_data(lv_obj_t* object) {
+  return object->data;
+}
+lv_obj_t* lv_obj_get_parent(lv_obj_t* object) {
+  return object->parent;
+}
+void lv_slider_set_value(lv_obj_t* object, int value, int) {
+  object->value = std::max(0, std::min(object->maximum, value));
+}
+int lv_slider_get_value(lv_obj_t* object) {
+  return object->value;
+}
+void lv_slider_set_range(lv_obj_t* object, int, int maximum) {
+  object->maximum = maximum;
+  object->value = std::min(object->value, maximum);
+}
+void lv_obj_add_flag(lv_obj_t* object, unsigned flag) {
+  object->flags |= flag;
+}
+void lv_obj_clear_flag(lv_obj_t* object, unsigned flag) {
+  object->flags &= ~flag;
+}
+void lv_label_set_display_text(lv_obj_t* object, const char* text) {
+  object->text = text;
+}
+#include "button_grid_config_parser.h"
+#include "page_card_dependencies.h"
+#include "panel_config_document.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+static size_t cpp_allocations = 0;
+void* operator new(size_t bytes) {
+  ++cpp_allocations;
+  if (void* pointer = std::malloc(bytes ? bytes : 1)) return pointer;
+  std::abort();
+}
+void* operator new[](size_t bytes) {
+  return ::operator new(bytes);
+}
+void operator delete(void* pointer) noexcept {
+  std::free(pointer);
+}
+void operator delete[](void* pointer) noexcept {
+  std::free(pointer);
+}
+void operator delete(void* pointer, std::size_t) noexcept {
+  std::free(pointer);
+}
+void operator delete[](void* pointer, std::size_t) noexcept {
+  std::free(pointer);
+}
+namespace {
+struct Arena : PageArenaAllocator {
+  std::unordered_map<void*, size_t> live;
+  bool fail{false};
+  size_t calls{0};
+  void* allocate(size_t bytes) override {
+    ++calls;
+    if (fail) return nullptr;
+    auto* pointer = std::malloc(bytes);
+    assert(pointer);
+    live[pointer] = bytes;
+    return pointer;
+  }
+  void release(void* pointer, size_t bytes) override {
+    assert(live.at(pointer) == bytes);
+    live.erase(pointer);
+    std::free(pointer);
+  }
+};
+struct Subscriptions : PageEntitySubscriptions {
+  bool subscribe(const char*, const char*, void*, uint32_t, uint32_t, Deliver) override {
+    std::abort();
+  }
+  void release(void*) override {
+    std::abort();
+  }
+  uint32_t connection_generation() const override {
+    return connection;
+  }
+  uint32_t connection{1};
+};
+struct Fixture {
+  Fixture(uint32_t generation, const std::string& entity = "number.room", const std::string& type = "slider",
+          const std::string& mode = "", const DeviceUiLimits& limits = DEVICE_UI_PROFILES[8]) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const auto card = entity + ";;Auto;Auto;" + mode + ";;" + type + ";;";
+    for (size_t i = 0; i < 2; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(card.data()), card.size()) ==
+             PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, generation, storage.data(), storage.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+  std::array<uint8_t, 8192> document{};
+  size_t size{0};
+  alignas(std::max_align_t) std::array<uint8_t, 32768> storage{};
+  PageStore store;
+};
+// @legacy-number-slider-reference
+void parity() {
+  for (const auto* entity : {"number.room", "input_number.room"}) {
+    Fixture fixture(17, entity);
+    Arena arena;
+    Subscriptions subscriptions;
+    PageNumberSliderRuntime runtime(arena, subscriptions);
+    assert(runtime.prepare(fixture.store));
+    runtime.activate_prepared(fixture.store);
+    lv_obj_t button, slider, fill, icon, container, value_label, unit_label;
+    SliderCtx context;
+    context.entity_id = entity;
+    context.fill = &fill;
+    context.icon_lbl = &icon;
+    context.sensor_container = &container;
+    context.sensor_lbl = &value_label;
+    context.unit_lbl = &unit_label;
+    slider.data = &context;
+    slider.parent = &button;
+    legacy_bindings.clear();
+    subscribe_slider_state(&button, &icon, &slider, false, nullptr, nullptr, entity, false);
+    assert(legacy_bindings.size() == 5);
+    auto report = [&](const char* attr, const char* text) {
+      for (const auto& binding : legacy_bindings)
+        if (binding.attribute == attr) binding.callback(esphome::StringRef(text));
+      runtime.observed(17, entity, attr, text, false);
+    };
+    auto compare = [&]() {
+      const auto view = runtime.read({17, 0});
+      assert(view.position == slider.value && view.positions == slider.maximum &&
+             view.fill_percent == fill.value);
+      assert(view.available == context.available && view.ready == context.numeric_metadata_ready &&
+             view.dragging == context.numeric_dragging);
+    };
+    report("min", "-10");
+    report("max", "10");
+    report("step", "0.1");
+    report("", "2.5");
+    compare();
+    constexpr const char* minima[] = {"-10", "0", "1", "-1000.5", "unknown", "NaN"};
+    constexpr const char* maxima[] = {"10", "100", "1000000", "0", "unknown", "inf"};
+    constexpr const char* steps[] = {"0.1", "1", "0.25", "0.00001", "5", "0", "-1", "bad"};
+    constexpr const char* states[] = {"0",           "1.25",    "-4.5", "100.75", "NaN",
+                                      "unavailable", "unknown", "inf",  "2tail"};
+    bool held = false;
+    uint32_t random = 1825;
+    for (size_t n = 0; n < 15000; ++n) {
+      random = random * 1664525u + 1013904223u;
+      const unsigned event = (random >> 16) % 8;
+      if (event < 4) {
+        const unsigned index = (random >> 8);
+        const char* attribute = event == 0 ? "" : event == 1 ? "min" : event == 2 ? "max" : "step";
+        const char* text = event == 0   ? states[index % 9]
+                           : event == 1 ? minima[index % 6]
+                           : event == 2 ? maxima[index % 6]
+                                        : steps[index % 8];
+        report(attribute, text);
+        if (held && !runtime.read({17, 0}).gesture) {
+          held = false;
+          slider_numeric_cancel_drag(&slider, &context);
+        }
+      } else if (event == 4 && !held) {
+        const bool expected = context.available && context.numeric_metadata_ready;
+        assert(runtime.begin({17, 0}) == expected);
+        if (expected) context.numeric_dragging = held = true;
+      } else if (event == 5 && held) {
+        const int position = static_cast<int>((random >> 8) % (slider.maximum + 1));
+        lv_slider_set_value(&slider, position, LV_ANIM_OFF);
+        slider_update_ctx_fill(&context, &button, slider_position_percent(&context, slider.value));
+        assert(runtime.drag({17, 0}, position));
+      } else if (event == 6 && held) {
+        const auto expected =
+            number_slider::value_for_position(slider_numeric_metadata(&context), slider.value);
+        double target = 0;
+        assert(runtime.finish({17, 0}, slider.value, target) && target == expected);
+        context.numeric_dragging = held = false;
+        slider_numeric_restore_visual(&context);
+      } else if (event == 7 && held) {
+        runtime.cancel({17, 0});
+        held = false;
+        slider_numeric_cancel_drag(&slider, &context);
+      }
+      compare();
+    }
+  }
+  legacy_bindings.clear();
+}
+void graph_snapshots() {
+  struct GraphSubscriptions : PageEntitySubscriptions {
+    struct Binding {
+      const char* entity;
+      const char* attribute;
+      void* owner;
+      uint32_t revision, channel;
+      Deliver deliver;
+    };
+    std::vector<Binding> bindings;
+    bool subscribe(const char* entity, const char* attribute, void* owner, uint32_t revision,
+                   uint32_t channel, Deliver deliver) override {
+      bindings.push_back({entity, attribute, owner, revision, channel, deliver});
+      return true;
+    }
+    void release(void* owner) override {
+      bindings.erase(std::remove_if(bindings.begin(), bindings.end(),
+                                    [&](const auto& binding) { return binding.owner == owner; }),
+                     bindings.end());
+    }
+    uint32_t connection_generation() const override {
+      return 1;
+    }
+    void send(const char* attribute, std::string_view value) {
+      for (const auto& binding : bindings)
+        if (std::strcmp(attribute, binding.attribute) == 0)
+          binding.deliver(binding.owner, binding.revision, binding.channel, value);
+    }
+  } subscriptions;
+  Fixture first(17), second(18);
+  Arena arena;
+  PageCardDependencies dependencies;
+  PageNumberSliderRuntime runtime(arena, subscriptions);
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {64, 64, 2048}, &runtime);
+  assert(runtime.prepare(first.store) && state.prepare(first.store));
+  runtime.activate_prepared(first.store);
+  state.activate_prepared(first.store);
+  subscriptions.send("min", "-10");
+  subscriptions.send("max", "10");
+  subscriptions.send("step", "0.1");
+  subscriptions.send("", "5");
+  assert(runtime.begin({17, 0}));
+  double target = 0;
+  assert(runtime.finish({17, 0}, 0, target));
+  assert(runtime.read({17, 0}).position == 0 && runtime.read({17, 1}).position == 150);
+  assert(runtime.prepare(second.store) && state.prepare(second.store));
+  assert(runtime.read({17, 0}).position == 0);
+  runtime.activate_prepared(second.store);
+  state.activate_prepared(second.store);
+  assert(runtime.read({18, 0}).position == 150 && runtime.read({18, 1}).position == 150);
+  assert(runtime.begin({18, 0}) && runtime.drag({18, 0}, 20));
+  subscriptions.send("step", "0.2");
+  assert(!runtime.finish({18, 0}, 20, target) && !runtime.read({18, 0}).dragging);
+}
+void lifecycle() {
+  Arena arena;
+  Subscriptions subscriptions;
+  Fixture first(17), second(18, "input_number.other"), empty(19, "sensor.room", "sensor");
+  {
+    PageNumberSliderRuntime runtime(arena, subscriptions);
+    assert(runtime.prepare(first.store));
+    runtime.activate_prepared(first.store);
+    auto report = [&](const char* attr, const char* value) {
+      runtime.observed(17, "number.room", attr, value, false);
+    };
+    assert(!runtime.begin({17, 0}));
+    report("min", "-10");
+    report("max", "10");
+    report("step", "0.1");
+    report("", "2.5");
+    assert(runtime.memory().sources == 1 && runtime.memory().cards == 2);
+    assert(runtime.begin({17, 0}) && runtime.drag({17, 0}, 0));
+    assert(runtime.read({17, 1}).position != 0 && runtime.read({17, 0}).fill_percent == 0);
+    report("", "5");
+    assert(runtime.read({17, 0}).position == 0 && runtime.read({17, 1}).position == 150);
+    report("step", "0.1");
+    assert(!runtime.read({17, 0}).dragging && runtime.read({17, 0}).gesture &&
+           runtime.read({17, 0}).position == 150);
+    double target = 0;
+    assert(runtime.finish({17, 0}, 100, target) &&
+           std::fabs(target) < 1e-12);  // Repeated metadata keeps release valid.
+    assert(runtime.begin({17, 0}));
+    report("step", "0.2");
+    assert(!runtime.finish({17, 0}, 50, target));  // A changed range cancels the old release.
+    report("step", "0.1");
+    assert(runtime.begin({17, 0}) && runtime.finish({17, 0}, 100, target) && std::fabs(target) < 1e-12);
+    report("", "5");
+    assert(runtime.read({17, 0}).position == 150);  // Identical state confirms preview.
+    assert(runtime.begin({17, 0}) && runtime.drag({17, 0}, 50));
+    report("", "unknown");
+    assert(!runtime.read({17, 0}).dragging && !runtime.read({17, 0}).available &&
+           runtime.read({17, 0}).position == 50);
+    report("", "5");
+    assert(runtime.read({17, 0}).position == 150);
+    assert(runtime.prepare(second.store));
+    runtime.discard_prepared();
+    assert(runtime.read({17, 0}).available && arena.live.size() == 1);
+    arena.fail = true;
+    assert(!runtime.prepare(second.store));
+    arena.fail = false;
+    assert(runtime.read({17, 0}).available && arena.live.size() == 1);
+    const auto cpp = cpp_allocations, calls = arena.calls;
+    for (int n = 0; n < 1000; ++n) {
+      report("min", "-10");
+      report("max", "10");
+      report("step", "0.1");
+      report("", "5");
+      assert(runtime.begin({17, 0}) && runtime.drag({17, 0}, 10) && runtime.finish({17, 0}, 20, target));
+      runtime.loop();
+      (void)runtime.read({17, 0});
+    }
+    assert(cpp_allocations == cpp && arena.calls == calls);
+    ++subscriptions.connection;
+    runtime.loop();
+    assert(!runtime.read({17, 0}).available && !runtime.read({17, 0}).ready && !runtime.begin({17, 0}));
+    for (int n = 0; n < 1000; ++n) {
+      const auto& store = n % 2 ? first.store : second.store;
+      assert(runtime.prepare(store));
+      runtime.activate_prepared(store);
+      assert(runtime.memory().sources == 1 && runtime.memory().cards == 2 && arena.live.size() == 1);
+    }
+    assert(runtime.prepare(empty.store));
+    runtime.activate_prepared(empty.store);
+    assert(arena.live.empty());
+    assert(!runtime.begin({17, 0}) && !runtime.drag({17, 0}, 50) && !runtime.finish({17, 0}, 50, target));
+    runtime.cancel({17, 0});
+  }
+  assert(arena.live.empty());
+  for (int limit = 0; limit < 3; ++limit) {
+    PageNumberSliderRuntime runtime(arena, subscriptions, limit == 0 ? 0 : 32, limit == 1 ? 0 : 512,
+                                    limit == 2 ? 0 : 2048);
+    assert(!runtime.prepare(first.store) && arena.live.empty());
+  }
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    Fixture fixture(17, "number.room", "fan_speed", "", limits);
+    PageNumberSliderRuntime runtime(arena, subscriptions);
+    assert(runtime.prepare(fixture.store));
+    runtime.activate_prepared(fixture.store);
+    assert(runtime.memory().sources == 1 && runtime.memory().cards == 2);
+  }
+  assert(arena.live.empty());
+}
+}  // namespace
+int main() {
+  parity();
+  graph_snapshots();
+  lifecycle();
+}
