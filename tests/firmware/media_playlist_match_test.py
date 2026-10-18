@@ -17,6 +17,7 @@ for name in ['media_playlist_trim_text', 'media_playlist_lower_text', 'media_pla
 source = r'''
 #include <cassert>
 #include <cstdlib>
+#include <cstdint>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -26,6 +27,8 @@ void *operator new(size_t size){++allocations;if(void *p=std::malloc(size?size:1
 void *operator new[](size_t size){return ::operator new(size);}
 void operator delete(void *p)noexcept{std::free(p);}
 void operator delete[](void *p)noexcept{std::free(p);}
+void operator delete(void *p, std::size_t) noexcept { std::free(p); }
+void operator delete[](void *p, std::size_t) noexcept { std::free(p); }
 ''' + helpers + r'''
 void check(const std::string &left,const std::string &right) {
   const auto id=media_playlist_content_id_matches(left,right),type=media_playlist_content_type_matches(left,right);

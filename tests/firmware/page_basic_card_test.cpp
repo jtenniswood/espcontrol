@@ -289,7 +289,8 @@ void media_action_profile(const DeviceUiLimits &limits) {
     if(entry.second[0])assert(value.label==entry.second);else assert(value.formatted_label&&std::strcmp(value.text,"Playing")==0);
   }
   subs.send("media_player.test","","playing");const auto before=allocations;
-  for(int i=0;i<1000;++i)assert(read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on);assert(allocations==before);
+  for(int i=0;i<1000;++i)assert(read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on);
+  assert(allocations==before);
   ++subs.generation;assert(!read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).on&&read_basic_card(definition,{17,0},state,2,"°C",nullptr,&media).label=="Unknown");
   for(const auto mode:{"previous","next","play_pause"}) {
     Fixture action(limits,std::string("media_player.test;;;;")+mode+";;media;;");assert(prepare_basic_card(action.store,0,definition));
