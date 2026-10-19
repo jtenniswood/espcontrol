@@ -92,6 +92,10 @@ struct PageBasicActions {
   // Allocation-free admission into the demanded confirmation owner. The epoch
   // belongs to PRESSED and the selected direction is captured before opening.
   void (*confirmation)(void*, PageBindingToken, uint32_t pressed_connection, bool currently_on){nullptr};
+  // Shared PIN state is read without registering a per-card observer.
+  bool (*screen_locked)(void*){nullptr};
+  // Admit a deferred local intent; the scene rechecks PIN/mode in maintenance.
+  void (*screen_lock)(void*, PageBindingToken, bool screensaver_on_lock){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -446,6 +450,14 @@ class PageBasicLvglPort final:public PageRendererPort {
           label_capacity = std::max<size_t>(label_capacity, HA_FRIENDLY_NAME_MAX_LEN + 1);
         }
         if (view.kind == BasicCardKind::LOCAL_RELAY && (!relay_ || !actions_.toggle)) return false;
+        if (view.kind == BasicCardKind::SCREEN_LOCK) {
+          if (!actions_.screen_locked || !actions_.screen_lock) return false;
+          for (const auto* key : {"Screen Locked", "Screen Unlocked"}) {
+            const auto* caption = theme_.translate ? theme_.translate(key) : nullptr;
+            label_capacity = std::max(label_capacity, std::strlen(caption ? caption : key) + 1);
+          }
+        }
+
         if (view.kind == BasicCardKind::LOCAL_NUMBER || view.kind == BasicCardKind::LOCAL_TEXT) {
           if (!local_) return false;
           if (view.kind == BasicCardKind::LOCAL_TEXT) {
@@ -816,6 +828,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     const bool clickable =
         cell.back || (s.definition && (s.definition->definition.kind == BasicCardKind::TOGGLE ||
                                        s.definition->definition.kind == BasicCardKind::LOCAL_RELAY ||
+                                       s.definition->definition.kind == BasicCardKind::SCREEN_LOCK ||
                                        s.definition->definition.kind == BasicCardKind::TIMER ||
                                        s.definition->definition.kind == BasicCardKind::COVER_COMMAND ||
                                        s.definition->definition.kind == BasicCardKind::COVER_TOGGLE ||
@@ -857,10 +870,11 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(s.cell.back){value.label=s.back.custom_label.empty()?theme_.back_label:s.back.custom_label;definition.custom_off=s.back.custom_color;definition.off_color=s.back.background_color;}
     else {
       definition = s.definition->definition;
-      value = read_basic_card(definition, {token.configuration, token.card}, state_,
-                              s.cell.column_span > 1 ? 2 : 1, theme_.temperature_unit, theme_.translate,
-                              media_, local_, relay_, fan_status_, percent_slider_, number_slider_,
-                              temperature_, timer_, cover_toggle_, access_, calendar_, timezone_, alarm_);
+      value = read_basic_card(
+          definition, {token.configuration, token.card}, state_, s.cell.column_span > 1 ? 2 : 1,
+          theme_.temperature_unit, theme_.translate, media_, local_, relay_, fan_status_, percent_slider_,
+          number_slider_, temperature_, timer_, cover_toggle_, access_, calendar_, timezone_, alarm_,
+          definition.kind == BasicCardKind::SCREEN_LOCK && actions_.screen_locked(actions_.owner));
       if(group_card(s))group_feedback(s,value);
       if (timer_card(s)) timer_feedback(s, value);
       if(definition.folder_mode==BasicFolderMode::CHILDREN) {
@@ -902,10 +916,10 @@ class PageBasicLvglPort final:public PageRendererPort {
                 !definition.sensor.empty() && value.on);
       const bool state_icon =
           definition.kind == BasicCardKind::TOGGLE || definition.kind == BasicCardKind::LOCAL_RELAY ||
-          definition.kind == BasicCardKind::FAN_SWITCH || definition.kind == BasicCardKind::ICON ||
-          definition.kind == BasicCardKind::STATUS || definition.kind == BasicCardKind::FAN_CONTROL ||
-          definition.kind == BasicCardKind::LIGHT || definition.kind == BasicCardKind::COVER ||
-          definition.action_display == BasicActionDisplay::ICON ||
+          definition.kind == BasicCardKind::SCREEN_LOCK || definition.kind == BasicCardKind::FAN_SWITCH ||
+          definition.kind == BasicCardKind::ICON || definition.kind == BasicCardKind::STATUS ||
+          definition.kind == BasicCardKind::FAN_CONTROL || definition.kind == BasicCardKind::LIGHT ||
+          definition.kind == BasicCardKind::COVER || definition.action_display == BasicActionDisplay::ICON ||
           definition.folder_mode == BasicFolderMode::ENTITY ||
           definition.folder_mode == BasicFolderMode::CLIMATE ||
           definition.folder_mode == BasicFolderMode::MOWER ||
@@ -1138,6 +1152,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (relay_) seen_relay_ = relay_->revision();
     if (fan_status_) seen_fan_status_ = fan_status_->revision();
     if (percent_slider_) seen_percent_slider_ = percent_slider_->revision();
+    seen_screen_locked_ = actions_.screen_locked && actions_.screen_locked(actions_.owner);
     seen_theme_ = theme_.revision;
     seen_forecast_ = forecasts_ ? forecasts_->revision() : 0;
     seen_media_ = media_ ? media_->revision() : 0;
@@ -1207,7 +1222,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         if (shell.pending_target >= 0 && !timer_card(shell) && !group_card(shell) &&
             static_cast<uint32_t>(media_->now_ms() - shell.pending_ms) >= pending_timeout(shell))
           return true;
-    return (alarm_ && alarm_->revision() != seen_alarm_) ||
+    return (actions_.screen_locked && actions_.screen_locked(actions_.owner) != seen_screen_locked_) ||
+           (alarm_ && alarm_->revision() != seen_alarm_) ||
            (timezone_ && timezone_->revision() != seen_timezone_) ||
            (calendar_ && calendar_->revision() != seen_calendar_) ||
            (access_ && access_->revision() != seen_access_) ||
@@ -2597,6 +2613,8 @@ class PageBasicLvglPort final:public PageRendererPort {
       port->actions_.control(port->actions_.owner, origin);
     else if (definition.kind == BasicCardKind::CLIMATE && port->actions_.climate)
       port->actions_.climate(port->actions_.owner,origin);
+    else if (definition.kind == BasicCardKind::SCREEN_LOCK && port->actions_.screen_lock)
+      port->actions_.screen_lock(port->actions_.owner, origin, definition.screensaver_on_lock);
     else if ((definition.kind == BasicCardKind::TOGGLE || definition.kind == BasicCardKind::LOCAL_RELAY) &&
              port->actions_.toggle)
       port->actions_.toggle(port->actions_.owner,origin,definition.entity);
@@ -2648,7 +2666,7 @@ class PageBasicLvglPort final:public PageRendererPort {
   std::array<Shell, Slots> shells_{};
   Arena active_, staged_;
   PageStore store_;
-  bool initialized_{false}, media_layout_dirty_{false}, media_finishing_{false};
+  bool initialized_{false}, media_layout_dirty_{false}, media_finishing_{false}, seen_screen_locked_{false};
   size_t callbacks_{0};
   uint64_t seen_alarm_{0}, seen_timezone_{0}, seen_calendar_{0}, seen_access_{0}, seen_cover_toggle_{0},
       seen_timer_{0}, seen_temperature_{0}, seen_number_slider_{0}, seen_percent_slider_{0},
