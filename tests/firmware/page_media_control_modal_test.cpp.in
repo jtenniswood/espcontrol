@@ -647,7 +647,7 @@ void test_panels() {
     PageMediaControlModalStyle style;
     style.owner = &styles;
     style.environment.media = &media;
-    style.resolve = [](void* p, const ParsedCfg&, PageMediaControlModalEnvironment&) {
+    style.resolve = [](void* p, PageModalToken, const ParsedCfg&, PageMediaControlModalEnvironment&) {
       return *static_cast<bool*>(p);
     };
     style.numeric_action_sent = [](void*, PageModalToken token, float) {

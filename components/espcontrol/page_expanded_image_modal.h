@@ -19,7 +19,9 @@ struct PageExpandedImageModalEnvironment {
 struct PageExpandedImageModalStyle {
   PageExpandedImageModalEnvironment environment;
   void* owner{nullptr};
-  bool (*resolve)(void*, const ParsedCfg&, PageExpandedImageModalEnvironment&){nullptr};
+  // Resolve by the opening's original configuration/card identity, including
+  // hidden-page fonts; never infer the source from the current visible grid.
+  bool (*resolve)(void*, PageModalToken, const ParsedCfg&, PageExpandedImageModalEnvironment&){nullptr};
   // Application scene keeps grid bindings but suppresses input, tile work and
   // animation under the overlay. It releases them for screensaver takeover.
   void (*covered)(void*, bool){nullptr};
@@ -92,7 +94,7 @@ class PageExpandedImageModalPort final : public PageModalPort {
     r->trigger = cfg_option_value(p.options, "image_modal_refresh_trigger");
     r->fit = image_card_modal_fit_enabled(p);
     r->environment = style_.environment;
-    if (!style_.resolve(style_.owner, p, r->environment) || !r->environment.label_font ||
+    if (!style_.resolve(style_.owner, token, p, r->environment) || !r->environment.label_font ||
         !r->environment.icon_font) {
       release(r);
       return nullptr;
@@ -165,7 +167,7 @@ class PageExpandedImageModalPort final : public PageModalPort {
     auto& r = *static_cast<Record*>(pointer);
     if (r.retired || !runtime_->valid(r.token)) return;
     auto environment = style_.environment;
-    if (!style_.resolve(style_.owner, r.config, environment) || !environment.label_font ||
+    if (!style_.resolve(style_.owner, r.token, r.config, environment) || !environment.label_font ||
         !environment.icon_font) {
       runtime_->notify_closed(r.token, PageModalClose::FAILED);
       return;

@@ -316,11 +316,18 @@ struct Harness {
   PageExpandedImageModalPort port;
   PageModalRuntime modal;
   bool covered{false};
+  PageModalToken styled{};
+  CardId hidden_card{NO_CARD};
+  lv_font_t hidden_font{};
+
   Harness(const DeviceUiLimits& limits)
       : document(limits),
         graph(deps, arena, transport, {256, 128, 32768}),
         port(arena, graph, view, style(this), this, [](void*, PageBindingToken t) { return t.binding != 0; }),
         modal(port) {
+    hidden_card = document.store.page(1)->first_card;
+    hidden_font = *LV_FONT_DEFAULT;
+    hidden_font.line_height += 2;
     assert(port.install(modal, true));
     assert(graph.prepare(document.store) && modal.prepare(document.store));
     graph.activate_prepared(document.store);
@@ -336,8 +343,13 @@ struct Harness {
   static PageExpandedImageModalStyle style(Harness* h) {
     PageExpandedImageModalStyle s;
     s.owner = h;
-    s.resolve = [](void*, const ParsedCfg&, PageExpandedImageModalEnvironment& e) {
-      e.label_font = LV_FONT_DEFAULT;
+    s.resolve = [](void* owner, PageModalToken token, const ParsedCfg&,
+                   PageExpandedImageModalEnvironment& e) {
+      auto& h = *static_cast<Harness*>(owner);
+      assert(token.opening && token.configuration == h.document.store.generation() &&
+             token.kind == ControlModalKind::IMAGE_CARD);
+      h.styled = token;
+      e.label_font = token.card == h.hidden_card ? &h.hidden_font : LV_FONT_DEFAULT;
       e.icon_font = LV_FONT_DEFAULT;
       e.background = 0x123456;
       return style_ok;
@@ -348,6 +360,7 @@ struct Harness {
   PageModalToken open(CardId card = 0) {
     assert(modal.request_card({document.store.generation(), card}));
     modal.loop();
+    if (modal.token().opening) assert(PageModalImageIdentity::same(styled, modal.token()));
     return modal.token();
   }
   lv_obj_t* panel() {
@@ -428,6 +441,12 @@ void lifetime(const DeviceUiLimits& limits) {
          h.arena.live == arenas && h.view.binds == h.view.unbinds);
   token = h.open(h.document.store.page(1)->first_card);
   assert(h.view.source.entity == "image.hidden" && clock_label == "Hidden");
+  auto* caption = lv_obj_get_child(h.loading(), 1);
+  assert(lv_obj_get_style_text_font(caption, LV_PART_MAIN) == &h.hidden_font);
+  h.modal.loop();
+  assert(PageModalImageIdentity::same(h.styled, token) &&
+         lv_obj_get_style_text_font(caption, LV_PART_MAIN) == &h.hidden_font);
+
   h.close();
 }
 void retirement_and_failures() {

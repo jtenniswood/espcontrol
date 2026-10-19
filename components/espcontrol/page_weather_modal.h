@@ -14,7 +14,9 @@ struct PageWeatherModalStyle {
   int radius{12};
   size_t gesture_capacity{128}, internal_free_min{24 * 1024}, internal_largest_min{8 * 1024};
   void* owner{nullptr};
-  bool (*resolve)(void*, const ParsedCfg&, PageWeatherModalStyle&){nullptr};
+  // Resolve by the opening's original configuration/card identity, including
+  // hidden-page fonts; never infer the source from the current visible grid.
+  bool (*resolve)(void*, PageModalToken, const ParsedCfg&, PageWeatherModalStyle&){nullptr};
 };
 class PageWeatherModalPort final : public PageModalPort {
  public:
@@ -82,8 +84,8 @@ class PageWeatherModalPort final : public PageModalPort {
     config.type = std::string(store.field(*card, CardField::TYPE));
     config.precision = std::string(store.field(*card, CardField::PRECISION));
     config.options = std::string(store.field(*card, CardField::OPTIONS));
-    if (!style_.resolve(style_.owner, config, environment) || !environment.font || !environment.icon_font ||
-        !environment.temperature_font ||
+    if (!style_.resolve(style_.owner, token, config, environment) || !environment.font ||
+        !environment.icon_font || !environment.temperature_font ||
         !ha_internal_heap_available("forecast panel setup", environment.internal_free_min,
                                     environment.internal_largest_min))
       return nullptr;

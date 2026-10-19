@@ -20,7 +20,9 @@ template<typename Family> struct PageLegacyModalStyle {
   typename Family::Environment environment{};
   size_t gesture_capacity{128};
   void *owner{nullptr};
-  bool (*resolve)(void *,const ParsedCfg &,typename Family::Environment &){nullptr};
+  // Resolve by the opening's original configuration/card identity, including
+  // hidden-page fonts; never infer the source from the current visible grid.
+  bool (*resolve)(void*, PageModalToken, const ParsedCfg&, typename Family::Environment&){nullptr};
   // A scene retains the original full grid binding at request time and matches
   // this opening token before forwarding a numeric preview to the card bank.
   void (*numeric_action_sent)(void *,PageModalToken,float){nullptr};
@@ -76,9 +78,9 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
     config.precision=std::string(store.field(*definition,CardField::PRECISION));
     config.options=std::string(store.field(*definition,CardField::OPTIONS));
     auto environment=style_.environment;
-    if(!style_.resolve(style_.owner,config,environment)||
-        !Family::initialize_context(record->context,config,environment)||
-        !initialize_state(*record,config,environment,style_.gesture_capacity,0)){
+    if (!style_.resolve(style_.owner, token, config, environment) ||
+        !Family::initialize_context(record->context, config, environment) ||
+        !initialize_state(*record, config, environment, style_.gesture_capacity, 0)) {
       release_record(record);return nullptr;
     }
     record->context.available=false;record_=record;return record;

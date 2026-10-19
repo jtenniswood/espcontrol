@@ -20,7 +20,9 @@ struct PageAlarmModalStyle {
   PageAlarmModalEnvironment environment;
   size_t gesture_capacity{128};
   void* owner{nullptr};
-  bool (*resolve)(void*, const ParsedCfg&, PageAlarmModalEnvironment&){nullptr};
+  // Resolve by the opening's original configuration/card identity, including
+  // hidden-page fonts; never infer the source from the current visible grid.
+  bool (*resolve)(void*, PageModalToken, const ParsedCfg&, PageAlarmModalEnvironment&){nullptr};
 };
 // One demanded record supplies control and PIN UI for one modal opening.
 // Switching to PIN keeps that opening; retiring it invalidates both interfaces.
@@ -124,7 +126,7 @@ class PageAlarmModalPort final : public PageModalPort {
     config.precision = std::string(store.field(*card, CardField::PRECISION));
     config.options = std::string(store.field(*card, CardField::OPTIONS));
     auto environment = style_.environment;
-    if (!style_.resolve(style_.owner, config, environment)) {
+    if (!style_.resolve(style_.owner, token, config, environment)) {
       release(record);
       return nullptr;
     }
