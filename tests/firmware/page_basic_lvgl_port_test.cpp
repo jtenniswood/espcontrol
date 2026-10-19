@@ -63,6 +63,30 @@ struct Fixture {
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
   }
+  struct ScreenLocks {};
+  Fixture(const DeviceUiLimits& limits, ScreenLocks) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {";Lock page;Auto;Auto;;;subpage;;", ";Ignore;Ignore;Ignore;;;screen_lock;;",
+                                 ";Ignore;Ignore;Ignore;;;screen_lock;;screensaver_on_lock"};
+    for (size_t i = 0; i < 3; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i].data()),
+                                  cards[i].size()) == PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1,2|screen_lock,,Ignore,Ignore,Ignore,,,,|screen_lock,,Ignore,Ignore,Ignore,,,,screensaver_on_"
+        "lock";
+    assert(writer.append_subpage(1, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    const std::string key = "button_order", order = "1,2,3";
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()), key.size(),
+                                 reinterpret_cast<const uint8_t*>(order.data()),
+                                 order.size()) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
   struct InputEpochs {};
   Fixture(const DeviceUiLimits& limits, InputEpochs) {
     PanelConfigWriter w(document.data(), document.size());
@@ -787,6 +811,8 @@ template<size_t Slots>struct Actions {
   static void climate(void *owner,PageBindingToken token){auto &a=*static_cast<Actions *>(owner);++a.climates;a.last=token;}
   static void action(void *owner,PageBindingToken token){auto &a=*static_cast<Actions *>(owner);++a.commands;a.last=token;}
   static void seek(void *owner,PageBindingToken token,uint8_t percent,float duration){auto &a=*static_cast<Actions *>(owner);++a.seeks;a.last=token;a.seek_percent=percent;a.seek_duration=duration;if(a.seek_page!=NO_PAGE)assert(a.renderer->open_page(a.seek_page));}
+  bool locked{false}, lock_screensaver{false};
+  size_t locks{0};
   size_t confirmations{0};
   uint32_t confirmation_connection{0};
   bool confirmation_current{false};
@@ -808,6 +834,14 @@ template<size_t Slots>struct Actions {
     auto result = PageBasicActions{this,    icon,   valid,  toggle, open,   back,
                                    climate, action, action, action, action, seek};
     result.bound = bound;
+    result.screen_locked = [](void* owner) { return static_cast<Actions*>(owner)->locked; };
+    result.screen_lock = [](void* owner, PageBindingToken token, bool saver) {
+      auto& a = *static_cast<Actions*>(owner);
+      ++a.locks;
+      a.last = token;
+      a.lock_screensaver = saver;
+    };
+
     return result;
   }
 };
@@ -6435,6 +6469,177 @@ void input_epoch_profile(const DeviceUiLimits& limits) {
       limits.device_profile);
 }
 
+template <size_t Slots>
+void screen_lock_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, Fixture::ScreenLocks{});
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192});
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  const size_t row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+  }
+  PageBasicTheme theme;
+  theme.translate = [](const char* key) {
+    return std::strcmp(key, "Screen Locked") == 0     ? "Touchscreen secured with the shared PIN"
+           : std::strcmp(key, "Screen Unlocked") == 0 ? "Touchscreen ready for input"
+                                                      : key;
+  };
+  Actions<Slots> actions;
+  auto callbacks = actions.callbacks();
+  for (bool missing_state : {false, true}) {
+    auto incomplete = callbacks;
+    if (missing_state)
+      incomplete.screen_locked = nullptr;
+    else
+      incomplete.screen_lock = nullptr;
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  incomplete);
+    assert(port.initialize() && !port.prepare(fixture.store, Slots));
+  }
+  {
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  callbacks);
+    assert(port.initialize());
+    PageLabelRefresh refresh(arena);
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t at = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[at++] = label;
+    assert(refresh.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    assert(renderer.prepare(fixture.store) && state.prepare(fixture.store));
+    renderer.activate_prepared(fixture.store);
+    state.activate_prepared(fixture.store);
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto verify = [&](size_t slot) {
+      if (std::strcmp(lv_label_get_text(widgets[slot].icon), actions.locked ? "LOCKED" : "UNLOCKED") != 0)
+        std::fprintf(stderr, "PIN projection: slot %zu, locked %d, icon '%s', label '%s', page %u\n", slot,
+                     actions.locked, lv_label_get_text(widgets[slot].icon),
+                     lv_label_get_text(widgets[slot].label), unsigned(renderer.active_page()));
+      assert(std::strcmp(lv_label_get_text(widgets[slot].icon), actions.locked ? "LOCKED" : "UNLOCKED") == 0);
+      assert(std::strcmp(lv_label_get_text(widgets[slot].label),
+                         theme.translate(actions.locked ? "Screen Locked" : "Screen Unlocked")) == 0);
+      assert(lv_obj_has_state(widgets[slot].button, LV_STATE_CHECKED) == actions.locked);
+      assert(lv_obj_has_flag(widgets[slot].sensor_container, LV_OBJ_FLAG_HIDDEN));
+    };
+    const auto tap = [&](size_t slot, bool saver) {
+      const auto count = actions.locks;
+      lv_obj_send_event(widgets[slot].button, LV_EVENT_PRESSED, nullptr);
+      lv_obj_send_event(widgets[slot].button, LV_EVENT_CLICKED, nullptr);
+      if (actions.locks != count + 1 || actions.lock_screensaver != saver || !renderer.valid(actions.last))
+        std::fprintf(stderr,
+                     "PIN input: page %u slot %zu count %zu -> %zu saver %d expected %d valid %d card %u\n",
+                     unsigned(renderer.active_page()), slot, count, actions.locks, actions.lock_screensaver,
+                     saver, renderer.valid(actions.last), unsigned(renderer.binding(slot).card));
+      assert(actions.locks == count + 1 && actions.lock_screensaver == saver && renderer.valid(actions.last));
+    };
+    verify(1);
+    const auto unpressed = actions.locks;
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESS_LOST, nullptr);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.locks == unpressed);
+    tap(1, false);
+    tap(2, true);
+    actions.locked = true;
+    renderer.update_visible();
+    verify(1);
+    actions.locked = false;
+    renderer.update_visible();
+    verify(1);
+    // HA reconnect does not invalidate an entirely local PIN-lock press.
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    ++subscriptions.generation;
+    state.invalidate_disconnected_state();
+    const auto reconnect_count = actions.locks;
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.locks == reconnect_count + 1);
+    const auto child = fixture.store.card(0)->target;
+    assert(child != NO_PAGE);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    assert(renderer.open_page(child));
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto stale = actions.locks;
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.locks == stale);
+    verify(1);
+    tap(1, false);
+    // Preserve the existing subpage normalizer, which strips this local flag.
+    assert(fixture.store.field(*fixture.store.card(renderer.binding(2).card), CardField::OPTIONS).empty());
+    tap(2, false);
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    assert(renderer.suspend());
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.locks == stale + 2);
+    assert(renderer.resume());
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto cpp = cpp_allocations, reservations = arena.allocations, retained = arena.live,
+               lv_bytes = lv_live_bytes;
+    const auto objects = lv_obj_get_child_count(page);
+    const auto descriptors = refresh.memory().descriptor_adds;
+    assert(subscriptions.bindings.empty());
+    for (int i = 0; i < 1000; ++i) {
+      actions.locked = (i % 2) == 0;
+      renderer.update_visible();
+      verify(1);
+      tap(2, true);
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      verify(1);
+      tap(1, false);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      verify(1);
+      assert(cpp_allocations == cpp && arena.allocations == reservations && arena.live == retained &&
+             lv_live_bytes == lv_bytes && lv_obj_get_child_count(page) == objects &&
+             refresh.memory().descriptor_adds == descriptors && subscriptions.bindings.empty());
+    }
+    // Replacement invalidates held input; a new binding reads shared state again.
+    lv_obj_send_event(widgets[1].button, LV_EVENT_PRESSED, nullptr);
+    assert(renderer.prepare(fixture.store) && state.prepare(fixture.store));
+    const auto before_replace = actions.locks;
+    renderer.activate_prepared(fixture.store);
+    state.activate_prepared(fixture.store);
+    lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.locks == before_replace);
+    renderer.update_visible();
+    verify(1);
+    tap(1, false);
+    renderer.retire_active();
+    state.retire_active();
+  }
+  assert(arena.live == 0);
+  lv_obj_delete(page);
+  std::printf("%s: Screen Lock, 1000 navigation/shared PIN cycles, local press guards and stable resources\n",
+              limits.device_profile);
+}
+
 int main() {
   std::setvbuf(stdout, nullptr, _IOLBF, 0);
   lv_init();
@@ -6457,6 +6662,25 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "screen_lock") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          screen_lock_profile<6>(limits);
+          break;
+        case 9:
+          screen_lock_profile<9>(limits);
+          break;
+        case 15:
+          screen_lock_profile<15>(limits);
+          break;
+        case 20:
+          screen_lock_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "input_epochs") == 0) {
       switch (limits.slot_count) {
         case 6:
@@ -6970,6 +7194,7 @@ int main() {
       case 6:
         profile<6>(limits);
         input_epoch_profile<6>(limits);
+        screen_lock_profile<6>(limits);
         confirmation_profile<6>(limits);
         qr_tile_profile<6>(limits);
         status_action_profile<6>(limits);
@@ -7005,6 +7230,7 @@ int main() {
       case 9:
         profile<9>(limits);
         input_epoch_profile<9>(limits);
+        screen_lock_profile<9>(limits);
         confirmation_profile<9>(limits);
         qr_tile_profile<9>(limits);
         status_action_profile<9>(limits);
@@ -7043,6 +7269,7 @@ int main() {
       case 15:
         profile<15>(limits);
         input_epoch_profile<15>(limits);
+        screen_lock_profile<15>(limits);
         confirmation_profile<15>(limits);
         qr_tile_profile<15>(limits);
         status_action_profile<15>(limits);
@@ -7078,6 +7305,7 @@ int main() {
       case 20:
         profile<20>(limits);
         input_epoch_profile<20>(limits);
+        screen_lock_profile<20>(limits);
         confirmation_profile<20>(limits);
         qr_tile_profile<20>(limits);
         status_action_profile<20>(limits);

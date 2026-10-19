@@ -105,6 +105,14 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
                               cfg_option_token_present(options, "hidden"), &payload, &ssid) &&
         !copy(payload, out.time_unit))
       return false;
+  } else if (type == "screen_lock") {
+    out.kind = BasicCardKind::SCREEN_LOCK;
+    out.entity = out.sensor = out.label = out.unit = {};
+    out.icon = "Lock Open";
+    out.icon_on = "Lock";
+    out.default_label = "Screen Unlocked";
+    out.active_color = out.push_feedback = true;
+    out.screensaver_on_lock = cfg_option_enabled(options, "screensaver_on_lock");
   } else if (type == "image") {
     out.kind = BasicCardKind::IMAGE;
     out.unit = {};
@@ -688,9 +696,17 @@ BasicCardState read_basic_card(
     PageFanStatusRuntime* fan_status, PagePercentSliderRuntime* percent_slider,
     PageNumberSliderRuntime* number_slider, PageLightTemperatureRuntime* temperature, PageTimerRuntime* timer,
     PageCoverToggleRuntime* cover_toggle, PageAccessStateRuntime* access, PageCalendarRuntime* calendar,
-    PageTimezoneRuntime* timezone, PageAlarmStateRuntime* alarm_owner) {
+    PageTimezoneRuntime* timezone, PageAlarmStateRuntime* alarm_owner, bool screen_locked) {
   BasicCardState result;
   if(card.kind==BasicCardKind::FORECAST)return result;
+  if (card.kind == BasicCardKind::SCREEN_LOCK) {
+    result.on = screen_locked;
+    const auto* key = screen_locked ? "Screen Locked" : "Screen Unlocked";
+    const auto* caption = translate ? translate(key) : nullptr;
+    result.label = caption ? caption : key;
+    return result;
+  }
+
   if (card.kind == BasicCardKind::WIFI_QR) {
     result.label = card.label;
     if (result.label.empty()) {

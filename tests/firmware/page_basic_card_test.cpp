@@ -69,7 +69,7 @@ void display_text() {
 }
 void profile(const DeviceUiLimits &limits) {
   static_assert(sizeof(BasicCardDefinition) == 264);
-  for (const auto& spec : std::array<std::pair<const char*, bool>, 16>{
+  for (const auto& spec : std::array<std::pair<const char*, bool>, 17>{
            {{"switch.test;;;;;;;;", true},
             {"script.test;;;;script.turn_on;;action;;", true},
             {"fan.test;;;;;;fan_switch;;", true},
@@ -85,11 +85,23 @@ void profile(const DeviceUiLimits &limits) {
             {"relay;;;;switch;;internal;;", false},
             {";Folder;;;indicator;;subpage;;", false},
             {"switch.guest;;;;;;wifi_qr;;ssid64=R3Vlc3Q,security=open", false},
-            {";;;;;;calendar;;", false}}}) {
+            {";;;;;;calendar;;", false},
+            {";;;;;;screen_lock;;", false}}}) {
     Fixture f(limits, spec.first);
     BasicCardDefinition d;
     TextPool text;
     assert(prepare_basic_card(f.store, 0, d, &text) && d.ha_input == spec.second);
+  }
+
+  for (const auto* options : {"", "screensaver_on_lock", "screensaver_on_lock=1", "screensaver_on_lock=0"}) {
+    Fixture f(limits, std::string("sensor.ignore;Ignore;Custom;Custom;sensor.ignore;Ignore;screen_lock;9;") +
+                          options);
+    BasicCardDefinition d;
+    assert(prepare_basic_card(f.store, 0, d));
+    assert(d.kind == BasicCardKind::SCREEN_LOCK && !d.ha_input);
+    assert(d.entity.empty() && d.label.empty() && d.sensor.empty() && d.unit.empty());
+    assert(d.icon == "Lock Open" && d.icon_on == "Lock" && d.push_feedback && d.active_color);
+    assert(d.screensaver_on_lock == (std::strcmp(options, "screensaver_on_lock") == 0));
   }
 
   for (const auto& spec : std::array<std::pair<const char*, uint8_t>, 6>{

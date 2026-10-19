@@ -66,7 +66,8 @@ enum class BasicCardKind : uint8_t {
   CLOCK,
   ALARM,
   IMAGE,
-  WIFI_QR
+  WIFI_QR,
+  SCREEN_LOCK
 };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode : uint8_t { NONE, ENTITY, CLIMATE, MOWER, TIMER, CHILDREN, NUMBER, TEXT };
@@ -90,6 +91,7 @@ struct BasicCardDefinition {
     AlarmCardOptions alarm;
     BasicImageOptions image;
     bool qr_tile;
+    bool screensaver_on_lock;
   };
   BasicActionDisplay action_display{BasicActionDisplay::NONE};
   std::string_view entity,sensor,label,unit,icon,icon_on;
@@ -194,5 +196,5 @@ BasicCardState read_basic_card(
     PageLightTemperatureRuntime* temperature = nullptr, PageTimerRuntime* timer = nullptr,
     PageCoverToggleRuntime* cover_toggle = nullptr, PageAccessStateRuntime* access = nullptr,
     PageCalendarRuntime* calendar = nullptr, PageTimezoneRuntime* timezone = nullptr,
-    PageAlarmStateRuntime* alarm = nullptr);
+    PageAlarmStateRuntime* alarm = nullptr, bool screen_locked = false);
 }  // namespace espcontrol::pages
